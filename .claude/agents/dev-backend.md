@@ -30,6 +30,7 @@ Tu passes en premier. Après ton premier commit, ouvre la PR en **brouillon** av
 2. **TDD** : test rouge → code minimal → refactor.
 3. Fais tourner **en local** toutes les barrières de `docs/workflow.md` avant de pousser.
 4. Mets à jour `docs/glossary.md` et la doc si un concept change.
+5. Commits **petits et atomiques**, au format Conventional Commits (voir « Messages de commit » dans `docs/workflow.md`), avec ton scope et le footer `Refs: #<n°>`.
 
 ## Règles communes
 - Reste dans **ton périmètre**. Si la story exige un changement hors de ton périmètre, signale-le à l'orchestrateur au lieu de le faire.

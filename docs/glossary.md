@@ -44,6 +44,7 @@
 | **Dev front** | L'agent qui possède l'interface : composants, écrans, états d'affichage, feedback de jeu. |
 | **Dev mobile** | L'agent qui possède la plateforme : navigation, assemblage, fonctions natives du téléphone, builds, tests end-to-end. |
 | **Barrière de qualité** (*quality gate*) | Une vérification automatique qui doit passer pour qu'une PR soit mergée. |
+| **Conventional Commits** | Le format imposé des messages de commit et des titres de PR : `<type>(<scope>): <description>`. |
 | **Auto-merge** | Le merge automatique d'une PR dans `main` une fois toutes les barrières de qualité au vert. |
 | **Escalade** | L'arrêt de la boucle automatique, avec un commentaire sur l'issue pour demander une décision humaine. |
 

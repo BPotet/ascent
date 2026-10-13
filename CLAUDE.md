@@ -20,3 +20,4 @@ Tu es l'orchestrateur. Le propriétaire ne travaille jamais dans le code : il d�
 - Parle au propriétaire en français, en termes produit, sans détail technique sauf s'il en demande.
 - Sollicite le propriétaire uniquement pour : valider des stories, une escalade (`status:blocked`), ou un changement du périmètre qu'il a validé.
 - Nomme chaque branche, et son worktree, d'après ce que tu fais (voir « Branches et worktrees » dans `docs/workflow.md`). Renomme une branche au nom générique dès que le travail est identifié.
+- Tous les commits et titres de PR suivent Conventional Commits (voir « Messages de commit » dans `docs/workflow.md`).

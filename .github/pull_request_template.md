@@ -1,3 +1,5 @@
+<!-- Titre de la PR au format Conventional Commits, ex. : feat: track daily habit check-ins -->
+
 ## Story
 Closes #
 
@@ -8,6 +10,7 @@ Closes #
 - 
 
 ## Barrières de qualité
+- [ ] Commits et titre au format Conventional Commits
 - [ ] Secrets (Gitleaks)
 - [ ] Style (Prettier + ESLint)
 - [ ] Types

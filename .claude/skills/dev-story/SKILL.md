@@ -17,5 +17,5 @@ Prérequis : la story est en `status:ready`. Sinon, arrête-toi et lance `/backl
 4. **Test** : lance l'agent **qa**. S'il y a des barrières rouges, renvoie au dev concerné (backend, front ou mobile) avec le rapport, puis relance **qa**.
 5. **Review** : passe en `status:review` et lance l'agent **reviewer**.
    - Changements demandés : retour à l'étape 3 (au plus 3 tours, puis `status:blocked` et résumé au propriétaire).
-6. **Merge** : quand la CI est entièrement verte et la review approuvée, active l'auto-merge (squash) de la PR. Elle ferme l'issue.
+6. **Merge** : quand la CI est entièrement verte et la review approuvée, active l'auto-merge (squash) de la PR. Son titre, au format Conventional Commits, devient le commit sur `main`. Elle ferme l'issue.
 7. Annonce au propriétaire, en une ou deux phrases produit, ce qui est maintenant disponible dans l'app.

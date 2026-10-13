@@ -100,6 +100,63 @@ Le nom de la branche dit **ce qu'on fait**. Le worktree porte le même nom que l
 - Si le travail change de nature en cours de route, l'orchestrateur renomme la branche (et le worktree) avant d'ouvrir la PR.
 - Une branche créée automatiquement avec un nom générique est renommée dès que l'on sait ce qu'on y fait.
 
+## Messages de commit
+
+Les commits suivent [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
+
+```
+<type>(<scope>): <description>
+
+[corps facultatif]
+
+[footers facultatifs]
+```
+
+- **Description** : en anglais, à l'impératif, en minuscules, sans point final, 72 caractères au plus (ex. `feat(domain): award xp on habit check-in`). Les termes viennent du glossaire (nom de code entre parenthèses).
+- **Corps** : le *pourquoi* du changement, si ce n'est pas évident.
+- **Footers** : `Refs: #<n°>` pour l'issue. `BREAKING CHANGE: <explication>` pour un changement incompatible.
+
+### Types
+
+| Type | Usage | Version |
+|---|---|---|
+| `feat` | Nouvelle fonctionnalité pour le joueur | MINOR |
+| `fix` | Correction d'un bug | PATCH |
+| `refactor` | Restructuration sans changement de comportement | — |
+| `perf` | Amélioration des performances | — |
+| `test` | Ajout ou correction de tests uniquement | — |
+| `docs` | Documentation, glossaire | — |
+| `style` | Formatage, sans changement de code | — |
+| `build` | Dépendances, configuration de build | — |
+| `ci` | Pipelines et barrières de qualité | — |
+| `chore` | Maintenance qui ne rentre dans aucun autre type | — |
+
+Un `!` après le type ou le scope (ex. `feat(persistence)!: …`), ou un footer `BREAKING CHANGE:`, signale un changement incompatible (MAJOR). Par exemple : une migration qui ne permet pas de revenir en arrière.
+
+### Scopes
+
+Le scope indique la zone touchée, alignée sur l'architecture et sur le dev qui la possède.
+
+| Scope | Zone | Dev |
+|---|---|---|
+| `domain` | `src/domain/` | backend |
+| `application` | `src/application/` | backend |
+| `persistence` | `src/adapters/persistence/` | backend |
+| `ui` | `src/adapters/ui/` | front |
+| `device` | `src/adapters/device/` | mobile |
+| `app` | `src/app/`, configuration | mobile |
+| `e2e` | `e2e/` | mobile |
+| `glossary` | `docs/glossary.md` | tous |
+| `workflow` | `docs/workflow.md`, agents, skills, templates | orchestrateur |
+
+Le scope est facultatif quand un commit touche plusieurs zones.
+
+### Commits et PR
+
+- Chaque dev fait des commits **petits et atomiques** dans son scope.
+- Les PR sont mergées en **squash** : le **titre de la PR** devient le commit sur `main`. Il doit donc lui aussi respecter le format, avec le type dominant de la story (ex. `feat: track daily habit check-ins`). Le corps du commit squashé contient `Closes #<n°>`.
+- Le format est vérifié automatiquement (barrière **Commits** ci-dessous). L'historique de `main` permettra ensuite de générer le changelog et les numéros de version.
+
 ## Statuts (labels GitHub)
 
 | Label | Étape | Qui fait avancer |
@@ -175,6 +232,7 @@ Toutes sont **bloquantes**. Les outils sont indicatifs et seront confirmés par 
 | # | Barrière | Ce qu'elle garantit | Outil pressenti | Quand |
 |---|---|---|---|---|
 | 1 | **Secrets** | Aucun secret ne part dans le dépôt | Gitleaks | pre-commit + CI |
+| 1 bis | **Commits** | Messages de commit et titre de PR au format Conventional Commits | commitlint | commit-msg + CI |
 | 2 | **Style** | Formatage et style uniformes | Prettier + ESLint | pre-commit + CI |
 | 3 | **Types** | Pas d'erreur de typage | TypeScript (`tsc --noEmit`) | pre-commit + CI |
 | 4 | **Architecture** | Les dépendances respectent l'hexagonal (équivalent d'ArchUnit) | dependency-cruiser | CI |

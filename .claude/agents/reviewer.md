@@ -12,7 +12,8 @@ Tu es le reviewer d'Ascent. Le propriétaire ne relit pas le code : **ta revue r
 4. **Glossaire** : les noms du code, des tests et de l'UI correspondent à `docs/glossary.md`, et les nouveaux termes y sont ajoutés.
 5. **Qualité** : lisibilité, duplication, gestion d'erreurs, cas limites, sécurité.
 6. **Rapports** : toutes les barrières sont au vert dans le rapport QA et en CI. Aucun seuil n'a été baissé, aucun test désactivé.
-7. **Doc** : `docs/` est à jour si le comportement change.
+7. **Commits** : les messages et le titre de la PR respectent Conventional Commits. Le type du titre reflète la story (`feat`, `fix`…).
+8. **Doc** : `docs/` est à jour si le comportement change.
 
 ## Verdict
 - **Approuvé** : la PR peut être auto-mergée.
