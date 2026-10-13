@@ -1,0 +1,705 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Habitudes et semaine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* ============ Page (hors téléphone) ============ */
+:root{
+  --s:1;
+  --bg:#F4F2EE; --surface:#FFFFFF; --surface-2:#ECE9E3; --text:#1B1F27; --muted:#5B6372; --line:#DEDAD2; --accent:#3047C9; --chip:#E4E8FB; --chip-text:#22339A;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B0E14; --surface:#151A24; --surface-2:#1C2230; --text:#E8ECF3; --muted:#98A2B3; --line:#263042; --accent:#9DB2FF; --chip:#202A45; --chip-text:#C9D5FF;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B0E14; --surface:#151A24; --surface-2:#1C2230; --text:#E8ECF3; --muted:#98A2B3; --line:#263042; --accent:#9DB2FF; --chip:#202A45; --chip-text:#C9D5FF;
+}
+*{box-sizing:border-box}
+html,body{overflow-x:hidden}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1400px;margin:0 auto;padding:28px 16px 96px}
+h1,h2.pg,h3.pg{font-family:Sora,Inter,system-ui,sans-serif;letter-spacing:-.01em}
+h1{font-size:clamp(28px,5vw,40px);line-height:1.15;margin:6px 0 8px}
+h2.pg{font-size:24px;margin:56px 0 6px}
+h3.pg{font-size:17px;margin:28px 0 8px}
+.eyebrow{font:600 13px Inter;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.lead{color:var(--muted);max-width:760px;margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0}
+.tag{display:inline-flex;align-items:center;gap:6px;background:var(--chip);color:var(--chip-text);border-radius:999px;padding:4px 12px;font:600 13px Inter}
+.tag.warn{background:#FFF1D1;color:#6A4A00}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tag.warn{background:#3A2E10;color:#FFD98A}}
+:root[data-theme="dark"] .tag.warn{background:#3A2E10;color:#FFD98A}
+nav.toc{display:flex;gap:8px;overflow-x:auto;padding:16px 0 4px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none}
+nav.toc a{flex:none;color:var(--text);text-decoration:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font:500 14px Inter;min-height:40px;display:inline-flex;align-items:center}
+nav.toc a:hover{border-color:var(--accent)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}
+ul.tight{margin:8px 0 0;padding-left:20px}
+ul.tight li{margin:4px 0}
+.muted{color:var(--muted)}
+code{font:500 13px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--surface-2);padding:1px 6px;border-radius:6px}
+
+/* Galerie de cadres */
+.gallery{display:flex;flex-wrap:wrap;gap:44px 32px;margin-top:20px}
+figure.frame{margin:0;width:calc(408px * var(--s))}
+figcaption{margin-bottom:12px}
+.cap-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.scr{font:600 13px Inter;color:var(--muted)}
+.story{font:700 12px Inter;background:var(--chip);color:var(--chip-text);border-radius:999px;padding:3px 10px;white-space:nowrap}
+.state{font:600 18px/1.3 Sora,Inter,sans-serif;margin-top:2px}
+.note{margin:4px 0 0;color:var(--muted);font-size:14px;line-height:1.45}
+.slot{width:calc(408px * var(--s));height:calc(862px * var(--s))}
+.phone{width:408px;height:862px;padding:9px;border-radius:62px;background:#04060A;box-shadow:0 0 0 1.5px #2A3142,0 22px 50px rgba(0,0,0,.28);transform:scale(var(--s));transform-origin:top left}
+
+/* Prototype */
+.proto{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;margin-top:20px}
+.controls{flex:1 1 300px;max-width:520px}
+.controls fieldset{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:0 0 14px}
+.controls legend{font:600 14px Inter;padding:0 6px}
+.controls label.opt{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer}
+.controls input[type=radio],.controls input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent)}
+.pbtn{min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--text);font:600 14px Inter;padding:0 14px;cursor:pointer;margin:0 8px 8px 0}
+.pbtn:hover{border-color:var(--accent)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Identité */
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.sw{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.sw i{display:block;height:64px}
+.sw div{padding:8px 10px;font-size:13px;line-height:1.35}
+.sw b{display:block;font-size:14px}
+.typo .t1{font:700 22px/28px Sora}.typo .t2{font:600 17px Sora}.typo .t3{font:400 15px/22px Inter}.typo .t4{font:500 13px Inter}
+.app.demo{border-radius:18px;padding:18px;display:flex;flex-wrap:wrap;gap:18px 22px;align-items:flex-start}
+.demo-item{display:flex;flex-direction:column;align-items:center;gap:8px;width:84px;text-align:center;font-size:12px;color:var(--a-muted)}
+.demo-item .cell{width:48px;height:48px;flex:none}
+
+/* ============ Application Ascent : identité « Nuit d'altitude » ============ */
+.app{
+  --a-bg:#0F1420; --a-surface:#18202F; --a-surface-2:#222B3D; --a-line:#2E3950;
+  --a-cell-line:#6B7894; --a-future:#3A4560;
+  --a-text:#EEF1F7; --a-muted:#9AA4B8;
+  --a-accent:#7C9CFF; --a-on-accent:#0B1020;
+  --a-done:#3DDC97; --a-on-done:#05261A;
+  --a-xp:#FFC94D; --a-on-xp:#2A1E00;
+  --a-danger:#FF7A7A; --a-on-danger:#2B0606;
+  --a-sealed-done:#2B5A48; --a-sealed-check:#A6E6C9;
+  background:var(--a-bg);color:var(--a-text);font-family:Inter,system-ui,sans-serif;
+}
+.app button{font-family:inherit;-webkit-tap-highlight-color:transparent}
+.app button:focus-visible{outline:3px solid var(--a-accent);outline-offset:2px}
+.screen{position:relative;width:390px;height:844px;border-radius:53px;overflow:hidden;display:flex;flex-direction:column}
+.island{position:absolute;top:11px;left:50%;width:124px;height:36px;margin-left:-62px;border-radius:20px;background:#000;z-index:95}
+.statusbar{height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:8px 32px 0 44px;font:600 16px Inter}
+.sb-icons{display:flex;gap:6px;align-items:center}
+.homebar{position:absolute;bottom:8px;left:50%;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:rgba(238,241,247,.85);z-index:99}
+
+.appbar{flex:none;display:flex;align-items:center;gap:12px;padding:6px 16px 12px;min-height:66px}
+.avatar{width:44px;height:44px;border-radius:14px;background:linear-gradient(160deg,#2A3A6B,#1A2238);display:grid;place-items:center;color:var(--a-xp);border:1px solid var(--a-line);flex:none}
+.who .lbl{font-size:13px;color:var(--a-muted);font-weight:500}
+.xpv{font:700 24px/1.15 Sora,Inter,sans-serif;color:var(--a-xp);font-variant-numeric:tabular-nums;display:inline-block;transform-origin:left center}
+.xpv.glow{text-shadow:0 0 18px rgba(255,201,77,.7)}
+.xpv.pulse{animation:xpPulse .6s ease-out}
+@keyframes xpPulse{0%{transform:scale(1)}35%{transform:scale(1.14);text-shadow:0 0 18px rgba(255,201,77,.85)}100%{transform:scale(1)}}
+.xpdelta{margin-left:auto;font:700 14px Sora,Inter,sans-serif;background:var(--a-xp);color:var(--a-on-xp);padding:6px 12px;border-radius:999px}
+.xpdelta.neg{background:var(--a-surface-2);color:var(--a-muted)}
+.xpdelta.anim{animation:deltaIn 1.4s ease-out forwards}
+@keyframes deltaIn{0%{opacity:0;transform:translateY(8px)}15%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0}}
+
+.weeknav{flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 6px;margin:0 16px;background:var(--a-surface);border-radius:16px;height:60px}
+.iconbtn{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:transparent;border:0;color:var(--a-text);cursor:pointer}
+.iconbtn:disabled{color:#4A5570;cursor:default}
+.wk{text-align:center}
+.wkt{font:600 16px Sora,Inter,sans-serif}
+.wks{font-size:13px;color:var(--a-muted)}
+
+.dayhead{flex:none;display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:12px 16px 4px;padding:0 10px}
+.dh{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:var(--a-muted)}
+.dl{font-weight:600}
+.dn{min-width:30px;height:24px;display:grid;place-items:center;border-radius:8px;font:600 13px Inter;color:var(--a-text)}
+.dh.today .dl{color:var(--a-accent)}
+.dh.today .dn{background:var(--a-accent);color:var(--a-on-accent)}
+
+.scroll{flex:1;overflow-y:auto;padding:4px 16px 128px;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.banner{display:flex;gap:10px;background:#1C2436;border:1px solid var(--a-line);border-radius:14px;padding:12px;margin:6px 0 6px;font-size:13px;line-height:1.4;color:var(--a-muted)}
+.banner svg{flex:none;color:var(--a-muted);margin-top:1px}
+.banner strong{color:var(--a-text);font-size:14px}
+.banner p{margin:2px 0 0}
+.linkbtn{min-height:44px;background:none;border:0;padding:0;color:var(--a-accent);font:600 14px Inter;cursor:pointer}
+.sect{display:flex;align-items:baseline;justify-content:space-between;margin:10px 2px 8px}
+.sect h2{font:600 15px Sora,Inter,sans-serif;margin:0}
+.sect span{font-size:13px;color:var(--a-muted)}
+.sect span.full{color:var(--a-xp);font-weight:600}
+
+.card{background:var(--a-surface);border-radius:16px;padding:4px 9px 10px;margin-bottom:10px;border:1px solid transparent;transition:border-color .4s, box-shadow .4s}
+.card.hl{border-color:var(--a-accent);box-shadow:0 0 0 3px rgba(124,156,255,.2)}
+.hname{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;background:none;border:0;color:var(--a-text);font:600 15px/1.3 Inter;text-align:left;padding:4px 2px;cursor:pointer}
+.hname svg{flex:none;color:var(--a-muted);margin-left:auto}
+.cells{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+
+.cell{position:relative;width:100%;aspect-ratio:1/1;min-height:44px;border-radius:12px;border:2px solid var(--a-cell-line);background:transparent;color:var(--a-on-done);display:grid;place-items:center;padding:0;cursor:pointer;transition:background-color .15s, border-color .15s}
+.cell>svg{opacity:0;transform:scale(.4);transition:opacity .15s, transform .2s cubic-bezier(.3,1.6,.5,1)}
+.cell.checked{background:var(--a-done);border-color:var(--a-done)}
+.cell.checked>svg{opacity:1;transform:scale(1)}
+.cell.today{border-color:var(--a-accent)}
+.cell.today.checked{border-color:var(--a-done);outline:2px solid var(--a-accent);outline-offset:1px}
+.cell.future{border:2px dashed var(--a-future);cursor:default}
+.cell.sealed{border-color:transparent;background:var(--a-surface-2);cursor:default}
+.cell.sealed.checked{background:var(--a-sealed-done);color:var(--a-sealed-check)}
+.cell.pop{animation:pop .32s ease-out}
+.cell.popframe{transform:scale(1.1)}
+.cell.shake{animation:shake .35s}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
+@keyframes shake{0%,100%{transform:none}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.xpf{position:absolute;left:50%;bottom:100%;transform:translate(-50%,0);font:700 15px Sora,Inter,sans-serif;color:var(--a-xp);white-space:nowrap;pointer-events:none;text-shadow:0 1px 10px rgba(0,0,0,.7);z-index:5;animation:rise .9s ease-out forwards}
+.xpf.neg{color:var(--a-muted);font-weight:600}
+.xpf.frozen{animation:none;opacity:1;transform:translate(-50%,-10px) scale(1.05)}
+@keyframes rise{0%{opacity:0;transform:translate(-50%,8px) scale(.8)}20%{opacity:1;transform:translate(-50%,-4px) scale(1.1)}100%{opacity:0;transform:translate(-50%,-46px) scale(1)}}
+
+.coach{margin-top:10px;background:rgba(124,156,255,.14);border:1px solid rgba(124,156,255,.45);color:#DCE4FF;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.4;display:flex;gap:8px;align-items:flex-start}
+.coach svg{flex:none;color:var(--a-xp);margin-top:1px}
+
+.fab{position:absolute;right:16px;bottom:34px;height:56px;padding:0 20px 0 16px;border-radius:28px;background:var(--a-accent);color:var(--a-on-accent);border:0;font:600 16px Inter;display:flex;align-items:center;gap:8px;box-shadow:0 10px 24px rgba(0,0,0,.45);z-index:20;cursor:pointer}
+.fab.limit{background:var(--a-surface-2);color:var(--a-muted);box-shadow:none;border:1px solid var(--a-line)}
+
+.toast{position:absolute;left:16px;right:16px;bottom:104px;background:#EEF1F7;color:#121826;border-radius:14px;padding:6px 6px 6px 16px;min-height:52px;display:flex;align-items:center;gap:8px;font:500 14px/1.35 Inter;z-index:60;box-shadow:0 12px 30px rgba(0,0,0,.45);animation:toastIn .25s ease-out}
+.toast.low{bottom:40px}
+.toast span{flex:1;padding:8px 0}
+.toast button{min-height:44px;padding:0 12px;border:0;background:none;color:#2C47D9;font:700 14px Inter;border-radius:10px;cursor:pointer}
+.toast.out{opacity:0;transition:opacity .2s}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+.scrim{position:absolute;inset:0;background:rgba(5,7,12,.64);z-index:70;animation:fade .2s}
+@keyframes fade{from{opacity:0}}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--a-surface);border-radius:24px 24px 0 0;padding:8px 20px 36px;z-index:80;animation:up .25s ease-out;border-top:1px solid var(--a-line)}
+.sheet.withkbd{bottom:291px;padding-bottom:16px}
+@keyframes up{from{transform:translateY(40px);opacity:.4}}
+.grab{width:40px;height:5px;border-radius:3px;background:#3A4560;margin:0 auto 14px}
+.sheet h3,.dialog h3{font:600 20px/1.3 Sora,Inter,sans-serif;margin:0 0 16px}
+.sheet label{font:500 13px Inter;color:var(--a-muted);display:block;margin-bottom:6px}
+.field{border:2px solid var(--a-line);border-radius:14px;background:var(--a-bg)}
+.field:focus-within,.field.focus{border-color:var(--a-accent)}
+.field.invalid,.field.invalid:focus-within{border-color:var(--a-danger)}
+.field input{width:100%;height:52px;background:transparent;border:0;outline:0;color:var(--a-text);font:500 17px Inter;padding:0 14px}
+.field input::placeholder{color:#7E889C}
+.helprow{display:flex;justify-content:space-between;gap:8px;min-height:22px;margin-top:6px;font-size:13px}
+.err{color:var(--a-danger);display:flex;gap:6px;align-items:flex-start}
+.err svg{flex:none;margin-top:1px}
+.count{color:var(--a-muted);flex:none}
+.alert{display:flex;gap:8px;align-items:flex-start;background:rgba(255,122,122,.12);border:1px solid rgba(255,122,122,.45);color:#FFC9C9;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.4;margin-top:10px}
+.alert svg{flex:none;margin-top:1px}
+.actions{display:flex;gap:10px;margin-top:16px}
+.actions .btn{flex:1}
+.btn{min-height:52px;border-radius:14px;border:0;font:600 16px Inter;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 16px}
+.btn.primary{background:var(--a-accent);color:var(--a-on-accent)}
+.btn.primary:disabled{background:#2A3349;color:#6F7A92;cursor:default}
+.btn.ghost{background:var(--a-surface-2);color:var(--a-text)}
+.btn.danger{background:var(--a-danger);color:var(--a-on-danger)}
+.btn.danger-text{background:none;color:var(--a-danger);width:100%;margin-top:10px;min-height:48px}
+.dialog{position:absolute;left:20px;right:20px;top:50%;transform:translateY(-50%);background:var(--a-surface);border-radius:24px;padding:24px 20px 20px;z-index:80;border:1px solid var(--a-line)}
+.dialog p{margin:0;color:var(--a-muted);font-size:15px;line-height:1.5}
+
+.kbd{position:absolute;left:0;right:0;bottom:0;height:291px;background:#1A202D;padding:10px 3px 0;z-index:85;display:flex;flex-direction:column;gap:11px;border-top:1px solid #262E40}
+.krow{display:flex;justify-content:center;gap:6px;padding:0 3px}
+.key{height:42px;flex:1;max-width:34px;border-radius:6px;background:#454C5E;color:#fff;display:grid;place-items:center;font:400 19px Inter}
+.key.wide{max-width:none;flex:1.6;background:#2E3546;font-size:15px}
+.key.space{max-width:none;flex:5;font-size:15px}
+
+.state-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 32px 90px;gap:10px}
+.state-center h2{font:600 21px/1.3 Sora,Inter,sans-serif;margin:8px 0 0}
+.state-center p{margin:0 0 12px;color:var(--a-muted);font-size:15px;line-height:1.5}
+.state-center .err-ico{color:var(--a-danger)}
+.sk{background:linear-gradient(90deg,#1B2333 0%,#27324B 50%,#1B2333 100%);background-size:200% 100%;animation:shim 1.2s linear infinite;border-radius:8px}
+@keyframes shim{from{background-position:200% 0}to{background-position:0 0}}
+
+@media (prefers-reduced-motion: reduce){
+  .app *,.app{animation:none !important;transition:none !important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Ascent · Maquette · Épique #2</div>
+  <h1>Gérer ses habitudes et les suivre jour par jour sur la semaine</h1>
+  <p class="lead">Tous les écrans de l'épique, avec leurs états et le feedback de jeu, dans un cadre de téléphone (390 × 844). Le prototype en haut se manipule : tape les cases, ajoute, renomme, supprime une habitude.</p>
+  <div class="meta">
+    <span class="tag">Version 1 · 13 oct. 2026</span>
+    <span class="tag warn">À valider par le propriétaire</span>
+    <span class="tag">Date simulée : jeudi 15 octobre 2026</span>
+  </div>
+  <nav class="toc" aria-label="Sections">
+    <a href="#hypotheses">Hypothèses</a>
+    <a href="#identite">Identité visuelle</a>
+    <a href="#prototype">Prototype</a>
+    <a href="#e1">E1 · Semaine</a>
+    <a href="#e2">E2 · Nouvelle habitude</a>
+    <a href="#e3">E3 · Modifier l'habitude</a>
+    <a href="#e4">E4 · Suppression</a>
+    <a href="#a11y">Accessibilité</a>
+  </nav>
+</header>
+
+<section id="hypotheses">
+  <h2 class="pg">Hypothèses de cette version</h2>
+  <p class="lead">Règles proposées par le Game Designer, appliquées dans la maquette. À confirmer par le propriétaire.</p>
+  <div class="cols" style="margin-top:16px">
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Suivi</h3>
+      <ul class="tight">
+        <li>Un tap coche une case (fait), un tap la décoche (pas fait).</li>
+        <li><b>Modifiables</b> : les jours de la semaine en cours jusqu'à aujourd'hui, plus hier (même si hier est le dimanche de la semaine précédente).</li>
+        <li><b>Jours scellés</b> : tous les autres jours passés. Consultables, pas modifiables.</li>
+        <li>Les jours de la semaine en cours antérieurs à la création d'une habitude restent cochables.</li>
+        <li>Les jours futurs ne sont pas cochables.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Expérience et limites</h3>
+      <ul class="tight">
+        <li>+10 XP par case cochée, −10 XP au décochage.</li>
+        <li>Suppression : l'XP des jours encore modifiables est retirée, l'XP des jours scellés est conservée.</li>
+        <li>10 habitudes au plus.</li>
+        <li>Nom d'habitude : 40 caractères au plus, pas de doublon (à confirmer par le PM).</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Stories</h3>
+      <ul class="tight">
+        <li><b>#3</b> · Créer une habitude et voir la semaine</li>
+        <li><b>#4</b> · Faire le suivi d'un tap</li>
+        <li><b>#5</b> · Gagner de l'expérience</li>
+        <li><b>#6</b> · Modifier et supprimer une habitude</li>
+        <li><b>#7</b> · Consulter les semaines passées</li>
+      </ul>
+      <p class="muted" style="font-size:14px;margin:10px 0 0">Termes à ajouter au glossaire : <b>Semaine</b> (<code>Week</code>), <b>Jour scellé</b>, et le libellé <b>XP</b>.</p>
+    </div>
+  </div>
+</section>
+
+<section id="identite">
+  <h2 class="pg">Identité visuelle : « Nuit d'altitude »</h2>
+  <p class="lead">Première épique : proposition d'identité réutilisée par les maquettes suivantes. Un thème sombre, comme une ascension de nuit. L'or est réservé à l'expérience, le vert au suivi « fait », le bleu « sommet » aux actions.</p>
+
+  <h3 class="pg">Palette</h3>
+  <div class="swatches">
+    <div class="sw"><i style="background:#0F1420"></i><div><b>Fond</b>#0F1420</div></div>
+    <div class="sw"><i style="background:#18202F"></i><div><b>Surface</b>#18202F · cartes, panneaux</div></div>
+    <div class="sw"><i style="background:#222B3D"></i><div><b>Surface 2</b>#222B3D · boutons secondaires</div></div>
+    <div class="sw"><i style="background:#EEF1F7"></i><div><b>Texte</b>#EEF1F7</div></div>
+    <div class="sw"><i style="background:#9AA4B8"></i><div><b>Texte secondaire</b>#9AA4B8</div></div>
+    <div class="sw"><i style="background:#7C9CFF"></i><div><b>Sommet</b>#7C9CFF · actions, aujourd'hui</div></div>
+    <div class="sw"><i style="background:#3DDC97"></i><div><b>Fait</b>#3DDC97 · case cochée</div></div>
+    <div class="sw"><i style="background:#FFC94D"></i><div><b>Expérience</b>#FFC94D · XP uniquement</div></div>
+    <div class="sw"><i style="background:#2B5A48"></i><div><b>Scellé fait</b>#2B5A48</div></div>
+    <div class="sw"><i style="background:#FF7A7A"></i><div><b>Danger</b>#FF7A7A · suppression, erreurs</div></div>
+  </div>
+
+  <div class="cols" style="margin-top:16px">
+    <div class="panel typo">
+      <h3 class="pg" style="margin-top:0">Typographie</h3>
+      <div class="t1">Sora 700 · 22/28 · titres, XP</div>
+      <div class="t2">Sora 600 · 17 · sous-titres</div>
+      <div class="t3">Inter 400 · 15/22 · texte courant</div>
+      <div class="t4">Inter 500 · 13 · libellés, dates</div>
+      <p class="muted" style="font-size:14px;margin:10px 0 0">Polices Google Fonts, remplacées par la police système si absentes. Chiffres tabulaires pour l'XP.</p>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Formes et mouvement</h3>
+      <ul class="tight">
+        <li>Rayons : cases 12 px, cartes 16 px, panneaux 24 px.</li>
+        <li>Espacements : 4, 8, 12, 16, 24 px. Marge latérale 16 px.</li>
+        <li>Zones tactiles ≥ 44 × 44 px (cases ≈ 45 px, bouton d'ajout 56 px).</li>
+        <li>Case : rebond 320 ms. « +10 XP » : envol 900 ms. Compteur : 450 ms.</li>
+        <li>Mouvement réduit : pas d'envol ni de rebond, mise à jour directe.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3 class="pg">Composants : états d'une case</h3>
+  <div class="app demo" id="demoCells"></div>
+</section>
+
+<section id="prototype">
+  <h2 class="pg">Prototype interactif</h2>
+  <p class="lead">E1 à E4 enchaînés. Tape une case pour la cocher ou la décocher, tape le nom d'une habitude pour la modifier, navigue vers les semaines passées.</p>
+  <div class="proto">
+    <div class="slot"><div class="phone"><div class="screen app" id="live"></div></div></div>
+    <div class="controls">
+      <fieldset>
+        <legend>Date simulée</legend>
+        <label class="opt"><input type="radio" name="today" value="10" checked> Jeudi 15 octobre</label>
+        <label class="opt"><input type="radio" name="today" value="7"> Lundi 12 octobre (dimanche 11 reste modifiable)</label>
+      </fieldset>
+      <fieldset>
+        <legend>Simulations</legend>
+        <label class="opt"><input type="checkbox" id="simErr"> Les enregistrements échouent</label>
+        <div style="margin-top:6px">
+          <button class="pbtn" data-sim="reset">Réinitialiser</button>
+          <button class="pbtn" data-sim="empty">Première utilisation</button>
+          <button class="pbtn" data-sim="fill">Remplir jusqu'à 10 habitudes</button>
+          <button class="pbtn" data-sim="loading">Voir le chargement</button>
+          <button class="pbtn" data-sim="error">Voir l'erreur de chargement</button>
+        </div>
+      </fieldset>
+      <div class="panel" style="font-size:14px">
+        <b>À essayer</b>
+        <ul class="tight">
+          <li>Cocher la case de jeudi : la case rebondit, « +10 XP » s'envole, le compteur monte.</li>
+          <li>Décocher : « −10 XP » discret, pas de célébration.</li>
+          <li>Taper un jour futur : rien ne se passe. Taper un jour scellé : un message l'explique.</li>
+          <li>Supprimer une habitude : la confirmation indique l'XP retirée.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div id="srLive" class="sr" aria-live="polite"></div>
+</section>
+
+<section id="e1">
+  <h2 class="pg">E1 · Semaine (accueil)</h2>
+  <p class="lead">L'écran d'accueil est aussi la liste des habitudes. Une carte par habitude, avec ses 7 cases du lundi au dimanche. Le suivi se fait d'un tap, sans confirmation.</p>
+  <div class="gallery" data-group="e1"></div>
+</section>
+
+<section id="e2">
+  <h2 class="pg">E2 · Panneau « Nouvelle habitude »</h2>
+  <p class="lead">S'ouvre depuis « Ajouter une habitude », clavier déjà ouvert. Un seul champ.</p>
+  <div class="gallery" data-group="e2"></div>
+</section>
+
+<section id="e3">
+  <h2 class="pg">E3 · Panneau « Modifier l'habitude »</h2>
+  <p class="lead">S'ouvre en tapant le nom d'une habitude. Il s'ouvre sans clavier, pour que « Supprimer l'habitude » reste visible.</p>
+  <div class="gallery" data-group="e3"></div>
+</section>
+
+<section id="e4">
+  <h2 class="pg">E4 · Confirmation de suppression</h2>
+  <p class="lead">La suppression est définitive. Le texte annonce l'XP retirée. « Annuler » est l'action par défaut.</p>
+  <div class="gallery" data-group="e4"></div>
+</section>
+
+<section id="a11y">
+  <h2 class="pg">Accessibilité</h2>
+  <div class="cols" style="margin-top:16px">
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Toucher et lecture</h3>
+      <ul class="tight">
+        <li>Toutes les zones tactiles font au moins 44 × 44 px.</li>
+        <li>Le bouton d'ajout est en bas à droite, à portée du pouce. Les panneaux s'ouvrent depuis le bas.</li>
+        <li>« Fait » ne repose jamais sur la couleur seule : une coche est toujours dessinée.</li>
+        <li>Contraste du texte ≥ 4,5:1, contours des cases ≥ 3:1 sur la carte.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Lecteur d'écran</h3>
+      <ul class="tight">
+        <li>Case modifiable : « Cuisiner, jeudi 15 octobre, pas fait », bouton bascule.</li>
+        <li>Jour futur : « jeudi 16 octobre, à venir, indisponible ».</li>
+        <li>Jour scellé : « mardi 6 octobre, fait, jour scellé », indisponible.</li>
+        <li>Gain d'expérience annoncé : « +10 points d'expérience. Total : 470 XP. »</li>
+        <li>Mouvement réduit : pas d'envol ni de rebond, le compteur se met à jour directement.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function(){
+/* ---------- Dates : d = jours depuis le lundi 5 octobre 2026 ---------- */
+const MONTHS=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+const MONTHS_L=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const DL=['L','M','M','J','V','S','D'];
+const DLONG=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+const dateOf=d=>new Date(2026,9,5+d);
+const dow=d=>((d%7)+7)%7;
+const monOf=d=>d-dow(d);
+const fmt=n=>n.toLocaleString('fr-FR');
+function rangeLabel(m){const a=dateOf(m),b=dateOf(m+6);return a.getMonth()===b.getMonth()?`${a.getDate()} – ${b.getDate()} ${MONTHS[b.getMonth()]}`:`${a.getDate()} ${MONTHS[a.getMonth()]} – ${b.getDate()} ${MONTHS[b.getMonth()]}`;}
+function longDate(d){const x=dateOf(d);return `${DLONG[dow(d)]} ${x.getDate()} ${MONTHS_L[x.getMonth()]}`;}
+function cellKind(today,d){if(d>today)return 'future';if(d>=monOf(today)||d===today-1)return 'open';return 'sealed';}
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- Icônes ---------- */
+const I={
+ check:'<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ left:'<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ right:'<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ pencil:'<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+ plus:'<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
+ lock:'<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+ alert:'<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5v5.5M12 16.5v.01" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+ trash:'<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 7h14M10 11v6M14 11v6M7 7l1 13h8l1-13M9 7V4h6v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ peak:'<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M2.5 20l7-12 3.6 6.2 2.2-3.2 6.2 9z" fill="currentColor" opacity=".92"/><path d="M9.5 8V3.2l3.6 1.6-3.6 1.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+ spark:'<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 2l2.2 6.6L21 11l-6.8 2.4L12 20l-2.2-6.6L3 11l6.8-2.4z" fill="currentColor"/></svg>',
+ bigAlert:'<svg class="err-ico" viewBox="0 0 24 24" width="56" height="56" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v6M12 16.5v.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+ status:'<span class="sb-icons" aria-hidden="true"><svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="currentColor"/><rect x="5" y="5.5" width="3" height="6.5" rx="1" fill="currentColor"/><rect x="10" y="3" width="3" height="9" rx="1" fill="currentColor"/><rect x="15" y="0" width="3" height="12" rx="1" fill="currentColor"/></svg><svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 11.5l2.4-2.9a3.6 3.6 0 0 0-4.8 0z M3.6 6.2a6.6 6.6 0 0 1 8.8 0l1.5-1.8a9 9 0 0 0-11.8 0z M0.8 3a10.8 10.8 0 0 1 14.4 0" fill="currentColor"/></svg><svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".45"/><rect x="2.5" y="2.5" width="17" height="8" rx="2" fill="currentColor"/><rect x="24.5" y="4.5" width="2" height="4" rx="1" fill="currentColor" opacity=".45"/></svg></span>'
+};
+const ILLU='<svg viewBox="0 0 180 130" width="180" height="130" aria-hidden="true"><defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2A3A6B"/><stop offset="1" stop-color="#18202F"/></linearGradient></defs><circle cx="140" cy="28" r="10" fill="#FFC94D" opacity=".9"/><path d="M10 120l50-70 22 30 18-24 70 64z" fill="url(#g1)" stroke="#2E3950" stroke-width="1.5"/><path d="M40 112c14-6 18-16 30-20s18-10 24-22 10-16 6-24" fill="none" stroke="#7C9CFF" stroke-width="2.4" stroke-dasharray="3 6" stroke-linecap="round"/><path d="M100 26v-18l14 6-14 6" fill="#3DDC97" stroke="#3DDC97" stroke-width="1.5" stroke-linejoin="round"/><circle cx="40" cy="112" r="5" fill="#7C9CFF"/></svg>';
+
+/* ---------- Données de démonstration ---------- */
+const H=[{id:'h1',name:'Cuisiner'},{id:'h2',name:'Ne pas dépasser mon budget de la journée'},{id:'h3',name:'Marcher 30 minutes'},{id:'h4',name:'Me coucher avant 23 h'}];
+const MORE=['Lire 20 minutes','Boire 1,5 L d’eau','Méditer 10 minutes','Pas d’écran au lit','Faire mes courses avec une liste','Ranger la cuisine'];
+const BASE_XP=60;
+function seedChecks(){const s=new Set();const add=(h,a)=>a.forEach(d=>s.add(h+':'+d));
+ add('h1',[-7,-6,-4,-2,0,1,3,4,6,7,8,9]);
+ add('h2',[-6,-5,-3,0,2,3,5,7,9,10]);
+ add('h3',[-5,-1,1,4,8]);
+ add('h4',[-7,-6,-5,-3,-2,0,1,2,4,5,6,7,8]);return s;}
+const xpOf=(checks,base=BASE_XP)=>base+10*checks.size;
+
+/* ---------- Rendu de l'application ---------- */
+function statusBar(){return `<div class="island"></div><div class="statusbar"><span>9:41</span>${I.status}</div>`;}
+function appbar(c){
+ const d=c.delta?`<span class="xpdelta ${c.delta<0?'neg':''} ${c.static?'':'anim'}">${c.delta>0?'+':'−'}${Math.abs(c.delta)} XP</span>`:'';
+ return `<header class="appbar"><div class="avatar">${I.peak}</div><div class="who"><div class="lbl">Expérience du personnage</div><div class="xpv ${c.pulse?'glow':''}" data-xp>${fmt(c.xp)} XP</div></div>${d}</header>`;
+}
+function weeknav(c,m){
+ const off=c.offset||0;const a=dateOf(m);
+ const t=off===0?'Cette semaine':off===-1?'Semaine dernière':`Semaine du ${a.getDate()} ${MONTHS[a.getMonth()]}`;
+ return `<div class="weeknav"><button class="iconbtn" data-act="prev" aria-label="Semaine précédente" ${off<=-8?'disabled':''}>${I.left}</button><div class="wk" aria-live="polite"><div class="wkt">${t}</div><div class="wks">${rangeLabel(m)}</div></div><button class="iconbtn" data-act="next" aria-label="Semaine suivante" ${off===0?'disabled':''}>${I.right}</button></div>`;
+}
+function dayhead(c,m){let s='';for(let i=0;i<7;i++){const d=m+i,t=d===c.today;s+=`<div class="dh ${t?'today':''}"><span class="dl">${DL[i]}</span><span class="dn">${dateOf(d).getDate()}</span></div>`;}return `<div class="dayhead" aria-hidden="true">${s}</div>`;}
+function banner(c,m){
+ if((c.offset||0)>=0)return '';
+ const open=[0,1,2,3,4,5,6].map(i=>m+i).filter(d=>cellKind(c.today,d)==='open');
+ const msg=open.length?`Jours scellés : consultables, non modifiables. Seul ${longDate(open[0])} (hier) reste modifiable.`:'Jours scellés : consultables, non modifiables.';
+ return `<div class="banner">${I.lock}<div><strong>Semaine passée</strong><p>${msg}</p><button class="linkbtn" data-act="now">Revenir à cette semaine</button></div></div>`;
+}
+function card(c,hb,m,idx){
+ let cells='';
+ for(let i=0;i<7;i++){
+  const d=m+i,k=cellKind(c.today,d),on=c.checks.has(hb.id+':'+d),t=d===c.today;
+  const cls=['cell',on?'checked':'',t?'today':'',k!=='open'?k:'',(c.pop&&c.pop.hid===hb.id&&c.pop.d===d)?'popframe':''].join(' ').replace(/\s+/g,' ').trim();
+  const st=k==='future'?'à venir, indisponible':(on?'fait':'pas fait')+(k==='sealed'?', jour scellé':'');
+  const fl=(c.float&&c.float.hid===hb.id&&c.float.d===d)?`<span class="xpf frozen ${c.float.neg?'neg':''}">${c.float.text}</span>`:'';
+  cells+=`<button class="${cls}" data-h="${hb.id}" data-d="${d}" ${k==='open'?`aria-pressed="${on}"`:'aria-disabled="true"'} aria-label="${esc(hb.name)}, ${longDate(d)}, ${st}">${I.check}${fl}</button>`;
+ }
+ const coach=(c.coach&&idx===0)?`<div class="coach">${I.spark}<span>Tape la case du jour quand c'est fait : +10 XP pour ton personnage.</span></div>`:'';
+ return `<div class="card ${c.hl===hb.id?'hl':''}" data-card="${hb.id}"><button class="hname" data-edit="${hb.id}" aria-label="Modifier l'habitude ${esc(hb.name)}"><span>${esc(hb.name)}</span>${I.pencil}</button><div class="cells">${cells}</div>${coach}</div>`;
+}
+function fab(c){
+ return c.habits.length>=10
+  ?`<button class="fab limit" data-act="limit" aria-disabled="true">${I.plus}<span>Limite atteinte · 10/10</span></button>`
+  :`<button class="fab" data-act="new">${I.plus}<span>Ajouter une habitude</span></button>`;
+}
+function toast(t,low){return `<div class="toast ${low?'low':''}" role="status"><span>${t.text}</span>${t.action?`<button data-act="toastAction">${t.action}</button>`:''}</div>`;}
+function kbd(){
+ const rows=[[...'azertyuiop'],[...'qsdfghjklm'],['⇧','w','x','c','v','b','n','⌫'],['123','espace','↵']];
+ return `<div class="kbd" aria-hidden="true">${rows.map(r=>`<div class="krow">${r.map(k=>`<span class="key ${k==='espace'?'space':(k.length>1||'⇧⌫↵'.includes(k))?'wide':''}">${k}</span>`).join('')}</div>`).join('')}</div>`;
+}
+function validate(o,habits){
+ const t=(o.value||'').trim();const excl=o.type==='edit'?o.id:null;
+ if(!t)return {err:o.type==='edit'?'Le nom ne peut pas être vide.':'',can:false};
+ const dup=habits.find(h=>h.id!==excl&&h.name.trim().toLowerCase()===t.toLowerCase());
+ if(dup)return {err:`Tu as déjà une habitude «&nbsp;${esc(dup.name)}&nbsp;».`,can:false};
+ if(o.type==='edit'&&t===o.original)return {err:'',can:false};
+ return {err:'',can:true};
+}
+function overlay(c){
+ const o=c.overlay;
+ if(o.type==='del'){
+  const body=o.xpLoss>0
+   ?`Son historique sera effacé. L'XP gagnée sur les jours encore modifiables sera retirée (−${o.xpLoss} XP). L'XP des jours scellés est conservée.`
+   :`Son historique sera effacé. Ton expérience est conservée.`;
+  return `<div class="scrim" data-act="close"></div><div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlgT" aria-describedby="dlgB"><h3 id="dlgT">Supprimer «&nbsp;${esc(o.name)}&nbsp;»&nbsp;?</h3><p id="dlgB">${body}</p>${o.delError?`<div class="alert">${I.alert}<span>La suppression a échoué. Réessaie.</span></div>`:''}<div class="actions"><button class="btn ghost" data-act="close">Annuler</button><button class="btn danger" data-act="confirmDel">${o.delError?'Réessayer':'Supprimer'}</button></div></div>`;
+ }
+ const isNew=o.type==='new',v=o.value||'',val=validate(o,c.habits);
+ return `<div class="scrim" data-act="close"></div><div class="sheet ${o.kbd?'withkbd':''}" role="dialog" aria-modal="true" aria-labelledby="shT"><div class="grab"></div><h3 id="shT">${isNew?'Nouvelle habitude':"Modifier l'habitude"}</h3><label for="nm">Nom de l'habitude</label><div class="field ${val.err?'invalid':''} ${o.focus?'focus':''}"><input id="nm" value="${esc(v)}" placeholder="Ex. Cuisiner" maxlength="40" autocomplete="off" enterkeyhint="done" ${c.static?'readonly tabindex="-1"':''} aria-invalid="${!!val.err}" aria-describedby="nmHelp"></div><div class="helprow" id="nmHelp"><span class="err">${val.err?I.alert+'<span>'+val.err+'</span>':''}</span><span class="count">${v.length}/40</span></div>${o.saveError?`<div class="alert">${I.alert}<span>${isNew?"L'habitude n'a pas pu être créée.":"Le nom n'a pas pu être enregistré."} Réessaie.</span></div>`:''}<div class="actions"><button class="btn ghost" data-act="close">Annuler</button><button class="btn primary" data-act="${isNew?'create':'save'}" ${val.can?'':'disabled'}>${isNew?"Créer l'habitude":'Enregistrer'}</button></div>${isNew?'':`<button class="btn danger-text" data-act="askDel">${I.trash}Supprimer l'habitude</button>`}</div>${o.kbd?kbd():''}`;
+}
+function loadingView(){
+ const card=`<div class="card" style="padding:12px 9px"><div class="sk" style="width:55%;height:14px;margin:6px 2px 16px"></div><div class="cells">${'<div class="sk" style="aspect-ratio:1/1;border-radius:12px"></div>'.repeat(7)}</div></div>`;
+ return `<div class="appbar" role="status" aria-label="Chargement de tes habitudes"><div class="sk" style="width:44px;height:44px;border-radius:14px"></div><div><div class="sk" style="width:150px;height:12px"></div><div class="sk" style="width:96px;height:22px;margin-top:8px"></div></div></div><div class="weeknav"><div class="sk" style="width:28px;height:28px;margin-left:8px"></div><div class="sk" style="width:120px;height:16px"></div><div class="sk" style="width:28px;height:28px;margin-right:8px"></div></div><div class="scroll" style="padding-top:44px">${card.repeat(4)}</div>`;
+}
+function renderApp(c){
+ let h=statusBar();
+ if(c.view==='loading')return h+loadingView()+'<div class="homebar"></div>';
+ if(c.view==='error')return h+`<div class="state-center" role="alert">${I.bigAlert}<h2>Impossible de charger tes habitudes.</h2><p>Une erreur est survenue en lisant tes données sur ce téléphone.</p><button class="btn primary" data-act="reload">Réessayer</button></div><div class="homebar"></div>`;
+ h+=appbar(c);
+ const empty=!c.habits.length;
+ if(empty){
+  h+=`<div class="state-center">${ILLU}<h2>Aucune habitude pour l'instant</h2><p>Crée ta première habitude et commence à gagner de l'expérience.</p><button class="btn primary" data-act="new" style="padding:0 22px">${I.plus}Ajouter une habitude</button></div>`;
+ }else{
+  const m=monOf(c.today)+7*(c.offset||0);
+  h+=weeknav(c,m)+dayhead(c,m)+`<div class="scroll">${banner(c,m)}<div class="sect"><h2>Mes habitudes</h2><span class="${c.habits.length>=10?'full':''}">${c.habits.length}/10</span></div>${c.habits.map((hb,i)=>card(c,hb,m,i)).join('')}</div>`+fab(c);
+ }
+ if(c.toast)h+=toast(c.toast,empty);
+ if(c.overlay)h+=overlay(c);
+ return h+'<div class="homebar"></div>';
+}
+
+/* ---------- Démonstration des états d'une case ---------- */
+(function(){
+ const items=[['','Non cochée'],['checked','Cochée'],['today','Aujourd’hui'],['today checked','Aujourd’hui, cochée'],['future','Jour futur'],['sealed','Scellé, pas fait'],['sealed checked','Scellé, fait']];
+ document.getElementById('demoCells').innerHTML=items.map(([k,l])=>`<div class="demo-item"><span class="cell ${k}" role="img" aria-label="${l}">${I.check}</span>${l}</div>`).join('')
+ +`<div class="demo-item" style="width:auto"><span class="xpv glow" style="font-size:22px">470 XP</span>Compteur</div><div class="demo-item" style="width:auto"><span class="xpdelta" style="margin:0">+10 XP</span>Gain</div><div class="demo-item" style="width:auto"><span class="xpdelta neg" style="margin:0">−10 XP</span>Perte</div><div class="demo-item" style="width:auto"><button class="btn primary" tabindex="-1">Créer l'habitude</button>Principal</div><div class="demo-item" style="width:auto"><button class="btn ghost" tabindex="-1">Annuler</button>Secondaire</div><div class="demo-item" style="width:auto"><button class="btn danger" tabindex="-1">Supprimer</button>Destructif</div>`;
+})();
+
+/* ---------- Galerie des états ---------- */
+const base=()=>({today:10,offset:0,habits:H.map(h=>({...h})),checks:seedChecks(),static:true});
+function F(group,screen,state,story,note,mod,opts={}){const c=base();if(mod)mod(c);if(c.xp==null)c.xp=xpOf(c.checks);return {group,screen,state,story,note,c,opts};}
+const STORY={"#3":'Créer une habitude et voir la semaine',"#4":"Faire le suivi d'un tap","#5":"Gagner de l'expérience","#6":'Modifier et supprimer une habitude',"#7":'Consulter les semaines passées'};
+const openXp=(c,id)=>10*[...c.checks].filter(k=>{const [h,d]=k.split(':');return h===id&&cellKind(c.today,+d)==='open';}).length;
+const FR=[
+ F('e1','E1 · Semaine','Chargement','#3','Squelette pendant la lecture des données du téléphone. Rien n’est actif.',c=>{c.view='loading';}),
+ F('e1','E1 · Semaine','Vide · première utilisation','#3','Premier lancement : 0 XP, un seul appel à l’action. Même état après suppression de la dernière habitude.',c=>{c.habits=[];c.checks=new Set();c.xp=0;}),
+ F('e1','E1 · Semaine','Première habitude créée','#3 · #4','Une aide unique explique le geste. Elle disparaît au premier suivi.',c=>{c.habits=[{id:'h1',name:'Cuisiner'}];c.checks=new Set();c.xp=0;c.coach=true;c.toast={text:'Habitude créée'};}),
+ F('e1','E1 · Semaine','Rempli','#3 · #4','Jeudi 15 : lundi à jeudi sont modifiables (rattraper lundi se fait d’un tap). Vendredi à dimanche sont des jours futurs, en pointillés.'),
+ F('e1','E1 · Semaine','Feedback : case cochée','#5','Instant figé : la case rebondit, « +10 XP » s’envole, le compteur pulse et la pastille « +10 XP » s’affiche. Légère vibration.',c=>{c.checks.add('h1:10');c.float={hid:'h1',d:10,text:'+10 XP'};c.pop={hid:'h1',d:10};c.pulse=true;c.delta=10;}),
+ F('e1','E1 · Semaine','Feedback : case décochée','#5','La case se vide, « −10 XP » en gris discret, le compteur baisse. Pas de célébration ni de vibration.',c=>{c.checks.delete('h2:10');c.float={hid:'h2',d:10,text:'−10 XP',neg:true};c.delta=-10;}),
+ F('e1','E1 · Semaine','Erreur d’enregistrement d’un suivi','#4','La case revient à son état précédent, l’XP est annulée. « Réessayer » relance le même suivi.',c=>{c.toast={text:"Le suivi n'a pas été enregistré.",action:'Réessayer'};}),
+ F('e1','E1 · Semaine','Erreur de chargement','#3','Les données n’ont pas pu être lues. Un seul bouton.',c=>{c.view='error';}),
+ F('e1','E1 · Semaine','Semaine passée','#7','Tous les jours sont scellés : couleurs atténuées, pas de contour. La flèche › ramène vers le présent.',c=>{c.offset=-1;}),
+ F('e1','E1 · Semaine','Tap sur un jour scellé','#7','Pas de changement, un message explique pourquoi.',c=>{c.offset=-1;c.toast={text:'Jour scellé : consultable, non modifiable.'};}),
+ F('e1','E1 · Semaine','Lundi : dimanche reste modifiable','#4 · #7','Lundi 12 : la semaine passée est scellée, sauf dimanche 11 (hier), encore modifiable.',c=>{c.today=7;c.offset=-1;}),
+ F('e1','E1 · Semaine','Habitude ajoutée','#3','Retour sur la semaine. La nouvelle carte est mise en évidence en bas de la liste.',c=>{c.habits.push({id:'h5',name:'Lire 20 minutes'});c.hl='h5';c.toast={text:'Habitude créée'};},{scroll:'bottom'}),
+ F('e1','E1 · Semaine','Limite atteinte (10/10)','#3','Le bouton d’ajout reste visible mais grisé. Le taper explique la limite.',c=>{MORE.forEach((n,i)=>c.habits.push({id:'m'+i,name:n}));c.toast={text:'10 habitudes au plus. Supprime une habitude pour en ajouter une.'};}),
+
+ F('e2','E2 · Nouvelle habitude','Vide','#3','Clavier ouvert, champ actif. « Créer l’habitude » est désactivé tant que le nom est vide.',c=>{c.overlay={type:'new',value:'',kbd:true,focus:true};}),
+ F('e2','E2 · Nouvelle habitude','Saisi','#3','Le bouton s’active. La touche ↵ du clavier valide aussi.',c=>{c.overlay={type:'new',value:'Lire 20 minutes',kbd:true,focus:true};}),
+ F('e2','E2 · Nouvelle habitude','Erreur : doublon','#3','Comparaison sans tenir compte des majuscules. Le message est aussi lu par le lecteur d’écran.',c=>{c.overlay={type:'new',value:'cuisiner',kbd:true,focus:true};}),
+ F('e2','E2 · Nouvelle habitude','Erreur d’enregistrement','#3','La saisie est conservée, on peut réessayer.',c=>{c.overlay={type:'new',value:'Lire 20 minutes',saveError:true};}),
+
+ F('e3','E3 · Modifier l’habitude','Ouvert, inchangé','#6','« Enregistrer » est désactivé tant que rien n’a changé.',c=>{c.overlay={type:'edit',id:'h1',value:'Cuisiner',original:'Cuisiner'};}),
+ F('e3','E3 · Modifier l’habitude','Modifié','#6','Le suivi et l’XP de l’habitude ne changent pas quand on la renomme.',c=>{c.overlay={type:'edit',id:'h1',value:'Cuisiner maison',original:'Cuisiner',kbd:true,focus:true};}),
+ F('e3','E3 · Modifier l’habitude','Erreur : nom vide','#6','Même règle de doublon que E2.',c=>{c.overlay={type:'edit',id:'h1',value:'',original:'Cuisiner',kbd:true,focus:true};}),
+ F('e3','E3 · Modifier l’habitude','Succès','#6','Retour sur la semaine, carte mise en évidence.',c=>{c.habits[0].name='Cuisiner maison';c.hl='h1';c.toast={text:'Habitude renommée'};}),
+
+ F('e4','E4 · Suppression','Confirmation','#6','L’XP retirée ne compte que les jours encore modifiables (ici lundi, mardi, mercredi). « Annuler » est l’action par défaut.',c=>{c.overlay={type:'del',id:'h1',name:'Cuisiner',xpLoss:openXp(c,'h1')};}),
+ F('e4','E4 · Suppression','Erreur','#6','La fenêtre reste ouverte, le bouton devient « Réessayer ».',c=>{c.overlay={type:'del',id:'h1',name:'Cuisiner',xpLoss:openXp(c,'h1'),delError:true};}),
+ F('e4','E4 · Suppression','Succès','#6 · #5','La carte disparaît, le compteur baisse de l’XP retirée. L’XP des jours scellés est conservée.',c=>{const loss=openXp(c,'h1');const before=xpOf(c.checks);c.habits=c.habits.filter(h=>h.id!=='h1');[...c.checks].filter(k=>k.startsWith('h1:')).forEach(k=>c.checks.delete(k));c.xp=before-loss;c.delta=-loss;c.toast={text:`Habitude supprimée · −${loss} XP`};})
+];
+document.querySelectorAll('.gallery').forEach(g=>{
+ g.innerHTML=FR.filter(f=>f.group===g.dataset.group).map(f=>`<figure class="frame"${f.opts.scroll?' data-scroll="bottom"':''}><figcaption><div class="cap-top"><span class="scr">${f.screen}</span><span class="story" title="${f.story.split(' · ').map(s=>s+' : '+STORY[s]).join(' / ')}">Story ${f.story}</span></div><div class="state">${f.state}</div><p class="note">${f.note}</p></figcaption><div class="slot"><div class="phone"><div class="screen app" inert>${renderApp(f.c)}</div></div></div></figure>`).join('');
+});
+document.querySelectorAll('[data-scroll="bottom"] .scroll').forEach(s=>{s.scrollTop=s.scrollHeight;});
+
+/* ---------- Prototype interactif ---------- */
+const live=document.getElementById('live'),srLive=document.getElementById('srLive');
+const P={};
+function resetP(){Object.assign(P,{today:+document.querySelector('input[name=today]:checked').value,offset:0,habits:H.map(h=>({...h})),checks:seedChecks(),base:BASE_XP,view:'week',overlay:null,toast:null,hl:null,next:5});}
+const xpP=()=>xpOf(P.checks,P.base);
+const errOn=()=>document.getElementById('simErr').checked;
+function draw(){live.innerHTML=renderApp({...P,xp:xpP(),static:false,coach:P.habits.length===1&&P.checks.size===0});}
+let xpRaf=0;
+function animateXp(from,to,delta){
+ const el=live.querySelector('[data-xp]');if(!el)return;
+ if(delta){const ab=live.querySelector('.appbar');ab.querySelector('.xpdelta')?.remove();const s=document.createElement('span');s.className='xpdelta anim'+(delta<0?' neg':'');s.textContent=(delta>0?'+':'−')+Math.abs(delta)+' XP';ab.appendChild(s);setTimeout(()=>s.remove(),1500);}
+ if(reduce){el.textContent=fmt(to)+' XP';return;}
+ if(delta>0){el.classList.remove('pulse');void el.offsetWidth;el.classList.add('pulse');}
+ cancelAnimationFrame(xpRaf);el.textContent=fmt(from)+' XP';
+ const t0=performance.now();
+ const step=t=>{const p=Math.min(1,(t-t0)/450);const v=Math.round(from+(to-from)*(1-Math.pow(1-p,3)));const e=live.querySelector('[data-xp]');if(e)e.textContent=fmt(v)+' XP';if(p<1)xpRaf=requestAnimationFrame(step);};
+ xpRaf=requestAnimationFrame(step);
+}
+function announce(t){srLive.textContent='';setTimeout(()=>{srLive.textContent=t;},30);}
+let toastTimer=0;
+function showToast(t){P.toast=t;const old=live.querySelector('.toast');if(old)old.remove();live.insertAdjacentHTML('beforeend',toast(t,!P.habits.length));clearTimeout(toastTimer);toastTimer=setTimeout(hideToast,t.action?5000:2800);}
+function hideToast(){P.toast=null;const t=live.querySelector('.toast');if(t){t.classList.add('out');setTimeout(()=>t.remove(),200);}}
+function cellFx(h,d,on,cls){
+ const cell=live.querySelector(`[data-h="${h}"][data-d="${d}"]`);if(!cell)return;
+ cell.classList.add(cls||'pop');
+ if(!reduce&&!cls){const f=document.createElement('span');f.className='xpf'+(on?'':' neg');f.textContent=on?'+10 XP':'−10 XP';cell.appendChild(f);setTimeout(()=>f.remove(),950);}
+}
+function tapCell(h,d){
+ const k=cellKind(P.today,d);
+ if(k==='future')return;
+ if(k==='sealed'){showToast({text:'Jour scellé : consultable, non modifiable.'});return;}
+ const key=h+':'+d,was=P.checks.has(key),before=xpP();
+ was?P.checks.delete(key):P.checks.add(key);
+ const keepToast=P.toast;draw();
+ cellFx(h,d,!was);animateXp(before,xpP(),was?-10:10);
+ if(navigator.vibrate&&!was)try{navigator.vibrate(12);}catch(e){}
+ announce(`${was?'−':'+'}10 points d'expérience. Total : ${fmt(xpP())} XP.`);
+ if(keepToast&&!errOn())hideToast();
+ if(errOn()){
+  setTimeout(()=>{
+   const b2=xpP();was?P.checks.add(key):P.checks.delete(key);draw();
+   cellFx(h,d,was,'shake');animateXp(b2,xpP(),0);
+   showToast({text:"Le suivi n'a pas été enregistré.",action:'Réessayer',run:()=>tapCell(h,d)});
+   announce("Le suivi n'a pas été enregistré.");
+  },700);
+ }
+}
+function openSheet(o){P.overlay=o;P.toast=null;draw();const i=live.querySelector('#nm');if(i&&o.type==='new')i.focus();if(o.type==='del')live.querySelector('[data-act="close"].btn')?.focus();}
+function patchSheet(){
+ const o=P.overlay;const v=validate(o,P.habits);
+ live.querySelector('.field').classList.toggle('invalid',!!v.err);
+ live.querySelector('.err').innerHTML=v.err?I.alert+'<span>'+v.err+'</span>':'';
+ live.querySelector('.count').textContent=o.value.length+'/40';
+ live.querySelector('#nm').setAttribute('aria-invalid',!!v.err);
+ live.querySelector('.sheet .alert')?.remove();
+ live.querySelector('.btn.primary').disabled=!v.can;
+}
+function highlight(id){P.hl=id;setTimeout(()=>{P.hl=null;live.querySelector(`[data-card="${id}"]`)?.classList.remove('hl');},1800);}
+function submitSheet(){
+ const o=P.overlay;const v=validate(o,P.habits);if(!v.can)return;
+ if(errOn()){o.saveError=true;draw();return;}
+ const name=o.value.trim();
+ if(o.type==='new'){const id='h'+(P.next++);P.habits.push({id,name});P.overlay=null;P.offset=0;highlight(id);draw();const s=live.querySelector('.scroll');if(s)s.scrollTop=s.scrollHeight;showToast({text:'Habitude créée'});}
+ else{P.habits.find(h=>h.id===o.id).name=name;P.overlay=null;highlight(o.id);draw();showToast({text:'Habitude renommée'});}
+}
+function confirmDel(){
+ const o=P.overlay;
+ if(errOn()){o.delError=true;draw();return;}
+ const before=xpP();let sealed=0,loss=0;
+ [...P.checks].forEach(k=>{const [h,d]=k.split(':');if(h!==o.id)return;cellKind(P.today,+d)==='open'?loss+=10:sealed+=10;P.checks.delete(k);});
+ P.base+=sealed;P.habits=P.habits.filter(h=>h.id!==o.id);P.overlay=null;draw();
+ if(loss)animateXp(before,xpP(),-loss);
+ showToast({text:`Habitude supprimée${loss?` · −${loss} XP`:''}`});
+}
+live.addEventListener('click',e=>{
+ const cell=e.target.closest('[data-h]');if(cell){tapCell(cell.dataset.h,+cell.dataset.d);return;}
+ const ed=e.target.closest('[data-edit]');if(ed){const h=P.habits.find(x=>x.id===ed.dataset.edit);openSheet({type:'edit',id:h.id,value:h.name,original:h.name});return;}
+ const b=e.target.closest('[data-act]');if(!b||b.disabled)return;
+ switch(b.dataset.act){
+  case 'prev':P.offset=Math.max(-8,P.offset-1);draw();break;
+  case 'next':P.offset=Math.min(0,P.offset+1);draw();break;
+  case 'now':P.offset=0;draw();break;
+  case 'new':openSheet({type:'new',value:''});break;
+  case 'limit':showToast({text:'10 habitudes au plus. Supprime une habitude pour en ajouter une.'});break;
+  case 'close':P.overlay=null;draw();break;
+  case 'create':case 'save':submitSheet();break;
+  case 'askDel':{const o=P.overlay;openSheet({type:'del',id:o.id,name:P.habits.find(h=>h.id===o.id).name,xpLoss:10*[...P.checks].filter(k=>{const [h,d]=k.split(':');return h===o.id&&cellKind(P.today,+d)==='open';}).length});break;}
+  case 'confirmDel':confirmDel();break;
+  case 'toastAction':{const t=P.toast;hideToast();t&&t.run&&t.run();break;}
+  case 'reload':P.view='loading';draw();setTimeout(()=>{P.view='week';draw();},1200);break;
+ }
+});
+live.addEventListener('input',e=>{if(e.target.id==='nm'&&P.overlay){P.overlay.value=e.target.value;P.overlay.saveError=false;patchSheet();}});
+live.addEventListener('keydown',e=>{
+ if(e.key==='Escape'&&P.overlay){P.overlay=null;draw();}
+ if(e.key==='Enter'&&e.target.id==='nm'){e.preventDefault();submitSheet();}
+});
+document.querySelectorAll('input[name=today]').forEach(r=>r.addEventListener('change',()=>{P.today=+r.value;P.offset=0;draw();}));
+document.querySelector('.controls').addEventListener('click',e=>{
+ const b=e.target.closest('[data-sim]');if(!b)return;
+ switch(b.dataset.sim){
+  case 'reset':resetP();draw();break;
+  case 'empty':resetP();P.habits=[];P.checks=new Set();P.base=0;draw();break;
+  case 'fill':P.view='week';P.overlay=null;let i=0;while(P.habits.length<10){const n=MORE[i++]||('Habitude '+i);if(!P.habits.some(h=>h.name===n))P.habits.push({id:'h'+(P.next++),name:n});}draw();break;
+  case 'loading':P.view='loading';P.overlay=null;draw();setTimeout(()=>{P.view='week';draw();},1500);break;
+  case 'error':P.view='error';P.overlay=null;draw();break;
+ }
+});
+resetP();draw();
+
+/* ---------- Mise à l'échelle des téléphones ---------- */
+function fit(){const w=document.documentElement.clientWidth;const s=Math.min(1,(w-32)/408);document.documentElement.style.setProperty('--s',s.toFixed(4));}
+fit();window.addEventListener('resize',fit);
+})();
+</script>
+</body>
+</html>
