@@ -40,6 +40,9 @@
 | **Scénario Gherkin** | Un critère d'acceptation sous forme exécutable, dans un fichier `.feature`. |
 | **Analyse d'impact** | L'analyse GitNexus du code existant, faite avant d'implémenter une story, pour mesurer ce qu'elle va toucher. |
 | **Impact fort** | Le résultat d'une analyse d'impact qui oblige à renvoyer la story au PM et à l'Architect avant de continuer (voir `docs/workflow.md`). |
+| **Dev backend** | L'agent qui possède la logique et les données : domaine, cas d'usage, ports, persistance. Plus tard : API et serveur. |
+| **Dev front** | L'agent qui possède l'interface : composants, écrans, états d'affichage, feedback de jeu. |
+| **Dev mobile** | L'agent qui possède la plateforme : navigation, assemblage, fonctions natives du téléphone, builds, tests end-to-end. |
 | **Barrière de qualité** (*quality gate*) | Une vérification automatique qui doit passer pour qu'une PR soit mergée. |
 | **Auto-merge** | Le merge automatique d'une PR dans `main` une fois toutes les barrières de qualité au vert. |
 | **Escalade** | L'arrêt de la boucle automatique, avec un commentaire sur l'issue pour demander une décision humaine. |

@@ -38,7 +38,13 @@ flowchart TD
     subgraph AUTO [" Automatique — aucune intervention humaine "]
         S3[3. Ready<br/>🏛️ Architect<br/>notes techniques]
         S4[4. Impact<br/>🔍 Impact Analyst<br/>GitNexus]
-        S5[5. Implement<br/>🛠️ Developer<br/>TDD + hexagonal]
+        subgraph S5 [" 5. Implement — TDD + hexagonal "]
+            direction LR
+            BE[⚙️ Dev backend<br/>domaine, cas d'usage,<br/>persistance]
+            FE[🎨 Dev front<br/>composants, écrans,<br/>feedback de jeu]
+            MO[📲 Dev mobile<br/>navigation, natif,<br/>end-to-end]
+            BE -- ports --> FE -- écrans --> MO
+        end
         S6[6. Test<br/>🧪 QA<br/>barrières de qualité]
         S7[7. Review<br/>👁️ Reviewer]
         S8[8. Merge<br/>auto-merge dans main]
@@ -73,7 +79,7 @@ flowchart TD
  4. IMPACT      Impact Analyst (GitNexus)
                 ├─ impact faible → 5
                 └─ impact fort   → PM + Architect → retour en 2 ou 3
- 5. IMPLEMENT   Developer                             → code + tests (TDD)
+ 5. IMPLEMENT   Dev backend → Dev front → Dev mobile  → code + tests (TDD)
  6. TEST        QA                                    → toutes les barrières
  7. REVIEW      Reviewer                              → OK → 8, sinon → 5
  8. MERGE       Auto-merge dans main                  → issue fermée
@@ -88,7 +94,7 @@ flowchart TD
 | `status:awaiting-approval` | ✋ Validation | **Propriétaire** |
 | `status:ready` | 3. Ready | Architect |
 | `status:impact-analysis` | 4. Impact | Impact Analyst |
-| `status:in-progress` | 5–6. Implement + Test | Developer, QA |
+| `status:in-progress` | 5–6. Implement + Test | Devs backend, front, mobile, QA |
 | `status:review` | 7. Review | Reviewer |
 | `status:blocked` | Escalade | **Propriétaire** |
 | *(issue fermée)* | 8. Merge | Auto |
@@ -124,7 +130,19 @@ L'impact est **fort** si au moins un de ces points est vrai :
 Si l'impact est fort, la story revient au **PM** et à l'**Architect**, qui la redécoupent ou l'ajustent. La décision est tracée en commentaire sur l'issue. Si ce changement modifie ce que le propriétaire a validé, la story repasse par ✋.
 
 ### 5. Implement — `/dev-story`
-Le **Developer** crée la branche `story/<n°>-<slug>` et travaille en TDD : le scénario Gherkin d'abord, puis les tests unitaires, puis le code. Il respecte l'architecture hexagonale.
+Trois devs, trois périmètres distincts, sur une même branche `story/<n°>-<slug>` et une même PR. Tous travaillent en TDD et respectent l'architecture hexagonale.
+
+| Ordre | Agent | Possède | Ne touche jamais |
+|---|---|---|---|
+| 1 | **Dev backend** | `domain`, `application`, `adapters/persistence` : règles de jeu, cas d'usage, ports, base locale, migrations. Plus tard : API et serveur. | L'interface |
+| 2 | **Dev front** | `adapters/ui` : composants, design system, écrans, états, feedback de jeu, accessibilité | Les règles métier, les API natives |
+| 3 | **Dev mobile** | `app` (navigation, assemblage), `adapters/device` (biométrie, stockage sécurisé, notifications…), configuration, builds, tests end-to-end | Les règles métier, la mise en forme des écrans |
+
+- L'**Architect** indique dans les notes techniques quels devs sont nécessaires. Une story sans interface n'a pas besoin du front ; une story purement visuelle peut se passer du backend.
+- Le backend ouvre la PR en **brouillon** et y décrit les ports disponibles. Le front et le mobile s'appuient dessus.
+- Dès que les ports sont stables, le front et le mobile peuvent travailler **en parallèle** (le front avec des ports en mémoire).
+- Le dernier dev sort la PR du mode brouillon quand les barrières sont vertes en local.
+- Un besoin hors de son périmètre se signale à l'orchestrateur, qui le confie au bon dev.
 
 ### 6. Test
 Le **QA** fait passer toutes les barrières de qualité ci-dessous, en local puis en CI.
@@ -168,16 +186,20 @@ Toutes sont **bloquantes**. Les outils sont indicatifs et seront confirmés par 
 
 ```
 src/
-  domain/        règles métier pures — aucune dépendance externe
-  application/   cas d'usage + ports (interfaces)
-  adapters/      implémentations des ports (stockage, UI, auth…)
-  app/           routes de l'app — ne contient que l'assemblage
+  domain/                 règles métier pures — aucune dépendance externe   [backend]
+  application/            cas d'usage + ports (interfaces)                  [backend]
+  adapters/
+    persistence/          stockage local, migrations                        [backend]
+    ui/                   composants, écrans, état d'affichage              [front]
+    device/               biométrie, stockage sécurisé, notifications…      [mobile]
+  app/                    routes et assemblage                              [mobile]
+e2e/                      tests end-to-end                                  [mobile]
 ```
 
 Règles vérifiées par les tests d'architecture :
 - `domain` n'importe rien hors de `domain`.
 - `application` n'importe que `domain`.
-- `adapters` implémentent les ports de `application` et n'importent pas d'autres adaptateurs.
+- `adapters` implémentent les ports de `application`. Un adaptateur n'importe pas un autre adaptateur (`ui` ne connaît ni `persistence` ni `device`).
 - Seuls `adapters` et `app` connaissent le framework et les bibliothèques natives.
 
 Conséquence pour les tests : le domaine et les cas d'usage se testent en unitaire, sans framework. Les adaptateurs se testent en intégration. Les parcours complets se testent en BDD et en end-to-end.
@@ -198,7 +220,9 @@ Conséquence pour les tests : le domaine et les cas d'usage se testent en unitai
 | UX | `.claude/agents/ux.md` | 2 |
 | Architect | `.claude/agents/architect.md` | 3, escalade d'impact |
 | Impact Analyst | `.claude/agents/impact-analyst.md` | 4 |
-| Developer | `.claude/agents/developer.md` | 5 |
+| Dev backend | `.claude/agents/dev-backend.md` | 5 |
+| Dev front | `.claude/agents/dev-front.md` | 5 |
+| Dev mobile | `.claude/agents/dev-mobile.md` | 5 |
 | QA | `.claude/agents/qa.md` | 6 |
 | Reviewer | `.claude/agents/reviewer.md` | 7 |
 
