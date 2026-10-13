@@ -85,6 +85,21 @@ flowchart TD
  8. MERGE       Auto-merge dans main                  → issue fermée
 ```
 
+## Branches et worktrees
+
+Le nom de la branche dit **ce qu'on fait**. Le worktree porte le même nom que la branche.
+
+| Type de travail | Format | Exemple |
+|---|---|---|
+| Story | `story/<n°>-<slug>` | `story/12-noter-une-habitude` |
+| Correctif | `fix/<n°>-<slug>` | `fix/31-xp-comptee-deux-fois` |
+| Outillage, process, doc | `chore/<slug>` | `chore/establish-workflow` |
+
+- `<slug>` : quelques mots en minuscules, séparés par des tirets, qui décrivent le travail.
+- Une branche, un worktree, une PR.
+- Si le travail change de nature en cours de route, l'orchestrateur renomme la branche (et le worktree) avant d'ouvrir la PR.
+- Une branche créée automatiquement avec un nom générique est renommée dès que l'on sait ce qu'on y fait.
+
 ## Statuts (labels GitHub)
 
 | Label | Étape | Qui fait avancer |
