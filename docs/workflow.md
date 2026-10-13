@@ -25,7 +25,7 @@ flowchart TD
         S2[2. Specify<br/>status:specifying]
         PM[🧭 PM<br/>découpe en stories]
         GD[🎲 Game Designer<br/>règles de jeu]
-        UX[📱 UX<br/>parcours et écrans]
+        UX[📱 UX<br/>parcours et maquettes]
         S1 --> S2
         S2 --- PM & GD & UX
     end
@@ -73,7 +73,7 @@ flowchart TD
 
 ```
  1. DEFINE      Propriétaire → Orchestrateur          → issue Epic
- 2. SPECIFY     PM + Game Designer + UX               → stories + critères Gherkin
+ 2. SPECIFY     PM + Game Designer + UX               → stories + critères Gherkin + maquettes
                 ✋ VALIDATION DU PROPRIÉTAIRE
  3. READY       Architect                             → notes techniques
  ──────────────────────── automatique ────────────────────────
@@ -201,11 +201,22 @@ Le propriétaire décrit la feature dans le chat. L'orchestrateur crée une issu
 ### 2. Specify — `/split-stories`
 - **PM** : découpe l'épique en stories (sous-issues), chacune livrable et testable seule.
 - **Game Designer** : règles de jeu, barèmes, équilibrage.
-- **UX** : parcours et écrans.
+- **UX** : parcours et **maquettes** des écrans (voir « Maquettes » ci-dessous).
 - Les critères d'acceptation sont écrits en **Gherkin** et deviendront des tests exécutables.
-- Le statut passe à `status:awaiting-approval`. L'orchestrateur résume les stories au propriétaire.
+- Le statut passe à `status:awaiting-approval`. L'orchestrateur résume les stories au propriétaire et lui donne le lien vers les maquettes.
 
-**✋ Le propriétaire valide.** Sans validation, rien ne part en développement.
+**✋ Le propriétaire valide les stories et les maquettes.** Sans validation, rien ne part en développement.
+
+#### Maquettes
+
+Toute épique avec une partie visible par le joueur a des maquettes, validées par le propriétaire **en même temps** que les stories.
+
+- **Format** : une page HTML statique par épique, `docs/mockups/<n°-épique>-<slug>/index.html`, autonome (sans dépendance externe), qui montre chaque écran dans un cadre de téléphone.
+- **Contenu** : chaque écran de chaque story, avec **tous ses états** (vide, chargement, erreur, succès, première utilisation) et le **feedback de jeu** (gain d'expérience, montée de niveau, déblocage). Les vrais libellés, tirés du glossaire, pas de faux texte. Chaque écran est annoté avec le numéro de la story qu'il illustre.
+- **Consultation** : l'orchestrateur publie la page en lien privé, consultable sur téléphone, et met ce lien dans l'issue épique et dans le résumé de validation.
+- **Itérations** : les retours du propriétaire produisent une nouvelle version de la maquette, jusqu'à validation.
+- **Après validation** : la maquette est committée sur une branche `docs/<n°-épique>-mockups`, mergée dans `develop`. Elle **fait foi** pour l'interface : le dev front la reproduit, et le Reviewer compare les captures d'écran de la PR avec elle.
+- Une maquette ne fixe pas de choix technique. Les premières maquettes posent l'identité visuelle (couleurs, typographie, composants) que les suivantes réutilisent.
 
 ### 3. Ready
 L'**Architect** ajoute les notes techniques à chaque story : couches hexagonales touchées, ports et adaptateurs, données, risques.
@@ -262,6 +273,7 @@ Toutes sont **bloquantes**. Les outils sont indicatifs et seront confirmés par 
 | 8 | **Tests end-to-end** | Parcours réels sur l'app | Maestro (mobile) ; Playwright si une version web apparaît | CI |
 | 9 | **Tests de mutation** | Les tests détectent vraiment les bugs | StrykerJS | CI |
 | 10 | **Coverage et qualité** | Seuils de couverture, code smells, duplication, sécurité | SonarQube Cloud | CI |
+| 10 bis | **Conformité aux maquettes** | Les écrans livrés correspondent aux maquettes validées (captures d'écran des tests end-to-end jointes à la PR) | Revue (Reviewer) | Review |
 | 11 | **Glossaire** | Les termes nouveaux ou modifiés figurent dans `docs/glossary.md` | Revue (Reviewer) | Review |
 
 ### Seuils (ajustables)

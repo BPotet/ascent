@@ -36,6 +36,7 @@
 | **Orchestrateur** | La session de chat principale. Elle reçoit les demandes du joueur-propriétaire, gère les issues GitHub et distribue le travail aux agents. |
 | **Épique** (`Epic`) | Une fonctionnalité complète, décrite dans une issue GitHub portant le label `type:epic`. |
 | **Story** | Une tranche livrable d'une épique, sous-issue avec le label `type:story`. Une story correspond à une PR. |
+| **Maquette** | La représentation visuelle des écrans d'une épique, avec tous leurs états, validée par le propriétaire avec les stories. Une fois validée, elle fait foi pour l'interface. Stockée dans `docs/mockups/`. |
 | **Critère d'acceptation** | Une condition vérifiable qu'une story doit remplir. Il est écrit en Gherkin (`Étant donné / Quand / Alors`). |
 | **Scénario Gherkin** | Un critère d'acceptation sous forme exécutable, dans un fichier `.feature`. |
 | **Analyse d'impact** | L'analyse GitNexus du code existant, faite avant d'implémenter une story, pour mesurer ce qu'elle va toucher. |

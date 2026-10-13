@@ -21,5 +21,6 @@ Closes #
 - [ ] Tests end-to-end
 - [ ] Tests de mutation (≥ seuil)
 - [ ] SonarQube Cloud (quality gate passed, coverage ≥ seuil)
+- [ ] Captures d'écran conformes à la maquette validée
 - [ ] Glossaire à jour
 - [ ] Documentation à jour

@@ -23,7 +23,7 @@ Fonctionnalité: …
 <!-- Game Designer : barèmes, conditions, cas limites. -->
 
 ## Notes UX
-<!-- UX : parcours, écrans, états, feedback. -->
+<!-- UX : lien vers la maquette et écrans concernés, parcours, états, feedback. -->
 
 ## Notes techniques
 <!-- Architect, à l'étape Ready : couches, ports, adaptateurs, données, plan de test, risques. -->

@@ -16,6 +16,9 @@ labels: ["type:epic", "status:idea"]
 ## Hors périmètre
 - 
 
+## Maquettes
+<!-- Lien vers la maquette publiée et chemin docs/mockups/<n°>-<slug>/index.html. -->
+
 ## Termes du glossaire
 <!-- Termes utilisés (docs/glossary.md) et termes nouveaux à ajouter. -->
 
