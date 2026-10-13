@@ -12,4 +12,4 @@ description: Récupère les issues ouvertes du dépôt GitHub d'Ascent, les clas
    - ce qui est **bloqué** (`status:blocked`), avec le résumé ;
    - ce qui est **en cours** ;
    - ce qui est **prêt** à partir en développement.
-4. Propose **une** prochaine action. Priorité : une barrière rouge sur `main`, puis les blocages, puis les validations en attente, puis la story prête la plus prioritaire.
+4. Propose **une** prochaine action. Priorité : un hotfix (bug en production), une barrière rouge sur `develop`, puis les blocages, puis les validations en attente, puis la story prête la plus prioritaire.

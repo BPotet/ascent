@@ -4,7 +4,7 @@ Inspiré de la [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD). GitH
 
 ## Principes
 
-1. **Le propriétaire ne touche jamais au code.** Il définit les features et valide les stories. Tout le reste est automatique, jusqu'au merge dans `main`.
+1. **Le propriétaire ne touche jamais au code.** Il définit les features et valide les stories. Tout le reste est automatique, jusqu'au merge dans `develop` puis à la release sur `main`.
 2. **Une seule validation humaine** : les stories d'une épique, avant le développement.
 3. **Les barrières de qualité remplacent la relecture humaine.** Une PR n'est mergée que si toutes sont au vert.
 4. **Le glossaire est la source de vérité** du vocabulaire. Les docs, le code et les tests l'utilisent tel quel.
@@ -47,7 +47,7 @@ flowchart TD
         end
         S6[6. Test<br/>🧪 QA<br/>barrières de qualité]
         S7[7. Review<br/>👁️ Reviewer]
-        S8[8. Merge<br/>auto-merge dans main]
+        S8[8. Merge<br/>auto-merge dans develop]
 
         S3 --> S4
         S4 -- impact faible --> S5
@@ -66,6 +66,7 @@ flowchart TD
     BLOCK -. résumé sur l'issue .-> OWNER
 
     S8 -- ferme l'issue --> DONE([✅ Done])
+    DONE -- épique terminée --> REL[🚀 Release<br/>release/x.y.z → main<br/>tag vX.Y.Z]
 ```
 
 ## Vue d'ensemble
@@ -82,23 +83,42 @@ flowchart TD
  5. IMPLEMENT   Dev backend → Dev front → Dev mobile  → code + tests (TDD)
  6. TEST        QA                                    → toutes les barrières
  7. REVIEW      Reviewer                              → OK → 8, sinon → 5
- 8. MERGE       Auto-merge dans main                  → issue fermée
+ 8. MERGE       Auto-merge dans develop               → issue fermée
+    RELEASE     Épique terminée → release/x.y.z → main (tag vx.y.z)
 ```
 
 ## Branches et worktrees
 
-Le nom de la branche dit **ce qu'on fait**. Le worktree porte le même nom que la branche.
+Le modèle de branches suit **Git Flow** (détails dans « CI/CD et Git Flow »). Le nom de la branche dit **ce qu'on fait**, et le worktree porte le même nom que la branche.
 
-| Type de travail | Format | Exemple |
+### Branches permanentes
+
+| Branche | Rôle | Qui y écrit |
 |---|---|---|
-| Story | `story/<n°>-<slug>` | `story/12-noter-une-habitude` |
-| Correctif | `fix/<n°>-<slug>` | `fix/31-xp-comptee-deux-fois` |
-| Outillage, process, doc | `chore/<slug>` | `chore/establish-workflow` |
+| `main` | Ce qui est publié. Chaque commit est une version taguée `vX.Y.Z`. | Uniquement les merges de `release/*` et `hotfix/*` |
+| `develop` | Intégration : la prochaine version en préparation. | Uniquement les PR de `feature/*`, `bugfix/*`, `chore/*`, `docs/*` |
 
-- `<slug>` : quelques mots en minuscules, séparés par des tirets, qui décrivent le travail.
-- Une branche, un worktree, une PR.
-- Si le travail change de nature en cours de route, l'orchestrateur renomme la branche (et le worktree) avant d'ouvrir la PR.
-- Une branche créée automatiquement avec un nom générique est renommée dès que l'on sait ce qu'on y fait.
+Personne, agent compris, ne pousse directement sur `main` ou `develop`.
+
+### Branches de travail
+
+| Type | Format | Part de | Merge dans | Exemple |
+|---|---|---|---|---|
+| Feature (story) | `feature/<n°>-<slug>` | `develop` | `develop` (squash) | `feature/12-habit-check-in` |
+| Bugfix (bug sur `develop`) | `bugfix/<n°>-<slug>` | `develop` | `develop` (squash) | `bugfix/31-xp-counted-twice` |
+| Hotfix (bug en production) | `hotfix/<x.y.z>-<slug>` | `main` | `main` + `develop` | `hotfix/1.2.1-lock-bypass` |
+| Release | `release/<x.y.z>` | `develop` | `main` + `develop` | `release/1.3.0` |
+| Outillage, CI | `chore/<slug>` | `develop` | `develop` (squash) | `chore/setup-quality-gates` |
+| Documentation | `docs/<slug>` | `develop` | `develop` (squash) | `docs/clarify-skill-rules` |
+
+### Règles de nommage
+
+- Minuscules, mots séparés par des **tirets**. Pas d'espaces, d'underscores, d'accents ni de majuscules.
+- Le préfixe correspond au type de travail ; il est cohérent avec le type Conventional Commits du titre de la PR (`feature/` → `feat`, `bugfix/` et `hotfix/` → `fix`).
+- Le **numéro d'issue** suit le préfixe dès qu'il existe une issue.
+- Le slug est **court** (3 à 5 mots, en anglais, comme le code) et **descriptif**. Pas de nom de personne ni de mot vague comme `update`, `test` ou `wip`.
+- Une branche, un worktree, une PR. La branche est supprimée après le merge.
+- Si le travail change de nature, l'orchestrateur renomme la branche (et le worktree) avant d'ouvrir la PR. Une branche au nom générique est renommée dès que l'on sait ce qu'on y fait.
 
 ## Messages de commit
 
@@ -154,8 +174,8 @@ Le scope est facultatif quand un commit touche plusieurs zones.
 ### Commits et PR
 
 - Chaque dev fait des commits **petits et atomiques** dans son scope.
-- Les PR sont mergées en **squash** : le **titre de la PR** devient le commit sur `main`. Il doit donc lui aussi respecter le format, avec le type dominant de la story (ex. `feat: track daily habit check-ins`). Le corps du commit squashé contient `Closes #<n°>`.
-- Le format est vérifié automatiquement (barrière **Commits** ci-dessous). L'historique de `main` permettra ensuite de générer le changelog et les numéros de version.
+- Les PR de feature et de bugfix sont mergées en **squash** dans `develop` : le **titre de la PR** devient le commit sur `develop`. Il doit donc lui aussi respecter le format, avec le type dominant de la story (ex. `feat: track daily habit check-ins`). Le corps du commit squashé contient `Closes #<n°>`.
+- Le format est vérifié automatiquement (barrière **Commits** ci-dessous). C'est cet historique qui sert à calculer le numéro de version et à générer le changelog de chaque release.
 
 ## Statuts (labels GitHub)
 
@@ -202,7 +222,7 @@ L'impact est **fort** si au moins un de ces points est vrai :
 Si l'impact est fort, la story revient au **PM** et à l'**Architect**, qui la redécoupent ou l'ajustent. La décision est tracée en commentaire sur l'issue. Si ce changement modifie ce que le propriétaire a validé, la story repasse par ✋.
 
 ### 5. Implement — `/dev-story`
-Trois devs, trois périmètres distincts, sur une même branche `story/<n°>-<slug>` et une même PR. Tous travaillent en TDD et respectent l'architecture hexagonale.
+Trois devs, trois périmètres distincts, sur une même branche `feature/<n°>-<slug>` et une même PR vers `develop`. Tous travaillent en TDD et respectent l'architecture hexagonale.
 
 | Ordre | Agent | Possède | Ne touche jamais |
 |---|---|---|---|
@@ -223,7 +243,7 @@ Le **QA** fait passer toutes les barrières de qualité ci-dessous, en local pui
 Le **Reviewer** vérifie la PR par rapport aux critères d'acceptation, à l'architecture, au glossaire et aux rapports (coverage, mutation, Sonar). S'il y a un problème, retour en 5 avec des commentaires précis.
 
 ### 8. Merge
-Quand toutes les barrières et la review sont au vert, la PR est mergée automatiquement dans `main` (squash). Elle porte `Closes #<story>`. L'épique est fermée quand toutes ses stories le sont.
+Quand toutes les barrières et la review sont au vert, la PR est mergée automatiquement dans `develop` (squash). Elle porte `Closes #<story>`. L'épique est fermée quand toutes ses stories le sont, ce qui déclenche une release (voir « CI/CD et Git Flow »).
 
 ## Barrières de qualité
 
@@ -277,10 +297,64 @@ Règles vérifiées par les tests d'architecture :
 
 Conséquence pour les tests : le domaine et les cas d'usage se testent en unitaire, sans framework. Les adaptateurs se testent en intégration. Les parcours complets se testent en BDD et en end-to-end.
 
+## CI/CD et Git Flow
+
+```mermaid
+gitGraph
+    commit id: "v1.0.0" tag: "v1.0.0"
+    branch develop
+    checkout develop
+    branch feature/12-habit-check-in
+    commit id: "feat(domain)"
+    commit id: "feat(ui)"
+    checkout develop
+    merge feature/12-habit-check-in id: "squash #12"
+    branch release/1.1.0
+    commit id: "chore: changelog"
+    checkout main
+    merge release/1.1.0 tag: "v1.1.0"
+    checkout develop
+    merge release/1.1.0
+    checkout main
+    branch hotfix/1.1.1-lock-bypass
+    commit id: "fix(device)"
+    checkout main
+    merge hotfix/1.1.1-lock-bypass tag: "v1.1.1"
+    checkout develop
+    merge hotfix/1.1.1-lock-bypass
+```
+
+### Pipelines
+
+| Déclencheur | Ce qui tourne | Résultat |
+|---|---|---|
+| **PR vers `develop`** (`feature/`, `bugfix/`, `chore/`, `docs/`) | Toutes les barrières de qualité : commits, secrets, style, types, architecture, unitaires, intégration, BDD, mutation sur le code modifié, SonarQube Cloud. End-to-end sur une plateforme. | Auto-merge (squash) si tout est vert et la review approuvée |
+| **Push sur `develop`** | Les mêmes barrières sur le résultat du merge, puis un **build de preview** installable sur le téléphone du propriétaire | Le propriétaire peut essayer la prochaine version |
+| **Branche `release/x.y.z`** | Suite complète : end-to-end **iOS et Android**, mutation sur tout le code, SonarQube Cloud. Génération du changelog. Build de production. | Merge dans `main` si tout est vert |
+| **Merge sur `main`** | Tag `vX.Y.Z`, GitHub Release avec le changelog, build de production distribué | Nouvelle version publiée |
+| **Branche `hotfix/x.y.z-…`** | Suite complète, comme une release | Merge dans `main` (tag) puis dans `develop` |
+
+Outils pressentis : GitHub Actions pour les pipelines, EAS Build et EAS Update pour les builds et la distribution. Ils seront confirmés par l'Architect lors de la mise en place.
+
+### Releases
+
+- Une release est déclenchée automatiquement par l'orchestrateur **quand une épique est terminée**, ou à la demande du propriétaire.
+- Le numéro de version est calculé à partir des commits Conventional Commits depuis la dernière version : `BREAKING CHANGE` → MAJOR, `feat` → MINOR, `fix` → PATCH.
+- La branche `release/x.y.z` ne reçoit que la préparation de la version (changelog, numéro de version) et des corrections de bugs trouvés pendant la release, jamais de nouvelle fonctionnalité.
+- `release/*` et `hotfix/*` sont mergées dans `main` avec un **commit de merge** (pas de squash), pour garder l'historique, puis réintégrées dans `develop`.
+- Le propriétaire reçoit un résumé produit de la version : ce qui est nouveau pour le joueur.
+
+### Protection des branches
+
+- `main` et `develop` sont protégées : pas de push direct, pas de force-push, toutes les barrières de qualité obligatoires.
+- `develop` n'accepte que le squash ; `main` n'accepte que des merges venant de `release/*` ou `hotfix/*`.
+- Les branches de travail sont supprimées automatiquement après le merge.
+
 ## Boucles et escalade
 
 - **Review → Implement** : 3 tours au maximum. Au 4e échec, la story passe en `status:blocked` et l'orchestrateur résume le problème en commentaire sur l'issue au propriétaire.
-- **Barrière rouge sur `main`** : priorité absolue, une story de correctif est créée immédiatement.
+- **Barrière rouge sur `develop`** : priorité absolue, une issue `type:bug` est créée et traitée en `bugfix/` immédiatement.
+- **Bug en production (`main`)** : une issue `type:bug` avec le label `priority:hotfix` est traitée en `hotfix/`, en dehors du flux normal (voir « CI/CD et Git Flow »).
 - **Impact fort** : décision du PM et de l'Architect, tracée sur l'issue. Le propriétaire n'est sollicité que si ce qu'il a validé change.
 
 ## Agents et skills
@@ -306,3 +380,4 @@ Conséquence pour les tests : le domaine et les cas d'usage se testent en unitai
 | `/split-stories` | Étape 2 |
 | `/dev-story` | Étapes 3 à 8 pour une story `status:ready` |
 | `/review-story` | Étape 7 sur une PR |
+| `/release` | Release ou hotfix selon Git Flow |

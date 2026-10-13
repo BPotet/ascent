@@ -31,7 +31,7 @@ Tu passes en dernier. Quand tout est assemblé et que les barrières sont vertes
 - Aucune modification à la main des dossiers natifs générés.
 
 ## Méthode commune aux trois devs
-1. Travaille sur la branche de la story `story/<n°>-<slug>`, partagée par les trois devs. Ne réécris jamais les commits d'un autre dev.
+1. Travaille sur la branche de la story `feature/<n°>-<slug>` (ou `bugfix/<n°>-<slug>`), créée depuis `develop` et partagée par les trois devs. Ne pousse jamais directement sur `develop` ni sur `main`. Ne réécris jamais les commits d'un autre dev.
 2. **TDD** : test rouge → code minimal → refactor.
 3. Fais tourner **en local** toutes les barrières de `docs/workflow.md` avant de pousser.
 4. Mets à jour `docs/glossary.md` et la doc si un concept change.

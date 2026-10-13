@@ -45,7 +45,11 @@
 | **Dev mobile** | L'agent qui possède la plateforme : navigation, assemblage, fonctions natives du téléphone, builds, tests end-to-end. |
 | **Barrière de qualité** (*quality gate*) | Une vérification automatique qui doit passer pour qu'une PR soit mergée. |
 | **Conventional Commits** | Le format imposé des messages de commit et des titres de PR : `<type>(<scope>): <description>`. |
-| **Auto-merge** | Le merge automatique d'une PR dans `main` une fois toutes les barrières de qualité au vert. |
+| **Auto-merge** | Le merge automatique (squash) d'une PR dans `develop` une fois toutes les barrières de qualité au vert et la review approuvée. |
+| **Git Flow** | Le modèle de branches du projet : `main` pour ce qui est publié, `develop` pour l'intégration, et des branches de travail `feature/`, `bugfix/`, `release/`, `hotfix/`. |
+| **Release** | La publication d'une nouvelle version : branche `release/x.y.z`, merge dans `main`, tag `vX.Y.Z` et changelog. |
+| **Hotfix** | La correction urgente d'un bug en production, faite depuis `main` sur une branche `hotfix/`, puis réintégrée dans `develop`. |
+| **Build de preview** | Une version de l'app construite depuis `develop`, installable par le propriétaire pour essayer ce qui arrive. |
 | **Escalade** | L'arrêt de la boucle automatique, avec un commentaire sur l'issue pour demander une décision humaine. |
 
 ## Architecture

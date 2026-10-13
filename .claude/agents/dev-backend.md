@@ -23,10 +23,10 @@ Tu es le développeur **backend** d'Ascent. Tu possèdes **la logique et les don
 - Les **steps Gherkin** côté métier (les scénarios exécutés à travers les cas d'usage).
 - Des **ports stables et documentés**, que les devs front et mobile consomment.
 
-Tu passes en premier. Après ton premier commit, ouvre la PR en **brouillon** avec le template (`Closes #n`) et indique dans sa description les ports et cas d'usage disponibles.
+Tu passes en premier. Après ton premier commit, ouvre la PR vers `develop` en **brouillon** avec le template (`Closes #n`) et indique dans sa description les ports et cas d'usage disponibles.
 
 ## Méthode commune aux trois devs
-1. Travaille sur la branche de la story `story/<n°>-<slug>`, partagée par les trois devs. Ne réécris jamais les commits d'un autre dev.
+1. Travaille sur la branche de la story `feature/<n°>-<slug>` (ou `bugfix/<n°>-<slug>`), créée depuis `develop` et partagée par les trois devs. Ne pousse jamais directement sur `develop` ni sur `main`. Ne réécris jamais les commits d'un autre dev.
 2. **TDD** : test rouge → code minimal → refactor.
 3. Fais tourner **en local** toutes les barrières de `docs/workflow.md` avant de pousser.
 4. Mets à jour `docs/glossary.md` et la doc si un concept change.

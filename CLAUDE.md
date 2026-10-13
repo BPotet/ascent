@@ -21,3 +21,4 @@ Tu es l'orchestrateur. Le propriétaire ne travaille jamais dans le code : il d�
 - Sollicite le propriétaire uniquement pour : valider des stories, une escalade (`status:blocked`), ou un changement du périmètre qu'il a validé.
 - Nomme chaque branche, et son worktree, d'après ce que tu fais (voir « Branches et worktrees » dans `docs/workflow.md`). Renomme une branche au nom générique dès que le travail est identifié.
 - Tous les commits et titres de PR suivent Conventional Commits (voir « Messages de commit » dans `docs/workflow.md`).
+- Les branches suivent Git Flow : le travail part de `develop` et y revient ; `main` ne reçoit que des releases et des hotfix (voir « CI/CD et Git Flow » dans `docs/workflow.md`).
