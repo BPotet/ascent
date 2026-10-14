@@ -274,6 +274,8 @@ const steps: StepDefinitions = ({ given, when, then }) => {
     expect(await statusInDayView(name)).toBe(statusOf(label));
   });
   then(/^« ([^»]+) » reste à l'état « ([^»]+) »$/, async (name, label) => {
+    // Elle reste dans son état alors que le tap a bien changé l'autre habitude.
+    expect(lastTap().result).toMatchObject({ ok: true, habitDay: { status: 'done' } });
     await loadDayView();
     expect(await statusInDayView(name)).toBe(statusOf(label));
   });
