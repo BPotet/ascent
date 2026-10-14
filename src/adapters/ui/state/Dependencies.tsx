@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
 
 import type { Clock } from '../../../application/ports/Clock';
 import type { UnitOfWork } from '../../../application/ports/UnitOfWork';
@@ -33,6 +33,5 @@ export function useDependencies(): Dependencies {
 
 /** Les ports des cas d'usage du suivi des habitudes (horloge et unité de travail). */
 export function useUseCaseDependencies(): UseCaseDependencies {
-  const { clock, unitOfWork } = useDependencies();
-  return useMemo(() => ({ clock, unitOfWork }), [clock, unitOfWork]);
+  return useDependencies();
 }
