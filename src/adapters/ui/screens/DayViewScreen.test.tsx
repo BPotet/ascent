@@ -1,5 +1,6 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react-native';
 
+import { useState } from 'react';
 import { ScrollView } from 'react-native';
 
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
@@ -132,6 +133,27 @@ describe('DayViewScreen', () => {
       await screen.findByLabelText('Cuisiner, mercredi 14 octobre, à faire'),
     ).toBeOnTheScreen();
     expect(screen.queryByRole('alert')).not.toBeOnTheScreen();
+  });
+
+  it('opens the « Nouvelle habitude » sheet each time it is asked to', async () => {
+    let ask: (request: string) => void = () => undefined;
+    function Host() {
+      const [request, setRequest] = useState<string | undefined>(undefined);
+      ask = setRequest;
+      return <DayViewScreen newHabitRequest={request} />;
+    }
+    await renderScreen(<Host />, dependencies);
+    await screen.findByTestId('day-view-empty');
+    expect(screen.queryByTestId('new-habit-sheet')).not.toBeOnTheScreen();
+
+    await act(async () => ask('1'));
+    expect(await screen.findByTestId('new-habit-sheet')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Annuler' }));
+    expect(screen.queryByTestId('new-habit-sheet')).not.toBeOnTheScreen();
+
+    await act(async () => ask('2'));
+    expect(await screen.findByTestId('new-habit-sheet')).toBeOnTheScreen();
   });
 
   it('creates a first habit: the sheet closes and the new habit is highlighted', async () => {

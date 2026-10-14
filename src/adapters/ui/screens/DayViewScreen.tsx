@@ -140,12 +140,25 @@ function HabitList({
  * échoue, elle revient à son état et un message propose « Réessayer ». L'aide au premier usage
  * disparaît au premier « fait ». La vue passe seule au nouveau jour (minuit, retour au premier
  * plan) et l'annonce.
+ *
+ * `newHabitRequest` ouvre le panneau « Nouvelle habitude » chaque fois qu'il prend une nouvelle
+ * valeur (l'état vide de la Vue Semaine mène ici pour créer une habitude).
  */
-export function DayViewScreen() {
+export function DayViewScreen({
+  newHabitRequest,
+}: { readonly newHabitRequest?: string | number | undefined } = {}) {
   const { state, reload, refresh, toggle } = useDayView();
   const create = useCreateHabit();
   const hint = useCheckInHint();
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  const [seenRequest, setSeenRequest] = useState<string | number | undefined>(undefined);
+  if (newHabitRequest !== seenRequest) {
+    setSeenRequest(newHabitRequest);
+    if (newHabitRequest !== undefined) {
+      setSheetOpen(true);
+    }
+  }
   const [highlighted, setHighlighted] = useState<HabitId | null>(null);
   const [toast, setToast] = useState<ToastContent | null>(null);
   const toastCount = useRef(0);
