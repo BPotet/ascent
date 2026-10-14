@@ -30,17 +30,16 @@ const screenOptions = {
 } as const;
 // Stryker restore all
 
-/** Les fichiers des polices livrées avec l'app, sous les noms qu'utilise l'interface. */
-const fontFiles = {
-  [fonts.soraSemiBold]: Sora_600SemiBold,
-  [fonts.soraBold]: Sora_700Bold,
-  [fonts.interRegular]: Inter_400Regular,
-  [fonts.interMedium]: Inter_500Medium,
-  [fonts.interSemiBold]: Inter_600SemiBold,
-};
-
 /** Ouvre la base locale et charge les polices (sans elles, la police système s'affiche). */
 async function start(): Promise<Dependencies> {
+  // Les fichiers des polices livrées avec l'app, sous les noms qu'utilise l'interface.
+  const fontFiles = {
+    [fonts.soraSemiBold]: Sora_600SemiBold,
+    [fonts.soraBold]: Sora_700Bold,
+    [fonts.interRegular]: Inter_400Regular,
+    [fonts.interMedium]: Inter_500Medium,
+    [fonts.interSemiBold]: Inter_600SemiBold,
+  };
   const [db] = await Promise.all([openAscentDatabase(), loadFonts(fontFiles)]);
   return { clock: new SystemClock(), unitOfWork: new SqliteUnitOfWork(db) };
 }
