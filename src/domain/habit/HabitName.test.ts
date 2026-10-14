@@ -56,6 +56,38 @@ describe('HabitName', () => {
       expect(() => HabitName.parse(`${name}a`)).toThrow(HabitNameTooLongError);
     });
 
+    it('accepts a name made of a single emoji', () => {
+      expect(HabitName.parse(' 🍳 ').value).toBe('🍳');
+    });
+
+    it('counts a composed emoji as its code points (ADR 0002)', () => {
+      const family = '\u{1F468}‍\u{1F469}‍\u{1F467}';
+      const flag = '\u{1F1EB}\u{1F1F7}';
+
+      expect(habitNameLength(family)).toBe(5);
+      expect(habitNameLength(flag)).toBe(2);
+      expect(HabitName.parse(`${'a'.repeat(35)}${family}`).value).toBe(
+        `${'a'.repeat(35)}${family}`,
+      );
+      expect(() => HabitName.parse(`${'a'.repeat(36)}${family}`)).toThrow(
+        new HabitNameTooLongError(41),
+      );
+    });
+
+    it('counts a decomposed accent as one character, after composing it (NFC)', () => {
+      const decomposedE = 'é';
+
+      expect(HabitName.parse(decomposedE.repeat(40)).value).toBe('é'.repeat(40));
+      expect(() => HabitName.parse(decomposedE.repeat(41))).toThrow(new HabitNameTooLongError(41));
+    });
+
+    it('accepts 40 characters once the spaces are cleaned, and refuses 41', () => {
+      const words = `${'a'.repeat(19)}   ${'b'.repeat(20)}`;
+
+      expect(HabitName.parse(`  ${words}  `).value).toHaveLength(40);
+      expect(() => HabitName.parse(`${words}b`)).toThrow(new HabitNameTooLongError(41));
+    });
+
     it('names its errors', () => {
       expect(new EmptyHabitNameError().name).toBe('EmptyHabitNameError');
       expect(new HabitNameTooLongError(41).name).toBe('HabitNameTooLongError');
@@ -74,6 +106,10 @@ describe('HabitName', () => {
 
     it('keeps accents', () => {
       expect(HabitName.parse('Eté sans sucre').key).not.toBe(HabitName.parse('Été sans sucre').key);
+    });
+
+    it('is the same for a decomposed accent typed in capitals', () => {
+      expect(HabitName.parse('ÉTÉ sans sucre').key).toBe(HabitName.parse('été sans sucre').key);
     });
 
     it('is the same for a composed and a decomposed accent', () => {
