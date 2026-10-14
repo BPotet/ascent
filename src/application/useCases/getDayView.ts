@@ -1,4 +1,4 @@
-import type { HabitDay } from '../../domain/checkIn/HabitDay';
+import { habitDayOf, type HabitDay } from '../../domain/checkIn/HabitDay';
 import type { Day } from '../../domain/day/Day';
 import { canAddHabit } from '../../domain/habit/HabitRules';
 import type { UseCaseDependencies } from './UseCaseDependencies';
@@ -30,7 +30,7 @@ export function getDayView({ clock, unitOfWork }: UseCaseDependencies): Promise<
       day: today,
       habits: existing
         .filter((habit) => habit.isActiveOn(today))
-        .map((habit) => ({ habit, day: today, status: 'pending' })),
+        .map((habit) => habitDayOf(habit, today, null, today)),
       habitCount: existing.length,
       canAddHabit: canAddHabit(existing),
     };
