@@ -13,8 +13,7 @@ const changed = execFileSync(
 )
   .split('\n')
   .filter((file) => /\.(ts|tsx)$/.test(file))
-  .filter((file) => !/\.test\.(ts|tsx)$/.test(file) && !file.includes('/testing/'))
-  .filter((file) => file !== 'src/adapters/persistence/sqlite/openAscentDatabase.ts');
+  .filter((file) => !/\.test\.(ts|tsx)$/.test(file) && !file.includes('/testing/'));
 
 if (changed.length === 0) {
   console.log(`No mutable source file changed since ${base}: mutation testing skipped.`);

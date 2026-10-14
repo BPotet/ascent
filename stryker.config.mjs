@@ -7,13 +7,7 @@ export default {
   // findRelatedTests ignore les routes chargées dynamiquement par expo-router : on le désactive.
   jest: { projectType: 'custom', configFile: 'jest.config.js', enableFindRelatedTests: false },
   coverageAnalysis: 'perTest',
-  mutate: [
-    'src/**/*.{ts,tsx}',
-    '!src/**/*.test.{ts,tsx}',
-    '!src/**/testing/**',
-    // Pont natif vers expo-sqlite : non exécutable sous Jest, couvert par les tests end-to-end.
-    '!src/adapters/persistence/sqlite/openAscentDatabase.ts',
-  ],
+  mutate: ['src/**/*.{ts,tsx}', '!src/**/*.test.{ts,tsx}', '!src/**/testing/**'],
   ignorePatterns: ['android', 'ios', 'coverage', 'reports', '.expo', 'dist'],
   thresholds: { high: 85, low: 70, break: 70 },
   reporters: ['clear-text', 'progress', 'html', 'json'],

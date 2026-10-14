@@ -42,9 +42,13 @@ L'arborescence est celle de `docs/workflow.md` : `src/domain`, `src/application`
 - **Ports** (`src/application/ports`) : `Clock` (Horloge, donne aujourd'hui) et `KeyValueStore`
   (Stockage clé-valeur). Cas d'usage d'exemple : `getToday`.
 - **Persistence** : `SqlDatabase`, une interface SQL minimale implémentée par `expo-sqlite` sur le
-  téléphone (`openAscentDatabase`) et par `node:sqlite` dans les tests (`testing/nodeSqliteDatabase`),
-  pour tester les adaptateurs sur une **vraie base SQLite** ; `runMigrations` (une transaction par
-  migration, refus d'une base plus récente que l'application) ; `SqliteKeyValueStore` et
+  téléphone (`openAscentDatabase`, `expoSqliteDatabase`) et par `node:sqlite` dans les tests
+  (`testing/nodeSqliteDatabase`), pour tester les adaptateurs sur une **vraie base SQLite** ;
+  `runMigrations` (une transaction par migration, refus d'une base plus récente que l'application) ;
+  sur le téléphone, la transaction passe par `withTransactionAsync`, sur la **même connexion** que les
+  requêtes de la migration (`withExclusiveTransactionAsync` ouvre une autre connexion et laisserait
+  ces requêtes hors transaction) ; si l'ouverture ou une migration échoue, la connexion est fermée
+  avant que l'erreur ne remonte ; `SqliteKeyValueStore` et
   `InMemoryKeyValueStore`, qui passent le même **test de contrat**.
 - **Device** : `SystemClock` (date locale du téléphone) et `FixedClock` (date fixée, pour les tests).
 - **UI** : `DependenciesProvider` (les ports fournis à l'interface), écran d'accueil provisoire
@@ -116,8 +120,9 @@ Seuils, tels que `docs/workflow.md` les fixe :
 
 - `node:sqlite` est encore expérimental dans Node 22 (avertissement à l'exécution) ; le SQL reste
   standard, mais une différence de comportement avec `expo-sqlite` reste possible : les tests
-  end-to-end sur l'APK sont le filet de sécurité. `openAscentDatabase` (pont vers `expo-sqlite`)
-  n'est couvert que par eux.
+  end-to-end sur l'APK sont le filet de sécurité. Le pont vers `expo-sqlite` est testé en
+  intégration avec une connexion simulée (`testing/fakeExpoSqlite`) qui reproduit le comportement
+  transactionnel d'expo-sqlite 57 ; seul le module natif lui-même n'est exercé que par l'end-to-end.
 - L'APK est signé avec la **clé de debug** : installable pour tester, pas publiable sur un store.
   Une clé de signature (secret GitHub) sera nécessaire avant toute publication.
 - ESLint reste en 9 : `eslint-config-expo` et ses plugins ne sont pas encore validés avec ESLint 10.

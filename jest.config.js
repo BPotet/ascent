@@ -37,13 +37,7 @@ module.exports = {
       moduleNameMapper: { '^uuid$': cucumberUuid },
     },
   ],
-  collectCoverageFrom: [
-    'src/**/*.{ts,tsx}',
-    '!src/**/*.test.{ts,tsx}',
-    '!src/**/testing/**',
-    // Pont natif vers expo-sqlite : couvert par les tests end-to-end sur l'APK.
-    '!src/adapters/persistence/sqlite/openAscentDatabase.ts',
-  ],
+  collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.test.{ts,tsx}', '!src/**/testing/**'],
   coverageDirectory: 'coverage',
   coverageReporters: ['text-summary', 'text', 'lcov'],
   coverageThreshold: {
