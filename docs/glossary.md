@@ -64,3 +64,8 @@
 | **Port** | Une interface définie par le domaine ou l'application pour communiquer avec l'extérieur (stockage, horloge, authentification). |
 | **Adaptateur** (`adapter`) | L'implémentation concrète d'un port (base locale, écran, biométrie). |
 | **Test d'architecture** | Un test automatique qui vérifie que les dépendances respectent l'architecture hexagonale. |
+| **Horloge** (`Clock`) | Le port qui donne **aujourd'hui** (la date du calendrier local du téléphone). Toute règle qui dépend du jour passe par lui, pour pouvoir fixer la date dans les tests. |
+| **Stockage clé-valeur** (`KeyValueStore`) | Un port de stockage local de valeurs texte simples, identifiées par une clé. Les données restent sur le téléphone. |
+| **Base locale** | La base SQLite de l'application, sur le téléphone (`ascent.db`). Seuls les adaptateurs de `persistence` y accèdent. |
+| **Migration** (`Migration`) | Une évolution versionnée du schéma de la base locale (1, 2, 3…), appliquée automatiquement au démarrage. Une migration publiée ne se modifie jamais : on en ajoute une nouvelle. |
+| **Test de contrat** | Une suite de tests commune à tous les adaptateurs d'un même port (ex. en mémoire et SQLite), qui garantit qu'ils se comportent de la même façon. |
