@@ -17,4 +17,6 @@ export interface CheckInRepository {
   save(checkIn: CheckIn): Promise<void>;
   /** Les suivis enregistrés du jour `from` au jour `to` inclus, par jour puis par habitude. */
   listBetween(from: Day, to: Day): Promise<CheckIn[]>;
+  /** Tous les suivis enregistrés d'une habitude, quelle que soit leur date, par jour (#6). */
+  listByHabit(habitId: HabitId): Promise<CheckIn[]>;
 }
