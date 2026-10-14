@@ -267,6 +267,7 @@ describe('DayViewScreen', () => {
     expect(screen.queryByTestId('day-view-empty')).not.toBeOnTheScreen();
     expect(screen.getByRole('header', { name: 'Aujourd’hui' })).toBeOnTheScreen();
     expect(screen.queryAllByTestId(/^habit-row-/)).toEqual([]);
+    expect(screen.queryByTestId('all-done')).not.toBeOnTheScreen();
   });
 
   it('disables adding a habit at 10 habits and explains why', async () => {
@@ -314,6 +315,7 @@ describe('DayViewScreen', () => {
       expect(screen.getByLabelText('1 habitude faite sur 2')).toHaveTextContent('1/2 faites');
       expect(screen.getByTestId('day-progress')).toHaveStyle({ width: '50%' });
       expect(await storedStatuses()).toEqual(['Cuisiner: done', 'Budget du jour: pending']);
+      expect(screen.queryByTestId('toast')).not.toBeOnTheScreen();
 
       await fireEvent.press(cooking('fait'));
 
@@ -405,9 +407,11 @@ describe('DayViewScreen', () => {
       await screen.findByText(HINT);
 
       await fireEvent.press(cooking('fait'));
-      await screen.findByLabelText('0 habitude faite sur 1');
+      await waitFor(async () => expect(await storedStatuses()).toEqual(['Cuisiner: pending']));
+      await act(async () => undefined);
 
       expect(screen.getByText(HINT)).toBeOnTheScreen();
+      expect(dependencies.keyValueStore.values.size).toBe(0);
     });
 
     it('moves to the new day by itself, and announces it', async () => {
