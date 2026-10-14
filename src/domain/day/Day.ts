@@ -65,6 +65,28 @@ export class Day {
     return `${pad(this.year, 4)}-${pad(this.month, 2)}-${pad(this.dayOfMonth, 2)}`;
   }
 
+  /** Le jour `days` jours après celui-ci (avant si `days` est négatif). */
+  plusDays(days: number): Day {
+    if (!Number.isInteger(days)) {
+      throw new InvalidDayError(`${this.toIsoString()} plus ${days} days`);
+    }
+    const date = this.toUtcDate();
+    date.setUTCDate(date.getUTCDate() + days);
+    return Day.of(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
+  }
+
+  /** Le jour de la semaine, de 1 (lundi) à 7 (dimanche), comme la norme ISO 8601. */
+  get dayOfWeek(): number {
+    return this.toUtcDate().getUTCDay() || 7;
+  }
+
+  /** Minuit UTC de ce jour : en UTC, un jour dure toujours 24 h (pas d'heure d'été). */
+  private toUtcDate(): Date {
+    const date = new Date(0);
+    date.setUTCFullYear(this.year, this.month - 1, this.dayOfMonth);
+    return date;
+  }
+
   equals(other: Day): boolean {
     return this.compareTo(other) === 0;
   }

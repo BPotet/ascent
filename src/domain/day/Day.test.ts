@@ -135,4 +135,55 @@ describe('Day', () => {
       expect(day.isBefore(Day.of(2026, 10, 13))).toBe(false);
     });
   });
+
+  describe('plusDays', () => {
+    it.each([
+      [Day.of(2026, 10, 14), 1, Day.of(2026, 10, 15)],
+      [Day.of(2026, 10, 14), 0, Day.of(2026, 10, 14)],
+      [Day.of(2026, 10, 14), -2, Day.of(2026, 10, 12)],
+      [Day.of(2026, 10, 31), 1, Day.of(2026, 11, 1)],
+      [Day.of(2026, 3, 1), -1, Day.of(2026, 2, 28)],
+      [Day.of(2024, 2, 28), 1, Day.of(2024, 2, 29)],
+      [Day.of(2026, 12, 29), 6, Day.of(2027, 1, 4)],
+      [Day.of(2027, 1, 1), -4, Day.of(2026, 12, 28)],
+      [Day.of(2026, 3, 29), 1, Day.of(2026, 3, 30)],
+      [Day.of(2026, 10, 25), 1, Day.of(2026, 10, 26)],
+      [Day.of(2026, 1, 1), 365, Day.of(2027, 1, 1)],
+      [Day.of(1, 1, 7), -6, Day.of(1, 1, 1)],
+      [Day.of(99, 12, 31), 1, Day.of(100, 1, 1)],
+      [Day.of(9999, 12, 25), 6, Day.of(9999, 12, 31)],
+    ])('moves %o by %i days to %o', (day, days, expected) => {
+      expect(day.plusDays(days)).toEqual(expected);
+    });
+
+    it('rejects a number of days that is not whole', () => {
+      expect(() => Day.of(2026, 10, 14).plusDays(1.5)).toThrow(
+        new InvalidDayError('2026-10-14 plus 1.5 days'),
+      );
+    });
+
+    it('rejects a day outside the calendar', () => {
+      expect(() => Day.of(9999, 12, 31).plusDays(1)).toThrow(InvalidDayError);
+      expect(() => Day.of(1, 1, 1).plusDays(-1)).toThrow(InvalidDayError);
+    });
+  });
+
+  describe('dayOfWeek', () => {
+    it.each([
+      [Day.of(2026, 10, 12), 1],
+      [Day.of(2026, 10, 13), 2],
+      [Day.of(2026, 10, 14), 3],
+      [Day.of(2026, 10, 15), 4],
+      [Day.of(2026, 10, 16), 5],
+      [Day.of(2026, 10, 17), 6],
+      [Day.of(2026, 10, 18), 7],
+      [Day.of(2026, 12, 29), 2],
+      [Day.of(2024, 2, 29), 4],
+      [Day.of(1, 1, 1), 1],
+      [Day.of(50, 6, 15), 3],
+      [Day.of(9999, 12, 31), 5],
+    ])('numbers %o as day %i, from 1 (Monday) to 7 (Sunday)', (day, dayOfWeek) => {
+      expect(day.dayOfWeek).toBe(dayOfWeek);
+    });
+  });
 });
