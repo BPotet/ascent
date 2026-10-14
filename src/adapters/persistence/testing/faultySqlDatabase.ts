@@ -13,15 +13,15 @@ export function withFaults(db: SqlDatabase): FaultySqlDatabase {
       await db.exec(sql);
     },
     run: async (sql, params) => {
-      faults.check(sql);
+      faults.check(sql, params);
       await db.run(sql, params);
     },
     getFirst: async (sql, params) => {
-      faults.check(sql);
+      faults.check(sql, params);
       return db.getFirst(sql, params);
     },
     getAll: async (sql, params) => {
-      faults.check(sql);
+      faults.check(sql, params);
       return db.getAll(sql, params);
     },
     transaction: (task) => db.transaction(task),
