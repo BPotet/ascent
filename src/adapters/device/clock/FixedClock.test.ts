@@ -3,11 +3,13 @@ import { FixedClock } from './FixedClock';
 
 describe('FixedClock', () => {
   it('gives the chosen day until it is moved', () => {
-    const clock = new FixedClock(Day.of(2026, 10, 14));
-    expect(clock.today().toIso()).toBe('2026-10-14');
+    const first = Day.of(2026, 10, 14);
+    const next = Day.of(2026, 10, 15);
+    const clock = new FixedClock(first);
+    expect(clock.today()).toBe(first);
 
-    clock.setToday(Day.of(2026, 10, 15));
+    clock.setToday(next);
 
-    expect(clock.today().toIso()).toBe('2026-10-15');
+    expect(clock.today()).toBe(next);
   });
 });
