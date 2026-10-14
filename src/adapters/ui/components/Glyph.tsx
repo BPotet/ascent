@@ -36,6 +36,19 @@ export function AlertGlyph({
   );
 }
 
+/** L'étoile de l'expérience, devant l'aide et l'encouragement. Décorative. */
+export function SparkGlyph({ color }: { readonly color: string }) {
+  return (
+    <Text
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[styles.spark, { color }]}
+    >
+      ✦
+    </Text>
+  );
+}
+
 /** La coche d'une habitude « fait ». Décorative : l'état est écrit et lu par le lecteur d'écran. */
 export function CheckGlyph({ color }: { readonly color: string }) {
   return (
@@ -50,6 +63,7 @@ export function CheckGlyph({ color }: { readonly color: string }) {
 
 const styles = StyleSheet.create({
   plus: { fontSize: 24, lineHeight: 26, fontWeight: '600' },
+  spark: { fontSize: 16, lineHeight: 20 },
   alert: { borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   alertMark: { fontWeight: '700', lineHeight: undefined },
   check: {

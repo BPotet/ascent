@@ -4,20 +4,33 @@ import { ScrollView } from 'react-native';
 
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../../application/testing/settableClock';
+import { CHECK_IN_HINT_DISMISSED_KEY } from '../../../application/useCases/checkInHint';
 import { createHabit } from '../../../application/useCases/createHabit';
+import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
 import { getDayView } from '../../../application/useCases/getDayView';
 import { Day } from '../../../domain/day/Day';
 import { TOAST_DURATION_MS } from '../components/Toast';
+import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { renderScreen } from '../testing/renderScreen';
 import { DayViewScreen, HIGHLIGHT_DURATION_MS } from './DayViewScreen';
 
 const nbsp = ' ';
 const wednesday = Day.of(2026, 10, 14);
 
-let dependencies: { clock: ReturnType<typeof settableClock>; unitOfWork: InMemoryUnitOfWork };
+const thursday = Day.of(2026, 10, 15);
+
+let dependencies: {
+  clock: ReturnType<typeof settableClock>;
+  unitOfWork: InMemoryUnitOfWork;
+  keyValueStore: ReturnType<typeof memoryKeyValueStore>;
+};
 
 beforeEach(() => {
-  dependencies = { clock: settableClock(wednesday), unitOfWork: new InMemoryUnitOfWork() };
+  dependencies = {
+    clock: settableClock(wednesday),
+    unitOfWork: new InMemoryUnitOfWork(),
+    keyValueStore: memoryKeyValueStore(),
+  };
 });
 
 async function given(...names: string[]) {
@@ -269,5 +282,167 @@ describe('DayViewScreen', () => {
       '10 habitudes au plus. Supprime une habitude pour en ajouter une.',
     );
     expect(screen.queryByTestId('new-habit-sheet')).not.toBeOnTheScreen();
+  });
+
+  describe('check-ins', () => {
+    const HINT = 'Tape ton habitude quand c’est fait : +10 XP pour ton personnage.';
+    const ALL_DONE = 'Toutes tes habitudes du jour sont faites. Belle ascension !';
+    const SAVE_FAILED = 'Le suivi n’a pas été enregistré.';
+    const cooking = (status: string, day = 'mercredi 14 octobre') =>
+      screen.getByRole('switch', { name: `Cuisiner, ${day}, ${status}` });
+
+    async function storedStatuses(): Promise<string[]> {
+      const view = await getDayView(dependencies);
+      return view.habits.map(({ habit, status }) => `${habit.name.value}: ${status}`);
+    }
+
+    async function showWith(...habitNames: string[]) {
+      await given(...habitNames);
+      await show();
+      await screen.findByText(habitNames[0] ?? '');
+    }
+
+    it('confirms a habit with a tap on its row, and a second tap undoes it', async () => {
+      await showWith('Cuisiner', 'Budget du jour');
+
+      await fireEvent.press(cooking('à faire'));
+
+      expect(await screen.findByRole('switch', { checked: true })).toHaveAccessibleName(
+        'Cuisiner, mercredi 14 octobre, fait',
+      );
+      expect(screen.getByText('Fait')).toBeOnTheScreen();
+      expect(screen.getByLabelText('1 habitude faite sur 2')).toHaveTextContent('1/2 faites');
+      expect(screen.getByTestId('day-progress')).toHaveStyle({ width: '50%' });
+      expect(await storedStatuses()).toEqual(['Cuisiner: done', 'Budget du jour: pending']);
+
+      await fireEvent.press(cooking('fait'));
+
+      expect(await screen.findByLabelText('0 habitude faite sur 2')).toBeOnTheScreen();
+      expect(cooking('à faire')).not.toBeChecked();
+      expect(await storedStatuses()).toEqual(['Cuisiner: pending', 'Budget du jour: pending']);
+    });
+
+    it('shows the habits already done today', async () => {
+      await given('Cuisiner');
+      await toggleCheckIn(dependencies, 1, wednesday);
+
+      await show();
+
+      expect(await screen.findByLabelText('Cuisiner, mercredi 14 octobre, fait')).toBeChecked();
+    });
+
+    it('encourages the player when every habit of the day is done', async () => {
+      await showWith('Cuisiner', 'Lire');
+      expect(screen.queryByText(ALL_DONE)).not.toBeOnTheScreen();
+
+      await fireEvent.press(cooking('à faire'));
+      await screen.findByLabelText('1 habitude faite sur 2');
+      expect(screen.queryByText(ALL_DONE)).not.toBeOnTheScreen();
+      await fireEvent.press(screen.getByRole('switch', { name: /^Lire/u }));
+
+      expect(await screen.findByText(ALL_DONE)).toBeOnTheScreen();
+      expect(screen.getByLabelText('2 habitudes faites sur 2')).toBeOnTheScreen();
+    });
+
+    it('comes back to « à faire » and says so when the check-in cannot be saved', async () => {
+      await showWith('Cuisiner');
+      dependencies.unitOfWork.failWrites();
+
+      await fireEvent.press(cooking('à faire'));
+
+      expect(await screen.findByTestId('toast')).toHaveTextContent(`${SAVE_FAILED}Réessayer`);
+      expect(cooking('à faire')).not.toBeChecked();
+      expect(screen.getByLabelText('0 habitude faite sur 1')).toBeOnTheScreen();
+      dependencies.unitOfWork.failWrites(false);
+      expect(await storedStatuses()).toEqual(['Cuisiner: pending']);
+    });
+
+    it('tries the same check-in again with « Réessayer »', async () => {
+      await showWith('Cuisiner');
+      dependencies.unitOfWork.failWrites();
+      await fireEvent.press(cooking('à faire'));
+      await screen.findByText(SAVE_FAILED);
+      dependencies.unitOfWork.failWrites(false);
+
+      await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
+
+      expect(await screen.findByRole('switch', { checked: true })).toHaveAccessibleName(
+        'Cuisiner, mercredi 14 octobre, fait',
+      );
+      expect(screen.queryByText(SAVE_FAILED)).not.toBeOnTheScreen();
+      expect(await storedStatuses()).toEqual(['Cuisiner: done']);
+    });
+
+    it('explains the tap once, until the first habit is done', async () => {
+      await showWith('Cuisiner');
+      expect(await screen.findByText(HINT)).toBeOnTheScreen();
+
+      await fireEvent.press(cooking('à faire'));
+
+      await waitFor(() => expect(screen.queryByText(HINT)).not.toBeOnTheScreen());
+      expect(dependencies.keyValueStore.values.get(CHECK_IN_HINT_DISMISSED_KEY)).toBe('true');
+      await screen.unmount();
+      await show();
+      await screen.findByText('Cuisiner');
+      expect(screen.queryByText(HINT)).not.toBeOnTheScreen();
+    });
+
+    it('keeps the hint when the check-in cannot be saved', async () => {
+      await showWith('Cuisiner');
+      await screen.findByText(HINT);
+      dependencies.unitOfWork.failWrites();
+
+      await fireEvent.press(cooking('à faire'));
+      await screen.findByText(SAVE_FAILED);
+
+      expect(screen.getByText(HINT)).toBeOnTheScreen();
+    });
+
+    it('keeps the hint when a habit goes back to « à faire »', async () => {
+      await given('Cuisiner');
+      await toggleCheckIn(dependencies, 1, wednesday);
+      await show();
+      await screen.findByText(HINT);
+
+      await fireEvent.press(cooking('fait'));
+      await screen.findByLabelText('0 habitude faite sur 1');
+
+      expect(screen.getByText(HINT)).toBeOnTheScreen();
+    });
+
+    it('moves to the new day by itself, and announces it', async () => {
+      await given('Cuisiner');
+      await toggleCheckIn(dependencies, 1, wednesday);
+      await show();
+      await screen.findByLabelText('1 habitude faite sur 1');
+
+      await act(() => dependencies.clock.setToday(thursday));
+
+      expect(await screen.findByText('Jeudi 15 octobre')).toBeOnTheScreen();
+      expect(cooking('à faire', 'jeudi 15 octobre')).not.toBeChecked();
+      expect(screen.getByLabelText('0 habitude faite sur 1')).toBeOnTheScreen();
+      expect(screen.getByTestId('toast')).toHaveTextContent('Nouvelle journée : jeudi 15 octobre.');
+    });
+
+    it('saves a tap on the day just closed as a correction, then shows the new day', async () => {
+      await showWith('Cuisiner');
+      const changes = jest.spyOn(dependencies.clock, 'today');
+      changes.mockReturnValue(thursday);
+
+      await fireEvent.press(cooking('à faire'));
+
+      expect(await screen.findByText('Jeudi 15 octobre')).toBeOnTheScreen();
+      expect(cooking('à faire', 'jeudi 15 octobre')).toBeOnTheScreen();
+      expect(screen.getByTestId('toast')).toHaveTextContent(
+        'Mercredi 14 octobre vient d’être clos : enregistré comme correction.',
+      );
+      changes.mockRestore();
+      dependencies.clock.setToday(thursday);
+      const view = await getDayView(dependencies);
+      expect(view.day).toEqual(thursday);
+      await expect(toggleCheckIn(dependencies, 1, wednesday)).resolves.toMatchObject({
+        habitDay: { status: 'missed' },
+      });
+    });
   });
 });
