@@ -1,0 +1,148 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import { getWeekView, type WeekView } from '../../../application/useCases/getWeekView';
+import type { HabitDay } from '../../../domain/checkIn/HabitDay';
+import { Week } from '../../../domain/week/Week';
+import { useUseCaseDependencies } from './Dependencies';
+import { useTodayChange } from './useTodayChange';
+import { useTrackingChanges } from './TrackingRevision';
+import {
+  keyOf,
+  type ShownStatuses,
+  type ToggleOutcome,
+  useOptimisticToggle,
+  withShown,
+} from './useOptimisticToggle';
+
+/** Ce que l'écran affiche de la Vue Semaine : chargement, échec de lecture ou la semaine. */
+export type WeekViewState =
+  | { readonly status: 'loading' }
+  | { readonly status: 'failed' }
+  | { readonly status: 'ready'; readonly view: WeekView };
+
+/** La vue où chaque case passe par `change`. */
+const mapCells = (view: WeekView, change: (habitDay: HabitDay) => HabitDay): WeekView => ({
+  ...view,
+  rows: view.rows.map((row) => ({ ...row, days: row.days.map(change) })),
+});
+
+/**
+ * La Vue Semaine affichée, ses actions et ses taps.
+ *
+ * La semaine affichée est soit **la semaine en cours**, qui suit le changement d'aujourd'hui
+ * (minuit du dimanche la fait passer à la semaine suivante), soit **une semaine choisie**, qui reste
+ * affichée. Elle se recharge, sans repasser par le chargement, quand aujourd'hui change ou quand une
+ * autre vue a enregistré un changement.
+ * - `previous` et `next` changent de semaine, seulement si la semaine affichée le permet (R22) ;
+ *   la nouvelle semaine remplace l'ancienne une fois lue ;
+ * - `goToCurrentWeek` revient à la semaine en cours, même après une erreur ;
+ * - `reload` relit la semaine demandée en repassant par le chargement (« Réessayer ») ;
+ * - `toggle` enregistre un tap sur une case, comme dans la Vue Journée, et prévient les autres vues.
+ */
+export function useWeekView(): {
+  readonly state: WeekViewState;
+  /** Vrai si la vue montre (ou essaie de lire) la semaine en cours. */
+  readonly followsCurrentWeek: boolean;
+  readonly previous: () => void;
+  readonly next: () => void;
+  readonly goToCurrentWeek: () => void;
+  readonly reload: () => Promise<void>;
+  readonly toggle: (habitDay: HabitDay) => Promise<ToggleOutcome>;
+} {
+  const dependencies = useUseCaseDependencies();
+  const [loaded, setLoaded] = useState<WeekViewState>({ status: 'loading' });
+  /** La semaine choisie, ou `null` pour la semaine en cours. */
+  const [chosen, setChosen] = useState<Week | null>(null);
+  const chosenRef = useRef<Week | null>(null);
+  const lastRequest = useRef(0);
+
+  const load = useCallback(
+    (week: Week | null): Promise<void> => {
+      lastRequest.current += 1;
+      const request = lastRequest.current;
+      const show = (state: WeekViewState) => {
+        if (request === lastRequest.current) {
+          setLoaded(state);
+        }
+      };
+      return getWeekView(dependencies, week ?? undefined).then(
+        (view) => show({ status: 'ready', view }),
+        () => show({ status: 'failed' }),
+      );
+    },
+    [dependencies],
+  );
+
+  const refresh = useCallback(() => load(chosenRef.current), [load]);
+
+  const reload = useCallback(() => {
+    setLoaded({ status: 'loading' });
+    return refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    chosenRef.current = chosen;
+    void load(chosen);
+  }, [load, chosen]);
+
+  useTodayChange(() => void refresh());
+  const trackingChanged = useTrackingChanges(() => void refresh());
+
+  const onSaved = useCallback(
+    (saved: HabitDay) => {
+      setLoaded((state) =>
+        state.status === 'ready'
+          ? {
+              ...state,
+              view: mapCells(state.view, (habitDay) =>
+                keyOf(habitDay) === keyOf(saved) ? saved : habitDay,
+              ),
+            }
+          : state,
+      );
+      trackingChanged();
+    },
+    [trackingChanged],
+  );
+
+  const { shown, toggle } = useOptimisticToggle({ onSaved, refresh });
+
+  const shownView = loaded.status === 'ready' ? loaded.view : null;
+
+  const previous = useCallback(() => {
+    if (shownView?.canGoPrevious === true) {
+      setChosen(shownView.week.previous());
+    }
+  }, [shownView]);
+
+  const next = useCallback(() => {
+    if (shownView?.canGoNext === true) {
+      const target = shownView.week.next();
+      setChosen(target.equals(Week.containing(shownView.today)) ? null : target);
+    }
+  }, [shownView]);
+
+  const goToCurrentWeek = useCallback(() => setChosen(null), []);
+
+  const state = useMemo<WeekViewState>(
+    () =>
+      loaded.status === 'ready'
+        ? { ...loaded, view: withShownStatuses(loaded.view, shown) }
+        : loaded,
+    [loaded, shown],
+  );
+
+  return {
+    state,
+    followsCurrentWeek: chosen === null,
+    previous,
+    next,
+    goToCurrentWeek,
+    reload,
+    toggle,
+  };
+}
+
+function withShownStatuses(view: WeekView, shown: ShownStatuses): WeekView {
+  return shown.size === 0 ? view : mapCells(view, (habitDay) => withShown(habitDay, shown));
+}

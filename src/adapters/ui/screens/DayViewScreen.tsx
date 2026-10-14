@@ -38,7 +38,7 @@ export const CHECK_IN_SAVE_FAILED = 'Le suivi n’a pas été enregistré.';
 
 const newDayMessage = (day: Day) => `Nouvelle journée : ${formatDayAndMonth(day)}.`;
 
-const correctionMessage = (day: Day) =>
+export const correctionMessage = (day: Day) =>
   `${capitalize(formatDayAndMonth(day))} vient d’être clos : enregistré comme correction.`;
 
 interface ToastContent {
