@@ -210,6 +210,17 @@ describe('SystemClock', () => {
       expect(jest.getTimerCount()).toBe(0);
     });
 
+    it('keeps a single 30 s reading when told twice that the app is visible', () => {
+      at(new Date(2026, 9, 14, 8, 0));
+      const visibility = controlledVisibility();
+      new SystemClock(undefined, visibility).onTodayChange(jest.fn());
+
+      visibility.set(true);
+      visibility.set(true);
+
+      expect(jest.getTimerCount()).toBe(2);
+    });
+
     it('stops every timer and listener once unsubscribed', () => {
       at(new Date(2026, 9, 14, 23, 59));
       const visibility = controlledVisibility();
