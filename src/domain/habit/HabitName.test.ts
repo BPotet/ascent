@@ -34,6 +34,37 @@ describe('HabitName', () => {
       expect(() => HabitName.parse(raw)).toThrow(EmptyHabitNameError);
     });
 
+    it.each([
+      ['zero width space', '\u200b'],
+      ['zero width non-joiner', '\u200c'],
+      ['zero width joiner', '\u200d'],
+      ['word joiner', '\u2060'],
+      ['byte order mark', '\ufeff'],
+      ['no-break space', '\u00a0'],
+      ['ideographic space', '\u3000'],
+      ['a mix of invisible characters and spaces', ' \u200b\u3000\u2060 \u200d\ufeff\u200c '],
+    ])('refuses a name made only of invisible characters (%s)', (_, raw) => {
+      expect(() => HabitName.parse(raw)).toThrow(EmptyHabitNameError);
+      expect(habitNameLength(raw)).toBe(0);
+    });
+
+    it('removes invisible characters at the start and the end', () => {
+      expect(HabitName.parse('\u200b\ufeff Cuisiner\u2060\u200c \u200d').value).toBe('Cuisiner');
+      expect(HabitName.parse('\u200bCuisiner').value).toBe('Cuisiner');
+      expect(HabitName.parse('Cuisiner\u200b').value).toBe('Cuisiner');
+    });
+
+    it('reduces inner Unicode spaces to a single space', () => {
+      expect(HabitName.parse('Lire\u3000\u00a0 20\u2003minutes').value).toBe('Lire 20 minutes');
+    });
+
+    it('keeps the joiners inside a composed emoji', () => {
+      const family = '\u{1f468}\u200d\u{1f469}\u200d\u{1f467}';
+
+      expect(HabitName.parse(` \u200b${family}\u200b `).value).toBe(family);
+      expect(HabitName.parse(`Famille ${family}`).value).toBe(`Famille ${family}`);
+    });
+
     it('accepts 1 and 40 characters', () => {
       expect(HabitName.parse('a').value).toBe('a');
       expect(HabitName.parse('a'.repeat(40)).value).toBe('a'.repeat(40));
@@ -130,6 +161,7 @@ describe('HabitName', () => {
       expect(habitNameLength('   ')).toBe(0);
       expect(habitNameLength('  Lire   20 minutes ')).toBe(15);
       expect(habitNameLength('Cuisiner 🍳')).toBe(10);
+      expect(habitNameLength('\u200b Lire \ufeff')).toBe(4);
       expect(habitNameLength('a'.repeat(41))).toBe(41);
     });
   });

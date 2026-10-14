@@ -45,10 +45,18 @@ describe('createHabit', () => {
   it.each([
     ['', 'empty'],
     ['   ', 'empty'],
+    ['\u200b\u200c\u200d\u2060\ufeff', 'empty'],
+    ['\u00a0\u3000 \u200b', 'empty'],
     ['a'.repeat(41), 'tooLong'],
   ])('refuses the name %p (%s) and creates nothing', async (rawName, reason) => {
     await expect(createHabit(deps(), rawName)).resolves.toEqual({ ok: false, reason });
     expect(await names()).toEqual([]);
+  });
+
+  it('stores a name without its invisible characters at the start and the end', async () => {
+    await createHabit(deps(), '\u200b Cuisiner\ufeff');
+
+    expect(await names()).toEqual(['Cuisiner']);
   });
 
   it('accepts a name of 40 characters', async () => {

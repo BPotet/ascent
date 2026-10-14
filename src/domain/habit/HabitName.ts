@@ -22,8 +22,16 @@ export class HabitNameTooLongError extends Error {
   }
 }
 
+/**
+ * Caractères sans chasse, invisibles mais absents de `\s` : espace sans chasse (U+200B),
+ * antiliant et liant sans chasse (U+200C, U+200D), gluon de mots (U+2060), et U+FEFF.
+ * À l'intérieur du nom, ils sont gardés : le liant (U+200D) compose les emoji (famille…).
+ */
+const LEADING_OR_TRAILING_BLANKS =
+  /^[\s\u200b-\u200d\u2060\ufeff]+|[\s\u200b-\u200d\u2060\ufeff]+$/gu;
+
 function clean(raw: string): string {
-  return raw.normalize('NFC').replace(/\s+/gu, ' ').trim();
+  return raw.normalize('NFC').replace(/\s+/gu, ' ').replace(LEADING_OR_TRAILING_BLANKS, '');
 }
 
 function countCharacters(text: string): number {
