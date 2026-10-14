@@ -37,6 +37,13 @@ const createButton = () => screen.getByRole('button', { name: 'Créer l’habitu
 const type = (text: string) => fireEvent.changeText(field(), text);
 
 describe('NewHabitSheet', () => {
+  // Le premier rendu charge et transforme les modules de React Native du panneau (Modal, clavier) :
+  // sans cache (bac à sable de StrykerJS), cela dépasse le délai d'un test. On le fait une fois ici.
+  beforeAll(async () => {
+    await open();
+    screen.unmount();
+  }, 60_000);
+
   it('opens with an empty name field, focused, and the create button disabled', async () => {
     await open();
 
