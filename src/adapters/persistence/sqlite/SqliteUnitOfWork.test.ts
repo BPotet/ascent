@@ -1,0 +1,118 @@
+import { describeHabitRepositoryContract } from '../testing/habitRepositoryContract';
+import { FakeExpoSqliteConnection } from '../testing/fakeExpoSqlite';
+import { withFaults } from '../testing/faultySqlDatabase';
+import { openNodeSqliteDatabase } from '../testing/nodeSqliteDatabase';
+import { readsFrom, SimulatedStorageError, writesTo } from '../testing/sqlFaults';
+import { describeUnitOfWorkContract } from '../testing/unitOfWorkContract';
+import { Day } from '../../../domain/day/Day';
+import { HabitName } from '../../../domain/habit/HabitName';
+import { prepareExpoSqliteDatabase } from './expoSqliteDatabase';
+import { prepareAscentDatabase } from './prepareAscentDatabase';
+import { SqliteUnitOfWork } from './SqliteUnitOfWork';
+
+const createUnitOfWork = async () =>
+  new SqliteUnitOfWork(await prepareAscentDatabase(openNodeSqliteDatabase()));
+
+describe('SqliteUnitOfWork', () => {
+  describeUnitOfWorkContract(createUnitOfWork);
+  describeHabitRepositoryContract(createUnitOfWork);
+
+  describe('on the expo-sqlite bridge', () => {
+    const createOnExpo = async () =>
+      new SqliteUnitOfWork(await prepareExpoSqliteDatabase(FakeExpoSqliteConnection.open()));
+
+    describeUnitOfWorkContract(createOnExpo);
+    describeHabitRepositoryContract(createOnExpo);
+
+    it('sends every statement of a work on the shared connection, inside one transaction', async () => {
+      const connection = FakeExpoSqliteConnection.open();
+      const unitOfWork = new SqliteUnitOfWork(await prepareExpoSqliteDatabase(connection));
+      connection.statements.length = 0;
+
+      await unitOfWork.run(async ({ habits }) => {
+        await habits.add(HabitName.parse('Cuisiner'), Day.of(2026, 10, 14));
+        return habits.listAll();
+      });
+
+      expect(
+        connection.statements.map(({ connection: name, sql }) => [name, sql.split(' ')[0]]),
+      ).toEqual([
+        ['main', 'BEGIN'],
+        ['main', 'INSERT'],
+        ['main', 'SELECT'],
+        ['main', 'COMMIT'],
+      ]);
+    });
+
+    it('keeps the habits when the database is reopened', async () => {
+      const connection = FakeExpoSqliteConnection.open();
+      await new SqliteUnitOfWork(await prepareExpoSqliteDatabase(connection)).run(({ habits }) =>
+        habits.add(HabitName.parse('Cuisiner'), Day.of(2026, 10, 14)),
+      );
+
+      const reopened = new SqliteUnitOfWork(await prepareExpoSqliteDatabase(connection.reopen()));
+
+      const habits = await reopened.run((repositories) => repositories.habits.listAll());
+      expect(habits.map((habit) => habit.name.value)).toEqual(['Cuisiner']);
+    });
+
+    it('keeps names, days of creation, order and duplicates refused after a restart', async () => {
+      const family = '\u{1F468}‍\u{1F469}‍\u{1F467}';
+      const connection = FakeExpoSqliteConnection.open();
+      await new SqliteUnitOfWork(await prepareExpoSqliteDatabase(connection)).run(
+        async ({ habits }) => {
+          await habits.add(HabitName.parse('Été sans sucre'), Day.of(2024, 2, 29));
+          await habits.add(HabitName.parse(`Repas ${family}`), Day.of(2026, 12, 31));
+        },
+      );
+
+      const reopened = new SqliteUnitOfWork(await prepareExpoSqliteDatabase(connection.reopen()));
+
+      const habits = await reopened.run((repositories) => repositories.habits.listAll());
+      expect(habits.map(({ name, createdOn }) => [name.value, createdOn.toIsoString()])).toEqual([
+        ['Été sans sucre', '2024-02-29'],
+        [`Repas ${family}`, '2026-12-31'],
+      ]);
+      await expect(
+        reopened.run(({ habits: repository }) =>
+          repository.add(HabitName.parse('ÉTÉ SANS SUCRE'), Day.of(2026, 10, 14)),
+        ),
+      ).rejects.toThrow();
+      await expect(
+        reopened.run((repositories) => repositories.habits.listAll()),
+      ).resolves.toHaveLength(2);
+    });
+  });
+
+  describe('storage failures', () => {
+    const day = Day.of(2026, 10, 14);
+
+    it('fails, and keeps the stored habits, when the habits cannot be read', async () => {
+      const db = withFaults(await prepareAscentDatabase(openNodeSqliteDatabase()));
+      const unitOfWork = new SqliteUnitOfWork(db);
+      await unitOfWork.run(({ habits }) => habits.add(HabitName.parse('Cuisiner'), day));
+
+      db.faults.failWhen(readsFrom('habits'));
+      await expect(unitOfWork.run(({ habits }) => habits.listAll())).rejects.toThrow(
+        SimulatedStorageError,
+      );
+
+      db.faults.failWhen(null);
+      const habits = await unitOfWork.run((repositories) => repositories.habits.listAll());
+      expect(habits.map((habit) => habit.name.value)).toEqual(['Cuisiner']);
+    });
+
+    it('stores nothing when a habit cannot be written', async () => {
+      const db = withFaults(await prepareAscentDatabase(openNodeSqliteDatabase()));
+      const unitOfWork = new SqliteUnitOfWork(db);
+
+      db.faults.failWhen(writesTo('habits'));
+      await expect(
+        unitOfWork.run(({ habits }) => habits.add(HabitName.parse('Méditer'), day)),
+      ).rejects.toThrow(SimulatedStorageError);
+
+      db.faults.failWhen(null);
+      await expect(unitOfWork.run(({ habits }) => habits.listAll())).resolves.toEqual([]);
+    });
+  });
+});

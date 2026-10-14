@@ -33,8 +33,15 @@ async function appStarts(): Promise<void> {
   await renderRouter(appDirectory);
 }
 
+/**
+ * L'écran d'accueil est la Vue Journée, une fois ses habitudes lues. Sur une base neuve, elle est
+ * dans son état vide (l'en-tête « Aujourd’hui » n'apparaît qu'avec au moins une habitude).
+ */
 async function welcomeScreenIsShown(): Promise<void> {
-  expect(await screen.findByRole('header', { name: 'Ascent' })).toBeOnTheScreen();
+  expect(await screen.findByTestId('day-view-empty')).toBeOnTheScreen();
+  expect(
+    screen.getByRole('header', { name: /^Aucune habitude pour l’instant/u }),
+  ).toBeOnTheScreen();
   expect(screen.queryByText('Réessayer')).not.toBeOnTheScreen();
 }
 
@@ -66,7 +73,7 @@ defineFeature(feature, (test) => {
     then("un écran d'erreur propose « Réessayer »", async () => {
       expect(await screen.findByRole('alert')).toBeOnTheScreen();
       expect(screen.getByRole('button', { name: 'Réessayer' })).toBeOnTheScreen();
-      expect(screen.queryByRole('header', { name: 'Ascent' })).not.toBeOnTheScreen();
+      expect(screen.queryByTestId('day-view')).not.toBeOnTheScreen();
     });
     when('la base locale redevient disponible et que le joueur touche « Réessayer »', async () => {
       localDatabaseOpens();

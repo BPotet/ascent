@@ -1,13 +1,22 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+// Une graisse par import : seules les polices utilisées entrent dans l'app.
+import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
+import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
+import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
+import { Sora_600SemiBold } from '@expo-google-fonts/sora/600SemiBold';
+import { Sora_700Bold } from '@expo-google-fonts/sora/700Bold';
 import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { SystemClock } from '../adapters/device/clock/SystemClock';
+import { loadFonts } from '../adapters/device/fonts/loadFonts';
 import { openAscentDatabase } from '../adapters/persistence/sqlite/openAscentDatabase';
+import { SqliteUnitOfWork } from '../adapters/persistence/sqlite/SqliteUnitOfWork';
 import { StartupErrorScreen, StartupLoadingScreen } from '../adapters/ui/screens/StartupScreen';
 import { type Dependencies, DependenciesProvider } from '../adapters/ui/state/Dependencies';
 import { colors } from '../adapters/ui/theme/colors';
+import { fonts } from '../adapters/ui/theme/typography';
 
 type Startup =
   | { readonly status: 'loading' }
@@ -21,7 +30,24 @@ const screenOptions = {
 } as const;
 // Stryker restore all
 
-/** Assemblage : ouvre la base locale, puis branche les adaptateurs sur les ports de l'interface. */
+/** Ouvre la base locale et charge les polices (sans elles, la police système s'affiche). */
+async function start(): Promise<Dependencies> {
+  // Les fichiers des polices livrées avec l'app, sous les noms qu'utilise l'interface.
+  const fontFiles = {
+    [fonts.soraSemiBold]: Sora_600SemiBold,
+    [fonts.soraBold]: Sora_700Bold,
+    [fonts.interRegular]: Inter_400Regular,
+    [fonts.interMedium]: Inter_500Medium,
+    [fonts.interSemiBold]: Inter_600SemiBold,
+  };
+  const [db] = await Promise.all([openAscentDatabase(), loadFonts(fontFiles)]);
+  return { clock: new SystemClock(), unitOfWork: new SqliteUnitOfWork(db) };
+}
+
+/**
+ * Assemblage : ouvre la base locale et charge les polices, puis branche les adaptateurs sur les
+ * ports de l'interface. Tout est sur le téléphone : le démarrage ne dépend pas du réseau.
+ */
 export default function RootLayout() {
   const [startup, setStartup] = useState<Startup>({ status: 'loading' });
   const loading = startup.status === 'loading';
@@ -30,8 +56,8 @@ export default function RootLayout() {
     if (!loading) {
       return;
     }
-    openAscentDatabase().then(
-      () => setStartup({ status: 'ready', dependencies: { clock: new SystemClock() } }),
+    start().then(
+      (dependencies) => setStartup({ status: 'ready', dependencies }),
       () => setStartup({ status: 'failed' }),
     );
   }, [loading]);

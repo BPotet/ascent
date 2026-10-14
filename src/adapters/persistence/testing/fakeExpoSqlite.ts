@@ -4,9 +4,12 @@
 // - `withExclusiveTransactionAsync` ouvre une AUTRE connexion, sur laquelle les requêtes de la
 //   transaction doivent passer.
 // Chaque instruction est journalisée avec le nom de la connexion qui l'a reçue.
+// Pour les scénarios : `reopen()` rouvre la même base (redémarrage de l'application) et
+// `faults.failWhen(...)` fait échouer des requêtes (panne de stockage, voir `sqlFaults.ts`).
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 
 import type { SqlValue } from '../sqlite/SqlDatabase';
+import { SqlFaults } from './sqlFaults';
 
 export interface ExecutedStatement {
   readonly connection: string;
@@ -16,6 +19,8 @@ export interface ExecutedStatement {
 export class FakeExpoSqliteConnection {
   closed = false;
   failOnClose = false;
+  /** Les requêtes de cette connexion à faire échouer. */
+  readonly faults = new SqlFaults();
 
   private constructor(
     private readonly db: DatabaseSync,
@@ -31,11 +36,20 @@ export class FakeExpoSqliteConnection {
     );
   }
 
+  /**
+   * Une nouvelle connexion à la même base, comme après un redémarrage de l'application :
+   * les données sont conservées, le journal des instructions et les pannes repartent de zéro.
+   */
+  reopen(): FakeExpoSqliteConnection {
+    return new FakeExpoSqliteConnection(this.db, 'main', []);
+  }
+
   private log(sql: string): void {
     if (this.closed) {
       throw new Error('Access to closed resource');
     }
     this.statements.push({ connection: this.name, sql });
+    this.faults.check(sql);
   }
 
   async execAsync(source: string): Promise<void> {

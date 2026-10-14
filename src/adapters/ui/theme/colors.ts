@@ -1,4 +1,5 @@
-/** Couleurs de l'identité visuelle, reprises de la maquette validée (`docs/mockups/`). */
+// Stryker disable all: valeurs purement visuelles, vérifiées par la conformité aux maquettes (barrière 10 bis).
+/** Couleurs de l'identité visuelle « Nuit d'altitude », reprises de la maquette validée (`docs/mockups/`). */
 export const colors = {
   background: '#0F1420',
   surface: '#18202F',
@@ -6,9 +7,25 @@ export const colors = {
   line: '#2E3950',
   text: '#EEF1F7',
   muted: '#9AA4B8',
+  placeholder: '#7E889C',
   accent: '#7C9CFF',
+  accentRing: 'rgba(124,156,255,0.2)',
   onAccent: '#0B1020',
+  disabled: '#2A3349',
+  onDisabled: '#6F7A92',
   done: '#3DDC97',
+  onDone: '#05261A',
+  doneSoft: '#16302A',
+  doneText: '#8FE8BF',
   xp: '#FFC94D',
   danger: '#FF7A7A',
+  dangerSoft: 'rgba(255,122,122,0.12)',
+  dangerLine: 'rgba(255,122,122,0.45)',
+  onDangerSoft: '#FFC9C9',
+  skeleton: '#1B2333',
+  grab: '#3A4560',
+  scrim: 'rgba(5,7,12,0.64)',
+  toast: '#EEF1F7',
+  onToast: '#121826',
 } as const;
+// Stryker restore all

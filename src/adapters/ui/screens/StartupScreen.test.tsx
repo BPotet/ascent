@@ -1,10 +1,14 @@
 import { fireEvent, screen } from '@testing-library/react-native';
 
+import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { Day } from '../../../domain/day/Day';
 import { renderScreen } from '../testing/renderScreen';
 import { StartupErrorScreen, StartupLoadingScreen } from './StartupScreen';
 
-const dependencies = { clock: { today: () => Day.of(2026, 10, 14) } };
+const dependencies = {
+  clock: { today: () => Day.of(2026, 10, 14) },
+  unitOfWork: new InMemoryUnitOfWork(),
+};
 
 describe('Startup screens', () => {
   it('shows a loading indicator', async () => {

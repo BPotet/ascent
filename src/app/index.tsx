@@ -1,3 +1,3 @@
-import { WelcomeScreen } from '../adapters/ui/screens/WelcomeScreen';
+import { DayViewScreen } from '../adapters/ui/screens/DayViewScreen';
 
-export default WelcomeScreen;
+export default DayViewScreen;
