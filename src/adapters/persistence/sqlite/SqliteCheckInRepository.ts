@@ -52,4 +52,12 @@ export class SqliteCheckInRepository implements CheckInRepository {
     );
     return rows.map(toCheckIn);
   }
+
+  async listByHabit(habitId: HabitId): Promise<CheckIn[]> {
+    const rows = await this.db.getAll<CheckInRow>(
+      `SELECT ${COLUMNS} FROM check_ins WHERE habit_id = ? ORDER BY day`,
+      [habitId],
+    );
+    return rows.map(toCheckIn);
+  }
 }
