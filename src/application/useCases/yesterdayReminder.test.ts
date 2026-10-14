@@ -135,6 +135,10 @@ describe('yesterday reminder (rappel d’hier)', () => {
       expect(keyValueStore.values).toEqual(
         new Map([[YESTERDAY_REMINDER_DISMISSED_FOR_KEY, '2026-10-13']]),
       );
+      // La clé est une donnée enregistrée sur le téléphone : elle ne doit pas changer.
+      expect(YESTERDAY_REMINDER_DISMISSED_FOR_KEY).toBe(
+        'day-view.yesterday-reminder.dismissed-for',
+      );
     });
 
     it('lets the reminder of the next day show again, after midnight', async () => {
