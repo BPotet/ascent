@@ -1,3 +1,4 @@
+import { describeCharacterRepositoryContract } from '../testing/characterRepositoryContract';
 import { describeCheckInRepositoryContract } from '../testing/checkInRepositoryContract';
 import { describeHabitRepositoryContract } from '../testing/habitRepositoryContract';
 import { FakeExpoSqliteConnection } from '../testing/fakeExpoSqlite';
@@ -5,6 +6,7 @@ import { withFaults } from '../testing/faultySqlDatabase';
 import { openNodeSqliteDatabase } from '../testing/nodeSqliteDatabase';
 import { readsFrom, readsFromWith, SimulatedStorageError, writesTo } from '../testing/sqlFaults';
 import { describeUnitOfWorkContract } from '../testing/unitOfWorkContract';
+import { Character } from '../../../domain/character/Character';
 import { Day } from '../../../domain/day/Day';
 import { HabitName } from '../../../domain/habit/HabitName';
 import { prepareExpoSqliteDatabase } from './expoSqliteDatabase';
@@ -18,6 +20,7 @@ describe('SqliteUnitOfWork', () => {
   describeUnitOfWorkContract(createUnitOfWork);
   describeHabitRepositoryContract(createUnitOfWork);
   describeCheckInRepositoryContract(createUnitOfWork);
+  describeCharacterRepositoryContract(createUnitOfWork);
 
   describe('on the expo-sqlite bridge', () => {
     const createOnExpo = async () =>
@@ -26,6 +29,7 @@ describe('SqliteUnitOfWork', () => {
     describeUnitOfWorkContract(createOnExpo);
     describeHabitRepositoryContract(createOnExpo);
     describeCheckInRepositoryContract(createOnExpo);
+    describeCharacterRepositoryContract(createOnExpo);
 
     it('sends every statement of a work on the shared connection, inside one transaction', async () => {
       const connection = FakeExpoSqliteConnection.open();
@@ -136,6 +140,31 @@ describe('SqliteUnitOfWork', () => {
       await expect(
         unitOfWork.run(({ checkIns }) => checkIns.find(cooking.id, day)),
       ).resolves.toEqual(done);
+    });
+
+    it('keeps the stored character when the character cannot be written', async () => {
+      const db = withFaults(await prepareAscentDatabase(openNodeSqliteDatabase()));
+      const unitOfWork = new SqliteUnitOfWork(db);
+      await unitOfWork.run(({ character }) => character.save(new Character(30)));
+
+      db.faults.failWhen(writesTo('character'));
+      await expect(
+        unitOfWork.run(({ character }) => character.save(new Character(40))),
+      ).rejects.toThrow(SimulatedStorageError);
+
+      db.faults.failWhen(null);
+      await expect(unitOfWork.run(({ character }) => character.get())).resolves.toEqual(
+        new Character(30),
+      );
+    });
+
+    it('fails to read a character missing from the database', async () => {
+      const db = await prepareAscentDatabase(openNodeSqliteDatabase());
+      await db.run('DELETE FROM character');
+
+      await expect(
+        new SqliteUnitOfWork(db).run(({ character }) => character.get()),
+      ).rejects.toThrow('The character is missing from the database');
     });
 
     it.each([
