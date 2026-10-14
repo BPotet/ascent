@@ -6,6 +6,7 @@ import { withFaults } from '../testing/faultySqlDatabase';
 import { openNodeSqliteDatabase } from '../testing/nodeSqliteDatabase';
 import { readsFrom, readsFromWith, SimulatedStorageError, writesTo } from '../testing/sqlFaults';
 import { describeUnitOfWorkContract } from '../testing/unitOfWorkContract';
+import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
 import { Character } from '../../../domain/character/Character';
 import { Day } from '../../../domain/day/Day';
 import { HabitName } from '../../../domain/habit/HabitName';
@@ -155,6 +156,27 @@ describe('SqliteUnitOfWork', () => {
       db.faults.failWhen(null);
       await expect(unitOfWork.run(({ character }) => character.get())).resolves.toEqual(
         new Character(30),
+      );
+    });
+
+    it('saves no check-in of a toggle whose experience cannot be written', async () => {
+      const db = withFaults(await prepareAscentDatabase(openNodeSqliteDatabase()));
+      const unitOfWork = new SqliteUnitOfWork(db);
+      const cooking = await unitOfWork.run(({ habits }) =>
+        habits.add(HabitName.parse('Cuisiner'), day),
+      );
+
+      db.faults.failWhen(writesTo('character'));
+      await expect(
+        toggleCheckIn({ clock: { today: () => day }, unitOfWork }, cooking.id, day),
+      ).rejects.toThrow(SimulatedStorageError);
+
+      db.faults.failWhen(null);
+      await expect(
+        unitOfWork.run(({ checkIns }) => checkIns.find(cooking.id, day)),
+      ).resolves.toBeNull();
+      await expect(unitOfWork.run(({ character }) => character.get())).resolves.toEqual(
+        Character.NEW,
       );
     });
 

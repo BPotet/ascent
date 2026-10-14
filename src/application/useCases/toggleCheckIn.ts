@@ -23,6 +23,14 @@ export type ToggleCheckInResult =
       readonly habitDay: HabitDay;
       /** Vrai si le jour était clos : c'est une correction (R10). */
       readonly isCorrection: boolean;
+      /**
+       * La variation de l'expérience du personnage : +10 si la case est passée à « fait », −10 si
+       * elle est revenue en arrière, 0 quand le plancher de 0 Xp l'en empêche (R14, R16). Pas de
+       * feedback d'expérience à afficher quand elle vaut 0.
+       */
+      readonly xpChange: number;
+      /** L'expérience totale du personnage après le tap, telle qu'elle est enregistrée. */
+      readonly xp: number;
     }
   | { readonly ok: false; readonly reason: ToggleCheckInRefusal };
 
@@ -33,14 +41,17 @@ export type ToggleCheckInResult =
  *
  * Aujourd'hui est lu, et le suivi enregistré relu, dans l'unité de travail : les taps sont
  * sérialisés et chacun inverse l'état enregistré, pas l'état affiché (trois taps donnent « fait »).
- * Un refus de règle est un résultat ; une panne de stockage est une exception, et rien ne change.
+ * L'expérience du personnage change dans la même unité de travail que le suivi, sur ce vrai
+ * changement d'état, correction comprise (R11, R14). Un refus ne change rien, l'expérience non plus.
+ * Un refus de règle est un résultat ; une panne de stockage est une exception, et rien ne change :
+ * ni le suivi, ni l'expérience.
  */
 export function toggleCheckIn(
   { clock, unitOfWork }: UseCaseDependencies,
   habitId: HabitId,
   day: Day,
 ): Promise<ToggleCheckInResult> {
-  return unitOfWork.run(async ({ habits, checkIns }) => {
+  return unitOfWork.run(async ({ habits, checkIns, character }) => {
     const today = clock.today();
     const habit = await habits.findById(habitId);
     if (habit === null) {
@@ -58,11 +69,16 @@ export function toggleCheckIn(
       }
       throw error;
     }
+    const before = await character.get();
+    const after = before.applyCheckInChange(toggled.checkIn.done);
     await checkIns.save(toggled.checkIn);
+    await character.save(after);
     return {
       ok: true,
       habitDay: habitDayOf(habit, day, toggled.checkIn, today),
       isCorrection: toggled.isCorrection,
+      xpChange: before.xpChangeTo(after),
+      xp: after.xp,
     };
   });
 }
