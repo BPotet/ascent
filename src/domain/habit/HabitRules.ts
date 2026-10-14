@@ -1,4 +1,4 @@
-import type { Habit } from './Habit';
+import type { Habit, HabitId } from './Habit';
 import type { HabitName } from './HabitName';
 
 /** Le joueur a au plus 10 habitudes à la fois. */
@@ -30,9 +30,17 @@ export function assertCanAddHabit(habits: readonly Habit[]): void {
   }
 }
 
-/** Refuse un nom déjà porté par une habitude (sans tenir compte des majuscules). */
-export function assertNameAvailable(habits: readonly Habit[], name: HabitName): void {
-  if (habits.some((habit) => habit.name.sameAs(name))) {
+/**
+ * Refuse un nom déjà porté par une habitude (sans tenir compte des majuscules). Pour un renommage
+ * (R18), `exceptId` est l'habitude renommée : elle n'est pas un doublon d'elle-même, ce qui permet
+ * de ne changer que les majuscules de son nom.
+ */
+export function assertNameAvailable(
+  habits: readonly Habit[],
+  name: HabitName,
+  exceptId?: HabitId,
+): void {
+  if (habits.some((habit) => habit.id !== exceptId && habit.name.sameAs(name))) {
     throw new DuplicateHabitNameError(name.value);
   }
 }

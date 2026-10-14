@@ -66,6 +66,19 @@ describe('HabitRules', () => {
 
       expect(() => assertNameAvailable(summer, HabitName.parse('Été sans sucre'))).not.toThrow();
     });
+
+    describe('when renaming a habit (R18)', () => {
+      it('does not count the renamed habit itself as a duplicate, capitals changed or not', () => {
+        expect(() => assertNameAvailable(existing, HabitName.parse('CUISINER'), 2)).not.toThrow();
+        expect(() => assertNameAvailable(existing, HabitName.parse('Cuisiner'), 2)).not.toThrow();
+      });
+
+      it('refuses the name of another habit, without regard to capitals', () => {
+        expect(() => assertNameAvailable(existing, HabitName.parse('budget du jour'), 2)).toThrow(
+          new DuplicateHabitNameError('budget du jour'),
+        );
+      });
+    });
   });
 
   it('names its errors', () => {
