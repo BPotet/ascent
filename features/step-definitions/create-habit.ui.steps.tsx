@@ -19,8 +19,8 @@ import { SqliteUnitOfWork } from '../../src/adapters/persistence/sqlite/SqliteUn
 import { FakeExpoSqliteConnection } from '../../src/adapters/persistence/testing/fakeExpoSqlite';
 import { readsFrom, writesTo } from '../../src/adapters/persistence/testing/sqlFaults';
 import { DayViewScreen } from '../../src/adapters/ui/screens/DayViewScreen';
+import type { Dependencies } from '../../src/adapters/ui/state/Dependencies';
 import { renderScreen } from '../../src/adapters/ui/testing/renderScreen';
-import type { UseCaseDependencies } from '../../src/application/useCases/UseCaseDependencies';
 import { createHabit } from '../../src/application/useCases/createHabit';
 import { getDayView } from '../../src/application/useCases/getDayView';
 import { Day } from '../../src/domain/day/Day';
@@ -28,7 +28,7 @@ import { frenchDay } from '../support/frenchDay';
 
 interface World {
   connection: FakeExpoSqliteConnection;
-  deps: UseCaseDependencies;
+  deps: Dependencies;
   /** La date du scénario, en toutes lettres : « mercredi 14 octobre 2026 ». */
   date: string;
   shown: boolean;
