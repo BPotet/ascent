@@ -139,6 +139,7 @@ export function DayViewScreen() {
       <Screen layout="top" testID="day-view">
         <StateMessage
           alert
+          illustration="alert"
           title="Impossible de charger tes habitudes."
           text="Une erreur est survenue en lisant tes données sur ce téléphone."
           action={<Button label="Réessayer" onPress={() => void reload()} />}
@@ -154,6 +155,7 @@ export function DayViewScreen() {
     <Screen layout="top" testID="day-view">
       {empty ? (
         <StateMessage
+          illustration="summit"
           title="Aucune habitude pour l’instant"
           text="Crée ta première habitude et commence à gagner de l’expérience."
           action={

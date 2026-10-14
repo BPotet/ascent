@@ -1,21 +1,35 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, type ImageSourcePropType, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
 
 /**
- * État plein écran d'une vue (vide, erreur) : un titre, une explication et une seule action.
- * `alert` fait annoncer l'état au lecteur d'écran (erreur).
+ * Illustrations des états de la maquette validée, exportées de ses SVG (1x, 2x, 3x) :
+ * `summit` (montagne, état vide) et `alert` (grande icône d'alerte de 56 pt, erreur).
+ */
+const illustrations = {
+  summit: { source: require('../assets/summit.png'), width: 180, height: 130 },
+  alert: { source: require('../assets/alert.png'), width: 56, height: 56 },
+} as const satisfies Record<string, { source: ImageSourcePropType; width: number; height: number }>;
+
+export type Illustration = keyof typeof illustrations;
+
+/**
+ * État plein écran d'une vue (vide, erreur) : une illustration, un titre, une explication et une
+ * seule action. `alert` fait annoncer l'état au lecteur d'écran (erreur). L'illustration est
+ * décorative : le lecteur d'écran ne la lit pas.
  */
 export function StateMessage({
+  illustration,
   title,
   text,
   action,
   alert = false,
   testID,
 }: {
+  readonly illustration: Illustration;
   readonly title: string;
   readonly text: string;
   readonly action: ReactNode;
@@ -24,6 +38,16 @@ export function StateMessage({
 }) {
   return (
     <View style={styles.state} testID={testID}>
+      <Image
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        source={illustrations[illustration].source}
+        testID={`illustration-${illustration}`}
+        style={{
+          width: illustrations[illustration].width,
+          height: illustrations[illustration].height,
+        }}
+      />
       <View
         accessible
         accessibilityRole={alert ? 'alert' : 'header'}
@@ -47,9 +71,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 32,
     paddingBottom: 120,
-    gap: spacing.md,
+    gap: 10,
   },
-  texts: { alignItems: 'center', gap: spacing.md },
+  texts: { alignItems: 'center', gap: spacing.md, marginTop: spacing.sm },
   title: { color: colors.text, textAlign: 'center' },
   text: { color: colors.muted, textAlign: 'center' },
 });
