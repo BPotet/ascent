@@ -1,0 +1,100 @@
+import {
+  EmptyHabitNameError,
+  HabitName,
+  HabitNameTooLongError,
+  MAX_HABIT_NAME_LENGTH,
+  habitNameLength,
+} from './HabitName';
+
+describe('HabitName', () => {
+  describe('parse', () => {
+    it('keeps a clean name as typed, capitals included', () => {
+      expect(HabitName.parse('Cuisiner').value).toBe('Cuisiner');
+    });
+
+    it('removes leading and trailing spaces', () => {
+      expect(HabitName.parse('  Cuisiner \t').value).toBe('Cuisiner');
+    });
+
+    it('reduces inner spaces to a single one', () => {
+      expect(HabitName.parse('   Lire   20  minutes  ').value).toBe('Lire 20 minutes');
+    });
+
+    it('treats non-breaking spaces and line breaks as spaces', () => {
+      expect(HabitName.parse(' Lire  20\n minutes ').value).toBe('Lire 20 minutes');
+    });
+
+    it('composes accents (NFC), so that a typed and a pasted « É » are the same', () => {
+      const decomposed = 'Été';
+
+      expect(HabitName.parse(decomposed).value).toBe('Été');
+    });
+
+    it.each(['', '   ', ' \t\n'])('refuses the empty name %p', (raw) => {
+      expect(() => HabitName.parse(raw)).toThrow(EmptyHabitNameError);
+    });
+
+    it('accepts 1 and 40 characters', () => {
+      expect(HabitName.parse('a').value).toBe('a');
+      expect(HabitName.parse('a'.repeat(40)).value).toBe('a'.repeat(40));
+    });
+
+    it('refuses 41 characters, with the limit in the error', () => {
+      expect(() => HabitName.parse('a'.repeat(41))).toThrow(new HabitNameTooLongError(41));
+      expect(new HabitNameTooLongError(41).maxLength).toBe(MAX_HABIT_NAME_LENGTH);
+      expect(new HabitNameTooLongError(41).length).toBe(41);
+    });
+
+    it('counts the length after cleaning', () => {
+      expect(HabitName.parse(`  ${'a'.repeat(40)}  `).value).toHaveLength(40);
+    });
+
+    it('counts a simple emoji as one character', () => {
+      const name = `${'a'.repeat(39)}🍳`;
+
+      expect(HabitName.parse(name).value).toBe(name);
+      expect(() => HabitName.parse(`${name}a`)).toThrow(HabitNameTooLongError);
+    });
+
+    it('names its errors', () => {
+      expect(new EmptyHabitNameError().name).toBe('EmptyHabitNameError');
+      expect(new HabitNameTooLongError(41).name).toBe('HabitNameTooLongError');
+      expect(new EmptyHabitNameError().message).toBe('A habit name cannot be empty');
+      expect(new HabitNameTooLongError(41).message).toBe(
+        'A habit name has at most 40 characters, got 41',
+      );
+    });
+  });
+
+  describe('key', () => {
+    it('ignores capitals', () => {
+      expect(HabitName.parse('Cuisiner').key).toBe(HabitName.parse('cuisiner  ').key);
+      expect(HabitName.parse('ÉTÉ').key).toBe('été');
+    });
+
+    it('keeps accents', () => {
+      expect(HabitName.parse('Eté sans sucre').key).not.toBe(HabitName.parse('Été sans sucre').key);
+    });
+
+    it('is the same for a composed and a decomposed accent', () => {
+      expect(HabitName.parse('Été').key).toBe(HabitName.parse('été').key);
+    });
+  });
+
+  describe('sameAs', () => {
+    it('compares names by their key', () => {
+      expect(HabitName.parse('Cuisiner').sameAs(HabitName.parse('CUISINER'))).toBe(true);
+      expect(HabitName.parse('Eté').sameAs(HabitName.parse('Été'))).toBe(false);
+    });
+  });
+
+  describe('habitNameLength', () => {
+    it('gives the length of the cleaned name, for the counter', () => {
+      expect(habitNameLength('')).toBe(0);
+      expect(habitNameLength('   ')).toBe(0);
+      expect(habitNameLength('  Lire   20 minutes ')).toBe(15);
+      expect(habitNameLength('Cuisiner 🍳')).toBe(10);
+      expect(habitNameLength('a'.repeat(41))).toBe(41);
+    });
+  });
+});
