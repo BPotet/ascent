@@ -72,6 +72,31 @@ describe('createHabit', () => {
     expect(await names()).toEqual(['Eté sans sucre', 'Été sans sucre']);
   });
 
+  it('refuses a duplicate typed with a decomposed accent and other capitals', async () => {
+    await createHabit(deps(), 'Été sans sucre');
+
+    await expect(createHabit(deps(), ' été   SANS sucre ')).resolves.toEqual({
+      ok: false,
+      reason: 'duplicate',
+    });
+    expect(await names()).toEqual(['Été sans sucre']);
+  });
+
+  it('stores a name typed with decomposed accents in its composed form (NFC)', async () => {
+    await createHabit(deps(), 'Été');
+
+    expect(await names()).toEqual(['Été']);
+  });
+
+  it('accepts the 10th habit', async () => {
+    for (let index = 1; index <= 9; index += 1) {
+      await createHabit(deps(), `Habitude ${index}`);
+    }
+
+    await expect(createHabit(deps(), 'Méditer')).resolves.toMatchObject({ ok: true });
+    expect(await names()).toHaveLength(10);
+  });
+
   it('refuses an 11th habit', async () => {
     for (let index = 1; index <= 10; index += 1) {
       await createHabit(deps(), `Habitude ${index}`);
