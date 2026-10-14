@@ -1,6 +1,5 @@
 import { openNodeSqliteDatabase } from '../../testing/nodeSqliteDatabase';
 import type { SqlDatabase } from '../SqlDatabase';
-import { prepareAscentDatabase } from '../prepareAscentDatabase';
 import { createKeyValue } from './0001-create-key-value';
 import { createHabits } from './0002-create-habits';
 import { createCheckIns } from './0003-create-check-ins';
@@ -21,7 +20,8 @@ describe('migration 0003: create check-ins', () => {
       'cuisiner',
       '2026-10-12',
     ]);
-    await prepareAscentDatabase(db);
+    await db.exec('PRAGMA foreign_keys = ON');
+    await runMigrations(db, [createKeyValue, createHabits, createCheckIns]);
   });
 
   afterEach(async () => {
