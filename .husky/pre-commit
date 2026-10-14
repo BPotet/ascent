@@ -1,0 +1,3 @@
+node scripts/gitleaks.mjs
+npx lint-staged
+npm run typecheck

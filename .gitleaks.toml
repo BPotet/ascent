@@ -1,0 +1,12 @@
+# Barrière « Secrets » (docs/workflow.md) : règles par défaut de Gitleaks.
+title = "Ascent"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fichiers générés ou de dépendances"
+paths = [
+  '''package-lock\.json''',
+  '''docs/mockups/.*''',
+]
