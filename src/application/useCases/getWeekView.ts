@@ -1,7 +1,6 @@
 import type { CheckIn } from '../../domain/checkIn/CheckIn';
 import { habitDayOf, type HabitDay } from '../../domain/checkIn/HabitDay';
 import type { Day } from '../../domain/day/Day';
-import { isClosedDay } from '../../domain/day/DayClosing';
 import type { Habit } from '../../domain/habit/Habit';
 import { History } from '../../domain/history/History';
 import type { Week } from '../../domain/week/Week';
@@ -29,22 +28,16 @@ export interface WeekView {
   readonly canGoNext: boolean;
 }
 
-/**
- * Dans la Vue Semaine, seule la case d'aujourd'hui se modifie pour l'instant : la correction des
- * jours clos y arrive avec #9, qui supprimera cette restriction.
- */
-function inWeekView(habitDay: HabitDay, today: Day): HabitDay {
-  return isClosedDay(habitDay.day, today) ? { ...habitDay, editable: false } : habitDay;
-}
-
 const checkInOf = (checkIns: readonly CheckIn[], habit: Habit, day: Day): CheckIn | null =>
   checkIns.find((checkIn) => checkIn.habitId === habit.id && checkIn.day.equals(day)) ?? null;
 
 /**
  * Cas d'usage : la Vue Semaine de `week`, ou de la semaine en cours si `week` est omise.
  *
- * Chaque habitude existante a ses 7 cases calculées par `habitDayOf` (R8, R7, R12) ; une case est
- * modifiable (`editable`) seulement si un tap la change, avec `toggleCheckIn` sur son jour.
+ * Chaque habitude existante a ses 7 cases calculées par `habitDayOf` (R8, R7, R12, R13) ; une case
+ * est modifiable (`editable`) si un tap la change, avec `toggleCheckIn` sur son jour : aujourd'hui,
+ * ou un jour clos à partir du jour de création (correction, sans limite de temps, R10). Une case
+ * « à venir » ou « hors habitude » ne l'est jamais.
  * Une semaine hors de l'historique (après la semaine en cours, avant la semaine de la plus ancienne
  * habitude) n'est pas affichée : la vue montre à la place la semaine consultable la plus proche.
  * Aujourd'hui est lu une fois, dans l'unité de travail. Une panne de lecture est une exception.
@@ -66,9 +59,7 @@ export function getWeekView(
       isCurrentWeek: shown.equals(history.currentWeek),
       rows: existing.map((habit) => ({
         habit,
-        days: days.map((day) =>
-          inWeekView(habitDayOf(habit, day, checkInOf(weekCheckIns, habit, day), today), today),
-        ),
+        days: days.map((day) => habitDayOf(habit, day, checkInOf(weekCheckIns, habit, day), today)),
       })),
       canGoPrevious: history.canGoBefore(shown),
       canGoNext: history.canGoAfter(shown),
