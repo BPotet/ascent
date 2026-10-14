@@ -123,6 +123,14 @@ describe('getWeekView', () => {
     ]);
   });
 
+  it('keeps the check-ins of each habit to its own row', async () => {
+    await checkIn('Budget du jour', day(10, 13));
+
+    const view = await getWeekView(deps(), currentWeek);
+
+    expect(view.rows.map(({ days }) => days[1]?.status)).toEqual(['missed', 'done']);
+  });
+
   it('ignores the check-ins of the other weeks', async () => {
     await checkIn('Cuisiner', day(10, 11));
     await checkIn('Cuisiner', day(10, 19));
