@@ -6,6 +6,10 @@
  */
 const path = require('node:path');
 
+// Fuseau fixe, avec heure d'été, pour que les tests soient les mêmes sur toute machine et en CI, et
+// que les changements d'heure (jour de 23 h ou 25 h) puissent être testés. Hérité par les workers.
+process.env.TZ = 'Europe/Paris';
+
 // jest-cucumber dépend d'uuid, dont l'export « browser » (choisi par l'environnement React Native)
 // est un module ESM. On force sa version CommonJS pour pouvoir exécuter des écrans dans les scénarios.
 const cucumberUuid = require.resolve('uuid', {
