@@ -28,16 +28,9 @@ tags:
 - tapOn:
     id: 'new-habit-name'
 - inputText: 'Cuisiner'
-# Panneau en cours de saisie, clavier ouvert : sur le petit écran de la CI (320×640), le clavier
-# peut recouvrir le bas du panneau (compteur, messages, boutons), que Maestro ne voit alors plus.
+# Panneau en cours de saisie, clavier ouvert : le panneau remonte au-dessus du clavier, le
+# compteur, les messages et les boutons restent visibles, même sur le petit écran de la CI (320×640).
 - takeScreenshot: create-habit-2-new-habit-sheet-keyboard
-# Le clavier est fermé s'il est ouvert (« Retour » sans clavier fermerait le panneau).
-- runFlow:
-    when:
-      visible:
-        id: 'com\.(google\.)?android\.inputmethod\.latin:id/.*'
-    commands:
-      - hideKeyboard
 - assertVisible:
     id: 'new-habit-name'
     text: 'Cuisiner'
@@ -58,7 +51,7 @@ tags:
 - assertVisible:
     id: 'day-view-list'
 - assertVisible: 'Aujourd’hui'
-- assertVisible: '1/10|1 habitudes sur 10'
+- assertVisible: '1/10|1 habitude sur 10'
 
 # Relance à froid : l'habitude est toujours là.
 - stopApp
@@ -79,12 +72,6 @@ tags:
 - tapOn:
     id: 'new-habit-name'
 - inputText: 'cuisiner'
-- runFlow:
-    when:
-      visible:
-        id: 'com\.(google\.)?android\.inputmethod\.latin:id/.*'
-    commands:
-      - hideKeyboard
 - tapOn:
     id: 'create-habit'
 - extendedWaitUntil:
@@ -93,16 +80,10 @@ tags:
 - assertVisible:
     id: 'create-habit'
     enabled: false
-- runFlow:
-    when:
-      visible:
-        id: 'com\.(google\.)?android\.inputmethod\.latin:id/.*'
-    commands:
-      - hideKeyboard
 - tapOn: 'Annuler'
 - extendedWaitUntil:
     notVisible: 'Nouvelle habitude'
     timeout: 10000
-- assertVisible: '1/10|1 habitudes sur 10'
+- assertVisible: '1/10|1 habitude sur 10'
 - assertNotVisible:
     id: 'habit-row-2'
