@@ -55,6 +55,33 @@ describe('SqliteUnitOfWork', () => {
       const habits = await reopened.run((repositories) => repositories.habits.listAll());
       expect(habits.map((habit) => habit.name.value)).toEqual(['Cuisiner']);
     });
+
+    it('keeps names, days of creation, order and duplicates refused after a restart', async () => {
+      const family = '\u{1F468}‍\u{1F469}‍\u{1F467}';
+      const connection = FakeExpoSqliteConnection.open();
+      await new SqliteUnitOfWork(await prepareExpoSqliteDatabase(connection)).run(
+        async ({ habits }) => {
+          await habits.add(HabitName.parse('Été sans sucre'), Day.of(2024, 2, 29));
+          await habits.add(HabitName.parse(`Repas ${family}`), Day.of(2026, 12, 31));
+        },
+      );
+
+      const reopened = new SqliteUnitOfWork(await prepareExpoSqliteDatabase(connection.reopen()));
+
+      const habits = await reopened.run((repositories) => repositories.habits.listAll());
+      expect(habits.map(({ name, createdOn }) => [name.value, createdOn.toIsoString()])).toEqual([
+        ['Été sans sucre', '2024-02-29'],
+        [`Repas ${family}`, '2026-12-31'],
+      ]);
+      await expect(
+        reopened.run(({ habits: repository }) =>
+          repository.add(HabitName.parse('ÉTÉ SANS SUCRE'), Day.of(2026, 10, 14)),
+        ),
+      ).rejects.toThrow();
+      await expect(
+        reopened.run((repositories) => repositories.habits.listAll()),
+      ).resolves.toHaveLength(2);
+    });
   });
 
   describe('storage failures', () => {
