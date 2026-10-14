@@ -1,7 +1,11 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold } from '@expo-google-fonts/inter';
-import { Sora_600SemiBold, Sora_700Bold } from '@expo-google-fonts/sora';
+// Une graisse par import : seules les polices utilisées entrent dans l'app.
+import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
+import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
+import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
+import { Sora_600SemiBold } from '@expo-google-fonts/sora/600SemiBold';
+import { Sora_700Bold } from '@expo-google-fonts/sora/700Bold';
 import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 

@@ -1,5 +1,6 @@
-import { Inter_400Regular } from '@expo-google-fonts/inter';
-import { Sora_600SemiBold, Sora_700Bold } from '@expo-google-fonts/sora';
+import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
+import { Sora_600SemiBold } from '@expo-google-fonts/sora/600SemiBold';
+import { Sora_700Bold } from '@expo-google-fonts/sora/700Bold';
 import type * as ExpoFont from 'expo-font';
 import { isLoaded, loadAsync } from 'expo-font';
 
