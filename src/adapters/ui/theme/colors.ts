@@ -28,5 +28,6 @@ export const colors = {
   scrim: 'rgba(5,7,12,0.64)',
   toast: '#EEF1F7',
   onToast: '#121826',
+  toastAction: '#2C47D9',
 } as const;
 // Stryker restore all
