@@ -25,11 +25,6 @@ export function formatDayAndMonth(day: Day): string {
   return `${weekday} ${day.dayOfMonth} ${month}`;
 }
 
-/** Un jour en toutes lettres, en français : « mercredi 14 octobre 2026 ». */
-export function formatLongDay(day: Day): string {
-  return `${formatDayAndMonth(day)} ${day.year}`;
-}
-
 /** Met une majuscule au début d'un libellé : « Mercredi 14 octobre ». */
 export function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
