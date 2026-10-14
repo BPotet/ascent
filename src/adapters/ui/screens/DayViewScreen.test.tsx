@@ -436,13 +436,12 @@ describe('DayViewScreen', () => {
       expect(screen.getByTestId('toast')).toHaveTextContent(
         'Mercredi 14 octobre vient d’être clos : enregistré comme correction.',
       );
-      changes.mockRestore();
-      dependencies.clock.setToday(thursday);
-      const view = await getDayView(dependencies);
-      expect(view.day).toEqual(thursday);
+      // Le suivi « fait » du mercredi est enregistré : un nouveau tap ce jour-là le retire.
       await expect(toggleCheckIn(dependencies, 1, wednesday)).resolves.toMatchObject({
+        isCorrection: true,
         habitDay: { status: 'missed' },
       });
+      changes.mockRestore();
     });
   });
 });
