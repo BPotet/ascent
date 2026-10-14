@@ -6,8 +6,9 @@
  *
  * Les données de départ (« le joueur a l'habitude … ») sont créées par le cas d'usage, comme
  * si le joueur les avait créées plus tôt. Les vérifications « rien n'est enregistré » relisent
- * la base par `getDayView`. Quand l'assemblage de `src/app` affichera la Vue Journée, ces étapes
- * pourront passer par `renderRouter` (voir `startup.steps.ts`).
+ * la base par `getDayView`. Ces étapes rendent la Vue Journée directement (`renderScreen`) avec
+ * les adaptateurs réels ; que l'application assemblée (`src/app`) ouvre bien la base et affiche la
+ * Vue Journée au démarrage est vérifié par `startup.feature`.
  */
 import { fireEvent, screen, waitFor, within } from '@testing-library/react-native';
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
@@ -194,6 +195,7 @@ const steps: StepDefinitions = ({ given, when, then }) => {
   });
   then("elle affiche l'état vide qui invite à créer une première habitude", () => {
     expect(screen.getByTestId('day-view-empty')).toBeOnTheScreen();
+    expect(screen.getByTestId('illustration-summit', { includeHiddenElements: true })).toBeTruthy();
     expect(screen.getByText('Aucune habitude pour l’instant')).toBeOnTheScreen();
     expect(
       screen.getByText('Crée ta première habitude et commence à gagner de l’expérience.'),
@@ -294,6 +296,7 @@ const steps: StepDefinitions = ({ given, when, then }) => {
 
   then("la Vue Journée affiche l'état d'erreur avec une action « Réessayer »", async () => {
     expect(screen.getByTestId('day-view-error')).toBeOnTheScreen();
+    expect(screen.getByTestId('illustration-alert', { includeHiddenElements: true })).toBeTruthy();
     expect(
       screen.getByRole('alert', { name: /^Impossible de charger tes habitudes\./u }),
     ).toBeOnTheScreen();
