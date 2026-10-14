@@ -42,7 +42,8 @@ export async function getYesterdayReminder({
     );
     return { day: yesterday, doneCount: done.length, activeCount: active.length };
   });
-  if (activeCount === 0 || doneCount === activeCount) {
+  // Sans habitude active hier, 0/0 : rien à rappeler non plus.
+  if (doneCount === activeCount) {
     return null;
   }
   const dismissedFor = await keyValueStore.get(YESTERDAY_REMINDER_DISMISSED_FOR_KEY);
