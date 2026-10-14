@@ -7,8 +7,10 @@ import { createHabit } from '../../../application/useCases/createHabit';
 import { getDayView } from '../../../application/useCases/getDayView';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import { Day } from '../../../domain/day/Day';
+import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { DependenciesProvider } from './Dependencies';
+import { useTrackingChanges } from './TrackingRevision';
 import { useDayView } from './useDayView';
 
 const tuesday = Day.of(2026, 10, 13);
@@ -164,6 +166,60 @@ describe('useDayView', () => {
 
     expect(names(result.current.state)).toEqual(['Méditer']);
     expect(statuses).not.toContain('loading');
+  });
+
+  describe('with the other views', () => {
+    async function showWithAnotherView() {
+      const { dependencies, wrapper } = setUp();
+      const cooking = await createHabit(dependencies, 'Cuisiner');
+      const otherReload = jest.fn();
+      const statusesSeen: string[] = [];
+      const { result } = await renderHook(
+        () => {
+          const day = useDayView();
+          statusesSeen.push(day.state.status);
+          return { day, other: useTrackingChanges(otherReload) };
+        },
+        { wrapper },
+      );
+      await waitFor(() => expect(result.current.day.state.status).toBe('ready'));
+      if (!cooking.ok) {
+        throw new Error('Cuisiner not created');
+      }
+      return { dependencies, result, otherReload, statusesSeen, cooking: cooking.habit };
+    }
+
+    it('makes the other views reload after a saved tap', async () => {
+      const { result, otherReload } = await showWithAnotherView();
+      const { state } = result.current.day;
+      const cell = state.status === 'ready' ? state.view.habits[0] : undefined;
+
+      await act(() => result.current.day.toggle(cell as HabitDay));
+
+      expect(otherReload).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not make the other views reload when the tap is not saved', async () => {
+      const { dependencies, result, otherReload } = await showWithAnotherView();
+      const { state } = result.current.day;
+      const cell = state.status === 'ready' ? state.view.habits[0] : undefined;
+      dependencies.unitOfWork.failWrites();
+
+      await act(() => result.current.day.toggle(cell as HabitDay));
+
+      expect(otherReload).not.toHaveBeenCalled();
+    });
+
+    it('reloads, without the loading state, after a change saved by another view', async () => {
+      const { dependencies, result, statusesSeen, cooking } = await showWithAnotherView();
+      await toggleCheckIn(dependencies, cooking.id, wednesday);
+      statusesSeen.length = 0;
+
+      await act(async () => result.current.other());
+
+      await waitFor(() => expect(statuses(result.current.day.state)).toEqual(['Cuisiner: done']));
+      expect(statusesSeen).not.toContain('loading');
+    });
   });
 
   describe('toggle', () => {
