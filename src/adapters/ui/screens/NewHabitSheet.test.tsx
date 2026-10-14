@@ -144,6 +144,15 @@ describe('NewHabitSheet', () => {
     expect(onCreated).not.toHaveBeenCalled();
   });
 
+  it('announces nothing while the name is valid', async () => {
+    jest.mocked(AccessibilityInfo.announceForAccessibility).mockClear();
+    await open();
+
+    await type('Méditer');
+
+    expect(AccessibilityInfo.announceForAccessibility).not.toHaveBeenCalled();
+  });
+
   it('clears a refusal as soon as the name changes', async () => {
     await open(async () => ({ ok: false, reason: 'duplicate' }) as const);
     await type('cuisiner');
