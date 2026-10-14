@@ -65,4 +65,68 @@ describe('Day', () => {
       expect(Day.fromLocalDate(new Date(2026, 11, 31, 12))).toEqual(Day.of(2026, 12, 31));
     });
   });
+
+  describe('toIsoString', () => {
+    it.each([
+      [Day.of(2026, 10, 14), '2026-10-14'],
+      [Day.of(2026, 1, 5), '2026-01-05'],
+      [Day.of(1, 1, 1), '0001-01-01'],
+      [Day.of(9999, 12, 31), '9999-12-31'],
+    ])('writes %o as %s', (day, iso) => {
+      expect(day.toIsoString()).toBe(iso);
+    });
+  });
+
+  describe('fromIsoString', () => {
+    it('reads a day written by toIsoString', () => {
+      expect(Day.fromIsoString('2026-10-14')).toEqual(Day.of(2026, 10, 14));
+      expect(Day.fromIsoString('0001-01-05')).toEqual(Day.of(1, 1, 5));
+      expect(Day.fromIsoString(Day.of(2024, 2, 29).toIsoString())).toEqual(Day.of(2024, 2, 29));
+    });
+
+    it.each([
+      '2026-10-1',
+      '2026-10-14T00:00',
+      ' 2026-10-14',
+      '20261014',
+      '2026/10/14',
+      'x2026-10-14',
+      '',
+    ])('rejects the malformed text %p', (text) => {
+      expect(() => Day.fromIsoString(text)).toThrow(new InvalidDayError(`"${text}"`));
+    });
+
+    it('rejects a date that does not exist', () => {
+      expect(() => Day.fromIsoString('2026-02-30')).toThrow(InvalidDayError);
+    });
+  });
+
+  describe('comparison', () => {
+    const day = Day.of(2026, 10, 14);
+
+    it('equals the same date only', () => {
+      expect(day.equals(Day.of(2026, 10, 14))).toBe(true);
+      expect(day.equals(Day.of(2026, 10, 15))).toBe(false);
+      expect(day.equals(Day.of(2026, 11, 14))).toBe(false);
+      expect(day.equals(Day.of(2025, 10, 14))).toBe(false);
+    });
+
+    it.each([
+      [Day.of(2026, 10, 13), 1],
+      [Day.of(2026, 10, 14), 0],
+      [Day.of(2026, 10, 15), -1],
+      [Day.of(2026, 9, 30), 1],
+      [Day.of(2026, 11, 1), -1],
+      [Day.of(2025, 12, 31), 1],
+      [Day.of(2027, 1, 1), -1],
+    ])('compares 2026-10-14 with %o', (other, sign) => {
+      expect(Math.sign(day.compareTo(other))).toBe(sign);
+    });
+
+    it('is after an earlier day only', () => {
+      expect(day.isAfter(Day.of(2026, 10, 13))).toBe(true);
+      expect(day.isAfter(Day.of(2026, 10, 14))).toBe(false);
+      expect(day.isAfter(Day.of(2026, 10, 15))).toBe(false);
+    });
+  });
 });

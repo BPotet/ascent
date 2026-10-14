@@ -10,6 +10,7 @@ export class InvalidDayError extends Error {
 }
 
 const MIN_YEAR = 1;
+const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
 const MAX_YEAR = 9999;
 
 function isLeapYear(year: number): boolean {
@@ -47,5 +48,33 @@ export class Day {
   /** La date locale (calendrier du téléphone) d'un instant. */
   static fromLocalDate(instant: Date): Day {
     return Day.of(instant.getFullYear(), instant.getMonth() + 1, instant.getDate());
+  }
+
+  /** Lit un jour écrit `AAAA-MM-JJ` (voir `toIsoString`). */
+  static fromIsoString(text: string): Day {
+    const parts = ISO_DAY.exec(text);
+    if (parts === null) {
+      throw new InvalidDayError(`"${text}"`);
+    }
+    return Day.of(Number(parts[1]), Number(parts[2]), Number(parts[3]));
+  }
+
+  /** Le jour écrit `AAAA-MM-JJ` : l'ordre alphabétique de ces textes est l'ordre chronologique. */
+  toIsoString(): string {
+    const pad = (value: number, width: number) => String(value).padStart(width, '0');
+    return `${pad(this.year, 4)}-${pad(this.month, 2)}-${pad(this.dayOfMonth, 2)}`;
+  }
+
+  equals(other: Day): boolean {
+    return this.compareTo(other) === 0;
+  }
+
+  /** Négatif si ce jour est avant `other`, nul si c'est le même, positif s'il est après. */
+  compareTo(other: Day): number {
+    return this.year - other.year || this.month - other.month || this.dayOfMonth - other.dayOfMonth;
+  }
+
+  isAfter(other: Day): boolean {
+    return this.compareTo(other) > 0;
   }
 }
