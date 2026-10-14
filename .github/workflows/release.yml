@@ -1,0 +1,30 @@
+# Release (docs/workflow.md, « Merge sur main ») : sur un tag vX.Y.Z, construit l'APK
+# et l'attache à la GitHub Release de ce tag (créée si elle n'existe pas encore).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  android-apk:
+    name: Attach the Android APK to the release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - id: build
+        uses: ./.github/actions/build-android-apk
+        with:
+          apk-name: ascent-${{ github.ref_name }}.apk
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.build.outputs.apk-path }}
+          fail_on_unmatched_files: true

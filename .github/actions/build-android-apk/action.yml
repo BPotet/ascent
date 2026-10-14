@@ -1,0 +1,34 @@
+name: Build Android APK
+description: >-
+  Génère le projet Android (Continuous Native Generation) puis construit un APK release,
+  signé avec la clé de debug : installable pour tester, pas publiable sur le Play Store.
+inputs:
+  apk-name:
+    description: Nom du fichier APK produit
+    required: true
+outputs:
+  apk-path:
+    description: Chemin de l'APK construit
+    value: ${{ steps.apk.outputs.path }}
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
+    - uses: gradle/actions/setup-gradle@v4
+    - name: Generate the native Android project
+      shell: bash
+      run: npx expo prebuild --platform android --no-install
+    - name: Assemble the release APK
+      shell: bash
+      working-directory: android
+      run: ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,x86_64
+    - id: apk
+      name: Rename the APK
+      shell: bash
+      run: |
+        mkdir -p dist
+        cp android/app/build/outputs/apk/release/app-release.apk "dist/${{ inputs.apk-name }}"
+        echo "path=dist/${{ inputs.apk-name }}" >> "$GITHUB_OUTPUT"

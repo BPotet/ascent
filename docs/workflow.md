@@ -258,15 +258,15 @@ Quand toutes les barrières et la review sont au vert, la PR est mergée automat
 
 ## Barrières de qualité
 
-Toutes sont **bloquantes**. Les outils sont indicatifs et seront confirmés par l'Architect lors de la mise en place.
+Toutes sont **bloquantes**. Les outils sont confirmés par l'Architect dans l'[ADR 0001](adr/0001-socle-technique.md), qui liste aussi les écarts temporaires. En local, `npm run verify` exécute toutes les barrières sauf la mutation et l'end-to-end ; `npm run verify:full` y ajoute la mutation.
 
-| # | Barrière | Ce qu'elle garantit | Outil pressenti | Quand |
+| # | Barrière | Ce qu'elle garantit | Outil | Quand |
 |---|---|---|---|---|
 | 1 | **Secrets** | Aucun secret ne part dans le dépôt | Gitleaks | pre-commit + CI |
 | 1 bis | **Commits** | Messages de commit et titre de PR au format Conventional Commits | commitlint | commit-msg + CI |
 | 2 | **Style** | Formatage et style uniformes | Prettier + ESLint | pre-commit + CI |
 | 3 | **Types** | Pas d'erreur de typage | TypeScript (`tsc --noEmit`) | pre-commit + CI |
-| 4 | **Architecture** | Les dépendances respectent l'hexagonal (équivalent d'ArchUnit) | dependency-cruiser | CI |
+| 4 | **Architecture** | Les dépendances respectent l'hexagonal (équivalent d'ArchUnit) | dependency-cruiser | local + CI |
 | 5 | **Tests unitaires** | Domaine et cas d'usage | Jest | CI |
 | 6 | **Tests d'intégration** | Adaptateurs + base locale + écrans | Jest + React Native Testing Library | CI |
 | 7 | **Tests BDD** | Les critères d'acceptation Gherkin passent | Cucumber (`jest-cucumber`) | CI |
@@ -346,7 +346,7 @@ gitGraph
 | **Merge sur `main`** | Tag `vX.Y.Z`, GitHub Release avec le changelog, build de production distribué | Nouvelle version publiée |
 | **Branche `hotfix/x.y.z-…`** | Suite complète, comme une release | Merge dans `main` (tag) puis dans `develop` |
 
-Outils pressentis : GitHub Actions pour les pipelines, EAS Build et EAS Update pour les builds et la distribution. Ils seront confirmés par l'Architect lors de la mise en place.
+Outils : GitHub Actions pour les pipelines **et** les builds. Chaque push produit un APK Android en artefact (le build de preview sur `develop`) ; chaque tag `vX.Y.Z` attache l'APK à la GitHub Release. EAS Build et EAS Update ne sont pas retenus pour l'instant (voir l'[ADR 0001](adr/0001-socle-technique.md)).
 
 ### Releases
 
