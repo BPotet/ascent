@@ -155,6 +155,12 @@ describe('toggleCheckIn', () => {
     await expect(stored(cooking, wednesday)).resolves.toBeNull();
   });
 
+  it('lets an unexpected error through instead of turning it into a refusal', async () => {
+    const notADay = null as unknown as Day;
+
+    await expect(toggleCheckIn(deps(), cooking.id, notADay)).rejects.toThrow(TypeError);
+  });
+
   it('fails when the data cannot be read', async () => {
     unitOfWork.failReads();
 

@@ -199,6 +199,17 @@ describe('SystemClock', () => {
       expect(listener).toHaveBeenCalledWith(wednesday);
     });
 
+    it('stops its timers once unsubscribed, with the default visibility', () => {
+      at(new Date(2026, 9, 14, 23, 59));
+      const listener = jest.fn();
+
+      new SystemClock().onTodayChange(listener)();
+      jest.advanceTimersByTime(24 * 60 * 60 * 1000);
+
+      expect(listener).not.toHaveBeenCalled();
+      expect(jest.getTimerCount()).toBe(0);
+    });
+
     it('stops every timer and listener once unsubscribed', () => {
       at(new Date(2026, 9, 14, 23, 59));
       const visibility = controlledVisibility();
