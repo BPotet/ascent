@@ -1,0 +1,213 @@
+# Barrières de qualité (docs/workflow.md, « Barrières de qualité » et « CI/CD et Git Flow »).
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main, 'release/**', 'hotfix/**']
+  push:
+    branches: [develop, main, 'release/**', 'hotfix/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GITLEAKS_VERSION: 8.28.0
+
+jobs:
+  commits:
+    name: Commits (commitlint)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Check every commit of the pull request
+        run: >-
+          npx commitlint --verbose
+          --from ${{ github.event.pull_request.base.sha }}
+          --to ${{ github.event.pull_request.head.sha }}
+
+  secrets:
+    name: Secrets (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Gitleaks
+        run: |
+          curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+      - name: Scan the git history
+        run: gitleaks git --redact --no-banner --config .gitleaks.toml --verbose
+
+  static:
+    name: Style, types and architecture
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Style (Prettier)
+        run: npm run format:check
+      - name: Style (ESLint)
+        run: npm run lint
+      - name: Types (tsc --noEmit)
+        run: npm run typecheck
+      - name: Architecture (dependency-cruiser)
+        run: npm run arch
+
+  tests:
+    name: Unit, integration and BDD tests with coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Integration tests
+        run: npm run test:integration
+      - name: BDD tests (Gherkin)
+        run: npm run test:bdd
+      - name: Coverage thresholds
+        run: npm run test:coverage -- --ci
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/lcov.info
+          retention-days: 7
+
+  mutation:
+    name: Mutation tests (StrykerJS)
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Mutate the code changed by the pull request
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+        run: npm run mutation:changed
+      - name: Mutate all the code
+        if: github.event_name != 'pull_request'
+        run: npm run mutation:domain && npm run mutation
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-report
+          path: reports/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  sonar:
+    name: SonarQube Cloud
+    needs: tests
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - name: Skip when SonarQube Cloud is not configured
+        if: env.SONAR_TOKEN == ''
+        run: echo "::warning title=SonarQube Cloud::SONAR_TOKEN secret is missing, analysis skipped (temporary gap, see docs/adr/0001-socle-technique.md)."
+      - uses: actions/checkout@v4
+        if: env.SONAR_TOKEN != ''
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        if: env.SONAR_TOKEN != ''
+        with:
+          name: coverage
+          path: coverage
+      - name: Analyse and wait for the quality gate
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@v5
+
+  android-apk:
+    name: Android APK
+    needs: [static, tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - id: build
+        uses: ./.github/actions/build-android-apk
+        with:
+          apk-name: ascent-${{ github.sha }}.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ascent-android-apk
+          path: ${{ steps.build.outputs.apk-path }}
+          if-no-files-found: error
+          retention-days: 30
+
+  e2e-android:
+    name: End-to-end tests (Maestro, Android)
+    needs: android-apk
+    runs-on: ubuntu-latest
+    # Écart temporaire (docs/adr/0001-socle-technique.md) : non bloquant tant que l'émulateur
+    # n'a pas prouvé sa stabilité en CI.
+    continue-on-error: true
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ascent-android-apk
+          path: dist
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Run the Maestro flows on an Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            adb install -r dist/*.apk
+            maestro test e2e/flows --format junit --output reports/e2e/junit.xml --test-output-dir reports/e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-report
+          path: reports/e2e
+          if-no-files-found: ignore
+          retention-days: 14
