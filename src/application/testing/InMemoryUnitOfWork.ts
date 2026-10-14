@@ -2,10 +2,12 @@
 // que les adaptateurs SQLite (`src/adapters/persistence/testing/`), et peuvent simuler une panne.
 // Ils vivent dans `application/testing` pour servir aux tests des cas d'usage et des écrans, qui
 // n'ont pas le droit d'importer un adaptateur de persistance.
+import { Character } from '../../domain/character/Character';
 import { type CheckIn, isBlank } from '../../domain/checkIn/CheckIn';
 import type { Day } from '../../domain/day/Day';
 import { Habit, type HabitId } from '../../domain/habit/Habit';
 import type { HabitName } from '../../domain/habit/HabitName';
+import type { CharacterRepository } from '../ports/CharacterRepository';
 import type { CheckInRepository } from '../ports/CheckInRepository';
 import type { HabitRepository } from '../ports/HabitRepository';
 import type { Repositories, UnitOfWork } from '../ports/UnitOfWork';
@@ -27,6 +29,7 @@ interface State {
   lastHabitId: number;
   /** Les suivis, par habitude et par jour (`clé de checkInKey`). */
   checkIns: Map<string, CheckIn>;
+  character: Character;
 }
 
 const checkInKey = (habitId: HabitId, day: Day) => `${habitId}/${day.toIsoString()}`;
@@ -104,8 +107,34 @@ class InMemoryCheckInRepository implements CheckInRepository {
   }
 }
 
+class InMemoryCharacterRepository implements CharacterRepository {
+  constructor(
+    private readonly state: State,
+    private readonly faults: Faults,
+  ) {}
+
+  async get(): Promise<Character> {
+    if (this.faults.reads) {
+      throw new StorageUnavailableError('read the character');
+    }
+    return this.state.character;
+  }
+
+  async save(character: Character): Promise<void> {
+    if (this.faults.writes) {
+      throw new StorageUnavailableError('write the character');
+    }
+    this.state.character = character;
+  }
+}
+
 export class InMemoryUnitOfWork implements UnitOfWork {
-  private state: State = { habits: [], lastHabitId: 0, checkIns: new Map() };
+  private state: State = {
+    habits: [],
+    lastHabitId: 0,
+    checkIns: new Map(),
+    character: Character.NEW,
+  };
   private readonly faults: Faults = { reads: false, writes: false };
   private queue: Promise<unknown> = Promise.resolve();
 
@@ -135,6 +164,7 @@ export class InMemoryUnitOfWork implements UnitOfWork {
       return await work({
         habits: new InMemoryHabitRepository(this.state, this.faults),
         checkIns: new InMemoryCheckInRepository(this.state, this.faults),
+        character: new InMemoryCharacterRepository(this.state, this.faults),
       });
     } catch (error) {
       this.state = snapshot;
