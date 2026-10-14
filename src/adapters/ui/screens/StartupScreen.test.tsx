@@ -3,12 +3,14 @@ import { fireEvent, screen } from '@testing-library/react-native';
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../../application/testing/settableClock';
 import { Day } from '../../../domain/day/Day';
+import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { renderScreen } from '../testing/renderScreen';
 import { StartupErrorScreen, StartupLoadingScreen } from './StartupScreen';
 
 const dependencies = {
   clock: settableClock(Day.of(2026, 10, 14)),
   unitOfWork: new InMemoryUnitOfWork(),
+  keyValueStore: memoryKeyValueStore(),
 };
 
 describe('Startup screens', () => {

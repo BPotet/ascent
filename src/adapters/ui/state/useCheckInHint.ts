@@ -4,8 +4,8 @@ import { dismissCheckInHint, getCheckInHint } from '../../../application/useCase
 import { usePreferenceDependencies } from './Dependencies';
 
 /**
- * L'aide au premier usage de la Vue Journée, qui explique le tap. Cachée pendant sa lecture, si
- * elle échoue ou sans préférences. `dismiss` la cache tout de suite et pour toujours (au premier
+ * L'aide au premier usage de la Vue Journée, qui explique le tap. Cachée pendant sa lecture ou si
+ * elle échoue. `dismiss` la cache tout de suite et pour toujours (au premier
  * suivi « fait ») ; si ce choix ne peut pas être enregistré, elle reviendra à la prochaine ouverture.
  */
 export function useCheckInHint(): {
@@ -17,9 +17,6 @@ export function useCheckInHint(): {
   const dismissed = useRef(false);
 
   useEffect(() => {
-    if (preferences === null) {
-      return;
-    }
     let mounted = true;
     getCheckInHint(preferences).then(
       (show) => mounted && setVisible(show && !dismissed.current),
@@ -33,9 +30,7 @@ export function useCheckInHint(): {
   const dismiss = useCallback(async () => {
     dismissed.current = true;
     setVisible(false);
-    if (preferences !== null) {
-      await dismissCheckInHint(preferences).catch(() => undefined);
-    }
+    await dismissCheckInHint(preferences).catch(() => undefined);
   }, [preferences]);
 
   return { visible, dismiss };

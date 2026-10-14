@@ -12,11 +12,8 @@ export interface Dependencies {
   readonly clock: WatchedClock;
   /** Accès aux habitudes et aux suivis enregistrés. */
   readonly unitOfWork: UnitOfWork;
-  /**
-   * Les préférences d'affichage (aide au premier usage). Sans elles, l'aide n'est pas montrée.
-   * Optionnel tant que l'assemblage ne les fournit pas.
-   */
-  readonly keyValueStore?: KeyValueStore;
+  /** Les préférences d'affichage (aide au premier usage). */
+  readonly keyValueStore: KeyValueStore;
 }
 
 const DependenciesContext = createContext<Dependencies | null>(null);
@@ -45,8 +42,8 @@ export function useUseCaseDependencies(): UseCaseDependencies {
   return useMemo(() => ({ clock, unitOfWork }), [clock, unitOfWork]);
 }
 
-/** Les ports des préférences d'affichage, ou `null` si l'assemblage ne les fournit pas. */
-export function usePreferenceDependencies(): PreferenceDependencies | null {
+/** Les ports des préférences d'affichage (aide au premier usage). */
+export function usePreferenceDependencies(): PreferenceDependencies {
   const { keyValueStore } = useDependencies();
-  return useMemo(() => (keyValueStore === undefined ? null : { keyValueStore }), [keyValueStore]);
+  return useMemo(() => ({ keyValueStore }), [keyValueStore]);
 }

@@ -44,14 +44,6 @@ describe('Dependencies', () => {
     expect(result.current).toEqual({ keyValueStore: dependencies.keyValueStore });
   });
 
-  it('has no preferences when the app provides no key-value store', async () => {
-    const { result } = await renderHook(() => usePreferenceDependencies(), {
-      wrapper: wrapperOf({ clock: dependencies.clock, unitOfWork: dependencies.unitOfWork }),
-    });
-
-    expect(result.current).toBeNull();
-  });
-
   it('cannot be used without dependencies', async () => {
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
 

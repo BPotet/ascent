@@ -7,6 +7,7 @@ import { createHabit } from '../../../application/useCases/createHabit';
 import { getDayView } from '../../../application/useCases/getDayView';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import { Day } from '../../../domain/day/Day';
+import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { DependenciesProvider } from './Dependencies';
 import { useDayView } from './useDayView';
 
@@ -15,7 +16,11 @@ const wednesday = Day.of(2026, 10, 14);
 const thursday = Day.of(2026, 10, 15);
 
 function setUp() {
-  const dependencies = { clock: settableClock(wednesday), unitOfWork: new InMemoryUnitOfWork() };
+  const dependencies = {
+    clock: settableClock(wednesday),
+    unitOfWork: new InMemoryUnitOfWork(),
+    keyValueStore: memoryKeyValueStore(),
+  };
   const wrapper = ({ children }: { children: ReactNode }) => (
     <DependenciesProvider value={dependencies}>{children}</DependenciesProvider>
   );

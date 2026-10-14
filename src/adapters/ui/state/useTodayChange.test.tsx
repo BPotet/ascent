@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../../application/testing/settableClock';
 import { Day } from '../../../domain/day/Day';
+import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { DependenciesProvider } from './Dependencies';
 import { useTodayChange } from './useTodayChange';
 
@@ -13,7 +14,9 @@ const thursday = Day.of(2026, 10, 15);
 function setUp() {
   const clock = settableClock(wednesday);
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <DependenciesProvider value={{ clock, unitOfWork: new InMemoryUnitOfWork() }}>
+    <DependenciesProvider
+      value={{ clock, unitOfWork: new InMemoryUnitOfWork(), keyValueStore: memoryKeyValueStore() }}
+    >
       {children}
     </DependenciesProvider>
   );

@@ -10,11 +10,11 @@ import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { DependenciesProvider } from './Dependencies';
 import { useCheckInHint } from './useCheckInHint';
 
-function render(keyValueStore?: KeyValueStore) {
+function render(keyValueStore: KeyValueStore) {
   const dependencies = {
     clock: settableClock(Day.of(2026, 10, 14)),
     unitOfWork: new InMemoryUnitOfWork(),
-    ...(keyValueStore && { keyValueStore }),
+    keyValueStore,
   };
   const wrapper = ({ children }: { children: ReactNode }) => (
     <DependenciesProvider value={dependencies}>{children}</DependenciesProvider>
@@ -80,15 +80,6 @@ describe('useCheckInHint', () => {
 
     await act(() => result.current.dismiss());
 
-    expect(result.current.visible).toBe(false);
-  });
-
-  it('is never shown when the app provides no preferences', async () => {
-    const { result } = await render();
-    await act(async () => undefined);
-
-    expect(result.current.visible).toBe(false);
-    await act(() => result.current.dismiss());
     expect(result.current.visible).toBe(false);
   });
 });
