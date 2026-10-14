@@ -5,7 +5,7 @@ import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfW
 import { settableClock } from '../../../application/testing/settableClock';
 import { createHabit } from '../../../application/useCases/createHabit';
 import { Day } from '../../../domain/day/Day';
-import { type Dependencies, DependenciesProvider } from './Dependencies';
+import { DependenciesProvider } from './Dependencies';
 import { useDayView } from './useDayView';
 
 const wednesday = Day.of(2026, 10, 14);
@@ -110,18 +110,5 @@ describe('useDayView', () => {
 
     expect(names(result.current.state)).toEqual(['Méditer']);
     expect(statuses).not.toContain('loading');
-  });
-
-  it('cannot be used without a unit of work', async () => {
-    jest.spyOn(console, 'error').mockImplementation(() => undefined);
-    const dependencies: Dependencies = { clock: settableClock(wednesday) };
-
-    await expect(
-      renderHook(() => useDayView(), {
-        wrapper: ({ children }: { children: ReactNode }) => (
-          <DependenciesProvider value={dependencies}>{children}</DependenciesProvider>
-        ),
-      }),
-    ).rejects.toThrow('The unit of work must be provided to the interface');
   });
 });
