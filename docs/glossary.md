@@ -26,7 +26,7 @@
 | **Jour clos** (`ClosedDay`) | Un jour antérieur à aujourd'hui. Il est consultable et reste corrigeable. | Défini |
 | **Jour neutre** (`neutral`) | Un jour sans habitude active : aucune expérience, rien à corriger. | Défini |
 | **Correction** (`Correction`) | Le changement d'un jour clos de « pas fait » à « fait » ou l'inverse. Sans limite de temps, jamais avant le jour de création de l'habitude, même barème d'expérience qu'un suivi du jour. Une case corrigée porte la marque **« corrigé »**, qui disparaît si elle revient à son état au moment de la clôture. | Défini |
-| **Semaine** (`Week`) | Période de 7 jours, du lundi au dimanche, selon la date locale du téléphone. | Défini |
+| **Semaine** (`Week`) | Période de 7 jours, du lundi au dimanche, selon la date locale du téléphone. La **semaine en cours** (`currentWeek`) est celle qui contient aujourd'hui. | Défini |
 | **Mois** (`Month`) | Un mois du calendrier local ; ses semaines vont du lundi au dimanche. | Défini |
 | **Vue Journée** (`DayView`) | L'écran d'accueil : les habitudes actives aujourd'hui, chacune « à faire » ou « fait », et le nombre d'habitudes faites. | Défini |
 | **Aide au premier usage** (`CheckInHint`) | Le message unique de la Vue Journée qui explique le tap. Il disparaît pour toujours au premier suivi. | Défini |
