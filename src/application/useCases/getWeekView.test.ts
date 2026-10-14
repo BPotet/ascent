@@ -69,12 +69,12 @@ describe('getWeekView', () => {
     ]);
   });
 
-  it('lets only today be changed, closed days waiting for the correction of #9 (R8, R9)', async () => {
+  it('lets today and the closed days from the day of creation be changed, not « à venir » nor « hors habitude » (R9, R10, R12)', async () => {
     const view = await getWeekView(deps(), currentWeek);
 
     expect(editable(view)).toEqual([
-      [false, false, true, false, false, false, false],
-      [false, false, true, false, false, false, false],
+      [true, true, true, false, false, false, false],
+      [false, true, true, false, false, false, false],
     ]);
   });
 
@@ -95,15 +95,20 @@ describe('getWeekView', () => {
       ['Cuisiner', ['missed', 'missed', 'missed', 'done', 'missed', 'missed', 'missed']],
       ['Budget du jour', Array(7).fill('notStarted')],
     ]);
-    expect(editable(view).flat()).not.toContain(true);
+    expect(editable(view)).toEqual([Array(7).fill(true), Array(7).fill(false)]);
   });
 
-  it('keeps the mark « corrigé » of a closed day for #9', async () => {
+  it('shows the mark « corrigé » of a closed day, which stays correctable (R13)', async () => {
     await checkIn('Cuisiner', day(10, 13), true, true);
+    await checkIn('Cuisiner', day(10, 12), false, true);
 
     const [cooking] = (await getWeekView(deps(), currentWeek)).rows;
 
-    expect(cooking?.days[1]).toMatchObject({ status: 'done', corrected: true, editable: false });
+    expect(cooking?.days.slice(0, 3)).toMatchObject([
+      { status: 'missed', corrected: true, editable: true },
+      { status: 'done', corrected: true, editable: true },
+      { status: 'pending', corrected: false, editable: true },
+    ]);
   });
 
   it('shows a check-in dated in the future « fait », not changeable, after the clock went back (R7)', async () => {
@@ -113,7 +118,7 @@ describe('getWeekView', () => {
     const [cooking] = (await getWeekView(deps(), currentWeek)).rows;
 
     expect(cooking?.days.map(({ status, editable: changeable }) => [status, changeable])).toEqual([
-      ['done', false],
+      ['done', true],
       ['pending', true],
       ['done', false],
       ['upcoming', false],
