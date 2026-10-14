@@ -17,6 +17,7 @@ concurrency:
 
 env:
   GITLEAKS_VERSION: 8.28.0
+  MAESTRO_VERSION: 2.11.0
 
 jobs:
   commits:
@@ -185,9 +186,15 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Install Maestro
+        # L'installeur lit MAESTRO_VERSION ; la vérification échoue si la version n'est pas la bonne.
+        env:
+          MAESTRO_CLI_NO_ANALYTICS: '1'
         run: |
           curl -fsSL "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          installed="$("$HOME/.maestro/bin/maestro" --version | tail -n 1)"
+          echo "Maestro ${installed}"
+          test "${installed}" = "${MAESTRO_VERSION}"
       - name: Run the Maestro flows on an Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
