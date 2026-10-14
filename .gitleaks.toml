@@ -1,12 +1,13 @@
 # Barrière « Secrets » (docs/workflow.md) : règles par défaut de Gitleaks.
+# Pas d'exception par dossier : les maquettes (docs/mockups/) sont analysées comme le reste.
+# Un faux positif se traite par une exception ciblée (règle et regex précises), jamais par un chemin entier.
 title = "Ascent"
 
 [extend]
 useDefault = true
 
 [allowlist]
-description = "Fichiers générés ou de dépendances"
+description = "Fichier de dépendances généré"
 paths = [
   '''package-lock\.json''',
-  '''docs/mockups/.*''',
 ]
