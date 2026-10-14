@@ -1,0 +1,20 @@
+# Parcours de démarrage : l'app s'ouvre hors ligne, crée sa base locale et affiche l'accueil.
+appId: com.bpotet.ascent
+name: Lancement de l'application
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: 'Ascent'
+    timeout: 30000
+- assertVisible:
+    id: 'welcome-today'
+- takeScreenshot: welcome
+# Relance à froid : la base locale déjà migrée est rouverte.
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: 'Ascent'
+    timeout: 30000
