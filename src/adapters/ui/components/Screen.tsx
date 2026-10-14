@@ -4,16 +4,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '../theme/colors';
 
-/** Fond et marges communs à tous les écrans. */
+/**
+ * Fond et marges communs à tous les écrans. `centered` centre un contenu court (démarrage) ;
+ * `top` laisse le contenu occuper l'écran depuis le haut (vues).
+ */
 export function Screen({
   children,
   testID,
+  layout = 'centered',
 }: {
   readonly children: ReactNode;
   readonly testID?: string;
+  readonly layout?: 'centered' | 'top';
 }) {
   return (
-    <SafeAreaView style={styles.screen} testID={testID}>
+    <SafeAreaView style={layout === 'centered' ? styles.screen : styles.top} testID={testID}>
       {children}
     </SafeAreaView>
   );
@@ -28,6 +33,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 24,
     gap: 12,
+  },
+  top: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
 });
 // Stryker restore all
