@@ -28,10 +28,23 @@ tags:
 - tapOn:
     id: 'new-habit-name'
 - inputText: 'Cuisiner'
+# Panneau en cours de saisie, clavier ouvert : sur le petit écran de la CI (320×640), le clavier
+# peut recouvrir le bas du panneau (compteur, messages, boutons), que Maestro ne voit alors plus.
+- takeScreenshot: create-habit-2-new-habit-sheet-keyboard
+# Le clavier est fermé s'il est ouvert (« Retour » sans clavier fermerait le panneau).
+- runFlow:
+    when:
+      visible:
+        id: 'com\.(google\.)?android\.inputmethod\.latin:id/.*'
+    commands:
+      - hideKeyboard
+- assertVisible:
+    id: 'new-habit-name'
+    text: 'Cuisiner'
 - assertVisible: '8/40'
 - takeScreenshot: create-habit-2-new-habit-sheet
-# Validation par la touche Entrée du clavier, qui peut recouvrir le bouton sur un petit écran.
-- pressKey: Enter
+- tapOn:
+    id: 'create-habit'
 
 # Le panneau se ferme et l'habitude est dans la Vue Journée, à faire aujourd'hui.
 - extendedWaitUntil:
@@ -64,15 +77,26 @@ tags:
 - tapOn:
     id: 'new-habit-name'
 - inputText: 'cuisiner'
-- pressKey: Enter
+- runFlow:
+    when:
+      visible:
+        id: 'com\.(google\.)?android\.inputmethod\.latin:id/.*'
+    commands:
+      - hideKeyboard
+- tapOn:
+    id: 'create-habit'
 - extendedWaitUntil:
     visible: 'Tu as déjà une habitude « Cuisiner »\.'
     timeout: 10000
 - assertVisible:
     id: 'create-habit'
     enabled: false
-# Le clavier se ferme d'abord : il pourrait recouvrir « Annuler ».
-- hideKeyboard
+- runFlow:
+    when:
+      visible:
+        id: 'com\.(google\.)?android\.inputmethod\.latin:id/.*'
+    commands:
+      - hideKeyboard
 - tapOn: 'Annuler'
 - extendedWaitUntil:
     notVisible: 'Nouvelle habitude'
