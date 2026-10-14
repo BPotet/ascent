@@ -60,7 +60,7 @@ describe('DayViewScreen', () => {
 
     await show();
 
-    expect(screen.getByLabelText('Chargement de tes habitudes')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Chargement de tes habitudes')).toBeBusy();
     await act(async () => read());
     expect(await screen.findByText('Aucune habitude pour l’instant')).toBeOnTheScreen();
     expect(screen.queryByLabelText('Chargement de tes habitudes')).not.toBeOnTheScreen();
@@ -71,6 +71,11 @@ describe('DayViewScreen', () => {
 
     expect(await screen.findByTestId('day-view-empty')).toBeOnTheScreen();
     expect(screen.getByText('Aucune habitude pour l’instant')).toBeOnTheScreen();
+    expect(
+      screen.getByRole('header', {
+        name: 'Aucune habitude pour l’instant Crée ta première habitude et commence à gagner de l’expérience.',
+      }),
+    ).toHaveProp('accessibilityLiveRegion', 'none');
     expect(
       screen.getByText('Crée ta première habitude et commence à gagner de l’expérience.'),
     ).toBeOnTheScreen();
@@ -102,7 +107,7 @@ describe('DayViewScreen', () => {
       await screen.findByRole('alert', {
         name: 'Impossible de charger tes habitudes. Une erreur est survenue en lisant tes données sur ce téléphone.',
       }),
-    ).toBeOnTheScreen();
+    ).toHaveProp('accessibilityLiveRegion', 'assertive');
     await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
     expect(await screen.findByRole('alert')).toBeOnTheScreen();
 

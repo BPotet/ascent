@@ -174,6 +174,9 @@ jobs:
     # n'a pas prouvé sa stabilité en CI.
     continue-on-error: true
     timeout-minutes: 45
+    # Écriture du dépôt : seulement pour publier les captures sur la branche `e2e-screenshots`.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -213,3 +216,66 @@ jobs:
           path: reports/e2e
           if-no-files-found: ignore
           retention-days: 14
+      - name: Publish the e2e screenshots for the review
+        # Les artefacts ne sont pas lisibles depuis les sessions de revue : les captures sont aussi
+        # poussées sur la branche orpheline `e2e-screenshots` (lisible par raw.githubusercontent.com),
+        # dans un dossier propre à ce passage. Cette étape ne fait jamais échouer le job.
+        if: always()
+        continue-on-error: true
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          REF_NAME: ${{ github.head_ref || github.ref_name }}
+        run: |
+          set -uo pipefail
+          publish() {
+            mapfile -t shots < <(find reports/e2e -type f -name '*.png' 2>/dev/null | sort)
+            if [ "${#shots[@]}" -eq 0 ]; then
+              echo "No e2e screenshot to publish." >> "$GITHUB_STEP_SUMMARY"
+              return 0
+            fi
+            local short="${HEAD_SHA:0:7}" dir
+            if [ -n "${PR_NUMBER}" ]; then dir="pr-${PR_NUMBER}/${short}"; else dir="${REF_NAME}/${short}"; fi
+            local work
+            work="$(mktemp -d)/screenshots"
+            git config --global user.name 'github-actions[bot]'
+            git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            if git ls-remote --exit-code --heads origin e2e-screenshots > /dev/null; then
+              git fetch --depth 1 origin e2e-screenshots || return 1
+              git worktree add --detach "${work}" FETCH_HEAD || return 1
+            else
+              git worktree add --orphan -b e2e-screenshots "${work}" || return 1
+            fi
+            local shot rel
+            for shot in "${shots[@]}"; do
+              rel="${shot#reports/e2e/}"
+              mkdir -p "${work}/${dir}/$(dirname "${rel}")"
+              cp "${shot}" "${work}/${dir}/${rel}"
+            done
+            git -C "${work}" add -- "${dir}"
+            git -C "${work}" commit -q -m "ci: e2e screenshots of ${dir}" || return 1
+            local attempt pushed=false
+            for attempt in 1 2 3; do
+              if git -C "${work}" push -q origin HEAD:refs/heads/e2e-screenshots; then
+                pushed=true
+                break
+              fi
+              git -C "${work}" fetch -q --depth 1 origin e2e-screenshots \
+                && git -C "${work}" rebase -q FETCH_HEAD || return 1
+            done
+            [ "${pushed}" = true ] || return 1
+            {
+              echo "### E2E screenshots (${dir})"
+              echo
+              for shot in "${shots[@]}"; do
+                rel="${shot#reports/e2e/}"
+                url="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/e2e-screenshots/$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1]))' "${dir}/${rel}")"
+                echo "- [${rel}](${url})"
+              done
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+          if ! publish; then
+            echo "::warning::The e2e screenshots could not be published on the e2e-screenshots branch."
+            echo "The e2e screenshots could not be published (see the step log)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit 0

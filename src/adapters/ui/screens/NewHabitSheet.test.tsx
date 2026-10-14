@@ -260,6 +260,15 @@ describe('NewHabitSheet', () => {
     expect(onCreate).not.toHaveBeenCalled();
   });
 
+  it('keeps the outside of the sheet out of reach of the screen reader', async () => {
+    await open();
+
+    expect(screen.getByTestId('new-habit-scrim', { includeHiddenElements: true })).toHaveProp(
+      'accessible',
+      false,
+    );
+  });
+
   it('closes with the back button of the phone', async () => {
     const { onClose } = await open();
 
