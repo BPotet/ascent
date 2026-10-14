@@ -11,7 +11,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { SystemClock } from '../adapters/device/clock/SystemClock';
 import { loadFonts } from '../adapters/device/fonts/loadFonts';
+import { appStateVisibility } from '../adapters/device/lifecycle/appStateVisibility';
 import { openAscentDatabase } from '../adapters/persistence/sqlite/openAscentDatabase';
+import { SqliteKeyValueStore } from '../adapters/persistence/sqlite/SqliteKeyValueStore';
 import { SqliteUnitOfWork } from '../adapters/persistence/sqlite/SqliteUnitOfWork';
 import { StartupErrorScreen, StartupLoadingScreen } from '../adapters/ui/screens/StartupScreen';
 import { type Dependencies, DependenciesProvider } from '../adapters/ui/state/Dependencies';
@@ -41,7 +43,12 @@ async function start(): Promise<Dependencies> {
     [fonts.interSemiBold]: Inter_600SemiBold,
   };
   const [db] = await Promise.all([openAscentDatabase(), loadFonts(fontFiles)]);
-  return { clock: new SystemClock(), unitOfWork: new SqliteUnitOfWork(db) };
+  return {
+    // L'heure du téléphone, relue au retour au premier plan.
+    clock: new SystemClock(undefined, appStateVisibility()),
+    unitOfWork: new SqliteUnitOfWork(db),
+    keyValueStore: new SqliteKeyValueStore(db),
+  };
 }
 
 /**
