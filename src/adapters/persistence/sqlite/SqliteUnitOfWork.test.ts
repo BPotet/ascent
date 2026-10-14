@@ -6,6 +6,8 @@ import { withFaults } from '../testing/faultySqlDatabase';
 import { openNodeSqliteDatabase } from '../testing/nodeSqliteDatabase';
 import { readsFrom, readsFromWith, SimulatedStorageError, writesTo } from '../testing/sqlFaults';
 import { describeUnitOfWorkContract } from '../testing/unitOfWorkContract';
+import { deleteHabit } from '../../../application/useCases/deleteHabit';
+import { renameHabit } from '../../../application/useCases/renameHabit';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
 import { Character } from '../../../domain/character/Character';
 import { Day } from '../../../domain/day/Day';
@@ -178,6 +180,49 @@ describe('SqliteUnitOfWork', () => {
       await expect(unitOfWork.run(({ character }) => character.get())).resolves.toEqual(
         Character.NEW,
       );
+    });
+
+    // Les suivis sont effacés par la cascade de `DELETE FROM habits`, sans requête à eux.
+    it.each(['habits', 'character'])(
+      'deletes nothing, and keeps the experience, when %s cannot be written (#6)',
+      async (table) => {
+        const db = withFaults(await prepareAscentDatabase(openNodeSqliteDatabase()));
+        const unitOfWork = new SqliteUnitOfWork(db);
+        const deps = { clock: { today: () => day }, unitOfWork };
+        const cooking = await unitOfWork.run(({ habits }) =>
+          habits.add(HabitName.parse('Cuisiner'), day.plusDays(-2)),
+        );
+        await toggleCheckIn(deps, cooking.id, day.plusDays(-1));
+        await toggleCheckIn(deps, cooking.id, day);
+
+        db.faults.failWhen(writesTo(table));
+        await expect(deleteHabit(deps, cooking.id)).rejects.toThrow(SimulatedStorageError);
+
+        db.faults.failWhen(null);
+        await expect(unitOfWork.run(({ habits }) => habits.listAll())).resolves.toEqual([cooking]);
+        await expect(
+          unitOfWork.run(({ checkIns }) => checkIns.listByHabit(cooking.id)),
+        ).resolves.toHaveLength(2);
+        await expect(unitOfWork.run(({ character }) => character.get())).resolves.toEqual(
+          new Character(20),
+        );
+      },
+    );
+
+    it('keeps the former name when a renamed habit cannot be written (#6)', async () => {
+      const db = withFaults(await prepareAscentDatabase(openNodeSqliteDatabase()));
+      const unitOfWork = new SqliteUnitOfWork(db);
+      const cooking = await unitOfWork.run(({ habits }) =>
+        habits.add(HabitName.parse('Cuisiner'), day),
+      );
+
+      db.faults.failWhen(writesTo('habits'));
+      await expect(renameHabit({ unitOfWork }, cooking.id, 'Cuisiner maison')).rejects.toThrow(
+        SimulatedStorageError,
+      );
+
+      db.faults.failWhen(null);
+      await expect(unitOfWork.run(({ habits }) => habits.listAll())).resolves.toEqual([cooking]);
     });
 
     it('fails to read a character missing from the database', async () => {
