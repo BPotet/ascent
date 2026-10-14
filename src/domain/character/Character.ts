@@ -1,3 +1,6 @@
+import type { CheckIn } from '../checkIn/CheckIn';
+import type { Day } from '../day/Day';
+
 /** L'expérience gagnée quand une case passe à « fait », perdue quand elle revient en arrière (R14). */
 export const XP_PER_CHECK_IN = 10;
 
@@ -44,6 +47,24 @@ export class Character {
   applyCheckInChange(done: boolean): Character {
     const change = done ? XP_PER_CHECK_IN : -XP_PER_CHECK_IN;
     return new Character(Math.max(0, this.xp + change), this.retainedXp);
+  }
+
+  /**
+   * Le personnage après la suppression d'une habitude dont `checkIns` sont les suivis (R17) :
+   * - l'expérience de son suivi d'aujourd'hui est retirée (−10 Xp s'il était « fait »), jamais sous
+   *   0 (R16) ;
+   * - celle de ses autres suivis « fait » reste acquise : elle passe dans l'Xp conservée. Ce sont les
+   *   jours clos, et aussi un jour devenu futur après un recul d'horloge (même règle que l'invariant).
+   * L'invariant (R15) est ainsi préservé une fois les suivis effacés.
+   */
+  retainOnHabitDeletion(checkIns: readonly CheckIn[], today: Day): Character {
+    const done = checkIns.filter((checkIn) => checkIn.done);
+    const doneToday = done.filter((checkIn) => checkIn.day.equals(today)).length;
+    const retained = XP_PER_CHECK_IN * (done.length - doneToday);
+    return new Character(
+      Math.max(0, this.xp - XP_PER_CHECK_IN * doneToday),
+      this.retainedXp + retained,
+    );
   }
 
   /** La variation d'expérience de ce personnage à `next` (ex. +10, −10, ou 0 au plancher). */
