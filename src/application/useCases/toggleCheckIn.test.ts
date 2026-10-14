@@ -103,6 +103,42 @@ describe('toggleCheckIn', () => {
     await expect(stored(cooking, tuesday)).resolves.toBeNull();
   });
 
+  it('corrects the day shown, and leaves the skipped day closed, after a jump to the east (R6)', async () => {
+    const friday = Day.of(2026, 10, 16);
+    clock.setToday(friday);
+
+    await expect(toggleCheckIn(deps(), cooking.id, wednesday)).resolves.toMatchObject({
+      ok: true,
+      habitDay: { day: wednesday, status: 'done', corrected: true },
+      isCorrection: true,
+    });
+    await expect(stored(cooking, thursday)).resolves.toBeNull();
+    await expect(toggleCheckIn(deps(), cooking.id, thursday)).resolves.toMatchObject({
+      ok: true,
+      habitDay: { day: thursday, status: 'done', corrected: true },
+      isCorrection: true,
+    });
+  });
+
+  it('toggles as today a corrected day that is today again after a jump to the west (R6, R13)', async () => {
+    clock.setToday(thursday);
+    await toggleCheckIn(deps(), cooking.id, wednesday);
+    clock.setToday(wednesday);
+
+    await expect(toggleCheckIn(deps(), cooking.id, wednesday)).resolves.toEqual({
+      ok: true,
+      habitDay: {
+        habit: cooking,
+        day: wednesday,
+        status: 'pending',
+        editable: true,
+        corrected: false,
+      },
+      isCorrection: false,
+    });
+    await expect(stored(cooking, wednesday)).resolves.toBeNull();
+  });
+
   it('reads today when the toggle runs, not when it was requested', async () => {
     let release = () => {};
     const gate = new Promise<void>((resolve) => {
