@@ -1,5 +1,5 @@
 import { Day } from '../../../domain/day/Day';
-import { formatLongDay } from './formatDay';
+import { capitalize, formatDayAndMonth, formatLongDay } from './formatDay';
 
 describe('formatLongDay', () => {
   it.each([
@@ -20,5 +20,24 @@ describe('formatLongDay', () => {
     [50, 3, 1, 'mardi 1 mars 50'],
   ])('formats %i-%i-%i as « %s »', (year, month, dayOfMonth, expected) => {
     expect(formatLongDay(Day.of(year, month, dayOfMonth))).toBe(expected);
+  });
+});
+
+describe('formatDayAndMonth', () => {
+  it.each([
+    [2026, 10, 14, 'mercredi 14 octobre'],
+    [2027, 1, 1, 'vendredi 1 janvier'],
+  ])('formats %i-%i-%i as « %s », without the year', (year, month, dayOfMonth, expected) => {
+    expect(formatDayAndMonth(Day.of(year, month, dayOfMonth))).toBe(expected);
+  });
+});
+
+describe('capitalize', () => {
+  it.each([
+    ['mercredi 14 octobre', 'Mercredi 14 octobre'],
+    ['été', 'Été'],
+    ['', ''],
+  ])('writes « %s » as « %s »', (text, expected) => {
+    expect(capitalize(text)).toBe(expected);
   });
 });
