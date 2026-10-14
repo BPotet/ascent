@@ -230,6 +230,32 @@ describe('DayViewScreen', () => {
     expect(screen.getByLabelText('Nom de l’habitude')).toHaveDisplayValue('');
   });
 
+  it('counts every existing habit, even one not active yet after the clock went back', async () => {
+    dependencies.clock.setToday(Day.of(2026, 10, 15));
+    await given('Méditer');
+    dependencies.clock.setToday(wednesday);
+    await given('Cuisiner');
+
+    await show();
+
+    expect(await screen.findByLabelText('2 habitudes sur 10')).toHaveTextContent('2/10');
+    expect(rowNames()).toEqual(['Cuisiner']);
+    expect(screen.getByLabelText('0 habitude faite sur 1')).toBeOnTheScreen();
+  });
+
+  it('shows the day, not the empty state, when no existing habit is active yet', async () => {
+    dependencies.clock.setToday(Day.of(2026, 10, 15));
+    await given('Méditer');
+    dependencies.clock.setToday(wednesday);
+
+    await show();
+
+    expect(await screen.findByLabelText('1 habitude sur 10')).toHaveTextContent('1/10');
+    expect(screen.queryByTestId('day-view-empty')).not.toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Aujourd’hui' })).toBeOnTheScreen();
+    expect(screen.queryAllByTestId(/^habit-row-/)).toEqual([]);
+  });
+
   it('disables adding a habit at 10 habits and explains why', async () => {
     await given(...Array.from({ length: 10 }, (_, index) => `Habitude ${index + 1}`));
 

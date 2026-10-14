@@ -61,10 +61,11 @@ function HabitList({
 }) {
   const scroll = useRef<ScrollView>(null);
   const doneCount = view.habits.filter(({ status }) => status === 'done').length;
-  const count = view.habits.length;
+  const activeCount = view.habits.length;
+  const count = view.habitCount;
   return (
     <>
-      <DayHeader day={view.day} doneCount={doneCount} activeCount={count} />
+      <DayHeader day={view.day} doneCount={doneCount} activeCount={activeCount} />
       <ScrollView
         ref={scroll}
         contentContainerStyle={styles.list}
@@ -85,7 +86,7 @@ function HabitList({
         <View style={styles.section}>
           <Text style={[typography.label, styles.sectionTitle]}>Habitudes</Text>
           <Text
-            accessibilityLabel={`${count} habitudes sur ${MAX_HABITS}`}
+            accessibilityLabel={`${count} ${count > 1 ? 'habitudes' : 'habitude'} sur ${MAX_HABITS}`}
             style={[typography.label, view.canAddHabit ? styles.sectionCount : styles.full]}
           >
             {`${count}/${MAX_HABITS}`}
@@ -150,7 +151,7 @@ export function DayViewScreen() {
   }
 
   const { view } = state;
-  const empty = view.habits.length === 0;
+  const empty = view.habitCount === 0;
   return (
     <Screen layout="top" testID="day-view">
       {empty ? (
