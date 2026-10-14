@@ -20,6 +20,9 @@ const base = {
   preset: 'jest-expo',
 };
 
+// Projets qui rendent des écrans : délai de test explicite (voir le fichier).
+const screenTestTimeout = '<rootDir>/test/setup/screenTestTimeout.ts';
+
 /** @type {import('jest').Config} */
 module.exports = {
   projects: [
@@ -33,12 +36,14 @@ module.exports = {
       ...base,
       displayName: 'integration',
       testMatch: ['<rootDir>/src/adapters/**/*.test.{ts,tsx}', '<rootDir>/test/**/*.test.{ts,tsx}'],
+      setupFilesAfterEnv: [screenTestTimeout],
     },
     {
       ...base,
       displayName: 'bdd',
       testMatch: ['<rootDir>/features/**/*.steps.{ts,tsx}'],
       moduleNameMapper: { '^uuid$': cucumberUuid },
+      setupFilesAfterEnv: [screenTestTimeout],
     },
   ],
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.test.{ts,tsx}', '!src/**/testing/**'],
