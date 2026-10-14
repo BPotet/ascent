@@ -112,6 +112,28 @@ describe('NewHabitSheet', () => {
     expect(screen.queryByRole('alert')).not.toBeOnTheScreen();
   });
 
+  it('counts a pasted decomposed accent as one character (NFC)', async () => {
+    await open();
+
+    await type('é'.repeat(40));
+
+    expect(screen.getByText('40/40')).toBeOnTheScreen();
+    expect(createButton()).toBeEnabled();
+  });
+
+  it('counts a composed emoji as its code points, like the rule (ADR 0002)', async () => {
+    const family = '\u{1F468}‍\u{1F469}‍\u{1F467}';
+    await open();
+
+    await type(`${'a'.repeat(35)}${family}`);
+    expect(screen.getByText('40/40')).toBeOnTheScreen();
+    expect(createButton()).toBeEnabled();
+
+    await type(`${'a'.repeat(36)}${family}`);
+    expect(screen.getByText('41/40')).toBeOnTheScreen();
+    expect(createButton()).toBeDisabled();
+  });
+
   it('keeps a pasted name of 41 characters and explains the limit', async () => {
     const { onCreate } = await open();
 
