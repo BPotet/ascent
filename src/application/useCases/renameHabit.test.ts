@@ -109,6 +109,13 @@ describe('renameHabit', () => {
     expect(await names()).toEqual(['Cuisiner', 'Budget du jour']);
   });
 
+  it('lets an unexpected error through instead of turning it into a refusal', async () => {
+    const notAName = null as unknown as string;
+
+    await expect(renameHabit(deps(), cooking.id, notAName)).rejects.toThrow(/normalize/);
+    expect(await names()).toEqual(['Cuisiner', 'Budget du jour']);
+  });
+
   it('fails when the habits cannot be read', async () => {
     unitOfWork.failReads();
 
