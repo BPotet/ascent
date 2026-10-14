@@ -41,7 +41,9 @@ tags:
 - assertVisible:
     id: 'new-habit-name'
     text: 'Cuisiner'
-- assertVisible: '8/40'
+# Le compteur s'affiche « 8/40 » ; son libellé lecteur d'écran est « 8 caractères sur 40 ».
+# Maestro compare le texte et ce libellé : l'un ou l'autre suffit, le nombre reste vérifié.
+- assertVisible: '8/40|8 caractères sur 40'
 - takeScreenshot: create-habit-2-new-habit-sheet
 - tapOn:
     id: 'create-habit'
@@ -56,7 +58,7 @@ tags:
 - assertVisible:
     id: 'day-view-list'
 - assertVisible: 'Aujourd’hui'
-- assertVisible: '1/10'
+- assertVisible: '1/10|1 habitudes sur 10'
 
 # Relance à froid : l'habitude est toujours là.
 - stopApp
@@ -101,6 +103,6 @@ tags:
 - extendedWaitUntil:
     notVisible: 'Nouvelle habitude'
     timeout: 10000
-- assertVisible: '1/10'
+- assertVisible: '1/10|1 habitudes sur 10'
 - assertNotVisible:
     id: 'habit-row-2'

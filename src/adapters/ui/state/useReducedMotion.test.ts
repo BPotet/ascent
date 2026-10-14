@@ -13,6 +13,14 @@ describe('useReducedMotion', () => {
     expect(result.current).toBe(false);
   });
 
+  it('is false while the phone has not answered yet', async () => {
+    isReduceMotionEnabled.mockReturnValueOnce(new Promise<boolean>(() => undefined));
+
+    const { result } = await renderHook(() => useReducedMotion());
+
+    expect(result.current).toBe(false);
+  });
+
   it('follows the setting of the phone', async () => {
     isReduceMotionEnabled.mockResolvedValueOnce(true);
 

@@ -34,4 +34,20 @@ describe('Toast', () => {
 
     expect(onHide).not.toHaveBeenCalled();
   });
+
+  it('announces a new message and shows it for the full duration', async () => {
+    const onHide = jest.fn();
+    const { rerender } = await render(<Toast message="Habitude créée" onHide={onHide} />);
+    await act(() => jest.advanceTimersByTime(TOAST_DURATION_MS - 1));
+
+    await rerender(<Toast message="Habitude enregistrée" onHide={onHide} />);
+
+    expect(AccessibilityInfo.announceForAccessibility).toHaveBeenLastCalledWith(
+      'Habitude enregistrée',
+    );
+    await act(() => jest.advanceTimersByTime(TOAST_DURATION_MS - 1));
+    expect(onHide).not.toHaveBeenCalled();
+    await act(() => jest.advanceTimersByTime(1));
+    expect(onHide).toHaveBeenCalledTimes(1);
+  });
 });
