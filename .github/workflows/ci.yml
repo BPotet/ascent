@@ -82,13 +82,8 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: Unit tests
-        run: npm run test:unit
-      - name: Integration tests
-        run: npm run test:integration
-      - name: BDD tests (Gherkin)
-        run: npm run test:bdd
-      - name: Coverage thresholds
+      # Une seule exécution des trois projets Jest (unit, integration, bdd) avec les seuils de couverture.
+      - name: Unit, integration and BDD tests with coverage thresholds
         run: npm run test:coverage -- --ci
       - uses: actions/upload-artifact@v4
         with:
