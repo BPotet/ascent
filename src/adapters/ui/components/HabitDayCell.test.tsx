@@ -57,8 +57,17 @@ describe('HabitDayCell', () => {
     await rerender(<HabitDayCell habitDay={habitDay('done', true)} today={wednesday} />);
     expect(screen.getByRole('switch')).toBeChecked();
 
+    expect(screen.getByRole('switch')).toHaveProp('accessibilityState', {
+      checked: true,
+      disabled: false,
+    });
+
     await rerender(<HabitDayCell habitDay={habitDay('upcoming', false)} today={wednesday} />);
     expect(screen.getByRole('switch')).toBeDisabled();
+    expect(screen.getByRole('switch')).toHaveProp('accessibilityState', {
+      checked: false,
+      disabled: true,
+    });
   });
 
   it.each([

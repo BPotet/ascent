@@ -62,6 +62,12 @@ describe('WeekDaysHeader', () => {
     expect(screen.getByTestId('weekday-2026-10-14', hidden)).toHaveStyle({
       backgroundColor: '#7C9CFF',
     });
+    const [, todayInitial, todayNumber] = screen.getAllByText(/^(M|14)$/u, hidden);
+    expect(todayInitial).toHaveStyle({ color: '#7C9CFF' });
+    expect(todayNumber).toHaveStyle({ color: '#0B1020' });
+    const [mondayInitial, mondayNumber] = screen.getAllByText(/^(L|12)$/u, hidden);
+    expect(mondayInitial).toHaveStyle({ color: '#9AA4B8' });
+    expect(mondayNumber).toHaveStyle({ color: '#EEF1F7' });
     expect(screen.getByTestId('weekday-2026-10-13', hidden)).not.toHaveStyle({
       backgroundColor: '#7C9CFF',
     });
@@ -107,6 +113,12 @@ describe('HabitWeekCard', () => {
 
     expect(onToggle).toHaveBeenCalledWith(days[2]);
   });
+});
+
+it('shows nothing for a habit without cells', async () => {
+  await render(<HabitWeekCard days={[]} today={wednesday} onToggle={jest.fn()} />);
+
+  expect(screen.toJSON()).toBeNull();
 });
 
 describe('WeekLegend', () => {

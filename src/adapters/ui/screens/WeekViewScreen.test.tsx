@@ -147,6 +147,42 @@ describe('WeekViewScreen', () => {
     expect(day.habits.map(({ status }) => status)).toEqual(['done', 'pending']);
   });
 
+  it('shows the other state at once, before the tap is saved, and says nothing when saved', async () => {
+    await givenTheBackground();
+    await show();
+    let open: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    const run = dependencies.unitOfWork.run.bind(dependencies.unitOfWork);
+    jest
+      .spyOn(dependencies.unitOfWork, 'run')
+      .mockImplementation((work) => gate.then(() => run(work)));
+
+    await fireEvent.press(cell(cooking, wednesday));
+
+    expect(labelOf(cooking, wednesday)).toBe('Cuisiner, mercredi 14 octobre, fait');
+    expect(labelOf(cooking, october(12))).toBe('Cuisiner, lundi 12 octobre, fait, indisponible');
+    await act(async () => open());
+    await waitFor(() => expect(cell(cooking, wednesday)).toBeChecked());
+    expect(screen.queryByTestId('toast')).toBeNull();
+  });
+
+  it('says nothing and shows the stored state when the tap is refused', async () => {
+    await givenTheBackground();
+    await show();
+    jest.spyOn(dependencies.clock, 'today').mockReturnValue(october(13));
+
+    await fireEvent.press(cell(cooking, wednesday));
+
+    await waitFor(() =>
+      expect(labelOf(cooking, wednesday)).toBe(
+        'Cuisiner, mercredi 14 octobre, à venir, indisponible',
+      ),
+    );
+    expect(screen.queryByTestId('toast')).toBeNull();
+  });
+
   it('comes back to « à faire » and offers « Réessayer » when the tap cannot be saved', async () => {
     await givenTheBackground();
     await show();

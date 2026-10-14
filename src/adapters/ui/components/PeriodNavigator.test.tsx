@@ -40,6 +40,10 @@ describe('PeriodNavigator', () => {
       />,
     );
 
+    expect(screen.getByRole('button', { name: 'Semaine précédente' })).toHaveProp(
+      'accessibilityState',
+      { disabled: false },
+    );
     await fireEvent.press(screen.getByRole('button', { name: 'Semaine précédente' }));
     expect(onPrevious).toHaveBeenCalledTimes(1);
     expect(onNext).not.toHaveBeenCalled();
@@ -65,6 +69,7 @@ describe('PeriodNavigator', () => {
     const next = screen.getByRole('button', { name: 'Semaine suivante' });
     expect(previous).toBeDisabled();
     expect(next).toBeDisabled();
+    expect(previous).toHaveProp('accessibilityState', { disabled: true });
     await fireEvent.press(previous);
     await fireEvent.press(next);
     expect(onPrevious).not.toHaveBeenCalled();
