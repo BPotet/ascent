@@ -1,5 +1,5 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
-import { AccessibilityInfo } from 'react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
+import { AccessibilityInfo, Keyboard, Platform } from 'react-native';
 
 import { Day } from '../../../domain/day/Day';
 import { Habit } from '../../../domain/habit/Habit';
@@ -297,6 +297,55 @@ describe('NewHabitSheet', () => {
 
     await waitFor(() =>
       expect(screen.getByTestId('new-habit-sheet')).toHaveProp('animationType', 'none'),
+    );
+  });
+
+  describe('with the keyboard open', () => {
+    function spyOnKeyboard() {
+      const listeners: { event: string; listener: (event?: unknown) => void }[] = [];
+      jest.spyOn(Keyboard, 'addListener').mockImplementation(((
+        event: string,
+        listener: (event?: unknown) => void,
+      ) => {
+        listeners.push({ event, listener });
+        return { remove: jest.fn() };
+      }) as never);
+      return (event: string) =>
+        act(() => {
+          for (const entry of listeners.filter((candidate) => candidate.event === event)) {
+            entry.listener(undefined);
+          }
+        });
+    }
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it.each([
+      ['ios', 'keyboardWillShow', 'keyboardWillHide'],
+      ['android', 'keyboardDidShow', 'keyboardDidHide'],
+    ] as const)(
+      'keeps the counter, the messages and the buttons above the keyboard on %s',
+      async (os, showEvent, hideEvent) => {
+        jest.replaceProperty(Platform, 'OS', os);
+        const emit = spyOnKeyboard();
+        await open();
+        const avoiding = screen.getByTestId('new-habit-keyboard-avoiding');
+        const sheet = screen.getByTestId('new-habit-sheet-content');
+
+        // « padding » : the whole sheet is pushed up by the height of the keyboard.
+        expect(avoiding).toHaveStyle({ paddingBottom: 0 });
+        expect(sheet).toHaveStyle({ paddingBottom: 36 });
+
+        await emit(showEvent);
+        expect(sheet).toHaveStyle({ paddingBottom: 16 });
+        expect(within(sheet).getByText('0/40')).toBeOnTheScreen();
+        expect(within(sheet).getByRole('button', { name: 'Créer l’habitude' })).toBeOnTheScreen();
+
+        await emit(hideEvent);
+        expect(sheet).toHaveStyle({ paddingBottom: 36 });
+      },
     );
   });
 });

@@ -3,7 +3,6 @@ import {
   AccessibilityInfo,
   KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -17,6 +16,7 @@ import { HABIT_LIMIT_MESSAGE } from '../components/AddHabitButton';
 import { Button } from '../components/Button';
 import { AlertGlyph } from '../components/Glyph';
 import type { CreateHabitFailure, CreateHabitOutcome } from '../state/useCreateHabit';
+import { useKeyboardVisible } from '../state/useKeyboardVisible';
 import { useReducedMotion } from '../state/useReducedMotion';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
@@ -63,6 +63,7 @@ export function NewHabitSheet({
   readonly onClose: () => void;
 }) {
   const reducedMotion = useReducedMotion();
+  const keyboardVisible = useKeyboardVisible();
   const [name, setName] = useState('');
   const [failure, setFailure] = useState<CreateHabitFailure | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -111,9 +112,14 @@ export function NewHabitSheet({
       onRequestClose={onClose}
       testID="new-habit-sheet"
     >
+      {/*
+        « padding » sur iOS comme sur Android : l'application est affichée bord à bord, la fenêtre
+        ne rétrécit donc pas quand le clavier s'ouvre ; c'est le panneau qui remonte au-dessus.
+      */}
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior="padding"
         style={styles.container}
+        testID="new-habit-keyboard-avoiding"
       >
         <Pressable
           accessible={false}
@@ -121,7 +127,11 @@ export function NewHabitSheet({
           testID="new-habit-scrim"
           style={styles.scrim}
         />
-        <View accessibilityViewIsModal style={styles.sheet}>
+        <View
+          accessibilityViewIsModal
+          style={[styles.sheet, keyboardVisible && styles.sheetAboveKeyboard]}
+          testID="new-habit-sheet-content"
+        >
           <View style={styles.grab} />
           <Text accessibilityRole="header" style={[typography.sheetTitle, styles.title]}>
             Nouvelle habitude
@@ -212,6 +222,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 36,
   },
+  /** Sans clavier, le bas du panneau laisse la place à la barre du téléphone ; avec, il se resserre. */
+  sheetAboveKeyboard: { paddingBottom: spacing.lg },
   grab: {
     width: 40,
     height: 5,

@@ -26,6 +26,7 @@ describe('getDayView', () => {
     await expect(getDayView(deps())).resolves.toEqual({
       day: wednesday,
       habits: [],
+      habitCount: 0,
       canAddHabit: true,
     });
   });
@@ -53,6 +54,16 @@ describe('getDayView', () => {
     const view = await getDayView(deps());
 
     expect(view.habits.map(({ habit }) => habit.name.value)).toEqual(['Cuisiner']);
+  });
+
+  it('counts every existing habit, even one not active yet after the clock went back', async () => {
+    await addHabit('Cuisiner');
+    await addHabit('Méditer', Day.of(2026, 10, 15));
+
+    const view = await getDayView(deps());
+
+    expect(view.habits).toHaveLength(1);
+    expect(view.habitCount).toBe(2);
   });
 
   it('reads today when the view is loaded', async () => {
