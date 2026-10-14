@@ -74,8 +74,11 @@ tags:
 - inputText: 'cuisiner'
 - tapOn:
     id: 'create-habit'
+# Le message réel est « Tu as déjà une habitude « Cuisiner ». », avec des espaces insécables
+# (U+00A0) à l'intérieur des guillemets, et peut passer sur deux lignes. Maestro compare le texte
+# entier à l'expression : les espaces acceptent donc aussi l'insécable et le retour à la ligne.
 - extendedWaitUntil:
-    visible: 'Tu as déjà une habitude « Cuisiner »\.'
+    visible: 'Tu as déjà une habitude[\s\u00A0]+«[\s\u00A0]*Cuisiner[\s\u00A0]*»\.'
     timeout: 10000
 - assertVisible:
     id: 'create-habit'
