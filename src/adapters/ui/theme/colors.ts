@@ -17,6 +17,7 @@ export const colors = {
   onDone: '#05261A',
   doneSoft: '#16302A',
   doneText: '#8FE8BF',
+  doneLine: 'rgba(61,220,151,0.55)',
   xp: '#FFC94D',
   danger: '#FF7A7A',
   dangerSoft: 'rgba(255,122,122,0.12)',

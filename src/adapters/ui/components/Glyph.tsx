@@ -36,9 +36,30 @@ export function AlertGlyph({
   );
 }
 
+/** La coche d'une habitude « fait ». Décorative : l'état est écrit et lu par le lecteur d'écran. */
+export function CheckGlyph({ color }: { readonly color: string }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      testID="check-mark"
+      style={[styles.check, { borderColor: color }]}
+    />
+  );
+}
+
 const styles = StyleSheet.create({
   plus: { fontSize: 24, lineHeight: 26, fontWeight: '600' },
   alert: { borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   alertMark: { fontWeight: '700', lineHeight: undefined },
+  check: {
+    width: 11,
+    height: 20,
+    marginTop: -4,
+    borderRightWidth: 3,
+    borderBottomWidth: 3,
+    borderRadius: 1,
+    transform: [{ rotate: '45deg' }],
+  },
 });
 // Stryker restore all
