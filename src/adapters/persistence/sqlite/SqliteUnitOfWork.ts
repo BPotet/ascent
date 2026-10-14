@@ -1,5 +1,6 @@
 import type { Repositories, UnitOfWork } from '../../../application/ports/UnitOfWork';
 import type { SqlDatabase } from './SqlDatabase';
+import { SqliteCheckInRepository } from './SqliteCheckInRepository';
 import { SqliteHabitRepository } from './SqliteHabitRepository';
 
 /**
@@ -12,7 +13,10 @@ export class SqliteUnitOfWork implements UnitOfWork {
   private queue: Promise<unknown> = Promise.resolve();
 
   constructor(private readonly db: SqlDatabase) {
-    this.repositories = { habits: new SqliteHabitRepository(db) };
+    this.repositories = {
+      habits: new SqliteHabitRepository(db),
+      checkIns: new SqliteCheckInRepository(db),
+    };
   }
 
   run<T>(work: (repositories: Repositories) => Promise<T>): Promise<T> {

@@ -1,3 +1,4 @@
+import { describeCheckInRepositoryContract } from '../testing/checkInRepositoryContract';
 import { describeHabitRepositoryContract } from '../testing/habitRepositoryContract';
 import { FakeExpoSqliteConnection } from '../testing/fakeExpoSqlite';
 import { withFaults } from '../testing/faultySqlDatabase';
@@ -16,6 +17,7 @@ const createUnitOfWork = async () =>
 describe('SqliteUnitOfWork', () => {
   describeUnitOfWorkContract(createUnitOfWork);
   describeHabitRepositoryContract(createUnitOfWork);
+  describeCheckInRepositoryContract(createUnitOfWork);
 
   describe('on the expo-sqlite bridge', () => {
     const createOnExpo = async () =>
@@ -23,6 +25,7 @@ describe('SqliteUnitOfWork', () => {
 
     describeUnitOfWorkContract(createOnExpo);
     describeHabitRepositoryContract(createOnExpo);
+    describeCheckInRepositoryContract(createOnExpo);
 
     it('sends every statement of a work on the shared connection, inside one transaction', async () => {
       const connection = FakeExpoSqliteConnection.open();
@@ -113,6 +116,26 @@ describe('SqliteUnitOfWork', () => {
 
       db.faults.failWhen(null);
       await expect(unitOfWork.run(({ habits }) => habits.listAll())).resolves.toEqual([]);
+    });
+
+    it('keeps the stored check-in when a check-in cannot be written', async () => {
+      const db = withFaults(await prepareAscentDatabase(openNodeSqliteDatabase()));
+      const unitOfWork = new SqliteUnitOfWork(db);
+      const cooking = await unitOfWork.run(({ habits }) =>
+        habits.add(HabitName.parse('Cuisiner'), day),
+      );
+      const done = { habitId: cooking.id, day, done: true, corrected: false };
+      await unitOfWork.run(({ checkIns }) => checkIns.save(done));
+
+      db.faults.failWhen(writesTo('check_ins'));
+      await expect(
+        unitOfWork.run(({ checkIns }) => checkIns.save({ ...done, done: false })),
+      ).rejects.toThrow(SimulatedStorageError);
+
+      db.faults.failWhen(null);
+      await expect(
+        unitOfWork.run(({ checkIns }) => checkIns.find(cooking.id, day)),
+      ).resolves.toEqual(done);
     });
   });
 });

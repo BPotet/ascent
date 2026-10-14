@@ -1,8 +1,10 @@
+import type { CheckInRepository } from './CheckInRepository';
 import type { HabitRepository } from './HabitRepository';
 
 /** Les dépôts disponibles dans une unité de travail. Cette liste grandit au fil des stories. */
 export interface Repositories {
   readonly habits: HabitRepository;
+  readonly checkIns: CheckInRepository;
 }
 
 /**
