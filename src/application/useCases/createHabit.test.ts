@@ -1,0 +1,122 @@
+import { Day } from '../../domain/day/Day';
+import { InMemoryUnitOfWork, StorageUnavailableError } from '../testing/InMemoryUnitOfWork';
+import { settableClock } from '../testing/settableClock';
+import { createHabit } from './createHabit';
+
+const wednesday = Day.of(2026, 10, 14);
+
+describe('createHabit', () => {
+  let unitOfWork: InMemoryUnitOfWork;
+  const clock = settableClock(wednesday);
+  const deps = () => ({ clock, unitOfWork });
+
+  async function names(): Promise<string[]> {
+    const habits = await unitOfWork.run((repositories) => repositories.habits.listAll());
+    return habits.map((habit) => habit.name.value);
+  }
+
+  beforeEach(() => {
+    unitOfWork = new InMemoryUnitOfWork();
+    clock.setToday(wednesday);
+  });
+
+  it('creates a habit dated from today (R1, R2)', async () => {
+    const result = await createHabit(deps(), 'Cuisiner');
+
+    expect(result).toEqual({ ok: true, habit: expect.objectContaining({ createdOn: wednesday }) });
+    expect(result.ok && result.habit.name.value).toBe('Cuisiner');
+    expect(await names()).toEqual(['Cuisiner']);
+  });
+
+  it('reads today when the habit is created', async () => {
+    clock.setToday(Day.of(2026, 10, 15));
+
+    const result = await createHabit(deps(), 'Cuisiner');
+
+    expect(result.ok && result.habit.createdOn).toEqual(Day.of(2026, 10, 15));
+  });
+
+  it('stores the cleaned name', async () => {
+    await createHabit(deps(), '   Lire   20  minutes  ');
+
+    expect(await names()).toEqual(['Lire 20 minutes']);
+  });
+
+  it.each([
+    ['', 'empty'],
+    ['   ', 'empty'],
+    ['a'.repeat(41), 'tooLong'],
+  ])('refuses the name %p (%s) and creates nothing', async (rawName, reason) => {
+    await expect(createHabit(deps(), rawName)).resolves.toEqual({ ok: false, reason });
+    expect(await names()).toEqual([]);
+  });
+
+  it('accepts a name of 40 characters', async () => {
+    await expect(createHabit(deps(), 'a'.repeat(40))).resolves.toMatchObject({ ok: true });
+  });
+
+  it('refuses a duplicate name without regard to capitals', async () => {
+    await createHabit(deps(), 'Cuisiner');
+
+    await expect(createHabit(deps(), 'cuisiner  ')).resolves.toEqual({
+      ok: false,
+      reason: 'duplicate',
+    });
+    expect(await names()).toEqual(['Cuisiner']);
+  });
+
+  it('lets accents distinguish two names', async () => {
+    await createHabit(deps(), 'Eté sans sucre');
+    await createHabit(deps(), 'Été sans sucre');
+
+    expect(await names()).toEqual(['Eté sans sucre', 'Été sans sucre']);
+  });
+
+  it('refuses an 11th habit', async () => {
+    for (let index = 1; index <= 10; index += 1) {
+      await createHabit(deps(), `Habitude ${index}`);
+    }
+
+    await expect(createHabit(deps(), 'Méditer')).resolves.toEqual({ ok: false, reason: 'limit' });
+    expect(await names()).toHaveLength(10);
+  });
+
+  it('checks the limit before the name', async () => {
+    for (let index = 1; index <= 10; index += 1) {
+      await createHabit(deps(), `Habitude ${index}`);
+    }
+
+    await expect(createHabit(deps(), '')).resolves.toEqual({ ok: false, reason: 'limit' });
+  });
+
+  it('creates nothing and fails when the habit cannot be saved', async () => {
+    unitOfWork.failWrites();
+
+    await expect(createHabit(deps(), 'Méditer')).rejects.toThrow(StorageUnavailableError);
+
+    unitOfWork.failWrites(false);
+    expect(await names()).toEqual([]);
+  });
+
+  it('lets an unexpected error through instead of turning it into a refusal', async () => {
+    const notAName = null as unknown as string;
+
+    await expect(createHabit(deps(), notAName)).rejects.toThrow(/normalize/);
+  });
+
+  it('fails when the habits cannot be read', async () => {
+    unitOfWork.failReads();
+
+    await expect(createHabit(deps(), 'Méditer')).rejects.toThrow(StorageUnavailableError);
+  });
+
+  it('cannot create the same name twice when two creations are requested together', async () => {
+    const results = await Promise.all([
+      createHabit(deps(), 'Cuisiner'),
+      createHabit(deps(), 'cuisiner'),
+    ]);
+
+    expect(results.map((result) => result.ok)).toEqual([true, false]);
+    expect(await names()).toEqual(['Cuisiner']);
+  });
+});
