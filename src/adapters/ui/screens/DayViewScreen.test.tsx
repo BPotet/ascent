@@ -15,6 +15,7 @@ import { renderScreen } from '../testing/renderScreen';
 import { DayViewScreen, HIGHLIGHT_DURATION_MS } from './DayViewScreen';
 
 const nbsp = ' ';
+const tuesday = Day.of(2026, 10, 13);
 const wednesday = Day.of(2026, 10, 14);
 
 const thursday = Day.of(2026, 10, 15);
@@ -446,6 +447,22 @@ describe('DayViewScreen', () => {
         habitDay: { status: 'missed' },
       });
       changes.mockRestore();
+    });
+
+    it('does nothing, and says nothing, on a tap refused because the day became « à venir »', async () => {
+      await showWith('Cuisiner');
+      // L'horloge recule avant que l'écran ne l'apprenne : le mercredi affiché est « à venir » (R7).
+      const changes = jest.spyOn(dependencies.clock, 'today');
+      changes.mockReturnValue(tuesday);
+
+      await fireEvent.press(cooking('à faire'));
+
+      expect(await screen.findByText('Mardi 13 octobre')).toBeOnTheScreen();
+      expect(screen.queryByText('Cuisiner')).not.toBeOnTheScreen();
+      expect(screen.queryByTestId('toast')).not.toBeOnTheScreen();
+      expect(dependencies.keyValueStore.values.size).toBe(0);
+      changes.mockRestore();
+      expect(await storedStatuses()).toEqual(['Cuisiner: pending']);
     });
   });
 });
