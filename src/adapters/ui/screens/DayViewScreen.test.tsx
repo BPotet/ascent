@@ -7,6 +7,7 @@ import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfW
 import { settableClock } from '../../../application/testing/settableClock';
 import { CHECK_IN_HINT_DISMISSED_KEY } from '../../../application/useCases/checkInHint';
 import { createHabit } from '../../../application/useCases/createHabit';
+import { deleteHabit } from '../../../application/useCases/deleteHabit';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
 import { getDayView } from '../../../application/useCases/getDayView';
 import { Day } from '../../../domain/day/Day';
@@ -694,5 +695,258 @@ describe('DayViewScreen and the experience', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
 
     await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 10 XP'));
+  });
+});
+
+describe('DayViewScreen and editing a habit', () => {
+  const xpBar = () => screen.getByTestId('character-bar');
+  const editButton = (name: string) =>
+    screen.getByRole('button', { name: `Modifier l’habitude ${name}` });
+  const nameField = () => screen.getByLabelText('Nom de l’habitude');
+  const toast = () => screen.getByTestId('toast');
+
+  /** « Cuisiner », créée mardi et « fait » mardi et mercredi, et « Budget du jour ». */
+  async function showTwoHabits({ cookingDoneToday = true } = {}) {
+    dependencies.clock.setToday(tuesday);
+    await given('Cuisiner');
+    await toggleCheckIn(dependencies, 1, tuesday);
+    dependencies.clock.setToday(wednesday);
+    await given('Budget du jour');
+    if (cookingDoneToday) {
+      await toggleCheckIn(dependencies, 1, wednesday);
+    }
+    await show();
+    await screen.findByText('Cuisiner');
+  }
+
+  async function askDeletion(name = 'Cuisiner') {
+    await fireEvent.press(editButton(name));
+    await fireEvent.press(screen.getByRole('button', { name: 'Supprimer l’habitude' }));
+    await screen.findByTestId('delete-habit-dialog');
+  }
+
+  it('opens « Modifier l’habitude » from « ⋯ », without toggling the habit', async () => {
+    await showTwoHabits({ cookingDoneToday: false });
+
+    await fireEvent.press(editButton('Cuisiner'));
+
+    expect(screen.getByRole('header', { name: 'Modifier l’habitude' })).toBeOnTheScreen();
+    expect(nameField()).toHaveDisplayValue('Cuisiner');
+    expect(nameField()).toHaveProp('autoFocus', false);
+    expect(screen.getByRole('button', { name: 'Enregistrer' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Supprimer l’habitude' })).toBeOnTheScreen();
+    expect(
+      screen.getByRole('switch', { name: 'Cuisiner, mercredi 14 octobre, à faire' }),
+    ).not.toBeChecked();
+  });
+
+  it('closes « Modifier l’habitude » with « Annuler », changing nothing', async () => {
+    await showTwoHabits();
+    await fireEvent.press(editButton('Cuisiner'));
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Annuler' }));
+
+    expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
+    expect(await names()).toEqual(['Cuisiner', 'Budget du jour']);
+  });
+
+  it('renames a habit, highlights it, and keeps its check-ins and the experience', async () => {
+    await showTwoHabits();
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP'));
+    await fireEvent.press(editButton('Cuisiner'));
+
+    await fireEvent.changeText(nameField(), 'Cuisiner maison');
+    await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    expect(
+      await screen.findByRole('switch', { name: 'Cuisiner maison, mercredi 14 octobre, fait' }),
+    ).toBeChecked();
+    expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
+    expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: '#7C9CFF' });
+    expect(toast()).toHaveTextContent('Habitude renommée');
+    expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP');
+    expect(await names()).toEqual(['Cuisiner maison', 'Budget du jour']);
+  });
+
+  it('does not scroll to the end of the list for a renamed habit', async () => {
+    await showTwoHabits();
+    const scrollToEnd = jest.spyOn(ScrollView.prototype, 'scrollToEnd');
+    await fireEvent.press(editButton('Cuisiner'));
+    await fireEvent.changeText(nameField(), 'Cuisiner maison');
+    await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
+    await screen.findByText('Cuisiner maison');
+
+    await fireEvent(screen.getByTestId('day-view-list'), 'contentSizeChange', 390, 900);
+
+    expect(scrollToEnd).not.toHaveBeenCalled();
+    scrollToEnd.mockRestore();
+  });
+
+  it('refuses the name of another habit and keeps the habit as it is', async () => {
+    await showTwoHabits();
+    await fireEvent.press(editButton('Cuisiner'));
+
+    await fireEvent.changeText(nameField(), 'budget du jour');
+    await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    expect(
+      await screen.findByRole('alert', {
+        name: `Tu as déjà une habitude «${nbsp}Budget du jour${nbsp}».`,
+      }),
+    ).toBeOnTheScreen();
+    expect(await names()).toEqual(['Cuisiner', 'Budget du jour']);
+  });
+
+  it('says the name could not be saved, and keeps the habit as it is', async () => {
+    await showTwoHabits();
+    await fireEvent.press(editButton('Cuisiner'));
+    dependencies.unitOfWork.failWrites();
+
+    await fireEvent.changeText(nameField(), 'Cuisiner maison');
+    await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    expect(
+      await screen.findByRole('alert', { name: 'Le nom n’a pas pu être enregistré. Réessaie.' }),
+    ).toBeOnTheScreen();
+    dependencies.unitOfWork.failWrites(false);
+    expect(await names()).toEqual(['Cuisiner', 'Budget du jour']);
+  });
+
+  it('asks to confirm a deletion, announcing the experience removed today', async () => {
+    await showTwoHabits();
+
+    await askDeletion();
+
+    expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
+    expect(
+      screen.getByRole('header', { name: `Supprimer «${nbsp}Cuisiner${nbsp}»${nbsp}?` }),
+    ).toBeOnTheScreen();
+    expect(screen.getByText(/seule celle d’aujourd’hui est retirée \(−10 XP\)\.$/u)).toBeTruthy();
+  });
+
+  it('announces no experience removed when the habit is not done today', async () => {
+    await showTwoHabits({ cookingDoneToday: false });
+
+    await askDeletion();
+
+    expect(
+      screen.getByText(
+        'Son historique sera effacé. L’expérience gagnée les jours passés reste acquise.',
+      ),
+    ).toBeOnTheScreen();
+  });
+
+  it('deletes the habit once confirmed, and shows the experience removed', async () => {
+    await showTwoHabits();
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP'));
+    await askDeletion();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Supprimer' }));
+
+    await waitFor(() => expect(screen.queryByText('Cuisiner')).not.toBeOnTheScreen());
+    expect(screen.queryByTestId('delete-habit-dialog')).not.toBeOnTheScreen();
+    expect(toast()).toHaveTextContent('Habitude supprimée · −10 XP');
+    expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 10 XP');
+    expect(screen.getByTestId('xp-change', { includeHiddenElements: true })).toHaveTextContent(
+      '−10 XP',
+    );
+    expect(screen.getByLabelText('1 habitude sur 10')).toBeOnTheScreen();
+    expect(await names()).toEqual(['Budget du jour']);
+  });
+
+  it('says « Habitude supprimée » alone when no experience is removed', async () => {
+    await showTwoHabits({ cookingDoneToday: false });
+    await askDeletion();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Supprimer' }));
+
+    await waitFor(() => expect(toast()).toHaveTextContent('Habitude supprimée'));
+    expect(toast()).not.toHaveTextContent('XP');
+    expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 10 XP');
+  });
+
+  it('keeps the habit and the experience when the deletion is cancelled', async () => {
+    await showTwoHabits();
+    await askDeletion();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Annuler' }));
+
+    expect(screen.queryByTestId('delete-habit-dialog')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
+    expect(
+      screen.getByRole('switch', { name: 'Cuisiner, mercredi 14 octobre, fait' }),
+    ).toBeChecked();
+    expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP');
+    expect(await names()).toEqual(['Cuisiner', 'Budget du jour']);
+  });
+
+  it('keeps the habit, its check-ins and the experience when the deletion fails', async () => {
+    await showTwoHabits();
+    await askDeletion();
+    dependencies.unitOfWork.failWrites();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Supprimer' }));
+
+    expect(
+      await screen.findByRole('alert', { name: 'La suppression a échoué. Réessaie.' }),
+    ).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Réessayer' })).toBeOnTheScreen();
+    dependencies.unitOfWork.failWrites(false);
+    expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP');
+    expect(await names()).toEqual(['Cuisiner', 'Budget du jour']);
+    expect((await getDayView(dependencies)).habits[0]?.status).toBe('done');
+  });
+
+  it('explains a deletion that could not be prepared, in the sheet', async () => {
+    await showTwoHabits();
+    await fireEvent.press(editButton('Cuisiner'));
+    dependencies.unitOfWork.failReads();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Supprimer l’habitude' }));
+
+    expect(
+      await screen.findByRole('alert', { name: 'La suppression a échoué. Réessaie.' }),
+    ).toBeOnTheScreen();
+    expect(screen.getByTestId('edit-habit-sheet')).toBeOnTheScreen();
+    expect(screen.queryByTestId('delete-habit-dialog')).not.toBeOnTheScreen();
+    dependencies.unitOfWork.failReads(false);
+  });
+
+  it('shows the empty state once the last habit is deleted', async () => {
+    await given('Cuisiner');
+    await show();
+    await screen.findByText('Cuisiner');
+    await askDeletion();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Supprimer' }));
+
+    expect(await screen.findByTestId('day-view-empty')).toBeOnTheScreen();
+    expect(toast()).toHaveTextContent('Habitude supprimée');
+  });
+
+  it('lets the player add a habit again once one of 10 habits is deleted', async () => {
+    await given(...Array.from({ length: 10 }, (_, index) => `Habitude ${index + 1}`));
+    await show();
+    expect(await screen.findByText('Limite atteinte · 10/10')).toBeOnTheScreen();
+    await askDeletion('Habitude 3');
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Supprimer' }));
+
+    await waitFor(() => expect(addButton()).toBeEnabled());
+    expect(screen.queryByText('Limite atteinte · 10/10')).not.toBeOnTheScreen();
+    expect(screen.getByLabelText('9 habitudes sur 10')).toBeOnTheScreen();
+  });
+
+  it('reloads and closes everything when the habit no longer exists', async () => {
+    await showTwoHabits();
+    await fireEvent.press(editButton('Cuisiner'));
+    await deleteHabit(dependencies, 1);
+
+    await fireEvent.changeText(nameField(), 'Cuisiner maison');
+    await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    await waitFor(() => expect(screen.queryByText('Cuisiner')).not.toBeOnTheScreen());
+    expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('toast')).not.toBeOnTheScreen();
   });
 });
