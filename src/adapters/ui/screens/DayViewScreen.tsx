@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { DayView } from '../../../application/useCases/getDayView';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import type { Day } from '../../../domain/day/Day';
 import type { Habit, HabitId } from '../../../domain/habit/Habit';
+import type { Week } from '../../../domain/week/Week';
 import { MAX_HABITS } from '../../../domain/habit/HabitRules';
 import { ADD_HABIT_LABEL, AddHabitButton, HABIT_LIMIT_MESSAGE } from '../components/AddHabitButton';
 import { Button } from '../components/Button';
@@ -14,12 +15,14 @@ import { HabitRow } from '../components/HabitRow';
 import { Notice } from '../components/Notice';
 import { Screen } from '../components/Screen';
 import { StateMessage } from '../components/StateMessage';
+import { YesterdayReminderBanner } from '../components/YesterdayReminderBanner';
 import { Toast, type ToastAction } from '../components/Toast';
 import { capitalize, formatDayAndMonth } from '../format/formatDay';
 import { useCheckInHint } from '../state/useCheckInHint';
 import { useCreateHabit } from '../state/useCreateHabit';
 import { useDayView } from '../state/useDayView';
 import { useTodayChange } from '../state/useTodayChange';
+import { useYesterdayReminder } from '../state/useYesterdayReminder';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
@@ -82,11 +85,13 @@ function HabitList({
   view,
   highlighted,
   showHint,
+  reminder,
   onToggle,
 }: {
   readonly view: DayView;
   readonly highlighted: HabitId | null;
   readonly showHint: boolean;
+  readonly reminder: ReactNode;
   readonly onToggle: (habitDay: HabitDay) => void;
 }) {
   const scroll = useRef<ScrollView>(null);
@@ -107,6 +112,7 @@ function HabitList({
         }}
         testID="day-view-list"
       >
+        {reminder}
         {allDone && <Notice kind="celebration" text={ALL_DONE_MESSAGE} testID="all-done" />}
         {showHint && <Notice kind="hint" text={CHECK_IN_HINT} testID="check-in-hint" />}
         {view.habits.map((habitDay) => (
@@ -143,11 +149,19 @@ function HabitList({
  *
  * `newHabitRequest` ouvre le panneau « Nouvelle habitude » chaque fois qu'il prend une nouvelle
  * valeur (l'état vide de la Vue Semaine mène ici pour créer une habitude).
+ *
+ * En haut de la liste, le rappel d'hier (« Hier : 1/2 faites ») propose de corriger hier :
+ * « Corriger » appelle `onCorrectYesterday` avec la semaine d'hier, à ouvrir dans la Vue Semaine.
  */
 export function DayViewScreen({
   newHabitRequest,
-}: { readonly newHabitRequest?: string | number | undefined } = {}) {
+  onCorrectYesterday,
+}: {
+  readonly newHabitRequest?: string | number | undefined;
+  readonly onCorrectYesterday?: ((week: Week) => void) | undefined;
+} = {}) {
   const { state, reload, refresh, toggle } = useDayView();
+  const { reminder, dismiss: dismissReminder } = useYesterdayReminder();
   const create = useCreateHabit();
   const hint = useCheckInHint();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -261,6 +275,18 @@ export function DayViewScreen({
             view={view}
             highlighted={highlighted}
             showHint={hint.visible}
+            reminder={
+              reminder && (
+                <YesterdayReminderBanner
+                  doneCount={reminder.doneCount}
+                  activeCount={reminder.activeCount}
+                  {...(onCorrectYesterday && {
+                    onCorrect: () => onCorrectYesterday(reminder.week),
+                  })}
+                  onDismiss={() => void dismissReminder()}
+                />
+              )
+            }
             onToggle={(habitDay) => void tap(habitDay)}
           />
           <AddHabitButton
