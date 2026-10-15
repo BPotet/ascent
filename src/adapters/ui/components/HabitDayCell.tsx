@@ -15,6 +15,24 @@ import { bounce } from './HabitRow';
 /** Ce qu'une case de la Vue Semaine lit au lecteur d'écran quand un tap ne la change pas. */
 export const UNAVAILABLE = 'indisponible';
 
+/** Ce qu'une case lit au lecteur d'écran quand elle porte la marque « corrigé » (R13). */
+export const CORRECTED = 'corrigé';
+
+/**
+ * La marque « corrigé » : une pastille claire en coin de case (maquette, « Marque corrigé »).
+ * Décorative : le mot « corrigé » est lu par le lecteur d'écran.
+ */
+export function CorrectedMark({ size = 'cell' }: { readonly size?: 'cell' | 'legend' }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      testID="corrected-mark"
+      style={[styles.correctedMark, size === 'legend' && styles.correctedMarkLegend]}
+    />
+  );
+}
+
 /**
  * La forme de chaque état, jamais la couleur seule (maquette, « Accessibilité ») : coche (fait),
  * contour plein (à faire), croix sur fond plein (pas fait), pointillés (à venir), point seul (hors
@@ -37,28 +55,38 @@ function Mark({ status }: { readonly status: CheckInStatus }) {
 
 /**
  * Case d'une habitude un jour donné dans la Vue Semaine. C'est un interrupteur : le toucher appelle
- * `onToggle` et fait rebondir la case (sauf mouvement réduit), seulement si la case est modifiable.
- * Le lecteur d'écran lit « Cuisiner, mercredi 14 octobre, pas fait », suivi de « indisponible »
- * quand un tap ne la change pas. Un « fait » gardé sur un jour après `today` (horloge reculée, R7)
- * est atténué.
+ * `onToggle` et fait rebondir la case (sauf mouvement réduit), seulement si la case est modifiable
+ * (aujourd'hui, ou un jour clos à corriger). Une case « hors habitude » ne change pas, mais un tap
+ * appelle `onNotStartedPress` pour l'expliquer ; une case « à venir » ne réagit pas.
+ * Le lecteur d'écran lit « Cuisiner, mercredi 14 octobre, pas fait », suivi de « corrigé » si la
+ * case porte la marque « corrigé » (pastille en coin, R13), et de « indisponible » quand un tap ne
+ * la change pas. Un « fait » gardé sur un jour après `today` (horloge reculée, R7) est atténué.
  */
 export function HabitDayCell({
   habitDay,
   today,
   onToggle,
+  onNotStartedPress,
 }: {
   readonly habitDay: HabitDay;
   readonly today: Day;
   readonly onToggle?: (habitDay: HabitDay) => void;
+  readonly onNotStartedPress?: (habitDay: HabitDay) => void;
 }) {
-  const { habit, day, status, editable } = habitDay;
+  const { habit, day, status, editable, corrected } = habitDay;
   const reducedMotion = useReducedMotion();
   const [scale] = useState(() => new Animated.Value(1));
   const label = [habit.name.value, formatDayAndMonth(day), checkInStatusLabels[status]]
+    .concat(corrected ? [CORRECTED] : [])
     .concat(editable ? [] : [UNAVAILABLE])
     .join(', ');
+  const explainsTap = !editable && status === 'notStarted' && onNotStartedPress !== undefined;
 
   const press = () => {
+    if (!editable) {
+      onNotStartedPress?.(habitDay);
+      return;
+    }
     if (!reducedMotion) {
       bounce(scale);
     }
@@ -71,7 +99,8 @@ export function HabitDayCell({
         accessibilityRole="switch"
         accessibilityLabel={label}
         accessibilityState={{ checked: status === 'done', disabled: !editable }}
-        disabled={!editable}
+        // Annoncée « indisponible », une case « hors habitude » reçoit quand même le tap qui l'explique.
+        {...(!explainsTap && { disabled: !editable })}
         onPress={press}
         testID={`cell-${habit.id}-${day.toIsoString()}`}
         style={[
@@ -81,6 +110,7 @@ export function HabitDayCell({
         ]}
       >
         <Mark status={status} />
+        {corrected && <CorrectedMark />}
       </Pressable>
     </Animated.View>
   );
@@ -115,5 +145,25 @@ const styles = StyleSheet.create({
   upcoming: { borderStyle: 'dashed', borderColor: colors.upcoming },
   notStarted: { borderColor: 'transparent' },
   dimmed: { opacity: 0.6 },
+  correctedMark: {
+    position: 'absolute',
+    top: -5.5,
+    right: -5.5,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2.5,
+    borderColor: colors.surface,
+    backgroundColor: colors.correctedMark,
+  },
+  correctedMarkLegend: {
+    top: -4,
+    right: -4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: colors.background,
+  },
 });
 // Stryker restore all
