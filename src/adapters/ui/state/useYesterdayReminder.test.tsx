@@ -31,8 +31,8 @@ beforeEach(async () => {
   clock.setToday(wednesday);
 });
 
-function render(keyValueStore?: KeyValueStore) {
-  const dependencies = { clock, unitOfWork, ...(keyValueStore && { keyValueStore }) };
+function render(keyValueStore: KeyValueStore = memoryKeyValueStore()) {
+  const dependencies = { clock, unitOfWork, keyValueStore };
   const wrapper = ({ children }: { children: ReactNode }) => (
     <DependenciesProvider value={dependencies}>{children}</DependenciesProvider>
   );
@@ -44,7 +44,7 @@ function render(keyValueStore?: KeyValueStore) {
 
 describe('useYesterdayReminder', () => {
   it('gives the reminder of yesterday, with the week to correct it', async () => {
-    const { result } = await render(memoryKeyValueStore());
+    const { result } = await render();
 
     await waitFor(() =>
       expect(result.current.reminder.reminder).toEqual({
@@ -56,7 +56,8 @@ describe('useYesterdayReminder', () => {
     );
   });
 
-  it('gives no reminder without preferences, nor while they are read', async () => {
+  it('gives no reminder while it is read', async () => {
+    jest.spyOn(unitOfWork, 'run').mockReturnValue(new Promise(() => undefined));
     const { result } = await render();
     await act(async () => undefined);
 
@@ -66,7 +67,7 @@ describe('useYesterdayReminder', () => {
   it('gives no reminder when it cannot be read', async () => {
     unitOfWork.failReads();
 
-    const { result } = await render(memoryKeyValueStore());
+    const { result } = await render();
     await act(async () => undefined);
 
     expect(result.current.reminder.reminder).toBeNull();
@@ -95,7 +96,7 @@ describe('useYesterdayReminder', () => {
   });
 
   it('follows the corrections of yesterday saved by a view', async () => {
-    const { result } = await render(memoryKeyValueStore());
+    const { result } = await render();
     await waitFor(() => expect(result.current.reminder.reminder).not.toBeNull());
 
     await toggleCheckIn({ clock, unitOfWork }, cooking, tuesday);
@@ -107,7 +108,7 @@ describe('useYesterdayReminder', () => {
   });
 
   it('gives the reminder of the new yesterday after midnight', async () => {
-    const { result } = await render(memoryKeyValueStore());
+    const { result } = await render();
     await waitFor(() => expect(result.current.reminder.reminder).not.toBeNull());
 
     await act(async () => clock.setToday(Day.of(2026, 10, 15)));
@@ -127,7 +128,7 @@ describe('useYesterdayReminder', () => {
   });
 
   it('hides the reminder when it can no longer be read', async () => {
-    const { result } = await render(memoryKeyValueStore());
+    const { result } = await render();
     await waitFor(() => expect(result.current.reminder.reminder).not.toBeNull());
 
     unitOfWork.failReads();
@@ -147,7 +148,7 @@ describe('useYesterdayReminder', () => {
     jest
       .spyOn(unitOfWork, 'run')
       .mockImplementationOnce((work) => firstAnswer.then(() => run(work)));
-    const { result } = await render(memoryKeyValueStore());
+    const { result } = await render();
 
     await toggleCheckIn({ clock, unitOfWork }, cooking, tuesday);
     await act(async () => {
