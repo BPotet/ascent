@@ -168,6 +168,38 @@ it('aligns the days of the header on the columns of the cells', async () => {
   });
 });
 
+describe('HabitWeekCard and the experience', () => {
+  it('lets the change of experience fly up from the touched case only', async () => {
+    await render(
+      <HabitWeekCard
+        days={days}
+        today={wednesday}
+        xpChange={{ id: 1, amount: 10, key: '3/2026-10-13' }}
+        onToggle={jest.fn()}
+      />,
+    );
+
+    const floats = screen.getAllByTestId('xp-float', hidden);
+    expect(floats).toHaveLength(1);
+    expect(within(screen.getByTestId('cell-3-2026-10-13')).getByTestId('xp-float', hidden)).toBe(
+      floats[0],
+    );
+  });
+
+  it('lets nothing fly up when the touched case is in another card', async () => {
+    await render(
+      <HabitWeekCard
+        days={days}
+        today={wednesday}
+        xpChange={{ id: 1, amount: 10, key: '4/2026-10-13' }}
+        onToggle={jest.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId('xp-float', hidden)).not.toBeOnTheScreen();
+  });
+});
+
 describe('WeekLegend', () => {
   it('names the five shapes and the mark « corrigé », hidden from the screen reader', async () => {
     await render(<WeekLegend />);

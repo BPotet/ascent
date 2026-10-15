@@ -244,4 +244,16 @@ describe('HabitDayCell', () => {
 
     expect(cell()).toHaveStyle({ width: '100%', height: 52 });
   });
+
+  it('lets the change of experience fly up from the case', async () => {
+    await render(
+      <HabitDayCell
+        habitDay={habitDay('missed', true)}
+        today={thursday}
+        xpChange={{ id: 1, amount: -10 }}
+      />,
+    );
+
+    expect(within(cell()).getByTestId('xp-float', hidden)).toHaveTextContent('−10 XP');
+  });
 });

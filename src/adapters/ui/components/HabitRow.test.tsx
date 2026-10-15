@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { AccessibilityInfo, Animated } from 'react-native';
 
 import type { CheckInStatus } from '../../../domain/checkIn/CheckInStatus';
@@ -123,5 +123,32 @@ describe('HabitRow', () => {
     await render(<HabitRow habitDay={habitDay('pending')} />);
 
     expect(screen.getByTestId('habit-row-7')).toHaveStyle({ borderColor: 'transparent' });
+  });
+
+  it('lets the change of experience fly up from its check', async () => {
+    await render(<HabitRow habitDay={habitDay('done')} xpChange={{ id: 1, amount: 10 }} />);
+
+    expect(screen.getByTestId('xp-float', { includeHiddenElements: true })).toHaveTextContent(
+      '+10 XP',
+    );
+  });
+
+  it('lets nothing fly up without a change of experience', async () => {
+    await render(<HabitRow habitDay={habitDay('done')} />);
+
+    expect(screen.queryByTestId('xp-float', { includeHiddenElements: true })).not.toBeOnTheScreen();
+  });
+
+  it('lets nothing fly up when the player asked to reduce motion', async () => {
+    jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockResolvedValueOnce(true);
+    await render(<HabitRow habitDay={habitDay('pending')} />);
+    await waitFor(() => expect(AccessibilityInfo.isReduceMotionEnabled).toHaveBeenCalled());
+    await act(async () => undefined);
+
+    await screen.rerender(
+      <HabitRow habitDay={habitDay('done')} xpChange={{ id: 1, amount: 10 }} />,
+    );
+
+    expect(screen.queryByTestId('xp-float', { includeHiddenElements: true })).not.toBeOnTheScreen();
   });
 });
