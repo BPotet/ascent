@@ -1,9 +1,10 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { WeekView } from '../../../application/useCases/getWeekView';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import type { Day } from '../../../domain/day/Day';
+import type { Habit, HabitId } from '../../../domain/habit/Habit';
 import { isClosedDay } from '../../../domain/day/DayClosing';
 import { Week } from '../../../domain/week/Week';
 import { ADD_HABIT_LABEL } from '../components/AddHabitButton';
@@ -30,6 +31,8 @@ import { useWeekView } from '../state/useWeekView';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
+import { HIGHLIGHT_DURATION_MS } from './DayViewScreen';
+import { type DeletedHabit, deletedMessage, HabitEditing, RENAMED_MESSAGE } from './HabitEditing';
 
 /** Le lien qui ramène à la semaine en cours (maquette, E4 « Semaine dernière »). */
 export const BACK_TO_CURRENT_WEEK = 'Revenir à cette semaine';
@@ -129,6 +132,9 @@ function Navigator({
  * Un tap sur une case « hors habitude » l'explique ; une case « à venir » ne réagit pas.
  * En haut, l'expérience du personnage (R24), avec le feedback d'un tap ou d'une correction
  * enregistrés : « +10 XP » s'envole de la case (`Experience`, `CharacterBar`).
+ * Toucher le nom d'une habitude ouvre « Modifier l'habitude » (`HabitEditing`) : renommée, elle est
+ * mise en évidence ; supprimée, elle disparaît de toutes les semaines, la navigation est recalculée
+ * (R22) et l'expérience retirée est montrée. Un message confirme l'un ou l'autre.
  * `onAddHabit` mène à la création d'une habitude (état vide). `weekRequest` affiche une semaine
  * demandée par une autre vue (« Corriger » du rappel d'hier), à chaque nouvel `id`.
  */
@@ -139,8 +145,19 @@ export function WeekViewScreen({
   readonly onAddHabit?: () => void;
   readonly weekRequest?: WeekRequest | undefined;
 }) {
-  const { state, followsCurrentWeek, previous, next, goToCurrentWeek, showWeek, reload, toggle } =
-    useWeekView();
+  const {
+    state,
+    followsCurrentWeek,
+    previous,
+    next,
+    goToCurrentWeek,
+    showWeek,
+    reload,
+    refresh,
+    toggle,
+  } = useWeekView();
+  const [editing, setEditing] = useState<Habit | null>(null);
+  const [highlighted, setHighlighted] = useState<HabitId | null>(null);
   const experience = useExperience();
   const [seenRequest, setSeenRequest] = useState<WeekRequest['id'] | undefined>(undefined);
   if (weekRequest !== undefined && weekRequest.id !== seenRequest) {
@@ -155,6 +172,31 @@ export function WeekViewScreen({
     setToast({ id: toastCount.current, message, ...(action && { action }) });
   }, []);
   const hideToast = useCallback(() => setToast(null), []);
+
+  useEffect(() => {
+    if (highlighted === null) {
+      return;
+    }
+    const timer = setTimeout(() => setHighlighted(null), HIGHLIGHT_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [highlighted]);
+
+  const closeEditing = () => setEditing(null);
+  const renamed = (habit: Habit) => {
+    setEditing(null);
+    setHighlighted(habit.id);
+    showToast(RENAMED_MESSAGE);
+    void refresh();
+  };
+  const deleted = ({ xpRemoved }: DeletedHabit) => {
+    setEditing(null);
+    showToast(deletedMessage(xpRemoved));
+    void refresh();
+  };
+  const gone = () => {
+    setEditing(null);
+    void refresh();
+  };
 
   /** Un tap sur `habitDay`, la vue étant affichée pour `today`. */
   const tap = useCallback(
@@ -255,6 +297,8 @@ export function WeekViewScreen({
                 xpChange={experience.change}
                 onToggle={(habitDay) => void tap(habitDay, view.today)}
                 onNotStartedPress={(habitDay) => showToast(notStartedMessage(habitDay))}
+                onEdit={setEditing}
+                highlighted={row.habit.id === highlighted}
               />
             ))}
             <WeekLegend />
@@ -268,6 +312,16 @@ export function WeekViewScreen({
           message={toast.message}
           {...(toast.action && { action: toast.action })}
           onHide={hideToast}
+        />
+      )}
+      {editing !== null && (
+        <HabitEditing
+          habit={editing}
+          habits={view.rows.map(({ habit }) => habit)}
+          onRenamed={renamed}
+          onDeleted={deleted}
+          onGone={gone}
+          onClose={closeEditing}
         />
       )}
     </Screen>
