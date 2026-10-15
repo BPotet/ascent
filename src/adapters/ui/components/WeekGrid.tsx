@@ -10,7 +10,7 @@ import { colors } from '../theme/colors';
 import { spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
 import { CheckGlyph, CrossGlyph, DotGlyph } from './Glyph';
-import { HabitDayCell } from './HabitDayCell';
+import { CORRECTED, CorrectedMark, HabitDayCell } from './HabitDayCell';
 
 /** Cache un élément décoratif au lecteur d'écran (Android et iOS). */
 const decorative = {
@@ -55,15 +55,20 @@ export function WeekDaysHeader({
   );
 }
 
-/** La carte d'une habitude dans la Vue Semaine : son nom et ses 7 cases, du lundi au dimanche. */
+/**
+ * La carte d'une habitude dans la Vue Semaine : son nom et ses 7 cases, du lundi au dimanche.
+ * `onNotStartedPress` reçoit le tap sur une case « hors habitude », pour l'expliquer.
+ */
 export function HabitWeekCard({
   days,
   today,
   onToggle,
+  onNotStartedPress,
 }: {
   readonly days: readonly HabitDay[];
   readonly today: Day;
   readonly onToggle: (habitDay: HabitDay) => void;
+  readonly onNotStartedPress?: (habitDay: HabitDay) => void;
 }) {
   const habit = days[0]?.habit;
   if (habit === undefined) {
@@ -79,6 +84,7 @@ export function HabitWeekCard({
             habitDay={habitDay}
             today={today}
             onToggle={onToggle}
+            {...(onNotStartedPress && { onNotStartedPress })}
           />
         ))}
       </View>
@@ -100,7 +106,10 @@ function LegendMark({ status }: { readonly status: CheckInStatus }) {
   );
 }
 
-/** La légende des cinq formes, sous les cartes. Décorative : chaque case dit son état. */
+/**
+ * La légende des cinq formes et de la marque « corrigé », sous les cartes. Décorative : chaque case
+ * dit son état au lecteur d'écran.
+ */
 export function WeekLegend() {
   return (
     <View {...decorative} style={styles.legend}>
@@ -112,6 +121,13 @@ export function WeekLegend() {
           </Text>
         </View>
       ))}
+      <View style={styles.legendItem}>
+        <View>
+          <LegendMark status="missed" />
+          <CorrectedMark size="legend" />
+        </View>
+        <Text style={[typography.small, styles.legendText]}>{capitalize(CORRECTED)}</Text>
+      </View>
     </View>
   );
 }
