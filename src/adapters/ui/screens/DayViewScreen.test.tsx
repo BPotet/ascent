@@ -10,6 +10,7 @@ import { createHabit } from '../../../application/useCases/createHabit';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
 import { getDayView } from '../../../application/useCases/getDayView';
 import { Day } from '../../../domain/day/Day';
+import { Week } from '../../../domain/week/Week';
 import { TOAST_DURATION_MS } from '../components/Toast';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { renderScreen } from '../testing/renderScreen';
@@ -485,6 +486,50 @@ describe('DayViewScreen', () => {
       expect(dependencies.keyValueStore.values.size).toBe(0);
       changes.mockRestore();
       expect(await storedStatuses()).toEqual(['Cuisiner: pending']);
+    });
+  });
+
+  describe('yesterday reminder', () => {
+    const tuesday = Day.of(2026, 10, 13);
+
+    async function givenHabitsSinceTuesday() {
+      dependencies.clock.setToday(tuesday);
+      await given('Cuisiner', 'Lire');
+      const [cooking] = (await getDayView(dependencies)).habits;
+      await toggleCheckIn(dependencies, cooking?.habit.id ?? 0, tuesday);
+      dependencies.clock.setToday(wednesday);
+    }
+
+    it('reminds the habits done yesterday at the top, and leads to their week', async () => {
+      await givenHabitsSinceTuesday();
+      const onCorrectYesterday = jest.fn();
+      await renderScreen(<DayViewScreen onCorrectYesterday={onCorrectYesterday} />, dependencies);
+
+      expect(
+        await screen.findByLabelText('Hier : 1 habitude faite sur 2. Un oubli ?'),
+      ).toBeOnTheScreen();
+      await fireEvent.press(screen.getByRole('button', { name: 'Corriger' }));
+
+      expect(onCorrectYesterday).toHaveBeenCalledWith(Week.containing(tuesday));
+    });
+
+    it('closes the reminder for the day', async () => {
+      await givenHabitsSinceTuesday();
+      await show();
+      await screen.findByTestId('yesterday-reminder');
+
+      await fireEvent.press(screen.getByRole('button', { name: 'Fermer le rappel d’hier' }));
+
+      expect(screen.queryByTestId('yesterday-reminder')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Corriger' })).toBeNull();
+    });
+
+    it('shows no reminder when every habit was done yesterday', async () => {
+      await given('Cuisiner');
+      await show();
+      await screen.findByText('Cuisiner');
+
+      expect(screen.queryByTestId('yesterday-reminder')).toBeNull();
     });
   });
 });
