@@ -3,7 +3,7 @@
  * une vraie base SQLite (node:sqlite à la place d'expo-sqlite) et l'horloge du téléphone fixée par
  * de faux timers au lundi 19 octobre 2026 : hier, dimanche 18, est dans la semaine précédente.
  */
-import { cleanup, fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
+import { act, cleanup, fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
 import path from 'node:path';
 
 import { FixedClock } from '../../src/adapters/device/clock/FixedClock';
@@ -121,6 +121,27 @@ describe('app reminder of yesterday', () => {
     expect(await screen.findByTestId('day-view')).toBeOnTheScreen();
     expect(screen.getByLabelText('Cuisiner, lundi 19 octobre, à faire')).toBeOnTheScreen();
     expect(screen.queryByTestId('yesterday-reminder')).not.toBeOnTheScreen();
+  });
+
+  it('reminds the new yesterday at midnight, even after the reminder of the day before was closed', async () => {
+    jest.setSystemTime(new Date(2026, 9, 19, 23, 59));
+    await renderRouter(appDirectory);
+    const reminder = await screen.findByTestId('yesterday-reminder');
+    await fireEvent.press(
+      within(reminder).getByRole('button', { name: 'Fermer le rappel d’hier' }),
+    );
+    await fireEvent.press(await screen.findByLabelText('Cuisiner, lundi 19 octobre, à faire'));
+    expect(await screen.findByLabelText('Cuisiner, lundi 19 octobre, fait')).toBeOnTheScreen();
+    expect(screen.queryByTestId('yesterday-reminder')).not.toBeOnTheScreen();
+
+    await act(async () => {
+      jest.advanceTimersByTime(2 * 60 * 1000);
+    });
+
+    expect(await screen.findByLabelText('Cuisiner, mardi 20 octobre, à faire')).toBeOnTheScreen();
+    expect(
+      await within(screen.getByTestId('yesterday-reminder')).findByText('1/2 faites'),
+    ).toBeOnTheScreen();
   });
 
   it('opens the week view on the week of the day it is given', async () => {
