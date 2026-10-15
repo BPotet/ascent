@@ -32,6 +32,12 @@ import { typography } from '../theme/typography';
 /** Le lien qui ramène à la semaine en cours (maquette, E4 « Semaine dernière »). */
 export const BACK_TO_CURRENT_WEEK = 'Revenir à cette semaine';
 
+/** Une semaine demandée par une autre vue ; chaque nouvel `id` l'affiche de nouveau. */
+export interface WeekRequest {
+  readonly week: Week;
+  readonly id: string | number;
+}
+
 /** L'astuce sous la légende : tout jour passé se corrige (maquette, E4 et E5). */
 export const CORRECTION_HINT = 'Tape une case d’un jour passé pour corriger un oubli.';
 
@@ -118,11 +124,23 @@ function Navigator({
  * (état et marque « corrigé ») si l'enregistrement échoue, et un message propose « Réessayer ».
  * Une correction est confirmée par un message, et la case porte ou perd la marque « corrigé » (R13).
  * Un tap sur une case « hors habitude » l'explique ; une case « à venir » ne réagit pas.
- * `onAddHabit` mène à la création d'une habitude (état vide).
+ * `onAddHabit` mène à la création d'une habitude (état vide). `weekRequest` affiche une semaine
+ * demandée par une autre vue (« Corriger » du rappel d'hier), à chaque nouvel `id`.
  */
-export function WeekViewScreen({ onAddHabit }: { readonly onAddHabit?: () => void }) {
-  const { state, followsCurrentWeek, previous, next, goToCurrentWeek, reload, toggle } =
+export function WeekViewScreen({
+  onAddHabit,
+  weekRequest,
+}: {
+  readonly onAddHabit?: () => void;
+  readonly weekRequest?: WeekRequest | undefined;
+}) {
+  const { state, followsCurrentWeek, previous, next, goToCurrentWeek, showWeek, reload, toggle } =
     useWeekView();
+  const [seenRequest, setSeenRequest] = useState<WeekRequest['id'] | undefined>(undefined);
+  if (weekRequest !== undefined && weekRequest.id !== seenRequest) {
+    setSeenRequest(weekRequest.id);
+    showWeek(weekRequest.week);
+  }
   const [toast, setToast] = useState<ToastContent | null>(null);
   const toastCount = useRef(0);
 

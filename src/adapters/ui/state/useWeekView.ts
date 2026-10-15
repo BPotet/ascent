@@ -38,6 +38,7 @@ const mapCells = (view: WeekView, change: (habitDay: HabitDay) => HabitDay): Wee
  * - `previous` et `next` changent de semaine, seulement si la semaine affichée le permet (R22) ;
  *   la nouvelle semaine remplace l'ancienne une fois lue ;
  * - `goToCurrentWeek` revient à la semaine en cours, même après une erreur ;
+ * - `showWeek` affiche une semaine demandée par une autre vue (la semaine en cours si c'est elle) ;
  * - `reload` relit la semaine demandée en repassant par le chargement (« Réessayer ») ;
  * - `toggle` enregistre un tap sur une case, comme dans la Vue Journée, et prévient les autres vues ;
  *   sur un jour clos (correction), une case « fait » touchée s'affiche « pas fait » tout de suite.
@@ -49,6 +50,7 @@ export function useWeekView(): {
   readonly previous: () => void;
   readonly next: () => void;
   readonly goToCurrentWeek: () => void;
+  readonly showWeek: (week: Week) => void;
   readonly reload: () => Promise<void>;
   readonly toggle: (habitDay: HabitDay) => Promise<ToggleOutcome>;
 } {
@@ -134,6 +136,12 @@ export function useWeekView(): {
 
   const goToCurrentWeek = useCallback(() => setChosen(null), []);
 
+  const showWeek = useCallback(
+    (week: Week) =>
+      setChosen(week.equals(Week.containing(dependencies.clock.today())) ? null : week),
+    [dependencies],
+  );
+
   const state = useMemo<WeekViewState>(
     () =>
       loaded.status === 'ready'
@@ -148,6 +156,7 @@ export function useWeekView(): {
     previous,
     next,
     goToCurrentWeek,
+    showWeek,
     reload,
     toggle,
   };

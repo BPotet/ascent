@@ -8,6 +8,7 @@ import { getDayView } from '../../../application/useCases/getDayView';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
 import { Day } from '../../../domain/day/Day';
 import type { HabitId } from '../../../domain/habit/Habit';
+import { Week } from '../../../domain/week/Week';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { renderScreen } from '../testing/renderScreen';
 import { useTrackingChanges } from '../state/TrackingRevision';
@@ -63,13 +64,14 @@ async function givenTheBackground() {
 }
 
 async function show(onAddHabit?: () => void) {
-  await renderScreen(
+  const rendered = await renderScreen(
     onAddHabit ? <WeekViewScreen onAddHabit={onAddHabit} /> : <WeekViewScreen />,
     dependencies,
   );
   await waitFor(() =>
     expect(screen.queryByLabelText('Chargement de tes habitudes')).not.toBeOnTheScreen(),
   );
+  return rendered;
 }
 
 const cell = (habit: HabitId, day: Day) => screen.getByTestId(`cell-${habit}-${day.toIsoString()}`);
@@ -429,6 +431,45 @@ describe('WeekViewScreen', () => {
     await fireEvent.press(nextButton());
     await waitFor(() => expect(shownWeek()).toMatch(/^Cette semaine/u));
     expect(nextButton()).toBeDisabled();
+  });
+
+  describe('week requested by another view (« Corriger » of the yesterday reminder)', () => {
+    const lastWeek = Week.containing(october(7));
+
+    it('shows the week requested, and again at each new request', async () => {
+      await givenTheBackground();
+      const { rerender } = await renderScreen(
+        <WeekViewScreen weekRequest={{ week: lastWeek, id: 1 }} />,
+        dependencies,
+      );
+      await waitFor(() => expect(shownWeek()).toMatch(/^Semaine dernière/u));
+
+      await fireEvent.press(screen.getByRole('button', { name: 'Revenir à cette semaine' }));
+      await waitFor(() => expect(shownWeek()).toMatch(/^Cette semaine/u));
+      await rerender(<WeekViewScreen weekRequest={{ week: lastWeek, id: 1 }} />);
+      expect(shownWeek()).toMatch(/^Cette semaine/u);
+
+      await rerender(<WeekViewScreen weekRequest={{ week: lastWeek, id: 2 }} />);
+      await waitFor(() => expect(shownWeek()).toMatch(/^Semaine dernière/u));
+    });
+
+    it('follows the change of week when the week requested is the current week', async () => {
+      await givenTheBackground();
+      dependencies.clock.setToday(october(18));
+      const { rerender } = await show();
+      await fireEvent.press(previousButton());
+      await waitFor(() => expect(shownWeek()).toMatch(/^Semaine dernière/u));
+
+      await rerender(
+        <WeekViewScreen weekRequest={{ week: Week.containing(october(18)), id: 1 }} />,
+      );
+      await waitFor(() => expect(shownWeek()).toMatch(/^Cette semaine/u));
+      await act(async () => dependencies.clock.setToday(october(19)));
+
+      await waitFor(() =>
+        expect(shownWeek()).toBe('Cette semaine, du lundi 19 octobre au dimanche 25 octobre'),
+      );
+    });
   });
 
   it('keeps the actions disabled at the bounds of the history', async () => {
