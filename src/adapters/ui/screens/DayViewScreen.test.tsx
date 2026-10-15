@@ -348,6 +348,27 @@ describe('DayViewScreen', () => {
       expect(await storedStatuses()).toEqual(['Cuisiner: pending', 'Budget du jour: pending']);
     });
 
+    it('shows « à faire » at once when a habit « fait » is touched, before it is saved', async () => {
+      await given('Cuisiner');
+      await toggleCheckIn(dependencies, 1, wednesday);
+      await show();
+      await screen.findByText('Cuisiner');
+      let open: () => void = () => undefined;
+      const gate = new Promise<void>((resolve) => {
+        open = resolve;
+      });
+      const run = dependencies.unitOfWork.run.bind(dependencies.unitOfWork);
+      jest
+        .spyOn(dependencies.unitOfWork, 'run')
+        .mockImplementation((work) => gate.then(() => run(work)));
+
+      await fireEvent.press(cooking('fait'));
+
+      expect(cooking('à faire')).not.toBeChecked();
+      await act(async () => open());
+      expect(await storedStatuses()).toEqual(['Cuisiner: pending']);
+    });
+
     it('shows the habits already done today', async () => {
       await given('Cuisiner');
       await toggleCheckIn(dependencies, 1, wednesday);

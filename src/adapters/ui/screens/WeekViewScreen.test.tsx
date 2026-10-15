@@ -186,6 +186,28 @@ describe('WeekViewScreen', () => {
     expect(screen.queryByTestId('toast')).toBeNull();
   });
 
+  it('shows « à faire », not « pas fait », at once when today « fait » is touched', async () => {
+    await givenTheBackground();
+    await doneOn(cooking, wednesday);
+    await show();
+    let open: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    const run = dependencies.unitOfWork.run.bind(dependencies.unitOfWork);
+    jest
+      .spyOn(dependencies.unitOfWork, 'run')
+      .mockImplementation((work) => gate.then(() => run(work)));
+
+    await fireEvent.press(cell(cooking, wednesday));
+
+    expect(labelOf(cooking, wednesday)).toBe('Cuisiner, mercredi 14 octobre, à faire');
+    await act(async () => open());
+    await waitFor(() =>
+      expect(labelOf(cooking, wednesday)).toBe('Cuisiner, mercredi 14 octobre, à faire'),
+    );
+  });
+
   it('says nothing and shows the stored state when the tap is refused', async () => {
     await givenTheBackground();
     await show();

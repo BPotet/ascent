@@ -7,6 +7,7 @@ describe('YesterdayReminderBanner', () => {
     await render(<YesterdayReminderBanner doneCount={1} activeCount={2} onDismiss={jest.fn()} />);
 
     expect(screen.getByText('1/2 faites')).toBeOnTheScreen();
+    expect(screen.getByText('Hier : 1/2 faites. Un oubli ?')).toBeOnTheScreen();
     expect(screen.getByLabelText('Hier : 1 habitude faite sur 2. Un oubli ?')).toBeOnTheScreen();
   });
 

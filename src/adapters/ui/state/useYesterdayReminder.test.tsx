@@ -147,7 +147,11 @@ describe('useYesterdayReminder', () => {
     const run = unitOfWork.run.bind(unitOfWork);
     jest
       .spyOn(unitOfWork, 'run')
-      .mockImplementationOnce((work) => firstAnswer.then(() => run(work)));
+      // La première lecture est faite tout de suite (0/2), mais sa réponse arrive en dernier.
+      .mockImplementationOnce((work) => {
+        const reading = run(work);
+        return firstAnswer.then(() => reading);
+      });
     const { result } = await render();
 
     await toggleCheckIn({ clock, unitOfWork }, cooking, tuesday);
