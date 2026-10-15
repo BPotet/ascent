@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Animated, Easing, StyleSheet } from 'react-native';
 
 import { formatXpChange } from '../format/formatXp';
-import { useReducedMotion } from '../state/useReducedMotion';
 import { colors } from '../theme/colors';
 import { fonts, typography } from '../theme/typography';
 import type { ShownXpChange } from './CharacterBar';
@@ -49,11 +48,16 @@ function Flight({ amount }: { readonly amount: number }) {
 /**
  * L'envol du feedback d'expérience au-dessus de la case touchée : « +10 XP » en or, « −10 XP » en
  * gris discret, qui monte et s'efface en `XP_FLOAT_DURATION_MS`. Rejoué à chaque nouveau
- * changement (`change.id`). Rien quand le mouvement est réduit : l'en-tête montre la nouvelle
- * expérience et le lecteur d'écran l'annonce.
+ * changement (`change.id`). Rien quand le mouvement est réduit (`reducedMotion`, lu par la case,
+ * toujours affichée) : l'en-tête montre la nouvelle expérience et le lecteur d'écran l'annonce.
  */
-export function XpFloat({ change }: { readonly change: ShownXpChange | undefined }) {
-  const reducedMotion = useReducedMotion();
+export function XpFloat({
+  change,
+  reducedMotion,
+}: {
+  readonly change: ShownXpChange | undefined;
+  readonly reducedMotion: boolean;
+}) {
   if (change === undefined || reducedMotion) {
     return null;
   }

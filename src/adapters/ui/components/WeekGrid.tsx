@@ -6,6 +6,7 @@ import type { Day } from '../../../domain/day/Day';
 import { checkInStatusLabels } from '../format/checkInStatus';
 import { capitalize } from '../format/formatDay';
 import { WEEKDAY_INITIALS } from '../format/formatWeek';
+import { type XpChange, xpChangeOn } from '../state/Experience';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
@@ -58,15 +59,18 @@ export function WeekDaysHeader({
 /**
  * La carte d'une habitude dans la Vue Semaine : son nom et ses 7 cases, du lundi au dimanche.
  * `onNotStartedPress` reçoit le tap sur une case « hors habitude », pour l'expliquer.
+ * `xpChange`, le dernier changement d'expérience, s'envole de la case touchée si elle est ici.
  */
 export function HabitWeekCard({
   days,
   today,
+  xpChange = null,
   onToggle,
   onNotStartedPress,
 }: {
   readonly days: readonly HabitDay[];
   readonly today: Day;
+  readonly xpChange?: XpChange | null;
   readonly onToggle: (habitDay: HabitDay) => void;
   readonly onNotStartedPress?: (habitDay: HabitDay) => void;
 }) {
@@ -83,6 +87,7 @@ export function HabitWeekCard({
             key={habitDay.day.toIsoString()}
             habitDay={habitDay}
             today={today}
+            xpChange={xpChangeOn(xpChange, habitDay)}
             onToggle={onToggle}
             {...(onNotStartedPress && { onNotStartedPress })}
           />

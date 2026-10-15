@@ -9,8 +9,10 @@ import { formatDayAndMonth } from '../format/formatDay';
 import { useReducedMotion } from '../state/useReducedMotion';
 import { colors } from '../theme/colors';
 import { MIN_TOUCH_SIZE } from '../theme/metrics';
+import type { ShownXpChange } from './CharacterBar';
 import { CheckGlyph, CrossGlyph, DotGlyph } from './Glyph';
 import { bounce } from './HabitRow';
+import { XpFloat } from './XpFloat';
 
 /** Ce qu'une case de la Vue Semaine lit au lecteur d'écran quand un tap ne la change pas. */
 export const UNAVAILABLE = 'indisponible';
@@ -61,15 +63,18 @@ function Mark({ status }: { readonly status: CheckInStatus }) {
  * Le lecteur d'écran lit « Cuisiner, mercredi 14 octobre, pas fait », suivi de « corrigé » si la
  * case porte la marque « corrigé » (pastille en coin, R13), et de « indisponible » quand un tap ne
  * la change pas. Un « fait » gardé sur un jour après `today` (horloge reculée, R7) est atténué.
+ * `xpChange` fait s'envoler « +10 XP » (ou « −10 XP ») de la case, après un tap enregistré.
  */
 export function HabitDayCell({
   habitDay,
   today,
+  xpChange,
   onToggle,
   onNotStartedPress,
 }: {
   readonly habitDay: HabitDay;
   readonly today: Day;
+  readonly xpChange?: ShownXpChange | undefined;
   readonly onToggle?: (habitDay: HabitDay) => void;
   readonly onNotStartedPress?: (habitDay: HabitDay) => void;
 }) {
@@ -111,6 +116,7 @@ export function HabitDayCell({
       >
         <Mark status={status} />
         {corrected && <CorrectedMark />}
+        <XpFloat change={xpChange} reducedMotion={reducedMotion} />
       </Pressable>
     </Animated.View>
   );

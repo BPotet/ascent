@@ -10,7 +10,12 @@ import type { Habit } from '../../../domain/habit/Habit';
 import { Day } from '../../../domain/day/Day';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { type Dependencies, DependenciesProvider } from './Dependencies';
-import { type ToggledCheckIn, useExperience, XP_CHANGE_DURATION_MS } from './Experience';
+import {
+  type ToggledCheckIn,
+  useExperience,
+  XP_CHANGE_DURATION_MS,
+  xpChangeOn,
+} from './Experience';
 import { useTrackingChanges } from './TrackingRevision';
 
 const tuesday = Day.of(2026, 10, 13);
@@ -243,5 +248,23 @@ describe('ExperienceProvider', () => {
     await expect(renderHook(() => useExperience())).rejects.toThrow(
       'useExperience must be used inside an ExperienceProvider',
     );
+  });
+});
+
+describe('xpChangeOn', () => {
+  const change = { id: 3, amount: 10, key: '1/2026-10-14' };
+  const habit = { id: 1 } as Habit;
+
+  it('gives the change to the touched case', () => {
+    expect(xpChangeOn(change, { habit, day: wednesday })).toBe(change);
+  });
+
+  it('gives nothing to another day or another habit', () => {
+    expect(xpChangeOn(change, { habit, day: tuesday })).toBeUndefined();
+    expect(xpChangeOn(change, { habit: { id: 2 } as Habit, day: wednesday })).toBeUndefined();
+  });
+
+  it('gives nothing without a change', () => {
+    expect(xpChangeOn(null, { habit, day: wednesday })).toBeUndefined();
   });
 });

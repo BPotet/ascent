@@ -14,7 +14,9 @@ import type { Haptics } from '../../../application/ports/Haptics';
 import { getCharacter } from '../../../application/useCases/getCharacter';
 import type { ToggleCheckInResult } from '../../../application/useCases/toggleCheckIn';
 import type { UnitOfWork } from '../../../application/ports/UnitOfWork';
+import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import { xpAnnouncement } from '../format/formatXp';
+import { keyOf } from './habitDayKey';
 import { useTrackingChanges } from './TrackingRevision';
 
 /** Un tap enregistré, tel que `toggleCheckIn` le renvoie. */
@@ -71,7 +73,16 @@ function readXp(
   );
 }
 
-const keyOf = ({ habitDay: { habit, day } }: ToggledCheckIn) => `${habit.id}/${day.toIsoString()}`;
+/**
+ * Le changement d'expérience à montrer sur la case `habitDay`, si c'est elle qui vient d'être
+ * touchée : d'elle s'envole « +10 XP ».
+ */
+export function xpChangeOn(
+  change: XpChange | null,
+  habitDay: Pick<HabitDay, 'habit' | 'day'>,
+): XpChange | undefined {
+  return change !== null && change.key === keyOf(habitDay) ? change : undefined;
+}
 
 /**
  * L'expérience du personnage, partagée par les en-têtes de toutes les vues (R24). Fournie par
@@ -121,7 +132,11 @@ export function ExperienceProvider({
         return;
       }
       changeCount.current += 1;
-      setChange({ id: changeCount.current, amount: toggled.xpChange, key: keyOf(toggled) });
+      setChange({
+        id: changeCount.current,
+        amount: toggled.xpChange,
+        key: keyOf(toggled.habitDay),
+      });
       if (toggled.xpChange > 0) {
         haptics?.success();
       }
