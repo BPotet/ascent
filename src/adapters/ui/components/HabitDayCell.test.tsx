@@ -13,12 +13,17 @@ const wednesday = Day.of(2026, 10, 14);
 const thursday = Day.of(2026, 10, 15);
 const cooking = new Habit(7, HabitName.parse('Cuisiner'), Day.of(2026, 10, 5));
 
-const habitDay = (status: CheckInStatus, editable: boolean, day = wednesday): HabitDay => ({
+const habitDay = (
+  status: CheckInStatus,
+  editable: boolean,
+  day = wednesday,
+  corrected = false,
+): HabitDay => ({
   habit: cooking,
   day,
   status,
   editable,
-  corrected: false,
+  corrected,
 });
 
 const hidden = { includeHiddenElements: true } as const;
@@ -147,6 +152,68 @@ describe('HabitDayCell', () => {
     await fireEvent.press(screen.getByRole('switch'));
 
     expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['done', 'Cuisiner, mercredi 14 octobre, fait, corrigé'],
+    ['missed', 'Cuisiner, mercredi 14 octobre, pas fait, corrigé'],
+  ] as const)('reads a corrected « %s » cell as « %s » (R13)', async (status, label) => {
+    await render(
+      <HabitDayCell habitDay={habitDay(status, true, wednesday, true)} today={thursday} />,
+    );
+
+    expect(screen.getByRole('switch', { name: label })).toBeOnTheScreen();
+  });
+
+  it('shows the mark « corrigé » as a light dot in the corner of the cell, not only a color', async () => {
+    const { rerender } = await render(
+      <HabitDayCell habitDay={habitDay('missed', true, wednesday, true)} today={thursday} />,
+    );
+
+    const mark = within(cell()).getByTestId('corrected-mark', hidden);
+    expect(mark).toHaveStyle({ position: 'absolute', backgroundColor: '#C9D5FF' });
+    expect(marks()).toEqual(['cross-mark']);
+
+    await rerender(
+      <HabitDayCell habitDay={habitDay('missed', true, wednesday)} today={thursday} />,
+    );
+    expect(within(cell()).queryByTestId('corrected-mark', hidden)).toBeNull();
+  });
+
+  it('tells about a tap on a « hors habitude » cell, without changing nor bouncing it', async () => {
+    const timing = jest.spyOn(Animated, 'timing');
+    const onToggle = jest.fn();
+    const onNotStartedPress = jest.fn();
+    await render(
+      <HabitDayCell
+        habitDay={habitDay('notStarted', false)}
+        today={wednesday}
+        onToggle={onToggle}
+        onNotStartedPress={onNotStartedPress}
+      />,
+    );
+
+    expect(cell()).toBeDisabled();
+    await fireEvent.press(cell());
+
+    expect(onNotStartedPress).toHaveBeenCalledWith(habitDay('notStarted', false));
+    expect(onToggle).not.toHaveBeenCalled();
+    expect(timing).not.toHaveBeenCalled();
+  });
+
+  it('says nothing about a tap on a « à venir » cell', async () => {
+    const onNotStartedPress = jest.fn();
+    await render(
+      <HabitDayCell
+        habitDay={habitDay('upcoming', false, thursday)}
+        today={wednesday}
+        onNotStartedPress={onNotStartedPress}
+      />,
+    );
+
+    await fireEvent.press(screen.getByRole('switch'));
+
+    expect(onNotStartedPress).not.toHaveBeenCalled();
   });
 
   const layOut = (width: number) =>
