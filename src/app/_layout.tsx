@@ -11,6 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { SystemClock } from '../adapters/device/clock/SystemClock';
 import { loadFonts } from '../adapters/device/fonts/loadFonts';
+import { ExpoHaptics } from '../adapters/device/haptics/ExpoHaptics';
 import { appStateVisibility } from '../adapters/device/lifecycle/appStateVisibility';
 import { openAscentDatabase } from '../adapters/persistence/sqlite/openAscentDatabase';
 import { SqliteKeyValueStore } from '../adapters/persistence/sqlite/SqliteKeyValueStore';
@@ -48,6 +49,8 @@ async function start(): Promise<Dependencies> {
     clock: new SystemClock(undefined, appStateVisibility()),
     unitOfWork: new SqliteUnitOfWork(db),
     keyValueStore: new SqliteKeyValueStore(db),
+    // La vibration légère d'un gain d'expérience ; silencieuse sur un téléphone sans vibreur.
+    haptics: new ExpoHaptics(),
   };
 }
 
