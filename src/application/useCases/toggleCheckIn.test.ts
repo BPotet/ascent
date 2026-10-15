@@ -142,6 +142,9 @@ describe('toggleCheckIn', () => {
         corrected: false,
       },
       isCorrection: false,
+      // La correction de jeudi avait donné +10 Xp ; ce vrai retour en arrière les reprend (R14).
+      xpChange: -10,
+      xp: 0,
     });
     await expect(stored(cooking, wednesday)).resolves.toBeNull();
   });
