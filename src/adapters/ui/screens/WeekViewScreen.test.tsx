@@ -94,6 +94,18 @@ describe('WeekViewScreen', () => {
     await renderScreen(<WeekViewScreen />, dependencies);
 
     expect(screen.getByLabelText('Chargement de tes habitudes')).toBeBusy();
+    const [slot] = screen.getAllByTestId('skeleton-cell', { includeHiddenElements: true });
+    if (slot === undefined) {
+      throw new Error('No skeleton cell');
+    }
+    await fireEvent(slot, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 35, height: 0 } },
+    });
+    expect(slot.children[0]).toHaveStyle({ width: '100%', height: 44 });
+    await fireEvent(slot, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 50, height: 0 } },
+    });
+    expect(slot.children[0]).toHaveStyle({ width: '100%', height: 50 });
     await act(async () => read());
     expect(await screen.findByText('Ta semaine est vide')).toBeOnTheScreen();
   });

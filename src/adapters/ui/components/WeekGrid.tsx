@@ -30,7 +30,7 @@ export function WeekDaysHeader({
   readonly today: Day;
 }) {
   return (
-    <View {...decorative} style={styles.daysHeader}>
+    <View {...decorative} testID="week-days-header" style={styles.daysHeader}>
       {days.map((day, index) => {
         const isToday = day.equals(today);
         return (
@@ -72,7 +72,7 @@ export function HabitWeekCard({
   return (
     <View testID={`week-card-${habit.id}`} style={styles.card}>
       <Text style={[typography.cardTitle, styles.name]}>{habit.name.value}</Text>
-      <View style={styles.cells}>
+      <View testID="week-cells" style={styles.cells}>
         {days.map((habitDay) => (
           <HabitDayCell
             key={habitDay.day.toIsoString()}
@@ -124,13 +124,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     marginBottom: spacing.xs,
     marginHorizontal: spacing.lg,
-    paddingHorizontal: 10,
+    paddingHorizontal: 9,
   },
-  weekday: { flex: 1, alignItems: 'center', gap: 2 },
+  weekday: { flex: 1, minWidth: 0, alignItems: 'center', gap: 2 },
   initial: { color: colors.muted, fontFamily: typography.cardTitle.fontFamily },
   initialToday: { color: colors.accent },
   number: {
-    minWidth: 30,
+    width: '100%',
+    maxWidth: 30,
     height: 24,
     borderRadius: spacing.sm,
     alignItems: 'center',

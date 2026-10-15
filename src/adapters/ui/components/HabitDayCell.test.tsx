@@ -149,9 +149,32 @@ describe('HabitDayCell', () => {
     expect(onToggle).not.toHaveBeenCalled();
   });
 
-  it('is at least 44 pt high', async () => {
+  const layOut = (width: number) =>
+    fireEvent(screen.getByTestId('cell-slot-7-2026-10-14'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width, height: 44 } },
+    });
+
+  it('is 44 pt high and as wide as its column before the layout is known', async () => {
     await render(<HabitDayCell habitDay={habitDay('pending', true)} today={wednesday} />);
 
-    expect(cell()).toHaveStyle({ minHeight: 44, aspectRatio: 1 });
+    expect(cell()).toHaveStyle({ width: '100%', height: 44 });
+    expect(cell()).not.toHaveStyle({ aspectRatio: 1 });
+  });
+
+  it('never gets wider than its column on a narrow screen, and stays 44 pt high', async () => {
+    await render(<HabitDayCell habitDay={habitDay('pending', true)} today={wednesday} />);
+
+    await layOut(35.6);
+
+    expect(cell()).toHaveStyle({ width: '100%', height: 44 });
+    expect(screen.getByTestId('cell-slot-7-2026-10-14')).toHaveStyle({ flex: 1, minWidth: 0 });
+  });
+
+  it('is square when its column is wider than 44 pt', async () => {
+    await render(<HabitDayCell habitDay={habitDay('pending', true)} today={wednesday} />);
+
+    await layOut(51.6);
+
+    expect(cell()).toHaveStyle({ width: '100%', height: 52 });
   });
 });

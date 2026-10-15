@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react-native';
+import { View } from 'react-native';
 
 import type { CheckInStatus } from '../../../domain/checkIn/CheckInStatus';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
@@ -119,6 +120,30 @@ it('shows nothing for a habit without cells', async () => {
   await render(<HabitWeekCard days={[]} today={wednesday} onToggle={jest.fn()} />);
 
   expect(screen.toJSON()).toBeNull();
+});
+
+it('aligns the days of the header on the columns of the cells', async () => {
+  await render(
+    <>
+      <WeekDaysHeader days={week.days()} today={wednesday} />
+      <View style={{ paddingHorizontal: 16 }}>
+        <HabitWeekCard days={days} today={wednesday} onToggle={jest.fn()} />
+      </View>
+    </>,
+  );
+
+  // En-tête : 16 (marge) + 9 ; cases : 16 (marge de la liste) + 9 (carte). Même écart de 4.
+  expect(screen.getByTestId('week-days-header', hidden)).toHaveStyle({
+    marginHorizontal: 16,
+    paddingHorizontal: 9,
+    gap: 4,
+  });
+  expect(screen.getByTestId('week-card-3')).toHaveStyle({ paddingHorizontal: 9 });
+  expect(screen.getByTestId('week-cells')).toHaveStyle({ gap: 4 });
+  expect(screen.getByTestId('weekday-2026-10-14', hidden)).toHaveStyle({
+    width: '100%',
+    maxWidth: 30,
+  });
 });
 
 describe('WeekLegend', () => {

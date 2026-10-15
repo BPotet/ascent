@@ -6,6 +6,7 @@ import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import { Week } from '../../../domain/week/Week';
 import { ADD_HABIT_LABEL } from '../components/AddHabitButton';
 import { Button } from '../components/Button';
+import { useCellHeight } from '../components/cellSize';
 import { PlusGlyph } from '../components/Glyph';
 import { LinkButton } from '../components/LinkButton';
 import { PeriodNavigator } from '../components/PeriodNavigator';
@@ -28,6 +29,16 @@ interface ToastContent {
   readonly action?: ToastAction;
 }
 
+/** Une case du squelette, de la même taille qu'une vraie case (`useCellHeight`). */
+function SkeletonCell() {
+  const { height, onLayout } = useCellHeight();
+  return (
+    <View onLayout={onLayout} testID="skeleton-cell" style={styles.skeletonSlot}>
+      <View style={[styles.skeleton, styles.skeletonCell, { height }]} />
+    </View>
+  );
+}
+
 function LoadingView() {
   return (
     <View
@@ -48,7 +59,7 @@ function LoadingView() {
           <View style={[styles.skeleton, styles.skeletonName]} />
           <View style={styles.skeletonCells}>
             {[0, 1, 2, 3, 4, 5, 6].map((cell) => (
-              <View key={cell} style={[styles.skeleton, styles.skeletonCell]} />
+              <SkeletonCell key={cell} />
             ))}
           </View>
         </View>
@@ -232,6 +243,7 @@ const styles = StyleSheet.create({
   },
   skeletonName: { width: '55%', height: 14, marginTop: 6, marginBottom: spacing.lg },
   skeletonCells: { flexDirection: 'row', gap: spacing.xs },
-  skeletonCell: { flex: 1, aspectRatio: 1, borderRadius: 12 },
+  skeletonSlot: { flex: 1, minWidth: 0 },
+  skeletonCell: { width: '100%', borderRadius: 12 },
 });
 // Stryker restore all

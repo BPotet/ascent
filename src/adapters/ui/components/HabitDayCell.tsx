@@ -8,7 +8,7 @@ import { checkInStatusLabels } from '../format/checkInStatus';
 import { formatDayAndMonth } from '../format/formatDay';
 import { useReducedMotion } from '../state/useReducedMotion';
 import { colors } from '../theme/colors';
-import { MIN_TOUCH_SIZE } from '../theme/metrics';
+import { useCellHeight } from './cellSize';
 import { CheckGlyph, CrossGlyph, DotGlyph } from './Glyph';
 import { bounce } from './HabitRow';
 
@@ -54,6 +54,7 @@ export function HabitDayCell({
   const { habit, day, status, editable } = habitDay;
   const reducedMotion = useReducedMotion();
   const [scale] = useState(() => new Animated.Value(1));
+  const { height, onLayout } = useCellHeight();
   const label = [habit.name.value, formatDayAndMonth(day), checkInStatusLabels[status]]
     .concat(editable ? [] : [UNAVAILABLE])
     .join(', ');
@@ -66,7 +67,11 @@ export function HabitDayCell({
   };
 
   return (
-    <Animated.View style={[styles.slot, { transform: [{ scale }] }]}>
+    <Animated.View
+      onLayout={onLayout}
+      testID={`cell-slot-${habit.id}-${day.toIsoString()}`}
+      style={[styles.slot, { transform: [{ scale }] }]}
+    >
       <Pressable
         accessibilityRole="switch"
         accessibilityLabel={label}
@@ -76,6 +81,7 @@ export function HabitDayCell({
         testID={`cell-${habit.id}-${day.toIsoString()}`}
         style={[
           styles.cell,
+          { height },
           styles[status],
           status === 'done' && day.isAfter(today) && styles.dimmed,
         ]}
@@ -88,10 +94,9 @@ export function HabitDayCell({
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  slot: { flex: 1 },
+  slot: { flex: 1, minWidth: 0 },
   cell: {
-    aspectRatio: 1,
-    minHeight: MIN_TOUCH_SIZE,
+    width: '100%',
     borderRadius: 12,
     borderWidth: 2,
     borderStyle: 'solid',
