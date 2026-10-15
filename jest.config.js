@@ -6,6 +6,10 @@
  */
 const path = require('node:path');
 
+// Fuseau fixe, avec heure d'été, pour que les tests soient les mêmes sur toute machine et en CI, et
+// que les changements d'heure (jour de 23 h ou 25 h) puissent être testés. Hérité par les workers.
+process.env.TZ = 'Europe/Paris';
+
 // jest-cucumber dépend d'uuid, dont l'export « browser » (choisi par l'environnement React Native)
 // est un module ESM. On force sa version CommonJS pour pouvoir exécuter des écrans dans les scénarios.
 const cucumberUuid = require.resolve('uuid', {
@@ -15,6 +19,9 @@ const cucumberUuid = require.resolve('uuid', {
 const base = {
   preset: 'jest-expo',
 };
+
+// Projets qui rendent des écrans : délai de test explicite (voir le fichier).
+const screenTestTimeout = '<rootDir>/test/setup/screenTestTimeout.ts';
 
 /** @type {import('jest').Config} */
 module.exports = {
@@ -29,12 +36,14 @@ module.exports = {
       ...base,
       displayName: 'integration',
       testMatch: ['<rootDir>/src/adapters/**/*.test.{ts,tsx}', '<rootDir>/test/**/*.test.{ts,tsx}'],
+      setupFilesAfterEnv: [screenTestTimeout],
     },
     {
       ...base,
       displayName: 'bdd',
       testMatch: ['<rootDir>/features/**/*.steps.{ts,tsx}'],
       moduleNameMapper: { '^uuid$': cucumberUuid },
+      setupFilesAfterEnv: [screenTestTimeout],
     },
   ],
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.test.{ts,tsx}', '!src/**/testing/**'],

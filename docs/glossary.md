@@ -28,7 +28,8 @@
 | **Correction** (`Correction`) | Le changement d'un jour clos de « pas fait » à « fait » ou l'inverse. Sans limite de temps, jamais avant le jour de création de l'habitude, même barème d'expérience qu'un suivi du jour. Une case corrigée porte la marque **« corrigé »**, qui disparaît si elle revient à son état au moment de la clôture. | Défini |
 | **Semaine** (`Week`) | Période de 7 jours, du lundi au dimanche, selon la date locale du téléphone. | Défini |
 | **Mois** (`Month`) | Un mois du calendrier local ; ses semaines vont du lundi au dimanche. | Défini |
-| **Vue Journée** (`DayView`) | L'écran d'accueil : les habitudes actives aujourd'hui, chacune « à faire » ou « fait ». | Défini |
+| **Vue Journée** (`DayView`) | L'écran d'accueil : les habitudes actives aujourd'hui, chacune « à faire » ou « fait », et le nombre d'habitudes faites. | Défini |
+| **Aide au premier usage** (`CheckInHint`) | Le message unique de la Vue Journée qui explique le tap. Il disparaît pour toujours au premier suivi. | Défini |
 | **Vue Semaine** (`WeekView`) | L'écran qui montre, pour chaque habitude existante, l'état du suivi des 7 jours d'une semaine. | Défini |
 | **Vue Mois** (`MonthView`) | L'écran qui montre un mois du calendrier : pour chaque jour, l'état de chaque habitude et le compteur « habitudes faites / habitudes actives ». | Défini |
 | **Historique** (`History`) | L'ensemble des semaines et des mois consultables : du mois (ou de la semaine) qui contient le plus ancien jour de création parmi les habitudes existantes, jusqu'au mois (ou à la semaine) en cours. | Défini |
@@ -77,7 +78,8 @@
 | **Port** | Une interface définie par le domaine ou l'application pour communiquer avec l'extérieur (stockage, horloge, authentification). |
 | **Adaptateur** (`adapter`) | L'implémentation concrète d'un port (base locale, écran, biométrie). |
 | **Test d'architecture** | Un test automatique qui vérifie que les dépendances respectent l'architecture hexagonale. |
-| **Horloge** (`Clock`) | Le port qui donne **aujourd'hui** (la date du calendrier local du téléphone) et prévient quand aujourd'hui change. Toute règle qui dépend du jour passe par lui, pour pouvoir fixer la date dans les tests. |
+| **Horloge** (`Clock`) | Le port qui donne **aujourd'hui** (la date du calendrier local du téléphone) et prévient quand aujourd'hui change (`WatchedClock.onTodayChange` : à minuit heure locale, au retour au premier plan, lors d'un changement de fuseau ou d'heure, jamais sans changement de jour). Toute règle qui dépend du jour passe par lui, pour pouvoir fixer la date dans les tests. |
+| **Visibilité de l'application** (`AppVisibility`) | Ce que l'horloge du téléphone sait de l'application : visible à l'écran (premier plan) ou non. Elle relit l'heure au retour au premier plan, et régulièrement tant que l'application est visible. |
 | **Dépôt** (`Repository`) | Port de stockage d'un type de données du domaine (habitudes, suivis, personnage). |
 | **Unité de travail** (`UnitOfWork`) | Port qui exécute un cas d'usage dans une transaction, un seul à la fois. Il fournit les dépôts ; si le cas d'usage échoue, rien n'est enregistré. |
 | **Stockage clé-valeur** (`KeyValueStore`) | Un port de stockage local de valeurs texte simples, identifiées par une clé. Les données restent sur le téléphone. |

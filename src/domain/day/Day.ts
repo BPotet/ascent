@@ -77,4 +77,8 @@ export class Day {
   isAfter(other: Day): boolean {
     return this.compareTo(other) > 0;
   }
+
+  isBefore(other: Day): boolean {
+    return this.compareTo(other) < 0;
+  }
 }

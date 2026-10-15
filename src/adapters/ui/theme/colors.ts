@@ -17,7 +17,14 @@ export const colors = {
   onDone: '#05261A',
   doneSoft: '#16302A',
   doneText: '#8FE8BF',
+  doneLine: 'rgba(61,220,151,0.55)',
   xp: '#FFC94D',
+  xpSoft: 'rgba(255,201,77,0.1)',
+  xpLine: 'rgba(255,201,77,0.4)',
+  onXpSoft: '#FFE3A3',
+  hintSoft: 'rgba(124,156,255,0.14)',
+  hintLine: 'rgba(124,156,255,0.45)',
+  onHint: '#DCE4FF',
   danger: '#FF7A7A',
   dangerSoft: 'rgba(255,122,122,0.12)',
   dangerLine: 'rgba(255,122,122,0.45)',
@@ -27,5 +34,6 @@ export const colors = {
   scrim: 'rgba(5,7,12,0.64)',
   toast: '#EEF1F7',
   onToast: '#121826',
+  toastAction: '#2C47D9',
 } as const;
 // Stryker restore all

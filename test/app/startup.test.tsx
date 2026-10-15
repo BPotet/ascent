@@ -12,6 +12,7 @@ import {
   waitFor,
 } from 'expo-router/testing-library';
 import { isLoaded, loadAsync } from 'expo-font';
+import { AppState, type AppStateStatus } from 'react-native';
 import type * as ExpoFont from 'expo-font';
 import path from 'node:path';
 
@@ -39,6 +40,14 @@ const openRealDatabase = () => prepareAscentDatabase(openNodeSqliteDatabase());
 // Chemin absolu : sous StrykerJS, les routes doivent être chargées depuis son bac à sable.
 const appDirectory = path.resolve(__dirname, '../../src/app');
 const COOKING_TODAY = 'Cuisiner, mercredi 14 octobre, à faire';
+const HINT = 'Tape ton habitude quand c’est fait : +10 XP pour ton personnage.';
+
+/** Le téléphone signale un nouvel état de l'application à tous ceux qui écoutent `AppState`. */
+function appStateBecomes(state: AppStateStatus): void {
+  for (const [, listener] of jest.mocked(AppState.addEventListener).mock.calls) {
+    listener(state);
+  }
+}
 
 function deferred() {
   let resolve: (db: SqlDatabase) => void = () => undefined;
@@ -106,6 +115,51 @@ describe('app startup', () => {
 
     expect(await screen.findByLabelText(COOKING_TODAY)).toBeOnTheScreen();
     expect(openDatabase).toHaveBeenCalledTimes(2);
+  });
+
+  it('shows the first-use hint until a habit is done, and keeps the check-in after a restart', async () => {
+    const db = await openRealDatabase();
+    await createHabit(
+      { clock: new FixedClock(Day.of(2026, 10, 14)), unitOfWork: new SqliteUnitOfWork(db) },
+      'Cuisiner',
+    );
+    openDatabase.mockResolvedValue(db);
+    await renderRouter(appDirectory);
+    expect(await screen.findByText(HINT)).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('switch', { name: COOKING_TODAY }));
+
+    expect(
+      await screen.findByRole('switch', { name: 'Cuisiner, mercredi 14 octobre, fait' }),
+    ).toBeOnTheScreen();
+    expect(screen.queryByText(HINT)).not.toBeOnTheScreen();
+
+    await cleanup();
+    await renderRouter(appDirectory);
+
+    expect(
+      await screen.findByRole('switch', { name: 'Cuisiner, mercredi 14 octobre, fait' }),
+    ).toBeOnTheScreen();
+    await act(async () => undefined);
+    expect(screen.queryByText(HINT)).not.toBeOnTheScreen();
+  });
+
+  it('moves to the new day when the app comes back to the foreground on another day', async () => {
+    const db = await openRealDatabase();
+    await createHabit(
+      { clock: new FixedClock(Day.of(2026, 10, 14)), unitOfWork: new SqliteUnitOfWork(db) },
+      'Cuisiner',
+    );
+    openDatabase.mockResolvedValue(db);
+    await renderRouter(appDirectory);
+    expect(await screen.findByText('Mercredi 14 octobre')).toBeOnTheScreen();
+
+    await act(async () => appStateBecomes('background'));
+    jest.setSystemTime(new Date(2026, 9, 15, 7, 30));
+    await act(async () => appStateBecomes('active'));
+
+    expect(await screen.findByText('Jeudi 15 octobre')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Cuisiner, jeudi 15 octobre, à faire')).toBeOnTheScreen();
   });
 
   it('loads the fonts of the interface before showing it', async () => {

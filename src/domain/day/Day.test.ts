@@ -128,5 +128,11 @@ describe('Day', () => {
       expect(day.isAfter(Day.of(2026, 10, 14))).toBe(false);
       expect(day.isAfter(Day.of(2026, 10, 15))).toBe(false);
     });
+
+    it('is before a later day only', () => {
+      expect(day.isBefore(Day.of(2026, 10, 15))).toBe(true);
+      expect(day.isBefore(Day.of(2026, 10, 14))).toBe(false);
+      expect(day.isBefore(Day.of(2026, 10, 13))).toBe(false);
+    });
   });
 });

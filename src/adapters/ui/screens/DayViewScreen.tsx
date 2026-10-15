@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { DayView } from '../../../application/useCases/getDayView';
+import type { HabitDay } from '../../../domain/checkIn/HabitDay';
+import type { Day } from '../../../domain/day/Day';
 import type { Habit, HabitId } from '../../../domain/habit/Habit';
 import { MAX_HABITS } from '../../../domain/habit/HabitRules';
 import { ADD_HABIT_LABEL, AddHabitButton, HABIT_LIMIT_MESSAGE } from '../components/AddHabitButton';
@@ -9,11 +11,15 @@ import { Button } from '../components/Button';
 import { DayHeader } from '../components/DayHeader';
 import { PlusGlyph } from '../components/Glyph';
 import { HabitRow } from '../components/HabitRow';
+import { Notice } from '../components/Notice';
 import { Screen } from '../components/Screen';
 import { StateMessage } from '../components/StateMessage';
-import { Toast } from '../components/Toast';
+import { Toast, type ToastAction } from '../components/Toast';
+import { capitalize, formatDayAndMonth } from '../format/formatDay';
+import { useCheckInHint } from '../state/useCheckInHint';
 import { useCreateHabit } from '../state/useCreateHabit';
 import { useDayView } from '../state/useDayView';
+import { useTodayChange } from '../state/useTodayChange';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
@@ -21,6 +27,26 @@ import { NewHabitSheet } from './NewHabitSheet';
 
 /** Durée de la mise en évidence d'une habitude qui vient d'être créée, comme dans la maquette. */
 export const HIGHLIGHT_DURATION_MS = 1800;
+
+/** L'aide au premier usage, qui explique le tap (maquette, E1 « Première habitude créée »). */
+export const CHECK_IN_HINT = 'Tape ton habitude quand c’est fait : +10 XP pour ton personnage.';
+
+/** L'encouragement quand toutes les habitudes du jour sont faites (maquette, E1 « Toutes faites »). */
+export const ALL_DONE_MESSAGE = 'Toutes tes habitudes du jour sont faites. Belle ascension\u00a0!';
+
+export const CHECK_IN_SAVE_FAILED = 'Le suivi n’a pas été enregistré.';
+
+const newDayMessage = (day: Day) => `Nouvelle journée : ${formatDayAndMonth(day)}.`;
+
+const correctionMessage = (day: Day) =>
+  `${capitalize(formatDayAndMonth(day))} vient d’être clos : enregistré comme correction.`;
+
+interface ToastContent {
+  /** Change à chaque message, pour l'annoncer et le montrer en entier même s'il se répète. */
+  readonly id: number;
+  readonly message: string;
+  readonly action?: ToastAction;
+}
 
 function LoadingView() {
   return (
@@ -55,13 +81,18 @@ function LoadingView() {
 function HabitList({
   view,
   highlighted,
+  showHint,
+  onToggle,
 }: {
   readonly view: DayView;
   readonly highlighted: HabitId | null;
+  readonly showHint: boolean;
+  readonly onToggle: (habitDay: HabitDay) => void;
 }) {
   const scroll = useRef<ScrollView>(null);
-  const doneCount = view.habits.filter(({ status }) => status === 'done').length;
+  const { doneCount } = view;
   const activeCount = view.habits.length;
+  const allDone = activeCount > 0 && doneCount === activeCount;
   const count = view.habitCount;
   return (
     <>
@@ -76,11 +107,14 @@ function HabitList({
         }}
         testID="day-view-list"
       >
+        {allDone && <Notice kind="celebration" text={ALL_DONE_MESSAGE} testID="all-done" />}
+        {showHint && <Notice kind="hint" text={CHECK_IN_HINT} testID="check-in-hint" />}
         {view.habits.map((habitDay) => (
           <HabitRow
             key={habitDay.habit.id}
             habitDay={habitDay}
             highlighted={habitDay.habit.id === highlighted}
+            onToggle={onToggle}
           />
         ))}
         <View style={styles.section}>
@@ -101,13 +135,52 @@ function HabitList({
  * Vue Journée (`DayView`), l'écran d'accueil : aujourd'hui et ses habitudes, et l'ajout d'une
  * habitude par le panneau « Nouvelle habitude ». États : chargement, erreur de lecture avec
  * « Réessayer », vide, liste, limite de 10 habitudes.
+ *
+ * Un tap sur une habitude la passe à « fait » ou la remet à « à faire » ; si l'enregistrement
+ * échoue, elle revient à son état et un message propose « Réessayer ». L'aide au premier usage
+ * disparaît au premier « fait ». La vue passe seule au nouveau jour (minuit, retour au premier
+ * plan) et l'annonce.
  */
 export function DayViewScreen() {
-  const { state, reload, refresh } = useDayView();
+  const { state, reload, refresh, toggle } = useDayView();
   const create = useCreateHabit();
+  const hint = useCheckInHint();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [highlighted, setHighlighted] = useState<HabitId | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastContent | null>(null);
+  const toastCount = useRef(0);
+
+  const showToast = useCallback((message: string, action?: ToastAction) => {
+    toastCount.current += 1;
+    setToast({ id: toastCount.current, message, ...(action && { action }) });
+  }, []);
+
+  useTodayChange((today) => {
+    void refresh();
+    showToast(newDayMessage(today));
+  });
+
+  const { dismiss: dismissHint } = hint;
+  const tap = useCallback(
+    (habitDay: HabitDay): Promise<void> => {
+      async function attempt(): Promise<void> {
+        setToast(null);
+        const outcome = await toggle(habitDay);
+        if (outcome.ok) {
+          if (outcome.habitDay.status === 'done') {
+            void dismissHint();
+          }
+          if (outcome.isCorrection) {
+            showToast(correctionMessage(outcome.habitDay.day));
+          }
+        } else if (outcome.reason === 'saveFailed') {
+          showToast(CHECK_IN_SAVE_FAILED, { label: 'Réessayer', onPress: () => void attempt() });
+        }
+      }
+      return attempt();
+    },
+    [toggle, dismissHint, showToast],
+  );
 
   useEffect(() => {
     if (highlighted === null) {
@@ -123,7 +196,7 @@ export function DayViewScreen() {
   const created = (habit: Habit) => {
     setSheetOpen(false);
     setHighlighted(habit.id);
-    setToast('Habitude créée');
+    showToast('Habitude créée');
     void refresh();
   };
 
@@ -171,15 +244,28 @@ export function DayViewScreen() {
         />
       ) : (
         <>
-          <HabitList view={view} highlighted={highlighted} />
+          <HabitList
+            view={view}
+            highlighted={highlighted}
+            showHint={hint.visible}
+            onToggle={(habitDay) => void tap(habitDay)}
+          />
           <AddHabitButton
             canAddHabit={view.canAddHabit}
             onPress={openSheet}
-            onLimitPress={() => setToast(HABIT_LIMIT_MESSAGE)}
+            onLimitPress={() => showToast(HABIT_LIMIT_MESSAGE)}
           />
         </>
       )}
-      {toast !== null && <Toast message={toast} onHide={hideToast} aboveButton={!empty} />}
+      {toast !== null && (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          {...(toast.action && { action: toast.action })}
+          onHide={hideToast}
+          aboveButton={!empty}
+        />
+      )}
       {sheetOpen && (
         <NewHabitSheet
           habits={view.habits.map(({ habit }) => habit)}

@@ -17,6 +17,13 @@ describe('getDayView', () => {
     );
   }
 
+  async function checkIn(name: string, day: Day): Promise<void> {
+    await unitOfWork.run(async ({ habits, checkIns }) => {
+      const habit = (await habits.listAll()).find((each) => each.name.value === name);
+      await checkIns.save({ habitId: habit?.id ?? 0, day, done: true, corrected: false });
+    });
+  }
+
   beforeEach(() => {
     unitOfWork = new InMemoryUnitOfWork();
     clock.setToday(wednesday);
@@ -28,6 +35,7 @@ describe('getDayView', () => {
       habits: [],
       habitCount: 0,
       canAddHabit: true,
+      doneCount: 0,
     });
   });
 
@@ -45,6 +53,56 @@ describe('getDayView', () => {
       [wednesday, 'pending'],
       [wednesday, 'pending'],
     ]);
+  });
+
+  it('shows the habits « fait » today and counts them (R8, R20)', async () => {
+    await addHabit('Cuisiner', Day.of(2026, 10, 12));
+    await addHabit('Budget du jour');
+    await addHabit('Lire');
+    await checkIn('Cuisiner', wednesday);
+    await checkIn('Lire', wednesday);
+    await checkIn('Budget du jour', Day.of(2026, 10, 13));
+
+    const view = await getDayView(deps());
+
+    expect(
+      view.habits.map(({ habit, status, editable, corrected }) => [
+        habit.name.value,
+        status,
+        editable,
+        corrected,
+      ]),
+    ).toEqual([
+      ['Cuisiner', 'done', true, false],
+      ['Budget du jour', 'pending', true, false],
+      ['Lire', 'done', true, false],
+    ]);
+    expect(view.doneCount).toBe(2);
+  });
+
+  it('shows the new day « à faire » after midnight (R4)', async () => {
+    await addHabit('Cuisiner', Day.of(2026, 10, 12));
+    await checkIn('Cuisiner', wednesday);
+
+    clock.setToday(Day.of(2026, 10, 15));
+
+    await expect(getDayView(deps())).resolves.toMatchObject({
+      day: Day.of(2026, 10, 15),
+      habits: [{ status: 'pending' }],
+      doneCount: 0,
+    });
+  });
+
+  it('shows « à faire » again a day that is today again after a time zone change (R6)', async () => {
+    await addHabit('Cuisiner', Day.of(2026, 10, 12));
+    clock.setToday(Day.of(2026, 10, 15));
+
+    clock.setToday(wednesday);
+
+    await expect(getDayView(deps())).resolves.toMatchObject({
+      day: wednesday,
+      habits: [{ status: 'pending', editable: true }],
+    });
   });
 
   it('leaves out a habit created after today, when the clock went back (R20)', async () => {

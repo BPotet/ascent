@@ -1,39 +1,79 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import { checkInStatusLabels } from '../format/checkInStatus';
 import { capitalize, formatDayAndMonth } from '../format/formatDay';
+import { useReducedMotion } from '../state/useReducedMotion';
 import { colors } from '../theme/colors';
 import { MIN_TOUCH_SIZE, radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
+import { CheckGlyph } from './Glyph';
+
+/** Durée du rebond de la coche quand on touche une habitude, comme dans la maquette. */
+export const BOUNCE_DURATION_MS = 320;
+
+/** Le rebond : la coche grossit puis revient, sur `BOUNCE_DURATION_MS` au total. */
+function bounce(scale: Animated.Value): void {
+  const grow = Math.round(BOUNCE_DURATION_MS * 0.4);
+  Animated.sequence([
+    Animated.timing(scale, { toValue: 1.18, duration: grow, useNativeDriver: true }),
+    Animated.timing(scale, {
+      toValue: 1,
+      duration: BOUNCE_DURATION_MS - grow,
+      useNativeDriver: true,
+    }),
+  ]).start();
+}
 
 /**
- * Ligne d'une habitude dans la Vue Journée : son nom et l'état du suivi d'aujourd'hui, écrit en
- * toutes lettres. `highlighted` met en évidence une habitude qui vient d'être créée.
- * Le tap qui passe à « fait » arrive avec #4.
+ * Ligne d'une habitude dans la Vue Journée : son nom et l'état du suivi, écrit en toutes lettres,
+ * avec une coche quand elle est « fait ». Toute la ligne est un interrupteur : la toucher appelle
+ * `onToggle`, si la case est modifiable, et fait rebondir la coche (sauf mouvement réduit).
+ * `highlighted` met en évidence une habitude qui vient d'être créée.
  */
 export function HabitRow({
   habitDay,
   highlighted = false,
+  onToggle,
 }: {
   readonly habitDay: HabitDay;
   readonly highlighted?: boolean;
+  readonly onToggle?: (habitDay: HabitDay) => void;
 }) {
-  const { habit, day, status } = habitDay;
+  const { habit, day, status, editable } = habitDay;
   const statusLabel = checkInStatusLabels[status];
+  const done = status === 'done';
+  const reducedMotion = useReducedMotion();
+  const [scale] = useState(() => new Animated.Value(1));
+
+  const press = () => {
+    if (!reducedMotion) {
+      bounce(scale);
+    }
+    onToggle?.(habitDay);
+  };
+
   return (
-    <View
-      accessible
+    <Pressable
+      accessibilityRole="switch"
       accessibilityLabel={`${habit.name.value}, ${formatDayAndMonth(day)}, ${statusLabel}`}
+      accessibilityState={{ checked: done, disabled: !editable }}
+      disabled={!editable}
+      onPress={press}
       testID={`habit-row-${habit.id}`}
-      style={[styles.row, highlighted && styles.highlighted]}
+      style={[styles.row, done && styles.done, highlighted && styles.highlighted]}
     >
-      <View style={styles.check} />
+      <Animated.View style={[styles.check, done && styles.checkDone, { transform: [{ scale }] }]}>
+        {done && <CheckGlyph color={colors.onDone} />}
+      </Animated.View>
       <View style={styles.texts}>
         <Text style={[typography.habitName, styles.name]}>{habit.name.value}</Text>
-        <Text style={[typography.label, styles.status]}>{capitalize(statusLabel)}</Text>
+        <Text style={[typography.label, styles.status, done && styles.statusDone]}>
+          {capitalize(statusLabel)}
+        </Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -53,6 +93,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
     backgroundColor: colors.surface,
   },
+  done: { borderColor: colors.doneLine, backgroundColor: colors.doneSoft },
   highlighted: {
     borderColor: colors.accent,
     shadowColor: colors.accent,
@@ -66,9 +107,13 @@ const styles = StyleSheet.create({
     borderRadius: MIN_TOUCH_SIZE / 2,
     borderWidth: 2.5,
     borderColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  checkDone: { backgroundColor: colors.done, borderColor: colors.done },
   texts: { flex: 1, gap: 2 },
   name: { color: colors.text },
   status: { color: colors.muted },
+  statusDone: { color: colors.doneText },
 });
 // Stryker restore all

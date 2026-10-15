@@ -4,18 +4,72 @@ import type { ReactNode } from 'react';
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../../application/testing/settableClock';
 import { createHabit } from '../../../application/useCases/createHabit';
+import { getDayView } from '../../../application/useCases/getDayView';
+import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import { Day } from '../../../domain/day/Day';
+import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { DependenciesProvider } from './Dependencies';
 import { useDayView } from './useDayView';
 
+const tuesday = Day.of(2026, 10, 13);
 const wednesday = Day.of(2026, 10, 14);
+const thursday = Day.of(2026, 10, 15);
 
 function setUp() {
-  const dependencies = { clock: settableClock(wednesday), unitOfWork: new InMemoryUnitOfWork() };
+  const dependencies = {
+    clock: settableClock(wednesday),
+    unitOfWork: new InMemoryUnitOfWork(),
+    keyValueStore: memoryKeyValueStore(),
+  };
   const wrapper = ({ children }: { children: ReactNode }) => (
     <DependenciesProvider value={dependencies}>{children}</DependenciesProvider>
   );
   return { dependencies, wrapper };
+}
+
+const statuses = (state: ReturnType<typeof useDayView>['state']) =>
+  state.status === 'ready'
+    ? state.view.habits.map(({ habit, status }) => `${habit.name.value}: ${status}`)
+    : null;
+
+const doneCount = (state: ReturnType<typeof useDayView>['state']) =>
+  state.status === 'ready' ? state.view.doneCount : null;
+
+async function storedStatuses(dependencies: ReturnType<typeof setUp>['dependencies']) {
+  const view = await getDayView(dependencies);
+  return view.habits.map(({ habit, status }) => `${habit.name.value}: ${status}`);
+}
+
+async function showDayView(...habitNames: string[]) {
+  const { dependencies, wrapper } = setUp();
+  for (const name of habitNames) {
+    await createHabit(dependencies, name);
+  }
+  const { result } = await renderHook(() => useDayView(), { wrapper });
+  await waitFor(() => expect(result.current.state.status).toBe('ready'));
+  const cell = (name: string): HabitDay => {
+    const { state } = result.current;
+    const found =
+      state.status === 'ready'
+        ? state.view.habits.find(({ habit }) => habit.name.value === name)
+        : undefined;
+    if (found === undefined) {
+      throw new Error(`No row « ${name} »`);
+    }
+    return found;
+  };
+  return { dependencies, result, cell };
+}
+
+/** Retient les appels à l'unité de travail jusqu'à `open()`. */
+function holdUnitOfWork(unitOfWork: InMemoryUnitOfWork) {
+  let open: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  const run = unitOfWork.run.bind(unitOfWork);
+  jest.spyOn(unitOfWork, 'run').mockImplementation((work) => gate.then(() => run(work)));
+  return { open };
 }
 
 const names = (state: ReturnType<typeof useDayView>['state']) =>
@@ -110,5 +164,154 @@ describe('useDayView', () => {
 
     expect(names(result.current.state)).toEqual(['Méditer']);
     expect(statuses).not.toContain('loading');
+  });
+
+  describe('toggle', () => {
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    it('shows « fait » at once, then keeps what is saved', async () => {
+      const { dependencies, result, cell } = await showDayView('Cuisiner', 'Lire');
+      const { open } = holdUnitOfWork(dependencies.unitOfWork);
+
+      let toggling: Promise<unknown> = Promise.resolve();
+      await act(async () => {
+        toggling = result.current.toggle(cell('Cuisiner'));
+      });
+      expect(statuses(result.current.state)).toEqual(['Cuisiner: done', 'Lire: pending']);
+      expect(doneCount(result.current.state)).toBe(1);
+
+      let outcome: unknown;
+      await act(async () => {
+        open();
+        outcome = await toggling;
+      });
+
+      expect(outcome).toMatchObject({
+        ok: true,
+        isCorrection: false,
+        habitDay: { status: 'done' },
+      });
+      expect(statuses(result.current.state)).toEqual(['Cuisiner: done', 'Lire: pending']);
+      expect(doneCount(result.current.state)).toBe(1);
+      jest.restoreAllMocks();
+      expect(await storedStatuses(dependencies)).toEqual(['Cuisiner: done', 'Lire: pending']);
+    });
+
+    it('goes back to « à faire » on a second tap', async () => {
+      const { dependencies, result, cell } = await showDayView('Cuisiner');
+
+      await act(() => result.current.toggle(cell('Cuisiner')));
+      await act(() => result.current.toggle(cell('Cuisiner')));
+
+      expect(statuses(result.current.state)).toEqual(['Cuisiner: pending']);
+      expect(doneCount(result.current.state)).toBe(0);
+      expect(await storedStatuses(dependencies)).toEqual(['Cuisiner: pending']);
+    });
+
+    it('comes back to the saved state when the check-in cannot be saved', async () => {
+      const { dependencies, result, cell } = await showDayView('Cuisiner');
+      dependencies.unitOfWork.failWrites();
+      const { open } = holdUnitOfWork(dependencies.unitOfWork);
+
+      let toggling: Promise<unknown> = Promise.resolve();
+      await act(async () => {
+        toggling = result.current.toggle(cell('Cuisiner'));
+      });
+      expect(statuses(result.current.state)).toEqual(['Cuisiner: done']);
+
+      let outcome: unknown;
+      await act(async () => {
+        open();
+        outcome = await toggling;
+      });
+
+      expect(outcome).toEqual({ ok: false, reason: 'saveFailed' });
+      expect(statuses(result.current.state)).toEqual(['Cuisiner: pending']);
+      expect(doneCount(result.current.state)).toBe(0);
+    });
+
+    it('settles on what the last tap saved after quick taps', async () => {
+      const { dependencies, result, cell } = await showDayView('Cuisiner');
+      const { open } = holdUnitOfWork(dependencies.unitOfWork);
+
+      const taps: Promise<unknown>[] = [];
+      for (let tap = 0; tap < 3; tap += 1) {
+        await act(async () => {
+          taps.push(result.current.toggle(cell('Cuisiner')));
+        });
+      }
+      expect(statuses(result.current.state)).toEqual(['Cuisiner: done']);
+
+      await act(async () => {
+        open();
+        await Promise.all(taps);
+      });
+
+      expect(statuses(result.current.state)).toEqual(['Cuisiner: done']);
+      jest.restoreAllMocks();
+      expect(await storedStatuses(dependencies)).toEqual(['Cuisiner: done']);
+    });
+
+    it('waits for the last tap before showing the saved state again', async () => {
+      const { dependencies, result, cell } = await showDayView('Cuisiner');
+      const run = dependencies.unitOfWork.run.bind(dependencies.unitOfWork);
+      let saveFirst: () => void = () => undefined;
+      const first = new Promise<void>((resolve) => {
+        saveFirst = resolve;
+      });
+      jest
+        .spyOn(dependencies.unitOfWork, 'run')
+        .mockImplementationOnce((work) => first.then(() => run(work)))
+        .mockImplementationOnce(() => Promise.reject(new Error('Storage unavailable')));
+
+      let firstTap: Promise<unknown> = Promise.resolve();
+      await act(async () => {
+        firstTap = result.current.toggle(cell('Cuisiner'));
+      });
+      await act(() => result.current.toggle(cell('Cuisiner')));
+      expect(statuses(result.current.state)).toEqual(['Cuisiner: pending']);
+
+      await act(async () => {
+        saveFirst();
+        await firstTap;
+      });
+
+      expect(statuses(result.current.state)).toEqual(['Cuisiner: done']);
+      jest.restoreAllMocks();
+      expect(await storedStatuses(dependencies)).toEqual(['Cuisiner: done']);
+    });
+
+    it('saves a tap on the day just closed as a correction, then shows the new day', async () => {
+      const { dependencies, result, cell } = await showDayView('Cuisiner');
+      dependencies.clock.setToday(thursday);
+
+      let outcome: unknown;
+      await act(async () => {
+        outcome = await result.current.toggle(cell('Cuisiner'));
+      });
+
+      expect(outcome).toMatchObject({
+        ok: true,
+        isCorrection: true,
+        habitDay: { day: wednesday, status: 'done' },
+      });
+      expect(result.current.state).toMatchObject({ view: { day: thursday } });
+      expect(statuses(result.current.state)).toEqual(['Cuisiner: pending']);
+    });
+
+    it('shows today again when a tap is refused', async () => {
+      const { dependencies, result, cell } = await showDayView('Cuisiner');
+      dependencies.clock.setToday(tuesday);
+
+      let outcome: unknown;
+      await act(async () => {
+        outcome = await result.current.toggle(cell('Cuisiner'));
+      });
+
+      expect(outcome).toEqual({ ok: false, reason: 'upcoming' });
+      expect(result.current.state).toMatchObject({ view: { day: tuesday, habits: [] } });
+    });
   });
 });

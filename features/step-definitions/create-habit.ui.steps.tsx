@@ -15,12 +15,13 @@ import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber'
 
 import { FixedClock } from '../../src/adapters/device/clock/FixedClock';
 import { prepareExpoSqliteDatabase } from '../../src/adapters/persistence/sqlite/expoSqliteDatabase';
+import { SqliteKeyValueStore } from '../../src/adapters/persistence/sqlite/SqliteKeyValueStore';
 import { SqliteUnitOfWork } from '../../src/adapters/persistence/sqlite/SqliteUnitOfWork';
 import { FakeExpoSqliteConnection } from '../../src/adapters/persistence/testing/fakeExpoSqlite';
 import { readsFrom, writesTo } from '../../src/adapters/persistence/testing/sqlFaults';
 import { DayViewScreen } from '../../src/adapters/ui/screens/DayViewScreen';
+import type { Dependencies } from '../../src/adapters/ui/state/Dependencies';
 import { renderScreen } from '../../src/adapters/ui/testing/renderScreen';
-import type { UseCaseDependencies } from '../../src/application/useCases/UseCaseDependencies';
 import { createHabit } from '../../src/application/useCases/createHabit';
 import { getDayView } from '../../src/application/useCases/getDayView';
 import { Day } from '../../src/domain/day/Day';
@@ -28,7 +29,7 @@ import { frenchDay } from '../support/frenchDay';
 
 interface World {
   connection: FakeExpoSqliteConnection;
-  deps: UseCaseDependencies;
+  deps: Dependencies;
   /** La date du scénario, en toutes lettres : « mercredi 14 octobre 2026 ». */
   date: string;
   shown: boolean;
@@ -48,7 +49,11 @@ const withoutYear = (date: string) => date.replace(/ \d{4}$/u, '');
 
 async function openApp(): Promise<void> {
   const db = await prepareExpoSqliteDatabase(world.connection);
-  world.deps = { clock: world.deps.clock, unitOfWork: new SqliteUnitOfWork(db) };
+  world.deps = {
+    clock: world.deps.clock,
+    unitOfWork: new SqliteUnitOfWork(db),
+    keyValueStore: new SqliteKeyValueStore(db),
+  };
   await renderScreen(<DayViewScreen />, world.deps);
   world.shown = true;
   await waitFor(() => expect(screen.queryByTestId('day-view-loading')).not.toBeOnTheScreen());
@@ -111,7 +116,7 @@ async function sheetKeepsTheName(): Promise<void> {
 const steps: StepDefinitions = ({ given, when, then }) => {
   given(/^nous sommes le (.+) selon le téléphone$/, (date: string) => {
     world.date = date;
-    world.deps = { clock: new FixedClock(frenchDay(date)), unitOfWork: world.deps.unitOfWork };
+    world.deps = { ...world.deps, clock: new FixedClock(frenchDay(date)) };
   });
 
   given("le joueur n'a aucune habitude", async () => {
@@ -323,11 +328,13 @@ const steps: StepDefinitions = ({ given, when, then }) => {
 
 beforeEach(async () => {
   const connection = FakeExpoSqliteConnection.open();
+  const db = await prepareExpoSqliteDatabase(connection);
   world = {
     connection,
     deps: {
       clock: new FixedClock(Day.of(2000, 1, 1)),
-      unitOfWork: new SqliteUnitOfWork(await prepareExpoSqliteDatabase(connection)),
+      unitOfWork: new SqliteUnitOfWork(db),
+      keyValueStore: new SqliteKeyValueStore(db),
     },
     date: '',
     shown: false,

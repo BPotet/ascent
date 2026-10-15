@@ -1,0 +1,105 @@
+# Story #4 : confirmer ses habitudes du jour d'un tap.
+# Parcours : une habitude « Lire » créée, « à faire » avec l'aide au premier usage → un tap sur la
+# ligne : coche, « 1/1 faites » et encouragement, l'aide disparaît → un autre tap : « à faire » →
+# un dernier tap : « fait » → relance à froid : toujours « fait », l'aide ne revient pas.
+# Captures pour la comparaison avec la maquette (E1) : « à faire » avec l'aide, tout fait,
+# de nouveau « à faire », après la relance.
+appId: com.bpotet.ascent
+name: Confirmer ses habitudes du jour d'un tap
+tags:
+  - story-4
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: 'day-view-empty'
+    timeout: 30000
+
+# Une habitude créée aujourd'hui, à faire.
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Lire'
+- tapOn:
+    id: 'create-habit'
+- extendedWaitUntil:
+    notVisible: 'Nouvelle habitude'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'Lire, .+, à faire'
+    timeout: 10000
+- assertVisible:
+    id: 'habit-row-1'
+    checked: false
+- assertNotVisible:
+    id: 'check-mark'
+- assertVisible: '0/1 faites|0 habitude faite sur 1'
+# L'aide au premier usage explique le tap.
+- assertVisible:
+    id: 'check-in-hint'
+- assertNotVisible:
+    id: 'all-done'
+- takeScreenshot: check-in-1-to-do-with-hint
+
+# Un tap sur la ligne : la coche, le compteur, l'encouragement ; l'aide disparaît.
+- tapOn:
+    id: 'habit-row-1'
+- extendedWaitUntil:
+    visible: 'Lire, .+, fait'
+    timeout: 10000
+- assertVisible:
+    id: 'habit-row-1'
+    checked: true
+- assertVisible:
+    id: 'check-mark'
+- assertVisible: '1/1 faites|1 habitude faite sur 1'
+- assertVisible:
+    id: 'all-done'
+- assertNotVisible:
+    id: 'check-in-hint'
+- takeScreenshot: check-in-2-all-done
+
+# Un autre tap : de nouveau « à faire », sans coche ni encouragement ; l'aide ne revient pas.
+- tapOn:
+    id: 'habit-row-1'
+- extendedWaitUntil:
+    visible: 'Lire, .+, à faire'
+    timeout: 10000
+- assertVisible:
+    id: 'habit-row-1'
+    checked: false
+- assertNotVisible:
+    id: 'check-mark'
+- assertVisible: '0/1 faites|0 habitude faite sur 1'
+- assertNotVisible:
+    id: 'all-done'
+- assertNotVisible:
+    id: 'check-in-hint'
+- takeScreenshot: check-in-3-to-do-again
+
+# Un dernier tap : « fait ».
+- tapOn:
+    id: 'habit-row-1'
+- extendedWaitUntil:
+    visible: 'Lire, .+, fait'
+    timeout: 10000
+
+# Relance à froid : le suivi est conservé, l'aide ne revient pas.
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: 'Lire, .+, fait'
+    timeout: 30000
+- assertVisible:
+    id: 'check-mark'
+- assertVisible: '1/1 faites|1 habitude faite sur 1'
+- assertVisible:
+    id: 'all-done'
+- assertNotVisible:
+    id: 'check-in-hint'
+- takeScreenshot: check-in-4-after-restart

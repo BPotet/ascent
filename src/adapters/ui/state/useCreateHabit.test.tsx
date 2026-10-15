@@ -4,13 +4,18 @@ import type { ReactNode } from 'react';
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../../application/testing/settableClock';
 import { Day } from '../../../domain/day/Day';
+import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { DependenciesProvider } from './Dependencies';
 import { useCreateHabit } from './useCreateHabit';
 
 const wednesday = Day.of(2026, 10, 14);
 
 async function setUp() {
-  const dependencies = { clock: settableClock(wednesday), unitOfWork: new InMemoryUnitOfWork() };
+  const dependencies = {
+    clock: settableClock(wednesday),
+    unitOfWork: new InMemoryUnitOfWork(),
+    keyValueStore: memoryKeyValueStore(),
+  };
   const wrapper = ({ children }: { children: ReactNode }) => (
     <DependenciesProvider value={dependencies}>{children}</DependenciesProvider>
   );

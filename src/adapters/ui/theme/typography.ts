@@ -34,6 +34,8 @@ export const typography = {
   button: { fontFamily: fonts.interSemiBold, fontSize: 16 },
   /** Libellés, dates, aides. */
   label: { fontFamily: fonts.interMedium, fontSize: 13, lineHeight: 18 },
+  /** Texte d'un encart de la Vue Journée (aide, encouragement). */
+  notice: { fontFamily: fonts.interRegular, fontSize: 14, lineHeight: 20 },
   /** Message d'un toast. */
   toast: { fontFamily: fonts.interMedium, fontSize: 14, lineHeight: 19 },
 } as const satisfies Record<string, TextStyle>;

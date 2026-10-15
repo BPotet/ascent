@@ -1,6 +1,6 @@
 import type { HabitRepository } from '../../../application/ports/HabitRepository';
 import { Day } from '../../../domain/day/Day';
-import { Habit } from '../../../domain/habit/Habit';
+import { Habit, type HabitId } from '../../../domain/habit/Habit';
 import { HabitName } from '../../../domain/habit/HabitName';
 import type { SqlDatabase } from './SqlDatabase';
 
@@ -22,6 +22,14 @@ export class SqliteHabitRepository implements HabitRepository {
       'SELECT id, name, created_on FROM habits ORDER BY id',
     );
     return rows.map(toHabit);
+  }
+
+  async findById(id: HabitId): Promise<Habit | null> {
+    const row = await this.db.getFirst<HabitRow>(
+      'SELECT id, name, created_on FROM habits WHERE id = ?',
+      [id],
+    );
+    return row === null ? null : toHabit(row);
   }
 
   async add(name: HabitName, createdOn: Day): Promise<Habit> {

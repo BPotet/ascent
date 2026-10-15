@@ -67,6 +67,19 @@ export function describeHabitRepositoryContract(createUnitOfWork: () => Promise<
       await expect(inTransaction((habits) => habits.listAll())).resolves.toHaveLength(1);
     });
 
+    it('finds a habit by its id', async () => {
+      await add('Cuisiner');
+      const budget = await add('Budget du jour', Day.of(2026, 10, 12));
+
+      await expect(inTransaction((habits) => habits.findById(budget.id))).resolves.toEqual(budget);
+    });
+
+    it('finds nothing for an unknown id', async () => {
+      const cooking = await add('Cuisiner');
+
+      await expect(inTransaction((habits) => habits.findById(cooking.id + 1))).resolves.toBeNull();
+    });
+
     it('lets accents distinguish two names', async () => {
       await add('Eté sans sucre');
       await add('Été sans sucre');
