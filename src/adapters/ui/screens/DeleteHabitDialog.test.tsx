@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { AccessibilityInfo } from 'react-native';
 
 import type { DeleteHabitOutcome } from '../state/useEditHabit';
@@ -122,7 +122,7 @@ describe('DeleteHabitDialog', () => {
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(deleteButton()).toBeDisabled();
-    finish({ ok: true, xpRemoved: 10, xp: 30 });
+    await act(async () => finish({ ok: true, xpRemoved: 10, xp: 30 }));
   });
 
   it('stays open after a failure, explains it, and lets the player retry', async () => {

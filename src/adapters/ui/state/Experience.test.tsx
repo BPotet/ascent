@@ -278,11 +278,13 @@ describe('ExperienceProvider', () => {
       .mockImplementationOnce(
         (work) => new Promise((resolve) => (read = () => resolve(run(work)))),
       );
-    const reading = act(() => result.current.experience.reload());
+    const reading = result.current.experience.reload();
 
     await act(() => result.current.experience.habitDeleted({ xp: 30, xpRemoved: 10 }));
-    read();
-    await reading;
+    await act(async () => {
+      read();
+      await reading;
+    });
 
     expect(result.current.experience.xp).toBe(30);
   });

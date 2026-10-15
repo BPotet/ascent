@@ -770,7 +770,9 @@ describe('DayViewScreen and editing a habit', () => {
 
   it('does not scroll to the end of the list for a renamed habit', async () => {
     await showTwoHabits();
+    // Un espion déjà posé par un test précédent garde ses appels : on part de zéro.
     const scrollToEnd = jest.spyOn(ScrollView.prototype, 'scrollToEnd');
+    scrollToEnd.mockClear();
     await fireEvent.press(editButton('Cuisiner'));
     await fireEvent.changeText(nameField(), 'Cuisiner maison');
     await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
