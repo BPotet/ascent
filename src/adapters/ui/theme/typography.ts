@@ -36,6 +36,17 @@ export const typography = {
   label: { fontFamily: fonts.interMedium, fontSize: 13, lineHeight: 18 },
   /** Texte d'un encart de la Vue Journée (aide, encouragement). */
   notice: { fontFamily: fonts.interRegular, fontSize: 14, lineHeight: 20 },
+  /** Titre de la période affichée : « Cette semaine ». */
+  periodTitle: { fontFamily: fonts.soraSemiBold, fontSize: 16, lineHeight: 21 },
+  /** Nom d'une habitude sur sa carte de la Vue Semaine. */
+  cardTitle: { fontFamily: fonts.interSemiBold, fontSize: 15, lineHeight: 20 },
+  /** Initiale et numéro des jours de la Vue Semaine, légende. */
+  small: { fontFamily: fonts.interMedium, fontSize: 12, lineHeight: 16 },
+  /** Libellé d'un onglet ; l'onglet actif est en gras. */
+  tab: { fontFamily: fonts.interMedium, fontSize: 12, lineHeight: 16 },
+  tabActive: { fontFamily: fonts.interSemiBold, fontSize: 12, lineHeight: 16 },
+  /** Lien d'action discret : « Revenir à cette semaine ». */
+  link: { fontFamily: fonts.interSemiBold, fontSize: 14 },
   /** Message d'un toast. */
   toast: { fontFamily: fonts.interMedium, fontSize: 14, lineHeight: 19 },
 } as const satisfies Record<string, TextStyle>;

@@ -44,12 +44,12 @@ export class FakeExpoSqliteConnection {
     return new FakeExpoSqliteConnection(this.db, 'main', []);
   }
 
-  private log(sql: string): void {
+  private log(sql: string, params: readonly SqlValue[] = []): void {
     if (this.closed) {
       throw new Error('Access to closed resource');
     }
     this.statements.push({ connection: this.name, sql });
-    this.faults.check(sql);
+    this.faults.check(sql, params);
   }
 
   async execAsync(source: string): Promise<void> {
@@ -58,18 +58,18 @@ export class FakeExpoSqliteConnection {
   }
 
   async runAsync(source: string, params: SqlValue[]): Promise<{ changes: number }> {
-    this.log(source);
+    this.log(source, params);
     const result = this.db.prepare(source).run(...(params as SQLInputValue[]));
     return { changes: Number(result.changes) };
   }
 
   async getFirstAsync<T>(source: string, params: SqlValue[]): Promise<T | null> {
-    this.log(source);
+    this.log(source, params);
     return (this.db.prepare(source).get(...(params as SQLInputValue[])) as T | undefined) ?? null;
   }
 
   async getAllAsync<T>(source: string, params: SqlValue[]): Promise<T[]> {
-    this.log(source);
+    this.log(source, params);
     return this.db.prepare(source).all(...(params as SQLInputValue[])) as T[];
   }
 

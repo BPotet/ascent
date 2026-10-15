@@ -35,5 +35,16 @@ export const colors = {
   toast: '#EEF1F7',
   onToast: '#121826',
   toastAction: '#2C47D9',
+  /** Cases de la Vue Semaine. */
+  pendingRing: 'rgba(124,156,255,0.18)',
+  missed: '#222B3D',
+  onMissed: '#9AA4B8',
+  notStarted: '#6B7894',
+  upcoming: '#3A4560',
+  /** Bouton d'icône désactivé (flèches de la Vue Semaine). */
+  iconDisabled: '#4A5570',
+  /** Barre d'onglets. */
+  tabBar: 'rgba(13,17,27,0.97)',
+  tabActiveSoft: 'rgba(124,156,255,0.22)',
 } as const;
 // Stryker restore all

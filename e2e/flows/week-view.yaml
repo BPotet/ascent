@@ -1,0 +1,98 @@
+# Story #7 : voir sa semaine et passer d'une vue à l'autre.
+# Parcours : créer « Cuisiner » → la cocher dans la Vue Journée → onglet Semaine : la case du jour
+# est « fait » → la toucher : « à faire » → retour Journée : « à faire » → la semaine précédente
+# n'est pas consultable (elle précède la création de l'habitude).
+# Captures pour la comparaison avec la maquette : Vue Semaine vide, en cours, après le tap (E4).
+appId: com.bpotet.ascent
+name: Voir sa semaine et passer de la Vue Journée à la Vue Semaine
+tags:
+  - story-7
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: 'day-view-empty'
+    timeout: 30000
+- assertVisible:
+    id: 'tab-day'
+- assertVisible:
+    id: 'tab-week'
+
+# Sans habitude, la Vue Semaine est vide : seule la semaine en cours est consultable.
+- tapOn:
+    id: 'tab-week'
+- extendedWaitUntil:
+    visible:
+      id: 'week-view-empty'
+    timeout: 10000
+- assertVisible:
+    text: 'Semaine précédente'
+    enabled: false
+- assertVisible:
+    text: 'Semaine suivante'
+    enabled: false
+- takeScreenshot: week-view-1-empty
+
+# Son bouton « Ajouter une habitude » ouvre le panneau dans la Vue Journée.
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Cuisiner'
+- tapOn:
+    id: 'create-habit'
+- extendedWaitUntil:
+    notVisible: 'Nouvelle habitude'
+    timeout: 10000
+
+# Cochée dans la Vue Journée.
+- extendedWaitUntil:
+    visible: 'Cuisiner, .+, à faire'
+    timeout: 10000
+- tapOn: 'Cuisiner, .+, à faire'
+- extendedWaitUntil:
+    visible: 'Cuisiner, .+, fait'
+    timeout: 10000
+
+# Onglet Semaine : la case du jour est « fait », les jours avant la création « hors habitude ».
+- tapOn:
+    id: 'tab-week'
+- extendedWaitUntil:
+    visible:
+      id: 'week-card-1'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'Cuisiner, .+, fait'
+    timeout: 10000
+- assertVisible: 'Cette semaine.*'
+- takeScreenshot: week-view-2-current-week-done
+
+# La toucher la remet « à faire ».
+- tapOn: 'Cuisiner, .+, fait'
+- extendedWaitUntil:
+    visible: 'Cuisiner, .+, à faire'
+    timeout: 10000
+- takeScreenshot: week-view-3-current-week-pending
+
+# La semaine précédente précède la création de l'habitude : elle n'est pas consultable, et rien
+# ne suit la semaine en cours.
+- assertVisible:
+    text: 'Semaine précédente'
+    enabled: false
+- assertVisible:
+    text: 'Semaine suivante'
+    enabled: false
+
+# Retour à la Vue Journée : l'habitude y est « à faire ».
+- tapOn:
+    id: 'tab-day'
+- extendedWaitUntil:
+    visible: 'Cuisiner, .+, à faire'
+    timeout: 10000
+- assertVisible:
+    id: 'day-view-list'
+- takeScreenshot: week-view-4-day-view-pending

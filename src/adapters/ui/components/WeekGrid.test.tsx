@@ -1,0 +1,161 @@
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
+import { View } from 'react-native';
+
+import type { CheckInStatus } from '../../../domain/checkIn/CheckInStatus';
+import type { HabitDay } from '../../../domain/checkIn/HabitDay';
+import { Day } from '../../../domain/day/Day';
+import { Habit } from '../../../domain/habit/Habit';
+import { HabitName } from '../../../domain/habit/HabitName';
+import { Week } from '../../../domain/week/Week';
+import { HabitWeekCard, WeekDaysHeader, WeekLegend } from './WeekGrid';
+
+const wednesday = Day.of(2026, 10, 14);
+const week = Week.containing(wednesday);
+const cooking = new Habit(3, HabitName.parse('Cuisiner'), Day.of(2026, 10, 5));
+const hidden = { includeHiddenElements: true } as const;
+
+const statuses: CheckInStatus[] = [
+  'done',
+  'missed',
+  'pending',
+  'upcoming',
+  'upcoming',
+  'upcoming',
+  'upcoming',
+];
+const days: HabitDay[] = week.days().map((day, index) => ({
+  habit: cooking,
+  day,
+  status: statuses[index] ?? 'upcoming',
+  editable: day.equals(wednesday),
+  corrected: false,
+}));
+
+describe('WeekDaysHeader', () => {
+  it('shows the initial and the number of each day, from Monday to Sunday', async () => {
+    await render(<WeekDaysHeader days={week.days()} today={wednesday} />);
+
+    const texts = screen
+      .getAllByText(/^(\w|\d+)$/u, hidden)
+      .map((text) => String(text.props.children));
+    expect(texts).toEqual([
+      'L',
+      '12',
+      'M',
+      '13',
+      'M',
+      '14',
+      'J',
+      '15',
+      'V',
+      '16',
+      'S',
+      '17',
+      'D',
+      '18',
+    ]);
+  });
+
+  it('highlights today, and is not read by the screen reader (each cell says its day)', async () => {
+    await render(<WeekDaysHeader days={week.days()} today={wednesday} />);
+
+    expect(screen.queryByText('14')).toBeNull();
+    expect(screen.getByTestId('weekday-2026-10-14', hidden)).toHaveStyle({
+      backgroundColor: '#7C9CFF',
+    });
+    const [, todayInitial, todayNumber] = screen.getAllByText(/^(M|14)$/u, hidden);
+    expect(todayInitial).toHaveStyle({ color: '#7C9CFF' });
+    expect(todayNumber).toHaveStyle({ color: '#0B1020' });
+    const [mondayInitial, mondayNumber] = screen.getAllByText(/^(L|12)$/u, hidden);
+    expect(mondayInitial).toHaveStyle({ color: '#9AA4B8' });
+    expect(mondayNumber).toHaveStyle({ color: '#EEF1F7' });
+    expect(screen.getByTestId('weekday-2026-10-13', hidden)).not.toHaveStyle({
+      backgroundColor: '#7C9CFF',
+    });
+  });
+
+  it('highlights no day when today is not in the week', async () => {
+    await render(<WeekDaysHeader days={week.previous().days()} today={wednesday} />);
+
+    for (const day of week.previous().days()) {
+      expect(screen.getByTestId(`weekday-${day.toIsoString()}`, hidden)).not.toHaveStyle({
+        backgroundColor: '#7C9CFF',
+      });
+    }
+  });
+});
+
+describe('HabitWeekCard', () => {
+  it('shows the habit and its 7 cells, from Monday to Sunday', async () => {
+    await render(<HabitWeekCard days={days} today={wednesday} onToggle={jest.fn()} />);
+
+    const card = screen.getByTestId('week-card-3');
+    expect(within(card).getByText('Cuisiner')).toBeOnTheScreen();
+    expect(
+      within(card)
+        .getAllByRole('switch')
+        .map((cell) => cell.props.accessibilityLabel),
+    ).toEqual([
+      'Cuisiner, lundi 12 octobre, fait, indisponible',
+      'Cuisiner, mardi 13 octobre, pas fait, indisponible',
+      'Cuisiner, mercredi 14 octobre, à faire',
+      'Cuisiner, jeudi 15 octobre, à venir, indisponible',
+      'Cuisiner, vendredi 16 octobre, à venir, indisponible',
+      'Cuisiner, samedi 17 octobre, à venir, indisponible',
+      'Cuisiner, dimanche 18 octobre, à venir, indisponible',
+    ]);
+  });
+
+  it('passes on the tap on a cell', async () => {
+    const onToggle = jest.fn();
+    await render(<HabitWeekCard days={days} today={wednesday} onToggle={onToggle} />);
+
+    await fireEvent.press(screen.getByTestId('cell-3-2026-10-14'));
+
+    expect(onToggle).toHaveBeenCalledWith(days[2]);
+  });
+});
+
+it('shows nothing for a habit without cells', async () => {
+  await render(<HabitWeekCard days={[]} today={wednesday} onToggle={jest.fn()} />);
+
+  expect(screen.toJSON()).toBeNull();
+});
+
+it('aligns the days of the header on the columns of the cells', async () => {
+  await render(
+    <>
+      <WeekDaysHeader days={week.days()} today={wednesday} />
+      <View style={{ paddingHorizontal: 16 }}>
+        <HabitWeekCard days={days} today={wednesday} onToggle={jest.fn()} />
+      </View>
+    </>,
+  );
+
+  // En-tête : 16 (marge) + 9 ; cases : 16 (marge de la liste) + 9 (carte). Même écart de 4.
+  expect(screen.getByTestId('week-days-header', hidden)).toHaveStyle({
+    marginHorizontal: 16,
+    paddingHorizontal: 9,
+    gap: 4,
+  });
+  expect(screen.getByTestId('week-card-3')).toHaveStyle({ paddingHorizontal: 9 });
+  expect(screen.getByTestId('week-cells')).toHaveStyle({ gap: 4 });
+  expect(screen.getByTestId('weekday-2026-10-14', hidden)).toHaveStyle({
+    width: '100%',
+    maxWidth: 30,
+  });
+});
+
+describe('WeekLegend', () => {
+  it('names the five shapes, hidden from the screen reader', async () => {
+    await render(<WeekLegend />);
+
+    expect(screen.queryByText('Fait')).toBeNull();
+    expect(screen.getAllByText(/.+/u, hidden).map((text) => text.props.children as string)).toEqual(
+      ['Fait', 'À faire', 'Pas fait', 'À venir', 'Hors habitude'],
+    );
+    expect(screen.getByTestId('check-mark', hidden)).toBeTruthy();
+    expect(screen.getByTestId('cross-mark', hidden)).toBeTruthy();
+    expect(screen.getByTestId('dot-mark', hidden)).toBeTruthy();
+  });
+});

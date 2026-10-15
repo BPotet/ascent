@@ -61,6 +61,58 @@ export function CheckGlyph({ color }: { readonly color: string }) {
   );
 }
 
+/** La croix d'une case « pas fait ». Décorative : l'état est lu par le lecteur d'écran. */
+export function CrossGlyph({ color }: { readonly color: string }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      testID="cross-mark"
+      style={styles.cross}
+    >
+      <View
+        style={[styles.crossBar, { backgroundColor: color, transform: [{ rotate: '45deg' }] }]}
+      />
+      <View
+        style={[styles.crossBar, { backgroundColor: color, transform: [{ rotate: '-45deg' }] }]}
+      />
+    </View>
+  );
+}
+
+/** Le point seul d'une case « hors habitude ». Décoratif. */
+export function DotGlyph({ color }: { readonly color: string }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      testID="dot-mark"
+      style={[styles.dot, { backgroundColor: color }]}
+    />
+  );
+}
+
+/** Le chevron des boutons « Semaine précédente » (`left`) et « Semaine suivante » (`right`). */
+export function ChevronGlyph({
+  color,
+  direction,
+}: {
+  readonly color: string;
+  readonly direction: 'left' | 'right';
+}) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[
+        styles.chevron,
+        { borderColor: color },
+        direction === 'left' ? styles.chevronLeft : styles.chevronRight,
+      ]}
+    />
+  );
+}
+
 const styles = StyleSheet.create({
   plus: { fontSize: 24, lineHeight: 26, fontWeight: '600' },
   spark: { fontSize: 16, lineHeight: 20 },
@@ -75,5 +127,11 @@ const styles = StyleSheet.create({
     borderRadius: 1,
     transform: [{ rotate: '45deg' }],
   },
+  cross: { width: 18, height: 18, alignItems: 'center', justifyContent: 'center' },
+  crossBar: { position: 'absolute', width: 17, height: 2.4, borderRadius: 1.2 },
+  dot: { width: 6.4, height: 6.4, borderRadius: 3.2 },
+  chevron: { width: 12, height: 12, borderLeftWidth: 2.4, borderBottomWidth: 2.4, borderRadius: 1 },
+  chevronLeft: { marginLeft: 5, transform: [{ rotate: '45deg' }] },
+  chevronRight: { marginRight: 5, transform: [{ rotate: '-135deg' }] },
 });
 // Stryker restore all

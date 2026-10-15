@@ -5,6 +5,7 @@ import type { KeyValueStore } from '../../../application/ports/KeyValueStore';
 import type { UnitOfWork } from '../../../application/ports/UnitOfWork';
 import type { PreferenceDependencies } from '../../../application/useCases/checkInHint';
 import type { UseCaseDependencies } from '../../../application/useCases/UseCaseDependencies';
+import { TrackingRevisionProvider } from './TrackingRevision';
 
 /** Les ports dont l'interface a besoin, fournis par l'assemblage (`src/app`). */
 export interface Dependencies {
@@ -18,6 +19,10 @@ export interface Dependencies {
 
 const DependenciesContext = createContext<Dependencies | null>(null);
 
+/**
+ * Fournit les ports à l'interface, et la révision des données suivies partagée par les vues
+ * (`TrackingRevision`).
+ */
 export function DependenciesProvider({
   value,
   children,
@@ -25,7 +30,11 @@ export function DependenciesProvider({
   readonly value: Dependencies;
   readonly children: ReactNode;
 }) {
-  return <DependenciesContext.Provider value={value}>{children}</DependenciesContext.Provider>;
+  return (
+    <DependenciesContext.Provider value={value}>
+      <TrackingRevisionProvider>{children}</TrackingRevisionProvider>
+    </DependenciesContext.Provider>
+  );
 }
 
 export function useDependencies(): Dependencies {

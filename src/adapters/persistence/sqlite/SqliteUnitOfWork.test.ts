@@ -3,7 +3,7 @@ import { describeHabitRepositoryContract } from '../testing/habitRepositoryContr
 import { FakeExpoSqliteConnection } from '../testing/fakeExpoSqlite';
 import { withFaults } from '../testing/faultySqlDatabase';
 import { openNodeSqliteDatabase } from '../testing/nodeSqliteDatabase';
-import { readsFrom, SimulatedStorageError, writesTo } from '../testing/sqlFaults';
+import { readsFrom, readsFromWith, SimulatedStorageError, writesTo } from '../testing/sqlFaults';
 import { describeUnitOfWorkContract } from '../testing/unitOfWorkContract';
 import { Day } from '../../../domain/day/Day';
 import { HabitName } from '../../../domain/habit/HabitName';
@@ -136,6 +136,37 @@ describe('SqliteUnitOfWork', () => {
       await expect(
         unitOfWork.run(({ checkIns }) => checkIns.find(cooking.id, day)),
       ).resolves.toEqual(done);
+    });
+
+    it.each([
+      [
+        'the SQL database',
+        async () => withFaults(await prepareAscentDatabase(openNodeSqliteDatabase())),
+      ],
+      [
+        'the expo-sqlite bridge',
+        async () => {
+          const connection = FakeExpoSqliteConnection.open();
+          return Object.assign(await prepareExpoSqliteDatabase(connection), {
+            faults: connection.faults,
+          });
+        },
+      ],
+    ])('on %s, fails the reads of the check-ins of one week only', async (_, open) => {
+      const db = await open();
+      const unitOfWork = new SqliteUnitOfWork(db);
+      const lastWeek = [Day.of(2026, 10, 5), Day.of(2026, 10, 11)] as const;
+      const thisWeek = [Day.of(2026, 10, 12), Day.of(2026, 10, 18)] as const;
+
+      db.faults.failWhen(readsFromWith('check_ins', '2026-10-05'));
+
+      await expect(
+        unitOfWork.run(({ checkIns }) => checkIns.listBetween(...lastWeek)),
+      ).rejects.toThrow(SimulatedStorageError);
+      await expect(
+        unitOfWork.run(({ checkIns }) => checkIns.listBetween(...thisWeek)),
+      ).resolves.toEqual([]);
+      await expect(unitOfWork.run(({ habits }) => habits.listAll())).resolves.toEqual([]);
     });
   });
 });
