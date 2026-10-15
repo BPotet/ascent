@@ -10,6 +10,7 @@ import { Day } from '../../../domain/day/Day';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { DependenciesProvider } from './Dependencies';
+import { useExperience } from './Experience';
 import { useTrackingChanges } from './TrackingRevision';
 import { useDayView } from './useDayView';
 
@@ -401,6 +402,50 @@ describe('useDayView', () => {
 
       expect(outcome).toEqual({ ok: false, reason: 'upcoming' });
       expect(result.current.state).toMatchObject({ view: { day: tuesday, habits: [] } });
+    });
+  });
+
+  describe('experience', () => {
+    async function showWithExperience() {
+      const { dependencies, wrapper } = setUp();
+      await createHabit(dependencies, 'Cuisiner');
+      const { result } = await renderHook(
+        () => ({ day: useDayView(), experience: useExperience() }),
+        { wrapper },
+      );
+      await waitFor(() => expect(result.current.day.state.status).toBe('ready'));
+      await waitFor(() => expect(result.current.experience.xp).toBe(0));
+      const cell = (): HabitDay => {
+        const { state } = result.current.day;
+        if (state.status !== 'ready' || state.view.habits[0] === undefined) {
+          throw new Error('No row');
+        }
+        return state.view.habits[0];
+      };
+      return { dependencies, result, cell };
+    }
+
+    it('shows the experience of a tap, as it is saved', async () => {
+      const { result, cell } = await showWithExperience();
+
+      let outcome: unknown;
+      await act(async () => {
+        outcome = await result.current.day.toggle(cell());
+      });
+
+      expect(outcome).toMatchObject({ ok: true, xpChange: 10, xp: 10 });
+      expect(result.current.experience.xp).toBe(10);
+      expect(result.current.experience.change).toMatchObject({ amount: 10 });
+    });
+
+    it('changes no experience when the tap cannot be saved', async () => {
+      const { dependencies, result, cell } = await showWithExperience();
+      dependencies.unitOfWork.failWrites();
+
+      await act(() => result.current.day.toggle(cell()));
+
+      expect(result.current.experience.xp).toBe(0);
+      expect(result.current.experience.change).toBeNull();
     });
   });
 });
