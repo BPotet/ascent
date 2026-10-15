@@ -18,10 +18,10 @@ export interface Dependencies {
   /** Les préférences d'affichage (aide au premier usage). */
   readonly keyValueStore: KeyValueStore;
   /**
-   * La vibration légère d'un gain d'expérience. Sans elle, le téléphone ne vibre pas ; le reste du
-   * feedback (« +10 XP », annonce au lecteur d'écran) est le même.
+   * La vibration légère d'un gain d'expérience. Un téléphone sans vibreur ne vibre pas ; le reste
+   * du feedback (« +10 XP », annonce au lecteur d'écran) est le même.
    */
-  readonly haptics?: Haptics;
+  readonly haptics: Haptics;
 }
 
 const DependenciesContext = createContext<Dependencies | null>(null);

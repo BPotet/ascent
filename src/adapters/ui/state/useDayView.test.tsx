@@ -9,6 +9,7 @@ import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import { Day } from '../../../domain/day/Day';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
+import { silentHaptics } from '../testing/silentHaptics';
 import { DependenciesProvider } from './Dependencies';
 import { useExperience } from './Experience';
 import { useTrackingChanges } from './TrackingRevision';
@@ -23,6 +24,7 @@ function setUp() {
     clock: settableClock(wednesday),
     unitOfWork: new InMemoryUnitOfWork(),
     keyValueStore: memoryKeyValueStore(),
+    haptics: silentHaptics(),
   };
   const wrapper = ({ children }: { children: ReactNode }) => (
     <DependenciesProvider value={dependencies}>{children}</DependenciesProvider>

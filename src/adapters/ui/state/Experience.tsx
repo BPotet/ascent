@@ -102,7 +102,7 @@ export function ExperienceProvider({
   children,
 }: {
   readonly unitOfWork: UnitOfWork;
-  readonly haptics: Haptics | undefined;
+  readonly haptics: Haptics;
   readonly children: ReactNode;
 }) {
   const [xp, setXp] = useState<number | null>(null);
@@ -138,7 +138,7 @@ export function ExperienceProvider({
         key: keyOf(toggled.habitDay),
       });
       if (toggled.xpChange > 0) {
-        haptics?.success();
+        haptics.success();
       }
       AccessibilityInfo.announceForAccessibility(
         xpAnnouncement({

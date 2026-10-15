@@ -5,6 +5,7 @@ import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfW
 import { settableClock } from '../../../application/testing/settableClock';
 import { Day } from '../../../domain/day/Day';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
+import { silentHaptics } from '../testing/silentHaptics';
 import { DependenciesProvider } from './Dependencies';
 import { TrackingRevisionProvider, useTrackingChanges } from './TrackingRevision';
 
@@ -12,6 +13,7 @@ const dependencies = {
   clock: settableClock(Day.of(2026, 10, 14)),
   unitOfWork: new InMemoryUnitOfWork(),
   keyValueStore: memoryKeyValueStore(),
+  haptics: silentHaptics(),
 };
 
 /** Deux vues affichées en même temps (deux onglets), chacune avec son rechargement. */

@@ -9,6 +9,7 @@ import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
 import type { Habit } from '../../../domain/habit/Habit';
 import { Day } from '../../../domain/day/Day';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
+import { silentHaptics } from '../testing/silentHaptics';
 import { type Dependencies, DependenciesProvider } from './Dependencies';
 import {
   type ToggledCheckIn,
@@ -180,14 +181,16 @@ describe('ExperienceProvider', () => {
     }
   });
 
-  it('works without vibration when the phone gives none', async () => {
-    const { haptics: _haptics, ...withoutHaptics } = dependencies;
-    const result = await renderExperience(withoutHaptics);
+  it('gives the same feedback on a phone that does not vibrate', async () => {
+    const haptics = silentHaptics();
+    const result = await renderExperience({ ...dependencies, haptics });
     const toggled = await toggle();
 
     await act(() => result.current.experience.checkInToggled(toggled));
 
+    expect(haptics.successes()).toBe(1);
     expect(result.current.experience.xp).toBe(10);
+    expect(result.current.experience.change).toMatchObject({ amount: 10 });
     expect(announce).toHaveBeenCalled();
   });
 
