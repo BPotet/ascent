@@ -153,6 +153,56 @@ export function ChevronGlyph({
   );
 }
 
+/** Les trois points « ⋯ » du bouton qui ouvre « Modifier l'habitude ». Décoratifs. */
+export function MoreGlyph({ color }: { readonly color: string }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      testID="more-glyph"
+      style={styles.more}
+    >
+      {[0, 1, 2].map((dot) => (
+        <View key={dot} style={[styles.moreDot, { backgroundColor: color }]} />
+      ))}
+    </View>
+  );
+}
+
+/** Le crayon du nom d'une habitude dans la Vue Semaine (le toucher la modifie). Décoratif. */
+export function PencilGlyph({ color }: { readonly color: string }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      testID="pencil-glyph"
+      style={styles.pencil}
+    >
+      <View style={[styles.pencilBody, { borderColor: color }]} />
+      <View style={[styles.pencilTip, { borderTopColor: color }]} />
+    </View>
+  );
+}
+
+/**
+ * La corbeille des actions de suppression : elle signale l'action destructive autrement que par la
+ * couleur. Décorative : le libellé du bouton suffit au lecteur d'écran.
+ */
+export function TrashGlyph({ color }: { readonly color: string }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      testID="trash-glyph"
+      style={styles.trash}
+    >
+      <View style={[styles.trashHandle, { borderColor: color }]} />
+      <View style={[styles.trashLid, { backgroundColor: color }]} />
+      <View style={[styles.trashBin, { borderColor: color }]} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   plus: { fontSize: 24, lineHeight: 26, fontWeight: '600' },
   spark: { fontSize: 16, lineHeight: 20 },
@@ -196,5 +246,34 @@ const styles = StyleSheet.create({
   chevron: { width: 12, height: 12, borderLeftWidth: 2.4, borderBottomWidth: 2.4, borderRadius: 1 },
   chevronLeft: { marginLeft: 5, transform: [{ rotate: '45deg' }] },
   chevronRight: { marginRight: 5, transform: [{ rotate: '-135deg' }] },
+  more: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  moreDot: { width: 4, height: 4, borderRadius: 2 },
+  pencil: { width: 18, height: 18, alignItems: 'center', justifyContent: 'center' },
+  pencilBody: {
+    width: 6,
+    height: 14,
+    borderWidth: 2,
+    borderRadius: 1,
+    transform: [{ rotate: '45deg' }, { translateY: -1 }],
+  },
+  pencilTip: {
+    position: 'absolute',
+    left: 2,
+    bottom: 1,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+    borderRightColor: 'transparent',
+  },
+  trash: { width: 18, height: 18, alignItems: 'center' },
+  trashHandle: { width: 7, height: 3, borderWidth: 2, borderBottomWidth: 0, marginTop: 1 },
+  trashLid: { width: 14, height: 2, borderRadius: 1 },
+  trashBin: {
+    width: 10,
+    height: 11,
+    borderWidth: 2,
+    borderTopWidth: 0,
+    borderBottomLeftRadius: 2,
+    borderBottomRightRadius: 2,
+  },
 });
 // Stryker restore all

@@ -174,7 +174,7 @@ describe('DayViewScreen', () => {
     ).toBeOnTheScreen();
     expect(screen.queryByTestId('new-habit-sheet')).not.toBeOnTheScreen();
     expect(screen.getByTestId('toast')).toHaveTextContent('Habitude créée');
-    expect(screen.getByTestId('habit-row-1')).toHaveStyle({ borderColor: '#7C9CFF' });
+    expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: '#7C9CFF' });
     expect(await names()).toEqual(['Cuisiner']);
   });
 
@@ -187,8 +187,8 @@ describe('DayViewScreen', () => {
     await fireEvent(screen.getByLabelText('Nom de l’habitude'), 'submitEditing');
 
     await waitFor(() => expect(rowNames()).toEqual(['Cuisiner', 'Lire 20 minutes']));
-    expect(screen.getByTestId('habit-row-2')).toHaveStyle({ borderColor: '#7C9CFF' });
-    expect(screen.getByTestId('habit-row-1')).toHaveStyle({ borderColor: 'transparent' });
+    expect(screen.getByTestId('habit-card-2')).toHaveStyle({ borderColor: '#7C9CFF' });
+    expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: 'transparent' });
   });
 
   it('scrolls to the new habit, and only to a new habit', async () => {
@@ -217,7 +217,7 @@ describe('DayViewScreen', () => {
       await screen.findByText('Cuisiner');
 
       await act(() => jest.advanceTimersByTime(HIGHLIGHT_DURATION_MS));
-      expect(screen.getByTestId('habit-row-1')).toHaveStyle({ borderColor: 'transparent' });
+      expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: 'transparent' });
       await act(() => jest.advanceTimersByTime(TOAST_DURATION_MS - HIGHLIGHT_DURATION_MS));
       expect(screen.queryByTestId('toast')).not.toBeOnTheScreen();
     } finally {
