@@ -4,12 +4,14 @@ import type { ReactNode } from 'react';
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../../application/testing/settableClock';
 import { Day } from '../../../domain/day/Day';
+import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { DependenciesProvider } from './Dependencies';
 import { TrackingRevisionProvider, useTrackingChanges } from './TrackingRevision';
 
 const dependencies = {
   clock: settableClock(Day.of(2026, 10, 14)),
   unitOfWork: new InMemoryUnitOfWork(),
+  keyValueStore: memoryKeyValueStore(),
 };
 
 /** Deux vues affichées en même temps (deux onglets), chacune avec son rechargement. */

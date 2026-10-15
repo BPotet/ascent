@@ -8,6 +8,7 @@ import { getDayView } from '../../../application/useCases/getDayView';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
 import { Day } from '../../../domain/day/Day';
 import type { HabitId } from '../../../domain/habit/Habit';
+import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { renderScreen } from '../testing/renderScreen';
 import { useTrackingChanges } from '../state/TrackingRevision';
 import { WeekViewScreen } from './WeekViewScreen';
@@ -18,12 +19,17 @@ const wednesday = october(14);
 let dependencies: {
   clock: ReturnType<typeof settableClock>;
   unitOfWork: InMemoryUnitOfWork;
+  keyValueStore: ReturnType<typeof memoryKeyValueStore>;
 };
 let cooking: HabitId;
 let budget: HabitId;
 
 beforeEach(() => {
-  dependencies = { clock: settableClock(wednesday), unitOfWork: new InMemoryUnitOfWork() };
+  dependencies = {
+    clock: settableClock(wednesday),
+    unitOfWork: new InMemoryUnitOfWork(),
+    keyValueStore: memoryKeyValueStore(),
+  };
 });
 
 afterEach(() => {
