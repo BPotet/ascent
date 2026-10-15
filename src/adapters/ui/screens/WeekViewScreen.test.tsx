@@ -373,6 +373,67 @@ describe('WeekViewScreen', () => {
       );
     });
 
+    it('keeps « fait » with its mark « corrigé » when undoing a correction cannot be saved', async () => {
+      await givenTheBackground();
+      await show();
+      await fireEvent.press(cell(cooking, october(13)));
+      await waitFor(() =>
+        expect(labelOf(cooking, october(13))).toBe('Cuisiner, mardi 13 octobre, fait, corrigé'),
+      );
+      dependencies.unitOfWork.failWrites();
+
+      await fireEvent.press(cell(cooking, october(13)));
+
+      expect(await screen.findByText('La correction n’a pas été enregistrée.')).toBeOnTheScreen();
+      expect(labelOf(cooking, october(13))).toBe('Cuisiner, mardi 13 octobre, fait, corrigé');
+      await expect(storedCheckIn(cooking, october(13))).resolves.toMatchObject({
+        done: true,
+        corrected: true,
+      });
+    });
+
+    it('keeps « fait » without mark when correcting a day « fait » at its closing cannot be saved', async () => {
+      await givenTheBackground();
+      await show();
+      dependencies.unitOfWork.failWrites();
+
+      await fireEvent.press(cell(cooking, october(12)));
+
+      expect(await screen.findByText('La correction n’a pas été enregistrée.')).toBeOnTheScreen();
+      expect(labelOf(cooking, october(12))).toBe('Cuisiner, lundi 12 octobre, fait');
+      await expect(storedCheckIn(cooking, october(12))).resolves.toMatchObject({
+        done: true,
+        corrected: false,
+      });
+    });
+
+    it('follows two quick taps on a closed day back to its state at the closing, without mark', async () => {
+      await givenTheBackground();
+      await show();
+      let open: () => void = () => undefined;
+      const gate = new Promise<void>((resolve) => {
+        open = resolve;
+      });
+      const run = dependencies.unitOfWork.run.bind(dependencies.unitOfWork);
+      jest
+        .spyOn(dependencies.unitOfWork, 'run')
+        .mockImplementation((work) => gate.then(() => run(work)));
+
+      await fireEvent.press(cell(cooking, october(13)));
+      expect(labelOf(cooking, october(13))).toBe('Cuisiner, mardi 13 octobre, fait');
+      await fireEvent.press(cell(cooking, october(13)));
+      expect(labelOf(cooking, october(13))).toBe('Cuisiner, mardi 13 octobre, pas fait');
+      await act(async () => open());
+
+      await waitFor(() =>
+        expect(
+          screen.getByText('Mardi 13 octobre revient à son état de la clôture.'),
+        ).toBeOnTheScreen(),
+      );
+      expect(labelOf(cooking, october(13))).toBe('Cuisiner, mardi 13 octobre, pas fait');
+      await expect(storedCheckIn(cooking, october(13))).resolves.toBeNull();
+    });
+
     it('explains under the legend that a past day can be corrected', async () => {
       await givenTheBackground();
       await show();
