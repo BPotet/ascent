@@ -59,4 +59,21 @@ describe('XpFloat', () => {
     expect(float()).not.toBeOnTheScreen();
     expect(timing).not.toHaveBeenCalled();
   });
+
+  it('starts below the case, small and transparent', async () => {
+    await render(<XpFloat reducedMotion={false} change={{ id: 1, amount: 10 }} />);
+
+    expect(float()).toHaveStyle({ opacity: 0, transform: [{ translateY: 8 }, { scale: 0.8 }] });
+  });
+
+  it('flies on the native thread, and stops when it leaves the screen', async () => {
+    const animation = { start: jest.fn(), stop: jest.fn(), reset: jest.fn() };
+    const timing = jest.spyOn(Animated, 'timing').mockReturnValue(animation);
+    await render(<XpFloat reducedMotion={false} change={{ id: 1, amount: 10 }} />);
+
+    expect(timing.mock.calls[0]?.[1]).toMatchObject({ toValue: 1, useNativeDriver: true });
+    expect(animation.start).toHaveBeenCalled();
+    await screen.unmount();
+    expect(animation.stop).toHaveBeenCalled();
+  });
 });

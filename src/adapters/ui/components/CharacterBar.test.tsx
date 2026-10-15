@@ -156,4 +156,68 @@ describe('CharacterBar', () => {
       '+10 XP',
     );
   });
+
+  it('glows for a gain only', async () => {
+    await render(<CharacterBar xp={50} change={{ id: 1, amount: 10 }} />);
+    expect(screen.getByTestId('xp-counter')).toHaveStyle({ textShadowRadius: 18 });
+
+    await screen.rerender(<CharacterBar xp={40} change={{ id: 2, amount: -10 }} />);
+    expect(screen.getByTestId('xp-counter')).not.toHaveStyle({ textShadowRadius: 18 });
+  });
+
+  it('grows the counter for 35 % of the pulse, on the native thread', async () => {
+    await render(<CharacterBar xp={40} change={null} />);
+    const timing = jest.spyOn(Animated, 'timing');
+
+    await screen.rerender(<CharacterBar xp={50} change={{ id: 1, amount: 10 }} />);
+
+    const grow = timing.mock.calls.find(([, config]) => config.toValue === 1.14)?.[1];
+    expect(grow).toMatchObject({ duration: 210, useNativeDriver: true });
+  });
+
+  it('writes the pill in dark on gold for a gain, in grey for a loss', async () => {
+    await render(<CharacterBar xp={50} change={{ id: 1, amount: 10 }} />);
+    expect(screen.getByText('+10 XP', { includeHiddenElements: true })).toHaveStyle({
+      color: '#2A1E00',
+    });
+
+    await screen.rerender(<CharacterBar xp={40} change={{ id: 2, amount: -10 }} />);
+    expect(screen.getByText('−10 XP', { includeHiddenElements: true })).toHaveStyle({
+      color: '#9AA4B8',
+    });
+  });
+
+  it('lets the pill appear from transparent, unless motion is reduced', async () => {
+    await render(<CharacterBar xp={50} change={{ id: 1, amount: 10 }} />);
+    expect(screen.getByTestId('xp-change', { includeHiddenElements: true })).toHaveStyle({
+      opacity: 0,
+    });
+  });
+
+  it('jumps to an experience read again while the last change is still shown', async () => {
+    await render(<CharacterBar xp={40} change={null} />);
+    await screen.rerender(<CharacterBar xp={50} change={{ id: 1, amount: 10 }} />);
+    const timing = jest.spyOn(Animated, 'timing');
+
+    await screen.rerender(<CharacterBar xp={60} change={{ id: 1, amount: 10 }} />);
+
+    expect(timing.mock.calls.map(([, config]) => config.duration)).not.toContain(
+      XP_COUNTER_DURATION_MS,
+    );
+  });
+
+  it('stops its animations when it leaves the screen', async () => {
+    const stop = jest.fn();
+    const animation = { start: jest.fn(), stop, reset: jest.fn() };
+    jest.spyOn(Animated, 'timing').mockReturnValue(animation);
+    jest.spyOn(Animated, 'sequence').mockReturnValue(animation);
+    await render(<CharacterBar xp={40} change={null} />);
+    await screen.rerender(<CharacterBar xp={50} change={{ id: 1, amount: 10 }} />);
+    expect(animation.start).toHaveBeenCalled();
+
+    await screen.unmount();
+
+    // Le compteur et la pastille s'arrêtent.
+    expect(stop).toHaveBeenCalledTimes(2);
+  });
 });
