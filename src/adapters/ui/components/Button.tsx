@@ -1,30 +1,43 @@
-import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import type { ReactNode, Ref } from 'react';
+import { Pressable, StyleSheet, Text, type View } from 'react-native';
 
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
 
-/** Bouton de la maquette : « primary » (action principale) ou « ghost » (action secondaire). */
+/**
+ * Bouton de la maquette : « primary » (action principale), « ghost » (action secondaire),
+ * « danger » (confirmer une action définitive) ou « dangerText » (proposer une action définitive,
+ * sans fond). Une action destructive se signale aussi autrement que par la couleur : son libellé
+ * (« Supprimer… »), une icône (`icon`) et `hint`, lu par le lecteur d'écran.
+ */
 export function Button({
   label,
   onPress,
   variant = 'primary',
   disabled = false,
   icon,
+  hint,
   testID,
+  ref,
 }: {
   readonly label: string;
   readonly onPress: () => void;
-  readonly variant?: 'primary' | 'ghost';
+  readonly variant?: 'primary' | 'ghost' | 'danger' | 'dangerText';
   readonly disabled?: boolean;
   readonly icon?: ReactNode;
+  /** Ce que fait le bouton, lu par le lecteur d'écran après son libellé. */
+  readonly hint?: string;
   readonly testID?: string;
+  /** Pour placer le lecteur d'écran sur le bouton (action par défaut d'une fenêtre). */
+  readonly ref?: Ref<View>;
 }) {
   return (
     <Pressable
+      ref={ref}
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityHint={hint}
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
@@ -37,13 +50,7 @@ export function Button({
       ]}
     >
       {icon}
-      <Text
-        style={[
-          typography.button,
-          variant === 'primary' ? styles.onPrimary : styles.onGhost,
-          disabled && styles.onDisabled,
-        ]}
-      >
+      <Text style={[typography.button, labelStyles[variant], disabled && styles.onDisabled]}>
         {label}
       </Text>
     </Pressable>
@@ -63,10 +70,17 @@ const styles = StyleSheet.create({
   },
   primary: { backgroundColor: colors.accent },
   ghost: { backgroundColor: colors.surfaceRaised },
+  danger: { backgroundColor: colors.danger },
+  dangerText: { minHeight: 48 },
   disabled: { backgroundColor: colors.disabled },
   pressed: { opacity: 0.85 },
-  onPrimary: { color: colors.onAccent },
-  onGhost: { color: colors.text },
   onDisabled: { color: colors.onDisabled },
+});
+
+const labelStyles = StyleSheet.create({
+  primary: { color: colors.onAccent },
+  ghost: { color: colors.text },
+  danger: { color: colors.onDanger },
+  dangerText: { color: colors.danger },
 });
 // Stryker restore all
