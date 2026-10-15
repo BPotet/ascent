@@ -12,6 +12,7 @@ import { AccessibilityInfo } from 'react-native';
 
 import type { Haptics } from '../../../application/ports/Haptics';
 import { getCharacter } from '../../../application/useCases/getCharacter';
+import type { DeleteHabitResult } from '../../../application/useCases/deleteHabit';
 import type { ToggleCheckInResult } from '../../../application/useCases/toggleCheckIn';
 import type { UnitOfWork } from '../../../application/ports/UnitOfWork';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
@@ -48,7 +49,18 @@ export interface Experience {
   readonly reload: () => Promise<void>;
   /** Montre l'expérience après un tap enregistré, avec son feedback. */
   readonly checkInToggled: (toggled: ToggledCheckIn) => void;
+  /** Montre l'expérience après la suppression d'une habitude, avec son feedback. */
+  readonly habitDeleted: (deleted: DeletedHabit) => void;
 }
+
+/** Une habitude supprimée, telle que `deleteHabit` le renvoie. */
+export type DeletedHabit = Pick<
+  Extract<DeleteHabitResult, { readonly ok: true }>,
+  'xp' | 'xpRemoved'
+>;
+
+/** La case d'où s'envole le changement d'une suppression : aucune, il ne s'affiche qu'en en-tête. */
+const NO_CASE = '';
 
 const ExperienceContext = createContext<Experience | null>(null);
 
@@ -95,6 +107,9 @@ export function xpChangeOn(
  * - le lecteur d'écran l'annonce : « +10 points d'expérience. Total : 40 XP. », précédé de
  *   « Correction enregistrée, » pour une correction qui pose la marque « corrigé » ;
  * - un gain fait vibrer légèrement le téléphone (`Haptics`), jamais une perte.
+ *
+ * Après la suppression d'une habitude, l'expérience suit ce que `deleteHabit` renvoie ; l'expérience
+ * retirée (−10 XP), s'il y en a, est montrée dans l'en-tête et annoncée de la même façon.
  */
 export function ExperienceProvider({
   unitOfWork,
@@ -151,6 +166,19 @@ export function ExperienceProvider({
     [haptics],
   );
 
+  const habitDeleted = useCallback(({ xp: total, xpRemoved }: DeletedHabit) => {
+    latest.current += 1;
+    setXp(total);
+    if (xpRemoved === 0) {
+      return;
+    }
+    changeCount.current += 1;
+    setChange({ id: changeCount.current, amount: -xpRemoved, key: NO_CASE });
+    AccessibilityInfo.announceForAccessibility(
+      xpAnnouncement({ xpChange: -xpRemoved, xp: total, correction: false }),
+    );
+  }, []);
+
   useEffect(() => {
     if (change === null) {
       return;
@@ -160,8 +188,8 @@ export function ExperienceProvider({
   }, [change]);
 
   const value = useMemo(
-    () => ({ xp, change, reload, checkInToggled }),
-    [xp, change, reload, checkInToggled],
+    () => ({ xp, change, reload, checkInToggled, habitDeleted }),
+    [xp, change, reload, checkInToggled, habitDeleted],
   );
   return <ExperienceContext.Provider value={value}>{children}</ExperienceContext.Provider>;
 }
