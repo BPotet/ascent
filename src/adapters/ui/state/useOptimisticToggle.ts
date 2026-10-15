@@ -30,14 +30,18 @@ export function withShown(habitDay: HabitDay, shown: ShownStatuses): HabitDay {
  * suite l'autre état (`shown`), puis se recale sur ce qui est enregistré quand le dernier tap en
  * cours sur cette case a répondu : en cas d'échec, la case revient à son état enregistré.
  * - `onSaved` reçoit chaque case enregistrée ;
- * - `refresh` recharge la vue après une correction (le jour vient d'être clos) ou un refus.
+ * - `refresh` recharge la vue après une correction ou un refus ;
+ * - `undoneStatusOf` donne l'état affiché quand une case « fait » est touchée : « à faire » par
+ *   défaut, « pas fait » pour un jour clos de la Vue Semaine.
  */
 export function useOptimisticToggle({
   onSaved,
   refresh,
+  undoneStatusOf = () => 'pending',
 }: {
   readonly onSaved: (saved: HabitDay) => void;
   readonly refresh: () => Promise<void>;
+  readonly undoneStatusOf?: (habitDay: HabitDay) => CheckInStatus;
 }): {
   readonly shown: ShownStatuses;
   readonly toggle: (habitDay: HabitDay) => Promise<ToggleOutcome>;
@@ -52,7 +56,7 @@ export function useOptimisticToggle({
       const counts = inFlight.current;
       counts.set(key, (counts.get(key) ?? 0) + 1);
       setShown((current) =>
-        new Map(current).set(key, habitDay.status === 'done' ? 'pending' : 'done'),
+        new Map(current).set(key, habitDay.status === 'done' ? undoneStatusOf(habitDay) : 'done'),
       );
 
       const outcome: ToggleOutcome = await toggleCheckIn(
@@ -80,7 +84,7 @@ export function useOptimisticToggle({
       }
       return outcome;
     },
-    [dependencies, onSaved, refresh],
+    [dependencies, onSaved, refresh, undoneStatusOf],
   );
 
   return { shown, toggle };

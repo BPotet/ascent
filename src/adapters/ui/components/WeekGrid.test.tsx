@@ -27,8 +27,9 @@ const days: HabitDay[] = week.days().map((day, index) => ({
   habit: cooking,
   day,
   status: statuses[index] ?? 'upcoming',
-  editable: day.equals(wednesday),
-  corrected: false,
+  // Aujourd'hui et les jours clos se modifient (correction, R10).
+  editable: !day.isAfter(wednesday),
+  corrected: day.equals(Day.of(2026, 10, 13)),
 }));
 
 describe('WeekDaysHeader', () => {
@@ -96,8 +97,8 @@ describe('HabitWeekCard', () => {
         .getAllByRole('switch')
         .map((cell) => cell.props.accessibilityLabel),
     ).toEqual([
-      'Cuisiner, lundi 12 octobre, fait, indisponible',
-      'Cuisiner, mardi 13 octobre, pas fait, indisponible',
+      'Cuisiner, lundi 12 octobre, fait',
+      'Cuisiner, mardi 13 octobre, pas fait, corrigé',
       'Cuisiner, mercredi 14 octobre, à faire',
       'Cuisiner, jeudi 15 octobre, à venir, indisponible',
       'Cuisiner, vendredi 16 octobre, à venir, indisponible',
@@ -113,6 +114,27 @@ describe('HabitWeekCard', () => {
     await fireEvent.press(screen.getByTestId('cell-3-2026-10-14'));
 
     expect(onToggle).toHaveBeenCalledWith(days[2]);
+  });
+
+  it('passes on the tap on a « hors habitude » cell, to explain it', async () => {
+    const onNotStartedPress = jest.fn();
+    const before = days.map((habitDay) => ({
+      ...habitDay,
+      status: 'notStarted' as const,
+      editable: false,
+    }));
+    await render(
+      <HabitWeekCard
+        days={before}
+        today={wednesday}
+        onToggle={jest.fn()}
+        onNotStartedPress={onNotStartedPress}
+      />,
+    );
+
+    await fireEvent.press(screen.getByTestId('cell-3-2026-10-12'));
+
+    expect(onNotStartedPress).toHaveBeenCalledWith(before[0]);
   });
 });
 
@@ -147,15 +169,18 @@ it('aligns the days of the header on the columns of the cells', async () => {
 });
 
 describe('WeekLegend', () => {
-  it('names the five shapes, hidden from the screen reader', async () => {
+  it('names the five shapes and the mark « corrigé », hidden from the screen reader', async () => {
     await render(<WeekLegend />);
 
     expect(screen.queryByText('Fait')).toBeNull();
     expect(screen.getAllByText(/.+/u, hidden).map((text) => text.props.children as string)).toEqual(
-      ['Fait', 'À faire', 'Pas fait', 'À venir', 'Hors habitude'],
+      ['Fait', 'À faire', 'Pas fait', 'À venir', 'Hors habitude', 'Corrigé'],
     );
     expect(screen.getByTestId('check-mark', hidden)).toBeTruthy();
-    expect(screen.getByTestId('cross-mark', hidden)).toBeTruthy();
+    expect(screen.getAllByTestId('cross-mark', hidden)).toHaveLength(2);
     expect(screen.getByTestId('dot-mark', hidden)).toBeTruthy();
+    expect(screen.getByTestId('corrected-mark', hidden)).toHaveStyle({
+      backgroundColor: '#C9D5FF',
+    });
   });
 });

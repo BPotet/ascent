@@ -85,6 +85,62 @@ describe('toggleCheckIn', () => {
       });
     });
 
+    it('corrects the day of creation once it is closed (R10, R12)', () => {
+      expect(toggleCheckIn(cooking, monday, null, tuesday)).toEqual({
+        checkIn: checkIn(monday, true, true),
+        isCorrection: true,
+      });
+    });
+
+    it('refuses the day before the day of creation, even long closed (R12)', () => {
+      expect(() => toggleCheckIn(cooking, Day.of(2026, 10, 11), null, Day.of(2030, 1, 1))).toThrow(
+        NotStartedDayError,
+      );
+    });
+
+    it('corrects a day skipped by a time zone change to the east, never today (R6, R10)', () => {
+      const friday = Day.of(2026, 10, 16);
+
+      expect(toggleCheckIn(cooking, thursday, null, friday)).toEqual({
+        checkIn: checkIn(thursday, true, true),
+        isCorrection: true,
+      });
+    });
+
+    /** Les suivis successifs de mardi après `taps` taps, aujourd'hui étant jeudi. */
+    const afterTaps = (closing: CheckIn | null, taps: number): CheckIn[] => {
+      const states: CheckIn[] = [];
+      let current = closing;
+      for (let tap = 1; tap <= taps; tap += 1) {
+        current = toggleCheckIn(cooking, tuesday, current, thursday).checkIn;
+        states.push(current);
+      }
+      return states;
+    };
+
+    it('puts, removes and puts again the mark of a day « pas fait » at closing (R13)', () => {
+      expect(afterTaps(null, 3)).toEqual([
+        checkIn(tuesday, true, true),
+        checkIn(tuesday, false, false),
+        checkIn(tuesday, true, true),
+      ]);
+    });
+
+    it('puts, removes and puts again the mark of a day « fait » at closing (R13)', () => {
+      expect(afterTaps(checkIn(tuesday, true), 3)).toEqual([
+        checkIn(tuesday, false, true),
+        checkIn(tuesday, true, false),
+        checkIn(tuesday, false, true),
+      ]);
+    });
+
+    it('keeps the state at closing through corrections made on different days (R13)', () => {
+      const corrected = toggleCheckIn(cooking, monday, null, tuesday).checkIn;
+      const back = toggleCheckIn(cooking, monday, corrected, Day.of(2026, 11, 2)).checkIn;
+
+      expect(back).toEqual(checkIn(monday, false, false));
+    });
+
     it('has no time limit (R10)', () => {
       const lateToday = Day.of(2030, 1, 1);
 

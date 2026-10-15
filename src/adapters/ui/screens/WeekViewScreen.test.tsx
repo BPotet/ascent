@@ -8,6 +8,7 @@ import { getDayView } from '../../../application/useCases/getDayView';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
 import { Day } from '../../../domain/day/Day';
 import type { HabitId } from '../../../domain/habit/Habit';
+import { Week } from '../../../domain/week/Week';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { renderScreen } from '../testing/renderScreen';
 import { useTrackingChanges } from '../state/TrackingRevision';
@@ -63,13 +64,14 @@ async function givenTheBackground() {
 }
 
 async function show(onAddHabit?: () => void) {
-  await renderScreen(
+  const rendered = await renderScreen(
     onAddHabit ? <WeekViewScreen onAddHabit={onAddHabit} /> : <WeekViewScreen />,
     dependencies,
   );
   await waitFor(() =>
     expect(screen.queryByLabelText('Chargement de tes habitudes')).not.toBeOnTheScreen(),
   );
+  return rendered;
 }
 
 const cell = (habit: HabitId, day: Day) => screen.getByTestId(`cell-${habit}-${day.toIsoString()}`);
@@ -136,10 +138,8 @@ describe('WeekViewScreen', () => {
 
     await show();
 
-    expect(labelOf(cooking, october(12))).toBe('Cuisiner, lundi 12 octobre, fait, indisponible');
-    expect(labelOf(cooking, october(13))).toBe(
-      'Cuisiner, mardi 13 octobre, pas fait, indisponible',
-    );
+    expect(labelOf(cooking, october(12))).toBe('Cuisiner, lundi 12 octobre, fait');
+    expect(labelOf(cooking, october(13))).toBe('Cuisiner, mardi 13 octobre, pas fait');
     expect(labelOf(cooking, october(14))).toBe('Cuisiner, mercredi 14 octobre, à faire');
     expect(labelOf(cooking, october(15))).toBe('Cuisiner, jeudi 15 octobre, à venir, indisponible');
     expect(labelOf(budget, october(12))).toBe(
@@ -180,10 +180,32 @@ describe('WeekViewScreen', () => {
     await fireEvent.press(cell(cooking, wednesday));
 
     expect(labelOf(cooking, wednesday)).toBe('Cuisiner, mercredi 14 octobre, fait');
-    expect(labelOf(cooking, october(12))).toBe('Cuisiner, lundi 12 octobre, fait, indisponible');
+    expect(labelOf(cooking, october(12))).toBe('Cuisiner, lundi 12 octobre, fait');
     await act(async () => open());
     await waitFor(() => expect(cell(cooking, wednesday)).toBeChecked());
     expect(screen.queryByTestId('toast')).toBeNull();
+  });
+
+  it('shows « à faire », not « pas fait », at once when today « fait » is touched', async () => {
+    await givenTheBackground();
+    await doneOn(cooking, wednesday);
+    await show();
+    let open: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    const run = dependencies.unitOfWork.run.bind(dependencies.unitOfWork);
+    jest
+      .spyOn(dependencies.unitOfWork, 'run')
+      .mockImplementation((work) => gate.then(() => run(work)));
+
+    await fireEvent.press(cell(cooking, wednesday));
+
+    expect(labelOf(cooking, wednesday)).toBe('Cuisiner, mercredi 14 octobre, à faire');
+    await act(async () => open());
+    await waitFor(() =>
+      expect(labelOf(cooking, wednesday)).toBe('Cuisiner, mercredi 14 octobre, à faire'),
+    );
   });
 
   it('says nothing and shows the stored state when the tap is refused', async () => {
@@ -234,10 +256,13 @@ describe('WeekViewScreen', () => {
   });
 
   it.each([
-    ['à venir', () => cell(cooking, october(15))],
-    ['hors habitude', () => cell(budget, october(12))],
-    ['pas fait (jour clos)', () => cell(cooking, october(13))],
-  ])('does not react to a tap on a « %s » cell', async (_, target) => {
+    ['à venir', () => cell(cooking, october(15)), null],
+    [
+      'hors habitude',
+      () => cell(budget, october(12)),
+      '« Budget du jour » commence le mardi 13 octobre.',
+    ],
+  ])('does not change a « %s » cell when touched (R12)', async (_, target, message) => {
     await givenTheBackground();
     await show();
     const before = target().props.accessibilityLabel as string;
@@ -248,6 +273,197 @@ describe('WeekViewScreen', () => {
 
     expect(target().props.accessibilityLabel).toBe(before);
     expect(run).not.toHaveBeenCalled();
+    if (message === null) {
+      expect(screen.queryByTestId('toast')).toBeNull();
+    } else {
+      expect(screen.getByText(message)).toBeOnTheScreen();
+    }
+  });
+
+  describe('correction of a closed day (R10, R13)', () => {
+    const storedCheckIn = (habit: HabitId, day: Day) =>
+      dependencies.unitOfWork.run(({ checkIns }) => checkIns.find(habit, day));
+
+    it('corrects « pas fait » into « fait », with the mark « corrigé »', async () => {
+      await givenTheBackground();
+      await show();
+
+      await fireEvent.press(cell(cooking, october(13)));
+
+      await waitFor(() =>
+        expect(labelOf(cooking, october(13))).toBe('Cuisiner, mardi 13 octobre, fait, corrigé'),
+      );
+      expect(cell(cooking, october(13))).toBeChecked();
+      expect(
+        within(cell(cooking, october(13))).getByTestId('corrected-mark', {
+          includeHiddenElements: true,
+        }),
+      ).toBeTruthy();
+      expect(screen.getByText('Correction enregistrée · mardi 13 octobre')).toBeOnTheScreen();
+      await expect(storedCheckIn(cooking, october(13))).resolves.toMatchObject({
+        done: true,
+        corrected: true,
+      });
+    });
+
+    it('corrects « fait » into « pas fait », showing « pas fait » at once', async () => {
+      await givenTheBackground();
+      await show();
+      let open: () => void = () => undefined;
+      const gate = new Promise<void>((resolve) => {
+        open = resolve;
+      });
+      const run = dependencies.unitOfWork.run.bind(dependencies.unitOfWork);
+      jest
+        .spyOn(dependencies.unitOfWork, 'run')
+        .mockImplementation((work) => gate.then(() => run(work)));
+
+      await fireEvent.press(cell(cooking, october(12)));
+
+      expect(labelOf(cooking, october(12))).toBe('Cuisiner, lundi 12 octobre, pas fait');
+      await act(async () => open());
+      await waitFor(() =>
+        expect(labelOf(cooking, october(12))).toBe('Cuisiner, lundi 12 octobre, pas fait, corrigé'),
+      );
+      expect(screen.getByText('Correction enregistrée · lundi 12 octobre')).toBeOnTheScreen();
+    });
+
+    it('takes the mark « corrigé » off when the cell comes back to its state at the closing', async () => {
+      await givenTheBackground();
+      await show();
+      await fireEvent.press(cell(cooking, october(13)));
+      await waitFor(() => expect(labelOf(cooking, october(13))).toMatch(/corrigé$/u));
+
+      await fireEvent.press(cell(cooking, october(13)));
+
+      await waitFor(() =>
+        expect(labelOf(cooking, october(13))).toBe('Cuisiner, mardi 13 octobre, pas fait'),
+      );
+      expect(
+        within(cell(cooking, october(13))).queryByTestId('corrected-mark', {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+      expect(
+        screen.getByText('Mardi 13 octobre revient à son état de la clôture.'),
+      ).toBeOnTheScreen();
+    });
+
+    it('corrects a day of a previous week, without time limit', async () => {
+      await givenTheBackground();
+      await show();
+      await fireEvent.press(previousButton());
+      await waitFor(() => expect(shownWeek()).toMatch(/^Semaine dernière/u));
+
+      await fireEvent.press(cell(cooking, october(9)));
+
+      await waitFor(() =>
+        expect(labelOf(cooking, october(9))).toBe('Cuisiner, vendredi 9 octobre, fait, corrigé'),
+      );
+      expect(shownWeek()).toMatch(/^Semaine dernière/u);
+    });
+
+    it('corrects the first day of the habit', async () => {
+      await givenTheBackground();
+      await show();
+
+      await fireEvent.press(cell(budget, october(13)));
+
+      await waitFor(() =>
+        expect(labelOf(budget, october(13))).toBe(
+          'Budget du jour, mardi 13 octobre, fait, corrigé',
+        ),
+      );
+    });
+
+    it('keeps « pas fait » without the mark and offers « Réessayer » when the correction cannot be saved', async () => {
+      await givenTheBackground();
+      await show();
+      dependencies.unitOfWork.failWrites();
+
+      await fireEvent.press(cell(cooking, october(13)));
+
+      expect(await screen.findByText('La correction n’a pas été enregistrée.')).toBeOnTheScreen();
+      expect(labelOf(cooking, october(13))).toBe('Cuisiner, mardi 13 octobre, pas fait');
+      await expect(storedCheckIn(cooking, october(13))).resolves.toBeNull();
+
+      dependencies.unitOfWork.failWrites(false);
+      await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
+
+      await waitFor(() =>
+        expect(labelOf(cooking, october(13))).toBe('Cuisiner, mardi 13 octobre, fait, corrigé'),
+      );
+    });
+
+    it('keeps « fait » with its mark « corrigé » when undoing a correction cannot be saved', async () => {
+      await givenTheBackground();
+      await show();
+      await fireEvent.press(cell(cooking, october(13)));
+      await waitFor(() =>
+        expect(labelOf(cooking, october(13))).toBe('Cuisiner, mardi 13 octobre, fait, corrigé'),
+      );
+      dependencies.unitOfWork.failWrites();
+
+      await fireEvent.press(cell(cooking, october(13)));
+
+      expect(await screen.findByText('La correction n’a pas été enregistrée.')).toBeOnTheScreen();
+      expect(labelOf(cooking, october(13))).toBe('Cuisiner, mardi 13 octobre, fait, corrigé');
+      await expect(storedCheckIn(cooking, october(13))).resolves.toMatchObject({
+        done: true,
+        corrected: true,
+      });
+    });
+
+    it('keeps « fait » without mark when correcting a day « fait » at its closing cannot be saved', async () => {
+      await givenTheBackground();
+      await show();
+      dependencies.unitOfWork.failWrites();
+
+      await fireEvent.press(cell(cooking, october(12)));
+
+      expect(await screen.findByText('La correction n’a pas été enregistrée.')).toBeOnTheScreen();
+      expect(labelOf(cooking, october(12))).toBe('Cuisiner, lundi 12 octobre, fait');
+      await expect(storedCheckIn(cooking, october(12))).resolves.toMatchObject({
+        done: true,
+        corrected: false,
+      });
+    });
+
+    it('follows two quick taps on a closed day back to its state at the closing, without mark', async () => {
+      await givenTheBackground();
+      await show();
+      let open: () => void = () => undefined;
+      const gate = new Promise<void>((resolve) => {
+        open = resolve;
+      });
+      const run = dependencies.unitOfWork.run.bind(dependencies.unitOfWork);
+      jest
+        .spyOn(dependencies.unitOfWork, 'run')
+        .mockImplementation((work) => gate.then(() => run(work)));
+
+      await fireEvent.press(cell(cooking, october(13)));
+      expect(labelOf(cooking, october(13))).toBe('Cuisiner, mardi 13 octobre, fait');
+      await fireEvent.press(cell(cooking, october(13)));
+      expect(labelOf(cooking, october(13))).toBe('Cuisiner, mardi 13 octobre, pas fait');
+      await act(async () => open());
+
+      await waitFor(() =>
+        expect(
+          screen.getByText('Mardi 13 octobre revient à son état de la clôture.'),
+        ).toBeOnTheScreen(),
+      );
+      expect(labelOf(cooking, october(13))).toBe('Cuisiner, mardi 13 octobre, pas fait');
+      await expect(storedCheckIn(cooking, october(13))).resolves.toBeNull();
+    });
+
+    it('explains under the legend that a past day can be corrected', async () => {
+      await givenTheBackground();
+      await show();
+
+      expect(
+        screen.getByText('Tape une case d’un jour passé pour corriger un oubli.'),
+      ).toBeOnTheScreen();
+    });
   });
 
   it('shows the previous week, then comes back to the current week', async () => {
@@ -262,10 +478,8 @@ describe('WeekViewScreen', () => {
       ),
     );
     expect(screen.getByText('5 – 11 oct. · début de l’historique')).toBeOnTheScreen();
-    expect(labelOf(cooking, october(8))).toBe('Cuisiner, jeudi 8 octobre, fait, indisponible');
-    expect(labelOf(cooking, october(9))).toBe(
-      'Cuisiner, vendredi 9 octobre, pas fait, indisponible',
-    );
+    expect(labelOf(cooking, october(8))).toBe('Cuisiner, jeudi 8 octobre, fait');
+    expect(labelOf(cooking, october(9))).toBe('Cuisiner, vendredi 9 octobre, pas fait');
     for (const day of [5, 6, 7, 8, 9, 10, 11]) {
       expect(labelOf(budget, october(day))).toMatch(/, hors habitude, indisponible$/u);
     }
@@ -300,6 +514,45 @@ describe('WeekViewScreen', () => {
     await fireEvent.press(nextButton());
     await waitFor(() => expect(shownWeek()).toMatch(/^Cette semaine/u));
     expect(nextButton()).toBeDisabled();
+  });
+
+  describe('week requested by another view (« Corriger » of the yesterday reminder)', () => {
+    const lastWeek = Week.containing(october(7));
+
+    it('shows the week requested, and again at each new request', async () => {
+      await givenTheBackground();
+      const { rerender } = await renderScreen(
+        <WeekViewScreen weekRequest={{ week: lastWeek, id: 1 }} />,
+        dependencies,
+      );
+      await waitFor(() => expect(shownWeek()).toMatch(/^Semaine dernière/u));
+
+      await fireEvent.press(screen.getByRole('button', { name: 'Revenir à cette semaine' }));
+      await waitFor(() => expect(shownWeek()).toMatch(/^Cette semaine/u));
+      await rerender(<WeekViewScreen weekRequest={{ week: lastWeek, id: 1 }} />);
+      expect(shownWeek()).toMatch(/^Cette semaine/u);
+
+      await rerender(<WeekViewScreen weekRequest={{ week: lastWeek, id: 2 }} />);
+      await waitFor(() => expect(shownWeek()).toMatch(/^Semaine dernière/u));
+    });
+
+    it('follows the change of week when the week requested is the current week', async () => {
+      await givenTheBackground();
+      dependencies.clock.setToday(october(18));
+      const { rerender } = await show();
+      await fireEvent.press(previousButton());
+      await waitFor(() => expect(shownWeek()).toMatch(/^Semaine dernière/u));
+
+      await rerender(
+        <WeekViewScreen weekRequest={{ week: Week.containing(october(18)), id: 1 }} />,
+      );
+      await waitFor(() => expect(shownWeek()).toMatch(/^Cette semaine/u));
+      await act(async () => dependencies.clock.setToday(october(19)));
+
+      await waitFor(() =>
+        expect(shownWeek()).toBe('Cette semaine, du lundi 19 octobre au dimanche 25 octobre'),
+      );
+    });
   });
 
   it('keeps the actions disabled at the bounds of the history', async () => {

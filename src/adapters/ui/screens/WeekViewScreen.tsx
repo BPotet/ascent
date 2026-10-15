@@ -1,8 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { WeekView } from '../../../application/useCases/getWeekView';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
+import type { Day } from '../../../domain/day/Day';
+import { isClosedDay } from '../../../domain/day/DayClosing';
 import { Week } from '../../../domain/week/Week';
 import { ADD_HABIT_LABEL } from '../components/AddHabitButton';
 import { Button } from '../components/Button';
@@ -14,14 +16,30 @@ import { Screen } from '../components/Screen';
 import { StateMessage } from '../components/StateMessage';
 import { Toast, type ToastAction } from '../components/Toast';
 import { HabitWeekCard, WeekDaysHeader, WeekLegend } from '../components/WeekGrid';
-import { CHECK_IN_SAVE_FAILED, correctionMessage } from '../format/checkInMessages';
+import {
+  CHECK_IN_SAVE_FAILED,
+  CORRECTION_SAVE_FAILED,
+  correctedMessage,
+  correctionMessage,
+  notStartedMessage,
+} from '../format/checkInMessages';
 import { formatWeekRange, HISTORY_START, weekLabel, weekTitle } from '../format/formatWeek';
 import { useWeekView } from '../state/useWeekView';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
+import { typography } from '../theme/typography';
 
 /** Le lien qui ramène à la semaine en cours (maquette, E4 « Semaine dernière »). */
 export const BACK_TO_CURRENT_WEEK = 'Revenir à cette semaine';
+
+/** Une semaine demandée par une autre vue ; chaque nouvel `id` l'affiche de nouveau. */
+export interface WeekRequest {
+  readonly week: Week;
+  readonly id: string | number;
+}
+
+/** L'astuce sous la légende : tout jour passé se corrige (maquette, E4 et E5). */
+export const CORRECTION_HINT = 'Tape une case d’un jour passé pour corriger un oubli.';
 
 interface ToastContent {
   readonly id: number;
@@ -101,13 +119,28 @@ function Navigator({
  * Navigation de semaine en semaine dans l'historique (R22), et retour à la semaine en cours.
  * États : chargement, erreur de lecture avec « Réessayer », aucune habitude.
  *
- * Seule une case modifiable réagit au tap (dans cette story, celle d'aujourd'hui) : comme dans la
- * Vue Journée, elle change tout de suite, revient en arrière si l'enregistrement échoue, et un
- * message propose « Réessayer ». `onAddHabit` mène à la création d'une habitude (état vide).
+ * Une case modifiable réagit au tap : aujourd'hui, ou un jour clos à corriger (correction, sans
+ * limite de temps, R10). Comme dans la Vue Journée, elle change tout de suite, revient en arrière
+ * (état et marque « corrigé ») si l'enregistrement échoue, et un message propose « Réessayer ».
+ * Une correction est confirmée par un message, et la case porte ou perd la marque « corrigé » (R13).
+ * Un tap sur une case « hors habitude » l'explique ; une case « à venir » ne réagit pas.
+ * `onAddHabit` mène à la création d'une habitude (état vide). `weekRequest` affiche une semaine
+ * demandée par une autre vue (« Corriger » du rappel d'hier), à chaque nouvel `id`.
  */
-export function WeekViewScreen({ onAddHabit }: { readonly onAddHabit?: () => void }) {
-  const { state, followsCurrentWeek, previous, next, goToCurrentWeek, reload, toggle } =
+export function WeekViewScreen({
+  onAddHabit,
+  weekRequest,
+}: {
+  readonly onAddHabit?: () => void;
+  readonly weekRequest?: WeekRequest | undefined;
+}) {
+  const { state, followsCurrentWeek, previous, next, goToCurrentWeek, showWeek, reload, toggle } =
     useWeekView();
+  const [seenRequest, setSeenRequest] = useState<WeekRequest['id'] | undefined>(undefined);
+  if (weekRequest !== undefined && weekRequest.id !== seenRequest) {
+    setSeenRequest(weekRequest.id);
+    showWeek(weekRequest.week);
+  }
   const [toast, setToast] = useState<ToastContent | null>(null);
   const toastCount = useRef(0);
 
@@ -117,15 +150,25 @@ export function WeekViewScreen({ onAddHabit }: { readonly onAddHabit?: () => voi
   }, []);
   const hideToast = useCallback(() => setToast(null), []);
 
+  /** Un tap sur `habitDay`, la vue étant affichée pour `today`. */
   const tap = useCallback(
-    (habitDay: HabitDay): Promise<void> => {
+    (habitDay: HabitDay, today: Day): Promise<void> => {
+      // Une case d'aujourd'hui touchée juste après minuit est aussi une correction (R10).
+      const shownClosed = isClosedDay(habitDay.day, today);
       async function attempt(): Promise<void> {
         setToast(null);
         const outcome = await toggle(habitDay);
         if (outcome.ok && outcome.isCorrection) {
-          showToast(correctionMessage(outcome.habitDay.day));
+          showToast(
+            shownClosed
+              ? correctedMessage(outcome.habitDay)
+              : correctionMessage(outcome.habitDay.day),
+          );
         } else if (!outcome.ok && outcome.reason === 'saveFailed') {
-          showToast(CHECK_IN_SAVE_FAILED, { label: 'Réessayer', onPress: () => void attempt() });
+          showToast(shownClosed ? CORRECTION_SAVE_FAILED : CHECK_IN_SAVE_FAILED, {
+            label: 'Réessayer',
+            onPress: () => void attempt(),
+          });
         }
       }
       return attempt();
@@ -196,10 +239,12 @@ export function WeekViewScreen({ onAddHabit }: { readonly onAddHabit?: () => voi
                 key={row.habit.id}
                 days={row.days}
                 today={view.today}
-                onToggle={(habitDay) => void tap(habitDay)}
+                onToggle={(habitDay) => void tap(habitDay, view.today)}
+                onNotStartedPress={(habitDay) => showToast(notStartedMessage(habitDay))}
               />
             ))}
             <WeekLegend />
+            <Text style={[typography.label, styles.hint]}>{CORRECTION_HINT}</Text>
           </ScrollView>
         </>
       )}
@@ -219,6 +264,7 @@ export function WeekViewScreen({ onAddHabit }: { readonly onAddHabit?: () => voi
 const styles = StyleSheet.create({
   list: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: 112 },
   actions: { alignItems: 'center', gap: spacing.xs },
+  hint: { color: colors.muted, marginTop: 10, marginHorizontal: 2 },
   loading: { flex: 1 },
   skeleton: { backgroundColor: colors.skeleton, borderRadius: spacing.sm },
   skeletonNav: {
