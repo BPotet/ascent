@@ -40,6 +40,16 @@ describe('CharacterBar', () => {
     expect(screen.queryByText(/XP/)).not.toBeOnTheScreen();
   });
 
+  it('shows a new experience at once when it is read again, without a change to show', async () => {
+    await render(<CharacterBar xp={40} change={null} />);
+    const timing = jest.spyOn(Animated, 'timing');
+
+    await screen.rerender(<CharacterBar xp={30} change={null} />);
+
+    expect(shownXp()).toBe('30 XP');
+    expect(timing).not.toHaveBeenCalled();
+  });
+
   it('shows the experience once it is read', async () => {
     await render(<CharacterBar xp={null} change={null} />);
 

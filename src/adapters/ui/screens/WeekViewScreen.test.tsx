@@ -1,5 +1,5 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { AccessibilityInfo, Text } from 'react-native';
 
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../../application/testing/settableClock';
@@ -10,8 +10,10 @@ import { Day } from '../../../domain/day/Day';
 import type { HabitId } from '../../../domain/habit/Habit';
 import { Week } from '../../../domain/week/Week';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
+import { reduceMotionInEachTest, withMotion } from '../testing/motion';
 import { renderScreen } from '../testing/renderScreen';
 import { useTrackingChanges } from '../state/TrackingRevision';
+import { DayViewScreen } from './DayViewScreen';
 import { WeekViewScreen } from './WeekViewScreen';
 
 const october = (dayOfMonth: number) => Day.of(2026, 10, dayOfMonth);
@@ -21,7 +23,10 @@ let dependencies: {
   clock: ReturnType<typeof settableClock>;
   unitOfWork: InMemoryUnitOfWork;
   keyValueStore: ReturnType<typeof memoryKeyValueStore>;
+  haptics: { success: jest.Mock };
 };
+
+reduceMotionInEachTest();
 let cooking: HabitId;
 let budget: HabitId;
 
@@ -30,6 +35,7 @@ beforeEach(() => {
     clock: settableClock(wednesday),
     unitOfWork: new InMemoryUnitOfWork(),
     keyValueStore: memoryKeyValueStore(),
+    haptics: { success: jest.fn() },
   };
 });
 
@@ -266,6 +272,7 @@ describe('WeekViewScreen', () => {
         }),
       ).toBeTruthy();
       expect(screen.getByText('Correction enregistrée · mardi 13 octobre')).toBeOnTheScreen();
+      await waitFor(() => expect(screen.getByTestId('xp-counter')).toHaveTextContent('30 XP'));
       await expect(storedCheckIn(cooking, october(13))).resolves.toMatchObject({
         done: true,
         corrected: true,
@@ -292,6 +299,7 @@ describe('WeekViewScreen', () => {
         expect(labelOf(cooking, october(12))).toBe('Cuisiner, lundi 12 octobre, pas fait, corrigé'),
       );
       expect(screen.getByText('Correction enregistrée · lundi 12 octobre')).toBeOnTheScreen();
+      await waitFor(() => expect(screen.getByTestId('xp-counter')).toHaveTextContent('10 XP'));
     });
 
     it('takes the mark « corrigé » off when the cell comes back to its state at the closing', async () => {
@@ -605,5 +613,135 @@ describe('WeekViewScreen', () => {
     await show();
 
     expect(screen.getByText('Hors habitude', { includeHiddenElements: true })).toBeTruthy();
+  });
+});
+
+describe('WeekViewScreen and the experience', () => {
+  const announce = jest.mocked(AccessibilityInfo.announceForAccessibility);
+  const xpBar = () => screen.getByTestId('character-bar');
+  const xpChange = () => screen.queryByTestId('xp-change', { includeHiddenElements: true });
+  const hasXp = (xp: string) =>
+    waitFor(() => expect(xpBar()).toHaveAccessibleName(`Expérience du personnage : ${xp}`));
+
+  beforeEach(() => announce.mockClear());
+
+  it('shows the experience of the character in the header (R24)', async () => {
+    await givenTheBackground();
+
+    await show();
+
+    await hasXp('20 XP');
+    expect(screen.getByTestId('xp-counter')).toHaveTextContent('20 XP');
+  });
+
+  it('shows 0 XP above an empty week', async () => {
+    await show();
+
+    expect(screen.getByTestId('week-view-empty')).toBeOnTheScreen();
+    await hasXp('0 XP');
+  });
+
+  it('shows the shape of the header while loading', async () => {
+    jest.spyOn(dependencies.unitOfWork, 'run').mockReturnValue(new Promise(() => undefined));
+
+    await renderScreen(<WeekViewScreen />, dependencies);
+
+    expect(
+      within(screen.getByTestId('week-view-loading')).getByTestId('character-bar-loading', {
+        includeHiddenElements: true,
+      }),
+    ).toBeTruthy();
+  });
+
+  it('earns 10 XP for a correction, as for a tap of today (R11)', async () => {
+    await givenTheBackground();
+    await show();
+    await hasXp('20 XP');
+
+    await fireEvent.press(cell(cooking, october(13)));
+
+    await hasXp('30 XP');
+    expect(xpChange()).toHaveTextContent('+10 XP');
+    expect(dependencies.haptics.success).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenCalledWith(
+      'Correction enregistrée, +10 points d’expérience. Total : 30 XP.',
+    );
+  });
+
+  it('loses 10 XP when a correction comes back to the state at the closing', async () => {
+    await givenTheBackground();
+    await show();
+    await fireEvent.press(cell(cooking, october(13)));
+    await hasXp('30 XP');
+    announce.mockClear();
+
+    await fireEvent.press(cell(cooking, october(13)));
+
+    await hasXp('20 XP');
+    expect(xpChange()).toHaveTextContent('−10 XP');
+    expect(dependencies.haptics.success).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenCalledWith('−10 points d’expérience. Total : 20 XP.');
+  });
+
+  it('changes no experience when the correction cannot be saved', async () => {
+    await givenTheBackground();
+    await show();
+    await hasXp('20 XP');
+    dependencies.unitOfWork.failWrites();
+
+    await fireEvent.press(cell(cooking, october(13)));
+
+    await screen.findByText('La correction n’a pas été enregistrée.');
+    expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP');
+    expect(xpChange()).not.toBeOnTheScreen();
+    expect(dependencies.haptics.success).not.toHaveBeenCalled();
+  });
+
+  it('lets « +10 XP » fly up from the corrected case', async () => {
+    withMotion();
+    await givenTheBackground();
+    await show();
+    await hasXp('20 XP');
+
+    await fireEvent.press(cell(cooking, october(13)));
+
+    await waitFor(() =>
+      expect(
+        within(cell(cooking, october(13))).getByTestId('xp-float', { includeHiddenElements: true }),
+      ).toHaveTextContent('+10 XP'),
+    );
+    await waitFor(() => expect(screen.getByTestId('xp-counter')).toHaveTextContent('30 XP'));
+  });
+
+  it('shows the same experience in the day view after a tap in the week view', async () => {
+    await givenTheBackground();
+    await renderScreen(
+      <>
+        <DayViewScreen />
+        <WeekViewScreen />
+      </>,
+      dependencies,
+    );
+    await waitFor(() => expect(screen.getAllByTestId('character-bar')).toHaveLength(2));
+
+    await fireEvent.press(cell(cooking, wednesday));
+
+    await waitFor(() =>
+      expect(
+        screen.getAllByTestId('character-bar').map((bar) => bar.props.accessibilityLabel),
+      ).toEqual(['Expérience du personnage : 30 XP', 'Expérience du personnage : 30 XP']),
+    );
+  });
+
+  it('reads the experience again with « Réessayer »', async () => {
+    await givenTheBackground();
+    dependencies.unitOfWork.failReads();
+    await renderScreen(<WeekViewScreen />, dependencies);
+    await screen.findByTestId('week-view-error');
+    dependencies.unitOfWork.failReads(false);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
+
+    await hasXp('20 XP');
   });
 });
