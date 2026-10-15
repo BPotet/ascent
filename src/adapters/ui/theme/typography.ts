@@ -22,6 +22,15 @@ export const typography = {
   stateTitle: { fontFamily: fonts.soraSemiBold, fontSize: 21, lineHeight: 27 },
   /** Titre d'un panneau : « Nouvelle habitude ». */
   sheetTitle: { fontFamily: fonts.soraSemiBold, fontSize: 20, lineHeight: 26 },
+  /** L'expérience du personnage dans l'en-tête : « 40 XP ». */
+  xp: { fontFamily: fonts.soraBold, fontSize: 24, lineHeight: 28, fontVariant: ['tabular-nums'] },
+  /** Un changement d'expérience : la pastille et l'envol « +10 XP ». */
+  xpChange: {
+    fontFamily: fonts.soraBold,
+    fontSize: 14,
+    lineHeight: 18,
+    fontVariant: ['tabular-nums'],
+  },
   /** Compteur « 0/3 ». */
   counter: { fontFamily: fonts.soraBold, fontSize: 17, fontVariant: ['tabular-nums'] },
   /** Nom d'une habitude dans une ligne. */
