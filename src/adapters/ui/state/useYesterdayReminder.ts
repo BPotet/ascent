@@ -10,8 +10,8 @@ import { useTodayChange } from './useTodayChange';
 import { useTrackingChanges } from './TrackingRevision';
 
 /**
- * Le rappel d'hier de la Vue Journée, ou `null` : rien à rappeler, lecture en cours ou en échec,
- * ou pas de préférences pour retenir sa fermeture. Il se relit quand aujourd'hui change et après
+ * Le rappel d'hier de la Vue Journée, ou `null` : rien à rappeler, lecture en cours ou en échec.
+ * Il se relit quand aujourd'hui change et après
  * chaque suivi enregistré (une correction d'hier change son compte).
  * `dismiss` le cache tout de suite pour ce jour-là ; si ce choix ne peut pas être enregistré, il
  * reviendra à la prochaine ouverture.
@@ -22,10 +22,7 @@ export function useYesterdayReminder(): {
 } {
   const useCases = useUseCaseDependencies();
   const preferences = usePreferenceDependencies();
-  const dependencies = useMemo(
-    () => (preferences === null ? null : { ...useCases, ...preferences }),
-    [useCases, preferences],
-  );
+  const dependencies = useMemo(() => ({ ...useCases, ...preferences }), [useCases, preferences]);
   const [loaded, setLoaded] = useState<YesterdayReminder | null>(null);
   const [dismissedFor, setDismissedFor] = useState<string | null>(null);
   const lastRequest = useRef(0);
@@ -33,9 +30,6 @@ export function useYesterdayReminder(): {
   const load = useCallback(() => {
     lastRequest.current += 1;
     const request = lastRequest.current;
-    if (dependencies === null) {
-      return;
-    }
     const show = (reminder: YesterdayReminder | null) => {
       if (request === lastRequest.current) {
         setLoaded(reminder);
@@ -49,7 +43,7 @@ export function useYesterdayReminder(): {
   useTrackingChanges(load);
 
   const dismiss = useCallback(async () => {
-    if (loaded === null || dependencies === null) {
+    if (loaded === null) {
       return;
     }
     setDismissedFor(loaded.day.toIsoString());
