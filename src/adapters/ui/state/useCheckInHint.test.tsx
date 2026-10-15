@@ -7,6 +7,7 @@ import { CHECK_IN_HINT_DISMISSED_KEY } from '../../../application/useCases/check
 import type { KeyValueStore } from '../../../application/ports/KeyValueStore';
 import { Day } from '../../../domain/day/Day';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
+import { silentHaptics } from '../testing/silentHaptics';
 import { DependenciesProvider } from './Dependencies';
 import { useCheckInHint } from './useCheckInHint';
 
@@ -15,6 +16,7 @@ function render(keyValueStore: KeyValueStore) {
     clock: settableClock(Day.of(2026, 10, 14)),
     unitOfWork: new InMemoryUnitOfWork(),
     keyValueStore,
+    haptics: silentHaptics(),
   };
   const wrapper = ({ children }: { children: ReactNode }) => (
     <DependenciesProvider value={dependencies}>{children}</DependenciesProvider>

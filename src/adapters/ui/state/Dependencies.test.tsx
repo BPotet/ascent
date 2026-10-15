@@ -5,6 +5,7 @@ import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfW
 import { settableClock } from '../../../application/testing/settableClock';
 import { Day } from '../../../domain/day/Day';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
+import { silentHaptics } from '../testing/silentHaptics';
 import {
   type Dependencies,
   DependenciesProvider,
@@ -18,6 +19,7 @@ describe('Dependencies', () => {
     clock: settableClock(Day.of(2026, 10, 14)),
     unitOfWork: new InMemoryUnitOfWork(),
     keyValueStore: memoryKeyValueStore(),
+    haptics: silentHaptics(),
   };
   const wrapperOf = (value: Dependencies) =>
     function Wrapper({ children }: { children: ReactNode }) {
