@@ -118,6 +118,20 @@ export function CloseGlyph({ color }: { readonly color: string }) {
   );
 }
 
+/** Le sommet de l'avatar du personnage, dans l'en-tête des vues. Décoratif. */
+export function PeakGlyph({ color }: { readonly color: string }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={styles.peak}
+    >
+      <View style={[styles.peakBig, { borderBottomColor: color }]} />
+      <View style={[styles.peakSmall, { borderBottomColor: color }]} />
+    </View>
+  );
+}
+
 /** Le chevron des boutons « Semaine précédente » (`left`) et « Semaine suivante » (`right`). */
 export function ChevronGlyph({
   color,
@@ -158,6 +172,27 @@ const styles = StyleSheet.create({
   cross: { width: 18, height: 18, alignItems: 'center', justifyContent: 'center' },
   crossBar: { position: 'absolute', width: 17, height: 2.4, borderRadius: 1.2 },
   dot: { width: 6.4, height: 6.4, borderRadius: 3.2 },
+  peak: { width: 26, height: 18, opacity: 0.92 },
+  peakBig: {
+    position: 'absolute',
+    left: 0,
+    bottom: 0,
+    borderLeftWidth: 9,
+    borderRightWidth: 9,
+    borderBottomWidth: 15,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+  },
+  peakSmall: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    borderLeftWidth: 7,
+    borderRightWidth: 7,
+    borderBottomWidth: 10,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+  },
   chevron: { width: 12, height: 12, borderLeftWidth: 2.4, borderBottomWidth: 2.4, borderRadius: 1 },
   chevronLeft: { marginLeft: 5, transform: [{ rotate: '45deg' }] },
   chevronRight: { marginRight: 5, transform: [{ rotate: '-135deg' }] },

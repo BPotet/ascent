@@ -19,6 +19,9 @@ export const colors = {
   doneText: '#8FE8BF',
   doneLine: 'rgba(61,220,151,0.55)',
   xp: '#FFC94D',
+  onXp: '#2A1E00',
+  /** Fond de l'avatar du personnage. */
+  avatar: '#222E52',
   xpSoft: 'rgba(255,201,77,0.1)',
   xpLine: 'rgba(255,201,77,0.4)',
   onXpSoft: '#FFE3A3',
