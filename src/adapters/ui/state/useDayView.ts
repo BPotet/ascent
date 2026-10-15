@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { UseCaseDependencies } from '../../../application/useCases/UseCaseDependencies';
 import { type DayView, getDayView } from '../../../application/useCases/getDayView';
@@ -21,14 +21,28 @@ export type DayViewState =
   | { readonly status: 'failed' }
   | { readonly status: 'ready'; readonly view: DayView };
 
-function load(
+/**
+ * Lit la Vue Journée et l'affiche, sauf si une lecture plus récente a été lancée entre-temps :
+ * une réponse ancienne arrivée après une plus récente est ignorée.
+ */
+function useLoad(
   dependencies: UseCaseDependencies,
-  show: (state: DayViewState) => void,
-): Promise<void> {
-  return getDayView(dependencies).then(
-    (view) => show({ status: 'ready', view }),
-    () => show({ status: 'failed' }),
-  );
+  setLoaded: (state: DayViewState) => void,
+): () => Promise<void> {
+  const lastRequest = useRef(0);
+  return useCallback(() => {
+    lastRequest.current += 1;
+    const request = lastRequest.current;
+    const show = (state: DayViewState) => {
+      if (request === lastRequest.current) {
+        setLoaded(state);
+      }
+    };
+    return getDayView(dependencies).then(
+      (view) => show({ status: 'ready', view }),
+      () => show({ status: 'failed' }),
+    );
+  }, [dependencies, setLoaded]);
 }
 
 const doneCountOf = (habits: readonly HabitDay[]) =>
@@ -58,7 +72,7 @@ function withShownStatuses(view: DayView, shown: ShownStatuses): DayView {
  * Charge la Vue Journée au montage.
  * - `reload` repasse par le chargement (après une erreur, « Réessayer ») ;
  * - `refresh` garde l'affichage en place jusqu'à la nouvelle vue (après une création, un
- *   changement de jour) ;
+ *   changement de jour) ; seule la lecture la plus récente est affichée ;
  * - `toggle` enregistre un tap sur une case, sur le jour **de la case affichée**. L'écran montre
  *   tout de suite l'autre état, puis se recale sur ce qui est enregistré quand le dernier tap en
  *   cours sur cette case a répondu : en cas d'échec, la case revient à son état enregistré. Après
@@ -77,12 +91,12 @@ export function useDayView(): {
   const dependencies = useUseCaseDependencies();
   const [loaded, setLoaded] = useState<DayViewState>({ status: 'loading' });
 
-  const refresh = useCallback(() => load(dependencies, setLoaded), [dependencies]);
+  const refresh = useLoad(dependencies, setLoaded);
 
   const reload = useCallback(() => {
     setLoaded({ status: 'loading' });
-    return load(dependencies, setLoaded);
-  }, [dependencies]);
+    return refresh();
+  }, [refresh]);
 
   const trackingChanged = useTrackingChanges(() => void refresh());
 
@@ -99,8 +113,8 @@ export function useDayView(): {
   const { shown, toggle } = useOptimisticToggle({ onSaved, refresh });
 
   useEffect(() => {
-    void load(dependencies, setLoaded);
-  }, [dependencies]);
+    void refresh();
+  }, [refresh]);
 
   const state = useMemo<DayViewState>(
     () =>

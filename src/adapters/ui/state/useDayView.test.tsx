@@ -168,6 +168,39 @@ describe('useDayView', () => {
     expect(statuses).not.toContain('loading');
   });
 
+  it('shows the latest read, even when an earlier read ends after it', async () => {
+    const { dependencies, wrapper } = setUp();
+    const created = await createHabit(dependencies, 'Cuisiner');
+    const { result } = await renderHook(() => useDayView(), { wrapper });
+    await waitFor(() => expect(statuses(result.current.state)).toEqual(['Cuisiner: pending']));
+    let open: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    const run = dependencies.unitOfWork.run.bind(dependencies.unitOfWork);
+    jest
+      .spyOn(dependencies.unitOfWork, 'run')
+      .mockImplementationOnce((work) => run(work).then((view) => gate.then(() => view)));
+
+    let earlier: Promise<void> = Promise.resolve();
+    await act(async () => {
+      earlier = result.current.refresh();
+    });
+    if (created.ok) {
+      await toggleCheckIn(dependencies, created.habit.id, wednesday);
+    }
+    await act(() => result.current.refresh());
+    expect(statuses(result.current.state)).toEqual(['Cuisiner: done']);
+
+    await act(async () => {
+      open();
+      await earlier;
+    });
+
+    expect(statuses(result.current.state)).toEqual(['Cuisiner: done']);
+    jest.restoreAllMocks();
+  });
+
   describe('with the other views', () => {
     async function showWithAnotherView() {
       const { dependencies, wrapper } = setUp();
