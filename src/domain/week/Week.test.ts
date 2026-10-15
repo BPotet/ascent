@@ -48,6 +48,22 @@ describe('Week', () => {
         day(1, 3, 2027),
       ]);
     });
+
+    // Les tests tournent en Europe/Paris (jest.config.js) : ces dimanches durent 23 h et 25 h.
+    it.each([
+      ['summer time', day(3, 29), day(3, 23)],
+      ['winter time', day(10, 25), day(10, 19)],
+    ])('keeps 7 days, one per date, in the week of the change to %s', (_, sunday, monday) => {
+      const week = Week.containing(sunday);
+
+      expect([week.start, week.end]).toEqual([monday, sunday]);
+      expect(week.days().map((each) => each.dayOfMonth)).toEqual(
+        [0, 1, 2, 3, 4, 5, 6].map((offset) => monday.dayOfMonth + offset),
+      );
+      expect(week.days().map((each) => each.dayOfWeek)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+      expect(week.next().start).toEqual(sunday.plusDays(1));
+      expect(week.next().previous()).toEqual(week);
+    });
   });
 
   describe('contains', () => {
