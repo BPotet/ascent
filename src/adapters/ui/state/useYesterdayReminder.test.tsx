@@ -114,4 +114,48 @@ describe('useYesterdayReminder', () => {
 
     await waitFor(() => expect(result.current.reminder.reminder?.day).toEqual(wednesday));
   });
+
+  it('does nothing when dismissed before the reminder is read', async () => {
+    const store = memoryKeyValueStore();
+    jest.spyOn(unitOfWork, 'run').mockReturnValue(new Promise(() => undefined));
+    const { result } = await render(store);
+
+    await act(() => result.current.reminder.dismiss());
+
+    expect(result.current.reminder.reminder).toBeNull();
+    expect(store.values.size).toBe(0);
+  });
+
+  it('hides the reminder when it can no longer be read', async () => {
+    const { result } = await render(memoryKeyValueStore());
+    await waitFor(() => expect(result.current.reminder.reminder).not.toBeNull());
+
+    unitOfWork.failReads();
+    await act(async () => {
+      result.current.changed();
+    });
+
+    await waitFor(() => expect(result.current.reminder.reminder).toBeNull());
+  });
+
+  it('keeps the latest reading when an older one answers last', async () => {
+    let answerFirst: () => void = () => undefined;
+    const firstAnswer = new Promise<void>((resolve) => {
+      answerFirst = resolve;
+    });
+    const run = unitOfWork.run.bind(unitOfWork);
+    jest
+      .spyOn(unitOfWork, 'run')
+      .mockImplementationOnce((work) => firstAnswer.then(() => run(work)));
+    const { result } = await render(memoryKeyValueStore());
+
+    await toggleCheckIn({ clock, unitOfWork }, cooking, tuesday);
+    await act(async () => {
+      result.current.changed();
+    });
+    await waitFor(() => expect(result.current.reminder.reminder?.doneCount).toBe(1));
+    await act(async () => answerFirst());
+
+    expect(result.current.reminder.reminder?.doneCount).toBe(1);
+  });
 });
