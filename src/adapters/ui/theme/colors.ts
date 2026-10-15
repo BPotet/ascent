@@ -41,6 +41,8 @@ export const colors = {
   onMissed: '#9AA4B8',
   notStarted: '#6B7894',
   upcoming: '#3A4560',
+  /** Fond du rappel d'hier, en haut de la Vue Journée. */
+  reminder: '#1C2436',
   /** La marque « corrigé » (pastille en coin de case). */
   correctedMark: '#C9D5FF',
   /** Bouton d'icône désactivé (flèches de la Vue Semaine). */

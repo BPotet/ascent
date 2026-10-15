@@ -92,6 +92,32 @@ export function DotGlyph({ color }: { readonly color: string }) {
   );
 }
 
+/** La lune du rappel d'hier. Décorative. */
+export function MoonGlyph({ color }: { readonly color: string }) {
+  return (
+    <Text
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[styles.moon, { color }]}
+    >
+      ☾
+    </Text>
+  );
+}
+
+/** La croix d'un bouton « Fermer ». Décorative : le bouton a son libellé. */
+export function CloseGlyph({ color }: { readonly color: string }) {
+  return (
+    <Text
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[styles.close, { color }]}
+    >
+      ×
+    </Text>
+  );
+}
+
 /** Le chevron des boutons « Semaine précédente » (`left`) et « Semaine suivante » (`right`). */
 export function ChevronGlyph({
   color,
@@ -116,6 +142,8 @@ export function ChevronGlyph({
 const styles = StyleSheet.create({
   plus: { fontSize: 24, lineHeight: 26, fontWeight: '600' },
   spark: { fontSize: 16, lineHeight: 20 },
+  moon: { fontSize: 18, lineHeight: 20 },
+  close: { fontSize: 24, lineHeight: 26 },
   alert: { borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   alertMark: { fontWeight: '700', lineHeight: undefined },
   check: {
