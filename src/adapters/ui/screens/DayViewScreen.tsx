@@ -15,7 +15,8 @@ import { Notice } from '../components/Notice';
 import { Screen } from '../components/Screen';
 import { StateMessage } from '../components/StateMessage';
 import { Toast, type ToastAction } from '../components/Toast';
-import { capitalize, formatDayAndMonth } from '../format/formatDay';
+import { CHECK_IN_SAVE_FAILED, correctionMessage } from '../format/checkInMessages';
+import { formatDayAndMonth } from '../format/formatDay';
 import { useCheckInHint } from '../state/useCheckInHint';
 import { useCreateHabit } from '../state/useCreateHabit';
 import { useDayView } from '../state/useDayView';
@@ -34,12 +35,7 @@ export const CHECK_IN_HINT = 'Tape ton habitude quand c’est fait : +10 XP pour
 /** L'encouragement quand toutes les habitudes du jour sont faites (maquette, E1 « Toutes faites »). */
 export const ALL_DONE_MESSAGE = 'Toutes tes habitudes du jour sont faites. Belle ascension\u00a0!';
 
-export const CHECK_IN_SAVE_FAILED = 'Le suivi n’a pas été enregistré.';
-
 const newDayMessage = (day: Day) => `Nouvelle journée : ${formatDayAndMonth(day)}.`;
-
-export const correctionMessage = (day: Day) =>
-  `${capitalize(formatDayAndMonth(day))} vient d’être clos : enregistré comme correction.`;
 
 interface ToastContent {
   /** Change à chaque message, pour l'annoncer et le montrer en entier même s'il se répète. */

@@ -14,11 +14,11 @@ import { Screen } from '../components/Screen';
 import { StateMessage } from '../components/StateMessage';
 import { Toast, type ToastAction } from '../components/Toast';
 import { HabitWeekCard, WeekDaysHeader, WeekLegend } from '../components/WeekGrid';
+import { CHECK_IN_SAVE_FAILED, correctionMessage } from '../format/checkInMessages';
 import { formatWeekRange, HISTORY_START, weekLabel, weekTitle } from '../format/formatWeek';
 import { useWeekView } from '../state/useWeekView';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
-import { CHECK_IN_SAVE_FAILED, correctionMessage } from './DayViewScreen';
 
 /** Le lien qui ramène à la semaine en cours (maquette, E4 « Semaine dernière »). */
 export const BACK_TO_CURRENT_WEEK = 'Revenir à cette semaine';
