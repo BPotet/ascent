@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { getWeekView, type WeekView } from '../../../application/useCases/getWeekView';
+import type { CheckInStatus } from '../../../domain/checkIn/CheckInStatus';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
+import { isClosedDay } from '../../../domain/day/DayClosing';
 import { Week } from '../../../domain/week/Week';
 import { useUseCaseDependencies } from './Dependencies';
 import { useTodayChange } from './useTodayChange';
@@ -37,7 +39,8 @@ const mapCells = (view: WeekView, change: (habitDay: HabitDay) => HabitDay): Wee
  *   la nouvelle semaine remplace l'ancienne une fois lue ;
  * - `goToCurrentWeek` revient à la semaine en cours, même après une erreur ;
  * - `reload` relit la semaine demandée en repassant par le chargement (« Réessayer ») ;
- * - `toggle` enregistre un tap sur une case, comme dans la Vue Journée, et prévient les autres vues.
+ * - `toggle` enregistre un tap sur une case, comme dans la Vue Journée, et prévient les autres vues ;
+ *   sur un jour clos (correction), une case « fait » touchée s'affiche « pas fait » tout de suite.
  */
 export function useWeekView(): {
   readonly state: WeekViewState;
@@ -105,9 +108,16 @@ export function useWeekView(): {
     [trackingChanged],
   );
 
-  const { shown, toggle } = useOptimisticToggle({ onSaved, refresh });
-
   const shownView = loaded.status === 'ready' ? loaded.view : null;
+  const shownToday = shownView?.today;
+
+  const undoneStatusOf = useCallback(
+    ({ day }: HabitDay): CheckInStatus =>
+      shownToday !== undefined && isClosedDay(day, shownToday) ? 'missed' : 'pending',
+    [shownToday],
+  );
+
+  const { shown, toggle } = useOptimisticToggle({ onSaved, refresh, undoneStatusOf });
 
   const previous = useCallback(() => {
     if (shownView?.canGoPrevious === true) {
