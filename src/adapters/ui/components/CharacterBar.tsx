@@ -29,13 +29,15 @@ export interface ShownXpChange {
 }
 
 /**
- * L'expérience affichée par le compteur : elle va de l'ancienne à la nouvelle valeur en
- * `XP_COUNTER_DURATION_MS`, ou directement quand le mouvement est réduit.
+ * L'expérience affichée par le compteur. Après un changement montré (`changeId`, un tap), elle va
+ * de l'ancienne à la nouvelle valeur en `XP_COUNTER_DURATION_MS` ; sinon (relecture), ou quand le
+ * mouvement est réduit, elle change directement.
  */
-function useCountedXp(xp: number, reducedMotion: boolean): number {
+function useCountedXp(xp: number, changeId: number | null, reducedMotion: boolean): number {
   const [value] = useState(() => new Animated.Value(xp));
   const [counted, setCounted] = useState(xp);
   const target = useRef(xp);
+  const countedChange = useRef(changeId);
 
   useEffect(() => {
     const listener = value.addListener(({ value: current }) => setCounted(Math.round(current)));
@@ -47,7 +49,9 @@ function useCountedXp(xp: number, reducedMotion: boolean): number {
       return;
     }
     target.current = xp;
-    if (reducedMotion) {
+    const shownChange = changeId !== null && changeId !== countedChange.current;
+    countedChange.current = changeId;
+    if (reducedMotion || !shownChange) {
       value.setValue(xp);
       return;
     }
@@ -59,7 +63,7 @@ function useCountedXp(xp: number, reducedMotion: boolean): number {
     });
     counting.start();
     return () => counting.stop();
-  }, [xp, reducedMotion, value]);
+  }, [xp, changeId, reducedMotion, value]);
 
   return counted;
 }
@@ -73,7 +77,7 @@ function XpCounter({
   readonly change: ShownXpChange | null;
   readonly reducedMotion: boolean;
 }) {
-  const counted = useCountedXp(xp, reducedMotion);
+  const counted = useCountedXp(xp, change?.id ?? null, reducedMotion);
   const [scale] = useState(() => new Animated.Value(1));
   const gainId = change !== null && change.amount > 0 ? change.id : null;
 

@@ -9,6 +9,7 @@ import type { Week } from '../../../domain/week/Week';
 import { MAX_HABITS } from '../../../domain/habit/HabitRules';
 import { ADD_HABIT_LABEL, AddHabitButton, HABIT_LIMIT_MESSAGE } from '../components/AddHabitButton';
 import { Button } from '../components/Button';
+import { CharacterBar } from '../components/CharacterBar';
 import { DayHeader } from '../components/DayHeader';
 import { PlusGlyph } from '../components/Glyph';
 import { HabitRow } from '../components/HabitRow';
@@ -22,6 +23,7 @@ import { formatDayAndMonth } from '../format/formatDay';
 import { useCheckInHint } from '../state/useCheckInHint';
 import { useCreateHabit } from '../state/useCreateHabit';
 import { useDayView } from '../state/useDayView';
+import { type XpChange, useExperience, xpChangeOn } from '../state/Experience';
 import { useTodayChange } from '../state/useTodayChange';
 import { useYesterdayReminder } from '../state/useYesterdayReminder';
 import { colors } from '../theme/colors';
@@ -57,6 +59,7 @@ function LoadingView() {
       testID="day-view-loading"
       style={styles.loading}
     >
+      <CharacterBar xp={null} change={null} />
       <View style={styles.loadingHeader}>
         <View>
           <View style={[styles.skeleton, styles.skeletonTitle]} />
@@ -80,12 +83,14 @@ function LoadingView() {
 function HabitList({
   view,
   highlighted,
+  xpChange,
   showHint,
   reminder,
   onToggle,
 }: {
   readonly view: DayView;
   readonly highlighted: HabitId | null;
+  readonly xpChange: XpChange | null;
   readonly showHint: boolean;
   readonly reminder: ReactNode;
   readonly onToggle: (habitDay: HabitDay) => void;
@@ -116,6 +121,7 @@ function HabitList({
             key={habitDay.habit.id}
             habitDay={habitDay}
             highlighted={habitDay.habit.id === highlighted}
+            xpChange={xpChangeOn(xpChange, habitDay)}
             onToggle={onToggle}
           />
         ))}
@@ -146,6 +152,9 @@ function HabitList({
  * `newHabitRequest` ouvre le panneau « Nouvelle habitude » chaque fois qu'il prend une nouvelle
  * valeur (l'état vide de la Vue Semaine mène ici pour créer une habitude).
  *
+ * En haut, l'expérience du personnage (R24) ; un tap enregistré la fait monter ou descendre, avec
+ * son feedback : « +10 XP » s'envole de la coche (`Experience`, `CharacterBar`).
+ *
  * En haut de la liste, le rappel d'hier (« Hier : 1/2 faites ») propose de corriger hier :
  * « Corriger » appelle `onCorrectYesterday` avec la semaine d'hier, à ouvrir dans la Vue Semaine.
  */
@@ -157,6 +166,7 @@ export function DayViewScreen({
   readonly onCorrectYesterday?: ((week: Week) => void) | undefined;
 } = {}) {
   const { state, reload, refresh, toggle } = useDayView();
+  const experience = useExperience();
   const { reminder, dismiss: dismissReminder } = useYesterdayReminder();
   const create = useCreateHabit();
   const hint = useCheckInHint();
@@ -239,7 +249,15 @@ export function DayViewScreen({
           illustration="alert"
           title="Impossible de charger tes habitudes."
           text="Une erreur est survenue en lisant tes données sur ce téléphone."
-          action={<Button label="Réessayer" onPress={() => void reload()} />}
+          action={
+            <Button
+              label="Réessayer"
+              onPress={() => {
+                void reload();
+                void experience.reload();
+              }}
+            />
+          }
           testID="day-view-error"
         />
       </Screen>
@@ -250,6 +268,7 @@ export function DayViewScreen({
   const empty = view.habitCount === 0;
   return (
     <Screen layout="top" testID="day-view">
+      <CharacterBar xp={experience.xp} change={experience.change} />
       {empty ? (
         <StateMessage
           illustration="summit"
@@ -270,6 +289,7 @@ export function DayViewScreen({
           <HabitList
             view={view}
             highlighted={highlighted}
+            xpChange={experience.change}
             showHint={hint.visible}
             reminder={
               reminder && (

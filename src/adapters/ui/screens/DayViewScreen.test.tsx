@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react-native';
 
 import { useState } from 'react';
-import { ScrollView } from 'react-native';
+import { AccessibilityInfo, ScrollView } from 'react-native';
 
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../../application/testing/settableClock';
@@ -13,6 +13,7 @@ import { Day } from '../../../domain/day/Day';
 import { Week } from '../../../domain/week/Week';
 import { TOAST_DURATION_MS } from '../components/Toast';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
+import { reduceMotionInEachTest, withMotion } from '../testing/motion';
 import { renderScreen } from '../testing/renderScreen';
 import { DayViewScreen, HIGHLIGHT_DURATION_MS } from './DayViewScreen';
 
@@ -26,13 +27,17 @@ let dependencies: {
   clock: ReturnType<typeof settableClock>;
   unitOfWork: InMemoryUnitOfWork;
   keyValueStore: ReturnType<typeof memoryKeyValueStore>;
+  haptics: { success: jest.Mock };
 };
+
+reduceMotionInEachTest();
 
 beforeEach(() => {
   dependencies = {
     clock: settableClock(wednesday),
     unitOfWork: new InMemoryUnitOfWork(),
     keyValueStore: memoryKeyValueStore(),
+    haptics: { success: jest.fn() },
   };
 });
 
@@ -552,5 +557,142 @@ describe('DayViewScreen', () => {
 
       expect(screen.queryByTestId('yesterday-reminder')).toBeNull();
     });
+  });
+});
+
+describe('DayViewScreen and the experience', () => {
+  const announce = jest.mocked(AccessibilityInfo.announceForAccessibility);
+  const xpBar = () => screen.getByTestId('character-bar');
+  const xpChange = () => screen.queryByTestId('xp-change', { includeHiddenElements: true });
+  const row = (status: string) =>
+    screen.getByRole('switch', { name: `Cuisiner, mercredi 14 octobre, ${status}` });
+
+  beforeEach(() => announce.mockClear());
+  afterEach(() => jest.restoreAllMocks());
+
+  async function showCooking() {
+    await given('Cuisiner');
+    await show();
+    await screen.findByText('Cuisiner');
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 0 XP'));
+  }
+
+  it('shows the experience of the character in the header (R24)', async () => {
+    await given('Cuisiner', 'Lire');
+    await toggleCheckIn(dependencies, 1, wednesday);
+    await toggleCheckIn(dependencies, 2, wednesday);
+
+    await show();
+
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP'));
+    expect(screen.getByText('Expérience du personnage')).toBeOnTheScreen();
+    expect(screen.getByTestId('xp-counter')).toHaveTextContent('20 XP');
+  });
+
+  it('shows 0 XP to a new player, above the empty state', async () => {
+    await show();
+
+    expect(await screen.findByTestId('day-view-empty')).toBeOnTheScreen();
+    await waitFor(() => expect(screen.getByTestId('xp-counter')).toHaveTextContent('0 XP'));
+  });
+
+  it('shows the shape of the header while loading', async () => {
+    jest.spyOn(dependencies.unitOfWork, 'run').mockReturnValue(new Promise(() => undefined));
+
+    await show();
+
+    expect(
+      within(screen.getByTestId('day-view-loading')).getByTestId('character-bar-loading', {
+        includeHiddenElements: true,
+      }),
+    ).toBeTruthy();
+  });
+
+  it('earns 10 XP for a habit done, with a light vibration and an announcement', async () => {
+    await showCooking();
+
+    await fireEvent.press(row('à faire'));
+
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 10 XP'));
+    expect(screen.getByTestId('xp-counter')).toHaveTextContent('10 XP');
+    expect(xpChange()).toHaveTextContent('+10 XP');
+    expect(dependencies.haptics.success).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenCalledWith('+10 points d’expérience. Total : 10 XP.');
+  });
+
+  it('loses 10 XP, discreetly and without vibration, when a habit goes back to « à faire »', async () => {
+    await given('Cuisiner');
+    await toggleCheckIn(dependencies, 1, wednesday);
+    await show();
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 10 XP'));
+
+    await fireEvent.press(row('fait'));
+
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 0 XP'));
+    expect(xpChange()).toHaveTextContent('−10 XP');
+    expect(dependencies.haptics.success).not.toHaveBeenCalled();
+    expect(announce).toHaveBeenCalledWith('−10 points d’expérience. Total : 0 XP.');
+  });
+
+  it('changes no experience when the check-in cannot be saved', async () => {
+    await showCooking();
+    dependencies.unitOfWork.failWrites();
+
+    await fireEvent.press(row('à faire'));
+
+    await screen.findByText('Le suivi n’a pas été enregistré.');
+    expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 0 XP');
+    expect(xpChange()).not.toBeOnTheScreen();
+    expect(dependencies.haptics.success).not.toHaveBeenCalled();
+    expect(announce).not.toHaveBeenCalledWith(expect.stringContaining('expérience'));
+  });
+
+  it('announces a tap on the day just closed as a correction', async () => {
+    await showCooking();
+    jest.spyOn(dependencies.clock, 'today').mockReturnValue(thursday);
+
+    await fireEvent.press(row('à faire'));
+
+    await screen.findByText('Jeudi 15 octobre');
+    expect(announce).toHaveBeenCalledWith(
+      'Correction enregistrée, +10 points d’expérience. Total : 10 XP.',
+    );
+    expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 10 XP');
+  });
+
+  it('lets « +10 XP » fly up from the row and counts up to the new experience', async () => {
+    withMotion();
+    await showCooking();
+
+    await fireEvent.press(row('à faire'));
+
+    await waitFor(() =>
+      expect(
+        within(row('fait')).getByTestId('xp-float', { includeHiddenElements: true }),
+      ).toHaveTextContent('+10 XP'),
+    );
+    await waitFor(() => expect(screen.getByTestId('xp-counter')).toHaveTextContent('10 XP'));
+  });
+
+  it('lets nothing fly up when the player asked to reduce motion', async () => {
+    await showCooking();
+
+    await fireEvent.press(row('à faire'));
+
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 10 XP'));
+    expect(screen.queryByTestId('xp-float', { includeHiddenElements: true })).not.toBeOnTheScreen();
+  });
+
+  it('reads the experience again with « Réessayer »', async () => {
+    await given('Cuisiner');
+    await toggleCheckIn(dependencies, 1, wednesday);
+    dependencies.unitOfWork.failReads();
+    await show();
+    await screen.findByTestId('day-view-error');
+    dependencies.unitOfWork.failReads(false);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
+
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 10 XP'));
   });
 });
