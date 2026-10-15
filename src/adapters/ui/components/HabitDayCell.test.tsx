@@ -24,7 +24,7 @@ const habitDay = (status: CheckInStatus, editable: boolean, day = wednesday): Ha
 const hidden = { includeHiddenElements: true } as const;
 const cell = () => screen.getByTestId('cell-7-2026-10-14');
 const marks = () =>
-  ['check-mark', 'cross-mark', 'dot-mark'].filter(
+  ['check-mark', 'cross-mark', 'dot-mark', 'pending-ring'].filter(
     (mark) => within(cell()).queryByTestId(mark, hidden) !== null,
   );
 
@@ -72,7 +72,7 @@ describe('HabitDayCell', () => {
 
   it.each([
     ['done', true, ['check-mark'], { backgroundColor: '#3DDC97', borderColor: '#3DDC97' }],
-    ['pending', true, [], { borderColor: '#7C9CFF', borderStyle: 'solid' }],
+    ['pending', true, ['pending-ring'], { borderColor: '#7C9CFF', borderStyle: 'solid' }],
     ['missed', true, ['cross-mark'], { backgroundColor: '#222B3D', borderColor: 'transparent' }],
     ['upcoming', false, [], { borderStyle: 'dashed', borderColor: '#3A4560' }],
     ['notStarted', false, ['dot-mark'], { borderColor: 'transparent' }],
