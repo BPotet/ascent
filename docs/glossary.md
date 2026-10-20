@@ -30,6 +30,7 @@
 | **Mois** (`Month`) | Un mois du calendrier local ; ses semaines vont du lundi au dimanche. | Défini |
 | **Vue Journée** (`DayView`) | L'écran d'accueil : les habitudes actives aujourd'hui, chacune « à faire » ou « fait », et le nombre d'habitudes faites. | Défini |
 | **Aide au premier usage** (`CheckInHint`) | Le message unique de la Vue Journée qui explique le tap. Il disparaît pour toujours au premier suivi. | Défini |
+| **Rappel d'hier** (`YesterdayReminder`) | Le bandeau discret en haut de la Vue Journée quand hier compte au moins une habitude active « pas fait » : « Hier : 1/2 faites », avec l'action « Corriger » qui ouvre la Vue Semaine sur la semaine d'hier. Le joueur peut le fermer pour la journée ; il revient le lendemain pour la nouvelle veille. | Défini |
 | **Vue Semaine** (`WeekView`) | L'écran qui montre, pour chaque habitude existante, l'état du suivi des 7 jours d'une semaine. | Défini |
 | **Barre d'onglets** (`TabBar`) | La barre en bas de l'écran qui passe d'une vue à l'autre : onglets **Journée**, **Semaine** et **Mois**. L'onglet de la vue affichée a un fond et un libellé en gras. | Défini |
 | **Révision du suivi** (`TrackingRevision`) | Le compteur, partagé par les vues affichées, qui avance à chaque habitude créée ou suivi enregistré : les autres vues se rechargent pour rester à jour. | Défini |

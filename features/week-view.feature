@@ -39,10 +39,8 @@ Fonctionnalité: Voir sa semaine et les semaines précédentes
     Alors ces cases gardent leur état
     Et aucun suivi n'est enregistré
 
-  Scénario: Un jour clos n'est pas modifiable dans cette story
-    Quand le joueur touche la case du mardi 13 octobre de « Cuisiner »
-    Alors la case reste à l'état « pas fait »
-    Et aucun suivi n'est enregistré
+  # « Un jour clos n'est pas modifiable dans cette story » (#7) est remplacé par la correction
+  # d'un jour clos de #9 : voir features/correction.feature.
 
   Scénario: Afficher la semaine précédente
     Quand le joueur touche « Semaine précédente »

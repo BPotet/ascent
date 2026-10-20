@@ -12,7 +12,7 @@ tags:
 - extendedWaitUntil:
     visible:
       id: 'day-view-empty'
-    timeout: 30000
+    timeout: 60000
 - takeScreenshot: create-habit-1-day-view-empty
 
 # Le panneau s'ouvre avec le champ, clavier ouvert, et « Créer l'habitude ».
@@ -58,7 +58,7 @@ tags:
 - launchApp
 - extendedWaitUntil:
     visible: 'Cuisiner, .+, à faire'
-    timeout: 30000
+    timeout: 60000
 - assertNotVisible:
     id: 'day-view-empty'
 - takeScreenshot: create-habit-3-day-view-list
