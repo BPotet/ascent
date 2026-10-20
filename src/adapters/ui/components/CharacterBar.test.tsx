@@ -206,6 +206,34 @@ describe('CharacterBar', () => {
     );
   });
 
+  it('ends on the new experience when changes come back to it before the counter has moved', async () => {
+    jest.useFakeTimers();
+    await render(<CharacterBar xp={0} change={null} />);
+    await screen.rerender(<CharacterBar xp={10} change={{ id: 1, amount: 10 }} />);
+
+    // Taps rapides : +10, −10, +10, dont les deux derniers arrivent ensemble.
+    await screen.rerender(<CharacterBar xp={10} change={{ id: 3, amount: 10 }} />);
+    await act(() => jest.advanceTimersByTime(XP_COUNTER_DURATION_MS * 2));
+
+    expect(shownXp()).toBe('10 XP');
+  });
+
+  it('ends on the experience when motion becomes reduced while it counts', async () => {
+    jest.useFakeTimers();
+    let changeReducedMotion: (reduced: boolean) => void = () => undefined;
+    jest.spyOn(AccessibilityInfo, 'addEventListener').mockImplementation((_, handler) => {
+      changeReducedMotion = handler as unknown as (reduced: boolean) => void;
+      return { remove: jest.fn() } as never;
+    });
+    await render(<CharacterBar xp={0} change={null} />);
+    await screen.rerender(<CharacterBar xp={10} change={{ id: 1, amount: 10 }} />);
+
+    await act(() => changeReducedMotion(true));
+    await act(() => jest.advanceTimersByTime(XP_COUNTER_DURATION_MS * 2));
+
+    expect(shownXp()).toBe('10 XP');
+  });
+
   it('stops its animations when it leaves the screen', async () => {
     const stop = jest.fn();
     const animation = { start: jest.fn(), stop, reset: jest.fn() };

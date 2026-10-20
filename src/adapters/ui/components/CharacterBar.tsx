@@ -31,12 +31,12 @@ export interface ShownXpChange {
 /**
  * L'expérience affichée par le compteur. Après un changement montré (`changeId`, un tap), elle va
  * de l'ancienne à la nouvelle valeur en `XP_COUNTER_DURATION_MS` ; sinon (relecture), ou quand le
- * mouvement est réduit, elle change directement.
+ * mouvement est réduit, elle change directement. Un compte interrompu (nouveau changement, mouvement
+ * réduit) reprend ou se termine sur la valeur à jour : le compteur ne reste jamais en route.
  */
 function useCountedXp(xp: number, changeId: number | null, reducedMotion: boolean): number {
   const [value] = useState(() => new Animated.Value(xp));
   const [counted, setCounted] = useState(xp);
-  const target = useRef(xp);
   const countedChange = useRef(changeId);
 
   useEffect(() => {
@@ -45,10 +45,6 @@ function useCountedXp(xp: number, changeId: number | null, reducedMotion: boolea
   }, [value]);
 
   useEffect(() => {
-    if (xp === target.current) {
-      return;
-    }
-    target.current = xp;
     const shownChange = changeId !== null && changeId !== countedChange.current;
     countedChange.current = changeId;
     if (reducedMotion || !shownChange) {
