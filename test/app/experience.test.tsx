@@ -18,6 +18,7 @@ import type { SqlDatabase } from '../../src/adapters/persistence/sqlite/SqlDatab
 import { SqliteUnitOfWork } from '../../src/adapters/persistence/sqlite/SqliteUnitOfWork';
 import { openNodeSqliteDatabase } from '../../src/adapters/persistence/testing/nodeSqliteDatabase';
 import { createHabit } from '../../src/application/useCases/createHabit';
+import { getCharacter } from '../../src/application/useCases/getCharacter';
 import { Day } from '../../src/domain/day/Day';
 
 jest.mock('../../src/adapters/persistence/sqlite/openAscentDatabase', () => ({
@@ -97,6 +98,32 @@ describe('app experience', () => {
     await showTab('Semaine');
 
     await headerShows(0);
+  });
+
+  it('follows the state exactly after three quick taps: « fait », 10 XP, a vibration per gain', async () => {
+    const db = await databaseWithCooking();
+    openDatabase.mockResolvedValue(db);
+    await renderRouter(appDirectory);
+    await headerShows(0);
+    const row = await screen.findByTestId('habit-row-1');
+
+    // Trois taps de suite, sans attendre que la case ou l'en-tête change.
+    await fireEvent.press(row);
+    await fireEvent.press(row);
+    await fireEvent.press(row);
+
+    expect(await screen.findByLabelText(`${COOKING_TODAY}, fait`)).toBeOnTheScreen();
+    await headerShows(10);
+    // +10, −10, +10 : une vibration par gain, aucune pour la perte.
+    expect(vibrations).toHaveBeenCalledTimes(2);
+
+    // Enregistré : un seul suivi « fait », et l'expérience qui lui correspond.
+    await expect(db.getAll('SELECT day, done FROM check_ins WHERE habit_id = 1')).resolves.toEqual([
+      { day: '2026-10-14', done: 1 },
+    ]);
+    await expect(getCharacter({ unitOfWork: new SqliteUnitOfWork(db) })).resolves.toMatchObject({
+      xp: 10,
+    });
   });
 
   it('keeps the experience after a restart', async () => {
