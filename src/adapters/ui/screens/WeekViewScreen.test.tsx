@@ -4,6 +4,7 @@ import { AccessibilityInfo, Text } from 'react-native';
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../../application/testing/settableClock';
 import { createHabit } from '../../../application/useCases/createHabit';
+import { deleteHabit } from '../../../application/useCases/deleteHabit';
 import { getDayView } from '../../../application/useCases/getDayView';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
 import { Day } from '../../../domain/day/Day';
@@ -964,5 +965,29 @@ describe('WeekViewScreen and editing a habit', () => {
       ).toEqual(['Expérience du personnage : 20 XP', 'Expérience du personnage : 20 XP']),
     );
     expect(screen.queryByRole('switch', { name: /^Cuisiner,/u })).not.toBeOnTheScreen();
+  });
+
+  it('closes « Modifier l’habitude » with « Annuler », changing nothing', async () => {
+    await givenTheBackground();
+    await show();
+    await fireEvent.press(editName('Cuisiner'));
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Annuler' }));
+
+    expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
+    expect(screen.getByText('Cuisiner')).toBeOnTheScreen();
+  });
+
+  it('reloads and closes everything when the habit was deleted meanwhile', async () => {
+    await givenTheBackground();
+    await show();
+    await fireEvent.press(editName('Cuisiner'));
+    await deleteHabit(dependencies, cooking);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Supprimer l’habitude' }));
+
+    await waitFor(() => expect(screen.queryByText('Cuisiner')).not.toBeOnTheScreen());
+    expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('delete-habit-dialog')).not.toBeOnTheScreen();
   });
 });
