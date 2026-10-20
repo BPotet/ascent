@@ -82,7 +82,8 @@ Fonctionnalité: Consulter un mois et tout l'historique
     Et les actions « Mois précédent » et « Mois suivant » sont désactivées
 
   Scénario: L'en-tête affiche l'expérience totale du personnage
-    Étant donné que le personnage a 40 Xp
+    Étant donné que le joueur a aussi l'habitude « Lire », créée le lundi 21 septembre 2026
+    Et que le personnage a 40 Xp
     Quand le joueur affiche la Vue Mois de septembre 2026
     Alors l'en-tête affiche « 40 XP »
 
