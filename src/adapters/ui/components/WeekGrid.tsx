@@ -13,7 +13,8 @@ import { spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
 import { CheckGlyph, CrossGlyph, DotGlyph, PencilGlyph } from './Glyph';
 import { editHabitLabel } from './HabitRow';
-import { CORRECTED, CorrectedMark, HabitDayCell } from './HabitDayCell';
+import { CORRECTED, CorrectedMark } from './CorrectedMark';
+import { HabitDayCell } from './HabitDayCell';
 
 /** Cache un élément décoratif au lecteur d'écran (Android et iOS). */
 const decorative = {

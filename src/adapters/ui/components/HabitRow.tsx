@@ -10,7 +10,7 @@ import { MIN_TOUCH_SIZE, radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
 import type { ShownXpChange } from './CharacterBar';
 import { CheckGlyph, CrossGlyph, MoreGlyph } from './Glyph';
-import { CORRECTED, CorrectedMark } from './HabitDayCell';
+import { CORRECTED, CorrectedMark } from './CorrectedMark';
 import { XpFloat } from './XpFloat';
 
 /** Le libellé, pour le lecteur d'écran, de l'action qui ouvre « Modifier l'habitude ». */
