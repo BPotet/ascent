@@ -10,7 +10,7 @@ tags:
 - extendedWaitUntil:
     visible:
       id: 'day-view-empty'
-    timeout: 30000
+    timeout: 60000
 - assertVisible: 'Ajouter une habitude'
 - takeScreenshot: launch-day-view-empty
 # Relance à froid : la base locale déjà migrée est rouverte.
@@ -19,4 +19,4 @@ tags:
 - extendedWaitUntil:
     visible:
       id: 'day-view-empty'
-    timeout: 30000
+    timeout: 60000

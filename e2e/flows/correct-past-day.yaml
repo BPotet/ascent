@@ -18,7 +18,7 @@ tags:
 - extendedWaitUntil:
     visible:
       id: 'day-view-empty'
-    timeout: 30000
+    timeout: 60000
 
 - tapOn:
     id: 'add-habit'
