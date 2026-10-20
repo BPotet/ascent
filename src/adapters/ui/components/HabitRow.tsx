@@ -9,7 +9,8 @@ import { colors } from '../theme/colors';
 import { MIN_TOUCH_SIZE, radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
 import type { ShownXpChange } from './CharacterBar';
-import { CheckGlyph, MoreGlyph } from './Glyph';
+import { CheckGlyph, CrossGlyph, MoreGlyph } from './Glyph';
+import { CORRECTED, CorrectedMark } from './HabitDayCell';
 import { XpFloat } from './XpFloat';
 
 /** Le libellé, pour le lecteur d'écran, de l'action qui ouvre « Modifier l'habitude ». */
@@ -38,6 +39,10 @@ export function bounce(scale: Animated.Value): void {
  * `highlighted` met en évidence une habitude qui vient d'être créée ou renommée. `xpChange` fait
  * s'envoler « +10 XP » (ou « −10 XP ») de la coche, après un tap enregistré.
  *
+ * Dans le détail d'un jour de la Vue Mois (`compact`, ligne plus basse), la ligne montre aussi
+ * « pas fait » (croix sur fond plein) et la marque « corrigé » (pastille sur la coche et mot écrit,
+ * lu par le lecteur d'écran), comme la maquette (E5, E6).
+ *
  * Avec `onEdit`, un bouton « ⋯ » à droite de la ligne ouvre « Modifier l'habitude » : c'est une
  * cible distincte de l'interrupteur (44 pt au moins), lue « Modifier l'habitude Cuisiner ».
  */
@@ -47,16 +52,22 @@ export function HabitRow({
   xpChange,
   onToggle,
   onEdit,
+  compact = false,
 }: {
   readonly habitDay: HabitDay;
   readonly highlighted?: boolean;
+  readonly compact?: boolean;
   readonly xpChange?: ShownXpChange | undefined;
   readonly onToggle?: (habitDay: HabitDay) => void;
   readonly onEdit?: (habitDay: HabitDay) => void;
 }) {
-  const { habit, day, status, editable } = habitDay;
+  const { habit, day, status, editable, corrected } = habitDay;
   const statusLabel = checkInStatusLabels[status];
   const done = status === 'done';
+  const missed = status === 'missed';
+  const label = [habit.name.value, formatDayAndMonth(day), statusLabel]
+    .concat(corrected ? [CORRECTED] : [])
+    .join(', ');
   const reducedMotion = useReducedMotion();
   const [scale] = useState(() => new Animated.Value(1));
 
@@ -74,22 +85,41 @@ export function HabitRow({
     >
       <Pressable
         accessibilityRole="switch"
-        accessibilityLabel={`${habit.name.value}, ${formatDayAndMonth(day)}, ${statusLabel}`}
+        accessibilityLabel={label}
         accessibilityState={{ checked: done, disabled: !editable }}
         disabled={!editable}
         onPress={press}
         testID={`habit-row-${habit.id}`}
-        style={styles.row}
+        style={[styles.row, compact && styles.rowCompact]}
       >
-        <Animated.View style={[styles.check, done && styles.checkDone, { transform: [{ scale }] }]}>
+        <Animated.View
+          testID={`habit-check-${habit.id}`}
+          style={[
+            styles.check,
+            compact && styles.checkCompact,
+            done && styles.checkDone,
+            missed && styles.checkMissed,
+            { transform: [{ scale }] },
+          ]}
+        >
           {done && <CheckGlyph color={colors.onDone} />}
+          {missed && <CrossGlyph color={colors.onMissed} />}
+          {corrected && <CorrectedMark size="row" />}
           <XpFloat change={xpChange} reducedMotion={reducedMotion} />
         </Animated.View>
         <View style={styles.texts}>
           <Text style={[typography.habitName, styles.name]}>{habit.name.value}</Text>
-          <Text style={[typography.label, styles.status, done && styles.statusDone]}>
-            {capitalize(statusLabel)}
-          </Text>
+          <View style={styles.statusLine}>
+            <Text style={[typography.label, styles.status, done && styles.statusDone]}>
+              {capitalize(statusLabel)}
+            </Text>
+            {corrected && (
+              <View style={styles.correctedText}>
+                <View style={styles.correctedDot} />
+                <Text style={[typography.label, styles.corrected]}>{CORRECTED}</Text>
+              </View>
+            )}
+          </View>
         </View>
       </Pressable>
       {onEdit && (
@@ -111,7 +141,6 @@ export function HabitRow({
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    minHeight: 76,
     marginBottom: 10,
     borderRadius: radii.row,
     borderWidth: 2,
@@ -120,6 +149,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flex: 1,
+    minHeight: 76,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 14,
@@ -127,6 +157,7 @@ const styles = StyleSheet.create({
     paddingLeft: 14,
     paddingRight: spacing.sm,
   },
+  rowCompact: { minHeight: 64 },
   more: {
     width: 52,
     minHeight: MIN_TOUCH_SIZE,
@@ -153,10 +184,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  checkCompact: { width: 40, height: 40, borderRadius: 20 },
   checkDone: { backgroundColor: colors.done, borderColor: colors.done },
+  checkMissed: { backgroundColor: colors.missed, borderColor: 'transparent' },
   texts: { flex: 1, gap: 2 },
   name: { color: colors.text },
+  statusLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   status: { color: colors.muted },
+  correctedText: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  correctedDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.correctedMark },
+  corrected: { color: colors.correctedMark },
   statusDone: { color: colors.doneText },
 });
 // Stryker restore all
