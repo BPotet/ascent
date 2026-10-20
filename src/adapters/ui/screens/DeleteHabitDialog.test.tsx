@@ -5,7 +5,7 @@ import type { DeleteHabitOutcome } from '../state/useEditHabit';
 import { DeleteHabitDialog, deleteHabitBody, deleteHabitTitle } from './DeleteHabitDialog';
 
 const nbsp = ' ';
-const KEPT = 'Son historique sera effacé. L’expérience gagnée les jours passés reste acquise';
+const KEPT = 'Ses suivis seront effacés. L’expérience gagnée les jours passés reste acquise';
 
 async function open(
   xpRemoved = 10,

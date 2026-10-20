@@ -20,7 +20,7 @@ export const deleteHabitTitle = (name: string) => `Supprimer « ${name} » ?`
  * conservée et, si l'habitude est « fait » aujourd'hui, l'expérience retirée (−10 XP).
  */
 export function deleteHabitBody(xpRemoved: number): string {
-  const kept = 'Son historique sera effacé. L’expérience gagnée les jours passés reste acquise';
+  const kept = 'Ses suivis seront effacés. L’expérience gagnée les jours passés reste acquise';
   return xpRemoved > 0
     ? `${kept} ; seule celle d’aujourd’hui est retirée (${formatXpChange(-xpRemoved)}).`
     : `${kept}.`;

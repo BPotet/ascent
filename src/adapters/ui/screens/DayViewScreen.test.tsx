@@ -833,7 +833,7 @@ describe('DayViewScreen and editing a habit', () => {
 
     expect(
       screen.getByText(
-        'Son historique sera effacé. L’expérience gagnée les jours passés reste acquise.',
+        'Ses suivis seront effacés. L’expérience gagnée les jours passés reste acquise.',
       ),
     ).toBeOnTheScreen();
   });
