@@ -1,6 +1,6 @@
 # ADR 0002 — Modèle du suivi des habitudes
 
-- **Statut** : accepté
+- **Statut** : accepté ; décision 5 remplacée en partie par l'ADR 0003
 - **Date** : 14 octobre 2026
 - **Décideur** : Architect
 - **Contexte produit** : épique #2 (stories #3, #4, #7, #9, #5, #6, #10)
@@ -68,6 +68,13 @@ Un suivi porte `done` et `corrected`. L'état de la case au moment de la clôtur
 La règle est appliquée par `toggleCheckIn` dès #4 ; #9 n'ajoute que l'affichage.
 
 ### 5. L'expérience est un solde transactionnel, avec l'Xp conservée à part
+
+> **Remplacée en partie par l'[ADR 0003](0003-reglages-de-la-semaine.md)** (épique #22, story
+> #23) : le barème dépend désormais de la difficulté de la semaine de chaque suivi (5, 10 ou
+> 20 Xp), et l'invariant ci-dessous devient
+> `xp = Σ suivis « fait » au barème de la difficulté de leur semaine + retained_xp`. Le solde reste
+> transactionnel, mis à jour par les variations que calcule `HabitXp`. Le texte d'origine est gardé
+> ci-dessous pour l'historique ; il reste exact pour une habitude en Moyenne.
 
 `character.xp` est mis à jour dans la **même transaction** que le suivi (+10 / −10, jamais sous 0)
 ou que la suppression d'une habitude. `character.retained_xp` reçoit, à la suppression, 10 par
