@@ -24,6 +24,7 @@ import { FakeExpoSqliteConnection } from '../../src/adapters/persistence/testing
 import { difficultyLabels } from '../../src/adapters/ui/format/formatDifficulty';
 import { DayViewScreen } from '../../src/adapters/ui/screens/DayViewScreen';
 import type { Dependencies } from '../../src/adapters/ui/state/Dependencies';
+import { reduceMotionInEachTest } from '../../src/adapters/ui/testing/motion';
 import { renderScreen } from '../../src/adapters/ui/testing/renderScreen';
 import { silentHaptics } from '../../src/adapters/ui/testing/silentHaptics';
 import { createHabit } from '../../src/application/useCases/createHabit';
@@ -38,6 +39,10 @@ interface World {
 }
 
 let world: World;
+
+// Le feedback reste dit avec le mouvement réduit (pastille « +20 XP ») ; le compteur de l'en-tête
+// se met alors à jour d'un coup, sans animation qui continuerait après le scénario.
+reduceMotionInEachTest();
 
 /** La difficulté écrite `label` (« Difficile »). */
 function difficultyNamed(label: string): Difficulty {
