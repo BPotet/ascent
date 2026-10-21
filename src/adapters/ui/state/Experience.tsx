@@ -14,6 +14,7 @@ import type { Haptics } from '../../../application/ports/Haptics';
 import { getCharacter } from '../../../application/useCases/getCharacter';
 import type { DeleteHabitResult } from '../../../application/useCases/deleteHabit';
 import type { ToggleCheckInResult } from '../../../application/useCases/toggleCheckIn';
+import type { UpdateHabitResult } from '../../../application/useCases/updateHabit';
 import type { UnitOfWork } from '../../../application/ports/UnitOfWork';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import { xpAnnouncement } from '../format/formatXp';
@@ -24,18 +25,18 @@ import { useTrackingChanges } from './TrackingRevision';
 export type ToggledCheckIn = Extract<ToggleCheckInResult, { readonly ok: true }>;
 
 /**
- * Durée du feedback d'un changement d'expérience : la pastille « +10 XP » de l'en-tête reste
+ * Durée du feedback d'un changement d'expérience : la pastille « +20 XP » de l'en-tête reste
  * visible ce temps-là (maquette, « Formes et mouvement »).
  */
 export const XP_CHANGE_DURATION_MS = 1400;
 
-/** Un changement d'expérience à montrer : « +10 XP » ou « −10 XP », sur la case touchée. */
+/** Un changement d'expérience à montrer : « +20 XP » ou « −20 XP », sur la case touchée. */
 export interface XpChange {
   /** Change à chaque changement, pour rejouer le feedback même s'il se répète. */
   readonly id: number;
-  /** La variation : +10 ou −10. */
+  /** La variation, renvoyée par le cas d'usage : +20 ou −20 pour un suivi en Difficile. */
   readonly amount: number;
-  /** La case touchée (`keyOf` de son habitude et de son jour), d'où « +10 XP » s'envole. */
+  /** La case touchée (`keyOf` de son habitude et de son jour), d'où « +20 XP » s'envole. */
   readonly key: string;
 }
 
@@ -51,6 +52,8 @@ export interface Experience {
   readonly checkInToggled: (toggled: ToggledCheckIn) => void;
   /** Montre l'expérience après la suppression d'une habitude, avec son feedback. */
   readonly habitDeleted: (deleted: DeletedHabit) => void;
+  /** Montre l'expérience après la modification d'une habitude, avec son feedback. */
+  readonly habitUpdated: (updated: UpdatedHabit) => void;
 }
 
 /** Une habitude supprimée, telle que `deleteHabit` le renvoie. */
@@ -59,7 +62,16 @@ export type DeletedHabit = Pick<
   'xp' | 'xpRemoved'
 >;
 
-/** La case d'où s'envole le changement d'une suppression : aucune, il ne s'affiche qu'en en-tête. */
+/** Une habitude modifiée, telle que `updateHabit` le renvoie. */
+export type UpdatedHabit = Pick<
+  Extract<UpdateHabitResult, { readonly ok: true }>,
+  'xp' | 'xpChange'
+>;
+
+/**
+ * La case d'où s'envole le changement d'une suppression ou d'une modification : aucune, il ne
+ * s'affiche qu'en en-tête.
+ */
 const NO_CASE = '';
 
 const ExperienceContext = createContext<Experience | null>(null);
@@ -87,7 +99,7 @@ function readXp(
 
 /**
  * Le changement d'expérience à montrer sur la case `habitDay`, si c'est elle qui vient d'être
- * touchée : d'elle s'envole « +10 XP ».
+ * touchée : d'elle s'envole « +20 XP ».
  */
 export function xpChangeOn(
   change: XpChange | null,
@@ -103,13 +115,17 @@ export function xpChangeOn(
  *
  * Après un tap enregistré, l'expérience suit ce que `toggleCheckIn` renvoie : l'interface ne
  * calcule rien. S'il y a eu un vrai changement d'expérience (`xpChange` différent de 0) :
- * - le changement est exposé pendant `XP_CHANGE_DURATION_MS`, pour le feedback « +10 XP » ;
- * - le lecteur d'écran l'annonce : « +10 points d'expérience. Total : 40 XP. », précédé de
+ * - le changement est exposé pendant `XP_CHANGE_DURATION_MS`, pour le feedback « +20 XP » ;
+ * - le lecteur d'écran l'annonce : « +20 points d'expérience. Total : 50 XP. », précédé de
  *   « Correction enregistrée, » pour une correction qui pose la marque « corrigé » ;
  * - un gain fait vibrer légèrement le téléphone (`Haptics`), jamais une perte.
  *
  * Après la suppression d'une habitude, l'expérience suit ce que `deleteHabit` renvoie ; l'expérience
- * retirée (−10 XP), s'il y en a, est montrée dans l'en-tête et annoncée de la même façon.
+ * retirée (−20 XP), s'il y en a, est montrée dans l'en-tête et annoncée de la même façon.
+ *
+ * Après la modification d'une habitude, l'expérience suit ce que `updateHabit` renvoie : un
+ * changement de difficulté réévalue la semaine en cours (R12). La variation, s'il y en a, est
+ * montrée dans l'en-tête et annoncée ; un gain fait vibrer, jamais une baisse.
  */
 export function ExperienceProvider({
   unitOfWork,
@@ -166,18 +182,35 @@ export function ExperienceProvider({
     [haptics],
   );
 
-  const habitDeleted = useCallback(({ xp: total, xpRemoved }: DeletedHabit) => {
-    latest.current += 1;
-    setXp(total);
-    if (xpRemoved === 0) {
-      return;
-    }
-    changeCount.current += 1;
-    setChange({ id: changeCount.current, amount: -xpRemoved, key: NO_CASE });
-    AccessibilityInfo.announceForAccessibility(
-      xpAnnouncement({ xpChange: -xpRemoved, xp: total, correction: false }),
-    );
-  }, []);
+  /** Montre `total` et, s'il y en a, la variation `amount` dans l'en-tête ; un gain fait vibrer. */
+  const showInHeader = useCallback(
+    (total: number, amount: number) => {
+      latest.current += 1;
+      setXp(total);
+      if (amount === 0) {
+        return;
+      }
+      changeCount.current += 1;
+      setChange({ id: changeCount.current, amount, key: NO_CASE });
+      if (amount > 0) {
+        haptics.success();
+      }
+      AccessibilityInfo.announceForAccessibility(
+        xpAnnouncement({ xpChange: amount, xp: total, correction: false }),
+      );
+    },
+    [haptics],
+  );
+
+  const habitDeleted = useCallback(
+    ({ xp: total, xpRemoved }: DeletedHabit) => showInHeader(total, -xpRemoved),
+    [showInHeader],
+  );
+
+  const habitUpdated = useCallback(
+    ({ xp: total, xpChange }: UpdatedHabit) => showInHeader(total, xpChange),
+    [showInHeader],
+  );
 
   useEffect(() => {
     if (change === null) {
@@ -188,8 +221,8 @@ export function ExperienceProvider({
   }, [change]);
 
   const value = useMemo(
-    () => ({ xp, change, reload, checkInToggled, habitDeleted }),
-    [xp, change, reload, checkInToggled, habitDeleted],
+    () => ({ xp, change, reload, checkInToggled, habitDeleted, habitUpdated }),
+    [xp, change, reload, checkInToggled, habitDeleted, habitUpdated],
   );
   return <ExperienceContext.Provider value={value}>{children}</ExperienceContext.Provider>;
 }

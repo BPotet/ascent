@@ -3,7 +3,9 @@ import type { ReactNode } from 'react';
 
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../../application/testing/settableClock';
+import { getDayView } from '../../../application/useCases/getDayView';
 import { Day } from '../../../domain/day/Day';
+import type { Difficulty } from '../../../domain/habit/Difficulty';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { silentHaptics } from '../testing/silentHaptics';
 import { DependenciesProvider } from './Dependencies';
@@ -31,8 +33,10 @@ async function setUp() {
     { wrapper },
   );
   return {
+    dependencies,
     unitOfWork: dependencies.unitOfWork,
-    create: (name: string) => act(() => result.current(name)),
+    create: (name: string, difficulty: Difficulty = 'medium') =>
+      act(() => result.current(name, difficulty)),
     otherReload,
   };
 }
@@ -46,6 +50,18 @@ describe('useCreateHabit', () => {
     expect(outcome.ok && outcome.habit.name.value).toBe('Cuisiner');
     expect(outcome.ok && outcome.habit.createdOn).toEqual(wednesday);
   });
+
+  it.each(['easy', 'medium', 'hard'] as const)(
+    'creates the habit with the difficulty chosen (%s)',
+    async (difficulty) => {
+      const { create, dependencies } = await setUp();
+
+      await create('Courir 5 km', difficulty);
+
+      const [row] = (await getDayView(dependencies)).habits;
+      expect(row?.weekSettings).toEqual({ difficulty });
+    },
+  );
 
   it('makes the other views reload once the habit is created', async () => {
     const { create, otherReload } = await setUp();

@@ -56,8 +56,12 @@ describe('app month view', () => {
   it('shows in the counter of today a check-in confirmed in the day view', async () => {
     openDatabase.mockImplementation(databaseWithCooking);
     await renderRouter(appDirectory);
-    await fireEvent.press(await screen.findByLabelText(`${COOKING_TODAY}, à faire`));
-    expect(await dayView().findByLabelText(`${COOKING_TODAY}, fait`)).toBeOnTheScreen();
+    await fireEvent.press(
+      await screen.findByLabelText(`${COOKING_TODAY}, à faire, Moyenne, 10 XP par suivi`),
+    );
+    expect(
+      await dayView().findByLabelText(`${COOKING_TODAY}, fait, Moyenne, 10 XP par suivi`),
+    ).toBeOnTheScreen();
 
     await showTab('Mois');
 
@@ -94,7 +98,9 @@ describe('app month view', () => {
     // Hier est maintenant entièrement fait : le rappel d'hier n'a plus rien à rappeler.
     await waitFor(() => expect(screen.queryByTestId('yesterday-reminder')).not.toBeOnTheScreen());
     expect(dayView().getByTestId('xp-counter')).toHaveTextContent('10 XP');
-    expect(dayView().getByLabelText(`${COOKING_TODAY}, à faire`)).toBeOnTheScreen();
+    expect(
+      dayView().getByLabelText(`${COOKING_TODAY}, à faire, Moyenne, 10 XP par suivi`),
+    ).toBeOnTheScreen();
   });
 
   it('opens the new habit sheet in the day view from the empty state of the month view', async () => {
@@ -110,7 +116,9 @@ describe('app month view', () => {
     expect(selectedTab()).toBe('Journée');
     await fireEvent.changeText(screen.getByLabelText('Nom de l’habitude'), 'Cuisiner');
     await fireEvent.press(screen.getByRole('button', { name: 'Créer l’habitude' }));
-    expect(await dayView().findByLabelText(`${COOKING_TODAY}, à faire`)).toBeOnTheScreen();
+    expect(
+      await dayView().findByLabelText(`${COOKING_TODAY}, à faire, Moyenne, 10 XP par suivi`),
+    ).toBeOnTheScreen();
 
     await showTab('Mois');
 

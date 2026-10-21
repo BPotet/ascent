@@ -36,6 +36,20 @@ export function AlertGlyph({
   );
 }
 
+/** Le « i » cerclé des messages d'information (« S'applique à toute cette semaine… »). Décoratif. */
+export function InfoGlyph({ color }: { readonly color: string }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      testID="info-glyph"
+      style={[styles.alert, { borderColor: color, width: 16, height: 16, borderRadius: 8 }]}
+    >
+      <Text style={[styles.alertMark, { color, fontSize: 11 }]}>i</Text>
+    </View>
+  );
+}
+
 /** L'étoile de l'expérience, devant l'aide et l'encouragement. Décorative. */
 export function SparkGlyph({ color }: { readonly color: string }) {
   return (

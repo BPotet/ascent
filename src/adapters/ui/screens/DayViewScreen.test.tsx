@@ -88,6 +88,39 @@ describe('DayViewScreen', () => {
     expect(screen.queryByLabelText('Chargement de tes habitudes')).not.toBeOnTheScreen();
   });
 
+  it('shows the difficulty of each habit this week on its row (E1)', async () => {
+    await createHabit(dependencies, 'Courir 5 km', 'hard');
+    await createHabit(dependencies, 'Lire', 'easy');
+
+    await show();
+
+    expect(await screen.findByTestId('habit-difficulty-1')).toHaveTextContent('Difficile');
+    expect(screen.getByTestId('habit-difficulty-2')).toHaveTextContent('Facile');
+    expect(
+      within(screen.getByTestId('habit-difficulty-1')).getAllByTestId('difficulty-peak', {
+        includeHiddenElements: true,
+      }),
+    ).toHaveLength(3);
+    expect(
+      screen.getByRole('switch', {
+        name: 'Courir 5 km, mercredi 14 octobre, à faire, Difficile, 20 XP par suivi',
+      }),
+    ).toBeOnTheScreen();
+  });
+
+  it('creates a habit with the difficulty chosen in the sheet', async () => {
+    await show();
+    await screen.findByTestId('day-view-empty');
+
+    await openSheetAndType('Courir 5 km');
+    await fireEvent.press(screen.getByRole('radio', { name: /^Difficile,/u }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Créer l’habitude' }));
+
+    expect(await screen.findByTestId('habit-difficulty-1')).toHaveTextContent('Difficile');
+    const [running] = (await getDayView(dependencies)).habits;
+    expect(running?.weekSettings).toEqual({ difficulty: 'hard' });
+  });
+
   it('invites to create a first habit when there is none', async () => {
     await show();
 
@@ -112,8 +145,14 @@ describe('DayViewScreen', () => {
     expect(await screen.findByRole('header', { name: 'Aujourd’hui' })).toBeOnTheScreen();
     expect(screen.getByText('Mercredi 14 octobre')).toBeOnTheScreen();
     expect(rowNames()).toEqual(['Cuisiner', 'Budget du jour']);
-    expect(screen.getByLabelText('Cuisiner, mercredi 14 octobre, à faire')).toBeOnTheScreen();
-    expect(screen.getByLabelText('Budget du jour, mercredi 14 octobre, à faire')).toBeOnTheScreen();
+    expect(
+      screen.getByLabelText('Cuisiner, mercredi 14 octobre, à faire, Moyenne, 10 XP par suivi'),
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByLabelText(
+        'Budget du jour, mercredi 14 octobre, à faire, Moyenne, 10 XP par suivi',
+      ),
+    ).toBeOnTheScreen();
     expect(screen.getByLabelText('0 habitude faite sur 2')).toBeOnTheScreen();
     expect(screen.getByLabelText('2 habitudes sur 10')).toHaveTextContent('2/10');
     expect(addButton()).toBeEnabled();
@@ -137,7 +176,9 @@ describe('DayViewScreen', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
 
     expect(
-      await screen.findByLabelText('Cuisiner, mercredi 14 octobre, à faire'),
+      await screen.findByLabelText(
+        'Cuisiner, mercredi 14 octobre, à faire, Moyenne, 10 XP par suivi',
+      ),
     ).toBeOnTheScreen();
     expect(screen.queryByRole('alert')).not.toBeOnTheScreen();
   });
@@ -171,7 +212,9 @@ describe('DayViewScreen', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Créer l’habitude' }));
 
     expect(
-      await screen.findByLabelText('Cuisiner, mercredi 14 octobre, à faire'),
+      await screen.findByLabelText(
+        'Cuisiner, mercredi 14 octobre, à faire, Moyenne, 10 XP par suivi',
+      ),
     ).toBeOnTheScreen();
     expect(screen.queryByTestId('new-habit-sheet')).not.toBeOnTheScreen();
     expect(screen.getByTestId('toast')).toHaveTextContent('Habitude créée');
@@ -320,7 +363,7 @@ describe('DayViewScreen', () => {
     const ALL_DONE = 'Toutes tes habitudes du jour sont faites. Belle ascension !';
     const SAVE_FAILED = 'Le suivi n’a pas été enregistré.';
     const cooking = (status: string, day = 'mercredi 14 octobre') =>
-      screen.getByRole('switch', { name: `Cuisiner, ${day}, ${status}` });
+      screen.getByRole('switch', { name: `Cuisiner, ${day}, ${status}, Moyenne, 10 XP par suivi` });
 
     async function storedStatuses(): Promise<string[]> {
       const view = await getDayView(dependencies);
@@ -339,7 +382,7 @@ describe('DayViewScreen', () => {
       await fireEvent.press(cooking('à faire'));
 
       expect(await screen.findByRole('switch', { checked: true })).toHaveAccessibleName(
-        'Cuisiner, mercredi 14 octobre, fait',
+        'Cuisiner, mercredi 14 octobre, fait, Moyenne, 10 XP par suivi',
       );
       expect(screen.getByText('Fait')).toBeOnTheScreen();
       expect(screen.getByLabelText('1 habitude faite sur 2')).toHaveTextContent('1/2 faites');
@@ -381,7 +424,11 @@ describe('DayViewScreen', () => {
 
       await show();
 
-      expect(await screen.findByLabelText('Cuisiner, mercredi 14 octobre, fait')).toBeChecked();
+      expect(
+        await screen.findByLabelText(
+          'Cuisiner, mercredi 14 octobre, fait, Moyenne, 10 XP par suivi',
+        ),
+      ).toBeChecked();
     });
 
     it('encourages the player when every habit of the day is done', async () => {
@@ -420,7 +467,7 @@ describe('DayViewScreen', () => {
       await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
 
       expect(await screen.findByRole('switch', { checked: true })).toHaveAccessibleName(
-        'Cuisiner, mercredi 14 octobre, fait',
+        'Cuisiner, mercredi 14 octobre, fait, Moyenne, 10 XP par suivi',
       );
       expect(screen.queryByText(SAVE_FAILED)).not.toBeOnTheScreen();
       expect(await storedStatuses()).toEqual(['Cuisiner: done']);
@@ -566,7 +613,9 @@ describe('DayViewScreen and the experience', () => {
   const xpBar = () => screen.getByTestId('character-bar');
   const xpChange = () => screen.queryByTestId('xp-change', { includeHiddenElements: true });
   const row = (status: string) =>
-    screen.getByRole('switch', { name: `Cuisiner, mercredi 14 octobre, ${status}` });
+    screen.getByRole('switch', {
+      name: `Cuisiner, mercredi 14 octobre, ${status}, Moyenne, 10 XP par suivi`,
+    });
 
   beforeEach(() => announce.mockClear());
   afterEach(() => jest.restoreAllMocks());
@@ -736,7 +785,9 @@ describe('DayViewScreen and editing a habit', () => {
     expect(screen.getByRole('button', { name: 'Enregistrer' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Supprimer l’habitude' })).toBeOnTheScreen();
     expect(
-      screen.getByRole('switch', { name: 'Cuisiner, mercredi 14 octobre, à faire' }),
+      screen.getByRole('switch', {
+        name: 'Cuisiner, mercredi 14 octobre, à faire, Moyenne, 10 XP par suivi',
+      }),
     ).not.toBeChecked();
   });
 
@@ -759,7 +810,9 @@ describe('DayViewScreen and editing a habit', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
 
     expect(
-      await screen.findByRole('switch', { name: 'Cuisiner maison, mercredi 14 octobre, fait' }),
+      await screen.findByRole('switch', {
+        name: 'Cuisiner maison, mercredi 14 octobre, fait, Moyenne, 10 XP par suivi',
+      }),
     ).toBeChecked();
     expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
     expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: '#7C9CFF' });
@@ -808,10 +861,126 @@ describe('DayViewScreen and editing a habit', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
 
     expect(
-      await screen.findByRole('alert', { name: 'Le nom n’a pas pu être enregistré. Réessaie.' }),
+      await screen.findByRole('alert', {
+        name: 'Les modifications n’ont pas pu être enregistrées. Réessaie.',
+      }),
     ).toBeOnTheScreen();
     dependencies.unitOfWork.failWrites(false);
     expect(await names()).toEqual(['Cuisiner', 'Budget du jour']);
+  });
+
+  describe('and its difficulty', () => {
+    const option = (name: string) =>
+      screen.getByRole('radio', { name: new RegExp(`^${name},`, 'u') });
+
+    it('prefills the difficulty of the current week, without message', async () => {
+      await showTwoHabits();
+
+      await fireEvent.press(editButton('Cuisiner'));
+
+      expect(option('Moyenne')).toBeChecked();
+      expect(screen.queryByTestId('difficulty-change-info')).not.toBeOnTheScreen();
+    });
+
+    it('re-evaluates the week at a higher difficulty: +20 XP, with a vibration', async () => {
+      await showTwoHabits();
+      await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP'));
+      await fireEvent.press(editButton('Cuisiner'));
+
+      await fireEvent.press(option('Difficile'));
+      await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
+
+      expect(
+        await screen.findByRole('switch', {
+          name: 'Cuisiner, mercredi 14 octobre, fait, Difficile, 20 XP par suivi',
+        }),
+      ).toBeChecked();
+      expect(screen.getByTestId('habit-difficulty-1')).toHaveTextContent('Difficile');
+      expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
+      expect(toast()).toHaveTextContent(`Habitude modifiée · +20 XP`);
+      expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: '#7C9CFF' });
+      expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 40 XP');
+      expect(screen.getByTestId('xp-change', { includeHiddenElements: true })).toHaveTextContent(
+        '+20 XP',
+      );
+      expect(dependencies.haptics.success).toHaveBeenCalledTimes(1);
+      expect(AccessibilityInfo.announceForAccessibility).toHaveBeenCalledWith(
+        '+20 points d’expérience. Total : 40 XP.',
+      );
+    });
+
+    it('takes back the difference at a lower difficulty, never with a vibration', async () => {
+      await showTwoHabits();
+      await fireEvent.press(editButton('Cuisiner'));
+
+      await fireEvent.press(option('Facile'));
+      await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
+
+      await waitFor(() => expect(toast()).toHaveTextContent('Habitude modifiée · −10 XP'));
+      expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 10 XP');
+      expect(dependencies.haptics.success).not.toHaveBeenCalled();
+    });
+
+    it('then gives a check-in at the new rate', async () => {
+      await showTwoHabits({ cookingDoneToday: false });
+      await fireEvent.press(editButton('Cuisiner'));
+      await fireEvent.press(option('Difficile'));
+      await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
+      await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP'));
+
+      await fireEvent.press(
+        await screen.findByRole('switch', {
+          name: 'Cuisiner, mercredi 14 octobre, à faire, Difficile, 20 XP par suivi',
+        }),
+      );
+
+      await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 40 XP'));
+    });
+
+    it('says « Habitude modifiée » when the name and the difficulty change together', async () => {
+      await showTwoHabits({ cookingDoneToday: false });
+      await fireEvent.press(editButton('Cuisiner'));
+
+      await fireEvent.changeText(nameField(), 'Cuisiner maison');
+      await fireEvent.press(option('Difficile'));
+      await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
+
+      await waitFor(() => expect(toast()).toHaveTextContent('Habitude modifiée · +10 XP'));
+      expect(await names()).toEqual(['Cuisiner maison', 'Budget du jour']);
+    });
+
+    it('changes nothing when the change cannot be saved, and keeps the choice', async () => {
+      await showTwoHabits();
+      await fireEvent.press(editButton('Cuisiner'));
+      dependencies.unitOfWork.failWrites();
+
+      await fireEvent.press(option('Difficile'));
+      await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
+
+      expect(
+        await screen.findByRole('alert', {
+          name: 'Les modifications n’ont pas pu être enregistrées. Réessaie.',
+        }),
+      ).toBeOnTheScreen();
+      expect(option('Difficile')).toBeChecked();
+      dependencies.unitOfWork.failWrites(false);
+      const [cooking] = (await getDayView(dependencies)).habits;
+      expect(cooking?.weekSettings).toEqual({ difficulty: 'medium' });
+      expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP');
+    });
+
+    it('keeps the difficulty chosen after a failed preparation of the deletion', async () => {
+      await showTwoHabits();
+      await fireEvent.press(editButton('Cuisiner'));
+      await fireEvent.press(option('Difficile'));
+      dependencies.unitOfWork.failReads();
+
+      await fireEvent.press(screen.getByRole('button', { name: 'Supprimer l’habitude' }));
+
+      expect(await screen.findByRole('alert')).toBeOnTheScreen();
+      expect(option('Difficile')).toBeChecked();
+      expect(screen.getByTestId('difficulty-change-info')).toBeOnTheScreen();
+    });
   });
 
   it('asks to confirm a deletion, announcing the experience removed today', async () => {
@@ -876,7 +1045,9 @@ describe('DayViewScreen and editing a habit', () => {
     expect(screen.queryByTestId('delete-habit-dialog')).not.toBeOnTheScreen();
     expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
     expect(
-      screen.getByRole('switch', { name: 'Cuisiner, mercredi 14 octobre, fait' }),
+      screen.getByRole('switch', {
+        name: 'Cuisiner, mercredi 14 octobre, fait, Moyenne, 10 XP par suivi',
+      }),
     ).toBeChecked();
     expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP');
     expect(await names()).toEqual(['Cuisiner', 'Budget du jour']);

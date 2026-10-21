@@ -4,7 +4,9 @@ import { AccessibilityInfo } from 'react-native';
 import { Day } from '../../../domain/day/Day';
 import { Habit } from '../../../domain/habit/Habit';
 import { HabitName } from '../../../domain/habit/HabitName';
-import type { RenameHabitOutcome } from '../state/useEditHabit';
+import type { Difficulty } from '../../../domain/habit/Difficulty';
+import type { UpdateHabitInput } from '../../../application/useCases/updateHabit';
+import type { UpdateHabitOutcome } from '../state/useEditHabit';
 import { EditHabitSheet } from './EditHabitSheet';
 
 const nbsp = ' ';
@@ -12,17 +14,26 @@ const monday = Day.of(2026, 10, 5);
 const cooking = new Habit(1, HabitName.parse('Cuisiner'), monday);
 const budget = new Habit(2, HabitName.parse('Budget du jour'), Day.of(2026, 10, 12));
 
-function renamed(name: string): RenameHabitOutcome {
-  return { ok: true, habit: new Habit(1, HabitName.parse(name), monday) };
+function updated({ name, difficulty }: UpdateHabitInput): UpdateHabitOutcome {
+  return {
+    ok: true,
+    habit: new Habit(1, HabitName.parse(name), monday),
+    weekSettings: { difficulty: difficulty ?? 'medium' },
+    nameChanged: name.trim() !== 'Cuisiner',
+    settingsChanged: difficulty !== undefined,
+    xpChange: 0,
+    xp: 0,
+  };
 }
 
 async function open(
-  rename: (name: string) => Promise<RenameHabitOutcome> = async (name) => renamed(name),
+  save: (input: UpdateHabitInput) => Promise<UpdateHabitOutcome> = async (input) => updated(input),
   deleteAlert: string | null = null,
+  difficulty: Difficulty = 'medium',
 ) {
   const props = {
-    onRename: jest.fn(rename),
-    onRenamed: jest.fn(),
+    onSave: jest.fn(save),
+    onSaved: jest.fn(),
     onGone: jest.fn(),
     onDelete: jest.fn(),
     onClose: jest.fn(),
@@ -30,6 +41,7 @@ async function open(
   await render(
     <EditHabitSheet
       habit={cooking}
+      difficulty={difficulty}
       habits={[cooking, budget]}
       deleteAlert={deleteAlert}
       {...props}
@@ -41,6 +53,8 @@ async function open(
 const field = () => screen.getByLabelText('Nom de l’habitude');
 const saveButton = () => screen.getByRole('button', { name: 'Enregistrer' });
 const type = (text: string) => fireEvent.changeText(field(), text);
+const option = (name: string) => screen.getByRole('radio', { name: new RegExp(`^${name},`, 'u') });
+const info = () => screen.queryByTestId('difficulty-change-info');
 
 describe('EditHabitSheet', () => {
   // Le premier rendu charge les modules du panneau (Modal, clavier) : une fois, avec plus de temps.
@@ -75,39 +89,39 @@ describe('EditHabitSheet', () => {
   it.each(['Cuisiner', '  Cuisiner ', 'Cuisiner​'])(
     'keeps saving disabled while the cleaned name has not changed (%p)',
     async (text) => {
-      const { onRename } = await open();
+      const { onSave } = await open();
 
       await type(text);
       await fireEvent(field(), 'submitEditing');
 
       expect(saveButton()).toBeDisabled();
-      expect(onRename).not.toHaveBeenCalled();
+      expect(onSave).not.toHaveBeenCalled();
     },
   );
 
-  it('renames the habit, and passes it on', async () => {
-    const { onRename, onRenamed } = await open();
+  it('renames the habit, keeping its difficulty, and passes it on', async () => {
+    const { onSave, onSaved } = await open();
 
     await type('Cuisiner maison');
     await fireEvent.press(saveButton());
 
-    expect(onRename).toHaveBeenCalledWith('Cuisiner maison');
-    expect(onRenamed).toHaveBeenCalledWith(expect.any(Habit));
-    expect(onRenamed.mock.calls[0]?.[0].name.value).toBe('Cuisiner maison');
+    expect(onSave).toHaveBeenCalledWith({ name: 'Cuisiner maison' });
+    expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ ok: true, nameChanged: true }));
+    expect(onSaved.mock.calls[0]?.[0].habit.name.value).toBe('Cuisiner maison');
   });
 
   it('lets the player change only the capital letters', async () => {
-    const { onRename } = await open();
+    const { onSave } = await open();
 
     await type('CUISINER');
 
     expect(saveButton()).toBeEnabled();
     await fireEvent.press(saveButton());
-    expect(onRename).toHaveBeenCalledWith('CUISINER');
+    expect(onSave).toHaveBeenCalledWith({ name: 'CUISINER' });
   });
 
   it('explains an emptied name and disables saving', async () => {
-    const { onRename } = await open();
+    const { onSave } = await open();
 
     await type('   ');
 
@@ -117,11 +131,11 @@ describe('EditHabitSheet', () => {
     );
     expect(screen.getByText('0/40')).toBeOnTheScreen();
     expect(saveButton()).toBeDisabled();
-    expect(onRename).not.toHaveBeenCalled();
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it('keeps a pasted name of 41 characters and explains the limit', async () => {
-    const { onRename } = await open();
+    const { onSave } = await open();
 
     await type('é'.repeat(41));
 
@@ -131,11 +145,11 @@ describe('EditHabitSheet', () => {
       screen.getByRole('alert', { name: 'Le nom compte 40 caractères au plus.' }),
     ).toBeOnTheScreen();
     expect(saveButton()).toBeDisabled();
-    expect(onRename).not.toHaveBeenCalled();
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it('refuses the name of another habit, names it, and keeps the name typed', async () => {
-    const { onRenamed } = await open(async () => ({ ok: false, reason: 'duplicate' }) as const);
+    const { onSaved } = await open(async () => ({ ok: false, reason: 'duplicate' }) as const);
 
     await type('budget du jour');
     await fireEvent.press(saveButton());
@@ -147,35 +161,37 @@ describe('EditHabitSheet', () => {
     ).toBeOnTheScreen();
     expect(field()).toHaveDisplayValue('budget du jour');
     expect(saveButton()).toBeDisabled();
-    expect(onRenamed).not.toHaveBeenCalled();
+    expect(onSaved).not.toHaveBeenCalled();
   });
 
   it('keeps the name typed when it cannot be saved, and lets the player retry', async () => {
     let attempts = 0;
-    const { onRename, onRenamed } = await open(async (name) => {
+    const { onSave, onSaved } = await open(async (input) => {
       attempts += 1;
-      return attempts === 1 ? { ok: false, reason: 'saveFailed' } : renamed(name);
+      return attempts === 1 ? { ok: false, reason: 'saveFailed' } : updated(input);
     });
 
     await type('Cuisiner maison');
     await fireEvent.press(saveButton());
 
     expect(
-      screen.getByRole('alert', { name: 'Le nom n’a pas pu être enregistré. Réessaie.' }),
+      screen.getByRole('alert', {
+        name: 'Les modifications n’ont pas pu être enregistrées. Réessaie.',
+      }),
     ).toBeOnTheScreen();
     expect(field()).toHaveDisplayValue('Cuisiner maison');
-    expect(onRenamed).not.toHaveBeenCalled();
+    expect(onSaved).not.toHaveBeenCalled();
 
     await fireEvent.press(saveButton());
-    expect(onRename).toHaveBeenCalledTimes(2);
-    expect(onRenamed).toHaveBeenCalledTimes(1);
+    expect(onSave).toHaveBeenCalledTimes(2);
+    expect(onSaved).toHaveBeenCalledTimes(1);
   });
 
   it('cannot rename twice while the first renaming is being saved (double tap)', async () => {
-    let finish: (outcome: RenameHabitOutcome) => void = () => undefined;
-    const { onRename, onRenamed } = await open(
+    let finish: (outcome: UpdateHabitOutcome) => void = () => undefined;
+    const { onSave, onSaved } = await open(
       () =>
-        new Promise<RenameHabitOutcome>((resolve) => {
+        new Promise<UpdateHabitOutcome>((resolve) => {
           finish = resolve;
         }),
     );
@@ -185,14 +201,14 @@ describe('EditHabitSheet', () => {
     expect(saveButton()).toBeDisabled();
     await fireEvent.press(saveButton());
     await fireEvent(field(), 'submitEditing');
-    await act(async () => finish(renamed('Cuisiner maison')));
+    await act(async () => finish(updated({ name: 'Cuisiner maison' })));
 
-    expect(onRename).toHaveBeenCalledTimes(1);
-    expect(onRenamed).toHaveBeenCalledTimes(1);
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onSaved).toHaveBeenCalledTimes(1);
   });
 
   it('tells the screen when the habit no longer exists', async () => {
-    const { onGone, onRenamed } = await open(
+    const { onGone, onSaved } = await open(
       async () => ({ ok: false, reason: 'unknownHabit' }) as const,
     );
 
@@ -200,17 +216,132 @@ describe('EditHabitSheet', () => {
     await fireEvent.press(saveButton());
 
     expect(onGone).toHaveBeenCalledTimes(1);
-    expect(onRenamed).not.toHaveBeenCalled();
+    expect(onSaved).not.toHaveBeenCalled();
     expect(screen.queryByRole('alert')).not.toBeOnTheScreen();
   });
 
+  describe('the block « Difficulté » (E7)', () => {
+    it.each(['easy', 'medium', 'hard'] as const)(
+      'is prefilled with the difficulty of the current week (%s), without message',
+      async (difficulty) => {
+        await open(undefined, null, difficulty);
+
+        expect(screen.getByTestId('difficulty-picker')).toHaveAccessibleName('Difficulté');
+        expect(screen.getByTestId(`difficulty-option-${difficulty}`)).toBeChecked();
+        expect(saveButton()).toBeDisabled();
+        expect(info()).not.toBeOnTheScreen();
+      },
+    );
+
+    it('says the whole current week is re-evaluated when the difficulty changes, and enables saving', async () => {
+      await open();
+
+      await fireEvent.press(option('Difficile'));
+
+      const message =
+        'S’applique à toute cette semaine : les suivis de la semaine rapporteront +20 XP. Les semaines passées ne changent pas.';
+      expect(screen.getByText(message)).toBeOnTheScreen();
+      expect(info()).toHaveAccessibleName(message);
+      expect(info()).toHaveProp('accessibilityLiveRegion', 'polite');
+      expect(AccessibilityInfo.announceForAccessibility).toHaveBeenLastCalledWith(message);
+      expect(screen.getByTestId('info-glyph', { includeHiddenElements: true })).toBeTruthy();
+      expect(saveButton()).toBeEnabled();
+    });
+
+    it('follows the rate of the difficulty chosen', async () => {
+      await open();
+
+      await fireEvent.press(option('Facile'));
+
+      expect(info()).toHaveTextContent(/rapporteront \+5 XP\./u);
+    });
+
+    it('goes back to « nothing changed » when the first difficulty is chosen again', async () => {
+      await open();
+
+      await fireEvent.press(option('Difficile'));
+      await fireEvent.press(option('Moyenne'));
+
+      expect(info()).not.toBeOnTheScreen();
+      expect(saveButton()).toBeDisabled();
+    });
+
+    it('saves the difficulty alone, with the name unchanged, in one go', async () => {
+      const { onSave, onSaved } = await open();
+
+      await fireEvent.press(option('Difficile'));
+      await fireEvent.press(saveButton());
+
+      expect(onSave).toHaveBeenCalledTimes(1);
+      expect(onSave).toHaveBeenCalledWith({ name: 'Cuisiner', difficulty: 'hard' });
+      expect(onSaved).toHaveBeenCalledWith(
+        expect.objectContaining({ settingsChanged: true, weekSettings: { difficulty: 'hard' } }),
+      );
+    });
+
+    it('saves the name and the difficulty together', async () => {
+      const { onSave } = await open();
+
+      await type('Courir 10 km');
+      await fireEvent.press(option('Facile'));
+      await fireEvent.press(saveButton());
+
+      expect(onSave).toHaveBeenCalledWith({ name: 'Courir 10 km', difficulty: 'easy' });
+    });
+
+    it('keeps the difficulty chosen while the name is corrected', async () => {
+      await open();
+
+      await fireEvent.press(option('Difficile'));
+      await type('');
+
+      expect(saveButton()).toBeDisabled();
+      expect(option('Difficile')).toBeChecked();
+      await type('Cuisiner');
+      expect(saveButton()).toBeEnabled();
+    });
+
+    it('keeps the difficulty chosen after a failed save, and retries with it', async () => {
+      let attempts = 0;
+      const { onSave, onSaved } = await open(async (input) => {
+        attempts += 1;
+        return attempts === 1 ? { ok: false, reason: 'saveFailed' } : updated(input);
+      });
+
+      await fireEvent.press(option('Difficile'));
+      await fireEvent.press(saveButton());
+
+      expect(
+        screen.getByRole('alert', {
+          name: 'Les modifications n’ont pas pu être enregistrées. Réessaie.',
+        }),
+      ).toBeOnTheScreen();
+      expect(option('Difficile')).toBeChecked();
+      expect(onSaved).not.toHaveBeenCalled();
+      await fireEvent.press(saveButton());
+      expect(onSave).toHaveBeenNthCalledWith(2, { name: 'Cuisiner', difficulty: 'hard' });
+      expect(onSaved).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps the difficulty chosen after a duplicate', async () => {
+      await open(async () => ({ ok: false, reason: 'duplicate' }) as const);
+
+      await fireEvent.press(option('Facile'));
+      await type('budget du jour');
+      await fireEvent.press(saveButton());
+
+      expect(screen.getByRole('alert', { name: /^Tu as déjà une habitude/u })).toBeOnTheScreen();
+      expect(option('Facile')).toBeChecked();
+    });
+  });
+
   it('asks for the deletion', async () => {
-    const { onDelete, onRename } = await open();
+    const { onDelete, onSave } = await open();
 
     await fireEvent.press(screen.getByRole('button', { name: 'Supprimer l’habitude' }));
 
     expect(onDelete).toHaveBeenCalledTimes(1);
-    expect(onRename).not.toHaveBeenCalled();
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it('explains a deletion that could not be prepared', async () => {
@@ -222,11 +353,11 @@ describe('EditHabitSheet', () => {
   });
 
   it('closes with « Annuler »', async () => {
-    const { onClose, onRename } = await open();
+    const { onClose, onSave } = await open();
 
     await fireEvent.press(screen.getByRole('button', { name: 'Annuler' }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
-    expect(onRename).not.toHaveBeenCalled();
+    expect(onSave).not.toHaveBeenCalled();
   });
 });

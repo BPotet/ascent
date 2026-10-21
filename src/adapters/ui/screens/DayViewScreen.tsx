@@ -29,10 +29,17 @@ import { useYesterdayReminder } from '../state/useYesterdayReminder';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
-import { type DeletedHabit, deletedMessage, HabitEditing, RENAMED_MESSAGE } from './HabitEditing';
+import {
+  type DeletedHabit,
+  deletedMessage,
+  HabitEditing,
+  SETTINGS_READ_FAILED,
+  type UpdatedHabit,
+  updatedMessage,
+} from './HabitEditing';
 import { NewHabitSheet } from './NewHabitSheet';
 
-/** Durée de la mise en évidence d'une habitude créée ou renommée, comme dans la maquette. */
+/** Durée de la mise en évidence d'une habitude créée ou modifiée, comme dans la maquette. */
 export const HIGHLIGHT_DURATION_MS = 1800;
 
 /** L'aide au premier usage, qui explique le tap (maquette, E1 « Première habitude créée »). */
@@ -129,6 +136,7 @@ function HabitList({
           <HabitRow
             key={habitDay.habit.id}
             habitDay={habitDay}
+            difficulty={habitDay.weekSettings.difficulty}
             highlighted={habitDay.habit.id === highlighted?.id}
             xpChange={xpChangeOn(xpChange, habitDay)}
             onToggle={onToggle}
@@ -159,15 +167,19 @@ function HabitList({
  * disparaît au premier « fait ». La vue passe seule au nouveau jour (minuit, retour au premier
  * plan) et l'annonce.
  *
- * Le bouton « ⋯ » d'une habitude ouvre « Modifier l'habitude » (`HabitEditing`) : renommée, elle
- * est mise en évidence ; supprimée, elle disparaît et l'expérience retirée est montrée. Un message
- * confirme l'un ou l'autre ; la vue se recharge (état vide après la dernière, limite de 10).
+ * Chaque ligne montre la difficulté de l'habitude cette semaine (icône et nom, E1).
+ *
+ * Le bouton « ⋯ » d'une habitude ouvre « Modifier l'habitude » (`HabitEditing`), prérempli avec
+ * ses réglages de la semaine : modifiée, elle est mise en évidence et la variation de l'expérience
+ * est montrée ; supprimée, elle disparaît et l'expérience retirée est montrée. Un message confirme
+ * l'un ou l'autre ; la vue se recharge (état vide après la dernière, limite de 10).
  *
  * `newHabitRequest` ouvre le panneau « Nouvelle habitude » chaque fois qu'il prend une nouvelle
  * valeur (l'état vide de la Vue Semaine mène ici pour créer une habitude).
  *
  * En haut, l'expérience du personnage (R24) ; un tap enregistré la fait monter ou descendre, avec
- * son feedback : « +10 XP » s'envole de la coche (`Experience`, `CharacterBar`).
+ * son feedback : « +20 XP » (au barème de la difficulté) s'envole de la coche (`Experience`,
+ * `CharacterBar`).
  *
  * En haut de la liste, le rappel d'hier (« Hier : 1/2 faites ») propose de corriger hier :
  * « Corriger » appelle `onCorrectYesterday` avec la semaine d'hier, à ouvrir dans la Vue Semaine.
@@ -248,10 +260,10 @@ export function DayViewScreen({
     void refresh();
   };
   const closeEditing = () => setEditing(null);
-  const renamed = (habit: Habit) => {
+  const updated = (outcome: UpdatedHabit) => {
     setEditing(null);
-    setHighlighted({ id: habit.id, reveal: false });
-    showToast(RENAMED_MESSAGE);
+    setHighlighted({ id: outcome.habit.id, reveal: false });
+    showToast(updatedMessage(outcome));
     void refresh();
   };
   const deleted = ({ xpRemoved }: DeletedHabit) => {
@@ -262,6 +274,10 @@ export function DayViewScreen({
   const gone = () => {
     setEditing(null);
     void refresh();
+  };
+  const readFailed = () => {
+    setEditing(null);
+    showToast(SETTINGS_READ_FAILED);
   };
 
   if (state.status === 'loading') {
@@ -364,10 +380,12 @@ export function DayViewScreen({
       {editing !== null && (
         <HabitEditing
           habit={editing}
+          weekSettings={view.habits.find(({ habit }) => habit.id === editing.id)?.weekSettings}
           habits={view.habits.map(({ habit }) => habit)}
-          onRenamed={renamed}
+          onUpdated={updated}
           onDeleted={deleted}
           onGone={gone}
+          onReadFailed={readFailed}
           onClose={closeEditing}
         />
       )}

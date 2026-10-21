@@ -7,22 +7,30 @@ import {
   type HabitDeletionPreview,
   previewHabitDeletion,
 } from '../../../application/useCases/deleteHabit';
+import { getDayView } from '../../../application/useCases/getDayView';
 import {
-  renameHabit,
-  type RenameHabitRefusal,
-  type RenameHabitResult,
-} from '../../../application/useCases/renameHabit';
+  updateHabit,
+  type UpdateHabitInput,
+  type UpdateHabitRefusal,
+  type UpdateHabitResult,
+} from '../../../application/useCases/updateHabit';
 import type { HabitId } from '../../../domain/habit/Habit';
+import type { WeekSettings } from '../../../domain/habit/WeekSettings';
 import { useUseCaseDependencies } from './Dependencies';
 import { useExperience } from './Experience';
 import { useTrackingChanges } from './TrackingRevision';
 
-/** Pourquoi une habitude n'a pas été renommée : un refus de règle, ou l'enregistrement a échoué. */
-export type RenameHabitFailure = RenameHabitRefusal | 'saveFailed';
+/** Pourquoi une habitude n'a pas été modifiée : un refus de règle, ou l'enregistrement a échoué. */
+export type UpdateHabitFailure = UpdateHabitRefusal | 'saveFailed';
 
-export type RenameHabitOutcome =
-  | Extract<RenameHabitResult, { ok: true }>
-  | { readonly ok: false; readonly reason: RenameHabitFailure };
+export type UpdateHabitOutcome =
+  | Extract<UpdateHabitResult, { ok: true }>
+  | { readonly ok: false; readonly reason: UpdateHabitFailure };
+
+/** Les réglages de la semaine en cours d'une habitude, ou pourquoi ils n'ont pas pu être lus. */
+export type CurrentSettingsOutcome =
+  | { readonly ok: true; readonly weekSettings: WeekSettings }
+  | { readonly ok: false; readonly reason: 'unknownHabit' | 'readFailed' };
 
 /** Le texte de la fenêtre de confirmation, ou pourquoi il n'a pas pu être lu. */
 export type DeletionPreviewOutcome =
@@ -35,7 +43,8 @@ export type DeleteHabitOutcome =
   | { readonly ok: false; readonly reason: DeleteHabitRefusal | 'saveFailed' };
 
 export interface EditHabit {
-  readonly rename: (habitId: HabitId, rawName: string) => Promise<RenameHabitOutcome>;
+  readonly update: (habitId: HabitId, input: UpdateHabitInput) => Promise<UpdateHabitOutcome>;
+  readonly currentSettings: (habitId: HabitId) => Promise<CurrentSettingsOutcome>;
   readonly previewDeletion: (habitId: HabitId) => Promise<DeletionPreviewOutcome>;
   readonly remove: (habitId: HabitId) => Promise<DeleteHabitOutcome>;
 }
@@ -43,16 +52,20 @@ export interface EditHabit {
 const ignore = () => undefined;
 
 /**
- * Renomme ou supprime une habitude (#6) ; une panne de stockage devient le motif `saveFailed` (ou
- * `readFailed` pour l'aperçu d'une suppression), pour l'afficher. Une habitude renommée, supprimée
- * ou disparue entre-temps (`unknownHabit`) fait recharger les autres vues (`TrackingRevision`) ;
- * la vue qui l'a demandé se recharge elle-même. Après une suppression, l'en-tête montre
- * l'expérience enregistrée et, s'il y en a, l'expérience retirée (`Experience`).
+ * Modifie (nom et difficulté, en un seul enregistrement) ou supprime une habitude (#6, #23) ; une
+ * panne de stockage devient le motif `saveFailed` (ou `readFailed` pour une lecture), pour
+ * l'afficher. Une habitude modifiée, supprimée ou disparue entre-temps (`unknownHabit`) fait
+ * recharger les autres vues (`TrackingRevision`) ; la vue qui l'a demandé se recharge elle-même.
+ * Après une modification ou une suppression, l'en-tête montre l'expérience enregistrée et, s'il y
+ * en a, sa variation (`Experience`).
+ *
+ * `currentSettings` lit les réglages de la semaine en cours d'une habitude, pour préremplir
+ * « Modifier l'habitude » ouvert depuis une autre semaine que celle en cours.
  */
 export function useEditHabit(): EditHabit {
   const dependencies = useUseCaseDependencies();
   const trackingChanged = useTrackingChanges(ignore);
-  const { habitDeleted } = useExperience();
+  const { habitDeleted, habitUpdated } = useExperience();
 
   const changedUnless = useCallback(
     (outcome: { readonly ok: boolean; readonly reason?: string }) => {
@@ -63,15 +76,34 @@ export function useEditHabit(): EditHabit {
     [trackingChanged],
   );
 
-  const rename = useCallback(
-    async (habitId: HabitId, rawName: string) => {
-      const outcome: RenameHabitOutcome = await renameHabit(dependencies, habitId, rawName).catch(
+  const update = useCallback(
+    async (habitId: HabitId, input: UpdateHabitInput) => {
+      const outcome: UpdateHabitOutcome = await updateHabit(dependencies, habitId, input).catch(
         () => ({ ok: false, reason: 'saveFailed' }) as const,
       );
       changedUnless(outcome);
+      if (outcome.ok) {
+        habitUpdated(outcome);
+      }
       return outcome;
     },
-    [dependencies, changedUnless],
+    [dependencies, changedUnless, habitUpdated],
+  );
+
+  const currentSettings = useCallback(
+    async (habitId: HabitId): Promise<CurrentSettingsOutcome> => {
+      const view = await getDayView(dependencies).catch(() => null);
+      if (view === null) {
+        return { ok: false, reason: 'readFailed' };
+      }
+      const row = view.habits.find(({ habit }) => habit.id === habitId);
+      if (row === undefined) {
+        trackingChanged();
+        return { ok: false, reason: 'unknownHabit' };
+      }
+      return { ok: true, weekSettings: row.weekSettings };
+    },
+    [dependencies, trackingChanged],
   );
 
   const previewDeletion = useCallback(
@@ -102,5 +134,8 @@ export function useEditHabit(): EditHabit {
     [dependencies, changedUnless, habitDeleted],
   );
 
-  return useMemo(() => ({ rename, previewDeletion, remove }), [rename, previewDeletion, remove]);
+  return useMemo(
+    () => ({ update, currentSettings, previewDeletion, remove }),
+    [update, currentSettings, previewDeletion, remove],
+  );
 }

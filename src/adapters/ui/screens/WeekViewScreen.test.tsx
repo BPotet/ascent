@@ -7,6 +7,7 @@ import { createHabit } from '../../../application/useCases/createHabit';
 import { deleteHabit } from '../../../application/useCases/deleteHabit';
 import { getDayView } from '../../../application/useCases/getDayView';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
+import { updateHabit } from '../../../application/useCases/updateHabit';
 import { Day } from '../../../domain/day/Day';
 import type { HabitId } from '../../../domain/habit/Habit';
 import { Week } from '../../../domain/week/Week';
@@ -853,6 +854,95 @@ describe('WeekViewScreen and editing a habit', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Supprimer l’habitude' }));
     await screen.findByTestId('delete-habit-dialog');
   }
+
+  describe('and its difficulty', () => {
+    const option = (name: string) =>
+      screen.getByRole('radio', { name: new RegExp(`^${name},`, 'u') });
+
+    /** Le fond, puis « Cuisiner » passée en Difficile aujourd'hui (mercredi 14). */
+    async function givenCookingHardThisWeek() {
+      await givenTheBackground();
+      await updateHabit(dependencies, cooking, { name: 'Cuisiner', difficulty: 'hard' });
+    }
+
+    it('shows on each card the difficulty of the week shown (E4)', async () => {
+      await givenCookingHardThisWeek();
+      await show();
+
+      expect(screen.getByTestId(`week-difficulty-${cooking}`)).toHaveTextContent('Difficile');
+      expect(screen.getByTestId(`week-difficulty-${budget}`)).toHaveTextContent('Moyenne');
+
+      await fireEvent.press(previousButton());
+
+      await waitFor(() =>
+        expect(screen.getByTestId(`week-difficulty-${cooking}`)).toHaveTextContent('Moyenne'),
+      );
+    });
+
+    it('re-evaluates the current week from « Modifier l’habitude »', async () => {
+      await givenTheBackground();
+      await show();
+      await fireEvent.press(editName('Cuisiner'));
+
+      expect(option('Moyenne')).toBeChecked();
+      await fireEvent.press(option('Difficile'));
+      await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('toast')).toHaveTextContent('Habitude modifiée · +10 XP'),
+      );
+      expect(screen.getByTestId(`week-difficulty-${cooking}`)).toHaveTextContent('Difficile');
+      expect(screen.getByTestId(`week-card-highlight-${cooking}`)).toBeOnTheScreen();
+      expect(screen.getByTestId('character-bar')).toHaveAccessibleName(
+        'Expérience du personnage : 30 XP',
+      );
+    });
+
+    it('prefills the difficulty of the current week when another week is shown', async () => {
+      await givenCookingHardThisWeek();
+      await show();
+      await fireEvent.press(previousButton());
+      await waitFor(() =>
+        expect(screen.getByTestId(`week-difficulty-${cooking}`)).toHaveTextContent('Moyenne'),
+      );
+
+      await fireEvent.press(editName('Cuisiner'));
+
+      expect(await screen.findByRole('header', { name: 'Modifier l’habitude' })).toBeOnTheScreen();
+      expect(option('Difficile')).toBeChecked();
+      expect(screen.getByRole('button', { name: 'Enregistrer' })).toBeDisabled();
+    });
+
+    it('says the habit could not be opened when its settings cannot be read', async () => {
+      await givenCookingHardThisWeek();
+      await show();
+      await fireEvent.press(previousButton());
+      await screen.findByText('Semaine dernière');
+      dependencies.unitOfWork.failReads();
+
+      await fireEvent.press(editName('Cuisiner'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('toast')).toHaveTextContent(
+          'L’habitude n’a pas pu être ouverte. Réessaie.',
+        ),
+      );
+      expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
+    });
+
+    it('reloads instead of opening a habit deleted in the meantime', async () => {
+      await givenCookingHardThisWeek();
+      await show();
+      await fireEvent.press(previousButton());
+      await screen.findByText('Semaine dernière');
+      await deleteHabit(dependencies, budget);
+
+      await fireEvent.press(editName('Budget du jour'));
+
+      await waitFor(() => expect(screen.queryByText('Budget du jour')).not.toBeOnTheScreen());
+      expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
+    });
+  });
 
   it('opens « Modifier l’habitude » from the name of a habit', async () => {
     await givenTheBackground();

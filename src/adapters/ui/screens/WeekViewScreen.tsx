@@ -32,7 +32,14 @@ import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
 import { HIGHLIGHT_DURATION_MS } from './DayViewScreen';
-import { type DeletedHabit, deletedMessage, HabitEditing, RENAMED_MESSAGE } from './HabitEditing';
+import {
+  type DeletedHabit,
+  deletedMessage,
+  HabitEditing,
+  SETTINGS_READ_FAILED,
+  type UpdatedHabit,
+  updatedMessage,
+} from './HabitEditing';
 
 /** Le lien qui ramène à la semaine en cours (maquette, E4 « Semaine dernière »). */
 export const BACK_TO_CURRENT_WEEK = 'Revenir à cette semaine';
@@ -131,10 +138,14 @@ function Navigator({
  * Une correction est confirmée par un message, et la case porte ou perd la marque « corrigé » (R13).
  * Un tap sur une case « hors habitude » l'explique ; une case « à venir » ne réagit pas.
  * En haut, l'expérience du personnage (R24), avec le feedback d'un tap ou d'une correction
- * enregistrés : « +10 XP » s'envole de la case (`Experience`, `CharacterBar`).
- * Toucher le nom d'une habitude ouvre « Modifier l'habitude » (`HabitEditing`) : renommée, elle est
- * mise en évidence ; supprimée, elle disparaît de toutes les semaines, la navigation est recalculée
- * (R22) et l'expérience retirée est montrée. Un message confirme l'un ou l'autre.
+ * enregistrés : « +20 XP » (au barème de la difficulté de la semaine) s'envole de la case
+ * (`Experience`, `CharacterBar`). Chaque carte montre, sous le nom, la difficulté de l'habitude
+ * pendant la semaine affichée (E4).
+ * Toucher le nom d'une habitude ouvre « Modifier l'habitude » (`HabitEditing`), prérempli avec ses
+ * réglages de la semaine en cours, même depuis une autre semaine : modifiée, elle est mise en
+ * évidence et la variation de l'expérience est montrée ; supprimée, elle disparaît de toutes les
+ * semaines, la navigation est recalculée (R22) et l'expérience retirée est montrée. Un message
+ * confirme l'un ou l'autre.
  * `onAddHabit` mène à la création d'une habitude (état vide). `weekRequest` affiche une semaine
  * demandée par une autre vue (« Corriger » du rappel d'hier), à chaque nouvel `id`.
  */
@@ -182,10 +193,10 @@ export function WeekViewScreen({
   }, [highlighted]);
 
   const closeEditing = () => setEditing(null);
-  const renamed = (habit: Habit) => {
+  const updated = (outcome: UpdatedHabit) => {
     setEditing(null);
-    setHighlighted(habit.id);
-    showToast(RENAMED_MESSAGE);
+    setHighlighted(outcome.habit.id);
+    showToast(updatedMessage(outcome));
     void refresh();
   };
   const deleted = ({ xpRemoved }: DeletedHabit) => {
@@ -196,6 +207,10 @@ export function WeekViewScreen({
   const gone = () => {
     setEditing(null);
     void refresh();
+  };
+  const readFailed = () => {
+    setEditing(null);
+    showToast(SETTINGS_READ_FAILED);
   };
 
   /** Un tap sur `habitDay`, la vue étant affichée pour `today`. */
@@ -294,6 +309,7 @@ export function WeekViewScreen({
                 key={row.habit.id}
                 days={row.days}
                 today={view.today}
+                difficulty={row.weekSettings.difficulty}
                 xpChange={experience.change}
                 onToggle={(habitDay) => void tap(habitDay, view.today)}
                 onNotStartedPress={(habitDay) => showToast(notStartedMessage(habitDay))}
@@ -317,10 +333,16 @@ export function WeekViewScreen({
       {editing !== null && (
         <HabitEditing
           habit={editing}
+          weekSettings={
+            view.isCurrentWeek
+              ? view.rows.find(({ habit }) => habit.id === editing.id)?.weekSettings
+              : undefined
+          }
           habits={view.rows.map(({ habit }) => habit)}
-          onRenamed={renamed}
+          onUpdated={updated}
           onDeleted={deleted}
           onGone={gone}
+          onReadFailed={readFailed}
           onClose={closeEditing}
         />
       )}
