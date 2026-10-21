@@ -31,7 +31,7 @@ tags:
 - tapOn:
     id: 'create-habit'
 - extendedWaitUntil:
-    visible: 'Cuisiner, .+, à faire'
+    visible: 'Cuisiner, .+, à faire, Moyenne, 10 XP par suivi'
     timeout: 10000
 
 # Créée aujourd'hui : rien à rappeler d'hier.

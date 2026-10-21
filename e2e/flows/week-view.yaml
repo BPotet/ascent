@@ -51,11 +51,11 @@ tags:
 
 # Cochée dans la Vue Journée.
 - extendedWaitUntil:
-    visible: 'Cuisiner, .+, à faire'
+    visible: 'Cuisiner, .+, à faire, Moyenne, 10 XP par suivi'
     timeout: 10000
-- tapOn: 'Cuisiner, .+, à faire'
+- tapOn: 'Cuisiner, .+, à faire, Moyenne, 10 XP par suivi'
 - extendedWaitUntil:
-    visible: 'Cuisiner, .+, fait'
+    visible: 'Cuisiner, .+, fait, Moyenne, 10 XP par suivi'
     timeout: 10000
 
 # Onglet Semaine : la case du jour est « fait », les jours avant la création « hors habitude ».
@@ -91,7 +91,7 @@ tags:
 - tapOn:
     id: 'tab-day'
 - extendedWaitUntil:
-    visible: 'Cuisiner, .+, à faire'
+    visible: 'Cuisiner, .+, à faire, Moyenne, 10 XP par suivi'
     timeout: 10000
 - assertVisible:
     id: 'day-view-list'

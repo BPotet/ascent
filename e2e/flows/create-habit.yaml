@@ -46,7 +46,7 @@ tags:
     notVisible: 'Nouvelle habitude'
     timeout: 10000
 - extendedWaitUntil:
-    visible: 'Cuisiner, .+, à faire'
+    visible: 'Cuisiner, .+, à faire, Moyenne, 10 XP par suivi'
     timeout: 10000
 - assertVisible:
     id: 'day-view-list'
@@ -57,7 +57,7 @@ tags:
 - stopApp
 - launchApp
 - extendedWaitUntil:
-    visible: 'Cuisiner, .+, à faire'
+    visible: 'Cuisiner, .+, à faire, Moyenne, 10 XP par suivi'
     timeout: 60000
 - assertNotVisible:
     id: 'day-view-empty'
