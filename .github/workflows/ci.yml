@@ -34,10 +34,18 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Check every commit of the pull request
-        run: >-
-          npx commitlint --verbose
-          --from ${{ github.event.pull_request.base.sha }}
-          --to ${{ github.event.pull_request.head.sha }}
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          from="$BASE_SHA"
+          if [ "$BASE_REF" = "main" ]; then
+            # A release or hotfix brings commits that develop already holds, each one
+            # checked by its own pull request: only the commits added since are checked.
+            from="$(git merge-base origin/develop "$HEAD_SHA")"
+          fi
+          npx commitlint --verbose --from "$from" --to "$HEAD_SHA"
 
   secrets:
     name: Secrets (Gitleaks)
