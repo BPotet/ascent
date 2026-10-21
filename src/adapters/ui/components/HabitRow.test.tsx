@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { AccessibilityInfo, Animated } from 'react-native';
 
 import type { CheckInStatus } from '../../../domain/checkIn/CheckInStatus';
@@ -179,6 +179,59 @@ describe('HabitRow', () => {
     );
 
     expect(screen.queryByTestId('xp-float', { includeHiddenElements: true })).not.toBeOnTheScreen();
+  });
+
+  describe('with its difficulty (Vue Journée, E1)', () => {
+    it('shows the icon and the name of the difficulty on the secondary line', async () => {
+      await render(<HabitRow habitDay={habitDay('pending')} difficulty="hard" />);
+
+      const line = screen.getByTestId('habit-difficulty-7');
+      expect(line).toHaveTextContent('Difficile');
+      expect(
+        within(line).getAllByTestId('difficulty-peak', { includeHiddenElements: true }),
+      ).toHaveLength(3);
+      expect(screen.getByText('À faire')).toBeOnTheScreen();
+    });
+
+    it('reads the difficulty and what a check-in brings after the status', async () => {
+      await render(<HabitRow habitDay={habitDay('pending')} difficulty="easy" />);
+
+      expect(
+        screen.getByRole('switch', {
+          name: 'Cuisiner, mercredi 14 octobre, à faire, Facile, 5 XP par suivi',
+        }),
+      ).toBeOnTheScreen();
+    });
+
+    it('takes the colours of the line: muted, or green once done', async () => {
+      const { rerender } = await render(
+        <HabitRow habitDay={habitDay('pending')} difficulty="medium" />,
+      );
+      expect(screen.getByText('Moyenne', { includeHiddenElements: true })).toHaveStyle({
+        color: '#9AA4B8',
+      });
+      expect(
+        screen.getAllByTestId('difficulty-peak', { includeHiddenElements: true })[0],
+      ).toHaveStyle({ borderBottomColor: '#B9C6E6' });
+
+      await rerender(<HabitRow habitDay={habitDay('done')} difficulty="medium" />);
+
+      expect(screen.getByText('Moyenne', { includeHiddenElements: true })).toHaveStyle({
+        color: '#8FE8BF',
+      });
+      expect(
+        screen.getAllByTestId('difficulty-peak', { includeHiddenElements: true })[0],
+      ).toHaveStyle({ borderBottomColor: '#8FE8BF' });
+    });
+
+    it('shows no difficulty without one (detail of a day)', async () => {
+      await render(<HabitRow habitDay={habitDay('pending')} />);
+
+      expect(screen.queryByTestId('habit-difficulty-7')).not.toBeOnTheScreen();
+      expect(
+        screen.queryByTestId('difficulty-peak', { includeHiddenElements: true }),
+      ).not.toBeOnTheScreen();
+    });
   });
 
   describe('with an edit action', () => {

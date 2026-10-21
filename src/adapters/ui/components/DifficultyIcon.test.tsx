@@ -72,5 +72,13 @@ describe('DifficultyLabel', () => {
     expect(screen.getByLabelText('Difficile, 20 XP par suivi')).toBeOnTheScreen();
     expect(peaks()).toHaveLength(3);
     expect(screen.getByText('Difficile')).toHaveStyle({ color: '#9AA4B8' });
+    expect(peaks()[0]).toHaveStyle({ borderBottomColor: '#9AA4B8' });
+  });
+
+  it('can draw its icon in another colour than its text', async () => {
+    await render(<DifficultyLabel difficulty="easy" color="#9AA4B8" iconColor="#B9C6E6" />);
+
+    expect(screen.getByText('Facile')).toHaveStyle({ color: '#9AA4B8' });
+    expect(peaks()[0]).toHaveStyle({ borderBottomColor: '#B9C6E6' });
   });
 });

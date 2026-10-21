@@ -73,11 +73,14 @@ export function DifficultyIcon({
 export function DifficultyLabel({
   difficulty,
   color,
+  iconColor = color,
   textStyle,
   testID,
 }: {
   readonly difficulty: Difficulty;
+  /** La couleur du texte, et de l'icône sauf `iconColor`. */
   readonly color: string;
+  readonly iconColor?: string;
   readonly textStyle?: TextStyle;
   readonly testID?: string;
 }) {
@@ -88,7 +91,7 @@ export function DifficultyLabel({
       testID={testID}
       style={styles.label}
     >
-      <DifficultyIcon difficulty={difficulty} color={color} />
+      <DifficultyIcon difficulty={difficulty} color={iconColor} />
       <Text style={[typography.label, textStyle, { color }]}>{difficultyLabels[difficulty]}</Text>
     </View>
   );
