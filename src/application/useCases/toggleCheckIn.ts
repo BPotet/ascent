@@ -94,9 +94,10 @@ export function toggleCheckIn(
     if (habit === null) {
       return { ok: false, reason: 'unknownHabit' };
     }
-    const current = await checkIns.find(habitId, day);
+    let current: CheckIn | null;
     let toggled: ReturnType<typeof toggle>;
     try {
+      current = await checkIns.find(habitId, day);
       toggled = toggle(habit, day, current, today);
     } catch (error) {
       if (error instanceof NotStartedDayError) {
