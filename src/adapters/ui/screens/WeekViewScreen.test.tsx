@@ -898,6 +898,27 @@ describe('WeekViewScreen and editing a habit', () => {
       );
     });
 
+    it('opens with the settings of the current week shown, without reading them again', async () => {
+      await givenCookingHardThisWeek();
+      await show();
+      dependencies.unitOfWork.failReads();
+
+      await fireEvent.press(editName('Cuisiner'));
+
+      expect(await screen.findByTestId('edit-habit-sheet')).toBeOnTheScreen();
+      expect(option('Difficile')).toBeChecked();
+    });
+
+    it('prefills the difficulty of the habit opened, not of another one', async () => {
+      await givenCookingHardThisWeek();
+      await show();
+
+      await fireEvent.press(editName('Budget du jour'));
+
+      expect(await screen.findByTestId('edit-habit-sheet')).toBeOnTheScreen();
+      expect(option('Moyenne')).toBeChecked();
+    });
+
     it('prefills the difficulty of the current week when another week is shown', async () => {
       await givenCookingHardThisWeek();
       await show();
@@ -941,6 +962,7 @@ describe('WeekViewScreen and editing a habit', () => {
 
       await waitFor(() => expect(screen.queryByText('Budget du jour')).not.toBeOnTheScreen());
       expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
+      expect(screen.queryByText('L’habitude n’a pas pu être ouverte. Réessaie.')).toBeNull();
     });
   });
 

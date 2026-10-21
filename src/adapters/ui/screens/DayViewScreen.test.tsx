@@ -9,6 +9,7 @@ import { CHECK_IN_HINT_DISMISSED_KEY } from '../../../application/useCases/check
 import { createHabit } from '../../../application/useCases/createHabit';
 import { deleteHabit } from '../../../application/useCases/deleteHabit';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
+import { updateHabit } from '../../../application/useCases/updateHabit';
 import { getDayView } from '../../../application/useCases/getDayView';
 import { Day } from '../../../domain/day/Day';
 import { Week } from '../../../domain/week/Week';
@@ -897,6 +898,29 @@ describe('DayViewScreen and editing a habit', () => {
 
       expect(option('Moyenne')).toBeChecked();
       expect(screen.queryByTestId('difficulty-change-info')).not.toBeOnTheScreen();
+    });
+
+    it('opens with the settings already shown, without reading them again', async () => {
+      await showTwoHabits();
+      dependencies.unitOfWork.failReads();
+
+      await fireEvent.press(editButton('Cuisiner'));
+
+      expect(await screen.findByTestId('edit-habit-sheet')).toBeOnTheScreen();
+      expect(option('Moyenne')).toBeChecked();
+      expect(screen.queryByText('L’habitude n’a pas pu être ouverte. Réessaie.')).toBeNull();
+    });
+
+    it('prefills the difficulty of the habit opened, not of another one', async () => {
+      await showTwoHabits();
+      await updateHabit(dependencies, 1, { name: 'Cuisiner', difficulty: 'hard' });
+      await screen.unmount();
+      await show();
+      expect(await screen.findByTestId('habit-difficulty-1')).toHaveTextContent('Difficile');
+
+      await fireEvent.press(editButton('Budget du jour'));
+
+      expect(option('Moyenne')).toBeChecked();
     });
 
     it('re-evaluates the week at a higher difficulty: +20 XP, with a vibration', async () => {

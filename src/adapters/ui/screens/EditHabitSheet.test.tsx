@@ -256,6 +256,17 @@ describe('EditHabitSheet', () => {
       expect(info()).toHaveTextContent(/rapporteront \+5 XP\./u);
     });
 
+    it('announces the message again when another difficulty is chosen', async () => {
+      await open();
+
+      await fireEvent.press(option('Difficile'));
+      await fireEvent.press(option('Facile'));
+
+      expect(AccessibilityInfo.announceForAccessibility).toHaveBeenLastCalledWith(
+        expect.stringContaining('rapporteront +5 XP.'),
+      );
+    });
+
     it('goes back to « nothing changed » when the first difficulty is chosen again', async () => {
       await open();
 

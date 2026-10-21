@@ -213,6 +213,9 @@ describe('HabitRow', () => {
       expect(
         screen.getAllByTestId('difficulty-peak', { includeHiddenElements: true })[0],
       ).toHaveStyle({ borderBottomColor: '#B9C6E6' });
+      expect(screen.getByText('·', { includeHiddenElements: true })).toHaveStyle({
+        color: '#9AA4B8',
+      });
 
       await rerender(<HabitRow habitDay={habitDay('done')} difficulty="medium" />);
 
@@ -222,6 +225,9 @@ describe('HabitRow', () => {
       expect(
         screen.getAllByTestId('difficulty-peak', { includeHiddenElements: true })[0],
       ).toHaveStyle({ borderBottomColor: '#8FE8BF' });
+      expect(screen.getByText('·', { includeHiddenElements: true })).toHaveStyle({
+        color: '#8FE8BF',
+      });
     });
 
     it('shows no difficulty without one (detail of a day)', async () => {
