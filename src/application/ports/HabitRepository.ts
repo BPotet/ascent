@@ -17,4 +17,17 @@ export interface HabitRepository {
    * existe déjà est tout de même refusé par une exception.
    */
   add(name: HabitName, createdOn: Day): Promise<Habit>;
+  /**
+   * Renomme l'habitude (#6, R18). Son identifiant, son jour de création, sa place dans l'ordre de
+   * création et ses suivis ne changent pas ; son ancien nom redevient libre. Les règles (doublon)
+   * sont vérifiées avant par le domaine ; un nom dont la clé est celle d'une autre habitude est tout
+   * de même refusé par une exception. Sans effet si l'habitude n'existe pas.
+   */
+  rename(id: HabitId, name: HabitName): Promise<void>;
+  /**
+   * Supprime définitivement l'habitude et efface tous ses suivis avec elle (#6, R17). Son nom
+   * redevient libre ; son identifiant n'est jamais réattribué. Sans effet si elle n'existe pas.
+   * L'expérience n'est pas touchée : c'est au cas d'usage de l'ajuster dans la même unité de travail.
+   */
+  remove(id: HabitId): Promise<void>;
 }

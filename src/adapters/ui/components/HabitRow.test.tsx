@@ -60,13 +60,13 @@ describe('HabitRow', () => {
   it('shows « fait » with a check mark, not only with a color', async () => {
     const { rerender } = await render(<HabitRow habitDay={habitDay('pending')} />);
     expect(screen.queryByTestId('check-mark', { includeHiddenElements: true })).toBeNull();
-    expect(screen.getByTestId('habit-row-7')).toHaveStyle({ backgroundColor: '#18202F' });
+    expect(screen.getByTestId('habit-card-7')).toHaveStyle({ backgroundColor: '#18202F' });
 
     await rerender(<HabitRow habitDay={habitDay('done')} />);
 
     expect(screen.getByTestId('check-mark', { includeHiddenElements: true })).toBeTruthy();
     expect(screen.getByText('Fait')).toBeOnTheScreen();
-    expect(screen.getByTestId('habit-row-7')).toHaveStyle({ backgroundColor: '#16302A' });
+    expect(screen.getByTestId('habit-card-7')).toHaveStyle({ backgroundColor: '#16302A' });
   });
 
   it('toggles the habit when the whole row is touched', async () => {
@@ -116,13 +116,13 @@ describe('HabitRow', () => {
   it('can be highlighted', async () => {
     await render(<HabitRow habitDay={habitDay('pending')} highlighted />);
 
-    expect(screen.getByTestId('habit-row-7')).toHaveStyle({ borderColor: '#7C9CFF' });
+    expect(screen.getByTestId('habit-card-7')).toHaveStyle({ borderColor: '#7C9CFF' });
   });
 
   it('is not highlighted by default', async () => {
     await render(<HabitRow habitDay={habitDay('pending')} />);
 
-    expect(screen.getByTestId('habit-row-7')).toHaveStyle({ borderColor: 'transparent' });
+    expect(screen.getByTestId('habit-card-7')).toHaveStyle({ borderColor: 'transparent' });
   });
 
   it('lets the change of experience fly up from its check', async () => {
@@ -150,5 +150,43 @@ describe('HabitRow', () => {
     );
 
     expect(screen.queryByTestId('xp-float', { includeHiddenElements: true })).not.toBeOnTheScreen();
+  });
+
+  describe('with an edit action', () => {
+    it('offers « Modifier l’habitude Cuisiner », a target apart from the switch', async () => {
+      const onToggle = jest.fn();
+      const onEdit = jest.fn();
+      await render(<HabitRow habitDay={habitDay('done')} onToggle={onToggle} onEdit={onEdit} />);
+
+      const edit = screen.getByRole('button', { name: 'Modifier l’habitude Cuisiner' });
+      await fireEvent.press(edit);
+
+      expect(onEdit).toHaveBeenCalledWith(habitDay('done'));
+      expect(onToggle).not.toHaveBeenCalled();
+      expect(screen.getByTestId('more-glyph', { includeHiddenElements: true })).toBeTruthy();
+    });
+
+    it('does not edit the habit when the switch is touched', async () => {
+      const onToggle = jest.fn();
+      const onEdit = jest.fn();
+      await render(<HabitRow habitDay={habitDay('pending')} onToggle={onToggle} onEdit={onEdit} />);
+
+      await fireEvent.press(screen.getByRole('switch'));
+
+      expect(onToggle).toHaveBeenCalled();
+      expect(onEdit).not.toHaveBeenCalled();
+    });
+
+    it('is at least 44 points wide and high', async () => {
+      await render(<HabitRow habitDay={habitDay('pending')} onEdit={jest.fn()} />);
+
+      expect(screen.getByRole('button')).toHaveStyle({ width: 52, minHeight: 44 });
+    });
+
+    it('is not offered without an edit action', async () => {
+      await render(<HabitRow habitDay={habitDay('pending')} />);
+
+      expect(screen.queryByRole('button')).not.toBeOnTheScreen();
+    });
   });
 });

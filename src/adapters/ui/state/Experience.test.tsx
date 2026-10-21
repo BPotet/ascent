@@ -245,6 +245,50 @@ describe('ExperienceProvider', () => {
     expect(result.current.experience.xp).toBe(10);
   });
 
+  it('shows the experience removed by a deletion, without vibration', async () => {
+    const result = await renderExperience();
+
+    await act(() => result.current.experience.habitDeleted({ xp: 30, xpRemoved: 10 }));
+
+    expect(result.current.experience.xp).toBe(30);
+    expect(result.current.experience.change).toEqual({ id: 1, amount: -10, key: '' });
+    expect(xpChangeOn(result.current.experience.change, { habit: cooking, day: wednesday })).toBe(
+      undefined,
+    );
+    expect(dependencies.haptics.success).not.toHaveBeenCalled();
+    expect(announce).toHaveBeenLastCalledWith('−10 points d’expérience. Total : 30 XP.');
+  });
+
+  it('shows no feedback when a deletion removed no experience', async () => {
+    const result = await renderExperience();
+
+    await act(() => result.current.experience.habitDeleted({ xp: 10, xpRemoved: 0 }));
+
+    expect(result.current.experience.xp).toBe(10);
+    expect(result.current.experience.change).toBeNull();
+    expect(announce).not.toHaveBeenCalled();
+  });
+
+  it('keeps the experience of a deletion over a reading that started before it', async () => {
+    const result = await renderExperience();
+    let read: () => void = () => undefined;
+    const run = dependencies.unitOfWork.run.bind(dependencies.unitOfWork);
+    jest
+      .spyOn(dependencies.unitOfWork, 'run')
+      .mockImplementationOnce(
+        (work) => new Promise((resolve) => (read = () => resolve(run(work)))),
+      );
+    const reading = result.current.experience.reload();
+
+    await act(() => result.current.experience.habitDeleted({ xp: 30, xpRemoved: 10 }));
+    await act(async () => {
+      read();
+      await reading;
+    });
+
+    expect(result.current.experience.xp).toBe(30);
+  });
+
   it('is only available inside the dependencies', async () => {
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
 

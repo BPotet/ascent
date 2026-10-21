@@ -18,6 +18,8 @@ export const colors = {
   doneSoft: '#16302A',
   doneText: '#8FE8BF',
   doneLine: 'rgba(61,220,151,0.55)',
+  /** Le trait qui sépare « ⋯ » d'une ligne « fait ». */
+  doneDivider: 'rgba(61,220,151,0.3)',
   xp: '#FFC94D',
   onXp: '#2A1E00',
   /** Fond de l'avatar du personnage. */
@@ -29,6 +31,7 @@ export const colors = {
   hintLine: 'rgba(124,156,255,0.45)',
   onHint: '#DCE4FF',
   danger: '#FF7A7A',
+  onDanger: '#2B0606',
   dangerSoft: 'rgba(255,122,122,0.12)',
   dangerLine: 'rgba(255,122,122,0.45)',
   onDangerSoft: '#FFC9C9',

@@ -1,8 +1,9 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { CheckInStatus } from '../../../domain/checkIn/CheckInStatus';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import type { Day } from '../../../domain/day/Day';
+import type { Habit } from '../../../domain/habit/Habit';
 import { checkInStatusLabels } from '../format/checkInStatus';
 import { capitalize } from '../format/formatDay';
 import { WEEKDAY_INITIALS } from '../format/formatWeek';
@@ -10,7 +11,8 @@ import { type XpChange, xpChangeOn } from '../state/Experience';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
-import { CheckGlyph, CrossGlyph, DotGlyph } from './Glyph';
+import { CheckGlyph, CrossGlyph, DotGlyph, PencilGlyph } from './Glyph';
+import { editHabitLabel } from './HabitRow';
 import { CORRECTED, CorrectedMark, HabitDayCell } from './HabitDayCell';
 
 /** Cache un élément décoratif au lecteur d'écran (Android et iOS). */
@@ -60,6 +62,9 @@ export function WeekDaysHeader({
  * La carte d'une habitude dans la Vue Semaine : son nom et ses 7 cases, du lundi au dimanche.
  * `onNotStartedPress` reçoit le tap sur une case « hors habitude », pour l'expliquer.
  * `xpChange`, le dernier changement d'expérience, s'envole de la case touchée si elle est ici.
+ * Avec `onEdit`, le nom, suivi d'un crayon, est un bouton qui ouvre « Modifier l'habitude » (lu
+ * « Modifier l'habitude Cuisiner »). `highlighted` met en évidence une habitude qui vient d'être
+ * renommée.
  */
 export function HabitWeekCard({
   days,
@@ -67,12 +72,16 @@ export function HabitWeekCard({
   xpChange = null,
   onToggle,
   onNotStartedPress,
+  onEdit,
+  highlighted = false,
 }: {
   readonly days: readonly HabitDay[];
   readonly today: Day;
   readonly xpChange?: XpChange | null;
   readonly onToggle: (habitDay: HabitDay) => void;
   readonly onNotStartedPress?: (habitDay: HabitDay) => void;
+  readonly onEdit?: (habit: Habit) => void;
+  readonly highlighted?: boolean;
 }) {
   const habit = days[0]?.habit;
   if (habit === undefined) {
@@ -80,7 +89,28 @@ export function HabitWeekCard({
   }
   return (
     <View testID={`week-card-${habit.id}`} style={styles.card}>
-      <Text style={[typography.cardTitle, styles.name]}>{habit.name.value}</Text>
+      {highlighted && (
+        // Un contour posé par-dessus la carte : il ne décale pas les cases, alignées sur l'en-tête.
+        <View
+          pointerEvents="none"
+          testID={`week-card-highlight-${habit.id}`}
+          style={styles.highlighted}
+        />
+      )}
+      {onEdit ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={editHabitLabel(habit.name.value)}
+          onPress={() => onEdit(habit)}
+          testID={`edit-habit-${habit.id}`}
+          style={styles.nameButton}
+        >
+          <Text style={[typography.cardTitle, styles.nameText]}>{habit.name.value}</Text>
+          <PencilGlyph color={colors.muted} />
+        </Pressable>
+      ) : (
+        <Text style={[typography.cardTitle, styles.name]}>{habit.name.value}</Text>
+      )}
       <View testID="week-cells" style={styles.cells}>
         {days.map((habitDay) => (
           <HabitDayCell
@@ -169,7 +199,26 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     marginBottom: 10,
   },
+  highlighted: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: colors.accent,
+    shadowColor: colors.accent,
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
+  },
   name: { color: colors.text, minHeight: 44, paddingVertical: 12, paddingHorizontal: 2 },
+  nameButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: 44,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: 2,
+  },
+  nameText: { flex: 1, color: colors.text },
   cells: { flexDirection: 'row', gap: spacing.xs },
   legend: {
     flexDirection: 'row',

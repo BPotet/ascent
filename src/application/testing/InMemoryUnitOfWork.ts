@@ -54,9 +54,7 @@ class InMemoryHabitRepository implements HabitRepository {
   }
 
   async add(name: HabitName, createdOn: Day): Promise<Habit> {
-    if (this.faults.writes) {
-      throw new StorageUnavailableError('write habits');
-    }
+    this.checkWrites();
     if (this.state.habits.some((habit) => habit.name.sameAs(name))) {
       throw new Error(`UNIQUE constraint failed: habits.name_key (${name.key})`);
     }
@@ -64,6 +62,33 @@ class InMemoryHabitRepository implements HabitRepository {
     const habit = new Habit(this.state.lastHabitId, name, createdOn);
     this.state.habits.push(habit);
     return habit;
+  }
+
+  async rename(id: HabitId, name: HabitName): Promise<void> {
+    this.checkWrites();
+    if (this.state.habits.some((habit) => habit.id !== id && habit.name.sameAs(name))) {
+      throw new Error(`UNIQUE constraint failed: habits.name_key (${name.key})`);
+    }
+    this.state.habits = this.state.habits.map((habit) =>
+      habit.id === id ? new Habit(habit.id, name, habit.createdOn) : habit,
+    );
+  }
+
+  /** Comme `ON DELETE CASCADE` : les suivis de l'habitude sont effacés avec elle. */
+  async remove(id: HabitId): Promise<void> {
+    this.checkWrites();
+    this.state.habits = this.state.habits.filter((habit) => habit.id !== id);
+    for (const [key, checkIn] of this.state.checkIns) {
+      if (checkIn.habitId === id) {
+        this.state.checkIns.delete(key);
+      }
+    }
+  }
+
+  private checkWrites(): void {
+    if (this.faults.writes) {
+      throw new StorageUnavailableError('write habits');
+    }
   }
 }
 
@@ -97,6 +122,13 @@ class InMemoryCheckInRepository implements CheckInRepository {
     this.checkReads();
     return [...this.state.checkIns.values()]
       .filter(({ day }) => !day.isBefore(from) && !day.isAfter(to))
+      .sort(byDayThenHabit);
+  }
+
+  async listByHabit(habitId: HabitId): Promise<CheckIn[]> {
+    this.checkReads();
+    return [...this.state.checkIns.values()]
+      .filter((checkIn) => checkIn.habitId === habitId)
       .sort(byDayThenHabit);
   }
 

@@ -145,6 +145,63 @@ export function describeCheckInRepositoryContract(
       await expect(all()).resolves.toEqual([of(cooking, wednesday, true)]);
     });
 
+    it('lists the check-ins of one habit, by day (#6)', async () => {
+      await save(of(cooking, wednesday, true));
+      await save(of(budget, tuesday, true));
+      await save(of(cooking, monday, false, true));
+      await save(of(cooking, thursday, true));
+
+      await expect(
+        inTransaction(({ checkIns }) => checkIns.listByHabit(cooking.id)),
+      ).resolves.toEqual([
+        of(cooking, monday, false, true),
+        of(cooking, wednesday, true),
+        of(cooking, thursday, true),
+      ]);
+      await expect(
+        inTransaction(({ checkIns }) => checkIns.listByHabit(cooking.id + budget.id + 100)),
+      ).resolves.toEqual([]);
+    });
+
+    it('erases the check-ins of a removed habit, and only those (R17)', async () => {
+      await save(of(cooking, monday, true));
+      await save(of(cooking, tuesday, false, true));
+      await save(of(budget, wednesday, true));
+
+      await inTransaction(({ habits }) => habits.remove(cooking.id));
+
+      await expect(all()).resolves.toEqual([of(budget, wednesday, true)]);
+      await expect(
+        inTransaction(({ checkIns }) => checkIns.listByHabit(cooking.id)),
+      ).resolves.toEqual([]);
+    });
+
+    it('keeps the check-ins of a habit whose removal failed', async () => {
+      await save(of(cooking, monday, true));
+
+      await expect(
+        inTransaction(async ({ habits }) => {
+          await habits.remove(cooking.id);
+          throw new Error('work failed');
+        }),
+      ).rejects.toThrow('work failed');
+
+      await expect(all()).resolves.toEqual([of(cooking, monday, true)]);
+    });
+
+    it('starts a habit created again under the same name with no check-in', async () => {
+      await save(of(cooking, tuesday, true));
+      await inTransaction(({ habits }) => habits.remove(cooking.id));
+
+      const again = await inTransaction(({ habits }) =>
+        habits.add(HabitName.parse('Cuisiner'), wednesday),
+      );
+
+      await expect(
+        inTransaction(({ checkIns }) => checkIns.listByHabit(again.id)),
+      ).resolves.toEqual([]);
+    });
+
     it('ends on « fait » after three toggles requested together (triple tap)', async () => {
       const toggle = () =>
         inTransaction(async ({ checkIns }) => {

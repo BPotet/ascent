@@ -39,4 +39,17 @@ export class SqliteHabitRepository implements HabitRepository {
     )) as HabitRow;
     return toHabit(row);
   }
+
+  async rename(id: HabitId, name: HabitName): Promise<void> {
+    await this.db.run('UPDATE habits SET name = ?, name_key = ? WHERE id = ?', [
+      name.value,
+      name.key,
+      id,
+    ]);
+  }
+
+  /** Les suivis de l'habitude sont effacés par `ON DELETE CASCADE` (`PRAGMA foreign_keys = ON`). */
+  async remove(id: HabitId): Promise<void> {
+    await this.db.run('DELETE FROM habits WHERE id = ?', [id]);
+  }
 }

@@ -9,8 +9,11 @@ import { colors } from '../theme/colors';
 import { MIN_TOUCH_SIZE, radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
 import type { ShownXpChange } from './CharacterBar';
-import { CheckGlyph } from './Glyph';
+import { CheckGlyph, MoreGlyph } from './Glyph';
 import { XpFloat } from './XpFloat';
+
+/** Le libellé, pour le lecteur d'écran, de l'action qui ouvre « Modifier l'habitude ». */
+export const editHabitLabel = (name: string) => `Modifier l’habitude ${name}`;
 
 /** Durée du rebond de la coche quand on touche une habitude, comme dans la maquette. */
 export const BOUNCE_DURATION_MS = 320;
@@ -32,19 +35,24 @@ export function bounce(scale: Animated.Value): void {
  * Ligne d'une habitude dans la Vue Journée : son nom et l'état du suivi, écrit en toutes lettres,
  * avec une coche quand elle est « fait ». Toute la ligne est un interrupteur : la toucher appelle
  * `onToggle`, si la case est modifiable, et fait rebondir la coche (sauf mouvement réduit).
- * `highlighted` met en évidence une habitude qui vient d'être créée. `xpChange` fait s'envoler
- * « +10 XP » (ou « −10 XP ») de la coche, après un tap enregistré.
+ * `highlighted` met en évidence une habitude qui vient d'être créée ou renommée. `xpChange` fait
+ * s'envoler « +10 XP » (ou « −10 XP ») de la coche, après un tap enregistré.
+ *
+ * Avec `onEdit`, un bouton « ⋯ » à droite de la ligne ouvre « Modifier l'habitude » : c'est une
+ * cible distincte de l'interrupteur (44 pt au moins), lue « Modifier l'habitude Cuisiner ».
  */
 export function HabitRow({
   habitDay,
   highlighted = false,
   xpChange,
   onToggle,
+  onEdit,
 }: {
   readonly habitDay: HabitDay;
   readonly highlighted?: boolean;
   readonly xpChange?: ShownXpChange | undefined;
   readonly onToggle?: (habitDay: HabitDay) => void;
+  readonly onEdit?: (habitDay: HabitDay) => void;
 }) {
   const { habit, day, status, editable } = habitDay;
   const statusLabel = checkInStatusLabels[status];
@@ -60,45 +68,74 @@ export function HabitRow({
   };
 
   return (
-    <Pressable
-      accessibilityRole="switch"
-      accessibilityLabel={`${habit.name.value}, ${formatDayAndMonth(day)}, ${statusLabel}`}
-      accessibilityState={{ checked: done, disabled: !editable }}
-      disabled={!editable}
-      onPress={press}
-      testID={`habit-row-${habit.id}`}
-      style={[styles.row, done && styles.done, highlighted && styles.highlighted]}
+    <View
+      testID={`habit-card-${habit.id}`}
+      style={[styles.card, done && styles.done, highlighted && styles.highlighted]}
     >
-      <Animated.View style={[styles.check, done && styles.checkDone, { transform: [{ scale }] }]}>
-        {done && <CheckGlyph color={colors.onDone} />}
-        <XpFloat change={xpChange} reducedMotion={reducedMotion} />
-      </Animated.View>
-      <View style={styles.texts}>
-        <Text style={[typography.habitName, styles.name]}>{habit.name.value}</Text>
-        <Text style={[typography.label, styles.status, done && styles.statusDone]}>
-          {capitalize(statusLabel)}
-        </Text>
-      </View>
-    </Pressable>
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityLabel={`${habit.name.value}, ${formatDayAndMonth(day)}, ${statusLabel}`}
+        accessibilityState={{ checked: done, disabled: !editable }}
+        disabled={!editable}
+        onPress={press}
+        testID={`habit-row-${habit.id}`}
+        style={styles.row}
+      >
+        <Animated.View style={[styles.check, done && styles.checkDone, { transform: [{ scale }] }]}>
+          {done && <CheckGlyph color={colors.onDone} />}
+          <XpFloat change={xpChange} reducedMotion={reducedMotion} />
+        </Animated.View>
+        <View style={styles.texts}>
+          <Text style={[typography.habitName, styles.name]}>{habit.name.value}</Text>
+          <Text style={[typography.label, styles.status, done && styles.statusDone]}>
+            {capitalize(statusLabel)}
+          </Text>
+        </View>
+      </Pressable>
+      {onEdit && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={editHabitLabel(habit.name.value)}
+          onPress={() => onEdit(habitDay)}
+          testID={`edit-habit-${habit.id}`}
+          style={[styles.more, done && styles.moreDone]}
+        >
+          <MoreGlyph color={colors.muted} />
+        </Pressable>
+      )}
+    </View>
   );
 }
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  row: {
+  card: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
     minHeight: 76,
-    paddingVertical: 10,
-    paddingLeft: 14,
-    paddingRight: spacing.sm,
     marginBottom: 10,
     borderRadius: radii.row,
     borderWidth: 2,
     borderColor: 'transparent',
     backgroundColor: colors.surface,
   },
+  row: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 10,
+    paddingLeft: 14,
+    paddingRight: spacing.sm,
+  },
+  more: {
+    width: 52,
+    minHeight: MIN_TOUCH_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderLeftWidth: 1,
+    borderLeftColor: colors.line,
+  },
+  moreDone: { borderLeftColor: colors.doneDivider },
   done: { borderColor: colors.doneLine, backgroundColor: colors.doneSoft },
   highlighted: {
     borderColor: colors.accent,

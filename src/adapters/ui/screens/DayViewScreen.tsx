@@ -29,9 +29,10 @@ import { useYesterdayReminder } from '../state/useYesterdayReminder';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
+import { type DeletedHabit, deletedMessage, HabitEditing, RENAMED_MESSAGE } from './HabitEditing';
 import { NewHabitSheet } from './NewHabitSheet';
 
-/** Durée de la mise en évidence d'une habitude qui vient d'être créée, comme dans la maquette. */
+/** Durée de la mise en évidence d'une habitude créée ou renommée, comme dans la maquette. */
 export const HIGHLIGHT_DURATION_MS = 1800;
 
 /** L'aide au premier usage, qui explique le tap (maquette, E1 « Première habitude créée »). */
@@ -41,6 +42,12 @@ export const CHECK_IN_HINT = 'Tape ton habitude quand c’est fait : +10 XP pour
 export const ALL_DONE_MESSAGE = 'Toutes tes habitudes du jour sont faites. Belle ascension\u00a0!';
 
 const newDayMessage = (day: Day) => `Nouvelle journée : ${formatDayAndMonth(day)}.`;
+
+/** L'habitude mise en évidence ; `reveal` fait défiler jusqu'à elle (créée, en bas de la liste). */
+interface Highlight {
+  readonly id: HabitId;
+  readonly reveal: boolean;
+}
 
 interface ToastContent {
   /** Change à chaque message, pour l'annoncer et le montrer en entier même s'il se répète. */
@@ -87,13 +94,15 @@ function HabitList({
   showHint,
   reminder,
   onToggle,
+  onEdit,
 }: {
   readonly view: DayView;
-  readonly highlighted: HabitId | null;
+  readonly highlighted: Highlight | null;
   readonly xpChange: XpChange | null;
   readonly showHint: boolean;
   readonly reminder: ReactNode;
   readonly onToggle: (habitDay: HabitDay) => void;
+  readonly onEdit: (habitDay: HabitDay) => void;
 }) {
   const scroll = useRef<ScrollView>(null);
   const { doneCount } = view;
@@ -107,7 +116,7 @@ function HabitList({
         ref={scroll}
         contentContainerStyle={styles.list}
         onContentSizeChange={() => {
-          if (highlighted !== null) {
+          if (highlighted?.reveal === true) {
             scroll.current?.scrollToEnd();
           }
         }}
@@ -120,9 +129,10 @@ function HabitList({
           <HabitRow
             key={habitDay.habit.id}
             habitDay={habitDay}
-            highlighted={habitDay.habit.id === highlighted}
+            highlighted={habitDay.habit.id === highlighted?.id}
             xpChange={xpChangeOn(xpChange, habitDay)}
             onToggle={onToggle}
+            onEdit={onEdit}
           />
         ))}
         <View style={styles.section}>
@@ -148,6 +158,10 @@ function HabitList({
  * échoue, elle revient à son état et un message propose « Réessayer ». L'aide au premier usage
  * disparaît au premier « fait ». La vue passe seule au nouveau jour (minuit, retour au premier
  * plan) et l'annonce.
+ *
+ * Le bouton « ⋯ » d'une habitude ouvre « Modifier l'habitude » (`HabitEditing`) : renommée, elle
+ * est mise en évidence ; supprimée, elle disparaît et l'expérience retirée est montrée. Un message
+ * confirme l'un ou l'autre ; la vue se recharge (état vide après la dernière, limite de 10).
  *
  * `newHabitRequest` ouvre le panneau « Nouvelle habitude » chaque fois qu'il prend une nouvelle
  * valeur (l'état vide de la Vue Semaine mène ici pour créer une habitude).
@@ -179,7 +193,8 @@ export function DayViewScreen({
       setSheetOpen(true);
     }
   }
-  const [highlighted, setHighlighted] = useState<HabitId | null>(null);
+  const [highlighted, setHighlighted] = useState<Highlight | null>(null);
+  const [editing, setEditing] = useState<Habit | null>(null);
   const [toast, setToast] = useState<ToastContent | null>(null);
   const toastCount = useRef(0);
 
@@ -228,8 +243,24 @@ export function DayViewScreen({
   const closeSheet = () => setSheetOpen(false);
   const created = (habit: Habit) => {
     setSheetOpen(false);
-    setHighlighted(habit.id);
+    setHighlighted({ id: habit.id, reveal: true });
     showToast('Habitude créée');
+    void refresh();
+  };
+  const closeEditing = () => setEditing(null);
+  const renamed = (habit: Habit) => {
+    setEditing(null);
+    setHighlighted({ id: habit.id, reveal: false });
+    showToast(RENAMED_MESSAGE);
+    void refresh();
+  };
+  const deleted = ({ xpRemoved }: DeletedHabit) => {
+    setEditing(null);
+    showToast(deletedMessage(xpRemoved));
+    void refresh();
+  };
+  const gone = () => {
+    setEditing(null);
     void refresh();
   };
 
@@ -304,6 +335,7 @@ export function DayViewScreen({
               )
             }
             onToggle={(habitDay) => void tap(habitDay)}
+            onEdit={({ habit }) => setEditing(habit)}
           />
           <AddHabitButton
             canAddHabit={view.canAddHabit}
@@ -327,6 +359,16 @@ export function DayViewScreen({
           onCreate={create}
           onCreated={created}
           onClose={closeSheet}
+        />
+      )}
+      {editing !== null && (
+        <HabitEditing
+          habit={editing}
+          habits={view.habits.map(({ habit }) => habit)}
+          onRenamed={renamed}
+          onDeleted={deleted}
+          onGone={gone}
+          onClose={closeEditing}
         />
       )}
     </Screen>

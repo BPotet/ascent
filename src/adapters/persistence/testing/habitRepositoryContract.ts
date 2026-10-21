@@ -80,6 +80,107 @@ export function describeHabitRepositoryContract(createUnitOfWork: () => Promise<
       await expect(inTransaction((habits) => habits.findById(cooking.id + 1))).resolves.toBeNull();
     });
 
+    describe('rename (#6)', () => {
+      const listNames = async () =>
+        (await inTransaction((habits) => habits.listAll())).map((habit) => habit.name.value);
+
+      it('renames a habit, keeping its id, its day of creation and its place', async () => {
+        const cooking = await add('Cuisiner', Day.of(2026, 10, 5));
+        await add('Budget du jour', Day.of(2026, 10, 12));
+
+        await inTransaction((habits) =>
+          habits.rename(cooking.id, HabitName.parse('Cuisiner maison')),
+        );
+
+        await expect(inTransaction((habits) => habits.findById(cooking.id))).resolves.toEqual({
+          ...cooking,
+          name: HabitName.parse('Cuisiner maison'),
+        });
+        expect(await listNames()).toEqual(['Cuisiner maison', 'Budget du jour']);
+      });
+
+      it('changes only the capitals of a name', async () => {
+        const cooking = await add('Cuisiner');
+
+        await inTransaction((habits) => habits.rename(cooking.id, HabitName.parse('CUISINER')));
+
+        expect(await listNames()).toEqual(['CUISINER']);
+      });
+
+      it('frees the former name', async () => {
+        const cooking = await add('Cuisiner');
+        await inTransaction((habits) =>
+          habits.rename(cooking.id, HabitName.parse('Cuisiner maison')),
+        );
+
+        await add('cuisiner');
+
+        expect(await listNames()).toEqual(['Cuisiner maison', 'cuisiner']);
+      });
+
+      it('refuses the name key of another habit, and keeps both names', async () => {
+        const cooking = await add('Cuisiner');
+        await add('Budget du jour');
+
+        await expect(
+          inTransaction((habits) => habits.rename(cooking.id, HabitName.parse('budget du jour'))),
+        ).rejects.toThrow();
+
+        expect(await listNames()).toEqual(['Cuisiner', 'Budget du jour']);
+      });
+
+      it('changes nothing for an unknown id', async () => {
+        const cooking = await add('Cuisiner');
+
+        await inTransaction((habits) => habits.rename(cooking.id + 1, HabitName.parse('Lire')));
+
+        expect(await listNames()).toEqual(['Cuisiner']);
+      });
+    });
+
+    describe('remove (#6)', () => {
+      it('removes the habit and keeps the others', async () => {
+        const cooking = await add('Cuisiner');
+        const budget = await add('Budget du jour');
+
+        await inTransaction((habits) => habits.remove(cooking.id));
+
+        await expect(inTransaction((habits) => habits.listAll())).resolves.toEqual([budget]);
+        await expect(inTransaction((habits) => habits.findById(cooking.id))).resolves.toBeNull();
+      });
+
+      it('frees its name, and never gives its id again', async () => {
+        await add('Budget du jour');
+        const cooking = await add('Cuisiner');
+        await inTransaction((habits) => habits.remove(cooking.id));
+
+        const again = await add('Cuisiner');
+
+        expect(again.id).toBeGreaterThan(cooking.id);
+      });
+
+      it('changes nothing for an unknown id', async () => {
+        const cooking = await add('Cuisiner');
+
+        await inTransaction((habits) => habits.remove(cooking.id + 1));
+
+        await expect(inTransaction((habits) => habits.listAll())).resolves.toEqual([cooking]);
+      });
+
+      it('keeps the habit when the work fails', async () => {
+        const cooking = await add('Cuisiner');
+
+        await expect(
+          inTransaction(async (habits) => {
+            await habits.remove(cooking.id);
+            throw new Error('work failed');
+          }),
+        ).rejects.toThrow('work failed');
+
+        await expect(inTransaction((habits) => habits.listAll())).resolves.toEqual([cooking]);
+      });
+    });
+
     it('lets accents distinguish two names', async () => {
       await add('Eté sans sucre');
       await add('Été sans sucre');

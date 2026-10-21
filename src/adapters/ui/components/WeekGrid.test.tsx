@@ -168,6 +168,52 @@ it('aligns the days of the header on the columns of the cells', async () => {
   });
 });
 
+describe('HabitWeekCard and editing the habit', () => {
+  it('opens « Modifier l’habitude » from the name, followed by a pencil', async () => {
+    const onEdit = jest.fn();
+    const onToggle = jest.fn();
+    await render(
+      <HabitWeekCard days={days} today={wednesday} onToggle={onToggle} onEdit={onEdit} />,
+    );
+
+    const name = screen.getByRole('button', { name: 'Modifier l’habitude Cuisiner' });
+    expect(name).toHaveStyle({ minHeight: 44 });
+    expect(within(name).getByText('Cuisiner')).toBeOnTheScreen();
+    expect(within(name).getByTestId('pencil-glyph', hidden)).toBeTruthy();
+    await fireEvent.press(name);
+
+    expect(onEdit).toHaveBeenCalledWith(cooking);
+    expect(onToggle).not.toHaveBeenCalled();
+  });
+
+  it('shows the name as text, without pencil, when the habit cannot be edited', async () => {
+    await render(<HabitWeekCard days={days} today={wednesday} onToggle={jest.fn()} />);
+
+    expect(screen.getByText('Cuisiner')).toBeOnTheScreen();
+    expect(
+      screen.queryByRole('button', { name: 'Modifier l’habitude Cuisiner' }),
+    ).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('pencil-glyph', hidden)).not.toBeOnTheScreen();
+  });
+
+  it('can be highlighted, after a rename', async () => {
+    const { rerender } = await render(
+      <HabitWeekCard days={days} today={wednesday} onToggle={jest.fn()} highlighted />,
+    );
+
+    expect(screen.getByTestId('week-card-highlight-3')).toHaveStyle({
+      position: 'absolute',
+      borderWidth: 2,
+      borderColor: '#7C9CFF',
+    });
+    expect(screen.getByTestId('week-card-3')).not.toHaveStyle({ borderWidth: 2 });
+
+    await rerender(<HabitWeekCard days={days} today={wednesday} onToggle={jest.fn()} />);
+
+    expect(screen.queryByTestId('week-card-highlight-3')).not.toBeOnTheScreen();
+  });
+});
+
 describe('HabitWeekCard and the experience', () => {
   it('lets the change of experience fly up from the touched case only', async () => {
     await render(

@@ -4,6 +4,7 @@ import { AccessibilityInfo, Text } from 'react-native';
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../../application/testing/settableClock';
 import { createHabit } from '../../../application/useCases/createHabit';
+import { deleteHabit } from '../../../application/useCases/deleteHabit';
 import { getDayView } from '../../../application/useCases/getDayView';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
 import { Day } from '../../../domain/day/Day';
@@ -838,5 +839,155 @@ describe('WeekViewScreen and the experience', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
 
     await hasXp('20 XP');
+  });
+});
+
+describe('WeekViewScreen and editing a habit', () => {
+  const nbsp = ' ';
+  const editName = (name: string) =>
+    screen.getByRole('button', { name: `Modifier l’habitude ${name}` });
+  const nameField = () => screen.getByLabelText('Nom de l’habitude');
+
+  async function askDeletion(name = 'Cuisiner') {
+    await fireEvent.press(editName(name));
+    await fireEvent.press(screen.getByRole('button', { name: 'Supprimer l’habitude' }));
+    await screen.findByTestId('delete-habit-dialog');
+  }
+
+  it('opens « Modifier l’habitude » from the name of a habit', async () => {
+    await givenTheBackground();
+    await show();
+
+    await fireEvent.press(editName('Cuisiner'));
+
+    expect(screen.getByRole('header', { name: 'Modifier l’habitude' })).toBeOnTheScreen();
+    expect(nameField()).toHaveDisplayValue('Cuisiner');
+    expect(screen.getByRole('button', { name: 'Enregistrer' })).toBeDisabled();
+  });
+
+  it('renames a habit, highlights its card for a while, and keeps its check-ins', async () => {
+    jest.useFakeTimers();
+    try {
+      await givenTheBackground();
+      await show();
+      await fireEvent.press(editName('Cuisiner'));
+
+      await fireEvent.changeText(nameField(), 'Cuisiner maison');
+      await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
+
+      await waitFor(() =>
+        expect(labelOf(cooking, october(12))).toBe('Cuisiner maison, lundi 12 octobre, fait'),
+      );
+      expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
+      expect(screen.getByTestId(`week-card-highlight-${cooking}`)).toBeOnTheScreen();
+      expect(screen.getByTestId('toast')).toHaveTextContent('Habitude renommée');
+
+      await act(() => jest.advanceTimersByTime(1800));
+
+      expect(screen.queryByTestId(`week-card-highlight-${cooking}`)).not.toBeOnTheScreen();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('refuses the name of another habit', async () => {
+    await givenTheBackground();
+    await show();
+    await fireEvent.press(editName('Cuisiner'));
+
+    await fireEvent.changeText(nameField(), 'budget du jour');
+    await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    expect(
+      await screen.findByRole('alert', {
+        name: `Tu as déjà une habitude «${nbsp}Budget du jour${nbsp}».`,
+      }),
+    ).toBeOnTheScreen();
+  });
+
+  it('deletes a habit: it disappears, and the history starts with the oldest one left', async () => {
+    await givenTheBackground();
+    await show();
+    await fireEvent.press(previousButton());
+    await waitFor(() => expect(shownWeek()).toMatch(/^Semaine dernière/u));
+    await askDeletion();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Supprimer' }));
+
+    await waitFor(() =>
+      expect(shownWeek()).toBe('Cette semaine, du lundi 12 octobre au dimanche 18 octobre'),
+    );
+    expect(screen.queryByText('Cuisiner')).not.toBeOnTheScreen();
+    expect(screen.getByText('Budget du jour')).toBeOnTheScreen();
+    expect(previousButton()).toBeDisabled();
+    expect(screen.getByTestId('toast')).toHaveTextContent('Habitude supprimée');
+    expect(screen.getByTestId('toast')).not.toHaveTextContent('XP');
+    await waitFor(() => expect(screen.getByTestId('xp-counter')).toHaveTextContent('20 XP'));
+  });
+
+  it('shows the empty week once the last habit is deleted', async () => {
+    cooking = await habitCreatedOn(october(12), 'Cuisiner');
+    await show();
+    await askDeletion();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Supprimer' }));
+
+    expect(await screen.findByTestId('week-view-empty')).toBeOnTheScreen();
+  });
+
+  it('removes the habit from the day view too, with the experience of today', async () => {
+    await givenTheBackground();
+    await doneOn(cooking, wednesday);
+    await renderScreen(
+      <>
+        <DayViewScreen />
+        <WeekViewScreen />
+      </>,
+      dependencies,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getAllByTestId('character-bar').map((bar) => bar.props.accessibilityLabel),
+      ).toEqual(['Expérience du personnage : 30 XP', 'Expérience du personnage : 30 XP']),
+    );
+    // Le premier est « ⋯ » dans la Journée, le second le nom dans la Semaine.
+    const [, weekEdit] = screen.getAllByRole('button', { name: 'Modifier l’habitude Cuisiner' });
+    await fireEvent.press(weekEdit as NonNullable<typeof weekEdit>);
+    await fireEvent.press(screen.getByRole('button', { name: 'Supprimer l’habitude' }));
+    expect(await screen.findByText(/\(−10 XP\)\.$/u)).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Supprimer' }));
+
+    await waitFor(() => expect(screen.queryAllByText('Cuisiner')).toEqual([]));
+    await waitFor(() =>
+      expect(
+        screen.getAllByTestId('character-bar').map((bar) => bar.props.accessibilityLabel),
+      ).toEqual(['Expérience du personnage : 20 XP', 'Expérience du personnage : 20 XP']),
+    );
+    expect(screen.queryByRole('switch', { name: /^Cuisiner,/u })).not.toBeOnTheScreen();
+  });
+
+  it('closes « Modifier l’habitude » with « Annuler », changing nothing', async () => {
+    await givenTheBackground();
+    await show();
+    await fireEvent.press(editName('Cuisiner'));
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Annuler' }));
+
+    expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
+    expect(screen.getByText('Cuisiner')).toBeOnTheScreen();
+  });
+
+  it('reloads and closes everything when the habit was deleted meanwhile', async () => {
+    await givenTheBackground();
+    await show();
+    await fireEvent.press(editName('Cuisiner'));
+    await deleteHabit(dependencies, cooking);
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Supprimer l’habitude' }));
+
+    await waitFor(() => expect(screen.queryByText('Cuisiner')).not.toBeOnTheScreen());
+    expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('delete-habit-dialog')).not.toBeOnTheScreen();
   });
 });
