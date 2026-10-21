@@ -12,28 +12,11 @@ import { useCellHeight } from './cellSize';
 import type { ShownXpChange } from './CharacterBar';
 import { CheckGlyph, CrossGlyph, DotGlyph } from './Glyph';
 import { bounce } from './HabitRow';
+import { CORRECTED, CorrectedMark } from './CorrectedMark';
 import { XpFloat } from './XpFloat';
 
 /** Ce qu'une case de la Vue Semaine lit au lecteur d'écran quand un tap ne la change pas. */
 export const UNAVAILABLE = 'indisponible';
-
-/** Ce qu'une case lit au lecteur d'écran quand elle porte la marque « corrigé » (R13). */
-export const CORRECTED = 'corrigé';
-
-/**
- * La marque « corrigé » : une pastille claire en coin de case (maquette, « Marque corrigé »).
- * Décorative : le mot « corrigé » est lu par le lecteur d'écran.
- */
-export function CorrectedMark({ size = 'cell' }: { readonly size?: 'cell' | 'legend' }) {
-  return (
-    <View
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      testID="corrected-mark"
-      style={[styles.correctedMark, size === 'legend' && styles.correctedMarkLegend]}
-    />
-  );
-}
 
 /**
  * La forme de chaque état, jamais la couleur seule (maquette, « Accessibilité ») : coche (fait),
@@ -156,25 +139,6 @@ const styles = StyleSheet.create({
   upcoming: { borderStyle: 'dashed', borderColor: colors.upcoming },
   notStarted: { borderColor: 'transparent' },
   dimmed: { opacity: 0.6 },
-  correctedMark: {
-    position: 'absolute',
-    top: -5.5,
-    right: -5.5,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 2.5,
-    borderColor: colors.surface,
-    backgroundColor: colors.correctedMark,
-  },
-  correctedMarkLegend: {
-    top: -4,
-    right: -4,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: colors.background,
-  },
 });
+
 // Stryker restore all

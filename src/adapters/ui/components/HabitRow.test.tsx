@@ -69,6 +69,35 @@ describe('HabitRow', () => {
     expect(screen.getByTestId('habit-card-7')).toHaveStyle({ backgroundColor: '#16302A' });
   });
 
+  it('shows « pas fait » with a cross on a plain background, not only with a color', async () => {
+    await render(<HabitRow habitDay={habitDay('missed')} />);
+
+    expect(screen.getByText('Pas fait')).toBeOnTheScreen();
+    expect(screen.getByTestId('cross-mark', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByTestId('habit-check-7')).toHaveStyle({ backgroundColor: '#222B3D' });
+  });
+
+  it('writes and shows the mark « corrigé », and reads it to the screen reader', async () => {
+    const { rerender } = await render(<HabitRow habitDay={habitDay('done')} />);
+    expect(screen.queryByText('corrigé')).toBeNull();
+    expect(screen.queryByTestId('corrected-mark', { includeHiddenElements: true })).toBeNull();
+
+    await rerender(<HabitRow habitDay={{ ...habitDay('done'), corrected: true }} />);
+
+    expect(screen.getByText('corrigé')).toBeOnTheScreen();
+    expect(screen.getByTestId('corrected-mark', { includeHiddenElements: true })).toBeTruthy();
+    expect(
+      screen.getByRole('switch', { name: 'Cuisiner, mercredi 14 octobre, fait, corrigé' }),
+    ).toBeChecked();
+  });
+
+  it('is smaller in the detail of a day, still 44 pt high at least', async () => {
+    await render(<HabitRow habitDay={habitDay('pending')} compact />);
+
+    expect(screen.getByTestId('habit-row-7')).toHaveStyle({ minHeight: 64 });
+    expect(screen.getByTestId('habit-check-7')).toHaveStyle({ width: 40, height: 40 });
+  });
+
   it('toggles the habit when the whole row is touched', async () => {
     const onToggle = jest.fn();
     await render(<HabitRow habitDay={habitDay('pending')} onToggle={onToggle} />);

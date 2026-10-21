@@ -1,6 +1,6 @@
 /**
- * Test d'intégration de l'assemblage des vues : les vraies routes de `src/app` (onglets Journée et
- * Semaine), une vraie base SQLite (node:sqlite à la place d'expo-sqlite) et l'horloge du téléphone
+ * Test d'intégration de l'assemblage des vues : les vraies routes de `src/app` (onglets Journée,
+ * Semaine et Mois), une vraie base SQLite (node:sqlite à la place d'expo-sqlite) et l'horloge du téléphone
  * fixée par de faux timers au mercredi 14 octobre 2026.
  */
 import { fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
@@ -35,7 +35,7 @@ async function databaseWithCooking(): Promise<SqlDatabase> {
 const dayView = () => within(screen.getByTestId('day-view'));
 const weekView = () => within(screen.getByTestId('week-view'));
 
-async function showTab(label: 'Journée' | 'Semaine'): Promise<void> {
+async function showTab(label: 'Journée' | 'Semaine' | 'Mois'): Promise<void> {
   await fireEvent.press(within(screen.getByTestId('tab-bar')).getByRole('tab', { name: label }));
 }
 
@@ -53,7 +53,7 @@ describe('app navigation between the views', () => {
     jest.useFakeTimers({ now: new Date(2026, 9, 14, 9, 0) });
   });
 
-  it('opens on the day view, with a tab bar offering the day and the week views only', async () => {
+  it('opens on the day view, with a tab bar offering the day, week and month views', async () => {
     openDatabase.mockImplementation(databaseWithCooking);
 
     await renderRouter(appDirectory);
@@ -61,7 +61,8 @@ describe('app navigation between the views', () => {
     expect(await screen.findByTestId('day-view')).toBeOnTheScreen();
     expect(screen.getByTestId('tab-day')).toBeOnTheScreen();
     expect(screen.getByTestId('tab-week')).toBeOnTheScreen();
-    expect(screen.queryByTestId('tab-month')).not.toBeOnTheScreen();
+    expect(screen.getByTestId('tab-month')).toBeOnTheScreen();
+    expect(within(screen.getByTestId('tab-bar')).getAllByRole('tab')).toHaveLength(3);
     expect(selectedTab()).toBe('Journée');
   });
 

@@ -5,8 +5,11 @@ import { WeekViewScreen } from '../../adapters/ui/screens/WeekViewScreen';
 import { Day } from '../../domain/day/Day';
 import { Week } from '../../domain/week/Week';
 
-/** Ouvre le panneau « Nouvelle habitude » de la Vue Journée, avec une demande toujours nouvelle. */
-function addHabit(): void {
+/**
+ * Ouvre le panneau « Nouvelle habitude » de la Vue Journée, avec une demande toujours nouvelle.
+ * L'état vide de la Vue Mois mène aussi à la création par ce chemin.
+ */
+export function addHabit(): void {
   router.navigate({ pathname: '/', params: { newHabit: String(Date.now()) } });
 }
 

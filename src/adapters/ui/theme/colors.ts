@@ -53,6 +53,8 @@ export const colors = {
   correctedMark: '#C9D5FF',
   /** Bouton d'icône désactivé (flèches de la Vue Semaine). */
   iconDisabled: '#4A5570',
+  /** Point d'une habitude « pas fait » sur un jour de la Vue Mois. */
+  monthDotMissed: '#8D97AC',
   /** Barre d'onglets. */
   tabBar: 'rgba(13,17,27,0.97)',
   tabActiveSoft: 'rgba(124,156,255,0.22)',
