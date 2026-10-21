@@ -100,6 +100,52 @@ describe('Month (R3)', () => {
     expect(weeks.flat().every((day) => day !== null)).toBe(true);
   });
 
+  it('lays a 29-day leap February out from Monday to Sunday', () => {
+    const weeks = Month.of(2028, 2).weeks();
+
+    expect(weeks).toHaveLength(5);
+    expect(isoOf(weeks[0] ?? [])).toEqual([
+      null,
+      '2028-02-01',
+      '2028-02-02',
+      '2028-02-03',
+      '2028-02-04',
+      '2028-02-05',
+      '2028-02-06',
+    ]);
+    expect(isoOf(weeks.at(-1) ?? [])).toEqual([
+      '2028-02-28',
+      '2028-02-29',
+      null,
+      null,
+      null,
+      null,
+      null,
+    ]);
+  });
+
+  it.each([
+    [2026, 3, 29],
+    [2026, 10, 25],
+  ])(
+    'keeps one place per day in %i-%i, whose clocks change on the %i (23 h or 25 h day)',
+    (year, month, changeDay) => {
+      const weeks = Month.of(year, month).weeks();
+      const days = weeks.flat().filter((day): day is Day => day !== null);
+
+      expect(days.map((day) => day.dayOfMonth)).toEqual(
+        Array.from({ length: 31 }, (_, index) => index + 1),
+      );
+      weeks.forEach((week) =>
+        week.forEach((day, index) => day !== null && expect(day.dayOfWeek).toBe(index + 1)),
+      );
+      const change = Day.of(year, month, changeDay);
+      expect(change.dayOfWeek).toBe(7);
+      expect(change.plusDays(1)).toEqual(Day.of(year, month, changeDay + 1));
+      expect(Day.fromLocalDate(new Date(year, month - 1, changeDay, 23, 59))).toEqual(change);
+    },
+  );
+
   it('goes to the previous and next month across years', () => {
     expect(Month.of(2026, 1).previous()).toEqual(Month.of(2025, 12));
     expect(Month.of(2026, 10).previous()).toEqual(Month.of(2026, 9));
