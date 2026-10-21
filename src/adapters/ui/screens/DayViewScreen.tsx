@@ -42,8 +42,12 @@ import { NewHabitSheet } from './NewHabitSheet';
 /** Durée de la mise en évidence d'une habitude créée ou modifiée, comme dans la maquette. */
 export const HIGHLIGHT_DURATION_MS = 1800;
 
-/** L'aide au premier usage, qui explique le tap (maquette, E1 « Première habitude créée »). */
-export const CHECK_IN_HINT = 'Tape ton habitude quand c’est fait : +10 XP pour ton personnage.';
+/**
+ * L'aide au premier usage, qui explique le tap (maquette, E1 « Première habitude créée ») ; elle
+ * reste vraie pour toutes les difficultés (texte fixé par le PM, #23).
+ */
+export const CHECK_IN_HINT =
+  'Tape ton habitude quand c’est fait : ton personnage gagne de l’XP selon sa difficulté.';
 
 /** L'encouragement quand toutes les habitudes du jour sont faites (maquette, E1 « Toutes faites »). */
 export const ALL_DONE_MESSAGE = 'Toutes tes habitudes du jour sont faites. Belle ascension\u00a0!';

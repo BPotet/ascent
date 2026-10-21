@@ -359,7 +359,8 @@ describe('DayViewScreen', () => {
   });
 
   describe('check-ins', () => {
-    const HINT = 'Tape ton habitude quand c’est fait : +10 XP pour ton personnage.';
+    const HINT =
+      'Tape ton habitude quand c’est fait : ton personnage gagne de l’XP selon sa difficulté.';
     const ALL_DONE = 'Toutes tes habitudes du jour sont faites. Belle ascension !';
     const SAVE_FAILED = 'Le suivi n’a pas été enregistré.';
     const cooking = (status: string, day = 'mercredi 14 octobre') =>
@@ -485,6 +486,22 @@ describe('DayViewScreen', () => {
       await show();
       await screen.findByText('Cuisiner');
       expect(screen.queryByText(HINT)).not.toBeOnTheScreen();
+    });
+
+    it('explains the tap without promising a fixed amount: true for every difficulty', async () => {
+      await createHabit(dependencies, 'Courir 5 km', 'hard');
+      await show();
+      expect(await screen.findByText(HINT)).toBeOnTheScreen();
+      expect(screen.queryByText(/10 XP/u)).not.toBeOnTheScreen();
+
+      await fireEvent.press(screen.getByRole('switch', { name: /^Courir 5 km, /u }));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('xp-change', { includeHiddenElements: true })).toHaveTextContent(
+          '+20 XP',
+        ),
+      );
+      await waitFor(() => expect(screen.queryByText(HINT)).not.toBeOnTheScreen());
     });
 
     it('keeps the hint when the check-in cannot be saved', async () => {

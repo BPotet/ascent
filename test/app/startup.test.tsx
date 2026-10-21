@@ -40,7 +40,8 @@ const openRealDatabase = () => prepareAscentDatabase(openNodeSqliteDatabase());
 // Chemin absolu : sous StrykerJS, les routes doivent être chargées depuis son bac à sable.
 const appDirectory = path.resolve(__dirname, '../../src/app');
 const COOKING_TODAY = 'Cuisiner, mercredi 14 octobre, à faire, Moyenne, 10 XP par suivi';
-const HINT = 'Tape ton habitude quand c’est fait : +10 XP pour ton personnage.';
+const HINT =
+  'Tape ton habitude quand c’est fait : ton personnage gagne de l’XP selon sa difficulté.';
 
 /** Le téléphone signale un nouvel état de l'application à tous ceux qui écoutent `AppState`. */
 function appStateBecomes(state: AppStateStatus): void {
