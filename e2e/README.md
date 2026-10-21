@@ -1,6 +1,9 @@
 # Tests end-to-end (Maestro)
 
 Les parcours sont dans `flows/`, un fichier YAML par parcours, écrits avec [Maestro](https://maestro.mobile.dev).
+Les sous-parcours partagés sont dans `subflows/`, hors de `flows/` pour ne pas être lancés seuls :
+`launch-fresh.yaml` lance l'app sur une installation neuve et attend la Vue Journée vide, en
+rejouant le lancement (au plus deux fois) si l'émulateur laisse un écran blanc.
 Ils s'exécutent sur l'APK release, sans serveur de développement.
 
 ## En CI
@@ -16,3 +19,9 @@ maestro test e2e/flows
 ```
 
 Sélecteurs : privilégier les textes visibles (libellés du glossaire) et les `testID` des écrans.
+
+Libellés des lignes de la Vue Journée (lecteur d'écran) : `<nom>, <jour>, <état>[, corrigé], <Difficulté>, <X> XP par suivi`,
+par exemple `Lire, mercredi 21 octobre, à faire, Moyenne, 10 XP par suivi`. Les cases de la Vue
+Semaine et du détail du jour ne portent pas la difficulté : `<nom>, <jour>, <état>`.
+
+Vérifier la syntaxe sans émulateur : `maestro check-syntax e2e/flows/<parcours>.yaml`.
