@@ -4,6 +4,7 @@ import { Text } from 'react-native';
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../../application/testing/settableClock';
 import { createHabit } from '../../../application/useCases/createHabit';
+import { deleteHabit } from '../../../application/useCases/deleteHabit';
 import { getCharacter } from '../../../application/useCases/getCharacter';
 import { getDayDetail } from '../../../application/useCases/getDayDetail';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
@@ -131,6 +132,17 @@ describe('DayDetailSheet', () => {
     ).toBeOnTheScreen();
     expect((await getCharacter(dependencies)).xp).toBe(40);
     expect(onOtherViewChange).toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('says nothing was lost when the touched habit was deleted meanwhile', async () => {
+    await open(october(8));
+    await deleteHabit(dependencies, cooking);
+
+    await fireEvent.press(row(/^Cuisiner, jeudi 8 octobre/u));
+
+    await waitFor(() => expect(screen.queryByText('Cuisiner')).toBeNull());
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('shows « pas fait » at once on a closed day, and the closing state again after a second touch', async () => {
