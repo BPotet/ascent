@@ -21,6 +21,7 @@ Fonctionnalité: Renommer et supprimer une habitude
     Alors l'habitude s'appelle « Cuisiner maison » dans la Vue Journée et la Vue Semaine
     Et le lundi 12 octobre de « Cuisiner maison » est toujours « fait »
     Et son jour de création est toujours le lundi 5 octobre 2026
+    Et sa difficulté est toujours « Moyenne »
     Et le personnage a toujours 10 Xp
 
   Scénario: Changer seulement les majuscules du nom

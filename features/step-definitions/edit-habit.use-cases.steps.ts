@@ -1,12 +1,14 @@
 /**
  * Scénarios de « Renommer et supprimer une habitude » (#6), côté métier : exécutés à travers les
- * cas d'usage (`renameHabit`, `previewHabitDeletion`, `deleteHabit`, `createHabit`, `toggleCheckIn`,
+ * cas d'usage (`updateHabit`, `previewHabitDeletion`, `deleteHabit`, `createHabit`, `toggleCheckIn`,
  * `getDayView`, `getWeekView`, `getCharacter`), sur une vraie base SQLite reliée par le pont
  * expo-sqlite, avec une horloge fixée (`FixedClock`).
  *
  * Correspondance métier des étapes d'interface :
- * - renommer = `renameHabit` avec le nom saisi ; un refus de règle (`empty`, `tooLong`,
- *   `duplicate`) est ce qui désactive l'enregistrement ou affiche le message d'erreur ;
+ * - renommer = `updateHabit` avec le nom saisi et la difficulté affichée, celle de la semaine en
+ *   cours (#23) ; un refus de règle (`empty`, `tooLong`, `duplicate`) est ce qui désactive
+ *   l'enregistrement ou affiche le message d'erreur ; « Habitude renommée » s'affiche quand seul le
+ *   nom a changé (`nameChanged` sans `settingsChanged`) ;
  * - choisir « Supprimer l'habitude » = ouvrir la fenêtre de confirmation, dont le texte vient de
  *   `previewHabitDeletion` ; confirmer = `deleteHabit` ; annuler = ne rien appeler de plus ;
  * - une habitude « affichée » est dans la Vue Journée et la Vue Semaine, relues après chaque
@@ -35,13 +37,14 @@ import {
 import { getCharacter } from '../../src/application/useCases/getCharacter';
 import { getDayView, type DayView } from '../../src/application/useCases/getDayView';
 import { getWeekView } from '../../src/application/useCases/getWeekView';
-import { renameHabit } from '../../src/application/useCases/renameHabit';
 import { toggleCheckIn } from '../../src/application/useCases/toggleCheckIn';
+import { updateHabit } from '../../src/application/useCases/updateHabit';
 import type { UseCaseDependencies } from '../../src/application/useCases/UseCaseDependencies';
 import { Character } from '../../src/domain/character/Character';
 import type { CheckIn } from '../../src/domain/checkIn/CheckIn';
 import type { HabitDay } from '../../src/domain/checkIn/HabitDay';
 import { Day } from '../../src/domain/day/Day';
+import type { Difficulty } from '../../src/domain/habit/Difficulty';
 import type { Habit, HabitId } from '../../src/domain/habit/Habit';
 import { HabitName, MAX_HABIT_NAME_LENGTH } from '../../src/domain/habit/HabitName';
 import { MAX_HABITS } from '../../src/domain/habit/HabitRules';
@@ -154,15 +157,30 @@ function lastAttempt(): Attempt {
   return last as Attempt;
 }
 
+/** La difficulté affichée dans le panneau « Modifier l'habitude » : celle de la semaine en cours. */
+async function shownDifficulty(habitId: HabitId): Promise<Difficulty> {
+  const { rows } = await getWeekView(world.deps);
+  const difficulty = rows.find(({ habit }) => habit.id === habitId)?.weekSettings.difficulty;
+  expect(difficulty).toBeDefined();
+  return difficulty as Difficulty;
+}
+
+/** Le joueur enregistre le panneau « Modifier l'habitude » avec le nom saisi. */
+async function save(rawName: string): Promise<void> {
+  const habitId = world.subject as HabitId;
+  const difficulty = await shownDifficulty(habitId);
+  await attempt(() => updateHabit(world.deps, habitId, { name: rawName, difficulty }));
+}
+
 async function rename(name: string, rawName: string): Promise<void> {
   await act();
   world.subject = (await habitNamed(name)).id;
-  await attempt(() => renameHabit(world.deps, world.subject as HabitId, rawName));
+  await save(rawName);
 }
 
 /** Le joueur reprend la saisie du panneau « Modifier l'habitude » ouvert. */
 async function retype(rawName: string): Promise<void> {
-  await attempt(() => renameHabit(world.deps, world.subject as HabitId, rawName));
+  await save(rawName);
 }
 
 async function askDeletion(name: string): Promise<void> {
@@ -268,7 +286,7 @@ const steps: StepDefinitions = ({ given, when, then }) => {
   );
 
   given("l'enregistrement sur le téléphone échoue", () => {
-    world.connection.faults.failWhen(writesTo('(?:habits|check_ins|character)'));
+    world.connection.faults.failWhen(writesTo('(?:habits|check_ins|character|settings_changes)'));
   });
 
   when(/^le joueur renomme « ([^»]+) » en « ([^»]+) »$/, rename);
@@ -303,7 +321,13 @@ const steps: StepDefinitions = ({ given, when, then }) => {
   then(
     /^l'habitude s'appelle « ([^»]+) » dans la Vue Journée et la Vue Semaine$/,
     async (name: string) => {
-      expect(lastAttempt().result).toMatchObject({ ok: true });
+      // « Habitude renommée » : seul le nom a changé.
+      expect(lastAttempt().result).toMatchObject({
+        ok: true,
+        nameChanged: true,
+        settingsChanged: false,
+        xpChange: 0,
+      });
       expect((await subject()).name.value).toBe(name);
       expect(await dayViewNames()).toEqual([name, 'Budget du jour']);
       expect(await weekViewNames()).toEqual([name, 'Budget du jour']);
@@ -316,6 +340,9 @@ const steps: StepDefinitions = ({ given, when, then }) => {
   });
   then(/^le (.+) de « ([^»]+) » est toujours « fait »$/, async (date: string, name: string) => {
     expect((await cellOf(name, dayOf(date))).status).toBe('done');
+  });
+  then(/^sa difficulté est toujours « Moyenne »$/, async () => {
+    expect(await shownDifficulty((await subject()).id)).toBe('medium');
   });
   then(/^son jour de création est (?:toujours )?le (.+)$/, async (date: string) => {
     expect((await subject()).createdOn).toEqual(frenchDay(date));
