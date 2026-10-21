@@ -154,4 +154,58 @@ describe('getDayView', () => {
 
     await expect(getDayView(deps())).rejects.toThrow(StorageUnavailableError);
   });
+
+  describe('difficulty', () => {
+    const setDifficulty = (name: string, changedOn: Day, difficulty: 'easy' | 'medium' | 'hard') =>
+      unitOfWork.run(async ({ habits, settingsChanges }) => {
+        const habit = (await habits.listAll()).find((each) => each.name.value === name);
+        await settingsChanges.add(habit?.id ?? 0, changedOn, { difficulty });
+      });
+
+    it('gives each line the settings of the current week', async () => {
+      await addHabit('Courir 5 km', Day.of(2026, 10, 5));
+      await addHabit('Cuisiner', Day.of(2026, 10, 5));
+      await setDifficulty('Courir 5 km', Day.of(2026, 10, 5), 'medium');
+      await setDifficulty('Cuisiner', Day.of(2026, 10, 5), 'easy');
+      await setDifficulty('Courir 5 km', Day.of(2026, 10, 13), 'hard');
+
+      const view = await getDayView(deps());
+
+      expect(
+        view.habits.map(({ habit, weekSettings }) => [habit.name.value, weekSettings]),
+      ).toEqual([
+        ['Courir 5 km', { difficulty: 'hard' }],
+        ['Cuisiner', { difficulty: 'easy' }],
+      ]);
+    });
+
+    it('gives Moyenne to a habit without any settings change', async () => {
+      await addHabit('Cuisiner', Day.of(2026, 10, 5));
+
+      await expect(getDayView(deps())).resolves.toMatchObject({
+        habits: [{ weekSettings: { difficulty: 'medium' } }],
+      });
+    });
+
+    it('fails when the settings changes cannot be read', async () => {
+      await addHabit('Cuisiner', Day.of(2026, 10, 5));
+      const unreadable = {
+        run: <T>(work: Parameters<InMemoryUnitOfWork['run']>[0]) =>
+          unitOfWork.run((repositories) =>
+            work({
+              ...repositories,
+              settingsChanges: {
+                listByHabit: () => Promise.reject(new StorageUnavailableError('read')),
+                listAll: () => Promise.reject(new StorageUnavailableError('read')),
+                add: () => Promise.reject(new StorageUnavailableError('write')),
+              },
+            }),
+          ) as Promise<T>,
+      };
+
+      await expect(getDayView({ clock, unitOfWork: unreadable })).rejects.toThrow(
+        StorageUnavailableError,
+      );
+    });
+  });
 });

@@ -1,4 +1,5 @@
 import { Day } from '../../domain/day/Day';
+import { InvalidDifficultyError, type Difficulty } from '../../domain/habit/Difficulty';
 import { InMemoryUnitOfWork, StorageUnavailableError } from '../testing/InMemoryUnitOfWork';
 import { settableClock } from '../testing/settableClock';
 import { createHabit } from './createHabit';
@@ -151,5 +152,73 @@ describe('createHabit', () => {
 
     expect(results.map((result) => result.ok)).toEqual([true, false]);
     expect(await names()).toEqual(['Cuisiner']);
+  });
+
+  describe('difficulty', () => {
+    const changes = () => unitOfWork.run(({ settingsChanges }) => settingsChanges.listAll());
+
+    it('records a first settings change in Moyenne, dated from today, by default (R2)', async () => {
+      const result = await createHabit(deps(), 'Lire 20 pages');
+
+      expect(result.ok).toBe(true);
+      await expect(changes()).resolves.toEqual([
+        {
+          habitId: result.ok && result.habit.id,
+          changedOn: wednesday,
+          sequence: expect.any(Number),
+          difficulty: 'medium',
+        },
+      ]);
+    });
+
+    it.each(['easy', 'medium', 'hard'] as const)(
+      'records the chosen difficulty %p',
+      async (difficulty: Difficulty) => {
+        const result = await createHabit(deps(), 'Courir 5 km', difficulty);
+
+        await expect(changes()).resolves.toMatchObject([
+          { habitId: result.ok && result.habit.id, changedOn: wednesday, difficulty },
+        ]);
+      },
+    );
+
+    it('records no settings change when the creation is refused', async () => {
+      await createHabit(deps(), 'Cuisiner', 'easy');
+
+      await expect(createHabit(deps(), 'cuisiner', 'hard')).resolves.toEqual({
+        ok: false,
+        reason: 'duplicate',
+      });
+      await expect(changes()).resolves.toMatchObject([{ difficulty: 'easy' }]);
+    });
+
+    it('refuses a value that is not a difficulty, and creates nothing', async () => {
+      await expect(createHabit(deps(), 'Cuisiner', 'extreme' as Difficulty)).rejects.toThrow(
+        InvalidDifficultyError,
+      );
+      expect(await names()).toEqual([]);
+    });
+
+    it('creates neither the habit nor its settings change when the change cannot be saved', async () => {
+      const failingChanges = {
+        run: <T>(work: Parameters<InMemoryUnitOfWork['run']>[0]) =>
+          unitOfWork.run((repositories) =>
+            work({
+              ...repositories,
+              settingsChanges: {
+                listByHabit: (id) => repositories.settingsChanges.listByHabit(id),
+                listAll: () => repositories.settingsChanges.listAll(),
+                add: () => Promise.reject(new StorageUnavailableError('write settings changes')),
+              },
+            }),
+          ) as Promise<T>,
+      };
+
+      await expect(
+        createHabit({ clock, unitOfWork: failingChanges }, 'Cuisiner', 'hard'),
+      ).rejects.toThrow(StorageUnavailableError);
+      expect(await names()).toEqual([]);
+      await expect(changes()).resolves.toEqual([]);
+    });
   });
 });

@@ -54,7 +54,7 @@ function withSaved(view: DayView, saved: HabitDay): DayView {
     return view;
   }
   const habits = view.habits.map((habitDay) =>
-    keyOf(habitDay) === keyOf(saved) ? saved : habitDay,
+    keyOf(habitDay) === keyOf(saved) ? { ...habitDay, ...saved } : habitDay,
   );
   return { ...view, habits, doneCount: doneCountOf(habits) };
 }

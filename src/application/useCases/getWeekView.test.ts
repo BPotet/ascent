@@ -210,4 +210,35 @@ describe('getWeekView', () => {
 
     await expect(getWeekView(deps(), previousWeek)).rejects.toThrow(StorageUnavailableError);
   });
+
+  describe('difficulty', () => {
+    const setDifficulty = (name: string, changedOn: Day, difficulty: 'easy' | 'medium' | 'hard') =>
+      unitOfWork.run(async ({ habits, settingsChanges }) => {
+        const habit = (await habits.listAll()).find((each) => each.name.value === name);
+        await settingsChanges.add(habit?.id ?? 0, changedOn, { difficulty });
+      });
+    const settings = (view: WeekView) =>
+      view.rows.map(({ habit, weekSettings }) => [habit.name.value, weekSettings.difficulty]);
+
+    beforeEach(async () => {
+      await setDifficulty('Cuisiner', day(10, 5), 'medium');
+      await setDifficulty('Budget du jour', day(10, 13), 'easy');
+      await setDifficulty('Cuisiner', day(10, 14), 'hard');
+    });
+
+    it('gives each row the settings of the week shown (R12)', async () => {
+      await expect(getWeekView(deps()).then(settings)).resolves.toEqual([
+        ['Cuisiner', 'hard'],
+        ['Budget du jour', 'easy'],
+      ]);
+    });
+
+    it('shows a past week with the difficulty of that week', async () => {
+      await expect(getWeekView(deps(), previousWeek).then(settings)).resolves.toEqual([
+        ['Cuisiner', 'medium'],
+        // Créée la semaine suivante : le premier changement s'applique.
+        ['Budget du jour', 'easy'],
+      ]);
+    });
+  });
 });

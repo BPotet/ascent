@@ -1,21 +1,11 @@
-import { Habit, type HabitId } from '../../domain/habit/Habit';
-import {
-  EmptyHabitNameError,
-  HabitName,
-  HabitNameTooLongError,
-} from '../../domain/habit/HabitName';
-import { DuplicateHabitNameError, assertNameAvailable } from '../../domain/habit/HabitRules';
+import type { Habit, HabitId } from '../../domain/habit/Habit';
 import type { UseCaseDependencies } from './UseCaseDependencies';
+import { updateHabit, type UpdateHabitRefusal } from './updateHabit';
 
-/**
- * Motif du refus d'un renommage, sans rien écrire :
- * - `empty` : le nom est vide une fois nettoyé ;
- * - `tooLong` : le nom dépasse 40 caractères ;
- * - `duplicate` : une **autre** habitude porte déjà ce nom (sans tenir compte des majuscules) ;
- * - `unknownHabit` : l'habitude n'existe plus.
- */
-export type RenameHabitRefusal = 'empty' | 'tooLong' | 'duplicate' | 'unknownHabit';
+/** @deprecated Alias temporaire : voir `renameHabit`. */
+export type RenameHabitRefusal = UpdateHabitRefusal;
 
+/** @deprecated Alias temporaire : voir `renameHabit`. */
 export type RenameHabitResult =
   | {
       readonly ok: true;
@@ -24,45 +14,18 @@ export type RenameHabitResult =
     }
   | { readonly ok: false; readonly reason: RenameHabitRefusal };
 
-const refusals: readonly [new (...args: never[]) => Error, RenameHabitRefusal][] = [
-  [EmptyHabitNameError, 'empty'],
-  [HabitNameTooLongError, 'tooLong'],
-  [DuplicateHabitNameError, 'duplicate'],
-];
-
-function refusalOf(error: unknown): RenameHabitRefusal | undefined {
-  return refusals.find(([type]) => error instanceof type)?.[1];
-}
-
 /**
- * Cas d'usage : renommer l'habitude `habitId` (#6, R18). Mêmes règles de nom qu'à la création ;
- * l'habitude n'est pas un doublon d'elle-même, on peut donc ne changer que les majuscules. Ni les
- * suivis, ni le jour de création, ni l'expérience ne changent. Un refus de règle est un résultat ;
- * une panne de stockage est une exception, et l'habitude garde son ancien nom.
+ * Renommer l'habitude `habitId` sans toucher à ses réglages : `updateHabit` avec le nom seul.
+ *
+ * @deprecated Remplacé par `updateHabit` (#23), qui enregistre le nom et la difficulté en une fois.
+ * Alias temporaire, gardé seulement pour que l'interface compile en attendant de passer à
+ * `updateHabit` (dev front, #23) ; à supprimer dans la même PR.
  */
-export function renameHabit(
-  { unitOfWork }: Pick<UseCaseDependencies, 'unitOfWork'>,
+export async function renameHabit(
+  deps: UseCaseDependencies,
   habitId: HabitId,
   rawName: string,
 ): Promise<RenameHabitResult> {
-  return unitOfWork.run(async ({ habits }) => {
-    const existing = await habits.listAll();
-    const habit = existing.find(({ id }) => id === habitId);
-    if (habit === undefined) {
-      return { ok: false, reason: 'unknownHabit' };
-    }
-    let name: HabitName;
-    try {
-      name = HabitName.parse(rawName);
-      assertNameAvailable(existing, name, habitId);
-    } catch (error) {
-      const reason = refusalOf(error);
-      if (reason === undefined) {
-        throw error;
-      }
-      return { ok: false, reason };
-    }
-    await habits.rename(habitId, name);
-    return { ok: true, habit: new Habit(habit.id, name, habit.createdOn) };
-  });
+  const result = await updateHabit(deps, habitId, { name: rawName });
+  return result.ok ? { ok: true, habit: result.habit } : result;
 }

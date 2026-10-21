@@ -1,129 +1,40 @@
-import { Character } from '../../domain/character/Character';
 import { Day } from '../../domain/day/Day';
 import type { Habit } from '../../domain/habit/Habit';
 import { HabitName } from '../../domain/habit/HabitName';
-import { InMemoryUnitOfWork, StorageUnavailableError } from '../testing/InMemoryUnitOfWork';
+import { InMemoryUnitOfWork } from '../testing/InMemoryUnitOfWork';
 import { settableClock } from '../testing/settableClock';
 import { renameHabit } from './renameHabit';
 
-const monday5 = Day.of(2026, 10, 5);
-const monday12 = Day.of(2026, 10, 12);
-const wednesday = Day.of(2026, 10, 14);
-
-describe('renameHabit', () => {
+// Alias temporaire de `updateHabit` (voir `updateHabit.test.ts` pour toutes les règles).
+describe('renameHabit (deprecated alias of updateHabit)', () => {
   let unitOfWork: InMemoryUnitOfWork;
   let cooking: Habit;
-  const deps = () => ({ clock: settableClock(wednesday), unitOfWork });
-
-  async function names(): Promise<string[]> {
-    const habits = await unitOfWork.run((repositories) => repositories.habits.listAll());
-    return habits.map((habit) => habit.name.value);
-  }
+  const deps = () => ({ clock: settableClock(Day.of(2026, 10, 14)), unitOfWork });
 
   beforeEach(async () => {
     unitOfWork = new InMemoryUnitOfWork();
-    cooking = await unitOfWork.run(async ({ habits }) => {
-      const habit = await habits.add(HabitName.parse('Cuisiner'), monday5);
-      await habits.add(HabitName.parse('Budget du jour'), monday12);
+    cooking = await unitOfWork.run(async ({ habits, settingsChanges }) => {
+      const habit = await habits.add(HabitName.parse('Cuisiner'), Day.of(2026, 10, 5));
+      await habits.add(HabitName.parse('Budget du jour'), Day.of(2026, 10, 5));
+      await settingsChanges.add(habit.id, Day.of(2026, 10, 5), { difficulty: 'hard' });
       return habit;
     });
   });
 
-  it('renames the habit and gives it back, with its id and day of creation', async () => {
+  it('renames the habit and gives back only the habit, keeping its difficulty', async () => {
     const result = await renameHabit(deps(), cooking.id, 'Cuisiner maison');
 
     expect(result).toEqual({ ok: true, habit: expect.objectContaining({ id: cooking.id }) });
     expect(result.ok && result.habit.name.value).toBe('Cuisiner maison');
-    expect(result.ok && result.habit.createdOn).toEqual(monday5);
-    expect(await names()).toEqual(['Cuisiner maison', 'Budget du jour']);
-  });
-
-  it('changes neither the check-ins nor the experience (R18)', async () => {
-    const checkIn = { habitId: cooking.id, day: monday12, done: true, corrected: false };
-    await unitOfWork.run(async ({ checkIns, character }) => {
-      await checkIns.save(checkIn);
-      await character.save(new Character(10));
-    });
-
-    await renameHabit(deps(), cooking.id, 'Cuisiner maison');
-
     await expect(
-      unitOfWork.run(({ checkIns }) => checkIns.listByHabit(cooking.id)),
-    ).resolves.toEqual([checkIn]);
-    await expect(unitOfWork.run(({ character }) => character.get())).resolves.toEqual(
-      new Character(10),
-    );
+      unitOfWork.run(({ settingsChanges }) => settingsChanges.listByHabit(cooking.id)),
+    ).resolves.toMatchObject([{ difficulty: 'hard' }]);
   });
 
-  it('stores the cleaned name', async () => {
-    await renameHabit(deps(), cooking.id, '  Cuisiner   maison ');
-
-    expect(await names()).toEqual(['Cuisiner maison', 'Budget du jour']);
-  });
-
-  it('lets only the capitals of the name change', async () => {
-    await expect(renameHabit(deps(), cooking.id, 'CUISINER')).resolves.toMatchObject({ ok: true });
-    expect(await names()).toEqual(['CUISINER', 'Budget du jour']);
-  });
-
-  it('accepts the unchanged name', async () => {
-    await expect(renameHabit(deps(), cooking.id, 'Cuisiner')).resolves.toMatchObject({ ok: true });
-    expect(await names()).toEqual(['Cuisiner', 'Budget du jour']);
-  });
-
-  it.each([
-    ['', 'empty'],
-    ['   ', 'empty'],
-    ['a'.repeat(41), 'tooLong'],
-    ['budget du jour', 'duplicate'],
-    ['  BUDGET  DU JOUR ', 'duplicate'],
-    ['\u200b\u2060\ufeff', 'empty'],
-    ['\u200bbudget du jour\u200b', 'duplicate'],
-    ['b'.repeat(40) + '\u200b' + 'b', 'tooLong'],
-  ])('refuses the name %p (%s) and keeps the former one', async (rawName, reason) => {
-    await expect(renameHabit(deps(), cooking.id, rawName)).resolves.toEqual({ ok: false, reason });
-    expect(await names()).toEqual(['Cuisiner', 'Budget du jour']);
-  });
-
-  it('accepts a name of 40 characters', async () => {
-    await expect(renameHabit(deps(), cooking.id, 'a'.repeat(40))).resolves.toMatchObject({
-      ok: true,
-    });
-  });
-
-  it('refuses to rename a habit that no longer exists', async () => {
-    await unitOfWork.run(({ habits }) => habits.remove(cooking.id));
-
-    await expect(renameHabit(deps(), cooking.id, 'Cuisiner maison')).resolves.toEqual({
+  it('gives back the refusals of updateHabit', async () => {
+    await expect(renameHabit(deps(), cooking.id, 'budget du jour')).resolves.toEqual({
       ok: false,
-      reason: 'unknownHabit',
+      reason: 'duplicate',
     });
-    expect(await names()).toEqual(['Budget du jour']);
-  });
-
-  it('fails, and keeps the former name, when the name cannot be saved', async () => {
-    unitOfWork.failWrites();
-
-    await expect(renameHabit(deps(), cooking.id, 'Cuisiner maison')).rejects.toThrow(
-      StorageUnavailableError,
-    );
-
-    unitOfWork.failWrites(false);
-    expect(await names()).toEqual(['Cuisiner', 'Budget du jour']);
-  });
-
-  it('lets an unexpected error through instead of turning it into a refusal', async () => {
-    const notAName = null as unknown as string;
-
-    await expect(renameHabit(deps(), cooking.id, notAName)).rejects.toThrow(/normalize/);
-    expect(await names()).toEqual(['Cuisiner', 'Budget du jour']);
-  });
-
-  it('fails when the habits cannot be read', async () => {
-    unitOfWork.failReads();
-
-    await expect(renameHabit(deps(), cooking.id, 'Cuisiner maison')).rejects.toThrow(
-      StorageUnavailableError,
-    );
   });
 });

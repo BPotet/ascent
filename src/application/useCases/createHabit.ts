@@ -1,3 +1,8 @@
+import {
+  DEFAULT_DIFFICULTY,
+  type Difficulty,
+  parseDifficulty,
+} from '../../domain/habit/Difficulty';
 import type { Habit } from '../../domain/habit/Habit';
 import {
   EmptyHabitNameError,
@@ -37,14 +42,19 @@ function refusalOf(error: unknown): CreateHabitRefusal | undefined {
 }
 
 /**
- * Cas d'usage : créer une habitude, datée d'aujourd'hui (R1, R2).
+ * Cas d'usage : créer une habitude, datée d'aujourd'hui (R1, R2 de #2), avec sa difficulté, Moyenne
+ * par défaut (R2 de #22). L'habitude et son premier changement de réglages, daté du jour de
+ * création, sont enregistrés dans la même unité de travail.
  * Un refus de règle est un résultat ; une panne de stockage est une exception, et rien n'est créé.
+ * Une valeur qui n'est pas une difficulté est une erreur d'appel (`InvalidDifficultyError`).
  */
 export function createHabit(
   { clock, unitOfWork }: UseCaseDependencies,
   rawName: string,
+  difficulty: Difficulty = DEFAULT_DIFFICULTY,
 ): Promise<CreateHabitResult> {
-  return unitOfWork.run(async ({ habits }) => {
+  return unitOfWork.run(async ({ habits, settingsChanges }) => {
+    const settings = { difficulty: parseDifficulty(difficulty) };
     const today = clock.today();
     const existing = await habits.listAll();
     let name: HabitName;
@@ -59,6 +69,8 @@ export function createHabit(
       }
       return { ok: false, reason };
     }
-    return { ok: true, habit: await habits.add(name, today) };
+    const habit = await habits.add(name, today);
+    await settingsChanges.add(habit.id, today, settings);
+    return { ok: true, habit };
   });
 }
