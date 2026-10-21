@@ -102,8 +102,9 @@ function shownNames(): string[] {
     );
 }
 
+/** Le libellé lu d'une ligne « à faire » ; une habitude créée sans autre choix est en Moyenne. */
 function rowLabel(name: string): string {
-  return `${name}, ${withoutYear(world.date)}, à faire`;
+  return `${name}, ${withoutYear(world.date)}, à faire, Moyenne, 10 XP par suivi`;
 }
 
 async function sheetIsClosed(): Promise<void> {
