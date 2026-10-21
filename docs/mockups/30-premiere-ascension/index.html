@@ -4,9 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>La première ascension</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
 <style>
 /* ============ Page (hors téléphone) : tokens clair / sombre ============ */
 :root{
@@ -55,7 +52,12 @@ figure.frame{margin:0;width:calc(408px * var(--s))}
 figcaption{margin-bottom:12px}
 .cap-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .scr{font:600 13px Inter;color:var(--muted)}
-.story{font:700 12px Inter;background:var(--chip);color:var(--chip-text);border-radius:999px;padding:3px 10px;white-space:nowrap}
+.stories{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.story{font:700 12px Inter;background:var(--chip);color:var(--chip-text);border-radius:999px;padding:3px 10px;white-space:nowrap;text-decoration:none}
+a.story:hover{outline:1.5px solid var(--accent)}
+.storylist{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:6px}
+.storylist li{display:flex;gap:8px;align-items:baseline;font-size:14px}
+.storylist .story{flex:none}
 .state{font:600 18px/1.3 Sora,Inter,sans-serif;margin-top:2px}
 .note{margin:4px 0 0;color:var(--muted);font-size:14px;line-height:1.45}
 .slot{width:calc(408px * var(--s));height:calc(862px * var(--s))}
@@ -94,10 +96,10 @@ figcaption{margin-bottom:12px}
   --a-favor:#6FD3A0; --a-favor-soft:#15302A;     /* faveur, cousine du « fait » */
   --a-curse:#E0607A; --a-curse-soft:#3A1724;     /* malédiction, ennemi maudit, pacte */
   --a-seal:#FF3B3B;                              /* sceau rouge : coup imparable, rien d'autre */
-  --a-ember:#FF9F5A;                             /* Braises : la monnaie gardée */
+  --a-shard:#FF9F5A;                             /* Éclats : la monnaie gardée */
   --a-guard:#8FB8C9; --a-hp:#E9DFC8; --a-foe-hp:#C46A6A;
   --a-sil:#06070C;
-  --r-common:#C3C7D3; --r-rare:#7C9CFF; --r-legend:#F2B45B;
+  --r-common:#C3C7D3; --r-rare:#7C9CFF; --r-epic:#C49BFF; --r-legend:#F2B45B;
   --f-game:"Alegreya SC",Georgia,"Times New Roman",serif;
   background:var(--a-bg);color:var(--a-text);font-family:Inter,system-ui,sans-serif;
 }
@@ -125,7 +127,7 @@ figcaption{margin-bottom:12px}
 .res{display:flex;gap:6px}
 .chipr{display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 9px;border-radius:999px;background:rgba(24,29,46,.8);border:1px solid var(--a-line);font:600 13px Inter;font-variant-numeric:tabular-nums}
 .chipr.key{color:var(--a-light)}
-.chipr.ember{color:var(--a-ember)}
+.chipr.shard{color:var(--a-shard)}
 .chipr.coin{color:#E7D9A8}
 .rule{display:inline-flex;align-items:center;gap:6px;font:600 12px Inter;color:#FFD0D8;background:var(--a-curse-soft);border:1px solid rgba(224,96,122,.5);border-radius:999px;padding:4px 10px}
 
@@ -236,6 +238,23 @@ figcaption{margin-bottom:12px}
 .pad.off .act{filter:saturate(.2) brightness(.7)}
 .pad.off::after{content:"";position:absolute;inset:0;border-radius:24px;pointer-events:none;background:repeating-linear-gradient(135deg,rgba(255,157,176,.10) 0 8px,transparent 8px 16px)}
 .zone:has(.pad.off) .zline{visibility:hidden}
+/* Changement de phase : temps mort, boutons verrouillés */
+.pad.locked .act{opacity:.38;filter:saturate(.15);cursor:default}
+.pad.locked::after{content:"";position:absolute;inset:0;border-radius:24px;pointer-events:none;background:repeating-linear-gradient(135deg,rgba(238,234,224,.06) 0 8px,transparent 8px 16px)}
+.locktag{position:absolute;top:-34px;left:50%;transform:translateX(-50%);display:inline-flex;align-items:center;gap:6px;font:700 13px Inter;color:var(--a-text);background:var(--a-surface-2);border:1px solid var(--a-line);border-radius:999px;padding:4px 12px;white-space:nowrap;z-index:2;overflow:hidden}
+.locktag .lb{position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--a-light);transform-origin:left;transform:scaleX(var(--p,0.45))}
+.locktag .lb.run{animation:lockfill var(--d,1000ms) linear forwards}
+@keyframes lockfill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.zone:has(.pad.locked) .zline{visibility:hidden}
+.phaseband{position:absolute;left:0;right:0;top:150px;z-index:9;display:flex;flex-direction:column;align-items:center;gap:4px;padding:16px 16px 14px;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(10,12,22,.92) 18%,rgba(10,12,22,.92) 82%,transparent);border-top:1px solid var(--bc,rgba(224,96,122,.6));border-bottom:1px solid var(--bc,rgba(224,96,122,.6))}
+.phaseband b{font:700 32px/1.1 var(--f-game);font-variant:small-caps;letter-spacing:.03em;color:var(--bt,#FFD0D8)}
+.phaseband span{font:500 14px Inter;color:var(--a-text)}
+.phaseband.hero{--bc:rgba(242,212,155,.6);--bt:var(--a-light)}
+.phaseband.anim{animation:bandin .28s ease-out}
+@keyframes bandin{from{opacity:0;transform:scaleY(.6)}to{opacity:1;transform:none}}
+.elan{display:flex;align-items:center;gap:3px;font:600 11px Inter;color:var(--a-muted);margin-top:5px}
+.elan i{width:9px;height:9px;transform:rotate(45deg);border-radius:2px;box-shadow:inset 0 0 0 1.5px #56657C;margin:0 1px}
+.elan i.on{background:var(--a-light);box-shadow:none}
 .offtag{position:absolute;top:-34px;left:50%;transform:translateX(-50%);font:700 13px Inter;color:#FFD0D8;background:var(--a-curse-soft);border:1px solid rgba(224,96,122,.6);border-radius:999px;padding:4px 12px;white-space:nowrap;z-index:2}
 
 /* Écrans de menu (tour, camp) */
@@ -308,7 +327,7 @@ figcaption{margin-bottom:12px}
 .door .t span{display:block;font:500 13px/1.4 Inter;color:var(--a-muted);margin-top:2px}
 .door .rule{margin-top:6px}
 .door.elite{--dc:rgba(224,96,122,.35);--dl:rgba(224,96,122,.6);--dt:#FF9DB0}
-.door.rest{--dc:rgba(255,159,90,.4);--dl:rgba(255,159,90,.6);--dt:var(--a-ember)}
+.door.rest{--dc:rgba(255,180,107,.4);--dl:rgba(255,180,107,.6);--dt:#FFB46B}
 .door.shop{--dc:rgba(231,217,168,.35);--dl:rgba(231,217,168,.5);--dt:#E7D9A8}
 .door.event{--dc:rgba(124,156,255,.35);--dl:rgba(124,156,255,.6);--dt:var(--a-accent)}
 .door.altar{--dc:rgba(224,96,122,.25);--dl:rgba(160,90,200,.6);--dt:#D7A6FF}
@@ -325,7 +344,18 @@ figcaption{margin-bottom:12px}
 .boon .t p{margin:4px 0 0;font:400 14px/1.4 Inter;color:var(--a-text)}
 .rar{display:inline-flex;align-items:center;gap:4px;font:700 11px Inter;letter-spacing:.06em;text-transform:uppercase;color:var(--rc)}
 .rar i{width:7px;height:7px;transform:rotate(45deg);background:var(--rc);display:inline-block}
-.rc-common{--rc:var(--r-common)}.rc-rare{--rc:var(--r-rare)}.rc-legend{--rc:var(--r-legend)}
+.rc-common{--rc:var(--r-common)}.rc-rare{--rc:var(--r-rare)}.rc-epic{--rc:var(--r-epic)}.rc-legend{--rc:var(--r-legend)}
+.source{display:flex;align-items:center;gap:10px;background:var(--a-surface);border:1px solid var(--a-line);border-radius:16px;padding:10px 12px}
+.source .t{flex:1;min-width:0;font:500 13px/1.35 Inter;color:var(--a-muted)}
+.source .t b{display:block;font:600 15px Inter;color:var(--a-text)}
+.diff{font:700 11px Inter;letter-spacing:.04em;text-transform:uppercase;border-radius:6px;padding:2px 7px;background:var(--a-surface-2);color:var(--a-text)}
+.maprow{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center;font:500 13px Inter;color:var(--a-muted)}
+.maprow.on{color:var(--a-text)}
+.maprow.on .diff{background:var(--a-light);color:var(--a-on-light)}
+.steps{display:flex;gap:6px;justify-content:center}
+.steps i{width:28px;height:6px;border-radius:3px;background:#3A4058}
+.steps i.on{background:var(--a-light)}
+.steps i.done{background:#8A93AD}
 .combo{display:flex;gap:10px;align-items:center;border-radius:16px;padding:12px;background:rgba(242,212,155,.1);border:1px solid rgba(242,212,155,.45);color:#FBE9C4;font:500 14px/1.4 Inter}
 .cmp{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
 .cmp .c{background:var(--a-surface-2);border-radius:14px;padding:10px;text-align:center}
@@ -344,7 +374,7 @@ figcaption{margin-bottom:12px}
 .item .t span{display:block;font:500 12px/1.35 Inter;color:var(--a-muted)}
 .price{min-height:48px;min-width:92px;border-radius:14px;border:0;font:700 15px Inter;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:0 12px;cursor:pointer;font-variant-numeric:tabular-nums}
 .price.coin{background:#E7D9A8;color:#2A2205}
-.price.ember{background:var(--a-ember);color:#2A1503}
+.price.shard{background:var(--a-shard);color:#2A1503}
 .price:disabled{background:var(--a-surface-2);color:var(--a-muted);cursor:default}
 .price.owned{background:transparent;color:var(--a-favor);border:1.5px solid rgba(111,211,160,.5)}
 .short{font:600 11px Inter;color:#FF9DB0;margin-top:2px}
@@ -367,7 +397,7 @@ figcaption{margin-bottom:12px}
 .count{font:700 120px/1 var(--f-game);color:var(--a-light);text-shadow:0 0 40px rgba(242,212,155,.6)}
 .sk{background:linear-gradient(90deg,#1B2033 0%,#2A3150 50%,#1B2033 100%);background-size:200% 100%;animation:shim 1.2s linear infinite;border-radius:10px}
 @keyframes shim{from{background-position:200% 0}to{background-position:0 0}}
-.big-ember{font:700 56px/1 var(--f-game);color:var(--a-ember);text-shadow:0 0 30px rgba(255,159,90,.55);display:flex;align-items:center;gap:8px;justify-content:center}
+.big-shard{font:700 56px/1 var(--f-game);color:var(--a-shard);text-shadow:0 0 30px rgba(255,159,90,.55);display:flex;align-items:center;gap:8px;justify-content:center}
 .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .stat{background:var(--a-surface);border:1px solid var(--a-line);border-radius:14px;padding:10px 12px}
 .stat b{display:block;font:700 22px var(--f-game);font-variant-numeric:tabular-nums}
@@ -405,6 +435,11 @@ figcaption{margin-bottom:12px}
 .newtag,.cardbtn .t .newtag{font:700 10px Inter;letter-spacing:.06em;text-transform:uppercase;background:var(--a-accent);color:var(--a-on-accent);border-radius:6px;padding:1px 6px}
 .empty-slot{border:1.5px dashed var(--a-line);border-radius:18px;padding:14px;display:flex;gap:12px;align-items:center;color:var(--a-muted);font:500 14px/1.4 Inter;min-height:72px}
 
+/* Gauge : cinq crans */
+.gtrack .tk{position:absolute;top:2px;bottom:2px;width:2px;margin-left:-1px;background:rgba(14,17,32,.55)}
+/* Sans police distante : petites capitales de synthèse pour la police de jeu */
+.g,.gloc .p,.hd h2,.act,.herobar .nm,.fxtext,.ttl,.door .t b,.boon .t b,.cmp .c b,.item .t b,.sheet h3,.coach b,.count,.big-shard,.stat b,.offv b,.cardbtn .t b,.gstate b,.typo .t0,[style*="f-game"]{font-variant:small-caps}
+
 @media (prefers-reduced-motion: reduce){
   .app *,.app{animation:none !important;transition:none !important}
 }
@@ -416,14 +451,15 @@ figcaption{margin-bottom:12px}
 <header>
   <div class="eyebrow">Ascent · Maquette · Épique #30</div>
   <h1>La première ascension</h1>
-  <p class="lead">Les écrans du rogue-lite, dans un cadre de téléphone (390 × 844), avec leurs états et les moments de feedback de jeu : pied de la tour et jauge, choix de la sortie, combat avec parade, bienfaits, lieux de la tour, boss, chute, fin d'ascension, camp, pause et réglages. Tout se joue d'une main, le pouce en bas de l'écran. Le prototype se manipule, y compris la parade.</p>
+  <p class="lead">Les écrans du rogue-lite, dans un cadre de téléphone (390 × 844), avec leurs états et les moments de feedback de jeu : pied de la tour, jauge et bénédictions de départ, choix du héros, choix de la sortie, combat avec parade, bienfaits, lieux de la tour, boss, chute, fin d'ascension, camp, pause et réglages. Tout se joue d'une main, le pouce en bas de l'écran. Le prototype se manipule, y compris la parade.</p>
   <div class="meta">
-    <span class="tag">Version 1 · 21 oct. 2026</span>
+    <span class="tag">Version 2 · 21 oct. 2026</span>
     <span class="tag warn">À valider par le propriétaire</span>
-    <span class="tag">Contenus et chiffres illustratifs</span>
+    <span class="tag">Chiffres illustratifs, règles du Game Designer</span>
     <button class="themebtn" id="themeBtn" type="button" aria-label="Thème de la page">Thème : auto</button>
   </div>
   <nav class="toc" aria-label="Sections">
+    <a href="#nouveau">Nouveau en v2</a>
     <a href="#hypotheses">Choix UX</a>
     <a href="#identite">Identité</a>
     <a href="#prototype">Prototype</a>
@@ -443,9 +479,24 @@ figcaption{margin-bottom:12px}
   </nav>
 </header>
 
+<section id="nouveau">
+  <h2 class="pg">Ce qui change en version 2</h2>
+  <div class="panel" style="margin-top:16px">
+    <ul class="tight" style="margin-top:0">
+      <li><b>Changement de phase</b> (retour après le prototype : « le passage de l'attaque à la parade est trop rapide ») : un temps mort d'environ 1 s, dans les deux sens, avec un bandeau « Phase ennemie » ou « À toi » et des boutons visiblement verrouillés. Les appuis pendant ce temps sont ignorés, sans déséquilibre. Le premier ennemi ne commence sa préparation qu'environ 500 ms après la fin du bandeau. Écrans <b>P0</b> et <b>F0</b>, et dans le prototype.</li>
+      <li><b>Monnaies</b> : les <b>Éclats</b> (gardés d'une ascension à l'autre) et l'<b>Or</b> (dépensé pendant l'ascension, perdu à sa fin).</li>
+      <li><b>Deux héros</b> : la Sentinelle et l'Errante, avec leur équipement de base et leur pouvoir. Pas de héros à débloquer dans cette version.</li>
+      <li><b>Jauge en cinq niveaux</b> : Faveur pleine, Faveur, Neutre, Malédiction, Malédiction forte. 2/3 hier donne une jauge Neutre. Seconde chance : 50 % des PV, une fois par ascension.</li>
+      <li><b>Bénédictions de départ</b> : une par habitude tenue hier (3 au plus), choisie 1 parmi 3 au pied de la tour. Leur rareté suit la difficulté de l'habitude (écrans T9 à T11).</li>
+      <li>Garde brisée : ×1,5 dégâts. Élan visible sous le nom du héros. Raretés en quatre niveaux (Commun, Rare, Épique, Légendaire). Noms, prix et effets repris des règles du Game Designer.</li>
+      <li>Chaque écran porte le numéro de la story qu'il illustre (#31 à #42).</li>
+    </ul>
+  </div>
+</section>
+
 <section id="hypotheses">
   <h2 class="pg">Choix UX de cette version</h2>
-  <p class="lead">Les décisions du propriétaire (épique #30) sont appliquées telles quelles. Ce qui suit est proposé par l'UX et reste à valider. Les règles chiffrées (paliers, dégâts, prix, effets de la jauge) attendent le Game Designer : les nombres affichés sont des exemples.</p>
+  <p class="lead">Les décisions du propriétaire (épique #30) et les règles du Game Designer sont appliquées. Les nombres affichés sont des valeurs de départ, à recaler sur le prototype.</p>
   <div class="cols" style="margin-top:16px">
     <div class="panel">
       <h3 class="pg" style="margin-top:0">Une main, dans le bus</h3>
@@ -453,18 +504,30 @@ figcaption{margin-bottom:12px}
         <li><b>Zone du pouce</b> : toutes les actions de combat sont dans le tiers bas, deux gros boutons de 116 px de haut. Le haut de l'écran sert à lire, pas à toucher (sauf le ciblage, sur les silhouettes).</li>
         <li><b>Le bouton de droite est toujours l'action principale</b> et garde la même couleur (lumière) : Attaquer, Frapper, Parade, Prendre, Continuer. Le pouce apprend une seule place.</li>
         <li><b>Une cible est toujours présélectionnée</b> : attaquer se fait en un seul toucher. Toucher un ennemi change la cible.</li>
-        <li>Les choix qui engagent (bienfait, sortie, achat) se font en deux temps : on touche la carte, puis le bouton en bas. Un cahot ne fait pas choisir par erreur.</li>
+        <li>Les choix qui engagent (bénédiction, bienfait, sortie, achat) se font en deux temps : on touche la carte, puis le bouton en bas. Un cahot ne fait pas choisir par erreur.</li>
         <li>Le pacte de l'autel se valide en <b>maintenant le bouton</b> (0,8 s) : c'est le seul choix risqué et sans retour.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Changement de phase</h3>
+      <ul class="tight">
+        <li>Entre la phase du héros et la phase ennemie, et dans l'autre sens, un <b>temps mort d'environ 1 s</b>.</li>
+        <li>Un <b>bandeau</b> traverse la scène : « Phase ennemie · Prépare ta parade » ou « À toi · Vise et attaque ». Il est lu par le lecteur d'écran.</li>
+        <li>Les boutons de la phase <b>qui arrive</b> s'affichent tout de suite à leur place, mais <b>verrouillés</b> : estompés, hachurés, une étiquette « Verrouillé » avec un cadenas et une barre qui se remplit jusqu'au déverrouillage. Le pouce peut se replacer sans risque.</li>
+        <li>Un appui pendant le temps mort est <b>ignoré</b> : pas de déséquilibre, pas d'action. Il ne fait rien d'autre qu'un léger enfoncement du bouton.</li>
+        <li>Vers la phase ennemie, la <b>première préparation</b> ne commence qu'environ <b>500 ms</b> après le déverrouillage. Pendant ce court instant, rien ne bouge : l'œil se pose sur l'ennemi.</li>
+        <li>Valeurs de départ (1 s, puis 500 ms), à recaler avec le propriétaire sur le prototype.</li>
       </ul>
     </div>
     <div class="panel">
       <h3 class="pg" style="margin-top:0">Navigation</h3>
       <ul class="tight">
-        <li>Un quatrième onglet <b>Tour</b> rejoint Journée, Semaine et Mois. Il ouvre le <b>pied de la tour</b>.</li>
+        <li>Un quatrième onglet <b>Tour</b> rejoint Journée, Semaine et Mois (décision du propriétaire, pour l'instant). Il ouvre le <b>pied de la tour</b>.</li>
+        <li>Au lancement d'une ascension, les <b>bénédictions de départ</b> se choisissent l'une après l'autre, avant le premier étage. Sans habitude tenue hier, l'écran est sauté.</li>
         <li>Pendant une ascension, l'écran est plein : pas de barre d'onglets. Le bouton <b>Pause</b>, en haut à gauche, est le seul moyen d'en sortir, et il sauvegarde.</li>
         <li>Le <b>camp</b> s'ouvre depuis le pied de la tour et depuis l'écran de fin d'ascension.</li>
         <li>Les <b>réglages de la parade</b> s'ouvrent depuis le pied de la tour (roue dentée) et depuis la pause.</li>
-        <li>« Abandonner l'ascension » est proposé dans la pause, avec confirmation, et mène à l'écran de fin (à confirmer par le Game Designer).</li>
+        <li>« Abandonner l'ascension » est proposé dans la pause, avec confirmation, et a le même effet qu'une chute.</li>
       </ul>
     </div>
     <div class="panel">
@@ -473,36 +536,39 @@ figcaption{margin-bottom:12px}
         <li><b>Lecture par l'animation seule</b> : aucun anneau, aucun compte à rebours. La silhouette prend son élan, se suspend, frappe sec. Seul le <b>sceau rouge</b> s'ajoute, au-dessus de l'ennemi, pour un coup imparable.</li>
         <li><b>Parade</b> à droite (1,45 fois plus large), <b>Esquive</b> à gauche. Ils réagissent au toucher du doigt, pas au relâchement.</li>
         <li>Le bouton ne change jamais pendant un coup imparable : c'est à l'œil de lire le sceau.</li>
-        <li>Un appui raté affiche « Déséquilibré » au-dessus des boutons, grisés et hachurés, tant que dure le déséquilibre. Les boutons restent actifs : chaque appui prolonge le déséquilibre, comme décidé.</li>
+        <li>Un appui raté affiche « Déséquilibré » au-dessus des boutons, grisés et hachurés, tant que dure le déséquilibre. Chaque appui le prolonge. À ne pas confondre avec le verrou du changement de phase, neutre (gris, cadenas) et sans pénalité.</li>
         <li><b>Frappe en rythme</b> : après « Attaquer », le même bouton devient « Frapper ». Le héros lève sa lame ; on touche quand elle atteint le sommet. Sans appui, le coup part quand même, sans bonus.</li>
-        <li>Pour éviter le mot « tour », l'interface parle de <b>phase du héros</b> et de <b>phase ennemie</b> (termes à ajouter au glossaire).</li>
+        <li>L'<b>Élan</b> s'affiche en losanges sous le nom du héros ; le bouton Pouvoir indique son coût et dit ce qui manque.</li>
+        <li>Le mot « tour » ne désigne que l'édifice : en combat, on parle de <b>manche</b>, de <b>phase du héros</b> et de <b>phase ennemie</b>.</li>
       </ul>
     </div>
     <div class="panel">
-      <h3 class="pg" style="margin-top:0">Stories illustrées (provisoire)</h3>
-      <p class="muted" style="font-size:14px;margin:0 0 6px">Le découpage appartient au PM. Chaque écran porte le nom de la story qu'il illustre, à remplacer par son numéro.</p>
-      <ul class="tight">
-        <li><b>Prototype de combat</b> : un héros, deux ennemis, parade, quelques animations</li>
-        <li><b>Combat complet</b> : groupes, ciblage, intentions, garde, frappe en rythme</li>
-        <li><b>Pied de la tour et jauge</b></li>
-        <li><b>Ascension et sorties</b> : étages, paliers, règles d'étage, pause et reprise</li>
-        <li><b>Bienfaits et objets</b> : 1 parmi 3, relance, coffres et clés, rareté</li>
-        <li><b>Lieux de la tour</b> : marchand, feu de camp, autel, événement</li>
-        <li><b>Boss et fin d'ascension</b> : boss, chute, seconde chance, Braises</li>
-        <li><b>Camp et boutiques</b></li>
-        <li><b>Réglages de la parade</b> : décalage, retours</li>
+      <h3 class="pg" style="margin-top:0">Stories illustrées</h3>
+      <ul class="storylist">
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/31">#31</a>Prototype jouable du combat : parer et esquiver</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/32">#32</a>Combat complet : briser la garde, frapper en rythme</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/33">#33</a>Commencer une ascension et franchir le premier palier</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/34">#34</a>Pause, reprise et réglages de la parade</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/35">#35</a>Choisir son héros : l'Errante</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/36">#36</a>Choisir un bienfait parmi trois</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/37">#37</a>Objets, coffres et combinaisons secrètes</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/38">#38</a>Trois paliers jusqu'au sommet, et les premiers Éclats</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/39">#39</a>Lieux de la tour : marchand, événement, autel et règles d'étage</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/40">#40</a>Le camp et les captifs libérés</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/41">#41</a>La jauge au pied de la tour : faveur et malédiction</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/42">#42</a>La faveur : clés, relances, bénédictions et seconde chance</li>
       </ul>
     </div>
     <div class="panel">
       <h3 class="pg" style="margin-top:0">Vocabulaire</h3>
-      <p class="muted" style="font-size:14px;margin:0">Libellés pris dans la liste de l'épique : Ascension, Tour, Palier, Étage, Sortie, Boss, Élite, Feu de camp, Marchand, Événement, Autel, Pacte, Règle d'étage, Ennemi, Intention, Garde, Parade, Esquive, Contre-attaque, Frappe en rythme, Coup imparable, Sceau, Déséquilibré, Décalage, Héros, Arme, Armure, Pouvoir, Bienfait, Combinaison, Rareté, Coffre, Clé, Relance, Seconde chance, Camp, Boutique, Personnage libéré, Jauge, Faveur, Malédiction, Ennemi maudit, Fatigue, Bénédiction de départ.<br><br>Propositions UX à trancher : <b>Braises</b> pour la monnaie gardée, <b>pièces</b> pour ce qu'on dépense chez le marchand dans la tour, <b>PV</b> pour les points de vie, <b>Phase du héros</b> et <b>Phase ennemie</b>, <b>Garde brisée</b>.</p>
+      <p class="muted" style="font-size:14px;margin:0">Libellés repris des règles du Game Designer et des stories : Ascension, Tour, Pied de la tour, Palier, Étage, Sortie, Halte, Boss, Élite, Feu de camp, Marchand, Événement, Autel, Pacte, Règle d'étage, Chute, Combat, Manche, Phase du héros, Phase ennemie, Ennemi, Intention, Garde, Cassure de garde (« Garde brisée » à l'écran), Élan, Parade, Esquive, Contre-attaque, Frappe en rythme, Coup imparable, Sceau, Déséquilibre, Décalage, Héros, Arme, Armure, Pouvoir, Bienfait, Combinaison, Rareté, Coffre scellé, Clé, Relance, Seconde chance, Or, Éclat, Camp, Boutique, Captif libéré, Jauge, Faveur, Malédiction, Ennemi maudit, Fatigue, Bénédiction de départ, Difficulté (Facile, Moyenne, Difficile, épique #22).<br><br>À ajouter au glossaire avec la story concernée : <b>Changement de phase</b> (le temps mort entre deux phases, #31), <b>PV</b> (abréviation affichée des points de vie).</p>
     </div>
     <div class="panel">
       <h3 class="pg" style="margin-top:0">Hors maquette</h3>
       <ul class="tight">
-        <li>La place de l'expérience et du niveau (#5) dans le jeu : en attente du Game Designer. L'onglet Tour n'affiche donc pas l'XP.</li>
-        <li>Les sons : seuls leurs moments sont indiqués (parade, parade parfaite, coup reçu, garde brisée).</li>
-        <li>Les vrais monstres, salles et objets : les noms sont des exemples.</li>
+        <li>Le <b>niveau et l'Xp ne sont pas affichés dans la tour</b> : ils mesurent la régularité, côté vie réelle, et ne donnent aucune puissance dans la tour.</li>
+        <li>Les sons : seuls leurs moments sont indiqués (changement de phase, parade, parade parfaite, coup reçu, garde brisée).</li>
+        <li>Les vrais décors, monstres et objets : les noms hors règles du Game Designer sont des exemples.</li>
       </ul>
     </div>
   </div>
@@ -522,7 +588,7 @@ figcaption{margin-bottom:12px}
     <div class="sw"><i style="background:#E0607A"></i><div><b>Malédiction</b>#E0607A · ennemi maudit, pacte</div></div>
     <div class="sw"><i style="background:#FF3B3B"></i><div><b>Sceau</b>#FF3B3B · coup imparable, rien d'autre</div></div>
     <div class="sw"><i style="background:#8FB8C9"></i><div><b>Garde</b>#8FB8C9 · crans de garde, parade</div></div>
-    <div class="sw"><i style="background:#FF9F5A"></i><div><b>Braises</b>#FF9F5A · monnaie gardée</div></div>
+    <div class="sw"><i style="background:#FF9F5A"></i><div><b>Éclats</b>#FF9F5A · monnaie gardée</div></div>
     <div class="sw"><i style="background:linear-gradient(90deg,#C3C7D3 33%,#7C9CFF 33% 66%,#F2B45B 66%)"></i><div><b>Rareté</b>commune · rare · légendaire, avec 1, 2 ou 3 losanges</div></div>
     <div class="sw"><i style="background:#251B14"></i><div><b>Camp</b>#17110D, #251B14, feu #FFB46B</div></div>
   </div>
@@ -594,7 +660,7 @@ figcaption{margin-bottom:12px}
 <section id="b"><h2 class="pg">B · Bienfaits, coffres et objets</h2><p class="lead">Un bienfait parmi trois après un combat gagné. Les coffres fermés demandent une clé. Les objets trouvés se comparent à ce qu'on porte.</p><div class="gallery" data-group="b"></div></section>
 <section id="l"><h2 class="pg">L · Lieux de la tour</h2><p class="lead">Marchand, feu de camp, autel et événement. Chacun tient sur un écran, avec ses choix dans la zone du pouce.</p><div class="gallery" data-group="l"></div></section>
 <section id="x"><h2 class="pg">X · Boss, chute et fin d'ascension</h2><p class="lead">Chaque palier finit par un boss tiré au hasard. Si le héros tombe, l'ascension s'arrête : l'écran de fin dit clairement ce qui est perdu et ce qui reste.</p><div class="gallery" data-group="x"></div></section>
-<section id="k"><h2 class="pg">K · Camp et boutiques</h2><p class="lead">Un refuge chaud entre deux ascensions. Les personnages libérés s'y installent et ouvrent une boutique : les Braises ajoutent de nouveaux objets à ce qu'on peut trouver dans la tour.</p><div class="gallery" data-group="k"></div></section>
+<section id="k"><h2 class="pg">K · Camp et boutiques</h2><p class="lead">Un refuge chaud entre deux ascensions. Les personnages libérés s'y installent et ouvrent une boutique : les Éclats ajoutent de nouveaux objets à ce qu'on peut trouver dans la tour.</p><div class="gallery" data-group="k"></div></section>
 <section id="z"><h2 class="pg">Z · Pause et reprise</h2><p class="lead">Pause à tout moment, même pendant un coup ennemi. La partie est sauvegardée à chaque étage et à chaque pause. Fermer l'app met en pause.</p><div class="gallery" data-group="z"></div></section>
 <section id="r"><h2 class="pg">R · Réglages de la parade</h2><p class="lead">Le décalage du téléphone compense un appui toujours un peu en avance ou en retard. Il se règle à la main ou se mesure en huit coups.</p><div class="gallery" data-group="r"></div></section>
 
@@ -636,7 +702,7 @@ figcaption{margin-bottom:12px}
   <h2 class="pg">Questions pour le propriétaire</h2>
   <div class="panel" style="margin-top:16px">
     <ol class="tight" style="margin-top:0">
-      <li><b>Monnaie</b> : la maquette propose « Braises » pour la monnaie gardée (gagnée sur les boss, dépensée au camp) et « pièces » pour ce qu'on dépense chez le marchand pendant l'ascension, perdues à la fin. Ces noms et ce partage te conviennent-ils ?</li>
+      <li><b>Monnaie</b> : la maquette propose « Éclats » pour la monnaie gardée (gagnée sur les boss, dépensée au camp) et « Or » pour ce qu'on dépense chez le marchand pendant l'ascension, perdues à la fin. Ces noms et ce partage te conviennent-ils ?</li>
       <li><b>Gauchers</b> : Parade est à droite, comme décidé. Faut-il une option « Inverser Parade et Esquive » dans les réglages, pour jouer de la main gauche ?</li>
       <li><b>Accès</b> : la tour devient un quatrième onglet « Tour », à côté de Journée, Semaine et Mois. Ou préfères-tu que l'app s'ouvre directement sur le pied de la tour ?</li>
     </ol>
@@ -678,7 +744,7 @@ const P={
  chev:'M9 5l7 7-7 7',
  check:'M5 12.5l4.5 4.5L19 7',
  lock:'M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
- ember:'M12 3c3 4 6 6.5 6 10.5A6 6 0 0 1 6 13.5C6 9.5 9 7 12 3zM12 11c1.4 1.8 2.5 2.8 2.5 4.5a2.5 2.5 0 0 1-5 0c0-1.7 1.1-2.7 2.5-4.5z',
+ shard:'M12 2.5l5.5 7-5.5 12-5.5-12zM6.5 9.5h11M12 2.5l-2 7 2 12 2-12z',
  coin:'M5 12a7 7 0 1 0 14 0a7 7 0 1 0-14 0M12 8.5v7M9.8 10.2h4.4',
  dodge:'M20 12H8M12 7l-5 5 5 5M4 5v14',
  star:'M12 3l2.6 5.8 6.4.7-4.8 4.3 1.4 6.2L12 16.9 6.4 20l1.4-6.2L3 9.5l6.4-.7z',
@@ -762,7 +828,7 @@ const S={};
 S.pied=(c={})=>{
  const k=c.gauge||'favor',h=HEROES[c.hero||0];
  const run=c.inRun;
- const head=`<div class="hd"><h2>La Tour</h2><span class="chipr ember" aria-label="${c.braises??34} Braises">${ic('ember',16)}${c.braises??34}</span><button class="iconbtn" ${go('reglages')} aria-label="Réglages de la parade">${ic('gear')}</button></div>`;
+ const head=`<div class="hd"><h2>La Tour</h2><span class="chipr shard" aria-label="${c.shards??34} Éclats">${ic('shard',16)}${c.shards??34}</span><button class="iconbtn" ${go('reglages')} aria-label="Réglages de la parade">${ic('gear')}</button></div>`;
  const illu=`<div class="illu" style="height:${run?190:200}px">${TOWER}</div>`;
  let lower;
  if(run){
@@ -776,16 +842,16 @@ S.pied=(c={})=>{
  }
  return chrome(`${head}<div class="body pb" style="gap:10px">${illu}${gaugeBlock(k)}${lower}</div>${tabbar()}`);
 };
-S.piedLoading=()=>chrome(`<div class="hd"><h2>La Tour</h2><span class="chipr ember sk" style="width:60px;border:0"></span></div><div class="body pb"><div class="illu" style="height:200px">${TOWER}</div><div class="card"><div class="sk" style="height:20px;width:40%"></div><div class="sk" style="height:12px;margin-top:14px"></div><div class="sk" style="height:28px;width:70%;margin-top:14px"></div></div><div class="sk" style="height:64px;border-radius:20px"></div><div class="sk" style="height:64px;border-radius:16px"></div></div>${tabbar()}<span class="sr">Chargement de la tour</span>`);
-S.piedError=()=>chrome(`<div class="hd"><h2>La Tour</h2></div><div class="body pb"><div class="illu" style="height:200px;opacity:.45">${TOWER}</div><div class="center" style="flex:none;padding:8px 8px 0"><span style="color:var(--a-danger)">${ic('alert',48,1.6)}</span><h3 class="g" style="font:700 22px var(--f-game);margin:0">La tour ne s'ouvre pas</h3><p class="sub">Ta partie n'a pas pu être chargée. Tes Braises, tes débloquages et ton ascension en cours ne sont pas perdus.</p></div><button class="btn pri big" ${go('pied')}>Réessayer</button></div>${tabbar()}`);
+S.piedLoading=()=>chrome(`<div class="hd"><h2>La Tour</h2><span class="chipr shard sk" style="width:60px;border:0"></span></div><div class="body pb"><div class="illu" style="height:200px">${TOWER}</div><div class="card"><div class="sk" style="height:20px;width:40%"></div><div class="sk" style="height:12px;margin-top:14px"></div><div class="sk" style="height:28px;width:70%;margin-top:14px"></div></div><div class="sk" style="height:64px;border-radius:20px"></div><div class="sk" style="height:64px;border-radius:16px"></div></div>${tabbar()}<span class="sr">Chargement de la tour</span>`);
+S.piedError=()=>chrome(`<div class="hd"><h2>La Tour</h2></div><div class="body pb"><div class="illu" style="height:200px;opacity:.45">${TOWER}</div><div class="center" style="flex:none;padding:8px 8px 0"><span style="color:var(--a-danger)">${ic('alert',48,1.6)}</span><h3 class="g" style="font:700 22px var(--f-game);margin:0">La tour ne s'ouvre pas</h3><p class="sub">Ta partie n'a pas pu être chargée. Tes Éclats, tes débloquages et ton ascension en cours ne sont pas perdus.</p></div><button class="btn pri big" ${go('pied')}>Réessayer</button></div>${tabbar()}`);
 S.jauge=(c={})=>{
  const k=c.gauge||'favor';const g=GAUGE[k];
  return S.pied(c).replace('<div class="homebar"></div>','')+`<div class="scrim"></div><div class="sheet" role="dialog" aria-label="Jauge du jour"><div class="grab"></div><h3>Jauge du jour</h3><p>Elle se calcule sur tes habitudes d'hier et vaut pour toutes tes ascensions d'aujourd'hui. Demain, elle repart de zéro.</p>
  <div class="card" style="background:var(--a-bg)"><div class="gstate"><b class="${g.cls}">${g.word}</b><span>${k==='first'?'':g.why}</span></div><div class="effs" style="margin-top:8px">${g.effs.map(e=>`<span class="eff ${g.ec}">${ic(e[0],16)}${e[1]}</span>`).join('')}</div></div>
- <p style="font-size:14px">${k==='curse'?'La malédiction est plafonnée : elle ne retire jamais de Braises ni de débloquages.':'Plus tu montes, plus la faveur compte.'}</p>
+ <p style="font-size:14px">${k==='curse'?'La malédiction est plafonnée : elle ne retire jamais d'Éclats ni de débloquages.':'Plus tu montes, plus la faveur compte.'}</p>
  <button class="btn ghost" ${go('pied')}>Fermer</button></div><div class="homebar"></div>`;
 };
-S.abandon=(c={})=>S.pied({...c,inRun:true}).replace('<div class="homebar"></div>','')+`<div class="scrim"></div><div class="sheet" role="alertdialog" aria-label="Abandonner l'ascension"><div class="grab"></div><h3>Abandonner l'ascension ?</h3><p>Ton héros quitte la tour. L'équipement, les pouvoirs et les bienfaits de cette ascension sont perdus. Tu gardes tes Braises.</p><div class="row2" style="margin-top:6px"><button class="btn ghost" ${go('abandon-cancel')}>Continuer</button><button class="btn curse" ${go('fin')}>Abandonner</button></div></div><div class="homebar"></div>`;
+S.abandon=(c={})=>S.pied({...c,inRun:true}).replace('<div class="homebar"></div>','')+`<div class="scrim"></div><div class="sheet" role="alertdialog" aria-label="Abandonner l'ascension"><div class="grab"></div><h3>Abandonner l'ascension ?</h3><p>Ton héros quitte la tour. L'équipement, les pouvoirs et les bienfaits de cette ascension sont perdus. Tu gardes tes Éclats.</p><div class="row2" style="margin-top:6px"><button class="btn ghost" ${go('abandon-cancel')}>Continuer</button><button class="btn curse" ${go('fin')}>Abandonner</button></div></div><div class="homebar"></div>`;
 
 /* H · Héros */
 S.heros=(c={})=>{
@@ -811,7 +877,7 @@ function floorsBar(cur,n=6){
  let h='';for(let i=1;i<=n;i++){h+=`<span class="fl ${i<cur?'done':''} ${i===cur?'now':''}" aria-hidden="true">${i<cur?ic('check',14,3):''}</span><span class="fll ${i<cur?'done':''}"></span>`;}
  return `<div class="floors" role="img" aria-label="Étage ${cur} sur ${n}, puis le boss">${h}<span class="fl boss ${cur>n?'now':''}">${ic('crown',18)}</span></div>`;
 }
-const gtop=(p,e,c={})=>`<div class="gtop"><button class="iconbtn solid" ${go('pause')} aria-label="Pause">${ic('pause')}</button><div class="gloc"><div class="p">${p}</div><div class="e">${e}</div></div><div class="res"><span class="chipr key" aria-label="${c.keys??2} clés">${ic('key',16)}${c.keys??2}</span>${c.coins!=null?`<span class="chipr coin" aria-label="${c.coins} pièces">${ic('coin',16)}${c.coins}</span>`:''}</div></div>`;
+const gtop=(p,e,c={})=>`<div class="gtop"><button class="iconbtn solid" ${go('pause')} aria-label="Pause">${ic('pause')}</button><div class="gloc"><div class="p">${p}</div><div class="e">${e}</div></div><div class="res"><span class="chipr key" aria-label="${c.keys??2} clés">${ic('key',16)}${c.keys??2}</span>${c.coins!=null?`<span class="chipr coin" aria-label="${c.coins} Or">${ic('coin',16)}${c.coins}</span>`:''}</div></div>`;
 S.sortie=(c={})=>{
  const list=c.doors||['combat','elite','event'];
  const sel=c.sel;
@@ -896,7 +962,7 @@ S.coffre=(c={})=>{
 S.marchand=(c={})=>{
  const coins=c.coins??40;
  const items=[['rare','sword','Lame de l\'aube','Arme · dégâts 13, frappe en rythme +20 %',32,c.sold===0],['common','armor','Brigandine','Armure · défense 6',18],['legend','power','Écho du glas','Pouvoir · la prochaine parade parfaite brise la garde',58],['common','heart','Fiole de sève','Rend 20 PV',12]];
- const rows=items.map(it=>{const can=coins>=it[4];return `<div class="item rc-${it[0]}"><span class="gem">${ic(it[1],22)}</span><div class="t">${rar(it[0])}<b>${it[2]}</b><span>${it[3]}</span>${!can&&!it[5]?`<div class="short">Il te manque ${it[4]-coins} pièces</div>`:''}</div>${it[5]?`<button class="price owned" disabled>${ic('check',16,3)}Acheté</button>`:`<button class="price coin" ${can?'':'disabled'} aria-label="Acheter ${it[2]} pour ${it[4]} pièces">${ic('coin',16)}${it[4]}</button>`}</div>`;}).join('');
+ const rows=items.map(it=>{const can=coins>=it[4];return `<div class="item rc-${it[0]}"><span class="gem">${ic(it[1],22)}</span><div class="t">${rar(it[0])}<b>${it[2]}</b><span>${it[3]}</span>${!can&&!it[5]?`<div class="short">Il te manque ${it[4]-coins} Or</div>`:''}</div>${it[5]?`<button class="price owned" disabled>${ic('check',16,3)}Acheté</button>`:`<button class="price coin" ${can?'':'disabled'} aria-label="Acheter ${it[2]} pour ${it[4]} Or">${ic('coin',16)}${it[4]}</button>`}</div>`;}).join('');
  return chrome(`${gtop('Palier 1 · La Nef engloutie','Marchand',{...c,coins})}<div class="illu" style="height:120px;margin:0">${`<svg viewBox="0 0 390 120" aria-hidden="true"><defs><radialGradient id="lan" cx=".55" cy=".45" r=".5"><stop offset="0" stop-color="#E7D9A8" stop-opacity=".45"/><stop offset="1" stop-color="#E7D9A8" stop-opacity="0"/></radialGradient></defs><rect width="390" height="120" fill="#141831"/><rect width="390" height="120" fill="url(#lan)"/><path d="M170 120c0-40 10-66 30-70 20 4 30 30 30 70z" fill="#06070C"/><circle cx="200" cy="44" r="12" fill="#06070C"/><path d="M188 40l12-18 12 18z" fill="#06070C"/><path d="M230 70v-14" stroke="#06070C" stroke-width="2"/><rect x="224" y="56" width="12" height="16" rx="3" fill="#E7D9A8"/></svg>`}</div><div class="body" style="gap:8px;padding-top:8px"><h2 class="ttl" style="text-align:left;font-size:22px">Le marchand des marches</h2>${rows}<div style="flex:1"></div><button class="btn ghost" ${go('sortie2')} style="margin-bottom:34px">Partir</button></div>`);
 };
 S.feu=(c={})=>{
@@ -918,36 +984,36 @@ S.evenement=(c={})=>{
  const st=c.st||'choice';
  const cell=`<svg viewBox="0 0 390 180" aria-hidden="true"><rect width="390" height="180" fill="#121630"/><g stroke="#06070C" stroke-width="8">${[110,150,190,230,270].map(x=>`<path d="M${x} 10v170"/>`).join('')}</g><path d="M90 20h210" stroke="#06070C" stroke-width="10"/><path d="M180 180c0-34 6-56 20-60 14 4 20 26 20 60z" fill="#06070C" opacity=".85"/><circle cx="200" cy="112" r="10" fill="#06070C"/><circle cx="200" cy="40" r="60" fill="#7C9CFF" opacity=".06"/></svg>`;
  const body=st==='choice'?`<p style="margin:0;font:400 16px/1.55 Inter">Une cellule scellée. Derrière les barreaux, une forgeronne lève les yeux. Elle ne demande rien. La serrure est vieille ; une clé la ferait céder.</p><div style="flex:1"></div><button class="door event" ${go('evt-ok')}><span class="arch">${ic('key',28)}</span><span class="t"><b>La libérer</b><span>Utilise une clé</span></span></button><button class="door" ${go('sortie2')} style="margin-bottom:34px"><span class="arch">${ic('chev',28)}</span><span class="t"><b>Passer ton chemin</b><span>Rien ne change</span></span></button>`
- :`<div class="center" style="gap:8px"><div style="width:90px;height:120px">${heroSVG('idle','sword')}</div><div class="lbl" style="color:var(--a-ember)">Personnage libéré</div><h3 class="g" style="font:700 26px var(--f-game);margin:0">La Forgeronne</h3><p class="sub">« Je t'attendrai au camp. » Elle y ouvrira une boutique d'armes, même si cette ascension s'arrête.</p></div><button class="btn pri big" ${go('sortie2')} style="margin-bottom:34px">Continuer</button>`;
+ :`<div class="center" style="gap:8px"><div style="width:90px;height:120px">${heroSVG('idle','sword')}</div><div class="lbl" style="color:var(--a-shard)">Personnage libéré</div><h3 class="g" style="font:700 26px var(--f-game);margin:0">La Forgeronne</h3><p class="sub">« Je t'attendrai au camp. » Elle y ouvrira une boutique d'armes, même si cette ascension s'arrête.</p></div><button class="btn pri big" ${go('sortie2')} style="margin-bottom:34px">Continuer</button>`;
  return chrome(`${gtop('Palier 1 · La Nef engloutie','Événement',{...c,keys:st==='choice'?2:1})}<div class="illu" style="height:180px;margin:0">${cell}</div><div class="body" style="gap:10px;padding-top:14px"><h2 class="ttl" style="text-align:left">La cellule</h2>${body}</div>`);
 };
 
 /* X · Boss et fin */
 S.bossIntro=()=>chrome(`<div class="scene boss" style="flex:1;height:auto"><div class="foes n1" style="top:120px;justify-content:center;padding:0"><div class="foe" style="width:300px"><span class="fig" style="width:260px;height:290px">${FOES.gardienne}</span></div></div><div style="position:absolute;left:0;right:0;bottom:40px;text-align:center;z-index:5;padding:0 24px"><div class="lbl" style="color:#FF9DB0">Boss du palier 1</div><h2 class="g" style="font:700 36px/1.1 var(--f-game);margin:6px 0 4px">La Gardienne des ossuaires</h2><p class="sub">Elle veille sur ceux qui ne sont jamais redescendus.</p></div></div><div class="zone" style="flex:none;padding-top:14px"><button class="btn pri big" ${go('boss')}>${ic('swords',22)}Affronter</button></div>`);
-S.bossVaincu=(c={})=>chrome(`<div class="center" style="position:relative;padding:0 24px"><div class="rays"></div><div class="lbl" style="position:relative;color:var(--a-light)">Boss vaincu</div><h2 class="g" style="font:700 34px/1.1 var(--f-game);margin:0;position:relative">Palier 1 franchi</h2><div class="big-ember" style="position:relative;margin-top:10px">${ic('ember',48,2)}+12</div><p class="sub" style="position:relative">Braises · gardées pour toujours, même si tu tombes.</p><div class="card" style="position:relative;display:flex;gap:10px;align-items:center;text-align:left;width:100%;margin-top:8px"><span style="color:var(--a-accent)">${ic('power',26)}</span><div><div class="g" style="font:700 16px var(--f-game)">Cri des ossuaires</div><div style="font:500 13px Inter;color:var(--a-muted)">Pouvoir trouvé sur la Gardienne</div></div></div></div><div class="zone" style="flex:none;gap:10px"><button class="btn pri big" ${go('palier')}>Continuer vers le palier 2</button><button class="btn ghost" ${go('quit')}>${ic('save',20)}Faire une pause</button></div>`);
+S.bossVaincu=(c={})=>chrome(`<div class="center" style="position:relative;padding:0 24px"><div class="rays"></div><div class="lbl" style="position:relative;color:var(--a-light)">Boss vaincu</div><h2 class="g" style="font:700 34px/1.1 var(--f-game);margin:0;position:relative">Palier 1 franchi</h2><div class="big-shard" style="position:relative;margin-top:10px">${ic('shard',48,2)}+12</div><p class="sub" style="position:relative">Éclats · gardés pour toujours, même si tu tombes.</p><div class="card" style="position:relative;display:flex;gap:10px;align-items:center;text-align:left;width:100%;margin-top:8px"><span style="color:var(--a-accent)">${ic('power',26)}</span><div><div class="g" style="font:700 16px var(--f-game)">Cri des ossuaires</div><div style="font:500 13px Inter;color:var(--a-muted)">Pouvoir trouvé sur la Gardienne</div></div></div></div><div class="zone" style="flex:none;gap:10px"><button class="btn pri big" ${go('palier')}>Continuer vers le palier 2</button><button class="btn ghost" ${go('quit')}>${ic('save',20)}Faire une pause</button></div>`);
 S.chute=(c={})=>{
  const sc=c.second;
  return chrome(`<div class="scene" style="flex:1;height:auto;box-shadow:inset 0 0 120px rgba(224,96,122,.35)"><div style="position:absolute;left:50%;top:44%;width:220px;height:110px;margin-left:-110px">${heroSVG('fallen')}</div><div style="position:absolute;left:0;right:0;top:120px;text-align:center;z-index:5;padding:0 24px"><h2 class="g" style="font:700 34px/1.1 var(--f-game);margin:0">Ton héros est tombé</h2><p class="sub" style="margin-top:6px">Palier 2 · Étage 4 · face au Chevalier déchu</p></div></div><div class="zone" style="flex:none;padding-top:14px;gap:10px">${sc?`<div class="card" style="border-color:rgba(111,211,160,.5);background:var(--a-favor-soft)"><div class="lbl" style="color:var(--a-favor)">Seconde chance · faveur du jour</div><p style="margin:4px 0 0;font:500 14px/1.4 Inter">Toutes tes habitudes d'hier sont tenues. Relève-toi avec 30 % de tes PV. Une fois par jour.</p></div><button class="btn pri big" ${go('combat')}>${ic('heart',22)}Se relever</button><button class="btn ghost" ${go('fin')}>Renoncer</button>`:`<button class="btn pri big" ${go('fin')}>Voir le bilan</button>`}</div>`);
 };
 S.fin=(c={})=>{
  const win=c.win;
- return chrome(`<div class="hd" style="padding-top:10px"><h2 style="text-align:center">${win?'Sommet atteint':'Fin de l\'ascension'}</h2></div><div class="body" style="gap:10px"><p class="sub">${win?'Les trois paliers franchis avec La Veilleuse.':'La Veilleuse est tombée au palier 2, étage 4.'}</p><div class="card" style="text-align:center"><div class="lbl">Braises gagnées</div><div class="big-ember" style="font-size:48px;margin:6px 0 2px">${ic('ember',40,2)}+${win?38:12}</div><div style="font:500 13px Inter;color:var(--a-muted)">Total au camp : ${win?72:46} Braises</div></div><div class="stats"><div class="stat"><b>${win?18:10}</b><span>Étages traversés</span></div><div class="stat"><b>${win?3:1}</b><span>Boss vaincus</span></div><div class="stat"><b>${win?41:23}</b><span>Ennemis vaincus</span></div><div class="stat"><b>${win?27:14}</b><span>Parades parfaites</span></div></div><div class="card keep"><div><span class="k">${ic('check',18,3)}</span><span>Tu gardes tes Braises, tes débloquages et La Forgeronne, libérée au palier 1.</span></div><div><span class="l">${ic('x',18,3)}</span><span>Armes, armures, pouvoirs et bienfaits de cette ascension sont perdus.</span></div></div><div style="flex:1"></div><div class="row2" style="grid-template-columns:1fr 1.45fr;margin-bottom:34px"><button class="btn ghost" ${go('pied0')}>La Tour</button><button class="btn pri" ${go('camp')}>${ic('tent',20)}Aller au camp</button></div></div>`);
+ return chrome(`<div class="hd" style="padding-top:10px"><h2 style="text-align:center">${win?'Sommet atteint':'Fin de l\'ascension'}</h2></div><div class="body" style="gap:10px"><p class="sub">${win?'Les trois paliers franchis avec La Veilleuse.':'La Veilleuse est tombée au palier 2, étage 4.'}</p><div class="card" style="text-align:center"><div class="lbl">Éclats gagnés</div><div class="big-shard" style="font-size:48px;margin:6px 0 2px">${ic('shard',40,2)}+${win?38:12}</div><div style="font:500 13px Inter;color:var(--a-muted)">Total au camp : ${win?72:46} Éclats</div></div><div class="stats"><div class="stat"><b>${win?18:10}</b><span>Étages traversés</span></div><div class="stat"><b>${win?3:1}</b><span>Boss vaincus</span></div><div class="stat"><b>${win?41:23}</b><span>Ennemis vaincus</span></div><div class="stat"><b>${win?27:14}</b><span>Parades parfaites</span></div></div><div class="card keep"><div><span class="k">${ic('check',18,3)}</span><span>Tu gardes tes Éclats, tes débloquages et La Forgeronne, libérée au palier 1.</span></div><div><span class="l">${ic('x',18,3)}</span><span>Armes, armures, pouvoirs et bienfaits de cette ascension sont perdus.</span></div></div><div style="flex:1"></div><div class="row2" style="grid-template-columns:1fr 1.45fr;margin-bottom:34px"><button class="btn ghost" ${go('pied0')}>La Tour</button><button class="btn pri" ${go('camp')}>${ic('tent',20)}Aller au camp</button></div></div>`);
 };
 
 /* K · Camp */
 S.camp=(c={})=>{
- const empty=c.empty;const b=c.braises??46;
+ const empty=c.empty;const b=c.shards??46;
  const res=empty?`<div class="empty-slot">${ic('person',26)}<span>Personne ne vit encore au camp. Les personnages libérés dans la tour viendront s'y installer et ouvriront une boutique.</span></div>`
  :`<button class="cardbtn" ${go('boutique')}><span style="width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--a-surface-2);color:var(--a-accent)">${ic('sword',24)}</span><span class="t"><b>La Forgeronne <span class="newtag">Nouvelle</span></b><span>Armes · 2 objets à ajouter</span></span>${ic('chev',20)}</button>
  <button class="cardbtn"><span style="width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--a-surface-2);color:var(--a-accent)">${ic('power',24)}</span><span class="t"><b>Le Sonneur</b><span>Pouvoirs · 1 objet à ajouter</span></span>${ic('chev',20)}</button>
  <div class="empty-slot" style="min-height:60px">${ic('person',24)}<span>Une place libre près du feu.</span></div>`;
- return chrome(`<div class="hd"><button class="iconbtn back" ${go('pied0')} aria-label="Retour au pied de la tour">${ic('back')}</button><h2>Le Camp</h2><span class="chipr ember" aria-label="${b} Braises">${ic('ember',16)}${b}</span></div><div class="illu" style="height:210px;margin:0">${CAMP}</div><div class="body" style="gap:10px;padding-top:12px"><p class="sub" style="text-align:left">Dépense tes Braises pour que de nouveaux objets puissent apparaître dans la tour.</p>${res}<div style="flex:1"></div><button class="btn camp-pri big" ${go('pied0')} style="margin-bottom:34px">${ic('tower',22)}Retour à la tour</button></div>`);
+ return chrome(`<div class="hd"><button class="iconbtn back" ${go('pied0')} aria-label="Retour au pied de la tour">${ic('back')}</button><h2>Le Camp</h2><span class="chipr shard" aria-label="${b} Éclats">${ic('shard',16)}${b}</span></div><div class="illu" style="height:210px;margin:0">${CAMP}</div><div class="body" style="gap:10px;padding-top:12px"><p class="sub" style="text-align:left">Dépense tes Éclats pour que de nouveaux objets puissent apparaître dans la tour.</p>${res}<div style="flex:1"></div><button class="btn camp-pri big" ${go('pied0')} style="margin-bottom:34px">${ic('tower',22)}Retour à la tour</button></div>`);
 };
 S.boutique=(c={})=>{
- const b=c.braises??46;const bought=c.bought||{};
+ const b=c.shards??46;const bought=c.bought||{};
  const items=[['rare','sword','Hache du veilleur','Arme · dégâts 14, brise 2 crans de garde',15],['legend','sword','Lame de l\'aube','Arme · frappe en rythme +30 %',60],['common','sword','Masse cloutée','Arme · dégâts 11',8]];
- const rows=items.map((it,i)=>{const own=bought[i]||(c.owned&&i===2);const can=b>=it[4];return `<div class="item rc-${it[0]}"><span class="gem">${ic(it[1],22)}</span><div class="t">${rar(it[0])}<b>${it[2]}</b><span>${it[3]}</span>${!own&&!can?`<div class="short">Il te manque ${it[4]-b} Braises</div>`:''}</div>${own?`<button class="price owned" disabled>${ic('check',16,3)}Dans la tour</button>`:`<button class="price ember" ${can?go('buy:'+i):'disabled'} aria-label="Ajouter ${it[2]} à la tour pour ${it[4]} Braises">${ic('ember',16)}${it[4]}</button>`}</div>`;}).join('');
- return chrome(`<div class="hd"><button class="iconbtn back" ${go('camp')} aria-label="Retour au camp">${ic('back')}</button><h2>La Forgeronne</h2><span class="chipr ember" aria-label="${b} Braises">${ic('ember',16)}${b}</span></div><div class="body" style="gap:8px"><p class="sub" style="text-align:left">« Ce que je forge ici, tu pourras le trouver là-haut. » Chaque objet ajouté peut apparaître dans les coffres, sur les ennemis et chez les marchands.</p>${rows}</div>${c.toast||''}`);
+ const rows=items.map((it,i)=>{const own=bought[i]||(c.owned&&i===2);const can=b>=it[4];return `<div class="item rc-${it[0]}"><span class="gem">${ic(it[1],22)}</span><div class="t">${rar(it[0])}<b>${it[2]}</b><span>${it[3]}</span>${!own&&!can?`<div class="short">Il te manque ${it[4]-b} Éclats</div>`:''}</div>${own?`<button class="price owned" disabled>${ic('check',16,3)}Dans la tour</button>`:`<button class="price shard" ${can?go('buy:'+i):'disabled'} aria-label="Ajouter ${it[2]} à la tour pour ${it[4]} Éclats">${ic('shard',16)}${it[4]}</button>`}</div>`;}).join('');
+ return chrome(`<div class="hd"><button class="iconbtn back" ${go('camp')} aria-label="Retour au camp">${ic('back')}</button><h2>La Forgeronne</h2><span class="chipr shard" aria-label="${b} Éclats">${ic('shard',16)}${b}</span></div><div class="body" style="gap:8px"><p class="sub" style="text-align:left">« Ce que je forge ici, tu pourras le trouver là-haut. » Chaque objet ajouté peut apparaître dans les coffres, sur les ennemis et chez les marchands.</p>${rows}</div>${c.toast||''}`);
 };
 
 /* Z · Pause */
@@ -980,7 +1046,7 @@ const G=[
  ['t','T1','Faveur','J','Hier : 3/3. La jauge penche à droite, les effets du jour sont listés. Toucher la jauge ouvre son détail.',()=>S.pied({gauge:'favor'})],
  ['t','T2','Légère faveur','J','Hier : 2/3. Moins d\'effets, même mise en page.',()=>S.pied({gauge:'light'})],
  ['t','T3','Malédiction','J','Hier : 1/3. Effets en rouge, et une phrase qui rassure : seulement aujourd\'hui, toujours gagnable.',()=>S.pied({gauge:'curse'})],
- ['t','T4','Première utilisation','J','Aucun jour clos : la jauge est neutre, hachurée, et dit quand elle comptera.',()=>S.pied({gauge:'first',braises:0})],
+ ['t','T4','Première utilisation','J','Aucun jour clos : la jauge est neutre, hachurée, et dit quand elle comptera.',()=>S.pied({gauge:'first',shards:0})],
  ['t','T5','Ascension en cours','A','Une ascension sauvegardée : « Reprendre » remplace « Commencer ». Le héros n\'est plus modifiable.',()=>S.pied({gauge:'favor',inRun:true})],
  ['t','T6','Détail de la jauge','J','Feuille ouverte depuis la jauge. Rappelle les garde-fous.',()=>S.jauge({gauge:'curse'})],
  ['t','T7','Chargement','J','Squelette pendant la lecture de la sauvegarde. L\'illustration reste, elle ne dépend pas des données.',()=>S.piedLoading()],
@@ -1015,7 +1081,7 @@ const G=[
  ['b','B5','Coffre fermé','O','Une clé l\'ouvre. Le nombre de clés est sur le bouton.',()=>S.coffre({})],
  ['b','B6','Sans clé','O','Le coffre reste visible, le bouton dit pourquoi on ne peut pas l\'ouvrir.',()=>S.coffre({st:'nokey',keys:0})],
  ['b','B7','Coffre ouvert','O','L\'objet est comparé à celui qu\'on porte. Rareté par couleur, losanges et mot.',()=>S.coffre({st:'open'})],
- ['l','L1','Marchand','L','Prix en pièces. Un objet trop cher dit ce qui manque. Un objet acheté reste affiché.',()=>S.marchand({coins:40,sold:0})],
+ ['l','L1','Marchand','L','Prix en Or. Un objet trop cher dit ce qui manque. Un objet acheté reste affiché.',()=>S.marchand({coins:40,sold:0})],
  ['l','L2','Feu de camp','L','Deux choix, une seule fois.',()=>S.feu({})],
  ['l','L3','Feu de camp, pas de soin','L','La règle d\'étage rend « Se reposer » indisponible et le dit.',()=>S.feu({rule:true})],
  ['l','L4','Autel','L','Gain et prix côte à côte. On maintient le bouton pour accepter.',()=>S.autel({})],
@@ -1025,16 +1091,16 @@ const G=[
  ['l','L8','Personnage libéré','K','Il rejoindra le camp, même si l\'ascension échoue.',()=>S.evenement({st:'ok'})],
  ['x','X1','Boss','B','Présentation plein écran, nom en grand.',()=>S.bossIntro()],
  ['x','X2','Combat de boss','B','Un seul ennemi, garde plus longue, même zone d\'action.',()=>S.combat({boss:true,phase:'enemy',attacker:0,seal:0,foes:[{k:'gardienne',name:'La Gardienne',hp:64,mx:90,g:4,gm:6,it:['atk','clock','12'],itn:'Faux lente, 12 dégâts'}],zline:'<b>La Gardienne</b> : coup imparable'})],
- ['x','X3','Boss vaincu','B','Braises en grand, gardées pour toujours. Continuer ou faire une pause.',()=>S.bossVaincu()],
+ ['x','X3','Boss vaincu','B','Éclats en grand, gardées pour toujours. Continuer ou faire une pause.',()=>S.bossVaincu()],
  ['x','X4','Chute, avec seconde chance','B','Faveur maximale : une seconde chance par jour.',()=>S.chute({second:true})],
  ['x','X5','Chute','B','Sans seconde chance : un seul bouton.',()=>S.chute({})],
  ['x','X6','Fin de l\'ascension','B','Ce qui reste (vert) et ce qui est perdu (rouge), sans ambiguïté.',()=>S.fin({})],
  ['x','X7','Sommet atteint','B','Même écran, en victoire.',()=>S.fin({win:true})],
  ['k','K1','Camp','K','Lumière du feu, personnages libérés, places libres.',()=>S.camp({})],
- ['k','K2','Camp vide','K','Première visite : le texte explique comment le camp se remplit.',()=>S.camp({empty:true,braises:12})],
- ['k','K3','Boutique','K','Ajouter un objet à la tour. Trop cher : ce qui manque est dit.',()=>S.boutique({braises:46,owned:true})],
- ['k','K4','Objet ajouté','K','Confirmation, sans fenêtre à fermer.',()=>S.boutique({braises:31,bought:{0:true},owned:true,toast:`<div class="toast"><span>La Hache du veilleur peut désormais apparaître dans la tour.</span></div>`})],
- ['k','K5','Erreur d\'achat','K','Les Braises ne sont pas dépensées.',()=>S.boutique({braises:46,owned:true,toast:`<div class="toast"><span>L'achat n'a pas pu être enregistré. Tes Braises sont intactes.</span><button>Réessayer</button></div>`})],
+ ['k','K2','Camp vide','K','Première visite : le texte explique comment le camp se remplit.',()=>S.camp({empty:true,shards:12})],
+ ['k','K3','Boutique','K','Ajouter un objet à la tour. Trop cher : ce qui manque est dit.',()=>S.boutique({shards:46,owned:true})],
+ ['k','K4','Objet ajouté','K','Confirmation, sans fenêtre à fermer.',()=>S.boutique({shards:31,bought:{0:true},owned:true,toast:`<div class="toast"><span>La Hache du veilleur peut désormais apparaître dans la tour.</span></div>`})],
+ ['k','K5','Erreur d\'achat','K','Les Éclats ne sont pas dépensés.',()=>S.boutique({shards:46,owned:true,toast:`<div class="toast"><span>L'achat n'a pas pu être enregistré. Tes Éclats sont intacts.</span><button>Réessayer</button></div>`})],
  ['z','Z1','Pause','A','Possible à tout moment, même pendant un élan ennemi. Le combat est figé.',()=>S.pause({})],
  ['z','Z2','Sauvegarde en échec','A','Rare. On ne propose pas de quitter tant que la sauvegarde n\'a pas abouti.',()=>S.pause({saveErr:true})],
  ['z','Z3','Reprise','A','Compte à rebours de 3 s. L\'attaque en cours recommence depuis son élan.',()=>S.reprise({n:3})],
@@ -1056,12 +1122,12 @@ document.getElementById('demoComp').innerHTML=`
  <div class="demo-cell" style="width:300px">Jauge (faveur)<div style="width:300px">${gaugeBlock('favor')}</div></div>
  <div class="demo-cell" style="width:300px">Boutons de la phase ennemie<div class="pad" style="width:300px"><button class="act sec" tabindex="-1">${ic('dodge',26)}Esquive</button><button class="act pri" tabindex="-1">${ic('shield',26)}Parade</button></div></div>
  <div class="demo-cell" style="width:170px">Ennemi : intention, garde, PV<div class="foes n1" style="position:static"><div class="foe target cursed" style="width:170px"><span class="intent atk">${ic('chain',15)}2×4</span><span class="fig">${SEAL}${FOES.goule}<span class="base"></span></span><span class="nm">Goule<span class="cur">Maudit</span></span><span class="guard"><i></i><i></i><i class="e"></i><i class="e"></i></span><span class="hpb"><i style="width:70%"></i></span></div></div></div>
- <div class="demo-cell" style="width:240px">Rareté<div style="display:flex;flex-direction:column;gap:6px">${rar('common')}${rar('rare')}${rar('legend')}</div>Monnaies<div style="display:flex;gap:6px"><span class="chipr ember">${ic('ember',16)}46 Braises</span><span class="chipr coin">${ic('coin',16)}40</span></div>Ressources de faveur<div style="display:flex;gap:6px"><span class="chipr key">${ic('key',16)}2</span><span class="eff">${ic('reroll',16)}1 relance</span></div></div>`;
+ <div class="demo-cell" style="width:240px">Rareté<div style="display:flex;flex-direction:column;gap:6px">${rar('common')}${rar('rare')}${rar('legend')}</div>Monnaies<div style="display:flex;gap:6px"><span class="chipr shard">${ic('shard',16)}46 Éclats</span><span class="chipr coin">${ic('coin',16)}40</span></div>Ressources de faveur<div style="display:flex;gap:6px"><span class="chipr key">${ic('key',16)}2</span><span class="eff">${ic('reroll',16)}1 relance</span></div></div>`;
 
 /* ============ PROTOTYPE ============ */
 const live=document.getElementById('live');const srLive=document.getElementById('srLive');
 let L;
-function resetL(){L={gauge:'favor',hero:0,inRun:false,braises:34,keys:2,rerolls:1,coins:40,hp:60,hpMax:60,offset:0,route:'pied',prev:'pied',boonSel:null,bought:{},combat:null,campBraises:46};}
+function resetL(){L={gauge:'favor',hero:0,inRun:false,shards:34,keys:2,rerolls:1,coins:40,hp:60,hpMax:60,offset:0,route:'pied',prev:'pied',boonSel:null,bought:{},combat:null,campShards:46};}
 function say(t){srLive.textContent='';setTimeout(()=>srLive.textContent=t,30);}
 function render(html,camp){live.className='screen app'+(camp?' camp':'');live.innerHTML=html;}
 function show(r){
@@ -1090,11 +1156,11 @@ function show(r){
   case 'evenement':render(S.evenement(ctx));break;
   case 'evt-ok':L.keys=Math.max(0,L.keys-1);render(S.evenement({...ctx,st:'ok'}));break;
   case 'boss-intro':render(S.bossIntro());break;
-  case 'boss-vaincu':L.braises+=12;render(S.bossVaincu());say('Boss vaincu. Plus 12 Braises.');break;
+  case 'boss-vaincu':L.shards+=12;render(S.bossVaincu());say('Boss vaincu. Plus 12 Éclats.');break;
   case 'chute':render(S.chute({second:L.gauge==='favor'&&!L.usedSecond}));break;
   case 'fin':L.inRun=false;L.combat=null;C=null;render(S.fin({}));break;
-  case 'camp':render(S.camp({braises:L.braises}),true);break;
-  case 'boutique':render(S.boutique({braises:L.braises,bought:L.bought,owned:true,toast:L.toast||''}),true);L.toast='';break;
+  case 'camp':render(S.camp({shards:L.shards}),true);break;
+  case 'boutique':render(S.boutique({shards:L.shards,bought:L.bought,owned:true,toast:L.toast||''}),true);L.toast='';break;
   case 'pause':render(S.pause({...ctx,foes:L.combat?L.combat.foes:undefined,target:L.combat?L.combat.target:1}));break;
   case 'reprise':startCountdown();break;
   case 'reglages':render(S.reglages({offset:L.offset}));wireSettings();break;
@@ -1110,7 +1176,7 @@ live.addEventListener('click',e=>{
  if(g.startsWith('hero:')){L.hero=+g.slice(5);show('heros');return;}
  if(g.startsWith('door:')){const d=g.slice(5);L.etageDone=true;({combat:()=>show('combat'),elite:()=>show('combat'),event:()=>show('evenement'),shop:()=>show('marchand'),rest:()=>show('feu'),altar:()=>show('autel'),boss:()=>show('boss-intro')})[d]();return;}
  if(g.startsWith('boon:')){L.boonSel=+g.slice(5);show('bienfait');return;}
- if(g.startsWith('buy:')){const i=+g.slice(4);const price=[15,60,8][i];if(L.braises>=price){L.braises-=price;L.bought[i]=true;L.toast=`<div class="toast"><span>${['La Hache du veilleur','La Lame de l\'aube','La Masse cloutée'][i]} peut désormais apparaître dans la tour.</span></div>`;say('Objet ajouté à la tour');}show('boutique');return;}
+ if(g.startsWith('buy:')){const i=+g.slice(4);const price=[15,60,8][i];if(L.shards>=price){L.shards-=price;L.bought[i]=true;L.toast=`<div class="toast"><span>${['La Hache du veilleur','La Lame de l\'aube','La Masse cloutée'][i]} peut désormais apparaître dans la tour.</span></div>`;say('Objet ajouté à la tour');}show('boutique');return;}
  switch(g){
   case 'debut':L.inRun=true;L.hp=L.gauge==='curse'?50:60;L.hpMax=60;L.pact=false;L.usedSecond=false;L.step=0;L.combat=null;C=null;L.keys={favor:2,light:1,curse:0,first:0}[L.gauge];L.rerolls=L.gauge==='favor'?1:0;L.coins=40;show('sortie');break;
   case 'pause':if(L.route==='combat'){show('pause');}else{L.pausedFrom=L.route;const base=live.innerHTML.replace('<div class="homebar"></div>','');live.innerHTML=base+pauseSheet({where:'Partie sauvegardée à cet étage'}).replace('<div class="okline">','<div class="okline" style="display:none">');L.route='pause-static';}break;
