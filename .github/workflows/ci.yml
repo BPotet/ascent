@@ -103,7 +103,16 @@ jobs:
   mutation:
     name: Mutation tests (StrykerJS)
     needs: tests
+    # En PR vers develop : le code modifié. Sur release/* et hotfix/* (et à la demande) : tout le code.
+    # Un push sur develop ou main n'en relance pas : la PR, ou la branche de release, l'a déjà muté.
+    # Une PR de release ou de hotfix non plus : le push sur sa branche mute déjà tout le code.
+    if: >-
+      (github.event_name == 'pull_request'
+        && !startsWith(github.head_ref, 'release/') && !startsWith(github.head_ref, 'hotfix/'))
+      || github.event_name == 'workflow_dispatch'
+      || startsWith(github.ref_name, 'release/') || startsWith(github.ref_name, 'hotfix/')
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:

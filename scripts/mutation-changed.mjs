@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Mutation du code modifié (docs/workflow.md, « PR vers develop ») : ne mute que les fichiers
 // de `src/` modifiés depuis la branche de base (BASE_REF, par défaut origin/develop).
-// Seuils : ceux de stryker.config.mjs (70 %), et 85 % si un fichier du domaine est modifié.
+// Les fichiers du domaine passent par stryker.domain.config.mjs (85 %), les autres par
+// stryker.config.mjs (70 %) : aucun fichier n'est muté deux fois.
 import { execFileSync, spawnSync } from 'node:child_process';
 
 const base = process.env.BASE_REF ?? 'origin/develop';
@@ -29,7 +30,8 @@ function stryker(config, files) {
 }
 
 const domain = changed.filter((file) => file.startsWith('src/domain/'));
-let status = stryker('stryker.config.mjs', changed);
+const others = changed.filter((file) => !file.startsWith('src/domain/'));
+let status = others.length > 0 ? stryker('stryker.config.mjs', others) : 0;
 if (status === 0 && domain.length > 0) {
   status = stryker('stryker.domain.config.mjs', domain);
 }

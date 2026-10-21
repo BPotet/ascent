@@ -341,7 +341,7 @@ gitGraph
 | Déclencheur | Ce qui tourne | Résultat |
 |---|---|---|
 | **PR vers `develop`** (`feature/`, `bugfix/`, `chore/`, `docs/`) | Toutes les barrières de qualité : commits, secrets, style, types, architecture, unitaires, intégration, BDD, mutation sur le code modifié, SonarQube Cloud. End-to-end sur une plateforme. | Auto-merge (squash) si tout est vert et la review approuvée |
-| **Push sur `develop`** | Les mêmes barrières sur le résultat du merge, puis un **build de preview** installable sur le téléphone du propriétaire | Le propriétaire peut essayer la prochaine version |
+| **Push sur `develop`** | Les mêmes barrières sur le résultat du merge, sauf la mutation (déjà faite par la PR), puis un **build de preview** installable sur le téléphone du propriétaire | Le propriétaire peut essayer la prochaine version |
 | **Branche `release/x.y.z`** | Suite complète : end-to-end **iOS et Android**, mutation sur tout le code, SonarQube Cloud. Génération du changelog. Build de production. | Merge dans `main` si tout est vert |
 | **Merge sur `main`** | Tag `vX.Y.Z`, GitHub Release avec le changelog, build de production distribué | Nouvelle version publiée |
 | **Branche `hotfix/x.y.z-…`** | Suite complète, comme une release | Merge dans `main` (tag) puis dans `develop` |
