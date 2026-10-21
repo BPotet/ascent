@@ -91,8 +91,10 @@ Seuils, tels que `docs/workflow.md` les fixe :
 - Couverture : ≥ 80 % sur l'ensemble et ≥ 95 % sur `src/domain` (Jest, bloquant). La couverture et
   la duplication du **code nouveau** sont mesurées par SonarQube Cloud.
 - Mutation : en PR, seuls les fichiers de `src/` modifiés sont mutés (`scripts/mutation-changed.mjs`),
-  seuil 70 %, et 85 % pour les fichiers du domaine ; sur `develop`, `main`, `release/*` et
-  `hotfix/*`, tout le code est muté (70 %) et le domaine à part (85 %).
+  seuil 70 %, et 85 % pour les fichiers du domaine ; sur `release/*` et `hotfix/*`, tout le code
+  est muté : le domaine avec ses seuls tests unitaires (85 %), le reste avec tous les tests (70 %).
+  Chaque fichier n'est muté qu'une fois. Un push sur `develop` ou `main` ne relance pas la mutation :
+  le code y arrive déjà muté par sa PR ou par sa branche de release.
 - Les styles visuels (`StyleSheet.create`, options d'apparence de la navigation) sont exclus de la
   mutation par un commentaire `// Stryker disable all: …` : leur contrôle est la conformité aux
   maquettes (barrière 10 bis). Aucune autre exclusion n'est admise sans ADR.
