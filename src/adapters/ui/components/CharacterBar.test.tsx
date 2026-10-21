@@ -132,6 +132,37 @@ describe('CharacterBar', () => {
     ).not.toBeOnTheScreen();
   });
 
+  it('does not pulse without a change', async () => {
+    const sequence = jest.spyOn(Animated, 'sequence');
+
+    await render(<CharacterBar xp={40} change={null} />);
+
+    expect(sequence).not.toHaveBeenCalled();
+  });
+
+  it('jumps to an experience read again once the last change is no longer shown', async () => {
+    await render(<CharacterBar xp={40} change={null} />);
+    await screen.rerender(<CharacterBar xp={50} change={{ id: 1, amount: 10 }} />);
+    const timing = jest.spyOn(Animated, 'timing');
+
+    await screen.rerender(<CharacterBar xp={60} change={null} />);
+
+    expect(timing.mock.calls.map(([, config]) => config.duration)).not.toContain(
+      XP_COUNTER_DURATION_MS,
+    );
+    expect(shownXp()).toBe('60 XP');
+  });
+
+  it('starts fading the pill in as soon as it is shown', async () => {
+    const start = jest.fn();
+    jest.spyOn(Animated, 'sequence').mockReturnValue({ start, stop: jest.fn(), reset: jest.fn() });
+
+    // Une perte : pas de pulsation, la seule séquence est celle de la pastille.
+    await render(<CharacterBar xp={40} change={{ id: 1, amount: -10 }} />);
+
+    expect(start).toHaveBeenCalledTimes(1);
+  });
+
   it('fades the pill in and out', async () => {
     const timing = jest.spyOn(Animated, 'timing');
 
