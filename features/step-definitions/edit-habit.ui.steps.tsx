@@ -19,6 +19,7 @@ import { FakeExpoSqliteConnection } from '../../src/adapters/persistence/testing
 import { DayViewScreen } from '../../src/adapters/ui/screens/DayViewScreen';
 import type { Dependencies } from '../../src/adapters/ui/state/Dependencies';
 import { renderScreen } from '../../src/adapters/ui/testing/renderScreen';
+import { silentHaptics } from '../../src/adapters/ui/testing/silentHaptics';
 import { createHabit } from '../../src/application/useCases/createHabit';
 import { Day } from '../../src/domain/day/Day';
 import { frenchDay } from '../support/frenchDay';
@@ -90,6 +91,7 @@ beforeEach(async () => {
       clock,
       unitOfWork: new SqliteUnitOfWork(db),
       keyValueStore: new SqliteKeyValueStore(db),
+      haptics: silentHaptics(),
     },
   };
 });
