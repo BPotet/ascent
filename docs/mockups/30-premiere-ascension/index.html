@@ -166,7 +166,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
 .foe.target .nm{color:var(--a-light)}
 .foe .tmark{position:absolute;bottom:62px;left:50%;transform:translateX(-50%);display:none}
 .foe .nm{font:600 13px/1.2 Inter;white-space:nowrap;display:flex;align-items:center;gap:4px}
-.foe .cur{position:absolute;top:36px;right:6px;font:700 10px Inter;letter-spacing:.06em;text-transform:uppercase;color:#FFD0D8;background:var(--a-curse-soft);border:1px solid rgba(224,96,122,.55);border-radius:6px;padding:0 5px}
+.foe .cur{position:static;margin-left:2px;font:700 10px Inter;letter-spacing:.06em;text-transform:uppercase;color:#FFD0D8;background:var(--a-curse-soft);border:1px solid rgba(224,96,122,.55);border-radius:6px;padding:0 5px}
 .guard{display:flex;gap:3px;align-items:center;height:10px}
 .guard i{width:12px;height:7px;border-radius:2px;background:var(--a-guard)}
 .guard i.e{background:transparent;box-shadow:inset 0 0 0 1.5px #56657C}
@@ -207,7 +207,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
 .streaks{position:absolute;inset:0;z-index:5;pointer-events:none}
 .shake{animation:shake .32s}
 @keyframes shake{0%,100%{transform:none}20%{transform:translate(-5px,3px)}40%{transform:translate(5px,-3px)}60%{transform:translate(-3px,2px)}80%{transform:translate(2px,-1px)}}
-.frozen-tag{position:absolute;right:10px;top:40px;z-index:8;font:600 11px Inter;color:var(--a-muted);background:rgba(10,12,22,.85);border:1px dashed var(--a-line);border-radius:8px;padding:3px 7px}
+.frozen-tag{position:absolute;right:10px;bottom:10px;z-index:8;font:600 11px Inter;color:var(--a-muted);background:rgba(10,12,22,.85);border:1px dashed var(--a-line);border-radius:8px;padding:3px 7px}
 
 /* Barre du héros */
 .herobar{flex:none;display:flex;align-items:center;gap:10px;padding:10px 16px 6px;min-height:62px}
@@ -246,10 +246,10 @@ a.story:hover{outline:1.5px solid var(--accent)}
 @keyframes lockfill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .foe.stepin .fig{transform:translateY(6px) scale(1.03);transition:transform .4s ease-out}
 .zone:has(.pad.locked) .zline{visibility:hidden}
-.phaseband{position:absolute;left:0;right:0;top:150px;z-index:9;display:flex;flex-direction:column;align-items:center;gap:4px;padding:16px 16px 14px;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(10,12,22,.92) 18%,rgba(10,12,22,.92) 82%,transparent);border-top:1px solid var(--bc,rgba(224,96,122,.6));border-bottom:1px solid var(--bc,rgba(224,96,122,.6))}
+.phaseband{position:absolute;left:0;right:0;top:272px;z-index:9;display:flex;flex-direction:column;align-items:center;gap:4px;padding:16px 16px 14px;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(10,12,22,.92) 18%,rgba(10,12,22,.92) 82%,transparent);border-top:1px solid var(--bc,rgba(224,96,122,.6));border-bottom:1px solid var(--bc,rgba(224,96,122,.6))}
 .phaseband b{font:700 32px/1.1 var(--f-game);font-variant:small-caps;letter-spacing:.03em;color:var(--bt,#FFD0D8)}
 .phaseband span{font:500 14px Inter;color:var(--a-text)}
-.phaseband.hero{--bc:rgba(242,212,155,.6);--bt:var(--a-light)}
+.phaseband.tohero{--bc:rgba(242,212,155,.6);--bt:var(--a-light)}
 .phaseband.anim{animation:bandin .28s ease-out}
 @media (prefers-reduced-motion: reduce){.phaseband.anim{animation:none}}
 @keyframes bandin{from{opacity:0;transform:scaleY(.6)}to{opacity:1;transform:none}}
@@ -292,7 +292,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
 .gstate b.f{color:var(--a-favor)}.gstate b.c{color:#FF9DB0}.gstate b.n{color:var(--a-text)}
 .gstate span{font:500 13px Inter;color:var(--a-muted)}
 .effs{display:flex;flex-wrap:wrap;gap:6px}
-.eff{display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:0 10px;border-radius:10px;font:600 13px Inter;background:var(--a-favor-soft);color:#BFF0D6}
+.eff{display:inline-flex;align-items:center;gap:5px;min-height:28px;padding:0 9px;border-radius:10px;font:600 12.5px Inter;background:var(--a-favor-soft);color:#BFF0D6}
 .eff.c{background:var(--a-curse-soft);color:#FFD0D8}
 .eff.n{background:var(--a-surface-2);color:var(--a-muted)}
 .reassure{font:500 13px/1.4 Inter;color:var(--a-muted)}
@@ -343,6 +343,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
 .boon .t{flex:1;min-width:0}
 .boon .t b{display:block;font:700 18px/1.2 var(--f-game)}
 .boon .t p{margin:4px 0 0;font:400 14px/1.4 Inter;color:var(--a-text)}
+.boon .t p .ic{display:inline-block;vertical-align:-2px}
 .rar{display:inline-flex;align-items:center;gap:4px;font:700 11px Inter;letter-spacing:.06em;text-transform:uppercase;color:var(--rc)}
 .rar i{width:7px;height:7px;transform:rotate(45deg);background:var(--rc);display:inline-block}
 .rc-common{--rc:var(--r-common)}.rc-rare{--rc:var(--r-rare)}.rc-epic{--rc:var(--r-epic)}.rc-legend{--rc:var(--r-legend)}
@@ -518,7 +519,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
         <li>Un appui pendant le temps mort est <b>ignoré</b> : pas d'action, pas de déséquilibre. Un doigt posé pendant le temps mort et maintenu ne compte jamais : seul un nouveau toucher compte. Un déséquilibre en cours s'arrête au début du temps mort.</li>
         <li>Vers la phase ennemie, le premier ennemi <b>s'avance pendant 400 ms</b>, puis sa préparation commence. Pendant l'avancée, les appuis sont de nouveau jugés. Entre deux ennemis de la même phase, seulement l'avancée.</li>
         <li><b>Arbitrage UX</b> (recommandation du Game Designer) : en phase du héros, « Attaquer », « Pouvoir » et le changement de cible se valident au <b>relâcher</b> du doigt, s'il est encore sur le bouton. Glisser hors du bouton annule. « Frapper », « Parade » et « Esquive » restent datés au toucher.</li>
-        <li>Toute reprise après une pause passe par le compte à rebours, puis par le temps mort et l'annonce de la phase en cours. Avec « réduire les animations », l'annonce apparaît sans glissement.</li>
+        <li>À la <b>reprise après une pause</b>, le compte à rebours de 3 s <b>remplace</b> le temps mort : l'annonce de la phase en cours reste affichée, les boutons sont inactifs, les appuis ignorés sans déséquilibre, et seul un nouveau toucher après la fin compte. En phase ennemie, l'avancée de 400 ms suit, puis la préparation repart du début. Avec « réduire les animations », l'annonce apparaît sans glissement.</li>
       </ul>
     </div>
     <div class="panel">
@@ -650,7 +651,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
           <li>Après ta frappe, l'annonce « Phase ennemie » reste 800 ms : les boutons Esquive et Parade sont déjà là, estompés. Touche-les : rien ne se passe, aucun déséquilibre.</li>
           <li>Phase ennemie : l'ennemi s'avance (400 ms), puis prend son élan. Quand il frappe, touche Parade. S'il porte le sceau rouge, touche Esquive. À la fin, l'annonce « À toi » laisse de nouveau 800 ms.</li>
           <li>Martèle les boutons : « Déséquilibré » apparaît et chaque appui le prolonge.</li>
-          <li>Touche Pause à tout moment, puis Reprendre : un compte à rebours laisse le temps de replacer le pouce.</li>
+          <li>Touche Pause à tout moment, puis Reprendre : un compte à rebours de 3 s, avec l'annonce de la phase en cours, laisse le temps de replacer le pouce. Les appuis y sont ignorés.</li>
           <li>Sur ordinateur : Espace pour Parade (ou l'action de droite), flèche gauche pour Esquive.</li>
         </ul>
       </div>
@@ -668,7 +669,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
 <section id="l"><h2 class="pg">L · Lieux de la tour</h2><p class="lead">Marchand, feu de camp, autel et événement. Chacun tient sur un écran, avec ses choix dans la zone du pouce.</p><div class="gallery" data-group="l"></div></section>
 <section id="x"><h2 class="pg">X · Boss, chute et fin d'ascension</h2><p class="lead">Chaque palier finit par un boss tiré au hasard. Si le héros tombe, l'ascension s'arrête : l'écran de fin dit clairement ce qui est perdu et ce qui reste.</p><div class="gallery" data-group="x"></div></section>
 <section id="k"><h2 class="pg">K · Camp et boutiques</h2><p class="lead">Un refuge chaud entre deux ascensions. Le Gardien de la flamme y est dès le départ ; les captifs libérés s'y installent et ouvrent une boutique : les Éclats ajoutent de nouveaux objets à ce qu'on peut trouver dans la tour.</p><div class="gallery" data-group="k"></div></section>
-<section id="z"><h2 class="pg">Z · Pause et reprise</h2><p class="lead">Pause à tout moment, même pendant un coup ennemi. La partie est sauvegardée après chaque action. Fermer l'app met en pause. La reprise passe par un compte à rebours, puis par l'annonce de la phase en cours.</p><div class="gallery" data-group="z"></div></section>
+<section id="z"><h2 class="pg">Z · Pause et reprise</h2><p class="lead">Pause à tout moment, même pendant un coup ennemi. La partie est sauvegardée après chaque action. Fermer l'app met en pause. À la reprise, un compte à rebours de 3 s, avec l'annonce de la phase en cours, remplace le temps mort.</p><div class="gallery" data-group="z"></div></section>
 <section id="r"><h2 class="pg">R · Réglages de la parade</h2><p class="lead">Le décalage du téléphone compense un appui toujours un peu en avance ou en retard. Il se règle à la main ou se mesure en huit coups.</p><div class="gallery" data-group="r"></div></section>
 
 <section id="a11y">
@@ -680,6 +681,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
         <li>Boutons de combat : 116 px de haut, Esquive ≈ 140 px de large, Parade ≈ 206 px. Toutes les autres cibles font au moins 48 × 48 px (Pause, retour, interrupteurs), cartes et portes au moins 64 px de haut.</li>
         <li>Les actions de combat, de choix et de validation sont dans le tiers bas, à portée du pouce droit comme du gauche.</li>
         <li>Ciblage : toute la colonne de l'ennemi (≈ 126 × 230 px) est touchable, pas seulement la silhouette.</li>
+        <li>En phase du héros, Attaquer, Pouvoir et le ciblage se valident au relâcher : glisser le doigt hors du bouton annule. Défense et frappe en rythme réagissent au toucher.</li>
         <li>Aucun geste de glissé n'est nécessaire. Le seul appui maintenu (pacte) a une alternative au lecteur d'écran (double-toucher puis confirmation).</li>
       </ul>
     </div>
@@ -687,7 +689,8 @@ a.story:hover{outline:1.5px solid var(--accent)}
       <h3 class="pg" style="margin-top:0">Lire sans la couleur</h3>
       <ul class="tight">
         <li>Le sceau rouge est aussi une <b>forme</b> (losange avec point d'exclamation) et un mot pour le lecteur d'écran.</li>
-        <li>Jauge : position du curseur, mot (Faveur, Malédiction) et liste d'effets. Rareté : 1, 2 ou 3 losanges et le mot.</li>
+        <li>Jauge : position du curseur sur cinq crans, mot (Faveur pleine, Faveur, Neutre, Malédiction, Malédiction forte) et liste d'effets. Rareté : 1 à 4 losanges et le mot. Difficulté de l'habitude écrite en toutes lettres à côté de la rareté de la bénédiction.</li>
+        <li>Transition de phase et déséquilibre ne se confondent pas : le temps mort est estompé avec un cadenas et le mot « Attends », sans hachures ; le déséquilibre est hachuré, en rose, avec le mot « Déséquilibré ».</li>
         <li>Ennemi maudit : l'étiquette « Maudit » et le halo. Cible : la lueur au sol et le nom en couleur, plus « cible » pour le lecteur d'écran.</li>
         <li>Contraste du texte ≥ 4,5:1 sur les surfaces ; « lumière » sur fond nuit ≈ 12:1 ; texte sombre sur bouton lumière ≈ 11:1.</li>
       </ul>
@@ -696,6 +699,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
       <h3 class="pg" style="margin-top:0">Lecteur d'écran et mouvement</h3>
       <ul class="tight">
         <li>Ennemi : « Goule maudite, cible, PV 18 sur 24, garde 2 sur 4, intention : double frappe, 2 fois 4 dégâts ».</li>
+        <li>Transition de phase : « Phase ennemie. Prépare ta parade. » ou « À toi. Vise et attaque. », annoncé dès le début du temps mort ; les boutons inactifs sont annoncés comme indisponibles.</li>
         <li>Phase ennemie : chaque attaque est annoncée (« Goule : coup imparable, esquive »), et le résultat est lu (« Parade parfaite, contre-attaque 8 dégâts »).</li>
         <li>Le timing de la parade ne peut pas être rendu accessible au lecteur d'écran sans aide : la parade étant un bonus, l'esquive et la défense passive permettent de survivre. Un futur mode d'aide (anneau, son d'élan) reste possible, il a été écarté comme aide <i>par défaut</i>.</li>
         <li>Mouvement réduit : pas de secousse ni d'éclat plein écran. Vibration et sons désactivables séparément dans les réglages.</li>
@@ -837,7 +841,7 @@ S.pied=(c={})=>{
  const k=c.gauge||'p2',h=HEROES[c.hero||0];
  const run=c.inRun;
  const head=`<div class="hd"><h2>La Tour</h2><span class="chipr shard" aria-label="${c.shards??34} Éclats">${ic('shard',16)}${c.shards??34}</span><button class="iconbtn" ${go('reglages')} aria-label="Réglages de la parade">${ic('gear')}</button></div>`;
- const illu=`<div class="illu" style="height:${run?190:200}px">${TOWER}</div>`;
+ const illu=`<div class="illu" style="height:${run?120:132}px">${TOWER}</div>`;
  let lower;
  if(run){
   lower=`<div class="card" style="display:flex;gap:12px;align-items:center"><div class="mini">${heroSVG('idle',h.weapon)}</div><div style="flex:1"><div class="lbl">Ascension en cours</div><div class="g" style="font:700 18px var(--f-game);margin-top:2px">Palier ${c.palier||2} · Étage ${c.etage||3} sur 6</div><div style="font:500 13px Inter;color:var(--a-muted)">${h.name} · PV ${c.hp||51}/${c.hpMax||80} · sauvegardée</div></div></div>
@@ -900,7 +904,7 @@ const DOORS={
  altar:['altar','altar','Autel','Un pacte risqué'],
  boss:['boss','crown','Boss du palier','Tiré au hasard parmi les gardiens du palier']
 };
-function floorsBar(cur,n=6){
+function floorsBar(cur,n=5){
  let h='';for(let i=1;i<=n;i++){h+=`<span class="fl ${i<cur?'done':''} ${i===cur?'now':''}" aria-hidden="true">${i<cur?ic('check',14,3):''}</span><span class="fll ${i<cur?'done':''}"></span>`;}
  return `<div class="floors" role="img" aria-label="Étage ${cur} sur ${n}, puis le boss">${h}<span class="fl boss ${cur>n?'now':''}">${ic('crown',18)}</span></div>`;
 }
@@ -910,7 +914,7 @@ S.sortie=(c={})=>{
  const sel=c.sel;
  const doors=list.map((d,i)=>{const D=DOORS[d];const rule=(c.rule===i)?`<div class="rule">${ic('heart',14)}Règle : Sans soin</div>`:'';return `<button class="door ${D[0]} ${sel===i?'sel':''}" ${go('door:'+d)} aria-label="Sortie ${D[2]}. ${D[3]}${c.rule===i?'. Règle d\'étage : Sans soin, aucun soin sur cet étage':''}"><span class="arch">${ic(D[1],30,1.8)}</span><span class="t"><b>${D[2]}</b><span>${D[3]}</span>${rule}</span>${ic('chev',20)}</button>`;}).join('');
  const et=c.etage||3;
- return chrome(`${gtop(c.palierName||'Palier 1 · Les Catacombes','Étage '+(et-1)+' franchi',c)}<div class="body" style="gap:10px">${floorsBar(et)}<h2 class="ttl">${list.length===1?'Dernière porte':'Choisis ta sortie'}</h2><p class="sub">${list.length===1?'Le boss du palier est tiré au hasard.':'Touche une porte pour entrer.'}</p>${doors}<div style="flex:1"></div><div class="herobar" style="padding:0 0 34px;min-height:0">${heroMini(c)}</div></div>`);
+ return chrome(`${gtop(c.palierName||'Palier 1 · Les Catacombes','Étage '+(et-1)+' franchi',c)}<div class="body" style="gap:10px">${floorsBar(et)}<h2 class="ttl">${list.length===1?'Dernière porte':c.halte?'Halte':'Choisis ta sortie'}</h2><p class="sub">${list.length===1?'Le boss du palier est tiré au hasard.':c.halte?'Feu de camp ou marchand, avant le boss.':'Touche une porte pour entrer.'}</p>${doors}<div style="flex:1"></div><div class="herobar" style="padding:0 0 34px;min-height:0">${heroMini(c)}</div></div>`);
 };
 function heroMini(c){const h=HEROES[c.hero||0],hp=c.hp??56,mx=c.hpMax??80;const el=c.elan!=null?`<div class="elan" role="img" aria-label="Élan ${c.elan} sur 5">Élan ${Array.from({length:5},(_,k)=>`<i class="${k<c.elan?'on':''}"></i>`).join('')}</div>`:'';return `<div class="who"><div class="nm">${h.name}</div><div class="pvrow"><div class="pvb"><i style="width:${hp/mx*100}%" class="${hp/mx<.3?'low':''}"></i></div><span class="pvn">PV ${hp}/${mx}</span></div>${el}</div><div class="buffs">${(c.buffs||[['bf','Givre persistant']]).map(b=>`<span class="buff ${b[0]}">${b[1]}</span>`).join('')}</div>`;}
 S.palier=(c={})=>chrome(`<div class="center" style="background:radial-gradient(60% 40% at 50% 40%,rgba(242,212,155,.14),transparent);padding:0 32px 60px"><div class="lbl">Palier 1 franchi</div><div style="color:var(--a-light);opacity:.9;filter:drop-shadow(0 0 18px rgba(242,212,155,.5))">${ic('tower',96,1.2)}</div><div class="lbl" style="color:var(--a-light)">Palier 2</div><h2 class="g" style="font:700 34px/1.1 var(--f-game);margin:0">La Nef engloutie</h2><p class="sub">Les ennemis y sont plus forts. La faveur du jour y compte davantage.</p></div><div class="zone" style="flex:none"><button class="btn pri big" ${go('sortie')}>Entrer</button></div>`);
@@ -949,7 +953,7 @@ function combat(c={}){
  const tr=ph==='trans'?c.to:null;
  const enemyLike=ph==='enemy'||tr==='enemy';
  const phaseLbl=ph==='won'?'':enemyLike?'<span class="phase ph-enemy">Phase ennemie</span>':'<span class="phase ph-hero">Phase du héros</span>';
- const band=tr?`<div class="phaseband ${tr==='hero'?'hero':''} ${c.live?'anim':''}" role="status" aria-live="assertive"><b>${tr==='hero'?'À toi':'Phase ennemie'}</b><span>${tr==='hero'?'Vise et attaque':'Prépare ta parade'}</span></div>`:'';
+ const band=tr?`<div class="phaseband ${tr==='hero'?'tohero':''} ${c.live?'anim':''}" role="status" aria-live="assertive"><b>${tr==='hero'?'À toi':'Phase ennemie'}</b><span>${tr==='hero'?'Vise et attaque':'Prépare ta parade'}</span></div>`:'';
  const fx=c.fx?`<div class="fxtext ${c.fx[0]}">${c.fx[1]}${c.fx[2]?`<small>${c.fx[2]}</small>`:''}</div>`:'';
  const flash=c.flash?`<div class="flash on ${c.flash==='red'?'red':''}"></div>`:'';
  const streaks=c.streaks?`<svg class="streaks" viewBox="0 0 390 440" aria-hidden="true"><g stroke="#FFF4D6" stroke-width="2" opacity=".8" stroke-linecap="round"><path d="M150 330l-60 20M160 300l-80-10M170 360l-50 40M200 300l20-60M220 330l70-10"/></g></svg>`:'';
@@ -978,7 +982,7 @@ S.combat=combat;
 
 /* B · Bienfaits et objets */
 const BOONS=[
- ['common','flame','Braise ardente','Ta frappe nette enflamme la cible : 2 dégâts à chaque manche, pendant 2 manches.'],
+ ['common','flame','Tison ardent','Ta frappe nette enflamme la cible : 2 dégâts à chaque manche, pendant 2 manches.'],
  ['rare','star','Givre persistant','Tes coups rendent la cible givrée : +25 % de dégâts de garde pendant 2 manches.'],
  ['epic','guard','Écho parfait','Ta contre-attaque inflige 50 % de dégâts en plus.']
 ];
@@ -1004,7 +1008,7 @@ S.coffre=(c={})=>{
 /* L · Lieux */
 S.marchand=(c={})=>{
  const coins=c.coins??52;
- const items=[['common','heart','Soin','Rend 30 % de tes PV max',30],['common','key','Clé','Ouvre un coffre scellé',40],['common','armor','Mailles','Armure · réduction 8 %',35,c.sold===0],['rare','sword','Marteau','Arme · Brise-garde ×1,6, Attaque ×0,8',70]];
+ const items=[['common','heart','Soin','Rend 30 % de tes PV max',30],['common','key','Clé','Ouvre un coffre scellé',40],['common','armor','Mailles','Armure · réduction 8 %',35,c.sold===2],['rare','sword','Marteau','Arme · Brise-garde ×1,6, Attaque ×0,8',70]];
  const rows=items.map((it,i)=>{const can=coins>=it[4];return `<div class="item rc-${it[0]}"><span class="gem">${ic(it[1],22)}</span><div class="t">${i>1?rar(it[0]):''}<b>${it[2]}</b><span>${it[3]}</span>${!can&&!it[5]?`<div class="short">Il te manque ${it[4]-coins} Or</div>`:''}</div>${it[5]?`<button class="price owned" disabled>${ic('check',16,3)}Acheté</button>`:`<button class="price coin" ${can?'':'disabled'} aria-label="Acheter ${it[2]} pour ${it[4]} Or${can?'':', il te manque '+(it[4]-coins)+' Or'}">${ic('coin',16)}${it[4]}</button>`}</div>`;}).join('');
  return chrome(`${gtop('Palier 1 · Les Catacombes','Halte · Marchand',{...c,coins})}<div class="illu" style="height:120px;margin:0">${`<svg viewBox="0 0 390 120" aria-hidden="true"><defs><radialGradient id="lan" cx=".55" cy=".45" r=".5"><stop offset="0" stop-color="#E7D9A8" stop-opacity=".45"/><stop offset="1" stop-color="#E7D9A8" stop-opacity="0"/></radialGradient></defs><rect width="390" height="120" fill="#141831"/><rect width="390" height="120" fill="url(#lan)"/><path d="M170 120c0-40 10-66 30-70 20 4 30 30 30 70z" fill="#06070C"/><circle cx="200" cy="44" r="12" fill="#06070C"/><path d="M188 40l12-18 12 18z" fill="#06070C"/><path d="M230 70v-14" stroke="#06070C" stroke-width="2"/><rect x="224" y="56" width="12" height="16" rx="3" fill="#E7D9A8"/></svg>`}</div><div class="body" style="gap:8px;padding-top:8px"><h2 class="ttl" style="text-align:left;font-size:22px">Le marchand des marches</h2><p class="sub" style="text-align:left;font-size:13px">L'Or ne sert que pendant l'ascension.</p>${rows}<div style="flex:1"></div><button class="btn ghost" ${go('sortie2')} style="margin-bottom:34px">Partir</button></div>`);
 };
@@ -1026,7 +1030,7 @@ S.autel=(c={})=>{
 S.evenement=(c={})=>{
  const coins=c.coins??32;
  const cell=`<svg viewBox="0 0 390 180" aria-hidden="true"><rect width="390" height="180" fill="#121630"/><path d="M0 180V60c40-30 80-40 120-30v150zM390 180V50c-40-20-90-24-130-10v140z" fill="#06070C" opacity=".8"/><path d="M180 180c0-34 6-56 20-60 14 4 20 26 20 60z" fill="#06070C" opacity=".9"/><circle cx="200" cy="112" r="10" fill="#06070C"/><path d="M226 150h18l-4 30h-10z" fill="#06070C"/><circle cx="235" cy="146" r="5" fill="#7C9CFF" opacity=".55"/><circle cx="200" cy="40" r="60" fill="#7C9CFF" opacity=".06"/></svg>`;
- return chrome(`${gtop('Palier 1 · Les Catacombes','Événement',{...c,coins})}<div class="illu" style="height:180px;margin:0">${cell}</div><div class="body" style="gap:10px;padding-top:14px"><h2 class="ttl" style="text-align:left">Le pèlerin affamé</h2><p style="margin:0;font:400 16px/1.55 Inter">Assis contre la pierre, un pèlerin tend la main. Il murmure qu'il connaît un secret de la tour, contre de quoi manger.</p><div style="flex:1"></div><button class="door event" ${coins>=20?go('sortie2'):'disabled style="opacity:.5"'} aria-label="Donner 20 Or, recevoir un bienfait${coins>=20?'':'. Indisponible : il te manque '+(20-coins)+' Or'}"><span class="arch">${ic('coin',28)}</span><span class="t"><b>Donner 20 Or</b><span>${coins>=20?'Il t\'offre un bienfait':'Il te manque '+(20-coins)+' Or'}</span></span></button><button class="door" ${go('sortie2')} style="margin-bottom:34px"><span class="arch">${ic('chev',28)}</span><span class="t"><b>Passer ton chemin</b><span>Rien ne change</span></span></button></div>`);
+ return chrome(`${gtop('Palier 1 · Les Catacombes','Événement',{...c,coins})}<div class="illu" style="height:180px;margin:0">${cell}</div><div class="body" style="gap:10px;padding-top:14px"><h2 class="ttl" style="text-align:left">Le pèlerin affamé</h2><p style="margin:0;font:400 16px/1.55 Inter">Assis contre la pierre, un pèlerin tend la main. Il murmure qu'il connaît un secret de la tour, contre de quoi manger.</p><div style="flex:1"></div><button class="door event" ${coins>=20?go('evt-give'):'disabled style="opacity:.5"'} aria-label="Donner 20 Or, recevoir un bienfait${coins>=20?'':'. Indisponible : il te manque '+(20-coins)+' Or'}"><span class="arch">${ic('coin',28)}</span><span class="t"><b>Donner 20 Or</b><span>${coins>=20?'Il t\'offre un bienfait':'Il te manque '+(20-coins)+' Or'}</span></span></button><button class="door" ${go('sortie2')} style="margin-bottom:34px"><span class="arch">${ic('chev',28)}</span><span class="t"><b>Passer ton chemin</b><span>Rien ne change</span></span></button></div>`);
 };
 S.captif=(c={})=>chrome(`${gtop('Palier 1 · Les Catacombes','Halte · Feu de camp',c)}<div class="illu" style="height:230px;margin:0">${CAMP}</div><div class="body" style="gap:10px;padding-top:6px"><div class="center" style="flex:none;gap:6px"><div style="width:84px;height:110px">${heroSVG('idle','sword')}</div><div class="lbl" style="color:var(--a-shard)">Captif libéré</div><h3 class="g" style="font:700 26px var(--f-game);margin:0">La Forgeronne</h3><p class="sub">« Je t'attendrai au camp. » Elle y ouvrira une boutique d'armes, même si cette ascension s'arrête.</p></div><div style="flex:1"></div><button class="btn pri big" ${go('feu-rest')} style="margin-bottom:34px">Continuer</button></div>`);
 
@@ -1061,7 +1065,7 @@ S.boutique=(c={})=>{
 /* Z · Pause */
 const pauseSheet=(c={})=>`<div class="scrim"></div><div class="sheet" role="dialog" aria-label="Pause"><div class="grab"></div><h3>Pause</h3><p>${c.where||'Palier 1 · Étage 3 sur 6 · combat'}</p>${c.saveErr?`<div class="errline">${ic('alert',18)}<span>La sauvegarde n'a pas abouti. Ne quitte pas tout de suite : on réessaie.</span></div>`:`<div class="okline">${ic('check',16,3)}Partie sauvegardée</div>`}<button class="btn pri big" ${go('reprise')}>Reprendre</button><div class="row2"><button class="btn ghost" ${go('reglages')}>${ic('gear',20)}Réglages</button><button class="btn ghost" ${c.saveErr?'disabled':''} ${go('quit')}>${ic('save',20)}Quitter</button></div><button class="btn danger" ${go('abandon')}>Abandonner l'ascension</button></div><div class="homebar"></div>`;
 S.pause=(c={})=>combat({...c,phase:'enemy',attacker:1,zline:'Goule maudite : double frappe'}).replace('<div class="homebar"></div>','')+pauseSheet(c);
-S.reprise=(c={})=>combat({...c,phase:'enemy',attacker:1,zline:'Goule maudite : double frappe'}).replace('<div class="homebar"></div>','')+`<div class="scrim" style="background:rgba(4,5,10,.55)"></div><div class="center" style="position:absolute;inset:0;z-index:80;padding:0 32px"><div class="count" id="countN">${c.n||3}</div><p class="sub" style="color:var(--a-text)">Place ton pouce. Puis l'annonce de la phase en cours, et l'ennemi reprend son élan depuis le début.</p></div><div class="homebar"></div>`;
+S.reprise=(c={})=>{const to=c.to||'enemy';return combat({...c,phase:'trans',to,lockP:c.lockP??.33,target:c.target??1}).replace('<div class="homebar"></div>','')+`<div class="scrim" style="background:rgba(4,5,10,.45);bottom:auto;height:330px"></div><div class="center" style="position:absolute;left:0;right:0;top:118px;z-index:80;padding:0 32px;justify-content:flex-start;gap:4px"><div class="count" id="countN" role="timer" aria-live="off">${c.n||3}</div><p class="sub" style="color:var(--a-text)">Place ton pouce. Les appuis sont ignorés jusqu'à la fin du compte.${to==='enemy'?' Puis l\'ennemi s\'avance et reprend son élan depuis le début.':''}</p></div><div class="homebar"></div>`;};
 
 /* R · Réglages */
 S.reglages=(c={})=>{
@@ -1154,7 +1158,7 @@ const G=[
  ['k','K5','Erreur d\'achat',['40'],'Les Éclats ne sont pas dépensés.',()=>S.boutique({shards:44,owned:true,toast:`<div class="toast"><span>Le déblocage n'a pas pu être enregistré. Tes Éclats sont intacts.</span><button>Réessayer</button></div>`})],
  ['z','Z1','Pause',['34'],'Possible à tout moment, même pendant un élan ennemi ou un temps mort. Le combat est figé.',()=>S.pause({})],
  ['z','Z2','Sauvegarde en échec',['34'],'Rare. On ne propose pas de quitter tant que la sauvegarde n\'a pas abouti.',()=>S.pause({saveErr:true})],
- ['z','Z3','Reprise',['34'],'Compte à rebours de 3 s, puis le temps mort de 800 ms avec l\'annonce de la phase en cours (P0 ou F0). L\'attaque en cours recommence depuis son élan.',()=>S.reprise({n:3})],
+ ['z','Z3','Reprise',['34'],'Le compte à rebours de 3 s remplace le temps mort : annonce de la phase en cours, boutons inactifs, appuis ignorés sans déséquilibre. En phase ennemie, l\'avancée suit, puis l\'attaque recommence depuis son élan.',()=>S.reprise({n:3})],
  ['r','R1','Réglages de la parade',['34'],'Décalage au pas de 5 ms, boutons de 56 px. Vibration, sons et secousse séparés.',()=>S.reglages({offset:15})],
  ['r','R2','Mesure en cours',['34'],'Huit coups réguliers, un seul gros bouton.',()=>S.calib({n:3})],
  ['r','R3','Mesure terminée',['34'],'Résultat lisible, à appliquer ou non.',()=>S.calib({st:'done',n:8})],
@@ -1172,7 +1176,7 @@ G.forEach(([grp,id,state,st,note,fn])=>{
 
 /* Composants */
 document.getElementById('demoComp').innerHTML=`
- <div class="demo-cell" style="width:300px">Jauge (faveur)<div style="width:300px">${gaugeBlock('favor')}</div></div>
+ <div class="demo-cell" style="width:300px">Jauge (faveur pleine)<div style="width:300px">${gaugeBlock('p2')}</div></div>
  <div class="demo-cell" style="width:300px">Transition de phase : boutons inactifs, sans hachures<div class="zone" style="padding:34px 0 0;flex:none;width:300px">${padEnemy({lockP:.5},true)}</div></div>
  <div class="demo-cell" style="width:300px">Boutons de la phase ennemie<div class="pad" style="width:300px"><button class="act sec" tabindex="-1">${ic('dodge',26)}Esquive</button><button class="act pri" tabindex="-1">${ic('shield',26)}Parade</button></div></div>
  <div class="demo-cell" style="width:170px">Ennemi : intention, garde, PV<div class="foes n1" style="position:static"><div class="foe target cursed" style="width:170px"><span class="intent atk">${ic('chain',15)}2×4</span><span class="fig">${SEAL}${FOES.goule}<span class="base"></span></span><span class="nm">Goule<span class="cur">Maudit</span></span><span class="guard"><i></i><i></i><i class="e"></i><i class="e"></i></span><span class="hpb"><i style="width:70%"></i></span></div></div></div>
@@ -1180,14 +1184,19 @@ document.getElementById('demoComp').innerHTML=`
 
 /* ============ PROTOTYPE ============ */
 const live=document.getElementById('live');const srLive=document.getElementById('srLive');
+/* Valeurs du Game Designer (C7, C9, C12) */
+const WIN={perfect:60,good:160,off:450,trans:800,step:400};
+const FATIGUE={m1:.9,m2:.8};
 let L;
-function resetL(){L={gauge:'favor',hero:0,inRun:false,shards:34,keys:2,rerolls:1,coins:40,hp:60,hpMax:60,offset:0,route:'pied',prev:'pied',boonSel:null,bought:{},combat:null,campShards:46};}
+function resetL(){const g=L?L.gauge:'p2';L={gauge:g,hero:0,inRun:false,shards:34,keys:0,rerolls:0,coins:0,hp:80,hpMax:80,offset:0,route:'pied',prev:'pied',boonSel:null,bought:{},combat:null,etage:1,palier:1,elanStart:1,freed:false};}
 function say(t){srLive.textContent='';setTimeout(()=>srLive.textContent=t,30);}
 function render(html,camp){live.className='screen app'+(camp?' camp':'');live.innerHTML=html;}
+const SORTIES={2:['combat','event','altar'],3:['elite','combat','shop'],4:['combat','rest','event']};
+function ctxL(){return {...L,buffs:[...(L.pact?[['pact','Pacte']]:[]),...(L.blessTaken||[]).map(b=>['bf',b])]};}
 function show(r){
  stopCombat();
  L.prev=L.route;L.route=r;
- const ctx={...L,hp:L.hp,hpMax:L.hpMax,buffs:L.pact?[['pact','Pacte'],['bf','Givre persistant']]:[['bf','Givre persistant']]};
+ const ctx=ctxL();
  switch(r){
   case 'pied':render(S.pied(ctx));break;
   case 'jauge':render(S.jauge(ctx));break;
@@ -1195,57 +1204,83 @@ function show(r){
   case 'abandon':render(S.abandon(ctx));break;
   case 'loading':render(S.piedLoading());setTimeout(()=>{if(L.route==='loading')show('pied');},1500);break;
   case 'error':render(S.piedError());break;
-  case 'sortie':render(S.sortie({...ctx,etage:2,doors:['combat','elite','event']}));break;
-  case 'sortie2':render(S.sortie({...ctx,etage:4+(L.step||0),doors:['shop','rest','altar'],rule:1}));break;
-  case 'sortie3':render(S.sortie({...ctx,etage:7,doors:['boss']}));break;
+  case 'bless':render(S.benediction({idx:L.bless.i,total:L.bless.n,sel:L.bless.sel}));break;
+  case 'sortie':
+   if(L.etage>=6)render(S.sortie({...ctx,etage:6,doors:['boss'],palierName:palierName()}));
+   else if(L.etage===5)render(S.sortie({...ctx,etage:5,doors:['rest','shop'],halte:true,palierName:palierName()}));
+   else render(S.sortie({...ctx,etage:L.etage,doors:SORTIES[L.etage],rule:L.etage===3?1:undefined,palierName:palierName()}));
+   break;
   case 'palier':render(S.palier());break;
   case 'bienfait':render(S.bienfait({...ctx,sel:L.boonSel,rerolls:L.rerolls,boons:L.boons}));break;
   case 'combo':render(S.combo(ctx));break;
-  case 'coffre':render(S.coffre({...ctx}));break;
+  case 'coffre':render(S.coffre({...ctx,st:L.keys>0?'closed':'nokey'}));break;
   case 'coffre-open':L.keys=Math.max(0,L.keys-1);render(S.coffre({...ctx,keys:L.keys+1,st:'open'}));break;
   case 'marchand':render(S.marchand({...ctx}));break;
-  case 'feu':render(S.feu({...ctx,rule:true}));break;
+  case 'feu':render(S.feu({...ctx}));break;
+  case 'captif':L.freed=true;render(S.captif(ctx));say('Captif libéré : la Forgeronne');break;
   case 'autel':render(S.autel(ctx));break;
   case 'autel-ok':render(S.autel({...ctx,st:'done'}));break;
   case 'evenement':render(S.evenement(ctx));break;
-  case 'evt-ok':L.keys=Math.max(0,L.keys-1);render(S.evenement({...ctx,st:'ok'}));break;
   case 'boss-intro':render(S.bossIntro());break;
-  case 'boss-vaincu':L.shards+=12;render(S.bossVaincu());say('Boss vaincu. Plus 12 Éclats.');break;
-  case 'chute':render(S.chute({second:L.gauge==='favor'&&!L.usedSecond}));break;
-  case 'fin':L.inRun=false;L.combat=null;C=null;render(S.fin({}));break;
-  case 'camp':render(S.camp({shards:L.shards}),true);break;
+  case 'boss-vaincu':L.shards+=8;L.coins+=40;render(S.bossVaincu());say('Boss vaincu. Plus 8 Éclats.');break;
+  case 'chute':render(S.chute({...ctx,second:L.second>0}));break;
+  case 'fin':L.inRun=false;L.combat=null;C=null;render(S.fin({hero:L.hero}));break;
+  case 'camp':render(S.camp({shards:L.shards,empty:!L.freed}),true);break;
   case 'boutique':render(S.boutique({shards:L.shards,bought:L.bought,owned:true,toast:L.toast||''}),true);L.toast='';break;
-  case 'pause':render(S.pause({...ctx,foes:L.combat?L.combat.foes:undefined,target:L.combat?L.combat.target:1}));break;
+  case 'pause':render(S.pause({...ctx,foes:C?C.foes:undefined,target:C?C.target:1,elan:C?C.elan:undefined}));break;
   case 'reprise':startCountdown();break;
   case 'reglages':render(S.reglages({offset:L.offset}));wireSettings();break;
   case 'calib':render(S.calib({n:0}));wireCalib();break;
-  case 'combat':if(C&&L.combat&&C.phase!=='won'){startCountdown();}else startCombat(false);break;
-  case 'boss':startCombat(true);break;
+  case 'combat':if(C&&L.combat&&C.phase!=='won'){startCountdown();}else startCombat('normal');break;
+  case 'elite':startCombat('elite');break;
+  case 'boss':startCombat('boss');break;
  }
 }
+const palierName=()=>L.palier===1?'Palier 1 · Les Catacombes':'Palier 2 · La Nef engloutie';
+function nextFloor(){L.etage++;show(L.etage>=6?'sortie':'sortie');}
 function backFromSettings(){show(L.settingsFrom||'pied');}
+/* Bénédictions de départ (J4) : effets appliqués dans le prototype */
+const BLESS_FX=[
+ [()=>{L.hpMax=Math.floor(L.hpMax*1.15);L.hp=L.hpMax;},()=>{L.elanStart+=2;},()=>{L.keys++;L.rerolls++;}],
+ [()=>{L.coins+=20;},()=>{},()=>{}],
+ [()=>{},()=>{L.coins+=10;},()=>{L.rerolls++;}]
+];
+function startAscent(){
+ const g=L.gauge,h=HEROES[L.hero];
+ L.inRun=true;L.hpMax=Math.floor(h.hp*(FATIGUE[g]||1));L.hp=L.hpMax;L.pact=false;L.etage=1;L.palier=1;L.combat=null;C=null;L.elanStart=1;L.blessTaken=[];
+ L.keys={p2:2,p1:1}[g]||0;L.rerolls={p2:2,p1:1}[g]||0;L.second=g==='p2'?1:0;L.coins=0;
+ const n=GAUGE[g].bless;
+ if(n>0){L.bless={i:0,n,sel:null};show('bless');}else show('combat');
+}
 live.addEventListener('click',e=>{
  const b=e.target.closest('[data-go]');if(!b||b.disabled)return;
  const g=b.getAttribute('data-go');
  if(g.startsWith('hero:')){L.hero=+g.slice(5);show('heros');return;}
- if(g.startsWith('door:')){const d=g.slice(5);L.etageDone=true;({combat:()=>show('combat'),elite:()=>show('combat'),event:()=>show('evenement'),shop:()=>show('marchand'),rest:()=>show('feu'),altar:()=>show('autel'),boss:()=>show('boss-intro')})[d]();return;}
+ if(g.startsWith('bless:')){L.bless.sel=+g.slice(6);show('bless');return;}
+ if(g.startsWith('door:')){const d=g.slice(5);({combat:()=>show('combat'),elite:()=>show('elite'),event:()=>show('evenement'),shop:()=>show('marchand'),rest:()=>show(L.etage===5&&!L.freed?'captif':'feu'),altar:()=>show('autel'),boss:()=>show('boss-intro')})[d]();return;}
  if(g.startsWith('boon:')){L.boonSel=+g.slice(5);show('bienfait');return;}
- if(g.startsWith('buy:')){const i=+g.slice(4);const price=[15,60,8][i];if(L.shards>=price){L.shards-=price;L.bought[i]=true;L.toast=`<div class="toast"><span>${['La Hache du veilleur','La Lame de l\'aube','La Masse cloutée'][i]} peut désormais apparaître dans la tour.</span></div>`;say('Objet ajouté à la tour');}show('boutique');return;}
+ if(g.startsWith('buy:')){const i=+g.slice(4);const price=SHOP[i][4];if(L.shards>=price){L.shards-=price;L.bought[i]=true;L.toast=`<div class="toast"><span>${SHOP[i][2]} peut désormais apparaître dans la tour.</span></div>`;say('Objet débloqué');}show('boutique');return;}
  switch(g){
-  case 'debut':L.inRun=true;L.hp=L.gauge==='curse'?50:60;L.hpMax=60;L.pact=false;L.usedSecond=false;L.step=0;L.combat=null;C=null;L.keys={favor:2,light:1,curse:0,first:0}[L.gauge];L.rerolls=L.gauge==='favor'?1:0;L.coins=40;show('sortie');break;
-  case 'pause':if(L.route==='combat'){show('pause');}else{L.pausedFrom=L.route;const base=live.innerHTML.replace('<div class="homebar"></div>','');live.innerHTML=base+pauseSheet({where:'Partie sauvegardée à cet étage'}).replace('<div class="okline">','<div class="okline" style="display:none">');L.route='pause-static';}break;
+  case 'debut':startAscent();break;
+  case 'bless-ok':{const {i,sel}=L.bless;if(sel==null)return;BLESS_FX[i][sel]();L.blessTaken.push(BLESS_OFFERS[i][sel][0]);if(i+1<L.bless.n){L.bless={...L.bless,i:i+1,sel:null};show('bless');}else{say('Bénédictions prises. Étage 1');show('combat');}break;}
+  case 'pause':if(L.route==='combat'){show('pause');}else{L.pausedFrom=L.route;const base=live.innerHTML.replace('<div class="homebar"></div>','');live.innerHTML=base+pauseSheet({where:'Partie sauvegardée'});L.route='pause-static';}break;
   case 'abandon-cancel':if(L.prev==='pause')show('pause');else if(L.prev==='pause-static')show(L.pausedFrom);else show('pied');break;
-  case 'combat':if(L.route==='chute'){L.usedSecond=true;L.hp=Math.round(L.hpMax*.3);}show('combat');break;
+  case 'combat':if(L.route==='chute'){L.second=0;L.hp=Math.floor(L.hpMax*.5);say('Seconde chance : '+L.hp+' PV');}show('combat');break;
   case 'pied0':show('pied');break;
   case 'reprise':if(L.route==='pied'){show(L.resumeTo||'sortie');}else if(L.route==='pause-static'){show(L.pausedFrom);}else show('reprise');break;
-  case 'quit':L.resumeTo=L.route==='pause'?'combat':L.route==='boss-vaincu'?'palier':(L.pausedFrom||'sortie2');show('pied');say('Partie sauvegardée');break;
+  case 'quit':L.resumeTo=L.route==='pause'?'combat':L.route==='boss-vaincu'?'palier':(L.pausedFrom||'sortie');show('pied');say('Partie sauvegardée');break;
   case 'reroll':if(L.rerolls>0){L.rerolls--;L.boonSel=null;L.boons=[BOONS[2],['common','heart','Sève tenace','Tu récupères 3 PV à chaque étage.'],BOONS[0]];}show('bienfait');break;
-  case 'combo':if(L.boonSel===1)show('combo');else show('sortie2');L.boonSel=null;L.boons=null;break;
+  case 'combo':{const s=L.boonSel;L.boonSel=null;L.boons=null;if(s===1)show('combo');else nextFloor();break;}
+  case 'bienfait':if(L.afterWin==='coffre'){L.afterWin=null;show('coffre');}else show('bienfait');break;
+  case 'feu-rest':show('feu');break;
+  case 'sortie3':L.hp=Math.min(L.hpMax,L.hp+Math.floor(L.hpMax*.4));say('Repos : PV '+L.hp);nextFloor();break;
+  case 'palier':show('palier');break;
+  case 'sortie':if(L.route==='palier'){L.palier=2;L.etage=2;}show('sortie');break;
+  case 'evt-give':if(L.coins>=20){L.coins-=20;show('bienfait');}break;
   case 'pacte':break;
   case 'back':backFromSettings();break;
   case 'reglages':if(!['calib','reglages'].includes(L.route))L.settingsFrom=L.route==='pause-static'?L.pausedFrom:L.route;show('reglages');break;
-  case 'strike':case 'pouvoir':case 'target:0':case 'target:1':case 'target:2':break;
-  case 'sortie2':L.step=(L.step||0)+1;show(L.step>=3?'sortie3':'sortie2');break;
+  case 'sortie2':nextFloor();break;
   default:show(g);
  }
 });
@@ -1253,13 +1288,13 @@ live.addEventListener('click',e=>{
 live.addEventListener('pointerdown',e=>{
  const b=e.target.closest('.hold');if(!b)return;
  b.classList.add('filling');b.querySelector('span').textContent='Maintiens…';
- const t=setTimeout(()=>{L.pact=true;L.hpMax=48;L.hp=Math.min(L.hp,48);show('autel-ok');say('Pacte scellé');},800);
+ const t=setTimeout(()=>{L.pact=true;L.hpMax=Math.floor(L.hpMax*.8);L.hp=Math.min(L.hp,L.hpMax);show('autel-ok');say('Pacte scellé');},800);
  const cancel=()=>{clearTimeout(t);b.classList.remove('filling');const s=b.querySelector('span');if(s)s.textContent='Maintenir pour accepter';window.removeEventListener('pointerup',cancel);window.removeEventListener('pointercancel',cancel);};
  window.addEventListener('pointerup',cancel);window.addEventListener('pointercancel',cancel);
 });
 function wireSettings(){
  const btns=live.querySelectorAll('.stepbtn');
- const upd=()=>{const html=S.reglages({offset:L.offset});render(html);wireSettings();};
+ const upd=()=>{render(S.reglages({offset:L.offset}));wireSettings();};
  btns[0].addEventListener('click',()=>{L.offset=Math.max(-120,L.offset-5);upd();});
  btns[1].addEventListener('click',()=>{L.offset=Math.min(120,L.offset+5);upd();});
  live.querySelectorAll('.sw-t').forEach(s=>s.addEventListener('click',()=>s.setAttribute('aria-checked',s.getAttribute('aria-checked')!=='true')));
@@ -1267,179 +1302,256 @@ function wireSettings(){
 function wireCalib(){
  const tok=L.calibTok=(L.calibTok||0)+1;
  let n=0,deltas=[],start=performance.now(),beat=900;const fig=live.querySelector('.fig');
- let raf;
- const loop=()=>{const t=(performance.now()-start)%beat;const p=t/beat;const lunge=p>.85?(1-p)/.15:p<.08?p/.08:0;if(fig)fig.style.transform=`translateY(${(p>.6&&p<.86?-6:0)+lunge*16}px) rotate(${p>.6&&p<.86?-8:lunge*8}deg)`;if(L.route!=='calib'||L.calibTok!==tok)return;raf=requestAnimationFrame(loop);};
- raf=requestAnimationFrame(loop);
+ let rq;
+ const lp=()=>{const t=(performance.now()-start)%beat;const p=t/beat;const lunge=p>.85?(1-p)/.15:p<.08?p/.08:0;if(fig)fig.style.transform=`translateY(${(p>.6&&p<.86?-6:0)+lunge*16}px) rotate(${p>.6&&p<.86?-8:lunge*8}deg)`;if(L.route!=='calib'||L.calibTok!==tok)return;rq=requestAnimationFrame(lp);};
+ rq=requestAnimationFrame(lp);
  const b=live.querySelector('[data-act="calib"]');
  b.addEventListener('pointerdown',e=>{e.preventDefault();const t=performance.now()-start;const k=Math.round(t/beat);const d=t-k*beat;deltas.push(d);n++;live.querySelectorAll('.beats i').forEach((x,i)=>x.classList.toggle('on',i<n));live.querySelector('.zline').textContent=`Touche Parade à chaque coup · ${n}/8`;
-  if(n>=8){cancelAnimationFrame(raf);const avg=deltas.reduce((a,b)=>a+b,0)/8;const sd=Math.sqrt(deltas.reduce((a,b)=>a+(b-avg)**2,0)/8);if(sd>110){render(S.calib({st:'err',n:8}));}else{const v=Math.max(-120,Math.min(120,Math.round(avg/5)*5));L.offset=v;render(S.calib({st:'done',n:8}).replace('+40 ms',(v>0?'+':'')+v+' ms').replace('40 ms après',Math.abs(v)+' ms '+(v>=0?'après':'avant')));}}
+  if(n>=8){cancelAnimationFrame(rq);const avg=deltas.reduce((a,b)=>a+b,0)/8;const sd=Math.sqrt(deltas.reduce((a,b)=>a+(b-avg)**2,0)/8);if(sd>110){render(S.calib({st:'err',n:8}));}else{const v=Math.max(-120,Math.min(120,Math.round(avg/5)*5));L.offset=v;render(S.calib({st:'done',n:8}).replace('+40 ms',(v>0?'+':'')+v+' ms').replace('40 ms après',Math.abs(v)+' ms '+(v>=0?'après':'avant')));}}
  });
 }
+function resumeTarget(){if(!C)return 'hero';if(C.phase==='busy')return 'busy';const en=(C.phase==='enemy'||(C.phase==='trans'&&C.to==='enemy'));return en&&C.queue.filter(i=>C.foes[i].hp>0).length?'enemy':'hero';}
 function startCountdown(){
  L.route='reprise';
- const html=S.reprise({...L,n:3,foes:L.combat?L.combat.foes:undefined,target:L.combat?L.combat.target:1});render(html);
+ const to=resumeTarget();
+ render(S.reprise({...ctxL(),n:3,to:to==='busy'?'hero':to,lockMs:3000,live:true,foes:C?C.foes:undefined,target:C?C.target:1,elan:C?C.elan:undefined}));
+ const lb=live.querySelector('.locktag .lb');if(lb)lb.style.setProperty('--d','3000ms');
+ if(to==='enemy'){tone(196,.32,'sine',.12);vibe(15);}else tone(660,.14,'triangle',.1);
+ say((to==='enemy'?'Phase ennemie':'À toi')+'. Reprise dans 3');
  let n=3;const el=live.querySelector('#countN');
- const tick=()=>{n--;if(L.route!=='reprise')return;if(n<=0){L.route='combat';resumeCombat();return;}el.textContent=n;say(String(n));setTimeout(tick,800);};
- say('3');setTimeout(tick,800);
+ const tick=()=>{n--;if(L.route!=='reprise')return;if(n<=0){L.route='combat';resumeCombat();return;}el.textContent=n;say(String(n));setTimeout(tick,1000);};
+ setTimeout(tick,1000);
 }
 
 /* ---------- Combat jouable ---------- */
-const PATTERNS=[
- {name:'coup simple',it:['atk','swords','6'],hits:[0],wind:1100,dmg:6},
- {name:'double frappe',it:['atk','chain','2×4'],hits:[0,420],wind:1000,dmg:4},
- {name:'coup retardé',it:['atk','clock','7'],hits:[0],wind:1700,dmg:7},
- {name:'coup trompeur',it:['atk','feint','6'],hits:[0],wind:1600,dmg:6,feint:true},
- {name:'coup imparable',it:['atk','swords','8'],hits:[0],wind:1300,dmg:8,perilous:true}
-];
-const WIN={perfect:60,good:160,lock:450};
+const PAT={
+ simple:{name:'coup simple',ic:'swords',hits:[0],wind:1100},
+ double:{name:'double frappe',ic:'chain',hits:[0,420],wind:1000},
+ delayed:{name:'coup retardé',ic:'clock',hits:[0],wind:1700},
+ feint:{name:'coup trompeur',ic:'feint',hits:[0],wind:1600,feint:true},
+ perilous:{name:'coup imparable',ic:'swords',hits:[0],wind:1300,perilous:true}
+};
+const FOE_DEF={
+ goule:{name:'Goule',hp:20,gm:3,moves:[['simple',5],['double',3]]},
+ spectre:{name:'Spectre',hp:14,gm:2,moves:[['delayed',6],['feint',6],['perilous',9]]},
+ chevalier:{name:'Chevalier déchu',hp:40,gm:5,moves:[['simple',8],['delayed',8],['perilous',12]]},
+ gardienne:{name:'La Gardienne',hp:60,gm:6,moves:[['simple',8],['double',5],['feint',8],['perilous',12]]}
+};
 let C=null,raf=0;
 function stopCombat(){if(raf)cancelAnimationFrame(raf);raf=0;}
-function startCombat(boss){
- const cursed=L.gauge==='curse';
- L.combat=C={boss,target:boss?0:1,phase:'hero',clock:0,last:performance.now(),freezeUntil:0,lockUntil:0,attack:null,queue:[],strike:null,
-  foes:boss?[{k:'gardienne',name:'La Gardienne',hp:40,mx:40,g:4,gm:6,pat:null}]:[{k:'goule',name:'Goule',hp:16,mx:16,g:3,gm:3,cursed},{k:'spectre',name:'Spectre',hp:12,mx:12,g:2,gm:2,cursed}]};
+function mkFoe(k,cursed){const d=FOE_DEF[k];const m=cursed?1.25:1;const hp=Math.floor(d.hp*m);return {k,name:d.name+(cursed?' maudite':''),hp,mx:hp,g:d.gm,gm:d.gm,cursed,dm:m,moves:d.moves};}
+function startCombat(kind){
+ const g=L.gauge;const curse=(g==='m1'||g==='m2');
+ const foes=kind==='boss'?[mkFoe('gardienne',false)]:kind==='elite'?[mkFoe('chevalier',g==='m2')]:[mkFoe('goule',curse),mkFoe('spectre',false)];
+ if(kind==='elite')foes[0].name=foes[0].cursed?'Chevalier déchu maudit':'Chevalier déchu';
+ if(foes[0].k==='goule'&&curse)foes[0].name='Goule maudite';
+ L.combat=C={kind,boss:kind==='boss',target:0,phase:'hero',round:1,clock:0,last:performance.now(),freezeUntil:0,offUntil:0,attack:null,queue:[],strike:null,elan:Math.min(5,L.elanStart),foes};
  C.foes.forEach(nextIntent);
- resumeCombat();
+ drawCombat({phase:'hero'});loop();
+ say('Combat. Phase du héros. Cible : '+C.foes[0].name);
 }
-function nextIntent(f){const p=PATTERNS[Math.floor(Math.random()*PATTERNS.length)];f.pat=p;f.it=p.it;f.itn=p.name;}
-function ctxC(extra={}){return {...L,boss:C.boss,foes:C.foes.map(f=>({...f})),target:C.target,live:true,buffs:L.pact?[['pact','Pacte'],['bf','Givre persistant']]:[['bf','Givre persistant']],...extra};}
+function nextIntent(f){const m=f.moves[Math.floor(Math.random()*f.moves.length)];const p=PAT[m[0]];const d=Math.floor(m[1]*f.dm);f.pat={...p,dmg:d};f.it=['atk',p.ic,p.hits.length>1?p.hits.length+'×'+d:String(d)];f.itn=p.name+', '+(p.hits.length>1?p.hits.length+' fois ':'')+d+' dégâts';f.wind=null;}
+function ctxC(extra={}){return {...ctxL(),boss:C.boss,foes:C.foes.map(f=>({...f})),target:C.target,live:true,elan:C.elan,...extra};}
 function drawCombat(extra){render(S.combat(ctxC(extra)));wireCombat();}
+/* Reprise après pause : le compte à rebours a tenu lieu de temps mort (C12, A9) */
 function resumeCombat(){
  L.route='combat';
- if(!C){startCombat(false);return;}
- C.last=performance.now();
- if(C.phase==='enemy'&&C.attack){C.attack=null;C.wait=C.clock+600;}
- drawCombat(phaseExtra());
+ if(!C){startCombat('normal');return;}
+ C.last=performance.now();C.offUntil=0;C.strike=null;
+ const to=resumeTarget();
+ if(to==='busy'){endHero();loop();return;}
+ C.attack=null;C.step=null;
+ if(to==='enemy'){C.queue=C.queue.filter(i=>C.foes[i].hp>0);C.phase='enemy';startStep();}
+ else{C.phase='hero';drawCombat({phase:'hero'});}
  loop();
 }
 function phaseExtra(){
  if(C.phase==='hero')return {phase:'hero'};
  if(C.phase==='strike')return {phase:'strike',pose:'raise'};
+ if(C.phase==='trans')return {phase:'trans',to:C.to};
  const ai=C.queue.length?C.queue[0]:null;
- return {phase:'enemy',attacker:ai,zline:ai!=null?`<b>${C.foes[ai].name}</b> : ${C.foes[ai].itn}`:''};
+ return {phase:'enemy',attacker:ai,stepin:C.step?ai:undefined,zline:ai!=null?`<b>${C.foes[ai].name}</b> : ${C.foes[ai].itn}`:''};
 }
+/* Appuis : la défense et la frappe sont datées au toucher ; les actions de la phase du héros se valident au relâcher. */
 function wireCombat(){
- live.querySelectorAll('[data-foe]').forEach(b=>b.addEventListener('click',()=>{if(C.phase!=='hero')return;const i=+b.dataset.foe;if(C.foes[i].hp<=0)return;C.target=i;drawCombat(phaseExtra());say(C.foes[i].name+', cible');}));
+ const releaseAct=(el,fn)=>{
+  el.addEventListener('pointerdown',e=>{e.preventDefault();el._down={id:e.pointerId,ok:C.phase==='hero'};if(C.phase==='hero')el.classList.add('pressed');});
+  el.addEventListener('pointerup',e=>{const d=el._down;el._down=null;el.classList.remove('pressed');if(!d||d.id!==e.pointerId||!d.ok||C.phase!=='hero')return;const under=document.elementFromPoint(e.clientX,e.clientY);if(under&&el.contains(under))fn();});
+  el.addEventListener('pointercancel',()=>{el._down=null;el.classList.remove('pressed');});
+  el.addEventListener('keydown',e=>{if((e.key===' '||e.key==='Enter')&&C.phase==='hero'){e.preventDefault();fn();}});
+ };
+ live.querySelectorAll('[data-foe]').forEach(b=>releaseAct(b,()=>{const i=+b.dataset.foe;if(C.foes[i].hp<=0)return;C.target=i;drawCombat(phaseExtra());say(C.foes[i].name+', cible');}));
  live.querySelectorAll('[data-act]').forEach(b=>{
   b.removeAttribute('data-go');
-  b.addEventListener('pointerdown',e=>{e.preventDefault();act(b.dataset.act,b);});
-  b.addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();act(b.dataset.act,b);}});
+  const k=b.dataset.act;
+  if(k==='attack'||k==='power'){releaseAct(b,()=>act(k,b));return;}
+  b.addEventListener('pointerdown',e=>{e.preventDefault();act(k,b);});
+  b.addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();act(k,b);}});
  });
 }
 function pressFx(b){if(!b)return;b.classList.add('pressed');setTimeout(()=>b.classList.remove('pressed'),110);}
-function fx(cls,text,small,dur=700){const sc=live.querySelector('#scene');if(!sc)return;sc.querySelectorAll('.fxtext').forEach(x=>x.remove());const d=document.createElement('div');d.className='fxtext anim '+cls;d.innerHTML=text+(small?`<small>${small}</small>`:'');sc.appendChild(d);say(text+(small?', '+small:''));}
+function fx(cls,text,small){const sc=live.querySelector('#scene');if(!sc)return;sc.querySelectorAll('.fxtext').forEach(x=>x.remove());const d=document.createElement('div');d.className='fxtext anim '+cls;d.innerHTML=text+(small?`<small>${small}</small>`:'');sc.appendChild(d);say(text+(small?', '+small:''));}
 function flash(red){const sc=live.querySelector('#scene');if(!sc||reduce)return;const d=document.createElement('div');d.className='flash anim'+(red?' red':'');sc.appendChild(d);setTimeout(()=>d.remove(),460);}
 function shake(){if(reduce)return;const sc=live.querySelector('#scene');if(!sc)return;sc.classList.remove('shake');void sc.offsetWidth;sc.classList.add('shake');}
 function vibe(p){try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}}
-let actx=null;function tone(f,d,type='triangle',v=.12){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();const o=actx.createOscillator(),g=actx.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(v,actx.currentTime);g.gain.exponentialRampToValueAtTime(.0001,actx.currentTime+d);o.connect(g).connect(actx.destination);o.start();o.stop(actx.currentTime+d);}catch(e){}}
+let actx=null;function tone(f,d,type='triangle',v=.12,at=0){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();const o=actx.createOscillator(),g=actx.createGain();const t0=actx.currentTime+at;o.type=type;o.frequency.value=f;g.gain.setValueAtTime(v,t0);g.gain.exponentialRampToValueAtTime(.0001,t0+d);o.connect(g).connect(actx.destination);o.start(t0);o.stop(t0+d);}catch(e){}}
 function setHeroPose(p){const h=live.querySelector('#heroFig');if(h)h.innerHTML=heroSVG(p,HEROES[L.hero].weapon);}
 function updateBars(){
  C.foes.forEach((f,i)=>{const el=live.querySelector(`[data-foe="${i}"]`);if(!el)return;el.querySelector('.hpb i').style.width=(f.hp/f.mx*100)+'%';el.querySelector('.hpn').textContent=`${f.hp}/${f.mx}`;if(f.hp<=0)el.classList.add('dead');});
  const pv=live.querySelector('.herobar .pvb i');if(pv){pv.style.width=(L.hp/L.hpMax*100)+'%';pv.classList.toggle('low',L.hp/L.hpMax<.3);}
  const pn=live.querySelector('.herobar .pvn');if(pn)pn.textContent=`PV ${L.hp}/${L.hpMax}`;
+ const el=live.querySelector('.herobar .elan');if(el){el.setAttribute('aria-label',`Élan ${C.elan} sur 5`);el.querySelectorAll('i').forEach((x,k)=>x.classList.toggle('on',k<C.elan));}
 }
-function damageFoe(i,d){const f=C.foes[i];f.hp=Math.max(0,f.hp-d);updateBars();}
+function addElan(n){C.elan=Math.max(0,Math.min(5,C.elan+n));updateBars();}
+function damageFoe(i,d,gd){const f=C.foes[i];if(f.broken)d=Math.floor(d*1.5);f.hp=Math.max(0,f.hp-d);
+ if(gd&&!f.broken&&f.hp>0){f.g=Math.max(0,f.g-gd);if(f.g===0){f.broken=true;f.brokenAt=C.round;setTimeout(()=>{if(L.route==='combat'){fx('good','Garde brisée','Il perd sa prochaine action, ×1,5 dégâts');tone(300,.25,'square',.06);}},450);}}
+ const el=live.querySelector(`[data-foe="${i}"] .guard`);if(el)el.innerHTML=Array.from({length:f.gm},(_,j)=>`<i class="${j<f.g?'':'e'}"></i>`).join('');
+ updateBars();return d;}
 function act(kind,b){
- pressFx(b);
+ if(!C)return;
  const now=C.clock;
+ /* Temps mort de la transition de phase : appui ignoré, sans déséquilibre */
+ if(C.phase==='trans'||C.phase==='busy'||C.phase==='won')return;
+ pressFx(b);
  if(C.phase==='hero'){
-  if(kind==='attack'){C.phase='strike';C.strike={start:now,apex:now+650};drawCombat({phase:'strike',pose:'raise'});say('Frappe en rythme : touche Frapper quand la lame est au plus haut');}
-  if(kind==='power'){fx('neutral','Lame de givre','Pouvoir : 5 dégâts à tous, ralentit');C.foes.forEach((f,i)=>f.hp>0&&damageFoe(i,5));setTimeout(endHero,700);C.phase='busy';}
+  if(kind==='attack'){const h=HEROES[L.hero];addElan(1);C.phase='strike';const hits=h.weapon==='daggers'?[700,1000]:[700];C.strike={impacts:hits.map(x=>now+x),res:hits.map(()=>null)};drawCombat({phase:'strike',pose:'raise'});say('Frappe en rythme : touche Frapper quand la lame est au plus haut');}
+  if(kind==='power'){const h=HEROES[L.hero];if(C.elan<h.powCost){fx('neutral','Il manque '+(h.powCost-C.elan)+' Élan');return;}addElan(-h.powCost);if(L.hero===0){C.rampart=true;fx('neutral','Rempart','Prochain coup subi −50 %');}else{C.shadow=true;fx('neutral','Pas de l\'ombre','Ta prochaine esquive contre-attaque');}C.phase='busy';setTimeout(endHero,700);}
   return;
  }
- if(C.phase==='strike'){resolveStrike(now);return;}
- if(C.phase==='enemy'){press(kind,now);}
+ if(C.phase==='strike'){judgeStrike(now);return;}
+ if(C.phase==='enemy')press(kind,now);
 }
-function resolveStrike(now){
- if(!C.strike)return;
- const d=Math.abs(now+L.offset-C.strike.apex);C.strike=null;
- const f=C.foes[C.target];
- let dmg=6,g=1,txt=['neutral','Frappe','6 dégâts'];
- if(d<=90){dmg=9;g=2;txt=['perfect','Frappe nette','9 dégâts · garde −2'];flash();tone(990,.15);vibe(20);}
- if(f.broken){dmg*=2;txt[2]=dmg+' dégâts · garde brisée';}
+function strikeHit(k,q){
+ const h=HEROES[L.hero];const base=h.weapon==='daggers'?6:10;const gb=h.weapon==='daggers'?1:1;
+ const m=q==='perfect'?1.5:q==='good'?1.2:1;
+ const d=damageFoe(C.target,Math.floor(base*m),q==='perfect'?gb+1:gb);
+ if(q==='perfect'){flash();tone(990,.15);vibe(20);fx('perfect','Frappe nette',d+' dégâts');}else if(q==='good')fx('good','Frappe',d+' dégâts');else fx('neutral','Frappe',d+' dégâts');
  setHeroPose('lean');
- damageFoe(C.target,dmg);
- if(!f.broken){f.g=Math.max(0,f.g-g);if(f.g===0){f.broken=true;setTimeout(()=>{fx('good','Garde brisée','Il perd sa prochaine action');tone(300,.25,'square',.06);},500);}}
- fx(...txt);
- C.phase='busy';
- setTimeout(endHero,1100);
+}
+function judgeStrike(now){
+ const s=C.strike;if(!s)return;
+ const k=s.res.findIndex(r=>r===null);if(k<0)return;
+ const d=Math.abs(now+L.offset-s.impacts[k]);
+ /* Seul le premier appui par impact compte ; rater ne pénalise jamais */
+ s.res[k]=d<=WIN.perfect?'perfect':d<=WIN.good?'good':'miss';
+ if(now+L.offset>=s.impacts[k]-WIN.good)strikeHit(k,s.res[k]);else s.res[k]={late:s.res[k]};
 }
 function endHero(){
  if(L.route!=='combat')return;
  if(C.foes.every(f=>f.hp<=0)){win();return;}
- const tgt=C.foes[C.target];if(tgt.hp<=0)C.target=C.foes.findIndex(f=>f.hp>0);
+ if(C.foes[C.target].hp<=0)C.target=C.foes.findIndex(f=>f.hp>0);
+ /* Un ennemi brisé avant cette phase du héros récupère sa garde à la fin de celle-ci */
+ C.foes.forEach(f=>{if(f.broken&&f.brokenAt<C.round){f.broken=false;f.g=f.gm;}});
  C.queue=C.foes.map((f,i)=>i).filter(i=>C.foes[i].hp>0&&!C.foes[i].broken);
- if(!C.queue.length){C.foes.forEach(f=>{if(f.broken){f.broken=false;f.g=f.gm;}});C.phase='hero';drawCombat({phase:'hero'});return;}
- C.phase='enemy';C.attack=null;C.wait=C.clock+700;
- drawCombat(phaseExtra());say('Phase ennemie');
+ if(!C.queue.length){C.round++;beginTrans('hero');return;}
+ beginTrans('enemy');
+}
+/* C12 : transition de phase, 800 ms, dans les deux sens */
+function beginTrans(to,resume){
+ C.phase='trans';C.to=to;C.transUntil=C.clock+WIN.trans;C.offUntil=0;C.attack=null;C.step=null;
+ drawCombat({phase:'trans',to,lockMs:WIN.trans});setHeroPose('idle');
+ if(to==='enemy'){tone(196,.32,'sine',.12);tone(147,.4,'sine',.1,.12);vibe(15);say((resume?'Reprise. ':'')+'Phase ennemie. Prépare ta parade.');}
+ else{tone(660,.14,'triangle',.1);tone(880,.2,'triangle',.1,.1);say((resume?'Reprise. ':'')+'À toi. Vise et attaque.');}
+}
+function endTrans(){
+ if(C.to==='enemy'){C.phase='enemy';startStep();}
+ else{C.phase='hero';drawCombat({phase:'hero'});}
+}
+/* C12 : avancée de 400 ms avant chaque préparation ennemie */
+function startStep(){
+ const i=C.queue[0];C.step={until:C.clock+WIN.step,i};
+ drawCombat(phaseExtra());
+ const z=live.querySelector('.zline');if(z)z.innerHTML=`<b>${C.foes[i].name}</b> s'avance`;
 }
 function win(){
- C.phase='won';L.combat=null;
- if(C.boss){setTimeout(()=>{L.combat=null;show('boss-vaincu');},700);fx('perfect','Boss vaincu');return;}
- setTimeout(()=>{if(L.route!=='combat')return;drawCombat({phase:'won',foes:C.foes.map(f=>({...f,dead:true})),fx:['neutral','Combat gagné']});live.querySelectorAll('[data-go="bienfait"]').forEach(b=>b.addEventListener('click',()=>{L.combat=null;}));},600);
+ C.phase='won';const kind=C.kind;L.combat=null;
+ const gold=kind==='elite'?25:kind==='boss'?40:8+Math.floor(Math.random()*5);
+ if(kind==='boss'){setTimeout(()=>{show('boss-vaincu');},700);fx('perfect','Boss vaincu');return;}
+ const rep=Math.floor(L.hpMax*.1);L.hp=Math.min(L.hpMax,L.hp+rep);L.coins+=gold;if(kind==='elite'){L.shards+=2;L.afterWin='coffre';}
+ setTimeout(()=>{if(L.route!=='combat')return;drawCombat({phase:'won',foes:C.foes.map(f=>({...f,dead:true})),fx:['neutral','Combat gagné','+'+gold+' Or · répit +'+rep+' PV'+(kind==='elite'?' · +2 Éclats':'')]});},600);
 }
 function startAttack(){
  const i=C.queue[0];const f=C.foes[i];const p=f.pat;
- const wind=p.wind*(0.85+Math.random()*0.3);
- C.attack={i,p,start:C.clock,wind,impacts:p.hits.map(h=>C.clock+wind+h),res:p.hits.map(()=>false)};
+ if(!f.wind)f.wind=p.wind*(0.8+Math.random()*0.4);
+ const wind=f.wind;
+ C.step=null;
+ C.attack={i,p,start:C.clock,wind,impacts:p.hits.map(h=>C.clock+wind+h),res:p.hits.map(()=>false),perfect:0};
  drawCombat({phase:'enemy',attacker:i,seal:p.perilous?i:undefined,zline:`<b>${f.name}</b> : ${p.name}`});
  if(p.perilous){tone(330,.35,'sawtooth',.06);say(f.name+' : coup imparable, esquive');}else say(f.name+' : '+p.name);
 }
 function press(kind,now){
  const dodge=kind==='dodge';
- if(now<C.lockUntil){C.lockUntil=now+WIN.lock;markOff(true);fx('miss','Déséquilibré');return;}
+ const whiff=t=>{C.offUntil=now+WIN.off;markOff(true);fx('miss',t);tone(140,.12,'square',.05);setHeroPose('off');};
+ if(now<C.offUntil){C.offUntil=now+WIN.off;markOff(true);fx('miss','Déséquilibré');return;}
  const a=C.attack;
- const whiff=t=>{C.lockUntil=now+WIN.lock;markOff(true);fx('miss',t);tone(140,.12,'square',.05);setHeroPose('off');};
  if(!a){whiff('Dans le vide');return;}
  const k=a.res.findIndex(r=>!r);if(k<0){whiff('Dans le vide');return;}
  const delta=now+L.offset-a.impacts[k];const ad=Math.abs(delta);
- let res=ad<=WIN.perfect?'perfect':ad<=WIN.good?'good':null;
+ const res=ad<=WIN.perfect?'perfect':ad<=WIN.good?'good':null;
  if(!res){whiff(delta<0?'Trop tôt':'Trop tard');return;}
- if(!dodge&&a.p.perilous){a.res[k]=true;hurt(a.p.dmg,'Imparable : esquive !');return;}
+ if(!dodge&&a.p.perilous){a.res[k]=true;hurt(a.p.dmg,1,'Imparable : esquive !');C.offUntil=now+WIN.off;markOff(true);return;}
  a.res[k]=true;
- if(dodge){setHeroPose('dodge');fx('good',res==='perfect'?'Esquive parfaite':'Esquive','Aucun dégât');tone(520,.1);vibe(12);return;}
+ if(dodge){setHeroPose('dodge');fx('good',res==='perfect'?'Esquive parfaite':'Esquive','Aucun dégât');tone(520,.1);vibe(12);
+  if(L.hero===1)addElan(1);
+  if(C.shadow){C.shadow=false;const d=damageFoe(a.i,3,1);setTimeout(()=>fx('perfect','Pas de l\'ombre','Contre-attaque · '+d+' dégâts'),250);}
+  return;}
  if(res==='perfect'){
-  C.freezeUntil=performance.now()+90;flash();shake();vibe([20,30,40]);tone(1320,.18,'triangle',.16);tone(660,.3,'sine',.08);
-  setHeroPose('counter');
-  const last=a.res.every(Boolean);
-  fx('perfect','Parade parfaite',last?'Contre-attaque · 5 dégâts':'');
-  if(last)setTimeout(()=>{damageFoe(a.i,5);},200);
- }else{
-  const d=Math.ceil(a.p.dmg/2);L.hp=Math.max(0,L.hp-d);updateBars();setHeroPose('lean');fx('good','Parade',d+' dégâts au lieu de '+a.p.dmg);tone(520,.12);vibe(15);if(!reduce)shake();
- }
+  a.perfect++;C.freezeUntil=performance.now()+90;flash();shake();vibe([20,30,40]);tone(1320,.18,'triangle',.16);tone(660,.3,'sine',.08);
+  setHeroPose('counter');addElan(1);
+  const last=a.perfect===a.res.length;
+  const h=HEROES[L.hero];const cd=Math.floor((h.weapon==='daggers'?6:10)*.5*(L.hero===0?1.3:1));
+  fx('perfect','Parade parfaite',last?'Contre-attaque · '+cd+' dégâts':'');
+  if(last)setTimeout(()=>{if(C&&C.foes[a.i])damageFoe(a.i,cd,1);},200);
+ }else{hurt(a.p.dmg,.25,'Parade');setHeroPose('lean');}
 }
-function hurt(d,t){L.hp=Math.max(0,L.hp-d);updateBars();setHeroPose('hit');flash(true);shake();fx('miss',t||'Touché','−'+d+' PV');tone(110,.2,'sawtooth',.07);vibe(60);}
+function hurt(D,factor,label){
+ const red=L.hero===0?.1:0;let f=factor;if(C.rampart){f*=.5;C.rampart=false;}
+ const d=Math.max(1,Math.floor(D*f*(1-red)));
+ L.hp=Math.max(0,L.hp-d);updateBars();
+ if(label==='Parade'){fx('good','Parade',d+' dégât'+(d>1?'s':'')+' au lieu de '+D);tone(520,.12);vibe(15);}
+ else{setHeroPose('hit');flash(true);shake();fx('miss',label||'Touché','−'+d+' PV');tone(110,.2,'sawtooth',.07);vibe(60);}
+ if(L.hp<=0){C.attack=null;C.queue.shift();C.phase='enemy';const r=L.route;setTimeout(()=>{if(L.route===r)show('chute');},600);stopCombat();}
+}
 function markOff(on){const pad=live.querySelector('.pad');if(!pad)return;pad.classList.toggle('off',on);let t=pad.querySelector('.offtag');if(on&&!t){t=document.createElement('span');t.className='offtag';t.textContent='Déséquilibré';pad.prepend(t);}if(!on&&t)t.remove();}
 function loop(){
  stopCombat();
  const step=t=>{
-  if(L.route!=='combat'){raf=0;return;}
+  if(L.route!=='combat'||!C){raf=0;return;}
   const dt=Math.min(50,t-C.last);C.last=t;
   if(t>=C.freezeUntil)C.clock+=dt;
   const now=C.clock;
-  if(C.phase==='strike'&&C.strike&&now>C.strike.apex+350){C.strike.apex=now+99999;resolveStrikeAuto();}
+  if(C.phase==='trans'&&now>=C.transUntil)endTrans();
+  if(C.phase==='strike'&&C.strike){
+   const s=C.strike;
+   s.impacts.forEach((imp,k)=>{
+    if(s.res[k]&&typeof s.res[k]==='object'&&now+L.offset>=imp-WIN.good){const q=s.res[k].late;s.res[k]=q;strikeHit(k,q);}
+    if(s.res[k]===null&&now>imp+WIN.good){s.res[k]='miss';strikeHit(k,'miss');}
+   });
+   if(s.res.every(r=>typeof r==='string')&&now>s.impacts[s.impacts.length-1]+WIN.good){C.strike=null;C.phase='busy';setTimeout(endHero,450);}
+  }
   if(C.phase==='enemy'){
-   if(C.lockUntil&&now>=C.lockUntil){C.lockUntil=0;markOff(false);setHeroPose('idle');}
-   if(!C.attack&&now>=C.wait&&C.queue.length)startAttack();
+   if(C.offUntil&&now>=C.offUntil){C.offUntil=0;markOff(false);setHeroPose('idle');}
+   if(C.step&&now>=C.step.until)startAttack();
    const a=C.attack;
    if(a){
-    a.impacts.forEach((imp,k)=>{if(!a.res[k]&&now-imp>WIN.good+Math.max(0,-L.offset)){a.res[k]=true;hurt(a.p.dmg);}});
+    a.impacts.forEach((imp,k)=>{if(!a.res[k]&&now-imp>WIN.good+Math.max(0,-L.offset)){a.res[k]=true;hurt(a.p.dmg,1);}});
+    if(!C||C.phase!=='enemy'||!C.attack){raf=0;return;}
     const fig=live.querySelector(`[data-fig="${a.i}"]`);
     if(fig){
      const k=a.res.findIndex(r=>!r);const imp=k>=0?a.impacts[k]:a.impacts[a.impacts.length-1];
      const until=imp-now;const p=Math.max(0,Math.min(1,1-until/a.wind));
      let lean=-10*Math.min(1,p*1.15),ty=-8*Math.min(1,p*1.2),sc=1+.08*p;
-     if(a.p.feint&&p>.35&&p<.6){const s=Math.sin((p-.35)/.25*Math.PI);ty=14*s;lean=8*s;}
+     if(a.p.feint&&p>.35&&p<.6){const s2=Math.sin((p-.35)/.25*Math.PI);ty=14*s2;lean=8*s2;}
      if(until<140&&until>-120){const q=1-Math.abs(until)/140;ty=34*q;lean=14*q;sc=1.15;}
      fig.style.transform=`translateY(${ty}px) rotate(${lean}deg) scale(${sc})`;
      const seal=fig.querySelector('.seal');if(seal)seal.style.opacity=now-a.start<750?1:Math.max(0,1-(now-a.start-750)/200);
     }
-    if(a.res.every(Boolean)&&now>a.impacts[a.impacts.length-1]+300){
-     const f=C.foes[a.i];nextIntent(f);C.queue.shift();C.attack=null;C.wait=now+500;
-     if(L.hp<=0){raf=0;setTimeout(()=>show('chute'),500);return;}
+    if(a.res.every(Boolean)&&now>a.impacts[a.impacts.length-1]+WIN.good+300){
+     nextIntent(C.foes[a.i]);C.queue.shift();C.attack=null;
      if(C.foes.every(x=>x.hp<=0)){win();raf=0;return;}
-     if(!C.queue.length){C.foes.forEach(x=>{if(x.broken){x.broken=false;x.g=x.gm;}});C.phase='hero';setHeroPose('idle');drawCombat({phase:'hero'});say('Phase du héros');}
-     else{drawCombat(phaseExtra());}
+     C.queue=C.queue.filter(i=>C.foes[i].hp>0&&!C.foes[i].broken);
+     if(!C.queue.length){C.round++;C.offUntil=0;beginTrans('hero');}
+     else startStep();
     }
    }
   }
@@ -1447,7 +1559,6 @@ function loop(){
  };
  raf=requestAnimationFrame(step);
 }
-function resolveStrikeAuto(){C.strike={apex:-99999};resolveStrike(C.clock);}
 document.addEventListener('keydown',e=>{
  if(!live.isConnected||!C||L.route!=='combat')return;
  const ae=document.activeElement;if(ae&&ae!==document.body)return;
@@ -1459,13 +1570,15 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden&&L.route===
 document.querySelectorAll('[data-g]').forEach(b=>b.addEventListener('click',()=>{L.gauge=b.dataset.g;document.querySelectorAll('[data-g]').forEach(x=>x.setAttribute('aria-pressed',x===b));if(!L.inRun)show('pied');}));
 document.querySelectorAll('[data-sim]').forEach(b=>b.addEventListener('click',()=>{
  const s=b.dataset.sim;
+ const prep=hero=>{L.hero=hero;L.inRun=true;L.combat=null;C=null;const h=HEROES[hero];L.hpMax=Math.floor(h.hp*(FATIGUE[L.gauge]||1));L.hp=L.hpMax;L.elanStart=1;L.second=L.gauge==='p2'?1:0;L.etage=1;};
  if(s==='reset'){resetL();show('pied');}
- if(s==='combat'){L.inRun=true;L.combat=null;C=null;show('combat');}
- if(s==='boss'){L.inRun=true;L.combat=null;C=null;show('boss');}
+ if(s==='combat'){prep(0);show('combat');}
+ if(s==='errante'){prep(1);show('combat');}
+ if(s==='boss'){prep(L.hero);L.etage=6;show('boss');}
  if(s==='loading')show('loading');
  if(s==='error')show('error');
 }));
-resetL();document.querySelector('[data-g="favor"]').setAttribute('aria-pressed','true');show('pied');
+resetL();document.querySelector('[data-g="p2"]').setAttribute('aria-pressed','true');show('pied');
 
 /* ---------- Mise à l'échelle des téléphones ---------- */
 function fit(){const w=document.documentElement.clientWidth;const s=Math.min(1,(w-32)/408);document.documentElement.style.setProperty('--s',s.toFixed(4));}
