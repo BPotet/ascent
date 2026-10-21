@@ -19,7 +19,7 @@ export interface Dependencies {
   readonly keyValueStore: KeyValueStore;
   /**
    * La vibration légère d'un gain d'expérience. Un téléphone sans vibreur ne vibre pas ; le reste
-   * du feedback (« +10 XP », annonce au lecteur d'écran) est le même.
+   * du feedback (« +20 XP », annonce au lecteur d'écran) est le même.
    */
   readonly haptics: Haptics;
 }

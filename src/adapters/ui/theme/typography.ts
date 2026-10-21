@@ -24,7 +24,7 @@ export const typography = {
   sheetTitle: { fontFamily: fonts.soraSemiBold, fontSize: 20, lineHeight: 26 },
   /** L'expérience du personnage dans l'en-tête : « 40 XP ». */
   xp: { fontFamily: fonts.soraBold, fontSize: 24, lineHeight: 28, fontVariant: ['tabular-nums'] },
-  /** Un changement d'expérience : la pastille et l'envol « +10 XP ». */
+  /** Un changement d'expérience : la pastille et l'envol « +20 XP ». */
   xpChange: {
     fontFamily: fonts.soraBold,
     fontSize: 14,
