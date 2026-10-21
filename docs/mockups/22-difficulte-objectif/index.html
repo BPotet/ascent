@@ -1,0 +1,1258 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Difficulté et objectif</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* ============ Page (hors téléphone) ============ */
+:root{
+  --s:1;
+  --bg:#F4F2EE; --surface:#FFFFFF; --surface-2:#ECE9E3; --text:#1B1F27; --muted:#5B6372; --line:#DEDAD2; --accent:#3047C9; --chip:#E4E8FB; --chip-text:#22339A;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B0E14; --surface:#151A24; --surface-2:#1C2230; --text:#E8ECF3; --muted:#98A2B3; --line:#263042; --accent:#9DB2FF; --chip:#202A45; --chip-text:#C9D5FF;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B0E14; --surface:#151A24; --surface-2:#1C2230; --text:#E8ECF3; --muted:#98A2B3; --line:#263042; --accent:#9DB2FF; --chip:#202A45; --chip-text:#C9D5FF;
+}
+*{box-sizing:border-box}
+html,body{overflow-x:hidden}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1400px;margin:0 auto;padding:28px 16px 96px}
+h1,h2.pg,h3.pg{font-family:Sora,Inter,system-ui,sans-serif;letter-spacing:-.01em}
+h1{font-size:clamp(28px,5vw,40px);line-height:1.15;margin:6px 0 8px}
+h2.pg{font-size:24px;margin:56px 0 6px}
+h3.pg{font-size:17px;margin:28px 0 8px}
+.eyebrow{font:600 13px Inter;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.lead{color:var(--muted);max-width:760px;margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0}
+.tag{display:inline-flex;align-items:center;gap:6px;background:var(--chip);color:var(--chip-text);border-radius:999px;padding:4px 12px;font:600 13px Inter}
+.tag.warn{background:#FFF1D1;color:#6A4A00}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .tag.warn{background:#3A2E10;color:#FFD98A}}
+:root[data-theme="dark"] .tag.warn{background:#3A2E10;color:#FFD98A}
+nav.toc{display:flex;gap:8px;overflow-x:auto;padding:16px 0 4px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none}
+nav.toc a{flex:none;color:var(--text);text-decoration:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font:500 14px Inter;min-height:40px;display:inline-flex;align-items:center}
+nav.toc a:hover{border-color:var(--accent)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}
+ul.tight{margin:8px 0 0;padding-left:20px}
+ul.tight li{margin:4px 0}
+.muted{color:var(--muted)}
+code{font:500 13px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--surface-2);padding:1px 6px;border-radius:6px}
+.pill-new{display:inline-block;font:700 11px Inter;letter-spacing:.04em;text-transform:uppercase;background:var(--chip);color:var(--chip-text);border-radius:6px;padding:1px 6px;margin-right:4px;vertical-align:1px}
+
+/* Galerie de cadres */
+.gallery{display:flex;flex-wrap:wrap;gap:44px 32px;margin-top:20px}
+figure.frame{margin:0;width:calc(408px * var(--s))}
+figcaption{margin-bottom:12px}
+.cap-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.scr{font:600 13px Inter;color:var(--muted)}
+.story{font:700 12px Inter;background:var(--chip);color:var(--chip-text);border-radius:999px;padding:3px 10px;white-space:nowrap}
+.state{font:600 18px/1.3 Sora,Inter,sans-serif;margin-top:2px}
+.note{margin:4px 0 0;color:var(--muted);font-size:14px;line-height:1.45}
+.slot{width:calc(408px * var(--s));height:calc(862px * var(--s))}
+.phone{width:408px;height:862px;padding:9px;border-radius:62px;background:#04060A;box-shadow:0 0 0 1.5px #2A3142,0 22px 50px rgba(0,0,0,.28);transform:scale(var(--s));transform-origin:top left}
+
+/* Prototype */
+.proto{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;margin-top:20px}
+.controls{flex:1 1 300px;max-width:520px}
+.controls fieldset{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:0 0 14px}
+.controls legend{font:600 14px Inter;padding:0 6px}
+.controls label.opt{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer}
+.controls input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent)}
+.simdate{font:600 15px Inter;margin:2px 0 10px}
+.pbtn{min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--text);font:600 14px Inter;padding:0 14px;cursor:pointer;margin:0 8px 8px 0}
+.pbtn:hover{border-color:var(--accent)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Identité */
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.sw{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.sw i{display:block;height:64px}
+.sw div{padding:8px 10px;font-size:13px;line-height:1.35}
+.sw b{display:block;font-size:14px}
+.typo .t1{font:700 22px/28px Sora}.typo .t2{font:600 17px Sora}.typo .t3{font:400 15px/22px Inter}.typo .t4{font:500 13px Inter}
+.app.demo{border-radius:18px;padding:18px;display:flex;flex-wrap:wrap;gap:18px 22px;align-items:flex-start;margin-top:12px}
+.demo-item{display:flex;flex-direction:column;align-items:center;gap:8px;width:84px;text-align:center;font-size:12px;color:var(--a-muted)}
+.demo-item .cell{width:48px;height:48px;flex:none}
+.demo-item .mday{width:50px;flex:none}
+.demo-wide{width:100%;max-width:340px;display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--a-muted)}
+
+/* ============ Application Ascent : identité « Nuit d'altitude » ============ */
+.app{
+  --a-bg:#0F1420; --a-surface:#18202F; --a-surface-2:#222B3D; --a-line:#2E3950;
+  --a-cell-line:#6B7894; --a-future:#3A4560;
+  --a-text:#EEF1F7; --a-muted:#9AA4B8;
+  --a-accent:#7C9CFF; --a-on-accent:#0B1020;
+  --a-done:#3DDC97; --a-on-done:#05261A; --a-done-soft:#16302A; --a-done-text:#8FE8BF;
+  --a-xp:#FFC94D; --a-on-xp:#2A1E00;
+  --a-danger:#FF7A7A; --a-on-danger:#2B0606;
+  --a-missed:#222B3D; --a-missed-ink:#9AA4B8; --a-notstarted:#6B7894;
+  --a-mark:#C9D5FF;
+  background:var(--a-bg);color:var(--a-text);font-family:Inter,system-ui,sans-serif;
+}
+.app button{font-family:inherit;-webkit-tap-highlight-color:transparent}
+.app button:focus-visible{outline:3px solid var(--a-accent);outline-offset:2px}
+.screen{position:relative;width:390px;height:844px;border-radius:53px;overflow:hidden;display:flex;flex-direction:column}
+.island{position:absolute;top:11px;left:50%;width:124px;height:36px;margin-left:-62px;border-radius:20px;background:#000;z-index:95}
+.statusbar{height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:8px 32px 0 44px;font:600 16px Inter;font-variant-numeric:tabular-nums}
+.sb-icons{display:flex;gap:6px;align-items:center}
+.homebar{position:absolute;bottom:8px;left:50%;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:rgba(238,241,247,.85);z-index:99}
+
+.appbar{flex:none;display:flex;align-items:center;gap:12px;padding:6px 16px 10px;min-height:64px}
+.avatar{width:44px;height:44px;border-radius:14px;background:linear-gradient(160deg,#2A3A6B,#1A2238);display:grid;place-items:center;color:var(--a-xp);border:1px solid var(--a-line);flex:none}
+.who .lbl{font-size:13px;color:var(--a-muted);font-weight:500}
+.xpv{font:700 24px/1.15 Sora,Inter,sans-serif;color:var(--a-xp);font-variant-numeric:tabular-nums;display:inline-block;transform-origin:left center}
+.xpv.glow{text-shadow:0 0 18px rgba(255,201,77,.7)}
+.xpv.pulse{animation:xpPulse .6s ease-out}
+@keyframes xpPulse{0%{transform:scale(1)}35%{transform:scale(1.14);text-shadow:0 0 18px rgba(255,201,77,.85)}100%{transform:scale(1)}}
+.xpdelta{margin-left:auto;font:700 14px Sora,Inter,sans-serif;background:var(--a-xp);color:var(--a-on-xp);padding:6px 12px;border-radius:999px}
+.xpdelta.neg{background:var(--a-surface-2);color:var(--a-muted)}
+.xpdelta.anim{animation:deltaIn 1.4s ease-out forwards}
+@keyframes deltaIn{0%{opacity:0;transform:translateY(8px)}15%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0}}
+
+/* Barre de navigation semaine / mois */
+.weeknav{flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 6px;margin:0 16px;background:var(--a-surface);border-radius:16px;height:60px}
+.iconbtn{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;background:transparent;border:0;color:var(--a-text);cursor:pointer}
+.iconbtn:disabled{color:#4A5570;cursor:default}
+.wk{text-align:center}
+.wkt{font:600 16px Sora,Inter,sans-serif}
+.wks{font-size:13px;color:var(--a-muted)}
+
+.dayhead{flex:none;display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:12px 16px 4px;padding:0 10px}
+.dayhead.month{padding:0;margin-bottom:6px}
+.dh{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;color:var(--a-muted)}
+.dl{font-weight:600}
+.dn{min-width:30px;height:24px;display:grid;place-items:center;border-radius:8px;font:600 13px Inter;color:var(--a-text)}
+.dh.today .dl{color:var(--a-accent)}
+.dh.today .dn{background:var(--a-accent);color:var(--a-on-accent)}
+
+.scroll{flex:1;overflow-y:auto;padding:4px 16px 112px;scrollbar-width:none}
+.scroll.withfab{padding-bottom:184px}
+.scroll::-webkit-scrollbar{display:none}
+.linkbtn{min-height:44px;background:none;border:0;padding:0 4px;color:var(--a-accent);font:600 14px Inter;cursor:pointer}
+.backrow{display:flex;justify-content:center;margin:2px 0 0}
+.sect{display:flex;align-items:baseline;justify-content:space-between;margin:10px 2px 8px}
+.sect h2{font:600 15px Sora,Inter,sans-serif;margin:0}
+.sect span{font-size:13px;color:var(--a-muted)}
+.sect span.full{color:var(--a-xp);font-weight:600}
+
+/* ---- Vue Journée ---- */
+.dayhd{flex:none;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:0 16px;padding:6px 2px 8px}
+.dayhd h2{font:700 26px/1.15 Sora,Inter,sans-serif;margin:0}
+.dayhd .date{color:var(--a-muted);font-size:15px;margin-top:2px}
+.prog{text-align:right;flex:none}
+.prog .pv{font:700 17px Sora,Inter,sans-serif;font-variant-numeric:tabular-nums}
+.prog .pl{font-size:13px;color:var(--a-muted);margin-left:4px}
+.bar{width:104px;height:6px;border-radius:3px;background:var(--a-surface-2);overflow:hidden;margin-top:6px;margin-left:auto}
+.bar i{display:block;height:100%;background:var(--a-done);border-radius:3px;transition:width .3s}
+.drow-w{display:flex;align-items:stretch;background:var(--a-surface);border-radius:18px;margin-bottom:10px;border:2px solid transparent;transition:border-color .3s,background-color .3s,box-shadow .4s}
+.drow-w.done{border-color:rgba(61,220,151,.55);background:var(--a-done-soft)}
+.drow-w.hl{border-color:var(--a-accent);box-shadow:0 0 0 3px rgba(124,156,255,.2)}
+.drow{flex:1;display:flex;align-items:center;gap:14px;min-height:76px;padding:10px 8px 10px 14px;background:none;border:0;color:var(--a-text);text-align:left;cursor:pointer;border-radius:16px;min-width:0}
+.dchk{position:relative;width:44px;height:44px;border-radius:50%;border:2.5px solid var(--a-accent);display:grid;place-items:center;flex:none;color:var(--a-on-done)}
+.drow-w.done .dchk{background:var(--a-done);border-color:var(--a-done)}
+.drow-w.missed .dchk{background:var(--a-missed);border-color:transparent;color:var(--a-missed-ink)}
+.dtx{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dnm{font:600 16px/1.3 Inter;overflow-wrap:anywhere}
+.dst{font:500 13px Inter;color:var(--a-muted);display:flex;align-items:center;gap:6px}
+.drow-w.done .dst{color:var(--a-done-text)}
+.dst .cmk{display:inline-flex;align-items:center;gap:4px;color:var(--a-mark)}
+.dst .cmk::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--a-mark)}
+.more{width:52px;flex:none;background:none;border:0;border-left:1px solid var(--a-line);color:var(--a-muted);display:grid;place-items:center;cursor:pointer;border-radius:0 16px 16px 0}
+.drow-w.done .more{border-left-color:rgba(61,220,151,.3)}
+.drow-w.sm .drow{min-height:64px}
+.drow-w.sm .dchk{width:40px;height:40px}
+.yday{display:flex;align-items:center;gap:8px;background:#1C2436;border:1px solid var(--a-line);border-radius:14px;padding:4px 4px 4px 12px;margin:2px 0 10px;font-size:14px;line-height:1.35;color:var(--a-muted)}
+.yday svg{flex:none}
+.yday span{flex:1}
+.yday b{color:var(--a-text)}
+.alldone{display:flex;gap:10px;align-items:center;background:rgba(255,201,77,.1);border:1px solid rgba(255,201,77,.4);color:#FFE3A3;border-radius:14px;padding:12px;font-size:14px;line-height:1.4;margin:4px 0 10px}
+.alldone svg{flex:none;color:var(--a-xp)}
+
+/* ---- Cases (Semaine) ---- */
+.card{background:var(--a-surface);border-radius:16px;padding:4px 9px 10px;margin-bottom:10px;border:1px solid transparent;transition:border-color .4s, box-shadow .4s}
+.card.hl{border-color:var(--a-accent);box-shadow:0 0 0 3px rgba(124,156,255,.2)}
+.hname{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;background:none;border:0;color:var(--a-text);font:600 15px/1.3 Inter;text-align:left;padding:4px 2px;cursor:pointer}
+.hname svg{flex:none;color:var(--a-muted);margin-left:auto}
+.cells{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cell{position:relative;width:100%;aspect-ratio:1/1;min-height:44px;border-radius:12px;border:2px solid var(--a-accent);background:transparent;color:var(--a-on-done);display:grid;place-items:center;padding:0;cursor:pointer;transition:background-color .15s, border-color .15s}
+.cell.done{background:var(--a-done);border-color:var(--a-done)}
+.cell.pending{border-color:var(--a-accent);box-shadow:inset 0 0 0 2px rgba(124,156,255,.18)}
+.cell.missed{background:var(--a-missed);border-color:transparent;color:var(--a-missed-ink)}
+.cell.upcoming{border:2px dashed var(--a-future);cursor:default}
+.cell.notstarted{border-color:transparent;background:transparent;color:var(--a-notstarted);cursor:default}
+.cell.locked{opacity:.6;cursor:default}
+.cm{position:absolute;top:-3px;right:-3px;width:11px;height:11px;border-radius:50%;background:var(--a-mark);box-shadow:0 0 0 2.5px var(--a-surface);pointer-events:none}
+.drow-w .dchk .cm{top:-1px;right:-1px;box-shadow:0 0 0 2.5px var(--a-surface)}
+.drow-w.done .dchk .cm{box-shadow:0 0 0 2.5px var(--a-done-soft)}
+.pop{animation:pop .32s ease-out}
+.popframe{transform:scale(1.1)}
+.shake{animation:shake .35s}
+@keyframes pop{0%{transform:scale(1)}40%{transform:scale(1.18)}100%{transform:scale(1)}}
+@keyframes shake{0%,100%{transform:none}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.xpf{position:absolute;left:50%;bottom:100%;transform:translate(-50%,0);font:700 15px Sora,Inter,sans-serif;color:var(--a-xp);white-space:nowrap;pointer-events:none;text-shadow:0 1px 10px rgba(0,0,0,.7);z-index:5;animation:rise .9s ease-out forwards}
+.xpf.neg{color:var(--a-muted);font-weight:600}
+.xpf.frozen{animation:none;opacity:1;transform:translate(-50%,-10px) scale(1.05)}
+@keyframes rise{0%{opacity:0;transform:translate(-50%,8px) scale(.8)}20%{opacity:1;transform:translate(-50%,-4px) scale(1.1)}100%{opacity:0;transform:translate(-50%,-46px) scale(1)}}
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;margin:14px 2px 0;font-size:12px;color:var(--a-muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend .cell{width:20px;min-height:20px;height:20px;border-radius:6px;border-width:1.5px;cursor:default}
+.legend .cell svg{width:13px;height:13px}
+.legend .cm{width:8px;height:8px;top:-2px;right:-2px;box-shadow:0 0 0 2px var(--a-bg)}
+.hint{font-size:13px;color:var(--a-muted);margin:10px 2px 0;line-height:1.4}
+
+/* ---- Vue Mois ---- */
+.mgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.mday{position:relative;height:66px;border-radius:12px;background:var(--a-surface);border:1.5px solid transparent;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px 4px;color:var(--a-text);cursor:pointer;font-family:inherit}
+.mday .n{font:600 13px/1.2 Inter}
+.mday .k{font:600 11px/1.2 Inter;color:var(--a-muted);font-variant-numeric:tabular-nums}
+.mdots{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 3px;max-width:38px}
+.mdots i{width:5px;height:5px;border-radius:50%}
+.mdots i.d{background:var(--a-done)}
+.mdots i.m{box-shadow:inset 0 0 0 1.3px #8D97AC}
+.mdots i.p{box-shadow:inset 0 0 0 1.5px var(--a-accent)}
+.mday.full{background:var(--a-done-soft)}
+.mday.full .k{color:var(--a-done-text)}
+.mday.today{border-color:var(--a-accent)}
+.mday.today .n{color:var(--a-accent)}
+.mday.neutral{background:transparent;cursor:default}
+.mday.neutral .n{color:#7E889C;font-weight:500}
+.mday.upcoming{background:transparent;border:1.5px dashed var(--a-future);cursor:default}
+.mday.upcoming .n{color:var(--a-muted);font-weight:500}
+.mday.blank{visibility:hidden}
+.mday .cm{top:-2px;right:-2px;width:9px;height:9px;box-shadow:0 0 0 2px var(--a-bg)}
+
+.coach{margin-top:2px;margin-bottom:10px;background:rgba(124,156,255,.14);border:1px solid rgba(124,156,255,.45);color:#DCE4FF;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.4;display:flex;gap:8px;align-items:flex-start}
+.coach svg{flex:none;color:var(--a-xp);margin-top:1px}
+
+.fab{position:absolute;right:16px;bottom:100px;height:56px;padding:0 20px 0 16px;border-radius:28px;background:var(--a-accent);color:var(--a-on-accent);border:0;font:600 16px Inter;display:flex;align-items:center;gap:8px;box-shadow:0 10px 24px rgba(0,0,0,.45);z-index:20;cursor:pointer}
+.fab.limit{background:var(--a-surface-2);color:var(--a-muted);box-shadow:none;border:1px solid var(--a-line)}
+
+/* Barre d'onglets */
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:86px;background:rgba(13,17,27,.97);border-top:1px solid var(--a-line);display:grid;grid-template-columns:repeat(3,1fr);padding:6px 10px 28px;z-index:30}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:0;color:var(--a-muted);font:500 12px Inter;min-height:52px;cursor:pointer;border-radius:14px;padding:0}
+.tab .ti{width:58px;height:30px;border-radius:15px;display:grid;place-items:center;transition:background-color .2s}
+.tab[aria-current="page"]{color:var(--a-text);font-weight:700}
+.tab[aria-current="page"] .ti{background:rgba(124,156,255,.22);color:var(--a-accent)}
+
+.toast{position:absolute;left:16px;right:16px;bottom:100px;background:#EEF1F7;color:#121826;border-radius:14px;padding:6px 6px 6px 16px;min-height:52px;display:flex;align-items:center;gap:8px;font:500 14px/1.35 Inter;z-index:60;box-shadow:0 12px 30px rgba(0,0,0,.45);animation:toastIn .25s ease-out}
+.toast.abovefab{bottom:168px}
+.toast span{flex:1;padding:8px 0}
+.toast button{min-height:44px;padding:0 12px;border:0;background:none;color:#2C47D9;font:700 14px Inter;border-radius:10px;cursor:pointer}
+.toast.out{opacity:0;transition:opacity .2s}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+.scrim{position:absolute;inset:0;background:rgba(5,7,12,.64);z-index:70;animation:fade .2s}
+@keyframes fade{from{opacity:0}}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--a-surface);border-radius:24px 24px 0 0;padding:8px 20px 36px;z-index:80;animation:up .25s ease-out;border-top:1px solid var(--a-line)}
+.sheet.withkbd{bottom:291px;padding-bottom:16px}
+.sheet.daysheet{background:var(--a-bg);max-height:640px;overflow-y:auto}
+.sheet.daysheet .drow-w{background:var(--a-surface)}
+.sheet.daysheet .drow-w.done{background:var(--a-done-soft)}
+.sheet .sub{margin:-10px 0 14px;color:var(--a-muted);font-size:14px}
+@keyframes up{from{transform:translateY(40px);opacity:.4}}
+.grab{width:40px;height:5px;border-radius:3px;background:#3A4560;margin:0 auto 14px}
+.sheet h3,.dialog h3{font:600 20px/1.3 Sora,Inter,sans-serif;margin:0 0 16px}
+.sheet label{font:500 13px Inter;color:var(--a-muted);display:block;margin-bottom:6px}
+.field{border:2px solid var(--a-line);border-radius:14px;background:var(--a-bg)}
+.field:focus-within,.field.focus{border-color:var(--a-accent)}
+.field.invalid,.field.invalid:focus-within{border-color:var(--a-danger)}
+.field input{width:100%;height:52px;background:transparent;border:0;outline:0;color:var(--a-text);font:500 17px Inter;padding:0 14px}
+.field input::placeholder{color:#7E889C}
+.helprow{display:flex;justify-content:space-between;gap:8px;min-height:22px;margin-top:6px;font-size:13px}
+.err{color:var(--a-danger);display:flex;gap:6px;align-items:flex-start}
+.err svg{flex:none;margin-top:1px}
+.count{color:var(--a-muted);flex:none}
+.alert{display:flex;gap:8px;align-items:flex-start;background:rgba(255,122,122,.12);border:1px solid rgba(255,122,122,.45);color:#FFC9C9;border-radius:12px;padding:10px 12px;font-size:14px;line-height:1.4;margin-top:10px}
+.alert svg{flex:none;margin-top:1px}
+.actions{display:flex;gap:10px;margin-top:16px}
+.actions .btn{flex:1}
+.btn{min-height:52px;border-radius:14px;border:0;font:600 16px Inter;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 16px}
+.btn.primary{background:var(--a-accent);color:var(--a-on-accent)}
+.btn.primary:disabled{background:#2A3349;color:#6F7A92;cursor:default}
+.btn.ghost{background:var(--a-surface-2);color:var(--a-text)}
+.btn.danger{background:var(--a-danger);color:var(--a-on-danger)}
+.btn.danger-text{background:none;color:var(--a-danger);width:100%;margin-top:10px;min-height:48px}
+.btn.block{width:100%;margin-top:8px}
+.dialog{position:absolute;left:20px;right:20px;top:50%;transform:translateY(-50%);background:var(--a-surface);border-radius:24px;padding:24px 20px 20px;z-index:80;border:1px solid var(--a-line)}
+.dialog p{margin:0;color:var(--a-muted);font-size:15px;line-height:1.5}
+
+.kbd{position:absolute;left:0;right:0;bottom:0;height:291px;background:#1A202D;padding:10px 3px 0;z-index:85;display:flex;flex-direction:column;gap:11px;border-top:1px solid #262E40}
+.krow{display:flex;justify-content:center;gap:6px;padding:0 3px}
+.key{height:42px;flex:1;max-width:34px;border-radius:6px;background:#454C5E;color:#fff;display:grid;place-items:center;font:400 19px Inter}
+.key.wide{max-width:none;flex:1.6;background:#2E3546;font-size:15px}
+.key.space{max-width:none;flex:5;font-size:15px}
+
+.state-center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 32px 120px;gap:10px}
+.state-center h2{font:600 21px/1.3 Sora,Inter,sans-serif;margin:8px 0 0}
+.state-center p{margin:0 0 12px;color:var(--a-muted);font-size:15px;line-height:1.5}
+.state-center .err-ico{color:var(--a-danger)}
+.sk{background:linear-gradient(90deg,#1B2333 0%,#27324B 50%,#1B2333 100%);background-size:200% 100%;animation:shim 1.2s linear infinite;border-radius:8px}
+@keyframes shim{from{background-position:200% 0}to{background-position:0 0}}
+
+@media (prefers-reduced-motion: reduce){
+  .app *,.app{animation:none !important;transition:none !important}
+}
+
+/* ============ Épique 22 : difficulté, objectif hebdomadaire, prime ============ */
+.dico{display:inline-flex;flex:none;color:#B9C6E6;line-height:0}
+.dst{flex-wrap:wrap}
+.drow-w.done .dst .dico{color:var(--a-done-text)}
+.goalb{display:inline-flex;align-items:center;gap:5px;align-self:flex-start;margin-top:5px;background:rgba(61,220,151,.16);color:#8FE8BF;border:1px solid rgba(61,220,151,.55);border-radius:999px;padding:2px 10px 2px 7px;font:600 12px/18px Inter;white-space:nowrap}
+.goalb svg{flex:none}
+.goalb.burst{animation:burst .6s ease-out}
+.goalb.burst.frozen{animation:none;border-color:var(--a-xp);color:#FFE3A3;background:rgba(255,201,77,.16);box-shadow:0 0 0 4px rgba(255,201,77,.22),0 0 22px 6px rgba(255,201,77,.5)}
+@keyframes burst{0%{transform:scale(.6);opacity:0}40%{transform:scale(1.12);opacity:1;border-color:#FFC94D;color:#FFE3A3;box-shadow:0 0 0 6px rgba(255,201,77,.35),0 0 26px 8px rgba(255,201,77,.6)}100%{transform:none;box-shadow:0 0 0 0 rgba(255,201,77,0)}}
+.xpds{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.xpds .xpdelta{margin-left:0;padding:4px 11px;font-size:13px}
+.xpdelta.prime{background:transparent;color:var(--a-xp);box-shadow:inset 0 0 0 1.5px var(--a-xp)}
+.xpdelta.prime.neg{color:var(--a-muted);box-shadow:inset 0 0 0 1.5px #4A5570;background:transparent}
+.xpdelta.later{animation-delay:.4s;opacity:0}
+.toast.goal{background:#1E2738;color:var(--a-text);border:1.5px solid var(--a-xp);box-shadow:0 0 0 3px rgba(255,201,77,.14),0 12px 30px rgba(0,0,0,.5);padding:10px 12px;gap:12px}
+.toast.goal .gi{width:40px;height:40px;border-radius:12px;background:rgba(255,201,77,.16);color:var(--a-xp);display:grid;place-items:center;flex:none}
+.toast.goal span.tx{padding:0;font-size:14px;line-height:1.4}
+.toast.goal b{display:block;font:600 15px/1.3 Sora,Inter,sans-serif}
+.toast.goal .pp{color:var(--a-xp);font-weight:700;white-space:nowrap}
+.toast.top{top:58px;bottom:auto;z-index:90}
+.toast.soft{background:var(--a-surface-2);color:var(--a-text);border:1px solid var(--a-line)}
+.news{position:relative;background:linear-gradient(160deg,#1F2B4D,#18202F);border:1px solid rgba(124,156,255,.55);border-radius:16px;padding:12px 8px 6px 14px;margin:2px 0 12px}
+.news .nh{display:flex;align-items:center;gap:6px;font:700 12px Inter;letter-spacing:.06em;text-transform:uppercase;color:var(--a-accent)}
+.news .nt{margin:6px 40px 2px 0;font:600 15px/1.35 Sora,Inter,sans-serif;color:var(--a-text)}
+.news p{margin:4px 8px 2px 0;font-size:14px;line-height:1.4;color:#C9D3EA}
+.news .x{position:absolute;top:4px;right:4px}
+.news .nact{display:flex;justify-content:flex-start;margin-left:-4px}
+.hrow{display:flex;align-items:center;gap:6px}
+.hrow .hname{flex:1;min-width:0}
+.gchip{flex:none;display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 10px;font:700 13px/18px Inter;font-variant-numeric:tabular-nums;background:var(--a-surface-2);color:var(--a-text);border:1px solid var(--a-line);white-space:nowrap}
+.gchip.ok{background:rgba(61,220,151,.16);color:#8FE8BF;border-color:rgba(61,220,151,.55)}
+.gchip.past{color:#B4BDCE}
+.gchip.burst{animation:burst .6s ease-out}
+.gchip.burst.frozen{animation:none;border-color:var(--a-xp);color:#FFE3A3;background:rgba(255,201,77,.16);box-shadow:0 0 0 4px rgba(255,201,77,.22),0 0 22px 6px rgba(255,201,77,.5)}
+.card.reached{border-color:rgba(61,220,151,.6)}
+.hsub{display:flex;align-items:flex-start;gap:6px;font:500 13px/1.35 Inter;color:var(--a-muted);margin:-4px 2px 8px}
+.hsub .dico{margin-top:2px}
+.hsub>span{min-width:0}
+.hsub .nx{color:var(--a-mark)}
+.wkinfo{display:flex;gap:8px;align-items:flex-start;background:#1C2436;border:1px solid var(--a-line);border-radius:12px;padding:10px 12px;font-size:13.5px;line-height:1.4;color:#C9D3EA;margin:0 0 10px}
+.wkinfo svg{flex:none;margin-top:1px;color:var(--a-accent)}
+.wgoals{margin-top:18px}
+.wgrow{display:flex;align-items:center;gap:12px;width:100%;min-height:60px;background:var(--a-surface);border:0;border-radius:14px;margin-bottom:8px;padding:8px 6px 8px 12px;color:var(--a-text);text-align:left;cursor:pointer;font-family:inherit}
+.wgrow .wi{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--a-surface-2);color:var(--a-muted);flex:none}
+.wgrow.all .wi{background:rgba(61,220,151,.16);color:var(--a-done)}
+.wgrow .wt{flex:1;display:flex;flex-direction:column;min-width:0}
+.wgrow .wt b{font:600 15px/1.3 Inter}
+.wgrow .wt span{font-size:13px;color:var(--a-muted)}
+.wgrow.all .wt span{color:#8FE8BF}
+.wgrow>svg{flex:none;color:var(--a-muted)}
+.sheet h3{margin-bottom:12px}
+.sheet .lbl2{font:600 13px Inter;color:var(--a-muted);margin:10px 0 6px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.segb{min-height:60px;border-radius:14px;border:2px solid var(--a-line);background:var(--a-bg);color:var(--a-text);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font:600 14px/1.25 Inter;cursor:pointer;padding:4px}
+.segb .x{font:500 12px Inter;color:var(--a-muted)}
+.segb[aria-checked="true"]{border-color:var(--a-accent);background:rgba(124,156,255,.18)}
+.segb[aria-checked="true"] .x{color:#C9D5FF}
+.segb .dico{color:inherit;margin-bottom:2px}
+.pills{display:flex;justify-content:space-between}
+.pillb{width:44px;height:44px;border-radius:50%;border:2px solid var(--a-line);background:var(--a-bg);color:var(--a-text);font:600 16px Inter;cursor:pointer;display:grid;place-items:center;padding:0}
+.pillb[aria-checked="true"]{background:var(--a-accent);border-color:var(--a-accent);color:var(--a-on-accent);font-weight:700}
+.tphrase{font-size:14px;color:var(--a-text);margin-top:8px;min-height:20px}
+.tphrase small{color:var(--a-muted);font-size:13px}
+.info{display:flex;gap:8px;align-items:flex-start;background:rgba(124,156,255,.12);border:1px solid rgba(124,156,255,.4);color:#DCE4FF;border-radius:12px;padding:9px 12px;font-size:13.5px;line-height:1.4;margin-top:10px}
+.info svg{flex:none;margin-top:1px;color:var(--a-accent)}
+.sheet .actions{margin-top:14px}
+.stepper{display:flex;align-items:center;gap:14px;color:var(--a-text)}
+.stepper .sb{width:56px;height:56px;border-radius:16px;border:2px solid var(--a-line);background:var(--a-bg);color:var(--a-text);font:600 28px Inter;display:grid;place-items:center}
+.stepper output{font:700 30px Sora,Inter,sans-serif;min-width:30px;text-align:center}
+.demo .toast{position:relative;left:auto;right:auto;bottom:auto;animation:none;width:100%;max-width:358px}
+.demo .seg,.demo .pills{width:100%}
+.demo-box{width:100%;max-width:358px;display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--a-muted)}
+.rules{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+.rules th,.rules td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+.rules th{font-weight:600;color:var(--muted)}
+.rules td.n{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Ascent · Maquette · Épique #22</div>
+  <h1>Difficulté et objectif hebdomadaire des habitudes</h1>
+  <p class="lead">Chaque habitude a maintenant une difficulté (Facile, Moyenne, Difficile) et un objectif hebdomadaire (1 à 7 fois par semaine). Atteindre l'objectif de la semaine rapporte une prime. Noter reste un seul tap : tout se règle à la création ou dans « Modifier l'habitude ». Écrans dans un cadre de téléphone (390 × 844), avec tous leurs états et le feedback de jeu.</p>
+  <div class="meta">
+    <span class="tag">Version 1 · 21 oct. 2026</span>
+    <span class="tag warn">À valider par le propriétaire</span>
+    <span class="tag">Date simulée : mercredi 21 octobre 2026</span>
+    <span class="tag">Mise à jour installée : mardi 13 octobre</span>
+  </div>
+  <nav class="toc" aria-label="Sections">
+    <a href="#regles">Règles</a>
+    <a href="#identite">Composants</a>
+    <a href="#prototype">Prototype</a>
+    <a href="#e1">E1 · Journée</a>
+    <a href="#f1">F1 · Objectif atteint</a>
+    <a href="#e2">E2 · Nouvelle habitude</a>
+    <a href="#e7">E7 · Modifier</a>
+    <a href="#e4">E4 · Semaine</a>
+    <a href="#e6">E6 · Mois</a>
+    <a href="#e8">E8 · Suppression</a>
+    <a href="#a11y">Accessibilité</a>
+    <a href="#ouverts">Points ouverts</a>
+  </nav>
+</header>
+
+<section id="regles">
+  <h2 class="pg">Règles appliquées et stories</h2>
+  <p class="lead">Règles du Game Designer reprises telles quelles. Tous les chiffres de la maquette sont calculés avec ce barème.</p>
+  <div class="cols" style="margin-top:16px">
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Barème</h3>
+      <table class="rules">
+        <thead><tr><th>Difficulté</th><th>XP par « fait »</th><th>Prime d'objectif</th></tr></thead>
+        <tbody>
+          <tr><td>Facile</td><td class="n">5 XP</td><td class="n">objectif × 3 (3 à 21)</td></tr>
+          <tr><td>Moyenne</td><td class="n">10 XP</td><td class="n">objectif × 5 (5 à 35)</td></tr>
+          <tr><td>Difficile</td><td class="n">20 XP</td><td class="n">objectif × 10 (10 à 70)</td></tr>
+        </tbody>
+      </table>
+      <ul class="tight">
+        <li>Par défaut : <b>Moyenne</b>, <b>tous les jours</b> (objectif 7).</li>
+        <li>La prime est accordée dès que la progression atteint l'objectif, une fois par semaine. Elle est retirée en entier si la progression repasse dessous, et rendue si l'objectif est de nouveau atteint.</li>
+        <li>Les « fait » au-delà de l'objectif rapportent leur XP normale. Pas de pénalité si l'objectif n'est pas atteint.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Changer en cours de route</h3>
+      <ul class="tight">
+        <li><b>Difficulté</b> : s'applique à <b>toute la semaine en cours</b> (suivis et prime réévalués) et aux suivantes. Jamais aux semaines passées.</li>
+        <li><b>Objectif</b> : s'applique à partir du <b>lundi suivant</b>. Exception : changé le jour de la création, il vaut dès la semaine de création.</li>
+        <li><b>Semaine de création</b> : l'objectif est réduit au nombre de jours restants. Créée mercredi avec « tous les jours » : objectif 5 cette semaine.</li>
+        <li><b>Habitudes existantes</b> à la mise à jour : Moyenne, tous les jours, dès la semaine de la mise à jour. Les semaines d'avant n'ont <b>pas d'objectif ni de prime</b>, même après correction.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Compteurs du jour (recommandation UX)</h3>
+      <ul class="tight">
+        <li>Une habitude non quotidienne compte dans « x/y faites », « Toutes faites », le Rappel d'hier et le compteur du Mois <b>tant que l'objectif de sa semaine n'est pas atteint</b>.</li>
+        <li>Une fois l'objectif atteint les jours précédents, elle sort du compteur ce jour-là, sauf si elle est faite ce jour-là (elle compte alors comme faite).</li>
+        <li>Le PM peut faire évoluer cette règle ; la maquette l'applique partout.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Stories (provisoires)</h3>
+      <ul class="tight">
+        <li><b>S1</b> · Choisir la difficulté d'une habitude</li>
+        <li><b>S2</b> · Fixer un objectif hebdomadaire et suivre sa progression</li>
+        <li><b>S3</b> · Atteindre l'objectif et gagner la prime</li>
+        <li><b>S4</b> · Habitudes existantes après la mise à jour</li>
+      </ul>
+      <p class="muted" style="font-size:14px;margin:8px 0 0">Numéros GitHub à reporter quand les sous-issues de l'épique #22 seront créées.</p>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Vocabulaire</h3>
+      <p class="muted" style="font-size:14px;margin:0">Termes à ajouter au glossaire avec la première story : <b>Difficulté</b> (Facile, Moyenne, Difficile), <b>Objectif hebdomadaire</b>, <b>Objectif de la semaine</b>, <b>Progression de la semaine</b>, <b>Objectif atteint</b>, <b>Prime d'objectif</b> (affichée « prime »), <b>Réglages de la semaine</b>. À créer et confirmer par le PM : <b>Carte de nouveauté</b>. À modifier : Expérience, Xp conservée, Correction, Habitude.</p>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Données d'exemple</h3>
+      <ul class="tight" style="font-size:14px">
+        <li><b>Cuisiner</b> · Moyenne · 5 fois par semaine (réglé le 13 octobre, en vigueur depuis le 19).</li>
+        <li><b>Ne pas dépasser mon budget de la journée</b> · Facile · tous les jours.</li>
+        <li><b>Courir 5 km</b> · Difficile · 3 fois par semaine, créée le mercredi 14 octobre.</li>
+        <li><b>Me coucher avant 23 h</b> · Moyenne · tous les jours (réglages par défaut).</li>
+        <li><b>Lire 20 minutes</b> · Facile · tous les jours, créée le jeudi 15 octobre ; passage à 4 fois demandé mardi 20, en vigueur lundi 26.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="identite">
+  <h2 class="pg">Identité visuelle et nouveaux composants</h2>
+  <p class="lead">Identité « Nuit d'altitude » de l'épique #2, inchangée. L'or reste réservé à l'expérience (et donc à la prime), le vert au « fait » et à l'objectif atteint, le bleu « sommet » aux actions. La difficulté est une forme (1, 2 ou 3 sommets) toujours accompagnée de son nom ou lue par le lecteur d'écran, jamais une couleur.</p>
+  <h3 class="pg">Difficulté, objectif, progression</h3>
+  <div class="app demo" id="demoA"></div>
+  <h3 class="pg">Feedback et Mois</h3>
+  <div class="app demo" id="demoB"></div>
+</section>
+
+<section id="prototype">
+  <h2 class="pg">Prototype interactif</h2>
+  <p class="lead">Les vues enchaînées avec les vraies règles. Fais « Courir 5 km » aujourd'hui pour atteindre l'objectif, défais-le, change une difficulté, corrige la semaine dernière.</p>
+  <div class="proto">
+    <div class="slot"><div class="phone"><div class="screen app" id="live"></div></div></div>
+    <div class="controls">
+      <fieldset>
+        <legend>Date simulée</legend>
+        <div class="simdate" id="simDate" aria-live="polite"></div>
+        <button class="pbtn" data-sim="midnight">Passer minuit</button>
+      </fieldset>
+      <fieldset>
+        <legend>Simulations</legend>
+        <label class="opt"><input type="checkbox" id="simErr"> Les enregistrements échouent</label>
+        <div style="margin-top:6px">
+          <button class="pbtn" data-sim="reset">Réinitialiser</button>
+          <button class="pbtn" data-sim="news">Première ouverture après la mise à jour</button>
+          <button class="pbtn" data-sim="loading">Voir le chargement</button>
+        </div>
+      </fieldset>
+      <div class="panel" style="font-size:14px">
+        <b>À essayer</b>
+        <ul class="tight">
+          <li>Journée : tape « Courir 5 km ». +20 XP, puis l'objectif de la semaine est atteint : badge, message et +30 XP de prime.</li>
+          <li>Tape-le de nouveau : −20 XP et la prime est retirée (−30 XP), sans vibration.</li>
+          <li>« ⋯ » sur « Cuisiner » : passe en Difficile. Les deux suivis de la semaine valent 20 XP au lieu de 10 (+20 XP).</li>
+          <li>Change l'objectif de « Cuisiner » : il s'appliquera lundi prochain, la Semaine l'indique.</li>
+          <li>Semaine dernière : coche le dimanche 18 de « Courir 5 km ». Correction qui atteint l'objectif de cette semaine-là : +20 XP et +30 XP de prime.</li>
+          <li>Ajoute une habitude « tous les jours » : cette semaine, son objectif est réduit aux jours restants.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div id="srLive" class="sr" aria-live="polite"></div>
+</section>
+
+<section id="e1">
+  <h2 class="pg">E1 · Vue Journée</h2>
+  <p class="lead">Le geste ne change pas : toute la ligne se tape. Une ligne secondaire dit où en est la semaine : icône de difficulté, état, « 2/5 cette semaine ».</p>
+  <div class="gallery" data-group="e1"></div>
+</section>
+
+<section id="f1">
+  <h2 class="pg">F1 · Feedback « Objectif atteint »</h2>
+  <p class="lead">Le moment fort de l'épique, décomposé. Il se joue une seule fois par seuil franchi : par le suivi du jour, une correction, ou une modification le jour de la création. Exemple : « Courir 5 km », Difficile, 3 fois par semaine, 2/3 avant le tap.</p>
+  <div class="gallery" data-group="f1"></div>
+</section>
+
+<section id="e2">
+  <h2 class="pg">E2 · Panneau « Nouvelle habitude »</h2>
+  <p class="lead">Nom, difficulté, objectif hebdomadaire. Les valeurs par défaut sont déjà choisies : taper un nom puis ↵ crée l'habitude en Moyenne, tous les jours. Le panneau tient au-dessus du clavier.</p>
+  <div class="gallery" data-group="e2"></div>
+</section>
+
+<section id="e7">
+  <h2 class="pg">E7 · Panneau « Modifier l'habitude »</h2>
+  <p class="lead">Mêmes blocs, préremplis avec les réglages actuels. Un message dit quand le changement s'applique, avant d'enregistrer.</p>
+  <div class="gallery" data-group="e7"></div>
+</section>
+
+<section id="e4">
+  <h2 class="pg">E4 · Vue Semaine</h2>
+  <p class="lead">Chaque carte gagne une puce de progression à droite du nom et, dessous, la difficulté et l'objectif. Les 7 cases ne changent pas.</p>
+  <div class="gallery" data-group="e4"></div>
+</section>
+
+<section id="e6">
+  <h2 class="pg">E6 · Vue Mois et Détail du jour</h2>
+  <p class="lead">Les cases de jour ne changent pas. Sous la grille, une nouvelle section « Objectifs par semaine » ; chaque ligne ouvre la Vue Semaine correspondante.</p>
+  <div class="gallery" data-group="e6"></div>
+</section>
+
+<section id="e8">
+  <h2 class="pg">E8 · Confirmation de suppression</h2>
+  <p class="lead">Seul le texte change : il annonce aussi la prime retirée quand supprimer le suivi d'aujourd'hui fait repasser sous l'objectif.</p>
+  <div class="gallery" data-group="e8"></div>
+</section>
+
+<section id="a11y">
+  <h2 class="pg">Accessibilité</h2>
+  <div class="cols" style="margin-top:16px">
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Toucher et lecture</h3>
+      <ul class="tight">
+        <li>Difficulté : trois boutons de 110 × 60 px. Objectif : sept pastilles de 44 × 44 px. Puce, badge et ligne « Objectifs par semaine » (60 px) ne sont pas des cibles plus petites que les lignes existantes.</li>
+        <li>La difficulté n'est jamais une couleur : 1, 2 ou 3 sommets, et le nom écrit dans les panneaux et la Semaine.</li>
+        <li>« Objectif atteint » : drapeau, texte et liseré. Semaine non atteinte : puce grise neutre, sans rouge ni croix.</li>
+        <li>Contraste du texte ≥ 4,5:1 (puce verte #8FE8BF sur son fond : 8:1 ; prime #FFC94D sur #1E2738 : 9,8:1 ; sommets #B9C6E6 sur la surface : 9,5:1), icônes ≥ 3:1.</li>
+        <li>Grand texte : la ligne secondaire passe à la ligne ; l'objectif s'affiche en compteur « − 3 + » (boutons 56 px) à la place des 7 pastilles.</li>
+        <li>Mouvement réduit : pas d'éclat ni de pulsation, le badge et le message apparaissent directement.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Lecteur d'écran</h3>
+      <ul class="tight">
+        <li>Difficulté : groupe radio « Difficulté » ; « Difficile, 20 XP par suivi, sélectionné ».</li>
+        <li>Objectif : groupe radio « Objectif hebdomadaire » ; « 3 fois par semaine », « 7 fois par semaine, tous les jours ».</li>
+        <li>Ligne de la Journée : « Courir 5 km, à faire, 2 sur 3 cette semaine, Difficile, 20 XP par suivi », bouton bascule. Atteint : « …, objectif atteint ».</li>
+        <li>Puce de la Semaine : « 3 sur 3, objectif atteint » ; semaine passée non atteinte : « 1 sur 3 ».</li>
+        <li>Objectif atteint annoncé (zone polie) : « Objectif de la semaine atteint pour Courir 5 km, 3 sur 3. +30 points d'expérience de prime. Total : … XP. »</li>
+        <li>Retour sous l'objectif : « Objectif de la semaine plus atteint pour Courir 5 km. −20 points d'expérience, −30 points de prime. »</li>
+        <li>Messages des panneaux (« S'applique à toute cette semaine… ») reliés au groupe modifié et lus à son changement.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="ouverts">
+  <h2 class="pg">Points ouverts</h2>
+  <div class="cols" style="margin-top:16px">
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Pour le PM</h3>
+      <ul class="tight">
+        <li>Compteurs du jour : la recommandation ci-dessus (compter tant que l'objectif n'est pas atteint) est appliquée partout ; à confirmer.</li>
+        <li>« Carte de nouveauté » : nouveau terme de glossaire. « Régler » ouvre « Modifier l'habitude » de la première habitude de la liste.</li>
+        <li>Un jour sans « fait » d'une habitude non quotidienne reste « pas fait » à la clôture (croix neutre, inchangée).</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Pour le propriétaire</h3>
+      <ul class="tight">
+        <li>Objectif changé : effet au lundi suivant (maquette) ou immédiat ?</li>
+        <li>Objectif par défaut « tous les jours » (maquette) ou choix obligatoire à la création ?</li>
+        <li>Prime tout ou rien (maquette) ou partielle ?</li>
+        <li>Objectif 7 affiché « 4/7 cette semaine », comme les autres (maquette).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function(){
+/* ---------- Dates : d = jours depuis le lundi 5 octobre 2026 ---------- */
+const MONTHS=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+const MONTHS_L=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const DL=['L','M','M','J','V','S','D'];
+const DLONG=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+const EPOCH=new Date(2026,9,5);
+const dateOf=d=>new Date(2026,9,5+d);
+const dayOf=(y,m,day)=>Math.round((new Date(y,m,day)-EPOCH)/864e5);
+const dow=d=>((d%7)+7)%7;
+const monOf=d=>d-dow(d);
+const mIdx=d=>{const x=dateOf(d);return x.getFullYear()*12+x.getMonth();};
+const fmt=n=>n.toLocaleString('fr-FR');
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+function rangeLabel(m){const a=dateOf(m),b=dateOf(m+6);return a.getMonth()===b.getMonth()?`${a.getDate()} – ${b.getDate()} ${MONTHS[b.getMonth()]}`:`${a.getDate()} ${MONTHS[a.getMonth()]} – ${b.getDate()} ${MONTHS[b.getMonth()]}`;}
+function longDate(d){const x=dateOf(d);return `${DLONG[dow(d)]} ${x.getDate()} ${MONTHS_L[x.getMonth()]}`;}
+const weekOfLabel=m=>`semaine du ${dateOf(m).getDate()} ${MONTHS_L[dateOf(m).getMonth()]}`;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+const plural=(n,s,p)=>n>1?p:s;
+const sgn=n=>(n>0?'+':'−')+Math.abs(n);
+
+/* ---------- Barème (Game Designer) ---------- */
+const DIFF={easy:{l:'Facile',xp:5,u:3,n:1},medium:{l:'Moyenne',xp:10,u:5,n:2},hard:{l:'Difficile',xp:20,u:10,n:3}};
+const DORDER=['easy','medium','hard'];
+const UPDATE=8; /* mardi 13 octobre : jour de la mise à jour */
+const tphrase=t=>t===7?'tous les jours':`${t} fois par semaine`;
+
+/* ---------- Icônes ---------- */
+const I={
+ check:'<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ checkS:'<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ cross:'<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+ dot:'<svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>',
+ left:'<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ right:'<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ chev:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ pencil:'<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+ more:'<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="5.5" cy="12" r="1.9" fill="currentColor"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/><circle cx="18.5" cy="12" r="1.9" fill="currentColor"/></svg>',
+ plus:'<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
+ close:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+ alert:'<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7.5v5.5M12 16.5v.01" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+ info:'<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 11v6M12 7.5v.01" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+ trash:'<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 7h14M10 11v6M14 11v6M7 7l1 13h8l1-13M9 7V4h6v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ peak:'<svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M2.5 20l7-12 3.6 6.2 2.2-3.2 6.2 9z" fill="currentColor" opacity=".92"/><path d="M9.5 8V3.2l3.6 1.6-3.6 1.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+ spark:'<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 2l2.2 6.6L21 11l-6.8 2.4L12 20l-2.2-6.6L3 11l6.8-2.4z" fill="currentColor"/></svg>',
+ flag:'<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M6 21.5V3" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M7 3.5h11.5l-3.2 4.2 3.2 4.3H7z" fill="currentColor"/></svg>',
+ flagL:'<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M2.5 21.5l6-9.5 3 4.5 2-2.8 5.5 7.8z" fill="currentColor" opacity=".55"/><path d="M8.5 12V2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9.3 2.8h9l-2.6 3.1 2.6 3.2h-9z" fill="currentColor"/></svg>',
+ target:'<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg>',
+ tDay:'<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.5 1.5M17.2 17.2l1.5 1.5M5.3 18.7l1.5-1.5M17.2 6.8l1.5-1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+ tWeek:'<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 5v14M12 5v14M16 5v14" stroke="currentColor" stroke-width="1.6"/></svg>',
+ tMonth:'<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 13h2M11 13h2M15 13h2M7 16.5h2M11 16.5h2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+ bigAlert:'<svg class="err-ico" viewBox="0 0 24 24" width="56" height="56" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v6M12 16.5v.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+ status:'<span class="sb-icons" aria-hidden="true"><svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="currentColor"/><rect x="5" y="5.5" width="3" height="6.5" rx="1" fill="currentColor"/><rect x="10" y="3" width="3" height="9" rx="1" fill="currentColor"/><rect x="15" y="0" width="3" height="12" rx="1" fill="currentColor"/></svg><svg width="16" height="12" viewBox="0 0 16 12"><path d="M8 11.5l2.4-2.9a3.6 3.6 0 0 0-4.8 0z M3.6 6.2a6.6 6.6 0 0 1 8.8 0l1.5-1.8a9 9 0 0 0-11.8 0z M0.8 3a10.8 10.8 0 0 1 14.4 0" fill="currentColor"/></svg><svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".45"/><rect x="2.5" y="2.5" width="17" height="8" rx="2" fill="currentColor"/><rect x="24.5" y="4.5" width="2" height="4" rx="1" fill="currentColor" opacity=".45"/></svg></span>'
+};
+/* Difficulté : 1, 2 ou 3 sommets */
+const PEAKS={
+ easy:'<path d="M9 15.5L15 3.5l6 12z"/>',
+ medium:'<path d="M3 15.5L9 4.5l6 11z"/><path d="M15 15.5L21 4.5l6 11z"/>',
+ hard:'<path d="M0 15.5L5 5.5l5 10z"/><path d="M10 15.5L15 5.5l5 10z"/><path d="M20 15.5L25 5.5l5 10z"/>'
+};
+const dico=(k,w=22)=>`<span class="dico" aria-hidden="true"><svg viewBox="0 0 30 16" width="${w}" height="${Math.round(w*16/30)}" fill="currentColor">${PEAKS[k]}</svg></span>`;
+
+/* ---------- Données de démonstration ---------- */
+const H0=[
+ {id:'h1',name:'Cuisiner',created:-14,legacy:true,init:{diff:'medium',target:7},changes:[{at:8,target:5}]},
+ {id:'h2',name:'Ne pas dépasser mon budget de la journée',created:-11,legacy:true,init:{diff:'medium',target:7},changes:[{at:8,diff:'easy'}]},
+ {id:'h3',name:'Courir 5 km',created:9,init:{diff:'hard',target:3},changes:[]},
+ {id:'h4',name:'Me coucher avant 23 h',created:-4,legacy:true,init:{diff:'medium',target:7},changes:[]},
+ {id:'h5',name:'Lire 20 minutes',created:10,init:{diff:'easy',target:7},changes:[{at:15,target:4}]}
+];
+const DONE={
+ h1:[-4,-3,-1, 0,1,3,5, 7,8,10,12, 14,15],
+ h2:[-4,-2,-1, 0,1,2,3,4,6, 7,9,10,11,13, 14],
+ h3:[9,11, 14,15],
+ h4:[-4,-3,-2,-1, 0,1,2,3,4,5,6, 7,8,9,10,11,12,13, 14,15],
+ h5:[10,11,12,13, 14,15,16]
+};
+const clone=a=>a.map(h=>({...h,init:{...h.init},changes:h.changes.map(x=>({...x}))}));
+function seedChecks(today){
+ const s=new Set();
+ H0.forEach(h=>{
+  for(let d=h.created;d<-4;d++)if((d*5+h.id.charCodeAt(1))%4!==0)s.add(h.id+':'+d);
+  DONE[h.id].forEach(d=>s.add(h.id+':'+d));
+ });
+ [...s].forEach(k=>{if(+k.split(':')[1]>today)s.delete(k);});
+ return s;
+}
+
+/* ---------- Règles ---------- */
+/* Réglages de la semaine qui commence le lundi m (R12, R13, R15, R16, R17, R6) */
+function cfgW(c,h,m){
+ if(m+6<h.created)return null;
+ const upd=c.update??UPDATE;
+ if(h.legacy&&m<monOf(upd))return {pre:true,diff:'medium',target:null,wt:null};
+ let diff=h.init.diff,target=h.init.target,next=null;
+ (h.changes||[]).forEach(ch=>{
+  if(ch.diff&&ch.at<=m+6)diff=ch.diff;
+  if(ch.target){if(ch.at<m)target=ch.target;else if(ch.at<=m+6)next=ch.target;}
+ });
+ if(next===target)next=null;
+ const active=m+7-Math.max(m,h.created);
+ const wt=Math.min(target,active);
+ return {diff,target,wt,reduced:wt<target,next};
+}
+const has=(c,h,d)=>c.checks.has(h.id+':'+d);
+function progress(c,h,m,upto){const end=Math.min(m+6,c.today,upto??Infinity);let n=0;for(let d=Math.max(m,h.created);d<=end;d++)if(has(c,h,d))n++;return n;}
+function reachedW(c,h,m){const cfg=cfgW(c,h,m);return !!(cfg&&cfg.wt!=null&&progress(c,h,m)>=cfg.wt);}
+function habitXp(c,h){
+ let x=0;
+ c.checks.forEach(k=>{const [id,ds]=k.split(':');const d=+ds;if(id!==h.id||d>c.today||d<h.created)return;x+=DIFF[cfgW(c,h,monOf(d)).diff].xp;});
+ for(let m=monOf(h.created);m<=monOf(c.today);m+=7){const cfg=cfgW(c,h,m);if(cfg&&cfg.wt!=null&&progress(c,h,m)>=cfg.wt)x+=cfg.wt*DIFF[cfg.diff].u;}
+ return x;
+}
+function xpOf(c){return Math.max(0,(c.base||0)+c.habits.reduce((s,h)=>s+habitXp(c,h),0));}
+/* Recommandation UX : une habitude dont l'objectif était atteint avant ce jour sort du compteur, sauf si elle est faite ce jour-là */
+function counted(c,h,d){
+ if(h.created>d)return false;
+ const m=monOf(d),cfg=cfgW(c,h,m);
+ if(!cfg||cfg.wt==null)return true;
+ return has(c,h,d)||progress(c,h,m,d-1)<cfg.wt;
+}
+function dayCount(c,d){const act=c.habits.filter(h=>counted(c,h,d));return {act,n:act.filter(h=>has(c,h,d)).length};}
+function status(c,h,d){
+ const on=c.checks.has(h.id+':'+d);
+ if(d<h.created)return 'notstarted';
+ if(d>c.today)return on?'locked':'upcoming';
+ if(on)return 'done';
+ return d===c.today?'pending':'missed';
+}
+function corrected(c,hid,d){const k=hid+':'+d;return d<c.today&&c.atClose.has(k)&&c.atClose.get(k)!==c.checks.has(k);}
+const oldest=c=>c.habits.length?Math.min(...c.habits.map(h=>h.created)):c.today;
+const weekMin=c=>(monOf(oldest(c))-monOf(c.today))/7;
+const monthMin=c=>mIdx(oldest(c))-mIdx(c.today);
+const ST_LABEL={done:'fait',pending:'à faire',missed:'pas fait',upcoming:'à venir',notstarted:'hors habitude',locked:'fait'};
+const GLYPH={done:I.check,locked:I.check,missed:I.cross,notstarted:I.dot,pending:'',upcoming:''};
+function curSettings(c,h){const cfg=cfgW(c,h,monOf(c.today));return {diff:cfg.diff,target:cfg.next??cfg.target};}
+
+/* Applique un suivi (ou une correction) et décrit ses effets : XP du suivi, prime gagnée ou perdue */
+function apply(c,hid,d,on){
+ const h=c.habits.find(x=>x.id===hid),m=monOf(d),cfg=cfgW(c,h,m);
+ const r0=reachedW(c,h,m),x0=xpOf(c),k=hid+':'+d;
+ if(d<c.today&&!c.atClose.has(k))c.atClose.set(k,c.checks.has(k));
+ on?c.checks.add(k):c.checks.delete(k);
+ const r1=reachedW(c,h,m),x1=xpOf(c),ck=DIFF[cfg.diff].xp*(on?1:-1);
+ return {h,m,cfg,r0,r1,x0,x1,ck,pr:x1-x0-ck,p:progress(c,h,m)};
+}
+function goalToast(c,a){
+ const cur=a.m===monOf(c.today);
+ return {goal:true,title:cur?'Objectif de la semaine atteint':`Objectif atteint · ${weekOfLabel(a.m)}`,text:`${esc(a.h.name)} · ${a.p}/${a.cfg.wt}`,prime:`+${a.pr} XP prime`};
+}
+function lostToast(c,a){
+ const cur=a.m===monOf(c.today);
+ return {soft:true,text:(cur?'Objectif de la semaine plus atteint':`Objectif de la ${weekOfLabel(a.m)} plus atteint`)+` · ${esc(a.h.name)} ${a.p}/${a.cfg.wt} · ${sgn(a.pr)} XP prime`};
+}
+function deltasOf(a){const l=[{t:sgn(a.ck)+' XP',neg:a.ck<0}];if(a.pr)l.push({t:sgn(a.pr)+' XP prime',neg:a.pr<0,prime:true});return l;}
+
+/* ---------- Rendu de l'application ---------- */
+function statusBar(c){return `<div class="island"></div><div class="statusbar"><span>${c.time||'9:41'}</span>${I.status}</div>`;}
+function appbar(c){
+ const ds=(c.deltas||[]).map((x,i)=>`<span class="xpdelta ${x.neg?'neg':''} ${x.prime?'prime':''} ${c.static?'':'anim'}">${x.t}</span>`).join('');
+ return `<header class="appbar"><div class="avatar">${I.peak}</div><div class="who"><div class="lbl">Expérience du personnage</div><div class="xpv ${c.pulse?'glow':''}" data-xp>${fmt(c.xp)} XP</div></div>${ds?`<span class="xpds">${ds}</span>`:''}</header>`;
+}
+function tabbar(c){
+ const T=[['day','Journée',I.tDay],['week','Semaine',I.tWeek],['month','Mois',I.tMonth]];
+ return `<nav class="tabbar" aria-label="Vues">${T.map(([k,l,ic])=>`<button class="tab" data-tab="${k}" ${c.tab===k?'aria-current="page"':''}><span class="ti">${ic}</span>${l}</button>`).join('')}</nav>`;
+}
+function floatFor(c,hid,d){return (c.float&&c.float.hid===hid&&c.float.d===d)?`<span class="xpf frozen ${c.float.neg?'neg':''}">${c.float.text}</span>`:'';}
+function isPop(c,hid,d){return c.pop&&c.pop.hid===hid&&c.pop.d===d;}
+const burstCls=(c,hid)=>c.burst===hid?('burst'+(c.static?' frozen':'')):'';
+
+/* Ligne de la Journée (et du Détail du jour) */
+function progInfo(c,h,d){
+ const m=monOf(d),cfg=cfgW(c,h,m);if(!cfg||cfg.wt==null)return null;
+ const p=progress(c,h,m),r=p>=cfg.wt,cur=m===monOf(c.today);
+ const when=cur?'cette semaine':weekOfLabel(m).replace('semaine','sem.').replace(/ (\S+)$/,(s,mo)=>' '+MONTHS[MONTHS_L.indexOf(mo)]);
+ const txt=r&&p>cfg.wt?`${p} fois ${when}`:`${p}/${cfg.wt} ${when}`;
+ const aria=r&&p>cfg.wt?`${p} fois ${cur?'cette semaine':weekOfLabel(m)}`:`${p} sur ${cfg.wt} ${cur?'cette semaine':weekOfLabel(m)}`;
+ return {cfg,p,r,txt,aria};
+}
+function drow(c,h,d,opt={}){
+ const st=status(opt.asToday?{...c,today:d}:c,h,d),cor=corrected(c,h.id,d);
+ const cfg=cfgW(c,h,monOf(d)),pg=progInfo(c,h,d),label=cap(ST_LABEL[st]);
+ const glyph=st==='done'?I.check:st==='missed'?I.cross:'';
+ const showBadge=pg&&pg.r&&!(c.noBadge===h.id);
+ const badge=showBadge?`<span class="goalb ${burstCls(c,h.id)}">${I.flag}Objectif atteint</span>`:'';
+ const di=cfg&&!cfg.pre?DIFF[cfg.diff]:null;
+ const txt=`<span class="dst">${di?dico(cfg.diff,20):''}<span>${label}${pg?' · '+pg.txt:''}</span>${cor?'<span class="cmk">corrigé</span>':''}</span>`;
+ const more=opt.more?`<button class="more" data-edit="${h.id}" aria-label="Options de l'habitude ${esc(h.name)}">${I.more}</button>`:'';
+ const aria=`${esc(h.name)}, ${ST_LABEL[st]}${pg?', '+pg.aria:''}${di?`, ${di.l}, ${di.xp} XP par suivi`:''}${showBadge?', objectif atteint':''}${cor?', corrigé':''}`;
+ return `<div class="drow-w ${st} ${opt.sm?'sm':''} ${c.hl===h.id?'hl':''}" data-card="${h.id}"><button class="drow" data-h="${h.id}" data-d="${d}" aria-pressed="${st==='done'}" aria-label="${aria}"><span class="dchk ${isPop(c,h.id,d)?'popframe':''}">${glyph}${cor?'<span class="cm"></span>':''}${floatFor(c,h.id,d)}</span><span class="dtx"><span class="dnm">${esc(h.name)}</span>${txt}${badge}</span></button>${more}</div>`;
+}
+function emptyState(title,text,act){return `<div class="state-center"><h2>${title}</h2><p>${text}</p><button class="btn primary" data-act="${act}" style="padding:0 22px">${I.plus}Ajouter une habitude</button></div>`;}
+function fab(c){
+ return c.habits.length>=10
+  ?`<button class="fab limit" data-act="limit" aria-disabled="true">${I.plus}<span>Limite atteinte · 10/10</span></button>`
+  :`<button class="fab" data-act="new">${I.plus}<span>Ajouter une habitude</span></button>`;
+}
+function newsCard(){
+ return `<div class="news" role="region" aria-label="Nouveauté"><div class="nh">${I.spark}Nouveau</div><div class="nt">Règle la difficulté et l'objectif de chaque habitude</div><p>Pour l'instant, toutes sont en Moyenne, tous les jours : rien ne change pour ton expérience. Atteins ton objectif de la semaine pour gagner une prime.</p><div class="nact"><button class="linkbtn" data-act="newsGo">Régler</button></div><button class="iconbtn x" data-act="newsClose" aria-label="Fermer la nouveauté">${I.close}</button></div>`;
+}
+function ydayBanner(c){
+ if(c.ydayDismissed)return '';
+ const y=c.today-1,{act,n}=dayCount(c,y);if(!act.length||n===act.length)return '';
+ return `<div class="yday"><span>Hier : <b>${n}/${act.length} faites</b>. Un oubli&nbsp;?</span><button class="linkbtn" data-act="ydayFix">Corriger</button><button class="iconbtn" data-act="ydayClose" aria-label="Fermer le rappel d'hier">${I.close}</button></div>`;
+}
+function dayView(c){
+ if(!c.habits.length)return emptyState("Aucune habitude pour l'instant","Crée ta première habitude et commence à gagner de l'expérience.",'new');
+ const d=c.today,{act,n}=dayCount(c,d);
+ const all=c.habits.filter(h=>h.created<=d);
+ const pct=act.length?Math.round(100*n/act.length):0;
+ const head=`<div class="dayhd"><div><h2>Aujourd'hui</h2><div class="date">${cap(longDate(d))}</div></div><div class="prog" aria-label="${n} ${plural(n,'habitude faite','habitudes faites')} sur ${act.length}"><span class="pv">${n}/${act.length}</span><span class="pl">faites</span><div class="bar"><i style="width:${pct}%"></i></div></div></div>`;
+ const alld=(n===act.length&&act.length)?`<div class="alldone">${I.spark}<span>Toutes tes habitudes du jour sont faites. Belle ascension&nbsp;!</span></div>`:'';
+ return head+`<div class="scroll withfab">${c.news?newsCard():''}${ydayBanner(c)}${alld}${all.map(h=>drow(c,h,d,{more:true})).join('')}<div class="sect" style="margin-top:6px"><span>Habitudes</span><span>${c.habits.length}/10</span></div></div>`+fab(c);
+}
+function navBar(title,sub,prevDis,nextDis,lp,ln){
+ return `<div class="weeknav"><button class="iconbtn" data-act="prev" aria-label="${lp}" ${prevDis?'disabled':''}>${I.left}</button><div class="wk" aria-live="polite"><div class="wkt">${title}</div><div class="wks">${sub}</div></div><button class="iconbtn" data-act="next" aria-label="${ln}" ${nextDis?'disabled':''}>${I.right}</button></div>`;
+}
+function legendW(){
+ const L=[['done','Fait'],['pending','À faire'],['missed','Pas fait'],['upcoming','À venir'],['notstarted','Hors habitude']];
+ return `<div class="legend" aria-hidden="true">${L.map(([k,l])=>`<span><i class="cell ${k}">${GLYPH[k]}</i>${l}</span>`).join('')}<span><span class="gchip" style="padding:0 7px;font-size:11px">2/5</span>Progression</span><span><span class="gchip ok" style="padding:0 7px;font-size:11px">${I.checkS}3/3</span>Objectif atteint</span></div>`;
+}
+function weekView(c){
+ if(!c.habits.length)return emptyState("Ta semaine est vide","Elle se remplira dès ta première habitude.",'goNew');
+ const off=c.weekOff||0,m=monOf(c.today)+7*off,min=weekMin(c),cur=off===0;
+ const t=off===0?'Cette semaine':off===-1?'Semaine dernière':`Semaine du ${dateOf(m).getDate()} ${MONTHS[dateOf(m).getMonth()]}`;
+ const sub=rangeLabel(m)+(off===min&&off<0?' · début de l’historique':'');
+ let dh='';for(let i=0;i<7;i++){const d=m+i;dh+=`<div class="dh ${d===c.today?'today':''}"><span class="dl">${DL[i]}</span><span class="dn">${dateOf(d).getDate()}</span></div>`;}
+ const hs=c.habits;
+ const pre=hs.length&&hs.every(h=>{const cf=cfgW(c,h,m);return !cf||cf.pre;});
+ const cards=hs.map(h=>{
+  const cfg=cfgW(c,h,m);
+  let chip='',sub='',reached=false;
+  if(cfg&&!cfg.pre){
+   const p=progress(c,h,m);reached=p>=cfg.wt;
+   chip=reached
+    ?`<span class="gchip ok ${burstCls(c,h.id)}" role="img" aria-label="${p} sur ${cfg.wt}, objectif atteint">${I.checkS}${p}/${cfg.wt} · Objectif atteint</span>`
+    :`<span class="gchip ${cur?'':'past'}" role="img" aria-label="${p} sur ${cfg.wt}">${p}/${cfg.wt}</span>`;
+   const red=cfg.reduced?` · ${cfg.wt} ${cur?'cette semaine':'cette semaine-là'} (créée ${DLONG[dow(h.created)]})`:'';
+   const nx=cur&&cfg.next?` · <span class="nx">${tphrase(cfg.next)} dès lundi</span>`:'';
+   sub=`<div class="hsub">${dico(cfg.diff,20)}<span>${DIFF[cfg.diff].l} · ${tphrase(cfg.target)}${red}${nx}</span></div>`;
+  }
+  let cells='';
+  for(let i=0;i<7;i++){
+   const d=m+i,st=status(c,h,d),cor=corrected(c,h.id,d);
+   const can=['done','pending','missed'].includes(st);
+   const lab=`${esc(h.name)}, ${longDate(d)}, ${ST_LABEL[st]}${cor?', corrigé':''}${can?'':', indisponible'}`;
+   cells+=`<button class="cell ${st} ${isPop(c,h.id,d)?'popframe':''}" data-h="${h.id}" data-d="${d}" ${can?`aria-pressed="${st==='done'}"`:'aria-disabled="true"'} aria-label="${lab}">${GLYPH[st]}${cor?'<span class="cm"></span>':''}${floatFor(c,h.id,d)}</button>`;
+  }
+  return `<div class="card ${c.hl===h.id?'hl':''} ${reached?'reached':''}" data-card="${h.id}"><div class="hrow"><button class="hname" data-edit="${h.id}" aria-label="Modifier l'habitude ${esc(h.name)}"><span>${esc(h.name)}</span>${I.pencil}</button>${chip}</div>${sub}<div class="cells">${cells}</div></div>`;
+ }).join('');
+ const info=pre?`<div class="wkinfo">${I.info}<span>Les objectifs n'existaient pas encore cette semaine-là : pas d'objectif ni de prime. Chaque « fait » vaut 10 XP.</span></div>`:'';
+ const back=off<0?`<div class="backrow"><button class="linkbtn" data-act="now">Revenir à cette semaine</button></div>`:'';
+ return navBar(t,sub,off<=min,off>=0,'Semaine précédente','Semaine suivante')+`<div class="dayhead" aria-hidden="true">${dh}</div><div class="scroll">${back}${info}${cards}${legendW()}<p class="hint">Tape une case d'un jour passé pour corriger un oubli.</p></div>`;
+}
+function monthCell(c,d){
+ const num=dateOf(d).getDate();
+ if(d>c.today)return `<div class="mday upcoming" role="img" aria-label="${longDate(d)}, à venir"><span class="n">${num}</span></div>`;
+ const {act,n}=dayCount(c,d);
+ if(!c.habits.some(h=>h.created<=d))return `<div class="mday neutral" role="img" aria-label="${longDate(d)}, aucune habitude active"><span class="n">${num}</span></div>`;
+ const cor=c.habits.some(h=>corrected(c,h.id,d));
+ const dots=act.map(h=>{const st=status(c,h,d);return `<i class="${st==='done'?'d':st==='pending'?'p':'m'}"></i>`;}).join('');
+ const cls=['mday',d===c.today?'today':'',n===act.length?'full':''].join(' ');
+ return `<button class="${cls}" data-mday="${d}" aria-label="${longDate(d)}${d===c.today?", aujourd'hui":''}, ${n} ${plural(n,'habitude faite','habitudes faites')} sur ${act.length}${cor?', corrigé':''}"><span class="n">${num}</span><span class="k">${n}/${act.length}</span><span class="mdots">${dots}</span>${cor?'<span class="cm"></span>':''}</button>`;
+}
+function weekGoals(c,y,mo){
+ const first=dayOf(y,mo,1),last=dayOf(y,mo+1,0);
+ let rows='',skipped=false;
+ for(let m=monOf(first);m<=last;m+=7){
+  if(m>c.today)break;
+  const hs=c.habits.map(h=>[h,cfgW(c,h,m)]).filter(([h,cf])=>cf);
+  if(!hs.length)continue;
+  const withT=hs.filter(([h,cf])=>cf.wt!=null);
+  if(!withT.length){skipped=true;continue;}
+  const r=withT.filter(([h])=>reachedW(c,h,m)).length,all=r===withT.length;
+  const cur=m===monOf(c.today);
+  const lbl=cur?'Cette semaine':cap(weekOfLabel(m));
+  rows+=`<button class="wgrow ${all?'all':''}" data-week="${m}" aria-label="${lbl}, ${r} ${plural(r,'objectif atteint','objectifs atteints')} sur ${withT.length}"><span class="wi">${all?I.flagL:I.target}</span><span class="wt"><b>${lbl}</b><span>${r}/${withT.length} ${plural(withT.length,'objectif atteint','objectifs atteints')}</span></span>${I.chev}</button>`;
+ }
+ if(!rows)return '';
+ return `<div class="wgoals"><div class="sect"><h2>Objectifs par semaine</h2></div>${rows}${skipped?`<p class="hint" style="margin-top:2px">Avant la mise à jour du 13 octobre, les habitudes n'avaient pas d'objectif.</p>`:''}</div>`;
+}
+function monthView(c){
+ if(!c.habits.length)return emptyState("Ton mois est vide","Chaque jour affichera tes habitudes faites dès ta première habitude.",'goNew');
+ const off=c.monthOff||0,min=monthMin(c);
+ const base=dateOf(c.today);const first=new Date(base.getFullYear(),base.getMonth()+off,1);
+ const y=first.getFullYear(),mo=first.getMonth(),last=new Date(y,mo+1,0).getDate();
+ const d1=dayOf(y,mo,1);
+ const sub=off===0?'Ce mois-ci':off===min?'Début de l’historique':'';
+ let g='';for(let i=0;i<dow(d1);i++)g+='<div class="mday blank"></div>';
+ for(let k=0;k<last;k++)g+=monthCell(c,d1+k);
+ const back=off<0?`<div class="backrow"><button class="linkbtn" data-act="now">Revenir à ce mois-ci</button></div>`:'';
+ const lg=`<div class="legend" aria-hidden="true"><span><span class="mdots"><i class="d"></i></span>Fait</span><span><span class="mdots"><i class="p"></i></span>À faire</span><span><span class="mdots"><i class="m"></i></span>Pas fait</span></div>`;
+ return navBar(cap(MONTHS_L[mo])+' '+y,sub,off<=min,off>=0,'Mois précédent','Mois suivant')+`<div class="scroll" style="padding-top:12px"><div class="dayhead month" aria-hidden="true">${DL.map(l=>`<div class="dh"><span class="dl">${l}</span></div>`).join('')}</div><div class="mgrid">${g}</div>${back}${lg}${weekGoals(c,y,mo)}</div>`;
+}
+function toast(t,abovefab,top){
+ if(t.goal)return `<div class="toast goal ${top?'top':abovefab?'abovefab':''}" role="status"><span class="gi">${I.flagL}</span><span class="tx"><b>${t.title}</b>${t.text} · <span class="pp">${t.prime}</span></span></div>`;
+ return `<div class="toast ${t.soft?'soft':''} ${top?'top':abovefab?'abovefab':''}" role="status"><span>${t.text}</span>${t.action?`<button data-act="toastAction">${t.action}</button>`:''}</div>`;
+}
+function kbd(){
+ const rows=[[...'azertyuiop'],[...'qsdfghjklm'],['⇧','w','x','c','v','b','n','⌫'],['123','espace','↵']];
+ return `<div class="kbd" aria-hidden="true">${rows.map(r=>`<div class="krow">${r.map(k=>`<span class="key ${k==='espace'?'space':(k.length>1||'⇧⌫↵'.includes(k))?'wide':''}">${k}</span>`).join('')}</div>`).join('')}</div>`;
+}
+function validate(o,habits){
+ const t=(o.value||'').trim();const excl=o.type==='edit'?o.id:null;
+ if(!t)return {err:o.type==='edit'?'Le nom ne peut pas être vide.':'',can:false};
+ const dup=habits.find(h=>h.id!==excl&&h.name.trim().toLowerCase()===t.toLowerCase());
+ if(dup)return {err:`Tu as déjà une habitude «&nbsp;${esc(dup.name)}&nbsp;».`,can:false};
+ if(o.type==='edit'&&t===o.original&&o.diff===o.oDiff&&o.target===o.oTarget)return {err:'',can:false};
+ return {err:'',can:true};
+}
+function settingsBlock(c,o){
+ const seg=DORDER.map(k=>`<button class="segb" role="radio" aria-checked="${o.diff===k}" data-diff="${k}" aria-label="${DIFF[k].l}, ${DIFF[k].xp} XP par suivi">${dico(k,26)}<span>${DIFF[k].l}</span><span class="x">+${DIFF[k].xp} XP</span></button>`).join('');
+ let pills='';for(let n=1;n<=7;n++)pills+=`<button class="pillb" role="radio" aria-checked="${o.target===n}" data-target="${n}" aria-label="${n===7?'7 fois par semaine, tous les jours':n+' fois par semaine'}">${n}</button>`;
+ const left=7-dow(c.today);
+ const isNew=o.type==='new';
+ const h=isNew?null:c.habits.find(x=>x.id===o.id);
+ const creationDay=isNew||(h&&h.created===c.today);
+ const red=creationDay&&o.target>left?`<small> · cette semaine : ${left}, à partir d'aujourd'hui</small>`:'';
+ let info='';
+ if(!isNew){
+  if(o.diff!==o.oDiff)info+=`<div class="info" role="status">${I.info}<span>S'applique à toute cette semaine : chaque suivi « fait » rapportera ${DIFF[o.diff].xp} XP. Les semaines passées ne changent pas.</span></div>`;
+  if(o.target!==o.oTarget){
+   if(creationDay)info+=`<div class="info" role="status">${I.info}<span>Habitude créée aujourd'hui : le nouvel objectif s'applique dès cette semaine.</span></div>`;
+   else{const cfg=cfgW(c,h,monOf(c.today));const nm=monOf(c.today)+7;info+=`<div class="info" role="status">${I.info}<span>Nouvel objectif à partir de lundi prochain (${dateOf(nm).getDate()} ${MONTHS_L[dateOf(nm).getMonth()]}). Cette semaine reste à ${cfg.wt}.</span></div>`;}
+  }
+ }
+ return `<div class="lbl2" id="dfL">Difficulté</div><div class="seg" role="radiogroup" aria-labelledby="dfL">${seg}</div><div class="lbl2" id="tgL">Objectif hebdomadaire</div><div class="pills" role="radiogroup" aria-labelledby="tgL">${pills}</div><div class="tphrase">${cap(tphrase(o.target))}${red}</div>${info}`;
+}
+function delBody(c,id){
+ const h=c.habits.find(x=>x.id===id);
+ if(!has(c,h,c.today))return `Son historique sera effacé. L'expérience gagnée les jours passés reste acquise.`;
+ const x0=habitXp(c,h),c2={...c,checks:new Set(c.checks)};c2.checks.delete(id+':'+c.today);
+ const loss=x0-habitXp(c2,h),ck=DIFF[cfgW(c,h,monOf(c.today)).diff].xp,pr=loss-ck;
+ return pr
+  ?`Son historique sera effacé. L'expérience gagnée les jours passés reste acquise. Sont retirés le suivi d'aujourd'hui (−${ck} XP) et la prime de cette semaine (−${pr} XP), l'objectif n'étant plus atteint : −${loss} XP en tout.`
+  :`Son historique sera effacé. L'expérience gagnée les jours passés reste acquise&nbsp;; seule celle d'aujourd'hui est retirée (−${ck} XP).`;
+}
+function overlay(c){
+ const o=c.overlay;
+ if(o.type==='del'){
+  return `<div class="scrim" data-act="close"></div><div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlgT" aria-describedby="dlgB"><h3 id="dlgT">Supprimer «&nbsp;${esc(o.name)}&nbsp;»&nbsp;?</h3><p id="dlgB">${delBody(c,o.id)}</p><div class="actions"><button class="btn ghost" data-act="close">Annuler</button><button class="btn danger" data-act="confirmDel">Supprimer</button></div></div>`;
+ }
+ if(o.type==='day'){
+  const d=o.d,{act,n}=dayCount(c,d);
+  const all=c.habits.filter(h=>h.created<=d),later=c.habits.filter(h=>h.created>d);
+  const sub=(d===c.today?"Aujourd'hui":'Jour clos · tu peux corriger un oubli')+` · ${n}/${act.length} faites`;
+  return `<div class="scrim" data-act="close"></div><div class="sheet daysheet" role="dialog" aria-modal="true" aria-labelledby="shT"><div class="grab"></div><h3 id="shT">${cap(longDate(d))}</h3><p class="sub">${sub}</p>${all.map(h=>drow(c,h,d,{sm:true})).join('')}${later.length?`<p class="hint" style="margin-top:4px">${later.map(h=>`«&nbsp;${esc(h.name)}&nbsp;»`).join(', ')} : ${plural(later.length,'créée','créées')} plus tard, hors habitude ce jour-là.</p>`:''}<button class="btn ghost block" data-act="close">Fermer</button></div>`;
+ }
+ const isNew=o.type==='new',v=o.value||'',val=validate(o,c.habits);
+ return `<div class="scrim" data-act="close"></div><div class="sheet ${o.kbd?'withkbd':''}" role="dialog" aria-modal="true" aria-labelledby="shT"><div class="grab"></div><h3 id="shT">${isNew?'Nouvelle habitude':"Modifier l'habitude"}</h3><label for="nm">Nom de l'habitude</label><div class="field ${val.err?'invalid':''} ${o.focus?'focus':''}"><input id="nm" value="${esc(v)}" placeholder="Ex. Cuisiner" maxlength="40" autocomplete="off" enterkeyhint="done" ${c.static?'readonly tabindex="-1"':''} aria-invalid="${!!val.err}" aria-describedby="nmHelp"></div><div class="helprow" id="nmHelp"><span class="err">${val.err?I.alert+'<span>'+val.err+'</span>':''}</span><span class="count">${v.length}/40</span></div><div class="setb">${settingsBlock(c,o)}</div>${o.saveError?`<div class="alert">${I.alert}<span>${isNew?"L'habitude n'a pas pu être créée.":"Les modifications n'ont pas pu être enregistrées."} Réessaie.</span></div>`:''}<div class="actions"><button class="btn ghost" data-act="close">Annuler</button><button class="btn primary" data-act="${isNew?'create':'save'}" ${val.can?'':'disabled'}>${isNew?"Créer l'habitude":'Enregistrer'}</button></div>${isNew?'':`<button class="btn danger-text" data-act="askDel">${I.trash}Supprimer l'habitude</button>`}</div>${o.kbd?kbd():''}`;
+}
+function loadingView(tab){
+ const ab=`<div class="appbar" role="status" aria-label="Chargement de tes habitudes"><div class="sk" style="width:44px;height:44px;border-radius:14px"></div><div><div class="sk" style="width:150px;height:12px"></div><div class="sk" style="width:96px;height:22px;margin-top:8px"></div></div></div>`;
+ if(tab==='day'){
+  const row='<div class="drow-w" style="padding:16px 14px;gap:14px;align-items:center"><div class="sk" style="width:44px;height:44px;border-radius:50%;flex:none"></div><div style="flex:1"><div class="sk" style="width:65%;height:14px"></div><div style="display:flex;gap:6px;margin-top:8px"><div class="sk" style="width:20px;height:11px"></div><div class="sk" style="width:46%;height:11px"></div></div></div></div>';
+  return ab+`<div class="dayhd"><div><div class="sk" style="width:150px;height:24px"></div><div class="sk" style="width:120px;height:13px;margin-top:8px"></div></div><div class="sk" style="width:90px;height:20px"></div></div><div class="scroll" style="padding-top:12px">${row.repeat(5)}</div>`;
+ }
+ const nav=`<div class="weeknav"><div class="sk" style="width:28px;height:28px;margin-left:8px"></div><div class="sk" style="width:120px;height:16px"></div><div class="sk" style="width:28px;height:28px;margin-right:8px"></div></div>`;
+ const card=`<div class="card" style="padding:12px 9px"><div style="display:flex;justify-content:space-between;margin:6px 2px 10px"><div class="sk" style="width:50%;height:14px"></div><div class="sk" style="width:44px;height:20px;border-radius:999px"></div></div><div class="sk" style="width:40%;height:11px;margin:0 2px 12px"></div><div class="cells">${'<div class="sk" style="aspect-ratio:1/1;border-radius:12px"></div>'.repeat(7)}</div></div>`;
+ return ab+nav+`<div class="scroll" style="padding-top:44px">${card.repeat(4)}</div>`;
+}
+function renderApp(c){
+ let h=statusBar(c);
+ if(c.view==='loading')return h+loadingView(c.tab)+tabbar(c)+'<div class="homebar"></div>';
+ h+=appbar(c);
+ h+=c.tab==='week'?weekView(c):c.tab==='month'?monthView(c):dayView(c);
+ h+=tabbar(c);
+ if(c.toast)h+=toast(c.toast,c.tab==='day'&&c.habits.length>0,!!c.overlay);
+ if(c.overlay)h+=overlay(c);
+ return h+'<div class="homebar"></div>';
+}
+
+/* ---------- Composants ---------- */
+(function(){
+ const c={today:16,checks:seedChecks(16),atClose:new Map(),habits:clone(H0),static:true};
+ const h3=c.habits[2];
+ const ctxR={...c,checks:new Set([...c.checks,'h3:16'])};
+ const seg=settingsBlock({...c},{type:'new',diff:'hard',target:3});
+ document.getElementById('demoA').innerHTML=
+  `<div class="demo-item" style="width:auto">${dico('easy',30)}Facile · 5 XP</div><div class="demo-item" style="width:auto">${dico('medium',30)}Moyenne · 10 XP</div><div class="demo-item" style="width:auto">${dico('hard',30)}Difficile · 20 XP</div>`
+  +`<div class="demo-box">${seg.replace(/id="(dfL|tgL)"/g,'').replace(/aria-labelledby="(dfL|tgL)"/g,'')}Panneaux : difficulté et objectif hebdomadaire</div>`
+  +`<div class="demo-box">${drow(c,h3,16)}Ligne · à faire, 2/3 cette semaine${drow(ctxR,h3,16)}Ligne · faite, objectif atteint</div>`
+  +`<div class="demo-item" style="width:auto"><span class="gchip">2/5</span>Puce · en cours</div><div class="demo-item" style="width:auto"><span class="gchip past">1/3</span>Puce · semaine passée</div><div class="demo-item" style="width:auto"><span class="gchip ok">${I.checkS}3/3 · Objectif atteint</span>Puce · atteint</div>`
+  +`<div class="demo-item" style="width:auto"><div class="stepper" role="img" aria-label="Compteur grand texte"><span class="sb">−</span><output>3</output><span class="sb">+</span></div>Objectif · grand texte</div>`;
+ document.getElementById('demoB').innerHTML=
+  `<div class="demo-item" style="width:auto"><span class="xpdelta" style="margin:0">+20 XP</span>Gain du suivi</div><div class="demo-item" style="width:auto"><span class="xpdelta prime" style="margin:0">+30 XP prime</span>Prime</div><div class="demo-item" style="width:auto"><span class="xpdelta prime neg" style="margin:0">−30 XP prime</span>Prime retirée</div><div class="demo-item" style="width:auto"><span class="goalb burst frozen" style="margin:0">${I.flag}Objectif atteint</span>Éclat (0,6 s)</div>`
+  +`<div class="demo-box">${toast({goal:true,title:'Objectif de la semaine atteint',text:'Courir 5 km · 3/3',prime:'+30 XP prime'})}Message F1</div>`
+  +`<div class="demo-box">${newsCard()}Carte de nouveauté</div>`
+  +`<div class="demo-box"><button class="wgrow all" tabindex="-1"><span class="wi">${I.flagL}</span><span class="wt"><b>Semaine du 12 octobre</b><span>5/5 objectifs atteints</span></span>${I.chev}</button><button class="wgrow" tabindex="-1"><span class="wi">${I.target}</span><span class="wt"><b>Cette semaine</b><span>0/5 objectifs atteints</span></span>${I.chev}</button>Mois · objectifs par semaine</div>`;
+})();
+
+/* ---------- Galerie des états ---------- */
+const base=(today=16)=>({today,time:today===16?'19:42':'20:05',tab:'day',weekOff:0,monthOff:0,habits:clone(H0),checks:seedChecks(today),atClose:new Map(),base:0,ydayDismissed:true,static:true});
+function F(group,screen,state,story,note,mod,opts={}){const c=base(opts.today);if(mod)mod(c);if(c.xp==null)c.xp=xpOf(c);return {group,screen,state,story,note,c,opts};}
+const STORY={"S1":"Choisir la difficulté d'une habitude","S2":"Fixer un objectif hebdomadaire et suivre sa progression","S3":"Atteindre l'objectif et gagner la prime","S4":"Habitudes existantes après la mise à jour"};
+/* Suivi figé à l'instant du feedback */
+function fb(c,hid,d,on,o={}){
+ const a=apply(c,hid,d,on);
+ c.float={hid,d,text:sgn(a.ck)+' XP',neg:!on};
+ if(on){c.pop={hid,d};c.pulse=true;}
+ c.deltas=deltasOf(a);
+ if(!a.r0&&a.r1){c.burst=hid;c.toast=goalToast(c,a);}
+ else if(a.r0&&!a.r1)c.toast=lostToast(c,a);
+ return a;
+}
+const editO=(c,id,mod={})=>{const h=c.habits.find(x=>x.id===id),s=curSettings(c,h);c.overlay={type:'edit',id,value:h.name,original:h.name,diff:s.diff,oDiff:s.diff,target:s.target,oTarget:s.target,...mod};};
+const meditate=(c,target=3,done=false)=>{c.habits.push({id:'h6',name:'Méditer 10 minutes',created:16,init:{diff:'easy',target},changes:[]});if(done)c.checks.add('h6:16');};
+const newsCtx=c=>{c.today=8;c.time='8:12';c.habits=c.habits.filter(h=>h.legacy).map(h=>({...h,changes:[]}));c.checks=seedChecks(8);c.update=8;};
+
+const FR=[
+ /* E1 · Journée */
+ F('e1','E1 · Vue Journée','Chargement','S2','Le squelette prévoit la ligne secondaire (icône de difficulté + progression), pour que rien ne saute à l’affichage.',c=>{c.view='loading';}),
+ F('e1','E1 · Vue Journée','Première ouverture après la mise à jour','S4','Mardi 13 octobre. Carte de nouveauté unique, fermable. Les habitudes existantes sont en Moyenne, tous les jours : l’XP est exactement la même qu’avant. « Régler » ouvre « Modifier l’habitude ».',c=>{newsCtx(c);c.news=true;}),
+ F('e1','E1 · Vue Journée','Rempli · objectifs mélangés','S1 · S2','Mercredi 21. Chaque ligne : sommets de difficulté, état, « 2/5 cette semaine ». « Tous les jours » s’affiche aussi en x/7. Le compteur « faites » ne change pas tant qu’aucun objectif n’est atteint.'),
+ F('e1','E1 · Vue Journée','Feedback : habitude faite','S1 · S2','Tap sur « Cuisiner » (Moyenne) : +10 XP s’envole, la ligne passe à « 3/5 cette semaine ». Même rebond et même vibration qu’avant.',c=>{fb(c,'h1',16,true);}),
+ F('e1','E1 · Vue Journée','Feedback : objectif atteint (F1)','S3','Tap sur « Courir 5 km » (Difficile, 2/3) : +20 XP, puis badge « Objectif atteint » avec éclat doré, message en bas et seconde pastille « +30 XP prime » (3 × 10).',c=>{fb(c,'h3',16,true);}),
+ F('e1','E1 · Vue Journée','Objectif déjà atteint · hors compteur','S3','Jeudi 22. « Courir 5 km » a atteint 3/3 hier : badge vert, ligne toujours tapable. Elle sort du compteur du jour (1/4 faites) tant qu’elle n’est pas refaite aujourd’hui (recommandation UX).',c=>{c.checks.add('h3:16');c.checks.add('h5:17');},{today:17}),
+ F('e1','E1 · Vue Journée','« Fait » au-delà de l’objectif','S3','Jeudi 22, nouveau tap : +20 XP normal, pas de nouvelle prime ni d’éclat. « 4 fois cette semaine ». La ligne revient dans le compteur (2/5 faites).',c=>{c.checks.add('h3:16');c.checks.add('h5:17');fb(c,'h3',17,true);},{today:17}),
+ F('e1','E1 · Vue Journée','Retour sous l’objectif','S3','Mercredi 21, second tap sur « Courir 5 km » faite : le badge disparaît, « −20 XP » et « −30 XP prime » en gris, message discret. Pas de vibration, pas de rouge.',c=>{c.checks.add('h3:16');fb(c,'h3',16,false);}),
+ F('e1','E1 · Vue Journée','Erreur d’enregistrement','S3','Le suivi qui atteignait l’objectif a échoué : tout est annulé (état, XP, progression, badge, prime). « Réessayer » rejoue le même suivi, F1 compris.',c=>{c.toast={text:"Le suivi n'a pas été enregistré.",action:'Réessayer'};}),
+
+ /* F1 · séquence */
+ F('f1','F1 · Objectif atteint','1 · Le suivi (0 s)','S3','Comme tout suivi : la coche rebondit, « +20 XP » s’envole, le compteur pulse, légère vibration. La ligne passe à 3/3.',c=>{const a=apply(c,'h3',16,true);c.float={hid:'h3',d:16,text:'+20 XP'};c.pop={hid:'h3',d:16};c.pulse=true;c.deltas=[{t:'+20 XP'}];c.noBadge='h3';c.xp=a.x0+a.ck;}),
+ F('f1','F1 · Objectif atteint','2 · L’objectif (≈ 0,4 s)','S3','Le badge « Objectif atteint » apparaît avec un éclat doré (0,6 s). Message en bas, seconde pastille « +30 XP prime », seconde pulsation du compteur, seconde vibration. Annonce au lecteur d’écran.',c=>{fb(c,'h3',16,true);c.float=null;c.pop=null;}),
+ F('f1','F1 · Objectif atteint','3 · État final (après 3 s)','S3','Le message et les pastilles disparaissent. Le badge reste toute la semaine. Mouvement réduit : on passe directement à cet état, message compris.',c=>{c.checks.add('h3:16');}),
+
+ /* E2 · Nouvelle habitude */
+ F('e2','E2 · Nouvelle habitude','Vide · valeurs par défaut','S1 · S2','Clavier ouvert. Moyenne et 7 (tous les jours) sont déjà choisis : nom puis ↵ suffit. « Créer l’habitude » est désactivé tant que le nom est vide.',c=>{c.overlay={type:'new',value:'',kbd:true,focus:true,diff:'medium',target:7};}),
+ F('e2','E2 · Nouvelle habitude','Saisi · réglages choisis','S1 · S2','Un tap pour la difficulté, un tap pour l’objectif. Chaque difficulté montre ce qu’elle rapporte par suivi. La phrase sous les pastilles confirme le choix.',c=>{c.overlay={type:'new',value:'Méditer 10 minutes',kbd:true,focus:true,diff:'easy',target:3};}),
+ F('e2','E2 · Nouvelle habitude','Semaine de création réduite','S2','Créée un mercredi avec « tous les jours » : il reste 5 jours, l’objectif de cette semaine est 5. Annoncé avant de créer.',c=>{c.overlay={type:'new',value:'Méditer 10 minutes',kbd:true,focus:true,diff:'medium',target:7};}),
+ F('e2','E2 · Nouvelle habitude','Erreur : doublon','S1 · S2','Même règle de nom qu’avant. Les réglages choisis sont conservés.',c=>{c.overlay={type:'new',value:'courir 5 km',kbd:true,focus:true,diff:'hard',target:3};}),
+ F('e2','E2 · Nouvelle habitude','Erreur d’enregistrement','S1 · S2','Saisie et réglages conservés, on peut réessayer.',c=>{c.overlay={type:'new',value:'Méditer 10 minutes',diff:'easy',target:3,saveError:true};}),
+ F('e2','E2 · Nouvelle habitude','Succès','S1 · S2','Retour sur la Journée, ligne mise en évidence : un sommet (Facile), « À faire · 0/3 cette semaine ».',c=>{meditate(c,3);c.hl='h6';c.toast={text:'Habitude créée'};},{scroll:'bottom'}),
+
+ /* E7 · Modifier */
+ F('e7','E7 · Modifier l’habitude','Ouvert, inchangé','S1 · S2','Préremplis avec les réglages actuels. « Enregistrer » est désactivé tant que rien ne change. « Supprimer l’habitude » reste visible sans défiler.',c=>{editO(c,'h1');}),
+ F('e7','E7 · Modifier l’habitude','Difficulté modifiée','S1','Moyenne → Difficile. Le message dit que toute la semaine en cours est réévaluée, pas les semaines passées.',c=>{editO(c,'h1',{diff:'hard'});}),
+ F('e7','E7 · Modifier l’habitude','Objectif modifié','S2','5 → 3. Effet lundi prochain : la semaine en cours garde son objectif, on ne peut pas baisser la barre pour toucher la prime tout de suite.',c=>{editO(c,'h1',{target:3});}),
+ F('e7','E7 · Modifier l’habitude','Objectif modifié le jour de la création','S2','Habitude créée aujourd’hui : le nouvel objectif vaut dès cette semaine.',c=>{meditate(c,3,true);editO(c,'h6',{target:1});}),
+ F('e7','E7 · Modifier l’habitude','Ouvert depuis la carte de nouveauté','S4','Mardi 13 octobre, « Régler » : valeurs par défaut de la mise à jour, Moyenne et tous les jours.',c=>{newsCtx(c);editO(c,'h1');}),
+ F('e7','E7 · Modifier l’habitude','Erreur : nom vide','S1 · S2','Les réglages modifiés sont conservés pendant la correction du nom.',c=>{editO(c,'h1',{value:'',focus:true,diff:'hard'});}),
+ F('e7','E7 · Modifier l’habitude','Erreur d’enregistrement','S1 · S2','Rien n’a changé (réglages, XP). On peut réessayer.',c=>{editO(c,'h1',{diff:'hard',saveError:true});}),
+ F('e7','E7 · Modifier l’habitude','Succès · difficulté changée','S1','« Cuisiner » passe en Difficile : ses 2 suivis de la semaine valent 20 XP au lieu de 10, +20 XP. Trois sommets sur la ligne.',c=>{const x0=xpOf(c);c.habits[0].changes.push({at:16,diff:'hard'});c.xp=xpOf(c);c.deltas=[{t:sgn(c.xp-x0)+' XP'}];c.hl='h1';c.toast={text:`Habitude modifiée · ${sgn(c.xp-x0)} XP`};}),
+ F('e7','E7 · Modifier l’habitude','Succès · objectif atteint (F1)','S2 · S3','« Méditer 10 minutes », créée et faite aujourd’hui, passe à 1 fois par semaine : objectif atteint, F1 se joue avec la prime (1 × 3 XP).',c=>{meditate(c,3,true);const x0=xpOf(c);c.habits[5].init.target=1;c.xp=xpOf(c);c.deltas=[{t:sgn(c.xp-x0)+' XP prime',prime:true}];c.burst='h6';c.pulse=true;c.toast={goal:true,title:'Objectif de la semaine atteint',text:'Méditer 10 minutes · 1/1',prime:`+${c.xp-x0} XP prime`};},{scroll:'bottom'}),
+
+ /* E4 · Semaine */
+ F('e4','E4 · Vue Semaine','Chargement','S2','Squelette avec la place de la puce et de la ligne de réglages.',c=>{c.view='loading';c.tab='week';}),
+ F('e4','E4 · Vue Semaine','Cette semaine','S1 · S2','Puce neutre « 2/5 » à droite du nom, difficulté et objectif dessous. « Lire 20 minutes » annonce son nouvel objectif : « 4 fois par semaine dès lundi ».',c=>{c.tab='week';}),
+ F('e4','E4 · Vue Semaine','F1 sur la carte','S3','Tap sur la case du jour de « Courir 5 km » : +20 XP, la puce devient verte « 3/3 · Objectif atteint » avec l’éclat, liseré vert, message et prime.',c=>{c.tab='week';fb(c,'h3',16,true);}),
+ F('e4','E4 · Vue Semaine','Semaine dernière · atteinte ou non','S2 · S3','Puce verte sans animation pour les objectifs atteints, puce grise neutre sinon (« 4/7 »), sans rouge. « Lire 20 minutes », créée jeudi : objectif réduit à 4, atteint.',c=>{c.tab='week';c.weekOff=-1;},{scroll:'h3'}),
+ F('e4','E4 · Vue Semaine','Correction qui atteint l’objectif','S3','Dimanche 18, « Courir 5 km » : pas fait → fait. 3/3, F1 se joue : +20 XP et +30 XP prime pour la semaine du 12 octobre.',c=>{c.tab='week';c.weekOff=-1;fb(c,'h3',13,true);}),
+ F('e4','E4 · Vue Semaine','Correction qui fait perdre l’objectif','S3','Jeudi 15, « Lire 20 minutes » : fait → pas fait. 3/4 : −5 XP et la prime est retirée (−12 XP), message discret, sans vibration.',c=>{c.tab='week';c.weekOff=-1;fb(c,'h5',10,false);},{scroll:'bottom'}),
+ F('e4','E4 · Vue Semaine','Semaine avant la mise à jour','S4','Semaine du 5 octobre : pas d’objectif, pas de puce, pas de prime, même après correction. Chaque « fait » vaut 10 XP, comme avant.',c=>{c.tab='week';c.weekOff=-2;}),
+
+ /* E6 · Mois */
+ F('e6','E6 · Vue Mois','Ce mois-ci · objectifs par semaine','S2 · S3','Sous la grille : une ligne par semaine écoulée du mois. Drapeau quand tout est atteint. Les semaines d’avant la mise à jour ne sont pas listées.',c=>{c.tab='month';},{scroll:'bottom'}),
+ F('e6','E6 · Vue Mois','Détail du jour','S2','Dimanche 18 octobre : chaque ligne montre la progression de sa semaine (« 2/3 sem. du 12 oct. »). « Me coucher avant 23 h » et « Lire 20 minutes » ont atteint leur objectif.',c=>{c.tab='month';c.overlay={type:'day',d:13};}),
+ F('e6','E6 · Vue Mois','Détail du jour · correction F1','S3','Tap sur « Courir 5 km » dans le détail : même F1 que dans la Semaine, message au-dessus du panneau.',c=>{c.tab='month';fb(c,'h3',13,true);c.overlay={type:'day',d:13};c.float=null;}),
+ F('e6','E6 · Vue Mois','Mois avant la mise à jour','S4','Septembre : aucune semaine n’a d’objectif, la section n’apparaît pas. Le calendrier ne change pas.',c=>{c.tab='month';c.monthOff=-1;}),
+
+ /* E8 · Suppression */
+ F('e8','E8 · Suppression','Confirmation · prime retirée','S3','« Courir 5 km » faite aujourd’hui (3/3). Supprimer retire le suivi d’aujourd’hui et la prime qui tombe ; le reste devient XP conservée.',c=>{c.checks.add('h3:16');c.overlay={type:'del',id:'h3',name:'Courir 5 km'};})
+];
+document.querySelectorAll('.gallery').forEach(g=>{
+ g.innerHTML=FR.filter(f=>f.group===g.dataset.group).map(f=>`<figure class="frame"${f.opts.scroll?` data-scroll="${f.opts.scroll}"`:''}><figcaption><div class="cap-top"><span class="scr">${f.screen}</span><span class="story" title="${f.story.split(' · ').map(s=>s+' : '+STORY[s]).join(' / ')}">Story ${f.story}</span></div><div class="state">${f.state}</div><p class="note">${f.note}</p></figcaption><div class="slot"><div class="phone"><div class="screen app" inert>${renderApp(f.c)}</div></div></div></figure>`).join('');
+});
+document.querySelectorAll('[data-scroll]').forEach(f=>{const s=f.querySelector('.scroll');if(!s)return;const k=f.dataset.scroll;if(k==='bottom'){s.scrollTop=s.scrollHeight;return;}const card=s.querySelector(`[data-card="${k}"]`);if(card)s.scrollTop=card.offsetTop-s.offsetTop-6;});
+
+/* ---------- Prototype interactif ---------- */
+const live=document.getElementById('live'),srLive=document.getElementById('srLive'),simDate=document.getElementById('simDate');
+const P={};
+function resetP(){Object.assign(P,{today:16,time:'19:42',tab:'day',weekOff:0,monthOff:0,habits:clone(H0),checks:seedChecks(16),atClose:new Map(),base:0,view:'ok',overlay:null,toast:null,hl:null,next:6,ydayDismissed:true,news:false,burst:null});}
+const errOn=()=>document.getElementById('simErr').checked;
+function draw(){
+ live.innerHTML=renderApp({...P,xp:xpOf(P),static:false});
+ simDate.textContent=cap(longDate(P.today))+' 2026 · '+P.time;
+}
+let xpRaf=0;
+function addPills(list){
+ const ab=live.querySelector('.appbar');if(!ab)return;
+ ab.querySelector('.xpds')?.remove();
+ const box=document.createElement('span');box.className='xpds';
+ list.forEach(x=>{const s=document.createElement('span');s.className='xpdelta anim'+(x.neg?' neg':'')+(x.prime?' prime':'');s.textContent=x.t;box.appendChild(s);});
+ ab.appendChild(box);setTimeout(()=>box.remove(),1600);
+}
+function animateXp(from,to,pulse){
+ const el=live.querySelector('[data-xp]');if(!el)return;
+ if(reduce){el.textContent=fmt(to)+' XP';return;}
+ if(pulse){el.classList.remove('pulse');void el.offsetWidth;el.classList.add('pulse');}
+ cancelAnimationFrame(xpRaf);el.textContent=fmt(from)+' XP';
+ const t0=performance.now();
+ const step=t=>{const p=Math.min(1,(t-t0)/450);const v=Math.round(from+(to-from)*(1-Math.pow(1-p,3)));const e=live.querySelector('[data-xp]');if(e)e.textContent=fmt(v)+' XP';if(p<1)xpRaf=requestAnimationFrame(step);};
+ xpRaf=requestAnimationFrame(step);
+}
+function announce(t){srLive.textContent='';setTimeout(()=>{srLive.textContent=t;},30);}
+let toastTimer=0;
+function showToast(t){P.toast=t;live.querySelector('.toast')?.remove();live.insertAdjacentHTML('beforeend',toast(t,P.tab==='day'&&P.habits.length>0&&!P.overlay,!!P.overlay));clearTimeout(toastTimer);toastTimer=setTimeout(hideToast,t.action||t.goal?4000:2800);}
+function hideToast(){P.toast=null;const t=live.querySelector('.toast');if(t){t.classList.add('out');setTimeout(()=>t.remove(),200);}}
+function floatAt(hid,d,text,neg){
+ const el=live.querySelector(`[data-h="${hid}"][data-d="${d}"]`);if(!el)return;
+ const tgt=el.querySelector('.dchk')||el;
+ if(!neg)tgt.classList.add('pop');
+ if(!reduce){const f=document.createElement('span');f.className='xpf'+(neg?' neg':'');f.textContent=text;tgt.appendChild(f);setTimeout(()=>f.remove(),950);}
+}
+const buzz=()=>{if(navigator.vibrate)try{navigator.vibrate(12);}catch(e){}};
+let burstTimer=0;
+function playGoal(a,x1){
+ const run=()=>{
+  P.burst=a.h.id;draw();
+  addPills([{t:sgn(a.pr)+' XP prime',prime:true}]);
+  animateXp(a.x0+a.ck,x1,true);buzz();
+  showToast(goalToast(P,a));
+  announce(`Objectif ${a.m===monOf(P.today)?'de la semaine':'de la '+weekOfLabel(a.m)} atteint pour ${a.h.name}, ${a.p} sur ${a.cfg.wt}. +${a.pr} points d'expérience de prime. Total : ${fmt(x1)} XP.`);
+  clearTimeout(burstTimer);burstTimer=setTimeout(()=>{P.burst=null;},700);
+ };
+ reduce?run():setTimeout(run,400);
+}
+function tap(hid,d){
+ const h=P.habits.find(x=>x.id===hid);if(!h)return;
+ if(d<h.created){showToast({text:`« ${esc(h.name)} » commence le ${longDate(h.created)}.`});return;}
+ if(d>P.today)return;
+ const k=hid+':'+d,was=P.checks.has(k),closed=d<P.today;
+ const a=apply(P,hid,d,!was);
+ P.toast=null;P.burst=null;draw();
+ floatAt(hid,d,sgn(a.ck)+' XP',was);
+ if(!a.r0&&a.r1){
+  addPills([{t:sgn(a.ck)+' XP'}]);animateXp(a.x0,a.x0+a.ck,true);buzz();
+  playGoal(a,a.x1);
+ }else if(a.r0&&!a.r1){
+  addPills(deltasOf(a));animateXp(a.x0,a.x1,false);
+  showToast(lostToast(P,a));
+  announce(`${a.m===monOf(P.today)?'Objectif de la semaine':'Objectif de la '+weekOfLabel(a.m)} plus atteint pour ${a.h.name}. ${sgn(a.ck)} points d'expérience, ${sgn(a.pr)} points de prime.`);
+ }else{
+  addPills(deltasOf(a));animateXp(a.x0,a.x1,!was);if(!was)buzz();
+  if(closed)showToast({text:corrected(P,hid,d)?`Correction enregistrée · ${longDate(d)}`:`${cap(longDate(d))} revient à son état de la clôture.`});
+  announce(`${sgn(a.ck)} points d'expérience. Total : ${fmt(a.x1)} XP.`);
+ }
+ if(errOn()){
+  setTimeout(()=>{
+   const b2=xpOf(P);was?P.checks.add(k):P.checks.delete(k);P.burst=null;draw();
+   const el=live.querySelector(`[data-h="${hid}"][data-d="${d}"]`);el&&(el.querySelector('.dchk')||el).classList.add('shake');
+   animateXp(b2,xpOf(P),false);
+   const msg=closed?"La correction n'a pas été enregistrée.":"Le suivi n'a pas été enregistré.";
+   showToast({text:msg,action:'Réessayer',run:()=>tap(hid,d)});announce(msg);
+  },reduce?300:1100);
+ }
+}
+function openSheet(o){P.overlay=o;P.toast=null;draw();const i=live.querySelector('#nm');if(i&&o.type==='new')i.focus();if(o.type==='del')live.querySelector('[data-act="close"].btn')?.focus();}
+function patchSheet(){
+ const o=P.overlay;const v=validate(o,P.habits);
+ live.querySelector('.field').classList.toggle('invalid',!!v.err);
+ live.querySelector('.err').innerHTML=v.err?I.alert+'<span>'+v.err+'</span>':'';
+ live.querySelector('.count').textContent=o.value.length+'/40';
+ live.querySelector('#nm').setAttribute('aria-invalid',!!v.err);
+ live.querySelector('.sheet .alert')?.remove();
+ live.querySelector('.setb').innerHTML=settingsBlock(P,o);
+ live.querySelector('.btn.primary').disabled=!v.can;
+}
+function highlight(id){P.hl=id;setTimeout(()=>{P.hl=null;live.querySelector(`[data-card="${id}"]`)?.classList.remove('hl');},1800);}
+function editSheet(id){const h=P.habits.find(x=>x.id===id),s=curSettings(P,h);openSheet({type:'edit',id,value:h.name,original:h.name,diff:s.diff,oDiff:s.diff,target:s.target,oTarget:s.target});}
+function submitSheet(){
+ const o=P.overlay;const v=validate(o,P.habits);if(!v.can)return;
+ if(errOn()){o.saveError=true;draw();return;}
+ const name=o.value.trim();
+ if(o.type==='new'){
+  const id='h'+(P.next++);P.habits.push({id,name,created:P.today,init:{diff:o.diff,target:o.target},changes:[]});
+  P.overlay=null;P.tab='day';highlight(id);draw();const s=live.querySelector('.scroll');if(s)s.scrollTop=s.scrollHeight;
+  const cfg=cfgW(P,P.habits[P.habits.length-1],monOf(P.today));
+  showToast({text:'Habitude créée'+(cfg.reduced?` · objectif ${cfg.wt} cette semaine`:'')});return;
+ }
+ const h=P.habits.find(x=>x.id===o.id),m=monOf(P.today),x0=xpOf(P),r0=reachedW(P,h,m);
+ const dch=o.diff!==o.oDiff,tch=o.target!==o.oTarget;h.name=name;
+ if(h.created===P.today){if(dch)h.init.diff=o.diff;if(tch)h.init.target=o.target;}
+ else if(dch||tch)h.changes.push({at:P.today,...(dch?{diff:o.diff}:{}),...(tch?{target:o.target}:{})});
+ const x1=xpOf(P),r1=reachedW(P,h,m);
+ P.overlay=null;P.news=false;highlight(h.id);draw();
+ if(!r0&&r1){const cfg=cfgW(P,h,m);const a={h,m,cfg,p:progress(P,h,m),x0,ck:0,pr:x1-x0};playGoal(a,x1);return;}
+ if(x1!==x0){addPills([{t:sgn(x1-x0)+' XP',neg:x1<x0}]);animateXp(x0,x1,x1>x0);}
+ showToast({text:(dch||tch?'Habitude modifiée':'Habitude renommée')+(x1!==x0?` · ${sgn(x1-x0)} XP`:'')});
+}
+function confirmDel(){
+ const o=P.overlay,h=P.habits.find(x=>x.id===o.id);
+ const before=xpOf(P);P.checks.delete(o.id+':'+P.today);
+ const kept=habitXp(P,h);
+ [...P.checks].forEach(k=>{if(k.split(':')[0]===o.id)P.checks.delete(k);});
+ P.base+=kept;P.habits=P.habits.filter(x=>x.id!==o.id);P.overlay=null;
+ P.weekOff=Math.max(P.weekOff,weekMin(P));P.monthOff=Math.max(P.monthOff,monthMin(P));
+ draw();const loss=before-xpOf(P);
+ if(loss){addPills([{t:'−'+loss+' XP',neg:true}]);animateXp(before,xpOf(P),false);}
+ showToast({text:`Habitude supprimée${loss?` · −${loss} XP`:''}`});
+}
+live.addEventListener('click',e=>{
+ const tb=e.target.closest('[data-tab]');if(tb){P.tab=tb.dataset.tab;P.overlay=null;P.toast=null;draw();return;}
+ const df=e.target.closest('[data-diff]');if(df&&P.overlay){P.overlay.diff=df.dataset.diff;P.overlay.saveError=false;patchSheet();live.querySelector(`[data-diff="${df.dataset.diff}"]`)?.focus();return;}
+ const tg=e.target.closest('[data-target]');if(tg&&P.overlay){P.overlay.target=+tg.dataset.target;P.overlay.saveError=false;patchSheet();live.querySelector(`[data-target="${tg.dataset.target}"]`)?.focus();return;}
+ const cell=e.target.closest('[data-h]');if(cell){tap(cell.dataset.h,+cell.dataset.d);return;}
+ const md=e.target.closest('[data-mday]');if(md){openSheet({type:'day',d:+md.dataset.mday});return;}
+ const wk=e.target.closest('[data-week]');if(wk){P.tab='week';P.weekOff=(+wk.dataset.week-monOf(P.today))/7;draw();return;}
+ const ed=e.target.closest('[data-edit]');if(ed){editSheet(ed.dataset.edit);return;}
+ const b=e.target.closest('[data-act]');if(!b||b.disabled)return;
+ switch(b.dataset.act){
+  case 'prev':if(P.tab==='week')P.weekOff=Math.max(weekMin(P),P.weekOff-1);else P.monthOff=Math.max(monthMin(P),P.monthOff-1);draw();break;
+  case 'next':if(P.tab==='week')P.weekOff=Math.min(0,P.weekOff+1);else P.monthOff=Math.min(0,P.monthOff+1);draw();break;
+  case 'now':P.weekOff=0;P.monthOff=0;draw();break;
+  case 'new':openSheet({type:'new',value:'',diff:'medium',target:7});break;
+  case 'goNew':P.tab='day';openSheet({type:'new',value:'',diff:'medium',target:7});break;
+  case 'limit':showToast({text:'10 habitudes au plus. Supprime une habitude pour en ajouter une.'});break;
+  case 'close':P.overlay=null;draw();break;
+  case 'create':case 'save':submitSheet();break;
+  case 'askDel':{const o=P.overlay;openSheet({type:'del',id:o.id,name:P.habits.find(h=>h.id===o.id).name});break;}
+  case 'confirmDel':confirmDel();break;
+  case 'toastAction':{const t=P.toast;hideToast();t&&t.run&&t.run();break;}
+  case 'newsGo':P.news=false;editSheet(P.habits[0].id);break;
+  case 'newsClose':P.news=false;draw();break;
+  case 'ydayFix':P.tab='week';P.weekOff=(monOf(P.today-1)-monOf(P.today))/7;draw();break;
+  case 'ydayClose':P.ydayDismissed=true;draw();break;
+ }
+});
+live.addEventListener('input',e=>{if(e.target.id==='nm'&&P.overlay){P.overlay.value=e.target.value;P.overlay.saveError=false;patchSheet();}});
+live.addEventListener('keydown',e=>{
+ if(e.key==='Escape'&&P.overlay){P.overlay=null;draw();}
+ if(e.key==='Enter'&&e.target.id==='nm'){e.preventDefault();submitSheet();}
+});
+document.querySelector('.controls').addEventListener('click',e=>{
+ const b=e.target.closest('[data-sim]');if(!b)return;
+ switch(b.dataset.sim){
+  case 'midnight':P.today++;P.time='0:00';P.weekOff=0;P.monthOff=0;P.ydayDismissed=false;if(P.overlay&&P.overlay.type==='day')P.overlay=null;draw();showToast({text:`Nouvelle journée : ${longDate(P.today)}.`});announce(`Nouvelle journée : ${longDate(P.today)}.`);break;
+  case 'reset':resetP();draw();break;
+  case 'news':P.view='ok';P.tab='day';P.overlay=null;P.news=true;draw();break;
+  case 'loading':P.view='loading';P.overlay=null;draw();setTimeout(()=>{P.view='ok';draw();},1500);break;
+ }
+});
+resetP();draw();
+
+/* ---------- Mise à l'échelle des téléphones ---------- */
+function fit(){const w=document.documentElement.clientWidth;const s=Math.min(1,(w-32)/408);document.documentElement.style.setProperty('--s',s.toFixed(4));}
+fit();window.addEventListener('resize',fit);
+})();
+</script>
+</body>
+</html>
