@@ -1,0 +1,70 @@
+# Story #9 : corriger un jour passé.
+# Limite : Maestro ne pilote pas la date du téléphone. Sur une app fraîchement installée, une
+# habitude créée le jour même n'a aucun jour clos à corriger, et aucun rappel d'hier ne s'affiche
+# (aucune habitude active hier). Les corrections réelles, leur marque « corrigé » et le rappel
+# « Hier : x/y faites · Corriger » sont couverts par les scénarios BDD et les tests d'assemblage
+# (`test/app/yesterdayReminder.test.tsx`).
+# Parcours : créer « Cuisiner » → aucun rappel d'hier → onglet Semaine : l'astuce de correction
+# s'affiche → un tap sur une case « hors habitude » de la semaine (s'il y en a une : pas le lundi)
+# l'explique sans la changer.
+# Captures pour la comparaison avec la maquette : Vue Semaine avec l'astuce, message (E4).
+appId: com.bpotet.ascent
+name: Corriger un jour passé, et l'explication d'une case hors habitude
+tags:
+  - story-9
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: 'day-view-empty'
+    timeout: 60000
+
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Cuisiner'
+- tapOn:
+    id: 'create-habit'
+- extendedWaitUntil:
+    visible: 'Cuisiner, .+, à faire'
+    timeout: 10000
+
+# Créée aujourd'hui : rien à rappeler d'hier.
+- assertNotVisible:
+    id: 'yesterday-reminder'
+
+# Onglet Semaine : tout jour passé se corrige, l'astuce le dit.
+- tapOn:
+    id: 'tab-week'
+- extendedWaitUntil:
+    visible:
+      id: 'week-card-1'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      text: 'Tape une case d’un jour passé pour corriger un oubli.'
+    direction: DOWN
+- takeScreenshot: correct-past-day-1-week-with-hint
+
+# Un jour avant la création de l'habitude est « hors habitude » : le toucher l'explique, la case ne
+# change pas. Le lundi, la semaine n'a aucun jour avant la création.
+- scrollUntilVisible:
+    element:
+      text: 'Cuisiner, .+, hors habitude, indisponible'
+    direction: UP
+    optional: true
+- runFlow:
+    when:
+      visible: 'Cuisiner, .+, hors habitude, indisponible'
+    commands:
+      - tapOn: 'Cuisiner, .+, hors habitude, indisponible'
+      - extendedWaitUntil:
+          visible: '.*Cuisiner.* commence le .+\.'
+          timeout: 10000
+      - assertVisible: 'Cuisiner, .+, hors habitude, indisponible'
+      - takeScreenshot: correct-past-day-2-not-started-explained

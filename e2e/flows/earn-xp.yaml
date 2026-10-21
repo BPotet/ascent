@@ -1,0 +1,107 @@
+# Story #5 : gagner de l'expérience en tenant ses habitudes.
+# Parcours : une habitude « Lire » créée, l'en-tête montre « 0 XP » → un tap : « 10 XP » →
+# un autre tap : « 0 XP » → un dernier tap : « 10 XP » → relance à froid : toujours « 10 XP »,
+# dans l'en-tête de la Vue Journée et de la Vue Semaine.
+# Captures pour la comparaison avec la maquette (E1 « Feedback : habitude faite » et « Feedback :
+# retour à « à faire » ») : prises juste après le tap, pendant que la pastille « +10 XP » ou
+# « −10 XP » est affichée (1,4 s ; l'émulateur de la CI, sans animations, demande le mouvement
+# réduit : pas d'envol, la pastille est fixe). La pastille et l'envol sont cachés au lecteur
+# d'écran, donc introuvables par Maestro : seules les captures les montrent.
+appId: com.bpotet.ascent
+name: Gagner de l'expérience en tenant ses habitudes
+tags:
+  - story-5
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: 'day-view-empty'
+    timeout: 30000
+
+# Une habitude créée aujourd'hui, à faire : le personnage n'a pas encore d'expérience.
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Lire'
+- tapOn:
+    id: 'create-habit'
+- extendedWaitUntil:
+    notVisible: 'Nouvelle habitude'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'Lire, .+, à faire'
+    timeout: 10000
+- assertVisible:
+    id: 'character-bar'
+- assertVisible: 'Expérience du personnage : 0 XP'
+- assertVisible:
+    id: 'xp-counter'
+    text: '0 XP'
+- takeScreenshot: earn-xp-1-no-experience
+
+# Un tap : « fait », +10 XP (vibration légère, non vérifiable par Maestro).
+- tapOn:
+    id: 'habit-row-1'
+- takeScreenshot: earn-xp-2-gain-feedback
+- extendedWaitUntil:
+    visible: 'Lire, .+, fait'
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: 'xp-counter'
+      text: '10 XP'
+    timeout: 10000
+- assertVisible: 'Expérience du personnage : 10 XP'
+
+# Un autre tap : de nouveau « à faire », −10 XP, discret.
+- tapOn:
+    id: 'habit-row-1'
+- takeScreenshot: earn-xp-3-loss-feedback
+- extendedWaitUntil:
+    visible: 'Lire, .+, à faire'
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: 'xp-counter'
+      text: '0 XP'
+    timeout: 10000
+- assertVisible: 'Expérience du personnage : 0 XP'
+
+# Un dernier tap : « fait », +10 XP.
+- tapOn:
+    id: 'habit-row-1'
+- extendedWaitUntil:
+    visible:
+      id: 'xp-counter'
+      text: '10 XP'
+    timeout: 10000
+
+# Relance à froid : l'expérience est conservée, dans la Vue Journée et dans la Vue Semaine.
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: 'Lire, .+, fait'
+    timeout: 30000
+- extendedWaitUntil:
+    visible:
+      id: 'xp-counter'
+      text: '10 XP'
+    timeout: 10000
+- assertVisible: 'Expérience du personnage : 10 XP'
+- takeScreenshot: earn-xp-4-after-restart
+- tapOn:
+    id: 'tab-week'
+- extendedWaitUntil:
+    visible:
+      id: 'week-card-1'
+    timeout: 10000
+- assertVisible:
+    id: 'xp-counter'
+    text: '10 XP'
+- assertVisible: 'Expérience du personnage : 10 XP'
+- takeScreenshot: earn-xp-5-week-after-restart

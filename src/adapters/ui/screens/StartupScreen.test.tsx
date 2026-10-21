@@ -1,0 +1,36 @@
+import { fireEvent, screen } from '@testing-library/react-native';
+
+import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
+import { settableClock } from '../../../application/testing/settableClock';
+import { Day } from '../../../domain/day/Day';
+import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
+import { silentHaptics } from '../testing/silentHaptics';
+import { renderScreen } from '../testing/renderScreen';
+import { StartupErrorScreen, StartupLoadingScreen } from './StartupScreen';
+
+const dependencies = {
+  clock: settableClock(Day.of(2026, 10, 14)),
+  unitOfWork: new InMemoryUnitOfWork(),
+  keyValueStore: memoryKeyValueStore(),
+  haptics: silentHaptics(),
+};
+
+describe('Startup screens', () => {
+  it('shows a loading indicator', async () => {
+    await renderScreen(<StartupLoadingScreen />, dependencies);
+
+    expect(screen.getByLabelText('Chargement')).toBeOnTheScreen();
+  });
+
+  it('explains the error and offers to retry', async () => {
+    const onRetry = jest.fn();
+    await renderScreen(<StartupErrorScreen onRetry={onRetry} />, dependencies);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Impossible d’ouvrir les données enregistrées sur le téléphone.',
+    );
+    await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
+
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+});

@@ -1,0 +1,112 @@
+# Story #6 : renommer et supprimer une habitude.
+# Parcours : créer « Cuisiner » → la cocher (10 XP) → « ⋯ » : panneau « Modifier l'habitude » →
+# la renommer « Cuisiner le soir » → le nouveau nom s'affiche, toujours « fait » → « ⋯ » →
+# « Supprimer l'habitude » : la fenêtre annonce le retrait de 10 XP → « Supprimer » : état vide,
+# 0 XP.
+# Sélecteurs : un `testID` posé sur un `Modal` n'est pas garanti sur la vue native Android ; le
+# panneau est repéré par son contenu (`edit-habit-sheet-content`), la fenêtre de suppression
+# (`delete-habit-dialog`) par son titre et son bouton `confirm-delete-habit`.
+# Captures pour la comparaison avec la maquette (E7, E8) : panneau « Modifier l'habitude »,
+# renommée, fenêtre de suppression, état vide après la suppression.
+appId: com.bpotet.ascent
+name: Renommer et supprimer une habitude
+tags:
+  - story-6
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: 'day-view-empty'
+    timeout: 60000
+
+# Une habitude créée aujourd'hui, cochée.
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Cuisiner'
+- tapOn:
+    id: 'create-habit'
+- extendedWaitUntil:
+    notVisible: 'Nouvelle habitude'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'Cuisiner, .+, à faire'
+    timeout: 10000
+- tapOn: 'Cuisiner, .+, à faire'
+- extendedWaitUntil:
+    visible: 'Cuisiner, .+, fait'
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: 'xp-counter'
+      text: '10 XP'
+    timeout: 10000
+
+# « ⋯ » ouvre « Modifier l'habitude », sans clavier : « Supprimer l'habitude » reste visible.
+- tapOn: 'Modifier l’habitude Cuisiner'
+- extendedWaitUntil:
+    visible:
+      id: 'edit-habit-sheet-content'
+    timeout: 10000
+- assertVisible:
+    id: 'edit-habit-name'
+- assertVisible:
+    id: 'delete-habit'
+- takeScreenshot: edit-habit-1-sheet
+
+# Renommer : le nouveau nom s'affiche, la case reste « fait », l'expérience ne change pas.
+- tapOn:
+    id: 'edit-habit-name'
+- eraseText: 20
+- inputText: 'Cuisiner le soir'
+- hideKeyboard
+- tapOn:
+    id: 'save-habit'
+- extendedWaitUntil:
+    notVisible:
+      id: 'edit-habit-sheet-content'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'Cuisiner le soir, .+, fait'
+    timeout: 10000
+- assertVisible:
+    id: 'xp-counter'
+    text: '10 XP'
+- takeScreenshot: edit-habit-2-renamed
+
+# Supprimer : la fenêtre nomme l'habitude et annonce le retrait de 10 XP.
+- tapOn: 'Modifier l’habitude Cuisiner le soir'
+- extendedWaitUntil:
+    visible:
+      id: 'edit-habit-sheet-content'
+    timeout: 10000
+- tapOn:
+    id: 'delete-habit'
+- extendedWaitUntil:
+    visible: 'Supprimer «.Cuisiner le soir.».\?'
+    timeout: 10000
+- assertVisible:
+    id: 'confirm-delete-habit'
+- assertVisible: '.*\(−10 XP\)\.'
+- assertVisible: 'Annuler'
+- takeScreenshot: edit-habit-3-delete-dialog
+
+# Confirmée : l'état vide revient, l'expérience d'aujourd'hui est retirée.
+- tapOn:
+    id: 'confirm-delete-habit'
+- extendedWaitUntil:
+    visible:
+      id: 'day-view-empty'
+    timeout: 10000
+- assertNotVisible: 'Cuisiner le soir, .+'
+- extendedWaitUntil:
+    visible:
+      id: 'xp-counter'
+      text: '0 XP'
+    timeout: 10000
+- takeScreenshot: edit-habit-4-empty-after-delete

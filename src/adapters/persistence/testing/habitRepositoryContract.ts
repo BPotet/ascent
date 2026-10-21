@@ -1,0 +1,191 @@
+// Contrat du port HabitRepository : chaque adaptateur doit passer exactement les mêmes tests.
+// Les dépôts ne s'obtiennent que dans une unité de travail.
+import type { HabitRepository } from '../../../application/ports/HabitRepository';
+import type { UnitOfWork } from '../../../application/ports/UnitOfWork';
+import { Day } from '../../../domain/day/Day';
+import { HabitName } from '../../../domain/habit/HabitName';
+
+export function describeHabitRepositoryContract(createUnitOfWork: () => Promise<UnitOfWork>): void {
+  describe('HabitRepository contract', () => {
+    let unitOfWork: UnitOfWork;
+    const inTransaction = <T>(work: (habits: HabitRepository) => Promise<T>) =>
+      unitOfWork.run(({ habits }) => work(habits));
+    const add = (name: string, createdOn = Day.of(2026, 10, 14)) =>
+      inTransaction((habits) => habits.add(HabitName.parse(name), createdOn));
+
+    beforeEach(async () => {
+      unitOfWork = await createUnitOfWork();
+    });
+
+    it('has no habit at first', async () => {
+      await expect(inTransaction((habits) => habits.listAll())).resolves.toEqual([]);
+    });
+
+    it('gives back the added habit with its name, day of creation and an id', async () => {
+      const habit = await add('Cuisiner', Day.of(2026, 10, 14));
+
+      expect(habit.name).toEqual(HabitName.parse('Cuisiner'));
+      expect(habit.createdOn).toEqual(Day.of(2026, 10, 14));
+      expect(Number.isInteger(habit.id)).toBe(true);
+    });
+
+    it('lists the habits in their order of creation, as they were added', async () => {
+      const cooking = await add('Cuisiner', Day.of(2026, 10, 1));
+      const budget = await add('Budget du jour', Day.of(2026, 10, 14));
+      const summer = await add('Été 🍳', Day.of(2024, 2, 29));
+
+      const habits = await inTransaction((repository) => repository.listAll());
+
+      expect(habits).toEqual([cooking, budget, summer]);
+      expect(habits.map((habit) => [habit.name.value, habit.createdOn.toIsoString()])).toEqual([
+        ['Cuisiner', '2026-10-01'],
+        ['Budget du jour', '2026-10-14'],
+        ['Été 🍳', '2024-02-29'],
+      ]);
+    });
+
+    it('gives each habit a greater id than the previous ones', async () => {
+      const first = await add('Cuisiner');
+      const second = await add('Méditer');
+      const third = await add('Lire');
+
+      expect(second.id).toBeGreaterThan(first.id);
+      expect(third.id).toBeGreaterThan(second.id);
+    });
+
+    it('keeps names of 40 characters', async () => {
+      await add('é'.repeat(40));
+
+      const habits = await inTransaction((repository) => repository.listAll());
+      expect(habits.map((habit) => habit.name.value)).toEqual(['é'.repeat(40)]);
+    });
+
+    it('refuses a habit whose name key already exists', async () => {
+      await add('Cuisiner');
+
+      await expect(add('CUISINER')).rejects.toThrow();
+      await expect(inTransaction((habits) => habits.listAll())).resolves.toHaveLength(1);
+    });
+
+    it('finds a habit by its id', async () => {
+      await add('Cuisiner');
+      const budget = await add('Budget du jour', Day.of(2026, 10, 12));
+
+      await expect(inTransaction((habits) => habits.findById(budget.id))).resolves.toEqual(budget);
+    });
+
+    it('finds nothing for an unknown id', async () => {
+      const cooking = await add('Cuisiner');
+
+      await expect(inTransaction((habits) => habits.findById(cooking.id + 1))).resolves.toBeNull();
+    });
+
+    describe('rename (#6)', () => {
+      const listNames = async () =>
+        (await inTransaction((habits) => habits.listAll())).map((habit) => habit.name.value);
+
+      it('renames a habit, keeping its id, its day of creation and its place', async () => {
+        const cooking = await add('Cuisiner', Day.of(2026, 10, 5));
+        await add('Budget du jour', Day.of(2026, 10, 12));
+
+        await inTransaction((habits) =>
+          habits.rename(cooking.id, HabitName.parse('Cuisiner maison')),
+        );
+
+        await expect(inTransaction((habits) => habits.findById(cooking.id))).resolves.toEqual({
+          ...cooking,
+          name: HabitName.parse('Cuisiner maison'),
+        });
+        expect(await listNames()).toEqual(['Cuisiner maison', 'Budget du jour']);
+      });
+
+      it('changes only the capitals of a name', async () => {
+        const cooking = await add('Cuisiner');
+
+        await inTransaction((habits) => habits.rename(cooking.id, HabitName.parse('CUISINER')));
+
+        expect(await listNames()).toEqual(['CUISINER']);
+      });
+
+      it('frees the former name', async () => {
+        const cooking = await add('Cuisiner');
+        await inTransaction((habits) =>
+          habits.rename(cooking.id, HabitName.parse('Cuisiner maison')),
+        );
+
+        await add('cuisiner');
+
+        expect(await listNames()).toEqual(['Cuisiner maison', 'cuisiner']);
+      });
+
+      it('refuses the name key of another habit, and keeps both names', async () => {
+        const cooking = await add('Cuisiner');
+        await add('Budget du jour');
+
+        await expect(
+          inTransaction((habits) => habits.rename(cooking.id, HabitName.parse('budget du jour'))),
+        ).rejects.toThrow();
+
+        expect(await listNames()).toEqual(['Cuisiner', 'Budget du jour']);
+      });
+
+      it('changes nothing for an unknown id', async () => {
+        const cooking = await add('Cuisiner');
+
+        await inTransaction((habits) => habits.rename(cooking.id + 1, HabitName.parse('Lire')));
+
+        expect(await listNames()).toEqual(['Cuisiner']);
+      });
+    });
+
+    describe('remove (#6)', () => {
+      it('removes the habit and keeps the others', async () => {
+        const cooking = await add('Cuisiner');
+        const budget = await add('Budget du jour');
+
+        await inTransaction((habits) => habits.remove(cooking.id));
+
+        await expect(inTransaction((habits) => habits.listAll())).resolves.toEqual([budget]);
+        await expect(inTransaction((habits) => habits.findById(cooking.id))).resolves.toBeNull();
+      });
+
+      it('frees its name, and never gives its id again', async () => {
+        await add('Budget du jour');
+        const cooking = await add('Cuisiner');
+        await inTransaction((habits) => habits.remove(cooking.id));
+
+        const again = await add('Cuisiner');
+
+        expect(again.id).toBeGreaterThan(cooking.id);
+      });
+
+      it('changes nothing for an unknown id', async () => {
+        const cooking = await add('Cuisiner');
+
+        await inTransaction((habits) => habits.remove(cooking.id + 1));
+
+        await expect(inTransaction((habits) => habits.listAll())).resolves.toEqual([cooking]);
+      });
+
+      it('keeps the habit when the work fails', async () => {
+        const cooking = await add('Cuisiner');
+
+        await expect(
+          inTransaction(async (habits) => {
+            await habits.remove(cooking.id);
+            throw new Error('work failed');
+          }),
+        ).rejects.toThrow('work failed');
+
+        await expect(inTransaction((habits) => habits.listAll())).resolves.toEqual([cooking]);
+      });
+    });
+
+    it('lets accents distinguish two names', async () => {
+      await add('Eté sans sucre');
+      await add('Été sans sucre');
+
+      await expect(inTransaction((habits) => habits.listAll())).resolves.toHaveLength(2);
+    });
+  });
+}

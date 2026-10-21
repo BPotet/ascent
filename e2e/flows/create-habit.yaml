@@ -1,0 +1,92 @@
+# Story #3 : créer une habitude et la voir dans la Vue Journée.
+# Parcours : Vue Journée vide → panneau « Nouvelle habitude » → « Cuisiner » créée et « à faire »
+# aujourd'hui → relance à froid : toujours là → un doublon (« cuisiner ») est refusé.
+# Captures pour la comparaison avec la maquette : vide (E1), panneau (E2), liste (E1).
+appId: com.bpotet.ascent
+name: Créer une habitude et la voir dans la Vue Journée
+tags:
+  - story-3
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: 'day-view-empty'
+    timeout: 60000
+- takeScreenshot: create-habit-1-day-view-empty
+
+# Le panneau s'ouvre avec le champ, clavier ouvert, et « Créer l'habitude ».
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- assertVisible:
+    id: 'new-habit-name'
+- assertVisible:
+    id: 'create-habit'
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Cuisiner'
+# Panneau en cours de saisie, clavier ouvert : le panneau remonte au-dessus du clavier, le
+# compteur, les messages et les boutons restent visibles, même sur le petit écran de la CI (320×640).
+- takeScreenshot: create-habit-2-new-habit-sheet-keyboard
+- assertVisible:
+    id: 'new-habit-name'
+    text: 'Cuisiner'
+# Le compteur s'affiche « 8/40 » ; son libellé lecteur d'écran est « 8 caractères sur 40 ».
+# Maestro compare le texte et ce libellé : l'un ou l'autre suffit, le nombre reste vérifié.
+- assertVisible: '8/40|8 caractères sur 40'
+- takeScreenshot: create-habit-2-new-habit-sheet
+- tapOn:
+    id: 'create-habit'
+
+# Le panneau se ferme et l'habitude est dans la Vue Journée, à faire aujourd'hui.
+- extendedWaitUntil:
+    notVisible: 'Nouvelle habitude'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'Cuisiner, .+, à faire'
+    timeout: 10000
+- assertVisible:
+    id: 'day-view-list'
+- assertVisible: 'Aujourd’hui'
+- assertVisible: '1/10|1 habitude sur 10'
+
+# Relance à froid : l'habitude est toujours là.
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: 'Cuisiner, .+, à faire'
+    timeout: 60000
+- assertNotVisible:
+    id: 'day-view-empty'
+- takeScreenshot: create-habit-3-day-view-list
+
+# Un doublon, même écrit en minuscules, est refusé et rien n'est créé.
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'cuisiner'
+- tapOn:
+    id: 'create-habit'
+# Le message réel est « Tu as déjà une habitude « Cuisiner ». », avec des espaces insécables
+# (U+00A0) à l'intérieur des guillemets, et peut passer sur deux lignes. Maestro compare le texte
+# entier à l'expression : les espaces acceptent donc aussi l'insécable et le retour à la ligne.
+- extendedWaitUntil:
+    visible: 'Tu as déjà une habitude[\s\u00A0]+«[\s\u00A0]*Cuisiner[\s\u00A0]*»\.'
+    timeout: 10000
+- assertVisible:
+    id: 'create-habit'
+    enabled: false
+- tapOn: 'Annuler'
+- extendedWaitUntil:
+    notVisible: 'Nouvelle habitude'
+    timeout: 10000
+- assertVisible: '1/10|1 habitude sur 10'
+- assertNotVisible:
+    id: 'habit-row-2'

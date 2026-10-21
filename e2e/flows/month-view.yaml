@@ -1,0 +1,97 @@
+# Story #10 : consulter un mois et tout l'historique.
+# Parcours : créer « Cuisiner » → la cocher dans la Vue Journée → onglet Mois : aujourd'hui affiche
+# « 1/1 » → ouvrir le détail d'aujourd'hui → « Fermer » → le mois précédent n'est pas consultable
+# (il précède la création de l'habitude), et rien ne suit le mois en cours.
+# Limite : Maestro ne pilote pas la date du téléphone ; les jours passés, leurs corrections et la
+# marque « corrigé » sont couverts par les scénarios BDD et les tests d'assemblage
+# (`test/app/monthView.test.tsx`).
+# Captures pour la comparaison avec la maquette : Vue Mois vide, en cours, détail d'un jour (E6).
+appId: com.bpotet.ascent
+name: Consulter un mois et le détail d'un jour
+tags:
+  - story-10
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: 'day-view-empty'
+    timeout: 60000
+- assertVisible:
+    id: 'tab-month'
+
+# Sans habitude, la Vue Mois est vide : seul le mois en cours est consultable.
+- tapOn:
+    id: 'tab-month'
+- extendedWaitUntil:
+    visible:
+      id: 'month-view-empty'
+    timeout: 10000
+- assertVisible:
+    text: 'Mois précédent'
+    enabled: false
+- assertVisible:
+    text: 'Mois suivant'
+    enabled: false
+- takeScreenshot: month-view-1-empty
+
+# Créer « Cuisiner » dans la Vue Journée et la cocher.
+- tapOn:
+    id: 'tab-day'
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Cuisiner'
+- tapOn:
+    id: 'create-habit'
+- extendedWaitUntil:
+    visible: 'Cuisiner, .+, à faire'
+    timeout: 10000
+- tapOn: 'Cuisiner, .+, à faire'
+- extendedWaitUntil:
+    visible: 'Cuisiner, .+, fait'
+    timeout: 10000
+
+# Onglet Mois : aujourd'hui compte une habitude faite sur une (« 1/1 »). Le jour est un seul élément
+# accessible : son libellé de lecteur d'écran porte le compteur.
+- tapOn:
+    id: 'tab-month'
+- extendedWaitUntil:
+    visible:
+      id: 'month-grid'
+    timeout: 10000
+- assertVisible:
+    id: 'month-view'
+- extendedWaitUntil:
+    visible: '.+, aujourd’hui, 1 habitude faite sur 1'
+    timeout: 10000
+- assertVisible: 'Ce mois-ci'
+- takeScreenshot: month-view-2-current-month-done
+
+# Le détail d'aujourd'hui : l'habitude y est « fait ».
+- tapOn: '.+, aujourd’hui, 1 habitude faite sur 1'
+- extendedWaitUntil:
+    visible:
+      id: 'day-detail-.+'
+    timeout: 10000
+- assertVisible: 'Cuisiner, .+, fait'
+- takeScreenshot: month-view-3-day-detail
+- tapOn: 'Fermer'
+- extendedWaitUntil:
+    notVisible:
+      id: 'day-detail-.+'
+    timeout: 10000
+
+# Le mois précédent précède la création de l'habitude : il n'est pas consultable, et rien ne suit
+# le mois en cours.
+- assertVisible:
+    text: 'Mois précédent'
+    enabled: false
+- assertVisible:
+    text: 'Mois suivant'
+    enabled: false
+- takeScreenshot: month-view-4-after-detail

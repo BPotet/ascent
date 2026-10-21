@@ -1,0 +1,289 @@
+# Barrières de qualité (docs/workflow.md, « Barrières de qualité » et « CI/CD et Git Flow »).
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main, 'release/**', 'hotfix/**']
+  push:
+    branches: [develop, main, 'release/**', 'hotfix/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GITLEAKS_VERSION: 8.28.0
+  MAESTRO_VERSION: 2.11.0
+
+jobs:
+  commits:
+    name: Commits (commitlint)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Check every commit of the pull request
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          from="$BASE_SHA"
+          if [ "$BASE_REF" = "main" ]; then
+            # A release or hotfix brings commits that develop already holds, each one
+            # checked by its own pull request: only the commits added since are checked.
+            from="$(git merge-base origin/develop "$HEAD_SHA")"
+          fi
+          npx commitlint --verbose --from "$from" --to "$HEAD_SHA"
+
+  secrets:
+    name: Secrets (Gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Gitleaks
+        run: |
+          curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+      - name: Scan the git history
+        run: gitleaks git --redact --no-banner --config .gitleaks.toml --verbose
+
+  static:
+    name: Style, types and architecture
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Style (Prettier)
+        run: npm run format:check
+      - name: Style (ESLint)
+        run: npm run lint
+      - name: Types (tsc --noEmit)
+        run: npm run typecheck
+      - name: Architecture (dependency-cruiser)
+        run: npm run arch
+
+  tests:
+    name: Unit, integration and BDD tests with coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # Une seule exécution des trois projets Jest (unit, integration, bdd) avec les seuils de couverture.
+      - name: Unit, integration and BDD tests with coverage thresholds
+        run: npm run test:coverage -- --ci
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/lcov.info
+          retention-days: 7
+
+  mutation:
+    name: Mutation tests (StrykerJS)
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Mutate the code changed by the pull request
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+        run: npm run mutation:changed
+      - name: Mutate all the code
+        if: github.event_name != 'pull_request'
+        run: npm run mutation:domain && npm run mutation
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-report
+          path: reports/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  sonar:
+    name: SonarQube Cloud
+    needs: tests
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - name: Skip when SonarQube Cloud is not configured
+        if: env.SONAR_TOKEN == ''
+        run: echo "::warning title=SonarQube Cloud::SONAR_TOKEN secret is missing, analysis skipped (temporary gap, see docs/adr/0001-socle-technique.md)."
+      - uses: actions/checkout@v4
+        if: env.SONAR_TOKEN != ''
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        if: env.SONAR_TOKEN != ''
+        with:
+          name: coverage
+          path: coverage
+      - name: Analyse and wait for the quality gate
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@v5
+
+  android-apk:
+    name: Android APK
+    needs: [static, tests]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - id: build
+        uses: ./.github/actions/build-android-apk
+        with:
+          apk-name: ascent-${{ github.sha }}.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ascent-android-apk
+          path: ${{ steps.build.outputs.apk-path }}
+          if-no-files-found: error
+          retention-days: 30
+
+  e2e-android:
+    name: End-to-end tests (Maestro, Android)
+    needs: android-apk
+    runs-on: ubuntu-latest
+    # Écart temporaire (docs/adr/0001-socle-technique.md) : non bloquant tant que l'émulateur
+    # n'a pas prouvé sa stabilité en CI.
+    continue-on-error: true
+    timeout-minutes: 45
+    # Écriture du dépôt : seulement pour publier les captures sur la branche `e2e-screenshots`.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ascent-android-apk
+          path: dist
+      - name: Enable KVM for the emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install Maestro
+        # L'installeur lit MAESTRO_VERSION ; la vérification échoue si la version n'est pas la bonne.
+        env:
+          MAESTRO_CLI_NO_ANALYTICS: '1'
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          installed="$("$HOME/.maestro/bin/maestro" --version | tail -n 1)"
+          echo "Maestro ${installed}"
+          test "${installed}" = "${MAESTRO_VERSION}"
+      - name: Run the Maestro flows on an Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            adb install -r dist/*.apk
+            maestro test e2e/flows --format junit --output reports/e2e/junit.xml --test-output-dir reports/e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-report
+          path: reports/e2e
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Publish the e2e screenshots for the review
+        # Les artefacts ne sont pas lisibles depuis les sessions de revue : les captures sont aussi
+        # poussées sur la branche orpheline `e2e-screenshots` (lisible par raw.githubusercontent.com),
+        # dans un dossier propre à ce passage. Cette étape ne fait jamais échouer le job.
+        if: always()
+        continue-on-error: true
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          REF_NAME: ${{ github.head_ref || github.ref_name }}
+        run: |
+          set -uo pipefail
+          publish() {
+            mapfile -t shots < <(find reports/e2e -type f -name '*.png' 2>/dev/null | sort)
+            if [ "${#shots[@]}" -eq 0 ]; then
+              echo "No e2e screenshot to publish." >> "$GITHUB_STEP_SUMMARY"
+              return 0
+            fi
+            local short="${HEAD_SHA:0:7}" dir
+            if [ -n "${PR_NUMBER}" ]; then dir="pr-${PR_NUMBER}/${short}"; else dir="${REF_NAME}/${short}"; fi
+            local work
+            work="$(mktemp -d)/screenshots"
+            git config --global user.name 'github-actions[bot]'
+            git config --global user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            if git ls-remote --exit-code --heads origin e2e-screenshots > /dev/null; then
+              git fetch --depth 1 origin e2e-screenshots || return 1
+              git worktree add --detach "${work}" FETCH_HEAD || return 1
+            else
+              git worktree add --orphan -b e2e-screenshots "${work}" || return 1
+            fi
+            local shot rel
+            for shot in "${shots[@]}"; do
+              rel="${shot#reports/e2e/}"
+              mkdir -p "${work}/${dir}/$(dirname "${rel}")"
+              cp "${shot}" "${work}/${dir}/${rel}"
+            done
+            git -C "${work}" add -- "${dir}"
+            git -C "${work}" commit -q -m "ci: e2e screenshots of ${dir}" || return 1
+            local attempt pushed=false
+            for attempt in 1 2 3; do
+              if git -C "${work}" push -q origin HEAD:refs/heads/e2e-screenshots; then
+                pushed=true
+                break
+              fi
+              git -C "${work}" fetch -q --depth 1 origin e2e-screenshots \
+                && git -C "${work}" rebase -q FETCH_HEAD || return 1
+            done
+            [ "${pushed}" = true ] || return 1
+            {
+              echo "### E2E screenshots (${dir})"
+              echo
+              for shot in "${shots[@]}"; do
+                rel="${shot#reports/e2e/}"
+                url="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/e2e-screenshots/$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1]))' "${dir}/${rel}")"
+                echo "- [${rel}](${url})"
+              done
+            } >> "$GITHUB_STEP_SUMMARY"
+          }
+          if ! publish; then
+            echo "::warning::The e2e screenshots could not be published on the e2e-screenshots branch."
+            echo "The e2e screenshots could not be published (see the step log)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit 0

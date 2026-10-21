@@ -1,0 +1,12 @@
+node_modules
+coverage
+reports
+.stryker-tmp
+.expo
+dist
+android
+ios
+package-lock.json
+docs/mockups
+# La documentation Markdown est rédigée à la main (tableaux, français) : Prettier ne la reformate pas.
+*.md
