@@ -22,6 +22,7 @@ import { readsFrom, writesTo } from '../../src/adapters/persistence/testing/sqlF
 import { DayViewScreen } from '../../src/adapters/ui/screens/DayViewScreen';
 import type { Dependencies } from '../../src/adapters/ui/state/Dependencies';
 import { renderScreen } from '../../src/adapters/ui/testing/renderScreen';
+import { silentHaptics } from '../../src/adapters/ui/testing/silentHaptics';
 import { createHabit } from '../../src/application/useCases/createHabit';
 import { getDayView } from '../../src/application/useCases/getDayView';
 import { Day } from '../../src/domain/day/Day';
@@ -53,6 +54,7 @@ async function openApp(): Promise<void> {
     clock: world.deps.clock,
     unitOfWork: new SqliteUnitOfWork(db),
     keyValueStore: new SqliteKeyValueStore(db),
+    haptics: world.deps.haptics,
   };
   await renderScreen(<DayViewScreen />, world.deps);
   world.shown = true;
@@ -335,6 +337,7 @@ beforeEach(async () => {
       clock: new FixedClock(Day.of(2000, 1, 1)),
       unitOfWork: new SqliteUnitOfWork(db),
       keyValueStore: new SqliteKeyValueStore(db),
+      haptics: silentHaptics(),
     },
     date: '',
     shown: false,

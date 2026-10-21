@@ -8,7 +8,9 @@ import { useReducedMotion } from '../state/useReducedMotion';
 import { colors } from '../theme/colors';
 import { MIN_TOUCH_SIZE, radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
+import type { ShownXpChange } from './CharacterBar';
 import { CheckGlyph } from './Glyph';
+import { XpFloat } from './XpFloat';
 
 /** Durée du rebond de la coche quand on touche une habitude, comme dans la maquette. */
 export const BOUNCE_DURATION_MS = 320;
@@ -30,15 +32,18 @@ export function bounce(scale: Animated.Value): void {
  * Ligne d'une habitude dans la Vue Journée : son nom et l'état du suivi, écrit en toutes lettres,
  * avec une coche quand elle est « fait ». Toute la ligne est un interrupteur : la toucher appelle
  * `onToggle`, si la case est modifiable, et fait rebondir la coche (sauf mouvement réduit).
- * `highlighted` met en évidence une habitude qui vient d'être créée.
+ * `highlighted` met en évidence une habitude qui vient d'être créée. `xpChange` fait s'envoler
+ * « +10 XP » (ou « −10 XP ») de la coche, après un tap enregistré.
  */
 export function HabitRow({
   habitDay,
   highlighted = false,
+  xpChange,
   onToggle,
 }: {
   readonly habitDay: HabitDay;
   readonly highlighted?: boolean;
+  readonly xpChange?: ShownXpChange | undefined;
   readonly onToggle?: (habitDay: HabitDay) => void;
 }) {
   const { habit, day, status, editable } = habitDay;
@@ -66,6 +71,7 @@ export function HabitRow({
     >
       <Animated.View style={[styles.check, done && styles.checkDone, { transform: [{ scale }] }]}>
         {done && <CheckGlyph color={colors.onDone} />}
+        <XpFloat change={xpChange} reducedMotion={reducedMotion} />
       </Animated.View>
       <View style={styles.texts}>
         <Text style={[typography.habitName, styles.name]}>{habit.name.value}</Text>

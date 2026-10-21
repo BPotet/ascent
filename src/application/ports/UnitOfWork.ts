@@ -1,3 +1,4 @@
+import type { CharacterRepository } from './CharacterRepository';
 import type { CheckInRepository } from './CheckInRepository';
 import type { HabitRepository } from './HabitRepository';
 
@@ -5,6 +6,7 @@ import type { HabitRepository } from './HabitRepository';
 export interface Repositories {
   readonly habits: HabitRepository;
   readonly checkIns: CheckInRepository;
+  readonly character: CharacterRepository;
 }
 
 /**

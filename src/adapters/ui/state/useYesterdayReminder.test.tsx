@@ -11,6 +11,7 @@ import { Day } from '../../../domain/day/Day';
 import type { HabitId } from '../../../domain/habit/Habit';
 import { Week } from '../../../domain/week/Week';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
+import { silentHaptics } from '../testing/silentHaptics';
 import { DependenciesProvider } from './Dependencies';
 import { useTrackingChanges } from './TrackingRevision';
 import { useYesterdayReminder } from './useYesterdayReminder';
@@ -32,7 +33,7 @@ beforeEach(async () => {
 });
 
 function render(keyValueStore: KeyValueStore = memoryKeyValueStore()) {
-  const dependencies = { clock, unitOfWork, keyValueStore };
+  const dependencies = { clock, unitOfWork, keyValueStore, haptics: silentHaptics() };
   const wrapper = ({ children }: { children: ReactNode }) => (
     <DependenciesProvider value={dependencies}>{children}</DependenciesProvider>
   );

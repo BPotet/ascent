@@ -6,6 +6,7 @@ import { settableClock } from '../../../application/testing/settableClock';
 import { createHabit } from '../../../application/useCases/createHabit';
 import { Day } from '../../../domain/day/Day';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
+import { silentHaptics } from '../testing/silentHaptics';
 import { DependenciesProvider } from './Dependencies';
 import { useWeekView } from './useWeekView';
 
@@ -17,6 +18,7 @@ async function showWeekView(today: Day) {
     clock: settableClock(october(5)),
     unitOfWork: new InMemoryUnitOfWork(),
     keyValueStore: memoryKeyValueStore(),
+    haptics: silentHaptics(),
   };
   await createHabit(dependencies, 'Cuisiner');
   dependencies.clock.setToday(today);

@@ -5,6 +5,7 @@ import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfW
 import { settableClock } from '../../../application/testing/settableClock';
 import { Day } from '../../../domain/day/Day';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
+import { silentHaptics } from '../testing/silentHaptics';
 import { DependenciesProvider } from './Dependencies';
 import { useTodayChange } from './useTodayChange';
 
@@ -15,7 +16,12 @@ function setUp() {
   const clock = settableClock(wednesday);
   const wrapper = ({ children }: { children: ReactNode }) => (
     <DependenciesProvider
-      value={{ clock, unitOfWork: new InMemoryUnitOfWork(), keyValueStore: memoryKeyValueStore() }}
+      value={{
+        clock,
+        unitOfWork: new InMemoryUnitOfWork(),
+        keyValueStore: memoryKeyValueStore(),
+        haptics: silentHaptics(),
+      }}
     >
       {children}
     </DependenciesProvider>

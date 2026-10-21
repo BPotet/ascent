@@ -1,5 +1,6 @@
 import type { Repositories, UnitOfWork } from '../../../application/ports/UnitOfWork';
 import type { SqlDatabase } from './SqlDatabase';
+import { SqliteCharacterRepository } from './SqliteCharacterRepository';
 import { SqliteCheckInRepository } from './SqliteCheckInRepository';
 import { SqliteHabitRepository } from './SqliteHabitRepository';
 
@@ -16,6 +17,7 @@ export class SqliteUnitOfWork implements UnitOfWork {
     this.repositories = {
       habits: new SqliteHabitRepository(db),
       checkIns: new SqliteCheckInRepository(db),
+      character: new SqliteCharacterRepository(db),
     };
   }
 

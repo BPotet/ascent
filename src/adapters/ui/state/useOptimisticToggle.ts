@@ -7,17 +7,20 @@ import {
 import type { CheckInStatus } from '../../../domain/checkIn/CheckInStatus';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import { useUseCaseDependencies } from './Dependencies';
+import { type ToggledCheckIn, useExperience } from './Experience';
+import { keyOf } from './habitDayKey';
 
-/** Le résultat d'un tap : la case enregistrée, un refus de règle, ou l'enregistrement a échoué. */
+/**
+ * Le résultat d'un tap : la case enregistrée et l'expérience qui en résulte, un refus de règle, ou
+ * l'enregistrement a échoué.
+ */
 export type ToggleOutcome =
-  | { readonly ok: true; readonly habitDay: HabitDay; readonly isCorrection: boolean }
-  | { readonly ok: false; readonly reason: ToggleCheckInRefusal | 'saveFailed' };
+  ToggledCheckIn | { readonly ok: false; readonly reason: ToggleCheckInRefusal | 'saveFailed' };
 
 /** Les états affichés, en attendant l'enregistrement, des cases qui viennent d'être touchées. */
 export type ShownStatuses = ReadonlyMap<string, CheckInStatus>;
 
-/** La clé d'une case : son habitude et son jour. */
-export const keyOf = ({ habit, day }: HabitDay): string => `${habit.id}/${day.toIsoString()}`;
+export { keyOf } from './habitDayKey';
 
 /** La case avec l'état affiché en attendant son enregistrement, s'il y en a un. */
 export function withShown(habitDay: HabitDay, shown: ShownStatuses): HabitDay {
@@ -30,6 +33,8 @@ export function withShown(habitDay: HabitDay, shown: ShownStatuses): HabitDay {
  * suite l'autre état (`shown`), puis se recale sur ce qui est enregistré quand le dernier tap en
  * cours sur cette case a répondu : en cas d'échec, la case revient à son état enregistré.
  * - `onSaved` reçoit chaque case enregistrée ;
+ * - l'expérience de chaque tap enregistré est montrée dans l'en-tête, avec son feedback
+ *   (`Experience`) ;
  * - `refresh` recharge la vue après une correction ou un refus ;
  * - `undoneStatusOf` donne l'état affiché quand une case « fait » est touchée : « à faire » par
  *   défaut, « pas fait » pour un jour clos de la Vue Semaine.
@@ -47,6 +52,7 @@ export function useOptimisticToggle({
   readonly toggle: (habitDay: HabitDay) => Promise<ToggleOutcome>;
 } {
   const dependencies = useUseCaseDependencies();
+  const { checkInToggled } = useExperience();
   const [shown, setShown] = useState<ShownStatuses>(new Map());
   const inFlight = useRef(new Map<string, number>());
 
@@ -67,6 +73,7 @@ export function useOptimisticToggle({
 
       if (outcome.ok) {
         onSaved(outcome.habitDay);
+        checkInToggled(outcome);
       }
       const remaining = (counts.get(key) ?? 1) - 1;
       if (remaining === 0) {
@@ -84,7 +91,7 @@ export function useOptimisticToggle({
       }
       return outcome;
     },
-    [dependencies, onSaved, refresh, undoneStatusOf],
+    [dependencies, checkInToggled, onSaved, refresh, undoneStatusOf],
   );
 
   return { shown, toggle };

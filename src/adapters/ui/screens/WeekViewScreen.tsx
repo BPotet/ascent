@@ -9,6 +9,7 @@ import { Week } from '../../../domain/week/Week';
 import { ADD_HABIT_LABEL } from '../components/AddHabitButton';
 import { Button } from '../components/Button';
 import { useCellHeight } from '../components/cellSize';
+import { CharacterBar } from '../components/CharacterBar';
 import { PlusGlyph } from '../components/Glyph';
 import { LinkButton } from '../components/LinkButton';
 import { PeriodNavigator } from '../components/PeriodNavigator';
@@ -24,6 +25,7 @@ import {
   notStartedMessage,
 } from '../format/checkInMessages';
 import { formatWeekRange, HISTORY_START, weekLabel, weekTitle } from '../format/formatWeek';
+import { useExperience } from '../state/Experience';
 import { useWeekView } from '../state/useWeekView';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
@@ -67,6 +69,7 @@ function LoadingView() {
       testID="week-view-loading"
       style={styles.loading}
     >
+      <CharacterBar xp={null} change={null} />
       <View style={styles.skeletonNav}>
         <View style={[styles.skeleton, styles.skeletonArrow]} />
         <View style={[styles.skeleton, styles.skeletonTitle]} />
@@ -124,6 +127,8 @@ function Navigator({
  * (état et marque « corrigé ») si l'enregistrement échoue, et un message propose « Réessayer ».
  * Une correction est confirmée par un message, et la case porte ou perd la marque « corrigé » (R13).
  * Un tap sur une case « hors habitude » l'explique ; une case « à venir » ne réagit pas.
+ * En haut, l'expérience du personnage (R24), avec le feedback d'un tap ou d'une correction
+ * enregistrés : « +10 XP » s'envole de la case (`Experience`, `CharacterBar`).
  * `onAddHabit` mène à la création d'une habitude (état vide). `weekRequest` affiche une semaine
  * demandée par une autre vue (« Corriger » du rappel d'hier), à chaque nouvel `id`.
  */
@@ -136,6 +141,7 @@ export function WeekViewScreen({
 }) {
   const { state, followsCurrentWeek, previous, next, goToCurrentWeek, showWeek, reload, toggle } =
     useWeekView();
+  const experience = useExperience();
   const [seenRequest, setSeenRequest] = useState<WeekRequest['id'] | undefined>(undefined);
   if (weekRequest !== undefined && weekRequest.id !== seenRequest) {
     setSeenRequest(weekRequest.id);
@@ -194,7 +200,13 @@ export function WeekViewScreen({
           text="Une erreur est survenue en lisant tes données sur ce téléphone."
           action={
             <View style={styles.actions}>
-              <Button label="Réessayer" onPress={() => void reload()} />
+              <Button
+                label="Réessayer"
+                onPress={() => {
+                  void reload();
+                  void experience.reload();
+                }}
+              />
               {!followsCurrentWeek && (
                 <LinkButton label={BACK_TO_CURRENT_WEEK} onPress={goToCurrentWeek} />
               )}
@@ -209,6 +221,7 @@ export function WeekViewScreen({
   const { view } = state;
   return (
     <Screen layout="top" testID="week-view">
+      <CharacterBar xp={experience.xp} change={experience.change} />
       <Navigator view={view} onPrevious={previous} onNext={next} />
       {view.rows.length === 0 ? (
         <StateMessage
@@ -239,6 +252,7 @@ export function WeekViewScreen({
                 key={row.habit.id}
                 days={row.days}
                 today={view.today}
+                xpChange={experience.change}
                 onToggle={(habitDay) => void tap(habitDay, view.today)}
                 onNotStartedPress={(habitDay) => showToast(notStartedMessage(habitDay))}
               />
