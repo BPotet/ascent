@@ -77,6 +77,9 @@ describe('renameHabit', () => {
     ['a'.repeat(41), 'tooLong'],
     ['budget du jour', 'duplicate'],
     ['  BUDGET  DU JOUR ', 'duplicate'],
+    ['\u200b\u2060\ufeff', 'empty'],
+    ['\u200bbudget du jour\u200b', 'duplicate'],
+    ['b'.repeat(40) + '\u200b' + 'b', 'tooLong'],
   ])('refuses the name %p (%s) and keeps the former one', async (rawName, reason) => {
     await expect(renameHabit(deps(), cooking.id, rawName)).resolves.toEqual({ ok: false, reason });
     expect(await names()).toEqual(['Cuisiner', 'Budget du jour']);
