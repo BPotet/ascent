@@ -55,6 +55,14 @@ export const colors = {
   iconDisabled: '#4A5570',
   /** Point d'une habitude « pas fait » sur un jour de la Vue Mois. */
   monthDotMissed: '#8D97AC',
+  /** L'icône de difficulté (sommets) sur une ligne ou une carte : 9,5:1 sur la surface. */
+  difficulty: '#B9C6E6',
+  /** L'option choisie d'un sélecteur (« Difficulté ») et son texte secondaire. */
+  optionSelected: 'rgba(124,156,255,0.18)',
+  onOptionSelected: '#C9D5FF',
+  /** Fond d'un message d'information de panneau (« S'applique à toute cette semaine… »). */
+  infoSoft: 'rgba(124,156,255,0.12)',
+  infoLine: 'rgba(124,156,255,0.4)',
   /** Barre d'onglets. */
   tabBar: 'rgba(13,17,27,0.97)',
   tabActiveSoft: 'rgba(124,156,255,0.22)',

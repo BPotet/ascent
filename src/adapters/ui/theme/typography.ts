@@ -41,6 +41,8 @@ export const typography = {
   input: { fontFamily: fonts.interMedium, fontSize: 17 },
   /** Libellé d'un bouton. */
   button: { fontFamily: fonts.interSemiBold, fontSize: 16 },
+  /** Nom d'une option d'un sélecteur : « Moyenne ». */
+  optionLabel: { fontFamily: fonts.interSemiBold, fontSize: 14, lineHeight: 18 },
   /** Libellés, dates, aides. */
   label: { fontFamily: fonts.interMedium, fontSize: 13, lineHeight: 18 },
   /** Texte d'un encart de la Vue Journée (aide, encouragement). */
