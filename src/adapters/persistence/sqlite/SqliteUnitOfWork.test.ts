@@ -1,6 +1,7 @@
 import { describeCharacterRepositoryContract } from '../testing/characterRepositoryContract';
 import { describeCheckInRepositoryContract } from '../testing/checkInRepositoryContract';
 import { describeHabitRepositoryContract } from '../testing/habitRepositoryContract';
+import { describeSettingsChangeRepositoryContract } from '../testing/settingsChangeRepositoryContract';
 import { FakeExpoSqliteConnection } from '../testing/fakeExpoSqlite';
 import { withFaults } from '../testing/faultySqlDatabase';
 import { openNodeSqliteDatabase } from '../testing/nodeSqliteDatabase';
@@ -24,6 +25,7 @@ describe('SqliteUnitOfWork', () => {
   describeHabitRepositoryContract(createUnitOfWork);
   describeCheckInRepositoryContract(createUnitOfWork);
   describeCharacterRepositoryContract(createUnitOfWork);
+  describeSettingsChangeRepositoryContract(createUnitOfWork);
 
   describe('on the expo-sqlite bridge', () => {
     const createOnExpo = async () =>
@@ -33,6 +35,7 @@ describe('SqliteUnitOfWork', () => {
     describeHabitRepositoryContract(createOnExpo);
     describeCheckInRepositoryContract(createOnExpo);
     describeCharacterRepositoryContract(createOnExpo);
+    describeSettingsChangeRepositoryContract(createOnExpo);
 
     it('sends every statement of a work on the shared connection, inside one transaction', async () => {
       const connection = FakeExpoSqliteConnection.open();

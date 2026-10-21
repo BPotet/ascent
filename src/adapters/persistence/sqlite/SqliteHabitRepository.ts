@@ -48,7 +48,10 @@ export class SqliteHabitRepository implements HabitRepository {
     ]);
   }
 
-  /** Les suivis de l'habitude sont effacés par `ON DELETE CASCADE` (`PRAGMA foreign_keys = ON`). */
+  /**
+   * Les suivis et les changements de réglages de l'habitude sont effacés par `ON DELETE CASCADE`
+   * (`PRAGMA foreign_keys = ON`).
+   */
   async remove(id: HabitId): Promise<void> {
     await this.db.run('DELETE FROM habits WHERE id = ?', [id]);
   }

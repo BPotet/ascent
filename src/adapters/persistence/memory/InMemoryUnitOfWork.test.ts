@@ -4,6 +4,7 @@ import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfW
 import { describeCharacterRepositoryContract } from '../testing/characterRepositoryContract';
 import { describeCheckInRepositoryContract } from '../testing/checkInRepositoryContract';
 import { describeHabitRepositoryContract } from '../testing/habitRepositoryContract';
+import { describeSettingsChangeRepositoryContract } from '../testing/settingsChangeRepositoryContract';
 import { describeUnitOfWorkContract } from '../testing/unitOfWorkContract';
 
 describe('InMemoryUnitOfWork', () => {
@@ -13,4 +14,5 @@ describe('InMemoryUnitOfWork', () => {
   describeHabitRepositoryContract(createUnitOfWork);
   describeCheckInRepositoryContract(createUnitOfWork);
   describeCharacterRepositoryContract(createUnitOfWork);
+  describeSettingsChangeRepositoryContract(createUnitOfWork);
 });
