@@ -9,12 +9,7 @@ name: Confirmer ses habitudes du jour d'un tap
 tags:
   - story-4
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      id: 'day-view-empty'
-    timeout: 60000
+- runFlow: ../subflows/launch-fresh.yaml
 
 # Une habitude créée aujourd'hui, à faire.
 - tapOn:

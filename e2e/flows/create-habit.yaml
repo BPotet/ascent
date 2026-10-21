@@ -7,12 +7,7 @@ name: Créer une habitude et la voir dans la Vue Journée
 tags:
   - story-3
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      id: 'day-view-empty'
-    timeout: 60000
+- runFlow: ../subflows/launch-fresh.yaml
 - takeScreenshot: create-habit-1-day-view-empty
 
 # Le panneau s'ouvre avec le champ, clavier ouvert, et « Créer l'habitude ».

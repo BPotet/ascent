@@ -11,12 +11,7 @@ name: Consulter un mois et le détail d'un jour
 tags:
   - story-10
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      id: 'day-view-empty'
-    timeout: 60000
+- runFlow: ../subflows/launch-fresh.yaml
 - assertVisible:
     id: 'tab-month'
 

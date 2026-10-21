@@ -8,12 +8,7 @@ name: Voir sa semaine et passer de la Vue Journée à la Vue Semaine
 tags:
   - story-7
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      id: 'day-view-empty'
-    timeout: 60000
+- runFlow: ../subflows/launch-fresh.yaml
 - assertVisible:
     id: 'tab-day'
 - assertVisible:

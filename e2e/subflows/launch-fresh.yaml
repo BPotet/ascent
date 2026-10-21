@@ -1,0 +1,19 @@
+# Sous-parcours partagé : lance l'app sur une installation neuve et attend la Vue Journée vide.
+# Sur l'émulateur de la CI, un lancement juste après `clearState` laisse parfois un écran blanc
+# (la fenêtre de l'app ne s'affiche pas, l'app n'est pas en cause : voir la capture
+# `step-004-assertCondition-day-view-empty` du passage develop/e1fc479). Le lancement est donc
+# rejoué, au plus deux fois, avec un nouvel effacement des données : l'attente de l'état vide
+# reste vérifiée à chaque essai, rien n'est sauté.
+# Ce fichier est hors de `e2e/flows` : `maestro test e2e/flows` ne l'exécute pas seul.
+appId: com.bpotet.ascent
+---
+- retry:
+    maxRetries: 2
+    commands:
+      - stopApp
+      - launchApp:
+          clearState: true
+      - extendedWaitUntil:
+          visible:
+            id: 'day-view-empty'
+          timeout: 45000
