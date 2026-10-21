@@ -255,6 +255,18 @@ describe('MonthViewScreen', () => {
     expect(labelOf(october(1))).toBe('jeudi 1 octobre, aucune habitude active');
   });
 
+  it('shows the grid of a past month where as many habits are active as created later', async () => {
+    await habitCreatedOn(Day.of(2026, 8, 3), 'Lire');
+    await habitCreatedOn(october(5), 'Cuisiner');
+    await show();
+
+    await fireEvent.press(previousButton());
+
+    await waitFor(() => expect(shownMonth()).toBe('Septembre 2026'));
+    expect(screen.queryByText('Ton mois est vide')).toBeNull();
+    expect(labelOf(Day.of(2026, 9, 15))).toBe('mardi 15 septembre, 0 habitude faite sur 1');
+  });
+
   it('shows the error state, and reads the month again with « Réessayer »', async () => {
     await givenTheBackground();
     dependencies.unitOfWork.failReads();
