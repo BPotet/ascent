@@ -22,6 +22,7 @@ let dependencies: {
   clock: ReturnType<typeof settableClock>;
   unitOfWork: InMemoryUnitOfWork;
   keyValueStore: ReturnType<typeof memoryKeyValueStore>;
+  haptics: { success: jest.Mock };
 };
 
 reduceMotionInEachTest();
@@ -31,6 +32,7 @@ beforeEach(() => {
     clock: settableClock(wednesday),
     unitOfWork: new InMemoryUnitOfWork(),
     keyValueStore: memoryKeyValueStore(),
+    haptics: { success: jest.fn() },
   };
 });
 

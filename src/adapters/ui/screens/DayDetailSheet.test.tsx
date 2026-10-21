@@ -23,6 +23,7 @@ let dependencies: {
   clock: ReturnType<typeof settableClock>;
   unitOfWork: InMemoryUnitOfWork;
   keyValueStore: ReturnType<typeof memoryKeyValueStore>;
+  haptics: { success: jest.Mock };
 };
 let cooking: HabitId;
 
@@ -50,6 +51,7 @@ beforeEach(async () => {
     clock: settableClock(wednesday),
     unitOfWork: new InMemoryUnitOfWork(),
     keyValueStore: memoryKeyValueStore(),
+    haptics: { success: jest.fn() },
   };
   cooking = await habitCreatedOn(october(5), 'Cuisiner');
   const budget = await habitCreatedOn(october(13), 'Budget du jour');

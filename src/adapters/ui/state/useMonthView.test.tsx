@@ -15,6 +15,7 @@ async function showMonthView(today: Day) {
     clock: settableClock(Day.of(2026, 9, 21)),
     unitOfWork: new InMemoryUnitOfWork(),
     keyValueStore: memoryKeyValueStore(),
+    haptics: { success: jest.fn() },
   };
   await createHabit(dependencies, 'Lire');
   dependencies.clock.setToday(today);

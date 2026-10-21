@@ -6,6 +6,7 @@ import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import { Button } from '../components/Button';
 import { AlertGlyph } from '../components/Glyph';
 import { HabitRow } from '../components/HabitRow';
+import { CHECK_IN_SAVE_FAILED, CORRECTION_SAVE_FAILED } from '../format/checkInMessages';
 import { capitalize, formatDayAndMonth } from '../format/formatDay';
 import { dayDetailSummary, notStartedHint } from '../format/formatMonth';
 import { useExperience, xpChangeOn } from '../state/Experience';
@@ -14,8 +15,6 @@ import { useReducedMotion } from '../state/useReducedMotion';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
-import { CHECK_IN_SAVE_FAILED } from './DayViewScreen';
-import { CORRECTION_SAVE_FAILED } from './WeekViewScreen';
 
 /**
  * Le panneau « détail du jour » (`DayDetail`), ouvert en touchant un jour de la Vue Mois (maquette,
