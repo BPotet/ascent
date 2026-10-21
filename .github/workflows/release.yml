@@ -5,6 +5,16 @@ name: Release
 on:
   push:
     tags: ['v*']
+  # Publication depuis GitHub Actions quand le tag ne peut pas être poussé : crée le tag
+  # sur le commit demandé et la release avec les notes du CHANGELOG.md.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Version tag to create, e.g. v0.1.0
+        required: true
+      commit:
+        description: Commit of main to release
+        required: true
 
 permissions:
   contents: write
@@ -15,16 +25,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      - id: notes
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          sed -n "/^## \\[${version}\\]/,/^\\[${version}\\]:/p" CHANGELOG.md | sed '1d;$d' > release-notes.md
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
       - id: build
         uses: ./.github/actions/build-android-apk
         with:
-          apk-name: ascent-${{ github.ref_name }}.apk
+          apk-name: ascent-${{ steps.notes.outputs.tag }}.apk
       - uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.notes.outputs.tag }}
+          target_commitish: ${{ inputs.commit || github.sha }}
+          name: Ascent ${{ steps.notes.outputs.tag }}
+          body_path: release-notes.md
           files: ${{ steps.build.outputs.apk-path }}
           fail_on_unmatched_files: true
