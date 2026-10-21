@@ -155,6 +155,24 @@ describe('getMonthView', () => {
       ).not.toContain('Lire');
     });
 
+    it('counts a day again without a deleted habit: neutral where it was the only active one', async () => {
+      await addHabit('Lire', day(9, 21));
+      await checkIn('Lire', day(10, 13));
+      expect(counters(await getMonthView(deps()), 1, 13).slice(0, 4)).toEqual(
+        Array(4).fill('tracked 0/1'),
+      );
+      expect(counters(await getMonthView(deps()), 13, 13)).toEqual(['tracked 3/3']);
+      const reading = (await unitOfWork.run(({ habits }) => habits.listAll())).find(
+        ({ name }) => name.value === 'Lire',
+      );
+      await unitOfWork.run(({ habits }) => habits.remove(reading?.id ?? 0));
+
+      const view = await getMonthView(deps());
+
+      expect(counters(view, 1, 4)).toEqual(Array(4).fill('neutral 0/0'));
+      expect(counters(view, 12, 14)).toEqual(['tracked 1/1', 'tracked 2/2', 'tracked 0/2']);
+    });
+
     it('without habit, shows the current month only, every day up to today neutral', async () => {
       unitOfWork = new InMemoryUnitOfWork();
 
@@ -195,6 +213,43 @@ describe('getMonthView', () => {
       });
       expect(dayOf(view, 1).isToday).toBe(true);
     });
+  });
+
+  it('closes the last day of the month at midnight: « à faire » the 31st, « pas fait » the 1st', async () => {
+    clock.setToday(day(10, 31));
+    const lastDay = dayOf(await getMonthView(deps()), 31);
+    expect(lastDay).toMatchObject({ kind: 'tracked', isToday: true, doneCount: 0, activeCount: 2 });
+    expect(lastDay.habits.map(({ status, editable }) => [status, editable])).toEqual([
+      ['pending', true],
+      ['pending', true],
+    ]);
+
+    clock.setToday(day(11, 1));
+    const view = await getMonthView(deps(), october);
+
+    expect(view).toMatchObject({ month: october, isCurrentMonth: false, canGoNext: true });
+    expect(dayOf(view, 31)).toMatchObject({ kind: 'tracked', isToday: false, corrected: false });
+    expect(dayOf(view, 31).habits.map(({ status, editable }) => [status, editable])).toEqual([
+      ['missed', true],
+      ['missed', true],
+    ]);
+  });
+
+  it('counts the check-ins of the days whose clocks change (TZ Europe/Paris)', async () => {
+    clock.setToday(day(10, 26));
+    await checkIn('Cuisiner', day(10, 25));
+    await checkIn('Budget du jour', day(10, 26));
+
+    const view = await getMonthView(deps());
+
+    expect(counters(view, 24, 27)).toEqual([
+      'tracked 0/2',
+      'tracked 1/2',
+      'tracked 1/2',
+      'upcoming 0/2',
+    ]);
+    expect(view.weeks[3]?.[6]?.day).toEqual(day(10, 25));
+    expect(view.weeks[4]?.[0]?.day).toEqual(day(10, 26));
   });
 
   it('reads today once, inside the unit of work', async () => {
