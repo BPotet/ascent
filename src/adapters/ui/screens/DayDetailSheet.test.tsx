@@ -159,7 +159,7 @@ describe('DayDetailSheet', () => {
   });
 
   it('puts a correction back when it is not saved, and offers to try again', async () => {
-    await open(october(8));
+    const { onOtherViewChange } = await open(october(8));
     dependencies.unitOfWork.failWrites();
 
     await fireEvent.press(row(/^Cuisiner, jeudi 8 octobre/u));
@@ -168,6 +168,12 @@ describe('DayDetailSheet', () => {
       await screen.findByRole('alert', { name: 'La correction n’a pas été enregistrée.' }),
     ).toBeOnTheScreen();
     expect(row(/^Cuisiner, jeudi 8 octobre, pas fait$/u)).not.toBeChecked();
+    expect(screen.queryByText('corrigé')).toBeNull();
+    expect(
+      screen.getByText('Jour clos · tu peux corriger un oubli · 0/1 faites'),
+    ).toBeOnTheScreen();
+    expect((await getCharacter(dependencies)).xp).toBe(30);
+    expect(onOtherViewChange).not.toHaveBeenCalled();
 
     dependencies.unitOfWork.failWrites(false);
     await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
