@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { AccessibilityInfo } from 'react-native';
 
 import { Day } from '../../../domain/day/Day';
@@ -168,6 +168,26 @@ describe('EditHabitSheet', () => {
 
     await fireEvent.press(saveButton());
     expect(onRename).toHaveBeenCalledTimes(2);
+    expect(onRenamed).toHaveBeenCalledTimes(1);
+  });
+
+  it('cannot rename twice while the first renaming is being saved (double tap)', async () => {
+    let finish: (outcome: RenameHabitOutcome) => void = () => undefined;
+    const { onRename, onRenamed } = await open(
+      () =>
+        new Promise<RenameHabitOutcome>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    await type('Cuisiner maison');
+
+    await fireEvent.press(saveButton());
+    expect(saveButton()).toBeDisabled();
+    await fireEvent.press(saveButton());
+    await fireEvent(field(), 'submitEditing');
+    await act(async () => finish(renamed('Cuisiner maison')));
+
+    expect(onRename).toHaveBeenCalledTimes(1);
     expect(onRenamed).toHaveBeenCalledTimes(1);
   });
 
