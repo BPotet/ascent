@@ -1142,6 +1142,130 @@ describe('nextDeadline', () => {
   });
 });
 
+describe('edge cases of the engine', () => {
+  /** La Goule à terre : le Spectre est la cible et attaque seul. */
+  const ghoulDown = (battle: Battle): Battle => ({
+    ...battle,
+    target: 1,
+    enemies: battle.enemies.map((enemy, index) => (index === 0 ? { ...enemy, hp: 0 } : enemy)),
+  });
+
+  it('draws no intent for a fallen enemy at the start of the next round (C10)', () => {
+    const play = BattlePlay.start().with(ghoulDown, fixedIntent(1, 'delayed'));
+    const random = play.battle.random;
+
+    play.attack(ATTACK_AT).advance(20_000);
+
+    const specter = drawIntent('specter', random);
+    expect(play.battle.round).toBe(2);
+    expect(play.battle.enemies[1]!.intent).toEqual(specter.intent);
+    expect(play.battle.random).toBe(specter.random);
+  });
+
+  it('keeps the target when the counter-attack fells another enemy', () => {
+    const play = BattlePlay.start()
+      .with(fixedIntent(0, 'basic'), fixedIntent(1, 'delayed'), (battle) => ({
+        ...battle,
+        target: 1,
+        enemies: battle.enemies.map((enemy, index) => (index === 0 ? { ...enemy, hp: 6 } : enemy)),
+      }))
+      .attack(ATTACK_AT)
+      .advance(GHOUL_WIND_UP_AT)
+      .press('parry', GHOUL_IMPACT)
+      .advance(GHOUL_IMPACT + 90);
+
+    expect(play.lastOf('enemyDefeated')).toEqual({
+      type: 'enemyDefeated',
+      at: GHOUL_IMPACT + 90,
+      enemy: 0,
+    });
+    expect(play.all('targetChanged')).toEqual([]);
+    expect(play.battle.target).toBe(1);
+  });
+
+  it('changes no target when the last enemy falls', () => {
+    const play = BattlePlay.start()
+      .with(ghoulDown, (battle) => ({
+        ...battle,
+        enemies: battle.enemies.map((enemy, index) => (index === 1 ? { ...enemy, hp: 1 } : enemy)),
+      }))
+      .attack(ATTACK_AT);
+
+    expect(play.lastTypes()).toEqual(['heroAttacked', 'enemyDefeated']);
+  });
+
+  it('lands an impact before an unanswered impact of the same instant', () => {
+    // Avec un décalage de −260 ms, l'échéance du 1er impact sans appui tombe 420 ms après lui,
+    // à l'instant même du 2e impact de la double frappe.
+    const play = toGhoulWindUp('double', 'delayed', { inputOffset: -260 }).advance(DOUBLE_IMPACT);
+
+    expect(nextDeadline(play.battle)).toEqual({ at: DOUBLE_IMPACT + 420, awaitsPress: false });
+    play.advance(DOUBLE_IMPACT + 420);
+    expect(play.lastTypes()).toEqual(['impactLanded']);
+    expect(nextDeadline(play.battle)).toEqual({ at: DOUBLE_IMPACT + 420, awaitsPress: true });
+  });
+
+  it('shifts with the hit-stop only the instants from the press onwards', () => {
+    const late = toGhoulWindUp('double').press('parry', DOUBLE_IMPACT + 20);
+    expect(late.battle.phase).toMatchObject({
+      step: { impacts: [{ at: DOUBLE_IMPACT }, { at: DOUBLE_IMPACT + 420 + 90 }] },
+    });
+
+    const onTime = toGhoulWindUp('double').press('parry', DOUBLE_IMPACT);
+    expect(onTime.battle.phase).toMatchObject({
+      step: { impacts: [{ at: DOUBLE_IMPACT + 90 }, { at: DOUBLE_IMPACT + 420 + 90 }] },
+    });
+  });
+
+  it('dates a press at the end of the hit-stop at its own instant', () => {
+    const play = toGhoulWindUp('double')
+      .press('parry', DOUBLE_IMPACT)
+      .press('dodge', DOUBLE_IMPACT + 90);
+
+    expect(play.lastOf('whiffed')).toEqual({
+      type: 'whiffed',
+      at: DOUBLE_IMPACT + 90,
+      button: 'dodge',
+      reason: 'early',
+    });
+  });
+
+  it('dates a late press at the start of the hit-stop, or at the engine state before it', () => {
+    const during = toGhoulWindUp('double')
+      .press('parry', DOUBLE_IMPACT)
+      .advance(DOUBLE_IMPACT + 50)
+      .press('dodge', DOUBLE_IMPACT);
+    expect(during.lastOf('whiffed')).toMatchObject({ at: DOUBLE_IMPACT });
+
+    const before = toGhoulWindUp('double')
+      .press('parry', DOUBLE_IMPACT)
+      .advance(DOUBLE_IMPACT + 50)
+      .press('dodge', DOUBLE_IMPACT - 5);
+    expect(before.lastOf('whiffed')).toMatchObject({ at: DOUBLE_IMPACT + 50 });
+  });
+
+  it('ignores « Attaquer » while the defense hint is shown, as during a transition', () => {
+    const play = BattlePlay.start({ defenseHint: true })
+      .with(fixedIntent(0, 'basic'))
+      .attack(ATTACK_AT)
+      .advance(HERO_ACTION_END)
+      .attack(3_000);
+
+    expect(play.last).toEqual([
+      { type: 'pressIgnored', at: 3_000, button: 'attack', reason: 'phaseTransition' },
+    ]);
+  });
+
+  it('keeps the events of the enemy phase that ends just before « Attaquer »', () => {
+    const play = toGhoulWindUp('basic').attack(20_000, 19_950);
+
+    const types = play.lastTypes();
+    expect(types).toContain('roundStarted');
+    expect(types.indexOf('heroPhaseStarted')).toBeGreaterThanOrEqual(0);
+    expect(types.indexOf('heroPhaseStarted')).toBeLessThan(types.indexOf('heroAttacked'));
+  });
+});
+
 describe('over about 500 seeds', () => {
   /** Les écarts tentés tour à tour sur chaque impact ; `null` : aucun appui. */
   const DELTAS = [-400, -170, -120, -40, 0, 30, 90, 150, null] as const;
