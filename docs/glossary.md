@@ -61,6 +61,7 @@
 | **Analyse d'impact** | L'analyse GitNexus du code existant, faite avant d'implémenter une story, pour mesurer ce qu'elle va toucher. |
 | **Impact fort** | Le résultat d'une analyse d'impact qui oblige à renvoyer la story au PM et à l'Architect avant de continuer (voir `docs/workflow.md`). |
 | **Dev** | L'agent full stack qui implémente une story de bout en bout : domaine, cas d'usage, ports, persistance, interface, feedback de jeu, navigation, fonctions natives du téléphone, builds, tests end-to-end. Plus tard : API et serveur. |
+| **Fixer** | L'agent qui corrige les bugs : il les reproduit par un test qui échoue, trouve la cause racine et applique la correction minimale, sans ajouter de fonctionnalité. |
 | **Barrière de qualité** (*quality gate*) | Une vérification automatique qui doit passer pour qu'une PR soit mergée. |
 | **Conventional Commits** | Le format imposé des messages de commit et des titres de PR : `<type>(<scope>): <description>`. |
 | **Auto-merge** | Le merge automatique (squash) d'une PR dans `develop` une fois toutes les barrières de qualité au vert et la review approuvée. |

@@ -25,7 +25,7 @@ Score de mutation code nouveau : Y % (seuil 70 %)
 Scénarios Gherkin : N/N
 ```
 
-Si une barrière est rouge et que la correction dépasse les tests, renvoie au dev avec le détail.
+Si une barrière est rouge et que la correction dépasse les tests, renvoie au dev (ou au fixer pour un bug) avec le détail.
 
 ## Règles
 - Ne baisse jamais un seuil, ne désactive jamais un test.

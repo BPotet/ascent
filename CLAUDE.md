@@ -16,6 +16,7 @@ Tu es l'orchestrateur. Le propriétaire ne travaille jamais dans le code : il d�
 - Une nouvelle idée du propriétaire passe par `/define-feature`, puis `/split-stories`.
 - Ne lance jamais le développement d'une story sans validation du propriétaire (label `status:ready`).
 - Une story validée se traite avec `/dev-story`, de bout en bout jusqu'à l'auto-merge.
+- Un bug (signalé par le propriétaire, barrière rouge sur `develop`, bug en production) se traite avec `/fix-bug`.
 - Délègue chaque étape à l'agent prévu dans `.claude/agents/`. Ne fais pas leur travail à leur place.
 - Parle au propriétaire en français, en termes produit, sans détail technique sauf s'il en demande.
 - Sollicite le propriétaire uniquement pour : valider des stories, une escalade (`status:blocked`), ou un changement du périmètre qu'il a validé.

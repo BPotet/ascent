@@ -180,7 +180,7 @@ Le scope est facultatif quand un commit touche plusieurs zones.
 | `status:awaiting-approval` | ✋ Validation | **Propriétaire** |
 | `status:ready` | 3. Ready | Architect |
 | `status:impact-analysis` | 4. Impact | Impact Analyst |
-| `status:in-progress` | 5–6. Implement + Test | Dev, QA |
+| `status:in-progress` | 5–6. Implement + Test | Dev (ou Fixer pour un bug), QA |
 | `status:review` | 7. Review | Reviewer |
 | `status:blocked` | Escalade | **Propriétaire** |
 | *(issue fermée)* | 8. Merge | Auto |
@@ -353,8 +353,17 @@ Outils : GitHub Actions pour les pipelines **et** les builds. Chaque push produi
 ## Boucles et escalade
 
 - **Review → Implement** : 3 tours au maximum. Au 4e échec, la story passe en `status:blocked` et l'orchestrateur résume le problème en commentaire sur l'issue au propriétaire.
-- **Barrière rouge sur `develop`** : priorité absolue, une issue `type:bug` est créée et traitée en `bugfix/` immédiatement.
-- **Bug en production (`main`)** : une issue `type:bug` avec le label `priority:hotfix` est traitée en `hotfix/`, en dehors du flux normal (voir « CI/CD et Git Flow »).
+- **Barrière rouge sur `develop`** : priorité absolue, une issue `type:bug` est créée et traitée en `bugfix/` immédiatement avec `/fix-bug`.
+- **Bug en production (`main`)** : une issue `type:bug` avec le label `priority:hotfix` est traitée en `hotfix/` avec `/fix-bug`, en dehors du flux normal (voir « CI/CD et Git Flow »).
+
+## Bugs — `/fix-bug`
+
+Un bug n'est pas une story : il ne crée pas de comportement nouveau, il rétablit celui que le propriétaire a déjà validé. Il ne repasse donc pas par ✋ et part directement en `status:ready`.
+
+1. L'issue `type:bug` (template « Bug ») décrit les étapes pour reproduire, l'attendu et l'observé.
+2. Le **Fixer** écrit d'abord un test de non-régression qui échoue, trouve la cause racine et applique la correction minimale, sur `bugfix/<n°>-<slug>` (depuis `develop`) ou `hotfix/<x.y.z>-<slug>` (depuis `main`).
+3. Les étapes **Test** (QA) et **Review** (Reviewer) sont les mêmes que pour une story, avec les mêmes barrières et la même limite de 3 tours.
+4. Si la correction change une règle de jeu ou un écran validés, ce n'est plus un bug mais un changement de périmètre : PM et Architect, puis ✋. Si elle demande une migration ou touche un port partagé, l'Impact Analyst et l'Architect passent avant le Fixer.
 - **Impact fort** : décision du PM et de l'Architect, tracée sur l'issue. Le propriétaire n'est sollicité que si ce qu'il a validé change.
 
 ## Agents et skills
@@ -368,6 +377,7 @@ Outils : GitHub Actions pour les pipelines **et** les builds. Chaque push produi
 | Architect | `.claude/agents/architect.md` | 3, escalade d'impact |
 | Impact Analyst | `.claude/agents/impact-analyst.md` | 4 |
 | Dev | `.claude/agents/dev.md` | 5 |
+| Fixer | `.claude/agents/fixer.md` | Bugs (`/fix-bug`) |
 | QA | `.claude/agents/qa.md` | 6 |
 | Reviewer | `.claude/agents/reviewer.md` | 7 |
 
@@ -377,5 +387,6 @@ Outils : GitHub Actions pour les pipelines **et** les builds. Chaque push produi
 | `/define-feature` | Étape 1 |
 | `/split-stories` | Étape 2 |
 | `/dev-story` | Étapes 3 à 8 pour une story `status:ready` |
+| `/fix-bug` | Correction d'un bug (`bugfix/` ou `hotfix/`) |
 | `/review-story` | Étape 7 sur une PR |
 | `/release` | Release ou hotfix selon Git Flow |
