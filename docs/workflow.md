@@ -287,6 +287,8 @@ Toutes sont **bloquantes**. Les outils sont confirmés par l'Architect dans l'[A
 | Quality gate SonarQube Cloud | Passed |
 | Duplication du code nouveau | ≤ 3 % |
 
+> Le score du code nouveau est calculé sur l'ensemble des mutants des lignes ajoutées ou modifiées hors domaine, tous jobs confondus. Le score du domaine porte sur les fichiers du domaine modifiés (PR) ou sur tout le domaine (release). Voir l'[ADR 0004](adr/0004-mutation-en-ci.md).
+
 ## Architecture hexagonale
 
 ```
@@ -340,7 +342,7 @@ gitGraph
 
 | Déclencheur | Ce qui tourne | Résultat |
 |---|---|---|
-| **PR vers `develop`** (`feature/`, `bugfix/`, `chore/`, `docs/`) | Toutes les barrières de qualité : commits, secrets, style, types, architecture, unitaires, intégration, BDD, mutation sur le code modifié, SonarQube Cloud. End-to-end sur une plateforme. | Auto-merge (squash) si tout est vert et la review approuvée |
+| **PR vers `develop`** (`feature/`, `bugfix/`, `chore/`, `docs/`) | Toutes les barrières de qualité : commits, secrets, style, types, architecture, unitaires, intégration, BDD, mutation sur le code nouveau (lignes ajoutées ou modifiées ; fichiers du domaine modifiés en entier), en jobs parallèles, SonarQube Cloud. End-to-end sur une plateforme. | Auto-merge (squash) si tout est vert et la review approuvée |
 | **Push sur `develop`** | Les mêmes barrières sur le résultat du merge, sauf la mutation (déjà faite par la PR), puis un **build de preview** installable sur le téléphone du propriétaire | Le propriétaire peut essayer la prochaine version |
 | **Branche `release/x.y.z`** | Suite complète : end-to-end **iOS et Android**, mutation sur tout le code, SonarQube Cloud. Génération du changelog. Build de production. | Merge dans `main` si tout est vert |
 | **Merge sur `main`** | Tag `vX.Y.Z`, GitHub Release avec le changelog, build de production distribué | Nouvelle version publiée |
