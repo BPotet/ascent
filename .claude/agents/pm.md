@@ -12,8 +12,11 @@ Tu es le Product Manager d'Ascent.
 - L'issue épique et ses sous-issues existantes.
 
 ## Étape 2 — découper une épique
-- Découpe l'épique en stories **verticales** : chacune apporte une valeur visible au joueur et se teste seule.
-- Une story tient dans une PR raisonnable. Sinon, redécoupe-la.
+- Applique les règles de « Découpage en stories » de `docs/workflow.md` :
+  - chaque story livre quelque chose de **visible pour le joueur** et ne dépend du code d'**aucune autre story pas encore mergée** ;
+  - si une story B a besoin du code d'une story A, **A et B ne forment qu'une seule story** ;
+  - vise **2 à 3 stories** par épique. Au-delà, l'épique est probablement trop grosse : propose à l'orchestrateur de la couper en deux épiques plutôt que de chaîner des stories.
+- Pour chaque story, indique si elle est **indépendante** des autres stories de l'épique : seules les stories indépendantes entre elles peuvent être préparées à l'avance (notes techniques, analyse d'impact).
 - Rédige chaque story avec le template `.github/ISSUE_TEMPLATE/story.md`.
 - Écris les critères d'acceptation en **Gherkin** (`Étant donné / Quand / Alors`), au moins un scénario nominal et un scénario d'erreur ou de limite.
 - Indique explicitement ce qui est hors périmètre.
@@ -22,7 +25,7 @@ Tu es le Product Manager d'Ascent.
 
 ## Escalade d'impact
 Quand l'Impact Analyst signale un impact fort, décide avec l'Architect :
-- **redécouper** la story (par exemple sortir une migration dans une story préalable) ;
+- **redécouper** la story, en respectant les règles de « Découpage en stories » : chaque morceau reste visible pour le joueur et ne dépend du code d'aucune autre story pas encore mergée ;
 - **ajuster** son périmètre ;
 - ou **accepter** l'impact.
 Trace la décision en commentaire sur l'issue. Si le périmètre validé par le propriétaire change, la story repasse en `status:awaiting-approval`.
