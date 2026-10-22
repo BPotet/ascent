@@ -138,22 +138,43 @@ describe('classify', () => {
 });
 
 describe('escapeGlob and assertMatches', () => {
+  // Stryker remplace chaque « \ » d'un motif par « / » (normalizeFileName) : un échappement par
+  // barre oblique inverse ne correspondrait à rien. Une classe d'un seul caractère, si.
   it('escapes the route group (tabs) and keeps a line range valid', () => {
     const file = 'src/app/(tabs)/week.tsx';
-    assert.equal(escapeGlob(file), 'src/app/\\(tabs\\)/week.tsx');
+    assert.equal(escapeGlob(file), 'src/app/[(]tabs[)]/week.tsx');
     assert.doesNotThrow(() => assertMatches(file, `${escapeGlob(file)}:3-8`));
   });
 
-  it('escapes a dynamic route [id]', () => {
+  it('escapes a dynamic route [id] and keeps a line range valid', () => {
     const file = 'src/adapters/ui/[id].tsx';
-    assert.equal(escapeGlob(file), 'src/adapters/ui/\\[id\\].tsx');
+    assert.equal(escapeGlob(file), 'src/adapters/ui/[[]id[]].tsx');
     assert.doesNotThrow(() => assertMatches(file, `${escapeGlob(file)}:1-2`));
+  });
+
+  it('escapes catch-all routes, extglob-like names and wildcards', () => {
+    for (const file of [
+      'src/app/[...slug].tsx',
+      'src/app/+not-found.tsx',
+      'src/app/@(x).tsx',
+      'src/app/!(x).tsx',
+      'src/app/a*b?.tsx',
+    ]) {
+      assert.doesNotThrow(() => assertMatches(file, `${escapeGlob(file)}:1-2`), file);
+    }
   });
 
   it('fails loudly on a pattern that matches nothing', () => {
     assert.throws(
-      () => assertMatches('src/adapters/ui/[id].tsx', 'src/adapters/ui/[id].tsx:1-2'),
+      () => assertMatches('src/adapters/ui/[id].tsx', 'src/adapters/ui/\\[id\\].tsx'),
       /does not match/,
+    );
+  });
+
+  it('fails loudly on a glob combined with a line range, which Stryker refuses', () => {
+    assert.throws(
+      () => assertMatches('src/adapters/ui/i.tsx', 'src/adapters/ui/[id].tsx:1-2'),
+      /glob/,
     );
   });
 
@@ -168,10 +189,10 @@ describe('escapeGlob and assertMatches', () => {
       weight: 4,
     };
     assert.deepEqual(mutateEntries(change, { whole: false }), [
-      'src/app/\\(tabs\\)/week.tsx:2-4',
-      'src/app/\\(tabs\\)/week.tsx:9-9',
+      'src/app/[(]tabs[)]/week.tsx:2-4',
+      'src/app/[(]tabs[)]/week.tsx:9-9',
     ]);
-    assert.deepEqual(mutateEntries(change, { whole: true }), ['src/app/\\(tabs\\)/week.tsx']);
+    assert.deepEqual(mutateEntries(change, { whole: true }), ['src/app/[(]tabs[)]/week.tsx']);
   });
 });
 
@@ -241,7 +262,7 @@ describe('buildPlan', () => {
         scope: 'ui',
         thresholdClass: 'newCode',
         config: 'stryker.config.mjs',
-        mutate: ['src/app/\\(tabs\\)/week.tsx:1-30'],
+        mutate: ['src/app/[(]tabs[)]/week.tsx:1-30'],
       },
       {
         id: 'ui-2',

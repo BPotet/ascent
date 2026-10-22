@@ -4,7 +4,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { minimatch } from 'minimatch';
+import { Minimatch, minimatch } from 'minimatch';
 import baseConfig from '../../stryker.config.mjs';
 import domainConfig from '../../stryker.domain.config.mjs';
 
@@ -89,15 +89,34 @@ export function parseDiff(text) {
   return changes;
 }
 
-/** Échappe les caractères spéciaux de minimatch pour qu'un chemin ne désigne que lui-même. */
+/**
+ * Échappe un chemin pour qu'il ne désigne que lui-même dans un motif `mutate` de Stryker.
+ * Stryker remplace chaque « \ » d'un motif par « / » (`normalizeFileName`) : l'échappement par
+ * barre oblique inverse est donc impossible. Chaque caractère spécial est mis dans une classe d'un
+ * seul caractère (`[(]`), que minimatch lit comme un littéral, sans glob : une plage reste permise.
+ * `! + @` ne sont spéciaux que devant `(`, déjà échappé ; `{ }` ne peuvent pas l'être ainsi, et
+ * `assertMatches()` refuse un chemin qui en dépendrait.
+ */
 export function escapeGlob(file) {
-  return file.replace(/[*?[\]{}()!+@]/g, '\\$&');
+  return file.replace(/[*?[\]()]/g, '[$&]');
 }
 
-/** Vérifie, comme Stryker, que le motif `pattern` désigne bien le fichier `file`. */
+const RANGE = /:\d+-\d+$/;
+const strykerPath = (file) => path.resolve(file).replace(/\\/g, '/');
+
+/**
+ * Vérifie, comme Stryker, que l'entrée `mutate` désigne bien le fichier `file` : même comparaison
+ * (`minimatch` sur les chemins absolus normalisés), et pas de glob avec une plage (refusé par
+ * Stryker). Sinon, lève une erreur au lieu de fausser la mesure en silence.
+ */
 export function assertMatches(file, pattern) {
-  const glob = pattern.replace(/:\d+-\d+$/, '');
-  if (!minimatch(path.resolve(file), path.resolve(glob))) {
+  const glob = pattern.replace(RANGE, '');
+  if (RANGE.test(pattern) && new Minimatch(pattern).hasMagic()) {
+    throw new Error(
+      `Mutate pattern "${pattern}" combines a glob with a line range: Stryker refuses it.`,
+    );
+  }
+  if (!minimatch(strykerPath(file), strykerPath(glob))) {
     throw new Error(
       `Mutate pattern "${pattern}" does not match "${file}": it would mutate nothing.`,
     );
