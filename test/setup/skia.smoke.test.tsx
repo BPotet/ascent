@@ -1,9 +1,9 @@
 /**
- * @jest-environment @shopify/react-native-skia/jestEnv.js
+ * @jest-environment ./test/setup/skiaEnvironment.js
  */
 // Test de fumée de Skia sous Jest. Skia reste hors des setups communs (jest.config.js) : son
-// environnement charge CanvasKit (WebAssembly), coûteux, et seul ce fichier le demande, par son
-// en-tête. Le setup de Skia est importé avant Skia lui-même.
+// environnement (skiaEnvironment.js) charge CanvasKit (WebAssembly), coûteux, et seul ce fichier le
+// demande, par son en-tête. Le setup de Skia est importé avant Skia lui-même.
 import '@shopify/react-native-skia/jestSetup';
 
 import { Canvas, Circle, Skia } from '@shopify/react-native-skia';
