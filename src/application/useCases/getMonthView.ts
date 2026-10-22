@@ -41,13 +41,16 @@ export function getMonthView(
   { clock, unitOfWork }: UseCaseDependencies,
   month?: Month,
 ): Promise<MonthView> {
-  return unitOfWork.run(async ({ habits, checkIns }) => {
+  return unitOfWork.run(async ({ habits, checkIns, settingsChanges }) => {
     const today = clock.today();
     const existing = await habits.listAll();
     const history = History.of(existing, today);
     const shown = history.monthWithin(month ?? history.currentMonth);
     const monthCheckIns = await checkIns.listBetween(shown.start, shown.end);
-    const days = shown.days().map((day) => monthDayOf(day, existing, monthCheckIns, today));
+    const changes = await settingsChanges.listAll();
+    const days = shown
+      .days()
+      .map((day) => monthDayOf(day, existing, monthCheckIns, changes, today));
     return {
       month: shown,
       today,

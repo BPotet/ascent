@@ -22,9 +22,10 @@ export function getDayDetail(
   { clock, unitOfWork }: UseCaseDependencies,
   day: Day,
 ): Promise<DayDetail> {
-  return unitOfWork.run(async ({ habits, checkIns }) => {
+  return unitOfWork.run(async ({ habits, checkIns, settingsChanges }) => {
     const today = clock.today();
     const existing = await habits.listAll();
-    return monthDayOf(day, existing, await checkIns.listBetween(day, day), today);
+    const dayCheckIns = await checkIns.listBetween(day, day);
+    return monthDayOf(day, existing, dayCheckIns, await settingsChanges.listAll(), today);
   });
 }

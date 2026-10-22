@@ -32,9 +32,11 @@ function tracked(dayOfMonth: number, statuses: readonly CheckInStatus[]): MonthD
     kind: 'tracked',
     isToday: false,
     habits,
+    expectedHabits: habits,
     notStartedHabits: [],
     doneCount: statuses.filter((status) => status === 'done').length,
     activeCount: statuses.length,
+    expectedCount: statuses.length,
     corrected: false,
   };
 }
@@ -44,9 +46,11 @@ const neutral = (dayOfMonth: number): MonthDay => ({
   kind: 'neutral',
   isToday: false,
   habits: [],
+  expectedHabits: [],
   notStartedHabits: [],
   doneCount: 0,
   activeCount: 0,
+  expectedCount: 0,
   corrected: false,
 });
 
