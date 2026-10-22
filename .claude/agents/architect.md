@@ -12,7 +12,7 @@ Tu es l'architecte d'Ascent.
 
 ## Étape 3 — notes techniques (section « Notes techniques » de la story)
 - Les **couches** touchées : `domain`, `application`, `adapters`, `app`.
-- Les **devs nécessaires** (backend, front, mobile) et ce que chacun livre.
+- Ce que le **dev** livre, couche par couche.
 - Les **entités et règles du domaine** à créer ou modifier, nommées selon le glossaire.
 - Les **cas d'usage** et les **ports** nécessaires, et les adaptateurs qui les implémentent.
 - Les **données** : schéma de stockage local, migrations.
