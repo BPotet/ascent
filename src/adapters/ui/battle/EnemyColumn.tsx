@@ -57,7 +57,10 @@ export function EnemyColumn({
         <View style={styles.figure}>{sealed ? <PerilSeal /> : null}</View>
         <Text style={[styles.name, target && styles.targetName]}>{ENEMY_NAMES[enemy.kind]}</Text>
         <View style={styles.hpTrack}>
-          <View style={[styles.hp, { width: `${(100 * enemy.hp) / enemy.maxHp}%` }]} />
+          <View
+            testID={`enemy-${enemy.kind}-hp`}
+            style={[styles.hp, { width: `${(100 * enemy.hp) / enemy.maxHp}%` }]}
+          />
         </View>
         <Text style={styles.hpText}>
           {enemy.hp}/{enemy.maxHp}

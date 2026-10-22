@@ -21,6 +21,7 @@ export function HeroBar({ hero }: { readonly hero: HeroState }) {
       <View style={styles.row}>
         <View style={styles.track}>
           <View
+            testID="battle-hero-hp"
             style={[styles.hp, ratio < LOW_HP_RATIO && styles.low, { width: `${100 * ratio}%` }]}
           />
         </View>

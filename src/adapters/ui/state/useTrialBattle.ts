@@ -3,7 +3,7 @@ import { AccessibilityInfo } from 'react-native';
 
 import type { BattleSession, BattleSnapshot } from '../../../application/useCases/BattleSession';
 import type { Battle } from '../../../domain/battle/Battle';
-import type { BattleEvent } from '../../../domain/battle/BattleEvent';
+import type { BattleEvent, BlowOutcome } from '../../../domain/battle/BattleEvent';
 import type { HeroPose } from '../battle/sceneTypes';
 import {
   endTitle,
@@ -25,7 +25,7 @@ export interface TrialBattleDisplay {
   readonly streaksAt: number | null;
 }
 
-const INITIAL: TrialBattleDisplay = {
+export const INITIAL_DISPLAY: TrialBattleDisplay = {
   snapshot: null,
   feedback: null,
   heroPose: 'idle',
@@ -42,7 +42,7 @@ function baseDamage(battle: Battle, event: BattleEvent): number {
   return enemy?.intent.damage ?? 0;
 }
 
-const POSE_OF_OUTCOME: Readonly<Record<string, HeroPose>> = {
+const POSE_OF_OUTCOME: Readonly<Record<BlowOutcome, HeroPose>> = {
   perfectParry: 'counter',
   parry: 'lean',
   dodge: 'dodge',
@@ -50,7 +50,7 @@ const POSE_OF_OUTCOME: Readonly<Record<string, HeroPose>> = {
   suffered: 'hit',
 };
 
-function displayOf(
+export function displayOf(
   previous: TrialBattleDisplay,
   snapshot: BattleSnapshot,
   reducedMotion: boolean,
@@ -63,7 +63,7 @@ function displayOf(
     }
     switch (event.type) {
       case 'blowResolved': {
-        display = { ...display, heroPose: POSE_OF_OUTCOME[event.outcome] ?? 'idle' };
+        display = { ...display, heroPose: POSE_OF_OUTCOME[event.outcome] };
         const perfect = event.outcome === 'perfectParry';
         const hurt = event.outcome === 'suffered' || event.outcome === 'perilousParry';
         if (perfect) display = { ...display, streaksAt: event.at };
@@ -132,7 +132,7 @@ type Action =
 
 function reduce(display: TrialBattleDisplay, action: Action): TrialBattleDisplay {
   return action.type === 'reset'
-    ? INITIAL
+    ? INITIAL_DISPLAY
     : displayOf(display, action.snapshot, action.reducedMotion);
 }
 
@@ -146,7 +146,7 @@ export function useTrialBattle(
   session: BattleSession,
   reducedMotion: boolean,
 ): TrialBattleDisplay & { readonly replay: () => void } {
-  const [display, dispatch] = useReducer(reduce, INITIAL);
+  const [display, dispatch] = useReducer(reduce, INITIAL_DISPLAY);
 
   useEffect(() => {
     const unsubscribe = session.subscribe((snapshot) => {

@@ -36,7 +36,7 @@ export function BattleHintBubble({
     >
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.text}>{text}</Text>
-      <View style={[styles.arrow, { left: arrow }]} />
+      <View testID="battle-hint-arrow" style={[styles.arrow, { left: arrow }]} />
     </Pressable>
   );
 }
