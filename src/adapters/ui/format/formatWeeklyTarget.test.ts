@@ -1,5 +1,8 @@
+import { Day } from '../../../domain/day/Day';
 import {
+  nextWeeklyTargetText,
   progressChipAccessibilityLabel,
+  weekCardTargetText,
   progressChipText,
   weeklyProgressAccessibilityLabel,
   weeklyProgressText,
@@ -108,5 +111,54 @@ describe('weeklyTargetChangeMessage', () => {
     expect(weeklyTargetChangeMessage({ appliesThisWeek: true, weekTarget: 7 })).toBe(
       'Habitude créée aujourd’hui : le nouvel objectif s’applique dès cette semaine.',
     );
+  });
+});
+
+describe('weekCardTargetText', () => {
+  const thursday = Day.of(2026, 10, 15);
+
+  it('writes the weekly target of the week shown, in lower case after the difficulty', () => {
+    expect(
+      weekCardTargetText({
+        weeklyTarget: 3,
+        weekTarget: 3,
+        currentWeek: true,
+        createdOn: thursday,
+      }),
+    ).toBe('3 fois par semaine');
+    expect(
+      weekCardTargetText({
+        weeklyTarget: 7,
+        weekTarget: 7,
+        currentWeek: false,
+        createdOn: thursday,
+      }),
+    ).toBe('tous les jours');
+  });
+
+  it('says the week target of the week of creation, reduced to the days left', () => {
+    expect(
+      weekCardTargetText({
+        weeklyTarget: 7,
+        weekTarget: 4,
+        currentWeek: true,
+        createdOn: thursday,
+      }),
+    ).toBe('tous les jours · 4 cette semaine (créée jeudi)');
+    expect(
+      weekCardTargetText({
+        weeklyTarget: 5,
+        weekTarget: 4,
+        currentWeek: false,
+        createdOn: thursday,
+      }),
+    ).toBe('5 fois par semaine · 4 cette semaine-là (créée jeudi)');
+  });
+});
+
+describe('nextWeeklyTargetText', () => {
+  it('announces a target that changes next Monday', () => {
+    expect(nextWeeklyTargetText(4)).toBe('4 fois par semaine dès lundi');
+    expect(nextWeeklyTargetText(7)).toBe('tous les jours dès lundi');
   });
 });

@@ -89,7 +89,14 @@ function LoadingView() {
       </View>
       {[0, 1, 2, 3].map((card) => (
         <View key={card} style={styles.skeletonCard}>
-          <View style={[styles.skeleton, styles.skeletonName]} />
+          <View style={styles.skeletonHead}>
+            <View style={[styles.skeleton, styles.skeletonName]} />
+            <View testID="week-view-loading-chip" style={[styles.skeleton, styles.skeletonChip]} />
+          </View>
+          <View
+            testID="week-view-loading-settings"
+            style={[styles.skeleton, styles.skeletonSettings]}
+          />
           <View style={styles.skeletonCells}>
             {[0, 1, 2, 3, 4, 5, 6].map((cell) => (
               <SkeletonCell key={cell} />
@@ -163,7 +170,9 @@ function Navigator({
  * En haut, l'expérience du personnage (R24), avec le feedback d'un tap ou d'une correction
  * enregistrés : « +20 XP » (au barème de la difficulté de la semaine) s'envole de la case
  * (`Experience`, `CharacterBar`). Chaque carte montre, sous le nom, la difficulté de l'habitude
- * pendant la semaine affichée (E4).
+ * pendant la semaine affichée (E4) et son objectif hebdomadaire, et à droite du nom la puce de sa
+ * progression de la semaine, verte une fois l'objectif atteint (#24) ; une semaine d'avant la mise à
+ * jour n'a ni objectif ni puce.
  * Toucher le nom d'une habitude ouvre « Modifier l'habitude » (`HabitEditing`), prérempli avec ses
  * réglages de la semaine en cours, même depuis une autre semaine : modifiée, elle est mise en
  * évidence et la variation de l'expérience est montrée ; supprimée, elle disparaît de toutes les
@@ -333,6 +342,14 @@ export function WeekViewScreen({
                 days={row.days}
                 today={view.today}
                 difficulty={row.weekSettings.difficulty}
+                target={{
+                  weeklyTarget: row.weekSettings.weeklyTarget,
+                  weekTarget: row.weekSettings.weekTarget,
+                  weeklyProgress: row.weeklyProgress,
+                  targetReached: row.targetReached,
+                  nextWeeklyTarget: row.nextWeeklyTarget,
+                  currentWeek: view.isCurrentWeek,
+                }}
                 xpChange={experience.change}
                 onToggle={(habitDay) => void tap(habitDay, view.today)}
                 onNotStartedPress={(habitDay) => showToast(notStartedMessage(habitDay))}
@@ -396,7 +413,16 @@ const styles = StyleSheet.create({
     borderRadius: radii.row,
     backgroundColor: colors.surface,
   },
-  skeletonName: { width: '55%', height: 14, marginTop: 6, marginBottom: spacing.lg },
+  skeletonHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 6,
+    marginBottom: 10,
+    marginHorizontal: 2,
+  },
+  skeletonName: { width: '50%', height: 14 },
+  skeletonChip: { width: 44, height: 20, borderRadius: radii.pill },
+  skeletonSettings: { width: '40%', height: 11, marginHorizontal: 2, marginBottom: spacing.md },
   skeletonCells: { flexDirection: 'row', gap: spacing.xs },
   skeletonSlot: { flex: 1, minWidth: 0 },
   skeletonCell: { width: '100%', borderRadius: 12 },

@@ -1,4 +1,6 @@
+import type { Day } from '../../../domain/day/Day';
 import type { WeeklyTarget } from '../../../domain/habit/WeeklyTarget';
+import { formatWeekday } from './formatDay';
 
 /** La progression de la semaine d'une habitude, telle que la lisent les vues (R5, R6, R7). */
 export interface WeeklyProgressShown {
@@ -54,6 +56,35 @@ export function weeklyProgressAccessibilityLabel({
   return targetReached
     ? `${weeklyProgress} fois cette semaine`
     : `${weeklyProgress} sur ${weekTarget} cette semaine`;
+}
+
+/**
+ * L'objectif sous le nom d'une carte de la Vue Semaine (E4), après la difficulté : « 3 fois par
+ * semaine » ; en semaine de création, l'objectif de la semaine réduit aux jours restants :
+ * « tous les jours · 4 cette semaine (créée jeudi) », « cette semaine-là » pour une semaine passée.
+ */
+export function weekCardTargetText({
+  weeklyTarget,
+  weekTarget,
+  currentWeek,
+  createdOn,
+}: {
+  readonly weeklyTarget: WeeklyTarget;
+  readonly weekTarget: number;
+  readonly currentWeek: boolean;
+  readonly createdOn: Day;
+}): string {
+  const phrase = weeklyTargetPhrase(weeklyTarget, 'inline');
+  if (weekTarget >= weeklyTarget) {
+    return phrase;
+  }
+  const week = currentWeek ? 'cette semaine' : 'cette semaine-là';
+  return `${phrase} · ${weekTarget} ${week} (créée ${formatWeekday(createdOn)})`;
+}
+
+/** Un objectif hebdomadaire qui change lundi prochain (E4) : « 4 fois par semaine dès lundi ». */
+export function nextWeeklyTargetText(target: WeeklyTarget): string {
+  return `${weeklyTargetPhrase(target, 'inline')} dès lundi`;
 }
 
 /** Le libellé du badge et de la puce d'une habitude dont l'objectif de la semaine est atteint. */

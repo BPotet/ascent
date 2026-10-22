@@ -1103,3 +1103,130 @@ describe('WeekViewScreen and editing a habit', () => {
     expect(screen.queryByTestId('delete-habit-dialog')).not.toBeOnTheScreen();
   });
 });
+
+describe('WeekViewScreen and the weekly target (E4)', () => {
+  const chip = (habit: HabitId) => screen.queryByTestId(`week-progress-${habit}`);
+  const targetLine = (habit: HabitId) => screen.getByTestId(`week-target-${habit}`);
+
+  it('keeps room for the chip and the line of settings while loading', async () => {
+    jest
+      .spyOn(dependencies.unitOfWork, 'run')
+      .mockImplementation(() => new Promise(() => undefined));
+
+    await renderScreen(<WeekViewScreen />, dependencies);
+
+    expect(screen.getAllByTestId('week-view-loading-chip')).toHaveLength(4);
+    expect(screen.getAllByTestId('week-view-loading-settings')).toHaveLength(4);
+  });
+
+  it('shows on each card its progress of the week and its weekly target', async () => {
+    await givenTheBackground();
+
+    await show();
+
+    expect(chip(cooking)).toHaveTextContent('1/7');
+    expect(chip(cooking)).toHaveAccessibleName('1 sur 7');
+    expect(targetLine(cooking)).toHaveTextContent('· tous les jours');
+    expect(chip(budget)).toHaveTextContent('0/6');
+    expect(targetLine(budget)).toHaveTextContent(
+      '· tous les jours · 6 cette semaine (créée mardi)',
+    );
+  });
+
+  it('follows a tap of today in the chip', async () => {
+    await givenTheBackground();
+    await show();
+
+    await fireEvent.press(cell(cooking, wednesday));
+
+    await waitFor(() => expect(chip(cooking)).toHaveTextContent('2/7'));
+  });
+
+  it('turns the chip green once the target is reached, with a green border', async () => {
+    dependencies.clock.setToday(october(12));
+    const created = await createHabit(dependencies, 'Courir 5 km', 'hard', 1);
+    dependencies.clock.setToday(wednesday);
+    const running = created.ok ? created.habit.id : 0;
+    await show();
+    expect(chip(running)).toHaveTextContent('0/1');
+
+    await fireEvent.press(cell(running, wednesday));
+
+    await waitFor(() => expect(chip(running)).toHaveTextContent('1/1 · Objectif atteint'));
+    expect(chip(running)).toHaveAccessibleName('1 sur 1, objectif atteint');
+    expect(screen.getByTestId(`week-card-reached-${running}`)).toBeOnTheScreen();
+    expect(targetLine(running)).toHaveTextContent('· 1 fois par semaine');
+  });
+
+  it('greys the chip of a past week not reached', async () => {
+    await givenTheBackground();
+    await show();
+
+    await fireEvent.press(previousButton());
+
+    await waitFor(() => expect(chip(cooking)).toHaveTextContent('1/7'));
+    expect(screen.getByText('1/7')).toHaveStyle({ color: '#B4BDCE' });
+    expect(chip(budget)).not.toBeOnTheScreen();
+  });
+
+  it('announces on the card a target changed for next Monday', async () => {
+    await givenTheBackground();
+    await updateHabit(dependencies, cooking, { name: 'Cuisiner', weeklyTarget: 4 });
+
+    await show();
+
+    expect(chip(cooking)).toHaveTextContent('1/7');
+    expect(targetLine(cooking)).toHaveTextContent(
+      '· tous les jours · 4 fois par semaine dès lundi',
+    );
+  });
+
+  describe('in « Modifier l’habitude »', () => {
+    const target = (value: number) => screen.getByTestId(`weekly-target-option-${value}`);
+    const editName = (name: string) =>
+      screen.getByRole('button', { name: `Modifier l’habitude ${name}` });
+
+    it('prefills the target of next week and says the current week keeps its own', async () => {
+      await givenTheBackground();
+      await updateHabit(dependencies, cooking, { name: 'Cuisiner', weeklyTarget: 4 });
+      await show();
+      dependencies.unitOfWork.failReads();
+
+      await fireEvent.press(editName('Cuisiner'));
+      expect(await screen.findByTestId('edit-habit-sheet')).toBeOnTheScreen();
+      expect(target(4)).toBeChecked();
+      await fireEvent.press(target(5));
+
+      expect(screen.getByTestId('weekly-target-change-info')).toHaveAccessibleName(
+        'Nouvel objectif à partir de lundi prochain. Cette semaine reste à 7.',
+      );
+    });
+
+    it('applies the target at once for a habit created today', async () => {
+      await givenTheBackground();
+      const created = await createHabit(dependencies, 'Lire');
+      await show();
+
+      await fireEvent.press(editName('Lire'));
+      await fireEvent.press(target(3));
+
+      expect(screen.getByTestId('weekly-target-change-info')).toHaveAccessibleName(
+        'Habitude créée aujourd’hui : le nouvel objectif s’applique dès cette semaine.',
+      );
+      expect(created.ok).toBe(true);
+    });
+
+    it('reads the target of next week when another week is shown', async () => {
+      await givenTheBackground();
+      await updateHabit(dependencies, cooking, { name: 'Cuisiner', weeklyTarget: 4 });
+      await show();
+      await fireEvent.press(previousButton());
+      await waitFor(() => expect(shownWeek()).toMatch(/^Semaine dernière/u));
+
+      await fireEvent.press(editName('Cuisiner'));
+
+      expect(await screen.findByTestId('edit-habit-sheet')).toBeOnTheScreen();
+      expect(target(4)).toBeChecked();
+    });
+  });
+});
