@@ -36,6 +36,11 @@ export interface XpChange {
   readonly id: number;
   /** La variation, renvoyée par le cas d'usage : +20 ou −20 pour un suivi en Difficile. */
   readonly amount: number;
+  /**
+   * La part de `amount` qui vient de la prime d'objectif (#26), montrée dans une seconde pastille
+   * « +15 XP prime » ; 0 sans prime, ou quand l'écran ne la sépare pas (Détail du jour).
+   */
+  readonly bonus: number;
   /** La case touchée (`keyOf` de son habitude et de son jour), d'où « +20 XP » s'envole. */
   readonly key: string;
 }
@@ -48,8 +53,12 @@ export interface Experience {
   readonly change: XpChange | null;
   /** Relit l'expérience enregistrée. */
   readonly reload: () => Promise<void>;
-  /** Montre l'expérience après un tap enregistré, avec son feedback. */
-  readonly checkInToggled: (toggled: ToggledCheckIn) => void;
+  /**
+   * Montre l'expérience après un tap enregistré, avec son feedback. Avec `splitBonus`, la prime
+   * d'objectif est montrée dans une seconde pastille, et l'annonce d'un franchissement du seuil est
+   * laissée au feedback « Objectif atteint » (`useTargetFeedback`).
+   */
+  readonly checkInToggled: (toggled: ToggledCheckIn, splitBonus?: boolean) => void;
   /** Montre l'expérience après la suppression d'une habitude, avec son feedback. */
   readonly habitDeleted: (deleted: DeletedHabit) => void;
   /** Montre l'expérience après la modification d'une habitude, avec son feedback. */
@@ -65,7 +74,7 @@ export type DeletedHabit = Pick<
 /** Une habitude modifiée, telle que `updateHabit` le renvoie. */
 export type UpdatedHabit = Pick<
   Extract<UpdateHabitResult, { readonly ok: true }>,
-  'xp' | 'xpChange'
+  'xp' | 'xpChange' | 'targetBonusChange' | 'targetReachedChange'
 >;
 
 /**
@@ -124,8 +133,15 @@ export function xpChangeOn(
  * retirée (−20 XP), s'il y en a, est montrée dans l'en-tête et annoncée de la même façon.
  *
  * Après la modification d'une habitude, l'expérience suit ce que `updateHabit` renvoie : un
- * changement de difficulté réévalue la semaine en cours (R12). La variation, s'il y en a, est
- * montrée dans l'en-tête et annoncée ; un gain fait vibrer, jamais une baisse.
+ * changement de difficulté réévalue la semaine en cours (R12), prime d'objectif comprise. La
+ * variation, s'il y en a, est montrée dans l'en-tête, la prime dans sa seconde pastille, et
+ * annoncée ; un gain fait vibrer, jamais une baisse. Quand l'objectif est atteint (baissé le jour de
+ * création), l'annonce est celle du feedback « Objectif atteint » (`useTargetFeedback`).
+ *
+ * Prime d'objectif (#26) : quand l'écran sépare la prime (`splitBonus`, Vue Journée et Vue
+ * Semaine), `change.bonus` porte la part de la prime, montrée dans une seconde pastille ; seule la
+ * part du suivi fait vibrer ici, la seconde vibration de F1 vient de `useTargetFeedback`, qui
+ * annonce aussi le franchissement du seuil.
  */
 export function ExperienceProvider({
   unitOfWork,
@@ -155,61 +171,69 @@ export function ExperienceProvider({
     void readXp(unitOfWork, latest.current, latest, setXp);
   }, [unitOfWork]);
 
-  const checkInToggled = useCallback(
-    (toggled: ToggledCheckIn) => {
-      latest.current += 1;
-      setXp(toggled.xp);
-      if (toggled.xpChange === 0) {
-        return;
-      }
-      changeCount.current += 1;
-      setChange({
-        id: changeCount.current,
-        amount: toggled.xpChange,
-        key: keyOf(toggled.habitDay),
-      });
-      if (toggled.xpChange > 0) {
-        haptics.success();
-      }
-      AccessibilityInfo.announceForAccessibility(
-        xpAnnouncement({
-          xpChange: toggled.xpChange,
-          xp: toggled.xp,
-          correction: toggled.isCorrection && toggled.habitDay.corrected,
-        }),
-      );
-    },
-    [haptics],
-  );
-
-  /** Montre `total` et, s'il y en a, la variation `amount` dans l'en-tête ; un gain fait vibrer. */
-  const showInHeader = useCallback(
-    (total: number, amount: number) => {
+  /**
+   * Montre `total` et, s'il y en a, la variation `amount` (dont `bonus` de prime) sur la case `key`
+   * ou dans l'en-tête seul : la part du suivi, si c'est un gain, fait vibrer ; l'annonce
+   * (`announcement`) est lue, sauf si le feedback « Objectif atteint » la remplace (`null`).
+   */
+  const show = useCallback(
+    (total: number, { amount, bonus, key }: Omit<XpChange, 'id'>, announcement: string | null) => {
       latest.current += 1;
       setXp(total);
       if (amount === 0) {
         return;
       }
       changeCount.current += 1;
-      setChange({ id: changeCount.current, amount, key: NO_CASE });
-      if (amount > 0) {
+      setChange({ id: changeCount.current, amount, bonus, key });
+      if (amount - bonus > 0) {
         haptics.success();
       }
-      AccessibilityInfo.announceForAccessibility(
-        xpAnnouncement({ xpChange: amount, xp: total, correction: false }),
-      );
+      if (announcement !== null) {
+        AccessibilityInfo.announceForAccessibility(announcement);
+      }
     },
     [haptics],
   );
 
+  const checkInToggled = useCallback(
+    (toggled: ToggledCheckIn, splitBonus = false) => {
+      const bonus = splitBonus ? toggled.targetBonusChange : 0;
+      const announced = !splitBonus || toggled.targetReachedChange === null;
+      show(
+        toggled.xp,
+        { amount: toggled.xpChange, bonus, key: keyOf(toggled.habitDay) },
+        announced
+          ? xpAnnouncement({
+              xpChange: toggled.xpChange,
+              xp: toggled.xp,
+              correction: toggled.isCorrection && toggled.habitDay.corrected,
+            })
+          : null,
+      );
+    },
+    [show],
+  );
+
   const habitDeleted = useCallback(
-    ({ xp: total, xpRemoved }: DeletedHabit) => showInHeader(total, -xpRemoved),
-    [showInHeader],
+    ({ xp: total, xpRemoved }: DeletedHabit) =>
+      show(
+        total,
+        { amount: -xpRemoved, bonus: 0, key: NO_CASE },
+        xpAnnouncement({ xpChange: -xpRemoved, xp: total, correction: false }),
+      ),
+    [show],
   );
 
   const habitUpdated = useCallback(
-    ({ xp: total, xpChange }: UpdatedHabit) => showInHeader(total, xpChange),
-    [showInHeader],
+    ({ xp: total, xpChange, targetBonusChange, targetReachedChange }: UpdatedHabit) =>
+      show(
+        total,
+        { amount: xpChange, bonus: targetBonusChange, key: NO_CASE },
+        targetReachedChange === 'reached'
+          ? null
+          : xpAnnouncement({ xpChange, xp: total, correction: false }),
+      ),
+    [show],
   );
 
   useEffect(() => {

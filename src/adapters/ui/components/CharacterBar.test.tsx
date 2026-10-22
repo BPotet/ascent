@@ -1,7 +1,12 @@
 import { act, render, screen, waitFor } from '@testing-library/react-native';
 import { AccessibilityInfo, Animated } from 'react-native';
 
-import { CharacterBar, XP_COUNTER_DURATION_MS, XP_PULSE_DURATION_MS } from './CharacterBar';
+import {
+  CharacterBar,
+  TARGET_BONUS_DELAY_MS,
+  XP_COUNTER_DURATION_MS,
+  XP_PULSE_DURATION_MS,
+} from './CharacterBar';
 
 const thin = ' ';
 const reduceMotion = () =>
@@ -276,7 +281,70 @@ describe('CharacterBar', () => {
 
     await screen.unmount();
 
-    // Le compteur et la pastille s'arrêtent.
-    expect(stop).toHaveBeenCalledTimes(2);
+    // Le compteur, la pulsation et la pastille s'arrêtent.
+    expect(stop).toHaveBeenCalledTimes(3);
+  });
+  describe('target bonus (#26)', () => {
+    const hidden = { includeHiddenElements: true };
+
+    it('shows the case and the bonus in two pills, the bonus 0.4 s later, and pulses twice', async () => {
+      const sequence = jest.spyOn(Animated, 'sequence');
+      const delay = jest.spyOn(Animated, 'delay');
+      await render(<CharacterBar xp={20} change={null} />);
+
+      await screen.rerender(<CharacterBar xp={45} change={{ id: 1, amount: 25, bonus: 15 }} />);
+
+      expect(screen.getByTestId('xp-change', hidden)).toHaveTextContent('+10 XP');
+      expect(screen.getByTestId('xp-change-bonus', hidden)).toHaveTextContent('+15 XP prime');
+      expect(screen.getByTestId('xp-change-bonus', hidden)).toHaveStyle({
+        borderColor: '#FFC94D',
+      });
+      expect(delay).toHaveBeenCalledWith(TARGET_BONUS_DELAY_MS);
+      // Les deux pulsations du compteur, puis leur enchaînement.
+      expect(sequence.mock.calls.filter(([steps]) => steps.length === 3)).toHaveLength(1);
+    });
+
+    it('shows a lost bonus in grey, at the same time as the case', async () => {
+      const delay = jest.spyOn(Animated, 'delay');
+      await render(<CharacterBar xp={45} change={null} />);
+
+      await screen.rerender(<CharacterBar xp={20} change={{ id: 1, amount: -25, bonus: -15 }} />);
+
+      expect(screen.getByTestId('xp-change', hidden)).toHaveTextContent('−10 XP');
+      expect(screen.getByTestId('xp-change-bonus', hidden)).toHaveTextContent('−15 XP prime');
+      expect(screen.getByTestId('xp-change-bonus', hidden)).toHaveStyle({
+        borderColor: '#4A5570',
+      });
+      expect(delay).not.toHaveBeenCalledWith(TARGET_BONUS_DELAY_MS);
+    });
+
+    it('shows the bonus alone when the case brings nothing (objectif baissé, E7)', async () => {
+      await render(<CharacterBar xp={10} change={null} />);
+
+      await screen.rerender(<CharacterBar xp={13} change={{ id: 1, amount: 3, bonus: 3 }} />);
+
+      expect(screen.queryByTestId('xp-change', hidden)).not.toBeOnTheScreen();
+      expect(screen.getByTestId('xp-change-bonus', hidden)).toHaveTextContent('+3 XP prime');
+    });
+
+    it('shows both pills at once, without motion, when the motion is reduced', async () => {
+      reduceMotion();
+      await render(<CharacterBar xp={20} change={null} />);
+      await act(async () => undefined);
+      const delay = jest.spyOn(Animated, 'delay');
+
+      await screen.rerender(<CharacterBar xp={45} change={{ id: 1, amount: 25, bonus: 15 }} />);
+
+      expect(screen.getByTestId('xp-change-bonus', hidden)).toHaveStyle({ opacity: 1 });
+      expect(delay).not.toHaveBeenCalled();
+      expect(shownXp()).toBe('45 XP');
+    });
+
+    it('never intercepts a touch with its pills', async () => {
+      await render(<CharacterBar xp={45} change={{ id: 1, amount: 25, bonus: 15 }} />);
+
+      expect(screen.getByTestId('xp-change', hidden)).toHaveProp('pointerEvents', 'none');
+      expect(screen.getByTestId('xp-change-bonus', hidden)).toHaveProp('pointerEvents', 'none');
+    });
   });
 });

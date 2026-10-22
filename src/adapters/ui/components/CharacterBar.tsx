@@ -19,13 +19,30 @@ const PILL_FADE_IN_MS = 210;
 const PILL_HOLD_MS = 840;
 const PILL_FADE_OUT_MS = 350;
 
+/**
+ * Le décalage de la seconde pastille « +15 XP prime » et de la seconde pulsation après la première
+ * (maquette F1, « L'objectif (≈ 0,4 s) »).
+ */
+export const TARGET_BONUS_DELAY_MS = 400;
+
 /** Le libellé de l'expérience dans l'en-tête, lu aussi par le lecteur d'écran. */
 export const CHARACTER_XP_LABEL = 'Expérience du personnage';
 
 /** Un changement d'expérience à montrer, « +20 XP » ou « −20 XP » ; `id` change à chaque fois. */
 export interface ShownXpChange {
   readonly id: number;
+  /** La variation totale, prime d'objectif comprise. */
   readonly amount: number;
+  /** La part de `amount` qui vient de la prime d'objectif (#26), dans sa propre pastille. */
+  readonly bonus?: number;
+}
+
+/** La part du suivi et celle de la prime d'un changement. */
+function sharesOf({ amount, bonus = 0 }: ShownXpChange): {
+  readonly checkIn: number;
+  readonly bonus: number;
+} {
+  return { checkIn: amount - bonus, bonus };
 }
 
 /**
@@ -76,21 +93,35 @@ function XpCounter({
   const counted = useCountedXp(xp, change?.id ?? null, reducedMotion);
   const [scale] = useState(() => new Animated.Value(1));
   const gainId = change !== null && change.amount > 0 ? change.id : null;
+  const shares = change === null ? { checkIn: 0, bonus: 0 } : sharesOf(change);
+  // Une pulsation pour le suivi, une seconde pour la prime qui suit (F1).
+  const pulses = Number(shares.checkIn > 0) + Number(shares.bonus > 0);
 
   useEffect(() => {
     if (gainId === null || reducedMotion) {
       return;
     }
     const grow = Math.round(XP_PULSE_DURATION_MS * 0.35);
-    Animated.sequence([
-      Animated.timing(scale, { toValue: 1.14, duration: grow, useNativeDriver: true }),
-      Animated.timing(scale, {
-        toValue: 1,
-        duration: XP_PULSE_DURATION_MS - grow,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [gainId, reducedMotion, scale]);
+    const pulse = () =>
+      Animated.sequence([
+        Animated.timing(scale, { toValue: 1.14, duration: grow, useNativeDriver: true }),
+        Animated.timing(scale, {
+          toValue: 1,
+          duration: XP_PULSE_DURATION_MS - grow,
+          useNativeDriver: true,
+        }),
+      ]);
+    const pulsing =
+      pulses > 1
+        ? Animated.sequence([
+            pulse(),
+            Animated.delay(Math.max(0, TARGET_BONUS_DELAY_MS - XP_PULSE_DURATION_MS)),
+            pulse(),
+          ])
+        : pulse();
+    pulsing.start();
+    return () => pulsing.stop();
+  }, [gainId, pulses, reducedMotion, scale]);
 
   return (
     <Animated.Text
@@ -102,12 +133,20 @@ function XpCounter({
   );
 }
 
-/** La pastille « +20 XP » (or) ou « −20 XP » (gris discret), à droite de l'en-tête. */
+/**
+ * La pastille « +20 XP » (or) ou « −20 XP » (gris discret), à droite de l'en-tête ; avec `bonus`,
+ * celle de la prime d'objectif, « +15 XP prime » (contour or) ou « −15 XP prime » (contour gris),
+ * qui apparaît `delay` ms après la première.
+ */
 function XpChangePill({
-  change,
+  amount,
+  bonus = false,
+  delay = 0,
   reducedMotion,
 }: {
-  readonly change: ShownXpChange;
+  readonly amount: number;
+  readonly bonus?: boolean;
+  readonly delay?: number;
   readonly reducedMotion: boolean;
 }) {
   const [opacity] = useState(() => new Animated.Value(reducedMotion ? 1 : 0));
@@ -118,26 +157,68 @@ function XpChangePill({
       return;
     }
     const fading = Animated.sequence([
+      Animated.delay(delay),
       Animated.timing(opacity, { toValue: 1, duration: PILL_FADE_IN_MS, useNativeDriver: true }),
       Animated.delay(PILL_HOLD_MS),
       Animated.timing(opacity, { toValue: 0, duration: PILL_FADE_OUT_MS, useNativeDriver: true }),
     ]);
     fading.start();
     return () => fading.stop();
-  }, [opacity, reducedMotion]);
+  }, [delay, opacity, reducedMotion]);
 
-  const gain = change.amount > 0;
+  const gain = amount > 0;
+  const text = bonus ? `${formatXpChange(amount)} prime` : formatXpChange(amount);
   return (
     <Animated.View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      testID="xp-change"
-      style={[styles.pill, gain ? styles.pillGain : styles.pillLoss, { opacity }]}
+      pointerEvents="none"
+      testID={bonus ? 'xp-change-bonus' : 'xp-change'}
+      style={[
+        styles.pill,
+        bonus && styles.pillBonus,
+        bonus && (gain ? styles.pillBonusGain : styles.pillBonusLoss),
+        !bonus && (gain ? styles.pillGain : styles.pillLoss),
+        { opacity },
+      ]}
     >
-      <Text style={[typography.xpChange, gain ? styles.pillGainText : styles.pillLossText]}>
-        {formatXpChange(change.amount)}
+      <Text
+        style={[
+          typography.xpChange,
+          bonus && (gain ? styles.pillBonusGainText : styles.pillLossText),
+          !bonus && (gain ? styles.pillGainText : styles.pillLossText),
+        ]}
+      >
+        {text}
       </Text>
     </Animated.View>
+  );
+}
+
+/**
+ * Les pastilles d'un changement : celle du suivi, s'il y en a une, puis celle de la prime d'objectif,
+ * décalée de `TARGET_BONUS_DELAY_MS` après un gain du suivi (F1), en même temps sinon.
+ */
+function XpChangePills({
+  change,
+  reducedMotion,
+}: {
+  readonly change: ShownXpChange;
+  readonly reducedMotion: boolean;
+}) {
+  const { checkIn, bonus } = sharesOf(change);
+  return (
+    <View style={styles.pills}>
+      {checkIn !== 0 && <XpChangePill amount={checkIn} reducedMotion={reducedMotion} />}
+      {bonus !== 0 && (
+        <XpChangePill
+          amount={bonus}
+          bonus
+          delay={checkIn > 0 && bonus > 0 ? TARGET_BONUS_DELAY_MS : 0}
+          reducedMotion={reducedMotion}
+        />
+      )}
+    </View>
   );
 }
 
@@ -147,8 +228,10 @@ function XpChangePill({
  * 40 XP », toujours la nouvelle valeur, même pendant que le compteur monte.
  *
  * Après un changement (`change`), le compteur va jusqu'à la nouvelle valeur en 450 ms et pulse
- * pour un gain ; une pastille « +20 XP » (or) ou « −20 XP » (gris) apparaît puis s'efface. Quand
- * le mouvement est réduit, le compteur se met à jour directement et la pastille ne bouge pas.
+ * pour un gain ; une pastille « +20 XP » (or) ou « −20 XP » (gris) apparaît puis s'efface. Une prime
+ * d'objectif (`change.bonus`, #26) a sa seconde pastille, « +15 XP prime » ou « −15 XP prime »
+ * (gris), et sa seconde pulsation, 0,4 s après la première (F1). Quand le mouvement est réduit, le
+ * compteur se met à jour directement et les pastilles ne bougent pas.
  * `xp` vaut `null` tant que l'expérience n'est pas lue : l'en-tête montre sa forme, sans valeur.
  */
 export function CharacterBar({
@@ -190,7 +273,7 @@ export function CharacterBar({
         <XpCounter xp={xp} change={change} reducedMotion={reducedMotion} />
       </View>
       {change !== null && (
-        <XpChangePill key={change.id} change={change} reducedMotion={reducedMotion} />
+        <XpChangePills key={change.id} change={change} reducedMotion={reducedMotion} />
       )}
     </View>
   );
@@ -227,6 +310,11 @@ const styles = StyleSheet.create({
   pillGain: { backgroundColor: colors.xp },
   pillLoss: { backgroundColor: colors.surfaceRaised },
   pillGainText: { color: colors.onXp },
+  pills: { alignItems: 'flex-end', gap: spacing.xs },
+  pillBonus: { paddingVertical: spacing.xs, borderWidth: 1.5, backgroundColor: 'transparent' },
+  pillBonusGain: { borderColor: colors.xp },
+  pillBonusLoss: { borderColor: colors.iconDisabled },
+  pillBonusGainText: { color: colors.xp },
   pillLossText: { color: colors.muted },
   skeleton: { backgroundColor: colors.skeleton, borderRadius: spacing.sm },
   skeletonLabel: { width: 150, height: 12 },

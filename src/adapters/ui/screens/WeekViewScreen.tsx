@@ -17,7 +17,13 @@ import { LinkButton } from '../components/LinkButton';
 import { PeriodNavigator } from '../components/PeriodNavigator';
 import { Screen } from '../components/Screen';
 import { StateMessage } from '../components/StateMessage';
-import { Toast, type ToastAction } from '../components/Toast';
+import {
+  targetToastOf,
+  Toast,
+  type ToastAction,
+  type ToastTarget,
+  type ToastVariant,
+} from '../components/Toast';
 import { HabitWeekCard, WeekDaysHeader, WeekLegend } from '../components/WeekGrid';
 import {
   CHECK_IN_SAVE_FAILED,
@@ -27,7 +33,9 @@ import {
   notStartedMessage,
 } from '../format/checkInMessages';
 import { formatWeekRange, HISTORY_START, weekLabel, weekTitle } from '../format/formatWeek';
+import type { TargetFeedback } from '../format/targetFeedback';
 import { useExperience } from '../state/Experience';
+import { targetFlashOn, updatedTargetPlay, useTargetFeedback } from '../state/useTargetFeedback';
 import type { EditableSettings } from '../state/useEditHabit';
 import { useWeekView } from '../state/useWeekView';
 import { colors } from '../theme/colors';
@@ -59,6 +67,10 @@ interface ToastContent {
   readonly id: number;
   readonly message: string;
   readonly action?: ToastAction;
+  /** Le feedback « Objectif atteint » (#26) : sa forme, son texte et son annonce. */
+  readonly variant?: ToastVariant;
+  readonly target?: ToastTarget;
+  readonly announcement?: string;
 }
 
 /** Une case du squelette, de la même taille qu'une vraie case (`useCellHeight`). */
@@ -173,6 +185,11 @@ function Navigator({
  * pendant la semaine affichée (E4) et son objectif hebdomadaire, et à droite du nom la puce de sa
  * progression de la semaine, verte une fois l'objectif atteint (#24) ; une semaine d'avant la mise à
  * jour n'a ni objectif ni puce.
+ * Un tap ou une correction qui atteint l'objectif de la semaine de la case joue F1 sur la carte (#26,
+ * `useTargetFeedback`) : la puce verte s'éclaire d'un éclat doré, la seconde pastille « +15 XP
+ * prime » et le message « Objectif de la semaine atteint » (« Objectif atteint · semaine du
+ * 5 octobre » pour une semaine close), qui remplace celui de la correction ; repasser sous
+ * l'objectif affiche un message discret, sans vibration.
  * Toucher le nom d'une habitude ouvre « Modifier l'habitude » (`HabitEditing`), prérempli avec ses
  * réglages de la semaine en cours, même depuis une autre semaine : modifiée, elle est mise en
  * évidence et la variation de l'expérience est montrée ; supprimée, elle disparaît de toutes les
@@ -215,6 +232,12 @@ export function WeekViewScreen({
     setToast({ id: toastCount.current, message, ...(action && { action }) });
   }, []);
   const hideToast = useCallback(() => setToast(null), []);
+  const showTargetToast = useCallback((feedback: TargetFeedback) => {
+    toastCount.current += 1;
+    setToast({ id: toastCount.current, ...targetToastOf(feedback) });
+  }, []);
+  const target = useTargetFeedback({ showToast: showTargetToast });
+  const { play } = target;
 
   useEffect(() => {
     if (highlighted === null) {
@@ -225,10 +248,16 @@ export function WeekViewScreen({
   }, [highlighted]);
 
   const closeEditing = () => setEditing(null);
-  const updated = (outcome: UpdatedHabit) => {
+  const updated = (outcome: UpdatedHabit, today: Day) => {
     setEditing(null);
     setHighlighted(outcome.habit.id);
-    showToast(updatedMessage(outcome));
+    // L'objectif, baissé le jour de création, est atteint : F1 remplace « Habitude modifiée » (E7).
+    const played =
+      outcome.targetReachedChange === 'reached' &&
+      play(updatedTargetPlay(outcome, today), { habit: outcome.habit, day: today });
+    if (!played) {
+      showToast(updatedMessage(outcome));
+    }
     void refresh();
   };
   const deleted = ({ xpRemoved }: DeletedHabit) => {
@@ -253,7 +282,11 @@ export function WeekViewScreen({
       async function attempt(): Promise<void> {
         setToast(null);
         const outcome = await toggle(habitDay);
-        if (outcome.ok && outcome.isCorrection) {
+        // F1 ou le retour sous l'objectif remplace le message de la correction (#26).
+        const played =
+          outcome.ok &&
+          play(outcome, outcome.habitDay, outcome.isCorrection && outcome.habitDay.corrected);
+        if (outcome.ok && outcome.isCorrection && !played) {
           showToast(
             shownClosed
               ? correctedMessage(outcome.habitDay)
@@ -268,7 +301,7 @@ export function WeekViewScreen({
       }
       return attempt();
     },
-    [toggle, showToast],
+    [toggle, showToast, play],
   );
 
   if (state.status === 'loading') {
@@ -355,6 +388,9 @@ export function WeekViewScreen({
                 onNotStartedPress={(habitDay) => showToast(notStartedMessage(habitDay))}
                 onEdit={setEditing}
                 highlighted={row.habit.id === highlighted}
+                targetFlash={row.days
+                  .map((habitDay) => targetFlashOn(target.flash, habitDay))
+                  .find((flash) => flash !== undefined)}
               />
             ))}
             <WeekLegend />
@@ -367,6 +403,9 @@ export function WeekViewScreen({
           key={toast.id}
           message={toast.message}
           {...(toast.action && { action: toast.action })}
+          {...(toast.variant && { variant: toast.variant })}
+          {...(toast.target && { target: toast.target })}
+          {...(toast.announcement !== undefined && { announcement: toast.announcement })}
           onHide={hideToast}
         />
       )}
@@ -376,7 +415,7 @@ export function WeekViewScreen({
           settings={editableSettings(view, editing)}
           habits={view.rows.map(({ habit }) => habit)}
           today={view.today}
-          onUpdated={updated}
+          onUpdated={(outcome) => updated(outcome, view.today)}
           onDeleted={deleted}
           onGone={gone}
           onReadFailed={readFailed}

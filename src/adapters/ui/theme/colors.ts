@@ -25,6 +25,10 @@ export const colors = {
   /** Fond de l'avatar du personnage. */
   avatar: '#222E52',
   xpSoft: 'rgba(255,201,77,0.1)',
+  /** Le fond de l'icône du message « Objectif atteint » (F1, #26). */
+  xpSoftStrong: 'rgba(255,201,77,0.16)',
+  /** Le fond du message « Objectif atteint » (F1, #26) : la prime en or y fait 9,8:1. */
+  goalToast: '#1E2738',
   xpLine: 'rgba(255,201,77,0.4)',
   onXpSoft: '#FFE3A3',
   hintSoft: 'rgba(124,156,255,0.14)',

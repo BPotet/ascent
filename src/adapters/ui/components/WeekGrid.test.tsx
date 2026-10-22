@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { View } from 'react-native';
 
 import type { CheckInStatus } from '../../../domain/checkIn/CheckInStatus';
@@ -286,6 +286,45 @@ describe('HabitWeekCard and the weekly target (Vue Semaine, E4)', () => {
     expect(screen.queryByTestId('week-card-reached-3')).not.toBeOnTheScreen();
   });
 
+  it('bursts the green chip when the target has just been reached on this card (F1, #26)', async () => {
+    await render(
+      <HabitWeekCard
+        days={days}
+        today={wednesday}
+        difficulty="medium"
+        target={target({ weeklyProgress: 3, targetReached: true })}
+        targetFlash={1}
+        onToggle={jest.fn()}
+      />,
+    );
+    await act(async () => undefined);
+
+    expect(
+      within(screen.getByTestId('week-card-3')).getByTestId('target-burst', {
+        includeHiddenElements: true,
+      }),
+    ).toBeOnTheScreen();
+    expect(chip()).toHaveTextContent('3/3 · Objectif atteint');
+  });
+
+  it('never bursts a chip below the target', async () => {
+    await render(
+      <HabitWeekCard
+        days={days}
+        today={wednesday}
+        difficulty="medium"
+        target={target()}
+        targetFlash={1}
+        onToggle={jest.fn()}
+      />,
+    );
+    await act(async () => undefined);
+
+    expect(
+      screen.queryByTestId('target-burst', { includeHiddenElements: true }),
+    ).not.toBeOnTheScreen();
+  });
+
   it('writes the weekly target under the name, after the difficulty', async () => {
     await showCard();
 
@@ -360,7 +399,7 @@ describe('HabitWeekCard and the experience', () => {
       <HabitWeekCard
         days={days}
         today={wednesday}
-        xpChange={{ id: 1, amount: 10, key: '3/2026-10-13' }}
+        xpChange={{ id: 1, amount: 10, bonus: 0, key: '3/2026-10-13' }}
         onToggle={jest.fn()}
       />,
     );
@@ -377,7 +416,7 @@ describe('HabitWeekCard and the experience', () => {
       <HabitWeekCard
         days={days}
         today={wednesday}
-        xpChange={{ id: 1, amount: 10, key: '4/2026-10-13' }}
+        xpChange={{ id: 1, amount: 10, bonus: 0, key: '4/2026-10-13' }}
         onToggle={jest.fn()}
       />,
     );
