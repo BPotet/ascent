@@ -25,7 +25,11 @@ describe('createHabit', () => {
   it('creates a habit dated from today (R1, R2)', async () => {
     const result = await createHabit(deps(), 'Cuisiner');
 
-    expect(result).toEqual({ ok: true, habit: expect.objectContaining({ createdOn: wednesday }) });
+    expect(result).toEqual({
+      ok: true,
+      habit: expect.objectContaining({ createdOn: wednesday }),
+      weekTarget: 5,
+    });
     expect(result.ok && result.habit.name.value).toBe('Cuisiner');
     expect(await names()).toEqual(['Cuisiner']);
   });
@@ -240,6 +244,29 @@ describe('createHabit', () => {
       await expect(changes()).resolves.toMatchObject([
         { changedOn: wednesday, difficulty: 'hard', weeklyTarget },
       ]);
+    });
+
+    it.each([
+      ['Monday', Day.of(2026, 10, 12), 7, 7],
+      ['Wednesday', wednesday, 7, 5],
+      ['Thursday', Day.of(2026, 10, 15), 3, 3],
+      ['Sunday', Day.of(2026, 10, 18), 4, 1],
+    ] as const)(
+      'gives the target of the week of creation, from today (%s, target %p: %p, R6)',
+      async (_, today, weeklyTarget, weekTarget) => {
+        clock.setToday(today);
+
+        await expect(
+          createHabit(deps(), 'Courir 5 km', 'medium', weeklyTarget),
+        ).resolves.toMatchObject({ ok: true, weekTarget });
+      },
+    );
+
+    it('gives the target of the week of creation of the default target (R4, R6)', async () => {
+      await expect(createHabit(deps(), 'Méditer')).resolves.toMatchObject({
+        ok: true,
+        weekTarget: 5,
+      });
     });
 
     it.each([0, 8, 2.5])(
