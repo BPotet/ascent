@@ -20,8 +20,12 @@ maestro test e2e/flows
 
 Sélecteurs : privilégier les textes visibles (libellés du glossaire) et les `testID` des écrans.
 
-Libellés des lignes de la Vue Journée (lecteur d'écran) : `<nom>, <jour>, <état>[, corrigé], <Difficulté>, <X> XP par suivi`,
-par exemple `Lire, mercredi 21 octobre, à faire, Moyenne, 10 XP par suivi`. Les cases de la Vue
+Libellés des lignes de la Vue Journée (lecteur d'écran) : `<nom>, <jour>, <état>[, corrigé], <progression>, <Difficulté>, <X> XP par suivi[, objectif atteint]`,
+par exemple `Lire, mercredi 21 octobre, à faire, 2 sur 5 cette semaine, Moyenne, 10 XP par suivi`. La
+progression de la semaine est `<N> sur <objectif> cette semaine`, puis `<N> fois cette semaine`
+au-delà de l'objectif ; comme Maestro ne pilote pas la date, l'objectif d'une habitude créée
+pendant le parcours dépend du jour (semaine de création réduite) : les parcours l'écrivent
+`.+ cette semaine` ou `\d`. Les cases de la Vue
 Semaine et du détail du jour ne portent pas la difficulté : `<nom>, <jour>, <état>`.
 
 Vérifier la syntaxe sans émulateur : `maestro check-syntax e2e/flows/<parcours>.yaml`.

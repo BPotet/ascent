@@ -31,14 +31,14 @@ tags:
     notVisible: 'Nouvelle habitude'
     timeout: 10000
 - extendedWaitUntil:
-    visible: 'Courir 5 km, .+, à faire, Moyenne, 10 XP par suivi'
+    visible: 'Courir 5 km, .+, à faire, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
     timeout: 10000
 
 # Cochée : 10 XP.
 - tapOn:
     id: 'habit-row-1'
 - extendedWaitUntil:
-    visible: 'Courir 5 km, .+, fait, Moyenne, 10 XP par suivi'
+    visible: 'Courir 5 km, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
     timeout: 10000
 - extendedWaitUntil:
     visible:
@@ -101,7 +101,7 @@ tags:
       id: 'edit-habit-sheet-content'
     timeout: 10000
 - extendedWaitUntil:
-    visible: 'Courir 5 km, .+, fait, Difficile, 20 XP par suivi'
+    visible: 'Courir 5 km, .+, fait, .+ cette semaine, Difficile, 20 XP par suivi(, objectif atteint)?'
     timeout: 10000
 - extendedWaitUntil:
     visible:
@@ -116,7 +116,7 @@ tags:
 - tapOn:
     id: 'habit-row-1'
 - extendedWaitUntil:
-    visible: 'Courir 5 km, .+, à faire, Difficile, 20 XP par suivi'
+    visible: 'Courir 5 km, .+, à faire, .+ cette semaine, Difficile, 20 XP par suivi(, objectif atteint)?'
     timeout: 10000
 - extendedWaitUntil:
     visible:

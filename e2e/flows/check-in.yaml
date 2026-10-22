@@ -26,7 +26,7 @@ tags:
     notVisible: 'Nouvelle habitude'
     timeout: 10000
 - extendedWaitUntil:
-    visible: 'Lire, .+, à faire, Moyenne, 10 XP par suivi'
+    visible: 'Lire, .+, à faire, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
     timeout: 10000
 - assertVisible:
     id: 'habit-row-1'
@@ -45,7 +45,7 @@ tags:
 - tapOn:
     id: 'habit-row-1'
 - extendedWaitUntil:
-    visible: 'Lire, .+, fait, Moyenne, 10 XP par suivi'
+    visible: 'Lire, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
     timeout: 10000
 - assertVisible:
     id: 'habit-row-1'
@@ -63,7 +63,7 @@ tags:
 - tapOn:
     id: 'habit-row-1'
 - extendedWaitUntil:
-    visible: 'Lire, .+, à faire, Moyenne, 10 XP par suivi'
+    visible: 'Lire, .+, à faire, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
     timeout: 10000
 - assertVisible:
     id: 'habit-row-1'
@@ -81,14 +81,14 @@ tags:
 - tapOn:
     id: 'habit-row-1'
 - extendedWaitUntil:
-    visible: 'Lire, .+, fait, Moyenne, 10 XP par suivi'
+    visible: 'Lire, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
     timeout: 10000
 
 # Relance à froid : le suivi est conservé, l'aide ne revient pas.
 - stopApp
 - launchApp
 - extendedWaitUntil:
-    visible: 'Lire, .+, fait, Moyenne, 10 XP par suivi'
+    visible: 'Lire, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
     timeout: 60000
 - assertVisible:
     id: 'check-mark'

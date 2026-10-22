@@ -61,7 +61,7 @@ tags:
     notVisible: 'Nouvelle habitude'
     timeout: 10000
 - extendedWaitUntil:
-    visible: 'Courir 5 km, .+, à faire, Difficile, 20 XP par suivi'
+    visible: 'Courir 5 km, .+, à faire, .+ cette semaine, Difficile, 20 XP par suivi(, objectif atteint)?'
     timeout: 10000
 - assertVisible:
     id: 'habit-difficulty-1'
@@ -79,7 +79,7 @@ tags:
     id: 'habit-row-1'
 - takeScreenshot: difficulty-E1-2-gain-20-xp
 - extendedWaitUntil:
-    visible: 'Courir 5 km, .+, fait, Difficile, 20 XP par suivi'
+    visible: 'Courir 5 km, .+, fait, .+ cette semaine, Difficile, 20 XP par suivi(, objectif atteint)?'
     timeout: 10000
 - extendedWaitUntil:
     visible:
@@ -96,7 +96,7 @@ tags:
     id: 'habit-row-1'
 - takeScreenshot: difficulty-E1-4-loss-20-xp
 - extendedWaitUntil:
-    visible: 'Courir 5 km, .+, à faire, Difficile, 20 XP par suivi'
+    visible: 'Courir 5 km, .+, à faire, .+ cette semaine, Difficile, 20 XP par suivi(, objectif atteint)?'
     timeout: 10000
 - extendedWaitUntil:
     visible:
@@ -134,7 +134,7 @@ tags:
 - stopApp
 - launchApp
 - extendedWaitUntil:
-    visible: 'Courir 5 km, .+, fait, Difficile, 20 XP par suivi'
+    visible: 'Courir 5 km, .+, fait, .+ cette semaine, Difficile, 20 XP par suivi(, objectif atteint)?'
     timeout: 60000
 - extendedWaitUntil:
     visible:
