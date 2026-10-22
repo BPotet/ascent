@@ -246,7 +246,7 @@ Il possède toutes les couches : `domain`, `application`, `adapters/persistence`
 
 - **Consigne ciblée** : l'orchestrateur lui donne les écrans de la maquette annotés pour la story (et non toute la maquette), les décisions utiles et les fichiers concernés. Le dev lit ce qui est indiqué, et ne lit le reste que si c'est nécessaire.
 - Il avance de l'intérieur vers l'extérieur, **couche par couche** : domaine, cas d'usage et ports, persistance, interface, puis assemblage et end-to-end.
-- Il ouvre la PR en **brouillon** après son premier commit. Quand les barrières sont vertes en local et le code poussé, il la sort du brouillon et rend son rapport **sans attendre la CI GitHub**. L'orchestrateur surveille la CI et lui renvoie la PR en cas d'échec.
+- Il ouvre la PR en **brouillon** après son premier commit. Quand les barrières sont vertes en local et le code poussé, il la sort du brouillon et rend son rapport **sans attendre la CI GitHub**. L'orchestrateur surveille la CI et lui renvoie la PR en cas d'échec. Si la CI échoue alors que le QA et le Reviewer tournent déjà, il attend leurs verdicts et renvoie tous les retours ensemble : ce renvoi compte comme un tour.
 - Un besoin hors du périmètre de la story se signale à l'orchestrateur.
 
 #### TDD par couche
