@@ -71,3 +71,41 @@ describe('isTargetReached', () => {
     expect(isTargetReached(7, null)).toBe(false);
   });
 });
+
+describe('weeklyProgressOf across the calendar edges', () => {
+  const at = (year: number, month: number, dayOfMonth: number): CheckIn => ({
+    habitId: 1,
+    day: Day.of(year, month, dayOfMonth),
+    done: true,
+    corrected: false,
+  });
+
+  it('counts a week that changes year, from Monday 28 December to Sunday 3 January', () => {
+    const yearEndWeek = Week.containing(Day.of(2026, 12, 31));
+    const checkIns = [
+      at(2026, 12, 27),
+      at(2026, 12, 28),
+      at(2026, 12, 31),
+      at(2027, 1, 1),
+      at(2027, 1, 3),
+      at(2027, 1, 4),
+      // Même jour et même mois, une autre année : hors de la semaine.
+      at(2025, 12, 31),
+      at(2028, 1, 1),
+    ];
+
+    expect(weeklyProgressOf(checkIns, yearEndWeek, Day.of(2026, 12, 31))).toBe(2);
+    expect(weeklyProgressOf(checkIns, yearEndWeek, Day.of(2027, 1, 1))).toBe(3);
+    expect(weeklyProgressOf(checkIns, yearEndWeek, Day.of(2027, 1, 3))).toBe(4);
+    expect(weeklyProgressOf(checkIns, yearEndWeek, Day.of(2027, 1, 4))).toBe(4);
+  });
+
+  it('counts the seven days of a week with a change of hour, the 25-hour Sunday included', () => {
+    const weekOfWinterTime = Week.containing(Day.of(2026, 10, 25));
+    const checkIns = [19, 20, 21, 22, 23, 24, 25, 26].map((dayOfMonth) => at(2026, 10, dayOfMonth));
+
+    expect(weeklyProgressOf(checkIns, weekOfWinterTime, Day.of(2026, 10, 25))).toBe(7);
+    expect(weeklyProgressOf(checkIns, weekOfWinterTime, Day.of(2026, 10, 24))).toBe(6);
+    expect(isTargetReached(7, 7)).toBe(true);
+  });
+});

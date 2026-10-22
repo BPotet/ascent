@@ -478,3 +478,52 @@ describe('weeklyTargetChangeAppliesThisWeek', () => {
     expect(outcomes.legacyOnUpdateDay).toBeGreaterThan(10);
   });
 });
+
+describe('weekly target across the calendar edges', () => {
+  // Semaine du lundi 28 décembre 2026 au dimanche 3 janvier 2027 : elle change d'année.
+  const thursday31 = Day.of(2026, 12, 31);
+  const yearEndWeek = Week.containing(thursday31);
+
+  it.each([
+    ['Thursday 31 December 2026', thursday31, 4],
+    ['Friday 1 January 2027', Day.of(2027, 1, 1), 3],
+    ['Sunday 3 January 2027', Day.of(2027, 1, 3), 1],
+    // Dimanche 25 octobre 2026 : passage à l'heure d'hiver (journée de 25 h, Europe/Paris).
+    ['Sunday 25 October 2026, day of 25 hours', Day.of(2026, 10, 25), 1],
+    ['Saturday 24 October 2026, before the change of hour', Day.of(2026, 10, 24), 2],
+    // Dimanche 28 mars 2027 : passage à l'heure d'été (journée de 23 h).
+    ['Sunday 28 March 2027, day of 23 hours', Day.of(2027, 3, 28), 1],
+    ['Monday 22 March 2027, week of the change of hour', Day.of(2027, 3, 22), 7],
+  ] as const)(
+    'cuts the week of creation to the days left, created on %s: %p (R6)',
+    (_, createdOn, weekTarget) => {
+      expect(creationWeekTargetOf(7, createdOn)).toBe(weekTarget);
+      expect(weekSettingsOf([target(createdOn, 7)], Week.containing(createdOn), createdOn)).toEqual(
+        { difficulty: 'medium', weeklyTarget: 7, weekTarget },
+      );
+    },
+  );
+
+  it('gives the whole target to the week after a week that changes year', () => {
+    const changes = [target(thursday31, 7)];
+
+    expect(weekSettingsOf(changes, yearEndWeek.next(), thursday31).weekTarget).toBe(7);
+    expect(weekSettingsOf(changes, yearEndWeek.previous(), thursday31).weekTarget).toBeNull();
+  });
+
+  it('applies a change made on New Year’s Day from the next Monday, 4 January 2027 (R13)', () => {
+    const changes = [target(Day.of(2026, 12, 7), 3), target(Day.of(2027, 1, 1), 5)];
+
+    expect(weekSettingsOf(changes, yearEndWeek, Day.of(2026, 12, 7)).weeklyTarget).toBe(3);
+    expect(
+      weekSettingsOf(changes, Week.containing(Day.of(2027, 1, 4)), Day.of(2026, 12, 7))
+        .weeklyTarget,
+    ).toBe(5);
+  });
+
+  it('tells a change on the day of creation from one on the next day, across the new year', () => {
+    expect(weeklyTargetChangeAppliesThisWeek(thursday31, thursday31)).toBe(true);
+    expect(weeklyTargetChangeAppliesThisWeek(thursday31, Day.of(2027, 1, 1))).toBe(false);
+    expect(weeklyTargetChangeAppliesThisWeek(Day.of(2027, 12, 31), thursday31)).toBe(false);
+  });
+});
