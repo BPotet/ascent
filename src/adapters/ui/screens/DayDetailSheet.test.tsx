@@ -17,6 +17,7 @@ import { useTrackingChanges } from '../state/TrackingRevision';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { reduceMotionInEachTest, withMotion } from '../testing/motion';
 import { renderScreen } from '../testing/renderScreen';
+import { TARGET_TOAST_DURATION_MS } from '../components/Toast';
 import { DayDetailSheet } from './DayDetailSheet';
 
 const october = (dayOfMonth: number) => Day.of(2026, 10, dayOfMonth);
@@ -535,6 +536,36 @@ describe('DayDetailSheet and the feedback « Objectif atteint » (F1, #26, #27)'
     expect(
       await within(screen.getByTestId('day-detail-toast-slot')).findByTestId('toast'),
     ).toBeOnTheScreen();
+  });
+
+  it('hides the message F1 after TARGET_TOAST_DURATION_MS', async () => {
+    const sheet = await openOn(october(16));
+    jest.useFakeTimers();
+    try {
+      await fireEvent.press(row(/^Courir 5 km, vendredi 16 octobre/u));
+      expect(await sheet.findByTestId('toast')).toBeOnTheScreen();
+
+      await act(async () => jest.advanceTimersByTime(TARGET_TOAST_DURATION_MS - 1));
+      expect(sheet.getByTestId('toast')).toBeOnTheScreen();
+      await act(async () => jest.advanceTimersByTime(1));
+      expect(sheet.queryByTestId('toast')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('clears the message F1 as soon as the next tap is made', async () => {
+    const sheet = await openOn(october(16));
+    await fireEvent.press(row(/^Courir 5 km, vendredi 16 octobre/u));
+    expect(await sheet.findByTestId('toast')).toBeOnTheScreen();
+    dependencies.unitOfWork.failWrites();
+
+    await fireEvent.press(row(/^Courir 5 km, vendredi 16 octobre/u));
+
+    expect(
+      await sheet.findByRole('alert', { name: 'La correction n’a pas été enregistrée.' }),
+    ).toBeOnTheScreen();
+    expect(sheet.queryByTestId('toast')).toBeNull();
   });
 
   it('shows the discreet message, without vibration, when a correction loses the target', async () => {
