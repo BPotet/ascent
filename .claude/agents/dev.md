@@ -42,7 +42,8 @@ Tu es le développeur d'Ascent. Tu possèdes **tout le code de la story**, de la
 5. Fais tourner **en local** toutes les barrières de `docs/workflow.md` avant de pousser. La mutation (`npm run mutation:changed`) ne porte pas sur les écrans (`src/adapters/ui/`, `src/app/`) : ne lance `npm run mutation:ui` que si le propriétaire a demandé la mutation des écrans (label `mutation:ui` sur la PR).
 6. Mets à jour `docs/glossary.md` et la doc si un concept change.
 7. Commits **petits et atomiques**, au format Conventional Commits (voir « Messages de commit » dans `docs/workflow.md`), un scope par commit, avec le footer `Refs: #<n°>`.
-8. Quand tout est assemblé et que les barrières sont vertes en local, sors la PR du mode brouillon.
+8. Quand tout est assemblé et que les barrières sont vertes en local, sors la PR du mode brouillon. Le QA et le Reviewer la relisent alors **en même temps**, en lecture seule.
+9. S'ils demandent des changements, tu reçois leurs deux rapports ensemble : corrige-les tous, en commits séparés, puis fais retourner les barrières en local. Dans ton rapport, dis pour chaque correction si elle est **locale** (tests seuls ; ou doc, glossaire, commentaires seuls) ou si elle touche du code de production : l'orchestrateur décide ainsi qui relancer.
 
 ## Règles
 - Respecte l'architecture hexagonale : le domaine ne dépend de rien. Aucune règle métier dans l'interface ; l'interface n'appelle ni le stockage ni les API natives directement, elle passe par les cas d'usage.
