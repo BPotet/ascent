@@ -1,0 +1,29 @@
+// Réservé aux tests : une graine du combat dont la première manche annonce les coups voulus.
+import type { AttackKind } from '../../domain/battle/attacks';
+import { startTrialBattle } from '../../domain/battle/Battle';
+import { DEFAULT_TRIAL_TUNING } from '../../domain/battle/TrialTuning';
+
+/** Les coups voulus à la première manche, par ennemi (Goule, Spectre), et la préparation exacte. */
+export interface FirstRound {
+  readonly ghoul?: AttackKind;
+  readonly specter?: AttackKind;
+}
+
+/** La plus petite graine dont la première manche annonce `wanted`. */
+export function seedFor(wanted: FirstRound): number {
+  for (let seed = 1; seed < 10_000; seed += 1) {
+    const [ghoul, specter] = startTrialBattle({
+      seed,
+      tuning: DEFAULT_TRIAL_TUNING,
+      defenseHint: false,
+      at: 0,
+    }).battle.enemies;
+    if (
+      (wanted.ghoul === undefined || ghoul!.intent.attack === wanted.ghoul) &&
+      (wanted.specter === undefined || specter!.intent.attack === wanted.specter)
+    ) {
+      return seed;
+    }
+  }
+  throw new Error(`No battle seed opens with ${JSON.stringify(wanted)}`);
+}
