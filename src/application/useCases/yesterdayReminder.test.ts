@@ -216,6 +216,24 @@ describe('yesterday reminder (rappel d’hier)', () => {
           week: Week.containing(day(10, 18)),
         });
       });
+
+      it('reads the week of yesterday on the Monday after the clock change (dimanche 25 octobre)', async () => {
+        const sunday25 = day(10, 25);
+        clock.setToday(day(10, 26));
+        const { running, cooking } = await story();
+        await done(running, day(10, 19), day(10, 20), day(10, 21));
+        await done(cooking, sunday25);
+
+        await expect(getYesterdayReminder(deps())).resolves.toBeNull();
+
+        await done(cooking, sunday25);
+
+        await expect(getYesterdayReminder(deps())).resolves.toMatchObject({
+          day: sunday25,
+          doneCount: 0,
+          expectedCount: 1,
+        });
+      });
     });
 
     it('fails when the data cannot be read', async () => {

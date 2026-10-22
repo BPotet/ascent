@@ -241,6 +241,22 @@ describe('getMonthView', () => {
       expect(counter(dayOf(view, 1))).toBe('tracked 0/1');
       expect(counter(dayOf(view, 2))).toBe('tracked 0/2');
     });
+
+    it('reads the week of the 1st from its Monday in the previous year (1er janvier 2027)', async () => {
+      clock.setToday(Day.of(2027, 1, 4));
+      const { running } = await story();
+      for (const each of [28, 29, 30]) {
+        await expect(
+          toggleCheckIn(deps(), running.id, Day.of(2026, 12, each)),
+        ).resolves.toMatchObject({ ok: true });
+      }
+
+      const view = await getMonthView(deps());
+
+      expect(view.month).toEqual(Month.of(2027, 1));
+      expect(counter(dayOf(view, 1))).toBe('tracked 0/1');
+      expect(counter(dayOf(view, 4))).toBe('tracked 0/2');
+    });
   });
 
   describe('navigation (R22)', () => {

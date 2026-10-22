@@ -175,6 +175,43 @@ describe('expectedHabitsOn', () => {
     expect(expectedHabitsOn(october(6), [budget], done(budget, 5), history)).toEqual([]);
   });
 
+  it('reads a week across two years from its Monday in December', () => {
+    const checkIns: CheckIn[] = [28, 29, 30].map((dayOfMonth) => ({
+      habitId: running.id,
+      day: Day.of(2026, 12, dayOfMonth),
+      done: true,
+      corrected: false,
+    }));
+
+    // Vendredi 1er janvier 2027 : semaine du lundi 28 décembre 2026, objectif 3 atteint.
+    expect(expectedHabitsOn(Day.of(2027, 1, 1), [running], checkIns, changes)).toEqual([]);
+    // Lundi 4 janvier 2027 : nouvelle semaine, de nouveau attendue.
+    expect(namesOf(expectedHabitsOn(Day.of(2027, 1, 4), [running], checkIns, changes))).toEqual([
+      'Courir 5 km',
+    ]);
+  });
+
+  it('counts the week of the clock change (Sunday 25 October 2026) like any other', () => {
+    const checkIns = done(running, 19, 20, 21);
+
+    expect(expectedHabitsOn(october(25), [running], checkIns, changes)).toEqual([]);
+    expect(namesOf(expectedHabitsOn(october(26), [running], checkIns, changes))).toEqual([
+      'Courir 5 km',
+    ]);
+  });
+
+  it('still expects a habit after skipped days, until the target is reached', () => {
+    // Lundi 12 et mardi 13 sautés, puis « fait » mercredi 14, jeudi 15 et vendredi 16.
+    const checkIns = done(running, 14, 15, 16);
+
+    for (const dayOfMonth of [12, 13, 14, 15, 16]) {
+      expect(namesOf(expectedHabitsOn(october(dayOfMonth), [running], checkIns, changes))).toEqual([
+        'Courir 5 km',
+      ]);
+    }
+    expect(expectedHabitsOn(october(17), [running], checkIns, changes)).toEqual([]);
+  });
+
   it('keeps the order of the habits given (order of creation)', () => {
     expect(namesOf(expectedHabitsOn(october(14), [cooking, running], [], changes))).toEqual([
       'Cuisiner',
