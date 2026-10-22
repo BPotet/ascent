@@ -14,7 +14,7 @@ const wednesday = Day.of(2026, 10, 14);
 const cooking = new Habit(1, HabitName.parse('Cuisiner'), wednesday);
 
 function created(name: string): CreateHabitOutcome {
-  return { ok: true, habit: new Habit(2, HabitName.parse(name), wednesday) };
+  return { ok: true, habit: new Habit(2, HabitName.parse(name), wednesday), weekTarget: 7 };
 }
 
 async function open(
