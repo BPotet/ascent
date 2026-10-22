@@ -93,10 +93,10 @@ le GD et l'UX pendant le développement (elles ne changent aucune règle validé
   transition de phase ;
 - **Durée de la contre-attaque** (`COUNTER_MS`) : 400 ms, après l'arrêt sur image.
 
-La préparation de base de la **double frappe** est celle du coup simple (1 100 ms) : avec
-1 000 ms (prototype de la maquette), le premier impact pourrait tomber 2 000 ms après l'action du
-héros, alors que la règle validée C12 en garantit au moins 2 080 (800 + 400 + 880). **À confirmer
-par le GD.**
+Décision du propriétaire (22 octobre) : la **double frappe** garde la préparation de base de
+1 000 ms du prototype essayé (maquette). C'est la plus courte préparation possible (800 ms après la
+variation de ×0,8) : la borne C12 du premier impact d'une phase ennemie est donc de **2 000 ms**
+après l'action du héros (800 + 400 + 800).
 
 ### 8. Rendu et animations
 
