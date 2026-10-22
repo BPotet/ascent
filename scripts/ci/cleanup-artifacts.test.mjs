@@ -10,6 +10,8 @@ import {
 
 const NAME = 'ascent-android-apk';
 const MB = 1024 * 1024;
+const REPOSITORY_ID = 42;
+const FORK_REPOSITORY_ID = 4242;
 
 let nextId = 1;
 function apk(branch, createdAt, overrides = {}) {
@@ -20,9 +22,21 @@ function apk(branch, createdAt, overrides = {}) {
     size_in_bytes: 34 * MB,
     expired: false,
     created_at: createdAt,
-    workflow_run: { id: 1000 + id, head_branch: branch },
+    workflow_run: {
+      id: 1000 + id,
+      head_branch: branch,
+      repository_id: REPOSITORY_ID,
+      head_repository_id: REPOSITORY_ID,
+    },
     ...overrides,
   };
+}
+
+/** APK construit par une PR venant d'un fork, dont la branche peut porter n'importe quel nom. */
+function forkApk(branch, createdAt) {
+  const artifact = apk(branch, createdAt);
+  artifact.workflow_run.head_repository_id = FORK_REPOSITORY_ID;
+  return artifact;
 }
 
 const ids = (artifacts) => artifacts.map((artifact) => artifact.id).sort((a, b) => a - b);
@@ -121,6 +135,29 @@ describe('selectArtifactsToDelete', () => {
 
     assert.deepEqual(keep, []);
     assert.deepEqual(remove, []);
+  });
+
+  it('never lets a more recent fork APK named develop protect itself or replace the repository one', () => {
+    const ours = apk('develop', '2026-10-21T10:00:00Z');
+    const fork = forkApk('develop', '2026-10-22T10:00:00Z');
+
+    const { keep, remove } = selectArtifactsToDelete({ artifacts: [ours, fork] });
+
+    assert.deepEqual(ids(keep), [ours.id]);
+    assert.deepEqual(ids(remove), [fork.id]);
+  });
+
+  it('never lets a more recent fork APK named like a branch with an open pull request replace the repository one', () => {
+    const ours = apk('feature/23-habit-difficulty', '2026-10-22T02:23:07Z');
+    const fork = forkApk('feature/23-habit-difficulty', '2026-10-22T03:01:41Z');
+
+    const { keep, remove } = selectArtifactsToDelete({
+      artifacts: [ours, fork],
+      openPullRequestBranches: ['feature/23-habit-difficulty'],
+    });
+
+    assert.deepEqual(ids(keep), [ours.id]);
+    assert.deepEqual(ids(remove), [fork.id]);
   });
 
   it('breaks a tie on the creation date with the highest id', () => {

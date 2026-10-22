@@ -2,8 +2,10 @@
 // Job CI « Clean up old artifacts » (docs/workflow.md, « CI/CD et Git Flow ») : supprime les APK
 // `ascent-android-apk` devenus inutiles pour libérer le stockage GitHub Actions. Sont gardés : le
 // plus récent de `develop`, de `main`, de chaque `release/*` et `hotfix/*`, le plus récent de chaque
-// branche qui a une PR ouverte, et ceux du run courant. Une suppression qui échoue n'est qu'un
-// avertissement : ce job ne fait jamais échouer la CI. Il est idempotent.
+// branche qui a une PR ouverte, et ceux du run courant. Un APK construit par une PR venant d'un fork
+// n'est jamais retenu comme le plus récent d'une branche, quel que soit le nom de sa branche. Une
+// suppression qui échoue n'est qu'un avertissement : ce job ne fait jamais échouer la CI. Il est
+// idempotent.
 import { appendFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
@@ -16,6 +18,15 @@ export function isLongLivedBranch(branch) {
     branch === 'main' ||
     (typeof branch === 'string' && (branch.startsWith('release/') || branch.startsWith('hotfix/')))
   );
+}
+
+/**
+ * Un artefact construit par une PR venant d'un fork peut porter le nom de n'importe quelle branche
+ * du dépôt (`develop`, `main`…) : il ne compte jamais comme le plus récent d'une branche.
+ */
+function isBuiltFromThisRepository(artifact) {
+  const run = artifact.workflow_run;
+  return run?.repository_id !== undefined && run.head_repository_id === run.repository_id;
 }
 
 function isNewer(a, b) {
@@ -37,6 +48,7 @@ export function selectArtifactsToDelete({
   for (const artifact of candidates) {
     const branch = artifact.workflow_run?.head_branch;
     if (!branch || !(isLongLivedBranch(branch) || protectedBranches.has(branch))) continue;
+    if (!isBuiltFromThisRepository(artifact)) continue;
     const latest = latestByBranch.get(branch);
     if (!latest || isNewer(artifact, latest)) latestByBranch.set(branch, artifact);
   }
