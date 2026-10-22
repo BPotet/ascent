@@ -4,6 +4,7 @@
 - **Date** : 22 octobre 2026
 - **Décideur** : Architect
 - **Contexte produit** : PR #29 (story #23)
+- **Avenant** : 22 octobre 2026, mutation des écrans à la demande (issue #54, voir en fin de document)
 
 ## Contexte
 
@@ -71,3 +72,54 @@ et `npm run mutation:domain` mutent toujours tout le code.
 - Le check `Mutation tests (StrykerJS)` garde son nom, pour ne pas casser une protection de branche
   qui l'exigerait.
 - L'écart « Mutation en PR par fichier modifié » de l'ADR 0001 est supprimé.
+
+## Avenant du 22 octobre 2026 — mutation des écrans à la demande
+
+- **Décideur** : le propriétaire
+- **Contexte produit** : issue #54
+
+### Contexte
+
+Même réduite aux lignes nouvelles, la mutation des écrans (`src/adapters/ui/` et `src/app/`) prend
+plusieurs dizaines de minutes par PR (parts `ui-1` et `ui-2` de la PR #47, story #31). Elle ralentit
+trop chaque story.
+
+### Décision
+
+1. **Par défaut, les écrans ne sont pas mutés** : PR, push, release, hotfix, `npm run mutation`,
+   `npm run mutation:changed` et `npm run verify:full`. Ils sortent de la liste `mutate` de
+   `stryker.config.mjs` et ont leur propre config, `stryker.ui.config.mjs`, qui reprend les seuils
+   du code nouveau.
+2. **Le reste est toujours muté, avec les mêmes seuils** : `src/domain/` (85 %),
+   `src/application/`, `src/adapters/persistence/` et `src/adapters/device/` (70 %).
+3. **La mutation des écrans tourne à la demande du propriétaire** :
+   - label `mutation:ui` sur une PR, posé par l'orchestrateur. Quand le label est posé, le workflow
+     `Screen mutation` (`.github/workflows/mutation-ui.yml`) mute les lignes nouvelles des écrans ;
+     ensuite, chaque push de la PR est muté par `ci.yml` écrans compris, car le plan lit le label ;
+   - lancement manuel du workflow `CI` avec l'entrée booléenne `ui-mutation` (tout le code) ;
+   - en local, `npm run mutation:ui` (lignes nouvelles des écrans ; `-- --full` pour tous).
+4. **Quand elle tourne, les seuils actuels s'appliquent** : les shards d'écrans sont dans la classe
+   du code nouveau (70 %). Aucun seuil ne change.
+5. **Le résumé de la CI le dit** : « Screen mutation (…) not requested », avec le nombre de fichiers
+   d'écran modifiés non mutés et les moyens de la demander ; ou « requested » quand elle tourne.
+
+Mise en œuvre : `buildPlan()` reçoit l'option `ui` (`exclude` par défaut, `include`, `only`),
+choisie par `MUTATION_UI` ou les options `--ui` et `--ui-only` de `scripts/mutation/run.mjs`.
+
+### Alternatives rejetées
+
+- **Ajouter `labeled` aux événements de `ci.yml`** : chaque label (`status:*`…) relancerait toute la
+  CI, ou, avec des jobs sautés, couperait le run en cours (même groupe de concurrence) et
+  publierait des checks « skipped » qui masqueraient ceux déjà rendus pour le même commit.
+- **Relancer les jobs de mutation du run de CI existant** : le run garde les labels de son
+  événement d'origine ; il faudrait lire les labels par l'API et attendre la fin du run.
+- **Retirer les écrans de la mutation pour de bon** : hors de la décision du propriétaire.
+
+### Conséquences
+
+- Une PR, une release et un hotfix lancent moins de shards : 3 au plus en release au lieu de 13.
+- Quand le label est posé sur une PR ouverte, la mutation des écrans a son propre check
+  (`Screen mutation tests (StrykerJS)`), avec un score calculé sur les écrans seuls ; aux pushs
+  suivants, elle est comptée dans le check habituel `Mutation tests (StrykerJS)`.
+- Les agents `dev`, `qa` et `reviewer` n'exigent plus la mutation des écrans quand elle n'a pas été
+  demandée.
