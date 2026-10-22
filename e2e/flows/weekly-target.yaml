@@ -53,13 +53,14 @@ tags:
     id: 'new-habit-name'
 - inputText: 'Courir 5 km'
 - takeScreenshot: weekly-target-E2-1-new-habit-three-times
+# Le message de création ne dure que 2,8 s : le clavier est fermé avant, pour que le panneau se
+# ferme tout de suite et que le message soit lu à temps.
+- hideKeyboard
 - tapOn:
     id: 'create-habit'
 - extendedWaitUntil:
-    visible:
-      id: 'toast'
-    timeout: 10000
-- assertVisible: 'Habitude créée( · objectif \d cette semaine)?'
+    visible: 'Habitude créée( · objectif \d cette semaine)?'
+    timeout: 5000
 - extendedWaitUntil:
     notVisible: 'Nouvelle habitude'
     timeout: 10000
@@ -87,12 +88,12 @@ tags:
     id: 'new-habit-name'
 - inputText: 'Méditer'
 - takeScreenshot: weekly-target-E2-2-new-habit-reduced-week
-- pressKey: Enter
+- hideKeyboard
+- tapOn:
+    id: 'create-habit'
 - extendedWaitUntil:
-    visible:
-      id: 'toast'
-    timeout: 10000
-- assertVisible: 'Habitude créée( · objectif \d cette semaine)?'
+    visible: 'Habitude créée( · objectif \d cette semaine)?'
+    timeout: 5000
 - takeScreenshot: weekly-target-E2-3-created-reduced-week
 - extendedWaitUntil:
     notVisible: 'Nouvelle habitude'
