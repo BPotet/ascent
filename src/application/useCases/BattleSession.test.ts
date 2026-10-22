@@ -303,6 +303,20 @@ describe('BattleSession', () => {
     });
   });
 
+  it('starts again after it is disposed, for a screen mounted again', async () => {
+    const context = setUp();
+    await context.session.start();
+    context.session.dispose();
+    const listener = jest.fn();
+    context.session.subscribe(listener);
+
+    await context.session.start();
+    context.session.heroAction({ kind: 'attack' }, 1_100, 1_200);
+
+    expect(listener).toHaveBeenCalledTimes(2);
+    expect(context.clock.pending()).toEqual([1_700]);
+  });
+
   it('stops publishing to an unsubscribed listener', async () => {
     const context = setUp();
     const listener = jest.fn();

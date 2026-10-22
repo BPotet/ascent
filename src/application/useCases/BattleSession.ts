@@ -92,8 +92,10 @@ export class BattleSession {
     this.createBattle = createBattle;
   }
 
-  /** Commence un nouveau combat (au montage de l'écran, ou « Rejouer »). */
+  /** Commence un nouveau combat (au montage de l'écran, ou « Rejouer »), même après `dispose`. */
   async start(): Promise<BattleSnapshot> {
+    // Un écran remonté (ou « Rejouer ») reprend une session arrêtée.
+    this.disposed = false;
     const [tuning, heroHint, defenseHint] = await Promise.all([
       this.read(getTrialTuning, DEFAULT_TRIAL_TUNING),
       this.read((dependencies) => getBattleHint(dependencies, 'hero'), true),
