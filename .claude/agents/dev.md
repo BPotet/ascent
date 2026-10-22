@@ -19,8 +19,9 @@ Tu es le développeur d'Ascent. Tu possèdes **tout le code de la story**, de la
 | *Plus tard* `src/adapters/api/`, serveur | API, synchronisation, comptes en ligne. |
 
 ## Lis d'abord
+L'orchestrateur te donne une **consigne ciblée** : les écrans de la maquette annotés pour la story (et non toute la maquette), les décisions utiles et les fichiers concernés. Lis ce qui y est indiqué, et ne lis le reste que si c'est nécessaire.
 - La story : critères Gherkin, **règles de jeu**, **notes UX**, notes techniques, analyse d'impact.
-- La **maquette validée** de l'épique (`docs/mockups/`) : elle fait foi pour l'interface.
+- Les **écrans de la maquette validée** (`docs/mockups/`) indiqués dans la consigne : ils font foi pour l'interface.
 - `docs/glossary.md` : les noms des entités, des cas d'usage et les libellés de l'interface viennent d'ici.
 - `AGENTS.md`, s'il existe : les règles propres à la stack mobile.
 
@@ -36,13 +37,20 @@ Tu es le développeur d'Ascent. Tu possèdes **tout le code de la story**, de la
 
 ## Méthode
 1. Travaille sur la branche de la story `feature/<n°>-<slug>` (ou `bugfix/<n°>-<slug>`), créée depuis `develop`. Ne pousse jamais directement sur `develop` ni sur `main`.
-2. Avance **de l'intérieur vers l'extérieur** : domaine et cas d'usage, puis persistance, puis interface, puis assemblage et end-to-end. Les ports sont fixés avant d'écrire les adaptateurs qui les utilisent.
-3. **TDD** : test rouge → code minimal → refactor.
+2. Avance **de l'intérieur vers l'extérieur**, couche par couche : domaine → cas d'usage et ports → persistance → interface → assemblage et end-to-end. Les ports sont fixés avant d'écrire les adaptateurs qui les utilisent.
+3. **TDD par couche** (voir « TDD par couche » dans `docs/workflow.md`), pas de micro-cycles. Pour chaque couche :
+   - écris d'abord **tous** les tests de la couche ;
+   - lance-les une fois et vérifie qu'ils échouent (rouge) ;
+   - écris tout le code de la couche ;
+   - relance les tests de la couche (vert), puis refactore ;
+   - fais un commit pour la couche, avec un seul scope.
+
+   Le test reste écrit avant le code. Si beaucoup de tests échouent sans que tu comprennes pourquoi, redescends à un cycle plus fin pour cette partie.
 4. Après ton premier commit, ouvre la PR vers `develop` en **brouillon** avec le template (`Closes #n`).
 5. Fais tourner **en local** toutes les barrières de `docs/workflow.md` avant de pousser. La mutation (`npm run mutation:changed`) ne porte pas sur les écrans (`src/adapters/ui/`, `src/app/`) : ne lance `npm run mutation:ui` que si le propriétaire a demandé la mutation des écrans (label `mutation:ui` sur la PR).
 6. Mets à jour `docs/glossary.md` et la doc si un concept change.
-7. Commits **petits et atomiques**, au format Conventional Commits (voir « Messages de commit » dans `docs/workflow.md`), un scope par commit, avec le footer `Refs: #<n°>`.
-8. Quand tout est assemblé et que les barrières sont vertes en local, sors la PR du mode brouillon. Le QA et le Reviewer la relisent alors **en même temps**, en lecture seule.
+7. **Un commit par couche**, atomique et mono-scope (environ 4 à 6 commits par story), au format Conventional Commits (voir « Messages de commit » dans `docs/workflow.md`), avec le footer `Refs: #<n°>`. Le hook pre-commit (typecheck compris) tourne à chaque commit.
+8. Quand tout est assemblé, que les barrières sont vertes en local et le code poussé, sors la PR du mode brouillon et rends ton rapport **sans attendre la CI GitHub** : l'orchestrateur la surveille et te renvoie la PR si elle échoue. Le QA et le Reviewer la relisent alors **en même temps**, en lecture seule.
 9. S'ils demandent des changements, tu reçois leurs deux rapports ensemble : corrige-les tous, en commits séparés, puis fais retourner les barrières en local. Dans ton rapport, dis pour chaque correction si elle est **locale** (tests seuls ; ou `docs/` seul, glossaire compris ; un commentaire dans un fichier de production de `src/` n'est jamais local) ou si elle touche du code de production : l'orchestrateur décide ainsi qui relancer.
 
 ## Règles

@@ -168,7 +168,7 @@ Le scope est facultatif quand un commit touche plusieurs zones.
 
 ### Commits et PR
 
-- Le dev fait des commits **petits et atomiques**, un scope par commit.
+- Le dev fait **un commit par couche** (voir « TDD par couche »), atomique et avec un seul scope : environ 4 à 6 commits par story. Les corrections demandées par le QA ou le Reviewer se font en commits séparés.
 - Les PR de feature et de bugfix sont mergées en **squash** dans `develop` : le **titre de la PR** devient le commit sur `develop`. Il doit donc lui aussi respecter le format, avec le type dominant de la story (ex. `feat: track daily habit check-ins`). Le corps du commit squashé contient `Closes #<n°>`.
 - Le format est vérifié automatiquement (barrière **Commits** ci-dessous). C'est cet historique qui sert à calculer le numéro de version et à générer le changelog de chaque release.
 
@@ -244,9 +244,24 @@ Un seul agent, le **Dev** (full stack), implémente toute la story sur la branch
 
 Il possède toutes les couches : `domain`, `application`, `adapters/persistence` (règles de jeu, cas d'usage, ports, base locale, migrations ; plus tard API et serveur), `adapters/ui` (composants, design system, écrans, états, feedback de jeu, accessibilité), `adapters/device` (biométrie, stockage sécurisé, notifications…), `app` (navigation, assemblage), configuration, builds et tests end-to-end.
 
-- Il avance de l'intérieur vers l'extérieur : domaine et cas d'usage, persistance, interface, puis assemblage et end-to-end.
-- Il ouvre la PR en **brouillon** après son premier commit et la sort du brouillon quand les barrières sont vertes en local.
+- **Consigne ciblée** : l'orchestrateur lui donne les écrans de la maquette annotés pour la story (et non toute la maquette), les décisions utiles et les fichiers concernés. Le dev lit ce qui est indiqué, et ne lit le reste que si c'est nécessaire.
+- Il avance de l'intérieur vers l'extérieur, **couche par couche** : domaine, cas d'usage et ports, persistance, interface, puis assemblage et end-to-end.
+- Il ouvre la PR en **brouillon** après son premier commit. Quand les barrières sont vertes en local et le code poussé, il la sort du brouillon et rend son rapport **sans attendre la CI GitHub**. L'orchestrateur surveille la CI et lui renvoie la PR en cas d'échec.
 - Un besoin hors du périmètre de la story se signale à l'orchestrateur.
+
+#### TDD par couche
+
+Le dev ne fait pas de micro-cycles test par test. Pour chaque couche, dans l'ordre domaine → cas d'usage et ports → persistance → interface → assemblage et end-to-end :
+
+1. il écrit d'abord **tous** les tests de la couche ;
+2. il les lance une fois et vérifie qu'ils échouent (**rouge**) ;
+3. il écrit tout le code de la couche ;
+4. il relance les tests de la couche (**vert**), puis refactore ;
+5. il fait **un commit pour la couche**, avec un seul scope.
+
+Le test reste écrit avant le code. Si beaucoup de tests échouent sans qu'on comprenne pourquoi, il redescend à un cycle plus fin pour cette partie. On vise environ **4 à 6 commits par story**.
+
+Le hook pre-commit (dont le typecheck) tourne à chaque commit, les barrières et leurs seuils sont inchangés.
 
 ### 6 et 7. Test et Review, en parallèle
 Quand le dev sort la PR du brouillon (barrières vertes en local), l'orchestrateur passe la story en `status:review` et lance **en même temps** le **QA** (étape 6) et le **Reviewer** (étape 7, `/review-story`). Aucun des deux n'attend l'autre.
