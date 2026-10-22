@@ -4,9 +4,18 @@ name: CI
 on:
   pull_request:
     branches: [develop, main, 'release/**', 'hotfix/**']
+    # `labeled` et `unlabeled` : poser ou retirer le label `mutation:ui` relance la CI avec ou sans
+    # la mutation des écrans (docs/adr/0004-mutation-en-ci.md, « Révisé »). Tout label relance la
+    # CI en entier : un run partiel laisserait des checks « skipped », comptés comme réussis.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   push:
     branches: [develop, main, 'release/**', 'hotfix/**']
   workflow_dispatch:
+    inputs:
+      ui:
+        description: Muter aussi les écrans
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -18,6 +27,12 @@ concurrency:
 env:
   GITLEAKS_VERSION: 8.28.0
   MAESTRO_VERSION: 2.11.0
+  # Les écrans ne sont mutés qu'à la demande du propriétaire : label `mutation:ui` sur la PR, ou
+  # case « Muter aussi les écrans » d'un lancement manuel.
+  MUTATION_UI: >-
+    ${{ (github.event_name == 'workflow_dispatch' && inputs.ui)
+      || (github.event_name == 'pull_request'
+        && contains(github.event.pull_request.labels.*.name, 'mutation:ui')) }}
 
 jobs:
   commits:
@@ -103,7 +118,7 @@ jobs:
           retention-days: 7
 
   # Mutation (docs/adr/0004-mutation-en-ci.md) : un plan, un job par shard, puis un job final qui
-  # applique les seuils au total des shards.
+  # applique les seuils au total des shards. Les écrans n'y sont que si MUTATION_UI vaut `true`.
   mutation-plan:
     name: Mutation plan
     # En PR vers develop : le code nouveau. Sur release/* et hotfix/* (et à la demande) : tout le code.
@@ -178,6 +193,10 @@ jobs:
     steps:
       - name: Check the mutation plan
         run: test "${{ needs.mutation-plan.result }}" = success
+      - name: Screens left out
+        if: env.MUTATION_UI != 'true'
+        run: |
+          echo "Screens (src/adapters/ui) not mutated: only on the owner's request (label \`mutation:ui\` or the \"Muter aussi les écrans\" box)." >> "$GITHUB_STEP_SUMMARY"
       - name: Nothing to mutate
         if: needs.mutation-plan.outputs.count == '0'
         run: |
