@@ -160,7 +160,7 @@ describe('useEditHabit', () => {
 
       dependencies.unitOfWork.failWrites(false);
       const [row] = (await getDayView(dependencies)).habits;
-      expect(row?.weekSettings).toEqual({ difficulty: 'medium' });
+      expect(row?.weekSettings).toMatchObject({ difficulty: 'medium' });
       expect(experience().xp).toBe(10);
       expect(experience().change).toBeNull();
       expect(otherReload).not.toHaveBeenCalled();
@@ -184,7 +184,7 @@ describe('useEditHabit', () => {
       dependencies.clock.setToday(wednesday);
       const { currentSettings, otherReload } = await setUp();
 
-      await expect(currentSettings()).resolves.toEqual({
+      await expect(currentSettings()).resolves.toMatchObject({
         ok: true,
         weekSettings: { difficulty: 'easy' },
       });

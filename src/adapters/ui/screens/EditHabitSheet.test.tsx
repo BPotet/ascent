@@ -18,7 +18,7 @@ function updated({ name, difficulty }: UpdateHabitInput): UpdateHabitOutcome {
   return {
     ok: true,
     habit: new Habit(1, HabitName.parse(name), monday),
-    weekSettings: { difficulty: difficulty ?? 'medium' },
+    weekSettings: { difficulty: difficulty ?? 'medium', weeklyTarget: 7, weekTarget: 7 },
     nameChanged: name.trim() !== 'Cuisiner',
     settingsChanged: difficulty !== undefined,
     xpChange: 0,
@@ -286,7 +286,10 @@ describe('EditHabitSheet', () => {
       expect(onSave).toHaveBeenCalledTimes(1);
       expect(onSave).toHaveBeenCalledWith({ name: 'Cuisiner', difficulty: 'hard' });
       expect(onSaved).toHaveBeenCalledWith(
-        expect.objectContaining({ settingsChanged: true, weekSettings: { difficulty: 'hard' } }),
+        expect.objectContaining({
+          settingsChanged: true,
+          weekSettings: expect.objectContaining({ difficulty: 'hard' }),
+        }),
       );
     });
 

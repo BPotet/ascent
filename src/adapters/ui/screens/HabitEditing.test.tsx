@@ -16,7 +16,7 @@ import { HabitEditing, type UpdatedHabit, updatedMessage } from './HabitEditing'
 const updated = (change: Partial<UpdatedHabit>): UpdatedHabit => ({
   ok: true,
   habit: new Habit(1, HabitName.parse('Cuisiner'), Day.of(2026, 10, 5)),
-  weekSettings: { difficulty: 'medium' },
+  weekSettings: { difficulty: 'medium', weeklyTarget: 7, weekTarget: 7 },
   nameChanged: false,
   settingsChanged: false,
   xpChange: 0,
@@ -123,7 +123,7 @@ describe('HabitEditing', () => {
     await renderScreen(
       <HabitEditing
         habit={cooking}
-        weekSettings={{ difficulty: 'easy' }}
+        weekSettings={{ difficulty: 'easy', weeklyTarget: 7, weekTarget: 7 }}
         habits={[cooking]}
         {...props}
       />,

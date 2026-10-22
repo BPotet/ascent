@@ -119,7 +119,7 @@ describe('DayViewScreen', () => {
 
     expect(await screen.findByTestId('habit-difficulty-1')).toHaveTextContent('Difficile');
     const [running] = (await getDayView(dependencies)).habits;
-    expect(running?.weekSettings).toEqual({ difficulty: 'hard' });
+    expect(running?.weekSettings).toMatchObject({ difficulty: 'hard' });
   });
 
   it('invites to create a first habit when there is none', async () => {
@@ -1006,7 +1006,7 @@ describe('DayViewScreen and editing a habit', () => {
       expect(option('Difficile')).toBeChecked();
       dependencies.unitOfWork.failWrites(false);
       const [cooking] = (await getDayView(dependencies)).habits;
-      expect(cooking?.weekSettings).toEqual({ difficulty: 'medium' });
+      expect(cooking?.weekSettings).toMatchObject({ difficulty: 'medium' });
       expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP');
     });
 

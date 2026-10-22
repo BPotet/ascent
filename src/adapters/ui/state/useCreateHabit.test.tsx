@@ -59,7 +59,7 @@ describe('useCreateHabit', () => {
       await create('Courir 5 km', difficulty);
 
       const [row] = (await getDayView(dependencies)).habits;
-      expect(row?.weekSettings).toEqual({ difficulty });
+      expect(row?.weekSettings).toMatchObject({ difficulty });
     },
   );
 
