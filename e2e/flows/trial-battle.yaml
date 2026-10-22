@@ -79,9 +79,10 @@ tags:
     times: 32
     commands:
       - tapOn: "Allonger l'avancée"
+# Les milliers sont séparés par une espace fine insécable : « 2 000 ms ».
 - assertVisible:
     id: 'trial-tuning-stepInMs'
-    text: '2 000 ms'
+    text: '2.000 ms'
 
 - tapOn: 'Rejouer'
 - extendedWaitUntil:
