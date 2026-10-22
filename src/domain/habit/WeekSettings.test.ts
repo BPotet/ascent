@@ -24,34 +24,42 @@ const monday12 = Day.of(2026, 10, 12);
 const sunday18 = Day.of(2026, 10, 18);
 const monday19 = Day.of(2026, 10, 19);
 
-describe('weekSettingsOf', () => {
+/**
+ * La difficulté de la semaine, seule : sa règle ne dépend pas du jour de création (#23). Les tests
+ * de la difficulté gardent ainsi leurs assertions.
+ */
+const difficultyOf = (changes: readonly SettingsChange[], shown: Week) => ({
+  difficulty: weekSettingsOf(changes, shown, monday5).difficulty,
+});
+
+describe('weekSettingsOf, difficulty', () => {
   it('gives the settings of the only change, from the week of creation on', () => {
     const changes = [change(monday5, 'hard')];
 
-    expect(weekSettingsOf(changes, Week.containing(monday5))).toEqual({ difficulty: 'hard' });
-    expect(weekSettingsOf(changes, week)).toEqual({ difficulty: 'hard' });
+    expect(difficultyOf(changes, Week.containing(monday5))).toEqual({ difficulty: 'hard' });
+    expect(difficultyOf(changes, week)).toEqual({ difficulty: 'hard' });
   });
 
   it('applies a change to its whole week, from Monday, and to the following weeks (R12)', () => {
     const changes = [change(monday5, 'medium'), change(Day.of(2026, 10, 14), 'hard')];
 
-    expect(weekSettingsOf(changes, week)).toEqual({ difficulty: 'hard' });
-    expect(weekSettingsOf(changes, week.next())).toEqual({ difficulty: 'hard' });
-    expect(weekSettingsOf(changes, previousWeek)).toEqual({ difficulty: 'medium' });
+    expect(difficultyOf(changes, week)).toEqual({ difficulty: 'hard' });
+    expect(difficultyOf(changes, week.next())).toEqual({ difficulty: 'hard' });
+    expect(difficultyOf(changes, previousWeek)).toEqual({ difficulty: 'medium' });
   });
 
   it('applies a change made on Sunday to its week (R15)', () => {
     const changes = [change(monday5, 'medium'), change(sunday18, 'easy')];
 
-    expect(weekSettingsOf(changes, week)).toEqual({ difficulty: 'easy' });
-    expect(weekSettingsOf(changes, previousWeek)).toEqual({ difficulty: 'medium' });
+    expect(difficultyOf(changes, week)).toEqual({ difficulty: 'easy' });
+    expect(difficultyOf(changes, previousWeek)).toEqual({ difficulty: 'medium' });
   });
 
   it('applies a change made on the next Monday to the next week only (R15)', () => {
     const changes = [change(monday5, 'medium'), change(monday19, 'easy')];
 
-    expect(weekSettingsOf(changes, week)).toEqual({ difficulty: 'medium' });
-    expect(weekSettingsOf(changes, week.next())).toEqual({ difficulty: 'easy' });
+    expect(difficultyOf(changes, week)).toEqual({ difficulty: 'medium' });
+    expect(difficultyOf(changes, week.next())).toEqual({ difficulty: 'easy' });
   });
 
   it('keeps the last of several changes of the same week (R15)', () => {
@@ -61,7 +69,7 @@ describe('weekSettingsOf', () => {
       change(Day.of(2026, 10, 15), 'easy'),
     ];
 
-    expect(weekSettingsOf(changes, week)).toEqual({ difficulty: 'easy' });
+    expect(difficultyOf(changes, week)).toEqual({ difficulty: 'easy' });
   });
 
   it('keeps the last entered of several changes of the same day (R15)', () => {
@@ -71,7 +79,7 @@ describe('weekSettingsOf', () => {
       change(monday12, 'easy', 3),
     ];
 
-    expect(weekSettingsOf(changes, week)).toEqual({ difficulty: 'easy' });
+    expect(difficultyOf(changes, week)).toEqual({ difficulty: 'easy' });
   });
 
   it('sorts the changes by day, then by order of entry, whatever their order in the list', () => {
@@ -82,9 +90,9 @@ describe('weekSettingsOf', () => {
       change(monday5, 'easy', 9),
     ];
 
-    expect(weekSettingsOf(changes, week)).toEqual({ difficulty: 'hard' });
-    expect(weekSettingsOf(changes, previousWeek)).toEqual({ difficulty: 'easy' });
-    expect(weekSettingsOf([...changes].reverse(), week)).toEqual({ difficulty: 'hard' });
+    expect(difficultyOf(changes, week)).toEqual({ difficulty: 'hard' });
+    expect(difficultyOf(changes, previousWeek)).toEqual({ difficulty: 'easy' });
+    expect(difficultyOf([...changes].reverse(), week)).toEqual({ difficulty: 'hard' });
   });
 
   it('does not let a more recent entry dated earlier override a change dated later (risk 3)', () => {
@@ -94,25 +102,25 @@ describe('weekSettingsOf', () => {
       change(Day.of(2026, 10, 14), 'easy', 2),
     ];
 
-    expect(weekSettingsOf(changes, week)).toEqual({ difficulty: 'hard' });
+    expect(difficultyOf(changes, week)).toEqual({ difficulty: 'hard' });
   });
 
   it('falls back on the first change for a week before every change (clock set back)', () => {
     const changes = [change(monday19, 'hard', 4), change(Day.of(2026, 10, 21), 'easy', 5)];
 
-    expect(weekSettingsOf(changes, week)).toEqual({ difficulty: 'hard' });
-    expect(weekSettingsOf(changes, previousWeek)).toEqual({ difficulty: 'hard' });
+    expect(difficultyOf(changes, week)).toEqual({ difficulty: 'hard' });
+    expect(difficultyOf(changes, previousWeek)).toEqual({ difficulty: 'hard' });
   });
 
   it('gives Moyenne to a habit without any change (R2)', () => {
-    expect(weekSettingsOf([], week)).toEqual({ difficulty: 'medium' });
+    expect(difficultyOf([], week)).toEqual({ difficulty: 'medium' });
   });
 
   it('does not change the list it is given', () => {
     const changes = [change(monday12, 'hard', 2), change(monday5, 'easy', 1)];
     const copy = [...changes];
 
-    weekSettingsOf(changes, week);
+    difficultyOf(changes, week);
 
     expect(changes).toEqual(copy);
   });

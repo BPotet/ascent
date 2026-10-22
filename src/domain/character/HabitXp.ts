@@ -20,12 +20,14 @@ export function weekXpOf(doneCount: number, settings: WeekSettings): number {
 }
 
 /**
- * L'expérience d'une habitude : la somme de `weekXpOf` sur les semaines de ses suivis « fait », de
- * toutes dates (y compris un jour devenu futur après un recul d'horloge), chacune avec ses réglages.
+ * L'expérience d'une habitude, créée le jour `createdOn` : la somme de `weekXpOf` sur les semaines
+ * de ses suivis « fait », de toutes dates (y compris un jour devenu futur après un recul d'horloge),
+ * chacune avec ses réglages.
  */
 export function habitXpOf(
   checkIns: readonly CheckIn[],
   changes: readonly SettingsChange[],
+  createdOn: Day,
 ): number {
   const doneCountByWeek = new Map<string, { week: Week; doneCount: number }>();
   for (const { day, done } of checkIns) {
@@ -37,7 +39,7 @@ export function habitXpOf(
     }
   }
   return [...doneCountByWeek.values()].reduce(
-    (xp, { week, doneCount }) => xp + weekXpOf(doneCount, weekSettingsOf(changes, week)),
+    (xp, { week, doneCount }) => xp + weekXpOf(doneCount, weekSettingsOf(changes, week, createdOn)),
     0,
   );
 }
@@ -51,8 +53,9 @@ export function xpChangeOfSettings(
   checkIns: readonly CheckIn[],
   before: readonly SettingsChange[],
   after: readonly SettingsChange[],
+  createdOn: Day,
 ): number {
-  return habitXpOf(checkIns, after) - habitXpOf(checkIns, before);
+  return habitXpOf(checkIns, after, createdOn) - habitXpOf(checkIns, before, createdOn);
 }
 
 /** Ce que devient l'expérience d'une habitude supprimée (`deletionXpOf`). */
@@ -71,13 +74,14 @@ export interface DeletionXp {
 export function deletionXpOf(
   checkIns: readonly CheckIn[],
   changes: readonly SettingsChange[],
+  createdOn: Day,
   today: Day,
 ): DeletionXp {
   const currentWeek = Week.containing(today);
-  const settings = weekSettingsOf(changes, currentWeek);
+  const settings = weekSettingsOf(changes, currentWeek, createdOn);
   const weekDone = checkIns.filter(({ day, done }) => done && currentWeek.contains(day));
   const doneToday = weekDone.filter(({ day }) => day.equals(today)).length;
   const removed =
     weekXpOf(weekDone.length, settings) - weekXpOf(weekDone.length - doneToday, settings);
-  return { removed, retained: habitXpOf(checkIns, changes) - removed };
+  return { removed, retained: habitXpOf(checkIns, changes, createdOn) - removed };
 }

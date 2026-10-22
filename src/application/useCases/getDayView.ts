@@ -55,6 +55,7 @@ export function getDayView({ clock, unitOfWork }: UseCaseDependencies): Promise<
         weekSettings: weekSettingsOf(
           changes.filter((change) => change.habitId === habit.id),
           currentWeek,
+          habit.createdOn,
         ),
       }));
     return {

@@ -106,7 +106,7 @@ export function updateHabit(
 
     const currentWeek = Week.containing(today);
     const before = await settingsChanges.listByHabit(habitId);
-    const current = weekSettingsOf(before, currentWeek);
+    const current = weekSettingsOf(before, currentWeek, habit.createdOn);
     const nameChanged = name.value !== habit.name.value;
     const difficulty = chosen ?? current.difficulty;
     const settingsChanged = difficulty !== current.difficulty;
@@ -120,14 +120,14 @@ export function updateHabit(
     if (settingsChanged) {
       after = [...before, await settingsChanges.add(habitId, today, { difficulty })];
       xpAfter = xpBefore.applyXpChange(
-        xpChangeOfSettings(await checkIns.listByHabit(habitId), before, after),
+        xpChangeOfSettings(await checkIns.listByHabit(habitId), before, after, habit.createdOn),
       );
       await character.save(xpAfter);
     }
     return {
       ok: true,
       habit: new Habit(habit.id, name, habit.createdOn),
-      weekSettings: weekSettingsOf(after, currentWeek),
+      weekSettings: weekSettingsOf(after, currentWeek, habit.createdOn),
       nameChanged,
       settingsChanged,
       xpChange: xpBefore.xpChangeTo(xpAfter),

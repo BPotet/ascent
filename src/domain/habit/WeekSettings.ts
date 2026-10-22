@@ -1,3 +1,4 @@
+import type { Day } from '../day/Day';
 import type { Week } from '../week/Week';
 import { DEFAULT_DIFFICULTY, type Difficulty } from './Difficulty';
 import { compareSettingsChanges, type SettingsChange } from './SettingsChange';
@@ -21,10 +22,15 @@ export interface WeekSettings {
  * - sans aucun changement, la difficulté est Moyenne (R2), comme pour une habitude créée avant la
  *   difficulté.
  *
- * Fonction pure des seuls changements de l'habitude et de la semaine, sans « aujourd'hui » : une
- * semaine close n'est changée ni par un changement ultérieur, ni par l'horloge.
+ * Fonction pure des changements de l'habitude, de la semaine et du jour de création de l'habitude
+ * (`createdOn`, un fait de l'habitude), sans « aujourd'hui » : une semaine close n'est changée ni par
+ * un changement ultérieur, ni par l'horloge.
  */
-export function weekSettingsOf(changes: readonly SettingsChange[], week: Week): WeekSettings {
+export function weekSettingsOf(
+  changes: readonly SettingsChange[],
+  week: Week,
+  createdOn: Day,
+): WeekSettings {
   const history = [...changes].sort(compareSettingsChanges);
   const [first] = history;
   if (first === undefined) {

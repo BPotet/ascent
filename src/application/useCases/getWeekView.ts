@@ -71,7 +71,7 @@ export function getWeekView(
       rows: existing.map((habit) => ({
         habit,
         days: days.map((day) => habitDayOf(habit, day, checkInOf(weekCheckIns, habit, day), today)),
-        weekSettings: weekSettingsOf(changesOf(changes, habit), shown),
+        weekSettings: weekSettingsOf(changesOf(changes, habit), shown, habit.createdOn),
       })),
       canGoPrevious: history.canGoBefore(shown),
       canGoNext: history.canGoAfter(shown),
