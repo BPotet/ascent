@@ -17,6 +17,7 @@ const updated = (change: Partial<UpdatedHabit>): UpdatedHabit => ({
   ok: true,
   habit: new Habit(1, HabitName.parse('Cuisiner'), Day.of(2026, 10, 5)),
   weekSettings: { difficulty: 'medium', weeklyTarget: 7, weekTarget: 7 },
+  nextWeeklyTarget: 7,
   nameChanged: false,
   settingsChanged: false,
   xpChange: 0,

@@ -214,7 +214,7 @@ describe('SqliteUnitOfWork', () => {
     );
 
     it.each(['habits', 'settings_changes', 'character'])(
-      'keeps name, difficulty and experience when %s cannot be written by updateHabit',
+      'keeps name, settings and experience when %s cannot be written by updateHabit',
       async (table) => {
         const db = withFaults(await prepareAscentDatabase(openNodeSqliteDatabase()));
         const unitOfWork = new SqliteUnitOfWork(db);
@@ -228,7 +228,11 @@ describe('SqliteUnitOfWork', () => {
 
         db.faults.failWhen(writesTo(table));
         await expect(
-          updateHabit(deps, running.id, { name: 'Courir 10 km', difficulty: 'hard' }),
+          updateHabit(deps, running.id, {
+            name: 'Courir 10 km',
+            difficulty: 'hard',
+            weeklyTarget: 3,
+          }),
         ).rejects.toThrow(SimulatedStorageError);
 
         db.faults.failWhen(null);

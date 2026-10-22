@@ -19,6 +19,7 @@ function updated({ name, difficulty }: UpdateHabitInput): UpdateHabitOutcome {
     ok: true,
     habit: new Habit(1, HabitName.parse(name), monday),
     weekSettings: { difficulty: difficulty ?? 'medium', weeklyTarget: 7, weekTarget: 7 },
+    nextWeeklyTarget: 7,
     nameChanged: name.trim() !== 'Cuisiner',
     settingsChanged: difficulty !== undefined,
     xpChange: 0,
