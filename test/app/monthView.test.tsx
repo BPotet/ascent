@@ -72,7 +72,7 @@ describe('app month view', () => {
     expect(await monthView().findByTestId('month-grid')).toBeOnTheScreen();
     expect(selectedTab()).toBe('Mois');
     expect(monthDay('2026-10-14')).toHaveAccessibleName(
-      'mercredi 14 octobre, aujourd’hui, 1 habitude faite sur 1',
+      'mercredi 14 octobre, aujourd’hui, 1 habitude faite sur 1 attendue',
     );
     expect(within(monthDay('2026-10-14')).getByText('1/1')).toBeOnTheScreen();
   });
@@ -90,7 +90,9 @@ describe('app month view', () => {
     await fireEvent.press(detail.getByRole('switch', { name: /^Cuisiner, mardi 13 octobre/u }));
 
     expect(
-      await monthView().findByLabelText('mardi 13 octobre, 1 habitude faite sur 1, corrigé'),
+      await monthView().findByLabelText(
+        'mardi 13 octobre, 1 habitude faite sur 1 attendue, corrigé',
+      ),
     ).toBeOnTheScreen();
     expect(detail.getByText('corrigé')).toBeOnTheScreen();
     await waitFor(() => expect(monthView().getByTestId('xp-counter')).toHaveTextContent('10 XP'));
@@ -131,7 +133,9 @@ describe('app month view', () => {
     await showTab('Mois');
 
     expect(
-      await monthView().findByLabelText('mercredi 14 octobre, aujourd’hui, 0 habitude faite sur 1'),
+      await monthView().findByLabelText(
+        'mercredi 14 octobre, aujourd’hui, 0 habitude faite sur 1 attendue',
+      ),
     ).toBeOnTheScreen();
   });
 });

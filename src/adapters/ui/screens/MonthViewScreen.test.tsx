@@ -120,7 +120,9 @@ describe('MonthViewScreen', () => {
     expect(screen.getByText('Octobre 2026')).toBeOnTheScreen();
     expect(screen.getByText('Ce mois-ci')).toBeOnTheScreen();
     expect(screen.getAllByTestId(/^month-day-/u)).toHaveLength(31);
-    expect(labelOf(wednesday)).toBe('mercredi 14 octobre, aujourd’hui, 0 habitude faite sur 2');
+    expect(labelOf(wednesday)).toBe(
+      'mercredi 14 octobre, aujourd’hui, 0 habitude faite sur 2 attendues',
+    );
     expect(dayCell(wednesday)).toHaveStyle({ borderColor: '#7C9CFF' });
     expect(screen.getByText(MONTH_HINT)).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: BACK_TO_CURRENT_MONTH })).toBeNull();
@@ -131,8 +133,8 @@ describe('MonthViewScreen', () => {
 
     await show();
 
-    expect(labelOf(october(12))).toBe('lundi 12 octobre, 1 habitude faite sur 1');
-    expect(labelOf(october(13))).toBe('mardi 13 octobre, 2 habitudes faites sur 2');
+    expect(labelOf(october(12))).toBe('lundi 12 octobre, 1 habitude faite sur 1 attendue');
+    expect(labelOf(october(13))).toBe('mardi 13 octobre, 2 habitudes faites sur 2 attendues');
     expect(within(dayCell(october(13))).getByText('2/2')).toBeOnTheScreen();
     for (const dayOfMonth of [1, 2, 3, 4]) {
       expect(labelOf(october(dayOfMonth))).toMatch(/, aucune habitude active$/u);
@@ -154,7 +156,7 @@ describe('MonthViewScreen', () => {
     await fireEvent.press(screen.getByRole('switch', { name: /^Cuisiner, jeudi 8 octobre/u }));
 
     await waitFor(() =>
-      expect(labelOf(october(8))).toBe('jeudi 8 octobre, 1 habitude faite sur 1, corrigé'),
+      expect(labelOf(october(8))).toBe('jeudi 8 octobre, 1 habitude faite sur 1 attendue, corrigé'),
     );
     expect(screen.getByText('40 XP')).toBeOnTheScreen();
 
@@ -175,7 +177,9 @@ describe('MonthViewScreen', () => {
     expect(previousButton()).toBeDisabled();
     expect(nextButton()).toBeEnabled();
     expect(labelOf(Day.of(2026, 9, 20))).toBe('dimanche 20 septembre, aucune habitude active');
-    expect(labelOf(Day.of(2026, 9, 21))).toBe('lundi 21 septembre, 0 habitude faite sur 1');
+    expect(labelOf(Day.of(2026, 9, 21))).toBe(
+      'lundi 21 septembre, 0 habitude faite sur 1 attendue',
+    );
 
     await fireEvent.press(screen.getByRole('button', { name: BACK_TO_CURRENT_MONTH }));
 
@@ -222,7 +226,7 @@ describe('MonthViewScreen', () => {
     await fireEvent.press(screen.getByText('Changer ailleurs'));
 
     await waitFor(() => expect(previousButton()).toBeDisabled());
-    expect(labelOf(october(12))).toBe('lundi 12 octobre, 1 habitude faite sur 1');
+    expect(labelOf(october(12))).toBe('lundi 12 octobre, 1 habitude faite sur 1 attendue');
   });
 
   it('shows an empty month, without navigation, when there is no habit', async () => {
@@ -264,7 +268,9 @@ describe('MonthViewScreen', () => {
 
     await waitFor(() => expect(shownMonth()).toBe('Septembre 2026'));
     expect(screen.queryByText('Ton mois est vide')).toBeNull();
-    expect(labelOf(Day.of(2026, 9, 15))).toBe('mardi 15 septembre, 0 habitude faite sur 1');
+    expect(labelOf(Day.of(2026, 9, 15))).toBe(
+      'mardi 15 septembre, 0 habitude faite sur 1 attendue',
+    );
   });
 
   it('shows the error state, and reads the month again with « Réessayer »', async () => {
@@ -284,7 +290,7 @@ describe('MonthViewScreen', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
 
     await waitFor(() => expect(shownMonth()).toBe('Octobre 2026, ce mois-ci'));
-    expect(labelOf(october(13))).toBe('mardi 13 octobre, 2 habitudes faites sur 2');
+    expect(labelOf(october(13))).toBe('mardi 13 octobre, 2 habitudes faites sur 2 attendues');
     expect(screen.getByText('30 XP')).toBeOnTheScreen();
   });
 

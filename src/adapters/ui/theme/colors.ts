@@ -68,6 +68,10 @@ export const colors = {
    * léger (8:1), liseré `doneLine`.
    */
   goalSoft: 'rgba(61,220,151,0.16)',
+  /** Le message « Objectifs de la semaine atteints » de la Vue Journée (maquette E1, #25). */
+  goalsReachedSoft: 'rgba(61,220,151,0.12)',
+  goalsReachedLine: 'rgba(61,220,151,0.5)',
+  onGoalsReached: '#C9F3DF',
   /** La puce d'une semaine passée dont l'objectif n'est pas atteint : grise, neutre (9:1). */
   chipPast: '#B4BDCE',
   /** La Carte de nouveauté, en haut de la Vue Journée (dégradé de la maquette, ton de départ). */

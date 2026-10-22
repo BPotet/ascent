@@ -60,8 +60,9 @@ const hasNoHabit = (view: MonthView) =>
 
 /**
  * Vue Mois (`MonthView`) : le calendrier du mois, ses semaines du lundi au dimanche (R21, R23).
- * Chaque jour montre le compteur « faites / actives » et un point par habitude active ; un jour sans
- * habitude active est neutre, un jour à venir en pointillés ; aujourd'hui est encadré, un jour
+ * Chaque jour montre le compteur « faites / attendues » et un point par habitude attendue, ou le
+ * drapeau « Objectifs atteints » sans habitude attendue (#25) ; un jour sans habitude active est
+ * neutre, un jour à venir en pointillés ; aujourd'hui est encadré, un jour
  * corrigé porte la pastille « corrigé ». Navigation de mois en mois dans l'historique (R22), et
  * retour au mois en cours. En haut, l'expérience du personnage (R24).
  * États : chargement, erreur de lecture avec « Réessayer », aucune habitude.

@@ -62,26 +62,37 @@ describe('monthDayLabel', () => {
   const tracked = { day: tuesday, kind: 'tracked', isToday: false, corrected: false } as const;
 
   it('reads a tracked day with its counter', () => {
-    expect(monthDayLabel({ ...tracked, doneCount: 3, activeCount: 4 })).toBe(
-      'mardi 13 octobre, 3 habitudes faites sur 4',
+    expect(monthDayLabel({ ...tracked, doneCount: 3, expectedCount: 4 })).toBe(
+      'mardi 13 octobre, 3 habitudes faites sur 4 attendues',
     );
   });
 
   it('reads « habitude faite » in the singular for 0 or 1', () => {
-    expect(monthDayLabel({ ...tracked, doneCount: 1, activeCount: 1 })).toBe(
-      'mardi 13 octobre, 1 habitude faite sur 1',
+    expect(monthDayLabel({ ...tracked, doneCount: 1, expectedCount: 1 })).toBe(
+      'mardi 13 octobre, 1 habitude faite sur 1 attendue',
     );
-    expect(monthDayLabel({ ...tracked, doneCount: 0, activeCount: 2 })).toBe(
-      'mardi 13 octobre, 0 habitude faite sur 2',
+    expect(monthDayLabel({ ...tracked, doneCount: 0, expectedCount: 2 })).toBe(
+      'mardi 13 octobre, 0 habitude faite sur 2 attendues',
     );
   });
 
   it('says that the day is today, and that it was corrected', () => {
-    expect(monthDayLabel({ ...tracked, isToday: true, doneCount: 2, activeCount: 2 })).toBe(
-      'mardi 13 octobre, aujourd’hui, 2 habitudes faites sur 2',
+    expect(monthDayLabel({ ...tracked, isToday: true, doneCount: 2, expectedCount: 2 })).toBe(
+      'mardi 13 octobre, aujourd’hui, 2 habitudes faites sur 2 attendues',
     );
-    expect(monthDayLabel({ ...tracked, corrected: true, doneCount: 1, activeCount: 2 })).toBe(
-      'mardi 13 octobre, 1 habitude faite sur 2, corrigé',
+    expect(monthDayLabel({ ...tracked, corrected: true, doneCount: 1, expectedCount: 2 })).toBe(
+      'mardi 13 octobre, 1 habitude faite sur 2 attendues, corrigé',
+    );
+  });
+
+  it('reads a tracked day without any expected habit with the flag, not a counter (#25)', () => {
+    expect(monthDayLabel({ ...tracked, doneCount: 0, expectedCount: 0 })).toBe(
+      'mardi 13 octobre, objectifs de la semaine atteints, aucune habitude attendue',
+    );
+    expect(
+      monthDayLabel({ ...tracked, isToday: true, corrected: true, doneCount: 0, expectedCount: 0 }),
+    ).toBe(
+      'mardi 13 octobre, aujourd’hui, objectifs de la semaine atteints, aucune habitude attendue, corrigé',
     );
   });
 
@@ -93,7 +104,7 @@ describe('monthDayLabel', () => {
         isToday: false,
         corrected: false,
         doneCount: 0,
-        activeCount: 0,
+        expectedCount: 0,
       }),
     ).toBe('dimanche 20 septembre, aucune habitude active');
     expect(
@@ -103,7 +114,7 @@ describe('monthDayLabel', () => {
         isToday: false,
         corrected: false,
         doneCount: 0,
-        activeCount: 2,
+        expectedCount: 2,
       }),
     ).toBe('jeudi 15 octobre, à venir');
   });
@@ -116,7 +127,7 @@ describe('monthDayLabel', () => {
         isToday: true,
         corrected: false,
         doneCount: 0,
-        activeCount: 0,
+        expectedCount: 0,
       }),
     ).toBe('mardi 13 octobre, aujourd’hui, aucune habitude active');
   });
@@ -124,14 +135,29 @@ describe('monthDayLabel', () => {
 
 describe('dayDetailSummary', () => {
   it('says « Aujourd’hui » and the counter for today', () => {
-    expect(dayDetailSummary({ isToday: true, doneCount: 1, activeCount: 2 })).toBe(
+    expect(dayDetailSummary({ isToday: true, doneCount: 1, expectedCount: 2 })).toBe(
       'Aujourd’hui · 1/2 faites',
     );
   });
 
   it('invites to correct a closed day', () => {
-    expect(dayDetailSummary({ isToday: false, doneCount: 2, activeCount: 2 })).toBe(
+    expect(dayDetailSummary({ isToday: false, doneCount: 2, expectedCount: 2 })).toBe(
       'Jour clos · tu peux corriger un oubli · 2/2 faites',
+    );
+  });
+
+  it('counts the expected habits only (#25)', () => {
+    expect(dayDetailSummary({ isToday: false, doneCount: 0, expectedCount: 1 })).toBe(
+      'Jour clos · tu peux corriger un oubli · 0/1 faites',
+    );
+  });
+
+  it('says that the goals of the week are reached without any expected habit (#25)', () => {
+    expect(dayDetailSummary({ isToday: false, doneCount: 0, expectedCount: 0 })).toBe(
+      'Jour clos · tu peux corriger un oubli · objectifs de la semaine atteints',
+    );
+    expect(dayDetailSummary({ isToday: true, doneCount: 0, expectedCount: 0 })).toBe(
+      'Aujourd’hui · objectifs de la semaine atteints',
     );
   });
 });

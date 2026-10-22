@@ -186,7 +186,7 @@ describe('DayViewScreen', () => {
         'Budget du jour, mercredi 14 octobre, à faire, 0 sur 5 cette semaine, Moyenne, 10 XP par suivi',
       ),
     ).toBeOnTheScreen();
-    expect(screen.getByLabelText('0 habitude faite sur 2')).toBeOnTheScreen();
+    expect(screen.getByLabelText('0 habitude faite sur 2 attendues')).toBeOnTheScreen();
     expect(screen.getByLabelText('2 habitudes sur 10')).toHaveTextContent('2/10');
     expect(addButton()).toBeEnabled();
   });
@@ -363,7 +363,7 @@ describe('DayViewScreen', () => {
 
     expect(await screen.findByLabelText('2 habitudes sur 10')).toHaveTextContent('2/10');
     expect(rowNames()).toEqual(['Cuisiner']);
-    expect(screen.getByLabelText('0 habitude faite sur 1')).toBeOnTheScreen();
+    expect(screen.getByLabelText('0 habitude faite sur 1 attendue')).toBeOnTheScreen();
   });
 
   it('shows the day, not the empty state, when no existing habit is active yet', async () => {
@@ -425,14 +425,16 @@ describe('DayViewScreen', () => {
         'Cuisiner, mercredi 14 octobre, fait, 1 sur 5 cette semaine, Moyenne, 10 XP par suivi',
       );
       expect(screen.getByTestId('habit-progress-1')).toHaveTextContent('Fait · 1/5 cette semaine');
-      expect(screen.getByLabelText('1 habitude faite sur 2')).toHaveTextContent('1/2 faites');
+      expect(screen.getByLabelText('1 habitude faite sur 2 attendues')).toHaveTextContent(
+        '1/2 faites',
+      );
       expect(screen.getByTestId('day-progress')).toHaveStyle({ width: '50%' });
       expect(await storedStatuses()).toEqual(['Cuisiner: done', 'Budget du jour: pending']);
       expect(screen.queryByTestId('toast')).not.toBeOnTheScreen();
 
       await fireEvent.press(cooking('fait'));
 
-      expect(await screen.findByLabelText('0 habitude faite sur 2')).toBeOnTheScreen();
+      expect(await screen.findByLabelText('0 habitude faite sur 2 attendues')).toBeOnTheScreen();
       expect(cooking('à faire')).not.toBeChecked();
       expect(await storedStatuses()).toEqual(['Cuisiner: pending', 'Budget du jour: pending']);
     });
@@ -476,12 +478,12 @@ describe('DayViewScreen', () => {
       expect(screen.queryByText(ALL_DONE)).not.toBeOnTheScreen();
 
       await fireEvent.press(cooking('à faire'));
-      await screen.findByLabelText('1 habitude faite sur 2');
+      await screen.findByLabelText('1 habitude faite sur 2 attendues');
       expect(screen.queryByText(ALL_DONE)).not.toBeOnTheScreen();
       await fireEvent.press(screen.getByRole('switch', { name: /^Lire/u }));
 
       expect(await screen.findByText(ALL_DONE)).toBeOnTheScreen();
-      expect(screen.getByLabelText('2 habitudes faites sur 2')).toBeOnTheScreen();
+      expect(screen.getByLabelText('2 habitudes faites sur 2 attendues')).toBeOnTheScreen();
     });
 
     it('comes back to « à faire » and says so when the check-in cannot be saved', async () => {
@@ -492,7 +494,7 @@ describe('DayViewScreen', () => {
 
       expect(await screen.findByTestId('toast')).toHaveTextContent(`${SAVE_FAILED}Réessayer`);
       expect(cooking('à faire')).not.toBeChecked();
-      expect(screen.getByLabelText('0 habitude faite sur 1')).toBeOnTheScreen();
+      expect(screen.getByLabelText('0 habitude faite sur 1 attendue')).toBeOnTheScreen();
       dependencies.unitOfWork.failWrites(false);
       expect(await storedStatuses()).toEqual(['Cuisiner: pending']);
     });
@@ -572,7 +574,7 @@ describe('DayViewScreen', () => {
       await given('Cuisiner');
       await toggleCheckIn(dependencies, 1, wednesday);
       await show();
-      await screen.findByLabelText('1 habitude faite sur 1');
+      await screen.findByLabelText('1 habitude faite sur 1 attendue');
 
       await act(() => dependencies.clock.setToday(thursday));
 
@@ -582,7 +584,7 @@ describe('DayViewScreen', () => {
           name: 'Cuisiner, jeudi 15 octobre, à faire, 1 sur 5 cette semaine, Moyenne, 10 XP par suivi',
         }),
       ).not.toBeChecked();
-      expect(screen.getByLabelText('0 habitude faite sur 1')).toBeOnTheScreen();
+      expect(screen.getByLabelText('0 habitude faite sur 1 attendue')).toBeOnTheScreen();
       expect(screen.getByTestId('toast')).toHaveTextContent('Nouvelle journée : jeudi 15 octobre.');
     });
 
@@ -644,7 +646,7 @@ describe('DayViewScreen', () => {
       await renderScreen(<DayViewScreen onCorrectYesterday={onCorrectYesterday} />, dependencies);
 
       expect(
-        await screen.findByLabelText('Hier : 1 habitude faite sur 2. Un oubli ?'),
+        await screen.findByLabelText('Hier : 1 habitude faite sur 2 attendues. Un oubli ?'),
       ).toBeOnTheScreen();
       await fireEvent.press(screen.getByRole('button', { name: 'Corriger' }));
 
@@ -1283,6 +1285,130 @@ describe('DayViewScreen and the weekly progress (E1)', () => {
     await waitFor(() => expect(badge()).not.toBeOnTheScreen());
     expect(progressLine()).toHaveTextContent('À faire · 2/3 cette semaine');
     expect(screen.queryByTestId('cross-mark', { includeHiddenElements: true })).toBeNull();
+  });
+});
+
+describe('DayViewScreen and the expected habits (#25)', () => {
+  const october = (dayOfMonth: number) => Day.of(2026, 10, dayOfMonth);
+  const running = () => screen.getByRole('switch', { name: /^Courir 5 km, /u });
+  const cooking = () => screen.getByRole('switch', { name: /^Cuisiner, /u });
+
+  /**
+   * Le contexte de la story : « Courir 5 km », objectif 3, et « Cuisiner », objectif 7, créées le
+   * lundi 5 octobre ; « Courir 5 km » est « fait » les jours `runningDays`, et aujourd'hui est `today`.
+   */
+  async function showStory(today: Day, runningDays: readonly number[], withCooking = true) {
+    dependencies.clock.setToday(october(5));
+    await createHabit(dependencies, 'Courir 5 km', 'medium', 3);
+    if (withCooking) {
+      await createHabit(dependencies, 'Cuisiner', 'medium', 7);
+    }
+    for (const each of runningDays) {
+      dependencies.clock.setToday(october(each));
+      await toggleCheckIn(dependencies, 1, october(each));
+    }
+    dependencies.clock.setToday(today);
+    await show();
+    await screen.findByText('Courir 5 km');
+  }
+
+  it('leaves out of the counter a habit whose target is reached, still listed, with its badge and tappable', async () => {
+    await showStory(thursday, [12, 13, 14]);
+
+    expect(screen.getByLabelText('0 habitude faite sur 1 attendue')).toHaveTextContent(
+      '0/1 faites',
+    );
+    expect(
+      screen.getByTestId('habit-target-reached-1', { includeHiddenElements: true }),
+    ).toHaveTextContent('Objectif atteint');
+    expect(running()).toBeEnabled();
+    expect(screen.queryByTestId('goals-reached')).toBeNull();
+  });
+
+  it('counts it again at once when touched, then once saved: « 1/2 faites »', async () => {
+    await showStory(thursday, [12, 13, 14]);
+    let save: () => void = () => undefined;
+    const saving = new Promise<void>((resolve) => {
+      save = resolve;
+    });
+    const run = dependencies.unitOfWork.run.bind(dependencies.unitOfWork);
+    jest
+      .spyOn(dependencies.unitOfWork, 'run')
+      .mockImplementation((work) => saving.then(() => run(work)));
+
+    await fireEvent.press(running());
+
+    expect(screen.getByLabelText('1 habitude faite sur 2 attendues')).toHaveTextContent(
+      '1/2 faites',
+    );
+    await act(async () => save());
+    jest.restoreAllMocks();
+    await waitFor(() =>
+      expect(screen.getByLabelText('1 habitude faite sur 2 attendues')).toBeOnTheScreen(),
+    );
+    await expect(getDayView(dependencies)).resolves.toMatchObject({
+      doneCount: 1,
+      expectedCount: 2,
+    });
+  });
+
+  it('goes back to « 0/1 faites » when the tap cannot be saved', async () => {
+    await showStory(thursday, [12, 13, 14]);
+    dependencies.unitOfWork.failWrites();
+
+    await fireEvent.press(running());
+
+    expect(await screen.findByTestId('toast')).toBeOnTheScreen();
+    expect(screen.getByLabelText('0 habitude faite sur 1 attendue')).toBeOnTheScreen();
+  });
+
+  it('celebrates « Toutes faites » without the habit whose target is reached', async () => {
+    await showStory(thursday, [12, 13, 14]);
+    expect(screen.queryByTestId('all-done')).toBeNull();
+
+    await fireEvent.press(cooking());
+
+    expect(await screen.findByTestId('all-done')).toBeOnTheScreen();
+    expect(screen.getByLabelText('1 habitude faite sur 1 attendue')).toHaveTextContent(
+      '1/1 faites',
+    );
+  });
+
+  it('says « Objectifs de la semaine atteints » calmly when no habit is expected, without « Toutes faites »', async () => {
+    await showStory(Day.of(2026, 10, 18), [12, 14, 16], false);
+
+    const notice = screen.getByTestId('goals-reached');
+    expect(notice).toHaveTextContent(
+      'Objectifs de la semaine atteintsRien n’est attendu aujourd’hui. Un « fait » en plus rapporte quand même son XP.',
+    );
+    expect(notice).toHaveAccessibleName(
+      'Objectifs de la semaine atteints. Rien n’est attendu aujourd’hui. Un « fait » en plus rapporte quand même son XP.',
+    );
+    expect(screen.getByTestId('day-goals-reached')).toHaveTextContent('Atteints');
+    expect(screen.queryByText(/faites$/u)).toBeNull();
+    expect(screen.queryByTestId('all-done')).toBeNull();
+    expect(running()).toBeEnabled();
+
+    await fireEvent.press(running());
+
+    await waitFor(() => expect(screen.queryByTestId('goals-reached')).toBeNull());
+    expect(screen.getByLabelText('1 habitude faite sur 1 attendue')).toBeOnTheScreen();
+    expect(await screen.findByTestId('all-done')).toBeOnTheScreen();
+  });
+
+  it('reminds yesterday with the expected habits only', async () => {
+    dependencies.clock.setToday(october(5));
+    await createHabit(dependencies, 'Courir 5 km', 'medium', 3);
+    await createHabit(dependencies, 'Cuisiner', 'medium', 7);
+    dependencies.clock.setToday(october(12));
+    await toggleCheckIn(dependencies, 2, october(12));
+    dependencies.clock.setToday(tuesday);
+
+    await show();
+
+    expect(
+      await screen.findByLabelText('Hier : 1 habitude faite sur 2 attendues. Un oubli ?'),
+    ).toHaveTextContent('Hier : 1/2 faites. Un oubli ?');
   });
 });
 

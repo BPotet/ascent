@@ -9,6 +9,7 @@ import { colors } from '../theme/colors';
 import { MIN_TOUCH_SIZE, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
 import { CORRECTED, CorrectedMark } from './CorrectedMark';
+import { FlagGlyph } from './Glyph';
 
 /** Cache un élément décoratif au lecteur d'écran (Android et iOS). */
 const decorative = {
@@ -40,13 +41,15 @@ export function MonthDaysHeader() {
 
 /**
  * Un jour de la Vue Mois (maquette, E6).
- * - Jour suivi (`tracked`) : son numéro, le compteur « faites / actives » et un point par habitude
- *   active, plein si elle est faite, cerclé sinon ; sur fond vert quand toutes sont faites. C'est
- *   un bouton : le toucher ouvre son détail (`onOpen`).
+ * - Jour suivi (`tracked`) : son numéro, le compteur « faites / attendues » et un point par
+ *   habitude attendue, plein si elle est faite, cerclé sinon ; sur fond vert quand toutes sont
+ *   faites (#25). Sans habitude attendue, le drapeau « Objectifs atteints » remplace le compteur et
+ *   les points, sur fond vert. C'est un bouton : le toucher ouvre son détail (`onOpen`).
  * - Jour neutre (aucune habitude active) : son numéro seul, sans fond, non touchable.
  * - Jour à venir : son numéro, en pointillés, non touchable.
  * Aujourd'hui est encadré ; un jour corrigé porte la pastille « corrigé ». Le lecteur d'écran lit
- * « mardi 13 octobre, 2 habitudes faites sur 2 » (`monthDayLabel`).
+ * « mardi 13 octobre, 2 habitudes faites sur 2 attendues » ou « samedi 24 octobre, objectifs de la
+ * semaine atteints, aucune habitude attendue » (`monthDayLabel`).
  */
 export function MonthDayCell({
   monthDay,
@@ -55,7 +58,7 @@ export function MonthDayCell({
   readonly monthDay: MonthDay;
   readonly onOpen: (monthDay: MonthDay) => void;
 }) {
-  const { day, kind, isToday, habits, doneCount, activeCount, corrected } = monthDay;
+  const { day, kind, isToday, expectedHabits, doneCount, expectedCount, corrected } = monthDay;
   const testID = `month-day-${day.toIsoString()}`;
   const number = (
     <Text
@@ -84,20 +87,27 @@ export function MonthDayCell({
     );
   }
 
+  const full = doneCount === expectedCount;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={monthDayLabel(monthDay)}
       onPress={() => onOpen(monthDay)}
       testID={testID}
-      style={[styles.day, doneCount === activeCount && styles.full, isToday && styles.today]}
+      style={[styles.day, full && styles.full, isToday && styles.today]}
     >
       {number}
-      <Text
-        style={[styles.counter, doneCount === activeCount && styles.counterFull]}
-      >{`${doneCount}/${activeCount}`}</Text>
+      {expectedCount === 0 ? (
+        <View style={styles.flag}>
+          <FlagGlyph color={colors.done} />
+        </View>
+      ) : (
+        <Text
+          style={[styles.counter, full && styles.counterFull]}
+        >{`${doneCount}/${expectedCount}`}</Text>
+      )}
       <View {...decorative} style={styles.dots}>
-        {habits.map((habitDay) => {
+        {expectedHabits.map((habitDay) => {
           const dot = dotKindOf(habitDay.status);
           return (
             <View
@@ -209,6 +219,7 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   counterFull: { color: colors.doneText },
+  flag: { marginTop: 2 },
   dots: {
     flexDirection: 'row',
     flexWrap: 'wrap',

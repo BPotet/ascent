@@ -60,12 +60,14 @@ const dayCell = (dayOfMonth: number) =>
   screen.getByTestId(`month-day-${october(dayOfMonth).toIsoString()}`);
 
 describe('MonthDayCell', () => {
-  it('shows a tracked day with its number, its counter and a dot per active habit', async () => {
+  it('shows a tracked day with its number, its counter and a dot per expected habit', async () => {
     await render(
       <MonthDayCell monthDay={tracked(13, ['done', 'missed', 'done'])} onOpen={jest.fn()} />,
     );
 
-    const cell = screen.getByRole('button', { name: 'mardi 13 octobre, 2 habitudes faites sur 3' });
+    const cell = screen.getByRole('button', {
+      name: 'mardi 13 octobre, 2 habitudes faites sur 3 attendues',
+    });
     expect(within(cell).getByText('13')).toBeOnTheScreen();
     expect(within(cell).getByText('2/3')).toBeOnTheScreen();
     expect(
@@ -77,6 +79,86 @@ describe('MonthDayCell', () => {
     expect(cell).toHaveStyle({ backgroundColor: '#18202F' });
   });
 
+  it('counts and dots the expected habits only (#25)', async () => {
+    const day = tracked(15, ['missed', 'done', 'missed']);
+    const [running, cooking, budget] = day.habits;
+    await render(
+      <MonthDayCell
+        monthDay={{ ...day, expectedHabits: [cooking!, budget!], expectedCount: 2 }}
+        onOpen={jest.fn()}
+      />,
+    );
+
+    const cell = screen.getByRole('button', {
+      name: 'jeudi 15 octobre, 1 habitude faite sur 2 attendues',
+    });
+    expect(running).toBeDefined();
+    expect(within(cell).getByText('1/2')).toBeOnTheScreen();
+    expect(
+      within(cell).getAllByTestId(/^month-dot-/u, { includeHiddenElements: true }),
+    ).toHaveLength(2);
+    expect(cell).toHaveStyle({ backgroundColor: '#18202F' });
+  });
+
+  it('shows the complete background when every expected habit is done (#25)', async () => {
+    const day = tracked(15, ['missed', 'done']);
+    await render(
+      <MonthDayCell
+        monthDay={{ ...day, expectedHabits: [day.habits[1]!], expectedCount: 1 }}
+        onOpen={jest.fn()}
+      />,
+    );
+
+    expect(dayCell(15)).toHaveStyle({ backgroundColor: '#16302A' });
+    expect(within(dayCell(15)).getByText('1/1')).toHaveStyle({ color: '#8FE8BF' });
+  });
+
+  it('shows the flag instead of the counter on a day without any expected habit (#25)', async () => {
+    const onOpen = jest.fn();
+    const monthDay: MonthDay = {
+      ...tracked(15, ['missed']),
+      expectedHabits: [],
+      expectedCount: 0,
+    };
+    await render(<MonthDayCell monthDay={monthDay} onOpen={onOpen} />);
+
+    const cell = screen.getByRole('button', {
+      name: 'jeudi 15 octobre, objectifs de la semaine atteints, aucune habitude attendue',
+    });
+    expect(within(cell).getByText('15')).toBeOnTheScreen();
+    expect(within(cell).getByTestId('flag-glyph', { includeHiddenElements: true })).toBeTruthy();
+    expect(within(cell).queryByText(/\//u)).toBeNull();
+    expect(
+      within(cell).queryAllByTestId(/^month-dot-/u, { includeHiddenElements: true }),
+    ).toHaveLength(0);
+    expect(cell).toHaveStyle({ backgroundColor: '#16302A' });
+
+    await fireEvent.press(cell);
+    expect(onOpen).toHaveBeenCalledWith(monthDay);
+  });
+
+  it('reads the flag of today, corrected', async () => {
+    await render(
+      <MonthDayCell
+        monthDay={{
+          ...tracked(24, ['missed']),
+          isToday: true,
+          corrected: true,
+          expectedHabits: [],
+          expectedCount: 0,
+        }}
+        onOpen={jest.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole('button', {
+        name: 'samedi 24 octobre, aujourd’hui, objectifs de la semaine atteints, aucune habitude attendue, corrigé',
+      }),
+    ).toBeOnTheScreen();
+    expect(screen.getByTestId('corrected-mark', { includeHiddenElements: true })).toBeTruthy();
+  });
+
   it('shows a habit still to do today with a blue ring', async () => {
     await render(
       <MonthDayCell
@@ -86,7 +168,7 @@ describe('MonthDayCell', () => {
     );
 
     const cell = screen.getByRole('button', {
-      name: 'mercredi 14 octobre, aujourd’hui, 1 habitude faite sur 2',
+      name: 'mercredi 14 octobre, aujourd’hui, 1 habitude faite sur 2 attendues',
     });
     expect(
       within(cell).getAllByTestId('month-dot-pending', { includeHiddenElements: true }),
@@ -114,7 +196,9 @@ describe('MonthDayCell', () => {
 
     expect(screen.getByTestId('corrected-mark', { includeHiddenElements: true })).toBeTruthy();
     expect(
-      screen.getByRole('button', { name: 'jeudi 8 octobre, 1 habitude faite sur 1, corrigé' }),
+      screen.getByRole('button', {
+        name: 'jeudi 8 octobre, 1 habitude faite sur 1 attendue, corrigé',
+      }),
     ).toBeOnTheScreen();
   });
 

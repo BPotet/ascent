@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { doneOutOfExpected } from '../format/formatExpected';
 import { colors } from '../theme/colors';
 import { MIN_TOUCH_SIZE, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
@@ -8,30 +9,30 @@ import { LinkButton } from './LinkButton';
 
 /**
  * Le rappel d'hier (`YesterdayReminder`), bandeau discret en haut de la Vue Journée (maquette, E1
- * « Rappel d'hier ») : « Hier : 1/2 faites. Un oubli ? », l'action « Corriger » (`onCorrect`,
+ * « Rappel d'hier ») : « Hier : 1/2 faites. Un oubli ? », sur les habitudes attendues hier (#25), lu
+ * « Hier : 1 habitude faite sur 2 attendues. Un oubli ? », l'action « Corriger » (`onCorrect`,
  * absente si l'application ne mène pas à la Vue Semaine) et le bouton qui le ferme (`onDismiss`).
  */
 export function YesterdayReminderBanner({
   doneCount,
-  activeCount,
+  expectedCount,
   onCorrect,
   onDismiss,
 }: {
   readonly doneCount: number;
-  readonly activeCount: number;
+  readonly expectedCount: number;
   readonly onCorrect?: () => void;
   readonly onDismiss: () => void;
 }) {
-  const done = `${doneCount} ${doneCount > 1 ? 'habitudes faites' : 'habitude faite'}`;
   return (
     <View testID="yesterday-reminder" style={styles.banner}>
       <MoonGlyph color={colors.muted} />
       <Text
-        accessibilityLabel={`Hier : ${done} sur ${activeCount}. Un oubli ?`}
+        accessibilityLabel={`Hier : ${doneOutOfExpected(doneCount, expectedCount)}. Un oubli ?`}
         style={[typography.notice, styles.text]}
       >
         {'Hier : '}
-        <Text style={styles.count}>{`${doneCount}/${activeCount} faites`}</Text>
+        <Text style={styles.count}>{`${doneCount}/${expectedCount} faites`}</Text>
         {'. Un oubli ?'}
       </Text>
       {onCorrect && <LinkButton label="Corriger" onPress={onCorrect} />}
