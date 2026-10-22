@@ -139,4 +139,41 @@ describe('useTouchProbe', () => {
     expect(probe.result.current.report.count).toBe(0);
     expect(probe.result.current.lastGap).toBeNull();
   });
+
+  describe('when its clocks change while mounted', () => {
+    async function renderWithClocks(clock: { time: number }) {
+      const initial = { now: () => clock.time, uiNow: () => clock.time };
+      const rendered = await renderHook(
+        (clocks: { now: () => number; uiNow: () => number }) => useTouchProbe(clocks),
+        { initialProps: initial },
+      );
+      await waitFor(() => expect(rendered.result.current.calibration).toEqual({ offset: 0 }));
+      return rendered;
+    }
+
+    it('calibrates again, and dates the next touches with the new UI clock', async () => {
+      const clock = { time: 1_000 };
+      const probe = await renderWithClocks(clock);
+
+      await probe.rerender({ now: () => clock.time, uiNow: () => clock.time + 50_000 });
+      await waitFor(() => expect(probe.result.current.calibration).toEqual({ offset: 50_000 }));
+      probe.result.current.onBegin();
+      clock.time += 10;
+      await flushToJs();
+
+      expect(probe.result.current.lastGap).toBe(10 - 50_000);
+    });
+
+    it('dates the reception of the next touches with the new JS clock', async () => {
+      const clock = { time: 1_000 };
+      const probe = await renderWithClocks(clock);
+
+      await probe.rerender({ now: () => clock.time + 40, uiNow: () => clock.time });
+      probe.result.current.onBegin();
+      clock.time += 10;
+      await flushToJs();
+
+      expect(probe.result.current.lastGap).toBe(50);
+    });
+  });
 });
