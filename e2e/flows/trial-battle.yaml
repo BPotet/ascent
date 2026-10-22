@@ -71,6 +71,11 @@ tags:
 - takeScreenshot: trial-battle-end
 
 # Réglages d'essai : transition et avancée allongées à 2 000 ms, pour capturer les états brefs.
+# Les réglages suivent la fin du combat, dans une vue qui défile.
+- scrollUntilVisible:
+    element:
+      text: "Allonger l'avancée"
+    direction: DOWN
 - repeat:
     times: 24
     commands:
@@ -83,7 +88,12 @@ tags:
 - assertVisible:
     id: 'trial-tuning-stepInMs'
     text: '2.000 ms'
+- takeScreenshot: trial-battle-tuning
 
+- scrollUntilVisible:
+    element:
+      text: 'Rejouer'
+    direction: UP
 - tapOn: 'Rejouer'
 - extendedWaitUntil:
     visible:
