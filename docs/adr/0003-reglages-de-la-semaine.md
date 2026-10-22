@@ -2,6 +2,7 @@
 
 - **Statut** : accepté
 - **Date** : 21 octobre 2026
+- **Révisé** : 22 octobre 2026, §4 corrigé par #24 (décisions PM Q-A et cas limite 2)
 - **Décideur** : Architect (décisions de l'escalade d'impact de #23 avec le PM)
 - **Contexte produit** : épique #22 (story #23, préparation de #24 et #26)
 - **Remplace** : la décision 5 de l'ADR 0002 pour l'invariant de l'expérience
@@ -38,7 +39,8 @@ chaque modification de ses réglages ; l'historique est effacé avec l'habitude.
 porte aucun réglage.
 
 Les **réglages de la semaine** (`WeekSettings`) en sont une fonction pure,
-`weekSettingsOf(changements de l'habitude, semaine)`, sans repère global ni « aujourd'hui » :
+`weekSettingsOf(changements de l'habitude, semaine, jour de création)`, sans repère global ni
+« aujourd'hui » (le jour de création, un fait de l'habitude, sert à l'objectif de #24, voir §4) :
 
 - difficulté de la semaine = celle du dernier changement daté au plus tard du dimanche de la
   semaine, dans l'ordre (jour, ordre de saisie) (R12, R15) ;
@@ -51,7 +53,7 @@ Les **réglages de la semaine** (`WeekSettings`) en sont une fonction pure,
 Barème `XP_PER_CHECK_IN` : `easy` 5, `medium` 10, `hard` 20 Xp par case « fait ». Le nouvel
 invariant de l'expérience **remplace la décision 5 de l'ADR 0002** :
 
-`xp = Σ (habitudes existantes h) Σ (suivis « fait » c de h, toutes dates) XP_PER_CHECK_IN[weekSettingsOf(changements de h, semaine de c).difficulty] + retained_xp`
+`xp = Σ (habitudes existantes h) Σ (suivis « fait » c de h, toutes dates) XP_PER_CHECK_IN[weekSettingsOf(changements de h, semaine de c, jour de création de h).difficulty] + retained_xp`
 
 Il ne dépend pas d'aujourd'hui : un changement est daté du jour de sa saisie, une semaine close
 n'est donc changée ni par un changement de réglages ultérieur, ni par un changement de fuseau ou un
@@ -107,22 +109,57 @@ Dans les changements antérieurs à son introduction (dont celui rétro-rempli p
 création), il reste vide : vide veut dire « ce réglage n'existait pas encore », donc pas d'objectif
 ni de prime pour ces semaines (R16, R17 de #24 ; R17 de #26).
 
-Son introduction pour les habitudes existantes est un **changement d'introduction** : au démarrage,
-après les migrations, un cas d'usage de l'application (nommé au glossaire par #24) ajoute à chaque
-habitude dont le dernier changement n'a pas ce réglage un changement daté de `clock.today()`, qui
-recopie les réglages en vigueur et porte la valeur introduite (l'objectif 7, R16). Une seule unité
-de travail ; idempotent par construction (après coup, plus aucun dernier changement n'est vide),
-donc rejoué sans effet, et rejoué au démarrage suivant si l'application s'arrête avant.
+Son introduction pour les habitudes existantes est un **changement d'introduction**
+(`introductionChange`, voir le glossaire) : au démarrage, après les migrations, le cas d'usage
+`introduceWeeklyTarget` ajoute à chaque habitude dont le dernier changement dans l'ordre de saisie
+n'a pas ce réglage un changement daté de `clock.today()` (`introductionChangeOf`), qui recopie la
+difficulté **de la semaine en cours** (pas celle du dernier changement, qu'un recul d'horloge peut
+avoir daté dans le futur) et porte la valeur introduite (l'objectif 7, R16). Une seule unité de
+travail ; idempotent par construction (après coup, le dernier changement dans l'ordre de saisie
+n'est plus vide), donc rejoué sans effet, et rejoué au démarrage suivant si l'application s'arrête
+avant. L'expérience n'est ni lue ni changée : la difficulté de chaque semaine reste la même (test
+de propriété).
 
-Règle de l'objectif de la semaine W, pour #24 : celui du dernier changement daté avant le lundi de
-W ; si ce changement n'existe pas ou est vide, le premier changement **qui porte un objectif**
-s'applique dès sa propre semaine (avec les changements du même jour, dans l'ordre de saisie) : le
-jour de création pour une habitude créée après la mise à jour, le jour de la mise à jour pour une
-habitude existante. Sinon, la semaine n'a pas d'objectif : ni progression, ni objectif atteint, ni
-prime, même après correction. La règle de la difficulté (décision 1) ne change pas.
+Règle de l'objectif de la semaine W, pour #24 (`weekSettingsOf(changes, W, createdOn)`, historique
+trié par jour puis ordre de saisie) :
 
-Le domaine refusera un changement qui viderait un réglage déjà renseigné (test de domaine ajouté
-par #24).
+1. l'objectif du dernier changement **qui porte un objectif** daté avant le lundi de W : un
+   changement d'objectif fait pendant W s'applique à partir du lundi suivant (R13) ;
+2. sinon, si le premier changement qui porte un objectif est daté dans W, il s'applique dès sa
+   propre semaine :
+   - s'il est daté du **jour de création** de l'habitude, l'objectif est celui du dernier
+     changement de ce jour, dans l'ordre de saisie (exception du jour de création, R13). C'est le
+     cas d'une habitude créée après la mise à jour, et aussi d'une habitude créée le jour même de la
+     mise à jour, dont le changement d'introduction est daté de son jour de création : elle garde
+     l'exception ;
+   - sinon, c'est le changement d'introduction d'une habitude créée avant le jour de la mise à
+     jour, et l'objectif est le sien seul (7, R16). **Le jour de la mise à jour ne devient pas un
+     jour de création** : un changement d'objectif fait ce jour-là s'applique à partir de la
+     semaine suivante ;
+3. sinon, la semaine n'a pas d'objectif : ni progression, ni objectif atteint, ni prime, même après
+   correction.
+
+Le jour de création est un paramètre de `weekSettingsOf`, pas le premier changement : un recul
+d'horloge peut dater un changement avant la création. La règle de la difficulté (décision 1) ne
+change pas.
+
+L'**objectif de la semaine** (`weekTarget`, R6) est cet objectif, réduit en semaine de création au
+nombre de jours de W à partir du jour de création (créée un jeudi avec 7 : 4) ; il est vide sans
+objectif, ou pour une semaine sans aucun jour actif. Un changement d'objectif enregistré aujourd'hui
+s'applique à la semaine en cours si et seulement si aujourd'hui est le jour de création
+(`weeklyTargetChangeAppliesThisWeek`, vérifié contre la règle par un test de propriété) : c'est ce
+qui choisit le message de « Modifier l'habitude », même ouvert depuis la Carte de nouveauté.
+
+Le domaine refuse un changement qui viderait un réglage déjà renseigné : le port n'écrit que des
+`HabitSettings`, où l'objectif est obligatoire, et les cas d'usage le vérifient avec
+`parseWeeklyTarget`. Seuls les changements d'avant la mise à jour, déjà stockés, sont relus vides.
+
+La **Carte de nouveauté** de la Vue Journée se déduit des données : elle s'affiche si au moins une
+habitude existante a un changement sans objectif (`predatesWeeklyTarget`, donc créée avant la mise
+à jour) et que la clé `day-view.whats-new.difficulty-and-weekly-target.dismissed` est absente du
+stockage clé-valeur. Rien n'est donc écrit à l'introduction pour elle, et il n'y a pas d'écriture à
+coordonner entre l'unité de travail et le stockage clé-valeur ; « Fermer » et « Régler » écrivent
+la clé.
 
 ### 5. Interdits
 
