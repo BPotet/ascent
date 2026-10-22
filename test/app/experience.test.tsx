@@ -199,14 +199,17 @@ describe('app experience', () => {
         1 - done,
       ]);
     }
-    // L'ouverture de la base par l'app la met au dernier schéma, comme sur le téléphone.
+    // L'ouverture de la base par l'app la met au dernier schéma, comme sur le téléphone ; le
+    // démarrage donne ensuite l'objectif 7 à « Cuisiner » (changement d'introduction, #24).
     openDatabase.mockImplementation(() => prepareAscentDatabase(db));
 
     await renderRouter(appDirectory);
 
     await headerShows(70);
     await fireEvent.press(
-      await screen.findByLabelText(`${COOKING_TODAY}, à faire, Moyenne, 10 XP par suivi`),
+      await screen.findByLabelText(
+        `${COOKING_TODAY}, à faire, 2 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
     );
     await headerShows(80);
   });
