@@ -108,8 +108,9 @@ export function previewHabitDeletion(
  * est retirée au barème de la difficulté de la semaine en cours (−20 Xp en Difficile s'il était
  * « fait »), avec la prime d'objectif de la semaine en cours si elle tombe sans lui (#26), jamais
  * sous 0 (R16, R18) ; celle de ses autres jours, au barème de leur semaine, et les primes encore
- * acquises restent acquises (Xp conservée, R19). Tout se fait dans une seule unité de travail : une panne de stockage
- * est une exception, et rien ne change, ni l'habitude, ni ses suivis, ni l'expérience.
+ * acquises restent acquises (Xp conservée, R19). Tout se fait dans une seule unité de travail :
+ * une panne de stockage est une exception, et rien ne change, ni l'habitude, ni ses suivis, ni
+ * l'expérience.
  */
 export function deleteHabit(
   deps: UseCaseDependencies,
