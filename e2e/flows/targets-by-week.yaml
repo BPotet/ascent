@@ -1,0 +1,99 @@
+# Story #27 : les objectifs atteints par semaine dans la Vue Mois.
+# Parcours : « Courir 5 km » en « 1 fois par semaine » → onglet Mois : le Détail du jour
+# d'aujourd'hui montre la progression de la semaine (« 0 sur 1 cette semaine ») → « Courir 5 km »
+# touchée : « 1 sur 1 cette semaine », objectif atteint → « Fermer » → sous la grille, la section
+# « Objectifs par semaine » : « Cette semaine · 1/1 objectif atteint », avec le drapeau → la ligne
+# touchée ouvre la Vue Semaine sur la semaine en cours.
+# Limites : Maestro ne pilote pas la date du téléphone, le parcours se limite donc à la semaine en
+# cours. Les semaines passées, la semaine à cheval sur deux mois, les semaines d'avant la mise à jour
+# et la progression « semaine du 12 octobre » sont couvertes par `features/targets-by-week.feature`
+# (cas d'usage et écrans) et les tests d'écran (`MonthViewScreen`, `DayDetailSheet`,
+# `TargetsByWeekSection`). Le feedback « Objectif atteint » depuis le Détail du jour (scénario 7)
+# viendra avec la prime d'objectif de #26 (phase B de #27).
+# Captures pour la comparaison avec la maquette docs/mockups/22-difficulte-objectif (E6, « Story 5 »).
+appId: com.bpotet.ascent
+name: Voir les objectifs atteints par semaine dans la Vue Mois
+tags:
+  - story-27
+---
+- runFlow: ../subflows/launch-fresh.yaml
+
+# « Courir 5 km », « 1 fois par semaine ».
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- tapOn:
+    id: 'weekly-target-option-1'
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Courir 5 km'
+- hideKeyboard
+- tapOn:
+    id: 'create-habit'
+- extendedWaitUntil:
+    notVisible: 'Nouvelle habitude'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'Courir 5 km, .+, à faire, 0 sur 1 cette semaine, Moyenne, 10 XP par suivi'
+    timeout: 10000
+
+# Onglet Mois : la section compte l'objectif de la semaine en cours, pas encore atteint.
+- tapOn:
+    id: 'tab-month'
+- extendedWaitUntil:
+    visible:
+      id: 'month-grid'
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: 'targets-by-week'
+    direction: DOWN
+- assertVisible: 'Objectifs par semaine'
+- assertVisible: 'Cette semaine, 0 objectif atteint sur 1, ouvrir la semaine'
+- takeScreenshot: targets-by-week-E6-1-section-not-reached
+
+# Le Détail du jour d'aujourd'hui : la progression de la semaine du jour.
+- scrollUntilVisible:
+    element: '.+, aujourd’hui, 0 habitude faite sur 1 attendue'
+    direction: UP
+- tapOn: '.+, aujourd’hui, 0 habitude faite sur 1 attendue'
+- extendedWaitUntil:
+    visible:
+      id: 'day-detail-.+'
+    timeout: 10000
+- assertVisible: 'Courir 5 km, .+, à faire, 0 sur 1 cette semaine'
+- takeScreenshot: targets-by-week-E6-2-day-detail-progress
+
+# « Courir 5 km » cochée dans le détail : l'objectif de la semaine est atteint.
+- tapOn:
+    id: 'habit-row-1'
+- extendedWaitUntil:
+    visible: 'Courir 5 km, .+, fait, 1 sur 1 cette semaine, objectif atteint'
+    timeout: 10000
+- assertVisible:
+    id: 'habit-target-reached-1'
+- takeScreenshot: targets-by-week-E6-3-day-detail-target-reached
+- tapOn: 'Fermer'
+- extendedWaitUntil:
+    notVisible:
+      id: 'day-detail-.+'
+    timeout: 10000
+
+# La section suit : tous les objectifs de la semaine sont atteints, avec le drapeau.
+- scrollUntilVisible:
+    element: 'Cette semaine, 1 objectif atteint sur 1, ouvrir la semaine'
+    direction: DOWN
+    timeout: 10000
+- takeScreenshot: targets-by-week-E6-4-section-all-reached
+
+# La ligne ouvre la Vue Semaine sur sa semaine, la semaine en cours.
+- tapOn: 'Cette semaine, 1 objectif atteint sur 1, ouvrir la semaine'
+- extendedWaitUntil:
+    visible:
+      id: 'week-view'
+    timeout: 10000
+- assertVisible: 'Cette semaine, du .+'
+- assertVisible: 'Courir 5 km, .+, fait'
+- takeScreenshot: targets-by-week-E6-5-week-view-opened

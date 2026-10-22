@@ -32,11 +32,20 @@ progression de la semaine est `<N> sur <objectif> cette semaine`, puis `<N> fois
 au-delà de l'objectif ; comme Maestro ne pilote pas la date, l'objectif d'une habitude créée
 pendant le parcours dépend du jour (semaine de création réduite) : les parcours l'écrivent
 `.+ cette semaine` ou `\d`. Les cases de la Vue
-Semaine et du détail du jour ne portent pas la difficulté : `<nom>, <jour>, <état>`.
+Semaine ne portent pas la difficulté : `<nom>, <jour>, <état>`. Les lignes du détail du jour non plus,
+mais elles portent la progression de la semaine du jour (#27) : `<nom>, <jour>, <état>[, <progression>][, corrigé][, objectif atteint]`,
+où la progression est `<N> sur <objectif> cette semaine` pour la semaine en cours et `<N> sur <objectif> semaine du <lundi>`
+sinon (`2 sur 3 semaine du 12 octobre`) ; une habitude sans objectif de la semaine n'en a pas.
 
 Compteurs (#25) : l'en-tête de la Vue Journée affiche `<faites>/<attendues> faites`, lu
 `<N> habitude(s) faite(s) sur <M> attendue(s)` ; un jour de la Vue Mois est lu `<jour>[, aujourd’hui], <N>
 habitude(s) faite(s) sur <M> attendue(s)`, ou `<jour>, objectifs de la semaine atteints, aucune habitude
 attendue` avec le drapeau.
+
+Objectifs par semaine (#27) : sous la grille de la Vue Mois, la section `targets-by-week` a une
+ligne par semaine (`week-targets-<lundi AAAA-MM-JJ>`), lue `Semaine du <jour> <mois>, <N> objectif(s)
+atteint(s) sur <M>, ouvrir la semaine`, ou `Cette semaine, …` pour la semaine en cours (singulier
+jusqu'à 1). Le texte affiché est `Semaine du 5 octobre` puis `3/4 objectifs atteints` (`0/1 objectif
+atteint`). Toucher une ligne ouvre la Vue Semaine sur sa semaine.
 
 Vérifier la syntaxe sans émulateur : `maestro check-syntax e2e/flows/<parcours>.yaml`.

@@ -67,13 +67,13 @@ tags:
 - assertVisible: 'Ce mois-ci'
 - takeScreenshot: month-view-2-current-month-done
 
-# Le détail d'aujourd'hui : l'habitude y est « fait ».
+# Le détail d'aujourd'hui : l'habitude y est « fait », avec la progression de la semaine (#27).
 - tapOn: '.+, aujourd’hui, 1 habitude faite sur 1 attendue'
 - extendedWaitUntil:
     visible:
       id: 'day-detail-.+'
     timeout: 10000
-- assertVisible: 'Cuisiner, .+, fait'
+- assertVisible: 'Cuisiner, .+, fait, 1 sur \d cette semaine(, objectif atteint)?'
 - takeScreenshot: month-view-3-day-detail
 - tapOn: 'Fermer'
 - extendedWaitUntil:
