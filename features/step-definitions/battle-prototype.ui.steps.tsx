@@ -12,6 +12,8 @@ import { act, fireEvent, screen, within } from '@testing-library/react-native';
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
 import { AccessibilityInfo } from 'react-native';
 
+import * as battleEffects from '../../src/adapters/ui/battle/BattleEffects';
+
 import { seedFor, type FirstRound } from '../../src/application/testing/trialBattleSeeds';
 import { BATTLE_HINT_SEEN_KEYS } from '../../src/application/useCases/battleHints';
 import type { BattleEvent } from '../../src/domain/battle/BattleEvent';
@@ -27,6 +29,9 @@ const SPECTER = 1;
 
 const reduceMotion = () => jest.mocked(AccessibilityInfo.isReduceMotionEnabled);
 const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+/** La secousse demandée à la scène : le dernier numéro passé à `useShake` (0 : aucune). */
+const shake = jest.spyOn(battleEffects, 'useShake');
+const lastShake = () => shake.mock.calls.at(-1)?.[0];
 
 interface World {
   test: TrialBattleTest;
@@ -148,7 +153,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       expect(screen.getByTestId('battle-flash-light')).toBeOnTheScreen();
       expect(world.test.sound.played).toContain('perfectParry');
       expect(world.test.haptics.played).toContain('perfectParry');
-      expect(screen.getByTestId('battle-scene-frame').props.shakeKey).toBeGreaterThan(0);
+      expect(lastShake()).toBeGreaterThan(0);
     },
   );
 
@@ -340,7 +345,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   then("il n'y a ni secousse ni éclat plein écran, mais la vibration et le son restent", () => {
     expect(screen.queryByTestId('battle-flash-light')).toBeNull();
-    expect(screen.getByTestId('battle-scene-frame').props.shakeKey).toBe(0);
+    expect(lastShake()).toBe(0);
     expect(scene().reducedMotion).toBe(true);
     expect(world.test.sound.played.at(-1)).toBe('perfectParry');
     expect(world.test.haptics.played.at(-1)).toBe('perfectParry');
