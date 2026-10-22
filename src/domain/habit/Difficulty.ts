@@ -1,8 +1,9 @@
 /**
  * Difficulté (`Difficulty`), voir `docs/glossary.md` : le niveau d'effort d'une habitude, **Facile**
  * (`easy`), **Moyenne** (`medium`) ou **Difficile** (`hard`). Elle fixe l'expérience d'une case
- * « fait » (R1) et la prime unitaire de la prime d'objectif (#26, R8). Un changement s'applique à toute la semaine en cours et aux suivantes, jamais aux
- * semaines closes (R12) : la difficulté d'une semaine se lit dans ses réglages (`WeekSettings`).
+ * « fait » (R1) et la prime unitaire de la prime d'objectif (#26, R8). Un changement s'applique à
+ * toute la semaine en cours et aux suivantes, jamais aux semaines closes (R12) : la difficulté d'une
+ * semaine se lit dans ses réglages (`WeekSettings`).
  */
 export type Difficulty = 'easy' | 'medium' | 'hard';
 

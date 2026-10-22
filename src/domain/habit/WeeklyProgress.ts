@@ -20,7 +20,9 @@ export function weeklyProgressOf(checkIns: readonly CheckIn[], week: Week, upTo:
  * moins égale à l'objectif de la semaine (R7). Au-delà, l'objectif reste atteint (« 4/3 »). Une
  * semaine sans objectif (`null`, avant la mise à jour, R17) ne l'atteint jamais. Pas de pénalité
  * sinon.
+ * Vrai seulement avec un objectif : sert aussi de garde de type (`weekTarget` est alors un
+ * nombre) ; faux ne dit rien de l'objectif.
  */
-export function isTargetReached(progress: number, weekTarget: number | null): boolean {
+export function isTargetReached(progress: number, weekTarget: number | null): weekTarget is number {
   return weekTarget !== null && progress >= weekTarget;
 }
