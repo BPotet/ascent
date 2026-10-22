@@ -45,9 +45,10 @@ tags:
 - takeScreenshot: trial-battle-p9-first-use
 - tapOn:
     id: 'battle-hint-defense'
+# Sur l'émulateur sans animations, l'app réduit les animations : la bannière est `phase-banner-still`.
 - extendedWaitUntil:
     visible:
-      id: 'phase-banner'
+      id: 'phase-banner.*'
     timeout: 5000
 - takeScreenshot: trial-battle-p0-enemy-phase
 - extendedWaitUntil:
