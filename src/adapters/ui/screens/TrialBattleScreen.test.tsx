@@ -440,7 +440,7 @@ describe('TrialBattleScreen', () => {
       expect(screen.getByRole('header', { name: 'Combat perdu' })).toBeOnTheScreen();
       expect(screen.getByText('La Sentinelle est tombée.')).toBeOnTheScreen();
       expect(sceneProps().heroPose).toBe('fallen');
-      fireEvent.press(screen.getByRole('button', { name: 'Quitter' }));
+      await fireEvent.press(screen.getByRole('button', { name: 'Quitter' }));
       expect(test.onClose).toHaveBeenCalledTimes(1);
     });
 
