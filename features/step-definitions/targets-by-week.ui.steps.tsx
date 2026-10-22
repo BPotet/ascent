@@ -17,8 +17,8 @@
  *   (`openWeek`, vérifié dans `test/app/navigation.test.tsx`) ;
  * - le contexte : les 4 habitudes du contexte et leurs objectifs atteints (`targetsByWeekStory`).
  *
- * Le scénario 7 (feedback « Objectif atteint » depuis le Détail du jour) attend la prime d'objectif
- * de #26 : il est en attente (`test.todo`), jamais mergé ainsi (phase B de #27).
+ * Le scénario 7 rejoue le feedback « Objectif atteint » (F1) de #26 depuis le Détail du jour : le
+ * message s'affiche dans le panneau, au-dessus de lui ; l'expérience se lit dans l'en-tête.
  */
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react-native';
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
@@ -34,6 +34,7 @@ import { InMemoryUnitOfWork } from '../../src/application/testing/InMemoryUnitOf
 import { settableClock } from '../../src/application/testing/settableClock';
 import { deleteHabit } from '../../src/application/useCases/deleteHabit';
 import { introduceWeeklyTarget } from '../../src/application/useCases/introduceWeeklyTarget';
+import { Character } from '../../src/domain/character/Character';
 import type { Day } from '../../src/domain/day/Day';
 import { Week } from '../../src/domain/week/Week';
 import { frenchDay } from '../support/frenchDay';
@@ -59,6 +60,8 @@ interface World {
   shown: boolean;
   /** La semaine que la Vue Mois a demandé d'ouvrir. */
   openedWeek?: Week | undefined;
+  /** La correction faite dans le Détail du jour, et l'objectif atteint de sa ligne avant elle. */
+  corrected?: { readonly day: Day; readonly reachedBefore: number } | undefined;
   /** La ligne que lit le lecteur d'écran. */
   read?: ReturnType<typeof screen.getByTestId> | undefined;
 }
@@ -162,9 +165,11 @@ const steps: StepDefinitions = ({ given, when, then }) => {
     }
   });
   given(
-    /^l'habitude « ([^»]+) », objectif (\d), est « fait » le (.+)$/,
-    async (name: string, target: string, dates: string) => {
+    /^l'habitude « ([^»]+) »(?:, en « ([^»]+) »)?, objectif (\d), est « fait » le (.+)$/,
+    async (name: string, difficulty: string | undefined, target: string, dates: string) => {
       expect(STORY_HABITS.find((habit) => habit.name === name)?.weeklyTarget).toBe(Number(target));
+      // Les habitudes du contexte sont créées en « Moyenne ».
+      expect(difficulty ?? 'Moyenne').toBe('Moyenne');
       const days = daysOf(dates);
       await setDoneDays(
         deps(),
@@ -174,6 +179,18 @@ const steps: StepDefinitions = ({ given, when, then }) => {
       );
     },
   );
+  // « Étant donné » avant la correction : fixe le solde enregistré ; « Alors » après : l'en-tête.
+  given(/^le personnage a (\d+) Xp$/, async (xp: string) => {
+    if (world.corrected !== undefined) {
+      await waitFor(() =>
+        expect(screen.getByTestId('character-bar')).toHaveAccessibleName(
+          `Expérience du personnage : ${xp} XP`,
+        ),
+      );
+      return;
+    }
+    await world.unitOfWork.run(({ character }) => character.save(new Character(Number(xp))));
+  });
   given(/^la lecture des données sur le téléphone échoue$/, () => {
     world.unitOfWork.failReads();
   });
@@ -194,6 +211,20 @@ const steps: StepDefinitions = ({ given, when, then }) => {
     await fireEvent.press(screen.getByTestId(`month-day-${day.toIsoString()}`));
     expect(await screen.findByTestId(`day-detail-${day.toIsoString()}`)).toBeOnTheScreen();
   });
+  when(
+    /^le joueur corrige le (.+) de « ([^»]+) » en « fait » dans le Détail du jour$/,
+    async (date: string, name: string) => {
+      await monthViewShown();
+      const day = dayOf(date);
+      const row = screen.getByTestId(`week-targets-${Week.containing(day).start.toIsoString()}`);
+      const count = String(within(row).getByText(/objectifs? atteints?$/u).props.children);
+      world.corrected = { day, reachedBefore: Number(/^(\d+)\//u.exec(count)?.[1]) };
+      await fireEvent.press(screen.getByTestId(`month-day-${day.toIsoString()}`));
+      await fireEvent.press(
+        await screen.findByRole('switch', { name: new RegExp(`^${name}, .+, pas fait`, 'u') }),
+      );
+    },
+  );
   when(/^le lecteur d'écran lit la ligne de la (semaine du .+)$/, async (text: string) => {
     await monthViewShown();
     const week = weekOfText(text, world.clock.today());
@@ -267,6 +298,23 @@ const steps: StepDefinitions = ({ given, when, then }) => {
     expect(screen.queryByTestId('month-grid')).toBeNull();
     expect(screen.queryByTestId('targets-by-week')).toBeNull();
   });
+  then(/^le message « ([^»]+) » s'affiche$/, async (message: string) => {
+    const { day } = world.corrected as NonNullable<World['corrected']>;
+    // Dans le panneau du Détail du jour, au-dessus de lui (#26, #27).
+    const sheet = within(screen.getByTestId(`day-detail-${day.toIsoString()}`));
+    expect(await sheet.findByTestId('toast')).toHaveTextContent(new RegExp(`^${message}\\s`, 'u'));
+  });
+  then(
+    /^la ligne « ([^»]+) » de la section passe à un objectif atteint de plus$/,
+    async (title: string) => {
+      const { reachedBefore } = world.corrected as NonNullable<World['corrected']>;
+      await waitFor(() =>
+        expect(within(rowTitled(title)).getByText(/objectifs? atteints?$/u)).toHaveTextContent(
+          new RegExp(`^${reachedBefore + 1}/`, 'u'),
+        ),
+      );
+    },
+  );
   then(/^il annonce « ([^»]+) »$/, (announced: string) => {
     expect(world.read).toHaveAccessibleName(announced);
     expect(world.read).toBe(screen.getByRole('button', { name: announced }));
@@ -290,20 +338,12 @@ const ON_SCREEN = new Set([
   'Le Détail du jour affiche la progression de la semaine de ce jour',
   'Échec de chargement de la Vue Mois',
   "Le lecteur d'écran lit les lignes de la section",
+  "Une correction dans le Détail du jour qui atteint l'objectif joue le feedback",
 ]);
-/** Phase B de #27 : attend la prime d'objectif et le feedback F1 de #26. */
-const AWAITING_26 = "Une correction dans le Détail du jour qui atteint l'objectif joue le feedback";
 
 const feature = loadFeature('features/targets-by-week.feature');
 const scenarios = feature.scenarios.filter(({ title }) => ON_SCREEN.has(title));
 if (scenarios.length !== ON_SCREEN.size) {
   throw new Error('A scenario run on screen is missing from features/targets-by-week.feature');
 }
-if (!feature.scenarios.some(({ title }) => title === AWAITING_26)) {
-  throw new Error('The scenario awaiting #26 is missing from features/targets-by-week.feature');
-}
 autoBindSteps([{ ...feature, scenarios, scenarioOutlines: [] }], [steps]);
-
-describe(`Feature: ${feature.title}, on screen (awaiting #26)`, () => {
-  test.todo(`Scenario: ${AWAITING_26}`);
-});

@@ -13,17 +13,20 @@
  * - toucher un jour de la Vue Mois ouvre son Détail du jour tel que la Vue Mois le montre
  *   (`dayDetailOf`), puis relu (`getDayDetail`) : les deux sont vérifiés ; la progression d'une
  *   habitude y est « 2/3 semaine du 12 octobre » (`progress`) ;
+ * - corriger un jour dans le Détail du jour = `toggleCheckIn` sur ce jour clos ; le message F1 est
+ *   « Objectif atteint · semaine du 12 octobre » quand le résultat atteint l'objectif d'une semaine
+ *   close (`targetReachedChange`, `closedWeek`, `week`, #26), « Objectif de la semaine atteint » pour
+ *   la semaine en cours ; « le personnage a N Xp » avant la correction fixe le solde enregistré ;
  * - le contexte : les 4 habitudes du contexte et leurs objectifs atteints (`targetsByWeekStory`) ;
  *   « avant la mise à jour » : un changement de réglages sans objectif, inséré dans la base comme
  *   la version précédente l'enregistrait, puis le changement d'introduction du 28 septembre.
  *
- * Invariant de l'expérience (ADR 0003) : l'expérience enregistrée est celle des suivis, vérifiée à
- * la fin de chaque scénario.
+ * Invariant de l'expérience (ADR 0003) : l'écart entre l'expérience enregistrée et celle des suivis
+ * et des primes est fixé par « le personnage a N Xp » (0 sinon), et vérifié à la fin de chaque
+ * scénario.
  *
  * Exécutés ici : les scénarios métier (`USE_CASES`). Les autres, et la vérification à l'écran des
- * mêmes scénarios, sont dans `targets-by-week.ui.steps.tsx`. Le scénario 7 (feedback « Objectif
- * atteint » depuis le Détail du jour) attend la prime d'objectif de #26 : il est en attente
- * (`test.todo`), jamais mergé ainsi (phase B de #27).
+ * mêmes scénarios, sont dans `targets-by-week.ui.steps.tsx`.
  */
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
 
@@ -38,8 +41,14 @@ import {
   getDayDetail,
   type DayDetail,
 } from '../../src/application/useCases/getDayDetail';
+import { getCharacter } from '../../src/application/useCases/getCharacter';
 import { getMonthView, type MonthView } from '../../src/application/useCases/getMonthView';
 import { introduceWeeklyTarget } from '../../src/application/useCases/introduceWeeklyTarget';
+import {
+  toggleCheckIn,
+  type ToggleCheckInResult,
+} from '../../src/application/useCases/toggleCheckIn';
+import { Character } from '../../src/domain/character/Character';
 import type { Day } from '../../src/domain/day/Day';
 import { Month } from '../../src/domain/month/Month';
 import { Week } from '../../src/domain/week/Week';
@@ -84,6 +93,10 @@ interface World {
   shown: MonthView[];
   /** Le Détail du jour ouvert depuis la Vue Mois (`dayDetailOf`), et le même relu. */
   opened?: { readonly fromMonth: DayDetail; readonly read: DayDetail } | undefined;
+  /** L'écart entre l'expérience enregistrée et l'invariant, fixé par « le personnage a N Xp ». */
+  xpGap: number;
+  /** La correction faite dans le Détail du jour, et l'objectif atteint de sa ligne avant elle. */
+  corrected?: { readonly result: ToggleCheckInResult; readonly reachedBefore: number } | undefined;
 }
 
 let world: World;
@@ -172,9 +185,11 @@ const steps: StepDefinitions = ({ given, when, then }) => {
     },
   );
   given(
-    /^l'habitude « ([^»]+) », objectif (\d), est « fait » le (.+)$/,
-    async (name: string, target: string, dates: string) => {
+    /^l'habitude « ([^»]+) »(?:, en « ([^»]+) »)?, objectif (\d), est « fait » le (.+)$/,
+    async (name: string, difficulty: string | undefined, target: string, dates: string) => {
       expect(STORY_HABITS.find((habit) => habit.name === name)?.weeklyTarget).toBe(Number(target));
+      // Les habitudes du contexte sont créées en « Moyenne ».
+      expect(difficulty ?? 'Moyenne').toBe('Moyenne');
       const days = daysOf(dates);
       await setDoneDays(
         world.deps,
@@ -205,6 +220,55 @@ const steps: StepDefinitions = ({ given, when, then }) => {
       read: await getDayDetail(world.deps, day),
     };
   });
+
+  // « Étant donné » avant la correction : fixe le solde enregistré ; « Alors » après : le vérifie.
+  given(/^le personnage a (\d+) Xp$/, async (xp: string) => {
+    if (world.corrected !== undefined) {
+      expect((await getCharacter(world.deps)).xp).toBe(Number(xp));
+      return;
+    }
+    const { expected } = await experienceInvariant(world.deps.unitOfWork);
+    await world.deps.unitOfWork.run(({ character }) => character.save(new Character(Number(xp))));
+    world.xpGap = Number(xp) - expected;
+  });
+  when(
+    /^le joueur corrige le (.+) de « ([^»]+) » en « fait » dans le Détail du jour$/,
+    async (date: string, name: string) => {
+      const day = dayOf(date);
+      const view = await showMonth(Month.containing(day));
+      const monthDay = view.days.find((each) => each.day.equals(day));
+      const detail = dayDetailOf(monthDay!, view.targetsByWeek);
+      const habitDay = detail.habits.find(({ habit }) => habit.name.value === name);
+      expect(habitDay).toMatchObject({ status: 'missed', editable: true });
+      const reachedBefore =
+        view.targetsByWeek.find((row) => row.week.contains(day))?.reachedCount ?? 0;
+      const result = await toggleCheckIn(world.deps, habitDay!.habit.id, day);
+      expect(result).toMatchObject({ ok: true, isCorrection: true });
+      world.corrected = { result, reachedBefore };
+      await showMonth(Month.containing(day));
+    },
+  );
+  then(/^le message « ([^»]+) » s'affiche$/, (message: string) => {
+    const { result } = world.corrected as NonNullable<World['corrected']>;
+    if (!result.ok) {
+      throw new Error('The correction was not saved');
+    }
+    // F1 : « Objectif atteint · semaine du 12 octobre » pour une semaine close (#26).
+    expect(result).toMatchObject({ targetReachedChange: 'reached', targetReached: true });
+    const title = result.closedWeek
+      ? `Objectif atteint · ${weekNameOf(result.week, today())}`
+      : 'Objectif de la semaine atteint';
+    expect(title).toBe(message);
+    expect(result.targetBonusChange).toBeGreaterThan(0);
+  });
+  then(
+    /^la ligne « ([^»]+) » de la section passe à un objectif atteint de plus$/,
+    (title: string) => {
+      const { reachedBefore } = world.corrected as NonNullable<World['corrected']>;
+      const row = shownView().targetsByWeek.find((each) => rowTitleOf(each, today()) === title);
+      expect(row?.reachedCount).toBe(reachedBefore + 1);
+    },
+  );
 
   then(/^la section « Objectifs par semaine » s'affiche sous la grille$/, () => {
     expect(shownView().days.length).toBeGreaterThan(0);
@@ -261,12 +325,13 @@ beforeEach(async () => {
       unitOfWork: new SqliteUnitOfWork(db),
     },
     shown: [],
+    xpGap: 0,
   };
 });
 
 afterEach(async () => {
   const { xp, expected } = await experienceInvariant(world.deps.unitOfWork);
-  expect(xp).toBe(expected);
+  expect(xp - expected).toBe(world.xpGap);
 });
 
 /** Les scénarios exécutés à travers les cas d'usage (notes techniques de #27). */
@@ -275,20 +340,12 @@ const USE_CASES = new Set([
   'Une semaine à cheval sur deux mois apparaît dans les deux',
   "Les semaines d'avant la mise à jour n'ont pas de ligne",
   'Le Détail du jour affiche la progression de la semaine de ce jour',
+  "Une correction dans le Détail du jour qui atteint l'objectif joue le feedback",
 ]);
-/** Phase B de #27 : attend la prime d'objectif et le feedback F1 de #26. */
-const AWAITING_26 = "Une correction dans le Détail du jour qui atteint l'objectif joue le feedback";
 
 const feature = loadFeature('features/targets-by-week.feature');
 const scenarios = feature.scenarios.filter(({ title }) => USE_CASES.has(title));
 if (scenarios.length !== USE_CASES.size) {
   throw new Error('A scenario run through the use cases is missing from targets-by-week.feature');
 }
-if (!feature.scenarios.some(({ title }) => title === AWAITING_26)) {
-  throw new Error('The scenario awaiting #26 is missing from targets-by-week.feature');
-}
 autoBindSteps([{ ...feature, scenarios, scenarioOutlines: [] }], [steps]);
-
-describe(`Feature: ${feature.title} (awaiting #26)`, () => {
-  test.todo(`Scenario: ${AWAITING_26}`);
-});
