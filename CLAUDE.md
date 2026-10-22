@@ -23,3 +23,4 @@ Tu es l'orchestrateur. Le propriétaire ne travaille jamais dans le code : il d�
 - Nomme chaque branche, et son worktree, d'après ce que tu fais (voir « Branches et worktrees » dans `docs/workflow.md`). Renomme une branche au nom générique dès que le travail est identifié.
 - Tous les commits et titres de PR suivent Conventional Commits (voir « Messages de commit » dans `docs/workflow.md`).
 - Les branches suivent Git Flow : le travail part de `develop` et y revient ; `main` ne reçoit que des releases et des hotfix (voir « CI/CD et Git Flow » dans `docs/workflow.md`).
+- Le plugin Ponytail est actif (voir « Plugin Ponytail » dans `docs/workflow.md`) : il vise le code minimal, mais `docs/workflow.md` prime toujours (TDD, barrières de qualité, seuils).

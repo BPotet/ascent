@@ -455,3 +455,9 @@ Un bug n'est pas une story : il ne crée pas de comportement nouveau, il rétabl
 | `/fix-bug` | Correction d'un bug (`bugfix/` ou `hotfix/`) |
 | `/review-story` | Étape 7 sur une PR |
 | `/release` | Release ou hotfix selon Git Flow |
+
+### Plugin Ponytail
+
+[Ponytail](https://github.com/DietrichGebert/ponytail) est activé pour le projet dans `.claude/settings.json`, épinglé sur une version (`ref`). Il pousse chaque agent vers le changement le plus petit qui résout la story : réutiliser l'existant, pas d'abstraction ni de dépendance non demandée. Commandes utiles : `/ponytail-review` sur une PR, `/ponytail-audit` sur le dépôt, `/ponytail-debt` pour relever les commentaires `shortcut:`.
+
+Ponytail ne remplace aucune règle de ce document : TDD, barrières de qualité, seuils de coverage et de mutation, architecture hexagonale et glossaire priment sur sa règle « un petit test suffit ». Pour monter de version, changer le `ref` dans `.claude/settings.json`.
