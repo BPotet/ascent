@@ -416,6 +416,14 @@ describe('MonthViewScreen', () => {
         }),
       ).toBeTruthy();
       expect(await screen.findByText('Fait · 1/1 semaine du 5 octobre')).toBeOnTheScreen();
+      // F1 dans le panneau, et les deux pastilles dans l'en-tête de la Vue Mois (#26).
+      const hidden = { includeHiddenElements: true };
+      expect(
+        within(screen.getByTestId('day-detail-2026-10-07')).getByTestId('toast'),
+      ).toHaveTextContent('Objectif atteint · semaine du 5 octobre\nCourir 5 km 1/1 · +5 XP prime');
+      expect(screen.getByTestId('xp-change', hidden)).toHaveTextContent('+10 XP');
+      expect(screen.getByTestId('xp-change-bonus', hidden)).toHaveTextContent('+5 XP prime');
+      expect(dependencies.haptics.success).toHaveBeenCalledTimes(2);
     });
   });
 });

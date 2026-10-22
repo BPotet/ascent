@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react-native';
 import { Text } from 'react-native';
 
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
@@ -467,5 +467,94 @@ describe('DayDetailSheet and the progress of the week (#27)', () => {
     expect(
       screen.getByTestId(`habit-target-reached-${running}`, { includeHiddenElements: true }),
     ).toBeTruthy();
+  });
+});
+
+describe('DayDetailSheet and the feedback « Objectif atteint » (F1, #26, #27)', () => {
+  const today = october(21);
+  const hidden = { includeHiddenElements: true };
+  let running: HabitId;
+
+  /** « Courir 5 km », Moyenne, objectif 3, créée le 28 septembre, « fait » les 12 et 14 octobre. */
+  beforeEach(async () => {
+    dependencies.unitOfWork = new InMemoryUnitOfWork();
+    dependencies.clock.setToday(Day.of(2026, 9, 28));
+    const created = await createHabit(dependencies, 'Courir 5 km', 'medium', 3);
+    running = created.ok ? created.habit.id : 0;
+    for (const each of [12, 14]) {
+      dependencies.clock.setToday(october(each));
+      await toggleCheckIn(dependencies, running, october(each));
+    }
+    dependencies.clock.setToday(today);
+    dependencies.haptics.success.mockClear();
+  });
+
+  async function openOn(day: Day) {
+    await renderScreen(
+      <DayDetailSheet
+        opened={await getDayDetail(dependencies, day)}
+        today={dependencies.clock.today()}
+        onClose={jest.fn()}
+      />,
+      dependencies,
+    );
+    return within(screen.getByTestId(`day-detail-${day.toIsoString()}`));
+  }
+
+  it('plays F1 inside the panel when a correction reaches the target (scenario 7)', async () => {
+    expect((await getCharacter(dependencies)).xp).toBe(20);
+    const sheet = await openOn(october(16));
+
+    await fireEvent.press(row(/^Courir 5 km, vendredi 16 octobre/u));
+
+    expect(await sheet.findByTestId('toast')).toHaveTextContent(
+      'Objectif atteint · semaine du 12 octobre\nCourir 5 km 3/3 · +15 XP prime',
+    );
+    expect((await getCharacter(dependencies)).xp).toBe(45);
+    expect(dependencies.haptics.success).toHaveBeenCalledTimes(2);
+    expect(await sheet.findByTestId(`habit-target-reached-${running}`, hidden)).toHaveTextContent(
+      'Objectif atteint',
+    );
+    expect(screen.queryByText(/^Correction enregistrée/u)).toBeNull();
+  });
+
+  it('shows the discreet message, without vibration, when a correction loses the target', async () => {
+    await doneOn(running, october(16));
+    dependencies.clock.setToday(today);
+    dependencies.haptics.success.mockClear();
+    const sheet = await openOn(october(16));
+
+    await fireEvent.press(row(/^Courir 5 km, vendredi 16 octobre/u));
+
+    expect(await sheet.findByTestId('toast')).toHaveTextContent(
+      'Objectif de la semaine du 12 octobre plus atteint · Courir 5 km 2/3 · −15 XP prime',
+    );
+    expect((await getCharacter(dependencies)).xp).toBe(20);
+    expect(dependencies.haptics.success).not.toHaveBeenCalled();
+  });
+
+  it('names a week starting on the 1st « semaine du 1er juin »', async () => {
+    dependencies.unitOfWork = new InMemoryUnitOfWork();
+    dependencies.clock.setToday(Day.of(2026, 6, 1));
+    const created = await createHabit(dependencies, 'Lire', 'medium', 1);
+    const reading = created.ok ? created.habit.id : 0;
+    dependencies.clock.setToday(Day.of(2026, 6, 10));
+    const sheet = await openOn(Day.of(2026, 6, 2));
+
+    await fireEvent.press(row(/^Lire, mardi 2 juin/u));
+
+    expect(await sheet.findByTestId('toast')).toHaveTextContent(
+      'Objectif atteint · semaine du 1er juin\nLire 1/1 · +5 XP prime',
+    );
+    expect(reading).toBeGreaterThan(0);
+  });
+
+  it('shows no message for a correction that does not cross the target', async () => {
+    const sheet = await openOn(october(12));
+
+    await fireEvent.press(row(/^Courir 5 km, lundi 12 octobre/u));
+
+    await waitFor(async () => expect((await getCharacter(dependencies)).xp).toBe(10));
+    expect(sheet.queryByTestId('toast')).toBeNull();
   });
 });

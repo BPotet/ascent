@@ -69,7 +69,12 @@ export function useDayDetail(opened: DayDetail): {
     [isToday],
   );
 
-  const { shown, toggle } = useOptimisticToggle({ onSaved, refresh, undoneStatusOf });
+  const { shown, toggle } = useOptimisticToggle({
+    onSaved,
+    refresh,
+    undoneStatusOf,
+    splitBonus: true,
+  });
 
   const shownDetail = useMemo<DayDetail>(
     () =>

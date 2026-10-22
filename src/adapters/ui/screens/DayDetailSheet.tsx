@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { DayDetail } from '../../../application/useCases/getDayDetail';
@@ -7,13 +7,16 @@ import type { Day } from '../../../domain/day/Day';
 import { Button } from '../components/Button';
 import { AlertGlyph } from '../components/Glyph';
 import { HabitRow } from '../components/HabitRow';
+import { targetToastOf, Toast } from '../components/Toast';
 import { CHECK_IN_SAVE_FAILED, CORRECTION_SAVE_FAILED } from '../format/checkInMessages';
 import { capitalize, formatDayAndMonth } from '../format/formatDay';
 import { dayDetailSummary, notStartedHint } from '../format/formatMonth';
 import { weekName } from '../format/formatTargetsByWeek';
+import type { TargetFeedback } from '../format/targetFeedback';
 import { useExperience, xpChangeOn } from '../state/Experience';
 import { useDayDetail } from '../state/useDayDetail';
 import { useReducedMotion } from '../state/useReducedMotion';
+import { targetFlashOn, useTargetFeedback } from '../state/useTargetFeedback';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
@@ -30,6 +33,11 @@ import { typography } from '../theme/typography';
  * 12 octobre », ou « 2/3 cette semaine » pour la semaine en cours. Une habitude sans objectif de la
  * semaine (avant la mise à jour) n'en montre pas, comme dans la Vue Semaine. La progression suit la
  * relecture du détail, après l'enregistrement d'un tap, comme dans la Vue Semaine.
+ *
+ * Une correction qui atteint l'objectif de la semaine joue le même feedback que la Vue Semaine (F1,
+ * `useTargetFeedback`, #26) : éclat du badge, message « Objectif atteint · semaine du 12 octobre »
+ * au-dessus du panneau, dans le `Modal`, vibration, pastille de la prime dans l'en-tête ; un retour
+ * sous l'objectif montre le message discret.
  *
  * Toucher une ligne fait le même geste que la Vue Journée (aujourd'hui) ou corrige le jour clos
  * (R10, sans limite de temps, au barème de la difficulté de sa semaine, marque « corrigé ») : la
@@ -51,11 +59,25 @@ export function DayDetailSheet({
   const experience = useExperience();
   const [failed, setFailed] = useState<HabitDay | null>(null);
   const testID = `day-detail-${opened.day.toIsoString()}`;
+  const [toast, setToast] = useState<(ReturnType<typeof targetToastOf> & { id: number }) | null>(
+    null,
+  );
+  const toastCount = useRef(0);
+  const showTargetToast = useCallback((feedback: TargetFeedback) => {
+    toastCount.current += 1;
+    setToast({ id: toastCount.current, ...targetToastOf(feedback) });
+  }, []);
+  const hideToast = useCallback(() => setToast(null), []);
+  const target = useTargetFeedback({ showToast: showTargetToast });
 
   const tap = async (habitDay: HabitDay) => {
     setFailed(null);
+    setToast(null);
     const outcome = await toggle(habitDay);
-    if (!outcome.ok && outcome.reason === 'saveFailed') {
+    if (outcome.ok) {
+      // F1 ou le retour sous l'objectif, comme dans la Vue Semaine (#26).
+      target.play(outcome, outcome.habitDay, outcome.isCorrection && outcome.habitDay.corrected);
+    } else if (outcome.reason === 'saveFailed') {
       setFailed(habitDay);
     }
   };
@@ -72,14 +94,27 @@ export function DayDetailSheet({
       onRequestClose={onClose}
       testID={testID}
     >
-      <View style={styles.container}>
+      <View accessibilityViewIsModal style={styles.container}>
         <Pressable
           accessible={false}
           onPress={onClose}
           testID="day-detail-scrim"
           style={styles.scrim}
         />
-        <View accessibilityViewIsModal style={styles.sheet}>
+        {/* Le message F1 au-dessus du panneau, dans le Modal : rendu par l'écran, il serait caché. */}
+        <View pointerEvents="box-none" style={styles.toastSlot}>
+          {toast !== null && (
+            <Toast
+              key={toast.id}
+              message={toast.message}
+              variant={toast.variant}
+              target={toast.target}
+              announcement={toast.announcement}
+              onHide={hideToast}
+            />
+          )}
+        </View>
+        <View style={styles.sheet}>
           <ScrollView contentContainerStyle={styles.content} bounces={false}>
             <View style={styles.grab} />
             <Text accessibilityRole="header" style={[typography.sheetTitle, styles.title]}>
@@ -92,6 +127,7 @@ export function DayDetailSheet({
                 habitDay={habitDay}
                 weeklyProgress={progressOf.get(habitDay.habit.id)}
                 weekLabel={shownWeek}
+                targetFlash={targetFlashOn(target.flash, habitDay)}
                 compact
                 xpChange={xpChangeOn(experience.change, habitDay)}
                 onToggle={(touched) => void tap(touched)}
@@ -135,6 +171,7 @@ export function DayDetailSheet({
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'flex-end' },
+  toastSlot: { height: 0, zIndex: 1 },
   scrim: { ...StyleSheet.absoluteFill, backgroundColor: colors.scrim },
   sheet: {
     maxHeight: '85%',
