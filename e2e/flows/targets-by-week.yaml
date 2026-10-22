@@ -72,8 +72,10 @@ tags:
     id: 'habit-row-1'
 # F1 dans le panneau (#26) : le message au-dessus du Détail du jour, avec la prime.
 - extendedWaitUntil:
-    visible: 'Objectif de la semaine atteint\sCourir 5 km 1/1 · \+5 XP prime'
+    visible:
+      id: 'toast'
     timeout: 10000
+- assertVisible: 'Objectif de la semaine atteint\sCourir 5 km 1/1 · \+5 XP prime'
 - takeScreenshot: targets-by-week-E6-3-day-detail-correction-F1
 - extendedWaitUntil:
     visible: 'Courir 5 km, .+, fait, 1 sur 1 cette semaine, objectif atteint'
