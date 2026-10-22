@@ -34,7 +34,7 @@ export type DayViewHabit = HabitDay & {
   /**
    * Vrai si un changement d'objectif enregistré aujourd'hui s'applique dès cette semaine : seulement
    * le jour de création (R13). Faux : « Modifier l'habitude » annonce « Nouvel objectif à partir de
-   * lundi prochain. Cette semaine reste à N. »
+   * lundi prochain (19 octobre). Cette semaine reste à N. »
    */
   readonly targetChangeAppliesThisWeek: boolean;
 };
