@@ -9,6 +9,11 @@
 # donc +10 XP (une case « fait » réévaluée de 10 à 20 XP), et non +20 XP comme avec les deux jours
 # du scénario Gherkin. Les semaines closes, plusieurs jours et les baisses sont couverts par
 # `features/difficulty.feature` et les tests des cas d'usage.
+# Prime d'objectif (#26) : créée aujourd'hui, l'habitude a l'objectif 7 réduit aux jours restants,
+# 1 le dimanche : la cocher atteint alors l'objectif (+5 XP de prime en Moyenne), et passer en
+# « Difficile » réévalue aussi la prime (+5 XP de plus). Les expériences exactes passent par
+# `subflows/expect-xp.yaml` (10 ou 15 XP, puis 20 ou 30 XP), et le message « Habitude modifiée »
+# par deux branches choisies sur le libellé de la ligne (+10 XP, ou +15 XP objectif atteint).
 # Captures pour la comparaison avec la maquette docs/mockups/22-difficulte-objectif (E7, E1, E4).
 appId: com.bpotet.ascent
 name: Passer une habitude en Difficile dans Modifier l'habitude
@@ -37,14 +42,12 @@ tags:
 # Cochée : 10 XP.
 - tapOn:
     id: 'habit-row-1'
-- extendedWaitUntil:
-    visible: 'Courir 5 km, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
-    timeout: 10000
-- extendedWaitUntil:
-    visible:
-      id: 'xp-counter'
-      text: '10 XP'
-    timeout: 10000
+- runFlow:
+    file: ../subflows/expect-xp.yaml
+    env:
+      ROW: 'Courir 5 km, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi'
+      XP: '10 XP'
+      XP_IF_TARGET_REACHED: '15 XP'
 
 # « Modifier l'habitude » : la difficulté de la semaine est préremplie, rien n'a changé.
 - tapOn:
@@ -94,7 +97,6 @@ tags:
     visible:
       id: 'toast'
     timeout: 10000
-- assertVisible: 'Habitude modifiée · \+10 XP'
 - takeScreenshot: difficulty-E7-3-updated-toast
 - extendedWaitUntil:
     notVisible:
@@ -103,16 +105,29 @@ tags:
 - extendedWaitUntil:
     visible: 'Courir 5 km, .+, fait, .+ cette semaine, Difficile, 20 XP par suivi(, objectif atteint)?'
     timeout: 10000
-- extendedWaitUntil:
-    visible:
-      id: 'xp-counter'
-      text: '20 XP'
-    timeout: 10000
+# Le message dure 2,8 s : il est lu tout de suite, selon l'objectif atteint ou non.
+- runFlow:
+    when:
+      visible: 'Courir 5 km, .+, fait, .+ cette semaine, Difficile, 20 XP par suivi, objectif atteint'
+    commands:
+      - assertVisible: 'Habitude modifiée · \+15 XP'
+- runFlow:
+    when:
+      notVisible: 'Courir 5 km, .+, fait, .+ cette semaine, Difficile, 20 XP par suivi, objectif atteint'
+    commands:
+      - assertVisible: 'Habitude modifiée · \+10 XP'
+- runFlow:
+    file: ../subflows/expect-xp.yaml
+    env:
+      ROW: 'Courir 5 km, .+, fait, .+ cette semaine, Difficile, 20 XP par suivi'
+      XP: '20 XP'
+      XP_IF_TARGET_REACHED: '30 XP'
 - assertVisible:
     id: 'habit-difficulty-1'
 - takeScreenshot: difficulty-E1-5-day-view-after-change
 
-# Toute la semaine suit la nouvelle difficulté : un tap retire 20 XP, un autre les rend.
+# Toute la semaine suit la nouvelle difficulté : un tap retire 20 XP (et la prime), un autre les
+# rend.
 - tapOn:
     id: 'habit-row-1'
 - extendedWaitUntil:
@@ -125,11 +140,12 @@ tags:
     timeout: 10000
 - tapOn:
     id: 'habit-row-1'
-- extendedWaitUntil:
-    visible:
-      id: 'xp-counter'
-      text: '20 XP'
-    timeout: 10000
+- runFlow:
+    file: ../subflows/expect-xp.yaml
+    env:
+      ROW: 'Courir 5 km, .+, fait, .+ cette semaine, Difficile, 20 XP par suivi'
+      XP: '20 XP'
+      XP_IF_TARGET_REACHED: '30 XP'
 
 # La carte de la Vue Semaine montre « Difficile ».
 - tapOn:
