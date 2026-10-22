@@ -66,6 +66,38 @@ describe('permission origins of the Android build', () => {
     );
   });
 
+  it('lists the removal of a blocked permission and the modules it is rejected from', () => {
+    // `android.blockedPermissions` (app.json) : Expo ajoute l'élément avec tools:node="remove".
+    const report = [
+      'uses-permission#android.permission.WAKE_LOCK',
+      'ADDED from /work/android/app/src/main/AndroidManifest.xml:5:3-91',
+      'REMOVED from /work/android/app/src/main/AndroidManifest.xml:5:3-91',
+      'REJECTED from [androidx.media3:media3-exoplayer:1.9.0] /cache/AndroidManifest.xml:23:5-68',
+      '\ttools:node',
+      '\t\tADDED from /work/android/app/src/main/AndroidManifest.xml:5:66-89',
+      'uses-permission#android.permission.ACCESS_NETWORK_STATE',
+      'ADDED from /work/android/app/src/main/AndroidManifest.xml:6:3-102',
+      'REMOVED from /work/android/app/src/main/AndroidManifest.xml:6:3-102',
+      'REJECTED from [androidx.media3:media3-exoplayer:1.9.0] /cache/AndroidManifest.xml:24:5-79',
+      'REJECTED from [androidx.media3:media3-common:1.9.0] /cache/AndroidManifest.xml:22:5-79',
+      '',
+    ].join('\n');
+
+    assert.equal(
+      origins(report),
+      [
+        '  - android.permission.WAKE_LOCK: ADDED from AndroidManifest.xml:5:3-91',
+        '  - android.permission.WAKE_LOCK: REMOVED from AndroidManifest.xml:5:3-91',
+        '  - android.permission.WAKE_LOCK: REJECTED from [androidx.media3:media3-exoplayer:1.9.0]',
+        '  - android.permission.ACCESS_NETWORK_STATE: ADDED from AndroidManifest.xml:6:3-102',
+        '  - android.permission.ACCESS_NETWORK_STATE: REMOVED from AndroidManifest.xml:6:3-102',
+        '  - android.permission.ACCESS_NETWORK_STATE: REJECTED from [androidx.media3:media3-exoplayer:1.9.0]',
+        '  - android.permission.ACCESS_NETWORK_STATE: REJECTED from [androidx.media3:media3-common:1.9.0]',
+        '',
+      ].join('\n'),
+    );
+  });
+
   it('ignores the origins of the other elements of the manifest', () => {
     assert.equal(
       origins('application\nADDED from [some:module:1.0] /x/AndroidManifest.xml:1:1\n'),
