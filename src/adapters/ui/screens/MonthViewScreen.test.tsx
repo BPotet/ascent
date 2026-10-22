@@ -9,6 +9,8 @@ import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
 import { Character } from '../../../domain/character/Character';
 import { Day } from '../../../domain/day/Day';
 import type { HabitId } from '../../../domain/habit/Habit';
+import { HabitName } from '../../../domain/habit/HabitName';
+import { Week } from '../../../domain/week/Week';
 import { useTrackingChanges } from '../state/TrackingRevision';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { reduceMotionInEachTest } from '../testing/motion';
@@ -76,9 +78,13 @@ function OtherView({ change }: { readonly change: () => Promise<unknown> }) {
   );
 }
 
-async function show(onAddHabit?: () => void) {
+async function show(onAddHabit?: () => void, onOpenWeek?: (week: Week) => void) {
   await renderScreen(
-    onAddHabit ? <MonthViewScreen onAddHabit={onAddHabit} /> : <MonthViewScreen />,
+    onAddHabit || onOpenWeek ? (
+      <MonthViewScreen {...(onAddHabit && { onAddHabit })} {...(onOpenWeek && { onOpenWeek })} />
+    ) : (
+      <MonthViewScreen />
+    ),
     dependencies,
   );
   await waitFor(() =>
@@ -107,6 +113,7 @@ describe('MonthViewScreen', () => {
     await renderScreen(<MonthViewScreen />, dependencies);
 
     expect(screen.getByLabelText('Chargement de tes habitudes')).toBeBusy();
+    expect(screen.getByTestId('month-view-loading-targets').children).toHaveLength(2);
     await act(async () => read());
     expect(await screen.findByText('Ton mois est vide')).toBeOnTheScreen();
   });
@@ -285,6 +292,7 @@ describe('MonthViewScreen', () => {
       }),
     ).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: BACK_TO_CURRENT_MONTH })).toBeNull();
+    expect(screen.queryByTestId('targets-by-week')).toBeNull();
 
     dependencies.unitOfWork.failReads(false);
     await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
@@ -306,5 +314,89 @@ describe('MonthViewScreen', () => {
     await fireEvent.press(screen.getByRole('button', { name: BACK_TO_CURRENT_MONTH }));
 
     await waitFor(() => expect(shownMonth()).toBe('Octobre 2026, ce mois-ci'));
+  });
+
+  describe('targets by week (#27)', () => {
+    const section = () => within(screen.getByTestId('targets-by-week'));
+
+    it('shows the section under the grid and its legend, one row per week up to this one', async () => {
+      await givenTheBackground();
+
+      await show();
+
+      const list = within(screen.getByTestId('month-view-list'));
+      expect(list.getByRole('header', { name: 'Objectifs par semaine' })).toBeOnTheScreen();
+      expect(
+        section()
+          .getAllByRole('button')
+          .map((row) => row.props.accessibilityLabel),
+      ).toEqual([
+        'Semaine du 5 octobre, 0 objectif atteint sur 1, ouvrir la semaine',
+        'Cette semaine, 0 objectif atteint sur 2, ouvrir la semaine',
+      ]);
+      expect(section().getByText('0/1 objectif atteint')).toBeOnTheScreen();
+      expect(section().getByText('0/2 objectifs atteints')).toBeOnTheScreen();
+    });
+
+    it('opens the week of a row (scenario 2)', async () => {
+      await givenTheBackground();
+      const onOpenWeek = jest.fn();
+      await show(undefined, onOpenWeek);
+
+      await fireEvent.press(section().getByRole('button', { name: /^Semaine du 5 octobre, /u }));
+
+      expect(onOpenWeek).toHaveBeenCalledWith(Week.containing(october(5)));
+    });
+
+    it('shows no section when no week of the month has a target (before the update)', async () => {
+      const reading = await dependencies.unitOfWork.run(({ habits }) =>
+        habits.add(HabitName.parse('Lire'), october(5)),
+      );
+      await dependencies.unitOfWork.addSettingsChangeBeforeWeeklyTarget(reading.id, october(5));
+
+      await show();
+
+      expect(screen.getByTestId('month-grid')).toBeOnTheScreen();
+      expect(screen.queryByTestId('targets-by-week')).toBeNull();
+    });
+
+    it('shows neither the grid nor the section in the empty month (scenario 4)', async () => {
+      await show();
+
+      expect(screen.getByTestId('month-view-empty')).toBeOnTheScreen();
+      expect(screen.queryByTestId('targets-by-week')).toBeNull();
+    });
+
+    it('counts one more target reached after a correction in the day detail', async () => {
+      const outcome = await createHabit(
+        { ...dependencies, clock: settableClock(october(5)) },
+        'Courir 5 km',
+        'medium',
+        1,
+      );
+      expect(outcome.ok).toBe(true);
+      await show();
+      expect(
+        within(screen.getByTestId('week-targets-2026-10-05')).getByText('0/1 objectif atteint'),
+      ).toBeOnTheScreen();
+
+      await fireEvent.press(dayCell(october(7)));
+      expect(screen.getByText('Pas fait · 0/1 semaine du 5 octobre')).toBeOnTheScreen();
+      await fireEvent.press(screen.getByRole('switch', { name: /^Courir 5 km, mercredi 7/u }));
+
+      await waitFor(() =>
+        expect(
+          section().getByRole('button', {
+            name: 'Semaine du 5 octobre, 1 objectif atteint sur 1, ouvrir la semaine',
+          }),
+        ).toBeOnTheScreen(),
+      );
+      expect(
+        within(screen.getByTestId('week-targets-2026-10-05')).getByTestId('summit-flag-glyph', {
+          includeHiddenElements: true,
+        }),
+      ).toBeTruthy();
+      expect(await screen.findByText('Fait · 1/1 semaine du 5 octobre')).toBeOnTheScreen();
+    });
   });
 });

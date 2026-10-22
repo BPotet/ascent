@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { dayDetailOf, type DayDetail } from '../../../application/useCases/getDayDetail';
 import type { MonthView } from '../../../application/useCases/getMonthView';
+import type { Week } from '../../../domain/week/Week';
 import { ADD_HABIT_LABEL } from '../components/AddHabitButton';
 import { Button } from '../components/Button';
 import { CharacterBar } from '../components/CharacterBar';
@@ -12,6 +13,7 @@ import { MONTH_DAY_HEIGHT, MonthDaysHeader, MonthGrid, MonthLegend } from '../co
 import { PeriodNavigator } from '../components/PeriodNavigator';
 import { Screen } from '../components/Screen';
 import { StateMessage } from '../components/StateMessage';
+import { TargetsByWeekSection, WEEK_TARGETS_ROW_HEIGHT } from '../components/TargetsByWeekSection';
 import { monthLabel, monthSubtitle, monthTitle } from '../format/formatMonth';
 import { useExperience } from '../state/Experience';
 import { useMonthView } from '../state/useMonthView';
@@ -28,6 +30,9 @@ export const MONTH_HINT = 'Tape un jour pour voir le détail de tes habitudes et
 
 /** Le nombre de jours du squelette de chargement : 5 semaines. */
 const SKELETON_DAYS = 35;
+
+/** Le nombre de lignes grises de la section « Objectifs par semaine » dans le squelette (#27). */
+const SKELETON_WEEK_ROWS = 2;
 
 function LoadingView() {
   return (
@@ -50,6 +55,11 @@ function LoadingView() {
           <View key={index} style={[styles.skeleton, styles.skeletonDay]} />
         ))}
       </View>
+      <View testID="month-view-loading-targets" style={styles.skeletonWeeks}>
+        {Array.from({ length: SKELETON_WEEK_ROWS }, (_, index) => (
+          <View key={index} style={[styles.skeleton, styles.skeletonWeek]} />
+        ))}
+      </View>
     </View>
   );
 }
@@ -67,11 +77,22 @@ const hasNoHabit = (view: MonthView) =>
  * retour au mois en cours. En haut, l'expérience du personnage (R24).
  * États : chargement, erreur de lecture avec « Réessayer », aucune habitude.
  *
- * Toucher un jour suivi ouvre son détail (`DayDetailSheet`), où ses habitudes se corrigent ; la Vue
- * Mois se met à jour quand le détail enregistre un changement. `onAddHabit` mène à la création
- * d'une habitude (état vide).
+ * Sous la grille et sa légende, la section « Objectifs par semaine » (#27) compte, pour chaque
+ * semaine du mois jusqu'à la semaine en cours, les habitudes à objectif atteint ; elle n'apparaît
+ * pas sans ligne. Toucher une ligne ouvre la Vue Semaine sur cette semaine (`onOpenWeek`).
+ *
+ * Toucher un jour suivi ouvre son détail (`DayDetailSheet`), tout de suite avec la progression de
+ * la semaine de chaque habitude (`dayDetailOf`), où ses habitudes se corrigent ; la Vue Mois se met
+ * à jour quand le détail enregistre un changement. `onAddHabit` mène à la création d'une habitude
+ * (état vide).
  */
-export function MonthViewScreen({ onAddHabit }: { readonly onAddHabit?: () => void }) {
+export function MonthViewScreen({
+  onAddHabit,
+  onOpenWeek,
+}: {
+  readonly onAddHabit?: () => void;
+  readonly onOpenWeek?: (week: Week) => void;
+}) {
   const { state, followsCurrentMonth, previous, next, goToCurrentMonth, reload } = useMonthView();
   const experience = useExperience();
   const [opened, setOpened] = useState<DayDetail | null>(null);
@@ -155,6 +176,11 @@ export function MonthViewScreen({ onAddHabit }: { readonly onAddHabit?: () => vo
             <LinkButton label={BACK_TO_CURRENT_MONTH} onPress={goToCurrentMonth} />
           )}
           <MonthLegend />
+          <TargetsByWeekSection
+            rows={view.targetsByWeek}
+            today={view.today}
+            onOpenWeek={onOpenWeek}
+          />
           <Text style={[typography.label, styles.hint]}>{MONTH_HINT}</Text>
         </ScrollView>
       )}
@@ -162,6 +188,7 @@ export function MonthViewScreen({ onAddHabit }: { readonly onAddHabit?: () => vo
         <DayDetailSheet
           key={opened.day.toIsoString()}
           opened={opened}
+          today={view.today}
           onClose={() => setOpened(null)}
         />
       )}
@@ -196,5 +223,7 @@ const styles = StyleSheet.create({
     marginTop: 40,
   },
   skeletonDay: { width: '13.2%', height: MONTH_DAY_HEIGHT, borderRadius: 12 },
+  skeletonWeeks: { gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: 44 },
+  skeletonWeek: { height: WEEK_TARGETS_ROW_HEIGHT, borderRadius: 14 },
 });
 // Stryker restore all

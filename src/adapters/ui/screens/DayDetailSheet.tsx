@@ -3,12 +3,14 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 
 import type { DayDetail } from '../../../application/useCases/getDayDetail';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
+import type { Day } from '../../../domain/day/Day';
 import { Button } from '../components/Button';
 import { AlertGlyph } from '../components/Glyph';
 import { HabitRow } from '../components/HabitRow';
 import { CHECK_IN_SAVE_FAILED, CORRECTION_SAVE_FAILED } from '../format/checkInMessages';
 import { capitalize, formatDayAndMonth } from '../format/formatDay';
 import { dayDetailSummary, notStartedHint } from '../format/formatMonth';
+import { weekLabel } from '../format/formatTargetsByWeek';
 import { useExperience, xpChangeOn } from '../state/Experience';
 import { useDayDetail } from '../state/useDayDetail';
 import { useReducedMotion } from '../state/useReducedMotion';
@@ -23,6 +25,12 @@ import { typography } from '../theme/typography';
  * habitude attendue (#25), puis une ligne par habitude active, attendue ou non, avec son état écrit
  * et la marque « corrigé ». Les habitudes créées plus tard sont nommées, « hors habitude ».
  *
+ * Chaque habitude qui a un objectif de la semaine montre sa progression de la semaine du jour,
+ * jusqu'à aujourd'hui (`today`), et le badge « Objectif atteint » (#27) : « Fait · 2/3 semaine du
+ * 12 octobre », ou « 2/3 cette semaine » pour la semaine en cours. Une habitude sans objectif de la
+ * semaine (avant la mise à jour) n'en montre pas, comme dans la Vue Semaine. La progression suit la
+ * relecture du détail, après l'enregistrement d'un tap, comme dans la Vue Semaine.
+ *
  * Toucher une ligne fait le même geste que la Vue Journée (aujourd'hui) ou corrige le jour clos
  * (R10, sans limite de temps, au barème de la difficulté de sa semaine, marque « corrigé ») : la
  * ligne change tout de suite et « +20 XP » s'envole de sa coche. Si l'enregistrement échoue, la
@@ -30,9 +38,12 @@ import { typography } from '../theme/typography';
  */
 export function DayDetailSheet({
   opened,
+  today,
   onClose,
 }: {
   readonly opened: DayDetail;
+  /** Aujourd'hui, tel que la Vue Mois l'a lu : il nomme la semaine du jour (« cette semaine »). */
+  readonly today: Day;
   readonly onClose: () => void;
 }) {
   const reducedMotion = useReducedMotion();
@@ -50,6 +61,8 @@ export function DayDetailSheet({
   };
 
   const alert = detail.isToday ? CHECK_IN_SAVE_FAILED : CORRECTION_SAVE_FAILED;
+  const progressOf = new Map(detail.progress.map((progress) => [progress.habit.id, progress]));
+  const shownWeek = weekLabel(detail.week, today);
 
   return (
     <Modal
@@ -77,6 +90,8 @@ export function DayDetailSheet({
               <HabitRow
                 key={habitDay.habit.id}
                 habitDay={habitDay}
+                weeklyProgress={progressOf.get(habitDay.habit.id)}
+                weekLabel={shownWeek}
                 compact
                 xpChange={xpChangeOn(experience.change, habitDay)}
                 onToggle={(touched) => void tap(touched)}
