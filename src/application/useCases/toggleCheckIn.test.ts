@@ -713,6 +713,40 @@ describe('toggleCheckIn', () => {
       });
     });
 
+    it('awards the bonus of the week just closed when its Sunday is corrected on Monday', async () => {
+      const sunday11 = Day.of(2026, 10, 11);
+      await done(monday5, wednesday7);
+      clock.setToday(monday);
+
+      await expect(tap(sunday11)).resolves.toMatchObject({
+        isCorrection: true,
+        xpChange: 25,
+        xp: 45,
+        targetBonusChange: 15,
+        targetReachedChange: 'reached',
+        weeklyProgress: 3,
+        week: Week.containing(monday5),
+        closedWeek: true,
+      });
+    });
+
+    it('takes back the bonus of the week just closed when its Sunday is corrected on Monday', async () => {
+      const sunday11 = Day.of(2026, 10, 11);
+      await done(monday5, wednesday7, sunday11);
+      clock.setToday(monday);
+
+      await expect(tap(sunday11)).resolves.toMatchObject({
+        isCorrection: true,
+        xpChange: -25,
+        xp: 20,
+        targetBonusChange: -15,
+        targetReachedChange: 'lost',
+        weeklyProgress: 2,
+        week: Week.containing(monday5),
+        closedWeek: true,
+      });
+    });
+
     it('keeps the difficulty of a closed week for its bonus (R14)', async () => {
       await done(monday5, wednesday7);
       clock.setToday(monday);
