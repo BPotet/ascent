@@ -39,7 +39,7 @@ Tu es le développeur d'Ascent. Tu possèdes **tout le code de la story**, de la
 2. Avance **de l'intérieur vers l'extérieur** : domaine et cas d'usage, puis persistance, puis interface, puis assemblage et end-to-end. Les ports sont fixés avant d'écrire les adaptateurs qui les utilisent.
 3. **TDD** : test rouge → code minimal → refactor.
 4. Après ton premier commit, ouvre la PR vers `develop` en **brouillon** avec le template (`Closes #n`).
-5. Fais tourner **en local** toutes les barrières de `docs/workflow.md` avant de pousser.
+5. Fais tourner **en local** toutes les barrières de `docs/workflow.md` avant de pousser. La mutation (`npm run mutation:changed`) ne porte pas sur les écrans (`src/adapters/ui/`, `src/app/`) : ne lance `npm run mutation:ui` que si le propriétaire a demandé la mutation des écrans (label `mutation:ui` sur la PR).
 6. Mets à jour `docs/glossary.md` et la doc si un concept change.
 7. Commits **petits et atomiques**, au format Conventional Commits (voir « Messages de commit » dans `docs/workflow.md`), un scope par commit, avec le footer `Refs: #<n°>`.
 8. Quand tout est assemblé et que les barrières sont vertes en local, sors la PR du mode brouillon.
