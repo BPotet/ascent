@@ -1,0 +1,128 @@
+# Mutation des écrans à la demande (docs/workflow.md, barrière 9 ; avenant du 22 octobre 2026 à
+# docs/adr/0004-mutation-en-ci.md). Quand le label `mutation:ui` est posé sur une PR ouverte, mute
+# les lignes nouvelles des écrans (src/adapters/ui/, src/app/) avec les seuils actuels. Les pushs
+# suivants sur la PR sont mutés par ci.yml, qui lit le label : rien n'est muté deux fois.
+# Workflow à part : ajouter `labeled` aux types de ci.yml relancerait (ou couperait) toute la CI à
+# chaque label, et ses jobs sautés masqueraient les checks déjà rendus pour le même commit.
+name: Screen mutation
+
+on:
+  pull_request:
+    types: [labeled]
+    branches: [develop, main, 'release/**', 'hotfix/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  # Un groupe par label : poser un autre label n'annule jamais une mutation des écrans en cours.
+  group: screen-mutation-${{ github.ref }}-${{ github.event.label.name }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    name: Screen mutation plan
+    if: github.event.label.name == 'mutation:ui'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      count: ${{ steps.plan.outputs.count }}
+      base: ${{ steps.plan.outputs.base }}
+      ui-notice: ${{ steps.plan.outputs.ui_notice }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - id: plan
+        name: Plan the screen mutation shards
+        env:
+          BASE_REF: origin/${{ github.base_ref }}
+          MUTATION_MODE: changed
+          MUTATION_UI: only
+        run: node scripts/mutation/run.mjs --plan
+
+  shard:
+    name: Screen mutation tests (StrykerJS) / ${{ matrix.shard }}
+    needs: plan
+    if: needs.plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Mutate the shard (thresholds are applied by the final job)
+        env:
+          BASE_REF: ${{ needs.plan.outputs.base }}
+          MUTATION_MODE: changed
+          MUTATION_UI: only
+        run: node scripts/mutation/run.mjs --shard ${{ matrix.shard }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-shard-${{ matrix.shard }}
+          path: reports/mutation/${{ matrix.shard }}/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  score:
+    name: Screen mutation tests (StrykerJS)
+    needs: [plan, shard]
+    if: ${{ !cancelled() && needs.plan.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check the screen mutation plan
+        run: test "${{ needs.plan.result }}" = success
+      - name: Nothing to mutate
+        if: needs.plan.outputs.count == '0'
+        run: |
+          {
+            echo "## Screen mutation tests (StrykerJS)"
+            echo
+            echo "No changed screen code: screen mutation testing skipped."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Check every screen mutation shard
+        if: needs.plan.outputs.count != '0'
+        run: test "${{ needs.shard.result }}" = success
+      - uses: actions/checkout@v4
+        if: needs.plan.outputs.count != '0'
+      - uses: actions/setup-node@v4
+        if: needs.plan.outputs.count != '0'
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+        if: needs.plan.outputs.count != '0'
+      - uses: actions/download-artifact@v4
+        if: needs.plan.outputs.count != '0'
+        with:
+          pattern: mutation-shard-*
+          path: reports/mutation
+      - name: Screen mutation score against the thresholds
+        if: needs.plan.outputs.count != '0'
+        env:
+          EXPECTED_SHARDS: ${{ needs.plan.outputs.count }}
+          MUTATION_UI_NOTICE: ${{ needs.plan.outputs.ui-notice }}
+        run: npm run mutation:score
+      - uses: actions/upload-artifact@v4
+        if: always() && needs.plan.outputs.count != '0'
+        with:
+          name: mutation-report
+          path: reports/mutation/summary.md
+          if-no-files-found: ignore
+          retention-days: 7
