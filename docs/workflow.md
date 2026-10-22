@@ -221,8 +221,9 @@ Avant toute ligne de code, l'**Impact Analyst** indexe le dépôt avec GitNexus 
 L'impact est **fort** si au moins un de ces points est vrai :
 - un changement de modèle de données stockées (migration) ;
 - une modification d'un port ou d'une règle du domaine utilisée par d'autres features ;
-- plus de 10 fichiers existants modifiés, ou plus de 2 modules touchés ;
-- une contradiction avec une autre story ouverte ou avec le glossaire.
+- une contradiction avec une autre story ouverte, avec le glossaire ou avec ce que le propriétaire a validé.
+
+Le **volume** (nombre de fichiers existants modifiés, de modules ou de couches touchés) n'est **pas** un critère d'impact fort : une story full stack traverse normalement toutes les couches. Il reste signalé dans l'analyse comme **conseil de découpage en commits**, par exemple au-delà de 10 fichiers existants modifiés ou de 2 modules touchés.
 
 Si l'impact est fort, la story revient au **PM** et à l'**Architect**, qui la redécoupent ou l'ajustent. La décision est tracée en commentaire sur l'issue. Si ce changement modifie ce que le propriétaire a validé, la story repasse par ✋.
 
