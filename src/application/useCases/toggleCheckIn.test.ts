@@ -7,6 +7,8 @@ import { InMemoryUnitOfWork, StorageUnavailableError } from '../testing/InMemory
 import type { UnitOfWork } from '../ports/UnitOfWork';
 import { experienceInvariant } from '../testing/experienceInvariant';
 import { settableClock } from '../testing/settableClock';
+import { createHabit } from './createHabit';
+import { introduceWeeklyTarget } from './introduceWeeklyTarget';
 import { toggleCheckIn } from './toggleCheckIn';
 
 const monday = Day.of(2026, 10, 12);
@@ -503,5 +505,61 @@ describe('toggleCheckIn', () => {
         }
       },
     );
+  });
+
+  describe('weekly target', () => {
+    async function expectInvariant(): Promise<void> {
+      const { xp, expected } = await experienceInvariant(unitOfWork);
+      expect(xp).toBe(expected);
+    }
+
+    beforeEach(() => {
+      unitOfWork = new InMemoryUnitOfWork();
+    });
+
+    it('pays the difficulty only, on a habit created in the middle of the week (target of the week 4)', async () => {
+      clock.setToday(thursday);
+      const created = await createHabit(deps(), 'Méditer', 'medium', 7);
+      const meditating = created.ok ? created.habit : (undefined as never);
+
+      await expect(toggleCheckIn(deps(), meditating.id, thursday)).resolves.toMatchObject({
+        ok: true,
+        xpChange: 10,
+        xp: 10,
+      });
+      await expectInvariant();
+      await expect(toggleCheckIn(deps(), meditating.id, thursday)).resolves.toMatchObject({
+        ok: true,
+        xpChange: -10,
+        xp: 0,
+      });
+      await expectInvariant();
+    });
+
+    it('pays the difficulty only, on a habit that existed before the update, after its introduction', async () => {
+      const habit = await unitOfWork.run(({ habits }) =>
+        habits.add(HabitName.parse('Cuisiner'), Day.of(2026, 10, 5)),
+      );
+      await unitOfWork.addSettingsChangeBeforeWeeklyTarget(habit.id, Day.of(2026, 10, 5), 'hard');
+      await toggleCheckIn(deps(), habit.id, monday);
+      await introduceWeeklyTarget(deps());
+
+      await expect(toggleCheckIn(deps(), habit.id, wednesday)).resolves.toMatchObject({
+        xpChange: 20,
+        xp: 40,
+      });
+      await expectInvariant();
+      await expect(toggleCheckIn(deps(), habit.id, Day.of(2026, 10, 6))).resolves.toMatchObject({
+        isCorrection: true,
+        xpChange: 20,
+        xp: 60,
+      });
+      await expectInvariant();
+      await expect(toggleCheckIn(deps(), habit.id, wednesday)).resolves.toMatchObject({
+        xpChange: -20,
+        xp: 40,
+      });
+      await expectInvariant();
+    });
   });
 });
