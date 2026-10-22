@@ -24,6 +24,7 @@ import { editHabitLabel } from './HabitRow';
 import { CORRECTED, CorrectedMark } from './CorrectedMark';
 import { DifficultyLabel } from './DifficultyIcon';
 import { HabitDayCell } from './HabitDayCell';
+import { TargetBurst } from './TargetReachedBadge';
 
 /** Cache un élément décoratif au lecteur d'écran (Android et iOS). */
 const decorative = {
@@ -90,30 +91,34 @@ export interface WeekCardTarget {
 function ProgressChip({
   habit,
   target: { weekTarget, weeklyProgress, targetReached, currentWeek },
+  flash,
 }: {
   readonly habit: Habit;
   readonly target: WeekCardTarget & { readonly weekTarget: number };
+  readonly flash: number | undefined;
 }) {
   const shown = { weeklyProgress, weekTarget, targetReached };
   return (
-    <View
-      accessible
-      accessibilityRole="image"
-      accessibilityLabel={progressChipAccessibilityLabel(shown)}
-      testID={`week-progress-${habit.id}`}
-      style={[styles.chip, targetReached && styles.chipReached]}
-    >
-      {targetReached && <SmallCheckGlyph color={colors.doneText} />}
-      <Text
-        style={[
-          styles.chipText,
-          targetReached && styles.chipTextReached,
-          !targetReached && !currentWeek && styles.chipTextPast,
-        ]}
+    <TargetBurst flash={targetReached ? flash : undefined}>
+      <View
+        accessible
+        accessibilityRole="image"
+        accessibilityLabel={progressChipAccessibilityLabel(shown)}
+        testID={`week-progress-${habit.id}`}
+        style={[styles.chip, targetReached && styles.chipReached]}
       >
-        {progressChipText(shown)}
-      </Text>
-    </View>
+        {targetReached && <SmallCheckGlyph color={colors.doneText} />}
+        <Text
+          style={[
+            styles.chipText,
+            targetReached && styles.chipTextReached,
+            !targetReached && !currentWeek && styles.chipTextPast,
+          ]}
+        >
+          {progressChipText(shown)}
+        </Text>
+      </View>
+    </TargetBurst>
   );
 }
 
@@ -161,7 +166,8 @@ function withTarget(
  * icône (« ▲▲▲ Difficile »), et lue avec son barème.
  * Avec `target` (#24), une semaine qui a un objectif montre la puce de progression à droite du nom,
  * et l'objectif après la difficulté (« · 3 fois par semaine », celui qui vaudra lundi prochain, et
- * l'objectif réduit de la semaine de création) ; l'objectif atteint borde la carte de vert.
+ * l'objectif réduit de la semaine de création) ; l'objectif atteint borde la carte de vert. Quand il
+ * vient d'être atteint (`targetFlash`, F1, #26), la puce s'éclaire d'un éclat doré.
  */
 export function HabitWeekCard({
   days,
@@ -173,6 +179,7 @@ export function HabitWeekCard({
   onNotStartedPress,
   onEdit,
   highlighted = false,
+  targetFlash,
 }: {
   readonly days: readonly HabitDay[];
   readonly today: Day;
@@ -185,6 +192,8 @@ export function HabitWeekCard({
   readonly onNotStartedPress?: (habitDay: HabitDay) => void;
   readonly onEdit?: (habit: Habit) => void;
   readonly highlighted?: boolean;
+  /** Change quand l'objectif de la semaine vient d'être atteint ici : l'éclat de la puce (F1, #26). */
+  readonly targetFlash?: number | undefined;
 }) {
   const habit = days[0]?.habit;
   if (habit === undefined) {
@@ -223,7 +232,7 @@ export function HabitWeekCard({
         ) : (
           <Text style={[typography.cardTitle, styles.name]}>{habit.name.value}</Text>
         )}
-        {shownTarget && <ProgressChip habit={habit} target={shownTarget} />}
+        {shownTarget && <ProgressChip habit={habit} target={shownTarget} flash={targetFlash} />}
       </View>
       {difficulty && (
         <View style={styles.settings}>

@@ -3,7 +3,9 @@
 Les parcours sont dans `flows/`, un fichier YAML par parcours, écrits avec [Maestro](https://maestro.mobile.dev).
 Les sous-parcours partagés sont dans `subflows/`, hors de `flows/` pour ne pas être lancés seuls :
 `launch-fresh.yaml` lance l'app sur une installation neuve et attend la Vue Journée vide, en
-rejouant le lancement (au plus deux fois) si l'émulateur laisse un écran blanc.
+rejouant le lancement (au plus deux fois) si l'émulateur laisse un écran blanc. `expect-xp.yaml`
+vérifie l'expérience exacte du personnage après un tap qui peut atteindre un objectif de la semaine
+(voir « Prime d'objectif » plus bas).
 Ils s'exécutent sur l'APK release, sans serveur de développement.
 
 ## En CI
@@ -41,6 +43,17 @@ Compteurs (#25) : l'en-tête de la Vue Journée affiche `<faites>/<attendues> fa
 `<N> habitude(s) faite(s) sur <M> attendue(s)` ; un jour de la Vue Mois est lu `<jour>[, aujourd’hui], <N>
 habitude(s) faite(s) sur <M> attendue(s)`, ou `<jour>, objectifs de la semaine atteints, aucune habitude
 attendue` avec le drapeau.
+
+Prime d'objectif (#26) : une habitude créée pendant le parcours a un objectif de la semaine réduit
+aux jours restants, 1 le dimanche ; son premier « fait » peut donc atteindre l'objectif et rapporter
+la prime d'objectif. **Toute assertion d'Xp exacte après un tap qui peut atteindre un objectif passe
+par `subflows/expect-xp.yaml`** (paramètres `ROW`, le libellé de la ligne sans `, objectif atteint`,
+`XP` et `XP_IF_TARGET_REACHED`) : deux branches exclusives, choisies sur le libellé
+`<ROW>, objectif atteint` lu par le lecteur d'écran, vérifient chacune une valeur exacte. Pour un
+texte (message, confirmation de suppression), la branche porte sur le libellé lu avant l'action. Le
+parcours `target-bonus.yaml` crée ses habitudes avec l'objectif 1 : il atteint l'objectif tous les
+jours. Le message « Objectif de la semaine atteint » (F1) écrit son titre sur sa propre ligne :
+`Objectif de la semaine atteint\sLire 1/1 · \+5 XP prime`.
 
 Objectifs par semaine (#27) : sous la grille de la Vue Mois, la section `targets-by-week` a une
 ligne par semaine (`week-targets-<lundi AAAA-MM-JJ>`), lue `Semaine du <jour> <mois>, <N> objectif(s)

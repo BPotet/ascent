@@ -150,7 +150,7 @@ export function useDayView(): {
     [trackingChanged, refresh],
   );
 
-  const { shown, toggle } = useOptimisticToggle({ onSaved, refresh });
+  const { shown, toggle } = useOptimisticToggle({ onSaved, refresh, splitBonus: true });
 
   useEffect(() => {
     void refresh();

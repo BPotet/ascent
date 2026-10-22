@@ -2,7 +2,8 @@
 
 - **Statut** : accepté
 - **Date** : 21 octobre 2026
-- **Révisé** : 22 octobre 2026, §4 corrigé par #24 (décisions PM Q-A et cas limite 2)
+- **Révisé** : 22 octobre 2026, §4 corrigé par #24 (décisions PM Q-A et cas limite 2) ; §2 complété et
+  §6 ajouté par #26 (prime d'objectif, rattrapage)
 - **Décideur** : Architect (décisions de l'escalade d'impact de #23 avec le PM)
 - **Contexte produit** : épique #22 (story #23, préparation de #24 et #26)
 - **Remplace** : la décision 5 de l'ADR 0002 pour l'invariant de l'expérience
@@ -53,7 +54,11 @@ Les **réglages de la semaine** (`WeekSettings`) en sont une fonction pure,
 Barème `XP_PER_CHECK_IN` : `easy` 5, `medium` 10, `hard` 20 Xp par case « fait ». Le nouvel
 invariant de l'expérience **remplace la décision 5 de l'ADR 0002** :
 
-`xp = Σ (habitudes existantes h) Σ (suivis « fait » c de h, toutes dates) XP_PER_CHECK_IN[weekSettingsOf(changements de h, semaine de c, jour de création de h).difficulty] + retained_xp`
+`xp = Σ (habitudes existantes h) Σ (semaines W de h) weekXpOf(cases « fait » de h dans W, weekSettingsOf(changements de h, W, jour de création de h)) + retained_xp`
+
+avec, depuis #26 (§6), `weekXpOf(n, réglages) = n × XP_PER_CHECK_IN[difficulté] + targetBonusOf(n, réglages)` :
+chaque suivi « fait », de toutes dates, au barème de la difficulté de sa semaine, plus la **prime
+d'objectif** de chaque semaine dont l'objectif est atteint.
 
 Il ne dépend pas d'aujourd'hui : un changement est daté du jour de sa saisie, une semaine close
 n'est donc changée ni par un changement de réglages ultérieur, ni par un changement de fuseau ou un
@@ -64,12 +69,13 @@ travail que ce qu'il enregistre, le **delta** calculé par un seul module du dom
 
 | Cas d'usage | Delta |
 |---|---|
-| `toggleCheckIn` | `weekXpOf` de la semaine du jour touché, après moins avant, avec les réglages de cette semaine (R1, R14) |
+| `toggleCheckIn` | `weekXpOf` de la semaine du jour touché, après moins avant, avec les réglages de cette semaine (R1, R14), décomposé par `weekXpChangeOf` en part du suivi et part de la prime |
 | `updateHabit` | `xpChangeOfSettings` = `habitXpOf(après) − habitXpOf(avant)` : seules bougent les semaines dont les réglages changent, jamais une semaine close (R12) |
-| `deleteHabit` | `deletionXpOf` : `removed` (le suivi d'aujourd'hui, au barème de la semaine en cours) est retiré, `retained` (le reste) passe dans l'Xp conservée (R18, R19) |
+| `deleteHabit` | `deletionXpOf` : `removed` (le suivi d'aujourd'hui, au barème de la semaine en cours, et la prime de la semaine en cours si elle tombe sans lui) est retiré, `retained` (le reste, primes encore acquises comprises) passe dans l'Xp conservée (R18, R19) |
+| `introduceTargetBonus` | une seule fois, `Σ habitTargetBonusOf` des habitudes existantes (§6) |
 
 `weekXpOf(cases « fait », réglages de la semaine)` est le point d'extension de #26 : la prime
-d'objectif s'y ajoutera sans changer le reste. Un test d'invariant partagé
+d'objectif s'y est ajoutée sans changer le reste (§6). Un test d'invariant partagé
 (`application/testing/experienceInvariant`) recalcule l'expérience suivi par suivi après chaque
 étape des tests de cas d'usage et des scénarios BDD.
 
@@ -167,6 +173,64 @@ la clé.
   viennent toujours de l'horloge de l'application.
 - Tout `DEFAULT` qui inventerait une valeur pour le passé (ex. `DEFAULT 7` pour l'objectif, qui
   donnerait un objectif, puis une prime, à toutes les semaines depuis la création).
+
+### 6. Prime d'objectif et rattrapage (#26)
+
+**Calcul.** `targetBonusOf(cases « fait », réglages de la semaine)` vaut `weekTarget ×
+TARGET_BONUS_PER_UNIT[difficulté]` (prime unitaire : Facile 3, Moyenne 5, Difficile 10, valeurs du
+barème) si le nombre de cases « fait » **de toute la semaine** atteint l'objectif de la semaine
+(`isTargetReached`), sinon 0 ; sans objectif (`weekTarget` vide, semaine close avant la mise à jour,
+R17), toujours 0. Elle est tout-ou-rien. Comme elle entre dans `weekXpOf`, `habitXpOf`,
+`xpChangeOfSettings` et `deletionXpOf` l'intègrent sans autre changement, et les règles suivent par
+construction : une seule prime par habitude et par semaine (c'est une fonction de l'état de la
+semaine, pas un événement), un aller-retour au seuil vaut 0 Xp net, un changement de difficulté
+réévalue la prime de la semaine en cours (R12), un changement d'objectif ne la touche pas (R13), une
+semaine close garde ses propres réglages (R14).
+
+**Progression comptée.** La prime compte tous les « fait » de la semaine, comme l'invariant, qui ne
+dépend pas d'aujourd'hui ; les vues lisent la progression jusqu'à aujourd'hui (`weeklyProgressOf`).
+Les deux ne diffèrent qu'après un recul d'horloge, avec un « fait » sur un jour devenu futur : la
+prime peut alors être acquise pendant que la ligne affiche « 2/3 ». C'est la même limite que l'Xp de
+ce jour, déjà comptée par l'invariant : cas rare, accepté.
+
+**Décomposition des variations.** `weekXpChangeOf(avant, après, réglages avant, réglages après)`
+donne la part du suivi (`checkInXp`), la part de la prime (`targetBonus`) et le franchissement du
+seuil (`targetReachedChange` : `reached`, `lost`, ou rien, y compris quand seule la prime change avec
+la difficulté). Les cas d'usage renvoient ces parts pour le feedback (seconde pastille
+« +15 XP prime », message « Objectif de la semaine atteint ») sans relire la vue. Quand le plancher
+de 0 Xp joue (état incohérent, sur une perte seulement), la part de la prime est réduite d'abord,
+puis celle du suivi (`targetBonusShareOf`), pour que les pastilles affichées fassent toujours la
+variation appliquée.
+
+**Rattrapage.** L'expérience doit respecter l'invariant dès que la prime existe, y compris pour les
+semaines déjà atteintes avant sa première ouverture (build de preview qui a déjà #24, ou semaine en
+cours entièrement « fait » le jour de la mise à jour). Au démarrage, juste après
+`introduceWeeklyTarget`, le cas d'usage `introduceTargetBonus` ajoute une seule fois à l'expérience
+`Σ habitTargetBonusOf` des habitudes existantes, sans feedback, et écrit la trace de cette
+**Introduction** dans la même unité de travail, par le port `IntroductionRepository`
+(`has`, `add`). Un démarrage interrompu puis rejoué n'accorde donc jamais deux fois ; une panne
+n'écrit rien et le démarrage propose « Réessayer ». L'Xp conservée n'est pas touchée : les habitudes
+supprimées avant n'avaient pas de prime. Sur une première installation, il ajoute 0 et pose la
+trace. C'est une exception étroite, décidée par le propriétaire (option 1 de Q-B), à
+« l'expérience est exactement la même juste après la mise à jour » (§3, #24) : elle ne retire jamais
+d'expérience et vaut au plus la prime d'une semaine par habitude pour une release qui apporte
+objectif et prime ensemble.
+
+**Migration 0007, additive** (§5 respecté) :
+
+```sql
+CREATE TABLE introductions (
+  name TEXT PRIMARY KEY NOT NULL CHECK (name IN ('targetBonus')),
+  introduced_on TEXT NOT NULL CHECK (introduced_on GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]')
+) STRICT;
+```
+
+Elle ne réécrit aucune ligne, ne calcule aucune date et ne touche pas `character` : la règle de la
+prime vit dans `HabitXp`, pas en SQL, pour qu'une migration publiée ne dépende jamais d'une règle qui
+évolue. Une future introduction élargira le `CHECK` par une nouvelle migration. Écartés : un
+rattrapage sans trace dans la transaction de `introduceWeeklyTarget` (ne rejoue pas sur un build de
+preview qui a déjà #24), une trace dans le stockage clé-valeur (hors de l'unité de travail, ou règle
+de jeu sous une clé non typée) et une colonne sur `character` (drapeau technique dans le domaine).
 
 ## Alternatives écartées
 

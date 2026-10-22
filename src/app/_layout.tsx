@@ -17,6 +17,7 @@ import { appStateVisibility } from '../adapters/device/lifecycle/appStateVisibil
 import { openAscentDatabase } from '../adapters/persistence/sqlite/openAscentDatabase';
 import { SqliteKeyValueStore } from '../adapters/persistence/sqlite/SqliteKeyValueStore';
 import { SqliteUnitOfWork } from '../adapters/persistence/sqlite/SqliteUnitOfWork';
+import { introduceTargetBonus } from '../application/useCases/introduceTargetBonus';
 import { introduceWeeklyTarget } from '../application/useCases/introduceWeeklyTarget';
 import { StartupErrorScreen, StartupLoadingScreen } from '../adapters/ui/screens/StartupScreen';
 import { type Dependencies, DependenciesProvider } from '../adapters/ui/state/Dependencies';
@@ -39,9 +40,10 @@ const gestureRootStyle = { flex: 1, backgroundColor: colors.background } as cons
 
 /**
  * Ouvre la base locale et charge les polices (sans elles, la police système s'affiche), puis fait le
- * changement d'introduction de l'objectif hebdomadaire (#24), avant l'interface : rejoué sans
- * risque à chaque démarrage, il n'écrit plus rien une fois fait. Un échec fait proposer
- * « Réessayer ».
+ * changement d'introduction de l'objectif hebdomadaire (#24), puis le rattrapage de la prime
+ * d'objectif (#26), dans cet ordre et avant l'interface : rejoués sans risque à chaque démarrage,
+ * ils n'écrivent plus rien une fois faits, et le rattrapage n'accorde jamais deux fois. Un échec
+ * fait proposer « Réessayer ».
  */
 async function start(): Promise<Dependencies> {
   // Les fichiers des polices livrées avec l'app, sous les noms qu'utilise l'interface.
@@ -62,6 +64,7 @@ async function start(): Promise<Dependencies> {
     haptics: new ExpoHaptics(),
   };
   await introduceWeeklyTarget(dependencies);
+  await introduceTargetBonus(dependencies);
   return dependencies;
 }
 

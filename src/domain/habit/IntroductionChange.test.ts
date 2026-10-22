@@ -1,4 +1,4 @@
-import { habitXpOf } from '../character/HabitXp';
+import { habitTargetBonusOf, habitXpOf, targetBonusOf } from '../character/HabitXp';
 import type { CheckIn } from '../checkIn/CheckIn';
 import { Day } from '../day/Day';
 import { Week } from '../week/Week';
@@ -120,7 +120,10 @@ describe('introductionChangeOf', () => {
 
   // Les semaines d'une habitude, à partir de sa création : avant, elle n'a aucun suivi. Le premier
   // changement d'une habitude d'avant la mise à jour est daté de son jour de création (migration 0005).
-  it('changes neither the difficulty of any week nor the experience, and is idempotent', () => {
+  // L'expérience ne change que par la prime d'objectif (#26), que le changement d'introduction rend
+  // possible à partir de la semaine de la mise à jour : c'est exactement ce que le rattrapage
+  // `introduceTargetBonus` accorde (Q-B, décision du propriétaire), jamais avant cette semaine (R17).
+  it('changes no difficulty, adds no target bonus before the update week, and is idempotent', () => {
     for (let seed = 1; seed <= 500; seed++) {
       const next = random(seed);
       const habitCreatedOn = day(1 + next(28));
@@ -143,25 +146,36 @@ describe('introductionChangeOf', () => {
         ...changes,
         { habitId: 1, changedOn: updateDay, sequence: 99, ...settings! },
       ];
+      const updateWeek = Week.containing(updateDay);
 
       for (
         let week = Week.containing(habitCreatedOn);
         week.isBefore(Week.containing(day(31)).next().next());
         week = week.next()
       ) {
+        const settingsAfter = weekSettingsOf(after, week, habitCreatedOn);
         expect({
           seed,
           week: week.start.toIsoString(),
-          difficulty: weekSettingsOf(after, week, habitCreatedOn).difficulty,
+          difficulty: settingsAfter.difficulty,
         }).toEqual({
           seed,
           week: week.start.toIsoString(),
           difficulty: weekSettingsOf(changes, week, habitCreatedOn).difficulty,
         });
+        if (week.isBefore(updateWeek)) {
+          const doneCount = checkIns.filter(({ day: each, done }) => done && week.contains(each));
+          expect({
+            seed,
+            week: week.start.toIsoString(),
+            bonus: targetBonusOf(doneCount.length, settingsAfter),
+          }).toEqual({ seed, week: week.start.toIsoString(), bonus: 0 });
+        }
       }
-      expect(habitXpOf(checkIns, after, habitCreatedOn)).toBe(
-        habitXpOf(checkIns, changes, habitCreatedOn),
-      );
+      expect(habitTargetBonusOf(checkIns, changes, habitCreatedOn)).toBe(0);
+      expect(
+        habitXpOf(checkIns, after, habitCreatedOn) - habitXpOf(checkIns, changes, habitCreatedOn),
+      ).toBe(habitTargetBonusOf(checkIns, after, habitCreatedOn));
       expect(introductionChangeOf(after, habitCreatedOn, updateDay)).toBeNull();
     }
   });

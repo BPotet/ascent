@@ -25,6 +25,9 @@ function updated({ name, difficulty, weeklyTarget }: UpdateHabitInput): UpdateHa
     settingsChanged: difficulty !== undefined || weeklyTarget !== undefined,
     xpChange: 0,
     xp: 0,
+    targetBonusChange: 0,
+    targetReachedChange: null,
+    weeklyProgress: 0,
   };
 }
 

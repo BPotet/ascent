@@ -3,6 +3,7 @@ import type { SqlDatabase } from './SqlDatabase';
 import { SqliteCharacterRepository } from './SqliteCharacterRepository';
 import { SqliteCheckInRepository } from './SqliteCheckInRepository';
 import { SqliteHabitRepository } from './SqliteHabitRepository';
+import { SqliteIntroductionRepository } from './SqliteIntroductionRepository';
 import { SqliteSettingsChangeRepository } from './SqliteSettingsChangeRepository';
 
 /**
@@ -20,6 +21,7 @@ export class SqliteUnitOfWork implements UnitOfWork {
       checkIns: new SqliteCheckInRepository(db),
       character: new SqliteCharacterRepository(db),
       settingsChanges: new SqliteSettingsChangeRepository(db),
+      introductions: new SqliteIntroductionRepository(db),
     };
   }
 

@@ -48,8 +48,10 @@ function Flight({ amount }: { readonly amount: number }) {
 /**
  * L'envol du feedback d'expérience au-dessus de la case touchée : « +20 XP » en or, « −20 XP » en
  * gris discret, qui monte et s'efface en `XP_FLOAT_DURATION_MS`. Rejoué à chaque nouveau
- * changement (`change.id`). Rien quand le mouvement est réduit (`reducedMotion`, lu par la case,
- * toujours affichée) : l'en-tête montre la nouvelle expérience et le lecteur d'écran l'annonce.
+ * changement (`change.id`). Seule la part du suivi s'envole : la prime d'objectif (`change.bonus`,
+ * #26) a sa pastille dans l'en-tête et le badge « Objectif atteint ». Rien quand le mouvement est
+ * réduit (`reducedMotion`, lu par la case, toujours affichée) : l'en-tête montre la nouvelle
+ * expérience et le lecteur d'écran l'annonce.
  */
 export function XpFloat({
   change,
@@ -58,10 +60,11 @@ export function XpFloat({
   readonly change: ShownXpChange | undefined;
   readonly reducedMotion: boolean;
 }) {
-  if (change === undefined || reducedMotion) {
+  const amount = change === undefined ? 0 : change.amount - (change.bonus ?? 0);
+  if (change === undefined || reducedMotion || amount === 0) {
     return null;
   }
-  return <Flight key={change.id} amount={change.amount} />;
+  return <Flight key={change.id} amount={amount} />;
 }
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).

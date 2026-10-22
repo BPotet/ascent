@@ -232,7 +232,12 @@ describe('useEditHabit', () => {
       await toggleCheckIn(dependencies, cooking.id, wednesday);
       const { preview, otherReload } = await setUp();
 
-      await expect(preview()).resolves.toEqual({ ok: true, name: 'Cuisiner', xpRemoved: 10 });
+      await expect(preview()).resolves.toEqual({
+        ok: true,
+        name: 'Cuisiner',
+        xpRemoved: 10,
+        targetBonusRemoved: 0,
+      });
       expect(otherReload).not.toHaveBeenCalled();
     });
 
@@ -258,7 +263,12 @@ describe('useEditHabit', () => {
       const { remove, experience, otherReload } = await setUp();
       expect(experience().xp).toBe(20);
 
-      await expect(remove()).resolves.toEqual({ ok: true, xpRemoved: 10, xp: 10 });
+      await expect(remove()).resolves.toEqual({
+        ok: true,
+        xpRemoved: 10,
+        targetBonusRemoved: 0,
+        xp: 10,
+      });
 
       expect(await names()).toEqual(['Budget du jour']);
       expect(experience().xp).toBe(10);

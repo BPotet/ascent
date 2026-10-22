@@ -50,7 +50,12 @@ type Step =
       readonly settings: EditableSettings;
       readonly alert: string | null;
     }
-  | { readonly kind: 'confirm'; readonly name: string; readonly xpRemoved: number };
+  | {
+      readonly kind: 'confirm';
+      readonly name: string;
+      readonly xpRemoved: number;
+      readonly targetBonusRemoved: number;
+    };
 
 /**
  * Modifier ou supprimer `habit` (#6, #23, #24), depuis la Vue Journée (« ⋯ », la Carte de
@@ -129,7 +134,12 @@ export function HabitEditing({
   const askDeletion = (shown: EditableSettings) => {
     void previewDeletion(habit.id).then((preview) => {
       if (preview.ok) {
-        setStep({ kind: 'confirm', name: preview.name, xpRemoved: preview.xpRemoved });
+        setStep({
+          kind: 'confirm',
+          name: preview.name,
+          xpRemoved: preview.xpRemoved,
+          targetBonusRemoved: preview.targetBonusRemoved,
+        });
       } else if (preview.reason === 'unknownHabit') {
         onGone();
       } else {
@@ -147,6 +157,7 @@ export function HabitEditing({
       <DeleteHabitDialog
         name={step.name}
         xpRemoved={step.xpRemoved}
+        targetBonusRemoved={step.targetBonusRemoved}
         onConfirm={() => remove(habit.id)}
         onDeleted={onDeleted}
         onGone={onGone}

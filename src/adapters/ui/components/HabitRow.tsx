@@ -17,9 +17,10 @@ import { colors } from '../theme/colors';
 import { MIN_TOUCH_SIZE, radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
 import type { ShownXpChange } from './CharacterBar';
-import { CheckGlyph, CrossGlyph, FlagGlyph, MoreGlyph } from './Glyph';
+import { CheckGlyph, CrossGlyph, MoreGlyph } from './Glyph';
 import { CORRECTED, CorrectedMark } from './CorrectedMark';
 import { DifficultyLabel } from './DifficultyIcon';
+import { TargetReachedBadge } from './TargetReachedBadge';
 import { XpFloat } from './XpFloat';
 
 /** Le libellé, pour le lecteur d'écran, de l'action qui ouvre « Modifier l'habitude ». */
@@ -57,7 +58,8 @@ export function bounce(scale: Animated.Value): void {
  * « ▲▲▲ Difficile · À faire · 2/3 cette semaine », « Fait · 3/3 cette semaine » à l'objectif tout
  * juste atteint, et « Fait · 4 fois cette semaine » au-delà (maquette E1, décision PM du 22 octobre
  * 2026) ; elle passe à la ligne en grand texte.
- * L'objectif atteint ajoute dessous le badge « Objectif atteint » (drapeau, texte et liseré verts) ;
+ * L'objectif atteint ajoute dessous le badge « Objectif atteint » (drapeau, texte et liseré verts,
+ * `TargetReachedBadge`), avec un éclat doré quand il vient d'être atteint (`targetFlash`, F1, #26) ;
  * la ligne reste tapable. Rien ne marque un objectif non atteint. Le lecteur d'écran entend la
  * progression après l'état, puis la difficulté, puis « objectif atteint » :
  * « Courir 5 km, …, à faire, 2 sur 3 cette semaine, Difficile, 20 XP par suivi ».
@@ -78,6 +80,7 @@ export function HabitRow({
   weekLabel,
   highlighted = false,
   xpChange,
+  targetFlash,
   onToggle,
   onEdit,
   compact = false,
@@ -92,6 +95,8 @@ export function HabitRow({
   readonly highlighted?: boolean;
   readonly compact?: boolean;
   readonly xpChange?: ShownXpChange | undefined;
+  /** Change quand l'objectif de la semaine vient d'être atteint ici : l'éclat du badge (F1, #26). */
+  readonly targetFlash?: number | undefined;
   readonly onToggle?: (habitDay: HabitDay) => void;
   readonly onEdit?: (habitDay: HabitDay) => void;
 }) {
@@ -175,10 +180,7 @@ export function HabitRow({
             )}
           </View>
           {reached && (
-            <View testID={`habit-target-reached-${habit.id}`} style={styles.badge}>
-              <FlagGlyph color={colors.doneText} />
-              <Text style={[typography.label, styles.badgeText]}>{TARGET_REACHED}</Text>
-            </View>
+            <TargetReachedBadge flash={targetFlash} testID={`habit-target-reached-${habit.id}`} />
           )}
         </View>
       </Pressable>
@@ -256,20 +258,5 @@ const styles = StyleSheet.create({
   corrected: { color: colors.correctedMark },
   statusDone: { color: colors.doneText },
   progress: { flexShrink: 1 },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 5,
-    marginTop: 5,
-    paddingVertical: 2,
-    paddingLeft: 7,
-    paddingRight: 10,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.doneLine,
-    backgroundColor: colors.goalSoft,
-  },
-  badgeText: { color: colors.doneText, fontWeight: '600' },
 });
 // Stryker restore all

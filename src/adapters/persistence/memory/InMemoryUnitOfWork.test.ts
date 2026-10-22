@@ -6,6 +6,7 @@ import { HabitName } from '../../../domain/habit/HabitName';
 import { describeCharacterRepositoryContract } from '../testing/characterRepositoryContract';
 import { describeCheckInRepositoryContract } from '../testing/checkInRepositoryContract';
 import { describeHabitRepositoryContract } from '../testing/habitRepositoryContract';
+import { describeIntroductionRepositoryContract } from '../testing/introductionRepositoryContract';
 import { describeSettingsChangeRepositoryContract } from '../testing/settingsChangeRepositoryContract';
 import { describeUnitOfWorkContract } from '../testing/unitOfWorkContract';
 
@@ -17,6 +18,7 @@ describe('InMemoryUnitOfWork', () => {
   describeCheckInRepositoryContract(createUnitOfWork);
   describeCharacterRepositoryContract(createUnitOfWork);
   describeSettingsChangeRepositoryContract(createUnitOfWork);
+  describeIntroductionRepositoryContract(createUnitOfWork);
 
   describe('seeding a change made before the weekly target', () => {
     const monday5 = Day.of(2026, 10, 5);

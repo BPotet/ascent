@@ -208,4 +208,29 @@ describe('app navigation between the views', () => {
 
     expect(await weekView().findByTestId('cell-1-2026-10-14')).toBeOnTheScreen();
   });
+
+  it('keeps the tab bar usable while the target feedback is shown (F1, D5)', async () => {
+    openDatabase.mockImplementation(async () => {
+      const db = await prepareAscentDatabase(openNodeSqliteDatabase());
+      const clock = new FixedClock(Day.of(2026, 10, 14));
+      await createHabit({ clock, unitOfWork: new SqliteUnitOfWork(db) }, 'Lire', 'medium', 1);
+      return db;
+    });
+    await renderRouter(appDirectory);
+    await screen.findByTestId('day-view');
+
+    await fireEvent.press(dayView().getByRole('switch', { name: /^Lire, /u }));
+    expect(await dayView().findByTestId('toast')).toHaveTextContent(
+      /^Objectif de la semaine atteint/u,
+    );
+    expect(dayView().getByTestId('toast')).toHaveProp('pointerEvents', 'none');
+    expect(
+      within(screen.getByTestId('tab-bar')).getByRole('tab', { name: 'Semaine' }),
+    ).toBeOnTheScreen();
+
+    await showTab('Semaine');
+
+    expect(await screen.findByTestId('week-card-1')).toBeOnTheScreen();
+    expect(selectedTab()).toBe('Semaine');
+  });
 });

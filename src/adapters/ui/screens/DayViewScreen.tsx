@@ -19,14 +19,27 @@ import { Screen } from '../components/Screen';
 import { StateMessage } from '../components/StateMessage';
 import { WhatsNewCard } from '../components/WhatsNewCard';
 import { YesterdayReminderBanner } from '../components/YesterdayReminderBanner';
-import { Toast, type ToastAction } from '../components/Toast';
+import {
+  targetToastOf,
+  Toast,
+  type ToastAction,
+  type ToastTarget,
+  type ToastVariant,
+} from '../components/Toast';
 import { CHECK_IN_SAVE_FAILED, correctionMessage } from '../format/checkInMessages';
 import { formatDayAndMonth } from '../format/formatDay';
 import type { WeeklyProgressShown } from '../format/formatWeeklyTarget';
+import type { TargetFeedback } from '../format/targetFeedback';
 import { useCheckInHint } from '../state/useCheckInHint';
 import { useCreateHabit } from '../state/useCreateHabit';
 import { useDayView } from '../state/useDayView';
 import { type XpChange, useExperience, xpChangeOn } from '../state/Experience';
+import {
+  type TargetFlash,
+  targetFlashOn,
+  updatedTargetPlay,
+  useTargetFeedback,
+} from '../state/useTargetFeedback';
 import { useTodayChange } from '../state/useTodayChange';
 import { useWhatsNewCard } from '../state/useWhatsNewCard';
 import { useYesterdayReminder } from '../state/useYesterdayReminder';
@@ -68,6 +81,10 @@ interface ToastContent {
   readonly id: number;
   readonly message: string;
   readonly action?: ToastAction;
+  /** Le feedback « Objectif atteint » (#26) : sa forme, son texte et son annonce. */
+  readonly variant?: ToastVariant;
+  readonly target?: ToastTarget;
+  readonly announcement?: string;
 }
 
 function LoadingView() {
@@ -117,6 +134,7 @@ function HabitList({
   view,
   highlighted,
   xpChange,
+  targetFlash,
   showHint,
   whatsNew,
   reminder,
@@ -126,6 +144,7 @@ function HabitList({
   readonly view: DayView;
   readonly highlighted: Highlight | null;
   readonly xpChange: XpChange | null;
+  readonly targetFlash: TargetFlash | null;
   readonly showHint: boolean;
   readonly whatsNew: ReactNode;
   readonly reminder: ReactNode;
@@ -171,6 +190,7 @@ function HabitList({
             weeklyProgress={weeklyProgressShownOf(habitDay)}
             highlighted={habitDay.habit.id === highlighted?.id}
             xpChange={xpChangeOn(xpChange, habitDay)}
+            targetFlash={targetFlashOn(targetFlash, habitDay)}
             onToggle={onToggle}
             onEdit={() => onEdit(habitDay)}
           />
@@ -221,6 +241,13 @@ function HabitList({
  * son feedback : « +20 XP » (au barème de la difficulté) s'envole de la coche (`Experience`,
  * `CharacterBar`).
  *
+ * Un tap qui atteint l'objectif de la semaine joue F1 (#26, `useTargetFeedback`) : badge
+ * « Objectif atteint » avec un éclat doré, seconde pastille « +15 XP prime », message en bas
+ * « Objectif de la semaine atteint · Courir 5 km 3/3 · +15 XP prime », seconde vibration. Un tap qui
+ * repasse sous l'objectif retire le badge, avec « −15 XP prime » en gris et un message discret, sans
+ * vibration. Après « Enregistrer » dans « Modifier l'habitude », F1 se joue aussi quand l'objectif,
+ * baissé le jour de création, est atteint. Le message ne masque jamais la barre d'onglets.
+ *
  * Tout en haut de la liste, la Carte de nouveauté (#24) invite le joueur qui avait des habitudes
  * avant la mise à jour à régler leur difficulté et leur objectif : « Régler » ouvre « Modifier
  * l'habitude » sur la première habitude de la liste ; « Régler » comme « Fermer » la retirent pour
@@ -261,6 +288,13 @@ export function DayViewScreen({
     setToast({ id: toastCount.current, message, ...(action && { action }) });
   }, []);
 
+  const showTargetToast = useCallback((feedback: TargetFeedback) => {
+    toastCount.current += 1;
+    setToast({ id: toastCount.current, ...targetToastOf(feedback) });
+  }, []);
+  const target = useTargetFeedback({ showToast: showTargetToast });
+  const { play } = target;
+
   useTodayChange((today) => {
     void refresh();
     showToast(newDayMessage(today));
@@ -276,7 +310,13 @@ export function DayViewScreen({
           if (outcome.habitDay.status === 'done') {
             void dismissHint();
           }
-          if (outcome.isCorrection) {
+          // F1 ou le retour sous l'objectif remplace le message de la correction (#26).
+          const played = play(
+            outcome,
+            outcome.habitDay,
+            outcome.isCorrection && outcome.habitDay.corrected,
+          );
+          if (outcome.isCorrection && !played) {
             showToast(correctionMessage(outcome.habitDay.day));
           }
         } else if (outcome.reason === 'saveFailed') {
@@ -285,7 +325,7 @@ export function DayViewScreen({
       }
       return attempt();
     },
-    [toggle, dismissHint, showToast],
+    [toggle, dismissHint, showToast, play],
   );
 
   useEffect(() => {
@@ -306,10 +346,16 @@ export function DayViewScreen({
     void refresh();
   };
   const closeEditing = () => setEditing(null);
-  const updated = (outcome: UpdatedHabit) => {
+  const updated = (outcome: UpdatedHabit, today: Day) => {
     setEditing(null);
     setHighlighted({ id: outcome.habit.id, reveal: false });
-    showToast(updatedMessage(outcome));
+    // L'objectif, baissé le jour de création, est atteint : F1 remplace « Habitude modifiée » (E7).
+    const played =
+      outcome.targetReachedChange === 'reached' &&
+      play(updatedTargetPlay(outcome, today), { habit: outcome.habit, day: today });
+    if (!played) {
+      showToast(updatedMessage(outcome));
+    }
     void refresh();
   };
   const deleted = ({ xpRemoved }: DeletedHabit) => {
@@ -379,6 +425,7 @@ export function DayViewScreen({
             view={view}
             highlighted={highlighted}
             xpChange={experience.change}
+            targetFlash={target.flash}
             showHint={hint.visible}
             whatsNew={
               whatsNew.visible && (
@@ -418,6 +465,9 @@ export function DayViewScreen({
           key={toast.id}
           message={toast.message}
           {...(toast.action && { action: toast.action })}
+          {...(toast.variant && { variant: toast.variant })}
+          {...(toast.target && { target: toast.target })}
+          {...(toast.announcement !== undefined && { announcement: toast.announcement })}
           onHide={hideToast}
           aboveButton={!empty}
         />
@@ -437,7 +487,7 @@ export function DayViewScreen({
           settings={editing}
           habits={view.habits.map(({ habit }) => habit)}
           today={view.day}
-          onUpdated={updated}
+          onUpdated={(outcome) => updated(outcome, view.day)}
           onDeleted={deleted}
           onGone={gone}
           onClose={closeEditing}
