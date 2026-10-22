@@ -18,7 +18,8 @@ npx expo start              # start the dev server
 npm run lint                # lint (ESLint, zero warning)
 npm run typecheck           # typecheck (tsc --noEmit)
 npm run verify              # every local quality gate: style, types, architecture, tests and coverage
-npm run verify:full         # verify + mutation testing
+npm run verify:full         # verify + mutation testing (screens excluded)
+npm run mutation:ui         # mutation testing of the screens, only on the owner's request
 npx expo-doctor             # diagnose dependency and config issues
 npx expo install --fix      # fix incompatible package versions
 ```

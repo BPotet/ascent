@@ -72,6 +72,7 @@
     "mutation": "stryker run",
     "mutation:domain": "stryker run stryker.domain.config.mjs",
     "mutation:changed": "node scripts/mutation/run.mjs",
+    "mutation:ui": "node scripts/mutation/run.mjs --ui-only",
     "mutation:score": "node scripts/mutation/score.mjs",
     "commitlint:range": "commitlint --from origin/develop --to HEAD --verbose",
     "secrets": "node scripts/gitleaks.mjs",

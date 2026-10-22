@@ -72,6 +72,7 @@
 | **Dev** | L'agent full stack qui implémente une story de bout en bout : domaine, cas d'usage, ports, persistance, interface, feedback de jeu, navigation, fonctions natives du téléphone, builds, tests end-to-end. Plus tard : API et serveur. |
 | **Fixer** | L'agent qui corrige les bugs : il les reproduit par un test qui échoue, trouve la cause racine et applique la correction minimale, sans ajouter de fonctionnalité. |
 | **Barrière de qualité** (*quality gate*) | Une vérification automatique qui doit passer pour qu'une PR soit mergée. |
+| **Mutation des écrans** | Les tests de mutation de `src/adapters/ui/` et `src/app/`. Ils ne tournent qu'à la demande du propriétaire : label `mutation:ui` sur la PR, entrée `ui-mutation` d'un lancement manuel de la CI, ou `npm run mutation:ui` en local. Quand ils tournent, les seuils habituels s'appliquent. |
 | **Conventional Commits** | Le format imposé des messages de commit et des titres de PR : `<type>(<scope>): <description>`. |
 | **Auto-merge** | Le merge automatique (squash) d'une PR dans `develop` une fois toutes les barrières de qualité au vert et la review approuvée. |
 | **Git Flow** | Le modèle de branches du projet : `main` pour ce qui est publié, `develop` pour l'intégration, et des branches de travail `feature/`, `bugfix/`, `release/`, `hotfix/`. |

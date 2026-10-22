@@ -6,7 +6,13 @@ on:
     branches: [develop, main, 'release/**', 'hotfix/**']
   push:
     branches: [develop, main, 'release/**', 'hotfix/**']
+  # Le label `mutation:ui` posé sur une PR déjà ouverte est traité par mutation-ui.yml.
   workflow_dispatch:
+    inputs:
+      ui-mutation:
+        description: Also mutate the screens (src/adapters/ui/, src/app/)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -103,7 +109,9 @@ jobs:
           retention-days: 7
 
   # Mutation (docs/adr/0004-mutation-en-ci.md) : un plan, un job par shard, puis un job final qui
-  # applique les seuils au total des shards.
+  # applique les seuils au total des shards. Les écrans (src/adapters/ui/, src/app/) ne sont mutés
+  # qu'à la demande du propriétaire : label `mutation:ui` sur la PR, ou entrée `ui-mutation` d'un
+  # lancement manuel.
   mutation-plan:
     name: Mutation plan
     # En PR vers develop : le code nouveau. Sur release/* et hotfix/* (et à la demande) : tout le code.
@@ -120,6 +128,8 @@ jobs:
       matrix: ${{ steps.plan.outputs.matrix }}
       count: ${{ steps.plan.outputs.count }}
       base: ${{ steps.plan.outputs.base }}
+      ui: ${{ steps.plan.outputs.ui }}
+      ui-notice: ${{ steps.plan.outputs.ui_notice }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -134,6 +144,9 @@ jobs:
         env:
           BASE_REF: origin/${{ github.base_ref }}
           MUTATION_MODE: ${{ github.event_name == 'pull_request' && 'changed' || 'full' }}
+          MUTATION_UI: >-
+            ${{ contains(github.event.pull_request.labels.*.name, 'mutation:ui')
+              || inputs.ui-mutation == true }}
         run: node scripts/mutation/run.mjs --plan
 
   mutation-shard:
@@ -159,6 +172,7 @@ jobs:
           # La base calculée par le plan : elle reste la même si develop avance pendant le run.
           BASE_REF: ${{ needs.mutation-plan.outputs.base }}
           MUTATION_MODE: ${{ github.event_name == 'pull_request' && 'changed' || 'full' }}
+          MUTATION_UI: ${{ needs.mutation-plan.outputs.ui }}
         run: node scripts/mutation/run.mjs --shard ${{ matrix.shard }}
       - uses: actions/upload-artifact@v4
         if: always()
@@ -180,8 +194,16 @@ jobs:
         run: test "${{ needs.mutation-plan.result }}" = success
       - name: Nothing to mutate
         if: needs.mutation-plan.outputs.count == '0'
+        env:
+          MUTATION_UI_NOTICE: ${{ needs.mutation-plan.outputs.ui-notice }}
         run: |
-          echo "No mutable code changed: mutation testing skipped." >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Mutation tests (StrykerJS)"
+            echo
+            echo "> ${MUTATION_UI_NOTICE}"
+            echo
+            echo "No mutable code changed: mutation testing skipped."
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Check every mutation shard
         if: needs.mutation-plan.outputs.count != '0'
         run: test "${{ needs.mutation-shard.result }}" = success
@@ -203,6 +225,7 @@ jobs:
         if: needs.mutation-plan.outputs.count != '0'
         env:
           EXPECTED_SHARDS: ${{ needs.mutation-plan.outputs.count }}
+          MUTATION_UI_NOTICE: ${{ needs.mutation-plan.outputs.ui-notice }}
         run: npm run mutation:score
       - uses: actions/upload-artifact@v4
         if: always() && needs.mutation-plan.outputs.count != '0'
@@ -299,6 +322,11 @@ jobs:
     # Écriture du dépôt : seulement pour publier les captures sur la branche `e2e-screenshots`.
     permissions:
       contents: write
+    # Image système de l'émulateur, déclarée une seule fois pour le cache et pour l'émulateur.
+    env:
+      EMULATOR_API_LEVEL: 34
+      EMULATOR_TARGET: google_apis
+      EMULATOR_ARCH: x86_64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -320,12 +348,44 @@ jobs:
           installed="$("$HOME/.maestro/bin/maestro" --version | tail -n 1)"
           echo "Maestro ${installed}"
           test "${installed}" = "${MAESTRO_VERSION}"
+      - name: Cache the Android system image
+        # Le téléchargement de l'image chez Google échoue parfois (archive corrompue) et l'émulateur
+        # ne démarre pas. Une image déjà présente n'est pas retéléchargée par sdkmanager.
+        # Le préfixe du SDK reste en dur : le contexte `env` ne voit pas ANDROID_HOME du runner.
+        id: system-image-cache
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/system-images/android-${{ env.EMULATOR_API_LEVEL }}/${{ env.EMULATOR_TARGET }}/${{ env.EMULATOR_ARCH }}
+          # Incrémenter le suffixe `-vN` force le renouvellement du cache.
+          key: android-system-image-${{ env.EMULATOR_API_LEVEL }}-${{ env.EMULATOR_TARGET }}-${{ env.EMULATOR_ARCH }}-v1
+      - name: Preinstall the Android system image
+        # Sans cache, l'image est installée ici avec trois tentatives. Une archive corrompue peut
+        # laisser sdkmanager terminer sans erreur : seul `package.xml` prouve l'installation.
+        if: steps.system-image-cache.outputs.cache-hit != 'true'
+        run: |
+          set -uo pipefail
+          sdkmanager="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          package="system-images;android-${EMULATOR_API_LEVEL};${EMULATOR_TARGET};${EMULATOR_ARCH}"
+          image_dir="${ANDROID_HOME}/system-images/android-${EMULATOR_API_LEVEL}/${EMULATOR_TARGET}/${EMULATOR_ARCH}"
+          yes | "${sdkmanager}" --licenses > /dev/null || true
+          for attempt in 1 2 3; do
+            echo "Installing ${package} (attempt ${attempt}/3)"
+            if "${sdkmanager}" --install "${package}" && [ -f "${image_dir}/package.xml" ]; then
+              echo "${package} installed in ${image_dir}"
+              exit 0
+            fi
+            echo "::warning::Attempt ${attempt} to install ${package} failed."
+            rm -rf "${image_dir}"
+            [ "${attempt}" -lt 3 ] && sleep 30
+          done
+          echo "::error::${package} could not be installed after 3 attempts."
+          exit 1
       - name: Run the Maestro flows on an Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
-          arch: x86_64
-          target: google_apis
+          api-level: ${{ env.EMULATOR_API_LEVEL }}
+          arch: ${{ env.EMULATOR_ARCH }}
+          target: ${{ env.EMULATOR_TARGET }}
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |

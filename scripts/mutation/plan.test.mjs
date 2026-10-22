@@ -8,8 +8,10 @@ import {
   isRetained,
   mutateEntries,
   parseDiff,
+  screenFiles,
   split,
   toMatrix,
+  uiNotice,
 } from './plan.mjs';
 
 const diffOf = (...blocks) => blocks.join('\n');
@@ -115,6 +117,17 @@ describe('classify', () => {
     assert.equal(classify('src/adapters/device/clock/SystemClock.ts'), 'core');
     assert.equal(classify('src/adapters/persistence/sqlite/SqlDatabase.ts'), 'core');
     assert.equal(classify('src/future/thing.ts'), 'core');
+  });
+
+  it('takes the screens from the mutate list of stryker.ui.config.mjs', () => {
+    assert.equal(
+      classify('src/adapters/ui/HabitCard.tsx', {
+        domainPatterns: [],
+        basePatterns: ['src/**/*.tsx'],
+        uiPatterns: [],
+      }),
+      'core',
+    );
   });
 
   it('puts the UI adapters and the routes in ui', () => {
@@ -229,9 +242,10 @@ describe('buildPlan', () => {
     ...extra,
   });
 
-  it('mutates new lines outside the domain and whole domain files', () => {
+  it('mutates new lines outside the domain and whole domain files, screens on request', () => {
     const shards = buildPlan({
       mode: 'changed',
+      ui: 'include',
       changes: [
         change('src/domain/habit/Habit.ts', [{ start: 4, end: 6 }]),
         change('src/application/checkIn.ts', [{ start: 10, end: 12 }]),
@@ -261,14 +275,14 @@ describe('buildPlan', () => {
         id: 'ui-1',
         scope: 'ui',
         thresholdClass: 'newCode',
-        config: 'stryker.config.mjs',
+        config: 'stryker.ui.config.mjs',
         mutate: ['src/app/[(]tabs[)]/week.tsx:1-30'],
       },
       {
         id: 'ui-2',
         scope: 'ui',
         thresholdClass: 'newCode',
-        config: 'stryker.config.mjs',
+        config: 'stryker.ui.config.mjs',
         mutate: ['src/adapters/ui/HabitCard.tsx:3-3'],
       },
     ]);
@@ -279,7 +293,7 @@ describe('buildPlan', () => {
     const changes = Array.from({ length: 12 }, (_, index) =>
       change(`src/adapters/ui/C${index}.tsx`, [], { added: true, weight: 100 - index }),
     );
-    const shards = buildPlan({ mode: 'full', changes });
+    const shards = buildPlan({ mode: 'full', ui: 'include', changes });
     assert.equal(shards.length, 10);
     assert.deepEqual(
       shards.map((shard) => shard.id),
@@ -299,5 +313,95 @@ describe('buildPlan', () => {
 
   it('rejects an unknown mode', () => {
     assert.throws(() => buildPlan({ mode: 'partial', changes: [] }), /Unknown mutation mode/);
+  });
+
+  // Décision du propriétaire (issue #54) : les écrans ne sont mutés qu'à sa demande.
+  const prChanges = [
+    change('src/domain/habit/Habit.ts', [{ start: 4, end: 6 }]),
+    change('src/application/checkIn.ts', [{ start: 10, end: 12 }]),
+    change('src/app/(tabs)/week.tsx', [{ start: 1, end: 30 }]),
+    change('src/adapters/ui/HabitCard.tsx', [{ start: 3, end: 3 }]),
+    change('src/adapters/ui/Old.tsx', []),
+  ];
+
+  it('does not mutate the screens by default', () => {
+    for (const mode of ['changed', 'full']) {
+      const shards = buildPlan({ mode, changes: prChanges });
+      assert.deepEqual(
+        shards.map((shard) => shard.id),
+        ['domain', 'core'],
+      );
+      assert.equal(shards.find((shard) => shard.scope === 'domain').thresholdClass, 'domain');
+      assert.ok(shards.every((shard) => shard.scope !== 'ui'));
+    }
+    assert.deepEqual(
+      buildPlan({ mode: 'changed', ui: 'exclude', changes: prChanges }),
+      buildPlan({ mode: 'changed', changes: prChanges }),
+    );
+  });
+
+  it('mutates the domain with or without the screens', () => {
+    for (const ui of ['exclude', 'include']) {
+      const [domain] = buildPlan({ mode: 'changed', ui, changes: prChanges });
+      assert.deepEqual(domain, {
+        id: 'domain',
+        scope: 'domain',
+        thresholdClass: 'domain',
+        config: 'stryker.domain.config.mjs',
+        mutate: ['src/domain/habit/Habit.ts'],
+      });
+    }
+  });
+
+  it('mutates only the screens on request, with the threshold of the new code', () => {
+    const shards = buildPlan({ mode: 'changed', ui: 'only', changes: prChanges });
+    assert.deepEqual(
+      shards.map(({ id, scope, thresholdClass, config }) => ({
+        id,
+        scope,
+        thresholdClass,
+        config,
+      })),
+      [
+        { id: 'ui-1', scope: 'ui', thresholdClass: 'newCode', config: 'stryker.ui.config.mjs' },
+        { id: 'ui-2', scope: 'ui', thresholdClass: 'newCode', config: 'stryker.ui.config.mjs' },
+      ],
+    );
+  });
+
+  it('rejects an unknown screen option', () => {
+    assert.throws(
+      () => buildPlan({ mode: 'changed', ui: 'yes', changes: [] }),
+      /Unknown screen mutation option/,
+    );
+  });
+});
+
+describe('screenFiles and uiNotice', () => {
+  const changes = [
+    { file: 'src/domain/habit/Habit.ts', added: false, ranges: [{ start: 1, end: 1 }], weight: 1 },
+    { file: 'src/app/(tabs)/week.tsx', added: false, ranges: [{ start: 1, end: 2 }], weight: 2 },
+    { file: 'src/adapters/ui/Old.tsx', added: false, ranges: [], weight: 0 },
+    { file: 'src/adapters/ui/New.tsx', added: true, ranges: [], weight: 9 },
+    { file: 'src/adapters/ui/New.test.tsx', added: true, ranges: [], weight: 9 },
+  ];
+
+  it('lists the screen files that have code to mutate', () => {
+    assert.deepEqual(screenFiles(changes), ['src/adapters/ui/New.tsx', 'src/app/(tabs)/week.tsx']);
+  });
+
+  it('says clearly when the screen mutation was not requested, and how to request it', () => {
+    const notice = uiNotice({ ui: 'exclude', screens: 2 });
+    assert.match(notice, /Screen mutation .* not requested/);
+    assert.match(notice, /2 changed screen file\(s\) not mutated/);
+    assert.match(notice, /`mutation:ui`/);
+    assert.match(notice, /`ui-mutation`/);
+    assert.match(notice, /`npm run mutation:ui`/);
+  });
+
+  it('says when the screen mutation was requested', () => {
+    assert.match(uiNotice({ ui: 'include', screens: 2 }), /Screen mutation .* requested/);
+    assert.doesNotMatch(uiNotice({ ui: 'include', screens: 2 }), /not requested/);
+    assert.match(uiNotice({ ui: 'only', screens: 0 }), /only the screens/);
   });
 });
