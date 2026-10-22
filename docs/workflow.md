@@ -38,13 +38,7 @@ flowchart TD
     subgraph AUTO [" Automatique — aucune intervention humaine "]
         S3[3. Ready<br/>🏛️ Architect<br/>notes techniques]
         S4[4. Impact<br/>🔍 Impact Analyst<br/>GitNexus]
-        subgraph S5 [" 5. Implement — TDD + hexagonal "]
-            direction LR
-            BE[⚙️ Dev backend<br/>domaine, cas d'usage,<br/>persistance]
-            FE[🎨 Dev front<br/>composants, écrans,<br/>feedback de jeu]
-            MO[📲 Dev mobile<br/>navigation, natif,<br/>end-to-end]
-            BE -- ports --> FE -- écrans --> MO
-        end
+        S5[5. Implement<br/>💻 Dev full stack<br/>TDD + hexagonal]
         S6[6. Test<br/>🧪 QA<br/>barrières de qualité]
         S7[7. Review<br/>👁️ Reviewer]
         S8[8. Merge<br/>auto-merge dans develop]
@@ -80,7 +74,7 @@ flowchart TD
  4. IMPACT      Impact Analyst (GitNexus)
                 ├─ impact faible → 5
                 └─ impact fort   → PM + Architect → retour en 2 ou 3
- 5. IMPLEMENT   Dev backend → Dev front → Dev mobile  → code + tests (TDD)
+ 5. IMPLEMENT   Dev                                   → code + tests (TDD)
  6. TEST        QA                                    → toutes les barrières
  7. REVIEW      Reviewer                              → OK → 8, sinon → 5
  8. MERGE       Auto-merge dans develop               → issue fermée
@@ -155,17 +149,17 @@ Un `!` après le type ou le scope (ex. `feat(persistence)!: …`), ou un footer 
 
 ### Scopes
 
-Le scope indique la zone touchée, alignée sur l'architecture et sur le dev qui la possède.
+Le scope indique la zone touchée, alignée sur l'architecture.
 
-| Scope | Zone | Dev |
+| Scope | Zone | Auteur |
 |---|---|---|
-| `domain` | `src/domain/` | backend |
-| `application` | `src/application/` | backend |
-| `persistence` | `src/adapters/persistence/` | backend |
-| `ui` | `src/adapters/ui/` | front |
-| `device` | `src/adapters/device/` | mobile |
-| `app` | `src/app/`, configuration | mobile |
-| `e2e` | `e2e/` | mobile |
+| `domain` | `src/domain/` | dev |
+| `application` | `src/application/` | dev |
+| `persistence` | `src/adapters/persistence/` | dev |
+| `ui` | `src/adapters/ui/` | dev |
+| `device` | `src/adapters/device/` | dev |
+| `app` | `src/app/`, configuration | dev |
+| `e2e` | `e2e/` | dev |
 | `glossary` | `docs/glossary.md` | tous |
 | `workflow` | `docs/workflow.md`, agents, skills, templates | orchestrateur |
 
@@ -173,7 +167,7 @@ Le scope est facultatif quand un commit touche plusieurs zones.
 
 ### Commits et PR
 
-- Chaque dev fait des commits **petits et atomiques** dans son scope.
+- Le dev fait des commits **petits et atomiques**, un scope par commit.
 - Les PR de feature et de bugfix sont mergées en **squash** dans `develop` : le **titre de la PR** devient le commit sur `develop`. Il doit donc lui aussi respecter le format, avec le type dominant de la story (ex. `feat: track daily habit check-ins`). Le corps du commit squashé contient `Closes #<n°>`.
 - Le format est vérifié automatiquement (barrière **Commits** ci-dessous). C'est cet historique qui sert à calculer le numéro de version et à générer le changelog de chaque release.
 
@@ -186,7 +180,7 @@ Le scope est facultatif quand un commit touche plusieurs zones.
 | `status:awaiting-approval` | ✋ Validation | **Propriétaire** |
 | `status:ready` | 3. Ready | Architect |
 | `status:impact-analysis` | 4. Impact | Impact Analyst |
-| `status:in-progress` | 5–6. Implement + Test | Devs backend, front, mobile, QA |
+| `status:in-progress` | 5–6. Implement + Test | Dev (ou Fixer pour un bug), QA |
 | `status:review` | 7. Review | Reviewer |
 | `status:blocked` | Escalade | **Propriétaire** |
 | *(issue fermée)* | 8. Merge | Auto |
@@ -215,7 +209,7 @@ Toute épique avec une partie visible par le joueur a des maquettes, validées p
 - **Contenu** : chaque écran de chaque story, avec **tous ses états** (vide, chargement, erreur, succès, première utilisation) et le **feedback de jeu** (gain d'expérience, montée de niveau, déblocage). Les vrais libellés, tirés du glossaire, pas de faux texte. Chaque écran est annoté avec le numéro de la story qu'il illustre.
 - **Consultation** : l'orchestrateur publie la page en lien privé, consultable sur téléphone, et met ce lien dans l'issue épique et dans le résumé de validation.
 - **Itérations** : les retours du propriétaire produisent une nouvelle version de la maquette, jusqu'à validation.
-- **Après validation** : la maquette est committée sur une branche `docs/<n°-épique>-mockups`, mergée dans `develop`. Elle **fait foi** pour l'interface : le dev front la reproduit, et le Reviewer compare les captures d'écran de la PR avec elle.
+- **Après validation** : la maquette est committée sur une branche `docs/<n°-épique>-mockups`, mergée dans `develop`. Elle **fait foi** pour l'interface : le dev la reproduit, et le Reviewer compare les captures d'écran de la PR avec elle.
 - Une maquette ne fixe pas de choix technique. Les premières maquettes posent l'identité visuelle (couleurs, typographie, composants) que les suivantes réutilisent.
 
 ### 3. Ready
@@ -233,19 +227,13 @@ L'impact est **fort** si au moins un de ces points est vrai :
 Si l'impact est fort, la story revient au **PM** et à l'**Architect**, qui la redécoupent ou l'ajustent. La décision est tracée en commentaire sur l'issue. Si ce changement modifie ce que le propriétaire a validé, la story repasse par ✋.
 
 ### 5. Implement — `/dev-story`
-Trois devs, trois périmètres distincts, sur une même branche `feature/<n°>-<slug>` et une même PR vers `develop`. Tous travaillent en TDD et respectent l'architecture hexagonale.
+Un seul agent, le **Dev** (full stack), implémente toute la story sur la branche `feature/<n°>-<slug>` et une PR vers `develop`. Il travaille en TDD et respecte l'architecture hexagonale.
 
-| Ordre | Agent | Possède | Ne touche jamais |
-|---|---|---|---|
-| 1 | **Dev backend** | `domain`, `application`, `adapters/persistence` : règles de jeu, cas d'usage, ports, base locale, migrations. Plus tard : API et serveur. | L'interface |
-| 2 | **Dev front** | `adapters/ui` : composants, design system, écrans, états, feedback de jeu, accessibilité | Les règles métier, les API natives |
-| 3 | **Dev mobile** | `app` (navigation, assemblage), `adapters/device` (biométrie, stockage sécurisé, notifications…), configuration, builds, tests end-to-end | Les règles métier, la mise en forme des écrans |
+Il possède toutes les couches : `domain`, `application`, `adapters/persistence` (règles de jeu, cas d'usage, ports, base locale, migrations ; plus tard API et serveur), `adapters/ui` (composants, design system, écrans, états, feedback de jeu, accessibilité), `adapters/device` (biométrie, stockage sécurisé, notifications…), `app` (navigation, assemblage), configuration, builds et tests end-to-end.
 
-- L'**Architect** indique dans les notes techniques quels devs sont nécessaires. Une story sans interface n'a pas besoin du front ; une story purement visuelle peut se passer du backend.
-- Le backend ouvre la PR en **brouillon** et y décrit les ports disponibles. Le front et le mobile s'appuient dessus.
-- Dès que les ports sont stables, le front et le mobile peuvent travailler **en parallèle** (le front avec des ports en mémoire).
-- Le dernier dev sort la PR du mode brouillon quand les barrières sont vertes en local.
-- Un besoin hors de son périmètre se signale à l'orchestrateur, qui le confie au bon dev.
+- Il avance de l'intérieur vers l'extérieur : domaine et cas d'usage, persistance, interface, puis assemblage et end-to-end.
+- Il ouvre la PR en **brouillon** après son premier commit et la sort du brouillon quand les barrières sont vertes en local.
+- Un besoin hors du périmètre de la story se signale à l'orchestrateur.
 
 ### 6. Test
 Le **QA** fait passer toutes les barrières de qualité ci-dessous, en local puis en CI.
@@ -293,14 +281,14 @@ Toutes sont **bloquantes**. Les outils sont confirmés par l'Architect dans l'[A
 
 ```
 src/
-  domain/                 règles métier pures — aucune dépendance externe   [backend]
-  application/            cas d'usage + ports (interfaces)                  [backend]
+  domain/                 règles métier pures — aucune dépendance externe
+  application/            cas d'usage + ports (interfaces)
   adapters/
-    persistence/          stockage local, migrations                        [backend]
-    ui/                   composants, écrans, état d'affichage              [front]
-    device/               biométrie, stockage sécurisé, notifications…      [mobile]
-  app/                    routes et assemblage                              [mobile]
-e2e/                      tests end-to-end                                  [mobile]
+    persistence/          stockage local, migrations
+    ui/                   composants, écrans, état d'affichage
+    device/               biométrie, stockage sécurisé, notifications…
+  app/                    routes et assemblage
+e2e/                      tests end-to-end
 ```
 
 Règles vérifiées par les tests d'architecture :
@@ -369,8 +357,17 @@ Conservation des artefacts (stockage GitHub Actions limité) : l'APK est gardé 
 ## Boucles et escalade
 
 - **Review → Implement** : 3 tours au maximum. Au 4e échec, la story passe en `status:blocked` et l'orchestrateur résume le problème en commentaire sur l'issue au propriétaire.
-- **Barrière rouge sur `develop`** : priorité absolue, une issue `type:bug` est créée et traitée en `bugfix/` immédiatement.
-- **Bug en production (`main`)** : une issue `type:bug` avec le label `priority:hotfix` est traitée en `hotfix/`, en dehors du flux normal (voir « CI/CD et Git Flow »).
+- **Barrière rouge sur `develop`** : priorité absolue, une issue `type:bug` est créée et traitée en `bugfix/` immédiatement avec `/fix-bug`.
+- **Bug en production (`main`)** : une issue `type:bug` avec le label `priority:hotfix` est traitée en `hotfix/` avec `/fix-bug`, en dehors du flux normal (voir « CI/CD et Git Flow »).
+
+## Bugs — `/fix-bug`
+
+Un bug n'est pas une story : il ne crée pas de comportement nouveau, il rétablit celui que le propriétaire a déjà validé. Il ne repasse donc pas par ✋ et part directement en `status:ready`.
+
+1. L'issue `type:bug` (template « Bug ») décrit les étapes pour reproduire, l'attendu et l'observé.
+2. Le **Fixer** écrit d'abord un test de non-régression qui échoue, trouve la cause racine et applique la correction minimale, sur `bugfix/<n°>-<slug>` (depuis `develop`) ou `hotfix/<x.y.z>-<slug>` (depuis `main`).
+3. Les étapes **Test** (QA) et **Review** (Reviewer) sont les mêmes que pour une story, avec les mêmes barrières et la même limite de 3 tours.
+4. Si la correction change une règle de jeu ou un écran validés, ce n'est plus un bug mais un changement de périmètre : PM et Architect, puis ✋. Si elle demande une migration ou touche un port partagé, l'Impact Analyst et l'Architect passent avant le Fixer.
 - **Impact fort** : décision du PM et de l'Architect, tracée sur l'issue. Le propriétaire n'est sollicité que si ce qu'il a validé change.
 
 ## Agents et skills
@@ -383,9 +380,8 @@ Conservation des artefacts (stockage GitHub Actions limité) : l'APK est gardé 
 | UX | `.claude/agents/ux.md` | 2 |
 | Architect | `.claude/agents/architect.md` | 3, escalade d'impact |
 | Impact Analyst | `.claude/agents/impact-analyst.md` | 4 |
-| Dev backend | `.claude/agents/dev-backend.md` | 5 |
-| Dev front | `.claude/agents/dev-front.md` | 5 |
-| Dev mobile | `.claude/agents/dev-mobile.md` | 5 |
+| Dev | `.claude/agents/dev.md` | 5 |
+| Fixer | `.claude/agents/fixer.md` | Bugs (`/fix-bug`) |
 | QA | `.claude/agents/qa.md` | 6 |
 | Reviewer | `.claude/agents/reviewer.md` | 7 |
 
@@ -395,5 +391,6 @@ Conservation des artefacts (stockage GitHub Actions limité) : l'APK est gardé 
 | `/define-feature` | Étape 1 |
 | `/split-stories` | Étape 2 |
 | `/dev-story` | Étapes 3 à 8 pour une story `status:ready` |
+| `/fix-bug` | Correction d'un bug (`bugfix/` ou `hotfix/`) |
 | `/review-story` | Étape 7 sur une PR |
 | `/release` | Release ou hotfix selon Git Flow |

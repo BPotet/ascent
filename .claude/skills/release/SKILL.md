@@ -15,4 +15,4 @@ description: Publie une nouvelle version d'Ascent selon Git Flow — branche rel
 7. Réintègre `main` dans `develop` et supprime la branche de release.
 8. Annonce la version au propriétaire, en termes produit : ce qui est nouveau pour le joueur.
 
-Pour un **hotfix**, même démarche, mais la branche `hotfix/<x.y.z>-<slug>` part de `main`, la version est un PATCH, et la correction suit la boucle normale (QA, review) avant le merge dans `main` puis dans `develop`.
+Pour un **hotfix**, même démarche, mais la branche `hotfix/<x.y.z>-<slug>` part de `main`, la version est un PATCH, et la correction est faite avec `/fix-bug` (Fixer, QA, review) avant le merge dans `main` puis dans `develop`.
