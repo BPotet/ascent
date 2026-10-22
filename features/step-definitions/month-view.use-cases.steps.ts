@@ -13,6 +13,8 @@
  * - toucher une habitude dans le détail du jour = `toggleCheckIn` sur ce jour, seulement si sa case
  *   est modifiable (`editable`) : une case « hors habitude » ou « à venir » ne réagit pas. Le détail
  *   et la Vue Mois sont ensuite relus ;
+ * - le compteur d'un jour est « habitudes faites / habitudes attendues » (`doneCount`,
+ *   `expectedCount`, #25) ;
  * - l'en-tête affiche `getCharacter().xp` ; « le personnage a N Xp » avant toute action fixe le
  *   solde enregistré, après, il le vérifie. Les suivis du contexte sont enregistrés directement ;
  * - une erreur de chargement est l'exception levée par `getMonthView` ; « Réessayer » le relance.
@@ -344,8 +346,8 @@ const steps: StepDefinitions = ({ given, when, then }) => {
 
   then(/^les jours affichent :$/, async (table: { jour: string; compteur: string }[]) => {
     for (const { jour, compteur } of table) {
-      const { kind, doneCount, activeCount } = await monthDayOf(dayOf(jour));
-      expect([jour, kind, `${doneCount}/${activeCount}`]).toEqual([jour, 'tracked', compteur]);
+      const { kind, doneCount, expectedCount } = await monthDayOf(dayOf(jour));
+      expect([jour, kind, `${doneCount}/${expectedCount}`]).toEqual([jour, 'tracked', compteur]);
     }
   });
   then(/^les jours du (.+) sont neutres$/, async (range: string) => {
@@ -377,12 +379,15 @@ const steps: StepDefinitions = ({ given, when, then }) => {
       expect(habitDay).toMatchObject({ status: statusOf(label), corrected: true });
     },
   );
-  then(/^le compteur du (.+) affiche « (\d+)\/(\d+) »$/, async (date, done, active) => {
-    expect(world.detail).toMatchObject({ doneCount: Number(done), activeCount: Number(active) });
+  then(/^le compteur du (.+) affiche « (\d+)\/(\d+) »$/, async (date, done, expected) => {
+    expect(world.detail).toMatchObject({
+      doneCount: Number(done),
+      expectedCount: Number(expected),
+    });
     expect(await monthDayOf(dayOf(date))).toMatchObject({
       kind: 'tracked',
       doneCount: Number(done),
-      activeCount: Number(active),
+      expectedCount: Number(expected),
     });
   });
   then(/^le (.+) signale discrètement qu'il a été corrigé$/, async (date: string) => {

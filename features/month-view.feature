@@ -14,7 +14,7 @@ Fonctionnalité: Consulter un mois et tout l'historique
     Et les semaines du mois vont du lundi au dimanche
     Et le mercredi 14 octobre est mis en évidence comme aujourd'hui
 
-  Scénario: Compteur « habitudes faites / habitudes actives » de chaque jour
+  Scénario: Compteur « habitudes faites / habitudes attendues » de chaque jour
     Quand le joueur affiche la Vue Mois d'octobre 2026
     Alors les jours affichent :
       | jour                 | compteur |
