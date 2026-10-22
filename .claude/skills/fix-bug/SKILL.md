@@ -14,5 +14,6 @@ description: Corrige un bug d'Ascent de bout en bout — reproduction par un tes
 5. **Review** : passe en `status:review` et lance l'agent **reviewer** (au plus 3 tours, puis `status:blocked` et résumé au propriétaire).
 6. **Merge** :
    - `bugfix/` : quand la CI est verte et la review approuvée, active l'auto-merge (squash) dans `develop`. Elle ferme l'issue.
+   - **Mutation des écrans** : comme dans `/dev-story`, pose le label `mutation:ui` **seulement si le propriétaire le demande** (voir « Mutation des écrans à la demande » dans `docs/workflow.md`). Quand il est posé, attends que le check `Screen mutation tests (StrykerJS)` soit vert avant d'activer l'auto-merge (désactive-le s'il était déjà actif) : ce check n'est pas exigé par la protection de branche. S'il est rouge, renvoie au **fixer**, puis à **qa**.
    - `hotfix/` : termine avec la démarche hotfix de `/release` (merge dans `main`, tag, réintégration dans `develop`).
 7. Annonce au propriétaire, en une phrase produit, ce qui est réparé.
