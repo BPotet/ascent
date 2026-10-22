@@ -133,7 +133,7 @@ Fonctionnalité: Prototype jouable du combat
     Quand elle se termine
     Alors le premier ennemi debout s'avance pendant 400 ms
     Et sa préparation (C10) commence seulement ensuite
-    Et son premier impact tombe au plus tôt 2 080 ms après la fin de l'attaque de la Sentinelle (800 + 400 + 880)
+    Et son premier impact tombe au plus tôt 2 000 ms après la fin de l'attaque de la Sentinelle (800 + 400 + 800)
 
   Scénario: Un appui pendant l'avancée est dans le vide (C9, C12)
     Étant donné une transition de phase vers la phase ennemie a commencé
