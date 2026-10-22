@@ -20,8 +20,12 @@ const base = {
   preset: 'jest-expo',
 };
 
-// Projets qui rendent des écrans : délai de test explicite (voir le fichier).
-const screenTestTimeout = '<rootDir>/test/setup/screenTestTimeout.ts';
+// Projets qui rendent des écrans : délai de test explicite et taille de texte habituelle (voir les
+// fichiers).
+const screenSetup = [
+  '<rootDir>/test/setup/screenTestTimeout.ts',
+  '<rootDir>/test/setup/textSize.ts',
+];
 
 /** @type {import('jest').Config} */
 module.exports = {
@@ -36,14 +40,14 @@ module.exports = {
       ...base,
       displayName: 'integration',
       testMatch: ['<rootDir>/src/adapters/**/*.test.{ts,tsx}', '<rootDir>/test/**/*.test.{ts,tsx}'],
-      setupFilesAfterEnv: [screenTestTimeout],
+      setupFilesAfterEnv: screenSetup,
     },
     {
       ...base,
       displayName: 'bdd',
       testMatch: ['<rootDir>/features/**/*.steps.{ts,tsx}'],
       moduleNameMapper: { '^uuid$': cucumberUuid },
-      setupFilesAfterEnv: [screenTestTimeout],
+      setupFilesAfterEnv: screenSetup,
     },
   ],
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.test.{ts,tsx}', '!src/**/testing/**'],
