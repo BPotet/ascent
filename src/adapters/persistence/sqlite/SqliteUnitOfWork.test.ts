@@ -1,6 +1,7 @@
 import { describeCharacterRepositoryContract } from '../testing/characterRepositoryContract';
 import { describeCheckInRepositoryContract } from '../testing/checkInRepositoryContract';
 import { describeHabitRepositoryContract } from '../testing/habitRepositoryContract';
+import { describeIntroductionRepositoryContract } from '../testing/introductionRepositoryContract';
 import { describeSettingsChangeRepositoryContract } from '../testing/settingsChangeRepositoryContract';
 import { FakeExpoSqliteConnection } from '../testing/fakeExpoSqlite';
 import { withFaults } from '../testing/faultySqlDatabase';
@@ -8,6 +9,7 @@ import { openNodeSqliteDatabase } from '../testing/nodeSqliteDatabase';
 import { readsFrom, readsFromWith, SimulatedStorageError, writesTo } from '../testing/sqlFaults';
 import { describeUnitOfWorkContract } from '../testing/unitOfWorkContract';
 import { deleteHabit } from '../../../application/useCases/deleteHabit';
+import { introduceTargetBonus } from '../../../application/useCases/introduceTargetBonus';
 import { createHabit } from '../../../application/useCases/createHabit';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
 import { updateHabit } from '../../../application/useCases/updateHabit';
@@ -27,6 +29,7 @@ describe('SqliteUnitOfWork', () => {
   describeCheckInRepositoryContract(createUnitOfWork);
   describeCharacterRepositoryContract(createUnitOfWork);
   describeSettingsChangeRepositoryContract(createUnitOfWork);
+  describeIntroductionRepositoryContract(createUnitOfWork);
 
   describe('on the expo-sqlite bridge', () => {
     const createOnExpo = async () =>
@@ -37,6 +40,7 @@ describe('SqliteUnitOfWork', () => {
     describeCheckInRepositoryContract(createOnExpo);
     describeCharacterRepositoryContract(createOnExpo);
     describeSettingsChangeRepositoryContract(createOnExpo);
+    describeIntroductionRepositoryContract(createOnExpo);
 
     it('sends every statement of a work on the shared connection, inside one transaction', async () => {
       const connection = FakeExpoSqliteConnection.open();
@@ -240,6 +244,37 @@ describe('SqliteUnitOfWork', () => {
         await expect(changes()).resolves.toEqual(before);
         await expect(unitOfWork.run(({ character }) => character.get())).resolves.toEqual(
           new Character(10),
+        );
+      },
+    );
+
+    it.each(['character', 'introductions'])(
+      'awards no target bonus and records no introduction when %s cannot be written (#26)',
+      async (table) => {
+        const db = withFaults(await prepareAscentDatabase(openNodeSqliteDatabase()));
+        const unitOfWork = new SqliteUnitOfWork(db);
+        const deps = { clock: { today: () => day }, unitOfWork };
+        const created = await createHabit(deps, 'Lire', 'medium', 1);
+        const reading = created.ok ? created.habit : (undefined as never);
+        await unitOfWork.run(({ checkIns }) =>
+          checkIns.save({ habitId: reading.id, day, done: true, corrected: false }),
+        );
+        await unitOfWork.run(({ character }) => character.save(new Character(10)));
+
+        db.faults.failWhen(writesTo(table));
+        await expect(introduceTargetBonus(deps)).rejects.toThrow(SimulatedStorageError);
+
+        db.faults.failWhen(null);
+        await expect(unitOfWork.run(({ character }) => character.get())).resolves.toEqual(
+          new Character(10),
+        );
+        await expect(
+          unitOfWork.run(({ introductions }) => introductions.has('targetBonus')),
+        ).resolves.toBe(false);
+        await expect(introduceTargetBonus(deps)).resolves.toBe(5);
+        await expect(introduceTargetBonus(deps)).resolves.toBe(0);
+        await expect(unitOfWork.run(({ character }) => character.get())).resolves.toEqual(
+          new Character(15),
         );
       },
     );
