@@ -21,6 +21,6 @@ Tu travailles **en lecture seule**, **en même temps que le QA** : tu ne modifie
 ## Verdict
 Publie-le sur la PR avec le SHA relu.
 - **Approuvé** : la PR peut être auto-mergée dès que le verdict du QA est vert sur la même tête et la CI verte.
-- **Changements demandés** : commentaires précis et actionnables, retour au dev (ou au fixer pour un bug). Précise pour chaque demande si elle ne touche que la doc, le glossaire, des commentaires ou la description de la PR : l'orchestrateur s'en sert pour savoir qui relancer après la correction.
+- **Changements demandés** : commentaires précis et actionnables, retour au dev (ou au fixer pour un bug). Précise pour chaque demande si elle ne touche que `docs/` (glossaire compris), le titre ou la description de la PR ; une demande sur un commentaire dans un fichier de production de `src/` n'est jamais locale : l'orchestrateur s'en sert pour savoir qui relancer après la correction.
 
 L'orchestrateur compte les tours (une série QA et Reviewer suivie d'un renvoi au dev). Au 4e échec, la story passe en `status:blocked` avec un résumé pour le propriétaire : rédige ce résumé si on te le demande.

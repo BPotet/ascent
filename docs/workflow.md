@@ -261,13 +261,15 @@ Tous deux sont en **lecture seule** : ils ne modifient ni le code, ni les tests,
 Si au moins un des deux demande des changements, l'orchestrateur attend les deux verdicts, puis renvoie leurs rapports **ensemble** au dev (ou au fixer), en `status:in-progress`. Après la correction, il relance :
 
 - **les deux**, par défaut, et dans tous les cas de doute ;
-- **seulement celui qui a demandé la correction**, si elle est **locale**, c'est-à-dire si tous ces points sont vrais :
-  - l'autre avait rendu un verdict vert sur le commit précédent ;
-  - la correction ne modifie aucun code de production : rien dans `src/` hors fichiers de test, aucune migration, aucune configuration, aucun workflow de CI ;
-  - pour une demande du **QA**, elle ne fait qu'ajouter ou renforcer des tests (fichiers `*.test.ts(x)`, steps Gherkin, `e2e/`) ;
-  - pour une demande du **Reviewer**, elle ne touche que la doc, le glossaire, des commentaires, le titre ou la description de la PR.
+- **seulement celui qui a demandé la correction**, si elle est **locale**, c'est-à-dire si tous ces points sont vrais, pour **tout le diff** entre le SHA relu par l'autre et la nouvelle tête (le dev peut pousser plusieurs commits de correction) :
+  - l'autre avait rendu un verdict vert sur la tête qu'il a relue ;
+  - aucun fichier de production n'est modifié : rien dans `src/` hors fichiers de test (`*.test.ts(x)`, dossiers `testing/`), **pas même un commentaire**, aucune migration, aucune configuration, aucun workflow de CI ;
+  - pour une demande du **QA**, la correction ne fait qu'ajouter ou renforcer des tests (fichiers `*.test.ts(x)` et dossiers `testing/` de `src/`, steps Gherkin, `features/`, `e2e/`) ;
+  - pour une demande du **Reviewer**, la correction ne touche que `docs/` (glossaire compris), le titre ou la description de la PR.
 
-Pour une correction locale, l'orchestrateur **reconduit** le verdict vert de l'autre sur la nouvelle tête, par un commentaire sur la PR (« Verdict QA reconduit de `<sha>` : correction locale aux tests »). Tout autre commit poussé après les verdicts, y compris une mise à jour depuis `develop`, relance les deux.
+Un **commentaire dans un fichier de production de `src/` n'est jamais une correction locale** : il relance les deux.
+
+Pour une correction locale, l'orchestrateur **reconduit** le verdict vert de l'autre sur la nouvelle tête, par un commentaire sur la PR (« Verdict QA reconduit de `<sha>` à `<sha>` : correction locale aux tests »). Quand c'est le verdict du Reviewer qui est reconduit après une correction aux tests, le QA vérifie aussi que les noms des tests ajoutés suivent le glossaire, ce que le Reviewer n'a pas relu. Tout autre commit poussé après les verdicts, y compris une mise à jour depuis `develop`, relance les deux.
 
 #### Tours
 

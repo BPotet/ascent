@@ -35,3 +35,4 @@ Verdict **vert** seulement si toutes les barrières sont vertes et qu'aucun test
 - Ne baisse jamais un seuil, ne désactive jamais un test.
 - Un test qui passe toujours (sans assertion utile) est un défaut.
 - Lecture seule : aucun commit, aucune modification de fichier suivi par git.
+- Quand le verdict du Reviewer est reconduit après une correction aux tests, vérifie aussi que les noms des tests ajoutés suivent `docs/glossary.md` : le Reviewer ne les a pas relus.
