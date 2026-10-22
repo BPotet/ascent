@@ -43,10 +43,12 @@ describe('touchesCode', () => {
 });
 
 describe('isApp', () => {
-  it('sees what goes into the APK or what the end-to-end exercises', () => {
+  it('sees what goes into the APK, what the end-to-end exercises and any unknown file', () => {
     for (const file of [
       'src/domain/habit/Habit.ts',
       'src/app/(tabs)/index.tsx',
+      'src/app/(tabs)/index.test.tsx',
+      'src/app/__tests__/x.tsx',
       'src/adapters/ui/testing/fixtures.ts',
       'app.json',
       'app.config.ts',
@@ -64,15 +66,22 @@ describe('isApp', () => {
       '.github/workflows/ci.yml',
       'e2e/flows/launch.yaml',
       'e2e/subflows/open-app.yaml',
+      'react-native.config.js',
+      'eas.json',
+      '.npmrc',
+      'patches/expo+57.0.28.patch',
+      'plugins/withX.js',
+      'src-old/index.ts',
     ])
       assert.equal(isApp(file), true, file);
   });
 
-  it('ignores tests, scenarios, CI scripts, tool configuration and other workflows', () => {
+  it('ignores tests outside the routes, scenarios, CI scripts, tool configuration and other workflows', () => {
     for (const file of [
       'src/domain/habit/Habit.test.ts',
       'src/adapters/ui/HabitCard.test.tsx',
       'src/adapters/ui/__tests__/HabitCard.tsx',
+      'src/application/useCases/getDayView.test.ts',
       'features/habit.feature',
       'features/steps/habit.steps.ts',
       'test/app/startup.test.tsx',
@@ -81,13 +90,20 @@ describe('isApp', () => {
       'scripts/mutation/run.mjs',
       'stryker.config.mjs',
       'stryker.ui.config.mjs',
+      'stryker.domain.config.mjs',
       'jest.config.js',
       'eslint.config.js',
       '.dependency-cruiser.cjs',
       'commitlint.config.mjs',
       'sonar-project.properties',
       '.prettierrc.json',
+      '.prettierignore',
+      '.gitleaks.toml',
+      '.gitignore',
       '.husky/pre-commit',
+      '.github/ISSUE_TEMPLATE/story.md',
+      '.github/ISSUE_TEMPLATE/config.yml',
+      '.github/pull_request_template.md',
       '.github/workflows/mutation-ui.yml',
       '.github/workflows/pr-title.yml',
       '.github/workflows/release.yml',
@@ -95,7 +111,6 @@ describe('isApp', () => {
       'docs/workflow.md',
       'src/app/README.md',
       'scripts/index.mjs',
-      'src-old/index.ts',
     ])
       assert.equal(isApp(file), false, file);
   });

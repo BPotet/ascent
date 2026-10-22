@@ -21,31 +21,40 @@ export function isDocumentation(file) {
 
 export const touchesCode = (files) => files.some((file) => !isDocumentation(file));
 
-const APP_DIRECTORIES = [
-  'src/',
-  'assets/',
-  'android/',
-  'e2e/',
-  '.github/actions/build-android-apk/',
+// Ce qui ne part pas dans l'APK et que l'end-to-end n'exerce pas. Tout autre fichier, même inconnu,
+// relance l'APK et l'end-to-end.
+const NON_APP_DIRECTORIES = [
+  'features/',
+  'test/',
+  'scripts/',
+  '.husky/',
+  '.github/ISSUE_TEMPLATE/',
 ];
-const APP_FILES = [
-  'app.json',
-  'package.json',
-  'package-lock.json',
-  '.nvmrc',
-  '.github/workflows/ci.yml',
+const NON_APP_FILES = [
+  '.dependency-cruiser.cjs',
+  'sonar-project.properties',
+  '.prettierignore',
+  '.gitleaks.toml',
+  '.gitignore',
+  '.github/pull_request_template.md',
 ];
-const APP_CONFIG = /^(app\.config|babel\.config|metro\.config|index|tsconfig(\..+)?)\.[^/]+$/;
+const NON_APP_CONFIG =
+  /^(stryker(\.[^/.]+)?\.config|jest\.config|eslint\.config|commitlint\.config)\.[^/]+$|^\.prettierrc[^/]*$/;
+// Les workflows, sauf ci.yml qui porte l'APK et l'end-to-end.
+const OTHER_WORKFLOW = /^\.github\/workflows\/(?!ci\.yml$)[^/]+$/;
 const TEST_FILE = /(\.test\.[jt]sx?$|(^|\/)__tests__\/)/;
 
 /** Un fichier qui part dans l'APK ou que l'end-to-end exerce : son changement relance l'APK et l'e2e. */
 export function isApp(file) {
   if (isDocumentation(file)) return false;
+  // Expo Router embarque tout fichier de src/app/ comme route, tests compris.
+  if (file.startsWith('src/app/')) return true;
   if (file.startsWith('src/')) return !TEST_FILE.test(file);
-  return (
-    APP_DIRECTORIES.some((directory) => file.startsWith(directory)) ||
-    APP_FILES.includes(file) ||
-    APP_CONFIG.test(file)
+  return !(
+    NON_APP_DIRECTORIES.some((directory) => file.startsWith(directory)) ||
+    NON_APP_FILES.includes(file) ||
+    NON_APP_CONFIG.test(file) ||
+    OTHER_WORKFLOW.test(file)
   );
 }
 
