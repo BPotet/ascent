@@ -1,0 +1,47 @@
+# Story #46 : la sonde de toucher mesure la datation des touchers sur le build de preview.
+# Parcours : installation neuve, accueil (Vue Journée vide) → lien profond
+# ascent://preview/touch-probe → 20 touchers sur la zone d'essai → le résultat montre l'écart
+# médian, l'écart p95 et la méthode de datation retenue (a, b ou c).
+# L'APK de la CI est construit sur le canal preview (action build-android-apk, sans canal précisé) :
+# sur le build de production, le même lien ramène à l'accueil (test/app/touchProbe.test.tsx).
+# La capture `touch-probe-result` donne les chiffres de l'émulateur consignés dans l'ADR 0005.
+# Le résultat est un seul élément accessible : son texte est son libellé
+# « Résultat. Écart médian : … ms. Écart p95 : … ms. Méthode retenue : a. Base commune : oui. ».
+appId: com.bpotet.ascent
+name: Sonde de toucher du build de preview
+tags:
+  - story-46
+---
+- runFlow: ../subflows/launch-fresh.yaml
+
+- openLink: ascent://preview/touch-probe
+- extendedWaitUntil:
+    visible: 'Sonde de toucher'
+    timeout: 15000
+- assertVisible: 'Outil du build de preview'
+# La calibration des deux horloges (un aller-retour vers le fil UI) est faite au montage.
+- extendedWaitUntil:
+    notVisible: 'Décalage calibré : en cours'
+    timeout: 10000
+- assertVisible:
+    id: 'touch-probe-target'
+- takeScreenshot: touch-probe-empty
+
+- repeat:
+    times: 20
+    commands:
+      - tapOn:
+          id: 'touch-probe-target'
+
+- extendedWaitUntil:
+    visible:
+      id: 'touch-probe-result'
+    timeout: 10000
+- assertVisible:
+    id: 'touch-probe-result'
+    text: '.*Écart médian : .+ ms\. Écart p95 : .+ ms\..*'
+- assertVisible:
+    id: 'touch-probe-result'
+    text: '.*Méthode retenue : [abc]\. Base commune : (oui|non)\..*'
+- assertVisible: 'Recommencer'
+- takeScreenshot: touch-probe-result
