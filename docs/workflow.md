@@ -285,7 +285,7 @@ Décision du propriétaire du 22 octobre 2026 (issue #54, avenant à l'[ADR 0004
 
 | Cas | Comment | Ce qui est muté |
 |---|---|---|
-| **PR** | L'orchestrateur pose le label `mutation:ui` sur la PR, quand le propriétaire le demande. | À la pose du label, les lignes nouvelles des écrans (workflow `Screen mutation`) ; à chaque push suivant, le code nouveau écrans compris (CI). |
+| **PR** | L'orchestrateur pose le label `mutation:ui` sur la PR, quand le propriétaire le demande. | À la pose du label, les lignes nouvelles des écrans (workflow `Screen mutation`) ; pour une PR vers `develop`, à chaque push suivant, le code nouveau écrans compris (CI). |
 | **Lancement manuel de la CI** | `workflow_dispatch` du workflow `CI` avec l'entrée `ui-mutation` cochée. | Tout le code, écrans compris. |
 | **En local** | `npm run mutation:ui` (lignes nouvelles depuis `origin/develop`) ; `npm run mutation:ui -- --full` pour tous les écrans. | Les écrans seuls. |
 
@@ -294,7 +294,7 @@ Quand elle tourne, les seuils actuels s'appliquent (code nouveau : 70 %). Sinon,
 Règles pour l'orchestrateur :
 
 - Il ne pose `mutation:ui` que si le propriétaire le demande, jamais de sa propre initiative.
-- Le check `Screen mutation tests (StrykerJS)` n'existe que sur le commit où le label a été posé : il ne peut pas être exigé par la protection de branche, et l'auto-merge ne l'attend pas. Quand `mutation:ui` est posé, l'orchestrateur attend donc que ce check soit **vert** avant d'activer l'auto-merge ; si l'auto-merge était déjà actif, il le désactive jusque-là. Un check rouge renvoie au dev, comme une barrière rouge. Aux pushs suivants, la mutation des écrans est comptée dans le check habituel `Mutation tests (StrykerJS)`, déjà exigé.
+- Le check `Screen mutation tests (StrykerJS)` n'existe que sur le commit où le label a été posé : il ne peut pas être exigé par la protection de branche, et l'auto-merge ne l'attend pas. Quand `mutation:ui` est posé, l'orchestrateur attend donc que ce check soit **vert** avant d'activer l'auto-merge ; si l'auto-merge était déjà actif, il le désactive jusque-là. Un check rouge renvoie au dev, comme une barrière rouge. Pour une PR vers `develop` seulement, aux pushs suivants, la mutation des écrans est comptée dans le check habituel `Mutation tests (StrykerJS)`, déjà exigé. Pour une PR de release ou de hotfix vers `main` (branche `release/*` ou `hotfix/*`), la CI ne mute pas le code de la PR (la branche est mutée à son push, sans les écrans) : les écrans n'y sont mutés que sur le commit où le label est posé.
 - Cas limite accepté : une PR **créée** avec le label déjà posé mute ses écrans deux fois (par la CI et par le workflow `Screen mutation`, que GitHub déclenche aussi à la création). Les deux résultats doivent être verts.
 
 ## Architecture hexagonale

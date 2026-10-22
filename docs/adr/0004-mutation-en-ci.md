@@ -95,7 +95,9 @@ trop chaque story.
 3. **La mutation des écrans tourne à la demande du propriétaire** :
    - label `mutation:ui` sur une PR, posé par l'orchestrateur. Quand le label est posé, le workflow
      `Screen mutation` (`.github/workflows/mutation-ui.yml`) mute les lignes nouvelles des écrans ;
-     ensuite, chaque push de la PR est muté par `ci.yml` écrans compris, car le plan lit le label ;
+     ensuite, pour une PR vers `develop`, chaque push de la PR est muté par `ci.yml` écrans
+     compris, car le plan lit le label. Pour une PR de release ou de hotfix vers `main`, `ci.yml`
+     ne mute pas la PR : les écrans n'y sont mutés que sur le commit où le label est posé ;
    - lancement manuel du workflow `CI` avec l'entrée booléenne `ui-mutation` (tout le code) ;
    - en local, `npm run mutation:ui` (lignes nouvelles des écrans ; `-- --full` pour tous).
 4. **Quand elle tourne, les seuils actuels s'appliquent** : les shards d'écrans sont dans la classe
@@ -126,8 +128,10 @@ choisie par `MUTATION_UI` ou les options `--ui` et `--ui-only` de `scripts/mutat
 
 - Une PR, une release et un hotfix lancent moins de shards : 3 au plus en release au lieu de 13.
 - Quand le label est posé sur une PR ouverte, la mutation des écrans a son propre check
-  (`Screen mutation tests (StrykerJS)`), avec un score calculé sur les écrans seuls ; aux pushs
-  suivants, elle est comptée dans le check habituel `Mutation tests (StrykerJS)`.
+  (`Screen mutation tests (StrykerJS)`), avec un score calculé sur les écrans seuls. Pour une PR
+  vers `develop` seulement, aux pushs suivants, elle est comptée dans le check habituel
+  `Mutation tests (StrykerJS)` ; pour une PR de release ou de hotfix vers `main`, elle ne porte
+  que sur le commit où le label est posé.
 - Pour un autre label, les jobs du workflow `Screen mutation` portent un autre nom (« Label without
   mutation … ») : aucun check sauté ne masque un échec de la mutation des écrans sur le même commit.
 - Cas limite accepté : une PR créée avec le label déjà posé mute ses écrans deux fois (`ci.yml` à
