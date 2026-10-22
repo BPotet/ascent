@@ -148,6 +148,8 @@ function toGhoulWindUp(
 
 /** L'instant du premier impact d'un coup simple de la Goule, à préparation de base. */
 const GHOUL_IMPACT = GHOUL_WIND_UP_AT + 1_100;
+/** Le 1er impact de la double frappe de la Goule (préparation de base 1 000 ms). */
+const DOUBLE_IMPACT = GHOUL_WIND_UP_AT + 1_000;
 
 describe('startTrialBattle', () => {
   it('opposes the Sentinel to a Ghoul and a Specter, in the hero phase of round 1', () => {
@@ -265,13 +267,16 @@ describe('the order of a round (C1, C12)', () => {
     ]);
   });
 
-  it('places the first impact 2,080 ms after the hero attack, with the shortest wind-up', () => {
+  it('places the first impact 2,000 ms after the hero attack, with the shortest wind-up', () => {
     const play = BattlePlay.start()
-      .with(fixedIntent(0, 'basic', { windUpMs: 880 }))
+      .with(fixedIntent(0, 'double', { windUpMs: 800 }))
       .attack(ATTACK_AT)
       .advance(GHOUL_WIND_UP_AT);
 
-    expect(play.lastOf('windUpStarted')?.impacts).toEqual([HERO_ACTION_END + 2_080]);
+    expect(play.lastOf('windUpStarted')?.impacts).toEqual([
+      HERO_ACTION_END + 2_000,
+      HERO_ACTION_END + 2_420,
+    ]);
   });
 
   it('applies the trial tuning of the transition and of the step-in', () => {
@@ -568,9 +573,9 @@ describe('judging a defense press (C7, C8)', () => {
 describe('double attack (C8, C10)', () => {
   it('judges each impact: perfect on the first, nothing on the second, no counter', () => {
     const play = toGhoulWindUp('double');
-    expect(play.lastOf('windUpStarted')?.impacts).toEqual([GHOUL_IMPACT, GHOUL_IMPACT + 420]);
+    expect(play.lastOf('windUpStarted')?.impacts).toEqual([DOUBLE_IMPACT, DOUBLE_IMPACT + 420]);
 
-    play.press('parry', GHOUL_IMPACT - 10).advance(20_000);
+    play.press('parry', DOUBLE_IMPACT - 10).advance(20_000);
 
     const blows = play.all('blowResolved').filter((blow) => blow.enemy === 0);
     expect(blows.map(({ index, outcome, damage }) => ({ index, outcome, damage }))).toEqual([
@@ -578,31 +583,31 @@ describe('double attack (C8, C10)', () => {
       { index: 1, outcome: 'suffered', damage: 2 },
     ]);
     // Le 2e impact est décalé par l'arrêt sur image de la 1re parade.
-    expect(blows[1]!.at).toBe(GHOUL_IMPACT + 420 + 90 + 160);
+    expect(blows[1]!.at).toBe(DOUBLE_IMPACT + 420 + 90 + 160);
     expect(play.all('counterAttacked')).toEqual([]);
     expect(blows[1]!.heroHp).toBe(78);
   });
 
   it('counters only when both impacts are parried perfectly', () => {
     const play = toGhoulWindUp('double')
-      .press('parry', GHOUL_IMPACT)
-      .press('parry', GHOUL_IMPACT + 420 + 90 + 20)
+      .press('parry', DOUBLE_IMPACT)
+      .press('parry', DOUBLE_IMPACT + 420 + 90 + 20)
       .advance(20_000);
 
     expect(play.all('hitStopStarted')).toHaveLength(2);
     expect(play.lastOf('counterAttacked')).toEqual({
       type: 'counterAttacked',
-      at: GHOUL_IMPACT + 530 + 90,
+      at: DOUBLE_IMPACT + 530 + 90,
       enemy: 0,
       damage: 6,
-      until: GHOUL_IMPACT + 530 + 90 + 400,
+      until: DOUBLE_IMPACT + 530 + 90 + 400,
     });
   });
 
   it('does not counter after a dodge and a perfect parry', () => {
     const play = toGhoulWindUp('double')
-      .press('dodge', GHOUL_IMPACT)
-      .press('parry', GHOUL_IMPACT + 420)
+      .press('dodge', DOUBLE_IMPACT)
+      .press('parry', DOUBLE_IMPACT + 420)
       .advance(20_000);
 
     expect(
@@ -910,15 +915,15 @@ describe('feint attack (C10)', () => {
           ...phase,
           step: {
             ...(phase.step as Extract<typeof phase.step, { kind: 'attack' }>),
-            feintAt: GHOUL_IMPACT + 200,
+            feintAt: DOUBLE_IMPACT + 200,
           },
         },
       };
     });
 
-    play.press('parry', GHOUL_IMPACT);
+    play.press('parry', DOUBLE_IMPACT);
 
-    expect(play.battle.phase).toMatchObject({ step: { feintAt: GHOUL_IMPACT + 290 } });
+    expect(play.battle.phase).toMatchObject({ step: { feintAt: DOUBLE_IMPACT + 290 } });
   });
 });
 
@@ -1211,13 +1216,13 @@ describe('over about 500 seeds', () => {
     }
   });
 
-  it('never lands the first impact of an enemy phase sooner than 2,080 ms after the hero attack', () => {
+  it('never lands the first impact of an enemy phase sooner than 2,000 ms after the hero attack', () => {
     for (const play of allPlays()) {
       for (const transition of play
         .all('phaseTransitionStarted')
         .filter(({ to }) => to === 'enemy')) {
         const windUp = play.all('windUpStarted').find(({ at }) => at > transition.at)!;
-        expect(windUp.impacts[0]! - transition.at).toBeGreaterThanOrEqual(2_080);
+        expect(windUp.impacts[0]! - transition.at).toBeGreaterThanOrEqual(2_000);
       }
     }
   });

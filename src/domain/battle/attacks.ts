@@ -17,9 +17,9 @@ export interface AttackProfile {
 
 export const ATTACKS: Readonly<Record<AttackKind, AttackProfile>> = {
   basic: { windUpMs: 1_100, hitOffsetsMs: [0], feint: false, perilous: false },
-  // Même préparation de base que le coup simple : le premier impact d'une phase ennemie tombe au
-  // plus tôt 800 + 400 + 880 ms après l'action du héros (C12).
-  double: { windUpMs: 1_100, hitOffsetsMs: [0, 420], feint: false, perilous: false },
+  // La préparation la plus courte : le premier impact d'une phase ennemie tombe au plus tôt
+  // 800 + 400 + 800 ms après l'action du héros (C12).
+  double: { windUpMs: 1_000, hitOffsetsMs: [0, 420], feint: false, perilous: false },
   delayed: { windUpMs: 1_700, hitOffsetsMs: [0], feint: false, perilous: false },
   feint: { windUpMs: 1_600, hitOffsetsMs: [0], feint: true, perilous: false },
   perilous: { windUpMs: 1_300, hitOffsetsMs: [0], feint: false, perilous: true },
@@ -32,7 +32,7 @@ export const WIND_UP_MAX_FACTOR = 1.2;
 export const FEINT_MIN_FRACTION = 0.35;
 export const FEINT_MAX_FRACTION = 0.6;
 
-/** La plus courte préparation possible, tous coups confondus (880 ms). */
+/** La plus courte préparation possible, tous coups confondus (800 ms, la double frappe). */
 export function shortestWindUpMs(): number {
   return Math.min(...Object.values(ATTACKS).map(({ windUpMs }) => windUpMs * WIND_UP_MIN_FACTOR));
 }

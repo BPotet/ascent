@@ -5,15 +5,15 @@ describe('attacks (C10)', () => {
   it('gives each attack its base wind-up and impacts', () => {
     expect(ATTACKS).toEqual({
       basic: { windUpMs: 1_100, hitOffsetsMs: [0], feint: false, perilous: false },
-      double: { windUpMs: 1_100, hitOffsetsMs: [0, 420], feint: false, perilous: false },
+      double: { windUpMs: 1_000, hitOffsetsMs: [0, 420], feint: false, perilous: false },
       delayed: { windUpMs: 1_700, hitOffsetsMs: [0], feint: false, perilous: false },
       feint: { windUpMs: 1_600, hitOffsetsMs: [0], feint: true, perilous: false },
       perilous: { windUpMs: 1_300, hitOffsetsMs: [0], feint: false, perilous: true },
     });
   });
 
-  it('never prepares an attack in less than 880 ms', () => {
-    expect(shortestWindUpMs()).toBe(880);
+  it('never prepares an attack in less than 800 ms (the double attack, 1,000 ms × 0.8)', () => {
+    expect(shortestWindUpMs()).toBe(800);
   });
 
   it('places the feint between 35 % and 60 % of the wind-up', () => {
