@@ -296,7 +296,15 @@ const styles = StyleSheet.create({
   loading: { color: battleColors.muted, fontSize: 15 },
   header: { height: 54, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   title: { color: battleColors.text, fontSize: 17, fontWeight: '700', letterSpacing: 0.4 },
-  scene: { height: SCENE_HEIGHT, flexShrink: 1, minHeight: 320, overflow: 'hidden' },
+  // Sur un petit écran, la scène cède la place : la barre du héros et la zone d'action, ancrée en
+  // bas, gardent toujours leur taille.
+  scene: {
+    flexBasis: SCENE_HEIGHT,
+    flexGrow: 0,
+    flexShrink: 1,
+    minHeight: 240,
+    overflow: 'hidden',
+  },
   phase: {
     position: 'absolute',
     top: 8,
@@ -324,7 +332,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 3,
   },
-  zone: { flex: 1, justifyContent: 'flex-end', paddingHorizontal: 16, paddingBottom: 34, gap: 10 },
+  zone: {
+    flexGrow: 1,
+    flexShrink: 0,
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingBottom: 34,
+    gap: 10,
+  },
   line: {
     color: battleColors.muted,
     fontSize: 14,
