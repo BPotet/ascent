@@ -12,7 +12,7 @@ Fonctionnalité: Renommer et supprimer une habitude
     Quand le joueur ouvre « Cuisiner » pour la modifier
     Alors le panneau « Modifier l'habitude » s'affiche avec le nom « Cuisiner »
     Et l'action « Supprimer l'habitude » est proposée
-    Et l'enregistrement est désactivé tant que le nom n'a pas changé
+    Et l'enregistrement est désactivé tant que rien n'a changé
 
   Scénario: Renommer une habitude conserve suivis et expérience
     Étant donné que « Cuisiner » est « fait » le lundi 12 octobre
@@ -21,6 +21,7 @@ Fonctionnalité: Renommer et supprimer une habitude
     Alors l'habitude s'appelle « Cuisiner maison » dans la Vue Journée et la Vue Semaine
     Et le lundi 12 octobre de « Cuisiner maison » est toujours « fait »
     Et son jour de création est toujours le lundi 5 octobre 2026
+    Et sa difficulté est toujours « Moyenne »
     Et le personnage a toujours 10 Xp
 
   Scénario: Changer seulement les majuscules du nom

@@ -12,12 +12,7 @@ name: Gagner de l'expérience en tenant ses habitudes
 tags:
   - story-5
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      id: 'day-view-empty'
-    timeout: 30000
+- runFlow: ../subflows/launch-fresh.yaml
 
 # Une habitude créée aujourd'hui, à faire : le personnage n'a pas encore d'expérience.
 - tapOn:
@@ -34,7 +29,7 @@ tags:
     notVisible: 'Nouvelle habitude'
     timeout: 10000
 - extendedWaitUntil:
-    visible: 'Lire, .+, à faire'
+    visible: 'Lire, .+, à faire, Moyenne, 10 XP par suivi'
     timeout: 10000
 - assertVisible:
     id: 'character-bar'
@@ -49,7 +44,7 @@ tags:
     id: 'habit-row-1'
 - takeScreenshot: earn-xp-2-gain-feedback
 - extendedWaitUntil:
-    visible: 'Lire, .+, fait'
+    visible: 'Lire, .+, fait, Moyenne, 10 XP par suivi'
     timeout: 10000
 - extendedWaitUntil:
     visible:
@@ -63,7 +58,7 @@ tags:
     id: 'habit-row-1'
 - takeScreenshot: earn-xp-3-loss-feedback
 - extendedWaitUntil:
-    visible: 'Lire, .+, à faire'
+    visible: 'Lire, .+, à faire, Moyenne, 10 XP par suivi'
     timeout: 10000
 - extendedWaitUntil:
     visible:
@@ -85,7 +80,7 @@ tags:
 - stopApp
 - launchApp
 - extendedWaitUntil:
-    visible: 'Lire, .+, fait'
+    visible: 'Lire, .+, fait, Moyenne, 10 XP par suivi'
     timeout: 30000
 - extendedWaitUntil:
     visible:

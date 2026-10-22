@@ -6,7 +6,7 @@ import { colors } from '../theme/colors';
 import { fonts, typography } from '../theme/typography';
 import type { ShownXpChange } from './CharacterBar';
 
-/** Durée de l'envol de « +10 XP » au-dessus de la case touchée (maquette). */
+/** Durée de l'envol de « +20 XP » au-dessus de la case touchée (maquette). */
 export const XP_FLOAT_DURATION_MS = 900;
 
 function Flight({ amount }: { readonly amount: number }) {
@@ -46,7 +46,7 @@ function Flight({ amount }: { readonly amount: number }) {
 }
 
 /**
- * L'envol du feedback d'expérience au-dessus de la case touchée : « +10 XP » en or, « −10 XP » en
+ * L'envol du feedback d'expérience au-dessus de la case touchée : « +20 XP » en or, « −20 XP » en
  * gris discret, qui monte et s'efface en `XP_FLOAT_DURATION_MS`. Rejoué à chaque nouveau
  * changement (`change.id`). Rien quand le mouvement est réduit (`reducedMotion`, lu par la case,
  * toujours affichée) : l'en-tête montre la nouvelle expérience et le lecteur d'écran l'annonce.

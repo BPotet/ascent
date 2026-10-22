@@ -289,6 +289,59 @@ describe('ExperienceProvider', () => {
     expect(result.current.experience.xp).toBe(30);
   });
 
+  it('shows the experience gained by a change of difficulty, with a light vibration', async () => {
+    const result = await renderExperience();
+
+    await act(() => result.current.experience.habitUpdated({ xp: 40, xpChange: 20 }));
+
+    expect(result.current.experience.xp).toBe(40);
+    expect(result.current.experience.change).toEqual({ id: 1, amount: 20, key: '' });
+    expect(dependencies.haptics.success).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenLastCalledWith('+20 points d’expérience. Total : 40 XP.');
+  });
+
+  it('shows the experience lost by a lower difficulty, never with a vibration', async () => {
+    const result = await renderExperience();
+
+    await act(() => result.current.experience.habitUpdated({ xp: 10, xpChange: -30 }));
+
+    expect(result.current.experience.xp).toBe(10);
+    expect(result.current.experience.change).toEqual({ id: 1, amount: -30, key: '' });
+    expect(dependencies.haptics.success).not.toHaveBeenCalled();
+    expect(announce).toHaveBeenLastCalledWith('−30 points d’expérience. Total : 10 XP.');
+  });
+
+  it('shows no feedback when a change of the habit did not change the experience', async () => {
+    const result = await renderExperience();
+
+    await act(() => result.current.experience.habitUpdated({ xp: 10, xpChange: 0 }));
+
+    expect(result.current.experience.xp).toBe(10);
+    expect(result.current.experience.change).toBeNull();
+    expect(dependencies.haptics.success).not.toHaveBeenCalled();
+    expect(announce).not.toHaveBeenCalled();
+  });
+
+  it('keeps the experience of a change of the habit over a reading that started before it', async () => {
+    const result = await renderExperience();
+    let read: () => void = () => undefined;
+    const run = dependencies.unitOfWork.run.bind(dependencies.unitOfWork);
+    jest
+      .spyOn(dependencies.unitOfWork, 'run')
+      .mockImplementationOnce(
+        (work) => new Promise((resolve) => (read = () => resolve(run(work)))),
+      );
+    const reading = result.current.experience.reload();
+
+    await act(() => result.current.experience.habitUpdated({ xp: 30, xpChange: 0 }));
+    await act(async () => {
+      read();
+      await reading;
+    });
+
+    expect(result.current.experience.xp).toBe(30);
+  });
+
   it('is only available inside the dependencies', async () => {
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
 

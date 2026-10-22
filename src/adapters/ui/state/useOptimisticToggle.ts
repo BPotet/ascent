@@ -23,7 +23,7 @@ export type ShownStatuses = ReadonlyMap<string, CheckInStatus>;
 export { keyOf } from './habitDayKey';
 
 /** La case avec l'état affiché en attendant son enregistrement, s'il y en a un. */
-export function withShown(habitDay: HabitDay, shown: ShownStatuses): HabitDay {
+export function withShown<Shown extends HabitDay>(habitDay: Shown, shown: ShownStatuses): Shown {
   const status = shown.get(keyOf(habitDay));
   return status === undefined ? habitDay : { ...habitDay, status };
 }

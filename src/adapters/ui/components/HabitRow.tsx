@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
+import type { Difficulty } from '../../../domain/habit/Difficulty';
 import { checkInStatusLabels } from '../format/checkInStatus';
+import { difficultyAccessibilityLabel } from '../format/formatDifficulty';
 import { capitalize, formatDayAndMonth } from '../format/formatDay';
 import { useReducedMotion } from '../state/useReducedMotion';
 import { colors } from '../theme/colors';
@@ -11,6 +13,7 @@ import { typography } from '../theme/typography';
 import type { ShownXpChange } from './CharacterBar';
 import { CheckGlyph, CrossGlyph, MoreGlyph } from './Glyph';
 import { CORRECTED, CorrectedMark } from './CorrectedMark';
+import { DifficultyLabel } from './DifficultyIcon';
 import { XpFloat } from './XpFloat';
 
 /** Le libellé, pour le lecteur d'écran, de l'action qui ouvre « Modifier l'habitude ». */
@@ -36,8 +39,13 @@ export function bounce(scale: Animated.Value): void {
  * Ligne d'une habitude dans la Vue Journée : son nom et l'état du suivi, écrit en toutes lettres,
  * avec une coche quand elle est « fait ». Toute la ligne est un interrupteur : la toucher appelle
  * `onToggle`, si la case est modifiable, et fait rebondir la coche (sauf mouvement réduit).
- * `highlighted` met en évidence une habitude qui vient d'être créée ou renommée. `xpChange` fait
- * s'envoler « +10 XP » (ou « −10 XP ») de la coche, après un tap enregistré.
+ * `highlighted` met en évidence une habitude qui vient d'être créée ou modifiée. `xpChange` fait
+ * s'envoler le changement d'expérience (« +20 XP », ou « −20 XP ») de la coche, après un tap
+ * enregistré.
+ *
+ * Avec `difficulty` (Vue Journée, E1), la ligne secondaire commence par l'icône et le nom de la
+ * difficulté de la semaine (« ▲▲▲ Difficile · À faire ») ; le lecteur d'écran l'entend après l'état,
+ * avec ce que rapporte une case « fait » : « …, à faire, Difficile, 20 XP par suivi ».
  *
  * Dans le détail d'un jour de la Vue Mois (`compact`, ligne plus basse), la ligne montre aussi
  * « pas fait » (croix sur fond plein) et la marque « corrigé » (pastille sur la coche et mot écrit,
@@ -48,6 +56,7 @@ export function bounce(scale: Animated.Value): void {
  */
 export function HabitRow({
   habitDay,
+  difficulty,
   highlighted = false,
   xpChange,
   onToggle,
@@ -55,6 +64,8 @@ export function HabitRow({
   compact = false,
 }: {
   readonly habitDay: HabitDay;
+  /** La difficulté de la semaine du jour affiché ; sans elle, la ligne n'en montre pas. */
+  readonly difficulty?: Difficulty | undefined;
   readonly highlighted?: boolean;
   readonly compact?: boolean;
   readonly xpChange?: ShownXpChange | undefined;
@@ -67,6 +78,7 @@ export function HabitRow({
   const missed = status === 'missed';
   const label = [habit.name.value, formatDayAndMonth(day), statusLabel]
     .concat(corrected ? [CORRECTED] : [])
+    .concat(difficulty ? [difficultyAccessibilityLabel(difficulty)] : [])
     .join(', ');
   const reducedMotion = useReducedMotion();
   const [scale] = useState(() => new Animated.Value(1));
@@ -110,6 +122,17 @@ export function HabitRow({
         <View style={styles.texts}>
           <Text style={[typography.habitName, styles.name]}>{habit.name.value}</Text>
           <View style={styles.statusLine}>
+            {difficulty && (
+              <>
+                <DifficultyLabel
+                  difficulty={difficulty}
+                  color={done ? colors.doneText : colors.muted}
+                  iconColor={done ? colors.doneText : colors.difficulty}
+                  testID={`habit-difficulty-${habit.id}`}
+                />
+                <Text style={[typography.label, styles.status, done && styles.statusDone]}>·</Text>
+              </>
+            )}
             <Text style={[typography.label, styles.status, done && styles.statusDone]}>
               {capitalize(statusLabel)}
             </Text>
@@ -189,7 +212,7 @@ const styles = StyleSheet.create({
   checkMissed: { backgroundColor: colors.missed, borderColor: 'transparent' },
   texts: { flex: 1, gap: 2 },
   name: { color: colors.text },
-  statusLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statusLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
   status: { color: colors.muted },
   correctedText: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   correctedDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.correctedMark },

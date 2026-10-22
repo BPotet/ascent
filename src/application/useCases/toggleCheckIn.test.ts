@@ -1,10 +1,11 @@
 import { Character } from '../../domain/character/Character';
-import type { CheckIn } from '../../domain/checkIn/CheckIn';
 import { Day } from '../../domain/day/Day';
+import type { Difficulty } from '../../domain/habit/Difficulty';
 import type { Habit } from '../../domain/habit/Habit';
 import { HabitName } from '../../domain/habit/HabitName';
 import { InMemoryUnitOfWork, StorageUnavailableError } from '../testing/InMemoryUnitOfWork';
 import type { UnitOfWork } from '../ports/UnitOfWork';
+import { experienceInvariant } from '../testing/experienceInvariant';
 import { settableClock } from '../testing/settableClock';
 import { toggleCheckIn } from './toggleCheckIn';
 
@@ -352,7 +353,104 @@ describe('toggleCheckIn', () => {
     });
   });
 
-  describe('invariant of the experience (R15)', () => {
+  describe('difficulty', () => {
+    const xp = () => unitOfWork.run(({ character }) => character.get()).then(({ xp }) => xp);
+    const tap = (habit: Habit, day: Day) => toggleCheckIn(deps(), habit.id, day);
+    const setDifficulty = (habit: Habit, changedOn: Day, difficulty: Difficulty) =>
+      unitOfWork.run(({ settingsChanges }) =>
+        settingsChanges.add(habit.id, changedOn, { difficulty }),
+      );
+
+    beforeEach(() => unitOfWork.run(({ character }) => character.save(new Character(30))));
+
+    it.each([
+      ['easy', 5],
+      ['medium', 10],
+      ['hard', 20],
+    ] as const)(
+      'pays a case « fait » in %s %p Xp, and takes them back (R1)',
+      async (difficulty, gain) => {
+        await setDifficulty(cooking, monday, difficulty);
+
+        await expect(tap(cooking, wednesday)).resolves.toMatchObject({
+          xpChange: gain,
+          xp: 30 + gain,
+        });
+        await expect(tap(cooking, wednesday)).resolves.toMatchObject({ xpChange: -gain, xp: 30 });
+      },
+    );
+
+    it('pays each habit at its own difficulty', async () => {
+      await setDifficulty(cooking, monday, 'hard');
+      await setDifficulty(budget, monday, 'easy');
+
+      await tap(cooking, wednesday);
+      await tap(budget, wednesday);
+
+      await expect(xp()).resolves.toBe(30 + 20 + 5);
+    });
+
+    it('pays a correction of a closed week at the difficulty of that week (R14)', async () => {
+      const thursday8 = Day.of(2026, 10, 8);
+      await unitOfWork.run(({ habits }) => habits.remove(cooking.id));
+      const running = await unitOfWork.run(({ habits }) =>
+        habits.add(HabitName.parse('Courir 5 km'), Day.of(2026, 10, 5)),
+      );
+      await setDifficulty(running, Day.of(2026, 10, 5), 'medium');
+      await setDifficulty(running, wednesday, 'hard');
+
+      await expect(tap(running, thursday8)).resolves.toMatchObject({
+        isCorrection: true,
+        xpChange: 10,
+        xp: 40,
+      });
+      await expect(tap(running, monday)).resolves.toMatchObject({
+        isCorrection: true,
+        xpChange: 20,
+        xp: 60,
+      });
+    });
+
+    it('pays a correction of the current week at the difficulty of the week (R12)', async () => {
+      await setDifficulty(cooking, monday, 'medium');
+      await setDifficulty(cooking, wednesday, 'hard');
+
+      await expect(tap(cooking, monday)).resolves.toMatchObject({ xpChange: 20, xp: 50 });
+    });
+
+    it('never goes below 0', async () => {
+      await setDifficulty(cooking, monday, 'hard');
+      await tap(cooking, wednesday);
+      await unitOfWork.run(({ character }) => character.save(new Character(5)));
+
+      await expect(tap(cooking, wednesday)).resolves.toMatchObject({ xpChange: -5, xp: 0 });
+    });
+
+    it('fails, and changes nothing, when the settings changes cannot be read', async () => {
+      const unreadableChanges: UnitOfWork = {
+        run: (work) =>
+          unitOfWork.run((repositories) =>
+            work({
+              ...repositories,
+              settingsChanges: {
+                listAll: () => repositories.settingsChanges.listAll(),
+                add: (id, day, settings) => repositories.settingsChanges.add(id, day, settings),
+                listByHabit: () =>
+                  Promise.reject(new StorageUnavailableError('read settings changes')),
+              },
+            }),
+          ),
+      };
+
+      await expect(
+        toggleCheckIn({ clock, unitOfWork: unreadableChanges }, cooking.id, wednesday),
+      ).rejects.toThrow(StorageUnavailableError);
+      await expect(stored(cooking, wednesday)).resolves.toBeNull();
+      await expect(xp()).resolves.toBe(30);
+    });
+  });
+
+  describe('invariant of the experience', () => {
     /** Générateur pseudo-aléatoire déterministe (LCG), pour des séquences reproductibles. */
     const random = (seed: number) => {
       let state = seed;
@@ -362,36 +460,45 @@ describe('toggleCheckIn', () => {
       };
     };
     const start = Day.of(2026, 10, 12);
-
-    const doneCount = async () =>
-      (
-        await unitOfWork.run(({ checkIns }) =>
-          checkIns.listBetween(Day.of(2000, 1, 1), Day.of(2100, 12, 31)),
-        )
-      ).filter((checkIn: CheckIn) => checkIn.done).length;
+    const difficulties: readonly Difficulty[] = ['easy', 'medium', 'hard'];
 
     it.each([1, 2, 3, 4, 5, 6, 7, 8, 9, 10])(
-      'keeps xp = 10 × check-ins « fait » through taps, corrections, midnights and clock changes (seed %p)',
+      'keeps xp = Σ check-ins « fait » at the difficulty of their week + retained, through taps, corrections, midnights and clock changes (seed %p)',
       async (seed) => {
         const next = random(seed);
         const habits = [cooking, budget];
+        await unitOfWork.run(async ({ settingsChanges }) => {
+          await settingsChanges.add(cooking.id, monday, { difficulty: 'easy' });
+          await settingsChanges.add(budget.id, monday, { difficulty: 'hard' });
+        });
         clock.setToday(start.plusDays(2));
 
         for (let step = 0; step < 60; step += 1) {
-          const action = next(10);
+          const action = next(12);
           if (action === 0) {
             // Minuit, ou un fuseau vers l'est.
             clock.setToday(clock.today().plusDays(1 + next(2)));
           } else if (action === 1) {
             // Recul d'horloge ou fuseau vers l'ouest : des suivis « fait » deviennent futurs (R6, R7).
             clock.setToday(clock.today().plusDays(-1 - next(2)));
+          } else if (action === 2) {
+            // Un changement de difficulté enregistré à part, sans expérience : l'invariant est
+            // remis à niveau en recalculant le solde (ce que fait updateHabit, testé à part).
+            const habit = habits[next(habits.length)] as Habit;
+            await unitOfWork.run(({ settingsChanges }) =>
+              settingsChanges.add(habit.id, clock.today(), {
+                difficulty: difficulties[next(3)] as Difficulty,
+              }),
+            );
+            const { expected } = await experienceInvariant(unitOfWork);
+            await unitOfWork.run(({ character }) => character.save(new Character(expected)));
           } else {
             const habit = habits[next(habits.length)] as Habit;
             await toggleCheckIn(deps(), habit.id, clock.today().plusDays(-next(4)));
           }
 
-          const character = await unitOfWork.run((repositories) => repositories.character.get());
-          expect(character.xp).toBe(10 * (await doneCount()) + character.retainedXp);
+          const { xp, expected } = await experienceInvariant(unitOfWork);
+          expect(xp).toBe(expected);
         }
       },
     );

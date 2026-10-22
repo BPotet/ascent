@@ -64,7 +64,11 @@ function cleanedName(raw: string): string | null {
  * Après un refus ou un échec d'enregistrement, la saisie est conservée.
  *
  * - `initialName` : le nom de départ. S'il n'est pas vide (modification), l'enregistrement reste
- *   désactivé tant que le nom, une fois nettoyé, n'a pas changé, et un nom effacé est expliqué.
+ *   désactivé tant que rien n'a changé (ni le nom une fois nettoyé, ni les réglages), et un nom
+ *   effacé est expliqué.
+ * - `settings` : le bloc des réglages (« Difficulté »), sous le nom ; `settingsChanged` dit si
+ *   les réglages choisis diffèrent de ceux de départ. Ils sont gardés par l'écran qui les affiche,
+ *   donc conservés après un refus ou un échec.
  * - `onSubmit` enregistre le nom saisi ; il renvoie le motif d'un refus ou d'un échec, ou `null`
  *   quand le nom est enregistré (le panneau est alors fermé par l'écran).
  * - `alert` : un message d'erreur venu d'ailleurs (lecture de la suppression), sous le champ.
@@ -78,6 +82,8 @@ export function HabitNameSheet({
   saveFailedMessage,
   habits,
   initialName = '',
+  settings,
+  settingsChanged = false,
   autoFocus,
   alert = null,
   footer,
@@ -92,6 +98,8 @@ export function HabitNameSheet({
   /** Les autres habitudes, pour nommer celle qui porte déjà le nom saisi. */
   readonly habits: readonly Habit[];
   readonly initialName?: string;
+  readonly settings?: ReactNode;
+  readonly settingsChanged?: boolean;
   readonly autoFocus: boolean;
   readonly alert?: string | null;
   readonly footer?: ReactNode;
@@ -108,7 +116,7 @@ export function HabitNameSheet({
   const length = habitNameLength(name);
   const tooLong = length > MAX_HABIT_NAME_LENGTH;
   const emptied = editing && length === 0;
-  const unchanged = editing && cleanedName(name) === initialName;
+  const unchanged = editing && cleanedName(name) === initialName && !settingsChanged;
   const refusal = failure === null || failure === 'saveFailed' ? null : failure;
   const fieldError = refusal
     ? refusalMessage(refusal, name, habits)
@@ -215,6 +223,7 @@ export function HabitNameSheet({
               {`${length}/${MAX_HABIT_NAME_LENGTH}`}
             </Text>
           </View>
+          {settings}
           {alertMessage !== null && (
             <View
               accessible

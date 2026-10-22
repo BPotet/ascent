@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { CheckInStatus } from '../../../domain/checkIn/CheckInStatus';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import type { Day } from '../../../domain/day/Day';
+import type { Difficulty } from '../../../domain/habit/Difficulty';
 import type { Habit } from '../../../domain/habit/Habit';
 import { checkInStatusLabels } from '../format/checkInStatus';
 import { capitalize } from '../format/formatDay';
@@ -14,6 +15,7 @@ import { typography } from '../theme/typography';
 import { CheckGlyph, CrossGlyph, DotGlyph, PencilGlyph } from './Glyph';
 import { editHabitLabel } from './HabitRow';
 import { CORRECTED, CorrectedMark } from './CorrectedMark';
+import { DifficultyLabel } from './DifficultyIcon';
 import { HabitDayCell } from './HabitDayCell';
 
 /** Cache un élément décoratif au lecteur d'écran (Android et iOS). */
@@ -65,11 +67,13 @@ export function WeekDaysHeader({
  * `xpChange`, le dernier changement d'expérience, s'envole de la case touchée si elle est ici.
  * Avec `onEdit`, le nom, suivi d'un crayon, est un bouton qui ouvre « Modifier l'habitude » (lu
  * « Modifier l'habitude Cuisiner »). `highlighted` met en évidence une habitude qui vient d'être
- * renommée.
+ * modifiée. Avec `difficulty`, la difficulté de la semaine affichée est écrite sous le nom, avec son
+ * icône (« ▲▲▲ Difficile »), et lue avec son barème.
  */
 export function HabitWeekCard({
   days,
   today,
+  difficulty,
   xpChange = null,
   onToggle,
   onNotStartedPress,
@@ -78,6 +82,8 @@ export function HabitWeekCard({
 }: {
   readonly days: readonly HabitDay[];
   readonly today: Day;
+  /** La difficulté de l'habitude pendant la semaine affichée. */
+  readonly difficulty?: Difficulty | undefined;
   readonly xpChange?: XpChange | null;
   readonly onToggle: (habitDay: HabitDay) => void;
   readonly onNotStartedPress?: (habitDay: HabitDay) => void;
@@ -111,6 +117,16 @@ export function HabitWeekCard({
         </Pressable>
       ) : (
         <Text style={[typography.cardTitle, styles.name]}>{habit.name.value}</Text>
+      )}
+      {difficulty && (
+        <View style={styles.settings}>
+          <DifficultyLabel
+            difficulty={difficulty}
+            color={colors.muted}
+            iconColor={colors.difficulty}
+            testID={`week-difficulty-${habit.id}`}
+          />
+        </View>
       )}
       <View testID="week-cells" style={styles.cells}>
         {days.map((habitDay) => (
@@ -220,6 +236,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   nameText: { flex: 1, color: colors.text },
+  settings: { flexDirection: 'row', marginTop: -2, marginBottom: spacing.sm, marginHorizontal: 2 },
   cells: { flexDirection: 'row', gap: spacing.xs },
   legend: {
     flexDirection: 'row',

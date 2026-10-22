@@ -1,14 +1,16 @@
 import { describeCharacterRepositoryContract } from '../testing/characterRepositoryContract';
 import { describeCheckInRepositoryContract } from '../testing/checkInRepositoryContract';
 import { describeHabitRepositoryContract } from '../testing/habitRepositoryContract';
+import { describeSettingsChangeRepositoryContract } from '../testing/settingsChangeRepositoryContract';
 import { FakeExpoSqliteConnection } from '../testing/fakeExpoSqlite';
 import { withFaults } from '../testing/faultySqlDatabase';
 import { openNodeSqliteDatabase } from '../testing/nodeSqliteDatabase';
 import { readsFrom, readsFromWith, SimulatedStorageError, writesTo } from '../testing/sqlFaults';
 import { describeUnitOfWorkContract } from '../testing/unitOfWorkContract';
 import { deleteHabit } from '../../../application/useCases/deleteHabit';
-import { renameHabit } from '../../../application/useCases/renameHabit';
+import { createHabit } from '../../../application/useCases/createHabit';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
+import { updateHabit } from '../../../application/useCases/updateHabit';
 import { Character } from '../../../domain/character/Character';
 import { Day } from '../../../domain/day/Day';
 import { HabitName } from '../../../domain/habit/HabitName';
@@ -24,6 +26,7 @@ describe('SqliteUnitOfWork', () => {
   describeHabitRepositoryContract(createUnitOfWork);
   describeCheckInRepositoryContract(createUnitOfWork);
   describeCharacterRepositoryContract(createUnitOfWork);
+  describeSettingsChangeRepositoryContract(createUnitOfWork);
 
   describe('on the expo-sqlite bridge', () => {
     const createOnExpo = async () =>
@@ -33,6 +36,7 @@ describe('SqliteUnitOfWork', () => {
     describeHabitRepositoryContract(createOnExpo);
     describeCheckInRepositoryContract(createOnExpo);
     describeCharacterRepositoryContract(createOnExpo);
+    describeSettingsChangeRepositoryContract(createOnExpo);
 
     it('sends every statement of a work on the shared connection, inside one transaction', async () => {
       const connection = FakeExpoSqliteConnection.open();
@@ -209,20 +213,61 @@ describe('SqliteUnitOfWork', () => {
       },
     );
 
-    it('keeps the former name when a renamed habit cannot be written (#6)', async () => {
+    it.each(['habits', 'settings_changes', 'character'])(
+      'keeps name, difficulty and experience when %s cannot be written by updateHabit',
+      async (table) => {
+        const db = withFaults(await prepareAscentDatabase(openNodeSqliteDatabase()));
+        const unitOfWork = new SqliteUnitOfWork(db);
+        const deps = { clock: { today: () => day }, unitOfWork };
+        const created = await createHabit(deps, 'Courir 5 km');
+        const running = created.ok ? created.habit : (undefined as never);
+        await toggleCheckIn(deps, running.id, day);
+        const changes = () =>
+          unitOfWork.run(({ settingsChanges }) => settingsChanges.listByHabit(running.id));
+        const before = await changes();
+
+        db.faults.failWhen(writesTo(table));
+        await expect(
+          updateHabit(deps, running.id, { name: 'Courir 10 km', difficulty: 'hard' }),
+        ).rejects.toThrow(SimulatedStorageError);
+
+        db.faults.failWhen(null);
+        await expect(unitOfWork.run(({ habits }) => habits.listAll())).resolves.toEqual([running]);
+        await expect(changes()).resolves.toEqual(before);
+        await expect(unitOfWork.run(({ character }) => character.get())).resolves.toEqual(
+          new Character(10),
+        );
+      },
+    );
+
+    it('creates neither the habit nor its settings change when the change cannot be written', async () => {
       const db = withFaults(await prepareAscentDatabase(openNodeSqliteDatabase()));
       const unitOfWork = new SqliteUnitOfWork(db);
-      const cooking = await unitOfWork.run(({ habits }) =>
-        habits.add(HabitName.parse('Cuisiner'), day),
-      );
 
-      db.faults.failWhen(writesTo('habits'));
-      await expect(renameHabit({ unitOfWork }, cooking.id, 'Cuisiner maison')).rejects.toThrow(
-        SimulatedStorageError,
-      );
+      db.faults.failWhen(writesTo('settings_changes'));
+      await expect(
+        createHabit({ clock: { today: () => day }, unitOfWork }, 'Courir 5 km', 'hard'),
+      ).rejects.toThrow(SimulatedStorageError);
 
       db.faults.failWhen(null);
-      await expect(unitOfWork.run(({ habits }) => habits.listAll())).resolves.toEqual([cooking]);
+      await expect(unitOfWork.run(({ habits }) => habits.listAll())).resolves.toEqual([]);
+      await expect(
+        unitOfWork.run(({ settingsChanges }) => settingsChanges.listAll()),
+      ).resolves.toEqual([]);
+    });
+
+    it('fails to read a stored difficulty that is not one', async () => {
+      const db = await prepareAscentDatabase(openNodeSqliteDatabase());
+      const unitOfWork = new SqliteUnitOfWork(db);
+      const created = await createHabit({ clock: { today: () => day }, unitOfWork }, 'Cuisiner');
+      expect(created.ok).toBe(true);
+      // Contourne la contrainte CHECK, comme une base abîmée.
+      await db.exec('PRAGMA ignore_check_constraints = ON');
+      await db.run("UPDATE settings_changes SET difficulty = 'extreme'");
+
+      await expect(
+        unitOfWork.run(({ settingsChanges }) => settingsChanges.listAll()),
+      ).rejects.toThrow('Invalid difficulty: "extreme"');
     });
 
     it('fails to read a character missing from the database', async () => {

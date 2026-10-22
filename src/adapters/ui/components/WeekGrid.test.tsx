@@ -214,6 +214,41 @@ describe('HabitWeekCard and editing the habit', () => {
   });
 });
 
+describe('HabitWeekCard and the difficulty (Vue Semaine, E4)', () => {
+  it('shows the icon and the name of the difficulty of the week under the name', async () => {
+    await render(
+      <HabitWeekCard
+        days={days}
+        today={wednesday}
+        difficulty="hard"
+        onToggle={jest.fn()}
+        onEdit={jest.fn()}
+      />,
+    );
+
+    const line = screen.getByTestId('week-difficulty-3');
+    expect(line).toHaveTextContent('Difficile');
+    expect(within(line).getAllByTestId('difficulty-peak', hidden)).toHaveLength(3);
+    expect(within(line).getAllByTestId('difficulty-peak', hidden)[0]).toHaveStyle({
+      borderBottomColor: '#B9C6E6',
+    });
+    expect(screen.getByText('Difficile')).toHaveStyle({ color: '#9AA4B8' });
+    // Lue avec son barème, à part du bouton du nom.
+    expect(screen.getByLabelText('Difficile, 20 XP par suivi')).toBeOnTheScreen();
+    expect(
+      within(screen.getByRole('button', { name: 'Modifier l’habitude Cuisiner' })).queryByText(
+        'Difficile',
+      ),
+    ).not.toBeOnTheScreen();
+  });
+
+  it('shows no difficulty without one', async () => {
+    await render(<HabitWeekCard days={days} today={wednesday} onToggle={jest.fn()} />);
+
+    expect(screen.queryByTestId('week-difficulty-3')).not.toBeOnTheScreen();
+  });
+});
+
 describe('HabitWeekCard and the experience', () => {
   it('lets the change of experience fly up from the touched case only', async () => {
     await render(

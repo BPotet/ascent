@@ -9,12 +9,7 @@ name: Confirmer ses habitudes du jour d'un tap
 tags:
   - story-4
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      id: 'day-view-empty'
-    timeout: 60000
+- runFlow: ../subflows/launch-fresh.yaml
 
 # Une habitude créée aujourd'hui, à faire.
 - tapOn:
@@ -31,7 +26,7 @@ tags:
     notVisible: 'Nouvelle habitude'
     timeout: 10000
 - extendedWaitUntil:
-    visible: 'Lire, .+, à faire'
+    visible: 'Lire, .+, à faire, Moyenne, 10 XP par suivi'
     timeout: 10000
 - assertVisible:
     id: 'habit-row-1'
@@ -50,7 +45,7 @@ tags:
 - tapOn:
     id: 'habit-row-1'
 - extendedWaitUntil:
-    visible: 'Lire, .+, fait'
+    visible: 'Lire, .+, fait, Moyenne, 10 XP par suivi'
     timeout: 10000
 - assertVisible:
     id: 'habit-row-1'
@@ -68,7 +63,7 @@ tags:
 - tapOn:
     id: 'habit-row-1'
 - extendedWaitUntil:
-    visible: 'Lire, .+, à faire'
+    visible: 'Lire, .+, à faire, Moyenne, 10 XP par suivi'
     timeout: 10000
 - assertVisible:
     id: 'habit-row-1'
@@ -86,14 +81,14 @@ tags:
 - tapOn:
     id: 'habit-row-1'
 - extendedWaitUntil:
-    visible: 'Lire, .+, fait'
+    visible: 'Lire, .+, fait, Moyenne, 10 XP par suivi'
     timeout: 10000
 
 # Relance à froid : le suivi est conservé, l'aide ne revient pas.
 - stopApp
 - launchApp
 - extendedWaitUntil:
-    visible: 'Lire, .+, fait'
+    visible: 'Lire, .+, fait, Moyenne, 10 XP par suivi'
     timeout: 60000
 - assertVisible:
     id: 'check-mark'

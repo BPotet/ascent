@@ -39,8 +39,9 @@ const openDatabase = jest.mocked(openAscentDatabase);
 const openRealDatabase = () => prepareAscentDatabase(openNodeSqliteDatabase());
 // Chemin absolu : sous StrykerJS, les routes doivent être chargées depuis son bac à sable.
 const appDirectory = path.resolve(__dirname, '../../src/app');
-const COOKING_TODAY = 'Cuisiner, mercredi 14 octobre, à faire';
-const HINT = 'Tape ton habitude quand c’est fait : +10 XP pour ton personnage.';
+const COOKING_TODAY = 'Cuisiner, mercredi 14 octobre, à faire, Moyenne, 10 XP par suivi';
+const HINT =
+  'Tape ton habitude quand c’est fait : ton personnage gagne de l’XP selon sa difficulté.';
 
 /** Le téléphone signale un nouvel état de l'application à tous ceux qui écoutent `AppState`. */
 function appStateBecomes(state: AppStateStatus): void {
@@ -130,7 +131,9 @@ describe('app startup', () => {
     await fireEvent.press(screen.getByRole('switch', { name: COOKING_TODAY }));
 
     expect(
-      await screen.findByRole('switch', { name: 'Cuisiner, mercredi 14 octobre, fait' }),
+      await screen.findByRole('switch', {
+        name: 'Cuisiner, mercredi 14 octobre, fait, Moyenne, 10 XP par suivi',
+      }),
     ).toBeOnTheScreen();
     expect(screen.queryByText(HINT)).not.toBeOnTheScreen();
 
@@ -138,7 +141,9 @@ describe('app startup', () => {
     await renderRouter(appDirectory);
 
     expect(
-      await screen.findByRole('switch', { name: 'Cuisiner, mercredi 14 octobre, fait' }),
+      await screen.findByRole('switch', {
+        name: 'Cuisiner, mercredi 14 octobre, fait, Moyenne, 10 XP par suivi',
+      }),
     ).toBeOnTheScreen();
     await act(async () => undefined);
     expect(screen.queryByText(HINT)).not.toBeOnTheScreen();
@@ -159,7 +164,9 @@ describe('app startup', () => {
     await act(async () => appStateBecomes('active'));
 
     expect(await screen.findByText('Jeudi 15 octobre')).toBeOnTheScreen();
-    expect(screen.getByLabelText('Cuisiner, jeudi 15 octobre, à faire')).toBeOnTheScreen();
+    expect(
+      screen.getByLabelText('Cuisiner, jeudi 15 octobre, à faire, Moyenne, 10 XP par suivi'),
+    ).toBeOnTheScreen();
   });
 
   it('loads the fonts of the interface before showing it', async () => {

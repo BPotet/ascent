@@ -4,6 +4,7 @@ import { Day } from '../../domain/day/Day';
 import type { Habit } from '../../domain/habit/Habit';
 import { HabitName } from '../../domain/habit/HabitName';
 import { InMemoryUnitOfWork, StorageUnavailableError } from '../testing/InMemoryUnitOfWork';
+import { experienceInvariant } from '../testing/experienceInvariant';
 import { settableClock } from '../testing/settableClock';
 import { createHabit } from './createHabit';
 import { deleteHabit, previewHabitDeletion } from './deleteHabit';
@@ -119,8 +120,7 @@ describe('deleting a habit', () => {
       await deleteHabit(deps(), cooking.id);
 
       const { xp, retainedXp } = await character();
-      const doneCount = (await allCheckIns()).filter((checkIn) => checkIn.done).length;
-      expect(xp).toBe(10 * doneCount + retainedXp);
+      await expect(experienceInvariant(unitOfWork)).resolves.toEqual({ xp, expected: xp });
       expect([xp, retainedXp]).toEqual([30, 10]);
     });
 
@@ -228,6 +228,68 @@ describe('deleting a habit', () => {
       await expect(previewHabitDeletion(deps(), cooking.id)).rejects.toThrow(
         StorageUnavailableError,
       );
+    });
+  });
+
+  describe('difficulty', () => {
+    let running: Habit;
+
+    beforeEach(async () => {
+      // « Courir 5 km », créée le lundi 5 octobre en Moyenne, passée en Difficile le lundi 12.
+      running = await unitOfWork.run(async ({ habits, settingsChanges }) => {
+        const habit = await habits.add(HabitName.parse('Courir 5 km'), Day.of(2026, 10, 5));
+        await settingsChanges.add(habit.id, Day.of(2026, 10, 5), { difficulty: 'medium' });
+        await settingsChanges.add(habit.id, monday, { difficulty: 'hard' });
+        return habit;
+      });
+    });
+
+    it("announces and removes the experience of today's check-in at the difficulty of the week (R18)", async () => {
+      await given(40, done(running, tuesday), done(running, wednesday));
+
+      await expect(previewHabitDeletion(deps(), running.id)).resolves.toEqual({
+        ok: true,
+        name: 'Courir 5 km',
+        xpRemoved: 20,
+      });
+      await expect(deleteHabit(deps(), running.id)).resolves.toEqual({
+        ok: true,
+        xpRemoved: 20,
+        xp: 20,
+      });
+      await expect(character()).resolves.toEqual(new Character(20, 20));
+    });
+
+    it('retains the experience of the closed days at the difficulty of their week (R19)', async () => {
+      const thursday8 = Day.of(2026, 10, 8);
+      await given(30, done(running, thursday8), done(running, monday));
+
+      await expect(deleteHabit(deps(), running.id)).resolves.toMatchObject({
+        xpRemoved: 0,
+        xp: 30,
+      });
+      await expect(character()).resolves.toEqual(new Character(30, 10 + 20));
+    });
+
+    it('erases the settings changes of the deleted habit', async () => {
+      await deleteHabit(deps(), running.id);
+
+      await expect(
+        unitOfWork.run(({ settingsChanges }) => settingsChanges.listByHabit(running.id)),
+      ).resolves.toEqual([]);
+    });
+
+    it('keeps the invariant after a deletion in Difficile', async () => {
+      await toggleCheckIn(deps(), running.id, Day.of(2026, 10, 9));
+      await toggleCheckIn(deps(), running.id, tuesday);
+      await toggleCheckIn(deps(), running.id, wednesday);
+      await toggleCheckIn(deps(), budget.id, wednesday);
+      await expect(experienceInvariant(unitOfWork)).resolves.toEqual({ xp: 60, expected: 60 });
+
+      await deleteHabit(deps(), running.id);
+
+      await expect(experienceInvariant(unitOfWork)).resolves.toEqual({ xp: 40, expected: 40 });
+      await expect(character()).resolves.toEqual(new Character(40, 30));
     });
   });
 });

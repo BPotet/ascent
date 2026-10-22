@@ -1,0 +1,143 @@
+# Story #23 : choisir la difficulté d'une habitude et gagner l'expérience correspondante.
+# Parcours : « Nouvelle habitude » s'ouvre avec « Moyenne » présélectionnée → « Courir 5 km » en
+# « Difficile » → la ligne de la Vue Journée montre la difficulté, l'aide au premier usage ne
+# promet plus 10 XP → un tap : « fait », +20 XP → un autre tap : « à faire », 0 XP → un dernier
+# tap : 20 XP → la carte de la Vue Semaine montre « Difficile » → relance à froid : la difficulté
+# et l'expérience sont conservées.
+# Captures pour la comparaison avec la maquette docs/mockups/22-difficulte-objectif (E2, E1, E4).
+# La pastille « +20 XP » est cachée au lecteur d'écran, donc introuvable par Maestro : seule la
+# capture prise juste après le tap la montre (mouvement réduit sur l'émulateur de la CI).
+appId: com.bpotet.ascent
+name: Créer une habitude difficile et gagner 20 XP
+tags:
+  - story-23
+---
+- runFlow: ../subflows/launch-fresh.yaml
+
+# « Nouvelle habitude » : le bloc « Difficulté » propose trois options, « Moyenne » présélectionnée.
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- assertVisible:
+    id: 'difficulty-picker'
+- assertVisible:
+    id: 'difficulty-option-easy'
+    text: 'Facile, 5 XP par suivi'
+    checked: false
+- assertVisible:
+    id: 'difficulty-option-medium'
+    text: 'Moyenne, 10 XP par suivi'
+    checked: true
+- assertVisible:
+    id: 'difficulty-option-hard'
+    text: 'Difficile, 20 XP par suivi'
+    checked: false
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Courir 5 km'
+- takeScreenshot: difficulty-E2-1-new-habit-default-medium
+
+# « Difficile » choisie : elle seule est sélectionnée.
+- tapOn:
+    id: 'difficulty-option-hard'
+- assertVisible:
+    id: 'difficulty-option-hard'
+    checked: true
+- assertVisible:
+    id: 'difficulty-option-medium'
+    checked: false
+- assertVisible:
+    id: 'new-habit-name'
+    text: 'Courir 5 km'
+- takeScreenshot: difficulty-E2-2-new-habit-hard
+- tapOn:
+    id: 'create-habit'
+
+# La ligne de la Vue Journée montre l'icône à 3 sommets et « Difficile » ; le lecteur d'écran lit
+# la difficulté et son barème après l'état.
+- extendedWaitUntil:
+    notVisible: 'Nouvelle habitude'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'Courir 5 km, .+, à faire, Difficile, 20 XP par suivi'
+    timeout: 10000
+- assertVisible:
+    id: 'habit-difficulty-1'
+- assertVisible:
+    id: 'xp-counter'
+    text: '0 XP'
+# L'aide au premier usage ne promet plus un montant fixe.
+- assertVisible:
+    id: 'check-in-hint'
+    text: 'Tape ton habitude quand c.est fait : ton personnage gagne de l.XP selon sa difficulté\.'
+- takeScreenshot: difficulty-E1-1-day-view-hard-to-do
+
+# Un tap : « fait », +20 XP ; l'aide disparaît.
+- tapOn:
+    id: 'habit-row-1'
+- takeScreenshot: difficulty-E1-2-gain-20-xp
+- extendedWaitUntil:
+    visible: 'Courir 5 km, .+, fait, Difficile, 20 XP par suivi'
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: 'xp-counter'
+      text: '20 XP'
+    timeout: 10000
+- assertVisible: 'Expérience du personnage : 20 XP'
+- assertNotVisible:
+    id: 'check-in-hint'
+- takeScreenshot: difficulty-E1-3-day-view-hard-done
+
+# Un autre tap : « à faire », −20 XP, discret.
+- tapOn:
+    id: 'habit-row-1'
+- takeScreenshot: difficulty-E1-4-loss-20-xp
+- extendedWaitUntil:
+    visible: 'Courir 5 km, .+, à faire, Difficile, 20 XP par suivi'
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: 'xp-counter'
+      text: '0 XP'
+    timeout: 10000
+
+# Un dernier tap : « fait », 20 XP.
+- tapOn:
+    id: 'habit-row-1'
+- extendedWaitUntil:
+    visible:
+      id: 'xp-counter'
+      text: '20 XP'
+    timeout: 10000
+
+# La carte de la Vue Semaine montre aussi l'icône à 3 sommets et « Difficile ».
+- tapOn:
+    id: 'tab-week'
+- extendedWaitUntil:
+    visible:
+      id: 'week-card-1'
+    timeout: 10000
+- assertVisible:
+    id: 'week-difficulty-1'
+- extendedWaitUntil:
+    visible: 'Courir 5 km, .+, fait'
+    timeout: 10000
+- assertVisible:
+    id: 'xp-counter'
+    text: '20 XP'
+- takeScreenshot: difficulty-E4-1-week-view-hard
+
+# Relance à froid : la difficulté et l'expérience sont conservées.
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: 'Courir 5 km, .+, fait, Difficile, 20 XP par suivi'
+    timeout: 60000
+- extendedWaitUntil:
+    visible:
+      id: 'xp-counter'
+      text: '20 XP'
+    timeout: 10000

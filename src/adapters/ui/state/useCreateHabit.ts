@@ -5,6 +5,7 @@ import {
   type CreateHabitRefusal,
   type CreateHabitResult,
 } from '../../../application/useCases/createHabit';
+import type { Difficulty } from '../../../domain/habit/Difficulty';
 import { useUseCaseDependencies } from './Dependencies';
 import { useTrackingChanges } from './TrackingRevision';
 
@@ -17,18 +18,24 @@ export type CreateHabitOutcome =
 
 const ignore = () => undefined;
 
+/** Crée une habitude avec le nom saisi et la difficulté choisie. */
+export type CreateHabit = (rawName: string, difficulty: Difficulty) => Promise<CreateHabitOutcome>;
+
 /**
- * Crée une habitude ; une panne de stockage devient le motif `saveFailed`, pour l'afficher. Une
- * habitude créée fait recharger les autres vues (`TrackingRevision`).
+ * Crée une habitude, avec la difficulté choisie dans « Nouvelle habitude » ; une panne de stockage
+ * devient le motif `saveFailed`, pour l'afficher. Une habitude créée fait recharger les autres vues
+ * (`TrackingRevision`).
  */
-export function useCreateHabit(): (rawName: string) => Promise<CreateHabitOutcome> {
+export function useCreateHabit(): CreateHabit {
   const dependencies = useUseCaseDependencies();
   const trackingChanged = useTrackingChanges(ignore);
   return useCallback(
-    async (rawName: string) => {
-      const outcome: CreateHabitOutcome = await createHabit(dependencies, rawName).catch(
-        () => ({ ok: false, reason: 'saveFailed' }) as const,
-      );
+    async (rawName: string, difficulty: Difficulty) => {
+      const outcome: CreateHabitOutcome = await createHabit(
+        dependencies,
+        rawName,
+        difficulty,
+      ).catch(() => ({ ok: false, reason: 'saveFailed' }) as const);
       if (outcome.ok) {
         trackingChanged();
       }

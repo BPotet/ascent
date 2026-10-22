@@ -1,7 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import type { DayView } from '../../../application/useCases/getDayView';
+import type { DayView, DayViewHabit } from '../../../application/useCases/getDayView';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import type { Day } from '../../../domain/day/Day';
 import type { Habit, HabitId } from '../../../domain/habit/Habit';
@@ -29,14 +29,24 @@ import { useYesterdayReminder } from '../state/useYesterdayReminder';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
-import { type DeletedHabit, deletedMessage, HabitEditing, RENAMED_MESSAGE } from './HabitEditing';
+import {
+  type DeletedHabit,
+  deletedMessage,
+  HabitEditing,
+  type UpdatedHabit,
+  updatedMessage,
+} from './HabitEditing';
 import { NewHabitSheet } from './NewHabitSheet';
 
-/** Durée de la mise en évidence d'une habitude créée ou renommée, comme dans la maquette. */
+/** Durée de la mise en évidence d'une habitude créée ou modifiée, comme dans la maquette. */
 export const HIGHLIGHT_DURATION_MS = 1800;
 
-/** L'aide au premier usage, qui explique le tap (maquette, E1 « Première habitude créée »). */
-export const CHECK_IN_HINT = 'Tape ton habitude quand c’est fait : +10 XP pour ton personnage.';
+/**
+ * L'aide au premier usage, qui explique le tap (maquette, E1 « Première habitude créée ») ; elle
+ * reste vraie pour toutes les difficultés (texte fixé par le PM, #23).
+ */
+export const CHECK_IN_HINT =
+  'Tape ton habitude quand c’est fait : ton personnage gagne de l’XP selon sa difficulté.';
 
 /** L'encouragement quand toutes les habitudes du jour sont faites (maquette, E1 « Toutes faites »). */
 export const ALL_DONE_MESSAGE = 'Toutes tes habitudes du jour sont faites. Belle ascension\u00a0!';
@@ -102,7 +112,7 @@ function HabitList({
   readonly showHint: boolean;
   readonly reminder: ReactNode;
   readonly onToggle: (habitDay: HabitDay) => void;
-  readonly onEdit: (habitDay: HabitDay) => void;
+  readonly onEdit: (row: DayViewHabit) => void;
 }) {
   const scroll = useRef<ScrollView>(null);
   const { doneCount } = view;
@@ -129,10 +139,11 @@ function HabitList({
           <HabitRow
             key={habitDay.habit.id}
             habitDay={habitDay}
+            difficulty={habitDay.weekSettings.difficulty}
             highlighted={habitDay.habit.id === highlighted?.id}
             xpChange={xpChangeOn(xpChange, habitDay)}
             onToggle={onToggle}
-            onEdit={onEdit}
+            onEdit={() => onEdit(habitDay)}
           />
         ))}
         <View style={styles.section}>
@@ -159,15 +170,19 @@ function HabitList({
  * disparaît au premier « fait ». La vue passe seule au nouveau jour (minuit, retour au premier
  * plan) et l'annonce.
  *
- * Le bouton « ⋯ » d'une habitude ouvre « Modifier l'habitude » (`HabitEditing`) : renommée, elle
- * est mise en évidence ; supprimée, elle disparaît et l'expérience retirée est montrée. Un message
- * confirme l'un ou l'autre ; la vue se recharge (état vide après la dernière, limite de 10).
+ * Chaque ligne montre la difficulté de l'habitude cette semaine (icône et nom, E1).
+ *
+ * Le bouton « ⋯ » d'une habitude ouvre « Modifier l'habitude » (`HabitEditing`), prérempli avec
+ * ses réglages de la semaine : modifiée, elle est mise en évidence et la variation de l'expérience
+ * est montrée ; supprimée, elle disparaît et l'expérience retirée est montrée. Un message confirme
+ * l'un ou l'autre ; la vue se recharge (état vide après la dernière, limite de 10).
  *
  * `newHabitRequest` ouvre le panneau « Nouvelle habitude » chaque fois qu'il prend une nouvelle
  * valeur (l'état vide de la Vue Semaine mène ici pour créer une habitude).
  *
  * En haut, l'expérience du personnage (R24) ; un tap enregistré la fait monter ou descendre, avec
- * son feedback : « +10 XP » s'envole de la coche (`Experience`, `CharacterBar`).
+ * son feedback : « +20 XP » (au barème de la difficulté) s'envole de la coche (`Experience`,
+ * `CharacterBar`).
  *
  * En haut de la liste, le rappel d'hier (« Hier : 1/2 faites ») propose de corriger hier :
  * « Corriger » appelle `onCorrectYesterday` avec la semaine d'hier, à ouvrir dans la Vue Semaine.
@@ -194,7 +209,7 @@ export function DayViewScreen({
     }
   }
   const [highlighted, setHighlighted] = useState<Highlight | null>(null);
-  const [editing, setEditing] = useState<Habit | null>(null);
+  const [editing, setEditing] = useState<DayViewHabit | null>(null);
   const [toast, setToast] = useState<ToastContent | null>(null);
   const toastCount = useRef(0);
 
@@ -248,10 +263,10 @@ export function DayViewScreen({
     void refresh();
   };
   const closeEditing = () => setEditing(null);
-  const renamed = (habit: Habit) => {
+  const updated = (outcome: UpdatedHabit) => {
     setEditing(null);
-    setHighlighted({ id: habit.id, reveal: false });
-    showToast(RENAMED_MESSAGE);
+    setHighlighted({ id: outcome.habit.id, reveal: false });
+    showToast(updatedMessage(outcome));
     void refresh();
   };
   const deleted = ({ xpRemoved }: DeletedHabit) => {
@@ -335,7 +350,7 @@ export function DayViewScreen({
               )
             }
             onToggle={(habitDay) => void tap(habitDay)}
-            onEdit={({ habit }) => setEditing(habit)}
+            onEdit={setEditing}
           />
           <AddHabitButton
             canAddHabit={view.canAddHabit}
@@ -363,9 +378,10 @@ export function DayViewScreen({
       )}
       {editing !== null && (
         <HabitEditing
-          habit={editing}
+          habit={editing.habit}
+          weekSettings={editing.weekSettings}
           habits={view.habits.map(({ habit }) => habit)}
-          onRenamed={renamed}
+          onUpdated={updated}
           onDeleted={deleted}
           onGone={gone}
           onClose={closeEditing}

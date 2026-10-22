@@ -23,9 +23,9 @@ import { typography } from '../theme/typography';
  * écrit et la marque « corrigé ». Les habitudes créées plus tard sont nommées, « hors habitude ».
  *
  * Toucher une ligne fait le même geste que la Vue Journée (aujourd'hui) ou corrige le jour clos
- * (R10, sans limite de temps, +10 / −10 Xp, marque « corrigé ») : la ligne change tout de suite et
- * « +10 XP » s'envole de sa coche. Si l'enregistrement échoue, la ligne revient en arrière et une
- * alerte propose « Réessayer ». « Fermer », le fond ou le retour du téléphone ferment le panneau.
+ * (R10, sans limite de temps, au barème de la difficulté de sa semaine, marque « corrigé ») : la
+ * ligne change tout de suite et « +20 XP » s'envole de sa coche. Si l'enregistrement échoue, la
+ * ligne revient en arrière et une alerte propose « Réessayer ». « Fermer », le fond ou le retour du téléphone ferment le panneau.
  */
 export function DayDetailSheet({
   opened,

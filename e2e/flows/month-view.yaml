@@ -11,12 +11,7 @@ name: Consulter un mois et le détail d'un jour
 tags:
   - story-10
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      id: 'day-view-empty'
-    timeout: 60000
+- runFlow: ../subflows/launch-fresh.yaml
 - assertVisible:
     id: 'tab-month'
 
@@ -49,11 +44,11 @@ tags:
 - tapOn:
     id: 'create-habit'
 - extendedWaitUntil:
-    visible: 'Cuisiner, .+, à faire'
+    visible: 'Cuisiner, .+, à faire, Moyenne, 10 XP par suivi'
     timeout: 10000
-- tapOn: 'Cuisiner, .+, à faire'
+- tapOn: 'Cuisiner, .+, à faire, Moyenne, 10 XP par suivi'
 - extendedWaitUntil:
-    visible: 'Cuisiner, .+, fait'
+    visible: 'Cuisiner, .+, fait, Moyenne, 10 XP par suivi'
     timeout: 10000
 
 # Onglet Mois : aujourd'hui compte une habitude faite sur une (« 1/1 »). Le jour est un seul élément

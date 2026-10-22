@@ -1,20 +1,6 @@
-import type { CheckIn } from '../checkIn/CheckIn';
-import { Day } from '../day/Day';
-import { Character, InvalidXpError, XP_PER_CHECK_IN } from './Character';
-
-const today = Day.of(2026, 10, 14);
-const checkIn = (day: Day, done = true, corrected = false): CheckIn => ({
-  habitId: 1,
-  day,
-  done,
-  corrected,
-});
+import { Character, InvalidXpError } from './Character';
 
 describe('Character', () => {
-  it('earns 10 Xp per check-in (R14)', () => {
-    expect(XP_PER_CHECK_IN).toBe(10);
-  });
-
   it('starts with no experience and no retained experience', () => {
     expect(Character.NEW).toEqual(new Character(0, 0));
     expect(Character.NEW.xp).toBe(0);
@@ -52,97 +38,76 @@ describe('Character', () => {
     expect(new InvalidXpError('xp', -1).name).toBe('InvalidXpError');
   });
 
-  describe('applyCheckInChange', () => {
-    it('gains 10 Xp when a case becomes « fait » (R14)', () => {
-      expect(new Character(30).applyCheckInChange(true)).toEqual(new Character(40));
+  describe('applyXpChange', () => {
+    it('gains the experience of a case that becomes « fait » (R1)', () => {
+      expect(new Character(30).applyXpChange(20)).toEqual(new Character(50));
     });
 
-    it('loses 10 Xp when a case goes back from « fait » (R14)', () => {
-      expect(new Character(40).applyCheckInChange(false)).toEqual(new Character(30));
+    it('loses the experience of a case that goes back from « fait » (R1)', () => {
+      expect(new Character(40).applyXpChange(-5)).toEqual(new Character(35));
     });
 
-    it('never goes below 0 (R16)', () => {
-      expect(new Character(0).applyCheckInChange(false)).toEqual(new Character(0));
-      expect(new Character(10).applyCheckInChange(false)).toEqual(new Character(0));
+    it('is unchanged by a change of 0', () => {
+      expect(new Character(40, 10).applyXpChange(0)).toEqual(new Character(40, 10));
+    });
+
+    it('never goes below 0', () => {
+      expect(new Character(0).applyXpChange(-10)).toEqual(new Character(0));
+      expect(new Character(10).applyXpChange(-20)).toEqual(new Character(0));
+      expect(new Character(10).applyXpChange(-10)).toEqual(new Character(0));
     });
 
     it('keeps the retained experience', () => {
-      expect(new Character(50, 20).applyCheckInChange(true)).toEqual(new Character(60, 20));
-      expect(new Character(50, 20).applyCheckInChange(false)).toEqual(new Character(40, 20));
+      expect(new Character(50, 20).applyXpChange(10)).toEqual(new Character(60, 20));
+      expect(new Character(50, 20).applyXpChange(-10)).toEqual(new Character(40, 20));
+    });
+
+    it('refuses a change that is not a whole number of points', () => {
+      expect(() => new Character(50).applyXpChange(2.5)).toThrow(InvalidXpError);
+      expect(() => new Character(50).applyXpChange(Number.NaN)).toThrow(InvalidXpError);
     });
 
     it('leaves the character itself unchanged', () => {
       const character = new Character(30);
 
-      character.applyCheckInChange(true);
+      character.applyXpChange(10);
 
       expect(character.xp).toBe(30);
     });
   });
 
   describe('retainOnHabitDeletion', () => {
-    const monday = Day.of(2026, 10, 12);
-    const tuesday = Day.of(2026, 10, 13);
-
-    it("removes only the experience of today's check-in « fait » (R17)", () => {
-      const deleted = [checkIn(monday), checkIn(tuesday), checkIn(today)];
-
-      expect(new Character(40).retainOnHabitDeletion(deleted, today)).toEqual(
-        new Character(30, 20),
+    it('removes the experience removed and adds the experience retained (R18, R19)', () => {
+      expect(new Character(40).retainOnHabitDeletion({ removed: 20, retained: 20 })).toEqual(
+        new Character(20, 20),
       );
     });
 
-    it('keeps the experience of the closed days as retained experience (R17)', () => {
-      expect(new Character(50, 10).retainOnHabitDeletion([checkIn(monday)], today)).toEqual(
+    it('adds to the retained experience already there (R19)', () => {
+      expect(new Character(50, 10).retainOnHabitDeletion({ removed: 0, retained: 10 })).toEqual(
         new Character(50, 20),
       );
     });
 
-    it('removes nothing without a check-in « fait » today (R17)', () => {
-      expect(new Character(10).retainOnHabitDeletion([], today)).toEqual(new Character(10));
-      expect(
-        new Character(10).retainOnHabitDeletion(
-          [checkIn(monday), checkIn(today, false, true)],
-          today,
-        ),
-      ).toEqual(new Character(10, 10));
-    });
-
-    it('retains nothing of a closed day corrected to « pas fait »', () => {
-      expect(
-        new Character(10).retainOnHabitDeletion([checkIn(monday, false, true)], today),
-      ).toEqual(new Character(10));
-    });
-
-    it('retains a check-in « fait » after today (clock set back), like a closed day', () => {
-      const thursday = Day.of(2026, 10, 15);
-
-      expect(new Character(10).retainOnHabitDeletion([checkIn(thursday)], today)).toEqual(
-        new Character(10, 10),
+    it('changes nothing when nothing is removed or retained', () => {
+      expect(new Character(10).retainOnHabitDeletion({ removed: 0, retained: 0 })).toEqual(
+        new Character(10),
       );
     });
 
-    it('never goes below 0 (R16)', () => {
-      expect(new Character(0).retainOnHabitDeletion([checkIn(today)], today)).toEqual(
+    it('never goes below 0', () => {
+      expect(new Character(0).retainOnHabitDeletion({ removed: 20, retained: 0 })).toEqual(
         new Character(0),
       );
-    });
-
-    it('keeps the invariant: xp = 10 × check-ins « fait » of existing habits + retained (R15)', () => {
-      // « Cuisiner » : lundi, mardi, aujourd'hui ; « Budget du jour » : aujourd'hui.
-      const cooking = [checkIn(monday), checkIn(tuesday), checkIn(today)];
-      const before = new Character(40, 0);
-
-      const after = before.retainOnHabitDeletion(cooking, today);
-
-      const budgetDone = 1;
-      expect(after.xp).toBe(XP_PER_CHECK_IN * budgetDone + after.retainedXp);
+      expect(new Character(5, 5).retainOnHabitDeletion({ removed: 10, retained: 5 })).toEqual(
+        new Character(0, 10),
+      );
     });
 
     it('leaves the character itself unchanged', () => {
       const character = new Character(40);
 
-      character.retainOnHabitDeletion([checkIn(today)], today);
+      character.retainOnHabitDeletion({ removed: 10, retained: 10 });
 
       expect(character).toEqual(new Character(40, 0));
     });

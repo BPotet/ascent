@@ -14,7 +14,7 @@ export const XP_COUNTER_DURATION_MS = 450;
 /** Durée de la pulsation du compteur après un gain (maquette, `xpPulse`). */
 export const XP_PULSE_DURATION_MS = 600;
 
-/** L'apparition de la pastille « +10 XP », puis sa disparition (maquette, `deltaIn`). */
+/** L'apparition de la pastille « +20 XP », puis sa disparition (maquette, `deltaIn`). */
 const PILL_FADE_IN_MS = 210;
 const PILL_HOLD_MS = 840;
 const PILL_FADE_OUT_MS = 350;
@@ -22,7 +22,7 @@ const PILL_FADE_OUT_MS = 350;
 /** Le libellé de l'expérience dans l'en-tête, lu aussi par le lecteur d'écran. */
 export const CHARACTER_XP_LABEL = 'Expérience du personnage';
 
-/** Un changement d'expérience à montrer, « +10 XP » ou « −10 XP » ; `id` change à chaque fois. */
+/** Un changement d'expérience à montrer, « +20 XP » ou « −20 XP » ; `id` change à chaque fois. */
 export interface ShownXpChange {
   readonly id: number;
   readonly amount: number;
@@ -102,7 +102,7 @@ function XpCounter({
   );
 }
 
-/** La pastille « +10 XP » (or) ou « −10 XP » (gris discret), à droite de l'en-tête. */
+/** La pastille « +20 XP » (or) ou « −20 XP » (gris discret), à droite de l'en-tête. */
 function XpChangePill({
   change,
   reducedMotion,
@@ -147,7 +147,7 @@ function XpChangePill({
  * 40 XP », toujours la nouvelle valeur, même pendant que le compteur monte.
  *
  * Après un changement (`change`), le compteur va jusqu'à la nouvelle valeur en 450 ms et pulse
- * pour un gain ; une pastille « +10 XP » (or) ou « −10 XP » (gris) apparaît puis s'efface. Quand
+ * pour un gain ; une pastille « +20 XP » (or) ou « −20 XP » (gris) apparaît puis s'efface. Quand
  * le mouvement est réduit, le compteur se met à jour directement et la pastille ne bouge pas.
  * `xp` vaut `null` tant que l'expérience n'est pas lue : l'en-tête montre sa forme, sans valeur.
  */

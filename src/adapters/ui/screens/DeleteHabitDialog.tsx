@@ -17,7 +17,8 @@ export const deleteHabitTitle = (name: string) => `Supprimer « ${name} » ?`
 
 /**
  * Ce que dit la fenêtre (maquette, E8) : les suivis effacés, l'expérience des jours passés
- * conservée et, si l'habitude est « fait » aujourd'hui, l'expérience retirée (−10 XP).
+ * conservée et, si l'habitude est « fait » aujourd'hui, l'expérience retirée, au barème de la
+ * difficulté de la semaine en cours (−20 XP en Difficile).
  */
 export function deleteHabitBody(xpRemoved: number): string {
   const kept = 'Ses suivis seront effacés. L’expérience gagnée les jours passés reste acquise';

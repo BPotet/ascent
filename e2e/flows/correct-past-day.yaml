@@ -13,12 +13,7 @@ name: Corriger un jour passé, et l'explication d'une case hors habitude
 tags:
   - story-9
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      id: 'day-view-empty'
-    timeout: 60000
+- runFlow: ../subflows/launch-fresh.yaml
 
 - tapOn:
     id: 'add-habit'
@@ -31,7 +26,7 @@ tags:
 - tapOn:
     id: 'create-habit'
 - extendedWaitUntil:
-    visible: 'Cuisiner, .+, à faire'
+    visible: 'Cuisiner, .+, à faire, Moyenne, 10 XP par suivi'
     timeout: 10000
 
 # Créée aujourd'hui : rien à rappeler d'hier.

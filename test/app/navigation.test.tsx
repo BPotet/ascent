@@ -80,7 +80,9 @@ describe('app navigation between the views', () => {
     await showTab('Journée');
 
     expect(selectedTab()).toBe('Journée');
-    expect(dayView().getByLabelText(`${COOKING_TODAY}, à faire`)).toBeOnTheScreen();
+    expect(
+      dayView().getByLabelText(`${COOKING_TODAY}, à faire, Moyenne, 10 XP par suivi`),
+    ).toBeOnTheScreen();
 
     // La Vue Semaine déjà ouverte est restée montée : elle s'affiche sans se recharger.
     await showTab('Semaine');
@@ -92,8 +94,12 @@ describe('app navigation between the views', () => {
   it('shows in the week view a check-in confirmed in the day view, and the other way round', async () => {
     openDatabase.mockImplementation(databaseWithCooking);
     await renderRouter(appDirectory);
-    await fireEvent.press(await screen.findByLabelText(`${COOKING_TODAY}, à faire`));
-    expect(await dayView().findByLabelText(`${COOKING_TODAY}, fait`)).toBeOnTheScreen();
+    await fireEvent.press(
+      await screen.findByLabelText(`${COOKING_TODAY}, à faire, Moyenne, 10 XP par suivi`),
+    );
+    expect(
+      await dayView().findByLabelText(`${COOKING_TODAY}, fait, Moyenne, 10 XP par suivi`),
+    ).toBeOnTheScreen();
 
     await showTab('Semaine');
 
@@ -104,7 +110,9 @@ describe('app navigation between the views', () => {
 
     await showTab('Journée');
 
-    expect(await dayView().findByLabelText(`${COOKING_TODAY}, à faire`)).toBeOnTheScreen();
+    expect(
+      await dayView().findByLabelText(`${COOKING_TODAY}, à faire, Moyenne, 10 XP par suivi`),
+    ).toBeOnTheScreen();
   });
 
   it('opens the new habit sheet in the day view from the empty state of the week view', async () => {
@@ -120,7 +128,9 @@ describe('app navigation between the views', () => {
     expect(selectedTab()).toBe('Journée');
     await fireEvent.changeText(screen.getByLabelText('Nom de l’habitude'), 'Cuisiner');
     await fireEvent.press(screen.getByRole('button', { name: 'Créer l’habitude' }));
-    expect(await dayView().findByLabelText(`${COOKING_TODAY}, à faire`)).toBeOnTheScreen();
+    expect(
+      await dayView().findByLabelText(`${COOKING_TODAY}, à faire, Moyenne, 10 XP par suivi`),
+    ).toBeOnTheScreen();
 
     await showTab('Semaine');
 

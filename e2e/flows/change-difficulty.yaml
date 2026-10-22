@@ -1,0 +1,143 @@
+# Story #23 : changer la difficulté d'une habitude réévalue toute la semaine en cours.
+# Parcours : « Courir 5 km » créée avec la touche ↵, donc en « Moyenne » → cochée : 10 XP →
+# « Modifier l'habitude » : « Moyenne » préremplie, « Enregistrer » désactivé → « Difficile » : le
+# message d'information s'affiche, « Enregistrer » s'active → enregistrée : « Habitude modifiée »
+# avec le gain, la case du jour vaut désormais 20 XP (20 XP au total) → un tap la retire (0 XP),
+# un autre la rend (20 XP) → la carte de la Vue Semaine montre « Difficile ».
+# Limite : Maestro ne pilote pas la date du téléphone. Sur une installation neuve, la semaine en
+# cours n'a qu'un jour d'habitude, aujourd'hui : le passage de « Moyenne » à « Difficile » rapporte
+# donc +10 XP (une case « fait » réévaluée de 10 à 20 XP), et non +20 XP comme avec les deux jours
+# du scénario Gherkin. Les semaines closes, plusieurs jours et les baisses sont couverts par
+# `features/difficulty.feature` et les tests des cas d'usage.
+# Captures pour la comparaison avec la maquette docs/mockups/22-difficulte-objectif (E7, E1, E4).
+appId: com.bpotet.ascent
+name: Passer une habitude en Difficile dans Modifier l'habitude
+tags:
+  - story-23
+---
+- runFlow: ../subflows/launch-fresh.yaml
+
+# Créée avec ↵, sans toucher au bloc « Difficulté » : elle est en « Moyenne ».
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Courir 5 km'
+- pressKey: Enter
+- extendedWaitUntil:
+    notVisible: 'Nouvelle habitude'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'Courir 5 km, .+, à faire, Moyenne, 10 XP par suivi'
+    timeout: 10000
+
+# Cochée : 10 XP.
+- tapOn:
+    id: 'habit-row-1'
+- extendedWaitUntil:
+    visible: 'Courir 5 km, .+, fait, Moyenne, 10 XP par suivi'
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: 'xp-counter'
+      text: '10 XP'
+    timeout: 10000
+
+# « Modifier l'habitude » : la difficulté de la semaine est préremplie, rien n'a changé.
+- tapOn:
+    id: 'edit-habit-1'
+- extendedWaitUntil:
+    visible:
+      id: 'edit-habit-sheet-content'
+    timeout: 10000
+- assertVisible:
+    id: 'edit-habit-name'
+    text: 'Courir 5 km'
+- assertVisible:
+    id: 'difficulty-option-medium'
+    checked: true
+- assertVisible:
+    id: 'save-habit'
+    enabled: false
+- assertNotVisible:
+    id: 'difficulty-change-info'
+- assertVisible:
+    id: 'delete-habit'
+- takeScreenshot: difficulty-E7-1-edit-sheet-medium
+
+# « Difficile » : le message dit que toute la semaine en cours passe à +20 XP, pas les semaines
+# passées ; « Enregistrer » s'active.
+- tapOn:
+    id: 'difficulty-option-hard'
+- extendedWaitUntil:
+    visible:
+      id: 'difficulty-change-info'
+    timeout: 10000
+- assertVisible:
+    id: 'difficulty-change-info'
+    text: 'S.applique à toute cette semaine : les suivis de la semaine rapporteront \+20 XP\. Les semaines passées ne changent pas\.'
+- assertVisible:
+    id: 'difficulty-option-hard'
+    checked: true
+- assertVisible:
+    id: 'save-habit'
+    enabled: true
+- takeScreenshot: difficulty-E7-2-edit-sheet-hard-info
+
+# Enregistrée : « Habitude modifiée » avec le gain ; la case du jour vaut désormais 20 XP.
+- tapOn:
+    id: 'save-habit'
+- extendedWaitUntil:
+    visible:
+      id: 'toast'
+    timeout: 10000
+- assertVisible: 'Habitude modifiée · \+10 XP'
+- takeScreenshot: difficulty-E7-3-updated-toast
+- extendedWaitUntil:
+    notVisible:
+      id: 'edit-habit-sheet-content'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'Courir 5 km, .+, fait, Difficile, 20 XP par suivi'
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: 'xp-counter'
+      text: '20 XP'
+    timeout: 10000
+- assertVisible:
+    id: 'habit-difficulty-1'
+- takeScreenshot: difficulty-E1-5-day-view-after-change
+
+# Toute la semaine suit la nouvelle difficulté : un tap retire 20 XP, un autre les rend.
+- tapOn:
+    id: 'habit-row-1'
+- extendedWaitUntil:
+    visible: 'Courir 5 km, .+, à faire, Difficile, 20 XP par suivi'
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: 'xp-counter'
+      text: '0 XP'
+    timeout: 10000
+- tapOn:
+    id: 'habit-row-1'
+- extendedWaitUntil:
+    visible:
+      id: 'xp-counter'
+      text: '20 XP'
+    timeout: 10000
+
+# La carte de la Vue Semaine montre « Difficile ».
+- tapOn:
+    id: 'tab-week'
+- extendedWaitUntil:
+    visible:
+      id: 'week-card-1'
+    timeout: 10000
+- assertVisible:
+    id: 'week-difficulty-1'
+- takeScreenshot: difficulty-E4-2-week-view-after-change

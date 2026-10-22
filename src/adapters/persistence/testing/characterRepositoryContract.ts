@@ -57,7 +57,7 @@ export function describeCharacterRepositoryContract(
         inTransaction(async ({ character }) => {
           const current = await character.get();
           await new Promise((resolve) => setTimeout(resolve, 0));
-          await character.save(current.applyCheckInChange(true));
+          await character.save(current.applyXpChange(10));
         });
 
       await Promise.all([gain(), gain(), gain()]);
