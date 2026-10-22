@@ -327,6 +327,39 @@ describe('getDayView', () => {
       });
     });
 
+    it('counts the week that changes year, and starts again from 0 on Monday 4 January', async () => {
+      const thursday31 = Day.of(2026, 12, 31);
+      const newYearsDay = Day.of(2027, 1, 1);
+      clock.setToday(newYearsDay);
+      const running = await create('Courir 5 km', Day.of(2026, 12, 21), 3);
+      await done(running, Day.of(2026, 12, 27), Day.of(2026, 12, 28), thursday31, newYearsDay);
+
+      await expect(lineOf('Courir 5 km')).resolves.toMatchObject({
+        weeklyProgress: 3,
+        weekTarget: 3,
+        targetReached: true,
+      });
+      clock.setToday(Day.of(2027, 1, 4));
+      await expect(lineOf('Courir 5 km')).resolves.toMatchObject({
+        weeklyProgress: 0,
+        weekTarget: 3,
+        targetReached: false,
+      });
+    });
+
+    it('cuts the week of creation on the 25-hour Sunday of the change of hour to 1', async () => {
+      const sunday25 = Day.of(2026, 10, 25);
+      clock.setToday(sunday25);
+      const meditating = await create('Méditer', sunday25, 7);
+      await done(meditating, sunday25);
+
+      await expect(lineOf('Méditer')).resolves.toMatchObject({
+        weeklyProgress: 1,
+        weekTarget: 1,
+        targetReached: true,
+      });
+    });
+
     it('does not count a check-in « fait » dated after today (clock set back)', async () => {
       const running = await create('Courir 5 km', monday5, 3);
       clock.setToday(friday16);

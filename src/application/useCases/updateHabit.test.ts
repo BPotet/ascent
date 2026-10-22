@@ -583,5 +583,24 @@ describe('updateHabit', () => {
         nextWeeklyTarget: 4,
       });
     });
+
+    it('records the target 7, never an empty one, when only the difficulty of a habit not yet introduced changes', async () => {
+      const habit = await unitOfWork.run(({ habits }) =>
+        habits.add(HabitName.parse('Lire'), monday5),
+      );
+      await unitOfWork.addSettingsChangeBeforeWeeklyTarget(habit.id, monday5);
+
+      await expect(
+        updateHabit(deps(), habit.id, { name: 'Lire', difficulty: 'hard' }),
+      ).resolves.toMatchObject({
+        settingsChanged: true,
+        weekSettings: { difficulty: 'hard', weeklyTarget: 7, weekTarget: 7 },
+        nextWeeklyTarget: 7,
+      });
+      await expect(changes(habit)).resolves.toEqual([
+        expect.objectContaining({ changedOn: monday5, weeklyTarget: null }),
+        expect.objectContaining({ changedOn: wednesday, difficulty: 'hard', weeklyTarget: 7 }),
+      ]);
+    });
   });
 });
