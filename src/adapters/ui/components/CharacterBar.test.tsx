@@ -340,6 +340,16 @@ describe('CharacterBar', () => {
       expect(shownXp()).toBe('45 XP');
     });
 
+    it('keeps both pills whole, the label giving way, on a narrow screen (320 dp)', async () => {
+      await render(<CharacterBar xp={45} change={{ id: 1, amount: 25, bonus: 15 }} />);
+
+      expect(screen.getByTestId('xp-change-pills', hidden)).toHaveStyle({ flexShrink: 0 });
+      expect(screen.getByTestId('character-bar-texts')).toHaveStyle({
+        flexShrink: 1,
+        minWidth: 0,
+      });
+    });
+
     it('never intercepts a touch with its pills', async () => {
       await render(<CharacterBar xp={45} change={{ id: 1, amount: 25, bonus: 15 }} />);
 

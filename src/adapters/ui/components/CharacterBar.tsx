@@ -208,7 +208,7 @@ function XpChangePills({
 }) {
   const { checkIn, bonus } = sharesOf(change);
   return (
-    <View style={styles.pills}>
+    <View testID="xp-change-pills" style={styles.pills}>
       {checkIn !== 0 && <XpChangePill amount={checkIn} reducedMotion={reducedMotion} />}
       {bonus !== 0 && (
         <XpChangePill
@@ -268,7 +268,7 @@ export function CharacterBar({
       <View style={[styles.avatar, styles.avatarFrame]}>
         <PeakGlyph color={colors.xp} />
       </View>
-      <View style={styles.texts}>
+      <View testID="character-bar-texts" style={styles.texts}>
         <Text style={[typography.label, styles.label]}>{CHARACTER_XP_LABEL}</Text>
         <XpCounter xp={xp} change={change} reducedMotion={reducedMotion} />
       </View>
@@ -298,7 +298,8 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     backgroundColor: colors.avatar,
   },
-  texts: { flex: 1, alignItems: 'flex-start' },
+  // Le libellé peut passer à la ligne, jamais les pastilles : elles gardent leur largeur.
+  texts: { flex: 1, flexShrink: 1, minWidth: 0, alignItems: 'flex-start' },
   label: { color: colors.muted },
   xp: { color: colors.xp, transformOrigin: 'left center' },
   glow: {
@@ -310,7 +311,7 @@ const styles = StyleSheet.create({
   pillGain: { backgroundColor: colors.xp },
   pillLoss: { backgroundColor: colors.surfaceRaised },
   pillGainText: { color: colors.onXp },
-  pills: { alignItems: 'flex-end', gap: spacing.xs },
+  pills: { flexShrink: 0, alignItems: 'flex-end', gap: spacing.xs },
   pillBonus: { paddingVertical: spacing.xs, borderWidth: 1.5, backgroundColor: 'transparent' },
   pillBonusGain: { borderColor: colors.xp },
   pillBonusLoss: { borderColor: colors.iconDisabled },

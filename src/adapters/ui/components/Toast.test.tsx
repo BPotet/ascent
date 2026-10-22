@@ -160,6 +160,35 @@ describe('Toast', () => {
       expect(screen.getByTestId('toast')).toHaveProp('pointerEvents', 'none');
     });
 
+    it('lets the discreet message of a lost target intercept no touch either', async () => {
+      await render(
+        <Toast
+          message="Objectif de la semaine plus atteint · Lire 0/1 · −5 XP prime"
+          variant="soft"
+          onHide={jest.fn()}
+        />,
+      );
+
+      expect(screen.getByTestId('toast')).toHaveProp('pointerEvents', 'none');
+    });
+
+    it('stays touchable when it offers an action', async () => {
+      const retry = jest.fn();
+      await render(
+        <Toast
+          message={message}
+          variant="goal"
+          target={target}
+          action={{ label: 'Réessayer', onPress: retry }}
+          onHide={jest.fn()}
+        />,
+      );
+
+      expect(screen.getByTestId('toast')).not.toHaveProp('pointerEvents', 'none');
+      await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
+      expect(retry).toHaveBeenCalledTimes(1);
+    });
+
     it('keeps a default toast, without a target, as it was', async () => {
       await render(<Toast message="Habitude créée" onHide={jest.fn()} />);
 
