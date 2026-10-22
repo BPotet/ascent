@@ -1,6 +1,7 @@
 import type { CharacterRepository } from './CharacterRepository';
 import type { CheckInRepository } from './CheckInRepository';
 import type { HabitRepository } from './HabitRepository';
+import type { IntroductionRepository } from './IntroductionRepository';
 import type { SettingsChangeRepository } from './SettingsChangeRepository';
 
 /** Les dépôts disponibles dans une unité de travail. Cette liste grandit au fil des stories. */
@@ -9,6 +10,7 @@ export interface Repositories {
   readonly checkIns: CheckInRepository;
   readonly character: CharacterRepository;
   readonly settingsChanges: SettingsChangeRepository;
+  readonly introductions: IntroductionRepository;
 }
 
 /**
