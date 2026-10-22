@@ -1,8 +1,15 @@
 import { Day } from '../../domain/day/Day';
+import type { Habit } from '../../domain/habit/Habit';
 import { HabitName } from '../../domain/habit/HabitName';
+import type { WeeklyTarget } from '../../domain/habit/WeeklyTarget';
+import { experienceInvariant } from '../testing/experienceInvariant';
 import { InMemoryUnitOfWork, StorageUnavailableError } from '../testing/InMemoryUnitOfWork';
 import { settableClock } from '../testing/settableClock';
+import { createHabit } from './createHabit';
 import { getDayView } from './getDayView';
+import { introduceWeeklyTarget } from './introduceWeeklyTarget';
+import { toggleCheckIn } from './toggleCheckIn';
+import { updateHabit } from './updateHabit';
 
 const wednesday = Day.of(2026, 10, 14);
 
@@ -206,6 +213,195 @@ describe('getDayView', () => {
       await expect(getDayView({ clock, unitOfWork: unreadable })).rejects.toThrow(
         StorageUnavailableError,
       );
+    });
+  });
+
+  describe('weekly progress', () => {
+    const monday5 = Day.of(2026, 10, 5);
+    const monday12 = Day.of(2026, 10, 12);
+    const friday16 = Day.of(2026, 10, 16);
+    const monday19 = Day.of(2026, 10, 19);
+
+    /** Crée l'habitude `name` le `createdOn`, avec l'objectif `weeklyTarget`, par `createHabit`. */
+    async function create(
+      name: string,
+      createdOn: Day,
+      weeklyTarget: WeeklyTarget,
+    ): Promise<Habit> {
+      const today = clock.today();
+      clock.setToday(createdOn);
+      const created = await createHabit(deps(), name, 'medium', weeklyTarget);
+      clock.setToday(today);
+      return created.ok ? created.habit : (undefined as never);
+    }
+
+    /** Des cases « fait » de `habit`, cochées ou corrigées par `toggleCheckIn`. */
+    async function done(habit: Habit, ...days: Day[]): Promise<void> {
+      for (const each of days) {
+        await expect(toggleCheckIn(deps(), habit.id, each)).resolves.toMatchObject({ ok: true });
+      }
+    }
+
+    /** Une habitude d'avant la mise à jour, puis le changement d'introduction du `updateDay`. */
+    async function existing(name: string, createdOn: Day, updateDay: Day): Promise<Habit> {
+      const habit = await unitOfWork.run(({ habits }) =>
+        habits.add(HabitName.parse(name), createdOn),
+      );
+      await unitOfWork.addSettingsChangeBeforeWeeklyTarget(habit.id, createdOn);
+      const today = clock.today();
+      clock.setToday(updateDay);
+      await introduceWeeklyTarget(deps());
+      clock.setToday(today);
+      return habit;
+    }
+
+    afterEach(async () => {
+      const { xp, expected } = await experienceInvariant(unitOfWork);
+      expect(xp).toBe(expected);
+    });
+
+    /** Ce que la ligne de `name` montre de l'objectif. */
+    async function lineOf(name: string) {
+      const line = (await getDayView(deps())).habits.find(({ habit }) => habit.name.value === name);
+      expect(line).toBeDefined();
+      const { weeklyProgress, targetReached, nextWeeklyTarget, targetChangeAppliesThisWeek } =
+        line!;
+      return {
+        weeklyProgress,
+        weekTarget: line!.weekSettings.weekTarget,
+        targetReached,
+        nextWeeklyTarget,
+        targetChangeAppliesThisWeek,
+      };
+    }
+
+    it('gives each line its progress of the week, from Monday to today (R5)', async () => {
+      const running = await create('Courir 5 km', monday5, 3);
+      await done(running, monday5, monday12);
+
+      await expect(lineOf('Courir 5 km')).resolves.toEqual({
+        weeklyProgress: 1,
+        weekTarget: 3,
+        targetReached: false,
+        nextWeeklyTarget: 3,
+        targetChangeAppliesThisWeek: false,
+      });
+      await done(running, wednesday);
+      await expect(lineOf('Courir 5 km')).resolves.toMatchObject({ weeklyProgress: 2 });
+      await done(running, wednesday);
+      await expect(lineOf('Courir 5 km')).resolves.toMatchObject({ weeklyProgress: 1 });
+    });
+
+    it('reaches the target, goes beyond it (« 4/3 ») and goes back under it, with no failure (R7)', async () => {
+      clock.setToday(friday16);
+      const running = await create('Courir 5 km', monday5, 3);
+      await done(running, monday12, wednesday);
+
+      await done(running, friday16);
+      await expect(lineOf('Courir 5 km')).resolves.toMatchObject({
+        weeklyProgress: 3,
+        targetReached: true,
+      });
+      await done(running, Day.of(2026, 10, 15));
+      await expect(lineOf('Courir 5 km')).resolves.toMatchObject({
+        weeklyProgress: 4,
+        targetReached: true,
+      });
+      await done(running, friday16, Day.of(2026, 10, 15));
+      await expect(lineOf('Courir 5 km')).resolves.toMatchObject({
+        weeklyProgress: 2,
+        targetReached: false,
+      });
+    });
+
+    it('starts again from 0 on Monday', async () => {
+      clock.setToday(friday16);
+      const running = await create('Courir 5 km', monday5, 3);
+      await done(running, monday12, wednesday, friday16);
+
+      clock.setToday(monday19);
+      await expect(lineOf('Courir 5 km')).resolves.toMatchObject({
+        weeklyProgress: 0,
+        weekTarget: 3,
+        targetReached: false,
+      });
+    });
+
+    it('does not count a check-in « fait » dated after today (clock set back)', async () => {
+      const running = await create('Courir 5 km', monday5, 3);
+      clock.setToday(friday16);
+      await done(running, friday16);
+      clock.setToday(wednesday);
+
+      await expect(lineOf('Courir 5 km')).resolves.toMatchObject({ weeklyProgress: 0 });
+    });
+
+    it('cuts the target of the week of creation to the active days (R6)', async () => {
+      clock.setToday(Day.of(2026, 10, 15));
+      await create('Méditer', Day.of(2026, 10, 15), 7);
+
+      await expect(lineOf('Méditer')).resolves.toMatchObject({
+        weekTarget: 4,
+        weeklyProgress: 0,
+        targetChangeAppliesThisWeek: true,
+      });
+    });
+
+    it('shows a target changed this week from next Monday, with the next target (R13)', async () => {
+      const running = await create('Courir 5 km', monday5, 3);
+      await updateHabit(deps(), running.id, { name: 'Courir 5 km', weeklyTarget: 5 });
+
+      await expect(lineOf('Courir 5 km')).resolves.toMatchObject({
+        weekTarget: 3,
+        nextWeeklyTarget: 5,
+        targetChangeAppliesThisWeek: false,
+      });
+      clock.setToday(monday19);
+      await expect(lineOf('Courir 5 km')).resolves.toMatchObject({
+        weekTarget: 5,
+        nextWeeklyTarget: 5,
+      });
+    });
+
+    it('gives the existing habits the target 7 from the week of the update (R16)', async () => {
+      const cooking = await existing('Cuisiner', monday5, wednesday);
+      await existing('Budget du jour', Day.of(2026, 10, 13), wednesday);
+      await done(cooking, monday12, Day.of(2026, 10, 13));
+
+      await expect(lineOf('Cuisiner')).resolves.toEqual({
+        weeklyProgress: 2,
+        weekTarget: 7,
+        targetReached: false,
+        nextWeeklyTarget: 7,
+        targetChangeAppliesThisWeek: false,
+      });
+      await expect(lineOf('Budget du jour')).resolves.toMatchObject({
+        weeklyProgress: 0,
+        weekTarget: 6,
+      });
+    });
+
+    it('gives no target to a habit not yet introduced (R17)', async () => {
+      const habit = await unitOfWork.run(({ habits }) =>
+        habits.add(HabitName.parse('Lire'), monday5),
+      );
+      await unitOfWork.addSettingsChangeBeforeWeeklyTarget(habit.id, monday5);
+      await done(habit, wednesday);
+
+      await expect(lineOf('Lire')).resolves.toEqual({
+        weeklyProgress: 1,
+        weekTarget: null,
+        targetReached: false,
+        nextWeeklyTarget: null,
+        targetChangeAppliesThisWeek: false,
+      });
+    });
+
+    it('still counts « faites » today only', async () => {
+      const running = await create('Courir 5 km', monday5, 3);
+      await done(running, monday12, wednesday);
+
+      await expect(getDayView(deps())).resolves.toMatchObject({ doneCount: 1 });
     });
   });
 });
