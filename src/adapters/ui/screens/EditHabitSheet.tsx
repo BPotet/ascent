@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 
 import type { UpdateHabitInput } from '../../../application/useCases/updateHabit';
+import type { Day } from '../../../domain/day/Day';
 import type { Habit } from '../../../domain/habit/Habit';
 import { DEFAULT_WEEKLY_TARGET } from '../../../domain/habit/WeeklyTarget';
 import { Button } from '../components/Button';
@@ -56,8 +57,10 @@ function ChangeInfo({ message, testID }: { readonly message: string; readonly te
  *
  * Quand la difficulté choisie diffère, un message dit qu'elle s'applique à toute la semaine en
  * cours, au barème choisi, et pas aux semaines passées (R12). Quand l'objectif choisi diffère, un
- * message dit qu'il vaut à partir de lundi prochain et que la semaine en cours garde son objectif de
- * la semaine, ou, le jour de création seulement, qu'il vaut dès cette semaine (R13).
+ * message dit qu'il vaut à partir de lundi prochain, daté (« lundi prochain (19 octobre) », d'après
+ * `today`), et que la semaine en cours garde son objectif de la semaine, ou, le jour de création
+ * seulement, qu'il vaut dès cette semaine (R13) ; ce jour-là, le bloc « Objectif » annonce aussi
+ * l'objectif de la semaine réduit aux jours restants, comme dans « Nouvelle habitude » (R6, E2).
  *
  * - `onSave` enregistre le nom et, s'ils ont changé, la difficulté et l'objectif, en une fois ;
  *   l'habitude modifiée est passée à `onSaved`. Si l'habitude n'existe plus, `onGone` est appelé.
@@ -69,6 +72,7 @@ export function EditHabitSheet({
   habit,
   settings,
   habits,
+  today,
   deleteAlert = null,
   onSave,
   onSaved,
@@ -81,6 +85,8 @@ export function EditHabitSheet({
   readonly settings: EditableSettings;
   /** Toutes les habitudes, pour nommer celle qui porte déjà le nom saisi. */
   readonly habits: readonly Habit[];
+  /** Aujourd'hui : il date « lundi prochain » et, le jour de création, l'objectif de la semaine. */
+  readonly today: Day;
   readonly deleteAlert?: string | null;
   readonly onSave: (input: UpdateHabitInput) => Promise<UpdateHabitOutcome>;
   readonly onSaved: (updated: UpdatedHabit) => void;
@@ -130,12 +136,17 @@ export function EditHabitSheet({
               testID="difficulty-change-info"
             />
           )}
-          <WeeklyTargetPicker value={weeklyTarget} onChange={setWeeklyTarget} />
+          <WeeklyTargetPicker
+            value={weeklyTarget}
+            onChange={setWeeklyTarget}
+            creationDay={settings.targetChangeAppliesThisWeek ? today : undefined}
+          />
           {targetChanged && (
             <ChangeInfo
               message={weeklyTargetChangeMessage({
                 appliesThisWeek: settings.targetChangeAppliesThisWeek,
                 weekTarget: settings.weekSettings.weekTarget,
+                today,
               })}
               testID="weekly-target-change-info"
             />

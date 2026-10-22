@@ -99,7 +99,13 @@ describe('HabitEditing', () => {
 
   /** « Modifier l'habitude » ouvert depuis une autre semaine : les réglages sont à lire. */
   const editing = (props: ReturnType<typeof callbacks>) => (
-    <HabitEditing habit={cooking} settings={undefined} habits={[cooking]} {...props} />
+    <HabitEditing
+      habit={cooking}
+      settings={undefined}
+      habits={[cooking]}
+      today={wednesday}
+      {...props}
+    />
   );
 
   it('opens the sheet with the settings of the current week once they are read', async () => {
@@ -145,6 +151,7 @@ describe('HabitEditing', () => {
           targetChangeAppliesThisWeek: false,
         }}
         habits={[cooking]}
+        today={wednesday}
         {...props}
       />,
       dependencies,

@@ -1,7 +1,13 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import type { Day } from '../../../domain/day/Day';
 import { WEEKLY_TARGETS, type WeeklyTarget } from '../../../domain/habit/WeeklyTarget';
-import { weeklyTargetOptionLabel, weeklyTargetPhrase } from '../format/formatWeeklyTarget';
+import { creationWeekTargetOf } from '../../../domain/habit/WeekSettings';
+import {
+  creationWeekNote,
+  weeklyTargetOptionLabel,
+  weeklyTargetPhrase,
+} from '../format/formatWeeklyTarget';
 import { useLargeText } from '../state/useLargeText';
 import { colors } from '../theme/colors';
 import { radii } from '../theme/metrics';
@@ -125,6 +131,10 @@ function Stepper({
  * sept pastilles de 1 à 7 (44 × 44 pt), la choisie pleine, puis la phrase qui confirme le choix
  * (« 3 fois par semaine », « Tous les jours »).
  *
+ * Avec `creationDay` (aujourd'hui, quand c'est le jour de création de l'habitude), la phrase annonce
+ * l'objectif de la semaine de création quand il est réduit aux jours restants (R6, maquette E2
+ * « Semaine de création réduite ») : « Tous les jours · cette semaine : 5, à partir d’aujourd’hui ».
+ *
  * Pour le lecteur d'écran, un groupe radio « Objectif hebdomadaire » dont chaque option est lue
  * « 3 fois par semaine », et 7 « 7 fois par semaine, tous les jours ». En grand texte, les pastilles
  * laissent place à un compteur « − 3 + » (maquette, « Accessibilité »).
@@ -132,11 +142,20 @@ function Stepper({
 export function WeeklyTargetPicker({
   value,
   onChange,
+  creationDay,
 }: {
   readonly value: WeeklyTarget;
   readonly onChange: (target: WeeklyTarget) => void;
+  /** Aujourd'hui, si c'est le jour de création de l'habitude ; sinon, rien n'est annoncé. */
+  readonly creationDay?: Day | undefined;
 }) {
   const largeText = useLargeText();
+  const note =
+    creationDay &&
+    creationWeekNote({
+      weeklyTarget: value,
+      creationWeekTarget: creationWeekTargetOf(value, creationDay),
+    });
   return (
     <View>
       <Text style={[typography.label, styles.title]}>{WEEKLY_TARGET_TITLE}</Text>
@@ -147,6 +166,7 @@ export function WeeklyTargetPicker({
       )}
       <Text testID="weekly-target-phrase" style={[typography.notice, styles.phrase]}>
         {weeklyTargetPhrase(value)}
+        {note && <Text style={styles.note}>{` · ${note}`}</Text>}
       </Text>
     </View>
   );
@@ -184,5 +204,6 @@ const styles = StyleSheet.create({
   stepText: { ...typography.screenTitle, color: colors.text },
   value: { ...typography.screenTitle, color: colors.text, minWidth: 30, textAlign: 'center' },
   phrase: { color: colors.text, marginTop: 8, minHeight: 20 },
+  note: { color: colors.muted },
 });
 // Stryker restore all

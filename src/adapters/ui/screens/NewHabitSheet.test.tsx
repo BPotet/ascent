@@ -13,8 +13,9 @@ const nbsp = '\u00A0';
 const wednesday = Day.of(2026, 10, 14);
 const cooking = new Habit(1, HabitName.parse('Cuisiner'), wednesday);
 
-function created(name: string): CreateHabitOutcome {
-  return { ok: true, habit: new Habit(2, HabitName.parse(name), wednesday), weekTarget: 7 };
+/** Une habitude créée le mercredi : « Tous les jours » donne l'objectif 5 cette semaine (R6). */
+function created(name: string, weekTarget = 5): CreateHabitOutcome {
+  return { ok: true, habit: new Habit(2, HabitName.parse(name), wednesday), weekTarget };
 }
 
 async function open(
@@ -30,6 +31,7 @@ async function open(
   await render(
     <NewHabitSheet
       habits={[cooking]}
+      today={wednesday}
       onCreate={onCreate}
       onCreated={onCreated}
       onClose={onClose}
@@ -94,7 +96,10 @@ describe('NewHabitSheet', () => {
     await fireEvent.press(createButton());
 
     expect(onCreate).toHaveBeenCalledWith('Lire 20 minutes', 'medium', 7);
-    expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ id: 2 }));
+    expect(onCreated).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 2 }),
+      'Habitude créée · objectif 5 cette semaine',
+    );
     expect(onClose).not.toHaveBeenCalled();
   });
 
@@ -204,7 +209,7 @@ describe('NewHabitSheet', () => {
       expect(screen.getAllByTestId(/^weekly-target-option-/u)).toHaveLength(7);
       expect(target(7)).toBeChecked();
       expect(target(3)).not.toBeChecked();
-      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent('Tous les jours');
+      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent(/^Tous les jours/u);
     });
 
     it('creates the habit « Tous les jours » when the keyboard validates (↵) at once', async () => {
@@ -239,6 +244,42 @@ describe('NewHabitSheet', () => {
       await type('Cuisiner maison');
       await fireEvent.press(createButton());
       expect(onCreate).toHaveBeenLastCalledWith('Cuisiner maison', 'hard', 3);
+    });
+
+    it('announces the target of this week cut to the days left, before creating', async () => {
+      await open();
+
+      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent(
+        'Tous les jours · cette semaine : 5, à partir d’aujourd’hui',
+      );
+
+      await fireEvent.press(target(3));
+
+      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent('3 fois par semaine', {
+        exact: true,
+      });
+    });
+
+    it('reports the creation with the target of this week, when it is cut', async () => {
+      const { onCreated } = await open();
+
+      await type('Méditer');
+      await fireEvent.press(createButton());
+
+      expect(onCreated).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 2 }),
+        'Habitude créée · objectif 5 cette semaine',
+      );
+    });
+
+    it('reports the creation alone when the target of this week is not cut', async () => {
+      const { onCreated } = await open(async (name) => created(name, 3));
+
+      await fireEvent.press(target(3));
+      await type('Courir 5 km');
+      await fireEvent.press(createButton());
+
+      expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ id: 2 }), 'Habitude créée');
     });
 
     it('announces no change of target: it applies from the day of creation', async () => {

@@ -11,6 +11,7 @@ import { EditHabitSheet } from './EditHabitSheet';
 
 const nbsp = ' ';
 const monday = Day.of(2026, 10, 5);
+const wednesday = Day.of(2026, 10, 14);
 const cooking = new Habit(1, HabitName.parse('Cuisiner'), monday);
 const budget = new Habit(2, HabitName.parse('Budget du jour'), Day.of(2026, 10, 12));
 
@@ -51,6 +52,7 @@ async function open(
         ...settings,
       }}
       habits={[cooking, budget]}
+      today={wednesday}
       deleteAlert={deleteAlert}
       {...props}
     />,
@@ -389,7 +391,8 @@ describe('EditHabitSheet', () => {
 
       await fireEvent.press(target(5));
 
-      const message = 'Nouvel objectif à partir de lundi prochain. Cette semaine reste à 3.';
+      const message =
+        'Nouvel objectif à partir de lundi prochain (19 octobre). Cette semaine reste à 3.';
       expect(screen.getByText(message)).toBeOnTheScreen();
       expect(targetInfo()).toHaveAccessibleName(message);
       expect(targetInfo()).toHaveProp('accessibilityLiveRegion', 'polite');
@@ -406,7 +409,7 @@ describe('EditHabitSheet', () => {
       await fireEvent.press(target(3));
 
       expect(targetInfo()).toHaveAccessibleName(
-        'Nouvel objectif à partir de lundi prochain. Cette semaine reste à 5.',
+        'Nouvel objectif à partir de lundi prochain (19 octobre). Cette semaine reste à 5.',
       );
     });
 
@@ -423,6 +426,34 @@ describe('EditHabitSheet', () => {
         'Habitude créée aujourd’hui : le nouvel objectif s’applique dès cette semaine.',
       );
       expect(screen.queryByText(/lundi prochain/u)).not.toBeOnTheScreen();
+    });
+
+    it('announces the target of this week cut to the days left on the day of creation (E2, E7)', async () => {
+      await open(undefined, null, 'medium', {
+        weekSettings: { difficulty: 'medium', weeklyTarget: 3, weekTarget: 3 },
+        nextWeeklyTarget: 3,
+        targetChangeAppliesThisWeek: true,
+      });
+
+      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent('3 fois par semaine', {
+        exact: true,
+      });
+
+      await fireEvent.press(target(7));
+
+      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent(
+        'Tous les jours · cette semaine : 5, à partir d’aujourd’hui',
+      );
+    });
+
+    it('announces no target of this week on another day than the day of creation', async () => {
+      await open();
+
+      await fireEvent.press(target(7));
+
+      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent('Tous les jours', {
+        exact: true,
+      });
     });
 
     it('goes back to « nothing changed » when the first target is chosen again', async () => {

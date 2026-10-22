@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Dimensions } from 'react-native';
 
+import { Day } from '../../../domain/day/Day';
 import type { WeeklyTarget } from '../../../domain/habit/WeeklyTarget';
 import { WeeklyTargetPicker } from './WeeklyTargetPicker';
 
@@ -58,6 +59,42 @@ describe('WeeklyTargetPicker', () => {
     await screen.rerender(<WeeklyTargetPicker value={7} onChange={jest.fn()} />);
 
     expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent('Tous les jours');
+  });
+
+  describe('on the day of creation (E2, « Semaine de création réduite »)', () => {
+    const wednesday = Day.of(2026, 10, 14);
+
+    it('announces the target of the week cut to the days left, today included', async () => {
+      await render(<WeeklyTargetPicker value={7} onChange={jest.fn()} creationDay={wednesday} />);
+
+      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent(
+        'Tous les jours · cette semaine : 5, à partir d’aujourd’hui',
+      );
+
+      await screen.rerender(
+        <WeeklyTargetPicker value={6} onChange={jest.fn()} creationDay={wednesday} />,
+      );
+
+      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent(
+        '6 fois par semaine · cette semaine : 5, à partir d’aujourd’hui',
+      );
+    });
+
+    it('announces nothing when the target is not cut', async () => {
+      await render(<WeeklyTargetPicker value={5} onChange={jest.fn()} creationDay={wednesday} />);
+
+      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent('5 fois par semaine', {
+        exact: true,
+      });
+    });
+
+    it('announces nothing on another day', async () => {
+      await show(7);
+
+      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent('Tous les jours', {
+        exact: true,
+      });
+    });
   });
 
   it('chooses the target touched', async () => {

@@ -283,10 +283,10 @@ export function DayViewScreen({
   const hideToast = useCallback(() => setToast(null), []);
   const openSheet = () => setSheetOpen(true);
   const closeSheet = () => setSheetOpen(false);
-  const created = (habit: Habit) => {
+  const created = (habit: Habit, message: string) => {
     setSheetOpen(false);
     setHighlighted({ id: habit.id, reveal: true });
-    showToast('Habitude créée');
+    showToast(message);
     void refresh();
   };
   const closeEditing = () => setEditing(null);
@@ -409,6 +409,7 @@ export function DayViewScreen({
       {sheetOpen && (
         <NewHabitSheet
           habits={view.habits.map(({ habit }) => habit)}
+          today={view.day}
           onCreate={create}
           onCreated={created}
           onClose={closeSheet}
@@ -419,6 +420,7 @@ export function DayViewScreen({
           habit={editing.habit}
           settings={editing}
           habits={view.habits.map(({ habit }) => habit)}
+          today={view.day}
           onUpdated={updated}
           onDeleted={deleted}
           onGone={gone}

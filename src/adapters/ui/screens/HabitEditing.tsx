@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import type { Day } from '../../../domain/day/Day';
 import type { Habit } from '../../../domain/habit/Habit';
 import { formatXpChange } from '../format/formatXp';
 import {
@@ -70,6 +71,7 @@ export function HabitEditing({
   habit,
   settings,
   habits,
+  today,
   onUpdated,
   onDeleted,
   onGone,
@@ -78,6 +80,8 @@ export function HabitEditing({
 }: SettingsSource & {
   readonly habit: Habit;
   readonly habits: readonly Habit[];
+  /** Aujourd'hui, pour dater les messages de « Modifier l'habitude ». */
+  readonly today: Day;
   readonly onUpdated: (updated: UpdatedHabit) => void;
   readonly onDeleted: (deleted: DeletedHabit) => void;
   readonly onGone: () => void;
@@ -156,6 +160,7 @@ export function HabitEditing({
       habit={habit}
       settings={step.settings}
       habits={habits}
+      today={today}
       deleteAlert={step.alert}
       onSave={(input) => update(habit.id, input)}
       onSaved={onUpdated}

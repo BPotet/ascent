@@ -1,10 +1,12 @@
 import { useState } from 'react';
 
+import type { Day } from '../../../domain/day/Day';
 import { DEFAULT_DIFFICULTY, type Difficulty } from '../../../domain/habit/Difficulty';
 import type { Habit } from '../../../domain/habit/Habit';
 import { DEFAULT_WEEKLY_TARGET, type WeeklyTarget } from '../../../domain/habit/WeeklyTarget';
 import { DifficultyPicker } from '../components/DifficultyPicker';
 import { WeeklyTargetPicker } from '../components/WeeklyTargetPicker';
+import { habitCreatedMessage } from '../format/formatWeeklyTarget';
 import type { CreateHabit } from '../state/useCreateHabit';
 import { HabitNameSheet } from './HabitNameSheet';
 
@@ -15,17 +17,24 @@ const SAVE_FAILED_MESSAGE = 'L’habitude n’a pas pu être créée. Réessaie.
  * le bloc « Difficulté », Moyenne présélectionnée (R2), et le bloc « Objectif », 7 (« Tous les
  * jours ») présélectionné (R4). Taper un nom puis ↵ crée l'habitude avec les réglages affichés.
  * Après un refus (doublon) ou un échec d'enregistrement, les réglages choisis sont conservés, comme
- * le nom. Une habitude créée est passée à `onCreated`.
+ * le nom.
+ *
+ * `today` est le jour de création : quand l'objectif choisi dépasse les jours restants de la
+ * semaine, le bloc « Objectif » annonce l'objectif de cette semaine (« · cette semaine : 5, à partir
+ * d’aujourd’hui », R6, maquette E2). Une habitude créée est passée à `onCreated` avec son message,
+ * « Habitude créée », suivi de « · objectif 5 cette semaine » quand cet objectif est réduit.
  */
 export function NewHabitSheet({
   habits,
+  today,
   onCreate,
   onCreated,
   onClose,
 }: {
   readonly habits: readonly Habit[];
+  readonly today: Day;
   readonly onCreate: CreateHabit;
-  readonly onCreated: (habit: Habit) => void;
+  readonly onCreated: (habit: Habit, message: string) => void;
   readonly onClose: () => void;
 }) {
   const [difficulty, setDifficulty] = useState<Difficulty>(DEFAULT_DIFFICULTY);
@@ -36,7 +45,10 @@ export function NewHabitSheet({
     if (!outcome.ok) {
       return outcome.reason;
     }
-    onCreated(outcome.habit);
+    onCreated(
+      outcome.habit,
+      habitCreatedMessage({ weeklyTarget, creationWeekTarget: outcome.weekTarget }),
+    );
     return null;
   };
 
@@ -51,7 +63,7 @@ export function NewHabitSheet({
       settings={
         <>
           <DifficultyPicker value={difficulty} onChange={setDifficulty} />
-          <WeeklyTargetPicker value={weeklyTarget} onChange={setWeeklyTarget} />
+          <WeeklyTargetPicker value={weeklyTarget} onChange={setWeeklyTarget} creationDay={today} />
         </>
       }
       autoFocus

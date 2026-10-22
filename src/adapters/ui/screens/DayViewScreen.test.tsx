@@ -230,7 +230,11 @@ describe('DayViewScreen', () => {
       ),
     ).toBeOnTheScreen();
     expect(screen.queryByTestId('new-habit-sheet')).not.toBeOnTheScreen();
-    expect(screen.getByTestId('toast')).toHaveTextContent('Habitude créée');
+    // Créée un mercredi, « Tous les jours » : objectif 5 cette semaine (R6, maquette E2).
+    expect(screen.getByTestId('toast')).toHaveTextContent(
+      'Habitude créée · objectif 5 cette semaine',
+      { exact: true },
+    );
     expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: '#7C9CFF' });
     expect(await names()).toEqual(['Cuisiner']);
   });
@@ -311,7 +315,7 @@ describe('DayViewScreen', () => {
       await screen.findByRole('alert', { name: 'L’habitude n’a pas pu être créée. Réessaie.' }),
     ).toBeOnTheScreen();
     expect(screen.getByLabelText('Nom de l’habitude')).toHaveDisplayValue('Méditer');
-    expect(screen.queryByText('Habitude créée')).not.toBeOnTheScreen();
+    expect(screen.queryByText(/^Habitude créée/u)).not.toBeOnTheScreen();
     dependencies.unitOfWork.failWrites(false);
     expect(await names()).toEqual([]);
   });

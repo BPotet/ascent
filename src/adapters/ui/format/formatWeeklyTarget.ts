@@ -1,6 +1,7 @@
 import type { Day } from '../../../domain/day/Day';
 import type { WeeklyTarget } from '../../../domain/habit/WeeklyTarget';
-import { formatWeekday } from './formatDay';
+import { Week } from '../../../domain/week/Week';
+import { formatWeekday, MONTH_NAMES } from './formatDay';
 
 /** La progression de la semaine d'une habitude, telle que la lisent les vues (R5, R6, R7). */
 export interface WeeklyProgressShown {
@@ -112,19 +113,54 @@ export function progressChipAccessibilityLabel({
 
 /**
  * Le message de « Modifier l'habitude » quand l'objectif choisi change (R13, maquette E7) : il vaut à
- * partir de lundi prochain et la semaine en cours garde son objectif de la semaine, sauf le jour de
- * création (`appliesThisWeek`), où il vaut dès cette semaine.
+ * partir de lundi prochain, daté (« lundi prochain (19 octobre) », le lundi qui suit `today`), et
+ * la semaine en cours garde son objectif de la semaine, sauf le jour de création
+ * (`appliesThisWeek`), où il vaut dès cette semaine.
  */
 export function weeklyTargetChangeMessage({
   appliesThisWeek,
   weekTarget,
+  today,
 }: {
   readonly appliesThisWeek: boolean;
   readonly weekTarget: number | null;
+  readonly today: Day;
 }): string {
   if (appliesThisWeek) {
     return 'Habitude créée aujourd’hui : le nouvel objectif s’applique dès cette semaine.';
   }
-  const nextMonday = 'Nouvel objectif à partir de lundi prochain.';
+  const monday = Week.containing(today).next().start;
+  const nextMonday = `Nouvel objectif à partir de lundi prochain (${monday.dayOfMonth} ${MONTH_NAMES[monday.month - 1]}).`;
   return weekTarget === null ? nextMonday : `${nextMonday} Cette semaine reste à ${weekTarget}.`;
+}
+
+/** L'objectif hebdomadaire choisi, et l'objectif de la semaine de création qu'il donnerait. */
+interface CreationWeek {
+  readonly weeklyTarget: WeeklyTarget;
+  /** L'objectif de la semaine de création, d'aujourd'hui à dimanche (`creationWeekTargetOf`, R6). */
+  readonly creationWeekTarget: number;
+}
+
+/**
+ * Ce que le bloc « Objectif » ajoute à la phrase en semaine de création réduite (maquette E2,
+ * « Semaine de création réduite ») : « cette semaine : 5, à partir d’aujourd’hui » ; `null` quand
+ * l'objectif n'est pas réduit.
+ */
+export function creationWeekNote({
+  weeklyTarget,
+  creationWeekTarget,
+}: CreationWeek): string | null {
+  return creationWeekTarget < weeklyTarget
+    ? `cette semaine : ${creationWeekTarget}, à partir d’aujourd’hui`
+    : null;
+}
+
+/**
+ * Le message qui suit une création (maquette E2) : « Habitude créée », et « Habitude créée ·
+ * objectif 5 cette semaine » quand l'objectif de la semaine de création est réduit.
+ */
+export function habitCreatedMessage({ weeklyTarget, creationWeekTarget }: CreationWeek): string {
+  return creationWeekTarget < weeklyTarget
+    ? `Habitude créée · objectif ${creationWeekTarget} cette semaine`
+    : 'Habitude créée';
 }

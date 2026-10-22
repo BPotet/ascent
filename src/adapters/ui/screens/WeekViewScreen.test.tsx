@@ -1198,7 +1198,7 @@ describe('WeekViewScreen and the weekly target (E4)', () => {
       await fireEvent.press(target(5));
 
       expect(screen.getByTestId('weekly-target-change-info')).toHaveAccessibleName(
-        'Nouvel objectif à partir de lundi prochain. Cette semaine reste à 7.',
+        'Nouvel objectif à partir de lundi prochain (19 octobre). Cette semaine reste à 7.',
       );
     });
 

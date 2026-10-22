@@ -1,5 +1,7 @@
 import { Day } from '../../../domain/day/Day';
 import {
+  creationWeekNote,
+  habitCreatedMessage,
   nextWeeklyTargetText,
   progressChipAccessibilityLabel,
   weekCardTargetText,
@@ -104,21 +106,61 @@ describe('progressChipText', () => {
 });
 
 describe('weeklyTargetChangeMessage', () => {
-  it('says the new target starts next Monday and the week keeps its target', () => {
-    expect(weeklyTargetChangeMessage({ appliesThisWeek: false, weekTarget: 3 })).toBe(
-      'Nouvel objectif à partir de lundi prochain. Cette semaine reste à 3.',
+  const wednesday = Day.of(2026, 10, 14);
+
+  it('says the new target starts next Monday, with its date, and the week keeps its target', () => {
+    expect(
+      weeklyTargetChangeMessage({ appliesThisWeek: false, weekTarget: 3, today: wednesday }),
+    ).toBe('Nouvel objectif à partir de lundi prochain (19 octobre). Cette semaine reste à 3.');
+  });
+
+  it.each([
+    ['Monday', Day.of(2026, 10, 12), '19 octobre'],
+    ['Sunday', Day.of(2026, 10, 18), '19 octobre'],
+    ['the end of a month', Day.of(2026, 10, 28), '2 novembre'],
+  ])('dates next Monday from %s: %s', (_, today, date) => {
+    expect(weeklyTargetChangeMessage({ appliesThisWeek: false, weekTarget: null, today })).toBe(
+      `Nouvel objectif à partir de lundi prochain (${date}).`,
     );
   });
 
   it('says only when it starts for a week without target', () => {
-    expect(weeklyTargetChangeMessage({ appliesThisWeek: false, weekTarget: null })).toBe(
-      'Nouvel objectif à partir de lundi prochain.',
-    );
+    expect(
+      weeklyTargetChangeMessage({ appliesThisWeek: false, weekTarget: null, today: wednesday }),
+    ).toBe('Nouvel objectif à partir de lundi prochain (19 octobre).');
   });
 
   it('says the new target applies this week on the day of creation', () => {
-    expect(weeklyTargetChangeMessage({ appliesThisWeek: true, weekTarget: 7 })).toBe(
-      'Habitude créée aujourd’hui : le nouvel objectif s’applique dès cette semaine.',
+    expect(
+      weeklyTargetChangeMessage({ appliesThisWeek: true, weekTarget: 7, today: wednesday }),
+    ).toBe('Habitude créée aujourd’hui : le nouvel objectif s’applique dès cette semaine.');
+  });
+});
+
+describe('creationWeekNote', () => {
+  it('announces the target of the week of creation when it is cut (E2)', () => {
+    expect(creationWeekNote({ weeklyTarget: 7, creationWeekTarget: 5 })).toBe(
+      'cette semaine : 5, à partir d’aujourd’hui',
+    );
+    expect(creationWeekNote({ weeklyTarget: 4, creationWeekTarget: 1 })).toBe(
+      'cette semaine : 1, à partir d’aujourd’hui',
+    );
+  });
+
+  it('announces nothing when the target is not cut', () => {
+    expect(creationWeekNote({ weeklyTarget: 3, creationWeekTarget: 3 })).toBeNull();
+    expect(creationWeekNote({ weeklyTarget: 7, creationWeekTarget: 7 })).toBeNull();
+  });
+});
+
+describe('habitCreatedMessage', () => {
+  it('says « Habitude créée » when the target of the week is not cut', () => {
+    expect(habitCreatedMessage({ weeklyTarget: 3, creationWeekTarget: 3 })).toBe('Habitude créée');
+  });
+
+  it('gives the target of the week when it is cut', () => {
+    expect(habitCreatedMessage({ weeklyTarget: 7, creationWeekTarget: 5 })).toBe(
+      'Habitude créée · objectif 5 cette semaine',
     );
   });
 });

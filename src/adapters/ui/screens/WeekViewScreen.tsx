@@ -375,6 +375,7 @@ export function WeekViewScreen({
           habit={editing}
           settings={editableSettings(view, editing)}
           habits={view.rows.map(({ habit }) => habit)}
+          today={view.today}
           onUpdated={updated}
           onDeleted={deleted}
           onGone={gone}
