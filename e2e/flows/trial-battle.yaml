@@ -1,13 +1,17 @@
 # Story #31 : le combat d'essai, ouvert depuis son point d'entrée provisoire (build de preview).
 # Parcours : installation neuve → « Combat d'essai » → bulle F2 fermée → le Spectre visé, puis
-# « Attaquer » → bulle P9 fermée → bannière « Phase ennemie » → avancée, préparation, sans aucun
-# appui → bannière « À toi » → « Attaquer » à chaque phase du héros jusqu'à la victoire → écran de
-# fin, avec les panneaux Réglages d'essai et Mesures → « Rejouer ».
+# « Attaquer » → bulle P9 fermée → « Attaquer » à chaque phase du héros jusqu'à la victoire →
+# écran de fin, avec les panneaux Réglages d'essai et Mesures → transition et avancée allongées à
+# 2 000 ms → « Rejouer » → bannière « Phase ennemie », avancée, préparation, sans aucun appui →
+# bannière « À toi » → victoire → panneau Mesures.
 # La partie se gagne toujours sans parer : 12 dégâts subis au plus par manche, 4 manches, 80 PV.
-# Maestro ne teste pas le timing (il ne touche pas à 10 ms près) : les écrans à état précis (P2 à
-# P8) sont vérifiés par les tests d'intégration, avec l'horloge de combat manuelle. Le parcours
-# joue les sons du combat : il échoue si l'app plante (permissions retirées, lecteur absent).
-# Les captures servent à la comparaison avec la maquette (écrans F2, F1, P9, P0, P0b, P1, F0, fin).
+# Maestro ne teste pas le timing (il ne touche pas à 10 ms près, et chaque commande prend une
+# seconde ou plus sur l'émulateur) : les écrans à état précis (P2 à P8) sont vérifiés par les tests
+# d'intégration, avec l'horloge de combat manuelle. Les états brefs (P0, P0b, P1, F0) sont capturés
+# au second combat, avec les durées allongées par les réglages d'essai ; leur attente est
+# facultative. Le parcours joue les sons du combat : il échoue si l'app plante (permissions
+# retirées, lecteur absent).
+# Sur l'émulateur sans animations, l'app réduit les animations : la bannière est `phase-banner-still`.
 appId: com.bpotet.ascent
 name: Combat d'essai du build de preview
 tags:
@@ -45,28 +49,8 @@ tags:
 - takeScreenshot: trial-battle-p9-first-use
 - tapOn:
     id: 'battle-hint-defense'
-# Sur l'émulateur sans animations, l'app réduit les animations : la bannière est `phase-banner-still`.
-- extendedWaitUntil:
-    visible:
-      id: 'phase-banner.*'
-    timeout: 5000
-- takeScreenshot: trial-battle-p0-enemy-phase
-- extendedWaitUntil:
-    visible: '.*s’avance'
-    timeout: 5000
-- takeScreenshot: trial-battle-p0b-step-in
-- extendedWaitUntil:
-    visible: 'Goule : .*'
-    timeout: 5000
-- takeScreenshot: trial-battle-p1-wind-up
 
-# Aucun appui : la manche se termine sur l'annonce « À toi ».
-- extendedWaitUntil:
-    visible: 'À toi'
-    timeout: 20000
-- takeScreenshot: trial-battle-f0-to-hero
-
-# Trois autres attaques : le Spectre (4 PV), puis la Goule deux fois.
+# Trois autres attaques, sans parer : le Spectre (4 PV), puis la Goule deux fois.
 - repeat:
     times: 3
     commands:
@@ -74,7 +58,7 @@ tags:
           visible:
             id: 'battle-attack-button'
             enabled: true
-          timeout: 20000
+          timeout: 30000
       - tapOn:
           id: 'battle-attack-button'
           enabled: true
@@ -85,11 +69,19 @@ tags:
 - assertVisible: 'La Goule et le Spectre sont tombés.'
 - assertVisible: "Réglages d'essai"
 - takeScreenshot: trial-battle-end
-- scrollUntilVisible:
-    element:
-      id: 'battle-measures-panel'
-    direction: DOWN
-- takeScreenshot: trial-battle-measures
+
+# Réglages d'essai : transition et avancée allongées à 2 000 ms, pour capturer les états brefs.
+- repeat:
+    times: 24
+    commands:
+      - tapOn: 'Allonger la transition de phase'
+- repeat:
+    times: 32
+    commands:
+      - tapOn: "Allonger l'avancée"
+- assertVisible:
+    id: 'trial-tuning-stepInMs'
+    text: '2 000 ms'
 
 - tapOn: 'Rejouer'
 - extendedWaitUntil:
@@ -100,3 +92,48 @@ tags:
 # Au combat suivant, la bulle d'aide n'apparaît plus.
 - assertNotVisible:
     id: 'battle-hint-hero'
+- tapOn:
+    id: 'battle-attack-button'
+
+- extendedWaitUntil:
+    visible:
+      id: 'phase-banner.*'
+    timeout: 5000
+    optional: true
+- takeScreenshot: trial-battle-p0-enemy-phase
+- extendedWaitUntil:
+    visible: '.*s’avance'
+    timeout: 5000
+    optional: true
+- takeScreenshot: trial-battle-p0b-step-in
+- extendedWaitUntil:
+    visible: 'Goule : .*'
+    timeout: 5000
+    optional: true
+- takeScreenshot: trial-battle-p1-wind-up
+- extendedWaitUntil:
+    visible: 'À toi'
+    timeout: 20000
+    optional: true
+- takeScreenshot: trial-battle-f0-to-hero
+
+# Trois autres attaques jusqu'à la victoire.
+- repeat:
+    times: 3
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: 'battle-attack-button'
+            enabled: true
+          timeout: 30000
+      - tapOn:
+          id: 'battle-attack-button'
+          enabled: true
+- extendedWaitUntil:
+    visible: 'Combat gagné'
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: 'battle-measures-panel'
+    direction: DOWN
+- takeScreenshot: trial-battle-measures

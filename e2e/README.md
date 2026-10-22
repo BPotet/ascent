@@ -30,9 +30,12 @@ Le combat d'essai (`trial-battle.yaml`, story #31) s'ouvre par le bouton « Comb
 de la barre d'onglets : il n'existe que dans le build de preview (canal `preview`), et la story #33 le
 remplacera. Le bouton est dans le flux de la mise en page : les autres parcours ne changent pas. Le
 parcours ne teste pas le timing de la parade (Maestro ne touche pas à 10 ms près) : il gagne le combat
-en n'utilisant que « Attaquer », et capture les écrans F2, F1, P9, P0, P0b, P1, F0 et l'écran de fin
-(avec les panneaux Réglages d'essai et Mesures) pour la comparaison avec la maquette. Il joue les sons
-du combat : un plantage du lecteur fait échouer le parcours.
+en n'utilisant que « Attaquer », et capture les écrans F2, F1, P9 et l'écran de fin (avec les panneaux
+Réglages d'essai et Mesures) pour la comparaison avec la maquette. Les états brefs (P0, P0b, P1, F0) sont
+capturés au second combat, après avoir allongé la transition et l'avancée à 2 000 ms dans les réglages
+d'essai : chaque commande Maestro prend une seconde ou plus sur l'émulateur. Il joue les sons du combat :
+un plantage du lecteur fait échouer le parcours. L'émulateur de la CI tourne sans animations : l'app réduit
+alors les animations, et la bannière de phase porte l'identifiant `phase-banner-still`.
 
 Sélecteurs : privilégier les textes visibles (libellés du glossaire) et les `testID` des écrans.
 
