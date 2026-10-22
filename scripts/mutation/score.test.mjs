@@ -112,6 +112,22 @@ describe('score', () => {
     assert.equal(await run(), 1);
   });
 
+  it('says in the summary whether the screen mutation was requested', async () => {
+    shard('core', 'newCode', { Killed: 10 }, { expectedShards: 1 });
+    const notice = 'Screen mutation (`src/adapters/ui/`, `src/app/`) not requested.';
+    assert.equal(await run({ MUTATION_UI_NOTICE: notice }), 0);
+    assert.match(
+      output,
+      /^## Mutation tests \(StrykerJS\)\n\n> Screen mutation .* not requested\.\n/,
+    );
+  });
+
+  it('writes no screen line when nothing says so', async () => {
+    shard('core', 'newCode', { Killed: 10 }, { expectedShards: 1 });
+    assert.equal(await run(), 0);
+    assert.doesNotMatch(output, /Screen mutation/);
+  });
+
   it('lists the survived and no-coverage mutants', () => {
     const lines = undetectedMutants(report('src/a.ts', { Killed: 1, Survived: 1, NoCoverage: 1 }));
     assert.deepEqual(lines, [

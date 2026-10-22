@@ -16,5 +16,6 @@ Prérequis : la story est en `status:ready`. Sinon, arrête-toi et lance `/backl
 5. **Review** : passe en `status:review` et lance l'agent **reviewer**.
    - Changements demandés : retour à l'étape 3 (au plus 3 tours, puis `status:blocked` et résumé au propriétaire).
 6. **Merge** : quand la CI est entièrement verte et la review approuvée, active l'auto-merge (squash) de la PR. Son titre, au format Conventional Commits, devient le commit sur `develop`. Elle ferme l'issue.
+   - **Mutation des écrans** : pose le label `mutation:ui` sur la PR **seulement si le propriétaire le demande** (voir « Mutation des écrans à la demande » dans `docs/workflow.md`). Quand il est posé, attends que le check `Screen mutation tests (StrykerJS)` soit vert avant d'activer l'auto-merge (désactive-le s'il était déjà actif) : ce check n'est pas exigé par la protection de branche. S'il est rouge, renvoie au **dev**, puis à **qa**.
 7. Si c'était la dernière story de l'épique, lance `/release`.
 8. Annonce au propriétaire, en une ou deux phrases produit, ce qui est maintenant disponible dans l'app.
