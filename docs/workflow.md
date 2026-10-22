@@ -252,7 +252,7 @@ Toutes sont **bloquantes**. Les outils sont confirmés par l'Architect dans l'[A
 |---|---|---|---|---|
 | 1 | **Secrets** | Aucun secret ne part dans le dépôt | Gitleaks | pre-commit + CI |
 | 1 bis | **Commits** | Messages de commit et titre de PR au format Conventional Commits | commitlint | commit-msg + CI |
-| 2 | **Style** | Formatage et style uniformes | Prettier + ESLint | pre-commit + CI |
+| 2 | **Style** | Formatage et style uniformes | Prettier + ESLint (dont la règle de pureté du domaine et des cas d'usage) | pre-commit + CI |
 | 3 | **Types** | Pas d'erreur de typage | TypeScript (`tsc --noEmit`) | pre-commit + CI |
 | 4 | **Architecture** | Les dépendances respectent l'hexagonal (équivalent d'ArchUnit) | dependency-cruiser | local + CI |
 | 5 | **Tests unitaires** | Domaine et cas d'usage | Jest | CI |
@@ -296,6 +296,7 @@ Règles vérifiées par les tests d'architecture :
 - `application` n'importe que `domain`.
 - `adapters` implémentent les ports de `application`. Un adaptateur n'importe pas un autre adaptateur (`ui` ne connaît ni `persistence` ni `device`).
 - Seuls `adapters` et `app` connaissent le framework et les bibliothèques natives.
+- `domain` et `application` n'utilisent ni minuteur, ni horloge directe, ni hasard (`setTimeout`, `setInterval`, `requestAnimationFrame`, `performance`, `Math.random`) : le temps et le hasard passent par des ports. Vérifié par ESLint (barrière Style).
 
 Conséquence pour les tests : le domaine et les cas d'usage se testent en unitaire, sans framework. Les adaptateurs se testent en intégration. Les parcours complets se testent en BDD et en end-to-end.
 

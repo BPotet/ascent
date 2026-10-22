@@ -18,6 +18,12 @@ Avec un émulateur ou un téléphone branché et l'APK installé :
 maestro test e2e/flows
 ```
 
+La sonde de toucher (`preview-touch-probe.yaml`, outil du build de preview) s'ouvre par le lien
+profond `ascent://preview/touch-probe` (`openLink`) : aucun bouton n'y mène. L'APK de la CI est
+construit sur le canal `preview` ; sur un build de production, le lien ramène à l'accueil. En
+local, lancer l'app avec `EXPO_PUBLIC_ASCENT_CHANNEL=preview` (par exemple
+`EXPO_PUBLIC_ASCENT_CHANNEL=preview npx expo run:android --variant release`) pour ouvrir la sonde.
+
 Sélecteurs : privilégier les textes visibles (libellés du glossaire) et les `testID` des écrans.
 
 Libellés des lignes de la Vue Journée (lecteur d'écran) : `<nom>, <jour>, <état>[, corrigé], <Difficulté>, <X> XP par suivi`,

@@ -24,6 +24,7 @@ jobs:
         uses: ./.github/actions/build-android-apk
         with:
           apk-name: ascent-${{ github.ref_name }}.apk
+          channel: production
       - uses: softprops/action-gh-release@v2
         with:
           files: ${{ steps.build.outputs.apk-path }}
