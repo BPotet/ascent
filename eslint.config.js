@@ -39,6 +39,9 @@ module.exports = defineConfig([
   },
   {
     // Le domaine et les cas d'usage n'utilisent ni React ni le framework (vérifié aussi par dependency-cruiser).
+    // Règle de pureté : ni minuteur, ni horloge directe, ni hasard. Le temps et le hasard passent par
+    // des ports, pour un moteur déterministe et testable à la milliseconde (test/lint/purity.test.mjs).
+    // Ce bloc est le seul à définir ces règles ici : un second bloc remplacerait cette liste.
     files: ['src/domain/**', 'src/application/**'],
     rules: {
       'no-restricted-globals': [
@@ -48,6 +51,18 @@ module.exports = defineConfig([
         'document',
         'navigator',
         'localStorage',
+        ...['setTimeout', 'setInterval', 'requestAnimationFrame', 'performance'].map((name) => ({
+          name,
+          message: `${name} : le temps passe par un port (Clock, ou BattleClock dans #31).`,
+        })),
+      ],
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'Math',
+          property: 'random',
+          message: 'Math.random : le hasard passe par une graine (SeedSource, #31).',
+        },
       ],
     },
   },

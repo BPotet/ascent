@@ -62,7 +62,7 @@
     "test:integration": "jest --selectProjects integration",
     "test:bdd": "jest --selectProjects bdd",
     "test:coverage": "jest --coverage",
-    "test:scripts": "node --test \"scripts/**/*.test.mjs\"",
+    "test:scripts": "node --test \"scripts/**/*.test.mjs\" \"test/lint/*.test.mjs\"",
     "mutation": "stryker run",
     "mutation:domain": "stryker run stryker.domain.config.mjs",
     "mutation:changed": "node scripts/mutation/run.mjs",
