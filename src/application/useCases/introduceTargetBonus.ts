@@ -33,9 +33,7 @@ export function introduceTargetBonus({ clock, unitOfWork }: UseCaseDependencies)
         habit.createdOn,
       );
     }
-    if (bonus > 0) {
-      await character.save((await character.get()).applyXpChange(bonus));
-    }
+    await character.save((await character.get()).applyXpChange(bonus));
     await introductions.add('targetBonus', today);
     return bonus;
   });

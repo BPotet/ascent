@@ -711,6 +711,21 @@ describe('updateHabit', () => {
       });
     });
 
+    it('counts only the cases of the current week for the target (a later week after a clock set back)', async () => {
+      const created = await createHabit(deps(), 'Méditer', 'medium', 7);
+      running = created.ok ? created.habit : (undefined as never);
+      clock.setToday(Day.of(2026, 10, 20));
+      await tap(Day.of(2026, 10, 20));
+      clock.setToday(wednesday);
+      await tap(wednesday);
+
+      await expect(update({ weeklyTarget: 2 })).resolves.toMatchObject({
+        targetBonusChange: 0,
+        targetReachedChange: null,
+        weeklyProgress: 1,
+      });
+    });
+
     it('loses the target when it is raised on the day of creation', async () => {
       const created = await createHabit(deps(), 'Méditer', 'medium', 1);
       running = created.ok ? created.habit : (undefined as never);
