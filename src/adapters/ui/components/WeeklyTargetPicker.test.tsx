@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { Dimensions } from 'react-native';
 
 import { Day } from '../../../domain/day/Day';
@@ -111,6 +111,8 @@ describe('WeeklyTargetPicker', () => {
     expect(option(1)).toHaveStyle({ width: 44, height: 44, borderRadius: 22 });
     expect(option(5)).toHaveStyle({ backgroundColor: '#7C9CFF', borderColor: '#7C9CFF' });
     expect(option(1)).toHaveStyle({ backgroundColor: '#0F1420', borderColor: '#2E3950' });
+    expect(within(option(5)).getByText('5')).toHaveStyle({ color: '#0B1020', fontWeight: '700' });
+    expect(within(option(1)).getByText('1')).toHaveStyle({ color: '#EEF1F7' });
   });
 
   describe('with large text', () => {
@@ -159,6 +161,22 @@ describe('WeeklyTargetPicker', () => {
     });
 
     it('lowers and raises the target with the gestures of the screen reader', async () => {
+      const onChange = await show(4);
+      const counter = screen.getByTestId('weekly-target-stepper');
+      expect(counter).toHaveProp('accessibilityActions', [
+        { name: 'increment' },
+        { name: 'decrement' },
+      ]);
+
+      await fireEvent(counter, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
+      expect(onChange).toHaveBeenLastCalledWith(5);
+      await fireEvent(counter, 'accessibilityAction', { nativeEvent: { actionName: 'decrement' } });
+      expect(onChange).toHaveBeenLastCalledWith(3);
+      await fireEvent(counter, 'accessibilityAction', { nativeEvent: { actionName: 'activate' } });
+      expect(onChange).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not go over 7 with the gestures of the screen reader', async () => {
       const onChange = await show(7);
       const counter = screen.getByTestId('weekly-target-stepper');
 
@@ -172,9 +190,12 @@ describe('WeeklyTargetPicker', () => {
 
     it('goes neither under 1 nor over 7', async () => {
       const onChange = await show(1);
-      expect(
-        screen.getByTestId('weekly-target-less', { includeHiddenElements: true }),
-      ).toBeDisabled();
+      const less = () => screen.getByTestId('weekly-target-less', { includeHiddenElements: true });
+      const more = () => screen.getByTestId('weekly-target-more', { includeHiddenElements: true });
+      expect(less()).toBeDisabled();
+      expect(less()).toHaveStyle({ opacity: 0.45 });
+      expect(more()).toBeEnabled();
+      expect(more()).not.toHaveStyle({ opacity: 0.45 });
       await fireEvent.press(
         screen.getByTestId('weekly-target-less', { includeHiddenElements: true }),
       );
@@ -185,12 +206,10 @@ describe('WeeklyTargetPicker', () => {
 
       await screen.rerender(<WeeklyTargetPicker value={7} onChange={onChange} />);
 
-      expect(
-        screen.getByTestId('weekly-target-more', { includeHiddenElements: true }),
-      ).toBeDisabled();
-      expect(
-        screen.getByTestId('weekly-target-less', { includeHiddenElements: true }),
-      ).toBeEnabled();
+      expect(more()).toBeDisabled();
+      expect(more()).toHaveStyle({ opacity: 0.45 });
+      expect(less()).toBeEnabled();
+      expect(less()).not.toHaveStyle({ opacity: 0.45 });
       await fireEvent.press(
         screen.getByTestId('weekly-target-more', { includeHiddenElements: true }),
       );
