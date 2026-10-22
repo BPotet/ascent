@@ -120,7 +120,9 @@ describe('app reminder of yesterday', () => {
 
     expect(await screen.findByTestId('day-view')).toBeOnTheScreen();
     expect(
-      screen.getByLabelText('Cuisiner, lundi 19 octobre, à faire, Moyenne, 10 XP par suivi'),
+      screen.getByLabelText(
+        'Cuisiner, lundi 19 octobre, à faire, 0 sur 7 cette semaine, Moyenne, 10 XP par suivi',
+      ),
     ).toBeOnTheScreen();
     expect(screen.queryByTestId('yesterday-reminder')).not.toBeOnTheScreen();
   });
@@ -133,10 +135,14 @@ describe('app reminder of yesterday', () => {
       within(reminder).getByRole('button', { name: 'Fermer le rappel d’hier' }),
     );
     await fireEvent.press(
-      await screen.findByLabelText('Cuisiner, lundi 19 octobre, à faire, Moyenne, 10 XP par suivi'),
+      await screen.findByLabelText(
+        'Cuisiner, lundi 19 octobre, à faire, 0 sur 7 cette semaine, Moyenne, 10 XP par suivi',
+      ),
     );
     expect(
-      await screen.findByLabelText('Cuisiner, lundi 19 octobre, fait, Moyenne, 10 XP par suivi'),
+      await screen.findByLabelText(
+        'Cuisiner, lundi 19 octobre, fait, 1 sur 7 cette semaine, Moyenne, 10 XP par suivi',
+      ),
     ).toBeOnTheScreen();
     expect(screen.queryByTestId('yesterday-reminder')).not.toBeOnTheScreen();
 
@@ -145,7 +151,9 @@ describe('app reminder of yesterday', () => {
     });
 
     expect(
-      await screen.findByLabelText('Cuisiner, mardi 20 octobre, à faire, Moyenne, 10 XP par suivi'),
+      await screen.findByLabelText(
+        'Cuisiner, mardi 20 octobre, à faire, 1 sur 7 cette semaine, Moyenne, 10 XP par suivi',
+      ),
     ).toBeOnTheScreen();
     expect(
       await within(screen.getByTestId('yesterday-reminder')).findByText('1/2 faites'),

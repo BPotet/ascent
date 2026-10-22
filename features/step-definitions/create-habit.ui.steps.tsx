@@ -102,9 +102,15 @@ function shownNames(): string[] {
     );
 }
 
-/** Le libellé lu d'une ligne « à faire » ; une habitude créée sans autre choix est en Moyenne. */
-function rowLabel(name: string): string {
-  return `${name}, ${withoutYear(world.date)}, à faire, Moyenne, 10 XP par suivi`;
+/**
+ * Le libellé lu d'une ligne « à faire » ; une habitude créée sans autre choix est en Moyenne, tous les
+ * jours : sa progression de la semaine est lue avant sa difficulté (« 0 sur 5 cette semaine »).
+ */
+function rowLabel(name: string): RegExp {
+  return new RegExp(
+    `^${name}, ${withoutYear(world.date)}, à faire, \\d sur \\d cette semaine, Moyenne, 10 XP par suivi$`,
+    'u',
+  );
 }
 
 async function sheetIsClosed(): Promise<void> {
@@ -227,7 +233,7 @@ const steps: StepDefinitions = ({ given, when, then }) => {
   then('le panneau se ferme', sheetIsClosed);
   then(/^« (.+) » apparaît dans la Vue Journée à l'état « à faire »$/, async (name: string) => {
     expect(await screen.findByLabelText(rowLabel(name))).toBeOnTheScreen();
-    expect(screen.getByText('À faire')).toBeOnTheScreen();
+    expect(screen.getByText(/^À faire · /u)).toBeOnTheScreen();
   });
   then(/^le jour de création de « (.+) » est le (.+)$/, async (name: string, date: string) => {
     const view = await getDayView(world.deps);

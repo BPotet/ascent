@@ -199,6 +199,36 @@ export function PencilGlyph({ color }: { readonly color: string }) {
 }
 
 /**
+ * Le drapeau planté au sommet de l'objectif atteint (badge, puce). Décoratif : « Objectif atteint »
+ * est écrit à côté et lu par le lecteur d'écran.
+ */
+export function FlagGlyph({ color }: { readonly color: string }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      testID="flag-glyph"
+      style={styles.flag}
+    >
+      <View style={[styles.flagPole, { backgroundColor: color }]} />
+      <View style={[styles.flagCloth, { backgroundColor: color }]} />
+    </View>
+  );
+}
+
+/** La coche de la puce « Objectif atteint ». Décorative. */
+export function SmallCheckGlyph({ color }: { readonly color: string }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      testID="small-check-glyph"
+      style={[styles.smallCheck, { borderColor: color }]}
+    />
+  );
+}
+
+/**
  * La corbeille des actions de suppression : elle signale l'action destructive autrement que par la
  * couleur. Décorative : le libellé du bouton suffit au lecteur d'écran.
  */
@@ -277,6 +307,18 @@ const styles = StyleSheet.create({
     borderTopWidth: 4,
     borderRightWidth: 4,
     borderRightColor: 'transparent',
+  },
+  flag: { width: 14, height: 14 },
+  flagPole: { position: 'absolute', left: 2, top: 1, width: 2.4, height: 13, borderRadius: 1.2 },
+  flagCloth: { position: 'absolute', left: 4, top: 1.5, width: 9, height: 6.5, borderRadius: 1 },
+  smallCheck: {
+    width: 6,
+    height: 10,
+    marginTop: -2,
+    marginHorizontal: 2,
+    borderRightWidth: 2.2,
+    borderBottomWidth: 2.2,
+    transform: [{ rotate: '45deg' }],
   },
   trash: { width: 18, height: 18, alignItems: 'center' },
   trashHandle: { width: 7, height: 3, borderWidth: 2, borderBottomWidth: 0, marginTop: 1 },

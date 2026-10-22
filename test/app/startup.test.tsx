@@ -39,7 +39,11 @@ const openDatabase = jest.mocked(openAscentDatabase);
 const openRealDatabase = () => prepareAscentDatabase(openNodeSqliteDatabase());
 // Chemin absolu : sous StrykerJS, les routes doivent être chargées depuis son bac à sable.
 const appDirectory = path.resolve(__dirname, '../../src/app');
-const COOKING_TODAY = 'Cuisiner, mercredi 14 octobre, à faire, Moyenne, 10 XP par suivi';
+const COOKING_TODAY =
+  'Cuisiner, mercredi 14 octobre, à faire, 0 sur 6 cette semaine, Moyenne, 10 XP par suivi';
+/** « Cuisiner » créée ce mercredi : l'objectif de sa semaine de création est réduit à 5. */
+const COOKING_CREATED_TODAY =
+  'Cuisiner, mercredi 14 octobre, à faire, 0 sur 5 cette semaine, Moyenne, 10 XP par suivi';
 const HINT =
   'Tape ton habitude quand c’est fait : ton personnage gagne de l’XP selon sa difficulté.';
 
@@ -109,12 +113,12 @@ describe('app startup', () => {
     await fireEvent.press(await screen.findByRole('button', { name: 'Ajouter une habitude' }));
     await fireEvent.changeText(screen.getByLabelText('Nom de l’habitude'), 'Cuisiner');
     await fireEvent.press(screen.getByRole('button', { name: 'Créer l’habitude' }));
-    expect(await screen.findByLabelText(COOKING_TODAY)).toBeOnTheScreen();
+    expect(await screen.findByLabelText(COOKING_CREATED_TODAY)).toBeOnTheScreen();
 
     await cleanup();
     await renderRouter(appDirectory);
 
-    expect(await screen.findByLabelText(COOKING_TODAY)).toBeOnTheScreen();
+    expect(await screen.findByLabelText(COOKING_CREATED_TODAY)).toBeOnTheScreen();
     expect(openDatabase).toHaveBeenCalledTimes(2);
   });
 
@@ -128,11 +132,11 @@ describe('app startup', () => {
     await renderRouter(appDirectory);
     expect(await screen.findByText(HINT)).toBeOnTheScreen();
 
-    await fireEvent.press(screen.getByRole('switch', { name: COOKING_TODAY }));
+    await fireEvent.press(screen.getByRole('switch', { name: COOKING_CREATED_TODAY }));
 
     expect(
       await screen.findByRole('switch', {
-        name: 'Cuisiner, mercredi 14 octobre, fait, Moyenne, 10 XP par suivi',
+        name: 'Cuisiner, mercredi 14 octobre, fait, 1 sur 5 cette semaine, Moyenne, 10 XP par suivi',
       }),
     ).toBeOnTheScreen();
     expect(screen.queryByText(HINT)).not.toBeOnTheScreen();
@@ -142,7 +146,7 @@ describe('app startup', () => {
 
     expect(
       await screen.findByRole('switch', {
-        name: 'Cuisiner, mercredi 14 octobre, fait, Moyenne, 10 XP par suivi',
+        name: 'Cuisiner, mercredi 14 octobre, fait, 1 sur 5 cette semaine, Moyenne, 10 XP par suivi',
       }),
     ).toBeOnTheScreen();
     await act(async () => undefined);
@@ -165,7 +169,9 @@ describe('app startup', () => {
 
     expect(await screen.findByText('Jeudi 15 octobre')).toBeOnTheScreen();
     expect(
-      screen.getByLabelText('Cuisiner, jeudi 15 octobre, à faire, Moyenne, 10 XP par suivi'),
+      screen.getByLabelText(
+        'Cuisiner, jeudi 15 octobre, à faire, 0 sur 5 cette semaine, Moyenne, 10 XP par suivi',
+      ),
     ).toBeOnTheScreen();
   });
 

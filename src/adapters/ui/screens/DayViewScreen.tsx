@@ -20,6 +20,7 @@ import { YesterdayReminderBanner } from '../components/YesterdayReminderBanner';
 import { Toast, type ToastAction } from '../components/Toast';
 import { CHECK_IN_SAVE_FAILED, correctionMessage } from '../format/checkInMessages';
 import { formatDayAndMonth } from '../format/formatDay';
+import type { WeeklyProgressShown } from '../format/formatWeeklyTarget';
 import { useCheckInHint } from '../state/useCheckInHint';
 import { useCreateHabit } from '../state/useCreateHabit';
 import { useDayView } from '../state/useDayView';
@@ -89,12 +90,24 @@ function LoadingView() {
           <View style={[styles.skeleton, styles.skeletonCheck]} />
           <View style={styles.skeletonTexts}>
             <View style={[styles.skeleton, styles.skeletonName]} />
-            <View style={[styles.skeleton, styles.skeletonStatus]} />
+            <View testID="day-view-loading-secondary-line" style={styles.skeletonLine}>
+              <View style={[styles.skeleton, styles.skeletonIcon]} />
+              <View style={[styles.skeleton, styles.skeletonStatus]} />
+            </View>
           </View>
         </View>
       ))}
     </View>
   );
+}
+
+/** La progression de la semaine d'une ligne, si sa semaine a un objectif. */
+function weeklyProgressOf({
+  weeklyProgress,
+  weekSettings: { weekTarget },
+  targetReached,
+}: DayViewHabit): WeeklyProgressShown | undefined {
+  return weekTarget === null ? undefined : { weeklyProgress, weekTarget, targetReached };
 }
 
 function HabitList({
@@ -140,6 +153,7 @@ function HabitList({
             key={habitDay.habit.id}
             habitDay={habitDay}
             difficulty={habitDay.weekSettings.difficulty}
+            weeklyProgress={weeklyProgressOf(habitDay)}
             highlighted={habitDay.habit.id === highlighted?.id}
             xpChange={xpChangeOn(xpChange, habitDay)}
             onToggle={onToggle}
@@ -170,7 +184,9 @@ function HabitList({
  * disparaît au premier « fait ». La vue passe seule au nouveau jour (minuit, retour au premier
  * plan) et l'annonce.
  *
- * Chaque ligne montre la difficulté de l'habitude cette semaine (icône et nom, E1).
+ * Chaque ligne montre la difficulté de l'habitude cette semaine (icône), son état et sa progression
+ * de la semaine (« À faire · 2/3 cette semaine »), et le badge « Objectif atteint » (E1, #24). Le
+ * squelette de chargement prévoit cette ligne secondaire, pour que rien ne saute à l'affichage.
  *
  * Le bouton « ⋯ » d'une habitude ouvre « Modifier l'habitude » (`HabitEditing`), prérempli avec
  * ses réglages de la semaine : modifiée, elle est mise en évidence et la variation de l'expérience
@@ -432,6 +448,8 @@ const styles = StyleSheet.create({
   skeletonCheck: { width: 44, height: 44, borderRadius: 22 },
   skeletonTexts: { flex: 1 },
   skeletonName: { width: '65%', height: 14 },
-  skeletonStatus: { width: '30%', height: 11, marginTop: spacing.sm },
+  skeletonLine: { flexDirection: 'row', gap: 6, marginTop: spacing.sm },
+  skeletonIcon: { width: 20, height: 11 },
+  skeletonStatus: { width: '46%', height: 11 },
 });
 // Stryker restore all

@@ -63,6 +63,13 @@ export const colors = {
   /** Fond d'un message d'information de panneau (« S'applique à toute cette semaine… »). */
   infoSoft: 'rgba(124,156,255,0.12)',
   infoLine: 'rgba(124,156,255,0.4)',
+  /**
+   * L'objectif atteint (badge de la Vue Journée, puce de la Vue Semaine) : texte vert sur fond vert
+   * léger (8:1), liseré `doneLine`.
+   */
+  goalSoft: 'rgba(61,220,151,0.16)',
+  /** La puce d'une semaine passée dont l'objectif n'est pas atteint : grise, neutre (9:1). */
+  chipPast: '#B4BDCE',
   /** Barre d'onglets. */
   tabBar: 'rgba(13,17,27,0.97)',
   tabActiveSoft: 'rgba(124,156,255,0.22)',
