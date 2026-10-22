@@ -122,12 +122,22 @@ limité à son test de fumée : les tests d'écran simulent `BattleScene`. Le re
 - L'action de build relève désormais, dans le résumé du job `android-apk`, l'origine de chaque
   permission tirée du rapport de fusion du manifeste de Gradle
   (`manifest-merger-release-report.txt`, `scripts/ci/permission-origins.awk`).
-- **Décision en attente du rapport de la CI de la PR #53** : si les deux permissions ne viennent
-  que des modules `androidx.media3` d'`expo-audio`, le combat (sons locaux préchargés, sans flux
-  réseau ni lecture en arrière-plan) n'en a pas besoin, et elles sont retirées par
-  `android.blockedPermissions` dans `app.json` ; le parcours e2e, qui joue les sons, vérifie que
-  rien ne plante. Si un autre module en dépend ou si le rapport est ambigu, elles sont gardées.
-  Le résultat est reporté ici.
+- **Origine prouvée** par le rapport de fusion du job `android-apk` de la PR #53 (exécution
+  39781525647, commit `5d2f19c`) :
+
+  | Permission | Origine (rapport de fusion) |
+  |---|---|
+  | `WAKE_LOCK` | ADDED from `[androidx.media3:media3-exoplayer:1.9.0]`, seulement |
+  | `ACCESS_NETWORK_STATE` | ADDED from `[androidx.media3:media3-exoplayer:1.9.0]`, MERGED from `[androidx.media3:media3-common:1.9.0]`, seulement |
+
+  Les autres permissions viennent du manifeste de l'app, d'`expo-file-system`, d'`expo-audio`
+  (`MODIFY_AUDIO_SETTINGS`), d'`expo-haptics` (`VIBRATE`) et d'`androidx.core`.
+- **Décision : retirées**, par `android.blockedPermissions` dans `app.json` (Expo ajoute
+  `tools:node="remove"`). Le combat joue des sons locaux préchargés, sans flux réseau ni lecture
+  en arrière-plan : il n'a besoin ni de garder l'appareil éveillé, ni d'observer le réseau.
+- **Vérification** : `aapt dump permissions` (résumé du job `android-apk`) ne doit plus les
+  lister, et le parcours e2e `trial-battle.yaml`, qui joue les sons du combat, doit passer sans
+  plantage. Une `SecurityException` de `media3` annulerait le retrait.
 
 ### 11. Renvois
 
@@ -174,8 +184,10 @@ Médiane et p95 (panneau Mesures) : _à reporter_. Au-delà d'environ 50 ms, le 
 
 ### Taille de l'APK
 
-Taille après #31, comparée aux 93,2 Mo de l'ADR 0005 : _à reporter depuis le résumé du job
-`android-apk` de la PR #53_.
+Build de preview de la PR #53 (job `android-apk`, commit `5d2f19c`) : **93 928 882 octets
+(93,9 Mo)**, contre 93 182 802 octets (93,2 Mo) dans l'ADR 0005 : +746 080 octets (+0,8 %),
+surtout les sons provisoires et le code du combat. Taille après le retrait des permissions : _à
+reporter_.
 
 ## Durées retenues
 
