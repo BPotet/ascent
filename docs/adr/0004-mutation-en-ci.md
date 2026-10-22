@@ -40,9 +40,12 @@ mute que des fichiers entiers. C'est faux : une entrée `mutate` accepte une pla
    `stryker.domain.config.mjs` restent la source de vérité de ce qui est muté.
 
 Mise en œuvre : `scripts/mutation/` (`plan.mjs`, `run.mjs`, `score.mjs`, testés par
-`npm run test:scripts`). Les chemins sont échappés (`src/app/(tabs)/…`, une future route `[id]`) et
-chaque entrée est vérifiée contre la comparaison de Stryker au moment du plan : un motif qui ne
-correspond à rien fait échouer le plan au lieu de fausser la mesure en silence. En local,
+`npm run test:scripts`). Les chemins sont échappés (`src/app/(tabs)/…`, une future route `[id]`) :
+chaque caractère spécial est mis dans une classe d'un seul caractère (`[(]`), car Stryker remplace
+toute barre oblique inverse d'un motif par `/`, ce qui rend l'échappement habituel (`\(`) inopérant
+sans aucune erreur. Chaque entrée est vérifiée contre la comparaison de Stryker au moment du plan :
+un motif qui ne correspond à rien, ou un glob combiné à une plage, fait échouer le plan au lieu de
+fausser la mesure en silence. En local,
 `npm run mutation:changed` enchaîne les shards puis `npm run mutation:score` ; `npm run mutation`
 et `npm run mutation:domain` mutent toujours tout le code.
 
