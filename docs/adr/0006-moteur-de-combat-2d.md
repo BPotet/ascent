@@ -138,6 +138,9 @@ limité à son test de fumée : les tests d'écran simulent `BattleScene`. Le re
 - **Vérification** : `aapt dump permissions` (résumé du job `android-apk`) ne doit plus les
   lister, et le parcours e2e `trial-battle.yaml`, qui joue les sons du combat, doit passer sans
   plantage. Une `SecurityException` de `media3` annulerait le retrait.
+- **Vérifié** sur la PR #53 (exécution 39797532219, commit `839a270`) : `aapt` ne liste plus ni
+  `WAKE_LOCK` ni `ACCESS_NETWORK_STATE`, et le parcours e2e (deux combats complets, sons joués)
+  passe sans plantage.
 
 ### 11. Renvois
 
@@ -157,7 +160,7 @@ toucher : ADR 0005.
 
 ### Datation des touchers
 
-| Mesure | Sonde au repos (`ascent://preview/touch-probe`) | Combat, sous charge (panneau Mesures) |
+| Mesure | Sonde de toucher au repos (ADR 0005) | Combat, sous charge (panneau Mesures) |
 |---|---|---|
 | Écart toucher → réception JS, médiane | _à reporter_ | _à reporter_ |
 | Écart toucher → réception JS, p95 | _à reporter_ | _à reporter_ |
@@ -179,15 +182,16 @@ Réactivité ressentie par le propriétaire (Parade, Esquive, « Attaquer ») : 
 
 ### Latence du son
 
-Médiane et p95 (panneau Mesures) : _à reporter_. Au-delà d'environ 50 ms, le repli
+Médiane et p95 (panneau Mesures) : _à reporter_. Pour mémoire, l'émulateur de la CI (lancé sans
+sortie audio, donc non représentatif) donne 85,7 ms et 254,3 ms. Au-delà d'environ 50 ms, le repli
 `react-native-audio-api` de l'ADR 0005 est réévalué.
 
 ### Taille de l'APK
 
 Build de preview de la PR #53 (job `android-apk`, commit `5d2f19c`) : **93 928 882 octets
 (93,9 Mo)**, contre 93 182 802 octets (93,2 Mo) dans l'ADR 0005 : +746 080 octets (+0,8 %),
-surtout les sons provisoires et le code du combat. Taille après le retrait des permissions : _à
-reporter_.
+surtout les sons provisoires et le code du combat. Après le retrait des permissions (commit
+`839a270`) : **93 928 850 octets**, soit 32 octets de moins.
 
 ## Durées retenues
 
