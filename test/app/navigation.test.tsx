@@ -170,4 +170,42 @@ describe('app navigation between the views', () => {
 
     expect(await screen.findByText('Nouvelle habitude')).toBeOnTheScreen();
   });
+
+  it('opens the week view on the week of a row of the targets by week of the month view', async () => {
+    openDatabase.mockImplementation(async () => {
+      const db = await prepareAscentDatabase(openNodeSqliteDatabase());
+      const clock = new FixedClock(Day.of(2026, 10, 5));
+      await createHabit({ clock, unitOfWork: new SqliteUnitOfWork(db) }, 'Cuisiner');
+      return db;
+    });
+    await renderRouter(appDirectory);
+    await screen.findByTestId('day-view');
+    await showTab('Mois');
+    const section = within(await screen.findByTestId('targets-by-week'));
+
+    await fireEvent.press(
+      section.getByRole('button', {
+        name: 'Semaine du 5 octobre, 0 objectif atteint sur 1, ouvrir la semaine',
+      }),
+    );
+
+    expect(await screen.findByTestId('week-view')).toBeOnTheScreen();
+    expect(selectedTab()).toBe('Semaine');
+    expect(
+      await weekView().findByLabelText('Cuisiner, lundi 5 octobre, pas fait'),
+    ).toBeOnTheScreen();
+    expect(weekView().getByTestId('cell-1-2026-10-11')).toBeOnTheScreen();
+    expect(weekView().queryByTestId('cell-1-2026-10-12')).not.toBeOnTheScreen();
+
+    // Une autre ligne mène à sa propre semaine : la semaine en cours.
+    await showTab('Mois');
+    jest.advanceTimersByTime(1000);
+    await fireEvent.press(
+      within(screen.getByTestId('targets-by-week')).getByRole('button', {
+        name: /^Cette semaine, /u,
+      }),
+    );
+
+    expect(await weekView().findByTestId('cell-1-2026-10-14')).toBeOnTheScreen();
+  });
 });
