@@ -320,6 +320,13 @@ jobs:
           installed="$("$HOME/.maestro/bin/maestro" --version | tail -n 1)"
           echo "Maestro ${installed}"
           test "${installed}" = "${MAESTRO_VERSION}"
+      - name: Cache the Android system image
+        # Le téléchargement de l'image chez Google échoue parfois (archive corrompue) et l'émulateur
+        # ne démarre pas. Une image déjà présente n'est pas retéléchargée par sdkmanager.
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/system-images/android-34/google_apis/x86_64
+          key: android-system-image-34-google_apis-x86_64
       - name: Run the Maestro flows on an Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
