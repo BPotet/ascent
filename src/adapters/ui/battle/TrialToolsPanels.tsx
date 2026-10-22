@@ -37,27 +37,29 @@ export function TrialTuningPanel({
         {"Réglages d'essai"}
       </Text>
       {TUNING_FIELDS.map(({ field, label, what }) => (
-        <View key={field} style={styles.row}>
+        <View key={field} style={styles.setting}>
           <Text style={styles.label}>{label}</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Raccourcir ${what}`}
-            onPress={() => onStep(field, -1)}
-            style={styles.step}
-          >
-            <Text style={styles.stepText}>−</Text>
-          </Pressable>
-          <Text testID={`trial-tuning-${field}`} style={styles.value}>
-            {formatMilliseconds(tuning[field])}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Allonger ${what}`}
-            onPress={() => onStep(field, 1)}
-            style={styles.step}
-          >
-            <Text style={styles.stepText}>+</Text>
-          </Pressable>
+          <View style={styles.row}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Raccourcir ${what}`}
+              onPress={() => onStep(field, -1)}
+              style={styles.step}
+            >
+              <Text style={styles.stepText}>−</Text>
+            </Pressable>
+            <Text testID={`trial-tuning-${field}`} style={styles.value}>
+              {formatMilliseconds(tuning[field])}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Allonger ${what}`}
+              onPress={() => onStep(field, 1)}
+              style={styles.step}
+            >
+              <Text style={styles.stepText}>+</Text>
+            </Pressable>
+          </View>
         </View>
       ))}
       <Text style={styles.note}>Appliqués au combat suivant.</Text>
@@ -142,7 +144,8 @@ const styles = StyleSheet.create({
   },
   title: { color: battleColors.text, fontSize: 16, fontWeight: '700' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  label: { flex: 1, color: battleColors.text, fontSize: 14, fontWeight: '500' },
+  setting: { gap: 4 },
+  label: { color: battleColors.text, fontSize: 14, fontWeight: '500' },
   step: {
     width: 48,
     height: 48,
@@ -153,6 +156,7 @@ const styles = StyleSheet.create({
   },
   stepText: { color: battleColors.text, fontSize: 22, fontWeight: '600' },
   value: {
+    flex: 1,
     minWidth: 80,
     textAlign: 'center',
     color: battleColors.light,

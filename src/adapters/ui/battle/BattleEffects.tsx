@@ -3,6 +3,7 @@ import { StyleSheet, Text } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
@@ -10,10 +11,31 @@ import Animated, {
 import type { FeedbackText } from '../format/battleText';
 import { battleColors } from '../theme/battleColors';
 
-/** Le texte d'effet d'un résultat (« Parade parfaite », « Touché −4 PV »…), au centre de la scène. */
+/** Le texte d'effet reste lisible un instant, puis s'efface (maquette : 0,7 s en tout). */
+const FEEDBACK_HOLD_MS = 450;
+const FEEDBACK_FADE_MS = 250;
+
+/**
+ * Le texte d'effet d'un résultat (« Parade parfaite », « Touché −4 PV »…), au centre de la scène.
+ * Il s'efface de lui-même ; un nouveau résultat le remplace (l'écran le remonte).
+ */
 export function FeedbackLabel({ feedback }: { readonly feedback: FeedbackText }) {
+  const opacity = useSharedValue(1);
+  useEffect(() => {
+    opacity.set(
+      withSequence(
+        withTiming(1, { duration: 0 }),
+        withDelay(FEEDBACK_HOLD_MS, withTiming(0, { duration: FEEDBACK_FADE_MS })),
+      ),
+    );
+  }, [opacity]);
+  // Dépendances explicites : le code instrumenté par Stryker n'est plus reconnu comme worklet.
+  const fade = useAnimatedStyle(() => {
+    'worklet';
+    return { opacity: opacity.get() };
+  }, [opacity]);
   return (
-    <Animated.View pointerEvents="none" testID="battle-feedback" style={styles.feedback}>
+    <Animated.View pointerEvents="none" testID="battle-feedback" style={[styles.feedback, fade]}>
       <Text style={[styles.title, styles[feedback.tone]]}>{feedback.title}</Text>
       {feedback.detail === null ? null : <Text style={styles.detail}>{feedback.detail}</Text>}
     </Animated.View>
