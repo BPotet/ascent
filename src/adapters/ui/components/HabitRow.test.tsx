@@ -247,7 +247,7 @@ describe('HabitRow', () => {
       targetReached,
     });
 
-    it('writes the status and the progress of the week after the icon of the difficulty', async () => {
+    it('writes the status and the progress of the week after the difficulty', async () => {
       await render(
         <HabitRow
           habitDay={habitDay('pending')}
@@ -264,7 +264,7 @@ describe('HabitRow', () => {
           includeHiddenElements: true,
         }),
       ).toHaveLength(3);
-      expect(screen.queryByText('Difficile')).not.toBeOnTheScreen();
+      expect(screen.getByTestId('habit-difficulty-7')).toHaveTextContent('Difficile');
     });
 
     it('writes « 0/7 cette semaine » for a habit to do every day, like the others', async () => {

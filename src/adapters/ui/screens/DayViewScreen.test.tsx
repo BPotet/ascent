@@ -110,6 +110,8 @@ describe('DayViewScreen', () => {
 
     expect(await peaksOf(1)).toBe(3);
     expect(await peaksOf(2)).toBe(1);
+    expect(screen.getByTestId('habit-difficulty-1')).toHaveTextContent('Difficile');
+    expect(screen.getByTestId('habit-difficulty-2')).toHaveTextContent('Facile');
     expect(
       screen.getByRole('switch', {
         name: 'Courir 5 km, mercredi 14 octobre, à faire, 0 sur 5 cette semaine, Difficile, 20 XP par suivi',

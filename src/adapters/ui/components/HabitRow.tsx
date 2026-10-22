@@ -19,7 +19,7 @@ import { typography } from '../theme/typography';
 import type { ShownXpChange } from './CharacterBar';
 import { CheckGlyph, CrossGlyph, FlagGlyph, MoreGlyph } from './Glyph';
 import { CORRECTED, CorrectedMark } from './CorrectedMark';
-import { DifficultyIcon, DifficultyLabel } from './DifficultyIcon';
+import { DifficultyLabel } from './DifficultyIcon';
 import { XpFloat } from './XpFloat';
 
 /** Le libellé, pour le lecteur d'écran, de l'action qui ouvre « Modifier l'habitude ». */
@@ -53,8 +53,8 @@ export function bounce(scale: Animated.Value): void {
  * difficulté de la semaine (« ▲▲▲ Difficile · À faire ») ; le lecteur d'écran l'entend après l'état,
  * avec ce que rapporte une case « fait » : « …, à faire, Difficile, 20 XP par suivi ».
  *
- * Avec `weeklyProgress` (Vue Journée, #24, E1), la ligne secondaire devient l'icône de la difficulté
- * suivie de l'état et de la progression de la semaine : « ▲▲▲ À faire · 2/3 cette semaine », et
+ * Avec `weeklyProgress` (Vue Journée, #24, E1), l'état est suivi de la progression de la semaine :
+ * « ▲▲▲ Difficile · À faire · 2/3 cette semaine », et
  * « 4 fois cette semaine » une fois l'objectif atteint ; elle passe à la ligne en grand texte.
  * L'objectif atteint ajoute dessous le badge « Objectif atteint » (drapeau, texte et liseré verts) ;
  * la ligne reste tapable. Rien ne marque un objectif non atteint. Le lecteur d'écran entend la
@@ -141,54 +141,33 @@ export function HabitRow({
         </Animated.View>
         <View style={styles.texts}>
           <Text style={[typography.habitName, styles.name]}>{habit.name.value}</Text>
-          {weeklyProgress ? (
-            <View style={styles.statusLine}>
-              {difficulty && (
-                <View testID={`habit-difficulty-${habit.id}`}>
-                  <DifficultyIcon
-                    difficulty={difficulty}
-                    color={done ? colors.doneText : colors.difficulty}
-                  />
-                </View>
-              )}
-              <Text
-                testID={`habit-progress-${habit.id}`}
-                style={[
-                  typography.label,
-                  styles.status,
-                  done && styles.statusDone,
-                  styles.progress,
-                ]}
-              >
-                {`${capitalize(statusLabel)} · ${weeklyProgressText(weeklyProgress)}`}
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.statusLine}>
-              {difficulty && (
-                <>
-                  <DifficultyLabel
-                    difficulty={difficulty}
-                    color={done ? colors.doneText : colors.muted}
-                    iconColor={done ? colors.doneText : colors.difficulty}
-                    testID={`habit-difficulty-${habit.id}`}
-                  />
-                  <Text style={[typography.label, styles.status, done && styles.statusDone]}>
-                    ·
-                  </Text>
-                </>
-              )}
-              <Text style={[typography.label, styles.status, done && styles.statusDone]}>
-                {capitalize(statusLabel)}
-              </Text>
-              {corrected && (
-                <View style={styles.correctedText}>
-                  <View style={styles.correctedDot} />
-                  <Text style={[typography.label, styles.corrected]}>{CORRECTED}</Text>
-                </View>
-              )}
-            </View>
-          )}
+          <View style={styles.statusLine}>
+            {difficulty && (
+              <>
+                <DifficultyLabel
+                  difficulty={difficulty}
+                  color={done ? colors.doneText : colors.muted}
+                  iconColor={done ? colors.doneText : colors.difficulty}
+                  testID={`habit-difficulty-${habit.id}`}
+                />
+                <Text style={[typography.label, styles.status, done && styles.statusDone]}>·</Text>
+              </>
+            )}
+            <Text
+              {...(weeklyProgress && { testID: `habit-progress-${habit.id}` })}
+              style={[typography.label, styles.status, done && styles.statusDone, styles.progress]}
+            >
+              {weeklyProgress
+                ? `${capitalize(statusLabel)} · ${weeklyProgressText(weeklyProgress)}`
+                : capitalize(statusLabel)}
+            </Text>
+            {corrected && (
+              <View style={styles.correctedText}>
+                <View style={styles.correctedDot} />
+                <Text style={[typography.label, styles.corrected]}>{CORRECTED}</Text>
+              </View>
+            )}
+          </View>
           {reached && (
             <View testID={`habit-target-reached-${habit.id}`} style={styles.badge}>
               <FlagGlyph color={colors.doneText} />
