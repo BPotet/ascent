@@ -13,6 +13,7 @@ import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
 import { updateHabit } from '../../../application/useCases/updateHabit';
 import { getDayView } from '../../../application/useCases/getDayView';
 import { Day } from '../../../domain/day/Day';
+import { HabitName } from '../../../domain/habit/HabitName';
 import { Week } from '../../../domain/week/Week';
 import { TOAST_DURATION_MS } from '../components/Toast';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
@@ -146,6 +147,25 @@ describe('DayViewScreen', () => {
       screen.getByText('Crée ta première habitude et commence à gagner de l’expérience.'),
     ).toBeOnTheScreen();
     expect(addButton()).toBeEnabled();
+  });
+
+  it('shows no weekly progress on the row of a habit whose week has no target (R17)', async () => {
+    const reading = await dependencies.unitOfWork.run(({ habits }) =>
+      habits.add(HabitName.parse('Lire'), Day.of(2026, 10, 5)),
+    );
+    await dependencies.unitOfWork.addSettingsChangeBeforeWeeklyTarget(
+      reading.id,
+      Day.of(2026, 10, 5),
+    );
+
+    await show();
+
+    expect(
+      await screen.findByLabelText('Lire, mercredi 14 octobre, à faire, Moyenne, 10 XP par suivi'),
+    ).toBeOnTheScreen();
+    expect(screen.queryByTestId(`habit-progress-${reading.id}`)).not.toBeOnTheScreen();
+    expect(screen.queryByText(/cette semaine/)).not.toBeOnTheScreen();
+    expect(screen.queryByText('Objectif atteint')).not.toBeOnTheScreen();
   });
 
   it('shows today and the habits of the day, in their order of creation, to do', async () => {
