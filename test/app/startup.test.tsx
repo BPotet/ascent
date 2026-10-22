@@ -14,6 +14,8 @@ import {
 import { isLoaded, loadAsync } from 'expo-font';
 import { AppState, type AppStateStatus } from 'react-native';
 import type * as ExpoFont from 'expo-font';
+import type * as IntroduceTargetBonus from '../../src/application/useCases/introduceTargetBonus';
+import type * as IntroduceWeeklyTarget from '../../src/application/useCases/introduceWeeklyTarget';
 import path from 'node:path';
 
 import { FixedClock } from '../../src/adapters/device/clock/FixedClock';
@@ -26,11 +28,26 @@ import { SqliteUnitOfWork } from '../../src/adapters/persistence/sqlite/SqliteUn
 import { openNodeSqliteDatabase } from '../../src/adapters/persistence/testing/nodeSqliteDatabase';
 import { fonts } from '../../src/adapters/ui/theme/typography';
 import { createHabit } from '../../src/application/useCases/createHabit';
+import { introduceTargetBonus } from '../../src/application/useCases/introduceTargetBonus';
+import { introduceWeeklyTarget } from '../../src/application/useCases/introduceWeeklyTarget';
 import { Day } from '../../src/domain/day/Day';
 
 jest.mock('../../src/adapters/persistence/sqlite/openAscentDatabase', () => ({
   openAscentDatabase: jest.fn(),
 }));
+// Les vrais cas d'usage du démarrage, observés pour vérifier leur ordre.
+jest.mock('../../src/application/useCases/introduceWeeklyTarget', () => {
+  const actual = jest.requireActual<typeof IntroduceWeeklyTarget>(
+    '../../src/application/useCases/introduceWeeklyTarget',
+  );
+  return { introduceWeeklyTarget: jest.fn(actual.introduceWeeklyTarget) };
+});
+jest.mock('../../src/application/useCases/introduceTargetBonus', () => {
+  const actual = jest.requireActual<typeof IntroduceTargetBonus>(
+    '../../src/application/useCases/introduceTargetBonus',
+  );
+  return { introduceTargetBonus: jest.fn(actual.introduceTargetBonus) };
+});
 // Le vrai expo-font (module natif simulé par jest-expo), dont on peut provoquer l'échec.
 jest.mock('expo-font', () => {
   const actual = jest.requireActual<typeof ExpoFont>('expo-font');
@@ -88,12 +105,36 @@ async function openPreviousVersionDatabase(): Promise<SqlDatabase> {
   return db;
 }
 
-/** `db`, dont les écritures de changements de réglages échouent tant que `broken.now` est vrai. */
-function withBrokenSettingsChanges(db: SqlDatabase, broken: { now: boolean }): SqlDatabase {
+/**
+ * Une base de la version précédente de #26 (schéma 6, avec l'objectif, sans la prime) : « Lire »,
+ * créée le lundi 12 octobre avec l'objectif 1, « fait » le mardi 13 : son objectif de la semaine est
+ * atteint, et le personnage a les 10 Xp du suivi, sans prime.
+ */
+async function openVersionSixDatabase(): Promise<SqlDatabase> {
+  const db = openNodeSqliteDatabase();
+  await db.exec('PRAGMA foreign_keys = ON');
+  await runMigrations(db, migrations.slice(0, 6));
+  await db.run("INSERT INTO habits (name, name_key, created_on) VALUES ('Lire', 'lire', ?)", [
+    '2026-10-12',
+  ]);
+  await db.run(
+    "INSERT INTO settings_changes (habit_id, changed_on, difficulty, weekly_target) VALUES (1, ?, 'medium', 1)",
+    ['2026-10-12'],
+  );
+  await db.run('INSERT INTO check_ins (habit_id, day, done, corrected) VALUES (1, ?, 1, 0)', [
+    '2026-10-13',
+  ]);
+  await db.run('UPDATE character SET xp = 10');
+  return db;
+}
+
+/** `db`, dont les écritures dans `table` échouent tant que `broken.now` est vrai. */
+function withBrokenWrites(db: SqlDatabase, table: string, broken: { now: boolean }): SqlDatabase {
+  const writes = new RegExp(String.raw`^\s*INSERT\s+INTO\s+${table}\b`, 'iu');
   const guarded =
     <Result,>(query: (sql: string, params?: readonly SqlValue[]) => Promise<Result>) =>
     (sql: string, params?: readonly SqlValue[]): Promise<Result> =>
-      broken.now && /^\s*INSERT\s+INTO\s+settings_changes\b/iu.test(sql)
+      broken.now && writes.test(sql)
         ? Promise.reject(new Error('disk I/O error'))
         : query(sql, params);
   return {
@@ -270,8 +311,9 @@ describe('app startup', () => {
 
   it('offers to retry when the weekly target cannot be introduced, then introduces it', async () => {
     const broken = { now: true };
-    const db = withBrokenSettingsChanges(
+    const db = withBrokenWrites(
       await prepareAscentDatabase(await openPreviousVersionDatabase()),
+      'settings_changes',
       broken,
     );
     openDatabase.mockResolvedValue(db);
@@ -286,6 +328,59 @@ describe('app startup', () => {
 
     expect(await screen.findByRole('switch', { name: COOKING_INTRODUCED })).toBeOnTheScreen();
     expect(await screen.findByTestId('whats-new-card')).toBeOnTheScreen();
+  });
+
+  it('introduces the weekly target, then catches up the target bonus, before the interface', async () => {
+    openDatabase.mockImplementation(openRealDatabase);
+
+    await renderRouter(appDirectory);
+    await emptyDayViewIsShown();
+
+    const [weeklyTarget] = jest.mocked(introduceWeeklyTarget).mock.invocationCallOrder.slice(-1);
+    const [targetBonus] = jest.mocked(introduceTargetBonus).mock.invocationCallOrder.slice(-1);
+    expect(weeklyTarget).toBeLessThan(targetBonus as number);
+  });
+
+  it('catches up once the target bonus of a week already reached, without feedback', async () => {
+    const db = await prepareAscentDatabase(await openVersionSixDatabase());
+    openDatabase.mockResolvedValue(db);
+
+    await renderRouter(appDirectory);
+
+    expect(await screen.findByLabelText('Expérience du personnage : 15 XP')).toBeOnTheScreen();
+    expect(screen.queryByTestId('toast')).not.toBeOnTheScreen();
+    await expect(db.getAll('SELECT name, introduced_on FROM introductions')).resolves.toEqual([
+      { name: 'targetBonus', introduced_on: '2026-10-14' },
+    ]);
+
+    await cleanup();
+    await renderRouter(appDirectory);
+
+    // Rejoué au démarrage suivant, il n'accorde plus rien.
+    expect(await screen.findByLabelText('Expérience du personnage : 15 XP')).toBeOnTheScreen();
+    await expect(db.getAll('SELECT xp FROM character')).resolves.toEqual([{ xp: 15 }]);
+  });
+
+  it('offers to retry when the target bonus cannot be caught up, then awards it once', async () => {
+    const broken = { now: true };
+    const db = withBrokenWrites(
+      await prepareAscentDatabase(await openVersionSixDatabase()),
+      'introductions',
+      broken,
+    );
+    openDatabase.mockResolvedValue(db);
+
+    await renderRouter(appDirectory);
+
+    expect(await screen.findByText('Réessayer')).toBeOnTheScreen();
+    expect(screen.queryByTestId('day-view')).not.toBeOnTheScreen();
+    await expect(db.getAll('SELECT xp FROM character')).resolves.toEqual([{ xp: 10 }]);
+
+    broken.now = false;
+    await fireEvent.press(screen.getByText('Réessayer'));
+
+    expect(await screen.findByLabelText('Expérience du personnage : 15 XP')).toBeOnTheScreen();
+    await expect(db.getAll('SELECT xp FROM character')).resolves.toEqual([{ xp: 15 }]);
   });
 
   it('offers to retry, as many times as needed, when the local database cannot be opened', async () => {
