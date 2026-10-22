@@ -72,6 +72,8 @@
 | **Impact fort** | Le résultat d'une analyse d'impact qui oblige à renvoyer la story au PM et à l'Architect avant de continuer (voir `docs/workflow.md`). |
 | **Dev** | L'agent full stack qui implémente une story de bout en bout : domaine, cas d'usage, ports, persistance, interface, feedback de jeu, navigation, fonctions natives du téléphone, builds, tests end-to-end. Plus tard : API et serveur. |
 | **Fixer** | L'agent qui corrige les bugs : il les reproduit par un test qui échoue, trouve la cause racine et applique la correction minimale, sans ajouter de fonctionnalité. |
+| **Consigne ciblée** | Ce que l'orchestrateur donne au dev pour une story : les écrans de la maquette annotés pour la story (et non toute la maquette), les décisions utiles et les fichiers concernés. Le dev ne lit le reste que si c'est nécessaire. |
+| **TDD par couche** | La façon de travailler du dev : pour chaque couche (domaine, cas d'usage et ports, persistance, interface, assemblage et end-to-end), il écrit tous les tests, vérifie qu'ils échouent, écrit le code, les fait passer, refactore, puis fait un commit mono-scope. Environ 4 à 6 commits par story. |
 | **Barrière de qualité** (*quality gate*) | Une vérification automatique qui doit passer pour qu'une PR soit mergée. |
 | **Mutation des écrans** | Les tests de mutation de `src/adapters/ui/` et `src/app/`. Ils ne tournent qu'à la demande du propriétaire : label `mutation:ui` sur la PR, entrée `ui-mutation` d'un lancement manuel de la CI, ou `npm run mutation:ui` en local. Quand ils tournent, les seuils habituels s'appliquent. |
 | **Conventional Commits** | Le format imposé des messages de commit et des titres de PR : `<type>(<scope>): <description>`. |
