@@ -67,6 +67,7 @@ import { createHabit } from '../../src/application/useCases/createHabit';
 import { getCharacter } from '../../src/application/useCases/getCharacter';
 import { getDayView, type DayViewHabit } from '../../src/application/useCases/getDayView';
 import { getWeekView, type WeekViewRow } from '../../src/application/useCases/getWeekView';
+import { introduceTargetBonus } from '../../src/application/useCases/introduceTargetBonus';
 import { introduceWeeklyTarget } from '../../src/application/useCases/introduceWeeklyTarget';
 import { toggleCheckIn } from '../../src/application/useCases/toggleCheckIn';
 import { updateHabit, type UpdateHabitResult } from '../../src/application/useCases/updateHabit';
@@ -203,12 +204,16 @@ async function start(connection: FakeExpoSqliteConnection): Promise<void> {
     unitOfWork: new SqliteUnitOfWork(db),
     keyValueStore: new SqliteKeyValueStore(db),
   };
-  await expect(readSchemaVersion(db)).resolves.toBe(6);
+  await expect(readSchemaVersion(db)).resolves.toBe(migrations.length);
 }
 
-/** Le démarrage de l'application : le changement d'introduction, rejoué sans risque. */
+/**
+ * Le démarrage de l'application : le changement d'introduction, puis le rattrapage de la prime
+ * d'objectif (#26), rejoués sans risque.
+ */
 async function introduce(): Promise<void> {
   await introduceWeeklyTarget(world.deps);
+  await introduceTargetBonus(world.deps);
 }
 
 async function restart(): Promise<void> {
