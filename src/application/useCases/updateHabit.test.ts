@@ -53,6 +53,9 @@ describe('updateHabit', () => {
       settingsChanged: false,
       xpChange: 0,
       xp: 0,
+      targetBonusChange: 0,
+      targetReachedChange: null,
+      weeklyProgress: 0,
     });
     expect(result.ok && result.habit.name.value).toBe('Cuisiner maison');
     expect(result.ok && result.habit.createdOn).toEqual(monday5);
@@ -192,6 +195,9 @@ describe('updateHabit', () => {
         settingsChanged: true,
         xpChange: 20,
         xp: 40,
+        targetBonusChange: 0,
+        targetReachedChange: null,
+        weeklyProgress: 2,
       });
       await expect(tap(running, wednesday)).resolves.toMatchObject({ xpChange: 20, xp: 60 });
     });
@@ -284,6 +290,9 @@ describe('updateHabit', () => {
         settingsChanged: false,
         xpChange: 0,
         xp: 20,
+        targetBonusChange: 0,
+        targetReachedChange: null,
+        weeklyProgress: 1,
       });
       unitOfWork.failWrites(false);
       await expect(changes(running)).resolves.toHaveLength(1);
@@ -601,6 +610,134 @@ describe('updateHabit', () => {
         expect.objectContaining({ changedOn: monday5, weeklyTarget: null }),
         expect.objectContaining({ changedOn: wednesday, difficulty: 'hard', weeklyTarget: 7 }),
       ]);
+    });
+  });
+  describe('target bonus (#26)', () => {
+    // « Courir 5 km », créée le lundi 5 octobre 2026 avec l'objectif 3.
+    const tuesday13 = Day.of(2026, 10, 13);
+    const friday16 = Day.of(2026, 10, 16);
+    let running: Habit;
+
+    const xp = () => unitOfWork.run(({ character }) => character.get()).then(({ xp }) => xp);
+    const tap = (day: Day) => toggleCheckIn(deps(), running.id, day);
+    const update = (input: { difficulty?: Difficulty; weeklyTarget?: WeeklyTarget }) =>
+      updateHabit(deps(), running.id, { name: running.name.value, ...input });
+
+    async function given(difficulty: Difficulty, ...days: Day[]): Promise<void> {
+      running = await unitOfWork.run(async ({ habits, settingsChanges }) => {
+        const habit = await habits.add(HabitName.parse('Courir 5 km'), monday5);
+        await settingsChanges.add(habit.id, monday5, { difficulty, weeklyTarget: 3 });
+        return habit;
+      });
+      for (const day of days) {
+        await tap(day);
+      }
+    }
+
+    afterEach(async () => {
+      const { xp: stored, expected } = await experienceInvariant(unitOfWork);
+      expect(stored).toBe(expected);
+    });
+
+    it('re-evaluates the cases before the target, then the bonus once reached (20 → 40 → 90)', async () => {
+      await given('medium', monday12, tuesday13);
+
+      await expect(update({ difficulty: 'hard' })).resolves.toMatchObject({
+        xpChange: 20,
+        xp: 40,
+        targetBonusChange: 0,
+        targetReachedChange: null,
+        weeklyProgress: 2,
+      });
+      await expect(tap(wednesday)).resolves.toMatchObject({
+        xpChange: 50,
+        xp: 90,
+        targetBonusChange: 30,
+        targetReachedChange: 'reached',
+      });
+    });
+
+    it('re-evaluates the bonus of a reached week without replaying F1 (90 → 24)', async () => {
+      await given('hard', monday12, tuesday13, wednesday);
+      await expect(xp()).resolves.toBe(90);
+
+      await expect(update({ difficulty: 'easy' })).resolves.toMatchObject({
+        xpChange: -66,
+        xp: 24,
+        targetBonusChange: -21,
+        targetReachedChange: null,
+        weeklyProgress: 3,
+      });
+    });
+
+    it('raises the bonus of a reached week with the difficulty (+15)', async () => {
+      await given('medium', monday12, tuesday13, wednesday);
+
+      await expect(update({ difficulty: 'hard' })).resolves.toMatchObject({
+        xpChange: 45,
+        xp: 90,
+        targetBonusChange: 15,
+        targetReachedChange: null,
+      });
+    });
+
+    it('keeps the bonus of the current week when the target changes (R13)', async () => {
+      clock.setToday(friday16);
+      await given('medium', monday12, wednesday, friday16);
+      await expect(xp()).resolves.toBe(45);
+
+      await expect(update({ weeklyTarget: 5 })).resolves.toMatchObject({
+        settingsChanged: true,
+        xpChange: 0,
+        xp: 45,
+        targetBonusChange: 0,
+        targetReachedChange: null,
+        weekSettings: { weekTarget: 3 },
+      });
+    });
+
+    it('reaches the target when it is lowered on the day of creation (F1 in E7)', async () => {
+      const created = await createHabit(deps(), 'Méditer', 'easy', 7);
+      running = created.ok ? created.habit : (undefined as never);
+      await tap(wednesday);
+
+      await expect(update({ weeklyTarget: 1 })).resolves.toMatchObject({
+        xpChange: 3,
+        xp: 8,
+        targetBonusChange: 3,
+        targetReachedChange: 'reached',
+        weeklyProgress: 1,
+        weekSettings: { weekTarget: 1 },
+      });
+    });
+
+    it('counts only the cases of the current week for the target (a later week after a clock set back)', async () => {
+      const created = await createHabit(deps(), 'Méditer', 'medium', 7);
+      running = created.ok ? created.habit : (undefined as never);
+      clock.setToday(Day.of(2026, 10, 20));
+      await tap(Day.of(2026, 10, 20));
+      clock.setToday(wednesday);
+      await tap(wednesday);
+
+      await expect(update({ weeklyTarget: 2 })).resolves.toMatchObject({
+        targetBonusChange: 0,
+        targetReachedChange: null,
+        weeklyProgress: 1,
+      });
+    });
+
+    it('loses the target when it is raised on the day of creation', async () => {
+      const created = await createHabit(deps(), 'Méditer', 'medium', 1);
+      running = created.ok ? created.habit : (undefined as never);
+      await tap(wednesday);
+      await expect(xp()).resolves.toBe(15);
+
+      await expect(update({ weeklyTarget: 3 })).resolves.toMatchObject({
+        xpChange: -5,
+        xp: 10,
+        targetBonusChange: -5,
+        targetReachedChange: 'lost',
+      });
     });
   });
 });

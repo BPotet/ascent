@@ -1,0 +1,39 @@
+# Sous-parcours partagé (#26) : vérifie l'expérience exacte du personnage après un tap qui peut
+# atteindre un objectif de la semaine. Maestro ne pilote pas la date du téléphone : une habitude
+# créée pendant le parcours a un objectif de la semaine réduit aux jours restants (1 le dimanche),
+# qu'un seul « fait » peut donc atteindre, avec sa prime d'objectif. C'est l'application qui dit si
+# l'objectif est atteint, par le libellé lu par le lecteur d'écran (`<ROW>, objectif atteint`) :
+# deux branches exclusives vérifient chacune une valeur exacte, sans dépendre de l'horloge de
+# l'hôte ni du fuseau.
+# Paramètres (`env`) :
+# - ROW : le libellé de la ligne (ou de la puce de la Vue Semaine), sans le suffixe
+#   `, objectif atteint` ;
+# - XP : l'expérience attendue sans objectif atteint (`10 XP`) ;
+# - XP_IF_TARGET_REACHED : l'expérience attendue, prime comprise, quand l'objectif est atteint
+#   (`15 XP`).
+# Ce fichier est hors de `e2e/flows` : `maestro test e2e/flows` ne l'exécute pas seul.
+appId: com.bpotet.ascent
+---
+- extendedWaitUntil:
+    visible: '${ROW}(, objectif atteint)?'
+    timeout: 10000
+- runFlow:
+    when:
+      visible: '${ROW}, objectif atteint'
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: 'xp-counter'
+            text: '${XP_IF_TARGET_REACHED}'
+          timeout: 10000
+      - assertVisible: 'Expérience du personnage : ${XP_IF_TARGET_REACHED}'
+- runFlow:
+    when:
+      notVisible: '${ROW}, objectif atteint'
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: 'xp-counter'
+            text: '${XP}'
+          timeout: 10000
+      - assertVisible: 'Expérience du personnage : ${XP}'

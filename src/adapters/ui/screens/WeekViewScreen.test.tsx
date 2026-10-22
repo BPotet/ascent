@@ -1230,3 +1230,102 @@ describe('WeekViewScreen and the weekly target (E4)', () => {
     });
   });
 });
+
+describe('WeekViewScreen and the target bonus (#26)', () => {
+  const hidden = { includeHiddenElements: true };
+  const announce = jest.mocked(AccessibilityInfo.announceForAccessibility);
+  const toast = () => screen.queryByTestId('toast');
+  const xpBar = () => screen.getByTestId('character-bar');
+  let running: HabitId;
+
+  /** « Courir 5 km », Moyenne, objectif 3, créée le lundi 5 octobre, « fait » les `days`. */
+  async function givenRunning(...days: Day[]) {
+    dependencies.clock.setToday(october(5));
+    const created = await createHabit(dependencies, 'Courir 5 km', 'medium', 3);
+    running = created.ok ? created.habit.id : (undefined as never);
+    for (const day of days) {
+      await doneOn(running, day);
+    }
+  }
+
+  it('plays F1 on the card when today reaches the target (E4)', async () => {
+    await givenRunning(october(12), october(13));
+    await show();
+
+    await fireEvent.press(cell(running, wednesday));
+
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 45 XP'));
+    expect(screen.getByTestId(`week-progress-${running}`)).toHaveTextContent(
+      '3/3 · Objectif atteint',
+    );
+    expect(screen.getByTestId(`week-card-reached-${running}`)).toBeOnTheScreen();
+    expect(screen.getByTestId('xp-change-bonus', hidden)).toHaveTextContent('+15 XP prime');
+    expect(toast()).toHaveTextContent(
+      'Objectif de la semaine atteint\nCourir 5 km 3/3 · +15 XP prime',
+    );
+    expect(dependencies.haptics.success).toHaveBeenCalledTimes(2);
+  });
+
+  it('bursts the chip of the card when the motion is not reduced', async () => {
+    withMotion();
+    await givenRunning(october(12), october(13));
+    await show();
+
+    await fireEvent.press(cell(running, wednesday));
+
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId(`week-card-${running}`)).getByTestId('target-burst', hidden),
+      ).toBeOnTheScreen(),
+    );
+  });
+
+  it('awards the bonus of a closed week by a correction, and names the week', async () => {
+    await givenRunning(october(5), october(7));
+    await show();
+    await fireEvent.press(previousButton());
+    await waitFor(() => expect(shownWeek()).toMatch(/^Semaine dernière/u));
+    announce.mockClear();
+
+    await fireEvent.press(cell(running, october(9)));
+
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 45 XP'));
+    expect(toast()).toHaveTextContent(
+      'Objectif atteint · semaine du 5 octobre\nCourir 5 km 3/3 · +15 XP prime',
+    );
+    expect(screen.queryByText(/^Correction enregistrée/u)).not.toBeOnTheScreen();
+    expect(announce).toHaveBeenCalledWith(
+      'Correction enregistrée, objectif de la semaine du 5 octobre atteint pour Courir 5 km, 3 sur 3. +15 points d’expérience de prime. Total : 45 XP.',
+    );
+  });
+
+  it('takes the bonus of a closed week back by a correction, with a discreet message', async () => {
+    await givenRunning(october(5), october(7), october(9));
+    await show();
+    await fireEvent.press(previousButton());
+    await waitFor(() => expect(shownWeek()).toMatch(/^Semaine dernière/u));
+    dependencies.haptics.success.mockClear();
+
+    await fireEvent.press(cell(running, october(9)));
+
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP'));
+    expect(toast()).toHaveTextContent(
+      'Objectif de la semaine du 5 octobre plus atteint · Courir 5 km 2/3 · −15 XP prime',
+    );
+    expect(dependencies.haptics.success).not.toHaveBeenCalled();
+  });
+
+  it('keeps the message of a correction that does not cross the target', async () => {
+    await givenRunning(october(5));
+    await show();
+    await fireEvent.press(previousButton());
+    await waitFor(() => expect(shownWeek()).toMatch(/^Semaine dernière/u));
+
+    await fireEvent.press(cell(running, october(9)));
+
+    expect(
+      await screen.findByText('Correction enregistrée · vendredi 9 octobre'),
+    ).toBeOnTheScreen();
+    expect(screen.queryByTestId('xp-change-bonus', hidden)).not.toBeOnTheScreen();
+  });
+});

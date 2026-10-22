@@ -1,4 +1,10 @@
-import { xpChangeOfSettings } from '../../domain/character/HabitXp';
+import {
+  habitTargetBonusOf,
+  targetBonusShareOf,
+  type TargetReachedChange,
+  weekXpChangeOf,
+  xpChangeOfSettings,
+} from '../../domain/character/HabitXp';
 import { type Difficulty, parseDifficulty } from '../../domain/habit/Difficulty';
 import { Habit, type HabitId } from '../../domain/habit/Habit';
 import {
@@ -12,6 +18,7 @@ import {
   parseWeeklyTarget,
   type WeeklyTarget,
 } from '../../domain/habit/WeeklyTarget';
+import { weeklyProgressOf } from '../../domain/habit/WeeklyProgress';
 import { weekSettingsOf, type WeekSettings } from '../../domain/habit/WeekSettings';
 import { Week } from '../../domain/week/Week';
 import type { UseCaseDependencies } from './UseCaseDependencies';
@@ -71,6 +78,21 @@ export type UpdateHabitResult =
       readonly xpChange: number;
       /** L'expérience totale du personnage après la modification, telle qu'elle est enregistrée. */
       readonly xp: number;
+      /**
+       * La part de `xpChange` qui vient de la prime d'objectif (#26) : la prime de la semaine en
+       * cours réévaluée avec la difficulté (R12, ex. +15 de Moyenne à Difficile avec l'objectif 3
+       * atteint), ou gagnée quand l'objectif baisse le jour de création ; 0 pour un changement
+       * d'objectif hors jour de création (R13).
+       */
+      readonly targetBonusChange: number;
+      /**
+       * Le franchissement du seuil de l'objectif de la semaine en cours : `reached` seulement quand
+       * l'objectif baisse le jour de création (F1 après « Enregistrer »), `lost` quand il monte le
+       * jour de création, `null` sinon, y compris quand seule la prime change avec la difficulté.
+       */
+      readonly targetReachedChange: TargetReachedChange;
+      /** La progression de la semaine en cours, jusqu'à aujourd'hui (« Méditer 1/1 »). */
+      readonly weeklyProgress: number;
     }
   | { readonly ok: false; readonly reason: UpdateHabitRefusal };
 
@@ -96,7 +118,8 @@ function refusalOf(error: unknown): UpdateHabitRefusal | undefined {
  *   semaine en cours et aux suivantes, jamais aux semaines closes : les cases « fait » de la semaine
  *   en cours sont réévaluées, l'expérience varie de `xpChangeOfSettings`, dans la même unité de
  *   travail. L'objectif s'applique à partir du lundi suivant, sauf le jour de création (R13) ; seul,
- *   il ne change pas l'expérience.
+ *   il ne change pas l'expérience. La prime d'objectif de la semaine en cours suit : réévaluée avec
+ *   la difficulté (R12 de #26), gagnée ou perdue quand l'objectif change le jour de création.
  *
  * Rien n'est écrit si rien ne change. Un refus de règle est un résultat ; une panne de stockage est
  * une exception, et rien ne change, ni le nom, ni les réglages, ni l'expérience. Une valeur qui n'est
@@ -145,16 +168,30 @@ export function updateHabit(
       await habits.rename(habitId, name);
     }
     const xpBefore = await character.get();
+    const habitCheckIns = await checkIns.listByHabit(habitId);
     let xpAfter = xpBefore;
     let after = before;
+    let settingsXp = 0;
     if (settingsChanged) {
       const weeklyTarget = chosenTarget ?? nextTarget ?? DEFAULT_WEEKLY_TARGET;
       after = [...before, await settingsChanges.add(habitId, today, { difficulty, weeklyTarget })];
-      xpAfter = xpBefore.applyXpChange(
-        xpChangeOfSettings(await checkIns.listByHabit(habitId), before, after, habit.createdOn),
-      );
+      settingsXp = xpChangeOfSettings(habitCheckIns, before, after, habit.createdOn);
+      xpAfter = xpBefore.applyXpChange(settingsXp);
       await character.save(xpAfter);
     }
+    const xpChange = xpBefore.xpChangeTo(xpAfter);
+    const targetBonus =
+      habitTargetBonusOf(habitCheckIns, after, habit.createdOn) -
+      habitTargetBonusOf(habitCheckIns, before, habit.createdOn);
+    const weekDone = habitCheckIns.filter(
+      ({ day, done }) => done && currentWeek.contains(day),
+    ).length;
+    const { targetReachedChange } = weekXpChangeOf(
+      weekDone,
+      weekDone,
+      current,
+      weekSettingsOf(after, currentWeek, habit.createdOn),
+    );
     return {
       ok: true,
       habit: new Habit(habit.id, name, habit.createdOn),
@@ -162,8 +199,14 @@ export function updateHabit(
       nextWeeklyTarget: weekSettingsOf(after, nextWeek, habit.createdOn).weeklyTarget,
       nameChanged,
       settingsChanged,
-      xpChange: xpBefore.xpChangeTo(xpAfter),
+      xpChange,
       xp: xpAfter.xp,
+      targetBonusChange: targetBonusShareOf(
+        { checkInXp: settingsXp - targetBonus, targetBonus },
+        xpChange,
+      ),
+      targetReachedChange,
+      weeklyProgress: weeklyProgressOf(habitCheckIns, currentWeek, today),
     };
   });
 }

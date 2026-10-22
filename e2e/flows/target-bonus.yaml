@@ -1,0 +1,219 @@
+# Story #26 : la prime d'objectif et le feedback « Objectif atteint » (F1).
+# Parcours : « Lire » créée en Moyenne avec l'objectif 1 → un tap : 10 XP de suivi et 5 XP de prime,
+# 15 XP, badge « Objectif atteint », message « Objectif de la semaine atteint · Lire 1/1 · +5 XP
+# prime » → la barre d'onglets reste utilisable pendant le message : la Vue Semaine s'ouvre tout de
+# suite, puce verte → retour à la Journée, un autre tap : sous l'objectif, 0 XP, message discret →
+# un dernier tap : 15 XP → « Supprimer l'habitude » : la fenêtre annonce le suivi et la prime qui
+# tombent (−15 XP en tout), annulée → « Méditer » (objectif 7) cochée, puis son objectif baissé à 1
+# le jour de sa création : F1 après « Enregistrer » (E7).
+# Déterministe tous les jours : l'objectif 1 vaut 1 quel que soit le jour de création, donc le
+# premier tap atteint toujours l'objectif. Seule l'étape E7 dépend du jour : le dimanche, l'objectif
+# de la semaine de création de « Méditer » est déjà réduit à 1, son premier tap l'atteint et il n'y a
+# plus d'objectif à baisser ; la branche du dimanche vérifie alors ce premier objectif atteint
+# (30 XP), l'autre la baisse et F1 dans « Modifier l'habitude ». C'est l'application qui dit lequel
+# s'applique, par le libellé de la ligne.
+# Les pastilles « +10 XP » et « +5 XP prime » et l'éclat du badge sont cachés au lecteur d'écran,
+# donc introuvables par Maestro : les captures les montrent (mouvement réduit sur l'émulateur de la
+# CI : apparition directe).
+# Captures pour la comparaison avec la maquette docs/mockups/22-difficulte-objectif (F1, E1, E4,
+# E7, E8).
+appId: com.bpotet.ascent
+name: Gagner une prime d'objectif et voir « Objectif atteint »
+tags:
+  - story-26
+---
+- runFlow: ../subflows/launch-fresh.yaml
+
+# « Lire », Moyenne, objectif 1.
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- tapOn:
+    id: 'weekly-target-option-1'
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Lire'
+- hideKeyboard
+- tapOn:
+    id: 'create-habit'
+- extendedWaitUntil:
+    notVisible: 'Nouvelle habitude'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'Lire, .+, à faire, 0 sur 1 cette semaine, Moyenne, 10 XP par suivi'
+    timeout: 10000
+- assertVisible: 'Expérience du personnage : 0 XP'
+
+# Un tap : l'objectif est atteint. +10 XP, puis la prime +5 XP, le badge et le message F1.
+- tapOn:
+    id: 'habit-row-1'
+- takeScreenshot: target-bonus-F1-1-reached
+- extendedWaitUntil:
+    visible: 'Lire, .+, fait, 1 sur 1 cette semaine, Moyenne, 10 XP par suivi, objectif atteint'
+    timeout: 10000
+- assertVisible:
+    id: 'habit-target-reached-1'
+- extendedWaitUntil:
+    visible:
+      id: 'xp-counter'
+      text: '15 XP'
+    timeout: 10000
+- assertVisible: 'Expérience du personnage : 15 XP'
+- extendedWaitUntil:
+    visible:
+      id: 'toast'
+    timeout: 10000
+- assertVisible: 'Objectif de la semaine atteint\sLire 1/1 · \+5 XP prime'
+- takeScreenshot: target-bonus-E1-1-target-reached
+
+# Le message ne masque pas la barre d'onglets : elle se touche sans attendre sa fin (D5).
+- assertVisible:
+    id: 'toast'
+- assertVisible:
+    id: 'tab-week'
+- tapOn:
+    id: 'tab-week'
+- extendedWaitUntil:
+    visible:
+      id: 'week-card-1'
+    timeout: 10000
+- assertVisible:
+    id: 'week-card-reached-1'
+- assertVisible: '1 sur 1, objectif atteint'
+- assertVisible: 'Expérience du personnage : 15 XP'
+- takeScreenshot: target-bonus-E4-1-week-view-reached
+
+# Retour à la Journée. Un autre tap : sous l'objectif, la prime est retirée en entier, sans
+# vibration ; message discret.
+- tapOn:
+    id: 'tab-day'
+- extendedWaitUntil:
+    visible:
+      id: 'habit-row-1'
+    timeout: 10000
+- extendedWaitUntil:
+    notVisible:
+      id: 'toast'
+    timeout: 10000
+- tapOn:
+    id: 'habit-row-1'
+- takeScreenshot: target-bonus-E1-2-target-lost
+- extendedWaitUntil:
+    visible: 'Lire, .+, à faire, 0 sur 1 cette semaine, Moyenne, 10 XP par suivi'
+    timeout: 10000
+- assertNotVisible:
+    id: 'habit-target-reached-1'
+- extendedWaitUntil:
+    visible:
+      id: 'xp-counter'
+      text: '0 XP'
+    timeout: 10000
+- assertVisible: 'Objectif de la semaine plus atteint · Lire 0/1 · −5 XP prime'
+
+# Un dernier tap : 15 XP, F1 de nouveau.
+- tapOn:
+    id: 'habit-row-1'
+- extendedWaitUntil:
+    visible:
+      id: 'xp-counter'
+      text: '15 XP'
+    timeout: 10000
+
+# « Supprimer l'habitude » : la fenêtre annonce le suivi d'aujourd'hui et la prime qui tombe (E8).
+- tapOn: 'Modifier l’habitude Lire'
+- extendedWaitUntil:
+    visible:
+      id: 'edit-habit-sheet-content'
+    timeout: 10000
+- tapOn:
+    id: 'delete-habit'
+- extendedWaitUntil:
+    visible: 'Supprimer «.Lire.».\?'
+    timeout: 10000
+- assertVisible: '.*\(−10 XP\) et la prime de cette semaine \(−5 XP\), l.objectif n.étant plus atteint.: −15 XP en tout\.'
+- takeScreenshot: target-bonus-E8-1-delete-with-bonus
+- tapOn: 'Annuler'
+- extendedWaitUntil:
+    notVisible: 'Supprimer «.Lire.».\?'
+    timeout: 10000
+- assertVisible: 'Expérience du personnage : 15 XP'
+
+# « Méditer », objectif 7, cochée aujourd'hui.
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Méditer'
+- hideKeyboard
+- tapOn:
+    id: 'create-habit'
+- extendedWaitUntil:
+    notVisible: 'Nouvelle habitude'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'Méditer, .+, à faire, 0 sur \d cette semaine, Moyenne, 10 XP par suivi'
+    timeout: 10000
+- tapOn:
+    id: 'habit-row-2'
+- extendedWaitUntil:
+    visible: 'Méditer, .+, fait, 1 sur \d cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
+    timeout: 10000
+
+# Le dimanche, l'objectif de la semaine de création vaut déjà 1 : il est atteint, 30 XP.
+- runFlow:
+    when:
+      visible: 'Méditer, .+, fait, 1 sur 1 cette semaine, Moyenne, 10 XP par suivi, objectif atteint'
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: 'xp-counter'
+            text: '30 XP'
+          timeout: 10000
+      - assertVisible: 'Expérience du personnage : 30 XP'
+# Les autres jours : 25 XP ; baisser l'objectif à 1 le jour de création l'atteint, F1 après
+# « Enregistrer » (E7).
+- runFlow:
+    when:
+      notVisible: 'Méditer, .+, fait, 1 sur 1 cette semaine, Moyenne, 10 XP par suivi, objectif atteint'
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: 'xp-counter'
+            text: '25 XP'
+          timeout: 10000
+      - tapOn:
+          id: 'edit-habit-2'
+      - extendedWaitUntil:
+          visible:
+            id: 'edit-habit-sheet-content'
+          timeout: 10000
+      - tapOn:
+          id: 'weekly-target-option-1'
+      - extendedWaitUntil:
+          visible:
+            id: 'weekly-target-change-info'
+          timeout: 10000
+      - assertVisible:
+          id: 'weekly-target-change-info'
+          text: 'Habitude créée aujourd’hui : le nouvel objectif s’applique dès cette semaine\.'
+      - tapOn:
+          id: 'save-habit'
+      - extendedWaitUntil:
+          visible:
+            id: 'toast'
+          timeout: 10000
+      - assertVisible: 'Objectif de la semaine atteint\sMéditer 1/1 · \+5 XP prime'
+      - takeScreenshot: target-bonus-E7-1-target-lowered-reached
+      - extendedWaitUntil:
+          visible: 'Méditer, .+, fait, 1 sur 1 cette semaine, Moyenne, 10 XP par suivi, objectif atteint'
+          timeout: 10000
+      - extendedWaitUntil:
+          visible:
+            id: 'xp-counter'
+            text: '30 XP'
+          timeout: 10000

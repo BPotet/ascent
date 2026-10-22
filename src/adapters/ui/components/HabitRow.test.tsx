@@ -340,6 +340,29 @@ describe('HabitRow', () => {
       ).toBeEnabled();
     });
 
+    it('bursts its badge when the target has just been reached here (F1, #26)', async () => {
+      await render(
+        <HabitRow
+          habitDay={habitDay('done')}
+          weeklyProgress={progress(3, 3, true)}
+          targetFlash={1}
+          onToggle={jest.fn()}
+        />,
+      );
+      await act(async () => undefined);
+
+      expect(screen.getByTestId('target-burst', { includeHiddenElements: true })).toBeOnTheScreen();
+    });
+
+    it('shows its badge without a burst otherwise', async () => {
+      await render(<HabitRow habitDay={habitDay('done')} weeklyProgress={progress(3, 3, true)} />);
+      await act(async () => undefined);
+
+      expect(
+        screen.queryByTestId('target-burst', { includeHiddenElements: true }),
+      ).not.toBeOnTheScreen();
+    });
+
     it('shows no badge, and no mark of failure, below the target', async () => {
       await render(<HabitRow habitDay={habitDay('pending')} weeklyProgress={progress(1, 3)} />);
 

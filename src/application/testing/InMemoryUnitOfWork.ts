@@ -16,6 +16,7 @@ import {
 import type { CharacterRepository } from '../ports/CharacterRepository';
 import type { CheckInRepository } from '../ports/CheckInRepository';
 import type { HabitRepository } from '../ports/HabitRepository';
+import type { Introduction, IntroductionRepository } from '../ports/IntroductionRepository';
 import type { SettingsChangeRepository } from '../ports/SettingsChangeRepository';
 import type { Repositories, UnitOfWork } from '../ports/UnitOfWork';
 
@@ -39,6 +40,8 @@ interface State {
   character: Character;
   settingsChanges: SettingsChange[];
   lastSequence: number;
+  /** Les introductions appliquées, et leur jour. */
+  introductions: Map<Introduction, Day>;
 }
 
 const checkInKey = (habitId: HabitId, day: Day) => `${habitId}/${day.toIsoString()}`;
@@ -224,6 +227,31 @@ class InMemorySettingsChangeRepository implements SettingsChangeRepository {
   }
 }
 
+class InMemoryIntroductionRepository implements IntroductionRepository {
+  constructor(
+    private readonly state: State,
+    private readonly faults: Faults,
+  ) {}
+
+  async has(introduction: Introduction): Promise<boolean> {
+    if (this.faults.reads) {
+      throw new StorageUnavailableError('read introductions');
+    }
+    return this.state.introductions.has(introduction);
+  }
+
+  /** Comme la clé primaire de `introductions` : une introduction n'est enregistrée qu'une fois. */
+  async add(introduction: Introduction, on: Day): Promise<void> {
+    if (this.faults.writes) {
+      throw new StorageUnavailableError('write introductions');
+    }
+    if (this.state.introductions.has(introduction)) {
+      throw new Error(`UNIQUE constraint failed: introductions.name (${introduction})`);
+    }
+    this.state.introductions.set(introduction, on);
+  }
+}
+
 export class InMemoryUnitOfWork implements UnitOfWork {
   private state: State = {
     habits: [],
@@ -232,6 +260,7 @@ export class InMemoryUnitOfWork implements UnitOfWork {
     character: Character.NEW,
     settingsChanges: [],
     lastSequence: 0,
+    introductions: new Map(),
   };
   private readonly faults: Faults = { reads: false, writes: false };
   private queue: Promise<unknown> = Promise.resolve();
@@ -277,6 +306,7 @@ export class InMemoryUnitOfWork implements UnitOfWork {
       habits: [...this.state.habits],
       checkIns: new Map(this.state.checkIns),
       settingsChanges: [...this.state.settingsChanges],
+      introductions: new Map(this.state.introductions),
     };
     try {
       return await work({
@@ -284,6 +314,7 @@ export class InMemoryUnitOfWork implements UnitOfWork {
         checkIns: new InMemoryCheckInRepository(this.state, this.faults),
         character: new InMemoryCharacterRepository(this.state, this.faults),
         settingsChanges: new InMemorySettingsChangeRepository(this.state, this.faults),
+        introductions: new InMemoryIntroductionRepository(this.state, this.faults),
       });
     } catch (error) {
       this.state = snapshot;

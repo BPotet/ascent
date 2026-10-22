@@ -52,6 +52,7 @@ import {
   getDayView,
 } from '../../src/application/useCases/getDayView';
 import { getMonthView } from '../../src/application/useCases/getMonthView';
+import { introduceTargetBonus } from '../../src/application/useCases/introduceTargetBonus';
 import { introduceWeeklyTarget } from '../../src/application/useCases/introduceWeeklyTarget';
 import { toggleCheckIn } from '../../src/application/useCases/toggleCheckIn';
 import {
@@ -165,7 +166,7 @@ function statesOf(text: string): { readonly state: string; readonly days: readon
 const run = <T>(work: Parameters<YesterdayReminderDependencies['unitOfWork']['run']>[0]) =>
   world.deps.unitOfWork.run(work) as Promise<T>;
 
-/** L'application ouvre la base de `connection` : migrations jusqu'au schéma 6. */
+/** L'application ouvre la base de `connection` : migrations jusqu'au dernier schéma. */
 async function start(connection: FakeExpoSqliteConnection): Promise<void> {
   const db = await prepareExpoSqliteDatabase(connection);
   world.connection = connection;
@@ -174,7 +175,7 @@ async function start(connection: FakeExpoSqliteConnection): Promise<void> {
     unitOfWork: new SqliteUnitOfWork(db),
     keyValueStore: new SqliteKeyValueStore(db),
   };
-  await expect(readSchemaVersion(db)).resolves.toBe(6);
+  await expect(readSchemaVersion(db)).resolves.toBe(migrations.length);
 }
 
 /** Fait `work` le jour `day`, puis revient à aujourd'hui. */
@@ -219,6 +220,7 @@ async function openNewVersion(updateDay: Day): Promise<void> {
   const { expected } = await experienceInvariant(world.deps.unitOfWork);
   await run(({ character }) => character.save(new Character(expected)));
   await on(updateDay, () => introduceWeeklyTarget(world.deps));
+  await on(updateDay, () => introduceTargetBonus(world.deps));
 }
 
 /** Enregistre les habitudes du scénario, une fois : celles d'avant la mise à jour, puis le contexte. */

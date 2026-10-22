@@ -7,6 +7,10 @@
 # « −10 XP » est affichée (1,4 s ; l'émulateur de la CI, sans animations, demande le mouvement
 # réduit : pas d'envol, la pastille est fixe). La pastille et l'envol sont cachés au lecteur
 # d'écran, donc introuvables par Maestro : seules les captures les montrent.
+# Prime d'objectif (#26) : « Lire » est créée aujourd'hui, avec l'objectif 7 réduit aux jours
+# restants ; le dimanche, il vaut 1, et le premier « fait » rapporte aussi la prime (+5 XP).
+# Chaque expérience exacte passe donc par `subflows/expect-xp.yaml` : 10 XP, ou 15 XP quand
+# l'application dit l'objectif atteint.
 appId: com.bpotet.ascent
 name: Gagner de l'expérience en tenant ses habitudes
 tags:
@@ -43,15 +47,12 @@ tags:
 - tapOn:
     id: 'habit-row-1'
 - takeScreenshot: earn-xp-2-gain-feedback
-- extendedWaitUntil:
-    visible: 'Lire, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
-    timeout: 10000
-- extendedWaitUntil:
-    visible:
-      id: 'xp-counter'
-      text: '10 XP'
-    timeout: 10000
-- assertVisible: 'Expérience du personnage : 10 XP'
+- runFlow:
+    file: ../subflows/expect-xp.yaml
+    env:
+      ROW: 'Lire, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi'
+      XP: '10 XP'
+      XP_IF_TARGET_REACHED: '15 XP'
 
 # Un autre tap : de nouveau « à faire », −10 XP, discret.
 - tapOn:
@@ -67,14 +68,15 @@ tags:
     timeout: 10000
 - assertVisible: 'Expérience du personnage : 0 XP'
 
-# Un dernier tap : « fait », +10 XP.
+# Un dernier tap : « fait », +10 XP (et la prime le dimanche).
 - tapOn:
     id: 'habit-row-1'
-- extendedWaitUntil:
-    visible:
-      id: 'xp-counter'
-      text: '10 XP'
-    timeout: 10000
+- runFlow:
+    file: ../subflows/expect-xp.yaml
+    env:
+      ROW: 'Lire, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi'
+      XP: '10 XP'
+      XP_IF_TARGET_REACHED: '15 XP'
 
 # Relance à froid : l'expérience est conservée, dans la Vue Journée et dans la Vue Semaine.
 - stopApp
@@ -82,12 +84,12 @@ tags:
 - extendedWaitUntil:
     visible: 'Lire, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
     timeout: 30000
-- extendedWaitUntil:
-    visible:
-      id: 'xp-counter'
-      text: '10 XP'
-    timeout: 10000
-- assertVisible: 'Expérience du personnage : 10 XP'
+- runFlow:
+    file: ../subflows/expect-xp.yaml
+    env:
+      ROW: 'Lire, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi'
+      XP: '10 XP'
+      XP_IF_TARGET_REACHED: '15 XP'
 - takeScreenshot: earn-xp-4-after-restart
 - tapOn:
     id: 'tab-week'
@@ -95,8 +97,11 @@ tags:
     visible:
       id: 'week-card-1'
     timeout: 10000
-- assertVisible:
-    id: 'xp-counter'
-    text: '10 XP'
-- assertVisible: 'Expérience du personnage : 10 XP'
+# Dans la Vue Semaine, c'est la puce de progression qui dit l'objectif atteint.
+- runFlow:
+    file: ../subflows/expect-xp.yaml
+    env:
+      ROW: '1 sur \d'
+      XP: '10 XP'
+      XP_IF_TARGET_REACHED: '15 XP'
 - takeScreenshot: earn-xp-5-week-after-restart

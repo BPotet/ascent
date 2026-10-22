@@ -126,7 +126,12 @@ export function useWeekView(): {
     [shownToday],
   );
 
-  const { shown, toggle } = useOptimisticToggle({ onSaved, refresh, undoneStatusOf });
+  const { shown, toggle } = useOptimisticToggle({
+    onSaved,
+    refresh,
+    undoneStatusOf,
+    splitBonus: true,
+  });
 
   const previous = useCallback(() => {
     if (shownView?.canGoPrevious === true) {

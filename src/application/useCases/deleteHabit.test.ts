@@ -76,6 +76,7 @@ describe('deleting a habit', () => {
       await expect(deleteHabit(deps(), cooking.id)).resolves.toEqual({
         ok: true,
         xpRemoved: 10,
+        targetBonusRemoved: 0,
         xp: 30,
       });
       await expect(character()).resolves.toEqual(new Character(30, 20));
@@ -87,6 +88,7 @@ describe('deleting a habit', () => {
       await expect(deleteHabit(deps(), cooking.id)).resolves.toEqual({
         ok: true,
         xpRemoved: 0,
+        targetBonusRemoved: 0,
         xp: 10,
       });
       await expect(character()).resolves.toEqual(new Character(10, 10));
@@ -98,6 +100,7 @@ describe('deleting a habit', () => {
       await expect(deleteHabit(deps(), cooking.id)).resolves.toEqual({
         ok: true,
         xpRemoved: 0,
+        targetBonusRemoved: 0,
         xp: 0,
       });
       await expect(character()).resolves.toEqual(new Character(0));
@@ -182,6 +185,7 @@ describe('deleting a habit', () => {
         ok: true,
         name: 'Cuisiner',
         xpRemoved: 10,
+        targetBonusRemoved: 0,
       });
     });
 
@@ -192,6 +196,7 @@ describe('deleting a habit', () => {
         ok: true,
         name: 'Cuisiner',
         xpRemoved: 0,
+        targetBonusRemoved: 0,
       });
     });
 
@@ -200,6 +205,7 @@ describe('deleting a habit', () => {
 
       await expect(previewHabitDeletion(deps(), cooking.id)).resolves.toMatchObject({
         xpRemoved: 0,
+        targetBonusRemoved: 0,
       });
     });
 
@@ -254,10 +260,12 @@ describe('deleting a habit', () => {
         ok: true,
         name: 'Courir 5 km',
         xpRemoved: 20,
+        targetBonusRemoved: 0,
       });
       await expect(deleteHabit(deps(), running.id)).resolves.toEqual({
         ok: true,
         xpRemoved: 20,
+        targetBonusRemoved: 0,
         xp: 20,
       });
       await expect(character()).resolves.toEqual(new Character(20, 20));
@@ -269,6 +277,7 @@ describe('deleting a habit', () => {
 
       await expect(deleteHabit(deps(), running.id)).resolves.toMatchObject({
         xpRemoved: 0,
+        targetBonusRemoved: 0,
         xp: 30,
       });
       await expect(character()).resolves.toEqual(new Character(30, 10 + 20));
@@ -293,6 +302,92 @@ describe('deleting a habit', () => {
 
       await expect(experienceInvariant(unitOfWork)).resolves.toEqual({ xp: 40, expected: 40 });
       await expect(character()).resolves.toEqual(new Character(40, 30));
+    });
+  });
+  describe('target bonus (#26)', () => {
+    const friday16 = Day.of(2026, 10, 16);
+    let running: Habit;
+
+    beforeEach(async () => {
+      // « Courir 5 km », créée le lundi 5 octobre en Moyenne avec l'objectif 3.
+      running = await unitOfWork.run(async ({ habits, settingsChanges }) => {
+        const habit = await habits.add(HabitName.parse('Courir 5 km'), Day.of(2026, 10, 5));
+        await settingsChanges.add(habit.id, Day.of(2026, 10, 5), {
+          difficulty: 'medium',
+          weeklyTarget: 3,
+        });
+        return habit;
+      });
+    });
+
+    afterEach(async () => {
+      const { xp, expected } = await experienceInvariant(unitOfWork);
+      expect(xp).toBe(expected);
+    });
+
+    it("announces and removes today's check-in and the bonus that falls (−25), the rest retained", async () => {
+      clock.setToday(friday16);
+      await given(45, done(running, monday), done(running, wednesday), done(running, friday16));
+
+      await expect(previewHabitDeletion(deps(), running.id)).resolves.toEqual({
+        ok: true,
+        name: 'Courir 5 km',
+        xpRemoved: 25,
+        targetBonusRemoved: 15,
+      });
+      await expect(deleteHabit(deps(), running.id)).resolves.toEqual({
+        ok: true,
+        xpRemoved: 25,
+        targetBonusRemoved: 15,
+        xp: 20,
+      });
+      await expect(character()).resolves.toEqual(new Character(20, 20));
+    });
+
+    it('keeps the bonus of the current week when the target stays reached without today', async () => {
+      clock.setToday(friday16);
+      await given(
+        55,
+        done(running, monday),
+        done(running, tuesday),
+        done(running, wednesday),
+        done(running, friday16),
+      );
+
+      await expect(deleteHabit(deps(), running.id)).resolves.toMatchObject({
+        xpRemoved: 10,
+        targetBonusRemoved: 0,
+        xp: 45,
+      });
+      await expect(character()).resolves.toEqual(new Character(45, 45));
+    });
+
+    it('keeps a reached closed week acquired after the deletion', async () => {
+      await given(
+        45,
+        done(running, Day.of(2026, 10, 5)),
+        done(running, Day.of(2026, 10, 7)),
+        done(running, Day.of(2026, 10, 9)),
+      );
+
+      await expect(deleteHabit(deps(), running.id)).resolves.toMatchObject({
+        xpRemoved: 0,
+        targetBonusRemoved: 0,
+        xp: 45,
+      });
+      await expect(character()).resolves.toEqual(new Character(45, 45));
+    });
+
+    it('reduces the bonus share first when the floor of 0 Xp plays', async () => {
+      clock.setToday(friday16);
+      await given(45, done(running, monday), done(running, wednesday), done(running, friday16));
+      await unitOfWork.run(({ character: repository }) => repository.save(new Character(12)));
+
+      await expect(previewHabitDeletion(deps(), running.id)).resolves.toMatchObject({
+        xpRemoved: 12,
+        targetBonusRemoved: 2,
+      });
+      await unitOfWork.run(({ character: repository }) => repository.save(new Character(45)));
     });
   });
 });

@@ -21,9 +21,10 @@ function assertValidXp(field: 'xp' | 'retainedXp', value: number): void {
  *
  * Invariant de l'expérience (ADR 0003, qui remplace la décision 5 de l'ADR 0002) : `xp` vaut la
  * somme, sur les habitudes existantes, des suivis « fait » de toutes dates, chacun au barème de la
- * difficulté de sa semaine (`habitXpOf`), plus `retainedXp`, tant que le plancher n'a pas joué. Il ne
- * dépend pas d'aujourd'hui : un recul d'horloge ou un changement de fuseau ne change jamais
- * l'expérience. Le solde est tenu par les variations que calcule `HabitXp`.
+ * difficulté de sa semaine, plus les primes d'objectif des semaines où l'objectif est atteint
+ * (`habitXpOf`, #26), plus `retainedXp`, tant que le plancher n'a pas joué. Il ne dépend pas
+ * d'aujourd'hui : un recul d'horloge, un changement de fuseau ou un changement de réglages ne change
+ * jamais une semaine close. Le solde est tenu par les variations que calcule `HabitXp`.
  * Immuable : chaque changement renvoie un nouveau personnage.
  */
 export class Character {
@@ -49,11 +50,15 @@ export class Character {
 
   /**
    * Le personnage après la suppression d'une habitude, selon `deletionXpOf` (R18, R19) :
-   * l'expérience `removed` (celle de son suivi d'aujourd'hui) est retirée, jamais sous 0 ; l'expérience
-   * `retained` (celle de ses autres jours) reste acquise et passe dans l'Xp conservée. L'invariant de
+   * l'expérience `removed` (celle de son suivi d'aujourd'hui, et la prime d'objectif qui tombe sans
+   * lui) est retirée, jamais sous 0 ; l'expérience `retained` (celle de ses autres jours, primes
+   * d'objectif encore acquises comprises) reste acquise et passe dans l'Xp conservée. L'invariant de
    * l'expérience est ainsi préservé une fois ses suivis effacés.
    */
-  retainOnHabitDeletion({ removed, retained }: DeletionXp): Character {
+  retainOnHabitDeletion({
+    removed,
+    retained,
+  }: Pick<DeletionXp, 'removed' | 'retained'>): Character {
     return new Character(Math.max(0, this.xp - removed), this.retainedXp + retained);
   }
 

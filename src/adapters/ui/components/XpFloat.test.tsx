@@ -30,6 +30,18 @@ describe('XpFloat', () => {
     });
   });
 
+  it('lets only the share of the case fly up, not the target bonus (#26)', async () => {
+    await render(<XpFloat reducedMotion={false} change={{ id: 1, amount: 25, bonus: 15 }} />);
+
+    expect(float()).toHaveTextContent('+10 XP');
+  });
+
+  it('lets nothing fly up when only the target bonus changes', async () => {
+    await render(<XpFloat reducedMotion={false} change={{ id: 1, amount: 3, bonus: 3 }} />);
+
+    expect(float()).not.toBeOnTheScreen();
+  });
+
   it('is hidden from the screen reader, which hears the announcement', async () => {
     await render(<XpFloat reducedMotion={false} change={{ id: 1, amount: 10 }} />);
 

@@ -22,6 +22,9 @@ const updated = (change: Partial<UpdatedHabit>): UpdatedHabit => ({
   settingsChanged: false,
   xpChange: 0,
   xp: 0,
+  targetBonusChange: 0,
+  targetReachedChange: null,
+  weeklyProgress: 0,
   ...change,
 });
 

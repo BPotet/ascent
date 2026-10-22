@@ -1475,3 +1475,164 @@ describe('DayViewScreen and the whats-new card', () => {
     expect(card()).not.toBeOnTheScreen();
   });
 });
+
+describe('DayViewScreen and the target bonus (#26)', () => {
+  const friday16 = Day.of(2026, 10, 16);
+  const hidden = { includeHiddenElements: true };
+  const announce = jest.mocked(AccessibilityInfo.announceForAccessibility);
+  const badge = () => screen.queryByTestId('habit-target-reached-1', hidden);
+  const xpBar = () => screen.getByTestId('character-bar');
+  const row = () => screen.getByRole('switch', { name: /^Courir 5 km, /u });
+  const toast = () => screen.queryByTestId('toast');
+
+  /** « Courir 5 km », Moyenne, objectif 3, créée le lundi 5 et « fait » lundi 12 et mercredi 14. */
+  async function showRunning() {
+    dependencies.clock.setToday(Day.of(2026, 10, 5));
+    await createHabit(dependencies, 'Courir 5 km', 'medium', 3);
+    for (const day of [Day.of(2026, 10, 12), wednesday]) {
+      dependencies.clock.setToday(day);
+      await toggleCheckIn(dependencies, 1, day);
+    }
+    dependencies.clock.setToday(friday16);
+    await show();
+    await screen.findByText('Courir 5 km');
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP'));
+    announce.mockClear();
+  }
+
+  it('plays F1 when the target is reached: badge, bonus pill, message, two vibrations (E1)', async () => {
+    await showRunning();
+
+    await fireEvent.press(row());
+
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 45 XP'));
+    expect(badge()).toHaveTextContent('Objectif atteint');
+    expect(screen.getByTestId('xp-change', hidden)).toHaveTextContent('+10 XP');
+    expect(screen.getByTestId('xp-change-bonus', hidden)).toHaveTextContent('+15 XP prime');
+    expect(toast()).toHaveTextContent(
+      'Objectif de la semaine atteint\nCourir 5 km 3/3 · +15 XP prime',
+    );
+    expect(dependencies.haptics.success).toHaveBeenCalledTimes(2);
+    expect(announce).toHaveBeenCalledWith(
+      'Objectif de la semaine atteint pour Courir 5 km, 3 sur 3. +15 points d’expérience de prime. Total : 45 XP.',
+    );
+    expect(announce).not.toHaveBeenCalledWith(expect.stringMatching(/^\+25 points/u));
+  });
+
+  it('takes the bonus back, discreetly and without vibration, below the target', async () => {
+    await showRunning();
+    await fireEvent.press(row());
+    await waitFor(() => expect(badge()).toBeOnTheScreen());
+    dependencies.haptics.success.mockClear();
+
+    await fireEvent.press(row());
+
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP'));
+    expect(badge()).not.toBeOnTheScreen();
+    expect(screen.getByTestId('xp-change', hidden)).toHaveTextContent('−10 XP');
+    expect(screen.getByTestId('xp-change-bonus', hidden)).toHaveTextContent('−15 XP prime');
+    expect(toast()).toHaveTextContent(
+      'Objectif de la semaine plus atteint · Courir 5 km 2/3 · −15 XP prime',
+    );
+    expect(dependencies.haptics.success).not.toHaveBeenCalled();
+    expect(announce).toHaveBeenLastCalledWith(
+      'Objectif de la semaine plus atteint pour Courir 5 km. −10 points d’expérience, −15 points de prime.',
+    );
+  });
+
+  it('pays the normal experience beyond the target, without a new bonus nor message', async () => {
+    await showRunning();
+    await fireEvent.press(row());
+    await waitFor(() => expect(badge()).toBeOnTheScreen());
+    await act(async () => {
+      await toggleCheckIn(dependencies, 1, Day.of(2026, 10, 13));
+    });
+    dependencies.clock.setToday(Day.of(2026, 10, 17));
+    await screen.unmount();
+    await show();
+    await screen.findByText('Courir 5 km');
+    announce.mockClear();
+
+    await fireEvent.press(row());
+
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 65 XP'));
+    expect(screen.queryByTestId('xp-change-bonus', hidden)).not.toBeOnTheScreen();
+    expect(toast()).not.toBeOnTheScreen();
+    expect(announce).toHaveBeenLastCalledWith('+10 points d’expérience. Total : 65 XP.');
+  });
+
+  it('shows neither the badge nor the bonus when the check-in cannot be saved', async () => {
+    await showRunning();
+    dependencies.unitOfWork.failWrites();
+
+    await fireEvent.press(row());
+
+    expect(await screen.findByText('Le suivi n’a pas été enregistré.')).toBeOnTheScreen();
+    await waitFor(() =>
+      expect(screen.getByTestId('habit-progress-1')).toHaveTextContent(
+        'À faire · 2/3 cette semaine',
+      ),
+    );
+    expect(badge()).not.toBeOnTheScreen();
+    expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP');
+    expect(screen.queryByTestId('xp-change-bonus', hidden)).not.toBeOnTheScreen();
+  });
+
+  it('plays F1 after « Enregistrer » when the target lowered on the day of creation is reached (E7)', async () => {
+    await createHabit(dependencies, 'Méditer 10 minutes', 'easy', 7);
+    await toggleCheckIn(dependencies, 1, wednesday);
+    await show();
+    await screen.findByText('Méditer 10 minutes');
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Modifier l’habitude Méditer 10 minutes' }),
+    );
+    await fireEvent.press(await screen.findByTestId('weekly-target-option-1'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    await waitFor(() =>
+      expect(toast()).toHaveTextContent(
+        'Objectif de la semaine atteint\nMéditer 10 minutes 1/1 · +3 XP prime',
+      ),
+    );
+    expect(screen.queryByText(/^Habitude modifiée/u)).not.toBeOnTheScreen();
+    expect(screen.getByTestId('xp-change-bonus', hidden)).toHaveTextContent('+3 XP prime');
+    expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 8 XP');
+    // La vibration de F1 seule : la modification ne change pas l'expérience des cases.
+    expect(dependencies.haptics.success).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-evaluates the bonus with the difficulty without replaying F1', async () => {
+    await showRunning();
+    await fireEvent.press(row());
+    await waitFor(() => expect(badge()).toBeOnTheScreen());
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Modifier l’habitude Courir 5 km' }));
+    await fireEvent.press(screen.getByRole('radio', { name: /^Difficile,/u }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 90 XP'));
+    expect(toast()).toHaveTextContent('Habitude modifiée · +45 XP');
+    expect(screen.getByTestId('xp-change', hidden)).toHaveTextContent('+30 XP');
+    expect(screen.getByTestId('xp-change-bonus', hidden)).toHaveTextContent('+15 XP prime');
+  });
+
+  it('announces the bonus that falls in the confirmation of the deletion (E8)', async () => {
+    await showRunning();
+    await fireEvent.press(row());
+    await waitFor(() => expect(badge()).toBeOnTheScreen());
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Modifier l’habitude Courir 5 km' }));
+    await fireEvent.press(await screen.findByTestId('delete-habit'));
+
+    expect(
+      await screen.findByText(
+        `Ses suivis seront effacés. L’expérience gagnée les jours passés reste acquise. Sont retirés le suivi d’aujourd’hui (−10 XP) et la prime de cette semaine (−15 XP), l’objectif n’étant plus atteint${nbsp}: −25 XP en tout.`,
+      ),
+    ).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('confirm-delete-habit'));
+
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP'));
+    expect(toast()).toHaveTextContent('Habitude supprimée · −25 XP');
+  });
+});

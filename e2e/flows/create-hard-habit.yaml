@@ -7,6 +7,9 @@
 # Captures pour la comparaison avec la maquette docs/mockups/22-difficulte-objectif (E2, E1, E4).
 # La pastille « +20 XP » est cachée au lecteur d'écran, donc introuvable par Maestro : seule la
 # capture prise juste après le tap la montre (mouvement réduit sur l'émulateur de la CI).
+# Prime d'objectif (#26) : créée aujourd'hui avec l'objectif 7 réduit aux jours restants, l'habitude
+# atteint son objectif au premier « fait » le dimanche (+10 XP de prime en Difficile) : chaque
+# expérience exacte passe par `subflows/expect-xp.yaml` (20 XP, ou 30 XP objectif atteint).
 appId: com.bpotet.ascent
 name: Créer une habitude difficile et gagner 20 XP
 tags:
@@ -78,15 +81,12 @@ tags:
 - tapOn:
     id: 'habit-row-1'
 - takeScreenshot: difficulty-E1-2-gain-20-xp
-- extendedWaitUntil:
-    visible: 'Courir 5 km, .+, fait, .+ cette semaine, Difficile, 20 XP par suivi(, objectif atteint)?'
-    timeout: 10000
-- extendedWaitUntil:
-    visible:
-      id: 'xp-counter'
-      text: '20 XP'
-    timeout: 10000
-- assertVisible: 'Expérience du personnage : 20 XP'
+- runFlow:
+    file: ../subflows/expect-xp.yaml
+    env:
+      ROW: 'Courir 5 km, .+, fait, .+ cette semaine, Difficile, 20 XP par suivi'
+      XP: '20 XP'
+      XP_IF_TARGET_REACHED: '30 XP'
 - assertNotVisible:
     id: 'check-in-hint'
 - takeScreenshot: difficulty-E1-3-day-view-hard-done
@@ -104,14 +104,15 @@ tags:
       text: '0 XP'
     timeout: 10000
 
-# Un dernier tap : « fait », 20 XP.
+# Un dernier tap : « fait », 20 XP (et la prime le dimanche).
 - tapOn:
     id: 'habit-row-1'
-- extendedWaitUntil:
-    visible:
-      id: 'xp-counter'
-      text: '20 XP'
-    timeout: 10000
+- runFlow:
+    file: ../subflows/expect-xp.yaml
+    env:
+      ROW: 'Courir 5 km, .+, fait, .+ cette semaine, Difficile, 20 XP par suivi'
+      XP: '20 XP'
+      XP_IF_TARGET_REACHED: '30 XP'
 
 # La carte de la Vue Semaine montre aussi l'icône à 3 sommets et « Difficile ».
 - tapOn:
@@ -125,9 +126,13 @@ tags:
 - extendedWaitUntil:
     visible: 'Courir 5 km, .+, fait'
     timeout: 10000
-- assertVisible:
-    id: 'xp-counter'
-    text: '20 XP'
+# Dans la Vue Semaine, c'est la puce de progression qui dit l'objectif atteint.
+- runFlow:
+    file: ../subflows/expect-xp.yaml
+    env:
+      ROW: '1 sur \d'
+      XP: '20 XP'
+      XP_IF_TARGET_REACHED: '30 XP'
 - takeScreenshot: difficulty-E4-1-week-view-hard
 
 # Relance à froid : la difficulté et l'expérience sont conservées.
@@ -136,8 +141,9 @@ tags:
 - extendedWaitUntil:
     visible: 'Courir 5 km, .+, fait, .+ cette semaine, Difficile, 20 XP par suivi(, objectif atteint)?'
     timeout: 60000
-- extendedWaitUntil:
-    visible:
-      id: 'xp-counter'
-      text: '20 XP'
-    timeout: 10000
+- runFlow:
+    file: ../subflows/expect-xp.yaml
+    env:
+      ROW: 'Courir 5 km, .+, fait, .+ cette semaine, Difficile, 20 XP par suivi'
+      XP: '20 XP'
+      XP_IF_TARGET_REACHED: '30 XP'
