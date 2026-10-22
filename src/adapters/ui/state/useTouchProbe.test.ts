@@ -169,6 +169,9 @@ describe('useTouchProbe', () => {
       const probe = await renderWithClocks(clock);
 
       await probe.rerender({ now: () => clock.time + 40, uiNow: () => clock.time });
+      // Le nouvel aller-retour vers le fil UI passe par une image simulée : il revient après le
+      // rerender, et doit revenir pendant le test, sous act.
+      await waitFor(() => expect(probe.result.current.calibration).toEqual({ offset: -40 }));
       probe.result.current.onBegin();
       clock.time += 10;
       await flushToJs();
