@@ -100,7 +100,12 @@ trop chaque story.
    - en local, `npm run mutation:ui` (lignes nouvelles des écrans ; `-- --full` pour tous).
 4. **Quand elle tourne, les seuils actuels s'appliquent** : les shards d'écrans sont dans la classe
    du code nouveau (70 %). Aucun seuil ne change.
-5. **Le résumé de la CI le dit** : « Screen mutation (…) not requested », avec le nombre de fichiers
+5. **L'orchestrateur ne pose le label qu'à la demande du propriétaire, et attend le résultat avant
+   de merger.** Le check `Screen mutation tests (StrykerJS)` n'existe que sur le commit où le label
+   est posé : il ne peut pas être exigé par la protection de branche (un check exigé qui ne
+   s'exécute pas bloquerait toutes les autres PR). L'orchestrateur attend donc qu'il soit vert
+   avant d'activer l'auto-merge (`/dev-story`, étape Merge), et le désactive s'il était actif.
+6. **Le résumé de la CI le dit** : « Screen mutation (…) not requested », avec le nombre de fichiers
    d'écran modifiés non mutés et les moyens de la demander ; ou « requested » quand elle tourne.
 
 Mise en œuvre : `buildPlan()` reçoit l'option `ui` (`exclude` par défaut, `include`, `only`),
@@ -114,6 +119,8 @@ choisie par `MUTATION_UI` ou les options `--ui` et `--ui-only` de `scripts/mutat
 - **Relancer les jobs de mutation du run de CI existant** : le run garde les labels de son
   événement d'origine ; il faudrait lire les labels par l'API et attendre la fin du run.
 - **Retirer les écrans de la mutation pour de bon** : hors de la décision du propriétaire.
+- **Rendre le check `Screen mutation tests (StrykerJS)` exigé** : il n'existe que sur les commits
+  où le label est posé ; exigé, il bloquerait toutes les PR sans label.
 
 ### Conséquences
 
@@ -121,5 +128,10 @@ choisie par `MUTATION_UI` ou les options `--ui` et `--ui-only` de `scripts/mutat
 - Quand le label est posé sur une PR ouverte, la mutation des écrans a son propre check
   (`Screen mutation tests (StrykerJS)`), avec un score calculé sur les écrans seuls ; aux pushs
   suivants, elle est comptée dans le check habituel `Mutation tests (StrykerJS)`.
+- Pour un autre label, les jobs du workflow `Screen mutation` portent un autre nom (« Label without
+  mutation … ») : aucun check sauté ne masque un échec de la mutation des écrans sur le même commit.
+- Cas limite accepté : une PR créée avec le label déjà posé mute ses écrans deux fois (`ci.yml` à
+  l'ouverture, et `mutation-ui.yml`, car GitHub émet aussi un événement `labeled` à la création).
+  Les deux résultats doivent être verts.
 - Les agents `dev`, `qa` et `reviewer` n'exigent plus la mutation des écrans quand elle n'a pas été
   demandée.
