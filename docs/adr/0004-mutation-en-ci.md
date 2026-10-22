@@ -144,7 +144,7 @@ choisie par `MUTATION_UI` ou les options `--ui` et `--ui-only` de `scripts/mutat
 ## Révisé le 22 octobre 2026 — mutation du « core » en parts parallèles
 
 - **Décideur** : le propriétaire
-- **Contexte produit** : PR #50 (story #24), changement de processus « faster story flow »
+- **Contexte produit** : PR #59, qui porte la décision ; mesures prises sur la PR #50 (story #24)
 
 ### Contexte
 
