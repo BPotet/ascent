@@ -299,6 +299,11 @@ jobs:
     # Écriture du dépôt : seulement pour publier les captures sur la branche `e2e-screenshots`.
     permissions:
       contents: write
+    # Image système de l'émulateur, déclarée une seule fois pour le cache et pour l'émulateur.
+    env:
+      EMULATOR_API_LEVEL: 34
+      EMULATOR_TARGET: google_apis
+      EMULATOR_ARCH: x86_64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -320,12 +325,44 @@ jobs:
           installed="$("$HOME/.maestro/bin/maestro" --version | tail -n 1)"
           echo "Maestro ${installed}"
           test "${installed}" = "${MAESTRO_VERSION}"
+      - name: Cache the Android system image
+        # Le téléchargement de l'image chez Google échoue parfois (archive corrompue) et l'émulateur
+        # ne démarre pas. Une image déjà présente n'est pas retéléchargée par sdkmanager.
+        # Le préfixe du SDK reste en dur : le contexte `env` ne voit pas ANDROID_HOME du runner.
+        id: system-image-cache
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/system-images/android-${{ env.EMULATOR_API_LEVEL }}/${{ env.EMULATOR_TARGET }}/${{ env.EMULATOR_ARCH }}
+          # Incrémenter le suffixe `-vN` force le renouvellement du cache.
+          key: android-system-image-${{ env.EMULATOR_API_LEVEL }}-${{ env.EMULATOR_TARGET }}-${{ env.EMULATOR_ARCH }}-v1
+      - name: Preinstall the Android system image
+        # Sans cache, l'image est installée ici avec trois tentatives. Une archive corrompue peut
+        # laisser sdkmanager terminer sans erreur : seul `package.xml` prouve l'installation.
+        if: steps.system-image-cache.outputs.cache-hit != 'true'
+        run: |
+          set -uo pipefail
+          sdkmanager="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          package="system-images;android-${EMULATOR_API_LEVEL};${EMULATOR_TARGET};${EMULATOR_ARCH}"
+          image_dir="${ANDROID_HOME}/system-images/android-${EMULATOR_API_LEVEL}/${EMULATOR_TARGET}/${EMULATOR_ARCH}"
+          yes | "${sdkmanager}" --licenses > /dev/null || true
+          for attempt in 1 2 3; do
+            echo "Installing ${package} (attempt ${attempt}/3)"
+            if "${sdkmanager}" --install "${package}" && [ -f "${image_dir}/package.xml" ]; then
+              echo "${package} installed in ${image_dir}"
+              exit 0
+            fi
+            echo "::warning::Attempt ${attempt} to install ${package} failed."
+            rm -rf "${image_dir}"
+            [ "${attempt}" -lt 3 ] && sleep 30
+          done
+          echo "::error::${package} could not be installed after 3 attempts."
+          exit 1
       - name: Run the Maestro flows on an Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
-          arch: x86_64
-          target: google_apis
+          api-level: ${{ env.EMULATOR_API_LEVEL }}
+          arch: ${{ env.EMULATOR_ARCH }}
+          target: ${{ env.EMULATOR_TARGET }}
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
