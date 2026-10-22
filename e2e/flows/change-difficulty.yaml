@@ -13,7 +13,8 @@
 # 1 le dimanche : la cocher atteint alors l'objectif (+5 XP de prime en Moyenne), et passer en
 # « Difficile » réévalue aussi la prime (+5 XP de plus). Les expériences exactes passent par
 # `subflows/expect-xp.yaml` (10 ou 15 XP, puis 20 ou 30 XP), et le message « Habitude modifiée »
-# par deux branches choisies sur le libellé de la ligne (+10 XP, ou +15 XP objectif atteint).
+# par deux branches choisies sur le libellé de la ligne lu avant « Enregistrer » (+10 XP, ou
+# +15 XP objectif atteint).
 # Captures pour la comparaison avec la maquette docs/mockups/22-difficulte-objectif (E7, E1, E4).
 appId: com.bpotet.ascent
 name: Passer une habitude en Difficile dans Modifier l'habitude
@@ -48,6 +49,14 @@ tags:
       ROW: 'Courir 5 km, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi'
       XP: '10 XP'
       XP_IF_TARGET_REACHED: '15 XP'
+
+# L'objectif atteint ou non, lu sur la ligne avant d'ouvrir le panneau.
+- evalScript: ${output.targetReached = false}
+- runFlow:
+    when:
+      visible: 'Courir 5 km, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi, objectif atteint'
+    commands:
+      - evalScript: ${output.targetReached = true}
 
 # « Modifier l'habitude » : la difficulté de la semaine est préremplie, rien n'a changé.
 - tapOn:
@@ -91,12 +100,25 @@ tags:
 - takeScreenshot: difficulty-E7-2-edit-sheet-hard-info
 
 # Enregistrée : « Habitude modifiée » avec le gain ; la case du jour vaut désormais 20 XP.
+# Le gain dépend de l'objectif atteint (prime réévaluée), lu sur la ligne avant d'ouvrir le
+# panneau, qui la cache : il est gardé dans `output.targetReached`. Le message ne dure que 2,8 s :
+# il est vérifié dès qu'il apparaît.
 - tapOn:
     id: 'save-habit'
 - extendedWaitUntil:
     visible:
       id: 'toast'
     timeout: 10000
+- runFlow:
+    when:
+      true: ${output.targetReached}
+    commands:
+      - assertVisible: 'Habitude modifiée · \+15 XP'
+- runFlow:
+    when:
+      true: ${!output.targetReached}
+    commands:
+      - assertVisible: 'Habitude modifiée · \+10 XP'
 - takeScreenshot: difficulty-E7-3-updated-toast
 - extendedWaitUntil:
     notVisible:
@@ -105,17 +127,6 @@ tags:
 - extendedWaitUntil:
     visible: 'Courir 5 km, .+, fait, .+ cette semaine, Difficile, 20 XP par suivi(, objectif atteint)?'
     timeout: 10000
-# Le message dure 2,8 s : il est lu tout de suite, selon l'objectif atteint ou non.
-- runFlow:
-    when:
-      visible: 'Courir 5 km, .+, fait, .+ cette semaine, Difficile, 20 XP par suivi, objectif atteint'
-    commands:
-      - assertVisible: 'Habitude modifiée · \+15 XP'
-- runFlow:
-    when:
-      notVisible: 'Courir 5 km, .+, fait, .+ cette semaine, Difficile, 20 XP par suivi, objectif atteint'
-    commands:
-      - assertVisible: 'Habitude modifiée · \+10 XP'
 - runFlow:
     file: ../subflows/expect-xp.yaml
     env:
