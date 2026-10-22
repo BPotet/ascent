@@ -379,7 +379,7 @@ export function DayViewScreen({
               reminder && (
                 <YesterdayReminderBanner
                   doneCount={reminder.doneCount}
-                  activeCount={reminder.activeCount}
+                  activeCount={reminder.expectedCount}
                   {...(onCorrectYesterday && {
                     onCorrect: () => onCorrectYesterday(reminder.week),
                   })}

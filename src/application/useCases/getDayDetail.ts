@@ -1,5 +1,6 @@
 import type { Day } from '../../domain/day/Day';
 import { monthDayOf, type MonthDay } from '../../domain/month/MonthDay';
+import { Week } from '../../domain/week/Week';
 import type { UseCaseDependencies } from './UseCaseDependencies';
 
 /**
@@ -16,6 +17,10 @@ export type DayDetail = MonthDay;
  * sans limite de temps, +10 / −10 Xp, marque « corrigé »). `notStartedHabits` contient les habitudes
  * existantes créées plus tard, « hors habitude », jamais modifiables (R12, Q3). Un jour à venir n'a
  * aucune case modifiable ; un jour neutre n'a aucune habitude active.
+ *
+ * Il compte les habitudes attendues comme le Jour du mois (#25) : les suivis sont lus du lundi de la
+ * semaine de `day` jusqu'à `day`, même quand ce lundi tombe le mois précédent, avec les changements
+ * de réglages. Le Détail du jour et la case de la Vue Mois ne peuvent donc pas se contredire.
  * Aujourd'hui est lu une fois, dans l'unité de travail. Une panne de lecture est une exception.
  */
 export function getDayDetail(
@@ -25,7 +30,7 @@ export function getDayDetail(
   return unitOfWork.run(async ({ habits, checkIns, settingsChanges }) => {
     const today = clock.today();
     const existing = await habits.listAll();
-    const dayCheckIns = await checkIns.listBetween(day, day);
-    return monthDayOf(day, existing, dayCheckIns, await settingsChanges.listAll(), today);
+    const weekCheckIns = await checkIns.listBetween(Week.containing(day).start, day);
+    return monthDayOf(day, existing, weekCheckIns, await settingsChanges.listAll(), today);
   });
 }

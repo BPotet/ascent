@@ -1,9 +1,14 @@
 import { Day } from '../../domain/day/Day';
+import type { Habit } from '../../domain/habit/Habit';
 import { HabitName } from '../../domain/habit/HabitName';
+import type { WeeklyTarget } from '../../domain/habit/WeeklyTarget';
 import { Week } from '../../domain/week/Week';
 import type { KeyValueStore } from '../ports/KeyValueStore';
 import { InMemoryUnitOfWork, StorageUnavailableError } from '../testing/InMemoryUnitOfWork';
+import { experienceInvariant } from '../testing/experienceInvariant';
 import { settableClock } from '../testing/settableClock';
+import { createHabit } from './createHabit';
+import { toggleCheckIn } from './toggleCheckIn';
 import {
   dismissYesterdayReminder,
   getYesterdayReminder,
@@ -55,13 +60,13 @@ describe('yesterday reminder (rappel d’hier)', () => {
   });
 
   describe('getYesterdayReminder', () => {
-    it('counts the habits « fait » yesterday among those active yesterday, and the week to open', async () => {
+    it('counts the habits « fait » yesterday among those expected yesterday, and the week to open', async () => {
       await checkIn('Cuisiner', tuesday);
 
       await expect(getYesterdayReminder(deps())).resolves.toEqual({
         day: tuesday,
         doneCount: 1,
-        activeCount: 2,
+        expectedCount: 2,
         week: Week.containing(tuesday),
       });
     });
@@ -73,7 +78,7 @@ describe('yesterday reminder (rappel d’hier)', () => {
 
       await expect(getYesterdayReminder(deps())).resolves.toMatchObject({
         doneCount: 1,
-        activeCount: 2,
+        expectedCount: 2,
       });
     });
 
@@ -88,11 +93,11 @@ describe('yesterday reminder (rappel d’hier)', () => {
 
       await expect(getYesterdayReminder(deps())).resolves.toMatchObject({
         doneCount: 0,
-        activeCount: 2,
+        expectedCount: 2,
       });
     });
 
-    it('is not shown when every habit active yesterday is « fait »', async () => {
+    it('is not shown when every habit expected yesterday is « fait »', async () => {
       await checkIn('Cuisiner', tuesday);
       await checkIn('Budget du jour', tuesday);
 
@@ -112,8 +117,104 @@ describe('yesterday reminder (rappel d’hier)', () => {
       await expect(getYesterdayReminder(deps())).resolves.toMatchObject({
         day: day(10, 18),
         doneCount: 0,
-        activeCount: 3,
+        expectedCount: 3,
         week: Week.containing(day(10, 18)),
+      });
+    });
+
+    describe('expected habits (#25)', () => {
+      const monday5 = day(10, 5);
+      const monday12 = day(10, 12);
+      const thursday15 = day(10, 15);
+      const friday16 = day(10, 16);
+
+      /** Crée l'habitude `name` le lundi 5 octobre, avec l'objectif `weeklyTarget`. */
+      async function create(name: string, weeklyTarget: WeeklyTarget): Promise<Habit> {
+        const today = clock.today();
+        clock.setToday(monday5);
+        const created = await createHabit(deps(), name, 'medium', weeklyTarget);
+        clock.setToday(today);
+        return created.ok ? created.habit : (undefined as never);
+      }
+
+      async function done(habit: Habit, ...days: Day[]): Promise<void> {
+        for (const each of days) {
+          await expect(toggleCheckIn(deps(), habit.id, each)).resolves.toMatchObject({ ok: true });
+        }
+      }
+
+      /** Le contexte de la story : « Courir 5 km », objectif 3, et « Cuisiner », objectif 7. */
+      async function story(): Promise<{ running: Habit; cooking: Habit }> {
+        unitOfWork = new InMemoryUnitOfWork();
+        return { running: await create('Courir 5 km', 3), cooking: await create('Cuisiner', 7) };
+      }
+
+      afterEach(async () => {
+        const { xp, expected } = await experienceInvariant(unitOfWork);
+        expect(xp).toBe(expected);
+      });
+
+      it('counts a non-daily habit still under its target (« Hier : 1/2 faites »)', async () => {
+        clock.setToday(tuesday);
+        const { cooking } = await story();
+        await done(cooking, monday12);
+
+        await expect(getYesterdayReminder(deps())).resolves.toMatchObject({
+          day: monday12,
+          doneCount: 1,
+          expectedCount: 2,
+        });
+      });
+
+      it('is not shown when the only habit not « fait » yesterday had already reached its target', async () => {
+        clock.setToday(friday16);
+        const { running, cooking } = await story();
+        await done(running, monday12, tuesday, wednesday);
+        await done(cooking, thursday15);
+
+        await expect(getYesterdayReminder(deps())).resolves.toBeNull();
+      });
+
+      it('counts it again once a correction takes the week back under its target', async () => {
+        clock.setToday(friday16);
+        const { running, cooking } = await story();
+        await done(running, monday12, tuesday, wednesday);
+        await done(cooking, thursday15);
+
+        await done(running, wednesday);
+
+        await expect(getYesterdayReminder(deps())).resolves.toMatchObject({
+          day: thursday15,
+          doneCount: 1,
+          expectedCount: 2,
+        });
+      });
+
+      it('reads the week of yesterday on a Monday, not the week of today', async () => {
+        const monday19 = day(10, 19);
+        clock.setToday(monday19);
+        const { running, cooking } = await story();
+        // Semaine d'hier (12 au 18) : « Courir 5 km » atteint son objectif le mercredi.
+        await done(running, monday12, tuesday, wednesday);
+        await done(cooking, day(10, 18));
+
+        await expect(getYesterdayReminder(deps())).resolves.toBeNull();
+      });
+
+      it('does not count a « fait » of today, Monday, in the progress of yesterday', async () => {
+        const monday19 = day(10, 19);
+        clock.setToday(monday19);
+        const { running, cooking } = await story();
+        await done(running, monday12, tuesday);
+        await done(cooking, day(10, 18));
+        await done(running, monday19);
+
+        await expect(getYesterdayReminder(deps())).resolves.toMatchObject({
+          day: day(10, 18),
+          doneCount: 1,
+          expectedCount: 2,
+          week: Week.containing(day(10, 18)),
+        });
       });
     });
 

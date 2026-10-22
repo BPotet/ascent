@@ -281,7 +281,9 @@ const steps: StepDefinitions = ({ given, when, then }) => {
   );
   given(/^le joueur a ouvert le (.+) dans la Vue Mois$/, openDay);
   given(/^les suivis d'(\S+ \d{4}) ne peuvent pas être lus$/, (text: string) => {
-    world.connection.faults.failWhen(readsFromWith('check_ins', monthOf(text).start.toIsoString()));
+    // La lecture des suivis du mois part du lundi de la semaine du 1er (#25) : elle finit au dernier
+    // jour du mois.
+    world.connection.faults.failWhen(readsFromWith('check_ins', monthOf(text).end.toIsoString()));
   });
 
   when(/^(?:le joueur|il) touche l'onglet « Mois »$/, () => showMonth('current'));
