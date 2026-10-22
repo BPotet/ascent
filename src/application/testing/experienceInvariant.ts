@@ -26,7 +26,11 @@ export function experienceInvariant(unitOfWork: UnitOfWork): Promise<ExperienceI
       const changes = await settingsChanges.listByHabit(habit.id);
       for (const checkIn of await checkIns.listByHabit(habit.id)) {
         if (checkIn.done) {
-          const { difficulty } = weekSettingsOf(changes, Week.containing(checkIn.day));
+          const { difficulty } = weekSettingsOf(
+            changes,
+            Week.containing(checkIn.day),
+            habit.createdOn,
+          );
           expected += XP_PER_CHECK_IN[difficulty];
         }
       }

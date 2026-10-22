@@ -1,5 +1,6 @@
 import { Day } from '../../domain/day/Day';
 import { InvalidDifficultyError, type Difficulty } from '../../domain/habit/Difficulty';
+import { InvalidWeeklyTargetError, type WeeklyTarget } from '../../domain/habit/WeeklyTarget';
 import { InMemoryUnitOfWork, StorageUnavailableError } from '../testing/InMemoryUnitOfWork';
 import { settableClock } from '../testing/settableClock';
 import { createHabit } from './createHabit';
@@ -24,7 +25,11 @@ describe('createHabit', () => {
   it('creates a habit dated from today (R1, R2)', async () => {
     const result = await createHabit(deps(), 'Cuisiner');
 
-    expect(result).toEqual({ ok: true, habit: expect.objectContaining({ createdOn: wednesday }) });
+    expect(result).toEqual({
+      ok: true,
+      habit: expect.objectContaining({ createdOn: wednesday }),
+      weekTarget: 5,
+    });
     expect(result.ok && result.habit.name.value).toBe('Cuisiner');
     expect(await names()).toEqual(['Cuisiner']);
   });
@@ -157,7 +162,7 @@ describe('createHabit', () => {
   describe('difficulty', () => {
     const changes = () => unitOfWork.run(({ settingsChanges }) => settingsChanges.listAll());
 
-    it('records a first settings change in Moyenne, dated from today, by default (R2)', async () => {
+    it('records a first settings change in Moyenne and « Tous les jours », dated from today, by default (R2, R4)', async () => {
       const result = await createHabit(deps(), 'Lire 20 pages');
 
       expect(result.ok).toBe(true);
@@ -167,6 +172,7 @@ describe('createHabit', () => {
           changedOn: wednesday,
           sequence: expect.any(Number),
           difficulty: 'medium',
+          weeklyTarget: 7,
         },
       ]);
     });
@@ -220,5 +226,58 @@ describe('createHabit', () => {
       expect(await names()).toEqual([]);
       await expect(changes()).resolves.toEqual([]);
     });
+  });
+
+  describe('weekly target', () => {
+    const changes = () => unitOfWork.run(({ settingsChanges }) => settingsChanges.listAll());
+
+    it('records the target 7 by default (R4)', async () => {
+      await createHabit(deps(), 'Boire de l’eau');
+
+      await expect(changes()).resolves.toMatchObject([{ weeklyTarget: 7 }]);
+    });
+
+    it.each([1, 3, 7] as const)('records the chosen target %p', async (weeklyTarget) => {
+      const result = await createHabit(deps(), 'Courir 5 km', 'hard', weeklyTarget);
+
+      expect(result.ok).toBe(true);
+      await expect(changes()).resolves.toMatchObject([
+        { changedOn: wednesday, difficulty: 'hard', weeklyTarget },
+      ]);
+    });
+
+    it.each([
+      ['Monday', Day.of(2026, 10, 12), 7, 7],
+      ['Wednesday', wednesday, 7, 5],
+      ['Thursday', Day.of(2026, 10, 15), 3, 3],
+      ['Sunday', Day.of(2026, 10, 18), 4, 1],
+    ] as const)(
+      'gives the target of the week of creation, from today (%s, target %p: %p, R6)',
+      async (_, today, weeklyTarget, weekTarget) => {
+        clock.setToday(today);
+
+        await expect(
+          createHabit(deps(), 'Courir 5 km', 'medium', weeklyTarget),
+        ).resolves.toMatchObject({ ok: true, weekTarget });
+      },
+    );
+
+    it('gives the target of the week of creation of the default target (R4, R6)', async () => {
+      await expect(createHabit(deps(), 'Méditer')).resolves.toMatchObject({
+        ok: true,
+        weekTarget: 5,
+      });
+    });
+
+    it.each([0, 8, 2.5])(
+      'refuses the target %p, and creates nothing (R3)',
+      async (weeklyTarget) => {
+        await expect(
+          createHabit(deps(), 'Courir 5 km', 'medium', weeklyTarget as WeeklyTarget),
+        ).rejects.toThrow(InvalidWeeklyTargetError);
+        expect(await names()).toEqual([]);
+        await expect(changes()).resolves.toEqual([]);
+      },
+    );
   });
 });

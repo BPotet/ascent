@@ -240,6 +240,117 @@ describe('HabitRow', () => {
     });
   });
 
+  describe('with its weekly progress (Vue Journée, E1)', () => {
+    const progress = (weeklyProgress: number, weekTarget: number, targetReached = false) => ({
+      weeklyProgress,
+      weekTarget,
+      targetReached,
+    });
+
+    it('writes the status and the progress of the week after the difficulty', async () => {
+      await render(
+        <HabitRow
+          habitDay={habitDay('pending')}
+          difficulty="hard"
+          weeklyProgress={progress(2, 3)}
+        />,
+      );
+
+      expect(screen.getByTestId('habit-progress-7')).toHaveTextContent(
+        'À faire · 2/3 cette semaine',
+      );
+      expect(
+        within(screen.getByTestId('habit-difficulty-7')).getAllByTestId('difficulty-peak', {
+          includeHiddenElements: true,
+        }),
+      ).toHaveLength(3);
+      expect(screen.getByTestId('habit-difficulty-7')).toHaveTextContent('Difficile');
+    });
+
+    it('writes « 0/7 cette semaine » for a habit to do every day, like the others', async () => {
+      await render(
+        <HabitRow
+          habitDay={habitDay('done')}
+          difficulty="medium"
+          weeklyProgress={progress(4, 7)}
+        />,
+      );
+
+      expect(screen.getByTestId('habit-progress-7')).toHaveTextContent('Fait · 4/7 cette semaine');
+      expect(screen.getByTestId('habit-progress-7')).toHaveStyle({ color: '#8FE8BF' });
+    });
+
+    it('reads the progress after the status: « Cuisiner, …, à faire, 2 sur 3 cette semaine »', async () => {
+      await render(
+        <HabitRow
+          habitDay={habitDay('pending')}
+          difficulty="hard"
+          weeklyProgress={progress(2, 3)}
+        />,
+      );
+
+      expect(
+        screen.getByRole('switch', {
+          name: 'Cuisiner, mercredi 14 octobre, à faire, 2 sur 3 cette semaine, Difficile, 20 XP par suivi',
+        }),
+      ).toBeOnTheScreen();
+    });
+
+    it('carries the badge « Objectif atteint » once the target of the week is reached', async () => {
+      await render(
+        <HabitRow
+          habitDay={habitDay('done')}
+          difficulty="hard"
+          weeklyProgress={progress(4, 3, true)}
+          onToggle={jest.fn()}
+        />,
+      );
+
+      const badge = screen.getByTestId('habit-target-reached-7', { includeHiddenElements: true });
+      expect(badge).toHaveTextContent('Objectif atteint');
+      expect(within(badge).getByTestId('flag-glyph', { includeHiddenElements: true })).toBeTruthy();
+      expect(badge).toHaveStyle({ borderColor: 'rgba(61,220,151,0.55)' });
+      expect(screen.getByTestId('habit-progress-7')).toHaveTextContent(
+        'Fait · 4 fois cette semaine',
+      );
+      const row = screen.getByRole('switch', {
+        name: 'Cuisiner, mercredi 14 octobre, fait, 4 fois cette semaine, Difficile, 20 XP par suivi, objectif atteint',
+      });
+      expect(row).toBeEnabled();
+    });
+
+    it('stays touchable once the target is just reached, written « 3/3 »', async () => {
+      const onToggle = jest.fn();
+      await render(
+        <HabitRow
+          habitDay={habitDay('pending')}
+          weeklyProgress={progress(3, 3, true)}
+          onToggle={onToggle}
+        />,
+      );
+
+      await fireEvent.press(screen.getByRole('switch'));
+
+      expect(onToggle).toHaveBeenCalled();
+      expect(screen.getByTestId('habit-progress-7')).toHaveTextContent(
+        'À faire · 3/3 cette semaine',
+      );
+      expect(
+        screen.getByRole('switch', { name: /, à faire, 3 sur 3 cette semaine, /u }),
+      ).toBeEnabled();
+    });
+
+    it('shows no badge, and no mark of failure, below the target', async () => {
+      await render(<HabitRow habitDay={habitDay('pending')} weeklyProgress={progress(1, 3)} />);
+
+      expect(
+        screen.queryByTestId('habit-target-reached-7', { includeHiddenElements: true }),
+      ).not.toBeOnTheScreen();
+      expect(screen.queryByTestId('cross-mark', { includeHiddenElements: true })).toBeNull();
+      expect(screen.getByRole('switch').props.accessibilityLabel).not.toMatch(/objectif atteint/u);
+    });
+  });
+
   describe('with an edit action', () => {
     it('offers « Modifier l’habitude Cuisiner », a target apart from the switch', async () => {
       const onToggle = jest.fn();

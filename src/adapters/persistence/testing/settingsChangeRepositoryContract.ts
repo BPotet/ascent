@@ -6,6 +6,7 @@ import type { Difficulty } from '../../../domain/habit/Difficulty';
 import type { Habit } from '../../../domain/habit/Habit';
 import { HabitName } from '../../../domain/habit/HabitName';
 import type { SettingsChange } from '../../../domain/habit/SettingsChange';
+import { WEEKLY_TARGETS, type WeeklyTarget } from '../../../domain/habit/WeeklyTarget';
 
 const monday5 = Day.of(2026, 10, 5);
 const monday12 = Day.of(2026, 10, 12);
@@ -21,18 +22,24 @@ export function describeSettingsChangeRepositoryContract(
 
     const inTransaction = <T>(work: (repositories: Repositories) => Promise<T>) =>
       unitOfWork.run(work);
-    const add = (habit: Habit, changedOn: Day, difficulty: Difficulty) =>
+    const add = (
+      habit: Habit,
+      changedOn: Day,
+      difficulty: Difficulty,
+      weeklyTarget: WeeklyTarget = 7,
+    ) =>
       inTransaction(({ settingsChanges }) =>
-        settingsChanges.add(habit.id, changedOn, { difficulty }),
+        settingsChanges.add(habit.id, changedOn, { difficulty, weeklyTarget }),
       );
     const listByHabit = (habit: Habit) =>
       inTransaction(({ settingsChanges }) => settingsChanges.listByHabit(habit.id));
     const listAll = () => inTransaction(({ settingsChanges }) => settingsChanges.listAll());
     /** Un changement sans son ordre de saisie, attribué au stockage. */
-    const withoutSequence = ({ habitId, changedOn, difficulty }: SettingsChange) => ({
+    const withoutSequence = ({ habitId, changedOn, difficulty, weeklyTarget }: SettingsChange) => ({
       habitId,
       changedOn,
       difficulty,
+      weeklyTarget,
     });
 
     beforeEach(async () => {
@@ -49,12 +56,13 @@ export function describeSettingsChangeRepositoryContract(
     });
 
     it('gives back the added change, with its day, its settings and an order of entry', async () => {
-      const added = await add(cooking, monday5, 'hard');
+      const added = await add(cooking, monday5, 'hard', 3);
 
       expect(withoutSequence(added)).toEqual({
         habitId: cooking.id,
         changedOn: monday5,
         difficulty: 'hard',
+        weeklyTarget: 3,
       });
       expect(Number.isSafeInteger(added.sequence)).toBe(true);
       await expect(listByHabit(cooking)).resolves.toEqual([added]);
@@ -64,6 +72,21 @@ export function describeSettingsChangeRepositoryContract(
       await add(cooking, monday5, difficulty);
 
       await expect(listByHabit(cooking)).resolves.toMatchObject([{ difficulty }]);
+    });
+
+    it.each(WEEKLY_TARGETS)('keeps the weekly target %p', async (weeklyTarget) => {
+      await add(cooking, monday5, 'medium', weeklyTarget);
+
+      await expect(listByHabit(cooking)).resolves.toMatchObject([{ weeklyTarget }]);
+      await expect(listAll()).resolves.toMatchObject([{ weeklyTarget }]);
+    });
+
+    it('keeps the settings of each change apart, never emptying a weekly target', async () => {
+      const first = await add(cooking, monday5, 'easy', 3);
+      const second = await add(cooking, wednesday14, 'hard', 5);
+
+      await expect(listByHabit(cooking)).resolves.toEqual([first, second]);
+      expect([first.weeklyTarget, second.weeklyTarget]).toEqual([3, 5]);
     });
 
     it('gives each change an order of entry greater than all the previous ones', async () => {
@@ -109,7 +132,10 @@ export function describeSettingsChangeRepositoryContract(
     it('refuses a change of a habit that does not exist', async () => {
       await expect(
         inTransaction(({ settingsChanges }) =>
-          settingsChanges.add(cooking.id + budget.id + 100, monday5, { difficulty: 'hard' }),
+          settingsChanges.add(cooking.id + budget.id + 100, monday5, {
+            difficulty: 'hard',
+            weeklyTarget: 7,
+          }),
         ),
       ).rejects.toThrow();
 
@@ -121,7 +147,10 @@ export function describeSettingsChangeRepositoryContract(
 
       await expect(
         inTransaction(async ({ settingsChanges }) => {
-          await settingsChanges.add(cooking.id, wednesday14, { difficulty: 'hard' });
+          await settingsChanges.add(cooking.id, wednesday14, {
+            difficulty: 'hard',
+            weeklyTarget: 7,
+          });
           throw new Error('work failed');
         }),
       ).rejects.toThrow('work failed');

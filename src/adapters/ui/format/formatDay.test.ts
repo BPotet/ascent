@@ -1,5 +1,5 @@
 import { Day } from '../../../domain/day/Day';
-import { capitalize, formatDayAndMonth } from './formatDay';
+import { capitalize, formatDayAndMonth, formatWeekday } from './formatDay';
 
 describe('formatDayAndMonth', () => {
   it.each([
@@ -21,6 +21,16 @@ describe('formatDayAndMonth', () => {
     [2027, 1, 1, 'vendredi 1 janvier'],
   ])('formats %i-%i-%i as « %s », without the year', (year, month, dayOfMonth, expected) => {
     expect(formatDayAndMonth(Day.of(year, month, dayOfMonth))).toBe(expected);
+  });
+});
+
+describe('formatWeekday', () => {
+  it.each([
+    [12, 'lundi'],
+    [15, 'jeudi'],
+    [18, 'dimanche'],
+  ])('names the day of the week of the %i October 2026 « %s »', (dayOfMonth, weekday) => {
+    expect(formatWeekday(Day.of(2026, 10, dayOfMonth))).toBe(weekday);
   });
 });
 

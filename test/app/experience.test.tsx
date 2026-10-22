@@ -70,11 +70,15 @@ describe('app experience', () => {
     await headerShows(0);
 
     await fireEvent.press(
-      await screen.findByLabelText(`${COOKING_TODAY}, à faire, Moyenne, 10 XP par suivi`),
+      await screen.findByLabelText(
+        `${COOKING_TODAY}, à faire, 0 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
     );
 
     expect(
-      await screen.findByLabelText(`${COOKING_TODAY}, fait, Moyenne, 10 XP par suivi`),
+      await screen.findByLabelText(
+        `${COOKING_TODAY}, fait, 1 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
     ).toBeOnTheScreen();
     await headerShows(10);
     expect(vibrations).toHaveBeenCalledTimes(1);
@@ -90,17 +94,23 @@ describe('app experience', () => {
     openDatabase.mockResolvedValue(await databaseWithCooking());
     await renderRouter(appDirectory);
     await fireEvent.press(
-      await screen.findByLabelText(`${COOKING_TODAY}, à faire, Moyenne, 10 XP par suivi`),
+      await screen.findByLabelText(
+        `${COOKING_TODAY}, à faire, 0 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
     );
     await headerShows(10);
     vibrations.mockClear();
 
     await fireEvent.press(
-      await screen.findByLabelText(`${COOKING_TODAY}, fait, Moyenne, 10 XP par suivi`),
+      await screen.findByLabelText(
+        `${COOKING_TODAY}, fait, 1 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
     );
 
     expect(
-      await screen.findByLabelText(`${COOKING_TODAY}, à faire, Moyenne, 10 XP par suivi`),
+      await screen.findByLabelText(
+        `${COOKING_TODAY}, à faire, 0 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
     ).toBeOnTheScreen();
     await headerShows(0);
     expect(vibrations).not.toHaveBeenCalled();
@@ -123,7 +133,9 @@ describe('app experience', () => {
     await fireEvent.press(row);
 
     expect(
-      await screen.findByLabelText(`${COOKING_TODAY}, fait, Moyenne, 10 XP par suivi`),
+      await screen.findByLabelText(
+        `${COOKING_TODAY}, fait, 1 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
     ).toBeOnTheScreen();
     await headerShows(10);
     // +10, −10, +10 : une vibration par gain, aucune pour la perte.
@@ -142,7 +154,9 @@ describe('app experience', () => {
     openDatabase.mockResolvedValue(await databaseWithCooking());
     await renderRouter(appDirectory);
     await fireEvent.press(
-      await screen.findByLabelText(`${COOKING_TODAY}, à faire, Moyenne, 10 XP par suivi`),
+      await screen.findByLabelText(
+        `${COOKING_TODAY}, à faire, 0 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
     );
     await headerShows(10);
 
@@ -151,7 +165,9 @@ describe('app experience', () => {
 
     await headerShows(10);
     expect(
-      screen.getByLabelText(`${COOKING_TODAY}, fait, Moyenne, 10 XP par suivi`),
+      screen.getByLabelText(
+        `${COOKING_TODAY}, fait, 1 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
     ).toBeOnTheScreen();
     expect(openDatabase).toHaveBeenCalledTimes(2);
   });
@@ -183,14 +199,17 @@ describe('app experience', () => {
         1 - done,
       ]);
     }
-    // L'ouverture de la base par l'app la met au dernier schéma, comme sur le téléphone.
+    // L'ouverture de la base par l'app la met au dernier schéma, comme sur le téléphone ; le
+    // démarrage donne ensuite l'objectif 7 à « Cuisiner » (changement d'introduction, #24).
     openDatabase.mockImplementation(() => prepareAscentDatabase(db));
 
     await renderRouter(appDirectory);
 
     await headerShows(70);
     await fireEvent.press(
-      await screen.findByLabelText(`${COOKING_TODAY}, à faire, Moyenne, 10 XP par suivi`),
+      await screen.findByLabelText(
+        `${COOKING_TODAY}, à faire, 2 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
     );
     await headerShows(80);
   });

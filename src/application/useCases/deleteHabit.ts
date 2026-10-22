@@ -54,6 +54,7 @@ async function deletionOf(
     deletionXpOf(
       await checkIns.listByHabit(habitId),
       await settingsChanges.listByHabit(habitId),
+      habit.createdOn,
       today,
     ),
   );

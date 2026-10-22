@@ -7,7 +7,7 @@ import {
 } from '../../domain/checkIn/CheckIn';
 import { habitDayOf, type HabitDay } from '../../domain/checkIn/HabitDay';
 import type { Day } from '../../domain/day/Day';
-import type { HabitId } from '../../domain/habit/Habit';
+import type { Habit, HabitId } from '../../domain/habit/Habit';
 import { weekSettingsOf } from '../../domain/habit/WeekSettings';
 import { Week } from '../../domain/week/Week';
 import type { Repositories } from '../ports/UnitOfWork';
@@ -51,18 +51,22 @@ async function doneCountOf(
 }
 
 /**
- * La variation d'expérience d'un tap qui remplace `current` par `next` : l'expérience de la semaine
- * du jour touché après moins avant, avec les réglages de **cette** semaine (R1, R14), par `weekXpOf`.
+ * La variation d'expérience d'un tap sur une case de `habit` qui remplace `current` par `next` :
+ * l'expérience de la semaine du jour touché après moins avant, avec les réglages de **cette**
+ * semaine (R1, R14), par `weekXpOf`. `habit` est celle que le cas d'usage a déjà lue : son jour de
+ * création sert aux réglages de la semaine, sans lecture de plus.
  */
 async function xpChangeOfToggle(
   repositories: Repositories,
+  habit: Habit,
   current: CheckIn | null,
   next: CheckIn,
 ): Promise<number> {
   const week = Week.containing(next.day);
   const settings = weekSettingsOf(
-    await repositories.settingsChanges.listByHabit(next.habitId),
+    await repositories.settingsChanges.listByHabit(habit.id),
     week,
+    habit.createdOn,
   );
   const before = await doneCountOf(repositories, next.habitId, week);
   const after = before - Number(current?.done ?? false) + Number(next.done);
@@ -110,7 +114,7 @@ export function toggleCheckIn(
     }
     const before = await character.get();
     const after = before.applyXpChange(
-      await xpChangeOfToggle(repositories, current, toggled.checkIn),
+      await xpChangeOfToggle(repositories, habit, current, toggled.checkIn),
     );
     await checkIns.save(toggled.checkIn);
     await character.save(after);

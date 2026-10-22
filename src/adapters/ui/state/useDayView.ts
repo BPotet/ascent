@@ -1,8 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { UseCaseDependencies } from '../../../application/useCases/UseCaseDependencies';
-import { type DayView, getDayView } from '../../../application/useCases/getDayView';
+import {
+  type DayView,
+  type DayViewHabit,
+  getDayView,
+} from '../../../application/useCases/getDayView';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
+import { isTargetReached } from '../../../domain/habit/WeeklyProgress';
 import { useUseCaseDependencies } from './Dependencies';
 import { useTrackingChanges } from './TrackingRevision';
 import {
@@ -48,13 +53,32 @@ function useLoad(
 const doneCountOf = (habits: readonly HabitDay[]) =>
   habits.filter(({ status }) => status === 'done').length;
 
+/**
+ * La ligne passée à l'état `status`, avec la progression de la semaine qui va avec : une case « fait »
+ * de plus ou de moins aujourd'hui, l'objectif atteint jugé par la règle du domaine. La relecture qui
+ * suit chaque tap enregistré montre ensuite ce qui est enregistré.
+ */
+function withStatus(row: DayViewHabit, status: HabitDay['status']): DayViewHabit {
+  const change = Number(status === 'done') - Number(row.status === 'done');
+  if (change === 0) {
+    return { ...row, status };
+  }
+  const weeklyProgress = row.weeklyProgress + change;
+  return {
+    ...row,
+    status,
+    weeklyProgress,
+    targetReached: isTargetReached(weeklyProgress, row.weekSettings.weekTarget),
+  };
+}
+
 /** La vue avec la case `saved` telle qu'elle est enregistrée, si la vue montre son jour. */
 function withSaved(view: DayView, saved: HabitDay): DayView {
   if (!view.day.equals(saved.day)) {
     return view;
   }
-  const habits = view.habits.map((habitDay) =>
-    keyOf(habitDay) === keyOf(saved) ? { ...habitDay, ...saved } : habitDay,
+  const habits = view.habits.map((row) =>
+    keyOf(row) === keyOf(saved) ? { ...withStatus(row, saved.status), ...saved } : row,
   );
   return { ...view, habits, doneCount: doneCountOf(habits) };
 }
@@ -64,7 +88,7 @@ function withShownStatuses(view: DayView, shown: ShownStatuses): DayView {
   if (shown.size === 0) {
     return view;
   }
-  const habits = view.habits.map((habitDay) => withShown(habitDay, shown));
+  const habits = view.habits.map((row) => withStatus(row, withShown(row, shown).status));
   return { ...view, habits, doneCount: doneCountOf(habits) };
 }
 
@@ -77,7 +101,8 @@ function withShownStatuses(view: DayView, shown: ShownStatuses): DayView {
  *   tout de suite l'autre état, puis se recale sur ce qui est enregistré quand le dernier tap en
  *   cours sur cette case a répondu : en cas d'échec, la case revient à son état enregistré. Après
  *   une correction (le jour vient d'être clos) ou un refus, la vue est rechargée. Un tap enregistré
- *   prévient les autres vues (`TrackingRevision`).
+ *   prévient les autres vues (`TrackingRevision`), et la vue se relit, sans repasser par le
+ *   chargement, pour montrer la progression de la semaine et l'objectif atteint qui en découlent.
  *
  * La vue se recharge, sans repasser par le chargement, quand une autre vue a enregistré un
  * changement (un tap dans la Vue Semaine).
@@ -106,8 +131,10 @@ export function useDayView(): {
         state.status === 'ready' ? { ...state, view: withSaved(state.view, saved) } : state,
       );
       trackingChanged();
+      // La progression de la semaine et l'objectif atteint se relisent après chaque tap enregistré.
+      void refresh();
     },
-    [trackingChanged],
+    [trackingChanged, refresh],
   );
 
   const { shown, toggle } = useOptimisticToggle({ onSaved, refresh });

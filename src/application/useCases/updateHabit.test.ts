@@ -3,10 +3,13 @@ import { Day } from '../../domain/day/Day';
 import { type Difficulty, InvalidDifficultyError } from '../../domain/habit/Difficulty';
 import type { Habit } from '../../domain/habit/Habit';
 import { HabitName } from '../../domain/habit/HabitName';
+import { InvalidWeeklyTargetError, type WeeklyTarget } from '../../domain/habit/WeeklyTarget';
 import type { UnitOfWork } from '../ports/UnitOfWork';
 import { experienceInvariant } from '../testing/experienceInvariant';
 import { InMemoryUnitOfWork, StorageUnavailableError } from '../testing/InMemoryUnitOfWork';
 import { settableClock } from '../testing/settableClock';
+import { createHabit } from './createHabit';
+import { introduceWeeklyTarget } from './introduceWeeklyTarget';
 import { toggleCheckIn } from './toggleCheckIn';
 import { updateHabit } from './updateHabit';
 
@@ -44,7 +47,8 @@ describe('updateHabit', () => {
     expect(result).toEqual({
       ok: true,
       habit: expect.objectContaining({ id: cooking.id }),
-      weekSettings: { difficulty: 'medium' },
+      weekSettings: { difficulty: 'medium', weeklyTarget: null, weekTarget: null },
+      nextWeeklyTarget: null,
       nameChanged: true,
       settingsChanged: false,
       xpChange: 0,
@@ -162,7 +166,7 @@ describe('updateHabit', () => {
     async function given(difficulty: Difficulty, ...days: Day[]): Promise<void> {
       running = await unitOfWork.run(async ({ habits, settingsChanges }) => {
         const habit = await habits.add(HabitName.parse('Courir 5 km'), monday5);
-        await settingsChanges.add(habit.id, monday5, { difficulty });
+        await settingsChanges.add(habit.id, monday5, { difficulty, weeklyTarget: 7 });
         return habit;
       });
       for (const day of days) {
@@ -182,7 +186,8 @@ describe('updateHabit', () => {
       await expect(update(running, 'hard')).resolves.toEqual({
         ok: true,
         habit: running,
-        weekSettings: { difficulty: 'hard' },
+        weekSettings: { difficulty: 'hard', weeklyTarget: 7, weekTarget: 7 },
+        nextWeeklyTarget: 7,
         nameChanged: false,
         settingsChanged: true,
         xpChange: 20,
@@ -203,6 +208,7 @@ describe('updateHabit', () => {
           changedOn: wednesday,
           sequence: expect.any(Number),
           difficulty: 'hard',
+          weeklyTarget: 7,
         },
       ]);
     });
@@ -241,7 +247,7 @@ describe('updateHabit', () => {
 
       await expect(update(running, 'hard')).resolves.toMatchObject({ xpChange: 10, xp: 20 });
       await expect(update(running, 'easy')).resolves.toMatchObject({
-        weekSettings: { difficulty: 'easy' },
+        weekSettings: { difficulty: 'easy', weeklyTarget: 7, weekTarget: 7 },
         xpChange: -15,
         xp: 5,
       });
@@ -256,7 +262,7 @@ describe('updateHabit', () => {
 
       expect(result).toMatchObject({
         ok: true,
-        weekSettings: { difficulty: 'easy' },
+        weekSettings: { difficulty: 'easy', weeklyTarget: 7, weekTarget: 7 },
         nameChanged: true,
         settingsChanged: true,
         xpChange: -5,
@@ -272,7 +278,8 @@ describe('updateHabit', () => {
       await expect(update(running, 'hard')).resolves.toEqual({
         ok: true,
         habit: running,
-        weekSettings: { difficulty: 'hard' },
+        weekSettings: { difficulty: 'hard', weeklyTarget: 7, weekTarget: 7 },
+        nextWeeklyTarget: 7,
         nameChanged: false,
         settingsChanged: false,
         xpChange: 0,
@@ -295,7 +302,7 @@ describe('updateHabit', () => {
       await given('hard');
 
       await expect(rename(running.id, 'Courir')).resolves.toMatchObject({
-        weekSettings: { difficulty: 'hard' },
+        weekSettings: { difficulty: 'hard', weeklyTarget: 7, weekTarget: 7 },
         settingsChanged: false,
       });
       await expect(changes(running)).resolves.toHaveLength(1);
@@ -366,6 +373,234 @@ describe('updateHabit', () => {
       unitOfWork.failWrites(false);
       await expect(changes(running)).resolves.toHaveLength(1);
       await expect(xp()).resolves.toBe(10);
+    });
+  });
+
+  describe('weekly target', () => {
+    // Aujourd'hui : le mercredi 14 octobre 2026.
+    const monday19 = Day.of(2026, 10, 19);
+    let running: Habit;
+
+    const changes = (habit: Habit) =>
+      unitOfWork.run(({ settingsChanges }) => settingsChanges.listByHabit(habit.id));
+    const setTarget = (habit: Habit, weeklyTarget: WeeklyTarget, difficulty?: Difficulty) =>
+      updateHabit(deps(), habit.id, {
+        name: habit.name.value,
+        weeklyTarget,
+        ...(difficulty === undefined ? {} : { difficulty }),
+      });
+
+    /** « Courir 5 km », créée le `createdOn` avec l'objectif `weeklyTarget`, en Moyenne. */
+    async function given(weeklyTarget: WeeklyTarget, createdOn = monday5): Promise<void> {
+      clock.setToday(createdOn);
+      const created = await createHabit(deps(), 'Courir 5 km', 'medium', weeklyTarget);
+      running = created.ok ? created.habit : (undefined as never);
+      clock.setToday(wednesday);
+    }
+
+    afterEach(async () => {
+      const { xp: stored, expected } = await experienceInvariant(unitOfWork);
+      expect(stored).toBe(expected);
+    });
+
+    it('applies a new target from next Monday, with no experience (R13)', async () => {
+      await given(3);
+      await toggleCheckIn(deps(), running.id, wednesday);
+
+      await expect(setTarget(running, 5)).resolves.toMatchObject({
+        ok: true,
+        settingsChanged: true,
+        weekSettings: { difficulty: 'medium', weeklyTarget: 3, weekTarget: 3 },
+        nextWeeklyTarget: 5,
+        xpChange: 0,
+        xp: 10,
+      });
+      await expect(changes(running)).resolves.toEqual([
+        expect.objectContaining({ changedOn: monday5, weeklyTarget: 3 }),
+        {
+          habitId: running.id,
+          changedOn: wednesday,
+          sequence: expect.any(Number),
+          difficulty: 'medium',
+          weeklyTarget: 5,
+        },
+      ]);
+    });
+
+    it('records the target and the difficulty in one change', async () => {
+      await given(3);
+      await toggleCheckIn(deps(), running.id, wednesday);
+
+      await expect(setTarget(running, 5, 'hard')).resolves.toMatchObject({
+        settingsChanged: true,
+        weekSettings: { difficulty: 'hard', weeklyTarget: 3 },
+        nextWeeklyTarget: 5,
+        xpChange: 10,
+      });
+      await expect(changes(running)).resolves.toMatchObject([
+        { weeklyTarget: 3 },
+        { changedOn: wednesday, difficulty: 'hard', weeklyTarget: 5 },
+      ]);
+    });
+
+    it('keeps the target of next week when only the difficulty changes', async () => {
+      await given(3);
+      await setTarget(running, 5);
+
+      await expect(
+        updateHabit(deps(), running.id, { name: 'Courir 5 km', difficulty: 'easy' }),
+      ).resolves.toMatchObject({ settingsChanged: true, nextWeeklyTarget: 5 });
+      await expect(changes(running)).resolves.toMatchObject([
+        { weeklyTarget: 3 },
+        { weeklyTarget: 5 },
+        { difficulty: 'easy', weeklyTarget: 5 },
+      ]);
+    });
+
+    it('compares the target with that of next week, prefilled in « Modifier l’habitude »', async () => {
+      await given(3);
+      await setTarget(running, 5);
+
+      await expect(setTarget(running, 5)).resolves.toMatchObject({ settingsChanged: false });
+      await expect(setTarget(running, 3)).resolves.toMatchObject({
+        settingsChanged: true,
+        weekSettings: { weeklyTarget: 3 },
+        nextWeeklyTarget: 3,
+      });
+      await expect(changes(running)).resolves.toHaveLength(3);
+    });
+
+    it('writes nothing when the target does not change', async () => {
+      await given(3);
+      unitOfWork.failWrites();
+
+      await expect(setTarget(running, 3)).resolves.toMatchObject({
+        ok: true,
+        settingsChanged: false,
+        nextWeeklyTarget: 3,
+      });
+      unitOfWork.failWrites(false);
+      await expect(changes(running)).resolves.toHaveLength(1);
+    });
+
+    it('applies a change made on the day of creation at once (R13)', async () => {
+      await given(7, wednesday);
+
+      await expect(setTarget(running, 3)).resolves.toMatchObject({
+        weekSettings: { weeklyTarget: 3, weekTarget: 3 },
+        nextWeeklyTarget: 3,
+      });
+    });
+
+    it('keeps the last of several changes of the week, from next Monday (R15)', async () => {
+      await given(3);
+
+      await setTarget(running, 5);
+      await expect(setTarget(running, 4)).resolves.toMatchObject({
+        weekSettings: { weeklyTarget: 3 },
+        nextWeeklyTarget: 4,
+      });
+
+      clock.setToday(monday19);
+      await expect(setTarget(running, 4)).resolves.toMatchObject({
+        settingsChanged: false,
+        weekSettings: { weeklyTarget: 4, weekTarget: 4 },
+      });
+    });
+
+    it('keeps the target when the change cannot be saved', async () => {
+      await given(3);
+      unitOfWork.failWrites();
+
+      await expect(setTarget(running, 5)).rejects.toThrow(StorageUnavailableError);
+      unitOfWork.failWrites(false);
+
+      await expect(changes(running)).resolves.toMatchObject([{ weeklyTarget: 3 }]);
+    });
+
+    it.each([0, 8, 2.5])('refuses the target %p, and records nothing (R3)', async (target) => {
+      await given(3);
+
+      await expect(setTarget(running, target as WeeklyTarget)).rejects.toThrow(
+        InvalidWeeklyTargetError,
+      );
+      await expect(changes(running)).resolves.toHaveLength(1);
+    });
+
+    describe('on the day of the update', () => {
+      async function existing(createdOn: Day): Promise<Habit> {
+        const habit = await unitOfWork.run(({ habits }) =>
+          habits.add(HabitName.parse('Cuisiner maison'), createdOn),
+        );
+        await unitOfWork.addSettingsChangeBeforeWeeklyTarget(habit.id, createdOn);
+        await introduceWeeklyTarget(deps());
+        return habit;
+      }
+
+      it('applies the change of an older habit from next Monday (Q-A (ii))', async () => {
+        const habit = await existing(monday5);
+
+        await expect(setTarget(habit, 3)).resolves.toMatchObject({
+          settingsChanged: true,
+          weekSettings: { weeklyTarget: 7, weekTarget: 7 },
+          nextWeeklyTarget: 3,
+        });
+      });
+
+      it('applies the change of a habit created that day at once (edge case 2)', async () => {
+        const habit = await existing(wednesday);
+
+        await expect(setTarget(habit, 3)).resolves.toMatchObject({
+          weekSettings: { weeklyTarget: 3, weekTarget: 3 },
+          nextWeeklyTarget: 3,
+        });
+      });
+
+      it('applies the change of a habit created the day before from next Monday', async () => {
+        const habit = await existing(Day.of(2026, 10, 13));
+
+        await expect(setTarget(habit, 3)).resolves.toMatchObject({
+          weekSettings: { weeklyTarget: 7, weekTarget: 6 },
+          nextWeeklyTarget: 3,
+        });
+      });
+    });
+
+    it('gives no target to a habit not yet introduced, and keeps it so on a rename', async () => {
+      const habit = await unitOfWork.run(({ habits }) =>
+        habits.add(HabitName.parse('Lire'), monday5),
+      );
+      await unitOfWork.addSettingsChangeBeforeWeeklyTarget(habit.id, monday5);
+
+      await expect(updateHabit(deps(), habit.id, { name: 'Lire' })).resolves.toMatchObject({
+        settingsChanged: false,
+        weekSettings: { weeklyTarget: null, weekTarget: null },
+        nextWeeklyTarget: null,
+      });
+      await expect(changes(habit)).resolves.toHaveLength(1);
+      await expect(setTarget(habit, 4)).resolves.toMatchObject({
+        settingsChanged: true,
+        nextWeeklyTarget: 4,
+      });
+    });
+
+    it('records the target 7, never an empty one, when only the difficulty of a habit not yet introduced changes', async () => {
+      const habit = await unitOfWork.run(({ habits }) =>
+        habits.add(HabitName.parse('Lire'), monday5),
+      );
+      await unitOfWork.addSettingsChangeBeforeWeeklyTarget(habit.id, monday5);
+
+      await expect(
+        updateHabit(deps(), habit.id, { name: 'Lire', difficulty: 'hard' }),
+      ).resolves.toMatchObject({
+        settingsChanged: true,
+        weekSettings: { difficulty: 'hard', weeklyTarget: 7, weekTarget: 7 },
+        nextWeeklyTarget: 7,
+      });
+      await expect(changes(habit)).resolves.toEqual([
+        expect.objectContaining({ changedOn: monday5, weeklyTarget: null }),
+        expect.objectContaining({ changedOn: wednesday, difficulty: 'hard', weeklyTarget: 7 }),
+      ]);
     });
   });
 });

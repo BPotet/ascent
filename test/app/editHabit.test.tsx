@@ -86,7 +86,9 @@ describe('app editing of a habit', () => {
     db = await databaseWithCooking({ full: false });
     openDatabase.mockResolvedValue(db);
     await renderRouter(appDirectory);
-    await dayView().findByLabelText(`Cuisiner, ${TODAY}, fait, Moyenne, 10 XP par suivi`);
+    await dayView().findByLabelText(
+      `Cuisiner, ${TODAY}, fait, 2 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+    );
     expect(xpShown()).toBe('20 XP');
 
     await openEditing('Cuisiner');
@@ -95,10 +97,14 @@ describe('app editing of a habit', () => {
     await fireEvent.press(screen.getByTestId('save-habit'));
 
     expect(
-      await dayView().findByLabelText(`Cuisiner le soir, ${TODAY}, fait, Moyenne, 10 XP par suivi`),
+      await dayView().findByLabelText(
+        `Cuisiner le soir, ${TODAY}, fait, 2 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
     ).toBeOnTheScreen();
     expect(
-      dayView().queryByLabelText(`Cuisiner, ${TODAY}, fait, Moyenne, 10 XP par suivi`),
+      dayView().queryByLabelText(
+        `Cuisiner, ${TODAY}, fait, 2 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
     ).not.toBeOnTheScreen();
     expect(xpShown()).toBe('20 XP');
 
@@ -116,7 +122,9 @@ describe('app editing of a habit', () => {
     db = await databaseWithCooking({ full: false });
     openDatabase.mockResolvedValue(db);
     await renderRouter(appDirectory);
-    await dayView().findByLabelText(`Cuisiner, ${TODAY}, fait, Moyenne, 10 XP par suivi`);
+    await dayView().findByLabelText(
+      `Cuisiner, ${TODAY}, fait, 2 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+    );
     expect(xpShown()).toBe('20 XP');
 
     await openEditing('Cuisiner');
@@ -125,7 +133,9 @@ describe('app editing of a habit', () => {
     await fireEvent.press(screen.getByTestId('save-habit'));
 
     expect(
-      await dayView().findByLabelText(`Cuisiner, ${TODAY}, fait, Difficile, 20 XP par suivi`),
+      await dayView().findByLabelText(
+        `Cuisiner, ${TODAY}, fait, 2 sur 7 cette semaine, Difficile, 20 XP par suivi`,
+      ),
     ).toBeOnTheScreen();
     // Le compteur de l'en-tête monte image par image : on lit l'expérience enregistrée affichée.
     expect(screen.getByLabelText('Expérience du personnage : 40 XP')).toBeOnTheScreen();
@@ -139,7 +149,9 @@ describe('app editing of a habit', () => {
     openDatabase.mockResolvedValue(db);
     await renderRouter(appDirectory);
     expect(
-      await dayView().findByLabelText(`Cuisiner, ${TODAY}, fait, Difficile, 20 XP par suivi`),
+      await dayView().findByLabelText(
+        `Cuisiner, ${TODAY}, fait, 2 sur 7 cette semaine, Difficile, 20 XP par suivi`,
+      ),
     ).toBeOnTheScreen();
     expect(xpShown()).toBe('40 XP');
   });
@@ -148,7 +160,9 @@ describe('app editing of a habit', () => {
     db = await databaseWithCooking({ full: true });
     openDatabase.mockResolvedValue(db);
     await renderRouter(appDirectory);
-    await dayView().findByLabelText(`Cuisiner, ${TODAY}, fait, Moyenne, 10 XP par suivi`);
+    await dayView().findByLabelText(
+      `Cuisiner, ${TODAY}, fait, 2 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+    );
     expect(dayView().getByText('10/10')).toBeOnTheScreen();
     expect(screen.getByTestId('add-habit')).toBeDisabled();
     expect(xpShown()).toBe('20 XP');
@@ -157,7 +171,9 @@ describe('app editing of a habit', () => {
 
     expect(await dayView().findByText('9/10')).toBeOnTheScreen();
     expect(
-      dayView().queryByLabelText(`Cuisiner, ${TODAY}, fait, Moyenne, 10 XP par suivi`),
+      dayView().queryByLabelText(
+        `Cuisiner, ${TODAY}, fait, 2 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
     ).not.toBeOnTheScreen();
     expect(screen.queryByTestId('delete-habit-dialog')).not.toBeOnTheScreen();
     expect(screen.getByTestId('add-habit')).toBeEnabled();
@@ -174,7 +190,9 @@ describe('app editing of a habit', () => {
     db = await databaseWithCooking({ full: false });
     openDatabase.mockResolvedValue(db);
     await renderRouter(appDirectory);
-    await dayView().findByLabelText(`Cuisiner, ${TODAY}, fait, Moyenne, 10 XP par suivi`);
+    await dayView().findByLabelText(
+      `Cuisiner, ${TODAY}, fait, 2 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+    );
 
     await deleteFromDayView('Cuisiner');
 

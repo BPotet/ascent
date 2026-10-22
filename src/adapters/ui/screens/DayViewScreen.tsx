@@ -16,15 +16,18 @@ import { HabitRow } from '../components/HabitRow';
 import { Notice } from '../components/Notice';
 import { Screen } from '../components/Screen';
 import { StateMessage } from '../components/StateMessage';
+import { WhatsNewCard } from '../components/WhatsNewCard';
 import { YesterdayReminderBanner } from '../components/YesterdayReminderBanner';
 import { Toast, type ToastAction } from '../components/Toast';
 import { CHECK_IN_SAVE_FAILED, correctionMessage } from '../format/checkInMessages';
 import { formatDayAndMonth } from '../format/formatDay';
+import type { WeeklyProgressShown } from '../format/formatWeeklyTarget';
 import { useCheckInHint } from '../state/useCheckInHint';
 import { useCreateHabit } from '../state/useCreateHabit';
 import { useDayView } from '../state/useDayView';
 import { type XpChange, useExperience, xpChangeOn } from '../state/Experience';
 import { useTodayChange } from '../state/useTodayChange';
+import { useWhatsNewCard } from '../state/useWhatsNewCard';
 import { useYesterdayReminder } from '../state/useYesterdayReminder';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
@@ -89,7 +92,10 @@ function LoadingView() {
           <View style={[styles.skeleton, styles.skeletonCheck]} />
           <View style={styles.skeletonTexts}>
             <View style={[styles.skeleton, styles.skeletonName]} />
-            <View style={[styles.skeleton, styles.skeletonStatus]} />
+            <View testID="day-view-loading-secondary-line" style={styles.skeletonLine}>
+              <View style={[styles.skeleton, styles.skeletonIcon]} />
+              <View style={[styles.skeleton, styles.skeletonStatus]} />
+            </View>
           </View>
         </View>
       ))}
@@ -97,11 +103,21 @@ function LoadingView() {
   );
 }
 
+/** La progression de la semaine d'une ligne, si sa semaine a un objectif. */
+function weeklyProgressOf({
+  weeklyProgress,
+  weekSettings: { weekTarget },
+  targetReached,
+}: DayViewHabit): WeeklyProgressShown | undefined {
+  return weekTarget === null ? undefined : { weeklyProgress, weekTarget, targetReached };
+}
+
 function HabitList({
   view,
   highlighted,
   xpChange,
   showHint,
+  whatsNew,
   reminder,
   onToggle,
   onEdit,
@@ -110,6 +126,7 @@ function HabitList({
   readonly highlighted: Highlight | null;
   readonly xpChange: XpChange | null;
   readonly showHint: boolean;
+  readonly whatsNew: ReactNode;
   readonly reminder: ReactNode;
   readonly onToggle: (habitDay: HabitDay) => void;
   readonly onEdit: (row: DayViewHabit) => void;
@@ -132,6 +149,7 @@ function HabitList({
         }}
         testID="day-view-list"
       >
+        {whatsNew}
         {reminder}
         {allDone && <Notice kind="celebration" text={ALL_DONE_MESSAGE} testID="all-done" />}
         {showHint && <Notice kind="hint" text={CHECK_IN_HINT} testID="check-in-hint" />}
@@ -140,6 +158,7 @@ function HabitList({
             key={habitDay.habit.id}
             habitDay={habitDay}
             difficulty={habitDay.weekSettings.difficulty}
+            weeklyProgress={weeklyProgressOf(habitDay)}
             highlighted={habitDay.habit.id === highlighted?.id}
             xpChange={xpChangeOn(xpChange, habitDay)}
             onToggle={onToggle}
@@ -170,7 +189,9 @@ function HabitList({
  * disparaît au premier « fait ». La vue passe seule au nouveau jour (minuit, retour au premier
  * plan) et l'annonce.
  *
- * Chaque ligne montre la difficulté de l'habitude cette semaine (icône et nom, E1).
+ * Chaque ligne montre la difficulté de l'habitude cette semaine (icône), son état et sa progression
+ * de la semaine (« À faire · 2/3 cette semaine »), et le badge « Objectif atteint » (E1, #24). Le
+ * squelette de chargement prévoit cette ligne secondaire, pour que rien ne saute à l'affichage.
  *
  * Le bouton « ⋯ » d'une habitude ouvre « Modifier l'habitude » (`HabitEditing`), prérempli avec
  * ses réglages de la semaine : modifiée, elle est mise en évidence et la variation de l'expérience
@@ -183,6 +204,11 @@ function HabitList({
  * En haut, l'expérience du personnage (R24) ; un tap enregistré la fait monter ou descendre, avec
  * son feedback : « +20 XP » (au barème de la difficulté) s'envole de la coche (`Experience`,
  * `CharacterBar`).
+ *
+ * Tout en haut de la liste, la Carte de nouveauté (#24) invite le joueur qui avait des habitudes
+ * avant la mise à jour à régler leur difficulté et leur objectif : « Régler » ouvre « Modifier
+ * l'habitude » sur la première habitude de la liste ; « Régler » comme « Fermer » la retirent pour
+ * toujours.
  *
  * En haut de la liste, le rappel d'hier (« Hier : 1/2 faites ») propose de corriger hier :
  * « Corriger » appelle `onCorrectYesterday` avec la semaine d'hier, à ouvrir dans la Vue Semaine.
@@ -199,6 +225,7 @@ export function DayViewScreen({
   const { reminder, dismiss: dismissReminder } = useYesterdayReminder();
   const create = useCreateHabit();
   const hint = useCheckInHint();
+  const whatsNew = useWhatsNewCard();
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const [seenRequest, setSeenRequest] = useState<string | number | undefined>(undefined);
@@ -256,10 +283,10 @@ export function DayViewScreen({
   const hideToast = useCallback(() => setToast(null), []);
   const openSheet = () => setSheetOpen(true);
   const closeSheet = () => setSheetOpen(false);
-  const created = (habit: Habit) => {
+  const created = (habit: Habit, message: string) => {
     setSheetOpen(false);
     setHighlighted({ id: habit.id, reveal: true });
-    showToast('Habitude créée');
+    showToast(message);
     void refresh();
   };
   const closeEditing = () => setEditing(null);
@@ -337,6 +364,17 @@ export function DayViewScreen({
             highlighted={highlighted}
             xpChange={experience.change}
             showHint={hint.visible}
+            whatsNew={
+              whatsNew.visible && (
+                <WhatsNewCard
+                  onAdjust={() => {
+                    void whatsNew.dismiss();
+                    setEditing(view.habits[0] ?? null);
+                  }}
+                  onClose={() => void whatsNew.dismiss()}
+                />
+              )
+            }
             reminder={
               reminder && (
                 <YesterdayReminderBanner
@@ -371,6 +409,7 @@ export function DayViewScreen({
       {sheetOpen && (
         <NewHabitSheet
           habits={view.habits.map(({ habit }) => habit)}
+          today={view.day}
           onCreate={create}
           onCreated={created}
           onClose={closeSheet}
@@ -379,8 +418,9 @@ export function DayViewScreen({
       {editing !== null && (
         <HabitEditing
           habit={editing.habit}
-          weekSettings={editing.weekSettings}
+          settings={editing}
           habits={view.habits.map(({ habit }) => habit)}
+          today={view.day}
           onUpdated={updated}
           onDeleted={deleted}
           onGone={gone}
@@ -432,6 +472,8 @@ const styles = StyleSheet.create({
   skeletonCheck: { width: 44, height: 44, borderRadius: 22 },
   skeletonTexts: { flex: 1 },
   skeletonName: { width: '65%', height: 14 },
-  skeletonStatus: { width: '30%', height: 11, marginTop: spacing.sm },
+  skeletonLine: { flexDirection: 'row', gap: 6, marginTop: spacing.sm },
+  skeletonIcon: { width: 20, height: 11 },
+  skeletonStatus: { width: '46%', height: 11 },
 });
 // Stryker restore all

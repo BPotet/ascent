@@ -7,7 +7,7 @@ import { Day } from '../../../domain/day/Day';
 import { Habit } from '../../../domain/habit/Habit';
 import { HabitName } from '../../../domain/habit/HabitName';
 import { Week } from '../../../domain/week/Week';
-import { HabitWeekCard, WeekDaysHeader, WeekLegend } from './WeekGrid';
+import { HabitWeekCard, type WeekCardTarget, WeekDaysHeader, WeekLegend } from './WeekGrid';
 
 const wednesday = Day.of(2026, 10, 14);
 const week = Week.containing(wednesday);
@@ -246,6 +246,111 @@ describe('HabitWeekCard and the difficulty (Vue Semaine, E4)', () => {
     await render(<HabitWeekCard days={days} today={wednesday} onToggle={jest.fn()} />);
 
     expect(screen.queryByTestId('week-difficulty-3')).not.toBeOnTheScreen();
+  });
+});
+
+describe('HabitWeekCard and the weekly target (Vue Semaine, E4)', () => {
+  const target = (change: Partial<WeekCardTarget> = {}): WeekCardTarget => ({
+    weeklyTarget: 3,
+    weekTarget: 3,
+    weeklyProgress: 1,
+    targetReached: false,
+    nextWeeklyTarget: 3,
+    currentWeek: true,
+    ...change,
+  });
+
+  async function showCard(change: Partial<WeekCardTarget> = {}) {
+    await render(
+      <HabitWeekCard
+        days={days}
+        today={wednesday}
+        difficulty="medium"
+        target={target(change)}
+        onToggle={jest.fn()}
+        onEdit={jest.fn()}
+      />,
+    );
+  }
+
+  const chip = () => screen.queryByTestId('week-progress-3');
+
+  it('shows a neutral chip « 1/3 » at the right of the name, read « 1 sur 3 »', async () => {
+    await showCard();
+
+    expect(chip()).toHaveTextContent('1/3');
+    expect(chip()).toHaveAccessibleName('1 sur 3');
+    expect(chip()).toHaveProp('accessibilityRole', 'image');
+    expect(chip()).toHaveStyle({ backgroundColor: '#222B3D', borderColor: '#2E3950' });
+    expect(screen.getByText('1/3')).toHaveStyle({ color: '#EEF1F7' });
+    expect(screen.queryByTestId('week-card-reached-3')).not.toBeOnTheScreen();
+  });
+
+  it('writes the weekly target under the name, after the difficulty', async () => {
+    await showCard();
+
+    expect(screen.getByTestId('week-target-3')).toHaveTextContent('· 3 fois par semaine');
+    expect(screen.getByTestId('week-difficulty-3')).toHaveTextContent('Moyenne');
+  });
+
+  it('writes « Tous les jours » for the target 7', async () => {
+    await showCard({ weeklyTarget: 7, weekTarget: 7, nextWeeklyTarget: 7 });
+
+    expect(screen.getByTestId('week-target-3')).toHaveTextContent('· tous les jours');
+  });
+
+  it('turns the chip green with a check, « 3/3 · Objectif atteint », with a green border', async () => {
+    await showCard({ weeklyProgress: 3, targetReached: true });
+
+    expect(chip()).toHaveTextContent('3/3 · Objectif atteint');
+    expect(chip()).toHaveAccessibleName('3 sur 3, objectif atteint');
+    expect(chip()).toHaveStyle({
+      backgroundColor: 'rgba(61,220,151,0.16)',
+      borderColor: 'rgba(61,220,151,0.55)',
+    });
+    expect(within(chip() as never).getByTestId('small-check-glyph', hidden)).toBeTruthy();
+    expect(screen.getByTestId('week-card-reached-3')).toHaveStyle({
+      borderColor: 'rgba(61,220,151,0.55)',
+    });
+  });
+
+  it('keeps « 4/3 · Objectif atteint » beyond the target', async () => {
+    await showCard({ weeklyProgress: 4, targetReached: true });
+
+    expect(chip()).toHaveTextContent('4/3 · Objectif atteint');
+  });
+
+  it('greys the chip of a past week not reached, never in red nor with a cross', async () => {
+    await showCard({ currentWeek: false, nextWeeklyTarget: null });
+
+    expect(screen.getByText('1/3')).toHaveStyle({ color: '#B4BDCE' });
+    expect(chip()).toHaveAccessibleName('1 sur 3');
+    expect(within(chip() as never).queryByTestId('cross-mark', hidden)).toBeNull();
+  });
+
+  it('shows no chip and no target for a week before the weekly target existed', async () => {
+    await showCard({ weeklyTarget: null, weekTarget: null, currentWeek: false });
+
+    expect(chip()).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('week-target-3')).not.toBeOnTheScreen();
+    expect(screen.getByTestId('week-difficulty-3')).toBeOnTheScreen();
+  });
+
+  it('announces a target that changes next Monday', async () => {
+    await showCard({ nextWeeklyTarget: 4 });
+
+    expect(screen.getByTestId('week-target-3')).toHaveTextContent(
+      '· 3 fois par semaine · 4 fois par semaine dès lundi',
+    );
+    expect(screen.getByText('4 fois par semaine dès lundi')).toHaveStyle({ color: '#C9D5FF' });
+  });
+
+  it('says the week target of the week of creation, reduced to the days left', async () => {
+    await showCard({ weeklyTarget: 7, weekTarget: 4, nextWeeklyTarget: 7 });
+
+    expect(screen.getByTestId('week-target-3')).toHaveTextContent(
+      '· tous les jours · 4 cette semaine (créée lundi)',
+    );
   });
 });
 

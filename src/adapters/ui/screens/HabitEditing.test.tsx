@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../../application/testing/settableClock';
@@ -16,7 +16,8 @@ import { HabitEditing, type UpdatedHabit, updatedMessage } from './HabitEditing'
 const updated = (change: Partial<UpdatedHabit>): UpdatedHabit => ({
   ok: true,
   habit: new Habit(1, HabitName.parse('Cuisiner'), Day.of(2026, 10, 5)),
-  weekSettings: { difficulty: 'medium' },
+  weekSettings: { difficulty: 'medium', weeklyTarget: 7, weekTarget: 7 },
+  nextWeeklyTarget: 7,
   nameChanged: false,
   settingsChanged: false,
   xpChange: 0,
@@ -98,7 +99,13 @@ describe('HabitEditing', () => {
 
   /** « Modifier l'habitude » ouvert depuis une autre semaine : les réglages sont à lire. */
   const editing = (props: ReturnType<typeof callbacks>) => (
-    <HabitEditing habit={cooking} weekSettings={undefined} habits={[cooking]} {...props} />
+    <HabitEditing
+      habit={cooking}
+      settings={undefined}
+      habits={[cooking]}
+      today={wednesday}
+      {...props}
+    />
   );
 
   it('opens the sheet with the settings of the current week once they are read', async () => {
@@ -116,6 +123,21 @@ describe('HabitEditing', () => {
     expect(props.onReadFailed).not.toHaveBeenCalled();
   });
 
+  it('reads the weekly target and the day of creation of the habit with its settings', async () => {
+    const props = callbacks();
+    await renderScreen(editing(props), dependencies);
+
+    expect(
+      await screen.findByRole('radio', { name: '7 fois par semaine, tous les jours' }),
+    ).toBeChecked();
+    await fireEvent.press(screen.getByRole('radio', { name: '3 fois par semaine' }));
+
+    // « Cuisiner » a été créée aujourd'hui : le nouvel objectif vaut dès cette semaine.
+    expect(screen.getByTestId('weekly-target-change-info')).toHaveAccessibleName(
+      /^Habitude créée aujourd’hui/u,
+    );
+  });
+
   it('opens the sheet with the settings given, without reading them', async () => {
     const props = callbacks();
     dependencies.unitOfWork.failReads();
@@ -123,8 +145,13 @@ describe('HabitEditing', () => {
     await renderScreen(
       <HabitEditing
         habit={cooking}
-        weekSettings={{ difficulty: 'easy' }}
+        settings={{
+          weekSettings: { difficulty: 'easy', weeklyTarget: 7, weekTarget: 7 },
+          nextWeeklyTarget: 4,
+          targetChangeAppliesThisWeek: false,
+        }}
         habits={[cooking]}
+        today={wednesday}
         {...props}
       />,
       dependencies,
@@ -132,6 +159,7 @@ describe('HabitEditing', () => {
 
     expect(await screen.findByTestId('edit-habit-sheet')).toBeOnTheScreen();
     expect(screen.getByRole('radio', { name: /^Facile,/u })).toBeChecked();
+    expect(screen.getByRole('radio', { name: '4 fois par semaine' })).toBeChecked();
     expect(props.onReadFailed).not.toHaveBeenCalled();
   });
 

@@ -214,7 +214,7 @@ describe('SqliteUnitOfWork', () => {
     );
 
     it.each(['habits', 'settings_changes', 'character'])(
-      'keeps name, difficulty and experience when %s cannot be written by updateHabit',
+      'keeps name, settings and experience when %s cannot be written by updateHabit',
       async (table) => {
         const db = withFaults(await prepareAscentDatabase(openNodeSqliteDatabase()));
         const unitOfWork = new SqliteUnitOfWork(db);
@@ -228,7 +228,11 @@ describe('SqliteUnitOfWork', () => {
 
         db.faults.failWhen(writesTo(table));
         await expect(
-          updateHabit(deps, running.id, { name: 'Courir 10 km', difficulty: 'hard' }),
+          updateHabit(deps, running.id, {
+            name: 'Courir 10 km',
+            difficulty: 'hard',
+            weeklyTarget: 3,
+          }),
         ).rejects.toThrow(SimulatedStorageError);
 
         db.faults.failWhen(null);
@@ -268,6 +272,35 @@ describe('SqliteUnitOfWork', () => {
       await expect(
         unitOfWork.run(({ settingsChanges }) => settingsChanges.listAll()),
       ).rejects.toThrow('Invalid difficulty: "extreme"');
+    });
+
+    it('reads a change made before the weekly target with an empty weekly target (R17)', async () => {
+      const db = await prepareAscentDatabase(openNodeSqliteDatabase());
+      const unitOfWork = new SqliteUnitOfWork(db);
+      await createHabit({ clock: { today: () => day }, unitOfWork }, 'Cuisiner');
+      await db.run(
+        "INSERT INTO settings_changes (habit_id, changed_on, difficulty) VALUES (1, '2026-10-15', 'hard')",
+      );
+
+      await expect(
+        unitOfWork.run(({ settingsChanges }) => settingsChanges.listAll()),
+      ).resolves.toMatchObject([
+        { difficulty: 'medium', weeklyTarget: 7 },
+        { difficulty: 'hard', weeklyTarget: null },
+      ]);
+    });
+
+    it('fails to read a stored weekly target that is not one', async () => {
+      const db = await prepareAscentDatabase(openNodeSqliteDatabase());
+      const unitOfWork = new SqliteUnitOfWork(db);
+      await createHabit({ clock: { today: () => day }, unitOfWork }, 'Cuisiner');
+      // Contourne la contrainte CHECK, comme une base abîmée.
+      await db.exec('PRAGMA ignore_check_constraints = ON');
+      await db.run('UPDATE settings_changes SET weekly_target = 9');
+
+      await expect(
+        unitOfWork.run(({ settingsChanges }) => settingsChanges.listAll()),
+      ).rejects.toThrow('Invalid weekly target: 9');
     });
 
     it('fails to read a character missing from the database', async () => {

@@ -3,6 +3,7 @@ import { createHabits } from './0002-create-habits';
 import { createCheckIns } from './0003-create-check-ins';
 import { createCharacter } from './0004-create-character';
 import { createSettingsChanges } from './0005-create-settings-changes';
+import { addWeeklyTarget } from './0006-add-weekly-target';
 import type { Migration } from './Migration';
 
 /** Toutes les migrations de la base Ascent, dans l'ordre. Ajouter les nouvelles à la fin. */
@@ -12,4 +13,5 @@ export const migrations: readonly Migration[] = [
   createCheckIns,
   createCharacter,
   createSettingsChanges,
+  addWeeklyTarget,
 ];

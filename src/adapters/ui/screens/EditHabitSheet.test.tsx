@@ -6,21 +6,23 @@ import { Habit } from '../../../domain/habit/Habit';
 import { HabitName } from '../../../domain/habit/HabitName';
 import type { Difficulty } from '../../../domain/habit/Difficulty';
 import type { UpdateHabitInput } from '../../../application/useCases/updateHabit';
-import type { UpdateHabitOutcome } from '../state/useEditHabit';
+import type { EditableSettings, UpdateHabitOutcome } from '../state/useEditHabit';
 import { EditHabitSheet } from './EditHabitSheet';
 
 const nbsp = ' ';
 const monday = Day.of(2026, 10, 5);
+const wednesday = Day.of(2026, 10, 14);
 const cooking = new Habit(1, HabitName.parse('Cuisiner'), monday);
 const budget = new Habit(2, HabitName.parse('Budget du jour'), Day.of(2026, 10, 12));
 
-function updated({ name, difficulty }: UpdateHabitInput): UpdateHabitOutcome {
+function updated({ name, difficulty, weeklyTarget }: UpdateHabitInput): UpdateHabitOutcome {
   return {
     ok: true,
     habit: new Habit(1, HabitName.parse(name), monday),
-    weekSettings: { difficulty: difficulty ?? 'medium' },
+    weekSettings: { difficulty: difficulty ?? 'medium', weeklyTarget: 3, weekTarget: 3 },
+    nextWeeklyTarget: weeklyTarget ?? 3,
     nameChanged: name.trim() !== 'Cuisiner',
-    settingsChanged: difficulty !== undefined,
+    settingsChanged: difficulty !== undefined || weeklyTarget !== undefined,
     xpChange: 0,
     xp: 0,
   };
@@ -30,6 +32,7 @@ async function open(
   save: (input: UpdateHabitInput) => Promise<UpdateHabitOutcome> = async (input) => updated(input),
   deleteAlert: string | null = null,
   difficulty: Difficulty = 'medium',
+  settings: Partial<EditableSettings> = {},
 ) {
   const props = {
     onSave: jest.fn(save),
@@ -41,8 +44,15 @@ async function open(
   await render(
     <EditHabitSheet
       habit={cooking}
-      difficulty={difficulty}
+      settings={{
+        // « Cuisiner », objectif 3, un mercredi : la semaine en cours garde son objectif.
+        weekSettings: { difficulty, weeklyTarget: 3, weekTarget: 3 },
+        nextWeeklyTarget: 3,
+        targetChangeAppliesThisWeek: false,
+        ...settings,
+      }}
       habits={[cooking, budget]}
+      today={wednesday}
       deleteAlert={deleteAlert}
       {...props}
     />,
@@ -286,7 +296,10 @@ describe('EditHabitSheet', () => {
       expect(onSave).toHaveBeenCalledTimes(1);
       expect(onSave).toHaveBeenCalledWith({ name: 'Cuisiner', difficulty: 'hard' });
       expect(onSaved).toHaveBeenCalledWith(
-        expect.objectContaining({ settingsChanged: true, weekSettings: { difficulty: 'hard' } }),
+        expect.objectContaining({
+          settingsChanged: true,
+          weekSettings: expect.objectContaining({ difficulty: 'hard' }),
+        }),
       );
     });
 
@@ -343,6 +356,171 @@ describe('EditHabitSheet', () => {
 
       expect(screen.getByRole('alert', { name: /^Tu as déjà une habitude/u })).toBeOnTheScreen();
       expect(option('Facile')).toBeChecked();
+    });
+  });
+
+  describe('the block « Objectif » (E7)', () => {
+    const target = (value: number) => screen.getByTestId(`weekly-target-option-${value}`);
+    const targetInfo = () => screen.queryByTestId('weekly-target-change-info');
+
+    it('is prefilled with the weekly target of the following weeks, without message', async () => {
+      await open(undefined, null, 'medium', {
+        weekSettings: { difficulty: 'medium', weeklyTarget: 3, weekTarget: 3 },
+        nextWeeklyTarget: 5,
+      });
+
+      expect(screen.getByTestId('weekly-target-picker')).toHaveAccessibleName(
+        'Objectif hebdomadaire',
+      );
+      expect(target(5)).toBeChecked();
+      expect(target(3)).not.toBeChecked();
+      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent('5 fois par semaine');
+      expect(saveButton()).toBeDisabled();
+      expect(targetInfo()).not.toBeOnTheScreen();
+    });
+
+    it('is prefilled with « Tous les jours » for a habit without weekly target yet', async () => {
+      await open(undefined, null, 'medium', { nextWeeklyTarget: null });
+
+      expect(target(7)).toBeChecked();
+      expect(saveButton()).toBeDisabled();
+    });
+
+    it('says the new target starts next Monday, the week keeping its own, and enables saving', async () => {
+      await open();
+
+      await fireEvent.press(target(5));
+
+      const message =
+        'Nouvel objectif à partir de lundi prochain (19 octobre). Cette semaine reste à 3.';
+      expect(screen.getByText(message)).toBeOnTheScreen();
+      expect(targetInfo()).toHaveAccessibleName(message);
+      expect(targetInfo()).toHaveProp('accessibilityLiveRegion', 'polite');
+      expect(AccessibilityInfo.announceForAccessibility).toHaveBeenLastCalledWith(message);
+      expect(saveButton()).toBeEnabled();
+    });
+
+    it('says the week keeps its week target, reduced in the week of creation', async () => {
+      await open(undefined, null, 'medium', {
+        weekSettings: { difficulty: 'medium', weeklyTarget: 7, weekTarget: 5 },
+        nextWeeklyTarget: 7,
+      });
+
+      await fireEvent.press(target(3));
+
+      expect(targetInfo()).toHaveAccessibleName(
+        'Nouvel objectif à partir de lundi prochain (19 octobre). Cette semaine reste à 5.',
+      );
+    });
+
+    it('says the new target applies this week on the day of creation, never « lundi prochain »', async () => {
+      await open(undefined, null, 'medium', {
+        weekSettings: { difficulty: 'medium', weeklyTarget: 7, weekTarget: 5 },
+        nextWeeklyTarget: 7,
+        targetChangeAppliesThisWeek: true,
+      });
+
+      await fireEvent.press(target(3));
+
+      expect(targetInfo()).toHaveAccessibleName(
+        'Habitude créée aujourd’hui : le nouvel objectif s’applique dès cette semaine.',
+      );
+      expect(screen.queryByText(/lundi prochain/u)).not.toBeOnTheScreen();
+    });
+
+    it('announces the target of this week cut to the days left on the day of creation (E2, E7)', async () => {
+      await open(undefined, null, 'medium', {
+        weekSettings: { difficulty: 'medium', weeklyTarget: 3, weekTarget: 3 },
+        nextWeeklyTarget: 3,
+        targetChangeAppliesThisWeek: true,
+      });
+
+      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent('3 fois par semaine', {
+        exact: true,
+      });
+
+      await fireEvent.press(target(7));
+
+      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent(
+        'Tous les jours · cette semaine : 5, à partir d’aujourd’hui',
+      );
+    });
+
+    it('announces no target of this week on another day than the day of creation', async () => {
+      await open();
+
+      await fireEvent.press(target(7));
+
+      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent('Tous les jours', {
+        exact: true,
+      });
+    });
+
+    it('goes back to « nothing changed » when the first target is chosen again', async () => {
+      await open();
+
+      await fireEvent.press(target(5));
+      await fireEvent.press(target(3));
+
+      expect(targetInfo()).not.toBeOnTheScreen();
+      expect(saveButton()).toBeDisabled();
+    });
+
+    it('shows both messages when the difficulty and the target change', async () => {
+      await open();
+
+      await fireEvent.press(option('Difficile'));
+      await fireEvent.press(target(5));
+
+      expect(info()).toBeOnTheScreen();
+      expect(targetInfo()).toBeOnTheScreen();
+    });
+
+    it('saves the target alone, with the name unchanged', async () => {
+      const { onSave, onSaved } = await open();
+
+      await fireEvent.press(target(5));
+      await fireEvent.press(saveButton());
+
+      expect(onSave).toHaveBeenCalledWith({ name: 'Cuisiner', weeklyTarget: 5 });
+      expect(onSaved).toHaveBeenCalledWith(
+        expect.objectContaining({ settingsChanged: true, nextWeeklyTarget: 5 }),
+      );
+    });
+
+    it('saves the name, the difficulty and the target together', async () => {
+      const { onSave } = await open();
+
+      await type('Courir 10 km');
+      await fireEvent.press(option('Facile'));
+      await fireEvent.press(target(1));
+      await fireEvent.press(saveButton());
+
+      expect(onSave).toHaveBeenCalledWith({
+        name: 'Courir 10 km',
+        difficulty: 'easy',
+        weeklyTarget: 1,
+      });
+    });
+
+    it('keeps the target chosen after a failed save, and retries with it', async () => {
+      let attempts = 0;
+      const { onSave } = await open(async (input) => {
+        attempts += 1;
+        return attempts === 1 ? { ok: false, reason: 'saveFailed' } : updated(input);
+      });
+
+      await fireEvent.press(target(5));
+      await fireEvent.press(saveButton());
+
+      expect(
+        screen.getByRole('alert', {
+          name: 'Les modifications n’ont pas pu être enregistrées. Réessaie.',
+        }),
+      ).toBeOnTheScreen();
+      expect(target(5)).toBeChecked();
+      await fireEvent.press(saveButton());
+      expect(onSave).toHaveBeenNthCalledWith(2, { name: 'Cuisiner', weeklyTarget: 5 });
     });
   });
 

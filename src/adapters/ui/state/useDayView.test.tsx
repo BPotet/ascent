@@ -8,6 +8,7 @@ import { getDayView } from '../../../application/useCases/getDayView';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import { Day } from '../../../domain/day/Day';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
+import { updateHabit } from '../../../application/useCases/updateHabit';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { silentHaptics } from '../testing/silentHaptics';
 import { DependenciesProvider } from './Dependencies';
@@ -75,6 +76,14 @@ function holdUnitOfWork(unitOfWork: InMemoryUnitOfWork) {
   const run = unitOfWork.run.bind(unitOfWork);
   jest.spyOn(unitOfWork, 'run').mockImplementation((work) => gate.then(() => run(work)));
   return { open };
+}
+
+/** « Cuisiner » passe à « 1 fois par semaine » le jour de sa création : cela vaut dès cette semaine. */
+async function updateHabitTarget(
+  dependencies: ReturnType<typeof setUp>['dependencies'],
+  id: number,
+): Promise<void> {
+  await updateHabit(dependencies, id, { name: 'Cuisiner', weeklyTarget: 1 });
 }
 
 const names = (state: ReturnType<typeof useDayView>['state']) =>
@@ -289,6 +298,49 @@ describe('useDayView', () => {
       expect(doneCount(result.current.state)).toBe(1);
       jest.restoreAllMocks();
       expect(await storedStatuses(dependencies)).toEqual(['Cuisiner: done', 'Lire: pending']);
+    });
+
+    it('shows the weekly progress and the target reached once a tap is saved', async () => {
+      const { dependencies, result, cell } = await showDayView('Cuisiner');
+      const created = cell('Cuisiner').habit;
+      await updateHabitTarget(dependencies, created.id);
+      await act(async () => result.current.refresh());
+      const progressOf = () => {
+        const { state } = result.current;
+        const row = state.status === 'ready' ? state.view.habits[0] : undefined;
+        return row && `${row.weeklyProgress}/${row.weekSettings.weekTarget} ${row.targetReached}`;
+      };
+      expect(progressOf()).toBe('0/1 false');
+
+      await act(() => result.current.toggle(cell('Cuisiner')));
+
+      await waitFor(() => expect(progressOf()).toBe('1/1 true'));
+    });
+
+    it('shows the weekly progress of a tap at once, before it is saved', async () => {
+      const { dependencies, result, cell } = await showDayView('Cuisiner');
+      await updateHabitTarget(dependencies, cell('Cuisiner').habit.id);
+      await act(async () => result.current.refresh());
+      const progressOf = () => {
+        const { state } = result.current;
+        const row = state.status === 'ready' ? state.view.habits[0] : undefined;
+        return row && `${row.weeklyProgress} ${row.targetReached}`;
+      };
+      const { open } = holdUnitOfWork(dependencies.unitOfWork);
+
+      let toggling: Promise<unknown> = Promise.resolve();
+      await act(async () => {
+        toggling = result.current.toggle(cell('Cuisiner'));
+      });
+      expect(progressOf()).toBe('1 true');
+      await act(async () => {
+        open();
+        await toggling;
+      });
+      jest.restoreAllMocks();
+
+      await act(() => result.current.toggle(cell('Cuisiner')));
+      expect(progressOf()).toBe('0 false');
     });
 
     it('goes back to « à faire » on a second tap', async () => {

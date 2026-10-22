@@ -1,6 +1,6 @@
 import type { Day } from '../../domain/day/Day';
 import type { HabitId } from '../../domain/habit/Habit';
-import type { SettingsChange, SettingsChangeValues } from '../../domain/habit/SettingsChange';
+import type { HabitSettings, SettingsChange } from '../../domain/habit/SettingsChange';
 
 /**
  * Dépôt des changements de réglages (`SettingsChangeRepository`), voir l'ADR 0003. On ne l'obtient
@@ -21,6 +21,10 @@ export interface SettingsChangeRepository {
    * réglages après le changement (`settings`, un instantané), et le renvoie. Son ordre de saisie
    * (`sequence`) est plus grand que celui de tout changement déjà enregistré. Un changement d'une
    * habitude qui n'existe pas est refusé par une exception.
+   *
+   * Tous les réglages y sont renseignés (`HabitSettings`) : un changement ne peut pas vider
+   * l'objectif hebdomadaire. Seuls les changements d'avant la mise à jour de #24, déjà stockés, sont
+   * relus avec un objectif vide (`weeklyTarget: null`).
    */
-  add(habitId: HabitId, changedOn: Day, settings: SettingsChangeValues): Promise<SettingsChange>;
+  add(habitId: HabitId, changedOn: Day, settings: HabitSettings): Promise<SettingsChange>;
 }

@@ -30,14 +30,15 @@ if (!transformIgnorePatterns.some((pattern) => pattern.includes('@shopify/react-
   throw new Error('jest-expo has changed its transformIgnorePatterns: add Skia to the new list');
 }
 
-// Projets qui rendent des écrans : délai de test explicite (voir le fichier), et simulations de
-// Gesture Handler et de Reanimated, dont les modules natifs n'existent pas sous Jest. Skia n'en
-// fait pas partie : seul son test de fumée le charge (test/setup/skia.smoke.test.tsx).
+// Projets qui rendent des écrans : délai de test explicite et taille de texte habituelle (voir les
+// fichiers), et simulations de Gesture Handler et de Reanimated, dont les modules natifs n'existent
+// pas sous Jest. Skia n'en fait pas partie : seul son test de fumée le charge (test/setup/skia.smoke.test.tsx).
 const screenSetup = {
   transformIgnorePatterns,
   setupFiles: ['react-native-gesture-handler/jestSetup.js'],
   setupFilesAfterEnv: [
     '<rootDir>/test/setup/screenTestTimeout.ts',
+    '<rootDir>/test/setup/textSize.ts',
     '<rootDir>/test/setup/reanimated.ts',
   ],
 };

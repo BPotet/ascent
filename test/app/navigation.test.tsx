@@ -81,7 +81,9 @@ describe('app navigation between the views', () => {
 
     expect(selectedTab()).toBe('Journée');
     expect(
-      dayView().getByLabelText(`${COOKING_TODAY}, à faire, Moyenne, 10 XP par suivi`),
+      dayView().getByLabelText(
+        `${COOKING_TODAY}, à faire, 0 sur 6 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
     ).toBeOnTheScreen();
 
     // La Vue Semaine déjà ouverte est restée montée : elle s'affiche sans se recharger.
@@ -95,10 +97,14 @@ describe('app navigation between the views', () => {
     openDatabase.mockImplementation(databaseWithCooking);
     await renderRouter(appDirectory);
     await fireEvent.press(
-      await screen.findByLabelText(`${COOKING_TODAY}, à faire, Moyenne, 10 XP par suivi`),
+      await screen.findByLabelText(
+        `${COOKING_TODAY}, à faire, 0 sur 6 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
     );
     expect(
-      await dayView().findByLabelText(`${COOKING_TODAY}, fait, Moyenne, 10 XP par suivi`),
+      await dayView().findByLabelText(
+        `${COOKING_TODAY}, fait, 1 sur 6 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
     ).toBeOnTheScreen();
 
     await showTab('Semaine');
@@ -111,7 +117,9 @@ describe('app navigation between the views', () => {
     await showTab('Journée');
 
     expect(
-      await dayView().findByLabelText(`${COOKING_TODAY}, à faire, Moyenne, 10 XP par suivi`),
+      await dayView().findByLabelText(
+        `${COOKING_TODAY}, à faire, 0 sur 6 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
     ).toBeOnTheScreen();
   });
 
@@ -129,7 +137,9 @@ describe('app navigation between the views', () => {
     await fireEvent.changeText(screen.getByLabelText('Nom de l’habitude'), 'Cuisiner');
     await fireEvent.press(screen.getByRole('button', { name: 'Créer l’habitude' }));
     expect(
-      await dayView().findByLabelText(`${COOKING_TODAY}, à faire, Moyenne, 10 XP par suivi`),
+      await dayView().findByLabelText(
+        `${COOKING_TODAY}, à faire, 0 sur 5 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
     ).toBeOnTheScreen();
 
     await showTab('Semaine');

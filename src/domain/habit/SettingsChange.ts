@@ -1,6 +1,7 @@
 import type { Day } from '../day/Day';
 import type { Difficulty } from './Difficulty';
 import type { HabitId } from './Habit';
+import type { WeeklyTarget } from './WeeklyTarget';
 
 /**
  * Changement de réglages (`SettingsChange`), voir `docs/glossary.md` et l'ADR 0003 : un changement
@@ -20,10 +21,23 @@ export interface SettingsChange {
   /** L'ordre de saisie, attribué au stockage : plus grand que celui de tout changement précédent. */
   readonly sequence: number;
   readonly difficulty: Difficulty;
+  /**
+   * L'objectif hebdomadaire après le changement, ou `null` dans un changement antérieur à la mise à
+   * jour qui l'introduit (#24) : « ce réglage n'existait pas encore » (R17).
+   */
+  readonly weeklyTarget: WeeklyTarget | null;
 }
 
-/** Les réglages que porte un changement de réglages (son instantané), sans sa date ni son ordre. */
-export type SettingsChangeValues = Omit<SettingsChange, 'habitId' | 'changedOn' | 'sequence'>;
+/**
+ * Les réglages d'une habitude (`HabitSettings`), tels qu'un nouveau changement de réglages les
+ * enregistre (son instantané). Tous y sont renseignés : un changement ne peut donc pas vider un
+ * réglage déjà renseigné (ADR 0003, §4). Seuls les changements d'avant la mise à jour, déjà stockés,
+ * ont un objectif hebdomadaire vide.
+ */
+export interface HabitSettings {
+  readonly difficulty: Difficulty;
+  readonly weeklyTarget: WeeklyTarget;
+}
 
 /** L'ordre de l'historique : par jour, puis, le même jour, par ordre de saisie (R15). */
 export function compareSettingsChanges(a: SettingsChange, b: SettingsChange): number {

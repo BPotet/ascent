@@ -6,6 +6,7 @@ import { settableClock } from '../../../application/testing/settableClock';
 import { getDayView } from '../../../application/useCases/getDayView';
 import { Day } from '../../../domain/day/Day';
 import type { Difficulty } from '../../../domain/habit/Difficulty';
+import type { WeeklyTarget } from '../../../domain/habit/WeeklyTarget';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { silentHaptics } from '../testing/silentHaptics';
 import { DependenciesProvider } from './Dependencies';
@@ -35,8 +36,8 @@ async function setUp() {
   return {
     dependencies,
     unitOfWork: dependencies.unitOfWork,
-    create: (name: string, difficulty: Difficulty = 'medium') =>
-      act(() => result.current(name, difficulty)),
+    create: (name: string, difficulty: Difficulty = 'medium', weeklyTarget: WeeklyTarget = 7) =>
+      act(() => result.current(name, difficulty, weeklyTarget)),
     otherReload,
   };
 }
@@ -59,7 +60,20 @@ describe('useCreateHabit', () => {
       await create('Courir 5 km', difficulty);
 
       const [row] = (await getDayView(dependencies)).habits;
-      expect(row?.weekSettings).toEqual({ difficulty });
+      expect(row?.weekSettings).toMatchObject({ difficulty });
+    },
+  );
+
+  it.each([3, 7] as const)(
+    'creates the habit with the weekly target chosen (%s)',
+    async (weeklyTarget) => {
+      const { create, dependencies } = await setUp();
+
+      await create('Courir 5 km', 'medium', weeklyTarget);
+
+      const [row] = (await getDayView(dependencies)).habits;
+      expect(row?.nextWeeklyTarget).toBe(weeklyTarget);
+      expect(row?.weekSettings.weeklyTarget).toBe(weeklyTarget);
     },
   );
 

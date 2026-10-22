@@ -3,6 +3,8 @@ import { habitDayOf, type HabitDay } from '../../domain/checkIn/HabitDay';
 import type { Day } from '../../domain/day/Day';
 import type { Habit } from '../../domain/habit/Habit';
 import type { SettingsChange } from '../../domain/habit/SettingsChange';
+import { isTargetReached, weeklyProgressOf } from '../../domain/habit/WeeklyProgress';
+import type { WeeklyTarget } from '../../domain/habit/WeeklyTarget';
 import { weekSettingsOf, type WeekSettings } from '../../domain/habit/WeekSettings';
 import { History } from '../../domain/history/History';
 import type { Week } from '../../domain/week/Week';
@@ -13,10 +15,23 @@ export interface WeekViewRow {
   readonly habit: Habit;
   readonly days: readonly HabitDay[];
   /**
-   * Les réglages de la semaine affichée (R12) : une semaine passée montre la difficulté de cette
-   * semaine-là.
+   * Les réglages de la semaine affichée (R12) : une semaine passée montre la difficulté et l'objectif
+   * de cette semaine-là. `weekTarget` est `null` pour une semaine d'avant la mise à jour : pas de
+   * puce de progression (R17).
    */
   readonly weekSettings: WeekSettings;
+  /**
+   * La progression de la semaine affichée : ses cases « fait », jusqu'à aujourd'hui (R5). Une
+   * correction est comptée à la lecture.
+   */
+  readonly weeklyProgress: number;
+  /** Objectif atteint pour la semaine affichée (R7) : jamais pour une semaine sans objectif. */
+  readonly targetReached: boolean;
+  /**
+   * Dans la semaine en cours, l'objectif hebdomadaire de la semaine suivante (un objectif qui change
+   * lundi prochain, R13) ; `null` pour une semaine passée.
+   */
+  readonly nextWeeklyTarget: WeeklyTarget | null;
 }
 
 /** Ce que montre la Vue Semaine (`WeekView`). */
@@ -44,7 +59,8 @@ const checkInOf = (checkIns: readonly CheckIn[], habit: Habit, day: Day): CheckI
 /**
  * Cas d'usage : la Vue Semaine de `week`, ou de la semaine en cours si `week` est omise.
  *
- * Chaque habitude existante a les réglages de la semaine affichée, et ses 7 cases calculées par `habitDayOf` (R8, R7, R12, R13) ; une case
+ * Chaque habitude existante a les réglages de la semaine affichée, sa progression de la semaine
+ * (R5, R7), et ses 7 cases calculées par `habitDayOf` (R8, R7, R12, R13) ; une case
  * est modifiable (`editable`) si un tap la change, avec `toggleCheckIn` sur son jour : aujourd'hui,
  * ou un jour clos à partir du jour de création (correction, sans limite de temps, R10). Une case
  * « à venir » ou « hors habitude » ne l'est jamais.
@@ -64,15 +80,31 @@ export function getWeekView(
     const weekCheckIns = await checkIns.listBetween(shown.start, shown.end);
     const changes = await settingsChanges.listAll();
     const days = shown.days();
+    const isCurrentWeek = shown.equals(history.currentWeek);
     return {
       week: shown,
       today,
-      isCurrentWeek: shown.equals(history.currentWeek),
-      rows: existing.map((habit) => ({
-        habit,
-        days: days.map((day) => habitDayOf(habit, day, checkInOf(weekCheckIns, habit, day), today)),
-        weekSettings: weekSettingsOf(changesOf(changes, habit), shown),
-      })),
+      isCurrentWeek,
+      rows: existing.map((habit): WeekViewRow => {
+        const weekSettings = weekSettingsOf(changesOf(changes, habit), shown, habit.createdOn);
+        const weeklyProgress = weeklyProgressOf(
+          weekCheckIns.filter((checkIn) => checkIn.habitId === habit.id),
+          shown,
+          today,
+        );
+        return {
+          habit,
+          days: days.map((day) =>
+            habitDayOf(habit, day, checkInOf(weekCheckIns, habit, day), today),
+          ),
+          weekSettings,
+          weeklyProgress,
+          targetReached: isTargetReached(weeklyProgress, weekSettings.weekTarget),
+          nextWeeklyTarget: isCurrentWeek
+            ? weekSettingsOf(changesOf(changes, habit), shown.next(), habit.createdOn).weeklyTarget
+            : null,
+        };
+      }),
       canGoPrevious: history.canGoBefore(shown),
       canGoNext: history.canGoAfter(shown),
     };
