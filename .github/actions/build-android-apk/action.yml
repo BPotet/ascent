@@ -51,11 +51,13 @@ runs:
         mkdir -p dist
         cp android/app/build/outputs/apk/release/app-release.apk "dist/${{ inputs.apk-name }}"
         echo "path=dist/${{ inputs.apk-name }}" >> "$GITHUB_OUTPUT"
-    # Taille et permissions Android de l'APK, relevées dans le journal et le résumé du job.
+    # Taille et permissions Android de l'APK, relevées dans le journal et le résumé du job, avec
+    # l'origine de chaque permission tirée du rapport de fusion du manifeste de Gradle (#31).
     - name: Report the APK size and permissions
       shell: bash
       env:
         APK: dist/${{ inputs.apk-name }}
+        MERGER_REPORT: android/app/build/outputs/logs/manifest-merger-release-report.txt
       run: |
         aapt="$(ls -d "$ANDROID_HOME"/build-tools/*/aapt 2>/dev/null | sort -V | tail -n 1)"
         {
@@ -66,5 +68,11 @@ runs:
             "$aapt" dump permissions "$APK" | sed -n "s/^uses-permission: name='\([^']*\)'.*/  - \1/p" | sort
           else
             echo "  - (aapt unavailable)"
+          fi
+          echo "- Permission origins (manifest merger report):"
+          if [ -f "$MERGER_REPORT" ]; then
+            awk -f scripts/ci/permission-origins.awk "$MERGER_REPORT"
+          else
+            echo "  - (manifest merger report unavailable)"
           fi
         } | tee -a "$GITHUB_STEP_SUMMARY"
