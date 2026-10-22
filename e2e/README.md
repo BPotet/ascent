@@ -26,6 +26,14 @@ construit sur le canal `preview` ; sur un build de production, le lien ramène �
 local, lancer l'app avec `EXPO_PUBLIC_ASCENT_CHANNEL=preview` (par exemple
 `EXPO_PUBLIC_ASCENT_CHANNEL=preview npx expo run:android --variant release`) pour ouvrir la sonde.
 
+Le combat d'essai (`trial-battle.yaml`, story #31) s'ouvre par le bouton « Combat d'essai », au-dessus
+de la barre d'onglets : il n'existe que dans le build de preview (canal `preview`), et la story #33 le
+remplacera. Le bouton est dans le flux de la mise en page : les autres parcours ne changent pas. Le
+parcours ne teste pas le timing de la parade (Maestro ne touche pas à 10 ms près) : il gagne le combat
+en n'utilisant que « Attaquer », et capture les écrans F2, F1, P9, P0, P0b, P1, F0 et l'écran de fin
+(avec les panneaux Réglages d'essai et Mesures) pour la comparaison avec la maquette. Il joue les sons
+du combat : un plantage du lecteur fait échouer le parcours.
+
 Sélecteurs : privilégier les textes visibles (libellés du glossaire) et les `testID` des écrans.
 
 Libellés des lignes de la Vue Journée (lecteur d'écran) : `<nom>, <jour>, <état>[, corrigé], <progression>, <Difficulté>, <X> XP par suivi[, objectif atteint]`,

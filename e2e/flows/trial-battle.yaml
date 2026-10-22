@@ -1,0 +1,101 @@
+# Story #31 : le combat d'essai, ouvert depuis son point d'entrée provisoire (build de preview).
+# Parcours : installation neuve → « Combat d'essai » → bulle F2 fermée → le Spectre visé, puis
+# « Attaquer » → bulle P9 fermée → bannière « Phase ennemie » → avancée, préparation, sans aucun
+# appui → bannière « À toi » → « Attaquer » à chaque phase du héros jusqu'à la victoire → écran de
+# fin, avec les panneaux Réglages d'essai et Mesures → « Rejouer ».
+# La partie se gagne toujours sans parer : 12 dégâts subis au plus par manche, 4 manches, 80 PV.
+# Maestro ne teste pas le timing (il ne touche pas à 10 ms près) : les écrans à état précis (P2 à
+# P8) sont vérifiés par les tests d'intégration, avec l'horloge de combat manuelle. Le parcours
+# joue les sons du combat : il échoue si l'app plante (permissions retirées, lecteur absent).
+# Les captures servent à la comparaison avec la maquette (écrans F2, F1, P9, P0, P0b, P1, F0, fin).
+appId: com.bpotet.ascent
+name: Combat d'essai du build de preview
+tags:
+  - story-31
+---
+- runFlow: ../subflows/launch-fresh.yaml
+
+- tapOn: "Combat d'essai"
+- extendedWaitUntil:
+    visible:
+      id: 'battle-hint-hero'
+    timeout: 15000
+- assertVisible: 'Phase du héros|PHASE DU HÉROS'
+- takeScreenshot: trial-battle-f2-first-use
+- tapOn:
+    id: 'battle-hint-hero'
+- assertNotVisible:
+    id: 'battle-hint-hero'
+- takeScreenshot: trial-battle-f1-hero-phase
+
+# Le Spectre visé, puis « Attaquer » (validé au relâcher).
+- tapOn:
+    id: 'enemy-specter'
+- assertVisible:
+    id: 'battle-attack-button'
+    text: 'Attaquer, cible : Spectre'
+- tapOn:
+    id: 'battle-attack-button'
+
+# Première phase ennemie : la bulle passe avant la transition, qui commence à sa fermeture.
+- extendedWaitUntil:
+    visible:
+      id: 'battle-hint-defense'
+    timeout: 10000
+- takeScreenshot: trial-battle-p9-first-use
+- tapOn:
+    id: 'battle-hint-defense'
+- extendedWaitUntil:
+    visible:
+      id: 'phase-banner'
+    timeout: 5000
+- takeScreenshot: trial-battle-p0-enemy-phase
+- extendedWaitUntil:
+    visible: '.*s’avance'
+    timeout: 5000
+- takeScreenshot: trial-battle-p0b-step-in
+- extendedWaitUntil:
+    visible: 'Goule : .*'
+    timeout: 5000
+- takeScreenshot: trial-battle-p1-wind-up
+
+# Aucun appui : la manche se termine sur l'annonce « À toi ».
+- extendedWaitUntil:
+    visible: 'À toi'
+    timeout: 20000
+- takeScreenshot: trial-battle-f0-to-hero
+
+# Trois autres attaques : le Spectre (4 PV), puis la Goule deux fois.
+- repeat:
+    times: 3
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: 'battle-attack-button'
+            enabled: true
+          timeout: 20000
+      - tapOn:
+          id: 'battle-attack-button'
+          enabled: true
+
+- extendedWaitUntil:
+    visible: 'Combat gagné'
+    timeout: 20000
+- assertVisible: 'La Goule et le Spectre sont tombés.'
+- assertVisible: "Réglages d'essai"
+- takeScreenshot: trial-battle-end
+- scrollUntilVisible:
+    element:
+      id: 'battle-measures-panel'
+    direction: DOWN
+- takeScreenshot: trial-battle-measures
+
+- tapOn: 'Rejouer'
+- extendedWaitUntil:
+    visible:
+      id: 'battle-attack-button'
+      text: 'Attaquer, cible : Goule'
+    timeout: 10000
+# Au combat suivant, la bulle d'aide n'apparaît plus.
+- assertNotVisible:
+    id: 'battle-hint-hero'
