@@ -77,7 +77,11 @@
 | **Git Flow** | Le modèle de branches du projet : `main` pour ce qui est publié, `develop` pour l'intégration, et des branches de travail `feature/`, `bugfix/`, `release/`, `hotfix/`. |
 | **Release** | La publication d'une nouvelle version : branche `release/x.y.z`, merge dans `main`, tag `vX.Y.Z` et changelog. |
 | **Hotfix** | La correction urgente d'un bug en production, faite depuis `main` sur une branche `hotfix/`, puis réintégrée dans `develop`. |
-| **Build de preview** | Une version de l'app construite depuis `develop`, installable par le propriétaire pour essayer ce qui arrive. |
+| **Build de preview** | Une version de l'app construite par la CI (sur les PR et sur `develop`) avec le canal `preview`, installable par le propriétaire pour essayer ce qui arrive. |
+| **Build de production** | La version de l'app publiée depuis `main`. Elle n'a aucune fonction réservée au build de preview. |
+| **Canal du build** (`BuildChannel`) | `preview` ou `production`, fixé à la construction de l'APK. Absent ou inconnu, il vaut `production`. |
+| **Sonde de toucher** (`TouchProbe`) | Un outil du build de preview, ouvert seulement par le lien `ascent://preview/touch-probe`. Il mesure l'écart entre l'instant d'un toucher et l'horloge JS, et en déduit la méthode de datation des appuis. |
+| **Méthode de datation** (`TimingMethod`) | La façon de dater un appui, retenue par la sonde de toucher : (a) dans le geste, sur le fil UI, quand son horloge a la même base que l'horloge JS (écart compris entre −2 ms et 500 ms) ; sinon (b) de même, recalée par un décalage calibré entre les deux horloges ; sinon (c) à la réception par le JS. |
 | **Escalade** | L'arrêt de la boucle automatique, avec un commentaire sur l'issue pour demander une décision humaine. |
 
 ## Architecture

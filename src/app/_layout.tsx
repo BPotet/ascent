@@ -7,6 +7,7 @@ import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
 import { Sora_600SemiBold } from '@expo-google-fonts/sora/600SemiBold';
 import { Sora_700Bold } from '@expo-google-fonts/sora/700Bold';
 import { useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { SystemClock } from '../adapters/device/clock/SystemClock';
@@ -32,6 +33,8 @@ const screenOptions = {
   headerShown: false,
   contentStyle: { backgroundColor: colors.background },
 } as const;
+// Racine des gestes : elle occupe tout l'écran, sans quoi l'app s'afficherait vide.
+const gestureRootStyle = { flex: 1, backgroundColor: colors.background } as const;
 // Stryker restore all
 
 /**
@@ -81,17 +84,19 @@ export default function RootLayout() {
   }, [loading]);
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="light" />
-      {startup.status === 'loading' && <StartupLoadingScreen />}
-      {startup.status === 'failed' && (
-        <StartupErrorScreen onRetry={() => setStartup({ status: 'loading' })} />
-      )}
-      {startup.status === 'ready' && (
-        <DependenciesProvider value={startup.dependencies}>
-          <Stack screenOptions={screenOptions} />
-        </DependenciesProvider>
-      )}
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={gestureRootStyle}>
+      <SafeAreaProvider>
+        <StatusBar style="light" />
+        {startup.status === 'loading' && <StartupLoadingScreen />}
+        {startup.status === 'failed' && (
+          <StartupErrorScreen onRetry={() => setStartup({ status: 'loading' })} />
+        )}
+        {startup.status === 'ready' && (
+          <DependenciesProvider value={startup.dependencies}>
+            <Stack screenOptions={screenOptions} />
+          </DependenciesProvider>
+        )}
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
