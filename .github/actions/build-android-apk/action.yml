@@ -6,6 +6,10 @@ inputs:
   apk-name:
     description: Nom du fichier APK produit
     required: true
+  channel:
+    description: 'Canal du build : preview ou production'
+    required: false
+    default: preview
 outputs:
   apk-path:
     description: Chemin de l'APK construit
@@ -13,6 +17,21 @@ outputs:
 runs:
   using: composite
   steps:
+    # Avant prebuild et Gradle : c'est Gradle qui produit le bundle JS (Metro), où la variable
+    # EXPO_PUBLIC_ASCENT_CHANNEL est inscrite. Un canal inconnu arrête le build.
+    - name: Set the build channel
+      shell: bash
+      env:
+        CHANNEL: ${{ inputs.channel }}
+      run: |
+        case "$CHANNEL" in
+          preview | production) ;;
+          *)
+            echo "::error::Unknown build channel '$CHANNEL' (expected preview or production)"
+            exit 1
+            ;;
+        esac
+        echo "EXPO_PUBLIC_ASCENT_CHANNEL=$CHANNEL" >> "$GITHUB_ENV"
     - uses: actions/setup-java@v4
       with:
         distribution: temurin
