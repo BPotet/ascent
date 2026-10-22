@@ -13,6 +13,7 @@ Prérequis : la story est en `status:ready`. Sinon, arrête-toi et lance `/backl
 3. **Implement** : passe en `status:in-progress` et lance l'agent **dev**. Il implémente toute la story, ouvre la PR en brouillon puis l'en sort quand les barrières sont vertes en local.
    S'il signale un besoin hors du périmètre de la story, traite-le comme un changement de périmètre (escalade PM et Architect).
 4. **Test** : lance l'agent **qa**. S'il y a des barrières rouges, renvoie au **dev** avec le rapport, puis relance **qa**.
+   La mutation des écrans n'en fait pas partie : elle n'est lancée que si le propriétaire la demande (label `mutation:ui` sur la PR, que seul lui pose ou fait poser). Ne pose aucun autre label sur la PR : tout label relance la CI.
 5. **Review** : passe en `status:review` et lance l'agent **reviewer**.
    - Changements demandés : retour à l'étape 3 (au plus 3 tours, puis `status:blocked` et résumé au propriétaire).
 6. **Merge** : quand la CI est entièrement verte et la review approuvée, active l'auto-merge (squash) de la PR. Son titre, au format Conventional Commits, devient le commit sur `develop`. Elle ferme l'issue.

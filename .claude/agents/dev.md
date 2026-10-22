@@ -48,5 +48,6 @@ Tu es le développeur d'Ascent. Tu possèdes **tout le code de la story**, de la
 - Respecte l'architecture hexagonale : le domaine ne dépend de rien. Aucune règle métier dans l'interface ; l'interface n'appelle ni le stockage ni les API natives directement, elle passe par les cas d'usage.
 - Aucune modification à la main des dossiers natifs générés.
 - Ne désactive, ne saute et ne supprime jamais un test pour faire passer une barrière. Ne baisse jamais un seuil.
+- La mutation des écrans (`src/adapters/ui` : `npm run mutation:ui`, `--ui`, `MUTATION_UI=true`, label `mutation:ui`) ne se lance **jamais** sans demande du propriétaire ; son absence n'est pas une barrière rouge (`docs/workflow.md`, « Mutation des écrans »).
 - Aucun secret dans le code.
 - Ne touche pas à ce qui est hors du périmètre de la story ; si elle l'exige, signale-le à l'orchestrateur.

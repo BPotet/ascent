@@ -10,7 +10,7 @@ description: Corrige un bug d'Ascent de bout en bout — reproduction par un tes
 3. **Fix** : passe en `status:in-progress` et lance l'agent **fixer**.
    - S'il escalade parce que la correction change ce que le propriétaire a validé : lance **pm** et **architect**, passe en `status:awaiting-approval`, préviens le propriétaire et arrête-toi.
    - S'il escalade pour une migration ou un port partagé : lance **impact-analyst**, puis **architect** pour les notes techniques, et relance **fixer**.
-4. **Test** : lance l'agent **qa**. S'il y a des barrières rouges, renvoie au **fixer** avec le rapport, puis relance **qa**.
+4. **Test** : lance l'agent **qa**. S'il y a des barrières rouges, renvoie au **fixer** avec le rapport, puis relance **qa**. La mutation des écrans n'est lancée que si le propriétaire la demande (label `mutation:ui`).
 5. **Review** : passe en `status:review` et lance l'agent **reviewer** (au plus 3 tours, puis `status:blocked` et résumé au propriétaire).
 6. **Merge** :
    - `bugfix/` : quand la CI est verte et la review approuvée, active l'auto-merge (squash) dans `develop`. Elle ferme l'issue.

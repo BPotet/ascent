@@ -28,4 +28,5 @@ Signale à l'orchestrateur, au lieu de corriger, si :
 - Aucune nouvelle fonctionnalité, aucun nettoyage hors du bug.
 - Respecte l'architecture hexagonale : le domaine ne dépend de rien.
 - Ne désactive, ne saute et ne supprime jamais un test pour faire passer une barrière. Ne baisse jamais un seuil.
+- La mutation des écrans (`src/adapters/ui` : `npm run mutation:ui`, `--ui`, `MUTATION_UI=true`, label `mutation:ui`) ne se lance **jamais** sans demande du propriétaire ; son absence n'est pas une barrière rouge (`docs/workflow.md`, « Mutation des écrans »).
 - Aucun secret dans le code.

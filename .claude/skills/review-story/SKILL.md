@@ -5,7 +5,7 @@ description: Étape 7 du workflow Ascent. Lance une revue complète d'une PR de 
 
 # /review-story <n° PR>
 
-1. Récupère la PR, l'issue liée (`Closes #n`), le rapport QA et l'état de la CI.
+1. Récupère la PR, l'issue liée (`Closes #n`), le rapport QA et l'état de la CI. Des écrans non mutés ne sont pas une barrière rouge : leur mutation n'a lieu qu'à la demande du propriétaire (label `mutation:ui`).
 2. Lance l'agent **reviewer**.
 3. Publie son verdict en review sur la PR :
    - **Approuvé** : signale que la PR est prête pour l'auto-merge.
