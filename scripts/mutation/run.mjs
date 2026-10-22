@@ -36,6 +36,11 @@ export function uiOption({ env, args }) {
   );
 }
 
+/** Les sorties du plan pour `$GITHUB_OUTPUT`, une clé par ligne, lues par ci.yml et mutation-ui.yml. */
+export function planOutputs({ matrix, count, base, ui, notice }) {
+  return `matrix=${matrix}\ncount=${count}\nbase=${base}\nui=${ui}\nui_notice=${notice}\n`;
+}
+
 const args = process.argv.slice(2);
 const mode = process.env.MUTATION_MODE === 'full' || args.includes('--full') ? 'full' : 'changed';
 const baseRef = process.env.BASE_REF || 'origin/develop';
@@ -96,8 +101,13 @@ async function main() {
     if (process.env.GITHUB_OUTPUT) {
       appendFileSync(
         process.env.GITHUB_OUTPUT,
-        `matrix=${matrix}\ncount=${shards.length}\nbase=${mode === 'full' ? '' : base}\n` +
-          `ui=${ui}\nui_notice=${notice}\n`,
+        planOutputs({
+          matrix,
+          count: shards.length,
+          base: mode === 'full' ? '' : base,
+          ui,
+          notice,
+        }),
       );
     }
     if (process.env.GITHUB_STEP_SUMMARY) {
