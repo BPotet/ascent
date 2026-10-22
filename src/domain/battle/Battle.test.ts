@@ -1182,22 +1182,24 @@ describe('over about 500 seeds', () => {
   }
 
   const seeds = Array.from({ length: 500 }, (_, index) => index * 48_271 + 1);
-  const plays = seeds.map(playSeed);
+  // Joués dans le premier test qui les demande, jamais au chargement du fichier (mutation).
+  let played: BattlePlay[] | null = null;
+  const allPlays = (): BattlePlay[] => (played ??= seeds.map(playSeed));
 
   it('always ends the battle', () => {
-    for (const play of plays) {
+    for (const play of allPlays()) {
       expect(play.battle.phase.kind).toBe('over');
     }
   });
 
   it('gives exactly the same battle for the same seed and the same presses', () => {
     for (const seed of seeds.slice(0, 50)) {
-      expect(playSeed(seed).events).toEqual(plays[seeds.indexOf(seed)]!.events);
+      expect(playSeed(seed).events).toEqual(allPlays()[seeds.indexOf(seed)]!.events);
     }
   });
 
   it('never judges a press during a phase transition', () => {
-    for (const play of plays) {
+    for (const play of allPlays()) {
       const transitions = play.all('phaseTransitionStarted');
       const judged = [
         ...play.all('whiffed'),
@@ -1210,7 +1212,7 @@ describe('over about 500 seeds', () => {
   });
 
   it('never lands the first impact of an enemy phase sooner than 2,080 ms after the hero attack', () => {
-    for (const play of plays) {
+    for (const play of allPlays()) {
       for (const transition of play
         .all('phaseTransitionStarted')
         .filter(({ to }) => to === 'enemy')) {
@@ -1221,7 +1223,7 @@ describe('over about 500 seeds', () => {
   });
 
   it('keeps every event in time order, and the hero HP within its bounds', () => {
-    for (const play of plays) {
+    for (const play of allPlays()) {
       const instants = play.events.map((event) => event.at);
       expect(instants).toEqual([...instants].sort((left, right) => left - right));
       for (const blow of play.all('blowResolved')) {
@@ -1232,7 +1234,7 @@ describe('over about 500 seeds', () => {
   });
 
   it('exercises every attack and every outcome, and is won by the hero', () => {
-    const events = plays.flatMap((play) => play.events);
+    const events = allPlays().flatMap((play) => play.events);
     const attacks = new Set(
       events.flatMap((event) => (event.type === 'windUpStarted' ? [event.attack] : [])),
     );

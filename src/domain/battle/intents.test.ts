@@ -29,20 +29,21 @@ describe('drawIntent (C10)', () => {
   });
 
   describe.each<EnemyKind>(['ghoul', 'specter'])('over about 500 seeds, for the %s', (kind) => {
-    const intents = SEEDS.map((seed) => drawIntent(kind, seedRandom(seed)).intent);
+    const intentsOf = () => SEEDS.map((seed) => drawIntent(kind, seedRandom(seed)).intent);
 
     it('only draws its own moves, and draws each of them', () => {
       const moves = ENEMIES[kind].moves;
-      for (const intent of intents) {
+      for (const intent of intentsOf()) {
         expect(moves).toContainEqual({ attack: intent.attack, damage: intent.damage });
       }
+      const intents = intentsOf();
       for (const move of moves) {
         expect(intents.some((intent) => intent.attack === move.attack)).toBe(true);
       }
     });
 
     it('keeps each wind-up between 0.8 and 1.2 times its base', () => {
-      for (const intent of intents) {
+      for (const intent of intentsOf()) {
         const base = ATTACKS[intent.attack].windUpMs;
         expect(intent.windUpMs).toBeGreaterThanOrEqual(base * 0.8);
         expect(intent.windUpMs).toBeLessThanOrEqual(base * 1.2);
@@ -51,7 +52,7 @@ describe('drawIntent (C10)', () => {
     });
 
     it('places the feint between 35 % and 60 % of the wind-up', () => {
-      for (const intent of intents) {
+      for (const intent of intentsOf()) {
         expect(intent.feintFraction).toBeGreaterThanOrEqual(0.35);
         expect(intent.feintFraction).toBeLessThan(0.6);
       }
