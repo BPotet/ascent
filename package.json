@@ -69,14 +69,15 @@
     "test:bdd": "jest --selectProjects bdd",
     "test:coverage": "jest --coverage",
     "test:scripts": "node --test \"scripts/**/*.test.mjs\" \"test/lint/*.test.mjs\"",
-    "mutation": "stryker run",
+    "mutation": "node scripts/mutation/run.mjs --full",
     "mutation:domain": "stryker run stryker.domain.config.mjs",
     "mutation:changed": "node scripts/mutation/run.mjs",
     "mutation:score": "node scripts/mutation/score.mjs",
+    "mutation:ui": "node scripts/mutation/run.mjs --ui",
     "commitlint:range": "commitlint --from origin/develop --to HEAD --verbose",
     "secrets": "node scripts/gitleaks.mjs",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run arch && npm run test:coverage && npm run test:scripts",
-    "verify:full": "npm run verify && npm run mutation:domain && npm run mutation"
+    "verify:full": "npm run verify && npm run mutation"
   },
   "private": true,
   "engines": {

@@ -1,8 +1,9 @@
 // Barrière « Tests de mutation » (docs/workflow.md) : seuil du code nouveau, 70 %.
-// `npm run mutation` mute tout sauf le domaine, muté à part par `npm run mutation:domain`
-// (stryker.domain.config.mjs, seuil 85 %). En CI et avec `npm run mutation:changed`,
-// scripts/mutation/ répartit ce même `mutate` en shards (lignes nouvelles en PR, tout en release) et
-// applique ces seuils au total des shards (docs/adr/0004-mutation-en-ci.md).
+// Ce `mutate` couvre tout sauf le domaine (stryker.domain.config.mjs, seuil 85 %). scripts/mutation/
+// le répartit en shards (lignes nouvelles en PR, tout en release, `npm run mutation` en local) et
+// applique ces seuils au total des shards (docs/adr/0004-mutation-en-ci.md). Les écrans
+// (`src/adapters/ui`) n'en sont mutés qu'à la demande du propriétaire (`npm run mutation:ui`,
+// label `mutation:ui`, case « Muter aussi les écrans »).
 /** @type {import('@stryker-mutator/api/core').PartialStrykerOptions} */
 export default {
   packageManager: 'npm',
