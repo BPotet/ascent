@@ -10,7 +10,7 @@ import { HabitRow } from '../components/HabitRow';
 import { CHECK_IN_SAVE_FAILED, CORRECTION_SAVE_FAILED } from '../format/checkInMessages';
 import { capitalize, formatDayAndMonth } from '../format/formatDay';
 import { dayDetailSummary, notStartedHint } from '../format/formatMonth';
-import { weekLabel } from '../format/formatTargetsByWeek';
+import { weekName } from '../format/formatTargetsByWeek';
 import { useExperience, xpChangeOn } from '../state/Experience';
 import { useDayDetail } from '../state/useDayDetail';
 import { useReducedMotion } from '../state/useReducedMotion';
@@ -62,7 +62,7 @@ export function DayDetailSheet({
 
   const alert = detail.isToday ? CHECK_IN_SAVE_FAILED : CORRECTION_SAVE_FAILED;
   const progressOf = new Map(detail.progress.map((progress) => [progress.habit.id, progress]));
-  const shownWeek = weekLabel(detail.week, today);
+  const shownWeek = weekName(detail.week, today);
 
   return (
     <Modal

@@ -1,7 +1,7 @@
 import { Day } from '../../../domain/day/Day';
 import { Week } from '../../../domain/week/Week';
 import {
-  weekLabel,
+  weekName,
   weekTargetsAccessibilityLabel,
   weekTargetsCount,
   weekTargetsText,
@@ -17,17 +17,17 @@ const row = (week: Week, reachedCount: number, targetCount: number) => ({
   targetCount,
 });
 
-describe('weekLabel', () => {
+describe('weekName', () => {
   it('names a week by its Monday, in the previous month if need be', () => {
-    expect(weekLabel(weekOf(10, 14), today)).toBe('semaine du 12 octobre');
-    expect(weekLabel(weekOf(10, 1), today)).toBe('semaine du 28 septembre');
-    expect(weekLabel(weekOf(6, 3), today)).toBe('semaine du 1 juin');
+    expect(weekName(weekOf(10, 14), today)).toBe('semaine du 12 octobre');
+    expect(weekName(weekOf(10, 1), today)).toBe('semaine du 28 septembre');
+    expect(weekName(weekOf(6, 3), today)).toBe('semaine du 1 juin');
   });
 
   it('names the week of today « cette semaine », from Monday to Sunday', () => {
-    expect(weekLabel(weekOf(10, 19), today)).toBe('cette semaine');
-    expect(weekLabel(weekOf(10, 19), Day.of(2026, 10, 25))).toBe('cette semaine');
-    expect(weekLabel(weekOf(10, 19), Day.of(2026, 10, 26))).toBe('semaine du 19 octobre');
+    expect(weekName(weekOf(10, 19), today)).toBe('cette semaine');
+    expect(weekName(weekOf(10, 19), Day.of(2026, 10, 25))).toBe('cette semaine');
+    expect(weekName(weekOf(10, 19), Day.of(2026, 10, 26))).toBe('semaine du 19 octobre');
   });
 });
 

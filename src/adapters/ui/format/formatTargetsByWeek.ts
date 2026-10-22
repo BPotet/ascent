@@ -14,7 +14,7 @@ type ShownRow = Pick<WeekTargetsRow, 'week' | 'reachedCount' | 'targetCount'>;
  * pour la semaine en cours, celle qui contient `today`. C'est aussi ce qui suit la progression de la
  * semaine dans le Détail du jour (« 2/3 semaine du 12 octobre »).
  */
-export function weekLabel(week: Week, today: Day): string {
+export function weekName(week: Week, today: Day): string {
   if (week.equals(Week.containing(today))) {
     return 'cette semaine';
   }
@@ -24,7 +24,7 @@ export function weekLabel(week: Week, today: Day): string {
 
 /** Le titre d'une ligne de la section : « Semaine du 5 octobre », « Cette semaine ». */
 export function weekTargetsTitle({ week }: ShownRow, today: Day): string {
-  return capitalize(weekLabel(week, today));
+  return capitalize(weekName(week, today));
 }
 
 /**
