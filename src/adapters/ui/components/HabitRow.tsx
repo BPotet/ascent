@@ -64,7 +64,9 @@ export function bounce(scale: Animated.Value): void {
  *
  * Dans le détail d'un jour de la Vue Mois (`compact`, ligne plus basse), la ligne montre aussi
  * « pas fait » (croix sur fond plein) et la marque « corrigé » (pastille sur la coche et mot écrit,
- * lu par le lecteur d'écran), comme la maquette (E5, E6).
+ * lu par le lecteur d'écran), comme la maquette (E5, E6). La progression y est celle de la semaine
+ * du jour, que `weekLabel` nomme (#27) : « Fait · 2/3 semaine du 12 octobre » ; par défaut, « cette
+ * semaine ».
  *
  * Avec `onEdit`, un bouton « ⋯ » à droite de la ligne ouvre « Modifier l'habitude » : c'est une
  * cible distincte de l'interrupteur (44 pt au moins), lue « Modifier l'habitude Cuisiner ».
@@ -73,6 +75,7 @@ export function HabitRow({
   habitDay,
   difficulty,
   weeklyProgress,
+  weekLabel,
   highlighted = false,
   xpChange,
   onToggle,
@@ -84,6 +87,8 @@ export function HabitRow({
   readonly difficulty?: Difficulty | undefined;
   /** La progression de la semaine en cours ; sans elle, la ligne n'en montre pas. */
   readonly weeklyProgress?: WeeklyProgressShown | undefined;
+  /** La semaine de la progression (« semaine du 12 octobre ») ; par défaut, « cette semaine ». */
+  readonly weekLabel?: string | undefined;
   readonly highlighted?: boolean;
   readonly compact?: boolean;
   readonly xpChange?: ShownXpChange | undefined;
@@ -96,7 +101,7 @@ export function HabitRow({
   const missed = status === 'missed';
   const reached = weeklyProgress?.targetReached === true;
   const label = [habit.name.value, formatDayAndMonth(day), statusLabel]
-    .concat(weeklyProgress ? [weeklyProgressAccessibilityLabel(weeklyProgress)] : [])
+    .concat(weeklyProgress ? [weeklyProgressAccessibilityLabel(weeklyProgress, weekLabel)] : [])
     .concat(corrected ? [CORRECTED] : [])
     .concat(difficulty ? [difficultyAccessibilityLabel(difficulty)] : [])
     .concat(reached ? [TARGET_REACHED.toLowerCase()] : [])
@@ -159,7 +164,7 @@ export function HabitRow({
               style={[typography.label, styles.status, done && styles.statusDone, styles.progress]}
             >
               {weeklyProgress
-                ? `${capitalize(statusLabel)} · ${weeklyProgressText(weeklyProgress)}`
+                ? `${capitalize(statusLabel)} · ${weeklyProgressText(weeklyProgress, weekLabel)}`
                 : capitalize(statusLabel)}
             </Text>
             {corrected && (

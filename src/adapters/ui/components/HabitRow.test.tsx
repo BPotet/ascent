@@ -340,6 +340,29 @@ describe('HabitRow', () => {
       ).toBeEnabled();
     });
 
+    it('names the week of the progress in the day detail (#27)', async () => {
+      await render(
+        <HabitRow
+          habitDay={{ ...habitDay('missed'), corrected: true }}
+          weeklyProgress={progress(3, 3, true)}
+          weekLabel="semaine du 12 octobre"
+          compact
+        />,
+      );
+
+      expect(screen.getByTestId('habit-progress-7')).toHaveTextContent(
+        'Pas fait · 3/3 semaine du 12 octobre',
+      );
+      expect(
+        screen.getByRole('switch', {
+          name: 'Cuisiner, mercredi 14 octobre, pas fait, 3 sur 3 semaine du 12 octobre, corrigé, objectif atteint',
+        }),
+      ).toBeOnTheScreen();
+      expect(
+        screen.getByTestId('habit-target-reached-7', { includeHiddenElements: true }),
+      ).toHaveTextContent('Objectif atteint');
+    });
+
     it('shows no badge, and no mark of failure, below the target', async () => {
       await render(<HabitRow habitDay={habitDay('pending')} weeklyProgress={progress(1, 3)} />);
 
