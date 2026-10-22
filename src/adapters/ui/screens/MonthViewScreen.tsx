@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import type { DayDetail } from '../../../application/useCases/getDayDetail';
+import { dayDetailOf, type DayDetail } from '../../../application/useCases/getDayDetail';
 import type { MonthView } from '../../../application/useCases/getMonthView';
 import { ADD_HABIT_LABEL } from '../components/AddHabitButton';
 import { Button } from '../components/Button';
@@ -147,7 +147,10 @@ export function MonthViewScreen({ onAddHabit }: { readonly onAddHabit?: () => vo
       ) : (
         <ScrollView contentContainerStyle={styles.list} testID="month-view-list">
           <MonthDaysHeader />
-          <MonthGrid weeks={view.weeks} onOpen={setOpened} />
+          <MonthGrid
+            weeks={view.weeks}
+            onOpen={(monthDay) => setOpened(dayDetailOf(monthDay, view.targetsByWeek))}
+          />
           {!view.isCurrentMonth && (
             <LinkButton label={BACK_TO_CURRENT_MONTH} onPress={goToCurrentMonth} />
           )}
