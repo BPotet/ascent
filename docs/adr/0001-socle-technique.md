@@ -105,6 +105,10 @@ Seuils, tels que `docs/workflow.md` les fixe :
   `commits`, `secrets`, `static`, `tests`, `mutation`, `sonar`, `android-apk`, `e2e-android`.
 - **`android-apk`** : `expo prebuild --platform android` puis `./gradlew assembleRelease` (JDK 17),
   APK publié en artefact `ascent-android-apk`. Sur `develop`, c'est le **build de preview**.
+- **`cleanup-artifacts`** (PR du dépôt et push sur `develop`) : supprime les anciens artefacts
+  `ascent-android-apk` (`scripts/ci/cleanup-artifacts.mjs`). Conservation : APK 1 jour sur une PR,
+  7 jours sur `develop`, 30 jours sur `main`, `release/*` et `hotfix/*` ; rapports de couverture
+  et d'end-to-end 7 jours (voir « CI/CD et Git Flow » dans `docs/workflow.md`).
 - **`Release`** (tag `v*`) : construit l'APK et l'attache à la GitHub Release du tag.
 - **EAS Build et EAS Update ne sont pas retenus** pour l'instant : les builds passent par GitHub
   Actions, sans compte Expo ni service externe.
