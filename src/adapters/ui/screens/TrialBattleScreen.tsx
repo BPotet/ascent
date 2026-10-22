@@ -190,6 +190,8 @@ export function TrialBattleScreen({
       <Animated.View
         onLayout={onSceneLayout}
         testID="battle-scene-frame"
+        // Le numéro de la dernière secousse, lu par les tests (aucune avec « réduire les animations »).
+        {...{ shakeKey: reducedMotion ? 0 : display.shakeKey }}
         style={[styles.scene, reducedMotion ? null : shake]}
       >
         <BattleScene
