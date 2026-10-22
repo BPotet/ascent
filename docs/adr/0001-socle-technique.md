@@ -73,11 +73,12 @@ Les fichiers de `src/**/testing/` sont des aides de test : jamais importées par
 | 6 | Tests d'intégration | Jest (`jest-expo`) + React Native Testing Library 14, projet `integration` (`src/adapters`, `test/`) | `npm run test:integration` | `tests` |
 | 7 | Tests BDD | jest-cucumber, projet `bdd` (`features/*.feature` en `# language: fr`, étapes dans `features/step-definitions/`) | `npm run test:bdd` | `tests` |
 | 8 | End-to-end | Maestro (`e2e/flows`) sur émulateur Android | — | `e2e-android` |
-| 9 | Mutation | StrykerJS 10 + jest-runner, `scripts/mutation/` (plan, shards, score) | `npm run mutation:changed`, `npm run mutation:score`, `npm run mutation`, `npm run mutation:domain` | `mutation-plan`, `mutation-shard`, `mutation` |
+| 9 | Mutation | StrykerJS 10 + jest-runner, `scripts/mutation/` (plan, shards, score) | `npm run mutation:changed`, `npm run mutation:score`, `npm run mutation`, `npm run mutation:domain` ; écrans à la demande du propriétaire : `npm run mutation:ui` | `mutation-plan`, `mutation-shard`, `mutation` |
 | 10 | Coverage et qualité | Jest (seuils) + SonarQube Cloud (`sonar-project.properties`) | `npm run test:coverage` | `tests`, `sonar` |
 
 `npm run verify` enchaîne en local style, types, architecture et tous les tests avec les seuils de
-couverture ; `npm run verify:full` y ajoute la mutation complète. Les hooks Git sont installés par
+couverture ; `npm run verify:full` y ajoute la mutation complète, sans les écrans (à la demande du
+propriétaire, [ADR 0004](0004-mutation-en-ci.md), « Révisé »). Les hooks Git sont installés par
 husky au `npm install`.
 
 Règles d'architecture (dependency-cruiser), appliquées à tout `src/`, tests compris :
@@ -95,7 +96,8 @@ Seuils, tels que `docs/workflow.md` les fixe :
   `release/*` et `hotfix/*`, tout le code est muté. La mutation est répartie en jobs parallèles
   (`mutation-plan`, puis un `mutation-shard` par part) et les seuils sont calculés sur le total des
   parts par le job `mutation` (`scripts/mutation/`, [ADR 0004](0004-mutation-en-ci.md)).
-  Chaque fichier n'est muté qu'une fois. Un push sur `develop` ou `main` ne relance pas la mutation :
+  Chaque fichier n'est muté qu'une fois. Les écrans (`src/adapters/ui`) ne sont mutés qu'à la
+  demande du propriétaire (label `mutation:ui`, case « Muter aussi les écrans », ADR 0004 révisé). Un push sur `develop` ou `main` ne relance pas la mutation :
   le code y arrive déjà muté par sa PR ou par sa branche de release.
 - Les styles visuels (`StyleSheet.create`, options d'apparence de la navigation) sont exclus de la
   mutation par un commentaire `// Stryker disable all: …` : leur contrôle est la conformité aux
