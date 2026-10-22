@@ -35,35 +35,45 @@ export interface ClockCalibration {
  */
 export type TimingMethod = 'a' | 'b' | 'c';
 
+/** Ce que mesurent les appuis déjà faits : écarts de la méthode retenue (recalés pour (b), bruts sinon), en ms. */
+export interface TouchProbeMeasure {
+  readonly median: number;
+  readonly p95: number;
+  readonly method: TimingMethod;
+}
+
 export interface TouchProbeReport {
   readonly count: number;
+  /** L'objectif est atteint : la mesure est le résultat de la sonde. */
   readonly complete: boolean;
-  /** Écarts de la méthode retenue (recalés pour (b), bruts sinon), en ms. */
-  readonly median: number | null;
-  readonly p95: number | null;
-  readonly method: TimingMethod | null;
+  /** Absente sans aucun appui. */
+  readonly measure: TouchProbeMeasure | null;
 }
 
 function sorted(samples: readonly number[]): number[] {
   return [...samples].sort((left, right) => left - right);
 }
 
-/** La valeur du milieu, ou la moyenne des deux du milieu pour un nombre pair d'échantillons. */
-export function median(samples: readonly number[]): number | null {
-  if (samples.length === 0) return null;
-  const ordered = sorted(samples);
+// Les rangs lus existent : ces deux calculs reçoivent au moins un échantillon, déjà trié.
+function middleOf(ordered: readonly number[]): number {
   const middle = Math.floor(ordered.length / 2);
-  // Les rangs lus existent : il y a au moins un échantillon.
   return ordered.length % 2 === 1
     ? ordered[middle]!
     : (ordered[middle - 1]! + ordered[middle]!) / 2;
 }
 
+function nearestRank95Of(ordered: readonly number[]): number {
+  return ordered[Math.ceil(0.95 * ordered.length) - 1]!;
+}
+
+/** La valeur du milieu, ou la moyenne des deux du milieu pour un nombre pair d'échantillons. */
+export function median(samples: readonly number[]): number | null {
+  return samples.length === 0 ? null : middleOf(sorted(samples));
+}
+
 /** Le 95ᵉ centile au rang le plus proche : la ⌈0,95 n⌉-ième plus petite valeur. */
 export function p95(samples: readonly number[]): number | null {
-  if (samples.length === 0) return null;
-  const ordered = sorted(samples);
-  return ordered[Math.ceil(0.95 * ordered.length) - 1]!;
+  return samples.length === 0 ? null : nearestRank95Of(sorted(samples));
 }
 
 /** Ajoute un appui à la mesure ; au-delà de l'objectif, les appuis sont ignorés. */
@@ -98,7 +108,7 @@ export function touchProbeReport(
 ): TouchProbeReport {
   const count = samples.length;
   const complete = count >= TOUCH_PROBE_TARGET;
-  if (count === 0) return { count, complete, median: null, p95: null, method: null };
+  if (count === 0) return { count, complete, measure: null };
 
   const rawGaps = samples.map(({ touchedAt, receivedAt }) => receivedAt - touchedAt);
   // Le toucher ramené sur l'horloge JS : touchedAt − offset.
@@ -106,5 +116,10 @@ export function touchProbeReport(
     ? samples.map(({ touchedAt, receivedAt }) => receivedAt - (touchedAt - calibration.offset))
     : null;
   const { method, gaps } = chooseMethod(rawGaps, calibratedGaps);
-  return { count, complete, median: median(gaps), p95: p95(gaps), method };
+  const ordered = sorted(gaps);
+  return {
+    count,
+    complete,
+    measure: { median: middleOf(ordered), p95: nearestRank95Of(ordered), method },
+  };
 }

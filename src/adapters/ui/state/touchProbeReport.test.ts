@@ -112,13 +112,7 @@ describe('touchProbeReport', () => {
   });
 
   it('reports nothing measured without any touch', () => {
-    expect(touchProbeReport([])).toEqual({
-      count: 0,
-      complete: false,
-      median: null,
-      p95: null,
-      method: null,
-    });
+    expect(touchProbeReport([])).toEqual({ count: 0, complete: false, measure: null });
   });
 
   it('counts the touches and is complete at the target', () => {
@@ -128,13 +122,21 @@ describe('touchProbeReport', () => {
     expect(touchProbeReport(twentyWith(8)).complete).toBe(true);
   });
 
+  it('measures the touches already made, before the target', () => {
+    expect(touchProbeReport(samplesWithGaps([8, 9])).measure).toEqual({
+      median: 8.5,
+      p95: 9,
+      method: 'a',
+    });
+  });
+
   it('measures the median and the p95 of the gaps between touch and reception', () => {
     const gaps = Array.from({ length: 20 }, (_, index) => index + 1);
 
     const report = touchProbeReport(samplesWithGaps(gaps));
 
-    expect(report.median).toBe(10.5);
-    expect(report.p95).toBe(19);
+    expect(report.measure?.median).toBe(10.5);
+    expect(report.measure?.p95).toBe(19);
   });
 
   describe('method (a): touches dated on the same base as the JS clock', () => {
@@ -143,15 +145,15 @@ describe('touchProbeReport', () => {
       ['the upper bound', 500],
       ['an ordinary gap', 8],
     ])('is chosen when every gap is within the range, %s included', (_, gap) => {
-      expect(touchProbeReport(twentyWith(gap)).method).toBe('a');
+      expect(touchProbeReport(twentyWith(gap)).measure?.method).toBe('a');
     });
 
     it('is chosen without any calibration', () => {
-      expect(touchProbeReport(twentyWith(8), undefined).method).toBe('a');
+      expect(touchProbeReport(twentyWith(8), undefined).measure?.method).toBe('a');
     });
 
     it('is chosen even when a calibration exists', () => {
-      expect(touchProbeReport(twentyWith(8), { offset: 1_000 }).method).toBe('a');
+      expect(touchProbeReport(twentyWith(8), { offset: 1_000 }).measure?.method).toBe('a');
     });
   });
 
@@ -160,7 +162,7 @@ describe('touchProbeReport', () => {
       ['−3 ms, just below the range', -3],
       ['501 ms, just above the range', 501],
     ])('is not (a) as soon as one gap is %s', (_, gap) => {
-      expect(touchProbeReport(twentyWith(gap)).method).not.toBe('a');
+      expect(touchProbeReport(twentyWith(gap)).measure?.method).not.toBe('a');
     });
 
     it('is chosen when the UI clock is ahead and the offset compensates for it', () => {
@@ -169,15 +171,15 @@ describe('touchProbeReport', () => {
 
       const report = touchProbeReport(samples, { offset: 50_000 });
 
-      expect(report.method).toBe('b');
-      expect(report.median).toBe(8);
-      expect(report.p95).toBe(8);
+      expect(report.measure?.method).toBe('b');
+      expect(report.measure?.median).toBe(8);
+      expect(report.measure?.p95).toBe(8);
     });
 
     it('is chosen when the UI clock is behind and the offset compensates for it', () => {
       const samples = samplesWithGaps(Array.from({ length: 20 }, () => 8 + 50_000));
 
-      expect(touchProbeReport(samples, { offset: -50_000 }).method).toBe('b');
+      expect(touchProbeReport(samples, { offset: -50_000 }).measure?.method).toBe('b');
     });
 
     it.each([
@@ -186,13 +188,13 @@ describe('touchProbeReport', () => {
     ])('is chosen when a calibrated gap is exactly %s', (_, gap) => {
       const samples = samplesWithGaps([gap - 50_000, ...Array.from({ length: 19 }, () => -49_992)]);
 
-      expect(touchProbeReport(samples, { offset: 50_000 }).method).toBe('b');
+      expect(touchProbeReport(samples, { offset: 50_000 }).measure?.method).toBe('b');
     });
   });
 
   describe('method (c): touches dated at their JS reception', () => {
     it('is chosen when the gaps are out of range and nothing was calibrated', () => {
-      expect(touchProbeReport(twentyWith(501)).method).toBe('c');
+      expect(touchProbeReport(twentyWith(501)).measure?.method).toBe('c');
     });
 
     it.each([
@@ -201,7 +203,7 @@ describe('touchProbeReport', () => {
     ])('is chosen when a calibrated gap is %s, just out of range', (_, gap) => {
       const samples = samplesWithGaps([gap - 50_000, ...Array.from({ length: 19 }, () => -49_992)]);
 
-      expect(touchProbeReport(samples, { offset: 50_000 }).method).toBe('c');
+      expect(touchProbeReport(samples, { offset: 50_000 }).measure?.method).toBe('c');
     });
 
     it('reports the raw gaps, since no offset makes them comparable', () => {
@@ -209,9 +211,9 @@ describe('touchProbeReport', () => {
 
       const report = touchProbeReport(samplesWithGaps(gaps), { offset: 10 });
 
-      expect(report.method).toBe('c');
-      expect(report.median).toBe(1_009.5);
-      expect(report.p95).toBe(1_018);
+      expect(report.measure?.method).toBe('c');
+      expect(report.measure?.median).toBe(1_009.5);
+      expect(report.measure?.p95).toBe(1_018);
     });
   });
 });

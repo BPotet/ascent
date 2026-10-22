@@ -117,9 +117,7 @@ describe('useTouchProbe', () => {
     expect(probe.result.current.report).toEqual({
       count: 20,
       complete: true,
-      median: 10,
-      p95: 10,
-      method: 'a',
+      measure: { median: 10, p95: 10, method: 'a' },
     });
   });
 
@@ -128,8 +126,8 @@ describe('useTouchProbe', () => {
 
     for (let index = 0; index < TOUCH_PROBE_TARGET; index += 1) await touch(probe, 10);
 
-    expect(probe.result.current.report.method).toBe('b');
-    expect(probe.result.current.report.median).toBe(10);
+    expect(probe.result.current.report.measure?.method).toBe('b');
+    expect(probe.result.current.report.measure?.median).toBe(10);
   });
 
   it('starts over from zero', async () => {
