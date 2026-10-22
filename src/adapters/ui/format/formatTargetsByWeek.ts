@@ -10,8 +10,9 @@ export const TARGETS_BY_WEEK_TITLE = 'Objectifs par semaine';
 type ShownRow = Pick<WeekTargetsRow, 'week' | 'reachedCount' | 'targetCount'>;
 
 /**
- * Une semaine dans une ligne de texte : « semaine du 12 octobre » (son lundi), ou « cette semaine »
- * pour la semaine en cours, celle qui contient `today`. C'est aussi ce qui suit la progression de la
+ * Une semaine dans une ligne de texte : « semaine du 12 octobre » (son lundi), « semaine du 1er
+ * juin » pour un lundi 1er, ou « cette semaine » pour la semaine en cours, celle qui contient
+ * `today`. C'est aussi ce qui suit la progression de la
  * semaine dans le Détail du jour (« 2/3 semaine du 12 octobre »).
  */
 export function weekName(week: Week, today: Day): string {
@@ -19,7 +20,9 @@ export function weekName(week: Week, today: Day): string {
     return 'cette semaine';
   }
   const { dayOfMonth, month } = week.start;
-  return `semaine du ${dayOfMonth} ${MONTH_NAMES[month - 1]}`;
+  // Le premier jour du mois s'écrit « 1er », lu « premier » (décision UX du 22 octobre 2026).
+  const day = dayOfMonth === 1 ? '1er' : String(dayOfMonth);
+  return `semaine du ${day} ${MONTH_NAMES[month - 1]}`;
 }
 
 /** Le titre d'une ligne de la section : « Semaine du 5 octobre », « Cette semaine ». */

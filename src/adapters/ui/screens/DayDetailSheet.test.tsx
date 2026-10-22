@@ -387,6 +387,8 @@ describe('DayDetailSheet and the progress of the week (#27)', () => {
     expect(
       row(/^Courir 5 km, mercredi 14 octobre, fait, 2 sur 3 semaine du 12 octobre$/u),
     ).toBeChecked();
+    // Le texte du Gherkin en toutes lettres, sans la difficulté (décision UX).
+    expect(screen.queryByTestId(`habit-difficulty-${running}`)).toBeNull();
     expect(
       screen.queryByTestId(`habit-target-reached-${running}`, { includeHiddenElements: true }),
     ).toBeNull();

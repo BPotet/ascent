@@ -338,6 +338,25 @@ describe('MonthViewScreen', () => {
       expect(section().getByText('0/2 objectifs atteints')).toBeOnTheScreen();
     });
 
+    it('puts the section last: grid, back to this month, legend, hint, section (décision UX)', async () => {
+      await givenTheBackground();
+      await habitCreatedOn(Day.of(2026, 9, 21), 'Lire');
+      await show();
+      await fireEvent.press(previousButton());
+      await waitFor(() => expect(shownMonth()).toBe('Septembre 2026, début de l’historique'));
+
+      const tree = JSON.stringify(screen.toJSON());
+      const positions = [
+        '"month-grid"',
+        `"${BACK_TO_CURRENT_MONTH}"`,
+        '"Corrigé"',
+        `"${MONTH_HINT}"`,
+        '"Objectifs par semaine"',
+      ].map((marker) => tree.indexOf(marker));
+      expect(positions.every((position) => position >= 0)).toBe(true);
+      expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+    });
+
     it('opens the week of a row (scenario 2)', async () => {
       await givenTheBackground();
       const onOpenWeek = jest.fn();

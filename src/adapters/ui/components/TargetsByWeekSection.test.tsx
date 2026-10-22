@@ -79,6 +79,17 @@ describe('TargetsByWeekSection', () => {
     ).toBe(line('2026-10-19'));
   });
 
+  it('writes the 1st of the month « 1er », in full and never cut (décision UX)', async () => {
+    await render(<TargetsByWeekSection rows={[row(weekOf(6, 1), 2, 4)]} today={today} />);
+
+    const line = screen.getByRole('button', {
+      name: 'Semaine du 1er juin, 2 objectifs atteints sur 4, ouvrir la semaine',
+    });
+    for (const text of ['Semaine du 1er juin', '2/4 objectifs atteints']) {
+      expect(within(line).getByText(text).props.numberOfLines).toBeUndefined();
+    }
+  });
+
   it('gives each row a touch target of at least 44 pt', async () => {
     await render(<TargetsByWeekSection rows={october} today={today} />);
 

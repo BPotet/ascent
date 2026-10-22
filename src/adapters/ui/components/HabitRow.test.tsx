@@ -361,6 +361,8 @@ describe('HabitRow', () => {
       expect(
         screen.getByTestId('habit-target-reached-7', { includeHiddenElements: true }),
       ).toHaveTextContent('Objectif atteint');
+      // Le texte complet passe à la ligne, il n'est jamais coupé (décision UX).
+      expect(screen.getByTestId('habit-progress-7').props.numberOfLines).toBeUndefined();
     });
 
     it('shows no badge, and no mark of failure, below the target', async () => {

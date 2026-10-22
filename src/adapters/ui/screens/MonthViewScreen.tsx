@@ -77,7 +77,7 @@ const hasNoHabit = (view: MonthView) =>
  * retour au mois en cours. En haut, l'expérience du personnage (R24).
  * États : chargement, erreur de lecture avec « Réessayer », aucune habitude.
  *
- * Sous la grille et sa légende, la section « Objectifs par semaine » (#27) compte, pour chaque
+ * Sous la grille, sa légende et l'astuce, la section « Objectifs par semaine » (#27) compte, pour chaque
  * semaine du mois jusqu'à la semaine en cours, les habitudes à objectif atteint ; elle n'apparaît
  * pas sans ligne. Toucher une ligne ouvre la Vue Semaine sur cette semaine (`onOpenWeek`).
  *
@@ -176,12 +176,12 @@ export function MonthViewScreen({
             <LinkButton label={BACK_TO_CURRENT_MONTH} onPress={goToCurrentMonth} />
           )}
           <MonthLegend />
+          <Text style={[typography.label, styles.hint]}>{MONTH_HINT}</Text>
           <TargetsByWeekSection
             rows={view.targetsByWeek}
             today={view.today}
             onOpenWeek={onOpenWeek}
           />
-          <Text style={[typography.label, styles.hint]}>{MONTH_HINT}</Text>
         </ScrollView>
       )}
       {opened !== null && (

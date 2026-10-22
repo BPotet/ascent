@@ -21,7 +21,8 @@ describe('weekName', () => {
   it('names a week by its Monday, in the previous month if need be', () => {
     expect(weekName(weekOf(10, 14), today)).toBe('semaine du 12 octobre');
     expect(weekName(weekOf(10, 1), today)).toBe('semaine du 28 septembre');
-    expect(weekName(weekOf(6, 3), today)).toBe('semaine du 1 juin');
+    expect(weekName(weekOf(6, 3), today)).toBe('semaine du 1er juin');
+    expect(weekName(weekOf(6, 10), today)).toBe('semaine du 8 juin');
   });
 
   it('names the week of today « cette semaine », from Monday to Sunday', () => {
@@ -53,6 +54,15 @@ describe('a row of the section « Objectifs par semaine »', () => {
     expect(weekTargetsCount(row(weekOf(10, 19), 0, 1))).toBe('0/1 objectif atteint');
     expect(weekTargetsCount(row(weekOf(10, 19), 1, 1))).toBe('1/1 objectif atteint');
     expect(weekTargetsCount(row(weekOf(10, 19), 1, 2))).toBe('1/2 objectifs atteints');
+  });
+
+  it('writes the 1st of the month « 1er » (décision UX)', () => {
+    expect(weekTargetsText(row(weekOf(6, 1), 2, 4), today)).toBe(
+      'Semaine du 1er juin · 2/4 objectifs atteints',
+    );
+    expect(weekTargetsAccessibilityLabel(row(weekOf(6, 1), 2, 4), today)).toBe(
+      'Semaine du 1er juin, 2 objectifs atteints sur 4, ouvrir la semaine',
+    );
   });
 
   it('reads the row to the screen reader (scenario 9)', () => {
