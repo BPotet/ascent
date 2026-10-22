@@ -219,6 +219,17 @@ describe('updateHabit', () => {
       await expect(tap(running, thursday8)).resolves.toMatchObject({ xpChange: 10, xp: 20 });
     });
 
+    it('re-evaluates the week once when the same change is saved twice together (double tap)', async () => {
+      await given('medium', monday12, Day.of(2026, 10, 13));
+
+      const [first, second] = await Promise.all([update(running, 'hard'), update(running, 'hard')]);
+
+      expect(first).toMatchObject({ ok: true, settingsChanged: true, xpChange: 20, xp: 40 });
+      expect(second).toMatchObject({ ok: true, settingsChanged: false, xpChange: 0, xp: 40 });
+      await expect(xp()).resolves.toBe(40);
+      await expect(changes(running)).resolves.toHaveLength(2);
+    });
+
     it('removes the difference when the difficulty goes down (R12)', async () => {
       await given('hard', monday12, Day.of(2026, 10, 13));
 
