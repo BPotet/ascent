@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { pathToFileURL } from 'node:url';
-import { shardConfig } from './run.mjs';
+import { shardConfig, uiOption } from './run.mjs';
 
 const dir = mkdtempSync(path.join(tmpdir(), 'ascent-shard-config-'));
 after(() => rmSync(dir, { recursive: true, force: true }));
@@ -27,7 +27,48 @@ const coreShard = {
   mutate: ['src/app/x.ts:3-7'],
 };
 
+const uiShard = {
+  id: 'ui-1',
+  config: 'stryker.ui.config.mjs',
+  mutate: ['src/app/[(]tabs[)]/week.tsx:1-30'],
+};
+
+describe('uiOption', () => {
+  it('leaves the screens out by default', () => {
+    assert.equal(uiOption({ env: {}, args: [] }), 'exclude');
+    assert.equal(uiOption({ env: { MUTATION_UI: '' }, args: [] }), 'exclude');
+    assert.equal(uiOption({ env: { MUTATION_UI: 'false' }, args: ['--full'] }), 'exclude');
+  });
+
+  it('adds the screens on request (CI label or manual run)', () => {
+    assert.equal(uiOption({ env: { MUTATION_UI: 'true' }, args: [] }), 'include');
+    assert.equal(uiOption({ env: { MUTATION_UI: 'include' }, args: [] }), 'include');
+    assert.equal(uiOption({ env: {}, args: ['--ui'] }), 'include');
+  });
+
+  it('mutates only the screens with npm run mutation:ui', () => {
+    assert.equal(uiOption({ env: {}, args: ['--ui-only'] }), 'only');
+    assert.equal(uiOption({ env: { MUTATION_UI: 'only' }, args: [] }), 'only');
+  });
+
+  it('rejects an unknown value instead of silently leaving the screens out', () => {
+    for (const value of ['yes', 'toString']) {
+      assert.throws(() => uiOption({ env: { MUTATION_UI: value }, args: [] }), /MUTATION_UI/);
+    }
+  });
+});
+
 describe('shardConfig', () => {
+  it('imports the screen config for a screen shard, with the thresholds of the new code', async () => {
+    const base = (await import('../../stryker.config.mjs')).default;
+    const ui = (await import('../../stryker.ui.config.mjs')).default;
+    const config = await load(uiShard);
+    assert.deepEqual(config.jest, ui.jest);
+    assert.deepEqual(ui.thresholds, base.thresholds);
+    assert.equal(config.thresholds.low, base.thresholds.low);
+    assert.deepEqual(config.mutate, uiShard.mutate);
+  });
+
   it('imports the domain config for a domain shard', async () => {
     const base = (await import('../../stryker.domain.config.mjs')).default;
     const config = await load(domainShard);

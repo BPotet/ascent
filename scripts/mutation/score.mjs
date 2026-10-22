@@ -121,9 +121,13 @@ function row(name, metrics, threshold, verdict) {
   return `| ${cells.join(' | ')} |`;
 }
 
-/** Le résumé Markdown : un tableau par classe et par shard, puis les mutants non tués. */
-export function renderSummary(result, errors = []) {
+/**
+ * Le résumé Markdown : la mutation des écrans demandée ou non (`notice`), un tableau par classe et
+ * par shard, puis les mutants non tués.
+ */
+export function renderSummary(result, errors = [], { notice = '' } = {}) {
   const lines = ['## Mutation tests (StrykerJS)', ''];
+  if (notice) lines.push(`> ${notice}`, '');
   for (const error of errors) lines.push(`- **Error**: ${error}`);
   if (errors.length > 0) lines.push('');
   lines.push(
@@ -172,7 +176,7 @@ export async function main({
     shards.filter(({ report }) => report),
     thresholds ?? (await loadThresholds()),
   );
-  const summary = renderSummary(result, errors);
+  const summary = renderSummary(result, errors, { notice: env.MUTATION_UI_NOTICE });
   write(summary);
   if (env.GITHUB_STEP_SUMMARY) appendFileSync(env.GITHUB_STEP_SUMMARY, summary);
   mkdirSync(dir, { recursive: true });
