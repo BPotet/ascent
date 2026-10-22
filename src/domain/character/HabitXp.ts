@@ -20,10 +20,9 @@ import { Week } from '../week/Week';
  */
 export function targetBonusOf(doneCount: number, settings: WeekSettings): number {
   const { weekTarget, difficulty } = settings;
-  if (weekTarget === null || !isTargetReached(doneCount, weekTarget)) {
-    return 0;
-  }
-  return weekTarget * TARGET_BONUS_PER_UNIT[difficulty];
+  return isTargetReached(doneCount, weekTarget)
+    ? (weekTarget ?? 0) * TARGET_BONUS_PER_UNIT[difficulty]
+    : 0;
 }
 
 /**
