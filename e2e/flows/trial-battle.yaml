@@ -71,21 +71,30 @@ tags:
 - takeScreenshot: trial-battle-end
 
 # Réglages d'essai : transition et avancée allongées à 2 000 ms, pour capturer les états brefs.
-# Les réglages suivent la fin du combat, dans une vue qui défile.
-- scrollUntilVisible:
-    element:
-      text: 'Allonger la transition de phase'
-    direction: DOWN
-    centerElement: true
+# Les réglages suivent la fin du combat, dans une vue qui défile. Sur 320 x 640, la partie qui
+# défile est petite : de courts glissements évitent de passer la ligne visée.
+- repeat:
+    while:
+      notVisible: 'Allonger la transition de phase'
+    times: 12
+    commands:
+      - swipe:
+          start: 50%, 88%
+          end: 50%, 68%
+          duration: 600
 - repeat:
     times: 24
     commands:
       - tapOn: 'Allonger la transition de phase'
-- scrollUntilVisible:
-    element:
-      text: "Allonger l'avancée"
-    direction: DOWN
-    centerElement: true
+- repeat:
+    while:
+      notVisible: "Allonger l'avancée"
+    times: 12
+    commands:
+      - swipe:
+          start: 50%, 88%
+          end: 50%, 68%
+          duration: 600
 - repeat:
     times: 32
     commands:
