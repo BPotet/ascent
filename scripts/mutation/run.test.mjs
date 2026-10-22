@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, describe, it } from 'node:test';
-import { pathToFileURL } from 'node:url';
-import { shardConfig, uiOption } from './run.mjs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { uiNotice } from './plan.mjs';
+import { planOutputs, shardConfig, uiOption } from './run.mjs';
 
 const dir = mkdtempSync(path.join(tmpdir(), 'ascent-shard-config-'));
 after(() => rmSync(dir, { recursive: true, force: true }));
@@ -109,5 +111,34 @@ describe('shardConfig', () => {
     const base = (await import('../../stryker.config.mjs')).default;
     const config = await load(coreShard);
     assert.deepEqual(config.ignorePatterns, [...base.ignorePatterns, '.stryker-tmp']);
+  });
+});
+
+describe('run.mjs --plan', () => {
+  it('writes the plan outputs to GITHUB_OUTPUT and the screen notice to the summary', () => {
+    const output = path.join(dir, 'github-output');
+    const summary = path.join(dir, 'github-summary');
+    writeFileSync(output, '');
+    writeFileSync(summary, '');
+    const script = fileURLToPath(new URL('./run.mjs', import.meta.url));
+    // Base de fusion avec HEAD : aucun changement, donc un plan vide.
+    execFileSync(process.execPath, [script, '--plan'], {
+      env: {
+        ...process.env,
+        BASE_REF: 'HEAD',
+        MUTATION_MODE: 'changed',
+        MUTATION_UI: 'false',
+        GITHUB_OUTPUT: output,
+        GITHUB_STEP_SUMMARY: summary,
+      },
+      stdio: 'pipe',
+    });
+    const head = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+    const notice = uiNotice({ ui: 'exclude', screens: 0 });
+    assert.equal(
+      readFileSync(output, 'utf8'),
+      planOutputs({ matrix: '{"shard":[]}', count: 0, base: head, ui: 'exclude', notice }),
+    );
+    assert.equal(readFileSync(summary, 'utf8'), `> ${notice}\n`);
   });
 });
