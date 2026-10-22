@@ -34,4 +34,9 @@ pendant le parcours dépend du jour (semaine de création réduite) : les parcou
 `.+ cette semaine` ou `\d`. Les cases de la Vue
 Semaine et du détail du jour ne portent pas la difficulté : `<nom>, <jour>, <état>`.
 
+Compteurs (#25) : l'en-tête de la Vue Journée affiche `<faites>/<attendues> faites`, lu
+`<N> habitude(s) faite(s) sur <M> attendue(s)` ; un jour de la Vue Mois est lu `<jour>[, aujourd’hui], <N>
+habitude(s) faite(s) sur <M> attendue(s)`, ou `<jour>, objectifs de la semaine atteints, aucune habitude
+attendue` avec le drapeau.
+
 Vérifier la syntaxe sans émulateur : `maestro check-syntax e2e/flows/<parcours>.yaml`.

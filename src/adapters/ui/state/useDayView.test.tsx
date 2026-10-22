@@ -502,4 +502,67 @@ describe('useDayView', () => {
       expect(result.current.experience.change).toBeNull();
     });
   });
+
+  describe('expected habits (#25)', () => {
+    /** « Courir 5 km », objectif 1, « fait » lundi 12 octobre, et « Cuisiner », objectif 7. */
+    async function showTargetReached() {
+      const { dependencies, wrapper } = setUp();
+      dependencies.clock.setToday(Day.of(2026, 10, 12));
+      const running = await createHabit(dependencies, 'Courir 5 km', 'medium', 1);
+      await createHabit(dependencies, 'Cuisiner', 'medium', 7);
+      await toggleCheckIn(dependencies, running.ok ? running.habit.id : 0, Day.of(2026, 10, 12));
+      dependencies.clock.setToday(wednesday);
+      const { result } = await renderHook(() => useDayView(), { wrapper });
+      await waitFor(() => expect(result.current.state.status).toBe('ready'));
+      const counted = () => {
+        const { state } = result.current;
+        return state.status === 'ready'
+          ? `${state.view.doneCount}/${state.view.expectedCount} ${state.view.habits
+              .map(({ expected }) => expected)
+              .join(',')}`
+          : null;
+      };
+      const running0 = () => {
+        const { state } = result.current;
+        return state.status === 'ready' ? state.view.habits[0]! : (undefined as never);
+      };
+      return { dependencies, result, counted, running: running0 };
+    }
+
+    it('counts again a habit whose target is reached as soon as it is touched, before it is saved', async () => {
+      const { dependencies, result, counted, running } = await showTargetReached();
+      expect(counted()).toBe('0/1 false,true');
+      const { open } = holdUnitOfWork(dependencies.unitOfWork);
+
+      let toggling: Promise<unknown> = Promise.resolve();
+      await act(async () => {
+        toggling = result.current.toggle(running());
+      });
+      expect(counted()).toBe('1/2 true,true');
+
+      await act(async () => {
+        open();
+        await toggling;
+      });
+      jest.restoreAllMocks();
+      // Le même compte une fois enregistré, puis relu : la même règle du domaine.
+      await waitFor(() => expect(counted()).toBe('1/2 true,true'));
+      await expect(getDayView(dependencies)).resolves.toMatchObject({
+        doneCount: 1,
+        expectedCount: 2,
+      });
+
+      await act(() => result.current.toggle(running()));
+      await waitFor(() => expect(counted()).toBe('0/1 false,true'));
+    });
+
+    it('goes back to « 0/1 » when the tap cannot be saved', async () => {
+      const { dependencies, result, counted, running } = await showTargetReached();
+      dependencies.unitOfWork.failWrites();
+
+      await act(() => result.current.toggle(running()));
+
+      expect(counted()).toBe('0/1 false,true');
+    });
+  });
 });

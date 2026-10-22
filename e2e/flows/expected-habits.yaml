@@ -1,0 +1,128 @@
+# Story #25 : compter seulement les habitudes attendues.
+# Parcours : « Courir 5 km » en « 1 fois par semaine » et « Cuisiner » en « Tous les jours » →
+# « 0/2 faites », lu « 0 habitude faite sur 2 attendues » → « Courir 5 km » touchée : objectif
+# atteint, et elle compte toujours puisqu'elle est faite aujourd'hui (« 1/2 faites ») → « Cuisiner »
+# touchée : « Toutes faites », « 2/2 faites » → onglet Mois : aujourd'hui « 2/2 », lu « … 2 habitudes
+# faites sur 2 attendues » → Détail du jour « Aujourd'hui · 2/2 faites » → retour à la Vue Journée,
+# « Courir 5 km » remise à « à faire » : sous son objectif, elle compte de nouveau (« 1/2 faites »).
+# Limites : Maestro ne pilote pas la date du téléphone. Une habitude n'est hors compteur qu'un jour
+# où elle n'est pas faite alors que son objectif est déjà atteint, donc un autre jour que celui où
+# elle l'a atteint : l'habitude hors compteur, « Objectifs de la semaine atteints », le Rappel
+# d'hier sans elle et le drapeau du Jour du mois sont couverts par `features/expected-habits.feature`
+# (cas d'usage et écrans) et les tests d'écran (`DayViewScreen`, `MonthGrid`, `DayDetailSheet`).
+# Captures pour la comparaison avec la maquette docs/mockups/22-difficulte-objectif (E1, E6).
+appId: com.bpotet.ascent
+name: Compter seulement les habitudes attendues
+tags:
+  - story-25
+---
+- runFlow: ../subflows/launch-fresh.yaml
+
+# « Courir 5 km », « 1 fois par semaine ».
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- tapOn:
+    id: 'weekly-target-option-1'
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Courir 5 km'
+- hideKeyboard
+- tapOn:
+    id: 'create-habit'
+- extendedWaitUntil:
+    notVisible: 'Nouvelle habitude'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'Courir 5 km, .+, à faire, 0 sur 1 cette semaine, Moyenne, 10 XP par suivi'
+    timeout: 10000
+
+# « Cuisiner », « Tous les jours ».
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Cuisiner'
+- hideKeyboard
+- tapOn:
+    id: 'create-habit'
+- extendedWaitUntil:
+    notVisible: 'Nouvelle habitude'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'Cuisiner, .+, à faire, 0 sur \d cette semaine, Moyenne, 10 XP par suivi'
+    timeout: 10000
+
+# Le compteur porte sur les habitudes attendues : les deux sont sous leur objectif.
+- assertVisible: '0/2 faites|0 habitude faite sur 2 attendues'
+- takeScreenshot: expected-habits-E1-1-counter-expected
+
+# « Courir 5 km » atteint son objectif aujourd'hui : faite, elle reste attendue.
+- tapOn:
+    id: 'habit-row-1'
+- extendedWaitUntil:
+    visible: 'Courir 5 km, .+, fait, 1 sur 1 cette semaine, Moyenne, 10 XP par suivi, objectif atteint'
+    timeout: 10000
+- assertVisible:
+    id: 'habit-target-reached-1'
+- assertVisible: '1/2 faites|1 habitude faite sur 2 attendues'
+- assertNotVisible:
+    id: 'goals-reached'
+- takeScreenshot: expected-habits-E1-2-target-reached-still-counted
+
+# « Cuisiner » faite : toutes les habitudes attendues sont faites.
+- tapOn:
+    id: 'habit-row-2'
+- extendedWaitUntil:
+    visible:
+      id: 'all-done'
+    timeout: 10000
+- assertVisible: '2/2 faites|2 habitudes faites sur 2 attendues'
+- takeScreenshot: expected-habits-E1-3-all-done
+
+# Onglet Mois : le compteur d'aujourd'hui porte sur les habitudes attendues.
+- tapOn:
+    id: 'tab-month'
+- extendedWaitUntil:
+    visible:
+      id: 'month-grid'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: '.+, aujourd’hui, 2 habitudes faites sur 2 attendues'
+    timeout: 10000
+- takeScreenshot: expected-habits-E6-1-month-day-expected
+
+# Le Détail du jour compte les mêmes habitudes attendues.
+- tapOn: '.+, aujourd’hui, 2 habitudes faites sur 2 attendues'
+- extendedWaitUntil:
+    visible:
+      id: 'day-detail-.+'
+    timeout: 10000
+- assertVisible: 'Aujourd’hui · 2/2 faites'
+- takeScreenshot: expected-habits-E6-2-day-detail-expected
+- tapOn: 'Fermer'
+- extendedWaitUntil:
+    notVisible:
+      id: 'day-detail-.+'
+    timeout: 10000
+
+# « Courir 5 km » remise à « à faire » : repassée sous son objectif, elle compte de nouveau.
+- tapOn:
+    id: 'tab-day'
+- extendedWaitUntil:
+    visible:
+      id: 'habit-row-1'
+    timeout: 10000
+- tapOn:
+    id: 'habit-row-1'
+- extendedWaitUntil:
+    visible: 'Courir 5 km, .+, à faire, 0 sur 1 cette semaine, Moyenne, 10 XP par suivi'
+    timeout: 10000
+- assertVisible: '1/2 faites|1 habitude faite sur 2 attendues'
+- assertNotVisible:
+    id: 'all-done'

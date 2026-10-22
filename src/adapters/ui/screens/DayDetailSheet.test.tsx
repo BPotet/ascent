@@ -7,6 +7,7 @@ import { createHabit } from '../../../application/useCases/createHabit';
 import { deleteHabit } from '../../../application/useCases/deleteHabit';
 import { getCharacter } from '../../../application/useCases/getCharacter';
 import { getDayDetail } from '../../../application/useCases/getDayDetail';
+import { getMonthView } from '../../../application/useCases/getMonthView';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
 import { Character } from '../../../domain/character/Character';
 import { Day } from '../../../domain/day/Day';
@@ -254,5 +255,62 @@ describe('DayDetailSheet', () => {
       await screen.findByText('Jour clos · tu peux corriger un oubli · 0/2 faites'),
     ).toBeOnTheScreen();
     expect(row(/^Cuisiner, mercredi 14 octobre, pas fait$/u)).toBeOnTheScreen();
+  });
+});
+
+describe('DayDetailSheet and the expected habits (#25)', () => {
+  const friday16 = october(16);
+  const monday19 = october(19);
+  let running: HabitId;
+
+  /** « Courir 5 km », objectif 3, et « Cuisiner », objectif 7, créées le lundi 5 octobre. */
+  beforeEach(async () => {
+    dependencies.unitOfWork = new InMemoryUnitOfWork();
+    dependencies.clock.setToday(october(5));
+    const created = await createHabit(dependencies, 'Courir 5 km', 'medium', 3);
+    const cuisine = await createHabit(dependencies, 'Cuisiner', 'medium', 7);
+    running = created.ok ? created.habit.id : 0;
+    cooking = cuisine.ok ? cuisine.habit.id : 0;
+    for (const each of [12, 13, 14]) {
+      await doneOn(running, october(each));
+    }
+  });
+
+  /** Le jour `dayOfMonth` dans la Vue Mois. */
+  async function monthDayOn(dayOfMonth: number) {
+    const view = await getMonthView(dependencies);
+    return view.days[dayOfMonth - 1]!;
+  }
+
+  it('counts only the expected habits under its title, and shows every habit, correctable', async () => {
+    dependencies.clock.setToday(friday16);
+
+    await open(october(15));
+
+    expect(
+      screen.getByText('Jour clos · tu peux corriger un oubli · 0/1 faites'),
+    ).toBeOnTheScreen();
+    expect(row(/^Courir 5 km, jeudi 15 octobre, pas fait$/u)).toBeEnabled();
+    expect(row(/^Cuisiner, jeudi 15 octobre, pas fait$/u)).toBeEnabled();
+  });
+
+  it('agrees with the flag of its day in the month view, and recounts with it after a correction', async () => {
+    await deleteHabit(dependencies, cooking);
+    dependencies.clock.setToday(monday19);
+    expect(await monthDayOn(15)).toMatchObject({ kind: 'tracked', expectedCount: 0 });
+
+    await open(october(15));
+
+    expect(
+      screen.getByText('Jour clos · tu peux corriger un oubli · objectifs de la semaine atteints'),
+    ).toBeOnTheScreen();
+    expect(row(/^Courir 5 km, jeudi 15 octobre, pas fait$/u)).toBeEnabled();
+
+    await fireEvent.press(row(/^Courir 5 km, jeudi 15 octobre/u));
+
+    expect(
+      await screen.findByText('Jour clos · tu peux corriger un oubli · 1/1 faites'),
+    ).toBeOnTheScreen();
+    expect(await monthDayOn(15)).toMatchObject({ doneCount: 1, expectedCount: 1 });
   });
 });

@@ -19,8 +19,9 @@ import { typography } from '../theme/typography';
 /**
  * Le panneau « détail du jour » (`DayDetail`), ouvert en touchant un jour de la Vue Mois (maquette,
  * E5 et E6) : le jour en toutes lettres, « Aujourd'hui » ou « Jour clos · tu peux corriger un
- * oubli » avec le compteur « faites / actives », puis une ligne par habitude active avec son état
- * écrit et la marque « corrigé ». Les habitudes créées plus tard sont nommées, « hors habitude ».
+ * oubli » avec le compteur « faites / attendues », ou « objectifs de la semaine atteints » sans
+ * habitude attendue (#25), puis une ligne par habitude active, attendue ou non, avec son état écrit
+ * et la marque « corrigé ». Les habitudes créées plus tard sont nommées, « hors habitude ».
  *
  * Toucher une ligne fait le même geste que la Vue Journée (aujourd'hui) ou corrige le jour clos
  * (R10, sans limite de temps, au barème de la difficulté de sa semaine, marque « corrigé ») : la

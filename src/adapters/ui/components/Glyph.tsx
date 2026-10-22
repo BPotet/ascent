@@ -216,6 +216,25 @@ export function FlagGlyph({ color }: { readonly color: string }) {
   );
 }
 
+/**
+ * Le drapeau planté sur un sommet, en grand (24 px) : le message « Objectifs de la semaine
+ * atteints » de la Vue Journée (maquette E1, #25). Décoratif : le message est écrit à côté.
+ */
+export function SummitFlagGlyph({ color }: { readonly color: string }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      testID="summit-flag-glyph"
+      style={styles.summitFlag}
+    >
+      <View style={[styles.summit, { borderBottomColor: color }]} />
+      <View style={[styles.summitFlagPole, { backgroundColor: color }]} />
+      <View style={[styles.summitFlagCloth, { backgroundColor: color }]} />
+    </View>
+  );
+}
+
 /** La coche de la puce « Objectif atteint ». Décorative. */
 export function SmallCheckGlyph({ color }: { readonly color: string }) {
   return (
@@ -309,6 +328,34 @@ const styles = StyleSheet.create({
     borderRightColor: 'transparent',
   },
   flag: { width: 14, height: 14 },
+  summitFlag: { width: 24, height: 24 },
+  summit: {
+    position: 'absolute',
+    left: 2.5,
+    bottom: 2.5,
+    borderLeftWidth: 6,
+    borderRightWidth: 11,
+    borderBottomWidth: 9.5,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    opacity: 0.55,
+  },
+  summitFlagPole: {
+    position: 'absolute',
+    left: 7.5,
+    top: 2.5,
+    width: 2,
+    height: 10,
+    borderRadius: 1,
+  },
+  summitFlagCloth: {
+    position: 'absolute',
+    left: 9.3,
+    top: 2.8,
+    width: 9,
+    height: 6.3,
+    borderRadius: 1,
+  },
   flagPole: { position: 'absolute', left: 2, top: 1, width: 2.4, height: 13, borderRadius: 1.2 },
   flagCloth: { position: 'absolute', left: 4, top: 1.5, width: 9, height: 6.5, borderRadius: 1 },
   smallCheck: {

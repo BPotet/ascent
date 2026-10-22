@@ -1,6 +1,7 @@
 import type { Month } from '../../../domain/month/Month';
 import type { MonthDay } from '../../../domain/month/MonthDay';
 import { capitalize, formatDayAndMonth, MONTH_NAMES } from './formatDay';
+import { doneOutOfExpected, GOALS_REACHED } from './formatExpected';
 
 /** Ce qu'il faut savoir du mois affiché pour le nommer. */
 interface ShownMonth {
@@ -32,12 +33,13 @@ export function monthLabel(month: Month, shown: ShownMonth): string {
   return subtitle === '' ? monthTitle(month) : `${monthTitle(month)}, ${subtitle.toLowerCase()}`;
 }
 
-const doneOf = (count: number) => `${count} ${count > 1 ? 'habitudes faites' : 'habitude faite'}`;
+const GOALS_REACHED_SAID = GOALS_REACHED.toLowerCase();
 
 /**
  * Un jour de la Vue Mois pour le lecteur d'écran (maquette, « Lecteur d'écran ») : « mardi
- * 13 octobre, 3 habitudes faites sur 4 », « dimanche 20 septembre, aucune habitude active »,
- * « jeudi 15 octobre, à venir ». Aujourd'hui et la marque « corrigé » sont dits aussi.
+ * 13 octobre, 3 habitudes faites sur 4 attendues », « samedi 24 octobre, objectifs de la semaine
+ * atteints, aucune habitude attendue », « dimanche 20 septembre, aucune habitude active », « jeudi
+ * 15 octobre, à venir ». Aujourd'hui et la marque « corrigé » sont dits aussi.
  */
 export function monthDayLabel({
   day,
@@ -45,8 +47,11 @@ export function monthDayLabel({
   isToday,
   corrected,
   doneCount,
-  activeCount,
-}: Pick<MonthDay, 'day' | 'kind' | 'isToday' | 'corrected' | 'doneCount' | 'activeCount'>): string {
+  expectedCount,
+}: Pick<
+  MonthDay,
+  'day' | 'kind' | 'isToday' | 'corrected' | 'doneCount' | 'expectedCount'
+>): string {
   const parts = [formatDayAndMonth(day)];
   if (isToday) {
     parts.push('aujourd’hui');
@@ -59,7 +64,11 @@ export function monthDayLabel({
       parts.push('aucune habitude active');
       break;
     case 'tracked':
-      parts.push(`${doneOf(doneCount)} sur ${activeCount}`);
+      parts.push(
+        expectedCount === 0
+          ? `${GOALS_REACHED_SAID}, aucune habitude attendue`
+          : doneOutOfExpected(doneCount, expectedCount),
+      );
       break;
   }
   if (corrected) {
@@ -70,15 +79,17 @@ export function monthDayLabel({
 
 /**
  * La ligne sous le titre du détail du jour (maquette, E6) : « Aujourd'hui · 1/2 faites » ou
- * « Jour clos · tu peux corriger un oubli · 2/2 faites ».
+ * « Jour clos · tu peux corriger un oubli · 2/2 faites », sur les habitudes attendues (#25) ; sans
+ * habitude attendue, « … · objectifs de la semaine atteints ».
  */
 export function dayDetailSummary({
   isToday,
   doneCount,
-  activeCount,
-}: Pick<MonthDay, 'isToday' | 'doneCount' | 'activeCount'>): string {
+  expectedCount,
+}: Pick<MonthDay, 'isToday' | 'doneCount' | 'expectedCount'>): string {
   const when = isToday ? 'Aujourd’hui' : 'Jour clos · tu peux corriger un oubli';
-  return `${when} · ${doneCount}/${activeCount} faites`;
+  const count = expectedCount === 0 ? GOALS_REACHED_SAID : `${doneCount}/${expectedCount} faites`;
+  return `${when} · ${count}`;
 }
 
 /** Les habitudes créées après le jour ouvert : « « Lire » : créée plus tard, hors habitude ce jour-là. » */

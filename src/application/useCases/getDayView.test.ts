@@ -43,6 +43,7 @@ describe('getDayView', () => {
       habitCount: 0,
       canAddHabit: true,
       doneCount: 0,
+      expectedCount: 0,
     });
   });
 
@@ -435,6 +436,97 @@ describe('getDayView', () => {
       await done(running, monday12, wednesday);
 
       await expect(getDayView(deps())).resolves.toMatchObject({ doneCount: 1 });
+    });
+
+    describe('expected habits (#25)', () => {
+      const tuesday13 = Day.of(2026, 10, 13);
+      const thursday15 = Day.of(2026, 10, 15);
+      const sunday18 = Day.of(2026, 10, 18);
+
+      /** Le contexte de la story : « Courir 5 km », objectif 3, et « Cuisiner », objectif 7. */
+      async function story(): Promise<{ running: Habit; cooking: Habit }> {
+        const running = await create('Courir 5 km', monday5, 3);
+        const cooking = await create('Cuisiner', monday5, 7);
+        return { running, cooking };
+      }
+
+      /** Ce que compte la Vue Journée : « faites / attendues », et la ligne attendue ou non. */
+      async function counted() {
+        const view = await getDayView(deps());
+        return {
+          doneCount: view.doneCount,
+          expectedCount: view.expectedCount,
+          expected: Object.fromEntries(
+            view.habits.map(({ habit, expected }) => [habit.name.value, expected]),
+          ),
+        };
+      }
+
+      it('counts a non-daily habit under its target (« 1/2 faites »)', async () => {
+        const { running, cooking } = await story();
+        await done(running, monday12);
+        await done(cooking, wednesday);
+
+        await expect(counted()).resolves.toEqual({
+          doneCount: 1,
+          expectedCount: 2,
+          expected: { 'Courir 5 km': true, Cuisiner: true },
+        });
+      });
+
+      it('leaves out a habit not « fait » whose target is reached, and counts it again once « fait »', async () => {
+        clock.setToday(thursday15);
+        const { running } = await story();
+        await done(running, monday12, tuesday13, wednesday);
+
+        await expect(counted()).resolves.toEqual({
+          doneCount: 0,
+          expectedCount: 1,
+          expected: { 'Courir 5 km': false, Cuisiner: true },
+        });
+        const line = (await getDayView(deps())).habits[0]!;
+        expect(line).toMatchObject({ targetReached: true, editable: true, status: 'pending' });
+
+        await done(running, thursday15);
+        await expect(counted()).resolves.toEqual({
+          doneCount: 1,
+          expectedCount: 2,
+          expected: { 'Courir 5 km': true, Cuisiner: true },
+        });
+      });
+
+      it('can expect no habit at all, while the habit stays in the list', async () => {
+        clock.setToday(sunday18);
+        const running = await create('Courir 5 km', monday5, 3);
+        await done(running, monday12, wednesday, friday16);
+
+        const view = await getDayView(deps());
+        expect(view).toMatchObject({ doneCount: 0, expectedCount: 0 });
+        expect(view.habits.map(({ habit, status }) => [habit.name.value, status])).toEqual([
+          ['Courir 5 km', 'pending'],
+        ]);
+      });
+
+      it('always counts a daily habit', async () => {
+        clock.setToday(thursday15);
+        const { cooking } = await story();
+        await done(cooking, monday12, tuesday13, wednesday);
+
+        await expect(counted()).resolves.toMatchObject({ expected: { Cuisiner: true } });
+      });
+
+      it('always counts a habit of a week without a target', async () => {
+        const habit = await unitOfWork.run(({ habits }) =>
+          habits.add(HabitName.parse('Lire'), monday5),
+        );
+        await unitOfWork.addSettingsChangeBeforeWeeklyTarget(habit.id, monday5);
+
+        await expect(counted()).resolves.toEqual({
+          doneCount: 0,
+          expectedCount: 1,
+          expected: { Lire: true },
+        });
+      });
     });
   });
 });

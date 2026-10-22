@@ -12,6 +12,7 @@ import { Button } from '../components/Button';
 import { CharacterBar } from '../components/CharacterBar';
 import { DayHeader } from '../components/DayHeader';
 import { PlusGlyph } from '../components/Glyph';
+import { GoalsReachedNotice } from '../components/GoalsReachedNotice';
 import { HabitRow } from '../components/HabitRow';
 import { Notice } from '../components/Notice';
 import { Screen } from '../components/Screen';
@@ -103,8 +104,8 @@ function LoadingView() {
   );
 }
 
-/** La progression de la semaine d'une ligne, si sa semaine a un objectif. */
-function weeklyProgressOf({
+/** La progression de la semaine affichée sur une ligne, si sa semaine a un objectif. */
+function weeklyProgressShownOf({
   weeklyProgress,
   weekSettings: { weekTarget },
   targetReached,
@@ -132,13 +133,21 @@ function HabitList({
   readonly onEdit: (row: DayViewHabit) => void;
 }) {
   const scroll = useRef<ScrollView>(null);
-  const { doneCount } = view;
+  const { doneCount, expectedCount } = view;
   const activeCount = view.habits.length;
-  const allDone = activeCount > 0 && doneCount === activeCount;
+  // Seules les habitudes attendues comptent (#25) : sans aucune, « Objectifs de la semaine
+  // atteints » remplace « Toutes faites ».
+  const allDone = expectedCount > 0 && doneCount === expectedCount;
+  const goalsReached = activeCount > 0 && expectedCount === 0;
   const count = view.habitCount;
   return (
     <>
-      <DayHeader day={view.day} doneCount={doneCount} activeCount={activeCount} />
+      <DayHeader
+        day={view.day}
+        doneCount={doneCount}
+        expectedCount={expectedCount}
+        activeCount={activeCount}
+      />
       <ScrollView
         ref={scroll}
         contentContainerStyle={styles.list}
@@ -151,6 +160,7 @@ function HabitList({
       >
         {whatsNew}
         {reminder}
+        {goalsReached && <GoalsReachedNotice />}
         {allDone && <Notice kind="celebration" text={ALL_DONE_MESSAGE} testID="all-done" />}
         {showHint && <Notice kind="hint" text={CHECK_IN_HINT} testID="check-in-hint" />}
         {view.habits.map((habitDay) => (
@@ -158,7 +168,7 @@ function HabitList({
             key={habitDay.habit.id}
             habitDay={habitDay}
             difficulty={habitDay.weekSettings.difficulty}
-            weeklyProgress={weeklyProgressOf(habitDay)}
+            weeklyProgress={weeklyProgressShownOf(habitDay)}
             highlighted={habitDay.habit.id === highlighted?.id}
             xpChange={xpChangeOn(xpChange, habitDay)}
             onToggle={onToggle}
@@ -192,6 +202,12 @@ function HabitList({
  * Chaque ligne montre la difficulté de l'habitude cette semaine (icône), son état et sa progression
  * de la semaine (« À faire · 2/3 cette semaine »), et le badge « Objectif atteint » (E1, #24). Le
  * squelette de chargement prévoit cette ligne secondaire, pour que rien ne saute à l'affichage.
+ *
+ * L'en-tête compte les habitudes faites sur les habitudes attendues (« 1/2 faites », #25) : une
+ * habitude dont l'objectif de la semaine est atteint et qui n'est pas faite aujourd'hui reste dans
+ * la liste, avec son badge, tapable, mais ne compte pas ; touchée, elle compte de nouveau tout de
+ * suite. « Toutes faites » ne porte que sur les habitudes attendues ; sans aucune, « Atteints » et
+ * le message « Objectifs de la semaine atteints » le remplacent, sans célébration.
  *
  * Le bouton « ⋯ » d'une habitude ouvre « Modifier l'habitude » (`HabitEditing`), prérempli avec
  * ses réglages de la semaine : modifiée, elle est mise en évidence et la variation de l'expérience
@@ -379,7 +395,7 @@ export function DayViewScreen({
               reminder && (
                 <YesterdayReminderBanner
                   doneCount={reminder.doneCount}
-                  activeCount={reminder.activeCount}
+                  expectedCount={reminder.expectedCount}
                   {...(onCorrectYesterday && {
                     onCorrect: () => onCorrectYesterday(reminder.week),
                   })}

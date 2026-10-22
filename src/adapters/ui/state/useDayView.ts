@@ -7,6 +7,7 @@ import {
   getDayView,
 } from '../../../application/useCases/getDayView';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
+import { isExpectedHabit } from '../../../domain/habit/ExpectedHabit';
 import { isTargetReached } from '../../../domain/habit/WeeklyProgress';
 import { useUseCaseDependencies } from './Dependencies';
 import { useTrackingChanges } from './TrackingRevision';
@@ -50,13 +51,21 @@ function useLoad(
   }, [dependencies, setLoaded]);
 }
 
-const doneCountOf = (habits: readonly HabitDay[]) =>
-  habits.filter(({ status }) => status === 'done').length;
+/** La vue avec ces lignes, et ses compteurs « faites / attendues » recomptés sur elles (#25). */
+function withHabits(view: DayView, habits: readonly DayViewHabit[]): DayView {
+  return {
+    ...view,
+    habits,
+    doneCount: habits.filter(({ status }) => status === 'done').length,
+    expectedCount: habits.filter(({ expected }) => expected).length,
+  };
+}
 
 /**
  * La ligne passée à l'état `status`, avec la progression de la semaine qui va avec : une case « fait »
- * de plus ou de moins aujourd'hui, l'objectif atteint jugé par la règle du domaine. La relecture qui
- * suit chaque tap enregistré montre ensuite ce qui est enregistré.
+ * de plus ou de moins aujourd'hui, l'objectif atteint et l'habitude attendue jugés par les règles du
+ * domaine (`isTargetReached`, `isExpectedHabit`), les mêmes que celles de `getDayView`. La relecture
+ * qui suit chaque tap enregistré montre ensuite ce qui est enregistré.
  */
 function withStatus(row: DayViewHabit, status: HabitDay['status']): DayViewHabit {
   const change = Number(status === 'done') - Number(row.status === 'done');
@@ -64,11 +73,13 @@ function withStatus(row: DayViewHabit, status: HabitDay['status']): DayViewHabit
     return { ...row, status };
   }
   const weeklyProgress = row.weeklyProgress + change;
+  const { weekTarget } = row.weekSettings;
   return {
     ...row,
     status,
     weeklyProgress,
-    targetReached: isTargetReached(weeklyProgress, row.weekSettings.weekTarget),
+    targetReached: isTargetReached(weeklyProgress, weekTarget),
+    expected: isExpectedHabit(status === 'done', weeklyProgress, weekTarget),
   };
 }
 
@@ -80,7 +91,7 @@ function withSaved(view: DayView, saved: HabitDay): DayView {
   const habits = view.habits.map((row) =>
     keyOf(row) === keyOf(saved) ? { ...withStatus(row, saved.status), ...saved } : row,
   );
-  return { ...view, habits, doneCount: doneCountOf(habits) };
+  return withHabits(view, habits);
 }
 
 /** La vue avec l'état affiché, en attendant l'enregistrement, des cases qui viennent d'être touchées. */
@@ -88,8 +99,10 @@ function withShownStatuses(view: DayView, shown: ShownStatuses): DayView {
   if (shown.size === 0) {
     return view;
   }
-  const habits = view.habits.map((row) => withStatus(row, withShown(row, shown).status));
-  return { ...view, habits, doneCount: doneCountOf(habits) };
+  return withHabits(
+    view,
+    view.habits.map((row) => withStatus(row, withShown(row, shown).status)),
+  );
 }
 
 /**

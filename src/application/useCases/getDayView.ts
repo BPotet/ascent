@@ -1,5 +1,6 @@
 import { habitDayOf, type HabitDay } from '../../domain/checkIn/HabitDay';
 import type { Day } from '../../domain/day/Day';
+import { isExpectedHabit } from '../../domain/habit/ExpectedHabit';
 import { canAddHabit } from '../../domain/habit/HabitRules';
 import { isTargetReached, weeklyProgressOf } from '../../domain/habit/WeeklyProgress';
 import type { WeeklyTarget } from '../../domain/habit/WeeklyTarget';
@@ -26,6 +27,12 @@ export type DayViewHabit = HabitDay & {
   readonly weeklyProgress: number;
   /** Objectif atteint : la progression est au moins égale à l'objectif de la semaine (R7). */
   readonly targetReached: boolean;
+  /**
+   * Habitude attendue aujourd'hui (#25) : « fait » aujourd'hui, ou sa progression de la semaine est
+   * sous l'objectif de la semaine (`isExpectedHabit`). Non attendue, la ligne reste affichée,
+   * tapable, mais ne compte pas dans « x/y faites ».
+   */
+  readonly expected: boolean;
   /**
    * L'objectif hebdomadaire de la semaine suivante : celui que préremplit « Modifier l'habitude ».
    * Il diffère de `weekSettings.weeklyTarget` après un changement fait cette semaine (R13).
@@ -55,14 +62,20 @@ export interface DayView {
   readonly habitCount: number;
   /** Faux quand le joueur a déjà 10 habitudes. */
   readonly canAddHabit: boolean;
-  /** Le nombre de cases « fait » aujourd'hui (compteur « faites » de la Vue Journée). */
+  /** Le nombre de cases « fait » aujourd'hui (le « 1 » de « 1/2 faites »). */
   readonly doneCount: number;
+  /**
+   * Le nombre d'habitudes attendues aujourd'hui (le « 2 » de « 1/2 faites », #25). Une habitude
+   * « fait » est toujours attendue. 0 avec des habitudes actives : « Objectifs de la semaine
+   * atteints ».
+   */
+  readonly expectedCount: number;
 }
 
 /**
  * Cas d'usage : la Vue Journée d'aujourd'hui, avec l'état réel de chaque case, les réglages de la
- * semaine en cours de chaque habitude et sa progression de la semaine (lue sur les suivis du lundi à
- * aujourd'hui).
+ * semaine en cours de chaque habitude, sa progression de la semaine (lue sur les suivis du lundi à
+ * aujourd'hui) et si elle est attendue aujourd'hui (#25).
  * Aujourd'hui est lu dans l'unité de travail. Une panne de lecture est une exception.
  */
 export function getDayView({ clock, unitOfWork }: UseCaseDependencies): Promise<DayView> {
@@ -79,16 +92,22 @@ export function getDayView({ clock, unitOfWork }: UseCaseDependencies): Promise<
         const habitChanges = changes.filter((change) => change.habitId === habit.id);
         const weekSettings = weekSettingsOf(habitChanges, currentWeek, habit.createdOn);
         const weeklyProgress = weeklyProgressOf(habitCheckIns, currentWeek, today);
+        const habitDay = habitDayOf(
+          habit,
+          today,
+          habitCheckIns.find((checkIn) => checkIn.day.equals(today)) ?? null,
+          today,
+        );
         return {
-          ...habitDayOf(
-            habit,
-            today,
-            habitCheckIns.find((checkIn) => checkIn.day.equals(today)) ?? null,
-            today,
-          ),
+          ...habitDay,
           weekSettings,
           weeklyProgress,
           targetReached: isTargetReached(weeklyProgress, weekSettings.weekTarget),
+          expected: isExpectedHabit(
+            habitDay.status === 'done',
+            weeklyProgress,
+            weekSettings.weekTarget,
+          ),
           nextWeeklyTarget: weekSettingsOf(habitChanges, currentWeek.next(), habit.createdOn)
             .weeklyTarget,
           targetChangeAppliesThisWeek: weeklyTargetChangeAppliesThisWeek(habit.createdOn, today),
@@ -100,6 +119,7 @@ export function getDayView({ clock, unitOfWork }: UseCaseDependencies): Promise<
       habitCount: existing.length,
       canAddHabit: canAddHabit(existing),
       doneCount: habitDays.filter(({ status }) => status === 'done').length,
+      expectedCount: habitDays.filter(({ expected }) => expected).length,
     };
   });
 }

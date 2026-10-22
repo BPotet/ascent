@@ -51,7 +51,7 @@ describe('useYesterdayReminder', () => {
       expect(result.current.reminder.reminder).toEqual({
         day: tuesday,
         doneCount: 0,
-        activeCount: 2,
+        expectedCount: 2,
         week: Week.containing(tuesday),
       }),
     );
