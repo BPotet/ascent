@@ -518,6 +518,25 @@ describe('DayDetailSheet and the feedback « Objectif atteint » (F1, #26, #27)'
     expect(screen.queryByText(/^Correction enregistrée/u)).toBeNull();
   });
 
+  it('lays the message out in the whole space above the panel, not outside its own bounds', async () => {
+    await openOn(october(16));
+    const slot = screen.getByTestId('day-detail-toast-slot');
+    expect(slot).toHaveStyle({ position: 'absolute', top: 0, left: 0, right: 0 });
+    expect(slot).toHaveProp('pointerEvents', 'box-none');
+
+    await fireEvent(screen.getByTestId('day-detail-panel'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 300, width: 390, height: 420 } },
+    });
+
+    // Sur Android, un élément hors des limites de son parent n'est pas vu par l'accessibilité
+    // (ni par Maestro) : la zone du message s'arrête au bord haut du panneau.
+    expect(screen.getByTestId('day-detail-toast-slot')).toHaveStyle({ bottom: 420 });
+    await fireEvent.press(row(/^Courir 5 km, vendredi 16 octobre/u));
+    expect(
+      await within(screen.getByTestId('day-detail-toast-slot')).findByTestId('toast'),
+    ).toBeOnTheScreen();
+  });
+
   it('shows the discreet message, without vibration, when a correction loses the target', async () => {
     await doneOn(running, october(16));
     dependencies.clock.setToday(today);

@@ -63,6 +63,7 @@ export function DayDetailSheet({
     null,
   );
   const toastCount = useRef(0);
+  const [panelHeight, setPanelHeight] = useState(0);
   const showTargetToast = useCallback((feedback: TargetFeedback) => {
     toastCount.current += 1;
     setToast({ id: toastCount.current, ...targetToastOf(feedback) });
@@ -101,8 +102,16 @@ export function DayDetailSheet({
           testID="day-detail-scrim"
           style={styles.scrim}
         />
-        {/* Le message F1 au-dessus du panneau, dans le Modal : rendu par l'écran, il serait caché. */}
-        <View pointerEvents="box-none" style={styles.toastSlot}>
+        {/*
+          Le message F1 au-dessus du panneau, dans le Modal : rendu par l'écran, il serait caché. Sa
+          zone couvre tout l'espace au-dessus du panneau : sur Android, un élément hors des limites
+          de son parent n'est vu ni par l'accessibilité (TalkBack) ni par Maestro.
+        */}
+        <View
+          pointerEvents="box-none"
+          testID="day-detail-toast-slot"
+          style={[styles.toastSlot, { bottom: panelHeight }]}
+        >
           {toast !== null && (
             <Toast
               key={toast.id}
@@ -114,7 +123,11 @@ export function DayDetailSheet({
             />
           )}
         </View>
-        <View style={styles.sheet}>
+        <View
+          testID="day-detail-panel"
+          onLayout={(event) => setPanelHeight(event.nativeEvent.layout.height)}
+          style={styles.sheet}
+        >
           <ScrollView contentContainerStyle={styles.content} bounces={false}>
             <View style={styles.grab} />
             <Text accessibilityRole="header" style={[typography.sheetTitle, styles.title]}>
@@ -171,7 +184,7 @@ export function DayDetailSheet({
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'flex-end' },
-  toastSlot: { height: 0, zIndex: 1 },
+  toastSlot: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1 },
   scrim: { ...StyleSheet.absoluteFill, backgroundColor: colors.scrim },
   sheet: {
     maxHeight: '85%',
