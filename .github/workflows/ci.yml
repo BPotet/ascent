@@ -100,10 +100,11 @@ jobs:
           path: coverage/lcov.info
           retention-days: 7
 
-  mutation:
-    name: Mutation tests (StrykerJS)
-    needs: tests
-    # En PR vers develop : le code modifié. Sur release/* et hotfix/* (et à la demande) : tout le code.
+  # Mutation (docs/adr/0004-mutation-en-ci.md) : un plan, un job par shard, puis un job final qui
+  # applique les seuils au total des shards.
+  mutation-plan:
+    name: Mutation plan
+    # En PR vers develop : le code nouveau. Sur release/* et hotfix/* (et à la demande) : tout le code.
     # Un push sur develop ou main n'en relance pas : la PR, ou la branche de release, l'a déjà muté.
     # Une PR de release ou de hotfix non plus : le push sur sa branche mute déjà tout le code.
     if: >-
@@ -112,7 +113,11 @@ jobs:
       || github.event_name == 'workflow_dispatch'
       || startsWith(github.ref_name, 'release/') || startsWith(github.ref_name, 'hotfix/')
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      count: ${{ steps.plan.outputs.count }}
+      base: ${{ steps.plan.outputs.base }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -122,19 +127,86 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: Mutate the code changed by the pull request
-        if: github.event_name == 'pull_request'
+      - id: plan
+        name: Plan the mutation shards
         env:
           BASE_REF: origin/${{ github.base_ref }}
-        run: npm run mutation:changed
-      - name: Mutate all the code
-        if: github.event_name != 'pull_request'
-        run: npm run mutation:domain && npm run mutation
+          MUTATION_MODE: ${{ github.event_name == 'pull_request' && 'changed' || 'full' }}
+        run: node scripts/mutation/run.mjs --plan
+
+  mutation-shard:
+    name: Mutation tests (StrykerJS) / ${{ matrix.shard }}
+    needs: [tests, mutation-plan]
+    if: needs.mutation-plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ github.event_name == 'pull_request' && 60 || 120 }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.mutation-plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Mutate the shard (thresholds are applied by the final job)
+        env:
+          # La base calculée par le plan : elle reste la même si develop avance pendant le run.
+          BASE_REF: ${{ needs.mutation-plan.outputs.base }}
+          MUTATION_MODE: ${{ github.event_name == 'pull_request' && 'changed' || 'full' }}
+        run: node scripts/mutation/run.mjs --shard ${{ matrix.shard }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
+          name: mutation-shard-${{ matrix.shard }}
+          path: reports/mutation/${{ matrix.shard }}/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  mutation:
+    # Nom de check conservé : une protection de branche peut l'exiger.
+    name: Mutation tests (StrykerJS)
+    needs: [mutation-plan, mutation-shard]
+    if: ${{ !cancelled() && needs.mutation-plan.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check the mutation plan
+        run: test "${{ needs.mutation-plan.result }}" = success
+      - name: Nothing to mutate
+        if: needs.mutation-plan.outputs.count == '0'
+        run: |
+          echo "No mutable code changed: mutation testing skipped." >> "$GITHUB_STEP_SUMMARY"
+      - name: Check every mutation shard
+        if: needs.mutation-plan.outputs.count != '0'
+        run: test "${{ needs.mutation-shard.result }}" = success
+      - uses: actions/checkout@v4
+        if: needs.mutation-plan.outputs.count != '0'
+      - uses: actions/setup-node@v4
+        if: needs.mutation-plan.outputs.count != '0'
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+        if: needs.mutation-plan.outputs.count != '0'
+      - uses: actions/download-artifact@v4
+        if: needs.mutation-plan.outputs.count != '0'
+        with:
+          pattern: mutation-shard-*
+          path: reports/mutation
+      - name: Mutation score of all the shards against the thresholds
+        if: needs.mutation-plan.outputs.count != '0'
+        env:
+          EXPECTED_SHARDS: ${{ needs.mutation-plan.outputs.count }}
+        run: npm run mutation:score
+      - uses: actions/upload-artifact@v4
+        if: always() && needs.mutation-plan.outputs.count != '0'
+        with:
           name: mutation-report
-          path: reports/
+          path: reports/mutation/summary.md
           if-no-files-found: ignore
           retention-days: 14
 

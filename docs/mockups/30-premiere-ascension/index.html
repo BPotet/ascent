@@ -1,0 +1,1589 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>La première ascension</title>
+<style>
+/* ============ Page (hors téléphone) : tokens clair / sombre ============ */
+:root{
+  --s:1;
+  --bg:#F4F2EE; --surface:#FFFFFF; --surface-2:#ECE9E3; --text:#1B1F27; --muted:#5B6372; --line:#DEDAD2; --accent:#3047C9; --chip:#E4E8FB; --chip-text:#22339A;
+  --warn-bg:#FFF1D1; --warn-text:#6A4A00; --phone-ring:#2A3142;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B0E14; --surface:#151A24; --surface-2:#1C2230; --text:#E8ECF3; --muted:#98A2B3; --line:#263042; --accent:#9DB2FF; --chip:#202A45; --chip-text:#C9D5FF;
+    --warn-bg:#3A2E10; --warn-text:#FFD98A; --phone-ring:#3A4358; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B0E14; --surface:#151A24; --surface-2:#1C2230; --text:#E8ECF3; --muted:#98A2B3; --line:#263042; --accent:#9DB2FF; --chip:#202A45; --chip-text:#C9D5FF;
+  --warn-bg:#3A2E10; --warn-text:#FFD98A; --phone-ring:#3A4358; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{overflow-x:hidden}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1400px;margin:0 auto;padding:28px 16px 96px}
+h1,h2.pg,h3.pg{font-family:Sora,Inter,system-ui,sans-serif;letter-spacing:-.01em}
+h1{font-size:clamp(28px,5vw,40px);line-height:1.15;margin:6px 0 8px}
+h2.pg{font-size:24px;margin:56px 0 6px}
+h3.pg{font-size:17px;margin:28px 0 8px}
+.eyebrow{font:600 13px Inter;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.lead{color:var(--muted);max-width:780px;margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0;align-items:center}
+.tag{display:inline-flex;align-items:center;gap:6px;background:var(--chip);color:var(--chip-text);border-radius:999px;padding:4px 12px;font:600 13px Inter}
+.tag.warn{background:var(--warn-bg);color:var(--warn-text)}
+.themebtn{margin-left:auto;min-height:40px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--text);font:600 13px Inter;padding:0 14px;cursor:pointer}
+nav.toc{display:flex;gap:8px;overflow-x:auto;padding:16px 16px 4px;margin:0 -16px;scrollbar-width:none}
+nav.toc a{flex:none;color:var(--text);text-decoration:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font:500 14px Inter;min-height:40px;display:inline-flex;align-items:center}
+nav.toc a:hover{border-color:var(--accent)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}
+ul.tight,ol.tight{margin:8px 0 0;padding-left:20px}
+ul.tight li,ol.tight li{margin:4px 0}
+.muted{color:var(--muted)}
+.pill-new{display:inline-block;font:700 11px Inter;letter-spacing:.04em;text-transform:uppercase;background:var(--chip);color:var(--chip-text);border-radius:6px;padding:1px 6px;margin-right:4px;vertical-align:1px}
+
+/* Galerie de cadres */
+.gallery{display:flex;flex-wrap:wrap;gap:44px 32px;margin-top:20px}
+figure.frame{margin:0;width:calc(408px * var(--s))}
+figcaption{margin-bottom:12px}
+.cap-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.scr{font:600 13px Inter;color:var(--muted)}
+.stories{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.story{font:700 12px Inter;background:var(--chip);color:var(--chip-text);border-radius:999px;padding:3px 10px;white-space:nowrap;text-decoration:none}
+a.story:hover{outline:1.5px solid var(--accent)}
+.storylist{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:6px}
+.storylist li{display:flex;gap:8px;align-items:baseline;font-size:14px}
+.storylist .story{flex:none}
+.state{font:600 18px/1.3 Sora,Inter,sans-serif;margin-top:2px}
+.note{margin:4px 0 0;color:var(--muted);font-size:14px;line-height:1.45}
+.slot{width:calc(408px * var(--s));height:calc(862px * var(--s))}
+.phone{width:408px;height:862px;padding:9px;border-radius:62px;background:#04060A;box-shadow:0 0 0 1.5px var(--phone-ring),0 22px 50px rgba(0,0,0,.28);transform:scale(var(--s));transform-origin:top left}
+
+/* Prototype */
+.proto{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;margin-top:20px}
+.controls{flex:1 1 300px;max-width:520px}
+.controls fieldset{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:0 0 14px}
+.controls legend{font:600 14px Inter;padding:0 6px}
+.pbtn{min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--text);font:600 14px Inter;padding:0 14px;cursor:pointer;margin:0 8px 8px 0}
+.pbtn:hover,.pbtn[aria-pressed="true"]{border-color:var(--accent)}
+.pbtn[aria-pressed="true"]{background:var(--chip);color:var(--chip-text)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Identité */
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.sw{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.sw i{display:block;height:56px}
+.sw div{padding:8px 10px;font-size:13px;line-height:1.35}
+.sw b{display:block;font-size:14px}
+.typo .t0{font:700 26px/1.2 "Alegreya SC",Georgia,serif}
+.typo .t1{font:700 22px/28px Sora}.typo .t3{font:400 15px/22px Inter}.typo .t4{font:500 13px Inter}
+.app.demo{border-radius:18px;padding:18px;display:flex;flex-wrap:wrap;gap:18px 22px;align-items:flex-start;margin-top:12px}
+.demo-cell{display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--a-muted);min-width:150px}
+
+/* ============ Application : « Nuit d'altitude », couche de jeu « Clair-obscur » ============ */
+.app{
+  /* Socle repris de l'épique #2 */
+  --a-bg:#0E1120; --a-surface:#181D2E; --a-surface-2:#232A40; --a-line:#313A55;
+  --a-text:#EEEAE0; --a-muted:#A3A7B8;
+  --a-accent:#7C9CFF; --a-on-accent:#0B1020;
+  --a-danger:#FF7A7A; --a-xp:#FFC94D;
+  /* Couche de jeu */
+  --a-light:#F2D49B; --a-on-light:#2A1C05;      /* lumière : action principale, parade parfaite, contre-jour */
+  --a-favor:#6FD3A0; --a-favor-soft:#15302A;     /* faveur, cousine du « fait » */
+  --a-curse:#E0607A; --a-curse-soft:#3A1724;     /* malédiction, ennemi maudit, pacte */
+  --a-seal:#FF3B3B;                              /* sceau rouge : coup imparable, rien d'autre */
+  --a-shard:#FF9F5A;                             /* Éclats : la monnaie gardée */
+  --a-guard:#8FB8C9; --a-hp:#E9DFC8; --a-foe-hp:#C46A6A;
+  --a-sil:#06070C;
+  --r-common:#C3C7D3; --r-rare:#7C9CFF; --r-epic:#C49BFF; --r-legend:#F2B45B;
+  --f-game:"Alegreya SC",Georgia,"Times New Roman",serif;
+  background:var(--a-bg);color:var(--a-text);font-family:Inter,system-ui,sans-serif;
+}
+.app.camp{
+  --a-bg:#17110D; --a-surface:#251B14; --a-surface-2:#33261C; --a-line:#4A3828;
+  --a-text:#F5EBDD; --a-muted:#C9B8A4; --a-accent:#FFB46B; --a-on-accent:#2A1503;
+}
+.app button{font-family:inherit;-webkit-tap-highlight-color:transparent;color:inherit}
+.app button:focus-visible{outline:3px solid var(--a-accent);outline-offset:2px}
+.screen{position:relative;width:390px;height:844px;border-radius:53px;overflow:hidden;display:flex;flex-direction:column;user-select:none;-webkit-user-select:none}
+.island{position:absolute;top:11px;left:50%;width:124px;height:36px;margin-left:-62px;border-radius:20px;background:#000;z-index:95}
+.statusbar{height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:8px 32px 0 44px;font:600 16px Inter;font-variant-numeric:tabular-nums;position:relative;z-index:90}
+.sb-icons{display:flex;gap:6px;align-items:center}
+.homebar{position:absolute;bottom:8px;left:50%;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:rgba(238,234,224,.85);z-index:99}
+.ic{flex:none;display:block}
+.g{font-family:var(--f-game)}
+
+/* Barre du haut en jeu */
+.gtop{flex:none;display:grid;grid-template-columns:48px 1fr auto;align-items:center;gap:6px;padding:0 12px 0 8px;height:54px;position:relative;z-index:20}
+.iconbtn{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:transparent;border:0;color:var(--a-text);cursor:pointer}
+.iconbtn.solid{background:var(--a-surface);border:1px solid var(--a-line)}
+.gloc{text-align:center;min-width:0}
+.gloc .p{font:700 15px/1.2 var(--f-game);letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gloc .e{font:500 12px Inter;color:var(--a-muted)}
+.res{display:flex;gap:6px}
+.chipr{display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 9px;border-radius:999px;background:rgba(24,29,46,.8);border:1px solid var(--a-line);font:600 13px Inter;font-variant-numeric:tabular-nums}
+.chipr.key{color:var(--a-light)}
+.chipr.shard{color:var(--a-shard)}
+.chipr.coin{color:#E7D9A8}
+.rule{display:inline-flex;align-items:center;gap:6px;font:600 12px Inter;color:#FFD0D8;background:var(--a-curse-soft);border:1px solid rgba(224,96,122,.5);border-radius:999px;padding:4px 10px}
+
+/* Scène de combat */
+.scene{position:relative;flex:none;height:440px;overflow:hidden;
+  background:
+    radial-gradient(1.5px 1.5px at 12% 22%,rgba(238,234,224,.35),transparent 60%),
+    radial-gradient(1.5px 1.5px at 74% 14%,rgba(238,234,224,.3),transparent 60%),
+    radial-gradient(1.5px 1.5px at 40% 60%,rgba(238,234,224,.22),transparent 60%),
+    radial-gradient(1.2px 1.2px at 86% 52%,rgba(238,234,224,.28),transparent 60%),
+    radial-gradient(1.2px 1.2px at 25% 80%,rgba(238,234,224,.2),transparent 60%),
+    radial-gradient(60% 45% at 50% 0%,rgba(242,212,155,.22),transparent 70%),
+    linear-gradient(180deg,#1B2040 0%,#151933 48%,#0B0D18 100%)}
+.scene::after{content:"";position:absolute;left:0;right:0;bottom:0;height:120px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.45));pointer-events:none}
+.scene .arch{position:absolute;inset:auto 0 0 0;height:100%;opacity:.35;pointer-events:none}
+.scene.boss{background:radial-gradient(55% 40% at 50% 18%,rgba(242,212,155,.26),transparent 70%),linear-gradient(180deg,#24193A 0%,#171230 50%,#0A0812 100%)}
+.scene.cursed{box-shadow:inset 0 0 80px rgba(224,96,122,.25)}
+.phase{position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:6;font:700 12px Inter;letter-spacing:.08em;text-transform:uppercase;padding:5px 12px;border-radius:999px;background:rgba(14,17,32,.85);border:1px solid var(--a-line);color:var(--a-muted);white-space:nowrap}
+.phase.ph-enemy{color:#FFD0D8;border-color:rgba(224,96,122,.55)}
+.phase.ph-hero{color:var(--a-light);border-color:rgba(242,212,155,.5)}
+.foes{position:absolute;top:40px;left:0;right:0;display:flex;justify-content:center;z-index:3}
+.foe{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:0;padding:4px 0 8px;width:126px;cursor:pointer;border-radius:18px;transition:opacity .2s}
+.foes.n2 .foe{width:160px}
+.foes.n1 .foe{width:260px}
+.foe .intent{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 9px;border-radius:999px;background:rgba(10,12,22,.88);border:1px solid var(--a-line);font:700 13px Inter;font-variant-numeric:tabular-nums;color:var(--a-text);white-space:nowrap}
+.foe .intent.atk{border-color:rgba(224,96,122,.55)}
+.foe .intent.def{border-color:rgba(143,184,201,.6);color:var(--a-guard)}
+.foe .fig{width:104px;height:130px;position:relative;transform-origin:50% 100%;will-change:transform}
+.foes.n1{justify-content:flex-end;padding-right:6px}
+.foes.n1 .foe .fig{width:170px;height:190px}
+.foe .fig svg{width:100%;height:100%;display:block;overflow:visible}
+.foe .fig svg.seal{width:42px;height:42px;top:-26px}
+.foes.n1 .fig svg.seal{width:54px;height:54px;top:6px;left:auto;right:-14px;transform:none}
+.foe .base{position:absolute;left:8%;right:8%;bottom:-4px;height:14px;border-radius:50%;background:radial-gradient(closest-side,rgba(0,0,0,.6),transparent)}
+.foe.target .base{background:radial-gradient(closest-side,rgba(242,212,155,.75),rgba(242,212,155,0))}
+.foe.target .nm{color:var(--a-light)}
+.foe .tmark{position:absolute;bottom:62px;left:50%;transform:translateX(-50%);display:none}
+.foe .nm{font:600 13px/1.2 Inter;white-space:nowrap;display:flex;align-items:center;gap:4px}
+.foe .cur{position:static;margin-left:2px;font:700 10px Inter;letter-spacing:.06em;text-transform:uppercase;color:#FFD0D8;background:var(--a-curse-soft);border:1px solid rgba(224,96,122,.55);border-radius:6px;padding:0 5px}
+.guard{display:flex;gap:3px;align-items:center;height:10px}
+.guard i{width:12px;height:7px;border-radius:2px;background:var(--a-guard)}
+.guard i.e{background:transparent;box-shadow:inset 0 0 0 1.5px #56657C}
+.broken{font:700 11px Inter;color:var(--a-on-light);background:var(--a-light);border-radius:6px;padding:1px 6px;letter-spacing:.02em}
+.hpb{width:86px;height:6px;border-radius:3px;background:#2A2F40;overflow:hidden}
+.foes.n1 .hpb{width:200px;height:8px}
+.hpb i{display:block;height:100%;background:var(--a-foe-hp);border-radius:3px;transition:width .3s}
+.hpn{font:500 11px Inter;color:var(--a-muted);font-variant-numeric:tabular-nums}
+.foe.dim{opacity:.45}
+.foe.dead{opacity:0;pointer-events:none}
+.foe.attacking .fig{transform:translateY(10px) scale(1.05)}
+.foe .nm,.foe .guard,.foe .hpb,.foe .hpn,.foe .broken,.foe .intent{position:relative;z-index:2}
+.foe.cursed .fig{filter:drop-shadow(0 0 10px rgba(224,96,122,.7))}
+.foe.staggered .fig{transform:rotate(-10deg) translateY(10px)}
+.seal{position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:44px;height:44px;z-index:5;filter:drop-shadow(0 0 12px rgba(255,59,59,.95))}
+.sil{fill:var(--a-sil)}
+.spec{fill:#0A0D1A;opacity:.93}
+.rim{fill:none;stroke:var(--a-light);stroke-width:1.6;opacity:.75;stroke-linecap:round}
+.blade{stroke:#D9DCE6;stroke-width:3;stroke-linecap:round}
+.claw{stroke:var(--a-sil);stroke-width:4;stroke-linecap:round;fill:none}
+.eye{fill:var(--a-light)}
+.cursed .eye{fill:var(--a-curse)}
+.hero{position:absolute;left:22px;bottom:6px;width:124px;height:166px;z-index:4;transform-origin:50% 100%;will-change:transform}
+.hero svg{width:100%;height:100%;overflow:visible}
+.fxtext{position:absolute;left:0;right:0;top:300px;text-align:center;z-index:7;pointer-events:none;font:700 22px/1.2 var(--f-game);letter-spacing:.02em;text-shadow:0 2px 14px rgba(0,0,0,.8)}
+.fxtext small{display:block;font:600 13px Inter;letter-spacing:0;margin-top:4px;color:var(--a-text)}
+.fxtext.perfect{color:var(--a-light);font-size:32px;text-shadow:0 0 22px rgba(242,212,155,.85),0 2px 10px rgba(0,0,0,.8)}
+.fxtext.good{color:var(--a-guard)}
+.fxtext.miss{color:#FF9DB0}
+.fxtext.neutral{color:var(--a-text)}
+.fxtext.anim{animation:fxin .7s ease-out forwards}
+@keyframes fxin{0%{opacity:0;transform:scale(.8)}15%{opacity:1;transform:scale(1.12)}30%{transform:scale(1)}80%{opacity:1}100%{opacity:0}}
+.flash{position:absolute;inset:0;z-index:6;pointer-events:none;background:radial-gradient(60% 50% at 50% 55%,rgba(255,244,214,.75),rgba(242,212,155,.15) 60%,transparent);opacity:0}
+.flash.on{opacity:1}
+.flash.anim{animation:flash .45s ease-out forwards}
+@keyframes flash{0%{opacity:1}100%{opacity:0}}
+.flash.red{background:radial-gradient(80% 70% at 50% 50%,transparent 40%,rgba(224,96,122,.45))}
+.streaks{position:absolute;inset:0;z-index:5;pointer-events:none}
+.shake{animation:shake .32s}
+@keyframes shake{0%,100%{transform:none}20%{transform:translate(-5px,3px)}40%{transform:translate(5px,-3px)}60%{transform:translate(-3px,2px)}80%{transform:translate(2px,-1px)}}
+.frozen-tag{position:absolute;right:10px;bottom:10px;z-index:8;font:600 11px Inter;color:var(--a-muted);background:rgba(10,12,22,.85);border:1px dashed var(--a-line);border-radius:8px;padding:3px 7px}
+
+/* Barre du héros */
+.herobar{flex:none;display:flex;align-items:center;gap:10px;padding:10px 16px 6px;min-height:62px}
+.herobar .who{flex:1;min-width:0}
+.herobar .nm{font:700 15px/1.2 var(--f-game);display:flex;align-items:center;gap:6px}
+.pvrow{display:flex;align-items:center;gap:8px;margin-top:5px}
+.pvb{flex:1;height:8px;border-radius:4px;background:#2A2F40;overflow:hidden}
+.pvb i{display:block;height:100%;background:var(--a-hp);border-radius:4px;transition:width .3s}
+.pvb i.low{background:#FF9DB0}
+.pvn{font:600 13px Inter;font-variant-numeric:tabular-nums;color:var(--a-text);white-space:nowrap}
+.buffs{display:flex;gap:4px;flex-wrap:wrap;max-width:150px;justify-content:flex-end}
+.buff{display:inline-flex;align-items:center;gap:3px;font:600 11px Inter;border-radius:7px;padding:2px 6px;background:var(--a-surface-2);color:var(--a-muted)}
+.buff.pact{background:var(--a-curse-soft);color:#FFD0D8}
+.buff.bf{background:rgba(242,212,155,.14);color:var(--a-light)}
+
+/* Zone d'action (pouce) */
+.zone{flex:1;display:flex;flex-direction:column;justify-content:flex-end;padding:0 16px 34px;gap:10px}
+.zline{font:500 14px/1.35 Inter;color:var(--a-muted);text-align:center;min-height:20px}
+.zline b{color:var(--a-text)}
+.pad{display:grid;grid-template-columns:1fr 1.45fr;gap:12px;position:relative}
+.act{min-height:116px;border-radius:24px;border:0;font:700 23px/1.1 var(--f-game);letter-spacing:.02em;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;touch-action:manipulation;transition:transform .06s,filter .15s}
+.act small{font:500 12px Inter;letter-spacing:0;opacity:.85}
+.act.pri{background:var(--a-light);color:var(--a-on-light);box-shadow:0 10px 30px rgba(242,212,155,.18)}
+.act.sec{background:var(--a-surface-2);color:var(--a-text);border:1.5px solid #46506C}
+.act:active,.act.pressed{transform:scale(.96)}
+.act.pressed.pri{filter:brightness(1.12)}
+.act:disabled{opacity:.4;cursor:default}
+.pad.off .act{filter:saturate(.2) brightness(.7)}
+.pad.off::after{content:"";position:absolute;inset:0;border-radius:24px;pointer-events:none;background:repeating-linear-gradient(135deg,rgba(255,157,176,.10) 0 8px,transparent 8px 16px)}
+.zone:has(.pad.off) .zline{visibility:hidden}
+/* Changement de phase : temps mort, boutons verrouillés */
+.pad.locked .act{opacity:.38;filter:saturate(.15);cursor:default}
+.locktag{position:absolute;top:-34px;left:50%;transform:translateX(-50%);display:inline-flex;align-items:center;gap:6px;font:700 13px Inter;color:var(--a-text);background:var(--a-surface-2);border:1px solid var(--a-line);border-radius:999px;padding:4px 12px;white-space:nowrap;z-index:2;overflow:hidden}
+.locktag .lb{position:absolute;left:0;bottom:0;height:3px;width:100%;background:var(--a-light);transform-origin:left;transform:scaleX(var(--p,0.45))}
+.locktag .lb.run{animation:lockfill var(--d,1000ms) linear forwards}
+@keyframes lockfill{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.foe.stepin .fig{transform:translateY(6px) scale(1.03);transition:transform .4s ease-out}
+.zone:has(.pad.locked) .zline{visibility:hidden}
+.phaseband{position:absolute;left:0;right:0;top:272px;z-index:9;display:flex;flex-direction:column;align-items:center;gap:4px;padding:16px 16px 14px;pointer-events:none;background:linear-gradient(90deg,transparent,rgba(10,12,22,.92) 18%,rgba(10,12,22,.92) 82%,transparent);border-top:1px solid var(--bc,rgba(224,96,122,.6));border-bottom:1px solid var(--bc,rgba(224,96,122,.6))}
+.phaseband b{font:700 32px/1.1 var(--f-game);font-variant:small-caps;letter-spacing:.03em;color:var(--bt,#FFD0D8)}
+.phaseband span{font:500 14px Inter;color:var(--a-text)}
+.phaseband.tohero{--bc:rgba(242,212,155,.6);--bt:var(--a-light)}
+.phaseband.anim{animation:bandin .28s ease-out}
+@media (prefers-reduced-motion: reduce){.phaseband.anim{animation:none}}
+@keyframes bandin{from{opacity:0;transform:scaleY(.6)}to{opacity:1;transform:none}}
+.elan{display:flex;align-items:center;gap:3px;font:600 11px Inter;color:var(--a-muted);margin-top:5px}
+.elan i{width:9px;height:9px;transform:rotate(45deg);border-radius:2px;box-shadow:inset 0 0 0 1.5px #56657C;margin:0 1px}
+.elan i.on{background:var(--a-light);box-shadow:none}
+.offtag{position:absolute;top:-34px;left:50%;transform:translateX(-50%);font:700 13px Inter;color:#FFD0D8;background:var(--a-curse-soft);border:1px solid rgba(224,96,122,.6);border-radius:999px;padding:4px 12px;white-space:nowrap;z-index:2}
+
+/* Écrans de menu (tour, camp) */
+.hd{flex:none;display:flex;align-items:center;gap:10px;padding:4px 16px 8px;min-height:56px}
+.hd h2{font:700 26px/1.1 var(--f-game);margin:0;flex:1;letter-spacing:.01em}
+.hd .back{margin-left:-10px}
+.body{flex:1;overflow:hidden;padding:0 16px;display:flex;flex-direction:column;gap:12px}
+.body.pb{padding-bottom:100px}
+.card{background:var(--a-surface);border:1px solid var(--a-line);border-radius:20px;padding:14px}
+.lbl{font:600 12px Inter;letter-spacing:.08em;text-transform:uppercase;color:var(--a-muted)}
+.btn{min-height:56px;border-radius:16px;border:0;font:700 17px Inter;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 18px;width:100%}
+.btn.pri{background:var(--a-light);color:var(--a-on-light)}
+.btn.camp-pri{background:var(--a-accent);color:var(--a-on-accent)}
+.btn.ghost{background:var(--a-surface-2);color:var(--a-text);border:1px solid var(--a-line)}
+.btn.danger{background:none;color:#FF9DB0;min-height:48px;font-weight:600}
+.btn.curse{background:var(--a-curse);color:#21060C}
+.btn.big{min-height:64px;font-size:19px}
+.btn:disabled{opacity:.45;cursor:default}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.illu{flex:none;position:relative;margin:0 -16px;height:230px;overflow:hidden}
+.illu svg{width:100%;height:100%;display:block}
+
+/* Jauge faveur / malédiction */
+.gauge{display:flex;flex-direction:column;gap:8px}
+.gtrack{position:relative;height:12px;border-radius:999px;background:linear-gradient(90deg,var(--a-curse) 0%,#4A3448 30%,#3A4058 50%,#2E4A44 70%,var(--a-favor) 100%)}
+.gtrack .mk{position:absolute;top:50%;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:var(--a-text);border:4px solid var(--a-bg);box-shadow:0 0 0 2px var(--a-text)}
+.gtrack .mid{position:absolute;left:50%;top:-4px;bottom:-4px;width:2px;background:rgba(238,234,224,.35)}
+.gtrack.none{background:repeating-linear-gradient(90deg,#3A4058 0 10px,#2A3046 10px 20px)}
+.gtrack.none .mk{background:var(--a-surface-2);box-shadow:0 0 0 2px #56657C}
+.gends{display:flex;justify-content:space-between;font:600 12px Inter;color:var(--a-muted)}
+.gends .c{color:#FF9DB0}.gends .f{color:var(--a-favor)}
+.gstate{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.gstate b{font:700 20px var(--f-game)}
+.gstate b.f{color:var(--a-favor)}.gstate b.c{color:#FF9DB0}.gstate b.n{color:var(--a-text)}
+.gstate span{font:500 13px Inter;color:var(--a-muted)}
+.effs{display:flex;flex-wrap:wrap;gap:6px}
+.eff{display:inline-flex;align-items:center;gap:5px;min-height:28px;padding:0 9px;border-radius:10px;font:600 12.5px Inter;background:var(--a-favor-soft);color:#BFF0D6}
+.eff.c{background:var(--a-curse-soft);color:#FFD0D8}
+.eff.n{background:var(--a-surface-2);color:var(--a-muted)}
+.reassure{font:500 13px/1.4 Inter;color:var(--a-muted)}
+.cardbtn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--a-surface);border:1px solid var(--a-line);border-radius:20px;padding:12px 14px;cursor:pointer;min-height:64px}
+.cardbtn .t{flex:1;min-width:0}
+.cardbtn .t b{display:block;font:700 16px var(--f-game)}
+.cardbtn .t span{font:500 13px Inter;color:var(--a-muted)}
+.mini{width:40px;height:52px;flex:none}
+.mini svg{width:100%;height:100%}
+.chev{color:var(--a-muted)}
+
+/* Barre d'onglets (reprise de l'épique #2, quatre onglets) */
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:86px;background:rgba(10,12,22,.97);border-top:1px solid var(--a-line);display:grid;grid-template-columns:repeat(4,1fr);padding:6px 8px 28px;z-index:30}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:0;color:var(--a-muted);font:500 12px Inter;min-height:52px;border-radius:14px;padding:0;cursor:pointer}
+.tab .ti{width:58px;height:30px;border-radius:15px;display:grid;place-items:center}
+.tab[aria-current="page"]{color:var(--a-text);font-weight:700}
+.tab[aria-current="page"] .ti{background:rgba(124,156,255,.22);color:var(--a-accent)}
+
+/* Choix de sortie */
+.floors{display:flex;align-items:center;justify-content:center;gap:0;padding:4px 0 2px}
+.fl{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;border:2px solid #46506C;color:var(--a-muted);background:var(--a-bg);flex:none}
+.fl.done{background:#46506C;border-color:#46506C;color:var(--a-text)}
+.fl.now{border-color:var(--a-light);color:var(--a-light);box-shadow:0 0 0 4px rgba(242,212,155,.18)}
+.fl.boss{width:36px;height:36px;border-color:var(--a-curse);color:#FF9DB0}
+.fll{width:18px;height:2px;background:#46506C;flex:none}
+.fll.done{background:#8A93AD}
+.ttl{font:700 24px/1.2 var(--f-game);margin:2px 0 0;text-align:center}
+.sub{font:500 14px/1.4 Inter;color:var(--a-muted);text-align:center;margin:0}
+.door{display:flex;align-items:center;gap:14px;width:100%;min-height:104px;text-align:left;background:linear-gradient(90deg,rgba(255,255,255,.03),transparent),var(--a-surface);border:1.5px solid var(--a-line);border-radius:22px;padding:12px 14px 12px 12px;cursor:pointer;position:relative}
+.door .arch{width:64px;height:80px;flex:none;border-radius:32px 32px 8px 8px;display:grid;place-items:center;background:radial-gradient(80% 70% at 50% 30%,var(--dc,rgba(242,212,155,.35)),transparent 75%),#0A0C16;border:1.5px solid var(--dl,rgba(242,212,155,.45));color:var(--dt,var(--a-light))}
+.door .t{flex:1;min-width:0}
+.door .t b{display:block;font:700 19px/1.2 var(--f-game)}
+.door .t span{display:block;font:500 13px/1.4 Inter;color:var(--a-muted);margin-top:2px}
+.door .rule{margin-top:6px}
+.door.elite{--dc:rgba(224,96,122,.35);--dl:rgba(224,96,122,.6);--dt:#FF9DB0}
+.door.rest{--dc:rgba(255,180,107,.4);--dl:rgba(255,180,107,.6);--dt:#FFB46B}
+.door.shop{--dc:rgba(231,217,168,.35);--dl:rgba(231,217,168,.5);--dt:#E7D9A8}
+.door.event{--dc:rgba(124,156,255,.35);--dl:rgba(124,156,255,.6);--dt:var(--a-accent)}
+.door.altar{--dc:rgba(224,96,122,.25);--dl:rgba(160,90,200,.6);--dt:#D7A6FF}
+.door.boss{--dc:rgba(224,96,122,.45);--dl:var(--a-curse);--dt:#FF9DB0;min-height:132px;border-color:rgba(224,96,122,.5)}
+.door.sel{border-color:var(--a-light);box-shadow:0 0 0 3px rgba(242,212,155,.2)}
+.savehint{display:flex;align-items:center;justify-content:center;gap:6px;font:500 12px Inter;color:var(--a-muted)}
+
+/* Bienfaits, objets */
+.boon{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;background:var(--a-surface);border:1.5px solid var(--a-line);border-radius:22px;padding:14px;cursor:pointer;min-height:112px}
+.boon.sel{border-color:var(--a-light);box-shadow:0 0 0 3px rgba(242,212,155,.22);background:linear-gradient(180deg,rgba(242,212,155,.07),transparent),var(--a-surface)}
+.boon .gem{width:48px;height:48px;flex:none;border-radius:14px;display:grid;place-items:center;background:#0A0C16;border:1.5px solid var(--rc);color:var(--rc)}
+.boon .t{flex:1;min-width:0}
+.boon .t b{display:block;font:700 18px/1.2 var(--f-game)}
+.boon .t p{margin:4px 0 0;font:400 14px/1.4 Inter;color:var(--a-text)}
+.boon .t p .ic{display:inline-block;vertical-align:-2px}
+.rar{display:inline-flex;align-items:center;gap:4px;font:700 11px Inter;letter-spacing:.06em;text-transform:uppercase;color:var(--rc)}
+.rar i{width:7px;height:7px;transform:rotate(45deg);background:var(--rc);display:inline-block}
+.rc-common{--rc:var(--r-common)}.rc-rare{--rc:var(--r-rare)}.rc-epic{--rc:var(--r-epic)}.rc-legend{--rc:var(--r-legend)}
+.source{display:flex;align-items:center;gap:10px;background:var(--a-surface);border:1px solid var(--a-line);border-radius:16px;padding:10px 12px}
+.source .t{flex:1;min-width:0;font:500 13px/1.35 Inter;color:var(--a-muted)}
+.source .t b{display:block;font:600 15px Inter;color:var(--a-text)}
+.diff{font:700 11px Inter;letter-spacing:.04em;text-transform:uppercase;border-radius:6px;padding:2px 7px;background:var(--a-surface-2);color:var(--a-text)}
+.maprow{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center;font:500 13px Inter;color:var(--a-muted)}
+.maprow.on{color:var(--a-text)}
+.maprow.on .diff{background:var(--a-light);color:var(--a-on-light)}
+.steps{display:flex;gap:6px;justify-content:center}
+.steps i{width:28px;height:6px;border-radius:3px;background:#3A4058}
+.steps i.on{background:var(--a-light)}
+.steps i.done{background:#8A93AD}
+.combo{display:flex;gap:10px;align-items:center;border-radius:16px;padding:12px;background:rgba(242,212,155,.1);border:1px solid rgba(242,212,155,.45);color:#FBE9C4;font:500 14px/1.4 Inter}
+.cmp{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
+.cmp .c{background:var(--a-surface-2);border-radius:14px;padding:10px;text-align:center}
+.cmp .c b{display:block;font:700 15px var(--f-game)}
+.cmp .c span{font:500 12px Inter;color:var(--a-muted)}
+.up{color:var(--a-favor);font-weight:700}
+.down{color:#FF9DB0;font-weight:700}
+.center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px}
+.rays{position:absolute;inset:0;background:conic-gradient(from 0deg,transparent 0 10deg,rgba(242,212,155,.10) 10deg 20deg,transparent 20deg 40deg,rgba(242,212,155,.08) 40deg 50deg,transparent 50deg 80deg,rgba(242,212,155,.10) 80deg 90deg,transparent 90deg 130deg,rgba(242,212,155,.08) 130deg 140deg,transparent 140deg 180deg,rgba(242,212,155,.1) 180deg 190deg,transparent 190deg 240deg,rgba(242,212,155,.08) 240deg 250deg,transparent 250deg 300deg,rgba(242,212,155,.1) 300deg 310deg,transparent 310deg);-webkit-mask:radial-gradient(closest-side,#000 30%,transparent);mask:radial-gradient(closest-side,#000 30%,transparent)}
+
+/* Marchand, boutiques */
+.item{display:flex;align-items:center;gap:12px;background:var(--a-surface);border:1px solid var(--a-line);border-radius:18px;padding:10px 10px 10px 12px;min-height:76px}
+.item .gem{width:44px;height:44px;flex:none;border-radius:12px;display:grid;place-items:center;background:rgba(0,0,0,.35);border:1.5px solid var(--rc);color:var(--rc)}
+.item .t{flex:1;min-width:0}
+.item .t b{display:block;font:700 15px/1.25 var(--f-game)}
+.item .t span{display:block;font:500 12px/1.35 Inter;color:var(--a-muted)}
+.price{min-height:48px;min-width:92px;border-radius:14px;border:0;font:700 15px Inter;display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:0 12px;cursor:pointer;font-variant-numeric:tabular-nums}
+.price.coin{background:#E7D9A8;color:#2A2205}
+.price.shard{background:var(--a-shard);color:#2A1503}
+.price:disabled{background:var(--a-surface-2);color:var(--a-muted);cursor:default}
+.price.owned{background:transparent;color:var(--a-favor);border:1.5px solid rgba(111,211,160,.5)}
+.short{font:600 11px Inter;color:#FF9DB0;margin-top:2px}
+
+/* Feuilles et dialogues */
+.scrim{position:absolute;inset:0;background:rgba(4,5,10,.7);z-index:70}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--a-surface);border-radius:26px 26px 0 0;padding:8px 20px 38px;z-index:80;border-top:1px solid var(--a-line);display:flex;flex-direction:column;gap:10px}
+.grab{width:40px;height:5px;border-radius:3px;background:#46506C;margin:0 auto 6px}
+.sheet h3{font:700 24px/1.2 var(--f-game);margin:0}
+.sheet p{margin:0;color:var(--a-muted);font:400 15px/1.5 Inter}
+.okline{display:flex;align-items:center;gap:6px;font:500 13px Inter;color:var(--a-favor)}
+.errline{display:flex;gap:8px;align-items:flex-start;background:rgba(255,122,122,.12);border:1px solid rgba(255,122,122,.45);color:#FFC9C9;border-radius:14px;padding:10px 12px;font:500 14px/1.4 Inter}
+.toast{position:absolute;left:16px;right:16px;bottom:110px;background:#EEEAE0;color:#141826;border-radius:16px;padding:6px 6px 6px 16px;min-height:56px;display:flex;align-items:center;gap:8px;font:500 14px/1.35 Inter;z-index:60;box-shadow:0 12px 30px rgba(0,0,0,.45)}
+.toast span{flex:1;padding:8px 0}
+.toast button{min-height:44px;padding:0 12px;border:0;background:none;color:#2C47D9;font:700 14px Inter;border-radius:10px;cursor:pointer}
+.coach{position:absolute;left:16px;right:16px;z-index:65;background:#EEEAE0;color:#141826;border-radius:18px;padding:12px 14px;font:500 15px/1.4 Inter;box-shadow:0 12px 30px rgba(0,0,0,.5)}
+.coach b{display:block;font:700 16px var(--f-game);margin-bottom:2px}
+.coach::after{content:"";position:absolute;bottom:-8px;left:var(--ax,50%);width:16px;height:16px;background:#EEEAE0;transform:rotate(45deg);margin-left:-8px}
+.coach.up::after{bottom:auto;top:-8px}
+.count{font:700 120px/1 var(--f-game);color:var(--a-light);text-shadow:0 0 40px rgba(242,212,155,.6)}
+.sk{background:linear-gradient(90deg,#1B2033 0%,#2A3150 50%,#1B2033 100%);background-size:200% 100%;animation:shim 1.2s linear infinite;border-radius:10px}
+@keyframes shim{from{background-position:200% 0}to{background-position:0 0}}
+.big-shard{font:700 56px/1 var(--f-game);color:var(--a-shard);text-shadow:0 0 30px rgba(255,159,90,.55);display:flex;align-items:center;gap:8px;justify-content:center}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{background:var(--a-surface);border:1px solid var(--a-line);border-radius:14px;padding:10px 12px}
+.stat b{display:block;font:700 22px var(--f-game);font-variant-numeric:tabular-nums}
+.stat span{font:500 12px Inter;color:var(--a-muted)}
+.keep{display:flex;flex-direction:column;gap:6px;font:500 14px/1.4 Inter}
+.keep div{display:flex;gap:8px;align-items:flex-start}
+.keep .k{color:var(--a-favor)}.keep .l{color:#FF9DB0}
+.hold{position:relative;overflow:hidden}
+.hold i{position:absolute;left:0;top:0;bottom:0;width:0;background:rgba(255,255,255,.28)}
+.hold.filling i{width:100%;transition:width .8s linear}
+
+/* Réglages */
+.setrow{display:flex;align-items:center;gap:12px;min-height:60px;border-bottom:1px solid var(--a-line);padding:4px 0}
+.setrow:last-child{border-bottom:0}
+.setrow .t{flex:1;min-width:0}
+.setrow .t b{display:block;font:600 15px Inter}
+.setrow .t span{display:block;font:400 13px/1.35 Inter;color:var(--a-muted)}
+.sw-t{width:56px;height:34px;border-radius:17px;background:#3A4058;position:relative;flex:none;border:0;cursor:pointer}
+.sw-t::after{content:"";position:absolute;top:3px;left:3px;width:28px;height:28px;border-radius:50%;background:#C3C7D3;transition:left .15s}
+.sw-t[aria-checked="true"]{background:var(--a-favor)}
+.sw-t[aria-checked="true"]::after{left:25px;background:#0E1120}
+.offset{display:grid;grid-template-columns:56px 1fr 56px;gap:10px;align-items:center}
+.stepbtn{height:56px;border-radius:16px;border:1px solid var(--a-line);background:var(--a-surface-2);font:700 24px Inter;cursor:pointer}
+.offv{text-align:center}
+.offv b{display:block;font:700 30px var(--f-game);font-variant-numeric:tabular-nums}
+.offv span{font:500 12px Inter;color:var(--a-muted)}
+.scale{position:relative;height:28px;margin-top:6px}
+.scale .ln{position:absolute;left:0;right:0;top:13px;height:2px;background:#3A4058}
+.scale .z{position:absolute;left:50%;top:6px;width:2px;height:16px;background:#56657C}
+.scale .k{position:absolute;top:4px;width:20px;height:20px;margin-left:-10px;border-radius:50%;background:var(--a-light)}
+.scale .lab{position:absolute;top:20px;font:500 11px Inter;color:var(--a-muted)}
+.beats{display:flex;gap:8px;justify-content:center}
+.beats i{width:14px;height:14px;border-radius:50%;box-shadow:inset 0 0 0 2px #56657C}
+.beats i.on{background:var(--a-light);box-shadow:none}
+.newtag,.cardbtn .t .newtag{font:700 10px Inter;letter-spacing:.06em;text-transform:uppercase;background:var(--a-accent);color:var(--a-on-accent);border-radius:6px;padding:1px 6px}
+.empty-slot{border:1.5px dashed var(--a-line);border-radius:18px;padding:14px;display:flex;gap:12px;align-items:center;color:var(--a-muted);font:500 14px/1.4 Inter;min-height:72px}
+
+/* Gauge : cinq crans */
+.gtrack .tk{position:absolute;top:2px;bottom:2px;width:2px;margin-left:-1px;background:rgba(14,17,32,.55)}
+/* Sans police distante : petites capitales de synthèse pour la police de jeu */
+.g,.gloc .p,.hd h2,.act,.herobar .nm,.fxtext,.ttl,.door .t b,.boon .t b,.cmp .c b,.item .t b,.sheet h3,.coach b,.count,.big-shard,.stat b,.offv b,.cardbtn .t b,.gstate b,.typo .t0,[style*="f-game"]{font-variant:small-caps}
+
+@media (prefers-reduced-motion: reduce){
+  .app *,.app{animation:none !important;transition:none !important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Ascent · Maquette · Épique #30</div>
+  <h1>La première ascension</h1>
+  <p class="lead">Les écrans du rogue-lite, dans un cadre de téléphone (390 × 844), avec leurs états et les moments de feedback de jeu : pied de la tour, jauge et bénédictions de départ, choix du héros, choix de la sortie, combat avec parade, bienfaits, lieux de la tour, boss, chute, fin d'ascension, camp, pause et réglages. Tout se joue d'une main, le pouce en bas de l'écran. Le prototype se manipule, y compris la parade.</p>
+  <div class="meta">
+    <span class="tag">Version 2 · 21 oct. 2026</span>
+    <span class="tag warn">À valider par le propriétaire</span>
+    <span class="tag">Chiffres illustratifs, règles du Game Designer</span>
+    <button class="themebtn" id="themeBtn" type="button" aria-label="Thème de la page">Thème : auto</button>
+  </div>
+  <nav class="toc" aria-label="Sections">
+    <a href="#nouveau">Nouveau en v2</a>
+    <a href="#hypotheses">Choix UX</a>
+    <a href="#identite">Identité</a>
+    <a href="#prototype">Prototype</a>
+    <a href="#t">Pied de la tour</a>
+    <a href="#h">Héros</a>
+    <a href="#c">Sortie</a>
+    <a href="#f">Combat</a>
+    <a href="#p">Parade</a>
+    <a href="#b">Bienfaits et objets</a>
+    <a href="#l">Lieux</a>
+    <a href="#x">Boss et fin</a>
+    <a href="#k">Camp</a>
+    <a href="#z">Pause</a>
+    <a href="#r">Réglages</a>
+    <a href="#a11y">Accessibilité</a>
+    <a href="#questions">Questions</a>
+  </nav>
+</header>
+
+<section id="nouveau">
+  <h2 class="pg">Ce qui change en version 2</h2>
+  <div class="panel" style="margin-top:16px">
+    <ul class="tight" style="margin-top:0">
+      <li><b>Transition de phase</b> (retour après le prototype : « le passage de l'attaque à la parade est trop rapide, on peut mal cliquer ») : un temps mort de <b>800 ms</b> dans les deux sens, avec l'annonce « Phase ennemie » ou « À toi » et des boutons visiblement inactifs. Les appuis pendant ce temps sont ignorés, sans déséquilibre. Puis le premier ennemi s'avance pendant <b>400 ms</b> avant sa préparation. Écrans <b>P0</b>, <b>P0b</b> et <b>F0</b>, et dans le prototype.</li>
+      <li><b>Monnaies</b> : les <b>Éclats</b> (gardés d'une ascension à l'autre) et l'<b>Or</b> (dépensé pendant l'ascension, perdu à sa fin).</li>
+      <li><b>Deux héros</b> : la Sentinelle et l'Errante, avec leur équipement de base et leur pouvoir. Pas de héros à débloquer dans cette version.</li>
+      <li><b>Jauge en cinq niveaux</b> : Faveur pleine, Faveur, Neutre, Malédiction, Malédiction forte. 2/3 hier donne une jauge Neutre. Seconde chance : 50 % des PV, une fois par ascension.</li>
+      <li><b>Bénédictions de départ</b> : une par habitude faite hier (3 au plus, les plus difficiles d'abord), choisie 1 parmi 3 au pied de la tour, de la plus rare à la moins rare. Rareté fixe selon la difficulté : Facile → Commune, Moyenne → Rare, Difficile → Épique (écrans T9 à T11).</li>
+      <li>Garde brisée : ×1,5 dégâts. Élan visible sous le nom du héros. Raretés en quatre niveaux (Commun, Rare, Épique, Légendaire). Noms, prix et effets repris des règles du Game Designer.</li>
+      <li>Chaque écran porte le numéro de la story qu'il illustre (#31 à #42).</li>
+    </ul>
+  </div>
+</section>
+
+<section id="hypotheses">
+  <h2 class="pg">Choix UX de cette version</h2>
+  <p class="lead">Les décisions du propriétaire (épique #30) et les règles du Game Designer sont appliquées. Les nombres affichés sont des valeurs de départ, à recaler sur le prototype.</p>
+  <div class="cols" style="margin-top:16px">
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Une main, dans le bus</h3>
+      <ul class="tight">
+        <li><b>Zone du pouce</b> : toutes les actions de combat sont dans le tiers bas, deux gros boutons de 116 px de haut. Le haut de l'écran sert à lire, pas à toucher (sauf le ciblage, sur les silhouettes).</li>
+        <li><b>Le bouton de droite est toujours l'action principale</b> et garde la même couleur (lumière) : Attaquer, Frapper, Parade, Prendre, Continuer. Le pouce apprend une seule place.</li>
+        <li><b>Une cible est toujours présélectionnée</b> : attaquer se fait en un seul toucher. Toucher un ennemi change la cible.</li>
+        <li>Les choix qui engagent (bénédiction, bienfait, sortie, achat) se font en deux temps : on touche la carte, puis le bouton en bas. Un cahot ne fait pas choisir par erreur.</li>
+        <li>Le pacte de l'autel se valide en <b>maintenant le bouton</b> (0,8 s) : c'est le seul choix risqué et sans retour.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Transition de phase</h3>
+      <ul class="tight">
+        <li>Entre la phase du héros et la phase ennemie, et dans l'autre sens, un <b>temps mort de 800 ms</b> (règle C12 du Game Designer).</li>
+        <li>L'<b>annonce de phase</b> traverse la scène pendant tout le temps mort : « Phase ennemie · Prépare ta parade » ou « À toi · Vise et attaque ». Un son propre à chaque sens, une vibration légère pour la phase ennemie seulement, une annonce au lecteur d'écran.</li>
+        <li>Les boutons de la phase <b>qui arrive</b> s'affichent tout de suite à leur place, <b>inactifs</b> : estompés, <b>sans hachures</b> (les hachures restent réservées au déséquilibre), avec une étiquette « Attends » et un cadenas, et une barre qui se remplit jusqu'à la fin du temps mort. Le pouce peut se replacer sans risque.</li>
+        <li>Un appui pendant le temps mort est <b>ignoré</b> : pas d'action, pas de déséquilibre. Un doigt posé pendant le temps mort et maintenu ne compte jamais : seul un nouveau toucher compte. Un déséquilibre en cours s'arrête au début du temps mort.</li>
+        <li>Vers la phase ennemie, le premier ennemi <b>s'avance pendant 400 ms</b>, puis sa préparation commence. Pendant l'avancée, les appuis sont de nouveau jugés. Entre deux ennemis de la même phase, seulement l'avancée.</li>
+        <li><b>Arbitrage UX</b> (recommandation du Game Designer) : en phase du héros, « Attaquer », « Pouvoir » et le changement de cible se valident au <b>relâcher</b> du doigt, s'il est encore sur le bouton. Glisser hors du bouton annule. « Frapper », « Parade » et « Esquive » restent datés au toucher.</li>
+        <li>À la <b>reprise après une pause</b>, le compte à rebours de 3 s <b>remplace</b> le temps mort : l'annonce de la phase en cours reste affichée, les boutons sont inactifs, les appuis ignorés sans déséquilibre, et seul un nouveau toucher après la fin compte. En phase ennemie, l'avancée de 400 ms suit, puis la préparation repart du début. Avec « réduire les animations », l'annonce apparaît sans glissement.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Navigation</h3>
+      <ul class="tight">
+        <li>Un quatrième onglet <b>Tour</b> rejoint Journée, Semaine et Mois (décision du propriétaire, pour l'instant). Il ouvre le <b>pied de la tour</b>.</li>
+        <li>Au lancement d'une <b>nouvelle</b> ascension, les <b>bénédictions de départ</b> se choisissent l'une après l'autre, avant le premier étage. Sans habitude faite hier, l'écran est sauté. Jamais à la reprise.</li>
+        <li>Pendant une ascension, l'écran est plein : pas de barre d'onglets. Le bouton <b>Pause</b>, en haut à gauche, est le seul moyen d'en sortir, et il sauvegarde.</li>
+        <li>Le <b>camp</b> s'ouvre depuis le pied de la tour et depuis l'écran de fin d'ascension.</li>
+        <li>Les <b>réglages de la parade</b> s'ouvrent depuis le pied de la tour (roue dentée) et depuis la pause.</li>
+        <li>« Abandonner l'ascension » est proposé dans la pause, avec confirmation, et a le même effet qu'une chute.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Combat et parade</h3>
+      <ul class="tight">
+        <li><b>Lecture par l'animation seule</b> : aucun anneau, aucun compte à rebours. La silhouette prend son élan, se suspend, frappe sec. Seul le <b>sceau rouge</b> s'ajoute, au-dessus de l'ennemi, pour un coup imparable.</li>
+        <li><b>Parade</b> à droite (1,45 fois plus large), <b>Esquive</b> à gauche. Ils réagissent au toucher du doigt, pas au relâchement.</li>
+        <li>Le bouton ne change jamais pendant un coup imparable : c'est à l'œil de lire le sceau.</li>
+        <li>Un appui raté affiche « Déséquilibré » au-dessus des boutons, grisés et hachurés, tant que dure le déséquilibre. Chaque appui le prolonge. À ne pas confondre avec le temps mort de la transition de phase, neutre (estompé, cadenas, sans hachures) et sans pénalité.</li>
+        <li><b>Frappe en rythme</b> : après « Attaquer », le même bouton devient « Frapper ». Le héros lève sa lame ; on touche quand elle atteint le sommet. Sans appui, le coup part quand même, sans bonus.</li>
+        <li>L'<b>Élan</b> s'affiche en losanges sous le nom du héros ; le bouton Pouvoir indique son coût et dit ce qui manque.</li>
+        <li>Le mot « tour » ne désigne que l'édifice : en combat, on parle de <b>manche</b>, de <b>phase du héros</b> et de <b>phase ennemie</b>.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Stories illustrées</h3>
+      <ul class="storylist">
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/31">#31</a>Prototype jouable du combat : parer et esquiver</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/32">#32</a>Combat complet : briser la garde, frapper en rythme</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/33">#33</a>Commencer une ascension et franchir le premier palier</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/34">#34</a>Pause, reprise et réglages de la parade</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/35">#35</a>Choisir son héros : l'Errante</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/36">#36</a>Choisir un bienfait parmi trois</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/37">#37</a>Objets, coffres et combinaisons secrètes</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/38">#38</a>Trois paliers jusqu'au sommet, et les premiers Éclats</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/39">#39</a>Lieux de la tour : marchand, événement, autel et règles d'étage</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/40">#40</a>Le camp et les captifs libérés</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/41">#41</a>La jauge au pied de la tour : faveur et malédiction</li>
+        <li><a class="story" href="https://github.com/BPotet/ascent/issues/42">#42</a>La faveur : clés, relances, bénédictions et seconde chance</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Vocabulaire</h3>
+      <p class="muted" style="font-size:14px;margin:0">Libellés repris des règles du Game Designer et des stories : Ascension, Tour, Pied de la tour, Palier, Étage, Sortie, Halte, Boss, Élite, Feu de camp, Marchand, Événement, Autel, Pacte, Règle d'étage, Chute, Combat, Manche, Phase du héros, Phase ennemie, Ennemi, Intention, Garde, Cassure de garde (« Garde brisée » à l'écran), Élan, Parade, Esquive, Contre-attaque, Frappe en rythme, Coup imparable, Sceau, Déséquilibre, Décalage, Héros, Arme, Armure, Pouvoir, Bienfait, Combinaison, Rareté, Coffre scellé, Clé, Relance, Seconde chance, Or, Éclat, Camp, Boutique, Captif libéré, Jauge, Faveur, Malédiction, Ennemi maudit, Fatigue, Bénédiction de départ, Difficulté (Facile, Moyenne, Difficile, épique #22).<br><br>Nouveaux termes du Game Designer : <b>Transition de phase</b>, <b>Annonce de phase</b>, <b>Avancée</b>, <b>Famille de bénédiction</b> (Vigueur, Élan, Bourse, Tranchant, Égide, Fortune). À ajouter aussi : <b>PV</b> (abréviation affichée des points de vie).</p>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Hors maquette</h3>
+      <ul class="tight">
+        <li>Le <b>niveau et l'Xp ne sont pas affichés dans la tour</b> : la tour ne lit jamais l'Xp ni le niveau. Les habitudes n'y entrent que par la jauge et les bénédictions de départ.</li>
+        <li>Les sons : seuls leurs moments sont indiqués (changement de phase, parade, parade parfaite, coup reçu, garde brisée).</li>
+        <li>Les vrais décors, monstres et objets : les noms hors règles du Game Designer sont des exemples.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="identite">
+  <h2 class="pg">Identité visuelle : « Nuit d'altitude », couche « Clair-obscur »</h2>
+  <p class="lead">Le socle de l'épique #2 est conservé (fond de nuit, Inter pour le texte, bleu « sommet » pour l'interface du suivi). La tour ajoute une couche de jeu : des silhouettes noires découpées par une seule lumière chaude, une écriture en petites capitales (Alegreya SC) pour les noms et les moments forts, et des couleurs qui portent un sens unique. Le camp réchauffe la même grille : bois, braise, lueur du feu.</p>
+  <h3 class="pg">Palette de la tour</h3>
+  <div class="swatches">
+    <div class="sw"><i style="background:#0E1120"></i><div><b>Nuit</b>#0E1120 · fond de la tour</div></div>
+    <div class="sw"><i style="background:linear-gradient(180deg,#1B2040,#0B0D18)"></i><div><b>Ciel de la tour</b>#1B2040 → #0B0D18 · scènes</div></div>
+    <div class="sw"><i style="background:#06070C"></i><div><b>Silhouette</b>#06070C · héros, ennemis</div></div>
+    <div class="sw"><i style="background:#F2D49B"></i><div><b>Lumière</b>#F2D49B · action principale, parade parfaite, contre-jour</div></div>
+    <div class="sw"><i style="background:#EEEAE0"></i><div><b>Texte</b>#EEEAE0 · blanc parchemin</div></div>
+    <div class="sw"><i style="background:#6FD3A0"></i><div><b>Faveur</b>#6FD3A0 · cousine du vert « fait »</div></div>
+    <div class="sw"><i style="background:#E0607A"></i><div><b>Malédiction</b>#E0607A · ennemi maudit, pacte</div></div>
+    <div class="sw"><i style="background:#FF3B3B"></i><div><b>Sceau</b>#FF3B3B · coup imparable, rien d'autre</div></div>
+    <div class="sw"><i style="background:#8FB8C9"></i><div><b>Garde</b>#8FB8C9 · crans de garde, parade</div></div>
+    <div class="sw"><i style="background:#FF9F5A"></i><div><b>Éclats</b>#FF9F5A · monnaie gardée, icône en éclat de cristal</div></div>
+    <div class="sw"><i style="background:#E7D9A8"></i><div><b>Or</b>#E7D9A8 · monnaie de l'ascension, perdue à sa fin</div></div>
+    <div class="sw"><i style="background:linear-gradient(90deg,#C3C7D3 25%,#7C9CFF 25% 50%,#C49BFF 50% 75%,#F2B45B 75%)"></i><div><b>Rareté</b>commun · rare · épique · légendaire, avec 1 à 4 losanges</div></div>
+    <div class="sw"><i style="background:#251B14"></i><div><b>Camp</b>#17110D, #251B14, feu #FFB46B</div></div>
+  </div>
+  <div class="cols" style="margin-top:16px">
+    <div class="panel typo">
+      <h3 class="pg" style="margin-top:0">Typographie</h3>
+      <div class="t0">Alegreya SC 700 · noms, lieux, boutons de combat</div>
+      <div class="t1">Sora 700 · titres de l'app hors tour</div>
+      <div class="t3">Inter 400 · 15/22 · texte courant, effets</div>
+      <div class="t4">Inter 500 · 13 · libellés, compteurs</div>
+      <p class="muted" style="font-size:14px;margin:10px 0 0">Aucune police distante : la page est autonome. Alegreya SC, Sora et Inter s'affichent si elles sont installées, sinon Georgia en petites capitales et la police système. Chiffres tabulaires pour PV, garde et monnaies.</p>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Formes et mouvement</h3>
+      <ul class="tight">
+        <li>Silhouettes plates, un liseré de lumière sur un seul côté. Pas de détail : la lecture vient de la pose (élan, suspension, frappe).</li>
+        <li>Rayons : boutons de combat 24 px, cartes 20 à 22 px, portes en arche.</li>
+        <li>Parade parfaite : arrêt sur image 90 ms, éclat de lumière 450 ms, secousse 320 ms, vibration.</li>
+        <li>Mouvement réduit : pas de secousse ni d'éclat plein écran ; l'arrêt sur image et le texte restent. Les animations des ennemis restent, car elles portent le jeu.</li>
+      </ul>
+    </div>
+  </div>
+  <h3 class="pg">Composants</h3>
+  <div class="app demo" id="demoComp"></div>
+</section>
+
+<section id="prototype">
+  <h2 class="pg">Prototype interactif</h2>
+  <p class="lead">Le parcours complet, de la jauge au camp. Le combat est jouable : vise, attaque, frappe en rythme, puis pare ou esquive les coups ennemis en lisant leur élan. Valeurs du Game Designer : fenêtre parfaite ± 60 ms, fenêtre de parade ± 160 ms, déséquilibre 450 ms, transition de phase 800 ms, avancée 400 ms.</p>
+  <div class="proto">
+    <div class="slot"><div class="phone"><div class="screen app" id="live"></div></div></div>
+    <div class="controls">
+      <fieldset>
+        <legend>Jauge du jour</legend>
+        <button class="pbtn" data-g="p2">Faveur pleine (3/3)</button>
+        <button class="pbtn" data-g="p1">Faveur (3/4)</button>
+        <button class="pbtn" data-g="n0">Neutre (2/3)</button>
+        <button class="pbtn" data-g="m1">Malédiction (1/3)</button>
+        <button class="pbtn" data-g="m2">Malédiction forte (0/3)</button>
+        <button class="pbtn" data-g="first">Première fois</button>
+      </fieldset>
+      <fieldset>
+        <legend>Simulations</legend>
+        <button class="pbtn" data-sim="reset">Réinitialiser</button>
+        <button class="pbtn" data-sim="combat">Aller au combat</button>
+        <button class="pbtn" data-sim="errante">Combat avec l'Errante</button>
+        <button class="pbtn" data-sim="boss">Aller au boss</button>
+        <button class="pbtn" data-sim="loading">Voir le chargement</button>
+        <button class="pbtn" data-sim="error">Voir l'erreur de chargement</button>
+      </fieldset>
+      <div class="panel" style="font-size:14px">
+        <b>À essayer</b>
+        <ul class="tight">
+          <li>Touche « Commencer l'ascension » : choisis tes bénédictions de départ, puis une sortie « Combat ».</li>
+          <li>Touche un ennemi pour le viser, puis « Attaquer » (validé au relâcher du doigt). Le bouton devient « Frapper » : touche-le quand la lame est au plus haut.</li>
+          <li>Après ta frappe, l'annonce « Phase ennemie » reste 800 ms : les boutons Esquive et Parade sont déjà là, estompés. Touche-les : rien ne se passe, aucun déséquilibre.</li>
+          <li>Phase ennemie : l'ennemi s'avance (400 ms), puis prend son élan. Quand il frappe, touche Parade. S'il porte le sceau rouge, touche Esquive. À la fin, l'annonce « À toi » laisse de nouveau 800 ms.</li>
+          <li>Martèle les boutons : « Déséquilibré » apparaît et chaque appui le prolonge.</li>
+          <li>Touche Pause à tout moment, puis Reprendre : un compte à rebours de 3 s, avec l'annonce de la phase en cours, laisse le temps de replacer le pouce. Les appuis y sont ignorés.</li>
+          <li>Sur ordinateur : Espace pour Parade (ou l'action de droite), flèche gauche pour Esquive.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div id="srLive" class="sr" aria-live="polite"></div>
+</section>
+
+<section id="t"><h2 class="pg">T · Pied de la tour</h2><p class="lead">L'onglet Tour. On y lit la jauge du jour, on choisit son héros, on commence ou on reprend une ascension. La jauge est calculée sur les habitudes d'hier et vaut pour toutes les ascensions du jour. Au lancement d'une nouvelle ascension, on choisit ses bénédictions de départ.</p><div class="gallery" data-group="t"></div></section>
+<section id="h"><h2 class="pg">H · Choix du héros</h2><p class="lead">Deux héros jouables dès le départ, la Sentinelle et l'Errante, chacun avec son équipement de base, son pouvoir et son style. Il n'y a pas de héros à débloquer dans cette version. Le choix est verrouillé pendant une ascension.</p><div class="gallery" data-group="h"></div></section>
+<section id="c"><h2 class="pg">C · Choix de la sortie</h2><p class="lead">Après chaque étage, deux ou trois sorties. Chacune est une grande porte en arche : le type se lit à la forme, à l'icône et au nom. Une règle d'étage s'affiche sur la porte avant d'entrer.</p><div class="gallery" data-group="c"></div></section>
+<section id="f"><h2 class="pg">F · Combat : phase du héros</h2><p class="lead">Les ennemis en haut, chacun avec son intention, sa garde et ses PV. Le héros en bas à gauche. Les actions dans la zone du pouce.</p><div class="gallery" data-group="f"></div></section>
+<section id="p"><h2 class="pg">P · Combat : phase ennemie et parade</h2><p class="lead">La phase ennemie s'ouvre sur l'annonce de phase (800 ms, boutons inactifs), puis l'ennemi qui attaque s'avance (400 ms) et les autres s'effacent. Parade à droite, Esquive à gauche, réaction dès que le doigt touche. Les images figent l'instant le plus parlant de chaque moment.</p><div class="gallery" data-group="p"></div></section>
+<section id="b"><h2 class="pg">B · Bienfaits, coffres et objets</h2><p class="lead">Un bienfait parmi trois après un combat gagné. Les coffres scellés demandent une clé. Les objets trouvés se comparent à ce qu'on porte.</p><div class="gallery" data-group="b"></div></section>
+<section id="l"><h2 class="pg">L · Lieux de la tour</h2><p class="lead">Marchand, feu de camp, autel et événement. Chacun tient sur un écran, avec ses choix dans la zone du pouce.</p><div class="gallery" data-group="l"></div></section>
+<section id="x"><h2 class="pg">X · Boss, chute et fin d'ascension</h2><p class="lead">Chaque palier finit par un boss tiré au hasard. Si le héros tombe, l'ascension s'arrête : l'écran de fin dit clairement ce qui est perdu et ce qui reste.</p><div class="gallery" data-group="x"></div></section>
+<section id="k"><h2 class="pg">K · Camp et boutiques</h2><p class="lead">Un refuge chaud entre deux ascensions. Le Gardien de la flamme y est dès le départ ; les captifs libérés s'y installent et ouvrent une boutique : les Éclats ajoutent de nouveaux objets à ce qu'on peut trouver dans la tour.</p><div class="gallery" data-group="k"></div></section>
+<section id="z"><h2 class="pg">Z · Pause et reprise</h2><p class="lead">Pause à tout moment, même pendant un coup ennemi. La partie est sauvegardée après chaque action. Fermer l'app met en pause. À la reprise, un compte à rebours de 3 s, avec l'annonce de la phase en cours, remplace le temps mort.</p><div class="gallery" data-group="z"></div></section>
+<section id="r"><h2 class="pg">R · Réglages de la parade</h2><p class="lead">Le décalage du téléphone compense un appui toujours un peu en avance ou en retard. Il se règle à la main ou se mesure en huit coups.</p><div class="gallery" data-group="r"></div></section>
+
+<section id="a11y">
+  <h2 class="pg">Accessibilité</h2>
+  <div class="cols" style="margin-top:16px">
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Toucher</h3>
+      <ul class="tight">
+        <li>Boutons de combat : 116 px de haut, Esquive ≈ 140 px de large, Parade ≈ 206 px. Toutes les autres cibles font au moins 48 × 48 px (Pause, retour, interrupteurs), cartes et portes au moins 64 px de haut.</li>
+        <li>Les actions de combat, de choix et de validation sont dans le tiers bas, à portée du pouce droit comme du gauche.</li>
+        <li>Ciblage : toute la colonne de l'ennemi (≈ 126 × 230 px) est touchable, pas seulement la silhouette.</li>
+        <li>En phase du héros, Attaquer, Pouvoir et le ciblage se valident au relâcher : glisser le doigt hors du bouton annule. Défense et frappe en rythme réagissent au toucher.</li>
+        <li>Aucun geste de glissé n'est nécessaire. Le seul appui maintenu (pacte) a une alternative au lecteur d'écran (double-toucher puis confirmation).</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Lire sans la couleur</h3>
+      <ul class="tight">
+        <li>Le sceau rouge est aussi une <b>forme</b> (losange avec point d'exclamation) et un mot pour le lecteur d'écran.</li>
+        <li>Jauge : position du curseur sur cinq crans, mot (Faveur pleine, Faveur, Neutre, Malédiction, Malédiction forte) et liste d'effets. Rareté : 1 à 4 losanges et le mot. Difficulté de l'habitude écrite en toutes lettres à côté de la rareté de la bénédiction.</li>
+        <li>Transition de phase et déséquilibre ne se confondent pas : le temps mort est estompé avec un cadenas et le mot « Attends », sans hachures ; le déséquilibre est hachuré, en rose, avec le mot « Déséquilibré ».</li>
+        <li>Ennemi maudit : l'étiquette « Maudit » et le halo. Cible : la lueur au sol et le nom en couleur, plus « cible » pour le lecteur d'écran.</li>
+        <li>Contraste du texte ≥ 4,5:1 sur les surfaces ; « lumière » sur fond nuit ≈ 12:1 ; texte sombre sur bouton lumière ≈ 11:1.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3 class="pg" style="margin-top:0">Lecteur d'écran et mouvement</h3>
+      <ul class="tight">
+        <li>Ennemi : « Goule maudite, cible, PV 18 sur 24, garde 2 sur 4, intention : double frappe, 2 fois 4 dégâts ».</li>
+        <li>Transition de phase : « Phase ennemie. Prépare ta parade. » ou « À toi. Vise et attaque. », annoncé dès le début du temps mort ; les boutons inactifs sont annoncés comme indisponibles.</li>
+        <li>Phase ennemie : chaque attaque est annoncée (« Goule : coup imparable, esquive »), et le résultat est lu (« Parade parfaite, contre-attaque 8 dégâts »).</li>
+        <li>Le timing de la parade ne peut pas être rendu accessible au lecteur d'écran sans aide : la parade étant un bonus, l'esquive et la défense passive permettent de survivre. Un futur mode d'aide (anneau, son d'élan) reste possible, il a été écarté comme aide <i>par défaut</i>.</li>
+        <li>Mouvement réduit : pas de secousse ni d'éclat plein écran. Vibration et sons désactivables séparément dans les réglages.</li>
+        <li>Pause automatique quand l'app passe en arrière-plan ou qu'un appel arrive.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="questions">
+  <h2 class="pg">Questions pour le propriétaire</h2>
+  <div class="panel" style="margin-top:16px">
+    <ol class="tight" style="margin-top:0">
+      <li><b>Gauchers</b> : Parade est à droite, comme décidé. Faut-il une option « Inverser Parade et Esquive » dans les réglages, pour jouer de la main gauche ?</li>
+    </ol>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function(){
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- Thème de la page ---------- */
+const TH=['auto','light','dark'],THL={auto:'auto',light:'clair',dark:'sombre'};
+let th='auto';try{th=localStorage.getItem('ascent-mock-theme')||'auto';}catch(e){}
+function applyTheme(){if(th==='auto')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',th);document.getElementById('themeBtn').textContent='Thème : '+THL[th];}
+document.getElementById('themeBtn').addEventListener('click',()=>{th=TH[(TH.indexOf(th)+1)%3];try{localStorage.setItem('ascent-mock-theme',th);}catch(e){}applyTheme();});
+applyTheme();
+
+/* ---------- Icônes (24 × 24, trait) ---------- */
+const P={
+ pause:'M9 6v12M15 6v12',
+ key:'M5 12a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0M12 12h9M17.5 12v3M20.5 12v2',
+ reroll:'M4 11a8 8 0 0 1 14-4.6L20 8.5M20 3.5v5h-5M20 13a8 8 0 0 1-14 4.6L4 15.5M4 20.5v-5h5',
+ heart:'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z',
+ shield:'M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6z',
+ sword:'M14.5 4H20v5.5L9 20.5 3.5 15zM6.5 12.5l5 5M3.5 20.5l2-2',
+ swords:'M4 4l9.5 9.5M20 4l-9.5 9.5M4 4h4M4 4v4M20 4h-4M20 4v4M7.5 14l2.5 2.5M16.5 14L14 16.5M6.5 17.5l-2.5 2.5M17.5 17.5l2.5 2.5',
+ flame:'M12 3c1 4 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5 .3 2 1.5 3 2.5 3 0-3-1-5 0-8z',
+ bag:'M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2',
+ event:'M12 2.5l9.5 9.5-9.5 9.5L2.5 12zM10 10a2 2 0 1 1 3 1.7c-.7.4-1 .8-1 1.6M12 16.3v.2',
+ altar:'M5 20h14M7 20v-6h10v6M9.5 14v-4M14.5 14v-4M8 10h8M12 3c1.3 1.5 1.3 3 0 4.5-1.3-1.5-1.3-3 0-4.5z',
+ skull:'M12 3a7 7 0 0 0-7 7c0 2.5 1.3 4 3 5v3h8v-3c1.7-1 3-2.5 3-5a7 7 0 0 0-7-7zM9.5 10.5v.5M14.5 10.5v.5M10.5 18v3M13.5 18v3',
+ crown:'M4 18h16M5 18L4 8l5 4 3-6 3 6 5-4-1 10z',
+ chest:'M4 10h16v10H4zM4 10a8 5 0 0 1 16 0M11 13h2v3h-2z',
+ gear:'M9 12a3 3 0 1 0 6 0a3 3 0 1 0-6 0M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1',
+ back:'M15 5l-7 7 7 7',
+ chev:'M9 5l7 7-7 7',
+ check:'M5 12.5l4.5 4.5L19 7',
+ lock:'M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
+ shard:'M12 2.5l5.5 7-5.5 12-5.5-12zM6.5 9.5h11M12 2.5l-2 7 2 12 2-12z',
+ coin:'M5 12a7 7 0 1 0 14 0a7 7 0 1 0-14 0M12 8.5v7M9.8 10.2h4.4',
+ dodge:'M20 12H8M12 7l-5 5 5 5M4 5v14',
+ star:'M12 3l2.6 5.8 6.4.7-4.8 4.3 1.4 6.2L12 16.9 6.4 20l1.4-6.2L3 9.5l6.4-.7z',
+ link:'M9 15l6-6M10 6.5l1.5-1.5a4 4 0 0 1 5.7 5.7L15.7 12M14 17.5l-1.5 1.5a4 4 0 0 1-5.7-5.7L8.3 12',
+ x:'M6 6l12 12M18 6L6 18',
+ tower:'M8 21V8l4-5 4 5v13zM6 21h12M11 11.5h2M11 15.5h2',
+ tent:'M3 20L12 5l9 15zM12 5v15M9 20l3-5 3 5',
+ tDay:'M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4',
+ tWeek:'M3 6h18v13H3zM8 6v13M12 6v13M16 6v13',
+ tMonth:'M3 5h18v16H3zM3 10h18M8 2.5v4M16 2.5v4',
+ save:'M5 4h11l3 3v13H5zM8 4v5h7V4M8 20v-6h8v6',
+ armor:'M7 4l5 2 5-2 3 4-3 3v9H7v-9L4 8z',
+ power:'M13 2L5 14h6l-1 8 8-12h-6z',
+ info:'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 11v6M12 7.5v.5',
+ alert:'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 7v6M12 16.5v.5',
+ clock:'M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9',
+ feint:'M4 12c3-6 6-6 8 0s5 6 8 0',
+ chain:'M7 9a4 4 0 0 1 0 6M17 9a4 4 0 0 0 0 6M9 12h6',
+ guard:'M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6zM9 12l2 2 4-4',
+ plus:'M12 5v14M5 12h14',
+ minus:'M5 12h14',
+ person:'M9 7a3 3 0 1 0 6 0a3 3 0 1 0-6 0M5 20c1-4 4-6 7-6s6 2 7 6'
+};
+const ic=(n,s=22,st=2)=>`<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${st}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${P[n]}"/></svg>`;
+const STATUS='<span class="sb-icons" aria-hidden="true"><svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="currentColor"/><rect x="5" y="5.5" width="3" height="6.5" rx="1" fill="currentColor"/><rect x="10" y="3" width="3" height="9" rx="1" fill="currentColor"/><rect x="15" y="0" width="3" height="12" rx="1" fill="currentColor"/></svg><svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".45"/><rect x="2.5" y="2.5" width="15" height="8" rx="2" fill="currentColor"/><rect x="24.5" y="4.5" width="2" height="4" rx="1" fill="currentColor" opacity=".45"/></svg></span>';
+const SEAL='<svg class="seal" viewBox="0 0 40 40" role="img" aria-label="Sceau rouge : coup imparable"><path d="M20 2l18 18-18 18L2 20z" fill="#FF3B3B" stroke="#FFD0D0" stroke-width="1.5"/><path d="M20 10v13" stroke="#12141B" stroke-width="4.5" stroke-linecap="round"/><circle cx="20" cy="29" r="2.6" fill="#12141B"/></svg>';
+
+/* ---------- Silhouettes ---------- */
+const HEROES=[
+ {id:'sentinelle',name:'La Sentinelle',short:'la Sentinelle',style:'Parade et contre-attaque',gear:['Épée courte','Écu cabossé','Rempart'],weapon:'sword',pow:'Rempart',powCost:1,powTxt:'Le prochain coup subi fait −50 %',hp:80,stats:'80 PV · Attaque 10 · réduction des dégâts 10 %',trait:'Contre-attaque ×1,3'},
+ {id:'errante',name:"L'Errante",short:"l'Errante",style:'Esquive et rythme',gear:['Dagues jumelles','Cape usée','Pas de l\'ombre'],weapon:'daggers',pow:'Pas de l\'ombre',powCost:2,powTxt:'La prochaine esquive réussie contre-attaque',hp:60,stats:'60 PV · Attaque 6 × 2 coups',trait:'Chaque esquive réussie donne +1 Élan'}
+];
+function heroSVG(pose='idle',w='sword'){
+ if(pose==='fallen')return `<svg viewBox="0 0 160 80" aria-hidden="true"><ellipse cx="80" cy="74" rx="66" ry="5" fill="rgba(0,0,0,.6)"/><path class="sil" d="M18 72c10-14 40-22 92-20 14 1 24 6 30 20z"/><circle class="sil" cx="146" cy="62" r="10"/><path class="rim" d="M22 70c12-12 44-19 88-17"/><path class="blade" d="M40 76L4 66"/></svg>`;
+ const rot={idle:0,raise:-4,lean:7,hit:-13,off:-17,counter:14,dodge:-10}[pose]||0;
+ const tx={dodge:-26,counter:30}[pose]||0;
+ let weap='';
+ if(w==='sword')weap=pose==='raise'?'<path class="blade" d="M70 70L80 4"/><path d="M66 74l9-2" stroke="#6E5E44" stroke-width="5" stroke-linecap="round"/>':'<path class="blade" d="M74 82L106 32"/><path d="M68 86l11-6" stroke="#6E5E44" stroke-width="5" stroke-linecap="round"/><path class="sil" d="M30 74c-10 4-12 30-2 36 8-4 10-28 2-36z"/>';
+ if(w==='spear')weap=pose==='raise'?'<path d="M62 120L84 0" stroke="#5B4A33" stroke-width="3.5"/><path class="blade" d="M84 0l-2 14"/>':'<path d="M40 128L110 24" stroke="#5B4A33" stroke-width="3.5"/><path class="blade" d="M110 24l-8 12"/>';
+ if(w==='daggers')weap=pose==='raise'?'<path class="blade" d="M72 72L84 30M44 76L34 40"/>':'<path class="blade" d="M76 88L98 70M42 90L22 76"/>';
+ const hood=w==='daggers'?'<path class="sil" d="M48 34l12-24 12 24z"/>':'';
+ return `<svg viewBox="0 0 120 160" aria-hidden="true"><ellipse cx="60" cy="156" rx="38" ry="4" fill="rgba(0,0,0,.55)"/><g transform="translate(${tx} 0) rotate(${rot} 60 156)"><path class="sil" d="M60 44C46 54 34 86 30 156h60C86 86 74 54 60 44z"/><circle class="sil" cx="60" cy="32" r="12"/>${hood}<path class="rim" d="M50 37C40 50 33 84 31 154"/><path class="rim" d="M50 28a11 11 0 0 1 8-8"/>${weap}</g></svg>`;
+}
+const FOES={
+ goule:`<svg viewBox="0 0 120 150" aria-hidden="true"><path class="sil" d="M28 146c0-38 8-66 28-80 12-8 26-6 32 6 7 14 4 42 2 74z"/><circle class="sil" cx="50" cy="62" r="12"/><path class="claw" d="M36 104l-16 14M40 110l-12 18M44 112l-6 20"/><path class="rim" d="M86 76c5 14 4 40 3 68" style="opacity:.4"/><circle class="eye" cx="45" cy="60" r="2.2"/><circle class="eye" cx="53" cy="61" r="2.2"/></svg>`,
+ spectre:`<svg viewBox="0 0 120 150" aria-hidden="true"><path class="spec" d="M60 12c22 0 32 28 32 58 0 26-2 44-2 62l-8-7-8 9-7-9-7 9-7-9-8 7c0-18-2-36-2-62 0-30 10-58 34-58z"/><path class="rim" d="M86 40c5 16 5 50 4 88" style="opacity:.45"/><circle class="eye" cx="52" cy="46" r="2.6"/><circle class="eye" cx="66" cy="46" r="2.6"/></svg>`,
+ chevalier:`<svg viewBox="0 0 120 150" aria-hidden="true"><path class="sil" d="M60 40c-16 8-26 40-30 108h60c-4-68-14-100-30-108z"/><path class="sil" d="M48 22h24v20c0 6-24 6-24 0z"/><path class="sil" d="M49 26L36 10l15 9M71 26l13-16-15 9"/><path d="M92 26v122" stroke="#06070C" stroke-width="4"/><path class="sil" d="M88 28l4-14 4 14z"/><path d="M53 32h14" stroke="var(--a-light)" stroke-width="2" opacity=".85"/><path class="rim" d="M80 60c6 18 8 50 9 86" style="opacity:.45"/></svg>`,
+ gardienne:`<svg viewBox="0 0 200 220" aria-hidden="true"><circle cx="100" cy="50" r="34" fill="none" stroke="var(--a-light)" stroke-width="2" opacity=".55"/><circle cx="100" cy="50" r="42" fill="none" stroke="var(--a-light)" stroke-width="1" opacity=".25"/><path class="sil" d="M100 66C68 86 52 150 40 218h120C148 150 132 86 100 66z"/><circle class="sil" cx="100" cy="54" r="15"/><path class="sil" d="M86 44l4-14 5 9 5-12 5 12 5-9 4 14z"/><path class="claw" d="M76 100L34 150M124 100l42 50"/><path d="M168 40v178" stroke="#06070C" stroke-width="4"/><path class="sil" d="M168 40c-20 2-36 14-40 30 12-10 26-16 40-16z"/><path class="rim" d="M88 70C66 92 54 150 44 214"/><circle class="eye" cx="94" cy="54" r="2.4"/><circle class="eye" cx="106" cy="54" r="2.4"/></svg>`
+};
+const TOWER=`<svg viewBox="0 0 390 230" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#151935"/><stop offset=".6" stop-color="#2A2346"/><stop offset="1" stop-color="#5A3A48"/></linearGradient><radialGradient id="glow" cx=".5" cy=".2" r=".6"><stop offset="0" stop-color="#F2D49B" stop-opacity=".35"/><stop offset="1" stop-color="#F2D49B" stop-opacity="0"/></radialGradient></defs><rect width="390" height="230" fill="url(#sky)"/><rect width="390" height="230" fill="url(#glow)"/><circle cx="300" cy="44" r="16" fill="#F2D49B" opacity=".9"/><circle cx="306" cy="40" r="14" fill="#151935" opacity=".55"/><g fill="#EEEAE0" opacity=".5"><circle cx="40" cy="30" r="1"/><circle cx="90" cy="60" r="1"/><circle cx="350" cy="90" r="1"/><circle cx="250" cy="20" r="1"/><circle cx="140" cy="18" r="1"/></g><path d="M0 200c60-20 120-10 190-24s140 6 200-8v62H0z" fill="#1A1630" opacity=".9"/><path d="M178 230V70l6-14 6-30 6 30 6 14v160z" fill="#06070C"/><path d="M168 230v-90l10-8v98zM212 230v-90l-10-8v98z" fill="#06070C"/><g fill="#F2D49B"><rect x="188" y="88" width="4" height="7" rx="2"/><rect x="188" y="120" width="4" height="7" rx="2" opacity=".7"/><rect x="188" y="156" width="4" height="7" rx="2" opacity=".85"/></g><path d="M184 100l-4 12 3 10M196 140l5 10-3 12" stroke="#E0607A" stroke-width="1.2" fill="none" opacity=".75"/><path d="M196 26v-10" stroke="#F2D49B" stroke-width="1.2" opacity=".7"/><path d="M0 214c70-8 130 4 200-4s130 6 190-2v26H0z" fill="#0A0B14"/><path d="M-10 176c80-8 140 6 220-2s120 4 190 0" stroke="#EEEAE0" stroke-width="10" opacity=".06" fill="none"/><path d="M60 72l6-3 6 3M100 52l5-3 5 3" stroke="#06070C" stroke-width="1.6" fill="none"/></svg>`;
+const CAMP=`<svg viewBox="0 0 390 230" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><defs><linearGradient id="csky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1A1220"/><stop offset=".7" stop-color="#3A2418"/><stop offset="1" stop-color="#1A100B"/></linearGradient><radialGradient id="fire" cx=".5" cy=".82" r=".5"><stop offset="0" stop-color="#FFB46B" stop-opacity=".65"/><stop offset=".5" stop-color="#FF9F5A" stop-opacity=".18"/><stop offset="1" stop-color="#FF9F5A" stop-opacity="0"/></radialGradient></defs><rect width="390" height="230" fill="url(#csky)"/><rect width="390" height="230" fill="url(#fire)"/><path d="M330 230V40l4-10 4 10v190z" fill="#0B0708" opacity=".7"/><path d="M20 196L70 120l50 76z" fill="#0B0708"/><path d="M70 120v76" stroke="#FFB46B" stroke-width="1" opacity=".5"/><path d="M262 198l44-64 44 64z" fill="#0B0708"/><path d="M0 200h390v30H0z" fill="#0F0A08"/><path d="M180 200c-4-14 4-22 10-34 2 10 10 14 10 24 4-6 4-10 2-16 8 8 10 18 6 26z" fill="#FFB46B"/><path d="M188 200c0-8 4-12 6-18 2 8 6 10 4 18z" fill="#FFE7B8"/><path d="M168 202h56" stroke="#3A2418" stroke-width="5" stroke-linecap="round"/><g fill="#0B0708"><path d="M120 200c0-22 6-34 16-34s14 12 14 34z"/><circle cx="136" cy="160" r="8"/><path d="M244 200c0-20 6-32 14-32s14 12 14 32z"/><circle cx="258" cy="162" r="8"/></g><path d="M146 172c3 8 4 18 4 28M248 174c-3 8-4 16-4 26" stroke="#FFB46B" stroke-width="1.4" opacity=".6" fill="none"/><g fill="#FFB46B" opacity=".7"><circle cx="196" cy="150" r="1.4"/><circle cx="204" cy="132" r="1"/><circle cx="188" cy="118" r="1"/></g></svg>`;
+
+/* ---------- Habillage d'un écran ---------- */
+const chrome=(inner)=>`<div class="island"></div><div class="statusbar"><span>7:42</span>${STATUS}</div>${inner}<div class="homebar"></div>`;
+const tabbar=()=>`<nav class="tabbar" aria-label="Onglets"><button class="tab"><span class="ti">${ic('tDay')}</span>Journée</button><button class="tab"><span class="ti">${ic('tWeek')}</span>Semaine</button><button class="tab"><span class="ti">${ic('tMonth')}</span>Mois</button><button class="tab" aria-current="page"><span class="ti">${ic('tower')}</span>Tour</button></nav>`;
+const go=(id,extra='')=>`data-go="${id}" ${extra}`;
+
+/* ---------- Jauge ---------- */
+const GAUGE={
+ p2:{lvl:'+2',pos:90,word:'Faveur pleine',cls:'f',why:'Hier : 3/3 faites',bless:3,effs:[['key','2 clés'],['reroll','2 relances'],['heart','Seconde chance'],['star','Butin plus rare'],['chest','Plus de coffres']],ec:''},
+ p1:{lvl:'+1',pos:70,word:'Faveur',cls:'f',why:'Hier : 3/4 faites',bless:3,effs:[['key','1 clé'],['reroll','1 relance'],['star','Butin un peu plus rare'],['chest','Un peu plus de coffres']],ec:''},
+ n0:{lvl:'0',pos:50,word:'Neutre',cls:'n',why:'Hier : 2/3 faites',bless:2,effs:[['info','Aucun effet aujourd\'hui']],ec:'n'},
+ m1:{lvl:'−1',pos:30,word:'Malédiction',cls:'c',why:'Hier : 1/3 faites',bless:1,effs:[['skull','1 ennemi maudit par combat'],['chest','Butin moins rare'],['heart','Fatigue : −10 % de PV max']],ec:'c'},
+ m2:{lvl:'−2',pos:10,word:'Malédiction forte',cls:'c',why:'Hier : 0/3 faites',bless:0,effs:[['skull','Ennemis et élites maudits'],['chest','Butin moins rare'],['heart','Fatigue : −20 % de PV max']],ec:'c'},
+ first:{lvl:'0',pos:50,word:'Neutre',cls:'n',why:'Aucune habitude hier. La jauge penchera demain, selon tes habitudes d\'aujourd\'hui.',bless:0,effs:[],ec:'n'}
+};
+const blessLine=n=>n?`<span class="eff" style="background:rgba(242,212,155,.12);color:var(--a-light)">${ic('star',16)}${n} bénédiction${n>1?'s':''} de départ</span>`:'';
+function gaugeBlock(k,compact){
+ const g=GAUGE[k];
+ const effs=(g.effs.length||g.bless)?`<div class="effs">${g.effs.map(e=>`<span class="eff ${g.ec}">${ic(e[0],16)}${e[1]}</span>`).join('')}${blessLine(g.bless)}</div>`:'';
+ const reassure=g.cls==='c'?`<div class="reassure">Elle ne vaut que pour aujourd'hui. L'ascension reste gagnable.</div>`:'';
+ const ticks=[10,30,70,90].map(x=>`<span class="tk" style="left:${x}%"></span>`).join('');
+ return `<button class="card gauge" ${go('jauge')} style="text-align:left;cursor:pointer;width:100%" aria-label="Jauge du jour : ${g.word}, niveau ${g.lvl}. ${g.why}. Effets : ${g.effs.map(e=>e[1]).join(', ')||'aucun'}${g.bless?', '+g.bless+' bénédictions de départ':''}. Ouvrir le détail.">
+  <div class="gstate"><b class="${g.cls}">${g.word}</b><span>${g.why.length<34?g.why:''}</span></div>
+  <div class="gtrack ${k==='first'?'none':''}">${ticks}<span class="mid"></span><span class="mk" style="left:${g.pos}%"></span></div>
+  <div class="gends"><span class="c">Malédiction</span><span class="f">Faveur</span></div>
+  ${k==='first'?`<div class="reassure">${g.why}</div>`:''}${effs}${reassure}</button>`;
+}
+
+/* ============ ÉCRANS ============ */
+const S={};
+
+/* T · Pied de la tour */
+S.pied=(c={})=>{
+ const k=c.gauge||'p2',h=HEROES[c.hero||0];
+ const run=c.inRun;
+ const head=`<div class="hd"><h2>La Tour</h2><span class="chipr shard" aria-label="${c.shards??34} Éclats">${ic('shard',16)}${c.shards??34}</span><button class="iconbtn" ${go('reglages')} aria-label="Réglages de la parade">${ic('gear')}</button></div>`;
+ const illu=`<div class="illu" style="height:${run?120:132}px">${TOWER}</div>`;
+ let lower;
+ if(run){
+  lower=`<div class="card" style="display:flex;gap:12px;align-items:center"><div class="mini">${heroSVG('idle',h.weapon)}</div><div style="flex:1"><div class="lbl">Ascension en cours</div><div class="g" style="font:700 18px var(--f-game);margin-top:2px">Palier ${c.palier||2} · Étage ${c.etage||3} sur 6</div><div style="font:500 13px Inter;color:var(--a-muted)">${h.name} · PV ${c.hp||51}/${c.hpMax||80} · sauvegardée</div></div></div>
+  <button class="btn pri big" ${go('reprise')}>${ic('tower')}Reprendre l'ascension</button>
+  <div class="row2"><button class="btn ghost" ${go('camp')}>${ic('tent',20)}Camp</button><button class="btn ghost" ${go('abandon')}>Abandonner</button></div>`;
+ }else{
+  lower=`<button class="cardbtn" ${go('heros')} aria-label="Héros : ${h.name}. Changer de héros"><div class="mini">${heroSVG('idle',h.weapon)}</div><div class="t"><span>Héros</span><b>${h.name}</b></div><span style="font:600 14px Inter;color:var(--a-accent)">Changer</span>${ic('chev',20)}</button>
+  <button class="btn pri big" ${go('debut')}>${ic('tower')}Commencer l'ascension</button>
+  <button class="btn ghost" ${go('camp')}>${ic('tent',20)}Camp</button>`;
+ }
+ return chrome(`${head}<div class="body pb" style="gap:10px">${illu}${gaugeBlock(k)}${lower}</div>${tabbar()}`);
+};
+S.piedLoading=()=>chrome(`<div class="hd"><h2>La Tour</h2><span class="chipr shard sk" style="width:60px;border:0"></span></div><div class="body pb"><div class="illu" style="height:200px">${TOWER}</div><div class="card"><div class="sk" style="height:20px;width:40%"></div><div class="sk" style="height:12px;margin-top:14px"></div><div class="sk" style="height:28px;width:70%;margin-top:14px"></div></div><div class="sk" style="height:64px;border-radius:20px"></div><div class="sk" style="height:64px;border-radius:16px"></div></div>${tabbar()}<span class="sr">Chargement de la tour</span>`);
+S.piedError=()=>chrome(`<div class="hd"><h2>La Tour</h2></div><div class="body pb"><div class="illu" style="height:200px;opacity:.45">${TOWER}</div><div class="center" style="flex:none;padding:8px 8px 0"><span style="color:var(--a-danger)">${ic('alert',48,1.6)}</span><h3 class="g" style="font:700 22px var(--f-game);margin:0">La tour ne s'ouvre pas</h3><p class="sub">Ta partie n'a pas pu être chargée. Tes Éclats, tes déblocages et ton ascension en cours ne sont pas perdus.</p></div><button class="btn pri big" ${go('pied')}>Réessayer</button></div>${tabbar()}`);
+S.jauge=(c={})=>{
+ const k=c.gauge||'p2';const g=GAUGE[k];
+ return S.pied(c).replace('<div class="homebar"></div>','')+`<div class="scrim"></div><div class="sheet" role="dialog" aria-label="Jauge du jour"><div class="grab"></div><h3>Jauge du jour</h3><p>Elle se calcule sur tes habitudes d'hier, comptées telles qu'à la clôture, et vaut pour toutes tes ascensions d'aujourd'hui. Elle se fige au lancement de ta première ascension du jour.</p>
+ <div class="card" style="background:var(--a-bg)"><div class="gstate"><b class="${g.cls}">${g.word}</b><span>${k==='first'?'':g.why}</span></div><div class="effs" style="margin-top:8px">${g.effs.map(e=>`<span class="eff ${g.ec}">${ic(e[0],16)}${e[1]}</span>`).join('')}${blessLine(g.bless)}</div></div>
+ <div style="display:flex;flex-direction:column;gap:4px;font:500 13px/1.4 Inter;color:var(--a-muted)"><span><b style="color:var(--a-favor)">Faveur pleine</b> 3/3 · <b style="color:var(--a-favor)">Faveur</b> 75 % ou plus · <b style="color:var(--a-text)">Neutre</b> 2/3</span><span><b style="color:#FF9DB0">Malédiction</b> 1/3 · <b style="color:#FF9DB0">Malédiction forte</b> 0/3</span><span>Une habitude dont l'objectif de la semaine était atteint ne compte que si elle a été faite.</span></div>
+ <p style="font-size:14px">${g.cls==='c'?'La malédiction est plafonnée : elle ne retire jamais d\'Éclats ni de déblocages, et le boss n\'est jamais maudit.':'Plus tu montes, plus la faveur compte.'}</p>
+ <button class="btn ghost" ${go('pied')}>Fermer</button></div><div class="homebar"></div>`;
+};
+S.abandon=(c={})=>S.pied({...c,inRun:true}).replace('<div class="homebar"></div>','')+`<div class="scrim"></div><div class="sheet" role="alertdialog" aria-label="Abandonner l'ascension"><div class="grab"></div><h3>Abandonner l'ascension ?</h3><p>Ton héros quitte la tour. L'Or, l'équipement, les pouvoirs, les bienfaits et les pactes de cette ascension sont perdus. Tu gardes tes Éclats et tes déblocages.</p><div class="row2" style="margin-top:6px"><button class="btn ghost" ${go('abandon-cancel')}>Continuer</button><button class="btn curse" ${go('fin')}>Abandonner</button></div></div><div class="homebar"></div>`;
+
+/* H · Héros */
+S.heros=(c={})=>{
+ const sel=c.hero||0;
+ const cards=HEROES.map((h,i)=>`<button class="boon ${i===sel?'sel':''}" ${go('hero:'+i)} aria-pressed="${i===sel}" aria-label="${esc(h.name)}, ${h.style}. ${h.stats}. Arme ${h.gear[0]}, armure ${h.gear[1]}, pouvoir ${esc(h.gear[2])} : ${h.powTxt}. ${h.trait}" style="min-height:0"><div class="mini" style="width:56px;height:76px">${heroSVG('idle',h.weapon)}</div><div class="t"><b>${h.name}</b><span class="rar" style="--rc:var(--a-light)">${h.style}</span><p style="color:var(--a-muted);font-size:13px;margin-top:6px">${h.stats}</p><p style="font-size:13px;display:flex;flex-direction:column;gap:3px;margin-top:6px"><span>${ic('sword',14)} ${h.gear[0]} · ${ic('armor',14)} ${h.gear[1]}</span><span>${ic('power',14)} <b style="display:inline;font:600 13px Inter">${h.gear[2]}</b> (${h.powCost} Élan) : ${h.powTxt}</span><span style="color:var(--a-muted)">${h.trait}</span></p></div>${i===sel?`<span style="color:var(--a-light)">${ic('check',24,2.6)}</span>`:''}</button>`).join('');
+ return chrome(`<div class="hd"><button class="iconbtn back" ${go('pied')} aria-label="Retour">${ic('back')}</button><h2>Choisir un héros</h2></div><div class="body">${cards}<p class="reassure" style="text-align:center">Deux héros dans cette version, jouables dès le départ.</p><div style="flex:1"></div><button class="btn pri big" ${go('pied')} style="margin-bottom:34px">Choisir ${HEROES[sel].short}</button></div>`);
+};
+
+/* T · Bénédictions de départ (J4) */
+const DIFF={epic:'Difficile',rare:'Moyenne',common:'Facile'};
+const BLESS_HABITS=[['Courir 20 minutes','epic'],['Lire 10 pages','rare'],['Boire 1,5 L d\'eau','common']];
+const BLESS_OFFERS=[
+ [['Vigueur','heart','PV max +15 %'],['Élan','power','+2 Élan de départ à chaque combat'],['Fortune','key','+1 clé et +1 relance']],
+ [['Bourse','coin','+20 Or au départ'],['Tranchant','sword','Dégâts +5 %'],['Égide','shield','Réduction des dégâts +5 %']],
+ [['Élan','power','+1 Élan au premier combat de chaque palier'],['Bourse','coin','+10 Or au départ'],['Fortune','reroll','+1 relance']]
+];
+S.benediction=(c={})=>{
+ const total=c.total??3, i=c.idx??0, sel=c.sel;
+ const [habit,r]=BLESS_HABITS[i];
+ const steps=Array.from({length:total},(_,k)=>`<i class="${k<i?'done':k===i?'on':''}"></i>`).join('');
+ const cards=BLESS_OFFERS[i].map((o,k)=>`<button class="boon rc-${r} ${sel===k?'sel':''}" ${go('bless:'+k)} aria-pressed="${sel===k}" style="min-height:88px;padding:12px 14px"><span class="gem">${ic(o[1],26)}</span><span class="t">${rarF(r)}<b>${o[0]}</b><p>${o[2]}</p></span></button>`).join('');
+ const map=['common','rare','epic'].map(x=>`<div class="maprow ${x===r?'on':''}"><span class="diff" style="justify-self:start">${DIFF[x]}</span><span aria-hidden="true">${ic('chev',14)}</span><span style="justify-self:end">${rarF(x)}</span></div>`).join('');
+ return chrome(`<div class="hd"><button class="iconbtn back" ${go('pied')} aria-label="Retour au pied de la tour">${ic('back')}</button><h2 style="font-size:23px">Bénédiction ${i+1} sur ${total}</h2></div><div class="body" style="gap:10px"><div class="steps" role="img" aria-label="Bénédiction ${i+1} sur ${total}">${steps}</div>
+ <div class="source"><span style="color:var(--a-favor)">${ic('check',22,3)}</span><span class="t">Faite hier<b>${habit}</b></span><span class="diff">${DIFF[r]}</span></div>
+ ${cards}
+ <div class="card" style="padding:10px 12px;display:flex;flex-direction:column;gap:5px"><div class="lbl" style="margin-bottom:2px">Rareté selon la difficulté</div>${map}</div>
+ <div style="flex:1"></div><button class="btn pri big" ${sel==null?'disabled':''} ${go('bless-ok')} style="margin-bottom:34px">${i+1<total?'Prendre':'Prendre et entrer'}</button></div>`);
+};
+
+/* C · Sorties */
+const DOORS={
+ combat:['','swords','Combat','Butin ordinaire'],
+ elite:['elite','skull','Élite','Plus dur, meilleur butin'],
+ rest:['rest','flame','Feu de camp','Se reposer ou aiguiser'],
+ shop:['shop','bag','Marchand','Armes, armures, pouvoirs'],
+ event:['event','event','Événement','Une rencontre, un choix'],
+ altar:['altar','altar','Autel','Un pacte risqué'],
+ boss:['boss','crown','Boss du palier','Tiré au hasard parmi les gardiens du palier']
+};
+function floorsBar(cur,n=5){
+ let h='';for(let i=1;i<=n;i++){h+=`<span class="fl ${i<cur?'done':''} ${i===cur?'now':''}" aria-hidden="true">${i<cur?ic('check',14,3):''}</span><span class="fll ${i<cur?'done':''}"></span>`;}
+ return `<div class="floors" role="img" aria-label="Étage ${cur} sur ${n}, puis le boss">${h}<span class="fl boss ${cur>n?'now':''}">${ic('crown',18)}</span></div>`;
+}
+const gtop=(p,e,c={})=>`<div class="gtop"><button class="iconbtn solid" ${go('pause')} aria-label="Pause">${ic('pause')}</button><div class="gloc"><div class="p">${p}</div><div class="e">${e}</div></div><div class="res"><span class="chipr key" aria-label="${c.keys??2} clés">${ic('key',16)}${c.keys??2}</span>${c.coins!=null?`<span class="chipr coin" aria-label="${c.coins} Or">${ic('coin',16)}${c.coins}</span>`:''}</div></div>`;
+S.sortie=(c={})=>{
+ const list=c.doors||['combat','elite','event'];
+ const sel=c.sel;
+ const doors=list.map((d,i)=>{const D=DOORS[d];const rule=(c.rule===i)?`<div class="rule">${ic('heart',14)}Règle : Sans soin</div>`:'';return `<button class="door ${D[0]} ${sel===i?'sel':''}" ${go('door:'+d)} aria-label="Sortie ${D[2]}. ${D[3]}${c.rule===i?'. Règle d\'étage : Sans soin, aucun soin sur cet étage':''}"><span class="arch">${ic(D[1],30,1.8)}</span><span class="t"><b>${D[2]}</b><span>${D[3]}</span>${rule}</span>${ic('chev',20)}</button>`;}).join('');
+ const et=c.etage||3;
+ return chrome(`${gtop(c.palierName||'Palier 1 · Les Catacombes','Étage '+(et-1)+' franchi',c)}<div class="body" style="gap:10px">${floorsBar(et)}<h2 class="ttl">${list.length===1?'Dernière porte':c.halte?'Halte':'Choisis ta sortie'}</h2><p class="sub">${list.length===1?'Le boss du palier est tiré au hasard.':c.halte?'Feu de camp ou marchand, avant le boss.':'Touche une porte pour entrer.'}</p>${doors}<div style="flex:1"></div><div class="herobar" style="padding:0 0 34px;min-height:0">${heroMini(c)}</div></div>`);
+};
+function heroMini(c){const h=HEROES[c.hero||0],hp=c.hp??56,mx=c.hpMax??80;const el=c.elan!=null?`<div class="elan" role="img" aria-label="Élan ${c.elan} sur 5">Élan ${Array.from({length:5},(_,k)=>`<i class="${k<c.elan?'on':''}"></i>`).join('')}</div>`:'';return `<div class="who"><div class="nm">${h.name}</div><div class="pvrow"><div class="pvb"><i style="width:${hp/mx*100}%" class="${hp/mx<.3?'low':''}"></i></div><span class="pvn">PV ${hp}/${mx}</span></div>${el}</div><div class="buffs">${(c.buffs||[['bf','Givre persistant']]).map(b=>`<span class="buff ${b[0]}">${b[1]}</span>`).join('')}</div>`;}
+S.palier=(c={})=>chrome(`<div class="center" style="background:radial-gradient(60% 40% at 50% 40%,rgba(242,212,155,.14),transparent);padding:0 32px 60px"><div class="lbl">Palier 1 franchi</div><div style="color:var(--a-light);opacity:.9;filter:drop-shadow(0 0 18px rgba(242,212,155,.5))">${ic('tower',96,1.2)}</div><div class="lbl" style="color:var(--a-light)">Palier 2</div><h2 class="g" style="font:700 34px/1.1 var(--f-game);margin:0">La Nef engloutie</h2><p class="sub">Les ennemis y sont plus forts. La faveur du jour y compte davantage.</p></div><div class="zone" style="flex:none"><button class="btn pri big" ${go('sortie')}>Entrer</button></div>`);
+S.etageLoading=()=>chrome(`<div class="gtop"><span class="iconbtn solid" aria-hidden="true">${ic('pause')}</span><div class="gloc"><div class="p">Palier 1 · Les Catacombes</div><div class="e">Étage 3 sur 6</div></div><span></span></div><div class="scene"><div class="center" style="position:absolute;inset:0"><div class="sk" style="width:120px;height:14px"></div><p class="sub" style="margin-top:8px">Préparation de l'étage…</p></div></div><div class="herobar"><div class="who"><div class="sk" style="height:14px;width:40%"></div><div class="sk" style="height:8px;margin-top:8px"></div></div></div><div class="zone"><div class="pad"><div class="sk" style="height:116px;border-radius:24px"></div><div class="sk" style="height:116px;border-radius:24px"></div></div></div>`);
+
+/* F / P · Combat */
+const DEF_FOES=[
+ {k:'goule',name:'Goule',hp:14,mx:20,g:3,gm:3,it:['atk','swords','5'],itn:'Coup simple, 5 dégâts'},
+ {k:'goule',name:'Goule maudite',hp:18,mx:25,g:2,gm:4,it:['atk','chain','2×3'],itn:'Double frappe, 2 fois 3 dégâts',cursed:true},
+ {k:'spectre',name:'Spectre',hp:12,mx:14,g:1,gm:2,it:['def','shield','Garde'],itn:'Garde : récupère 30 % de sa garde'}
+];
+function foesHTML(foes,o={}){
+ const n=foes.length;
+ return `<div class="foes n${n}">${foes.map((f,i)=>{
+  const pips=Array.from({length:f.gm},(_,j)=>`<i class="${j<f.g?'':'e'}"></i>`).join('');
+  const cls=['foe',o.stepin===i?'stepin':'',f.cursed?'cursed':'',o.target===i?'target':'',o.attacker!=null&&o.attacker!==i?'dim':'',o.attacker===i?'attacking':'',f.broken?'staggered':'',f.dead?'dead':''].join(' ');
+  const aria=`${f.name}${o.target===i?', cible':''}, PV ${f.hp} sur ${f.mx}, garde ${f.g} sur ${f.gm}${f.broken?', garde brisée':''}, intention : ${f.itn}`;
+  return `<button class="${cls}" data-foe="${i}" ${o.live?'':go('target:'+i)} aria-label="${esc(aria)}" aria-pressed="${o.target===i}">
+   <span class="intent ${f.it[0]}">${ic(f.it[1],15)}${f.it[2]}</span>
+   <span class="fig" data-fig="${i}">${(o.seal===i)?SEAL:''}${FOES[f.k]}<span class="base"></span></span>
+   <span class="nm">${f.name}${f.cursed?'<span class="cur">Maudit</span>':''}</span>
+   ${f.broken?'<span class="broken">Garde brisée</span>':`<span class="guard" aria-hidden="true">${pips}</span>`}
+   <span class="hpb"><i style="width:${f.hp/f.mx*100}%"></i></span><span class="hpn">${f.hp}/${f.mx}</span></button>`;}).join('')}</div>`;
+}
+const lockTag=(c)=>`<span class="locktag" role="status">${ic('lock',14,2.4)}Attends<span class="lb ${c.live?'run':''}" style="--p:${c.lockP??.45};--d:${c.lockMs||800}ms"></span></span>`;
+function padHero(h,c,locked){
+ const short=c.elan!=null&&c.elan<h.powCost;
+ return `<div class="pad ${locked?'locked':''}" ${locked?'aria-disabled="true"':''}>${locked?lockTag(c):''}<button class="act sec" ${locked?'disabled':''} ${go('pouvoir')} data-act="power" ${short?'aria-disabled="true" style="opacity:.55"':''} aria-label="Pouvoir ${esc(h.pow)}, ${h.powCost} Élan${short?', indisponible : il manque '+(h.powCost-c.elan)+' Élan':''}">${ic('power',24)}Pouvoir<small>${short?'Il manque '+(h.powCost-c.elan)+' Élan':h.pow+' · '+h.powCost+' Élan'}</small></button><button class="act pri" ${locked?'disabled':''} ${go('strike')} data-act="attack">${ic('sword',26)}Attaquer</button></div>`;
+}
+function padEnemy(c,locked){
+ return `<div class="pad ${c.off?'off':''} ${locked?'locked':''}" ${locked?'aria-disabled="true"':''}>${c.off?'<span class="offtag">Déséquilibré</span>':''}${locked?lockTag(c):''}<button class="act sec ${c.pressDodge?'pressed':''}" ${locked?'disabled':''} data-act="dodge" aria-label="Esquive">${ic('dodge',26)}Esquive</button><button class="act pri ${c.pressParry?'pressed':''}" ${locked?'disabled':''} data-act="parry" aria-label="Parade">${ic('shield',26)}Parade</button></div>`;
+}
+function combat(c={}){
+ const foes=c.foes||DEF_FOES;
+ const ph=c.phase||'hero';
+ const tr=ph==='trans'?c.to:null;
+ const enemyLike=ph==='enemy'||tr==='enemy';
+ const phaseLbl=ph==='won'?'':enemyLike?'<span class="phase ph-enemy">Phase ennemie</span>':'<span class="phase ph-hero">Phase du héros</span>';
+ const band=tr?`<div class="phaseband ${tr==='hero'?'tohero':''} ${c.live?'anim':''}" role="status" aria-live="assertive"><b>${tr==='hero'?'À toi':'Phase ennemie'}</b><span>${tr==='hero'?'Vise et attaque':'Prépare ta parade'}</span></div>`:'';
+ const fx=c.fx?`<div class="fxtext ${c.fx[0]}">${c.fx[1]}${c.fx[2]?`<small>${c.fx[2]}</small>`:''}</div>`:'';
+ const flash=c.flash?`<div class="flash on ${c.flash==='red'?'red':''}"></div>`:'';
+ const streaks=c.streaks?`<svg class="streaks" viewBox="0 0 390 440" aria-hidden="true"><g stroke="#FFF4D6" stroke-width="2" opacity=".8" stroke-linecap="round"><path d="M150 330l-60 20M160 300l-80-10M170 360l-50 40M200 300l20-60M220 330l70-10"/></g></svg>`:'';
+ const frozen=c.frozen?`<span class="frozen-tag">arrêt sur image · 90 ms</span>`:c.tag?`<span class="frozen-tag">${c.tag}</span>`:'';
+ const h=HEROES[c.hero||0];
+ const scene=`<div class="scene ${c.boss?'boss':''} ${c.curseScene?'cursed':''}" id="scene">${phaseLbl}${foesHTML(foes,{target:c.target,attacker:c.attacker,seal:c.seal,live:c.live,stepin:c.stepin})}<div class="hero" id="heroFig">${heroSVG(c.pose||'idle',h.weapon)}</div>${streaks}${flash}${band}${fx}${frozen}${c.coach||''}</div>`;
+ const hb=`<div class="herobar">${heroMini({...c,elan:c.elan??2})}</div>`;
+ let zone='';
+ if(ph==='hero'){
+  const t=foes[c.target??1];
+  zone=`<div class="zline">${c.zline||`Cible : <b>${t?t.name:''}</b>`}</div>${padHero(h,c,false)}`;
+ }else if(tr==='hero'){
+  zone=`<div class="zline"></div>${padHero(h,c,true)}`;
+ }else if(ph==='strike'){
+  zone=`<div class="zline">${c.zline||'Touche quand la lame est au plus haut'}</div><div class="pad"><button class="act sec" disabled>${ic('power',24)}Pouvoir</button><button class="act pri ${c.pressed?'pressed':''}" data-act="strike">${ic('sword',26)}Frapper</button></div>`;
+ }else if(tr==='enemy'){
+  zone=`<div class="zline"></div>${padEnemy(c,true)}`;
+ }else if(ph==='enemy'){
+  zone=`<div class="zline">${c.zline||''}</div>${padEnemy(c,false)}`;
+ }else if(ph==='won'){
+  zone=`<div class="card" style="display:flex;gap:12px;align-items:center"><span class="arch" style="width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:#0A0C16;border:1.5px solid var(--r-rare);color:var(--r-rare)">${ic('sword',24)}</span><div style="flex:1"><span class="rar rc-rare"><i></i><i></i>Rare</span><div class="g" style="font:700 16px var(--f-game)">Hache</div><div style="font:500 12px Inter;color:var(--a-muted)">Attaque 12 · ton Épée courte : 10 <span class="up">+2</span> · +30 % de garde brisée</div></div></div><div class="row2"><button class="btn ghost" ${go('bienfait')}>Laisser</button><button class="btn pri" ${go('bienfait')}>Équiper</button></div>`;
+ }
+ return chrome(`${gtop(c.boss?'Palier 1 · Boss':'Palier 1 · Les Catacombes',c.boss?'La Gardienne des ossuaires':'Étage 3 sur 6',c)}${scene}${hb}<div class="zone" id="zone">${zone}</div>${c.overlay||''}`);
+}
+S.combat=combat;
+
+/* B · Bienfaits et objets */
+const BOONS=[
+ ['common','flame','Tison ardent','Ta frappe nette enflamme la cible : 2 dégâts à chaque manche, pendant 2 manches.'],
+ ['rare','star','Givre persistant','Tes coups rendent la cible givrée : +25 % de dégâts de garde pendant 2 manches.'],
+ ['epic','guard','Écho parfait','Ta contre-attaque inflige 50 % de dégâts en plus.']
+];
+const RN={common:['Commun',1],rare:['Rare',2],epic:['Épique',3],legend:['Légendaire',4]};
+const rar=r=>`<span class="rar rc-${r}">${'<i></i>'.repeat(RN[r][1])}${RN[r][0]}</span>`;
+const rarF=r=>`<span class="rar rc-${r}">${'<i></i>'.repeat(RN[r][1])}${r==='common'?'Commune':RN[r][0]}</span>`;
+S.bienfait=(c={})=>{
+ const sel=c.sel;const rr=c.rerolls??1;
+ const cards=(c.boons||BOONS).map((b,i)=>`<button class="boon rc-${b[0]} ${sel===i?'sel':''}" ${go('boon:'+i)} aria-pressed="${sel===i}"><span class="gem">${ic(b[1],26)}</span><span class="t">${rar(b[0])}<b>${b[2]}</b><p>${b[3]}</p></span></button>`).join('');
+ return chrome(`${gtop('Palier 1 · Les Catacombes','Combat gagné',c)}<div class="body" style="gap:10px"><h2 class="ttl" style="margin-top:6px">Choisis un bienfait</h2><p class="sub">Un seul des trois. Certains se combinent en secret.</p>${cards}<div style="flex:1"></div><div class="row2" style="grid-template-columns:1fr 1.45fr;margin-bottom:34px"><button class="btn ghost" ${rr?'':'disabled'} ${go('reroll')} aria-label="Relancer les bienfaits, ${rr} relance restante">${ic('reroll',20)}${rr?`Relancer (${rr})`:'Aucune relance'}</button><button class="btn pri" ${sel==null?'disabled':''} ${go('combo')}>Prendre</button></div></div>`);
+};
+S.combo=(c={})=>chrome(`${gtop('Palier 1 · Les Catacombes','Bienfait obtenu',c)}<div class="center" style="position:relative;padding:0 24px"><div class="rays"></div><div style="position:relative;display:flex;gap:10px;align-items:center"><span class="gem" style="width:64px;height:64px;border-radius:18px;display:grid;place-items:center;background:#0A0C16;border:1.5px solid var(--r-rare);color:var(--r-rare)">${ic('star',32)}</span><span style="color:var(--a-light)">${ic('link',30)}</span><span class="gem" style="width:64px;height:64px;border-radius:18px;display:grid;place-items:center;background:#0A0C16;border:1.5px solid var(--a-accent);color:var(--a-accent)">${ic('power',32)}</span></div><div class="lbl" style="color:var(--a-light);position:relative">Combinaison découverte</div><h2 class="g" style="font:700 32px/1.1 var(--f-game);margin:0;position:relative">Hiver éternel</h2><p class="sub" style="position:relative">Givre persistant + Lame de givre : une cible givrée le reste jusqu'à la fin du combat.</p><p class="sub" style="position:relative;font-size:13px">Inscrite au catalogue.</p></div><div class="zone" style="flex:none"><button class="btn pri big" ${go('sortie2')}>Continuer</button></div>`);
+S.coffre=(c={})=>{
+ const st=c.st||'closed';const keys=c.keys??2;
+ const chest=`<svg viewBox="0 0 120 100" width="150" height="125" aria-hidden="true"><ellipse cx="60" cy="94" rx="50" ry="5" fill="rgba(0,0,0,.6)"/><path d="M14 46h92v44H14z" fill="#0B0A10"/><path d="M14 46c0-20 92-20 92 0" fill="#0B0A10"/><path d="M14 46h92" stroke="#F2D49B" stroke-width="1.4" opacity=".6"/>${st==='open'?'<path d="M14 46c4-26 88-26 92 0" fill="none" stroke="#F2D49B" stroke-width="2"/><path d="M30 46c10-30 50-30 60 0" fill="#F2D49B" opacity=".35"/>':'<rect x="54" y="52" width="12" height="14" rx="2" fill="#F2D49B" opacity=".85"/><path d="M14 60h92M14 76h92" stroke="#F2D49B" stroke-width="1" opacity=".35"/>'}</svg>`;
+ let low;
+ if(st==='closed')low=`<p class="sub">Un coffre scellé. Une clé l'ouvre. Il contient au moins un objet Rare.</p><div class="row2" style="grid-template-columns:1fr 1.45fr"><button class="btn ghost" ${go('sortie2')}>Laisser</button><button class="btn pri" ${go('coffre-open')} aria-label="Ouvrir avec une clé, ${keys} clés">${ic('key',20)}Ouvrir (${keys})</button></div>`;
+ if(st==='nokey')low=`<p class="sub">Un coffre scellé, et plus aucune clé. Rien n'est perdu. La faveur en donne au départ, le marchand en vend.</p><div class="row2" style="grid-template-columns:1fr 1.45fr"><button class="btn ghost" ${go('sortie2')}>Laisser</button><button class="btn pri" disabled>${ic('lock',20)}Aucune clé</button></div>`;
+ if(st==='open')low=`<div class="cmp"><div class="c"><span>Tu portes</span><b>Écu cabossé</b><span>Réduction 10 %</span></div><span class="up">${ic('chev',20)}</span><div class="c" style="border:1.5px solid var(--r-rare)"><span class="rar rc-rare"><i></i><i></i>Rare</span><b>Bouclier du veilleur</b><span>Réduction 12 % <span class="up">+2</span></span></div></div><p class="sub" style="font-size:13px">Chaque parade parfaite te soigne de 3 PV.</p><div class="row2" style="grid-template-columns:1fr 1.45fr"><button class="btn ghost" ${go('sortie2')}>Garder l'ancien</button><button class="btn pri" ${go('sortie2')}>${ic('armor',20)}Équiper</button></div>`;
+ return chrome(`${gtop('Palier 1 · Les Catacombes','Élite vaincue',{...c,keys:st==='open'?keys-1:keys})}<div class="center" style="position:relative">${st==='open'?'<div class="rays"></div>':''}<div style="position:relative">${chest}</div><h2 class="g" style="font:700 26px var(--f-game);margin:0;position:relative">${st==='open'?'Bouclier du veilleur':'Coffre scellé'}</h2></div><div class="zone" style="flex:none;padding-top:8px">${low}</div>`);
+};
+
+/* L · Lieux */
+S.marchand=(c={})=>{
+ const coins=c.coins??52;
+ const items=[['common','heart','Soin','Rend 30 % de tes PV max',30],['common','key','Clé','Ouvre un coffre scellé',40],['common','armor','Mailles','Armure · réduction 8 %',35,c.sold===2],['rare','sword','Marteau','Arme · Brise-garde ×1,6, Attaque ×0,8',70]];
+ const rows=items.map((it,i)=>{const can=coins>=it[4];return `<div class="item rc-${it[0]}"><span class="gem">${ic(it[1],22)}</span><div class="t">${i>1?rar(it[0]):''}<b>${it[2]}</b><span>${it[3]}</span>${!can&&!it[5]?`<div class="short">Il te manque ${it[4]-coins} Or</div>`:''}</div>${it[5]?`<button class="price owned" disabled>${ic('check',16,3)}Acheté</button>`:`<button class="price coin" ${can?'':'disabled'} aria-label="Acheter ${it[2]} pour ${it[4]} Or${can?'':', il te manque '+(it[4]-coins)+' Or'}">${ic('coin',16)}${it[4]}</button>`}</div>`;}).join('');
+ return chrome(`${gtop('Palier 1 · Les Catacombes','Halte · Marchand',{...c,coins})}<div class="illu" style="height:120px;margin:0">${`<svg viewBox="0 0 390 120" aria-hidden="true"><defs><radialGradient id="lan" cx=".55" cy=".45" r=".5"><stop offset="0" stop-color="#E7D9A8" stop-opacity=".45"/><stop offset="1" stop-color="#E7D9A8" stop-opacity="0"/></radialGradient></defs><rect width="390" height="120" fill="#141831"/><rect width="390" height="120" fill="url(#lan)"/><path d="M170 120c0-40 10-66 30-70 20 4 30 30 30 70z" fill="#06070C"/><circle cx="200" cy="44" r="12" fill="#06070C"/><path d="M188 40l12-18 12 18z" fill="#06070C"/><path d="M230 70v-14" stroke="#06070C" stroke-width="2"/><rect x="224" y="56" width="12" height="16" rx="3" fill="#E7D9A8"/></svg>`}</div><div class="body" style="gap:8px;padding-top:8px"><h2 class="ttl" style="text-align:left;font-size:22px">Le marchand des marches</h2><p class="sub" style="text-align:left;font-size:13px">L'Or ne sert que pendant l'ascension.</p>${rows}<div style="flex:1"></div><button class="btn ghost" ${go('sortie2')} style="margin-bottom:34px">Partir</button></div>`);
+};
+S.feu=(c={})=>{
+ const nohealing=c.rule;
+ return chrome(`${gtop('Palier 1 · Les Catacombes',nohealing?'Étage 4 · Feu de camp':'Halte · Feu de camp',c)}<div class="illu" style="height:250px;margin:0">${CAMP}</div><div class="body" style="gap:10px;padding-top:10px"><h2 class="ttl">Un feu dans la pierre</h2>${nohealing?`<div style="text-align:center"><span class="rule">${ic('heart',14)}Règle : Sans soin</span></div>`:'<p class="sub">Une halte avant le boss.</p>'}
+ <button class="door rest" ${nohealing?'disabled style="opacity:.5"':go('sortie3')} aria-label="Se reposer, récupérer 40 % des PV max${nohealing?', indisponible : règle Sans soin, aucun soin sur cet étage':''}"><span class="arch">${ic('heart',28)}</span><span class="t"><b>Se reposer</b><span>${nohealing?'Impossible ici : aucun soin sur cet étage':'Récupère 40 % de tes PV max (+24)'}</span></span></button>
+ ${nohealing?`<button class="btn ghost" ${go('sortie2')}>Repartir</button>`:''}
+ ${heroMiniBar(c)}</div>`);
+};
+const heroMiniBar=c=>`<div style="flex:1"></div><div class="herobar" style="padding:0 0 34px;min-height:0">${heroMini(c)}</div>`;
+S.autel=(c={})=>{
+ const st=c.st||'offer';
+ const altar=`<svg viewBox="0 0 390 200" aria-hidden="true"><defs><radialGradient id="ag" cx=".5" cy=".55" r=".45"><stop offset="0" stop-color="#E0607A" stop-opacity=".45"/><stop offset="1" stop-color="#E0607A" stop-opacity="0"/></radialGradient></defs><rect width="390" height="200" fill="#120F22"/><rect width="390" height="200" fill="url(#ag)"/><path d="M150 200v-60h90v60z" fill="#06070C"/><path d="M140 140h110v-10H140z" fill="#06070C"/><path d="M195 128c8-10 8-22 0-34-8 12-8 24 0 34z" fill="#E0607A"/><path d="M195 124c3-5 3-10 0-16-3 6-3 11 0 16z" fill="#FFD0D8"/><path d="M120 200v-110M270 200v-110" stroke="#06070C" stroke-width="10"/></svg>`;
+ const low=st==='offer'?`<div class="card" style="display:flex;flex-direction:column;gap:8px"><div class="lbl">Pacte de sang</div><div style="display:flex;gap:8px;align-items:flex-start;font:500 15px/1.4 Inter"><span class="up">${ic('plus',18,3)}</span><span><b>+30 % de dégâts</b> jusqu'à la fin du palier</span></div><div style="display:flex;gap:8px;align-items:flex-start;font:500 15px/1.4 Inter"><span class="down">${ic('minus',18,3)}</span><span><b>−20 % de PV max</b> jusqu'à la fin du palier (80 → 64)</span></div></div><div class="row2" style="grid-template-columns:1fr 1.45fr;margin-bottom:34px"><button class="btn ghost" ${go('sortie2')}>Refuser</button><button class="btn curse hold ${c.filling?'filling':''}" ${go('pacte')} aria-label="Accepter le pacte. Maintenir pour confirmer"><i></i><span style="position:relative">${c.filling?'Maintiens…':'Maintenir pour accepter'}</span></button></div>`
+ :`<div class="center" style="flex:none;gap:6px"><div class="lbl" style="color:#FFD0D8">Pacte scellé</div><p class="sub">Jusqu'à la fin du palier : +30 % de dégâts, PV max 64.</p></div><button class="btn pri big" ${go('sortie2')} style="margin-bottom:34px">Continuer</button>`;
+ return chrome(`${gtop('Palier 1 · Les Catacombes','Autel',c)}<div class="illu" style="height:200px;margin:0">${altar}</div><div class="body" style="gap:10px;padding-top:12px"><h2 class="ttl">L'autel sans nom</h2><p class="sub">Une voix propose un marché. Le refuser ne coûte rien. L'accepter ne se défait pas.</p><div style="flex:1"></div>${low}</div>`);
+};
+S.evenement=(c={})=>{
+ const coins=c.coins??32;
+ const cell=`<svg viewBox="0 0 390 180" aria-hidden="true"><rect width="390" height="180" fill="#121630"/><path d="M0 180V60c40-30 80-40 120-30v150zM390 180V50c-40-20-90-24-130-10v140z" fill="#06070C" opacity=".8"/><path d="M180 180c0-34 6-56 20-60 14 4 20 26 20 60z" fill="#06070C" opacity=".9"/><circle cx="200" cy="112" r="10" fill="#06070C"/><path d="M226 150h18l-4 30h-10z" fill="#06070C"/><circle cx="235" cy="146" r="5" fill="#7C9CFF" opacity=".55"/><circle cx="200" cy="40" r="60" fill="#7C9CFF" opacity=".06"/></svg>`;
+ return chrome(`${gtop('Palier 1 · Les Catacombes','Événement',{...c,coins})}<div class="illu" style="height:180px;margin:0">${cell}</div><div class="body" style="gap:10px;padding-top:14px"><h2 class="ttl" style="text-align:left">Le pèlerin affamé</h2><p style="margin:0;font:400 16px/1.55 Inter">Assis contre la pierre, un pèlerin tend la main. Il murmure qu'il connaît un secret de la tour, contre de quoi manger.</p><div style="flex:1"></div><button class="door event" ${coins>=20?go('evt-give'):'disabled style="opacity:.5"'} aria-label="Donner 20 Or, recevoir un bienfait${coins>=20?'':'. Indisponible : il te manque '+(20-coins)+' Or'}"><span class="arch">${ic('coin',28)}</span><span class="t"><b>Donner 20 Or</b><span>${coins>=20?'Il t\'offre un bienfait':'Il te manque '+(20-coins)+' Or'}</span></span></button><button class="door" ${go('sortie2')} style="margin-bottom:34px"><span class="arch">${ic('chev',28)}</span><span class="t"><b>Passer ton chemin</b><span>Rien ne change</span></span></button></div>`);
+};
+S.captif=(c={})=>chrome(`${gtop('Palier 1 · Les Catacombes','Halte · Feu de camp',c)}<div class="illu" style="height:230px;margin:0">${CAMP}</div><div class="body" style="gap:10px;padding-top:6px"><div class="center" style="flex:none;gap:6px"><div style="width:84px;height:110px">${heroSVG('idle','sword')}</div><div class="lbl" style="color:var(--a-shard)">Captif libéré</div><h3 class="g" style="font:700 26px var(--f-game);margin:0">La Forgeronne</h3><p class="sub">« Je t'attendrai au camp. » Elle y ouvrira une boutique d'armes, même si cette ascension s'arrête.</p></div><div style="flex:1"></div><button class="btn pri big" ${go('feu-rest')} style="margin-bottom:34px">Continuer</button></div>`);
+
+/* X · Boss et fin */
+S.bossIntro=()=>chrome(`<div class="scene boss" style="flex:1;height:auto"><div class="foes n1" style="top:120px;justify-content:center;padding:0"><div class="foe" style="width:300px"><span class="fig" style="width:260px;height:290px">${FOES.gardienne}</span></div></div><div style="position:absolute;left:0;right:0;bottom:40px;text-align:center;z-index:5;padding:0 24px"><div class="lbl" style="color:#FF9DB0">Boss du palier 1</div><h2 class="g" style="font:700 36px/1.1 var(--f-game);margin:6px 0 4px">La Gardienne des ossuaires</h2><p class="sub">Elle veille sur ceux qui ne sont jamais redescendus.</p></div></div><div class="zone" style="flex:none;padding-top:14px"><button class="btn pri big" ${go('boss')}>${ic('swords',22)}Affronter</button></div>`);
+S.bossVaincu=(c={})=>chrome(`<div class="center" style="position:relative;padding:0 24px"><div class="rays"></div><div class="lbl" style="position:relative;color:var(--a-light)">Boss vaincu</div><h2 class="g" style="font:700 34px/1.1 var(--f-game);margin:0;position:relative">Palier 1 franchi</h2><div class="big-shard" style="position:relative;margin-top:10px">${ic('shard',48,2)}+8</div><p class="sub" style="position:relative">Éclats · gardés pour toujours, même si tu tombes.</p><div class="card" style="position:relative;display:flex;flex-direction:column;gap:8px;text-align:left;width:100%;margin-top:8px"><div style="display:flex;gap:10px;align-items:center"><span style="color:#E7D9A8">${ic('coin',24)}</span><span style="font:600 15px Inter">+40 Or</span></div><div style="display:flex;gap:10px;align-items:center"><span style="color:var(--r-rare)">${ic('chest',24)}</span><span style="font:600 15px Inter">Un coffre, au moins Rare, et un bienfait</span></div></div></div><div class="zone" style="flex:none;gap:10px"><button class="btn pri big" ${go('palier')}>Continuer vers le palier 2</button><button class="btn ghost" ${go('quit')}>${ic('save',20)}Faire une pause</button></div>`);
+S.chute=(c={})=>{
+ const sc=c.second;const h=HEROES[c.hero||0];
+ return chrome(`<div class="scene" style="flex:1;height:auto;box-shadow:inset 0 0 120px rgba(224,96,122,.35)"><div style="position:absolute;left:50%;top:44%;width:220px;height:110px;margin-left:-110px">${heroSVG('fallen')}</div><div style="position:absolute;left:0;right:0;top:120px;text-align:center;z-index:5;padding:0 24px"><h2 class="g" style="font:700 34px/1.1 var(--f-game);margin:0">Ton héros est tombé</h2><p class="sub" style="margin-top:6px">Palier 2 · Étage 4 · face au Chevalier déchu</p></div></div><div class="zone" style="flex:none;padding-top:14px;gap:10px">${sc?`<div class="card" style="border-color:rgba(111,211,160,.5);background:var(--a-favor-soft)"><div class="lbl" style="color:var(--a-favor)">Seconde chance · faveur pleine</div><p style="margin:4px 0 0;font:500 14px/1.4 Inter">Toutes tes habitudes d'hier sont faites. Relève-toi avec 50 % de tes PV max (${Math.floor(h.hp/2)} PV). Une fois par ascension.</p></div><button class="btn pri big" ${go('combat')}>${ic('heart',22)}Se relever</button><button class="btn ghost" ${go('fin')}>Renoncer</button>`:`<button class="btn pri big" ${go('fin')}>Voir le bilan</button>`}</div>`);
+};
+S.fin=(c={})=>{
+ const win=c.win;const h=HEROES[c.hero||0];const name=h.name;
+ return chrome(`<div class="hd" style="padding-top:10px"><h2 style="text-align:center">${win?'Sommet atteint':'Fin de l\'ascension'}</h2></div><div class="body" style="gap:10px"><p class="sub">${win?'Les trois paliers franchis avec '+h.short+'.':name+' est tombée au palier 2, étage 4.'}</p><div class="card" style="text-align:center"><div class="lbl">Éclats gagnés</div><div class="big-shard" style="font-size:48px;margin:6px 0 2px">${ic('shard',40,2)}+${win?54:10}</div><div style="font:500 13px Inter;color:var(--a-muted)">${win?'Dont 10 pour le sommet · ':''}Total au camp : ${win?88:44} Éclats</div></div><div class="stats"><div class="stat"><b>${win?18:10}</b><span>Étages traversés</span></div><div class="stat"><b>${win?3:1}</b><span>Boss vaincus</span></div><div class="stat"><b>${win?41:23}</b><span>Ennemis vaincus</span></div><div class="stat"><b>${win?27:14}</b><span>Parades parfaites</span></div></div><div class="card keep"><div><span class="k">${ic('check',18,3)}</span><span>Tu gardes tes Éclats, tes déblocages et la Forgeronne, libérée au palier 1.</span></div><div><span class="l">${ic('x',18,3)}</span><span>L'Or, l'équipement, les bienfaits et les pactes de cette ascension sont perdus.</span></div></div><div style="flex:1"></div><div class="row2" style="grid-template-columns:1fr 1.45fr;margin-bottom:34px"><button class="btn ghost" ${go('pied0')}>La Tour</button><button class="btn pri" ${go('camp')}>${ic('tent',20)}Aller au camp</button></div></div>`);
+};
+
+/* K · Camp */
+S.camp=(c={})=>{
+ const first=c.empty;const b=c.shards??44;
+ const gardien=`<button class="cardbtn" ${go('boutique')}><span style="width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--a-surface-2);color:var(--a-accent)">${ic('power',24)}</span><span class="t"><b>Le Gardien de la flamme</b><span>Pouvoirs · 3 objets à débloquer</span></span>${ic('chev',20)}</button>`;
+ const res=first?`${gardien}<div class="empty-slot">${ic('person',26)}<span>Trois places libres. Les captifs libérés aux haltes de la tour viendront s'y installer et ouvriront leur boutique.</span></div>`
+ :`${gardien}<button class="cardbtn" ${go('boutique')}><span style="width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:var(--a-surface-2);color:var(--a-accent)">${ic('sword',24)}</span><span class="t"><b>La Forgeronne <span class="newtag">Nouvelle</span></b><span>Armes · 3 objets à débloquer</span></span>${ic('chev',20)}</button>
+ <div class="empty-slot" style="min-height:60px">${ic('person',24)}<span>Deux places libres près du feu.</span></div>`;
+ return chrome(`<div class="hd"><button class="iconbtn back" ${go('pied0')} aria-label="Retour au pied de la tour">${ic('back')}</button><h2>Le Camp</h2><span class="chipr shard" aria-label="${b} Éclats">${ic('shard',16)}${b}</span></div><div class="illu" style="height:210px;margin:0">${CAMP}</div><div class="body" style="gap:10px;padding-top:12px"><p class="sub" style="text-align:left">Dépense tes Éclats pour débloquer des objets : ils pourront ensuite apparaître dans la tour.</p>${res}<div style="flex:1"></div><button class="btn camp-pri big" ${go('pied0')} style="margin-bottom:34px">${ic('tower',22)}Retour à la tour</button></div>`);
+};
+const SHOP=[['rare','sword','Hache','Arme · +30 % de garde brisée',15],['epic','sword','Marteau','Arme · Brise-garde ×1,6, Attaque ×0,8',25],['common','sword','Lance','Arme · touche aussi le voisin à 50 %',8]];
+S.boutique=(c={})=>{
+ const b=c.shards??44;const bought=c.bought||{};
+ const rows=SHOP.map((it,i)=>{const own=bought[i]||(c.owned&&i===2);const can=b>=it[4];return `<div class="item rc-${it[0]}"><span class="gem">${ic(it[1],22)}</span><div class="t">${rar(it[0])}<b>${it[2]}</b><span>${it[3]}</span>${!own&&!can?`<div class="short">Il te manque ${it[4]-b} Éclats</div>`:''}</div>${own?`<button class="price owned" disabled>${ic('check',16,3)}Dans la tour</button>`:`<button class="price shard" ${can?go('buy:'+i):'disabled'} aria-label="Débloquer ${it[2]} pour ${it[4]} Éclats${can?'':', il te manque '+(it[4]-b)+' Éclats'}">${ic('shard',16)}${it[4]}</button>`}</div>`;}).join('');
+ return chrome(`<div class="hd"><button class="iconbtn back" ${go('camp')} aria-label="Retour au camp">${ic('back')}</button><h2>La Forgeronne</h2><span class="chipr shard" aria-label="${b} Éclats">${ic('shard',16)}${b}</span></div><div class="body" style="gap:8px"><p class="sub" style="text-align:left">« Ce que je forge ici, tu pourras le trouver là-haut. » Chaque objet débloqué peut apparaître dans les coffres, chez les marchands et dans les bienfaits.</p>${rows}<p class="reassure">Commun 8 · Rare 15 · Épique 25 · Légendaire 40 Éclats</p></div>${c.toast||''}`);
+};
+
+/* Z · Pause */
+const pauseSheet=(c={})=>`<div class="scrim"></div><div class="sheet" role="dialog" aria-label="Pause"><div class="grab"></div><h3>Pause</h3><p>${c.where||'Palier 1 · Étage 3 sur 6 · combat'}</p>${c.saveErr?`<div class="errline">${ic('alert',18)}<span>La sauvegarde n'a pas abouti. Ne quitte pas tout de suite : on réessaie.</span></div>`:`<div class="okline">${ic('check',16,3)}Partie sauvegardée</div>`}<button class="btn pri big" ${go('reprise')}>Reprendre</button><div class="row2"><button class="btn ghost" ${go('reglages')}>${ic('gear',20)}Réglages</button><button class="btn ghost" ${c.saveErr?'disabled':''} ${go('quit')}>${ic('save',20)}Quitter</button></div><button class="btn danger" ${go('abandon')}>Abandonner l'ascension</button></div><div class="homebar"></div>`;
+S.pause=(c={})=>combat({...c,phase:'enemy',attacker:1,zline:'Goule maudite : double frappe'}).replace('<div class="homebar"></div>','')+pauseSheet(c);
+S.reprise=(c={})=>{const to=c.to||'enemy';return combat({...c,phase:'trans',to,lockP:c.lockP??.33,target:c.target??1}).replace('<div class="homebar"></div>','')+`<div class="scrim" style="background:rgba(4,5,10,.45);bottom:auto;height:330px"></div><div class="center" style="position:absolute;left:0;right:0;top:118px;z-index:80;padding:0 32px;justify-content:flex-start;gap:4px"><div class="count" id="countN" role="timer" aria-live="off">${c.n||3}</div><p class="sub" style="color:var(--a-text)">Place ton pouce. Les appuis sont ignorés jusqu'à la fin du compte.${to==='enemy'?' Puis l\'ennemi s\'avance et reprend son élan depuis le début.':''}</p></div><div class="homebar"></div>`;};
+
+/* R · Réglages */
+S.reglages=(c={})=>{
+ const off=c.offset??40;
+ const pos=50+off/240*100;
+ const tg=(l,d,on)=>`<div class="setrow"><div class="t"><b>${l}</b><span>${d}</span></div><button class="sw-t" role="switch" aria-checked="${on}" aria-label="${l}"></button></div>`;
+ return chrome(`<div class="hd"><button class="iconbtn back" ${go('back')} aria-label="Retour">${ic('back')}</button><h2 style="font-size:22px">Réglages de la parade</h2></div><div class="body" style="gap:12px"><div class="card"><div class="lbl">Décalage du téléphone</div><p style="margin:6px 0 10px;font:400 14px/1.4 Inter;color:var(--a-muted)">Si tu pares toujours un peu trop tôt ou trop tard, compense ici.</p><div class="offset"><button class="stepbtn" aria-label="Diminuer le décalage de 5 ms">−</button><div class="offv" aria-live="polite"><b>${off>0?'+':''}${off} ms</b><span>${off>0?'tes appuis arrivent en retard':off<0?'tes appuis arrivent en avance':'aucun décalage'}</span></div><button class="stepbtn" aria-label="Augmenter le décalage de 5 ms">+</button></div><div class="scale" aria-hidden="true"><span class="ln"></span><span class="z"></span><span class="k" style="left:${pos}%"></span><span class="lab" style="left:0">−120</span><span class="lab" style="right:0">+120</span></div><button class="btn ghost" ${go('calib')} style="margin-top:12px">Mesurer mon décalage</button></div><div class="card" style="padding:4px 14px">${tg('Vibration','À chaque parade et à chaque coup reçu',true)}${tg('Sons','Parade, parade parfaite, coup reçu',true)}${tg('Secousse de l\'écran','Sur une parade parfaite et un coup reçu',!reduce)}</div><p class="reassure" style="text-align:center">Les fenêtres de parade ne changent pas : seul le décalage se règle.</p></div>`);
+};
+S.calib=(c={})=>{
+ const st=c.st||'run';const n=c.n??3;
+ const beats=Array.from({length:8},(_,i)=>`<i class="${i<n?'on':''}"></i>`).join('');
+ let low;
+ if(st==='run')low=`<div class="zline">Touche Parade à chaque coup · ${n}/8</div><div class="pad" style="grid-template-columns:1fr"><button class="act pri" data-act="calib">${ic('shield',26)}Parade</button></div>`;
+ if(st==='done')low=`<div class="card" style="text-align:center"><div class="lbl">Résultat</div><div class="g" style="font:700 30px var(--f-game);margin:4px 0">+40 ms</div><p class="sub" style="font-size:14px">Tu touches en moyenne 40 ms après le coup. Le jeu en tiendra compte.</p></div><div class="row2" style="grid-template-columns:1fr 1.45fr"><button class="btn ghost" ${go('calib')}>Recommencer</button><button class="btn pri" ${go('reglages')}>Appliquer</button></div>`;
+ if(st==='err')low=`<div class="errline">${ic('alert',18)}<span>Tes appuis sont trop irréguliers pour mesurer. Cale-toi, puis recommence. Ton réglage actuel est conservé.</span></div><div class="row2" style="grid-template-columns:1fr 1.45fr"><button class="btn ghost" ${go('reglages')}>Annuler</button><button class="btn pri" ${go('calib')}>Recommencer</button></div>`;
+ return chrome(`<div class="hd"><button class="iconbtn back" ${go('reglages')} aria-label="Retour">${ic('back')}</button><h2 style="font-size:22px">Mesurer le décalage</h2></div><div class="scene" style="height:400px"><div class="foes n1" style="top:40px;justify-content:center;padding:0"><div class="foe" style="width:220px"><span class="fig" style="width:150px;height:190px;${st==='run'?'transform:translateY(14px) rotate(6deg)':''}">${FOES.chevalier}</span></div></div><div style="position:absolute;bottom:24px;left:0;right:0;z-index:5">${`<div class="beats" aria-label="${n} coups sur 8">${beats}</div>`}</div><p class="sub" style="position:absolute;top:10px;left:0;right:0;z-index:5">Le chevalier frappe toujours au même rythme.</p></div><div class="zone">${low}</div>`);
+};
+
+/* ---------- Galerie ---------- */
+const coachHero=`<div class="coach" style="top:250px;--ax:75%"><b>Première ascension</b>Touche un ennemi pour le viser, puis Attaquer.</div>`;
+const coachEnemy=`<div class="coach" style="top:250px;--ax:50%"><b>Lis son geste</b>Quand il frappe, touche Parade. S'il porte un sceau rouge, touche Esquive.</div>`;
+const FOES_IMP=DEF_FOES.map((f,i)=>i===2?{...f,it:['atk','swords','9'],itn:'Coup imparable, 9 dégâts'}:f);
+const TR_ENEMY={phase:'trans',to:'enemy',target:1,lockP:.45,tag:'temps mort · 800 ms'};
+const G=[
+ ['t','T1','Faveur pleine',['41','42'],'Hier : 3/3 faites (+2). Le curseur est au cran de droite ; dotation, effets du jour et bénédictions de départ sont listés. Toucher la jauge ouvre son détail.',()=>S.pied({gauge:'p2'})],
+ ['t','T2','Neutre',['41'],'Hier : 2/3 faites (0). Aucun effet, mais deux bénédictions de départ : chaque habitude faite compte.',()=>S.pied({gauge:'n0'})],
+ ['t','T2b','Faveur',['41','42'],'Hier : 3/4 faites, 75 % ou plus (+1). Une clé, une relance, un peu de rareté.',()=>S.pied({gauge:'p1'})],
+ ['t','T3','Malédiction',['41'],'Hier : 1/3 faites (−1). Effets en rouge, et une phrase qui rassure : seulement aujourd\'hui, toujours gagnable.',()=>S.pied({gauge:'m1'})],
+ ['t','T3b','Malédiction forte',['41'],'Hier : 0/3 faites (−2). Fatigue plafonnée à −20 %, jamais de boss maudit. Pas de bénédiction.',()=>S.pied({gauge:'m2'})],
+ ['t','T4','Première utilisation',['41'],'Aucune habitude hier : la jauge est Neutre, hachurée, et dit quand elle comptera. Même chose un jour où tous les objectifs de la semaine étaient atteints sans rien faire.',()=>S.pied({gauge:'first',shards:0})],
+ ['t','T5','Ascension en cours',['33','35'],'Une ascension sauvegardée : « Reprendre » remplace « Commencer ». Le héros n\'est plus modifiable. Aucune bénédiction à la reprise.',()=>S.pied({gauge:'p2',inRun:true})],
+ ['t','T6','Détail de la jauge',['41','42'],'Feuille ouverte depuis la jauge : les cinq niveaux, le compte « tel qu\'à la clôture », les garde-fous.',()=>S.jauge({gauge:'m1'})],
+ ['t','T7','Chargement',['33'],'Squelette pendant la lecture de la sauvegarde. L\'illustration reste, elle ne dépend pas des données.',()=>S.piedLoading()],
+ ['t','T8','Erreur',['33'],'La sauvegarde ne se lit pas. Le texte rassure sur ce qui n\'est pas perdu.',()=>S.piedError()],
+ ['t','T9','Bénédiction 1 sur 3 · Épique',['42'],'Après « Commencer l\'ascension ». Une par habitude faite hier, la plus difficile d\'abord. Trois familles distinctes, toutes de la rareté de l\'habitude. Aucune n\'est choisie au départ.',()=>S.benediction({idx:0,total:3})],
+ ['t','T10','Bénédiction 2 sur 3 · Rare',['42'],'Habitude Moyenne : offres Rares. La famille déjà prise (Vigueur) n\'est plus proposée. La carte touchée s\'illumine, « Prendre » s\'active.',()=>S.benediction({idx:1,total:3,sel:1})],
+ ['t','T11','Bénédiction 3 sur 3 · Commune',['42'],'Habitude Facile : offres Communes. Dernière : « Prendre et entrer » lance l\'étage 1. Sans habitude faite hier, ces écrans sont sautés.',()=>S.benediction({idx:2,total:3})],
+ ['h','H1','La Sentinelle',['35'],'Deux héros, jouables dès le départ. Équipement de base, pouvoir, coût en Élan et trait. Le choix se confirme en bas.',()=>S.heros({hero:0})],
+ ['h','H2','L\'Errante',['35'],'L\'autre héros sélectionné. Pas de héros à débloquer dans cette version.',()=>S.heros({hero:1})],
+ ['c','C1','Trois sorties',['33'],'Après l\'étage 2. Types tous différents, au moins un Combat ou une Élite. La progression du palier est en haut, le héros en bas.',()=>S.sortie({etage:3})],
+ ['c','C2','Règle d\'étage',['39'],'La règle s\'affiche sur la porte, avant d\'entrer. Elle reste visible pendant l\'étage (barre du haut).',()=>S.sortie({etage:4,doors:['combat','event','altar'],rule:0})],
+ ['c','C3','Avant le boss',['33'],'Une seule porte, plus grande. Le boss est tiré au hasard parmi les deux du palier.',()=>S.sortie({etage:6,doors:['boss'],hp:51})],
+ ['c','C4','Nouveau palier',['38'],'Transition entre deux paliers, avant le premier étage.',()=>S.palier()],
+ ['c','C5','Chargement de l\'étage',['33'],'Très bref ; les boutons gardent leur place pour que le pouce ne bouge pas.',()=>S.etageLoading()],
+ ['f','F0','Transition : « À toi »',['31'],'Fin de la phase ennemie. Annonce « À toi » pendant 800 ms, son propre. Attaquer et Pouvoir sont déjà à leur place, estompés et sans hachures ; un toucher est ignoré, sans déséquilibre.',()=>S.combat({phase:'trans',to:'hero',target:1,lockP:.6,tag:'temps mort · 800 ms'})],
+ ['f','F1','Phase du héros',['31','32'],'Cible présélectionnée (lueur au sol, nom en lumière). « Attaquer » se valide au relâcher du doigt. L\'Élan est sous le nom du héros.',()=>S.combat({target:1})],
+ ['f','F2','Première utilisation',['31'],'Une seule bulle, au premier combat, puis plus jamais.',()=>S.combat({target:1,coach:coachHero})],
+ ['f','F3','Frappe en rythme',['32'],'Le héros lève sa lame ; « Attaquer » devient « Frapper », daté au toucher. Touché au sommet : frappe nette.',()=>S.combat({target:1,phase:'strike',pose:'raise'})],
+ ['f','F4','Frappe nette',['32'],'Appui parfait : ×1,5 dégâts et ×1,5 dégâts de garde. Sans appui, le coup part sans bonus et sans pénalité.',()=>S.combat({target:1,phase:'strike',pose:'lean',pressed:true,fx:['perfect','Frappe nette','15 dégâts · garde −18'],flash:true,foes:DEF_FOES.map((f,i)=>i===1?{...f,hp:3,g:0}:f)})],
+ ['f','F5','Garde brisée',['32'],'Garde à 0 : l\'ennemi chancelle, perd sa prochaine action et subit ×1,5 dégâts jusqu\'à la fin de la prochaine phase du héros.',()=>S.combat({target:1,foes:DEF_FOES.map((f,i)=>i===1?{...f,hp:9,g:0,broken:true,it:['def','x','Chancelle'],itn:'chancelle, ne peut pas agir'}:f),fx:['good','Garde brisée','Il perd sa prochaine action'],zline:'Cible : <b>Goule maudite</b> · ×1,5 dégâts'})],
+ ['f','F6','Ennemi maudit',['39','41'],'Malédiction du jour : un ennemi maudit par combat. Halo rouge, étiquette « Maudit », yeux rouges.',()=>S.combat({target:1,curseScene:true})],
+ ['f','F7','Combat gagné',['37'],'Butin de l\'ennemi : comparaison immédiate, « Équiper » à droite. Or et répit sont crédités.',()=>S.combat({phase:'won',foes:DEF_FOES.map(f=>({...f,dead:true})),fx:['neutral','Combat gagné','+10 Or · répit +8 PV']})],
+ ['p','P0','Transition : « Phase ennemie »',['31'],'Juste après la frappe du héros. Annonce pendant 800 ms, son et vibration légère. Esquive et Parade sont déjà là, estompés, cadenas et barre qui se remplit, sans hachures. Un appui est ignoré, sans déséquilibre.',()=>S.combat(TR_ENEMY)],
+ ['p','P0b','Avancée',['31'],'Après le temps mort : le premier ennemi s\'avance pendant 400 ms, puis prend son élan. Les boutons sont actifs, les appuis de nouveau jugés. Entre deux ennemis, seulement l\'avancée.',()=>S.combat({phase:'enemy',attacker:1,stepin:1,zline:'<b>Goule maudite</b> s\'avance',tag:'avancée · 400 ms'})],
+ ['p','P1','Élan',['31'],'L\'ennemi qui attaque prend son élan, les autres s\'effacent. Seule l\'animation dit quand frapper.',()=>S.combat({phase:'enemy',attacker:1,zline:'<b>Goule maudite</b> : double frappe'})],
+ ['p','P2','Coup imparable',['31'],'Le sceau rouge apparaît au-dessus de l\'ennemi pendant l\'élan. Il faut esquiver.',()=>S.combat({phase:'enemy',attacker:2,seal:2,zline:'<b>Spectre</b> : coup imparable',foes:FOES_IMP})],
+ ['p','P3','Parade parfaite',['31'],'Arrêt sur image, éclat, secousse, vibration, son. Aucun dégât, puis contre-attaque et +1 Élan.',()=>S.combat({phase:'enemy',attacker:1,pressParry:true,fx:['perfect','Parade parfaite','Contre-attaque · 6 dégâts'],flash:true,streaks:true,frozen:true,pose:'lean',elan:3})],
+ ['p','P4','Parade',['31'],'Dans la fenêtre de parade, hors fenêtre parfaite : 25 % des dégâts, pas de contre-attaque.',()=>S.combat({phase:'enemy',attacker:0,pressParry:true,fx:['good','Parade','1 dégât au lieu de 5'],hp:55})],
+ ['p','P5','Esquive',['31'],'Sûre, sans contre-attaque. Fonctionne aussi sur un coup normal.',()=>S.combat({phase:'enemy',attacker:2,seal:2,foes:FOES_IMP,pressDodge:true,pose:'dodge',fx:['good','Esquive','Aucun dégât']})],
+ ['p','P6','Déséquilibré',['31'],'Appui trop tôt, trop tard ou dans le vide. Boutons grisés et hachurés : chaque appui prolonge les 450 ms.',()=>S.combat({phase:'enemy',attacker:1,off:true,pose:'off',fx:['miss','Trop tôt']})],
+ ['p','P7','Touché',['31'],'Coup reçu : vignette rouge, secousse légère, PV qui baissent.',()=>S.combat({phase:'enemy',attacker:0,pose:'hit',flash:'red',fx:['miss','Touché','−4 PV'],hp:52})],
+ ['p','P8','Parade sur un coup imparable',['31'],'La parade échoue : dégâts entiers et déséquilibre. Le message dit pourquoi.',()=>S.combat({phase:'enemy',attacker:2,seal:2,foes:FOES_IMP,pose:'hit',flash:'red',pressParry:true,off:true,fx:['miss','Imparable : esquive !','−8 PV'],hp:48})],
+ ['p','P9','Première utilisation',['31'],'Au premier coup ennemi seulement. La bulle passe avant le temps mort, qui ne commence qu\'à sa fermeture.',()=>S.combat({phase:'enemy',attacker:1,coach:coachEnemy})],
+ ['b','B1','Trois bienfaits',['36','42'],'Aucun n\'est choisi au départ. La relance (dotation de la faveur) est à gauche, avec le nombre restant.',()=>S.bienfait({rerolls:2})],
+ ['b','B2','Bienfait choisi',['36'],'La carte touchée s\'illumine ; « Prendre » s\'active.',()=>S.bienfait({sel:1,rerolls:2})],
+ ['b','B3','Sans relance',['36'],'Plus de relance : le bouton reste visible, inactif, pour que le joueur sache que la faveur en donne.',()=>S.bienfait({sel:0,rerolls:0})],
+ ['b','B4','Combinaison découverte',['37'],'Moment rare : rayons, nom de la combinaison, effet expliqué, inscription au catalogue.',()=>S.combo()],
+ ['b','B5','Coffre scellé',['37','42'],'Garanti après une élite. Une clé l\'ouvre ; le nombre de clés est sur le bouton.',()=>S.coffre({})],
+ ['b','B6','Sans clé',['37'],'Le coffre reste visible, le bouton dit pourquoi on ne peut pas l\'ouvrir. Rien n\'est perdu.',()=>S.coffre({st:'nokey',keys:0})],
+ ['b','B7','Coffre ouvert',['37'],'L\'objet est comparé à celui qu\'on porte. Rareté par couleur, losanges et mot.',()=>S.coffre({st:'open'})],
+ ['l','L1','Marchand',['39'],'Prix en Or. Un objet trop cher dit ce qui manque. Un objet acheté reste affiché.',()=>S.marchand({coins:52,sold:2})],
+ ['l','L2','Feu de camp',['33'],'À la halte : se reposer rend 40 % des PV max.',()=>S.feu({})],
+ ['l','L3','Feu de camp, Sans soin',['39'],'La règle d\'étage rend « Se reposer » indisponible et le dit.',()=>S.feu({rule:true})],
+ ['l','L4','Autel',['39'],'Gain et prix côte à côte. On maintient le bouton pour accepter.',()=>S.autel({})],
+ ['l','L5','Autel, maintien en cours',['39'],'Le bouton se remplit pendant 0,8 s. Relâcher annule.',()=>S.autel({filling:true})],
+ ['l','L6','Pacte scellé',['39'],'Le pacte apparaît ensuite dans la barre du héros pour tout le palier.',()=>S.autel({st:'done'})],
+ ['l','L7','Événement',['39'],'Texte court, ton sérieux, deux grandes portes de choix. Un choix trop cher dit ce qui manque.',()=>S.evenement({})],
+ ['l','L8','Captif libéré',['40'],'Au feu de camp de la halte, sans condition. Il rejoindra le camp, même si l\'ascension échoue.',()=>S.captif({})],
+ ['x','X1','Boss',['33'],'Présentation plein écran, nom en grand.',()=>S.bossIntro()],
+ ['x','X2','Combat de boss',['33'],'Un seul ennemi, garde plus longue, même zone d\'action. Jamais maudit.',()=>S.combat({boss:true,phase:'enemy',attacker:0,seal:0,foes:[{k:'gardienne',name:'La Gardienne',hp:104,mx:160,g:4,gm:6,it:['atk','clock','12'],itn:'Faux lente, 12 dégâts'}],zline:'<b>La Gardienne</b> : coup imparable'})],
+ ['x','X3','Boss vaincu',['38'],'Éclats en grand, gardés pour toujours. Or, coffre et bienfait. Continuer ou faire une pause.',()=>S.bossVaincu()],
+ ['x','X4','Chute, avec seconde chance',['42'],'Faveur pleine : se relever avec 50 % des PV max, une fois par ascension.',()=>S.chute({second:true})],
+ ['x','X5','Chute',['33','42'],'Sans seconde chance : un seul bouton.',()=>S.chute({})],
+ ['x','X6','Fin de l\'ascension',['33','38'],'Ce qui reste (vert) et ce qui est perdu (rouge), sans ambiguïté.',()=>S.fin({})],
+ ['x','X7','Sommet atteint',['33','38'],'Même écran, en victoire, avec le bonus du sommet.',()=>S.fin({win:true})],
+ ['k','K1','Camp',['40'],'Lumière du feu, boutiques des captifs libérés, places libres.',()=>S.camp({})],
+ ['k','K2','Première visite',['40'],'Seul le Gardien de la flamme est là. Le texte explique comment le camp se remplit.',()=>S.camp({empty:true,shards:8})],
+ ['k','K3','Boutique',['40'],'Débloquer un objet pour la tour. Trop cher : ce qui manque est dit.',()=>S.boutique({shards:20,owned:true})],
+ ['k','K4','Objet débloqué',['40'],'Confirmation, sans fenêtre à fermer.',()=>S.boutique({shards:29,bought:{0:true},owned:true,toast:`<div class="toast"><span>La Hache peut désormais apparaître dans la tour.</span></div>`})],
+ ['k','K5','Erreur d\'achat',['40'],'Les Éclats ne sont pas dépensés.',()=>S.boutique({shards:44,owned:true,toast:`<div class="toast"><span>Le déblocage n'a pas pu être enregistré. Tes Éclats sont intacts.</span><button>Réessayer</button></div>`})],
+ ['z','Z1','Pause',['34'],'Possible à tout moment, même pendant un élan ennemi ou un temps mort. Le combat est figé.',()=>S.pause({})],
+ ['z','Z2','Sauvegarde en échec',['34'],'Rare. On ne propose pas de quitter tant que la sauvegarde n\'a pas abouti.',()=>S.pause({saveErr:true})],
+ ['z','Z3','Reprise',['34'],'Le compte à rebours de 3 s remplace le temps mort : annonce de la phase en cours, boutons inactifs, appuis ignorés sans déséquilibre. En phase ennemie, l\'avancée suit, puis l\'attaque recommence depuis son élan.',()=>S.reprise({n:3})],
+ ['r','R1','Réglages de la parade',['34'],'Décalage au pas de 5 ms, boutons de 56 px. Vibration, sons et secousse séparés.',()=>S.reglages({offset:15})],
+ ['r','R2','Mesure en cours',['34'],'Huit coups réguliers, un seul gros bouton.',()=>S.calib({n:3})],
+ ['r','R3','Mesure terminée',['34'],'Résultat lisible, à appliquer ou non.',()=>S.calib({st:'done',n:8})],
+ ['r','R4','Mesure impossible',['34'],'Appuis trop irréguliers (bus qui freine) : le réglage précédent est conservé.',()=>S.calib({st:'err',n:8})]
+];
+const STITLE={31:'Prototype jouable du combat',32:'Combat complet',33:'Commencer une ascension',34:'Pause, reprise et réglages',35:'Choisir son héros',36:'Choisir un bienfait',37:'Objets, coffres et combinaisons',38:'Trois paliers et les Éclats',39:'Lieux de la tour',40:'Le camp et les captifs',41:'La jauge au pied de la tour',42:'La faveur'};
+G.forEach(([grp,id,state,st,note,fn])=>{
+ const host=document.querySelector(`.gallery[data-group="${grp}"]`);if(!host)return;
+ const camp=['K1','K2','K3','K4','K5'].includes(id);
+ const fig=document.createElement('figure');fig.className='frame';
+ const tags=st.map(n=>`<a class="story" href="https://github.com/BPotet/ascent/issues/${n}" title="Story #${n} · ${STITLE[n]}">#${n}</a>`).join('');
+ fig.innerHTML=`<figcaption><div class="cap-top"><span class="scr">${id}</span><span class="stories">${tags}</span></div><div class="state">${state}</div><p class="note">${note}</p></figcaption><div class="slot"><div class="phone"><div class="screen app ${camp?'camp':''}" inert>${fn()}</div></div></div>`;
+ host.appendChild(fig);
+});
+
+/* Composants */
+document.getElementById('demoComp').innerHTML=`
+ <div class="demo-cell" style="width:300px">Jauge (faveur pleine)<div style="width:300px">${gaugeBlock('p2')}</div></div>
+ <div class="demo-cell" style="width:300px">Transition de phase : boutons inactifs, sans hachures<div class="zone" style="padding:34px 0 0;flex:none;width:300px">${padEnemy({lockP:.5},true)}</div></div>
+ <div class="demo-cell" style="width:300px">Boutons de la phase ennemie<div class="pad" style="width:300px"><button class="act sec" tabindex="-1">${ic('dodge',26)}Esquive</button><button class="act pri" tabindex="-1">${ic('shield',26)}Parade</button></div></div>
+ <div class="demo-cell" style="width:170px">Ennemi : intention, garde, PV<div class="foes n1" style="position:static"><div class="foe target cursed" style="width:170px"><span class="intent atk">${ic('chain',15)}2×4</span><span class="fig">${SEAL}${FOES.goule}<span class="base"></span></span><span class="nm">Goule<span class="cur">Maudit</span></span><span class="guard"><i></i><i></i><i class="e"></i><i class="e"></i></span><span class="hpb"><i style="width:70%"></i></span></div></div></div>
+ <div class="demo-cell" style="width:240px">Rareté<div style="display:flex;flex-direction:column;gap:6px">${rar('common')}${rar('rare')}${rar('epic')}${rar('legend')}</div>Monnaies<div style="display:flex;gap:6px"><span class="chipr shard">${ic('shard',16)}46 Éclats</span><span class="chipr coin">${ic('coin',16)}40</span></div>Ressources de faveur<div style="display:flex;gap:6px"><span class="chipr key">${ic('key',16)}2</span><span class="eff">${ic('reroll',16)}1 relance</span></div></div>`;
+
+/* ============ PROTOTYPE ============ */
+const live=document.getElementById('live');const srLive=document.getElementById('srLive');
+/* Valeurs du Game Designer (C7, C9, C12) */
+const WIN={perfect:60,good:160,off:450,trans:800,step:400};
+const FATIGUE={m1:.9,m2:.8};
+let L;
+function resetL(){const g=L?L.gauge:'p2';L={gauge:g,hero:0,inRun:false,shards:34,keys:0,rerolls:0,coins:0,hp:80,hpMax:80,offset:0,route:'pied',prev:'pied',boonSel:null,bought:{},combat:null,etage:1,palier:1,elanStart:1,freed:false};}
+function say(t){srLive.textContent='';setTimeout(()=>srLive.textContent=t,30);}
+function render(html,camp){live.className='screen app'+(camp?' camp':'');live.innerHTML=html;}
+const SORTIES={2:['combat','event','altar'],3:['elite','combat','shop'],4:['combat','rest','event']};
+function ctxL(){return {...L,buffs:[...(L.pact?[['pact','Pacte']]:[]),...(L.blessTaken||[]).map(b=>['bf',b])]};}
+function show(r){
+ stopCombat();
+ L.prev=L.route;L.route=r;
+ const ctx=ctxL();
+ switch(r){
+  case 'pied':render(S.pied(ctx));break;
+  case 'jauge':render(S.jauge(ctx));break;
+  case 'heros':render(S.heros(ctx));break;
+  case 'abandon':render(S.abandon(ctx));break;
+  case 'loading':render(S.piedLoading());setTimeout(()=>{if(L.route==='loading')show('pied');},1500);break;
+  case 'error':render(S.piedError());break;
+  case 'bless':render(S.benediction({idx:L.bless.i,total:L.bless.n,sel:L.bless.sel}));break;
+  case 'sortie':
+   if(L.etage>=6)render(S.sortie({...ctx,etage:6,doors:['boss'],palierName:palierName()}));
+   else if(L.etage===5)render(S.sortie({...ctx,etage:5,doors:['rest','shop'],halte:true,palierName:palierName()}));
+   else render(S.sortie({...ctx,etage:L.etage,doors:SORTIES[L.etage],rule:L.etage===3?1:undefined,palierName:palierName()}));
+   break;
+  case 'palier':render(S.palier());break;
+  case 'bienfait':render(S.bienfait({...ctx,sel:L.boonSel,rerolls:L.rerolls,boons:L.boons}));break;
+  case 'combo':render(S.combo(ctx));break;
+  case 'coffre':render(S.coffre({...ctx,st:L.keys>0?'closed':'nokey'}));break;
+  case 'coffre-open':L.keys=Math.max(0,L.keys-1);render(S.coffre({...ctx,keys:L.keys+1,st:'open'}));break;
+  case 'marchand':render(S.marchand({...ctx}));break;
+  case 'feu':render(S.feu({...ctx}));break;
+  case 'captif':L.freed=true;render(S.captif(ctx));say('Captif libéré : la Forgeronne');break;
+  case 'autel':render(S.autel(ctx));break;
+  case 'autel-ok':render(S.autel({...ctx,st:'done'}));break;
+  case 'evenement':render(S.evenement(ctx));break;
+  case 'boss-intro':render(S.bossIntro());break;
+  case 'boss-vaincu':L.shards+=8;L.coins+=40;render(S.bossVaincu());say('Boss vaincu. Plus 8 Éclats.');break;
+  case 'chute':render(S.chute({...ctx,second:L.second>0}));break;
+  case 'fin':L.inRun=false;L.combat=null;C=null;render(S.fin({hero:L.hero}));break;
+  case 'camp':render(S.camp({shards:L.shards,empty:!L.freed}),true);break;
+  case 'boutique':render(S.boutique({shards:L.shards,bought:L.bought,owned:true,toast:L.toast||''}),true);L.toast='';break;
+  case 'pause':render(S.pause({...ctx,foes:C?C.foes:undefined,target:C?C.target:1,elan:C?C.elan:undefined}));break;
+  case 'reprise':startCountdown();break;
+  case 'reglages':render(S.reglages({offset:L.offset}));wireSettings();break;
+  case 'calib':render(S.calib({n:0}));wireCalib();break;
+  case 'combat':if(C&&L.combat&&C.phase!=='won'){startCountdown();}else startCombat('normal');break;
+  case 'elite':startCombat('elite');break;
+  case 'boss':startCombat('boss');break;
+ }
+}
+const palierName=()=>L.palier===1?'Palier 1 · Les Catacombes':'Palier 2 · La Nef engloutie';
+function nextFloor(){L.etage++;show(L.etage>=6?'sortie':'sortie');}
+function backFromSettings(){show(L.settingsFrom||'pied');}
+/* Bénédictions de départ (J4) : effets appliqués dans le prototype */
+const BLESS_FX=[
+ [()=>{L.hpMax=Math.floor(L.hpMax*1.15);L.hp=L.hpMax;},()=>{L.elanStart+=2;},()=>{L.keys++;L.rerolls++;}],
+ [()=>{L.coins+=20;},()=>{},()=>{}],
+ [()=>{},()=>{L.coins+=10;},()=>{L.rerolls++;}]
+];
+function startAscent(){
+ const g=L.gauge,h=HEROES[L.hero];
+ L.inRun=true;L.hpMax=Math.floor(h.hp*(FATIGUE[g]||1));L.hp=L.hpMax;L.pact=false;L.etage=1;L.palier=1;L.combat=null;C=null;L.elanStart=1;L.blessTaken=[];
+ L.keys={p2:2,p1:1}[g]||0;L.rerolls={p2:2,p1:1}[g]||0;L.second=g==='p2'?1:0;L.coins=0;
+ const n=GAUGE[g].bless;
+ if(n>0){L.bless={i:0,n,sel:null};show('bless');}else show('combat');
+}
+live.addEventListener('click',e=>{
+ const b=e.target.closest('[data-go]');if(!b||b.disabled)return;
+ const g=b.getAttribute('data-go');
+ if(g.startsWith('hero:')){L.hero=+g.slice(5);show('heros');return;}
+ if(g.startsWith('bless:')){L.bless.sel=+g.slice(6);show('bless');return;}
+ if(g.startsWith('door:')){const d=g.slice(5);({combat:()=>show('combat'),elite:()=>show('elite'),event:()=>show('evenement'),shop:()=>show('marchand'),rest:()=>show(L.etage===5&&!L.freed?'captif':'feu'),altar:()=>show('autel'),boss:()=>show('boss-intro')})[d]();return;}
+ if(g.startsWith('boon:')){L.boonSel=+g.slice(5);show('bienfait');return;}
+ if(g.startsWith('buy:')){const i=+g.slice(4);const price=SHOP[i][4];if(L.shards>=price){L.shards-=price;L.bought[i]=true;L.toast=`<div class="toast"><span>${SHOP[i][2]} peut désormais apparaître dans la tour.</span></div>`;say('Objet débloqué');}show('boutique');return;}
+ switch(g){
+  case 'debut':startAscent();break;
+  case 'bless-ok':{const {i,sel}=L.bless;if(sel==null)return;BLESS_FX[i][sel]();L.blessTaken.push(BLESS_OFFERS[i][sel][0]);if(i+1<L.bless.n){L.bless={...L.bless,i:i+1,sel:null};show('bless');}else{say('Bénédictions prises. Étage 1');show('combat');}break;}
+  case 'pause':if(L.route==='combat'){show('pause');}else{L.pausedFrom=L.route;const base=live.innerHTML.replace('<div class="homebar"></div>','');live.innerHTML=base+pauseSheet({where:'Partie sauvegardée'});L.route='pause-static';}break;
+  case 'abandon-cancel':if(L.prev==='pause')show('pause');else if(L.prev==='pause-static')show(L.pausedFrom);else show('pied');break;
+  case 'combat':if(L.route==='chute'){L.second=0;L.hp=Math.floor(L.hpMax*.5);say('Seconde chance : '+L.hp+' PV');}show('combat');break;
+  case 'pied0':show('pied');break;
+  case 'reprise':if(L.route==='pied'){show(L.resumeTo||'sortie');}else if(L.route==='pause-static'){show(L.pausedFrom);}else show('reprise');break;
+  case 'quit':L.resumeTo=L.route==='pause'?'combat':L.route==='boss-vaincu'?'palier':(L.pausedFrom||'sortie');show('pied');say('Partie sauvegardée');break;
+  case 'reroll':if(L.rerolls>0){L.rerolls--;L.boonSel=null;L.boons=[BOONS[2],['common','heart','Sève tenace','Tu récupères 3 PV à chaque étage.'],BOONS[0]];}show('bienfait');break;
+  case 'combo':{const s=L.boonSel;L.boonSel=null;L.boons=null;if(s===1)show('combo');else nextFloor();break;}
+  case 'bienfait':if(L.afterWin==='coffre'){L.afterWin=null;show('coffre');}else show('bienfait');break;
+  case 'feu-rest':show('feu');break;
+  case 'sortie3':L.hp=Math.min(L.hpMax,L.hp+Math.floor(L.hpMax*.4));say('Repos : PV '+L.hp);nextFloor();break;
+  case 'palier':show('palier');break;
+  case 'sortie':if(L.route==='palier'){L.palier=2;L.etage=2;}show('sortie');break;
+  case 'evt-give':if(L.coins>=20){L.coins-=20;show('bienfait');}break;
+  case 'pacte':break;
+  case 'back':backFromSettings();break;
+  case 'reglages':if(!['calib','reglages'].includes(L.route))L.settingsFrom=L.route==='pause-static'?L.pausedFrom:L.route;show('reglages');break;
+  case 'sortie2':nextFloor();break;
+  default:show(g);
+ }
+});
+/* Maintien pour accepter le pacte */
+live.addEventListener('pointerdown',e=>{
+ const b=e.target.closest('.hold');if(!b)return;
+ b.classList.add('filling');b.querySelector('span').textContent='Maintiens…';
+ const t=setTimeout(()=>{L.pact=true;L.hpMax=Math.floor(L.hpMax*.8);L.hp=Math.min(L.hp,L.hpMax);show('autel-ok');say('Pacte scellé');},800);
+ const cancel=()=>{clearTimeout(t);b.classList.remove('filling');const s=b.querySelector('span');if(s)s.textContent='Maintenir pour accepter';window.removeEventListener('pointerup',cancel);window.removeEventListener('pointercancel',cancel);};
+ window.addEventListener('pointerup',cancel);window.addEventListener('pointercancel',cancel);
+});
+function wireSettings(){
+ const btns=live.querySelectorAll('.stepbtn');
+ const upd=()=>{render(S.reglages({offset:L.offset}));wireSettings();};
+ btns[0].addEventListener('click',()=>{L.offset=Math.max(-120,L.offset-5);upd();});
+ btns[1].addEventListener('click',()=>{L.offset=Math.min(120,L.offset+5);upd();});
+ live.querySelectorAll('.sw-t').forEach(s=>s.addEventListener('click',()=>s.setAttribute('aria-checked',s.getAttribute('aria-checked')!=='true')));
+}
+function wireCalib(){
+ const tok=L.calibTok=(L.calibTok||0)+1;
+ let n=0,deltas=[],start=performance.now(),beat=900;const fig=live.querySelector('.fig');
+ let rq;
+ const lp=()=>{const t=(performance.now()-start)%beat;const p=t/beat;const lunge=p>.85?(1-p)/.15:p<.08?p/.08:0;if(fig)fig.style.transform=`translateY(${(p>.6&&p<.86?-6:0)+lunge*16}px) rotate(${p>.6&&p<.86?-8:lunge*8}deg)`;if(L.route!=='calib'||L.calibTok!==tok)return;rq=requestAnimationFrame(lp);};
+ rq=requestAnimationFrame(lp);
+ const b=live.querySelector('[data-act="calib"]');
+ b.addEventListener('pointerdown',e=>{e.preventDefault();const t=performance.now()-start;const k=Math.round(t/beat);const d=t-k*beat;deltas.push(d);n++;live.querySelectorAll('.beats i').forEach((x,i)=>x.classList.toggle('on',i<n));live.querySelector('.zline').textContent=`Touche Parade à chaque coup · ${n}/8`;
+  if(n>=8){cancelAnimationFrame(rq);const avg=deltas.reduce((a,b)=>a+b,0)/8;const sd=Math.sqrt(deltas.reduce((a,b)=>a+(b-avg)**2,0)/8);if(sd>110){render(S.calib({st:'err',n:8}));}else{const v=Math.max(-120,Math.min(120,Math.round(avg/5)*5));L.offset=v;render(S.calib({st:'done',n:8}).replace('+40 ms',(v>0?'+':'')+v+' ms').replace('40 ms après',Math.abs(v)+' ms '+(v>=0?'après':'avant')));}}
+ });
+}
+function resumeTarget(){if(!C)return 'hero';if(C.phase==='busy')return 'busy';const en=(C.phase==='enemy'||(C.phase==='trans'&&C.to==='enemy'));return en&&C.queue.filter(i=>C.foes[i].hp>0).length?'enemy':'hero';}
+function startCountdown(){
+ L.route='reprise';
+ const to=resumeTarget();
+ render(S.reprise({...ctxL(),n:3,to:to==='busy'?'hero':to,lockMs:3000,live:true,foes:C?C.foes:undefined,target:C?C.target:1,elan:C?C.elan:undefined}));
+ const lb=live.querySelector('.locktag .lb');if(lb)lb.style.setProperty('--d','3000ms');
+ if(to==='enemy'){tone(196,.32,'sine',.12);vibe(15);}else tone(660,.14,'triangle',.1);
+ say((to==='enemy'?'Phase ennemie':'À toi')+'. Reprise dans 3');
+ let n=3;const el=live.querySelector('#countN');
+ const tick=()=>{n--;if(L.route!=='reprise')return;if(n<=0){L.route='combat';resumeCombat();return;}el.textContent=n;say(String(n));setTimeout(tick,1000);};
+ setTimeout(tick,1000);
+}
+
+/* ---------- Combat jouable ---------- */
+const PAT={
+ simple:{name:'coup simple',ic:'swords',hits:[0],wind:1100},
+ double:{name:'double frappe',ic:'chain',hits:[0,420],wind:1000},
+ delayed:{name:'coup retardé',ic:'clock',hits:[0],wind:1700},
+ feint:{name:'coup trompeur',ic:'feint',hits:[0],wind:1600,feint:true},
+ perilous:{name:'coup imparable',ic:'swords',hits:[0],wind:1300,perilous:true}
+};
+const FOE_DEF={
+ goule:{name:'Goule',hp:20,gm:3,moves:[['simple',5],['double',3]]},
+ spectre:{name:'Spectre',hp:14,gm:2,moves:[['delayed',6],['feint',6],['perilous',9]]},
+ chevalier:{name:'Chevalier déchu',hp:40,gm:5,moves:[['simple',8],['delayed',8],['perilous',12]]},
+ gardienne:{name:'La Gardienne',hp:60,gm:6,moves:[['simple',8],['double',5],['feint',8],['perilous',12]]}
+};
+let C=null,raf=0;
+function stopCombat(){if(raf)cancelAnimationFrame(raf);raf=0;}
+function mkFoe(k,cursed){const d=FOE_DEF[k];const m=cursed?1.25:1;const hp=Math.floor(d.hp*m);return {k,name:d.name+(cursed?' maudite':''),hp,mx:hp,g:d.gm,gm:d.gm,cursed,dm:m,moves:d.moves};}
+function startCombat(kind){
+ const g=L.gauge;const curse=(g==='m1'||g==='m2');
+ const foes=kind==='boss'?[mkFoe('gardienne',false)]:kind==='elite'?[mkFoe('chevalier',g==='m2')]:[mkFoe('goule',curse),mkFoe('spectre',false)];
+ if(kind==='elite')foes[0].name=foes[0].cursed?'Chevalier déchu maudit':'Chevalier déchu';
+ if(foes[0].k==='goule'&&curse)foes[0].name='Goule maudite';
+ L.combat=C={kind,boss:kind==='boss',target:0,phase:'hero',round:1,clock:0,last:performance.now(),freezeUntil:0,offUntil:0,attack:null,queue:[],strike:null,elan:Math.min(5,L.elanStart),foes};
+ C.foes.forEach(nextIntent);
+ drawCombat({phase:'hero'});loop();
+ say('Combat. Phase du héros. Cible : '+C.foes[0].name);
+}
+function nextIntent(f){const m=f.moves[Math.floor(Math.random()*f.moves.length)];const p=PAT[m[0]];const d=Math.floor(m[1]*f.dm);f.pat={...p,dmg:d};f.it=['atk',p.ic,p.hits.length>1?p.hits.length+'×'+d:String(d)];f.itn=p.name+', '+(p.hits.length>1?p.hits.length+' fois ':'')+d+' dégâts';f.wind=null;}
+function ctxC(extra={}){return {...ctxL(),boss:C.boss,foes:C.foes.map(f=>({...f})),target:C.target,live:true,elan:C.elan,...extra};}
+function drawCombat(extra){render(S.combat(ctxC(extra)));wireCombat();}
+/* Reprise après pause : le compte à rebours a tenu lieu de temps mort (C12, A9) */
+function resumeCombat(){
+ L.route='combat';
+ if(!C){startCombat('normal');return;}
+ C.last=performance.now();C.offUntil=0;C.strike=null;
+ const to=resumeTarget();
+ if(to==='busy'){endHero();loop();return;}
+ C.attack=null;C.step=null;
+ if(to==='enemy'){C.queue=C.queue.filter(i=>C.foes[i].hp>0);C.phase='enemy';startStep();}
+ else{C.phase='hero';drawCombat({phase:'hero'});}
+ loop();
+}
+function phaseExtra(){
+ if(C.phase==='hero')return {phase:'hero'};
+ if(C.phase==='strike')return {phase:'strike',pose:'raise'};
+ if(C.phase==='trans')return {phase:'trans',to:C.to};
+ const ai=C.queue.length?C.queue[0]:null;
+ return {phase:'enemy',attacker:ai,stepin:C.step?ai:undefined,zline:ai!=null?`<b>${C.foes[ai].name}</b> : ${C.foes[ai].itn}`:''};
+}
+/* Appuis : la défense et la frappe sont datées au toucher ; les actions de la phase du héros se valident au relâcher. */
+function wireCombat(){
+ const releaseAct=(el,fn)=>{
+  el.addEventListener('pointerdown',e=>{e.preventDefault();el._down={id:e.pointerId,ok:C.phase==='hero'};if(C.phase==='hero')el.classList.add('pressed');});
+  el.addEventListener('pointerup',e=>{const d=el._down;el._down=null;el.classList.remove('pressed');if(!d||d.id!==e.pointerId||!d.ok||C.phase!=='hero')return;const under=document.elementFromPoint(e.clientX,e.clientY);if(under&&el.contains(under))fn();});
+  el.addEventListener('pointercancel',()=>{el._down=null;el.classList.remove('pressed');});
+  el.addEventListener('keydown',e=>{if((e.key===' '||e.key==='Enter')&&C.phase==='hero'){e.preventDefault();fn();}});
+ };
+ live.querySelectorAll('[data-foe]').forEach(b=>releaseAct(b,()=>{const i=+b.dataset.foe;if(C.foes[i].hp<=0)return;C.target=i;drawCombat(phaseExtra());say(C.foes[i].name+', cible');}));
+ live.querySelectorAll('[data-act]').forEach(b=>{
+  b.removeAttribute('data-go');
+  const k=b.dataset.act;
+  if(k==='attack'||k==='power'){releaseAct(b,()=>act(k,b));return;}
+  b.addEventListener('pointerdown',e=>{e.preventDefault();act(k,b);});
+  b.addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();act(k,b);}});
+ });
+}
+function pressFx(b){if(!b)return;b.classList.add('pressed');setTimeout(()=>b.classList.remove('pressed'),110);}
+function fx(cls,text,small){const sc=live.querySelector('#scene');if(!sc)return;sc.querySelectorAll('.fxtext').forEach(x=>x.remove());const d=document.createElement('div');d.className='fxtext anim '+cls;d.innerHTML=text+(small?`<small>${small}</small>`:'');sc.appendChild(d);say(text+(small?', '+small:''));}
+function flash(red){const sc=live.querySelector('#scene');if(!sc||reduce)return;const d=document.createElement('div');d.className='flash anim'+(red?' red':'');sc.appendChild(d);setTimeout(()=>d.remove(),460);}
+function shake(){if(reduce)return;const sc=live.querySelector('#scene');if(!sc)return;sc.classList.remove('shake');void sc.offsetWidth;sc.classList.add('shake');}
+function vibe(p){try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}}
+let actx=null;function tone(f,d,type='triangle',v=.12,at=0){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();const o=actx.createOscillator(),g=actx.createGain();const t0=actx.currentTime+at;o.type=type;o.frequency.value=f;g.gain.setValueAtTime(v,t0);g.gain.exponentialRampToValueAtTime(.0001,t0+d);o.connect(g).connect(actx.destination);o.start(t0);o.stop(t0+d);}catch(e){}}
+function setHeroPose(p){const h=live.querySelector('#heroFig');if(h)h.innerHTML=heroSVG(p,HEROES[L.hero].weapon);}
+function updateBars(){
+ C.foes.forEach((f,i)=>{const el=live.querySelector(`[data-foe="${i}"]`);if(!el)return;el.querySelector('.hpb i').style.width=(f.hp/f.mx*100)+'%';el.querySelector('.hpn').textContent=`${f.hp}/${f.mx}`;if(f.hp<=0)el.classList.add('dead');});
+ const pv=live.querySelector('.herobar .pvb i');if(pv){pv.style.width=(L.hp/L.hpMax*100)+'%';pv.classList.toggle('low',L.hp/L.hpMax<.3);}
+ const pn=live.querySelector('.herobar .pvn');if(pn)pn.textContent=`PV ${L.hp}/${L.hpMax}`;
+ const el=live.querySelector('.herobar .elan');if(el){el.setAttribute('aria-label',`Élan ${C.elan} sur 5`);el.querySelectorAll('i').forEach((x,k)=>x.classList.toggle('on',k<C.elan));}
+}
+function addElan(n){C.elan=Math.max(0,Math.min(5,C.elan+n));updateBars();}
+function damageFoe(i,d,gd){const f=C.foes[i];if(f.broken)d=Math.floor(d*1.5);f.hp=Math.max(0,f.hp-d);
+ if(gd&&!f.broken&&f.hp>0){f.g=Math.max(0,f.g-gd);if(f.g===0){f.broken=true;f.brokenAt=C.round;setTimeout(()=>{if(L.route==='combat'){fx('good','Garde brisée','Il perd sa prochaine action, ×1,5 dégâts');tone(300,.25,'square',.06);}},450);}}
+ const el=live.querySelector(`[data-foe="${i}"] .guard`);if(el)el.innerHTML=Array.from({length:f.gm},(_,j)=>`<i class="${j<f.g?'':'e'}"></i>`).join('');
+ updateBars();return d;}
+function act(kind,b){
+ if(!C)return;
+ const now=C.clock;
+ /* Temps mort de la transition de phase : appui ignoré, sans déséquilibre */
+ if(C.phase==='trans'||C.phase==='busy'||C.phase==='won')return;
+ pressFx(b);
+ if(C.phase==='hero'){
+  if(kind==='attack'){const h=HEROES[L.hero];addElan(1);C.phase='strike';const hits=h.weapon==='daggers'?[700,1000]:[700];C.strike={impacts:hits.map(x=>now+x),res:hits.map(()=>null)};drawCombat({phase:'strike',pose:'raise'});say('Frappe en rythme : touche Frapper quand la lame est au plus haut');}
+  if(kind==='power'){const h=HEROES[L.hero];if(C.elan<h.powCost){fx('neutral','Il manque '+(h.powCost-C.elan)+' Élan');return;}addElan(-h.powCost);if(L.hero===0){C.rampart=true;fx('neutral','Rempart','Prochain coup subi −50 %');}else{C.shadow=true;fx('neutral','Pas de l\'ombre','Ta prochaine esquive contre-attaque');}C.phase='busy';setTimeout(endHero,700);}
+  return;
+ }
+ if(C.phase==='strike'){judgeStrike(now);return;}
+ if(C.phase==='enemy')press(kind,now);
+}
+function strikeHit(k,q){
+ const h=HEROES[L.hero];const base=h.weapon==='daggers'?6:10;const gb=h.weapon==='daggers'?1:1;
+ const m=q==='perfect'?1.5:q==='good'?1.2:1;
+ const d=damageFoe(C.target,Math.floor(base*m),q==='perfect'?gb+1:gb);
+ if(q==='perfect'){flash();tone(990,.15);vibe(20);fx('perfect','Frappe nette',d+' dégâts');}else if(q==='good')fx('good','Frappe',d+' dégâts');else fx('neutral','Frappe',d+' dégâts');
+ setHeroPose('lean');
+}
+function judgeStrike(now){
+ const s=C.strike;if(!s)return;
+ const k=s.res.findIndex(r=>r===null);if(k<0)return;
+ const d=Math.abs(now+L.offset-s.impacts[k]);
+ /* Seul le premier appui par impact compte ; rater ne pénalise jamais */
+ s.res[k]=d<=WIN.perfect?'perfect':d<=WIN.good?'good':'miss';
+ if(now+L.offset>=s.impacts[k]-WIN.good)strikeHit(k,s.res[k]);else s.res[k]={late:s.res[k]};
+}
+function endHero(){
+ if(L.route!=='combat')return;
+ if(C.foes.every(f=>f.hp<=0)){win();return;}
+ if(C.foes[C.target].hp<=0)C.target=C.foes.findIndex(f=>f.hp>0);
+ /* Un ennemi brisé avant cette phase du héros récupère sa garde à la fin de celle-ci */
+ C.foes.forEach(f=>{if(f.broken&&f.brokenAt<C.round){f.broken=false;f.g=f.gm;}});
+ C.queue=C.foes.map((f,i)=>i).filter(i=>C.foes[i].hp>0&&!C.foes[i].broken);
+ if(!C.queue.length){C.round++;beginTrans('hero');return;}
+ beginTrans('enemy');
+}
+/* C12 : transition de phase, 800 ms, dans les deux sens */
+function beginTrans(to,resume){
+ C.phase='trans';C.to=to;C.transUntil=C.clock+WIN.trans;C.offUntil=0;C.attack=null;C.step=null;
+ drawCombat({phase:'trans',to,lockMs:WIN.trans});setHeroPose('idle');
+ if(to==='enemy'){tone(196,.32,'sine',.12);tone(147,.4,'sine',.1,.12);vibe(15);say((resume?'Reprise. ':'')+'Phase ennemie. Prépare ta parade.');}
+ else{tone(660,.14,'triangle',.1);tone(880,.2,'triangle',.1,.1);say((resume?'Reprise. ':'')+'À toi. Vise et attaque.');}
+}
+function endTrans(){
+ if(C.to==='enemy'){C.phase='enemy';startStep();}
+ else{C.phase='hero';drawCombat({phase:'hero'});}
+}
+/* C12 : avancée de 400 ms avant chaque préparation ennemie */
+function startStep(){
+ const i=C.queue[0];C.step={until:C.clock+WIN.step,i};
+ drawCombat(phaseExtra());
+ const z=live.querySelector('.zline');if(z)z.innerHTML=`<b>${C.foes[i].name}</b> s'avance`;
+}
+function win(){
+ C.phase='won';const kind=C.kind;L.combat=null;
+ const gold=kind==='elite'?25:kind==='boss'?40:8+Math.floor(Math.random()*5);
+ if(kind==='boss'){setTimeout(()=>{show('boss-vaincu');},700);fx('perfect','Boss vaincu');return;}
+ const rep=Math.floor(L.hpMax*.1);L.hp=Math.min(L.hpMax,L.hp+rep);L.coins+=gold;if(kind==='elite'){L.shards+=2;L.afterWin='coffre';}
+ setTimeout(()=>{if(L.route!=='combat')return;drawCombat({phase:'won',foes:C.foes.map(f=>({...f,dead:true})),fx:['neutral','Combat gagné','+'+gold+' Or · répit +'+rep+' PV'+(kind==='elite'?' · +2 Éclats':'')]});},600);
+}
+function startAttack(){
+ const i=C.queue[0];const f=C.foes[i];const p=f.pat;
+ if(!f.wind)f.wind=p.wind*(0.8+Math.random()*0.4);
+ const wind=f.wind;
+ C.step=null;
+ C.attack={i,p,start:C.clock,wind,impacts:p.hits.map(h=>C.clock+wind+h),res:p.hits.map(()=>false),perfect:0};
+ drawCombat({phase:'enemy',attacker:i,seal:p.perilous?i:undefined,zline:`<b>${f.name}</b> : ${p.name}`});
+ if(p.perilous){tone(330,.35,'sawtooth',.06);say(f.name+' : coup imparable, esquive');}else say(f.name+' : '+p.name);
+}
+function press(kind,now){
+ const dodge=kind==='dodge';
+ const whiff=t=>{C.offUntil=now+WIN.off;markOff(true);fx('miss',t);tone(140,.12,'square',.05);setHeroPose('off');};
+ if(now<C.offUntil){C.offUntil=now+WIN.off;markOff(true);fx('miss','Déséquilibré');return;}
+ const a=C.attack;
+ if(!a){whiff('Dans le vide');return;}
+ const k=a.res.findIndex(r=>!r);if(k<0){whiff('Dans le vide');return;}
+ const delta=now+L.offset-a.impacts[k];const ad=Math.abs(delta);
+ const res=ad<=WIN.perfect?'perfect':ad<=WIN.good?'good':null;
+ if(!res){whiff(delta<0?'Trop tôt':'Trop tard');return;}
+ if(!dodge&&a.p.perilous){a.res[k]=true;hurt(a.p.dmg,1,'Imparable : esquive !');C.offUntil=now+WIN.off;markOff(true);return;}
+ a.res[k]=true;
+ if(dodge){setHeroPose('dodge');fx('good',res==='perfect'?'Esquive parfaite':'Esquive','Aucun dégât');tone(520,.1);vibe(12);
+  if(L.hero===1)addElan(1);
+  if(C.shadow){C.shadow=false;const d=damageFoe(a.i,3,1);setTimeout(()=>fx('perfect','Pas de l\'ombre','Contre-attaque · '+d+' dégâts'),250);}
+  return;}
+ if(res==='perfect'){
+  a.perfect++;C.freezeUntil=performance.now()+90;flash();shake();vibe([20,30,40]);tone(1320,.18,'triangle',.16);tone(660,.3,'sine',.08);
+  setHeroPose('counter');addElan(1);
+  const last=a.perfect===a.res.length;
+  const h=HEROES[L.hero];const cd=Math.floor((h.weapon==='daggers'?6:10)*.5*(L.hero===0?1.3:1));
+  fx('perfect','Parade parfaite',last?'Contre-attaque · '+cd+' dégâts':'');
+  if(last)setTimeout(()=>{if(C&&C.foes[a.i])damageFoe(a.i,cd,1);},200);
+ }else{hurt(a.p.dmg,.25,'Parade');setHeroPose('lean');}
+}
+function hurt(D,factor,label){
+ const red=L.hero===0?.1:0;let f=factor;if(C.rampart){f*=.5;C.rampart=false;}
+ const d=Math.max(1,Math.floor(D*f*(1-red)));
+ L.hp=Math.max(0,L.hp-d);updateBars();
+ if(label==='Parade'){fx('good','Parade',d+' dégât'+(d>1?'s':'')+' au lieu de '+D);tone(520,.12);vibe(15);}
+ else{setHeroPose('hit');flash(true);shake();fx('miss',label||'Touché','−'+d+' PV');tone(110,.2,'sawtooth',.07);vibe(60);}
+ if(L.hp<=0){C.attack=null;C.queue.shift();C.phase='enemy';const r=L.route;setTimeout(()=>{if(L.route===r)show('chute');},600);stopCombat();}
+}
+function markOff(on){const pad=live.querySelector('.pad');if(!pad)return;pad.classList.toggle('off',on);let t=pad.querySelector('.offtag');if(on&&!t){t=document.createElement('span');t.className='offtag';t.textContent='Déséquilibré';pad.prepend(t);}if(!on&&t)t.remove();}
+function loop(){
+ stopCombat();
+ const step=t=>{
+  if(L.route!=='combat'||!C){raf=0;return;}
+  const dt=Math.min(50,t-C.last);C.last=t;
+  if(t>=C.freezeUntil)C.clock+=dt;
+  const now=C.clock;
+  if(C.phase==='trans'&&now>=C.transUntil)endTrans();
+  if(C.phase==='strike'&&C.strike){
+   const s=C.strike;
+   s.impacts.forEach((imp,k)=>{
+    if(s.res[k]&&typeof s.res[k]==='object'&&now+L.offset>=imp-WIN.good){const q=s.res[k].late;s.res[k]=q;strikeHit(k,q);}
+    if(s.res[k]===null&&now>imp+WIN.good){s.res[k]='miss';strikeHit(k,'miss');}
+   });
+   if(s.res.every(r=>typeof r==='string')&&now>s.impacts[s.impacts.length-1]+WIN.good){C.strike=null;C.phase='busy';setTimeout(endHero,450);}
+  }
+  if(C.phase==='enemy'){
+   if(C.offUntil&&now>=C.offUntil){C.offUntil=0;markOff(false);setHeroPose('idle');}
+   if(C.step&&now>=C.step.until)startAttack();
+   const a=C.attack;
+   if(a){
+    a.impacts.forEach((imp,k)=>{if(!a.res[k]&&now-imp>WIN.good+Math.max(0,-L.offset)){a.res[k]=true;hurt(a.p.dmg,1);}});
+    if(!C||C.phase!=='enemy'||!C.attack){raf=0;return;}
+    const fig=live.querySelector(`[data-fig="${a.i}"]`);
+    if(fig){
+     const k=a.res.findIndex(r=>!r);const imp=k>=0?a.impacts[k]:a.impacts[a.impacts.length-1];
+     const until=imp-now;const p=Math.max(0,Math.min(1,1-until/a.wind));
+     let lean=-10*Math.min(1,p*1.15),ty=-8*Math.min(1,p*1.2),sc=1+.08*p;
+     if(a.p.feint&&p>.35&&p<.6){const s2=Math.sin((p-.35)/.25*Math.PI);ty=14*s2;lean=8*s2;}
+     if(until<140&&until>-120){const q=1-Math.abs(until)/140;ty=34*q;lean=14*q;sc=1.15;}
+     fig.style.transform=`translateY(${ty}px) rotate(${lean}deg) scale(${sc})`;
+     const seal=fig.querySelector('.seal');if(seal)seal.style.opacity=now-a.start<750?1:Math.max(0,1-(now-a.start-750)/200);
+    }
+    if(a.res.every(Boolean)&&now>a.impacts[a.impacts.length-1]+WIN.good+300){
+     nextIntent(C.foes[a.i]);C.queue.shift();C.attack=null;
+     if(C.foes.every(x=>x.hp<=0)){win();raf=0;return;}
+     C.queue=C.queue.filter(i=>C.foes[i].hp>0&&!C.foes[i].broken);
+     if(!C.queue.length){C.round++;C.offUntil=0;beginTrans('hero');}
+     else startStep();
+    }
+   }
+  }
+  raf=requestAnimationFrame(step);
+ };
+ raf=requestAnimationFrame(step);
+}
+document.addEventListener('keydown',e=>{
+ if(!live.isConnected||!C||L.route!=='combat')return;
+ const ae=document.activeElement;if(ae&&ae!==document.body)return;
+ if(e.code==='Space'){e.preventDefault();const b=live.querySelector('.act.pri');if(b&&!b.disabled)act(b.dataset.act,b);}
+ if(e.code==='ArrowLeft'){e.preventDefault();const b=live.querySelector('.act.sec');if(b&&!b.disabled)act(b.dataset.act,b);}
+});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&L.route==='combat'){show('pause');}});
+
+document.querySelectorAll('[data-g]').forEach(b=>b.addEventListener('click',()=>{L.gauge=b.dataset.g;document.querySelectorAll('[data-g]').forEach(x=>x.setAttribute('aria-pressed',x===b));if(!L.inRun)show('pied');}));
+document.querySelectorAll('[data-sim]').forEach(b=>b.addEventListener('click',()=>{
+ const s=b.dataset.sim;
+ const prep=hero=>{L.hero=hero;L.inRun=true;L.combat=null;C=null;const h=HEROES[hero];L.hpMax=Math.floor(h.hp*(FATIGUE[L.gauge]||1));L.hp=L.hpMax;L.elanStart=1;L.second=L.gauge==='p2'?1:0;L.etage=1;};
+ if(s==='reset'){resetL();show('pied');}
+ if(s==='combat'){prep(0);show('combat');}
+ if(s==='errante'){prep(1);show('combat');}
+ if(s==='boss'){prep(L.hero);L.etage=6;show('boss');}
+ if(s==='loading')show('loading');
+ if(s==='error')show('error');
+}));
+resetL();document.querySelector('[data-g="p2"]').setAttribute('aria-pressed','true');show('pied');
+
+/* ---------- Mise à l'échelle des téléphones ---------- */
+function fit(){const w=document.documentElement.clientWidth;const s=Math.min(1,(w-32)/408);document.documentElement.style.setProperty('--s',s.toFixed(4));}
+fit();window.addEventListener('resize',fit);
+})();
+</script>
+</body>
+</html>

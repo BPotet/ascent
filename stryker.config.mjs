@@ -1,6 +1,8 @@
 // Barrière « Tests de mutation » (docs/workflow.md) : seuil du code nouveau, 70 %.
-// En PR, `npm run mutation:changed` ne mute que les fichiers modifiés ; `npm run mutation` mute tout
-// sauf le domaine, muté à part par `npm run mutation:domain` (stryker.domain.config.mjs, seuil 85 %).
+// `npm run mutation` mute tout sauf le domaine, muté à part par `npm run mutation:domain`
+// (stryker.domain.config.mjs, seuil 85 %). En CI et avec `npm run mutation:changed`,
+// scripts/mutation/ répartit ce même `mutate` en shards (lignes nouvelles en PR, tout en release) et
+// applique ces seuils au total des shards (docs/adr/0004-mutation-en-ci.md).
 /** @type {import('@stryker-mutator/api/core').PartialStrykerOptions} */
 export default {
   packageManager: 'npm',
