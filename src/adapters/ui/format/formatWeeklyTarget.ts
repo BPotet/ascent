@@ -33,29 +33,29 @@ export function weeklyTargetOptionLabel(target: WeeklyTarget): string {
   return target === 7 ? `${times}, tous les jours` : times;
 }
 
+/** Vrai au-delà de l'objectif de la semaine : la progression se compte alors en nombre de fois. */
+const beyondTarget = ({ weeklyProgress, weekTarget }: WeeklyProgressShown): boolean =>
+  weeklyProgress > weekTarget;
+
 /**
- * La progression de la semaine sur la ligne de la Vue Journée (E1) : « 2/3 cette semaine » ; une
- * fois l'objectif atteint, le nombre de fois, « 4 fois cette semaine ».
+ * La progression de la semaine sur la ligne de la Vue Journée (E1) : « 2/3 cette semaine », et
+ * « 3/3 cette semaine » à l'objectif tout juste atteint ; au-delà, le nombre de fois, « 4 fois cette
+ * semaine » (maquette E1, décision PM du 22 octobre 2026).
  */
-export function weeklyProgressText({
-  weeklyProgress,
-  weekTarget,
-  targetReached,
-}: WeeklyProgressShown): string {
-  return targetReached
-    ? `${weeklyProgress} fois cette semaine`
-    : `${weeklyProgress}/${weekTarget} cette semaine`;
+export function weeklyProgressText(progress: WeeklyProgressShown): string {
+  return beyondTarget(progress)
+    ? `${progress.weeklyProgress} fois cette semaine`
+    : `${progress.weeklyProgress}/${progress.weekTarget} cette semaine`;
 }
 
-/** La progression de la semaine pour le lecteur d'écran : « 2 sur 3 cette semaine ». */
-export function weeklyProgressAccessibilityLabel({
-  weeklyProgress,
-  weekTarget,
-  targetReached,
-}: WeeklyProgressShown): string {
-  return targetReached
-    ? `${weeklyProgress} fois cette semaine`
-    : `${weeklyProgress} sur ${weekTarget} cette semaine`;
+/**
+ * La progression de la semaine pour le lecteur d'écran : « 2 sur 3 cette semaine », « 3 sur 3 cette
+ * semaine », puis « 4 fois cette semaine » au-delà de l'objectif.
+ */
+export function weeklyProgressAccessibilityLabel(progress: WeeklyProgressShown): string {
+  return beyondTarget(progress)
+    ? `${progress.weeklyProgress} fois cette semaine`
+    : `${progress.weeklyProgress} sur ${progress.weekTarget} cette semaine`;
 }
 
 /**

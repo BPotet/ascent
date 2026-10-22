@@ -47,10 +47,13 @@ describe('weeklyProgressText', () => {
     );
   });
 
-  it('counts the times once the target is reached', () => {
+  it('keeps « 3/3 » when the target is just reached (decision PM, E1)', () => {
     expect(weeklyProgressText({ weeklyProgress: 3, weekTarget: 3, targetReached: true })).toBe(
-      '3 fois cette semaine',
+      '3/3 cette semaine',
     );
+  });
+
+  it('counts the times beyond the target', () => {
     expect(weeklyProgressText({ weeklyProgress: 4, weekTarget: 3, targetReached: true })).toBe(
       '4 fois cette semaine',
     );
@@ -64,7 +67,13 @@ describe('weeklyProgressAccessibilityLabel', () => {
     ).toBe('2 sur 3 cette semaine');
   });
 
-  it('reads « 4 fois cette semaine » once the target is reached', () => {
+  it('reads « 3 sur 3 cette semaine » when the target is just reached', () => {
+    expect(
+      weeklyProgressAccessibilityLabel({ weeklyProgress: 3, weekTarget: 3, targetReached: true }),
+    ).toBe('3 sur 3 cette semaine');
+  });
+
+  it('reads « 4 fois cette semaine » beyond the target', () => {
     expect(
       weeklyProgressAccessibilityLabel({ weeklyProgress: 4, weekTarget: 3, targetReached: true }),
     ).toBe('4 fois cette semaine');

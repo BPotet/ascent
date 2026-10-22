@@ -319,7 +319,7 @@ describe('HabitRow', () => {
       expect(row).toBeEnabled();
     });
 
-    it('stays touchable beyond the target', async () => {
+    it('stays touchable once the target is just reached, written « 3/3 »', async () => {
       const onToggle = jest.fn();
       await render(
         <HabitRow
@@ -333,8 +333,11 @@ describe('HabitRow', () => {
 
       expect(onToggle).toHaveBeenCalled();
       expect(screen.getByTestId('habit-progress-7')).toHaveTextContent(
-        'À faire · 3 fois cette semaine',
+        'À faire · 3/3 cette semaine',
       );
+      expect(
+        screen.getByRole('switch', { name: /, à faire, 3 sur 3 cette semaine, /u }),
+      ).toBeEnabled();
     });
 
     it('shows no badge, and no mark of failure, below the target', async () => {

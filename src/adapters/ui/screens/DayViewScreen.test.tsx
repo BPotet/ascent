@@ -1247,10 +1247,10 @@ describe('DayViewScreen and the weekly progress (E1)', () => {
     await fireEvent.press(screen.getByRole('switch', { name: /^Courir 5 km, /u }));
 
     await waitFor(() => expect(badge()).toHaveTextContent('Objectif atteint'));
-    expect(progressLine()).toHaveTextContent('Fait · 3 fois cette semaine');
+    expect(progressLine()).toHaveTextContent('Fait · 3/3 cette semaine');
     expect(
       screen.getByRole('switch', {
-        name: 'Courir 5 km, mercredi 14 octobre, fait, 3 fois cette semaine, Difficile, 20 XP par suivi, objectif atteint',
+        name: 'Courir 5 km, mercredi 14 octobre, fait, 3 sur 3 cette semaine, Difficile, 20 XP par suivi, objectif atteint',
       }),
     ).toBeEnabled();
 

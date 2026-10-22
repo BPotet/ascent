@@ -54,8 +54,9 @@ export function bounce(scale: Animated.Value): void {
  * avec ce que rapporte une case « fait » : « …, à faire, Difficile, 20 XP par suivi ».
  *
  * Avec `weeklyProgress` (Vue Journée, #24, E1), l'état est suivi de la progression de la semaine :
- * « ▲▲▲ Difficile · À faire · 2/3 cette semaine », et
- * « 4 fois cette semaine » une fois l'objectif atteint ; elle passe à la ligne en grand texte.
+ * « ▲▲▲ Difficile · À faire · 2/3 cette semaine », « Fait · 3/3 cette semaine » à l'objectif tout
+ * juste atteint, et « Fait · 4 fois cette semaine » au-delà (maquette E1, décision PM du 22 octobre
+ * 2026) ; elle passe à la ligne en grand texte.
  * L'objectif atteint ajoute dessous le badge « Objectif atteint » (drapeau, texte et liseré verts) ;
  * la ligne reste tapable. Rien ne marque un objectif non atteint. Le lecteur d'écran entend la
  * progression après l'état, puis la difficulté, puis « objectif atteint » :
