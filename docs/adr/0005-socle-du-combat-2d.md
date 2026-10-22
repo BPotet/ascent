@@ -172,15 +172,29 @@ limités à ces deux projets et Skia à un seul test de fumée.
 
 ### Datation des touchers sur l'émulateur
 
-Les chiffres (écart médian, écart p95, méthode retenue, base commune) sont ceux de la capture
-`touch-probe-result` du parcours end-to-end `e2e/flows/preview-touch-probe.yaml`, exécuté par le job
-`e2e-android` sur l'APK de preview de la PR (émulateur Android API 34, x86_64). Aucun émulateur
-n'est disponible dans l'environnement des agents (ADR 0001) : ils sont reportés ici depuis cette
-capture avant que l'Architect passe l'ADR en « accepté ».
+Capture `touch-probe-result` du parcours end-to-end `e2e/flows/preview-touch-probe.yaml`, job
+`e2e-android` de la PR #47 à `ad86d00` (APK de preview, émulateur Android API 34, x86_64, sans
+animations), 20 touchers par Maestro :
 
-| Écart médian | Écart p95 | Méthode retenue | Base commune |
-|---|---|---|---|
-| à reporter | à reporter | à reporter | à reporter |
+| Écart médian | Écart p95 | Méthode retenue | Base commune | Décalage calibré |
+|---|---|---|---|---|
+| 0,1 ms | 0,2 ms | **a** | oui | 3,5 ms |
+
+[Capture](https://raw.githubusercontent.com/BPotet/ascent/ebcf22367413934d38109b68a2b4a7d98030db0a/pr-47/ad86d00/2026-10-22_093733/Sonde%20de%20toucher%20du%20build%20de%20preview/takeScreenshot/touch-probe-result.png)
+(branche `e2e-screenshots`).
+
+**Méthode retenue : (a).** Sur l'émulateur, `performance.now()` du fil UI et celui du fil JS ont la
+même base : tous les écarts « réception JS − toucher » sont dans [−2 ms, 500 ms]. Le décalage
+calibré (3,5 ms) reste de l'ordre d'un demi aller-retour entre les fils, ce qui est cohérent avec
+une base commune ; la méthode (b) n'est pas nécessaire.
+
+Limites de cette mesure :
+
+- l'émulateur est au repos : le fil JS n'a rien d'autre à faire, d'où un écart de réception
+  inférieur à la milliseconde. Sous la charge du combat, cet écart grandira ; c'est justement ce que
+  la méthode (a) neutralise, puisque l'appui est jugé à l'instant daté sur le fil UI ;
+- la base commune doit être **confirmée sur le téléphone du propriétaire** par #31 (§ 7), avant que
+  son moteur de combat n'en dépende.
 
 ## Conséquences
 
