@@ -33,3 +33,8 @@ export function frenchDay(text: string, defaultYear?: number): Day {
   }
   return day;
 }
+
+/** Le jour et le mois de `day`, comme l'interface les écrit : « 19 octobre ». */
+export function frenchDayAndMonth(day: Day): string {
+  return `${day.dayOfMonth} ${MONTHS[day.month - 1]}`;
+}

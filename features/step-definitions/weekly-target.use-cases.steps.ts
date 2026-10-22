@@ -8,18 +8,23 @@
  * - l'objectif présélectionné de « Nouvelle habitude » est `DEFAULT_WEEKLY_TARGET` ; le bloc
  *   « Objectif » propose `WEEKLY_TARGETS` ; un objectif se lit « N fois par semaine », et 7
  *   « Tous les jours » ;
- * - créer (↵ ou « Créer ») = `createHabit` avec l'objectif affiché ;
+ * - le bloc « Objectif » de « Nouvelle habitude » affiche la phrase de l'objectif choisi, suivie de
+ *   « · cette semaine : N, à partir d'aujourd'hui » quand l'objectif de la semaine de création
+ *   (`creationWeekTargetOf`, avec aujourd'hui) est réduit, c'est-à-dire inférieur à l'objectif ;
+ * - créer (↵ ou « Créer ») = `createHabit` avec l'objectif affiché ; le message est « Habitude créée »,
+ *   suivi de « · objectif N cette semaine » quand le `weekTarget` rendu est réduit ;
  * - « l'objectif hebdomadaire » d'une habitude est celui que préremplit « Modifier l'habitude » :
  *   `nextWeeklyTarget` ; « l'objectif de la semaine » est `weekSettings.weekTarget` ;
- * - la ligne secondaire de la Vue Journée est « À faire · 2/3 cette semaine » ou « Fait · 2/3 cette
- *   semaine » (`status`, `weeklyProgress`, `weekSettings.weekTarget`), et « Objectif atteint · 4 fois
- *   cette semaine » quand `targetReached` ; le badge « Objectif atteint » est `targetReached` ;
+ * - la ligne secondaire de la Vue Journée est « À faire · 2/3 cette semaine » ou « Fait · 3/3 cette
+ *   semaine » (`status`, `weeklyProgress`, `weekSettings.weekTarget`), et « Fait · 4 fois cette
+ *   semaine » au-delà de l'objectif de la semaine ; le badge « Objectif atteint » est `targetReached` ;
  * - la puce d'une carte de la Vue Semaine est « 1/3 » (`weeklyProgress`, `weekSettings.weekTarget`),
  *   suivie de « · Objectif atteint » quand `targetReached` ; elle est verte quand l'objectif est
  *   atteint, grise pour une semaine passée non atteinte, neutre sinon, absente sans objectif de la
  *   semaine ; « 3 fois par semaine » sous le nom lit `weekSettings.weeklyTarget` ;
  * - choisir un objectif dans « Modifier l'habitude » affiche « Nouvel objectif à partir de lundi
- *   prochain. Cette semaine reste à N. » (N : `weekSettings.weekTarget`) quand il diffère de
+ *   prochain (19 octobre). Cette semaine reste à N. » (le lundi de la semaine suivante ; N :
+ *   `weekSettings.weekTarget`) quand il diffère de
  *   `nextWeeklyTarget` et que `targetChangeAppliesThisWeek` est faux ; enregistrer = `updateHabit`
  *   avec cet objectif ;
  * - toucher une habitude de la Vue Journée = `toggleCheckIn` sur aujourd'hui ; corriger un jour =
@@ -80,8 +85,9 @@ import {
   WEEKLY_TARGETS,
   type WeeklyTarget,
 } from '../../src/domain/habit/WeeklyTarget';
+import { creationWeekTargetOf } from '../../src/domain/habit/WeekSettings';
 import { Week } from '../../src/domain/week/Week';
-import { frenchDay } from '../support/frenchDay';
+import { frenchDay, frenchDayAndMonth } from '../support/frenchDay';
 
 const YEAR = 2026;
 
@@ -141,13 +147,30 @@ function targetOf(text: string): WeeklyTarget {
   return Number(text) as WeeklyTarget;
 }
 
-/** La ligne secondaire d'une ligne de la Vue Journée. */
+/** Le bloc « Objectif » de « Nouvelle habitude » : la phrase, et la semaine de création réduite. */
+function blockTextOf(target: WeeklyTarget, today: Day): string {
+  const weekTarget = creationWeekTargetOf(target, today);
+  return weekTarget < target
+    ? `${phraseOf(target)} · cette semaine : ${weekTarget}, à partir d'aujourd'hui`
+    : phraseOf(target);
+}
+
+/** Le message qui suit une création : l'objectif de la semaine de création, s'il est réduit. */
+function createdMessageOf(target: WeeklyTarget, weekTarget: number): string {
+  return weekTarget < target
+    ? `Habitude créée · objectif ${weekTarget} cette semaine`
+    : 'Habitude créée';
+}
+
+/** La ligne secondaire d'une ligne de la Vue Journée : « 3/3 », puis « 4 fois » au-delà. */
 function lineTextOf(line: DayViewHabit): string {
-  if (line.targetReached) {
-    return `Objectif atteint · ${line.weeklyProgress} fois cette semaine`;
-  }
   const status = line.status === 'done' ? 'Fait' : 'À faire';
-  return `${status} · ${line.weeklyProgress}/${line.weekSettings.weekTarget} cette semaine`;
+  const { weekTarget } = line.weekSettings;
+  const progress =
+    weekTarget !== null && line.weeklyProgress > weekTarget
+      ? `${line.weeklyProgress} fois`
+      : `${line.weeklyProgress}/${weekTarget}`;
+  return `${status} · ${progress} cette semaine`;
 }
 
 /** La puce d'une carte de la Vue Semaine, ou `null` sans objectif de la semaine. */
@@ -349,10 +372,21 @@ async function chooseTarget(name: string, target: WeeklyTarget): Promise<void> {
   world.editing = name;
   world.current = name;
   world.chosen = target;
+  const nextMonday = frenchDayAndMonth(Week.containing(world.clock.today()).next().start);
   world.message =
     target === line.nextWeeklyTarget || line.targetChangeAppliesThisWeek
       ? null
-      : `Nouvel objectif à partir de lundi prochain. Cette semaine reste à ${line.weekSettings.weekTarget}.`;
+      : `Nouvel objectif à partir de lundi prochain (${nextMonday}). Cette semaine reste à ${line.weekSettings.weekTarget}.`;
+}
+
+/** La création de `name` avec l'objectif `target`, et le message qui la suit. */
+async function create(name: string, target: WeeklyTarget = DEFAULT_WEEKLY_TARGET): Promise<void> {
+  const result = await createHabit(world.deps, name, 'medium', target);
+  expect(result).toMatchObject({ ok: true });
+  if (result.ok) {
+    world.message = createdMessageOf(target, result.weekTarget);
+  }
+  world.current = name;
 }
 
 async function save(): Promise<void> {
@@ -402,43 +436,42 @@ const steps: StepDefinitions = ({ given, when, then }) => {
   );
   when(/^il saisit « ([^»]+) » et valide avec la touche ↵ du clavier$/, async (name: string) => {
     await act();
-    await expect(createHabit(world.deps, name)).resolves.toMatchObject({ ok: true });
-    world.current = name;
+    await create(name);
     await checkInvariant();
   });
   when(/^le joueur choisit l'objectif (\d) dans « Nouvelle habitude »$/, async (target: string) => {
     await act();
     world.chosen = targetOf(target);
   });
-  then(/^le bloc « Objectif » affiche « ([^»]+) »$/, (phrase: string) => {
-    expect(phraseOf(world.chosen ?? null)).toBe(phrase);
+  then(/^le bloc « Objectif » affiche « ([^»]+) »$/, (text: string) => {
+    expect(blockTextOf(world.chosen as WeeklyTarget, world.clock.today())).toBe(text);
   });
+  then(
+    /^le bloc « Objectif » affiche « ([^»]+) » sans mention « cette semaine »$/,
+    (phrase: string) => {
+      const text = blockTextOf(world.chosen as WeeklyTarget, world.clock.today());
+      expect(text).toBe(phrase);
+      expect(text).not.toContain('cette semaine');
+    },
+  );
   when(/^il crée l'habitude « ([^»]+) »$/, async (name: string) => {
-    await expect(
-      createHabit(world.deps, name, 'medium', world.chosen as WeeklyTarget),
-    ).resolves.toMatchObject({ ok: true });
-    world.current = name;
+    await create(name, world.chosen as WeeklyTarget);
     await checkInvariant();
+  });
+  then(/^le message « Habitude créée » s'affiche, sans objectif de la semaine$/, () => {
+    expect(world.message).toBe('Habitude créée');
   });
   when(
     /^le joueur crée l'habitude « ([^»]+) » avec l'objectif (\d)$/,
     async (name: string, target: string) => {
       await act();
-      await expect(
-        createHabit(world.deps, name, 'medium', targetOf(target)),
-      ).resolves.toMatchObject({ ok: true });
-      world.current = name;
+      await create(name, targetOf(target));
       await checkInvariant();
     },
   );
   given(
     /^le joueur a créé aujourd'hui l'habitude « ([^»]+) » avec l'objectif (\d)$/,
-    async (name: string, target: string) => {
-      await expect(
-        createHabit(world.deps, name, 'medium', targetOf(target)),
-      ).resolves.toMatchObject({ ok: true });
-      world.current = name;
-    },
+    (name: string, target: string) => create(name, targetOf(target)),
   );
   then(/^« ([^»]+) » a l'objectif hebdomadaire (\d)$/, async (name: string, target: string) => {
     expect((await lineOf(name)).nextWeeklyTarget).toBe(Number(target));
@@ -543,7 +576,7 @@ const steps: StepDefinitions = ({ given, when, then }) => {
       await expectLine(name ?? (world.current as string), text);
     },
   );
-  then(/^« ([^»]+) » porte le badge « Objectif atteint »$/, async (name: string) => {
+  then(/^« ([^»]+) » porte (?:toujours )?le badge « Objectif atteint »$/, async (name: string) => {
     expect((await lineOf(name)).targetReached).toBe(true);
   });
   then(/^le badge « Objectif atteint » disparaît$/, async () => {

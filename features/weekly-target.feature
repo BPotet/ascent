@@ -34,6 +34,20 @@ Fonctionnalité: Objectif hebdomadaire et progression de la semaine
     Quand le joueur crée l'habitude « Courir 5 km » avec l'objectif 3
     Alors l'objectif de la semaine de « Courir 5 km » est 3
 
+  Scénario: La semaine de création réduite est annoncée avant de créer
+    Étant donné que nous sommes le mercredi 14 octobre 2026 selon le téléphone
+    Quand le joueur ouvre « Nouvelle habitude »
+    Alors le bloc « Objectif » affiche « Tous les jours · cette semaine : 5, à partir d'aujourd'hui »
+    Quand il crée l'habitude « Méditer »
+    Alors le message « Habitude créée · objectif 5 cette semaine » s'affiche
+
+  Scénario: Pas d'annonce quand l'objectif n'est pas réduit
+    Étant donné que nous sommes le jeudi 15 octobre 2026 selon le téléphone
+    Quand le joueur choisit l'objectif 3 dans « Nouvelle habitude »
+    Alors le bloc « Objectif » affiche « 3 fois par semaine » sans mention « cette semaine »
+    Quand il crée l'habitude « Courir 5 km »
+    Alors le message « Habitude créée » s'affiche, sans objectif de la semaine
+
   Scénario: La progression de la semaine suit les suivis
     Étant donné que nous sommes le mercredi 14 octobre 2026 selon le téléphone
     Et que l'habitude « Courir 5 km », objectif 3, créée le lundi 5 octobre 2026, est « fait » le lundi 12 octobre
@@ -47,7 +61,7 @@ Fonctionnalité: Objectif hebdomadaire et progression de la semaine
     Et que l'habitude « Courir 5 km », objectif 3, créée le lundi 5 octobre 2026, est « fait » le lundi 12 et le mercredi 14 octobre
     Quand le joueur touche « Courir 5 km » dans la Vue Journée
     Alors « Courir 5 km » porte le badge « Objectif atteint »
-    Et sa ligne affiche « Objectif atteint · 3 fois cette semaine »
+    Et sa ligne affiche « Fait · 3/3 cette semaine »
     Et la carte de la Vue Semaine affiche la puce verte « 3/3 · Objectif atteint »
 
   Scénario: Dépasser l'objectif de la semaine
@@ -55,7 +69,8 @@ Fonctionnalité: Objectif hebdomadaire et progression de la semaine
     Et que l'habitude « Courir 5 km », objectif 3, est « fait » le lundi 12, le mercredi 14 et le vendredi 16 octobre
     Alors « Courir 5 km » reste tapable dans la Vue Journée
     Quand le joueur touche « Courir 5 km »
-    Alors sa ligne affiche « Objectif atteint · 4 fois cette semaine »
+    Alors sa ligne affiche « Fait · 4 fois cette semaine »
+    Et « Courir 5 km » porte toujours le badge « Objectif atteint »
     Et la carte de la Vue Semaine affiche la puce « 4/3 · Objectif atteint »
 
   Scénario: Repasser sous l'objectif retire le badge, sans marque d'échec
@@ -88,7 +103,7 @@ Fonctionnalité: Objectif hebdomadaire et progression de la semaine
     Étant donné que nous sommes le mercredi 14 octobre 2026 selon le téléphone
     Et que l'habitude « Courir 5 km », objectif 3, créée le lundi 5 octobre 2026, est « fait » le lundi 12 octobre
     Quand le joueur choisit l'objectif 5 dans « Modifier l'habitude » de « Courir 5 km »
-    Alors le message « Nouvel objectif à partir de lundi prochain. Cette semaine reste à 3. » s'affiche
+    Alors le message « Nouvel objectif à partir de lundi prochain (19 octobre). Cette semaine reste à 3. » s'affiche
     Quand il enregistre
     Alors sa ligne dans la Vue Journée affiche « À faire · 1/3 cette semaine »
     Quand le téléphone passe au lundi 19 octobre 2026
@@ -141,7 +156,7 @@ Fonctionnalité: Objectif hebdomadaire et progression de la semaine
     Et qu'il ouvre pour la première fois, le mercredi 14 octobre 2026, la version qui introduit l'objectif hebdomadaire
     Quand il touche « Régler » sur la carte de nouveauté
     Et qu'il choisit l'objectif 3 dans « Modifier l'habitude » de « Cuisiner »
-    Alors le message « Nouvel objectif à partir de lundi prochain. Cette semaine reste à 7. » s'affiche
+    Alors le message « Nouvel objectif à partir de lundi prochain (19 octobre). Cette semaine reste à 7. » s'affiche
     Quand il enregistre
     Alors la ligne de « Cuisiner » dans la Vue Journée affiche « À faire · 2/7 cette semaine »
     Quand le téléphone passe au lundi 19 octobre 2026
@@ -180,7 +195,8 @@ Fonctionnalité: Objectif hebdomadaire et progression de la semaine
   # Scénario d'interface : exécuté par les étapes des écrans, pas par les cas d'usage.
   @ui
   Scénario: Le lecteur d'écran annonce l'objectif et la progression
-    Étant donné que l'habitude « Courir 5 km », objectif 3, est « à faire » avec 2 « fait » cette semaine
+    Étant donné que nous sommes le jeudi 15 octobre 2026 selon le téléphone
+    Et que l'habitude « Courir 5 km », objectif 3, est « à faire » avec 2 « fait » cette semaine
     Quand le lecteur d'écran lit sa ligne dans la Vue Journée
-    Alors il annonce « Courir 5 km, à faire, 2 sur 3 cette semaine »
+    Alors il annonce « Courir 5 km, jeudi 15 octobre, à faire, 2 sur 3 cette semaine »
     Et le bloc « Objectif » est annoncé comme le groupe « Objectif hebdomadaire », l'option 7 étant lue « 7 fois par semaine, tous les jours »
