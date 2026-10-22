@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, describe, it } from 'node:test';
 import { pathToFileURL } from 'node:url';
-import { shardConfig } from './run.mjs';
+import { parseOptions, shardConfig } from './run.mjs';
 
 const dir = mkdtempSync(path.join(tmpdir(), 'ascent-shard-config-'));
 after(() => rmSync(dir, { recursive: true, force: true }));
@@ -68,5 +68,34 @@ describe('shardConfig', () => {
     const base = (await import('../../stryker.config.mjs')).default;
     const config = await load(coreShard);
     assert.deepEqual(config.ignorePatterns, [...base.ignorePatterns, '.stryker-tmp']);
+  });
+});
+
+describe('parseOptions', () => {
+  it('mutates the new code without the screens by default', () => {
+    assert.deepEqual(parseOptions([], {}), { mode: 'changed', includeUi: false });
+  });
+
+  it('mutates the whole code with --full or MUTATION_MODE=full, still without the screens', () => {
+    assert.deepEqual(parseOptions(['--full'], {}), { mode: 'full', includeUi: false });
+    assert.deepEqual(parseOptions([], { MUTATION_MODE: 'full' }), {
+      mode: 'full',
+      includeUi: false,
+    });
+  });
+
+  it('mutates the screens only on an explicit request: --ui or MUTATION_UI=true', () => {
+    assert.deepEqual(parseOptions(['--ui'], {}), { mode: 'changed', includeUi: true });
+    assert.deepEqual(parseOptions(['--full', '--ui'], {}), { mode: 'full', includeUi: true });
+    assert.deepEqual(parseOptions([], { MUTATION_UI: 'true' }), {
+      mode: 'changed',
+      includeUi: true,
+    });
+  });
+
+  it('does not take any other value of MUTATION_UI for a request', () => {
+    for (const value of ['', 'false', '0', 'yes', undefined]) {
+      assert.equal(parseOptions([], { MUTATION_UI: value }).includeUi, false, String(value));
+    }
   });
 });

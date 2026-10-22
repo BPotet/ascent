@@ -5,20 +5,45 @@
 //   sans option   : mute tous les shards l'un après l'autre, puis applique les seuils.
 // Mode : `changed` (code nouveau depuis BASE_REF, par défaut origin/develop), ou `full` avec
 // MUTATION_MODE=full ou --full (tout le code).
+// Les écrans (`src/adapters/ui`) ne sont mutés qu'à la demande du propriétaire : --ui ou
+// MUTATION_UI=true. Un agent ne l'ajoute jamais de lui-même.
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { buildPlan, collectChanges, toMatrix } from './plan.mjs';
+import { buildPlan, collectChanges, screenFiles, toMatrix } from './plan.mjs';
 import { main as scoreMain, REPORTS_DIR } from './score.mjs';
 
+/** Le mode et la demande de mutation des écrans, lus dans les arguments et l'environnement. */
+export function parseOptions(args, env) {
+  return {
+    mode: env.MUTATION_MODE === 'full' || args.includes('--full') ? 'full' : 'changed',
+    includeUi: args.includes('--ui') || env.MUTATION_UI === 'true',
+  };
+}
+
 const args = process.argv.slice(2);
-const mode = process.env.MUTATION_MODE === 'full' || args.includes('--full') ? 'full' : 'changed';
+const { mode, includeUi } = parseOptions(args, process.env);
 const baseRef = process.env.BASE_REF || 'origin/develop';
 
 function plan() {
   const { base, changes } = collectChanges({ mode, baseRef });
-  return { base, shards: buildPlan({ mode, changes }) };
+  return {
+    base,
+    shards: buildPlan({ mode, changes, includeUi }),
+    skippedScreens: includeUi ? [] : screenFiles(changes),
+  };
+}
+
+function reportScreens(skippedScreens) {
+  if (includeUi) {
+    console.log('Screens (src/adapters/ui) mutated: requested by the owner.');
+  } else if (skippedScreens.length > 0) {
+    console.log(
+      `Screens (src/adapters/ui) not mutated: ${skippedScreens.length} file(s) left out. ` +
+        'The owner asks for it (label mutation:ui, or npm run mutation:ui).',
+    );
+  }
 }
 
 /** La config Stryker d'un shard : celle de son groupe, restreinte à ses entrées, sans seuil bloquant. */
@@ -54,8 +79,9 @@ function runShard(shard, expectedShards) {
 }
 
 async function main() {
-  const { base, shards } = plan();
+  const { base, shards, skippedScreens } = plan();
   const since = mode === 'full' ? '(full mode)' : `${baseRef} (${base})`;
+  reportScreens(skippedScreens);
 
   if (args.includes('--plan')) {
     const matrix = JSON.stringify(toMatrix(shards));

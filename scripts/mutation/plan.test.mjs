@@ -8,6 +8,7 @@ import {
   isRetained,
   mutateEntries,
   parseDiff,
+  screenFiles,
   split,
   toMatrix,
 } from './plan.mjs';
@@ -110,17 +111,19 @@ describe('classify', () => {
     assert.equal(classify('src/domain/habit/Habit.ts'), 'domain');
   });
 
-  it('puts the application and the non-UI adapters in core', () => {
+  it('puts the application, the non-UI adapters and the routes in core', () => {
     assert.equal(classify('src/application/checkIn.ts'), 'core');
     assert.equal(classify('src/adapters/device/clock/SystemClock.ts'), 'core');
     assert.equal(classify('src/adapters/persistence/sqlite/SqlDatabase.ts'), 'core');
     assert.equal(classify('src/future/thing.ts'), 'core');
+    // Les routes et l'assemblage restent mutés par défaut : seuls les écrans sont à la demande.
+    assert.equal(classify('src/app/(tabs)/week.tsx'), 'core');
+    assert.equal(classify('src/app/_layout.tsx'), 'core');
   });
 
-  it('puts the UI adapters and the routes in ui', () => {
+  it('puts the screens (UI adapters) in ui', () => {
     assert.equal(classify('src/adapters/ui/HabitCard.tsx'), 'ui');
-    assert.equal(classify('src/app/(tabs)/week.tsx'), 'ui');
-    assert.equal(classify('src/app/_layout.tsx'), 'ui');
+    assert.equal(classify('src/adapters/ui/screens/WeekScreen.tsx'), 'ui');
   });
 
   it('excludes tests, testing helpers and other files', () => {
@@ -229,40 +232,52 @@ describe('buildPlan', () => {
     ...extra,
   });
 
-  it('mutates new lines outside the domain and whole domain files', () => {
-    const shards = buildPlan({
-      mode: 'changed',
-      changes: [
-        change('src/domain/habit/Habit.ts', [{ start: 4, end: 6 }]),
-        change('src/application/checkIn.ts', [{ start: 10, end: 12 }]),
-        change('src/adapters/device/clock/SystemClock.ts', [], { added: true, weight: 20 }),
-        change('src/app/(tabs)/week.tsx', [{ start: 1, end: 30 }]),
-        change('src/adapters/ui/HabitCard.tsx', [{ start: 3, end: 3 }]),
-        change('src/adapters/ui/HabitCard.test.tsx', [{ start: 1, end: 50 }]),
-        change('src/adapters/ui/Old.tsx', []),
-      ],
-    });
+  const changes = [
+    change('src/domain/habit/Habit.ts', [{ start: 4, end: 6 }]),
+    change('src/application/checkIn.ts', [{ start: 10, end: 12 }]),
+    change('src/adapters/device/clock/SystemClock.ts', [], { added: true, weight: 20 }),
+    change('src/app/(tabs)/week.tsx', [{ start: 1, end: 30 }]),
+    change('src/adapters/ui/HabitCard.tsx', [{ start: 3, end: 3 }]),
+    change('src/adapters/ui/Week.tsx', [{ start: 5, end: 9 }]),
+    change('src/adapters/ui/HabitCard.test.tsx', [{ start: 1, end: 50 }]),
+    change('src/adapters/ui/Old.tsx', []),
+  ];
+  const domainShard = {
+    id: 'domain',
+    scope: 'domain',
+    thresholdClass: 'domain',
+    config: 'stryker.domain.config.mjs',
+    mutate: ['src/domain/habit/Habit.ts'],
+  };
+  const coreShard = {
+    id: 'core',
+    scope: 'core',
+    thresholdClass: 'newCode',
+    config: 'stryker.config.mjs',
+    mutate: [
+      'src/app/[(]tabs[)]/week.tsx:1-30',
+      'src/adapters/device/clock/SystemClock.ts',
+      'src/application/checkIn.ts:10-12',
+    ],
+  };
+
+  it('mutates new lines outside the domain and whole domain files, without the screens', () => {
+    const shards = buildPlan({ mode: 'changed', changes });
+    assert.deepEqual(shards, [domainShard, coreShard]);
+    assert.deepEqual(toMatrix(shards), { shard: ['domain', 'core'] });
+  });
+
+  it('mutates the screens only when asked, against the threshold of the new code', () => {
+    const shards = buildPlan({ mode: 'changed', changes, includeUi: true });
     assert.deepEqual(shards, [
-      {
-        id: 'domain',
-        scope: 'domain',
-        thresholdClass: 'domain',
-        config: 'stryker.domain.config.mjs',
-        mutate: ['src/domain/habit/Habit.ts'],
-      },
-      {
-        id: 'core',
-        scope: 'core',
-        thresholdClass: 'newCode',
-        config: 'stryker.config.mjs',
-        mutate: ['src/adapters/device/clock/SystemClock.ts', 'src/application/checkIn.ts:10-12'],
-      },
+      domainShard,
+      coreShard,
       {
         id: 'ui-1',
         scope: 'ui',
         thresholdClass: 'newCode',
         config: 'stryker.config.mjs',
-        mutate: ['src/app/[(]tabs[)]/week.tsx:1-30'],
+        mutate: ['src/adapters/ui/Week.tsx:5-9'],
       },
       {
         id: 'ui-2',
@@ -275,11 +290,19 @@ describe('buildPlan', () => {
     assert.deepEqual(toMatrix(shards), { shard: ['domain', 'core', 'ui-1', 'ui-2'] });
   });
 
-  it('mutates whole files in full mode, with more parts', () => {
+  it('lists the screens left out, with new lines only', () => {
+    assert.deepEqual(screenFiles(changes), [
+      'src/adapters/ui/HabitCard.tsx',
+      'src/adapters/ui/Week.tsx',
+    ]);
+  });
+
+  it('mutates whole files in full mode, with more parts, the screens only when asked', () => {
     const changes = Array.from({ length: 12 }, (_, index) =>
       change(`src/adapters/ui/C${index}.tsx`, [], { added: true, weight: 100 - index }),
     );
-    const shards = buildPlan({ mode: 'full', changes });
+    assert.deepEqual(buildPlan({ mode: 'full', changes }), []);
+    const shards = buildPlan({ mode: 'full', changes, includeUi: true });
     assert.equal(shards.length, 10);
     assert.deepEqual(
       shards.map((shard) => shard.id),

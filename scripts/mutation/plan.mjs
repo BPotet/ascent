@@ -12,13 +12,16 @@ export const BASE_CONFIG = 'stryker.config.mjs';
 export const DOMAIN_CONFIG = 'stryker.domain.config.mjs';
 
 // Réglages de la répartition, pas des seuils : nombre de parts (shards) par groupe et par mode.
+// Le groupe `ui` (les écrans) n'est muté qu'à la demande du propriétaire (`includeUi`).
 export const PARTS = {
   changed: { domain: 1, core: 1, ui: 2 },
   full: { domain: 1, core: 2, ui: 10 },
 };
 
 const SCOPES = ['domain', 'core', 'ui'];
-const UI_PATTERNS = ['src/adapters/ui/**', 'src/app/**'];
+// Les écrans : muté seulement à la demande du propriétaire. Les routes (`src/app/`) restent dans
+// `core`, mutées par défaut.
+const UI_PATTERNS = ['src/adapters/ui/**'];
 
 /**
  * Vrai si `file` est retenu par une liste `mutate` de Stryker, lue dans l'ordre : un motif positif
@@ -156,14 +159,15 @@ export function split(items, parts) {
 /**
  * Le plan : une liste de shards `{ id, scope, thresholdClass, config, mutate }`.
  * `changes` vient de `parseDiff()` (mode `changed`) ou de `collectChanges()` (mode `full`).
+ * Les écrans (groupe `ui`) ne sont mutés qu'avec `includeUi`, sur demande du propriétaire.
  */
-export function buildPlan({ mode, changes, scopeOf = classify }) {
+export function buildPlan({ mode, changes, scopeOf = classify, includeUi = false }) {
   const parts = PARTS[mode];
   if (!parts) throw new Error(`Unknown mutation mode "${mode}" (expected "changed" or "full").`);
   const byScope = Object.fromEntries(SCOPES.map((scope) => [scope, []]));
   for (const change of changes) {
     const scope = scopeOf(change.file);
-    if (!scope) continue;
+    if (!scope || (scope === 'ui' && !includeUi)) continue;
     const whole = mode === 'full' || scope === 'domain';
     const mutate = mutateEntries(change, { whole });
     if (mutate.length === 0) continue; // seulement des lignes supprimées
@@ -183,6 +187,13 @@ export function buildPlan({ mode, changes, scopeOf = classify }) {
     });
   }
   return shards;
+}
+
+/** Les fichiers d'écran qui ont du code nouveau à muter : ceux qu'un plan sans `includeUi` laisse de côté. */
+export function screenFiles(changes, scopeOf = classify) {
+  return changes
+    .filter((change) => scopeOf(change.file) === 'ui' && (change.added || change.ranges.length > 0))
+    .map((change) => change.file);
 }
 
 /** La matrice GitHub Actions d'un plan. */
