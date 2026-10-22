@@ -33,7 +33,7 @@ tags:
     checked: false
 - assertNotVisible:
     id: 'check-mark'
-- assertVisible: '0/1 faites|0 habitude faite sur 1'
+- assertVisible: '0/1 faites|0 habitude faite sur 1 attendue'
 # L'aide au premier usage explique le tap.
 - assertVisible:
     id: 'check-in-hint'
@@ -52,7 +52,7 @@ tags:
     checked: true
 - assertVisible:
     id: 'check-mark'
-- assertVisible: '1/1 faites|1 habitude faite sur 1'
+- assertVisible: '1/1 faites|1 habitude faite sur 1 attendue'
 - assertVisible:
     id: 'all-done'
 - assertNotVisible:
@@ -70,7 +70,7 @@ tags:
     checked: false
 - assertNotVisible:
     id: 'check-mark'
-- assertVisible: '0/1 faites|0 habitude faite sur 1'
+- assertVisible: '0/1 faites|0 habitude faite sur 1 attendue'
 - assertNotVisible:
     id: 'all-done'
 - assertNotVisible:
@@ -92,7 +92,7 @@ tags:
     timeout: 60000
 - assertVisible:
     id: 'check-mark'
-- assertVisible: '1/1 faites|1 habitude faite sur 1'
+- assertVisible: '1/1 faites|1 habitude faite sur 1 attendue'
 - assertVisible:
     id: 'all-done'
 - assertNotVisible:

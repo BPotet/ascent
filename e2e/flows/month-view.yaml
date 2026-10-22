@@ -62,13 +62,13 @@ tags:
 - assertVisible:
     id: 'month-view'
 - extendedWaitUntil:
-    visible: '.+, aujourd’hui, 1 habitude faite sur 1'
+    visible: '.+, aujourd’hui, 1 habitude faite sur 1 attendue'
     timeout: 10000
 - assertVisible: 'Ce mois-ci'
 - takeScreenshot: month-view-2-current-month-done
 
 # Le détail d'aujourd'hui : l'habitude y est « fait ».
-- tapOn: '.+, aujourd’hui, 1 habitude faite sur 1'
+- tapOn: '.+, aujourd’hui, 1 habitude faite sur 1 attendue'
 - extendedWaitUntil:
     visible:
       id: 'day-detail-.+'
