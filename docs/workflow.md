@@ -45,10 +45,11 @@ flowchart TD
 
         S3 --> S4
         S4 -- impact faible --> S5
-        S5 --> S6
-        S6 -- barrière rouge --> S5
-        S6 -- tout vert --> S7
+        S5 -- PR sortie du brouillon --> S6
+        S5 -- en même temps --> S7
+        S6 -- changements demandés --> S5
         S7 -- changements demandés --> S5
+        S6 -- vert --> S8
         S7 -- approuvé --> S8
     end
 
@@ -56,7 +57,7 @@ flowchart TD
     ESC -- périmètre inchangé --> S3
     ESC -- périmètre validé modifié --> GATE1
 
-    S7 -- 4e échec --> BLOCK[⛔ status:blocked]
+    S5 -- 4e tour en échec --> BLOCK[⛔ status:blocked]
     BLOCK -. résumé sur l'issue .-> OWNER
 
     S8 -- ferme l'issue --> DONE([✅ Done])
@@ -75,8 +76,8 @@ flowchart TD
                 ├─ impact faible → 5
                 └─ impact fort   → PM + Architect → retour en 2 ou 3
  5. IMPLEMENT   Dev                                   → code + tests (TDD)
- 6. TEST        QA                                    → toutes les barrières
- 7. REVIEW      Reviewer                              → OK → 8, sinon → 5
+ 6. TEST     ┐  QA        (en parallèle, lecture seule) → toutes les barrières
+ 7. REVIEW   ┘  Reviewer  (en parallèle, lecture seule) → les deux verts → 8, sinon → 5
  8. MERGE       Auto-merge dans develop               → issue fermée
     RELEASE     Épique terminée → release/x.y.z → main (tag vx.y.z)
 ```
@@ -180,8 +181,8 @@ Le scope est facultatif quand un commit touche plusieurs zones.
 | `status:awaiting-approval` | ✋ Validation | **Propriétaire** |
 | `status:ready` | 3. Ready | Architect |
 | `status:impact-analysis` | 4. Impact | Impact Analyst |
-| `status:in-progress` | 5–6. Implement + Test | Dev (ou Fixer pour un bug), QA |
-| `status:review` | 7. Review | Reviewer |
+| `status:in-progress` | 5. Implement, et chaque correction demandée par le QA ou le Reviewer | Dev (ou Fixer pour un bug) |
+| `status:review` | 6–7. Test et Review, en parallèle | QA et Reviewer |
 | `status:blocked` | Escalade | **Propriétaire** |
 | *(issue fermée)* | 8. Merge | Auto |
 
@@ -232,8 +233,9 @@ Avant toute ligne de code, l'**Impact Analyst** indexe le dépôt avec GitNexus 
 L'impact est **fort** si au moins un de ces points est vrai :
 - un changement de modèle de données stockées (migration) ;
 - une modification d'un port ou d'une règle du domaine utilisée par d'autres features ;
-- plus de 10 fichiers existants modifiés, ou plus de 2 modules touchés ;
-- une contradiction avec une autre story ouverte ou avec le glossaire.
+- une contradiction avec une autre story ouverte, avec le glossaire ou avec ce que le propriétaire a validé.
+
+Le **volume** (nombre de fichiers existants modifiés, de modules ou de couches touchés) n'est **pas** un critère d'impact fort : une story full stack traverse normalement toutes les couches. Il reste signalé dans l'analyse comme **conseil de découpage en commits**, par exemple au-delà de 10 fichiers existants modifiés ou de 2 modules touchés.
 
 Si l'impact est fort, la story revient au **PM** et à l'**Architect**, qui la redécoupent ou l'ajustent. La décision est tracée en commentaire sur l'issue. Si ce changement modifie ce que le propriétaire a validé, la story repasse par ✋.
 
@@ -246,14 +248,40 @@ Il possède toutes les couches : `domain`, `application`, `adapters/persistence`
 - Il ouvre la PR en **brouillon** après son premier commit et la sort du brouillon quand les barrières sont vertes en local.
 - Un besoin hors du périmètre de la story se signale à l'orchestrateur.
 
-### 6. Test
-Le **QA** fait passer toutes les barrières de qualité ci-dessous, en local puis en CI.
+### 6 et 7. Test et Review, en parallèle
+Quand le dev sort la PR du brouillon (barrières vertes en local), l'orchestrateur passe la story en `status:review` et lance **en même temps** le **QA** (étape 6) et le **Reviewer** (étape 7, `/review-story`). Aucun des deux n'attend l'autre.
 
-### 7. Review — `/review-story`
-Le **Reviewer** vérifie la PR par rapport aux critères d'acceptation, à l'architecture, au glossaire et aux rapports (coverage, mutation, Sonar). S'il y a un problème, retour en 5 avec des commentaires précis.
+Tous deux sont en **lecture seule** : ils ne modifient ni le code, ni les tests, ni la doc, et ne poussent aucun commit. Chacun publie son verdict en commentaire (ou en review) sur la PR, avec le commit relu (SHA de la tête de la PR).
+
+- **QA** : fait tourner toutes les barrières de qualité ci-dessous, en local puis en CI, lit les rapports de couverture et de mutation, et liste les tests manquants (mutants survivants, cas limites). Verdict : **vert** ou **changements demandés**.
+- **Reviewer** : vérifie la PR par rapport aux critères d'acceptation, à l'architecture, au glossaire, aux maquettes et aux rapports de la CI (coverage, mutation, Sonar). Verdict : **approuvé** ou **changements demandés**, avec des commentaires précis.
+
+#### Corrections
+
+Si au moins un des deux demande des changements, l'orchestrateur attend les deux verdicts, puis renvoie leurs rapports **ensemble** au dev (ou au fixer), en `status:in-progress`. Après la correction, il relance :
+
+- **les deux**, par défaut, et dans tous les cas de doute ;
+- **seulement celui qui a demandé la correction**, si elle est **locale**, c'est-à-dire si tous ces points sont vrais, pour **tout le diff** entre le SHA relu par l'autre et la nouvelle tête (le dev peut pousser plusieurs commits de correction) :
+  - l'autre avait rendu un verdict vert sur la tête qu'il a relue ;
+  - aucun fichier de production n'est modifié : rien dans `src/` hors fichiers de test (`*.test.ts(x)`, dossiers `testing/`), **pas même un commentaire**, aucune migration, aucune configuration, aucun workflow de CI ;
+  - pour une demande du **QA**, la correction ne fait qu'ajouter ou renforcer des tests (fichiers `*.test.ts(x)` et dossiers `testing/` de `src/`, steps Gherkin, `features/`, `e2e/`) ;
+  - pour une demande du **Reviewer**, la correction ne touche que `docs/` (glossaire compris), le titre ou la description de la PR.
+
+Un **commentaire dans un fichier de production de `src/` n'est jamais une correction locale** : il relance les deux.
+
+Pour une correction locale, l'orchestrateur **reconduit** le verdict vert de l'autre sur la nouvelle tête, par un commentaire sur la PR (« Verdict QA reconduit de `<sha>` à `<sha>` : correction locale aux tests »). Quand c'est le verdict du Reviewer qui est reconduit après une correction aux tests, le QA vérifie aussi que les noms des tests ajoutés suivent le glossaire, ce que le Reviewer n'a pas relu. Tout autre commit poussé après les verdicts, y compris une mise à jour depuis `develop`, relance les deux.
+
+#### Tours
+
+Un **tour** est une série QA et Reviewer suivie d'un renvoi au dev parce qu'au moins un verdict demande des changements. Les deux demandes d'une même série comptent pour **un seul** tour ; relancer un seul agent après une correction locale ouvre une nouvelle série. L'orchestrateur tient le compteur en commentaire sur l'issue : **3 tours au maximum** (voir « Boucles et escalade »).
 
 ### 8. Merge
-Quand toutes les barrières et la review sont au vert, la PR est mergée automatiquement dans `develop` (squash). Elle porte `Closes #<story>`. L'épique est fermée quand toutes ses stories le sont, ce qui déclenche une release (voir « CI/CD et Git Flow »).
+La PR n'est mergée que si, **sur la tête courante** de la PR :
+
+- le verdict du QA est **vert** et celui du Reviewer **approuvé**, rendus sur ce commit ou reconduits selon la règle des corrections locales ;
+- la CI est **entièrement verte**.
+
+L'orchestrateur active alors l'auto-merge dans `develop` (squash) ; si un commit est poussé ensuite, il le désactive jusqu'aux nouveaux verdicts. La PR porte `Closes #<story>`. L'épique est fermée quand toutes ses stories le sont, ce qui déclenche une release (voir « CI/CD et Git Flow »).
 
 ## Barrières de qualité
 
@@ -305,7 +333,7 @@ Quand elle tourne, les seuils actuels s'appliquent (code nouveau : 70 %). Sinon,
 Règles pour l'orchestrateur :
 
 - Il ne pose `mutation:ui` que si le propriétaire le demande, jamais de sa propre initiative.
-- Le check `Screen mutation tests (StrykerJS)` n'existe que sur le commit où le label a été posé : il ne peut pas être exigé par la protection de branche, et l'auto-merge ne l'attend pas. Quand `mutation:ui` est posé, l'orchestrateur attend donc que ce check soit **vert** avant d'activer l'auto-merge ; si l'auto-merge était déjà actif, il le désactive jusque-là. Un check rouge renvoie au dev, comme une barrière rouge. Pour une PR vers `develop` seulement, aux pushs suivants, la mutation des écrans est comptée dans le check habituel `Mutation tests (StrykerJS)`, déjà exigé. Pour une PR de release ou de hotfix vers `main` (branche `release/*` ou `hotfix/*`), la CI ne mute pas le code de la PR (la branche est mutée à son push, sans les écrans) : les écrans n'y sont mutés que sur le commit où le label est posé.
+- Le check `Screen mutation tests (StrykerJS)` n'existe que sur le commit où le label a été posé : il ne peut pas être exigé par la protection de branche, et l'auto-merge ne l'attend pas. Quand `mutation:ui` est posé, l'orchestrateur attend donc que ce check soit **vert** avant d'activer l'auto-merge ; si l'auto-merge était déjà actif, il le désactive jusque-là. Un check rouge renvoie au dev, comme une barrière rouge, puis QA et Reviewer sont relancés selon la règle des corrections. Pour une PR vers `develop` seulement, aux pushs suivants, la mutation des écrans est comptée dans le check habituel `Mutation tests (StrykerJS)`, déjà exigé. Pour une PR de release ou de hotfix vers `main` (branche `release/*` ou `hotfix/*`), la CI ne mute pas le code de la PR (la branche est mutée à son push, sans les écrans) : les écrans n'y sont mutés que sur le commit où le label est posé.
 - Cas limite accepté : une PR **créée** avec le label déjà posé mute ses écrans deux fois (par la CI et par le workflow `Screen mutation`, que GitHub déclenche aussi à la création). Les deux résultats doivent être verts.
 
 ## Architecture hexagonale
@@ -362,7 +390,7 @@ gitGraph
 
 | Déclencheur | Ce qui tourne | Résultat |
 |---|---|---|
-| **PR vers `develop`** (`feature/`, `bugfix/`, `chore/`, `docs/`) | Toutes les barrières de qualité : commits, secrets, style, types, architecture, unitaires, intégration, BDD, mutation sur le code nouveau hors écrans (lignes ajoutées ou modifiées ; fichiers du domaine modifiés en entier), en jobs parallèles, écrans compris seulement avec le label `mutation:ui`, SonarQube Cloud. End-to-end sur une plateforme. | Auto-merge (squash) si tout est vert et la review approuvée |
+| **PR vers `develop`** (`feature/`, `bugfix/`, `chore/`, `docs/`) | Toutes les barrières de qualité : commits, secrets, style, types, architecture, unitaires, intégration, BDD, mutation sur le code nouveau hors écrans (lignes ajoutées ou modifiées ; fichiers du domaine modifiés en entier), en jobs parallèles (le code hors domaine et hors écrans en 3 parts, 6 en release : voir l'[ADR 0004](adr/0004-mutation-en-ci.md)), écrans compris seulement avec le label `mutation:ui`, SonarQube Cloud. End-to-end sur une plateforme. | Auto-merge (squash) si tout est vert et les verdicts du QA et du Reviewer verts sur la tête de la PR |
 | **Push sur `develop`** | Les mêmes barrières sur le résultat du merge, sauf la mutation (déjà faite par la PR), puis un **build de preview** installable sur le téléphone du propriétaire | Le propriétaire peut essayer la prochaine version |
 | **Branche `release/x.y.z`** | Suite complète : end-to-end **iOS et Android**, mutation sur tout le code hors écrans, SonarQube Cloud. Génération du changelog. Build de production. | Merge dans `main` si tout est vert |
 | **Merge sur `main`** | Tag `vX.Y.Z`, GitHub Release avec le changelog, build de production distribué | Nouvelle version publiée |
@@ -389,7 +417,7 @@ Conservation des artefacts (stockage GitHub Actions limité) : l'APK est gardé 
 
 ## Boucles et escalade
 
-- **Review → Implement** : 3 tours au maximum. Au 4e échec, la story passe en `status:blocked` et l'orchestrateur résume le problème en commentaire sur l'issue au propriétaire.
+- **Test et Review → Implement** : 3 tours au maximum, un tour comptant pour la série QA et Reviewer (voir « 6 et 7. Test et Review, en parallèle »). Au 4e échec, la story passe en `status:blocked` et l'orchestrateur résume le problème en commentaire sur l'issue au propriétaire.
 - **Barrière rouge sur `develop`** : priorité absolue, une issue `type:bug` est créée et traitée en `bugfix/` immédiatement avec `/fix-bug`.
 - **Bug en production (`main`)** : une issue `type:bug` avec le label `priority:hotfix` est traitée en `hotfix/` avec `/fix-bug`, en dehors du flux normal (voir « CI/CD et Git Flow »).
 
@@ -399,7 +427,7 @@ Un bug n'est pas une story : il ne crée pas de comportement nouveau, il rétabl
 
 1. L'issue `type:bug` (template « Bug ») décrit les étapes pour reproduire, l'attendu et l'observé.
 2. Le **Fixer** écrit d'abord un test de non-régression qui échoue, trouve la cause racine et applique la correction minimale, sur `bugfix/<n°>-<slug>` (depuis `develop`) ou `hotfix/<x.y.z>-<slug>` (depuis `main`).
-3. Les étapes **Test** (QA) et **Review** (Reviewer) sont les mêmes que pour une story, avec les mêmes barrières et la même limite de 3 tours.
+3. Les étapes **Test** (QA) et **Review** (Reviewer) sont les mêmes que pour une story : lancées en parallèle quand la PR est ouverte et ses barrières vertes en local, avec les mêmes barrières, la même règle des corrections et la même limite de 3 tours.
 4. Si la correction change une règle de jeu ou un écran validés, ce n'est plus un bug mais un changement de périmètre : PM et Architect, puis ✋. Si elle demande une migration ou touche un port partagé, l'Impact Analyst et l'Architect passent avant le Fixer.
 - **Impact fort** : décision du PM et de l'Architect, tracée sur l'issue. Le propriétaire n'est sollicité que si ce qu'il a validé change.
 
@@ -415,8 +443,8 @@ Un bug n'est pas une story : il ne crée pas de comportement nouveau, il rétabl
 | Impact Analyst | `.claude/agents/impact-analyst.md` | 4 |
 | Dev | `.claude/agents/dev.md` | 5 |
 | Fixer | `.claude/agents/fixer.md` | Bugs (`/fix-bug`) |
-| QA | `.claude/agents/qa.md` | 6 |
-| Reviewer | `.claude/agents/reviewer.md` | 7 |
+| QA | `.claude/agents/qa.md` | 6, en parallèle de 7 |
+| Reviewer | `.claude/agents/reviewer.md` | 7, en parallèle de 6 |
 
 | Skill | Rôle |
 |---|---|

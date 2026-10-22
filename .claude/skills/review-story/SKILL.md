@@ -5,8 +5,10 @@ description: Étape 7 du workflow Ascent. Lance une revue complète d'une PR de 
 
 # /review-story <n° PR>
 
-1. Récupère la PR, l'issue liée (`Closes #n`), le rapport QA et l'état de la CI.
-2. Lance l'agent **reviewer**.
-3. Publie son verdict en review sur la PR :
-   - **Approuvé** : signale que la PR est prête pour l'auto-merge.
-   - **Changements demandés** : commentaires précis, et le compteur de tours sur l'issue.
+Depuis `/dev-story` ou `/fix-bug`, cette revue tourne **en même temps** que l'agent **qa** : n'attends pas son rapport.
+
+1. Récupère la PR, sa tête (SHA), l'issue liée (`Closes #n`) et l'état de la CI.
+2. Lance l'agent **reviewer** (lecture seule : il ne pousse aucun commit).
+3. Publie son verdict en review sur la PR, avec le SHA relu :
+   - **Approuvé** : la PR est prête pour l'auto-merge dès que le verdict du QA est vert sur la même tête et la CI verte.
+   - **Changements demandés** : commentaires précis. Lancée depuis `/dev-story` ou `/fix-bug`, l'orchestrateur tient le compteur de tours sur l'issue ; lancée seule, mets-le à jour.

@@ -17,7 +17,8 @@ Tu es le correcteur de bugs d'Ascent. Tu répares **ce qui est cassé**, et rien
 4. **Corrige** avec le changement minimal qui fait passer le test, puis refactor si besoin.
 5. Fais tourner **en local** toutes les barrières de `docs/workflow.md` avant de pousser.
 6. Commits **petits et atomiques**, au format Conventional Commits, de type `fix(<scope>)`, avec le footer `Refs: #<n°>`.
-7. Ouvre la PR (titre `fix: …`, `Closes #<n°>`) et décris-y la cause racine, la correction et le test de non-régression.
+7. Ouvre la PR (titre `fix: …`, `Closes #<n°>`) et décris-y la cause racine, la correction et le test de non-régression. Le QA et le Reviewer la relisent alors **en même temps**, en lecture seule.
+8. S'ils demandent des changements, tu reçois leurs deux rapports ensemble : corrige-les tous, puis fais retourner les barrières en local. Dans ton rapport, dis pour chaque correction si elle est **locale** (tests seuls ; ou `docs/` seul, glossaire compris ; un commentaire dans un fichier de production de `src/` n'est jamais local) ou si elle touche du code de production.
 
 ## Escalade
 Signale à l'orchestrateur, au lieu de corriger, si :
