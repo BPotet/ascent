@@ -128,11 +128,14 @@ export async function reachStoryTargets(deps: UseCaseDependencies): Promise<void
   }
 }
 
-/** « semaine du 12 octobre », ou « cette semaine » pour la semaine en cours, comme l'interface. */
+/**
+ * « semaine du 12 octobre », « semaine du 1er juin », ou « cette semaine » pour la semaine en
+ * cours, comme l'interface.
+ */
 export function weekNameOf(week: Week, today: Day): string {
   return week.equals(Week.containing(today))
     ? 'cette semaine'
-    : `semaine du ${frenchDayAndMonth(week.start)}`;
+    : `semaine du ${frenchDayAndMonth(week.start).replace(/^1 /u, '1er ')}`;
 }
 
 /** Le titre d'une ligne de la section : « Semaine du 5 octobre », « Cette semaine ». */
@@ -153,9 +156,9 @@ export function weekOfText(text: string, today: Day): Week {
   if (trimmed === 'cette semaine') {
     return Week.containing(today);
   }
-  const parts = /^(?:la )?semaine du (\d{1,2} \S+)$/u.exec(trimmed);
+  const parts = /^(?:la )?semaine du (\d{1,2})(?:er)? (\S+)$/u.exec(trimmed);
   if (parts === null) {
     throw new Error(`Not a week: "${text}"`);
   }
-  return Week.containing(frenchDay(`lundi ${parts[1]}`, today.year));
+  return Week.containing(frenchDay(`lundi ${parts[1]} ${parts[2]}`, today.year));
 }
