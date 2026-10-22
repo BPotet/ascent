@@ -45,6 +45,12 @@ describe('Carte de nouveauté (WhatsNewCard)', () => {
     clock.setToday(wednesday14);
   });
 
+  it('is stored under its own key, apart from the other preferences', () => {
+    expect(WHATS_NEW_CARD_DISMISSED_KEY).toBe(
+      'day-view.whats-new.difficulty-and-weekly-target.dismissed',
+    );
+  });
+
   it('is not shown at the first install, without any habit', async () => {
     await expect(getWhatsNewCard(deps())).resolves.toBe(false);
   });
