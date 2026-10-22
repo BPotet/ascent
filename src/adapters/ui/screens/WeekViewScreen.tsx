@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import type { WeekView } from '../../../application/useCases/getWeekView';
+import type { WeekView, WeekViewRow } from '../../../application/useCases/getWeekView';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import type { Day } from '../../../domain/day/Day';
 import type { Habit, HabitId } from '../../../domain/habit/Habit';
 import { isClosedDay } from '../../../domain/day/DayClosing';
+import { weeklyTargetChangeAppliesThisWeek } from '../../../domain/habit/WeekSettings';
 import { Week } from '../../../domain/week/Week';
 import { ADD_HABIT_LABEL } from '../components/AddHabitButton';
 import { Button } from '../components/Button';
@@ -27,6 +28,7 @@ import {
 } from '../format/checkInMessages';
 import { formatWeekRange, HISTORY_START, weekLabel, weekTitle } from '../format/formatWeek';
 import { useExperience } from '../state/Experience';
+import type { EditableSettings } from '../state/useEditHabit';
 import { useWeekView } from '../state/useWeekView';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
@@ -97,6 +99,27 @@ function LoadingView() {
       ))}
     </View>
   );
+}
+
+/**
+ * Les réglages à modifier de `habit`, lus sur sa carte quand la semaine en cours est affichée ;
+ * sinon, ils sont à lire.
+ */
+function editableSettings(view: WeekView, habit: Habit): EditableSettings | undefined {
+  const row = view.isCurrentWeek ? view.rows.find((each) => each.habit.id === habit.id) : undefined;
+  return row && editableSettingsOf(row, view.today);
+}
+
+/** Les réglages à modifier d'une habitude, lus sur sa carte de la semaine en cours. */
+function editableSettingsOf(
+  { habit, weekSettings, nextWeeklyTarget }: WeekViewRow,
+  today: Day,
+): EditableSettings {
+  return {
+    weekSettings,
+    nextWeeklyTarget,
+    targetChangeAppliesThisWeek: weeklyTargetChangeAppliesThisWeek(habit.createdOn, today),
+  };
 }
 
 function Navigator({
@@ -333,11 +356,7 @@ export function WeekViewScreen({
       {editing !== null && (
         <HabitEditing
           habit={editing}
-          weekSettings={
-            view.isCurrentWeek
-              ? view.rows.find(({ habit }) => habit.id === editing.id)?.weekSettings
-              : undefined
-          }
+          settings={editableSettings(view, editing)}
           habits={view.rows.map(({ habit }) => habit)}
           onUpdated={updated}
           onDeleted={deleted}

@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 
-import type { Difficulty } from '../../../domain/habit/Difficulty';
 import type { Habit } from '../../../domain/habit/Habit';
-import type { WeekSettings } from '../../../domain/habit/WeekSettings';
 import { formatXpChange } from '../format/formatXp';
-import { type DeleteHabitOutcome, useEditHabit } from '../state/useEditHabit';
+import {
+  type DeleteHabitOutcome,
+  type EditableSettings,
+  useEditHabit,
+} from '../state/useEditHabit';
 import { DELETE_FAILED, DeleteHabitDialog } from './DeleteHabitDialog';
 import { EditHabitSheet, type UpdatedHabit } from './EditHabitSheet';
 
@@ -35,26 +37,30 @@ export const deletedMessage = (xpRemoved: number) =>
 /** Une habitude supprimée, telle que `deleteHabit` le renvoie. */
 export type DeletedHabit = Extract<DeleteHabitOutcome, { ok: true }>;
 
-/** Les réglages de la semaine en cours : toujours connus de l'écran, ou à lire au besoin. */
-type WeekSettingsSource =
-  | { readonly weekSettings: WeekSettings; readonly onReadFailed?: undefined }
-  | { readonly weekSettings: WeekSettings | undefined; readonly onReadFailed: () => void };
+/** Les réglages de l'habitude : toujours connus de l'écran, ou à lire au besoin. */
+type SettingsSource =
+  | { readonly settings: EditableSettings; readonly onReadFailed?: undefined }
+  | { readonly settings: EditableSettings | undefined; readonly onReadFailed: () => void };
 
 type Step =
   | { readonly kind: 'reading' }
-  | { readonly kind: 'sheet'; readonly difficulty: Difficulty; readonly alert: string | null }
+  | {
+      readonly kind: 'sheet';
+      readonly settings: EditableSettings;
+      readonly alert: string | null;
+    }
   | { readonly kind: 'confirm'; readonly name: string; readonly xpRemoved: number };
 
 /**
- * Modifier ou supprimer `habit` (#6, #23), depuis la Vue Journée (« ⋯ ») ou la Vue Semaine (le
- * nom) : le panneau « Modifier l'habitude », prérempli avec les réglages de la semaine en cours,
- * puis, pour supprimer, la fenêtre de confirmation, qui annonce l'expérience retirée
- * (`previewHabitDeletion`). Annuler la confirmation ferme tout.
+ * Modifier ou supprimer `habit` (#6, #23, #24), depuis la Vue Journée (« ⋯ », la Carte de
+ * nouveauté) ou la Vue Semaine (le nom) : le panneau « Modifier l'habitude », prérempli avec ses
+ * réglages (`EditableSettings`), puis, pour supprimer, la fenêtre de confirmation, qui annonce
+ * l'expérience retirée (`previewHabitDeletion`). Annuler la confirmation ferme tout.
  *
- * `weekSettings` : les réglages de la semaine en cours, quand l'écran les connaît (Vue Journée,
- * Vue Semaine de la semaine en cours). Sinon (une autre semaine est affichée), ils sont lus avant
- * d'ouvrir le panneau ; s'ils ne peuvent pas l'être, `onReadFailed` est appelé. Un écran qui les
- * connaît toujours ne donne pas `onReadFailed`.
+ * `settings` : les réglages de l'habitude, quand l'écran les connaît (Vue Journée, Vue Semaine de la
+ * semaine en cours). Sinon (une autre semaine est affichée), ils sont lus avant d'ouvrir le
+ * panneau ; s'ils ne peuvent pas l'être, `onReadFailed` est appelé. Un écran qui les connaît
+ * toujours ne donne pas `onReadFailed`.
  *
  * L'écran reçoit le résultat : `onUpdated` (l'habitude modifiée, avec la variation de
  * l'expérience), `onDeleted` (l'expérience retirée et le total), ou `onGone` si l'habitude n'existe
@@ -62,14 +68,14 @@ type Step =
  */
 export function HabitEditing({
   habit,
-  weekSettings,
+  settings,
   habits,
   onUpdated,
   onDeleted,
   onGone,
   onReadFailed,
   onClose,
-}: WeekSettingsSource & {
+}: SettingsSource & {
   readonly habit: Habit;
   readonly habits: readonly Habit[];
   readonly onUpdated: (updated: UpdatedHabit) => void;
@@ -79,9 +85,7 @@ export function HabitEditing({
 }) {
   const { update, currentSettings, previewDeletion, remove } = useEditHabit();
   const [step, setStep] = useState<Step>(() =>
-    weekSettings === undefined
-      ? { kind: 'reading' }
-      : { kind: 'sheet', difficulty: weekSettings.difficulty, alert: null },
+    settings === undefined ? { kind: 'reading' } : { kind: 'sheet', settings, alert: null },
   );
   const reading = step.kind === 'reading';
   /** Les rappels de l'écran, recréés à chaque rendu : la lecture n'est pas relancée pour autant. */
@@ -100,7 +104,12 @@ export function HabitEditing({
         return;
       }
       if (outcome.ok) {
-        setStep({ kind: 'sheet', difficulty: outcome.weekSettings.difficulty, alert: null });
+        const { weekSettings, nextWeeklyTarget, targetChangeAppliesThisWeek } = outcome;
+        setStep({
+          kind: 'sheet',
+          settings: { weekSettings, nextWeeklyTarget, targetChangeAppliesThisWeek },
+          alert: null,
+        });
       } else if (outcome.reason === 'unknownHabit') {
         notify.current.onGone();
       } else {
@@ -113,14 +122,14 @@ export function HabitEditing({
     };
   }, [reading, currentSettings, habit.id]);
 
-  const askDeletion = (difficulty: Difficulty) => {
+  const askDeletion = (shown: EditableSettings) => {
     void previewDeletion(habit.id).then((preview) => {
       if (preview.ok) {
         setStep({ kind: 'confirm', name: preview.name, xpRemoved: preview.xpRemoved });
       } else if (preview.reason === 'unknownHabit') {
         onGone();
       } else {
-        setStep({ kind: 'sheet', difficulty, alert: DELETE_FAILED });
+        setStep({ kind: 'sheet', settings: shown, alert: DELETE_FAILED });
       }
     });
   };
@@ -145,13 +154,13 @@ export function HabitEditing({
   return (
     <EditHabitSheet
       habit={habit}
-      difficulty={step.difficulty}
+      settings={step.settings}
       habits={habits}
       deleteAlert={step.alert}
       onSave={(input) => update(habit.id, input)}
       onSaved={onUpdated}
       onGone={onGone}
-      onDelete={() => askDeletion(step.difficulty)}
+      onDelete={() => askDeletion(step.settings)}
       onClose={onClose}
     />
   );

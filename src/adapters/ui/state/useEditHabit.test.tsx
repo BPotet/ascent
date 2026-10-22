@@ -178,17 +178,38 @@ describe('useEditHabit', () => {
   });
 
   describe('currentSettings', () => {
-    it('gives the settings of the current week, whatever week is shown', async () => {
+    it('gives the settings to edit, whatever week is shown', async () => {
       dependencies.clock.setToday(tuesday);
-      await updateHabit(dependencies, cooking.id, { name: 'Cuisiner', difficulty: 'easy' });
+      await updateHabit(dependencies, cooking.id, {
+        name: 'Cuisiner',
+        difficulty: 'easy',
+        weeklyTarget: 3,
+      });
       dependencies.clock.setToday(wednesday);
       const { currentSettings, otherReload } = await setUp();
 
-      await expect(currentSettings()).resolves.toMatchObject({
+      await expect(currentSettings()).resolves.toEqual({
         ok: true,
-        weekSettings: { difficulty: 'easy' },
+        // Changé le jour de création (mardi) : l'objectif vaut dès cette semaine.
+        weekSettings: { difficulty: 'easy', weeklyTarget: 3, weekTarget: 3 },
+        nextWeeklyTarget: 3,
+        targetChangeAppliesThisWeek: false,
       });
       expect(otherReload).not.toHaveBeenCalled();
+    });
+
+    it('says a change of target applies this week on the day of creation', async () => {
+      const { currentSettings } = await setUp();
+      const created = await createHabit(dependencies, 'Lire', 'medium', 3);
+      if (!created.ok) {
+        throw new Error('Lire not created');
+      }
+
+      await expect(currentSettings(created.habit.id)).resolves.toMatchObject({
+        ok: true,
+        nextWeeklyTarget: 3,
+        targetChangeAppliesThisWeek: true,
+      });
     });
 
     it('turns a storage failure into « readFailed »', async () => {

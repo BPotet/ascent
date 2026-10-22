@@ -15,6 +15,7 @@ import {
   type UpdateHabitResult,
 } from '../../../application/useCases/updateHabit';
 import type { HabitId } from '../../../domain/habit/Habit';
+import type { WeeklyTarget } from '../../../domain/habit/WeeklyTarget';
 import type { WeekSettings } from '../../../domain/habit/WeekSettings';
 import { useUseCaseDependencies } from './Dependencies';
 import { useExperience } from './Experience';
@@ -27,9 +28,24 @@ export type UpdateHabitOutcome =
   | Extract<UpdateHabitResult, { ok: true }>
   | { readonly ok: false; readonly reason: UpdateHabitFailure };
 
-/** Les réglages de la semaine en cours d'une habitude, ou pourquoi ils n'ont pas pu être lus. */
+/**
+ * Ce que « Modifier l'habitude » montre d'une habitude, tel que le lit la Vue Journée (`DayViewHabit`).
+ */
+export interface EditableSettings {
+  /**
+   * Les réglages de la semaine en cours : la difficulté préremplie, et l'objectif de la semaine
+   * (`weekTarget`) que garde la semaine en cours après un changement d'objectif.
+   */
+  readonly weekSettings: WeekSettings;
+  /** L'objectif hebdomadaire des semaines suivantes, prérempli ; `null` sans objectif encore. */
+  readonly nextWeeklyTarget: WeeklyTarget | null;
+  /** Vrai si un changement d'objectif fait aujourd'hui vaut dès cette semaine (jour de création). */
+  readonly targetChangeAppliesThisWeek: boolean;
+}
+
+/** Les réglages d'une habitude à modifier, ou pourquoi ils n'ont pas pu être lus. */
 export type CurrentSettingsOutcome =
-  | { readonly ok: true; readonly weekSettings: WeekSettings }
+  | ({ readonly ok: true } & EditableSettings)
   | { readonly ok: false; readonly reason: 'unknownHabit' | 'readFailed' };
 
 /** Le texte de la fenêtre de confirmation, ou pourquoi il n'a pas pu être lu. */
@@ -52,14 +68,15 @@ export interface EditHabit {
 const ignore = () => undefined;
 
 /**
- * Modifie (nom et difficulté, en un seul enregistrement) ou supprime une habitude (#6, #23) ; une
+ * Modifie (nom, difficulté et objectif hebdomadaire, en un seul enregistrement) ou supprime une
+ * habitude (#6, #23, #24) ; une
  * panne de stockage devient le motif `saveFailed` (ou `readFailed` pour une lecture), pour
  * l'afficher. Une habitude modifiée, supprimée ou disparue entre-temps (`unknownHabit`) fait
  * recharger les autres vues (`TrackingRevision`) ; la vue qui l'a demandé se recharge elle-même.
  * Après une modification ou une suppression, l'en-tête montre l'expérience enregistrée et, s'il y
  * en a, sa variation (`Experience`).
  *
- * `currentSettings` lit les réglages de la semaine en cours d'une habitude, pour préremplir
+ * `currentSettings` lit les réglages d'une habitude à modifier (`EditableSettings`), pour préremplir
  * « Modifier l'habitude » ouvert depuis une autre semaine que celle en cours.
  */
 export function useEditHabit(): EditHabit {
@@ -101,7 +118,8 @@ export function useEditHabit(): EditHabit {
         trackingChanged();
         return { ok: false, reason: 'unknownHabit' };
       }
-      return { ok: true, weekSettings: row.weekSettings };
+      const { weekSettings, nextWeeklyTarget, targetChangeAppliesThisWeek } = row;
+      return { ok: true, weekSettings, nextWeeklyTarget, targetChangeAppliesThisWeek };
     },
     [dependencies, trackingChanged],
   );

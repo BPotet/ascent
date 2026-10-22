@@ -379,7 +379,7 @@ export function DayViewScreen({
       {editing !== null && (
         <HabitEditing
           habit={editing.habit}
-          weekSettings={editing.weekSettings}
+          settings={editing}
           habits={view.habits.map(({ habit }) => habit)}
           onUpdated={updated}
           onDeleted={deleted}

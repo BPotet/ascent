@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 
 import type { UpdateHabitInput } from '../../../application/useCases/updateHabit';
-import type { Difficulty } from '../../../domain/habit/Difficulty';
 import type { Habit } from '../../../domain/habit/Habit';
+import { DEFAULT_WEEKLY_TARGET } from '../../../domain/habit/WeeklyTarget';
 import { Button } from '../components/Button';
 import { DifficultyPicker } from '../components/DifficultyPicker';
 import { InfoGlyph, TrashGlyph } from '../components/Glyph';
+import { WeeklyTargetPicker } from '../components/WeeklyTargetPicker';
 import { difficultyChangeMessage } from '../format/formatDifficulty';
-import type { UpdateHabitOutcome } from '../state/useEditHabit';
+import { weeklyTargetChangeMessage } from '../format/formatWeeklyTarget';
+import type { EditableSettings, UpdateHabitOutcome } from '../state/useEditHabit';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
@@ -22,11 +24,10 @@ export const DELETE_HABIT_LABEL = 'Supprimer l’habitude';
 export type UpdatedHabit = Extract<UpdateHabitOutcome, { ok: true }>;
 
 /**
- * Le message d'information d'un changement de difficulté (E7) : toute la semaine en cours est
- * réévaluée, jamais les semaines passées. Lu par le lecteur d'écran dès qu'il apparaît ou change.
+ * Un message d'information du panneau (E7), sous le bloc qui a changé : lu par le lecteur d'écran dès
+ * qu'il apparaît ou change.
  */
-function DifficultyChangeInfo({ difficulty }: { readonly difficulty: Difficulty }) {
-  const message = difficultyChangeMessage(difficulty);
+function ChangeInfo({ message, testID }: { readonly message: string; readonly testID: string }) {
   useEffect(() => {
     AccessibilityInfo.announceForAccessibility(message);
   }, [message]);
@@ -35,7 +36,7 @@ function DifficultyChangeInfo({ difficulty }: { readonly difficulty: Difficulty 
       accessible
       accessibilityLabel={message}
       accessibilityLiveRegion="polite"
-      testID="difficulty-change-info"
+      testID={testID}
       style={styles.info}
     >
       <InfoGlyph color={colors.accent} />
@@ -45,24 +46,28 @@ function DifficultyChangeInfo({ difficulty }: { readonly difficulty: Difficulty 
 }
 
 /**
- * Panneau du bas « Modifier l'habitude » (#6, #23, maquette E7) : le nom de l'habitude, mêmes règles
- * et mêmes messages qu'à la création (`HabitNameSheet`), et le bloc « Difficulté », prérempli avec
- * `difficulty`, la difficulté de la semaine en cours. Il s'ouvre **sans clavier**, pour que
- * « Supprimer l'habitude » reste visible ; « Enregistrer » reste désactivé tant que rien n'a changé.
- * Changer seulement les majuscules est permis : l'habitude n'est pas un doublon d'elle-même.
+ * Panneau du bas « Modifier l'habitude » (#6, #23, #24, maquette E7) : le nom de l'habitude, mêmes
+ * règles et mêmes messages qu'à la création (`HabitNameSheet`), le bloc « Difficulté », prérempli
+ * avec la difficulté de la semaine en cours, et le bloc « Objectif », prérempli avec l'objectif
+ * hebdomadaire des semaines suivantes (`nextWeeklyTarget`, 7 sans objectif encore). Il s'ouvre
+ * **sans clavier**, pour que « Supprimer l'habitude » reste visible ; « Enregistrer » reste
+ * désactivé tant que rien n'a changé. Changer seulement les majuscules est permis : l'habitude n'est
+ * pas un doublon d'elle-même.
  *
  * Quand la difficulté choisie diffère, un message dit qu'elle s'applique à toute la semaine en
- * cours, au barème choisi, et pas aux semaines passées (R12).
+ * cours, au barème choisi, et pas aux semaines passées (R12). Quand l'objectif choisi diffère, un
+ * message dit qu'il vaut à partir de lundi prochain et que la semaine en cours garde son objectif de
+ * la semaine, ou, le jour de création seulement, qu'il vaut dès cette semaine (R13).
  *
- * - `onSave` enregistre le nom et, si elle a changé, la difficulté, en une fois ; l'habitude
- *   modifiée est passée à `onSaved`. Si l'habitude n'existe plus, `onGone` est appelé. Après un
- *   refus ou un échec, le nom et la difficulté choisis sont conservés.
+ * - `onSave` enregistre le nom et, s'ils ont changé, la difficulté et l'objectif, en une fois ;
+ *   l'habitude modifiée est passée à `onSaved`. Si l'habitude n'existe plus, `onGone` est appelé.
+ *   Après un refus ou un échec, le nom et les réglages choisis sont conservés.
  * - « Supprimer l'habitude » appelle `onDelete` (la confirmation suit) ; `deleteAlert` explique
  *   un échec de sa préparation.
  */
 export function EditHabitSheet({
   habit,
-  difficulty: initialDifficulty,
+  settings,
   habits,
   deleteAlert = null,
   onSave,
@@ -72,8 +77,8 @@ export function EditHabitSheet({
   onClose,
 }: {
   readonly habit: Habit;
-  /** La difficulté de l'habitude pendant la semaine en cours. */
-  readonly difficulty: Difficulty;
+  /** Les réglages de l'habitude, tels que les lit la Vue Journée. */
+  readonly settings: EditableSettings;
   /** Toutes les habitudes, pour nommer celle qui porte déjà le nom saisi. */
   readonly habits: readonly Habit[];
   readonly deleteAlert?: string | null;
@@ -83,11 +88,19 @@ export function EditHabitSheet({
   readonly onDelete: () => void;
   readonly onClose: () => void;
 }) {
+  const initialDifficulty = settings.weekSettings.difficulty;
+  const initialTarget = settings.nextWeeklyTarget ?? DEFAULT_WEEKLY_TARGET;
   const [difficulty, setDifficulty] = useState(initialDifficulty);
+  const [weeklyTarget, setWeeklyTarget] = useState(initialTarget);
   const difficultyChanged = difficulty !== initialDifficulty;
+  const targetChanged = weeklyTarget !== initialTarget;
 
   const submit = async (rawName: string) => {
-    const outcome = await onSave({ name: rawName, ...(difficultyChanged && { difficulty }) });
+    const outcome = await onSave({
+      name: rawName,
+      ...(difficultyChanged && { difficulty }),
+      ...(targetChanged && { weeklyTarget }),
+    });
     if (outcome.ok) {
       onSaved(outcome);
       return null;
@@ -111,10 +124,25 @@ export function EditHabitSheet({
       settings={
         <>
           <DifficultyPicker value={difficulty} onChange={setDifficulty} />
-          {difficultyChanged && <DifficultyChangeInfo difficulty={difficulty} />}
+          {difficultyChanged && (
+            <ChangeInfo
+              message={difficultyChangeMessage(difficulty)}
+              testID="difficulty-change-info"
+            />
+          )}
+          <WeeklyTargetPicker value={weeklyTarget} onChange={setWeeklyTarget} />
+          {targetChanged && (
+            <ChangeInfo
+              message={weeklyTargetChangeMessage({
+                appliesThisWeek: settings.targetChangeAppliesThisWeek,
+                weekTarget: settings.weekSettings.weekTarget,
+              })}
+              testID="weekly-target-change-info"
+            />
+          )}
         </>
       }
-      settingsChanged={difficultyChanged}
+      settingsChanged={difficultyChanged || targetChanged}
       autoFocus={false}
       alert={deleteAlert}
       footer={
