@@ -194,13 +194,24 @@ Labels de type : `type:epic`, `type:story`, `type:bug`, `type:chore`.
 Le propriétaire décrit la feature dans le chat. L'orchestrateur crée une issue `type:epic` à partir du template [epic](../.github/ISSUE_TEMPLATE/epic.md) : objectif, valeur pour le joueur, périmètre, hors périmètre. Tout nouveau terme est ajouté au glossaire.
 
 ### 2. Specify — `/split-stories`
-- **PM** : découpe l'épique en stories (sous-issues), chacune livrable et testable seule.
+- **PM** : découpe l'épique en stories (sous-issues), selon les règles de « Découpage en stories » ci-dessous.
 - **Game Designer** : règles de jeu, barèmes, équilibrage.
 - **UX** : parcours et **maquettes** des écrans (voir « Maquettes » ci-dessous).
 - Les critères d'acceptation sont écrits en **Gherkin** et deviendront des tests exécutables.
 - Le statut passe à `status:awaiting-approval`. L'orchestrateur résume les stories au propriétaire et lui donne le lien vers les maquettes.
 
 **✋ Le propriétaire valide les stories et les maquettes.** Sans validation, rien ne part en développement.
+
+#### Découpage en stories
+
+Chaque story repasse par toutes les étapes et toutes les barrières de qualité. Des stories qui s'attendent les unes les autres font donc attendre l'épique entière. Le découpage suit quatre règles :
+
+1. **Une story est visible et autonome.** Elle livre quelque chose de visible pour le joueur, et elle ne dépend du code d'aucune autre story pas encore mergée.
+2. **Pas de chaîne entre stories.** Si une story B a besoin du code d'une story A, A et B ne forment qu'une seule story.
+3. **Seules les stories indépendantes se préparent à l'avance.** Les notes techniques (Ready) et l'analyse d'impact (Impact) ne sont préparées à l'avance que pour des stories indépendantes entre elles.
+4. **Une épique compte en général 2 à 3 stories.** Au-delà, elle est probablement trop grosse : elle se coupe en deux épiques.
+
+Exemple : l'épique #22 a été découpée en 5 stories chaînées (#23 seule ; #24 avant #25 et #26 ; #26 avant #27). Avec ces règles, elle en aurait compté 3 : la **difficulté** (#23) ; l'**objectif hebdomadaire** et l'habitude dont l'**objectif de la semaine** est atteint qui ne compte plus comme manquée (#24 + #25) ; la prime d'expérience de l'**objectif atteint** et son affichage dans la **Vue Mois** (#26 + #27). Ces règles valent pour les épiques découpées à partir de maintenant : les stories déjà validées de #22 restent telles quelles.
 
 #### Maquettes
 
