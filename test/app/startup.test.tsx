@@ -17,9 +17,11 @@ import type * as ExpoFont from 'expo-font';
 import path from 'node:path';
 
 import { FixedClock } from '../../src/adapters/device/clock/FixedClock';
+import { migrations } from '../../src/adapters/persistence/sqlite/migrations';
+import { runMigrations } from '../../src/adapters/persistence/sqlite/migrations/runMigrations';
 import { openAscentDatabase } from '../../src/adapters/persistence/sqlite/openAscentDatabase';
 import { prepareAscentDatabase } from '../../src/adapters/persistence/sqlite/prepareAscentDatabase';
-import type { SqlDatabase } from '../../src/adapters/persistence/sqlite/SqlDatabase';
+import type { SqlDatabase, SqlValue } from '../../src/adapters/persistence/sqlite/SqlDatabase';
 import { SqliteUnitOfWork } from '../../src/adapters/persistence/sqlite/SqliteUnitOfWork';
 import { openNodeSqliteDatabase } from '../../src/adapters/persistence/testing/nodeSqliteDatabase';
 import { fonts } from '../../src/adapters/ui/theme/typography';
@@ -61,6 +63,53 @@ function deferred() {
   });
   return { promise, resolve };
 }
+
+/**
+ * Une base de la version précédente (schéma 5, avec la difficulté, sans objectif) : « Cuisiner »,
+ * créée le lundi 5 octobre, « fait » le lundi 12 et le mardi 13 octobre.
+ */
+async function openPreviousVersionDatabase(): Promise<SqlDatabase> {
+  const db = openNodeSqliteDatabase();
+  await db.exec('PRAGMA foreign_keys = ON');
+  await runMigrations(db, migrations.slice(0, 5));
+  await db.run(
+    "INSERT INTO habits (name, name_key, created_on) VALUES ('Cuisiner', 'cuisiner', ?)",
+    ['2026-10-05'],
+  );
+  await db.run(
+    "INSERT INTO settings_changes (habit_id, changed_on, difficulty) VALUES (1, ?, 'medium')",
+    ['2026-10-05'],
+  );
+  for (const day of ['2026-10-12', '2026-10-13']) {
+    await db.run('INSERT INTO check_ins (habit_id, day, done, corrected) VALUES (1, ?, 1, 0)', [
+      day,
+    ]);
+  }
+  return db;
+}
+
+/** `db`, dont les écritures de changements de réglages échouent tant que `broken.now` est vrai. */
+function withBrokenSettingsChanges(db: SqlDatabase, broken: { now: boolean }): SqlDatabase {
+  const guarded =
+    <Result,>(query: (sql: string, params?: readonly SqlValue[]) => Promise<Result>) =>
+    (sql: string, params?: readonly SqlValue[]): Promise<Result> =>
+      broken.now && /^\s*INSERT\s+INTO\s+settings_changes\b/iu.test(sql)
+        ? Promise.reject(new Error('disk I/O error'))
+        : query(sql, params);
+  return {
+    exec: (sql) => db.exec(sql),
+    run: guarded((sql, params) => db.run(sql, params)),
+    getFirst: <Row,>(sql: string, params?: readonly SqlValue[]) =>
+      guarded((query, values) => db.getFirst<Row>(query, values))(sql, params),
+    getAll: <Row,>(sql: string, params?: readonly SqlValue[]) => db.getAll<Row>(sql, params),
+    transaction: (task) => db.transaction(task),
+    close: () => db.close(),
+  };
+}
+
+/** « Cuisiner » d'avant la mise à jour, après le changement d'introduction : 2 sur 7 ce mercredi. */
+const COOKING_INTRODUCED =
+  'Cuisiner, mercredi 14 octobre, à faire, 2 sur 7 cette semaine, Moyenne, 10 XP par suivi';
 
 /** La Vue Journée est affichée, ses habitudes lues (ici aucune : l'état vide). */
 async function emptyDayViewIsShown(): Promise<void> {
@@ -193,6 +242,50 @@ describe('app startup', () => {
     await renderRouter(appDirectory);
 
     await emptyDayViewIsShown();
+  });
+
+  it('introduces the weekly target to the habits of the previous version, then invites to set them', async () => {
+    const db = await prepareAscentDatabase(await openPreviousVersionDatabase());
+    openDatabase.mockResolvedValue(db);
+
+    await renderRouter(appDirectory);
+
+    expect(await screen.findByRole('switch', { name: COOKING_INTRODUCED })).toBeOnTheScreen();
+    expect(await screen.findByTestId('whats-new-card')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Régler' })).toBeOnTheScreen();
+    await expect(
+      db.getAll('SELECT changed_on, weekly_target FROM settings_changes ORDER BY sequence'),
+    ).resolves.toEqual([
+      { changed_on: '2026-10-05', weekly_target: null },
+      { changed_on: '2026-10-14', weekly_target: 7 },
+    ]);
+
+    await cleanup();
+    await renderRouter(appDirectory);
+
+    // Rejoué au démarrage suivant, il n'écrit plus rien.
+    expect(await screen.findByRole('switch', { name: COOKING_INTRODUCED })).toBeOnTheScreen();
+    await expect(db.getAll('SELECT * FROM settings_changes')).resolves.toHaveLength(2);
+  });
+
+  it('offers to retry when the weekly target cannot be introduced, then introduces it', async () => {
+    const broken = { now: true };
+    const db = withBrokenSettingsChanges(
+      await prepareAscentDatabase(await openPreviousVersionDatabase()),
+      broken,
+    );
+    openDatabase.mockResolvedValue(db);
+
+    await renderRouter(appDirectory);
+
+    expect(await screen.findByText('Réessayer')).toBeOnTheScreen();
+    expect(screen.queryByTestId('day-view')).not.toBeOnTheScreen();
+
+    broken.now = false;
+    await fireEvent.press(screen.getByText('Réessayer'));
+
+    expect(await screen.findByRole('switch', { name: COOKING_INTRODUCED })).toBeOnTheScreen();
+    expect(await screen.findByTestId('whats-new-card')).toBeOnTheScreen();
   });
 
   it('offers to retry, as many times as needed, when the local database cannot be opened', async () => {
