@@ -3,7 +3,11 @@ import { Week } from '../week/Week';
 import type { Difficulty } from './Difficulty';
 import type { SettingsChange } from './SettingsChange';
 import { WEEKLY_TARGETS, type WeeklyTarget } from './WeeklyTarget';
-import { weeklyTargetChangeAppliesThisWeek, weekSettingsOf } from './WeekSettings';
+import {
+  creationWeekTargetOf,
+  weeklyTargetChangeAppliesThisWeek,
+  weekSettingsOf,
+} from './WeekSettings';
 
 let nextSequence = 1;
 const change = (
@@ -357,6 +361,35 @@ describe('weekSettingsOf, weekly target', () => {
       weeklyTarget: 3,
       weekTarget: 3,
     });
+  });
+});
+
+describe('creationWeekTargetOf', () => {
+  it.each([
+    ['Monday', monday12, 7, 7],
+    ['Wednesday', wednesday14, 7, 5],
+    ['Thursday', thursday15, 7, 4],
+    ['Sunday', sunday18, 7, 1],
+    ['Thursday', thursday15, 3, 3],
+    ['Thursday', thursday15, 4, 4],
+    ['Sunday', sunday18, 1, 1],
+  ] as const)(
+    'created on %s with %p: %p, the days left in the week, today included (R6)',
+    (_, today, weeklyTarget, weekTarget) => {
+      expect(creationWeekTargetOf(weeklyTarget, today)).toBe(weekTarget);
+    },
+  );
+
+  it('is the target of the week that the habit gets once created', () => {
+    for (const today of week.days()) {
+      for (const weeklyTarget of WEEKLY_TARGETS) {
+        const changes = [target(today, weeklyTarget)];
+
+        expect(creationWeekTargetOf(weeklyTarget, today)).toBe(
+          weekSettingsOf(changes, week, today).weekTarget,
+        );
+      }
+    }
   });
 });
 

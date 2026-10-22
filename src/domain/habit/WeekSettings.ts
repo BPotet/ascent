@@ -1,5 +1,5 @@
 import type { Day } from '../day/Day';
-import type { Week } from '../week/Week';
+import { Week } from '../week/Week';
 import { DEFAULT_DIFFICULTY, type Difficulty } from './Difficulty';
 import { compareSettingsChanges, type SettingsChange } from './SettingsChange';
 import type { WeeklyTarget } from './WeeklyTarget';
@@ -131,6 +131,17 @@ export function weekSettingsOf(
     weeklyTarget,
     weekTarget: weekTargetOf(weeklyTarget, week, createdOn),
   };
+}
+
+/**
+ * L'objectif de la semaine de création d'une habitude créée `today` avec `weeklyTarget` (R6) :
+ * `weeklyTarget`, réduit au nombre de jours restants dans la semaine, aujourd'hui compris (de 7 le
+ * lundi à 1 le dimanche). C'est l'objectif de la semaine que `weekSettingsOf` donnera à l'habitude
+ * une fois créée ; « Nouvelle habitude » l'annonce avant de créer quand il est réduit (« · cette
+ * semaine : N, à partir d'aujourd'hui »).
+ */
+export function creationWeekTargetOf(weeklyTarget: WeeklyTarget, today: Day): number {
+  return Math.min(weeklyTarget, activeDaysOf(Week.containing(today), today));
 }
 
 /**
