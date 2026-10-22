@@ -12,13 +12,13 @@
  * scénario `@ui`.
  *
  * Correspondance des libellés :
- * - la ligne secondaire d'une ligne de la Vue Journée est l'état et la progression : « À faire ·
- *   2/3 cette semaine ». Objectif atteint, elle donne le nombre de fois (« Fait · 4 fois cette
- *   semaine ») et la ligne porte le badge « Objectif atteint » (maquette E1) : « sa ligne affiche
- *   « Objectif atteint · 4 fois cette semaine » » se lit sur le badge et la ligne secondaire ;
- * - le lecteur d'écran lit le jour de la ligne après le nom (convention des lignes depuis #19) :
+ * - la ligne secondaire d'une ligne de la Vue Journée finit par l'état et la progression : « À faire
+ *   · 2/3 cette semaine », « Fait · 3/3 cette semaine », puis « Fait · 4 fois cette semaine »
+ *   au-delà de l'objectif (maquette E1) ; le badge « Objectif atteint » est vérifié à part ;
+ * - le lecteur d'écran lit la ligne telle que le scénario l'annonce, puis la difficulté :
  *   « Courir 5 km, jeudi 15 octobre, à faire, 2 sur 3 cette semaine, Moyenne, 10 XP par suivi » ;
- *   l'annonce du scénario se lit sans ce jour ;
+ * - un message s'affiche dans « Modifier l'habitude » (sous le bloc « Objectif ») ou, après une
+ *   création, en bas de l'écran (« Habitude créée · objectif 5 cette semaine ») ;
  * - l'objectif sous le nom d'une carte de la Vue Semaine est écrit en minuscules après la
  *   difficulté (« Moyenne · tous les jours ») ;
  * - les textes de l'interface emploient l'apostrophe typographique, le fichier `.feature`
@@ -36,7 +36,6 @@ import { settableClock } from '../../src/application/testing/settableClock';
 import { createHabit } from '../../src/application/useCases/createHabit';
 import { introduceWeeklyTarget } from '../../src/application/useCases/introduceWeeklyTarget';
 import { toggleCheckIn } from '../../src/application/useCases/toggleCheckIn';
-import { formatDayAndMonth } from '../../src/adapters/ui/format/formatDay';
 import { DayViewScreen } from '../../src/adapters/ui/screens/DayViewScreen';
 import { WeekViewScreen } from '../../src/adapters/ui/screens/WeekViewScreen';
 import { memoryKeyValueStore } from '../../src/adapters/ui/testing/memoryKeyValueStore';
@@ -235,24 +234,18 @@ async function setTarget(name: string, target: number): Promise<void> {
   world.current = name;
 }
 
-/** La ligne secondaire de `name` dans la Vue Journée, et son badge. */
+/** Un texte de scénario, à retrouver tel quel dans un texte de l'interface. */
+const literally = (text: string) => typographic(text).replace(/[.*+?^${}()|[\]\\/]/gu, '\\$&');
+
+/** La ligne secondaire de `name` dans la Vue Journée : elle finit par `text`, après la difficulté. */
 async function expectLine(name: string, text: string): Promise<void> {
   await dayViewShown();
   const { id } = await habitNamed(name);
-  const reached = /^Objectif atteint · (.+)$/u.exec(text);
-  await waitFor(() => {
-    const line = screen.getByTestId(`habit-progress-${id}`);
-    const badge = screen.queryByTestId(`habit-target-reached-${id}`, {
-      includeHiddenElements: true,
-    });
-    if (reached) {
-      expect(line).toHaveTextContent(new RegExp(` · ${reached[1]}$`, 'u'));
-      expect(badge).toHaveTextContent('Objectif atteint');
-    } else {
-      expect(line).toHaveTextContent(text);
-      expect(badge).not.toBeOnTheScreen();
-    }
-  });
+  await waitFor(() =>
+    expect(screen.getByTestId(`habit-progress-${id}`)).toHaveTextContent(
+      new RegExp(`(^|· )${literally(text)}$`, 'u'),
+    ),
+  );
 }
 
 /** La puce de `name` dans la Vue Semaine affichée, et sa couleur. */
@@ -313,8 +306,18 @@ const steps: StepDefinitions = ({ given, when, then }) => {
     await fireEvent.press(targetOption(Number(target)));
   });
   then(/^le bloc « Objectif » affiche « ([^»]+) »$/, (phrase: string) => {
-    expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent(phrase);
+    expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent(typographic(phrase), {
+      exact: true,
+    });
   });
+  then(
+    /^le bloc « Objectif » affiche « ([^»]+) » sans mention « cette semaine »$/,
+    (phrase: string) => {
+      const shown = screen.getByTestId('weekly-target-phrase');
+      expect(shown).toHaveTextContent(phrase, { exact: true });
+      expect(shown).not.toHaveTextContent(/cette semaine/u);
+    },
+  );
   when(/^il crée l'habitude « ([^»]+) »$/, async (name: string) => {
     await fireEvent.changeText(screen.getByLabelText('Nom de l’habitude'), name);
     await fireEvent.press(screen.getByRole('button', { name: 'Créer l’habitude' }));
@@ -360,7 +363,6 @@ const steps: StepDefinitions = ({ given, when, then }) => {
   given(
     /^l'habitude « ([^»]+) », objectif (\d), est « à faire » avec (\d) « fait » cette semaine$/,
     async (name: string, target: string, done: string) => {
-      world.clock.setToday(dayOf('jeudi 15 octobre'));
       const week = Week.containing(world.clock.today());
       const doneDays = [0, 1, 2]
         .slice(0, Number(done))
@@ -380,7 +382,7 @@ const steps: StepDefinitions = ({ given, when, then }) => {
     /^(?:sa|la) ligne(?: de « ([^»]+) »)?(?: dans la Vue Journée)? affiche(?: toujours)? « ([^»]+) »$/,
     (name: string | undefined, text: string) => expectLine(name ?? (world.current as string), text),
   );
-  then(/^« ([^»]+) » porte le badge « Objectif atteint »$/, async (name: string) => {
+  then(/^« ([^»]+) » porte (?:toujours )?le badge « Objectif atteint »$/, async (name: string) => {
     const { id } = await habitNamed(name);
     expect(
       await screen.findByTestId(`habit-target-reached-${id}`, { includeHiddenElements: true }),
@@ -449,9 +451,21 @@ const steps: StepDefinitions = ({ given, when, then }) => {
       world.current = name;
     },
   );
-  then(/^le message « ([^»]+) » s'affiche$/, (message: string) => {
-    expect(changeInfo()).toHaveAccessibleName(typographic(message));
-    expect(screen.getByText(typographic(message))).toBeOnTheScreen();
+  then(/^le message « ([^»]+) » s'affiche$/, async (message: string) => {
+    const info = changeInfo();
+    if (info !== null) {
+      expect(info).toHaveAccessibleName(typographic(message));
+      expect(screen.getByText(typographic(message))).toBeOnTheScreen();
+      return;
+    }
+    expect(await screen.findByTestId('toast')).toHaveTextContent(typographic(message), {
+      exact: true,
+    });
+  });
+  then(/^le message « Habitude créée » s'affiche, sans objectif de la semaine$/, async () => {
+    expect(await screen.findByTestId('toast')).toHaveTextContent('Habitude créée', {
+      exact: true,
+    });
   });
   then(/^aucun message « à partir de lundi prochain » ne s'(?:affiche|est affiché)$/, () => {
     expect(world.messages.filter((message) => /lundi prochain/u.test(message))).toEqual([]);
@@ -577,13 +591,9 @@ const steps: StepDefinitions = ({ given, when, then }) => {
   when(/^le lecteur d'écran lit sa ligne dans la Vue Journée$/, showDayView);
   then(/^il annonce « ([^»]+) »$/, (announced: string) => {
     const name = world.current as string;
-    const read = typographic(announced).replace(
-      `${name}, `,
-      `${name}, ${formatDayAndMonth(world.clock.today())}, `,
-    );
     const row = screen.getByRole('switch', { name: new RegExp(`^${name}, `, 'u') });
     expect(String(row.props.accessibilityLabel)).toMatch(
-      new RegExp(`^${read.replaceAll('.', '\\.')}(, |$)`, 'u'),
+      new RegExp(`^${literally(announced)}(, |$)`, 'u'),
     );
   });
   then(
@@ -613,6 +623,8 @@ beforeEach(() => {
 const ON_SCREEN = new Set([
   "Créer une habitude avec l'objectif par défaut",
   'Créer une habitude « 3 fois par semaine »',
+  'La semaine de création réduite est annoncée avant de créer',
+  "Pas d'annonce quand l'objectif n'est pas réduit",
   "Atteindre l'objectif de la semaine",
   "Dépasser l'objectif de la semaine",
   "Repasser sous l'objectif retire le badge, sans marque d'échec",
