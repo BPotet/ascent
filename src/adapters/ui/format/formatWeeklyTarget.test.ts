@@ -60,9 +60,35 @@ describe('weeklyProgressText', () => {
       '4 fois cette semaine',
     );
   });
+
+  it('names another week than the current one (Détail du jour, #27)', () => {
+    const progress = { weeklyProgress: 2, weekTarget: 3, targetReached: false };
+    expect(weeklyProgressText(progress, 'semaine du 12 octobre')).toBe('2/3 semaine du 12 octobre');
+    expect(
+      weeklyProgressText(
+        { weeklyProgress: 4, weekTarget: 3, targetReached: true },
+        'semaine du 12 octobre',
+      ),
+    ).toBe('4 fois semaine du 12 octobre');
+  });
 });
 
 describe('weeklyProgressAccessibilityLabel', () => {
+  it('names another week than the current one (Détail du jour, #27)', () => {
+    expect(
+      weeklyProgressAccessibilityLabel(
+        { weeklyProgress: 2, weekTarget: 3, targetReached: false },
+        'semaine du 12 octobre',
+      ),
+    ).toBe('2 sur 3 semaine du 12 octobre');
+    expect(
+      weeklyProgressAccessibilityLabel(
+        { weeklyProgress: 4, weekTarget: 3, targetReached: true },
+        'semaine du 12 octobre',
+      ),
+    ).toBe('4 fois semaine du 12 octobre');
+  });
+
   it('reads « 2 sur 3 cette semaine »', () => {
     expect(
       weeklyProgressAccessibilityLabel({ weeklyProgress: 2, weekTarget: 3, targetReached: false }),

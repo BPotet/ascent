@@ -38,25 +38,33 @@ export function weeklyTargetOptionLabel(target: WeeklyTarget): string {
 const beyondTarget = ({ weeklyProgress, weekTarget }: WeeklyProgressShown): boolean =>
   weeklyProgress > weekTarget;
 
+/** La semaine dont on donne la progression, par défaut la semaine en cours. */
+const CURRENT_WEEK = 'cette semaine';
+
 /**
  * La progression de la semaine sur la ligne de la Vue Journée (E1) : « 2/3 cette semaine », et
  * « 3/3 cette semaine » à l'objectif tout juste atteint ; au-delà, le nombre de fois, « 4 fois cette
- * semaine » (maquette E1, décision PM du 22 octobre 2026).
+ * semaine » (maquette E1, décision PM du 22 octobre 2026). Le Détail du jour nomme la semaine du
+ * jour (`week`, #27) : « 2/3 semaine du 12 octobre », « 4 fois semaine du 12 octobre ».
  */
-export function weeklyProgressText(progress: WeeklyProgressShown): string {
+export function weeklyProgressText(progress: WeeklyProgressShown, week = CURRENT_WEEK): string {
   return beyondTarget(progress)
-    ? `${progress.weeklyProgress} fois cette semaine`
-    : `${progress.weeklyProgress}/${progress.weekTarget} cette semaine`;
+    ? `${progress.weeklyProgress} fois ${week}`
+    : `${progress.weeklyProgress}/${progress.weekTarget} ${week}`;
 }
 
 /**
  * La progression de la semaine pour le lecteur d'écran : « 2 sur 3 cette semaine », « 3 sur 3 cette
- * semaine », puis « 4 fois cette semaine » au-delà de l'objectif.
+ * semaine », puis « 4 fois cette semaine » au-delà de l'objectif ; « 2 sur 3 semaine du 12 octobre »
+ * pour une autre semaine (`week`, Détail du jour, #27).
  */
-export function weeklyProgressAccessibilityLabel(progress: WeeklyProgressShown): string {
+export function weeklyProgressAccessibilityLabel(
+  progress: WeeklyProgressShown,
+  week = CURRENT_WEEK,
+): string {
   return beyondTarget(progress)
-    ? `${progress.weeklyProgress} fois cette semaine`
-    : `${progress.weeklyProgress} sur ${progress.weekTarget} cette semaine`;
+    ? `${progress.weeklyProgress} fois ${week}`
+    : `${progress.weeklyProgress} sur ${progress.weekTarget} ${week}`;
 }
 
 /**
