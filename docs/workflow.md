@@ -442,8 +442,9 @@ Un bug n'est pas une story : il ne crée pas de comportement nouveau, il rétabl
 
 1. L'issue `type:bug` (template « Bug ») décrit les étapes pour reproduire, l'attendu et l'observé.
 2. Le **Fixer** écrit d'abord un test de non-régression qui échoue, trouve la cause racine et applique la correction minimale, sur `bugfix/<n°>-<slug>` (depuis `develop`) ou `hotfix/<x.y.z>-<slug>` (depuis `main`).
-3. Les étapes **Test** (QA) et **Review** (Reviewer) sont les mêmes que pour une story : lancées en parallèle quand la PR est ouverte et ses barrières vertes en local, avec les mêmes barrières, la même règle des corrections et la même limite de 3 tours.
-4. Si la correction change une règle de jeu ou un écran validés, ce n'est plus un bug mais un changement de périmètre : PM et Architect, puis ✋. Si elle demande une migration ou touche un port partagé, l'Impact Analyst et l'Architect passent avant le Fixer.
+3. Le Fixer pousse, ouvre la PR et rend son rapport **sans attendre la CI GitHub**. L'orchestrateur surveille la CI et lui renvoie la PR en cas d'échec, comme pour le dev.
+4. Les étapes **Test** (QA) et **Review** (Reviewer) sont les mêmes que pour une story : lancées en parallèle quand la PR est ouverte et ses barrières vertes en local, avec les mêmes barrières, la même règle des corrections et la même limite de 3 tours.
+5. Si la correction change une règle de jeu ou un écran validés, ce n'est plus un bug mais un changement de périmètre : PM et Architect, puis ✋. Si elle demande une migration ou touche un port partagé, l'Impact Analyst et l'Architect passent avant le Fixer.
 - **Impact fort** : décision du PM et de l'Architect, tracée sur l'issue. Le propriétaire n'est sollicité que si ce qu'il a validé change.
 
 ## Agents et skills
