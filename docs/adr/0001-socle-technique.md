@@ -73,7 +73,7 @@ Les fichiers de `src/**/testing/` sont des aides de test : jamais importées par
 | 6 | Tests d'intégration | Jest (`jest-expo`) + React Native Testing Library 14, projet `integration` (`src/adapters`, `test/`) | `npm run test:integration` | `tests` |
 | 7 | Tests BDD | jest-cucumber, projet `bdd` (`features/*.feature` en `# language: fr`, étapes dans `features/step-definitions/`) | `npm run test:bdd` | `tests` |
 | 8 | End-to-end | Maestro (`e2e/flows`) sur émulateur Android | — | `e2e-android` |
-| 9 | Mutation | StrykerJS 10 + jest-runner | `npm run mutation:changed`, `npm run mutation`, `npm run mutation:domain` | `mutation` |
+| 9 | Mutation | StrykerJS 10 + jest-runner, `scripts/mutation/` (plan, shards, score) | `npm run mutation:changed`, `npm run mutation:score`, `npm run mutation`, `npm run mutation:domain` | `mutation-plan`, `mutation-shard`, `mutation` |
 | 10 | Coverage et qualité | Jest (seuils) + SonarQube Cloud (`sonar-project.properties`) | `npm run test:coverage` | `tests`, `sonar` |
 
 `npm run verify` enchaîne en local style, types, architecture et tous les tests avec les seuils de
@@ -90,9 +90,11 @@ Seuils, tels que `docs/workflow.md` les fixe :
 
 - Couverture : ≥ 80 % sur l'ensemble et ≥ 95 % sur `src/domain` (Jest, bloquant). La couverture et
   la duplication du **code nouveau** sont mesurées par SonarQube Cloud.
-- Mutation : en PR, seuls les fichiers de `src/` modifiés sont mutés (`scripts/mutation-changed.mjs`),
-  seuil 70 %, et 85 % pour les fichiers du domaine ; sur `release/*` et `hotfix/*`, tout le code
-  est muté : le domaine avec ses seuls tests unitaires (85 %), le reste avec tous les tests (70 %).
+- Mutation : en PR, on mute les lignes ajoutées ou modifiées de `src/` hors domaine (seuil 70 %) et
+  les fichiers modifiés du domaine en entier, avec ses seuls tests unitaires (seuil 85 %) ; sur
+  `release/*` et `hotfix/*`, tout le code est muté. La mutation est répartie en jobs parallèles
+  (`mutation-plan`, puis un `mutation-shard` par part) et les seuils sont calculés sur le total des
+  parts par le job `mutation` (`scripts/mutation/`, [ADR 0004](0004-mutation-en-ci.md)).
   Chaque fichier n'est muté qu'une fois. Un push sur `develop` ou `main` ne relance pas la mutation :
   le code y arrive déjà muté par sa PR ou par sa branche de release.
 - Les styles visuels (`StyleSheet.create`, options d'apparence de la navigation) sont exclus de la
@@ -102,7 +104,8 @@ Seuils, tels que `docs/workflow.md` les fixe :
 ### CI/CD
 
 - **`CI`** (PR vers `develop`, `main`, `release/*`, `hotfix/*`, et push sur ces branches) : jobs
-  `commits`, `secrets`, `static`, `tests`, `mutation`, `sonar`, `android-apk`, `e2e-android`.
+  `commits`, `secrets`, `static`, `tests`, `mutation-plan`, `mutation-shard`, `mutation`, `sonar`,
+  `android-apk`, `e2e-android`.
 - **`android-apk`** : `expo prebuild --platform android` puis `./gradlew assembleRelease` (JDK 17),
   APK publié en artefact `ascent-android-apk`. Sur `develop`, c'est le **build de preview**.
 - **`cleanup-artifacts`** (PR du dépôt et push sur `develop`) : supprime les anciens artefacts
@@ -142,4 +145,3 @@ Seuils, tels que `docs/workflow.md` les fixe :
 | Le job `e2e-android` est **non bloquant** (`continue-on-error`) | Émulateur en CI pas encore éprouvé (temps, stabilité) | Le rendre bloquant après une série de passages verts |
 | Pas d'end-to-end ni de build **iOS** | Demande un runner macOS et un compte Apple | À décider à la première release iOS |
 | Gitleaks est **facultatif en local** (le hook prévient s'il manque, la CI bloque toujours) | Binaire hors npm, non installable dans l'environnement des agents | Installer Gitleaks sur les postes et dans l'environnement des agents |
-| Mutation en PR **par fichier modifié**, pas par ligne | StrykerJS mute des fichiers entiers | Acceptable : plus strict que « code nouveau » |
