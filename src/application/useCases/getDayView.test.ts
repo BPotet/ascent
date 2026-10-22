@@ -159,7 +159,7 @@ describe('getDayView', () => {
     const setDifficulty = (name: string, changedOn: Day, difficulty: 'easy' | 'medium' | 'hard') =>
       unitOfWork.run(async ({ habits, settingsChanges }) => {
         const habit = (await habits.listAll()).find((each) => each.name.value === name);
-        await settingsChanges.add(habit?.id ?? 0, changedOn, { difficulty });
+        await settingsChanges.add(habit?.id ?? 0, changedOn, { difficulty, weeklyTarget: 7 });
       });
 
     it('gives each line the settings of the current week', async () => {
@@ -174,8 +174,8 @@ describe('getDayView', () => {
       expect(
         view.habits.map(({ habit, weekSettings }) => [habit.name.value, weekSettings]),
       ).toEqual([
-        ['Courir 5 km', { difficulty: 'hard' }],
-        ['Cuisiner', { difficulty: 'easy' }],
+        ['Courir 5 km', { difficulty: 'hard', weeklyTarget: 7, weekTarget: 7 }],
+        ['Cuisiner', { difficulty: 'easy', weeklyTarget: 7, weekTarget: 7 }],
       ]);
     });
 

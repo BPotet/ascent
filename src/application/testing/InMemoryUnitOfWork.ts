@@ -7,10 +7,11 @@ import { type CheckIn, isBlank } from '../../domain/checkIn/CheckIn';
 import type { Day } from '../../domain/day/Day';
 import { Habit, type HabitId } from '../../domain/habit/Habit';
 import type { HabitName } from '../../domain/habit/HabitName';
+import { DEFAULT_DIFFICULTY, type Difficulty } from '../../domain/habit/Difficulty';
 import {
   compareSettingsChanges,
+  type HabitSettings,
   type SettingsChange,
-  type SettingsChangeValues,
 } from '../../domain/habit/SettingsChange';
 import type { CharacterRepository } from '../ports/CharacterRepository';
 import type { CheckInRepository } from '../ports/CheckInRepository';
@@ -191,10 +192,18 @@ class InMemorySettingsChangeRepository implements SettingsChangeRepository {
     return [...this.state.settingsChanges].sort(byHabitThenHistory);
   }
 
-  async add(
+  add(habitId: HabitId, changedOn: Day, settings: HabitSettings): Promise<SettingsChange> {
+    return this.store(habitId, changedOn, settings);
+  }
+
+  /**
+   * Enregistre un changement, avec ou sans objectif hebdomadaire. Seule l'aide d'amorçage
+   * `addSettingsChangeBeforeWeeklyTarget` en enregistre un sans objectif.
+   */
+  async store(
     habitId: HabitId,
     changedOn: Day,
-    settings: SettingsChangeValues,
+    settings: Pick<SettingsChange, 'difficulty' | 'weeklyTarget'>,
   ): Promise<SettingsChange> {
     if (this.faults.writes) {
       throw new StorageUnavailableError('write settings changes');
@@ -208,6 +217,7 @@ class InMemorySettingsChangeRepository implements SettingsChangeRepository {
       changedOn,
       sequence: this.state.lastSequence,
       difficulty: settings.difficulty,
+      weeklyTarget: settings.weeklyTarget,
     };
     this.state.settingsChanges.push(change);
     return change;
@@ -234,6 +244,25 @@ export class InMemoryUnitOfWork implements UnitOfWork {
   /** Simule une panne d'écriture des données (ou la répare avec `false`). */
   failWrites(fail = true): void {
     this.faults.writes = fail;
+  }
+
+  /**
+   * Amorçage des tests : enregistre, dans sa propre unité de travail, un changement de réglages
+   * d'avant la mise à jour qui introduit l'objectif hebdomadaire (#24), donc sans objectif, pour
+   * simuler une habitude qui existait avant elle. C'est le seul moyen d'en créer un : le port
+   * (`SettingsChangeRepository.add`) exige un objectif.
+   */
+  addSettingsChangeBeforeWeeklyTarget(
+    habitId: HabitId,
+    changedOn: Day,
+    difficulty: Difficulty = DEFAULT_DIFFICULTY,
+  ): Promise<SettingsChange> {
+    return this.run(() =>
+      new InMemorySettingsChangeRepository(this.state, this.faults).store(habitId, changedOn, {
+        difficulty,
+        weeklyTarget: null,
+      }),
+    );
   }
 
   run<T>(work: (repositories: Repositories) => Promise<T>): Promise<T> {

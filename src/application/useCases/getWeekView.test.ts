@@ -215,7 +215,7 @@ describe('getWeekView', () => {
     const setDifficulty = (name: string, changedOn: Day, difficulty: 'easy' | 'medium' | 'hard') =>
       unitOfWork.run(async ({ habits, settingsChanges }) => {
         const habit = (await habits.listAll()).find((each) => each.name.value === name);
-        await settingsChanges.add(habit?.id ?? 0, changedOn, { difficulty });
+        await settingsChanges.add(habit?.id ?? 0, changedOn, { difficulty, weeklyTarget: 7 });
       });
     const settings = (view: WeekView) =>
       view.rows.map(({ habit, weekSettings }) => [habit.name.value, weekSettings.difficulty]);

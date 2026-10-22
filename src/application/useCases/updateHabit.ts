@@ -7,6 +7,7 @@ import {
   HabitNameTooLongError,
 } from '../../domain/habit/HabitName';
 import { DuplicateHabitNameError, assertNameAvailable } from '../../domain/habit/HabitRules';
+import { DEFAULT_WEEKLY_TARGET } from '../../domain/habit/WeeklyTarget';
 import { weekSettingsOf, type WeekSettings } from '../../domain/habit/WeekSettings';
 import { Week } from '../../domain/week/Week';
 import type { UseCaseDependencies } from './UseCaseDependencies';
@@ -118,7 +119,10 @@ export function updateHabit(
     let xpAfter = xpBefore;
     let after = before;
     if (settingsChanged) {
-      after = [...before, await settingsChanges.add(habitId, today, { difficulty })];
+      const weeklyTarget =
+        weekSettingsOf(before, currentWeek.next(), habit.createdOn).weeklyTarget ??
+        DEFAULT_WEEKLY_TARGET;
+      after = [...before, await settingsChanges.add(habitId, today, { difficulty, weeklyTarget })];
       xpAfter = xpBefore.applyXpChange(
         xpChangeOfSettings(await checkIns.listByHabit(habitId), before, after, habit.createdOn),
       );

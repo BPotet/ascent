@@ -238,8 +238,11 @@ describe('deleting a habit', () => {
       // « Courir 5 km », créée le lundi 5 octobre en Moyenne, passée en Difficile le lundi 12.
       running = await unitOfWork.run(async ({ habits, settingsChanges }) => {
         const habit = await habits.add(HabitName.parse('Courir 5 km'), Day.of(2026, 10, 5));
-        await settingsChanges.add(habit.id, Day.of(2026, 10, 5), { difficulty: 'medium' });
-        await settingsChanges.add(habit.id, monday, { difficulty: 'hard' });
+        await settingsChanges.add(habit.id, Day.of(2026, 10, 5), {
+          difficulty: 'medium',
+          weeklyTarget: 7,
+        });
+        await settingsChanges.add(habit.id, monday, { difficulty: 'hard', weeklyTarget: 7 });
         return habit;
       });
     });

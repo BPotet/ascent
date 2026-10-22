@@ -23,6 +23,7 @@ const change = (dayOfMonth: number, difficulty: Difficulty): SettingsChange => (
   changedOn: day(dayOfMonth),
   sequence: nextSequence++,
   difficulty,
+  weeklyTarget: 7,
 });
 
 // Semaines du 5 au 11 octobre (close) et du 12 au 18 octobre 2026 (en cours) ; aujourd'hui : le 14.
@@ -37,9 +38,9 @@ describe('weekXpOf', () => {
   ] as const)(
     'pays the scale of the difficulty of the week (%s) per case « fait » (R1)',
     (difficulty, xp) => {
-      expect(weekXpOf(0, { difficulty })).toBe(0);
-      expect(weekXpOf(1, { difficulty })).toBe(xp);
-      expect(weekXpOf(3, { difficulty })).toBe(3 * xp);
+      expect(weekXpOf(0, { difficulty, weeklyTarget: 7, weekTarget: 7 })).toBe(0);
+      expect(weekXpOf(1, { difficulty, weeklyTarget: 7, weekTarget: 7 })).toBe(xp);
+      expect(weekXpOf(3, { difficulty, weeklyTarget: 7, weekTarget: 7 })).toBe(3 * xp);
     },
   );
 });

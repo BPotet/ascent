@@ -157,7 +157,7 @@ describe('createHabit', () => {
   describe('difficulty', () => {
     const changes = () => unitOfWork.run(({ settingsChanges }) => settingsChanges.listAll());
 
-    it('records a first settings change in Moyenne, dated from today, by default (R2)', async () => {
+    it('records a first settings change in Moyenne and « Tous les jours », dated from today, by default (R2, R4)', async () => {
       const result = await createHabit(deps(), 'Lire 20 pages');
 
       expect(result.ok).toBe(true);
@@ -167,6 +167,7 @@ describe('createHabit', () => {
           changedOn: wednesday,
           sequence: expect.any(Number),
           difficulty: 'medium',
+          weeklyTarget: 7,
         },
       ]);
     });

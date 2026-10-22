@@ -44,7 +44,7 @@ describe('updateHabit', () => {
     expect(result).toEqual({
       ok: true,
       habit: expect.objectContaining({ id: cooking.id }),
-      weekSettings: { difficulty: 'medium' },
+      weekSettings: { difficulty: 'medium', weeklyTarget: null, weekTarget: null },
       nameChanged: true,
       settingsChanged: false,
       xpChange: 0,
@@ -162,7 +162,7 @@ describe('updateHabit', () => {
     async function given(difficulty: Difficulty, ...days: Day[]): Promise<void> {
       running = await unitOfWork.run(async ({ habits, settingsChanges }) => {
         const habit = await habits.add(HabitName.parse('Courir 5 km'), monday5);
-        await settingsChanges.add(habit.id, monday5, { difficulty });
+        await settingsChanges.add(habit.id, monday5, { difficulty, weeklyTarget: 7 });
         return habit;
       });
       for (const day of days) {
@@ -182,7 +182,7 @@ describe('updateHabit', () => {
       await expect(update(running, 'hard')).resolves.toEqual({
         ok: true,
         habit: running,
-        weekSettings: { difficulty: 'hard' },
+        weekSettings: { difficulty: 'hard', weeklyTarget: 7, weekTarget: 7 },
         nameChanged: false,
         settingsChanged: true,
         xpChange: 20,
@@ -203,6 +203,7 @@ describe('updateHabit', () => {
           changedOn: wednesday,
           sequence: expect.any(Number),
           difficulty: 'hard',
+          weeklyTarget: 7,
         },
       ]);
     });
@@ -241,7 +242,7 @@ describe('updateHabit', () => {
 
       await expect(update(running, 'hard')).resolves.toMatchObject({ xpChange: 10, xp: 20 });
       await expect(update(running, 'easy')).resolves.toMatchObject({
-        weekSettings: { difficulty: 'easy' },
+        weekSettings: { difficulty: 'easy', weeklyTarget: 7, weekTarget: 7 },
         xpChange: -15,
         xp: 5,
       });
@@ -256,7 +257,7 @@ describe('updateHabit', () => {
 
       expect(result).toMatchObject({
         ok: true,
-        weekSettings: { difficulty: 'easy' },
+        weekSettings: { difficulty: 'easy', weeklyTarget: 7, weekTarget: 7 },
         nameChanged: true,
         settingsChanged: true,
         xpChange: -5,
@@ -272,7 +273,7 @@ describe('updateHabit', () => {
       await expect(update(running, 'hard')).resolves.toEqual({
         ok: true,
         habit: running,
-        weekSettings: { difficulty: 'hard' },
+        weekSettings: { difficulty: 'hard', weeklyTarget: 7, weekTarget: 7 },
         nameChanged: false,
         settingsChanged: false,
         xpChange: 0,
@@ -295,7 +296,7 @@ describe('updateHabit', () => {
       await given('hard');
 
       await expect(rename(running.id, 'Courir')).resolves.toMatchObject({
-        weekSettings: { difficulty: 'hard' },
+        weekSettings: { difficulty: 'hard', weeklyTarget: 7, weekTarget: 7 },
         settingsChanged: false,
       });
       await expect(changes(running)).resolves.toHaveLength(1);

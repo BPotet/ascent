@@ -358,7 +358,7 @@ describe('toggleCheckIn', () => {
     const tap = (habit: Habit, day: Day) => toggleCheckIn(deps(), habit.id, day);
     const setDifficulty = (habit: Habit, changedOn: Day, difficulty: Difficulty) =>
       unitOfWork.run(({ settingsChanges }) =>
-        settingsChanges.add(habit.id, changedOn, { difficulty }),
+        settingsChanges.add(habit.id, changedOn, { difficulty, weeklyTarget: 7 }),
       );
 
     beforeEach(() => unitOfWork.run(({ character }) => character.save(new Character(30))));
@@ -468,8 +468,8 @@ describe('toggleCheckIn', () => {
         const next = random(seed);
         const habits = [cooking, budget];
         await unitOfWork.run(async ({ settingsChanges }) => {
-          await settingsChanges.add(cooking.id, monday, { difficulty: 'easy' });
-          await settingsChanges.add(budget.id, monday, { difficulty: 'hard' });
+          await settingsChanges.add(cooking.id, monday, { difficulty: 'easy', weeklyTarget: 7 });
+          await settingsChanges.add(budget.id, monday, { difficulty: 'hard', weeklyTarget: 7 });
         });
         clock.setToday(start.plusDays(2));
 
@@ -488,6 +488,7 @@ describe('toggleCheckIn', () => {
             await unitOfWork.run(({ settingsChanges }) =>
               settingsChanges.add(habit.id, clock.today(), {
                 difficulty: difficulties[next(3)] as Difficulty,
+                weeklyTarget: 7,
               }),
             );
             const { expected } = await experienceInvariant(unitOfWork);

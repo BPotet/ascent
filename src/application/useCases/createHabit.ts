@@ -4,6 +4,7 @@ import {
   parseDifficulty,
 } from '../../domain/habit/Difficulty';
 import type { Habit } from '../../domain/habit/Habit';
+import { DEFAULT_WEEKLY_TARGET } from '../../domain/habit/WeeklyTarget';
 import {
   EmptyHabitNameError,
   HabitName,
@@ -54,7 +55,10 @@ export function createHabit(
   difficulty: Difficulty = DEFAULT_DIFFICULTY,
 ): Promise<CreateHabitResult> {
   return unitOfWork.run(async ({ habits, settingsChanges }) => {
-    const settings = { difficulty: parseDifficulty(difficulty) };
+    const settings = {
+      difficulty: parseDifficulty(difficulty),
+      weeklyTarget: DEFAULT_WEEKLY_TARGET,
+    };
     const today = clock.today();
     const existing = await habits.listAll();
     let name: HabitName;

@@ -183,7 +183,7 @@ async function storeHabit(
 ): Promise<void> {
   await run(async ({ habits, settingsChanges, checkIns }) => {
     const habit = await habits.add(HabitName.parse(name), createdOn);
-    await settingsChanges.add(habit.id, createdOn, { difficulty });
+    await settingsChanges.add(habit.id, createdOn, { difficulty, weeklyTarget: 7 });
     for (const day of doneDays) {
       await checkIns.save({ habitId: habit.id, day, done: true, corrected: false });
     }
