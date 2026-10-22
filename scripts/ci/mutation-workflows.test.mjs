@@ -37,7 +37,8 @@ const runEnv = (job, flag) => job.steps.find((step) => step.run?.includes(`run.m
 
 describe('ci.yml', () => {
   it('does not run again for a label', () => {
-    assert.equal(ci.on.pull_request.types, undefined);
+    assert.ok(!ci.on.pull_request.types.includes('labeled'));
+    assert.ok(!ci.on.pull_request.types.includes('unlabeled'));
   });
 
   it('offers an explicit screen mutation input to a manual run, off by default', () => {

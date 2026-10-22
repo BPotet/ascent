@@ -4,6 +4,8 @@ name: CI
 on:
   pull_request:
     branches: [develop, main, 'release/**', 'hotfix/**']
+    # ready_for_review : la sortie de brouillon lance l'APK et l'end-to-end, sautés en brouillon.
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [develop, main, 'release/**', 'hotfix/**']
   # Le label `mutation:ui` posé sur une PR déjà ouverte est traité par mutation-ui.yml.
@@ -28,12 +30,14 @@ env:
 jobs:
   # Un changement qui ne touche que la documentation ou la configuration des agents saute les
   # barrières lourdes (scripts/ci/code-changes.mjs). Les jobs qui en dépendent sont sautés avec elles.
+  # Un changement qui ne touche pas l'app (sortie `app`) saute l'APK et l'end-to-end.
   changes:
     name: Code changes
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
       code: ${{ steps.diff.outputs.code }}
+      app: ${{ steps.diff.outputs.app }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -287,7 +291,11 @@ jobs:
 
   android-apk:
     name: Android APK
-    needs: [static, tests]
+    # Sauté sur une PR en brouillon et quand le changement ne touche pas l'app ; un check sauté
+    # compte comme réussi pour la protection de branche. Sur un push ou un lancement manuel, seule
+    # la sortie `app` compte.
+    needs: [changes, static, tests]
+    if: needs.changes.outputs.app == 'true' && github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -340,7 +348,9 @@ jobs:
 
   e2e-android:
     name: End-to-end tests (Maestro, Android)
-    needs: android-apk
+    # Mêmes conditions que l'APK, qu'il télécharge.
+    needs: [changes, android-apk]
+    if: needs.changes.outputs.app == 'true' && github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     # Écart temporaire (docs/adr/0001-socle-technique.md) : non bloquant tant que l'émulateur
     # n'a pas prouvé sa stabilité en CI.
