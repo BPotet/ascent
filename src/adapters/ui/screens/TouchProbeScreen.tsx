@@ -71,10 +71,10 @@ export function TouchProbeScreen({
       <View style={styles.content}>
         <View style={styles.header}>
           <View style={styles.titles}>
-            <Text accessibilityRole="header" style={[typography.screenTitle, styles.title]}>
+            <Text accessibilityRole="header" style={styles.title}>
               Sonde de toucher
             </Text>
-            <Text style={[typography.label, styles.muted]}>Outil du build de preview</Text>
+            <Text style={styles.subtitle}>Outil du build de preview</Text>
           </View>
           <Button label="Fermer" variant="ghost" onPress={onClose} />
         </View>
@@ -87,8 +87,8 @@ export function TouchProbeScreen({
             testID="touch-probe-target"
             style={styles.target}
           >
-            <Text style={[typography.stateTitle, styles.title]}>Touche ici</Text>
-            <Text style={[typography.counter, styles.counter]}>
+            <Text style={styles.targetLabel}>Touche ici</Text>
+            <Text style={styles.counter}>
               {report.count} / {TOUCH_PROBE_TARGET}
             </Text>
           </View>
@@ -96,11 +96,9 @@ export function TouchProbeScreen({
 
         <View style={styles.measures}>
           {lastGap === null ? null : (
-            <Text style={[typography.body, styles.muted]}>
-              Dernier écart : {formatMilliseconds(lastGap)}
-            </Text>
+            <Text style={styles.measure}>Dernier écart : {formatMilliseconds(lastGap)}</Text>
           )}
-          <Text style={[typography.body, styles.muted]}>
+          <Text style={styles.measure}>
             Décalage calibré :{' '}
             {calibration === undefined ? 'en cours' : formatMilliseconds(calibration.offset)}
           </Text>
@@ -116,7 +114,7 @@ export function TouchProbeScreen({
               style={styles.result}
             >
               {resultLines(result).map((line) => (
-                <Text key={line} style={[typography.habitName, styles.title]}>
+                <Text key={line} style={styles.resultLine}>
                   {line}
                 </Text>
               ))}
@@ -134,8 +132,8 @@ const styles = StyleSheet.create({
   content: { flex: 1, padding: spacing.xl, gap: spacing.lg },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   titles: { flex: 1, gap: spacing.xs },
-  title: { color: colors.text },
-  muted: { color: colors.muted },
+  title: { ...typography.screenTitle, color: colors.text },
+  subtitle: { ...typography.label, color: colors.muted },
   target: {
     minHeight: 220,
     borderRadius: radii.sheet,
@@ -146,8 +144,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
   },
-  counter: { color: colors.accent },
+  targetLabel: { ...typography.stateTitle, color: colors.text },
+  counter: { ...typography.counter, color: colors.accent },
   measures: { gap: spacing.xs },
+  measure: { ...typography.body, color: colors.muted },
+  resultLine: { ...typography.habitName, color: colors.text },
   result: {
     padding: spacing.lg,
     borderRadius: radii.row,

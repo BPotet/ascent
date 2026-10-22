@@ -204,6 +204,31 @@ describe('TouchProbeScreen', () => {
     );
   });
 
+  it('counts the touches in the label, in the plural from 2', async () => {
+    const { clock } = await renderProbe();
+
+    await touch(clock);
+    await touch(clock);
+
+    expect(screen.getByTestId('touch-probe-target')).toHaveAccessibleName(
+      'Zone d’essai, touche ici. 2 appuis sur 20.',
+    );
+  });
+
+  it('follows a new JS clock given while open', async () => {
+    const { clock } = await renderProbe();
+    const later = { ...clock, now: () => clock.time + 40 };
+
+    await screen.rerender(
+      <SafeAreaProvider initialMetrics={TEST_METRICS}>
+        <TouchProbeScreen onClose={jest.fn()} now={later.now} uiNow={clock.uiNow} />
+      </SafeAreaProvider>,
+    );
+    await touch(clock);
+
+    expect(screen.getByText('Dernier écart : 340 ms')).toBeOnTheScreen();
+  });
+
   it('offers touch targets of at least 48 points', async () => {
     const { clock } = await renderProbe();
     for (let index = 0; index < 20; index += 1) await touch(clock);
