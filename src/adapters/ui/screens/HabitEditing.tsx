@@ -35,6 +35,11 @@ export const deletedMessage = (xpRemoved: number) =>
 /** Une habitude supprimée, telle que `deleteHabit` le renvoie. */
 export type DeletedHabit = Extract<DeleteHabitOutcome, { ok: true }>;
 
+/** Les réglages de la semaine en cours : toujours connus de l'écran, ou à lire au besoin. */
+type WeekSettingsSource =
+  | { readonly weekSettings: WeekSettings; readonly onReadFailed?: undefined }
+  | { readonly weekSettings: WeekSettings | undefined; readonly onReadFailed: () => void };
+
 type Step =
   | { readonly kind: 'reading' }
   | { readonly kind: 'sheet'; readonly difficulty: Difficulty; readonly alert: string | null }
@@ -48,7 +53,8 @@ type Step =
  *
  * `weekSettings` : les réglages de la semaine en cours, quand l'écran les connaît (Vue Journée,
  * Vue Semaine de la semaine en cours). Sinon (une autre semaine est affichée), ils sont lus avant
- * d'ouvrir le panneau ; s'ils ne peuvent pas l'être, `onReadFailed` est appelé.
+ * d'ouvrir le panneau ; s'ils ne peuvent pas l'être, `onReadFailed` est appelé. Un écran qui les
+ * connaît toujours ne donne pas `onReadFailed`.
  *
  * L'écran reçoit le résultat : `onUpdated` (l'habitude modifiée, avec la variation de
  * l'expérience), `onDeleted` (l'expérience retirée et le total), ou `onGone` si l'habitude n'existe
@@ -63,14 +69,12 @@ export function HabitEditing({
   onGone,
   onReadFailed,
   onClose,
-}: {
+}: WeekSettingsSource & {
   readonly habit: Habit;
-  readonly weekSettings: WeekSettings | undefined;
   readonly habits: readonly Habit[];
   readonly onUpdated: (updated: UpdatedHabit) => void;
   readonly onDeleted: (deleted: DeletedHabit) => void;
   readonly onGone: () => void;
-  readonly onReadFailed: () => void;
   readonly onClose: () => void;
 }) {
   const { update, currentSettings, previewDeletion, remove } = useEditHabit();
@@ -100,7 +104,8 @@ export function HabitEditing({
       } else if (outcome.reason === 'unknownHabit') {
         notify.current.onGone();
       } else {
-        notify.current.onReadFailed();
+        // Lus seulement quand l'écran ne les connaît pas : il a alors donné `onReadFailed`.
+        notify.current.onReadFailed?.();
       }
     });
     return () => {

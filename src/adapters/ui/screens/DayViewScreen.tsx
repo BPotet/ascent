@@ -1,7 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import type { DayView } from '../../../application/useCases/getDayView';
+import type { DayView, DayViewHabit } from '../../../application/useCases/getDayView';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import type { Day } from '../../../domain/day/Day';
 import type { Habit, HabitId } from '../../../domain/habit/Habit';
@@ -33,7 +33,6 @@ import {
   type DeletedHabit,
   deletedMessage,
   HabitEditing,
-  SETTINGS_READ_FAILED,
   type UpdatedHabit,
   updatedMessage,
 } from './HabitEditing';
@@ -113,7 +112,7 @@ function HabitList({
   readonly showHint: boolean;
   readonly reminder: ReactNode;
   readonly onToggle: (habitDay: HabitDay) => void;
-  readonly onEdit: (habitDay: HabitDay) => void;
+  readonly onEdit: (row: DayViewHabit) => void;
 }) {
   const scroll = useRef<ScrollView>(null);
   const { doneCount } = view;
@@ -144,7 +143,7 @@ function HabitList({
             highlighted={habitDay.habit.id === highlighted?.id}
             xpChange={xpChangeOn(xpChange, habitDay)}
             onToggle={onToggle}
-            onEdit={onEdit}
+            onEdit={() => onEdit(habitDay)}
           />
         ))}
         <View style={styles.section}>
@@ -210,7 +209,7 @@ export function DayViewScreen({
     }
   }
   const [highlighted, setHighlighted] = useState<Highlight | null>(null);
-  const [editing, setEditing] = useState<Habit | null>(null);
+  const [editing, setEditing] = useState<DayViewHabit | null>(null);
   const [toast, setToast] = useState<ToastContent | null>(null);
   const toastCount = useRef(0);
 
@@ -278,10 +277,6 @@ export function DayViewScreen({
   const gone = () => {
     setEditing(null);
     void refresh();
-  };
-  const readFailed = () => {
-    setEditing(null);
-    showToast(SETTINGS_READ_FAILED);
   };
 
   if (state.status === 'loading') {
@@ -355,7 +350,7 @@ export function DayViewScreen({
               )
             }
             onToggle={(habitDay) => void tap(habitDay)}
-            onEdit={({ habit }) => setEditing(habit)}
+            onEdit={setEditing}
           />
           <AddHabitButton
             canAddHabit={view.canAddHabit}
@@ -383,13 +378,12 @@ export function DayViewScreen({
       )}
       {editing !== null && (
         <HabitEditing
-          habit={editing}
-          weekSettings={view.habits.find(({ habit }) => habit.id === editing.id)?.weekSettings}
+          habit={editing.habit}
+          weekSettings={editing.weekSettings}
           habits={view.habits.map(({ habit }) => habit)}
           onUpdated={updated}
           onDeleted={deleted}
           onGone={gone}
-          onReadFailed={readFailed}
           onClose={closeEditing}
         />
       )}
