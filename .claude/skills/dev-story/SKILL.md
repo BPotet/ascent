@@ -10,11 +10,9 @@ Prérequis : la story est en `status:ready`. Sinon, arrête-toi et lance `/backl
 1. **Ready** : lance l'agent **architect** pour ajouter les notes techniques à la story.
 2. **Impact** : passe en `status:impact-analysis` et lance l'agent **impact-analyst**.
    - Impact fort : lance **pm** et **architect** pour décider. Si le périmètre validé change, repasse la story en `status:awaiting-approval`, préviens le propriétaire et arrête-toi. Sinon, reprends à l'étape 1.
-3. **Implement** : passe en `status:in-progress` et lance les devs indiqués dans les notes techniques :
-   1. **dev-backend** : domaine, cas d'usage, ports, persistance. Il ouvre la PR en brouillon.
-   2. **dev-front** et **dev-mobile** : en parallèle une fois les ports stables, sinon l'un après l'autre. Le dernier sort la PR du brouillon.
-   Si un dev signale un besoin hors de son périmètre, confie-le au dev concerné.
-4. **Test** : lance l'agent **qa**. S'il y a des barrières rouges, renvoie au dev concerné (backend, front ou mobile) avec le rapport, puis relance **qa**.
+3. **Implement** : passe en `status:in-progress` et lance l'agent **dev**. Il implémente toute la story, ouvre la PR en brouillon puis l'en sort quand les barrières sont vertes en local.
+   S'il signale un besoin hors du périmètre de la story, traite-le comme un changement de périmètre (escalade PM et Architect).
+4. **Test** : lance l'agent **qa**. S'il y a des barrières rouges, renvoie au **dev** avec le rapport, puis relance **qa**.
 5. **Review** : passe en `status:review` et lance l'agent **reviewer**.
    - Changements demandés : retour à l'étape 3 (au plus 3 tours, puis `status:blocked` et résumé au propriétaire).
 6. **Merge** : quand la CI est entièrement verte et la review approuvée, active l'auto-merge (squash) de la PR. Son titre, au format Conventional Commits, devient le commit sur `develop`. Elle ferme l'issue.
