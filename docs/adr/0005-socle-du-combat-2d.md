@@ -1,6 +1,6 @@
 # ADR 0005 — Socle du combat 2D
 
-- **Statut** : proposé
+- **Statut** : accepté (22 octobre 2026, après le verdict vert de la QA sur la PR #47)
 - **Date** : 22 octobre 2026
 - **Décideur** : Architect (notes techniques de #46 et escalade d'impact, avec le PM)
 - **Contexte produit** : épique #30, story technique #46 (préalable au prototype de combat #31)
@@ -140,16 +140,33 @@ plus).
 | Permission | Origine |
 |---|---|
 | `MODIFY_AUDIO_SETTINGS` | Manifeste d'`expo-audio` (et son plugin, qui l'ajoute même sans micro) |
-| `WAKE_LOCK` | Manifestes fusionnés des bibliothèques `androidx.media3` 1.9.0 (lecteur ExoPlayer, session média) qu'embarque `expo-audio` |
-| `ACCESS_NETWORK_STATE` | Idem : `androidx.media3` (ExoPlayer observe le type de réseau pour la lecture en flux) |
+| `WAKE_LOCK` | Déduite par élimination : bibliothèques `androidx.media3` 1.9.0 (lecteur ExoPlayer, session média) qu'embarque `expo-audio` |
+| `ACCESS_NETWORK_STATE` | Déduite par élimination : `androidx.media3` (ExoPlayer observe le type de réseau pour la lecture en flux) |
 
 Reanimated, Worklets, Gesture Handler et Skia ne déclarent aucune permission. Les permissions déjà
 présentes avant #46 (`INTERNET`, `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`,
 `SYSTEM_ALERT_WINDOW`, `VIBRATE`, `com.bpotet.ascent.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`) sont
 inchangées. Le job `android-apk` relève désormais la taille et les permissions de chaque APK dans
-son résumé. **Réexamen prévu à #31**, quand les sons seront joués : retirer `WAKE_LOCK` et
+son résumé.
+
+**Comment l'origine est établie.** Les permissions présentes dans l'APK sont **mesurées**
+(`aapt dump permissions`). Leur origine, elle, est **déduite par élimination**, sans rapport de
+fusion du manifeste :
+
+- le manifeste d'`expo-audio` ne déclare que `MODIFY_AUDIO_SETTINGS` ;
+- les manifestes de Reanimated, Worklets, Gesture Handler et Skia ne déclarent aucune permission ;
+- les seules nouvelles dépendances natives transitives de #46 sont les modules `androidx.media3`
+  (`media3-session`, `media3-exoplayer`, `media3-datasource-okhttp`…) déclarés par le
+  `build.gradle` d'`expo-audio`.
+
+`WAKE_LOCK` et `ACCESS_NETWORK_STATE` viennent donc très probablement de `androidx.media3`, mais
+l'attribution à un module précis n'est pas prouvée. **Cela suffit pour #46** : l'acceptation repose
+sur le niveau de protection (« normal », aucune demande au joueur), qui est mesuré, et non sur
+l'origine. L'origine ne compte que pour retirer une permission, ce qui relève de #31. **Réexamen prévu à #31**, quand les sons seront joués : retirer `WAKE_LOCK` et
 `ACCESS_NETWORK_STATE` (`tools:node="remove"` par un plugin de configuration) si le combat n'en a
-pas besoin.
+pas besoin. Avant tout retrait, #31 joint le **rapport de fusion du manifeste**
+(`manifest-merger-*-report.txt` de Gradle) pour confirmer leur origine et vérifier qu'aucun autre
+module n'en dépend.
 
 ### Durée des tests Jest
 
@@ -207,5 +224,5 @@ Limites de cette mesure :
   séquence : on prouve une datation par une horloge qui avance à chaque étape, pas par l'ordre des
   appels.
 - Un build sans canal se comporte en production : les outils de preview restent cachés.
-- La taille de l'APK (#49) et les permissions de `expo-audio` (#31) restent à suivre ; le repli
+- La taille de l'APK (#49) et les permissions de `expo-audio` (#31, rapport de fusion du manifeste à l'appui) restent à suivre ; le repli
   `react-native-svg` reste possible si Skia pèse trop.
