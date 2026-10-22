@@ -5,6 +5,7 @@
 - **Décideur** : Architect
 - **Contexte produit** : PR #29 (story #23)
 - **Avenant** : 22 octobre 2026, mutation des écrans à la demande (issue #54, voir en fin de document)
+- **Révisé** : 22 octobre 2026, le groupe `core` est réparti en parts parallèles (voir en fin de document)
 
 ## Contexte
 
@@ -139,3 +140,56 @@ choisie par `MUTATION_UI` ou les options `--ui` et `--ui-only` de `scripts/mutat
   Les deux résultats doivent être verts.
 - Les agents `dev`, `qa` et `reviewer` n'exigent plus la mutation des écrans quand elle n'a pas été
   demandée.
+
+## Révisé le 22 octobre 2026 — mutation du « core » en parts parallèles
+
+- **Décideur** : le propriétaire
+- **Contexte produit** : PR #50 (story #24), changement de processus « faster story flow »
+
+### Contexte
+
+Depuis l'avenant sur les écrans, une PR ne lance plus que deux shards : `domain` et `core`
+(application, persistance, téléphone et tout futur dossier hors domaine et hors écrans). Le shard
+`core` est devenu le plus long de la CI : environ 25 minutes sur une PR, dont 19 de mutation sur la
+PR #50 (299 lignes nouvelles hors domaine), alors que le shard `domain` finit en moins de
+3 minutes.
+
+Ce que coûte un shard `core` :
+
+- **Par mutant** : environ 10 secondes en CI (les 6 mutants par minute mesurés plus haut), avec
+  `coverageAnalysis: 'perTest'` et `concurrency: 4`.
+- **Coût fixe par shard** : environ 5 minutes. Installation (`npm ci`), puis « dry run » de Stryker,
+  qui passe toute la suite Jest (130 suites, plus de 2 000 tests, environ 2 min 30 en local) pour
+  mesurer la couverture par test. Ce coût est payé par chaque shard, quel que soit son nombre de
+  mutants.
+
+### Décision
+
+1. **`PARTS.changed.core` passe de 1 à 3** : sur une PR, le code nouveau hors domaine et hors
+   écrans est réparti en `core-1`, `core-2` et `core-3`, par fichier, sans couper un fichier, comme
+   les écrans. Durée estimée d'un shard : 5 minutes de coût fixe et environ un tiers des
+   14 minutes de mutation, soit **10 minutes environ au lieu de 25**. Au-delà de 3 parts, le coût
+   fixe domine (4 parts : environ 8 min 30 ; 6 parts : environ 7 min 30) pour plus de minutes de
+   CI et de jobs simultanés.
+2. **`PARTS.full.core` passe de 2 à 6** : en release, en hotfix ou au lancement manuel, le groupe
+   `core` compte environ 2 000 lignes, soit 7 fois le code nouveau de la PR #50. Avec 2 parts,
+   chacune durait près d'une heure (délai : 120 minutes) ; avec 6, environ 20 minutes chacune.
+3. **Une seule part reste une seule part** : `split()` supprime les parts vides. Une PR qui ne
+   touche qu'un fichier `core` garde un unique shard nommé `core`, sans coût fixe en trop.
+4. **Rien d'autre ne change** : seuils (85 % pour le domaine, 70 % pour le code nouveau), score
+   calculé au job final sur le total des shards, mutation des écrans à la demande, `PARTS.ui`.
+
+Mise en œuvre : `PARTS` dans `scripts/mutation/plan.mjs`, testé par `npm run test:scripts`. Le
+plan de la PR #50 rejoué avec `node scripts/mutation/run.mjs --plan` donne trois parts de 98, 103
+et 98 lignes ; le plan complet, six parts de 336 à 344 lignes.
+
+### Conséquences
+
+- Une PR lance jusqu'à 4 shards de mutation (`domain`, `core-1` à `core-3`) au lieu de 2, et 6 avec
+  les écrans demandés. Le coût fixe est payé 3 fois pour `core` : plus de minutes de CI, gratuites
+  pour un dépôt public.
+- Une release lance jusqu'à 7 shards de mutation (17 avec les écrans demandés), sous la limite de
+  20 jobs simultanés de GitHub, avec un peu d'attente possible pendant les autres jobs.
+- Un fichier très modifié reste dans une seule part : le shard le plus long est au moins celui de
+  ce fichier.
+- `PARTS` reste un réglage à recalibrer d'après la durée des shards en CI, pas un seuil.

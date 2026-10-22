@@ -265,11 +265,18 @@ describe('buildPlan', () => {
         mutate: ['src/domain/habit/Habit.ts'],
       },
       {
-        id: 'core',
+        id: 'core-1',
         scope: 'core',
         thresholdClass: 'newCode',
         config: 'stryker.config.mjs',
-        mutate: ['src/adapters/device/clock/SystemClock.ts', 'src/application/checkIn.ts:10-12'],
+        mutate: ['src/adapters/device/clock/SystemClock.ts'],
+      },
+      {
+        id: 'core-2',
+        scope: 'core',
+        thresholdClass: 'newCode',
+        config: 'stryker.config.mjs',
+        mutate: ['src/application/checkIn.ts:10-12'],
       },
       {
         id: 'ui-1',
@@ -286,7 +293,9 @@ describe('buildPlan', () => {
         mutate: ['src/adapters/ui/HabitCard.tsx:3-3'],
       },
     ]);
-    assert.deepEqual(toMatrix(shards), { shard: ['domain', 'core', 'ui-1', 'ui-2'] });
+    assert.deepEqual(toMatrix(shards), {
+      shard: ['domain', 'core-1', 'core-2', 'ui-1', 'ui-2'],
+    });
   });
 
   it('mutates whole files in full mode, with more parts', () => {
@@ -300,6 +309,49 @@ describe('buildPlan', () => {
       Array.from({ length: 10 }, (_, index) => `ui-${index + 1}`),
     );
     assert.ok(shards.every((shard) => shard.mutate.every((entry) => !entry.includes(':'))));
+  });
+
+  // Le shard `core` d'une PR prenait environ 25 minutes (docs/adr/0004-mutation-en-ci.md, révision
+  // du 22 octobre 2026) : il est réparti comme les écrans.
+  const coreFiles = (count) =>
+    Array.from({ length: count }, (_, index) =>
+      change(`src/application/useCases/u${index}.ts`, [], { added: true, weight: 50 - index }),
+    );
+
+  it('splits the core into 3 shards on a pull request', () => {
+    const shards = buildPlan({ mode: 'changed', changes: coreFiles(8) });
+    assert.deepEqual(
+      shards.map(({ id, scope, thresholdClass, config }) => ({
+        id,
+        scope,
+        thresholdClass,
+        config,
+      })),
+      ['core-1', 'core-2', 'core-3'].map((id) => ({
+        id,
+        scope: 'core',
+        thresholdClass: 'newCode',
+        config: 'stryker.config.mjs',
+      })),
+    );
+    assert.equal(shards.flatMap((shard) => shard.mutate).length, 8);
+  });
+
+  it('splits the core into 6 shards in full mode', () => {
+    const shards = buildPlan({ mode: 'full', changes: coreFiles(12) });
+    assert.deepEqual(
+      shards.map((shard) => shard.id),
+      Array.from({ length: 6 }, (_, index) => `core-${index + 1}`),
+    );
+    assert.ok(shards.every((shard) => shard.thresholdClass === 'newCode'));
+  });
+
+  it('keeps a single core shard when only one core file changed', () => {
+    const shards = buildPlan({ mode: 'changed', changes: coreFiles(1) });
+    assert.deepEqual(
+      shards.map((shard) => shard.id),
+      ['core'],
+    );
   });
 
   it('gives an empty plan when nothing mutable changed', () => {

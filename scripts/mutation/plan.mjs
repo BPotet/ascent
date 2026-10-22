@@ -15,9 +15,13 @@ export const UI_CONFIG = 'stryker.ui.config.mjs';
 const CONFIGS = { domain: DOMAIN_CONFIG, core: BASE_CONFIG, ui: UI_CONFIG };
 
 // Réglages de la répartition, pas des seuils : nombre de parts (shards) par groupe et par mode.
+// `core` (révision du 22 octobre 2026 de l'ADR 0004) : environ 10 s par mutant en CI, plus un coût
+// fixe d'environ 5 minutes par shard (installation et « dry run » de toute la suite Jest). 3 parts
+// en PR ramènent les ~25 minutes d'un seul shard à environ 10 ; au-delà, le coût fixe domine. En
+// release, ~7 fois plus de lignes : 6 parts d'environ 20 minutes au lieu de 2 de près d'une heure.
 export const PARTS = {
-  changed: { domain: 1, core: 1, ui: 2 },
-  full: { domain: 1, core: 2, ui: 10 },
+  changed: { domain: 1, core: 3, ui: 2 },
+  full: { domain: 1, core: 6, ui: 10 },
 };
 
 const SCOPES = ['domain', 'core', 'ui'];
