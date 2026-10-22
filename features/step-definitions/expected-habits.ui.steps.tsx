@@ -187,10 +187,15 @@ async function openDetail(day: Day): Promise<void> {
   world.monthDay = day;
 }
 
-/** La ligne de `name` dans le Détail du jour ouvert : « pas fait », et tapable pour corriger. */
+/**
+ * La ligne de `name` dans le Détail du jour ouvert : « pas fait », et tapable pour corriger. Le
+ * lecteur d'écran lit ensuite la progression de la semaine du jour (#27).
+ */
 function expectCorrectable(name: string): void {
   expect(
-    screen.getByRole('switch', { name: new RegExp(`^${name}, .+, pas fait$`, 'u') }),
+    screen.getByRole('switch', {
+      name: new RegExp(`^${name}, \\S+ \\d+ \\S+, pas fait(?:, .+)?$`, 'u'),
+    }),
   ).toBeEnabled();
 }
 

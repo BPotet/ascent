@@ -43,6 +43,7 @@ import type { Habit } from '../../src/domain/habit/Habit';
 import { HabitName } from '../../src/domain/habit/HabitName';
 import { Month } from '../../src/domain/month/Month';
 import type { MonthDay } from '../../src/domain/month/MonthDay';
+import { Week } from '../../src/domain/week/Week';
 import { frenchDay } from '../support/frenchDay';
 
 const YEAR = 2026;
@@ -283,9 +284,10 @@ const steps: StepDefinitions = ({ given, when, then }) => {
   );
   given(/^le joueur a ouvert le (.+) dans la Vue Mois$/, openDay);
   given(/^les suivis d'(\S+ \d{4}) ne peuvent pas être lus$/, (text: string) => {
-    // La lecture des suivis du mois part du lundi de la semaine du 1er (#25) : elle finit au dernier
-    // jour du mois.
-    world.connection.faults.failWhen(readsFromWith('check_ins', monthOf(text).end.toIsoString()));
+    // La lecture des suivis du mois part du lundi de la semaine du 1er (#25) : elle finit au
+    // dimanche de la semaine du dernier jour du mois (#27).
+    const lastSunday = Week.containing(monthOf(text).end).end;
+    world.connection.faults.failWhen(readsFromWith('check_ins', lastSunday.toIsoString()));
   });
 
   when(/^(?:le joueur|il) touche l'onglet « Mois »$/, () => showMonth('current'));

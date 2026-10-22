@@ -117,6 +117,107 @@ describe('getMonthView', () => {
     expect(dayOf(view, 31)).toMatchObject({ doneCount: 0, kind: 'upcoming' });
   });
 
+  it('keeps the counters of the last days of the month whatever the check-ins of the next month', async () => {
+    clock.setToday(day(11, 1));
+    await addHabit('Lire', day(9, 21));
+    const before = await getMonthView(deps(), october);
+    await checkIn('Lire', day(11, 1));
+
+    const after = await getMonthView(deps(), october);
+
+    expect(after.days).toEqual(before.days);
+    expect(dayOf(after, 31)).toMatchObject({ doneCount: 0, expectedCount: 3, kind: 'tracked' });
+  });
+
+  describe('targets by week (#27)', () => {
+    const update = day(9, 28);
+    const today = day(10, 21);
+
+    /** Crée l'habitude `name` le lundi 28 septembre, avec l'objectif `weeklyTarget`. */
+    async function create(name: string, weeklyTarget: WeeklyTarget): Promise<Habit> {
+      clock.setToday(update);
+      const created = await createHabit(deps(), name, 'medium', weeklyTarget);
+      clock.setToday(today);
+      return created.ok ? created.habit : (undefined as never);
+    }
+
+    async function toggle(habit: Habit, ...days: Day[]): Promise<void> {
+      for (const each of days) {
+        await expect(toggleCheckIn(deps(), habit.id, each)).resolves.toMatchObject({ ok: true });
+      }
+    }
+
+    const summary = (view: MonthView) =>
+      view.targetsByWeek.map(({ week, reachedCount, targetCount }) => [
+        week.start.toIsoString(),
+        reachedCount,
+        targetCount,
+      ]);
+
+    /** Le scénario 1 : 2/4 la semaine du 28 septembre, 3/4, 4/4, puis 1/4 cette semaine. */
+    async function scenario(): Promise<void> {
+      unitOfWork = new InMemoryUnitOfWork();
+      const running = await create('Courir 5 km', 3);
+      const cooking = await create('Cuisiner', 1);
+      const reading = await create('Lire 20 minutes', 2);
+      const sleeping = await create('Me coucher avant 23 h', 1);
+      await toggle(running, update, day(9, 29), day(10, 5), day(10, 7), day(10, 9));
+      await toggle(running, day(10, 12), day(10, 14), day(10, 16), day(10, 20));
+      await toggle(cooking, day(9, 30), day(10, 6), day(10, 13), day(10, 19));
+      await toggle(reading, day(9, 29), day(10, 6), day(10, 8), day(10, 13), day(10, 15));
+      await toggle(sleeping, day(10, 1), day(10, 18));
+    }
+
+    afterEach(async () => {
+      const { xp, expected } = await experienceInvariant(unitOfWork);
+      expect(xp).toBe(expected);
+    });
+
+    it('gives a row for each week of the month up to the current week (scenario 1)', async () => {
+      await scenario();
+
+      const view = await getMonthView(deps(), october);
+
+      expect(summary(view)).toEqual([
+        ['2026-09-28', 2, 4],
+        ['2026-10-05', 3, 4],
+        ['2026-10-12', 4, 4],
+        ['2026-10-19', 1, 4],
+      ]);
+    });
+
+    it('gives the same row to a week across two months (scenario 3)', async () => {
+      await scenario();
+
+      const inOctober = await getMonthView(deps(), october);
+      const inSeptember = await getMonthView(deps(), september);
+
+      expect(summary(inSeptember)).toEqual([['2026-09-28', 2, 4]]);
+      expect(inSeptember.targetsByWeek[0]).toEqual(inOctober.targetsByWeek[0]);
+    });
+
+    it('has no row for the weeks before the update (scenario 5)', async () => {
+      unitOfWork = new InMemoryUnitOfWork();
+      const reading = await unitOfWork.run(({ habits }) =>
+        habits.add(HabitName.parse('Lire'), day(9, 21)),
+      );
+      await unitOfWork.addSettingsChangeBeforeWeeklyTarget(reading.id, day(9, 21));
+      clock.setToday(update);
+      await introduceWeeklyTarget(deps());
+      clock.setToday(today);
+
+      const view = await getMonthView(deps(), september);
+
+      expect(summary(view)).toEqual([['2026-09-28', 0, 1]]);
+    });
+
+    it('is empty without any habit', async () => {
+      unitOfWork = new InMemoryUnitOfWork();
+
+      expect((await getMonthView(deps())).targetsByWeek).toEqual([]);
+    });
+  });
+
   describe('expected habits (#25)', () => {
     const monday5 = day(10, 5);
     const friday16 = day(10, 16);
@@ -408,7 +509,7 @@ describe('getMonthView', () => {
     expect(today).toHaveBeenCalledTimes(1);
   });
 
-  it('reads the check-ins in one go, from the Monday of the week of the 1st (#25)', async () => {
+  it('reads the check-ins in one go, from the Monday of the week of the 1st to the Sunday of the last week', async () => {
     const listBetween = jest.fn<Promise<CheckIn[]>, [Day, Day]>();
     const spied: UnitOfWork = {
       run: (work) =>
@@ -422,10 +523,11 @@ describe('getMonthView', () => {
     clock.setToday(day(11, 2));
     await getMonthView({ clock, unitOfWork: spied }, Month.of(2026, 11));
 
-    // Le 1er octobre 2026 est un jeudi, le 1er novembre un dimanche.
+    // Le 1er octobre 2026 est un jeudi, le 1er novembre un dimanche ; le 31 octobre est un samedi,
+    // le 30 novembre un lundi : la lecture va jusqu'au dimanche de la dernière semaine (#27).
     expect(listBetween.mock.calls).toEqual([
-      [day(9, 28), day(10, 31)],
-      [day(10, 26), day(11, 30)],
+      [day(9, 28), day(11, 1)],
+      [day(10, 26), day(12, 6)],
     ]);
   });
 

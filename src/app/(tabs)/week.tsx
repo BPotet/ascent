@@ -13,6 +13,18 @@ export function addHabit(): void {
   router.navigate({ pathname: '/', params: { newHabit: String(Date.now()) } });
 }
 
+/**
+ * Ouvre la Vue Semaine sur `week`, désignée par son lundi, avec une demande toujours nouvelle : la
+ * semaine est réaffichée même si le joueur en a changé depuis. C'est ainsi que « Corriger » du
+ * rappel d'hier et une ligne de la section « Objectifs par semaine » de la Vue Mois y mènent.
+ */
+export function openWeek(week: Week): void {
+  router.navigate({
+    pathname: '/week',
+    params: { week: week.start.toIsoString(), request: String(Date.now()) },
+  });
+}
+
 /** La semaine du jour `day` (`AAAA-MM-JJ`), ou aucune si le paramètre manque ou n'est pas un jour. */
 function weekOf(day: string | undefined): Week | undefined {
   try {
@@ -25,7 +37,8 @@ function weekOf(day: string | undefined): Week | undefined {
 /**
  * Vue Semaine. Sans habitude, son bouton « Ajouter une habitude » mène à la Vue Journée. Les
  * paramètres `week` (un jour `AAAA-MM-JJ`) et `request` (une nouvelle valeur à chaque demande)
- * l'affichent sur la semaine de ce jour : c'est ainsi que le rappel d'hier mène à la correction.
+ * l'affichent sur la semaine de ce jour (`openWeek`) : c'est ainsi que le rappel d'hier mène à la
+ * correction, et la section « Objectifs par semaine » de la Vue Mois à une semaine.
  */
 export default function WeekRoute() {
   const { week, request } = useLocalSearchParams<{ week?: string; request?: string }>();

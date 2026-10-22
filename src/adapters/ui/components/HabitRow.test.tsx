@@ -340,6 +340,31 @@ describe('HabitRow', () => {
       ).toBeEnabled();
     });
 
+    it('names the week of the progress in the day detail (#27)', async () => {
+      await render(
+        <HabitRow
+          habitDay={{ ...habitDay('missed'), corrected: true }}
+          weeklyProgress={progress(3, 3, true)}
+          weekLabel="semaine du 12 octobre"
+          compact
+        />,
+      );
+
+      expect(screen.getByTestId('habit-progress-7')).toHaveTextContent(
+        'Pas fait · 3/3 semaine du 12 octobre',
+      );
+      expect(
+        screen.getByRole('switch', {
+          name: 'Cuisiner, mercredi 14 octobre, pas fait, 3 sur 3 semaine du 12 octobre, corrigé, objectif atteint',
+        }),
+      ).toBeOnTheScreen();
+      expect(
+        screen.getByTestId('habit-target-reached-7', { includeHiddenElements: true }),
+      ).toHaveTextContent('Objectif atteint');
+      // Le texte complet passe à la ligne, il n'est jamais coupé (décision UX).
+      expect(screen.getByTestId('habit-progress-7').props.numberOfLines).toBeUndefined();
+    });
+
     it('bursts its badge when the target has just been reached here (F1, #26)', async () => {
       await render(
         <HabitRow
