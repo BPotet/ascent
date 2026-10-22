@@ -329,6 +329,97 @@ describe('BattleSession', () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
+  it('plays nothing and notifies nobody after it is disposed, even when started again', async () => {
+    const context = setUp();
+    await context.session.start();
+    context.clock.advanceTo(2_000);
+    context.session.heroAction({ kind: 'attack' }, 1_940, 2_000);
+    const played = [...context.sound.played];
+
+    context.session.dispose();
+    context.session.pressDefense('parry', 10_000);
+    expect(context.sound.played).toEqual(played);
+    expect(context.haptics.played).toEqual(played);
+
+    const published = context.published.length;
+    await context.session.start();
+    expect(context.published).toHaveLength(published);
+  });
+
+  it('advances the battle to the present when its timer fires late', async () => {
+    let now = 1_000;
+    const timers: (() => void)[] = [];
+    const session = new BattleSession({
+      clock: {
+        now: () => now,
+        setTimer: (_at, callback) => {
+          timers.push(callback);
+          return () => undefined;
+        },
+      },
+      seeds: new FixedSeedSource(seedFor({ ghoul: 'basic' })),
+      sound: silentBattleSound(),
+      haptics: silentBattleHaptics(),
+      keyValueStore: (() => {
+        const store = mapStore();
+        seenHints(store);
+        return store;
+      })(),
+    });
+    await session.start();
+    now = 2_000;
+    session.heroAction({ kind: 'attack' }, 1_940, 2_000);
+
+    // Le minuteur de la fin de l'attaque (2 500 ms) se déclenche à 3 000 ms.
+    now = 3_000;
+    timers.at(-1)!();
+
+    expect(session.current()!.battle.now).toBe(3_000);
+    expect(session.current()!.battle.phase).toMatchObject({ kind: 'transition' });
+  });
+
+  describe('presses redated by the engine state', () => {
+    /** Parade parfaite à l'impact : arrêt sur image de `impact` à `impact + 90`. */
+    async function afterPerfectParry(clockAt: (impact: number) => number) {
+      const context = setUp();
+      await context.session.start();
+      const impact = toGhoulWindUp(context);
+      context.clock.advanceTo(impact);
+      context.session.pressDefense('parry', impact);
+      context.clock.advanceTo(clockAt(impact));
+      return { context, impact };
+    }
+
+    it('does not count a press dated at the start of the hit-stop', async () => {
+      const { context, impact } = await afterPerfectParry((impact) => impact + 95);
+
+      context.session.pressDefense('dodge', impact);
+
+      expect(context.session.measures().redatedPresses).toBe(0);
+    });
+
+    it('counts a press dated before the hit-stop', async () => {
+      const { context, impact } = await afterPerfectParry((impact) => impact + 95);
+
+      context.session.pressDefense('dodge', impact - 100);
+
+      expect(context.session.measures().redatedPresses).toBe(1);
+    });
+
+    it('counts a press dated at the end of the hit-stop, before the engine state', async () => {
+      const { context, impact } = await afterPerfectParry((impact) => impact + 600);
+      expect(context.session.current()!.battle.now).toBeGreaterThan(impact + 90);
+      expect(context.session.current()!.battle.hitStop).toEqual({
+        at: impact,
+        until: impact + 90,
+      });
+
+      context.session.pressDefense('dodge', impact + 90);
+
+      expect(context.session.measures().redatedPresses).toBe(1);
+    });
+  });
+
   describe('hints (bulles d’aide du combat)', () => {
     it('shows the hero hint in the first hero phase until the first attack, then never again', async () => {
       const context = setUp({ hints: true });
@@ -344,6 +435,51 @@ describe('BattleSession', () => {
       expect(context.keyValueStore.values.get(BATTLE_HINT_SEEN_KEYS.hero)).toBe('1');
 
       expect((await context.session.start()).heroHint).toBe(false);
+    });
+
+    it('neither shows nor saves the hero hint again once it was seen', async () => {
+      const context = setUp();
+      const set = jest.spyOn(context.keyValueStore, 'set');
+
+      expect((await context.session.start()).heroHint).toBe(false);
+      context.session.heroAction({ kind: 'attack' }, 1_100, 1_200);
+      await Promise.resolve();
+
+      expect(set).not.toHaveBeenCalled();
+    });
+
+    it('closes the hero hint when the first attack also fells an enemy', async () => {
+      const context = setUp({ hints: true });
+      const session = new BattleSession(
+        {
+          clock: context.clock,
+          seeds: new FixedSeedSource(7),
+          sound: context.sound,
+          haptics: context.haptics,
+          keyValueStore: context.keyValueStore,
+        },
+        {
+          createBattle: (options) => {
+            const update = startTrialBattle(options);
+            const enemies = update.battle.enemies.map((enemy, index) =>
+              index === 0 ? { ...enemy, hp: 10 } : enemy,
+            );
+            return { ...update, battle: { ...update.battle, enemies } };
+          },
+        },
+      );
+      await session.start();
+
+      session.heroAction({ kind: 'attack' }, 1_100, 1_200);
+
+      expect(typesOf(session.current()!.events)).toEqual([
+        'heroAttacked',
+        'enemyDefeated',
+        'targetChanged',
+      ]);
+      expect(session.current()!.heroHint).toBe(false);
+      await Promise.resolve();
+      expect(context.keyValueStore.values.get(BATTLE_HINT_SEEN_KEYS.hero)).toBe('1');
     });
 
     it('closes the hero hint on demand', async () => {
