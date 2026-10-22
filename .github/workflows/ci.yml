@@ -26,6 +26,27 @@ env:
   MAESTRO_VERSION: 2.11.0
 
 jobs:
+  # Un changement qui ne touche que la documentation ou la configuration des agents saute les
+  # barrières lourdes (scripts/ci/code-changes.mjs). Les jobs qui en dépendent sont sautés avec elles.
+  changes:
+    name: Code changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - id: diff
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/ci/code-changes.mjs
+
   commits:
     name: Commits (commitlint)
     if: github.event_name == 'pull_request'
@@ -70,6 +91,8 @@ jobs:
 
   static:
     name: Style, types and architecture
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -91,6 +114,8 @@ jobs:
 
   tests:
     name: Unit, integration and BDD tests with coverage
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -117,11 +142,13 @@ jobs:
     # En PR vers develop : le code nouveau. Sur release/* et hotfix/* (et à la demande) : tout le code.
     # Un push sur develop ou main n'en relance pas : la PR, ou la branche de release, l'a déjà muté.
     # Une PR de release ou de hotfix non plus : le push sur sa branche mute déjà tout le code.
+    needs: changes
     if: >-
-      (github.event_name == 'pull_request'
-        && !startsWith(github.head_ref, 'release/') && !startsWith(github.head_ref, 'hotfix/'))
-      || github.event_name == 'workflow_dispatch'
-      || startsWith(github.ref_name, 'release/') || startsWith(github.ref_name, 'hotfix/')
+      needs.changes.outputs.code == 'true' && (
+        (github.event_name == 'pull_request'
+          && !startsWith(github.head_ref, 'release/') && !startsWith(github.head_ref, 'hotfix/'))
+        || github.event_name == 'workflow_dispatch'
+        || startsWith(github.ref_name, 'release/') || startsWith(github.ref_name, 'hotfix/'))
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
