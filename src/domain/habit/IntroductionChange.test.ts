@@ -56,6 +56,25 @@ describe('introductionChangeOf', () => {
     expect(introductionChangeOf(changes, createdOn, today)).toBeNull();
   });
 
+  it('finds the last change entered whatever the order of the list', () => {
+    const introduced = [
+      change(14, 'medium', 7, 3),
+      change(21, 'hard', null, 2),
+      change(5, 'easy', null, 1),
+    ];
+    const notYet = [
+      change(14, 'medium', null, 3),
+      change(5, 'easy', 7, 1),
+      change(12, 'hard', 7, 2),
+    ];
+
+    expect(introductionChangeOf(introduced, createdOn, today)).toBeNull();
+    expect(introductionChangeOf(notYet, createdOn, today)).toEqual({
+      difficulty: 'medium',
+      weeklyTarget: 7,
+    });
+  });
+
   it('introduces again when the last change entered is empty, whatever the days', () => {
     const changes = [change(14, 'medium', 7, 1), change(5, 'easy', null, 2)];
 

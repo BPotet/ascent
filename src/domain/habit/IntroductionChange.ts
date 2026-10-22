@@ -20,10 +20,7 @@ export function introductionChangeOf(
   createdOn: Day,
   today: Day,
 ): HabitSettings | null {
-  const lastEntered = changes.reduce<SettingsChange | undefined>(
-    (last, change) => (last === undefined || change.sequence > last.sequence ? change : last),
-    undefined,
-  );
+  const lastEntered = [...changes].sort((a, b) => a.sequence - b.sequence).at(-1);
   if (lastEntered !== undefined && lastEntered.weeklyTarget !== null) {
     return null;
   }
