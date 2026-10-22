@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 
@@ -25,8 +26,8 @@ export function EnemyColumn({
   dimmed,
   sealed,
   uiNow,
+  now,
   onTarget,
-  onAccessibilityTarget,
 }: {
   readonly enemy: EnemyState;
   readonly index: number;
@@ -34,10 +35,15 @@ export function EnemyColumn({
   readonly dimmed: boolean;
   readonly sealed: boolean;
   readonly uiNow: () => number;
-  readonly onTarget: (touchStartedAt: number, releasedAt: number) => void;
-  readonly onAccessibilityTarget: () => void;
+  readonly now: () => number;
+  readonly onTarget: (enemy: number, touchStartedAt: number, releasedAt: number) => void;
 }) {
-  const gesture = useReleaseGesture(enemyGestureTestId(index), uiNow, onTarget);
+  // Un rappel stable : le geste n'est pas recréé à chaque instantané du combat.
+  const onRelease = useCallback(
+    (touchStartedAt: number, releasedAt: number) => onTarget(index, touchStartedAt, releasedAt),
+    [onTarget, index],
+  );
+  const gesture = useReleaseGesture(enemyGestureTestId(index), uiNow, onRelease);
   const standing = enemy.hp > 0;
   return (
     <GestureDetector gesture={gesture}>
@@ -47,7 +53,7 @@ export function EnemyColumn({
         accessibilityLabel={enemyLabel(enemy, target)}
         accessibilityState={{ selected: target, disabled: !standing }}
         accessibilityActions={[{ name: 'activate' }]}
-        onAccessibilityAction={onAccessibilityTarget}
+        onAccessibilityAction={() => onTarget(index, now(), now())}
         testID={`enemy-${enemy.kind}`}
         style={[styles.column, dimmed && styles.dimmed, !standing && styles.down]}
       >

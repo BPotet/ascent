@@ -4,6 +4,7 @@
 // horloge qui avance à chaque étape du geste qui suit son début (ADR 0005, § 2).
 import { act, fireEvent, screen, within } from '@testing-library/react-native';
 import { AccessibilityInfo, StyleSheet } from 'react-native';
+import { Gesture } from 'react-native-gesture-handler';
 
 import { seedFor } from '../../../application/testing/trialBattleSeeds';
 import { BATTLE_HINT_SEEN_KEYS } from '../../../application/useCases/battleHints';
@@ -231,6 +232,20 @@ describe('TrialBattleScreen', () => {
   });
 
   describe('enemy phase (P0b, P1, P2)', () => {
+    it('creates no new gesture from one snapshot to the next', async () => {
+      const test = await renderTrialBattle({ seed: seedFor({ ghoul: 'double' }) });
+      await test.attack();
+      await test.runUntil(() => test.battle().phase.kind === 'enemy');
+      const tap = jest.spyOn(Gesture, 'Tap');
+
+      await test.toWindUpOf(GHOUL);
+      await test.advanceTo(test.attackStep()!.impacts[0]!.at);
+
+      expect(test.snapshots.length).toBeGreaterThan(2);
+      expect(tap).not.toHaveBeenCalled();
+      tap.mockRestore();
+    });
+
     it('shows the enemy stepping in, then its wind-up; the others fade', async () => {
       const test = await renderTrialBattle({ seed: seedFor({ ghoul: 'double' }) });
       await test.attack();

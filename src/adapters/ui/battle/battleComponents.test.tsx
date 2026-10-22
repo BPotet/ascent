@@ -40,7 +40,7 @@ describe('HeroBar', () => {
 
 describe('EnemyColumn', () => {
   async function renderColumn(props: Partial<Parameters<typeof EnemyColumn>[0]> = {}) {
-    const onAccessibilityTarget = jest.fn();
+    const onTarget = jest.fn();
     await render(
       <EnemyColumn
         enemy={ghoul}
@@ -49,12 +49,12 @@ describe('EnemyColumn', () => {
         dimmed={false}
         sealed={false}
         uiNow={() => 0}
-        onTarget={jest.fn()}
-        onAccessibilityTarget={onAccessibilityTarget}
+        now={() => 4_321}
+        onTarget={onTarget}
         {...props}
       />,
     );
-    return { onAccessibilityTarget };
+    return { onTarget };
   }
 
   it('shows the intent, the name and the HP of the enemy', async () => {
@@ -96,13 +96,13 @@ describe('EnemyColumn', () => {
   });
 
   it('targets the enemy with the screen reader', async () => {
-    const { onAccessibilityTarget } = await renderColumn();
+    const { onTarget } = await renderColumn();
 
     await fireEvent(screen.getByTestId('enemy-ghoul'), 'accessibilityAction', {
       nativeEvent: { actionName: 'activate' },
     });
 
-    expect(onAccessibilityTarget).toHaveBeenCalledTimes(1);
+    expect(onTarget).toHaveBeenCalledWith(0, 4_321, 4_321);
   });
 });
 

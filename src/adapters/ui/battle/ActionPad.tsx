@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -65,17 +65,22 @@ function DefenseKey({
   primary,
   disabled,
   uiNow,
-  onTouch,
-  onAccessibilityPress,
+  now,
+  onDefense,
 }: {
   readonly button: DefenseButton;
   readonly label: string;
   readonly primary: boolean;
   readonly disabled: boolean;
   readonly uiNow: () => number;
-  readonly onTouch: (touchedAt: number) => void;
-  readonly onAccessibilityPress: () => void;
+  readonly now: () => number;
+  readonly onDefense: (button: DefenseButton, touchedAt: number) => void;
 }) {
+  // Un rappel stable : le geste n'est pas recréé à chaque instantané du combat.
+  const onTouch = useCallback(
+    (touchedAt: number) => onDefense(button, touchedAt),
+    [onDefense, button],
+  );
   const gesture = useDefenseGesture(DEFENSE_GESTURE_TEST_IDS[button], uiNow, onTouch);
   return (
     <GestureDetector gesture={gesture}>
@@ -85,7 +90,7 @@ function DefenseKey({
         accessibilityLabel={label}
         accessibilityState={{ disabled }}
         accessibilityActions={[{ name: 'activate' }]}
-        onAccessibilityAction={onAccessibilityPress}
+        onAccessibilityAction={() => onDefense(button, now())}
         testID={`battle-${button}-button`}
         style={[styles.key, primary ? styles.primary : styles.secondary, disabled && styles.locked]}
       >
@@ -190,8 +195,8 @@ export function ActionPad({
             primary={false}
             disabled={pad.locked}
             uiNow={uiNow}
-            onTouch={(touchedAt) => onDefense('dodge', touchedAt)}
-            onAccessibilityPress={() => onDefense('dodge', now())}
+            now={now}
+            onDefense={onDefense}
           />
           <DefenseKey
             button="parry"
@@ -199,8 +204,8 @@ export function ActionPad({
             primary
             disabled={pad.locked}
             uiNow={uiNow}
-            onTouch={(touchedAt) => onDefense('parry', touchedAt)}
-            onAccessibilityPress={() => onDefense('parry', now())}
+            now={now}
+            onDefense={onDefense}
           />
         </>
       )}

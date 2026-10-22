@@ -114,12 +114,13 @@ export function TrialBattleScreen({
   );
   const [frameStats, setFrameStats] = useState<FrameStats>({ frames: 0, dropped: 0, worstGap: 0 });
 
+  const { record } = measures;
   const onDefense = useCallback(
     (button: DefenseButton, touchedAt: number) => {
-      measures.record(touchedAt);
+      record(touchedAt);
       session.pressDefense(button, toBattleInstant(touchedAt));
     },
-    [measures, session],
+    [record, session],
   );
   const onAttack = useCallback(
     (touchStartedAt: number, releasedAt: number) =>
@@ -131,7 +132,7 @@ export function TrialBattleScreen({
     [session],
   );
   const onTarget = useCallback(
-    (enemy: number) => (touchStartedAt: number, releasedAt: number) =>
+    (enemy: number, touchStartedAt: number, releasedAt: number) =>
       session.heroAction(
         { kind: 'target', enemy },
         toBattleInstant(touchStartedAt),
@@ -223,8 +224,8 @@ export function TrialBattleScreen({
               dimmed={view.attacker !== null && view.attacker !== index}
               sealed={view.sealed === index}
               uiNow={uiNow}
-              onTarget={onTarget(index)}
-              onAccessibilityTarget={() => onTarget(index)(now(), now())}
+              now={now}
+              onTarget={onTarget}
             />
           ))}
         </View>
