@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Day } from '../../../domain/day/Day';
 import { WEEKLY_TARGETS, type WeeklyTarget } from '../../../domain/habit/WeeklyTarget';
@@ -10,20 +11,44 @@ import {
 } from '../format/formatWeeklyTarget';
 import { useLargeText } from '../state/useLargeText';
 import { colors } from '../theme/colors';
-import { radii } from '../theme/metrics';
+import { MIN_TOUCH_SIZE, radii } from '../theme/metrics';
 import { typography } from '../theme/typography';
 
 /** Le titre du bloc, et le nom du groupe pour le lecteur d'écran. */
 export const WEEKLY_TARGET_TITLE = 'Objectif hebdomadaire';
 
-/** Taille d'une pastille (maquette, « Accessibilité ») : 44 × 44 pt. */
+/** Taille d'une pastille (maquette, « Accessibilité ») : 44 × 44 pt, au plus. */
 const PILL_SIZE = 44;
+/** L'écart minimal entre deux pastilles, quand la rangée est trop étroite pour 7 × 44 pt. */
+const PILL_MIN_GAP = 2;
 /** Taille d'un bouton du compteur en grand texte : 56 pt. */
 const STEP_SIZE = 56;
 
 /** L'objectif voisin de `value`, dans l'ordre de `WEEKLY_TARGETS`, s'il existe. */
 function neighbour(value: WeeklyTarget, step: -1 | 1): WeeklyTarget | undefined {
   return WEEKLY_TARGETS[WEEKLY_TARGETS.indexOf(value) + step];
+}
+
+/**
+ * La taille des pastilles d'après la largeur de leur rangée : 44 pt quand les sept y tiennent
+ * (maquette, 390 pt), sinon elles se partagent la largeur (écran de 320 dp). En dessous de 44 pt,
+ * la zone de toucher est complétée jusqu'à 44 pt par un `hitSlop`.
+ */
+export function pillSizeFor(rowWidth: number): number {
+  const count = WEEKLY_TARGETS.length;
+  const shared = Math.floor((rowWidth - (count - 1) * PILL_MIN_GAP) / count);
+  return Math.max(0, Math.min(PILL_SIZE, shared));
+}
+
+function usePillSize(): {
+  readonly size: number;
+  readonly onLayout: (event: LayoutChangeEvent) => void;
+} {
+  const [size, setSize] = useState(PILL_SIZE);
+  const onLayout = useCallback((event: LayoutChangeEvent) => {
+    setSize(pillSizeFor(event.nativeEvent.layout.width));
+  }, []);
+  return { size, onLayout };
 }
 
 /** Les sept pastilles, de 1 à 7, en groupe radio. */
@@ -34,8 +59,11 @@ function Pills({
   readonly value: WeeklyTarget;
   readonly onChange: (target: WeeklyTarget) => void;
 }) {
+  const { size, onLayout } = usePillSize();
+  const slop = Math.max(0, Math.ceil((MIN_TOUCH_SIZE - size) / 2));
   return (
     <View
+      onLayout={onLayout}
       accessibilityRole="radiogroup"
       accessibilityLabel={WEEKLY_TARGET_TITLE}
       testID="weekly-target-picker"
@@ -50,8 +78,13 @@ function Pills({
             accessibilityLabel={weeklyTargetOptionLabel(target)}
             accessibilityState={{ checked: selected, selected }}
             onPress={() => onChange(target)}
+            hitSlop={slop}
             testID={`weekly-target-option-${target}`}
-            style={[styles.pill, selected && styles.pillSelected]}
+            style={[
+              styles.pill,
+              { width: size, height: size, borderRadius: size / 2 },
+              selected && styles.pillSelected,
+            ]}
           >
             <Text style={[styles.pillText, selected && styles.pillTextSelected]}>{target}</Text>
           </Pressable>
@@ -128,7 +161,7 @@ function Stepper({
 
 /**
  * Le bloc « Objectif » des panneaux « Nouvelle habitude » (E2) et « Modifier l'habitude » (E7) :
- * sept pastilles de 1 à 7 (44 × 44 pt), la choisie pleine, puis la phrase qui confirme le choix
+ * sept pastilles de 1 à 7 (44 × 44 pt, moins sur un écran étroit), la choisie pleine, puis la phrase qui confirme le choix
  * (« 3 fois par semaine », « Tous les jours »).
  *
  * Avec `creationDay` (aujourd'hui, quand c'est le jour de création de l'habitude), la phrase annonce
@@ -175,11 +208,8 @@ export function WeeklyTargetPicker({
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
   title: { color: colors.muted, fontWeight: '600', marginTop: 10, marginBottom: 6 },
-  pills: { flexDirection: 'row', justifyContent: 'space-between' },
+  pills: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   pill: {
-    width: PILL_SIZE,
-    height: PILL_SIZE,
-    borderRadius: PILL_SIZE / 2,
     borderWidth: 2,
     borderColor: colors.line,
     backgroundColor: colors.background,
