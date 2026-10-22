@@ -103,8 +103,8 @@ function LoadingView() {
   );
 }
 
-/** La progression de la semaine d'une ligne, si sa semaine a un objectif. */
-function weeklyProgressOf({
+/** La progression de la semaine affichée sur une ligne, si sa semaine a un objectif. */
+function weeklyProgressShownOf({
   weeklyProgress,
   weekSettings: { weekTarget },
   targetReached,
@@ -158,7 +158,7 @@ function HabitList({
             key={habitDay.habit.id}
             habitDay={habitDay}
             difficulty={habitDay.weekSettings.difficulty}
-            weeklyProgress={weeklyProgressOf(habitDay)}
+            weeklyProgress={weeklyProgressShownOf(habitDay)}
             highlighted={habitDay.habit.id === highlighted?.id}
             xpChange={xpChangeOn(xpChange, habitDay)}
             onToggle={onToggle}
