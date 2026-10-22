@@ -35,6 +35,9 @@ export default {
   htmlReporter: { fileName: ${JSON.stringify(`${dir}/index.html`)} },
   jsonReporter: { fileName: ${JSON.stringify(`${dir}/mutation.json`)} },
   tempDirName: ${JSON.stringify(`.stryker-tmp/${shard.id}`)},
+  // Chaque shard a son bac à sable : on les ignore tous, sinon un shard recopie ceux laissés par
+  // un autre (en échec ou interrompu) dans le sien.
+  ignorePatterns: [...(base.ignorePatterns ?? []), '.stryker-tmp'],
 };
 `;
 }

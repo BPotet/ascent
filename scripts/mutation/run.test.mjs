@@ -21,7 +21,11 @@ const domainShard = {
   config: 'stryker.domain.config.mjs',
   mutate: ['src/domain/a.ts', 'src/domain/b[(]c[)].ts'],
 };
-const coreShard = { id: 'core-2', config: 'stryker.config.mjs', mutate: ['src/app/x.ts:3-7'] };
+const coreShard = {
+  id: 'core-2',
+  config: 'stryker.config.mjs',
+  mutate: ['src/app/x.ts:3-7'],
+};
 
 describe('shardConfig', () => {
   it('imports the domain config for a domain shard', async () => {
@@ -58,5 +62,11 @@ describe('shardConfig', () => {
 
   it('uses a sandbox of its own', async () => {
     assert.equal((await load(coreShard)).tempDirName, '.stryker-tmp/core-2');
+  });
+
+  it('ignores every sandbox, so no shard copies another one', async () => {
+    const base = (await import('../../stryker.config.mjs')).default;
+    const config = await load(coreShard);
+    assert.deepEqual(config.ignorePatterns, [...base.ignorePatterns, '.stryker-tmp']);
   });
 });
