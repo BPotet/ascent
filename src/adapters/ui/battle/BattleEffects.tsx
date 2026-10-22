@@ -36,7 +36,11 @@ export function Flash({
     opacity.set(1);
     opacity.set(withTiming(0, { duration: 450 }));
   }, [flashKey, opacity]);
-  const style = useAnimatedStyle(() => ({ opacity: opacity.get() }));
+  // Dépendances explicites : le code instrumenté par Stryker n'est plus reconnu comme worklet.
+  const style = useAnimatedStyle(() => {
+    'worklet';
+    return { opacity: opacity.get() };
+  }, [opacity]);
   return (
     <Animated.View
       pointerEvents="none"
@@ -61,9 +65,11 @@ export function useShake(shakeKey: number) {
       ),
     );
   }, [shakeKey, offset]);
-  return useAnimatedStyle(() => ({
-    transform: [{ translateX: offset.get() }, { translateY: -offset.get() * 0.6 }],
-  }));
+  // Dépendances explicites : le code instrumenté par Stryker n'est plus reconnu comme worklet.
+  return useAnimatedStyle(() => {
+    'worklet';
+    return { transform: [{ translateX: offset.get() }, { translateY: -offset.get() * 0.6 }] };
+  }, [offset]);
 }
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).

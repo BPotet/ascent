@@ -149,6 +149,7 @@ function EnemyFigure({
   const left = sceneWidth / 2 - (count * COLUMN_WIDTH) / 2 + index * COLUMN_WIDTH;
   const x = left + (COLUMN_WIDTH - FOE_WIDTH) / 2;
   const transform = useDerivedValue(() => {
+    'worklet';
     const current = timeline.get();
     const pose =
       current !== null && current.enemy === index
@@ -165,7 +166,7 @@ function EnemyFigure({
       { translateY: -FOE_HEIGHT },
       { scale: FOE_SCALE },
     ];
-  });
+  }, [timeline, clock, x, index]);
   if (!enemy.standing) return null;
   const figure =
     enemy.kind === 'ghoul' ? (
@@ -322,9 +323,10 @@ export function BattleScene({
     if (gap > frameMeter.worstGap.get()) frameMeter.worstGap.set(gap);
   });
 
-  const streaksOpacity = useDerivedValue(() =>
-    reducedMotion ? 0 : Math.max(0, 1 - (clock.get() - sharedStreaks.get()) / 450) * 0.8,
-  );
+  const streaksOpacity = useDerivedValue(() => {
+    'worklet';
+    return reducedMotion ? 0 : Math.max(0, 1 - (clock.get() - sharedStreaks.get()) / 450) * 0.8;
+  }, [reducedMotion, clock, sharedStreaks]);
 
   return (
     <Canvas style={[StyleSheet.absoluteFill, { width, height }]}>

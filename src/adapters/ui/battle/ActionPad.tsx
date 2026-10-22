@@ -45,7 +45,11 @@ function LockTag({ lock, now }: { readonly lock: LockSpan | null; readonly now: 
     progress.set(duration === 0 ? 1 : elapsed / duration);
     progress.set(withTiming(1, { duration: duration - elapsed, easing: Easing.linear }));
   }, [lock, now, progress]);
-  const bar = useAnimatedStyle(() => ({ transform: [{ scaleX: progress.get() }] }));
+  // Dépendances explicites : le code instrumenté par Stryker n'est plus reconnu comme worklet.
+  const bar = useAnimatedStyle(() => {
+    'worklet';
+    return { transform: [{ scaleX: progress.get() }] };
+  }, [progress]);
   return (
     <View accessibilityRole="text" testID="battle-lock-tag" style={styles.tag}>
       <LockGlyph color={battleColors.text} />
