@@ -4,6 +4,8 @@
 # suivants sur la PR sont mutés par ci.yml, qui lit le label : rien n'est muté deux fois.
 # Workflow à part : ajouter `labeled` aux types de ci.yml relancerait (ou couperait) toute la CI à
 # chaque label, et ses jobs sautés masqueraient les checks déjà rendus pour le même commit.
+# Pour la même raison, chaque nom de job dépend du label : un autre label ne publie aucun check
+# « Screen mutation … » (un check sauté sous ce nom masquerait un échec de la mutation des écrans).
 name: Screen mutation
 
 on:
@@ -21,7 +23,7 @@ concurrency:
 
 jobs:
   plan:
-    name: Screen mutation plan
+    name: ${{ github.event.label.name == 'mutation:ui' && 'Screen mutation plan' || 'Label without mutation (plan)' }}
     if: github.event.label.name == 'mutation:ui'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -48,7 +50,7 @@ jobs:
         run: node scripts/mutation/run.mjs --plan
 
   shard:
-    name: Screen mutation tests (StrykerJS) / ${{ matrix.shard }}
+    name: ${{ github.event.label.name == 'mutation:ui' && format('Screen mutation tests (StrykerJS) / {0}', matrix.shard) || 'Label without mutation (shard)' }}
     needs: plan
     if: needs.plan.outputs.count != '0'
     runs-on: ubuntu-latest
@@ -80,7 +82,7 @@ jobs:
           if-no-files-found: ignore
 
   score:
-    name: Screen mutation tests (StrykerJS)
+    name: ${{ github.event.label.name == 'mutation:ui' && 'Screen mutation tests (StrykerJS)' || 'Label without mutation (score)' }}
     needs: [plan, shard]
     if: ${{ !cancelled() && needs.plan.result != 'skipped' }}
     runs-on: ubuntu-latest

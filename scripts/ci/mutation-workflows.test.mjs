@@ -10,11 +10,27 @@ import { fileURLToPath } from 'node:url';
 
 import { parse } from 'yaml';
 
+import { planOutputs } from '../mutation/run.mjs';
+
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const readYaml = (file) => parse(readFileSync(resolve(root, file), 'utf8'));
 
 const ci = readYaml('.github/workflows/ci.yml');
 const screen = readYaml('.github/workflows/mutation-ui.yml');
+
+/**
+ * Le nom d'un job pour un label : `${{ github.event.label.name == 'x' && 'A' || 'B' }}` vaut A pour
+ * le label x, B sinon. Un nom sans expression est le même pour tous les labels.
+ */
+function jobName(job, label) {
+  const match =
+    /^\$\{\{ github\.event\.label\.name == '([^']+)' && (format\('([^']+)', matrix\.shard\)|'([^']+)') \|\| '([^']+)' \}\}$/.exec(
+      job.name,
+    );
+  if (!match) return job.name;
+  const [, expected, , formatted, plain, other] = match;
+  return label === expected ? (formatted ?? plain).replace('{0}', 'ui-1') : other;
+}
 
 /** L'environnement de l'étape qui lance `scripts/mutation/run.mjs` avec `flag`. */
 const runEnv = (job, flag) => job.steps.find((step) => step.run?.includes(`run.mjs ${flag}`)).env;
@@ -85,13 +101,76 @@ describe('mutation-ui.yml', () => {
   it('has check names of its own, so it never hides a check of ci.yml', () => {
     const ciNames = Object.values(ci.jobs).map((job) => job.name);
     for (const job of Object.values(screen.jobs)) {
-      assert.ok(!ciNames.includes(job.name), job.name);
-      assert.match(job.name, /^Screen mutation/);
+      const name = jobName(job, 'mutation:ui');
+      assert.ok(!ciNames.includes(name), name);
+      assert.match(name, /^Screen mutation/);
     }
+    assert.equal(jobName(screen.jobs.score, 'mutation:ui'), 'Screen mutation tests (StrykerJS)');
+    assert.equal(
+      jobName(screen.jobs.shard, 'mutation:ui'),
+      'Screen mutation tests (StrykerJS) / ui-1',
+    );
+  });
+
+  // Un check « skipped » publié sous le même nom, sur le même commit, masquerait un échec.
+  it('publishes no screen mutation check for another label', () => {
+    for (const label of ['status:review', 'type:chore']) {
+      for (const job of Object.values(screen.jobs)) {
+        const name = jobName(job, label);
+        assert.doesNotMatch(name, /Screen mutation/i, `${label}: ${name}`);
+        assert.doesNotMatch(name, /\$\{\{/, `${label}: ${name}`);
+      }
+    }
+  });
+
+  it('scores only when the plan ran, and never after a cancellation', () => {
+    assert.deepEqual(screen.jobs.score.needs, ['plan', 'shard']);
+    assert.equal(screen.jobs.score.if, "${{ !cancelled() && needs.plan.result != 'skipped' }}");
+    assert.equal(screen.jobs.shard.needs, 'plan');
+    assert.equal(screen.jobs.shard.if, "needs.plan.outputs.count != '0'");
   });
 
   it('applies the thresholds to the total of its shards', () => {
     const scoreStep = screen.jobs.score.steps.find((s) => s.run === 'npm run mutation:score');
     assert.equal(scoreStep.env.EXPECTED_SHARDS, '${{ needs.plan.outputs.count }}');
+  });
+
+  it('never shares a concurrency group with ci.yml', () => {
+    const prefix = (group) => group.split('${{')[0];
+    assert.notEqual(prefix(screen.concurrency.group), prefix(ci.concurrency.group));
+    assert.ok(!prefix(screen.concurrency.group).startsWith(prefix(ci.concurrency.group)));
+  });
+});
+
+describe('plan outputs', () => {
+  const keys = new Set(
+    planOutputs({ matrix: '{}', count: 0, base: '', ui: 'exclude', notice: 'n' })
+      .trim()
+      .split('\n')
+      .map((line) => line.split('=')[0]),
+  );
+
+  it('writes every key that the workflows read', () => {
+    for (const [workflow, job] of [
+      [ci, 'mutation-plan'],
+      [screen, 'plan'],
+    ]) {
+      for (const value of Object.values(workflow.jobs[job].outputs)) {
+        const [, key] = /steps\.plan\.outputs\.(\w+)/.exec(value);
+        assert.ok(keys.has(key), `${job} reads ${key}`);
+      }
+    }
+    assert.ok(keys.has('ui') && keys.has('ui_notice'));
+  });
+
+  it('writes one line per key', () => {
+    const text = planOutputs({
+      matrix: '{"shard":[]}',
+      count: 2,
+      base: 'abc',
+      ui: 'only',
+      notice: 'x',
+    });
+    assert.equal(text, 'matrix={"shard":[]}\ncount=2\nbase=abc\nui=only\nui_notice=x\n');
   });
 });
