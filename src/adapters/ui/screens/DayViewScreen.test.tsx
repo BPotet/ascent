@@ -6,6 +6,7 @@ import { AccessibilityInfo, ScrollView } from 'react-native';
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../../application/testing/settableClock';
 import { CHECK_IN_HINT_DISMISSED_KEY } from '../../../application/useCases/checkInHint';
+import { WHATS_NEW_CARD_DISMISSED_KEY } from '../../../application/useCases/whatsNewCard';
 import { createHabit } from '../../../application/useCases/createHabit';
 import { deleteHabit } from '../../../application/useCases/deleteHabit';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
@@ -1256,5 +1257,69 @@ describe('DayViewScreen and the weekly progress (E1)', () => {
     await waitFor(() => expect(badge()).not.toBeOnTheScreen());
     expect(progressLine()).toHaveTextContent('À faire · 2/3 cette semaine');
     expect(screen.queryByTestId('cross-mark', { includeHiddenElements: true })).toBeNull();
+  });
+});
+
+describe('DayViewScreen and the whats-new card', () => {
+  const card = () => screen.queryByTestId('whats-new-card');
+
+  /** « Cuisiner » et « Budget du jour », d'avant la mise à jour qui introduit l'objectif. */
+  async function givenHabitsBeforeTheUpdate() {
+    await given('Cuisiner', 'Budget du jour');
+    await dependencies.unitOfWork.addSettingsChangeBeforeWeeklyTarget(1, Day.of(2026, 10, 5));
+  }
+
+  it('shows the card at the top, above the reminder of yesterday', async () => {
+    dependencies.clock.setToday(tuesday);
+    await given('Cuisiner', 'Budget du jour');
+    await toggleCheckIn(dependencies, 1, tuesday);
+    dependencies.clock.setToday(wednesday);
+    await dependencies.unitOfWork.addSettingsChangeBeforeWeeklyTarget(1, Day.of(2026, 10, 5));
+
+    await show();
+
+    expect(await screen.findByTestId('whats-new-card')).toBeOnTheScreen();
+    const list = screen.getByTestId('day-view-list');
+    const order = within(list)
+      .getAllByTestId(/^(whats-new-card|yesterday-reminder)$/u)
+      .map((each) => each.props.testID as string);
+    expect(order).toEqual(['whats-new-card', 'yesterday-reminder']);
+  });
+
+  it('opens « Modifier l’habitude » on the first habit with « Régler », and is gone for good', async () => {
+    await givenHabitsBeforeTheUpdate();
+    await show();
+
+    await fireEvent.press(await screen.findByRole('button', { name: 'Régler' }));
+
+    expect(await screen.findByTestId('edit-habit-sheet')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Nom de l’habitude')).toHaveDisplayValue('Cuisiner');
+    expect(card()).not.toBeOnTheScreen();
+    expect(dependencies.keyValueStore.values.get(WHATS_NEW_CARD_DISMISSED_KEY)).toBe('true');
+    await screen.unmount();
+    await show();
+    await screen.findByText('Cuisiner');
+    expect(card()).not.toBeOnTheScreen();
+  });
+
+  it('closes for good', async () => {
+    await givenHabitsBeforeTheUpdate();
+    await show();
+
+    await fireEvent.press(await screen.findByRole('button', { name: 'Fermer la nouveauté' }));
+
+    expect(card()).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
+    expect(dependencies.keyValueStore.values.get(WHATS_NEW_CARD_DISMISSED_KEY)).toBe('true');
+  });
+
+  it('shows no card on a first install', async () => {
+    await given('Cuisiner');
+
+    await show();
+    await screen.findByText('Cuisiner');
+    await act(async () => undefined);
+
+    expect(card()).not.toBeOnTheScreen();
   });
 });

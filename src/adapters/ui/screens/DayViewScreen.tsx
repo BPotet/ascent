@@ -16,6 +16,7 @@ import { HabitRow } from '../components/HabitRow';
 import { Notice } from '../components/Notice';
 import { Screen } from '../components/Screen';
 import { StateMessage } from '../components/StateMessage';
+import { WhatsNewCard } from '../components/WhatsNewCard';
 import { YesterdayReminderBanner } from '../components/YesterdayReminderBanner';
 import { Toast, type ToastAction } from '../components/Toast';
 import { CHECK_IN_SAVE_FAILED, correctionMessage } from '../format/checkInMessages';
@@ -26,6 +27,7 @@ import { useCreateHabit } from '../state/useCreateHabit';
 import { useDayView } from '../state/useDayView';
 import { type XpChange, useExperience, xpChangeOn } from '../state/Experience';
 import { useTodayChange } from '../state/useTodayChange';
+import { useWhatsNewCard } from '../state/useWhatsNewCard';
 import { useYesterdayReminder } from '../state/useYesterdayReminder';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
@@ -115,6 +117,7 @@ function HabitList({
   highlighted,
   xpChange,
   showHint,
+  whatsNew,
   reminder,
   onToggle,
   onEdit,
@@ -123,6 +126,7 @@ function HabitList({
   readonly highlighted: Highlight | null;
   readonly xpChange: XpChange | null;
   readonly showHint: boolean;
+  readonly whatsNew: ReactNode;
   readonly reminder: ReactNode;
   readonly onToggle: (habitDay: HabitDay) => void;
   readonly onEdit: (row: DayViewHabit) => void;
@@ -145,6 +149,7 @@ function HabitList({
         }}
         testID="day-view-list"
       >
+        {whatsNew}
         {reminder}
         {allDone && <Notice kind="celebration" text={ALL_DONE_MESSAGE} testID="all-done" />}
         {showHint && <Notice kind="hint" text={CHECK_IN_HINT} testID="check-in-hint" />}
@@ -200,6 +205,11 @@ function HabitList({
  * son feedback : « +20 XP » (au barème de la difficulté) s'envole de la coche (`Experience`,
  * `CharacterBar`).
  *
+ * Tout en haut de la liste, la Carte de nouveauté (#24) invite le joueur qui avait des habitudes
+ * avant la mise à jour à régler leur difficulté et leur objectif : « Régler » ouvre « Modifier
+ * l'habitude » sur la première habitude de la liste ; « Régler » comme « Fermer » la retirent pour
+ * toujours.
+ *
  * En haut de la liste, le rappel d'hier (« Hier : 1/2 faites ») propose de corriger hier :
  * « Corriger » appelle `onCorrectYesterday` avec la semaine d'hier, à ouvrir dans la Vue Semaine.
  */
@@ -215,6 +225,7 @@ export function DayViewScreen({
   const { reminder, dismiss: dismissReminder } = useYesterdayReminder();
   const create = useCreateHabit();
   const hint = useCheckInHint();
+  const whatsNew = useWhatsNewCard();
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const [seenRequest, setSeenRequest] = useState<string | number | undefined>(undefined);
@@ -353,6 +364,17 @@ export function DayViewScreen({
             highlighted={highlighted}
             xpChange={experience.change}
             showHint={hint.visible}
+            whatsNew={
+              whatsNew.visible && (
+                <WhatsNewCard
+                  onAdjust={() => {
+                    void whatsNew.dismiss();
+                    setEditing(view.habits[0] ?? null);
+                  }}
+                  onClose={() => void whatsNew.dismiss()}
+                />
+              )
+            }
             reminder={
               reminder && (
                 <YesterdayReminderBanner
