@@ -246,7 +246,7 @@ Quand toutes les barrières et la review sont au vert, la PR est mergée automat
 
 ## Barrières de qualité
 
-Toutes sont **bloquantes**. Les outils sont confirmés par l'Architect dans l'[ADR 0001](adr/0001-socle-technique.md), qui liste aussi les écarts temporaires. En local, `npm run verify` exécute toutes les barrières sauf la mutation et l'end-to-end ; `npm run verify:full` y ajoute la mutation.
+Toutes sont **bloquantes**. Les outils sont confirmés par l'Architect dans l'[ADR 0001](adr/0001-socle-technique.md), qui liste aussi les écarts temporaires. En local, `npm run verify` exécute toutes les barrières sauf la mutation et l'end-to-end ; `npm run verify:full` y ajoute la mutation (sans les écrans).
 
 | # | Barrière | Ce qu'elle garantit | Outil | Quand |
 |---|---|---|---|---|
@@ -259,7 +259,7 @@ Toutes sont **bloquantes**. Les outils sont confirmés par l'Architect dans l'[A
 | 6 | **Tests d'intégration** | Adaptateurs + base locale + écrans | Jest + React Native Testing Library | CI |
 | 7 | **Tests BDD** | Les critères d'acceptation Gherkin passent | Cucumber (`jest-cucumber`) | CI |
 | 8 | **Tests end-to-end** | Parcours réels sur l'app | Maestro (mobile) ; Playwright si une version web apparaît | CI |
-| 9 | **Tests de mutation** | Les tests détectent vraiment les bugs | StrykerJS | CI |
+| 9 | **Tests de mutation** | Les tests détectent vraiment les bugs (les écrans seulement à la demande du propriétaire, voir ci-dessous) | StrykerJS | CI |
 | 10 | **Coverage et qualité** | Seuils de couverture, code smells, duplication, sécurité | SonarQube Cloud | CI |
 | 10 bis | **Conformité aux maquettes** | Les écrans livrés correspondent aux maquettes validées (captures d'écran des tests end-to-end jointes à la PR) | Revue (Reviewer) | Review |
 | 11 | **Glossaire** | Les termes nouveaux ou modifiés figurent dans `docs/glossary.md` | Revue (Reviewer) | Review |
@@ -276,6 +276,20 @@ Toutes sont **bloquantes**. Les outils sont confirmés par l'Architect dans l'[A
 | Duplication du code nouveau | ≤ 3 % |
 
 > Le score du code nouveau est calculé sur l'ensemble des mutants des lignes ajoutées ou modifiées hors domaine, tous jobs confondus. Le score du domaine porte sur les fichiers du domaine modifiés (PR) ou sur tout le domaine (release). Voir l'[ADR 0004](adr/0004-mutation-en-ci.md).
+
+#### Mutation des écrans : à la demande du propriétaire
+
+Par décision du propriétaire, les **écrans** (`src/adapters/ui`) ne sont **pas mutés par défaut**, ni en local ni en CI : leurs lignes ne comptent pas dans le score du code nouveau. Les routes et l'assemblage (`src/app/`), le domaine et le reste du code restent mutés, avec les mêmes seuils.
+
+Le propriétaire, et lui seul, décide de muter les écrans :
+
+| Où | Comment |
+|---|---|
+| Sur une PR | Poser le label **`mutation:ui`** (depuis GitHub, téléphone compris). La CI est relancée avec les écrans ; chaque push suivant les mute tant que le label reste. Le retirer relance la CI sans eux. |
+| Sur une branche | Onglet **Actions** → workflow **CI** → **Run workflow**, choisir la branche et cocher **« Muter aussi les écrans »** (tout le code de la branche). |
+| En local | `npm run mutation:ui` (code nouveau) ou `npm run mutation -- --ui` (tout le code), lancé à sa demande. |
+
+Quand les écrans sont mutés, leurs mutants comptent dans le code nouveau hors domaine (seuil 70 %), et la barrière bloque comme les autres. **Aucun agent ne lance la mutation des écrans sans demande du propriétaire, et son absence n'est pas une barrière rouge.** Poser ou retirer n'importe quel label sur une PR relance toute la CI : on n'en pose donc pas d'autre sur les PR.
 
 ## Architecture hexagonale
 
@@ -331,9 +345,9 @@ gitGraph
 
 | Déclencheur | Ce qui tourne | Résultat |
 |---|---|---|
-| **PR vers `develop`** (`feature/`, `bugfix/`, `chore/`, `docs/`) | Toutes les barrières de qualité : commits, secrets, style, types, architecture, unitaires, intégration, BDD, mutation sur le code nouveau (lignes ajoutées ou modifiées ; fichiers du domaine modifiés en entier), en jobs parallèles, SonarQube Cloud. End-to-end sur une plateforme. | Auto-merge (squash) si tout est vert et la review approuvée |
+| **PR vers `develop`** (`feature/`, `bugfix/`, `chore/`, `docs/`) | Toutes les barrières de qualité : commits, secrets, style, types, architecture, unitaires, intégration, BDD, mutation sur le code nouveau (lignes ajoutées ou modifiées ; fichiers du domaine modifiés en entier ; écrans seulement avec le label `mutation:ui`), en jobs parallèles, SonarQube Cloud. End-to-end sur une plateforme. | Auto-merge (squash) si tout est vert et la review approuvée |
 | **Push sur `develop`** | Les mêmes barrières sur le résultat du merge, sauf la mutation (déjà faite par la PR), puis un **build de preview** installable sur le téléphone du propriétaire | Le propriétaire peut essayer la prochaine version |
-| **Branche `release/x.y.z`** | Suite complète : end-to-end **iOS et Android**, mutation sur tout le code, SonarQube Cloud. Génération du changelog. Build de production. | Merge dans `main` si tout est vert |
+| **Branche `release/x.y.z`** | Suite complète : end-to-end **iOS et Android**, mutation sur tout le code sauf les écrans (à la demande du propriétaire), SonarQube Cloud. Génération du changelog. Build de production. | Merge dans `main` si tout est vert |
 | **Merge sur `main`** | Tag `vX.Y.Z`, GitHub Release avec le changelog, build de production distribué | Nouvelle version publiée |
 | **Branche `hotfix/x.y.z-…`** | Suite complète, comme une release | Merge dans `main` (tag) puis dans `develop` |
 
