@@ -1,8 +1,8 @@
 # ADR 0006 — Moteur de combat 2D
 
-- **Statut** : proposé (22 octobre 2026, à l'ouverture de la PR #53). Mesures du téléphone du
-  propriétaire reportées le 23 octobre 2026 : elles ne tiennent pas le budget de latence du son
-  (voir « Conclusion des mesures »). L'ADR reste « proposé » jusqu'à la décision sur le son.
+- **Statut** : accepté (23 octobre 2026), après le report des mesures du téléphone du
+  propriétaire. Proposé le 22 octobre 2026, à l'ouverture de la PR #53. Le budget de latence du son
+  est révisé (voir « Décision : poursuivre ou ajuster »).
 - **Date** : 22 octobre 2026
 - **Décideur** : Architect (notes techniques de #31), avec le dev
 - **Contexte produit** : épique #30, story #31 (prototype jouable du combat)
@@ -222,10 +222,12 @@ Essai 2 : **médiane 67,5 ms, p95 114,5 ms** (essai 1 : aucune mesure, aucun son
 l'émulateur de la CI (lancé sans sortie audio, donc non représentatif) donne 85,7 ms et 254,3 ms.
 Au-delà d'environ 50 ms, le repli `react-native-audio-api` de l'ADR 0005 est réévalué.
 
-**Ne tient pas** : la médiane dépasse le budget d'environ 50 ms de 17,5 ms, et le p95 le dépasse de
-plus du double. Un son de parade peut donc arriver plus tard que la demi-fenêtre parfaite (60 ms)
-après l'appui : le p95 est presque deux fois cette demi-fenêtre. La mesure vient d'un seul essai,
-en mode vibreur, sur un téléphone dont le modèle n'est pas relevé.
+**Ne tient pas le budget initial** : la médiane dépasse le budget d'environ 50 ms de 17,5 ms, et
+le p95 le dépasse de plus du double. La mesure vient d'un seul essai, en mode vibreur, sur un
+téléphone dont le modèle n'est pas relevé. Elle va de la demande de lecture jusqu'au moment où le
+fil JS apprend que la lecture a commencé : ce n'est pas la latence acoustique, qui ajoute le temps de
+sortie du téléphone (davantage avec un casque Bluetooth). Le budget est révisé dans « Décision :
+poursuivre ou ajuster ».
 
 ### Taille de l'APK
 
@@ -240,13 +242,13 @@ surtout les sons provisoires et le code du combat. Après le retrait des permiss
 |---|---|---|
 | Datation des touchers, devant les fenêtres de ±60 ms et ±160 ms (méthode a) | ≤ 0,2 ms, méthode a, 0 appui redaté | tient |
 | Images perdues | 1 sur 757 (0,13 %), pire écart 25,8 ms | tient |
-| Latence du son ≤ ~50 ms (ADR 0005) | médiane 67,5 ms, p95 114,5 ms | **ne tient pas** |
+| Latence du son ≤ ~50 ms (ADR 0005, budget initial) | médiane 67,5 ms, p95 114,5 ms | ne tient pas |
+| Latence d'un son joué après le jugement, p95 ≤ 125 ms (budget révisé, voir la décision) | p95 114,5 ms | tient |
 
-Le moteur, la datation au toucher et le rendu tiennent leurs budgets. La latence du son ne tient pas
-le sien : le seuil de réévaluation du repli `react-native-audio-api` est franchi. L'ADR reste donc
-« proposé » jusqu'à la décision sur le son (garder `expo-audio`, ou essayer le repli), à consigner
-dans « Décision : poursuivre ou ajuster ». Restent aussi à relever : le modèle du téléphone, sa
-version d'Android et sa fréquence d'écran.
+Le moteur, la datation au toucher et le rendu tiennent leurs budgets. La latence du son dépasse le
+budget initial, ce qui imposait de réévaluer le repli `react-native-audio-api`. Cette réévaluation
+est faite dans « Décision : poursuivre ou ajuster ». Restent à relever, au prochain essai sur le
+téléphone : son modèle, sa version d'Android et sa fréquence d'écran.
 
 ## Durées retenues
 
@@ -257,16 +259,61 @@ propriétaire.
 
 ## Décision : poursuivre ou ajuster
 
-_À compléter après l'essai du propriétaire_ : poursuivre l'épique sur ce moteur, ou ajuster les
-fenêtres, les durées, la bibliothèque de rendu (repli `react-native-svg`) ou de son (repli
-`react-native-audio-api`).
+Décision de l'Architect (23 octobre 2026) : **poursuivre l'épique sur ce moteur**, sans changer les
+fenêtres, les durées ni le rendu Skia (repli `react-native-svg` écarté : 1 image perdue sur 757).
+**Garder `expo-audio`** et réviser le budget de latence du son, en connaissance de cause. Le repli
+`react-native-audio-api` n'est pas essayé pour l'instant.
+
+**Pourquoi la latence mesurée est acceptable** :
+
+- **Le son n'entre pas dans le jugement.** La parade est jugée sur l'instant du toucher, daté sur le
+  fil UI (§ 2 et 3). La latence du son ne change ni l'écart ni le résultat d'un appui.
+- **Aucun son de #31 ne sert de repère de timing.** Les repères de l'impact sont visuels : l'éclair,
+  l'avancée et la frappe de l'ennemi, et les aides visuelles prototypées pour #32 (un anneau qui se
+  ferme à l'impact). Les sons de #31 sont **joués après le jugement** de l'appui (parade, parade
+  parfaite, esquive, coup reçu, coup dans le vide, fin du combat), ou des annonces sans
+  exigence de timing (annonce de phase, et le sceau au début d'une préparation qui dure au moins
+  800 ms). Il n'y a pas de son de préparation calé sur l'impact : rien n'est à anticiper dans #31.
+- **Un son joué après le jugement, en retard, reste perçu comme lié à son action.** D'après la
+  recommandation ITU-R BT.1359, un son en retard sur l'image ne se remarque qu'au-delà d'environ
+  125 ms. Le p95 mesuré (114,5 ms) reste en dessous.
+- **Le repli a un coût réel, pour un gain incertain.** `react-native-audio-api` est un module natif
+  de plus, moins mûr (ADR 0005) : il ajoute du build, une surface de risque et des setups de test.
+  Avec une seule mesure, prise sur un seul téléphone, rien ne garantit qu'il fasse mieux sur ce
+  téléphone.
+
+**Budget révisé du son** :
+
+- **son joué après le jugement** : p95 ≤ 125 ms, de la demande au début de la lecture (panneau
+  Mesures). La cible de ~50 ms reste souhaitable, mais n'est plus un critère ;
+- **son qui annonce l'instant d'un appui**, c'est-à-dire un son sur lequel le joueur cale son appui
+  (par exemple un son de préparation qui annonce l'impact, ou un temps de la frappe en rythme de
+  #32) : il est **programmé en avance de la latence médiane mesurée**. La session de combat le demande à
+  l'échéance nominale moins cette latence, par le port `BattleClock`, comme les autres échéances
+  (§ 1). Un tel son n'est donc jamais joué « à l'événement ». C'est possible parce que ces
+  instants sont connus dès le début de la manche (§ 6).
+
+Le **décalage** (`InputOffset`, C7, réglé dans #34) corrige l'instant des appuis pour les juger, et
+absorbe donc un retard constant entre un repère et l'appui du joueur. Il ne remplace pas
+l'anticipation des sons qui annoncent un appui : il décalerait aussi le jugement face aux repères
+visuels, qui n'ont pas ce retard.
+
+**Ce qui rouvrirait la décision** (repli `react-native-audio-api` à essayer dans un spike dédié) :
+
+- une nouvelle mesure, sur le téléphone du propriétaire ou un autre, au-delà de 125 ms au p95 pour
+  les sons joués après le jugement ;
+- une latence trop variable pour qu'une anticipation fixe cale les sons qui annoncent un appui, à
+  juger sur l'écart entre la médiane et le p95 dès que #32 en introduit ;
+- un retour du propriétaire à l'essai : un son qui lui semble en retard sur l'image.
 
 ## Conséquences
 
 - **#32** (combat complet : garde, frappe en rythme, Élan, pouvoirs) s'appuie sur le même moteur :
   la frappe en rythme est un nouvel appui daté au toucher, jugé par les mêmes fenêtres. « Pouvoir »
   prend la case de gauche de la zone d'action, laissée vide par #31 ; l'Élan revient dans la barre
-  du héros.
+  du héros. Un son qui annonce un temps de la frappe en rythme est programmé en avance de la latence
+  mesurée (voir la décision). L'essai de #32 sur le téléphone relève à nouveau la latence du son,
+  avec le modèle du téléphone, sa version d'Android, sa fréquence d'écran et l'état du Bluetooth.
 - **#34** (pause et réglages de la parade) suspend l'horloge de combat ; le décalage
   (`InputOffset`) est déjà un paramètre du moteur, fixé à 0 ms dans #31.
 - Les tests d'écran simulent la scène Skia ; la datation au toucher se prouve par une horloge qui
