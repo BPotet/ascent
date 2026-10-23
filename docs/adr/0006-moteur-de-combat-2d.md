@@ -1,7 +1,8 @@
 # ADR 0006 — Moteur de combat 2D
 
-- **Statut** : proposé (22 octobre 2026, à l'ouverture de la PR #53). Il passe à « accepté » quand
-  les chiffres du téléphone du propriétaire sont reportés ci-dessous (section « Mesures »).
+- **Statut** : accepté (23 octobre 2026), après le report des mesures du téléphone du
+  propriétaire. Proposé le 22 octobre 2026, à l'ouverture de la PR #53. Le budget de latence du son
+  est révisé (voir « Décision : poursuivre ou ajuster »).
 - **Date** : 22 octobre 2026
 - **Décideur** : Architect (notes techniques de #31), avec le dev
 - **Contexte produit** : épique #30, story #31 (prototype jouable du combat)
@@ -55,8 +56,9 @@ sonde de toucher) est l'ADR 0005, auquel cet ADR renvoie.
 - Un seul point de conversion existe : `toBattleInstant` (`src/adapters/ui/state/battleTouch.ts`).
   Si le téléphone du propriétaire donne la méthode (b), seule cette fonction change (instant −
   décalage calibré par `calibrateClocks`). La méthode (c) déclencherait une escalade (#31, § 7).
-- **À confirmer sur le téléphone du propriétaire** : la sonde au repos, puis les appuis du combat
-  sous charge (panneau Mesures, qui recalcule la méthode par `touchProbeReport`).
+- **Confirmée sur le téléphone du propriétaire**, sous charge : aux deux essais, le panneau
+  Mesures (qui recalcule la méthode par `touchProbeReport`) retient la méthode (a) sur les appuis
+  du combat. La sonde au repos n'a pas été lancée sur le téléphone (voir « Mesures »).
 
 ### 4. Garde de réordonnancement de 32 ms
 
@@ -153,42 +155,80 @@ toucher : ADR 0005.
 
 ## Mesures
 
-À reporter depuis l'essai du propriétaire (APK de preview de la PR #53), avant le passage au statut
-« accepté ».
+Essais du propriétaire sur un téléphone Android réel, relevés dans le panneau Mesures (issue #31) :
+
+- **essai 1** (23 octobre, APK de `e6e5ca7`, mode vibreur, Bluetooth actif) : aucun son, à cause
+  de `playsInSilentMode: false` sur Android (§ 8) ;
+- **essai 2** (23 octobre, APK de `050dd8d`, mode vibreur) : son fonctionnel. C'est l'essai de
+  référence ci-dessous.
 
 ### Téléphone
 
 | Modèle | Version d'Android | Fréquence d'écran |
 |---|---|---|
-| _à reporter_ | | |
+| non relevé | non relevé | non relevée |
+
+Le modèle, la version d'Android et la fréquence d'écran n'ont pas été relevés pendant les essais.
 
 ### Datation des touchers
 
-| Mesure | Sonde de toucher au repos (ADR 0005) | Combat, sous charge (panneau Mesures) |
-|---|---|---|
-| Écart toucher → réception JS, médiane | _à reporter_ | _à reporter_ |
-| Écart toucher → réception JS, p95 | _à reporter_ | _à reporter_ |
-| Méthode retenue | _à reporter_ | _à reporter_ |
-| Décalage calibré | _à reporter_ | — |
-| Appuis redatés par la garde | — | _à reporter_ |
+| Mesure | Sonde au repos, émulateur (ADR 0005) | Combat, essai 1 (7 appuis) | Combat, essai 2 (5 appuis) |
+|---|---|---|---|
+| Écart toucher → réception JS, médiane | 0,1 ms | 0,1 ms | 0,1 ms |
+| Écart toucher → réception JS, p95 | 0,2 ms | 0,2 ms | 0,1 ms |
+| Méthode retenue | **a** | **a** | **a** |
+| Décalage calibré | 3,5 ms | — | — |
+| Appuis redatés par la garde | — | 0 | 0 |
+
+La sonde au repos n'a pas été lancée sur le téléphone ; la colonne de l'émulateur sert de référence.
+Sous la charge du combat, le téléphone retient la méthode (a) aux deux essais, avec des écarts du
+même ordre que l'émulateur au repos : la base d'horloge commune est **confirmée**, et
+`toBattleInstant` reste sans conversion (§ 3). L'erreur de datation (≤ 0,2 ms) est négligeable devant
+les fenêtres de ±60 ms et ±160 ms. Aucun appui n'a été redaté : la garde de 32 ms (§ 4) n'a pas eu à
+servir.
 
 ### Précision mesurée des fenêtres de timing
 
-Distribution des écarts des appuis jugés (panneau Mesures, « Répartition ») : _à reporter_.
+Écarts des appuis jugés (panneau Mesures, « Répartition »), 3 appuis à chaque essai :
+
+| Essai | Médiane | p95 | −160 à −61 ms | ±60 ms | 61 à 160 ms |
+|---|---|---|---|---|---|
+| 1 | 109,5 ms | 117,7 ms | 1 | 0 | 2 |
+| 2 | 82,2 ms | 159,9 ms | 1 | 0 | 2 |
+
+Les écarts mesurent le jeu du joueur, pas la technique : ils ne sont pas un critère d'acceptation.
+Tous tombent dans la fenêtre de ±160 ms, ce qui montre que les appuis sont jugés et classés.
+
+Indice pour le réglage de la parade (#34) : les 3 écarts jugés à chaque essai sont tous hors de ±60 ms.
 
 ### Fluidité des animations
 
-Images perdues pendant les préparations et l'éclat (taux et pire écart) : _à reporter_.
+Images perdues (écart entre deux images de plus de 25 ms, `DROPPED_FRAME_MS`) pendant le combat :
+
+| Essai | Images perdues | Taux | Pire écart |
+|---|---|---|---|
+| 1 | 0 sur 736 | 0 % | 23,5 ms |
+| 2 | 1 sur 757 | 0,13 % | 25,8 ms |
+
+**Tient** : une seule image perdue sur 1 493, de 0,8 ms au-dessus du seuil. Les poses calculées sur
+le fil UI (§ 8) restent fluides sous la charge du combat.
 
 ### Réactivité des boutons
 
-Réactivité ressentie par le propriétaire (Parade, Esquive, « Attaquer ») : _à reporter_.
+Réactivité ressentie par le propriétaire (Parade, Esquive, « Attaquer ») : non relevée.
 
 ### Latence du son
 
-Médiane et p95 (panneau Mesures) : _à reporter_. Pour mémoire, l'émulateur de la CI (lancé sans
-sortie audio, donc non représentatif) donne 85,7 ms et 254,3 ms. Au-delà d'environ 50 ms, le repli
-`react-native-audio-api` de l'ADR 0005 est réévalué.
+Essai 2 : **médiane 67,5 ms, p95 114,5 ms** (essai 1 : aucune mesure, aucun son). Pour mémoire,
+l'émulateur de la CI (lancé sans sortie audio, donc non représentatif) donne 85,7 ms et 254,3 ms.
+Au-delà d'environ 50 ms, le repli `react-native-audio-api` de l'ADR 0005 est réévalué.
+
+**Ne tient pas le budget initial** : la médiane dépasse le budget d'environ 50 ms de 17,5 ms, et
+le p95 le dépasse de plus du double. La mesure vient d'un seul essai, en mode vibreur, sur un
+téléphone dont le modèle n'est pas relevé. Elle va de la demande de lecture jusqu'au moment où le
+fil JS apprend que la lecture a commencé : ce n'est pas la latence acoustique, qui ajoute le temps de
+sortie du téléphone (davantage avec un casque Bluetooth). Le budget est révisé dans « Décision :
+poursuivre ou ajuster ».
 
 ### Taille de l'APK
 
@@ -196,6 +236,26 @@ Build de preview de la PR #53 (job `android-apk`, commit `5d2f19c`) : **93 928 8
 (93,9 Mo)**, contre 93 182 802 octets (93,2 Mo) dans l'ADR 0005 : +746 080 octets (+0,8 %),
 surtout les sons provisoires et le code du combat. Après le retrait des permissions (commit
 `839a270`) : **93 928 850 octets**, soit 32 octets de moins.
+
+### Conclusion des mesures
+
+| Budget | Mesure (essai 2) | Verdict |
+|---|---|---|
+| Datation des touchers, devant les fenêtres de ±60 ms et ±160 ms (méthode a) | p95 0,1 ms, méthode a, 0 appui redaté | tient |
+| Images perdues | 1 sur 757 (0,13 %), pire écart 25,8 ms | tient |
+| Latence du son ≤ ~50 ms (ADR 0005, budget initial) | médiane 67,5 ms, p95 114,5 ms | ne tient pas |
+| Son joué après le jugement : p95 ≤ 125 ms (budget révisé) | p95 114,5 ms, tous sons confondus | tient (condition nécessaire) |
+| Sceau : p95 ≤ 125 ms (budget révisé), au moins 1 040 ms avant l'impact | p95 114,5 ms, tous sons confondus | tient (condition nécessaire) |
+| Annonce de phase : p95 ≤ 125 ms (budget révisé) | p95 114,5 ms, tous sons confondus | tient (condition nécessaire) |
+
+Le panneau Mesures donne une seule latence pour tous les sons : chaque ligne du son la reprend.
+Le budget révisé et ce qui le rend « nécessaire, pas suffisant » sont dans « Décision : poursuivre
+ou ajuster ».
+
+Le moteur, la datation au toucher et le rendu tiennent leurs budgets. La latence du son dépasse le
+budget initial, ce qui imposait de réévaluer le repli `react-native-audio-api`. Cette réévaluation
+est faite dans « Décision : poursuivre ou ajuster ». Restent à relever, au prochain essai sur le
+téléphone : son modèle, sa version d'Android et sa fréquence d'écran.
 
 ## Durées retenues
 
@@ -206,16 +266,93 @@ propriétaire.
 
 ## Décision : poursuivre ou ajuster
 
-_À compléter après l'essai du propriétaire_ : poursuivre l'épique sur ce moteur, ou ajuster les
-fenêtres, les durées, la bibliothèque de rendu (repli `react-native-svg`) ou de son (repli
-`react-native-audio-api`).
+Décision de l'Architect (23 octobre 2026) : **poursuivre l'épique sur ce moteur**, sans changer les
+fenêtres, les durées ni le rendu Skia (repli `react-native-svg` écarté : 1 image perdue sur 757).
+**Garder `expo-audio`** et réviser le budget de latence du son, en connaissance de cause. Le repli
+`react-native-audio-api` n'est pas essayé pour l'instant.
+
+### Pourquoi la latence mesurée est acceptable
+
+- **Le son n'entre pas dans le jugement.** La parade est jugée sur l'instant du toucher, daté sur le
+  fil UI (§ 2 et 3). La latence du son ne change ni l'écart ni le résultat d'un appui.
+- **Aucun son de #31 ne sert de repère de timing.** Les repères de l'impact sont visuels : l'avancée,
+  la préparation (fausse amorce comprise) et la frappe de l'ennemi (§ 8). L'éclat qui suit le
+  jugement n'est pas un repère. Un repère de timing supplémentaire est à l'étude côté UX, non
+  validé. Les sons de #31 sont de trois sortes :
+  - **joués après le jugement** : parade, parade parfaite, esquive, coup reçu, coup dans le vide,
+    fin du combat ;
+  - **le sceau**, joué au début de la préparation d'un coup imparable, au moins 1 040 ms avant
+    l'impact (1 300 ms × 0,8) : il double le losange du sceau et laisse le temps de choisir
+    l'esquive, il ne date pas l'impact ;
+  - **l'annonce de phase**, jouée au début de la transition de phase de 800 ms, avec sa bannière.
+
+  Aucun ne précède l'impact pour en donner l'instant : rien n'est à anticiper dans #31.
+- **Un son en retard sur l'image reste lié à elle.** La recommandation ITU-R BT.1359-1 fixe, pour
+  un son en retard sur l'image, le seuil de détectabilité à −125 ms et le seuil d'acceptabilité à
+  −185 ms. Chaque son de #31 accompagne une image (résultat de l'appui, sceau, bannière) : c'est le
+  bon repère pour tous.
+- **Le repli a un coût réel, pour un gain incertain.** `react-native-audio-api` est un module natif
+  de plus, moins mûr (ADR 0005) : il ajoute du build, une surface de risque et des setups de test.
+  Avec une seule mesure, prise sur un seul téléphone, rien ne garantit qu'il fasse mieux sur ce
+  téléphone.
+
+### Budget révisé du son
+
+Un seul budget pour tous les sons de #31 (joués après le jugement, sceau, annonce de phase) :
+**p95 ≤ 125 ms** au panneau Mesures, tous sons confondus. La cible de ~50 ms de l'ADR 0005 reste
+souhaitable, mais n'est plus un critère.
+
+- **Condition nécessaire, pas suffisante.** La mesure s'arrête au moment où le fil JS apprend que
+  la lecture a commencé : elle ne compte pas la sortie audio du téléphone. Au p95 de l'essai 2
+  (114,5 ms), il reste environ 10 ms avant le seuil de détectabilité, que la sortie audio peut
+  consommer. Il en reste environ 70 ms avant le seuil d'acceptabilité (−185 ms) : un retard
+  remarqué au p95 resterait acceptable.
+- **Bluetooth : hors budget.** Une sortie Bluetooth ajoute un retard que l'app ne mesure pas et
+  que `expo-audio` ne donne pas ; il varie selon le casque et le codec. Le jeu ne le compense pas.
+  Il reste entièrement jouable, puisque tous les repères de timing sont visuels et que le jugement
+  se fait au toucher ; seul le son arrive plus tard. L'essai 1, Bluetooth actif, n'a donné aucune
+  mesure de son (§ 8) : le budget est jugé sur l'essai 2, sortie sur le téléphone.
+
+### Sons qui annoncent l'instant d'un appui (à partir de #32)
+
+Un son sur lequel le joueur cale son appui, par exemple un son qui annonce l'impact de la frappe en
+rythme de #32, est **lancé en avance de la latence attendue**. Il n'est jamais joué « à
+l'événement ».
+
+- **Quand l'instant est connu.** Celui d'un impact ennemi l'est au plus tard au début de sa
+  préparation, dont la durée est tirée au début de la manche (§ 6) ; un arrêt sur image le décale
+  ensuite de 90 ms (§ 5), et le son programmé est alors reprogrammé. Celui de l'impact de la frappe en rythme ne l'est qu'au déclenchement de la frappe : il tombe
+  700 ms plus tard (préparation fixe, C6). La session de combat programme alors le son à l'impact
+  moins la latence attendue, par le port `BattleClock`, comme les autres échéances (§ 1). 700 ms
+  laissent largement la place à une avance d'une centaine de millisecondes.
+- **D'où vient la latence attendue : une mesure à l'exécution, fournie par un port.** Le port
+  `BattleSound` donne la latence attendue, médiane des latences qu'il a mesurées sur ce téléphone
+  (`ExpoAudioBattleSound` les relève déjà). Tant qu'il n'a pas assez de mesures, il donne la
+  médiane de l'essai 2 (67,5 ms). Une constante unique serait fausse sur les autres téléphones :
+  la latence audio varie beaucoup d'un appareil Android à l'autre, et la nôtre ne vient que d'un
+  seul. Le domaine et l'application restent purs : la valeur entre par un port. Le nombre de
+  mesures requis et le nom de la méthode sont fixés dans les notes techniques de #32.
+- **Le décalage ne suffit pas.** Le décalage (`InputOffset`, C7, réglé dans #34) corrige l'instant
+  des appuis pour les juger : il décalerait aussi le jugement face aux repères visuels, qui n'ont
+  pas ce retard. Il reste le réglage du joueur, pas la compensation du son.
+
+### Ce qui rouvrirait la décision
+
+Le repli `react-native-audio-api` serait alors essayé dans un spike dédié :
+
+- une nouvelle mesure au-delà de 125 ms au p95, sur le téléphone du propriétaire ou un autre ;
+- une latence trop variable pour qu'une avance fixe cale les sons qui annoncent un appui, à juger
+  sur l'écart entre la médiane et le p95 dès que #32 en introduit ;
+- un retour du propriétaire à l'essai : un son qui lui semble en retard sur l'image.
 
 ## Conséquences
 
 - **#32** (combat complet : garde, frappe en rythme, Élan, pouvoirs) s'appuie sur le même moteur :
   la frappe en rythme est un nouvel appui daté au toucher, jugé par les mêmes fenêtres. « Pouvoir »
   prend la case de gauche de la zone d'action, laissée vide par #31 ; l'Élan revient dans la barre
-  du héros.
+  du héros. Un son qui annonce l'impact de la frappe en rythme est lancé en avance de la latence
+  attendue, donnée par le port `BattleSound` (voir la décision). L'essai de #32 sur le téléphone relève à nouveau la latence du son,
+  avec le modèle du téléphone, sa version d'Android, sa fréquence d'écran et l'état du Bluetooth.
 - **#34** (pause et réglages de la parade) suspend l'horloge de combat ; le décalage
   (`InputOffset`) est déjà un paramètre du moteur, fixé à 0 ms dans #31.
 - Les tests d'écran simulent la scène Skia ; la datation au toucher se prouve par une horloge qui
