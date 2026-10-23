@@ -83,6 +83,23 @@ describe('ExpoAudioBattleSound', () => {
     expect(playerOf('hit').calls).toEqual([]);
   });
 
+  it('measures the sound latency with the monotonic clock of the phone by default', () => {
+    const now = jest
+      .spyOn(performance, 'now')
+      .mockReturnValueOnce(1_000)
+      .mockReturnValueOnce(1_032);
+    try {
+      const sound = new ExpoAudioBattleSound();
+
+      sound.play('dodge');
+      playerOf('dodge').emit({ playing: true });
+
+      expect(sound.latencies()).toEqual([32]);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
   it('measures the latency from the request to the start of the playback', () => {
     let now = 1_000;
     const sound = new ExpoAudioBattleSound(() => now);
