@@ -16,7 +16,7 @@
 | Terme | Définition | Statut |
 |---|---|---|
 | **Joueur** (`Player`) | La personne qui utilise Ascent. | Défini |
-| **Personnage** (`Character`) | L'avatar du joueur dans le jeu. Il progresse quand le joueur tient ses habitudes. | Défini |
+| **Personnage** (`Character`) | L'avatar du joueur, porteur de l'expérience. Il progresse quand le joueur tient ses habitudes. Il est distinct du **Héros**, qui combat dans la tour. Le lien avec le niveau reste à préciser, hors de l'épique #30. | Défini |
 | **Habitude** (`Habit`) | Un comportement du quotidien que le joueur veut construire (ex. « me faire à manger ») ou abandonner. Elle est datée de son **jour de création** (date locale). Elle est **active** un jour donné si son jour de création est antérieur ou égal à ce jour ; avant, le jour est « hors habitude ». Son nom, nettoyé des espaces superflus et des caractères invisibles en début et en fin (un nom fait seulement de caractères invisibles est vide), compte de 1 à 40 caractères et est unique sans tenir compte des majuscules (les accents comptent). Le joueur a au plus 10 habitudes à la fois. Elle a une **difficulté** et un **objectif hebdomadaire**, choisis à la création et modifiables ensuite (`updateHabit`, avec le nom). **Modifier** une habitude (`updateHabit`) enregistre en une fois son nom et ses réglages : le nom suit les mêmes règles (elle n'est pas un doublon d'elle-même : on peut n'en changer que les majuscules) et ne change ni ses suivis, ni son jour de création, ni l'expérience ; un changement de difficulté s'applique à toute la semaine en cours, un changement d'objectif à partir de la semaine suivante (sauf le jour de création). « Habitude renommée » s'affiche si seul le nom change, « Habitude modifiée » sinon, suivi de la variation de l'expérience s'il y en a (« Habitude modifiée · +20 XP »). **Supprimer** une habitude (`deleteHabit`), après une confirmation qui annonce l'expérience retirée, prime d'objectif comprise (`previewHabitDeletion` : « −25 XP » pour le suivi d'aujourd'hui et la prime de la semaine qui tombe), est définitif : ses suivis et ses changements de réglages sont effacés et elle n'apparaît plus dans aucune vue ; recréée sous le même nom, elle repart d'aujourd'hui. | Défini |
 | **Suivi** (`CheckIn`) | L'indication par le joueur qu'il a tenu une habitude un jour donné. Le joueur n'enregistre que « fait » : un tap passe à « fait », un second tap revient en arrière. Au plus un suivi par habitude et par jour. Un suivi « pas fait » n'existe que s'il porte la marque « corrigé » (correction d'un jour « fait » à sa clôture). | Défini |
 | **Jour** (`Day`) | Une date du calendrier local du téléphone. **Aujourd'hui** est la date locale au moment de l'action. Chaque suivi est rattaché à un jour. | Défini |
@@ -54,10 +54,66 @@
 | **Niveau** (`Level`) | Le palier de progression du personnage, déterminé par son expérience. | À préciser (courbe) |
 | **Compétence** (`Skill`) | Une capacité que le personnage débloque grâce à sa progression. | À préciser (effets) |
 | **Déblocage** (`Unlock`) | L'obtention d'une compétence ou d'une récompense quand une condition de progression est remplie. | À préciser |
-| **Monstre** (`Monster`) | Un adversaire que le personnage combat dans le monde de jeu. | À préciser |
 | **Quête** (`Quest`) | Un objectif narratif composé d'étapes, lié à l'histoire. | À préciser (lien avec les habitudes) |
 | **Histoire** (`Story`, côté jeu : `Lore`) | Le récit et l'univers d'Ascent. Dans le code, utiliser `Lore` pour éviter la confusion avec une *story* de développement. | À préciser (univers, ton) |
 | **Verrou** (`AppLock`) | La protection d'accès à l'application sur le téléphone. | À préciser (PIN, biométrie) |
+
+## Combat
+
+Termes de l'épique #30 (« La première ascension »), introduits par la story #31 (prototype jouable du combat). Le mot « tour » ne désigne que l'édifice gravi : dans un combat, on parle de **manche** et de **phase**.
+
+| Terme | Définition | Statut |
+|---|---|---|
+| **Tour** (`Tower`) | L'édifice que le héros gravit pendant une ascension, et seulement lui. Le mot « tour » n'est jamais employé pour le combat. | Défini |
+| **Héros** (`Hero`) | Le combattant que le joueur dirige dans la tour. Il a ses **PV**, son **Attaque**, sa **réduction des dégâts** et son **trait**. Distinct du **Personnage**. | Défini |
+| **La Sentinelle** (`Sentinel`) | Le premier héros : 80 PV, Attaque 10 (1 coup), réduction des dégâts 10 %, trait « contre-attaque ×1,3 ». | Défini |
+| **Ennemi** (`Enemy`) | Un adversaire du héros dans un combat. Il remplace le terme « Monstre ». | Défini |
+| **Goule** (`Ghoul`) | Ennemi du combat d'essai : 20 PV, coup simple de 5, double frappe de 3 + 3. | Défini |
+| **Spectre** (`Specter`) | Ennemi du combat d'essai : 14 PV, coup retardé de 6, coup trompeur de 6 et, pour l'essai seulement, un coup imparable de 9 (6 × 1,5). | Défini |
+| **PV** (`Hp`) | Les points de vie d'un héros ou d'un ennemi. À 0, il tombe. | Défini |
+| **Attaque** (`AttackPower`) | La caractéristique qui fixe les dégâts infligés par un héros. Ne pas confondre avec le bouton « Attaquer » ni avec un coup ennemi. | Défini |
+| **Réduction des dégâts** (`DamageReduction`) | La part des dégâts subis que le héros retire, en pourcentage (10 % pour la Sentinelle). | Défini |
+| **Trait** (`Trait`) | La particularité permanente d'un héros (pour la Sentinelle : contre-attaque ×1,3). | Défini |
+| **Combat** (`Battle`) | L'affrontement entre le héros et un groupe d'ennemis, en manches successives, jusqu'à la victoire ou la défaite. | Défini |
+| **Combat d'essai** (`TrialBattle`) | Le combat du prototype (#31) : la Sentinelle contre une Goule et un Spectre. Il s'ouvre depuis un point d'entrée provisoire, visible dans le build de preview seulement, et se rejoue depuis le début. | Défini |
+| **Manche** (`Round`) | Une phase du héros suivie d'une phase ennemie. Les intentions des ennemis sont tirées au début de chaque manche. | Défini |
+| **Phase du héros** (`HeroPhase`) | La partie de la manche où le joueur choisit sa cible et attaque. Ses actions se valident au relâcher du doigt, s'il est encore sur le bouton. | Défini |
+| **Phase ennemie** (`EnemyPhase`) | La partie de la manche où les ennemis debout attaquent un par un, de gauche à droite, et où le joueur pare ou esquive. | Défini |
+| **Intention** (`Intent`) | L'action qu'un ennemi annonce pour la manche : ici, toujours une attaque, avec son type de coup et ses dégâts. | Défini |
+| **Cible** (`Target`) | L'ennemi visé par le héros. L'ennemi debout le plus à gauche au départ ; un toucher sur sa colonne la change, et elle reste d'une manche à l'autre. | Défini |
+| **Coup simple** (`BasicAttack`) | Un coup ennemi à un seul impact. | Défini |
+| **Double frappe** (`DoubleAttack`) | Un coup ennemi à deux impacts, le second 420 ms après le premier, jugés chacun séparément. | Défini |
+| **Coup retardé** (`DelayedAttack`) | Un coup ennemi à un seul impact, dont la préparation est longue. | Défini |
+| **Coup trompeur** (`FeintAttack`) | Un coup ennemi dont la préparation contient une **fausse amorce**. | Défini |
+| **Coup imparable** (`PerilousAttack`) | Un coup ennemi signalé par le **sceau** : une parade échoue, il faut l'esquiver. Ses dégâts valent 1,5 fois ceux d'un coup normal. | Défini |
+| **Sceau** (`PerilSeal`) | Le losange rouge, avec un point d'exclamation et un libellé lu par le lecteur d'écran, qui apparaît au-dessus d'un ennemi qui prépare un coup imparable. Jamais la couleur seule. | Défini |
+| **Préparation** (`WindUp`) | L'élan d'un ennemi avant son impact. Sa durée de base dépend du type de coup et varie de ×0,8 à ×1,2, tirée au début de la manche. Seule l'animation la montre. | Défini |
+| **Fausse amorce** (`Feint`) | Un faux départ du coup trompeur, entre 35 % et 60 % de sa préparation. Un appui à ce moment est un appui raté. | Défini |
+| **Impact** (`Impact`) | Dans un combat : l'instant où un coup ennemi frappe le héros. Une double frappe en a deux. À ne pas confondre avec l'**Analyse d'impact** du workflow. | Défini |
+| **Appui** (`Press`) | Un toucher sur « Parade » ou « Esquive », daté à l'instant où le doigt se pose. | Défini |
+| **Écart** (`PressDelta`) | L'instant d'un appui, plus le décalage, moins l'instant de l'impact, en ms. Négatif si l'appui est en avance. | Défini |
+| **Fenêtre parfaite** (`PerfectWindow`) | Un appui dont l'écart est d'au plus 60 ms, en valeur absolue. | Défini |
+| **Fenêtre de parade** (`ParryWindow`) | Un appui dont l'écart est d'au plus 160 ms, en valeur absolue. Hors de cette fenêtre, l'appui est raté. Un impact sans appui valide est subi à impact + 160 ms. | Défini |
+| **Parade** (`Parry`) | La défense risquée et payante : parfaite, aucun dégât et une contre-attaque si tous les impacts du coup sont parés parfaitement ; bonne, 25 % des dégâts. Elle échoue sur un coup imparable. | Défini |
+| **Esquive** (`Dodge`) | La défense sûre : aucun dégât dans la fenêtre de parade, même sur un coup imparable, sans contre-attaque. | Défini |
+| **Contre-attaque** (`Counter`) | L'attaque du héros qui suit la parade parfaite de tous les impacts d'un coup : 50 % de son Attaque, multipliés par son trait (6 pour la Sentinelle). | Défini |
+| **Arrêt sur image** (`HitStop`) | Les 90 ms où le temps du combat s'arrête à une parade parfaite. Les échéances suivantes sont décalées d'autant ; un appui pendant l'arrêt est daté à son début. | Défini |
+| **Appui raté** (`Whiff`) | Un appui trop tôt, trop tard ou **dans le vide** (sans impact à juger). Il met le héros en déséquilibre. | Défini |
+| **Déséquilibre** (`OffBalance`) | Les 450 ms qui suivent un appui raté. Chaque appui pendant ce temps est ignoré et relance les 450 ms ; un impact qui tombe pendant ce temps est subi. Il s'arrête au début d'une transition de phase. Les boutons s'affichent grisés et hachurés, toujours actifs. | Défini |
+| **Décalage** (`InputOffset`) | La correction, en ms, ajoutée à l'instant d'un appui pour le juger. Fixé à 0 ms dans #31 ; son réglage arrive avec #34. | Défini |
+| **Transition de phase** (`PhaseTransition`) | Le temps mort de 800 ms entre la phase du héros et la phase ennemie, dans les deux sens, pendant lequel les appuis sont ignorés sans déséquilibre. Seul un toucher commencé après sa fin compte. | Défini |
+| **Annonce de phase** (`PhaseBanner`) | La bannière (« Phase ennemie » ou « À toi »), le son, la vibration (phase ennemie seulement) et l'annonce au lecteur d'écran qui accompagnent la transition de phase. Les boutons de la phase qui arrive s'affichent inactifs, sans hachures. | Défini |
+| **Avancée** (`StepIn`) | Les 400 ms où un ennemi s'avance avant sa préparation. Les appuis y sont jugés : un appui est alors dans le vide. | Défini |
+| **Durée de l'action du héros** (`HeroActionDuration`) | Le temps de résolution de l'attaque du héros, animation comprise (500 ms), avant la transition de phase. | Défini |
+| **Victoire** (`Victory`) | La fin du combat quand tous les ennemis sont à 0 PV. | Défini |
+| **Défaite** (`Defeat`) | La fin du combat quand le héros tombe à 0 PV. | Défini |
+| **Bulle d'aide du combat** (`BattleHint`) | Une bulle de première utilisation : en phase du héros (« Touche un ennemi pour le viser, puis Attaquer. ») et avant la première phase ennemie (Parade et Esquive). Chacune n'apparaît qu'une fois. Celle de la phase ennemie passe avant la transition de phase, qui ne commence qu'à sa fermeture. | Défini |
+| **Réglages d'essai** (`TrialTuning`) | Dans le build de preview seulement : les durées de la transition de phase (800 ms par défaut) et de l'avancée (400 ms par défaut), de 0 à 2 000 ms par pas de 50 ms, appliquées au combat suivant. | Défini |
+| **Mesures** (`BattleMeasuresPanel`) | Dans le build de preview seulement : le panneau de l'écran de fin qui relève, pour l'essai sur téléphone, l'écart entre le toucher et sa réception, les appuis redatés, les écarts des appuis jugés et leur répartition, les images perdues et la latence du son. | Défini |
+| **Graine du combat** (`BattleSeed`) | Le nombre qui détermine tous les tirages d'un combat : une même graine et les mêmes actions donnent exactement le même combat. Distincte de la **Graine** d'une ascension (`AscentSeed`, #33), qui produira celles des combats. | Défini |
+| **Tirage avec graine** (`SeededRandom`) | Le générateur de nombres du combat, déterminé par la graine du combat. Les tirages se font au début de la manche, dans un ordre fixe : ennemis debout de gauche à droite, puis pour chacun le coup, la durée de préparation et la position de la fausse amorce. | Défini |
+| **Événement de combat** (`BattleEvent`) | Ce que le moteur du combat annonce, daté de son instant nominal (préparation commencée, impact jugé, contre-attaque…). L'interface, les sons et les vibrations ne réagissent qu'à eux. | Défini |
+| **Session de combat** (`BattleSession`) | Le cas d'usage qui mène un combat : il crée le combat, reçoit les appuis, fait avancer le moteur à chaque échéance et publie l'état et les événements. | Défini |
 
 ## Workflow de développement
 
@@ -69,7 +125,7 @@
 | **Maquette** | La représentation visuelle des écrans d'une épique, avec tous leurs états, validée par le propriétaire avec les stories. Une fois validée, elle fait foi pour l'interface. Stockée dans `docs/mockups/`. |
 | **Critère d'acceptation** | Une condition vérifiable qu'une story doit remplir. Il est écrit en Gherkin (`Étant donné / Quand / Alors`). |
 | **Scénario Gherkin** | Un critère d'acceptation sous forme exécutable, dans un fichier `.feature`. |
-| **Analyse d'impact** | L'analyse GitNexus du code existant, faite avant d'implémenter une story, pour mesurer ce qu'elle va toucher. |
+| **Analyse d'impact** | L'analyse GitNexus du code existant, faite avant d'implémenter une story, pour mesurer ce qu'elle va toucher. À ne pas confondre avec l'**Impact** d'un coup ennemi, dans un combat. |
 | **Impact fort** | Le résultat d'une analyse d'impact qui oblige à renvoyer la story au PM et à l'Architect avant de continuer (voir `docs/workflow.md`). |
 | **Dev** | L'agent full stack qui implémente une story de bout en bout : domaine, cas d'usage, ports, persistance, interface, feedback de jeu, navigation, fonctions natives du téléphone, builds, tests end-to-end. Plus tard : API et serveur. |
 | **Fixer** | L'agent qui corrige les bugs : il les reproduit par un test qui échoue, trouve la cause racine et applique la correction minimale, sans ajouter de fonctionnalité. |
@@ -107,7 +163,12 @@
 | **Visibilité de l'application** (`AppVisibility`) | Ce que l'horloge du téléphone sait de l'application : visible à l'écran (premier plan) ou non. Elle relit l'heure au retour au premier plan, et régulièrement tant que l'application est visible. |
 | **Dépôt** (`Repository`) | Port de stockage d'un type de données du domaine (habitudes, suivis, personnage, changements de réglages, introductions). |
 | **Unité de travail** (`UnitOfWork`) | Port qui exécute un cas d'usage dans une transaction, un seul à la fois. Il fournit les dépôts ; si le cas d'usage échoue, rien n'est enregistré. |
-| **Retour haptique** (`Haptics`) | Le port de la vibration légère qui accompagne un gain d'expérience. Jamais pour une perte d'expérience. |
+| **Retour haptique** (`Haptics`) | Le port de la vibration légère qui accompagne un gain d'expérience. Jamais pour une perte d'expérience. Il est réservé au gain d'expérience : les vibrations du combat passent par la **Vibration de combat** (`BattleHaptics`). |
+| **Horloge de combat** (`BattleClock`) | Le port qui donne l'instant présent, en ms, sur la base monotone des instants de toucher, et programme les échéances du combat. À distinguer de l'**Horloge** (`Clock`), qui donne aujourd'hui. |
+| **Source de graine** (`SeedSource`) | Le port qui fournit une graine du combat pour chaque nouveau combat (au hasard sur le téléphone, fixée dans les tests). |
+| **Son de combat** (`BattleSound`) | Le port qui joue les sons du combat (parades, esquive, touché, appui raté, sceau, annonces de phase, victoire, défaite). Il ne lève jamais d'erreur. |
+| **Vibration de combat** (`BattleHaptics`) | Le port des vibrations du combat : parade parfaite (forte), esquive, touché, annonce de la phase ennemie (légère). Il ne lève jamais d'erreur. |
+| **Garde de réordonnancement** (`ReorderGuard`) | Les 32 ms que la session de combat attend après une échéance « appui absent » avant de la traiter, pour qu'un toucher arrivé juste avant ne soit jamais jugé après. Un appui daté avant l'état du moteur est redaté à cet état et compté. |
 | **Stockage clé-valeur** (`KeyValueStore`) | Un port de stockage local de valeurs texte simples, identifiées par une clé. Les données restent sur le téléphone. |
 | **Base locale** | La base SQLite de l'application, sur le téléphone (`ascent.db`). Seuls les adaptateurs de `persistence` y accèdent. |
 | **Introduction** (`Introduction`, port `IntroductionRepository`) | La trace, dans la base locale, qu'une règle d'expérience introduite par une mise à jour a été appliquée une fois aux données existantes (ex. `targetBonus`, cas d'usage `introduceTargetBonus`, qui accorde au démarrage les primes d'objectif déjà atteintes). Elle est écrite dans la même unité de travail que l'expérience ajoutée : un démarrage interrompu puis rejoué n'accorde jamais deux fois. À distinguer du **Changement d'introduction**, qui est un changement de réglages ajouté à chaque habitude : une Introduction ne touche aucune habitude. |
