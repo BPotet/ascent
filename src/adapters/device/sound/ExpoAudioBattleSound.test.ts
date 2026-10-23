@@ -1,4 +1,5 @@
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
+import { Platform } from 'react-native';
 
 import { BATTLE_SOUND_CUES } from '../../../application/ports/BattleSound';
 import { BATTLE_SOUND_FILES, ExpoAudioBattleSound } from './ExpoAudioBattleSound';
@@ -64,14 +65,28 @@ describe('ExpoAudioBattleSound', () => {
     expect(players.map((player) => player.source)).toEqual(Object.values(BATTLE_SOUND_FILES));
   });
 
-  it('respects the silent mode of the phone and mixes with other sounds', () => {
-    new ExpoAudioBattleSound();
+  it.each([
+    ['ios', false],
+    ['android', true],
+  ] as const)(
+    'on %s, mixes with other sounds and plays in silent mode: %s',
+    (os, playsInSilentMode) => {
+      // iOS : le mode silencieux coupe les sons du jeu, c'est voulu. Android : expo-audio ne joue
+      // rien hors du mode sonnerie normal si playsInSilentMode vaut false ; le jeu doit sonner au
+      // volume Multimédia, même en mode vibreur.
+      const platform = jest.replaceProperty(Platform, 'OS', os);
+      try {
+        new ExpoAudioBattleSound();
 
-    expect(audioMode).toHaveBeenCalledWith({
-      playsInSilentMode: false,
-      interruptionMode: 'mixWithOthers',
-    });
-  });
+        expect(audioMode).toHaveBeenCalledWith({
+          playsInSilentMode,
+          interruptionMode: 'mixWithOthers',
+        });
+      } finally {
+        platform.restore();
+      }
+    },
+  );
 
   it('plays a sound from its start', () => {
     const sound = new ExpoAudioBattleSound();

@@ -1,4 +1,5 @@
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
+import { Platform } from 'react-native';
 
 import type { BattleSound, BattleSoundCue } from '../../../application/ports/BattleSound';
 
@@ -18,7 +19,9 @@ export const BATTLE_SOUND_FILES: Readonly<Record<BattleSoundCue, number>> = {
 
 /**
  * Son de combat du téléphone (`expo-audio`) : un lecteur préchargé par son, rejoué depuis le
- * début. Sur iOS, le mode silencieux coupe les sons ; la bannière et la vibration restent. Ne lève
+ * début. Sur iOS, le mode silencieux coupe les sons ; la bannière et la vibration restent. Sur
+ * Android, le jeu sonne au volume Multimédia, même en mode vibreur ou silencieux : avec
+ * `playsInSilentMode: false`, expo-audio n'y joue rien hors du mode sonnerie normal. Ne lève
  * jamais d'erreur. Mesure la latence du son : de la demande au début effectif de la lecture.
  */
 export class ExpoAudioBattleSound implements BattleSound {
@@ -27,9 +30,10 @@ export class ExpoAudioBattleSound implements BattleSound {
   private readonly latencySamples: number[] = [];
 
   constructor(private readonly now: () => number = () => performance.now()) {
-    setAudioModeAsync({ playsInSilentMode: false, interruptionMode: 'mixWithOthers' }).catch(
-      () => undefined,
-    );
+    setAudioModeAsync({
+      playsInSilentMode: Platform.OS === 'android',
+      interruptionMode: 'mixWithOthers',
+    }).catch(() => undefined);
     for (const cue of Object.keys(BATTLE_SOUND_FILES) as BattleSoundCue[]) {
       try {
         const player = createAudioPlayer(BATTLE_SOUND_FILES[cue]);
