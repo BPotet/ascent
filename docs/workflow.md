@@ -163,6 +163,7 @@ Le scope indique la zone touchée, alignée sur l'architecture.
 | `e2e` | `e2e/` | dev |
 | `glossary` | `docs/glossary.md` | tous |
 | `workflow` | `docs/workflow.md`, agents, skills, templates | orchestrateur |
+| `release` | numéro de version et changelog d'une release (`chore(release): x.y.z`) | orchestrateur |
 
 Le scope est facultatif quand un commit touche plusieurs zones.
 
