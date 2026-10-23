@@ -1,7 +1,8 @@
 # ADR 0006 — Moteur de combat 2D
 
-- **Statut** : proposé (22 octobre 2026, à l'ouverture de la PR #53). Il passe à « accepté » quand
-  les chiffres du téléphone du propriétaire sont reportés ci-dessous (section « Mesures »).
+- **Statut** : proposé (22 octobre 2026, à l'ouverture de la PR #53). Mesures du téléphone du
+  propriétaire reportées le 23 octobre 2026 : elles ne tiennent pas le budget de latence du son
+  (voir « Conclusion des mesures »). L'ADR reste « proposé » jusqu'à la décision sur le son.
 - **Date** : 22 octobre 2026
 - **Décideur** : Architect (notes techniques de #31), avec le dev
 - **Contexte produit** : épique #30, story #31 (prototype jouable du combat)
@@ -153,42 +154,78 @@ toucher : ADR 0005.
 
 ## Mesures
 
-À reporter depuis l'essai du propriétaire (APK de preview de la PR #53), avant le passage au statut
-« accepté ».
+Essais du propriétaire sur un téléphone Android réel, relevés dans le panneau Mesures (issue #31) :
+
+- **essai 1** (23 octobre, APK de `e6e5ca7`, mode vibreur, Bluetooth actif) : aucun son, à cause
+  de `playsInSilentMode: false` sur Android (§ 8) ;
+- **essai 2** (23 octobre, APK de `050dd8d`, mode vibreur) : son fonctionnel. C'est l'essai de
+  référence ci-dessous.
 
 ### Téléphone
 
 | Modèle | Version d'Android | Fréquence d'écran |
 |---|---|---|
-| _à reporter_ | | |
+| non relevé | non relevé | non relevée |
+
+Le modèle, la version d'Android et la fréquence d'écran n'ont pas été relevés pendant les essais.
 
 ### Datation des touchers
 
-| Mesure | Sonde de toucher au repos (ADR 0005) | Combat, sous charge (panneau Mesures) |
-|---|---|---|
-| Écart toucher → réception JS, médiane | _à reporter_ | _à reporter_ |
-| Écart toucher → réception JS, p95 | _à reporter_ | _à reporter_ |
-| Méthode retenue | _à reporter_ | _à reporter_ |
-| Décalage calibré | _à reporter_ | — |
-| Appuis redatés par la garde | — | _à reporter_ |
+| Mesure | Sonde au repos, émulateur (ADR 0005) | Combat, essai 1 (7 appuis) | Combat, essai 2 (5 appuis) |
+|---|---|---|---|
+| Écart toucher → réception JS, médiane | 0,1 ms | 0,1 ms | 0,1 ms |
+| Écart toucher → réception JS, p95 | 0,2 ms | 0,2 ms | 0,1 ms |
+| Méthode retenue | **a** | **a** | **a** |
+| Décalage calibré | 3,5 ms | — | — |
+| Appuis redatés par la garde | — | 0 | 0 |
+
+La sonde au repos n'a pas été lancée sur le téléphone ; la colonne de l'émulateur sert de référence.
+Sous la charge du combat, le téléphone retient la méthode (a) aux deux essais, avec des écarts du
+même ordre que l'émulateur au repos : la base d'horloge commune est **confirmée**, et
+`toBattleInstant` reste sans conversion (§ 3). L'erreur de datation (≤ 0,2 ms) est négligeable devant
+les fenêtres de ±60 ms et ±160 ms. Aucun appui n'a été redaté : la garde de 32 ms (§ 4) n'a pas eu à
+servir.
 
 ### Précision mesurée des fenêtres de timing
 
-Distribution des écarts des appuis jugés (panneau Mesures, « Répartition ») : _à reporter_.
+Écarts des appuis jugés (panneau Mesures, « Répartition »), 3 appuis à chaque essai :
+
+| Essai | Médiane | p95 | −160 à −61 ms | ±60 ms | 61 à 160 ms |
+|---|---|---|---|---|---|
+| 1 | 109,5 ms | 117,7 ms | 1 | 0 | 2 |
+| 2 | 82,2 ms | 159,9 ms | 1 | 0 | 2 |
+
+Les écarts mesurent le jeu du joueur, pas la technique : ils ne sont pas un critère d'acceptation.
+Tous tombent dans la fenêtre de ±160 ms, ce qui montre que les appuis sont jugés et classés.
+
+Indice pour le réglage de la parade (#34) : les 3 écarts jugés à chaque essai sont tous hors de ±60 ms.
 
 ### Fluidité des animations
 
-Images perdues pendant les préparations et l'éclat (taux et pire écart) : _à reporter_.
+Images perdues (écart entre deux images de plus de 25 ms, `DROPPED_FRAME_MS`) pendant le combat :
+
+| Essai | Images perdues | Taux | Pire écart |
+|---|---|---|---|
+| 1 | 0 sur 736 | 0 % | 23,5 ms |
+| 2 | 1 sur 757 | 0,13 % | 25,8 ms |
+
+**Tient** : une seule image perdue sur 1 493, de 0,8 ms au-dessus du seuil. Les poses calculées sur
+le fil UI (§ 8) restent fluides sous la charge du combat.
 
 ### Réactivité des boutons
 
-Réactivité ressentie par le propriétaire (Parade, Esquive, « Attaquer ») : _à reporter_.
+Réactivité ressentie par le propriétaire (Parade, Esquive, « Attaquer ») : non relevée.
 
 ### Latence du son
 
-Médiane et p95 (panneau Mesures) : _à reporter_. Pour mémoire, l'émulateur de la CI (lancé sans
-sortie audio, donc non représentatif) donne 85,7 ms et 254,3 ms. Au-delà d'environ 50 ms, le repli
-`react-native-audio-api` de l'ADR 0005 est réévalué.
+Essai 2 : **médiane 67,5 ms, p95 114,5 ms** (essai 1 : aucune mesure, aucun son). Pour mémoire,
+l'émulateur de la CI (lancé sans sortie audio, donc non représentatif) donne 85,7 ms et 254,3 ms.
+Au-delà d'environ 50 ms, le repli `react-native-audio-api` de l'ADR 0005 est réévalué.
+
+**Ne tient pas** : la médiane dépasse le budget d'environ 50 ms de 17,5 ms, et le p95 le dépasse de
+plus du double. Un son de parade peut donc arriver plus tard que la demi-fenêtre parfaite (60 ms)
+après l'appui : le p95 est presque deux fois cette demi-fenêtre. La mesure vient d'un seul essai,
+en mode vibreur, sur un téléphone dont le modèle n'est pas relevé.
 
 ### Taille de l'APK
 
@@ -196,6 +233,20 @@ Build de preview de la PR #53 (job `android-apk`, commit `5d2f19c`) : **93 928 8
 (93,9 Mo)**, contre 93 182 802 octets (93,2 Mo) dans l'ADR 0005 : +746 080 octets (+0,8 %),
 surtout les sons provisoires et le code du combat. Après le retrait des permissions (commit
 `839a270`) : **93 928 850 octets**, soit 32 octets de moins.
+
+### Conclusion des mesures
+
+| Budget | Mesure (essai 2) | Verdict |
+|---|---|---|
+| Datation des touchers, devant les fenêtres de ±60 ms et ±160 ms (méthode a) | ≤ 0,2 ms, méthode a, 0 appui redaté | tient |
+| Images perdues | 1 sur 757 (0,13 %), pire écart 25,8 ms | tient |
+| Latence du son ≤ ~50 ms (ADR 0005) | médiane 67,5 ms, p95 114,5 ms | **ne tient pas** |
+
+Le moteur, la datation au toucher et le rendu tiennent leurs budgets. La latence du son ne tient pas
+le sien : le seuil de réévaluation du repli `react-native-audio-api` est franchi. L'ADR reste donc
+« proposé » jusqu'à la décision sur le son (garder `expo-audio`, ou essayer le repli), à consigner
+dans « Décision : poursuivre ou ajuster ». Restent aussi à relever : le modèle du téléphone, sa
+version d'Android et sa fréquence d'écran.
 
 ## Durées retenues
 
