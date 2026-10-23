@@ -1,8 +1,4 @@
-import type { CheckIn } from '../checkIn/CheckIn';
-import type { Day } from '../day/Day';
-
-/** L'expérience gagnée quand une case passe à « fait », perdue quand elle revient en arrière (R14). */
-export const XP_PER_CHECK_IN = 10;
+import type { DeletionXp } from './HabitXp';
 
 /** Refus : une expérience est toujours un nombre entier de points, jamais négatif (R16). */
 export class InvalidXpError extends Error {
@@ -19,13 +15,16 @@ function assertValidXp(field: 'xp' | 'retainedXp', value: number): void {
 }
 
 /**
- * Personnage (`Character`), voir `docs/glossary.md` et l'ADR 0002 (décision 5). Il n'y en a qu'un.
+ * Personnage (`Character`), voir `docs/glossary.md`, l'ADR 0002 et l'ADR 0003. Il n'y en a qu'un.
  * - `xp` : son expérience totale, toutes habitudes confondues, un solde jamais négatif (R16) ;
  * - `retainedXp` : l'Xp conservée, acquise sur les jours clos d'habitudes supprimées (R17, #6).
  *
- * Invariant (R15, précisé par la note Ready de l'épique) : `xp = 10 × (suivis « fait » des
- * habitudes existantes, toutes dates confondues) + retainedXp`, tant que le plancher n'a pas joué.
- * Un recul d'horloge ou un changement de fuseau ne change donc jamais l'expérience (R6).
+ * Invariant de l'expérience (ADR 0003, qui remplace la décision 5 de l'ADR 0002) : `xp` vaut la
+ * somme, sur les habitudes existantes, des suivis « fait » de toutes dates, chacun au barème de la
+ * difficulté de sa semaine, plus les primes d'objectif des semaines où l'objectif est atteint
+ * (`habitXpOf`, #26), plus `retainedXp`, tant que le plancher n'a pas joué. Il ne dépend pas
+ * d'aujourd'hui : un recul d'horloge, un changement de fuseau ou un changement de réglages ne change
+ * jamais une semaine close. Le solde est tenu par les variations que calcule `HabitXp`.
  * Immuable : chaque changement renvoie un nouveau personnage.
  */
 export class Character {
@@ -41,33 +40,29 @@ export class Character {
   }
 
   /**
-   * Le personnage après un vrai changement d'état d'une case, aujourd'hui ou par correction (R11,
-   * R14) : +10 Xp si elle passe à « fait », −10 Xp si elle revient en arrière, jamais sous 0 (R16).
+   * Le personnage après une variation `xpChange` de son expérience, calculée par `HabitXp` : un vrai
+   * changement d'état d'une case, aujourd'hui ou par correction (R1, R14), ou un changement de
+   * difficulté (R12). Jamais sous 0 ; l'Xp conservée ne change pas.
    */
-  applyCheckInChange(done: boolean): Character {
-    const change = done ? XP_PER_CHECK_IN : -XP_PER_CHECK_IN;
-    return new Character(Math.max(0, this.xp + change), this.retainedXp);
+  applyXpChange(xpChange: number): Character {
+    return new Character(Math.max(0, this.xp + xpChange), this.retainedXp);
   }
 
   /**
-   * Le personnage après la suppression d'une habitude dont `checkIns` sont les suivis (R17) :
-   * - l'expérience de son suivi d'aujourd'hui est retirée (−10 Xp s'il était « fait »), jamais sous
-   *   0 (R16) ;
-   * - celle de ses autres suivis « fait » reste acquise : elle passe dans l'Xp conservée. Ce sont les
-   *   jours clos, et aussi un jour devenu futur après un recul d'horloge (même règle que l'invariant).
-   * L'invariant (R15) est ainsi préservé une fois les suivis effacés.
+   * Le personnage après la suppression d'une habitude, selon `deletionXpOf` (R18, R19) :
+   * l'expérience `removed` (celle de son suivi d'aujourd'hui, et la prime d'objectif qui tombe sans
+   * lui) est retirée, jamais sous 0 ; l'expérience `retained` (celle de ses autres jours, primes
+   * d'objectif encore acquises comprises) reste acquise et passe dans l'Xp conservée. L'invariant de
+   * l'expérience est ainsi préservé une fois ses suivis effacés.
    */
-  retainOnHabitDeletion(checkIns: readonly CheckIn[], today: Day): Character {
-    const done = checkIns.filter((checkIn) => checkIn.done);
-    const doneToday = done.filter((checkIn) => checkIn.day.equals(today)).length;
-    const retained = XP_PER_CHECK_IN * (done.length - doneToday);
-    return new Character(
-      Math.max(0, this.xp - XP_PER_CHECK_IN * doneToday),
-      this.retainedXp + retained,
-    );
+  retainOnHabitDeletion({
+    removed,
+    retained,
+  }: Pick<DeletionXp, 'removed' | 'retained'>): Character {
+    return new Character(Math.max(0, this.xp - removed), this.retainedXp + retained);
   }
 
-  /** La variation d'expérience de ce personnage à `next` (ex. +10, −10, ou 0 au plancher). */
+  /** La variation d'expérience de ce personnage à `next` (ex. +20, −5, ou 0 au plancher). */
   xpChangeTo(next: Character): number {
     return next.xp - this.xp;
   }

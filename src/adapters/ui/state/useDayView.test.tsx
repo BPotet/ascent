@@ -8,6 +8,7 @@ import { getDayView } from '../../../application/useCases/getDayView';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import { Day } from '../../../domain/day/Day';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
+import { updateHabit } from '../../../application/useCases/updateHabit';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { silentHaptics } from '../testing/silentHaptics';
 import { DependenciesProvider } from './Dependencies';
@@ -75,6 +76,14 @@ function holdUnitOfWork(unitOfWork: InMemoryUnitOfWork) {
   const run = unitOfWork.run.bind(unitOfWork);
   jest.spyOn(unitOfWork, 'run').mockImplementation((work) => gate.then(() => run(work)));
   return { open };
+}
+
+/** « Cuisiner » passe à « 1 fois par semaine » le jour de sa création : cela vaut dès cette semaine. */
+async function updateHabitTarget(
+  dependencies: ReturnType<typeof setUp>['dependencies'],
+  id: number,
+): Promise<void> {
+  await updateHabit(dependencies, id, { name: 'Cuisiner', weeklyTarget: 1 });
 }
 
 const names = (state: ReturnType<typeof useDayView>['state']) =>
@@ -291,6 +300,49 @@ describe('useDayView', () => {
       expect(await storedStatuses(dependencies)).toEqual(['Cuisiner: done', 'Lire: pending']);
     });
 
+    it('shows the weekly progress and the target reached once a tap is saved', async () => {
+      const { dependencies, result, cell } = await showDayView('Cuisiner');
+      const created = cell('Cuisiner').habit;
+      await updateHabitTarget(dependencies, created.id);
+      await act(async () => result.current.refresh());
+      const progressOf = () => {
+        const { state } = result.current;
+        const row = state.status === 'ready' ? state.view.habits[0] : undefined;
+        return row && `${row.weeklyProgress}/${row.weekSettings.weekTarget} ${row.targetReached}`;
+      };
+      expect(progressOf()).toBe('0/1 false');
+
+      await act(() => result.current.toggle(cell('Cuisiner')));
+
+      await waitFor(() => expect(progressOf()).toBe('1/1 true'));
+    });
+
+    it('shows the weekly progress of a tap at once, before it is saved', async () => {
+      const { dependencies, result, cell } = await showDayView('Cuisiner');
+      await updateHabitTarget(dependencies, cell('Cuisiner').habit.id);
+      await act(async () => result.current.refresh());
+      const progressOf = () => {
+        const { state } = result.current;
+        const row = state.status === 'ready' ? state.view.habits[0] : undefined;
+        return row && `${row.weeklyProgress} ${row.targetReached}`;
+      };
+      const { open } = holdUnitOfWork(dependencies.unitOfWork);
+
+      let toggling: Promise<unknown> = Promise.resolve();
+      await act(async () => {
+        toggling = result.current.toggle(cell('Cuisiner'));
+      });
+      expect(progressOf()).toBe('1 true');
+      await act(async () => {
+        open();
+        await toggling;
+      });
+      jest.restoreAllMocks();
+
+      await act(() => result.current.toggle(cell('Cuisiner')));
+      expect(progressOf()).toBe('0 false');
+    });
+
     it('goes back to « à faire » on a second tap', async () => {
       const { dependencies, result, cell } = await showDayView('Cuisiner');
 
@@ -448,6 +500,69 @@ describe('useDayView', () => {
 
       expect(result.current.experience.xp).toBe(0);
       expect(result.current.experience.change).toBeNull();
+    });
+  });
+
+  describe('expected habits (#25)', () => {
+    /** « Courir 5 km », objectif 1, « fait » lundi 12 octobre, et « Cuisiner », objectif 7. */
+    async function showTargetReached() {
+      const { dependencies, wrapper } = setUp();
+      dependencies.clock.setToday(Day.of(2026, 10, 12));
+      const running = await createHabit(dependencies, 'Courir 5 km', 'medium', 1);
+      await createHabit(dependencies, 'Cuisiner', 'medium', 7);
+      await toggleCheckIn(dependencies, running.ok ? running.habit.id : 0, Day.of(2026, 10, 12));
+      dependencies.clock.setToday(wednesday);
+      const { result } = await renderHook(() => useDayView(), { wrapper });
+      await waitFor(() => expect(result.current.state.status).toBe('ready'));
+      const counted = () => {
+        const { state } = result.current;
+        return state.status === 'ready'
+          ? `${state.view.doneCount}/${state.view.expectedCount} ${state.view.habits
+              .map(({ expected }) => expected)
+              .join(',')}`
+          : null;
+      };
+      const running0 = () => {
+        const { state } = result.current;
+        return state.status === 'ready' ? state.view.habits[0]! : (undefined as never);
+      };
+      return { dependencies, result, counted, running: running0 };
+    }
+
+    it('counts again a habit whose target is reached as soon as it is touched, before it is saved', async () => {
+      const { dependencies, result, counted, running } = await showTargetReached();
+      expect(counted()).toBe('0/1 false,true');
+      const { open } = holdUnitOfWork(dependencies.unitOfWork);
+
+      let toggling: Promise<unknown> = Promise.resolve();
+      await act(async () => {
+        toggling = result.current.toggle(running());
+      });
+      expect(counted()).toBe('1/2 true,true');
+
+      await act(async () => {
+        open();
+        await toggling;
+      });
+      jest.restoreAllMocks();
+      // Le même compte une fois enregistré, puis relu : la même règle du domaine.
+      await waitFor(() => expect(counted()).toBe('1/2 true,true'));
+      await expect(getDayView(dependencies)).resolves.toMatchObject({
+        doneCount: 1,
+        expectedCount: 2,
+      });
+
+      await act(() => result.current.toggle(running()));
+      await waitFor(() => expect(counted()).toBe('0/1 false,true'));
+    });
+
+    it('goes back to « 0/1 » when the tap cannot be saved', async () => {
+      const { dependencies, result, counted, running } = await showTargetReached();
+      dependencies.unitOfWork.failWrites();
+
+      await act(() => result.current.toggle(running()));
+
+      expect(counted()).toBe('0/1 false,true');
     });
   });
 });

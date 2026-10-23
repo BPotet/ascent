@@ -7,6 +7,7 @@ import { createHabit } from '../../../application/useCases/createHabit';
 import { deleteHabit } from '../../../application/useCases/deleteHabit';
 import { getDayView } from '../../../application/useCases/getDayView';
 import { toggleCheckIn } from '../../../application/useCases/toggleCheckIn';
+import { updateHabit } from '../../../application/useCases/updateHabit';
 import { Day } from '../../../domain/day/Day';
 import type { HabitId } from '../../../domain/habit/Habit';
 import { Week } from '../../../domain/week/Week';
@@ -854,6 +855,117 @@ describe('WeekViewScreen and editing a habit', () => {
     await screen.findByTestId('delete-habit-dialog');
   }
 
+  describe('and its difficulty', () => {
+    const option = (name: string) =>
+      screen.getByRole('radio', { name: new RegExp(`^${name},`, 'u') });
+
+    /** Le fond, puis « Cuisiner » passée en Difficile aujourd'hui (mercredi 14). */
+    async function givenCookingHardThisWeek() {
+      await givenTheBackground();
+      await updateHabit(dependencies, cooking, { name: 'Cuisiner', difficulty: 'hard' });
+    }
+
+    it('shows on each card the difficulty of the week shown (E4)', async () => {
+      await givenCookingHardThisWeek();
+      await show();
+
+      expect(screen.getByTestId(`week-difficulty-${cooking}`)).toHaveTextContent('Difficile');
+      expect(screen.getByTestId(`week-difficulty-${budget}`)).toHaveTextContent('Moyenne');
+
+      await fireEvent.press(previousButton());
+
+      await waitFor(() =>
+        expect(screen.getByTestId(`week-difficulty-${cooking}`)).toHaveTextContent('Moyenne'),
+      );
+    });
+
+    it('re-evaluates the current week from « Modifier l’habitude »', async () => {
+      await givenTheBackground();
+      await show();
+      await fireEvent.press(editName('Cuisiner'));
+
+      expect(option('Moyenne')).toBeChecked();
+      await fireEvent.press(option('Difficile'));
+      await fireEvent.press(screen.getByRole('button', { name: 'Enregistrer' }));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('toast')).toHaveTextContent('Habitude modifiée · +10 XP'),
+      );
+      expect(screen.getByTestId(`week-difficulty-${cooking}`)).toHaveTextContent('Difficile');
+      expect(screen.getByTestId(`week-card-highlight-${cooking}`)).toBeOnTheScreen();
+      expect(screen.getByTestId('character-bar')).toHaveAccessibleName(
+        'Expérience du personnage : 30 XP',
+      );
+    });
+
+    it('opens with the settings of the current week shown, without reading them again', async () => {
+      await givenCookingHardThisWeek();
+      await show();
+      dependencies.unitOfWork.failReads();
+
+      await fireEvent.press(editName('Cuisiner'));
+
+      expect(await screen.findByTestId('edit-habit-sheet')).toBeOnTheScreen();
+      expect(option('Difficile')).toBeChecked();
+    });
+
+    it('prefills the difficulty of the habit opened, not of another one', async () => {
+      await givenCookingHardThisWeek();
+      await show();
+
+      await fireEvent.press(editName('Budget du jour'));
+
+      expect(await screen.findByTestId('edit-habit-sheet')).toBeOnTheScreen();
+      expect(option('Moyenne')).toBeChecked();
+    });
+
+    it('prefills the difficulty of the current week when another week is shown', async () => {
+      await givenCookingHardThisWeek();
+      await show();
+      await fireEvent.press(previousButton());
+      await waitFor(() =>
+        expect(screen.getByTestId(`week-difficulty-${cooking}`)).toHaveTextContent('Moyenne'),
+      );
+
+      await fireEvent.press(editName('Cuisiner'));
+
+      expect(await screen.findByRole('header', { name: 'Modifier l’habitude' })).toBeOnTheScreen();
+      expect(option('Difficile')).toBeChecked();
+      expect(screen.getByRole('button', { name: 'Enregistrer' })).toBeDisabled();
+    });
+
+    it('says the habit could not be opened when its settings cannot be read', async () => {
+      await givenCookingHardThisWeek();
+      await show();
+      await fireEvent.press(previousButton());
+      await screen.findByText('Semaine dernière');
+      dependencies.unitOfWork.failReads();
+
+      await fireEvent.press(editName('Cuisiner'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('toast')).toHaveTextContent(
+          'L’habitude n’a pas pu être ouverte. Réessaie.',
+        ),
+      );
+      expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
+    });
+
+    it('reloads instead of opening a habit deleted in the meantime', async () => {
+      await givenCookingHardThisWeek();
+      await show();
+      await fireEvent.press(previousButton());
+      await screen.findByText('Semaine dernière');
+      await deleteHabit(dependencies, budget);
+
+      await fireEvent.press(editName('Budget du jour'));
+
+      await waitFor(() => expect(screen.queryByText('Budget du jour')).not.toBeOnTheScreen());
+      expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
+      expect(screen.queryByText('L’habitude n’a pas pu être ouverte. Réessaie.')).toBeNull();
+    });
+  });
+
   it('opens « Modifier l’habitude » from the name of a habit', async () => {
     await givenTheBackground();
     await show();
@@ -989,5 +1101,231 @@ describe('WeekViewScreen and editing a habit', () => {
     await waitFor(() => expect(screen.queryByText('Cuisiner')).not.toBeOnTheScreen());
     expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
     expect(screen.queryByTestId('delete-habit-dialog')).not.toBeOnTheScreen();
+  });
+});
+
+describe('WeekViewScreen and the weekly target (E4)', () => {
+  const chip = (habit: HabitId) => screen.queryByTestId(`week-progress-${habit}`);
+  const targetLine = (habit: HabitId) => screen.getByTestId(`week-target-${habit}`);
+
+  it('keeps room for the chip and the line of settings while loading', async () => {
+    jest
+      .spyOn(dependencies.unitOfWork, 'run')
+      .mockImplementation(() => new Promise(() => undefined));
+
+    await renderScreen(<WeekViewScreen />, dependencies);
+
+    expect(screen.getAllByTestId('week-view-loading-chip')).toHaveLength(4);
+    expect(screen.getAllByTestId('week-view-loading-settings')).toHaveLength(4);
+  });
+
+  it('shows on each card its progress of the week and its weekly target', async () => {
+    await givenTheBackground();
+
+    await show();
+
+    expect(chip(cooking)).toHaveTextContent('1/7');
+    expect(chip(cooking)).toHaveAccessibleName('1 sur 7');
+    expect(targetLine(cooking)).toHaveTextContent('· tous les jours');
+    expect(chip(budget)).toHaveTextContent('0/6');
+    expect(targetLine(budget)).toHaveTextContent(
+      '· tous les jours · 6 cette semaine (créée mardi)',
+    );
+  });
+
+  it('follows a tap of today in the chip', async () => {
+    await givenTheBackground();
+    await show();
+
+    await fireEvent.press(cell(cooking, wednesday));
+
+    await waitFor(() => expect(chip(cooking)).toHaveTextContent('2/7'));
+  });
+
+  it('turns the chip green once the target is reached, with a green border', async () => {
+    dependencies.clock.setToday(october(12));
+    const created = await createHabit(dependencies, 'Courir 5 km', 'hard', 1);
+    dependencies.clock.setToday(wednesday);
+    const running = created.ok ? created.habit.id : 0;
+    await show();
+    expect(chip(running)).toHaveTextContent('0/1');
+
+    await fireEvent.press(cell(running, wednesday));
+
+    await waitFor(() => expect(chip(running)).toHaveTextContent('1/1 · Objectif atteint'));
+    expect(chip(running)).toHaveAccessibleName('1 sur 1, objectif atteint');
+    expect(screen.getByTestId(`week-card-reached-${running}`)).toBeOnTheScreen();
+    expect(targetLine(running)).toHaveTextContent('· 1 fois par semaine');
+  });
+
+  it('greys the chip of a past week not reached', async () => {
+    await givenTheBackground();
+    await show();
+
+    await fireEvent.press(previousButton());
+
+    await waitFor(() => expect(chip(cooking)).toHaveTextContent('1/7'));
+    expect(screen.getByText('1/7')).toHaveStyle({ color: '#B4BDCE' });
+    expect(chip(budget)).not.toBeOnTheScreen();
+  });
+
+  it('announces on the card a target changed for next Monday', async () => {
+    await givenTheBackground();
+    await updateHabit(dependencies, cooking, { name: 'Cuisiner', weeklyTarget: 4 });
+
+    await show();
+
+    expect(chip(cooking)).toHaveTextContent('1/7');
+    expect(targetLine(cooking)).toHaveTextContent(
+      '· tous les jours · 4 fois par semaine dès lundi',
+    );
+  });
+
+  describe('in « Modifier l’habitude »', () => {
+    const target = (value: number) => screen.getByTestId(`weekly-target-option-${value}`);
+    const editName = (name: string) =>
+      screen.getByRole('button', { name: `Modifier l’habitude ${name}` });
+
+    it('prefills the target of next week and says the current week keeps its own', async () => {
+      await givenTheBackground();
+      await updateHabit(dependencies, cooking, { name: 'Cuisiner', weeklyTarget: 4 });
+      await show();
+      dependencies.unitOfWork.failReads();
+
+      await fireEvent.press(editName('Cuisiner'));
+      expect(await screen.findByTestId('edit-habit-sheet')).toBeOnTheScreen();
+      expect(target(4)).toBeChecked();
+      await fireEvent.press(target(5));
+
+      expect(screen.getByTestId('weekly-target-change-info')).toHaveAccessibleName(
+        'Nouvel objectif à partir de lundi prochain (19 octobre). Cette semaine reste à 7.',
+      );
+    });
+
+    it('applies the target at once for a habit created today', async () => {
+      await givenTheBackground();
+      const created = await createHabit(dependencies, 'Lire');
+      await show();
+
+      await fireEvent.press(editName('Lire'));
+      await fireEvent.press(target(3));
+
+      expect(screen.getByTestId('weekly-target-change-info')).toHaveAccessibleName(
+        'Habitude créée aujourd’hui : le nouvel objectif s’applique dès cette semaine.',
+      );
+      expect(created.ok).toBe(true);
+    });
+
+    it('reads the target of next week when another week is shown', async () => {
+      await givenTheBackground();
+      await updateHabit(dependencies, cooking, { name: 'Cuisiner', weeklyTarget: 4 });
+      await show();
+      await fireEvent.press(previousButton());
+      await waitFor(() => expect(shownWeek()).toMatch(/^Semaine dernière/u));
+
+      await fireEvent.press(editName('Cuisiner'));
+
+      expect(await screen.findByTestId('edit-habit-sheet')).toBeOnTheScreen();
+      expect(target(4)).toBeChecked();
+    });
+  });
+});
+
+describe('WeekViewScreen and the target bonus (#26)', () => {
+  const hidden = { includeHiddenElements: true };
+  const announce = jest.mocked(AccessibilityInfo.announceForAccessibility);
+  const toast = () => screen.queryByTestId('toast');
+  const xpBar = () => screen.getByTestId('character-bar');
+  let running: HabitId;
+
+  /** « Courir 5 km », Moyenne, objectif 3, créée le lundi 5 octobre, « fait » les `days`. */
+  async function givenRunning(...days: Day[]) {
+    dependencies.clock.setToday(october(5));
+    const created = await createHabit(dependencies, 'Courir 5 km', 'medium', 3);
+    running = created.ok ? created.habit.id : (undefined as never);
+    for (const day of days) {
+      await doneOn(running, day);
+    }
+  }
+
+  it('plays F1 on the card when today reaches the target (E4)', async () => {
+    await givenRunning(october(12), october(13));
+    await show();
+
+    await fireEvent.press(cell(running, wednesday));
+
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 45 XP'));
+    expect(screen.getByTestId(`week-progress-${running}`)).toHaveTextContent(
+      '3/3 · Objectif atteint',
+    );
+    expect(screen.getByTestId(`week-card-reached-${running}`)).toBeOnTheScreen();
+    expect(screen.getByTestId('xp-change-bonus', hidden)).toHaveTextContent('+15 XP prime');
+    expect(toast()).toHaveTextContent(
+      'Objectif de la semaine atteint\nCourir 5 km 3/3 · +15 XP prime',
+    );
+    expect(dependencies.haptics.success).toHaveBeenCalledTimes(2);
+  });
+
+  it('bursts the chip of the card when the motion is not reduced', async () => {
+    withMotion();
+    await givenRunning(october(12), october(13));
+    await show();
+
+    await fireEvent.press(cell(running, wednesday));
+
+    await waitFor(() =>
+      expect(
+        within(screen.getByTestId(`week-card-${running}`)).getByTestId('target-burst', hidden),
+      ).toBeOnTheScreen(),
+    );
+  });
+
+  it('awards the bonus of a closed week by a correction, and names the week', async () => {
+    await givenRunning(october(5), october(7));
+    await show();
+    await fireEvent.press(previousButton());
+    await waitFor(() => expect(shownWeek()).toMatch(/^Semaine dernière/u));
+    announce.mockClear();
+
+    await fireEvent.press(cell(running, october(9)));
+
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 45 XP'));
+    expect(toast()).toHaveTextContent(
+      'Objectif atteint · semaine du 5 octobre\nCourir 5 km 3/3 · +15 XP prime',
+    );
+    expect(screen.queryByText(/^Correction enregistrée/u)).not.toBeOnTheScreen();
+    expect(announce).toHaveBeenCalledWith(
+      'Correction enregistrée, objectif de la semaine du 5 octobre atteint pour Courir 5 km, 3 sur 3. +15 points d’expérience de prime. Total : 45 XP.',
+    );
+  });
+
+  it('takes the bonus of a closed week back by a correction, with a discreet message', async () => {
+    await givenRunning(october(5), october(7), october(9));
+    await show();
+    await fireEvent.press(previousButton());
+    await waitFor(() => expect(shownWeek()).toMatch(/^Semaine dernière/u));
+    dependencies.haptics.success.mockClear();
+
+    await fireEvent.press(cell(running, october(9)));
+
+    await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP'));
+    expect(toast()).toHaveTextContent(
+      'Objectif de la semaine du 5 octobre plus atteint · Courir 5 km 2/3 · −15 XP prime',
+    );
+    expect(dependencies.haptics.success).not.toHaveBeenCalled();
+  });
+
+  it('keeps the message of a correction that does not cross the target', async () => {
+    await givenRunning(october(5));
+    await show();
+    await fireEvent.press(previousButton());
+    await waitFor(() => expect(shownWeek()).toMatch(/^Semaine dernière/u));
+
+    await fireEvent.press(cell(running, october(9)));
+
+    expect(
+      await screen.findByText('Correction enregistrée · vendredi 9 octobre'),
+    ).toBeOnTheScreen();
+    expect(screen.queryByTestId('xp-change-bonus', hidden)).not.toBeOnTheScreen();
   });
 });

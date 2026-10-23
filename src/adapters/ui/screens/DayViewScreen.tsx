@@ -1,7 +1,7 @@
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import type { DayView } from '../../../application/useCases/getDayView';
+import type { DayView, DayViewHabit } from '../../../application/useCases/getDayView';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import type { Day } from '../../../domain/day/Day';
 import type { Habit, HabitId } from '../../../domain/habit/Habit';
@@ -12,31 +12,58 @@ import { Button } from '../components/Button';
 import { CharacterBar } from '../components/CharacterBar';
 import { DayHeader } from '../components/DayHeader';
 import { PlusGlyph } from '../components/Glyph';
+import { GoalsReachedNotice } from '../components/GoalsReachedNotice';
 import { HabitRow } from '../components/HabitRow';
 import { Notice } from '../components/Notice';
 import { Screen } from '../components/Screen';
 import { StateMessage } from '../components/StateMessage';
+import { WhatsNewCard } from '../components/WhatsNewCard';
 import { YesterdayReminderBanner } from '../components/YesterdayReminderBanner';
-import { Toast, type ToastAction } from '../components/Toast';
+import {
+  targetToastOf,
+  Toast,
+  type ToastAction,
+  type ToastTarget,
+  type ToastVariant,
+} from '../components/Toast';
 import { CHECK_IN_SAVE_FAILED, correctionMessage } from '../format/checkInMessages';
 import { formatDayAndMonth } from '../format/formatDay';
+import type { WeeklyProgressShown } from '../format/formatWeeklyTarget';
+import type { TargetFeedback } from '../format/targetFeedback';
 import { useCheckInHint } from '../state/useCheckInHint';
 import { useCreateHabit } from '../state/useCreateHabit';
 import { useDayView } from '../state/useDayView';
 import { type XpChange, useExperience, xpChangeOn } from '../state/Experience';
+import {
+  type TargetFlash,
+  targetFlashOn,
+  updatedTargetPlay,
+  useTargetFeedback,
+} from '../state/useTargetFeedback';
 import { useTodayChange } from '../state/useTodayChange';
+import { useWhatsNewCard } from '../state/useWhatsNewCard';
 import { useYesterdayReminder } from '../state/useYesterdayReminder';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
-import { type DeletedHabit, deletedMessage, HabitEditing, RENAMED_MESSAGE } from './HabitEditing';
+import {
+  type DeletedHabit,
+  deletedMessage,
+  HabitEditing,
+  type UpdatedHabit,
+  updatedMessage,
+} from './HabitEditing';
 import { NewHabitSheet } from './NewHabitSheet';
 
-/** Durée de la mise en évidence d'une habitude créée ou renommée, comme dans la maquette. */
+/** Durée de la mise en évidence d'une habitude créée ou modifiée, comme dans la maquette. */
 export const HIGHLIGHT_DURATION_MS = 1800;
 
-/** L'aide au premier usage, qui explique le tap (maquette, E1 « Première habitude créée »). */
-export const CHECK_IN_HINT = 'Tape ton habitude quand c’est fait : +10 XP pour ton personnage.';
+/**
+ * L'aide au premier usage, qui explique le tap (maquette, E1 « Première habitude créée ») ; elle
+ * reste vraie pour toutes les difficultés (texte fixé par le PM, #23).
+ */
+export const CHECK_IN_HINT =
+  'Tape ton habitude quand c’est fait : ton personnage gagne de l’XP selon sa difficulté.';
 
 /** L'encouragement quand toutes les habitudes du jour sont faites (maquette, E1 « Toutes faites »). */
 export const ALL_DONE_MESSAGE = 'Toutes tes habitudes du jour sont faites. Belle ascension\u00a0!';
@@ -54,6 +81,10 @@ interface ToastContent {
   readonly id: number;
   readonly message: string;
   readonly action?: ToastAction;
+  /** Le feedback « Objectif atteint » (#26) : sa forme, son texte et son annonce. */
+  readonly variant?: ToastVariant;
+  readonly target?: ToastTarget;
+  readonly announcement?: string;
 }
 
 function LoadingView() {
@@ -79,7 +110,10 @@ function LoadingView() {
           <View style={[styles.skeleton, styles.skeletonCheck]} />
           <View style={styles.skeletonTexts}>
             <View style={[styles.skeleton, styles.skeletonName]} />
-            <View style={[styles.skeleton, styles.skeletonStatus]} />
+            <View testID="day-view-loading-secondary-line" style={styles.skeletonLine}>
+              <View style={[styles.skeleton, styles.skeletonIcon]} />
+              <View style={[styles.skeleton, styles.skeletonStatus]} />
+            </View>
           </View>
         </View>
       ))}
@@ -87,11 +121,22 @@ function LoadingView() {
   );
 }
 
+/** La progression de la semaine affichée sur une ligne, si sa semaine a un objectif. */
+function weeklyProgressShownOf({
+  weeklyProgress,
+  weekSettings: { weekTarget },
+  targetReached,
+}: DayViewHabit): WeeklyProgressShown | undefined {
+  return weekTarget === null ? undefined : { weeklyProgress, weekTarget, targetReached };
+}
+
 function HabitList({
   view,
   highlighted,
   xpChange,
+  targetFlash,
   showHint,
+  whatsNew,
   reminder,
   onToggle,
   onEdit,
@@ -99,19 +144,29 @@ function HabitList({
   readonly view: DayView;
   readonly highlighted: Highlight | null;
   readonly xpChange: XpChange | null;
+  readonly targetFlash: TargetFlash | null;
   readonly showHint: boolean;
+  readonly whatsNew: ReactNode;
   readonly reminder: ReactNode;
   readonly onToggle: (habitDay: HabitDay) => void;
-  readonly onEdit: (habitDay: HabitDay) => void;
+  readonly onEdit: (row: DayViewHabit) => void;
 }) {
   const scroll = useRef<ScrollView>(null);
-  const { doneCount } = view;
+  const { doneCount, expectedCount } = view;
   const activeCount = view.habits.length;
-  const allDone = activeCount > 0 && doneCount === activeCount;
+  // Seules les habitudes attendues comptent (#25) : sans aucune, « Objectifs de la semaine
+  // atteints » remplace « Toutes faites ».
+  const allDone = expectedCount > 0 && doneCount === expectedCount;
+  const goalsReached = activeCount > 0 && expectedCount === 0;
   const count = view.habitCount;
   return (
     <>
-      <DayHeader day={view.day} doneCount={doneCount} activeCount={activeCount} />
+      <DayHeader
+        day={view.day}
+        doneCount={doneCount}
+        expectedCount={expectedCount}
+        activeCount={activeCount}
+      />
       <ScrollView
         ref={scroll}
         contentContainerStyle={styles.list}
@@ -122,17 +177,22 @@ function HabitList({
         }}
         testID="day-view-list"
       >
+        {whatsNew}
         {reminder}
+        {goalsReached && <GoalsReachedNotice />}
         {allDone && <Notice kind="celebration" text={ALL_DONE_MESSAGE} testID="all-done" />}
         {showHint && <Notice kind="hint" text={CHECK_IN_HINT} testID="check-in-hint" />}
         {view.habits.map((habitDay) => (
           <HabitRow
             key={habitDay.habit.id}
             habitDay={habitDay}
+            difficulty={habitDay.weekSettings.difficulty}
+            weeklyProgress={weeklyProgressShownOf(habitDay)}
             highlighted={habitDay.habit.id === highlighted?.id}
             xpChange={xpChangeOn(xpChange, habitDay)}
+            targetFlash={targetFlashOn(targetFlash, habitDay)}
             onToggle={onToggle}
-            onEdit={onEdit}
+            onEdit={() => onEdit(habitDay)}
           />
         ))}
         <View style={styles.section}>
@@ -159,15 +219,39 @@ function HabitList({
  * disparaît au premier « fait ». La vue passe seule au nouveau jour (minuit, retour au premier
  * plan) et l'annonce.
  *
- * Le bouton « ⋯ » d'une habitude ouvre « Modifier l'habitude » (`HabitEditing`) : renommée, elle
- * est mise en évidence ; supprimée, elle disparaît et l'expérience retirée est montrée. Un message
- * confirme l'un ou l'autre ; la vue se recharge (état vide après la dernière, limite de 10).
+ * Chaque ligne montre la difficulté de l'habitude cette semaine (icône), son état et sa progression
+ * de la semaine (« À faire · 2/3 cette semaine »), et le badge « Objectif atteint » (E1, #24). Le
+ * squelette de chargement prévoit cette ligne secondaire, pour que rien ne saute à l'affichage.
+ *
+ * L'en-tête compte les habitudes faites sur les habitudes attendues (« 1/2 faites », #25) : une
+ * habitude dont l'objectif de la semaine est atteint et qui n'est pas faite aujourd'hui reste dans
+ * la liste, avec son badge, tapable, mais ne compte pas ; touchée, elle compte de nouveau tout de
+ * suite. « Toutes faites » ne porte que sur les habitudes attendues ; sans aucune, « Atteints » et
+ * le message « Objectifs de la semaine atteints » le remplacent, sans célébration.
+ *
+ * Le bouton « ⋯ » d'une habitude ouvre « Modifier l'habitude » (`HabitEditing`), prérempli avec
+ * ses réglages de la semaine : modifiée, elle est mise en évidence et la variation de l'expérience
+ * est montrée ; supprimée, elle disparaît et l'expérience retirée est montrée. Un message confirme
+ * l'un ou l'autre ; la vue se recharge (état vide après la dernière, limite de 10).
  *
  * `newHabitRequest` ouvre le panneau « Nouvelle habitude » chaque fois qu'il prend une nouvelle
  * valeur (l'état vide de la Vue Semaine mène ici pour créer une habitude).
  *
  * En haut, l'expérience du personnage (R24) ; un tap enregistré la fait monter ou descendre, avec
- * son feedback : « +10 XP » s'envole de la coche (`Experience`, `CharacterBar`).
+ * son feedback : « +20 XP » (au barème de la difficulté) s'envole de la coche (`Experience`,
+ * `CharacterBar`).
+ *
+ * Un tap qui atteint l'objectif de la semaine joue F1 (#26, `useTargetFeedback`) : badge
+ * « Objectif atteint » avec un éclat doré, seconde pastille « +15 XP prime », message en bas
+ * « Objectif de la semaine atteint · Courir 5 km 3/3 · +15 XP prime », seconde vibration. Un tap qui
+ * repasse sous l'objectif retire le badge, avec « −15 XP prime » en gris et un message discret, sans
+ * vibration. Après « Enregistrer » dans « Modifier l'habitude », F1 se joue aussi quand l'objectif,
+ * baissé le jour de création, est atteint. Le message ne masque jamais la barre d'onglets.
+ *
+ * Tout en haut de la liste, la Carte de nouveauté (#24) invite le joueur qui avait des habitudes
+ * avant la mise à jour à régler leur difficulté et leur objectif : « Régler » ouvre « Modifier
+ * l'habitude » sur la première habitude de la liste ; « Régler » comme « Fermer » la retirent pour
+ * toujours.
  *
  * En haut de la liste, le rappel d'hier (« Hier : 1/2 faites ») propose de corriger hier :
  * « Corriger » appelle `onCorrectYesterday` avec la semaine d'hier, à ouvrir dans la Vue Semaine.
@@ -184,6 +268,7 @@ export function DayViewScreen({
   const { reminder, dismiss: dismissReminder } = useYesterdayReminder();
   const create = useCreateHabit();
   const hint = useCheckInHint();
+  const whatsNew = useWhatsNewCard();
   const [sheetOpen, setSheetOpen] = useState(false);
 
   const [seenRequest, setSeenRequest] = useState<string | number | undefined>(undefined);
@@ -194,7 +279,7 @@ export function DayViewScreen({
     }
   }
   const [highlighted, setHighlighted] = useState<Highlight | null>(null);
-  const [editing, setEditing] = useState<Habit | null>(null);
+  const [editing, setEditing] = useState<DayViewHabit | null>(null);
   const [toast, setToast] = useState<ToastContent | null>(null);
   const toastCount = useRef(0);
 
@@ -202,6 +287,13 @@ export function DayViewScreen({
     toastCount.current += 1;
     setToast({ id: toastCount.current, message, ...(action && { action }) });
   }, []);
+
+  const showTargetToast = useCallback((feedback: TargetFeedback) => {
+    toastCount.current += 1;
+    setToast({ id: toastCount.current, ...targetToastOf(feedback) });
+  }, []);
+  const target = useTargetFeedback({ showToast: showTargetToast });
+  const { play } = target;
 
   useTodayChange((today) => {
     void refresh();
@@ -218,7 +310,13 @@ export function DayViewScreen({
           if (outcome.habitDay.status === 'done') {
             void dismissHint();
           }
-          if (outcome.isCorrection) {
+          // F1 ou le retour sous l'objectif remplace le message de la correction (#26).
+          const played = play(
+            outcome,
+            outcome.habitDay,
+            outcome.isCorrection && outcome.habitDay.corrected,
+          );
+          if (outcome.isCorrection && !played) {
             showToast(correctionMessage(outcome.habitDay.day));
           }
         } else if (outcome.reason === 'saveFailed') {
@@ -227,7 +325,7 @@ export function DayViewScreen({
       }
       return attempt();
     },
-    [toggle, dismissHint, showToast],
+    [toggle, dismissHint, showToast, play],
   );
 
   useEffect(() => {
@@ -241,17 +339,23 @@ export function DayViewScreen({
   const hideToast = useCallback(() => setToast(null), []);
   const openSheet = () => setSheetOpen(true);
   const closeSheet = () => setSheetOpen(false);
-  const created = (habit: Habit) => {
+  const created = (habit: Habit, message: string) => {
     setSheetOpen(false);
     setHighlighted({ id: habit.id, reveal: true });
-    showToast('Habitude créée');
+    showToast(message);
     void refresh();
   };
   const closeEditing = () => setEditing(null);
-  const renamed = (habit: Habit) => {
+  const updated = (outcome: UpdatedHabit, today: Day) => {
     setEditing(null);
-    setHighlighted({ id: habit.id, reveal: false });
-    showToast(RENAMED_MESSAGE);
+    setHighlighted({ id: outcome.habit.id, reveal: false });
+    // L'objectif, baissé le jour de création, est atteint : F1 remplace « Habitude modifiée » (E7).
+    const played =
+      outcome.targetReachedChange === 'reached' &&
+      play(updatedTargetPlay(outcome, today), { habit: outcome.habit, day: today });
+    if (!played) {
+      showToast(updatedMessage(outcome));
+    }
     void refresh();
   };
   const deleted = ({ xpRemoved }: DeletedHabit) => {
@@ -321,12 +425,24 @@ export function DayViewScreen({
             view={view}
             highlighted={highlighted}
             xpChange={experience.change}
+            targetFlash={target.flash}
             showHint={hint.visible}
+            whatsNew={
+              whatsNew.visible && (
+                <WhatsNewCard
+                  onAdjust={() => {
+                    void whatsNew.dismiss();
+                    setEditing(view.habits[0] ?? null);
+                  }}
+                  onClose={() => void whatsNew.dismiss()}
+                />
+              )
+            }
             reminder={
               reminder && (
                 <YesterdayReminderBanner
                   doneCount={reminder.doneCount}
-                  activeCount={reminder.activeCount}
+                  expectedCount={reminder.expectedCount}
                   {...(onCorrectYesterday && {
                     onCorrect: () => onCorrectYesterday(reminder.week),
                   })}
@@ -335,7 +451,7 @@ export function DayViewScreen({
               )
             }
             onToggle={(habitDay) => void tap(habitDay)}
-            onEdit={({ habit }) => setEditing(habit)}
+            onEdit={setEditing}
           />
           <AddHabitButton
             canAddHabit={view.canAddHabit}
@@ -349,6 +465,9 @@ export function DayViewScreen({
           key={toast.id}
           message={toast.message}
           {...(toast.action && { action: toast.action })}
+          {...(toast.variant && { variant: toast.variant })}
+          {...(toast.target && { target: toast.target })}
+          {...(toast.announcement !== undefined && { announcement: toast.announcement })}
           onHide={hideToast}
           aboveButton={!empty}
         />
@@ -356,6 +475,7 @@ export function DayViewScreen({
       {sheetOpen && (
         <NewHabitSheet
           habits={view.habits.map(({ habit }) => habit)}
+          today={view.day}
           onCreate={create}
           onCreated={created}
           onClose={closeSheet}
@@ -363,9 +483,11 @@ export function DayViewScreen({
       )}
       {editing !== null && (
         <HabitEditing
-          habit={editing}
+          habit={editing.habit}
+          settings={editing}
           habits={view.habits.map(({ habit }) => habit)}
-          onRenamed={renamed}
+          today={view.day}
+          onUpdated={(outcome) => updated(outcome, view.day)}
           onDeleted={deleted}
           onGone={gone}
           onClose={closeEditing}
@@ -416,6 +538,8 @@ const styles = StyleSheet.create({
   skeletonCheck: { width: 44, height: 44, borderRadius: 22 },
   skeletonTexts: { flex: 1 },
   skeletonName: { width: '65%', height: 14 },
-  skeletonStatus: { width: '30%', height: 11, marginTop: spacing.sm },
+  skeletonLine: { flexDirection: 'row', gap: 6, marginTop: spacing.sm },
+  skeletonIcon: { width: 20, height: 11 },
+  skeletonStatus: { width: '46%', height: 11 },
 });
 // Stryker restore all

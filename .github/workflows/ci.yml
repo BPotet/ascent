@@ -4,9 +4,17 @@ name: CI
 on:
   pull_request:
     branches: [develop, main, 'release/**', 'hotfix/**']
+    # ready_for_review : la sortie de brouillon lance l'APK et l'end-to-end, sautés en brouillon.
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [develop, main, 'release/**', 'hotfix/**']
+  # Le label `mutation:ui` posé sur une PR déjà ouverte est traité par mutation-ui.yml.
   workflow_dispatch:
+    inputs:
+      ui-mutation:
+        description: Also mutate the screens (src/adapters/ui/, src/app/)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -20,6 +28,29 @@ env:
   MAESTRO_VERSION: 2.11.0
 
 jobs:
+  # Un changement qui ne touche que la documentation ou la configuration des agents saute les
+  # barrières lourdes (scripts/ci/code-changes.mjs). Les jobs qui en dépendent sont sautés avec elles.
+  # Un changement qui ne touche pas l'app (sortie `app`) saute l'APK et l'end-to-end.
+  changes:
+    name: Code changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+      app: ${{ steps.diff.outputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - id: diff
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/ci/code-changes.mjs
+
   commits:
     name: Commits (commitlint)
     if: github.event_name == 'pull_request'
@@ -64,6 +95,8 @@ jobs:
 
   static:
     name: Style, types and architecture
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -80,9 +113,13 @@ jobs:
         run: npm run typecheck
       - name: Architecture (dependency-cruiser)
         run: npm run arch
+      - name: CI scripts tests (node:test)
+        run: npm run test:scripts
 
   tests:
     name: Unit, integration and BDD tests with coverage
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -100,10 +137,30 @@ jobs:
           path: coverage/lcov.info
           retention-days: 7
 
-  mutation:
-    name: Mutation tests (StrykerJS)
-    needs: tests
+  # Mutation (docs/adr/0004-mutation-en-ci.md) : un plan, un job par shard, puis un job final qui
+  # applique les seuils au total des shards. Les écrans (src/adapters/ui/, src/app/) ne sont mutés
+  # qu'à la demande du propriétaire : label `mutation:ui` sur la PR, ou entrée `ui-mutation` d'un
+  # lancement manuel.
+  mutation-plan:
+    name: Mutation plan
+    # En PR vers develop : le code nouveau. Sur release/* et hotfix/* (et à la demande) : tout le code.
+    # Un push sur develop ou main n'en relance pas : la PR, ou la branche de release, l'a déjà muté.
+    # Une PR de release ou de hotfix non plus : le push sur sa branche mute déjà tout le code.
+    needs: changes
+    if: >-
+      needs.changes.outputs.code == 'true' && (
+        (github.event_name == 'pull_request'
+          && !startsWith(github.head_ref, 'release/') && !startsWith(github.head_ref, 'hotfix/'))
+        || github.event_name == 'workflow_dispatch'
+        || startsWith(github.ref_name, 'release/') || startsWith(github.ref_name, 'hotfix/'))
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      count: ${{ steps.plan.outputs.count }}
+      base: ${{ steps.plan.outputs.base }}
+      ui: ${{ steps.plan.outputs.ui }}
+      ui-notice: ${{ steps.plan.outputs.ui_notice }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -113,21 +170,101 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - name: Mutate the code changed by the pull request
-        if: github.event_name == 'pull_request'
+      - id: plan
+        name: Plan the mutation shards
         env:
           BASE_REF: origin/${{ github.base_ref }}
-        run: npm run mutation:changed
-      - name: Mutate all the code
-        if: github.event_name != 'pull_request'
-        run: npm run mutation:domain && npm run mutation
+          MUTATION_MODE: ${{ github.event_name == 'pull_request' && 'changed' || 'full' }}
+          MUTATION_UI: >-
+            ${{ contains(github.event.pull_request.labels.*.name, 'mutation:ui')
+              || inputs.ui-mutation == true }}
+        run: node scripts/mutation/run.mjs --plan
+
+  mutation-shard:
+    name: Mutation tests (StrykerJS) / ${{ matrix.shard }}
+    needs: [tests, mutation-plan]
+    if: needs.mutation-plan.outputs.count != '0'
+    runs-on: ubuntu-latest
+    timeout-minutes: ${{ github.event_name == 'pull_request' && 60 || 120 }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.mutation-plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Mutate the shard (thresholds are applied by the final job)
+        env:
+          # La base calculée par le plan : elle reste la même si develop avance pendant le run.
+          BASE_REF: ${{ needs.mutation-plan.outputs.base }}
+          MUTATION_MODE: ${{ github.event_name == 'pull_request' && 'changed' || 'full' }}
+          MUTATION_UI: ${{ needs.mutation-plan.outputs.ui }}
+        run: node scripts/mutation/run.mjs --shard ${{ matrix.shard }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: mutation-report
-          path: reports/
+          name: mutation-shard-${{ matrix.shard }}
+          path: reports/mutation/${{ matrix.shard }}/
+          retention-days: 7
           if-no-files-found: ignore
-          retention-days: 14
+
+  mutation:
+    # Nom de check conservé : une protection de branche peut l'exiger.
+    name: Mutation tests (StrykerJS)
+    needs: [mutation-plan, mutation-shard]
+    if: ${{ !cancelled() && needs.mutation-plan.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check the mutation plan
+        run: test "${{ needs.mutation-plan.result }}" = success
+      - name: Nothing to mutate
+        if: needs.mutation-plan.outputs.count == '0'
+        env:
+          MUTATION_UI_NOTICE: ${{ needs.mutation-plan.outputs.ui-notice }}
+        run: |
+          {
+            echo "## Mutation tests (StrykerJS)"
+            echo
+            echo "> ${MUTATION_UI_NOTICE}"
+            echo
+            echo "No mutable code changed: mutation testing skipped."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Check every mutation shard
+        if: needs.mutation-plan.outputs.count != '0'
+        run: test "${{ needs.mutation-shard.result }}" = success
+      - uses: actions/checkout@v4
+        if: needs.mutation-plan.outputs.count != '0'
+      - uses: actions/setup-node@v4
+        if: needs.mutation-plan.outputs.count != '0'
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+        if: needs.mutation-plan.outputs.count != '0'
+      - uses: actions/download-artifact@v4
+        if: needs.mutation-plan.outputs.count != '0'
+        with:
+          pattern: mutation-shard-*
+          path: reports/mutation
+      - name: Mutation score of all the shards against the thresholds
+        if: needs.mutation-plan.outputs.count != '0'
+        env:
+          EXPECTED_SHARDS: ${{ needs.mutation-plan.outputs.count }}
+          MUTATION_UI_NOTICE: ${{ needs.mutation-plan.outputs.ui-notice }}
+        run: npm run mutation:score
+      - uses: actions/upload-artifact@v4
+        if: always() && needs.mutation-plan.outputs.count != '0'
+        with:
+          name: mutation-report
+          path: reports/mutation/summary.md
+          if-no-files-found: ignore
+          retention-days: 7
 
   sonar:
     name: SonarQube Cloud
@@ -154,7 +291,11 @@ jobs:
 
   android-apk:
     name: Android APK
-    needs: [static, tests]
+    # Sauté sur une PR en brouillon et quand le changement ne touche pas l'app ; un check sauté
+    # compte comme réussi pour la protection de branche. Sur un push ou un lancement manuel, seule
+    # la sortie `app` compte.
+    needs: [changes, static, tests]
+    if: needs.changes.outputs.app == 'true' && github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -172,11 +313,44 @@ jobs:
           name: ascent-android-apk
           path: ${{ steps.build.outputs.apk-path }}
           if-no-files-found: error
-          retention-days: 30
+          # 1 jour sur une PR (le job e2e le télécharge dans le même run), 7 jours sur develop,
+          # 30 jours sur main, release/* et hotfix/*.
+          retention-days: >-
+            ${{ github.event_name == 'pull_request' && 1
+              || ((github.ref_name == 'main' || startsWith(github.ref_name, 'release/')
+                || startsWith(github.ref_name, 'hotfix/')) && 30 || 7) }}
+
+  cleanup-artifacts:
+    name: Clean up old artifacts
+    # Libère le stockage GitHub Actions (scripts/ci/cleanup-artifacts.mjs). Pas sur une PR venant
+    # d'un fork : son jeton ne peut pas supprimer d'artefact.
+    if: >-
+      (github.event_name == 'pull_request'
+        && github.event.pull_request.head.repo.full_name == github.repository)
+      || (github.event_name == 'push' && github.ref_name == 'develop')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Delete the APKs nobody needs any more
+        # Une suppression qui échoue n'est qu'un avertissement : ce job ne bloque jamais la CI.
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ci/cleanup-artifacts.mjs
 
   e2e-android:
     name: End-to-end tests (Maestro, Android)
-    needs: android-apk
+    # Mêmes conditions que l'APK, qu'il télécharge.
+    needs: [changes, android-apk]
+    if: needs.changes.outputs.app == 'true' && github.event.pull_request.draft != true
     runs-on: ubuntu-latest
     # Écart temporaire (docs/adr/0001-socle-technique.md) : non bloquant tant que l'émulateur
     # n'a pas prouvé sa stabilité en CI.
@@ -185,6 +359,11 @@ jobs:
     # Écriture du dépôt : seulement pour publier les captures sur la branche `e2e-screenshots`.
     permissions:
       contents: write
+    # Image système de l'émulateur, déclarée une seule fois pour le cache et pour l'émulateur.
+    env:
+      EMULATOR_API_LEVEL: 34
+      EMULATOR_TARGET: google_apis
+      EMULATOR_ARCH: x86_64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
@@ -206,12 +385,44 @@ jobs:
           installed="$("$HOME/.maestro/bin/maestro" --version | tail -n 1)"
           echo "Maestro ${installed}"
           test "${installed}" = "${MAESTRO_VERSION}"
+      - name: Cache the Android system image
+        # Le téléchargement de l'image chez Google échoue parfois (archive corrompue) et l'émulateur
+        # ne démarre pas. Une image déjà présente n'est pas retéléchargée par sdkmanager.
+        # Le préfixe du SDK reste en dur : le contexte `env` ne voit pas ANDROID_HOME du runner.
+        id: system-image-cache
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/android/sdk/system-images/android-${{ env.EMULATOR_API_LEVEL }}/${{ env.EMULATOR_TARGET }}/${{ env.EMULATOR_ARCH }}
+          # Incrémenter le suffixe `-vN` force le renouvellement du cache.
+          key: android-system-image-${{ env.EMULATOR_API_LEVEL }}-${{ env.EMULATOR_TARGET }}-${{ env.EMULATOR_ARCH }}-v1
+      - name: Preinstall the Android system image
+        # Sans cache, l'image est installée ici avec trois tentatives. Une archive corrompue peut
+        # laisser sdkmanager terminer sans erreur : seul `package.xml` prouve l'installation.
+        if: steps.system-image-cache.outputs.cache-hit != 'true'
+        run: |
+          set -uo pipefail
+          sdkmanager="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          package="system-images;android-${EMULATOR_API_LEVEL};${EMULATOR_TARGET};${EMULATOR_ARCH}"
+          image_dir="${ANDROID_HOME}/system-images/android-${EMULATOR_API_LEVEL}/${EMULATOR_TARGET}/${EMULATOR_ARCH}"
+          yes | "${sdkmanager}" --licenses > /dev/null || true
+          for attempt in 1 2 3; do
+            echo "Installing ${package} (attempt ${attempt}/3)"
+            if "${sdkmanager}" --install "${package}" && [ -f "${image_dir}/package.xml" ]; then
+              echo "${package} installed in ${image_dir}"
+              exit 0
+            fi
+            echo "::warning::Attempt ${attempt} to install ${package} failed."
+            rm -rf "${image_dir}"
+            [ "${attempt}" -lt 3 ] && sleep 30
+          done
+          echo "::error::${package} could not be installed after 3 attempts."
+          exit 1
       - name: Run the Maestro flows on an Android emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
-          arch: x86_64
-          target: google_apis
+          api-level: ${{ env.EMULATOR_API_LEVEL }}
+          arch: ${{ env.EMULATOR_ARCH }}
+          target: ${{ env.EMULATOR_TARGET }}
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
@@ -223,7 +434,7 @@ jobs:
           name: e2e-report
           path: reports/e2e
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 7
       - name: Publish the e2e screenshots for the review
         # Les artefacts ne sont pas lisibles depuis les sessions de revue : les captures sont aussi
         # poussées sur la branche orpheline `e2e-screenshots` (lisible par raw.githubusercontent.com),

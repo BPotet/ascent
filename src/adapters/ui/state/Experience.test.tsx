@@ -57,6 +57,14 @@ async function toggle(day: Day = wednesday): Promise<ToggledCheckIn> {
   return result;
 }
 
+/** Une habitude modifiée, telle que `updateHabit` la renvoie, sans prime d'objectif. */
+const updated = (xp: number, xpChange: number) => ({
+  xp,
+  xpChange,
+  targetBonusChange: 0,
+  targetReachedChange: null,
+});
+
 async function renderExperience(value: Dependencies = dependencies) {
   const wrapper = ({ children }: { children: ReactNode }) => (
     <DependenciesProvider value={value}>{children}</DependenciesProvider>
@@ -101,6 +109,7 @@ describe('ExperienceProvider', () => {
     expect(result.current.experience.change).toEqual({
       id: 1,
       amount: 10,
+      bonus: 0,
       key: `${cooking.id}/2026-10-14`,
     });
     expect(dependencies.haptics.success).toHaveBeenCalledTimes(1);
@@ -251,7 +260,7 @@ describe('ExperienceProvider', () => {
     await act(() => result.current.experience.habitDeleted({ xp: 30, xpRemoved: 10 }));
 
     expect(result.current.experience.xp).toBe(30);
-    expect(result.current.experience.change).toEqual({ id: 1, amount: -10, key: '' });
+    expect(result.current.experience.change).toEqual({ id: 1, amount: -10, bonus: 0, key: '' });
     expect(xpChangeOn(result.current.experience.change, { habit: cooking, day: wednesday })).toBe(
       undefined,
     );
@@ -289,6 +298,59 @@ describe('ExperienceProvider', () => {
     expect(result.current.experience.xp).toBe(30);
   });
 
+  it('shows the experience gained by a change of difficulty, with a light vibration', async () => {
+    const result = await renderExperience();
+
+    await act(() => result.current.experience.habitUpdated(updated(40, 20)));
+
+    expect(result.current.experience.xp).toBe(40);
+    expect(result.current.experience.change).toEqual({ id: 1, amount: 20, bonus: 0, key: '' });
+    expect(dependencies.haptics.success).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenLastCalledWith('+20 points d’expérience. Total : 40 XP.');
+  });
+
+  it('shows the experience lost by a lower difficulty, never with a vibration', async () => {
+    const result = await renderExperience();
+
+    await act(() => result.current.experience.habitUpdated(updated(10, -30)));
+
+    expect(result.current.experience.xp).toBe(10);
+    expect(result.current.experience.change).toEqual({ id: 1, amount: -30, bonus: 0, key: '' });
+    expect(dependencies.haptics.success).not.toHaveBeenCalled();
+    expect(announce).toHaveBeenLastCalledWith('−30 points d’expérience. Total : 10 XP.');
+  });
+
+  it('shows no feedback when a change of the habit did not change the experience', async () => {
+    const result = await renderExperience();
+
+    await act(() => result.current.experience.habitUpdated(updated(10, 0)));
+
+    expect(result.current.experience.xp).toBe(10);
+    expect(result.current.experience.change).toBeNull();
+    expect(dependencies.haptics.success).not.toHaveBeenCalled();
+    expect(announce).not.toHaveBeenCalled();
+  });
+
+  it('keeps the experience of a change of the habit over a reading that started before it', async () => {
+    const result = await renderExperience();
+    let read: () => void = () => undefined;
+    const run = dependencies.unitOfWork.run.bind(dependencies.unitOfWork);
+    jest
+      .spyOn(dependencies.unitOfWork, 'run')
+      .mockImplementationOnce(
+        (work) => new Promise((resolve) => (read = () => resolve(run(work)))),
+      );
+    const reading = result.current.experience.reload();
+
+    await act(() => result.current.experience.habitUpdated(updated(30, 0)));
+    await act(async () => {
+      read();
+      await reading;
+    });
+
+    expect(result.current.experience.xp).toBe(30);
+  });
+
   it('is only available inside the dependencies', async () => {
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
 
@@ -298,8 +360,106 @@ describe('ExperienceProvider', () => {
   });
 });
 
+describe('ExperienceProvider and the target bonus (#26)', () => {
+  /** « Lire », objectif 1, créée aujourd'hui : un tap atteint l'objectif (+10, puis +5 de prime). */
+  async function toggleReading(): Promise<ToggledCheckIn> {
+    const created = await createHabit(dependencies, 'Lire', 'medium', 1);
+    if (!created.ok) {
+      throw new Error('Habit not created');
+    }
+    const result = await toggleCheckIn(dependencies, created.habit.id, wednesday);
+    if (!result.ok) {
+      throw new Error(`Toggle refused: ${result.reason}`);
+    }
+    return result;
+  }
+
+  it('shows the bonus in its own pill, vibrates for the case, and leaves the announcement to F1', async () => {
+    const result = await renderExperience();
+    const toggled = await toggleReading();
+
+    await act(() => result.current.experience.checkInToggled(toggled, true));
+
+    expect(result.current.experience.xp).toBe(15);
+    expect(result.current.experience.change).toMatchObject({ amount: 15, bonus: 5 });
+    expect(dependencies.haptics.success).toHaveBeenCalledTimes(1);
+    expect(announce).not.toHaveBeenCalled();
+  });
+
+  it('keeps a single pill with the bonus included when the screen does not separate it', async () => {
+    const result = await renderExperience();
+    const toggled = await toggleReading();
+
+    await act(() => result.current.experience.checkInToggled(toggled));
+
+    expect(result.current.experience.change).toMatchObject({ amount: 15, bonus: 0 });
+    expect(announce).toHaveBeenLastCalledWith('+15 points d’expérience. Total : 15 XP.');
+  });
+
+  it('shows a lost bonus without vibration, and leaves the announcement to the feedback', async () => {
+    const result = await renderExperience();
+    const reached = await toggleReading();
+    await act(() => result.current.experience.checkInToggled(reached, true));
+    dependencies.haptics.success.mockClear();
+    const lost = await toggleCheckIn(dependencies, reached.habitDay.habit.id, wednesday);
+    if (!lost.ok) {
+      throw new Error('Toggle refused');
+    }
+
+    await act(() => result.current.experience.checkInToggled(lost, true));
+
+    expect(result.current.experience.change).toMatchObject({ amount: -15, bonus: -5 });
+    expect(dependencies.haptics.success).not.toHaveBeenCalled();
+    expect(announce).not.toHaveBeenCalled();
+  });
+
+  it('announces a gain beyond the target, without a bonus', async () => {
+    const result = await renderExperience();
+    const toggled = await toggle();
+
+    await act(() => result.current.experience.checkInToggled(toggled, true));
+
+    expect(result.current.experience.change).toMatchObject({ amount: 10, bonus: 0 });
+    expect(announce).toHaveBeenLastCalledWith('+10 points d’expérience. Total : 10 XP.');
+  });
+
+  it('shows the bonus of a habit whose target is reached by a change, without its own vibration', async () => {
+    const result = await renderExperience();
+
+    await act(() =>
+      result.current.experience.habitUpdated({
+        xp: 13,
+        xpChange: 3,
+        targetBonusChange: 3,
+        targetReachedChange: 'reached',
+      }),
+    );
+
+    expect(result.current.experience.change).toEqual({ id: 1, amount: 3, bonus: 3, key: '' });
+    expect(dependencies.haptics.success).not.toHaveBeenCalled();
+    expect(announce).not.toHaveBeenCalled();
+  });
+
+  it('announces a bonus re-evaluated with the difficulty, and vibrates for the cases', async () => {
+    const result = await renderExperience();
+
+    await act(() =>
+      result.current.experience.habitUpdated({
+        xp: 90,
+        xpChange: 45,
+        targetBonusChange: 15,
+        targetReachedChange: null,
+      }),
+    );
+
+    expect(result.current.experience.change).toMatchObject({ amount: 45, bonus: 15 });
+    expect(dependencies.haptics.success).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenLastCalledWith('+45 points d’expérience. Total : 90 XP.');
+  });
+});
+
 describe('xpChangeOn', () => {
-  const change = { id: 3, amount: 10, key: '1/2026-10-14' };
+  const change = { id: 3, amount: 10, bonus: 0, key: '1/2026-10-14' };
   const habit = { id: 1 } as Habit;
 
   it('gives the change to the touched case', () => {

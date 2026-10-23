@@ -36,6 +36,20 @@ export function AlertGlyph({
   );
 }
 
+/** Le « i » cerclé des messages d'information (« S'applique à toute cette semaine… »). Décoratif. */
+export function InfoGlyph({ color }: { readonly color: string }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      testID="info-glyph"
+      style={[styles.alert, { borderColor: color, width: 16, height: 16, borderRadius: 8 }]}
+    >
+      <Text style={[styles.alertMark, { color, fontSize: 11 }]}>i</Text>
+    </View>
+  );
+}
+
 /** L'étoile de l'expérience, devant l'aide et l'encouragement. Décorative. */
 export function SparkGlyph({ color }: { readonly color: string }) {
   return (
@@ -185,6 +199,55 @@ export function PencilGlyph({ color }: { readonly color: string }) {
 }
 
 /**
+ * Le drapeau planté au sommet de l'objectif atteint (badge, puce). Décoratif : « Objectif atteint »
+ * est écrit à côté et lu par le lecteur d'écran.
+ */
+export function FlagGlyph({ color }: { readonly color: string }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      testID="flag-glyph"
+      style={styles.flag}
+    >
+      <View style={[styles.flagPole, { backgroundColor: color }]} />
+      <View style={[styles.flagCloth, { backgroundColor: color }]} />
+    </View>
+  );
+}
+
+/**
+ * Le drapeau planté sur un sommet, en grand (24 px) : le message « Objectifs de la semaine
+ * atteints » de la Vue Journée (maquette E1, #25). Décoratif : le message est écrit à côté.
+ */
+export function SummitFlagGlyph({ color }: { readonly color: string }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      testID="summit-flag-glyph"
+      style={styles.summitFlag}
+    >
+      <View style={[styles.summit, { borderBottomColor: color }]} />
+      <View style={[styles.summitFlagPole, { backgroundColor: color }]} />
+      <View style={[styles.summitFlagCloth, { backgroundColor: color }]} />
+    </View>
+  );
+}
+
+/** La coche de la puce « Objectif atteint ». Décorative. */
+export function SmallCheckGlyph({ color }: { readonly color: string }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      testID="small-check-glyph"
+      style={[styles.smallCheck, { borderColor: color }]}
+    />
+  );
+}
+
+/**
  * La corbeille des actions de suppression : elle signale l'action destructive autrement que par la
  * couleur. Décorative : le libellé du bouton suffit au lecteur d'écran.
  */
@@ -263,6 +326,46 @@ const styles = StyleSheet.create({
     borderTopWidth: 4,
     borderRightWidth: 4,
     borderRightColor: 'transparent',
+  },
+  flag: { width: 14, height: 14 },
+  summitFlag: { width: 24, height: 24 },
+  summit: {
+    position: 'absolute',
+    left: 2.5,
+    bottom: 2.5,
+    borderLeftWidth: 6,
+    borderRightWidth: 11,
+    borderBottomWidth: 9.5,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    opacity: 0.55,
+  },
+  summitFlagPole: {
+    position: 'absolute',
+    left: 7.5,
+    top: 2.5,
+    width: 2,
+    height: 10,
+    borderRadius: 1,
+  },
+  summitFlagCloth: {
+    position: 'absolute',
+    left: 9.3,
+    top: 2.8,
+    width: 9,
+    height: 6.3,
+    borderRadius: 1,
+  },
+  flagPole: { position: 'absolute', left: 2, top: 1, width: 2.4, height: 13, borderRadius: 1.2 },
+  flagCloth: { position: 'absolute', left: 4, top: 1.5, width: 9, height: 6.5, borderRadius: 1 },
+  smallCheck: {
+    width: 6,
+    height: 10,
+    marginTop: -2,
+    marginHorizontal: 2,
+    borderRightWidth: 2.2,
+    borderBottomWidth: 2.2,
+    transform: [{ rotate: '45deg' }],
   },
   trash: { width: 18, height: 18, alignItems: 'center' },
   trashHandle: { width: 7, height: 3, borderWidth: 2, borderBottomWidth: 0, marginTop: 1 },

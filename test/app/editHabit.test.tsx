@@ -2,8 +2,9 @@
  * Test d'intégration de l'assemblage de « Modifier l'habitude » (story #6) : les vraies routes de
  * `src/app` (onglets Journée et Semaine), une vraie base SQLite (node:sqlite à la place
  * d'expo-sqlite) et l'horloge du téléphone fixée par de faux timers au mercredi 14 octobre 2026.
- * Aucune route ni prop nouvelle : la Vue Journée et la Vue Semaine portent le renommage et la
- * suppression ; ce test vérifie qu'elles restent cohérentes entre elles et après une relance.
+ * Aucune route ni prop nouvelle : la Vue Journée et la Vue Semaine portent la modification (nom et
+ * difficulté, #23) et la suppression ; ce test vérifie qu'elles restent cohérentes entre elles et
+ * après une relance.
  */
 import { cleanup, fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
 import path from 'node:path';
@@ -85,7 +86,9 @@ describe('app editing of a habit', () => {
     db = await databaseWithCooking({ full: false });
     openDatabase.mockResolvedValue(db);
     await renderRouter(appDirectory);
-    await dayView().findByLabelText(`Cuisiner, ${TODAY}, fait`);
+    await dayView().findByLabelText(
+      `Cuisiner, ${TODAY}, fait, 2 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+    );
     expect(xpShown()).toBe('20 XP');
 
     await openEditing('Cuisiner');
@@ -93,8 +96,16 @@ describe('app editing of a habit', () => {
     await fireEvent.changeText(field, 'Cuisiner le soir');
     await fireEvent.press(screen.getByTestId('save-habit'));
 
-    expect(await dayView().findByLabelText(`Cuisiner le soir, ${TODAY}, fait`)).toBeOnTheScreen();
-    expect(dayView().queryByLabelText(`Cuisiner, ${TODAY}, fait`)).not.toBeOnTheScreen();
+    expect(
+      await dayView().findByLabelText(
+        `Cuisiner le soir, ${TODAY}, fait, 2 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
+    ).toBeOnTheScreen();
+    expect(
+      dayView().queryByLabelText(
+        `Cuisiner, ${TODAY}, fait, 2 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
+    ).not.toBeOnTheScreen();
     expect(xpShown()).toBe('20 XP');
 
     await showTab('Semaine');
@@ -107,11 +118,51 @@ describe('app editing of a habit', () => {
     expect(xpShown()).toBe('20 XP');
   });
 
+  it('changes the difficulty from the day view: the week is re-evaluated in both views, after a restart too', async () => {
+    db = await databaseWithCooking({ full: false });
+    openDatabase.mockResolvedValue(db);
+    await renderRouter(appDirectory);
+    await dayView().findByLabelText(
+      `Cuisiner, ${TODAY}, fait, 2 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+    );
+    expect(xpShown()).toBe('20 XP');
+
+    await openEditing('Cuisiner');
+    await fireEvent.press(screen.getByTestId('difficulty-option-hard'));
+    expect(screen.getByTestId('difficulty-change-info')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId('save-habit'));
+
+    expect(
+      await dayView().findByLabelText(
+        `Cuisiner, ${TODAY}, fait, 2 sur 7 cette semaine, Difficile, 20 XP par suivi`,
+      ),
+    ).toBeOnTheScreen();
+    // Le compteur de l'en-tête monte image par image : on lit l'expérience enregistrée affichée.
+    expect(screen.getByLabelText('Expérience du personnage : 40 XP')).toBeOnTheScreen();
+    expect(screen.getByTestId('toast')).toHaveTextContent('Habitude modifiée · +20 XP');
+
+    await showTab('Semaine');
+    expect(await weekView().findByTestId('week-difficulty-1')).toHaveTextContent('Difficile');
+    expect(screen.getByLabelText('Expérience du personnage : 40 XP')).toBeOnTheScreen();
+
+    await cleanup();
+    openDatabase.mockResolvedValue(db);
+    await renderRouter(appDirectory);
+    expect(
+      await dayView().findByLabelText(
+        `Cuisiner, ${TODAY}, fait, 2 sur 7 cette semaine, Difficile, 20 XP par suivi`,
+      ),
+    ).toBeOnTheScreen();
+    expect(xpShown()).toBe('40 XP');
+  });
+
   it('deletes a habit done today from both views, removes today’s experience and frees the limit', async () => {
     db = await databaseWithCooking({ full: true });
     openDatabase.mockResolvedValue(db);
     await renderRouter(appDirectory);
-    await dayView().findByLabelText(`Cuisiner, ${TODAY}, fait`);
+    await dayView().findByLabelText(
+      `Cuisiner, ${TODAY}, fait, 2 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+    );
     expect(dayView().getByText('10/10')).toBeOnTheScreen();
     expect(screen.getByTestId('add-habit')).toBeDisabled();
     expect(xpShown()).toBe('20 XP');
@@ -119,7 +170,11 @@ describe('app editing of a habit', () => {
     await deleteFromDayView('Cuisiner');
 
     expect(await dayView().findByText('9/10')).toBeOnTheScreen();
-    expect(dayView().queryByLabelText(`Cuisiner, ${TODAY}, fait`)).not.toBeOnTheScreen();
+    expect(
+      dayView().queryByLabelText(
+        `Cuisiner, ${TODAY}, fait, 2 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
+    ).not.toBeOnTheScreen();
     expect(screen.queryByTestId('delete-habit-dialog')).not.toBeOnTheScreen();
     expect(screen.getByTestId('add-habit')).toBeEnabled();
     expect(screen.getByLabelText('Expérience du personnage : 10 XP')).toBeOnTheScreen();
@@ -135,7 +190,9 @@ describe('app editing of a habit', () => {
     db = await databaseWithCooking({ full: false });
     openDatabase.mockResolvedValue(db);
     await renderRouter(appDirectory);
-    await dayView().findByLabelText(`Cuisiner, ${TODAY}, fait`);
+    await dayView().findByLabelText(
+      `Cuisiner, ${TODAY}, fait, 2 sur 7 cette semaine, Moyenne, 10 XP par suivi`,
+    );
 
     await deleteFromDayView('Cuisiner');
 

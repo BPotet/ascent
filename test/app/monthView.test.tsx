@@ -56,15 +56,23 @@ describe('app month view', () => {
   it('shows in the counter of today a check-in confirmed in the day view', async () => {
     openDatabase.mockImplementation(databaseWithCooking);
     await renderRouter(appDirectory);
-    await fireEvent.press(await screen.findByLabelText(`${COOKING_TODAY}, à faire`));
-    expect(await dayView().findByLabelText(`${COOKING_TODAY}, fait`)).toBeOnTheScreen();
+    await fireEvent.press(
+      await screen.findByLabelText(
+        `${COOKING_TODAY}, à faire, 0 sur 6 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
+    );
+    expect(
+      await dayView().findByLabelText(
+        `${COOKING_TODAY}, fait, 1 sur 6 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
+    ).toBeOnTheScreen();
 
     await showTab('Mois');
 
     expect(await monthView().findByTestId('month-grid')).toBeOnTheScreen();
     expect(selectedTab()).toBe('Mois');
     expect(monthDay('2026-10-14')).toHaveAccessibleName(
-      'mercredi 14 octobre, aujourd’hui, 1 habitude faite sur 1',
+      'mercredi 14 octobre, aujourd’hui, 1 habitude faite sur 1 attendue',
     );
     expect(within(monthDay('2026-10-14')).getByText('1/1')).toBeOnTheScreen();
   });
@@ -82,7 +90,9 @@ describe('app month view', () => {
     await fireEvent.press(detail.getByRole('switch', { name: /^Cuisiner, mardi 13 octobre/u }));
 
     expect(
-      await monthView().findByLabelText('mardi 13 octobre, 1 habitude faite sur 1, corrigé'),
+      await monthView().findByLabelText(
+        'mardi 13 octobre, 1 habitude faite sur 1 attendue, corrigé',
+      ),
     ).toBeOnTheScreen();
     expect(detail.getByText('corrigé')).toBeOnTheScreen();
     await waitFor(() => expect(monthView().getByTestId('xp-counter')).toHaveTextContent('10 XP'));
@@ -94,7 +104,11 @@ describe('app month view', () => {
     // Hier est maintenant entièrement fait : le rappel d'hier n'a plus rien à rappeler.
     await waitFor(() => expect(screen.queryByTestId('yesterday-reminder')).not.toBeOnTheScreen());
     expect(dayView().getByTestId('xp-counter')).toHaveTextContent('10 XP');
-    expect(dayView().getByLabelText(`${COOKING_TODAY}, à faire`)).toBeOnTheScreen();
+    expect(
+      dayView().getByLabelText(
+        `${COOKING_TODAY}, à faire, 1 sur 6 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
+    ).toBeOnTheScreen();
   });
 
   it('opens the new habit sheet in the day view from the empty state of the month view', async () => {
@@ -110,12 +124,18 @@ describe('app month view', () => {
     expect(selectedTab()).toBe('Journée');
     await fireEvent.changeText(screen.getByLabelText('Nom de l’habitude'), 'Cuisiner');
     await fireEvent.press(screen.getByRole('button', { name: 'Créer l’habitude' }));
-    expect(await dayView().findByLabelText(`${COOKING_TODAY}, à faire`)).toBeOnTheScreen();
+    expect(
+      await dayView().findByLabelText(
+        `${COOKING_TODAY}, à faire, 0 sur 5 cette semaine, Moyenne, 10 XP par suivi`,
+      ),
+    ).toBeOnTheScreen();
 
     await showTab('Mois');
 
     expect(
-      await monthView().findByLabelText('mercredi 14 octobre, aujourd’hui, 0 habitude faite sur 1'),
+      await monthView().findByLabelText(
+        'mercredi 14 octobre, aujourd’hui, 0 habitude faite sur 1 attendue',
+      ),
     ).toBeOnTheScreen();
   });
 });

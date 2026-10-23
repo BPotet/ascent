@@ -11,12 +11,7 @@ name: Consulter un mois et le détail d'un jour
 tags:
   - story-10
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      id: 'day-view-empty'
-    timeout: 60000
+- runFlow: ../subflows/launch-fresh.yaml
 - assertVisible:
     id: 'tab-month'
 
@@ -49,11 +44,11 @@ tags:
 - tapOn:
     id: 'create-habit'
 - extendedWaitUntil:
-    visible: 'Cuisiner, .+, à faire'
+    visible: 'Cuisiner, .+, à faire, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
     timeout: 10000
-- tapOn: 'Cuisiner, .+, à faire'
+- tapOn: 'Cuisiner, .+, à faire, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
 - extendedWaitUntil:
-    visible: 'Cuisiner, .+, fait'
+    visible: 'Cuisiner, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
     timeout: 10000
 
 # Onglet Mois : aujourd'hui compte une habitude faite sur une (« 1/1 »). Le jour est un seul élément
@@ -67,18 +62,18 @@ tags:
 - assertVisible:
     id: 'month-view'
 - extendedWaitUntil:
-    visible: '.+, aujourd’hui, 1 habitude faite sur 1'
+    visible: '.+, aujourd’hui, 1 habitude faite sur 1 attendue'
     timeout: 10000
 - assertVisible: 'Ce mois-ci'
 - takeScreenshot: month-view-2-current-month-done
 
-# Le détail d'aujourd'hui : l'habitude y est « fait ».
-- tapOn: '.+, aujourd’hui, 1 habitude faite sur 1'
+# Le détail d'aujourd'hui : l'habitude y est « fait », avec la progression de la semaine (#27).
+- tapOn: '.+, aujourd’hui, 1 habitude faite sur 1 attendue'
 - extendedWaitUntil:
     visible:
       id: 'day-detail-.+'
     timeout: 10000
-- assertVisible: 'Cuisiner, .+, fait'
+- assertVisible: 'Cuisiner, .+, fait, 1 sur \d cette semaine(, objectif atteint)?'
 - takeScreenshot: month-view-3-day-detail
 - tapOn: 'Fermer'
 - extendedWaitUntil:

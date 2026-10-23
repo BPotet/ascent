@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { AccessibilityInfo, Animated } from 'react-native';
 
 import type { CheckInStatus } from '../../../domain/checkIn/CheckInStatus';
@@ -179,6 +179,224 @@ describe('HabitRow', () => {
     );
 
     expect(screen.queryByTestId('xp-float', { includeHiddenElements: true })).not.toBeOnTheScreen();
+  });
+
+  describe('with its difficulty (Vue Journée, E1)', () => {
+    it('shows the icon and the name of the difficulty on the secondary line', async () => {
+      await render(<HabitRow habitDay={habitDay('pending')} difficulty="hard" />);
+
+      const line = screen.getByTestId('habit-difficulty-7');
+      expect(line).toHaveTextContent('Difficile');
+      expect(
+        within(line).getAllByTestId('difficulty-peak', { includeHiddenElements: true }),
+      ).toHaveLength(3);
+      expect(screen.getByText('À faire')).toBeOnTheScreen();
+    });
+
+    it('reads the difficulty and what a check-in brings after the status', async () => {
+      await render(<HabitRow habitDay={habitDay('pending')} difficulty="easy" />);
+
+      expect(
+        screen.getByRole('switch', {
+          name: 'Cuisiner, mercredi 14 octobre, à faire, Facile, 5 XP par suivi',
+        }),
+      ).toBeOnTheScreen();
+    });
+
+    it('takes the colours of the line: muted, or green once done', async () => {
+      const { rerender } = await render(
+        <HabitRow habitDay={habitDay('pending')} difficulty="medium" />,
+      );
+      expect(screen.getByText('Moyenne', { includeHiddenElements: true })).toHaveStyle({
+        color: '#9AA4B8',
+      });
+      expect(
+        screen.getAllByTestId('difficulty-peak', { includeHiddenElements: true })[0],
+      ).toHaveStyle({ borderBottomColor: '#B9C6E6' });
+      expect(screen.getByText('·', { includeHiddenElements: true })).toHaveStyle({
+        color: '#9AA4B8',
+      });
+
+      await rerender(<HabitRow habitDay={habitDay('done')} difficulty="medium" />);
+
+      expect(screen.getByText('Moyenne', { includeHiddenElements: true })).toHaveStyle({
+        color: '#8FE8BF',
+      });
+      expect(
+        screen.getAllByTestId('difficulty-peak', { includeHiddenElements: true })[0],
+      ).toHaveStyle({ borderBottomColor: '#8FE8BF' });
+      expect(screen.getByText('·', { includeHiddenElements: true })).toHaveStyle({
+        color: '#8FE8BF',
+      });
+    });
+
+    it('shows no difficulty without one (detail of a day)', async () => {
+      await render(<HabitRow habitDay={habitDay('pending')} />);
+
+      expect(screen.queryByTestId('habit-difficulty-7')).not.toBeOnTheScreen();
+      expect(
+        screen.queryByTestId('difficulty-peak', { includeHiddenElements: true }),
+      ).not.toBeOnTheScreen();
+    });
+  });
+
+  describe('with its weekly progress (Vue Journée, E1)', () => {
+    const progress = (weeklyProgress: number, weekTarget: number, targetReached = false) => ({
+      weeklyProgress,
+      weekTarget,
+      targetReached,
+    });
+
+    it('writes the status and the progress of the week after the difficulty', async () => {
+      await render(
+        <HabitRow
+          habitDay={habitDay('pending')}
+          difficulty="hard"
+          weeklyProgress={progress(2, 3)}
+        />,
+      );
+
+      expect(screen.getByTestId('habit-progress-7')).toHaveTextContent(
+        'À faire · 2/3 cette semaine',
+      );
+      expect(
+        within(screen.getByTestId('habit-difficulty-7')).getAllByTestId('difficulty-peak', {
+          includeHiddenElements: true,
+        }),
+      ).toHaveLength(3);
+      expect(screen.getByTestId('habit-difficulty-7')).toHaveTextContent('Difficile');
+    });
+
+    it('writes « 0/7 cette semaine » for a habit to do every day, like the others', async () => {
+      await render(
+        <HabitRow
+          habitDay={habitDay('done')}
+          difficulty="medium"
+          weeklyProgress={progress(4, 7)}
+        />,
+      );
+
+      expect(screen.getByTestId('habit-progress-7')).toHaveTextContent('Fait · 4/7 cette semaine');
+      expect(screen.getByTestId('habit-progress-7')).toHaveStyle({ color: '#8FE8BF' });
+    });
+
+    it('reads the progress after the status: « Cuisiner, …, à faire, 2 sur 3 cette semaine »', async () => {
+      await render(
+        <HabitRow
+          habitDay={habitDay('pending')}
+          difficulty="hard"
+          weeklyProgress={progress(2, 3)}
+        />,
+      );
+
+      expect(
+        screen.getByRole('switch', {
+          name: 'Cuisiner, mercredi 14 octobre, à faire, 2 sur 3 cette semaine, Difficile, 20 XP par suivi',
+        }),
+      ).toBeOnTheScreen();
+    });
+
+    it('carries the badge « Objectif atteint » once the target of the week is reached', async () => {
+      await render(
+        <HabitRow
+          habitDay={habitDay('done')}
+          difficulty="hard"
+          weeklyProgress={progress(4, 3, true)}
+          onToggle={jest.fn()}
+        />,
+      );
+
+      const badge = screen.getByTestId('habit-target-reached-7', { includeHiddenElements: true });
+      expect(badge).toHaveTextContent('Objectif atteint');
+      expect(within(badge).getByTestId('flag-glyph', { includeHiddenElements: true })).toBeTruthy();
+      expect(badge).toHaveStyle({ borderColor: 'rgba(61,220,151,0.55)' });
+      expect(screen.getByTestId('habit-progress-7')).toHaveTextContent(
+        'Fait · 4 fois cette semaine',
+      );
+      const row = screen.getByRole('switch', {
+        name: 'Cuisiner, mercredi 14 octobre, fait, 4 fois cette semaine, Difficile, 20 XP par suivi, objectif atteint',
+      });
+      expect(row).toBeEnabled();
+    });
+
+    it('stays touchable once the target is just reached, written « 3/3 »', async () => {
+      const onToggle = jest.fn();
+      await render(
+        <HabitRow
+          habitDay={habitDay('pending')}
+          weeklyProgress={progress(3, 3, true)}
+          onToggle={onToggle}
+        />,
+      );
+
+      await fireEvent.press(screen.getByRole('switch'));
+
+      expect(onToggle).toHaveBeenCalled();
+      expect(screen.getByTestId('habit-progress-7')).toHaveTextContent(
+        'À faire · 3/3 cette semaine',
+      );
+      expect(
+        screen.getByRole('switch', { name: /, à faire, 3 sur 3 cette semaine, /u }),
+      ).toBeEnabled();
+    });
+
+    it('names the week of the progress in the day detail (#27)', async () => {
+      await render(
+        <HabitRow
+          habitDay={{ ...habitDay('missed'), corrected: true }}
+          weeklyProgress={progress(3, 3, true)}
+          weekLabel="semaine du 12 octobre"
+          compact
+        />,
+      );
+
+      expect(screen.getByTestId('habit-progress-7')).toHaveTextContent(
+        'Pas fait · 3/3 semaine du 12 octobre',
+      );
+      expect(
+        screen.getByRole('switch', {
+          name: 'Cuisiner, mercredi 14 octobre, pas fait, 3 sur 3 semaine du 12 octobre, corrigé, objectif atteint',
+        }),
+      ).toBeOnTheScreen();
+      expect(
+        screen.getByTestId('habit-target-reached-7', { includeHiddenElements: true }),
+      ).toHaveTextContent('Objectif atteint');
+      // Le texte complet passe à la ligne, il n'est jamais coupé (décision UX).
+      expect(screen.getByTestId('habit-progress-7').props.numberOfLines).toBeUndefined();
+    });
+
+    it('bursts its badge when the target has just been reached here (F1, #26)', async () => {
+      await render(
+        <HabitRow
+          habitDay={habitDay('done')}
+          weeklyProgress={progress(3, 3, true)}
+          targetFlash={1}
+          onToggle={jest.fn()}
+        />,
+      );
+      await act(async () => undefined);
+
+      expect(screen.getByTestId('target-burst', { includeHiddenElements: true })).toBeOnTheScreen();
+    });
+
+    it('shows its badge without a burst otherwise', async () => {
+      await render(<HabitRow habitDay={habitDay('done')} weeklyProgress={progress(3, 3, true)} />);
+      await act(async () => undefined);
+
+      expect(
+        screen.queryByTestId('target-burst', { includeHiddenElements: true }),
+      ).not.toBeOnTheScreen();
+    });
+
+    it('shows no badge, and no mark of failure, below the target', async () => {
+      await render(<HabitRow habitDay={habitDay('pending')} weeklyProgress={progress(1, 3)} />);
+
+      expect(
+        screen.queryByTestId('habit-target-reached-7', { includeHiddenElements: true }),
+      ).not.toBeOnTheScreen();
+      expect(screen.queryByTestId('cross-mark', { includeHiddenElements: true })).toBeNull();
+      expect(screen.getByRole('switch').props.accessibilityLabel).not.toMatch(/objectif atteint/u);
+    });
   });
 
   describe('with an edit action', () => {

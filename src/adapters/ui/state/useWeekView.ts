@@ -44,6 +44,8 @@ const mapCells = (view: WeekView, change: (habitDay: HabitDay) => HabitDay): Wee
  *   semaine devenue hors de l'historique est remplacée par la plus proche consultable) ;
  * - `toggle` enregistre un tap sur une case, comme dans la Vue Journée, et prévient les autres vues ;
  *   sur un jour clos (correction), une case « fait » touchée s'affiche « pas fait » tout de suite.
+ *   Une fois le tap enregistré, la semaine se relit pour montrer sa progression et l'objectif
+ *   atteint.
  */
 export function useWeekView(): {
   readonly state: WeekViewState;
@@ -109,8 +111,10 @@ export function useWeekView(): {
           : state,
       );
       trackingChanged();
+      // La progression de la semaine et l'objectif atteint se relisent après chaque tap enregistré.
+      void refresh();
     },
-    [trackingChanged],
+    [trackingChanged, refresh],
   );
 
   const shownView = loaded.status === 'ready' ? loaded.view : null;
@@ -122,7 +126,12 @@ export function useWeekView(): {
     [shownToday],
   );
 
-  const { shown, toggle } = useOptimisticToggle({ onSaved, refresh, undoneStatusOf });
+  const { shown, toggle } = useOptimisticToggle({
+    onSaved,
+    refresh,
+    undoneStatusOf,
+    splitBonus: true,
+  });
 
   const previous = useCallback(() => {
     if (shownView?.canGoPrevious === true) {

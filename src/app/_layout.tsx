@@ -7,6 +7,7 @@ import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
 import { Sora_600SemiBold } from '@expo-google-fonts/sora/600SemiBold';
 import { Sora_700Bold } from '@expo-google-fonts/sora/700Bold';
 import { useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { SystemClock } from '../adapters/device/clock/SystemClock';
@@ -16,6 +17,8 @@ import { appStateVisibility } from '../adapters/device/lifecycle/appStateVisibil
 import { openAscentDatabase } from '../adapters/persistence/sqlite/openAscentDatabase';
 import { SqliteKeyValueStore } from '../adapters/persistence/sqlite/SqliteKeyValueStore';
 import { SqliteUnitOfWork } from '../adapters/persistence/sqlite/SqliteUnitOfWork';
+import { introduceTargetBonus } from '../application/useCases/introduceTargetBonus';
+import { introduceWeeklyTarget } from '../application/useCases/introduceWeeklyTarget';
 import { StartupErrorScreen, StartupLoadingScreen } from '../adapters/ui/screens/StartupScreen';
 import { type Dependencies, DependenciesProvider } from '../adapters/ui/state/Dependencies';
 import { colors } from '../adapters/ui/theme/colors';
@@ -31,9 +34,17 @@ const screenOptions = {
   headerShown: false,
   contentStyle: { backgroundColor: colors.background },
 } as const;
+// Racine des gestes : elle occupe tout l'écran, sans quoi l'app s'afficherait vide.
+const gestureRootStyle = { flex: 1, backgroundColor: colors.background } as const;
 // Stryker restore all
 
-/** Ouvre la base locale et charge les polices (sans elles, la police système s'affiche). */
+/**
+ * Ouvre la base locale et charge les polices (sans elles, la police système s'affiche), puis fait le
+ * changement d'introduction de l'objectif hebdomadaire (#24), puis le rattrapage de la prime
+ * d'objectif (#26), dans cet ordre et avant l'interface : rejoués sans risque à chaque démarrage,
+ * ils n'écrivent plus rien une fois faits, et le rattrapage n'accorde jamais deux fois. Un échec
+ * fait proposer « Réessayer ».
+ */
 async function start(): Promise<Dependencies> {
   // Les fichiers des polices livrées avec l'app, sous les noms qu'utilise l'interface.
   const fontFiles = {
@@ -44,7 +55,7 @@ async function start(): Promise<Dependencies> {
     [fonts.interSemiBold]: Inter_600SemiBold,
   };
   const [db] = await Promise.all([openAscentDatabase(), loadFonts(fontFiles)]);
-  return {
+  const dependencies: Dependencies = {
     // L'heure du téléphone, relue au retour au premier plan.
     clock: new SystemClock(undefined, appStateVisibility()),
     unitOfWork: new SqliteUnitOfWork(db),
@@ -52,6 +63,9 @@ async function start(): Promise<Dependencies> {
     // La vibration légère d'un gain d'expérience ; silencieuse sur un téléphone sans vibreur.
     haptics: new ExpoHaptics(),
   };
+  await introduceWeeklyTarget(dependencies);
+  await introduceTargetBonus(dependencies);
+  return dependencies;
 }
 
 /**
@@ -73,17 +87,19 @@ export default function RootLayout() {
   }, [loading]);
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="light" />
-      {startup.status === 'loading' && <StartupLoadingScreen />}
-      {startup.status === 'failed' && (
-        <StartupErrorScreen onRetry={() => setStartup({ status: 'loading' })} />
-      )}
-      {startup.status === 'ready' && (
-        <DependenciesProvider value={startup.dependencies}>
-          <Stack screenOptions={screenOptions} />
-        </DependenciesProvider>
-      )}
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={gestureRootStyle}>
+      <SafeAreaProvider>
+        <StatusBar style="light" />
+        {startup.status === 'loading' && <StartupLoadingScreen />}
+        {startup.status === 'failed' && (
+          <StartupErrorScreen onRetry={() => setStartup({ status: 'loading' })} />
+        )}
+        {startup.status === 'ready' && (
+          <DependenciesProvider value={startup.dependencies}>
+            <Stack screenOptions={screenOptions} />
+          </DependenciesProvider>
+        )}
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

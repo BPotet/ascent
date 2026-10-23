@@ -9,12 +9,7 @@ name: Confirmer ses habitudes du jour d'un tap
 tags:
   - story-4
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      id: 'day-view-empty'
-    timeout: 60000
+- runFlow: ../subflows/launch-fresh.yaml
 
 # Une habitude créée aujourd'hui, à faire.
 - tapOn:
@@ -31,14 +26,14 @@ tags:
     notVisible: 'Nouvelle habitude'
     timeout: 10000
 - extendedWaitUntil:
-    visible: 'Lire, .+, à faire'
+    visible: 'Lire, .+, à faire, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
     timeout: 10000
 - assertVisible:
     id: 'habit-row-1'
     checked: false
 - assertNotVisible:
     id: 'check-mark'
-- assertVisible: '0/1 faites|0 habitude faite sur 1'
+- assertVisible: '0/1 faites|0 habitude faite sur 1 attendue'
 # L'aide au premier usage explique le tap.
 - assertVisible:
     id: 'check-in-hint'
@@ -50,14 +45,14 @@ tags:
 - tapOn:
     id: 'habit-row-1'
 - extendedWaitUntil:
-    visible: 'Lire, .+, fait'
+    visible: 'Lire, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
     timeout: 10000
 - assertVisible:
     id: 'habit-row-1'
     checked: true
 - assertVisible:
     id: 'check-mark'
-- assertVisible: '1/1 faites|1 habitude faite sur 1'
+- assertVisible: '1/1 faites|1 habitude faite sur 1 attendue'
 - assertVisible:
     id: 'all-done'
 - assertNotVisible:
@@ -68,14 +63,14 @@ tags:
 - tapOn:
     id: 'habit-row-1'
 - extendedWaitUntil:
-    visible: 'Lire, .+, à faire'
+    visible: 'Lire, .+, à faire, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
     timeout: 10000
 - assertVisible:
     id: 'habit-row-1'
     checked: false
 - assertNotVisible:
     id: 'check-mark'
-- assertVisible: '0/1 faites|0 habitude faite sur 1'
+- assertVisible: '0/1 faites|0 habitude faite sur 1 attendue'
 - assertNotVisible:
     id: 'all-done'
 - assertNotVisible:
@@ -86,18 +81,18 @@ tags:
 - tapOn:
     id: 'habit-row-1'
 - extendedWaitUntil:
-    visible: 'Lire, .+, fait'
+    visible: 'Lire, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
     timeout: 10000
 
 # Relance à froid : le suivi est conservé, l'aide ne revient pas.
 - stopApp
 - launchApp
 - extendedWaitUntil:
-    visible: 'Lire, .+, fait'
+    visible: 'Lire, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
     timeout: 60000
 - assertVisible:
     id: 'check-mark'
-- assertVisible: '1/1 faites|1 habitude faite sur 1'
+- assertVisible: '1/1 faites|1 habitude faite sur 1 attendue'
 - assertVisible:
     id: 'all-done'
 - assertNotVisible:

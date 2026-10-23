@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import type { WeekView } from '../../../application/useCases/getWeekView';
+import type { WeekView, WeekViewRow } from '../../../application/useCases/getWeekView';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import type { Day } from '../../../domain/day/Day';
 import type { Habit, HabitId } from '../../../domain/habit/Habit';
 import { isClosedDay } from '../../../domain/day/DayClosing';
+import { weeklyTargetChangeAppliesThisWeek } from '../../../domain/habit/WeekSettings';
 import { Week } from '../../../domain/week/Week';
 import { ADD_HABIT_LABEL } from '../components/AddHabitButton';
 import { Button } from '../components/Button';
@@ -16,7 +17,13 @@ import { LinkButton } from '../components/LinkButton';
 import { PeriodNavigator } from '../components/PeriodNavigator';
 import { Screen } from '../components/Screen';
 import { StateMessage } from '../components/StateMessage';
-import { Toast, type ToastAction } from '../components/Toast';
+import {
+  targetToastOf,
+  Toast,
+  type ToastAction,
+  type ToastTarget,
+  type ToastVariant,
+} from '../components/Toast';
 import { HabitWeekCard, WeekDaysHeader, WeekLegend } from '../components/WeekGrid';
 import {
   CHECK_IN_SAVE_FAILED,
@@ -26,13 +33,23 @@ import {
   notStartedMessage,
 } from '../format/checkInMessages';
 import { formatWeekRange, HISTORY_START, weekLabel, weekTitle } from '../format/formatWeek';
+import type { TargetFeedback } from '../format/targetFeedback';
 import { useExperience } from '../state/Experience';
+import { targetFlashOn, updatedTargetPlay, useTargetFeedback } from '../state/useTargetFeedback';
+import type { EditableSettings } from '../state/useEditHabit';
 import { useWeekView } from '../state/useWeekView';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
 import { HIGHLIGHT_DURATION_MS } from './DayViewScreen';
-import { type DeletedHabit, deletedMessage, HabitEditing, RENAMED_MESSAGE } from './HabitEditing';
+import {
+  type DeletedHabit,
+  deletedMessage,
+  HabitEditing,
+  SETTINGS_READ_FAILED,
+  type UpdatedHabit,
+  updatedMessage,
+} from './HabitEditing';
 
 /** Le lien qui ramène à la semaine en cours (maquette, E4 « Semaine dernière »). */
 export const BACK_TO_CURRENT_WEEK = 'Revenir à cette semaine';
@@ -50,6 +67,10 @@ interface ToastContent {
   readonly id: number;
   readonly message: string;
   readonly action?: ToastAction;
+  /** Le feedback « Objectif atteint » (#26) : sa forme, son texte et son annonce. */
+  readonly variant?: ToastVariant;
+  readonly target?: ToastTarget;
+  readonly announcement?: string;
 }
 
 /** Une case du squelette, de la même taille qu'une vraie case (`useCellHeight`). */
@@ -80,7 +101,14 @@ function LoadingView() {
       </View>
       {[0, 1, 2, 3].map((card) => (
         <View key={card} style={styles.skeletonCard}>
-          <View style={[styles.skeleton, styles.skeletonName]} />
+          <View style={styles.skeletonHead}>
+            <View style={[styles.skeleton, styles.skeletonName]} />
+            <View testID="week-view-loading-chip" style={[styles.skeleton, styles.skeletonChip]} />
+          </View>
+          <View
+            testID="week-view-loading-settings"
+            style={[styles.skeleton, styles.skeletonSettings]}
+          />
           <View style={styles.skeletonCells}>
             {[0, 1, 2, 3, 4, 5, 6].map((cell) => (
               <SkeletonCell key={cell} />
@@ -90,6 +118,27 @@ function LoadingView() {
       ))}
     </View>
   );
+}
+
+/**
+ * Les réglages à modifier de `habit`, lus sur sa carte quand la semaine en cours est affichée ;
+ * sinon, ils sont à lire.
+ */
+function editableSettings(view: WeekView, habit: Habit): EditableSettings | undefined {
+  const row = view.isCurrentWeek ? view.rows.find((each) => each.habit.id === habit.id) : undefined;
+  return row && editableSettingsOf(row, view.today);
+}
+
+/** Les réglages à modifier d'une habitude, lus sur sa carte de la semaine en cours. */
+function editableSettingsOf(
+  { habit, weekSettings, nextWeeklyTarget }: WeekViewRow,
+  today: Day,
+): EditableSettings {
+  return {
+    weekSettings,
+    nextWeeklyTarget,
+    targetChangeAppliesThisWeek: weeklyTargetChangeAppliesThisWeek(habit.createdOn, today),
+  };
 }
 
 function Navigator({
@@ -131,10 +180,21 @@ function Navigator({
  * Une correction est confirmée par un message, et la case porte ou perd la marque « corrigé » (R13).
  * Un tap sur une case « hors habitude » l'explique ; une case « à venir » ne réagit pas.
  * En haut, l'expérience du personnage (R24), avec le feedback d'un tap ou d'une correction
- * enregistrés : « +10 XP » s'envole de la case (`Experience`, `CharacterBar`).
- * Toucher le nom d'une habitude ouvre « Modifier l'habitude » (`HabitEditing`) : renommée, elle est
- * mise en évidence ; supprimée, elle disparaît de toutes les semaines, la navigation est recalculée
- * (R22) et l'expérience retirée est montrée. Un message confirme l'un ou l'autre.
+ * enregistrés : « +20 XP » (au barème de la difficulté de la semaine) s'envole de la case
+ * (`Experience`, `CharacterBar`). Chaque carte montre, sous le nom, la difficulté de l'habitude
+ * pendant la semaine affichée (E4) et son objectif hebdomadaire, et à droite du nom la puce de sa
+ * progression de la semaine, verte une fois l'objectif atteint (#24) ; une semaine d'avant la mise à
+ * jour n'a ni objectif ni puce.
+ * Un tap ou une correction qui atteint l'objectif de la semaine de la case joue F1 sur la carte (#26,
+ * `useTargetFeedback`) : la puce verte s'éclaire d'un éclat doré, la seconde pastille « +15 XP
+ * prime » et le message « Objectif de la semaine atteint » (« Objectif atteint · semaine du
+ * 5 octobre » pour une semaine close), qui remplace celui de la correction ; repasser sous
+ * l'objectif affiche un message discret, sans vibration.
+ * Toucher le nom d'une habitude ouvre « Modifier l'habitude » (`HabitEditing`), prérempli avec ses
+ * réglages de la semaine en cours, même depuis une autre semaine : modifiée, elle est mise en
+ * évidence et la variation de l'expérience est montrée ; supprimée, elle disparaît de toutes les
+ * semaines, la navigation est recalculée (R22) et l'expérience retirée est montrée. Un message
+ * confirme l'un ou l'autre.
  * `onAddHabit` mène à la création d'une habitude (état vide). `weekRequest` affiche une semaine
  * demandée par une autre vue (« Corriger » du rappel d'hier), à chaque nouvel `id`.
  */
@@ -172,6 +232,12 @@ export function WeekViewScreen({
     setToast({ id: toastCount.current, message, ...(action && { action }) });
   }, []);
   const hideToast = useCallback(() => setToast(null), []);
+  const showTargetToast = useCallback((feedback: TargetFeedback) => {
+    toastCount.current += 1;
+    setToast({ id: toastCount.current, ...targetToastOf(feedback) });
+  }, []);
+  const target = useTargetFeedback({ showToast: showTargetToast });
+  const { play } = target;
 
   useEffect(() => {
     if (highlighted === null) {
@@ -182,10 +248,16 @@ export function WeekViewScreen({
   }, [highlighted]);
 
   const closeEditing = () => setEditing(null);
-  const renamed = (habit: Habit) => {
+  const updated = (outcome: UpdatedHabit, today: Day) => {
     setEditing(null);
-    setHighlighted(habit.id);
-    showToast(RENAMED_MESSAGE);
+    setHighlighted(outcome.habit.id);
+    // L'objectif, baissé le jour de création, est atteint : F1 remplace « Habitude modifiée » (E7).
+    const played =
+      outcome.targetReachedChange === 'reached' &&
+      play(updatedTargetPlay(outcome, today), { habit: outcome.habit, day: today });
+    if (!played) {
+      showToast(updatedMessage(outcome));
+    }
     void refresh();
   };
   const deleted = ({ xpRemoved }: DeletedHabit) => {
@@ -197,6 +269,10 @@ export function WeekViewScreen({
     setEditing(null);
     void refresh();
   };
+  const readFailed = () => {
+    setEditing(null);
+    showToast(SETTINGS_READ_FAILED);
+  };
 
   /** Un tap sur `habitDay`, la vue étant affichée pour `today`. */
   const tap = useCallback(
@@ -206,7 +282,11 @@ export function WeekViewScreen({
       async function attempt(): Promise<void> {
         setToast(null);
         const outcome = await toggle(habitDay);
-        if (outcome.ok && outcome.isCorrection) {
+        // F1 ou le retour sous l'objectif remplace le message de la correction (#26).
+        const played =
+          outcome.ok &&
+          play(outcome, outcome.habitDay, outcome.isCorrection && outcome.habitDay.corrected);
+        if (outcome.ok && outcome.isCorrection && !played) {
           showToast(
             shownClosed
               ? correctedMessage(outcome.habitDay)
@@ -221,7 +301,7 @@ export function WeekViewScreen({
       }
       return attempt();
     },
-    [toggle, showToast],
+    [toggle, showToast, play],
   );
 
   if (state.status === 'loading') {
@@ -294,11 +374,23 @@ export function WeekViewScreen({
                 key={row.habit.id}
                 days={row.days}
                 today={view.today}
+                difficulty={row.weekSettings.difficulty}
+                target={{
+                  weeklyTarget: row.weekSettings.weeklyTarget,
+                  weekTarget: row.weekSettings.weekTarget,
+                  weeklyProgress: row.weeklyProgress,
+                  targetReached: row.targetReached,
+                  nextWeeklyTarget: row.nextWeeklyTarget,
+                  currentWeek: view.isCurrentWeek,
+                }}
                 xpChange={experience.change}
                 onToggle={(habitDay) => void tap(habitDay, view.today)}
                 onNotStartedPress={(habitDay) => showToast(notStartedMessage(habitDay))}
                 onEdit={setEditing}
                 highlighted={row.habit.id === highlighted}
+                targetFlash={row.days
+                  .map((habitDay) => targetFlashOn(target.flash, habitDay))
+                  .find((flash) => flash !== undefined)}
               />
             ))}
             <WeekLegend />
@@ -311,16 +403,22 @@ export function WeekViewScreen({
           key={toast.id}
           message={toast.message}
           {...(toast.action && { action: toast.action })}
+          {...(toast.variant && { variant: toast.variant })}
+          {...(toast.target && { target: toast.target })}
+          {...(toast.announcement !== undefined && { announcement: toast.announcement })}
           onHide={hideToast}
         />
       )}
       {editing !== null && (
         <HabitEditing
           habit={editing}
+          settings={editableSettings(view, editing)}
           habits={view.rows.map(({ habit }) => habit)}
-          onRenamed={renamed}
+          today={view.today}
+          onUpdated={(outcome) => updated(outcome, view.today)}
           onDeleted={deleted}
           onGone={gone}
+          onReadFailed={readFailed}
           onClose={closeEditing}
         />
       )}
@@ -355,7 +453,16 @@ const styles = StyleSheet.create({
     borderRadius: radii.row,
     backgroundColor: colors.surface,
   },
-  skeletonName: { width: '55%', height: 14, marginTop: 6, marginBottom: spacing.lg },
+  skeletonHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 6,
+    marginBottom: 10,
+    marginHorizontal: 2,
+  },
+  skeletonName: { width: '50%', height: 14 },
+  skeletonChip: { width: 44, height: 20, borderRadius: radii.pill },
+  skeletonSettings: { width: '40%', height: 11, marginHorizontal: 2, marginBottom: spacing.md },
   skeletonCells: { flexDirection: 'row', gap: spacing.xs },
   skeletonSlot: { flex: 1, minWidth: 0 },
   skeletonCell: { width: '100%', borderRadius: 12 },

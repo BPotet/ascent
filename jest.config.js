@@ -20,8 +20,28 @@ const base = {
   preset: 'jest-expo',
 };
 
-// Projets qui rendent des écrans : délai de test explicite (voir le fichier).
-const screenTestTimeout = '<rootDir>/test/setup/screenTestTimeout.ts';
+// Skia est publié en modules ES : il rejoint la liste des paquets que le preset jest-expo transpile.
+const transpiledPackages = '/node_modules/(?!(';
+const transformIgnorePatterns = require('jest-expo/jest-preset').transformIgnorePatterns.map(
+  (pattern) =>
+    pattern.replace(transpiledPackages, `${transpiledPackages}@shopify/react-native-skia|`),
+);
+if (!transformIgnorePatterns.some((pattern) => pattern.includes('@shopify/react-native-skia'))) {
+  throw new Error('jest-expo has changed its transformIgnorePatterns: add Skia to the new list');
+}
+
+// Projets qui rendent des écrans : délai de test explicite et taille de texte habituelle (voir les
+// fichiers), et simulations de Gesture Handler et de Reanimated, dont les modules natifs n'existent
+// pas sous Jest. Skia n'en fait pas partie : seul son test de fumée le charge (test/setup/skia.smoke.test.tsx).
+const screenSetup = {
+  transformIgnorePatterns,
+  setupFiles: ['react-native-gesture-handler/jestSetup.js'],
+  setupFilesAfterEnv: [
+    '<rootDir>/test/setup/screenTestTimeout.ts',
+    '<rootDir>/test/setup/textSize.ts',
+    '<rootDir>/test/setup/reanimated.ts',
+  ],
+};
 
 /** @type {import('jest').Config} */
 module.exports = {
@@ -36,14 +56,14 @@ module.exports = {
       ...base,
       displayName: 'integration',
       testMatch: ['<rootDir>/src/adapters/**/*.test.{ts,tsx}', '<rootDir>/test/**/*.test.{ts,tsx}'],
-      setupFilesAfterEnv: [screenTestTimeout],
+      ...screenSetup,
     },
     {
       ...base,
       displayName: 'bdd',
       testMatch: ['<rootDir>/features/**/*.steps.{ts,tsx}'],
       moduleNameMapper: { '^uuid$': cucumberUuid },
-      setupFilesAfterEnv: [screenTestTimeout],
+      ...screenSetup,
     },
   ],
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.test.{ts,tsx}', '!src/**/testing/**'],

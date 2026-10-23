@@ -23,7 +23,7 @@ export type ShownStatuses = ReadonlyMap<string, CheckInStatus>;
 export { keyOf } from './habitDayKey';
 
 /** La case avec l'état affiché en attendant son enregistrement, s'il y en a un. */
-export function withShown(habitDay: HabitDay, shown: ShownStatuses): HabitDay {
+export function withShown<Shown extends HabitDay>(habitDay: Shown, shown: ShownStatuses): Shown {
   const status = shown.get(keyOf(habitDay));
   return status === undefined ? habitDay : { ...habitDay, status };
 }
@@ -37,16 +37,20 @@ export function withShown(habitDay: HabitDay, shown: ShownStatuses): HabitDay {
  *   (`Experience`) ;
  * - `refresh` recharge la vue après une correction ou un refus ;
  * - `undoneStatusOf` donne l'état affiché quand une case « fait » est touchée : « à faire » par
- *   défaut, « pas fait » pour un jour clos de la Vue Semaine.
+ *   défaut, « pas fait » pour un jour clos de la Vue Semaine ;
+ * - `splitBonus` montre la prime d'objectif dans sa propre pastille et laisse l'annonce d'un
+ *   franchissement du seuil au feedback « Objectif atteint » de l'écran (`useTargetFeedback`, #26).
  */
 export function useOptimisticToggle({
   onSaved,
   refresh,
   undoneStatusOf = () => 'pending',
+  splitBonus = false,
 }: {
   readonly onSaved: (saved: HabitDay) => void;
   readonly refresh: () => Promise<void>;
   readonly undoneStatusOf?: (habitDay: HabitDay) => CheckInStatus;
+  readonly splitBonus?: boolean;
 }): {
   readonly shown: ShownStatuses;
   readonly toggle: (habitDay: HabitDay) => Promise<ToggleOutcome>;
@@ -73,7 +77,7 @@ export function useOptimisticToggle({
 
       if (outcome.ok) {
         onSaved(outcome.habitDay);
-        checkInToggled(outcome);
+        checkInToggled(outcome, splitBonus);
       }
       const remaining = (counts.get(key) ?? 1) - 1;
       if (remaining === 0) {
@@ -91,7 +95,7 @@ export function useOptimisticToggle({
       }
       return outcome;
     },
-    [dependencies, checkInToggled, onSaved, refresh, undoneStatusOf],
+    [dependencies, checkInToggled, onSaved, refresh, undoneStatusOf, splitBonus],
   );
 
   return { shown, toggle };

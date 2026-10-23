@@ -2,6 +2,24 @@
 
 Toutes les évolutions notables d'Ascent. Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/). Les versions sont calculées à partir des [Conventional Commits](https://www.conventionalcommits.org/fr/v1.0.0/).
 
+## [0.2.0] - 2026-10-23
+
+L'épique #22 « Difficulté et objectif hebdomadaire des habitudes ».
+
+### Nouveautés pour le joueur
+
+- **Difficulté des habitudes** : Facile, Moyenne ou Difficile, choisie à la création et modifiable ; une habitude tenue rapporte 5, 10 ou 20 XP selon sa difficulté. Les habitudes existantes passent en Moyenne, sans changer l'XP déjà gagnée (#23, #29).
+- **Objectif hebdomadaire** : de 1 à 7 fois par semaine, avec la progression « 2/3 cette semaine » dans la Vue Journée et la Vue Semaine, et le badge « Objectif atteint ». Un changement d'objectif s'applique à partir du lundi suivant (#24, #50).
+- **Compteurs justes pour les habitudes non quotidiennes** : une habitude dont l'objectif de la semaine est déjà atteint n'est plus comptée comme à faire dans les compteurs du jour, « Toutes faites » et le rappel d'hier (#25, #57).
+- **Prime d'objectif** : atteindre l'objectif de la semaine rapporte une prime proportionnelle à l'objectif et à la difficulté, avec un éclat doré, le message « Objectif de la semaine atteint » et une vibration ; la prime est retirée si l'on repasse sous l'objectif (#26, #61).
+- **Objectifs par semaine dans la Vue Mois** : sous la grille, une ligne par semaine « Semaine du 5 octobre · 3/4 objectifs atteints », qui ouvre la Vue Semaine ; le Détail du jour affiche la progression de la semaine de ce jour et joue le feedback quand une correction atteint l'objectif (#27, #60).
+
+### Technique
+
+- Maquettes validées des épiques #22 et #30 (#28, #44) et socle natif des futurs combats en 2D (#47).
+- CI plus rapide et plus économe : mutation des seules lignes nouvelles en parallèle, mutation des écrans à la demande, cache de l'émulateur, moins d'artefacts conservés, barrières lourdes sautées quand seule la documentation change, APK et end-to-end sautés sur une PR en brouillon ou quand l'app ne change pas (#21, #43, #45, #52, #55, #64, #65).
+- Workflow : un seul dev full stack et un agent de correction de bugs, découpage des stories, TDD par couche, plugin Ponytail (#51, #58, #59, #62, #63).
+
 ## [0.1.0] - 2026-10-21
 
 Première version jouable : l'épique #2 « Gérer ses habitudes et les suivre jour par jour ».
@@ -21,4 +39,5 @@ Première version jouable : l'épique #2 « Gérer ses habitudes et les suivre j
 - Socle Expo (Android et iOS), base locale SQLite avec migrations, architecture hexagonale vérifiée, barrières de qualité (lint, types, tests unitaires, d'intégration, BDD, mutation, end-to-end Maestro, secrets) et construction de l'APK en CI (#12).
 - Maquettes validées de l'épique #2 (#11) et workflow de développement (#1).
 
+[0.2.0]: https://github.com/BPotet/ascent/releases/tag/v0.2.0
 [0.1.0]: https://github.com/BPotet/ascent/releases/tag/v0.1.0

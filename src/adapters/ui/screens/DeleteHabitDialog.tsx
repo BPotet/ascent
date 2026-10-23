@@ -17,12 +17,24 @@ export const deleteHabitTitle = (name: string) => `Supprimer « ${name} » ?`
 
 /**
  * Ce que dit la fenêtre (maquette, E8) : les suivis effacés, l'expérience des jours passés
- * conservée et, si l'habitude est « fait » aujourd'hui, l'expérience retirée (−10 XP).
+ * conservée et, si l'habitude est « fait » aujourd'hui, l'expérience retirée, au barème de la
+ * difficulté de la semaine en cours (−20 XP en Difficile). Quand la prime d'objectif de la semaine
+ * tombe avec ce suivi (`targetBonusRemoved`, #26), la fenêtre l'annonce aussi, avec le total : « Sont
+ * retirés le suivi d'aujourd'hui (−10 XP) et la prime de cette semaine (−15 XP), l'objectif n'étant
+ * plus atteint : −25 XP en tout. »
  */
-export function deleteHabitBody(xpRemoved: number): string {
+export function deleteHabitBody(xpRemoved: number, targetBonusRemoved = 0): string {
   const kept = 'Ses suivis seront effacés. L’expérience gagnée les jours passés reste acquise';
+  if (targetBonusRemoved > 0) {
+    const checkIn = formatXpChange(-(xpRemoved - targetBonusRemoved));
+    const bonus = formatXpChange(-targetBonusRemoved);
+    return (
+      `${kept}. Sont retirés le suivi d’aujourd’hui (${checkIn}) et la prime de cette semaine ` +
+      `(${bonus}), l’objectif n’étant plus atteint\u00a0: ${formatXpChange(-xpRemoved)} en tout.`
+    );
+  }
   return xpRemoved > 0
-    ? `${kept} ; seule celle d’aujourd’hui est retirée (${formatXpChange(-xpRemoved)}).`
+    ? `${kept}\u00a0; seule celle d’aujourd’hui est retirée (${formatXpChange(-xpRemoved)}).`
     : `${kept}.`;
 }
 
@@ -40,6 +52,7 @@ export function deleteHabitBody(xpRemoved: number): string {
 export function DeleteHabitDialog({
   name,
   xpRemoved,
+  targetBonusRemoved = 0,
   onConfirm,
   onDeleted,
   onGone,
@@ -47,6 +60,8 @@ export function DeleteHabitDialog({
 }: {
   readonly name: string;
   readonly xpRemoved: number;
+  /** La part de `xpRemoved` qui vient de la prime d'objectif qui tombe (#26). */
+  readonly targetBonusRemoved?: number;
   readonly onConfirm: () => Promise<DeleteHabitOutcome>;
   readonly onDeleted: (deleted: Extract<DeleteHabitOutcome, { ok: true }>) => void;
   readonly onGone: () => void;
@@ -99,7 +114,9 @@ export function DeleteHabitDialog({
           <Text accessibilityRole="header" style={[typography.sheetTitle, styles.title]}>
             {deleteHabitTitle(name)}
           </Text>
-          <Text style={[typography.body, styles.body]}>{deleteHabitBody(xpRemoved)}</Text>
+          <Text style={[typography.body, styles.body]}>
+            {deleteHabitBody(xpRemoved, targetBonusRemoved)}
+          </Text>
           {failed && (
             <View
               accessible

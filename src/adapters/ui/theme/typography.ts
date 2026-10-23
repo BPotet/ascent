@@ -24,7 +24,7 @@ export const typography = {
   sheetTitle: { fontFamily: fonts.soraSemiBold, fontSize: 20, lineHeight: 26 },
   /** L'expérience du personnage dans l'en-tête : « 40 XP ». */
   xp: { fontFamily: fonts.soraBold, fontSize: 24, lineHeight: 28, fontVariant: ['tabular-nums'] },
-  /** Un changement d'expérience : la pastille et l'envol « +10 XP ». */
+  /** Un changement d'expérience : la pastille et l'envol « +20 XP ». */
   xpChange: {
     fontFamily: fonts.soraBold,
     fontSize: 14,
@@ -41,6 +41,8 @@ export const typography = {
   input: { fontFamily: fonts.interMedium, fontSize: 17 },
   /** Libellé d'un bouton. */
   button: { fontFamily: fonts.interSemiBold, fontSize: 16 },
+  /** Nom d'une option d'un sélecteur : « Moyenne ». */
+  optionLabel: { fontFamily: fonts.interSemiBold, fontSize: 14, lineHeight: 18 },
   /** Libellés, dates, aides. */
   label: { fontFamily: fonts.interMedium, fontSize: 13, lineHeight: 18 },
   /** Texte d'un encart de la Vue Journée (aide, encouragement). */

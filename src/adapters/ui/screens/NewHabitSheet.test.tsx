@@ -2,8 +2,10 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { AccessibilityInfo, Keyboard, Platform } from 'react-native';
 
 import { Day } from '../../../domain/day/Day';
+import type { Difficulty } from '../../../domain/habit/Difficulty';
 import { Habit } from '../../../domain/habit/Habit';
 import { HabitName } from '../../../domain/habit/HabitName';
+import type { WeeklyTarget } from '../../../domain/habit/WeeklyTarget';
 import type { CreateHabitOutcome } from '../state/useCreateHabit';
 import { NewHabitSheet } from './NewHabitSheet';
 
@@ -11,12 +13,17 @@ const nbsp = '\u00A0';
 const wednesday = Day.of(2026, 10, 14);
 const cooking = new Habit(1, HabitName.parse('Cuisiner'), wednesday);
 
-function created(name: string): CreateHabitOutcome {
-  return { ok: true, habit: new Habit(2, HabitName.parse(name), wednesday) };
+/** Une habitude créée le mercredi : « Tous les jours » donne l'objectif 5 cette semaine (R6). */
+function created(name: string, weekTarget = 5): CreateHabitOutcome {
+  return { ok: true, habit: new Habit(2, HabitName.parse(name), wednesday), weekTarget };
 }
 
 async function open(
-  create: (name: string) => Promise<CreateHabitOutcome> = async (name) => created(name),
+  create: (
+    name: string,
+    difficulty: Difficulty,
+    weeklyTarget: WeeklyTarget,
+  ) => Promise<CreateHabitOutcome> = async (name) => created(name),
 ) {
   const onCreate = jest.fn(create);
   const onCreated = jest.fn();
@@ -24,6 +31,7 @@ async function open(
   await render(
     <NewHabitSheet
       habits={[cooking]}
+      today={wednesday}
       onCreate={onCreate}
       onCreated={onCreated}
       onClose={onClose}
@@ -35,6 +43,7 @@ async function open(
 const field = () => screen.getByLabelText('Nom de l’habitude');
 const createButton = () => screen.getByRole('button', { name: 'Créer l’habitude' });
 const type = (text: string) => fireEvent.changeText(field(), text);
+const option = (name: string) => screen.getByRole('radio', { name: new RegExp(`^${name},`, 'u') });
 
 describe('NewHabitSheet', () => {
   // Le premier rendu charge et transforme les modules de React Native du panneau (Modal, clavier) :
@@ -86,8 +95,11 @@ describe('NewHabitSheet', () => {
     await type('Lire 20 minutes');
     await fireEvent.press(createButton());
 
-    expect(onCreate).toHaveBeenCalledWith('Lire 20 minutes');
-    expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ id: 2 }));
+    expect(onCreate).toHaveBeenCalledWith('Lire 20 minutes', 'medium', 7);
+    expect(onCreated).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 2 }),
+      'Habitude créée · objectif 5 cette semaine',
+    );
     expect(onClose).not.toHaveBeenCalled();
   });
 
@@ -97,7 +109,186 @@ describe('NewHabitSheet', () => {
     await type('Méditer');
     await fireEvent(field(), 'submitEditing');
 
-    expect(onCreate).toHaveBeenCalledWith('Méditer');
+    expect(onCreate).toHaveBeenCalledWith('Méditer', 'medium', 7);
+  });
+
+  describe('the block « Difficulté » (E2)', () => {
+    it('offers the three difficulties with what a check-in brings, « Moyenne » preselected', async () => {
+      await open();
+
+      expect(screen.getByTestId('difficulty-picker')).toHaveAccessibleName('Difficulté');
+      expect(screen.getByTestId('difficulty-option-easy')).toHaveTextContent('Facile+5 XP');
+      expect(screen.getByTestId('difficulty-option-medium')).toHaveTextContent('Moyenne+10 XP');
+      expect(screen.getByTestId('difficulty-option-hard')).toHaveTextContent('Difficile+20 XP');
+      expect(option('Moyenne')).toBeChecked();
+      expect(option('Facile')).not.toBeChecked();
+      expect(option('Difficile')).not.toBeChecked();
+    });
+
+    it('creates the habit with the difficulty chosen', async () => {
+      const { onCreate } = await open();
+
+      await fireEvent.press(option('Difficile'));
+      await type('Courir 5 km');
+      await fireEvent.press(createButton());
+
+      expect(option('Difficile')).toBeChecked();
+      expect(onCreate).toHaveBeenCalledWith('Courir 5 km', 'hard', 7);
+    });
+
+    it('creates with the settings shown when the keyboard validates (↵)', async () => {
+      const { onCreate } = await open();
+
+      await type('Méditer 10 minutes');
+      await fireEvent.press(option('Facile'));
+      await fireEvent(field(), 'submitEditing');
+
+      expect(onCreate).toHaveBeenCalledWith('Méditer 10 minutes', 'easy', 7);
+    });
+
+    it('does not enable the creation by choosing a difficulty without a name', async () => {
+      const { onCreate } = await open();
+
+      await fireEvent.press(option('Difficile'));
+
+      expect(createButton()).toBeDisabled();
+      expect(onCreate).not.toHaveBeenCalled();
+    });
+
+    it('keeps the difficulty chosen after a duplicate', async () => {
+      const { onCreate } = await open(async () => ({ ok: false, reason: 'duplicate' }) as const);
+
+      await fireEvent.press(option('Facile'));
+      await type('cuisiner');
+      await fireEvent.press(createButton());
+
+      expect(screen.getByRole('alert', { name: /^Tu as déjà une habitude/u })).toBeOnTheScreen();
+      expect(option('Facile')).toBeChecked();
+      await type('Cuisiner maison');
+      await fireEvent.press(createButton());
+      expect(onCreate).toHaveBeenLastCalledWith('Cuisiner maison', 'easy', 7);
+    });
+
+    it('keeps the difficulty chosen after a failed save, and retries with it', async () => {
+      let attempts = 0;
+      const { onCreate } = await open(async (name) => {
+        attempts += 1;
+        return attempts === 1 ? { ok: false, reason: 'saveFailed' } : created(name);
+      });
+
+      await fireEvent.press(option('Difficile'));
+      await type('Courir 5 km');
+      await fireEvent.press(createButton());
+
+      expect(
+        screen.getByRole('alert', { name: 'L’habitude n’a pas pu être créée. Réessaie.' }),
+      ).toBeOnTheScreen();
+      expect(option('Difficile')).toBeChecked();
+      await fireEvent.press(createButton());
+      expect(onCreate).toHaveBeenNthCalledWith(2, 'Courir 5 km', 'hard', 7);
+    });
+
+    it('announces no change of the week: there is no week to re-evaluate yet', async () => {
+      await open();
+
+      await fireEvent.press(option('Difficile'));
+
+      expect(screen.queryByTestId('difficulty-change-info')).not.toBeOnTheScreen();
+    });
+  });
+
+  describe('the block « Objectif » (E2)', () => {
+    const target = (value: number) => screen.getByTestId(`weekly-target-option-${value}`);
+
+    it('offers the targets 1 to 7, « Tous les jours » (7) preselected', async () => {
+      await open();
+
+      expect(screen.getByTestId('weekly-target-picker')).toHaveAccessibleName(
+        'Objectif hebdomadaire',
+      );
+      expect(screen.getAllByTestId(/^weekly-target-option-/u)).toHaveLength(7);
+      expect(target(7)).toBeChecked();
+      expect(target(3)).not.toBeChecked();
+      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent(/^Tous les jours/u);
+    });
+
+    it('creates the habit « Tous les jours » when the keyboard validates (↵) at once', async () => {
+      const { onCreate } = await open();
+
+      await type('Boire de l’eau');
+      await fireEvent(field(), 'submitEditing');
+
+      expect(onCreate).toHaveBeenCalledWith('Boire de l’eau', 'medium', 7);
+    });
+
+    it('creates the habit with the target chosen, said in words', async () => {
+      const { onCreate } = await open();
+
+      await fireEvent.press(target(3));
+      await type('Courir 5 km');
+      await fireEvent.press(createButton());
+
+      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent('3 fois par semaine');
+      expect(onCreate).toHaveBeenCalledWith('Courir 5 km', 'medium', 3);
+    });
+
+    it('keeps the settings chosen after a duplicate', async () => {
+      const { onCreate } = await open(async () => ({ ok: false, reason: 'duplicate' }) as const);
+
+      await fireEvent.press(target(3));
+      await fireEvent.press(option('Difficile'));
+      await type('cuisiner');
+      await fireEvent.press(createButton());
+
+      expect(target(3)).toBeChecked();
+      await type('Cuisiner maison');
+      await fireEvent.press(createButton());
+      expect(onCreate).toHaveBeenLastCalledWith('Cuisiner maison', 'hard', 3);
+    });
+
+    it('announces the target of this week cut to the days left, before creating', async () => {
+      await open();
+
+      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent(
+        'Tous les jours · cette semaine : 5, à partir d’aujourd’hui',
+      );
+
+      await fireEvent.press(target(3));
+
+      expect(screen.getByTestId('weekly-target-phrase')).toHaveTextContent('3 fois par semaine', {
+        exact: true,
+      });
+    });
+
+    it('reports the creation with the target of this week, when it is cut', async () => {
+      const { onCreated } = await open();
+
+      await type('Méditer');
+      await fireEvent.press(createButton());
+
+      expect(onCreated).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 2 }),
+        'Habitude créée · objectif 5 cette semaine',
+      );
+    });
+
+    it('reports the creation alone when the target of this week is not cut', async () => {
+      const { onCreated } = await open(async (name) => created(name, 3));
+
+      await fireEvent.press(target(3));
+      await type('Courir 5 km');
+      await fireEvent.press(createButton());
+
+      expect(onCreated).toHaveBeenCalledWith(expect.objectContaining({ id: 2 }), 'Habitude créée');
+    });
+
+    it('announces no change of target: it applies from the day of creation', async () => {
+      await open();
+
+      await fireEvent.press(target(3));
+
+      expect(screen.queryByTestId('weekly-target-change-info')).not.toBeOnTheScreen();
+    });
   });
 
   it('does not create from the keyboard while the name is empty', async () => {

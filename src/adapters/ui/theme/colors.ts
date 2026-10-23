@@ -25,6 +25,10 @@ export const colors = {
   /** Fond de l'avatar du personnage. */
   avatar: '#222E52',
   xpSoft: 'rgba(255,201,77,0.1)',
+  /** Le fond de l'icône du message « Objectif atteint » (F1, #26). */
+  xpSoftStrong: 'rgba(255,201,77,0.16)',
+  /** Le fond du message « Objectif atteint » (F1, #26) : la prime en or y fait 9,8:1. */
+  goalToast: '#1E2738',
   xpLine: 'rgba(255,201,77,0.4)',
   onXpSoft: '#FFE3A3',
   hintSoft: 'rgba(124,156,255,0.14)',
@@ -55,6 +59,29 @@ export const colors = {
   iconDisabled: '#4A5570',
   /** Point d'une habitude « pas fait » sur un jour de la Vue Mois. */
   monthDotMissed: '#8D97AC',
+  /** L'icône de difficulté (sommets) sur une ligne ou une carte : 9,5:1 sur la surface. */
+  difficulty: '#B9C6E6',
+  /** L'option choisie d'un sélecteur (« Difficulté ») et son texte secondaire. */
+  optionSelected: 'rgba(124,156,255,0.18)',
+  onOptionSelected: '#C9D5FF',
+  /** Fond d'un message d'information de panneau (« S'applique à toute cette semaine… »). */
+  infoSoft: 'rgba(124,156,255,0.12)',
+  infoLine: 'rgba(124,156,255,0.4)',
+  /**
+   * L'objectif atteint (badge de la Vue Journée, puce de la Vue Semaine) : texte vert sur fond vert
+   * léger (8:1), liseré `doneLine`.
+   */
+  goalSoft: 'rgba(61,220,151,0.16)',
+  /** Le message « Objectifs de la semaine atteints » de la Vue Journée (maquette E1, #25). */
+  goalsReachedSoft: 'rgba(61,220,151,0.12)',
+  goalsReachedLine: 'rgba(61,220,151,0.5)',
+  onGoalsReached: '#C9F3DF',
+  /** La puce d'une semaine passée dont l'objectif n'est pas atteint : grise, neutre (9:1). */
+  chipPast: '#B4BDCE',
+  /** La Carte de nouveauté, en haut de la Vue Journée (dégradé de la maquette, ton de départ). */
+  whatsNew: '#1F2B4D',
+  whatsNewLine: 'rgba(124,156,255,0.55)',
+  onWhatsNew: '#C9D3EA',
   /** Barre d'onglets. */
   tabBar: 'rgba(13,17,27,0.97)',
   tabActiveSoft: 'rgba(124,156,255,0.22)',

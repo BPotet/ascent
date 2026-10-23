@@ -2,8 +2,16 @@ import { useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
+import type { Difficulty } from '../../../domain/habit/Difficulty';
 import { checkInStatusLabels } from '../format/checkInStatus';
+import { difficultyAccessibilityLabel } from '../format/formatDifficulty';
 import { capitalize, formatDayAndMonth } from '../format/formatDay';
+import {
+  TARGET_REACHED,
+  type WeeklyProgressShown,
+  weeklyProgressAccessibilityLabel,
+  weeklyProgressText,
+} from '../format/formatWeeklyTarget';
 import { useReducedMotion } from '../state/useReducedMotion';
 import { colors } from '../theme/colors';
 import { MIN_TOUCH_SIZE, radii, spacing } from '../theme/metrics';
@@ -11,6 +19,8 @@ import { typography } from '../theme/typography';
 import type { ShownXpChange } from './CharacterBar';
 import { CheckGlyph, CrossGlyph, MoreGlyph } from './Glyph';
 import { CORRECTED, CorrectedMark } from './CorrectedMark';
+import { DifficultyLabel } from './DifficultyIcon';
+import { TargetReachedBadge } from './TargetReachedBadge';
 import { XpFloat } from './XpFloat';
 
 /** Le libellé, pour le lecteur d'écran, de l'action qui ouvre « Modifier l'habitude ». */
@@ -36,28 +46,57 @@ export function bounce(scale: Animated.Value): void {
  * Ligne d'une habitude dans la Vue Journée : son nom et l'état du suivi, écrit en toutes lettres,
  * avec une coche quand elle est « fait ». Toute la ligne est un interrupteur : la toucher appelle
  * `onToggle`, si la case est modifiable, et fait rebondir la coche (sauf mouvement réduit).
- * `highlighted` met en évidence une habitude qui vient d'être créée ou renommée. `xpChange` fait
- * s'envoler « +10 XP » (ou « −10 XP ») de la coche, après un tap enregistré.
+ * `highlighted` met en évidence une habitude qui vient d'être créée ou modifiée. `xpChange` fait
+ * s'envoler le changement d'expérience (« +20 XP », ou « −20 XP ») de la coche, après un tap
+ * enregistré.
+ *
+ * Avec `difficulty` (Vue Journée, E1), la ligne secondaire commence par l'icône et le nom de la
+ * difficulté de la semaine (« ▲▲▲ Difficile · À faire ») ; le lecteur d'écran l'entend après l'état,
+ * avec ce que rapporte une case « fait » : « …, à faire, Difficile, 20 XP par suivi ».
+ *
+ * Avec `weeklyProgress` (Vue Journée, #24, E1), l'état est suivi de la progression de la semaine :
+ * « ▲▲▲ Difficile · À faire · 2/3 cette semaine », « Fait · 3/3 cette semaine » à l'objectif tout
+ * juste atteint, et « Fait · 4 fois cette semaine » au-delà (maquette E1, décision PM du 22 octobre
+ * 2026) ; elle passe à la ligne en grand texte.
+ * L'objectif atteint ajoute dessous le badge « Objectif atteint » (drapeau, texte et liseré verts,
+ * `TargetReachedBadge`), avec un éclat doré quand il vient d'être atteint (`targetFlash`, F1, #26) ;
+ * la ligne reste tapable. Rien ne marque un objectif non atteint. Le lecteur d'écran entend la
+ * progression après l'état, puis la difficulté, puis « objectif atteint » :
+ * « Courir 5 km, …, à faire, 2 sur 3 cette semaine, Difficile, 20 XP par suivi ».
  *
  * Dans le détail d'un jour de la Vue Mois (`compact`, ligne plus basse), la ligne montre aussi
  * « pas fait » (croix sur fond plein) et la marque « corrigé » (pastille sur la coche et mot écrit,
- * lu par le lecteur d'écran), comme la maquette (E5, E6).
+ * lu par le lecteur d'écran), comme la maquette (E5, E6). La progression y est celle de la semaine
+ * du jour, que `weekLabel` nomme (#27) : « Fait · 2/3 semaine du 12 octobre » ; par défaut, « cette
+ * semaine ».
  *
  * Avec `onEdit`, un bouton « ⋯ » à droite de la ligne ouvre « Modifier l'habitude » : c'est une
  * cible distincte de l'interrupteur (44 pt au moins), lue « Modifier l'habitude Cuisiner ».
  */
 export function HabitRow({
   habitDay,
+  difficulty,
+  weeklyProgress,
+  weekLabel,
   highlighted = false,
   xpChange,
+  targetFlash,
   onToggle,
   onEdit,
   compact = false,
 }: {
   readonly habitDay: HabitDay;
+  /** La difficulté de la semaine du jour affiché ; sans elle, la ligne n'en montre pas. */
+  readonly difficulty?: Difficulty | undefined;
+  /** La progression de la semaine en cours ; sans elle, la ligne n'en montre pas. */
+  readonly weeklyProgress?: WeeklyProgressShown | undefined;
+  /** La semaine de la progression (« semaine du 12 octobre ») ; par défaut, « cette semaine ». */
+  readonly weekLabel?: string | undefined;
   readonly highlighted?: boolean;
   readonly compact?: boolean;
   readonly xpChange?: ShownXpChange | undefined;
+  /** Change quand l'objectif de la semaine vient d'être atteint ici : l'éclat du badge (F1, #26). */
+  readonly targetFlash?: number | undefined;
   readonly onToggle?: (habitDay: HabitDay) => void;
   readonly onEdit?: (habitDay: HabitDay) => void;
 }) {
@@ -65,8 +104,12 @@ export function HabitRow({
   const statusLabel = checkInStatusLabels[status];
   const done = status === 'done';
   const missed = status === 'missed';
+  const reached = weeklyProgress?.targetReached === true;
   const label = [habit.name.value, formatDayAndMonth(day), statusLabel]
+    .concat(weeklyProgress ? [weeklyProgressAccessibilityLabel(weeklyProgress, weekLabel)] : [])
     .concat(corrected ? [CORRECTED] : [])
+    .concat(difficulty ? [difficultyAccessibilityLabel(difficulty)] : [])
+    .concat(reached ? [TARGET_REACHED.toLowerCase()] : [])
     .join(', ');
   const reducedMotion = useReducedMotion();
   const [scale] = useState(() => new Animated.Value(1));
@@ -110,8 +153,24 @@ export function HabitRow({
         <View style={styles.texts}>
           <Text style={[typography.habitName, styles.name]}>{habit.name.value}</Text>
           <View style={styles.statusLine}>
-            <Text style={[typography.label, styles.status, done && styles.statusDone]}>
-              {capitalize(statusLabel)}
+            {difficulty && (
+              <>
+                <DifficultyLabel
+                  difficulty={difficulty}
+                  color={done ? colors.doneText : colors.muted}
+                  iconColor={done ? colors.doneText : colors.difficulty}
+                  testID={`habit-difficulty-${habit.id}`}
+                />
+                <Text style={[typography.label, styles.status, done && styles.statusDone]}>·</Text>
+              </>
+            )}
+            <Text
+              {...(weeklyProgress && { testID: `habit-progress-${habit.id}` })}
+              style={[typography.label, styles.status, done && styles.statusDone, styles.progress]}
+            >
+              {weeklyProgress
+                ? `${capitalize(statusLabel)} · ${weeklyProgressText(weeklyProgress, weekLabel)}`
+                : capitalize(statusLabel)}
             </Text>
             {corrected && (
               <View style={styles.correctedText}>
@@ -120,6 +179,9 @@ export function HabitRow({
               </View>
             )}
           </View>
+          {reached && (
+            <TargetReachedBadge flash={targetFlash} testID={`habit-target-reached-${habit.id}`} />
+          )}
         </View>
       </Pressable>
       {onEdit && (
@@ -189,11 +251,12 @@ const styles = StyleSheet.create({
   checkMissed: { backgroundColor: colors.missed, borderColor: 'transparent' },
   texts: { flex: 1, gap: 2 },
   name: { color: colors.text },
-  statusLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statusLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
   status: { color: colors.muted },
   correctedText: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   correctedDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.correctedMark },
   corrected: { color: colors.correctedMark },
   statusDone: { color: colors.doneText },
+  progress: { flexShrink: 1 },
 });
 // Stryker restore all

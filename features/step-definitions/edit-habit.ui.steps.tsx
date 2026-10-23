@@ -2,7 +2,7 @@
  * Scénarios d'interface (`@ui`) de « Renommer et supprimer une habitude » (#6) : la Vue Journée
  * (`DayViewScreen`) et le panneau « Modifier l'habitude », sur une vraie base SQLite reliée par le
  * pont expo-sqlite, avec l'horloge fixée au jour du scénario. Le joueur agit comme sur le
- * téléphone : il touche « ⋯ », lit le panneau.
+ * téléphone : il touche « ⋯ », lit le panneau, change le nom ou la difficulté.
  *
  * Les autres scénarios de la fonctionnalité passent par les cas d'usage
  * (`edit-habit.use-cases.steps.ts`) ; leur pendant à l'écran est vérifié par les tests
@@ -70,13 +70,23 @@ const steps: StepDefinitions = ({ given, when, then }) => {
   then(/^l'action « Supprimer l'habitude » est proposée$/, () => {
     expect(screen.getByRole('button', { name: 'Supprimer l’habitude' })).toBeEnabled();
   });
-  then("l'enregistrement est désactivé tant que le nom n'a pas changé", async () => {
+  then("l'enregistrement est désactivé tant que rien n'a changé", async () => {
     const save = () => screen.getByRole('button', { name: 'Enregistrer' });
+    const difficulty = (label: string) =>
+      screen.getByRole('radio', { name: new RegExp(`^${label},`, 'u') });
     expect(save()).toBeDisabled();
+    // Ni le nom (une fois nettoyé)…
     await fireEvent.changeText(screen.getByLabelText('Nom de l’habitude'), ' Cuisiner ');
     expect(save()).toBeDisabled();
     await fireEvent.changeText(screen.getByLabelText('Nom de l’habitude'), 'Cuisiner maison');
     expect(save()).toBeEnabled();
+    await fireEvent.changeText(screen.getByLabelText('Nom de l’habitude'), 'Cuisiner');
+    expect(save()).toBeDisabled();
+    // … ni la difficulté.
+    await fireEvent.press(difficulty('Difficile'));
+    expect(save()).toBeEnabled();
+    await fireEvent.press(difficulty('Moyenne'));
+    expect(save()).toBeDisabled();
   });
 };
 

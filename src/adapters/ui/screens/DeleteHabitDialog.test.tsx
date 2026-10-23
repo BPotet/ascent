@@ -9,7 +9,12 @@ const KEPT = 'Ses suivis seront effacés. L’expérience gagnée les jours pass
 
 async function open(
   xpRemoved = 10,
-  confirm: () => Promise<DeleteHabitOutcome> = async () => ({ ok: true, xpRemoved, xp: 30 }),
+  confirm: () => Promise<DeleteHabitOutcome> = async () => ({
+    ok: true,
+    xpRemoved,
+    targetBonusRemoved: 0,
+    xp: 30,
+  }),
 ) {
   const props = {
     onConfirm: jest.fn(confirm),
@@ -31,6 +36,12 @@ describe('deleteHabitTitle and deleteHabitBody', () => {
   it('announces the experience removed when the habit is done today', () => {
     expect(deleteHabitBody(10)).toBe(
       `${KEPT}${nbsp}; seule celle d’aujourd’hui est retirée (−10 XP).`,
+    );
+  });
+
+  it('announces the target bonus that falls with the check-in of today (E8, #26)', () => {
+    expect(deleteHabitBody(25, 15)).toBe(
+      `${KEPT}. Sont retirés le suivi d’aujourd’hui (−10 XP) et la prime de cette semaine (−15 XP), l’objectif n’étant plus atteint${nbsp}: −25 XP en tout.`,
     );
   });
 
@@ -104,7 +115,12 @@ describe('DeleteHabitDialog', () => {
     await fireEvent.press(deleteButton());
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
-    expect(onDeleted).toHaveBeenCalledWith({ ok: true, xpRemoved: 10, xp: 30 });
+    expect(onDeleted).toHaveBeenCalledWith({
+      ok: true,
+      xpRemoved: 10,
+      targetBonusRemoved: 0,
+      xp: 30,
+    });
   });
 
   it('does not delete twice while the deletion is being saved', async () => {
@@ -122,7 +138,7 @@ describe('DeleteHabitDialog', () => {
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(deleteButton()).toBeDisabled();
-    await act(async () => finish({ ok: true, xpRemoved: 10, xp: 30 }));
+    await act(async () => finish({ ok: true, xpRemoved: 10, targetBonusRemoved: 0, xp: 30 }));
   });
 
   it('stays open after a failure, explains it, and lets the player retry', async () => {
@@ -131,7 +147,7 @@ describe('DeleteHabitDialog', () => {
       attempts += 1;
       return attempts === 1
         ? { ok: false, reason: 'saveFailed' }
-        : { ok: true, xpRemoved: 10, xp: 30 };
+        : { ok: true, xpRemoved: 10, targetBonusRemoved: 0, xp: 30 };
     });
 
     await fireEvent.press(deleteButton());

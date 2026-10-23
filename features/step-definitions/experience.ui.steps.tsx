@@ -72,7 +72,7 @@ const steps: StepDefinitions = ({ given, when, then }) => {
   when(/^le joueur confirme « ([^»]+) »$/, async (name: string) => {
     await renderScreen(<DayViewScreen />, world.deps);
     const row = await screen.findByRole('switch', {
-      name: new RegExp(`^${name}, .*, à faire$`, 'u'),
+      name: new RegExp(`^${name}, .*, à faire, .* cette semaine, Moyenne, 10 XP par suivi$`, 'u'),
     });
     await waitFor(() => expect(screen.getByTestId('character-bar')).toBeOnTheScreen());
     world.timing.mockClear();

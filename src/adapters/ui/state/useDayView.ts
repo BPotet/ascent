@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { UseCaseDependencies } from '../../../application/useCases/UseCaseDependencies';
-import { type DayView, getDayView } from '../../../application/useCases/getDayView';
+import {
+  type DayView,
+  type DayViewHabit,
+  getDayView,
+} from '../../../application/useCases/getDayView';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
+import { isExpectedHabit } from '../../../domain/habit/ExpectedHabit';
+import { isTargetReached } from '../../../domain/habit/WeeklyProgress';
 import { useUseCaseDependencies } from './Dependencies';
 import { useTrackingChanges } from './TrackingRevision';
 import {
@@ -45,18 +51,47 @@ function useLoad(
   }, [dependencies, setLoaded]);
 }
 
-const doneCountOf = (habits: readonly HabitDay[]) =>
-  habits.filter(({ status }) => status === 'done').length;
+/** La vue avec ces lignes, et ses compteurs « faites / attendues » recomptés sur elles (#25). */
+function withHabits(view: DayView, habits: readonly DayViewHabit[]): DayView {
+  return {
+    ...view,
+    habits,
+    doneCount: habits.filter(({ status }) => status === 'done').length,
+    expectedCount: habits.filter(({ expected }) => expected).length,
+  };
+}
+
+/**
+ * La ligne passée à l'état `status`, avec la progression de la semaine qui va avec : une case « fait »
+ * de plus ou de moins aujourd'hui, l'objectif atteint et l'habitude attendue jugés par les règles du
+ * domaine (`isTargetReached`, `isExpectedHabit`), les mêmes que celles de `getDayView`. La relecture
+ * qui suit chaque tap enregistré montre ensuite ce qui est enregistré.
+ */
+function withStatus(row: DayViewHabit, status: HabitDay['status']): DayViewHabit {
+  const change = Number(status === 'done') - Number(row.status === 'done');
+  if (change === 0) {
+    return { ...row, status };
+  }
+  const weeklyProgress = row.weeklyProgress + change;
+  const { weekTarget } = row.weekSettings;
+  return {
+    ...row,
+    status,
+    weeklyProgress,
+    targetReached: isTargetReached(weeklyProgress, weekTarget),
+    expected: isExpectedHabit(status === 'done', weeklyProgress, weekTarget),
+  };
+}
 
 /** La vue avec la case `saved` telle qu'elle est enregistrée, si la vue montre son jour. */
 function withSaved(view: DayView, saved: HabitDay): DayView {
   if (!view.day.equals(saved.day)) {
     return view;
   }
-  const habits = view.habits.map((habitDay) =>
-    keyOf(habitDay) === keyOf(saved) ? saved : habitDay,
+  const habits = view.habits.map((row) =>
+    keyOf(row) === keyOf(saved) ? { ...withStatus(row, saved.status), ...saved } : row,
   );
-  return { ...view, habits, doneCount: doneCountOf(habits) };
+  return withHabits(view, habits);
 }
 
 /** La vue avec l'état affiché, en attendant l'enregistrement, des cases qui viennent d'être touchées. */
@@ -64,8 +99,10 @@ function withShownStatuses(view: DayView, shown: ShownStatuses): DayView {
   if (shown.size === 0) {
     return view;
   }
-  const habits = view.habits.map((habitDay) => withShown(habitDay, shown));
-  return { ...view, habits, doneCount: doneCountOf(habits) };
+  return withHabits(
+    view,
+    view.habits.map((row) => withStatus(row, withShown(row, shown).status)),
+  );
 }
 
 /**
@@ -77,7 +114,8 @@ function withShownStatuses(view: DayView, shown: ShownStatuses): DayView {
  *   tout de suite l'autre état, puis se recale sur ce qui est enregistré quand le dernier tap en
  *   cours sur cette case a répondu : en cas d'échec, la case revient à son état enregistré. Après
  *   une correction (le jour vient d'être clos) ou un refus, la vue est rechargée. Un tap enregistré
- *   prévient les autres vues (`TrackingRevision`).
+ *   prévient les autres vues (`TrackingRevision`), et la vue se relit, sans repasser par le
+ *   chargement, pour montrer la progression de la semaine et l'objectif atteint qui en découlent.
  *
  * La vue se recharge, sans repasser par le chargement, quand une autre vue a enregistré un
  * changement (un tap dans la Vue Semaine).
@@ -106,11 +144,13 @@ export function useDayView(): {
         state.status === 'ready' ? { ...state, view: withSaved(state.view, saved) } : state,
       );
       trackingChanged();
+      // La progression de la semaine et l'objectif atteint se relisent après chaque tap enregistré.
+      void refresh();
     },
-    [trackingChanged],
+    [trackingChanged, refresh],
   );
 
-  const { shown, toggle } = useOptimisticToggle({ onSaved, refresh });
+  const { shown, toggle } = useOptimisticToggle({ onSaved, refresh, splitBonus: true });
 
   useEffect(() => {
     void refresh();

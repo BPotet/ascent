@@ -3,6 +3,8 @@ import type { SqlDatabase } from './SqlDatabase';
 import { SqliteCharacterRepository } from './SqliteCharacterRepository';
 import { SqliteCheckInRepository } from './SqliteCheckInRepository';
 import { SqliteHabitRepository } from './SqliteHabitRepository';
+import { SqliteIntroductionRepository } from './SqliteIntroductionRepository';
+import { SqliteSettingsChangeRepository } from './SqliteSettingsChangeRepository';
 
 /**
  * Unité de travail sur la base locale (ADR 0002, décision 6).
@@ -18,6 +20,8 @@ export class SqliteUnitOfWork implements UnitOfWork {
       habits: new SqliteHabitRepository(db),
       checkIns: new SqliteCheckInRepository(db),
       character: new SqliteCharacterRepository(db),
+      settingsChanges: new SqliteSettingsChangeRepository(db),
+      introductions: new SqliteIntroductionRepository(db),
     };
   }
 

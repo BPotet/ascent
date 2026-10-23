@@ -1,0 +1,191 @@
+# Story #24 : l'objectif hebdomadaire et la progression de la semaine.
+# Parcours : « Nouvelle habitude » avec « Tous les jours » (7) présélectionné → « Courir 5 km » en
+# « 3 fois par semaine » → message de création, ligne « À faire · 0/3 cette semaine » → « Méditer »
+# avec « Tous les jours » : la semaine de création réduite est annoncée avant de créer, puis dans le
+# message → « Lire » en « 1 fois par semaine », touchée : badge « Objectif atteint » et
+# « Fait · 1/1 cette semaine » → puce de la Vue Semaine → « Modifier l'habitude » de « Courir 5 km »
+# le jour de sa création : le nouvel objectif vaut dès cette semaine.
+# Limites : Maestro ne pilote pas la date du téléphone. Sur une installation neuve, toutes les
+# habitudes sont créées aujourd'hui : la semaine de création est réduite aux jours restants (de 7 le
+# lundi à 1 le dimanche), d'où les mentions « cette semaine : N » facultatives ci-dessous (absentes
+# un lundi pour « Tous les jours »). Le message « Nouvel objectif à partir de lundi prochain (…) »,
+# le dépassement de l'objectif (« 4 fois cette semaine »), la nouvelle semaine et la Carte de
+# nouveauté (base d'une version précédente) demandent une autre date ou une ancienne base : ils sont
+# couverts par `features/weekly-target.feature` (cas d'usage et écrans) et `test/app/startup.test.tsx`.
+# Captures pour la comparaison avec la maquette docs/mockups/22-difficulte-objectif (E2, E1, E4, E7).
+appId: com.bpotet.ascent
+name: Choisir un objectif hebdomadaire et suivre la progression de la semaine
+tags:
+  - story-24
+---
+- runFlow: ../subflows/launch-fresh.yaml
+
+# « Nouvelle habitude » : sept pastilles, « Tous les jours » présélectionné.
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- assertVisible:
+    id: 'weekly-target-picker'
+- assertVisible:
+    id: 'weekly-target-option-7'
+    text: '7 fois par semaine, tous les jours'
+    checked: true
+- assertVisible:
+    id: 'weekly-target-option-1'
+    text: '1 fois par semaine'
+    checked: false
+- assertVisible:
+    id: 'weekly-target-phrase'
+    text: 'Tous les jours( · cette semaine : \d, à partir d’aujourd’hui)?'
+
+# « 3 fois par semaine » choisi, puis créée.
+- tapOn:
+    id: 'weekly-target-option-3'
+- assertVisible:
+    id: 'weekly-target-option-3'
+    checked: true
+- assertVisible:
+    id: 'weekly-target-phrase'
+    text: '3 fois par semaine( · cette semaine : \d, à partir d’aujourd’hui)?'
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Courir 5 km'
+- takeScreenshot: weekly-target-E2-1-new-habit-three-times
+# Le message de création ne dure que 2,8 s : le clavier est fermé avant, pour que le panneau se
+# ferme tout de suite et que le message soit lu à temps.
+- hideKeyboard
+- tapOn:
+    id: 'create-habit'
+- extendedWaitUntil:
+    visible: 'Habitude créée( · objectif \d cette semaine)?'
+    timeout: 5000
+- extendedWaitUntil:
+    notVisible: 'Nouvelle habitude'
+    timeout: 10000
+
+# La ligne de la Vue Journée donne l'état et la progression de la semaine.
+- extendedWaitUntil:
+    visible: 'Courir 5 km, .+, à faire, 0 sur \d cette semaine, Moyenne, 10 XP par suivi'
+    timeout: 10000
+- assertVisible:
+    id: 'habit-progress-1'
+    text: '.*À faire · 0/\d cette semaine'
+- takeScreenshot: weekly-target-E1-1-day-view-to-do
+
+# « Méditer » avec « Tous les jours » : la semaine de création réduite est annoncée avant de créer
+# (sauf un lundi), puis dans le message de création.
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- assertVisible:
+    id: 'weekly-target-phrase'
+    text: 'Tous les jours( · cette semaine : \d, à partir d’aujourd’hui)?'
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Méditer'
+- takeScreenshot: weekly-target-E2-2-new-habit-reduced-week
+- hideKeyboard
+- tapOn:
+    id: 'create-habit'
+- extendedWaitUntil:
+    visible: 'Habitude créée( · objectif \d cette semaine)?'
+    timeout: 5000
+- takeScreenshot: weekly-target-E2-3-created-reduced-week
+- extendedWaitUntil:
+    notVisible: 'Nouvelle habitude'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'Méditer, .+, à faire, 0 sur \d cette semaine, Moyenne, 10 XP par suivi'
+    timeout: 10000
+
+# « Lire », « 1 fois par semaine » : un tap atteint l'objectif, la ligne reste tapable.
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- tapOn:
+    id: 'weekly-target-option-1'
+- assertVisible:
+    id: 'weekly-target-phrase'
+    text: '1 fois par semaine'
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Lire'
+- tapOn:
+    id: 'create-habit'
+- extendedWaitUntil:
+    notVisible: 'Nouvelle habitude'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'Lire, .+, à faire, 0 sur 1 cette semaine, Moyenne, 10 XP par suivi'
+    timeout: 10000
+- tapOn:
+    id: 'habit-row-3'
+- extendedWaitUntil:
+    visible: 'Lire, .+, fait, 1 sur 1 cette semaine, Moyenne, 10 XP par suivi, objectif atteint'
+    timeout: 10000
+- assertVisible:
+    id: 'habit-target-reached-3'
+- assertVisible:
+    id: 'habit-progress-3'
+    text: '.*Fait · 1/1 cette semaine'
+- takeScreenshot: weekly-target-E1-2-day-view-target-reached
+
+# Vue Semaine : la puce de progression de chaque carte, verte pour « Lire ».
+- tapOn:
+    id: 'tab-week'
+- extendedWaitUntil:
+    visible:
+      id: 'week-card-3'
+    timeout: 10000
+- assertVisible:
+    id: 'week-progress-1'
+- assertVisible:
+    id: 'week-card-reached-3'
+- takeScreenshot: weekly-target-E4-1-week-view-progress
+
+# « Modifier l'habitude » de « Courir 5 km », créée aujourd'hui : le nouvel objectif vaut dès cette
+# semaine, et la semaine réduite est annoncée.
+- tapOn:
+    id: 'tab-day'
+- extendedWaitUntil:
+    visible:
+      id: 'edit-habit-1'
+    timeout: 10000
+- tapOn:
+    id: 'edit-habit-1'
+- extendedWaitUntil:
+    visible:
+      id: 'edit-habit-sheet-content'
+    timeout: 10000
+- assertVisible:
+    id: 'weekly-target-option-3'
+    checked: true
+- tapOn:
+    id: 'weekly-target-option-7'
+- extendedWaitUntil:
+    visible:
+      id: 'weekly-target-change-info'
+    timeout: 10000
+- assertVisible:
+    id: 'weekly-target-change-info'
+    text: 'Habitude créée aujourd’hui : le nouvel objectif s’applique dès cette semaine\.'
+- assertVisible:
+    id: 'weekly-target-phrase'
+    text: 'Tous les jours( · cette semaine : \d, à partir d’aujourd’hui)?'
+- takeScreenshot: weekly-target-E7-1-edit-sheet-creation-day
+- tapOn:
+    id: 'save-habit'
+- extendedWaitUntil:
+    visible:
+      id: 'toast'
+    timeout: 10000
+- assertVisible: 'Habitude modifiée'
+- extendedWaitUntil:
+    visible: 'Courir 5 km, .+, à faire, 0 sur \d cette semaine, Moyenne, 10 XP par suivi'
+    timeout: 10000

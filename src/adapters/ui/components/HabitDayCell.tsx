@@ -46,7 +46,8 @@ function Mark({ status }: { readonly status: CheckInStatus }) {
  * Le lecteur d'écran lit « Cuisiner, mercredi 14 octobre, pas fait », suivi de « corrigé » si la
  * case porte la marque « corrigé » (pastille en coin, R13), et de « indisponible » quand un tap ne
  * la change pas. Un « fait » gardé sur un jour après `today` (horloge reculée, R7) est atténué.
- * `xpChange` fait s'envoler « +10 XP » (ou « −10 XP ») de la case, après un tap enregistré.
+ * `xpChange` fait s'envoler le changement d'expérience (« +20 XP », ou « −20 XP ») de la case,
+ * après un tap enregistré.
  */
 export function HabitDayCell({
   habitDay,

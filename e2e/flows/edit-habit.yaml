@@ -3,6 +3,10 @@
 # la renommer « Cuisiner le soir » → le nouveau nom s'affiche, toujours « fait » → « ⋯ » →
 # « Supprimer l'habitude » : la fenêtre annonce le retrait de 10 XP → « Supprimer » : état vide,
 # 0 XP.
+# Prime d'objectif (#26) : créée aujourd'hui, l'habitude a l'objectif 7 réduit aux jours restants,
+# 1 le dimanche : la cocher atteint alors l'objectif (+5 XP de prime). Les expériences exactes
+# passent par `subflows/expect-xp.yaml` (10 XP, ou 15 XP), et la fenêtre de suppression annonce
+# aussi la prime qui tombe.
 # Sélecteurs : un `testID` posé sur un `Modal` n'est pas garanti sur la vue native Android ; le
 # panneau est repéré par son contenu (`edit-habit-sheet-content`), la fenêtre de suppression
 # (`delete-habit-dialog`) par son titre et son bouton `confirm-delete-habit`.
@@ -13,12 +17,7 @@ name: Renommer et supprimer une habitude
 tags:
   - story-6
 ---
-- launchApp:
-    clearState: true
-- extendedWaitUntil:
-    visible:
-      id: 'day-view-empty'
-    timeout: 60000
+- runFlow: ../subflows/launch-fresh.yaml
 
 # Une habitude créée aujourd'hui, cochée.
 - tapOn:
@@ -35,17 +34,15 @@ tags:
     notVisible: 'Nouvelle habitude'
     timeout: 10000
 - extendedWaitUntil:
-    visible: 'Cuisiner, .+, à faire'
+    visible: 'Cuisiner, .+, à faire, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
     timeout: 10000
-- tapOn: 'Cuisiner, .+, à faire'
-- extendedWaitUntil:
-    visible: 'Cuisiner, .+, fait'
-    timeout: 10000
-- extendedWaitUntil:
-    visible:
-      id: 'xp-counter'
-      text: '10 XP'
-    timeout: 10000
+- tapOn: 'Cuisiner, .+, à faire, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
+- runFlow:
+    file: ../subflows/expect-xp.yaml
+    env:
+      ROW: 'Cuisiner, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi'
+      XP: '10 XP'
+      XP_IF_TARGET_REACHED: '15 XP'
 
 # « ⋯ » ouvre « Modifier l'habitude », sans clavier : « Supprimer l'habitude » reste visible.
 - tapOn: 'Modifier l’habitude Cuisiner'
@@ -71,28 +68,56 @@ tags:
     notVisible:
       id: 'edit-habit-sheet-content'
     timeout: 10000
-- extendedWaitUntil:
-    visible: 'Cuisiner le soir, .+, fait'
-    timeout: 10000
-- assertVisible:
-    id: 'xp-counter'
-    text: '10 XP'
+- runFlow:
+    file: ../subflows/expect-xp.yaml
+    env:
+      ROW: 'Cuisiner le soir, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi'
+      XP: '10 XP'
+      XP_IF_TARGET_REACHED: '15 XP'
 - takeScreenshot: edit-habit-2-renamed
 
-# Supprimer : la fenêtre nomme l'habitude et annonce le retrait de 10 XP.
-- tapOn: 'Modifier l’habitude Cuisiner le soir'
-- extendedWaitUntil:
-    visible:
-      id: 'edit-habit-sheet-content'
-    timeout: 10000
-- tapOn:
-    id: 'delete-habit'
-- extendedWaitUntil:
-    visible: 'Supprimer «.Cuisiner le soir.».\?'
-    timeout: 10000
+# Supprimer : la fenêtre nomme l'habitude et annonce le retrait de 10 XP, et aussi celui de la
+# prime de la semaine (−5 XP, −15 XP en tout) quand l'objectif est atteint (#26). La branche est
+# choisie sur le libellé de la ligne, lu avant d'ouvrir la fenêtre (qui le cache ensuite) : il est
+# gardé dans `output.targetReached`.
+- evalScript: ${output.targetReached = false}
+- runFlow:
+    when:
+      visible: 'Cuisiner le soir, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi, objectif atteint'
+    commands:
+      - evalScript: ${output.targetReached = true}
+- runFlow:
+    when:
+      true: ${output.targetReached}
+    commands:
+      - tapOn: 'Modifier l’habitude Cuisiner le soir'
+      - extendedWaitUntil:
+          visible:
+            id: 'edit-habit-sheet-content'
+          timeout: 10000
+      - tapOn:
+          id: 'delete-habit'
+      - extendedWaitUntil:
+          visible: 'Supprimer «.Cuisiner le soir.».\?'
+          timeout: 10000
+      - assertVisible: '.*\(−10 XP\) et la prime de cette semaine \(−5 XP\), l.objectif n.étant plus atteint.: −15 XP en tout\.'
+- runFlow:
+    when:
+      true: ${!output.targetReached}
+    commands:
+      - tapOn: 'Modifier l’habitude Cuisiner le soir'
+      - extendedWaitUntil:
+          visible:
+            id: 'edit-habit-sheet-content'
+          timeout: 10000
+      - tapOn:
+          id: 'delete-habit'
+      - extendedWaitUntil:
+          visible: 'Supprimer «.Cuisiner le soir.».\?'
+          timeout: 10000
+      - assertVisible: '.*\(−10 XP\)\.'
 - assertVisible:
     id: 'confirm-delete-habit'
-- assertVisible: '.*\(−10 XP\)\.'
 - assertVisible: 'Annuler'
 - takeScreenshot: edit-habit-3-delete-dialog
 
