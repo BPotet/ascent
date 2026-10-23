@@ -109,6 +109,10 @@ après l'action du héros (800 + 400 + 800).
 - Sons provisoires générés par `scripts/sounds/battle-sounds.mjs` (WAV de moins de 30 ko, aucune
   licence tierce), préchargés par `expo-audio` ; vibrations par `expo-haptics`, par un port propre
   au combat (`BattleHaptics`). Le Retour haptique (`Haptics`) reste réservé à l'expérience.
+- Mode silencieux : sur iOS, il coupe les sons du combat (voulu). Sur Android, le jeu sonne au
+  volume Multimédia, même en mode vibreur ou silencieux : `playsInSilentMode` vaut `true` sur
+  Android seulement, car avec `false`, `expo-audio` ne joue rien hors du mode sonnerie normal
+  (premier essai sur téléphone, en mode vibreur : aucun son).
 
 ### 9. Exclusion de mutation pour le dessin de la scène
 
