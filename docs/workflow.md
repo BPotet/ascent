@@ -372,6 +372,8 @@ Règles vérifiées par les tests d'architecture :
 - `adapters` implémentent les ports de `application`. Un adaptateur n'importe pas un autre adaptateur (`ui` ne connaît ni `persistence` ni `device`).
 - Seuls `adapters` et `app` connaissent le framework et les bibliothèques natives.
 - `domain` et `application` n'utilisent ni minuteur, ni horloge directe, ni hasard (`setTimeout`, `setInterval`, `requestAnimationFrame`, `performance`, `Math.random`) : le temps et le hasard passent par des ports. Vérifié par ESLint (barrière Style).
+- Dans `src/adapters/ui/`, seuls `pixelArt/SpriteCanvas.tsx` (et son test de fumée) et le combat (`battle/`) importent Skia (`pixel-art-skia-in-one-place`, [ADR 0007](adr/0007-identite-pixel-art.md)).
+- Ni `pixelArt/`, ni les composants redessinés en pixel art, ni `DayViewScreen`, ni `StartupScreen` n'importent `components/legacy/` (`no-legacy-in-pixel-art`, ADR 0007). La story #73 supprime cette règle avec le dossier.
 
 Conséquence pour les tests : le domaine et les cas d'usage se testent en unitaire, sans framework. Les adaptateurs se testent en intégration. Les parcours complets se testent en BDD et en end-to-end.
 

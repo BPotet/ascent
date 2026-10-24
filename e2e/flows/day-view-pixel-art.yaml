@@ -1,0 +1,95 @@
+# Story #72 : la Journée en pixel art, avec ses retours de jeu.
+# Parcours : premier lancement, Vue Journée vide (le personnage à ×3 sous un ciel de nuit) →
+# création de « Cuisiner » : l'aide au premier usage dans un cadre cranté → un tap : la case verte
+# et sa coche, l'étincelle et « +10 XP », « 1/1 faites » et « Toutes faites » → les onglets :
+# l'en-tête du personnage dans la Vue Semaine et la Vue Mois, puis retour à la Vue Journée.
+# Captures pour la comparaison avec la maquette (E1, F1, E6 et la barre d'onglets).
+appId: com.bpotet.ascent
+name: La Journée en pixel art
+tags:
+  - story-72
+---
+- runFlow: ../subflows/launch-fresh.yaml
+
+# E1 · Vide, première utilisation : le personnage attend, un seul bouton.
+- assertVisible: 'Aucune habitude pour l’instant.*'
+- assertVisible:
+    id: 'character-bar'
+- assertVisible: 'Expérience du personnage : 0 XP'
+- assertVisible:
+    id: 'add-habit'
+- takeScreenshot: day-view-pixel-art-1-empty
+
+# E1 · Aide au premier usage : « Cuisiner » créée, l'aide dans un cadre cranté.
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Cuisiner'
+- tapOn:
+    id: 'create-habit'
+- extendedWaitUntil:
+    notVisible: 'Nouvelle habitude'
+    timeout: 10000
+- extendedWaitUntil:
+    visible: 'Cuisiner, .+, à faire, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
+    timeout: 10000
+- assertVisible:
+    id: 'check-in-hint'
+- assertVisible: '0/1 faites|0 habitude faite sur 1 attendue'
+- assertNotVisible:
+    id: 'check-mark'
+- takeScreenshot: day-view-pixel-art-2-first-use-hint
+
+# F1 · Habitude faite : la coche, l'étincelle, « +10 XP », le compteur et « Toutes faites ».
+- tapOn:
+    id: 'habit-row-1'
+- takeScreenshot: day-view-pixel-art-3-habit-done-feedback
+- runFlow:
+    file: ../subflows/expect-xp.yaml
+    env:
+      ROW: 'Cuisiner, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi'
+      XP: '10 XP'
+      XP_IF_TARGET_REACHED: '15 XP'
+- assertVisible:
+    id: 'habit-row-1'
+    checked: true
+- assertVisible:
+    id: 'check-mark'
+- assertVisible: '1/1 faites|1 habitude faite sur 1 attendue'
+- assertVisible:
+    id: 'all-done'
+- assertNotVisible:
+    id: 'check-in-hint'
+- takeScreenshot: day-view-pixel-art-4-all-done
+
+# La barre d'onglets : Journée, Semaine et Mois ; l'en-tête du personnage dans chaque vue.
+- tapOn:
+    id: 'tab-week'
+- extendedWaitUntil:
+    visible:
+      id: 'week-view'
+    timeout: 10000
+- assertVisible:
+    id: 'character-bar'
+- takeScreenshot: day-view-pixel-art-5-week-header
+- tapOn:
+    id: 'tab-month'
+- extendedWaitUntil:
+    visible:
+      id: 'month-view'
+    timeout: 10000
+- assertVisible:
+    id: 'character-bar'
+- takeScreenshot: day-view-pixel-art-6-month-header
+- tapOn:
+    id: 'tab-day'
+- extendedWaitUntil:
+    visible:
+      id: 'habit-row-1'
+    timeout: 10000
+- assertVisible:
+    id: 'all-done'
