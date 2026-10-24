@@ -175,9 +175,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
 .foes.n1 .hpb{width:200px;height:8px}
 .hpb i{display:block;height:100%;background:var(--a-foe-hp);border-radius:3px;transition:width .3s}
 .hpn{font:500 11px Inter;color:var(--a-muted);font-variant-numeric:tabular-nums}
-.foe.dim{opacity:.45}
 .foe.dead{opacity:0;pointer-events:none}
-.foe.attacking .fig{transform:translateY(10px) scale(1.05)}
 .foe .nm,.foe .guard,.foe .hpb,.foe .hpn,.foe .broken,.foe .intent{position:relative;z-index:2}
 .foe.cursed .fig{filter:drop-shadow(0 0 10px rgba(224,96,122,.7))}
 .foe.staggered .fig{transform:rotate(-10deg) translateY(10px)}
@@ -207,6 +205,56 @@ a.story:hover{outline:1.5px solid var(--accent)}
 .streaks{position:absolute;inset:0;z-index:5;pointer-events:none}
 .shake{animation:shake .32s}
 @keyframes shake{0%,100%{transform:none}20%{transform:translate(-5px,3px)}40%{transform:translate(5px,-3px)}60%{transform:translate(-3px,2px)}80%{transform:translate(2px,-1px)}}
+/* ===== v3 · Ennemi actif, anneau, retours de résultat ===== */
+.scene.ep .foes{z-index:5}
+.scene.ep .foe .nm,.scene.ep .foe .hpn{visibility:hidden}
+.foe.dim>.nm,.foe.dim>.guard,.foe.dim>.hpb,.foe.dim>.hpn,.foe.dim>.broken,.foe.dim>.intent:not(.peril),.foe.dim .fig>:not(.seal){opacity:.3;filter:saturate(.3) brightness(.7)}
+.foe.attacking>.guard,.foe.attacking>.hpb{opacity:.45}
+.foe.attacking .intent{border-color:var(--a-light);box-shadow:0 0 12px rgba(242,212,155,.35)}
+.foe.attacking.peril .intent{border-color:#FF3B3B;box-shadow:0 0 16px rgba(255,59,59,.6)}
+.foe .intent .iseal{width:20px;height:20px;flex:none;filter:drop-shadow(0 0 4px rgba(255,59,59,.8))}
+.foe .intent.peril{color:#FFB3B3;border-color:rgba(255,59,59,.7)}
+.foe .intent.hollow .iseal path:first-child{fill:none}
+.foe .intent.hollow .iseal path:nth-child(2){stroke:#FF9D9D}
+.foe .intent.hollow .iseal circle{fill:#FF9D9D}
+.foes:not(.n1) .foe.attacking .fig svg.seal{animation:sealpulse .45s ease-in-out infinite alternate}
+@keyframes sealpulse{from{transform:translateX(-50%) scale(.88)}to{transform:translateX(-50%) scale(1.12)}}
+.tremk{position:absolute;top:34%;bottom:44%;left:-10px;right:-10px;pointer-events:none;color:var(--a-light)}
+.tremk.red{color:#FF6B6B}
+.tremk::before,.tremk::after{content:"";position:absolute;top:0;bottom:0;width:9px;border-left:2px solid currentColor;border-right:2px solid currentColor;opacity:.55}
+.tremk::before{left:0}.tremk::after{right:0}
+.ttgt,.tring{position:absolute;left:84px;top:330px;width:76px;height:76px;margin:-38px 0 0 -38px;border-radius:50%;pointer-events:none;z-index:6}
+.ttgt{border:2px dashed rgba(242,212,155,.6);opacity:.75}
+.ttgt.red{border-color:rgba(255,59,59,.75)}
+.tring{border:3px solid var(--a-light);box-shadow:0 0 14px rgba(242,212,155,.6),inset 0 0 10px rgba(242,212,155,.35);will-change:transform,opacity}
+.tring.red{border-color:#FF3B3B;box-shadow:0 0 16px rgba(255,59,59,.75),inset 0 0 10px rgba(255,59,59,.4)}
+.tring .cr{position:absolute;display:none;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;background:#FF3B3B;border:1.5px solid #FFD0D0;transform:rotate(45deg)}
+.tring.red .cr{display:block}
+.tring .cr.n{left:50%;top:-1.5px}.tring .cr.s{left:50%;top:calc(100% + 1.5px)}.tring .cr.w{left:-1.5px;top:50%}.tring .cr.e{left:calc(100% + 1.5px);top:50%}
+.iflash{position:absolute;left:84px;top:330px;width:220px;height:170px;margin:-85px 0 0 -110px;border-radius:50%;pointer-events:none;z-index:6;background:radial-gradient(closest-side,rgba(255,248,226,.95),rgba(242,212,155,.25) 55%,transparent)}
+.iflash.anim{animation:flash .16s linear forwards}
+.spark{position:absolute;left:84px;top:322px;width:130px;height:130px;margin:-65px 0 0 -65px;border-radius:50%;pointer-events:none;z-index:7}
+.spark.gold{background:radial-gradient(circle,#FFF6DA 0 9%,rgba(242,212,155,.9) 17%,rgba(242,212,155,0) 58%)}
+.spark.gold::after{content:"";position:absolute;inset:0;border-radius:50%;background:repeating-conic-gradient(from 8deg,rgba(255,240,200,.95) 0 4deg,transparent 4deg 30deg);-webkit-mask:radial-gradient(circle,transparent 16%,#000 22%,transparent 64%);mask:radial-gradient(circle,transparent 16%,#000 22%,transparent 64%)}
+.spark.blue{width:96px;height:96px;margin:-48px 0 0 -48px;background:radial-gradient(circle,#EAF6FF 0 8%,rgba(143,200,230,.85) 18%,rgba(143,200,230,0) 56%)}
+.spark.anim{animation:spark .4s ease-out forwards}
+@keyframes spark{0%{transform:scale(.3);opacity:1}100%{transform:scale(1.25);opacity:0}}
+.dmgf{position:absolute;left:84px;top:244px;transform:translateX(-50%);z-index:8;font:700 21px Inter;font-variant-numeric:tabular-nums;color:#FF9DB0;text-shadow:0 2px 10px rgba(0,0,0,.9);pointer-events:none}
+.dmgf.anim{animation:dmgup 1s ease-out forwards}
+@keyframes dmgup{0%{opacity:0;transform:translate(-50%,6px)}15%{opacity:1}100%{opacity:0;transform:translate(-50%,-24px)}}
+.segc{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:#0A0C16;border:1px solid var(--a-line);border-radius:14px;padding:4px;margin-top:10px}
+.segc button{min-height:48px;border:0;border-radius:10px;background:transparent;color:var(--a-text);font:600 15px Inter;cursor:pointer}
+.segc button[aria-checked="true"]{background:var(--a-light);color:var(--a-on-light)}
+.aidprev{position:relative;flex:none;width:104px;height:96px;border-radius:14px;overflow:hidden;background:radial-gradient(60% 80% at 50% 75%,#1E2540,#0A0C16);border:1px solid var(--a-line)}
+.aidprev .hp{position:absolute;left:50%;top:8px;width:60px;height:80px;margin-left:-30px}
+.aidprev .hp svg{width:100%;height:100%;overflow:visible}
+.aidprev .ttgt,.aidprev .tring{left:50%;top:44px;width:64px;height:64px;margin:-32px 0 0 -32px}
+.aidprev .none{position:absolute;left:0;right:0;bottom:6px;text-align:center;font:500 12px Inter;color:var(--a-muted)}
+.tring.lp-completes{animation:rfull 1.6s linear infinite}
+.tring.lp-legeres{animation:rlight 1.6s linear infinite}
+@keyframes rfull{0%{transform:scale(2.6);opacity:.3}69%{transform:scale(1);opacity:1}76%{transform:scale(.88);opacity:0}100%{transform:scale(.88);opacity:0}}
+@keyframes rlight{0%,40%{transform:scale(2.6);opacity:0}40.5%{transform:scale(2.6);opacity:.3}69%{transform:scale(1);opacity:1}76%{transform:scale(.88);opacity:0}100%{transform:scale(.88);opacity:0}}
+@media (prefers-reduced-motion: reduce){.tring{box-shadow:none}}
 .frozen-tag{position:absolute;right:10px;bottom:10px;z-index:8;font:600 11px Inter;color:var(--a-muted);background:rgba(10,12,22,.85);border:1px dashed var(--a-line);border-radius:8px;padding:3px 7px}
 
 /* Barre du héros */
@@ -455,12 +503,13 @@ a.story:hover{outline:1.5px solid var(--accent)}
   <h1>La première ascension</h1>
   <p class="lead">Les écrans du rogue-lite, dans un cadre de téléphone (390 × 844), avec leurs états et les moments de feedback de jeu : pied de la tour, jauge et bénédictions de départ, choix du héros, choix de la sortie, combat avec parade, bienfaits, lieux de la tour, boss, chute, fin d'ascension, camp, pause et réglages. Tout se joue d'une main, le pouce en bas de l'écran. Le prototype se manipule, y compris la parade.</p>
   <div class="meta">
-    <span class="tag">Version 2 · 21 oct. 2026</span>
+    <span class="tag">Version 3 · 24 oct. 2026</span>
     <span class="tag warn">À valider par le propriétaire</span>
     <span class="tag">Chiffres illustratifs, règles du Game Designer</span>
     <button class="themebtn" id="themeBtn" type="button" aria-label="Thème de la page">Thème : auto</button>
   </div>
   <nav class="toc" aria-label="Sections">
+    <a href="#nouveau3">Nouveau en v3</a>
     <a href="#nouveau">Nouveau en v2</a>
     <a href="#hypotheses">Choix UX</a>
     <a href="#identite">Identité</a>
@@ -480,6 +529,20 @@ a.story:hover{outline:1.5px solid var(--accent)}
     <a href="#questions">Questions</a>
   </nav>
 </header>
+
+<section id="nouveau3">
+  <h2 class="pg">Ce qui change en version 3 : aides visuelles</h2>
+  <div class="panel" style="margin-top:16px">
+    <p style="margin-top:0">Décision du propriétaire du 24/10 : sans aide, le combat est trop dur. Il veut des animations travaillées et très claires. Spécification détaillée : « Aides visuelles et animations de la phase ennemie » (poses clés, durées, anneau, niveaux, accessibilité).</p>
+    <ul class="tight">
+      <li><b>Anneau</b> : un cercle se resserre sur le héros et se ferme pile à l'impact. Par défaut (<b>Légères</b>), il n'apparaît que dans la dernière demi-seconde (450 ms). Rouge, avec quatre crans en losange, pour un coup imparable. Écrans <b>P10</b>, <b>P11</b>, <b>P2</b>.</li>
+      <li><b>Réglage « Aides visuelles »</b> en tête des réglages de la parade : <b>Complètes</b>, <b>Légères</b>, <b>Aucune</b>, avec un aperçu. Écrans <b>R1</b>, <b>R5</b> à <b>R7</b>.</li>
+      <li><b>Une préparation par type de coup</b>, lisible sans texte : coup simple (un élan), double frappe (deux ruées sans détente), coup retardé (hésitation tremblante), coup trompeur (une ruée qui s'arrête court), coup imparable (rouge, plus gros, grand sceau). Écrans <b>P1</b>, <b>P11</b> à <b>P13</b>, <b>P2</b>.</li>
+      <li><b>Ennemi actif</b> au premier plan, les autres estompés (leur sceau reste net). Pendant la phase ennemie, les noms des ennemis, la ligne d'information et les textes de résultat disparaissent : il ne reste que « Parfait », « Cassure » et « Déséquilibré ». Les résultats se lisent à l'étincelle, aux chiffres et à la pose du héros.</li>
+      <li><b>Intentions</b> en icône et en nombre, sans mot : entaille, deux entailles, sablier, onde, sceau, bouclier.</li>
+    </ul>
+  </div>
+</section>
 
 <section id="nouveau">
   <h2 class="pg">Ce qui change en version 2</h2>
@@ -536,7 +599,8 @@ a.story:hover{outline:1.5px solid var(--accent)}
     <div class="panel">
       <h3 class="pg" style="margin-top:0">Combat et parade</h3>
       <ul class="tight">
-        <li><b>Lecture par l'animation seule</b> : aucun anneau, aucun compte à rebours. La silhouette prend son élan, se suspend, frappe sec. Seul le <b>sceau rouge</b> s'ajoute, au-dessus de l'ennemi, pour un coup imparable.</li>
+        <li><b>Lecture par l'animation, aidée par l'anneau</b> (v3) : chaque type de coup a sa préparation propre (anticipation, ruée de 80 ms, impact, récupération). Selon les <b>aides visuelles</b>, un anneau se resserre sur le héros et se ferme pile à l'impact : dans la dernière demi-seconde par défaut (Légères), pendant toute la préparation (Complètes), ou jamais (Aucune). Le <b>sceau rouge</b> reste à tous les niveaux.</li>
+        <li><b>Texte minimal en phase ennemie</b> : seul l'ennemi actif est net ; ni noms, ni ligne d'information, ni « Parade » ou « Touché » écrits. Restent « Parfait », « Cassure », « Déséquilibré », les chiffres de dégâts et les libellés des boutons.</li>
         <li><b>Parade</b> à droite (1,45 fois plus large), <b>Esquive</b> à gauche. Ils réagissent au toucher du doigt, pas au relâchement.</li>
         <li>Le bouton ne change jamais pendant un coup imparable : c'est à l'œil de lire le sceau.</li>
         <li>Un appui raté affiche « Déséquilibré » au-dessus des boutons, grisés et hachurés, tant que dure le déséquilibre. Chaque appui le prolonge. À ne pas confondre avec le temps mort de la transition de phase, neutre (estompé, cadenas, sans hachures) et sans pénalité.</li>
@@ -610,8 +674,9 @@ a.story:hover{outline:1.5px solid var(--accent)}
       <ul class="tight">
         <li>Silhouettes plates, un liseré de lumière sur un seul côté. Pas de détail : la lecture vient de la pose (élan, suspension, frappe).</li>
         <li>Rayons : boutons de combat 24 px, cartes 20 à 22 px, portes en arche.</li>
-        <li>Parade parfaite : arrêt sur image 90 ms, éclat de lumière 450 ms, secousse 320 ms, vibration.</li>
-        <li>Mouvement réduit : pas de secousse ni d'éclat plein écran ; l'arrêt sur image et le texte restent. Les animations des ennemis restent, car elles portent le jeu.</li>
+        <li>Parade parfaite : arrêt sur image 90 ms, étincelle dorée à rayons 400 ms, secousse 320 ms, vibration. Bonne parade : étincelle bleu acier, plus petite, sans rayons.</li>
+        <li>Anneau : trait de 3 px, couleur lumière, contour d'arrivée en pointillés ; rouge à quatre crans en losange pour un coup imparable. Resserrement linéaire, de 2,6 fois sa taille à sa taille de fermeture.</li>
+        <li>Mouvement réduit : les déplacements des ennemis passent à 25 % de leur amplitude, avec les mêmes durées ; la lueur reste pleine. Pas de secousse, le grand sceau ne bat plus. L'anneau reste (de 1,8 fois à 1), car c'est une information de timing.</li>
       </ul>
     </div>
   </div>
@@ -621,7 +686,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
 
 <section id="prototype">
   <h2 class="pg">Prototype interactif</h2>
-  <p class="lead">Le parcours complet, de la jauge au camp. Le combat est jouable : vise, attaque, frappe en rythme, puis pare ou esquive les coups ennemis en lisant leur élan. Valeurs du Game Designer : fenêtre parfaite ± 60 ms, fenêtre de parade ± 160 ms, déséquilibre 450 ms, transition de phase 800 ms, avancée 400 ms.</p>
+  <p class="lead">Le parcours complet, de la jauge au camp. Le combat est jouable : vise, attaque, frappe en rythme, puis pare ou esquive les coups ennemis en lisant leur préparation, aidé par l'anneau. Valeurs du Game Designer : fenêtre parfaite ± 60 ms, fenêtre de parade ± 160 ms, déséquilibre 450 ms, transition de phase 800 ms, avancée 400 ms.</p>
   <div class="proto">
     <div class="slot"><div class="phone"><div class="screen app" id="live"></div></div></div>
     <div class="controls">
@@ -633,6 +698,12 @@ a.story:hover{outline:1.5px solid var(--accent)}
         <button class="pbtn" data-g="m1">Malédiction (1/3)</button>
         <button class="pbtn" data-g="m2">Malédiction forte (0/3)</button>
         <button class="pbtn" data-g="first">Première fois</button>
+      </fieldset>
+      <fieldset>
+        <legend>Aides visuelles</legend>
+        <button class="pbtn" data-aids="completes">Complètes</button>
+        <button class="pbtn" data-aids="legeres">Légères</button>
+        <button class="pbtn" data-aids="aucune">Aucune</button>
       </fieldset>
       <fieldset>
         <legend>Simulations</legend>
@@ -649,7 +720,8 @@ a.story:hover{outline:1.5px solid var(--accent)}
           <li>Touche « Commencer l'ascension » : choisis tes bénédictions de départ, puis une sortie « Combat ».</li>
           <li>Touche un ennemi pour le viser, puis « Attaquer » (validé au relâcher du doigt). Le bouton devient « Frapper » : touche-le quand la lame est au plus haut.</li>
           <li>Après ta frappe, l'annonce « Phase ennemie » reste 800 ms : les boutons Esquive et Parade sont déjà là, estompés. Touche-les : rien ne se passe, aucun déséquilibre.</li>
-          <li>Phase ennemie : l'ennemi s'avance (400 ms), puis prend son élan. Quand il frappe, touche Parade. S'il porte le sceau rouge, touche Esquive. À la fin, l'annonce « À toi » laisse de nouveau 800 ms.</li>
+          <li>Phase ennemie : l'ennemi s'avance (400 ms), passe au premier plan, puis prépare son coup. Touche Parade quand l'anneau se ferme. Sceau rouge : touche Esquive. À la fin, l'annonce « À toi » laisse de nouveau 800 ms.</li>
+          <li>Change les aides visuelles ci-dessus (ou dans Pause, Réglages) : Complètes montre l'anneau pendant toute la préparation, Aucune l'enlève avec les icônes des coups.</li>
           <li>Martèle les boutons : « Déséquilibré » apparaît et chaque appui le prolonge.</li>
           <li>Touche Pause à tout moment, puis Reprendre : un compte à rebours de 3 s, avec l'annonce de la phase en cours, laisse le temps de replacer le pouce. Les appuis y sont ignorés.</li>
           <li>Sur ordinateur : Espace pour Parade (ou l'action de droite), flèche gauche pour Esquive.</li>
@@ -664,13 +736,13 @@ a.story:hover{outline:1.5px solid var(--accent)}
 <section id="h"><h2 class="pg">H · Choix du héros</h2><p class="lead">Deux héros jouables dès le départ, la Sentinelle et l'Errante, chacun avec son équipement de base, son pouvoir et son style. Il n'y a pas de héros à débloquer dans cette version. Le choix est verrouillé pendant une ascension.</p><div class="gallery" data-group="h"></div></section>
 <section id="c"><h2 class="pg">C · Choix de la sortie</h2><p class="lead">Après chaque étage, deux ou trois sorties. Chacune est une grande porte en arche : le type se lit à la forme, à l'icône et au nom. Une règle d'étage s'affiche sur la porte avant d'entrer.</p><div class="gallery" data-group="c"></div></section>
 <section id="f"><h2 class="pg">F · Combat : phase du héros</h2><p class="lead">Les ennemis en haut, chacun avec son intention, sa garde et ses PV. Le héros en bas à gauche. Les actions dans la zone du pouce.</p><div class="gallery" data-group="f"></div></section>
-<section id="p"><h2 class="pg">P · Combat : phase ennemie et parade</h2><p class="lead">La phase ennemie s'ouvre sur l'annonce de phase (800 ms, boutons inactifs), puis l'ennemi qui attaque s'avance (400 ms) et les autres s'effacent. Parade à droite, Esquive à gauche, réaction dès que le doigt touche. Les images figent l'instant le plus parlant de chaque moment.</p><div class="gallery" data-group="p"></div></section>
+<section id="p"><h2 class="pg">P · Combat : phase ennemie et parade</h2><p class="lead">La phase ennemie s'ouvre sur l'annonce de phase (800 ms, boutons inactifs), puis l'ennemi actif s'avance (400 ms), passe au premier plan, et les autres s'estompent. Chaque type de coup a sa préparation ; l'anneau, selon les aides visuelles, se ferme pile à l'impact. Parade à droite, Esquive à gauche, réaction dès que le doigt touche. Sauf mention, les images sont en aides <b>Légères</b> (par défaut) et figent l'instant le plus parlant.</p><div class="gallery" data-group="p"></div></section>
 <section id="b"><h2 class="pg">B · Bienfaits, coffres et objets</h2><p class="lead">Un bienfait parmi trois après un combat gagné. Les coffres scellés demandent une clé. Les objets trouvés se comparent à ce qu'on porte.</p><div class="gallery" data-group="b"></div></section>
 <section id="l"><h2 class="pg">L · Lieux de la tour</h2><p class="lead">Marchand, feu de camp, autel et événement. Chacun tient sur un écran, avec ses choix dans la zone du pouce.</p><div class="gallery" data-group="l"></div></section>
 <section id="x"><h2 class="pg">X · Boss, chute et fin d'ascension</h2><p class="lead">Chaque palier finit par un boss tiré au hasard. Si le héros tombe, l'ascension s'arrête : l'écran de fin dit clairement ce qui est perdu et ce qui reste.</p><div class="gallery" data-group="x"></div></section>
 <section id="k"><h2 class="pg">K · Camp et boutiques</h2><p class="lead">Un refuge chaud entre deux ascensions. Le Gardien de la flamme y est dès le départ ; les captifs libérés s'y installent et ouvrent une boutique : les Éclats ajoutent de nouveaux objets à ce qu'on peut trouver dans la tour.</p><div class="gallery" data-group="k"></div></section>
 <section id="z"><h2 class="pg">Z · Pause et reprise</h2><p class="lead">Pause à tout moment, même pendant un coup ennemi. La partie est sauvegardée après chaque action. Fermer l'app met en pause. À la reprise, un compte à rebours de 3 s, avec l'annonce de la phase en cours, remplace le temps mort.</p><div class="gallery" data-group="z"></div></section>
-<section id="r"><h2 class="pg">R · Réglages de la parade</h2><p class="lead">Le décalage du téléphone compense un appui toujours un peu en avance ou en retard. Il se règle à la main ou se mesure en huit coups.</p><div class="gallery" data-group="r"></div></section>
+<section id="r"><h2 class="pg">R · Réglages de la parade</h2><p class="lead">Les aides visuelles d'abord (Complètes, Légères, Aucune), puis le décalage du téléphone, qui compense un appui toujours un peu en avance ou en retard. R5 à R7 montrent le même instant d'une double frappe aux trois niveaux.</p><div class="gallery" data-group="r"></div></section>
 
 <section id="a11y">
   <h2 class="pg">Accessibilité</h2>
@@ -688,7 +760,8 @@ a.story:hover{outline:1.5px solid var(--accent)}
     <div class="panel">
       <h3 class="pg" style="margin-top:0">Lire sans la couleur</h3>
       <ul class="tight">
-        <li>Le sceau rouge est aussi une <b>forme</b> (losange avec point d'exclamation) et un mot pour le lecteur d'écran.</li>
+        <li>Le sceau rouge est aussi une <b>forme</b> (losange avec point d'exclamation) et un mot pour le lecteur d'écran. Il reste visible à tous les niveaux d'aides visuelles, même sur un ennemi estompé. L'anneau d'un coup imparable porte en plus quatre crans en losange.</li>
+        <li>Bonne parade et parade parfaite se distinguent par la forme de l'étincelle (rayons ou non), le mot « Parfait », la vibration et le son, pas seulement par la couleur.</li>
         <li>Jauge : position du curseur sur cinq crans, mot (Faveur pleine, Faveur, Neutre, Malédiction, Malédiction forte) et liste d'effets. Rareté : 1 à 4 losanges et le mot. Difficulté de l'habitude écrite en toutes lettres à côté de la rareté de la bénédiction.</li>
         <li>Transition de phase et déséquilibre ne se confondent pas : le temps mort est estompé avec un cadenas et le mot « Attends », sans hachures ; le déséquilibre est hachuré, en rose, avec le mot « Déséquilibré ».</li>
         <li>Ennemi maudit : l'étiquette « Maudit » et le halo. Cible : la lueur au sol et le nom en couleur, plus « cible » pour le lecteur d'écran.</li>
@@ -701,8 +774,9 @@ a.story:hover{outline:1.5px solid var(--accent)}
         <li>Ennemi : « Goule maudite, cible, PV 18 sur 24, garde 2 sur 4, intention : double frappe, 2 fois 4 dégâts ».</li>
         <li>Transition de phase : « Phase ennemie. Prépare ta parade. » ou « À toi. Vise et attaque. », annoncé dès le début du temps mort ; les boutons inactifs sont annoncés comme indisponibles.</li>
         <li>Phase ennemie : chaque attaque est annoncée (« Goule : coup imparable, esquive »), et le résultat est lu (« Parade parfaite, contre-attaque 8 dégâts »).</li>
-        <li>Le timing de la parade ne peut pas être rendu accessible au lecteur d'écran sans aide : la parade étant un bonus, l'esquive et la défense passive permettent de survivre. Un futur mode d'aide (anneau, son d'élan) reste possible, il a été écarté comme aide <i>par défaut</i>.</li>
-        <li>Mouvement réduit : pas de secousse ni d'éclat plein écran. Vibration et sons désactivables séparément dans les réglages.</li>
+        <li>Le timing de la parade ne peut pas être rendu accessible au lecteur d'écran sans aide : la parade étant un bonus, l'esquive et la défense passive permettent de survivre. L'anneau est une aide visuelle seulement ; une aide sonore au timing reste hors périmètre.</li>
+        <li>« Aides visuelles » est un groupe de trois boutons radio : « Aides visuelles, Légères, sélectionné, 2 sur 3 », suivi de la phrase du niveau. Les résultats masqués à l'écran sont toujours lus (« Parade, 1 dégât », « Trop tôt, déséquilibré »).</li>
+        <li>Mouvement réduit : amplitudes des ennemis à 25 %, durées identiques, lueur pleine ; pas de secousse ; l'étincelle s'efface sans grandir ; le grand sceau est fixe ; l'anneau reste. Vibration et sons désactivables séparément dans les réglages.</li>
         <li>Pause automatique quand l'app passe en arrière-plan ou qu'un appel arrive.</li>
       </ul>
     </div>
@@ -771,6 +845,10 @@ const P={
  alert:'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M12 7v6M12 16.5v.5',
  clock:'M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9',
  feint:'M4 12c3-6 6-6 8 0s5 6 8 0',
+ hit:'M5 19L19 5',
+ double:'M4 15L13 6M11 19L20 10',
+ raise:'M12 20V7M7 12l5-5 5 5M5 21h14',
+ skip:'M5 5l14 14M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0',
  chain:'M7 9a4 4 0 0 1 0 6M17 9a4 4 0 0 0 0 6M9 12h6',
  guard:'M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6zM9 12l2 2 4-4',
  plus:'M12 5v14M5 12h14',
@@ -780,6 +858,7 @@ const P={
 const ic=(n,s=22,st=2)=>`<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${st}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${P[n]}"/></svg>`;
 const STATUS='<span class="sb-icons" aria-hidden="true"><svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1" fill="currentColor"/><rect x="5" y="5.5" width="3" height="6.5" rx="1" fill="currentColor"/><rect x="10" y="3" width="3" height="9" rx="1" fill="currentColor"/><rect x="15" y="0" width="3" height="12" rx="1" fill="currentColor"/></svg><svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".45"/><rect x="2.5" y="2.5" width="15" height="8" rx="2" fill="currentColor"/><rect x="24.5" y="4.5" width="2" height="4" rx="1" fill="currentColor" opacity=".45"/></svg></span>';
 const SEAL='<svg class="seal" viewBox="0 0 40 40" role="img" aria-label="Sceau rouge : coup imparable"><path d="M20 2l18 18-18 18L2 20z" fill="#FF3B3B" stroke="#FFD0D0" stroke-width="1.5"/><path d="M20 10v13" stroke="#12141B" stroke-width="4.5" stroke-linecap="round"/><circle cx="20" cy="29" r="2.6" fill="#12141B"/></svg>';
+const SEAL_I=SEAL.replace('class="seal"','class="iseal"').replace(/role="img" aria-label="[^"]*"/,'aria-hidden="true"');
 
 /* ---------- Silhouettes ---------- */
 const HEROES=[
@@ -922,19 +1001,53 @@ S.etageLoading=()=>chrome(`<div class="gtop"><span class="iconbtn solid" aria-hi
 
 /* F / P · Combat */
 const DEF_FOES=[
- {k:'goule',name:'Goule',hp:14,mx:20,g:3,gm:3,it:['atk','swords','5'],itn:'Coup simple, 5 dégâts'},
- {k:'goule',name:'Goule maudite',hp:18,mx:25,g:2,gm:4,it:['atk','chain','2×3'],itn:'Double frappe, 2 fois 3 dégâts',cursed:true},
- {k:'spectre',name:'Spectre',hp:12,mx:14,g:1,gm:2,it:['def','shield','Garde'],itn:'Garde : récupère 30 % de sa garde'}
+ {k:'goule',name:'Goule',hp:14,mx:20,g:3,gm:3,it:['atk','hit','5'],itn:'Coup simple, 5 dégâts'},
+ {k:'goule',name:'Goule maudite',hp:18,mx:25,g:2,gm:4,it:['atk','double','3+3','6'],itn:'Double frappe, 2 fois 3 dégâts',cursed:true},
+ {k:'spectre',name:'Spectre',hp:12,mx:14,g:1,gm:2,it:['def','shield','+1'],itn:'Garde : récupère 30 % de sa garde'}
 ];
+/* v3 · Poses clés de l'ennemi actif. Position : 0 = sa place, 1 = contact avec le héros. */
+const HERO_C={x:84,y:330};
+function foeVec(n,i){const cx=n===1?254:n===2?[115,275][i]:69+126*i;const cy=n===1?170:140;return {x:HERO_C.x-cx,y:HERO_C.y-cy};}
+const POSE={
+ avance:{p:.30,s:1,g:0},
+ antic:{p:.16,s:1.18,g:.75},
+ anticEarly:{p:.24,s:1.07,g:.3},
+ hesit:{p:.16,s:1.16,g:.5,trem:true},
+ feint:{p:.74,s:1.15,g:1},
+ between:{p:.20,s:1.12,g:.8},
+ lunge:{p:.85,s:1.18,g:1},
+ recover:{p:.55,s:1.08,g:.4},
+ peril:{p:.16,s:1.26,g:.9,red:true,trem:true}
+};
+function poseCSS(n,i,o){
+ const v=foeVec(n,i),M=reduce?.25:1,sc=1+(o.s-1)*M,jx=(o.jx||0)*M;
+ const fil=o.red?`drop-shadow(0 0 ${(8+14*Math.max(o.g,.4)).toFixed(1)}px rgba(255,59,59,${(.45+.5*o.g).toFixed(2)}))`:o.g>0?`drop-shadow(0 0 ${(4+14*o.g).toFixed(1)}px rgba(242,212,155,${(.2+.75*o.g).toFixed(2)}))`:'';
+ return `transform:translate(${(v.x*o.p*M+jx).toFixed(1)}px,${(v.y*o.p*M).toFixed(1)}px) scale(${sc.toFixed(3)});transition:none;${fil?'filter:'+fil:''}`;
+}
+/* L'anneau : taille 1 = fermé, pile à l'impact. En mouvement réduit, il part de 1,8 au lieu de 2,6. */
+const ringScale=x=>reduce?1+(x-1)*.5:x;
+function ringHTML(r,live){
+ if(!r&&!live)return '';
+ const red=r&&r.red?' red':'',st=r?`transform:scale(${ringScale(r.s).toFixed(3)});opacity:${r.o??1}`:'opacity:0';
+ return `<div class="ttgt${red}" id="ttgt" aria-hidden="true" style="${r?'':'opacity:0'}"></div><div class="tring${red}" id="tring" aria-hidden="true" style="${st}"><i class="cr n"></i><i class="cr e"></i><i class="cr s"></i><i class="cr w"></i></div>`;
+}
+function intentHTML(f,aids){
+ const peril=f.it[1]==='seal',hollow=f.it[1]==='sealHollow';
+ const kindIc=f.it[0]==='atk'&&!peril;
+ const icon=(peril||hollow)?SEAL_I:(aids==='aucune'&&kindIc)?'':ic(f.it[1],15,2.4);
+ const num=(aids==='aucune'&&kindIc)?(f.it[3]||f.it[2]):f.it[2];
+ return `<span class="intent ${f.it[0]} ${peril?'peril':''} ${hollow?'hollow':''}">${icon}${num}</span>`;
+}
 function foesHTML(foes,o={}){
  const n=foes.length;
  return `<div class="foes n${n}">${foes.map((f,i)=>{
   const pips=Array.from({length:f.gm},(_,j)=>`<i class="${j<f.g?'':'e'}"></i>`).join('');
-  const cls=['foe',o.stepin===i?'stepin':'',f.cursed?'cursed':'',o.target===i?'target':'',o.attacker!=null&&o.attacker!==i?'dim':'',o.attacker===i?'attacking':'',f.broken?'staggered':'',f.dead?'dead':''].join(' ');
+  const cls=['foe',o.stepin===i?'stepin':'',f.cursed?'cursed':'',o.target===i?'target':'',o.attacker!=null&&o.attacker!==i?'dim':'',o.attacker===i?'attacking':'',o.attacker===i&&f.it[1]==='seal'?'peril':'',f.broken?'staggered':'',f.dead?'dead':''].join(' ');
+  const pz=o.attacker===i&&o.pose?(typeof o.pose==='string'?POSE[o.pose]:o.pose):null;
   const aria=`${f.name}${o.target===i?', cible':''}, PV ${f.hp} sur ${f.mx}, garde ${f.g} sur ${f.gm}${f.broken?', garde brisée':''}, intention : ${f.itn}`;
   return `<button class="${cls}" data-foe="${i}" ${o.live?'':go('target:'+i)} aria-label="${esc(aria)}" aria-pressed="${o.target===i}">
-   <span class="intent ${f.it[0]}">${ic(f.it[1],15)}${f.it[2]}</span>
-   <span class="fig" data-fig="${i}">${(o.seal===i)?SEAL:''}${FOES[f.k]}<span class="base"></span></span>
+   ${intentHTML(f,o.aids)}
+   <span class="fig" data-fig="${i}" ${pz?`style="${poseCSS(n,i,pz)}"`:''}>${(o.seal===i)?SEAL:''}${FOES[f.k]}<span class="base"></span>${pz&&pz.trem&&!o.live?`<span class="tremk ${pz.red?'red':''}"></span>`:''}</span>
    <span class="nm">${f.name}${f.cursed?'<span class="cur">Maudit</span>':''}</span>
    ${f.broken?'<span class="broken">Garde brisée</span>':`<span class="guard" aria-hidden="true">${pips}</span>`}
    <span class="hpb"><i style="width:${f.hp/f.mx*100}%"></i></span><span class="hpn">${f.hp}/${f.mx}</span></button>`;}).join('')}</div>`;
@@ -959,7 +1072,9 @@ function combat(c={}){
  const streaks=c.streaks?`<svg class="streaks" viewBox="0 0 390 440" aria-hidden="true"><g stroke="#FFF4D6" stroke-width="2" opacity=".8" stroke-linecap="round"><path d="M150 330l-60 20M160 300l-80-10M170 360l-50 40M200 300l20-60M220 330l70-10"/></g></svg>`:'';
  const frozen=c.frozen?`<span class="frozen-tag">arrêt sur image · 90 ms</span>`:c.tag?`<span class="frozen-tag">${c.tag}</span>`:'';
  const h=HEROES[c.hero||0];
- const scene=`<div class="scene ${c.boss?'boss':''} ${c.curseScene?'cursed':''}" id="scene">${phaseLbl}${foesHTML(foes,{target:c.target,attacker:c.attacker,seal:c.seal,live:c.live,stepin:c.stepin})}<div class="hero" id="heroFig">${heroSVG(c.pose||'idle',h.weapon)}</div>${streaks}${flash}${band}${fx}${frozen}${c.coach||''}</div>`;
+ const aids=c.aids||'legeres';
+ const extras=ringHTML(c.ring,c.live&&ph==='enemy')+(c.iflash?'<div class="iflash"></div>':'')+(c.spark?`<div class="spark ${c.spark}"></div>`:'')+(c.dmg?`<div class="dmgf">${c.dmg}</div>`:'');
+ const scene=`<div class="scene ${c.boss?'boss':''} ${c.curseScene?'cursed':''} ${ph==='enemy'?'ep':''}" id="scene">${phaseLbl}${foesHTML(foes,{target:c.target,attacker:c.attacker,seal:c.seal,live:c.live,stepin:c.stepin,aids,pose:c.foePose})}<div class="hero" id="heroFig">${heroSVG(c.pose||'idle',h.weapon)}</div>${extras}${streaks}${flash}${band}${fx}${frozen}${c.coach||''}</div>`;
  const hb=`<div class="herobar">${heroMini({...c,elan:c.elan??2})}</div>`;
  let zone='';
  if(ph==='hero'){
@@ -972,7 +1087,7 @@ function combat(c={}){
  }else if(tr==='enemy'){
   zone=`<div class="zline"></div>${padEnemy(c,true)}`;
  }else if(ph==='enemy'){
-  zone=`<div class="zline">${c.zline||''}</div>${padEnemy(c,false)}`;
+  zone=`<div class="zline"></div>${padEnemy(c,false)}`;
  }else if(ph==='won'){
   zone=`<div class="card" style="display:flex;gap:12px;align-items:center"><span class="arch" style="width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:#0A0C16;border:1.5px solid var(--r-rare);color:var(--r-rare)">${ic('sword',24)}</span><div style="flex:1"><span class="rar rc-rare"><i></i><i></i>Rare</span><div class="g" style="font:700 16px var(--f-game)">Hache</div><div style="font:500 12px Inter;color:var(--a-muted)">Attaque 12 · ton Épée courte : 10 <span class="up">+2</span> · +30 % de garde brisée</div></div></div><div class="row2"><button class="btn ghost" ${go('bienfait')}>Laisser</button><button class="btn pri" ${go('bienfait')}>Équiper</button></div>`;
  }
@@ -1072,7 +1187,12 @@ S.reglages=(c={})=>{
  const off=c.offset??40;
  const pos=50+off/240*100;
  const tg=(l,d,on)=>`<div class="setrow"><div class="t"><b>${l}</b><span>${d}</span></div><button class="sw-t" role="switch" aria-checked="${on}" aria-label="${l}"></button></div>`;
- return chrome(`<div class="hd"><button class="iconbtn back" ${go('back')} aria-label="Retour">${ic('back')}</button><h2 style="font-size:22px">Réglages de la parade</h2></div><div class="body" style="gap:12px"><div class="card"><div class="lbl">Décalage du téléphone</div><p style="margin:6px 0 10px;font:400 14px/1.4 Inter;color:var(--a-muted)">Si tu pares toujours un peu trop tôt ou trop tard, compense ici.</p><div class="offset"><button class="stepbtn" aria-label="Diminuer le décalage de 5 ms">−</button><div class="offv" aria-live="polite"><b>${off>0?'+':''}${off} ms</b><span>${off>0?'tes appuis arrivent en retard':off<0?'tes appuis arrivent en avance':'aucun décalage'}</span></div><button class="stepbtn" aria-label="Augmenter le décalage de 5 ms">+</button></div><div class="scale" aria-hidden="true"><span class="ln"></span><span class="z"></span><span class="k" style="left:${pos}%"></span><span class="lab" style="left:0">−120</span><span class="lab" style="right:0">+120</span></div><button class="btn ghost" ${go('calib')} style="margin-top:12px">Mesurer mon décalage</button></div><div class="card" style="padding:4px 14px">${tg('Vibration','À chaque parade et à chaque coup reçu',true)}${tg('Sons','Parade, parade parfaite, coup reçu',true)}${tg('Secousse de l\'écran','Sur une parade parfaite et un coup reçu',!reduce)}</div><p class="reassure" style="text-align:center">Les fenêtres de parade ne changent pas : seul le décalage se règle.</p></div>`);
+ const aids=c.aids||'legeres';
+ const AIDL={completes:['Complètes','L\'anneau se resserre pendant toute la préparation et se ferme pile à l\'impact.'],legeres:['Légères','L\'anneau n\'apparaît que dans la dernière demi-seconde avant l\'impact.'],aucune:['Aucune','Ni anneau ni icône de coup : lis le geste de l\'ennemi. Le sceau reste.']};
+ const segs=Object.keys(AIDL).map((k,n)=>`<button role="radio" aria-checked="${aids===k}" data-aids="${k}" ${aids===k?'':'tabindex="-1"'} aria-label="${AIDL[k][0]}, ${n+1} sur 3">${AIDL[k][0]}</button>`).join('');
+ const prev=`<div class="aidprev" aria-hidden="true"><span class="hp">${heroSVG('idle',HEROES[0].weapon)}</span>${aids==='aucune'?'<span class="none">Sans anneau</span>':`<div class="ttgt"></div><div class="tring lp-${aids}"></div>`}</div>`;
+ const aidCard=`<div class="card"><div class="lbl" id="aidsL">Aides visuelles</div><div class="segc" role="radiogroup" aria-labelledby="aidsL">${segs}</div><div style="display:flex;gap:12px;align-items:center;margin-top:10px"><p style="margin:0;flex:1;font:400 14px/1.4 Inter;color:var(--a-muted)" aria-live="polite">${AIDL[aids][1]}</p>${prev}</div></div>`;
+ return chrome(`<div class="hd"><button class="iconbtn back" ${go('back')} aria-label="Retour">${ic('back')}</button><h2 style="font-size:22px">Réglages de la parade</h2></div><div class="body" style="gap:12px">${aidCard}<div class="card"><div class="lbl">Décalage du téléphone</div><p style="margin:6px 0 10px;font:400 14px/1.4 Inter;color:var(--a-muted)">Si tu pares toujours un peu trop tôt ou trop tard, compense ici.</p><div class="offset"><button class="stepbtn" aria-label="Diminuer le décalage de 5 ms">−</button><div class="offv" aria-live="polite"><b>${off>0?'+':''}${off} ms</b><span>${off>0?'tes appuis arrivent en retard':off<0?'tes appuis arrivent en avance':'aucun décalage'}</span></div><button class="stepbtn" aria-label="Augmenter le décalage de 5 ms">+</button></div><div class="scale" aria-hidden="true"><span class="ln"></span><span class="z"></span><span class="k" style="left:${pos}%"></span><span class="lab" style="left:0">−120</span><span class="lab" style="right:0">+120</span></div><button class="btn ghost" ${go('calib')} style="margin-top:12px">Mesurer mon décalage</button></div><div class="card" style="padding:4px 14px">${tg('Vibration','À chaque parade et à chaque coup reçu',true)}${tg('Sons','Parade, parade parfaite, coup reçu',true)}${tg('Secousse de l\'écran','Sur une parade parfaite et un coup reçu',!reduce)}</div><p class="reassure" style="text-align:center">Les fenêtres de parade ne changent pas : aides et décalage ne touchent qu'à ce que tu vois et à la mesure de tes appuis.</p></div>`);
 };
 S.calib=(c={})=>{
  const st=c.st||'run';const n=c.n??3;
@@ -1086,8 +1206,10 @@ S.calib=(c={})=>{
 
 /* ---------- Galerie ---------- */
 const coachHero=`<div class="coach" style="top:250px;--ax:75%"><b>Première ascension</b>Touche un ennemi pour le viser, puis Attaquer.</div>`;
-const coachEnemy=`<div class="coach" style="top:250px;--ax:50%"><b>Lis son geste</b>Quand il frappe, touche Parade. S'il porte un sceau rouge, touche Esquive.</div>`;
-const FOES_IMP=DEF_FOES.map((f,i)=>i===2?{...f,it:['atk','swords','9'],itn:'Coup imparable, 9 dégâts'}:f);
+const coachEnemy=`<div class="coach" style="top:250px;--ax:50%"><b>Lis son geste</b>Touche Parade quand l'anneau se ferme. Sceau rouge : Esquive.</div>`;
+const FOES_IMP=DEF_FOES.map((f,i)=>i===2?{...f,it:['atk','seal','9'],itn:'Coup imparable, 9 dégâts'}:f);
+const FOES_DEL=DEF_FOES.map((f,i)=>i===2?{...f,it:['atk','clock','6'],itn:'Coup retardé, 6 dégâts'}:f);
+const FOES_FEINT=DEF_FOES.map((f,i)=>i===2?{...f,it:['atk','feint','6'],itn:'Coup trompeur, 6 dégâts'}:f);
 const TR_ENEMY={phase:'trans',to:'enemy',target:1,lockP:.45,tag:'temps mort · 800 ms'};
 const G=[
  ['t','T1','Faveur pleine',['41','42'],'Hier : 3/3 faites (+2). Le curseur est au cran de droite ; dotation, effets du jour et bénédictions de départ sont listés. Toucher la jauge ouvre son détail.',()=>S.pied({gauge:'p2'})],
@@ -1115,20 +1237,24 @@ const G=[
  ['f','F2','Première utilisation',['31'],'Une seule bulle, au premier combat, puis plus jamais.',()=>S.combat({target:1,coach:coachHero})],
  ['f','F3','Frappe en rythme',['32'],'Le héros lève sa lame ; « Attaquer » devient « Frapper », daté au toucher. Touché au sommet : frappe nette.',()=>S.combat({target:1,phase:'strike',pose:'raise'})],
  ['f','F4','Frappe nette',['32'],'Appui parfait : ×1,5 dégâts et ×1,5 dégâts de garde. Sans appui, le coup part sans bonus et sans pénalité.',()=>S.combat({target:1,phase:'strike',pose:'lean',pressed:true,fx:['perfect','Frappe nette','15 dégâts · garde −18'],flash:true,foes:DEF_FOES.map((f,i)=>i===1?{...f,hp:3,g:0}:f)})],
- ['f','F5','Garde brisée',['32'],'Garde à 0 : l\'ennemi chancelle, perd sa prochaine action et subit ×1,5 dégâts jusqu\'à la fin de la prochaine phase du héros.',()=>S.combat({target:1,foes:DEF_FOES.map((f,i)=>i===1?{...f,hp:9,g:0,broken:true,it:['def','x','Chancelle'],itn:'chancelle, ne peut pas agir'}:f),fx:['good','Garde brisée','Il perd sa prochaine action'],zline:'Cible : <b>Goule maudite</b> · ×1,5 dégâts'})],
+ ['f','F5','Garde brisée',['32'],'Garde à 0 : l\'ennemi chancelle, perd sa prochaine action et subit ×1,5 dégâts jusqu\'à la fin de la prochaine phase du héros.',()=>S.combat({target:1,foes:DEF_FOES.map((f,i)=>i===1?{...f,hp:9,g:0,broken:true,it:['def','skip',''],itn:'chancelle, ne peut pas agir'}:f),fx:['good','Garde brisée','Il perd sa prochaine action'],zline:'Cible : <b>Goule maudite</b> · ×1,5 dégâts'})],
  ['f','F6','Ennemi maudit',['39','41'],'Malédiction du jour : un ennemi maudit par combat. Halo rouge, étiquette « Maudit », yeux rouges.',()=>S.combat({target:1,curseScene:true})],
  ['f','F7','Combat gagné',['37'],'Butin de l\'ennemi : comparaison immédiate, « Équiper » à droite. Or et répit sont crédités.',()=>S.combat({phase:'won',foes:DEF_FOES.map(f=>({...f,dead:true})),fx:['neutral','Combat gagné','+10 Or · répit +8 PV']})],
  ['p','P0','Transition : « Phase ennemie »',['31'],'Juste après la frappe du héros. Annonce pendant 800 ms, son et vibration légère. Esquive et Parade sont déjà là, estompés, cadenas et barre qui se remplit, sans hachures. Un appui est ignoré, sans déséquilibre.',()=>S.combat(TR_ENEMY)],
- ['p','P0b','Avancée',['31'],'Après le temps mort : le premier ennemi s\'avance pendant 400 ms, puis prend son élan. Les boutons sont actifs, les appuis de nouveau jugés. Entre deux ennemis, seulement l\'avancée.',()=>S.combat({phase:'enemy',attacker:1,stepin:1,zline:'<b>Goule maudite</b> s\'avance',tag:'avancée · 400 ms'})],
- ['p','P1','Élan',['31'],'L\'ennemi qui attaque prend son élan, les autres s\'effacent. Seule l\'animation dit quand frapper.',()=>S.combat({phase:'enemy',attacker:1,zline:'<b>Goule maudite</b> : double frappe'})],
- ['p','P2','Coup imparable',['31'],'Le sceau rouge apparaît au-dessus de l\'ennemi pendant l\'élan. Il faut esquiver.',()=>S.combat({phase:'enemy',attacker:2,seal:2,zline:'<b>Spectre</b> : coup imparable',foes:FOES_IMP})],
- ['p','P3','Parade parfaite',['31'],'Arrêt sur image, éclat, secousse, vibration, son. Aucun dégât, puis contre-attaque et +1 Élan.',()=>S.combat({phase:'enemy',attacker:1,pressParry:true,fx:['perfect','Parade parfaite','Contre-attaque · 6 dégâts'],flash:true,streaks:true,frozen:true,pose:'lean',elan:3})],
- ['p','P4','Parade',['31'],'Dans la fenêtre de parade, hors fenêtre parfaite : 25 % des dégâts, pas de contre-attaque.',()=>S.combat({phase:'enemy',attacker:0,pressParry:true,fx:['good','Parade','1 dégât au lieu de 5'],hp:55})],
- ['p','P5','Esquive',['31'],'Sûre, sans contre-attaque. Fonctionne aussi sur un coup normal.',()=>S.combat({phase:'enemy',attacker:2,seal:2,foes:FOES_IMP,pressDodge:true,pose:'dodge',fx:['good','Esquive','Aucun dégât']})],
- ['p','P6','Déséquilibré',['31'],'Appui trop tôt, trop tard ou dans le vide. Boutons grisés et hachurés : chaque appui prolonge les 450 ms.',()=>S.combat({phase:'enemy',attacker:1,off:true,pose:'off',fx:['miss','Trop tôt']})],
- ['p','P7','Touché',['31'],'Coup reçu : vignette rouge, secousse légère, PV qui baissent.',()=>S.combat({phase:'enemy',attacker:0,pose:'hit',flash:'red',fx:['miss','Touché','−4 PV'],hp:52})],
- ['p','P8','Parade sur un coup imparable',['31'],'La parade échoue : dégâts entiers et déséquilibre. Le message dit pourquoi.',()=>S.combat({phase:'enemy',attacker:2,seal:2,foes:FOES_IMP,pose:'hit',flash:'red',pressParry:true,off:true,fx:['miss','Imparable : esquive !','−8 PV'],hp:48})],
- ['p','P9','Première utilisation',['31'],'Au premier coup ennemi seulement. La bulle passe avant le temps mort, qui ne commence qu\'à sa fermeture.',()=>S.combat({phase:'enemy',attacker:1,coach:coachEnemy})],
+ ['p','P0b','Avancée',['31'],'Après le temps mort : l\'ennemi actif s\'avance pendant 400 ms (jusqu\'à 30 % du chemin) et passe au premier plan ; les autres s\'estompent. Noms et ligne d\'information disparaissent. Les appuis sont de nouveau jugés : ici, un appui est dans le vide.',()=>S.combat({phase:'enemy',attacker:1,foePose:'avance',tag:'avancée · 400 ms'})],
+ ['p','P1','Coup simple · anticipation',['31','32'],'Préparation de 1 100 ms (880 à 1 320). La Goule recule, grandit et s\'illumine. En aides Légères, pas encore d\'anneau : il n\'apparaît qu\'à 450 ms de l\'impact.',()=>S.combat({phase:'enemy',attacker:0,foePose:'anticEarly',tag:'Légères · impact dans 700 ms'})],
+ ['p','P10','Coup simple · anneau',['32'],'Dernière demi-seconde : l\'anneau apparaît à 2,6 fois sa taille et se resserre à vitesse constante. Il se ferme sur le contour en pointillés pile à l\'impact, à la fin de la ruée de 80 ms.',()=>S.combat({phase:'enemy',attacker:0,foePose:'antic',ring:{s:1.9,o:.75},tag:'Légères · impact dans 250 ms'})],
+ ['p','P11','Double frappe · second anneau',['32'],'Deux ruées, sans détente entre elles : après le premier impact, la Goule ne revient qu\'à mi-chemin, lueur tenue. Le second anneau apparaît quand le premier s\'efface, déjà en partie fermé, et se ferme 420 ms après le premier impact.',()=>S.combat({phase:'enemy',attacker:1,foePose:'between',ring:{s:1.55,o:.85},tag:'entre les deux impacts'})],
+ ['p','P12','Coup retardé · hésitation',['32'],'Préparation de 1 700 ms : l\'élan arrive vite, puis le Spectre se suspend en tremblant. « Ça tremble, ce n\'est pas encore. » Pas d\'anneau à ce stade en aides Légères.',()=>S.combat({phase:'enemy',attacker:2,foes:FOES_DEL,foePose:'hesit',tag:'Légères · hésitation'})],
+ ['p','P13','Coup trompeur · fausse amorce',['32'],'Aides Complètes. Une vraie ruée qui s\'arrête court, sans éclair, sans son, sans vibration. L\'anneau continue de se resserrer sans se fermer : ne touche pas. En aides Légères, l\'anneau n\'apparaît qu\'après la fausse amorce.',()=>S.combat({phase:'enemy',attacker:2,foes:FOES_FEINT,foePose:'feint',ring:{s:1.75,o:.7},aids:'completes',tag:'Complètes · fausse amorce'})],
+ ['p','P2','Coup imparable',['31','32'],'Grand sceau qui bat au-dessus du Spectre, silhouette plus grosse, rouge et tremblante. Anneau rouge à quatre crans en losange : il se ferme à l\'instant de l\'esquive. Le sceau de l\'intention reste.',()=>S.combat({phase:'enemy',attacker:2,seal:2,foes:FOES_IMP,foePose:'peril',ring:{s:1.6,o:.8,red:true},tag:'Légères · impact dans 170 ms'})],
+ ['p','P3','Parade parfaite',['31','32'],'Arrêt sur image de 90 ms, étincelle dorée à rayons, éclair, secousse, vibration forte, son. Un seul mot : « Parfait » (« Parfait · contre-attaque » quand la contre-attaque part). +1 Élan.',()=>S.combat({phase:'enemy',attacker:1,foePose:'lunge',pressParry:true,fx:['perfect','Parfait'],spark:'gold',iflash:true,frozen:true,pose:'counter',elan:3})],
+ ['p','P4','Bonne parade',['31','32'],'Dans la fenêtre de parade, hors fenêtre parfaite : 25 % des dégâts. Aucun texte : l\'étincelle bleu acier, plus petite et sans rayons, et le chiffre au-dessus du héros. Le lecteur d\'écran dit « Parade, 1 dégât ».',()=>S.combat({phase:'enemy',attacker:0,foePose:'lunge',pressParry:true,spark:'blue',dmg:'−1',pose:'counter',hp:55})],
+ ['p','P5','Esquive',['31','32'],'Le héros fait un pas de côté ; l\'ennemi frappe dans le vide. Aucun texte, aucun chiffre. Sûre, sans contre-attaque, aussi sur un coup normal.',()=>S.combat({phase:'enemy',attacker:2,seal:2,foes:FOES_IMP,foePose:{...POSE.lunge,red:true},pressDodge:true,pose:'dodge',iflash:true})],
+ ['p','P6','Déséquilibré',['31','32'],'Appui trop tôt, trop tard, dans le vide ou sur la fausse amorce. Seul texte : « Déséquilibré » au-dessus des boutons grisés et hachurés ; chaque appui prolonge les 450 ms. Le lecteur d\'écran précise « Trop tôt ».',()=>S.combat({phase:'enemy',attacker:1,foePose:'antic',off:true,pose:'off'})],
+ ['p','P7','Touché',['31','32'],'Sans appui valide : vignette rouge, secousse légère, pose touché, chiffre au-dessus du héros, PV qui baissent. Pas de mot « Touché ».',()=>S.combat({phase:'enemy',attacker:0,foePose:'recover',pose:'hit',flash:'red',dmg:'−4',hp:52})],
+ ['p','P8','Parade sur un coup imparable',['31','32'],'La parade échoue : déséquilibre puis dégâts entiers. Le grand sceau bat plus fort. Le lecteur d\'écran dit « Imparable : la parade échoue, 8 dégâts ».',()=>S.combat({phase:'enemy',attacker:2,seal:2,foes:FOES_IMP,foePose:{...POSE.lunge,red:true},pose:'hit',flash:'red',pressParry:true,off:true,dmg:'−8',hp:48})],
+ ['p','P9','Première utilisation',['31'],'Au premier coup ennemi seulement. La bulle passe avant le temps mort, qui ne commence qu\'à sa fermeture. Son texte suit les aides visuelles ; avec « Aucune » : « Quand il frappe, touche Parade. S\'il porte un sceau rouge, touche Esquive. »',()=>S.combat({phase:'enemy',attacker:1,coach:coachEnemy})],
  ['b','B1','Trois bienfaits',['36','42'],'Aucun n\'est choisi au départ. La relance (dotation de la faveur) est à gauche, avec le nombre restant.',()=>S.bienfait({rerolls:2})],
  ['b','B2','Bienfait choisi',['36'],'La carte touchée s\'illumine ; « Prendre » s\'active.',()=>S.bienfait({sel:1,rerolls:2})],
  ['b','B3','Sans relance',['36'],'Plus de relance : le bouton reste visible, inactif, pour que le joueur sache que la faveur en donne.',()=>S.bienfait({sel:0,rerolls:0})],
@@ -1145,7 +1271,7 @@ const G=[
  ['l','L7','Événement',['39'],'Texte court, ton sérieux, deux grandes portes de choix. Un choix trop cher dit ce qui manque.',()=>S.evenement({})],
  ['l','L8','Captif libéré',['40'],'Au feu de camp de la halte, sans condition. Il rejoindra le camp, même si l\'ascension échoue.',()=>S.captif({})],
  ['x','X1','Boss',['33'],'Présentation plein écran, nom en grand.',()=>S.bossIntro()],
- ['x','X2','Combat de boss',['33'],'Un seul ennemi, garde plus longue, même zone d\'action. Jamais maudit.',()=>S.combat({boss:true,phase:'enemy',attacker:0,seal:0,foes:[{k:'gardienne',name:'La Gardienne',hp:104,mx:160,g:4,gm:6,it:['atk','clock','12'],itn:'Faux lente, 12 dégâts'}],zline:'<b>La Gardienne</b> : coup imparable'})],
+ ['x','X2','Combat de boss',['33'],'Un seul ennemi, garde plus longue, même zone d\'action. Jamais maudit. Mêmes poses et même anneau que les ennemis ordinaires.',()=>S.combat({boss:true,phase:'enemy',attacker:0,seal:0,foePose:'peril',ring:{s:1.4,o:.85,red:true},foes:[{k:'gardienne',name:'La Gardienne',hp:104,mx:160,g:4,gm:6,it:['atk','seal','12'],itn:'Coup imparable, 12 dégâts'}],zline:'<b>La Gardienne</b> : coup imparable'})],
  ['x','X3','Boss vaincu',['38'],'Éclats en grand, gardés pour toujours. Or, coffre et bienfait. Continuer ou faire une pause.',()=>S.bossVaincu()],
  ['x','X4','Chute, avec seconde chance',['42'],'Faveur pleine : se relever avec 50 % des PV max, une fois par ascension.',()=>S.chute({second:true})],
  ['x','X5','Chute',['33','42'],'Sans seconde chance : un seul bouton.',()=>S.chute({})],
@@ -1159,10 +1285,13 @@ const G=[
  ['z','Z1','Pause',['34'],'Possible à tout moment, même pendant un élan ennemi ou un temps mort. Le combat est figé.',()=>S.pause({})],
  ['z','Z2','Sauvegarde en échec',['34'],'Rare. On ne propose pas de quitter tant que la sauvegarde n\'a pas abouti.',()=>S.pause({saveErr:true})],
  ['z','Z3','Reprise',['34'],'Le compte à rebours de 3 s remplace le temps mort : annonce de la phase en cours, boutons inactifs, appuis ignorés sans déséquilibre. En phase ennemie, l\'avancée suit, puis l\'attaque recommence depuis son élan.',()=>S.reprise({n:3})],
- ['r','R1','Réglages de la parade',['34'],'Décalage au pas de 5 ms, boutons de 56 px. Vibration, sons et secousse séparés.',()=>S.reglages({offset:15})],
+ ['r','R1','Réglages de la parade',['34'],'En tête, les aides visuelles : trois choix de 48 px, Légères par défaut, la phrase du niveau et un aperçu de l\'anneau en boucle. Puis le décalage au pas de 5 ms et les interrupteurs. Gardés d\'une ascension à l\'autre ; ouverts depuis la pause et le pied de la tour.',()=>S.reglages({offset:15})],
  ['r','R2','Mesure en cours',['34'],'Huit coups réguliers, un seul gros bouton.',()=>S.calib({n:3})],
  ['r','R3','Mesure terminée',['34'],'Résultat lisible, à appliquer ou non.',()=>S.calib({st:'done',n:8})],
- ['r','R4','Mesure impossible',['34'],'Appuis trop irréguliers (bus qui freine) : le réglage précédent est conservé.',()=>S.calib({st:'err',n:8})]
+ ['r','R4','Mesure impossible',['34'],'Appuis trop irréguliers (bus qui freine) : le réglage précédent est conservé.',()=>S.calib({st:'err',n:8})],
+ ['r','R5','Aides Complètes',['34','32'],'Double frappe, 600 ms avant le premier impact. L\'anneau est là depuis le début de la préparation et se resserre à vitesse constante. Icônes des coups visibles.',()=>S.combat({phase:'enemy',attacker:1,foePose:'antic',ring:{s:1.96,o:.72},aids:'completes',tag:'Complètes · impact dans 600 ms'})],
+ ['r','R6','Aides Légères (par défaut)',['34','32'],'Même instant : pas encore d\'anneau, il n\'apparaîtra qu\'à 450 ms de l\'impact. Icônes des coups visibles.',()=>S.combat({phase:'enemy',attacker:1,foePose:'antic',aids:'legeres',tag:'Légères · impact dans 600 ms'})],
+ ['r','R7','Aucune aide',['34','32'],'Même instant : ni anneau ni icône de coup, seulement les dégâts (total de la double frappe : 6). L\'animation, le son et le sceau d\'un coup imparable restent.',()=>S.combat({phase:'enemy',attacker:1,foePose:'antic',aids:'aucune',tag:'Aucune · impact dans 600 ms'})]
 ];
 const STITLE={31:'Prototype jouable du combat',32:'Combat complet',33:'Commencer une ascension',34:'Pause, reprise et réglages',35:'Choisir son héros',36:'Choisir un bienfait',37:'Objets, coffres et combinaisons',38:'Trois paliers et les Éclats',39:'Lieux de la tour',40:'Le camp et les captifs',41:'La jauge au pied de la tour',42:'La faveur'};
 G.forEach(([grp,id,state,st,note,fn])=>{
@@ -1179,7 +1308,10 @@ document.getElementById('demoComp').innerHTML=`
  <div class="demo-cell" style="width:300px">Jauge (faveur pleine)<div style="width:300px">${gaugeBlock('p2')}</div></div>
  <div class="demo-cell" style="width:300px">Transition de phase : boutons inactifs, sans hachures<div class="zone" style="padding:34px 0 0;flex:none;width:300px">${padEnemy({lockP:.5},true)}</div></div>
  <div class="demo-cell" style="width:300px">Boutons de la phase ennemie<div class="pad" style="width:300px"><button class="act sec" tabindex="-1">${ic('dodge',26)}Esquive</button><button class="act pri" tabindex="-1">${ic('shield',26)}Parade</button></div></div>
- <div class="demo-cell" style="width:170px">Ennemi : intention, garde, PV<div class="foes n1" style="position:static"><div class="foe target cursed" style="width:170px"><span class="intent atk">${ic('chain',15)}2×4</span><span class="fig">${SEAL}${FOES.goule}<span class="base"></span></span><span class="nm">Goule<span class="cur">Maudit</span></span><span class="guard"><i></i><i></i><i class="e"></i><i class="e"></i></span><span class="hpb"><i style="width:70%"></i></span></div></div></div>
+ <div class="demo-cell" style="width:170px">Ennemi : intention, garde, PV<div class="foes n1" style="position:static"><div class="foe target cursed" style="width:170px"><span class="intent atk">${ic('double',15,2.4)}4+4</span><span class="fig">${SEAL}${FOES.goule}<span class="base"></span></span><span class="nm">Goule<span class="cur">Maudit</span></span><span class="guard"><i></i><i></i><i class="e"></i><i class="e"></i></span><span class="hpb"><i style="width:70%"></i></span></div></div></div>
+ <div class="demo-cell" style="width:250px">Intentions : icône et nombre<div style="display:flex;flex-direction:row;flex-wrap:wrap;gap:6px;width:auto;padding:0;cursor:default" class="foe" aria-hidden="true">${intentHTML({it:['atk','hit','5']})}${intentHTML({it:['atk','double','3+3']})}${intentHTML({it:['atk','clock','6']})}${intentHTML({it:['atk','feint','6']})}${intentHTML({it:['atk','seal','9']})}${intentHTML({it:['def','shield','+4']})}${intentHTML({it:['def','heart','+11']})}${intentHTML({it:['def','raise','']})}${intentHTML({it:['def','sealHollow','']})}${intentHTML({it:['def','skip','']})}</div><span style="font-size:12px">Coup simple, double frappe, retardé, trompeur, imparable · Garde, Soin, Relever, coup imparable à venir, n'agit pas</span></div>
+ <div class="demo-cell" style="width:200px">Anneau, normal et imparable<div style="position:relative;height:110px;background:#0E1120;border-radius:14px"><div class="ttgt" style="left:50px;top:55px"></div><div class="tring" style="left:50px;top:55px;transform:scale(1.25)"><i class="cr n"></i><i class="cr e"></i><i class="cr s"></i><i class="cr w"></i></div><div class="ttgt red" style="left:150px;top:55px"></div><div class="tring red" style="left:150px;top:55px;transform:scale(1.25)"><i class="cr n"></i><i class="cr e"></i><i class="cr s"></i><i class="cr w"></i></div></div></div>
+ <div class="demo-cell" style="width:200px">Étincelles : parfaite, bonne<div style="position:relative;height:110px;background:#0E1120;border-radius:14px;overflow:hidden"><div class="spark gold" style="left:52px;top:55px"></div><div class="spark blue" style="left:150px;top:55px"></div></div></div>
  <div class="demo-cell" style="width:240px">Rareté<div style="display:flex;flex-direction:column;gap:6px">${rar('common')}${rar('rare')}${rar('epic')}${rar('legend')}</div>Monnaies<div style="display:flex;gap:6px"><span class="chipr shard">${ic('shard',16)}46 Éclats</span><span class="chipr coin">${ic('coin',16)}40</span></div>Ressources de faveur<div style="display:flex;gap:6px"><span class="chipr key">${ic('key',16)}2</span><span class="eff">${ic('reroll',16)}1 relance</span></div></div>`;
 
 /* ============ PROTOTYPE ============ */
@@ -1188,7 +1320,7 @@ const live=document.getElementById('live');const srLive=document.getElementById(
 const WIN={perfect:60,good:160,off:450,trans:800,step:400};
 const FATIGUE={m1:.9,m2:.8};
 let L;
-function resetL(){const g=L?L.gauge:'p2';L={gauge:g,hero:0,inRun:false,shards:34,keys:0,rerolls:0,coins:0,hp:80,hpMax:80,offset:0,route:'pied',prev:'pied',boonSel:null,bought:{},combat:null,etage:1,palier:1,elanStart:1,freed:false};}
+function resetL(){const g=L?L.gauge:'p2';L={gauge:g,hero:0,inRun:false,shards:34,keys:0,rerolls:0,coins:0,hp:80,hpMax:80,offset:0,aids:'legeres',route:'pied',prev:'pied',boonSel:null,bought:{},combat:null,etage:1,palier:1,elanStart:1,freed:false};}
 function say(t){srLive.textContent='';setTimeout(()=>srLive.textContent=t,30);}
 function render(html,camp){live.className='screen app'+(camp?' camp':'');live.innerHTML=html;}
 const SORTIES={2:['combat','event','altar'],3:['elite','combat','shop'],4:['combat','rest','event']};
@@ -1229,7 +1361,7 @@ function show(r){
   case 'boutique':render(S.boutique({shards:L.shards,bought:L.bought,owned:true,toast:L.toast||''}),true);L.toast='';break;
   case 'pause':render(S.pause({...ctx,foes:C?C.foes:undefined,target:C?C.target:1,elan:C?C.elan:undefined}));break;
   case 'reprise':startCountdown();break;
-  case 'reglages':render(S.reglages({offset:L.offset}));wireSettings();break;
+  case 'reglages':render(S.reglages({offset:L.offset,aids:L.aids}));wireSettings();break;
   case 'calib':render(S.calib({n:0}));wireCalib();break;
   case 'combat':if(C&&L.combat&&C.phase!=='won'){startCountdown();}else startCombat('normal');break;
   case 'elite':startCombat('elite');break;
@@ -1294,7 +1426,8 @@ live.addEventListener('pointerdown',e=>{
 });
 function wireSettings(){
  const btns=live.querySelectorAll('.stepbtn');
- const upd=()=>{render(S.reglages({offset:L.offset}));wireSettings();};
+ const upd=()=>{render(S.reglages({offset:L.offset,aids:L.aids}));wireSettings();};
+ live.querySelectorAll('.segc [data-aids]').forEach(b=>b.addEventListener('click',()=>{setAids(b.dataset.aids);upd();const f=live.querySelector(`.segc [data-aids="${L.aids}"]`);if(f)f.focus();}));
  btns[0].addEventListener('click',()=>{L.offset=Math.max(-120,L.offset-5);upd();});
  btns[1].addEventListener('click',()=>{L.offset=Math.min(120,L.offset+5);upd();});
  live.querySelectorAll('.sw-t').forEach(s=>s.addEventListener('click',()=>s.setAttribute('aria-checked',s.getAttribute('aria-checked')!=='true')));
@@ -1325,11 +1458,11 @@ function startCountdown(){
 
 /* ---------- Combat jouable ---------- */
 const PAT={
- simple:{name:'coup simple',ic:'swords',hits:[0],wind:1100},
- double:{name:'double frappe',ic:'chain',hits:[0,420],wind:1000},
+ simple:{name:'coup simple',ic:'hit',hits:[0],wind:1100},
+ double:{name:'double frappe',ic:'double',hits:[0,420],wind:1000},
  delayed:{name:'coup retardé',ic:'clock',hits:[0],wind:1700},
  feint:{name:'coup trompeur',ic:'feint',hits:[0],wind:1600,feint:true},
- perilous:{name:'coup imparable',ic:'swords',hits:[0],wind:1300,perilous:true}
+ perilous:{name:'coup imparable',ic:'seal',hits:[0],wind:1300,perilous:true}
 };
 const FOE_DEF={
  goule:{name:'Goule',hp:20,gm:3,moves:[['simple',5],['double',3]]},
@@ -1350,7 +1483,7 @@ function startCombat(kind){
  drawCombat({phase:'hero'});loop();
  say('Combat. Phase du héros. Cible : '+C.foes[0].name);
 }
-function nextIntent(f){const m=f.moves[Math.floor(Math.random()*f.moves.length)];const p=PAT[m[0]];const d=Math.floor(m[1]*f.dm);f.pat={...p,dmg:d};f.it=['atk',p.ic,p.hits.length>1?p.hits.length+'×'+d:String(d)];f.itn=p.name+', '+(p.hits.length>1?p.hits.length+' fois ':'')+d+' dégâts';f.wind=null;}
+function nextIntent(f){const m=f.moves[Math.floor(Math.random()*f.moves.length)];const p=PAT[m[0]];const d=Math.floor(m[1]*f.dm);f.pat={...p,dmg:d};f.it=['atk',p.ic,p.hits.length>1?d+'+'+d:String(d),String(d*p.hits.length)];f.itn=p.name+', '+(p.hits.length>1?p.hits.length+' fois ':'')+d+' dégâts';f.wind=null;}
 function ctxC(extra={}){return {...ctxL(),boss:C.boss,foes:C.foes.map(f=>({...f})),target:C.target,live:true,elan:C.elan,...extra};}
 function drawCombat(extra){render(S.combat(ctxC(extra)));wireCombat();}
 /* Reprise après pause : le compte à rebours a tenu lieu de temps mort (C12, A9) */
@@ -1370,7 +1503,7 @@ function phaseExtra(){
  if(C.phase==='strike')return {phase:'strike',pose:'raise'};
  if(C.phase==='trans')return {phase:'trans',to:C.to};
  const ai=C.queue.length?C.queue[0]:null;
- return {phase:'enemy',attacker:ai,stepin:C.step?ai:undefined,zline:ai!=null?`<b>${C.foes[ai].name}</b> : ${C.foes[ai].itn}`:''};
+ return {phase:'enemy',attacker:ai,seal:C.attack&&C.attack.p.perilous?ai:undefined};
 }
 /* Appuis : la défense et la frappe sont datées au toucher ; les actions de la phase du héros se valident au relâcher. */
 function wireCombat(){
@@ -1461,7 +1594,7 @@ function endTrans(){
 function startStep(){
  const i=C.queue[0];C.step={until:C.clock+WIN.step,i};
  drawCombat(phaseExtra());
- const z=live.querySelector('.zline');if(z)z.innerHTML=`<b>${C.foes[i].name}</b> s'avance`;
+ say(C.foes[i].name+' s\'avance');
 }
 function win(){
  C.phase='won';const kind=C.kind;L.combat=null;
@@ -1475,32 +1608,32 @@ function startAttack(){
  if(!f.wind)f.wind=p.wind*(0.8+Math.random()*0.4);
  const wind=f.wind;
  C.step=null;
- C.attack={i,p,start:C.clock,wind,impacts:p.hits.map(h=>C.clock+wind+h),res:p.hits.map(()=>false),perfect:0};
- drawCombat({phase:'enemy',attacker:i,seal:p.perilous?i:undefined,zline:`<b>${f.name}</b> : ${p.name}`});
+ C.attack={i,p,start:C.clock,wind,impacts:p.hits.map(h=>C.clock+wind+h),res:p.hits.map(()=>false),perfect:0,feintAt:p.feint?C.clock+wind*(.35+Math.random()*.25):null,flashed:p.hits.map(()=>false)};
+ drawCombat({phase:'enemy',attacker:i,seal:p.perilous?i:undefined});
  if(p.perilous){tone(330,.35,'sawtooth',.06);say(f.name+' : coup imparable, esquive');}else say(f.name+' : '+p.name);
 }
 function press(kind,now){
  const dodge=kind==='dodge';
- const whiff=t=>{C.offUntil=now+WIN.off;markOff(true);fx('miss',t);tone(140,.12,'square',.05);setHeroPose('off');};
- if(now<C.offUntil){C.offUntil=now+WIN.off;markOff(true);fx('miss','Déséquilibré');return;}
+ const whiff=t=>{C.offUntil=now+WIN.off;markOff(true);say(t+', déséquilibré');tone(140,.12,'square',.05);setHeroPose('off');};
+ if(now<C.offUntil){C.offUntil=now+WIN.off;markOff(true);return;}
  const a=C.attack;
  if(!a){whiff('Dans le vide');return;}
  const k=a.res.findIndex(r=>!r);if(k<0){whiff('Dans le vide');return;}
  const delta=now+L.offset-a.impacts[k];const ad=Math.abs(delta);
  const res=ad<=WIN.perfect?'perfect':ad<=WIN.good?'good':null;
- if(!res){whiff(delta<0?'Trop tôt':'Trop tard');return;}
- if(!dodge&&a.p.perilous){a.res[k]=true;hurt(a.p.dmg,1,'Imparable : esquive !');C.offUntil=now+WIN.off;markOff(true);return;}
+ if(!res){whiff(a.feintAt!=null&&delta<0&&Math.abs(now-a.feintAt)<350?'Fausse amorce':delta<0?'Trop tôt':'Trop tard');return;}
+ if(!dodge&&a.p.perilous){a.res[k]=true;C.offUntil=now+WIN.off;markOff(true);setHeroPose('off');hurt(a.p.dmg,1,'Imparable : la parade échoue');return;}
  a.res[k]=true;
- if(dodge){setHeroPose('dodge');fx('good',res==='perfect'?'Esquive parfaite':'Esquive','Aucun dégât');tone(520,.1);vibe(12);
+ if(dodge){setHeroPose('dodge');heroDodge();say('Esquive');tone(520,.1);vibe(12);
   if(L.hero===1)addElan(1);
   if(C.shadow){C.shadow=false;const d=damageFoe(a.i,3,1);setTimeout(()=>fx('perfect','Pas de l\'ombre','Contre-attaque · '+d+' dégâts'),250);}
   return;}
  if(res==='perfect'){
-  a.perfect++;C.freezeUntil=performance.now()+90;flash();shake();vibe([20,30,40]);tone(1320,.18,'triangle',.16);tone(660,.3,'sine',.08);
+  a.perfect++;C.freezeUntil=performance.now()+90;spark('gold');shake();vibe([20,30,40]);tone(1320,.18,'triangle',.16);tone(660,.3,'sine',.08);
   setHeroPose('counter');addElan(1);
   const last=a.perfect===a.res.length;
   const h=HEROES[L.hero];const cd=Math.floor((h.weapon==='daggers'?6:10)*.5*(L.hero===0?1.3:1));
-  fx('perfect','Parade parfaite',last?'Contre-attaque · '+cd+' dégâts':'');
+  fx('perfect',last?'Parfait · contre-attaque':'Parfait');say('Parade parfaite'+(last?'. Contre-attaque, '+cd+' dégâts':''));
   if(last)setTimeout(()=>{if(C&&C.foes[a.i])damageFoe(a.i,cd,1);},200);
  }else{hurt(a.p.dmg,.25,'Parade');setHeroPose('lean');}
 }
@@ -1508,10 +1641,50 @@ function hurt(D,factor,label){
  const red=L.hero===0?.1:0;let f=factor;if(C.rampart){f*=.5;C.rampart=false;}
  const d=Math.max(1,Math.floor(D*f*(1-red)));
  L.hp=Math.max(0,L.hp-d);updateBars();
- if(label==='Parade'){fx('good','Parade',d+' dégât'+(d>1?'s':'')+' au lieu de '+D);tone(520,.12);vibe(15);}
- else{setHeroPose('hit');flash(true);shake();fx('miss',label||'Touché','−'+d+' PV');tone(110,.2,'sawtooth',.07);vibe(60);}
+ if(label==='Parade'){spark('blue');dmgFloat('−'+d);say('Parade, '+d+' dégât'+(d>1?'s':''));tone(520,.12);vibe(15);}
+ else{setHeroPose('hit');flash(true);shake();dmgFloat('−'+d);say((label||'Touché')+', '+d+' dégât'+(d>1?'s':''));tone(110,.2,'sawtooth',.07);vibe(60);}
  if(L.hp<=0){C.attack=null;C.queue.shift();C.phase='enemy';const r=L.route;setTimeout(()=>{if(L.route===r)show('chute');},600);stopCombat();}
 }
+/* v3 · Poses clés et anneau dans le prototype (spec « Aides visuelles ») */
+const ease=x=>x<0?0:x>1?1:x*x*(3-2*x);
+const clamp01=x=>Math.max(0,Math.min(1,x));
+function poseAt(a,t){
+ const ADV=.30,BACK=.14,HIT=.85,LG=80,REC=170,k=a.p,red=!!k.perilous;
+ let p=ADV,s=1,g=0,jx=0;const imps=a.impacts;let j=-1;
+ for(let n=0;n<imps.length;n++){if(t<imps[n]+REC){j=n;break;}}
+ if(j<0){const last=imps[imps.length-1]+REC;return {p:ADV*(1-ease((t-last)/250)),s:1,g:0,red};}
+ const it=imps[j],segS=j===0?a.start:imps[j-1]+REC,rest=j<imps.length-1?ADV-.06:ADV;
+ if(t>=it){const r=clamp01((t-it)/REC);return {p:HIT-(HIT-rest)*ease(r),s:1.18-.18*r,g:1-r,red};}
+ if(t>=it-LG){const l=(t-(it-LG))/LG;return {p:(ADV-BACK)+(HIT-(ADV-BACK))*l*l,s:1.18,g:1,red};}
+ const q=clamp01((t-segS)/Math.max(1,it-LG-segS));
+ if(k.name==='coup retardé'){const q2=clamp01(q/.45);p=ADV-BACK*ease(q2);s=1+.16*q2;g=.15+.4*q2;if(q>.45){jx=Math.sin(t*.09)*3;s=1.16+.02*Math.sin(t*.03);g=.5;}}
+ else if(j===1){p=rest-(rest-(ADV-BACK))*ease(q);s=1.12;g=.8;}
+ else{p=ADV-BACK*ease(q);s=1+(red?.26:.18)*q;g=.15+.6*q*q;}
+ if(red)jx=Math.sin(t*.12)*2.2*q;
+ if(a.feintAt!=null&&t>=a.feintAt-140&&t<a.feintAt+190){const f=t-a.feintAt,fp=f<0?Math.pow(1+f/140,2):1-ease(f/190);p=(ADV-BACK)+(.74-(ADV-BACK))*fp;s=1.15;g=Math.max(g,fp);}
+ return {p,s,g,red,jx};
+}
+function drawRing(a,t){
+ const r=live.querySelector('#tring'),tg=live.querySelector('#ttgt');if(!r||!tg)return;
+ let show=false;
+ if(L.aids!=='aucune'){
+  const j=a.impacts.findIndex(im=>t<im+120);
+  if(j>=0){
+   const it=a.impacts[j],prev=j===0?a.start:a.impacts[j-1]+120,st0=L.aids==='completes'?prev:Math.max(prev,it-450);
+   if(t>=st0){show=true;let sc,op;
+    if(t<it){const q=(t-st0)/Math.max(1,it-st0);sc=1+1.6*(1-q);op=.3+.7*q;}else{const e=(t-it)/120;sc=1-.12*e;op=1-e;}
+    r.style.transform=`scale(${ringScale(sc).toFixed(3)})`;r.style.opacity=op.toFixed(2);tg.style.opacity=t<it?.75:0;
+    const red=!!a.p.perilous;r.classList.toggle('red',red);tg.classList.toggle('red',red);}
+  }
+ }
+ if(!show){r.style.opacity=0;tg.style.opacity=0;}
+}
+function addFx(cls,html,ms){const sc=live.querySelector('#scene');if(!sc)return;const d=document.createElement('div');d.className=cls;if(html)d.textContent=html;sc.appendChild(d);setTimeout(()=>d.remove(),ms);}
+function spark(kind){addFx('spark anim '+kind,'',450);}
+function impactFlash(){addFx('iflash anim','',180);}
+function dmgFloat(t){addFx('dmgf anim',t,1000);}
+function heroDodge(){const h=live.querySelector('#heroFig');if(!h||!h.animate)return;const dx=reduce?-13:-42;h.animate([{transform:'none'},{transform:`translateX(${dx}px)`},{transform:'none'}],{duration:300,easing:'ease-out'});}
+function setAids(k){L.aids=k;document.querySelectorAll('[data-aids].pbtn').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.aids===k)));}
 function markOff(on){const pad=live.querySelector('.pad');if(!pad)return;pad.classList.toggle('off',on);let t=pad.querySelector('.offtag');if(on&&!t){t=document.createElement('span');t.className='offtag';t.textContent='Déséquilibré';pad.prepend(t);}if(!on&&t)t.remove();}
 function loop(){
  stopCombat();
@@ -1531,21 +1704,16 @@ function loop(){
   }
   if(C.phase==='enemy'){
    if(C.offUntil&&now>=C.offUntil){C.offUntil=0;markOff(false);setHeroPose('idle');}
+   if(C.step){const fig=live.querySelector(`[data-fig="${C.step.i}"]`);if(fig){const q=1-Math.max(0,C.step.until-now)/WIN.step;fig.style.cssText=poseCSS(C.foes.length,C.step.i,{p:.30*ease(q),s:1,g:0});}}
    if(C.step&&now>=C.step.until)startAttack();
    const a=C.attack;
    if(a){
     a.impacts.forEach((imp,k)=>{if(!a.res[k]&&now-imp>WIN.good+Math.max(0,-L.offset)){a.res[k]=true;hurt(a.p.dmg,1);}});
     if(!C||C.phase!=='enemy'||!C.attack){raf=0;return;}
     const fig=live.querySelector(`[data-fig="${a.i}"]`);
-    if(fig){
-     const k=a.res.findIndex(r=>!r);const imp=k>=0?a.impacts[k]:a.impacts[a.impacts.length-1];
-     const until=imp-now;const p=Math.max(0,Math.min(1,1-until/a.wind));
-     let lean=-10*Math.min(1,p*1.15),ty=-8*Math.min(1,p*1.2),sc=1+.08*p;
-     if(a.p.feint&&p>.35&&p<.6){const s2=Math.sin((p-.35)/.25*Math.PI);ty=14*s2;lean=8*s2;}
-     if(until<140&&until>-120){const q=1-Math.abs(until)/140;ty=34*q;lean=14*q;sc=1.15;}
-     fig.style.transform=`translateY(${ty}px) rotate(${lean}deg) scale(${sc})`;
-     const seal=fig.querySelector('.seal');if(seal)seal.style.opacity=now-a.start<750?1:Math.max(0,1-(now-a.start-750)/200);
-    }
+    if(fig)fig.style.cssText=poseCSS(C.foes.length,a.i,poseAt(a,now));
+    a.impacts.forEach((imp,k)=>{if(!a.flashed[k]&&now>=imp){a.flashed[k]=true;impactFlash();}});
+    drawRing(a,now);
     if(a.res.every(Boolean)&&now>a.impacts[a.impacts.length-1]+WIN.good+300){
      nextIntent(C.foes[a.i]);C.queue.shift();C.attack=null;
      if(C.foes.every(x=>x.hp<=0)){win();raf=0;return;}
@@ -1578,7 +1746,8 @@ document.querySelectorAll('[data-sim]').forEach(b=>b.addEventListener('click',()
  if(s==='loading')show('loading');
  if(s==='error')show('error');
 }));
-resetL();document.querySelector('[data-g="p2"]').setAttribute('aria-pressed','true');show('pied');
+document.querySelectorAll('.pbtn[data-aids]').forEach(b=>b.addEventListener('click',()=>{setAids(b.dataset.aids);if(L.route==='reglages')show('reglages');else if(C&&L.route==='combat')drawCombat(phaseExtra());}));
+resetL();document.querySelector('[data-g="p2"]').setAttribute('aria-pressed','true');setAids('legeres');show('pied');
 
 /* ---------- Mise à l'échelle des téléphones ---------- */
 function fit(){const w=document.documentElement.clientWidth;const s=Math.min(1,(w-32)/408);document.documentElement.style.setProperty('--s',s.toFixed(4));}
