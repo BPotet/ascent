@@ -37,10 +37,11 @@ const LOOKS = {
 /**
  * Un bouton de l'identité pixel art (`PixelButton`) : cadre cranté, 48 dp de haut au moins, libellé
  * en police de texte, `icon` devant le libellé. Enfoncé, il descend de 2 dp. Désactivé, il est
- * hachuré et annoncé désactivé.
+ * hachuré et annoncé désactivé. `text` remplace le libellé affiché, sans changer le libellé lu.
  */
 export function PixelButton({
   label,
+  text = label,
   onPress,
   variant = 'primary',
   icon,
@@ -50,6 +51,7 @@ export function PixelButton({
   testID,
 }: {
   readonly label: string;
+  readonly text?: string;
   readonly onPress: () => void;
   readonly variant?: ButtonVariant;
   readonly icon?: IconName;
@@ -92,7 +94,7 @@ export function PixelButton({
         </>
       )}
       {icon !== undefined && <PixelIcon name={icon} color={textColor} testID="pixel-button-icon" />}
-      <Text style={[pixelTypography.button, { color: textColor }]}>{label}</Text>
+      <Text style={[pixelTypography.button, { color: textColor }]}>{text}</Text>
       {(['topLeft', 'topRight', 'bottomLeft', 'bottomRight'] as const).map((corner) => (
         <View key={corner} pointerEvents="none" style={[styles.corner, styles[corner]]} />
       ))}

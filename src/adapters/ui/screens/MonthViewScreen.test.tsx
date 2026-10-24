@@ -216,6 +216,8 @@ describe('MonthViewScreen', () => {
 
     await waitFor(() => expect(shownMonth()).toMatch(/^Septembre 2026/u));
     expect(screen.getByLabelText('Expérience du personnage : 40 XP')).toBeOnTheScreen();
+    // L'en-tête du personnage en pixel art, plus bas que dans la Vue Journée (#72).
+    expect(screen.getByTestId('character-bar')).toHaveStyle({ minHeight: 92 });
   });
 
   it('recomputes the history when a habit is deleted in another view', async () => {

@@ -316,26 +316,3 @@ export const ICONS: Readonly<Record<IconName, IconRows>> = {
 
 /** Les noms de toutes les icônes. */
 export const iconNames = Object.keys(ICONS) as IconName[];
-
-/** L'écart entre deux sommets accolés de l'icône de difficulté, en pixels d'art. */
-const PEAK_STEP = 5;
-
-/**
- * L'icône de difficulté : 1, 2 ou 3 sommets (`peak8`) accolés, de 8 pixels d'art de haut. Le
- * premier sommet est devant les suivants.
- */
-export function difficultyIconRows(peaks: 1 | 2 | 3): IconRows {
-  const peak = ICONS.peak8;
-  const width = peak.length + (peaks - 1) * PEAK_STEP;
-  return peak.map((_, y) => {
-    const row = Array.from({ length: width }, () => '.');
-    for (let k = peaks - 1; k >= 0; k -= 1) {
-      [...(peak[y] ?? '')].forEach((code, x) => {
-        if (code !== '.') {
-          row[k * PEAK_STEP + x] = code;
-        }
-      });
-    }
-    return row.join('');
-  });
-}

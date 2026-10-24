@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react-native';
 
 import { useState } from 'react';
-import { AccessibilityInfo, ScrollView } from 'react-native';
+import { AccessibilityInfo, Dimensions, ScrollView } from 'react-native';
 
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../../application/testing/settableClock';
@@ -16,10 +16,13 @@ import { Day } from '../../../domain/day/Day';
 import { HabitName } from '../../../domain/habit/HabitName';
 import { Week } from '../../../domain/week/Week';
 import { TOAST_DURATION_MS } from '../format/toast';
+import { artPalette } from '../pixelArt/artPalette';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { reduceMotionInEachTest, withMotion } from '../testing/motion';
 import { renderScreen } from '../testing/renderScreen';
 import { DayViewScreen, HIGHLIGHT_DURATION_MS } from './DayViewScreen';
+
+const { roles } = artPalette;
 
 const nbsp = ' ';
 const tuesday = Day.of(2026, 10, 13);
@@ -255,7 +258,7 @@ describe('DayViewScreen', () => {
       'Habitude créée · objectif 5 cette semaine',
       { exact: true },
     );
-    expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: '#7C9CFF' });
+    expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: roles.gold });
     expect(await names()).toEqual(['Cuisiner']);
   });
 
@@ -268,8 +271,8 @@ describe('DayViewScreen', () => {
     await fireEvent(screen.getByLabelText('Nom de l’habitude'), 'submitEditing');
 
     await waitFor(() => expect(rowNames()).toEqual(['Cuisiner', 'Lire 20 minutes']));
-    expect(screen.getByTestId('habit-card-2')).toHaveStyle({ borderColor: '#7C9CFF' });
-    expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: 'transparent' });
+    expect(screen.getByTestId('habit-card-2')).toHaveStyle({ borderColor: roles.gold });
+    expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: roles.line });
   });
 
   it('scrolls to the new habit, and only to a new habit', async () => {
@@ -298,7 +301,7 @@ describe('DayViewScreen', () => {
       await screen.findByText('Cuisiner');
 
       await act(() => jest.advanceTimersByTime(HIGHLIGHT_DURATION_MS));
-      expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: 'transparent' });
+      expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: roles.line });
       await act(() => jest.advanceTimersByTime(TOAST_DURATION_MS - HIGHLIGHT_DURATION_MS));
       expect(screen.queryByTestId('toast')).not.toBeOnTheScreen();
     } finally {
@@ -428,7 +431,12 @@ describe('DayViewScreen', () => {
       expect(screen.getByLabelText('1 habitude faite sur 2 attendues')).toHaveTextContent(
         '1/2 faites',
       );
-      expect(screen.getByTestId('day-progress')).toHaveStyle({ width: '50%' });
+      expect(
+        within(screen.getByLabelText('1 habitude faite sur 2 attendues')).getAllByTestId(
+          'week-notch-on',
+          { includeHiddenElements: true },
+        ),
+      ).toHaveLength(1);
       expect(await storedStatuses()).toEqual(['Cuisiner: done', 'Budget du jour: pending']);
       expect(screen.queryByTestId('toast')).not.toBeOnTheScreen();
 
@@ -881,7 +889,7 @@ describe('DayViewScreen and editing a habit', () => {
       }),
     ).toBeChecked();
     expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
-    expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: '#7C9CFF' });
+    expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: roles.gold });
     expect(toast()).toHaveTextContent('Habitude renommée');
     expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP');
     expect(await names()).toEqual(['Cuisiner maison', 'Budget du jour']);
@@ -987,7 +995,7 @@ describe('DayViewScreen and editing a habit', () => {
       expect(await peaksOf(1)).toBe(3);
       expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
       expect(toast()).toHaveTextContent(`Habitude modifiée · +20 XP`);
-      expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: '#7C9CFF' });
+      expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: roles.gold });
       expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 40 XP');
       expect(screen.getByTestId('xp-change', { includeHiddenElements: true })).toHaveTextContent(
         '+20 XP',
@@ -1238,7 +1246,7 @@ describe('DayViewScreen and the weekly progress (E1)', () => {
 
     await show();
 
-    expect(screen.getAllByTestId('day-view-loading-secondary-line')).toHaveLength(4);
+    expect(screen.getAllByTestId('day-view-loading-secondary-line')).toHaveLength(5);
     jest.restoreAllMocks();
   });
 
@@ -1634,5 +1642,171 @@ describe('DayViewScreen and the target bonus (#26)', () => {
 
     await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP'));
     expect(toast()).toHaveTextContent('Habitude supprimée · −25 XP');
+  });
+});
+
+describe('DayViewScreen in pixel art (#72)', () => {
+  const hidden = { includeHiddenElements: true };
+  const names = ['Cuisiner', 'Budget du jour', 'Courir 5 km', 'Me coucher avant 23 h', 'Lire'];
+  const sky = () => screen.getByTestId('day-sky', hidden).props.sprite as string;
+  const switchOf = (name: string) =>
+    screen.getByRole('switch', { name: new RegExp(`^${name}, `, 'u') });
+
+  async function twoOfFiveDone() {
+    await given(...names);
+    await toggleCheckIn(dependencies, 1, wednesday);
+    await toggleCheckIn(dependencies, 2, wednesday);
+    await show();
+    await screen.findByText('Cuisiner');
+  }
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('dresses the day view in the pixel art identity', async () => {
+    await twoOfFiveDone();
+
+    expect(screen.getByTestId('day-view')).toHaveStyle({ backgroundColor: roles.night });
+    expect(screen.getByRole('header', { name: 'Aujourd’hui' })).toHaveStyle({
+      fontFamily: 'PixelifySans_700Bold',
+    });
+    expect(screen.getByText('2/5')).toHaveStyle({
+      fontFamily: 'PixelifySans_700Bold',
+      fontSize: 22,
+    });
+    expect(screen.getByText('faites')).toHaveStyle({ fontSize: 18 });
+    expect(screen.getByText('Cuisiner')).toHaveStyle({ fontFamily: 'Inter_600SemiBold' });
+    screen
+      .getAllByTestId(/^(day-sky|character-sprite)$/u, hidden)
+      .forEach((sprite) => expect([2, 3]).toContain(sprite.props.scale));
+  });
+
+  it('lights the day sky one notch with a third habit done, and raises the sun when all are done', async () => {
+    await twoOfFiveDone();
+    await waitFor(() => expect(sky()).toMatch(/^day-sky:0\.4:/u));
+
+    await fireEvent.press(switchOf('Courir 5 km'));
+    await waitFor(() => expect(sky()).toMatch(/^day-sky:0\.6:/u));
+
+    await fireEvent.press(switchOf('Me coucher avant 23 h'));
+    await waitFor(() => expect(screen.getByText('4/5')).toBeOnTheScreen());
+    await fireEvent.press(switchOf('Lire'));
+    await waitFor(() => expect(sky()).toMatch(/^day-sky:1:/u));
+    expect(screen.getByText('Toutes faites')).toHaveStyle({ fontFamily: 'PixelifySans_700Bold' });
+  });
+
+  it('waits for the first habit with the character at ×3 under a night sky, and a single button', async () => {
+    await show();
+    await screen.findByTestId('day-view-empty');
+
+    expect(screen.getByTestId('illustration-character', hidden).props.scale).toBe(3);
+    await waitFor(() => expect(sky()).toMatch(/^day-sky:0:/u));
+    expect(screen.getAllByRole('button', { name: 'Ajouter une habitude' })).toHaveLength(1);
+  });
+
+  it('shows the alert emblem, the message in the text font and « Réessayer » when the habits cannot be read', async () => {
+    dependencies.unitOfWork.failReads();
+    await show();
+
+    await screen.findByTestId('day-view-error');
+    expect(screen.getByTestId('illustration-alert', hidden).props.sprite).toBe('alert-emblem');
+    expect(
+      screen.getByText('Une erreur est survenue en lisant tes données sur ce téléphone.'),
+    ).toHaveStyle({
+      fontFamily: 'Inter_400Regular',
+    });
+    expect(screen.getByRole('button', { name: 'Réessayer' })).toHaveStyle({ minHeight: 48 });
+  });
+
+  it('plays the game feedback of a habit done: spark, check, pill, experience and counter', async () => {
+    withMotion();
+    await createHabit(dependencies, 'Cuisiner');
+    await createHabit(dependencies, 'Lire');
+    await show();
+    await screen.findByText('Cuisiner');
+    await waitFor(() => expect(screen.getByTestId('xp-counter')).toHaveTextContent('0 XP'));
+
+    await fireEvent.press(switchOf('Cuisiner'));
+
+    expect(screen.getByTestId('habit-burst', hidden).props.sprite).toBe('burst-0');
+    await waitFor(() => expect(screen.getByTestId('xp-counter')).toHaveTextContent('10 XP'));
+    expect(screen.getByTestId('check-mark', hidden)).toBeTruthy();
+    expect(screen.getByTestId('xp-change', hidden)).toHaveTextContent('+10 XP');
+    expect(screen.getByLabelText('1 habitude faite sur 2 attendues')).toBeOnTheScreen();
+    expect(dependencies.haptics.success).toHaveBeenCalledTimes(1);
+    expect(AccessibilityInfo.announceForAccessibility).toHaveBeenCalledWith(
+      '+10 points d’expérience. Total : 10 XP.',
+    );
+  });
+
+  it('shows « −10 XP » in grey, without spark nor vibration, when a habit goes back', async () => {
+    withMotion();
+    await createHabit(dependencies, 'Cuisiner');
+    await toggleCheckIn(dependencies, 1, wednesday);
+    await show();
+    await waitFor(() => expect(screen.getByTestId('xp-counter')).toHaveTextContent('10 XP'));
+
+    await fireEvent.press(switchOf('Cuisiner'));
+
+    await waitFor(() => expect(screen.getByTestId('xp-counter')).toHaveTextContent('0 XP'));
+    expect(screen.queryByTestId('habit-burst', hidden)).toBeNull();
+    expect(screen.getByTestId('xp-float', hidden)).toHaveTextContent('−10 XP');
+    expect(dependencies.haptics.success).not.toHaveBeenCalled();
+    expect(screen.getByTestId('habit-check-1', hidden)).toHaveStyle({ borderColor: roles.gold });
+  });
+
+  it('puts everything back, without any bonus, when a check-in is not saved', async () => {
+    await createHabit(dependencies, 'Cuisiner', 'medium', 1);
+    await show();
+    await screen.findByText('Cuisiner');
+    dependencies.unitOfWork.failWrites();
+
+    await fireEvent.press(switchOf('Cuisiner'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('toast')).toHaveTextContent(/^Le suivi n’a pas été enregistré\./u),
+    );
+    expect(screen.getByRole('button', { name: 'Réessayer' })).toBeOnTheScreen();
+    expect(switchOf('Cuisiner')).not.toBeChecked();
+    expect(screen.getByTestId('xp-counter')).toHaveTextContent('0 XP');
+    expect(screen.queryByTestId('xp-change-bonus', hidden)).toBeNull();
+    expect(screen.queryByTestId('habit-target-reached-1', hidden)).toBeNull();
+  });
+
+  it('shows the final states at once when the motion is reduced', async () => {
+    await createHabit(dependencies, 'Courir 5 km', 'hard', 1);
+    await show();
+    await screen.findByText('Courir 5 km');
+
+    await fireEvent.press(switchOf('Courir 5 km'));
+
+    await waitFor(() => expect(screen.getByTestId('habit-target-reached-1', hidden)).toBeTruthy());
+    expect(screen.queryByTestId('habit-burst', hidden)).toBeNull();
+    expect(screen.queryByTestId('xp-float', hidden)).toBeNull();
+    expect(screen.getByTestId('xp-change', hidden)).toHaveTextContent('+20 XP');
+    expect(screen.getByTestId('habit-target-reached-1', hidden)).toHaveStyle({
+      borderColor: roles.goldDark,
+    });
+    expect(dependencies.haptics.success).toHaveBeenCalledTimes(2);
+  });
+
+  it('lets the text grow at 200 %, pixel font included, without scaling any sprite', async () => {
+    Dimensions.set({
+      window: { ...Dimensions.get('window'), fontScale: 2 },
+      screen: { ...Dimensions.get('screen'), fontScale: 2 },
+    });
+    await twoOfFiveDone();
+
+    [screen.getByRole('header', { name: 'Aujourd’hui' }), screen.getByText('2/5')].forEach(
+      (text) => {
+        expect(text.props.numberOfLines).toBeUndefined();
+        expect(text.props.adjustsFontSizeToFit).toBeUndefined();
+        expect(text.props.allowFontScaling).not.toBe(false);
+      },
+    );
+    screen
+      .getAllByTestId(/^(day-sky|character-sprite)$/u, hidden)
+      .forEach((sprite) => expect(sprite.props.scale).toBe(2));
   });
 });

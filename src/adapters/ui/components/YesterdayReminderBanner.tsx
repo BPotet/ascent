@@ -1,17 +1,21 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 
 import { doneOutOfExpected } from '../format/formatExpected';
-import { colors } from '../theme/colors';
-import { MIN_TOUCH_SIZE, spacing } from '../theme/metrics';
-import { typography } from '../theme/typography';
-import { CloseGlyph, MoonGlyph } from './Glyph';
-import { LinkButton } from './LinkButton';
+import { artPalette } from '../pixelArt/artPalette';
+import { MIN_TARGET_SIZE } from '../pixelArt/PixelButton';
+import { PixelFrame } from '../pixelArt/PixelFrame';
+import { PixelIcon } from '../pixelArt/PixelIcon';
+import { PixelLink } from '../pixelArt/PixelLink';
+import { pixelTypography, textFont } from '../pixelArt/pixelTypography';
+
+const { roles } = artPalette;
 
 /**
- * Le rappel d'hier (`YesterdayReminder`), bandeau discret en haut de la Vue Journée (maquette, E1
- * « Rappel d'hier ») : « Hier : 1/2 faites. Un oubli ? », sur les habitudes attendues hier (#25), lu
- * « Hier : 1 habitude faite sur 2 attendues. Un oubli ? », l'action « Corriger » (`onCorrect`,
- * absente si l'application ne mène pas à la Vue Semaine) et le bouton qui le ferme (`onDismiss`).
+ * Le rappel d'hier (`YesterdayReminder`), bandeau discret en cadre cranté en haut de la Vue Journée
+ * (maquette, E1 « Rappel d'hier ») : « Hier : 1/2 faites. Un oubli ? », sur les habitudes attendues
+ * hier (#25), lu « Hier : 1 habitude faite sur 2 attendues. Un oubli ? », l'action « Corriger »
+ * (`onCorrect`, absente si l'application ne mène pas à la Vue Semaine) et le bouton qui le ferme
+ * (`onDismiss`).
  */
 export function YesterdayReminderBanner({
   doneCount,
@@ -25,26 +29,25 @@ export function YesterdayReminderBanner({
   readonly onDismiss: () => void;
 }) {
   return (
-    <View testID="yesterday-reminder" style={styles.banner}>
-      <MoonGlyph color={colors.muted} />
+    <PixelFrame testID="yesterday-reminder" style={styles.banner}>
       <Text
         accessibilityLabel={`Hier : ${doneOutOfExpected(doneCount, expectedCount)}. Un oubli ?`}
-        style={[typography.notice, styles.text]}
+        style={[pixelTypography.notice, styles.text]}
       >
         {'Hier : '}
         <Text style={styles.count}>{`${doneCount}/${expectedCount} faites`}</Text>
-        {'. Un oubli ?'}
+        {'. Un oubli ?'}
       </Text>
-      {onCorrect && <LinkButton label="Corriger" onPress={onCorrect} />}
+      {onCorrect && <PixelLink label="Corriger" onPress={onCorrect} />}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Fermer le rappel d’hier"
         onPress={onDismiss}
         style={styles.close}
       >
-        <CloseGlyph color={colors.text} />
+        <PixelIcon name="close" color={roles.parchment} />
       </Pressable>
-    </View>
+    </PixelFrame>
   );
 }
 
@@ -53,23 +56,15 @@ const styles = StyleSheet.create({
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.reminder,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 14,
-    paddingVertical: 4,
-    paddingLeft: 12,
-    paddingRight: 4,
-    marginTop: 2,
-    marginBottom: 10,
+    gap: 6,
+    paddingLeft: 14,
+    paddingRight: 2,
   },
-  text: { flex: 1, color: colors.muted },
-  count: { color: colors.text, fontFamily: typography.habitName.fontFamily },
+  text: { flex: 1, color: roles.light, paddingVertical: 8 },
+  count: { fontFamily: textFont.bold },
   close: {
-    minWidth: MIN_TOUCH_SIZE,
-    minHeight: MIN_TOUCH_SIZE,
-    borderRadius: 12,
+    minWidth: MIN_TARGET_SIZE,
+    minHeight: MIN_TARGET_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
   },

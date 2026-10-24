@@ -93,7 +93,7 @@ function LoadingView() {
       testID="week-view-loading"
       style={styles.loading}
     >
-      <CharacterBar xp={null} change={null} />
+      <CharacterBar xp={null} change={null} compact />
       <View style={styles.skeletonNav}>
         <View style={[styles.skeleton, styles.skeletonArrow]} />
         <View style={[styles.skeleton, styles.skeletonTitle]} />
@@ -343,7 +343,7 @@ export function WeekViewScreen({
   const { view } = state;
   return (
     <Screen layout="top" testID="week-view">
-      <CharacterBar xp={experience.xp} change={experience.change} />
+      <CharacterBar xp={experience.xp} change={experience.change} compact />
       <Navigator view={view} onPrevious={previous} onNext={next} />
       {view.rows.length === 0 ? (
         <StateMessage

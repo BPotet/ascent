@@ -44,7 +44,7 @@ function LoadingView() {
       testID="month-view-loading"
       style={styles.loading}
     >
-      <CharacterBar xp={null} change={null} />
+      <CharacterBar xp={null} change={null} compact />
       <View style={styles.skeletonNav}>
         <View style={[styles.skeleton, styles.skeletonArrow]} />
         <View style={[styles.skeleton, styles.skeletonTitle]} />
@@ -136,7 +136,7 @@ export function MonthViewScreen({
   const { view } = state;
   return (
     <Screen layout="top" testID="month-view">
-      <CharacterBar xp={experience.xp} change={experience.change} />
+      <CharacterBar xp={experience.xp} change={experience.change} compact />
       <PeriodNavigator
         title={monthTitle(view.month)}
         subtitle={monthSubtitle(view)}
