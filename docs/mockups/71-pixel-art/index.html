@@ -145,7 +145,6 @@ figcaption{margin-bottom:12px}
 .hd .plate{position:absolute;left:74px;right:16px;bottom:10px;padding:8px 12px 9px;display:flex;flex-direction:column;gap:5px;background:rgba(16,19,31,.92)}
 .hd.short .plate{bottom:8px;padding:7px 12px 8px}
 .plate .r1{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
-.plate .lv{font:700 18px/1 var(--f-px);color:var(--gold);letter-spacing:.02em}
 .plate .lbl{font:500 12px/1.2 var(--f-ui);color:var(--parch)}
 .plate .xpv{font:700 20px/1 var(--f-px);color:var(--light);font-variant-numeric:tabular-nums;white-space:nowrap}
 .plate .r3{display:flex;align-items:center;justify-content:space-between;gap:8px;font:500 12px/1.2 var(--f-ui);color:var(--parch)}
@@ -158,13 +157,6 @@ figcaption{margin-bottom:12px}
 .delta.anim{animation:dIn .42s steps(3,end) both}
 @keyframes dIn{0%{transform:translateY(6px);opacity:0}34%{opacity:1}100%{transform:none;opacity:1}}
 
-/* Jauge d'expérience : segments de 2 × 4 pixels d'art */
-.xpg{display:flex;gap:2px;height:10px}
-.xpg i{flex:1;background:var(--raised);box-shadow:inset 0 -2px 0 0 var(--ink)}
-.xpg i.on{background:var(--gold);box-shadow:inset 0 2px 0 0 var(--light),inset 0 -2px 0 0 var(--gold-d)}
-.xpg i.new{background:var(--light);box-shadow:inset 0 -2px 0 0 var(--gold)}
-.xpg.anim i.new{animation:segIn .5s steps(2,end) both}
-@keyframes segIn{0%{background:var(--raised)}100%{background:var(--light)}}
 
 /* Corps des vues */
 .body{flex:1;min-height:0;position:relative;display:flex;flex-direction:column}
@@ -349,24 +341,6 @@ figcaption{margin-bottom:12px}
 .toast.goal .pp{color:var(--gold);font-weight:700}
 .toast.soft{background:var(--raised);color:var(--light);box-shadow:inset 0 0 0 2px var(--line)}
 
-/* Passage de niveau */
-.lvl{position:absolute;inset:0;z-index:40;background:rgba(6,7,12,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:0 28px 60px;text-align:center}
-.lvl .stage{position:relative;width:240px;height:240px;display:grid;place-items:center}
-.lvl .rays{position:absolute;inset:0;width:240px;height:240px;background-size:480px 240px;background-repeat:no-repeat;image-rendering:pixelated}
-.lvl .rays.anim{animation:rays .34s steps(1,end) infinite}
-@keyframes rays{0%{background-position:0 0}50%{background-position:-240px 0}}
-.lvl .perso{position:relative;z-index:2}
-.lvl .badge{font:600 13px/1 var(--f-ui);color:var(--parch);letter-spacing:.08em;text-transform:uppercase}
-.lvl h3{margin:0;font:700 46px/1 var(--f-px);color:var(--gold);text-shadow:4px 4px 0 var(--ink)}
-.lvl h3.anim{animation:lvIn .5s steps(4,end) both}
-@keyframes lvIn{0%{transform:translateY(12px);opacity:0}50%{opacity:1}100%{transform:none}}
-.lvl p{margin:0;font:500 16px/1.45 var(--f-ui);color:var(--light);max-width:290px}
-.lvl .xpn{font:500 13px var(--f-ui);color:var(--parch)}
-.lvl .pb{margin-top:10px;min-width:220px}
-.motes{position:absolute;inset:0;pointer-events:none}
-.motes i{position:absolute;width:4px;height:4px;background:var(--gold)}
-.motes.anim i{animation:mote 1.2s steps(6,end) infinite}
-@keyframes mote{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-36px);opacity:0}}
 
 /* Pied de la tour (référence #30) */
 .towerhd{flex:none;display:flex;align-items:center;gap:8px;padding:6px 16px 8px}
@@ -404,13 +378,13 @@ figcaption{margin-bottom:12px}
 </head>
 <body>
 <div class="wrap">
-  <div class="eyebrow">Épique #71 · Maquette v1 · à valider</div>
+  <div class="eyebrow">Épique #71 · Maquette v2 · à valider</div>
   <h1>Toute l'app en pixel art</h1>
   <p class="lead">Le suivi des habitudes passe dans le style retenu pour la tour : même palette, même lumière, même grille. Le fonctionnement ne change pas : mêmes écrans, mêmes gestes, mêmes libellés. Seule l'apparence et les retours de jeu changent. Le texte courant reste dans une police lisible : le pixel art habille, il ne sert pas à lire une phrase.</p>
   <div class="meta">
     <span class="tag">Référence : prototype « Duel sans anneau » (pixel art)</span>
     <span class="tag">Base : « Nuit d'altitude » (#2) et « Clair-obscur » (#30)</span>
-    <span class="tag warn">3 décisions pour le propriétaire</span>
+    <span class="tag">3 décisions prises (24/10)</span>
     <button class="themebtn" id="themeBtn" type="button">Page claire / sombre</button>
   </div>
   <nav class="toc" aria-label="Sommaire">
@@ -432,24 +406,24 @@ figcaption{margin-bottom:12px}
         <ul class="tight">
           <li>L'apparence : cadres, boutons, cases, jauges et icônes en pixels, sur la palette de la tour.</li>
           <li>L'en-tête de chaque vue montre le <b>personnage</b> dessiné en pixels, devant le <b>ciel du jour</b> et la tour au loin.</li>
-          <li>Les retours de jeu : coche qui rebondit, étincelle, « +10 XP » qui s'envole par pas, jauge qui se remplit cran par cran, passage de niveau.</li>
+          <li>Les retours de jeu : coche qui rebondit, étincelle, « +10 XP » qui s'envole par pas, crans de la semaine qui se remplissent, ciel du jour qui s'éclaire.</li>
           <li>La barre d'onglets accueille l'onglet <b>Tour</b> (prévu par l'épique #30).</li>
         </ul>
       </div>
       <div class="panel">
         <h3 class="pg" style="margin-top:0">Découpage proposé : 2 stories</h3>
         <ul class="storylist" style="list-style:none;padding:0;margin:8px 0 0;display:grid;gap:10px">
-          <li><span class="story">S1</span> <b>La Journée en pixel art, avec ses retours de jeu.</b> L'identité (palette, polices, icônes, cadres, boutons, jauges, cases), l'en-tête du personnage, la barre d'onglets, la Vue Journée dans tous ses états, les retours de jeu (habitude faite, XP, objectif atteint, passage de niveau si la décision 1 le retient) et l'écran de démarrage.</li>
+          <li><span class="story">S1</span> <b>La Journée en pixel art, avec ses retours de jeu.</b> L'identité (palette, polices, icônes, cadres, boutons, crans, cases), l'en-tête du personnage avec son expérience, le ciel du jour, la barre d'onglets, la Vue Journée dans tous ses états, les retours de jeu (habitude faite, XP gagnée, objectif atteint, retour en arrière, erreur d'enregistrement) et l'écran de démarrage. L'en-tête garde l'expérience seule : pas de niveau.</li>
           <li><span class="story">S2</span> <b>La Semaine, le Mois et les panneaux d'habitude en pixel art.</b> La part de l'identité dont ces écrans ont besoin (palette, polices, icônes, cadres, boutons, cases, jauge de la semaine), la Vue Semaine, la Vue Mois, le Détail du jour, les panneaux « Nouvelle habitude » et « Modifier l'habitude », la confirmation de suppression, avec leurs états.</li>
         </ul>
         <p class="note">Chaque story apporte la partie de l'identité qu'elle utilise : aucune n'attend le code de l'autre. Celle qui arrive en second réutilise ce que la première a déjà livré.</p>
       </div>
       <div class="panel">
-        <h3 class="pg" style="margin-top:0">Décisions du propriétaire</h3>
+        <h3 class="pg" style="margin-top:0">Décisions du propriétaire (24/10)</h3>
         <ol class="tight">
-          <li><b>Le niveau du personnage.</b> Aujourd'hui, l'app n'affiche que l'expérience : la courbe des niveaux n'est pas encore définie. <b>Recommandé :</b> le Game Designer fixe la courbe maintenant, et S1 affiche « Niveau 4 », la jauge vers le niveau suivant et le passage de niveau. <b>Sinon :</b> l'en-tête garde l'expérience seule (cadre « Sans niveau » en E1), et le passage de niveau attend une épique à part. Les chiffres de niveau de cette maquette sont des exemples.</li>
-          <li><b>Le ciel du jour.</b> Dans l'en-tête, le ciel nocturne s'éclaire à mesure que les habitudes du jour sont faites, jusqu'au lever du soleil sur la tour quand toutes le sont. <b>Recommandé :</b> oui, c'est le lien le plus visible entre le suivi et la tour. <b>Sinon :</b> un ciel de nuit fixe.</li>
-          <li><b>Les images faites en code.</b> Le personnage, la tour, le ciel et les icônes sont dessinés par le code, comme dans le prototype validé. <b>Recommandé :</b> les garder pour cette épique ; un pack ou un artiste pourra les remplacer plus tard sans changer les écrans.</li>
+          <li><b>Pas de niveau dans cette épique.</b> L'en-tête garde l'expérience seule : « Expérience du personnage » et le total en XP, dans le nouveau style. Le niveau et son passage viendront avec la courbe des niveaux, dans une autre épique.</li>
+          <li><b>Le ciel du jour est retenu.</b> Dans l'en-tête, le ciel de nuit s'éclaire à mesure que les habitudes du jour sont faites, jusqu'au lever du soleil sur la tour quand toutes le sont.</li>
+          <li><b>Les images dessinées par le code sont retenues.</b> Le personnage, la tour, le ciel et les icônes sont dessinés par le code ; un pack ou un artiste pourra les remplacer plus tard sans changer les écrans.</li>
         </ol>
       </div>
     </div>
@@ -465,7 +439,7 @@ figcaption{margin-bottom:12px}
         <h3 class="pg" style="margin-top:0">Grille et échelle</h3>
         <ul class="tight">
           <li><b>Pixel d'art = 2 dp</b> dans toute l'interface (échelle ×2). Traits, crans, jauges, coins et décalages se comptent en multiples de 2 dp.</li>
-          <li><b>×3</b> pour les grands moments seulement : le personnage du passage de niveau et des états vides.</li>
+          <li><b>×3</b> pour les grands moments seulement : le personnage des états vides.</li>
           <li><b>Échelle entière uniquement</b> : jamais de mise à l'échelle fractionnaire, jamais d'agrandissement animé d'un sprite. Un « rebond » est une image dessinée un pixel d'art plus haut, pas un zoom.</li>
           <li>Les sprites sont affichés sans lissage (plus proche voisin).</li>
           <li>Le texte, lui, reste vectoriel et suit la taille de police du téléphone.</li>
@@ -479,7 +453,7 @@ figcaption{margin-bottom:12px}
         <h3 class="pg" style="margin-top:0">Polices</h3>
         <div class="board" style="display:block">
           <div class="typo-row"><span style="font:700 28px/1.1 'Pixelify Sans'">Aujourd'hui</span><small>Police pixel · Pixelify Sans 700 · 28 · titres d'écran</small></div>
-          <div class="typo-row"><span style="font:700 22px/1.2 'Pixelify Sans';color:#F2D49B">1 260 XP · 2/5 · Niveau 5</span><small>Police pixel · 18 à 46 · chiffres de jeu, envols, moments forts</small></div>
+          <div class="typo-row"><span style="font:700 22px/1.2 'Pixelify Sans';color:#F2D49B">1 260 XP · 2/5 · Toutes faites</span><small>Police pixel · 18 à 44 · chiffres de jeu, envols, moments forts</small></div>
           <div class="typo-row"><span style="font:600 16px/1.3 Inter">Ne pas dépasser mon budget de la journée</span><small>Police de texte · Inter 600 · 16 · nom d'une habitude</small></div>
           <div class="typo-row"><span style="font:400 15px/1.5 Inter;color:#C9C2B0">Tape ton habitude quand c'est fait : ton personnage gagne de l'XP selon sa difficulté.</span><small>Police de texte · Inter 400 · 15 · texte courant, aides, erreurs</small></div>
         </div>
@@ -509,17 +483,16 @@ figcaption{margin-bottom:12px}
         <ul class="tight">
           <li><b>Cadence :</b> les images changent à 12 images par seconde (≈ 83 ms), comme dans la tour. Les envols montent par pas de 2 dp.</li>
           <li><b>Habitude faite</b> (0 ms) : la case passe au vert, la coche monte d'un pixel d'art puis retombe (2 images), une étincelle de 3 images éclate autour, légère vibration.</li>
-          <li><b>XP gagnée</b> (≈ 80 à 900 ms) : « +10 XP » s'envole au-dessus de la case ; la pastille « +10 XP » apparaît près de l'expérience ; les crans neufs de la jauge s'allument en blanc puis en or ; le compteur « faites » clignote une fois en or.</li>
+          <li><b>XP gagnée</b> (≈ 80 à 900 ms) : « +10 XP » s'envole au-dessus de la case ; la pastille « +10 XP » apparaît près de l'expérience, dont le cadre s'allume une image en or ; le nouveau cran de la semaine s'allume ; le compteur « faites » clignote une fois en or.</li>
           <li><b>Objectif atteint</b> (≈ 400 ms) : les crans de la semaine passent à l'or, le badge « Objectif atteint » s'allume par paliers, le message « Objectif de la semaine atteint » et la pastille « +30 XP prime ». Seconde vibration.</li>
           <li><b>Retour en arrière</b> : « −10 XP » en gris, sans étincelle, sans vibration, sans rouge.</li>
-          <li><b>Passage de niveau</b> (après l'envol, ≈ 900 ms) : le jeu s'assombrit, des rayons d'or alternent sur 2 images derrière le personnage ×3, « Niveau 5 » monte en 4 pas, vibration plus marquée, bouton « Continuer ».</li>
         </ul>
       </div>
       <div class="panel">
         <ul class="tight">
-          <li><b>Mouvement réduit</b> (réglage du téléphone) : pas d'envol, pas d'étincelle, pas de rayons ni de particules, pas de rebond. Les états finaux s'affichent tout de suite : case verte, pastille « +10 XP », jauge à jour, badge, message et écran de niveau fixe. Les vibrations restent.</li>
+          <li><b>Mouvement réduit</b> (réglage du téléphone) : pas d'envol, pas d'étincelle, pas de rebond, pas de clignotement. Les états finaux s'affichent tout de suite : case verte, pastille « +10 XP », crans à jour, badge et message. Le ciel du jour change sans transition. Les vibrations restent.</li>
           <li><b>Jamais la couleur seule</b> : « Fait » et « À faire » sont écrits ; la case faite a une coche, la case manquée une croix ; l'objectif atteint a un drapeau et ses mots ; l'onglet actif a un fond, un trait et un libellé en gras.</li>
-          <li><b>Lecteur d'écran</b> : « Cuisiner, fait, 3 sur 5 cette semaine, Moyenne, 10 XP par suivi » ; puis « plus 10 XP » ; « Objectif de la semaine atteint, plus 30 XP de prime » ; « Niveau 5 atteint ».</li>
+          <li><b>Lecteur d'écran</b> : « Cuisiner, fait, 3 sur 5 cette semaine, Moyenne, 10 XP par suivi » ; puis « plus 10 XP » ; « Objectif de la semaine atteint, plus 30 XP de prime ».</li>
         </ul>
       </div>
     </div>
@@ -528,16 +501,12 @@ figcaption{margin-bottom:12px}
   <!-- ============ Prototype ============ -->
   <section id="proto">
     <h2 class="pg">Prototype</h2>
-    <p class="lead">Mercredi 21 octobre au soir. Tape les habitudes pour les marquer faites : l'expérience monte, le ciel s'éclaire. « Courir 5 km » atteint son objectif de la semaine et fait passer le personnage au niveau 5. Les onglets, le bouton « Ajouter une habitude », le bouton « ⋯ » et les cases de la Vue Semaine fonctionnent.</p>
+    <p class="lead">Mercredi 21 octobre au soir. Tape les habitudes pour les marquer faites : l'expérience monte, le ciel s'éclaire. « Courir 5 km » atteint son objectif de la semaine et rapporte sa prime. Les onglets, le bouton « Ajouter une habitude », le bouton « ⋯ » et les cases de la Vue Semaine fonctionnent.</p>
     <div class="proto">
       <div class="slot"><div class="phone"><div class="screen app live" id="live"></div></div></div>
       <div class="controls">
         <fieldset><legend>Réglages du téléphone</legend>
           <button class="pbtnx" type="button" data-ctl="rm" aria-pressed="false">Mouvement réduit</button>
-        </fieldset>
-        <fieldset><legend>Décisions à essayer</legend>
-          <button class="pbtnx" type="button" data-ctl="level" aria-pressed="true">Décision 1 : niveau affiché</button>
-          <button class="pbtnx" type="button" data-ctl="sky" aria-pressed="true">Décision 2 : ciel du jour</button>
         </fieldset>
         <fieldset><legend>Partie</legend>
           <button class="pbtnx" type="button" data-ctl="reset">Recommencer</button>
@@ -601,11 +570,9 @@ figcaption{margin-bottom:12px}
       <tr><td><b>Palette d'art</b></td><td>Les 31 teintes des sprites et du décor, reprises du prototype de la tour, plus 5 teintes d'interface (« fait », erreur, Éclats).</td></tr>
       <tr><td><b>Police pixel</b> / <b>Police de texte</b></td><td>Pixelify Sans pour les titres, chiffres de jeu et moments forts (18 px au moins) ; Inter pour tout le texte à lire.</td></tr>
       <tr><td><b>Crans de la semaine</b></td><td>L'affichage de la progression de la semaine d'une habitude : un cran par « fait » attendu par l'objectif de la semaine, verts quand ils sont faits, dorés quand l'objectif est atteint. Toujours accompagnés du texte « 2/5 cette semaine ».</td></tr>
-      <tr><td><b>Jauge d'expérience</b></td><td>La jauge de l'en-tête qui montre l'expérience gagnée depuis le niveau actuel vers le suivant (si la décision 1 retient le niveau).</td></tr>
-      <tr><td><b>Passage de niveau</b></td><td>Le retour de jeu plein écran quand l'expérience fait monter le personnage d'un niveau (si la décision 1 retient le niveau).</td></tr>
-      <tr><td><b>Ciel du jour</b></td><td>Le décor de l'en-tête : ciel de nuit qui s'éclaire selon les habitudes faites sur les habitudes attendues du jour, avec la tour au loin (si la décision 2 le retient).</td></tr>
+      <tr><td><b>Ciel du jour</b></td><td>Le décor de l'en-tête : ciel de nuit qui s'éclaire selon les habitudes faites sur les habitudes attendues du jour, avec la tour au loin. Retenu le 24/10.</td></tr>
     </table></div>
-    <p class="note">À réviser : <b>Barre d'onglets</b> (quatre onglets avec <b>Tour</b> quand l'épique #30 livre le pied de la tour) ; <b>Niveau</b> (courbe, si la décision 1 le retient).</p></div>
+    <p class="note">À réviser : <b>Barre d'onglets</b> (quatre onglets avec <b>Tour</b> quand l'épique #30 livre le pied de la tour). <b>Niveau</b> reste « à préciser » : il n'apparaît pas dans cette épique.</p></div>
   </section>
 </div>
 
@@ -698,19 +665,6 @@ function drawBurst(){
  for(const[a,b]of[[-11,-11],[11,-11],[-11,11],[11,11]]){P(1,C+a,C+b,'#FFF3D6');P(1,C+a+Math.sign(a),C+b+Math.sign(b),'#F2D49B')}
  for(const[a,b]of[[0,-16],[0,15],[-16,0],[15,0],[-13,-13],[13,-13],[-13,13],[13,13]])P(2,C+a,C+b,'#B98E5A');
  return c;
-}
-/* Rayons du passage de niveau : 2 images de 120 × 120 pixels d'art */
-function drawRays(){
- const S=120,c=document.createElement('canvas');c.width=S*2;c.height=S;const x=c.getContext('2d'),im=x.createImageData(S*2,S),D=im.data;
- const G=hex('#F2D49B'),L=hex('#FFF3D6'),O=hex('#B98E5A');
- for(let f=0;f<2;f++)for(let Y=0;Y<S;Y++)for(let X=0;X<S;X++){
-  const dx=X-S/2+.5,dy=Y-S/2+.5,d=Math.hypot(dx,dy),a=Math.atan2(dy,dx)+f*Math.PI/12;
-  const ray=Math.floor((a+Math.PI)/(Math.PI/6))%2===0;let col=null;
-  if(d<20){col=(1-d/20)>bay(X,Y)*.9?L:G}
-  else if(ray&&d<58){const v=1-(d-20)/38;if(v*v>bay(X,Y))col=v>.6?G:O}
-  if(col){const k=(Y*S*2+X+f*S)*4;D[k]=col[0];D[k+1]=col[1];D[k+2]=col[2];D[k+3]=d<20?200:150}
- }
- x.putImageData(im,0,0);return c;
 }
 /* Le ciel du jour et la tour, peints au pixel d'art (×2) avec un tramage ordonné */
 function paintSky(cv,o){
@@ -834,8 +788,7 @@ const SEED=(()=>{const s=new Set();let r=11;const rnd=()=>{r=(r*16807)%214748364
  s.delete('h5:20');s.delete('h2:20');
  return s})();
 const CORR=new Set(['h4:20','h1:17']);
-const LV={lvl:4,from:1000,to:1300};
-function base(){return {tab:'day',habits:H0.map(h=>({...h})),checks:new Set(SEED),xp:1260,today:21,level:true,sky:true,time:'20:41'}}
+function base(){return {tab:'day',habits:H0.map(h=>({...h})),checks:new Set(SEED),xp:1260,today:21,sky:true,time:'20:41'}}
 
 const isDone=(c,h,d)=>c.checks.has(h.id+':'+d);
 const active=(h,d)=>d>=h.created;
@@ -852,18 +805,9 @@ function reached(c,h,m){const t=wt(h,m);return t!=null&&prog(c,h,m,Math.min(c.to
    ===================================================================== */
 const statusBar=c=>`<div class="island"></div><div class="statusbar"><span>${c.time||'20:41'}</span><span aria-hidden="true" style="display:flex;gap:6px;align-items:center"><span style="display:inline-block;width:18px;height:10px;background:linear-gradient(90deg,#FFF3D6 0 3px,transparent 3px 5px,#FFF3D6 5px 8px,transparent 8px 10px,#FFF3D6 10px 13px,transparent 13px 15px,#FFF3D6 15px)"></span><span style="display:inline-block;width:24px;height:12px;box-shadow:inset 0 0 0 2px #FFF3D6;padding:2px"><span style="display:block;width:70%;height:100%;background:#FFF3D6"></span></span></span></div>`;
 function skyLight(c){if(!c.sky)return .12;if(c.skyL!=null)return c.skyL;const {act,n}=dayCount(c,c.today);if(!act.length)return c.habits.length?1:.1;return .1+.9*(n/act.length)}
-function xpGauge(c){
- const N=22,span=LV.to-LV.from,on=Math.max(0,Math.min(N,Math.floor(N*(c.xp-LV.from)/span)));
- const before=c.xpBefore!=null?Math.max(0,Math.min(N,Math.floor(N*(c.xpBefore-LV.from)/span))):on;
- let s='';for(let i=0;i<N;i++)s+=`<i class="${i<before?'on':i<on?'new':''}"></i>`;
- return `<div class="xpg ${c.static?'':'anim'}" aria-hidden="true">${s}</div>`;
-}
 function header(c,short){
- const lv=c.level&&c.xp<LV.to;
  const ds=(c.deltas||[]).map(x=>`<span class="delta ${x.prime?'prime':''} ${x.neg?'neg':''} ${c.static?'':'anim'}">${x.t}</span>`).join('');
- const plate=c.level
-  ?`<div class="plate pf ${c.flash?'flash':''}" role="group" aria-label="Personnage, niveau ${LV.lvl}, ${fmt(c.xp)} XP, ${Math.max(0,LV.to-c.xp)} XP avant le niveau ${LV.lvl+1}"><div class="r1"><span class="lv">Niveau ${LV.lvl}</span><span class="xpv">${fmt(c.xp)} XP</span></div>${xpGauge(c)}<div class="r3"><span>${Math.max(0,LV.to-c.xp)} XP avant le niveau ${LV.lvl+1}</span></div></div>`
-  :`<div class="plate pf ${c.flash?'flash':''}" role="group" aria-label="Expérience du personnage, ${fmt(c.xp)} XP"><div class="lbl">Expérience du personnage</div><div class="xpv" style="font-size:24px">${fmt(c.xp)} XP</div></div>`;
+ const plate=`<div class="plate pf ${c.flash?'flash':''}" role="group" aria-label="Expérience du personnage, ${fmt(c.xp)} XP"><div class="lbl">Expérience du personnage</div><div class="xpv" style="font-size:24px">${fmt(c.xp)} XP</div></div>`;
  return `<header class="hd ${short?'short':''}"><canvas class="sky" data-sky="${skyLight(c)}" width="195" height="${short?46:66}" aria-hidden="true"></canvas>${PERSO(c.persoF||0,2)}${plate}${ds?`<div class="deltas" aria-hidden="true">${ds}</div>`:''}</header>`;
 }
 function tabbar(c){
@@ -982,10 +926,6 @@ function toast(t,cls){
  if(t.goal)return `<div class="toast goal ${cls}" role="status">${I('flag8','#F2D49B','#C9C2B0')}<span><b>Objectif de la semaine atteint</b>${t.text} · <span class="pp">${t.prime}</span></span></div>`;
  return `<div class="toast ${t.soft?'soft':''} ${cls}" role="status"><span>${t.text}</span>${t.action?`<button data-act="toastAction">${t.action}</button>`:''}</div>`;
 }
-function levelUp(c){
- const motes=[[30,170],[200,150],[60,60],[180,40],[120,20],[24,110],[214,92]].map(([x,y])=>`<i style="left:${x}px;top:${y}px"></i>`).join('');
- return `<div class="lvl" role="dialog" aria-modal="true" aria-label="Niveau ${LV.lvl+1} atteint"><div class="stage"><span class="rays ${c.static||c.rm?'':'anim'}" style="background-image:url(${spriteURL('rays',drawRays)})" aria-hidden="true"></span>${c.rm?'':`<span class="motes ${c.static?'':'anim'}" aria-hidden="true">${motes}</span>`}${PERSO(2,3,'perso')}</div><span class="badge">Passage de niveau</span><h3 class="${c.static||c.rm?'':'anim'}">Niveau ${LV.lvl+1}</h3><p>Ton personnage passe au niveau ${LV.lvl+1}.</p><span class="xpn">${fmt(c.xp)} XP · ${LV.to+400-c.xp} XP avant le niveau ${LV.lvl+2}</span><button class="pb pri" data-act="lvlOk">Continuer</button></div>`;
-}
 function startup(c){
  return `<div class="body" style="position:relative"><canvas class="sky" data-tower="start" width="195" height="398" style="position:absolute;inset:0;width:390px;height:796px" aria-hidden="true"></canvas><div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:${c.err?'250':'300'}px;text-align:center;padding-left:28px;padding-right:28px">${c.err?`${EMB()}<div class="pf" style="padding:16px 16px 18px;background:rgba(16,19,31,.94);display:flex;flex-direction:column;gap:12px;align-items:center"><p style="margin:0;font:600 16px/1.45 var(--f-ui);color:var(--light)" role="alert">Impossible d'ouvrir les données enregistrées sur le téléphone.</p><button class="pb pri" style="min-width:180px">Réessayer</button></div>`:`<div style="font:700 44px/1 var(--f-px);color:var(--gold);text-shadow:4px 4px 0 var(--ink)">Ascent</div><div class="dots3" role="status" aria-label="Chargement"><i></i><i></i><i></i></div>`}</div></div>`;
 }
@@ -999,7 +939,6 @@ function renderApp(c){
  h+=tabbar(c);
  if(c.toast)h+=toast(c.toast,c.overlay?'top':c.tab==='day'&&c.habits.length?'abovefab':'');
  if(c.overlay){const o=c.overlay;h+=o.type==='del'?delDialog(c,o):o.type==='day'?daySheet(c,o.d):sheet(c,o)}
- if(c.levelUp)h+=levelUp(c);
  return h+'<div class="homebar"></div>';
 }
 function paint(root){
@@ -1019,29 +958,25 @@ const tap=(c,id,d=21)=>{const h=c.habits.find(x=>x.id===id),m=monOf(d),t=wt(h,m)
  if(on)c.checks.add(id+':'+d);else c.checks.delete(id+':'+d);
  const r1=prog(c,h,m,d)>=t,x=DIFF[h.diff].xp,pr=t*DIFF[h.diff].u;let dx=on?x:-x;const deltas=[{t:(on?'+':'−')+x+' XP',neg:!on}];
  if(!r0&&r1){dx+=pr;deltas.push({t:'+'+pr+' XP prime',prime:true})}if(r0&&!r1){dx-=pr;deltas.push({t:'−'+pr+' XP prime',neg:true})}
- c.xpBefore=c.xp;c.xp+=dx;c.deltas=deltas;c.fx={id,d,t:(on?'+':'−')+x+' XP',neg:!on,burst:on};c.pulse=true;
+ c.xpBefore=c.xp;c.xp+=dx;c.deltas=deltas;c.flash=on;c.fx={id,d,t:(on?'+':'−')+x+' XP',neg:!on,burst:on};c.pulse=true;
  if(!r0&&r1){c.burst=id;c.toast={goal:true,text:`${h.name} ${prog(c,h,m,d)}/${t}`,prime:`+${pr} XP prime`}}
  return {on,reachedNow:!r0&&r1,dx};};
-const STORIES={S1:'S1 · Journée et retours de jeu',S2:'S2 · Semaine, Mois et panneaux',D1:'Décision 1 · niveau',D2:'Décision 2 · ciel du jour','#30':'Épique #30'};
+const STORIES={S1:'S1 · Journée et retours de jeu',S2:'S2 · Semaine, Mois et panneaux','#30':'Épique #30'};
 const FR=[
  F('e1','E1 · Vue Journée','En cours','S1','Mercredi 21 au soir, 2/5 faites. Chaque ligne : la case (cadre d\'or = à faire), le nom, l\'état écrit, les sommets de difficulté, les crans de la semaine. Le ciel n\'est qu\'à moitié éclairé.'),
  F('e1','E1 · Vue Journée','Chargement','S1','Squelette au pixel d\'art : la place des lignes et du compteur est réservée. L\'en-tête s\'affiche tout de suite. Mouvement réduit : il ne clignote pas.',c=>{c.view='loading'}),
- F('e1','E1 · Vue Journée','Vide · première utilisation','S1','Aucune habitude. Le personnage attend sous un ciel de nuit, à ×3. Un seul bouton : « Ajouter une habitude ».',c=>{c.habits=[];c.checks=new Set();c.xp=0;c.level=true}),
+ F('e1','E1 · Vue Journée','Vide · première utilisation','S1','Aucune habitude. Le personnage attend sous un ciel de nuit, à ×3. Un seul bouton : « Ajouter une habitude ».',c=>{c.habits=[];c.checks=new Set();c.xp=0}),
  F('e1','E1 · Vue Journée','Aide au premier usage','S1','Première habitude créée : la bulle d\'aide explique le tap, puis disparaît pour toujours au premier suivi.',c=>{c.habits=[{id:'h1',name:'Cuisiner',diff:'medium',target:7,created:21}];c.checks=new Set();c.xp=0;c.hint=true;c.hl='h1'}),
- F('e1','E1 · Vue Journée','Toutes faites','S1','5/5 : le message « Toutes faites » en police pixel, le soleil se lève derrière la tour. Le texte reste en police lisible.',c=>{['h1','h3','h4'].forEach(id=>c.checks.add(id+':21'));c.xp=1350;LVhold(c)}),
+ F('e1','E1 · Vue Journée','Toutes faites','S1','5/5 : le message « Toutes faites » en police pixel, le soleil se lève derrière la tour. Le texte reste en police lisible.',c=>{['h1','h3','h4'].forEach(id=>c.checks.add(id+':21'));c.xp=1290;c.persoF=2}),
  F('e1','E1 · Vue Journée','Objectifs de la semaine atteints','S1','Samedi 24 : plus rien n\'est attendu. « Atteints » remplace le compteur. Les lignes restent tapables.',c=>{c.today=24;c.time='9:12';[22,23].forEach(d=>c.habits.forEach(h=>c.checks.add(h.id+':'+d)));c.checks.add('h1:21');c.checks.add('h3:21');c.checks.add('h4:21');c.checks.add('h5:20');c.checks.add('h2:20');c.habits.forEach(h=>{if(h.target===7)h.target=5});c.xp=1290}),
  F('e1','E1 · Vue Journée','Rappel d\'hier','S1','Jeudi 22 au matin : le rappel discret en haut, « Corriger » ouvre la Vue Semaine.',c=>{c.today=22;c.time='8:05';c.yday=true}),
  F('e1','E1 · Vue Journée','Erreur de lecture','S1','Les habitudes ne se lisent pas. Emblème d\'alerte 24 × 24 à ×2, message en police de texte, « Réessayer ».',c=>{c.view='error'}),
- F('e1','E1 · Vue Journée','Sans niveau','D1','Si la décision 1 ne retient pas le niveau : l\'en-tête garde « Expérience du personnage » et le total, comme aujourd\'hui, dans le nouveau style.',c=>{c.level=false}),
- F('e1','E1 · Vue Journée','Sans ciel du jour','D2','Si la décision 2 ne retient pas le ciel du jour : une nuit fixe, quel que soit l\'avancement.',c=>{c.sky=false;['h1','h3'].forEach(id=>c.checks.add(id+':21'))}),
 
  F('f1','F1 · Retours de jeu','1 · Habitude faite (0 ms)','S1','Tap sur « Cuisiner » : la case passe au vert avec sa coche, l\'étincelle éclate (image 2 sur 3), légère vibration.',c=>{tap(c,'h1');c.fx.t='';c.deltas=null;c.xp=c.xpBefore;c.xpBefore=null}),
- F('f1','F1 · Retours de jeu','2 · XP gagnée (≈ 250 ms)','S1','« +10 XP » s\'envole par pas de 2 dp. La pastille apparaît près de l\'expérience, les crans neufs de la jauge s\'allument en blanc, le compteur passe à 3/5 en clignotant une fois.',c=>{tap(c,'h1')}),
+ F('f1','F1 · Retours de jeu','2 · XP gagnée (≈ 250 ms)','S1','« +10 XP » s\'envole par pas de 2 dp. La pastille apparaît près de l\'expérience, le cadre de l\'expérience s\'allume en or, le nouveau cran de la semaine s\'allume, le compteur passe à 3/5 en clignotant une fois.',c=>{tap(c,'h1')}),
  F('f1','F1 · Retours de jeu','3 · Objectif atteint','S1','« Courir 5 km » atteint 3/3 : +20 XP, crans dorés, badge « Objectif atteint », message et « +30 XP prime ». Seconde vibration, annonce au lecteur d\'écran.',c=>{c.xp=1240;tap(c,'h3');c.fx=null;c.burst='h3';c.flash=true}),
  F('f1','F1 · Retours de jeu','4 · Retour en arrière','S1','Second tap sur une habitude faite : « −5 XP » en gris, ni étincelle, ni vibration, ni rouge. La case revient au cadre d\'or « à faire ».',c=>{tap(c,'h2');c.fx.burst=false}),
- F('f1','F1 · Retours de jeu','5 · Passage de niveau','S1 · D1','L\'expérience franchit le palier : l\'écran s\'assombrit, les rayons alternent sur 2 images derrière le personnage ×3, « Niveau 5 » monte en 4 pas. « Continuer » rend la Journée.',c=>{tap(c,'h3');c.xp=1310;c.levelUp=true;c.toast=null}),
- F('f1','F1 · Retours de jeu','6 · Passage de niveau · mouvement réduit','S1 · D1','Même écran, fixe : ni rayons animés, ni particules, ni montée du titre. La vibration et l\'annonce restent.',c=>{tap(c,'h3');c.xp=1310;c.levelUp=true;c.toast=null;c.rm=true}),
- F('f1','F1 · Retours de jeu','7 · Erreur d\'enregistrement','S1','Le suivi a échoué : tout revient comme avant (case, XP, crans). Le message propose « Réessayer ».',c=>{c.toast={text:"Le suivi n'a pas été enregistré.",action:'Réessayer'}}),
+ F('f1','F1 · Retours de jeu','5 · Erreur d\'enregistrement','S1','Le suivi a échoué : tout revient comme avant (case, XP, crans). Le message propose « Réessayer ».',c=>{c.toast={text:"Le suivi n'a pas été enregistré.",action:'Réessayer'}}),
 
  F('e2','E2 · Nouvelle habitude','Vide · valeurs par défaut','S2','Clavier ouvert, nom vide. Moyenne et 7 sont déjà choisis : il suffit d\'un nom puis ↵.',c=>{c.overlay={type:'new',value:'',diff:'medium',target:7,kbd:true,focus:true}}),
  F('e2','E2 · Nouvelle habitude','Saisi · réglages choisis','S2','Clavier fermé. La difficulté choisie a un cadre d\'or, une coche et un texte en gras ; l\'objectif choisi est rempli d\'or. « Créer l\'habitude » s\'active.',c=>{c.overlay={type:'new',value:'Méditer 10 minutes',diff:'easy',target:3}}),
@@ -1069,7 +1004,6 @@ const FR=[
 
  F('t1','T1 · La Tour','Pied de la tour','#30','L\'onglet Tour en pixel art : le même ciel, la même tour, les mêmes cadres. La Jauge du jour reprend les crans (rouge et vert de la Faveur, avec les mots). Libellés de la maquette #30.',c=>{c.tab='tower'})
 ];
-function LVhold(c){if(c.xp>=LV.to)c.xp=LV.to-10}
 document.querySelectorAll('.gallery').forEach(g=>{
  g.innerHTML=FR.filter(f=>f.group===g.dataset.group).map((f,i)=>`<figure class="frame"><figcaption><div class="cap-top"><span class="scr">${f.screen}</span><span class="stories">${f.story.split(' · ').map(s=>`<span class="story ${s.startsWith('D')?'dec':''}" title="${STORIES[s]||s}">${s}</span>`).join('')}</span></div><div class="state">${f.state}</div><p class="note">${f.note}</p></figcaption><div class="slot"><div class="phone"><div class="screen app frozen ${f.c.rm?'rm':''}" data-fr="${FR.indexOf(f)}"></div></div></div></figure>`).join('');
 });
@@ -1106,7 +1040,7 @@ document.getElementById('zPerso').innerHTML=PERSO(0,2,'zoom')+PERSO(0,3,'zoom');
  <div class="cellx"><b>Cadres</b><div class="pf" style="width:150px;padding:12px;font:500 13px Inter;color:#C9C2B0">Cadre · surface</div><div class="pf raised" style="width:150px;padding:12px;font:500 13px Inter;color:#C9C2B0">Cadre relevé</div><div class="pf inset" style="width:150px;padding:12px;font:500 13px Inter;color:#C9C2B0">Cadre creux · champ</div></div>
  <div class="cellx"><b>Boutons</b><button class="pb pri">${I('plus','#06070C')}Ajouter une habitude</button><button class="pb pri pressed">Appuyé</button><button class="pb sec">Annuler</button><button class="pb off" aria-disabled="true">Créer l'habitude</button><button class="pb dng">Supprimer</button><span class="linkb">Corriger</span></div>
  <div class="cellx"><b>Cases (40 dp)</b><div style="display:grid;grid-template-columns:repeat(3,auto);gap:8px 10px;align-items:center;font:500 12px Inter;color:#C9C2B0">${cs('done')}<span>Fait</span><span></span>${cs('pending')}<span>À faire</span><span></span>${cs('missed')}<span>Pas fait</span><span></span>${cs('upcoming')}<span>À venir</span><span></span>${cs('notstarted')}<span>Hors habitude</span><span></span><span class="cs done" style="width:40px;height:40px">${GLYPH.done()}<span class="cm"></span></span><span>Corrigé</span><span></span></div></div>
- <div class="cellx"><b>Jauge d'expérience</b><div class="plate pf" style="position:static;width:250px;display:flex;flex-direction:column;gap:5px;padding:8px 12px 9px"><div class="r1"><span class="lv">Niveau 4</span><span class="xpv">1 260 XP</span></div><div class="xpg">${Array.from({length:22},(_,i)=>`<i class="${i<18?'on':i<19?'new':''}"></i>`).join('')}</div><div class="r3"><span>40 XP avant le niveau 5</span></div></div><span>22 segments de 2 × 5 pixels d'art. Les segments neufs s'allument en blanc, puis en or.</span></div>
+ <div class="cellx"><b>En-tête : expérience</b><div class="plate pf" style="position:static;width:250px;display:flex;flex-direction:column;gap:5px;padding:8px 12px 9px"><div class="lbl">Expérience du personnage</div><div class="xpv" style="font-size:24px">1 260 XP</div></div><div class="plate pf flash" style="position:static;width:250px;display:flex;flex-direction:column;gap:5px;padding:8px 12px 9px"><div class="lbl">Expérience du personnage</div><div class="xpv" style="font-size:24px">1 270 XP</div></div><span>Au gain d'XP, le cadre s'allume une image en or (pas de jauge : pas de niveau dans cette épique).</span></div>
  <div class="cellx"><b>Crans de la semaine</b><div style="display:flex;flex-direction:column;gap:10px;font:500 13px Inter;color:#C9C2B0"><span style="display:flex;gap:8px;align-items:center">${cr(2,5)}2/5 cette semaine</span><span style="display:flex;gap:8px;align-items:center">${cr(3,3,true)}<span class="goalb">${I('flag8','#F2D49B','#C9C2B0')}Objectif atteint</span></span><span style="display:flex;gap:8px;align-items:center"><span class="chip">${cr(2,5)}2/5</span><span class="chip ok">${I('flag8','#F2D49B','#C9C2B0')}3/3 · Objectif atteint</span></span></div></div>
  <div class="cellx" style="min-width:300px"><b>Barre d'onglets</b><div style="position:relative;width:340px;height:70px;overflow:hidden">${tabbar({tab:'day'}).replace('class="tabbar"','class="tabbar" style="position:static;height:66px;padding:4px 4px 6px"')}</div><span>Avec l'onglet Tour (dès que #30 livre le pied de la tour).</span><div style="position:relative;width:340px;height:70px;overflow:hidden">${tabbar({tab:'week',tower:false}).replace('class="tabbar"','class="tabbar" style="position:static;height:66px;padding:4px 4px 6px"')}</div><span>Avant : trois onglets, même style. Onglet actif : fond, trait d'or, icône et libellé en or et en gras.</span></div>
  <div class="cellx"><b>Messages</b><div style="width:300px;display:flex;flex-direction:column;gap:8px;position:relative">${toast({text:"Le suivi n'a pas été enregistré.",action:'Réessayer'},'')}${toast({goal:true,text:'Courir 5 km 3/3',prime:'+30 XP prime'},'')}</div></div>`;
@@ -1118,7 +1052,7 @@ document.getElementById('zPerso').innerHTML=PERSO(0,2,'zoom')+PERSO(0,3,'zoom');
    ===================================================================== */
 const live=document.getElementById('live');const note=document.getElementById('liveNote');
 let L,timers=[],uid=1;
-function reset(empty){L=base();L.static=false;L.rm=document.querySelector('[data-ctl="rm"]').getAttribute('aria-pressed')==='true';L.level=document.querySelector('[data-ctl="level"]').getAttribute('aria-pressed')==='true';L.sky=document.querySelector('[data-ctl="sky"]').getAttribute('aria-pressed')==='true';if(empty){L.habits=[];L.checks=new Set();L.xp=0}draw()}
+function reset(empty){L=base();L.static=false;L.rm=document.querySelector('[data-ctl="rm"]').getAttribute('aria-pressed')==='true';if(empty){L.habits=[];L.checks=new Set();L.xp=0}draw()}
 function draw(){live.classList.toggle('rm',!!L.rm);const st=live.querySelector('.scroll'),sc=st?st.scrollTop:0;live.innerHTML=renderApp(L);paint(live);const s2=live.querySelector('.scroll');if(s2)s2.scrollTop=sc}
 function later(fn,ms){timers.push(setTimeout(fn,ms))}
 function clearFx(){timers.forEach(clearTimeout);timers=[];}
@@ -1127,14 +1061,12 @@ live.addEventListener('click',e=>{
  const t=e.target.closest('button,[data-act],[data-mday]');if(!t)return;
  if(t.dataset.tab){L.tab=t.dataset.tab;L.overlay=null;L.toast=null;L.fx=null;L.deltas=null;draw();return}
  if(t.dataset.h&&!t.getAttribute('aria-disabled')){
-  clearFx();const before=L.xp,r=tap(L,t.dataset.h,+t.dataset.d);L.hint=false;
-  const crossed=L.level&&before<LV.to&&L.xp>=LV.to;
+  clearFx();const r=tap(L,t.dataset.h,+t.dataset.d);L.hint=false;
   draw();
   say(`${r.on?'Fait':'À faire'} : ${r.dx>0?'+':''}${r.dx} XP${r.reachedNow?' · Objectif de la semaine atteint':''}`);
   try{navigator.vibrate&&navigator.vibrate(r.on?(r.reachedNow?[20,60,30]:15):0)}catch(_){}
   later(()=>{L.fx=null;L.pulse=false;L.flash=false;draw()},900);
   later(()=>{L.deltas=null;L.burst=null;L.xpBefore=null;if(!L.overlay)L.toast=null;draw()},2600);
-  if(crossed)later(()=>{L.levelUp=true;L.toast=null;draw();say('Niveau 5 atteint')},950);
   return}
  if(t.dataset.mday){L.overlay={type:'day',d:+t.dataset.mday};draw();return}
  if(t.dataset.edit){const h=L.habits.find(x=>x.id===t.dataset.edit);L.overlay={type:'edit',id:h.id,value:h.name,diff:h.diff,target:h.target,uid:uid++};draw();return}
@@ -1147,15 +1079,14 @@ live.addEventListener('click',e=>{
  if(a==='save'){const o=L.overlay,h=L.habits.find(x=>x.id===o.id);const ren=o.value.trim()!==h.name&&o.diff===h.diff&&o.target===h.target;h.name=o.value.trim();h.diff=o.diff;h.target=o.target;L.hl=h.id;L.overlay=null;L.toast={text:ren?'Habitude renommée':'Habitude modifiée'};draw();later(()=>{L.toast=null;draw()},2600);return}
  if(a==='del'){L.overlay={type:'del',id:L.overlay.id};draw();return}
  if(a==='confirmDel'){const id=L.overlay.id;L.habits=L.habits.filter(h=>h.id!==id);L.overlay=null;L.toast={text:'Habitude supprimée'};draw();later(()=>{L.toast=null;draw()},2600);return}
- if(a==='lvlOk'){L.levelUp=false;LV.lvl=5;LV.from=1300;LV.to=1700;draw();return}
  if(a==='toastAction'){L.toast=null;draw();return}
 });
 live.addEventListener('input',e=>{if(e.target.matches('[data-name]')&&L.overlay){L.overlay.value=e.target.value;const pos=e.target.selectionStart;draw();const i=live.querySelector('[data-name]');if(i){i.focus();try{i.setSelectionRange(pos,pos)}catch(_){}}}});
 document.querySelectorAll('[data-ctl]').forEach(b=>b.addEventListener('click',()=>{
  const k=b.dataset.ctl;
- if(k==='reset'||k==='empty'){LV.lvl=4;LV.from=1000;LV.to=1300;clearFx();reset(k==='empty');return}
+ if(k==='reset'||k==='empty'){clearFx();reset(k==='empty');return}
  const on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',String(on));
- if(k==='rm')L.rm=on;if(k==='level')L.level=on;if(k==='sky')L.sky=on;draw();
+ if(k==='rm')L.rm=on;draw();
 }));
 reset(false);
 
