@@ -7,7 +7,7 @@ import { Day } from '../../../domain/day/Day';
 import { Habit } from '../../../domain/habit/Habit';
 import { HabitName } from '../../../domain/habit/HabitName';
 import { HabitDayCell } from './HabitDayCell';
-import { BOUNCE_DURATION_MS } from './HabitRow';
+import { BOUNCE_DURATION_MS } from './bounce';
 
 const wednesday = Day.of(2026, 10, 14);
 const thursday = Day.of(2026, 10, 15);

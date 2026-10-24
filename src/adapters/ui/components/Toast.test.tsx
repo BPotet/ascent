@@ -3,10 +3,10 @@ import { AccessibilityInfo } from 'react-native';
 
 import {
   TARGET_TOAST_DURATION_MS,
-  Toast,
   TOAST_DURATION_MS,
   TOAST_WITH_ACTION_DURATION_MS,
-} from './Toast';
+} from '../format/toast';
+import { Toast } from './Toast';
 
 describe('Toast', () => {
   beforeEach(() => {

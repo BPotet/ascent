@@ -1,12 +1,8 @@
 import { act, render, screen, waitFor } from '@testing-library/react-native';
 import { AccessibilityInfo, Animated } from 'react-native';
 
-import {
-  CharacterBar,
-  TARGET_BONUS_DELAY_MS,
-  XP_COUNTER_DURATION_MS,
-  XP_PULSE_DURATION_MS,
-} from './CharacterBar';
+import { TARGET_BONUS_DELAY_MS } from '../state/xpFeedback';
+import { CharacterBar, XP_COUNTER_DURATION_MS, XP_PULSE_DURATION_MS } from './CharacterBar';
 
 const thin = ' ';
 const reduceMotion = () =>

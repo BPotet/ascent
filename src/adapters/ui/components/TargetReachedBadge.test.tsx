@@ -1,8 +1,8 @@
 import { act, render, screen } from '@testing-library/react-native';
 import { AccessibilityInfo, Animated, Text } from 'react-native';
 
-import { TARGET_BONUS_DELAY_MS } from './CharacterBar';
-import { TARGET_BURST_DURATION_MS, TargetBurst, TargetReachedBadge } from './TargetReachedBadge';
+import { TARGET_BONUS_DELAY_MS, TARGET_BURST_DURATION_MS } from '../state/xpFeedback';
+import { TargetBurst, TargetReachedBadge } from './TargetReachedBadge';
 
 const hidden = { includeHiddenElements: true };
 const burst = () => screen.queryByTestId('target-burst', hidden);

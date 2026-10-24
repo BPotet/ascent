@@ -15,7 +15,7 @@ import { getDayView } from '../../../application/useCases/getDayView';
 import { Day } from '../../../domain/day/Day';
 import { HabitName } from '../../../domain/habit/HabitName';
 import { Week } from '../../../domain/week/Week';
-import { TOAST_DURATION_MS } from '../components/Toast';
+import { TOAST_DURATION_MS } from '../format/toast';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { reduceMotionInEachTest, withMotion } from '../testing/motion';
 import { renderScreen } from '../testing/renderScreen';

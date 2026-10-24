@@ -7,7 +7,7 @@ import type { Day } from '../../../domain/day/Day';
 import type { Habit, HabitId } from '../../../domain/habit/Habit';
 import type { Week } from '../../../domain/week/Week';
 import { MAX_HABITS } from '../../../domain/habit/HabitRules';
-import { ADD_HABIT_LABEL, AddHabitButton, HABIT_LIMIT_MESSAGE } from '../components/AddHabitButton';
+import { AddHabitButton } from '../components/AddHabitButton';
 import { Button } from '../components/Button';
 import { CharacterBar } from '../components/CharacterBar';
 import { DayHeader } from '../components/DayHeader';
@@ -19,17 +19,18 @@ import { Screen } from '../components/Screen';
 import { StateMessage } from '../components/StateMessage';
 import { WhatsNewCard } from '../components/WhatsNewCard';
 import { YesterdayReminderBanner } from '../components/YesterdayReminderBanner';
-import {
-  targetToastOf,
-  Toast,
-  type ToastAction,
-  type ToastTarget,
-  type ToastVariant,
-} from '../components/Toast';
+import { Toast } from '../components/Toast';
+import { ADD_HABIT_LABEL, HABIT_LIMIT_MESSAGE } from '../format/addHabit';
 import { CHECK_IN_SAVE_FAILED, correctionMessage } from '../format/checkInMessages';
 import { formatDayAndMonth } from '../format/formatDay';
 import type { WeeklyProgressShown } from '../format/formatWeeklyTarget';
 import type { TargetFeedback } from '../format/targetFeedback';
+import {
+  targetToastOf,
+  type ToastAction,
+  type ToastTarget,
+  type ToastVariant,
+} from '../format/toast';
 import { useCheckInHint } from '../state/useCheckInHint';
 import { useCreateHabit } from '../state/useCreateHabit';
 import { useDayView } from '../state/useDayView';

@@ -3,6 +3,7 @@ import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 
 import { formatXp, formatXpChange } from '../format/formatXp';
 import { useReducedMotion } from '../state/useReducedMotion';
+import { type ShownXpChange, TARGET_BONUS_DELAY_MS } from '../state/xpFeedback';
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
@@ -19,23 +20,8 @@ const PILL_FADE_IN_MS = 210;
 const PILL_HOLD_MS = 840;
 const PILL_FADE_OUT_MS = 350;
 
-/**
- * Le décalage de la seconde pastille « +15 XP prime » et de la seconde pulsation après la première
- * (maquette F1, « L'objectif (≈ 0,4 s) »).
- */
-export const TARGET_BONUS_DELAY_MS = 400;
-
 /** Le libellé de l'expérience dans l'en-tête, lu aussi par le lecteur d'écran. */
 export const CHARACTER_XP_LABEL = 'Expérience du personnage';
-
-/** Un changement d'expérience à montrer, « +20 XP » ou « −20 XP » ; `id` change à chaque fois. */
-export interface ShownXpChange {
-  readonly id: number;
-  /** La variation totale, prime d'objectif comprise. */
-  readonly amount: number;
-  /** La part de `amount` qui vient de la prime d'objectif (#26), dans sa propre pastille. */
-  readonly bonus?: number;
-}
 
 /** La part du suivi et celle de la prime d'un changement. */
 function sharesOf({ amount, bonus = 0 }: ShownXpChange): {

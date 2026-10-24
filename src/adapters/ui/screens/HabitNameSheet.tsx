@@ -12,7 +12,7 @@ import {
 
 import type { Habit } from '../../../domain/habit/Habit';
 import { HabitName, habitNameLength, MAX_HABIT_NAME_LENGTH } from '../../../domain/habit/HabitName';
-import { HABIT_LIMIT_MESSAGE } from '../components/AddHabitButton';
+import { HABIT_LIMIT_MESSAGE } from '../format/addHabit';
 import { Button } from '../components/Button';
 import { AlertGlyph } from '../components/Glyph';
 import { useKeyboardVisible } from '../state/useKeyboardVisible';

@@ -20,7 +20,7 @@ import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
 import { CheckGlyph, CrossGlyph, DotGlyph, PencilGlyph, SmallCheckGlyph } from './Glyph';
-import { editHabitLabel } from './HabitRow';
+import { editHabitLabel } from '../format/habitDayLabel';
 import { CORRECTED, CorrectedMark } from './CorrectedMark';
 import { DifficultyLabel } from './DifficultyIcon';
 import { HabitDayCell } from './HabitDayCell';

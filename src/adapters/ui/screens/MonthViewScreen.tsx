@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { dayDetailOf, type DayDetail } from '../../../application/useCases/getDayDetail';
 import type { MonthView } from '../../../application/useCases/getMonthView';
 import type { Week } from '../../../domain/week/Week';
-import { ADD_HABIT_LABEL } from '../components/AddHabitButton';
+import { ADD_HABIT_LABEL } from '../format/addHabit';
 import { Button } from '../components/Button';
 import { CharacterBar } from '../components/CharacterBar';
 import { PlusGlyph } from '../components/Glyph';

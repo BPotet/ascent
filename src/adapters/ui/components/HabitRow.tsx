@@ -4,43 +4,20 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import type { Difficulty } from '../../../domain/habit/Difficulty';
 import { checkInStatusLabels } from '../format/checkInStatus';
-import { difficultyAccessibilityLabel } from '../format/formatDifficulty';
-import { capitalize, formatDayAndMonth } from '../format/formatDay';
-import {
-  TARGET_REACHED,
-  type WeeklyProgressShown,
-  weeklyProgressAccessibilityLabel,
-  weeklyProgressText,
-} from '../format/formatWeeklyTarget';
+import { capitalize } from '../format/formatDay';
+import { type WeeklyProgressShown, weeklyProgressText } from '../format/formatWeeklyTarget';
+import { editHabitLabel, habitDayAccessibilityLabel } from '../format/habitDayLabel';
 import { useReducedMotion } from '../state/useReducedMotion';
+import type { ShownXpChange } from '../state/xpFeedback';
 import { colors } from '../theme/colors';
 import { MIN_TOUCH_SIZE, radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
-import type { ShownXpChange } from './CharacterBar';
+import { bounce } from './bounce';
 import { CheckGlyph, CrossGlyph, MoreGlyph } from './Glyph';
 import { CORRECTED, CorrectedMark } from './CorrectedMark';
 import { DifficultyLabel } from './DifficultyIcon';
 import { TargetReachedBadge } from './TargetReachedBadge';
 import { XpFloat } from './XpFloat';
-
-/** Le libellé, pour le lecteur d'écran, de l'action qui ouvre « Modifier l'habitude ». */
-export const editHabitLabel = (name: string) => `Modifier l’habitude ${name}`;
-
-/** Durée du rebond de la coche quand on touche une habitude, comme dans la maquette. */
-export const BOUNCE_DURATION_MS = 320;
-
-/** Le rebond : la coche (ou la case) grossit puis revient, sur `BOUNCE_DURATION_MS` au total. */
-export function bounce(scale: Animated.Value): void {
-  const grow = Math.round(BOUNCE_DURATION_MS * 0.4);
-  Animated.sequence([
-    Animated.timing(scale, { toValue: 1.18, duration: grow, useNativeDriver: true }),
-    Animated.timing(scale, {
-      toValue: 1,
-      duration: BOUNCE_DURATION_MS - grow,
-      useNativeDriver: true,
-    }),
-  ]).start();
-}
 
 /**
  * Ligne d'une habitude dans la Vue Journée : son nom et l'état du suivi, écrit en toutes lettres,
@@ -100,17 +77,12 @@ export function HabitRow({
   readonly onToggle?: (habitDay: HabitDay) => void;
   readonly onEdit?: (habitDay: HabitDay) => void;
 }) {
-  const { habit, day, status, editable, corrected } = habitDay;
+  const { habit, status, editable, corrected } = habitDay;
   const statusLabel = checkInStatusLabels[status];
   const done = status === 'done';
   const missed = status === 'missed';
   const reached = weeklyProgress?.targetReached === true;
-  const label = [habit.name.value, formatDayAndMonth(day), statusLabel]
-    .concat(weeklyProgress ? [weeklyProgressAccessibilityLabel(weeklyProgress, weekLabel)] : [])
-    .concat(corrected ? [CORRECTED] : [])
-    .concat(difficulty ? [difficultyAccessibilityLabel(difficulty)] : [])
-    .concat(reached ? [TARGET_REACHED.toLowerCase()] : [])
-    .join(', ');
+  const label = habitDayAccessibilityLabel({ habitDay, difficulty, weeklyProgress, weekLabel });
   const reducedMotion = useReducedMotion();
   const [scale] = useState(() => new Animated.Value(1));
 

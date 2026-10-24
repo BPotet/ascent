@@ -6,11 +6,8 @@ import { useReducedMotion } from '../state/useReducedMotion';
 import { colors } from '../theme/colors';
 import { radii } from '../theme/metrics';
 import { typography } from '../theme/typography';
-import { TARGET_BONUS_DELAY_MS } from './CharacterBar';
+import { TARGET_BONUS_DELAY_MS, TARGET_BURST_DURATION_MS } from '../state/xpFeedback';
 import { FlagGlyph } from './Glyph';
-
-/** Durée de l'éclat doré du badge « Objectif atteint » (maquette F1, `burst`). */
-export const TARGET_BURST_DURATION_MS = 600;
 
 /** L'éclat : le badge grossit puis revient, sous un liseré doré qui s'allume puis s'efface. */
 function Burst({

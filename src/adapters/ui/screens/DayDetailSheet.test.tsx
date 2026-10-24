@@ -17,7 +17,7 @@ import { useTrackingChanges } from '../state/TrackingRevision';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { reduceMotionInEachTest, withMotion } from '../testing/motion';
 import { renderScreen } from '../testing/renderScreen';
-import { TARGET_TOAST_DURATION_MS } from '../components/Toast';
+import { TARGET_TOAST_DURATION_MS } from '../format/toast';
 import { DayDetailSheet } from './DayDetailSheet';
 
 const october = (dayOfMonth: number) => Day.of(2026, 10, dayOfMonth);

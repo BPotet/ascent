@@ -8,7 +8,7 @@ import type { Habit, HabitId } from '../../../domain/habit/Habit';
 import { isClosedDay } from '../../../domain/day/DayClosing';
 import { weeklyTargetChangeAppliesThisWeek } from '../../../domain/habit/WeekSettings';
 import { Week } from '../../../domain/week/Week';
-import { ADD_HABIT_LABEL } from '../components/AddHabitButton';
+import { ADD_HABIT_LABEL } from '../format/addHabit';
 import { Button } from '../components/Button';
 import { useCellHeight } from '../components/cellSize';
 import { CharacterBar } from '../components/CharacterBar';
@@ -17,13 +17,13 @@ import { LinkButton } from '../components/LinkButton';
 import { PeriodNavigator } from '../components/PeriodNavigator';
 import { Screen } from '../components/Screen';
 import { StateMessage } from '../components/StateMessage';
+import { Toast } from '../components/Toast';
 import {
   targetToastOf,
-  Toast,
   type ToastAction,
   type ToastTarget,
   type ToastVariant,
-} from '../components/Toast';
+} from '../format/toast';
 import { HabitWeekCard, WeekDaysHeader, WeekLegend } from '../components/WeekGrid';
 import {
   CHECK_IN_SAVE_FAILED,
