@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Animated, Easing, StyleSheet } from 'react-native';
 
-import { formatXpChange } from '../format/formatXp';
-import { colors } from '../theme/colors';
-import { fonts, typography } from '../theme/typography';
-import type { ShownXpChange } from '../state/xpFeedback';
+import { formatXpChange } from '../../format/formatXp';
+import { colors } from '../../theme/colors';
+import { fonts, typography } from '../../theme/typography';
+import type { ShownXpChange } from '../../state/xpFeedback';
 
 /** Durée de l'envol de « +20 XP » au-dessus de la case touchée (maquette). */
 export const XP_FLOAT_DURATION_MS = 900;

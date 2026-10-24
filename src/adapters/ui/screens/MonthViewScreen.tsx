@@ -12,7 +12,7 @@ import { LinkButton } from '../components/LinkButton';
 import { MONTH_DAY_HEIGHT, MonthDaysHeader, MonthGrid, MonthLegend } from '../components/MonthGrid';
 import { PeriodNavigator } from '../components/PeriodNavigator';
 import { Screen } from '../components/Screen';
-import { StateMessage } from '../components/StateMessage';
+import { StateMessage } from '../components/legacy/StateMessage';
 import { TargetsByWeekSection, WEEK_TARGETS_ROW_HEIGHT } from '../components/TargetsByWeekSection';
 import { monthLabel, monthSubtitle, monthTitle } from '../format/formatMonth';
 import { useExperience } from '../state/Experience';

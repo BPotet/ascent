@@ -1,17 +1,17 @@
 import type { ReactNode } from 'react';
 import { Image, type ImageSourcePropType, StyleSheet, Text, View } from 'react-native';
 
-import { colors } from '../theme/colors';
-import { spacing } from '../theme/metrics';
-import { typography } from '../theme/typography';
+import { colors } from '../../theme/colors';
+import { spacing } from '../../theme/metrics';
+import { typography } from '../../theme/typography';
 
 /**
  * Illustrations des états de la maquette validée, exportées de ses SVG (1x, 2x, 3x) :
  * `summit` (montagne, état vide) et `alert` (grande icône d'alerte de 56 pt, erreur).
  */
 const illustrations = {
-  summit: { source: require('../assets/summit.png'), width: 180, height: 130 },
-  alert: { source: require('../assets/alert.png'), width: 56, height: 56 },
+  summit: { source: require('../../assets/summit.png'), width: 180, height: 130 },
+  alert: { source: require('../../assets/alert.png'), width: 56, height: 56 },
 } as const satisfies Record<string, { source: ImageSourcePropType; width: number; height: number }>;
 
 export type Illustration = keyof typeof illustrations;

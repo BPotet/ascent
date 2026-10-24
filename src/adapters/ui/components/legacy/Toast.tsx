@@ -6,11 +6,11 @@ import {
   toastDurationOf,
   type ToastTarget,
   type ToastVariant,
-} from '../format/toast';
-import { colors } from '../theme/colors';
-import { FlagGlyph } from './Glyph';
-import { radii, spacing } from '../theme/metrics';
-import { fonts, typography } from '../theme/typography';
+} from '../../format/toast';
+import { colors } from '../../theme/colors';
+import { FlagGlyph } from '../Glyph';
+import { radii, spacing } from '../../theme/metrics';
+import { fonts, typography } from '../../theme/typography';
 
 /** Le texte d'un toast du feedback « Objectif atteint » : titre en gras, puis détail et prime. */
 function TargetText({

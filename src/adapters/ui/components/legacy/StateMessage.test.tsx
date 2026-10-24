@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react-native';
 
-import { Button } from './Button';
+import { Button } from '../Button';
 import { StateMessage } from './StateMessage';
 
 const action = <Button label="Réessayer" onPress={() => undefined} />;

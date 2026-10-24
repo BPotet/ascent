@@ -1,12 +1,12 @@
 import { StyleSheet, Text, type TextStyle, View } from 'react-native';
 
-import type { Difficulty } from '../../../domain/habit/Difficulty';
+import type { Difficulty } from '../../../../domain/habit/Difficulty';
 import {
   difficultyAccessibilityLabel,
   difficultyLabels,
   peakCount,
-} from '../format/formatDifficulty';
-import { typography } from '../theme/typography';
+} from '../../format/formatDifficulty';
+import { typography } from '../../theme/typography';
 
 /**
  * Les sommets de la maquette (`PEAKS`, cadre de 30 × 16) : largeur de base et hauteur de chaque

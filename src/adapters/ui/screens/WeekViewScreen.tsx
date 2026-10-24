@@ -16,8 +16,8 @@ import { PlusGlyph } from '../components/Glyph';
 import { LinkButton } from '../components/LinkButton';
 import { PeriodNavigator } from '../components/PeriodNavigator';
 import { Screen } from '../components/Screen';
-import { StateMessage } from '../components/StateMessage';
-import { Toast } from '../components/Toast';
+import { StateMessage } from '../components/legacy/StateMessage';
+import { Toast } from '../components/legacy/Toast';
 import {
   targetToastOf,
   type ToastAction,

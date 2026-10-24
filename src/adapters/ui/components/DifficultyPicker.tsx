@@ -9,7 +9,7 @@ import {
 import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
-import { DifficultyIcon } from './DifficultyIcon';
+import { DifficultyIcon } from './legacy/DifficultyIcon';
 
 /** Le titre du bloc, et le nom du groupe pour le lecteur d'écran. */
 export const DIFFICULTY_TITLE = 'Difficulté';

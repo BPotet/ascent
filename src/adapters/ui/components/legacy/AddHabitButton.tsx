@@ -1,11 +1,11 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { MAX_HABITS } from '../../../domain/habit/HabitRules';
-import { ADD_HABIT_LABEL, HABIT_LIMIT_MESSAGE } from '../format/addHabit';
-import { colors } from '../theme/colors';
-import { radii, spacing } from '../theme/metrics';
-import { typography } from '../theme/typography';
-import { PlusGlyph } from './Glyph';
+import { MAX_HABITS } from '../../../../domain/habit/HabitRules';
+import { ADD_HABIT_LABEL, HABIT_LIMIT_MESSAGE } from '../../format/addHabit';
+import { colors } from '../../theme/colors';
+import { radii, spacing } from '../../theme/metrics';
+import { typography } from '../../theme/typography';
+import { PlusGlyph } from '../Glyph';
 
 /**
  * Bouton flottant « Ajouter une habitude » de la Vue Journée. À la limite de 10 habitudes, il

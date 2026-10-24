@@ -5,7 +5,7 @@ import {
   TARGET_TOAST_DURATION_MS,
   TOAST_DURATION_MS,
   TOAST_WITH_ACTION_DURATION_MS,
-} from '../format/toast';
+} from '../../format/toast';
 import { Toast } from './Toast';
 
 describe('Toast', () => {

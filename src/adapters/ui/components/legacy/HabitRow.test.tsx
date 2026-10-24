@@ -1,12 +1,12 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { AccessibilityInfo, Animated } from 'react-native';
 
-import type { CheckInStatus } from '../../../domain/checkIn/CheckInStatus';
-import type { HabitDay } from '../../../domain/checkIn/HabitDay';
-import { Day } from '../../../domain/day/Day';
-import { Habit } from '../../../domain/habit/Habit';
-import { HabitName } from '../../../domain/habit/HabitName';
-import { BOUNCE_DURATION_MS } from './bounce';
+import type { CheckInStatus } from '../../../../domain/checkIn/CheckInStatus';
+import type { HabitDay } from '../../../../domain/checkIn/HabitDay';
+import { Day } from '../../../../domain/day/Day';
+import { Habit } from '../../../../domain/habit/Habit';
+import { HabitName } from '../../../../domain/habit/HabitName';
+import { BOUNCE_DURATION_MS } from '../bounce';
 import { HabitRow } from './HabitRow';
 
 const wednesday = Day.of(2026, 10, 14);
