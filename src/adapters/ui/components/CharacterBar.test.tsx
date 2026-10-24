@@ -1,5 +1,5 @@
 import { act, screen, waitFor } from '@testing-library/react-native';
-import { AccessibilityInfo, Animated, StyleSheet } from 'react-native';
+import { AccessibilityInfo, Animated, Dimensions, StyleSheet } from 'react-native';
 
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../../application/testing/settableClock';
@@ -70,6 +70,20 @@ describe('CharacterBar', () => {
     expect(screen.getByTestId('day-sky', hidden).props.scale).toBe(2);
     expect(screen.queryByTestId('day-sky')).toBeNull();
     expect(screen.queryByTestId('character-sprite')).toBeNull();
+  });
+
+  it('paints the day sky at the width of the screen: half of it in art pixels', async () => {
+    await show(<CharacterBar xp={340} change={null} />);
+
+    const sky = screen.getByTestId('day-sky', hidden);
+    expect(sky.props).toMatchObject({
+      pixelWidth: Math.ceil(Dimensions.get('window').width / 2),
+      pixelHeight: 66,
+    });
+    expect(screen.getByTestId('character-sprite', hidden).props).toMatchObject({
+      pixelWidth: 24,
+      pixelHeight: 32,
+    });
   });
 
   it('lights the day sky with the habits done today', async () => {
