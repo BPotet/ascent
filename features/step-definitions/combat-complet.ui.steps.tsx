@@ -199,7 +199,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   // --- Cassure de garde (C5) ----------------------------------------------------------------
 
-  given(/^la garde du (Spectre|Nécromancien|de la Goule) est à (\d+)$/u, (who, guard) => {
+  given(/^la garde du (Spectre|Nécromancien) est à (\d+)$/u, (who, guard) => {
     const enemy = who === 'Spectre' ? SPECTER : NECROMANCER;
     world.changes.push(enemyWith(enemy, { guard: Number(guard) }));
   });
