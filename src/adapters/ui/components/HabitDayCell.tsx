@@ -83,16 +83,23 @@ export function HabitDayCell({
         testID={`cell-${habit.id}-${iso}`}
         style={[styles.cell, status === 'done' && day.isAfter(today) && styles.dimmed]}
       >
-        <View style={styles.boxSlot}>
-          {bursts > 0 ? (
-            <Burst key={bursts} style={styles.burst}>
-              {box}
-            </Burst>
-          ) : (
-            box(false)
-          )}
-          {corrected && <CorrectedMark />}
-          <XpFloat change={xpChange} />
+        {/*
+          Sur Android, une vue annoncée désactivée (`accessibilityState.disabled`) n'est jamais la
+          cible d'un toucher, mais ses enfants peuvent l'être : cette surface, réelle et aussi grande
+          que la case, reçoit le tap qui explique une case « hors habitude ».
+        */}
+        <View collapsable={false} testID={`cell-touch-${habit.id}-${iso}`} style={styles.surface}>
+          <View style={styles.boxSlot}>
+            {bursts > 0 ? (
+              <Burst key={bursts} style={styles.burst}>
+                {box}
+              </Burst>
+            ) : (
+              box(false)
+            )}
+            {corrected && <CorrectedMark />}
+            <XpFloat change={xpChange} />
+          </View>
         </View>
       </Pressable>
     </View>
@@ -101,9 +108,11 @@ export function HabitDayCell({
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  cell: {
+  cell: { width: '100%', minHeight: MIN_TARGET_SIZE },
+  surface: {
     width: '100%',
     minHeight: MIN_TARGET_SIZE,
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

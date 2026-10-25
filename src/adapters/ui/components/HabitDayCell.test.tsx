@@ -252,6 +252,23 @@ describe('HabitDayCell', () => {
     expect(burst()).toBeNull();
   });
 
+  it('keeps a touch surface over the whole « hors habitude » cell, for the tap that explains it on Android', async () => {
+    await render(
+      <HabitDayCell
+        habitDay={habitDay('notStarted', false)}
+        today={wednesday}
+        onNotStartedPress={jest.fn()}
+      />,
+    );
+
+    // Annoncée indisponible, la case est désactivée pour Android, qui ne la prend jamais pour cible
+    // d'un toucher : seule une vue enfant, réelle (non aplatie), peut recevoir le tap qui l'explique.
+    const surface = within(cell()).getByTestId('cell-touch-7-2026-10-14');
+    expect(surface).toHaveProp('collapsable', false);
+    expect(surface).not.toHaveProp('pointerEvents', expect.anything());
+    expect(surface).toHaveStyle({ width: '100%', minHeight: 48 });
+  });
+
   it('says nothing about a tap on a « à venir » cell', async () => {
     const onNotStartedPress = jest.fn();
     await render(
