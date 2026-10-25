@@ -12,7 +12,8 @@
 # P14, tous étourdis P15, action perdue F5b) sont vérifiés par les tests d'intégration et les
 # scénarios, avec l'horloge de combat manuelle. Les captures de la scène dessinée (F5, P0b, P2b,
 # P10) viennent avec #81 ; celle de F5 montre ici la plaque « Étourdi ×1,5 », hors de la scène.
-# La frappe en rythme dure 1 180 ms : sa capture (F3) est attendue sans bloquer le parcours.
+# La frappe en rythme dure 1 180 ms : sa capture (F3) suit le toucher sur « Attaquer » sans
+# attente, puis « Frapper » est vérifié.
 # Les états brefs du second combat (P0, F0) sont capturés avec les durées allongées par les
 # réglages d'essai, chacun attendu par un texte propre à cet état. Le parcours joue les sons du
 # combat et vérifie, dans le panneau Mesures, qu'une latence du son a été mesurée.
@@ -62,20 +63,19 @@ tags:
 - assertVisible:
     id: 'battle-attack-button'
     text: 'Attaquer, cible : Spectre'
+# F3 : « Frapper » sur toute la largeur, pendant les 1 180 ms de la frappe. La capture suit le
+# toucher sans attente (la barre bouge : Maestro n'attend pas que l'écran se pose), puis le
+# parcours vérifie que « Frapper » est bien à l'écran.
 - tapOn:
     id: 'battle-attack-button'
-    waitToSettleTimeoutMs: 200
-# F3 : « Frapper » sur toute la largeur, pendant les 1 180 ms de la frappe.
-- extendedWaitUntil:
-    visible:
-      id: 'battle-strike-button'
-    timeout: 1000
-    optional: true
+    waitToSettleTimeoutMs: 1
 - takeScreenshot: trial-battle-f3-timed-strike
+- assertVisible:
+    id: 'battle-strike-button'
 - tapOn:
     id: 'battle-strike-button'
     optional: true
-    waitToSettleTimeoutMs: 200
+    waitToSettleTimeoutMs: 1
 
 # Première phase ennemie : la bulle passe avant la transition, qui commence à sa fermeture.
 - extendedWaitUntil:
@@ -87,11 +87,12 @@ tags:
     id: 'battle-hint-defense'
 
 # F5, hors de la scène : la frappe (12 points de garde) a brisé la garde du Spectre (10). Il est
-# étourdi jusqu'à la fin de la prochaine action de la Sentinelle.
+# étourdi jusqu'à la fin de la prochaine action de la Sentinelle. Il est la cible : son libellé
+# porte « cible ».
 - extendedWaitUntil:
     visible:
       id: 'enemy-specter'
-      text: 'Spectre, [0-9]+ PV sur 35, étourdi, dégâts ×1,5.*'
+      text: 'Spectre, (cible, )?[0-9]+ PV sur 35, étourdi, dégâts ×1,5.*'
     timeout: 10000
 - takeScreenshot: trial-battle-f5-stunned
 
