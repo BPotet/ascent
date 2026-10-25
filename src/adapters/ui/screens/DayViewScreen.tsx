@@ -150,22 +150,30 @@ interface RowPlace {
   readonly height: number;
 }
 
+/** La hauteur du bouton flottant avant sa mesure : 56 dp. */
+const FAB_HEIGHT = 56;
+
 /**
  * L'espace sous la dernière ligne de la liste, que couvre le bouton flottant « Ajouter une
- * habitude » : une ligne révélée par le défilement s'arrête au-dessus.
+ * habitude » : la marge du bas de l'écran (16), le bouton (`fabHeight`, mesuré, qui grandit avec le
+ * texte) et un écart (8). Avant la mesure, celui d'un bouton de 56 dp : 80. Une ligne révélée par
+ * le défilement s'arrête au-dessus, et le libellé « Habitudes » reste au-dessus du bouton.
  */
-const LIST_BOTTOM_SPACE = 112;
+export function listBottomSpaceOf(fabHeight: number | undefined): number {
+  return 16 + (fabHeight ?? FAB_HEIGHT) + 8;
+}
 
 /**
  * Le défilement qui montre une ligne sous le bord de l'écran ou sous le bouton flottant, juste
- * assez pour voir son bas au-dessus du bouton ; `null` si elle est déjà visible (ou si la hauteur
- * visible n'est pas encore connue).
+ * assez pour voir son bas au-dessus du bouton (`bottomSpace`, `listBottomSpaceOf`) ; `null` si elle
+ * est déjà visible (ou si la hauteur visible n'est pas encore connue).
  */
-function revealOffsetOf(
+export function revealOffsetOf(
   { y, height }: RowPlace,
   shown: { readonly offset: number; readonly height: number },
+  bottomSpace: number,
 ): number | null {
-  const bottom = y + height + LIST_BOTTOM_SPACE;
+  const bottom = y + height + bottomSpace;
   if (shown.height === 0 || bottom <= shown.offset + shown.height) {
     return null;
   }
@@ -174,6 +182,7 @@ function revealOffsetOf(
 
 function HabitList({
   view,
+  bottomSpace,
   highlighted,
   xpChange,
   targetFlash,
@@ -184,6 +193,8 @@ function HabitList({
   onEdit,
 }: {
   readonly view: DayView;
+  /** L'espace réservé sous la liste pour le bouton flottant (`listBottomSpaceOf`). */
+  readonly bottomSpace: number;
   readonly highlighted: Highlight | null;
   readonly xpChange: XpChange | null;
   readonly targetFlash: TargetFlash | null;
@@ -207,7 +218,7 @@ function HabitList({
       return;
     }
     const row = rows.current.get(highlighted.id);
-    const offset = row && revealOffsetOf(row, shown.current);
+    const offset = row && revealOffsetOf(row, shown.current, bottomSpace);
     if (offset !== undefined && offset !== null) {
       revealed.current = highlighted.id;
       scroll.current?.scrollTo({ y: offset, animated: false });
@@ -238,7 +249,7 @@ function HabitList({
       />
       <ScrollView
         ref={scroll}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, styles.fill, { paddingBottom: bottomSpace }]}
         onContentSizeChange={reveal}
         onLayout={({ nativeEvent }) => {
           shown.current = { ...shown.current, height: nativeEvent.layout.height };
@@ -273,7 +284,7 @@ function HabitList({
             }}
           />
         ))}
-        <View style={styles.section}>
+        <View testID="day-view-section" style={styles.section}>
           <Text style={[pixelTypography.label, styles.sectionTitle]}>Habitudes</Text>
           <Text
             accessibilityLabel={`${count} ${count > 1 ? 'habitudes' : 'habitude'} sur ${MAX_HABITS}`}
@@ -348,6 +359,7 @@ export function DayViewScreen({
   const hint = useCheckInHint();
   const whatsNew = useWhatsNewCard();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [fabHeight, setFabHeight] = useState<number | undefined>(undefined);
 
   const [seenRequest, setSeenRequest] = useState<string | number | undefined>(undefined);
   if (newHabitRequest !== seenRequest) {
@@ -503,6 +515,7 @@ export function DayViewScreen({
         <>
           <HabitList
             view={view}
+            bottomSpace={listBottomSpaceOf(fabHeight)}
             highlighted={highlighted}
             xpChange={experience.change}
             targetFlash={target.flash}
@@ -537,6 +550,7 @@ export function DayViewScreen({
             canAddHabit={view.canAddHabit}
             onPress={openSheet}
             onLimitPress={() => showToast(HABIT_LIMIT_MESSAGE)}
+            onLayout={({ nativeEvent }) => setFabHeight(nativeEvent.layout.height)}
           />
         </>
       )}
@@ -579,7 +593,9 @@ export function DayViewScreen({
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  list: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: LIST_BOTTOM_SPACE, gap: 8 },
+  list: { paddingHorizontal: 16, paddingTop: 4, gap: 8 },
+  /** La liste prend toute la hauteur visible, même courte : sa marge basse reste réservée. */
+  fill: { flexGrow: 1 },
   section: {
     flexDirection: 'row',
     alignItems: 'baseline',
