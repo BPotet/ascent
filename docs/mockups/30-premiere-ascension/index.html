@@ -573,6 +573,11 @@ a.story:hover{outline:1.5px solid var(--accent)}
 .pint.raise{box-shadow:inset 0 0 0 2px #4E7A6E}
 .pint.heal{box-shadow:inset 0 0 0 2px #7A4E5E}
 .pint.skip{box-shadow:inset 0 0 0 2px #7A6A48}
+.pint.n{width:auto;min-width:44px;gap:2px;padding:0 9px 0 6px}
+.pint.n img{width:28px;height:28px}
+.pint b{font:700 16px/1 Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums;color:#EDEFF7;text-shadow:0 1px 0 #000}
+.pint.guard b{color:#BFDCEA}
+.pint.heal b{color:#F2C2CF}
 .pfoe.active .pint{background:var(--raised);box-shadow:inset 0 0 0 2px var(--gold),0 0 0 2px var(--ink)}
 .pfoe.active.peril .pint{box-shadow:inset 0 0 0 2px var(--seal),0 0 0 2px var(--ink)}
 .pfig{position:relative;width:88px;height:104px}
@@ -696,6 +701,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
 .pxb.narrow .fsep{padding-left:4px;margin:6px 1px 0}
 .pxb.narrow .pfoes{left:14%}
 .pxb.narrow .pint{width:40px}
+.pxb.narrow .pint.n{width:auto;min-width:40px;padding:0 7px 0 5px}
 .pxb.narrow .pname{font-size:11px}
 .pxb.narrow .pbar b{font-size:9.5px}
 .pxb.narrow .pzone{padding:6px 12px 28px}
@@ -720,8 +726,8 @@ a.story:hover{outline:1.5px solid var(--accent)}
   <h1>La première ascension</h1>
   <p class="lead">Les écrans du rogue-lite, dans un cadre de téléphone (390 × 844, et un cadre de 320 dp pour le combat), avec leurs états et les moments de feedback de jeu : pied de la tour, jauge et bénédictions de départ, choix du héros, choix de la sortie, combat en pixel art avec frise d'action et parade, bienfaits, lieux de la tour, boss, chute, fin d'ascension, camp, pause et réglages. Tout se joue d'une main, le pouce en bas de l'écran. Le prototype se manipule, combat compris.</p>
   <div class="meta">
-    <span class="tag">Version 4 · 25 oct. 2026</span>
-    <span class="tag warn">À valider par le propriétaire, avec les stories</span>
+    <span class="tag">Version 4.1 · 25 oct. 2026</span>
+    <span class="tag">Validée par le propriétaire le 25/10</span>
     <span class="tag">Chiffres illustratifs, règles du Game Designer du 25/10</span>
     <button class="themebtn" id="themeBtn" type="button" aria-label="Thème de la page">Thème : auto</button>
   </div>
@@ -743,12 +749,19 @@ a.story:hover{outline:1.5px solid var(--accent)}
     <a href="#z">Pause</a>
     <a href="#r">Réglages</a>
     <a href="#a11y">Accessibilité</a>
-    <a href="#questions">Questions</a>
+    <a href="#questions">Questions tranchées</a>
   </nav>
 </header>
 
 <section id="nouveau4">
   <h2 class="pg">Ce qui change en version 4</h2>
+  <div class="panel" style="margin-top:16px">
+    <h3 class="pg" style="margin-top:0">Version 4.1 : validée le 25/10</h3>
+    <ul class="tight">
+      <li><b>Garde et Soin affichent leur nombre</b>, « +N », à côté de l'icône : un bouclier « +3 » pour le Nécromancien (F1, P14), un cœur « +N » pour le Soin. L'attaque reste une icône seule ; Relever et N'agit pas restent sans nombre. Le lecteur d'écran lit « intention : garde, plus 3 ». Galerie, composants et prototype jouable à jour.</li>
+      <li><b>Frise d'action</b> : les combattants qui ont agi en sortent, l'action en cours est toujours à gauche. Confirmé, rien ne change.</li>
+    </ul>
+  </div>
   <p class="lead">Décisions du propriétaire des 24 et 25/10, règles consolidées du Game Designer, stories réécrites : <a class="story" href="https://github.com/BPotet/ascent/issues/32">#32</a> Combat complet, <a class="story" href="https://github.com/BPotet/ascent/issues/78">#78</a> Initiative et frise d'action (nouvelle), et <a class="story" href="https://github.com/BPotet/ascent/issues/33">#33</a> à <a class="story" href="https://github.com/BPotet/ascent/issues/39">#39</a>, <a class="story" href="https://github.com/BPotet/ascent/issues/42">#42</a>.</p>
   <div class="cols" style="margin-top:16px">
     <div class="panel">
@@ -756,7 +769,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
       <ul class="tight">
         <li><b>Pixel art</b>, dans l'identité de l'épique #71 et du prototype « Duel sans anneau » v6 : palette d'art de 31 teintes, contour sombre d'un pixel d'art, pixel d'art de 2 dp (3 dp pour le héros au premier plan), 12 images par seconde.</li>
         <li><b>Vue 2.5D</b>, façon combats Pokémon : ennemis de trois quarts face en haut à droite, sur des socles, en escalier ; héros de dos en bas à gauche. Le <b>nom de l'ennemi est sous sa barre de PV</b>, la garde en dessous.</li>
-        <li><b>Intentions cachées</b> : seulement la catégorie, en icône pixel seule. Une lame (attaque, quel que soit le coup), un bouclier (garde), un cœur (soin), une flèche vers le haut (relever), un cercle barré (n'agit pas). Ni nombre, ni type de coup, pour tous les héros et à tous les niveaux d'aides.</li>
+        <li><b>Intentions cachées</b> : la catégorie, en icône pixel. Une lame (attaque, quel que soit le coup), un bouclier et son nombre (garde, « +3 »), un cœur et son nombre (soin, « +N »), une flèche vers le haut (relever), un cercle barré (n'agit pas). Jamais le type de coup ni les dégâts d'une attaque, pour tous les héros et à tous les niveaux d'aides.</li>
         <li><b>Plus aucun Présage.</b> Le <b>coup imparable</b> ne se reconnaît que <b>pendant sa préparation</b> : palette rouge, silhouette plus grande et tremblante, sceau qui pulse au-dessus de l'ennemi, reflet rouge 150 ms avant l'impact. Rien de rouge pendant l'avancée (P0b, P2, P2b).</li>
         <li><b>Reflet</b> avant chaque impact : blanc, double pour une double frappe, terne avant la fausse amorce, rouge pour un coup imparable (P10, P11, P13, P2b).</li>
         <li><b>Ennemi étourdi</b> quand sa garde est brisée : à terre, étoiles, « Étourdi ×1,5 » sous sa barre. Il perd son action (250 ms, sans premier plan), puis se relève (400 ms : à terre, à genoux, debout) avec sa garde pleine. Cercle barré tant que son action est à perdre, puis aucune intention (F5 à F5f, P3b, P15).</li>
@@ -778,7 +791,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
     <div class="panel">
       <h3 class="pg" style="margin-top:0">Écarts du prototype v6 corrigés</h3>
       <ul class="tight">
-        <li>L'intention Garde affichait « +N » : icône seule (le gain se lit après coup, « +3 » au-dessus de la garde, P14).</li>
+        <li>L'intention Garde affichait « +N » : gardé (v4.1, décision du 25/10), et étendu au Soin ; le gain se confirme au-dessus de la garde (P14).</li>
         <li>Après son action perdue, un ennemi à terre affichait son intention estompée : il n'en affiche plus aucune jusqu'à son retour en garde.</li>
         <li>La palette rouge du coup imparable commençait dès l'avancée : elle commence avec la préparation, comme le sceau et le contour rouge de l'intention.</li>
         <li>La frappe parfaite n'agrandissait pas le chiffre : il passe à 34 px, en or.</li>
@@ -839,7 +852,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
       <h3 class="pg" style="margin-top:0">Combat et parade</h3>
       <ul class="tight">
         <li><b>Lecture par le geste, aidée par le reflet et l'anneau</b> : chaque type de coup a sa préparation propre (anticipation, ruée de 80 ms, impact, récupération) ; un <b>reflet</b> brille sur l'ennemi 150 ms avant chaque impact. Selon les <b>aides visuelles</b>, un anneau se resserre sur le héros et se ferme pile à l'impact. Le sceau, la palette rouge et le reflet restent à tous les niveaux.</li>
-        <li><b>L'intention dit quoi, jamais comment ni combien</b> : une icône pixel par catégorie, sans mot ni nombre. Le type de coup se découvre au geste, et le lecteur d'écran le dit au début de la préparation (« Goule, double frappe »).</li>
+        <li><b>L'intention dit quoi, et combien seulement pour Garde et Soin</b> : une icône pixel par catégorie, sans mot. Garde et Soin ajoutent leur nombre, « +3 » à côté du bouclier ou du cœur : il ne trahit aucun coup. L'attaque reste une lame seule : le type de coup se découvre au geste, et le lecteur d'écran le dit au début de la préparation (« Goule, double frappe »).</li>
         <li><b>Texte minimal en phase ennemie</b> : seul l'ennemi actif est net ; ni noms, ni chiffres de PV, ni « Parade » ou « Touché » écrits. Restent « Parfait », « Parfait · contre-attaque », « Cassure », « Déséquilibré », « Étourdi ×1,5 », les « −N » et les libellés des boutons. La frise reste visible, estompée.</li>
         <li><b>Parade</b> à droite (1,45 fois plus large), <b>Esquive</b> à gauche. Ils réagissent au toucher du doigt, pas au relâchement. Le bouton ne change jamais pendant un coup imparable : c'est à l'œil de lire le sceau.</li>
         <li>Un appui raté affiche « Déséquilibré » au-dessus des boutons, grisés et hachurés. À ne pas confondre avec le temps mort de la transition, estompé, avec un cadenas, sans hachures et sans pénalité.</li>
@@ -1017,7 +1030,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
         <b>À essayer</b>
         <ul class="tight">
           <li>« Aller au combat » : la bulle d'aide passe d'abord, puis le <b>Spectre</b> (Initiative 8) agit avant toi. La frise, en haut, montre l'ordre : Spectre, toi, Goule, Nécromancien, puis la manche suivante.</li>
-          <li>Les intentions ne montrent que la catégorie : une lame, un bouclier, une flèche. Lis le geste ; le <b>reflet</b> brille 150 ms avant chaque impact : blanc, double, terne (fausse amorce, attends), rouge (coup imparable : Esquive).</li>
+          <li>Les intentions montrent la catégorie : une lame, un bouclier « +3 », une flèche. Lis le geste ; le <b>reflet</b> brille 150 ms avant chaque impact : blanc, double, terne (fausse amorce, attends), rouge (coup imparable : Esquive).</li>
           <li>Le Spectre ne rougit et ne montre son sceau qu'au début de sa préparation, jamais pendant son avancée.</li>
           <li>À ton action : touche un ennemi pour le viser, puis « Attaquer » (au relâcher). « Frapper » : touche quand la barre atteint le trait. Frappe parfaite : arrêt sur image et chiffre agrandi.</li>
           <li>Brise une garde : l'ennemi tombe à terre, étourdi. Dans la frise, son action est barrée ; elle passe sans transition, puis il se relève après ta prochaine action.</li>
@@ -1035,7 +1048,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
 <section id="t"><h2 class="pg">T · Pied de la tour</h2><p class="lead">L'onglet Tour. On y lit la jauge du jour, on choisit son héros, on commence ou on reprend une ascension. La jauge est calculée sur les habitudes d'hier et vaut pour toutes les ascensions du jour. Au lancement d'une nouvelle ascension, on choisit ses bénédictions de départ, dont la Hâte.</p><div class="gallery" data-group="t"></div></section>
 <section id="h"><h2 class="pg">H · Choix du héros</h2><p class="lead">Deux héros jouables dès le départ, la Sentinelle et l'Errante, chacun avec son équipement de base, son pouvoir, son style et son Initiative. Il n'y a pas de héros à débloquer dans cette version. Le choix est verrouillé pendant une ascension.</p><div class="gallery" data-group="h"></div></section>
 <section id="c"><h2 class="pg">C · Choix de la sortie</h2><p class="lead">Après chaque étage, deux ou trois sorties. Chacune est une grande porte en arche : le type se lit à la forme, à l'icône et au nom. Une règle d'étage s'affiche sur la porte avant d'entrer.</p><div class="gallery" data-group="c"></div></section>
-<section id="f"><h2 class="pg">F · Combat : phase du héros, garde et étourdissement</h2><p class="lead">Pixel art, vue 2.5D. En haut : la manche, la phase et la frise d'action. Les ennemis en escalier à droite, chacun avec son intention (icône seule), son nom sous la barre de PV et sa garde. Le héros de dos en bas à gauche, avec ses PV et son Élan. Les actions dans la zone du pouce. Groupe de #32 : Goule (Initiative 4), Spectre (8), Nécromancien (3) ; la Sentinelle a 5.</p><div class="gallery" data-group="f"></div></section>
+<section id="f"><h2 class="pg">F · Combat : phase du héros, garde et étourdissement</h2><p class="lead">Pixel art, vue 2.5D. En haut : la manche, la phase et la frise d'action. Les ennemis en escalier à droite, chacun avec son intention (icône, et « +N » pour Garde et Soin), son nom sous la barre de PV et sa garde. Le héros de dos en bas à gauche, avec ses PV et son Élan. Les actions dans la zone du pouce. Groupe de #32 : Goule (Initiative 4), Spectre (8), Nécromancien (3) ; la Sentinelle a 5.</p><div class="gallery" data-group="f"></div></section>
 <section id="i"><h2 class="pg">I · Initiative et frise d'action</h2><p class="lead">Chacun agit une fois par manche, par Initiative décroissante ; à égalité, le héros d'abord, puis les ennemis de gauche à droite. La frise dit qui agit et quand, jamais quoi. Story #78.</p><div class="gallery" data-group="i"></div></section>
 <section id="p"><h2 class="pg">P · Combat : phase ennemie et parade</h2><p class="lead">La phase ennemie s'ouvre sur l'annonce de phase (800 ms, boutons inactifs), puis l'ennemi actif s'avance (400 ms), passe au premier plan, et les autres s'estompent. Chaque type de coup a sa préparation et son reflet ; l'anneau, selon les aides visuelles, se ferme pile à l'impact. Esquive à gauche, Parade à droite, réaction dès que le doigt touche. Sauf mention, les images sont en aides <b>Légères</b> (par défaut) et figent l'instant le plus parlant.</p><div class="gallery" data-group="p"></div></section>
 <section id="b"><h2 class="pg">B · Bienfaits, coffres et objets</h2><p class="lead">Un bienfait parmi trois après un combat gagné. Les coffres scellés demandent une clé. Les objets trouvés se comparent à ce qu'on porte, Initiative comprise.</p><div class="gallery" data-group="b"></div></section>
@@ -1061,7 +1074,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
     <div class="panel">
       <h3 class="pg" style="margin-top:0">Lire sans la couleur</h3>
       <ul class="tight">
-        <li><b>Intentions</b> : cinq formes distinctes (lame, bouclier, cœur, flèche, cercle barré), chacune sur une plaque de 44 × 40 dp. Jamais la couleur seule.</li>
+        <li><b>Intentions</b> : cinq formes distinctes (lame, bouclier, cœur, flèche, cercle barré), chacune sur une plaque de 40 dp de haut, d'au moins 44 dp de large. Garde et Soin ajoutent « +N » en Inter 16 px gras, clair sur la plaque sombre (contraste ≥ 7:1). Jamais la couleur seule.</li>
         <li><b>Coup imparable</b> : silhouette plus grande et tremblante, sceau en losange avec point d'exclamation qui pulse, reflet rouge, quatre crans en losange sur l'anneau, son propre, et « coup imparable, esquive » au lecteur d'écran.</li>
         <li><b>Reflet</b> : blanc (une croix), double (deux croix, aux mains), terne (une petite croix grise), rouge (plus grand). La forme et le nombre portent le sens, avec un son pour chacun.</li>
         <li><b>Étourdi</b> : la pose à terre, les étoiles, le mot « Étourdi ×1,5 » sur la barre de garde ; dans la frise, le portrait à terre, et l'action perdue barrée.</li>
@@ -1072,7 +1085,7 @@ a.story:hover{outline:1.5px solid var(--accent)}
     <div class="panel">
       <h3 class="pg" style="margin-top:0">Lecteur d'écran et mouvement</h3>
       <ul class="tight">
-        <li>Ennemi : « Goule, cible, 38 PV sur 50, garde 15 sur 15, intention : attaque ». Étourdi : « Goule, 23 PV sur 50, étourdie, dégâts ×1,5, étourdie, n'agit pas ». Le type de coup est annoncé au <b>début de la préparation</b>, jamais avant : « Spectre, coup imparable, esquive ».</li>
+        <li>Ennemi : « Goule, cible, 38 PV sur 50, garde 15 sur 15, intention : attaque » ; « Nécromancien, 41 PV sur 45, garde 8 sur 12, intention : garde, plus 3 ». Le soin se lit de même : « intention : soin, plus N ». Étourdi : « Goule, 23 PV sur 50, étourdie, dégâts ×1,5, étourdie, n'agit pas ». Le type de coup est annoncé au <b>début de la préparation</b>, jamais avant : « Spectre, coup imparable, esquive ».</li>
         <li>Frise : un groupe lu « Ordre d'action. Manche 1 : toi, Goule, Nécromancien. Manche suivante : Spectre, toi, Goule, Nécromancien. » ; au début de chaque phase du héros : « Ordre : Spectre, toi, Goule, Nécromancien. Manche suivante : … ».</li>
         <li>Action perdue : « Goule, étourdie, n'agit pas ». Retour en garde : « Goule se relève, garde 15 ». Frappe parfaite : « Frappe parfaite, 15 dégâts, 18 de garde ». Les résultats masqués à l'écran sont toujours lus (« Parade, 1 dégât », « Trop tôt, déséquilibré »).</li>
         <li>Le timing de la parade n'est pas rendu au lecteur d'écran : l'esquive et la défense passive permettent de survivre. Une aide sonore au timing reste hors périmètre.</li>
@@ -1084,11 +1097,11 @@ a.story:hover{outline:1.5px solid var(--accent)}
 </section>
 
 <section id="questions">
-  <h2 class="pg">Questions pour le propriétaire</h2>
+  <h2 class="pg">Questions tranchées</h2>
   <div class="panel" style="margin-top:16px">
     <ol class="tight" style="margin-top:0">
-      <li><b>Nombre de l'intention Garde (et Soin)</b> (#32) : la maquette applique ta décision à la lettre, un bouclier seul, sans « +3 ». Le gain s'affiche après coup, au-dessus de la garde (P14). Le nombre ne trahit aucun coup : veux-tu le garder pour Garde et Soin ?</li>
-      <li><b>Frise d'action</b> (#78) : les combattants qui ont agi sortent de la frise (comme dans le prototype v6), l'action en cours est donc toujours à gauche. Préfères-tu qu'ils restent, grisés, pour voir toute la manche ?</li>
+      <li><b>Nombre de l'intention Garde (et Soin)</b> (#32) · <b>tranché le 25/10</b> : Garde et Soin affichent leur nombre, « +N », à côté de l'icône (F1, P14, composants, prototype). L'attaque reste une icône seule ; Relever et N'agit pas restent sans nombre.</li>
+      <li><b>Frise d'action</b> (#78) · <b>tranché le 25/10</b> : les combattants qui ont agi sortent de la frise, l'action en cours est toujours à gauche. C'était déjà le cas.</li>
     </ol>
     <p class="muted" style="font-size:14px;margin:12px 0 0">Hors maquette : la silhouette pixel de l'Errante (elle reprend ici celle de la Sentinelle) et celles du Chevalier déchu et du second boss se dessinent avec #33 et #35. Les sons ne sont décrits que par leurs moments.</p>
   </div>
@@ -1266,7 +1279,7 @@ const sprSize=id=>[CHARS[id].w+4,CHARS[id].h+4];
 function sealGrid(r,w){const n=2*r+3,c=r+1,g=grid(n,n);for(let y=0;y<n;y++)for(let x=0;x<n;x++){const d=Math.abs(x-c)+Math.abs(y-c);if(d<=r-1)px(g,x,y,22);else if(d===r)px(g,x,y,25);else if(d===r+1)px(g,x,y,1)}
  rect(g,c-(w>>1),c-r+3,w,r-2,1);rect(g,c-(w>>1),c+1+w,w,w,1);return g}
 
-/* Icônes pixel des intentions (12 × 12 pixels d'art, affichées en 24 dp, plus le contour) : catégorie seule, jamais un nombre */
+/* Icônes pixel des intentions (12 × 12 pixels d'art, affichées en 24 dp, plus le contour) : la catégorie ; Garde et Soin ajoutent leur nombre, « +N » (décision du 25/10) */
 function icon(draw){const g=grid(12,12);draw(g);return toCanvas(finish(g,{}))}
 const ICON={},PORTRAIT={};let SEALPX='',BIG1='',BIG2='',SKULL='';
 try{
@@ -1383,7 +1396,9 @@ function starPt(g,i,id){const a=anchor(g,i,id,'down','head');return a?{x:a.x,y:a
 /* ---------- Composants de l'interface du combat (texte net par-dessus la scène pixel) ---------- */
 const INTL={atk:'attaque',guard:'garde',heal:'soin',raise:'relever un allié'};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function intentSR(e){if(e.dead)return '';if(e.intent==='skip')return e.stun?(e.fem?'étourdie, n’agit pas':'étourdi, n’agit pas'):(e.fem?'relevée, n’agit pas':'relevé, n’agit pas');return e.intent?'intention : '+INTL[e.intent]:''}
+/* Nombre de l'intention : Garde et Soin seulement. Garde : 30 % de la garde max, sauf nombre donné. */
+function intentN(e){if(e.intent==='guard')return e.intentN!=null?e.intentN:Math.floor(e.gm*.3);if(e.intent==='heal')return e.intentN!=null?e.intentN:null;return null}
+function intentSR(e){if(e.dead)return '';if(e.intent==='skip')return e.stun?(e.fem?'étourdie, n’agit pas':'étourdi, n’agit pas'):(e.fem?'relevée, n’agit pas':'relevé, n’agit pas');if(!e.intent)return '';const n=intentN(e);return 'intention : '+INTL[e.intent]+(n!=null?', plus '+n:'')}
 function foeAria(e,o){
  if(e.dead)return `${e.name}, tombé${e.fem?'e':''}`;
  const st=e.stun?`${e.fem?'étourdie':'étourdi'}, dégâts ×1,5`:`garde ${e.g} sur ${e.gm}`,it=intentSR(e);
@@ -1391,7 +1406,7 @@ function foeAria(e,o){
 }
 function intentChip(e,o){
  if(e.dead||!e.intent)return `<span class="pint none" aria-hidden="true"></span>`;
- return `<span class="pint ${e.intent}" aria-hidden="true"><img src="${ICON[e.intent]||''}" alt=""></span>`;
+ const n=intentN(e);return `<span class="pint ${e.intent}${n!=null?' n':''}" aria-hidden="true"><img src="${ICON[e.intent]||''}" alt="">${n!=null?`<b>+${n}</b>`:''}</span>`;
 }
 function foeHTML(e,i,o={}){
  const id=e.id,[sw,sh]=sprSize(id+'3');
@@ -1430,7 +1445,7 @@ function padHTML(m,o={}){
 }
 X.paintSprites=root=>root.querySelectorAll('canvas[data-spr]').forEach(cv=>{const[id,f,t,r]=cv.dataset.spr.split('|');drawSprite(cv,id,{f,tier:+t,red:r==='1'})});
 Object.assign(X,{PAL,RGB,CHARS,pxSprite,pxMeta,drawSprite,sprSize,ICON,PORTRAIT,get SEALPX(){return SEALPX},get BIG1(){return BIG1},get BIG2(){return BIG2},SKULL,paintBG,paintFX,geometry,paintStage,glintPts,starPt,offIn,
- foeHTML,friseHTML,friseLabel,heroBox,padHTML,intentSR,foeAria,esc,rngFrom});
+ foeHTML,friseHTML,friseLabel,heroBox,padHTML,intentSR,intentN,intentChip,foeAria,esc,rngFrom});
 window.PXL=X;
 })();
 </script>
@@ -1818,7 +1833,7 @@ function render(){
  R.stage.classList.toggle('ep',enemy&&!B.over);
  const a=B.ep&&B.ep.act,t=cnow();
  $('#foes').innerHTML=B.foes.map((e,i)=>{const isAct=B.step==='enemy'&&a&&a.i===i,pick=B.step==='hero1'&&e.hp>0;
-  const v={...e,g:e.guard,gm:e.guardMax,dead:e.hp<=0,stun:e.broken,intent:intentOf(e,i)};
+  const v={...e,g:e.guard,gm:e.guardMax,dead:e.hp<=0,stun:e.broken,intent:intentOf(e,i),intentN:e.guardUp};
   return PXL.foeHTML(v,i,{live:1,sel:(B.step==='hero1'||B.step==='strike')&&i===B.target&&e.hp>0,pick,active:!!isAct,dim:!!(B.step==='enemy'&&a&&!isAct),peril:!!(isAct&&a.kind==='perilous'&&t>=a.windStart),ep:enemy&&!B.over})}).join('');
  R.fins=[...document.querySelectorAll('#foes .pfin')];R.pxc=[...document.querySelectorAll('#foes canvas')];R.foeEls=[...document.querySelectorAll('#foes .pfoe')];
  $('#hinfo').innerHTML=PXL.heroBox({name:HD.name,hp:hero.hp,hpMax:hero.hpMax,elan:B.elan,chips:[...(B.rempartC?['Rempart']:[]),...(B.shadow?['Pas de l’ombre']:[]),...(+CFG.haste?['Hâte +'+CFG.haste]:[])]});
@@ -2331,7 +2346,7 @@ const G=[
  ['r','R4','Mesure impossible',['34'],'Appuis trop irréguliers (bus qui freine) : le réglage précédent est conservé.',()=>S.calib({st:'err',n:8})],
  /* ---- F · Phase du héros, garde et étourdissement (#32, #78) ---- */
  ['f','F0','Transition : « À toi »',['32','78'],"Le Spectre (Initiative 8) a agi avant la Sentinelle (5). L'annonce « À toi » reste 800 ms. Attaquer et Pouvoir sont déjà à leur place, estompés, sans hachures, avec « Attends » ; un toucher est ignoré, sans déséquilibre. La frise montre la suite de la manche 1, puis la manche 2 en aperçu.",()=>S.combat({phase:'trans-hero',band:'hero',target:0,lockP:.45,tag:'temps mort · 800 ms'})],
- ['f','F1','Phase du héros',['32','78'],"La Goule est présélectionnée : plaque et nom en or, socle éclairé. « Attaquer » se valide au relâcher. Chaque ennemi montre seulement la catégorie de son intention, en icône : une lame pour toute attaque, un bouclier pour la garde. Jamais le type de coup, jamais les dégâts. Le nom est sous la barre de PV, la garde en dessous.",()=>S.combat({target:0,say:'Goule, cible, 38 PV sur 50, garde 15 sur 15, intention : attaque'})],
+ ['f','F1','Phase du héros',['32','78'],"La Goule est présélectionnée : plaque et nom en or, socle éclairé. « Attaquer » se valide au relâcher. Chaque ennemi montre seulement la catégorie de son intention, en icône : une lame pour toute attaque ; pour la garde, un bouclier et son nombre, « +3 » pour le Nécromancien. Jamais le type de coup, jamais les dégâts d'une attaque. Le nom est sous la barre de PV, la garde en dessous.",()=>S.combat({target:0,say:'Goule, cible, 38 PV sur 50, garde 15 sur 15, intention : attaque. Nécromancien, 41 PV sur 45, garde 8 sur 12, intention : garde, plus 3'})],
  ['f','F2','Première utilisation',['32','33'],"Une seule bulle, au premier combat où le héros agit, puis plus jamais.",()=>S.combat({target:0,coach:['Première ascension','Touche un ennemi pour le viser, puis Attaquer.']})],
  ['f','F3','Frappe en rythme',['32'],"« Attaquer » devient « Frapper », sur toute la largeur. La barre se remplit pendant les 700 ms de la préparation ; le héros lève sa lame. Touché quand la barre atteint le trait : frappe parfaite (± 60 ms) ; à ± 160 ms : bonne frappe (×1,2). Sans appui, le coup part sans bonus ni pénalité. Seul le premier appui compte.",()=>S.combat({phase:'strike',target:0,pose:'raise',fill:.6})],
  ['f','F4','Frappe parfaite',['32'],"Le seul critique du jeu, jamais au hasard. Arrêt sur image de 90 ms, « Frappe parfaite », chiffre agrandi en or (15 PV, ×1,5), vibration courte, lame qui s’illumine. Le mot « Critique » n'apparaît jamais. Ici, les 18 points de garde font tomber la garde de la Goule : la cassure suit (F5).",()=>S.combat({phase:'strike',target:0,pose:'atk1',heroTier:1,heroTr:'translate(24px,-16px)',fill:.84,peak:true,press:true,ban:['Frappe parfaite','perfect'],floats:[{at:'foe:0',t:'−15',cls:'big'}],foes:GRP({hp:23,g:0}),fo:[{f:'hurt',tier:2}],tag:'arrêt sur image · 90 ms'})],
@@ -2372,7 +2387,7 @@ const G=[
  ['p','P6','Déséquilibré',['32'],"Appui trop tôt, trop tard, dans le vide ou sur la fausse amorce. Seul texte : « Déséquilibré » au-dessus des boutons grisés et hachurés ; chaque appui prolonge les 450 ms. Le lecteur d'écran précise « Trop tôt, déséquilibré ».",()=>S.combat({phase:'enemy',active:0,fo:[{f:'ant1',tier:1,p:.2}],pose:'off0',off:true,frise:['G* N','S h G N'],say:'Trop tôt, déséquilibré'})],
  ['p','P7','Touché',['32'],"Sans appui valide : vignette rouge tramée, secousse légère, pose touchée, chiffre au-dessus du héros, PV qui baissent. Pas de mot « Touché ». Les dégâts se lisent après coup, jamais avant.",()=>S.combat({phase:'enemy',active:0,fo:[{f:'impact',tier:2,p:.85}],pose:'hit1',hurt:.8,flash:.5,floats:[{at:'hero',t:'−4',cls:'me'}],hp:52,frise:['G* N','S h G N']})],
  ['p','P8','Parade sur un coup imparable',['32'],"La parade échoue : déséquilibre puis dégâts entiers (9, réduits à 8 par la Sentinelle). Le lecteur d'écran dit « Coup imparable : la parade échoue, 8 dégâts ».",()=>S.combat({phase:'enemy',active:1,round:2,peril:true,fo:[{},{f:'impact',tier:2,red:true,p:.85}],pose:'off0',off:true,hurt:.8,floats:[{at:'hero',t:'−8',cls:'me'}],hp:48,frise:['S* h G N','S h G N']})],
- ['p','P14','Garde du Nécromancien',['32'],"Avant l'action, l'intention n'était qu'un bouclier. Le gain se lit après coup : « +3 » au-dessus de sa garde, qui remonte de 30 % de son maximum. Sans cette intention, la garde ne remonte jamais d'elle-même.",()=>S.combat({phase:'enemy',active:2,fo:[{},{},{f:'ant1',tier:1,p:.1}],foes:GRP({},{},{g:11}),floats:[{at:'guard:2',t:'+3',cls:'gd'}],frise:['N*','S h G N'],say:'Nécromancien relève sa garde, plus 3'})],
+ ['p','P14','Garde du Nécromancien',['32'],"L'intention annonçait un bouclier « +3 ». Le gain se confirme pendant l'action : « +3 » au-dessus de sa garde, qui remonte de 30 % de son maximum. Sans cette intention, la garde ne remonte jamais d'elle-même.",()=>S.combat({phase:'enemy',active:2,fo:[{},{},{f:'ant1',tier:1,p:.1}],foes:GRP({},{},{g:11}),floats:[{at:'guard:2',t:'+3',cls:'gd'}],frise:['N*','S h G N'],say:'Nécromancien relève sa garde, plus 3'})],
  ['p','P15','Tous les ennemis étourdis',['32','78'],"Les trois ennemis ont perdu leur action, 250 ms chacun, sans transition ni « Phase ennemie ». La phase du héros commence directement par l'annonce « À toi ». Après l'action de la Sentinelle, les trois se relèvent.",()=>S.combat({target:1,round:4,foes:GRP({hp:20,stun:true,intent:null},{hp:14,stun:true,intent:null},{hp:22,stun:true,intent:null}),ban:['À toi','sub'],frise:['h* Gz Nz','S h G N']})],
  ['x','X2','Combat de boss',['33','78'],"Un seul ennemi, plus grand (pixel d'art de 2 dp, sprite plus haut), sur un socle plus large, sous un ciel plus rouge. Jamais maudit. Initiative 6 : il agit avant la Sentinelle. Mêmes poses, même reflet, même anneau que les ennemis ordinaires ; ici, la préparation d'un coup imparable. Sa phase 2 (Initiative 9, à partir de la manche suivante) arrive avec #33. Chiffres illustratifs.",()=>S.combat({boss:true,phase:'enemy',active:0,round:3,peril:true,foes:[foe('gardienne',{hp:196,g:24})],fo:[{f:'ant1',tier:1,red:true,p:.14,jx:2}],ring:{s:1.5,o:.72,red:true},frise:['B* h','B h'],say:'La Gardienne des ossuaires, coup imparable, esquive'})],
  ['z','Z1','Pause',['34'],"Possible à tout moment, même pendant une préparation ennemie ou un temps mort. Le combat est figé, la partie sauvegardée avec la manche, l'ordre d'action figé et le rang de l'action en cours.",()=>S.pause({})],
@@ -2404,7 +2419,7 @@ document.getElementById('demoComp').innerHTML=`
 document.getElementById('demoPx').innerHTML=`
  <div class="demo-cell" style="width:300px">Sprites : Goule, Spectre, Nécromancien (2 dp)<div style="display:flex;gap:4px;align-items:flex-end">${['goule3','spectre3','necro3'].map(id=>`<canvas width="44" height="52" data-spr="${id}|idle0|0|0" style="width:88px;height:104px;image-rendering:pixelated"></canvas>`).join('')}</div></div>
  <div class="demo-cell" style="width:250px">La Sentinelle (3 dp) et le boss (2 dp)<div style="display:flex;gap:10px;align-items:flex-end"><canvas width="36" height="44" data-spr="hero3|idle0|0|0" style="width:108px;height:132px;image-rendering:pixelated"></canvas><canvas width="52" height="62" data-spr="gardienne3|idle0|0|0" style="width:104px;height:124px;image-rendering:pixelated"></canvas></div></div>
- <div class="demo-cell" style="width:320px">Intentions : la catégorie, en icône seule<div class="pxb" style="flex-direction:row;gap:8px;flex-wrap:wrap">${[['atk','Attaque'],['guard','Garde'],['heal','Soin'],['raise','Relever'],['skip','N’agit pas']].map(([k,l])=>`<div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:56px"><span class="pint ${k}"><img src="${PXL.ICON[k]}" alt=""></span><span style="font:500 11px/1.2 Inter;color:var(--a-muted);text-align:center">${l}</span></div>`).join('')}</div></div>
+ <div class="demo-cell" style="width:320px">Intentions : la catégorie, et « +N » pour Garde et Soin<div class="pxb" style="flex-direction:row;gap:8px;flex-wrap:wrap">${[['atk','Attaque'],['guard','Garde +3',3],['heal','Soin +6',6],['raise','Relever'],['skip','N’agit pas']].map(([k,l,n])=>`<div style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:56px">${PXL.intentChip({intent:k,intentN:n},{})}<span style="font:500 11px/1.2 Inter;color:var(--a-muted);text-align:center">${l}</span></div>`).join('')}</div></div>
  <div class="demo-cell" style="width:250px">Coup imparable, pendant sa préparation seulement<div class="pxb" style="position:relative;width:120px;height:120px"><span class="pbig" style="top:-2px"><img class="b1" src="${PXL.BIG1}" alt=""><img class="b2" src="${PXL.BIG2}" alt=""></span><canvas width="44" height="52" data-spr="spectre3|ant1|1|1" style="position:absolute;left:16px;bottom:0;width:88px;height:104px"></canvas></div></div>
  <div class="demo-cell" style="width:200px">Étourdi : à terre<div class="pxb" style="height:110px;justify-content:flex-end"><canvas width="44" height="52" data-spr="goule3|down|0|0" style="width:88px;height:104px"></canvas></div><div class="pxb"><span class="pbar gd brk" style="width:120px"><b>Étourdie ×1,5</b></span></div></div>
  <div class="demo-cell" style="width:min(330px,100%);overflow:hidden">Frise d'action : en cours, héros, action perdue, maudit, aperçu<div class="pxb"><div class="frise" style="padding:0 0 6px">${PXL.friseHTML(fr('h* Gx Nm'),fr('S h G Nm'))}</div></div></div>
