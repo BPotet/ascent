@@ -30,23 +30,14 @@ Le combat d'essai (`trial-battle.yaml`, stories #31 et #32) s'ouvre par le bouto
 de la barre d'onglets : il n'existe que dans le build de preview (canal `preview`), et la story #33 le
 remplacera. Le bouton est dans le flux de la mise en page : en preview, il réduit la hauteur de la liste
 de la Vue Journée, et `weekly-target.yaml` remonte donc jusqu'à la première habitude avant de la
-modifier. Le parcours ne teste pas le timing de la parade ni de la frappe (Maestro ne touche pas à 10 ms
-près). Depuis #32, le combat ne se gagne plus sans parer : le parcours joue « Attaquer » jusqu'à la fin
-du combat, victoire ou défaite. Chaque commande Maestro prend une seconde ou plus sur l'émulateur de la
-CI : le parcours n'attend que des états d'au moins 2 secondes, ou qui durent jusqu'à son action
-suivante. La frappe en rythme (F3, « Frapper », 1 180 ms) est donc trop brève : elle est vérifiée par
-les tests d'intégration et la revue, pas par Maestro. Le parcours capture les écrans F2, F1 (intentions,
-garde, Élan, « Pouvoir »), P9, le Spectre étourdi (sa garde brisée par la frappe), puis l'écran de fin
-(avec les panneaux Réglages d'essai et Mesures) pour la comparaison avec la maquette. Il utilise aussi le
-Rempart. Les états précis (frappe parfaite, parades, garde du Nécromancien, tous étourdis, action
-perdue) sont couverts par les tests d'intégration et les scénarios ; les captures de la scène dessinée
-viennent avec #81. Les états brefs (P0, F0) sont capturés au second combat, après avoir allongé la
-transition et l'avancée à 2 000 ms (le maximum) dans les réglages d'essai. Ce combat s'ouvre par le
-Rempart (500 ms) plutôt que par « Attaquer » (1 180 ms) : la bannière P0 est alors à l'écran de 0,5 à
-2,5 s après le toucher. Chaque état est attendu par un texte qui n'existe que dans cet état, sans attente
-facultative. Le parcours joue les sons du combat et vérifie, dans le panneau Mesures, qu'une latence du
-son a été mesurée. L'émulateur de la CI tourne sans animations : l'app réduit alors les animations, et
-la bannière de phase porte l'identifiant `phase-banner-still`.
+modifier. Décision du propriétaire du 25/10 : le gameplay du combat (timing, parade, frappe,
+transitions) se teste à la main sur l'APK ; l'e2e vérifie seulement que le combat s'ouvre et s'affiche ;
+les règles sont couvertes par les tests unitaires, d'intégration et BDD. Le parcours est donc un test de
+fumée : il ouvre le combat, capture et ferme la bulle d'aide (F2), vérifie la phase du héros (
+« Attaquer », « Pouvoir », les trois ennemis avec leur garde et leur intention, la barre du héros et son Élan),
+la capture (F1), puis touche « Attaquer » une fois sans rien vérifier ensuite. Aucune attente ne dépend
+du timing du combat. Les réglages d'essai et le panneau Mesures, qui ne s'ouvrent qu'à la fin d'un
+combat, sont couverts par les tests d'intégration.
 
 Sélecteurs : privilégier les textes visibles (libellés du glossaire) et les `testID` des écrans.
 

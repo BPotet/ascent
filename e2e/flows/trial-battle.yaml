@@ -1,25 +1,14 @@
-# Stories #31 et #32 (combat complet, partie A) : le combat d'essai, ouvert depuis son point
-# d'entrée provisoire (build de preview).
-# Parcours : installation neuve → « Combat d'essai » → bulle F2 fermée → intentions, garde, Élan et
-# « Pouvoir » vérifiés (F1) → le Spectre visé, puis « Attaquer » → bulle P9 fermée → le Spectre
-# étourdi, sa garde (10) brisée par la frappe (12) → le Rempart → « Attaquer » à chaque phase du
-# héros jusqu'à la fin du combat → écran de fin, avec les panneaux Réglages d'essai et Mesures →
-# transition et avancée allongées à 2 000 ms → « Rejouer » → le Rempart → bannière « Phase
-# ennemie » (P0) → bannière « À toi » (F0) → fin du combat → panneau Mesures.
-# Le combat ne se gagne plus sans parer (#32 : 130 PV d'ennemis, que le Nécromancien relève) et
-# Maestro ne pare pas à 10 ms près : le parcours joue jusqu'à la fin du combat, victoire ou
-# défaite. Chaque commande Maestro prend une seconde ou plus sur l'émulateur de la CI : le parcours
-# n'attend que des états d'au moins 2 secondes, ou qui durent jusqu'à son action suivante.
-# La frappe en rythme (F3, « Frapper ») dure 1 180 ms : trop court pour Maestro, elle n'est ni
-# capturée ni touchée ici. F3 est vérifié par les tests d'intégration et la revue, comme les écrans
-# à état précis (frappe parfaite F4, parades P3 à P8, garde du Nécromancien P14, tous étourdis
-# P15, action perdue F5b), avec l'horloge de combat manuelle. Les captures de la scène dessinée
-# (F5, P0b, P2b, P10) viennent avec #81 ; celle de F5 montre ici la plaque « Étourdi ×1,5 », hors
-# de la scène.
-# Les états brefs du second combat (P0, F0) sont capturés avec les durées allongées par les
-# réglages d'essai, chacun attendu par un texte propre à cet état. Le parcours joue les sons du
-# combat et vérifie, dans le panneau Mesures, qu'une latence du son a été mesurée.
-# Sur l'émulateur sans animations, l'app réduit les animations : la bannière est `phase-banner-still`.
+# Stories #31 et #32 (combat complet, partie A) : test de fumée du combat d'essai, ouvert depuis
+# son point d'entrée provisoire (build de preview).
+# Décision du propriétaire du 25/10 : le gameplay du combat (timing, parade, frappe, transitions)
+# se teste à la main sur l'APK ; l'e2e vérifie seulement que le combat s'ouvre et s'affiche ; les
+# règles sont couvertes par les tests unitaires, d'intégration et BDD.
+# Parcours : installation neuve → « Combat d'essai » → bulle d'aide F2 (capture), fermée → phase du
+# héros (F1, capture) : « Attaquer », « Pouvoir », les trois ennemis avec leur garde et leur
+# intention, la barre du héros et son Élan → un toucher sur « Attaquer ».
+# Aucune attente ne dépend du timing du combat : la phase du héros dure jusqu'au toucher, et rien
+# n'est vérifié après lui. Les réglages d'essai et le panneau Mesures ne s'ouvrent qu'à la fin d'un
+# combat : ils sont vérifiés par les tests d'intégration, pas ici.
 appId: com.bpotet.ascent
 name: Combat d'essai du build de preview
 tags:
@@ -31,17 +20,24 @@ tags:
 - tapOn: "Combat d'essai"
 - extendedWaitUntil:
     visible:
-      id: 'battle-hint-hero'
+      id: 'battle-attack-button'
     timeout: 15000
-- assertVisible: 'Phase du héros|PHASE DU HÉROS'
-- takeScreenshot: trial-battle-f2-first-use
-- tapOn:
-    id: 'battle-hint-hero'
+
+# F2 : la bulle d'aide de la première phase du héros, fermée si elle est là.
+- runFlow:
+    when:
+      visible:
+        id: 'battle-hint-hero'
+    commands:
+      - takeScreenshot: trial-battle-f2-first-use
+      - tapOn:
+          id: 'battle-hint-hero'
 - assertNotVisible:
     id: 'battle-hint-hero'
 
-# F1 : la Goule présélectionnée ; chaque ennemi montre sa garde et la catégorie de son intention,
-# jamais le type de coup ni les dégâts ; « Pouvoir » à gauche, avec le Rempart et son coût.
+# F1 : la phase du héros, stable jusqu'au toucher. La Goule est présélectionnée ; chaque ennemi
+# montre sa garde et la catégorie de son intention, jamais le type de coup ni les dégâts.
+- assertVisible: 'Phase du héros|PHASE DU HÉROS'
 - assertVisible:
     id: 'enemy-ghoul'
     text: 'Goule, cible, 50 PV sur 50, garde 15 sur 15, intention : attaque'
@@ -57,170 +53,12 @@ tags:
 - assertVisible:
     id: 'battle-power-button'
     text: 'Pouvoir : Rempart, 1 Élan'
+- assertVisible:
+    id: 'battle-attack-button'
+    text: 'Attaquer, cible : Goule'
 - takeScreenshot: trial-battle-f1-hero-phase
 
-# Le Spectre visé, puis « Attaquer » (validé au relâcher) : la frappe en rythme commence. Sans
-# appui sur « Frapper », elle frappe sans bonus (10 PV, 12 points de garde) à la fin de sa fenêtre.
-- tapOn:
-    id: 'enemy-specter'
-- assertVisible:
-    id: 'battle-attack-button'
-    text: 'Attaquer, cible : Spectre'
+# Un toucher sur « Attaquer » : le combat continue, sans vérification après le toucher (tout ce
+# qui suit dépend du timing du combat).
 - tapOn:
     id: 'battle-attack-button'
-
-# Première phase ennemie : la bulle passe avant la transition, qui commence à sa fermeture.
-- extendedWaitUntil:
-    visible:
-      id: 'battle-hint-defense'
-    timeout: 10000
-- takeScreenshot: trial-battle-p9-first-use
-- tapOn:
-    id: 'battle-hint-defense'
-
-# F5, hors de la scène : la frappe (12 points de garde) a brisé la garde du Spectre (10). Il est
-# étourdi jusqu'à la fin de la prochaine action de la Sentinelle. Il est la cible : son libellé
-# porte « cible ».
-- extendedWaitUntil:
-    visible:
-      id: 'enemy-specter'
-      text: 'Spectre, (cible, )?[0-9]+ PV sur 35, étourdi, dégâts ×1,5.*'
-    timeout: 10000
-- takeScreenshot: trial-battle-f5-stunned
-
-# Le Rempart, pour 1 Élan, à la phase du héros suivante : l'Élan passe de 2 (1 au départ, plus 1
-# pour l'attaque) à 1, et le reste jusqu'à l'attaque suivante. Le Rempart, lui, s'use au premier
-# coup subi, environ 2,5 s après le toucher : sa mention dans le libellé est facultative.
-- extendedWaitUntil:
-    visible:
-      id: 'battle-power-button'
-      enabled: true
-    timeout: 30000
-- tapOn:
-    id: 'battle-power-button'
-    enabled: true
-- assertVisible:
-    id: 'battle-hero-bar'
-    text: 'La Sentinelle, PV [0-9]+ sur 80, Élan 1 sur 5(, Rempart)?'
-
-# « Attaquer » à chaque phase du héros jusqu'à la fin du combat.
-- repeat:
-    while:
-      notVisible: 'Combat perdu|Combat gagné'
-    times: 30
-    commands:
-      - extendedWaitUntil:
-          visible:
-            id: 'battle-attack-button'
-            enabled: true
-          timeout: 30000
-          optional: true
-      - tapOn:
-          id: 'battle-attack-button'
-          enabled: true
-          optional: true
-
-- extendedWaitUntil:
-    visible: 'Combat perdu|Combat gagné'
-    timeout: 30000
-- assertVisible: "Réglages d'essai"
-- takeScreenshot: trial-battle-end
-
-# Réglages d'essai : transition et avancée allongées à 2 000 ms, pour capturer les états brefs.
-# Les réglages suivent la fin du combat, dans une vue qui défile. Sur 320 x 640, la partie qui
-# défile est petite : de courts glissements évitent de passer la ligne visée.
-- repeat:
-    while:
-      notVisible: 'Allonger la transition de phase'
-    times: 12
-    commands:
-      - swipe:
-          start: 50%, 88%
-          end: 50%, 68%
-          duration: 600
-- repeat:
-    times: 24
-    commands:
-      - tapOn: 'Allonger la transition de phase'
-- repeat:
-    while:
-      notVisible: "Allonger l'avancée"
-    times: 12
-    commands:
-      - swipe:
-          start: 50%, 88%
-          end: 50%, 68%
-          duration: 600
-- repeat:
-    times: 32
-    commands:
-      - tapOn: "Allonger l'avancée"
-# Les milliers sont séparés par une espace fine insécable : « 2 000 ms ».
-- assertVisible:
-    id: 'trial-tuning-stepInMs'
-    text: '2.000 ms'
-- takeScreenshot: trial-battle-tuning
-
-- scrollUntilVisible:
-    element:
-      text: 'Rejouer'
-    direction: UP
-- tapOn: 'Rejouer'
-- extendedWaitUntil:
-    visible:
-      id: 'battle-attack-button'
-      text: 'Attaquer, cible : Goule'
-    timeout: 10000
-# Au combat suivant, la bulle d'aide n'apparaît plus.
-- assertNotVisible:
-    id: 'battle-hint-hero'
-# Le Rempart plutôt que « Attaquer » : l'action dure 500 ms (contre 1 180 ms pour la frappe), et
-# la bannière P0 est à l'écran de 0,5 à 2,5 s après le toucher. Sans attendre que l'écran se
-# stabilise.
-- tapOn:
-    id: 'battle-power-button'
-    text: 'Pouvoir : Rempart, 1 Élan'
-    waitToSettleTimeoutMs: 200
-
-# Les états brefs du second combat, chacun attendu par un texte qui n'existe que dans cet état,
-# puis capturé aussitôt (durées allongées : transition et avancée de 2 000 ms chacune).
-# P0 : bannière « Phase ennemie », pendant la transition qui suit le Rempart.
-- extendedWaitUntil:
-    visible: 'Prépare ta parade'
-    timeout: 5000
-- takeScreenshot: trial-battle-p0-enemy-phase
-# F0 : bannière « À toi », pendant la transition vers la phase du héros.
-- extendedWaitUntil:
-    visible: 'Vise et attaque'
-    timeout: 30000
-- takeScreenshot: trial-battle-f0-to-hero
-
-# « Attaquer » jusqu'à la fin du combat.
-- repeat:
-    while:
-      notVisible: 'Combat perdu|Combat gagné'
-    times: 30
-    commands:
-      - extendedWaitUntil:
-          visible:
-            id: 'battle-attack-button'
-            enabled: true
-          timeout: 40000
-          optional: true
-      - tapOn:
-          id: 'battle-attack-button'
-          enabled: true
-          optional: true
-- extendedWaitUntil:
-    visible: 'Combat perdu|Combat gagné'
-    timeout: 40000
-- scrollUntilVisible:
-    element:
-      id: 'battle-measures-panel'
-    direction: DOWN
-# Les sons ont joué : sans aucun son, la ligne afficherait « aucune mesure ».
-- scrollUntilVisible:
-    element:
-      text: 'Latence du son : médiane .*'
-    direction: DOWN
-- takeScreenshot: trial-battle-measures
