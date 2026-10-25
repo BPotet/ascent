@@ -97,7 +97,13 @@ function XpChangePills({ change }: { readonly change: ShownXpChange }) {
   }, [delayed]);
 
   return (
-    <View pointerEvents="none" testID="xp-change-pills" style={styles.pills}>
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      pointerEvents="none"
+      testID="xp-change-pills"
+      style={styles.pills}
+    >
       {checkIn !== 0 && <XpChangePill amount={checkIn} />}
       {bonus !== 0 && bonusShown && <XpChangePill amount={bonus} bonus />}
     </View>
@@ -109,7 +115,15 @@ function XpChangePills({ change }: { readonly change: ShownXpChange }) {
  * « 340 XP » en police pixel. Après un gain (`gainId`), son trait s'allume une image en or ; jamais
  * en mouvement réduit.
  */
-function XpPlate({ xp, gainId }: { readonly xp: number; readonly gainId: number | null }) {
+function XpPlate({
+  xp,
+  gainId,
+  change,
+}: {
+  readonly xp: number;
+  readonly gainId: number | null;
+  readonly change: ShownXpChange | null;
+}) {
   const frame = useArtFrames(2, { play: gainId !== null });
   const flash = gainId !== null && frame === 0;
   return (
@@ -122,9 +136,12 @@ function XpPlate({ xp, gainId }: { readonly xp: number; readonly gainId: number 
     >
       <View testID="character-bar-texts" style={styles.texts}>
         <Text style={[pixelTypography.label, styles.label]}>{CHARACTER_XP_LABEL}</Text>
-        <Text testID="xp-counter" style={[pixelTypography.gameNumber, styles.xp]}>
-          {formatXp(xp)}
-        </Text>
+        <View testID="xp-row" style={styles.xpRow}>
+          <Text testID="xp-counter" style={[pixelTypography.gameNumber, styles.xp]}>
+            {formatXp(xp)}
+          </Text>
+          {change !== null && <XpChangePills key={change.id} change={change} />}
+        </View>
       </View>
     </PixelFrame>
   );
@@ -138,7 +155,7 @@ function XpPlate({ xp, gainId }: { readonly xp: number; readonly gainId: number 
  * toujours la nouvelle valeur.
  *
  * Après un changement (`change`), l'expérience passe directement à la nouvelle valeur, et une
- * pastille d'expérience « +10 XP » (or) ou « −10 XP » (gris) apparaît ; une prime d'objectif
+ * pastille d'expérience « +10 XP » (or) ou « −10 XP » (gris) apparaît à côté d'elle ; une prime d'objectif
  * (`change.bonus`, #26) a sa seconde pastille, « +30 XP prime », 0,4 s après (F1). Pour un gain, le
  * trait de la plaque s'allume une image en or. En mouvement réduit, tout est tout de suite en place.
  *
@@ -209,18 +226,8 @@ export function CharacterBar({
         testID="character-bar"
         style={[styles.content, { minHeight }]}
       >
-        <XpPlate key={gainId ?? 'still'} xp={xp} gainId={gainId} />
+        <XpPlate key={gainId ?? 'still'} xp={xp} gainId={gainId} change={change} />
       </View>
-      {change !== null && (
-        <View
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-          pointerEvents="none"
-          style={[styles.deltas, compact && styles.deltasCompact]}
-        >
-          <XpChangePills key={change.id} change={change} />
-        </View>
-      )}
     </View>
   );
 }
@@ -243,9 +250,9 @@ const styles = StyleSheet.create({
   texts: { flexShrink: 1, minWidth: 0, gap: 5 },
   label: { color: roles.parchment, fontSize: 12, lineHeight: 15 },
   xp: { color: roles.light },
-  deltas: { position: 'absolute', right: 18, top: 52 },
-  deltasCompact: { top: 8 },
-  pills: { flexShrink: 0, alignItems: 'flex-end', gap: 4 },
+  // Les pastilles, près de l'expérience (F1-2) : à sa droite, ou dessous en grand texte.
+  xpRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 4 },
+  pills: { flexShrink: 0, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4 },
   pill: { paddingTop: 5, paddingBottom: 4, paddingHorizontal: 8 },
 });
 // Stryker restore all
