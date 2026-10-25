@@ -2,12 +2,17 @@ import { ImpactFeedbackStyle, impactAsync } from 'expo-haptics';
 
 import type { BattleHapticCue, BattleHaptics } from '../../../application/ports/BattleHaptics';
 
-/** La force de chaque vibration du combat : forte pour la parade parfaite, légère pour la phase ennemie. */
+/**
+ * La force de chaque vibration du combat : forte pour la parade parfaite et la cassure de garde,
+ * courte et sèche pour la frappe parfaite, légère pour la phase ennemie.
+ */
 export const BATTLE_HAPTIC_STYLES: Readonly<Record<BattleHapticCue, ImpactFeedbackStyle>> = {
   perfectParry: ImpactFeedbackStyle.Heavy,
   dodge: ImpactFeedbackStyle.Light,
   hit: ImpactFeedbackStyle.Medium,
   enemyPhase: ImpactFeedbackStyle.Soft,
+  guardBreak: ImpactFeedbackStyle.Heavy,
+  perfectStrike: ImpactFeedbackStyle.Rigid,
 };
 
 /**

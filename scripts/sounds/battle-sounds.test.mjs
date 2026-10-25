@@ -18,14 +18,22 @@ describe('provisional battle sounds', () => {
 
   it('gives one sound per cue of the battle', () => {
     assert.deepEqual(Object.keys(rendered).sort(), [
+      'bulwark.wav',
       'defeat.wav',
       'dodge.wav',
       'enemy-phase.wav',
+      'guard-break.wav',
+      'guard-restore.wav',
+      'guard-up.wav',
       'hero-phase.wav',
       'hit.wav',
+      'lost-action.wav',
       'parry.wav',
       'perfect-parry.wav',
+      'perfect-strike.wav',
+      'raise.wav',
       'seal.wav',
+      'strike.wav',
       'victory.wav',
       'whiff.wav',
     ]);

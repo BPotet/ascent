@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Sons provisoires du combat (#31) : des WAV courts générés à partir des tonalités du prototype de
-// la maquette (`docs/mockups/30-premiere-ascension/index.html`, fonction `tone`). Aucune licence
-// tierce. Les sons définitifs sont hors du périmètre de #31.
+// Sons provisoires du combat (#31, complétés par #32) : des WAV courts générés à partir des
+// tonalités du prototype de la maquette (`docs/mockups/30-premiere-ascension/index.html`, fonctions
+// `tone` et `sfx`). Aucune licence tierce. Les sons définitifs sont hors du périmètre.
 //   node scripts/sounds/battle-sounds.mjs  : écrit les fichiers dans src/adapters/device/sound/assets/
 import { Buffer } from 'node:buffer';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -44,6 +44,41 @@ export const CUES = {
   defeat: [
     [220, 0.3, 'sine', 0.12, 0],
     [165, 0.4, 'sine', 0.12, 0.2],
+  ],
+  // #32 : sans bruit blanc ni glissando (le script ne joue que des notes tenues), au plus proche.
+  strike: [
+    [1_200, 0.08, 'sawtooth', 0.06, 0],
+    [600, 0.12, 'triangle', 0.08, 0.03],
+  ],
+  'perfect-strike': [
+    [1_568, 0.3, 'sine', 0.12, 0],
+    [2_093, 0.3, 'sine', 0.12, 0.025],
+    [2_637, 0.3, 'sine', 0.12, 0.05],
+    [1_250, 0.3, 'triangle', 0.16, 0],
+  ],
+  'guard-break': [
+    [880, 0.28, 'triangle', 0.14, 0],
+    [660, 0.28, 'triangle', 0.14, 0.06],
+    [494, 0.28, 'triangle', 0.14, 0.12],
+    [330, 0.28, 'triangle', 0.14, 0.18],
+  ],
+  'lost-action': [[300, 0.05, 'triangle', 0.04, 0]],
+  'guard-restore': [
+    [320, 0.2, 'sine', 0.06, 0],
+    [480, 0.25, 'sine', 0.06, 0.15],
+  ],
+  'guard-up': [
+    [392, 0.4, 'triangle', 0.12, 0],
+    [523, 0.4, 'sine', 0.08, 0.08],
+  ],
+  raise: [
+    [262, 0.4, 'sawtooth', 0.04, 0],
+    [311, 0.4, 'sawtooth', 0.04, 0.12],
+    [370, 0.4, 'sawtooth', 0.04, 0.24],
+  ],
+  bulwark: [
+    [196, 0.6, 'triangle', 0.16, 0],
+    [294, 0.5, 'sine', 0.1, 0.05],
   ],
 };
 
