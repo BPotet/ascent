@@ -27,7 +27,7 @@ styles coexistent à l'écran.
 
 Un **sprite** (`Sprite`) est une image en pixels d'art : `{ width, height, pixels: Uint8Array }`, où
 chaque pixel est un indice de la palette d'art (`artPalette.tints`, 0 = transparent). Le moteur de
-la maquette (`grid`, `px`, `rect`, `ell`, `line`, `poly`, `limb`, `finish`, tramage ordonné `bay`)
+la maquette (`grid`, `px`, `rect`, `ell`, `line`, `poly`, `finish`, tramage ordonné `bay`)
 est porté en TypeScript dans `src/adapters/ui/pixelArt/sprites/`, sans React ni Skia : il se teste
 en Node, et il est déterministe (les étoiles du ciel suivent une suite à graine fixe).
 

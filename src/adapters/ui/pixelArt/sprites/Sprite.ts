@@ -23,7 +23,7 @@ export type Point = readonly [number, number];
 
 /*
  * Le moteur de sprites, porté du code de dessin de la maquette (`grid`, `px`, `rect`, `ell`,
- * `line`, `poly`, `limb`, `finish`, `bay`). Les coordonnées sont en pixels d'art ; un dessin hors
+ * `line`, `poly`, `finish`, `bay`). Les coordonnées sont en pixels d'art ; un dessin hors
  * de la grille est ignoré.
  */
 
@@ -140,34 +140,6 @@ export function poly(sprite: Sprite, points: readonly Point[], code: number): vo
       }
     }
   }
-}
-
-/** Un membre plié de l'épaule `shoulder` à la main `hand`, coudé de `bend` du côté `side`. */
-export function limb(
-  sprite: Sprite,
-  shoulder: Point,
-  hand: Point,
-  bend: number,
-  side: 1 | -1,
-  code: number,
-  breadth: number,
-): Point {
-  const dx = hand[0] - shoulder[0];
-  const dy = hand[1] - shoulder[1];
-  const length = Math.hypot(dx, dy) || 1;
-  let nx = -dy / length;
-  let ny = dx / length;
-  if (nx * side < 0) {
-    nx = -nx;
-    ny = -ny;
-  }
-  const elbow: Point = [
-    (shoulder[0] + hand[0]) / 2 + nx * bend,
-    (shoulder[1] + hand[1]) / 2 + ny * bend,
-  ];
-  line(sprite, shoulder[0], shoulder[1], elbow[0], elbow[1], code, breadth);
-  line(sprite, elbow[0], elbow[1], hand[0], hand[1], code, breadth);
-  return elbow;
 }
 
 // Stryker disable all: éclairage purement visuel, celui de la maquette.
