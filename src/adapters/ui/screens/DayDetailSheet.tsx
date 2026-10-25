@@ -4,10 +4,8 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import type { DayDetail } from '../../../application/useCases/getDayDetail';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import type { Day } from '../../../domain/day/Day';
-import { Button } from '../components/Button';
-import { AlertGlyph } from '../components/Glyph';
-import { HabitRow } from '../components/legacy/HabitRow';
-import { Toast } from '../components/legacy/Toast';
+import { HabitRow } from '../components/HabitRow';
+import { Toast } from '../components/Toast';
 import { targetToastOf } from '../format/toast';
 import { CHECK_IN_SAVE_FAILED, CORRECTION_SAVE_FAILED } from '../format/checkInMessages';
 import { capitalize, formatDayAndMonth } from '../format/formatDay';
@@ -18,13 +16,20 @@ import { useExperience, xpChangeOn } from '../state/Experience';
 import { useDayDetail } from '../state/useDayDetail';
 import { useReducedMotion } from '../state/useReducedMotion';
 import { targetFlashOn, useTargetFeedback } from '../state/useTargetFeedback';
-import { colors } from '../theme/colors';
-import { radii, spacing } from '../theme/metrics';
-import { typography } from '../theme/typography';
+import { artPalette } from '../pixelArt/artPalette';
+import { PixelButton } from '../pixelArt/PixelButton';
+import { PixelFrame } from '../pixelArt/PixelFrame';
+import { PixelIcon } from '../pixelArt/PixelIcon';
+import { PixelSheet } from '../pixelArt/PixelSheet';
+import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypography';
+
+const { roles } = artPalette;
 
 /**
- * Le panneau « détail du jour » (`DayDetail`), ouvert en touchant un jour de la Vue Mois (maquette,
- * E5 et E6) : le jour en toutes lettres, « Aujourd'hui » ou « Jour clos · tu peux corriger un
+ * Le panneau « Détail du jour » (`DayDetailSheet`), ouvert en touchant un jour de la Vue Mois, dans
+ * l'identité pixel art (maquette E5, #73) : un panneau cranté (`PixelSheet`), le titre en police
+ * pixel et les lignes de la Vue Journée (`HabitRow`), avec leur case dessinée et leurs retours de
+ * jeu. On y trouve le jour en toutes lettres, « Aujourd'hui » ou « Jour clos · tu peux corriger un
  * oubli » avec le compteur « faites / attendues », ou « objectifs de la semaine atteints » sans
  * habitude attendue (#25), puis une ligne par habitude active, attendue ou non, avec son état écrit
  * et la marque « corrigé ». Les habitudes créées plus tard sont nommées, « hors habitude ».
@@ -124,17 +129,16 @@ export function DayDetailSheet({
             />
           )}
         </View>
-        <View
+        <PixelSheet
           testID="day-detail-panel"
           onLayout={(event) => setPanelHeight(event.nativeEvent.layout.height)}
           style={styles.sheet}
         >
           <ScrollView contentContainerStyle={styles.content} bounces={false}>
-            <View style={styles.grab} />
-            <Text accessibilityRole="header" style={[typography.sheetTitle, styles.title]}>
+            <Text accessibilityRole="header" style={styles.title}>
               {capitalize(formatDayAndMonth(detail.day))}
             </Text>
-            <Text style={[typography.notice, styles.summary]}>{dayDetailSummary(detail)}</Text>
+            <Text style={[pixelTypography.label, styles.summary]}>{dayDetailSummary(detail)}</Text>
             {detail.habits.map((habitDay) => (
               <HabitRow
                 key={habitDay.habit.id}
@@ -142,41 +146,46 @@ export function DayDetailSheet({
                 weeklyProgress={progressOf.get(habitDay.habit.id)}
                 weekLabel={shownWeek}
                 targetFlash={targetFlashOn(target.flash, habitDay)}
-                compact
                 xpChange={xpChangeOn(experience.change, habitDay)}
                 onToggle={(touched) => void tap(touched)}
               />
             ))}
             {detail.notStartedHabits.length > 0 && (
-              <Text style={[typography.label, styles.hint]}>
+              <Text style={[pixelTypography.label, styles.hint]}>
                 {notStartedHint(detail.notStartedHabits.map(({ habit }) => habit.name.value))}
               </Text>
             )}
             {failed !== null && (
-              <View
+              <PixelFrame
                 accessible
                 accessibilityRole="alert"
                 accessibilityLabel={alert}
                 accessibilityLiveRegion="assertive"
+                tone="error"
+                background={roles.errorBg}
+                under={roles.surface}
                 style={styles.alert}
               >
-                <AlertGlyph color={colors.onDangerSoft} />
-                <Text style={[typography.toast, styles.alertText]}>{alert}</Text>
+                <PixelIcon name="alert" color={roles.error} />
+                <Text style={styles.alertText}>{alert}</Text>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Réessayer"
                   onPress={() => void tap(failed)}
                   style={styles.retry}
                 >
-                  <Text style={[typography.link, styles.retryText]}>Réessayer</Text>
+                  <Text style={[pixelTypography.link, styles.retryText]}>Réessayer</Text>
                 </Pressable>
-              </View>
+              </PixelFrame>
             )}
-            <View style={styles.close}>
-              <Button label="Fermer" variant="ghost" onPress={onClose} />
-            </View>
+            <PixelButton
+              label="Fermer"
+              variant="secondary"
+              onPress={onClose}
+              style={styles.close}
+            />
           </ScrollView>
-        </View>
+        </PixelSheet>
       </View>
     </Modal>
   );
@@ -186,43 +195,29 @@ export function DayDetailSheet({
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'flex-end' },
   toastSlot: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 1 },
-  scrim: { ...StyleSheet.absoluteFill, backgroundColor: colors.scrim },
-  sheet: {
-    maxHeight: '85%',
-    backgroundColor: colors.background,
-    borderTopLeftRadius: radii.sheet,
-    borderTopRightRadius: radii.sheet,
-    borderTopWidth: 1,
-    borderColor: colors.line,
-  },
-  content: { paddingTop: spacing.sm, paddingHorizontal: 20, paddingBottom: 36 },
-  grab: {
-    width: 40,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: colors.grab,
-    alignSelf: 'center',
-    marginBottom: 14,
-  },
-  title: { color: colors.text, marginBottom: 6 },
-  summary: { color: colors.muted, marginBottom: 14 },
-  hint: { color: colors.muted, marginTop: spacing.xs, marginHorizontal: 2 },
+  scrim: { ...StyleSheet.absoluteFill, backgroundColor: roles.scrim },
+  sheet: { maxHeight: '85%' },
+  content: { paddingTop: 8, paddingHorizontal: 16, paddingBottom: 40, gap: 10 },
+  title: { fontFamily: pixelFont, fontSize: 22, lineHeight: 26, color: roles.light },
+  summary: { color: roles.parchment, marginTop: -6 },
+  hint: { color: roles.parchment, paddingHorizontal: 4 },
   alert: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: 10,
-    paddingVertical: spacing.xs,
-    paddingLeft: spacing.md,
-    paddingRight: spacing.xs,
-    borderRadius: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.dangerLine,
-    backgroundColor: colors.dangerSoft,
+    gap: 8,
+    paddingVertical: 4,
+    paddingLeft: 12,
+    paddingRight: 4,
   },
-  alertText: { color: colors.onDangerSoft, flex: 1 },
-  retry: { minHeight: 44, paddingHorizontal: spacing.md, justifyContent: 'center' },
-  retryText: { color: colors.onDangerSoft },
-  close: { marginTop: spacing.sm },
+  alertText: {
+    flex: 1,
+    fontFamily: textFont.semiBold,
+    fontSize: 13,
+    lineHeight: 18,
+    color: roles.pink,
+  },
+  retry: { minHeight: 48, paddingHorizontal: 8, justifyContent: 'center' },
+  retryText: { color: roles.pink },
+  close: { alignSelf: 'stretch' },
 });
 // Stryker restore all

@@ -95,6 +95,8 @@ export const artPalette = {
     goldMessageBg: '#1F1E26',
     /** Fond du message « Objectifs de la semaine atteints ». */
     doneMessageBg: '#14262A',
+    /** Voile sous un panneau ou une fenêtre. */
+    scrim: 'rgba(6,7,12,0.72)',
     /** Fond de la plaque de l'expérience, posée sur le ciel. */
     plate: 'rgba(16,19,31,0.92)',
     /** Lien d'un message clair. */

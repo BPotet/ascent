@@ -9,36 +9,22 @@ import {
   weekTargetsCount,
   weekTargetsTitle,
 } from '../format/formatTargetsByWeek';
-import { colors } from '../theme/colors';
-import { spacing } from '../theme/metrics';
-import { typography } from '../theme/typography';
-import { ChevronGlyph, SummitFlagGlyph } from './Glyph';
+import { artPalette } from '../pixelArt/artPalette';
+import { PixelFrame } from '../pixelArt/PixelFrame';
+import { PixelIcon } from '../pixelArt/PixelIcon';
+import { textFont } from '../pixelArt/pixelTypography';
 
-/** La hauteur d'une ligne de la section (maquette E6 : 60 px, au-delà des 44 pt d'une cible). */
-export const WEEK_TARGETS_ROW_HEIGHT = 60;
+const { roles } = artPalette;
 
-/** La cible d'une semaine dont tous les objectifs ne sont pas atteints (maquette E6). Décorative. */
-function TargetGlyph({ color }: { readonly color: string }) {
-  return (
-    <View
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      testID="target-glyph"
-      style={[styles.targetOuter, { borderColor: color }]}
-    >
-      <View style={[styles.targetInner, { borderColor: color }]}>
-        <View style={[styles.targetDot, { backgroundColor: color }]} />
-      </View>
-    </View>
-  );
-}
+/** La hauteur d'une ligne de la section, au moins (maquette E5 : 56 dp, au-delà des 48 d'une cible). */
+export const WEEK_TARGETS_ROW_HEIGHT = 56;
 
 /**
- * Une ligne de la section « Objectifs par semaine » (maquette E6, #27) : la cible, ou le drapeau de
- * sommet quand tous les objectifs de la semaine sont atteints, le titre (« Semaine du 5 octobre »,
- * « Cette semaine »), le compte (« 3/4 objectifs atteints ») et un chevron. Toute la ligne est un
- * bouton qui ouvre la semaine, lu « Semaine du 12 octobre, 4 objectifs atteints sur 4, ouvrir la
- * semaine ».
+ * Une ligne de la section « Objectifs par semaine » (maquette E5, #27), dans un cadre cranté : une
+ * étoile grise, ou le drapeau d'or quand tous les objectifs de la semaine sont atteints, le titre
+ * (« Semaine du 5 octobre », « Cette semaine »), le compte (« 3/4 objectifs atteints ») et un
+ * chevron. Toute la ligne est un bouton qui ouvre la semaine, lu « Semaine du 12 octobre,
+ * 4 objectifs atteints sur 4, ouvrir la semaine ».
  */
 function WeekTargetsLine({
   row,
@@ -56,22 +42,32 @@ function WeekTargetsLine({
       accessibilityLabel={weekTargetsAccessibilityLabel(row, today)}
       onPress={() => onOpenWeek?.(row.week)}
       testID={`week-targets-${row.week.start.toIsoString()}`}
-      style={styles.row}
+      style={styles.button}
     >
-      <View style={[styles.icon, allReached && styles.iconAll]}>
-        {allReached ? (
-          <SummitFlagGlyph color={colors.done} />
-        ) : (
-          <TargetGlyph color={colors.muted} />
-        )}
-      </View>
-      <View style={styles.texts}>
-        <Text style={[typography.cardTitle, styles.title]}>{weekTargetsTitle(row, today)}</Text>
-        <Text style={[typography.label, styles.count, allReached && styles.countAll]}>
-          {weekTargetsCount(row)}
-        </Text>
-      </View>
-      <ChevronGlyph color={colors.muted} direction="right" />
+      {({ pressed }) => (
+        <PixelFrame testID="week-targets-frame" style={[styles.row, pressed && styles.pressed]}>
+          {allReached ? (
+            <PixelIcon
+              name="flag8"
+              color={roles.gold}
+              secondColor={roles.parchment}
+              testID="summit-flag-glyph"
+            />
+          ) : (
+            <PixelIcon
+              name="star8"
+              color={roles.muted}
+              secondColor={roles.parchment}
+              testID="target-glyph"
+            />
+          )}
+          <View style={styles.texts}>
+            <Text style={styles.title}>{weekTargetsTitle(row, today)}</Text>
+            <Text style={styles.count}>{weekTargetsCount(row)}</Text>
+          </View>
+          <PixelIcon name="right" color={roles.muted} testID="chevron-icon" />
+        </PixelFrame>
+      )}
     </Pressable>
   );
 }
@@ -96,7 +92,7 @@ export function TargetsByWeekSection({
   }
   return (
     <View testID="targets-by-week" style={styles.section}>
-      <Text accessibilityRole="header" style={[typography.periodTitle, styles.header]}>
+      <Text accessibilityRole="header" style={styles.header}>
         {TARGETS_BY_WEEK_TITLE}
       </Text>
       {rows.map((row) => (
@@ -113,49 +109,30 @@ export function TargetsByWeekSection({
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  section: { marginTop: 18 },
-  header: { color: colors.text, marginTop: 10, marginBottom: spacing.sm, marginHorizontal: 2 },
+  section: { marginTop: 8, gap: 8 },
+  header: {
+    fontFamily: textFont.semiBold,
+    fontSize: 12,
+    lineHeight: 15,
+    color: roles.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    paddingTop: 8,
+    paddingHorizontal: 2,
+  },
+  button: { minHeight: WEEK_TARGETS_ROW_HEIGHT },
   row: {
+    flexGrow: 1,
     minHeight: WEEK_TARGETS_ROW_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingLeft: spacing.md,
-    paddingRight: 14,
-    borderRadius: 14,
-    backgroundColor: colors.surface,
+    gap: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
-  icon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.surfaceRaised,
-  },
-  iconAll: { backgroundColor: colors.goalSoft },
+  pressed: { transform: [{ translateY: 2 }] },
   texts: { flex: 1, minWidth: 0 },
-  title: { color: colors.text },
-  count: { color: colors.muted },
-  countAll: { color: colors.doneText },
-  targetOuter: {
-    width: 17,
-    height: 17,
-    borderRadius: 8.5,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  targetInner: {
-    width: 9,
-    height: 9,
-    borderRadius: 4.5,
-    borderWidth: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  targetDot: { width: 2, height: 2, borderRadius: 1 },
+  title: { fontFamily: textFont.bold, fontSize: 15, lineHeight: 20, color: roles.light },
+  count: { fontFamily: textFont.medium, fontSize: 13, lineHeight: 17, color: roles.parchment },
 });
 // Stryker restore all

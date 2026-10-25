@@ -3,7 +3,11 @@ import { fireEvent, render, screen, within } from '@testing-library/react-native
 import { Day } from '../../../domain/day/Day';
 import type { WeekTargetsRow } from '../../../domain/month/TargetsByWeek';
 import { Week } from '../../../domain/week/Week';
+import { artPalette } from '../pixelArt/artPalette';
+import { textFont } from '../pixelArt/pixelTypography';
 import { TargetsByWeekSection } from './TargetsByWeekSection';
+
+const { roles } = artPalette;
 
 const today = Day.of(2026, 10, 21);
 const weekOf = (month: number, dayOfMonth: number) =>
@@ -37,7 +41,7 @@ describe('TargetsByWeekSection', () => {
     expect(line('2026-10-19')).toHaveTextContent('Cette semaine1/4 objectifs atteints');
   });
 
-  it('plants the summit flag on a week whose targets are all reached, a target otherwise', async () => {
+  it('plants the gold flag on a week whose targets are all reached, a grey star otherwise', async () => {
     await render(<TargetsByWeekSection rows={october} today={today} />);
 
     const hidden = { includeHiddenElements: true };
@@ -46,11 +50,16 @@ describe('TargetsByWeekSection', () => {
     expect(within(line('2026-10-05')).getByTestId('target-glyph', hidden)).toBeTruthy();
     expect(within(line('2026-10-05')).queryByTestId('summit-flag-glyph', hidden)).toBeNull();
     expect(within(line('2026-10-12')).getByText('4/4 objectifs atteints')).toHaveStyle({
-      color: '#8FE8BF',
+      color: roles.parchment,
+      fontFamily: textFont.medium,
+      fontSize: 13,
     });
-    expect(within(line('2026-10-05')).getByText('3/4 objectifs atteints')).toHaveStyle({
-      color: '#9AA4B8',
+    expect(within(line('2026-10-12')).getByText('Semaine du 12 octobre')).toHaveStyle({
+      color: roles.light,
+      fontFamily: textFont.bold,
+      fontSize: 15,
     });
+    expect(within(line('2026-10-12')).getByTestId('chevron-icon', hidden)).toBeTruthy();
   });
 
   it('agrees a row with a single habit that has a target', async () => {
@@ -90,11 +99,14 @@ describe('TargetsByWeekSection', () => {
     }
   });
 
-  it('gives each row a touch target of at least 44 pt', async () => {
+  it('gives each row a pixel frame and a touch target of at least 56 dp', async () => {
     await render(<TargetsByWeekSection rows={october} today={today} />);
 
     for (const button of screen.getAllByRole('button')) {
-      expect(button).toHaveStyle({ minHeight: 60 });
+      expect(button).toHaveStyle({ minHeight: 56 });
+      expect(within(button).getByTestId('week-targets-frame')).toHaveStyle({
+        borderColor: roles.line,
+      });
     }
   });
 

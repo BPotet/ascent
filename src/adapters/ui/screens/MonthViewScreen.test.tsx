@@ -16,6 +16,7 @@ import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { reduceMotionInEachTest } from '../testing/motion';
 import { renderScreen } from '../testing/renderScreen';
 import { BACK_TO_CURRENT_MONTH, MONTH_HINT, MonthViewScreen } from './MonthViewScreen';
+import { artPalette } from '../pixelArt/artPalette';
 
 const october = (dayOfMonth: number) => Day.of(2026, 10, dayOfMonth);
 const wednesday = october(14);
@@ -130,7 +131,7 @@ describe('MonthViewScreen', () => {
     expect(labelOf(wednesday)).toBe(
       'mercredi 14 octobre, aujourd’hui, 0 habitude faite sur 2 attendues',
     );
-    expect(dayCell(wednesday)).toHaveStyle({ borderColor: '#7C9CFF' });
+    expect(dayCell(wednesday)).toHaveStyle({ borderColor: artPalette.roles.gold });
     expect(screen.getByText(MONTH_HINT)).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: BACK_TO_CURRENT_MONTH })).toBeNull();
   });
@@ -427,5 +428,52 @@ describe('MonthViewScreen', () => {
       expect(screen.getByTestId('xp-change-bonus', hidden)).toHaveTextContent('+5 XP prime');
       expect(dependencies.haptics.success).toHaveBeenCalledTimes(2);
     });
+  });
+});
+
+describe('MonthViewScreen in pixel art (E5, #73)', () => {
+  const hidden = { includeHiddenElements: true };
+  const { roles } = artPalette;
+
+  it('shows the view on the night of the pixel art, the title in the pixel font', async () => {
+    await givenTheBackground();
+    await show();
+
+    expect(screen.getByTestId('month-view')).toHaveStyle({ backgroundColor: roles.night });
+    expect(screen.getByText('Octobre 2026')).toHaveStyle({ fontFamily: 'PixelifySans_700Bold' });
+  });
+
+  it('shows the character and « Ajouter une habitude » in the empty month', async () => {
+    await show(jest.fn());
+
+    expect(
+      within(screen.getByTestId('month-view-empty')).getByTestId('illustration-character', hidden),
+    ).toBeTruthy();
+    expect(screen.getByTestId('add-habit')).toHaveStyle({ backgroundColor: roles.gold });
+  });
+
+  it('shows the alert emblem, the message in the text font and « Réessayer » when the month cannot be read', async () => {
+    await givenTheBackground();
+    dependencies.unitOfWork.failReads();
+
+    await show();
+
+    expect(await screen.findByRole('alert')).toBeOnTheScreen();
+    expect(screen.getByTestId('illustration-alert', hidden)).toBeTruthy();
+    expect(
+      screen.getByText('Une erreur est survenue en lisant tes données sur ce téléphone.'),
+    ).toHaveStyle({ fontFamily: 'Inter_400Regular' });
+    expect(screen.getByRole('button', { name: 'Réessayer' })).toHaveStyle({
+      backgroundColor: roles.gold,
+    });
+  });
+
+  it('reserves the place of the days in pixel art while loading', async () => {
+    jest.spyOn(dependencies.unitOfWork, 'run').mockReturnValue(new Promise(() => undefined));
+
+    await renderScreen(<MonthViewScreen />, dependencies);
+
+    expect(screen.getAllByTestId('month-view-loading-day', hidden)).toHaveLength(35);
+    expect(screen.getByTestId('month-view-loading-targets')).toBeOnTheScreen();
   });
 });

@@ -15,12 +15,12 @@ const { roles } = artPalette;
 const wednesday = Day.of(2026, 10, 21);
 const cooking = new Habit(7, HabitName.parse('Cuisiner'), wednesday);
 
-const habitDay = (status: CheckInStatus, editable = true): HabitDay => ({
+const habitDay = (status: CheckInStatus, editable = true, corrected = false): HabitDay => ({
   habit: cooking,
   day: wednesday,
   status,
   editable,
-  corrected: false,
+  corrected,
 });
 const progress = (weeklyProgress: number, weekTarget = 5) => ({
   weeklyProgress,
@@ -190,5 +190,49 @@ describe('HabitRow (pixel art)', () => {
       within(screen.getByTestId('habit-check-7', hidden)).queryByTestId('xp-float', hidden),
     ).toBeNull();
     expect(screen.getByTestId('xp-float', hidden)).toHaveTextContent('+10 XP');
+  });
+
+  it('names the week of its progress in the day detail, and reads it', async () => {
+    await render(
+      <HabitRow
+        habitDay={habitDay('done')}
+        weeklyProgress={progress(2, 3)}
+        weekLabel="semaine du 12 octobre"
+      />,
+    );
+
+    expect(screen.getByTestId('habit-progress-7')).toHaveTextContent(
+      'Fait · 2/3 semaine du 12 octobre',
+    );
+    expect(
+      screen.getByRole('switch', {
+        name: 'Cuisiner, mercredi 21 octobre, fait, 2 sur 3 semaine du 12 octobre',
+      }),
+    ).toBeOnTheScreen();
+  });
+
+  it('shows the mark « corrigé » on the box and writes « corrigé » in the status line', async () => {
+    await render(
+      <HabitRow habitDay={habitDay('missed', true, true)} weeklyProgress={progress(1)} />,
+    );
+
+    expect(
+      within(screen.getByTestId('habit-box-slot-7')).getByTestId('corrected-mark', hidden),
+    ).toBeTruthy();
+    expect(screen.getByText('corrigé')).toHaveStyle({
+      fontFamily: textFont.semiBold,
+      fontSize: 11,
+      color: roles.blue,
+      textDecorationLine: 'underline',
+      textDecorationStyle: 'dotted',
+    });
+    expect(screen.getByRole('switch', { name: /, corrigé$/u })).toBeOnTheScreen();
+  });
+
+  it('shows no mark « corrigé » on a day that was not corrected, as in the day view', async () => {
+    await render(<HabitRow habitDay={habitDay('done')} />);
+
+    expect(screen.queryByTestId('corrected-mark', hidden)).toBeNull();
+    expect(screen.queryByText('corrigé')).toBeNull();
   });
 });

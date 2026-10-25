@@ -7,7 +7,12 @@ import { Habit } from '../../../domain/habit/Habit';
 import { HabitName } from '../../../domain/habit/HabitName';
 import { Month } from '../../../domain/month/Month';
 import type { MonthDay } from '../../../domain/month/MonthDay';
+import { artPalette } from '../pixelArt/artPalette';
+import { textFont } from '../pixelArt/pixelTypography';
 import { MonthDayCell, MonthDaysHeader, MonthGrid, MonthLegend } from './MonthGrid';
+
+const { roles } = artPalette;
+const hidden = { includeHiddenElements: true };
 
 const october = (dayOfMonth: number) => Day.of(2026, 10, dayOfMonth);
 const cooking = new Habit(1, HabitName.parse('Cuisiner'), october(5));
@@ -76,7 +81,7 @@ describe('MonthDayCell', () => {
     expect(
       within(cell).getAllByTestId('month-dot-missed', { includeHiddenElements: true }),
     ).toHaveLength(1);
-    expect(cell).toHaveStyle({ backgroundColor: '#18202F' });
+    expect(cell).toHaveStyle({ backgroundColor: roles.surface, borderBottomColor: roles.ink });
   });
 
   it('counts and dots the expected habits only (#25)', async () => {
@@ -97,7 +102,7 @@ describe('MonthDayCell', () => {
     expect(
       within(cell).getAllByTestId(/^month-dot-/u, { includeHiddenElements: true }),
     ).toHaveLength(2);
-    expect(cell).toHaveStyle({ backgroundColor: '#18202F' });
+    expect(cell).toHaveStyle({ backgroundColor: roles.surface, borderBottomColor: roles.ink });
   });
 
   it('shows the complete background when every expected habit is done (#25)', async () => {
@@ -109,8 +114,7 @@ describe('MonthDayCell', () => {
       />,
     );
 
-    expect(dayCell(15)).toHaveStyle({ backgroundColor: '#16302A' });
-    expect(within(dayCell(15)).getByText('1/1')).toHaveStyle({ color: '#8FE8BF' });
+    expect(dayCell(15)).toHaveStyle({ backgroundColor: roles.doneBg, borderColor: roles.doneLine });
   });
 
   it('shows the flag instead of the counter on a day without any expected habit (#25)', async () => {
@@ -126,12 +130,12 @@ describe('MonthDayCell', () => {
       name: 'jeudi 15 octobre, objectifs de la semaine atteints, aucune habitude attendue',
     });
     expect(within(cell).getByText('15')).toBeOnTheScreen();
-    expect(within(cell).getByTestId('flag-glyph', { includeHiddenElements: true })).toBeTruthy();
+    expect(within(cell).getByTestId('flag-glyph', hidden)).toBeTruthy();
     expect(within(cell).queryByText(/\//u)).toBeNull();
     expect(
       within(cell).queryAllByTestId(/^month-dot-/u, { includeHiddenElements: true }),
     ).toHaveLength(0);
-    expect(cell).toHaveStyle({ backgroundColor: '#16302A' });
+    expect(cell).toHaveStyle({ backgroundColor: roles.doneBg });
 
     await fireEvent.press(cell);
     expect(onOpen).toHaveBeenCalledWith(monthDay);
@@ -159,7 +163,7 @@ describe('MonthDayCell', () => {
     expect(screen.getByTestId('corrected-mark', { includeHiddenElements: true })).toBeTruthy();
   });
 
-  it('shows a habit still to do today with a blue ring', async () => {
+  it('shows a habit still to do today with a full gold dot, today in a gold frame', async () => {
     await render(
       <MonthDayCell
         monthDay={{ ...tracked(14, ['pending', 'done']), isToday: true }}
@@ -173,15 +177,45 @@ describe('MonthDayCell', () => {
     expect(
       within(cell).getAllByTestId('month-dot-pending', { includeHiddenElements: true }),
     ).toHaveLength(1);
-    expect(cell).toHaveStyle({ borderColor: '#7C9CFF' });
-    expect(within(cell).getByText('14')).toHaveStyle({ color: '#7C9CFF' });
+    expect(within(cell).getByTestId('month-dot-pending', hidden)).toHaveStyle({
+      width: 4,
+      height: 4,
+      backgroundColor: roles.gold,
+    });
+    expect(within(cell).getByTestId('month-dot-done', hidden)).toHaveStyle({
+      backgroundColor: roles.done,
+    });
+    expect(cell).toHaveStyle({ borderColor: roles.gold, borderWidth: 2 });
   });
 
-  it('shows a complete day on a green background', async () => {
+  it('shows a complete day on a green background, with a 2 dp frame no other day has', async () => {
     await render(<MonthDayCell monthDay={tracked(12, ['done', 'done'])} onOpen={jest.fn()} />);
 
-    expect(dayCell(12)).toHaveStyle({ backgroundColor: '#16302A' });
-    expect(within(dayCell(12)).getByText('2/2')).toHaveStyle({ color: '#8FE8BF' });
+    expect(dayCell(12)).toHaveStyle({
+      backgroundColor: roles.doneBg,
+      borderColor: roles.doneLine,
+      borderWidth: 2,
+    });
+    expect(within(dayCell(12)).getByText('2/2')).toHaveStyle({
+      color: roles.light,
+      fontFamily: textFont.bold,
+      fontSize: 12,
+    });
+    expect(within(dayCell(12)).getByText('12')).toHaveStyle({
+      color: roles.parchment,
+      fontFamily: textFont.semiBold,
+      fontSize: 12,
+    });
+  });
+
+  it('draws a missed habit as an outline dot, not only by its color', async () => {
+    await render(<MonthDayCell monthDay={tracked(12, ['missed'])} onOpen={jest.fn()} />);
+
+    expect(screen.getByTestId('month-dot-missed', hidden)).toHaveStyle({
+      backgroundColor: 'transparent',
+      borderColor: roles.muted,
+    });
+    expect(dayCell(12)).not.toHaveStyle({ borderColor: roles.doneLine });
   });
 
   it('shows the mark « corrigé » on a corrected day, and reads it', async () => {
@@ -224,14 +258,14 @@ describe('MonthDayCell', () => {
     expect(onOpen).not.toHaveBeenCalled();
   });
 
-  it('shows a day to come in dashes, without counter, not touchable', async () => {
+  it('shows a day to come with its dimmed number, without counter, not touchable', async () => {
     const onOpen = jest.fn();
     await render(<MonthDayCell monthDay={upcoming(15)} onOpen={onOpen} />);
 
     expect(screen.queryByRole('button')).toBeNull();
     expect(screen.getByLabelText('jeudi 15 octobre, à venir')).toBeOnTheScreen();
     expect(within(dayCell(15)).queryByText(/\//u)).toBeNull();
-    expect(dayCell(15)).toHaveStyle({ borderStyle: 'dashed' });
+    expect(within(dayCell(15)).getByText('15')).toHaveStyle({ color: roles.muted });
     await fireEvent.press(dayCell(15));
     expect(onOpen).not.toHaveBeenCalled();
   });
@@ -239,13 +273,23 @@ describe('MonthDayCell', () => {
   it('frames a neutral today too', async () => {
     await render(<MonthDayCell monthDay={{ ...neutral(14), isToday: true }} onOpen={jest.fn()} />);
 
-    expect(dayCell(14)).toHaveStyle({ borderColor: '#7C9CFF' });
+    expect(dayCell(14)).toHaveStyle({ borderColor: roles.gold });
   });
 
-  it('gives a touch target of 44 pt at least', async () => {
+  it('gives a touch target as wide as its column, 48 dp at most, and 58 dp high at least', async () => {
     await render(<MonthDayCell monthDay={tracked(13, ['done'])} onOpen={jest.fn()} />);
 
-    expect(dayCell(13)).toHaveStyle({ height: 66, minHeight: 44 });
+    expect(dayCell(13)).toHaveStyle({ width: 48, minHeight: 58 });
+    expect(dayCell(13)).not.toHaveStyle({ height: 58 });
+  });
+
+  it('takes the width of its column on a narrow screen, never more', async () => {
+    await render(
+      <MonthDayCell monthDay={tracked(13, ['done'])} columnWidth={41} onOpen={jest.fn()} />,
+    );
+
+    expect(dayCell(13)).toHaveStyle({ width: 41 });
+    expect(dayCell(13)).not.toHaveProp('hitSlop', expect.anything());
   });
 });
 
@@ -294,7 +338,7 @@ describe('MonthLegend', () => {
     await render(<MonthLegend />);
 
     expect(screen.queryByText('Fait')).toBeNull();
-    for (const label of ['Fait', 'À faire', 'Pas fait', 'Corrigé']) {
+    for (const label of ['Fait', 'À faire', 'Pas fait', 'Corrigé', 'Objectifs atteints']) {
       expect(screen.getByText(label, { includeHiddenElements: true })).toBeTruthy();
     }
     expect(screen.getByTestId('corrected-mark', { includeHiddenElements: true })).toBeTruthy();
