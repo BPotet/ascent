@@ -9,15 +9,12 @@ import { isClosedDay } from '../../../domain/day/DayClosing';
 import { weeklyTargetChangeAppliesThisWeek } from '../../../domain/habit/WeekSettings';
 import { Week } from '../../../domain/week/Week';
 import { ADD_HABIT_LABEL } from '../format/addHabit';
-import { Button } from '../components/Button';
-import { useCellHeight } from '../components/cellSize';
+import { useWeekColumnWidth, WEEK_CARD_CHROME } from '../components/cellSize';
 import { CharacterBar } from '../components/CharacterBar';
-import { PlusGlyph } from '../components/Glyph';
-import { LinkButton } from '../components/LinkButton';
 import { PeriodNavigator } from '../components/PeriodNavigator';
 import { Screen } from '../components/Screen';
-import { StateMessage } from '../components/legacy/StateMessage';
-import { Toast } from '../components/legacy/Toast';
+import { StateMessage } from '../components/StateMessage';
+import { Toast } from '../components/Toast';
 import {
   targetToastOf,
   type ToastAction,
@@ -38,9 +35,12 @@ import { useExperience } from '../state/Experience';
 import { targetFlashOn, updatedTargetPlay, useTargetFeedback } from '../state/useTargetFeedback';
 import type { EditableSettings } from '../state/useEditHabit';
 import { useWeekView } from '../state/useWeekView';
-import { colors } from '../theme/colors';
-import { radii, spacing } from '../theme/metrics';
-import { typography } from '../theme/typography';
+import { artPalette } from '../pixelArt/artPalette';
+import { PixelButton } from '../pixelArt/PixelButton';
+import { PixelFrame } from '../pixelArt/PixelFrame';
+import { PixelLink } from '../pixelArt/PixelLink';
+import { PixelSkeleton } from '../pixelArt/PixelSkeleton';
+import { pixelTypography } from '../pixelArt/pixelTypography';
 import { HIGHLIGHT_DURATION_MS } from './DayViewScreen';
 import {
   type DeletedHabit,
@@ -73,17 +73,27 @@ interface ToastContent {
   readonly announcement?: string;
 }
 
-/** Une case du squelette, de la même taille qu'une vraie case (`useCellHeight`). */
-function SkeletonCell() {
-  const { height, onLayout } = useCellHeight();
+const { roles } = artPalette;
+
+/** Le nombre de cartes que réserve le squelette de chargement. */
+const SKELETON_CARDS = 4;
+
+/** Une case du squelette, à la place d'une vraie case : sa colonne, et une case de 40 dp. */
+function SkeletonCell({ width }: { readonly width: number }) {
   return (
-    <View onLayout={onLayout} testID="skeleton-cell" style={styles.skeletonSlot}>
-      <View style={[styles.skeleton, styles.skeletonCell, { height }]} />
+    <View testID="skeleton-cell" style={[styles.skeletonCell, { width }]}>
+      <PixelSkeleton width={40} height={40} />
     </View>
   );
 }
 
+/**
+ * Le chargement : l'en-tête du personnage, puis un squelette au pixel d'art qui réserve la place
+ * de la navigation, des cartes, de leur puce, de leurs réglages et de leurs 7 cases (sans clignoter
+ * en mouvement réduit).
+ */
 function LoadingView() {
+  const column = useWeekColumnWidth(WEEK_CARD_CHROME);
   return (
     <View
       accessible
@@ -95,27 +105,30 @@ function LoadingView() {
     >
       <CharacterBar xp={null} change={null} compact />
       <View style={styles.skeletonNav}>
-        <View style={[styles.skeleton, styles.skeletonArrow]} />
-        <View style={[styles.skeleton, styles.skeletonTitle]} />
-        <View style={[styles.skeleton, styles.skeletonArrow]} />
+        <PixelSkeleton width={28} height={28} />
+        <PixelSkeleton width={140} height={22} />
+        <PixelSkeleton width={28} height={28} />
       </View>
-      {[0, 1, 2, 3].map((card) => (
-        <View key={card} style={styles.skeletonCard}>
-          <View style={styles.skeletonHead}>
-            <View style={[styles.skeleton, styles.skeletonName]} />
-            <View testID="week-view-loading-chip" style={[styles.skeleton, styles.skeletonChip]} />
-          </View>
-          <View
-            testID="week-view-loading-settings"
-            style={[styles.skeleton, styles.skeletonSettings]}
-          />
-          <View style={styles.skeletonCells}>
-            {[0, 1, 2, 3, 4, 5, 6].map((cell) => (
-              <SkeletonCell key={cell} />
-            ))}
-          </View>
-        </View>
-      ))}
+      <View style={styles.list}>
+        {Array.from({ length: SKELETON_CARDS }, (_, card) => (
+          <PixelFrame key={card} style={styles.skeletonCard}>
+            <View style={styles.skeletonHead}>
+              <PixelSkeleton width="50%" height={14} />
+              <View testID="week-view-loading-chip">
+                <PixelSkeleton width={56} height={24} />
+              </View>
+            </View>
+            <View testID="week-view-loading-settings" style={styles.skeletonSettings}>
+              <PixelSkeleton width="40%" height={11} />
+            </View>
+            <View style={styles.skeletonCells}>
+              {Array.from({ length: 7 }, (_, cell) => (
+                <SkeletonCell key={cell} width={column} />
+              ))}
+            </View>
+          </PixelFrame>
+        ))}
+      </View>
     </View>
   );
 }
@@ -306,7 +319,7 @@ export function WeekViewScreen({
 
   if (state.status === 'loading') {
     return (
-      <Screen layout="top" testID="week-view">
+      <Screen layout="top" testID="week-view" background={roles.night}>
         <LoadingView />
       </Screen>
     );
@@ -314,7 +327,7 @@ export function WeekViewScreen({
 
   if (state.status === 'failed') {
     return (
-      <Screen layout="top" testID="week-view">
+      <Screen layout="top" testID="week-view" background={roles.night}>
         <StateMessage
           alert
           illustration="alert"
@@ -322,15 +335,16 @@ export function WeekViewScreen({
           text="Une erreur est survenue en lisant tes données sur ce téléphone."
           action={
             <View style={styles.actions}>
-              <Button
+              <PixelButton
                 label="Réessayer"
                 onPress={() => {
                   void reload();
                   void experience.reload();
                 }}
+                style={styles.retry}
               />
               {!followsCurrentWeek && (
-                <LinkButton label={BACK_TO_CURRENT_WEEK} onPress={goToCurrentWeek} />
+                <PixelLink label={BACK_TO_CURRENT_WEEK} onPress={goToCurrentWeek} />
               )}
             </View>
           }
@@ -342,20 +356,20 @@ export function WeekViewScreen({
 
   const { view } = state;
   return (
-    <Screen layout="top" testID="week-view">
+    <Screen layout="top" testID="week-view" background={roles.night}>
       <CharacterBar xp={experience.xp} change={experience.change} compact />
       <Navigator view={view} onPrevious={previous} onNext={next} />
       {view.rows.length === 0 ? (
         <StateMessage
-          illustration="summit"
+          illustration="character"
           title="Ta semaine est vide"
           text="Elle se remplira dès ta première habitude."
           action={
             onAddHabit && (
-              <Button
+              <PixelButton
                 label={ADD_HABIT_LABEL}
+                icon="plus"
                 onPress={onAddHabit}
-                icon={<PlusGlyph color={colors.onAccent} />}
                 testID="add-habit"
               />
             )
@@ -367,7 +381,9 @@ export function WeekViewScreen({
           <WeekDaysHeader days={view.week.days()} today={view.today} />
           <ScrollView contentContainerStyle={styles.list} testID="week-view-list">
             {!view.isCurrentWeek && (
-              <LinkButton label={BACK_TO_CURRENT_WEEK} onPress={goToCurrentWeek} />
+              <View style={styles.back}>
+                <PixelLink label={BACK_TO_CURRENT_WEEK} onPress={goToCurrentWeek} />
+              </View>
             )}
             {view.rows.map((row) => (
               <HabitWeekCard
@@ -394,7 +410,7 @@ export function WeekViewScreen({
               />
             ))}
             <WeekLegend />
-            <Text style={[typography.label, styles.hint]}>{CORRECTION_HINT}</Text>
+            <Text style={[pixelTypography.label, styles.hint]}>{CORRECTION_HINT}</Text>
           </ScrollView>
         </>
       )}
@@ -428,43 +444,29 @@ export function WeekViewScreen({
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  list: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: 112 },
-  actions: { alignItems: 'center', gap: spacing.xs },
-  hint: { color: colors.muted, marginTop: 10, marginHorizontal: 2 },
+  list: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 112, gap: 8 },
+  actions: { alignItems: 'center', gap: 4 },
+  retry: { minWidth: 180 },
+  back: { alignItems: 'center' },
+  hint: { color: roles.parchment, paddingHorizontal: 4 },
   loading: { flex: 1 },
-  skeleton: { backgroundColor: colors.skeleton, borderRadius: spacing.sm },
   skeletonNav: {
-    height: 60,
+    height: 64,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginHorizontal: spacing.lg,
-    paddingHorizontal: spacing.sm,
-    borderRadius: 16,
-    backgroundColor: colors.surface,
+    paddingHorizontal: 18,
   },
-  skeletonArrow: { width: 28, height: 28 },
-  skeletonTitle: { width: 120, height: 16 },
-  skeletonCard: {
-    marginHorizontal: spacing.lg,
-    marginTop: 10,
-    paddingVertical: spacing.md,
-    paddingHorizontal: 9,
-    borderRadius: radii.row,
-    backgroundColor: colors.surface,
-  },
+  skeletonCard: { paddingVertical: 10, paddingHorizontal: 2, gap: 8 },
   skeletonHead: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 6,
-    marginBottom: 10,
-    marginHorizontal: 2,
+    paddingHorizontal: 6,
+    minHeight: 32,
   },
-  skeletonName: { width: '50%', height: 14 },
-  skeletonChip: { width: 44, height: 20, borderRadius: radii.pill },
-  skeletonSettings: { width: '40%', height: 11, marginHorizontal: 2, marginBottom: spacing.md },
-  skeletonCells: { flexDirection: 'row', gap: spacing.xs },
-  skeletonSlot: { flex: 1, minWidth: 0 },
-  skeletonCell: { width: '100%', borderRadius: 12 },
+  skeletonSettings: { paddingHorizontal: 6 },
+  skeletonCells: { flexDirection: 'row', justifyContent: 'center' },
+  skeletonCell: { minHeight: 48, alignItems: 'center', justifyContent: 'center' },
 });
 // Stryker restore all

@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
-import { View } from 'react-native';
+import { AccessibilityInfo, View } from 'react-native';
 
 import type { CheckInStatus } from '../../../domain/checkIn/CheckInStatus';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
@@ -7,12 +7,15 @@ import { Day } from '../../../domain/day/Day';
 import { Habit } from '../../../domain/habit/Habit';
 import { HabitName } from '../../../domain/habit/HabitName';
 import { Week } from '../../../domain/week/Week';
+import { artPalette } from '../pixelArt/artPalette';
+import { textFont } from '../pixelArt/pixelTypography';
 import { HabitWeekCard, type WeekCardTarget, WeekDaysHeader, WeekLegend } from './WeekGrid';
 
 const wednesday = Day.of(2026, 10, 14);
 const week = Week.containing(wednesday);
 const cooking = new Habit(3, HabitName.parse('Cuisiner'), Day.of(2026, 10, 5));
 const hidden = { includeHiddenElements: true } as const;
+const { roles } = artPalette;
 
 const statuses: CheckInStatus[] = [
   'done',
@@ -57,21 +60,29 @@ describe('WeekDaysHeader', () => {
     ]);
   });
 
-  it('highlights today, and is not read by the screen reader (each cell says its day)', async () => {
+  it('puts today on a gold plate, and is not read by the screen reader (each cell says its day)', async () => {
     await render(<WeekDaysHeader days={week.days()} today={wednesday} />);
 
     expect(screen.queryByText('14')).toBeNull();
     expect(screen.getByTestId('weekday-2026-10-14', hidden)).toHaveStyle({
-      backgroundColor: '#7C9CFF',
+      backgroundColor: roles.gold,
     });
     const [, todayInitial, todayNumber] = screen.getAllByText(/^(M|14)$/u, hidden);
-    expect(todayInitial).toHaveStyle({ color: '#7C9CFF' });
-    expect(todayNumber).toHaveStyle({ color: '#0B1020' });
+    expect(todayInitial).toHaveStyle({ color: roles.gold });
+    expect(todayNumber).toHaveStyle({ color: roles.ink });
     const [mondayInitial, mondayNumber] = screen.getAllByText(/^(L|12)$/u, hidden);
-    expect(mondayInitial).toHaveStyle({ color: '#9AA4B8' });
-    expect(mondayNumber).toHaveStyle({ color: '#EEF1F7' });
+    expect(mondayInitial).toHaveStyle({
+      color: roles.muted,
+      fontFamily: textFont.semiBold,
+      fontSize: 12,
+    });
+    expect(mondayNumber).toHaveStyle({
+      color: roles.parchment,
+      fontFamily: textFont.bold,
+      fontSize: 15,
+    });
     expect(screen.getByTestId('weekday-2026-10-13', hidden)).not.toHaveStyle({
-      backgroundColor: '#7C9CFF',
+      backgroundColor: roles.gold,
     });
   });
 
@@ -80,7 +91,7 @@ describe('WeekDaysHeader', () => {
 
     for (const day of week.previous().days()) {
       expect(screen.getByTestId(`weekday-${day.toIsoString()}`, hidden)).not.toHaveStyle({
-        backgroundColor: '#7C9CFF',
+        backgroundColor: roles.gold,
       });
     }
   });
@@ -144,7 +155,7 @@ it('shows nothing for a habit without cells', async () => {
   expect(screen.toJSON()).toBeNull();
 });
 
-it('aligns the days of the header on the columns of the cells', async () => {
+it('aligns the days of the header on the columns of the cells, both centered', async () => {
   await render(
     <>
       <WeekDaysHeader days={week.days()} today={wednesday} />
@@ -154,18 +165,13 @@ it('aligns the days of the header on the columns of the cells', async () => {
     </>,
   );
 
-  // En-tête : 16 (marge) + 9 ; cases : 16 (marge de la liste) + 9 (carte). Même écart de 4.
   expect(screen.getByTestId('week-days-header', hidden)).toHaveStyle({
-    marginHorizontal: 16,
-    paddingHorizontal: 9,
-    gap: 4,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
   });
-  expect(screen.getByTestId('week-card-3')).toHaveStyle({ paddingHorizontal: 9 });
-  expect(screen.getByTestId('week-cells')).toHaveStyle({ gap: 4 });
-  expect(screen.getByTestId('weekday-2026-10-14', hidden)).toHaveStyle({
-    width: '100%',
-    maxWidth: 30,
-  });
+  expect(screen.getByTestId('week-cells')).toHaveStyle({ justifyContent: 'center' });
+  expect(screen.getByTestId('weekday-column-2026-10-14', hidden)).toHaveStyle({ width: 48 });
+  expect(screen.getByTestId('cell-slot-3-2026-10-14')).toHaveStyle({ width: 48 });
 });
 
 describe('HabitWeekCard and editing the habit', () => {
@@ -177,9 +183,12 @@ describe('HabitWeekCard and editing the habit', () => {
     );
 
     const name = screen.getByRole('button', { name: 'Modifier l’habitude Cuisiner' });
-    expect(name).toHaveStyle({ minHeight: 44 });
-    expect(within(name).getByText('Cuisiner')).toBeOnTheScreen();
-    expect(within(name).getByTestId('pencil-glyph', hidden)).toBeTruthy();
+    expect(name).toHaveStyle({ minHeight: 48 });
+    expect(within(name).getByText('Cuisiner')).toHaveStyle({
+      fontFamily: textFont.semiBold,
+      fontSize: 16,
+    });
+    expect(within(name).getByTestId('pencil-icon', hidden)).toBeTruthy();
     await fireEvent.press(name);
 
     expect(onEdit).toHaveBeenCalledWith(cooking);
@@ -193,7 +202,7 @@ describe('HabitWeekCard and editing the habit', () => {
     expect(
       screen.queryByRole('button', { name: 'Modifier l’habitude Cuisiner' }),
     ).not.toBeOnTheScreen();
-    expect(screen.queryByTestId('pencil-glyph', hidden)).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('pencil-icon', hidden)).not.toBeOnTheScreen();
   });
 
   it('can be highlighted, after a rename', async () => {
@@ -201,12 +210,10 @@ describe('HabitWeekCard and editing the habit', () => {
       <HabitWeekCard days={days} today={wednesday} onToggle={jest.fn()} highlighted />,
     );
 
-    expect(screen.getByTestId('week-card-highlight-3')).toHaveStyle({
+    expect(screen.getByTestId('week-card-highlight-3', hidden)).toHaveStyle({
       position: 'absolute',
-      borderWidth: 2,
-      borderColor: '#7C9CFF',
     });
-    expect(screen.getByTestId('week-card-3')).not.toHaveStyle({ borderWidth: 2 });
+    expect(screen.getByTestId('week-card-3')).toHaveStyle({ borderColor: roles.gold });
 
     await rerender(<HabitWeekCard days={days} today={wednesday} onToggle={jest.fn()} />);
 
@@ -229,10 +236,10 @@ describe('HabitWeekCard and the difficulty (Vue Semaine, E4)', () => {
     const line = screen.getByTestId('week-difficulty-3');
     expect(line).toHaveTextContent('Difficile');
     expect(within(line).getAllByTestId('difficulty-peak', hidden)).toHaveLength(3);
-    expect(within(line).getAllByTestId('difficulty-peak', hidden)[0]).toHaveStyle({
-      borderBottomColor: '#B9C6E6',
+    expect(screen.getByText('Difficile')).toHaveStyle({
+      color: roles.parchment,
+      fontFamily: textFont.medium,
     });
-    expect(screen.getByText('Difficile')).toHaveStyle({ color: '#9AA4B8' });
     // Lue avec son barème, à part du bouton du nom.
     expect(screen.getByLabelText('Difficile, 20 XP par suivi')).toBeOnTheScreen();
     expect(
@@ -275,18 +282,20 @@ describe('HabitWeekCard and the weekly target (Vue Semaine, E4)', () => {
 
   const chip = () => screen.queryByTestId('week-progress-3');
 
-  it('shows a neutral chip « 1/3 » at the right of the name, read « 1 sur 3 »', async () => {
+  it('shows a neutral chip with the notches of the week and « 1/3 », read « 1 sur 3 »', async () => {
     await showCard();
 
     expect(chip()).toHaveTextContent('1/3');
     expect(chip()).toHaveAccessibleName('1 sur 3');
     expect(chip()).toHaveProp('accessibilityRole', 'image');
-    expect(chip()).toHaveStyle({ backgroundColor: '#222B3D', borderColor: '#2E3950' });
-    expect(screen.getByText('1/3')).toHaveStyle({ color: '#EEF1F7' });
+    expect(chip()).toHaveStyle({ backgroundColor: roles.night, borderColor: roles.line });
+    expect(within(chip() as never).getAllByTestId(/^week-notch-/u, hidden)).toHaveLength(3);
+    expect(within(chip() as never).getAllByTestId('week-notch-on', hidden)).toHaveLength(1);
+    expect(screen.getByText('1/3')).toHaveStyle({ color: roles.light, fontFamily: textFont.bold });
     expect(screen.queryByTestId('week-card-reached-3')).not.toBeOnTheScreen();
   });
 
-  it('bursts the green chip when the target has just been reached on this card (F1, #26)', async () => {
+  it('lights the gold chip up when the target has just been reached on this card (F1, #26)', async () => {
     await render(
       <HabitWeekCard
         days={days}
@@ -305,6 +314,44 @@ describe('HabitWeekCard and the weekly target (Vue Semaine, E4)', () => {
       }),
     ).toBeOnTheScreen();
     expect(chip()).toHaveTextContent('3/3 · Objectif atteint');
+  });
+
+  it('lights the chip up in 3 steps of 83 ms', async () => {
+    jest.useFakeTimers();
+    await render(
+      <HabitWeekCard
+        days={days}
+        today={wednesday}
+        target={target({ weeklyProgress: 3, targetReached: true })}
+        targetFlash={1}
+        onToggle={jest.fn()}
+      />,
+    );
+
+    expect(chip()).toHaveStyle({ borderColor: roles.light });
+    await act(async () => jest.advanceTimersByTime(83));
+    expect(chip()).toHaveStyle({ borderColor: roles.gold });
+    await act(async () => jest.advanceTimersByTime(83));
+    expect(chip()).toHaveStyle({ borderColor: roles.goldDark });
+    jest.useRealTimers();
+  });
+
+  it('shows the chip in its final state at once when the motion is reduced', async () => {
+    jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockResolvedValue(true);
+    await render(
+      <HabitWeekCard
+        days={days}
+        today={wednesday}
+        target={target({ weeklyProgress: 3, targetReached: true })}
+        targetFlash={1}
+        onToggle={jest.fn()}
+      />,
+    );
+    await act(async () => undefined);
+
+    expect(chip()).toHaveStyle({ borderColor: roles.goldDark });
+    expect(screen.queryByTestId('target-burst', hidden)).toBeNull();
+    jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockResolvedValue(false);
   });
 
   it('never bursts a chip below the target', async () => {
@@ -338,19 +385,17 @@ describe('HabitWeekCard and the weekly target (Vue Semaine, E4)', () => {
     expect(screen.getByTestId('week-target-3')).toHaveTextContent('· tous les jours');
   });
 
-  it('turns the chip green with a check, « 3/3 · Objectif atteint », with a green border', async () => {
+  it('turns the chip gold with a flag, « 3/3 · Objectif atteint », and the card dark gold', async () => {
     await showCard({ weeklyProgress: 3, targetReached: true });
 
     expect(chip()).toHaveTextContent('3/3 · Objectif atteint');
     expect(chip()).toHaveAccessibleName('3 sur 3, objectif atteint');
-    expect(chip()).toHaveStyle({
-      backgroundColor: 'rgba(61,220,151,0.16)',
-      borderColor: 'rgba(61,220,151,0.55)',
-    });
-    expect(within(chip() as never).getByTestId('small-check-glyph', hidden)).toBeTruthy();
-    expect(screen.getByTestId('week-card-reached-3')).toHaveStyle({
-      borderColor: 'rgba(61,220,151,0.55)',
-    });
+    expect(chip()).toHaveStyle({ backgroundColor: roles.goldBg, borderColor: roles.goldDark });
+    expect(screen.getByText('3/3 · Objectif atteint')).toHaveStyle({ color: roles.gold });
+    expect(within(chip() as never).getByTestId('flag-icon', hidden)).toBeTruthy();
+    expect(within(chip() as never).queryByTestId('week-notch-on', hidden)).toBeNull();
+    expect(screen.getByTestId('week-card-reached-3', hidden)).toBeTruthy();
+    expect(screen.getByTestId('week-card-3')).toHaveStyle({ borderColor: roles.goldDark });
   });
 
   it('keeps « 4/3 · Objectif atteint » beyond the target', async () => {
@@ -362,7 +407,7 @@ describe('HabitWeekCard and the weekly target (Vue Semaine, E4)', () => {
   it('greys the chip of a past week not reached, never in red nor with a cross', async () => {
     await showCard({ currentWeek: false, nextWeeklyTarget: null });
 
-    expect(screen.getByText('1/3')).toHaveStyle({ color: '#B4BDCE' });
+    expect(screen.getByText('1/3')).toHaveStyle({ color: roles.muted });
     expect(chip()).toHaveAccessibleName('1 sur 3');
     expect(within(chip() as never).queryByTestId('cross-mark', hidden)).toBeNull();
   });
@@ -381,7 +426,7 @@ describe('HabitWeekCard and the weekly target (Vue Semaine, E4)', () => {
     expect(screen.getByTestId('week-target-3')).toHaveTextContent(
       '· 3 fois par semaine · 4 fois par semaine dès lundi',
     );
-    expect(screen.getByText('4 fois par semaine dès lundi')).toHaveStyle({ color: '#C9D5FF' });
+    expect(screen.getByText('4 fois par semaine dès lundi')).toHaveStyle({ color: roles.blue });
   });
 
   it('says the week target of the week of creation, reduced to the days left', async () => {
@@ -433,11 +478,16 @@ describe('WeekLegend', () => {
     expect(screen.getAllByText(/.+/u, hidden).map((text) => text.props.children as string)).toEqual(
       ['Fait', 'À faire', 'Pas fait', 'À venir', 'Hors habitude', 'Corrigé'],
     );
-    expect(screen.getByTestId('check-mark', hidden)).toBeTruthy();
-    expect(screen.getAllByTestId('cross-mark', hidden)).toHaveLength(2);
+    expect(screen.getAllByTestId('check-mark', hidden)).toHaveLength(2);
+    expect(screen.getByTestId('cross-mark', hidden)).toBeTruthy();
     expect(screen.getByTestId('dot-mark', hidden)).toBeTruthy();
+    expect(screen.getByTestId('dash-mark', hidden)).toBeTruthy();
+    expect(screen.getAllByTestId('legend-box', hidden)).toHaveLength(6);
+    for (const legendBox of screen.getAllByTestId('legend-box', hidden)) {
+      expect(legendBox).toHaveStyle({ width: 24, height: 24 });
+    }
     expect(screen.getByTestId('corrected-mark', hidden)).toHaveStyle({
-      backgroundColor: '#C9D5FF',
+      backgroundColor: roles.light,
     });
   });
 });

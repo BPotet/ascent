@@ -119,7 +119,7 @@ export function HabitRow({
         >
           {done && <CheckGlyph color={colors.onDone} />}
           {missed && <CrossGlyph color={colors.onMissed} />}
-          {corrected && <CorrectedMark size="row" />}
+          {corrected && <CorrectedMark />}
           <XpFloat change={xpChange} reducedMotion={reducedMotion} />
         </Animated.View>
         <View style={styles.texts}>

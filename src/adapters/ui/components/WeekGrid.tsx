@@ -15,16 +15,26 @@ import {
   progressChipText,
   weekCardTargetText,
 } from '../format/formatWeeklyTarget';
-import { type XpChange, xpChangeOn } from '../state/Experience';
-import { colors } from '../theme/colors';
-import { radii, spacing } from '../theme/metrics';
-import { typography } from '../theme/typography';
-import { CheckGlyph, CrossGlyph, DotGlyph, PencilGlyph, SmallCheckGlyph } from './Glyph';
 import { editHabitLabel } from '../format/habitDayLabel';
+import { artPalette } from '../pixelArt/artPalette';
+import { artPixelSize, notchedCorners } from '../pixelArt/artPixel';
+import { HabitDayBox } from '../pixelArt/HabitDayBox';
+import { MIN_TARGET_SIZE } from '../pixelArt/PixelButton';
+import { type FrameTone, PixelFrame } from '../pixelArt/PixelFrame';
+import { PixelIcon } from '../pixelArt/PixelIcon';
+import { pixelTypography, textFont } from '../pixelArt/pixelTypography';
+import { WeekNotches } from '../pixelArt/WeekNotches';
+import { type XpChange, xpChangeOn } from '../state/Experience';
+import { useWeekColumnWidth, WEEK_CARD_CHROME } from './cellSize';
 import { CorrectedMark } from './CorrectedMark';
-import { DifficultyLabel } from './legacy/DifficultyIcon';
+import { DifficultyLabel } from './DifficultyIcon';
 import { HabitDayCell } from './HabitDayCell';
-import { TargetBurst } from './legacy/TargetReachedBadge';
+import { LIGHTING_STEPS, useTargetLighting } from './useTargetLighting';
+
+const { roles } = artPalette;
+
+/** Le pixel d'art, arrondi au pixel physique du téléphone. */
+const LINE = artPixelSize(2);
 
 /** Cache un élément décoratif au lecteur d'écran (Android et iOS). */
 const decorative = {
@@ -33,7 +43,8 @@ const decorative = {
 } as const;
 
 /**
- * Les jours de la semaine au-dessus des cartes : initiale et numéro, aujourd'hui mis en évidence.
+ * Les jours de la semaine au-dessus des cartes : l'initiale et le numéro, alignés sur les colonnes
+ * des cases (`useWeekColumnWidth`) ; le numéro d'aujourd'hui est sur une plaque d'or crantée.
  * Décoratif : chaque case dit son jour au lecteur d'écran.
  */
 export function WeekDaysHeader({
@@ -43,24 +54,29 @@ export function WeekDaysHeader({
   readonly days: readonly Day[];
   readonly today: Day;
 }) {
+  const column = useWeekColumnWidth(WEEK_CARD_CHROME);
   return (
     <View {...decorative} testID="week-days-header" style={styles.daysHeader}>
       {days.map((day, index) => {
         const isToday = day.equals(today);
+        const iso = day.toIsoString();
         return (
-          <View key={day.toIsoString()} style={styles.weekday}>
-            <Text style={[typography.small, styles.initial, isToday && styles.initialToday]}>
+          <View
+            key={iso}
+            testID={`weekday-column-${iso}`}
+            style={[styles.weekday, { width: column }]}
+          >
+            <Text style={[styles.initial, isToday && styles.initialToday]}>
               {WEEKDAY_INITIALS[index]}
             </Text>
-            <View
-              testID={`weekday-${day.toIsoString()}`}
-              style={[styles.number, isToday && styles.numberToday]}
-            >
-              <Text
-                style={[typography.label, styles.numberText, isToday && styles.numberTextToday]}
-              >
+            <View testID={`weekday-${iso}`} style={[styles.number, isToday && styles.numberToday]}>
+              <Text style={[styles.numberText, isToday && styles.numberTextToday]}>
                 {day.dayOfMonth}
               </Text>
+              {isToday &&
+                notchedCorners(LINE).map((corner, place) => (
+                  <View key={place} style={[styles.corner, corner]} />
+                ))}
             </View>
           </View>
         );
@@ -84,9 +100,10 @@ export interface WeekCardTarget {
 }
 
 /**
- * La puce de progression, à droite du nom : neutre « 2/5 » pendant la semaine, grise pour une
- * semaine passée non atteinte, verte avec une coche « 3/3 · Objectif atteint ». Jamais de rouge ni
- * de croix. Lue « 3 sur 3, objectif atteint ».
+ * La puce de progression (`ProgressChip`), à droite du nom : avant l'objectif, les crans de la
+ * semaine puis « 2/3 », gris pour une semaine passée non atteinte ; à l'objectif atteint, le drapeau
+ * et « 3/3 · Objectif atteint », en or. Jamais de rouge ni de croix. Lue « 3 sur 3, objectif
+ * atteint ». Quand l'objectif vient d'être atteint (`flash`), elle s'allume en 3 paliers.
  */
 function ProgressChip({
   habit,
@@ -98,27 +115,46 @@ function ProgressChip({
   readonly flash: number | undefined;
 }) {
   const shown = { weeklyProgress, weekTarget, targetReached };
-  return (
-    <TargetBurst flash={targetReached ? flash : undefined}>
-      <View
-        accessible
-        accessibilityRole="image"
-        accessibilityLabel={progressChipAccessibilityLabel(shown)}
-        testID={`week-progress-${habit.id}`}
-        style={[styles.chip, targetReached && styles.chipReached]}
+  const { step, lighting } = useTargetLighting(targetReached ? flash : undefined);
+  const chip = (
+    <PixelFrame
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={progressChipAccessibilityLabel(shown)}
+      variant="inset"
+      tone={targetReached ? 'goldDark' : 'default'}
+      under={roles.surface}
+      {...(targetReached && { background: roles.goldBg })}
+      testID={`week-progress-${habit.id}`}
+      style={[styles.chip, targetReached && { borderColor: LIGHTING_STEPS[step] }]}
+    >
+      {targetReached ? (
+        <PixelIcon
+          name="flag8"
+          color={roles.gold}
+          secondColor={roles.parchment}
+          testID="flag-icon"
+        />
+      ) : (
+        <WeekNotches done={weeklyProgress} target={weekTarget} reached={false} />
+      )}
+      <Text
+        style={[
+          styles.chipText,
+          targetReached && styles.chipTextReached,
+          !targetReached && !currentWeek && styles.chipTextPast,
+        ]}
       >
-        {targetReached && <SmallCheckGlyph color={colors.doneText} />}
-        <Text
-          style={[
-            styles.chipText,
-            targetReached && styles.chipTextReached,
-            !targetReached && !currentWeek && styles.chipTextPast,
-          ]}
-        >
-          {progressChipText(shown)}
-        </Text>
-      </View>
-    </TargetBurst>
+        {progressChipText(shown)}
+      </Text>
+    </PixelFrame>
+  );
+  return lighting ? (
+    <View pointerEvents="none" testID="target-burst">
+      {chip}
+    </View>
+  ) : (
+    chip
   );
 }
 
@@ -135,7 +171,7 @@ function TargetLine({
 }) {
   const next = nextWeeklyTarget !== null && nextWeeklyTarget !== weeklyTarget;
   return (
-    <Text testID={`week-target-${habit.id}`} style={[typography.label, styles.target]}>
+    <Text testID={`week-target-${habit.id}`} style={[pixelTypography.label, styles.target]}>
       {`· ${weekCardTargetText({ weeklyTarget, weekTarget, currentWeek, createdOn: habit.createdOn })}`}
       {next && (
         <>
@@ -156,18 +192,29 @@ function withTarget(
     : null;
 }
 
+/** Le trait d'une carte : or si elle est mise en évidence, or sombre à l'objectif atteint. */
+function toneOf(highlighted: boolean, reached: boolean): FrameTone {
+  if (highlighted) {
+    return 'gold';
+  }
+  return reached ? 'goldDark' : 'default';
+}
+
 /**
- * La carte d'une habitude dans la Vue Semaine : son nom et ses 7 cases, du lundi au dimanche.
+ * La carte d'une habitude dans la Vue Semaine, dans l'identité pixel art (E4) : un cadre cranté
+ * avec son nom et ses 7 cases, du lundi au dimanche, alignées sur l'en-tête des jours.
  * `onNotStartedPress` reçoit le tap sur une case « hors habitude », pour l'expliquer.
  * `xpChange`, le dernier changement d'expérience, s'envole de la case touchée si elle est ici.
  * Avec `onEdit`, le nom, suivi d'un crayon, est un bouton qui ouvre « Modifier l'habitude » (lu
- * « Modifier l'habitude Cuisiner »). `highlighted` met en évidence une habitude qui vient d'être
- * modifiée. Avec `difficulty`, la difficulté de la semaine affichée est écrite sous le nom, avec son
- * icône (« ▲▲▲ Difficile »), et lue avec son barème.
+ * « Modifier l'habitude Cuisiner »). `highlighted` borde d'or une habitude qui vient d'être
+ * modifiée. Avec `difficulty`, la difficulté de la semaine affichée est écrite sous le nom, avec ses
+ * sommets (« Difficile »), et lue avec son barème.
  * Avec `target` (#24), une semaine qui a un objectif montre la puce de progression à droite du nom,
  * et l'objectif après la difficulté (« · 3 fois par semaine », celui qui vaudra lundi prochain, et
- * l'objectif réduit de la semaine de création) ; l'objectif atteint borde la carte de vert. Quand il
- * vient d'être atteint (`targetFlash`, F1, #26), la puce s'éclaire d'un éclat doré.
+ * l'objectif réduit de la semaine de création) ; l'objectif atteint borde la carte d'or sombre.
+ * Quand il vient d'être atteint (`targetFlash`, F1, #26), la puce s'allume en 3 paliers.
+ * Les repères `week-card-reached-…` et `week-card-highlight-…` sont posés sur la carte, sans fond et
+ * sans toucher : ils ne décalent pas les cases.
  */
 export function HabitWeekCard({
   days,
@@ -192,29 +239,30 @@ export function HabitWeekCard({
   readonly onNotStartedPress?: (habitDay: HabitDay) => void;
   readonly onEdit?: (habit: Habit) => void;
   readonly highlighted?: boolean;
-  /** Change quand l'objectif de la semaine vient d'être atteint ici : l'éclat de la puce (F1, #26). */
+  /** Change quand l'objectif de la semaine vient d'être atteint ici : l'allumage de la puce (F1). */
   readonly targetFlash?: number | undefined;
 }) {
+  const column = useWeekColumnWidth(WEEK_CARD_CHROME);
   const habit = days[0]?.habit;
   if (habit === undefined) {
     return null;
   }
   const shownTarget = withTarget(target);
+  const reached = shownTarget?.targetReached === true;
   return (
-    <View testID={`week-card-${habit.id}`} style={styles.card}>
-      {shownTarget?.targetReached === true && (
-        <View
-          pointerEvents="none"
-          testID={`week-card-reached-${habit.id}`}
-          style={styles.reached}
-        />
+    <PixelFrame
+      tone={toneOf(highlighted, reached)}
+      testID={`week-card-${habit.id}`}
+      style={styles.card}
+    >
+      {reached && (
+        <View pointerEvents="none" testID={`week-card-reached-${habit.id}`} style={styles.marker} />
       )}
       {highlighted && (
-        // Un contour posé par-dessus la carte : il ne décale pas les cases, alignées sur l'en-tête.
         <View
           pointerEvents="none"
           testID={`week-card-highlight-${habit.id}`}
-          style={styles.highlighted}
+          style={styles.marker}
         />
       )}
       <View style={styles.nameRow}>
@@ -226,22 +274,22 @@ export function HabitWeekCard({
             testID={`edit-habit-${habit.id}`}
             style={styles.nameButton}
           >
-            <Text style={[typography.cardTitle, styles.nameText]}>{habit.name.value}</Text>
-            <PencilGlyph color={colors.muted} />
+            <Text style={[pixelTypography.habitName, styles.nameText]}>{habit.name.value}</Text>
+            <PixelIcon
+              name="pencil"
+              color={roles.muted}
+              secondColor={roles.gold}
+              testID="pencil-icon"
+            />
           </Pressable>
         ) : (
-          <Text style={[typography.cardTitle, styles.name]}>{habit.name.value}</Text>
+          <Text style={[pixelTypography.habitName, styles.name]}>{habit.name.value}</Text>
         )}
         {shownTarget && <ProgressChip habit={habit} target={shownTarget} flash={targetFlash} />}
       </View>
       {difficulty && (
         <View style={styles.settings}>
-          <DifficultyLabel
-            difficulty={difficulty}
-            color={colors.muted}
-            iconColor={colors.difficulty}
-            testID={`week-difficulty-${habit.id}`}
-          />
+          <DifficultyLabel difficulty={difficulty} testID={`week-difficulty-${habit.id}`} />
           {shownTarget && <TargetLine habit={habit} target={shownTarget} />}
         </View>
       )}
@@ -251,51 +299,38 @@ export function HabitWeekCard({
             key={habitDay.day.toIsoString()}
             habitDay={habitDay}
             today={today}
+            columnWidth={column}
             xpChange={xpChangeOn(xpChange, habitDay)}
             onToggle={onToggle}
             {...(onNotStartedPress && { onNotStartedPress })}
           />
         ))}
       </View>
-    </View>
+    </PixelFrame>
   );
 }
 
 const LEGEND: readonly CheckInStatus[] = ['done', 'pending', 'missed', 'upcoming', 'notStarted'];
 
-function LegendMark({ status }: { readonly status: CheckInStatus }) {
-  return (
-    <View style={[styles.legendCell, legendStyles[status]]}>
-      <View style={styles.legendGlyph}>
-        {status === 'done' && <CheckGlyph color={colors.onDone} />}
-        {status === 'missed' && <CrossGlyph color={colors.onMissed} />}
-        {status === 'notStarted' && <DotGlyph color={colors.notStarted} />}
-      </View>
-    </View>
-  );
-}
-
 /**
- * La légende des cinq formes et de la marque « corrigé », sous les cartes. Décorative : chaque case
- * dit son état au lecteur d'écran.
+ * La légende des cinq états et de la marque « corrigé », sous les cartes, avec des cases de 24 dp.
+ * Décorative : chaque case dit son état au lecteur d'écran.
  */
 export function WeekLegend() {
   return (
     <View {...decorative} style={styles.legend}>
       {LEGEND.map((status) => (
         <View key={status} style={styles.legendItem}>
-          <LegendMark status={status} />
-          <Text style={[typography.small, styles.legendText]}>
-            {capitalize(checkInStatusLabels[status])}
-          </Text>
+          <HabitDayBox status={status} size={24} under={roles.night} testID="legend-box" />
+          <Text style={styles.legendText}>{capitalize(checkInStatusLabels[status])}</Text>
         </View>
       ))}
       <View style={styles.legendItem}>
         <View>
-          <LegendMark status="missed" />
+          <HabitDayBox status="done" size={24} under={roles.night} testID="legend-box" />
           <CorrectedMark size="legend" />
         </View>
-        <Text style={[typography.small, styles.legendText]}>{capitalize(CORRECTED)}</Text>
+        <Text style={styles.legendText}>{capitalize(CORRECTED)}</Text>
       </View>
     </View>
   );
@@ -305,123 +340,72 @@ export function WeekLegend() {
 const styles = StyleSheet.create({
   daysHeader: {
     flexDirection: 'row',
-    gap: spacing.xs,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-    marginHorizontal: spacing.lg,
-    paddingHorizontal: 9,
-  },
-  weekday: { flex: 1, minWidth: 0, alignItems: 'center', gap: 2 },
-  initial: { color: colors.muted, fontFamily: typography.cardTitle.fontFamily },
-  initialToday: { color: colors.accent },
-  number: {
-    width: '100%',
-    maxWidth: 30,
-    height: 24,
-    borderRadius: spacing.sm,
-    alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 4,
   },
-  numberToday: { backgroundColor: colors.accent },
-  numberText: { color: colors.text, fontFamily: typography.cardTitle.fontFamily },
-  numberTextToday: { color: colors.onAccent },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    paddingTop: spacing.xs,
-    paddingHorizontal: 9,
-    paddingBottom: 10,
-    marginBottom: 10,
+  weekday: { alignItems: 'center', gap: 2 },
+  initial: { fontFamily: textFont.semiBold, fontSize: 12, lineHeight: 15, color: roles.muted },
+  initialToday: { color: roles.gold },
+  number: { paddingHorizontal: 6, paddingVertical: 1 },
+  numberToday: { backgroundColor: roles.gold },
+  numberText: {
+    fontFamily: textFont.bold,
+    fontSize: 15,
+    lineHeight: 19,
+    color: roles.parchment,
+    textAlign: 'center',
   },
-  highlighted: {
-    ...StyleSheet.absoluteFill,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: colors.accent,
-    shadowColor: colors.accent,
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 0 },
+  numberTextToday: { color: roles.ink },
+  corner: { position: 'absolute', backgroundColor: roles.night },
+  card: { paddingTop: 8, paddingBottom: 8, paddingHorizontal: 2, gap: 4 },
+  marker: { ...StyleSheet.absoluteFill },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 6 },
+  name: { flex: 1, minHeight: MIN_TARGET_SIZE, paddingVertical: 13, color: roles.light },
+  nameButton: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    minHeight: MIN_TARGET_SIZE,
   },
-  reached: {
-    ...StyleSheet.absoluteFill,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.doneLine,
-  },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  name: { flex: 1, color: colors.text, minHeight: 44, paddingVertical: 12, paddingHorizontal: 2 },
+  nameText: { flexShrink: 1, color: roles.light },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.line,
-    backgroundColor: colors.surfaceRaised,
+    gap: 6,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
-  chipReached: { borderColor: colors.doneLine, backgroundColor: colors.goalSoft },
   chipText: {
-    fontFamily: typography.counter.fontFamily,
+    fontFamily: textFont.bold,
     fontSize: 13,
-    lineHeight: 18,
+    lineHeight: 16,
     fontVariant: ['tabular-nums'],
-    color: colors.text,
+    color: roles.light,
   },
-  chipTextReached: { color: colors.doneText },
-  chipTextPast: { color: colors.chipPast },
-  target: { flexShrink: 1, color: colors.muted },
-  nextTarget: { color: colors.correctedMark },
-  nameButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    minHeight: 44,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: 2,
-  },
-  nameText: { flex: 1, color: colors.text },
+  chipTextReached: { color: roles.gold },
+  chipTextPast: { color: roles.muted },
+  target: { flexShrink: 1, color: roles.parchment },
+  nextTarget: { color: roles.blue },
   settings: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
     columnGap: 6,
-    marginTop: -2,
-    marginBottom: spacing.sm,
-    marginHorizontal: 2,
+    paddingHorizontal: 6,
   },
-  cells: { flexDirection: 'row', gap: spacing.xs },
+  cells: { flexDirection: 'row', justifyContent: 'center' },
   legend: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     columnGap: 14,
-    rowGap: spacing.sm,
-    marginTop: 14,
-    marginHorizontal: 2,
+    rowGap: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendCell: {
-    width: 20,
-    height: 20,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  legendGlyph: { transform: [{ scale: 0.6 }] },
-  legendText: { color: colors.muted },
-});
-
-const legendStyles = StyleSheet.create({
-  done: { backgroundColor: colors.done, borderColor: colors.done },
-  pending: { borderColor: colors.accent },
-  missed: { backgroundColor: colors.missed, borderColor: 'transparent' },
-  upcoming: { borderStyle: 'dashed', borderColor: colors.upcoming },
-  notStarted: { borderColor: 'transparent' },
+  legendText: { fontFamily: textFont.medium, fontSize: 12, lineHeight: 15, color: roles.parchment },
 });
 // Stryker restore all

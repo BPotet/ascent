@@ -1,62 +1,34 @@
 import { StyleSheet, View } from 'react-native';
 
-import { colors } from '../theme/colors';
+import { artPalette } from '../pixelArt/artPalette';
+
+const { roles } = artPalette;
+
+/** La taille de la marque : sur une case de la Vue Semaine, sur un jour du Mois, dans une légende. */
+export type CorrectedMarkSize = 'cell' | 'day' | 'legend';
 
 /**
- * La marque « corrigé » : une pastille claire en coin de case (maquette, « Marque corrigé »).
- * Décorative : le mot « corrigé » est lu par le lecteur d'écran.
+ * La marque « corrigé » (maquette, `.cm`) : un carré clair en coin, cerné d'encre, de 6 dp sur une
+ * case de la Vue Semaine, de 4 dp sur un jour de la Vue Mois et dans une légende. C'est une forme,
+ * visible sans la couleur. Décorative : le mot « corrigé » est dans l'annonce.
  */
-export function CorrectedMark({
-  size = 'cell',
-}: {
-  readonly size?: 'cell' | 'legend' | 'row' | 'day';
-}) {
+export function CorrectedMark({ size = 'cell' }: { readonly size?: CorrectedMarkSize }) {
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
+      pointerEvents="none"
       testID="corrected-mark"
-      style={[styles.correctedMark, size !== 'cell' && correctedMarkSizes[size]]}
+      style={[styles.mark, styles[size]]}
     />
   );
 }
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  correctedMark: {
-    position: 'absolute',
-    top: -5.5,
-    right: -5.5,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 2.5,
-    borderColor: colors.surface,
-    backgroundColor: colors.correctedMark,
-  },
-});
-
-const correctedMarkSizes = StyleSheet.create({
-  legend: {
-    top: -4,
-    right: -4,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: colors.background,
-  },
-  /** Sur la coche d'une ligne du détail du jour (maquette, `.drow-w .dchk .cm`). */
-  row: { top: -3.5, right: -3.5, width: 16, height: 16, borderRadius: 8 },
-  /** Sur un jour de la Vue Mois (maquette, `.mday .cm`). */
-  day: {
-    top: -4,
-    right: -4,
-    width: 13,
-    height: 13,
-    borderRadius: 6.5,
-    borderWidth: 2,
-    borderColor: colors.background,
-  },
+  mark: { position: 'absolute', backgroundColor: roles.light },
+  cell: { top: 0, right: 0, width: 10, height: 10, borderWidth: 2, borderColor: roles.ink },
+  day: { top: 4, right: 4, width: 4, height: 4 },
+  legend: { top: 0, right: 0, width: 8, height: 8, borderWidth: 2, borderColor: roles.ink },
 });
 // Stryker restore all
