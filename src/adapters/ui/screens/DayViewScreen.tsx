@@ -154,19 +154,32 @@ interface RowPlace {
 const FAB_HEIGHT = 56;
 
 /**
- * L'espace sous la dernière ligne de la liste, que couvre le bouton flottant « Ajouter une
- * habitude » : la marge du bas de l'écran (16), le bouton (`fabHeight`, mesuré, qui grandit avec le
- * texte) et un écart (8). Avant la mesure, celui d'un bouton de 56 dp : 80. Une ligne révélée par
- * le défilement s'arrête au-dessus, et le libellé « Habitudes » reste au-dessus du bouton.
+ * L'espace réservé sous la dernière ligne de la liste, au moins : le bouton flottant « Ajouter une
+ * habitude » et, au-dessus de lui, le message d'une habitude créée (à 84 dp du bas, sur deux
+ * lignes : 60 dp), plus un écart de 8 dp. Une habitude créée est révélée au-dessus des deux.
+ */
+export const LIST_BOTTOM_SPACE = 152;
+
+/** Le délai après lequel le défilement de révélation vérifie qu'il a bien eu lieu. */
+export const REVEAL_CHECK_MS = 120;
+
+/** Le nombre de défilements de révélation, au plus, pour une même habitude créée. */
+const REVEAL_ATTEMPTS = 5;
+
+/**
+ * L'espace sous la dernière ligne de la liste : `LIST_BOTTOM_SPACE`, ou plus si le bouton flottant
+ * grandit avec le texte (la marge du bas de l'écran, 16, le bouton, `fabHeight`, mesuré, et un
+ * écart, 8). Le libellé « Habitudes » reste ainsi au-dessus du bouton, en bas de la liste.
  */
 export function listBottomSpaceOf(fabHeight: number | undefined): number {
-  return 16 + (fabHeight ?? FAB_HEIGHT) + 8;
+  return Math.max(LIST_BOTTOM_SPACE, 16 + (fabHeight ?? FAB_HEIGHT) + 8);
 }
 
 /**
- * Le défilement qui montre une ligne sous le bord de l'écran ou sous le bouton flottant, juste
- * assez pour voir son bas au-dessus du bouton (`bottomSpace`, `listBottomSpaceOf`) ; `null` si elle
- * est déjà visible (ou si la hauteur visible n'est pas encore connue).
+ * Le défilement qui montre une ligne sous le bord de l'écran, sous le bouton flottant ou sous le
+ * message de création, juste assez pour voir son bas au-dessus d'eux (`bottomSpace`,
+ * `listBottomSpaceOf`) ; `null` si elle est déjà visible (ou si la hauteur visible n'est pas encore
+ * connue).
  */
 export function revealOffsetOf(
   { y, height }: RowPlace,
@@ -193,7 +206,7 @@ function HabitList({
   onEdit,
 }: {
   readonly view: DayView;
-  /** L'espace réservé sous la liste pour le bouton flottant (`listBottomSpaceOf`). */
+  /** L'espace réservé sous la liste, pour le bouton et le message (`listBottomSpaceOf`). */
   readonly bottomSpace: number;
   readonly highlighted: Highlight | null;
   readonly xpChange: XpChange | null;
@@ -210,25 +223,52 @@ function HabitList({
   const shown = useRef({ offset: 0, height: 0 });
   /** La hauteur du contenu de la liste, telle que la liste l'a reçue. */
   const contentHeight = useRef(0);
-  /** L'habitude créée déjà révélée : elle ne bouge plus ensuite, sous le doigt du joueur. */
+  /** L'habitude créée déjà révélée (ou laissée au joueur) : elle ne bouge plus sous son doigt. */
   const revealed = useRef<HabitId | null>(null);
+  /** Les défilements déjà demandés pour l'habitude créée, et la vérification à venir. */
+  const attempts = useRef<{ id: HabitId | null; count: number }>({ id: null, count: 0 });
+  const check = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(check.current), []);
   // Une habitude créée, en bas de la liste, n'y est montrée que si elle est sous le bord de
-  // l'écran ou sous le bouton, et juste assez : les encarts du haut (aide, « Toutes faites »)
-  // restent à l'écran. Le défilement est immédiat, et fait une seule fois.
+  // l'écran, sous le bouton ou sous le message de création, et juste assez : les encarts du haut
+  // (aide, « Toutes faites ») restent à l'écran. Le défilement est immédiat.
+  // Sous Android, il peut être demandé avant que la ligne ne soit montée : il s'arrête alors au
+  // bas de l'ancien contenu, sans erreur ni nouvel événement. Il est donc vérifié par la position
+  // reçue (`onScroll`) et redemandé, au prochain événement de mise en page ou après
+  // `REVEAL_CHECK_MS`, `REVEAL_ATTEMPTS` fois au plus. Il est fini dès que la ligne est à l'écran,
+  // ou dès que le joueur fait défiler la liste lui-même.
   const reveal = () => {
     if (highlighted?.reveal !== true || revealed.current === highlighted.id) {
       return;
     }
-    const row = rows.current.get(highlighted.id);
-    const offset = row && revealOffsetOf(row, shown.current, bottomSpace);
-    // Le défilement attend que le contenu de la liste tienne la ligne et la place du bouton : placée
-    // avant que le contenu ne grandisse, la ligne serait hors de portée, et Android arrêterait le
-    // défilement au bas de l'ancien contenu, la ligne sous le bouton.
-    const held = row !== undefined && contentHeight.current >= row.y + row.height + bottomSpace;
-    if (offset !== undefined && offset !== null && held) {
-      revealed.current = highlighted.id;
-      scroll.current?.scrollTo({ y: offset, animated: false });
+    const { id } = highlighted;
+    const row = rows.current.get(id);
+    if (row === undefined || shown.current.height === 0) {
+      return;
     }
+    const wanted = revealOffsetOf(row, shown.current, bottomSpace);
+    if (wanted === null) {
+      revealed.current = id;
+      return;
+    }
+    // Pas plus loin que le contenu connu : il grandira, et le défilement suivra.
+    const reachable =
+      contentHeight.current > 0 ? contentHeight.current - shown.current.height : wanted;
+    const target = Math.min(wanted, reachable);
+    if (target <= shown.current.offset + 1) {
+      return;
+    }
+    if (attempts.current.id !== id) {
+      attempts.current = { id, count: 0 };
+    }
+    if (attempts.current.count >= REVEAL_ATTEMPTS) {
+      revealed.current = id;
+      return;
+    }
+    attempts.current.count += 1;
+    scroll.current?.scrollTo({ y: target, animated: false });
+    clearTimeout(check.current);
+    check.current = setTimeout(reveal, REVEAL_CHECK_MS);
   };
   const { doneCount, expectedCount } = view;
   const activeCount = view.habits.length;
@@ -265,6 +305,14 @@ function HabitList({
         }}
         onScroll={({ nativeEvent }) => {
           shown.current = { ...shown.current, offset: nativeEvent.contentOffset.y };
+          // La position reçue confirme (ou non) le défilement de révélation en cours.
+          if (attempts.current.id === highlighted?.id) {
+            reveal();
+          }
+        }}
+        onScrollBeginDrag={() => {
+          // Le joueur fait défiler lui-même : la révélation s'arrête là.
+          revealed.current = highlighted?.id ?? null;
         }}
         scrollEventThrottle={16}
         testID="day-view-list"
