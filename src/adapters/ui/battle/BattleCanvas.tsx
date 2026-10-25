@@ -23,7 +23,13 @@ import { StyleSheet } from 'react-native';
 import { useDerivedValue, useFrameCallback, useSharedValue } from 'react-native-reanimated';
 
 import { battleColors } from '../theme/battleColors';
-import type { FrameMeter, HeroPose, SceneEnemy, SceneTimeline } from './sceneTypes';
+import {
+  columnWidth,
+  type FrameMeter,
+  type HeroPose,
+  type SceneEnemy,
+  type SceneTimeline,
+} from './sceneTypes';
 
 export interface BattleSceneProps {
   readonly width: number;
@@ -44,7 +50,6 @@ export interface BattleSceneProps {
 const FOE_WIDTH = 104;
 const FOE_HEIGHT = 130;
 const FOE_SCALE = FOE_WIDTH / 120;
-const COLUMN_WIDTH = 160;
 /** Haut de la silhouette d'un ennemi dans la scène : rangée à 40, pastille d'intention de 28. */
 const FOE_TOP = 75;
 const HERO_SCALE = 124 / 120;
@@ -69,6 +74,22 @@ const SPECTER = {
     { x: 66, y: 46, r: 2.6 },
   ],
 };
+const NECROMANCER = {
+  robe: 'M60 30c18 0 26 30 30 60 3 24 6 44 8 58H22c2-14 5-34 8-58 4-30 12-60 30-60z',
+  hood: 'M60 18c12 0 20 12 20 26 0 6-4 10-8 10H48c-4 0-8-4-8-10 0-14 8-26 20-26z',
+  staff: 'M96 30L96 150',
+  orb: { x: 96, y: 26, r: 6 },
+  eyes: [
+    { x: 55, y: 40, r: 2.2 },
+    { x: 65, y: 40, r: 2.2 },
+  ],
+};
+/** Les étoiles d'un ennemi étourdi, au-dessus de sa tête, à terre. */
+const STARS = [
+  { x: 34, y: 36 },
+  { x: 60, y: 28 },
+  { x: 86, y: 36 },
+];
 const HERO = {
   body: 'M60 44C46 54 34 86 30 156h60C86 86 74 54 60 44z',
   rims: ['M50 37C40 50 33 84 31 154', 'M50 28a11 11 0 0 1 8-8'],
@@ -146,15 +167,19 @@ function EnemyFigure({
   readonly count: number;
   readonly index: number;
 }) {
-  const left = sceneWidth / 2 - (count * COLUMN_WIDTH) / 2 + index * COLUMN_WIDTH;
-  const x = left + (COLUMN_WIDTH - FOE_WIDTH) / 2;
+  const width = columnWidth(sceneWidth, count);
+  const left = sceneWidth / 2 - (count * width) / 2 + index * width;
+  const x = left + (width - FOE_WIDTH) / 2;
+  const { down, active } = enemy;
   const transform = useDerivedValue(() => {
     'worklet';
     const current = timeline.get();
+    // À terre : écrasé et penché ; actif : au premier plan, un peu plus grand.
+    const rest = down
+      ? { ty: 30, lean: -18, scale: 0.8 }
+      : { ty: 0, lean: 0, scale: active ? 1.08 : 1 };
     const pose =
-      current !== null && current.enemy === index
-        ? windUpPose(current, clock.get())
-        : { ty: 0, lean: 0, scale: 1 };
+      current !== null && current.enemy === index ? windUpPose(current, clock.get()) : rest;
     return [
       { translateX: x },
       { translateY: FOE_TOP + pose.ty },
@@ -166,7 +191,7 @@ function EnemyFigure({
       { translateY: -FOE_HEIGHT },
       { scale: FOE_SCALE },
     ];
-  }, [timeline, clock, x, index]);
+  }, [timeline, clock, x, index, down, active]);
   if (!enemy.standing) return null;
   const figure =
     enemy.kind === 'ghoul' ? (
@@ -194,6 +219,27 @@ function EnemyFigure({
           opacity={0.3}
         />
         {GHOUL.eyes.map((eye) => (
+          <Circle key={eye.x} cx={eye.x} cy={eye.y} r={eye.r} color={battleColors.light} />
+        ))}
+      </>
+    ) : enemy.kind === 'necromancer' ? (
+      <>
+        <Path path={NECROMANCER.robe} color={battleColors.silhouette} />
+        <Path path={NECROMANCER.hood} color={battleColors.silhouette} />
+        <Path
+          path={NECROMANCER.staff}
+          style="stroke"
+          strokeWidth={3}
+          strokeCap="round"
+          color={battleColors.hilt}
+        />
+        <Circle
+          cx={NECROMANCER.orb.x}
+          cy={NECROMANCER.orb.y}
+          r={NECROMANCER.orb.r}
+          color={battleColors.guard}
+        />
+        {NECROMANCER.eyes.map((eye) => (
           <Circle key={eye.x} cx={eye.x} cy={eye.y} r={eye.r} color={battleColors.light} />
         ))}
       </>
@@ -232,6 +278,17 @@ function EnemyFigure({
         />
       </Oval>
       <Group transform={transform}>{figure}</Group>
+      {down
+        ? STARS.map((star) => (
+            <Circle
+              key={star.x}
+              cx={x + star.x * FOE_SCALE}
+              cy={FOE_TOP + 30 + star.y}
+              r={3}
+              color={battleColors.light}
+            />
+          ))
+        : null}
     </Group>
   );
 }

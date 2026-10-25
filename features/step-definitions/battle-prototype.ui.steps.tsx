@@ -1,5 +1,7 @@
 /**
- * Scénarios d'interface (`@ui`) de « Prototype jouable du combat » (#31) : exécutés à travers
+ * Scénarios d'interface (`@ui`) de « Prototype jouable du combat » (#31, adaptés par #32 : trois
+ * ennemis, frappe en rythme, phase ennemie épurée où les résultats se lisent aux chiffres et au
+ * lecteur d'écran, et une garde qu'une contre-attaque peut briser) : exécutés à travers
  * l'écran du combat d'essai (`TrialBattleScreen`), sur une vraie session de combat, l'horloge de
  * combat manuelle et une graine du combat fixée. Les touchers sont simulés par Gesture Handler. La
  * scène Skia est simulée (Skia reste limité à son test de fumée sous Jest) : elle expose la pose
@@ -14,7 +16,9 @@ import { AccessibilityInfo } from 'react-native';
 
 import * as battleEffects from '../../src/adapters/ui/battle/BattleEffects';
 
+import { battleWith, enemyWith } from '../../src/application/testing/battleBuilder';
 import { seedFor, type FirstRound } from '../../src/application/testing/trialBattleSeeds';
+import type { BattleFactory } from '../../src/application/useCases/BattleSession';
 import { BATTLE_HINT_SEEN_KEYS } from '../../src/application/useCases/battleHints';
 import type { BattleEvent } from '../../src/domain/battle/BattleEvent';
 import { memoryKeyValueStore } from '../../src/adapters/ui/testing/memoryKeyValueStore';
@@ -26,6 +30,16 @@ jest.mock('../../src/adapters/ui/battle/BattleCanvas', () =>
 
 const GHOUL = 0;
 const SPECTER = 1;
+const NECROMANCER = 2;
+
+/** La Goule garde une garde qu'aucun coup ne brise : la contre-attaque reste celle de #31. */
+const sturdyGhoul = battleWith(enemyWith(GHOUL, { guard: 99 }));
+/** Des ennemis à 10 PV : le combat se gagne en trois frappes. */
+const weakEnemies = battleWith(
+  enemyWith(GHOUL, { hp: 10 }),
+  enemyWith(SPECTER, { hp: 10 }),
+  enemyWith(NECROMANCER, { hp: 10 }),
+);
 
 const reduceMotion = () => jest.mocked(AccessibilityInfo.isReduceMotionEnabled);
 const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
@@ -56,16 +70,19 @@ async function open({
   firstRound = {},
   hintsSeen = true,
   trialTools = false,
+  createBattle,
 }: {
   readonly firstRound?: FirstRound;
   readonly hintsSeen?: boolean;
   readonly trialTools?: boolean;
+  readonly createBattle?: BattleFactory;
 } = {}): Promise<TrialBattleTest> {
   world.test = await renderTrialBattle({
     seed: seedFor(firstRound),
     hintsSeen,
     trialTools,
     keyValueStore: world.keyValueStore,
+    ...(createBattle === undefined ? {} : { createBattle }),
   });
   return world.test;
 }
@@ -104,7 +121,7 @@ function lockedWithoutHatching(names: readonly string[]): void {
 
 const steps: StepDefinitions = ({ given, when, then, and }) => {
   given(
-    /^le combat d'essai : la Sentinelle .+ contre une Goule \(20 PV\) et un Spectre \(14 PV\)$/u,
+    /^le combat d'essai : la Sentinelle .+ contre la Goule \(50 PV\), le Spectre \(35 PV\) et le Nécromancien \(45 PV\)$/u,
     () => {
       // L'écran s'ouvre à l'étape suivante, avec la première manche voulue par le scénario.
     },
@@ -117,10 +134,11 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   // --- Coups de la Goule et du Spectre ------------------------------------------------------
 
   given(/^la Goule (lance|prépare) un coup simple( de 5 dégâts)?$/u, async () => {
-    const test = await open({ firstRound: { ghoul: 'basic' } });
+    const test = await open({ firstRound: { ghoul: 'basic' }, createBattle: sturdyGhoul });
     expect(test.battle().inputOffset).toBe(0);
     world.impact = await test.toWindUpOf(GHOUL);
-    expect(screen.getByTestId('battle-zone-line')).toHaveTextContent('Goule : coup simple');
+    // Le type de coup se dit au lecteur d'écran au début de la préparation (#32, C2.4).
+    expect(announce).toHaveBeenCalledWith('Goule, coup simple');
   });
 
   when(/^le joueur touche « Parade » (\d+) ms avant l'impact$/u, async (delay: string) => {
@@ -128,16 +146,16 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then('la Sentinelle ne perd aucun PV', () => {
-    expect(screen.getByLabelText('La Sentinelle, PV 80 sur 80')).toBeOnTheScreen();
+    expect(screen.getByLabelText(/^La Sentinelle, PV 80 sur 80, /u)).toBeOnTheScreen();
   });
 
   and(/^la Sentinelle contre-attaque la Goule, qui perd 6 PV \(.+\)$/u, async () => {
     await world.test.advanceTo(world.impact + 40);
-    expect(screen.getByTestId('battle-feedback')).toHaveTextContent(
-      'Parade parfaiteContre-attaque · 6 dégâts',
-    );
-    // 20 PV − 10 (« Attaquer ») − 6.
-    expect(screen.getByRole('button', { name: /^Goule, cible, PV 4 sur 20/u })).toBeOnTheScreen();
+    expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Parfait · contre-attaque');
+    expect(screen.getByText('−6')).toBeOnTheScreen();
+    expect(announce).toHaveBeenCalledWith('Contre-attaque, 6 dégâts');
+    // 50 PV − 10 (frappe sans appui) − 6.
+    expect(screen.getByRole('button', { name: /^Goule, 34 PV sur 50/u })).toBeOnTheScreen();
   });
 
   and(
@@ -179,13 +197,17 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(/^la parade échoue, la Sentinelle perd 8 PV \(.+\) et est déséquilibrée$/u, () => {
-    expect(screen.getByLabelText(`La Sentinelle, PV ${world.heroHp - 8} sur 80`)).toBeOnTheScreen();
+    expect(
+      screen.getByLabelText(new RegExp(`^La Sentinelle, PV ${world.heroHp - 8} sur 80, `, 'u')),
+    ).toBeOnTheScreen();
+    expect(screen.getByText('−8')).toBeOnTheScreen();
     expect(screen.getByTestId('battle-off-balance')).toHaveTextContent('Déséquilibré');
   });
 
   and("le message dit qu'un coup imparable s'esquive", () => {
-    expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Imparable : esquive !−8 PV');
-    expect(announce).toHaveBeenCalledWith('Imparable : esquive !, −8 PV');
+    // La phase ennemie est épurée (#32) : le message passe par le lecteur d'écran.
+    expect(announce).toHaveBeenCalledWith('Spectre, coup imparable, esquive');
+    expect(announce).toHaveBeenCalledWith('Coup imparable : la parade échoue, 8 dégâts');
   });
 
   // --- Déséquilibre (C9) --------------------------------------------------------------------
@@ -217,8 +239,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     expect(events()).toContainEqual(
       expect.objectContaining({ type: 'impactLanded', at: world.impact, lost: true }),
     );
-    expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Touché−4 PV');
-    expect(screen.getByLabelText('La Sentinelle, PV 76 sur 80')).toBeOnTheScreen();
+    expect(screen.getByText('−4')).toBeOnTheScreen();
+    expect(screen.getByLabelText(/^La Sentinelle, PV 76 sur 80, /u)).toBeOnTheScreen();
   });
 
   // --- Datation au toucher ------------------------------------------------------------------
@@ -238,7 +260,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     expect(events()).toContainEqual(
       expect.objectContaining({ type: 'blowResolved', at: world.impact - 50, delta: -50 }),
     );
-    expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Parade parfaite');
+    expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Parfait');
   });
 
   // --- Fin du déséquilibre à la transition (C9, C12) ----------------------------------------
@@ -246,9 +268,13 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   given(
     'la Sentinelle est déséquilibrée depuis 100 ms quand le dernier coup ennemi est résolu',
     async () => {
-      const test = await open({ firstRound: { specter: 'delayed' } });
+      const test = await open({
+        firstRound: { specter: 'delayed' },
+        createBattle: battleWith(enemyWith(NECROMANCER, { hp: 0 })),
+      });
       world.impact = await test.toWindUpOf(SPECTER);
-      // Le Spectre est le dernier ennemi : il est esquivé, puis un appui dans le vide à + 60 ms.
+      // Le Nécromancien est tombé, le Spectre est le dernier ennemi : il est esquivé, puis un
+      // appui dans le vide à + 60 ms.
       await test.touchDefense('dodge', world.impact);
       await test.touchDefense('parry', world.impact + 60);
       world.reference = test.attackStep()!.resolvedAt;
@@ -337,10 +363,10 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   // --- Mouvement réduit ---------------------------------------------------------------------
 
   when('le joueur réussit une parade parfaite', async () => {
-    const test = await open({ firstRound: { ghoul: 'basic' } });
+    const test = await open({ firstRound: { ghoul: 'basic' }, createBattle: sturdyGhoul });
     world.impact = await test.toWindUpOf(GHOUL);
     await test.touchDefense('parry', world.impact - 20);
-    expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Parade parfaite');
+    expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Parfait');
   });
 
   then("il n'y a ni secousse ni éclat plein écran, mais la vibration et le son restent", () => {
@@ -401,7 +427,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   // --- Réglages d'essai (C12) ---------------------------------------------------------------
 
   given('le build de preview du prototype', async () => {
-    const test = await open({ trialTools: true });
+    const test = await open({ trialTools: true, createBattle: weakEnemies });
     for (let round = 0; test.battle().phase.kind !== 'over' && round < 8; round += 1) {
       await test.runUntil(() => ['hero', 'over'].includes(test.battle().phase.kind));
       if (test.battle().phase.kind === 'hero') await test.attack();

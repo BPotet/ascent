@@ -1,4 +1,6 @@
-// Moteur du combat (#31) : chaque règle par un scénario daté à la ms, puis un balayage de graines.
+// Moteur du combat (#31, complété par #32) : chaque règle par un scénario daté à la ms, puis un
+// balayage de graines. Les règles propres à #32 (garde, frappe en rythme, Élan) sont dans
+// Battle.fullCombat.test.ts.
 import type { AttackKind } from './attacks';
 import {
   advance,
@@ -6,9 +8,11 @@ import {
   heroAction,
   nextDeadline,
   pressDefense,
+  pressStrike,
   startTrialBattle,
   type Battle,
   type BattleUpdate,
+  type EnemyState,
 } from './Battle';
 import type { BattleEvent, DefenseButton } from './BattleEvent';
 import { ATTACKS } from './attacks';
@@ -19,28 +23,40 @@ import { DEFAULT_TRIAL_TUNING, type TrialTuning } from './TrialTuning';
 
 type EventOf<Type extends BattleEvent['type']> = Extract<BattleEvent, { type: Type }>;
 
-/** Une intention fixée pour un test : la préparation de base, la fausse amorce à 50 %. */
+/** Le contexte de tirage d'un ennemi debout, garde pleine, sans allié tombé. */
+const CALM = { fallenAlly: null, stunned: false, guardDamaged: false } as const;
+
+/** Les gardes max du combat d'essai : Goule, Spectre, Nécromancien. */
+const TRIAL_GUARDS = [15, 10, 12] as const;
+
+/** Un ennemi changé (PV, garde…), sans événement. */
+function changeEnemy(enemy: number, change: Partial<EnemyState>): (battle: Battle) => Battle {
+  return (battle) => ({
+    ...battle,
+    enemies: battle.enemies.map((current, index) =>
+      index === enemy ? { ...current, ...change } : current,
+    ),
+  });
+}
+
+/** Une intention d'attaque fixée pour un test : la préparation de base, la fausse amorce à 50 %. */
 function fixedIntent(
   enemy: number,
   attack: AttackKind,
-  overrides: Partial<Intent> = {},
+  overrides: Partial<Extract<Intent, { category: 'attack' }>> = {},
 ): (battle: Battle) => Battle {
   return (battle) => {
     const kind = battle.enemies[enemy]!.kind;
     const move = ENEMIES[kind].moves.find((candidate) => candidate.attack === attack);
     const intent: Intent = {
+      category: 'attack',
       attack,
       damage: move?.damage ?? 5,
       windUpMs: ATTACKS[attack].windUpMs,
       feintFraction: 0.5,
       ...overrides,
     };
-    return {
-      ...battle,
-      enemies: battle.enemies.map((current, index) =>
-        index === enemy ? { ...current, intent } : current,
-      ),
-    };
+    return changeEnemy(enemy, { intent })(battle);
   };
 }
 
@@ -96,9 +112,23 @@ class BattlePlay {
     return this.apply(pressDefense(this.battle, { button, at }));
   }
 
+  strike(at: number): this {
+    return this.apply(pressStrike(this.battle, { at }));
+  }
+
   attack(releasedAt: number, touchStartedAt = releasedAt - 50): this {
     return this.apply(
       heroAction(this.battle, { action: { kind: 'attack' }, touchStartedAt, releasedAt }),
+    );
+  }
+
+  bulwark(releasedAt: number, touchStartedAt = releasedAt - 50): this {
+    return this.apply(
+      heroAction(this.battle, {
+        action: { kind: 'power', power: 'bulwark' },
+        touchStartedAt,
+        releasedAt,
+      }),
     );
   }
 
@@ -110,6 +140,18 @@ class BattlePlay {
 
   dismissHint(at: number): this {
     return this.apply(dismissDefenseHint(this.battle, at));
+  }
+
+  /** Jusqu'au début de la préparation de `enemy` ; renvoie ses impacts. */
+  toWindUpOf(enemy: number): readonly number[] {
+    for (let guard = 0; guard < 100; guard += 1) {
+      const { phase } = this.battle;
+      if (phase.kind === 'enemy' && phase.step.kind === 'attack' && phase.step.enemy === enemy) {
+        return phase.step.impacts.map((impact) => impact.at);
+      }
+      this.advance(nextDeadline(this.battle)!.at + 1);
+    }
+    throw new Error(`No wind-up of enemy ${enemy}`);
   }
 
   all<Type extends BattleEvent['type']>(type: Type): EventOf<Type>[] {
@@ -127,61 +169,86 @@ class BattlePlay {
 }
 
 // Chronologie de référence (réglages par défaut, combat commencé à 0) : « Attaquer » relâché à
-// 1 000 ms, attaque résolue à 1 500 ms, transition de phase jusqu'à 2 300 ms, avancée de la Goule
-// jusqu'à 2 700 ms, puis sa préparation.
+// 1 000 ms, impact de la frappe à 1 700 ms, sans appui résolue à 1 860 ms, action du héros finie à
+// 2 180 ms (récupération de 320 ms), transition de phase jusqu'à 2 980 ms, avancée de la Goule
+// jusqu'à 3 380 ms, puis sa préparation. La Goule (garde 15) n'est jamais brisée par une frappe
+// sans appui (12 points de garde).
 const ATTACK_AT = 1_000;
-const HERO_ACTION_END = 1_500;
-const ENEMY_PHASE_AT = 2_300;
-const GHOUL_WIND_UP_AT = 2_700;
+const STRIKE_RESOLVED = 1_860;
+const HERO_ACTION_END = 2_180;
+const ENEMY_PHASE_AT = 2_980;
+const GHOUL_WIND_UP_AT = 3_380;
 
-/** Le combat jusqu'à la préparation de la Goule, ses intentions et celles du Spectre fixées. */
+/**
+ * Le combat jusqu'à la préparation de la Goule, ses intentions et celles des autres fixées. Sa
+ * garde est rendue pleine après la frappe : une contre-attaque ne la brise pas.
+ */
 function toGhoulWindUp(
   ghoul: AttackKind = 'basic',
   specter: AttackKind = 'delayed',
   options: Parameters<typeof BattlePlay.start>[0] = {},
 ): BattlePlay {
   return BattlePlay.start(options)
-    .with(fixedIntent(0, ghoul), fixedIntent(1, specter))
+    .with(fixedIntent(0, ghoul), fixedIntent(1, specter), fixedIntent(2, 'basic'))
     .attack(ATTACK_AT)
-    .advance(GHOUL_WIND_UP_AT);
+    .advance(GHOUL_WIND_UP_AT)
+    .with(changeEnemy(0, { guard: 15 }));
 }
 
 /** L'instant du premier impact d'un coup simple de la Goule, à préparation de base. */
 const GHOUL_IMPACT = GHOUL_WIND_UP_AT + 1_100;
 /** Le 1er impact de la double frappe de la Goule (préparation de base 1 000 ms). */
 const DOUBLE_IMPACT = GHOUL_WIND_UP_AT + 1_000;
+/** La fin de la manche 1 de `toGhoulWindUp` sans appui : coup simple, coup retardé, coup simple. */
+const ROUND_END = 8_560;
+const HERO_PHASE_2 = ROUND_END + 800;
 
 describe('startTrialBattle', () => {
-  it('opposes the Sentinel to a Ghoul and a Specter, in the hero phase of round 1', () => {
+  it('opposes the Sentinel to a Ghoul, a Specter and a Necromancer, in the hero phase of round 1', () => {
     const play = BattlePlay.start({ at: 250 });
 
-    expect(play.battle.hero).toEqual({ hp: 80, maxHp: 80 });
-    expect(play.battle.enemies.map(({ kind, hp, maxHp }) => ({ kind, hp, maxHp }))).toEqual([
-      { kind: 'ghoul', hp: 20, maxHp: 20 },
-      { kind: 'specter', hp: 14, maxHp: 14 },
+    expect(play.battle.hero).toEqual({ hp: 80, maxHp: 80, momentum: 1, bulwark: false });
+    expect(
+      play.battle.enemies.map(({ kind, hp, maxHp, guard, maxGuard, stun }) => ({
+        kind,
+        hp,
+        maxHp,
+        guard,
+        maxGuard,
+        stun,
+      })),
+    ).toEqual([
+      { kind: 'ghoul', hp: 50, maxHp: 50, guard: 15, maxGuard: 15, stun: null },
+      { kind: 'specter', hp: 35, maxHp: 35, guard: 10, maxGuard: 10, stun: null },
+      { kind: 'necromancer', hp: 45, maxHp: 45, guard: 12, maxGuard: 12, stun: null },
     ]);
     expect(play.battle.round).toBe(1);
-    expect(play.battle.phase).toEqual({ kind: 'hero', since: 250 });
+    expect(play.battle.phase).toEqual({ kind: 'hero', since: 250, announced: false });
+    expect(play.battle.turn).toEqual({ order: ['hero', 0, 1, 2], position: 0 });
+    expect(play.battle.lastPlayed).toBeNull();
+    expect(play.battle.heroActions).toBe(0);
     expect(play.battle.now).toBe(250);
     expect(play.battle.offBalanceUntil).toBeNull();
     expect(play.battle.hitStop).toBeNull();
     expect(play.battle.inputOffset).toBe(0);
     expect(play.events).toEqual([
       { type: 'roundStarted', at: 250, round: 1 },
-      { type: 'heroPhaseStarted', at: 250 },
+      { type: 'heroPhaseStarted', at: 250, announced: false },
     ]);
   });
 
   it('draws the intents of every enemy, from the seed', () => {
     const play = BattlePlay.start({ seed: 31 });
-    const ghoul = drawIntent('ghoul', seedRandom(31));
-    const specter = drawIntent('specter', ghoul.random);
+    const ghoul = drawIntent('ghoul', seedRandom(31), CALM);
+    const specter = drawIntent('specter', ghoul.random, CALM);
+    const necromancer = drawIntent('necromancer', specter.random, CALM);
 
     expect(play.battle.enemies.map((enemy) => enemy.intent)).toEqual([
       ghoul.intent,
       specter.intent,
+      necromancer.intent,
     ]);
-    expect(play.battle.random).toBe(specter.random);
+    expect(play.battle.random).toBe(necromancer.random);
   });
 
   it('keeps the input offset and the tuning it is given', () => {
@@ -199,42 +266,50 @@ describe('startTrialBattle', () => {
 });
 
 describe('the order of a round (C1, C12)', () => {
-  it('resolves the hero attack, then the transition, then each enemy from left to right', () => {
+  it('resolves the hero strike, then the transition, then each enemy from left to right', () => {
     const play = toGhoulWindUp('basic', 'delayed').advance(20_000);
 
     const timeline = play.events.map((event) => `${event.type}@${event.at}`);
     expect(timeline).toEqual([
       'roundStarted@0',
       'heroPhaseStarted@0',
-      'heroAttacked@1000',
-      'phaseTransitionStarted@1500',
-      'stepInStarted@2300',
-      'windUpStarted@2700',
-      'impactLanded@3800',
-      'blowResolved@3960',
+      'strikeStarted@1000',
+      'momentumChanged@1000',
+      'strikeResolved@1860',
+      'phaseTransitionStarted@2180',
+      'stepInStarted@2980',
+      'windUpStarted@3380',
+      'impactLanded@4480',
+      'blowResolved@4640',
       // Entre deux ennemis : seulement l'avancée.
-      'stepInStarted@3960',
-      'windUpStarted@4360',
-      'impactLanded@6060',
-      'blowResolved@6220',
-      'phaseTransitionStarted@6220',
-      'roundStarted@6220',
-      'heroPhaseStarted@7020',
+      'stepInStarted@4640',
+      'windUpStarted@5040',
+      'impactLanded@6740',
+      'blowResolved@6900',
+      'stepInStarted@6900',
+      'windUpStarted@7300',
+      'impactLanded@8400',
+      'blowResolved@8560',
+      'roundStarted@8560',
+      'phaseTransitionStarted@8560',
+      'heroPhaseStarted@9360',
     ]);
     expect(play.battle.round).toBe(2);
-    expect(play.battle.phase).toEqual({ kind: 'hero', since: 7_020 });
+    expect(play.battle.phase).toEqual({ kind: 'hero', since: HERO_PHASE_2, announced: false });
+    expect(play.battle.lastPlayed).toBe('enemy');
   });
 
   it('announces each transition with its direction and its end', () => {
     const play = toGhoulWindUp().advance(20_000);
 
     expect(play.all('phaseTransitionStarted')).toEqual([
-      { type: 'phaseTransitionStarted', at: 1_500, to: 'enemy', until: 2_300 },
-      { type: 'phaseTransitionStarted', at: 6_220, to: 'hero', until: 7_020 },
+      { type: 'phaseTransitionStarted', at: HERO_ACTION_END, to: 'enemy', until: ENEMY_PHASE_AT },
+      { type: 'phaseTransitionStarted', at: ROUND_END, to: 'hero', until: HERO_PHASE_2 },
     ]);
     expect(play.all('stepInStarted')).toEqual([
-      { type: 'stepInStarted', at: 2_300, enemy: 0, until: 2_700 },
-      { type: 'stepInStarted', at: 3_960, enemy: 1, until: 4_360 },
+      { type: 'stepInStarted', at: 2_980, enemy: 0, until: 3_380 },
+      { type: 'stepInStarted', at: 4_640, enemy: 1, until: 5_040 },
+      { type: 'stepInStarted', at: 6_900, enemy: 2, until: 7_300 },
     ]);
   });
 
@@ -243,31 +318,34 @@ describe('the order of a round (C1, C12)', () => {
 
     expect(play.lastOf('windUpStarted')).toEqual({
       type: 'windUpStarted',
-      at: 2_700,
+      at: GHOUL_WIND_UP_AT,
       enemy: 0,
       attack: 'basic',
-      impacts: [3_800],
+      impacts: [GHOUL_IMPACT],
       feintAt: null,
     });
     expect(play.battle.phase).toMatchObject({
       kind: 'enemy',
-      waiting: [1],
-      step: { kind: 'attack', enemy: 0, attack: 'basic', damage: 5, startedAt: 2_700 },
+      step: { kind: 'attack', enemy: 0, attack: 'basic', damage: 5, startedAt: GHOUL_WIND_UP_AT },
     });
+    expect(play.battle.turn).toEqual({ order: ['hero', 0, 1, 2], position: 1 });
   });
 
   it('draws new intents for the standing enemies at the start of the next round', () => {
     const play = toGhoulWindUp().advance(20_000);
-    const ghoul = drawIntent('ghoul', BattlePlay.start().battle.random);
-    const specter = drawIntent('specter', ghoul.random);
+    const ghoul = drawIntent('ghoul', BattlePlay.start().battle.random, CALM);
+    const specter = drawIntent('specter', ghoul.random, CALM);
+    const necromancer = drawIntent('necromancer', specter.random, CALM);
 
     expect(play.battle.enemies.map((enemy) => enemy.intent)).toEqual([
       ghoul.intent,
       specter.intent,
+      necromancer.intent,
     ]);
+    expect(play.battle.turn).toEqual({ order: ['hero', 0, 1, 2], position: 0 });
   });
 
-  it('places the first impact 2,000 ms after the hero attack, with the shortest wind-up', () => {
+  it('places the first impact 2,000 ms after the hero action, with the shortest wind-up', () => {
     const play = BattlePlay.start()
       .with(fixedIntent(0, 'double', { windUpMs: 800 }))
       .attack(ATTACK_AT)
@@ -285,21 +363,25 @@ describe('the order of a round (C1, C12)', () => {
       .attack(ATTACK_AT)
       .advance(4_000);
 
-    expect(play.lastOf('phaseTransitionStarted')).toMatchObject({ at: 1_500, until: 2_500 });
-    expect(play.lastOf('stepInStarted')).toMatchObject({ at: 2_500, until: 2_750 });
-    expect(play.lastOf('windUpStarted')).toMatchObject({ at: 2_750 });
+    expect(play.lastOf('phaseTransitionStarted')).toMatchObject({
+      at: HERO_ACTION_END,
+      until: HERO_ACTION_END + 1_000,
+    });
+    expect(play.lastOf('stepInStarted')).toMatchObject({ at: 3_180, until: 3_430 });
+    expect(play.lastOf('windUpStarted')).toMatchObject({ at: 3_430 });
   });
 
   it('skips the dead enemies in the enemy phase', () => {
     const play = BattlePlay.start()
-      .with(fixedIntent(1, 'delayed'), (battle) => ({
-        ...battle,
-        enemies: battle.enemies.map((enemy, index) => (index === 0 ? { ...enemy, hp: 10 } : enemy)),
-      }))
+      .with(fixedIntent(1, 'delayed'), changeEnemy(0, { hp: 10 }))
       .attack(ATTACK_AT)
       .advance(GHOUL_WIND_UP_AT);
 
-    expect(play.lastOf('enemyDefeated')).toEqual({ type: 'enemyDefeated', at: 1_000, enemy: 0 });
+    expect(play.lastOf('enemyDefeated')).toEqual({
+      type: 'enemyDefeated',
+      at: STRIKE_RESOLVED,
+      enemy: 0,
+    });
     expect(play.lastOf('stepInStarted')).toEqual({
       type: 'stepInStarted',
       at: ENEMY_PHASE_AT,
@@ -314,34 +396,45 @@ describe('targeting (C4)', () => {
     expect(BattlePlay.start().battle.target).toBe(0);
   });
 
-  it('changes the target with a touch on an enemy, then attacks it', () => {
+  it('changes the target with a touch on an enemy, then strikes it', () => {
     const play = BattlePlay.start().target(1, 400);
 
     expect(play.last).toEqual([{ type: 'targetChanged', at: 400, enemy: 1 }]);
     expect(play.battle.target).toBe(1);
 
     play.attack(ATTACK_AT);
-    expect(play.lastOf('heroAttacked')).toEqual({
-      type: 'heroAttacked',
+    expect(play.lastOf('strikeStarted')).toEqual({
+      type: 'strikeStarted',
       at: ATTACK_AT,
       enemy: 1,
-      damage: 10,
+      impactAt: 1_700,
       until: HERO_ACTION_END,
     });
-    expect(play.battle.enemies[1]!.hp).toBe(4);
-    expect(play.battle.enemies[0]!.hp).toBe(20);
     expect(play.battle.phase).toEqual({
-      kind: 'heroAction',
+      kind: 'heroStrike',
+      enemy: 1,
       since: ATTACK_AT,
+      impactAt: 1_700,
+      press: null,
+      resolved: false,
       until: HERO_ACTION_END,
     });
+
+    play.advance(STRIKE_RESOLVED + 1);
+    expect(play.battle.enemies[1]!.hp).toBe(25);
+    expect(play.battle.enemies[0]!.hp).toBe(50);
   });
 
   it('keeps the target from one round to the next', () => {
-    const play = BattlePlay.start().with(fixedIntent(0, 'basic'), fixedIntent(1, 'delayed'));
+    const play = BattlePlay.start().with(
+      fixedIntent(0, 'basic'),
+      fixedIntent(1, 'delayed'),
+      fixedIntent(2, 'basic'),
+    );
     play.target(1, 400).attack(ATTACK_AT).advance(20_000);
 
     expect(play.battle.round).toBe(2);
+    expect(play.battle.phase.kind).toBe('hero');
     expect(play.battle.target).toBe(1);
   });
 
@@ -353,11 +446,8 @@ describe('targeting (C4)', () => {
     ['a dead enemy', 0],
     ['an enemy that does not exist', 5],
   ])('ignores a touch on %s', (_, enemy) => {
-    const play = BattlePlay.start().with((battle) => ({
+    const play = BattlePlay.start().with(changeEnemy(0, { hp: 0 }), (battle) => ({
       ...battle,
-      enemies: battle.enemies.map((current, index) =>
-        index === 0 ? { ...current, hp: 0 } : current,
-      ),
       target: 1,
     }));
 
@@ -370,40 +460,42 @@ describe('targeting (C4)', () => {
   });
 
   it('targets the next standing enemy when the target falls', () => {
-    const play = BattlePlay.start().with((battle) => ({
-      ...battle,
-      enemies: battle.enemies.map((enemy, index) => (index === 0 ? { ...enemy, hp: 10 } : enemy)),
-    }));
+    const play = BattlePlay.start().with(changeEnemy(0, { hp: 10 }));
 
-    play.attack(ATTACK_AT);
+    play.attack(ATTACK_AT).advance(STRIKE_RESOLVED + 1);
 
     expect(play.last).toEqual([
-      { type: 'heroAttacked', at: ATTACK_AT, enemy: 0, damage: 10, until: HERO_ACTION_END },
-      { type: 'enemyDefeated', at: ATTACK_AT, enemy: 0 },
-      { type: 'targetChanged', at: ATTACK_AT, enemy: 1 },
+      {
+        type: 'strikeResolved',
+        at: STRIKE_RESOLVED,
+        enemy: 0,
+        judgement: null,
+        delta: null,
+        damage: 10,
+        guardDamage: 12,
+      },
+      { type: 'enemyDefeated', at: STRIKE_RESOLVED, enemy: 0 },
+      { type: 'targetChanged', at: STRIKE_RESOLVED, enemy: 1 },
     ]);
     expect(play.battle.target).toBe(1);
   });
 
   it('keeps the target when another enemy falls', () => {
     const play = BattlePlay.start()
-      .with(fixedIntent(0, 'basic'), (battle) => ({
-        ...battle,
-        enemies: battle.enemies.map((enemy, index) => (index === 0 ? { ...enemy, hp: 6 } : enemy)),
-      }))
-      .target(1, 400)
-      .attack(ATTACK_AT)
-      .advance(GHOUL_WIND_UP_AT)
-      .press('parry', GHOUL_IMPACT)
-      .advance(GHOUL_IMPACT + 90);
+      .with(fixedIntent(0, 'basic'), changeEnemy(0, { hp: 6 }), changeEnemy(2, { guard: 99 }))
+      .target(2, 400)
+      .attack(ATTACK_AT);
+    const [impact] = play.toWindUpOf(0);
+
+    play.press('parry', impact!).advance(impact! + 90);
 
     expect(play.lastOf('enemyDefeated')).toEqual({
       type: 'enemyDefeated',
-      at: GHOUL_IMPACT + 90,
+      at: impact! + 90,
       enemy: 0,
     });
-    expect(play.all('targetChanged')).toEqual([{ type: 'targetChanged', at: 400, enemy: 1 }]);
-    expect(play.battle.target).toBe(1);
+    expect(play.all('targetChanged')).toEqual([{ type: 'targetChanged', at: 400, enemy: 2 }]);
+    expect(play.battle.target).toBe(2);
   });
 });
 
@@ -423,19 +515,21 @@ describe('judging a defense press (C7, C8)', () => {
         damage: 0,
         heroHp: 80,
       },
+      { type: 'momentumChanged', at: GHOUL_IMPACT - 50, momentum: 3 },
       { type: 'hitStopStarted', at: GHOUL_IMPACT - 50, until: GHOUL_IMPACT + 40 },
     ]);
 
     play.advance(20_000);
-    expect(play.lastOf('counterAttacked')).toEqual({
+    expect(play.all('counterAttacked')[0]).toEqual({
       type: 'counterAttacked',
       at: GHOUL_IMPACT + 40,
       enemy: 0,
       damage: 6,
+      guardDamage: 12,
       until: GHOUL_IMPACT + 440,
     });
-    // 20 PV, − 10 (attaque de la Sentinelle), − 6 (contre-attaque).
-    expect(play.battle.enemies[0]!.hp).toBe(4);
+    // 50 PV, − 10 (frappe de la Sentinelle), − 6 (contre-attaque).
+    expect(play.battle.enemies[0]!.hp).toBe(34);
   });
 
   it('shifts every later deadline of the attack by the hit-stop', () => {
@@ -476,8 +570,8 @@ describe('judging a defense press (C7, C8)', () => {
     });
     expect(play.all('counterAttacked')).toEqual([]);
     expect(play.all('hitStopStarted')).toEqual([]);
-    // Seule l'attaque de la Sentinelle l'a touchée.
-    expect(play.battle.enemies[0]!.hp).toBe(10);
+    // Seule la frappe de la Sentinelle l'a touchée.
+    expect(play.battle.enemies[0]!.hp).toBe(40);
   });
 
   it('dodge: no damage and no counter, even far from the perfect window', () => {
@@ -553,12 +647,17 @@ describe('judging a defense press (C7, C8)', () => {
   });
 
   it('judges with the input offset, and waits longer with a negative one', () => {
-    const play = toGhoulWindUp('basic', 'delayed', { inputOffset: -40 });
+    const play = toGhoulWindUp('basic', 'delayed', { inputOffset: -40 }).advance(
+      GHOUL_WIND_UP_AT + 40,
+    );
+    // La fenêtre de la frappe de la Sentinelle attend aussi 40 ms de plus.
+    const impact = GHOUL_IMPACT + 40;
+    expect(play.lastOf('windUpStarted')?.impacts).toEqual([impact]);
 
-    play.advance(GHOUL_IMPACT + 161);
+    play.advance(impact + 161);
     expect(play.all('blowResolved')).toEqual([]);
 
-    play.press('parry', GHOUL_IMPACT + 190);
+    play.press('parry', impact + 190);
     expect(play.lastOf('blowResolved')).toMatchObject({ outcome: 'parry', delta: 150 });
   });
 
@@ -594,12 +693,15 @@ describe('double attack (C8, C10)', () => {
       .press('parry', DOUBLE_IMPACT + 420 + 90 + 20)
       .advance(20_000);
 
-    expect(play.all('hitStopStarted')).toHaveLength(2);
-    expect(play.lastOf('counterAttacked')).toEqual({
+    expect(
+      play.all('hitStopStarted').filter((hitStop) => hitStop.at < DOUBLE_IMPACT + 1_000),
+    ).toHaveLength(2);
+    expect(play.all('counterAttacked')[0]).toEqual({
       type: 'counterAttacked',
       at: DOUBLE_IMPACT + 530 + 90,
       enemy: 0,
       damage: 6,
+      guardDamage: 12,
       until: DOUBLE_IMPACT + 530 + 90 + 400,
     });
   });
@@ -608,7 +710,7 @@ describe('double attack (C8, C10)', () => {
     const play = toGhoulWindUp('double')
       .press('dodge', DOUBLE_IMPACT)
       .press('parry', DOUBLE_IMPACT + 420)
-      .advance(20_000);
+      .advance(DOUBLE_IMPACT + 2_000);
 
     expect(
       play
@@ -621,14 +723,10 @@ describe('double attack (C8, C10)', () => {
 });
 
 describe('perilous attack (C8)', () => {
-  /** Le Spectre attaque seul (la Goule est tombée), avec son coup imparable. */
+  /** Le Spectre attaque le premier : la Goule, à 10 PV, tombe sous la frappe de la Sentinelle. */
   function toPerilousWindUp(): { play: BattlePlay; impact: number } {
     const play = BattlePlay.start()
-      .with(fixedIntent(1, 'perilous'), (battle) => ({
-        ...battle,
-        target: 1,
-        enemies: battle.enemies.map((enemy, index) => (index === 0 ? { ...enemy, hp: 0 } : enemy)),
-      }))
+      .with(fixedIntent(1, 'perilous'), changeEnemy(0, { hp: 10 }))
       .attack(ATTACK_AT)
       .advance(GHOUL_WIND_UP_AT);
     return { play, impact: GHOUL_WIND_UP_AT + 1_300 };
@@ -737,12 +835,9 @@ describe('off-balance (C9)', () => {
   });
 
   it('stops at the start of the transition to the hero phase', () => {
-    // Le Spectre est tombé : la Goule est le dernier ennemi debout.
+    // Le Spectre et le Nécromancien sont tombés : la Goule est le dernier ennemi debout.
     const play = BattlePlay.start()
-      .with(fixedIntent(0, 'basic'), (battle) => ({
-        ...battle,
-        enemies: battle.enemies.map((enemy, index) => (index === 1 ? { ...enemy, hp: 0 } : enemy)),
-      }))
+      .with(fixedIntent(0, 'basic'), changeEnemy(1, { hp: 0 }), changeEnemy(2, { hp: 0 }))
       .attack(ATTACK_AT)
       .advance(GHOUL_WIND_UP_AT)
       .press('dodge', GHOUL_IMPACT)
@@ -752,6 +847,7 @@ describe('off-balance (C9)', () => {
     play.advance(GHOUL_IMPACT + 161);
 
     expect(play.last).toEqual([
+      { type: 'roundStarted', at: GHOUL_IMPACT + 160, round: 2 },
       { type: 'offBalanceEnded', at: GHOUL_IMPACT + 160 },
       {
         type: 'phaseTransitionStarted',
@@ -759,7 +855,6 @@ describe('off-balance (C9)', () => {
         to: 'hero',
         until: GHOUL_IMPACT + 960,
       },
-      { type: 'roundStarted', at: GHOUL_IMPACT + 160, round: 2 },
     ]);
     expect(play.battle.offBalanceUntil).toBeNull();
   });
@@ -810,36 +905,38 @@ describe('phase transition (C12)', () => {
   });
 
   it('ignores « Attaquer » during the transition to the hero phase, and a touch begun in it', () => {
-    const play = toGhoulWindUp('basic', 'delayed').advance(6_221);
+    const play = toGhoulWindUp('basic', 'delayed').advance(ROUND_END + 1);
     expect(play.battle.phase).toEqual({
       kind: 'transition',
       to: 'hero',
-      since: 6_220,
-      until: 7_020,
+      since: ROUND_END,
+      until: HERO_PHASE_2,
     });
 
-    play.attack(6_420, 6_400);
+    play.attack(ROUND_END + 200, ROUND_END + 180);
     expect(play.last).toEqual([
-      { type: 'pressIgnored', at: 6_420, button: 'attack', reason: 'phaseTransition' },
+      { type: 'pressIgnored', at: ROUND_END + 200, button: 'attack', reason: 'phaseTransition' },
     ]);
 
     // Doigt posé pendant la transition, relâché après : jamais pris en compte.
-    play.attack(7_100, 7_000);
+    play.attack(HERO_PHASE_2 + 80, HERO_PHASE_2 - 20);
     expect(play.last).toEqual([
-      { type: 'heroPhaseStarted', at: 7_020 },
-      { type: 'pressIgnored', at: 7_100, button: 'attack', reason: 'touchTooEarly' },
+      { type: 'heroPhaseStarted', at: HERO_PHASE_2, announced: false },
+      { type: 'pressIgnored', at: HERO_PHASE_2 + 80, button: 'attack', reason: 'touchTooEarly' },
     ]);
-    // Seule l'attaque de la première manche l'a touchée.
-    expect(play.battle.enemies[0]!.hp).toBe(10);
+    // Seule la frappe de la première manche l'a touchée.
+    expect(play.battle.enemies[0]!.hp).toBe(40);
 
-    play.attack(7_300, 7_200);
-    expect(play.lastOf('heroAttacked')).toMatchObject({ at: 7_300, enemy: 0 });
+    play.attack(HERO_PHASE_2 + 280, HERO_PHASE_2 + 180);
+    expect(play.lastOf('strikeStarted')).toMatchObject({ at: HERO_PHASE_2 + 280, enemy: 0 });
   });
 
   it('accepts a touch that starts at the very start of the hero phase', () => {
-    const play = toGhoulWindUp('basic', 'delayed').advance(7_020).attack(7_100, 7_020);
+    const play = toGhoulWindUp('basic', 'delayed')
+      .advance(HERO_PHASE_2)
+      .attack(HERO_PHASE_2 + 80, HERO_PHASE_2);
 
-    expect(play.lastOf('heroAttacked')).toMatchObject({ at: 7_100 });
+    expect(play.lastOf('strikeStarted')).toMatchObject({ at: HERO_PHASE_2 + 80 });
   });
 
   it('ignores a target touch during a transition, and a defense press in the hero phase', () => {
@@ -928,28 +1025,49 @@ describe('feint attack (C10)', () => {
 });
 
 describe('end of the battle (C11)', () => {
-  it('is won when the last enemy falls, at the end of the hero attack', () => {
-    const play = BattlePlay.start().with((battle) => ({
-      ...battle,
-      enemies: battle.enemies.map((enemy) => ({ ...enemy, hp: enemy.kind === 'ghoul' ? 0 : 10 })),
-      target: 1,
-    }));
+  it('is won when the last enemy falls, at the end of the hero action, with the respite', () => {
+    const play = BattlePlay.start().with(
+      changeEnemy(0, { hp: 0 }),
+      changeEnemy(1, { hp: 10 }),
+      changeEnemy(2, { hp: 0 }),
+      (battle) => ({ ...battle, target: 1, hero: { ...battle.hero, hp: 50 } }),
+    );
 
-    play.attack(ATTACK_AT);
-    expect(play.battle.phase.kind).toBe('heroAction');
+    play.attack(ATTACK_AT).advance(STRIKE_RESOLVED + 1);
+    expect(play.battle.phase.kind).toBe('heroStrike');
     play.advance(HERO_ACTION_END);
 
-    expect(play.last).toEqual([{ type: 'battleEnded', at: HERO_ACTION_END, outcome: 'victory' }]);
+    expect(play.last).toEqual([
+      { type: 'respite', at: HERO_ACTION_END, gain: 8, heroHp: 58 },
+      { type: 'battleEnded', at: HERO_ACTION_END, outcome: 'victory' },
+    ]);
+    expect(play.battle.hero.hp).toBe(58);
     expect(play.battle.phase).toEqual({ kind: 'over', outcome: 'victory', at: HERO_ACTION_END });
     expect(nextDeadline(play.battle)).toBeNull();
   });
 
+  it('never raises the HP above their maximum with the respite', () => {
+    const play = BattlePlay.start().with(
+      changeEnemy(0, { hp: 5 }),
+      changeEnemy(1, { hp: 0 }),
+      changeEnemy(2, { hp: 0 }),
+      (battle) => ({ ...battle, hero: { ...battle.hero, hp: 76 } }),
+    );
+
+    play.attack(ATTACK_AT).advance(HERO_ACTION_END);
+
+    expect(play.lastOf('respite')).toEqual({
+      type: 'respite',
+      at: HERO_ACTION_END,
+      gain: 4,
+      heroHp: 80,
+    });
+  });
+
   it('is won when a counter fells the last enemy, at the end of the counter', () => {
     const play = BattlePlay.start()
-      .with(fixedIntent(0, 'basic'), (battle) => ({
-        ...battle,
-        enemies: battle.enemies.map((enemy) => ({ ...enemy, hp: enemy.kind === 'ghoul' ? 16 : 0 })),
-      }))
+      .with(fixedIntent(0, 'basic'), changeEnemy(0, { hp: 16 }), changeEnemy(1, { hp: 0 }))
+      .with(changeEnemy(2, { hp: 0 }))
       .attack(ATTACK_AT)
       .advance(GHOUL_WIND_UP_AT)
       .press('parry', GHOUL_IMPACT)
@@ -970,7 +1088,7 @@ describe('end of the battle (C11)', () => {
   it('is lost when the Sentinel falls to 0 HP, at the blow', () => {
     const play = toGhoulWindUp('basic').with((battle) => ({
       ...battle,
-      hero: { hp: 3, maxHp: 80 },
+      hero: { ...battle.hero, hp: 3 },
     }));
 
     play.advance(20_000);
@@ -981,15 +1099,14 @@ describe('end of the battle (C11)', () => {
     ]);
     expect(play.battle.phase).toEqual({ kind: 'over', outcome: 'defeat', at: GHOUL_IMPACT + 160 });
     expect(play.all('stepInStarted')).toHaveLength(1);
+    expect(play.all('respite')).toEqual([]);
   });
 
   it('is lost on a failed parry of a perilous attack, and stops the off-balance', () => {
     const play = BattlePlay.start()
-      .with(fixedIntent(1, 'perilous'), (battle) => ({
+      .with(fixedIntent(1, 'perilous'), changeEnemy(0, { hp: 10 }), (battle) => ({
         ...battle,
-        hero: { hp: 8, maxHp: 80 },
-        target: 1,
-        enemies: battle.enemies.map((enemy, index) => (index === 0 ? { ...enemy, hp: 0 } : enemy)),
+        hero: { ...battle.hero, hp: 8 },
       }))
       .attack(ATTACK_AT)
       .press('parry', GHOUL_WIND_UP_AT + 1_300);
@@ -1001,7 +1118,7 @@ describe('end of the battle (C11)', () => {
 
   it('stops an off-balance at the end of the battle', () => {
     const play = toGhoulWindUp('basic')
-      .with((battle) => ({ ...battle, hero: { hp: 2, maxHp: 80 } }))
+      .with((battle) => ({ ...battle, hero: { ...battle.hero, hp: 2 } }))
       .press('parry', GHOUL_IMPACT - 200)
       .advance(20_000);
 
@@ -1017,9 +1134,10 @@ describe('end of the battle (C11)', () => {
       phase: { kind: 'over', outcome: 'victory', at: 0 },
     }));
 
-    play.press('parry', 100).attack(200);
+    play.press('parry', 100).attack(200).strike(300);
 
     expect(play.all('pressIgnored').map((event) => event.reason)).toEqual([
+      'notAvailable',
       'notAvailable',
       'notAvailable',
     ]);
@@ -1030,7 +1148,8 @@ describe('defense hint (C12)', () => {
   it('shows the hint before the first transition, which starts only when it is closed', () => {
     const play = BattlePlay.start({ defenseHint: true })
       .with(fixedIntent(0, 'basic'))
-      .attack(ATTACK_AT);
+      .attack(ATTACK_AT)
+      .advance(STRIKE_RESOLVED + 1);
 
     play.advance(HERO_ACTION_END);
     expect(play.last).toEqual([{ type: 'defenseHintShown', at: HERO_ACTION_END }]);
@@ -1047,32 +1166,41 @@ describe('defense hint (C12)', () => {
       { type: 'phaseTransitionStarted', at: 6_000, to: 'enemy', until: 6_800 },
     ]);
     expect(play.battle.defenseHintPending).toBe(false);
+    play.advance(6_800);
+    expect(play.lastOf('stepInStarted')).toEqual({
+      type: 'stepInStarted',
+      at: 6_800,
+      enemy: 0,
+      until: 7_200,
+    });
   });
 
   it('shows the hint only once in a battle', () => {
     const play = BattlePlay.start({ defenseHint: true })
-      .with(fixedIntent(0, 'basic'), fixedIntent(1, 'delayed'))
+      .with(fixedIntent(0, 'basic'), fixedIntent(1, 'delayed'), fixedIntent(2, 'basic'))
+      .with(changeEnemy(0, { guard: 99 }))
       .attack(ATTACK_AT)
+      .advance(HERO_ACTION_END)
       .dismissHint(HERO_ACTION_END)
       .advance(20_000);
-    play.attack(20_100, 20_050).advance(20_600);
+    play.attack(20_100, 20_050).advance(21_280);
 
     expect(play.all('defenseHintShown')).toHaveLength(1);
-    expect(play.lastOf('phaseTransitionStarted')).toMatchObject({ at: 20_600, to: 'enemy' });
+    expect(play.lastOf('phaseTransitionStarted')).toMatchObject({ at: 21_280, to: 'enemy' });
   });
 
   it('does nothing when no hint is shown', () => {
     const play = BattlePlay.start().dismissHint(300);
 
     expect(play.last).toEqual([]);
-    expect(play.battle.phase).toEqual({ kind: 'hero', since: 0 });
+    expect(play.battle.phase).toEqual({ kind: 'hero', since: 0, announced: false });
   });
 
   it('starts the transition at the engine state when the dismissal is dated earlier', () => {
     const play = BattlePlay.start({ defenseHint: true })
       .attack(ATTACK_AT)
       .advance(3_000)
-      .dismissHint(2_000);
+      .dismissHint(2_500);
 
     expect(play.lastOf('phaseTransitionStarted')).toMatchObject({ at: 3_000 });
   });
@@ -1090,7 +1218,7 @@ describe('dating of the presses', () => {
   it('dates a hero action released before the engine state at the engine state', () => {
     const play = BattlePlay.start().advance(800).attack(500, 400);
 
-    expect(play.lastOf('heroAttacked')).toMatchObject({ at: 800, until: 1_300 });
+    expect(play.lastOf('strikeStarted')).toMatchObject({ at: 800, impactAt: 1_500, until: 1_980 });
   });
 
   it('never moves the engine state backwards', () => {
@@ -1101,9 +1229,11 @@ describe('dating of the presses', () => {
 });
 
 describe('nextDeadline', () => {
-  it('gives the end of the hero attack, then the transition, then the step-in', () => {
+  it('gives the strike, the end of the hero action, the transition, then the step-in', () => {
     const play = BattlePlay.start().with(fixedIntent(0, 'basic')).attack(ATTACK_AT);
 
+    expect(nextDeadline(play.battle)).toEqual({ at: STRIKE_RESOLVED, awaitsPress: true });
+    play.advance(STRIKE_RESOLVED + 1);
     expect(nextDeadline(play.battle)).toEqual({ at: HERO_ACTION_END, awaitsPress: false });
     play.advance(HERO_ACTION_END);
     expect(nextDeadline(play.battle)).toEqual({ at: ENEMY_PHASE_AT, awaitsPress: false });
@@ -1143,40 +1273,44 @@ describe('nextDeadline', () => {
 });
 
 describe('edge cases of the engine', () => {
-  /** La Goule à terre : le Spectre est la cible et attaque seul. */
+  /** La Goule à terre : le Spectre, garde forte, est la cible, et attaque le premier. */
   const ghoulDown = (battle: Battle): Battle => ({
-    ...battle,
+    ...changeEnemy(1, { guard: 99 })(changeEnemy(0, { hp: 0 })(battle)),
     target: 1,
-    enemies: battle.enemies.map((enemy, index) => (index === 0 ? { ...enemy, hp: 0 } : enemy)),
   });
 
-  it('draws no intent for a fallen enemy at the start of the next round (C10)', () => {
-    const play = BattlePlay.start().with(ghoulDown, fixedIntent(1, 'delayed'));
+  it('draws no intent for a fallen enemy at the start of the next round (C2.1)', () => {
+    const play = BattlePlay.start().with(
+      ghoulDown,
+      fixedIntent(1, 'delayed'),
+      fixedIntent(2, 'basic'),
+    );
     const random = play.battle.random;
 
     play.attack(ATTACK_AT).advance(20_000);
 
-    const specter = drawIntent('specter', random);
+    const specter = drawIntent('specter', random, CALM);
+    const necromancer = drawIntent('necromancer', specter.random, { ...CALM, fallenAlly: 0 });
     expect(play.battle.round).toBe(2);
     expect(play.battle.enemies[1]!.intent).toEqual(specter.intent);
-    expect(play.battle.random).toBe(specter.random);
+    expect(play.battle.enemies[2]!.intent).toEqual({ category: 'raise', ally: 0 });
+    expect(play.battle.random).toBe(necromancer.random);
   });
 
   it('keeps the target when the counter-attack fells another enemy', () => {
-    const play = BattlePlay.start()
-      .with(fixedIntent(0, 'basic'), fixedIntent(1, 'delayed'), (battle) => ({
-        ...battle,
-        target: 1,
-        enemies: battle.enemies.map((enemy, index) => (index === 0 ? { ...enemy, hp: 6 } : enemy)),
-      }))
-      .attack(ATTACK_AT)
-      .advance(GHOUL_WIND_UP_AT)
-      .press('parry', GHOUL_IMPACT)
-      .advance(GHOUL_IMPACT + 90);
+    const play = BattlePlay.start().with(
+      fixedIntent(0, 'basic'),
+      changeEnemy(0, { hp: 6 }),
+      changeEnemy(1, { guard: 99 }),
+      (battle) => ({ ...battle, target: 1 }),
+    );
+    const [impact] = play.attack(ATTACK_AT).toWindUpOf(0);
+
+    play.press('parry', impact!).advance(impact! + 90);
 
     expect(play.lastOf('enemyDefeated')).toEqual({
       type: 'enemyDefeated',
-      at: GHOUL_IMPACT + 90,
+      at: impact! + 90,
       enemy: 0,
     });
     expect(play.all('targetChanged')).toEqual([]);
@@ -1185,24 +1319,26 @@ describe('edge cases of the engine', () => {
 
   it('changes no target when the last enemy falls', () => {
     const play = BattlePlay.start()
-      .with(ghoulDown, (battle) => ({
-        ...battle,
-        enemies: battle.enemies.map((enemy, index) => (index === 1 ? { ...enemy, hp: 1 } : enemy)),
-      }))
-      .attack(ATTACK_AT);
+      .with(ghoulDown, changeEnemy(1, { hp: 1 }), changeEnemy(2, { hp: 0 }))
+      .attack(ATTACK_AT)
+      .advance(STRIKE_RESOLVED + 1);
 
-    expect(play.lastTypes()).toEqual(['heroAttacked', 'enemyDefeated']);
+    expect(play.lastTypes()).toEqual(['strikeResolved', 'enemyDefeated']);
   });
 
   it('lands an impact before an unanswered impact of the same instant', () => {
     // Avec un décalage de −260 ms, l'échéance du 1er impact sans appui tombe 420 ms après lui,
     // à l'instant même du 2e impact de la double frappe.
-    const play = toGhoulWindUp('double', 'delayed', { inputOffset: -260 }).advance(DOUBLE_IMPACT);
+    const play = BattlePlay.start({ inputOffset: -260 })
+      .with(fixedIntent(0, 'double'))
+      .attack(ATTACK_AT);
+    const [first] = play.toWindUpOf(0);
+    play.advance(first!);
 
-    expect(nextDeadline(play.battle)).toEqual({ at: DOUBLE_IMPACT + 420, awaitsPress: false });
-    play.advance(DOUBLE_IMPACT + 420);
+    expect(nextDeadline(play.battle)).toEqual({ at: first! + 420, awaitsPress: false });
+    play.advance(first! + 420);
     expect(play.lastTypes()).toEqual(['impactLanded']);
-    expect(nextDeadline(play.battle)).toEqual({ at: DOUBLE_IMPACT + 420, awaitsPress: true });
+    expect(nextDeadline(play.battle)).toEqual({ at: first! + 420, awaitsPress: true });
   });
 
   it('shifts with the hit-stop only the instants from the press onwards', () => {
@@ -1262,30 +1398,36 @@ describe('edge cases of the engine', () => {
     const types = play.lastTypes();
     expect(types).toContain('roundStarted');
     expect(types.indexOf('heroPhaseStarted')).toBeGreaterThanOrEqual(0);
-    expect(types.indexOf('heroPhaseStarted')).toBeLessThan(types.indexOf('heroAttacked'));
+    expect(types.indexOf('heroPhaseStarted')).toBeLessThan(types.indexOf('strikeStarted'));
   });
 });
 
 describe('over about 500 seeds', () => {
-  /** Les écarts tentés tour à tour sur chaque impact ; `null` : aucun appui. */
+  /** Les écarts tentés tour à tour sur chaque impact et chaque frappe ; `null` : aucun appui. */
   const DELTAS = [-400, -170, -120, -40, 0, 30, 90, 150, null] as const;
 
   /**
-   * Un combat joué de façon reproductible : une attaque 300 ms après chaque début de phase du
-   * héros, un appui pendant chaque transition (ignoré), puis, sur chaque impact, un écart et un
-   * bouton choisis tour à tour.
+   * Un combat joué de façon reproductible : une attaque (parfois un Rempart) 300 ms après chaque
+   * début de phase du héros, une frappe à un écart choisi tour à tour, un appui pendant chaque
+   * transition (ignoré), puis, sur chaque impact, un écart et un bouton choisis tour à tour.
    */
   function playSeed(seed: number): BattlePlay {
     const play = BattlePlay.start({ seed, defenseHint: seed % 2 === 0 });
     const tried = new Set<string>();
     let turn = seed;
-    for (let guard = 0; guard < 2_000 && play.battle.phase.kind !== 'over'; guard += 1) {
+    for (let guard = 0; guard < 4_000 && play.battle.phase.kind !== 'over'; guard += 1) {
       const { phase, now } = play.battle;
       turn += 1;
+      const delta = DELTAS[turn % DELTAS.length] ?? null;
       if (phase.kind === 'defenseHint') {
         play.dismissHint(now + 300);
       } else if (phase.kind === 'hero') {
-        play.attack(Math.max(now, phase.since) + 300, phase.since + 10);
+        const at = Math.max(now, phase.since) + 300;
+        if (turn % 7 === 0 && play.battle.hero.momentum > 0) play.bulwark(at, phase.since + 10);
+        else play.attack(at, phase.since + 10);
+      } else if (phase.kind === 'heroStrike' && !tried.has(`strike@${phase.since}`)) {
+        tried.add(`strike@${phase.since}`);
+        if (delta !== null && phase.impactAt + delta >= now) play.strike(phase.impactAt + delta);
       } else if (phase.kind === 'transition' && !tried.has(`transition@${phase.since}`)) {
         tried.add(`transition@${phase.since}`);
         play.press('parry', phase.since + (turn % 8) * 100);
@@ -1296,10 +1438,9 @@ describe('over about 500 seeds', () => {
             ? step.impacts.findIndex((impact) => impact.outcome === null)
             : -1;
         const key = step?.kind === 'attack' ? `${step.startedAt}#${index}` : '';
-        const delta = DELTAS[turn % DELTAS.length];
         if (step?.kind === 'attack' && index >= 0 && !tried.has(key) && delta !== null) {
           tried.add(key);
-          const at = step.impacts[index]!.at + delta!;
+          const at = step.impacts[index]!.at + delta;
           if (at >= now) play.press(turn % 3 === 0 ? 'dodge' : 'parry', at);
         } else {
           tried.add(key);
@@ -1307,7 +1448,7 @@ describe('over about 500 seeds', () => {
         }
       }
     }
-    return play.advance(200_000);
+    return play.advance(400_000);
   }
 
   const seeds = Array.from({ length: 500 }, (_, index) => index * 48_271 + 1);
@@ -1340,13 +1481,15 @@ describe('over about 500 seeds', () => {
     }
   });
 
-  it('never lands the first impact of an enemy phase sooner than 2,000 ms after the hero attack', () => {
+  it('never lands the first impact of an enemy phase sooner than 2,000 ms after its transition', () => {
     for (const play of allPlays()) {
       for (const transition of play
         .all('phaseTransitionStarted')
         .filter(({ to }) => to === 'enemy')) {
-        const windUp = play.all('windUpStarted').find(({ at }) => at > transition.at)!;
-        expect(windUp.impacts[0]! - transition.at).toBeGreaterThanOrEqual(2_000);
+        const windUp = play.all('windUpStarted').find(({ at }) => at > transition.at);
+        if (windUp !== undefined) {
+          expect(windUp.impacts[0]! - transition.at).toBeGreaterThanOrEqual(2_000);
+        }
       }
     }
   });
@@ -1362,8 +1505,55 @@ describe('over about 500 seeds', () => {
     }
   });
 
-  it('exercises every attack and every outcome, and is won by the hero', () => {
+  it('breaks a guard only when it falls to 0, and a break costs exactly one action (C5.10)', () => {
+    for (const play of allPlays()) {
+      const guards: number[] = [...TRIAL_GUARDS];
+      const stunned = TRIAL_GUARDS.map(() => false);
+      const lostSlots = TRIAL_GUARDS.map(() => 0);
+      for (const event of play.events) {
+        switch (event.type) {
+          case 'strikeResolved':
+          case 'counterAttacked':
+            guards[event.enemy] = Math.max(0, guards[event.enemy]! - event.guardDamage);
+            break;
+          case 'guardBroken':
+            expect(guards[event.enemy]).toBe(0);
+            expect(stunned[event.enemy]).toBe(false);
+            stunned[event.enemy] = true;
+            lostSlots[event.enemy] = 0;
+            break;
+          case 'actionLost':
+            lostSlots[event.enemy]! += 1;
+            break;
+          case 'guardRestored':
+            if (event.inPlaceOfAction) lostSlots[event.enemy]! += 1;
+            expect(lostSlots[event.enemy]).toBe(1);
+            stunned[event.enemy] = false;
+            guards[event.enemy] = TRIAL_GUARDS[event.enemy]!;
+            break;
+          case 'guardRaised':
+            guards[event.enemy] = event.guard;
+            break;
+          case 'allyRaised':
+            guards[event.ally] = TRIAL_GUARDS[event.ally]!;
+            break;
+          case 'enemyDefeated':
+            stunned[event.enemy] = false;
+            break;
+          case 'stepInStarted':
+            // Un ennemi étourdi ne joue jamais d'action.
+            expect(stunned[event.enemy]).toBe(false);
+            break;
+          default:
+            break;
+        }
+      }
+    }
+  });
+
+  it('exercises every attack, every outcome, the guard breaks and both endings', () => {
     const events = allPlays().flatMap((play) => play.events);
+    const kinds = new Set(events.map((event) => event.type));
     const attacks = new Set(
       events.flatMap((event) => (event.type === 'windUpStarted' ? [event.attack] : [])),
     );
@@ -1382,6 +1572,16 @@ describe('over about 500 seeds', () => {
       'perilousParry',
       'suffered',
     ]);
-    expect([...endings].sort()).toEqual(['victory']);
+    for (const type of [
+      'guardBroken',
+      'actionLost',
+      'guardRestored',
+      'allyRaised',
+      'powerUsed',
+      'respite',
+    ] as const) {
+      expect(kinds).toContain(type);
+    }
+    expect([...endings].sort()).toEqual(['defeat', 'victory']);
   });
 });

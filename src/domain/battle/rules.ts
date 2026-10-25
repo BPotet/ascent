@@ -12,8 +12,10 @@ export const PARRY_WINDOW_MS = 160;
 export const OFF_BALANCE_MS = 450;
 /** Arrêt sur image (`HitStop`) d'une parade parfaite : le temps du combat s'arrête. */
 export const HIT_STOP_MS = 90;
-/** Durée de l'action du héros (`HeroActionDuration`) : son attaque, animation comprise. */
+/** Durée de l'action du héros (`HeroActionDuration`) d'un pouvoir, animation comprise. */
 export const HERO_ACTION_MS = 500;
+/** L'effet d'une intention Garde ou Relever, après l'avancée (durée interne). */
+export const SUPPORT_ACTION_MS = 400;
 /** Durée de la contre-attaque, animation comprise. */
 export const COUNTER_MS = 400;
 

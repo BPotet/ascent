@@ -27,10 +27,10 @@ function headings(text: string): string[] {
 const steps: StepDefinitions = ({ given, and, then }) => {
   // Le contexte commun : le combat d'essai dont l'ADR consigne les conclusions.
   given(
-    /^le combat d'essai : la Sentinelle \(.+\) contre une Goule \(20 PV\) et un Spectre \(14 PV\)$/u,
+    /^le combat d'essai : la Sentinelle \(.+\) contre la Goule \(50 PV\), le Spectre \(35 PV\) et le Nécromancien \(45 PV\)$/u,
     () => {
       expect(SENTINEL.maxHp).toBe(80);
-      expect(TRIAL_BATTLE_ENEMIES).toEqual(['ghoul', 'specter']);
+      expect(TRIAL_BATTLE_ENEMIES).toEqual(['ghoul', 'specter', 'necromancer']);
     },
   );
 

@@ -9,13 +9,22 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import type { DefenseButton } from '../../../domain/battle/BattleEvent';
-import { attackButtonLabel } from '../format/battleText';
-import type { ActionPad as Pad, LockSpan } from '../state/battleView';
+import {
+  attackButtonLabel,
+  missingMomentumText,
+  powerButtonLabel,
+  powerCostText,
+} from '../format/battleText';
+import type { ActionPad as Pad, LockSpan, PowerSlot } from '../state/battleView';
 import { battleColors } from '../theme/battleColors';
 import { DodgeGlyph, LockGlyph, ShieldGlyph, SwordGlyph } from './BattleGlyphs';
 import { useDefenseGesture, useReleaseGesture } from './touchGestures';
 
 export const ATTACK_GESTURE_TEST_ID = 'battle-attack';
+export const POWER_GESTURE_TEST_ID = 'battle-power';
+export const STRIKE_GESTURE_TEST_ID = 'battle-strike';
+/** La place du trait sur la barre de « Frapper » : la barre l'atteint à l'impact (maquette F3). */
+const STRIKE_MARK = 0.8;
 export const DEFENSE_GESTURE_TEST_IDS: Readonly<Record<DefenseButton, string>> = {
   parry: 'battle-parry',
   dodge: 'battle-dodge',
@@ -141,10 +150,102 @@ function AttackKey({
 }
 
 /**
- * La zone d'action : une grille de deux cases, ancrée en bas. En phase du héros, la case de
- * gauche reste vide (rien à toucher ni à lire) et « Attaquer » occupe la case de droite ; en phase
- * ennemie, Esquive à gauche et Parade à droite. Pendant le temps mort : inactifs, sans hachures,
- * avec « Attends ». En déséquilibre : grisés et hachurés, toujours actifs.
+ * « Pouvoir » (C3) : le pouvoir de base et son coût. Sans assez d'Élan, il reste visible mais
+ * indisponible et dit l'Élan qui manque.
+ */
+function PowerKey({
+  slot,
+  locked,
+  uiNow,
+  now,
+  onPower,
+}: {
+  readonly slot: PowerSlot;
+  readonly locked: boolean;
+  readonly uiNow: () => number;
+  readonly now: () => number;
+  readonly onPower: (touchStartedAt: number, releasedAt: number) => void;
+}) {
+  const disabled = locked || slot.missing > 0;
+  const gesture = useReleaseGesture(POWER_GESTURE_TEST_ID, uiNow, onPower);
+  return (
+    <GestureDetector gesture={gesture}>
+      <View
+        accessible
+        accessibilityRole="button"
+        accessibilityLabel={powerButtonLabel(slot.power, slot.missing)}
+        accessibilityState={{ disabled }}
+        accessibilityActions={[{ name: 'activate' }]}
+        onAccessibilityAction={() => {
+          if (!disabled) onPower(now(), now());
+        }}
+        testID="battle-power-button"
+        style={[styles.key, styles.secondary, disabled && styles.locked]}
+      >
+        <Text style={[styles.keyText, styles.onSecondary]}>Pouvoir</Text>
+        <Text style={styles.keyNote}>
+          {slot.missing > 0 ? missingMomentumText(slot.missing) : powerCostText(slot.power)}
+        </Text>
+      </View>
+    </GestureDetector>
+  );
+}
+
+/**
+ * « Frapper », sur toute la largeur, pendant la frappe en rythme (C6, maquette F3) : la barre se
+ * remplit pendant la préparation et atteint le trait à l'impact. L'appui est daté quand le doigt se
+ * pose, comme Parade.
+ */
+function StrikeKey({
+  pad,
+  uiNow,
+  now,
+  onStrike,
+}: {
+  readonly pad: Extract<Pad, { kind: 'strike' }>;
+  readonly uiNow: () => number;
+  readonly now: () => number;
+  readonly onStrike: (touchedAt: number) => void;
+}) {
+  const gesture = useDefenseGesture(STRIKE_GESTURE_TEST_ID, uiNow, onStrike);
+  const fill = useSharedValue(0);
+  const { since, impactAt } = pad;
+  useEffect(() => {
+    const full = since + (impactAt - since) / STRIKE_MARK;
+    const elapsed = Math.min(full - since, Math.max(0, now() - since));
+    fill.set(elapsed / (full - since));
+    fill.set(withTiming(1, { duration: full - since - elapsed, easing: Easing.linear }));
+  }, [since, impactAt, now, fill]);
+  // Dépendances explicites : le code instrumenté par Stryker n'est plus reconnu comme worklet.
+  const bar = useAnimatedStyle(() => {
+    'worklet';
+    return { transform: [{ scaleX: fill.get() }] };
+  }, [fill]);
+  return (
+    <GestureDetector gesture={gesture}>
+      <View
+        accessible
+        accessibilityRole="button"
+        accessibilityLabel="Frapper"
+        accessibilityState={{ disabled: pad.resolved }}
+        accessibilityActions={[{ name: 'activate' }]}
+        onAccessibilityAction={() => onStrike(now())}
+        testID="battle-strike-button"
+        style={[styles.key, styles.strike]}
+      >
+        <Animated.View pointerEvents="none" style={[styles.strikeFill, bar]} />
+        <View pointerEvents="none" testID="battle-strike-mark" style={styles.strikeMark} />
+        <Text style={[styles.keyText, styles.onSecondary]}>Frapper</Text>
+      </View>
+    </GestureDetector>
+  );
+}
+
+/**
+ * La zone d'action : une grille de deux cases, ancrée en bas. En phase du héros, « Pouvoir » à
+ * gauche et « Attaquer » à droite ; pendant la frappe en rythme, « Frapper » sur toute la largeur ;
+ * en phase ennemie, Esquive à gauche et Parade à droite. Pendant le temps mort : inactifs, sans
+ * hachures, avec « Attends ». En déséquilibre : grisés et hachurés, toujours actifs.
  */
 export function ActionPad({
   pad,
@@ -153,6 +254,8 @@ export function ActionPad({
   now,
   onDefense,
   onAttack,
+  onPower,
+  onStrike,
 }: {
   readonly pad: Pad;
   readonly targetName: string;
@@ -160,8 +263,17 @@ export function ActionPad({
   readonly now: () => number;
   readonly onDefense: (button: DefenseButton, touchedAt: number) => void;
   readonly onAttack: (touchStartedAt: number, releasedAt: number) => void;
+  readonly onPower: (touchStartedAt: number, releasedAt: number) => void;
+  readonly onStrike: (touchedAt: number) => void;
 }) {
   if (pad.kind === 'none') return null;
+  if (pad.kind === 'strike') {
+    return (
+      <View testID="battle-pad" style={styles.pad}>
+        <StrikeKey pad={pad} uiNow={uiNow} now={now} onStrike={onStrike} />
+      </View>
+    );
+  }
   const offBalance = pad.kind === 'defense' && pad.offBalance;
   return (
     <View testID="battle-pad" style={[styles.pad, offBalance && styles.offBalance]}>
@@ -173,11 +285,12 @@ export function ActionPad({
       ) : null}
       {pad.kind === 'hero' ? (
         <>
-          <View
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-            testID="battle-empty-slot"
-            style={styles.slot}
+          <PowerKey
+            slot={pad.power}
+            locked={pad.locked}
+            uiNow={uiNow}
+            now={now}
+            onPower={onPower}
           />
           <AttackKey
             targetName={targetName}
@@ -218,7 +331,6 @@ export function ActionPad({
 const styles = StyleSheet.create({
   pad: { flexDirection: 'row', gap: 12, borderRadius: 24 },
   offBalance: { opacity: 0.7 },
-  slot: { flex: 1, minHeight: 116 },
   key: {
     minHeight: 116,
     borderRadius: 24,
@@ -235,6 +347,27 @@ const styles = StyleSheet.create({
   },
   locked: { opacity: 0.38 },
   keyText: { fontSize: 23, fontWeight: '700', letterSpacing: 0.5 },
+  keyNote: { color: battleColors.muted, fontSize: 13, fontWeight: '600' },
+  strike: {
+    flex: 1,
+    overflow: 'hidden',
+    backgroundColor: battleColors.secondaryButton,
+    borderWidth: 1.5,
+    borderColor: battleColors.light,
+  },
+  strikeFill: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: battleColors.lightGlow,
+    transformOrigin: 'left',
+  },
+  strikeMark: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: `${100 * STRIKE_MARK}%`,
+    width: 4,
+    backgroundColor: battleColors.light,
+  },
   onPrimary: { color: battleColors.onLight },
   onSecondary: { color: battleColors.text },
   hatching: { ...StyleSheet.absoluteFill, borderRadius: 24, overflow: 'hidden' },

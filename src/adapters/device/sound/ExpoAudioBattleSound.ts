@@ -15,6 +15,14 @@ export const BATTLE_SOUND_FILES: Readonly<Record<BattleSoundCue, number>> = {
   heroPhase: require('./assets/hero-phase.wav'),
   victory: require('./assets/victory.wav'),
   defeat: require('./assets/defeat.wav'),
+  strike: require('./assets/strike.wav'),
+  perfectStrike: require('./assets/perfect-strike.wav'),
+  guardBreak: require('./assets/guard-break.wav'),
+  lostAction: require('./assets/lost-action.wav'),
+  guardRestore: require('./assets/guard-restore.wav'),
+  guardUp: require('./assets/guard-up.wav'),
+  raise: require('./assets/raise.wav'),
+  bulwark: require('./assets/bulwark.wav'),
 };
 
 /**

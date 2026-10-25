@@ -8,7 +8,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import type { FeedbackText } from '../format/battleText';
+import type { DamageFloat as Float, FeedbackText } from '../format/battleText';
 import { battleColors } from '../theme/battleColors';
 
 /** Le texte d'effet reste lisible un instant, puis s'efface (maquette : 0,7 s en tout). */
@@ -16,10 +16,10 @@ const FEEDBACK_HOLD_MS = 450;
 const FEEDBACK_FADE_MS = 250;
 
 /**
- * Le texte d'effet d'un résultat (« Parade parfaite », « Touché −4 PV »…), au centre de la scène.
- * Il s'efface de lui-même ; un nouveau résultat le remplace (l'écran le remonte).
+ * Le mot d'un résultat (« Parfait », « Cassure », « Frappe parfaite »), au centre de la scène. Il
+ * s'efface de lui-même ; un nouveau résultat le remplace (l'écran le remonte).
  */
-export function FeedbackLabel({ feedback }: { readonly feedback: FeedbackText }) {
+export function FeedbackLabel({ texts }: { readonly texts: readonly FeedbackText[] }) {
   const opacity = useSharedValue(1);
   useEffect(() => {
     opacity.set(
@@ -36,8 +36,44 @@ export function FeedbackLabel({ feedback }: { readonly feedback: FeedbackText })
   }, [opacity]);
   return (
     <Animated.View pointerEvents="none" testID="battle-feedback" style={[styles.feedback, fade]}>
-      <Text style={[styles.title, styles[feedback.tone]]}>{feedback.title}</Text>
-      {feedback.detail === null ? null : <Text style={styles.detail}>{feedback.detail}</Text>}
+      {texts.map((text) => (
+        <Text key={text.title} style={[styles.title, styles[text.tone]]}>
+          {text.title}
+        </Text>
+      ))}
+    </Animated.View>
+  );
+}
+
+/** Le temps d'envol d'un chiffre (« −4 », « +3 »). */
+const FLOAT_MS = 700;
+
+/**
+ * Un chiffre qui s'envole au-dessus du héros ou d'un ennemi (« −4 », « +3 ») : les dégâts se
+ * lisent après coup, jamais avant (C2.5). Agrandi pour une frappe parfaite (C6.7).
+ */
+export function DamageFloat({ float }: { readonly float: Float }) {
+  const rise = useSharedValue(0);
+  useEffect(() => {
+    rise.set(withTiming(1, { duration: FLOAT_MS }));
+  }, [rise]);
+  // Dépendances explicites : le code instrumenté par Stryker n'est plus reconnu comme worklet.
+  const style = useAnimatedStyle(() => {
+    'worklet';
+    return { opacity: 1 - rise.get() * rise.get(), transform: [{ translateY: -24 * rise.get() }] };
+  }, [rise]);
+  return (
+    <Animated.View pointerEvents="none" style={[styles.float, style]}>
+      <Text
+        style={[
+          styles.floatText,
+          float.kind === 'guard' && styles.floatGuard,
+          float.at === 'hero' && styles.floatHero,
+          float.big && styles.floatBig,
+        ]}
+      >
+        {float.text}
+      </Text>
     </Animated.View>
   );
 }
@@ -112,10 +148,19 @@ const styles = StyleSheet.create({
     textShadowRadius: 14,
   },
   perfect: { color: battleColors.light, fontSize: 32, lineHeight: 36 },
-  good: { color: battleColors.guard },
-  miss: { color: battleColors.miss },
-  neutral: { color: battleColors.text },
-  detail: { color: battleColors.text, fontSize: 13, fontWeight: '600', marginTop: 4 },
+  break: { color: battleColors.light, fontSize: 34, lineHeight: 38, letterSpacing: 1 },
+  float: { position: 'absolute', top: 6, alignSelf: 'center', zIndex: 8 },
+  floatText: {
+    color: battleColors.text,
+    fontSize: 20,
+    fontWeight: '800',
+    textShadowColor: 'rgba(0,0,0,0.85)',
+    textShadowRadius: 6,
+    fontVariant: ['tabular-nums'],
+  },
+  floatHero: { color: battleColors.miss },
+  floatGuard: { color: battleColors.guard },
+  floatBig: { color: battleColors.light, fontSize: 32 },
   flash: { ...StyleSheet.absoluteFill, zIndex: 6 },
   light: { backgroundColor: battleColors.flash },
   red: { backgroundColor: battleColors.flashRed },

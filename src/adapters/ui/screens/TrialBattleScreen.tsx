@@ -4,16 +4,21 @@ import Animated, { useSharedValue } from 'react-native-reanimated';
 
 import type { BattleSession } from '../../../application/useCases/BattleSession';
 import type { AttackStep, Battle } from '../../../domain/battle/Battle';
-import type { DefenseButton } from '../../../domain/battle/BattleEvent';
+import type { BattleEvent, DefenseButton } from '../../../domain/battle/BattleEvent';
 import { ActionPad } from '../battle/ActionPad';
 import { BattleScene } from '../battle/BattleCanvas';
-import { FeedbackLabel, Flash, useShake } from '../battle/BattleEffects';
+import { DamageFloat, FeedbackLabel, Flash, useShake } from '../battle/BattleEffects';
 import { BattleEndPanel } from '../battle/BattleEndPanel';
 import { BattleHintBubble } from '../battle/BattleHintBubble';
 import { EnemyColumn } from '../battle/EnemyColumn';
 import { HeroBar } from '../battle/HeroBar';
 import { PhaseBanner } from '../battle/PhaseBanner';
-import type { FrameMeter, SceneEnemy, SceneTimeline } from '../battle/sceneTypes';
+import {
+  columnWidth,
+  type FrameMeter,
+  type SceneEnemy,
+  type SceneTimeline,
+} from '../battle/sceneTypes';
 import {
   BattleMeasuresPanel,
   TrialTuningPanel,
@@ -47,24 +52,38 @@ export interface TrialBattleScreenProps {
 
 /** La ligne au-dessus des boutons s'efface pendant le temps mort et le déséquilibre. */
 function lineHidden(pad: BattleView['pad']): boolean {
-  return pad.kind !== 'none' && (pad.locked || (pad.kind === 'defense' && pad.offBalance));
+  if (pad.kind === 'none' || pad.kind === 'strike') return false;
+  return pad.locked || (pad.kind === 'defense' && pad.offBalance);
+}
+
+/** Les PV regagnés par le répit de la victoire, `null` sans répit (ou s'il ne rend rien). */
+function respiteOf(events: readonly BattleEvent[]): number | null {
+  const respite = events.find((event) => event.type === 'respite');
+  return respite?.type === 'respite' && respite.gain > 0 ? respite.gain : null;
 }
 
 /** La hauteur de la scène de la maquette (cadre de 390 × 844 pt). */
 const SCENE_HEIGHT = 440;
 const NO_LATENCIES = () => [];
 
+/** La préparation tirée de l'intention d'attaque d'un ennemi (0 pour une autre intention). */
+function windUpOf(battle: Battle, enemy: number): number {
+  const intent = battle.enemies[enemy]!.intent;
+  return intent?.category === 'attack' ? intent.windUpMs : 0;
+}
+
 function sceneTimeline(battle: Battle): SceneTimeline | null {
   const { phase } = battle;
   if (phase.kind !== 'enemy') return null;
   const { step } = phase;
+  if (step.kind !== 'stepIn' && step.kind !== 'attack') return null;
   const hitStop = battle.hitStop ?? { at: 0, until: 0 };
   if (step.kind === 'stepIn') {
     return {
       enemy: step.enemy,
       stepInAt: step.since,
       windUpAt: step.until,
-      windUpMs: battle.enemies[step.enemy]!.intent.windUpMs,
+      windUpMs: windUpOf(battle, step.enemy),
       impacts: [],
       feintAt: null,
       hitStopAt: hitStop.at,
@@ -85,10 +104,10 @@ function sceneTimeline(battle: Battle): SceneTimeline | null {
 }
 
 /**
- * L'écran du combat d'essai (#31, maquette de l'épique #30, écrans F0, F1, F2, P0, P0b et P1 à
- * P9) : la scène, les colonnes des ennemis, la barre du héros et la zone d'action ancrée en bas.
+ * L'écran du combat d'essai (#31 et #32, maquette de l'épique #30, écrans F0 à F8 et P0 à P15) :
+ * la scène, les colonnes des ennemis, la barre du héros et la zone d'action ancrée en bas.
  * L'écran ne contient aucune règle : il envoie les touchers datés à la session de combat et
- * affiche ses états et ses événements.
+ * affiche ses états (`battleView`) et ses événements.
  */
 export function TrialBattleScreen({
   session,
@@ -103,7 +122,7 @@ export function TrialBattleScreen({
   const measures = useBattleMeasures({ now, uiNow });
   const tuning = useTrialTuning();
   const shake = useShake(display.shakeKey);
-  const { width } = useWindowDimensions();
+  const { width: screenWidth } = useWindowDimensions();
   const [sceneHeight, setSceneHeight] = useState(SCENE_HEIGHT);
   const frames = useSharedValue(0);
   const dropped = useSharedValue(0);
@@ -121,6 +140,22 @@ export function TrialBattleScreen({
       session.pressDefense(button, toBattleInstant(touchedAt));
     },
     [record, session],
+  );
+  const onStrike = useCallback(
+    (touchedAt: number) => {
+      record(touchedAt);
+      session.pressStrike(toBattleInstant(touchedAt));
+    },
+    [record, session],
+  );
+  const onPower = useCallback(
+    (touchStartedAt: number, releasedAt: number) =>
+      session.heroAction(
+        { kind: 'power', power: 'bulwark' },
+        toBattleInstant(touchStartedAt),
+        toBattleInstant(releasedAt),
+      ),
+    [session],
   );
   const onAttack = useCallback(
     (touchStartedAt: number, releasedAt: number) =>
@@ -171,12 +206,17 @@ export function TrialBattleScreen({
     );
   }
 
-  const enemies: SceneEnemy[] = battle.enemies.map((enemy, index) => ({
+  const enemies: SceneEnemy[] = view.enemies.map((enemy) => ({
     kind: enemy.kind,
-    standing: enemy.hp > 0,
-    target: index === battle.target && view.phase !== 'enemy',
-    dimmed: view.attacker !== null && view.attacker !== index,
+    standing: enemy.standing,
+    target: enemy.target,
+    dimmed: enemy.dimmed,
+    active: enemy.active,
+    down: enemy.stunned,
   }));
+  const width = columnWidth(screenWidth, enemies.length);
+  const heroFloat = display.float?.float.at === 'hero' ? display.float : null;
+  const respite = respiteOf(display.snapshot?.events ?? []);
   const targetName = ENEMY_NAMES[battle.enemies[battle.target]!.kind];
   const onSceneLayout = (event: LayoutChangeEvent) =>
     setSceneHeight(event.nativeEvent.layout.height);
@@ -194,7 +234,7 @@ export function TrialBattleScreen({
         style={[styles.scene, reducedMotion ? null : shake]}
       >
         <BattleScene
-          width={width}
+          width={screenWidth}
           height={sceneHeight}
           enemies={enemies}
           heroPose={display.heroPose}
@@ -213,14 +253,14 @@ export function TrialBattleScreen({
           </Text>
         )}
         <View style={styles.foes}>
-          {battle.enemies.map((enemy, index) => (
+          {view.enemies.map((enemy, index) => (
             <EnemyColumn
               key={enemy.kind}
-              enemy={enemy}
+              view={enemy}
               index={index}
-              target={index === battle.target}
-              dimmed={view.attacker !== null && view.attacker !== index}
+              width={width}
               sealed={view.sealed === index}
+              float={display.float?.float.at === index ? display.float : null}
               uiNow={uiNow}
               now={now}
               onTarget={onTarget}
@@ -231,10 +271,22 @@ export function TrialBattleScreen({
           <Flash kind={display.flash.kind} flashKey={display.flash.key} />
         )}
         {display.feedback === null || over !== null ? null : (
-          <FeedbackLabel key={display.feedback.key} feedback={display.feedback.text} />
+          <FeedbackLabel key={display.feedback.key} texts={display.feedback.texts} />
+        )}
+        {heroFloat === null ? null : (
+          <View pointerEvents="none" style={styles.heroFloat}>
+            <DamageFloat key={heroFloat.key} float={heroFloat.float} />
+          </View>
         )}
         {view.banner === null ? null : (
-          <PhaseBanner key={view.banner.since} to={view.banner.to} reducedMotion={reducedMotion} />
+          <PhaseBanner
+            key={view.banner.since}
+            to={view.banner.to}
+            reducedMotion={reducedMotion}
+            {...(battle.phase.kind === 'hero' && {
+              hideAfterMs: view.banner.until - view.banner.since,
+            })}
+          />
         )}
         {display.snapshot?.heroHint && view.heroActions ? (
           <BattleHintBubble kind="hero" onClose={() => session.dismissHint('hero')} />
@@ -266,11 +318,13 @@ export function TrialBattleScreen({
               now={now}
               onDefense={onDefense}
               onAttack={onAttack}
+              onPower={onPower}
+              onStrike={onStrike}
             />
           </View>
         </>
       ) : (
-        <BattleEndPanel outcome={over} onReplay={replay} onClose={onClose}>
+        <BattleEndPanel outcome={over} respite={respite} onReplay={replay} onClose={onClose}>
           {trialTools ? (
             <>
               <TrialTuningPanel tuning={tuning.tuning} onStep={tuning.step} />
@@ -347,6 +401,7 @@ const styles = StyleSheet.create({
     minHeight: 20,
   },
   hidden: { opacity: 0 },
+  heroFloat: { position: 'absolute', left: 40, bottom: 150, width: 80, zIndex: 8 },
   strong: { color: battleColors.text, fontWeight: '600' },
 });
 // Stryker restore all

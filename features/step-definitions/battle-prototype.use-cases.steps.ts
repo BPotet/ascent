@@ -4,8 +4,8 @@
  * du combat choisie pour la première manche voulue, et un son et une vibration qui notent ce
  * qu'on leur demande. Les instants sont exacts à la milliseconde.
  *
- * Correspondance métier des étapes d'interface : « affiche son intention » = l'intention tirée au
- * début de la manche ; « l'annonce de phase s'affiche pendant toute sa durée » = la session est en
+ * Correspondance métier des étapes d'interface : « affiche la catégorie de son intention » = ce que
+ * montre l'intention tirée au début de la manche (`shownIntent`) ; « l'annonce de phase s'affiche pendant toute sa durée » = la session est en
  * transition de phase vers ce sens, de son début à sa fin ; « le joueur touche » = un appui daté à
  * l'instant où le doigt se pose (un doigt maintenu ne produit pas de nouvel appui) ; « le joueur
  * peut rejouer » = un nouveau combat commence. Les scénarios `@ui` passent par l'écran.
@@ -18,6 +18,7 @@ import {
   silentBattleHaptics,
   silentBattleSound,
 } from '../../src/application/testing/recordingBattleFeedback';
+import { changeBattle, enemyWith } from '../../src/application/testing/battleBuilder';
 import { seedFor, type FirstRound } from '../../src/application/testing/trialBattleSeeds';
 import type { KeyValueStore } from '../../src/application/ports/KeyValueStore';
 import { BATTLE_HINT_SEEN_KEYS } from '../../src/application/useCases/battleHints';
@@ -29,18 +30,18 @@ import {
 import { startTrialBattle, type AttackStep, type Battle } from '../../src/domain/battle/Battle';
 import type { BattleEvent } from '../../src/domain/battle/BattleEvent';
 import { ENEMIES, SENTINEL } from '../../src/domain/battle/combatants';
+import { shownIntent } from '../../src/domain/battle/shownIntent';
 
 type EventOf<Type extends BattleEvent['type']> = Extract<BattleEvent, { type: Type }>;
 
 const GHOUL = 0;
 const SPECTER = 1;
-const ATTACK_NAMES = {
-  basic: 'coup simple',
-  double: 'double frappe',
-  delayed: 'coup retardé',
-  feint: 'coup trompeur',
-  perilous: 'coup imparable',
-} as const;
+const NECROMANCER = 2;
+/**
+ * L'action du héros (#32) : la frappe en rythme sans appui, de « Attaquer » à la fin de sa
+ * récupération : 700 (préparation) + 160 (fenêtre de l'impact) + 320 (récupération).
+ */
+const HERO_STRIKE_MS = 1_180;
 
 interface World {
   clock: ManualBattleClock;
@@ -189,13 +190,14 @@ function ms(text: string): number {
 
 const steps: StepDefinitions = ({ given, when, then, and }) => {
   given(
-    /^le combat d'essai : la Sentinelle \(80 PV, Attaque 10, réduction des dégâts 10 %\) contre une Goule \(20 PV\) et un Spectre \(14 PV\)$/u,
+    /^le combat d'essai : la Sentinelle \(80 PV, Attaque 10, réduction des dégâts 10 %\) contre la Goule \(50 PV\), le Spectre \(35 PV\) et le Nécromancien \(45 PV\)$/u,
     async () => {
       await startBattle();
       expect(SENTINEL).toMatchObject({ maxHp: 80, attackPower: 10, damageReductionPercent: 10 });
       expect(battle().enemies.map(({ kind, hp }) => ({ kind, hp }))).toEqual([
-        { kind: 'ghoul', hp: 20 },
-        { kind: 'specter', hp: 14 },
+        { kind: 'ghoul', hp: 50 },
+        { kind: 'specter', hp: 35 },
+        { kind: 'necromancer', hp: 45 },
       ]);
     },
   );
@@ -211,20 +213,27 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     expect(battle().phase.kind).toBe('hero');
   });
 
-  then(/^chaque ennemi debout affiche son intention d'attaque et le type de coup \(.+\)$/u, () => {
-    for (const enemy of battle().enemies) {
-      expect(Object.keys(ATTACK_NAMES)).toContain(enemy.intent.attack);
-      expect(ENEMIES[enemy.kind].moves).toContainEqual({
-        attack: enemy.intent.attack,
-        damage: enemy.intent.damage,
+  then(
+    'chaque ennemi debout affiche la catégorie de son intention, sans le type de coup ni les dégâts',
+    () => {
+      battle().enemies.forEach((enemy, index) => {
+        const intent = enemy.intent!;
+        if (intent.category === 'attack') {
+          expect(ENEMIES[enemy.kind].moves).toContainEqual({
+            attack: intent.attack,
+            damage: intent.damage,
+          });
+        }
+        // Ce qui est montré : la catégorie seule, jamais le coup ni les dégâts (C2.3).
+        expect(shownIntent(battle(), index)).toEqual({ category: intent.category });
       });
-    }
-  });
+    },
+  );
 
   when('la Sentinelle attaque la cible présélectionnée', () => {
     markRecent();
     attack();
-    world.reference = world.clock.now() + 500;
+    world.reference = world.clock.now() + HERO_STRIKE_MS;
   });
 
   then('la transition de phase vers la phase ennemie commence', () => {
@@ -238,11 +247,11 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   and('les ennemis debout attaquent ensuite un par un, de gauche à droite', () => {
     runUntil((current) => current.phase.kind === 'transition' && current.phase.to === 'hero');
-    expect(all('windUpStarted').map((event) => event.enemy)).toEqual([GHOUL, SPECTER]);
+    expect(all('windUpStarted').map((event) => event.enemy)).toEqual([GHOUL, SPECTER, NECROMANCER]);
     const [ghoulEnd] = all('blowResolved')
       .filter((event) => event.enemy === GHOUL)
       .slice(-1);
-    expect(all('stepInStarted').map((event) => event.enemy)).toEqual([GHOUL, SPECTER]);
+    expect(all('stepInStarted').map((event) => event.enemy)).toEqual([GHOUL, SPECTER, NECROMANCER]);
     expect(all('stepInStarted')[1]!.at).toBeGreaterThanOrEqual(ghoulEnd!.at);
   });
 
@@ -250,7 +259,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     runUntil((current) => current.phase.kind === 'hero');
     const toHero = all('phaseTransitionStarted').at(-1)!;
     expect(toHero.to).toBe('hero');
-    expect(battle().phase).toEqual({ kind: 'hero', since: toHero.until });
+    expect(battle().phase).toEqual({ kind: 'hero', since: toHero.until, announced: false });
     expect(battle().round).toBe(2);
   });
 
@@ -273,7 +282,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then('le Spectre perd 10 PV', () => {
-    expect(battle().enemies[SPECTER]!.hp).toBe(4);
+    // La frappe sans appui part à la fin de la fenêtre de son impact (#32).
+    runUntil(({ phase }) => phase.kind !== 'heroStrike' || phase.resolved);
+    expect(battle().enemies[SPECTER]!.hp).toBe(25);
   });
 
   and('le Spectre reste la cible à la manche suivante', () => {
@@ -420,7 +431,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     "la Sentinelle vient d'attaquer et son attaque est entièrement résolue, animation comprise",
     () => {
       attack();
-      world.reference = world.clock.now() + 500;
+      world.reference = world.clock.now() + HERO_STRIKE_MS;
       markRecent();
       world.clock.advanceTo(world.reference);
     },
@@ -448,19 +459,20 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   given(
     'le dernier ennemi debout vient de porter un coup simple, sans appui du joueur',
     async () => {
-      // Le Spectre est déjà tombé : la Goule, au coup simple, est le dernier ennemi debout.
+      // Le Spectre et le Nécromancien sont déjà tombés : la Goule, au coup simple, est le
+      // dernier ennemi debout.
       await startBattle(
         { ghoul: 'basic' },
-        changedBattle((current) => ({
-          ...current,
-          enemies: current.enemies.map((enemy, index) =>
-            index === SPECTER ? { ...enemy, hp: 0 } : enemy,
-          ),
-        })),
+        changedBattle((current) =>
+          changeBattle(current, enemyWith(SPECTER, { hp: 0 }), enemyWith(NECROMANCER, { hp: 0 })),
+        ),
       );
       toWindUpOf(GHOUL);
       expect(attackStep()).toMatchObject({ attack: 'basic' });
-      expect(battle().phase).toMatchObject({ waiting: [] });
+      const { order, position } = battle().turn;
+      expect(
+        order.slice(position + 1).every((enemy) => battle().enemies[enemy as number]!.hp === 0),
+      ).toBe(true);
       world.clock.advanceTo(world.impact);
     },
   );
@@ -477,7 +489,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   given('une transition de phase vers la phase ennemie a commencé', () => {
     attack();
-    world.reference = world.clock.now() + 500;
+    world.reference = world.clock.now() + HERO_STRIKE_MS;
     world.clock.advanceTo(world.reference);
     expect(battle().phase).toMatchObject({ kind: 'transition', to: 'enemy' });
     markRecent();
@@ -523,7 +535,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then("la Sentinelle n'attaque pas", () => {
-    expect(recent().filter((event) => event.type === 'heroAttacked')).toEqual([]);
+    expect(recent().filter((event) => event.type === 'strikeStarted')).toEqual([]);
     expect(recent()).toContainEqual(
       expect.objectContaining({
         type: 'pressIgnored',
@@ -540,12 +552,12 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       // Un toucher commencé pendant la transition, relâché après : ignoré.
       world.clock.advanceTo(end + 100);
       world.session.heroAction({ kind: 'attack' }, end - 100, end + 100);
-      expect(recent().filter((event) => event.type === 'heroAttacked')).toEqual([]);
+      expect(recent().filter((event) => event.type === 'strikeStarted')).toEqual([]);
       // Un nouveau toucher, commencé après la fin : l'attaque part.
       world.clock.advanceTo(end + 300);
       world.session.heroAction({ kind: 'attack' }, end + 200, end + 300);
       expect(recent()).toContainEqual(
-        expect.objectContaining({ type: 'heroAttacked', at: end + 300 }),
+        expect.objectContaining({ type: 'strikeStarted', at: end + 300 }),
       );
     },
   );
@@ -587,7 +599,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   given('une transition de phase vers la phase ennemie de 800 ms', () => {
     attack();
-    world.reference = world.clock.now() + 500;
+    world.reference = world.clock.now() + HERO_STRIKE_MS;
     world.clock.advanceTo(world.reference);
     expect(battle().phase).toMatchObject({ kind: 'transition', until: world.reference + 800 });
   });
@@ -623,7 +635,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       for (const seed of [2, 3, 5, 8, 13, 21, 34, 55, 89, 144]) {
         await startBattle({ seed });
         attack();
-        const resolvedAt = world.clock.now() + 500;
+        const resolvedAt = world.clock.now() + HERO_STRIKE_MS;
         runUntil(() => attackStep() !== null);
         expect(attackStep()!.impacts[0]!.at - resolvedAt).toBeGreaterThanOrEqual(2_000);
       }
@@ -674,19 +686,29 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   // --- Fin du combat (C11) ------------------------------------------------------------------
 
-  given('la Goule et le Spectre sont à 0 PV', () => {
-    // Quatre attaques suffisent : 20 PV et 14 PV, 10 dégâts par attaque.
-    for (const target of [GHOUL, GHOUL, SPECTER, SPECTER]) {
-      runUntil((current) => current.phase.kind === 'hero');
-      if (battle().target !== target) {
-        const at = world.clock.now() + 50;
-        world.clock.advanceTo(at);
-        world.session.heroAction({ kind: 'target', enemy: target }, at - 30, at);
-      }
-      attack();
+  given('la Goule, le Spectre et le Nécromancien sont à 0 PV', async () => {
+    // Avec 130 PV d'ennemis, le combat ne se gagne plus en n'attaquant que (#32) : ce premier
+    // combat part avec 10 PV par ennemi, et une frappe sans appui fait tomber chacun.
+    let first = true;
+    await startBattle({}, (options) => {
+      const update = startTrialBattle(options);
+      if (!first) return update;
+      first = false;
+      return {
+        ...update,
+        battle: changeBattle(
+          update.battle,
+          ...[GHOUL, SPECTER, NECROMANCER].map((enemy) => enemyWith(enemy, { hp: 10 })),
+        ),
+      };
+    });
+    // Le Nécromancien relève la Goule une fois : quelques manches de plus.
+    for (let round = 0; round < 12 && battle().phase.kind !== 'over'; round += 1) {
+      runUntil((current) => current.phase.kind === 'hero' || current.phase.kind === 'over');
+      if (battle().phase.kind === 'hero') attack();
     }
     runUntil((current) => current.phase.kind === 'over');
-    expect(battle().enemies.map((enemy) => enemy.hp)).toEqual([0, 0]);
+    expect(battle().enemies.map((enemy) => enemy.hp)).toEqual([0, 0, 0]);
   });
 
   then('le combat est gagné et le joueur peut rejouer', async () => {
@@ -727,8 +749,8 @@ async function basicWindUps(): Promise<number[]> {
       keyValueStore: memoryStore(),
     });
     const { battle: started } = await session.start();
-    const ghoul = started.enemies[GHOUL]!.intent;
-    if (ghoul.attack === 'basic') windUps.push(ghoul.windUpMs);
+    const ghoul = started.enemies[GHOUL]!.intent!;
+    if (ghoul.category === 'attack' && ghoul.attack === 'basic') windUps.push(ghoul.windUpMs);
   }
   return windUps;
 }
@@ -738,7 +760,7 @@ async function replays(): Promise<void> {
   const snapshot = await world.session.start();
   expect(snapshot.battle.phase.kind).toBe('hero');
   expect(snapshot.battle.round).toBe(1);
-  expect(snapshot.battle.enemies.map((enemy) => enemy.hp)).toEqual([20, 14]);
+  expect(snapshot.battle.enemies.map((enemy) => enemy.hp)).toEqual([50, 35, 45]);
 }
 
 // Les scénarios d'interface (`@ui`) sont laissés aux étapes de l'écran, celui de l'ADR (`@adr`) à

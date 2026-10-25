@@ -2,10 +2,15 @@ import { useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 
-import type { EnemyState } from '../../../domain/battle/Battle';
-import { ENEMY_NAMES, enemyLabel, intentBadge } from '../format/battleText';
+import type { IntentCategory } from '../../../domain/battle/shownIntent';
+import { intentNumber } from '../format/battleText';
+import { PixelIcon } from '../pixelArt/PixelIcon';
+import type { IconName } from '../pixelArt/sprites/icons';
+import type { EnemyView } from '../state/battleView';
 import { battleColors } from '../theme/battleColors';
+import { DamageFloat } from './BattleEffects';
 import { PerilSeal } from './PerilSeal';
+import type { TrialBattleDisplay } from '../state/useTrialBattle';
 import { useReleaseGesture } from './touchGestures';
 
 /** L'identifiant du geste de la colonne d'un ennemi, pour `getByGestureTestId` dans les tests. */
@@ -13,27 +18,38 @@ export function enemyGestureTestId(index: number): string {
   return `battle-enemy-${index}`;
 }
 
+/** L'icône de chaque catégorie d'intention (C2.2). */
+const INTENT_ICONS: Readonly<Record<IntentCategory, IconName>> = {
+  attack: 'iAttack',
+  guard: 'iGuard',
+  heal: 'iHeal',
+  raise: 'iRaise',
+  skip: 'iSkip',
+};
+
 /**
- * La colonne d'un ennemi : toute la colonne est touchable pour le viser (au relâcher). Elle montre
- * son intention, son nom (en lumière s'il est la cible), ses PV, et le sceau rouge d'un coup
- * imparable. L'ennemi est annoncé en entier au lecteur d'écran (nom, cible, PV, intention). La
- * silhouette est dessinée par la scène, derrière.
+ * La colonne d'un ennemi (maquette F1, F5, F7) : toute la colonne est touchable pour le viser (au
+ * relâcher). Elle montre son intention en icône (avec « +N » pour Garde et Soin), sa barre de PV,
+ * son nom, sa garde (ou « Étourdie ×1,5 ») et le sceau rouge d'un coup imparable. En phase ennemie
+ * épurée, le nom et les chiffres sont masqués. L'ennemi est annoncé en entier au lecteur d'écran.
+ * La silhouette est dessinée par la scène, derrière.
  */
 export function EnemyColumn({
-  enemy,
+  view,
   index,
-  target,
-  dimmed,
+  width,
   sealed,
+  float,
   uiNow,
   now,
   onTarget,
 }: {
-  readonly enemy: EnemyState;
+  readonly view: EnemyView;
   readonly index: number;
-  readonly target: boolean;
-  readonly dimmed: boolean;
+  readonly width: number;
   readonly sealed: boolean;
+  /** Le chiffre qui s'envole au-dessus de lui, s'il est pour lui. */
+  readonly float: TrialBattleDisplay['float'];
   readonly uiNow: () => number;
   readonly now: () => number;
   readonly onTarget: (enemy: number, touchStartedAt: number, releasedAt: number) => void;
@@ -44,33 +60,78 @@ export function EnemyColumn({
     [onTarget, index],
   );
   const gesture = useReleaseGesture(enemyGestureTestId(index), uiNow, onRelease);
-  const standing = enemy.hp > 0;
+  const { kind, intent } = view;
+  const number = intent === null ? null : intentNumber(intent);
   return (
     <GestureDetector gesture={gesture}>
       <View
         accessible
         accessibilityRole="button"
-        accessibilityLabel={enemyLabel(enemy, target)}
-        accessibilityState={{ selected: target, disabled: !standing }}
+        accessibilityLabel={view.label}
+        accessibilityState={{ selected: view.target, disabled: !view.standing }}
         accessibilityActions={[{ name: 'activate' }]}
         onAccessibilityAction={() => onTarget(index, now(), now())}
-        testID={`enemy-${enemy.kind}`}
-        style={[styles.column, dimmed && styles.dimmed, !standing && styles.down]}
+        testID={`enemy-${kind}`}
+        style={[
+          styles.column,
+          { width },
+          view.dimmed && styles.dimmed,
+          !view.standing && styles.down,
+        ]}
       >
-        <View style={styles.intent}>
-          <Text style={styles.intentText}>{intentBadge(enemy.intent)}</Text>
+        <View
+          {...(intent === null ? {} : { testID: `enemy-${kind}-intent` })}
+          style={[styles.intent, intent === null && styles.noIntent]}
+        >
+          {intent === null ? null : (
+            <>
+              <PixelIcon
+                name={INTENT_ICONS[intent.category]}
+                color={battleColors.text}
+                secondColor={battleColors.light}
+                testID={`enemy-${kind}-intent-${intent.category}`}
+              />
+              {number === null ? null : <Text style={styles.intentText}>{number}</Text>}
+            </>
+          )}
         </View>
-        <View style={styles.figure}>{sealed ? <PerilSeal /> : null}</View>
-        <Text style={[styles.name, target && styles.targetName]}>{ENEMY_NAMES[enemy.kind]}</Text>
-        <View style={styles.hpTrack}>
-          <View
-            testID={`enemy-${enemy.kind}-hp`}
-            style={[styles.hp, { width: `${(100 * enemy.hp) / enemy.maxHp}%` }]}
-          />
+        <View style={styles.figure}>
+          {sealed ? <PerilSeal /> : null}
+          {view.stunned ? (
+            <Text
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              testID={`enemy-${kind}-stars`}
+              style={[styles.stars, view.losingAction && styles.starsJump]}
+            >
+              ✦ ✦ ✦
+            </Text>
+          ) : null}
+          {float === null ? null : <DamageFloat key={float.key} float={float.float} />}
         </View>
-        <Text style={styles.hpText}>
-          {enemy.hp}/{enemy.maxHp}
-        </Text>
+        <View style={[styles.plate, view.target && styles.targetPlate]}>
+          <View style={styles.track}>
+            <View
+              testID={`enemy-${kind}-hp`}
+              style={[styles.hp, { width: `${Math.round(100 * view.hpRatio)}%` }]}
+            />
+            {view.hpText === null ? null : <Text style={styles.barText}>{view.hpText}</Text>}
+          </View>
+          {view.name === null ? null : (
+            <Text style={[styles.name, view.target && styles.targetName]}>{view.name}</Text>
+          )}
+          <View style={[styles.track, view.stunned && styles.stunnedTrack]}>
+            <View
+              testID={`enemy-${kind}-guard`}
+              style={[styles.guard, { width: `${Math.round(100 * view.guardRatio)}%` }]}
+            />
+            {view.guardText === null ? null : (
+              <Text style={[styles.barText, view.stunned && styles.stunnedText]}>
+                {view.guardText}
+              </Text>
+            )}
+          </View>
+        </View>
       </View>
     </GestureDetector>
   );
@@ -79,7 +140,6 @@ export function EnemyColumn({
 // Stryker disable all: dessin de la scène, vérifié par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
   column: {
-    width: 160,
     alignItems: 'center',
     gap: 3,
     paddingTop: 4,
@@ -89,36 +149,64 @@ const styles = StyleSheet.create({
   dimmed: { opacity: 0.45 },
   down: { opacity: 0 },
   intent: {
-    height: 28,
-    paddingHorizontal: 9,
-    borderRadius: 999,
+    height: 34,
+    minWidth: 34,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
     backgroundColor: battleColors.badge,
     borderWidth: 1,
     borderColor: battleColors.curseLine,
-    justifyContent: 'center',
   },
+  noIntent: { opacity: 0 },
   intentText: {
     color: battleColors.text,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },
-  figure: { width: 104, height: 130 },
-  name: { color: battleColors.text, fontSize: 13, fontWeight: '600' },
-  targetName: { color: battleColors.light },
-  hpTrack: {
-    width: 86,
-    height: 6,
+  figure: { width: 104, height: 112, alignItems: 'center' },
+  stars: {
+    position: 'absolute',
+    top: 34,
+    color: battleColors.light,
+    fontSize: 13,
+    letterSpacing: 2,
+  },
+  starsJump: { top: 28 },
+  plate: {
+    width: '96%',
+    maxWidth: 120,
+    gap: 2,
+    padding: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: battleColors.line,
+    backgroundColor: battleColors.badge,
+  },
+  targetPlate: { borderColor: battleColors.light },
+  track: {
+    height: 14,
     borderRadius: 3,
     backgroundColor: battleColors.hpTrack,
     overflow: 'hidden',
+    justifyContent: 'center',
   },
-  hp: { height: '100%', borderRadius: 3, backgroundColor: battleColors.foeHp },
-  hpText: {
-    color: battleColors.muted,
-    fontSize: 11,
-    fontWeight: '500',
+  stunnedTrack: { backgroundColor: battleColors.light },
+  hp: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: battleColors.foeHp },
+  guard: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: battleColors.guard },
+  barText: {
+    color: battleColors.text,
+    fontSize: 10,
+    fontWeight: '700',
+    textAlign: 'center',
     fontVariant: ['tabular-nums'],
   },
+  stunnedText: { color: battleColors.onLight },
+  name: { color: battleColors.text, fontSize: 12, fontWeight: '600' },
+  targetName: { color: battleColors.light },
 });
 // Stryker restore all

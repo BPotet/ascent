@@ -2,6 +2,9 @@
 Fonctionnalité: Prototype jouable du combat
   Story #31 : la Sentinelle affronte une Goule et un Spectre ; le joueur lit leurs attaques à
   l'animation, puis pare ou esquive au bon moment.
+  Adapté par #32 là où le combat complet change une valeur validée : PV ×2,5, le Nécromancien en
+  troisième ennemi, la frappe en rythme au lieu de l'attaque de 500 ms, et les intentions montrées
+  par leur catégorie seulement (C2.3).
 
   # Les scénarios sans tag passent par la session de combat (cas d'usage), avec l'horloge de
   # combat manuelle et une graine du combat fixée : leurs instants sont exacts à la milliseconde.
@@ -9,12 +12,12 @@ Fonctionnalité: Prototype jouable du combat
   # `@adr` lit l'ADR du moteur de combat.
 
   Contexte:
-    Étant donné le combat d'essai : la Sentinelle (80 PV, Attaque 10, réduction des dégâts 10 %) contre une Goule (20 PV) et un Spectre (14 PV)
+    Étant donné le combat d'essai : la Sentinelle (80 PV, Attaque 10, réduction des dégâts 10 %) contre la Goule (50 PV), le Spectre (35 PV) et le Nécromancien (45 PV)
     Et le décalage vaut 0 ms
 
   Scénario: Une manche se déroule dans l'ordre (C1, C12)
     Étant donné le début d'une manche
-    Alors chaque ennemi debout affiche son intention d'attaque et le type de coup (coup simple, double frappe, coup retardé, coup trompeur ou coup imparable)
+    Alors chaque ennemi debout affiche la catégorie de son intention, sans le type de coup ni les dégâts
     Quand la Sentinelle attaque la cible présélectionnée
     Alors la transition de phase vers la phase ennemie commence
     Et les ennemis debout attaquent ensuite un par un, de gauche à droite
@@ -172,7 +175,7 @@ Fonctionnalité: Prototype jouable du combat
     Alors la bannière et la vibration restent
 
   Scénario: Victoire du combat d'essai (C11)
-    Étant donné la Goule et le Spectre sont à 0 PV
+    Étant donné la Goule, le Spectre et le Nécromancien sont à 0 PV
     Alors le combat est gagné et le joueur peut rejouer
 
   Scénario: Défaite du combat d'essai

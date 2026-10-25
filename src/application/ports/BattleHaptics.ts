@@ -1,5 +1,9 @@
-/** Les vibrations du combat : parade parfaite (forte), esquive, touché, phase ennemie (légère). */
-export type BattleHapticCue = 'perfectParry' | 'dodge' | 'hit' | 'enemyPhase';
+/**
+ * Les vibrations du combat : parade parfaite (forte), esquive, touché, phase ennemie (légère),
+ * cassure de garde (forte) et frappe parfaite (courte).
+ */
+export type BattleHapticCue =
+  'perfectParry' | 'dodge' | 'hit' | 'enemyPhase' | 'guardBreak' | 'perfectStrike';
 
 /**
  * Vibration de combat (`BattleHaptics`) — port des vibrations du combat. Le Retour haptique

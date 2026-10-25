@@ -1,15 +1,23 @@
-// L'écran du combat d'essai (#31), sur une vraie session de combat, l'horloge de combat manuelle
-// et une graine fixée. Les touchers sont simulés par Gesture Handler (fireGestureHandler, qui
-// complète toujours la séquence d'un geste) : la datation au début du toucher se prouve par une
-// horloge qui avance à chaque étape du geste qui suit son début (ADR 0005, § 2).
+// L'écran du combat d'essai (#31, combat complet #32), sur une vraie session de combat, l'horloge
+// de combat manuelle et une graine fixée. Les touchers sont simulés par Gesture Handler
+// (fireGestureHandler, qui complète toujours la séquence d'un geste) : la datation au début du
+// toucher se prouve par une horloge qui avance à chaque étape du geste qui suit son début
+// (ADR 0005, § 2). La scène dessinée est simulée : seul ce qui est hors de la scène est vérifié.
 import { act, fireEvent, screen, within } from '@testing-library/react-native';
 import { AccessibilityInfo, StyleSheet } from 'react-native';
 import { Gesture } from 'react-native-gesture-handler';
 
+import {
+  battleWith,
+  enemyWith,
+  heroWith,
+  stunnedEnemy,
+  targetOn,
+  type BattleChange,
+} from '../../../application/testing/battleBuilder';
 import { seedFor } from '../../../application/testing/trialBattleSeeds';
 import { BATTLE_HINT_SEEN_KEYS } from '../../../application/useCases/battleHints';
 import { TRIAL_TUNING_KEY } from '../../../application/useCases/trialTuning';
-import { startTrialBattle, type Battle } from '../../../domain/battle/Battle';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { reduceMotionInEachTest, withMotion } from '../testing/motion';
 import { renderTrialBattle, type TrialBattleTest } from '../testing/trialBattle';
@@ -18,22 +26,16 @@ jest.mock('../battle/BattleCanvas', () => jest.requireActual('../battle/testing/
 
 const GHOUL = 0;
 const SPECTER = 1;
+const NECROMANCER = 2;
 
 const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
 
 beforeEach(() => announce.mockClear());
 
-function changed(change: (battle: Battle) => Battle) {
-  return (options: Parameters<typeof startTrialBattle>[0]) => {
-    const update = startTrialBattle(options);
-    return { ...update, battle: change(update.battle) };
-  };
-}
-
-const specterDown = changed((battle) => ({
-  ...battle,
-  enemies: battle.enemies.map((enemy, index) => (index === SPECTER ? { ...enemy, hp: 0 } : enemy)),
-}));
+/** Une garde qu'aucun coup ne brise : les parades et contre-attaques restent celles de #31. */
+const sturdy = (enemy: number): BattleChange => enemyWith(enemy, { guard: 99 });
+const onlyGhoul = battleWith(enemyWith(SPECTER, { hp: 0 }), enemyWith(NECROMANCER, { hp: 0 }));
+const sturdyGhoul = battleWith(sturdy(GHOUL));
 
 function pad() {
   return screen.getByTestId('battle-pad');
@@ -47,56 +49,92 @@ function sceneProps(): Record<string, unknown> {
   >;
 }
 
-/** La case vide de la phase du héros, cachée au lecteur d'écran. */
-function emptySlot() {
-  return screen.getByTestId('battle-empty-slot', { includeHiddenElements: true });
+function events(test: TrialBattleTest) {
+  return test.snapshots.flatMap((snapshot) => snapshot.events);
 }
 
 describe('TrialBattleScreen', () => {
   describe('hero phase (F1)', () => {
-    it('shows the trial battle, its two enemies, the Sentinel and « Attaquer » on the right', async () => {
+    it('shows the three enemies with their guard and their intent category, the Sentinel and her momentum', async () => {
       await renderTrialBattle({ seed: seedFor({ ghoul: 'basic', specter: 'delayed' }) });
 
       expect(screen.getByRole('header', { name: "Combat d'essai" })).toBeOnTheScreen();
       expect(screen.getByTestId('battle-phase')).toHaveTextContent('Phase du héros');
       expect(
         screen.getByRole('button', {
-          name: 'Goule, cible, PV 20 sur 20, intention : coup simple, 5 dégâts',
+          name: 'Goule, cible, 50 PV sur 50, garde 15 sur 15, intention : attaque',
         }),
       ).toBeOnTheScreen();
       expect(
         screen.getByRole('button', {
-          name: 'Spectre, PV 14 sur 14, intention : coup retardé, 6 dégâts',
+          name: 'Spectre, 35 PV sur 35, garde 10 sur 10, intention : attaque',
         }),
       ).toBeOnTheScreen();
-      expect(screen.getByLabelText('La Sentinelle, PV 80 sur 80')).toHaveTextContent(
-        'La SentinellePV 80/80',
-      );
+      expect(
+        screen.getByRole('button', { name: /^Nécromancien, 45 PV sur 45, garde 12 sur 12/u }),
+      ).toBeOnTheScreen();
+      // Jamais le type de coup, jamais les dégâts d'une attaque (C2.3).
+      expect(screen.queryByText(/coup simple|coup retardé|dégâts/u)).toBeNull();
+      expect(screen.getByText('Garde 15/15')).toBeOnTheScreen();
+      expect(screen.getByText('50/50 PV')).toBeOnTheScreen();
+      expect(screen.getByLabelText('La Sentinelle, PV 80 sur 80, Élan 1 sur 5')).toBeOnTheScreen();
       expect(screen.getByTestId('battle-zone-line')).toHaveTextContent('Cible : Goule');
       expect(screen.getByRole('button', { name: 'Attaquer, cible : Goule' })).toBeOnTheScreen();
+      expect(screen.getByRole('button', { name: 'Pouvoir : Rempart, 1 Élan' })).toBeEnabled();
     });
 
-    it('leaves the left cell empty: no control, nothing read, no « Pouvoir » nor « Élan »', async () => {
-      await renderTrialBattle({ seed: 1 });
+    it('shows the shield and the gain of the Guard intent of the Necromancer (C2.2)', async () => {
+      await renderTrialBattle({
+        seed: 1,
+        createBattle: battleWith(
+          enemyWith(NECROMANCER, { guard: 8, intent: { category: 'guard', gain: 3 } }),
+        ),
+      });
 
-      expect(emptySlot()).toBeOnTheScreen();
-      expect(screen.queryByTestId('battle-empty-slot')).toBeNull();
-      expect(within(emptySlot()).queryAllByText(/./u, { includeHiddenElements: true })).toEqual([]);
-      expect(within(pad()).getAllByRole('button')).toHaveLength(1);
-      expect(screen.queryByText(/Pouvoir/u)).toBeNull();
-      expect(screen.queryByText(/Élan/u)).toBeNull();
-      expect(screen.queryByText(/Palier|Étage|Or\b|Pause/u)).toBeNull();
+      expect(
+        screen.getByRole('button', {
+          name: 'Nécromancien, 45 PV sur 45, garde 8 sur 12, intention : garde, plus 3',
+        }),
+      ).toBeOnTheScreen();
+      expect(within(screen.getByTestId('enemy-necromancer')).getByText('+3')).toBeOnTheScreen();
     });
 
-    it('validates « Attaquer » on release, when the finger is still on the button', async () => {
+    it('starts the timed strike on release: « Frapper » replaces the buttons', async () => {
       const test = await renderTrialBattle({ seed: 1 });
 
       await test.attack(10_100, 10_400);
 
-      expect(test.battle().enemies[GHOUL]!.hp).toBe(10);
-      expect(test.snapshots.flatMap((snapshot) => snapshot.events)).toContainEqual(
-        expect.objectContaining({ type: 'heroAttacked', at: 10_400, enemy: GHOUL, damage: 10 }),
+      expect(events(test)).toContainEqual(
+        expect.objectContaining({ type: 'strikeStarted', at: 10_400, enemy: GHOUL }),
       );
+      expect(within(pad()).getByRole('button', { name: 'Frapper' })).toBeEnabled();
+      expect(screen.queryByTestId('battle-attack-button')).toBeNull();
+      expect(screen.getByTestId('battle-zone-line')).toHaveTextContent(
+        'Touche Frapper quand la barre atteint le trait.',
+      );
+      expect(screen.getByLabelText('La Sentinelle, PV 80 sur 80, Élan 2 sur 5')).toBeOnTheScreen();
+
+      // Sans appui, la frappe part sans bonus ni pénalité (C6.1).
+      await test.advanceTo(10_400 + 700 + 160 + 32);
+      expect(test.battle().enemies[GHOUL]).toMatchObject({ hp: 40, guard: 3 });
+      expect(screen.getByText('−10')).toBeOnTheScreen();
+    });
+
+    it('dates « Frapper » when the finger touches, and rewards a perfect strike (F4)', async () => {
+      withMotion();
+      const test = await renderTrialBattle({ seed: 1, createBattle: sturdyGhoul });
+      await test.attack(10_100, 10_180);
+
+      // Chaque étape du geste après son début avance l'horloge de 100 ms : daté à la fin,
+      // l'appui serait trop tard pour être parfait.
+      await test.strike(10_180 + 700 + 40, 100);
+
+      expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Frappe parfaite');
+      expect(screen.getByText('−15')).toBeOnTheScreen();
+      expect(screen.queryByText(/critique/iu)).toBeNull();
+      expect(test.sound.played).toContain('perfectStrike');
+      expect(test.haptics.played).toContain('perfectStrike');
+      expect(announce).toHaveBeenCalledWith('Frappe parfaite, 15 dégâts');
     });
 
     it('does not attack when the finger leaves the button before the release', async () => {
@@ -104,7 +142,6 @@ describe('TrialBattleScreen', () => {
 
       await test.release('battle-attack', 10_100, 10_300, false);
 
-      expect(test.battle().enemies[GHOUL]!.hp).toBe(20);
       expect(test.battle().phase.kind).toBe('hero');
     });
 
@@ -116,12 +153,12 @@ describe('TrialBattleScreen', () => {
       expect(screen.getByTestId('battle-zone-line')).toHaveTextContent('Cible : Spectre');
       expect(screen.getByRole('button', { name: 'Attaquer, cible : Spectre' })).toBeOnTheScreen();
       expect(
-        screen.getByRole('button', { name: /^Spectre, cible, PV 14 sur 14/u }),
+        screen.getByRole('button', { name: /^Spectre, cible, 35 PV sur 35/u }),
       ).toBeOnTheScreen();
       expect(announce).not.toHaveBeenCalledWith(expect.stringMatching(/Phase/u));
     });
 
-    it('targets and attacks with the screen reader', async () => {
+    it('targets, attacks and strikes with the screen reader', async () => {
       const test = await renderTrialBattle({ seed: 1 });
 
       await act(async () => {
@@ -134,8 +171,107 @@ describe('TrialBattleScreen', () => {
           nativeEvent: { actionName: 'activate' },
         });
       });
+      await act(async () => {
+        fireEvent(screen.getByTestId('battle-strike-button'), 'accessibilityAction', {
+          nativeEvent: { actionName: 'activate' },
+        });
+      });
 
-      expect(test.battle().enemies[SPECTER]!.hp).toBe(4);
+      expect(test.battle().phase).toMatchObject({ kind: 'heroStrike', enemy: SPECTER });
+      expect(test.battle().phase).toMatchObject({ press: { judgement: 'miss' } });
+    });
+  });
+
+  describe('momentum and power (C3)', () => {
+    it('uses the Bulwark: 1 momentum, then the enemy phase', async () => {
+      const test = await renderTrialBattle({ seed: 1 });
+
+      await test.power();
+
+      expect(test.battle().hero).toMatchObject({ momentum: 0, bulwark: true });
+      expect(test.sound.played).toContain('bulwark');
+      expect(announce).toHaveBeenCalledWith('Rempart');
+      expect(
+        screen.getByLabelText('La Sentinelle, PV 80 sur 80, Élan 0 sur 5, Rempart'),
+      ).toBeOnTheScreen();
+      await test.runUntil(() => test.battle().phase.kind === 'transition');
+    });
+
+    it('keeps Pouvoir visible but unavailable without momentum, telling what it misses', async () => {
+      await renderTrialBattle({ seed: 1, createBattle: battleWith(heroWith({ momentum: 0 })) });
+
+      expect(
+        screen.getByRole('button', {
+          name: 'Pouvoir : Rempart, 1 Élan, indisponible : il manque 1 Élan',
+        }),
+      ).toBeDisabled();
+      expect(screen.getByText('Il manque 1 Élan')).toBeOnTheScreen();
+    });
+  });
+
+  describe('guard break and stun (F5, P3b)', () => {
+    it('stuns the Specter: « Cassure », « Étourdi ×1,5 » and the barred circle', async () => {
+      const test = await renderTrialBattle({
+        seed: 1,
+        createBattle: battleWith(targetOn(SPECTER)),
+      });
+
+      await test.attack();
+      await test.runUntil(() => test.battle().enemies[SPECTER]!.stun !== null);
+
+      expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Cassure');
+      expect(
+        within(screen.getByTestId('enemy-specter')).getByText('Étourdi ×1,5'),
+      ).toBeOnTheScreen();
+      expect(
+        within(screen.getByTestId('enemy-specter')).getByTestId('enemy-specter-intent-skip', {
+          includeHiddenElements: true,
+        }),
+      ).toBeOnTheScreen();
+      expect(announce).toHaveBeenCalledWith('Cassure, Spectre étourdi');
+      expect(test.haptics.played).toContain('guardBreak');
+      expect(sceneProps().enemies).toEqual(
+        expect.arrayContaining([expect.objectContaining({ kind: 'specter', down: true })]),
+      );
+    });
+
+    it('plays the lost action of a stunned enemy without transition nor pill (F5b)', async () => {
+      const test = await renderTrialBattle({
+        seed: 1,
+        createBattle: battleWith(stunnedEnemy(GHOUL), sturdy(SPECTER), targetOn(SPECTER)),
+      });
+
+      await test.attack();
+      await test.runUntil(() => test.battle().phase.kind === 'enemy');
+
+      expect(test.battle().phase).toMatchObject({ step: { kind: 'lostAction', enemy: GHOUL } });
+      expect(announce).toHaveBeenCalledWith("Goule, étourdie, n'agit pas");
+      expect(screen.queryByTestId('battle-phase')).toBeNull();
+      expect(screen.queryByTestId('phase-banner')).toBeNull();
+      expect(screen.getByRole('button', { name: 'Attaquer, cible : Spectre' })).toBeDisabled();
+      expect(
+        StyleSheet.flatten(screen.getByTestId('enemy-specter').props.style).opacity,
+      ).toBeUndefined();
+    });
+
+    it('announces « À toi » without transition when every enemy lost its action (P15)', async () => {
+      const test = await renderTrialBattle({
+        seed: 1,
+        createBattle: battleWith(
+          stunnedEnemy(GHOUL),
+          stunnedEnemy(SPECTER),
+          stunnedEnemy(NECROMANCER),
+        ),
+      });
+
+      await test.attack();
+      await test.runUntil(() => test.battle().phase.kind === 'hero');
+
+      expect(screen.getByTestId('phase-banner')).toHaveTextContent('À toiVise et attaque');
+      expect(announce).toHaveBeenCalledWith('À toi. Vise et attaque.');
+      expect(events(test).some((event) => event.type === 'phaseTransitionStarted')).toBe(false);
+      expect(screen.getByTestId('battle-zone-line')).toHaveTextContent('Cible : Goule · ×1,5');
+      expect(screen.getByRole('button', { name: 'Attaquer, cible : Goule' })).toBeEnabled();
     });
   });
 
@@ -158,7 +294,7 @@ describe('TrialBattleScreen', () => {
     it('shows the defense hint before the transition, which starts only when it is closed', async () => {
       const test = await renderTrialBattle({ seed: 1, hintsSeen: false });
       await test.attack();
-      await test.advanceTo(test.clock.now() + 500);
+      await test.runUntil(() => test.battle().phase.kind === 'defenseHint');
 
       expect(screen.getByTestId('battle-hint-defense')).toHaveTextContent(
         "Lis son gesteQuand il frappe, touche Parade. S'il porte un sceau rouge, touche Esquive.",
@@ -188,7 +324,7 @@ describe('TrialBattleScreen', () => {
       const test = await renderTrialBattle({ seed: 1 });
 
       await test.attack();
-      await test.advanceTo(test.clock.now() + 500);
+      await test.runUntil(() => test.battle().phase.kind === 'transition');
 
       expect(screen.getByTestId('phase-banner')).toHaveTextContent(
         'Phase ennemiePrépare ta parade',
@@ -203,8 +339,8 @@ describe('TrialBattleScreen', () => {
       expect(test.haptics.played).toEqual(['enemyPhase']);
     });
 
-    it('announces the hero phase and shows « Attaquer » inactive, alone, at its place', async () => {
-      const test = await renderTrialBattle({ seed: 1, createBattle: specterDown });
+    it('announces the hero phase and shows « Attaquer » and « Pouvoir » inactive, at their place', async () => {
+      const test = await renderTrialBattle({ seed: 1, createBattle: onlyGhoul });
       await test.toWindUpOf(GHOUL);
 
       await test.runUntil(() => test.battle().phase.kind === 'transition');
@@ -212,7 +348,7 @@ describe('TrialBattleScreen', () => {
       expect(screen.getByTestId('phase-banner')).toHaveTextContent('À toiVise et attaque');
       expect(screen.getByTestId('battle-lock-tag')).toHaveTextContent('Attends');
       expect(screen.getByRole('button', { name: 'Attaquer, cible : Goule' })).toBeDisabled();
-      expect(emptySlot()).toBeOnTheScreen();
+      expect(screen.getByRole('button', { name: 'Pouvoir : Rempart, 1 Élan' })).toBeDisabled();
       expect(announce).toHaveBeenCalledWith('À toi. Vise et attaque.');
       expect(test.sound.played.at(-1)).toBe('heroPhase');
       expect(test.haptics.played).not.toContain('heroPhase');
@@ -221,7 +357,7 @@ describe('TrialBattleScreen', () => {
     it('ignores a touch on a button during the transition, without off-balance', async () => {
       const test = await renderTrialBattle({ seed: 1 });
       await test.attack();
-      await test.advanceTo(test.clock.now() + 500);
+      await test.runUntil(() => test.battle().phase.kind === 'transition');
 
       await test.touchDefense('parry', test.clock.now() + 300);
 
@@ -231,7 +367,7 @@ describe('TrialBattleScreen', () => {
     });
   });
 
-  describe('enemy phase (P0b, P1, P2)', () => {
+  describe('trimmed enemy phase (P1, P2)', () => {
     it('creates no new gesture from one snapshot to the next', async () => {
       const test = await renderTrialBattle({ seed: seedFor({ ghoul: 'double' }) });
       await test.attack();
@@ -246,17 +382,20 @@ describe('TrialBattleScreen', () => {
       tap.mockRestore();
     });
 
-    it('shows the enemy stepping in, then its wind-up; the others fade', async () => {
+    it('hides the names, the HP figures and the line; the active enemy in front, the others faded', async () => {
       const test = await renderTrialBattle({ seed: seedFor({ ghoul: 'double' }) });
       await test.attack();
       await test.runUntil(() => test.battle().phase.kind === 'enemy');
 
-      expect(screen.getByTestId('battle-zone-line')).toHaveTextContent('Goule s’avance');
       expect(within(pad()).getByRole('button', { name: 'Parade' })).toBeEnabled();
+      expect(screen.getByTestId('battle-zone-line')).toHaveTextContent('');
+      expect(screen.queryByText('Goule')).toBeNull();
+      expect(screen.queryByText(/\/50 PV/u)).toBeNull();
 
       await test.toWindUpOf(GHOUL);
 
-      expect(screen.getByTestId('battle-zone-line')).toHaveTextContent('Goule : double frappe');
+      expect(screen.getByTestId('battle-zone-line')).toHaveTextContent('');
+      expect(screen.queryByText(/double frappe/u)).toBeNull();
       expect(sceneProps().timeline).toMatchObject({
         enemy: GHOUL,
         impacts: test.attackStep()!.impacts.map((impact) => impact.at),
@@ -264,7 +403,13 @@ describe('TrialBattleScreen', () => {
       expect(StyleSheet.flatten(screen.getByTestId('enemy-specter').props.style).opacity).toBe(
         0.45,
       );
-      expect(announce).toHaveBeenCalledWith('Goule : double frappe');
+      expect(sceneProps().enemies).toEqual(
+        expect.arrayContaining([expect.objectContaining({ kind: 'ghoul', active: true })]),
+      );
+      // Le type de coup se dit au lecteur d'écran au début de la préparation, jamais avant (C2.4).
+      expect(announce).toHaveBeenCalledWith('Goule, double frappe');
+      // Le lecteur d'écran garde les noms et les PV.
+      expect(screen.getByRole('button', { name: /^Goule, 40 PV sur 50/u })).toBeOnTheScreen();
     });
 
     it('shows the red seal over an enemy that prepares a perilous attack, read by the screen reader', async () => {
@@ -275,7 +420,7 @@ describe('TrialBattleScreen', () => {
       const seal = screen.getByLabelText('Sceau rouge : coup imparable');
       expect(within(screen.getByTestId('enemy-specter')).getByTestId('peril-seal')).toBe(seal);
       expect(seal).toHaveTextContent('!');
-      expect(announce).toHaveBeenCalledWith('Spectre : coup imparable, esquive');
+      expect(announce).toHaveBeenCalledWith('Spectre, coup imparable, esquive');
       expect(test.sound.played).toContain('seal');
     });
 
@@ -285,8 +430,9 @@ describe('TrialBattleScreen', () => {
 
       await test.touchDefense('parry', impact - 20);
 
-      expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Imparable : esquive !−8 PV');
+      expect(screen.getByText('−8')).toBeOnTheScreen();
       expect(screen.getByTestId('battle-off-balance')).toHaveTextContent('Déséquilibré');
+      expect(announce).toHaveBeenCalledWith('Coup imparable : la parade échoue, 8 dégâts');
     });
   });
 
@@ -299,7 +445,7 @@ describe('TrialBattleScreen', () => {
       // serait 250 ms après l'impact, raté.
       await test.touchDefense('parry', impact - 50, 100);
 
-      expect(test.snapshots.flatMap((snapshot) => snapshot.events)).toContainEqual(
+      expect(events(test)).toContainEqual(
         expect.objectContaining({ type: 'blowResolved', outcome: 'perfectParry', delta: -50 }),
       );
     });
@@ -311,11 +457,12 @@ describe('TrialBattleScreen', () => {
       await test.touchDefense('dodge', impact - 10);
       await test.touchDefense('parry', impact - 10);
 
-      const events = test.snapshots.flatMap((snapshot) => snapshot.events);
-      expect(events).toContainEqual(
+      expect(events(test)).toContainEqual(
         expect.objectContaining({ type: 'blowResolved', button: 'dodge' }),
       );
-      expect(events).toContainEqual(expect.objectContaining({ type: 'whiffed', button: 'parry' }));
+      expect(events(test)).toContainEqual(
+        expect.objectContaining({ type: 'whiffed', button: 'parry' }),
+      );
     });
 
     it('presses with the screen reader', async () => {
@@ -329,45 +476,73 @@ describe('TrialBattleScreen', () => {
         });
       });
 
-      expect(screen.getByTestId('battle-feedback')).toHaveTextContent('EsquiveAucun dégât');
+      expect(announce).toHaveBeenCalledWith('Esquive, aucun dégât');
+      expect(screen.queryByTestId('battle-feedback')).toBeNull();
     });
 
-    it('rewards a perfect parry: freeze, flash, sound, vibration, shake, then the counter', async () => {
+    it('rewards a perfect parry: « Parfait », freeze, flash, sound, vibration, then the counter', async () => {
       withMotion();
-      const test = await renderTrialBattle({ seed: seedFor({ ghoul: 'basic' }) });
+      const test = await renderTrialBattle({
+        seed: seedFor({ ghoul: 'basic' }),
+        createBattle: sturdyGhoul,
+      });
       const impact = await test.toWindUpOf(GHOUL);
 
       await test.touchDefense('parry', impact - 50);
 
-      expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Parade parfaite');
+      expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Parfait');
       expect(screen.getByTestId('battle-flash-light')).toBeOnTheScreen();
       expect(sceneProps().heroPose).toBe('counter');
       expect(test.sound.played.at(-1)).toBe('perfectParry');
       expect(test.haptics.played.at(-1)).toBe('perfectParry');
       expect(test.battle().hitStop).toEqual({ at: impact - 50, until: impact + 40 });
+      expect(screen.getByLabelText('La Sentinelle, PV 80 sur 80, Élan 3 sur 5')).toBeOnTheScreen();
 
       await test.advanceTo(impact + 40);
 
-      expect(screen.getByTestId('battle-feedback')).toHaveTextContent(
-        'Parade parfaiteContre-attaque · 6 dégâts',
-      );
-      expect(announce).toHaveBeenCalledWith('Parade parfaite, Contre-attaque · 6 dégâts');
-      expect(screen.getByRole('button', { name: /^Goule, cible, PV 4 sur 20/u })).toBeOnTheScreen();
+      expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Parfait · contre-attaque');
+      expect(screen.getByText('−6')).toBeOnTheScreen();
+      expect(announce).toHaveBeenCalledWith('Contre-attaque, 6 dégâts');
+      expect(screen.getByRole('button', { name: /^Goule, 34 PV sur 50/u })).toBeOnTheScreen();
     });
 
-    it('shows a good parry, a dodge and a hit with their damage', async () => {
+    it('breaks the guard with the counter: « Cassure », the only word, and « Étourdie ×1,5 » (P3b)', async () => {
+      const test = await renderTrialBattle({
+        seed: seedFor({ ghoul: 'basic' }),
+        createBattle: battleWith(
+          enemyWith(GHOUL, { guard: 10 }),
+          sturdy(SPECTER),
+          targetOn(SPECTER),
+        ),
+      });
+      const impact = await test.toWindUpOf(GHOUL);
+
+      await test.touchDefense('parry', impact - 20);
+      await test.advanceTo(impact + 70);
+
+      expect(screen.getByTestId('battle-feedback')).toHaveTextContent(/^Cassure$/u);
+      expect(
+        within(screen.getByTestId('enemy-ghoul')).getByText('Étourdie ×1,5'),
+      ).toBeOnTheScreen();
+      expect(announce).toHaveBeenCalledWith('Cassure, Goule étourdie');
+    });
+
+    it('shows a good parry and a hit by their figures only, above the hero', async () => {
       withMotion();
       const test = await renderTrialBattle({ seed: seedFor({ ghoul: 'double' }) });
       const impact = await test.toWindUpOf(GHOUL);
 
       await test.touchDefense('parry', impact + 120);
-      expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Parade1 dégât au lieu de 3');
+      expect(screen.getByText('−1')).toBeOnTheScreen();
+      expect(screen.queryByTestId('battle-feedback')).toBeNull();
+      expect(announce).toHaveBeenCalledWith('Parade, 1 dégât');
       expect(sceneProps().heroPose).toBe('lean');
 
       await test.advanceTo(impact + 420 + 161 + 32);
-      expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Touché−2 PV');
+      expect(screen.getByText('−2')).toBeOnTheScreen();
+      expect(screen.queryByText(/Touché/u)).toBeNull();
       expect(screen.getByTestId('battle-flash-red')).toBeOnTheScreen();
-      expect(screen.getByLabelText('La Sentinelle, PV 77 sur 80')).toBeOnTheScreen();
+      expect(screen.getByLabelText('La Sentinelle, PV 77 sur 80, Élan 2 sur 5')).toBeOnTheScreen();
       expect(sceneProps().heroPose).toBe('hit');
     });
 
@@ -377,14 +552,14 @@ describe('TrialBattleScreen', () => {
 
       await test.touchDefense('parry', impact - 400);
 
-      expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Trop tôt');
       expect(screen.getByTestId('battle-pad-hatching')).toBeOnTheScreen();
       expect(screen.getByTestId('battle-off-balance')).toHaveTextContent('Déséquilibré');
       expect(within(pad()).getByRole('button', { name: 'Parade' })).toBeEnabled();
       expect(sceneProps().heroPose).toBe('off');
+      expect(announce).toHaveBeenCalledWith('Trop tôt, déséquilibré');
 
       await test.touchDefense('dodge', impact - 200);
-      expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Déséquilibré');
+      expect(announce).toHaveBeenCalledWith('Déséquilibré');
 
       await test.advanceTo(impact + 251);
       expect(screen.queryByTestId('battle-pad-hatching')).toBeNull();
@@ -395,16 +570,19 @@ describe('TrialBattleScreen', () => {
     reduceMotionInEachTest();
 
     it('shows the banner without slide, and a perfect parry without flash nor shake', async () => {
-      const test = await renderTrialBattle({ seed: seedFor({ ghoul: 'basic' }) });
+      const test = await renderTrialBattle({
+        seed: seedFor({ ghoul: 'basic' }),
+        createBattle: sturdyGhoul,
+      });
       await test.attack();
-      await test.advanceTo(test.clock.now() + 500);
+      await test.runUntil(() => test.battle().phase.kind === 'transition');
       expect(screen.getByTestId('phase-banner-still')).toHaveTextContent(/^Phase ennemie/u);
       expect(screen.queryByTestId('phase-banner')).toBeNull();
 
       const impact = await test.toWindUpOf(GHOUL);
       await test.touchDefense('parry', impact - 30);
 
-      expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Parade parfaite');
+      expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Parfait');
       expect(screen.queryByTestId('battle-flash-light')).toBeNull();
       expect(sceneProps().reducedMotion).toBe(true);
       expect(test.sound.played.at(-1)).toBe('perfectParry');
@@ -412,7 +590,14 @@ describe('TrialBattleScreen', () => {
     });
   });
 
-  describe('end of the battle', () => {
+  describe('end of the battle (F8)', () => {
+    /** Des ennemis à 10 PV : une frappe chacun. */
+    const weakEnemies = battleWith(
+      enemyWith(GHOUL, { hp: 10 }),
+      enemyWith(SPECTER, { hp: 10 }),
+      enemyWith(NECROMANCER, { hp: 10 }),
+    );
+
     async function win(test: TrialBattleTest): Promise<void> {
       for (let round = 0; test.battle().phase.kind !== 'over' && round < 8; round += 1) {
         await test.runUntil(() => ['hero', 'over'].includes(test.battle().phase.kind));
@@ -421,13 +606,17 @@ describe('TrialBattleScreen', () => {
       await test.runUntil(() => test.battle().phase.kind === 'over');
     }
 
-    it('is won, and the player can replay from the start', async () => {
-      const test = await renderTrialBattle({ seed: 3 });
+    it('is won with the respite, and the player can replay from the start', async () => {
+      const test = await renderTrialBattle({ seed: 3, createBattle: weakEnemies });
 
       await win(test);
 
       expect(screen.getByRole('header', { name: 'Combat gagné' })).toBeOnTheScreen();
-      expect(screen.getByText('La Goule et le Spectre sont tombés.')).toBeOnTheScreen();
+      expect(
+        screen.getByText('La Goule, le Spectre et le Nécromancien sont tombés.'),
+      ).toBeOnTheScreen();
+      const respite = events(test).find((event) => event.type === 'respite');
+      expect(respite).toBeDefined();
       expect(announce).toHaveBeenCalledWith('Combat gagné.');
       expect(screen.queryByTestId('trial-tuning-panel')).toBeNull();
       expect(screen.queryByTestId('battle-measures-panel')).toBeNull();
@@ -443,10 +632,27 @@ describe('TrialBattleScreen', () => {
       expect(screen.queryByTestId('battle-feedback')).toBeNull();
     });
 
+    it('shows the respite gained after a victory', async () => {
+      const test = await renderTrialBattle({
+        seed: 3,
+        createBattle: battleWith(
+          enemyWith(GHOUL, { hp: 10 }),
+          enemyWith(SPECTER, { hp: 0 }),
+          enemyWith(NECROMANCER, { hp: 0 }),
+          heroWith({ hp: 50 }),
+        ),
+      });
+
+      await win(test);
+
+      expect(screen.getByText('Répit +8 PV')).toBeOnTheScreen();
+      expect(announce).toHaveBeenCalledWith('Répit, plus 8 PV');
+    });
+
     it('is lost when the Sentinel falls, and the player can replay or leave', async () => {
       const test = await renderTrialBattle({
         seed: seedFor({ ghoul: 'basic' }),
-        createBattle: changed((battle) => ({ ...battle, hero: { ...battle.hero, hp: 4 } })),
+        createBattle: battleWith(heroWith({ hp: 4 })),
       });
       await test.toWindUpOf(GHOUL);
 
@@ -454,6 +660,7 @@ describe('TrialBattleScreen', () => {
 
       expect(screen.getByRole('header', { name: 'Combat perdu' })).toBeOnTheScreen();
       expect(screen.getByText('La Sentinelle est tombée.')).toBeOnTheScreen();
+      expect(screen.queryByText(/Répit/u)).toBeNull();
       expect(sceneProps().heroPose).toBe('fallen');
       await fireEvent.press(screen.getByRole('button', { name: 'Quitter' }));
       expect(test.onClose).toHaveBeenCalledTimes(1);
@@ -461,8 +668,15 @@ describe('TrialBattleScreen', () => {
 
     it('offers the trial tuning and the measures on the preview build', async () => {
       const keyValueStore = memoryKeyValueStore();
-      const test = await renderTrialBattle({ seed: 3, trialTools: true, keyValueStore });
-      const impact = await test.toWindUpOf(GHOUL);
+      const test = await renderTrialBattle({
+        seed: 3,
+        trialTools: true,
+        keyValueStore,
+        createBattle: weakEnemies,
+      });
+      await test.attack();
+      await test.strike(test.clock.now() + 700 - 20);
+      const impact = await test.toWindUpOf(SPECTER);
       await test.touchDefense('parry', impact - 30);
       await win(test);
 
@@ -482,19 +696,19 @@ describe('TrialBattleScreen', () => {
       });
 
       const measures = screen.getByTestId('battle-measures-panel');
-      expect(measures).toHaveTextContent(/Toucher → JS \(1 appuis\) : médiane 0 ms, p95 0 ms/u);
+      expect(measures).toHaveTextContent(/Toucher → JS \(2 appuis\) : médiane 0 ms, p95 0 ms/u);
       expect(measures).toHaveTextContent(/Méthode recalculée : a/u);
       expect(measures).toHaveTextContent(/Appuis redatés : 0/u);
       expect(measures).toHaveTextContent(/Latence du son : médiane 18 ms, p95 40 ms/u);
       expect(measures).toHaveTextContent(/Écarts jugés \(1\) : médiane 30 ms/u);
+      expect(measures).toHaveTextContent(/Écarts des frappes \(1\) : médiane 20 ms/u);
       expect(screen.queryByText(/preview\/|sonde/iu)).toBeNull();
 
       await act(async () => {
         fireEvent.press(screen.getByRole('button', { name: 'Rejouer' }));
       });
       await test.attack();
-      await test.advanceTo(test.clock.now() + 500);
-      expect(test.battle().phase).toMatchObject({ kind: 'transition' });
+      await test.runUntil(() => test.battle().phase.kind === 'transition');
       expect(
         (test.battle().phase as { until: number }).until -
           (test.battle().phase as { since: number }).since,

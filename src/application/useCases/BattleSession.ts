@@ -4,6 +4,7 @@ import {
   heroAction,
   nextDeadline,
   pressDefense,
+  pressStrike,
   startTrialBattle,
   type Battle,
   type BattleUpdate,
@@ -47,6 +48,8 @@ export interface BattleMeasures {
   readonly redatedPresses: number;
   /** L'écart de chaque appui jugé (parade ou esquive), en ms. */
   readonly deltas: readonly number[];
+  /** L'écart du premier appui de chaque frappe en rythme, en ms (mesuré à part). */
+  readonly strikeDeltas: readonly number[];
 }
 
 type Listener = (snapshot: BattleSnapshot) => void;
@@ -77,6 +80,7 @@ export class BattleSession {
   private heroHintPending = false;
   private redatedPresses = 0;
   private deltas: number[] = [];
+  private strikeDeltas: number[] = [];
   private disposed = false;
   private readonly reorderGuardMs: number;
   private readonly createBattle: BattleFactory;
@@ -104,6 +108,7 @@ export class BattleSession {
     this.heroHintPending = heroHint;
     this.redatedPresses = 0;
     this.deltas = [];
+    this.strikeDeltas = [];
     const update = this.createBattle({
       seed: this.dependencies.seeds.next(),
       tuning,
@@ -129,10 +134,16 @@ export class BattleSession {
 
   /** Un appui sur « Parade » ou « Esquive », daté à l'instant où le doigt s'est posé. */
   pressDefense(button: DefenseButton, touchedAt: number): void {
-    const battle = this.snapshot?.battle;
-    if (battle === undefined) return;
-    if (touchedAt < battle.now && !isInHitStop(battle, touchedAt)) this.redatedPresses += 1;
+    const battle = this.dated(touchedAt);
+    if (battle === null) return;
     this.apply(pressDefense(battle, { button, at: touchedAt }));
+  }
+
+  /** Un appui sur « Frapper », daté à l'instant où le doigt s'est posé. */
+  pressStrike(touchedAt: number): void {
+    const battle = this.dated(touchedAt);
+    if (battle === null) return;
+    this.apply(pressStrike(battle, { at: touchedAt }));
   }
 
   /** Une action de la phase du héros, validée au relâcher, avec le début du toucher. */
@@ -140,7 +151,10 @@ export class BattleSession {
     const battle = this.snapshot?.battle;
     if (battle === undefined) return;
     const update = heroAction(battle, { action, touchStartedAt, releasedAt });
-    if (update.events.some((event) => event.type === 'heroAttacked')) {
+    const acted = update.events.some(
+      (event) => event.type === 'strikeStarted' || event.type === 'powerUsed',
+    );
+    if (acted) {
       // La bulle de la phase du héros a servi : elle n'apparaît plus.
       this.dismissHeroHintIfShown();
     }
@@ -162,7 +176,11 @@ export class BattleSession {
   }
 
   measures(): BattleMeasures {
-    return { redatedPresses: this.redatedPresses, deltas: [...this.deltas] };
+    return {
+      redatedPresses: this.redatedPresses,
+      deltas: [...this.deltas],
+      strikeDeltas: [...this.strikeDeltas],
+    };
   }
 
   /** Arrête le combat : plus aucune échéance, plus aucun abonné. */
@@ -171,6 +189,14 @@ export class BattleSession {
     this.cancelTimer?.();
     this.cancelTimer = null;
     this.listeners.clear();
+  }
+
+  /** Le combat en cours, après avoir compté un appui daté avant l'état du moteur. */
+  private dated(touchedAt: number): Battle | null {
+    const battle = this.snapshot?.battle;
+    if (battle === undefined) return null;
+    if (touchedAt < battle.now && !isInHitStop(battle, touchedAt)) this.redatedPresses += 1;
+    return battle;
   }
 
   private dismissHeroHintIfShown(): void {
@@ -207,6 +233,9 @@ export class BattleSession {
       if (sound !== null) this.dependencies.sound.play(sound);
       if (haptic !== null) this.dependencies.haptics.play(haptic);
       if (event.type === 'blowResolved' && event.delta !== null) this.deltas.push(event.delta);
+      if (event.type === 'strikeResolved' && event.delta !== null) {
+        this.strikeDeltas.push(event.delta);
+      }
     }
     this.snapshot = { battle, events, heroHint: this.heroHintShown(battle) };
     this.schedule(battle);

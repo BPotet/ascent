@@ -7,6 +7,7 @@
 - **Décideur** : Architect (notes techniques de #31), avec le dev
 - **Contexte produit** : épique #30, story #31 (prototype jouable du combat)
 - **Numéro** : fixé au merge ; 0006 si aucun autre ADR n'est mergé avant.
+- **Avenant** : 25 octobre 2026, durées internes du combat complet (story #32, voir § 7)
 
 ## Contexte
 
@@ -99,6 +100,21 @@ Décision du propriétaire (22 octobre) : la **double frappe** garde la prépara
 1 000 ms du prototype essayé (maquette). C'est la plus courte préparation possible (800 ms après la
 variation de ×0,8) : la borne C12 du premier impact d'une phase ennemie est donc de **2 000 ms**
 après l'action du héros (800 + 400 + 800).
+
+#### Avenant du 25 octobre 2026 — durées du combat complet (story #32)
+
+La frappe en rythme (C6) et les intentions Garde et Relever (C2) changent les durées de l'action :
+
+- **Attaque** : elle ne dure plus `HERO_ACTION_MS`. Elle va de « Attaquer » à l'impact de la
+  frappe (`STRIKE_WIND_UP_MS`, 700 ms), plus la fin de sa fenêtre (160 ms), plus sa récupération
+  (`STRIKE_RECOVERY_MS`, 320 ms), soit 1 180 ms sans arrêt sur image ; la transition de phase
+  commence ensuite.
+- **Pouvoir** : `HERO_ACTION_MS` (500 ms) ne vaut plus que pour un pouvoir (le Rempart).
+- **Garde et Relever** : nouvelle durée interne `SUPPORT_ACTION_MS`, 400 ms après l'avancée de
+  l'ennemi, avant l'action suivante.
+- **Borne C12** : les 2 000 ms du premier impact d'une phase ennemie se mesurent désormais depuis le
+  début de la transition de phase (800 + 400 + 800), et non plus depuis « Attaquer ». Le balayage
+  de graines le vérifie dans ce sens.
 
 ### 8. Rendu et animations
 

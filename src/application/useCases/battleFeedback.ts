@@ -21,10 +21,11 @@ const BLOW_FEEDBACK: Readonly<Record<BlowOutcome, BattleFeedback>> = {
 };
 
 /**
- * La table des sons et des vibrations du combat (#31, § 4 des notes techniques). Ils partent dès
- * le jugement de l'appui. L'annonce de phase a un son propre à chaque sens, et une vibration
- * légère pour la phase ennemie seulement (C12). L'éclat, la secousse, la bannière et le lecteur
- * d'écran restent à l'interface.
+ * La table des sons et des vibrations du combat (#31, § 4 des notes techniques, complétée par
+ * #32). Ils partent dès le jugement de l'appui. L'annonce de phase a un son propre à chaque sens,
+ * et une vibration légère pour la phase ennemie seulement (C12) ; « À toi » sans transition garde
+ * son son. La frappe parfaite et la cassure de garde vibrent (C5.1, C6.7). L'éclat, la secousse,
+ * la bannière et le lecteur d'écran restent à l'interface.
  */
 export function feedbackFor(event: BattleEvent): BattleFeedback {
   switch (event.type) {
@@ -40,6 +41,24 @@ export function feedbackFor(event: BattleEvent): BattleFeedback {
         : { sound: 'heroPhase', haptic: null };
     case 'battleEnded':
       return { sound: event.outcome, haptic: null };
+    case 'heroPhaseStarted':
+      return event.announced ? { sound: 'heroPhase', haptic: null } : NONE;
+    case 'strikeResolved':
+      return event.judgement === 'perfect'
+        ? { sound: 'perfectStrike', haptic: 'perfectStrike' }
+        : { sound: 'strike', haptic: null };
+    case 'guardBroken':
+      return { sound: 'guardBreak', haptic: 'guardBreak' };
+    case 'actionLost':
+      return { sound: 'lostAction', haptic: null };
+    case 'guardRestored':
+      return { sound: 'guardRestore', haptic: null };
+    case 'guardRaised':
+      return { sound: 'guardUp', haptic: null };
+    case 'allyRaised':
+      return { sound: 'raise', haptic: null };
+    case 'powerUsed':
+      return { sound: event.power, haptic: null };
     default:
       return NONE;
   }
