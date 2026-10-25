@@ -16,7 +16,7 @@ Tu travailles **en lecture seule**, **en même temps que le reviewer** : tu ne m
 5. Liste les tests manquants pour les cas limites : dates, fuseaux horaires, jours sautés, données vides, double saisie.
 
 ## Mode prototype
-Si la story ou la PR porte le label `prototype` (voir « Mode prototype » dans `docs/workflow.md`), ta démarche se limite à vérifier que les **barrières gardées** sont vertes : secrets, commits, style, types, architecture, tests unitaires des règles du domaine (et seuil de couverture du domaine), build de l'APK, end-to-end en test de fumée, et les tests existants. Tu ne lances pas la mutation, tu n'exiges ni test BDD des scénarios Gherkin, ni seuil de couverture du code nouveau, ni liste de cas limites. Dans le rapport, remplace les lignes de coverage et de mutation par « Mode prototype : mutation et seuil du code nouveau levés ».
+Si la PR porte le label `prototype` (voir « Mode prototype » dans `docs/workflow.md`), ta démarche se limite à vérifier que les **barrières gardées** sont vertes : secrets, commits, style, types, architecture, tests unitaires des règles du domaine, seuils de couverture et SonarQube Cloud, build de l'APK, end-to-end en test de fumée, et les tests existants. Tu ne lances pas la mutation, tu n'exiges ni test BDD des scénarios Gherkin ni liste de cas limites. Dans le rapport, remplace la ligne de mutation par « Mode prototype : mutation des lignes changées levée ».
 
 ## Ce que tu produis
 Un commentaire sur la PR :

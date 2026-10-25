@@ -264,9 +264,9 @@ Le dev ne fait pas de micro-cycles test par test. Pour chaque couche, dans l'ord
 
 Le test reste écrit avant le code. Si beaucoup de tests échouent sans qu'on comprenne pourquoi, il redescend à un cycle plus fin pour cette partie. On vise environ **4 à 6 commits par story**.
 
-En **mode prototype** (label `prototype`), le TDD ne porte que sur les règles du domaine. Les autres couches n'ont pas de test exigé, en dehors du test de fumée end-to-end (voir « Mode prototype »).
+Le hook pre-commit (dont le typecheck) tourne à chaque commit. Hors mode prototype, les barrières et leurs seuils sont inchangés.
 
-Le hook pre-commit (dont le typecheck) tourne à chaque commit, les barrières et leurs seuils sont inchangés.
+En **mode prototype** (label `prototype`), le TDD ne porte que sur les règles du domaine. Les autres couches n'ont pas de test exigé, en dehors du test de fumée end-to-end. Les seuils de couverture restent (voir « Mode prototype »).
 
 ### 6 et 7. Test et Review, en parallèle
 Quand le dev sort la PR du brouillon (barrières vertes en local), l'orchestrateur passe la story en `status:review` et lance **en même temps** le **QA** (étape 6) et le **Reviewer** (étape 7, `/review-story`). Aucun des deux n'attend l'autre.
@@ -276,7 +276,7 @@ Tous deux sont en **lecture seule** : ils ne modifient ni le code, ni les tests,
 - **QA** : fait tourner toutes les barrières de qualité ci-dessous, en local puis en CI, lit les rapports de couverture et de mutation, et liste les tests manquants (mutants survivants, cas limites). Verdict : **vert** ou **changements demandés**.
 - **Reviewer** : vérifie la PR par rapport aux critères d'acceptation, à l'architecture, au glossaire, aux maquettes et aux rapports de la CI (coverage, mutation, Sonar). Verdict : **approuvé** ou **changements demandés**, avec des commentaires précis.
 
-En **mode prototype** (label `prototype`), les deux rôles sont allégés : le QA vérifie seulement que les barrières gardées sont vertes, le Reviewer ne compare pas les captures pixel à pixel à la maquette (voir « Mode prototype »).
+En **mode prototype** (label `prototype`), l'orchestrateur vérifie d'abord que le label est sur la PR. Les deux rôles sont allégés : le QA vérifie seulement que les barrières gardées sont vertes ; le Reviewer ne compare pas les captures pixel à pixel à la maquette, et il vérifie que le code définitif n'est modifié que pour brancher le prototype (voir « Mode prototype »).
 
 #### Corrections
 
@@ -325,19 +325,19 @@ Toutes sont **bloquantes**. Les outils sont confirmés par l'Architect dans l'[A
 | 10 bis | **Conformité aux maquettes** | Les écrans livrés correspondent aux maquettes validées (captures d'écran des tests end-to-end jointes à la PR) | Revue (Reviewer) | Review |
 | 11 | **Glossaire** | Les termes nouveaux ou modifiés figurent dans `docs/glossary.md` | Revue (Reviewer) | Review |
 
-En **mode prototype** (label `prototype`), certaines barrières sont levées :
+En **mode prototype** (label `prototype`), sur la PR seulement, quelques barrières sont levées. `develop` et les releases gardent toutes les barrières.
 
-| # | Barrière | En mode prototype |
+| # | Barrière | Sur une PR en mode prototype |
 |---|---|---|
 | 1 | Secrets | Gardée |
 | 1 bis | Commits | Gardée |
 | 2, 3, 4 | Style, types, architecture | Gardées |
 | 5 | Tests unitaires | Gardée pour les règles du domaine |
-| 6 | Tests d'intégration | Levée pour le code du prototype ; les tests existants restent verts |
+| 6 | Tests d'intégration | Pas exigés pour le code du prototype ; les tests existants restent verts |
 | 7 | Tests BDD | Levée : les scénarios Gherkin restent dans la story comme spécification ; les tests existants restent verts |
 | 8 | Tests end-to-end | Test de fumée : l'app s'ouvre, l'écran s'affiche |
-| 9 | Tests de mutation | Levée : la CI saute les jobs de mutation |
-| 10 | Coverage et qualité | Seuil du code nouveau levé ; seuil du domaine et quality gate gardés |
+| 9 | Tests de mutation | Levée pour les lignes changées : la CI saute les jobs de mutation |
+| 10 | Coverage et qualité | Gardée : seuils de couverture et quality gate inchangés |
 | 10 bis | Conformité aux maquettes | Levée : pas de comparaison stricte des captures |
 | 11 | Glossaire | Gardée, avec la documentation |
 
@@ -376,41 +376,50 @@ Règles pour l'orchestrateur :
 
 ### Mode prototype
 
-Décision du propriétaire du 25 octobre 2026 : tant qu'on explore, inutile d'empiler les tests. Le mode prototype allège les barrières pour essayer vite une mécanique de jeu ou un rendu, avant sa version définitive.
+Décision du propriétaire du 25 octobre 2026 : tant qu'on explore, inutile d'empiler les tests. Le mode prototype allège les barrières d'une PR pour essayer vite une mécanique de jeu ou un rendu, avant sa version définitive.
 
 **Activation**
 
-- Une story ou une PR porte le label `prototype`.
-- L'orchestrateur le pose, sur décision du propriétaire, quand on explore une mécanique de jeu ou un rendu. Jamais de sa propre initiative.
-- Il pose aussi le label sur la PR de la story, au plus tard avant sa sortie du brouillon. La CI lit les labels de la PR à chaque push et à la sortie du brouillon. Sur un push vers `develop`, il n'y a pas de PR : rien ne change.
+- Une story porte le label `prototype`. L'orchestrateur le pose, sur décision du propriétaire, quand on explore une mécanique de jeu ou un rendu. Jamais de sa propre initiative.
+- Le dev pose le même label sur la PR **à son ouverture**, quand la story le porte.
+- L'orchestrateur vérifie que la PR porte le label avant de lancer le QA et le Reviewer.
+- La CI lit les labels de la PR à chaque push, à l'ouverture et à la sortie du brouillon, jamais quand un label change. Ajouter ou retirer `prototype` n'a donc d'effet qu'**après un nouveau push** : sans lui, l'auto-merge ne s'active pas.
 
-**Barrières gardées**
+**Ce qui est levé, sur la PR seulement**
+
+- la mutation des lignes changées : la CI saute le plan, les shards et le job final ; un check sauté compte comme réussi pour la protection de branche ;
+- l'automatisation des scénarios Gherkin : ils restent dans la story comme spécification ;
+- la comparaison stricte des captures à la maquette ;
+- la QA complète : le QA vérifie seulement que les barrières gardées sont vertes.
+
+**Ce qui est gardé**
 
 - secrets (Gitleaks) ;
 - commits et titre de la PR au format Conventional Commits ;
 - style, types et architecture hexagonale (dependency-cruiser) ;
-- tests unitaires des règles du domaine, avec le seuil de couverture du domaine ;
+- tests unitaires des règles du domaine ;
+- seuils de couverture et quality gate SonarQube Cloud : la couverture de `develop` est très au-dessus du seuil, un prototype ne la fait pas passer au rouge ;
 - build de l'APK ;
 - end-to-end en **test de fumée** : l'app s'ouvre, l'écran s'affiche ;
 - glossaire et documentation à jour ;
-- revue par le Reviewer, allégée : il vérifie l'architecture, le glossaire et l'absence de régression hors prototype. Il ne vérifie pas la conformité pixel à pixel à la maquette.
+- revue par le Reviewer, allégée : architecture, glossaire, absence de régression hors prototype et respect du code définitif (ci-dessous). Pas de conformité pixel à pixel à la maquette.
 
-**Barrières levées**
+En local, le dev lance `npm run verify`, mais pas `npm run mutation:changed`.
 
-- tests de mutation : la CI saute le plan, les shards et le job final ; un check sauté compte comme réussi pour la protection de branche ;
-- scénarios Gherkin automatisés : ils restent dans la story comme spécification ;
-- seuils de couverture du code nouveau : la CI lève le seuil global de Jest (`PROTOTYPE_MODE=true`, `scripts/ci/coverage-threshold.cjs`) et ne compte pas la couverture dans SonarQube Cloud. Tous les tests tournent quand même ;
-- comparaison stricte des captures à la maquette ;
-- QA complète : le QA vérifie seulement que les barrières gardées sont vertes.
+**Code définitif**
 
-En local, le dev lance `PROTOTYPE_MODE=true npm run verify` et ne lance pas la mutation.
+- Une PR `prototype` ne modifie le code définitif que pour **brancher** le prototype : assemblage, navigation, injection d'un port.
+- Toute autre modification du code définitif passe par une PR sans le label, avec toutes les barrières.
+- Le code du prototype ne casse jamais une fonctionnalité définitive : leurs tests restent verts.
 
-**Validation** : le propriétaire juge le prototype sur l'APK (artefact de la PR, ou build de preview de `develop` après le merge). Le merge suit les règles habituelles : verdicts du QA et du Reviewer, CI verte.
+**Validation** : le propriétaire juge le prototype sur le **build de preview de `develop`**, après le merge. Le merge suit les règles habituelles : verdicts du QA et du Reviewer, CI verte.
 
 **Sortie du mode prototype**
 
-- Quand une mécanique est jugée bonne, une story « version définitive » remet toutes les barrières sur le code concerné.
-- Le code du prototype ne casse jamais une fonctionnalité définitive : leurs tests restent verts.
+- Le mode ne vaut que pour la PR. Sur `develop`, la CI ne connaît pas le label. La branche `release/*` garde toutes les barrières, dont la mutation de tout le code hors écrans. Un prototype non repris bloque donc la release : c'est voulu.
+- Une épique qui contient une story `prototype` n'est publiée qu'une fois sa story « version définitive » mergée, ou le code du prototype retiré.
+- Prototype jugé bon : le PM crée la story « version définitive » dès que le propriétaire l'a jugé bon sur la preview. Elle remet toutes les barrières sur le code concerné.
+- Prototype jugé mauvais : son code est retiré par une tâche `type:chore`.
 
 **Combat** : décision du propriétaire du 25 octobre 2026. Le gameplay du combat se teste à la main, sur l'APK. Son end-to-end reste un test de fumée.
 
@@ -470,7 +479,7 @@ gitGraph
 
 | Déclencheur | Ce qui tourne | Résultat |
 |---|---|---|
-| **PR vers `develop`** (`feature/`, `bugfix/`, `chore/`, `docs/`) | Toutes les barrières de qualité : commits, secrets, style, types, architecture, unitaires, intégration, BDD, mutation sur le code nouveau hors écrans (lignes ajoutées ou modifiées ; fichiers du domaine modifiés en entier), en jobs parallèles (le code hors domaine et hors écrans en 3 parts, 6 en release : voir l'[ADR 0004](adr/0004-mutation-en-ci.md)), écrans compris seulement avec le label `mutation:ui`, SonarQube Cloud. End-to-end sur une plateforme. Avec le label `prototype`, sans mutation ni seuil de couverture du code nouveau (voir « Mode prototype »). | Auto-merge (squash) si tout est vert et les verdicts du QA et du Reviewer verts sur la tête de la PR |
+| **PR vers `develop`** (`feature/`, `bugfix/`, `chore/`, `docs/`) | Toutes les barrières de qualité : commits, secrets, style, types, architecture, unitaires, intégration, BDD, mutation sur le code nouveau hors écrans (lignes ajoutées ou modifiées ; fichiers du domaine modifiés en entier), en jobs parallèles (le code hors domaine et hors écrans en 3 parts, 6 en release : voir l'[ADR 0004](adr/0004-mutation-en-ci.md)), écrans compris seulement avec le label `mutation:ui`, SonarQube Cloud. End-to-end sur une plateforme. Avec le label `prototype`, sans mutation (voir « Mode prototype »). | Auto-merge (squash) si tout est vert et les verdicts du QA et du Reviewer verts sur la tête de la PR |
 | **Push sur `develop`** | Les mêmes barrières sur le résultat du merge, sauf la mutation (déjà faite par la PR), puis un **build de preview** installable sur le téléphone du propriétaire | Le propriétaire peut essayer la prochaine version |
 | **Branche `release/x.y.z`** | Suite complète : end-to-end **iOS et Android**, mutation sur tout le code hors écrans, SonarQube Cloud. Génération du changelog. Build de production. | Merge dans `main` si tout est vert |
 | **Merge sur `main`** | Tag `vX.Y.Z`, GitHub Release avec le changelog, build de production distribué | Nouvelle version publiée |
@@ -486,6 +495,7 @@ Conservation des artefacts (stockage GitHub Actions limité) : l'APK est gardé 
 ### Releases
 
 - Une release est déclenchée **automatiquement**, sans validation du propriétaire, par l'orchestrateur **quand une épique est terminée**. Le propriétaire peut aussi en demander une à tout moment.
+- Une épique qui contient une story `prototype` n'est terminée qu'une fois sa story « version définitive » mergée, ou le code du prototype retiré (voir « Mode prototype »).
 - Le numéro de version est calculé à partir des commits Conventional Commits depuis la dernière version : `BREAKING CHANGE` → MAJOR, `feat` → MINOR, `fix` → PATCH.
 - La branche `release/x.y.z` ne reçoit que la préparation de la version (changelog, numéro de version) et des corrections de bugs trouvés pendant la release, jamais de nouvelle fonctionnalité.
 - `release/*` et `hotfix/*` sont mergées dans `main` avec un **commit de merge** (pas de squash), pour garder l'historique, puis réintégrées dans `develop`.
