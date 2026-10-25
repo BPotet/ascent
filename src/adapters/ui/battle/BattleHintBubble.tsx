@@ -11,7 +11,8 @@ export const BATTLE_HINTS = {
   },
   defense: {
     title: 'Lis son geste',
-    text: "Quand il frappe, touche Parade. S'il porte un sceau rouge, touche Esquive.",
+    // Aides visuelles Légères (le défaut) : la bulle parle de l'anneau (maquette, `pcoach`).
+    text: "Touche Parade quand l'anneau se ferme. Sceau rouge : Esquive.",
     arrow: '50%',
   },
 } as const;

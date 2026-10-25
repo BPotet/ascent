@@ -40,15 +40,17 @@ const perfectStrike: BattleEvent = {
 };
 
 describe('displayOf (display state of the trial battle)', () => {
-  it('starts idle, without feedback, float, flash nor shake', () => {
+  it('starts idle, without feedback, float, spark, vignette nor shake', () => {
     expect(INITIAL_DISPLAY).toEqual({
       snapshot: null,
       feedback: null,
       float: null,
       heroPose: 'idle',
-      flash: null,
+      heroPoseSince: 0,
+      spark: null,
+      hurtAt: null,
+      downSince: {},
       shakeKey: 0,
-      streaksAt: null,
     });
   });
 
@@ -59,31 +61,40 @@ describe('displayOf (display state of the trial battle)', () => {
 
   it.each([
     ['perfectParry', 'counter'],
-    ['parry', 'lean'],
+    ['parry', 'parry'],
     ['dodge', 'dodge'],
     ['perilousParry', 'hit'],
     ['suffered', 'hit'],
-  ] as const)('poses the hero after a %s', (outcome, pose) => {
-    expect(displayOf(INITIAL_DISPLAY, snapshot([blow(outcome, 1)]), false).heroPose).toBe(pose);
+  ] as const)('poses the hero after a %s, from the instant of the blow', (outcome, pose) => {
+    const display = displayOf(INITIAL_DISPLAY, snapshot([blow(outcome, 1, 1_300)]), false);
+    expect([display.heroPose, display.heroPoseSince]).toEqual([pose, 1_300]);
   });
 
-  it('flashes light, shakes and draws streaks on a perfect parry', () => {
+  it('shows a golden spark and shakes on a perfect parry', () => {
     const display = displayOf(INITIAL_DISPLAY, snapshot([blow('perfectParry', 0, 1_234)]), false);
 
-    expect(display.flash).toEqual({ kind: 'light', key: 1 });
+    expect(display.spark).toEqual({ kind: 'gold', at: 1_234 });
+    expect(display.hurtAt).toBeNull();
     expect(display.shakeKey).toBe(1);
-    expect(display.streaksAt).toBe(1_234);
     expect(display.feedback).toEqual({ texts: [{ tone: 'perfect', title: 'Parfait' }], key: 1 });
   });
 
-  it.each(['suffered', 'perilousParry'] as const)(
-    'flashes red and shakes on a %s blow, the damage flying above the hero',
-    (outcome) => {
-      const display = displayOf(INITIAL_DISPLAY, snapshot([blow(outcome, 4)]), false);
+  it('shows a steel blue spark on a good parry, without text nor shake (P4)', () => {
+    const display = displayOf(INITIAL_DISPLAY, snapshot([blow('parry', 1, 1_500)]), false);
 
-      expect(display.flash).toEqual({ kind: 'red', key: 1 });
+    expect(display.spark).toEqual({ kind: 'steel', at: 1_500 });
+    expect(display.feedback).toBeNull();
+    expect(display.shakeKey).toBe(0);
+  });
+
+  it.each(['suffered', 'perilousParry'] as const)(
+    'shows the red vignette and shakes on a %s blow, the damage flying above the hero',
+    (outcome) => {
+      const display = displayOf(INITIAL_DISPLAY, snapshot([blow(outcome, 4, 900)]), false);
+
+      expect(display.hurtAt).toBe(900);
       expect(display.shakeKey).toBe(1);
-      expect(display.streaksAt).toBeNull();
+      expect(display.spark).toBeNull();
       expect(display.float).toEqual({
         float: { at: 'hero', text: '−4', big: false, kind: 'damage' },
         key: 1,
@@ -93,26 +104,36 @@ describe('displayOf (display state of the trial battle)', () => {
     },
   );
 
-  it.each(['parry', 'dodge'] as const)('neither flashes nor shakes on a %s', (outcome) => {
-    const display = displayOf(INITIAL_DISPLAY, snapshot([blow(outcome, 1)]), false);
+  it('neither shakes nor shows the vignette on a dodge', () => {
+    const display = displayOf(INITIAL_DISPLAY, snapshot([blow('dodge', 0)]), false);
 
-    expect(display.flash).toBeNull();
-    expect(display.shakeKey).toBe(0);
+    expect([display.hurtAt, display.spark, display.shakeKey]).toEqual([null, null, 0]);
   });
 
-  it('neither flashes nor shakes with reduced motion, but keeps the streaks instant', () => {
-    const display = displayOf(INITIAL_DISPLAY, snapshot([blow('perfectParry', 0, 50)]), true);
+  it('neither shakes nor shows the vignette with reduced motion, but keeps the spark', () => {
+    const suffered = displayOf(INITIAL_DISPLAY, snapshot([blow('suffered', 4)]), true);
+    const parried = displayOf(INITIAL_DISPLAY, snapshot([blow('perfectParry', 0, 50)]), true);
 
-    expect(display.flash).toBeNull();
-    expect(display.shakeKey).toBe(0);
-    expect(display.streaksAt).toBe(50);
+    expect([suffered.hurtAt, suffered.shakeKey]).toEqual([null, 0]);
+    expect(parried.spark).toEqual({ kind: 'gold', at: 50 });
+    expect(parried.shakeKey).toBe(0);
   });
 
-  it('numbers each new flash, shake, feedback and float', () => {
+  it('keeps the instant each enemy fell, for its hurt frame (F5)', () => {
+    const display = displayOf(
+      INITIAL_DISPLAY,
+      snapshot([{ type: 'guardBroken', at: 1_740, enemy: 0, by: 'strike' }]),
+      false,
+    );
+
+    expect(display.downSince).toEqual({ 0: 1_740 });
+  });
+
+  it('numbers each new shake, feedback and float', () => {
     const once = displayOf(INITIAL_DISPLAY, snapshot([blow('suffered', 4)]), false);
     const twice = displayOf(once, snapshot([blow('perfectParry'), perfectStrike]), false);
 
-    expect(twice.flash).toEqual({ kind: 'light', key: 2 });
+    expect(twice.spark).toEqual({ kind: 'gold', at: 1_000 });
     expect(twice.shakeKey).toBe(2);
     expect(twice.feedback?.key).toBe(1);
     expect(twice.float?.key).toBe(2);
@@ -123,7 +144,7 @@ describe('displayOf (display state of the trial battle)', () => {
 
     expect(display.feedback?.texts).toEqual([{ tone: 'perfect', title: 'Frappe parfaite' }]);
     expect(display.float?.float).toEqual({ at: 0, text: '−15', big: true, kind: 'damage' });
-    expect(display.heroPose).toBe('lean');
+    expect(display.heroPose).toBe('strike');
   });
 
   it('shows « Cassure » under « Frappe parfaite » when the perfect strike breaks the guard', () => {
@@ -162,20 +183,25 @@ describe('displayOf (display state of the trial battle)', () => {
 
   it.each([
     [{ type: 'whiffed', at: 0, button: 'parry', reason: 'early' }, 'idle', 'off'],
-    [perfectStrike, 'idle', 'lean'],
-    [{ type: 'strikeStarted', at: 0, enemy: 0, impactAt: 700, until: 1_180 }, 'lean', 'idle'],
+    [perfectStrike, 'raise', 'strike'],
+    [{ type: 'strikeStarted', at: 0, enemy: 0, impactAt: 700, until: 1_180 }, 'parry', 'raise'],
+    [
+      { type: 'counterAttacked', at: 0, enemy: 0, damage: 6, guardDamage: 12, until: 400 },
+      'counter',
+      'strike',
+    ],
     [
       { type: 'windUpStarted', at: 0, enemy: 0, attack: 'basic', impacts: [900], feintAt: null },
       'hit',
       'idle',
     ],
     [{ type: 'heroPhaseStarted', at: 0, announced: false }, 'hit', 'idle'],
-    [{ type: 'phaseTransitionStarted', at: 0, to: 'enemy', until: 800 }, 'lean', 'idle'],
+    [{ type: 'phaseTransitionStarted', at: 0, to: 'enemy', until: 800 }, 'strike', 'idle'],
     [{ type: 'phaseTransitionStarted', at: 0, to: 'hero', until: 800 }, 'hit', 'hit'],
     [{ type: 'offBalanceEnded', at: 0 }, 'off', 'idle'],
     [{ type: 'offBalanceEnded', at: 0 }, 'hit', 'hit'],
     [{ type: 'battleEnded', at: 0, outcome: 'defeat' }, 'hit', 'fallen'],
-    [{ type: 'battleEnded', at: 0, outcome: 'victory' }, 'lean', 'idle'],
+    [{ type: 'battleEnded', at: 0, outcome: 'victory' }, 'strike', 'idle'],
     [{ type: 'stepInStarted', at: 0, enemy: 1, until: 400 }, 'hit', 'hit'],
   ] as [BattleEvent, string, string][])(
     'after %j, poses the hero from %s to %s',

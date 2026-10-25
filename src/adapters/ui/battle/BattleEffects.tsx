@@ -78,36 +78,6 @@ export function DamageFloat({ float }: { readonly float: Float }) {
   );
 }
 
-/**
- * L'éclat plein écran : lumière pour une parade parfaite, vignette rouge pour un coup reçu. Jamais
- * avec « réduire les animations » (l'écran ne le monte pas).
- */
-export function Flash({
-  kind,
-  flashKey,
-}: {
-  readonly kind: 'light' | 'red';
-  readonly flashKey: number;
-}) {
-  const opacity = useSharedValue(1);
-  useEffect(() => {
-    opacity.set(1);
-    opacity.set(withTiming(0, { duration: 450 }));
-  }, [flashKey, opacity]);
-  // Dépendances explicites : le code instrumenté par Stryker n'est plus reconnu comme worklet.
-  const style = useAnimatedStyle(() => {
-    'worklet';
-    return { opacity: opacity.get() };
-  }, [opacity]);
-  return (
-    <Animated.View
-      pointerEvents="none"
-      testID={`battle-flash-${kind}`}
-      style={[styles.flash, kind === 'light' ? styles.light : styles.red, style]}
-    />
-  );
-}
-
 /** La secousse de la scène (320 ms), relancée à chaque `shakeKey` ; aucune s'il vaut 0. */
 export function useShake(shakeKey: number) {
   const offset = useSharedValue(0);
@@ -161,8 +131,5 @@ const styles = StyleSheet.create({
   floatHero: { color: battleColors.miss },
   floatGuard: { color: battleColors.guard },
   floatBig: { color: battleColors.light, fontSize: 32 },
-  flash: { ...StyleSheet.absoluteFill, zIndex: 6 },
-  light: { backgroundColor: battleColors.flash },
-  red: { backgroundColor: battleColors.flashRed },
 });
 // Stryker restore all
