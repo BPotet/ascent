@@ -68,18 +68,17 @@ tags:
 
 # E2 · Succès : la Journée, la ligne créée bordée d'or, « Habitude créée » et l'aide au premier usage
 # au-dessus du bouton flottant (marge calée sur son emprise réelle, revue de #75).
+# Le cadre d'or (1,8 s) et le message (2,8 s) sont brefs : la capture suit leur apparition.
 - tapOn:
     id: 'create-habit'
 - extendedWaitUntil:
-    notVisible: 'Nouvelle habitude'
-    timeout: 10000
-- extendedWaitUntil:
     visible: 'Habitude créée.*'
     timeout: 10000
+- takeScreenshot: week-month-pixel-art-E2-3-created-day-view
+- assertNotVisible: 'Nouvelle habitude'
 - assertVisible:
     id: 'check-in-hint'
 - assertVisible: 'Courir 5 km, .+, à faire, .+, Difficile, 20 XP par suivi'
-- takeScreenshot: week-month-pixel-art-E2-3-created-day-view
 
 # E2 · Erreur : le doublon « courir 5 km », validé au clavier (↵) comme aujourd'hui : cadre rouge,
 # icône et message actuel, bouton hachuré.
@@ -93,7 +92,7 @@ tags:
 - inputText: 'courir 5 km'
 - pressKey: Enter
 - extendedWaitUntil:
-    visible: 'Tu as déjà une habitude .Courir 5 km.\.'
+    visible: 'Tu as déjà une habitude[\s\u00A0]+«[\s\u00A0]*Courir 5 km[\s\u00A0]*»\.'
     timeout: 10000
 - takeScreenshot: week-month-pixel-art-E2-4-duplicate
 # Le panneau se ferme par « Annuler », une fois le clavier fermé s'il l'est encore.
