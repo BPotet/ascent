@@ -542,6 +542,10 @@ describe('BattleSession', () => {
       expect(typesOf(context.session.current()!.events)).toEqual(['powerUsed', 'momentumChanged']);
       expect(context.session.current()!.heroHint).toBe(false);
       expect(context.sound.played).toEqual(['bulwark']);
+      // La bulle a servi : elle est retenue, et n'apparaît plus au combat suivant.
+      await Promise.resolve();
+      expect(context.keyValueStore.values.get(BATTLE_HINT_SEEN_KEYS.hero)).toBe('1');
+      expect((await context.session.start()).heroHint).toBe(false);
     });
 
     it('closes the hero hint when the first attack starts, whatever its target', async () => {
