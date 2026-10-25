@@ -109,6 +109,16 @@ describe('CharacterBar', () => {
     expect(spriteOf('day-sky')).toMatch(/x66$/u);
   });
 
+  it('raises its lantern at sunrise, when every expected habit is done', async () => {
+    const clock = settableClock(wednesday);
+    await createHabit({ clock, unitOfWork }, 'Cuisiner');
+    await toggleCheckIn({ clock, unitOfWork }, 1, wednesday);
+
+    await show(<CharacterBar xp={10} change={null} />);
+
+    await waitFor(() => expect(spriteOf('character-sprite')).toBe('character-2'));
+  });
+
   it('lights the day sky with the habits done today', async () => {
     const clock = settableClock(wednesday);
     for (const name of ['Cuisiner', 'Lire', 'Courir', 'Méditer', 'Marcher']) {

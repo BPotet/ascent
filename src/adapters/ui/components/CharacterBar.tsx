@@ -3,10 +3,10 @@ import { type LayoutChangeEvent, StyleSheet, Text, useWindowDimensions, View } f
 
 import { formatXp, formatXpChange } from '../format/formatXp';
 import { artPalette } from '../pixelArt/artPalette';
-import { ART_PIXEL, artPixelSize } from '../pixelArt/artPixel';
+import { artPixelSize } from '../pixelArt/artPixel';
 import { PixelFrame } from '../pixelArt/PixelFrame';
 import { pixelTypography } from '../pixelArt/pixelTypography';
-import { characterSprite } from '../pixelArt/sprites/characterSprite';
+import { type CharacterFrame, characterSprite } from '../pixelArt/sprites/characterSprite';
 import { paintDaySky } from '../pixelArt/sprites/paintDaySky';
 import { toPixelImage } from '../pixelArt/sprites/Sprite';
 import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
@@ -16,6 +16,9 @@ import { useReducedMotion } from '../state/useReducedMotion';
 import { type ShownXpChange, TARGET_BONUS_DELAY_MS } from '../state/xpFeedback';
 
 const { roles } = artPalette;
+
+/** Le pixel d'art, arrondi au pixel physique du téléphone (traits, crans, pas des envols). */
+const LINE = artPixelSize(2);
 
 /** Le libellé de l'expérience dans l'en-tête, lu aussi par le lecteur d'écran. */
 export const CHARACTER_XP_LABEL = 'Expérience du personnage';
@@ -35,8 +38,8 @@ function sharesOf({ amount, bonus = 0 }: ShownXpChange): {
   return { checkIn: amount - bonus, bonus };
 }
 
-/** Le sprite du personnage, au repos. */
-const drawCharacter = () => toPixelImage(characterSprite(0));
+/** Le personnage : au repos, ou la lanterne levée au lever du soleil (maquette, « Toutes faites »). */
+const characterFrameOf = (light: number): CharacterFrame => (light === 1 ? 2 : 0);
 
 /**
  * Une pastille d'expérience (`XpChangePill`) : « +10 XP » sur l'or, « +30 XP prime » sur la lumière
@@ -64,7 +67,7 @@ function XpChangePill({
       style={[
         styles.pill,
         { backgroundColor: gain ? background : roles.raised },
-        { transform: [{ translateY: (PILL_FRAMES - 1 - frame) * ART_PIXEL }] },
+        { transform: [{ translateY: (PILL_FRAMES - 1 - frame) * LINE }] },
       ]}
     >
       <Text style={[pixelTypography.xpChange, { color: gain ? roles.ink : roles.parchment }]}>
@@ -129,7 +132,7 @@ function XpPlate({ xp, gainId }: { readonly xp: number; readonly gainId: number 
 
 /**
  * L'en-tête du personnage (`CharacterBar`), en haut de la Vue Journée, de la Vue Semaine et de la
- * Vue Mois (R24, #72) : le personnage en pixels (×2), devant le ciel du jour (`useDaySky`) et la
+ * Vue Mois (R24, #72) : le personnage en pixels (×2, la lanterne levée au lever du soleil), devant le ciel du jour (`useDaySky`) et la
  * tour au loin, et l'expérience totale, « 340 XP ». Ni niveau, ni jauge d'expérience. Le lecteur
  * d'écran ignore le personnage, le ciel et la tour, et lit « Expérience du personnage : 340 XP »,
  * toujours la nouvelle valeur.
@@ -159,6 +162,7 @@ export function CharacterBar({
   const pixel = artPixelSize(2);
   const columns = Math.ceil(width / pixel);
   const rows = Math.ceil(Math.max(minHeight, height) / pixel);
+  const frame = characterFrameOf(light);
   const gainId = change !== null && sharesOf(change).checkIn > 0 ? change.id : null;
 
   const measure = ({ nativeEvent }: LayoutChangeEvent) =>
@@ -174,8 +178,8 @@ export function CharacterBar({
         style={styles.sky}
       />
       <SpriteCanvas
-        sprite="character-0"
-        draw={drawCharacter}
+        sprite={`character-${frame}`}
+        draw={() => toPixelImage(characterSprite(frame))}
         scale={2}
         testID="character-sprite"
         style={styles.character}
