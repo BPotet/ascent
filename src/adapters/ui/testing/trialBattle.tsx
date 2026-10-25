@@ -25,7 +25,12 @@ import {
 import type { AttackStep } from '../../../domain/battle/Battle';
 import type { DefenseButton } from '../../../domain/battle/BattleEvent';
 import { Day } from '../../../domain/day/Day';
-import { ATTACK_GESTURE_TEST_ID, DEFENSE_GESTURE_TEST_IDS } from '../battle/ActionPad';
+import {
+  ATTACK_GESTURE_TEST_ID,
+  DEFENSE_GESTURE_TEST_IDS,
+  POWER_GESTURE_TEST_ID,
+  STRIKE_GESTURE_TEST_ID,
+} from '../battle/ActionPad';
 import { enemyGestureTestId } from '../battle/EnemyColumn';
 import { TrialBattleScreen } from '../screens/TrialBattleScreen';
 import { memoryKeyValueStore } from './memoryKeyValueStore';
@@ -124,8 +129,18 @@ export async function renderTrialBattle({
 
   /** Le doigt se pose sur « Parade » ou « Esquive » à `at` ; le geste se termine ensuite. */
   async function touchDefense(button: DefenseButton, at: number, step = 0): Promise<void> {
+    await touch(DEFENSE_GESTURE_TEST_IDS[button], at, step);
+  }
+
+  /** Le doigt se pose sur « Frapper » à `at` ; le geste se termine ensuite. */
+  async function strike(at: number, step = 0): Promise<void> {
+    await touch(STRIKE_GESTURE_TEST_ID, at, step);
+  }
+
+  /** Un geste daté quand le doigt se pose ; `step` fait avancer le fil UI à chaque étape suivante. */
+  async function touch(testId: string, at: number, step: number): Promise<void> {
     await advanceTo(at);
-    const gesture = getByGestureTestId(DEFENSE_GESTURE_TEST_IDS[button]);
+    const gesture = getByGestureTestId(testId);
     advanceOnLaterSteps(gesture, step);
     uiAhead = 0;
     fireGestureHandler(gesture, [{ state: State.BEGAN }]);
@@ -171,6 +186,11 @@ export async function renderTrialBattle({
     await release(ATTACK_GESTURE_TEST_ID, startedAt, releasedAt);
   }
 
+  /** « Pouvoir » (le Rempart), posé à `startedAt` et relâché 80 ms après. */
+  async function power(startedAt = clock.now()): Promise<void> {
+    await release(POWER_GESTURE_TEST_ID, startedAt, startedAt + 80);
+  }
+
   async function touchEnemy(enemy: number, startedAt = clock.now()): Promise<void> {
     await release(enemyGestureTestId(enemy), startedAt, startedAt + 80);
   }
@@ -195,6 +215,8 @@ export async function renderTrialBattle({
     advanceTo,
     runUntil,
     touchDefense,
+    strike,
+    power,
     release,
     attack,
     touchEnemy,

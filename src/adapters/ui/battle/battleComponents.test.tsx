@@ -2,20 +2,36 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
-import type { EnemyState } from '../../../domain/battle/Battle';
+import type { EnemyView } from '../state/battleView';
 import { battleColors } from '../theme/battleColors';
 import { ActionPad } from './ActionPad';
+import { DamageFloat, FeedbackLabel } from './BattleEffects';
+import { BattleEndPanel } from './BattleEndPanel';
 import { BATTLE_HINTS, BattleHintBubble } from './BattleHintBubble';
 import { EnemyColumn } from './EnemyColumn';
 import { HeroBar } from './HeroBar';
 import { PhaseBanner } from './PhaseBanner';
+import { columnWidth } from './sceneTypes';
 
-const ghoul: EnemyState = {
+const ghoul: EnemyView = {
   kind: 'ghoul',
-  hp: 15,
-  maxHp: 20,
-  intent: { attack: 'double', damage: 3, windUpMs: 1_100, feintFraction: 0.5 },
+  name: 'Goule',
+  standing: true,
+  target: false,
+  hpRatio: 0.76,
+  hpText: '38/50 PV',
+  guardRatio: 1,
+  guardText: 'Garde 15/15',
+  stunned: false,
+  losingAction: false,
+  rising: null,
+  intent: { category: 'attack' },
+  active: false,
+  dimmed: false,
+  label: 'Goule, 38 PV sur 50, garde 15 sur 15, intention : attaque',
 };
+
+const sentinel = { hp: 56, maxHp: 80, momentum: 2, bulwark: false };
 
 function style(testID: string) {
   return StyleSheet.flatten(
@@ -23,18 +39,53 @@ function style(testID: string) {
   );
 }
 
+const noop = () => undefined;
+
+function padProps() {
+  return {
+    targetName: 'Goule',
+    uiNow: () => 0,
+    now: () => 4_321,
+    onDefense: jest.fn(),
+    onAttack: jest.fn(),
+    onPower: jest.fn(),
+    onStrike: jest.fn(),
+  } as const;
+}
+
 describe('HeroBar', () => {
   it.each([
     [23, battleColors.heroHpLow],
     [24, battleColors.heroHp],
   ])('colours %i HP out of 80 as an alert under 30 %', async (hp, color) => {
-    await render(<HeroBar hero={{ hp, maxHp: 80 }} />);
+    await render(<HeroBar hero={{ ...sentinel, hp }} />);
 
     expect(style('battle-hero-hp')).toMatchObject({
       backgroundColor: color,
       width: `${100 * (hp / 80)}%`,
     });
     expect(screen.getByText(`PV ${hp}/80`)).toBeOnTheScreen();
+  });
+
+  it('shows the momentum as 5 diamonds, the full ones first (C3)', async () => {
+    await render(<HeroBar hero={sentinel} />);
+
+    expect(
+      screen.getAllByTestId('battle-momentum-full', { includeHiddenElements: true }),
+    ).toHaveLength(2);
+    expect(
+      screen.getAllByTestId('battle-momentum-empty', { includeHiddenElements: true }),
+    ).toHaveLength(3);
+    expect(screen.getByText('Élan')).toBeOnTheScreen();
+    expect(screen.getByLabelText('La Sentinelle, PV 56 sur 80, Élan 2 sur 5')).toBeOnTheScreen();
+  });
+
+  it('tells the screen reader when the Bulwark is up', async () => {
+    await render(<HeroBar hero={{ ...sentinel, bulwark: true }} />);
+
+    expect(
+      screen.getByLabelText('La Sentinelle, PV 56 sur 80, Élan 2 sur 5, Rempart'),
+    ).toBeOnTheScreen();
   });
 });
 
@@ -43,11 +94,11 @@ describe('EnemyColumn', () => {
     const onTarget = jest.fn();
     await render(
       <EnemyColumn
-        enemy={ghoul}
+        view={ghoul}
         index={0}
-        target={false}
-        dimmed={false}
+        width={130}
         sealed={false}
+        float={null}
         uiNow={() => 0}
         now={() => 4_321}
         onTarget={onTarget}
@@ -57,19 +108,68 @@ describe('EnemyColumn', () => {
     return { onTarget };
   }
 
-  it('shows the intent, the name and the HP of the enemy', async () => {
+  it('shows the intent as a blade only, the HP, the name and the guard', async () => {
     await renderColumn();
 
-    expect(screen.getByText('2×3')).toBeOnTheScreen();
+    expect(
+      screen.getByTestId('enemy-ghoul-intent-attack', { includeHiddenElements: true }),
+    ).toBeOnTheScreen();
+    expect(screen.queryByText(/\+\d/)).toBeNull();
+    expect(screen.getByText('38/50 PV')).toBeOnTheScreen();
     expect(screen.getByText('Goule')).toBeOnTheScreen();
-    expect(screen.getByText('15/20')).toBeOnTheScreen();
+    expect(screen.getByText('Garde 15/15')).toBeOnTheScreen();
     expect(screen.queryByTestId('peril-seal')).toBeNull();
     expect(style('enemy-ghoul').opacity).toBeUndefined();
-    expect(style('enemy-ghoul-hp').width).toBe('75%');
+    expect(style('enemy-ghoul-hp').width).toBe('76%');
+    expect(style('enemy-ghoul-guard').width).toBe('100%');
+  });
+
+  it('shows the shield and its gain for a Guard intent', async () => {
+    await renderColumn({ view: { ...ghoul, intent: { category: 'guard', gain: 3 } } });
+
+    expect(
+      screen.getByTestId('enemy-ghoul-intent-guard', { includeHiddenElements: true }),
+    ).toBeOnTheScreen();
+    expect(screen.getByTestId('enemy-ghoul-intent')).toHaveTextContent('+3', { exact: true });
+  });
+
+  it('shows the barred circle, « Étourdie ×1,5 » and the stars of a stunned enemy', async () => {
+    await renderColumn({
+      view: {
+        ...ghoul,
+        stunned: true,
+        guardRatio: 0,
+        guardText: 'Étourdie ×1,5',
+        intent: { category: 'skip', reason: 'stunned' },
+      },
+    });
+
+    expect(
+      screen.getByTestId('enemy-ghoul-intent-skip', { includeHiddenElements: true }),
+    ).toBeOnTheScreen();
+    expect(screen.getByText('Étourdie ×1,5')).toBeOnTheScreen();
+    expect(
+      screen.getByTestId('enemy-ghoul-stars', { includeHiddenElements: true }),
+    ).toBeOnTheScreen();
+  });
+
+  it('shows no intent once the stunned enemy has lost its action', async () => {
+    await renderColumn({ view: { ...ghoul, stunned: true, intent: null } });
+
+    expect(screen.queryByTestId(/enemy-ghoul-intent/, { includeHiddenElements: true })).toBeNull();
+  });
+
+  it('hides its name and its figures in the trimmed enemy phase', async () => {
+    await renderColumn({ view: { ...ghoul, name: null, hpText: null, guardText: null } });
+
+    expect(screen.queryByText('Goule')).toBeNull();
+    expect(screen.queryByText('38/50 PV')).toBeNull();
+    expect(screen.queryByText('Garde 15/15')).toBeNull();
+    expect(screen.getByLabelText(ghoul.label)).toBeOnTheScreen();
   });
 
   it('lights the name of the target, and marks it selected', async () => {
-    await renderColumn({ target: true });
+    await renderColumn({ view: { ...ghoul, target: true } });
 
     expect(StyleSheet.flatten(screen.getByText('Goule').props.style).color).toBe(
       battleColors.light,
@@ -80,11 +180,11 @@ describe('EnemyColumn', () => {
     });
   });
 
-  it('fades while another enemy attacks, and disappears once down', async () => {
-    await renderColumn({ dimmed: true });
+  it('fades while another enemy acts, and disappears once fallen', async () => {
+    await renderColumn({ view: { ...ghoul, dimmed: true } });
     expect(style('enemy-ghoul').opacity).toBe(0.45);
 
-    await renderColumn({ enemy: { ...ghoul, hp: 0 } });
+    await renderColumn({ view: { ...ghoul, standing: false } });
     expect(style('enemy-ghoul').opacity).toBe(0);
     expect(screen.getByTestId('enemy-ghoul').props.accessibilityState.disabled).toBe(true);
   });
@@ -95,6 +195,14 @@ describe('EnemyColumn', () => {
     expect(screen.getByLabelText('Sceau rouge : coup imparable')).toBeOnTheScreen();
   });
 
+  it('flies the damage it takes', async () => {
+    await renderColumn({
+      float: { float: { at: 0, text: '−15', big: true, kind: 'damage' }, key: 1 },
+    });
+
+    expect(screen.getByText('−15')).toBeOnTheScreen();
+  });
+
   it('targets the enemy with the screen reader', async () => {
     const { onTarget } = await renderColumn();
 
@@ -103,6 +211,14 @@ describe('EnemyColumn', () => {
     });
 
     expect(onTarget).toHaveBeenCalledWith(0, 4_321, 4_321);
+  });
+});
+
+describe('columnWidth', () => {
+  it('narrows the columns so that three enemies fit on a phone', () => {
+    expect(columnWidth(390, 3)).toBe(127);
+    expect(columnWidth(900, 2)).toBe(160);
+    expect(columnWidth(390, 0)).toBe(160);
   });
 });
 
@@ -133,47 +249,141 @@ describe('PhaseBanner', () => {
   });
 });
 
-describe('ActionPad', () => {
-  it('shows nothing at the end of the battle', async () => {
+describe('FeedbackLabel and DamageFloat', () => {
+  it('shows « Cassure » in its own tone, under « Frappe parfaite »', async () => {
     await render(
-      <ActionPad
-        pad={{ kind: 'none' }}
-        targetName="Goule"
-        uiNow={() => 0}
-        now={() => 0}
-        onDefense={jest.fn()}
-        onAttack={jest.fn()}
+      <FeedbackLabel
+        texts={[
+          { tone: 'perfect', title: 'Frappe parfaite' },
+          { tone: 'break', title: 'Cassure' },
+        ]}
       />,
     );
+
+    expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Frappe parfaiteCassure');
+  });
+
+  it('enlarges the figure of a perfect strike', async () => {
+    await render(<DamageFloat float={{ at: 0, text: '−15', big: true, kind: 'damage' }} />);
+    const big = StyleSheet.flatten(screen.getByText('−15').props.style).fontSize;
+
+    await render(<DamageFloat float={{ at: 0, text: '−10', big: false, kind: 'damage' }} />);
+    const plain = StyleSheet.flatten(screen.getByText('−10').props.style).fontSize;
+
+    expect(big).toBeGreaterThan(plain);
+  });
+});
+
+describe('BattleEndPanel', () => {
+  it('shows the respite after a victory', async () => {
+    await render(<BattleEndPanel outcome="victory" respite={8} onReplay={noop} onClose={noop} />);
+
+    expect(screen.getByText('Combat gagné')).toBeOnTheScreen();
+    expect(screen.getByText('Répit +8 PV')).toBeOnTheScreen();
+  });
+
+  it('shows no respite after a defeat', async () => {
+    await render(<BattleEndPanel outcome="defeat" respite={null} onReplay={noop} onClose={noop} />);
+
+    expect(screen.queryByText(/Répit/)).toBeNull();
+  });
+});
+
+describe('ActionPad', () => {
+  it('shows nothing at the end of the battle', async () => {
+    await render(<ActionPad pad={{ kind: 'none' }} {...padProps()} />);
 
     expect(screen.queryByTestId('battle-pad')).toBeNull();
   });
 
-  it('shows « Attends » without its bar while the hero attack is resolved', async () => {
+  it('shows « Attends » without its bar while a hero action is resolved', async () => {
     await render(
       <ActionPad
-        pad={{ kind: 'hero', locked: true, lock: null }}
-        targetName="Goule"
-        uiNow={() => 0}
-        now={() => 0}
-        onDefense={jest.fn()}
-        onAttack={jest.fn()}
+        pad={{
+          kind: 'hero',
+          locked: true,
+          lock: null,
+          power: { power: 'bulwark', cost: 1, missing: 0 },
+        }}
+        {...padProps()}
       />,
     );
 
     expect(screen.getByTestId('battle-lock-tag')).toHaveTextContent('Attends');
   });
 
+  it('shows Pouvoir on the left with the Bulwark and its cost, Attaquer on the right', async () => {
+    const props = padProps();
+    await render(
+      <ActionPad
+        pad={{
+          kind: 'hero',
+          locked: false,
+          lock: null,
+          power: { power: 'bulwark', cost: 1, missing: 0 },
+        }}
+        {...props}
+      />,
+    );
+
+    expect(screen.getByTestId('battle-power-button')).toHaveTextContent('PouvoirRempart · 1 Élan');
+    expect(screen.getByLabelText('Pouvoir : Rempart, 1 Élan')).toBeOnTheScreen();
+    await fireEvent(screen.getByTestId('battle-power-button'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'activate' },
+    });
+    expect(props.onPower).toHaveBeenCalledWith(4_321, 4_321);
+  });
+
+  it('keeps Pouvoir visible but unavailable, telling the momentum it misses (C3)', async () => {
+    const props = padProps();
+    await render(
+      <ActionPad
+        pad={{
+          kind: 'hero',
+          locked: false,
+          lock: null,
+          power: { power: 'bulwark', cost: 1, missing: 1 },
+        }}
+        {...props}
+      />,
+    );
+
+    expect(screen.getByTestId('battle-power-button')).toHaveTextContent('PouvoirIl manque 1 Élan');
+    expect(screen.getByTestId('battle-power-button').props.accessibilityState).toEqual({
+      disabled: true,
+    });
+    await fireEvent(screen.getByTestId('battle-power-button'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'activate' },
+    });
+    expect(props.onPower).not.toHaveBeenCalled();
+  });
+
+  it('turns into a single « Frapper », with its bar and its mark, during the strike', async () => {
+    const props = padProps();
+    await render(
+      <ActionPad
+        pad={{ kind: 'strike', since: 1_000, impactAt: 1_700, resolved: false }}
+        {...props}
+      />,
+    );
+
+    expect(screen.getByTestId('battle-strike-button')).toHaveTextContent('Frapper');
+    expect(screen.queryByTestId('battle-attack-button')).toBeNull();
+    expect(
+      screen.getByTestId('battle-strike-mark', { includeHiddenElements: true }),
+    ).toBeOnTheScreen();
+    await fireEvent(screen.getByTestId('battle-strike-button'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'activate' },
+    });
+    expect(props.onStrike).toHaveBeenCalledWith(4_321);
+  });
+
   it('presses Parade and Esquive with the screen reader, at the JS instant', async () => {
-    const onDefense = jest.fn();
+    const props = padProps();
     await render(
       <ActionPad
         pad={{ kind: 'defense', locked: false, lock: null, offBalance: false }}
-        targetName="Goule"
-        uiNow={() => 0}
-        now={() => 4_321}
-        onDefense={onDefense}
-        onAttack={jest.fn()}
+        {...props}
       />,
     );
 
@@ -183,7 +393,7 @@ describe('ActionPad', () => {
       });
     }
 
-    expect(onDefense.mock.calls).toEqual([
+    expect(props.onDefense.mock.calls).toEqual([
       ['parry', 4_321],
       ['dodge', 4_321],
     ]);

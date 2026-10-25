@@ -110,6 +110,8 @@ export function measureLines({
     `Latence du son : ${spread(soundLatencies)}`,
     `Écarts jugés (${session.deltas.length}) : ${spread(session.deltas.map(Math.abs))}`,
     `Répartition : ${deltaBuckets(session.deltas)}`,
+    `Écarts des frappes (${session.strikeDeltas.length}) : ${spread(session.strikeDeltas.map(Math.abs))}`,
+    `Répartition des frappes : ${deltaBuckets(session.strikeDeltas)}`,
   ];
 }
 

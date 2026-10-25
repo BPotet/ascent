@@ -9,6 +9,7 @@ import { router } from 'expo-router';
 import { createAudioPlayer } from 'expo-audio';
 import path from 'node:path';
 
+import { BATTLE_SOUND_CUES } from '../../src/application/ports/BattleSound';
 import { openAscentDatabase } from '../../src/adapters/persistence/sqlite/openAscentDatabase';
 import { prepareAscentDatabase } from '../../src/adapters/persistence/sqlite/prepareAscentDatabase';
 import { openNodeSqliteDatabase } from '../../src/adapters/persistence/testing/nodeSqliteDatabase';
@@ -98,7 +99,7 @@ describe('trial battle route', () => {
       await renderRouter(appDirectory, { initialUrl: TRIAL_BATTLE_URL });
 
       await trialBattleIsShown();
-      expect(jest.mocked(createAudioPlayer)).toHaveBeenCalledTimes(10);
+      expect(jest.mocked(createAudioPlayer)).toHaveBeenCalledTimes(BATTLE_SOUND_CUES.length);
     });
   });
 

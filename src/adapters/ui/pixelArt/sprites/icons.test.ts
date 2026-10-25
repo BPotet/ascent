@@ -40,6 +40,12 @@ describe('the icons', () => {
     expect(iconNames).not.toContain('tTower');
   });
 
+  it('has the intent icons of the battle: blade, shield, heart, arrow and barred circle (#32)', () => {
+    expect(iconNames).toEqual(
+      expect.arrayContaining(['iAttack', 'iGuard', 'iHeal', 'iRaise', 'iSkip']),
+    );
+  });
+
   it('mirrors « left » into « right »', () => {
     ICONS.left.forEach((row, index) =>
       expect(ICONS.right[index]).toBe([...row].reverse().join('')),

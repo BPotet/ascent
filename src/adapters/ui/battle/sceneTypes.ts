@@ -8,8 +8,12 @@ export interface SceneEnemy {
   readonly kind: EnemyKind;
   readonly standing: boolean;
   readonly target: boolean;
-  /** Un autre ennemi attaque : celui-ci s'efface. */
+  /** Un autre ennemi agit : celui-ci s'efface. */
   readonly dimmed: boolean;
+  /** L'ennemi actif, au premier plan. */
+  readonly active: boolean;
+  /** Étourdi : à terre, avec ses étoiles. */
+  readonly down: boolean;
 }
 
 /**
@@ -38,4 +42,9 @@ export interface FrameMeter {
   readonly frames: SharedNumber;
   readonly dropped: SharedNumber;
   readonly worstGap: SharedNumber;
+}
+
+/** La largeur d'une colonne d'ennemi : 160 au plus, moins pour que trois tiennent sur l'écran. */
+export function columnWidth(sceneWidth: number, count: number): number {
+  return Math.min(160, Math.floor((sceneWidth - 8) / Math.max(1, count)));
 }
