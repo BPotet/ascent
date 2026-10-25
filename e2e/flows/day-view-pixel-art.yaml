@@ -1,7 +1,8 @@
 # Story #72 : la Journée en pixel art, avec ses retours de jeu.
-# Parcours : premier lancement, Vue Journée vide (le personnage à ×3 sous un ciel de nuit) →
+# Parcours : l'écran de démarrage (E6, fugace : capturé au plus tôt) → Vue Journée vide (le personnage à ×3 sous un ciel de nuit) →
 # création de « Cuisiner » : l'aide au premier usage dans un cadre cranté → un tap : la case verte
 # et sa coche, l'étincelle et « +10 XP », « 1/1 faites » et « Toutes faites » → les onglets :
+# un second tap : « −10 XP » en gris (retour en arrière), puis de nouveau « fait » → les onglets :
 # l'en-tête du personnage dans la Vue Semaine et la Vue Mois, puis retour à la Vue Journée.
 # Captures pour la comparaison avec la maquette (E1, F1, E6 et la barre d'onglets).
 appId: com.bpotet.ascent
@@ -9,6 +10,11 @@ name: La Journée en pixel art
 tags:
   - story-72
 ---
+# E6 · Démarrage : la tour dans la nuit, le titre et les trois carrés, le temps d'ouvrir les données.
+# L'écran est fugace : la capture est prise dès le lancement, sans attente.
+- launchApp:
+    clearState: true
+- takeScreenshot: day-view-pixel-art-0-startup
 - runFlow: ../subflows/launch-fresh.yaml
 
 # E1 · Vide, première utilisation : le personnage attend, un seul bouton.
@@ -65,6 +71,21 @@ tags:
 - assertNotVisible:
     id: 'check-in-hint'
 - takeScreenshot: day-view-pixel-art-4-all-done
+
+# F1 · Retour en arrière : « −10 XP » en gris, sans étincelle ; la case revient au cadre d'or.
+- tapOn:
+    id: 'habit-row-1'
+- takeScreenshot: day-view-pixel-art-4b-back-to-do
+- extendedWaitUntil:
+    visible: 'Cuisiner, .+, à faire, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
+    timeout: 10000
+- assertNotVisible:
+    id: 'check-mark'
+- tapOn:
+    id: 'habit-row-1'
+- extendedWaitUntil:
+    visible: 'Cuisiner, .+, fait, .+ cette semaine, Moyenne, 10 XP par suivi(, objectif atteint)?'
+    timeout: 10000
 
 # La barre d'onglets : Journée, Semaine et Mois ; l'en-tête du personnage dans chaque vue.
 - tapOn:
