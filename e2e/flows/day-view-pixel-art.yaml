@@ -11,10 +11,21 @@ tags:
   - story-72
 ---
 # E6 · Démarrage : la tour dans la nuit, le titre et les trois carrés, le temps d'ouvrir les données.
-# L'écran est fugace : la capture est prise dès le lancement, sans attente.
+# L'écran est fugace (le temps d'ouvrir les données) : le parcours attend qu'il soit affiché, et ne
+# le capture que s'il l'a vu, jamais l'écran d'accueil d'Android à sa place.
 - launchApp:
     clearState: true
-- takeScreenshot: day-view-pixel-art-0-startup
+- extendedWaitUntil:
+    visible:
+      id: 'startup-loading'
+    timeout: 5000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: 'startup-loading'
+    commands:
+      - takeScreenshot: day-view-pixel-art-0-startup
 - runFlow: ../subflows/launch-fresh.yaml
 
 # E1 · Vide, première utilisation : le personnage attend, un seul bouton.
@@ -35,6 +46,7 @@ tags:
 - tapOn:
     id: 'new-habit-name'
 - inputText: 'Cuisiner'
+- hideKeyboard
 - tapOn:
     id: 'create-habit'
 - extendedWaitUntil:
