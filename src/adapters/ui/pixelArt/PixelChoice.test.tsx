@@ -1,8 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { Text } from 'react-native';
 
 import { artPalette } from './artPalette';
-import { PixelChoice } from './PixelChoice';
+import { PixelChoice, TICK_SIZE, TICK_TOP } from './PixelChoice';
 import { textFont } from './pixelTypography';
 
 const hidden = { includeHiddenElements: true };
@@ -93,5 +93,55 @@ describe('PixelChoice', () => {
       fontFamily: textFont.medium,
       color: roles.gold,
     });
+  });
+
+  it('never lays its tick over the number of a narrow filled option: the tick has its own line above it', async () => {
+    await render(
+      <PixelChoice
+        label="7 fois par semaine"
+        text="7"
+        filled
+        checked
+        onPress={jest.fn()}
+        testID="choice"
+      />,
+    );
+
+    const slot = screen.getByTestId('choice-tick-slot', hidden);
+    expect(slot).not.toHaveStyle({ position: 'absolute' });
+    expect(slot).toHaveStyle({ height: TICK_SIZE });
+    const frame = screen.getByTestId('choice-frame-choice');
+    expect(frame).toHaveStyle({ flexDirection: 'column' });
+    const children = frame.children as unknown[];
+    expect(children.indexOf(slot)).toBeLessThan(children.indexOf(screen.getByText('7')));
+    expect(within(slot).getByTestId('choice-tick', hidden)).toBeTruthy();
+  });
+
+  it('keeps the line of the tick on a filled option not chosen, so that the numbers stay aligned', async () => {
+    await render(
+      <PixelChoice
+        label="3 fois par semaine"
+        text="3"
+        filled
+        checked={false}
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('choice-tick-slot', hidden)).toHaveStyle({ height: TICK_SIZE });
+    expect(screen.queryByTestId('choice-tick', hidden)).toBeNull();
+  });
+
+  it('puts the tick of a wide option in its top right corner', async () => {
+    await render(
+      <PixelChoice label="Moyenne" text="Moyenne" checked onPress={jest.fn()} testID="choice" />,
+    );
+
+    expect(screen.getByTestId('choice-tick-corner', hidden)).toHaveStyle({
+      position: 'absolute',
+      top: TICK_TOP,
+      right: TICK_TOP,
+    });
+    expect(screen.queryByTestId('choice-tick-slot', hidden)).toBeNull();
   });
 });
