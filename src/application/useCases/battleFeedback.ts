@@ -1,5 +1,6 @@
 import { ATTACKS } from '../../domain/battle/attacks';
 import type { BattleEvent, BlowOutcome } from '../../domain/battle/BattleEvent';
+import type { GlintKind } from '../../domain/battle/glints';
 import type { BattleHapticCue } from '../ports/BattleHaptics';
 import type { BattleSoundCue } from '../ports/BattleSound';
 
@@ -8,6 +9,14 @@ export interface BattleFeedback {
   readonly sound: BattleSoundCue | null;
   readonly haptic: BattleHapticCue | null;
 }
+
+/** Le son de chaque reflet (C2.10), joué par la session de combat en avance de sa latence. */
+export const GLINT_CUES: Readonly<Record<GlintKind, BattleSoundCue>> = {
+  white: 'glint',
+  double: 'glintDouble',
+  red: 'glintPerilous',
+  dull: 'glintDull',
+};
 
 const NONE: BattleFeedback = { sound: null, haptic: null };
 

@@ -1,5 +1,5 @@
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
-import { feedbackFor } from './battleFeedback';
+import { GLINT_CUES, feedbackFor } from './battleFeedback';
 
 const blow = (outcome: Extract<BattleEvent, { type: 'blowResolved' }>['outcome']): BattleEvent => ({
   type: 'blowResolved',
@@ -148,5 +148,16 @@ describe('feedbackFor (sounds and vibrations of a battle)', () => {
     expect(toHero.haptic).toBeNull();
     expect(toEnemy.haptic).toBe('enemyPhase');
     expect(toHero.sound).not.toBe(toEnemy.sound);
+  });
+});
+
+describe('GLINT_CUES (the sound of each glint, C2.10)', () => {
+  it('gives each glint its own sound', () => {
+    expect(GLINT_CUES).toEqual({
+      white: 'glint',
+      double: 'glintDouble',
+      red: 'glintPerilous',
+      dull: 'glintDull',
+    });
   });
 });
