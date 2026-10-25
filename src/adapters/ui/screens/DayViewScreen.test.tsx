@@ -341,6 +341,7 @@ describe('DayViewScreen', () => {
       await createMeditation();
       // La ligne est à l'écran (160 à 236), mais sous le bouton, qui couvre les 80 derniers dp.
       await layout('habit-card-2', 160, 76);
+      await fireEvent(list(), 'contentSizeChange', 390, 360);
 
       expect(scrollTo).toHaveBeenCalledWith({ y: 16, animated: false });
     });
@@ -353,6 +354,7 @@ describe('DayViewScreen', () => {
       await layout('day-view-list', 0, 300);
       await createMeditation();
       await layout('habit-card-2', 340, 76);
+      await fireEvent(list(), 'contentSizeChange', 390, 560);
       expect(scrollTo).toHaveBeenCalledTimes(1);
 
       // La ligne bouge (une aide apparaît au-dessus) : elle n'est plus déplacée sous le doigt.
@@ -372,6 +374,7 @@ describe('DayViewScreen', () => {
       await fireEvent.scroll(list(), { nativeEvent: { contentOffset: { x: 0, y: 196 } } });
 
       await layout('habit-card-2', 340, 76);
+      await fireEvent(list(), 'contentSizeChange', 390, 560);
 
       expect(scrollTo).not.toHaveBeenCalled();
     });
@@ -438,9 +441,35 @@ describe('DayViewScreen', () => {
 
         await createMeditation();
         await layout('habit-card-2', 280, 76);
+        await fireEvent(list(), 'contentSizeChange', 390, 474);
 
         // Le bas de la ligne (356), plus 80 dp, moins 360 : 76 dp, et non 108 avec les 112 dp.
         expect(scrollTo).toHaveBeenCalledWith({ y: 76, animated: false });
+      });
+
+      it('waits for the list to hold the new row before scrolling to it, so that the scroll is not cut short', async () => {
+        const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+        await given('Cuisiner', 'Lire');
+        await show();
+        await screen.findByText('Lire');
+        await layout('day-view-list', 0, 360);
+        await layout('add-habit', 568, 56);
+        // Le contenu avant la création : 2 lignes, le libellé et la marge du bouton.
+        await fireEvent(list(), 'contentSizeChange', 390, 330);
+
+        await createMeditation();
+        // La ligne est placée avant que le contenu de la liste ne grandisse : sur Android, un
+        // défilement demandé à cet instant s'arrêterait au bas de l'ancien contenu (330 − 360 :
+        // aucun défilement), et la ligne resterait sous le bouton.
+        await layout('habit-card-3', 324, 76);
+        expect(scrollTo).not.toHaveBeenCalled();
+
+        await fireEvent(list(), 'contentSizeChange', 390, 518);
+
+        // Le bas de la ligne (400), plus 80 dp, moins 360 : 120 dp, une seule fois.
+        expect(scrollTo).toHaveBeenCalledWith({ y: 120, animated: false });
+        await fireEvent(list(), 'contentSizeChange', 390, 600);
+        expect(scrollTo).toHaveBeenCalledTimes(1);
       });
 
       it('keeps the label « Habitudes » and its counter above the button at the end of the list', async () => {

@@ -208,6 +208,8 @@ function HabitList({
   /** La place de chaque ligne dans la liste, et la partie de la liste à l'écran. */
   const rows = useRef(new Map<HabitId, RowPlace>());
   const shown = useRef({ offset: 0, height: 0 });
+  /** La hauteur du contenu de la liste, telle que la liste l'a reçue. */
+  const contentHeight = useRef(0);
   /** L'habitude créée déjà révélée : elle ne bouge plus ensuite, sous le doigt du joueur. */
   const revealed = useRef<HabitId | null>(null);
   // Une habitude créée, en bas de la liste, n'y est montrée que si elle est sous le bord de
@@ -219,7 +221,11 @@ function HabitList({
     }
     const row = rows.current.get(highlighted.id);
     const offset = row && revealOffsetOf(row, shown.current, bottomSpace);
-    if (offset !== undefined && offset !== null) {
+    // Le défilement attend que le contenu de la liste tienne la ligne et la place du bouton : placée
+    // avant que le contenu ne grandisse, la ligne serait hors de portée, et Android arrêterait le
+    // défilement au bas de l'ancien contenu, la ligne sous le bouton.
+    const held = row !== undefined && contentHeight.current >= row.y + row.height + bottomSpace;
+    if (offset !== undefined && offset !== null && held) {
       revealed.current = highlighted.id;
       scroll.current?.scrollTo({ y: offset, animated: false });
     }
@@ -250,7 +256,10 @@ function HabitList({
       <ScrollView
         ref={scroll}
         contentContainerStyle={[styles.list, styles.fill, { paddingBottom: bottomSpace }]}
-        onContentSizeChange={reveal}
+        onContentSizeChange={(_width, height) => {
+          contentHeight.current = height;
+          reveal();
+        }}
         onLayout={({ nativeEvent }) => {
           shown.current = { ...shown.current, height: nativeEvent.layout.height };
         }}
