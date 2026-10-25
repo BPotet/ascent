@@ -5,7 +5,8 @@
 # (`features/week-month-pixel-art.feature`) et les tests d'intégration. Ici, le tap sur la case
 # d'aujourd'hui joue le même retour qu'une correction.
 # Parcours : Vue Semaine vide (E4) → « Nouvelle habitude » vide, saisie (Difficile, objectif 1),
-# créée : la Journée avec l'aide au premier usage (E2) → doublon refusé (E2) → Vue Semaine, puis la
+# créée : la Journée avec l'aide au premier usage (E2) → doublon refusé (E2) → « Lire », révélée
+# au-dessus du bouton et du message, et touchée aussitôt (E2) → Vue Semaine, puis la
 # case d'aujourd'hui qui atteint l'objectif (E4) → « Modifier l'habitude » ouvert, difficulté
 # modifiée, enregistré, puis confirmation de suppression annulée (E3) → Vue Mois, objectifs par semaine,
 # Détail du jour avec un tap (E5).
@@ -109,6 +110,37 @@ tags:
       - tapOn: 'Annuler'
 - extendedWaitUntil:
     notVisible: 'Nouvelle habitude'
+    timeout: 10000
+
+# E2 · Une seconde habitude, créée au bas de la liste : la liste défile pour la montrer au-dessus du
+# bouton flottant et du message « Habitude créée ». La capture suit la création ; la ligne se
+# touche aussitôt (« fait », puis de nouveau « à faire »), sans toucher le bouton.
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Lire'
+- hideKeyboard
+- tapOn:
+    id: 'create-habit'
+- extendedWaitUntil:
+    visible: 'Habitude créée.*'
+    timeout: 10000
+- takeScreenshot: week-month-pixel-art-E2-5-created-revealed
+- assertVisible: 'Lire, .+, à faire, .+'
+- tapOn:
+    id: 'habit-row-2'
+- extendedWaitUntil:
+    visible: 'Lire, .+, fait, .+'
+    timeout: 10000
+- assertNotVisible: 'Nouvelle habitude'
+- tapOn:
+    id: 'habit-row-2'
+- extendedWaitUntil:
+    visible: 'Lire, .+, à faire, .+'
     timeout: 10000
 
 # E4 · Cette semaine : la carte, ses 7 cases et la puce « 0/1 ».
@@ -217,7 +249,7 @@ tags:
     element:
       id: 'targets-by-week'
     direction: DOWN
-- assertVisible: 'Cette semaine, 1 objectif atteint sur 1, ouvrir la semaine'
+- assertVisible: 'Cette semaine, 1 objectif atteint sur 2, ouvrir la semaine'
 - takeScreenshot: week-month-pixel-art-E5-2-targets-by-week
 
 # E5 · Détail du jour : le panneau et ses lignes en pixel art, puis un tap et son retour de jeu.
