@@ -229,7 +229,11 @@ function HabitList({
   // bas de l'ancien contenu, sans erreur ni nouvel événement. Il est donc vérifié par la position
   // reçue (`onScroll`) et redemandé, au prochain événement de mise en page ou après
   // `REVEAL_CHECK_MS`, `REVEAL_ATTEMPTS` fois au plus. Il est fini dès que la ligne est à l'écran,
-  // ou dès que le joueur fait défiler la liste lui-même.
+  // que la liste est à sa cible (à 1 dp près), ou dès que le joueur touche la liste.
+  const finish = (id: HabitId | null) => {
+    revealed.current = id;
+    clearTimeout(check.current);
+  };
   const reveal = () => {
     if (highlighted?.reveal !== true || revealed.current === highlighted.id) {
       return;
@@ -241,7 +245,7 @@ function HabitList({
     }
     const wanted = revealOffsetOf(row, shown.current, bottomSpace);
     if (wanted === null) {
-      revealed.current = id;
+      finish(id);
       return;
     }
     // Pas plus loin que le contenu connu : il grandira, et le défilement suivra.
@@ -249,13 +253,17 @@ function HabitList({
       contentHeight.current > 0 ? contentHeight.current - shown.current.height : wanted;
     const target = Math.min(wanted, reachable);
     if (target <= shown.current.offset + 1) {
+      // À sa cible, à 1 dp près : la révélation est finie, sauf si le contenu doit encore grandir.
+      if (target === wanted) {
+        finish(id);
+      }
       return;
     }
     if (attempts.current.id !== id) {
       attempts.current = { id, count: 0 };
     }
     if (attempts.current.count >= REVEAL_ATTEMPTS) {
-      revealed.current = id;
+      finish(id);
       return;
     }
     attempts.current.count += 1;
@@ -305,7 +313,11 @@ function HabitList({
         }}
         onScrollBeginDrag={() => {
           // Le joueur fait défiler lui-même : la révélation s'arrête là.
-          revealed.current = highlighted?.id ?? null;
+          finish(highlighted?.id ?? null);
+        }}
+        onTouchStart={() => {
+          // Le joueur touche une ligne ou la liste : elle ne bouge plus sous son doigt.
+          finish(highlighted?.id ?? null);
         }}
         scrollEventThrottle={16}
         testID="day-view-list"

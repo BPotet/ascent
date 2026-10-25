@@ -522,6 +522,48 @@ describe('DayViewScreen', () => {
         expect(scrollTo).not.toHaveBeenCalled();
       });
 
+      it('ends the reveal on a position received within 1 dp of the target, even if a row then changes height', async () => {
+        const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+        await given('Cuisiner', 'Lire');
+        await show();
+        await screen.findByText('Lire');
+        await layout('day-view-list', 0, 360);
+        await layout('add-habit', 568, 56);
+
+        await createMeditation();
+        await fireEvent(list(), 'contentSizeChange', 390, 518);
+        await layout('habit-card-3', 324, 76);
+        expect(scrollTo).toHaveBeenCalledTimes(1);
+
+        // La liste s'est arrêtée à moins d'1 dp de la cible (120) : la révélation est finie.
+        await fireEvent.scroll(list(), { nativeEvent: { contentOffset: { x: 0, y: 119.5 } } });
+        // L'aide disparaît, la ligne change de hauteur : la liste ne bouge plus sous le doigt.
+        await layout('habit-card-3', 324, 100);
+        await fireEvent(list(), 'contentSizeChange', 390, 542);
+        await new Promise((done) => setTimeout(done, REVEAL_CHECK_MS * 2));
+        expect(scrollTo).toHaveBeenCalledTimes(1);
+      });
+
+      it('leaves the list to a player who touches it while a reveal is pending', async () => {
+        const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+        await given('Cuisiner', 'Lire');
+        await show();
+        await screen.findByText('Lire');
+        await layout('day-view-list', 0, 360);
+        await layout('add-habit', 568, 56);
+        await fireEvent(list(), 'contentSizeChange', 390, 330);
+
+        await createMeditation();
+        await layout('habit-card-3', 324, 76);
+        expect(scrollTo).not.toHaveBeenCalled();
+
+        // Le joueur touche une ligne avant que le contenu ne grandisse : plus aucun défilement.
+        await fireEvent(list(), 'touchStart');
+        await fireEvent(list(), 'contentSizeChange', 390, 518);
+        await new Promise((done) => setTimeout(done, REVEAL_CHECK_MS * 2));
+        expect(scrollTo).not.toHaveBeenCalled();
+      });
+
       it('keeps the label « Habitudes » and its counter above the button at the end of the list', async () => {
         await given('Cuisiner');
         await show();
