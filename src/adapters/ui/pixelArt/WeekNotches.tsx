@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { artPalette } from './artPalette';
-import { ART_PIXEL } from './artPixel';
+import { artPixelSize } from './artPixel';
 import { textFont } from './pixelTypography';
 
 const { roles } = artPalette;
@@ -34,18 +34,19 @@ export function WeekNotches({
 }) {
   const side = SIZES[size];
   const on = reached ? styles.gold : styles.done;
+  const line = artPixelSize(2);
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       testID={testID}
-      style={styles.notches}
+      style={[styles.notches, { gap: line }]}
     >
       {Array.from({ length: target }, (_, index) => (
         <View
           key={index}
           testID={index < done ? 'week-notch-on' : 'week-notch-off'}
-          style={[styles.notch, { width: side, height: side }, index < done ? on : styles.off]}
+          style={[{ width: side, height: side, borderWidth: line }, index < done ? on : styles.off]}
         />
       ))}
       {done > target && <Text style={styles.more}>{`+${done - target}`}</Text>}
@@ -55,8 +56,7 @@ export function WeekNotches({
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  notches: { flexDirection: 'row', alignItems: 'center', gap: ART_PIXEL },
-  notch: { borderWidth: ART_PIXEL },
+  notches: { flexDirection: 'row', alignItems: 'center' },
   off: { borderColor: roles.muted, backgroundColor: 'transparent' },
   done: { borderColor: roles.doneLine, backgroundColor: roles.done },
   gold: { borderColor: roles.goldDark, backgroundColor: roles.gold },

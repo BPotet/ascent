@@ -2,7 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import type { CheckInStatus } from '../../../domain/checkIn/CheckInStatus';
 import { artPalette } from './artPalette';
-import { ART_PIXEL, artPixelSize } from './artPixel';
+import { artPixelSize, notchedCorners } from './artPixel';
 import { PixelIcon } from './PixelIcon';
 import type { IconName } from './sprites/icons';
 
@@ -88,6 +88,7 @@ export function HabitDayBox({
   readonly testID?: string;
 }) {
   const look = LOOKS[status];
+  const line = artPixelSize(2);
   return (
     <View
       accessibilityElementsHidden
@@ -96,14 +97,15 @@ export function HabitDayBox({
       testID={testID}
       style={[
         styles.box,
-        { width: size, height: size, backgroundColor: look.background, borderColor: look.line },
+        { width: size, height: size, borderWidth: line },
+        { backgroundColor: look.background, borderColor: look.line },
       ]}
     >
       {look.inner !== null && (
         <View
           style={[
             styles.inner,
-            look.innerAtTop ? styles.innerTop : styles.innerBottom,
+            look.innerAtTop ? { top: 0, height: line } : { bottom: 0, height: 2 * line },
             { backgroundColor: look.inner },
           ]}
         />
@@ -113,11 +115,11 @@ export function HabitDayBox({
           name={look.mark.icon}
           color={look.mark.color}
           testID={look.mark.testID}
-          style={{ transform: [{ translateY: lifted ? -artPixelSize(2) : 0 }] }}
+          style={{ transform: [{ translateY: lifted ? -line : 0 }] }}
         />
       )}
-      {(['topLeft', 'topRight', 'bottomLeft', 'bottomRight'] as const).map((corner) => (
-        <View key={corner} style={[styles.corner, styles[corner], { backgroundColor: under }]} />
+      {notchedCorners(line).map((corner, index) => (
+        <View key={index} style={[styles.corner, corner, { backgroundColor: under }]} />
       ))}
     </View>
   );
@@ -125,14 +127,8 @@ export function HabitDayBox({
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  box: { alignItems: 'center', justifyContent: 'center', borderWidth: ART_PIXEL },
-  inner: { position: 'absolute', left: 0, right: 0, height: ART_PIXEL },
-  innerTop: { top: 0 },
-  innerBottom: { bottom: 0, height: 2 * ART_PIXEL },
-  corner: { position: 'absolute', width: ART_PIXEL, height: ART_PIXEL },
-  topLeft: { top: -ART_PIXEL, left: -ART_PIXEL },
-  topRight: { top: -ART_PIXEL, right: -ART_PIXEL },
-  bottomLeft: { bottom: -ART_PIXEL, left: -ART_PIXEL },
-  bottomRight: { bottom: -ART_PIXEL, right: -ART_PIXEL },
+  box: { alignItems: 'center', justifyContent: 'center' },
+  inner: { position: 'absolute', left: 0, right: 0 },
+  corner: { position: 'absolute' },
 });
 // Stryker restore all

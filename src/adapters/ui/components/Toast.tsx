@@ -8,12 +8,15 @@ import {
   type ToastVariant,
 } from '../format/toast';
 import { artPalette } from '../pixelArt/artPalette';
-import { ART_PIXEL } from '../pixelArt/artPixel';
+import { artPixelSize } from '../pixelArt/artPixel';
 import { MIN_TARGET_SIZE } from '../pixelArt/PixelButton';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { pixelTypography, textFont } from '../pixelArt/pixelTypography';
 
 const { roles } = artPalette;
+
+/** Le pixel d'art, arrondi au pixel physique du téléphone (traits, crans, pas des envols). */
+const LINE = artPixelSize(2);
 
 /** Le texte d'un toast du feedback « Objectif atteint » : titre, puis détail et prime. */
 function TargetText({
@@ -135,12 +138,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingLeft: 14,
     paddingRight: 8,
-    borderWidth: ART_PIXEL,
+    borderWidth: LINE,
     borderColor: roles.ink,
     backgroundColor: roles.light,
   },
   aboveButton: { bottom: 84 },
-  shade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 2 * ART_PIXEL },
+  shade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 2 * LINE },
   text: { flex: 1, color: roles.ink, fontFamily: textFont.semiBold },
   goal: {
     alignItems: 'flex-start',

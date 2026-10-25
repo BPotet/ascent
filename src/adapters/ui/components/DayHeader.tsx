@@ -5,13 +5,16 @@ import type { Day } from '../../../domain/day/Day';
 import { capitalize, formatDayAndMonth } from '../format/formatDay';
 import { doneOutOfExpected, GOALS_REACHED } from '../format/formatExpected';
 import { artPalette } from '../pixelArt/artPalette';
-import { ART_PIXEL } from '../pixelArt/artPixel';
+import { artPixelSize } from '../pixelArt/artPixel';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { pixelTypography, textFont } from '../pixelArt/pixelTypography';
 import { useArtFrames } from '../pixelArt/useArtFrames';
 import { WeekNotches } from '../pixelArt/WeekNotches';
 
 const { roles } = artPalette;
+
+/** Le pixel d'art, arrondi au pixel physique du téléphone (traits, crans, pas des envols). */
+const LINE = artPixelSize(2);
 
 /** Les images du clignotement du compteur : en or, puis de nouveau en lumière vive. */
 const PULSE_FRAMES = 4;
@@ -128,7 +131,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingLeft: 6,
     paddingRight: 8,
-    borderWidth: ART_PIXEL,
+    borderWidth: LINE,
     borderColor: roles.goldDark,
     backgroundColor: roles.goldBg,
   },

@@ -2,12 +2,15 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { artPalette } from '../pixelArt/artPalette';
-import { ART_PIXEL } from '../pixelArt/artPixel';
+import { artPixelSize } from '../pixelArt/artPixel';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { pixelTypography } from '../pixelArt/pixelTypography';
 import type { IconName } from '../pixelArt/sprites/icons';
 
 const { roles } = artPalette;
+
+/** Le pixel d'art, arrondi au pixel physique du téléphone (traits, crans, pas des envols). */
+const LINE = artPixelSize(2);
 
 /**
  * Les onglets de la barre d'onglets : leur libellé et leur icône (maquette, « Barre d'onglets »).
@@ -101,15 +104,15 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: ART_PIXEL,
+    height: LINE,
     backgroundColor: roles.line,
   },
   shade: {
     position: 'absolute',
-    top: ART_PIXEL,
+    top: LINE,
     left: 0,
     right: 0,
-    height: ART_PIXEL,
+    height: LINE,
     backgroundColor: roles.ink,
   },
   tab: {
@@ -118,7 +121,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
-    borderWidth: ART_PIXEL,
+    borderWidth: LINE,
     borderColor: 'transparent',
   },
   selected: { backgroundColor: roles.surface, borderColor: roles.line },
@@ -127,7 +130,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 2 * ART_PIXEL,
+    height: 2 * LINE,
     backgroundColor: roles.gold,
   },
 });

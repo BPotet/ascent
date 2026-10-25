@@ -2,13 +2,16 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { TARGET_REACHED } from '../format/formatWeeklyTarget';
 import { artPalette } from '../pixelArt/artPalette';
-import { ART_PIXEL } from '../pixelArt/artPixel';
+import { artPixelSize } from '../pixelArt/artPixel';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { textFont } from '../pixelArt/pixelTypography';
 import { useArtFrames } from '../pixelArt/useArtFrames';
 import { useReducedMotion } from '../state/useReducedMotion';
 
 const { roles } = artPalette;
+
+/** Le pixel d'art, arrondi au pixel physique du téléphone (traits, crans, pas des envols). */
+const LINE = artPixelSize(2);
 
 // Stryker disable all: valeurs purement visuelles, vérifiées par la conformité aux maquettes (barrière 10 bis).
 /** Les 3 paliers de l'allumage du badge : lumière vive, or, puis or sombre (l'état final). */
@@ -75,7 +78,7 @@ const styles = StyleSheet.create({
     paddingBottom: 2,
     paddingLeft: 4,
     paddingRight: 6,
-    borderWidth: ART_PIXEL,
+    borderWidth: LINE,
     backgroundColor: roles.goldBg,
   },
   text: { fontFamily: textFont.bold, fontSize: 12, lineHeight: 16, color: roles.gold },

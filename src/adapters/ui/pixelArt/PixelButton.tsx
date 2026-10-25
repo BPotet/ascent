@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { artPalette } from './artPalette';
-import { ART_PIXEL } from './artPixel';
+import { artPixelSize, notchedCorners } from './artPixel';
 import { PixelIcon } from './PixelIcon';
 import { pixelTypography } from './pixelTypography';
 import type { IconName } from './sprites/icons';
@@ -63,6 +63,7 @@ export function PixelButton({
   const [pressed, setPressed] = useState(false);
   const look = LOOKS[variant];
   const textColor = disabled ? roles.muted : look.text;
+  const line = artPixelSize(2);
   return (
     <Pressable
       accessibilityRole="button"
@@ -76,27 +77,35 @@ export function PixelButton({
       testID={testID}
       style={[
         styles.button,
+        { borderWidth: line },
         disabled ? styles.disabled : { backgroundColor: look.background, borderColor: look.line },
-        { transform: [{ translateY: pressed && !disabled ? ART_PIXEL : 0 }] },
+        { transform: [{ translateY: pressed && !disabled ? line : 0 }] },
         style,
       ]}
     >
       {disabled ? (
         <View pointerEvents="none" testID="pixel-button-hatching" style={styles.hatching}>
           {Array.from({ length: 24 }, (_, index) => (
-            <View key={index} style={styles.hatch} />
+            <View key={index} style={[styles.hatch, { width: line }]} />
           ))}
         </View>
       ) : (
         <>
-          <View style={[styles.light, { backgroundColor: pressed ? look.shade : look.light }]} />
-          <View style={[styles.shade, { backgroundColor: look.shade }]} />
+          <View
+            style={[
+              styles.strip,
+              { top: 0, height: line, backgroundColor: pressed ? look.shade : look.light },
+            ]}
+          />
+          <View
+            style={[styles.strip, { bottom: 0, height: 2 * line, backgroundColor: look.shade }]}
+          />
         </>
       )}
       {icon !== undefined && <PixelIcon name={icon} color={textColor} testID="pixel-button-icon" />}
       <Text style={[pixelTypography.button, { color: textColor }]}>{text}</Text>
-      {(['topLeft', 'topRight', 'bottomLeft', 'bottomRight'] as const).map((corner) => (
-        <View key={corner} pointerEvents="none" style={[styles.corner, styles[corner]]} />
+      {notchedCorners(line).map((corner, index) => (
+        <View key={index} pointerEvents="none" style={[styles.corner, corner]} />
       ))}
     </Pressable>
   );
@@ -111,28 +120,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    borderWidth: ART_PIXEL,
     overflow: 'hidden',
   },
   disabled: { backgroundColor: roles.surface, borderColor: roles.raised },
-  light: { position: 'absolute', top: 0, left: 0, right: 0, height: ART_PIXEL },
-  shade: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 2 * ART_PIXEL },
+  strip: { position: 'absolute', left: 0, right: 0 },
   hatching: {
     ...StyleSheet.absoluteFill,
     flexDirection: 'row',
     gap: 4,
     transform: [{ skewX: '-45deg' }],
   },
-  hatch: { width: ART_PIXEL, height: '100%', backgroundColor: 'rgba(62,72,112,0.35)' },
-  corner: {
-    position: 'absolute',
-    width: ART_PIXEL,
-    height: ART_PIXEL,
-    backgroundColor: roles.night,
-  },
-  topLeft: { top: -ART_PIXEL, left: -ART_PIXEL },
-  topRight: { top: -ART_PIXEL, right: -ART_PIXEL },
-  bottomLeft: { bottom: -ART_PIXEL, left: -ART_PIXEL },
-  bottomRight: { bottom: -ART_PIXEL, right: -ART_PIXEL },
+  hatch: { height: '100%', backgroundColor: 'rgba(62,72,112,0.35)' },
+  corner: { position: 'absolute', backgroundColor: roles.night },
 });
 // Stryker restore all

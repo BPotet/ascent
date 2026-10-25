@@ -2,7 +2,7 @@ import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { Screen } from '../components/Screen';
 import { artPalette } from '../pixelArt/artPalette';
-import { ART_PIXEL, artPixelSize } from '../pixelArt/artPixel';
+import { artPixelSize } from '../pixelArt/artPixel';
 import { PixelButton } from '../pixelArt/PixelButton';
 import { PixelFrame } from '../pixelArt/PixelFrame';
 import { pixelTypography } from '../pixelArt/pixelTypography';
@@ -14,6 +14,9 @@ import { useArtFrames } from '../pixelArt/useArtFrames';
 import { useReducedMotion } from '../state/useReducedMotion';
 
 const { roles } = artPalette;
+
+/** Le pixel d'art, arrondi au pixel physique du téléphone (traits, crans, pas des envols). */
+const LINE = artPixelSize(2);
 
 // Stryker disable all: valeurs purement visuelles, vérifiées par la conformité aux maquettes (barrière 10 bis).
 /** Les trois carrés du chargement, et leur couleur quand ils sont fixes (mouvement réduit). */
@@ -119,7 +122,7 @@ const styles = StyleSheet.create({
     color: roles.gold,
     textAlign: 'center',
     textShadowColor: roles.ink,
-    textShadowOffset: { width: 2 * ART_PIXEL, height: 2 * ART_PIXEL },
+    textShadowOffset: { width: 2 * LINE, height: 2 * LINE },
     textShadowRadius: 0,
   },
   squares: { flexDirection: 'row', gap: 6 },

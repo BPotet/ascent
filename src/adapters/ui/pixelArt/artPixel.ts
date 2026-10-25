@@ -13,3 +13,16 @@ export type ArtScale = 2 | 3;
 export function artPixelSize(scale: ArtScale): number {
   return PixelRatio.roundToNearestPixel(scale);
 }
+
+/**
+ * Les 4 carrés qui coupent les coins d'un cadre cranté, d'un pixel d'art (`size`, en dp) : posés
+ * sur ses coins, de la couleur du fond dessous.
+ */
+export function notchedCorners(size: number) {
+  return [
+    { top: -size, left: -size, width: size, height: size },
+    { top: -size, right: -size, width: size, height: size },
+    { bottom: -size, left: -size, width: size, height: size },
+    { bottom: -size, right: -size, width: size, height: size },
+  ] as const;
+}

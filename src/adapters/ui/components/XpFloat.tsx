@@ -2,13 +2,16 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { formatXpChange } from '../format/formatXp';
 import { artPalette } from '../pixelArt/artPalette';
-import { ART_PIXEL } from '../pixelArt/artPixel';
+import { artPixelSize } from '../pixelArt/artPixel';
 import { pixelTypography } from '../pixelArt/pixelTypography';
 import { useArtFrames } from '../pixelArt/useArtFrames';
 import { useReducedMotion } from '../state/useReducedMotion';
 import type { ShownXpChange } from '../state/xpFeedback';
 
 const { roles } = artPalette;
+
+/** Le pixel d'art, arrondi au pixel physique du téléphone (traits, crans, pas des envols). */
+const LINE = artPixelSize(2);
 
 /** Les images de l'envol : il monte de 2 dp par image pendant 10 images, puis disparaît. */
 export const XP_FLOAT_FRAMES = 10;
@@ -24,7 +27,7 @@ function Flight({ amount }: { readonly amount: number }) {
       importantForAccessibility="no-hide-descendants"
       pointerEvents="none"
       testID="xp-float"
-      style={[styles.float, { transform: [{ translateY: -frame * ART_PIXEL }] }]}
+      style={[styles.float, { transform: [{ translateY: -frame * LINE }] }]}
     >
       <Text
         style={[
@@ -67,7 +70,7 @@ const styles = StyleSheet.create({
   },
   text: {
     textShadowColor: roles.ink,
-    textShadowOffset: { width: ART_PIXEL, height: ART_PIXEL },
+    textShadowOffset: { width: LINE, height: LINE },
     textShadowRadius: 0,
   },
 });
