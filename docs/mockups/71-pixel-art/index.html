@@ -1,0 +1,1099 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ascent en pixel art</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Pixelify+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============ Page (hors téléphone) : tokens clair / sombre, repris des maquettes précédentes ============ */
+:root{
+  --s:1;
+  --bg:#F4F2EE; --surface:#FFFFFF; --surface-2:#ECE9E3; --text:#1B1F27; --muted:#5B6372; --line:#DEDAD2; --accent:#3047C9; --chip:#E4E8FB; --chip-text:#22339A;
+  --warn-bg:#FFF1D1; --warn-text:#6A4A00; --phone-ring:#2A3142;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B0E14; --surface:#151A24; --surface-2:#1C2230; --text:#E8ECF3; --muted:#98A2B3; --line:#263042; --accent:#9DB2FF; --chip:#202A45; --chip-text:#C9D5FF;
+    --warn-bg:#3A2E10; --warn-text:#FFD98A; --phone-ring:#3A4358; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B0E14; --surface:#151A24; --surface-2:#1C2230; --text:#E8ECF3; --muted:#98A2B3; --line:#263042; --accent:#9DB2FF; --chip:#202A45; --chip-text:#C9D5FF;
+  --warn-bg:#3A2E10; --warn-text:#FFD98A; --phone-ring:#3A4358; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{overflow-x:hidden}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1400px;margin:0 auto;padding:28px 16px 96px}
+h1,h2.pg,h3.pg{letter-spacing:-.01em}
+h1{font:700 clamp(30px,5vw,44px)/1.1 "Pixelify Sans",Inter,sans-serif;margin:6px 0 10px}
+h2.pg{font:700 26px/1.2 "Pixelify Sans",Inter,sans-serif;margin:56px 0 6px}
+h3.pg{font:700 17px/1.3 Inter,sans-serif;margin:28px 0 8px}
+.eyebrow{font:600 13px Inter;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.lead{color:var(--muted);max-width:820px;margin:0}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0;align-items:center}
+.tag{display:inline-flex;align-items:center;gap:6px;background:var(--chip);color:var(--chip-text);border-radius:999px;padding:4px 12px;font:600 13px Inter}
+.tag.warn{background:var(--warn-bg);color:var(--warn-text)}
+.themebtn{margin-left:auto;min-height:44px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--text);font:600 13px Inter;padding:0 14px;cursor:pointer}
+nav.toc{display:flex;gap:8px;overflow-x:auto;padding:16px 16px 4px;margin:0 -16px;scrollbar-width:none}
+nav.toc a{flex:none;color:var(--text);text-decoration:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 14px;font:500 14px Inter;min-height:44px;display:inline-flex;align-items:center}
+nav.toc a:hover{border-color:var(--accent)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px;min-width:0}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px}
+ul.tight,ol.tight{margin:8px 0 0;padding-left:20px}
+ul.tight li,ol.tight li{margin:5px 0}
+.muted{color:var(--muted)}
+code{font:13px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--surface-2);border-radius:6px;padding:1px 5px}
+table.t{width:100%;border-collapse:collapse;font-size:14px}
+table.t th,table.t td{text-align:left;padding:7px 8px;border-top:1px solid var(--line);vertical-align:top}
+table.t th{font-weight:600;color:var(--muted);border-top:0}
+.tscroll{overflow-x:auto}
+
+/* Galerie de cadres */
+.gallery{display:flex;flex-wrap:wrap;gap:44px 32px;margin-top:20px}
+figure.frame{margin:0;width:calc(408px * var(--s))}
+figcaption{margin-bottom:12px}
+.cap-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.scr{font:600 13px Inter;color:var(--muted)}
+.stories{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.story{font:700 12px Inter;background:var(--chip);color:var(--chip-text);border-radius:999px;padding:3px 10px;white-space:nowrap}
+.story.dec{background:var(--warn-bg);color:var(--warn-text)}
+.state{font:600 18px/1.3 Inter,sans-serif;margin-top:2px}
+.note{margin:4px 0 0;color:var(--muted);font-size:14px;line-height:1.45}
+.slot{width:calc(408px * var(--s));height:calc(862px * var(--s))}
+.phone{width:408px;height:862px;padding:9px;border-radius:62px;background:#04060A;box-shadow:0 0 0 1.5px var(--phone-ring),0 22px 50px rgba(0,0,0,.28);transform:scale(var(--s));transform-origin:top left}
+
+/* Prototype */
+.proto{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;margin-top:20px}
+.controls{flex:1 1 300px;max-width:560px}
+.controls fieldset{border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:0 0 14px}
+.controls legend{font:600 14px Inter;padding:0 6px}
+.pbtnx{min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--text);font:600 14px Inter;padding:0 14px;cursor:pointer;margin:0 8px 8px 0}
+.pbtnx:hover,.pbtnx[aria-pressed="true"]{border-color:var(--accent)}
+.pbtnx[aria-pressed="true"]{background:var(--chip);color:var(--chip-text)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* Identité : nuancier, polices, planches */
+.swatches{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px}
+.sw{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface)}
+.sw i{display:block;height:52px}
+.sw div{padding:8px 10px;font-size:13px;line-height:1.35}
+.sw b{display:block;font-size:14px}
+.sw code{font-size:12px}
+.artpal{display:grid;grid-template-columns:repeat(auto-fill,minmax(40px,1fr));gap:4px;margin-top:10px}
+.artpal span{display:block;height:40px;border-radius:4px;box-shadow:inset 0 0 0 1px rgba(127,127,127,.25);position:relative}
+.artpal span b{position:absolute;left:3px;bottom:2px;font:600 10px Inter;color:#fff;text-shadow:0 1px 2px #000}
+.board{background:#10131F;color:#FFF3D6;border-radius:16px;padding:18px;display:flex;flex-wrap:wrap;gap:20px 26px;align-items:flex-start;margin-top:12px}
+.board .cellx{display:flex;flex-direction:column;gap:8px;min-width:120px;font:500 12px Inter;color:#C9C2B0}
+.board .cellx > b{font:600 12px Inter;color:#8C93A8;text-transform:uppercase;letter-spacing:.06em}
+.typo-row{display:flex;flex-direction:column;gap:2px;padding:10px 0;border-top:1px solid #2A3150}
+.typo-row:first-child{border-top:0}
+.typo-row small{font:500 12px Inter;color:#8C93A8}
+.icgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:10px;width:100%}
+.icgrid div{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px;border-radius:10px;background:#1C2133;font:500 12px Inter;color:#C9C2B0;text-align:center}
+.zoom{image-rendering:pixelated;image-rendering:crisp-edges}
+.gridzoom{position:relative;display:inline-block;line-height:0}
+.gridzoom::after{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,243,214,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(255,243,214,.12) 1px,transparent 1px);background-size:var(--g) var(--g);pointer-events:none}
+
+/* ============ Application : identité pixel art (palette d'art de la tour + rôles d'interface) ============ */
+.screen{position:relative;width:390px;height:844px;border-radius:53px;overflow:hidden;display:flex;flex-direction:column}
+.app{
+  --ink:#06070C; --night:#10131F; --surf:#1C2133; --raised:#2A3150; --line:#3E4870; --dusk:#6B5A7A;
+  --gold-d:#B98E5A; --gold:#F2D49B; --light:#FFF3D6; --muted:#8C93A8; --parch:#C9C2B0; --blue:#8995BE;
+  --fait-bg:#15302A; --fait-line:#3E9E74; --fait:#6FD3A0;
+  --miss-bg:#2A1F36; --miss-line:#4A3660;
+  --curse:#E0607A; --err:#FF8E8E; --err-bg:#3A1724; --pink:#FFD0D8; --shard:#FF9F5A;
+  --f-px:"Pixelify Sans",ui-monospace,"Courier New",monospace;
+  --f-ui:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --n2:polygon(2px 0,calc(100% - 2px) 0,calc(100% - 2px) 2px,100% 2px,100% calc(100% - 2px),calc(100% - 2px) calc(100% - 2px),calc(100% - 2px) 100%,2px 100%,2px calc(100% - 2px),0 calc(100% - 2px),0 2px,2px 2px);
+  background:var(--night);color:var(--light);font:400 15px/1.45 var(--f-ui);-webkit-font-smoothing:antialiased;
+}
+.app *{box-sizing:border-box}
+:where(.app) button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit;-webkit-tap-highlight-color:transparent}
+.app img.px,.app canvas{image-rendering:pixelated;image-rendering:crisp-edges;display:block;flex:none}
+.app .island{position:absolute;top:11px;left:50%;width:124px;height:36px;margin-left:-62px;border-radius:20px;background:#000;z-index:60}
+.app .statusbar{flex:none;height:47px;display:flex;align-items:center;justify-content:space-between;padding:6px 30px 0 34px;font:600 15px var(--f-ui);color:var(--light);position:relative;z-index:5}
+.app .homebar{position:absolute;bottom:8px;left:50%;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:var(--light);opacity:.85;z-index:70}
+
+/* Cadre pixel : trait 2 dp, coins crantés d'un pixel d'art, arête haute éclairée, bas dans l'ombre */
+.pf{background:var(--surf);clip-path:var(--n2);box-shadow:inset 0 0 0 2px var(--line),inset 0 4px 0 0 var(--raised),inset 0 -4px 0 0 var(--ink)}
+.pf.raised{background:var(--raised);box-shadow:inset 0 0 0 2px var(--line),inset 0 4px 0 0 #3E4870,inset 0 -4px 0 0 var(--ink)}
+.pf.inset{background:var(--night);box-shadow:inset 0 0 0 2px var(--line),inset 0 4px 0 0 var(--ink)}
+
+/* Boutons pixel */
+.pb{position:relative;min-height:48px;padding:0 18px;display:inline-flex;align-items:center;justify-content:center;gap:8px;font:700 15px/1.2 var(--f-ui);clip-path:var(--n2);text-align:center;user-select:none;white-space:nowrap}
+.pb.pri{background:var(--gold);color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink),inset 0 4px 0 0 var(--light),inset 0 -6px 0 0 var(--gold-d)}
+.pb.sec{background:var(--surf);color:var(--light);box-shadow:inset 0 0 0 2px var(--line),inset 0 4px 0 0 var(--raised),inset 0 -6px 0 0 var(--ink)}
+.pb.dng{background:var(--err-bg);color:var(--pink);box-shadow:inset 0 0 0 2px var(--curse),inset 0 4px 0 0 #5A2233,inset 0 -6px 0 0 var(--ink)}
+.pb.pressed,.pb:active{transform:translateY(2px)}
+.pb.pri.pressed,.pb.pri:active{box-shadow:inset 0 0 0 2px var(--ink),inset 0 4px 0 0 var(--gold-d),inset 0 -2px 0 0 var(--gold-d)}
+.pb.off,.pb[aria-disabled="true"]{background:var(--surf);color:var(--muted);box-shadow:inset 0 0 0 2px var(--raised);background-image:repeating-linear-gradient(135deg,rgba(62,72,112,.35) 0 2px,transparent 2px 6px)}
+.pb.block{display:flex;width:100%}
+.pb.big{min-height:56px;font:700 20px var(--f-px);letter-spacing:.02em}
+.app .pf:focus-visible,.app .pb:focus-visible,.app button:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--gold),inset 0 0 0 4px var(--ink)}
+.linkb{min-height:48px;display:inline-flex;align-items:center;gap:6px;font:700 14px var(--f-ui);color:var(--gold);text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:2px}
+
+/* En-tête : le ciel du jour, le personnage, l'expérience */
+.hd{flex:none;position:relative;height:132px;overflow:hidden}
+.hd.short{height:92px}
+.hd canvas.sky{position:absolute;left:0;top:0;width:390px;height:100%}
+.hd .perso{position:absolute;left:18px;bottom:6px}
+.hd .plate{position:absolute;left:74px;right:16px;bottom:10px;padding:8px 12px 9px;display:flex;flex-direction:column;gap:5px;background:rgba(16,19,31,.92)}
+.hd.short .plate{bottom:8px;padding:7px 12px 8px}
+.plate .r1{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.plate .lbl{font:500 12px/1.2 var(--f-ui);color:var(--parch)}
+.plate .xpv{font:700 20px/1 var(--f-px);color:var(--light);font-variant-numeric:tabular-nums;white-space:nowrap}
+.plate .r3{display:flex;align-items:center;justify-content:space-between;gap:8px;font:500 12px/1.2 var(--f-ui);color:var(--parch)}
+.plate.flash{box-shadow:inset 0 0 0 2px var(--gold),inset 0 4px 0 0 var(--raised),inset 0 -4px 0 0 var(--ink)}
+.deltas{position:absolute;right:18px;top:52px;display:flex;flex-direction:column;align-items:flex-end;gap:4px;z-index:3}
+.hd.short .deltas{top:8px}
+.delta{font:700 16px/1 var(--f-px);color:var(--ink);background:var(--gold);padding:5px 8px 4px;clip-path:var(--n2);box-shadow:inset 0 -2px 0 0 var(--gold-d)}
+.delta.prime{background:var(--light)}
+.delta.neg{background:var(--raised);color:var(--parch);box-shadow:none}
+.delta.anim{animation:dIn .42s steps(3,end) both}
+@keyframes dIn{0%{transform:translateY(6px);opacity:0}34%{opacity:1}100%{transform:none;opacity:1}}
+
+
+/* Corps des vues */
+.body{flex:1;min-height:0;position:relative;display:flex;flex-direction:column}
+.scroll{flex:1;min-height:0;overflow:hidden;padding:4px 16px 120px;display:flex;flex-direction:column;gap:8px}
+.app.live .scroll{overflow-y:auto;scrollbar-width:none}
+.dayhd{flex:none;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:12px 16px 10px}
+.dayhd h2{margin:0;font:700 28px/1.05 var(--f-px);color:var(--light);letter-spacing:.01em}
+.dayhd .date{font:500 14px/1.3 var(--f-ui);color:var(--parch);margin-top:4px}
+.count{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+.count .cv{font:700 22px/1 var(--f-px);color:var(--light);font-variant-numeric:tabular-nums}
+.count .cv small{font:500 13px var(--f-ui);color:var(--parch);margin-left:4px}
+.count.pulse .cv{animation:pulse .34s steps(2,end)}
+@keyframes pulse{0%{color:var(--gold)}100%{color:var(--light)}}
+.crans{display:inline-flex;gap:2px;align-items:center;flex:none}
+.crans i{width:10px;height:10px;box-shadow:inset 0 0 0 2px var(--muted)}
+.crans i.on{background:var(--fait);box-shadow:inset 0 0 0 2px var(--fait-line),inset 0 -2px 0 2px var(--fait-line)}
+.crans.ok i.on{background:var(--gold);box-shadow:inset 0 0 0 2px var(--gold-d)}
+.crans.big i{width:12px;height:12px}
+.crans .more{font:700 12px var(--f-ui);color:var(--gold);margin-left:3px}
+
+/* Ligne d'habitude (Vue Journée, Détail du jour) */
+.row{display:flex;align-items:stretch;position:relative}
+.row.pf,.card.pf{clip-path:none;position:relative}
+.row.pf::after,.card.pf::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(var(--under,var(--night)),var(--under,var(--night))) 0 0/2px 2px no-repeat,linear-gradient(var(--under,var(--night)),var(--under,var(--night))) 100% 0/2px 2px no-repeat,linear-gradient(var(--under,var(--night)),var(--under,var(--night))) 0 100%/2px 2px no-repeat,linear-gradient(var(--under,var(--night)),var(--under,var(--night))) 100% 100%/2px 2px no-repeat}
+.sheet .row{--under:var(--surf)}
+.boxw{position:relative;flex:none}
+.row .tap{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:12px 4px 12px 12px;min-height:72px}
+.row .more{width:48px;flex:none;display:grid;place-items:center}
+.box{position:relative;width:44px;height:44px;flex:none;display:grid;place-items:center;clip-path:var(--n2);background:var(--night);box-shadow:inset 0 0 0 2px var(--gold),inset 0 4px 0 0 var(--ink)}
+.row.done{box-shadow:inset 0 0 0 2px var(--fait-line),inset 0 4px 0 0 var(--raised),inset 0 -4px 0 0 var(--ink)}
+.row.done .box{background:var(--fait-bg);box-shadow:inset 0 0 0 2px var(--fait),inset 0 -4px 0 0 #0C1F19}
+.row.reached{box-shadow:inset 0 0 0 2px var(--gold-d),inset 0 4px 0 0 var(--raised),inset 0 -4px 0 0 var(--ink)}
+.row.reached.done{box-shadow:inset 0 0 0 2px var(--fait-line),inset 0 4px 0 0 var(--raised),inset 0 -4px 0 0 var(--ink)}
+.row.hl{box-shadow:inset 0 0 0 2px var(--gold),inset 0 4px 0 0 var(--raised),inset 0 -4px 0 0 var(--ink)}
+.box.pop{animation:boxPop .25s steps(1,end)}
+@keyframes boxPop{0%{transform:translateY(-2px)}50%{transform:translateY(-4px)}100%{transform:none}}
+.tx{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.nm{font:600 16px/1.3 var(--f-ui);color:var(--light);overflow-wrap:anywhere}
+.sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font:500 13px/1.3 var(--f-ui);color:var(--parch)}
+.row.done .sub .st{color:var(--fait);font-weight:700}
+.sub .st{color:var(--gold);font-weight:700}
+.row.missed .sub .st{color:var(--muted)}
+.goalb{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;padding:4px 8px 4px 6px;font:700 12px/1.2 var(--f-ui);color:var(--gold);background:#231F1D;clip-path:var(--n2);box-shadow:inset 0 0 0 2px var(--gold-d)}
+.goalb.burst{animation:gb .5s steps(3,end)}
+@keyframes gb{0%{box-shadow:inset 0 0 0 2px var(--light);color:var(--light)}66%{box-shadow:inset 0 0 0 2px var(--gold)}100%{box-shadow:inset 0 0 0 2px var(--gold-d)}}
+.cmk{font:600 11px var(--f-ui);color:var(--blue);border-bottom:2px dotted var(--blue)}
+.burstfx{position:absolute;left:-10px;top:-10px;width:64px;height:64px;pointer-events:none;background-size:192px 64px;background-repeat:no-repeat;image-rendering:pixelated;z-index:4}
+.burstfx.anim{animation:bfx .25s steps(3) forwards}
+@keyframes bfx{from{background-position:0 0}to{background-position:-192px 0}}
+.burstfx.frozen{background-position:-64px 0}
+.xpf{position:absolute;left:50%;top:-6px;transform:translate(-50%,-14px);font:700 18px/1 var(--f-px);color:var(--gold);text-shadow:2px 2px 0 var(--ink);white-space:nowrap;z-index:5;pointer-events:none}
+.xpf.neg{color:var(--muted)}
+.xpf.anim{animation:xpf .9s steps(9,end) forwards}
+@keyframes xpf{0%{transform:translate(-50%,0);opacity:1}70%{opacity:1}100%{transform:translate(-50%,-22px);opacity:0}}
+.sect{display:flex;justify-content:space-between;align-items:center;font:600 12px/1 var(--f-ui);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;padding:8px 2px 0}
+
+/* Messages d'état, aides, rappels */
+.msg{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;font:500 14px/1.4 var(--f-ui);color:var(--light)}
+.msg b{display:block;font:700 15px/1.3 var(--f-ui)}
+.msg.gold{box-shadow:inset 0 0 0 2px var(--gold-d),inset 0 4px 0 0 var(--raised),inset 0 -4px 0 0 var(--ink);background:#1F1E26}
+.msg.fait{box-shadow:inset 0 0 0 2px var(--fait-line),inset 0 4px 0 0 var(--raised),inset 0 -4px 0 0 var(--ink);background:#14262A}
+.msg.hint{box-shadow:inset 0 0 0 2px var(--blue),inset 0 4px 0 0 var(--raised),inset 0 -4px 0 0 var(--ink)}
+.msg .x{margin:-8px -8px -8px auto;width:48px;height:48px;display:grid;place-items:center;flex:none}
+.big-moment{font:700 20px/1.2 var(--f-px);color:var(--gold)}
+.center{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:12px;padding:0 28px 120px}
+.center h3{margin:0;font:700 24px/1.2 var(--f-px);color:var(--light)}
+.center p{margin:0;font:400 15px/1.5 var(--f-ui);color:var(--parch);max-width:300px}
+.sk{background:var(--surf);background-image:repeating-linear-gradient(90deg,rgba(62,72,112,.45) 0 2px,transparent 2px 4px);clip-path:var(--n2)}
+.app.live .sk{animation:skp 1.2s steps(4,end) infinite}
+@keyframes skp{0%,100%{opacity:1}50%{opacity:.55}}
+.dots3{display:flex;gap:6px}
+.dots3 i{width:8px;height:8px;background:var(--gold)}
+.dots3 i:nth-child(2){background:var(--gold-d)}.dots3 i:nth-child(3){background:var(--dusk)}
+
+/* Bouton flottant, barre d'onglets */
+.fab{position:absolute;right:16px;bottom:100px;z-index:8;min-height:56px;padding:0 18px 0 14px}
+.fab.limit{bottom:100px}
+.tabbar{position:absolute;left:0;right:0;bottom:0;z-index:9;height:96px;padding:6px 8px 30px;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;background:var(--night);box-shadow:inset 0 2px 0 0 var(--line),inset 0 4px 0 0 var(--ink)}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:56px;font:600 12px/1 var(--f-ui);color:var(--parch);position:relative;clip-path:var(--n2)}
+.tab[aria-current="page"]{color:var(--gold);font-weight:700;background:var(--surf);box-shadow:inset 0 0 0 2px var(--line),inset 0 4px 0 0 var(--gold)}
+
+/* Navigation de période */
+.pnav{flex:none;display:flex;align-items:center;justify-content:space-between;padding:10px 8px 6px}
+.pnav .ib{width:48px;height:48px;display:grid;place-items:center}
+.pnav .ib[disabled]{opacity:.35;cursor:default}
+.pnav .t{text-align:center}
+.pnav .t b{display:block;font:700 22px/1.1 var(--f-px);color:var(--light)}
+.pnav .t span{font:500 13px var(--f-ui);color:var(--parch)}
+.dhead{flex:none;display:grid;grid-template-columns:repeat(7,48px);justify-content:center;padding:0 16px 4px;gap:0}
+.dhead div{display:flex;flex-direction:column;align-items:center;font:600 12px/1.2 var(--f-ui);color:var(--muted)}
+.dhead div b{font:700 15px var(--f-ui);color:var(--parch)}
+.dhead div.today b{color:var(--ink);background:var(--gold);padding:1px 6px;clip-path:var(--n2)}
+.dhead div.today{color:var(--gold)}
+
+/* Carte de la Vue Semaine */
+.card{padding:10px 8px 10px;display:flex;flex-direction:column;gap:6px}
+.card .hrow{display:flex;align-items:center;gap:6px;padding:0 4px}
+.card .hname{flex:1;min-width:0;display:flex;align-items:center;gap:8px;min-height:44px;font:600 16px/1.3 var(--f-ui);color:var(--light)}
+.card .hname span{overflow-wrap:anywhere}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;font:700 13px/1.2 var(--f-ui);color:var(--light);background:var(--night);clip-path:var(--n2);box-shadow:inset 0 0 0 2px var(--line);white-space:nowrap}
+.chip.ok{color:var(--gold);box-shadow:inset 0 0 0 2px var(--gold-d);background:#231F1D}
+.card .hsub{display:flex;align-items:center;gap:6px;padding:0 4px;font:500 13px/1.3 var(--f-ui);color:var(--parch)}
+.cells{display:grid;grid-template-columns:repeat(7,48px);justify-content:center}
+.cell{width:48px;height:48px;display:grid;place-items:center;position:relative}
+.cs{width:40px;height:40px;display:grid;place-items:center;clip-path:var(--n2);position:relative}
+.cs.done{background:var(--fait-bg);box-shadow:inset 0 0 0 2px var(--fait),inset 0 -4px 0 0 #0C1F19}
+.cs.pending{background:var(--night);box-shadow:inset 0 0 0 2px var(--gold),inset 0 4px 0 0 var(--ink)}
+.cs.missed{background:var(--miss-bg);box-shadow:inset 0 0 0 2px var(--miss-line)}
+.cs.upcoming{box-shadow:inset 0 0 0 2px var(--raised)}
+.cs.notstarted{}
+.cs .cm{position:absolute;right:2px;top:2px;width:6px;height:6px;background:var(--light);box-shadow:0 0 0 2px var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;padding:6px 4px;font:500 12px/1.2 var(--f-ui);color:var(--parch)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{display:inline-block}
+.legend .cs{width:24px;height:24px}
+.hint{font:500 13px/1.4 var(--f-ui);color:var(--parch);margin:0;padding:0 4px}
+
+/* Vue Mois */
+.mgrid{display:grid;grid-template-columns:repeat(7,48px);justify-content:center;gap:2px 0}
+.mday{width:48px;height:58px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;padding-top:6px;position:relative;clip-path:var(--n2)}
+.mday .n{font:600 12px/1 var(--f-ui);color:var(--parch)}
+.mday .k{font:700 12px/1 var(--f-ui);color:var(--light);font-variant-numeric:tabular-nums}
+.mday .dts{display:flex;gap:2px;flex-wrap:wrap;justify-content:center;max-width:36px}
+.mday .dts i{width:4px;height:4px;background:var(--muted)}
+.mday .dts i.d{background:var(--fait)}
+.mday .dts i.p{background:var(--gold)}
+.mday .dts i.m{background:transparent;box-shadow:inset 0 0 0 1px var(--muted)}
+.mday.tracked{background:var(--surf);box-shadow:inset 0 -2px 0 0 var(--ink)}
+.mday.full{background:var(--fait-bg);box-shadow:inset 0 0 0 2px var(--fait-line)}
+.mday.today{box-shadow:inset 0 0 0 2px var(--gold);background:var(--surf)}
+.mday.upcoming .n,.mday.neutral .n{color:#6B7290}
+.mday .cm{position:absolute;right:4px;top:4px;width:4px;height:4px;background:var(--light)}
+.wgrow{display:flex;align-items:center;gap:10px;min-height:56px;padding:6px 12px;width:100%}
+.wgrow .wt{flex:1;display:flex;flex-direction:column;font:500 13px/1.3 var(--f-ui);color:var(--parch)}
+.wgrow .wt b{font:700 15px var(--f-ui);color:var(--light)}
+
+/* Panneaux, dialogues, toasts */
+.scrim{position:absolute;inset:0;background:rgba(6,7,12,.72);z-index:20}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:21;padding:10px 16px 40px;display:flex;flex-direction:column;gap:10px;background:var(--surf);clip-path:polygon(0 4px,2px 4px,2px 2px,4px 2px,4px 0,calc(100% - 4px) 0,calc(100% - 4px) 2px,calc(100% - 2px) 2px,calc(100% - 2px) 4px,100% 4px,100% 100%,0 100%);box-shadow:inset 0 2px 0 0 var(--line),inset 0 6px 0 0 var(--raised)}
+.sheet.withkbd{padding-bottom:236px}
+.grab{width:40px;height:4px;background:var(--line);margin:4px auto 2px}
+.sheet h3{margin:0;font:700 22px/1.2 var(--f-px);color:var(--light)}
+.sheet .sub2{margin:-6px 0 0;font:500 13px var(--f-ui);color:var(--parch)}
+.flabel{font:600 13px var(--f-ui);color:var(--parch)}
+.field{display:flex;align-items:center;min-height:52px;padding:0 14px;font:500 16px var(--f-ui);color:var(--light)}
+.field.focus{box-shadow:inset 0 0 0 2px var(--gold),inset 0 4px 0 0 var(--ink)}
+.field.invalid{box-shadow:inset 0 0 0 2px var(--err),inset 0 4px 0 0 var(--ink)}
+.field input{all:unset;flex:1;min-width:0;font:500 16px var(--f-ui);color:var(--light)}
+.field input::placeholder{color:var(--muted)}
+.caret{display:inline-block;width:2px;height:20px;background:var(--gold);margin-left:1px;vertical-align:-4px}
+.helprow{display:flex;justify-content:space-between;gap:8px;font:500 12px/1.3 var(--f-ui);color:var(--parch);min-height:16px;margin-top:-4px}
+.helprow .err{display:flex;align-items:center;gap:6px;color:var(--err);font-weight:600}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.segb{min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font:600 13px/1.1 var(--f-ui);color:var(--light);position:relative}
+.segb .x{font:500 12px var(--f-ui);color:var(--parch)}
+.segb[aria-checked="true"]{background:#231F1D;box-shadow:inset 0 0 0 2px var(--gold),inset 0 4px 0 0 var(--raised),inset 0 -4px 0 0 var(--ink);font-weight:700}
+.segb[aria-checked="true"] .x{color:var(--gold)}
+.segb .tick{position:absolute;right:6px;top:6px;display:none}
+.segb[aria-checked="true"] .tick{display:block}
+.pills{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.pillb{min-height:48px;display:grid;place-items:center;font:700 18px var(--f-px);color:var(--light)}
+.pillb[aria-checked="true"]{background:var(--gold);color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink),inset 0 4px 0 0 var(--light),inset 0 -4px 0 0 var(--gold-d)}
+.tphrase{font:600 14px var(--f-ui);color:var(--light)}
+.tphrase small{font:500 13px var(--f-ui);color:var(--parch)}
+.info{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;font:500 13px/1.4 var(--f-ui);color:var(--light);box-shadow:inset 0 0 0 2px var(--blue)}
+.alert{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;font:600 13px/1.4 var(--f-ui);color:var(--pink);background:var(--err-bg);clip-path:var(--n2);box-shadow:inset 0 0 0 2px var(--curse)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kbd{position:absolute;left:0;right:0;bottom:0;height:226px;z-index:22;background:#0B0D16;padding:8px 3px 40px;display:flex;flex-direction:column;gap:8px;box-shadow:inset 0 2px 0 0 var(--ink)}
+.krow{display:flex;justify-content:center;gap:5px}
+.key{width:33px;height:38px;display:grid;place-items:center;background:#2A3150;color:var(--light);font:500 16px var(--f-ui);border-radius:5px}
+.key.wide{width:46px;font-size:13px}.key.space{width:170px;font-size:13px}
+.dialog{position:absolute;left:20px;right:20px;top:270px;z-index:21;padding:18px 16px 16px;display:flex;flex-direction:column;gap:12px}
+.dialog h3{margin:0;font:700 21px/1.25 var(--f-px);color:var(--light)}
+.dialog p{margin:0;font:400 15px/1.5 var(--f-ui);color:var(--parch)}
+.toast{position:absolute;left:16px;right:16px;bottom:104px;z-index:12;display:flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;min-height:52px;background:var(--light);color:var(--ink);font:600 14px/1.35 var(--f-ui);clip-path:var(--n2);box-shadow:inset 0 0 0 2px var(--ink),inset 0 -4px 0 0 var(--parch)}
+.toast.abovefab{bottom:166px}
+.toast.top{bottom:auto;top:56px}
+.toast span{flex:1}
+.toast button{min-height:44px;padding:0 10px;font:700 14px var(--f-ui);color:#2C3D6B;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+.toast.goal{background:#1F1E26;color:var(--light);box-shadow:inset 0 0 0 2px var(--gold),inset 0 4px 0 0 var(--raised),inset 0 -4px 0 0 var(--ink);align-items:flex-start;padding:12px 14px}
+.toast.goal b{display:block;font:700 18px/1.2 var(--f-px);color:var(--gold)}
+.toast.goal .pp{color:var(--gold);font-weight:700}
+.toast.soft{background:var(--raised);color:var(--light);box-shadow:inset 0 0 0 2px var(--line)}
+
+
+/* Pied de la tour (référence #30) */
+.towerhd{flex:none;display:flex;align-items:center;gap:8px;padding:6px 16px 8px}
+.towerhd h2{flex:1;margin:0;font:700 28px/1 var(--f-px);color:var(--light)}
+.shardc{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;font:700 16px/1 var(--f-px);color:var(--shard);background:var(--surf);clip-path:var(--n2);box-shadow:inset 0 0 0 2px #6E4A44}
+.ib48{width:48px;height:48px;display:grid;place-items:center}
+.illu{position:relative;flex:none;margin:0 16px;clip-path:var(--n2);box-shadow:inset 0 0 0 2px var(--line)}
+.illu canvas{width:358px;height:200px}
+.gauge{padding:12px 14px;display:flex;flex-direction:column;gap:8px;width:100%;text-align:left}
+.gauge .gs{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.gauge .gs b{font:700 20px/1 var(--f-px);color:var(--fait)}
+.gauge .gs span{font:500 13px var(--f-ui);color:var(--parch)}
+.gtrack{position:relative;height:14px;display:grid;grid-template-columns:repeat(5,1fr);gap:2px}
+.gtrack i{background:var(--raised);box-shadow:inset 0 -2px 0 0 var(--ink)}
+.gtrack i:nth-child(1),.gtrack i:nth-child(2){background:var(--miss-bg);box-shadow:inset 0 0 0 2px var(--curse)}
+.gtrack i:nth-child(4),.gtrack i:nth-child(5){background:var(--fait-bg);box-shadow:inset 0 0 0 2px var(--fait-line)}
+.gtrack i.mk{background:var(--fait);box-shadow:inset 0 0 0 2px var(--light)}
+.gends{display:flex;justify-content:space-between;font:600 12px var(--f-ui)}
+.gends .c{color:var(--err)}.gends .f{color:var(--fait)}
+.effs{display:flex;flex-wrap:wrap;gap:6px}
+.eff{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;font:600 12px/1.2 var(--f-ui);color:var(--light);background:var(--fait-bg);clip-path:var(--n2)}
+.eff.b{background:#231F1D;color:var(--gold)}
+.herocard{display:flex;align-items:center;gap:12px;padding:8px 12px;min-height:72px;width:100%}
+.herocard .t{flex:1;display:flex;flex-direction:column}
+.herocard .t span{font:500 12px var(--f-ui);color:var(--parch)}
+.herocard .t b{font:700 18px/1.2 var(--f-px);color:var(--light)}
+.herocard .chg{font:700 14px var(--f-ui);color:var(--gold)}
+
+/* Mouvement réduit : rien ne se déplace ni ne grandit, les états finaux s'affichent tout de suite */
+.app.rm *, .app.frozen *{animation:none !important}
+@media (prefers-reduced-motion: reduce){ .app *{animation-duration:1ms !important;animation-iteration-count:1 !important} }
+.app.rm .xpf{display:none}
+.app.rm .burstfx{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Épique #71 · Maquette v2 · à valider</div>
+  <h1>Toute l'app en pixel art</h1>
+  <p class="lead">Le suivi des habitudes passe dans le style retenu pour la tour : même palette, même lumière, même grille. Le fonctionnement ne change pas : mêmes écrans, mêmes gestes, mêmes libellés. Seule l'apparence et les retours de jeu changent. Le texte courant reste dans une police lisible : le pixel art habille, il ne sert pas à lire une phrase.</p>
+  <div class="meta">
+    <span class="tag">Référence : prototype « Duel sans anneau » (pixel art)</span>
+    <span class="tag">Base : « Nuit d'altitude » (#2) et « Clair-obscur » (#30)</span>
+    <span class="tag">3 décisions prises (24/10)</span>
+    <button class="themebtn" id="themeBtn" type="button">Page claire / sombre</button>
+  </div>
+  <nav class="toc" aria-label="Sommaire">
+    <a href="#regles">Stories et décisions</a><a href="#identite">Identité pixel art</a><a href="#proto">Prototype</a><a href="#e1">E1 · Journée</a><a href="#f1">F1 · Retours de jeu</a><a href="#e2">E2 · Nouvelle habitude</a><a href="#e3">E3 · Modifier</a><a href="#e4">E4 · Semaine</a><a href="#e5">E5 · Mois</a><a href="#e6">E6 · Démarrage</a><a href="#t1">T1 · La Tour</a><a href="#a11y">Accessibilité</a><a href="#gloss">Glossaire</a>
+  </nav>
+
+  <!-- ============ Stories et décisions ============ -->
+  <section id="regles">
+    <h2 class="pg">Ce qui change, les stories, les décisions</h2>
+    <div class="cols">
+      <div class="panel">
+        <h3 class="pg" style="margin-top:0">Ce qui ne change pas</h3>
+        <ul class="tight">
+          <li>Les écrans, leur ordre et leurs gestes : un tap sur une habitude la passe à « fait », un second tap revient en arrière.</li>
+          <li>Les libellés du glossaire : Vue Journée, Vue Semaine, Vue Mois, « 2/5 faites », « Objectif atteint », « XP »…</li>
+          <li>Les règles d'expérience, de difficulté et d'objectif hebdomadaire (épiques #2 et #22).</li>
+        </ul>
+        <h3 class="pg">Ce qui change</h3>
+        <ul class="tight">
+          <li>L'apparence : cadres, boutons, cases, crans de la semaine et icônes en pixels, sur la palette de la tour.</li>
+          <li>L'en-tête de chaque vue montre le <b>personnage</b> dessiné en pixels, devant le <b>ciel du jour</b> et la tour au loin.</li>
+          <li>Les retours de jeu : coche qui rebondit, étincelle, « +10 XP » qui s'envole par pas, crans de la semaine qui se remplissent, ciel du jour qui s'éclaire.</li>
+          <li>La barre d'onglets garde ses trois onglets (Journée, Semaine, Mois), dans le nouveau style. L'onglet <b>Tour</b> arrivera avec l'épique #30.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3 class="pg" style="margin-top:0">Découpage proposé : 2 stories</h3>
+        <ul class="storylist" style="list-style:none;padding:0;margin:8px 0 0;display:grid;gap:10px">
+          <li><span class="story">S1</span> <b>La Journée en pixel art, avec ses retours de jeu.</b> L'identité (palette, polices, icônes, cadres, boutons, crans, cases), l'en-tête du personnage avec son expérience, le ciel du jour, la barre d'onglets, la Vue Journée dans tous ses états, les retours de jeu (habitude faite, XP gagnée, objectif atteint, retour en arrière, erreur d'enregistrement) et l'écran de démarrage. L'en-tête garde l'expérience seule : pas de niveau.</li>
+          <li><span class="story">S2</span> <b>La Semaine, le Mois et les panneaux d'habitude en pixel art.</b> La part de l'identité dont ces écrans ont besoin (palette, polices, icônes, cadres, boutons, cases, crans de la semaine), la Vue Semaine, la Vue Mois, le Détail du jour, les panneaux « Nouvelle habitude » et « Modifier l'habitude », la confirmation de suppression, avec leurs états.</li>
+        </ul>
+        <p class="note">Chaque story apporte la partie de l'identité qu'elle utilise : aucune n'attend le code de l'autre. Celle qui arrive en second réutilise ce que la première a déjà livré.</p>
+      </div>
+      <div class="panel">
+        <h3 class="pg" style="margin-top:0">Décisions du propriétaire (24/10)</h3>
+        <ol class="tight">
+          <li><b>Pas de niveau dans cette épique.</b> L'en-tête garde l'expérience seule : « Expérience du personnage » et le total en XP, dans le nouveau style. Le niveau et son passage viendront avec la courbe des niveaux, dans une autre épique.</li>
+          <li><b>Le ciel du jour est retenu.</b> Dans l'en-tête, le ciel de nuit s'éclaire à mesure que les habitudes du jour sont faites, jusqu'au lever du soleil sur la tour quand toutes le sont.</li>
+          <li><b>Les images dessinées par le code sont retenues.</b> Le personnage, la tour, le ciel et les icônes sont dessinés par le code ; un pack ou un artiste pourra les remplacer plus tard sans changer les écrans.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Identité ============ -->
+  <section id="identite">
+    <h2 class="pg">Identité pixel art</h2>
+    <p class="lead">Le style de la tour, étendu à toute l'app : une nuit bleue, une lumière chaude or pâle qui vient d'en haut à droite, des masses dans l'ombre, un contour sombre d'un pixel d'art autour de chaque forme. Le vert ne sert qu'à « fait » et à la Faveur, le rouge du sceau ne sert qu'au coup imparable dans la tour.</p>
+
+    <div class="cols" style="margin-top:16px">
+      <div class="panel">
+        <h3 class="pg" style="margin-top:0">Grille et échelle</h3>
+        <ul class="tight">
+          <li><b>Pixel d'art = 2 dp</b> dans toute l'interface (échelle ×2). Traits, crans, coins et décalages se comptent en multiples de 2 dp.</li>
+          <li><b>×3</b> pour les grands moments seulement : le personnage des états vides.</li>
+          <li><b>Échelle entière uniquement</b> : jamais de mise à l'échelle fractionnaire, jamais d'agrandissement animé d'un sprite. Un « rebond » est une image dessinée un pixel d'art plus haut, pas un zoom.</li>
+          <li>Les sprites sont affichés sans lissage (plus proche voisin).</li>
+          <li>Le texte, lui, reste vectoriel et suit la taille de police du téléphone.</li>
+        </ul>
+        <div class="board" style="margin-top:14px">
+          <div class="cellx"><b>Coin cranté</b><span class="gridzoom" style="--g:12px" id="zCorner"></span><span>Cadre de 2 dp, coin coupé d'un pixel d'art</span></div>
+          <div class="cellx"><b>Personnage ×2 / ×3</b><span style="display:flex;gap:12px;align-items:flex-end" id="zPerso"></span></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3 class="pg" style="margin-top:0">Polices</h3>
+        <div class="board" style="display:block">
+          <div class="typo-row"><span style="font:700 28px/1.1 'Pixelify Sans'">Aujourd'hui</span><small>Police pixel · Pixelify Sans 700 · 28 · titres d'écran</small></div>
+          <div class="typo-row"><span style="font:700 22px/1.2 'Pixelify Sans';color:#F2D49B">1 260 XP · 2/5 · Toutes faites</span><small>Police pixel · 18 à 44 · chiffres de jeu, envols, moments forts</small></div>
+          <div class="typo-row"><span style="font:600 16px/1.3 Inter">Ne pas dépasser mon budget de la journée</span><small>Police de texte · Inter 600 · 16 · nom d'une habitude</small></div>
+          <div class="typo-row"><span style="font:400 15px/1.5 Inter;color:#C9C2B0">Tape ton habitude quand c'est fait : ton personnage gagne de l'XP selon sa difficulté.</span><small>Police de texte · Inter 400 · 15 · texte courant, aides, erreurs</small></div>
+        </div>
+        <ul class="tight" style="margin-top:12px">
+          <li><b>Pixelify Sans</b> (police pixel) : celle du prototype validé. Elle est vectorielle, donc nette à toutes les tailles et compatible avec le grossissement du texte, et elle a les accents et les minuscules du français (contrairement à Press Start 2P ou Silkscreen, en capitales ou très larges). <b>18 px au moins</b>, et seulement pour des titres, des chiffres et des mots isolés.</li>
+          <li><b>Inter</b> (police de texte) : déjà dans l'app, très lisible aux petites tailles, chiffres tabulaires pour les compteurs. Elle porte tout ce qui se lit : noms d'habitudes, phrases, erreurs, libellés d'onglets et de boutons.</li>
+          <li>Les deux suivent le réglage de taille du texte du téléphone ; au-delà de 130 %, les titres pixel passent à la ligne au lieu de rétrécir.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 class="pg">Palette et rôles</h3>
+    <p class="lead">La palette d'art de la tour (31 teintes du prototype) sert aux sprites et au décor. L'interface en tire ses rôles, plus 5 teintes d'interface pour « fait », l'erreur et les Éclats. Contraste mesuré sur la surface <code>#1C2133</code>, sauf mention.</p>
+    <div class="swatches" id="roles" style="margin-top:12px"></div>
+    <details style="margin-top:14px"><summary style="cursor:pointer;font-weight:600;min-height:44px;display:flex;align-items:center">Palette d'art complète (31 teintes du prototype)</summary><div class="artpal" id="artpal"></div></details>
+
+    <h3 class="pg">Icônes</h3>
+    <p class="lead">Deux tailles : <b>16 × 16 dp</b> (8 × 8 pixels d'art) dans le texte, les puces et les cases ; <b>24 × 24 dp</b> (12 × 12 pixels d'art) dans les boutons et la barre d'onglets. Les emblèmes des grands moments font 24 × 24 pixels d'art (48 dp). Une icône n'est jamais seule pour porter un sens : elle accompagne un libellé ou une annonce au lecteur d'écran.</p>
+    <div class="board"><div class="icgrid" id="icons"></div></div>
+
+    <h3 class="pg">Composants</h3>
+    <div class="board" id="components"></div>
+
+    <h3 class="pg">Retours de jeu</h3>
+    <div class="cols">
+      <div class="panel">
+        <ul class="tight">
+          <li><b>Cadence :</b> les images changent à 12 images par seconde (≈ 83 ms), comme dans la tour. Les envols montent par pas de 2 dp.</li>
+          <li><b>Habitude faite</b> (0 ms) : la case passe au vert, la coche monte d'un pixel d'art puis retombe (2 images), une étincelle de 3 images éclate autour, légère vibration.</li>
+          <li><b>XP gagnée</b> (≈ 80 à 900 ms) : « +10 XP » s'envole au-dessus de la case ; la pastille « +10 XP » apparaît près de l'expérience, dont le cadre s'allume une image en or ; le nouveau cran de la semaine s'allume ; le compteur « faites » clignote une fois en or.</li>
+          <li><b>Objectif atteint</b> (≈ 400 ms) : les crans de la semaine passent à l'or, le badge « Objectif atteint » s'allume par paliers, le message « Objectif de la semaine atteint » et la pastille « +30 XP prime ». Seconde vibration.</li>
+          <li><b>Retour en arrière</b> : « −10 XP » en gris, sans étincelle, sans vibration, sans rouge.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <ul class="tight">
+          <li><b>Mouvement réduit</b> (réglage du téléphone) : pas d'envol, pas d'étincelle, pas de rebond, pas de clignotement. Les états finaux s'affichent tout de suite : case verte, pastille « +10 XP », crans à jour, badge et message. Le ciel du jour change sans transition. Les vibrations restent.</li>
+          <li><b>Jamais la couleur seule</b> : « Fait » et « À faire » sont écrits ; la case faite a une coche, la case manquée une croix ; l'objectif atteint a un drapeau et ses mots ; l'onglet actif a un fond, un trait et un libellé en gras.</li>
+          <li><b>Lecteur d'écran</b> : « Cuisiner, fait, 3 sur 5 cette semaine, Moyenne, 10 XP par suivi » ; puis « plus 10 XP » ; « Objectif de la semaine atteint, plus 30 XP de prime ».</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ Prototype ============ -->
+  <section id="proto">
+    <h2 class="pg">Prototype</h2>
+    <p class="lead">Mercredi 21 octobre au soir. Tape les habitudes pour les marquer faites : l'expérience monte, le ciel s'éclaire. « Courir 5 km » atteint son objectif de la semaine et rapporte sa prime. Les onglets, le bouton « Ajouter une habitude », le bouton « ⋯ » et les cases de la Vue Semaine fonctionnent.</p>
+    <div class="proto">
+      <div class="slot"><div class="phone"><div class="screen app live" id="live"></div></div></div>
+      <div class="controls">
+        <fieldset><legend>Réglages du téléphone</legend>
+          <button class="pbtnx" type="button" data-ctl="rm" aria-pressed="false">Mouvement réduit</button>
+        </fieldset>
+        <fieldset><legend>Partie</legend>
+          <button class="pbtnx" type="button" data-ctl="reset">Recommencer</button>
+          <button class="pbtnx" type="button" data-ctl="empty">Aucune habitude</button>
+        </fieldset>
+        <p class="note" id="liveNote" aria-live="polite"></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="e1"><h2 class="pg">E1 · Vue Journée</h2><p class="lead">L'écran d'accueil. Le ciel, le personnage et l'expérience en haut ; « Aujourd'hui » et le compteur « faites » ; une ligne par habitude avec sa case, son état écrit, sa difficulté et les crans de sa semaine.</p><div class="gallery" data-group="e1"></div></section>
+  <section id="f1"><h2 class="pg">F1 · Retours de jeu</h2><p class="lead">Images figées des moments de jeu, dans l'ordre où ils se jouent. Le prototype les joue en mouvement.</p><div class="gallery" data-group="f1"></div></section>
+  <section id="e2"><h2 class="pg">E2 · Panneau « Nouvelle habitude »</h2><p class="lead">Mêmes champs et mêmes règles qu'aujourd'hui : nom, difficulté (Moyenne par défaut), objectif hebdomadaire (7 par défaut).</p><div class="gallery" data-group="e2"></div></section>
+  <section id="e3"><h2 class="pg">E3 · Panneau « Modifier l'habitude » et suppression</h2><p class="lead">Ouvert par « ⋯ » dans la Journée ou par le nom dans la Semaine.</p><div class="gallery" data-group="e3"></div></section>
+  <section id="e4"><h2 class="pg">E4 · Vue Semaine</h2><p class="lead">Une carte par habitude, ses 7 cases et la puce de progression. Chaque case touchable fait 48 × 48 dp, la case dessinée 40 × 40 dp.</p><div class="gallery" data-group="e4"></div></section>
+  <section id="e5"><h2 class="pg">E5 · Vue Mois et Détail du jour</h2><p class="lead">Le calendrier, les objectifs par semaine et le Détail du jour, où l'on corrige d'un tap.</p><div class="gallery" data-group="e5"></div></section>
+  <section id="e6"><h2 class="pg">E6 · Démarrage</h2><p class="lead">L'ouverture de l'app, avant la Vue Journée : la tour dans la nuit, puis l'erreur si les données ne s'ouvrent pas.</p><div class="gallery" data-group="e6"></div></section>
+  <section id="t1"><h2 class="pg">T1 · La Tour (référence pour l'épique #30)</h2><p class="lead">Hors de cette épique : le pied de la tour est conçu dans les stories de #30. Il est montré ici pour vérifier que le suivi et la tour forment un seul univers, avec les libellés de la maquette #30.</p><div class="gallery" data-group="t1"></div></section>
+
+  <!-- ============ Accessibilité ============ -->
+  <section id="a11y">
+    <h2 class="pg">Accessibilité</h2>
+    <div class="cols">
+      <div class="panel">
+        <h3 class="pg" style="margin-top:0">Contrastes</h3>
+        <div class="tscroll"><table class="t">
+          <tr><th>Texte</th><th>Fond</th><th>Rapport</th></tr>
+          <tr><td>Texte principal <code>#FFF3D6</code></td><td>Surface <code>#1C2133</code></td><td>14,5:1</td></tr>
+          <tr><td>Texte secondaire <code>#C9C2B0</code></td><td>Surface</td><td>9,0:1</td></tr>
+          <tr><td>Texte discret <code>#8C93A8</code></td><td>Surface / nuit</td><td>5,2:1 / 6,0:1</td></tr>
+          <tr><td>Or <code>#F2D49B</code> (XP, onglet actif)</td><td>Surface</td><td>11,2:1</td></tr>
+          <tr><td>Encre <code>#06070C</code> sur bouton or</td><td><code>#F2D49B</code></td><td>14,1:1</td></tr>
+          <tr><td>« Fait » <code>#6FD3A0</code></td><td>Surface</td><td>8,9:1</td></tr>
+          <tr><td>Erreur <code>#FF8E8E</code></td><td>Surface</td><td>7,2:1</td></tr>
+          <tr><td>Croix « pas fait » <code>#8C93A8</code></td><td><code>#2A1F36</code></td><td>5,1:1</td></tr>
+          <tr><td>Trait de la case « fait » <code>#6FD3A0</code></td><td>Surface</td><td>8,9:1 (≥ 3:1 exigé)</td></tr>
+          <tr><td>Trait de la case « à faire » <code>#F2D49B</code></td><td>Nuit</td><td>12,9:1</td></tr>
+        </table></div>
+        <p class="note">Le texte discret ne se pose jamais sur la surface relevée <code>#2A3150</code> (4,1:1) : on y met le texte secondaire.</p>
+      </div>
+      <div class="panel">
+        <h3 class="pg" style="margin-top:0">Toucher, lecture, mouvement</h3>
+        <ul class="tight">
+          <li><b>48 dp au moins</b> pour tout ce qui se touche : lignes (72 dp de haut), « ⋯ » 48 × 48, cases de la Semaine 48 × 48 (dessin 40 × 40), jours du Mois 48 × 58, onglets 56 de haut, boutons 48 à 56, pastilles d'objectif 48.</li>
+          <li><b>Lecteur d'écran</b> : les images (ciel, personnage, tour, étincelles, rayons) sont décoratives et ignorées ; chaque ligne, case et jour garde l'annonce complète de l'app actuelle ; les retours de jeu sont annoncés en mots.</li>
+          <li><b>Mouvement réduit</b> : voir « Retours de jeu ». Le squelette de chargement ne clignote plus.</li>
+          <li><b>Jamais la couleur seule</b> : textes « Fait », « À faire », coche, croix, point, tiret, drapeau, marque « corrigé » soulignée de pointillés, onglet actif en gras avec un fond.</li>
+          <li><b>Focus clavier</b> : un trait d'or de 2 dp à l'intérieur du cadre, doublé d'encre.</li>
+          <li>La police pixel ne descend jamais sous 18 px et ne porte jamais une phrase.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="gloss">
+    <h2 class="pg">Glossaire : termes nouveaux proposés</h2>
+    <div class="panel"><div class="tscroll"><table class="t">
+      <tr><th>Terme</th><th>Définition proposée</th></tr>
+      <tr><td><b>Identité pixel art</b></td><td>Le style visuel commun de toute l'app : grille au pixel d'art, palette d'art et rôles d'interface, police pixel et police de texte, icônes, cadres, boutons, crans de la semaine et retours de jeu.</td></tr>
+      <tr><td><b>Pixel d'art</b></td><td>L'unité de la grille : 2 dp dans l'interface (×2), 3 dp pour les grands moments (×3). Toujours une échelle entière.</td></tr>
+      <tr><td><b>Palette d'art</b></td><td>Les 31 teintes des sprites et du décor, reprises du prototype de la tour, plus 5 teintes d'interface (« fait », erreur, Éclats).</td></tr>
+      <tr><td><b>Police pixel</b> / <b>Police de texte</b></td><td>Pixelify Sans pour les titres, chiffres de jeu et moments forts (18 px au moins) ; Inter pour tout le texte à lire.</td></tr>
+      <tr><td><b>Crans de la semaine</b></td><td>L'affichage de la progression de la semaine d'une habitude : un cran par « fait » attendu par l'objectif de la semaine, verts quand ils sont faits, dorés quand l'objectif est atteint. Toujours accompagnés du texte « 2/5 cette semaine ».</td></tr>
+      <tr><td><b>Ciel du jour</b></td><td>Le décor de l'en-tête : ciel de nuit qui s'éclaire selon les habitudes faites sur les habitudes attendues du jour, avec la tour au loin. Retenu le 24/10.</td></tr>
+    </table></div>
+    <p class="note">À réviser : <b>Barre d'onglets</b> (quatre onglets avec <b>Tour</b> quand l'épique #30 livre le pied de la tour). <b>Niveau</b> reste « à préciser » : il n'apparaît pas dans cette épique.</p></div>
+  </section>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   1. Pixel art fait en code (moteur repris du prototype validé)
+   ===================================================================== */
+const PAL=['','#06070C','#10131F','#1C2133','#2A3150','#3E4870','#6B5A7A','#B98E5A','#F2D49B','#FFF3D6',
+ '#8C93A8','#D9DCE6','#3E4639','#646D58','#949B7E','#252B48','#47527A','#8995BE','#2A1F36','#4A3660',
+ '#BFE6DA','#5B4636','#FF3B3B','#8A1E2A','#E0607A','#FFD0D8','#2C3D6B','#4B63A0','#C9C2B0','#B32E3C','#FF8E8E'];
+const hex=h=>[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];
+const RGB=PAL.map(h=>h?hex(h):null);
+const NOLIT=new Set([1,7,8,9,20,22,25,30]);
+const LT={24:25,2:3,3:4,4:5,5:6,10:11,11:9,12:13,13:14,14:28,15:16,16:17,17:9,18:19,19:6,21:7,26:27,27:17,28:9,23:29,29:30};
+const SH={24:23,3:2,4:3,5:4,13:12,14:13,16:15,17:16,19:18,27:26,26:15,11:10,10:4,28:14,6:19,29:23};
+const WARM={13:7,14:7,16:6,17:8,19:6,10:7,11:8,26:6,27:6,28:8,4:6,5:6,21:7,29:30};
+const BAY=[0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5].map(v=>(v+.5)/16);
+const bay=(x,y)=>BAY[(y&3)*4+(x&3)];
+function grid(w,h){return {w,h,d:new Uint8Array(w*h)}}
+function px(g,x,y,c){x=Math.round(x);y=Math.round(y);if(x>=0&&y>=0&&x<g.w&&y<g.h)g.d[y*g.w+x]=c}
+function rect(g,x,y,w,h,c){for(let j=0;j<h;j++)for(let i=0;i<w;i++)px(g,x+i,y+j,c)}
+function ell(g,cx,cy,rx,ry,c){const ax=rx+.5,ay=ry+.5;for(let y=Math.floor(cy-ry);y<=Math.ceil(cy+ry);y++)for(let x=Math.floor(cx-rx);x<=Math.ceil(cx+rx);x++){const dx=(x-cx)/ax,dy=(y-cy)/ay;if(dx*dx+dy*dy<=1)px(g,x,y,c)}}
+function line(g,x0,y0,x1,y1,c,b=1){x0=Math.round(x0);y0=Math.round(y0);x1=Math.round(x1);y1=Math.round(y1);
+ const dx=Math.abs(x1-x0),dy=-Math.abs(y1-y0),sx=x0<x1?1:-1,sy=y0<y1?1:-1,o=(b-1)>>1;let e=dx+dy;
+ for(let n=0;n<400;n++){rect(g,x0-o,y0-o,b,b,c);if(x0===x1&&y0===y1)break;const e2=2*e;if(e2>=dy){e+=dy;x0+=sx}if(e2<=dx){e+=dx;y0+=sy}}}
+function poly(g,pts,c){let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;for(const[p,q]of pts){x0=Math.min(x0,p);x1=Math.max(x1,p);y0=Math.min(y0,q);y1=Math.max(y1,q)}
+ for(let y=Math.floor(y0);y<=Math.ceil(y1);y++)for(let x=Math.floor(x0);x<=Math.ceil(x1);x++){const X=x+.5,Y=y+.5;let ins=false;
+  for(let i=0,j=pts.length-1;i<pts.length;j=i++){const xi=pts[i][0],yi=pts[i][1],xj=pts[j][0],yj=pts[j][1];if((yi>Y)!==(yj>Y)&&X<(xj-xi)*(Y-yi)/(yj-yi)+xi)ins=!ins}
+  if(ins)px(g,x,y,c)}}
+function limb(g,s,h,bend,side,c,b){const dx=h[0]-s[0],dy=h[1]-s[1],L=Math.hypot(dx,dy)||1;let nx=-dy/L,ny=dx/L;if(nx*side<0){nx=-nx;ny=-ny}
+ const m=[(s[0]+h[0])/2+nx*bend,(s[1]+h[1])/2+ny*bend];line(g,s[0],s[1],m[0],m[1],c,b);line(g,m[0],m[1],h[0],h[1],c,b);return m}
+/* Finition : arête haute éclairée, coin chaud en haut à droite, flanc gauche dans l'ombre, contour d'encre d'un pixel d'art */
+function finish(inn){
+ const W=inn.w+4,H=inn.h+4,g=grid(W,H);
+ for(let y=0;y<inn.h;y++)for(let x=0;x<inn.w;x++){const c=inn.d[y*inn.w+x];if(c)px(g,x+2,y+2,c)}
+ const s=g.d.slice(),A=(x,y)=>x>=0&&y>=0&&x<W&&y<H?s[y*W+x]:0;
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++){let c=s[y*W+x];if(!c)continue;
+  if(!NOLIT.has(c)){const up=!A(x,y-1),rt=!A(x+1,y),lf=!A(x-1,y);
+   if(up&&rt&&WARM[c])c=WARM[c];else if((up||rt)&&LT[c])c=LT[c];else if(lf&&SH[c])c=SH[c];
+   else if((x<W*.42||y>H*.66)&&SH[c])c=SH[c]}
+  g.d[y*W+x]=c}
+ const s2=g.d.slice(),B=(x,y)=>x>=0&&y>=0&&x<W&&y<H?s2[y*W+x]:0;
+ for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(!s2[y*W+x]&&(B(x-1,y)||B(x+1,y)||B(x,y-1)||B(x,y+1)))g.d[y*W+x]=1;
+ return g;
+}
+function toCanvas(g){const c=document.createElement('canvas');c.width=g.w;c.height=g.h;const x=c.getContext('2d'),im=x.createImageData(g.w,g.h);
+ for(let i=0;i<g.d.length;i++){const k=g.d[i];if(!k)continue;const r=RGB[k];im.data[i*4]=r[0];im.data[i*4+1]=r[1];im.data[i*4+2]=r[2];im.data[i*4+3]=255}
+ x.putImageData(im,0,0);return c}
+const URL_={};
+function spriteURL(key,fn){if(!URL_[key]){try{URL_[key]=fn().toDataURL()}catch(e){URL_[key]=''}}return URL_[key]}
+
+/* Le personnage : un voyageur encapuchonné, bâton et lanterne. Distinct du héros de la tour. */
+function drawPerso(f){
+ const g=grid(20,28),b=f===1?1:0,up=f===2;
+ rect(g,7,21,2,6,3);rect(g,11,21,2,6,3);rect(g,6,26,3,1,2);rect(g,11,26,3,1,2);
+ poly(g,[[6,9+b],[14,9+b],[16,23],[4,23]],19);
+ for(let x=4,k=0;x<16;x+=3,k++)poly(g,[[x,23],[x+3,23],[x+1.5,24+(k%2)]],19);
+ line(g,7,10+b,13,18,21,1);
+ ell(g,10,6+b,4,4,19);poly(g,[[6,6+b],[14,6+b],[13,11+b],[7,11+b]],19);
+ ell(g,10,7+b,2,2,1);px(g,9,7+b,8);px(g,11,7+b,8);
+ line(g,3,up?0:2,3,27,21,1);px(g,3,up?-1:1,7);
+ line(g,6,12+b,3,14,19,2);
+ const lx=16,ly=up?4:16;
+ line(g,14,11+b,lx,ly-1,19,2);
+ rect(g,lx-1,ly,3,4,8);px(g,lx,ly+1,9);px(g,lx,ly+2,9);px(g,lx,ly-1,5);px(g,lx-1,ly+4,7);px(g,lx+1,ly+4,7);
+ return finish(g);
+}
+/* Le héros de la tour (sprite du prototype, pose de repos) */
+function drawHero(){
+ const g=grid(32,40),b=0,cr=0,l1=11,l2=17;
+ rect(g,l1,31+b,4,9-b,3);rect(g,l2,31+b,4,9-b,3);rect(g,l1-1,38,5,2,2);rect(g,l2,38,5,2,2);
+ poly(g,[[9,13+b],[23,13+b],[26,34+b],[6,34+b]],26);
+ for(let x=6,k=0;x<26;x+=4,k++){const dn=k%2?3:2;poly(g,[[x,34+b],[x+4,34+b],[x+2,34+b+dn]],26)}
+ line(g,12,17+b,10,33+b,15,1);line(g,20,17+b,22,33+b,15,1);
+ limb(g,[8,16+b],[6,27+b],1,-1,10,2);limb(g,[24,16+b],[25,24],1,1,10,2);
+ ell(g,9,14+b,3,2,10);ell(g,23,14+b,3,2,10);
+ ell(g,16,8+b,5,5,10);rect(g,12,12+b,9,2,4);line(g,16,1+b,16,4+b,7,2);
+ line(g,25,24,29,39,11,1);line(g,23,25,27,23,7,1);
+ return finish(g);
+}
+/* Étincelle de l'habitude faite : 3 images de 32 × 32 pixels d'art */
+function drawBurst(){
+ const c=document.createElement('canvas');c.width=96;c.height=32;const x=c.getContext('2d');
+ const P=(f,X,Y,col)=>{x.fillStyle=col;x.fillRect(f*32+X,Y,1,1)};
+ const C=16;
+ for(const[dx,dy]of[[0,-12],[0,12],[-12,0],[12,0]]){for(let k=0;k<2;k++){P(0,C+dx*(1+k/12)|0,C+dy*(1+k/12)|0,'#FFF3D6')}}
+ for(let k=0;k<3;k++){P(0,C,C-13+k,'#F2D49B');P(0,C,C+11+k,'#F2D49B');P(0,C-13+k,C,'#F2D49B');P(0,C+11+k,C,'#F2D49B')}
+ for(let k=0;k<4;k++){P(1,C,C-15+k,'#F2D49B');P(1,C,C+12+k,'#F2D49B');P(1,C-15+k,C,'#F2D49B');P(1,C+12+k,C,'#F2D49B')}
+ for(const[a,b]of[[-11,-11],[11,-11],[-11,11],[11,11]]){P(1,C+a,C+b,'#FFF3D6');P(1,C+a+Math.sign(a),C+b+Math.sign(b),'#F2D49B')}
+ for(const[a,b]of[[0,-16],[0,15],[-16,0],[15,0],[-13,-13],[13,-13],[-13,13],[13,13]])P(2,C+a,C+b,'#B98E5A');
+ return c;
+}
+/* Le ciel du jour et la tour, peints au pixel d'art (×2) avec un tramage ordonné */
+function paintSky(cv,o){
+ const W=cv.width,H=cv.height,x=cv.getContext('2d'),im=x.createImageData(W,H),D=im.data;
+ const put=(X,Y,r)=>{if(X<0||Y<0||X>=W||Y>=H)return;const k=(Y*W+X)*4;D[k]=r[0];D[k+1]=r[1];D[k+2]=r[2];D[k+3]=255};
+ const l=Math.max(0,Math.min(1,o.l)),gnd=o.ground??6,hz=H-gnd;
+ const SKY=['#0B0E1F','#10142B','#161A36','#1D1E40','#282346','#382B4A','#4F364C','#6E4650','#8A5A4E'].map(hex);
+ const reach=3+5*l,sunX=Math.round(W*(o.sunX??.62)),sunY=hz-2-Math.round(H*.22*Math.max(0,l-.5)),sunR=Math.max(5,Math.round(H*.12));
+ const GL1=hex('#8A5A4E'),GL2=hex('#B98E5A'),SUN=hex('#F2D49B'),SUN2=hex('#FFF3D6');
+ for(let y=0;y<hz;y++){const t=y/Math.max(1,hz-1),v=t*reach,i=Math.floor(v),f=v-i;
+  for(let X=0;X<W;X++){let col=f>bay(X,y)?SKY[Math.min(SKY.length-1,i+1)]:SKY[Math.min(SKY.length-1,i)];
+   if(l>.35){const d=Math.hypot(X-sunX,(y-sunY)*1.3),gr=sunR*(1.5+2.6*l);
+    if(l>=.99&&d<=sunR)col=d<sunR*.55?SUN2:SUN;
+    else if(d<gr){const gv=(1-d/gr)*(l-.25);if(gv*1.6>bay(X,y))col=gv>.45?GL2:GL1}}
+   put(X,y,col)}}
+ let s=7;const rnd=()=>{s=(s*1103515245+12345)&0x7fffffff;return s/0x7fffffff};
+ const STAR=hex('#EEEAE0'),STAR2=hex('#8C93A8'),nst=Math.round(W*hz/(240+700*l));
+ for(let n=0;n<nst;n++){const X=Math.floor(rnd()*W),Y=Math.floor(rnd()*hz*.75);const big=rnd()<.12;put(X,Y,big?STAR:STAR2);if(big&&Y>0){put(X-1,Y,STAR2);put(X+1,Y,STAR2)}}
+ const FAR=hex('#2A2140'),FARL=hex(l>.6?'#9A6A50':'#4A3448'),NEAR=hex('#151426'),NEARL=hex(l>.6?'#6E4A44':'#3A2C40');
+ for(let X=0;X<W;X++){
+  const r1=hz-4-Math.round(H*.12*Math.abs(Math.sin(X*.045+1.3))+3*Math.sin(X*.13+.4)+1.5*Math.sin(X*.37));
+  for(let y=Math.max(0,r1);y<hz;y++)put(X,y,FAR);put(X,r1,FARL);
+  const r2=hz-1-Math.round(H*.06*Math.abs(Math.sin(X*.07+2.1))+1.5*Math.sin(X*.21)+Math.sin(X*.5));
+  for(let y=Math.max(0,r2);y<hz;y++)put(X,y,NEAR);put(X,r2,NEARL);
+ }
+ if(o.tower!==false){
+  const tx=Math.round(W*(o.towerX??.8)),tw=o.towerW??10,top=o.towerTop??Math.round(H*.12);
+  const ST=hex('#1C2133'),STL=hex('#3E4870'),STW=hex('#6B5A7A'),WIN=hex('#F2D49B'),WIN2=hex('#B98E5A'),INK=hex('#06070C');
+  for(let y=top;y<hz;y++){const k=(y-top)/(hz-top),half=Math.round(tw/2+k*tw*.35);
+   for(let X=tx-half;X<=tx+half;X++){let col=ST;if(X===tx+half)col=l>.6?STW:STL;else if(X===tx-half)col=INK;else if((y-top)%7===0&&X%3===0)col=INK;put(X,y,col)}}
+  for(let X=tx-Math.round(tw/2)-1;X<=tx+Math.round(tw/2)+1;X++){put(X,top,STL);if((X-tx)%2===0){put(X,top-1,ST);put(X,top-2,ST)}}
+  put(tx,top-4,WIN);put(tx,top-3,WIN);put(tx,top-5,WIN2);
+  const nw=o.windows??3;for(let i=0;i<nw;i++){const wy=top+5+i*Math.round((hz-top-8)/Math.max(1,nw));put(tx+(i%2?2:-1),wy,WIN);put(tx+(i%2?2:-1),wy+1,WIN2)}
+ }
+ const FL=['#2E2434','#251F30','#1D1A29','#171624','#12121D'].map(hex),JOINT=hex('#0E0F18'),HI=hex(l>.6?'#7A5A48':'#45363F');
+ for(let y=hz;y<H;y++){const u=(y-hz)/Math.max(1,gnd),v=u*(FL.length-1),i=Math.floor(v),f=v-i;
+  for(let X=0;X<W;X++){let col=f>bay(X,y)?FL[Math.min(FL.length-1,i+1)]:FL[i];if(y===hz)col=HI;else if((X+(y-hz)*3)%11===0)col=JOINT;put(X,y,col)}}
+ x.putImageData(im,0,0);
+}
+
+/* Icônes : 8 × 8 (glyphes, 16 dp) et 12 × 12 (24 dp). X = couleur, Y = seconde couleur, k = encre */
+const ICONS={
+ check8:['........','.......X','......XX','X....XX.','XX..XX..','.XXXX...','..XX....','........'],
+ cross8:['........','.X....X.','..X..X..','...XX...','...XX...','..X..X..','.X....X.','........'],
+ dot8:['........','........','........','...XX...','...XX...','........','........','........'],
+ dash8:['........','........','........','..XXXX..','........','........','........','........'],
+ peak8:['........','...YY...','..YXXY..','..XXXX..','.XXXXXX.','.XXXXXX.','XXXXXXXX','........'],
+ flag8:['.YXXX...','.YXXXX..','.YXXX...','.Y......','.Y......','.Y......','.Y......','........'],
+ alert8:['...XX...','...XX...','..XkkX..','..XkkX..','.XXkkXX.','.XXXXXX.','XXXkkXXX','XXXXXXXX'],
+ star8:['...X....','...X....','..XYX...','XXYYYXX.','..XYX...','...X....','...X....','........'],
+ check12:['............','............','..........XX','.........XXX','........XXX.','.XX....XXX..','.XXX..XXX...','..XXXXXX....','...XXXX.....','....XX......','............','............'],
+ cross12:['............','.XX......XX.','.XXX....XXX.','..XXX..XXX..','...XXXXXX...','....XXXX....','....XXXX....','...XXXXXX...','..XXX..XXX..','.XXX....XXX.','.XX......XX.','............'],
+ dot12:['............','............','............','............','.....XX.....','....XXXX....','....XXXX....','.....XX.....','............','............','............','............'],
+ dash12:['............','............','............','............','............','...XXXXXX...','...XXXXXX...','............','............','............','............','............'],
+ plus:['............','.....XX.....','.....XX.....','.....XX.....','.....XX.....','.XXXXXXXXXX.','.XXXXXXXXXX.','.....XX.....','.....XX.....','.....XX.....','.....XX.....','............'],
+ pencil:['............','........XX..','.......XXXX.','......XXXX..','.....XXXX...','....XXXX....','...XXXX.....','..XXXX......','..YXX.......','.YYY........','.YY.........','............'],
+ left:['............','............','.......XX...','......XX....','.....XX.....','....XX......','....XX......','.....XX.....','......XX....','.......XX...','............','............'],
+ close:['............','.XX......XX.','..XX....XX..','...XX..XX...','....XXXX....','.....XX.....','....XXXX....','...XX..XX...','..XX....XX..','.XX......XX.','............','............'],
+ more:['............','............','............','............','............','.XX..XX..XX.','.XX..XX..XX.','............','............','............','............','............'],
+ info:['....XXXX....','..XX....XX..','.X...YY...X.','.X........X.','X....YY....X','X....YY....X','X....YY....X','X....YY....X','.X...YY...X.','.X........X.','..XX....XX..','....XXXX....'],
+ alert:['.....XX.....','.....XX.....','....XXXX....','....XkkX....','...XXkkXX...','...XXkkXX...','..XXXkkXXX..','..XXXkkXXX..','.XXXXXXXXXX.','.XXXXkkXXXX.','XXXXXXXXXXXX','XXXXXXXXXXXX'],
+ trash:['....XXXX....','.XXXXXXXXXX.','............','..XXXXXXXX..','..X.X..X.X..','..X.X..X.X..','..X.X..X.X..','..X.X..X.X..','..X.X..X.X..','..X.X..X.X..','..XXXXXXXX..','............'],
+ tDay:['.....XX.....','.X...XX...X.','..X......X..','....XXXX....','...XXXXXX...','XX.XXYYXX.XX','XX.XXYYXX.XX','...XXXXXX...','....XXXX....','..X......X..','.X...XX...X.','.....XX.....'],
+ tWeek:['..X......X..','.XXXXXXXXXX.','.XXXXXXXXXX.','.X........X.','.X........X.','.XYYYYYYYYX.','.XYYYYYYYYX.','.X........X.','.X........X.','.X........X.','.XXXXXXXXXX.','............'],
+ tMonth:['..X......X..','.XXXXXXXXXX.','.XXXXXXXXXX.','.X........X.','.X.YY..YY.X.','.X........X.','.X.YY..YY.X.','.X........X.','.X.YY..YY.X.','.X........X.','.XXXXXXXXXX.','............'],
+ tTower:['.X.X.XX.X.X.','.XXXXXXXXXX.','..XXXXXXXX..','...XXXXXX...','...XXYYXX...','...XXYYXX...','...XXXXXX...','...XXXXXX...','...XXXXXX...','..XXX..XXX..','..XXX..XXX..','.XXXXXXXXXX.'],
+ shard:['.....X......','....XYX.....','...XYYXX....','...XYXXX....','..XYXXXXX...','..XXXXXXX...','..XXXXXXX...','...XXXXX....','...XXXXX....','....XXX.....','.....X......','............'],
+ gear:['.....XX.....','..X.XXXX.X..','..XXXXXXXX..','...XX..XX...','.XXX....XXX.','XXX......XXX','XXX......XXX','.XXX....XXX.','...XX..XX...','..XXXXXXXX..','..X.XXXX.X..','.....XX.....'],
+ tent:['.....XX.....','....XXXX....','....XYYX....','...XXYYXX...','...XYYYYX...','..XXYYYYXX..','..XYYYYYYX..','.XXYYYYYYXX.','.XYYYYYYYYX.','XXXXXXXXXXXX','............','............'],
+ key:['............','.XXX........','X...X.......','X...XXXXXXX.','X...X..X.X..','.XXX...X.X..','............','............','............','............','............','............'],
+ heart:['............','.XX....XX...','XXXX..XXXX..','XXXXXXXXXX..','XXXXXXXXXX..','.XXXXXXXX...','..XXXXXX....','...XXXX.....','....XX......','............','............','............']
+};
+function iconCanvas(name,c1,c2){
+ const rows=ICONS[name],h=rows.length,w=rows[0].length,c=document.createElement('canvas');c.width=w;c.height=h;
+ const x=c.getContext('2d');
+ rows.forEach((r,y)=>[...r].forEach((ch,X)=>{const col=ch==='X'?c1:ch==='Y'?(c2||c1):ch==='k'?'#06070C':null;if(col){x.fillStyle=col;x.fillRect(X,y,1,1)}}));
+ return c;
+}
+function mirror(name){ICONS[name.replace('left','right')]=ICONS[name].map(r=>[...r].reverse().join(''))}
+mirror('left');
+/* Icône de difficulté : 1, 2 ou 3 sommets accolés */
+function diffCanvas(n,c1,c2){
+ const w=8+(n-1)*5,c=document.createElement('canvas');c.width=w;c.height=8;const x=c.getContext('2d');
+ for(let k=n-1;k>=0;k--){x.drawImage(iconCanvas('peak8',c1,c2),k*5,0)}
+ return c;
+}
+function I(name,c1,c2,scale=2,alt=''){
+ const key=`i:${name}:${c1}:${c2||''}`;const u=spriteURL(key,()=>iconCanvas(name,c1,c2));const r=ICONS[name];
+ return `<img class="px" src="${u}" width="${r[0].length*scale}" height="${r.length*scale}" alt="${alt}"${alt?'':' aria-hidden="true"'}>`;
+}
+function DI(n,scale=2){const u=spriteURL('d:'+n,()=>diffCanvas(n,'#C9C2B0','#FFF3D6'));return `<img class="px" src="${u}" width="${(8+(n-1)*5)*scale}" height="${8*scale}" alt="" aria-hidden="true">`}
+function PERSO(f=0,scale=2,cls='perso'){const u=spriteURL('p'+f,()=>toCanvas(drawPerso(f)));return `<img class="px ${cls}" src="${u}" width="${24*scale}" height="${32*scale}" alt="" aria-hidden="true">`}
+function drawAlert(){const g=grid(20,20);poly(g,[[10,0],[19.6,19.6],[0.4,19.6]],24);rect(g,9,6,2,8,1);rect(g,9,16,2,2,1);return finish(g)}
+function EMB(){const u=spriteURL('emb',()=>toCanvas(drawAlert()));return `<img class="px" src="${u}" width="48" height="48" alt="" aria-hidden="true">`}
+function HERO(scale=2){const u=spriteURL('hero',()=>toCanvas(drawHero()));return `<img class="px" src="${u}" width="${36*scale}" height="${44*scale}" alt="" aria-hidden="true">`}
+
+/* =====================================================================
+   2. Données d'exemple : mercredi 21 octobre 2026
+   ===================================================================== */
+const DIFF={easy:{l:'Facile',xp:5,u:3,n:1},medium:{l:'Moyenne',xp:10,u:5,n:2},hard:{l:'Difficile',xp:20,u:10,n:3}};
+const DORDER=['easy','medium','hard'];
+const DL=['L','M','M','J','V','S','D'];
+const DLONG=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+const dow=d=>((d+2)%7+7)%7;           /* 1er octobre 2026 = jeudi */
+const monOf=d=>d-dow(d);
+const longDate=d=>d<1?`${DLONG[dow(d)]} ${30+d} septembre`:`${DLONG[dow(d)]} ${d} octobre`;
+const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
+const fmt=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g,' ');
+const esc=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const H0=[
+ {id:'h1',name:'Cuisiner',diff:'medium',target:5,created:-40},
+ {id:'h2',name:'Ne pas dépasser mon budget de la journée',diff:'easy',target:7,created:-40},
+ {id:'h3',name:'Courir 5 km',diff:'hard',target:3,created:-40},
+ {id:'h4',name:'Me coucher avant 23 h',diff:'medium',target:7,created:-40},
+ {id:'h5',name:'Lire 20 minutes',diff:'easy',target:4,created:15}
+];
+const SEED=(()=>{const s=new Set();let r=11;const rnd=()=>{r=(r*16807)%2147483647;return r/2147483647};
+ const p={h1:.68,h2:.78,h3:.42,h4:.62,h5:.72};
+ for(let d=-2;d<=18;d++)for(const h of H0){if(d<h.created)continue;if(rnd()<p[h.id])s.add(h.id+':'+d)}
+ ['h1:19','h1:20','h2:19','h2:21','h3:19','h3:20','h4:19','h4:20','h5:19','h5:21'].forEach(k=>s.add(k));
+ s.delete('h5:20');s.delete('h2:20');
+ return s})();
+const CORR=new Set(['h4:20','h1:17']);
+function base(){return {tab:'day',habits:H0.map(h=>({...h})),checks:new Set(SEED),xp:1260,today:21,sky:true,time:'20:41'}}
+
+const isDone=(c,h,d)=>c.checks.has(h.id+':'+d);
+const active=(h,d)=>d>=h.created;
+function status(c,h,d){if(!active(h,d))return 'notstarted';if(d>c.today)return 'upcoming';if(isDone(c,h,d))return 'done';return d===c.today?'pending':'missed'}
+const ST_LABEL={done:'fait',pending:'à faire',missed:'pas fait',upcoming:'à venir',notstarted:'hors habitude'};
+function wt(h,m){let n=0;for(let d=m;d<m+7;d++)if(active(h,d))n++;return n?Math.min(h.target,n):null}
+function prog(c,h,m,upto){let n=0;for(let d=m;d<=Math.min(m+6,upto);d++)if(isDone(c,h,d)&&active(h,d))n++;return n}
+function expected(c,h,d){if(!active(h,d))return false;if(isDone(c,h,d))return true;const t=wt(h,monOf(d));return t==null||prog(c,h,monOf(d),d)<t}
+function dayCount(c,d){const act=c.habits.filter(h=>expected(c,h,d));return {act,n:act.filter(h=>isDone(c,h,d)).length}}
+function reached(c,h,m){const t=wt(h,m);return t!=null&&prog(c,h,m,Math.min(c.today,m+6))>=t}
+
+/* =====================================================================
+   3. Écrans
+   ===================================================================== */
+const statusBar=c=>`<div class="island"></div><div class="statusbar"><span>${c.time||'20:41'}</span><span aria-hidden="true" style="display:flex;gap:6px;align-items:center"><span style="display:inline-block;width:18px;height:10px;background:linear-gradient(90deg,#FFF3D6 0 3px,transparent 3px 5px,#FFF3D6 5px 8px,transparent 8px 10px,#FFF3D6 10px 13px,transparent 13px 15px,#FFF3D6 15px)"></span><span style="display:inline-block;width:24px;height:12px;box-shadow:inset 0 0 0 2px #FFF3D6;padding:2px"><span style="display:block;width:70%;height:100%;background:#FFF3D6"></span></span></span></div>`;
+function skyLight(c){if(!c.sky)return .12;if(c.skyL!=null)return c.skyL;const {act,n}=dayCount(c,c.today);if(!act.length)return c.habits.length?1:.1;return .1+.9*(n/act.length)}
+function header(c,short){
+ const ds=(c.deltas||[]).map(x=>`<span class="delta ${x.prime?'prime':''} ${x.neg?'neg':''} ${c.static?'':'anim'}">${x.t}</span>`).join('');
+ const plate=`<div class="plate pf ${c.flash?'flash':''}" role="group" aria-label="Expérience du personnage, ${fmt(c.xp)} XP"><div class="lbl">Expérience du personnage</div><div class="xpv" style="font-size:24px">${fmt(c.xp)} XP</div></div>`;
+ return `<header class="hd ${short?'short':''}"><canvas class="sky" data-sky="${skyLight(c)}" width="195" height="${short?46:66}" aria-hidden="true"></canvas>${PERSO(c.persoF||0,2)}${plate}${ds?`<div class="deltas" aria-hidden="true">${ds}</div>`:''}</header>`;
+}
+function tabbar(c){
+ const T=[['day','Journée','tDay'],['week','Semaine','tWeek'],['month','Mois','tMonth']];if(c.tower===true)T.push(['tower','Tour','tTower']);
+ return `<nav class="tabbar" aria-label="Vues">${T.map(([k,l,ic])=>{const on=c.tab===k;return `<button class="tab" data-tab="${k}" ${on?'aria-current="page"':''}>${I(ic,on?'#F2D49B':'#8C93A8',on?'#FFF3D6':'#C9C2B0')}${l}</button>`}).join('')}</nav>`;
+}
+function crans(c,h,m,upto,big){
+ const t=wt(h,m);if(t==null)return '';const p=prog(c,h,m,upto),ok=p>=t;let s='';
+ for(let i=0;i<t;i++)s+=`<i class="${i<p?'on':''}"></i>`;
+ return `<span class="crans ${ok?'ok':''} ${big?'big':''}" aria-hidden="true">${s}${p>t?`<span class="more">+${p-t}</span>`:''}</span>`;
+}
+function weekText(c,h,d){const m=monOf(d),t=wt(h,m);if(t==null)return null;const p=prog(c,h,m,d),cur=m===monOf(c.today);const when=cur?'cette semaine':`sem. du ${m<1?(30+m)+' sept.':m+' oct.'}`;return p>t?`${p} fois ${when}`:`${p}/${t} ${when}`}
+function hrow(c,h,d,opt={}){
+ const st=status(c,h,d),m=monOf(d),t=wt(h,m),p=prog(c,h,m,d),ok=t!=null&&p>=t&&!(c.noBadge===h.id);
+ const glyph=st==='done'?I('check12','#6FD3A0'):st==='missed'?I('cross12','#8C93A8'):st==='notstarted'?I('dash12','#3E4870'):'';
+ const cor=CORR.has(h.id+':'+d)&&d<c.today;
+ const wtxt=weekText(c,h,d);
+ const fx=(c.fx&&c.fx.id===h.id)?`${c.fx.burst?`<span class="burstfx ${c.static?'frozen':'anim'}" style="background-image:url(${spriteURL('burst',drawBurst)})"></span>`:''}<span class="xpf ${c.fx.neg?'neg':''} ${c.static?'':'anim'}">${c.fx.t}</span>`:'';
+ const badge=ok?`<span class="goalb ${c.burst===h.id?'burst':''}">${I('flag8','#F2D49B','#C9C2B0')}Objectif atteint</span>`:'';
+ const aria=`${esc(h.name)}, ${ST_LABEL[st]}${wtxt?', '+wtxt.replace('/',' sur '):''}, ${DIFF[h.diff].l}, ${DIFF[h.diff].xp} XP par suivi${ok?', objectif atteint':''}${cor?', corrigé':''}`;
+ const lbl=cap(ST_LABEL[st]);
+ const more=opt.more?`<button class="more" data-edit="${h.id}" aria-label="Options de l'habitude ${esc(h.name)}">${I('more','#C9C2B0')}</button>`:'';
+ return `<div class="row pf ${st} ${ok?'reached':''} ${c.hl===h.id?'hl':''}"><button class="tap" data-h="${h.id}" data-d="${d}" ${st==='upcoming'||st==='notstarted'?'aria-disabled="true"':`aria-pressed="${st==='done'}"`} aria-label="${aria}"><span class="boxw"><span class="box ${c.fx&&c.fx.id===h.id&&c.fx.burst&&!c.static?'pop':''}">${glyph}</span>${fx}</span><span class="tx"><span class="nm">${esc(h.name)}</span><span class="sub">${DI(DIFF[h.diff].n)}<span class="st">${lbl}</span>${wtxt?`<span>· ${wtxt}</span>`:''}${cor?'<span class="cmk">corrigé</span>':''}</span><span class="sub">${t!=null?crans(c,h,m,d):''}${badge}</span></span></button>${more}</div>`;
+}
+function fab(c){return c.habits.length>=10?`<button class="pb off fab limit" data-act="limit" aria-disabled="true">${I('plus','#8C93A8')}Limite atteinte · 10/10</button>`:`<button class="pb pri fab" data-act="new">${I('plus','#06070C')}Ajouter une habitude</button>`}
+function emptyBlock(title,text,act){return `<div class="center">${PERSO(0,3,'')}<h3>${title}</h3><p>${text}</p><button class="pb pri" data-act="${act}" style="margin-top:6px">${I('plus','#06070C')}Ajouter une habitude</button></div>`}
+function dayView(c){
+ if(!c.habits.length)return `<div class="body">${emptyBlock("Aucune habitude pour l'instant","Crée ta première habitude et commence à gagner de l'expérience.",'new')}</div>`;
+ const d=c.today,{act,n}=dayCount(c,d),all=c.habits.filter(h=>active(h,d)),none=!act.length&&all.length>0;
+ let cnt;
+ if(none)cnt=`<div class="count"><span class="goalb">${I('flag8','#F2D49B','#C9C2B0')}Atteints</span></div>`;
+ else{let seg='';for(let i=0;i<act.length;i++)seg+=`<i class="${i<n?'on':''}"></i>`;
+  cnt=`<div class="count ${c.pulse&&!c.static?'pulse':''}" aria-label="${n} ${n>1?'habitudes faites':'habitude faite'} sur ${act.length}"><span class="cv">${n}/${act.length}<small>faites</small></span><span class="crans big" aria-hidden="true">${seg}</span></div>`}
+ const hd=`<div class="dayhd"><div><h2>Aujourd'hui</h2><div class="date">${cap(longDate(d))}</div></div>${cnt}</div>`;
+ let top='';
+ if(c.hint)top+=`<div class="msg hint pf" role="note">${I('info','#8995BE','#FFF3D6')}<span>Tape ton habitude quand c'est fait : ton personnage gagne de l'XP selon sa difficulté.</span></div>`;
+ if(c.yday)top+=`<div class="msg pf"><span style="flex:1">Hier : <b style="display:inline">${dayCount(c,d-1).n}/${dayCount(c,d-1).act.length} faites</b>. Un oubli&nbsp;?</span><button class="linkb" data-tab="week">Corriger</button><button class="x" aria-label="Fermer le rappel d'hier">${I('close','#C9C2B0')}</button></div>`;
+ if(none)top+=`<div class="msg fait pf" role="status">${I('flag8','#6FD3A0','#C9C2B0')}<span><b>Objectifs de la semaine atteints</b>Rien n'est attendu aujourd'hui. Un « fait » en plus rapporte quand même son XP.</span></div>`;
+ else if(n===act.length)top+=`<div class="msg gold pf" role="status">${I('star8','#F2D49B','#FFF3D6')}<span><b class="big-moment" style="font-size:20px">Toutes faites</b>Toutes tes habitudes du jour sont faites. Belle ascension&nbsp;!</span></div>`;
+ return `<div class="body">${hd}<div class="scroll">${top}${all.map(h=>hrow(c,h,d,{more:true})).join('')}<div class="sect"><span>Habitudes</span><span>${c.habits.length}/10</span></div></div>${fab(c)}</div>`;
+}
+function pnav(title,sub,prevDis,nextDis,lp,ln){return `<div class="pnav"><button class="ib" data-act="prev" aria-label="${lp}" ${prevDis?'disabled':''}>${I('left','#FFF3D6')}</button><div class="t" aria-live="polite"><b>${title}</b><span>${sub}</span></div><button class="ib" data-act="next" aria-label="${ln}" ${nextDis?'disabled':''}>${I('right','#FFF3D6')}</button></div>`}
+const GLYPH={done:()=>I('check12','#6FD3A0'),missed:()=>I('cross12','#8C93A8'),upcoming:()=>I('dot12','#3E4870'),notstarted:()=>I('dash12','#3E4870'),pending:()=>''};
+function weekView(c){
+ if(!c.habits.length)return `<div class="body">${emptyBlock('Ta semaine est vide','Elle se remplira dès ta première habitude.','new')}</div>`;
+ const m=monOf(c.today);
+ let dh='';for(let i=0;i<7;i++){const d=m+i;dh+=`<div class="${d===c.today?'today':''}"><span>${DL[i]}</span><b>${d}</b></div>`}
+ const cards=c.habits.map(h=>{
+  const t=wt(h,m),p=prog(c,h,m,c.today),ok=t!=null&&p>=t;
+  const chip=t==null?'':ok?`<span class="chip ok" role="img" aria-label="${p} sur ${t}, objectif atteint">${I('flag8','#F2D49B','#C9C2B0')}${p}/${t} · Objectif atteint</span>`:`<span class="chip" role="img" aria-label="${p} sur ${t}">${crans(c,h,m,c.today)}${p}/${t}</span>`;
+  let cells='';
+  for(let i=0;i<7;i++){const d=m+i,st=status(c,h,d),cor=CORR.has(h.id+':'+d)&&d<c.today,can=['done','pending','missed'].includes(st);
+   const f=(c.fx&&c.fx.id===h.id&&c.fx.d===d);
+   cells+=`<button class="cell" data-h="${h.id}" data-d="${d}" ${can?`aria-pressed="${st==='done'}"`:'aria-disabled="true"'} aria-label="${esc(h.name)}, ${longDate(d)}, ${ST_LABEL[st]}${cor?', corrigé':''}"><span class="cs ${st}">${GLYPH[st]()}${cor?'<span class="cm"></span>':''}</span>${f?`<span class="burstfx ${c.static?'frozen':'anim'}" style="background-image:url(${spriteURL('burst',drawBurst)});left:-8px;top:-8px"></span><span class="xpf ${c.fx.neg?'neg':''} ${c.static?'':'anim'}">${c.fx.t}</span>`:''}</button>`}
+  return `<div class="card pf ${ok?'reached':''}"><div class="hrow"><button class="hname" data-edit="${h.id}" aria-label="Modifier l'habitude ${esc(h.name)}"><span>${esc(h.name)}</span>${I('pencil','#8C93A8','#F2D49B')}</button>${chip}</div><div class="hsub">${DI(DIFF[h.diff].n)}<span>${DIFF[h.diff].l} · ${h.target===7?'tous les jours':h.target+' fois par semaine'}</span></div><div class="cells">${cells}</div></div>`;
+ }).join('');
+ const lg=`<div class="legend" aria-hidden="true">${[['done','Fait'],['pending','À faire'],['missed','Pas fait'],['upcoming','À venir'],['notstarted','Hors habitude']].map(([k,l])=>`<span><span class="cs ${k}" style="transform:none">${k==='pending'?'':({done:I('check8','#6FD3A0'),missed:I('cross8','#8C93A8'),upcoming:I('dot8','#3E4870'),notstarted:I('dash8','#3E4870')})[k]}</span>${l}</span>`).join('')}<span><span class="cs done" style="width:24px;height:24px"><span class="cm" style="width:4px;height:4px"></span></span>Corrigé</span></div>`;
+ return `<div class="body">${pnav('Cette semaine','19 – 25 octobre',false,true,'Semaine précédente','Semaine suivante')}<div class="dhead" aria-hidden="true">${dh}</div><div class="scroll" style="padding-bottom:110px">${c.toast&&c.toast.goal?'':''}${cards}${lg}<p class="hint">Tape une case d'un jour passé pour corriger un oubli.</p></div></div>`;
+}
+function monthCell(c,d){
+ if(d>c.today)return `<div class="mday upcoming" role="img" aria-label="${longDate(d)}, à venir"><span class="n">${d}</span></div>`;
+ const {act,n}=dayCount(c,d),cor=c.habits.some(h=>CORR.has(h.id+':'+d));
+ if(!act.length)return `<button class="mday full" data-mday="${d}" aria-label="${longDate(d)}, objectifs de la semaine atteints"><span class="n">${d}</span>${I('flag8','#6FD3A0','#C9C2B0')}</button>`;
+ const dots=act.map(h=>{const st=status(c,h,d);return `<i class="${st==='done'?'d':st==='pending'?'p':'m'}"></i>`}).join('');
+ const cls=['mday','tracked',d===c.today?'today':'',n===act.length&&d!==c.today?'full':''].join(' ');
+ return `<button class="${cls}" data-mday="${d}" aria-label="${longDate(d)}${d===c.today?", aujourd'hui":''}, ${n} ${n>1?'habitudes faites':'habitude faite'} sur ${act.length}${cor?', corrigé':''}"><span class="n">${d}</span><span class="k">${n}/${act.length}</span><span class="dts">${dots}</span>${cor?'<span class="cm"></span>':''}</button>`;
+}
+function monthView(c){
+ if(!c.habits.length)return `<div class="body">${emptyBlock('Ton mois est vide','Chaque jour affichera tes habitudes faites dès ta première habitude.','new')}</div>`;
+ let g='';for(let i=0;i<dow(1);i++)g+='<div></div>';for(let d=1;d<=31;d++)g+=monthCell(c,d);
+ const weeks=[[-2,'Semaine du 28 septembre'],[5,'Semaine du 5 octobre'],[12,'Semaine du 12 octobre'],[19,'Cette semaine']];
+ const rows=weeks.map(([m,l])=>{const hs=c.habits.filter(h=>wt(h,m)!=null),r=hs.filter(h=>reached(c,h,m)).length,all=r===hs.length;
+  return `<button class="wgrow pf" aria-label="${l}, ${r} sur ${hs.length} objectifs atteints">${all?I('flag8','#F2D49B','#C9C2B0'):I('star8','#8C93A8','#C9C2B0')}<span class="wt"><b>${l}</b><span>${r}/${hs.length} objectifs atteints</span></span>${I('right','#8C93A8')}</button>`}).join('');
+ const lg=`<div class="legend" aria-hidden="true"><span><i style="width:6px;height:6px;background:#6FD3A0"></i>Fait</span><span><i style="width:6px;height:6px;background:#F2D49B"></i>À faire</span><span><i style="width:6px;height:6px;box-shadow:inset 0 0 0 2px #8C93A8"></i>Pas fait</span><span>${I('flag8','#6FD3A0','#C9C2B0',2)}Objectifs atteints</span></div>`;
+ return `<div class="body">${pnav('Octobre 2026','Ce mois-ci',false,true,'Mois précédent','Mois suivant')}<div class="scroll" style="padding-top:2px;gap:6px"><div class="dhead" style="padding:0" aria-hidden="true">${DL.map(l=>`<div><span>${l}</span></div>`).join('')}</div><div class="mgrid">${g}</div>${lg}<div class="sect"><span>Objectifs par semaine</span></div>${rows}</div></div>`;
+}
+function towerView(c){
+ const head=`<div class="towerhd"><h2>La Tour</h2><span class="shardc" aria-label="34 Éclats">${I('shard','#FF9F5A','#FFD0D8')}34</span><button class="ib48" aria-label="Réglages de la parade">${I('gear','#C9C2B0')}</button></div>`;
+ const illu=`<div class="illu"><canvas class="sky" data-tower="big" width="179" height="100" aria-hidden="true"></canvas></div>`;
+ const gauge=`<button class="gauge pf" aria-label="Jauge du jour : Faveur, niveau plus 1. Hier : 3/4 faites. Ouvrir le détail."><div class="gs"><b>Faveur</b><span>Hier : 3/4 faites</span></div><div class="gtrack" aria-hidden="true"><i></i><i></i><i></i><i class="mk"></i><i></i></div><div class="gends"><span class="c">Malédiction</span><span class="f">Faveur</span></div><div class="effs"><span class="eff">${I('key','#6FD3A0')}1 clé</span><span class="eff">${I('star8','#6FD3A0','#FFF3D6')}Butin un peu plus rare</span><span class="eff b">${I('star8','#F2D49B','#FFF3D6')}3 bénédictions de départ</span></div></button>`;
+ const hero=`<button class="herocard pf" aria-label="Héros : La Sentinelle. Changer de héros"><span style="width:64px;height:60px;overflow:hidden;flex:none">${HERO(2)}</span><span class="t"><span>Héros</span><b>La Sentinelle</b></span><span class="chg">Changer</span>${I('right','#8C93A8')}</button>`;
+ return `<div class="body">${head}<div class="scroll" style="padding:0 0 110px;gap:10px">${illu}<div style="padding:0 16px;display:flex;flex-direction:column;gap:10px">${gauge}${hero}<button class="pb pri big block">${I('tTower','#06070C','#B98E5A')}Commencer l'ascension</button><button class="pb sec block">${I('tent','#C9C2B0','#6B5A7A')}Camp</button></div></div></div>`;
+}
+function loadingView(c){
+ const row=`<div class="row pf" style="padding:12px;gap:12px;align-items:center;min-height:72px"><div class="sk" style="width:44px;height:44px;flex:none"></div><div style="flex:1;display:flex;flex-direction:column;gap:8px"><div class="sk" style="width:62%;height:14px"></div><div class="sk" style="width:44%;height:10px"></div></div></div>`;
+ return `<div class="body" role="status" aria-label="Chargement de tes habitudes"><div class="dayhd"><div><div class="sk" style="width:150px;height:26px"></div><div class="sk" style="width:120px;height:12px;margin-top:8px"></div></div><div class="sk" style="width:80px;height:22px"></div></div><div class="scroll">${row.repeat(5)}</div></div>`;
+}
+function errorView(){return `<div class="body"><div class="center">${EMB()}<h3>Impossible de charger tes habitudes.</h3><p>Une erreur est survenue en lisant tes données sur ce téléphone.</p><button class="pb pri" style="margin-top:6px;min-width:180px">Réessayer</button></div></div>`}
+const KBD=()=>{const rows=[[...'azertyuiop'],[...'qsdfghjklm'],['⇧','w','x','c','v','b','n','⌫'],['123','espace','↵']];return `<div class="kbd" aria-hidden="true">${rows.map(r=>`<div class="krow">${r.map(k=>`<span class="key ${k==='espace'?'space':(k.length>1||'⇧⌫↵'.includes(k))?'wide':''}">${k}</span>`).join('')}</div>`).join('')}</div>`};
+function sheet(c,o){
+ const isNew=o.type==='new',v=o.value||'';
+ const dup=v&&c.habits.find(h=>h.id!==o.id&&h.name.toLowerCase()===v.trim().toLowerCase());
+ const err=dup?`Tu as déjà une habitude «&nbsp;${esc(dup.name)}&nbsp;».`:(!isNew&&!v.trim()?'Le nom ne peut pas être vide.':'');
+ const h=isNew?null:c.habits.find(x=>x.id===o.id);
+ const changed=isNew?!!v.trim():(v!==h.name||o.diff!==h.diff||o.target!==h.target);
+ const can=changed&&!err&&v.trim();
+ const seg=DORDER.map(k=>`<button class="segb pf" role="radio" aria-checked="${o.diff===k}" data-diff="${k}" aria-label="${DIFF[k].l}, ${DIFF[k].xp} XP par suivi"><span class="tick">${I('check8','#F2D49B')}</span>${DI(DIFF[k].n)}<span>${DIFF[k].l}</span><span class="x">+${DIFF[k].xp} XP</span></button>`).join('');
+ let pills='';for(let n=1;n<=7;n++)pills+=`<button class="pillb pf" role="radio" aria-checked="${o.target===n}" data-target="${n}" aria-label="${n===7?'7 fois par semaine, tous les jours':n+' fois par semaine'}">${n}</button>`;
+ let info='';
+ if(!isNew&&h&&o.diff!==h.diff)info+=`<div class="info pf">${I('info','#8995BE','#FFF3D6')}<span>S'applique à toute cette semaine : chaque suivi « fait » rapportera ${DIFF[o.diff].xp} XP. Les semaines passées ne changent pas.</span></div>`;
+ if(!isNew&&h&&o.target!==h.target)info+=`<div class="info pf">${I('info','#8995BE','#FFF3D6')}<span>Nouvel objectif à partir de lundi prochain (26 octobre). Cette semaine reste à ${wt(h,19)}.</span></div>`;
+ const tp=o.target===7?'Tous les jours':`${o.target} fois par semaine`;
+ const actions=isNew?`<button class="pb ${can?'pri':'off'} block" ${can?'data-act="create"':'aria-disabled="true"'}>Créer l'habitude</button>`
+  :`<button class="pb ${can?'pri':'off'} block" ${can?'data-act="save"':'aria-disabled="true"'}>Enregistrer</button><button class="linkb" data-act="del" style="align-self:center;color:#FF8E8E">${I('trash','#FF8E8E')}Supprimer l'habitude</button>`;
+ return `<div class="scrim" data-act="close"></div><div class="sheet ${o.kbd?'withkbd':''}" role="dialog" aria-modal="true" aria-label="${isNew?'Nouvelle habitude':"Modifier l'habitude"}"><div class="grab"></div><h3>${isNew?'Nouvelle habitude':"Modifier l'habitude"}</h3><label class="flabel" for="nm-${o.uid||0}">Nom de l'habitude</label><div class="field pf inset ${err?'invalid':o.focus?'focus':''}"><input id="nm-${o.uid||0}" data-name value="${esc(v)}" placeholder="Ex. Cuisiner" maxlength="40" autocomplete="off" ${c.static?'readonly tabindex="-1"':''}>${o.focus&&c.static?'<span class="caret"></span>':''}</div><div class="helprow"><span class="err">${err?I('alert8','#FF8E8E')+'<span>'+err+'</span>':''}</span><span>${v.length}/40</span></div>${o.kbd?'':`<div class="flabel">Difficulté</div><div class="seg" role="radiogroup" aria-label="Difficulté">${seg}</div><div class="flabel">Objectif hebdomadaire</div><div class="pills" role="radiogroup" aria-label="Objectif hebdomadaire">${pills}</div><div class="tphrase">${tp}</div>${info}`}${o.saveError?`<div class="alert">${I('alert','#FF8E8E',null,2)}<span>${isNew?"L'habitude n'a pas pu être créée.":"Les modifications n'ont pas pu être enregistrées."} Réessaie.</span></div>`:''}${o.kbd?'':actions}</div>${o.kbd?KBD():''}`;
+}
+function delDialog(c,o){
+ const h=c.habits.find(x=>x.id===o.id);
+ return `<div class="scrim" data-act="close"></div><div class="dialog pf raised" role="alertdialog" aria-modal="true" aria-label="Supprimer ${esc(h.name)}"><h3>Supprimer «&nbsp;${esc(h.name)}&nbsp;»&nbsp;?</h3><p>Son historique sera effacé. L'expérience gagnée les jours passés reste acquise&nbsp;; seule celle d'aujourd'hui est retirée (−${DIFF[h.diff].xp} XP).</p><div class="row2"><button class="pb sec" data-act="close">Annuler</button><button class="pb dng" data-act="confirmDel">Supprimer</button></div></div>`;
+}
+function daySheet(c,d){
+ const {act,n}=dayCount(c,d),all=c.habits.filter(h=>active(h,d)),later=c.habits.filter(h=>!active(h,d));
+ return `<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="${cap(longDate(d))}"><div class="grab"></div><h3>${cap(longDate(d))}</h3><p class="sub2">${d===c.today?"Aujourd'hui":'Jour clos · tu peux corriger un oubli'} · ${n}/${act.length} faites</p>${all.map(h=>hrow(c,h,d)).join('')}${later.length?`<p class="hint">${later.map(h=>`«&nbsp;${esc(h.name)}&nbsp;»`).join(', ')} : créée plus tard, hors habitude ce jour-là.</p>`:''}<button class="pb sec block" data-act="close">Fermer</button></div>`;
+}
+function toast(t,cls){
+ if(t.goal)return `<div class="toast goal ${cls}" role="status">${I('flag8','#F2D49B','#C9C2B0')}<span><b>Objectif de la semaine atteint</b>${t.text} · <span class="pp">${t.prime}</span></span></div>`;
+ return `<div class="toast ${t.soft?'soft':''} ${cls}" role="status"><span>${t.text}</span>${t.action?`<button data-act="toastAction">${t.action}</button>`:''}</div>`;
+}
+function startup(c){
+ return `<div class="body" style="position:relative"><canvas class="sky" data-tower="start" width="195" height="398" style="position:absolute;inset:0;width:390px;height:796px" aria-hidden="true"></canvas><div style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:14px;padding-top:${c.err?'250':'300'}px;text-align:center;padding-left:28px;padding-right:28px">${c.err?`${EMB()}<div class="pf" style="padding:16px 16px 18px;background:rgba(16,19,31,.94);display:flex;flex-direction:column;gap:12px;align-items:center"><p style="margin:0;font:600 16px/1.45 var(--f-ui);color:var(--light)" role="alert">Impossible d'ouvrir les données enregistrées sur le téléphone.</p><button class="pb pri" style="min-width:180px">Réessayer</button></div>`:`<div style="font:700 44px/1 var(--f-px);color:var(--gold);text-shadow:4px 4px 0 var(--ink)">Ascent</div><div class="dots3" role="status" aria-label="Chargement"><i></i><i></i><i></i></div>`}</div></div>`;
+}
+function renderApp(c){
+ let h=statusBar(c);
+ if(c.view==='startup')return h+startup(c)+'<div class="homebar"></div>';
+ if(c.tab!=='tower')h+=header(c,c.tab!=='day');
+ if(c.view==='loading')h+=loadingView(c);
+ else if(c.view==='error')h+=errorView();
+ else h+=c.tab==='week'?weekView(c):c.tab==='month'?monthView(c):c.tab==='tower'?towerView(c):dayView(c);
+ h+=tabbar(c);
+ if(c.toast)h+=toast(c.toast,c.overlay?'top':c.tab==='day'&&c.habits.length?'abovefab':'');
+ if(c.overlay){const o=c.overlay;h+=o.type==='del'?delDialog(c,o):o.type==='day'?daySheet(c,o.d):sheet(c,o)}
+ return h+'<div class="homebar"></div>';
+}
+function paint(root){
+ root.querySelectorAll('canvas.sky').forEach(cv=>{
+  const t=cv.dataset.tower;
+  if(t==='big')paintSky(cv,{l:.62,ground:10,towerX:.5,towerW:16,towerTop:12,windows:5,sunX:.78});
+  else if(t==='start')paintSky(cv,{l:.08,ground:60,towerX:.5,towerW:22,towerTop:70,windows:7,sunX:.5});
+  else paintSky(cv,{l:+cv.dataset.sky,ground:6,towerX:.9,towerW:8,towerTop:cv.height>50?10:6,windows:3});
+ });
+}
+
+/* =====================================================================
+   4. Galerie
+   ===================================================================== */
+function F(group,screen,state,story,note,mod){const c=base();c.static=true;if(mod)mod(c);return {group,screen,state,story,note,c}}
+const tap=(c,id,d=21)=>{const h=c.habits.find(x=>x.id===id),m=monOf(d),t=wt(h,m),r0=prog(c,h,m,d)>=t,on=!isDone(c,h,d);
+ if(on)c.checks.add(id+':'+d);else c.checks.delete(id+':'+d);
+ const r1=prog(c,h,m,d)>=t,x=DIFF[h.diff].xp,pr=t*DIFF[h.diff].u;let dx=on?x:-x;const deltas=[{t:(on?'+':'−')+x+' XP',neg:!on}];
+ if(!r0&&r1){dx+=pr;deltas.push({t:'+'+pr+' XP prime',prime:true})}if(r0&&!r1){dx-=pr;deltas.push({t:'−'+pr+' XP prime',neg:true})}
+ c.xpBefore=c.xp;c.xp+=dx;c.deltas=deltas;c.flash=on;c.fx={id,d,t:(on?'+':'−')+x+' XP',neg:!on,burst:on};c.pulse=true;
+ if(!r0&&r1){c.burst=id;c.toast={goal:true,text:`${h.name} ${prog(c,h,m,d)}/${t}`,prime:`+${pr} XP prime`}}
+ return {on,reachedNow:!r0&&r1,dx};};
+const STORIES={S1:'S1 · Journée et retours de jeu',S2:'S2 · Semaine, Mois et panneaux','#30':'Épique #30'};
+const FR=[
+ F('e1','E1 · Vue Journée','En cours','S1','Mercredi 21 au soir, 2/5 faites. Chaque ligne : la case (cadre d\'or = à faire), le nom, l\'état écrit, les sommets de difficulté, les crans de la semaine. Le ciel n\'est qu\'à moitié éclairé.'),
+ F('e1','E1 · Vue Journée','Chargement','S1','Squelette au pixel d\'art : la place des lignes et du compteur est réservée. L\'en-tête s\'affiche tout de suite. Mouvement réduit : il ne clignote pas.',c=>{c.view='loading'}),
+ F('e1','E1 · Vue Journée','Vide · première utilisation','S1','Aucune habitude. Le personnage attend sous un ciel de nuit, à ×3. Un seul bouton : « Ajouter une habitude ».',c=>{c.habits=[];c.checks=new Set();c.xp=0}),
+ F('e1','E1 · Vue Journée','Aide au premier usage','S1','Première habitude créée : la bulle d\'aide explique le tap, puis disparaît pour toujours au premier suivi.',c=>{c.habits=[{id:'h1',name:'Cuisiner',diff:'medium',target:7,created:21}];c.checks=new Set();c.xp=0;c.hint=true;c.hl='h1'}),
+ F('e1','E1 · Vue Journée','Toutes faites','S1','5/5 : le message « Toutes faites » en police pixel, le soleil se lève derrière la tour. Le texte reste en police lisible.',c=>{['h1','h3','h4'].forEach(id=>c.checks.add(id+':21'));c.xp=1290;c.persoF=2}),
+ F('e1','E1 · Vue Journée','Objectifs de la semaine atteints','S1','Samedi 24 : plus rien n\'est attendu. « Atteints » remplace le compteur. Les lignes restent tapables.',c=>{c.today=24;c.time='9:12';[22,23].forEach(d=>c.habits.forEach(h=>c.checks.add(h.id+':'+d)));c.checks.add('h1:21');c.checks.add('h3:21');c.checks.add('h4:21');c.checks.add('h5:20');c.checks.add('h2:20');c.habits.forEach(h=>{if(h.target===7)h.target=5});c.xp=1290}),
+ F('e1','E1 · Vue Journée','Rappel d\'hier','S1','Jeudi 22 au matin : le rappel discret en haut, « Corriger » ouvre la Vue Semaine.',c=>{c.today=22;c.time='8:05';c.yday=true}),
+ F('e1','E1 · Vue Journée','Erreur de lecture','S1','Les habitudes ne se lisent pas. Emblème d\'alerte 24 × 24 à ×2, message en police de texte, « Réessayer ».',c=>{c.view='error'}),
+
+ F('f1','F1 · Retours de jeu','1 · Habitude faite (0 ms)','S1','Tap sur « Cuisiner » : la case passe au vert avec sa coche, l\'étincelle éclate (image 2 sur 3), légère vibration.',c=>{tap(c,'h1');c.fx.t='';c.deltas=null;c.xp=c.xpBefore;c.xpBefore=null}),
+ F('f1','F1 · Retours de jeu','2 · XP gagnée (≈ 250 ms)','S1','« +10 XP » s\'envole par pas de 2 dp. La pastille apparaît près de l\'expérience, le cadre de l\'expérience s\'allume en or, le nouveau cran de la semaine s\'allume, le compteur passe à 3/5 en clignotant une fois.',c=>{tap(c,'h1')}),
+ F('f1','F1 · Retours de jeu','3 · Objectif atteint','S1','« Courir 5 km » atteint 3/3 : +20 XP, crans dorés, badge « Objectif atteint », message et « +30 XP prime ». Seconde vibration, annonce au lecteur d\'écran.',c=>{c.xp=1240;tap(c,'h3');c.fx=null;c.burst='h3';c.flash=true}),
+ F('f1','F1 · Retours de jeu','4 · Retour en arrière','S1','Second tap sur une habitude faite : « −5 XP » en gris, ni étincelle, ni vibration, ni rouge. La case revient au cadre d\'or « à faire ».',c=>{tap(c,'h2');c.fx.burst=false}),
+ F('f1','F1 · Retours de jeu','5 · Erreur d\'enregistrement','S1','Le suivi a échoué : tout revient comme avant (case, XP, crans). Le message propose « Réessayer ».',c=>{c.toast={text:"Le suivi n'a pas été enregistré.",action:'Réessayer'}}),
+
+ F('e2','E2 · Nouvelle habitude','Vide · valeurs par défaut','S2','Clavier ouvert, nom vide. Moyenne et 7 sont déjà choisis : il suffit d\'un nom puis ↵.',c=>{c.overlay={type:'new',value:'',diff:'medium',target:7,kbd:true,focus:true}}),
+ F('e2','E2 · Nouvelle habitude','Saisi · réglages choisis','S2','Clavier fermé. La difficulté choisie a un cadre d\'or, une coche et un texte en gras ; l\'objectif choisi est rempli d\'or. « Créer l\'habitude » s\'active.',c=>{c.overlay={type:'new',value:'Méditer 10 minutes',diff:'easy',target:3}}),
+ F('e2','E2 · Nouvelle habitude','Erreur : doublon','S2','Même règle de nom. Cadre rouge, icône et message ; le bouton reste hachuré.',c=>{c.overlay={type:'new',value:'courir 5 km',diff:'hard',target:3}}),
+ F('e2','E2 · Nouvelle habitude','Erreur d\'enregistrement','S2','Saisie et réglages conservés, on peut réessayer.',c=>{c.overlay={type:'new',value:'Méditer 10 minutes',diff:'easy',target:3,saveError:true}}),
+ F('e2','E2 · Nouvelle habitude','Succès','S2','Retour sur la Journée, la ligne créée a un cadre d\'or. Message « Habitude créée ».',c=>{c.habits.push({id:'h6',name:'Méditer 10 minutes',diff:'easy',target:3,created:21});c.hl='h6';c.toast={text:'Habitude créée'}}),
+
+ F('e3','E3 · Modifier l\'habitude','Ouvert, inchangé','S2','Préremplis. « Enregistrer » est hachuré tant que rien ne change. « Supprimer l\'habitude » reste visible.',c=>{c.overlay={type:'edit',id:'h1',value:'Cuisiner',diff:'medium',target:5}}),
+ F('e3','E3 · Modifier l\'habitude','Difficulté modifiée','S2','Moyenne → Difficile : le message d\'information, en police de texte, dit ce qui change.',c=>{c.overlay={type:'edit',id:'h1',value:'Cuisiner',diff:'hard',target:5}}),
+ F('e3','E3 · Modifier l\'habitude','Confirmation de suppression','S2','Dialogue en cadre relevé. « Supprimer » en rouge d\'erreur, avec son libellé ; « Annuler » à gauche.',c=>{c.overlay={type:'del',id:'h3'}}),
+ F('e3','E3 · Modifier l\'habitude','Succès','S2','« Habitude modifiée · +20 XP » : la variation d\'expérience s\'affiche comme aujourd\'hui, avec la pastille de l\'en-tête.',c=>{c.habits[0].diff='hard';c.xpBefore=1260;c.xp=1280;c.deltas=[{t:'+20 XP'}];c.hl='h1';c.toast={text:'Habitude modifiée · +20 XP'}}),
+
+ F('e4','E4 · Vue Semaine','Cette semaine','S2','Chaque case : un cadre, une coche, une croix, un point ou un tiret. La case du jour a le cadre d\'or « à faire ». « Me coucher avant 23 h », mardi, porte la marque « corrigé » (coin clair).',c=>{c.tab='week'}),
+ F('e4','E4 · Vue Semaine','Correction · objectif atteint','S2','Tap sur la case de mercredi de « Courir 5 km » : même retour que dans la Journée, la puce passe à l\'or « 3/3 · Objectif atteint ».',c=>{c.tab='week';tap(c,'h3');c.fx.t='+20 XP'}),
+ F('e4','E4 · Vue Semaine','Chargement','S2','Squelette des cartes et des cases.',c=>{c.tab='week';c.view='loading'}),
+ F('e4','E4 · Vue Semaine','Vide','S2','Aucune habitude : le personnage, le message et « Ajouter une habitude ».',c=>{c.tab='week';c.habits=[];c.xp=0}),
+
+ F('e5','E5 · Vue Mois','Ce mois-ci','S2','Chaque jour suivi : le compteur et un point de 2 pixels d\'art par habitude attendue (plein vert, contour, or). Jour complet : fond vert. Aujourd\'hui : cadre d\'or. Le 17 porte la marque « corrigé ».',c=>{c.tab='month'}),
+ F('e5','E5 · Vue Mois','Objectifs par semaine','S2','Sous la grille : une ligne par semaine, drapeau d\'or quand tous les objectifs sont atteints.',c=>{c.tab='month';c.scrollMonth=true}),
+ F('e5','E5 · Vue Mois','Détail du jour','S2','Dimanche 18 : les lignes de la Journée, en panneau. On corrige d\'un tap.',c=>{c.tab='month';c.overlay={type:'day',d:18}}),
+ F('e5','E5 · Vue Mois','Erreur de lecture','S2','Même erreur que la Journée, dans la Vue Mois.',c=>{c.tab='month';c.view='error'}),
+
+ F('e6','E6 · Démarrage','Chargement','S1','La tour dans la nuit, le titre en police pixel, trois carrés qui s\'allument tour à tour (fixes en mouvement réduit).',c=>{c.view='startup'}),
+ F('e6','E6 · Démarrage','Erreur','S1','Les données ne s\'ouvrent pas : le libellé actuel, en police de texte, et « Réessayer ».',c=>{c.view='startup';c.err=true}),
+
+ F('t1','T1 · La Tour','Pied de la tour','#30','L\'onglet Tour en pixel art : le même ciel, la même tour, les mêmes cadres. La Jauge du jour reprend les crans (rouge et vert de la Faveur, avec les mots). Libellés de la maquette #30.',c=>{c.tower=true;c.tab='tower'})
+];
+document.querySelectorAll('.gallery').forEach(g=>{
+ g.innerHTML=FR.filter(f=>f.group===g.dataset.group).map((f,i)=>`<figure class="frame"><figcaption><div class="cap-top"><span class="scr">${f.screen}</span><span class="stories">${f.story.split(' · ').map(s=>`<span class="story ${s.startsWith('D')?'dec':''}" title="${STORIES[s]||s}">${s}</span>`).join('')}</span></div><div class="state">${f.state}</div><p class="note">${f.note}</p></figcaption><div class="slot"><div class="phone"><div class="screen app frozen ${f.c.rm?'rm':''}" data-fr="${FR.indexOf(f)}"></div></div></div></figure>`).join('');
+});
+document.querySelectorAll('[data-fr]').forEach(el=>{const f=FR[+el.dataset.fr];el.innerHTML=renderApp(f.c);paint(el);
+ if(f.c.scrollMonth){const s=el.querySelector('.scroll');if(s){s.style.transform='translateY(-250px)'}}
+ el.querySelectorAll('button,input').forEach(b=>b.setAttribute('tabindex','-1'));el.setAttribute('aria-hidden','true')});
+
+/* =====================================================================
+   5. Identité : planches
+   ===================================================================== */
+const ROLES=[
+ ['Nuit','#10131F','Fond des vues, champs de saisie','—'],['Surface','#1C2133','Cadres, lignes, cartes, panneaux','—'],['Surface relevée','#2A3150','Arête haute éclairée, dialogues','—'],
+ ['Trait','#3E4870','Trait des cadres (décoratif, jamais seul porteur d\'un sens)','1,8:1'],['Encre','#06070C','Contour des sprites, ombre basse, texte sur l\'or','14,1:1 sur or'],
+ ['Lumière','#F2D49B','Action principale, case « à faire », XP, onglet actif, objectif atteint','11,2:1'],['Lumière vive','#FFF3D6','Texte principal, reflets, crans neufs','14,5:1'],['Lumière sombre','#B98E5A','Bas des boutons d\'or, contour du badge','5,4:1'],
+ ['Parchemin','#C9C2B0','Texte secondaire','9,0:1'],['Brume','#8C93A8','Texte discret, croix « pas fait », icônes inactives','5,2:1'],['Ciel froid','#8995BE','Information, aide, marque « corrigé »','5,4:1'],
+ ['Fait · vif','#6FD3A0','Coche, trait et crans de « fait », Faveur','8,9:1'],['Fait · trait','#3E9E74','Trait d\'une ligne faite','4,8:1'],['Fait · fond','#15302A','Fond d\'une case faite','—'],
+ ['Pas fait','#2A1F36','Fond d\'une case manquée (jamais de rouge)','—'],['Crépuscule','#6B5A7A','Décor, lueur chaude de la tour','2,6:1'],
+ ['Erreur','#FF8E8E','Texte et icône d\'erreur','7,2:1'],['Malédiction','#E0607A','Trait d\'erreur, Malédiction de la Jauge du jour (#30)','4,7:1'],['Erreur · fond','#3A1724','Fond d\'erreur, bouton « Supprimer »','—'],
+ ['Éclats','#FF9F5A','Monnaie de la tour (#30) seulement','—'],['Sceau','#FF3B3B','Coup imparable dans la tour, rien d\'autre','—']
+];
+document.getElementById('roles').innerHTML=ROLES.map(([n,h,r,ct])=>`<div class="sw"><i style="background:${h}"></i><div><b>${n}</b><code>${h}</code> · ${ct}<br><span class="muted">${r}</span></div></div>`).join('');
+document.getElementById('artpal').innerHTML=PAL.slice(1).map((h,i)=>`<span style="background:${h}" title="${h}"><b>${i+1}</b></span>`).join('');
+const ICL=[['check12','Fait','#6FD3A0'],['cross12','Pas fait','#8C93A8'],['dot12','À venir','#8995BE'],['dash12','Hors habitude','#8995BE'],['plus','Ajouter','#F2D49B'],['pencil','Modifier','#C9C2B0','#F2D49B'],['more','Options','#C9C2B0'],['left','Précédent','#FFF3D6'],['right','Suivant','#FFF3D6'],['close','Fermer','#C9C2B0'],['info','Information','#8995BE','#FFF3D6'],['alert','Erreur','#E0607A'],['trash','Supprimer','#FF8E8E'],['tDay','Journée','#F2D49B','#FFF3D6'],['tWeek','Semaine','#C9C2B0','#F2D49B'],['tMonth','Mois','#C9C2B0','#F2D49B'],['tTower','Tour','#C9C2B0','#F2D49B'],['shard','Éclats','#FF9F5A','#FFD0D8'],['check8','Coche 16','#6FD3A0'],['flag8','Objectif atteint','#F2D49B','#C9C2B0'],['star8','XP','#F2D49B','#FFF3D6']];
+document.getElementById('icons').innerHTML=ICL.map(([n,l,c1,c2])=>`<div>${I(n,c1,c2,2)}<span>${l}</span><span style="font-size:11px;color:#8C93A8">${ICONS[n].length===8?'16 dp':'24 dp'}</span></div>`).join('')+`<div>${DI(1)}${DI(2)}${DI(3)}<span>Difficulté</span><span style="font-size:11px;color:#8C93A8">1, 2, 3 sommets</span></div><div>${EMB()}<span>Emblème</span><span style="font-size:11px;color:#8C93A8">48 dp</span></div>`;
+document.getElementById('zCorner').innerHTML=`<span class="app" style="display:block;background:transparent"><span class="pf" style="display:block;width:96px;height:60px;transform:scale(3);transform-origin:0 0;margin:0 192px 120px 0"></span></span>`;
+document.getElementById('zPerso').innerHTML=PERSO(0,2,'zoom')+PERSO(0,3,'zoom');
+(function(){
+ const c=base();c.static=true;
+ const cs=k=>`<span class="cs ${k}" style="width:40px;height:40px">${GLYPH[k]()}</span>`;
+ const comp=document.getElementById('components');
+ comp.classList.add('app');comp.style.background='#10131F';
+ const cr=(p,t,ok)=>{let s='';for(let i=0;i<t;i++)s+=`<i class="${i<p?'on':''}"></i>`;return `<span class="crans ${ok?'ok':''}">${s}</span>`};
+ comp.innerHTML=`
+ <div class="cellx"><b>Cadres</b><div class="pf" style="width:150px;padding:12px;font:500 13px Inter;color:#C9C2B0">Cadre · surface</div><div class="pf raised" style="width:150px;padding:12px;font:500 13px Inter;color:#C9C2B0">Cadre relevé</div><div class="pf inset" style="width:150px;padding:12px;font:500 13px Inter;color:#C9C2B0">Cadre creux · champ</div></div>
+ <div class="cellx"><b>Boutons</b><button class="pb pri">${I('plus','#06070C')}Ajouter une habitude</button><button class="pb pri pressed">Appuyé</button><button class="pb sec">Annuler</button><button class="pb off" aria-disabled="true">Créer l'habitude</button><button class="pb dng">Supprimer</button><span class="linkb">Corriger</span></div>
+ <div class="cellx"><b>Cases (40 dp)</b><div style="display:grid;grid-template-columns:repeat(3,auto);gap:8px 10px;align-items:center;font:500 12px Inter;color:#C9C2B0">${cs('done')}<span>Fait</span><span></span>${cs('pending')}<span>À faire</span><span></span>${cs('missed')}<span>Pas fait</span><span></span>${cs('upcoming')}<span>À venir</span><span></span>${cs('notstarted')}<span>Hors habitude</span><span></span><span class="cs done" style="width:40px;height:40px">${GLYPH.done()}<span class="cm"></span></span><span>Corrigé</span><span></span></div></div>
+ <div class="cellx"><b>En-tête : expérience</b><div class="plate pf" style="position:static;width:250px;display:flex;flex-direction:column;gap:5px;padding:8px 12px 9px"><div class="lbl">Expérience du personnage</div><div class="xpv" style="font-size:24px">1 260 XP</div></div><div class="plate pf flash" style="position:static;width:250px;display:flex;flex-direction:column;gap:5px;padding:8px 12px 9px"><div class="lbl">Expérience du personnage</div><div class="xpv" style="font-size:24px">1 270 XP</div></div><span>Au gain d'XP, le cadre s'allume une image en or (pas de jauge : pas de niveau dans cette épique).</span></div>
+ <div class="cellx"><b>Crans de la semaine</b><div style="display:flex;flex-direction:column;gap:10px;font:500 13px Inter;color:#C9C2B0"><span style="display:flex;gap:8px;align-items:center">${cr(2,5)}2/5 cette semaine</span><span style="display:flex;gap:8px;align-items:center">${cr(3,3,true)}<span class="goalb">${I('flag8','#F2D49B','#C9C2B0')}Objectif atteint</span></span><span style="display:flex;gap:8px;align-items:center"><span class="chip">${cr(2,5)}2/5</span><span class="chip ok">${I('flag8','#F2D49B','#C9C2B0')}3/3 · Objectif atteint</span></span></div></div>
+ <div class="cellx" style="min-width:300px"><b>Barre d'onglets</b><div style="position:relative;width:340px;height:70px;overflow:hidden">${tabbar({tab:'day',tower:true}).replace('class="tabbar"','class="tabbar" style="position:static;height:66px;padding:4px 4px 6px"')}</div><span>Plus tard, avec l'onglet Tour : il arrivera avec l'épique #30.</span><div style="position:relative;width:340px;height:70px;overflow:hidden">${tabbar({tab:'week',tower:false}).replace('class="tabbar"','class="tabbar" style="position:static;height:66px;padding:4px 4px 6px"')}</div><span>Dans cette épique : trois onglets, Journée, Semaine et Mois. Onglet actif : fond, trait d'or, icône et libellé en or et en gras.</span></div>
+ <div class="cellx"><b>Messages</b><div style="width:300px;display:flex;flex-direction:column;gap:8px;position:relative">${toast({text:"Le suivi n'a pas été enregistré.",action:'Réessayer'},'')}${toast({goal:true,text:'Courir 5 km 3/3',prime:'+30 XP prime'},'')}</div></div>`;
+ comp.querySelectorAll('.toast').forEach(t=>{t.style.position='static'});
+})();
+
+/* =====================================================================
+   6. Prototype
+   ===================================================================== */
+const live=document.getElementById('live');const note=document.getElementById('liveNote');
+let L,timers=[],uid=1;
+function reset(empty){L=base();L.static=false;L.rm=document.querySelector('[data-ctl="rm"]').getAttribute('aria-pressed')==='true';if(empty){L.habits=[];L.checks=new Set();L.xp=0}draw()}
+function draw(){live.classList.toggle('rm',!!L.rm);const st=live.querySelector('.scroll'),sc=st?st.scrollTop:0;live.innerHTML=renderApp(L);paint(live);const s2=live.querySelector('.scroll');if(s2)s2.scrollTop=sc}
+function later(fn,ms){timers.push(setTimeout(fn,ms))}
+function clearFx(){timers.forEach(clearTimeout);timers=[];}
+function say(t){note.textContent=t}
+live.addEventListener('click',e=>{
+ const t=e.target.closest('button,[data-act],[data-mday]');if(!t)return;
+ if(t.dataset.tab){L.tab=t.dataset.tab;L.overlay=null;L.toast=null;L.fx=null;L.deltas=null;draw();return}
+ if(t.dataset.h&&!t.getAttribute('aria-disabled')){
+  clearFx();const r=tap(L,t.dataset.h,+t.dataset.d);L.hint=false;
+  draw();
+  say(`${r.on?'Fait':'À faire'} : ${r.dx>0?'+':''}${r.dx} XP${r.reachedNow?' · Objectif de la semaine atteint':''}`);
+  try{navigator.vibrate&&navigator.vibrate(r.on?(r.reachedNow?[20,60,30]:15):0)}catch(_){}
+  later(()=>{L.fx=null;L.pulse=false;L.flash=false;draw()},900);
+  later(()=>{L.deltas=null;L.burst=null;L.xpBefore=null;if(!L.overlay)L.toast=null;draw()},2600);
+  return}
+ if(t.dataset.mday){L.overlay={type:'day',d:+t.dataset.mday};draw();return}
+ if(t.dataset.edit){const h=L.habits.find(x=>x.id===t.dataset.edit);L.overlay={type:'edit',id:h.id,value:h.name,diff:h.diff,target:h.target,uid:uid++};draw();return}
+ if(t.dataset.diff){L.overlay.diff=t.dataset.diff;draw();return}
+ if(t.dataset.target){L.overlay.target=+t.dataset.target;draw();return}
+ const a=t.dataset.act;
+ if(a==='new'){L.overlay={type:'new',value:'',diff:'medium',target:7,focus:true,uid:uid++};draw();const i=live.querySelector('[data-name]');if(i)i.focus();return}
+ if(a==='close'){L.overlay=null;draw();return}
+ if(a==='create'){const o=L.overlay;L.habits.push({id:'n'+uid,name:o.value.trim(),diff:o.diff,target:o.target,created:L.today});L.hl='n'+uid;L.overlay=null;L.tab='day';L.toast={text:'Habitude créée'};if(L.habits.length===1)L.hint=true;draw();later(()=>{L.toast=null;draw()},2600);return}
+ if(a==='save'){const o=L.overlay,h=L.habits.find(x=>x.id===o.id);const ren=o.value.trim()!==h.name&&o.diff===h.diff&&o.target===h.target;h.name=o.value.trim();h.diff=o.diff;h.target=o.target;L.hl=h.id;L.overlay=null;L.toast={text:ren?'Habitude renommée':'Habitude modifiée'};draw();later(()=>{L.toast=null;draw()},2600);return}
+ if(a==='del'){L.overlay={type:'del',id:L.overlay.id};draw();return}
+ if(a==='confirmDel'){const id=L.overlay.id;L.habits=L.habits.filter(h=>h.id!==id);L.overlay=null;L.toast={text:'Habitude supprimée'};draw();later(()=>{L.toast=null;draw()},2600);return}
+ if(a==='toastAction'){L.toast=null;draw();return}
+});
+live.addEventListener('input',e=>{if(e.target.matches('[data-name]')&&L.overlay){L.overlay.value=e.target.value;const pos=e.target.selectionStart;draw();const i=live.querySelector('[data-name]');if(i){i.focus();try{i.setSelectionRange(pos,pos)}catch(_){}}}});
+document.querySelectorAll('[data-ctl]').forEach(b=>b.addEventListener('click',()=>{
+ const k=b.dataset.ctl;
+ if(k==='reset'||k==='empty'){clearFx();reset(k==='empty');return}
+ const on=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',String(on));
+ if(k==='rm')L.rm=on;draw();
+}));
+reset(false);
+
+/* Échelle des cadres et thème de la page */
+function fit(){const w=document.documentElement.clientWidth;const s=Math.min(1,(w-32)/408);document.documentElement.style.setProperty('--s',s.toFixed(4))}
+fit();window.addEventListener('resize',fit);
+document.getElementById('themeBtn').addEventListener('click',()=>{const r=document.documentElement;const dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme: dark)').matches;r.dataset.theme=dark?'light':'dark'});
+</script>
+</body>
+</html>

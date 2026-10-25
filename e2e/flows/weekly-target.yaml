@@ -141,10 +141,15 @@ tags:
     id: 'tab-week'
 - extendedWaitUntil:
     visible:
-      id: 'week-card-3'
+      id: 'week-card-1'
     timeout: 10000
 - assertVisible:
     id: 'week-progress-1'
+# Sous l'en-tête du personnage en pixel art (#72), la 3e carte peut être sous le bord de l'écran.
+- scrollUntilVisible:
+    element:
+      id: 'week-card-3'
+    direction: DOWN
 - assertVisible:
     id: 'week-card-reached-3'
 - takeScreenshot: weekly-target-E4-1-week-view-progress
@@ -155,8 +160,14 @@ tags:
     id: 'tab-day'
 - extendedWaitUntil:
     visible:
-      id: 'edit-habit-1'
+      id: 'habit-progress-3'
     timeout: 10000
+# Dans le build de preview, l'entrée « Combat d'essai » réduit la liste : la première carte peut
+# être au-dessus de la partie visible.
+- scrollUntilVisible:
+    element:
+      id: 'edit-habit-1'
+    direction: UP
 - tapOn:
     id: 'edit-habit-1'
 - extendedWaitUntil:

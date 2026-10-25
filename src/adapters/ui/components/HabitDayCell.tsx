@@ -1,75 +1,56 @@
-import { useState } from 'react';
-import { Animated, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import type { CheckInStatus } from '../../../domain/checkIn/CheckInStatus';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import type { Day } from '../../../domain/day/Day';
-import { checkInStatusLabels } from '../format/checkInStatus';
-import { formatDayAndMonth } from '../format/formatDay';
-import { useReducedMotion } from '../state/useReducedMotion';
-import { colors } from '../theme/colors';
-import { useCellHeight } from './cellSize';
-import type { ShownXpChange } from './CharacterBar';
-import { CheckGlyph, CrossGlyph, DotGlyph } from './Glyph';
-import { bounce } from './HabitRow';
-import { CORRECTED, CorrectedMark } from './CorrectedMark';
+import { habitDayCellAccessibilityLabel } from '../format/habitDayLabel';
+import { HabitDayBox } from '../pixelArt/HabitDayBox';
+import { MIN_TARGET_SIZE } from '../pixelArt/PixelButton';
+import type { ShownXpChange } from '../state/xpFeedback';
+import { Burst, useBurst } from './Burst';
+import { MAX_COLUMN_WIDTH } from './cellSize';
+import { CorrectedMark } from './CorrectedMark';
 import { XpFloat } from './XpFloat';
 
-/** Ce qu'une case de la Vue Semaine lit au lecteur d'écran quand un tap ne la change pas. */
-export const UNAVAILABLE = 'indisponible';
+/** La taille de la case dessinée, centrée dans sa cible (maquette E4, `.cs`). */
+const BOX_SIZE = 40;
 
 /**
- * La forme de chaque état, jamais la couleur seule (maquette, « Accessibilité ») : coche (fait),
- * contour plein (à faire), croix sur fond plein (pas fait), pointillés (à venir), point seul (hors
- * habitude).
- */
-function Mark({ status }: { readonly status: CheckInStatus }) {
-  switch (status) {
-    case 'done':
-      return <CheckGlyph color={colors.onDone} />;
-    case 'missed':
-      return <CrossGlyph color={colors.onMissed} />;
-    case 'notStarted':
-      return <DotGlyph color={colors.notStarted} />;
-    case 'pending':
-      return <View testID="pending-ring" style={styles.pendingRing} />;
-    default:
-      return null;
-  }
-}
-
-/**
- * Case d'une habitude un jour donné dans la Vue Semaine. C'est un interrupteur : le toucher appelle
- * `onToggle` et fait rebondir la case (sauf mouvement réduit), seulement si la case est modifiable
+ * Case d'une habitude un jour donné dans la Vue Semaine, dans l'identité pixel art (E4) : la case
+ * dessinée de 40 × 40 dp (`HabitDayBox`), centrée dans une cible aussi large que sa colonne
+ * (`columnWidth`, 48 dp au plus) et haute de 48 dp au moins, sans `hitSlop` : un tap ne touche
+ * jamais le jour voisin. Chaque état a son signe en plus de sa couleur : coche, croix, point,
+ * tiret, cadre d'or « à faire ». Une case corrigée porte la marque « corrigé » en coin (R13).
+ *
+ * C'est un interrupteur : le toucher appelle `onToggle`, seulement si la case est modifiable
  * (aujourd'hui, ou un jour clos à corriger). Une case « hors habitude » ne change pas, mais un tap
- * appelle `onNotStartedPress` pour l'expliquer ; une case « à venir » ne réagit pas.
- * Le lecteur d'écran lit « Cuisiner, mercredi 14 octobre, pas fait », suivi de « corrigé » si la
- * case porte la marque « corrigé » (pastille en coin, R13), et de « indisponible » quand un tap ne
- * la change pas. Un « fait » gardé sur un jour après `today` (horloge reculée, R7) est atténué.
- * `xpChange` fait s'envoler le changement d'expérience (« +20 XP », ou « −20 XP ») de la case,
- * après un tap enregistré.
+ * appelle `onNotStartedPress` pour l'expliquer ; une case « à venir » ne réagit pas. Le lecteur
+ * d'écran lit la même annonce qu'avant #73 (`habitDayCellAccessibilityLabel`). Un « fait » gardé sur
+ * un jour après `today` (horloge reculée, R7) est atténué.
+ *
+ * Retours de jeu, ceux de la Vue Journée : le tap qui passe la case à « fait » joue l'étincelle et relève
+ * sa coche d'un pixel d'art pendant 2 images (`Burst`), jamais par une mise à l'échelle ;
+ * `xpChange` fait s'envoler le changement d'expérience (« +20 XP », ou « −20 XP »). Rien de tout
+ * cela en mouvement réduit.
  */
 export function HabitDayCell({
   habitDay,
   today,
+  columnWidth = MAX_COLUMN_WIDTH,
   xpChange,
   onToggle,
   onNotStartedPress,
 }: {
   readonly habitDay: HabitDay;
   readonly today: Day;
+  /** La largeur de la colonne de la case (`weekColumnWidth`). */
+  readonly columnWidth?: number;
   readonly xpChange?: ShownXpChange | undefined;
   readonly onToggle?: (habitDay: HabitDay) => void;
   readonly onNotStartedPress?: (habitDay: HabitDay) => void;
 }) {
   const { habit, day, status, editable, corrected } = habitDay;
-  const reducedMotion = useReducedMotion();
-  const [scale] = useState(() => new Animated.Value(1));
-  const { height, onLayout } = useCellHeight();
-  const label = [habit.name.value, formatDayAndMonth(day), checkInStatusLabels[status]]
-    .concat(corrected ? [CORRECTED] : [])
-    .concat(editable ? [] : [UNAVAILABLE])
-    .join(', ');
+  const { bursts, tap } = useBurst(status);
+  const iso = day.toIsoString();
   const explainsTap = !editable && status === 'notStarted' && onNotStartedPress !== undefined;
 
   const press = () => {
@@ -77,69 +58,66 @@ export function HabitDayCell({
       onNotStartedPress?.(habitDay);
       return;
     }
-    if (!reducedMotion) {
-      bounce(scale);
-    }
+    tap();
     onToggle?.(habitDay);
   };
 
+  const box = (lifted: boolean) => (
+    <HabitDayBox
+      status={status}
+      size={BOX_SIZE}
+      lifted={lifted}
+      testID={`cell-box-${habit.id}-${iso}`}
+    />
+  );
+
   return (
-    <Animated.View
-      onLayout={onLayout}
-      testID={`cell-slot-${habit.id}-${day.toIsoString()}`}
-      style={[styles.slot, { transform: [{ scale }] }]}
-    >
+    <View testID={`cell-slot-${habit.id}-${iso}`} style={{ width: columnWidth }}>
       <Pressable
         accessibilityRole="switch"
-        accessibilityLabel={label}
+        accessibilityLabel={habitDayCellAccessibilityLabel(habitDay)}
         accessibilityState={{ checked: status === 'done', disabled: !editable }}
         // Annoncée « indisponible », une case « hors habitude » reçoit quand même le tap qui l'explique.
         {...(!explainsTap && { disabled: !editable })}
         onPress={press}
-        testID={`cell-${habit.id}-${day.toIsoString()}`}
-        style={[
-          styles.cell,
-          { height },
-          styles[status],
-          status === 'done' && day.isAfter(today) && styles.dimmed,
-        ]}
+        testID={`cell-${habit.id}-${iso}`}
+        style={[styles.cell, status === 'done' && day.isAfter(today) && styles.dimmed]}
       >
-        <Mark status={status} />
-        {corrected && <CorrectedMark />}
-        <XpFloat change={xpChange} reducedMotion={reducedMotion} />
+        {/*
+          Sur Android, une vue annoncée désactivée (`accessibilityState.disabled`) n'est jamais la
+          cible d'un toucher, mais ses enfants peuvent l'être : cette surface, réelle et aussi grande
+          que la case, reçoit le tap qui explique une case « hors habitude ».
+        */}
+        <View collapsable={false} testID={`cell-touch-${habit.id}-${iso}`} style={styles.surface}>
+          <View style={styles.boxSlot}>
+            {bursts > 0 ? (
+              <Burst key={bursts} style={styles.burst}>
+                {box}
+              </Burst>
+            ) : (
+              box(false)
+            )}
+            {corrected && <CorrectedMark />}
+            <XpFloat change={xpChange} />
+          </View>
+        </View>
       </Pressable>
-    </Animated.View>
+    </View>
   );
 }
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  slot: { flex: 1, minWidth: 0 },
-  cell: {
+  cell: { width: '100%', minHeight: MIN_TARGET_SIZE },
+  surface: {
     width: '100%',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderStyle: 'solid',
-    borderColor: colors.accent,
+    minHeight: MIN_TARGET_SIZE,
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  done: { backgroundColor: colors.done, borderColor: colors.done },
-  pending: { borderColor: colors.accent },
-  pendingRing: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: colors.pendingRing,
-  },
-  missed: { backgroundColor: colors.missed, borderColor: 'transparent' },
-  upcoming: { borderStyle: 'dashed', borderColor: colors.upcoming },
-  notStarted: { borderColor: 'transparent' },
+  boxSlot: { width: BOX_SIZE, height: BOX_SIZE },
+  burst: { left: -12, top: -12 },
   dimmed: { opacity: 0.6 },
 });
-
 // Stryker restore all

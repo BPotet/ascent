@@ -1,7 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import type { Difficulty } from '../../../domain/habit/Difficulty';
+import { artPalette } from '../pixelArt/artPalette';
+import { textFont } from '../pixelArt/pixelTypography';
 import { DifficultyPicker } from './DifficultyPicker';
+
+const { roles } = artPalette;
 
 async function show(value: Difficulty = 'medium') {
   const onChange = jest.fn();
@@ -52,13 +56,18 @@ describe('DifficultyPicker', () => {
     expect(option('Moyenne')).not.toBeSelected();
   });
 
-  it('shows the selection otherwise than by colour alone: a border and a highlighted text', async () => {
+  it('shows the selection otherwise than by colour alone: a gold frame, a tick and a bold text', async () => {
     await show('easy');
 
-    expect(screen.getByTestId('difficulty-option-easy')).toHaveStyle({ borderColor: '#7C9CFF' });
-    expect(screen.getByTestId('difficulty-option-medium')).toHaveStyle({
-      borderColor: '#2E3950',
+    expect(screen.getByTestId('choice-frame-difficulty-option-easy')).toHaveStyle({
+      borderColor: roles.gold,
     });
+    expect(screen.getByTestId('choice-frame-difficulty-option-medium')).toHaveStyle({
+      borderColor: roles.line,
+    });
+    expect(screen.getAllByTestId('choice-tick', { includeHiddenElements: true })).toHaveLength(1);
+    expect(screen.getByText('Facile')).toHaveStyle({ fontFamily: textFont.bold });
+    expect(screen.getByText('Moyenne')).toHaveStyle({ fontFamily: textFont.semiBold });
   });
 
   it('passes on the difficulty touched', async () => {
@@ -70,9 +79,9 @@ describe('DifficultyPicker', () => {
     expect(onChange).toHaveBeenLastCalledWith('easy');
   });
 
-  it('gives each option a target of at least 60 points high (mockup, « Toucher et lecture »)', async () => {
+  it('gives each option a target of at least 72 dp high (mockup E2)', async () => {
     await show();
 
-    expect(screen.getByTestId('difficulty-option-medium')).toHaveStyle({ minHeight: 60 });
+    expect(screen.getByTestId('difficulty-option-medium')).toHaveStyle({ minHeight: 72 });
   });
 });

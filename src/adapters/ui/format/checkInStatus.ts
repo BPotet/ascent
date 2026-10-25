@@ -8,3 +8,6 @@ export const checkInStatusLabels: Readonly<Record<CheckInStatus, string>> = {
   upcoming: 'à venir',
   notStarted: 'hors habitude',
 };
+
+/** Ce qu'une case lit au lecteur d'écran quand elle porte la marque « corrigé » (R13). */
+export const CORRECTED = 'corrigé';

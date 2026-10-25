@@ -33,6 +33,7 @@ export default {
         'e2e',
         'glossary',
         'workflow',
+        'release',
       ],
     ],
     'subject-max-length': [2, 'always', 72],

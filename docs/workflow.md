@@ -163,6 +163,7 @@ Le scope indique la zone touchée, alignée sur l'architecture.
 | `e2e` | `e2e/` | dev |
 | `glossary` | `docs/glossary.md` | tous |
 | `workflow` | `docs/workflow.md`, agents, skills, templates | orchestrateur |
+| `release` | numéro de version et changelog d'une release (`chore(release): x.y.z`) | orchestrateur |
 
 Le scope est facultatif quand un commit touche plusieurs zones.
 
@@ -371,6 +372,8 @@ Règles vérifiées par les tests d'architecture :
 - `adapters` implémentent les ports de `application`. Un adaptateur n'importe pas un autre adaptateur (`ui` ne connaît ni `persistence` ni `device`).
 - Seuls `adapters` et `app` connaissent le framework et les bibliothèques natives.
 - `domain` et `application` n'utilisent ni minuteur, ni horloge directe, ni hasard (`setTimeout`, `setInterval`, `requestAnimationFrame`, `performance`, `Math.random`) : le temps et le hasard passent par des ports. Vérifié par ESLint (barrière Style).
+- Dans `src/adapters/ui/`, seuls `pixelArt/SpriteCanvas.tsx` (et son test de fumée) et le combat (`battle/`) importent Skia (`pixel-art-skia-in-one-place`, [ADR 0007](adr/0007-identite-pixel-art.md)).
+- Dans `src/adapters/ui/`, `pixelArt/`, `components/`, `screens/`, `format/` et `state/` n'importent pas l'ancien thème (`theme/colors`, `theme/metrics`, `theme/typography`), sauf le combat d'essai et la sonde de toucher (`Button`, `Screen`, `TrialBattleEntry`, `TouchProbeScreen`, `TrialBattleScreen`), jusqu'à l'épique #30 (`habit-screens-in-pixel-art`, [ADR 0007](adr/0007-identite-pixel-art.md)).
 
 Conséquence pour les tests : le domaine et les cas d'usage se testent en unitaire, sans framework. Les adaptateurs se testent en intégration. Les parcours complets se testent en BDD et en end-to-end.
 

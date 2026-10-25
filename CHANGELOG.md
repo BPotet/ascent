@@ -2,6 +2,22 @@
 
 Toutes les évolutions notables d'Ascent. Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/). Les versions sont calculées à partir des [Conventional Commits](https://www.conventionalcommits.org/fr/v1.0.0/).
 
+## [0.3.0] - 2026-10-25
+
+L'épique #71 « Ascent en pixel art ».
+
+### Nouveautés pour le joueur
+
+- **La Journée en pixel art** : la Vue Journée, l'en-tête du personnage, la barre d'onglets et l'écran de démarrage prennent l'identité pixel art de la tour. Le ciel de l'en-tête s'éclaire au fil des habitudes faites, et le personnage lève sa lanterne quand toutes sont faites. Tenir une habitude joue une étincelle, une coche relevée, un « +XP » qui s'envole et des puces qui s'allument en or ; ces retours sont figés quand les animations sont réduites (#72, #75).
+- **La Semaine, le Mois et les panneaux en pixel art** : la Vue Semaine, la Vue Mois, le Détail du jour, les panneaux « Nouvelle habitude » et « Modifier l'habitude » et la confirmation de suppression passent dans le même style. Une correction d'un jour passé joue les mêmes retours de jeu que dans la Journée, et un objectif atteint s'affiche en or (#73, #76).
+- **Une habitude créée reste en vue** : la Vue Journée la fait apparaître juste au-dessus du bouton « Ajouter une habitude », sans rogner l'aide du premier usage, et la liste ne bouge plus sous le doigt du joueur (#73, #76).
+- **Combat d'essai** (build de preview seulement) : un premier combat jouable avec parade et esquive, la Sentinelle contre une Goule et un Spectre (#31, #53).
+
+### Technique
+
+- Maquettes validées de l'épique #71 (#74), et mesures sur téléphone du moteur de combat (#69).
+- Identité pixel art documentée dans l'ADR 0007 : sprites dessinés par le code, Skia réservé aux grandes images, pixel d'art arrondi au pixel physique. Une règle d'architecture garde les écrans d'habitude en pixel art (#75, #76).
+
 ## [0.2.0] - 2026-10-23
 
 L'épique #22 « Difficulté et objectif hebdomadaire des habitudes ».
@@ -39,5 +55,6 @@ Première version jouable : l'épique #2 « Gérer ses habitudes et les suivre j
 - Socle Expo (Android et iOS), base locale SQLite avec migrations, architecture hexagonale vérifiée, barrières de qualité (lint, types, tests unitaires, d'intégration, BDD, mutation, end-to-end Maestro, secrets) et construction de l'APK en CI (#12).
 - Maquettes validées de l'épique #2 (#11) et workflow de développement (#1).
 
+[0.3.0]: https://github.com/BPotet/ascent/releases/tag/v0.3.0
 [0.2.0]: https://github.com/BPotet/ascent/releases/tag/v0.2.0
 [0.1.0]: https://github.com/BPotet/ascent/releases/tag/v0.1.0

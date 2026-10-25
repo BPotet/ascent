@@ -1,77 +1,87 @@
-import { useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import type { Difficulty } from '../../../domain/habit/Difficulty';
-import { checkInStatusLabels } from '../format/checkInStatus';
-import { difficultyAccessibilityLabel } from '../format/formatDifficulty';
-import { capitalize, formatDayAndMonth } from '../format/formatDay';
-import {
-  TARGET_REACHED,
-  type WeeklyProgressShown,
-  weeklyProgressAccessibilityLabel,
-  weeklyProgressText,
-} from '../format/formatWeeklyTarget';
-import { useReducedMotion } from '../state/useReducedMotion';
-import { colors } from '../theme/colors';
-import { MIN_TOUCH_SIZE, radii, spacing } from '../theme/metrics';
-import { typography } from '../theme/typography';
-import type { ShownXpChange } from './CharacterBar';
-import { CheckGlyph, CrossGlyph, MoreGlyph } from './Glyph';
-import { CORRECTED, CorrectedMark } from './CorrectedMark';
+import { checkInStatusLabels, CORRECTED } from '../format/checkInStatus';
+import { capitalize } from '../format/formatDay';
+import { type WeeklyProgressShown, weeklyProgressText } from '../format/formatWeeklyTarget';
+import { editHabitLabel, habitDayAccessibilityLabel } from '../format/habitDayLabel';
+import { artPalette } from '../pixelArt/artPalette';
+import { HabitDayBox } from '../pixelArt/HabitDayBox';
+import { MIN_TARGET_SIZE } from '../pixelArt/PixelButton';
+import { type FrameTone, PixelFrame } from '../pixelArt/PixelFrame';
+import { PixelIcon } from '../pixelArt/PixelIcon';
+import { pixelTypography, textFont } from '../pixelArt/pixelTypography';
+import { WeekNotches } from '../pixelArt/WeekNotches';
+import type { ShownXpChange } from '../state/xpFeedback';
+import { Burst, useBurst } from './Burst';
+import { CorrectedMark } from './CorrectedMark';
 import { DifficultyLabel } from './DifficultyIcon';
 import { TargetReachedBadge } from './TargetReachedBadge';
 import { XpFloat } from './XpFloat';
 
-/** Le libellé, pour le lecteur d'écran, de l'action qui ouvre « Modifier l'habitude ». */
-export const editHabitLabel = (name: string) => `Modifier l’habitude ${name}`;
+const { roles } = artPalette;
 
-/** Durée du rebond de la coche quand on touche une habitude, comme dans la maquette. */
-export const BOUNCE_DURATION_MS = 320;
+/** La ligne écrite sous le nom : l'état en gras et sa couleur, puis la progression de la semaine. */
+function StatusLine({
+  statusText,
+  progressText,
+  done,
+  corrected,
+  testID,
+}: {
+  readonly statusText: string;
+  readonly progressText: string | undefined;
+  readonly done: boolean;
+  readonly corrected: boolean;
+  readonly testID: string | undefined;
+}) {
+  return (
+    <>
+      <Text {...(testID !== undefined && { testID })} style={[pixelTypography.label, styles.sub]}>
+        <Text style={[pixelTypography.statusWord, { color: done ? roles.done : roles.gold }]}>
+          {statusText}
+        </Text>
+        {progressText !== undefined && ` · ${progressText}`}
+      </Text>
+      {corrected && <Text style={styles.corrected}>{CORRECTED}</Text>}
+    </>
+  );
+}
 
-/** Le rebond : la coche (ou la case) grossit puis revient, sur `BOUNCE_DURATION_MS` au total. */
-export function bounce(scale: Animated.Value): void {
-  const grow = Math.round(BOUNCE_DURATION_MS * 0.4);
-  Animated.sequence([
-    Animated.timing(scale, { toValue: 1.18, duration: grow, useNativeDriver: true }),
-    Animated.timing(scale, {
-      toValue: 1,
-      duration: BOUNCE_DURATION_MS - grow,
-      useNativeDriver: true,
-    }),
-  ]).start();
+/** Le trait du cadre d'une ligne : or si elle est mise en évidence, vert si elle est faite. */
+function toneOf(highlighted: boolean, done: boolean, reached: boolean): FrameTone {
+  if (highlighted) {
+    return 'gold';
+  }
+  if (done) {
+    return 'done';
+  }
+  return reached ? 'goldDark' : 'default';
 }
 
 /**
- * Ligne d'une habitude dans la Vue Journée : son nom et l'état du suivi, écrit en toutes lettres,
- * avec une coche quand elle est « fait ». Toute la ligne est un interrupteur : la toucher appelle
- * `onToggle`, si la case est modifiable, et fait rebondir la coche (sauf mouvement réduit).
- * `highlighted` met en évidence une habitude qui vient d'être créée ou modifiée. `xpChange` fait
- * s'envoler le changement d'expérience (« +20 XP », ou « −20 XP ») de la coche, après un tap
- * enregistré.
+ * Ligne d'une habitude dans la Vue Journée, dans l'identité pixel art (E1, #72) : la case dessinée
+ * (`HabitDayBox`), le nom en police de texte, l'état écrit en toutes lettres, la difficulté de la
+ * semaine (sommets et nom), puis les crans de la semaine et « 2/5 cette semaine », et le badge
+ * « Objectif atteint ». Toute la ligne est un interrupteur, de 72 dp au moins : la toucher appelle
+ * `onToggle`, si la case est modifiable. Le lecteur d'écran lit la même annonce qu'avant #72
+ * (`habitDayAccessibilityLabel`).
  *
- * Avec `difficulty` (Vue Journée, E1), la ligne secondaire commence par l'icône et le nom de la
- * difficulté de la semaine (« ▲▲▲ Difficile · À faire ») ; le lecteur d'écran l'entend après l'état,
- * avec ce que rapporte une case « fait » : « …, à faire, Difficile, 20 XP par suivi ».
+ * Retours de jeu (F1), à 12 images par seconde : une habitude qui passe à « fait » fait éclater une
+ * étincelle de 3 images autour de la case, dont la coche est relevée d'un pixel d'art pendant 2
+ * images ; « +10 XP » s'envole de la case après un tap enregistré (`xpChange`, `XpFloat`) ; le badge
+ * s'allume en 3 paliers quand l'objectif vient d'être atteint (`targetFlash`). Au retour en
+ * arrière, ni étincelle ni rebond. En mouvement réduit, aucune de ces images : l'état final
+ * s'affiche tout de suite.
  *
- * Avec `weeklyProgress` (Vue Journée, #24, E1), l'état est suivi de la progression de la semaine :
- * « ▲▲▲ Difficile · À faire · 2/3 cette semaine », « Fait · 3/3 cette semaine » à l'objectif tout
- * juste atteint, et « Fait · 4 fois cette semaine » au-delà (maquette E1, décision PM du 22 octobre
- * 2026) ; elle passe à la ligne en grand texte.
- * L'objectif atteint ajoute dessous le badge « Objectif atteint » (drapeau, texte et liseré verts,
- * `TargetReachedBadge`), avec un éclat doré quand il vient d'être atteint (`targetFlash`, F1, #26) ;
- * la ligne reste tapable. Rien ne marque un objectif non atteint. Le lecteur d'écran entend la
- * progression après l'état, puis la difficulté, puis « objectif atteint » :
- * « Courir 5 km, …, à faire, 2 sur 3 cette semaine, Difficile, 20 XP par suivi ».
+ * `highlighted` borde d'or une habitude qui vient d'être créée ou modifiée. Avec `onEdit`, le bouton
+ * « ⋯ » de 48 × 48 dp, à droite, ouvre « Modifier l'habitude ».
  *
- * Dans le détail d'un jour de la Vue Mois (`compact`, ligne plus basse), la ligne montre aussi
- * « pas fait » (croix sur fond plein) et la marque « corrigé » (pastille sur la coche et mot écrit,
- * lu par le lecteur d'écran), comme la maquette (E5, E6). La progression y est celle de la semaine
- * du jour, que `weekLabel` nomme (#27) : « Fait · 2/3 semaine du 12 octobre » ; par défaut, « cette
- * semaine ».
- *
- * Avec `onEdit`, un bouton « ⋯ » à droite de la ligne ouvre « Modifier l'habitude » : c'est une
- * cible distincte de l'interrupteur (44 pt au moins), lue « Modifier l'habitude Cuisiner ».
+ * Dans le Détail du jour (#73), la progression est celle de la semaine du jour, que `weekLabel`
+ * nomme (« Fait · 2/3 semaine du 12 octobre ») ; par défaut, « cette semaine ». Un jour corrigé
+ * porte la marque « corrigé » sur sa case et le mot « corrigé » dans sa ligne d'état, lu dans
+ * l'annonce. Un jour de la Vue Journée n'est jamais corrigé.
  */
 export function HabitRow({
   habitDay,
@@ -83,7 +93,7 @@ export function HabitRow({
   targetFlash,
   onToggle,
   onEdit,
-  compact = false,
+  onLayout,
 }: {
   readonly habitDay: HabitDay;
   /** La difficulté de la semaine du jour affiché ; sans elle, la ligne n'en montre pas. */
@@ -93,94 +103,86 @@ export function HabitRow({
   /** La semaine de la progression (« semaine du 12 octobre ») ; par défaut, « cette semaine ». */
   readonly weekLabel?: string | undefined;
   readonly highlighted?: boolean;
-  readonly compact?: boolean;
   readonly xpChange?: ShownXpChange | undefined;
-  /** Change quand l'objectif de la semaine vient d'être atteint ici : l'éclat du badge (F1, #26). */
+  /** Change quand l'objectif de la semaine vient d'être atteint ici : le badge s'allume (F1). */
   readonly targetFlash?: number | undefined;
   readonly onToggle?: (habitDay: HabitDay) => void;
   readonly onEdit?: (habitDay: HabitDay) => void;
+  /** La place de la ligne dans la liste, quand elle change (la Vue Journée révèle une habitude créée). */
+  readonly onLayout?: (event: LayoutChangeEvent) => void;
 }) {
-  const { habit, day, status, editable, corrected } = habitDay;
-  const statusLabel = checkInStatusLabels[status];
+  const { habit, status, editable, corrected } = habitDay;
   const done = status === 'done';
-  const missed = status === 'missed';
   const reached = weeklyProgress?.targetReached === true;
-  const label = [habit.name.value, formatDayAndMonth(day), statusLabel]
-    .concat(weeklyProgress ? [weeklyProgressAccessibilityLabel(weeklyProgress, weekLabel)] : [])
-    .concat(corrected ? [CORRECTED] : [])
-    .concat(difficulty ? [difficultyAccessibilityLabel(difficulty)] : [])
-    .concat(reached ? [TARGET_REACHED.toLowerCase()] : [])
-    .join(', ');
-  const reducedMotion = useReducedMotion();
-  const [scale] = useState(() => new Animated.Value(1));
+  const { bursts, tap } = useBurst(status);
 
-  const press = () => {
-    if (!reducedMotion) {
-      bounce(scale);
-    }
-    onToggle?.(habitDay);
-  };
+  const box = (lifted: boolean) => (
+    <HabitDayBox status={status} lifted={lifted} testID={`habit-check-${habit.id}`} />
+  );
 
   return (
-    <View
+    <PixelFrame
+      tone={toneOf(highlighted, done, reached)}
+      {...(onLayout !== undefined && { onLayout })}
       testID={`habit-card-${habit.id}`}
-      style={[styles.card, done && styles.done, highlighted && styles.highlighted]}
+      style={styles.card}
     >
       <Pressable
         accessibilityRole="switch"
-        accessibilityLabel={label}
+        accessibilityLabel={habitDayAccessibilityLabel({
+          habitDay,
+          difficulty,
+          weeklyProgress,
+          weekLabel,
+        })}
         accessibilityState={{ checked: done, disabled: !editable }}
         disabled={!editable}
-        onPress={press}
+        onPress={() => {
+          tap();
+          onToggle?.(habitDay);
+        }}
         testID={`habit-row-${habit.id}`}
-        style={[styles.row, compact && styles.rowCompact]}
+        style={styles.row}
       >
-        <Animated.View
-          testID={`habit-check-${habit.id}`}
-          style={[
-            styles.check,
-            compact && styles.checkCompact,
-            done && styles.checkDone,
-            missed && styles.checkMissed,
-            { transform: [{ scale }] },
-          ]}
-        >
-          {done && <CheckGlyph color={colors.onDone} />}
-          {missed && <CrossGlyph color={colors.onMissed} />}
-          {corrected && <CorrectedMark size="row" />}
-          <XpFloat change={xpChange} reducedMotion={reducedMotion} />
-        </Animated.View>
+        <View testID={`habit-box-slot-${habit.id}`} style={styles.boxSlot}>
+          {bursts > 0 ? (
+            <Burst key={bursts} style={styles.burst}>
+              {box}
+            </Burst>
+          ) : (
+            box(false)
+          )}
+          {corrected && <CorrectedMark />}
+          <XpFloat change={xpChange} />
+        </View>
         <View style={styles.texts}>
-          <Text style={[typography.habitName, styles.name]}>{habit.name.value}</Text>
-          <View style={styles.statusLine}>
+          <Text style={[pixelTypography.habitName, styles.name]}>{habit.name.value}</Text>
+          <View style={styles.subLine}>
             {difficulty && (
-              <>
-                <DifficultyLabel
-                  difficulty={difficulty}
-                  color={done ? colors.doneText : colors.muted}
-                  iconColor={done ? colors.doneText : colors.difficulty}
-                  testID={`habit-difficulty-${habit.id}`}
-                />
-                <Text style={[typography.label, styles.status, done && styles.statusDone]}>·</Text>
-              </>
+              <DifficultyLabel difficulty={difficulty} testID={`habit-difficulty-${habit.id}`} />
             )}
-            <Text
-              {...(weeklyProgress && { testID: `habit-progress-${habit.id}` })}
-              style={[typography.label, styles.status, done && styles.statusDone, styles.progress]}
-            >
-              {weeklyProgress
-                ? `${capitalize(statusLabel)} · ${weeklyProgressText(weeklyProgress, weekLabel)}`
-                : capitalize(statusLabel)}
-            </Text>
-            {corrected && (
-              <View style={styles.correctedText}>
-                <View style={styles.correctedDot} />
-                <Text style={[typography.label, styles.corrected]}>{CORRECTED}</Text>
-              </View>
-            )}
+            <StatusLine
+              statusText={capitalize(checkInStatusLabels[status])}
+              progressText={weeklyProgress && weeklyProgressText(weeklyProgress, weekLabel)}
+              done={done}
+              corrected={corrected}
+              testID={weeklyProgress && `habit-progress-${habit.id}`}
+            />
           </View>
-          {reached && (
-            <TargetReachedBadge flash={targetFlash} testID={`habit-target-reached-${habit.id}`} />
+          {weeklyProgress && (
+            <View style={styles.subLine}>
+              <WeekNotches
+                done={weeklyProgress.weeklyProgress}
+                target={weeklyProgress.weekTarget}
+                reached={reached}
+              />
+              {reached && (
+                <TargetReachedBadge
+                  flash={targetFlash}
+                  testID={`habit-target-reached-${habit.id}`}
+                />
+              )}
+            </View>
           )}
         </View>
       </Pressable>
@@ -190,73 +192,48 @@ export function HabitRow({
           accessibilityLabel={editHabitLabel(habit.name.value)}
           onPress={() => onEdit(habitDay)}
           testID={`edit-habit-${habit.id}`}
-          style={[styles.more, done && styles.moreDone]}
+          style={styles.more}
         >
-          <MoreGlyph color={colors.muted} />
+          <PixelIcon name="more" color={roles.parchment} />
         </Pressable>
       )}
-    </View>
+    </PixelFrame>
   );
 }
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    marginBottom: 10,
-    borderRadius: radii.row,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    backgroundColor: colors.surface,
-  },
+  card: { flexDirection: 'row' },
   row: {
     flex: 1,
-    minHeight: 76,
+    minHeight: 72,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    paddingVertical: 10,
-    paddingLeft: 14,
-    paddingRight: spacing.sm,
+    gap: 12,
+    paddingVertical: 12,
+    paddingLeft: 12,
+    paddingRight: 4,
   },
-  rowCompact: { minHeight: 64 },
+  boxSlot: { width: 44, height: 44 },
+  burst: { left: -10, top: -10 },
+  texts: { flex: 1, minWidth: 0, gap: 4 },
+  name: { color: roles.light },
+  subLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
+  sub: { color: roles.parchment, flexShrink: 1 },
+  corrected: {
+    fontFamily: textFont.semiBold,
+    fontSize: 11,
+    lineHeight: 15,
+    color: roles.blue,
+    textDecorationLine: 'underline',
+    textDecorationStyle: 'dotted',
+    textDecorationColor: roles.blue,
+  },
   more: {
-    width: 52,
-    minHeight: MIN_TOUCH_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderLeftWidth: 1,
-    borderLeftColor: colors.line,
-  },
-  moreDone: { borderLeftColor: colors.doneDivider },
-  done: { borderColor: colors.doneLine, backgroundColor: colors.doneSoft },
-  highlighted: {
-    borderColor: colors.accent,
-    shadowColor: colors.accent,
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 0 },
-  },
-  check: {
-    width: MIN_TOUCH_SIZE,
-    height: MIN_TOUCH_SIZE,
-    borderRadius: MIN_TOUCH_SIZE / 2,
-    borderWidth: 2.5,
-    borderColor: colors.accent,
+    width: MIN_TARGET_SIZE,
+    minHeight: MIN_TARGET_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkCompact: { width: 40, height: 40, borderRadius: 20 },
-  checkDone: { backgroundColor: colors.done, borderColor: colors.done },
-  checkMissed: { backgroundColor: colors.missed, borderColor: 'transparent' },
-  texts: { flex: 1, gap: 2 },
-  name: { color: colors.text },
-  statusLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
-  status: { color: colors.muted },
-  correctedText: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  correctedDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.correctedMark },
-  corrected: { color: colors.correctedMark },
-  statusDone: { color: colors.doneText },
-  progress: { flexShrink: 1 },
 });
 // Stryker restore all

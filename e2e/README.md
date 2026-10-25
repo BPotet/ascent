@@ -26,6 +26,19 @@ construit sur le canal `preview` ; sur un build de production, le lien ramène �
 local, lancer l'app avec `EXPO_PUBLIC_ASCENT_CHANNEL=preview` (par exemple
 `EXPO_PUBLIC_ASCENT_CHANNEL=preview npx expo run:android --variant release`) pour ouvrir la sonde.
 
+Le combat d'essai (`trial-battle.yaml`, story #31) s'ouvre par le bouton « Combat d'essai », au-dessus
+de la barre d'onglets : il n'existe que dans le build de preview (canal `preview`), et la story #33 le
+remplacera. Le bouton est dans le flux de la mise en page : en preview, il réduit la hauteur de la liste
+de la Vue Journée, et `weekly-target.yaml` remonte donc jusqu'à la première habitude avant de la
+modifier. Le parcours ne teste pas le timing de la parade (Maestro ne touche pas à 10 ms près) : il gagne le combat
+en n'utilisant que « Attaquer », et capture les écrans F2, F1, P9 et l'écran de fin (avec les panneaux
+Réglages d'essai et Mesures) pour la comparaison avec la maquette. Les états brefs (P0, P0b, P1, F0) sont
+capturés au second combat, après avoir allongé la transition et l'avancée à 2 000 ms dans les réglages
+d'essai : chaque commande Maestro prend une seconde ou plus sur l'émulateur. Chacun est attendu par un
+texte qui n'existe que dans cet état, sans attente facultative. Il joue les sons du combat et vérifie,
+dans le panneau Mesures, qu'une latence du son a été mesurée. L'émulateur de la CI tourne sans animations : l'app réduit
+alors les animations, et la bannière de phase porte l'identifiant `phase-banner-still`.
+
 Sélecteurs : privilégier les textes visibles (libellés du glossaire) et les `testID` des écrans.
 
 Libellés des lignes de la Vue Journée (lecteur d'écran) : `<nom>, <jour>, <état>[, corrigé], <progression>, <Difficulté>, <X> XP par suivi[, objectif atteint]`,

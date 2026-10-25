@@ -1,91 +1,74 @@
-import { render, screen } from '@testing-library/react-native';
-import { Animated } from 'react-native';
+import { act, render, screen } from '@testing-library/react-native';
+import { AccessibilityInfo, StyleSheet } from 'react-native';
 
-import { XP_FLOAT_DURATION_MS, XpFloat } from './XpFloat';
+import { artPalette } from '../pixelArt/artPalette';
+import { pixelFont } from '../pixelArt/pixelTypography';
+import { XpFloat } from './XpFloat';
 
-const float = () => screen.queryByTestId('xp-float', { includeHiddenElements: true });
+const hidden = { includeHiddenElements: true };
+const float = () => screen.queryByTestId('xp-float', hidden);
 
-describe('XpFloat', () => {
-  afterEach(() => jest.restoreAllMocks());
-
-  it('lets « +10 XP » fly up from the touched case, in gold, for 900 ms', async () => {
-    const timing = jest.spyOn(Animated, 'timing');
-
-    await render(<XpFloat reducedMotion={false} change={{ id: 1, amount: 10 }} />);
-
-    expect(float()).toHaveTextContent('+10 XP');
-    expect(screen.getByText('+10 XP', { includeHiddenElements: true })).toHaveStyle({
-      color: '#FFC94D',
-    });
-    expect(timing.mock.calls.map(([, config]) => config.duration)).toEqual([XP_FLOAT_DURATION_MS]);
-    expect(XP_FLOAT_DURATION_MS).toBe(900);
+describe('XpFloat (pixel art)', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockResolvedValue(false);
   });
 
-  it('lets « −10 XP » fly up in a discreet grey', async () => {
-    await render(<XpFloat reducedMotion={false} change={{ id: 1, amount: -10 }} />);
+  it('lets « +10 XP » fly up in gold, in the pixel font at 18', async () => {
+    await render(<XpFloat change={{ id: 1, amount: 10 }} />);
 
-    expect(float()).toHaveTextContent('−10 XP');
-    expect(screen.getByText('−10 XP', { includeHiddenElements: true })).toHaveStyle({
-      color: '#9AA4B8',
+    expect(screen.getByText('+10 XP', hidden)).toHaveStyle({
+      fontFamily: pixelFont,
+      fontSize: 18,
+      color: artPalette.roles.gold,
     });
   });
 
-  it('lets only the share of the case fly up, not the target bonus (#26)', async () => {
-    await render(<XpFloat reducedMotion={false} change={{ id: 1, amount: 25, bonus: 15 }} />);
+  it('shows « −10 XP » in grey, never in red', async () => {
+    await render(<XpFloat change={{ id: 1, amount: -10 }} />);
+
+    expect(screen.getByText('−10 XP', hidden)).toHaveStyle({ color: artPalette.roles.muted });
+  });
+
+  it('rises by steps of 2 dp for 10 frames, then disappears', async () => {
+    await render(<XpFloat change={{ id: 1, amount: 10 }} />);
+    const offsets = [];
+    for (let frame = 0; frame < 10; frame += 1) {
+      // `+ 0` : la première image est à 0 dp, qu'il soit écrit 0 ou −0.
+      offsets.push(Number(StyleSheet.flatten(float()?.props.style).transform?.[0]?.translateY) + 0);
+      await act(async () => jest.advanceTimersByTime(83));
+    }
+
+    expect(offsets).toEqual([0, -2, -4, -6, -8, -10, -12, -14, -16, -18]);
+    expect(float()).toBeNull();
+  });
+
+  it('flies only the share of the check-in, not the bonus', async () => {
+    await render(<XpFloat change={{ id: 1, amount: 25, bonus: 15 }} />);
 
     expect(float()).toHaveTextContent('+10 XP');
   });
 
-  it('lets nothing fly up when only the target bonus changes', async () => {
-    await render(<XpFloat reducedMotion={false} change={{ id: 1, amount: 3, bonus: 3 }} />);
+  it('shows nothing without a change, or for a change of the bonus alone', async () => {
+    await render(<XpFloat change={undefined} />);
+    expect(float()).toBeNull();
 
-    expect(float()).not.toBeOnTheScreen();
+    await screen.rerender(<XpFloat change={{ id: 2, amount: 3, bonus: 3 }} />);
+    expect(float()).toBeNull();
   });
 
-  it('is hidden from the screen reader, which hears the announcement', async () => {
-    await render(<XpFloat reducedMotion={false} change={{ id: 1, amount: 10 }} />);
+  it('shows nothing when the motion is reduced', async () => {
+    jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockResolvedValue(true);
+    await render(<XpFloat change={{ id: 1, amount: 10 }} />);
+    await act(async () => undefined);
 
-    expect(screen.queryByText('+10 XP')).not.toBeOnTheScreen();
+    expect(float()).toBeNull();
   });
 
-  it('flies again for each new change', async () => {
-    const timing = jest.spyOn(Animated, 'timing');
-    await render(<XpFloat reducedMotion={false} change={{ id: 1, amount: 10 }} />);
+  it('never intercepts a touch', async () => {
+    await render(<XpFloat change={{ id: 1, amount: 10 }} />);
 
-    await screen.rerender(<XpFloat reducedMotion={false} change={{ id: 2, amount: 10 }} />);
-
-    expect(timing).toHaveBeenCalledTimes(2);
-  });
-
-  it('shows nothing without a change', async () => {
-    await render(<XpFloat reducedMotion={false} change={undefined} />);
-
-    expect(float()).not.toBeOnTheScreen();
-  });
-
-  it('does not fly when the player asked to reduce motion', async () => {
-    const timing = jest.spyOn(Animated, 'timing');
-
-    await render(<XpFloat reducedMotion change={{ id: 1, amount: 10 }} />);
-
-    expect(float()).not.toBeOnTheScreen();
-    expect(timing).not.toHaveBeenCalled();
-  });
-
-  it('starts below the case, small and transparent', async () => {
-    await render(<XpFloat reducedMotion={false} change={{ id: 1, amount: 10 }} />);
-
-    expect(float()).toHaveStyle({ opacity: 0, transform: [{ translateY: 8 }, { scale: 0.8 }] });
-  });
-
-  it('flies on the native thread, and stops when it leaves the screen', async () => {
-    const animation = { start: jest.fn(), stop: jest.fn(), reset: jest.fn() };
-    const timing = jest.spyOn(Animated, 'timing').mockReturnValue(animation);
-    await render(<XpFloat reducedMotion={false} change={{ id: 1, amount: 10 }} />);
-
-    expect(timing.mock.calls[0]?.[1]).toMatchObject({ toValue: 1, useNativeDriver: true });
-    expect(animation.start).toHaveBeenCalled();
-    await screen.unmount();
-    expect(animation.stop).toHaveBeenCalled();
+    expect(float()).toHaveProp('pointerEvents', 'none');
   });
 });

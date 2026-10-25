@@ -1,48 +1,63 @@
 import { render, screen } from '@testing-library/react-native';
+import { Text } from 'react-native';
 
-import { Button } from './Button';
+import { pixelFont, textFont } from '../pixelArt/pixelTypography';
 import { StateMessage } from './StateMessage';
 
-const action = <Button label="Réessayer" onPress={() => undefined} />;
+const hidden = { includeHiddenElements: true };
 
-describe('StateMessage', () => {
-  it.each([
-    ['summit', 180, 130],
-    ['alert', 56, 56],
-  ] as const)(
-    'shows the « %s » illustration of the mockup, %i × %i, hidden from the screen reader',
-    async (illustration, width, height) => {
-      await render(
-        <StateMessage illustration={illustration} title="Titre" text="Texte" action={action} />,
-      );
+describe('StateMessage (pixel art)', () => {
+  it('shows the character at ×3, a title in the pixel font, a text in the text font and its action', async () => {
+    await render(
+      <StateMessage
+        illustration="character"
+        title="Aucune habitude pour l’instant"
+        text="Crée ta première habitude."
+        action={<Text>Ajouter</Text>}
+      />,
+    );
 
-      const image = screen.getByTestId(`illustration-${illustration}`, {
-        includeHiddenElements: true,
-      });
-      expect(image).toHaveStyle({ width, height });
-      expect(image).toHaveProp('source', expect.anything());
-      expect(screen.queryByTestId(`illustration-${illustration}`)).not.toBeOnTheScreen();
-    },
-  );
-
-  it('uses a different picture for each illustration', async () => {
-    await render(<StateMessage illustration="summit" title="T" text="T" action={action} />);
-    const summit = screen.getByTestId('illustration-summit', { includeHiddenElements: true }).props
-      .source;
-    await render(<StateMessage illustration="alert" title="T" text="T" action={action} />);
-    const alert = screen.getByTestId('illustration-alert', { includeHiddenElements: true }).props
-      .source;
-
-    expect(summit).not.toEqual(alert);
+    const character = screen.getByTestId('illustration-character', hidden);
+    expect(character.props.sprite).toBe('character-0');
+    expect(character.props.scale).toBe(3);
+    expect(screen.getByText('Aucune habitude pour l’instant')).toHaveStyle({
+      fontFamily: pixelFont,
+      fontSize: 24,
+    });
+    expect(screen.getByText('Crée ta première habitude.')).toHaveStyle({
+      fontFamily: textFont.regular,
+    });
+    expect(screen.getByText('Ajouter')).toBeOnTheScreen();
+    expect(screen.getByRole('header')).toHaveAccessibleName(
+      'Aucune habitude pour l’instant Crée ta première habitude.',
+    );
   });
 
-  it('reads the title and the text as a header, or as an alert', async () => {
-    await render(<StateMessage illustration="summit" title="Vide." text="Rien." action={action} />);
-    expect(screen.getByRole('header', { name: 'Vide. Rien.' })).toBeOnTheScreen();
-
+  it('shows the alert emblem at ×2 and announces an error', async () => {
     await render(
-      <StateMessage alert illustration="alert" title="Erreur." text="Oups." action={action} />,
+      <StateMessage
+        alert
+        illustration="alert"
+        title="Impossible de charger tes habitudes."
+        text="Une erreur est survenue."
+        action={null}
+      />,
     );
-    expect(screen.getByRole('alert', { name: 'Erreur. Oups.' })).toBeOnTheScreen();
+
+    const emblem = screen.getByTestId('illustration-alert', hidden);
+    expect(emblem.props.sprite).toBe('alert-emblem');
+    expect(emblem.props.scale).toBe(2);
+    expect(screen.getByRole('alert')).toHaveAccessibleName(
+      'Impossible de charger tes habitudes. Une erreur est survenue.',
+    );
+  });
+
+  it('never cuts the title in the pixel font', async () => {
+    await render(<StateMessage illustration="alert" title="Titre" text="Texte" action={null} />);
+
+    const title = screen.getByText('Titre');
+    expect(title.props.numberOfLines).toBeUndefined();
+    expect(title.props.adjustsFontSizeToFit).toBeUndefined();
+    expect(title.props.allowFontScaling).not.toBe(false);
   });
 });
