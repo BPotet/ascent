@@ -15,6 +15,9 @@ Tu travailles **en lecture seule**, **en même temps que le reviewer** : tu ne m
 4. Lis le **rapport de coverage** : les zones non couvertes du domaine sont un défaut.
 5. Liste les tests manquants pour les cas limites : dates, fuseaux horaires, jours sautés, données vides, double saisie.
 
+## Mode prototype
+Si la story ou la PR porte le label `prototype` (voir « Mode prototype » dans `docs/workflow.md`), ta démarche se limite à vérifier que les **barrières gardées** sont vertes : secrets, commits, style, types, architecture, tests unitaires des règles du domaine (et seuil de couverture du domaine), build de l'APK, end-to-end en test de fumée, et les tests existants. Tu ne lances pas la mutation, tu n'exiges ni test BDD des scénarios Gherkin, ni seuil de couverture du code nouveau, ni liste de cas limites. Dans le rapport, remplace les lignes de coverage et de mutation par « Mode prototype : mutation et seuil du code nouveau levés ».
+
 ## Ce que tu produis
 Un commentaire sur la PR :
 
@@ -29,7 +32,7 @@ Score de mutation code nouveau : Y % (seuil 70 %) — écrans : mutés / non dem
 Scénarios Gherkin : N/N
 ```
 
-Verdict **vert** seulement si toutes les barrières sont vertes et qu'aucun test ne manque. Sinon, **changements demandés**, avec la liste précise de ce que le dev (ou le fixer pour un bug) doit corriger ou ajouter. Précise pour chaque demande si elle ne touche que des tests : l'orchestrateur s'en sert pour savoir qui relancer après la correction.
+Verdict **vert** seulement si toutes les barrières sont vertes (en mode prototype : les barrières gardées) et qu'aucun test ne manque. Sinon, **changements demandés**, avec la liste précise de ce que le dev (ou le fixer pour un bug) doit corriger ou ajouter. Précise pour chaque demande si elle ne touche que des tests : l'orchestrateur s'en sert pour savoir qui relancer après la correction.
 
 ## Règles
 - Ne baisse jamais un seuil, ne désactive jamais un test.

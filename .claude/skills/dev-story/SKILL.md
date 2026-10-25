@@ -7,6 +7,8 @@ description: Étapes 3 à 8 du workflow Ascent. Mène une story validée (status
 
 Prérequis : la story est en `status:ready`. Sinon, arrête-toi et lance `/backlog`.
 
+**Mode prototype** : si la story porte le label `prototype` (posé seulement sur décision du propriétaire), dis-le au **dev**, au **qa** et au **reviewer** dans leur consigne, et pose le même label sur la PR avant sa sortie du brouillon. Les barrières sont alors celles de « Mode prototype » dans `docs/workflow.md` : pas de mutation, pas de scénarios Gherkin automatisés, pas de seuil de couverture du code nouveau, end-to-end en test de fumée, QA et review allégés.
+
 1. **Ready** : lance l'agent **architect** pour ajouter les notes techniques à la story.
 2. **Impact** : passe en `status:impact-analysis` et lance l'agent **impact-analyst**.
    - Impact fort : lance **pm** et **architect** pour décider. Si le périmètre validé change, repasse la story en `status:awaiting-approval`, préviens le propriétaire et arrête-toi. Sinon, reprends à l'étape 1.
