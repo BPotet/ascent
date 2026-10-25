@@ -7,7 +7,7 @@
 # Parcours : Vue Semaine vide (E4) → « Nouvelle habitude » vide, saisie (Difficile, objectif 1),
 # créée : la Journée avec l'aide au premier usage (E2) → doublon refusé (E2) → Vue Semaine, puis la
 # case d'aujourd'hui qui atteint l'objectif (E4) → « Modifier l'habitude » ouvert, difficulté
-# modifiée, confirmation de suppression annulée, enregistré (E3) → Vue Mois, objectifs par semaine,
+# modifiée, enregistré, puis confirmation de suppression annulée (E3) → Vue Mois, objectifs par semaine,
 # Détail du jour avec un tap (E5).
 # Captures pour la comparaison avec la maquette (E2, E3, E4, E5).
 appId: com.bpotet.ascent
@@ -159,11 +159,30 @@ tags:
     timeout: 10000
 - takeScreenshot: week-month-pixel-art-E3-2-difficulty-changed
 
-# E3 · Confirmation de suppression : « Annuler » à gauche, « Supprimer » en rouge ; annulée.
-- scrollUntilVisible:
-    element:
+# E3 · Succès : « Habitude modifiée » et la variation de l'expérience.
+- extendedWaitUntil:
+    visible:
+      id: 'save-habit'
+    timeout: 10000
+- tapOn:
+    id: 'save-habit'
+- extendedWaitUntil:
+    visible: 'Habitude modifiée.*'
+    timeout: 10000
+- takeScreenshot: week-month-pixel-art-E3-4-saved
+- extendedWaitUntil:
+    notVisible:
+      id: 'edit-habit-sheet-content'
+    timeout: 10000
+
+# E3 · Confirmation de suppression : « Annuler » à gauche, « Supprimer » en rouge. « Annuler »
+# ferme la confirmation et le panneau, comme aujourd'hui (`HabitEditing`) : rien n'est supprimé.
+- tapOn:
+    id: 'edit-habit-1'
+- extendedWaitUntil:
+    visible:
       id: 'delete-habit'
-    direction: DOWN
+    timeout: 10000
 - tapOn:
     id: 'delete-habit'
 - extendedWaitUntil:
@@ -176,18 +195,12 @@ tags:
     notVisible:
       id: 'confirm-delete-habit'
     timeout: 10000
-
-# E3 · Succès : « Habitude modifiée » et la variation de l'expérience.
 - extendedWaitUntil:
-    visible:
-      id: 'save-habit'
+    notVisible:
+      id: 'edit-habit-sheet-content'
     timeout: 10000
-- tapOn:
-    id: 'save-habit'
-- extendedWaitUntil:
-    visible: 'Habitude modifiée.*'
-    timeout: 10000
-- takeScreenshot: week-month-pixel-art-E3-4-saved
+- assertVisible:
+    id: 'week-card-1'
 
 # E5 · Ce mois-ci : la grille, aujourd'hui dans le cadre d'or.
 - tapOn:
