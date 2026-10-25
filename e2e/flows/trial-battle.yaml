@@ -1,5 +1,5 @@
-# Stories #31 et #32 (combat complet, partie A) : test de fumée du combat d'essai, ouvert depuis
-# son point d'entrée provisoire (build de preview).
+# Stories #31, #32 et #81 (combat complet, parties A et B) : test de fumée du combat d'essai, ouvert
+# depuis son point d'entrée provisoire (build de preview), avec la scène en pixel art 2.5D.
 # Décision du propriétaire du 25/10 : le gameplay du combat (timing, parade, frappe, transitions)
 # se teste à la main sur l'APK ; l'e2e vérifie seulement que le combat s'ouvre et s'affiche ; les
 # règles sont couvertes par les tests unitaires, d'intégration et BDD.
@@ -14,6 +14,7 @@ name: Combat d'essai du build de preview
 tags:
   - story-31
   - story-32
+  - story-81
 ---
 - runFlow: ../subflows/launch-fresh.yaml
 
@@ -38,6 +39,9 @@ tags:
 # F1 : la phase du héros, stable jusqu'au toucher. La Goule est présélectionnée ; chaque ennemi
 # montre sa garde et la catégorie de son intention, jamais le type de coup ni les dégâts.
 - assertVisible: 'Phase du héros|PHASE DU HÉROS'
+# La scène 2.5D : décor, socles (celui de la Goule éclairé), sprites, plaques.
+- assertVisible:
+    id: 'battle-scene-frame'
 - assertVisible:
     id: 'enemy-ghoul'
     text: 'Goule, cible, 50 PV sur 50, garde 15 sur 15, intention : attaque'

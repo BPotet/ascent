@@ -68,7 +68,7 @@ maquette) ; la pastille « +10 XP » est en 18 (16 dans la maquette).
 
 Toutes les animations pixel passent par `useArtFrames` : une image toutes les 83 ms, sans
 interpolation ni mise à l'échelle animée. En mouvement réduit, il passe directement à la dernière
-image. Les vibrations et les annonces au lecteur d'écran ne dépendent pas du rendu.
+image. Exception : le combat, qui ne passe pas par `useArtFrames` (ADR 0008). Les vibrations et les annonces au lecteur d'écran ne dépendent pas du rendu.
 
 ### 6. Le ciel du jour est une règle de jeu
 
