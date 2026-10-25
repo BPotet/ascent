@@ -4,9 +4,15 @@ import type { KeyValueStore } from '../ports/KeyValueStore';
 import { FixedSeedSource } from '../testing/FixedSeedSource';
 import { ManualBattleClock } from '../testing/ManualBattleClock';
 import { silentBattleHaptics, silentBattleSound } from '../testing/recordingBattleFeedback';
+import { battleWith, enemyWith } from '../testing/battleBuilder';
 import { seedFor } from '../testing/trialBattleSeeds';
 import { BATTLE_HINT_SEEN_KEYS } from './battleHints';
-import { BattleSession, REORDER_GUARD_MS, type BattleSnapshot } from './BattleSession';
+import {
+  BattleSession,
+  REORDER_GUARD_MS,
+  type BattleFactory,
+  type BattleSnapshot,
+} from './BattleSession';
 import { TRIAL_TUNING_KEY } from './trialTuning';
 
 function mapStore(): KeyValueStore & { values: Map<string, string>; fail: boolean } {
@@ -35,19 +41,29 @@ function seenHints(store: ReturnType<typeof mapStore>): void {
   store.values.set(BATTLE_HINT_SEEN_KEYS.defense, '1');
 }
 
-function setUp({ seed = seedFor({ ghoul: 'basic' }), start = 1_000, hints = false } = {}) {
+/** La Goule n'est jamais brisée : ses parades et contre-attaques restent celles de #31. */
+const sturdyGhoul = battleWith(enemyWith(0, { guard: 99 }));
+
+function setUp({
+  seed = seedFor({ ghoul: 'basic' }),
+  start = 1_000,
+  hints = false,
+  createBattle = sturdyGhoul,
+}: {
+  seed?: number;
+  start?: number;
+  hints?: boolean;
+  createBattle?: BattleFactory;
+} = {}) {
   const clock = new ManualBattleClock(start);
   const keyValueStore = mapStore();
   if (!hints) seenHints(keyValueStore);
   const sound = silentBattleSound();
   const haptics = silentBattleHaptics();
-  const session = new BattleSession({
-    clock,
-    seeds: new FixedSeedSource(seed, seed + 1),
-    sound,
-    haptics,
-    keyValueStore,
-  });
+  const session = new BattleSession(
+    { clock, seeds: new FixedSeedSource(seed, seed + 1), sound, haptics, keyValueStore },
+    { createBattle },
+  );
   const published: BattleSnapshot[] = [];
   session.subscribe((snapshot) => published.push(snapshot));
   const events = () => published.flatMap((snapshot) => snapshot.events);
@@ -70,8 +86,9 @@ function typesOf(events: readonly BattleEvent[]): string[] {
 function toGhoulWindUp(context: ReturnType<typeof setUp>, at = 2_000): number {
   context.clock.advanceTo(at);
   context.session.heroAction({ kind: 'attack' }, at - 60, at);
-  // 500 (attaque) + 800 (transition) + 400 (avancée)
-  context.clock.advanceTo(at + 1_700);
+  // 700 (préparation de la frappe) + 160 (fenêtre) + 320 (récupération) + 800 (transition)
+  // + 400 (avancée)
+  context.clock.advanceTo(at + 2_380);
   return attackStep(context.session).impacts[0]!.at;
 }
 
@@ -82,7 +99,7 @@ describe('BattleSession', () => {
     const snapshot = await context.session.start();
 
     expect(snapshot.battle.now).toBe(1_234);
-    expect(snapshot.battle.phase).toEqual({ kind: 'hero', since: 1_234 });
+    expect(snapshot.battle.phase).toEqual({ kind: 'hero', since: 1_234, announced: false });
     expect(typesOf(snapshot.events)).toEqual(['roundStarted', 'heroPhaseStarted']);
     expect(context.session.current()).toBe(snapshot);
     expect(context.published).toEqual([snapshot]);
@@ -92,6 +109,7 @@ describe('BattleSession', () => {
     const context = setUp();
 
     context.session.pressDefense('parry', 10);
+    context.session.pressStrike(10);
     context.session.heroAction({ kind: 'attack' }, 0, 10);
     context.session.dismissHint('defense');
     context.session.dismissHint('hero');
@@ -106,17 +124,78 @@ describe('BattleSession', () => {
 
     context.clock.advanceTo(2_000);
     context.session.heroAction({ kind: 'attack' }, 1_940, 2_000);
-    expect(context.clock.pending()).toEqual([2_500]);
+    // La frappe sans appui : fin de sa fenêtre (2 860 ms), après la garde de réordonnancement.
+    expect(context.clock.pending()).toEqual([2_860 + REORDER_GUARD_MS]);
+    context.clock.advanceTo(2_892);
+    expect(context.clock.pending()).toEqual([3_180]);
 
     // Le minuteur part en retard : les événements gardent leur instant nominal.
-    context.clock.advanceTo(2_530);
+    context.clock.advanceTo(3_210);
     expect(context.events().filter((event) => event.type === 'phaseTransitionStarted')).toEqual([
-      { type: 'phaseTransitionStarted', at: 2_500, to: 'enemy', until: 3_300 },
+      { type: 'phaseTransitionStarted', at: 3_180, to: 'enemy', until: 3_980 },
     ]);
 
-    context.clock.advanceTo(3_700);
+    context.clock.advanceTo(4_380);
     const impact = attackStep(context.session).impacts[0]!.at;
     expect(context.clock.pending()).toEqual([impact]);
+  });
+
+  describe('the timed strike (« Frapper »)', () => {
+    async function striking(context: ReturnType<typeof setUp>): Promise<number> {
+      await context.session.start();
+      context.clock.advanceTo(2_000);
+      context.session.heroAction({ kind: 'attack' }, 1_940, 2_000);
+      return 2_700;
+    }
+
+    it('dates the press at the touch, and plays the perfect strike', async () => {
+      const context = setUp({ createBattle: startTrialBattle });
+      const impact = await striking(context);
+
+      context.clock.advanceTo(impact + 30);
+      context.session.pressStrike(impact + 20);
+
+      // 18 points de garde : la garde de la Goule (15) tombe, un seul arrêt sur image.
+      expect(context.session.current()!.events).toEqual([
+        expect.objectContaining({ type: 'strikeResolved', judgement: 'perfect', delta: 20 }),
+        { type: 'guardBroken', at: impact + 20, enemy: 0, by: 'strike' },
+        { type: 'hitStopStarted', at: impact + 20, until: impact + 110 },
+      ]);
+      expect(context.sound.played).toEqual(['perfectStrike', 'guardBreak']);
+      expect(context.haptics.played).toEqual(['perfectStrike', 'guardBreak']);
+      expect(context.session.measures()).toEqual({
+        redatedPresses: 0,
+        deltas: [],
+        strikeDeltas: [20],
+      });
+    });
+
+    it('still judges a strike dated just before the end of its window and received just after it', async () => {
+      const context = setUp();
+      const impact = await striking(context);
+
+      context.clock.advanceTo(impact + 180);
+      context.session.pressStrike(impact + 150);
+
+      expect(context.events().find((event) => event.type === 'strikeResolved')).toMatchObject({
+        judgement: 'good',
+        delta: 150,
+      });
+    });
+
+    it('counts a strike press dated before the engine state', async () => {
+      const context = setUp();
+      const impact = await striking(context);
+      context.clock.advanceTo(impact - 100);
+      context.session.pressDefense('parry', impact - 100);
+
+      context.session.pressStrike(impact - 200);
+
+      expect(context.session.measures().redatedPresses).toBe(1);
+      expect(context.session.current()!.battle.phase).toMatchObject({
+        press: { at: impact - 100, delta: -100, judgement: 'good' },
+      });
+    });
   });
 
   it('waits for the reorder guard after an impact without press', async () => {
@@ -148,7 +227,11 @@ describe('BattleSession', () => {
       outcome: 'parry',
       delta: 155,
     });
-    expect(context.session.measures()).toEqual({ redatedPresses: 0, deltas: [155] });
+    expect(context.session.measures()).toEqual({
+      redatedPresses: 0,
+      deltas: [155],
+      strikeDeltas: [],
+    });
   });
 
   it('can take another reorder guard', async () => {
@@ -166,7 +249,8 @@ describe('BattleSession', () => {
     await session.start();
     context.clock.advanceTo(2_000);
     session.heroAction({ kind: 'attack' }, 1_940, 2_000);
-    context.clock.advanceTo(3_700);
+    expect(context.clock.pending()).toEqual([2_910]);
+    context.clock.advanceTo(4_380);
     const phase = session.current()!.battle.phase as Extract<
       BattleSnapshot['battle']['phase'],
       { kind: 'enemy' }
@@ -219,13 +303,13 @@ describe('BattleSession', () => {
     await context.session.start();
     const impact = toGhoulWindUp(context);
 
-    expect(context.sound.played).toEqual(['enemyPhase']);
+    expect(context.sound.played).toEqual(['strike', 'enemyPhase']);
     expect(context.haptics.played).toEqual(['enemyPhase']);
 
     context.clock.advanceTo(impact - 30);
     context.session.pressDefense('parry', impact - 30);
 
-    expect(context.sound.played).toEqual(['enemyPhase', 'perfectParry']);
+    expect(context.sound.played).toEqual(['strike', 'enemyPhase', 'perfectParry']);
     expect(context.haptics.played).toEqual(['enemyPhase', 'perfectParry']);
   });
 
@@ -243,9 +327,9 @@ describe('BattleSession', () => {
 
     expect(context.events().find((event) => event.type === 'stepInStarted')).toEqual({
       type: 'stepInStarted',
-      at: 3_700,
+      at: 4_380,
       enemy: 0,
-      until: 3_800,
+      until: 4_480,
     });
   });
 
@@ -259,8 +343,8 @@ describe('BattleSession', () => {
     const second = await context.session.start();
 
     expect(second.battle.random).not.toBe(first.battle.random);
-    expect(second.battle.phase).toEqual({ kind: 'hero', since: impact });
-    expect(context.session.measures()).toEqual({ redatedPresses: 0, deltas: [] });
+    expect(second.battle.phase).toEqual({ kind: 'hero', since: impact, announced: false });
+    expect(context.session.measures()).toEqual({ redatedPresses: 0, deltas: [], strikeDeltas: [] });
     expect(context.clock.pending()).toEqual([]);
   });
 
@@ -314,7 +398,8 @@ describe('BattleSession', () => {
     context.session.heroAction({ kind: 'attack' }, 1_100, 1_200);
 
     expect(listener).toHaveBeenCalledTimes(2);
-    expect(context.clock.pending()).toEqual([1_700]);
+    // La fin de la fenêtre de la frappe, plus la garde de réordonnancement.
+    expect(context.clock.pending()).toEqual([1_200 + 700 + 160 + REORDER_GUARD_MS]);
   });
 
   it('stops publishing to an unsubscribed listener', async () => {
@@ -370,11 +455,11 @@ describe('BattleSession', () => {
     now = 2_000;
     session.heroAction({ kind: 'attack' }, 1_940, 2_000);
 
-    // Le minuteur de la fin de l'attaque (2 500 ms) se déclenche à 3 000 ms.
-    now = 3_000;
+    // Le minuteur de la frappe sans appui (2 892 ms) se déclenche à 3 500 ms.
+    now = 3_500;
     timers.at(-1)!();
 
-    expect(session.current()!.battle.now).toBe(3_000);
+    expect(session.current()!.battle.now).toBe(3_500);
     expect(session.current()!.battle.phase).toMatchObject({ kind: 'transition' });
   });
 
@@ -448,7 +533,18 @@ describe('BattleSession', () => {
       expect(set).not.toHaveBeenCalled();
     });
 
-    it('closes the hero hint when the first attack also fells an enemy', async () => {
+    it('closes the hero hint when the hero uses a power', async () => {
+      const context = setUp({ hints: true });
+      await context.session.start();
+
+      context.session.heroAction({ kind: 'power', power: 'bulwark' }, 1_100, 1_200);
+
+      expect(typesOf(context.session.current()!.events)).toEqual(['powerUsed', 'momentumChanged']);
+      expect(context.session.current()!.heroHint).toBe(false);
+      expect(context.sound.played).toEqual(['bulwark']);
+    });
+
+    it('closes the hero hint when the first attack starts, whatever its target', async () => {
       const context = setUp({ hints: true });
       const session = new BattleSession(
         {
@@ -472,11 +568,7 @@ describe('BattleSession', () => {
 
       session.heroAction({ kind: 'attack' }, 1_100, 1_200);
 
-      expect(typesOf(session.current()!.events)).toEqual([
-        'heroAttacked',
-        'enemyDefeated',
-        'targetChanged',
-      ]);
+      expect(typesOf(session.current()!.events)).toEqual(['strikeStarted', 'momentumChanged']);
       expect(session.current()!.heroHint).toBe(false);
       await Promise.resolve();
       expect(context.keyValueStore.values.get(BATTLE_HINT_SEEN_KEYS.hero)).toBe('1');
@@ -498,10 +590,10 @@ describe('BattleSession', () => {
       const context = setUp({ hints: true });
       await context.session.start();
       context.session.heroAction({ kind: 'attack' }, 1_100, 1_200);
-      context.clock.advanceTo(1_700);
+      context.clock.advanceTo(2_380);
       expect(context.session.current()!.battle.phase).toEqual({
         kind: 'defenseHint',
-        since: 1_700,
+        since: 2_380,
       });
       expect(context.clock.pending()).toEqual([]);
 
