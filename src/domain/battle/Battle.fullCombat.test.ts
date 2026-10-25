@@ -17,6 +17,7 @@ import type { BattleEvent, DefenseButton } from './BattleEvent';
 import { ATTACKS } from './attacks';
 import { ENEMIES } from './combatants';
 import type { Intent } from './intents';
+import { nextRandom, type RandomState } from './SeededRandom';
 import { shownIntent } from './shownIntent';
 import { DEFAULT_TRIAL_TUNING } from './TrialTuning';
 
@@ -295,6 +296,24 @@ describe('timed strike (C6)', () => {
       { type: 'pressIgnored', at: STRIKE_IMPACT, button: 'strike', reason: 'notAvailable' },
     ]);
     expect(play.battle.offBalanceUntil).toBeNull();
+  });
+
+  it('judges only the first of two presses made before the impact', () => {
+    const play = BattlePlay.start()
+      .attack(ATTACK_AT)
+      .strike(STRIKE_IMPACT - 300)
+      .strike(STRIKE_IMPACT - 120);
+
+    expect(play.last).toEqual([
+      { type: 'pressIgnored', at: STRIKE_IMPACT - 120, button: 'strike', reason: 'notAvailable' },
+    ]);
+    play.advance(STRIKE_IMPACT);
+    expect(play.lastOf('strikeResolved')).toMatchObject({
+      at: STRIKE_IMPACT,
+      judgement: 'miss',
+      delta: -300,
+      damage: 10,
+    });
   });
 
   it('has no random critical: the same delta gives the same damage whatever the seed (C6.3)', () => {
@@ -584,6 +603,7 @@ describe('guard break and stun (C5)', () => {
       step: { kind: 'guardRestore', enemy: GHOUL, since: at + 500, until: at + 900 },
     });
     expect(play.battle.enemies[GHOUL]).toMatchObject({ guard: 15, stun: null, intent: null });
+    expect(play.battle.enemies[GHOUL]!.guardRestore).toEqual({ since: at + 500, until: at + 900 });
     expect(shownIntent(play.battle, GHOUL)).toBeNull();
     play.advance(at + 900);
     expect(play.last).toEqual([
@@ -705,6 +725,7 @@ describe('the Guard and Raise intents (C2)', () => {
     expect(play.last).toEqual([
       { type: 'guardRaised', at: stepInEnd, enemy: NECROMANCER, gain: 3, guard: 7 },
     ]);
+    expect(play.battle.enemies[NECROMANCER]).toMatchObject({ guard: 7 });
     expect(play.battle.phase).toEqual({
       kind: 'enemy',
       step: {
@@ -732,6 +753,7 @@ describe('the Guard and Raise intents (C2)', () => {
     play.until(({ phase }) => phase.kind === 'enemy' && phase.step.kind === 'support');
 
     expect(play.lastOf('guardRaised')).toMatchObject({ gain: 3, guard: 12 });
+    expect(play.battle.enemies[NECROMANCER]).toMatchObject({ guard: 12 });
   });
 
   it('raises a fallen ally at 50 % of its HP, full guard, acting from the next round', () => {
@@ -761,6 +783,79 @@ describe('the Guard and Raise intents (C2)', () => {
     expect(shownIntent(play.battle, GHOUL)).not.toBeNull();
     // Le Nécromancien ne relève jamais deux fois le même allié.
     expect(play.battle.enemies[NECROMANCER]!.intent?.category).not.toBe('raise');
+  });
+
+  it('never raises again an ally it raised, even fallen again', () => {
+    const play = BattlePlay.start()
+      .with(
+        changeEnemy(GHOUL, { hp: 0 }),
+        changeEnemy(SPECTER, { guard: 99 }),
+        changeEnemy(NECROMANCER, { intent: { category: 'raise', ally: GHOUL } }),
+        withTarget(SPECTER),
+      )
+      .attack(ATTACK_AT)
+      .toHeroPhase();
+    expect(play.battle.enemies[GHOUL]).toMatchObject({ hp: 25, raised: true });
+
+    // La Goule relevée retombe : à la manche suivante, le Nécromancien ne la relève pas.
+    play.with(changeEnemy(GHOUL, { hp: 0 }));
+    const round = play.battle.round;
+    play.attack(play.battle.now + 300).until((battle) => battle.round === round + 1);
+
+    expect(play.battle.enemies[NECROMANCER]!.intent?.category).not.toBe('raise');
+  });
+
+  describe('chooses the intent of the Necromancer at the start of the round', () => {
+    /** Un état du tirage dont le premier nombre est sous le tiers (intention Garde possible). */
+    function lowDrawState(): RandomState {
+      let state: RandomState = 1;
+      while (nextRandom(state).value >= 1 / 3) state += 1;
+      return state;
+    }
+
+    /**
+     * La manche 2, tirée par le Nécromancien seul debout (la Goule et le Spectre tombés, déjà
+     * relevés), avec `change` appliqué juste avant le tirage.
+     */
+    function secondRound(change: Partial<EnemyState>): Battle {
+      const play = BattlePlay.start()
+        .with(
+          changeEnemy(GHOUL, { hp: 0, raised: true }),
+          changeEnemy(SPECTER, { hp: 0, raised: true }),
+          changeEnemy(NECROMANCER, { guard: 99, maxGuard: 99 }),
+          withTarget(NECROMANCER),
+        )
+        .attack(ATTACK_AT);
+      play.until(
+        ({ phase }) =>
+          phase.kind === 'enemy' &&
+          phase.step.kind === 'attack' &&
+          phase.step.enemy === NECROMANCER,
+      );
+      play.with(changeEnemy(NECROMANCER, { maxGuard: 12, ...change }), (battle) => ({
+        ...battle,
+        random: lowDrawState(),
+      }));
+      return play.until((battle) => battle.round === 2).battle;
+    }
+
+    it('guards when its guard is damaged and it is not stunned', () => {
+      expect(secondRound({ guard: 4, stun: null }).enemies[NECROMANCER]!.intent).toEqual({
+        category: 'guard',
+        gain: 3,
+      });
+    });
+
+    it('attacks with the same draw when its guard is full', () => {
+      expect(secondRound({ guard: 12, stun: null }).enemies[NECROMANCER]!.intent).toMatchObject({
+        category: 'attack',
+      });
+    });
+
+    it('attacks with the same draw when it is stunned', () => {
+      const battle = secondRound({ guard: 0, stun: { actionLost: true, heroAction: 1 } });
+      expect(battle.enemies[NECROMANCER]!.intent).toMatchObject({ category: 'attack' });
+    });
   });
 
   it('never lets a fallen enemy act (C1)', () => {
