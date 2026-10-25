@@ -110,6 +110,16 @@ describe('TargetsByWeekSection', () => {
     }
   });
 
+  it('moves the row 2 dp down while it is pressed', async () => {
+    await render(<TargetsByWeekSection rows={october} today={today} />);
+
+    await fireEvent(line('2026-10-12'), 'pressIn');
+
+    expect(within(line('2026-10-12')).getByTestId('week-targets-frame')).toHaveStyle({
+      transform: [{ translateY: 2 }],
+    });
+  });
+
   it('opens the week of a row (scenario 2)', async () => {
     const onOpenWeek = jest.fn();
     await render(<TargetsByWeekSection rows={october} today={today} onOpenWeek={onOpenWeek} />);

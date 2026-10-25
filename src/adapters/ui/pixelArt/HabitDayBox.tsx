@@ -14,14 +14,6 @@ const { roles } = artPalette;
  */
 export type BoxSize = 44 | 40 | 24;
 
-/** Les petites marques (8 × 8 pixels d'art) de la case de 24 dp. */
-const SMALL_MARKS: Readonly<Partial<Record<IconName, IconName>>> = {
-  check12: 'check8',
-  cross12: 'cross8',
-  dot12: 'dot8',
-  dash12: 'dash8',
-};
-
 // Stryker disable all: valeurs purement visuelles, vérifiées par la conformité aux maquettes (barrière 10 bis).
 /** Le dessin de chaque état : fond, trait, ombre ou lumière intérieure, et sa marque. */
 const LOOKS: Readonly<
@@ -34,6 +26,8 @@ const LOOKS: Readonly<
       readonly innerAtTop: boolean;
       readonly mark: {
         readonly icon: IconName;
+        /** La petite marque (8 × 8 pixels d'art) de la case de 24 dp. */
+        readonly small: IconName;
         readonly color: string;
         readonly testID: string;
       } | null;
@@ -52,28 +46,28 @@ const LOOKS: Readonly<
     line: roles.done,
     inner: roles.doneShade,
     innerAtTop: false,
-    mark: { icon: 'check12', color: roles.done, testID: 'check-mark' },
+    mark: { icon: 'check12', small: 'check8', color: roles.done, testID: 'check-mark' },
   },
   missed: {
     background: roles.missedBg,
     line: roles.missedLine,
     inner: null,
     innerAtTop: false,
-    mark: { icon: 'cross12', color: roles.muted, testID: 'cross-mark' },
+    mark: { icon: 'cross12', small: 'cross8', color: roles.muted, testID: 'cross-mark' },
   },
   upcoming: {
     background: 'transparent',
     line: roles.raised,
     inner: null,
     innerAtTop: false,
-    mark: { icon: 'dot12', color: roles.line, testID: 'dot-mark' },
+    mark: { icon: 'dot12', small: 'dot8', color: roles.line, testID: 'dot-mark' },
   },
   notStarted: {
     background: 'transparent',
     line: 'transparent',
     inner: null,
     innerAtTop: false,
-    mark: { icon: 'dash12', color: roles.line, testID: 'dash-mark' },
+    mark: { icon: 'dash12', small: 'dash8', color: roles.line, testID: 'dash-mark' },
   },
 };
 // Stryker restore all
@@ -123,7 +117,7 @@ export function HabitDayBox({
       )}
       {look.mark !== null && (
         <PixelIcon
-          name={size === 24 ? (SMALL_MARKS[look.mark.icon] ?? look.mark.icon) : look.mark.icon}
+          name={size === 24 ? look.mark.small : look.mark.icon}
           color={look.mark.color}
           testID={look.mark.testID}
           style={{ transform: [{ translateY: lifted ? -line : 0 }] }}

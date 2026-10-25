@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Day } from '../../../domain/day/Day';
@@ -36,38 +37,39 @@ function WeekTargetsLine({
   readonly onOpenWeek?: ((week: Week) => void) | undefined;
 }) {
   const allReached = row.reachedCount === row.targetCount;
+  const [pressed, setPressed] = useState(false);
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={weekTargetsAccessibilityLabel(row, today)}
       onPress={() => onOpenWeek?.(row.week)}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
       testID={`week-targets-${row.week.start.toIsoString()}`}
       style={styles.button}
     >
-      {({ pressed }) => (
-        <PixelFrame testID="week-targets-frame" style={[styles.row, pressed && styles.pressed]}>
-          {allReached ? (
-            <PixelIcon
-              name="flag8"
-              color={roles.gold}
-              secondColor={roles.parchment}
-              testID="summit-flag-glyph"
-            />
-          ) : (
-            <PixelIcon
-              name="star8"
-              color={roles.muted}
-              secondColor={roles.parchment}
-              testID="target-glyph"
-            />
-          )}
-          <View style={styles.texts}>
-            <Text style={styles.title}>{weekTargetsTitle(row, today)}</Text>
-            <Text style={styles.count}>{weekTargetsCount(row)}</Text>
-          </View>
-          <PixelIcon name="right" color={roles.muted} testID="chevron-icon" />
-        </PixelFrame>
-      )}
+      <PixelFrame testID="week-targets-frame" style={[styles.row, pressed && styles.pressed]}>
+        {allReached ? (
+          <PixelIcon
+            name="flag8"
+            color={roles.gold}
+            secondColor={roles.parchment}
+            testID="summit-flag-glyph"
+          />
+        ) : (
+          <PixelIcon
+            name="star8"
+            color={roles.muted}
+            secondColor={roles.parchment}
+            testID="target-glyph"
+          />
+        )}
+        <View style={styles.texts}>
+          <Text style={styles.title}>{weekTargetsTitle(row, today)}</Text>
+          <Text style={styles.count}>{weekTargetsCount(row)}</Text>
+        </View>
+        <PixelIcon name="right" color={roles.muted} testID="chevron-icon" />
+      </PixelFrame>
     </Pressable>
   );
 }
