@@ -107,6 +107,19 @@ describe('HabitRow (pixel art)', () => {
     expect(card()).toHaveStyle({ borderColor: roles.gold });
   });
 
+  it('tells its place in the list when it is laid out', async () => {
+    const onLayout = jest.fn();
+    await render(<HabitRow habitDay={habitDay('pending')} onLayout={onLayout} />);
+
+    await fireEvent(card(), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 120, width: 358, height: 76 } },
+    });
+
+    expect(onLayout).toHaveBeenCalledWith(
+      expect.objectContaining({ nativeEvent: { layout: expect.objectContaining({ y: 120 }) } }),
+    );
+  });
+
   it('toggles the habit when it is touched', async () => {
     const onToggle = jest.fn();
     await render(<HabitRow habitDay={habitDay('pending')} onToggle={onToggle} />);

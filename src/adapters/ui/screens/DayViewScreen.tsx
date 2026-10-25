@@ -150,18 +150,22 @@ interface RowPlace {
   readonly height: number;
 }
 
-/** L'espace laissé sous une ligne montrée par le défilement. */
-const REVEAL_MARGIN = 8;
+/**
+ * L'espace sous la dernière ligne de la liste, que couvre le bouton flottant « Ajouter une
+ * habitude » : une ligne révélée par le défilement s'arrête au-dessus.
+ */
+const LIST_BOTTOM_SPACE = 112;
 
 /**
- * Le défilement qui montre une ligne sous le bord de l'écran, juste assez pour voir son bas ;
- * `null` si elle est déjà à l'écran (ou si la hauteur visible n'est pas encore connue).
+ * Le défilement qui montre une ligne sous le bord de l'écran ou sous le bouton flottant, juste
+ * assez pour voir son bas au-dessus du bouton ; `null` si elle est déjà visible (ou si la hauteur
+ * visible n'est pas encore connue).
  */
 function revealOffsetOf(
   { y, height }: RowPlace,
   shown: { readonly offset: number; readonly height: number },
 ): number | null {
-  const bottom = y + height + REVEAL_MARGIN;
+  const bottom = y + height + LIST_BOTTOM_SPACE;
   if (shown.height === 0 || bottom <= shown.offset + shown.height) {
     return null;
   }
@@ -193,13 +197,20 @@ function HabitList({
   /** La place de chaque ligne dans la liste, et la partie de la liste à l'écran. */
   const rows = useRef(new Map<HabitId, RowPlace>());
   const shown = useRef({ offset: 0, height: 0 });
+  /** L'habitude créée déjà révélée : elle ne bouge plus ensuite, sous le doigt du joueur. */
+  const revealed = useRef<HabitId | null>(null);
   // Une habitude créée, en bas de la liste, n'y est montrée que si elle est sous le bord de
-  // l'écran, et juste assez : les encarts du haut (aide, « Toutes faites ») restent à l'écran.
+  // l'écran ou sous le bouton, et juste assez : les encarts du haut (aide, « Toutes faites »)
+  // restent à l'écran. Le défilement est immédiat, et fait une seule fois.
   const reveal = () => {
-    const row = highlighted?.reveal === true ? rows.current.get(highlighted.id) : undefined;
+    if (highlighted?.reveal !== true || revealed.current === highlighted.id) {
+      return;
+    }
+    const row = rows.current.get(highlighted.id);
     const offset = row && revealOffsetOf(row, shown.current);
     if (offset !== undefined && offset !== null) {
-      scroll.current?.scrollTo({ y: offset, animated: true });
+      revealed.current = highlighted.id;
+      scroll.current?.scrollTo({ y: offset, animated: false });
     }
   };
   const { doneCount, expectedCount } = view;
@@ -244,27 +255,23 @@ function HabitList({
         {allDone && <Notice kind="celebration" text={ALL_DONE_MESSAGE} testID="all-done" />}
         {showHint && <Notice kind="hint" text={CHECK_IN_HINT} testID="check-in-hint" />}
         {view.habits.map((habitDay) => (
-          <View
+          <HabitRow
             key={habitDay.habit.id}
+            habitDay={habitDay}
+            difficulty={habitDay.weekSettings.difficulty}
+            weeklyProgress={weeklyProgressShownOf(habitDay)}
+            highlighted={habitDay.habit.id === highlighted?.id}
+            xpChange={xpChangeOn(xpChange, habitDay)}
+            targetFlash={targetFlashOn(targetFlash, habitDay)}
+            onToggle={onToggle}
+            onEdit={() => onEdit(habitDay)}
             onLayout={({ nativeEvent: { layout } }) => {
               rows.current.set(habitDay.habit.id, { y: layout.y, height: layout.height });
               if (habitDay.habit.id === highlighted?.id) {
                 reveal();
               }
             }}
-            testID={`habit-slot-${habitDay.habit.id}`}
-          >
-            <HabitRow
-              habitDay={habitDay}
-              difficulty={habitDay.weekSettings.difficulty}
-              weeklyProgress={weeklyProgressShownOf(habitDay)}
-              highlighted={habitDay.habit.id === highlighted?.id}
-              xpChange={xpChangeOn(xpChange, habitDay)}
-              targetFlash={targetFlashOn(targetFlash, habitDay)}
-              onToggle={onToggle}
-              onEdit={() => onEdit(habitDay)}
-            />
-          </View>
+          />
         ))}
         <View style={styles.section}>
           <Text style={[pixelTypography.label, styles.sectionTitle]}>Habitudes</Text>
@@ -572,7 +579,7 @@ export function DayViewScreen({
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  list: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 112, gap: 8 },
+  list: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: LIST_BOTTOM_SPACE, gap: 8 },
   section: {
     flexDirection: 'row',
     alignItems: 'baseline',

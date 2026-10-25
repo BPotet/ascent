@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import type { Difficulty } from '../../../domain/habit/Difficulty';
@@ -112,6 +112,7 @@ export function HabitRow({
   targetFlash,
   onToggle,
   onEdit,
+  onLayout,
 }: {
   readonly habitDay: HabitDay;
   /** La difficulté de la semaine du jour affiché ; sans elle, la ligne n'en montre pas. */
@@ -124,6 +125,8 @@ export function HabitRow({
   readonly targetFlash?: number | undefined;
   readonly onToggle?: (habitDay: HabitDay) => void;
   readonly onEdit?: (habitDay: HabitDay) => void;
+  /** La place de la ligne dans la liste, quand elle change (la Vue Journée révèle une habitude créée). */
+  readonly onLayout?: (event: LayoutChangeEvent) => void;
 }) {
   const { habit, status, editable } = habitDay;
   const done = status === 'done';
@@ -145,6 +148,7 @@ export function HabitRow({
   return (
     <PixelFrame
       tone={toneOf(highlighted, done, reached)}
+      {...(onLayout !== undefined && { onLayout })}
       testID={`habit-card-${habit.id}`}
       style={styles.card}
     >
