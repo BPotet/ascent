@@ -275,20 +275,82 @@ describe('DayViewScreen', () => {
     expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: roles.line });
   });
 
-  it('scrolls to the new habit, and only to a new habit', async () => {
-    const scrollToEnd = jest.spyOn(ScrollView.prototype, 'scrollToEnd');
-    await given('Cuisiner');
-    await show();
-    await screen.findByText('Cuisiner');
-    await fireEvent(screen.getByTestId('day-view-list'), 'contentSizeChange', 390, 900);
-    expect(scrollToEnd).not.toHaveBeenCalled();
+  describe('reveals a new habit without hiding the top of the list', () => {
+    const layout = (testID: string, y: number, height: number) =>
+      fireEvent(screen.getByTestId(testID), 'layout', {
+        nativeEvent: { layout: { x: 0, y, width: 390, height } },
+      });
+    const list = () => screen.getByTestId('day-view-list');
 
-    await openSheetAndType('Méditer');
-    await fireEvent.press(screen.getByRole('button', { name: 'Créer l’habitude' }));
-    await screen.findByText('Méditer');
-    await fireEvent(screen.getByTestId('day-view-list'), 'contentSizeChange', 390, 1000);
+    // Les espions du prototype gardent leurs appels d'un test à l'autre : on part de zéro.
+    beforeEach(() => jest.clearAllMocks());
+    afterEach(() => jest.restoreAllMocks());
 
-    expect(scrollToEnd).toHaveBeenCalled();
+    async function createMeditation(): Promise<void> {
+      await openSheetAndType('Méditer');
+      await fireEvent.press(screen.getByRole('button', { name: 'Créer l’habitude' }));
+      await screen.findByText('Méditer');
+    }
+
+    it('does not scroll when the new habit is already on the screen, so that the hint and « Toutes faites » stay visible', async () => {
+      const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+      const scrollToEnd = jest.spyOn(ScrollView.prototype, 'scrollToEnd');
+      await given('Cuisiner');
+      await show();
+      await screen.findByText('Cuisiner');
+      await layout('day-view-list', 0, 400);
+
+      await createMeditation();
+      await layout('habit-slot-2', 180, 76);
+      await fireEvent(list(), 'contentSizeChange', 390, 380);
+
+      expect(scrollTo).not.toHaveBeenCalled();
+      expect(scrollToEnd).not.toHaveBeenCalled();
+    });
+
+    it('scrolls just enough to show a new habit below the fold, not to the bottom', async () => {
+      const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+      const scrollToEnd = jest.spyOn(ScrollView.prototype, 'scrollToEnd');
+      await given('Cuisiner');
+      await show();
+      await screen.findByText('Cuisiner');
+      await layout('day-view-list', 0, 300);
+
+      await createMeditation();
+      await layout('habit-slot-2', 340, 76);
+      await fireEvent(list(), 'contentSizeChange', 390, 560);
+
+      // Le bas de la ligne (340 + 76), plus une marge de 8 dp, moins la hauteur visible (300).
+      expect(scrollTo).toHaveBeenCalledWith({ y: 124, animated: true });
+      expect(scrollToEnd).not.toHaveBeenCalled();
+    });
+
+    it('does not scroll again once the new habit is on the screen', async () => {
+      const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+      await given('Cuisiner');
+      await show();
+      await screen.findByText('Cuisiner');
+      await layout('day-view-list', 0, 300);
+      await createMeditation();
+      await fireEvent.scroll(list(), { nativeEvent: { contentOffset: { x: 0, y: 124 } } });
+
+      await layout('habit-slot-2', 340, 76);
+
+      expect(scrollTo).not.toHaveBeenCalled();
+    });
+
+    it('never scrolls for a habit that is not new', async () => {
+      const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+      await given('Cuisiner');
+      await show();
+      await screen.findByText('Cuisiner');
+      await layout('day-view-list', 0, 100);
+
+      await layout('habit-slot-1', 340, 76);
+      await fireEvent(list(), 'contentSizeChange', 390, 900);
+
+      expect(scrollTo).not.toHaveBeenCalled();
+    });
   });
 
   it('stops highlighting the new habit and hides the message after a moment', async () => {

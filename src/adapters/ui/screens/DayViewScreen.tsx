@@ -144,6 +144,30 @@ function weeklyProgressShownOf({
   return weekTarget === null ? undefined : { weeklyProgress, weekTarget, targetReached };
 }
 
+/** La place d'une ligne dans la liste : son haut et sa hauteur, en dp. */
+interface RowPlace {
+  readonly y: number;
+  readonly height: number;
+}
+
+/** L'espace laissé sous une ligne montrée par le défilement. */
+const REVEAL_MARGIN = 8;
+
+/**
+ * Le défilement qui montre une ligne sous le bord de l'écran, juste assez pour voir son bas ;
+ * `null` si elle est déjà à l'écran (ou si la hauteur visible n'est pas encore connue).
+ */
+function revealOffsetOf(
+  { y, height }: RowPlace,
+  shown: { readonly offset: number; readonly height: number },
+): number | null {
+  const bottom = y + height + REVEAL_MARGIN;
+  if (shown.height === 0 || bottom <= shown.offset + shown.height) {
+    return null;
+  }
+  return bottom - shown.height;
+}
+
 function HabitList({
   view,
   highlighted,
@@ -166,6 +190,18 @@ function HabitList({
   readonly onEdit: (row: DayViewHabit) => void;
 }) {
   const scroll = useRef<ScrollView>(null);
+  /** La place de chaque ligne dans la liste, et la partie de la liste à l'écran. */
+  const rows = useRef(new Map<HabitId, RowPlace>());
+  const shown = useRef({ offset: 0, height: 0 });
+  // Une habitude créée, en bas de la liste, n'y est montrée que si elle est sous le bord de
+  // l'écran, et juste assez : les encarts du haut (aide, « Toutes faites ») restent à l'écran.
+  const reveal = () => {
+    const row = highlighted?.reveal === true ? rows.current.get(highlighted.id) : undefined;
+    const offset = row && revealOffsetOf(row, shown.current);
+    if (offset !== undefined && offset !== null) {
+      scroll.current?.scrollTo({ y: offset, animated: true });
+    }
+  };
   const { doneCount, expectedCount } = view;
   const activeCount = view.habits.length;
   // Seules les habitudes attendues comptent (#25) : sans aucune, « Objectifs de la semaine
@@ -184,11 +220,14 @@ function HabitList({
       <ScrollView
         ref={scroll}
         contentContainerStyle={styles.list}
-        onContentSizeChange={() => {
-          if (highlighted?.reveal === true) {
-            scroll.current?.scrollToEnd();
-          }
+        onContentSizeChange={reveal}
+        onLayout={({ nativeEvent }) => {
+          shown.current = { ...shown.current, height: nativeEvent.layout.height };
         }}
+        onScroll={({ nativeEvent }) => {
+          shown.current = { ...shown.current, offset: nativeEvent.contentOffset.y };
+        }}
+        scrollEventThrottle={16}
         testID="day-view-list"
       >
         {whatsNew}
@@ -197,17 +236,27 @@ function HabitList({
         {allDone && <Notice kind="celebration" text={ALL_DONE_MESSAGE} testID="all-done" />}
         {showHint && <Notice kind="hint" text={CHECK_IN_HINT} testID="check-in-hint" />}
         {view.habits.map((habitDay) => (
-          <HabitRow
+          <View
             key={habitDay.habit.id}
-            habitDay={habitDay}
-            difficulty={habitDay.weekSettings.difficulty}
-            weeklyProgress={weeklyProgressShownOf(habitDay)}
-            highlighted={habitDay.habit.id === highlighted?.id}
-            xpChange={xpChangeOn(xpChange, habitDay)}
-            targetFlash={targetFlashOn(targetFlash, habitDay)}
-            onToggle={onToggle}
-            onEdit={() => onEdit(habitDay)}
-          />
+            onLayout={({ nativeEvent: { layout } }) => {
+              rows.current.set(habitDay.habit.id, { y: layout.y, height: layout.height });
+              if (habitDay.habit.id === highlighted?.id) {
+                reveal();
+              }
+            }}
+            testID={`habit-slot-${habitDay.habit.id}`}
+          >
+            <HabitRow
+              habitDay={habitDay}
+              difficulty={habitDay.weekSettings.difficulty}
+              weeklyProgress={weeklyProgressShownOf(habitDay)}
+              highlighted={habitDay.habit.id === highlighted?.id}
+              xpChange={xpChangeOn(xpChange, habitDay)}
+              targetFlash={targetFlashOn(targetFlash, habitDay)}
+              onToggle={onToggle}
+              onEdit={() => onEdit(habitDay)}
+            />
+          </View>
         ))}
         <View style={styles.section}>
           <Text style={[pixelTypography.label, styles.sectionTitle]}>Habitudes</Text>
