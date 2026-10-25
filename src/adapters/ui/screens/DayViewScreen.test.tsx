@@ -339,6 +339,31 @@ describe('DayViewScreen', () => {
       expect(scrollTo).not.toHaveBeenCalled();
     });
 
+    it('scrolls back to the top when « Toutes faites » appears, so that the moment is seen', async () => {
+      const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+      await given('Cuisiner');
+      await show();
+      await screen.findByText('Cuisiner');
+      await fireEvent.scroll(list(), { nativeEvent: { contentOffset: { x: 0, y: 40 } } });
+
+      await fireEvent.press(screen.getByRole('switch', { name: /^Cuisiner, /u }));
+
+      await screen.findByTestId('all-done');
+      expect(scrollTo).toHaveBeenCalledWith({ y: 0, animated: true });
+    });
+
+    it('stays in place when « Toutes faites » appears at the top of the screen', async () => {
+      const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+      await given('Cuisiner');
+      await show();
+      await screen.findByText('Cuisiner');
+
+      await fireEvent.press(screen.getByRole('switch', { name: /^Cuisiner, /u }));
+
+      await screen.findByTestId('all-done');
+      expect(scrollTo).not.toHaveBeenCalled();
+    });
+
     it('never scrolls for a habit that is not new', async () => {
       const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
       await given('Cuisiner');

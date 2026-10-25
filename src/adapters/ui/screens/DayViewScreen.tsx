@@ -209,6 +209,14 @@ function HabitList({
   const allDone = expectedCount > 0 && doneCount === expectedCount;
   const goalsReached = activeCount > 0 && expectedCount === 0;
   const count = view.habitCount;
+  // « Toutes faites » et « Objectifs de la semaine atteints » apparaissent en haut de la liste : la
+  // liste y remonte s'ils naissent au-dessus de la partie à l'écran.
+  const topMoment = allDone || goalsReached;
+  useEffect(() => {
+    if (topMoment && shown.current.offset > 0) {
+      scroll.current?.scrollTo({ y: 0, animated: true });
+    }
+  }, [topMoment]);
   return (
     <>
       <DayHeader
