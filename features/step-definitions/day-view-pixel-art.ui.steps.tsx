@@ -603,6 +603,9 @@ const steps: StepDefinitions = ({ given, when, then }) => {
     async () => {
       // L'étincelle et le rebond se jouent dès le tap, avant l'enregistrement.
       expect(screen.getByTestId('habit-burst', hidden).props.sprite).toBe('burst-0');
+      expect(within(boxOf('Cuisiner')).getByTestId('check-mark', hidden)).toHaveStyle({
+        transform: [{ translateY: -2 }],
+      });
       await waitFor(() => expect(rowOf('Cuisiner')).toBeChecked());
       expect(boxOf('Cuisiner')).toHaveStyle({ borderColor: roles.done });
       expect(within(boxOf('Cuisiner')).getByTestId('check-mark', hidden)).toBeTruthy();

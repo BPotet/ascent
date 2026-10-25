@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { AccessibilityInfo, Animated, Dimensions, StyleSheet } from 'react-native';
 
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
@@ -84,6 +84,29 @@ describe('CharacterBar', () => {
       pixelWidth: 24,
       pixelHeight: 32,
     });
+  });
+
+  it('grows with its text, and paints the sky again at its new height', async () => {
+    await show(<CharacterBar xp={340} change={null} />);
+    const bar = screen.getByTestId('character-bar').parent;
+
+    await fireEvent(bar as never, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 180 } },
+    });
+
+    expect(spriteOf('day-sky')).toMatch(/x90$/u);
+    expect(screen.getByTestId('day-sky', hidden).props.pixelHeight).toBe(90);
+  });
+
+  it('never paints the sky lower than the header', async () => {
+    await show(<CharacterBar xp={340} change={null} />);
+    const bar = screen.getByTestId('character-bar').parent;
+
+    await fireEvent(bar as never, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 100 } },
+    });
+
+    expect(spriteOf('day-sky')).toMatch(/x66$/u);
   });
 
   it('lights the day sky with the habits done today', async () => {

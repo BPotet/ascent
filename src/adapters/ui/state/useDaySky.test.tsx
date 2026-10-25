@@ -89,6 +89,33 @@ describe('useDaySky', () => {
     await waitFor(() => expect(light()).toBe('0'));
   });
 
+  it('shows only the most recent reading, even when an older one answers last', async () => {
+    await toggleCheckIn({ clock, unitOfWork }, 1, wednesday);
+    // La première lecture, celle du ciel au montage (l'effet de l'enfant passe avant celui de
+    // l'expérience), répond la dernière.
+    let answerSlowly: (sky: { light: number }) => void = () => undefined;
+    jest.spyOn(unitOfWork, 'run').mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          answerSlowly = done as (sky: { light: number }) => void;
+        }),
+    );
+    await renderScreen(
+      <>
+        <Sky />
+        <Notifier />
+      </>,
+      deps(),
+    );
+
+    await notify();
+    await waitFor(() => expect(light()).toBe('0.5'));
+    await act(async () => answerSlowly({ light: 0.1 }));
+
+    expect(light()).toBe('0.5');
+    jest.restoreAllMocks();
+  });
+
   it('keeps its last sky when it cannot be read', async () => {
     await toggleCheckIn({ clock, unitOfWork }, 1, wednesday);
     await renderScreen(

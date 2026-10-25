@@ -95,6 +95,24 @@ describe('getDaySky', () => {
     await expect(getDaySky(deps())).resolves.toEqual({ light: 0 });
   });
 
+  it('does not count the check-ins of the week before', async () => {
+    const cooking = await addHabit('Cuisiner', Day.of(2026, 10, 12), 2);
+    await done(cooking.id, Day.of(2026, 10, 17));
+    await done(cooking.id, Day.of(2026, 10, 18));
+
+    await expect(getDaySky(deps())).resolves.toEqual({ light: 0 });
+  });
+
+  it('follows the habits done when today is a Monday, the first day of the week', async () => {
+    const cooking = await addHabit('Cuisiner', Day.of(2026, 10, 12));
+    await addHabit('Lire', Day.of(2026, 10, 12));
+    await done(cooking.id, Day.of(2026, 10, 18));
+    await done(cooking.id, monday);
+    clock.setToday(monday);
+
+    await expect(getDaySky(deps())).resolves.toEqual({ light: 0.5 });
+  });
+
   it('fails when the habits cannot be read', async () => {
     unitOfWork.failReads();
 

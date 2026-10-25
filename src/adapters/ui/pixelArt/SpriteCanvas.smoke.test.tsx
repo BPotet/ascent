@@ -5,6 +5,7 @@
 // remplacent par `testing/fakeSpriteCanvas.tsx` (jest.config.js). Le setup de Skia vient d'abord.
 import '@shopify/react-native-skia/jestSetup';
 
+import { FilterMode, MipmapMode } from '@shopify/react-native-skia';
 import { render, screen } from '@testing-library/react-native';
 import { PixelRatio } from 'react-native';
 
@@ -31,6 +32,29 @@ describe('SpriteCanvas with Skia', () => {
     const canvas = screen.getByTestId('sprite', { includeHiddenElements: true });
     expect(canvas).toHaveStyle({ width: 72, height: 96 });
     expect(canvas).toHaveProp('accessibilityElementsHidden', true);
+  });
+
+  it('draws the image without smoothing (nearest neighbour, no mipmap), on the whole canvas', async () => {
+    await render(
+      <SpriteCanvas
+        sprite="character-2"
+        draw={() => toPixelImage(characterSprite(2))}
+        scale={2}
+        testID="sprite"
+      />,
+    );
+
+    const [image] = screen.getByTestId('sprite', { includeHiddenElements: true }).children as {
+      props: Record<string, unknown>;
+    }[];
+    expect(image?.props).toMatchObject({
+      sampling: { filter: FilterMode.Nearest, mipmap: MipmapMode.None },
+      x: 0,
+      y: 0,
+      width: 48,
+      height: 64,
+      fit: 'fill',
+    });
   });
 
   it('makes a Skia image of the pixels once per sprite name', () => {

@@ -57,5 +57,9 @@ describe('PixelButton', () => {
     await fireEvent(button, 'pressIn');
 
     expect(button).toHaveStyle({ transform: [{ translateY: 2 }] });
+
+    await fireEvent(button, 'pressOut');
+
+    expect(button).toHaveStyle({ transform: [{ translateY: 0 }] });
   });
 });
