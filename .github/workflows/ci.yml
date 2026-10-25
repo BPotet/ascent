@@ -129,7 +129,11 @@ jobs:
           cache: npm
       - run: npm ci
       # Une seule exécution des trois projets Jest (unit, integration, bdd) avec les seuils de couverture.
+      # Mode prototype (label `prototype`) : tous les tests tournent, seul le seuil du domaine reste
+      # (scripts/ci/coverage-threshold.cjs).
       - name: Unit, integration and BDD tests with coverage thresholds
+        env:
+          PROTOTYPE_MODE: ${{ contains(github.event.pull_request.labels.*.name, 'prototype') }}
         run: npm run test:coverage -- --ci
       - uses: actions/upload-artifact@v4
         with:
@@ -140,7 +144,8 @@ jobs:
   # Mutation (docs/adr/0004-mutation-en-ci.md) : un plan, un job par shard, puis un job final qui
   # applique les seuils au total des shards. Les écrans (src/adapters/ui/, src/app/) ne sont mutés
   # qu'à la demande du propriétaire : label `mutation:ui` sur la PR, ou entrée `ui-mutation` d'un
-  # lancement manuel.
+  # lancement manuel. Une PR en mode prototype (label `prototype`) saute le plan, donc les shards et
+  # le job final : un check sauté compte comme réussi pour la protection de branche.
   mutation-plan:
     name: Mutation plan
     # En PR vers develop : le code nouveau. Sur release/* et hotfix/* (et à la demande) : tout le code.
@@ -150,7 +155,8 @@ jobs:
     if: >-
       needs.changes.outputs.code == 'true' && (
         (github.event_name == 'pull_request'
-          && !startsWith(github.head_ref, 'release/') && !startsWith(github.head_ref, 'hotfix/'))
+          && !startsWith(github.head_ref, 'release/') && !startsWith(github.head_ref, 'hotfix/')
+          && !contains(github.event.pull_request.labels.*.name, 'prototype'))
         || github.event_name == 'workflow_dispatch'
         || startsWith(github.ref_name, 'release/') || startsWith(github.ref_name, 'hotfix/'))
     runs-on: ubuntu-latest
@@ -288,6 +294,11 @@ jobs:
       - name: Analyse and wait for the quality gate
         if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@v5
+        # Mode prototype (label `prototype`) : la couverture du code nouveau ne compte pas.
+        with:
+          args: >-
+            ${{ contains(github.event.pull_request.labels.*.name, 'prototype')
+              && '-Dsonar.coverage.exclusions=**/*' || '' }}
 
   android-apk:
     name: Android APK
