@@ -49,8 +49,9 @@ function TargetText({
  *
  * Le feedback « Objectif atteint » (#26) y passe aussi, avec `target` et une forme (`variant`) :
  * F1 (`goal`, bordé d'or, titre en police pixel, 4 s) ou le retour sous l'objectif (`soft`). Son
- * annonce est `announcement` à la place du message. Sans action, un toast de l'objectif
- * n'intercepte aucun toucher : la barre d'onglets reste utilisable pendant qu'il est affiché.
+ * annonce est `announcement` à la place du message. Sans action, un toast n'intercepte aucun
+ * toucher : la barre d'onglets, et la ligne qu'il couvre (une habitude créée, révélée juste
+ * au-dessus du bouton flottant), restent utilisables pendant qu'il est affiché.
  */
 export function Toast({
   message,
@@ -80,7 +81,7 @@ export function Toast({
   return (
     <View
       accessibilityLiveRegion="polite"
-      {...(dark && !withAction && { pointerEvents: 'none' as const })}
+      {...(!withAction && { pointerEvents: 'none' as const })}
       testID="toast"
       style={[
         styles.toast,
