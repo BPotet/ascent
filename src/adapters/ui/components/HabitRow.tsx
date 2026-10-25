@@ -1,9 +1,8 @@
-import { type ReactNode, useState } from 'react';
 import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import type { Difficulty } from '../../../domain/habit/Difficulty';
-import { checkInStatusLabels } from '../format/checkInStatus';
+import { checkInStatusLabels, CORRECTED } from '../format/checkInStatus';
 import { capitalize } from '../format/formatDay';
 import { type WeeklyProgressShown, weeklyProgressText } from '../format/formatWeeklyTarget';
 import { editHabitLabel, habitDayAccessibilityLabel } from '../format/habitDayLabel';
@@ -12,65 +11,41 @@ import { HabitDayBox } from '../pixelArt/HabitDayBox';
 import { MIN_TARGET_SIZE } from '../pixelArt/PixelButton';
 import { type FrameTone, PixelFrame } from '../pixelArt/PixelFrame';
 import { PixelIcon } from '../pixelArt/PixelIcon';
-import { pixelTypography } from '../pixelArt/pixelTypography';
-import { BURST_FRAMES, burstSprite, type BurstFrame } from '../pixelArt/sprites/burstSprite';
-import { toPixelImage } from '../pixelArt/sprites/Sprite';
-import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
-import { useArtFrames } from '../pixelArt/useArtFrames';
+import { pixelTypography, textFont } from '../pixelArt/pixelTypography';
 import { WeekNotches } from '../pixelArt/WeekNotches';
-import { useReducedMotion } from '../state/useReducedMotion';
 import type { ShownXpChange } from '../state/xpFeedback';
+import { Burst, useBurst } from './Burst';
+import { CorrectedMark } from './CorrectedMark';
 import { DifficultyLabel } from './DifficultyIcon';
 import { TargetReachedBadge } from './TargetReachedBadge';
 import { XpFloat } from './XpFloat';
 
 const { roles } = artPalette;
 
-/** Les images où la coche est relevée d'un pixel d'art, au début de l'étincelle (rebond). */
-const LIFTED_FRAMES = 2;
-
-/**
- * L'étincelle d'une habitude qui passe à « fait » : 3 images autour de la case, à 12 images par
- * seconde, puis plus rien. Pendant ses 2 premières images, la case (`children`) dessine sa coche
- * un pixel d'art plus haut. Décorative.
- */
-function Burst({ children }: { readonly children: (lifted: boolean) => ReactNode }) {
-  const frame = useArtFrames(BURST_FRAMES + 1);
-  return (
-    <>
-      {children(frame < LIFTED_FRAMES)}
-      {frame < BURST_FRAMES && (
-        <SpriteCanvas
-          sprite={`burst-${frame}`}
-          draw={() => toPixelImage(burstSprite(frame as BurstFrame))}
-          scale={2}
-          testID="habit-burst"
-          style={styles.burst}
-        />
-      )}
-    </>
-  );
-}
-
 /** La ligne écrite sous le nom : l'état en gras et sa couleur, puis la progression de la semaine. */
 function StatusLine({
   statusText,
   progressText,
   done,
+  corrected,
   testID,
 }: {
   readonly statusText: string;
   readonly progressText: string | undefined;
   readonly done: boolean;
+  readonly corrected: boolean;
   readonly testID: string | undefined;
 }) {
   return (
-    <Text {...(testID !== undefined && { testID })} style={[pixelTypography.label, styles.sub]}>
-      <Text style={[pixelTypography.statusWord, { color: done ? roles.done : roles.gold }]}>
-        {statusText}
+    <>
+      <Text {...(testID !== undefined && { testID })} style={[pixelTypography.label, styles.sub]}>
+        <Text style={[pixelTypography.statusWord, { color: done ? roles.done : roles.gold }]}>
+          {statusText}
+        </Text>
+        {progressText !== undefined && ` · ${progressText}`}
       </Text>
-      {progressText !== undefined && ` · ${progressText}`}
-    </Text>
+      {corrected && <Text style={styles.corrected}>{CORRECTED}</Text>}
+    </>
   );
 }
 
@@ -102,11 +77,17 @@ function toneOf(highlighted: boolean, done: boolean, reached: boolean): FrameTon
  *
  * `highlighted` borde d'or une habitude qui vient d'être créée ou modifiée. Avec `onEdit`, le bouton
  * « ⋯ » de 48 × 48 dp, à droite, ouvre « Modifier l'habitude ».
+ *
+ * Dans le Détail du jour (#73), la progression est celle de la semaine du jour, que `weekLabel`
+ * nomme (« Fait · 2/3 semaine du 12 octobre ») ; par défaut, « cette semaine ». Un jour corrigé
+ * porte la marque « corrigé » sur sa case et le mot « corrigé » dans sa ligne d'état, lu dans
+ * l'annonce. Un jour de la Vue Journée n'est jamais corrigé.
  */
 export function HabitRow({
   habitDay,
   difficulty,
   weeklyProgress,
+  weekLabel,
   highlighted = false,
   xpChange,
   targetFlash,
@@ -119,6 +100,8 @@ export function HabitRow({
   readonly difficulty?: Difficulty | undefined;
   /** La progression de la semaine en cours ; sans elle, la ligne n'en montre pas. */
   readonly weeklyProgress?: WeeklyProgressShown | undefined;
+  /** La semaine de la progression (« semaine du 12 octobre ») ; par défaut, « cette semaine ». */
+  readonly weekLabel?: string | undefined;
   readonly highlighted?: boolean;
   readonly xpChange?: ShownXpChange | undefined;
   /** Change quand l'objectif de la semaine vient d'être atteint ici : le badge s'allume (F1). */
@@ -128,18 +111,10 @@ export function HabitRow({
   /** La place de la ligne dans la liste, quand elle change (la Vue Journée révèle une habitude créée). */
   readonly onLayout?: (event: LayoutChangeEvent) => void;
 }) {
-  const { habit, status, editable } = habitDay;
+  const { habit, status, editable, corrected } = habitDay;
   const done = status === 'done';
   const reached = weeklyProgress?.targetReached === true;
-  const reducedMotion = useReducedMotion();
-  const [bursts, setBursts] = useState(0);
-
-  const press = () => {
-    if (status !== 'done' && !reducedMotion) {
-      setBursts((count) => count + 1);
-    }
-    onToggle?.(habitDay);
-  };
+  const { bursts, tap } = useBurst(status);
 
   const box = (lifted: boolean) => (
     <HabitDayBox status={status} lifted={lifted} testID={`habit-check-${habit.id}`} />
@@ -154,15 +129,30 @@ export function HabitRow({
     >
       <Pressable
         accessibilityRole="switch"
-        accessibilityLabel={habitDayAccessibilityLabel({ habitDay, difficulty, weeklyProgress })}
+        accessibilityLabel={habitDayAccessibilityLabel({
+          habitDay,
+          difficulty,
+          weeklyProgress,
+          weekLabel,
+        })}
         accessibilityState={{ checked: done, disabled: !editable }}
         disabled={!editable}
-        onPress={press}
+        onPress={() => {
+          tap();
+          onToggle?.(habitDay);
+        }}
         testID={`habit-row-${habit.id}`}
         style={styles.row}
       >
-        <View style={styles.boxSlot}>
-          {bursts > 0 ? <Burst key={bursts}>{box}</Burst> : box(false)}
+        <View testID={`habit-box-slot-${habit.id}`} style={styles.boxSlot}>
+          {bursts > 0 ? (
+            <Burst key={bursts} style={styles.burst}>
+              {box}
+            </Burst>
+          ) : (
+            box(false)
+          )}
+          {corrected && <CorrectedMark />}
           <XpFloat change={xpChange} />
         </View>
         <View style={styles.texts}>
@@ -173,8 +163,9 @@ export function HabitRow({
             )}
             <StatusLine
               statusText={capitalize(checkInStatusLabels[status])}
-              progressText={weeklyProgress && weeklyProgressText(weeklyProgress)}
+              progressText={weeklyProgress && weeklyProgressText(weeklyProgress, weekLabel)}
               done={done}
+              corrected={corrected}
               testID={weeklyProgress && `habit-progress-${habit.id}`}
             />
           </View>
@@ -224,11 +215,20 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   boxSlot: { width: 44, height: 44 },
-  burst: { position: 'absolute', left: -10, top: -10 },
+  burst: { left: -10, top: -10 },
   texts: { flex: 1, minWidth: 0, gap: 4 },
   name: { color: roles.light },
   subLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
   sub: { color: roles.parchment, flexShrink: 1 },
+  corrected: {
+    fontFamily: textFont.semiBold,
+    fontSize: 11,
+    lineHeight: 15,
+    color: roles.blue,
+    textDecorationLine: 'underline',
+    textDecorationStyle: 'dotted',
+    textDecorationColor: roles.blue,
+  },
   more: {
     width: MIN_TARGET_SIZE,
     minHeight: MIN_TARGET_SIZE,

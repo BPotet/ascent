@@ -1,9 +1,11 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors } from '../theme/colors';
-import { MIN_TOUCH_SIZE } from '../theme/metrics';
-import { typography } from '../theme/typography';
-import { ChevronGlyph } from './Glyph';
+import { artPalette } from '../pixelArt/artPalette';
+import { MIN_TARGET_SIZE } from '../pixelArt/PixelButton';
+import { PixelIcon } from '../pixelArt/PixelIcon';
+import { pixelFont, pixelTypography } from '../pixelArt/pixelTypography';
+
+const { roles } = artPalette;
 
 function Arrow({
   direction,
@@ -23,17 +25,19 @@ function Arrow({
       accessibilityState={{ disabled: !enabled }}
       disabled={!enabled}
       onPress={onPress}
-      style={styles.arrow}
+      style={[styles.arrow, { opacity: enabled ? 1 : 0.35 }]}
     >
-      <ChevronGlyph color={enabled ? colors.text : colors.iconDisabled} direction={direction} />
+      <PixelIcon name={direction} color={roles.light} testID={`period-arrow-${direction}`} />
     </Pressable>
   );
 }
 
 /**
- * Barre de navigation d'une période (semaine, plus tard mois) : la période d'avant, son titre et
- * ses jours, la période d'après. Une action qui sortirait de l'historique est désactivée. Le titre
- * est lu en entier (`label`) par le lecteur d'écran à chaque changement de période.
+ * Barre de navigation d'une période (semaine, mois), dans l'identité pixel art : la flèche de la
+ * période d'avant, son titre en police pixel (« Cette semaine ») et ses jours en police de texte,
+ * la flèche de la période d'après, chacune dans une cible de 48 × 48 dp. Une action qui sortirait
+ * de l'historique est désactivée, à 35 % d'opacité. Le titre est lu en entier (`label`) par le
+ * lecteur d'écran à chaque changement de période.
  */
 export function PeriodNavigator({
   title,
@@ -65,8 +69,8 @@ export function PeriodNavigator({
         accessibilityLiveRegion="polite"
         style={styles.titles}
       >
-        <Text style={[typography.periodTitle, styles.title]}>{title}</Text>
-        <Text style={[typography.label, styles.subtitle]}>{subtitle}</Text>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={[pixelTypography.label, styles.subtitle]}>{subtitle}</Text>
       </View>
       <Arrow direction="right" label={nextLabel} enabled={canGoNext} onPress={onNext} />
     </View>
@@ -76,24 +80,27 @@ export function PeriodNavigator({
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
   bar: {
-    height: 60,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 6,
-    marginHorizontal: 16,
-    borderRadius: 16,
-    backgroundColor: colors.surface,
+    paddingTop: 10,
+    paddingBottom: 6,
+    paddingHorizontal: 8,
   },
   arrow: {
-    width: MIN_TOUCH_SIZE,
-    height: MIN_TOUCH_SIZE,
-    borderRadius: 12,
+    width: MIN_TARGET_SIZE,
+    height: MIN_TARGET_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
   },
   titles: { flex: 1, alignItems: 'center' },
-  title: { color: colors.text, textAlign: 'center' },
-  subtitle: { color: colors.muted, textAlign: 'center' },
+  title: {
+    fontFamily: pixelFont,
+    fontSize: 22,
+    lineHeight: 26,
+    color: roles.light,
+    textAlign: 'center',
+  },
+  subtitle: { color: roles.parchment, textAlign: 'center' },
 });
 // Stryker restore all

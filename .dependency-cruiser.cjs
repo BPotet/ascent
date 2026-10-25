@@ -80,18 +80,16 @@ module.exports = {
       to: { path: '^node_modules/@shopify/react-native-skia/' },
     },
     {
-      name: 'no-legacy-in-pixel-art',
+      name: 'habit-screens-in-pixel-art',
       comment:
-        "Le pixel art et les écrans redessinés n'importent pas l'ancien thème de `components/legacy/` (ADR 0007). #73 supprime cette règle avec le dossier.",
+        "Les écrans d'habitudes, leurs composants et le pixel art n'importent pas l'ancien thème (`theme/colors`, `theme/metrics`, `theme/typography`). Seuls le combat d'essai et la sonde de toucher le gardent, jusqu'à l'épique #30 (ADR 0007, avenant de #73).",
       severity: 'error',
       from: {
-        path: [
-          '^src/adapters/ui/pixelArt/',
-          '^src/adapters/ui/components/(AddHabitButton|CharacterBar|DayHeader|DifficultyIcon|GoalsReachedNotice|HabitRow|Notice|StateMessage|TabBar|TargetReachedBadge|Toast|WhatsNewCard|XpFloat|YesterdayReminderBanner)(\\.test)?\\.tsx$',
-          '^src/adapters/ui/screens/(DayViewScreen|StartupScreen)(\\.test)?\\.tsx$',
-        ],
+        path: '^src/adapters/ui/(pixelArt|components|screens|format|state)/',
+        pathNot:
+          '^src/adapters/ui/(components/(Button|Screen|TrialBattleEntry)|screens/(TouchProbeScreen|TrialBattleScreen))(\\.test)?\\.tsx$',
       },
-      to: { path: '^src/adapters/ui/components/legacy/' },
+      to: { path: '^src/adapters/ui/theme/(colors|metrics|typography)\\.ts$' },
     },
     {
       name: 'test-helpers-stay-in-tests',

@@ -5,38 +5,22 @@ import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize } from '../pixelArt/artPixel';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { textFont } from '../pixelArt/pixelTypography';
-import { useArtFrames } from '../pixelArt/useArtFrames';
-import { useReducedMotion } from '../state/useReducedMotion';
+import { LIGHTING_STEPS, useTargetLighting } from './useTargetLighting';
 
 const { roles } = artPalette;
 
 /** Le pixel d'art, arrondi au pixel physique du téléphone (traits, crans, pas des envols). */
 const LINE = artPixelSize(2);
 
-// Stryker disable all: valeurs purement visuelles, vérifiées par la conformité aux maquettes (barrière 10 bis).
-/** Les 3 paliers de l'allumage du badge : lumière vive, or, puis or sombre (l'état final). */
-const STEPS = [roles.light, roles.gold, roles.goldDark] as const;
-// Stryker restore all
-
 /** Le badge, au palier `step`. */
 function Badge({ step, testID }: { readonly step: number; readonly testID?: string }) {
   return (
     <View
       {...(testID !== undefined && { testID })}
-      style={[styles.badge, { borderColor: STEPS[step] }]}
+      style={[styles.badge, { borderColor: LIGHTING_STEPS[step] }]}
     >
       <PixelIcon name="flag8" color={roles.gold} secondColor={roles.parchment} testID="flag-icon" />
       <Text style={styles.text}>{TARGET_REACHED}</Text>
-    </View>
-  );
-}
-
-/** Le badge qui s'allume en 3 paliers, à 12 images par seconde (`target-burst`). */
-function LightingBadge({ testID }: { readonly testID?: string }) {
-  const step = useArtFrames(STEPS.length);
-  return (
-    <View testID="target-burst">
-      <Badge step={step} {...(testID !== undefined && { testID })} />
     </View>
   );
 }
@@ -54,15 +38,11 @@ export function TargetReachedBadge({
   readonly flash?: number | undefined;
   readonly testID?: string;
 }) {
-  const reducedMotion = useReducedMotion();
-  const props = testID !== undefined ? { testID } : {};
+  const { step, lighting } = useTargetLighting(flash);
+  const badge = <Badge step={step} {...(testID !== undefined && { testID })} />;
   return (
     <View pointerEvents="none" style={styles.slot}>
-      {flash === undefined || reducedMotion ? (
-        <Badge step={STEPS.length - 1} {...props} />
-      ) : (
-        <LightingBadge key={flash} {...props} />
-      )}
+      {lighting ? <View testID="target-burst">{badge}</View> : badge}
     </View>
   );
 }

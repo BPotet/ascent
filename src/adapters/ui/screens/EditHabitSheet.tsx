@@ -5,17 +5,19 @@ import type { UpdateHabitInput } from '../../../application/useCases/updateHabit
 import type { Day } from '../../../domain/day/Day';
 import type { Habit } from '../../../domain/habit/Habit';
 import { DEFAULT_WEEKLY_TARGET } from '../../../domain/habit/WeeklyTarget';
-import { Button } from '../components/Button';
 import { DifficultyPicker } from '../components/DifficultyPicker';
-import { InfoGlyph, TrashGlyph } from '../components/Glyph';
 import { WeeklyTargetPicker } from '../components/WeeklyTargetPicker';
 import { difficultyChangeMessage } from '../format/formatDifficulty';
 import { weeklyTargetChangeMessage } from '../format/formatWeeklyTarget';
 import type { EditableSettings, UpdateHabitOutcome } from '../state/useEditHabit';
-import { colors } from '../theme/colors';
-import { spacing } from '../theme/metrics';
-import { typography } from '../theme/typography';
+import { artPalette } from '../pixelArt/artPalette';
+import { PixelFrame } from '../pixelArt/PixelFrame';
+import { PixelIcon } from '../pixelArt/PixelIcon';
+import { PixelLink } from '../pixelArt/PixelLink';
+import { textFont } from '../pixelArt/pixelTypography';
 import { HabitNameSheet } from './HabitNameSheet';
+
+const { roles } = artPalette;
 
 export const UPDATE_SAVE_FAILED = 'Les modifications n’ont pas pu être enregistrées. Réessaie.';
 
@@ -25,24 +27,26 @@ export const DELETE_HABIT_LABEL = 'Supprimer l’habitude';
 export type UpdatedHabit = Extract<UpdateHabitOutcome, { ok: true }>;
 
 /**
- * Un message d'information du panneau (E7), sous le bloc qui a changé : lu par le lecteur d'écran dès
- * qu'il apparaît ou change.
+ * Un message d'information du panneau (E3), sous le bloc qui a changé, dans un cadre de trait bleu
+ * avec l'icône d'information : lu par le lecteur d'écran dès qu'il apparaît ou change.
  */
 function ChangeInfo({ message, testID }: { readonly message: string; readonly testID: string }) {
   useEffect(() => {
     AccessibilityInfo.announceForAccessibility(message);
   }, [message]);
   return (
-    <View
+    <PixelFrame
       accessible
       accessibilityLabel={message}
       accessibilityLiveRegion="polite"
+      tone="hint"
+      under={roles.surface}
       testID={testID}
       style={styles.info}
     >
-      <InfoGlyph color={colors.accent} />
-      <Text style={[typography.notice, styles.infoText]}>{message}</Text>
-    </View>
+      <PixelIcon name="info" color={roles.blue} secondColor={roles.light} testID="info-icon" />
+      <Text style={styles.infoText}>{message}</Text>
+    </PixelFrame>
   );
 }
 
@@ -158,11 +162,11 @@ export function EditHabitSheet({
       alert={deleteAlert}
       footer={
         <View style={styles.delete}>
-          <Button
+          <PixelLink
             label={DELETE_HABIT_LABEL}
-            variant="dangerText"
-            icon={<TrashGlyph color={colors.danger} />}
-            hint="Demande une confirmation avant de supprimer définitivement l’habitude."
+            color={roles.error}
+            icon="trash"
+            accessibilityHint="Demande une confirmation avant de supprimer définitivement l’habitude."
             onPress={onDelete}
             testID="delete-habit"
           />
@@ -176,19 +180,20 @@ export function EditHabitSheet({
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  delete: { marginTop: 10 },
+  delete: { alignItems: 'center' },
   info: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: spacing.sm,
-    marginTop: 10,
-    paddingVertical: 9,
-    paddingHorizontal: spacing.md,
-    borderRadius: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.infoLine,
-    backgroundColor: colors.infoSoft,
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
-  infoText: { flex: 1, color: colors.onHint },
+  infoText: {
+    flex: 1,
+    fontFamily: textFont.medium,
+    fontSize: 13,
+    lineHeight: 18,
+    color: roles.light,
+  },
 });
 // Stryker restore all

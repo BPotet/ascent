@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
+import { pixelFont, textFont } from '../pixelArt/pixelTypography';
 import { PeriodNavigator } from './PeriodNavigator';
 
 const props = {
@@ -76,7 +77,49 @@ describe('PeriodNavigator', () => {
     expect(onNext).not.toHaveBeenCalled();
   });
 
-  it('has buttons of at least 44 × 44 pt', async () => {
+  it('writes the title in the pixel font, and the dates in the text font', async () => {
+    await render(
+      <PeriodNavigator
+        {...props}
+        canGoPrevious
+        canGoNext
+        onPrevious={jest.fn()}
+        onNext={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Semaine dernière')).toHaveStyle({
+      fontFamily: pixelFont,
+      fontSize: 22,
+    });
+    expect(screen.getByText('5 – 11 oct.')).toHaveStyle({
+      fontFamily: textFont.medium,
+      fontSize: 13,
+    });
+  });
+
+  it('dims a disabled arrow to 35 %', async () => {
+    await render(
+      <PeriodNavigator
+        {...props}
+        canGoPrevious
+        canGoNext={false}
+        onPrevious={jest.fn()}
+        onNext={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Semaine suivante' })).toHaveStyle({
+      opacity: 0.35,
+    });
+    expect(screen.getByRole('button', { name: 'Semaine précédente' })).toHaveStyle({ opacity: 1 });
+    expect(screen.getAllByTestId(/^period-arrow-/u, { includeHiddenElements: true })).toHaveLength(
+      2,
+    );
+    expect(screen.getByTestId('period-arrow-left', { includeHiddenElements: true })).toBeTruthy();
+  });
+
+  it('has buttons of at least 48 × 48 dp', async () => {
     await render(
       <PeriodNavigator
         {...props}
@@ -88,8 +131,8 @@ describe('PeriodNavigator', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Semaine suivante' })).toHaveStyle({
-      width: 44,
-      height: 44,
+      width: 48,
+      height: 48,
     });
   });
 });

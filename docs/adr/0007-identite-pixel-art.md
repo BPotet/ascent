@@ -87,6 +87,29 @@ Tout ce qui n'est pas visuel (libellés, annonces, durées, `targetToastOf`) est
 pixel art et aux écrans réécrits d'importer `legacy/`. #73 rebranche ses écrans sur les versions
 pixel, puis supprime `legacy/` et cette règle.
 
+#### Avenant du 25 octobre 2026 : fin de la coexistence (#73)
+
+Décidé par l'Architect (notes techniques de #73), colonnes confirmées par le PM le 25 octobre.
+
+- **`legacy/` et sa règle sont supprimés.** La Vue Semaine, la Vue Mois, le Détail du jour, les
+  panneaux « Nouvelle habitude » et « Modifier l'habitude » et la confirmation de suppression sont
+  rebranchés sur les versions pixel ; `components/legacy/`, `Glyph`, `LinkButton` et `bounce`
+  disparaissent. La règle `no-legacy-in-pixel-art` part avec le dossier.
+- **Une nouvelle règle protège les écrans d'habitudes** : `habit-screens-in-pixel-art` interdit à
+  `pixelArt/`, `components/`, `screens/`, `format/` et `state/` d'importer l'ancien thème
+  (`theme/colors`, `theme/metrics`, `theme/typography`), sauf au combat et à la sonde de toucher
+  (`Button`, `Screen`, `TrialBattleEntry`, `TouchProbeScreen`, `TrialBattleScreen`).
+- **Le rebond par mise à l'échelle de la Vue Semaine est retiré** (§3) : une case qui passe à
+  « fait » joue l'étincelle (`Burst`) et relève sa coche d'un pixel d'art pendant 2 images, comme
+  dans la Vue Journée.
+- **`theme/` et Sora restent**, pour le combat, la sonde de toucher et l'entrée du combat d'essai
+  seulement. Leur retrait viendra avec l'épique #30.
+- **Les colonnes de la Vue Semaine et de la Vue Mois font au plus 48 dp** :
+  `weekColumnWidth(largeur) = min(48, largeur / 7)`. La cible d'une case de la Semaine fait 48 dp
+  de haut au moins, celle d'un jour du Mois 58 dp (`minHeight`) ; la case dessinée garde 40 × 40 dp.
+  Aucun défilement horizontal, aucune zone de toucher qui dépasse sa colonne (pas de `hitSlop`
+  latéral) : sur un écran de 320 dp, la cible la plus petite fait 40 × 48 dp, sans chevauchement.
+
 ## Conséquences
 
 - Pas de migration, pas de port nouveau : seule la présentation change, plus une règle de jeu pure

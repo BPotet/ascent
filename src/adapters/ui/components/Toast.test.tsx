@@ -202,15 +202,32 @@ describe('Toast (pixel art)', () => {
       expect(retry).toHaveBeenCalledTimes(1);
     });
 
-    it('keeps a default toast, without a target, as it was', async () => {
+    it('keeps the look of a default toast, without a target', async () => {
       await render(<Toast message="Habitude créée" onHide={jest.fn()} />);
 
-      expect(screen.getByTestId('toast')).not.toHaveProp('pointerEvents', 'none');
       expect(screen.getByTestId('toast')).toHaveStyle({
         backgroundColor: roles.light,
         borderColor: roles.ink,
       });
       expect(screen.getByText('Habitude créée')).toHaveStyle({ color: roles.ink });
+    });
+
+    it('lets a default toast without action intercept no touch: the row it covers stays touchable', async () => {
+      await render(<Toast message="Habitude créée" aboveButton onHide={jest.fn()} />);
+
+      expect(screen.getByTestId('toast')).toHaveProp('pointerEvents', 'none');
+    });
+
+    it('keeps a default toast with an action touchable', async () => {
+      await render(
+        <Toast
+          message="Le suivi n’a pas été enregistré."
+          action={{ label: 'Réessayer', onPress: jest.fn() }}
+          onHide={jest.fn()}
+        />,
+      );
+
+      expect(screen.getByTestId('toast')).not.toHaveProp('pointerEvents', 'none');
     });
   });
 });

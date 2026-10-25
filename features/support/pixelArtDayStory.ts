@@ -89,3 +89,35 @@ export async function storyContext(deps: StoryDependencies): Promise<Habit[]> {
   await characterHas(deps, CONTEXT_XP);
   return habits;
 }
+
+/** Le lundi de la semaine dernière, jour de création des habitudes du contexte de #73. */
+export const LAST_MONDAY = Day.of(2026, 10, 12);
+export const LAST_THURSDAY = Day.of(2026, 10, 15);
+export const LAST_SUNDAY = Day.of(2026, 10, 18);
+
+/**
+ * Le contexte de `features/week-month-pixel-art.feature` (#73) : les 5 habitudes de #72, avec
+ * leurs « fait » de cette semaine, mais créées le lundi 12 octobre, pour que la semaine dernière
+ * soit suivie. Le jeudi 15, toutes sont faites (jour complet de la Vue Mois) ; le dimanche 18,
+ * seule « Cuisiner » l'est. « Lire » a été corrigée le mardi 20 (« fait », marque « corrigé »).
+ * Le personnage a 340 XP.
+ */
+export async function weekMonthStoryContext(deps: StoryDependencies): Promise<Habit[]> {
+  const habits = [];
+  for (const { name, difficulty, weeklyTarget, done } of HABITS) {
+    const habit = await habitCreatedOn(deps, LAST_MONDAY, name, difficulty, weeklyTarget);
+    await doneOn(deps, habit, [LAST_THURSDAY, ...done]);
+    habits.push(habit);
+  }
+  const [cooking, , , , reading] = habits;
+  if (cooking !== undefined) {
+    await doneOn(deps, cooking, [LAST_SUNDAY]);
+  }
+  if (reading !== undefined) {
+    await deps.unitOfWork.run(({ checkIns }) =>
+      checkIns.save({ habitId: reading.id, day: TUESDAY, done: true, corrected: true }),
+    );
+  }
+  await characterHas(deps, CONTEXT_XP);
+  return habits;
+}

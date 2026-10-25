@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type Ref, useState } from 'react';
 import { Pressable, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { artPalette } from './artPalette';
@@ -9,8 +9,11 @@ import type { IconName } from './sprites/icons';
 
 const { roles } = artPalette;
 
-/** Le bouton principal (or) ou secondaire (surface). La variante `danger` viendra avec #73. */
-export type ButtonVariant = 'primary' | 'secondary';
+/**
+ * Le bouton principal (or), secondaire (surface), ou `danger` (rouge d'erreur), qui confirme une
+ * action définitive : son libellé est toujours écrit, le rouge ne porte jamais le sens seul.
+ */
+export type ButtonVariant = 'primary' | 'secondary' | 'danger';
 
 /** La hauteur minimale d'un bouton, et de tout ce qui se touche : 48 dp. */
 export const MIN_TARGET_SIZE = 48;
@@ -31,6 +34,13 @@ const LOOKS = {
     shade: roles.ink,
     text: roles.light,
   },
+  danger: {
+    background: roles.errorBg,
+    line: roles.curse,
+    light: roles.errorBg,
+    shade: roles.ink,
+    text: roles.pink,
+  },
 } as const;
 // Stryker restore all
 
@@ -38,6 +48,7 @@ const LOOKS = {
  * Un bouton de l'identité pixel art (`PixelButton`) : cadre cranté, 48 dp de haut au moins, libellé
  * en police de texte, `icon` devant le libellé. Enfoncé, il descend de 2 dp. Désactivé, il est
  * hachuré et annoncé désactivé. `text` remplace le libellé affiché, sans changer le libellé lu.
+ * `ref` permet à un écran d'y placer le lecteur d'écran (action par défaut d'une fenêtre).
  */
 export function PixelButton({
   label,
@@ -49,6 +60,7 @@ export function PixelButton({
   accessibilityHint,
   style,
   testID,
+  ref,
 }: {
   readonly label: string;
   readonly text?: string;
@@ -59,6 +71,7 @@ export function PixelButton({
   readonly accessibilityHint?: string;
   readonly style?: StyleProp<ViewStyle>;
   readonly testID?: string;
+  readonly ref?: Ref<View>;
 }) {
   const [pressed, setPressed] = useState(false);
   const look = LOOKS[variant];
@@ -66,6 +79,7 @@ export function PixelButton({
   const line = artPixelSize(2);
   return (
     <Pressable
+      ref={ref}
       accessibilityRole="button"
       accessibilityLabel={label}
       {...(accessibilityHint !== undefined && { accessibilityHint })}

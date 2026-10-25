@@ -3,15 +3,19 @@ import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import { Day } from '../../../domain/day/Day';
 import { Habit } from '../../../domain/habit/Habit';
 import { HabitName } from '../../../domain/habit/HabitName';
-import { editHabitLabel, habitDayAccessibilityLabel } from './habitDayLabel';
+import {
+  editHabitLabel,
+  habitDayAccessibilityLabel,
+  habitDayCellAccessibilityLabel,
+} from './habitDayLabel';
 
 const wednesday = Day.of(2026, 10, 14);
 const cooking = new Habit(7, HabitName.parse('Cuisiner'), wednesday);
-const habitDay = (status: CheckInStatus, corrected = false): HabitDay => ({
+const habitDay = (status: CheckInStatus, corrected = false, editable = true): HabitDay => ({
   habit: cooking,
   day: wednesday,
   status,
-  editable: true,
+  editable,
   corrected,
 });
 
@@ -66,5 +70,26 @@ describe('habitDayAccessibilityLabel', () => {
 describe('editHabitLabel', () => {
   it('reads the action that opens « Modifier l’habitude »', () => {
     expect(editHabitLabel('Cuisiner')).toBe('Modifier l’habitude Cuisiner');
+  });
+});
+
+describe('habitDayCellAccessibilityLabel', () => {
+  it('reads a cell of the Week view the same as before #73', () => {
+    expect(habitDayCellAccessibilityLabel(habitDay('missed', true, false))).toBe(
+      'Cuisiner, mercredi 14 octobre, pas fait, corrigé, indisponible',
+    );
+  });
+
+  it.each([
+    ['done', 'Cuisiner, mercredi 14 octobre, fait'],
+    ['pending', 'Cuisiner, mercredi 14 octobre, à faire'],
+  ] as const)('reads an editable « %s » cell as « %s »', (status, label) => {
+    expect(habitDayCellAccessibilityLabel(habitDay(status))).toBe(label);
+  });
+
+  it('says « indisponible » when a tap does not change the cell', () => {
+    expect(habitDayCellAccessibilityLabel(habitDay('notStarted', false, false))).toBe(
+      'Cuisiner, mercredi 14 octobre, hors habitude, indisponible',
+    );
   });
 });

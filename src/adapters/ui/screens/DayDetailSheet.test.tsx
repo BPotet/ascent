@@ -19,6 +19,8 @@ import { reduceMotionInEachTest, withMotion } from '../testing/motion';
 import { renderScreen } from '../testing/renderScreen';
 import { TARGET_TOAST_DURATION_MS } from '../format/toast';
 import { DayDetailSheet } from './DayDetailSheet';
+import { artPalette } from '../pixelArt/artPalette';
+import { pixelFont, textFont } from '../pixelArt/pixelTypography';
 
 const october = (dayOfMonth: number) => Day.of(2026, 10, dayOfMonth);
 const wednesday = october(14);
@@ -606,5 +608,86 @@ describe('DayDetailSheet and the feedback « Objectif atteint » (F1, #26, #27)'
 
     await waitFor(async () => expect((await getCharacter(dependencies)).xp).toBe(10));
     expect(sheet.queryByTestId('toast')).toBeNull();
+  });
+});
+
+describe('DayDetailSheet in pixel art (E5, #73)', () => {
+  const hidden = { includeHiddenElements: true };
+  const { roles } = artPalette;
+
+  it('opens in a pixel sheet, its title in the pixel font and its summary in the text font', async () => {
+    await open(october(12));
+
+    expect(
+      within(screen.getByTestId('day-detail-panel')).getByTestId('pixel-sheet-grab', hidden),
+    ).toBeTruthy();
+    expect(screen.getByRole('header', { name: 'Lundi 12 octobre' })).toHaveStyle({
+      fontFamily: pixelFont,
+      fontSize: 22,
+    });
+    expect(screen.getByText('Jour clos · tu peux corriger un oubli · 1/1 faites')).toHaveStyle({
+      fontFamily: textFont.medium,
+      fontSize: 13,
+    });
+    expect(screen.getByRole('button', { name: 'Fermer' })).toHaveStyle({
+      backgroundColor: roles.surface,
+    });
+  });
+
+  it('shows the rows of the day view, with their pixel box', async () => {
+    await open(october(12));
+
+    expect(screen.getByTestId(`habit-check-${cooking}`, hidden)).toHaveStyle({
+      borderColor: roles.done,
+    });
+    expect(screen.getByTestId('check-mark', hidden)).toBeTruthy();
+  });
+
+  it('plays the burst of the day view on a correction that becomes « fait »', async () => {
+    withMotion();
+    await open(october(8));
+
+    await fireEvent.press(row(/^Cuisiner, jeudi 8 octobre/u));
+
+    expect(await screen.findByTestId('habit-burst', hidden)).toBeTruthy();
+  });
+
+  it('plays no spark when a failed save puts « fait » back on the row', async () => {
+    withMotion();
+    await open(october(12));
+    dependencies.unitOfWork.failWrites();
+
+    await fireEvent.press(row(/^Cuisiner, lundi 12 octobre/u));
+
+    expect(
+      await screen.findByRole('alert', { name: 'La correction n’a pas été enregistrée.' }),
+    ).toBeOnTheScreen();
+    await waitFor(() => expect(row(/^Cuisiner, lundi 12 octobre, fait/u)).toBeChecked());
+    expect(screen.queryByTestId('habit-burst', hidden)).toBeNull();
+  });
+
+  it('shows the mark « corrigé » on the box of a corrected day, and writes it', async () => {
+    await open(october(8));
+
+    await fireEvent.press(row(/^Cuisiner, jeudi 8 octobre/u));
+
+    await waitFor(() => expect(screen.getByText('corrigé')).toBeOnTheScreen());
+    expect(screen.getByTestId('corrected-mark', hidden)).toBeTruthy();
+  });
+
+  it('writes the failure in an error frame, in the text font', async () => {
+    await open(october(8));
+    dependencies.unitOfWork.failWrites();
+
+    await fireEvent.press(row(/^Cuisiner, jeudi 8 octobre/u));
+
+    const alert = await screen.findByRole('alert', {
+      name: 'La correction n’a pas été enregistrée.',
+    });
+    expect(alert).toHaveStyle({ backgroundColor: roles.errorBg, borderColor: roles.curse });
+    expect(within(alert).getByText('La correction n’a pas été enregistrée.')).toHaveStyle({
+      fontFamily: textFont.semiBold,
+      color: roles.pink,
+    });
   });
 });
