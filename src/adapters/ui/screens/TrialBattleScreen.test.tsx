@@ -18,6 +18,8 @@ import {
 import { seedFor } from '../../../application/testing/trialBattleSeeds';
 import { BATTLE_HINT_SEEN_KEYS } from '../../../application/useCases/battleHints';
 import { TRIAL_TUNING_KEY } from '../../../application/useCases/trialTuning';
+import { glintsOf } from '../../../domain/battle/glints';
+import { sceneGeometry } from '../battle/scene/sceneGeometry';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { reduceMotionInEachTest, withMotion } from '../testing/motion';
 import { renderTrialBattle, type TrialBattleTest } from '../testing/trialBattle';
@@ -297,7 +299,7 @@ describe('TrialBattleScreen', () => {
       await test.runUntil(() => test.battle().phase.kind === 'defenseHint');
 
       expect(screen.getByTestId('battle-hint-defense')).toHaveTextContent(
-        "Lis son gesteQuand il frappe, touche Parade. S'il porte un sceau rouge, touche Esquive.",
+        "Lis son gesteTouche Parade quand l'anneau se ferme. Sceau rouge : Esquive.",
       );
       expect(screen.queryByTestId('phase-banner')).toBeNull();
       expect(within(pad()).getByRole('button', { name: 'Parade' })).toBeDisabled();
@@ -401,7 +403,7 @@ describe('TrialBattleScreen', () => {
         impacts: test.attackStep()!.impacts.map((impact) => impact.at),
       });
       expect(StyleSheet.flatten(screen.getByTestId('enemy-specter').props.style).opacity).toBe(
-        0.45,
+        0.25,
       );
       expect(sceneProps().enemies).toEqual(
         expect.arrayContaining([expect.objectContaining({ kind: 'ghoul', active: true })]),
@@ -412,16 +414,40 @@ describe('TrialBattleScreen', () => {
       expect(screen.getByRole('button', { name: /^Goule, 40 PV sur 50/u })).toBeOnTheScreen();
     });
 
-    it('shows the red seal over an enemy that prepares a perilous attack, read by the screen reader', async () => {
+    it('shows the red seal over an enemy that prepares a perilous attack, never during its step in, read by the screen reader', async () => {
       const test = await renderTrialBattle({ seed: seedFor({ specter: 'perilous' }) });
+
+      await test.attack();
+      await test.runUntil(() => {
+        const { phase } = test.battle();
+        return (
+          phase.kind === 'enemy' && phase.step.kind === 'stepIn' && phase.step.enemy === SPECTER
+        );
+      });
+      expect(screen.queryByLabelText('Sceau rouge : coup imparable')).toBeNull();
+      expect(sceneProps().timeline).toMatchObject({ kind: 'stepIn', attack: null });
 
       await test.toWindUpOf(SPECTER);
 
       const seal = screen.getByLabelText('Sceau rouge : coup imparable');
       expect(within(screen.getByTestId('enemy-specter')).getByTestId('peril-seal')).toBe(seal);
-      expect(seal).toHaveTextContent('!');
+      expect(sceneProps().timeline).toMatchObject({ kind: 'attack', attack: 'perilous' });
       expect(announce).toHaveBeenCalledWith('Spectre, coup imparable, esquive');
       expect(test.sound.played).toContain('seal');
+    });
+
+    it('gives the scene the glints of the wind-up, computed by the domain (C2.10)', async () => {
+      const test = await renderTrialBattle({ seed: seedFor({ ghoul: 'double' }) });
+
+      await test.toWindUpOf(GHOUL);
+
+      expect(sceneProps().timeline).toMatchObject({
+        kind: 'attack',
+        attack: 'double',
+        glints: glintsOf(test.attackStep()!),
+      });
+      expect(sceneProps().spark).toBeNull();
+      expect(sceneProps().hurtAt).toBeNull();
     });
 
     it('says that a perilous attack must be dodged when it is parried (P8)', async () => {
@@ -491,8 +517,9 @@ describe('TrialBattleScreen', () => {
       await test.touchDefense('parry', impact - 50);
 
       expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Parfait');
-      expect(screen.getByTestId('battle-flash-light')).toBeOnTheScreen();
+      expect(sceneProps().spark).toEqual({ kind: 'gold', at: impact - 50 });
       expect(sceneProps().heroPose).toBe('counter');
+      expect(sceneProps().heroPoseSince).toBe(impact - 50);
       expect(test.sound.played.at(-1)).toBe('perfectParry');
       expect(test.haptics.played.at(-1)).toBe('perfectParry');
       expect(test.battle().hitStop).toEqual({ at: impact - 50, until: impact + 40 });
@@ -536,12 +563,13 @@ describe('TrialBattleScreen', () => {
       expect(screen.getByText('−1')).toBeOnTheScreen();
       expect(screen.queryByTestId('battle-feedback')).toBeNull();
       expect(announce).toHaveBeenCalledWith('Parade, 1 dégât');
-      expect(sceneProps().heroPose).toBe('lean');
+      expect(sceneProps().heroPose).toBe('parry');
+      expect(sceneProps().spark).toEqual({ kind: 'steel', at: impact + 120 });
 
       await test.advanceTo(impact + 420 + 161 + 32);
       expect(screen.getByText('−2')).toBeOnTheScreen();
       expect(screen.queryByText(/Touché/u)).toBeNull();
-      expect(screen.getByTestId('battle-flash-red')).toBeOnTheScreen();
+      expect(sceneProps().hurtAt).toBe(impact + 420 + 160);
       expect(screen.getByLabelText('La Sentinelle, PV 77 sur 80, Élan 2 sur 5')).toBeOnTheScreen();
       expect(sceneProps().heroPose).toBe('hit');
     });
@@ -583,7 +611,7 @@ describe('TrialBattleScreen', () => {
       await test.touchDefense('parry', impact - 30);
 
       expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Parfait');
-      expect(screen.queryByTestId('battle-flash-light')).toBeNull();
+      expect(sceneProps().hurtAt).toBeNull();
       expect(sceneProps().reducedMotion).toBe(true);
       expect(test.sound.played.at(-1)).toBe('perfectParry');
       expect(test.haptics.played.at(-1)).toBe('perfectParry');
@@ -662,6 +690,10 @@ describe('TrialBattleScreen', () => {
       expect(screen.getByText('La Sentinelle est tombée.')).toBeOnTheScreen();
       expect(screen.queryByText(/Répit/u)).toBeNull();
       expect(sceneProps().heroPose).toBe('fallen');
+      // Les plaques des ennemis restent entières : la scène ne rétrécit plus sous leur bas.
+      expect(
+        StyleSheet.flatten(screen.getByTestId('battle-scene-frame').props.style),
+      ).toMatchObject({ flexShrink: 0, minHeight: sceneGeometry(390, 440, 3).platesBottom + 8 });
       await fireEvent.press(screen.getByRole('button', { name: 'Quitter' }));
       expect(test.onClose).toHaveBeenCalledTimes(1);
     });

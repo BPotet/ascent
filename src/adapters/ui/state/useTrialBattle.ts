@@ -3,7 +3,7 @@ import { AccessibilityInfo } from 'react-native';
 
 import type { BattleSession, BattleSnapshot } from '../../../application/useCases/BattleSession';
 import type { BattleEvent, BlowOutcome } from '../../../domain/battle/BattleEvent';
-import type { HeroPose } from '../battle/sceneTypes';
+import type { HeroPose, SceneSpark } from '../battle/sceneTypes';
 import {
   announcement,
   damageFloat,
@@ -20,10 +20,15 @@ export interface TrialBattleDisplay {
   /** Le dernier chiffre qui s'envole (« −4 », « +3 »). */
   readonly float: { readonly float: DamageFloat; readonly key: number } | null;
   readonly heroPose: HeroPose;
-  readonly flash: { readonly kind: 'light' | 'red'; readonly key: number } | null;
+  /** L'instant où la pose du héros a commencé, pour ses images. */
+  readonly heroPoseSince: number;
+  /** La dernière étincelle de parade : dorée (parfaite), bleu acier (bonne). */
+  readonly spark: SceneSpark | null;
+  /** L'instant du dernier coup reçu (vignette rouge), jamais avec « réduire les animations ». */
+  readonly hurtAt: number | null;
+  /** L'instant de la chute de chaque ennemi brisé, par place. */
+  readonly downSince: Readonly<Record<number, number>>;
   readonly shakeKey: number;
-  /** L'instant de la dernière parade parfaite, pour les traînées de la scène. */
-  readonly streaksAt: number | null;
 }
 
 export const INITIAL_DISPLAY: TrialBattleDisplay = {
@@ -31,14 +36,16 @@ export const INITIAL_DISPLAY: TrialBattleDisplay = {
   feedback: null,
   float: null,
   heroPose: 'idle',
-  flash: null,
+  heroPoseSince: 0,
+  spark: null,
+  hurtAt: null,
+  downSince: {},
   shakeKey: 0,
-  streaksAt: null,
 };
 
 const POSE_OF_OUTCOME: Readonly<Record<BlowOutcome, HeroPose>> = {
   perfectParry: 'counter',
-  parry: 'lean',
+  parry: 'parry',
   dodge: 'dodge',
   perilousParry: 'hit',
   suffered: 'hit',
@@ -52,9 +59,11 @@ function poseAfter(event: BattleEvent, pose: HeroPose): HeroPose | null {
     case 'whiffed':
       return 'off';
     case 'strikeResolved':
-      return 'lean';
-    // Un coup reçu reste visible pendant l'avancée suivante ou la transition vers le héros.
+    case 'counterAttacked':
+      return 'strike';
     case 'strikeStarted':
+      return 'raise';
+    // Un coup reçu reste visible pendant l'avancée suivante ou la transition vers le héros.
     case 'windUpStarted':
     case 'heroPhaseStarted':
       return 'idle';
@@ -69,11 +78,19 @@ function poseAfter(event: BattleEvent, pose: HeroPose): HeroPose | null {
   }
 }
 
-/** L'éclat et la secousse d'un coup : lumière à la parade parfaite, rouge à un coup subi. */
-function flashOf(event: BattleEvent): 'light' | 'red' | null {
+/** L'étincelle d'une parade : dorée à rayons pour une parade parfaite, bleu acier pour une bonne. */
+function sparkOf(event: BattleEvent): SceneSpark | null {
   if (event.type !== 'blowResolved') return null;
-  if (event.outcome === 'perfectParry') return 'light';
-  return event.outcome === 'suffered' || event.outcome === 'perilousParry' ? 'red' : null;
+  if (event.outcome === 'perfectParry') return { kind: 'gold', at: event.at };
+  return event.outcome === 'parry' ? { kind: 'steel', at: event.at } : null;
+}
+
+/** Un coup reçu : la vignette rouge et la secousse. */
+function hurts(event: BattleEvent): boolean {
+  return (
+    event.type === 'blowResolved' &&
+    (event.outcome === 'suffered' || event.outcome === 'perilousParry')
+  );
 }
 
 /**
@@ -102,15 +119,17 @@ export function displayOf(
       display = { ...display, float: { float, key: (display.float?.key ?? 0) + 1 } };
     }
     const pose = poseAfter(event, display.heroPose);
-    if (pose !== null) display = { ...display, heroPose: pose };
-    if (event.type === 'blowResolved' && event.outcome === 'perfectParry') {
-      display = { ...display, streaksAt: event.at };
+    if (pose !== null) display = { ...display, heroPose: pose, heroPoseSince: event.at };
+    const spark = sparkOf(event);
+    if (spark !== null) display = { ...display, spark };
+    if (event.type === 'guardBroken') {
+      display = { ...display, downSince: { ...display.downSince, [event.enemy]: event.at } };
     }
-    const flash = flashOf(event);
-    if (flash !== null && !reducedMotion) {
+    const hurt = hurts(event);
+    if ((hurt || spark?.kind === 'gold') && !reducedMotion) {
       display = {
         ...display,
-        flash: { kind: flash, key: (display.flash?.key ?? 0) + 1 },
+        hurtAt: hurt ? event.at : display.hurtAt,
         shakeKey: display.shakeKey + 1,
       };
     }
@@ -139,9 +158,9 @@ function reduce(display: TrialBattleDisplay, action: Action): TrialBattleDisplay
 
 /**
  * Le combat d'essai affiché : la session est démarrée au montage, chaque mise à jour devient un
- * état d'affichage (mot, chiffre, pose du héros, éclat, secousse) et des annonces au lecteur
- * d'écran. Avec « réduire les animations », ni éclat ni secousse ; le son et la vibration ne
- * changent pas (la session les joue). `replay` commence un nouveau combat.
+ * état d'affichage (mot, chiffre, pose du héros, étincelle, vignette, secousse) et des annonces au
+ * lecteur d'écran. Avec « réduire les animations », ni vignette ni secousse ; le son et la
+ * vibration ne changent pas (la session les joue). `replay` commence un nouveau combat.
  */
 export function useTrialBattle(
   session: BattleSession,

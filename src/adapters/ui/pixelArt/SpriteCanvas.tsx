@@ -32,17 +32,24 @@ export interface SpriteCanvasProps {
 const CACHE_SIZE = 48;
 const cache = new Map<string, SkImage | null>();
 
+/**
+ * L'image Skia de pixels RGBA, faite à chaque appel, sans cache : le combat l'appelle pour ses
+ * atlas, qui videraient le cache des sprites.
+ */
+export function toSkImage({ width, height, rgba }: PixelImage): SkImage | null {
+  return Skia.Image.MakeImage(
+    { width, height, alphaType: AlphaType.Unpremul, colorType: ColorType.RGBA_8888 },
+    Skia.Data.fromBytes(rgba),
+    width * 4,
+  );
+}
+
 /** L'image Skia du sprite `sprite`, faite une seule fois à partir de ses pixels RGBA. */
 export function skImageOf(sprite: string, draw: () => PixelImage): SkImage | null {
   if (cache.has(sprite)) {
     return cache.get(sprite) ?? null;
   }
-  const { width, height, rgba } = draw();
-  const image = Skia.Image.MakeImage(
-    { width, height, alphaType: AlphaType.Unpremul, colorType: ColorType.RGBA_8888 },
-    Skia.Data.fromBytes(rgba),
-    width * 4,
-  );
+  const image = toSkImage(draw());
   if (cache.size >= CACHE_SIZE) {
     const oldest = cache.keys().next().value;
     if (oldest !== undefined) {

@@ -35,7 +35,12 @@ function TrialBattle() {
       haptics: new ExpoBattleHaptics(),
       keyValueStore,
     });
-    return { sound, session, latencies: () => sound.latencies() };
+    return {
+      sound,
+      session,
+      latencies: () => sound.latencies(),
+      expectedLatency: () => sound.expectedLatency(),
+    };
   });
   useEffect(() => () => assembly.sound.release(), [assembly]);
 
@@ -45,6 +50,7 @@ function TrialBattle() {
       onClose={close}
       trialTools={currentBuildChannel() === 'preview'}
       soundLatencies={assembly.latencies}
+      expectedSoundLatency={assembly.expectedLatency}
     />
   );
 }

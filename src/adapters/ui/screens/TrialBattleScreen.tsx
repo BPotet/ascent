@@ -2,23 +2,20 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import Animated, { useSharedValue } from 'react-native-reanimated';
 
+import { DEFAULT_SOUND_LATENCY_MS } from '../../../application/ports/BattleSound';
 import type { BattleSession } from '../../../application/useCases/BattleSession';
-import type { AttackStep, Battle } from '../../../domain/battle/Battle';
 import type { BattleEvent, DefenseButton } from '../../../domain/battle/BattleEvent';
 import { ActionPad } from '../battle/ActionPad';
-import { BattleScene } from '../battle/BattleCanvas';
-import { DamageFloat, FeedbackLabel, Flash, useShake } from '../battle/BattleEffects';
+import { BattleScene, prepareBattleScene } from '../battle/BattleCanvas';
+import { DamageFloat, FeedbackLabel, useShake } from '../battle/BattleEffects';
 import { BattleEndPanel } from '../battle/BattleEndPanel';
 import { BattleHintBubble } from '../battle/BattleHintBubble';
 import { EnemyColumn } from '../battle/EnemyColumn';
 import { HeroBar } from '../battle/HeroBar';
 import { PhaseBanner } from '../battle/PhaseBanner';
-import {
-  columnWidth,
-  type FrameMeter,
-  type SceneEnemy,
-  type SceneTimeline,
-} from '../battle/sceneTypes';
+import { sceneGeometry } from '../battle/scene/sceneGeometry';
+import { sceneTimeline } from '../battle/scene/sceneTimeline';
+import type { FrameMeter, SceneEnemy } from '../battle/sceneTypes';
 import {
   BattleMeasuresPanel,
   TrialTuningPanel,
@@ -48,6 +45,8 @@ export interface TrialBattleScreenProps {
   readonly uiNow?: () => number;
   /** Les latences mesurées du son de combat, en ms. */
   readonly soundLatencies?: () => readonly number[];
+  /** La latence attendue du son de combat, en ms (panneau Mesures). */
+  readonly expectedSoundLatency?: () => number;
 }
 
 /** La ligne au-dessus des boutons s'efface pendant le temps mort et le déséquilibre. */
@@ -66,42 +65,9 @@ function respiteOf(events: readonly BattleEvent[]): number | null {
 const SCENE_HEIGHT = 440;
 const NO_LATENCIES = () => [];
 
-/** La préparation tirée de l'intention d'attaque d'un ennemi (0 pour une autre intention). */
-function windUpOf(battle: Battle, enemy: number): number {
-  const intent = battle.enemies[enemy]!.intent;
-  return intent?.category === 'attack' ? intent.windUpMs : 0;
-}
-
-function sceneTimeline(battle: Battle): SceneTimeline | null {
-  const { phase } = battle;
-  if (phase.kind !== 'enemy') return null;
-  const { step } = phase;
-  if (step.kind !== 'stepIn' && step.kind !== 'attack') return null;
-  const hitStop = battle.hitStop ?? { at: 0, until: 0 };
-  if (step.kind === 'stepIn') {
-    return {
-      enemy: step.enemy,
-      stepInAt: step.since,
-      windUpAt: step.until,
-      windUpMs: windUpOf(battle, step.enemy),
-      impacts: [],
-      feintAt: null,
-      hitStopAt: hitStop.at,
-      hitStopUntil: hitStop.until,
-    };
-  }
-  const attack: AttackStep = step;
-  return {
-    enemy: attack.enemy,
-    stepInAt: attack.startedAt,
-    windUpAt: attack.startedAt,
-    windUpMs: attack.impacts[0]!.at - attack.startedAt,
-    impacts: attack.impacts.map((impact) => impact.at),
-    feintAt: attack.feintAt,
-    hitStopAt: hitStop.at,
-    hitStopUntil: hitStop.until,
-  };
-}
+const DEFAULT_LATENCY = () => DEFAULT_SOUND_LATENCY_MS;
+/** Sur l'écran de fin, la scène garde ce jeu sous le bas des plaques des ennemis. */
+const END_SCENE_MARGIN = 8;
 
 /**
  * L'écran du combat d'essai (#31 et #32, maquette de l'épique #30, écrans F0 à F8 et P0 à P15) :
@@ -116,6 +82,7 @@ export function TrialBattleScreen({
   now = jsThreadNow,
   uiNow = uiThreadNow,
   soundLatencies = NO_LATENCIES,
+  expectedSoundLatency = DEFAULT_LATENCY,
 }: TrialBattleScreenProps) {
   const reducedMotion = useReducedMotion();
   const display = useTrialBattle(session, reducedMotion);
@@ -132,6 +99,11 @@ export function TrialBattleScreen({
     [frames, dropped, worstGap],
   );
   const [frameStats, setFrameStats] = useState<FrameStats>({ frames: 0, dropped: 0, worstGap: 0 });
+
+  // Les atlas de la scène sont faits pendant « Préparation du combat… », jamais pendant le combat.
+  useEffect(() => {
+    prepareBattleScene();
+  }, []);
 
   const { record } = measures;
   const onDefense = useCallback(
@@ -206,15 +178,19 @@ export function TrialBattleScreen({
     );
   }
 
-  const enemies: SceneEnemy[] = view.enemies.map((enemy) => ({
+  const enemies: SceneEnemy[] = view.enemies.map((enemy, index) => ({
     kind: enemy.kind,
     standing: enemy.standing,
     target: enemy.target,
     dimmed: enemy.dimmed,
     active: enemy.active,
     down: enemy.stunned,
+    losingAction: enemy.losingAction,
+    rising: enemy.rising,
+    downSince: display.downSince[index] ?? null,
   }));
-  const width = columnWidth(screenWidth, enemies.length);
+  const geometry = sceneGeometry(screenWidth, sceneHeight, enemies.length);
+  const strikeImpactAt = battle.phase.kind === 'heroStrike' ? battle.phase.impactAt : null;
   const heroFloat = display.float?.float.at === 'hero' ? display.float : null;
   const respite = respiteOf(display.snapshot?.events ?? []);
   const targetName = ENEMY_NAMES[battle.enemies[battle.target]!.kind];
@@ -231,15 +207,26 @@ export function TrialBattleScreen({
       <Animated.View
         onLayout={onSceneLayout}
         testID="battle-scene-frame"
-        style={[styles.scene, reducedMotion ? null : shake]}
+        style={[
+          styles.scene,
+          over === null
+            ? null
+            : { flexShrink: 0, minHeight: geometry.platesBottom + END_SCENE_MARGIN },
+          reducedMotion ? null : shake,
+        ]}
       >
         <BattleScene
           width={screenWidth}
           height={sceneHeight}
+          geometry={geometry}
           enemies={enemies}
           heroPose={display.heroPose}
+          heroPoseSince={display.heroPoseSince}
+          strikeTarget={battle.target}
+          strikeImpactAt={strikeImpactAt}
           timeline={timeline}
-          streaksAt={display.streaksAt}
+          spark={display.spark}
+          hurtAt={display.hurtAt}
           reducedMotion={reducedMotion}
           uiNow={uiNow}
           frameMeter={frameMeter}
@@ -252,14 +239,15 @@ export function TrialBattleScreen({
             {view.phase === 'enemy' ? 'Phase ennemie' : 'Phase du héros'}
           </Text>
         )}
-        <View style={styles.foes}>
+        <View style={styles.foes} pointerEvents="box-none">
           {view.enemies.map((enemy, index) => (
             <EnemyColumn
               key={enemy.kind}
               view={enemy}
               index={index}
-              width={width}
+              slot={geometry.enemies[index]!}
               sealed={view.sealed === index}
+              reducedMotion={reducedMotion}
               float={display.float?.float.at === index ? display.float : null}
               uiNow={uiNow}
               now={now}
@@ -267,9 +255,6 @@ export function TrialBattleScreen({
             />
           ))}
         </View>
-        {display.flash === null || reducedMotion ? null : (
-          <Flash kind={display.flash.kind} flashKey={display.flash.key} />
-        )}
         {display.feedback === null || over !== null ? null : (
           <FeedbackLabel key={display.feedback.key} texts={display.feedback.texts} />
         )}
@@ -334,6 +319,7 @@ export function TrialBattleScreen({
                   session: session.measures(),
                   frames: frameStats,
                   soundLatencies: soundLatencies(),
+                  expectedSoundLatency: expectedSoundLatency(),
                 })}
               />
             </>
@@ -376,15 +362,7 @@ const styles = StyleSheet.create({
   },
   enemyPhase: { color: battleColors.onCurseSoft, borderColor: battleColors.curseLine },
   heroPhase: { color: battleColors.light, borderColor: battleColors.lightGlow },
-  foes: {
-    position: 'absolute',
-    top: 40,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    zIndex: 3,
-  },
+  foes: { ...StyleSheet.absoluteFill, zIndex: 3 },
   zone: {
     flexGrow: 1,
     flexShrink: 0,

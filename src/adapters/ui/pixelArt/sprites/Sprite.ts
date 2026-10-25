@@ -142,6 +142,81 @@ export function poly(sprite: Sprite, points: readonly Point[], code: number): vo
   }
 }
 
+/**
+ * Un membre en deux segments, de l'épaule `shoulder` à la main `hand`, plié de `bend` pixels d'art
+ * vers son côté (`side` : 1 ou −1). Renvoie le coude.
+ */
+export function limb(
+  sprite: Sprite,
+  shoulder: Point,
+  hand: Point,
+  bend: number,
+  side: number,
+  code: number,
+  breadth: number,
+): Point {
+  const dx = hand[0] - shoulder[0];
+  const dy = hand[1] - shoulder[1];
+  const length = Math.hypot(dx, dy) || 1;
+  let normalX = -dy / length;
+  let normalY = dx / length;
+  if (normalX * side < 0) {
+    normalX = -normalX;
+    normalY = -normalY;
+  }
+  // `+ 0` : un coude sur l'axe vaut 0, jamais −0.
+  const elbow: Point = [
+    (shoulder[0] + hand[0]) / 2 + normalX * bend + 0,
+    (shoulder[1] + hand[1]) / 2 + normalY * bend + 0,
+  ];
+  line(sprite, shoulder[0], shoulder[1], elbow[0], elbow[1], code, breadth);
+  line(sprite, elbow[0], elbow[1], hand[0], hand[1], code, breadth);
+  return elbow;
+}
+
+/** Trois griffes de `length` pixels d'art au bout de la main, dans le prolongement du bras. */
+export function claws(
+  sprite: Sprite,
+  elbow: Point,
+  hand: Point,
+  code: number,
+  length: number,
+): void {
+  const dx = hand[0] - elbow[0];
+  const dy = hand[1] - elbow[1];
+  const norm = Math.hypot(dx, dy) || 1;
+  const ux = dx / norm;
+  const uy = dy / norm;
+  for (const spread of [-1.6, 0, 1.6]) {
+    line(
+      sprite,
+      hand[0],
+      hand[1],
+      hand[0] + ux * length - uy * spread,
+      hand[1] + uy * length + ux * spread,
+      code,
+      1,
+    );
+  }
+}
+
+/**
+ * Penche les lignes au-dessus de `bottom` : le haut glisse de `amount` pixels d'art, le bas ne
+ * bouge pas (l'esquive et le recul du héros).
+ */
+export function shear(sprite: Sprite, amount: number, bottom: number): void {
+  const { width, pixels } = sprite;
+  for (let y = 0; y < bottom; y += 1) {
+    const shift = Math.round((amount * (bottom - y)) / bottom);
+    if (shift === 0) continue;
+    const row = pixels.slice(y * width, (y + 1) * width);
+    for (let x = 0; x < width; x += 1) {
+      const from = x - shift;
+      pixels[y * width + x] = from >= 0 && from < width ? (row[from] ?? 0) : 0;
+    }
+  }
+}
+
 // Stryker disable all: éclairage purement visuel, celui de la maquette.
 /** Les teintes qui ne s'éclairent ni ne s'assombrissent (encre, or, lumière, rouges vifs). */
 const UNLIT = new Set([1, 7, 8, 9, 20, 22, 25, 30]);
@@ -217,19 +292,66 @@ export function bay(x: number, y: number): number {
 }
 
 /**
+ * La teinte tramée d'un dégradé au pixel `(x, y)` : `value` est une place entre les teintes
+ * `steps` (0 la première) ; entre deux teintes, le seuil du tramage ordonné choisit. Commune au
+ * ciel du jour et au décor du combat.
+ */
+export function dithered<Step>(steps: readonly Step[], value: number, x: number, y: number): Step {
+  const index = Math.floor(value);
+  const next = value - index > bay(x, y) ? index + 1 : index;
+  return steps[Math.max(0, Math.min(steps.length - 1, next))]!;
+}
+
+/** Les options de finition des sprites du combat (`pxlib` de la maquette du combat, #81). */
+export interface FinishOptions {
+  /** Décalage horizontal du dessin, en pixels d'art (l'hésitation du coup retardé). */
+  readonly dx?: number;
+  /** La palette rouge du coup imparable. */
+  readonly red?: boolean;
+  /** Le liseré autour du contour : 1 pointillé, 2 plein, 3 plein rouge sombre. */
+  readonly tier?: 0 | 1 | 2 | 3;
+  /** Les points d'où part la traînée de la ruée, en pixels d'art du dessin. */
+  readonly smear?: readonly Point[] | null;
+  /** La teinte de la traînée (le rouge clair en palette rouge). */
+  readonly smearCode?: number;
+  /** Un halo pointillé `[x, y, rayon]` autour d'un point du dessin (l'orbe du Nécromancien). */
+  readonly halo?: readonly [number, number, number] | null;
+  /** Sans lumière : les teintes restent plates. */
+  readonly flat?: boolean;
+}
+
+// Stryker disable all: palette du combat, celle de la maquette (`REDSWAP`, liserés, traînée).
+/** L'échange de palette du coup imparable. */
+const RED_SWAP: Readonly<Record<number, number>> = {
+  15: 23,
+  16: 29,
+  17: 30,
+  9: 22,
+  5: 29,
+  4: 23,
+  6: 29,
+};
+const HALO_CODE = 20;
+const RED_SMEAR_CODE = 30;
+// Stryker restore all
+
+/**
  * La finition d'un sprite : arête haute éclairée, coin chaud en haut à droite, flanc gauche dans
  * l'ombre, puis un contour d'encre d'un pixel d'art. Le sprite fini a 2 pixels d'art de plus de
- * chaque côté.
+ * chaque côté. Les options (combat) ajoutent un décalage, la palette rouge, un halo, un liseré
+ * par paliers et la traînée de la ruée ; sans option, rien ne change.
  */
-export function finish(inner: Sprite): Sprite {
+export function finish(inner: Sprite, options: FinishOptions = {}): Sprite {
   const width = inner.width + 4;
   const height = inner.height + 4;
   const sprite = grid(width, height);
+  const offsetX = 2 + (options.dx ?? 0);
+  const offsetY = 2;
   for (let y = 0; y < inner.height; y += 1) {
     for (let x = 0; x < inner.width; x += 1) {
       const code = inner.pixels[y * inner.width + x] ?? 0;
       if (code !== 0) {
-        px(sprite, x + 2, y + 2, code);
+        px(sprite, x + offsetX, y + offsetY, code);
       }
     }
   }
@@ -238,30 +360,100 @@ export function finish(inner: Sprite): Sprite {
     x >= 0 && y >= 0 && x < width && y < height ? (pixels[y * width + x] ?? 0) : 0;
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
-      const code = at(before, x, y);
-      if (code !== 0 && !UNLIT.has(code)) {
-        sprite.pixels[y * width + x] = lit(code, x, y, width, height, (dx, dy) =>
-          at(before, x + dx, y + dy),
-        );
+      let code = at(before, x, y);
+      if (code === 0) continue;
+      if (options.flat !== true && !UNLIT.has(code)) {
+        code = lit(code, x, y, width, height, (dx, dy) => at(before, x + dx, y + dy));
       }
+      if (options.red === true) code = RED_SWAP[code] ?? code;
+      sprite.pixels[y * width + x] = code;
     }
   }
   const colored = sprite.pixels.slice();
+  /** Un voisin direct du pixel `(x, y)` est coloré, ou vaut `code`. */
+  const touches = (pixels: Uint8Array, x: number, y: number, code?: number) => {
+    const left = at(pixels, x - 1, y);
+    const right = at(pixels, x + 1, y);
+    const up = at(pixels, x, y - 1);
+    const down = at(pixels, x, y + 1);
+    return code === undefined
+      ? left !== 0 || right !== 0 || up !== 0 || down !== 0
+      : left === code || right === code || up === code || down === code;
+  };
   for (let y = 0; y < height; y += 1) {
     for (let x = 0; x < width; x += 1) {
-      const empty = at(colored, x, y) === 0;
-      const touches =
-        at(colored, x - 1, y) !== 0 ||
-        at(colored, x + 1, y) !== 0 ||
-        at(colored, x, y - 1) !== 0 ||
-        at(colored, x, y + 1) !== 0;
-      if (empty && touches) {
+      if (at(colored, x, y) === 0 && touches(colored, x, y)) {
         sprite.pixels[y * width + x] = 1;
       }
     }
   }
+  if (options.halo) paintHalo(sprite, options.halo, offsetX, offsetY);
+  if (options.tier) paintRim(sprite, options.tier, options.red === true, touches);
+  if (options.smear) {
+    const code = options.red === true ? RED_SMEAR_CODE : (options.smearCode ?? 0);
+    paintSmear(sprite, options.smear, code, offsetX, offsetY);
+  }
   return sprite;
 }
+
+// Stryker disable all: effets purement visuels, ceux de la maquette (`finish` de `pxlib`).
+function paintHalo(
+  sprite: Sprite,
+  [haloX, haloY, radius]: readonly [number, number, number],
+  offsetX: number,
+  offsetY: number,
+): void {
+  const { width, height, pixels } = sprite;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const distance = Math.hypot(x - (haloX + offsetX), y - (haloY + offsetY));
+      const ring = distance > radius + 1.4 && distance < radius + 2.6;
+      if (ring && pixels[y * width + x] === 0 && ((x + y) & 1) === 0) {
+        pixels[y * width + x] = HALO_CODE;
+      }
+    }
+  }
+}
+
+function paintRim(
+  sprite: Sprite,
+  tier: 1 | 2 | 3,
+  red: boolean,
+  touches: (pixels: Uint8Array, x: number, y: number, code?: number) => boolean,
+): void {
+  const { width, height, pixels } = sprite;
+  const outlined = pixels.slice();
+  const code = red ? 22 : tier === 3 ? 29 : tier > 1 ? 8 : 7;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const dotted = tier >= 2 || ((x + y) & 1) === 0;
+      if (outlined[y * width + x] === 0 && touches(outlined, x, y, 1) && dotted) {
+        pixels[y * width + x] = code;
+      }
+    }
+  }
+}
+
+function paintSmear(
+  sprite: Sprite,
+  points: readonly Point[],
+  code: number,
+  offsetX: number,
+  offsetY: number,
+): void {
+  const { width, height, pixels } = sprite;
+  for (const [pointX, pointY] of points) {
+    for (let k = 2; k < 13; k += 1) {
+      if (k > 7 && k % 2 === 1) continue;
+      const x = Math.round(pointX) + offsetX;
+      const y = Math.round(pointY) + offsetY - k;
+      if (x >= 0 && y >= 0 && x < width && y < height && pixels[y * width + x] === 0) {
+        pixels[y * width + x] = code;
+      }
+    }
+  }
+}
+// Stryker restore all
 
 // Stryker disable all: éclairage purement visuel, celui de la maquette.
 /** La teinte éclairée ou ombrée du pixel `(x, y)` de couleur `code`, selon ses voisins. */
@@ -304,17 +496,22 @@ export function rgbOf(hex: string): readonly [number, number, number] {
   ];
 }
 
+/** Les composantes de chaque teinte de la palette d'art, `null` pour le transparent. */
+const TINT_RGB = artPalette.tints.map((tint) => (tint === null ? null : rgbOf(tint)));
+
 /** Les pixels RGBA d'un sprite, transparents là où il est vide. */
 export function toRgba(sprite: Sprite): Uint8Array {
   const rgba = new Uint8Array(sprite.width * sprite.height * 4);
-  sprite.pixels.forEach((code, index) => {
-    const tint = artPalette.tints[code];
-    if (code === 0 || tint === undefined || tint === null) {
-      return;
-    }
-    const [r, g, b] = rgbOf(tint);
-    rgba.set([r, g, b, 255], index * 4);
-  });
+  const { pixels } = sprite;
+  for (let index = 0; index < pixels.length; index += 1) {
+    const rgb = TINT_RGB[pixels[index] ?? 0];
+    if (rgb === null || rgb === undefined) continue;
+    const at = index * 4;
+    rgba[at] = rgb[0];
+    rgba[at + 1] = rgb[1];
+    rgba[at + 2] = rgb[2];
+    rgba[at + 3] = 255;
+  }
   return rgba;
 }
 

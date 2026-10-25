@@ -1,7 +1,10 @@
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { Platform } from 'react-native';
 
-import { BATTLE_SOUND_CUES } from '../../../application/ports/BattleSound';
+import {
+  BATTLE_SOUND_CUES,
+  DEFAULT_SOUND_LATENCY_MS,
+} from '../../../application/ports/BattleSound';
 import { BATTLE_SOUND_FILES, ExpoAudioBattleSound } from './ExpoAudioBattleSound';
 
 type StatusListener = (status: { readonly playing: boolean }) => void;
@@ -170,5 +173,40 @@ describe('ExpoAudioBattleSound', () => {
 
     for (const player of players) expect(player.remove).toHaveBeenCalledTimes(1);
     expect(playerOf('parry').play).not.toHaveBeenCalled();
+  });
+
+  describe('the expected latency', () => {
+    /** Mesure les latences `latencies`, une à une, sur le son de l'esquive. */
+    function measured(latencies: readonly number[]): ExpoAudioBattleSound {
+      let now = 0;
+      const sound = new ExpoAudioBattleSound(() => now);
+      for (const latency of latencies) {
+        now += 1_000;
+        sound.play('dodge');
+        now += latency;
+        playerOf('dodge').emit({ playing: true });
+      }
+      return sound;
+    }
+
+    it('is the default latency under 5 measures', () => {
+      expect(new ExpoAudioBattleSound().expectedLatency()).toBe(DEFAULT_SOUND_LATENCY_MS);
+      expect(measured([10, 20, 30, 40]).expectedLatency()).toBe(DEFAULT_SOUND_LATENCY_MS);
+    });
+
+    it('is the median of the measures from 5 measures on', () => {
+      expect(measured([90, 10, 50, 30, 70]).expectedLatency()).toBe(50);
+    });
+
+    it('takes the mean of the two middle measures for an even count', () => {
+      expect(measured([90, 10, 50, 30, 70, 20]).expectedLatency()).toBe(40);
+    });
+
+    it('only keeps the last 20 measures', () => {
+      const old = Array.from({ length: 10 }, () => 500);
+      const recent = Array.from({ length: 20 }, (_, index) => 10 + index);
+
+      expect(measured([...old, ...recent]).expectedLatency()).toBe(19.5);
+    });
   });
 });

@@ -4,11 +4,12 @@
 // d'écran vérifient ce qui est dessiné, sans Skia.
 import { View } from 'react-native';
 
-import type { SpriteCanvasProps } from '../SpriteCanvas';
+import type * as RealSpriteCanvas from '../SpriteCanvas';
+import type { PixelImage } from '../sprites/Sprite';
 
 const drawn = new Map<string, { readonly width: number; readonly height: number }>();
 
-function sizeOf(sprite: string, draw: SpriteCanvasProps['draw']) {
+function sizeOf(sprite: string, draw: RealSpriteCanvas.SpriteCanvasProps['draw']) {
   const known = drawn.get(sprite);
   if (known !== undefined) {
     return known;
@@ -18,7 +19,13 @@ function sizeOf(sprite: string, draw: SpriteCanvasProps['draw']) {
   return { width, height };
 }
 
-export function SpriteCanvas({ sprite, draw, scale, style, testID }: SpriteCanvasProps) {
+export function SpriteCanvas({
+  sprite,
+  draw,
+  scale,
+  style,
+  testID,
+}: RealSpriteCanvas.SpriteCanvasProps) {
   const { width, height } = sizeOf(sprite, draw);
   return (
     <View
@@ -30,4 +37,12 @@ export function SpriteCanvas({ sprite, draw, scale, style, testID }: SpriteCanva
       {...{ sprite, scale, pixelWidth: width, pixelHeight: height }}
     />
   );
+}
+
+/**
+ * La vraie conversion en image Skia, chargée seulement à l'appel : seul le test de fumée de la
+ * scène du combat l'appelle, dans l'environnement Skia.
+ */
+export function toSkImage(image: PixelImage): ReturnType<typeof RealSpriteCanvas.toSkImage> {
+  return (jest.requireActual('../SpriteCanvas') as typeof RealSpriteCanvas).toSkImage(image);
 }

@@ -11,7 +11,9 @@ import { BATTLE_HINTS, BattleHintBubble } from './BattleHintBubble';
 import { EnemyColumn } from './EnemyColumn';
 import { HeroBar } from './HeroBar';
 import { PhaseBanner } from './PhaseBanner';
-import { columnWidth } from './sceneTypes';
+import { sceneGeometry } from './scene/sceneGeometry';
+
+const SLOT = sceneGeometry(390, 440, 3).enemies[0]!;
 
 const ghoul: EnemyView = {
   kind: 'ghoul',
@@ -96,7 +98,7 @@ describe('EnemyColumn', () => {
       <EnemyColumn
         view={ghoul}
         index={0}
-        width={130}
+        slot={SLOT}
         sealed={false}
         float={null}
         uiNow={() => 0}
@@ -133,7 +135,7 @@ describe('EnemyColumn', () => {
     expect(screen.getByTestId('enemy-ghoul-intent')).toHaveTextContent('+3', { exact: true });
   });
 
-  it('shows the barred circle, « Étourdie ×1,5 » and the stars of a stunned enemy', async () => {
+  it('shows the barred circle and « Étourdie ×1,5 » of a stunned enemy, the scene drawing its stars', async () => {
     await renderColumn({
       view: {
         ...ghoul,
@@ -148,9 +150,27 @@ describe('EnemyColumn', () => {
       screen.getByTestId('enemy-ghoul-intent-skip', { includeHiddenElements: true }),
     ).toBeOnTheScreen();
     expect(screen.getByText('Étourdie ×1,5')).toBeOnTheScreen();
-    expect(
-      screen.getByTestId('enemy-ghoul-stars', { includeHiddenElements: true }),
-    ).toBeOnTheScreen();
+    expect(screen.queryByText(/✦/u)).toBeNull();
+  });
+
+  it('stands at its place in the scene, its plate under its sprite', async () => {
+    await renderColumn();
+
+    expect(style('enemy-ghoul')).toMatchObject({
+      position: 'absolute',
+      left: SLOT.column.x,
+      top: SLOT.column.y,
+      width: SLOT.column.width,
+    });
+  });
+
+  it('outlines the intent of the active enemy in light, in red once its perilous wind-up starts, its plate at 45 %', async () => {
+    await renderColumn({ view: { ...ghoul, active: true } });
+    expect(style('enemy-ghoul-intent').borderColor).toBe(battleColors.light);
+    expect(style('enemy-ghoul-plate').opacity).toBe(0.45);
+
+    await renderColumn({ view: { ...ghoul, active: true }, sealed: true });
+    expect(style('enemy-ghoul-intent').borderColor).toBe(battleColors.seal);
   });
 
   it('shows no intent once the stunned enemy has lost its action', async () => {
@@ -182,17 +202,26 @@ describe('EnemyColumn', () => {
 
   it('fades while another enemy acts, and disappears once fallen', async () => {
     await renderColumn({ view: { ...ghoul, dimmed: true } });
-    expect(style('enemy-ghoul').opacity).toBe(0.45);
+    expect(style('enemy-ghoul').opacity).toBe(0.25);
 
     await renderColumn({ view: { ...ghoul, standing: false } });
     expect(style('enemy-ghoul').opacity).toBe(0);
     expect(screen.getByTestId('enemy-ghoul').props.accessibilityState.disabled).toBe(true);
   });
 
-  it('carries the red seal of a perilous attack', async () => {
+  it('carries the big red seal of a perilous attack, pulsing between its two sizes', async () => {
     await renderColumn({ sealed: true });
 
     expect(screen.getByLabelText('Sceau rouge : coup imparable')).toBeOnTheScreen();
+    const hidden = { includeHiddenElements: true };
+    expect(screen.getByTestId('peril-seal-small', hidden).props).toMatchObject({
+      sprite: 'seal-8',
+      scale: 2,
+    });
+    expect(screen.getByTestId('peril-seal-big', hidden).props).toMatchObject({
+      sprite: 'seal-10',
+      scale: 2,
+    });
   });
 
   it('flies the damage it takes', async () => {
@@ -214,14 +243,6 @@ describe('EnemyColumn', () => {
   });
 });
 
-describe('columnWidth', () => {
-  it('narrows the columns so that three enemies fit on a phone', () => {
-    expect(columnWidth(390, 3)).toBe(127);
-    expect(columnWidth(900, 2)).toBe(160);
-    expect(columnWidth(390, 0)).toBe(160);
-  });
-});
-
 describe('BattleHintBubble', () => {
   it.each([
     ['hero', '75%'],
@@ -234,6 +255,12 @@ describe('BattleHintBubble', () => {
     expect(style('battle-hint-arrow').left).toBe(left);
     await fireEvent.press(screen.getByRole('button'));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('tells to parry when the ring closes, and to dodge a red seal (Light visual aids)', () => {
+    expect(BATTLE_HINTS.defense.text).toBe(
+      "Touche Parade quand l'anneau se ferme. Sceau rouge : Esquive.",
+    );
   });
 });
 
@@ -286,6 +313,12 @@ describe('BattleEndPanel', () => {
     await render(<BattleEndPanel outcome="defeat" respite={null} onReplay={noop} onClose={noop} />);
 
     expect(screen.queryByText(/Répit/)).toBeNull();
+  });
+
+  it('fills the room left under the scene, and scrolls its panels', async () => {
+    await render(<BattleEndPanel outcome="defeat" respite={null} onReplay={noop} onClose={noop} />);
+
+    expect(style('battle-end').flex).toBe(1);
   });
 });
 

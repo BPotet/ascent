@@ -6,24 +6,29 @@ import {
   pressDefense,
   pressStrike,
   startTrialBattle,
+  type AttackStep,
   type Battle,
   type BattleUpdate,
   type HeroAction,
   type TrialBattleOptions,
 } from '../../domain/battle/Battle';
 import type { BattleEvent, DefenseButton } from '../../domain/battle/BattleEvent';
+import { glintsOf } from '../../domain/battle/glints';
 import { DEFAULT_TRIAL_TUNING } from '../../domain/battle/TrialTuning';
 import type { BattleClock } from '../ports/BattleClock';
 import type { BattleHaptics } from '../ports/BattleHaptics';
 import type { BattleSound } from '../ports/BattleSound';
 import type { KeyValueStore } from '../ports/KeyValueStore';
 import type { SeedSource } from '../ports/SeedSource';
-import { feedbackFor } from './battleFeedback';
+import { GLINT_CUES, feedbackFor } from './battleFeedback';
 import { dismissBattleHint, getBattleHint, type BattleHintKind } from './battleHints';
 import { getTrialTuning } from './trialTuning';
 
 /** La garde de réordonnancement (`ReorderGuard`) par défaut, en ms. */
 export const REORDER_GUARD_MS = 32;
+
+/** Un son de reflet qui partirait plus de 60 ms après son instant prévu n'est pas joué. */
+export const GLINT_SOUND_LATE_MS = 60;
 
 export interface BattleSessionDependencies {
   readonly clock: BattleClock;
@@ -72,11 +77,18 @@ export interface BattleSessionOptions {
  *
  * Garde de réordonnancement : une échéance « appui absent » (impact + 160 ms) n'est traitée que
  * 32 ms après, pour qu'un toucher daté juste avant, arrivé un peu après, soit encore jugé.
+ *
+ * Reflet (C2.10) : un second minuteur demande le son du prochain reflet de l'attaque en cours en
+ * avance de la latence attendue du son. Un reflet n'est joué qu'une fois, même après un arrêt sur
+ * image, et jamais plus de 60 ms en retard.
  */
 export class BattleSession {
   private snapshot: BattleSnapshot | null = null;
   private readonly listeners = new Set<Listener>();
   private cancelTimer: (() => void) | null = null;
+  private cancelGlintTimer: (() => void) | null = null;
+  /** Les reflets déjà joués ou passés, par attaque (`startedAt:index`). */
+  private readonly doneGlints = new Set<string>();
   private heroHintPending = false;
   private redatedPresses = 0;
   private deltas: number[] = [];
@@ -109,6 +121,7 @@ export class BattleSession {
     this.redatedPresses = 0;
     this.deltas = [];
     this.strikeDeltas = [];
+    this.doneGlints.clear();
     const update = this.createBattle({
       seed: this.dependencies.seeds.next(),
       tuning,
@@ -188,6 +201,8 @@ export class BattleSession {
     this.disposed = true;
     this.cancelTimer?.();
     this.cancelTimer = null;
+    this.cancelGlintTimer?.();
+    this.cancelGlintTimer = null;
     this.listeners.clear();
   }
 
@@ -239,6 +254,7 @@ export class BattleSession {
     }
     this.snapshot = { battle, events, heroHint: this.heroHintShown(battle) };
     this.schedule(battle);
+    this.scheduleGlint(battle);
     for (const listener of [...this.listeners]) listener(this.snapshot);
   }
 
@@ -255,6 +271,33 @@ export class BattleSession {
       this.apply(advance(current, Math.max(this.dependencies.clock.now(), at)));
     });
   }
+
+  /** Programme le son du prochain reflet pas encore joué de l'attaque en cours, s'il y en a un. */
+  private scheduleGlint(battle: Battle): void {
+    this.cancelGlintTimer?.();
+    this.cancelGlintTimer = null;
+    const { phase } = battle;
+    if (phase.kind !== 'enemy' || phase.step.kind !== 'attack') return;
+    const { step } = phase;
+    const glints = glintsOf(step);
+    const index = glints.findIndex((_, position) => !this.doneGlints.has(glintKey(step, position)));
+    const glint = glints[index];
+    if (glint === undefined) return;
+    const { clock, sound } = this.dependencies;
+    const at = glint.at - sound.expectedLatency();
+    this.cancelGlintTimer = clock.setTimer(at, () => {
+      this.cancelGlintTimer = null;
+      this.doneGlints.add(glintKey(step, index));
+      if (clock.now() - at <= GLINT_SOUND_LATE_MS) sound.play(GLINT_CUES[glint.kind]);
+      const current = this.snapshot?.battle;
+      if (current !== undefined) this.scheduleGlint(current);
+    });
+  }
+}
+
+/** La clé d'un reflet : son attaque (son début) et sa place dans l'attaque. */
+function glintKey(step: AttackStep, index: number): string {
+  return `${step.startedAt}:${index}`;
 }
 
 function isInHitStop(battle: Battle, at: number): boolean {

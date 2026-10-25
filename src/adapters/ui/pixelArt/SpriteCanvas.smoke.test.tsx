@@ -11,7 +11,7 @@ import { PixelRatio } from 'react-native';
 
 import { characterSprite } from './sprites/characterSprite';
 import { toPixelImage } from './sprites/Sprite';
-import { SpriteCanvas, skImageOf } from './SpriteCanvas';
+import { SpriteCanvas, skImageOf, toSkImage } from './SpriteCanvas';
 
 describe('SpriteCanvas with Skia', () => {
   beforeEach(() =>
@@ -66,5 +66,17 @@ describe('SpriteCanvas with Skia', () => {
     expect(image?.height()).toBe(32);
     expect(skImageOf('character-1-smoke', draw)).toBe(image);
     expect(draw).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('toSkImage', () => {
+  it('makes a Skia image of a pixel image, without the cache of the sprites', () => {
+    const pixels = toPixelImage(characterSprite(0));
+
+    const first = toSkImage(pixels);
+
+    expect(first?.width()).toBe(24);
+    expect(first?.height()).toBe(32);
+    expect(toSkImage(pixels)).not.toBe(first);
   });
 });

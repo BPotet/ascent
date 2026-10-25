@@ -22,6 +22,10 @@ describe('provisional battle sounds', () => {
       'defeat.wav',
       'dodge.wav',
       'enemy-phase.wav',
+      'glint-double.wav',
+      'glint-dull.wav',
+      'glint-perilous.wav',
+      'glint.wav',
       'guard-break.wav',
       'guard-restore.wav',
       'guard-up.wav',
@@ -70,6 +74,25 @@ describe('provisional battle sounds', () => {
     assert.equal(samples.length, Math.ceil(0.52 * SAMPLE_RATE));
     assert.ok(samples.every((sample) => sample >= -1 && sample <= 1));
     assert.ok(samples.some((sample) => Math.abs(sample) > 0.05));
+  });
+
+  it('makes the dull glint a square sound sliding from 520 to 380 Hz, like the mockup', () => {
+    assert.deepEqual(CUES['glint-dull'], [[520, 0.07, 'square', 0.035, 0, 380]]);
+  });
+
+  it('slides a note to its last frequency (exponential ramp)', () => {
+    const crossings = (samples) =>
+      samples.slice(1).filter((sample, index) => Math.sign(sample) !== Math.sign(samples[index]))
+        .length;
+    const tenth = Math.round(0.1 * SAMPLE_RATE);
+    const glide = renderSamples([[2_000, 1, 'sine', 0.5, 0, 500]]);
+    const start = crossings(glide.slice(0, tenth));
+    const end = crossings(glide.slice(-tenth));
+    assert.ok(start > 3 * end, `${start} crossings at the start, ${end} at the end`);
+    assert.deepEqual(
+      renderSamples([[440, 0.1, 'sine', 0.5, 0, 440]]),
+      renderSamples([[440, 0.1, 'sine', 0.5, 0]]),
+    );
   });
 
   it('clips the samples beyond full scale', () => {

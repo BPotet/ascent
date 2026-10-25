@@ -9,7 +9,8 @@ import { battleColors } from '../theme/battleColors';
 /**
  * L'écran de fin du combat d'essai : gagné (avec le répit regagné, C11) ou perdu, « Rejouer » (le
  * combat repart du début) et « Quitter ». Dans le build de preview, les panneaux d'essai suivent
- * (`children`).
+ * (`children`). Il occupe la place laissée sous la scène, et ses panneaux défilent : la scène ne
+ * rétrécit jamais sous le bas des plaques des ennemis.
  */
 export function BattleEndPanel({
   outcome,
@@ -26,7 +27,7 @@ export function BattleEndPanel({
   readonly children?: ReactNode;
 }) {
   return (
-    <ScrollView testID="battle-end" contentContainerStyle={styles.content}>
+    <ScrollView testID="battle-end" style={styles.panel} contentContainerStyle={styles.content}>
       <View style={styles.card}>
         <Text
           accessibilityRole="header"
@@ -52,6 +53,7 @@ export function BattleEndPanel({
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
+  panel: { flex: 1 },
   content: { padding: 16, paddingBottom: 34, gap: 12 },
   card: {
     backgroundColor: battleColors.surface,

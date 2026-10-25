@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Sons provisoires du combat (#31, complétés par #32) : des WAV courts générés à partir des
+// Sons provisoires du combat (#31, complétés par #32 et #81) : des WAV courts générés à partir des
 // tonalités du prototype de la maquette (`docs/mockups/30-premiere-ascension/index.html`, fonctions
 // `tone` et `sfx`). Aucune licence tierce. Les sons définitifs sont hors du périmètre.
 //   node scripts/sounds/battle-sounds.mjs  : écrit les fichiers dans src/adapters/device/sound/assets/
@@ -15,8 +15,9 @@ export const OUTPUT_DIR = resolve(
 );
 
 /**
- * Les sons, comme dans la maquette : [fréquence (Hz), durée (s), forme, volume, départ (s)].
- * La victoire et la défaite n'ont pas de son dans la maquette : un arpège montant, une chute.
+ * Les sons, comme dans la maquette : [fréquence (Hz), durée (s), forme, volume, départ (s)], et
+ * la fréquence d'arrivée (Hz) d'une note qui glisse. La victoire et la défaite n'ont pas de son
+ * dans la maquette : un arpège montant, une chute.
  */
 export const CUES = {
   'perfect-parry': [
@@ -80,6 +81,19 @@ export const CUES = {
     [196, 0.6, 'triangle', 0.16, 0],
     [294, 0.5, 'sine', 0.1, 0.05],
   ],
+  // #81 : les reflets (C2.10), d'après `sfx.tell` de la maquette, sans le bruit blanc.
+  glint: [
+    [2_700, 0.09, 'triangle', 0.17, 0],
+    [4_000, 0.06, 'sine', 0.06, 0],
+  ],
+  'glint-double': [
+    [2_700, 0.09, 'triangle', 0.17, 0],
+    [4_000, 0.06, 'sine', 0.06, 0],
+    [3_200, 0.08, 'triangle', 0.15, 0.055],
+    [4_600, 0.05, 'sine', 0.05, 0.055],
+  ],
+  'glint-perilous': [[1_500, 0.16, 'sawtooth', 0.07, 0, 900]],
+  'glint-dull': [[520, 0.07, 'square', 0.035, 0, 380]],
 };
 
 const WAVES = {
@@ -89,19 +103,29 @@ const WAVES = {
   sawtooth: (phase) => 2 * (phase - Math.floor(phase + 0.5)),
 };
 
+/**
+ * La phase d'une note à l'instant `time` : sa fréquence glisse de `from` à `to` en `duration`
+ * (rampe exponentielle, comme `exponentialRampToValueAtTime`), ou reste à `from`.
+ */
+function phaseAt(from, to, duration, time) {
+  if (to === undefined || to === from) return from * time;
+  const ratio = Math.log(to / from);
+  return (from * duration * (Math.exp((ratio * time) / duration) - 1)) / ratio;
+}
+
 /** Les échantillons d'un son : chaque note décroît de son volume à 0,0001 (rampe exponentielle). */
 export function renderSamples(notes) {
   const length = Math.ceil(
     Math.max(...notes.map(([, duration, , , at]) => at + duration)) * SAMPLE_RATE,
   );
   const samples = new Float64Array(length);
-  for (const [frequency, duration, wave, volume, at] of notes) {
+  for (const [frequency, duration, wave, volume, at, to] of notes) {
     const first = Math.round(at * SAMPLE_RATE);
     const count = Math.round(duration * SAMPLE_RATE);
     for (let index = 0; index < count; index += 1) {
       const time = index / SAMPLE_RATE;
       const gain = volume * Math.pow(0.0001 / volume, time / duration);
-      samples[first + index] += gain * WAVES[wave](frequency * time);
+      samples[first + index] += gain * WAVES[wave](phaseAt(frequency, to, duration, time));
     }
   }
   return samples;

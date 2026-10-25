@@ -93,11 +93,14 @@ export function measureLines({
   session,
   frames,
   soundLatencies,
+  expectedSoundLatency,
 }: {
   readonly touch: TouchProbeReport;
   readonly session: BattleMeasures;
   readonly frames: FrameStats;
   readonly soundLatencies: readonly number[];
+  /** La latence attendue du son, qui avance le son du reflet (essai du risque 2). */
+  readonly expectedSoundLatency: number;
 }): string[] {
   const measure = touch.measure;
   return [
@@ -108,6 +111,7 @@ export function measureLines({
     `Appuis redatés : ${session.redatedPresses}`,
     `Images perdues : ${frames.dropped} sur ${frames.frames} (${percent(frames.dropped, frames.frames)}), pire écart ${formatMilliseconds(frames.worstGap)}`,
     `Latence du son : ${spread(soundLatencies)}`,
+    `Latence attendue : ${formatMilliseconds(expectedSoundLatency)}`,
     `Écarts jugés (${session.deltas.length}) : ${spread(session.deltas.map(Math.abs))}`,
     `Répartition : ${deltaBuckets(session.deltas)}`,
     `Écarts des frappes (${session.strikeDeltas.length}) : ${spread(session.strikeDeltas.map(Math.abs))}`,

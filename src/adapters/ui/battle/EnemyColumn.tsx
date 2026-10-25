@@ -10,6 +10,7 @@ import type { EnemyView } from '../state/battleView';
 import { battleColors } from '../theme/battleColors';
 import { DamageFloat } from './BattleEffects';
 import { PerilSeal } from './PerilSeal';
+import type { EnemySlot } from './scene/sceneGeometry';
 import type { TrialBattleDisplay } from '../state/useTrialBattle';
 import { useReleaseGesture } from './touchGestures';
 
@@ -28,17 +29,20 @@ const INTENT_ICONS: Readonly<Record<IntentCategory, IconName>> = {
 };
 
 /**
- * La colonne d'un ennemi (maquette F1, F5, F7) : toute la colonne est touchable pour le viser (au
- * relâcher). Elle montre son intention en icône (avec « +N » pour Garde et Soin), sa barre de PV,
- * son nom, sa garde (ou « Étourdie ×1,5 ») et le sceau rouge d'un coup imparable. En phase ennemie
- * épurée, le nom et les chiffres sont masqués. L'ennemi est annoncé en entier au lecteur d'écran.
- * La silhouette est dessinée par la scène, derrière.
+ * La colonne d'un ennemi (maquette F1, F5, F7, P0b à P13) : toute la colonne est touchable pour le
+ * viser (au relâcher). Elle montre son intention en icône (avec « +N » pour Garde et Soin), sa barre
+ * de PV, son nom, sa garde (ou « Étourdie ×1,5 ») et le sceau rouge d'un coup imparable. En phase
+ * ennemie épurée, le nom et les chiffres sont masqués. L'ennemi actif a son intention cernée de
+ * lumière (de rouge sous le sceau) et sa plaque à 45 % ; les autres s'estompent. L'ennemi est
+ * annoncé en entier au lecteur d'écran. Son sprite, ses étoiles et son socle sont dessinés par la
+ * scène, derrière, à la place que donne `sceneGeometry`.
  */
 export function EnemyColumn({
   view,
   index,
-  width,
+  slot,
   sealed,
+  reducedMotion = false,
   float,
   uiNow,
   now,
@@ -46,8 +50,10 @@ export function EnemyColumn({
 }: {
   readonly view: EnemyView;
   readonly index: number;
-  readonly width: number;
+  /** Sa place dans la scène. */
+  readonly slot: EnemySlot;
   readonly sealed: boolean;
+  readonly reducedMotion?: boolean;
   /** Le chiffre qui s'envole au-dessus de lui, s'il est pour lui. */
   readonly float: TrialBattleDisplay['float'];
   readonly uiNow: () => number;
@@ -74,14 +80,18 @@ export function EnemyColumn({
         testID={`enemy-${kind}`}
         style={[
           styles.column,
-          { width },
+          { left: slot.column.x, top: slot.column.y, width: slot.column.width },
           view.dimmed && styles.dimmed,
           !view.standing && styles.down,
         ]}
       >
         <View
           {...(intent === null ? {} : { testID: `enemy-${kind}-intent` })}
-          style={[styles.intent, intent === null && styles.noIntent]}
+          style={[
+            styles.intent,
+            intent === null && styles.noIntent,
+            view.active && (sealed ? styles.sealedIntent : styles.activeIntent),
+          ]}
         >
           {intent === null ? null : (
             <>
@@ -96,20 +106,17 @@ export function EnemyColumn({
           )}
         </View>
         <View style={styles.figure}>
-          {sealed ? <PerilSeal /> : null}
-          {view.stunned ? (
-            <Text
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-              testID={`enemy-${kind}-stars`}
-              style={[styles.stars, view.losingAction && styles.starsJump]}
-            >
-              ✦ ✦ ✦
-            </Text>
-          ) : null}
+          {sealed ? <PerilSeal reducedMotion={reducedMotion} /> : null}
           {float === null ? null : <DamageFloat key={float.key} float={float.float} />}
         </View>
-        <View style={[styles.plate, view.target && styles.targetPlate]}>
+        <View
+          testID={`enemy-${kind}-plate`}
+          style={[
+            styles.plate,
+            view.target && styles.targetPlate,
+            view.active && styles.activePlate,
+          ]}
+        >
           <View style={styles.track}>
             <View
               testID={`enemy-${kind}-hp`}
@@ -140,17 +147,18 @@ export function EnemyColumn({
 // Stryker disable all: dessin de la scène, vérifié par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
   column: {
+    position: 'absolute',
     alignItems: 'center',
-    gap: 3,
-    paddingTop: 4,
-    paddingBottom: 8,
-    borderRadius: 18,
+    gap: 2,
+    paddingTop: 2,
+    paddingBottom: 4,
   },
-  dimmed: { opacity: 0.45 },
+  // Maquette `.pfoe.dim` : 25 % ; la scène désature son sprite.
+  dimmed: { opacity: 0.25 },
   down: { opacity: 0 },
   intent: {
-    height: 34,
-    minWidth: 34,
+    height: 40,
+    minWidth: 44,
     paddingHorizontal: 6,
     borderRadius: 8,
     flexDirection: 'row',
@@ -162,24 +170,18 @@ const styles = StyleSheet.create({
     borderColor: battleColors.curseLine,
   },
   noIntent: { opacity: 0 },
+  activeIntent: { borderWidth: 2, borderColor: battleColors.light },
+  sealedIntent: { borderWidth: 2, borderColor: battleColors.seal },
   intentText: {
     color: battleColors.text,
     fontSize: 14,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },
-  figure: { width: 104, height: 112, alignItems: 'center' },
-  stars: {
-    position: 'absolute',
-    top: 34,
-    color: battleColors.light,
-    fontSize: 13,
-    letterSpacing: 2,
-  },
-  starsJump: { top: 28 },
+  figure: { width: 88, height: 104, alignItems: 'center' },
   plate: {
-    width: '96%',
-    maxWidth: 120,
+    width: '100%',
+    minHeight: 56,
     gap: 2,
     padding: 3,
     borderRadius: 6,
@@ -188,6 +190,7 @@ const styles = StyleSheet.create({
     backgroundColor: battleColors.badge,
   },
   targetPlate: { borderColor: battleColors.light },
+  activePlate: { opacity: 0.45 },
   track: {
     height: 14,
     borderRadius: 3,

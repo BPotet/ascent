@@ -28,10 +28,6 @@ export const battleColors = {
   heroHpLow: '#FF9DB0',
   foeHp: '#C46A6A',
   hpTrack: '#2A2F40',
-  silhouette: '#06070C',
-  specter: '#0A0D1A',
-  blade: '#D9DCE6',
-  hilt: '#6E5E44',
   secondaryButton: '#232A40',
   secondaryLine: '#46506C',
   pill: 'rgba(14,17,32,0.85)',
@@ -42,10 +38,5 @@ export const battleColors = {
   coach: '#EEEAE0',
   onCoach: '#141826',
   hatch: 'rgba(255,157,176,0.22)',
-  flash: 'rgba(255,244,214,0.55)',
-  flashRed: 'rgba(224,96,122,0.3)',
-  skyTop: '#1B2040',
-  skyMiddle: '#151933',
-  skyBottom: '#0B0D18',
 } as const;
 // Stryker restore all

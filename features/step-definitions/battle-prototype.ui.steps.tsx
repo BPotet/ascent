@@ -168,7 +168,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
           until: world.impact + 40,
         }),
       );
-      expect(screen.getByTestId('battle-flash-light')).toBeOnTheScreen();
+      expect(scene().spark).toEqual({ kind: 'gold', at: world.impact - 50 });
       expect(world.test.sound.played).toContain('perfectParry');
       expect(world.test.haptics.played).toContain('perfectParry');
       expect(lastShake()).toBeGreaterThan(0);
@@ -187,7 +187,10 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       const seal = within(screen.getByTestId('enemy-specter')).getByLabelText(
         'Sceau rouge : coup imparable',
       );
-      expect(seal).toHaveTextContent('!');
+      // La forme : le losange en pixel art qui pulse (#81).
+      expect(
+        within(seal).getByTestId('peril-seal-small', { includeHiddenElements: true }).props.sprite,
+      ).toBe('seal-8');
       expect(seal.props.accessibilityRole).toBe('image');
     },
   );
@@ -370,7 +373,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then("il n'y a ni secousse ni éclat plein écran, mais la vibration et le son restent", () => {
-    expect(screen.queryByTestId('battle-flash-light')).toBeNull();
+    expect(scene().hurtAt).toBeNull();
     expect(lastShake()).toBe(0);
     expect(scene().reducedMotion).toBe(true);
     expect(world.test.sound.played.at(-1)).toBe('perfectParry');
@@ -394,7 +397,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   then('une bulle explique Parade et Esquive avant la transition de phase', () => {
     expect(screen.getByTestId('battle-hint-defense')).toHaveTextContent(
-      "Lis son gesteQuand il frappe, touche Parade. S'il porte un sceau rouge, touche Esquive.",
+      "Lis son gesteTouche Parade quand l'anneau se ferme. Sceau rouge : Esquive.",
     );
     expect(screen.queryByTestId('phase-banner')).toBeNull();
   });

@@ -4,11 +4,13 @@ import type { KeyValueStore } from '../ports/KeyValueStore';
 import { FixedSeedSource } from '../testing/FixedSeedSource';
 import { ManualBattleClock } from '../testing/ManualBattleClock';
 import { silentBattleHaptics, silentBattleSound } from '../testing/recordingBattleFeedback';
-import { battleWith, enemyWith } from '../testing/battleBuilder';
+import { attackIntentOf, battleWith, enemyWith } from '../testing/battleBuilder';
+import { DEFAULT_SOUND_LATENCY_MS } from '../ports/BattleSound';
 import { seedFor } from '../testing/trialBattleSeeds';
 import { BATTLE_HINT_SEEN_KEYS } from './battleHints';
 import {
   BattleSession,
+  GLINT_SOUND_LATE_MS,
   REORDER_GUARD_MS,
   type BattleFactory,
   type BattleSnapshot,
@@ -49,16 +51,18 @@ function setUp({
   start = 1_000,
   hints = false,
   createBattle = sturdyGhoul,
+  latency,
 }: {
   seed?: number;
   start?: number;
   hints?: boolean;
   createBattle?: BattleFactory;
+  latency?: number;
 } = {}) {
   const clock = new ManualBattleClock(start);
   const keyValueStore = mapStore();
   if (!hints) seenHints(keyValueStore);
-  const sound = silentBattleSound();
+  const sound = silentBattleSound(latency === undefined ? {} : { latency });
   const haptics = silentBattleHaptics();
   const session = new BattleSession(
     { clock, seeds: new FixedSeedSource(seed, seed + 1), sound, haptics, keyValueStore },
@@ -137,7 +141,8 @@ describe('BattleSession', () => {
 
     context.clock.advanceTo(4_380);
     const impact = attackStep(context.session).impacts[0]!.at;
-    expect(context.clock.pending()).toEqual([impact]);
+    // Le son du reflet, en avance de la latence attendue, puis l'impact.
+    expect(context.clock.pending()).toEqual([impact - 150 - 67.5, impact]);
   });
 
   describe('the timed strike (« Frapper »)', () => {
@@ -309,7 +314,7 @@ describe('BattleSession', () => {
     context.clock.advanceTo(impact - 30);
     context.session.pressDefense('parry', impact - 30);
 
-    expect(context.sound.played).toEqual(['strike', 'enemyPhase', 'perfectParry']);
+    expect(context.sound.played).toEqual(['strike', 'enemyPhase', 'glint', 'perfectParry']);
     expect(context.haptics.played).toEqual(['enemyPhase', 'perfectParry']);
   });
 
@@ -635,6 +640,182 @@ describe('BattleSession', () => {
       // L'échec d'écriture de la bulle vue n'empêche pas de jouer.
       expect(() => context.session.dismissHint('hero')).not.toThrow();
       await Promise.resolve();
+    });
+  });
+
+  describe('the glint sound (C2.10), ahead of the expected latency', () => {
+    const ghoulAttacking = (attack: Parameters<typeof attackIntentOf>[1]) =>
+      battleWith(enemyWith(0, { guard: 99 }), attackIntentOf(0, attack));
+    const glintSounds = (context: ReturnType<typeof setUp>) =>
+      context.sound.played.filter((cue) => cue.startsWith('glint'));
+
+    it('requests the glint sound at impact − 150 ms − the expected latency (67.5 ms by default)', async () => {
+      expect(DEFAULT_SOUND_LATENCY_MS).toBe(67.5);
+      const context = setUp({ createBattle: ghoulAttacking('basic') });
+      await context.session.start();
+      const impact = toGhoulWindUp(context);
+      const requestedAt = impact - 150 - 67.5;
+
+      expect(context.clock.pending()).toContain(requestedAt);
+      context.clock.advanceTo(requestedAt - 1);
+      expect(glintSounds(context)).toEqual([]);
+      context.clock.advanceTo(requestedAt);
+      expect(glintSounds(context)).toEqual(['glint']);
+    });
+
+    it('takes the latency the sound expects', async () => {
+      const context = setUp({ createBattle: ghoulAttacking('basic'), latency: 120 });
+      await context.session.start();
+      const impact = toGhoulWindUp(context);
+
+      context.clock.advanceTo(impact - 271);
+      expect(glintSounds(context)).toEqual([]);
+      context.clock.advanceTo(impact - 270);
+      expect(glintSounds(context)).toEqual(['glint']);
+    });
+
+    it('plays a double glint before each impact of a double attack', async () => {
+      const context = setUp({ createBattle: ghoulAttacking('double') });
+      await context.session.start();
+      toGhoulWindUp(context);
+      const [first, second] = attackStep(context.session).impacts.map((impact) => impact.at);
+
+      context.clock.advanceTo(first! - 217.5);
+      expect(glintSounds(context)).toEqual(['glintDouble']);
+      context.clock.advanceTo(second! - 218.5);
+      expect(glintSounds(context)).toEqual(['glintDouble']);
+      context.clock.advanceTo(second! - 217.5);
+      expect(glintSounds(context)).toEqual(['glintDouble', 'glintDouble']);
+    });
+
+    it('plays a dull glint before the false start of a feint, then a white one', async () => {
+      const context = setUp({ createBattle: ghoulAttacking('feint') });
+      await context.session.start();
+      toGhoulWindUp(context);
+      const step = attackStep(context.session);
+
+      context.clock.advanceTo(step.feintAt! - 217.5);
+      expect(glintSounds(context)).toEqual(['glintDull']);
+      context.clock.advanceTo(step.impacts[0]!.at - 217.5);
+      expect(glintSounds(context)).toEqual(['glintDull', 'glint']);
+    });
+
+    it('plays the red glint of a perilous attack', async () => {
+      const context = setUp({ createBattle: ghoulAttacking('perilous') });
+      await context.session.start();
+      const impact = toGhoulWindUp(context);
+
+      context.clock.advanceTo(impact);
+      expect(glintSounds(context)).toEqual(['glintPerilous']);
+    });
+
+    it('moves the second glint of a double attack after a perfect parry of the first impact (+ 90 ms), and never plays a glint twice', async () => {
+      const context = setUp({ createBattle: ghoulAttacking('double') });
+      await context.session.start();
+      toGhoulWindUp(context);
+      const [first, second] = attackStep(context.session).impacts.map((impact) => impact.at);
+
+      context.clock.advanceTo(first!);
+      context.session.pressDefense('parry', first!);
+      expect(context.session.current()!.battle.hitStop).toEqual({ at: first!, until: first! + 90 });
+
+      context.clock.advanceTo(second! + 90 - 218.5);
+      expect(glintSounds(context)).toEqual(['glintDouble']);
+      context.clock.advanceTo(second! + 90 - 217.5);
+      expect(glintSounds(context)).toEqual(['glintDouble', 'glintDouble']);
+      context.clock.advanceTo(second! + 600);
+      expect(glintSounds(context).filter((cue) => cue === 'glintDouble')).toHaveLength(2);
+    });
+
+    it('schedules nothing outside an attack', async () => {
+      const context = setUp({ createBattle: ghoulAttacking('basic') });
+      await context.session.start();
+      context.clock.advanceTo(2_000);
+      context.session.heroAction({ kind: 'attack' }, 1_940, 2_000);
+
+      expect(context.clock.pending()).toEqual([2_860 + REORDER_GUARD_MS]);
+    });
+
+    it('cancels the glint when the session is disposed, and when a new battle starts', async () => {
+      const context = setUp({ createBattle: ghoulAttacking('basic') });
+      await context.session.start();
+      const impact = toGhoulWindUp(context);
+
+      context.session.dispose();
+      expect(context.clock.pending()).toEqual([]);
+
+      const again = setUp({ createBattle: ghoulAttacking('basic') });
+      await again.session.start();
+      toGhoulWindUp(again);
+      await again.session.start();
+      again.clock.advanceTo(impact + 1_000);
+      expect(glintSounds(again)).toEqual([]);
+    });
+
+    /** Une session dont on déclenche les minuteurs à la main, en retard si on veut. */
+    async function lateSession() {
+      let now = 1_000;
+      const timers: { at: number; callback: () => void }[] = [];
+      const sound = silentBattleSound();
+      const keyValueStore = mapStore();
+      seenHints(keyValueStore);
+      const session = new BattleSession(
+        {
+          clock: {
+            now: () => now,
+            setTimer: (at, callback) => {
+              timers.push({ at, callback });
+              return () => undefined;
+            },
+          },
+          seeds: new FixedSeedSource(seedFor({ ghoul: 'basic' })),
+          sound,
+          haptics: silentBattleHaptics(),
+          keyValueStore,
+        },
+        { createBattle: ghoulAttacking('basic') },
+      );
+      await session.start();
+      now = 2_000;
+      session.heroAction({ kind: 'attack' }, 1_940, 2_000);
+      // Hors d'une attaque, le dernier minuteur est la prochaine échéance du combat.
+      while (session.current()!.battle.phase.kind !== 'enemy' || attackOf(session) === null) {
+        const timer = timers.at(-1)!;
+        now = timer.at;
+        timer.callback();
+      }
+      const glintAt = attackOf(session)!.impacts[0]!.at - 217.5;
+      const glint = timers.find((timer) => timer.at === glintAt)!;
+      return {
+        sound,
+        fireGlintAt: (instant: number) => {
+          now = instant;
+          glint.callback();
+        },
+        glintAt,
+      };
+    }
+
+    function attackOf(session: BattleSession): AttackStep | null {
+      const { phase } = session.current()!.battle;
+      return phase.kind === 'enemy' && phase.step.kind === 'attack' ? phase.step : null;
+    }
+
+    it('does not play a glint sound more than 60 ms late', async () => {
+      expect(GLINT_SOUND_LATE_MS).toBe(60);
+      const late = await lateSession();
+
+      late.fireGlintAt(late.glintAt + 61);
+
+      expect(late.sound.played.filter((cue) => cue.startsWith('glint'))).toEqual([]);
+    });
+
+    it('plays a glint sound up to 60 ms late', async () => {
+      const late = await lateSession();
+
+      late.fireGlintAt(late.glintAt + 60);
+
+      expect(late.sound.played.filter((cue) => cue.startsWith('glint'))).toEqual(['glint']);
     });
   });
 });

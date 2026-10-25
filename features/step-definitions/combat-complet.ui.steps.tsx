@@ -231,10 +231,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   and(
     "le Spectre est à terre, avec les étoiles d'étourdissement, et « Étourdi ×1,5 » s'affiche sous lui",
     () => {
+      // La scène dessine le Spectre à terre et ses étoiles (#81).
       expect(sceneEnemies()[SPECTER]).toMatchObject({ kind: 'specter', down: true });
-      expect(
-        within(column(SPECTER)).getByTestId('enemy-specter-stars', { includeHiddenElements: true }),
-      ).toBeOnTheScreen();
       expect(within(column(SPECTER)).getByText('Étourdi ×1,5')).toBeOnTheScreen();
     },
   );
