@@ -3,7 +3,7 @@ import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { HabitDay } from '../../../../domain/checkIn/HabitDay';
 import type { Difficulty } from '../../../../domain/habit/Difficulty';
-import { checkInStatusLabels } from '../../format/checkInStatus';
+import { checkInStatusLabels, CORRECTED } from '../../format/checkInStatus';
 import { capitalize } from '../../format/formatDay';
 import { type WeeklyProgressShown, weeklyProgressText } from '../../format/formatWeeklyTarget';
 import { editHabitLabel, habitDayAccessibilityLabel } from '../../format/habitDayLabel';
@@ -14,7 +14,7 @@ import { MIN_TOUCH_SIZE, radii, spacing } from '../../theme/metrics';
 import { typography } from '../../theme/typography';
 import { bounce } from '../bounce';
 import { CheckGlyph, CrossGlyph, MoreGlyph } from '../Glyph';
-import { CORRECTED, CorrectedMark } from '../CorrectedMark';
+import { CorrectedMark } from '../CorrectedMark';
 import { DifficultyLabel } from './DifficultyIcon';
 import { TargetReachedBadge } from './TargetReachedBadge';
 import { XpFloat } from './XpFloat';

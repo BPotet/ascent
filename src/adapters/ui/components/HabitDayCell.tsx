@@ -4,19 +4,15 @@ import { Animated, Pressable, StyleSheet, View } from 'react-native';
 import type { CheckInStatus } from '../../../domain/checkIn/CheckInStatus';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import type { Day } from '../../../domain/day/Day';
-import { checkInStatusLabels } from '../format/checkInStatus';
-import { formatDayAndMonth } from '../format/formatDay';
+import { habitDayCellAccessibilityLabel } from '../format/habitDayLabel';
 import { useReducedMotion } from '../state/useReducedMotion';
 import { colors } from '../theme/colors';
 import { useCellHeight } from './cellSize';
 import type { ShownXpChange } from '../state/xpFeedback';
 import { CheckGlyph, CrossGlyph, DotGlyph } from './Glyph';
 import { bounce } from './bounce';
-import { CORRECTED, CorrectedMark } from './CorrectedMark';
+import { CorrectedMark } from './CorrectedMark';
 import { XpFloat } from './legacy/XpFloat';
-
-/** Ce qu'une case de la Vue Semaine lit au lecteur d'écran quand un tap ne la change pas. */
-export const UNAVAILABLE = 'indisponible';
 
 /**
  * La forme de chaque état, jamais la couleur seule (maquette, « Accessibilité ») : coche (fait),
@@ -66,10 +62,7 @@ export function HabitDayCell({
   const reducedMotion = useReducedMotion();
   const [scale] = useState(() => new Animated.Value(1));
   const { height, onLayout } = useCellHeight();
-  const label = [habit.name.value, formatDayAndMonth(day), checkInStatusLabels[status]]
-    .concat(corrected ? [CORRECTED] : [])
-    .concat(editable ? [] : [UNAVAILABLE])
-    .join(', ');
+  const label = habitDayCellAccessibilityLabel(habitDay);
   const explainsTap = !editable && status === 'notStarted' && onNotStartedPress !== undefined;
 
   const press = () => {

@@ -1,4 +1,3 @@
-import { type ReactNode, useState } from 'react';
 import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
@@ -13,44 +12,14 @@ import { MIN_TARGET_SIZE } from '../pixelArt/PixelButton';
 import { type FrameTone, PixelFrame } from '../pixelArt/PixelFrame';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { pixelTypography } from '../pixelArt/pixelTypography';
-import { BURST_FRAMES, burstSprite, type BurstFrame } from '../pixelArt/sprites/burstSprite';
-import { toPixelImage } from '../pixelArt/sprites/Sprite';
-import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
-import { useArtFrames } from '../pixelArt/useArtFrames';
 import { WeekNotches } from '../pixelArt/WeekNotches';
-import { useReducedMotion } from '../state/useReducedMotion';
 import type { ShownXpChange } from '../state/xpFeedback';
+import { Burst, useBurst } from './Burst';
 import { DifficultyLabel } from './DifficultyIcon';
 import { TargetReachedBadge } from './TargetReachedBadge';
 import { XpFloat } from './XpFloat';
 
 const { roles } = artPalette;
-
-/** Les images où la coche est relevée d'un pixel d'art, au début de l'étincelle (rebond). */
-const LIFTED_FRAMES = 2;
-
-/**
- * L'étincelle d'une habitude qui passe à « fait » : 3 images autour de la case, à 12 images par
- * seconde, puis plus rien. Pendant ses 2 premières images, la case (`children`) dessine sa coche
- * un pixel d'art plus haut. Décorative.
- */
-function Burst({ children }: { readonly children: (lifted: boolean) => ReactNode }) {
-  const frame = useArtFrames(BURST_FRAMES + 1);
-  return (
-    <>
-      {children(frame < LIFTED_FRAMES)}
-      {frame < BURST_FRAMES && (
-        <SpriteCanvas
-          sprite={`burst-${frame}`}
-          draw={() => toPixelImage(burstSprite(frame as BurstFrame))}
-          scale={2}
-          testID="habit-burst"
-          style={styles.burst}
-        />
-      )}
-    </>
-  );
-}
 
 /** La ligne écrite sous le nom : l'état en gras et sa couleur, puis la progression de la semaine. */
 function StatusLine({
@@ -131,15 +100,7 @@ export function HabitRow({
   const { habit, status, editable } = habitDay;
   const done = status === 'done';
   const reached = weeklyProgress?.targetReached === true;
-  const reducedMotion = useReducedMotion();
-  const [bursts, setBursts] = useState(0);
-
-  const press = () => {
-    if (status !== 'done' && !reducedMotion) {
-      setBursts((count) => count + 1);
-    }
-    onToggle?.(habitDay);
-  };
+  const bursts = useBurst(status);
 
   const box = (lifted: boolean) => (
     <HabitDayBox status={status} lifted={lifted} testID={`habit-check-${habit.id}`} />
@@ -157,12 +118,18 @@ export function HabitRow({
         accessibilityLabel={habitDayAccessibilityLabel({ habitDay, difficulty, weeklyProgress })}
         accessibilityState={{ checked: done, disabled: !editable }}
         disabled={!editable}
-        onPress={press}
+        onPress={() => onToggle?.(habitDay)}
         testID={`habit-row-${habit.id}`}
         style={styles.row}
       >
         <View style={styles.boxSlot}>
-          {bursts > 0 ? <Burst key={bursts}>{box}</Burst> : box(false)}
+          {bursts > 0 ? (
+            <Burst key={bursts} style={styles.burst}>
+              {box}
+            </Burst>
+          ) : (
+            box(false)
+          )}
           <XpFloat change={xpChange} />
         </View>
         <View style={styles.texts}>
@@ -224,7 +191,7 @@ const styles = StyleSheet.create({
     paddingRight: 4,
   },
   boxSlot: { width: 44, height: 44 },
-  burst: { position: 'absolute', left: -10, top: -10 },
+  burst: { left: -10, top: -10 },
   texts: { flex: 1, minWidth: 0, gap: 4 },
   name: { color: roles.light },
   subLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },

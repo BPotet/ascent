@@ -2,9 +2,6 @@ import { StyleSheet, View } from 'react-native';
 
 import { colors } from '../theme/colors';
 
-/** Ce qu'une case lit au lecteur d'écran quand elle porte la marque « corrigé » (R13). */
-export const CORRECTED = 'corrigé';
-
 /**
  * La marque « corrigé » : une pastille claire en coin de case (maquette, « Marque corrigé »).
  * Décorative : le mot « corrigé » est lu par le lecteur d'écran.

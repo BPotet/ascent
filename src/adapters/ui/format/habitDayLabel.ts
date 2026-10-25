@@ -1,7 +1,6 @@
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import type { Difficulty } from '../../../domain/habit/Difficulty';
-import { checkInStatusLabels } from './checkInStatus';
-import { CORRECTED } from '../components/CorrectedMark';
+import { checkInStatusLabels, CORRECTED } from './checkInStatus';
 import { difficultyAccessibilityLabel } from './formatDifficulty';
 import { formatDayAndMonth } from './formatDay';
 import {
@@ -9,6 +8,9 @@ import {
   type WeeklyProgressShown,
   weeklyProgressAccessibilityLabel,
 } from './formatWeeklyTarget';
+
+/** Ce qu'une case de la Vue Semaine lit au lecteur d'écran quand un tap ne la change pas. */
+export const UNAVAILABLE = 'indisponible';
 
 /** Le libellé, pour le lecteur d'écran, de l'action qui ouvre « Modifier l'habitude ». */
 export const editHabitLabel = (name: string) => `Modifier l’habitude ${name}`;
@@ -35,5 +37,23 @@ export function habitDayAccessibilityLabel({
     .concat(corrected ? [CORRECTED] : [])
     .concat(difficulty ? [difficultyAccessibilityLabel(difficulty)] : [])
     .concat(weeklyProgress?.targetReached === true ? [TARGET_REACHED.toLowerCase()] : [])
+    .join(', ');
+}
+
+/**
+ * L'annonce d'une case de la Vue Semaine : le nom, le jour, l'état du suivi, « corrigé » si la case
+ * porte la marque (R13), et « indisponible » quand un tap ne la change pas.
+ * « Cuisiner, mercredi 14 octobre, pas fait, corrigé, indisponible ».
+ */
+export function habitDayCellAccessibilityLabel({
+  habit,
+  day,
+  status,
+  editable,
+  corrected,
+}: HabitDay): string {
+  return [habit.name.value, formatDayAndMonth(day), checkInStatusLabels[status]]
+    .concat(corrected ? [CORRECTED] : [])
+    .concat(editable ? [] : [UNAVAILABLE])
     .join(', ');
 }

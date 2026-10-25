@@ -6,7 +6,7 @@ import type { Day } from '../../../domain/day/Day';
 import type { Difficulty } from '../../../domain/habit/Difficulty';
 import type { Habit } from '../../../domain/habit/Habit';
 import type { WeeklyTarget } from '../../../domain/habit/WeeklyTarget';
-import { checkInStatusLabels } from '../format/checkInStatus';
+import { checkInStatusLabels, CORRECTED } from '../format/checkInStatus';
 import { capitalize } from '../format/formatDay';
 import { WEEKDAY_INITIALS } from '../format/formatWeek';
 import {
@@ -21,7 +21,7 @@ import { radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
 import { CheckGlyph, CrossGlyph, DotGlyph, PencilGlyph, SmallCheckGlyph } from './Glyph';
 import { editHabitLabel } from '../format/habitDayLabel';
-import { CORRECTED, CorrectedMark } from './CorrectedMark';
+import { CorrectedMark } from './CorrectedMark';
 import { DifficultyLabel } from './legacy/DifficultyIcon';
 import { HabitDayCell } from './HabitDayCell';
 import { TargetBurst } from './legacy/TargetReachedBadge';

@@ -8,7 +8,8 @@ import { monthDayLabel } from '../format/formatMonth';
 import { colors } from '../theme/colors';
 import { MIN_TOUCH_SIZE, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
-import { CORRECTED, CorrectedMark } from './CorrectedMark';
+import { CORRECTED } from '../format/checkInStatus';
+import { CorrectedMark } from './CorrectedMark';
 import { FlagGlyph } from './Glyph';
 
 /** Cache un élément décoratif au lecteur d'écran (Android et iOS). */
