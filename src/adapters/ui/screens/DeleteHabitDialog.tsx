@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Button } from '../components/Button';
-import { AlertGlyph } from '../components/Glyph';
 import { formatXpChange } from '../format/formatXp';
+import { artPalette } from '../pixelArt/artPalette';
+import { PixelButton } from '../pixelArt/PixelButton';
+import { PixelFrame } from '../pixelArt/PixelFrame';
+import { PixelIcon } from '../pixelArt/PixelIcon';
+import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypography';
 import type { DeleteHabitOutcome } from '../state/useEditHabit';
 import { useReducedMotion } from '../state/useReducedMotion';
-import { colors } from '../theme/colors';
-import { radii, spacing } from '../theme/metrics';
-import { typography } from '../theme/typography';
+
+const { roles } = artPalette;
 
 export const DELETE_FAILED = 'La suppression a échoué. Réessaie.';
 
@@ -39,8 +41,10 @@ export function deleteHabitBody(xpRemoved: number, targetBonusRemoved = 0): stri
 }
 
 /**
- * Fenêtre de confirmation de la suppression d'une habitude (#6). Elle nomme l'habitude et dit ce
- * qui est effacé, conservé et retiré. « Annuler » est l'action par défaut : il vient en premier et
+ * Fenêtre de confirmation de la suppression d'une habitude (#6), dans un cadre relevé de
+ * l'identité pixel art (E3) : le titre en police pixel, le texte en police de texte, « Annuler » à
+ * gauche et « Supprimer » à droite, en rouge d'erreur avec son libellé. Elle nomme l'habitude et
+ * dit ce qui est effacé, conservé et retiré. « Annuler » est l'action par défaut : il vient en premier et
  * le lecteur d'écran s'y place à l'ouverture ; le fond et le retour du téléphone annulent aussi.
  * « Supprimer » est signalé comme définitif autrement que par la couleur (libellé et indication
  * lue par le lecteur d'écran).
@@ -110,41 +114,53 @@ export function DeleteHabitDialog({
           testID="delete-habit-scrim"
           style={styles.scrim}
         />
-        <View accessibilityViewIsModal style={styles.dialog}>
-          <Text accessibilityRole="header" style={[typography.sheetTitle, styles.title]}>
+        <PixelFrame
+          accessibilityViewIsModal
+          variant="raised"
+          under="transparent"
+          testID="delete-habit-dialog-frame"
+          style={styles.dialog}
+        >
+          <Text accessibilityRole="header" style={styles.title}>
             {deleteHabitTitle(name)}
           </Text>
-          <Text style={[typography.body, styles.body]}>
+          <Text style={[pixelTypography.body, styles.body]}>
             {deleteHabitBody(xpRemoved, targetBonusRemoved)}
           </Text>
           {failed && (
-            <View
+            <PixelFrame
               accessible
               accessibilityRole="alert"
               accessibilityLabel={DELETE_FAILED}
               accessibilityLiveRegion="assertive"
+              tone="error"
+              background={roles.errorBg}
+              under={roles.raised}
               style={styles.alert}
             >
-              <AlertGlyph color={colors.onDangerSoft} />
-              <Text style={[typography.toast, styles.alertText]}>{DELETE_FAILED}</Text>
-            </View>
+              <PixelIcon name="alert" color={roles.error} />
+              <Text style={styles.alertText}>{DELETE_FAILED}</Text>
+            </PixelFrame>
           )}
           <View style={styles.actions}>
-            <View style={styles.action}>
-              <Button ref={cancel} label="Annuler" variant="ghost" onPress={onCancel} />
-            </View>
-            <View style={styles.action}>
-              <Button
-                label={failed ? 'Réessayer' : 'Supprimer'}
-                variant="danger"
-                hint={`Supprime définitivement «\u00a0${name}\u00a0» et ses suivis.`}
-                disabled={deleting}
-                onPress={confirm}
-                testID="confirm-delete-habit"
-              />
-            </View>
+            <PixelButton
+              ref={cancel}
+              label="Annuler"
+              variant="secondary"
+              onPress={onCancel}
+              style={styles.action}
+            />
+            <PixelButton
+              label={failed ? 'Réessayer' : 'Supprimer'}
+              variant="danger"
+              accessibilityHint={`Supprime définitivement «\u00a0${name}\u00a0» et ses suivis.`}
+              disabled={deleting}
+              onPress={confirm}
+              testID="confirm-delete-habit"
+              style={styles.action}
+            />
           </View>
-        </View>
+        </PixelFrame>
       </View>
     </Modal>
   );
@@ -153,32 +169,19 @@ export function DeleteHabitDialog({
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', paddingHorizontal: 20 },
-  scrim: { ...StyleSheet.absoluteFill, backgroundColor: colors.scrim },
-  dialog: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.sheet,
-    borderWidth: 1,
-    borderColor: colors.line,
-    paddingTop: spacing.xl,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+  scrim: { ...StyleSheet.absoluteFill, backgroundColor: roles.scrim },
+  dialog: { paddingTop: 18, paddingHorizontal: 16, paddingBottom: 16, gap: 12 },
+  title: { fontFamily: pixelFont, fontSize: 21, lineHeight: 26, color: roles.light },
+  body: { color: roles.parchment },
+  alert: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10 },
+  alertText: {
+    flex: 1,
+    fontFamily: textFont.semiBold,
+    fontSize: 13,
+    lineHeight: 18,
+    color: roles.pink,
   },
-  title: { color: colors.text, marginBottom: spacing.lg },
-  body: { color: colors.muted },
-  alert: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    marginTop: 10,
-    paddingVertical: 10,
-    paddingHorizontal: spacing.md,
-    borderRadius: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.dangerLine,
-    backgroundColor: colors.dangerSoft,
-  },
-  alertText: { color: colors.onDangerSoft, flex: 1 },
-  actions: { flexDirection: 'row', gap: 10, marginTop: spacing.lg },
+  actions: { flexDirection: 'row', gap: 8 },
   action: { flex: 1 },
 });
 // Stryker restore all

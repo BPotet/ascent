@@ -24,6 +24,7 @@ export function PixelChoice({
   checked,
   filled = false,
   under = roles.surface,
+  minHeight = MIN_TARGET_SIZE,
   onPress,
   testID,
 }: {
@@ -35,6 +36,8 @@ export function PixelChoice({
   readonly filled?: boolean;
   /** La couleur sous l'option, qui coupe ses coins. */
   readonly under?: string;
+  /** La hauteur de l'option, au moins : 48 dp par défaut. */
+  readonly minHeight?: number;
   readonly onPress: () => void;
   readonly testID?: string;
 }) {
@@ -47,13 +50,13 @@ export function PixelChoice({
       accessibilityState={{ checked, selected: checked }}
       onPress={onPress}
       testID={testID}
-      style={styles.choice}
+      style={[styles.choice, { minHeight }]}
     >
       <PixelFrame
         tone={checked ? 'gold' : 'default'}
         under={under}
         {...(checked && { background: gold ? roles.gold : roles.goldBg })}
-        testID={testID === undefined ? 'choice-frame' : `${testID}-frame`}
+        testID={testID === undefined ? 'choice-frame' : `choice-frame-${testID}`}
         style={styles.frame}
       >
         {picture}
@@ -82,7 +85,7 @@ export function PixelChoice({
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  choice: { flex: 1, minHeight: MIN_TARGET_SIZE },
+  choice: { flex: 1 },
   frame: {
     flexGrow: 1,
     alignItems: 'center',

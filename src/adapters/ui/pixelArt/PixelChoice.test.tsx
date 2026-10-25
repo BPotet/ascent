@@ -35,7 +35,7 @@ describe('PixelChoice', () => {
     );
 
     expect(screen.getByRole('radio', { name: 'Moyenne' })).toBeChecked();
-    expect(screen.getByTestId('choice-frame')).toHaveStyle({
+    expect(screen.getByTestId('choice-frame-choice')).toHaveStyle({
       borderColor: roles.gold,
       backgroundColor: roles.goldBg,
     });
@@ -54,7 +54,7 @@ describe('PixelChoice', () => {
       />,
     );
 
-    expect(screen.getByTestId('choice-frame')).toHaveStyle({ borderColor: roles.line });
+    expect(screen.getByTestId('choice-frame-choice')).toHaveStyle({ borderColor: roles.line });
     expect(screen.queryByTestId('choice-tick', hidden)).toBeNull();
     expect(screen.getByText('Facile')).toHaveStyle({ fontFamily: textFont.semiBold });
   });
@@ -71,7 +71,7 @@ describe('PixelChoice', () => {
       />,
     );
 
-    expect(screen.getByTestId('choice-frame')).toHaveStyle({ backgroundColor: roles.gold });
+    expect(screen.getByTestId('choice-frame-choice')).toHaveStyle({ backgroundColor: roles.gold });
     expect(screen.getByText('3')).toHaveStyle({ color: roles.ink, fontFamily: textFont.bold });
     expect(screen.getByTestId('choice-tick', hidden)).toBeTruthy();
   });

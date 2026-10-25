@@ -1,5 +1,4 @@
-import { useCallback, useState } from 'react';
-import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { Day } from '../../../domain/day/Day';
 import { WEEKLY_TARGETS, type WeeklyTarget } from '../../../domain/habit/WeeklyTarget';
@@ -10,18 +9,17 @@ import {
   weeklyTargetPhrase,
 } from '../format/formatWeeklyTarget';
 import { useLargeText } from '../state/useLargeText';
-import { colors } from '../theme/colors';
-import { MIN_TOUCH_SIZE, radii } from '../theme/metrics';
-import { typography } from '../theme/typography';
+import { artPalette } from '../pixelArt/artPalette';
+import { artPixelSize } from '../pixelArt/artPixel';
+import { PixelChoice } from '../pixelArt/PixelChoice';
+import { pixelTypography, textFont } from '../pixelArt/pixelTypography';
+
+const { roles } = artPalette;
 
 /** Le titre du bloc, et le nom du groupe pour le lecteur d'écran. */
 export const WEEKLY_TARGET_TITLE = 'Objectif hebdomadaire';
 
-/** Taille d'une pastille (maquette, « Accessibilité ») : 44 × 44 pt, au plus. */
-const PILL_SIZE = 44;
-/** L'écart minimal entre deux pastilles, quand la rangée est trop étroite pour 7 × 44 pt. */
-const PILL_MIN_GAP = 2;
-/** Taille d'un bouton du compteur en grand texte : 56 pt. */
+/** Taille d'un bouton du compteur en grand texte : 56 dp. */
 const STEP_SIZE = 56;
 
 /** L'objectif voisin de `value`, dans l'ordre de `WEEKLY_TARGETS`, s'il existe. */
@@ -30,28 +28,9 @@ function neighbour(value: WeeklyTarget, step: -1 | 1): WeeklyTarget | undefined 
 }
 
 /**
- * La taille des pastilles d'après la largeur de leur rangée : 44 pt quand les sept y tiennent
- * (maquette, 390 pt), sinon elles se partagent la largeur (écran de 320 dp). En dessous de 44 pt,
- * la zone de toucher est complétée jusqu'à 44 pt par un `hitSlop`.
+ * Les sept options, de 1 à 7, en groupe radio : elles se partagent la rangée (48 dp de haut au
+ * moins), sans zone de toucher qui dépasse la leur ; la choisie est remplie d'or, avec sa coche.
  */
-export function pillSizeFor(rowWidth: number): number {
-  const count = WEEKLY_TARGETS.length;
-  const shared = Math.floor((rowWidth - (count - 1) * PILL_MIN_GAP) / count);
-  return Math.max(0, Math.min(PILL_SIZE, shared));
-}
-
-function usePillSize(): {
-  readonly size: number;
-  readonly onLayout: (event: LayoutChangeEvent) => void;
-} {
-  const [size, setSize] = useState(PILL_SIZE);
-  const onLayout = useCallback((event: LayoutChangeEvent) => {
-    setSize(pillSizeFor(event.nativeEvent.layout.width));
-  }, []);
-  return { size, onLayout };
-}
-
-/** Les sept pastilles, de 1 à 7, en groupe radio. */
 function Pills({
   value,
   onChange,
@@ -59,37 +38,24 @@ function Pills({
   readonly value: WeeklyTarget;
   readonly onChange: (target: WeeklyTarget) => void;
 }) {
-  const { size, onLayout } = usePillSize();
-  const slop = Math.max(0, Math.ceil((MIN_TOUCH_SIZE - size) / 2));
   return (
     <View
-      onLayout={onLayout}
       accessibilityRole="radiogroup"
       accessibilityLabel={WEEKLY_TARGET_TITLE}
       testID="weekly-target-picker"
       style={styles.pills}
     >
-      {WEEKLY_TARGETS.map((target) => {
-        const selected = target === value;
-        return (
-          <Pressable
-            key={target}
-            accessibilityRole="radio"
-            accessibilityLabel={weeklyTargetOptionLabel(target)}
-            accessibilityState={{ checked: selected, selected }}
-            onPress={() => onChange(target)}
-            hitSlop={slop}
-            testID={`weekly-target-option-${target}`}
-            style={[
-              styles.pill,
-              { width: size, height: size, borderRadius: size / 2 },
-              selected && styles.pillSelected,
-            ]}
-          >
-            <Text style={[styles.pillText, selected && styles.pillTextSelected]}>{target}</Text>
-          </Pressable>
-        );
-      })}
+      {WEEKLY_TARGETS.map((target) => (
+        <PixelChoice
+          key={target}
+          label={weeklyTargetOptionLabel(target)}
+          text={String(target)}
+          filled
+          checked={target === value}
+          onPress={() => onChange(target)}
+          testID={`weekly-target-option-${target}`}
+        />
+      ))}
     </View>
   );
 }
@@ -139,7 +105,7 @@ function Stepper({
         disabled={less === undefined}
         onPress={() => go(less)}
         testID="weekly-target-less"
-        style={[styles.step, less === undefined && styles.stepDisabled]}
+        style={[styles.step, { borderWidth: LINE }, less === undefined && styles.stepDisabled]}
       >
         <Text style={styles.stepText}>−</Text>
       </Pressable>
@@ -151,7 +117,7 @@ function Stepper({
         disabled={more === undefined}
         onPress={() => go(more)}
         testID="weekly-target-more"
-        style={[styles.step, more === undefined && styles.stepDisabled]}
+        style={[styles.step, { borderWidth: LINE }, more === undefined && styles.stepDisabled]}
       >
         <Text style={styles.stepText}>+</Text>
       </Pressable>
@@ -160,8 +126,9 @@ function Stepper({
 }
 
 /**
- * Le bloc « Objectif » des panneaux « Nouvelle habitude » (E2) et « Modifier l'habitude » (E7) :
- * sept pastilles de 1 à 7 (44 × 44 pt, moins sur un écran étroit), la choisie pleine, puis la phrase qui confirme le choix
+ * Le bloc « Objectif » des panneaux « Nouvelle habitude » (E2) et « Modifier l'habitude » (E3),
+ * dans l'identité pixel art : sept options de 1 à 7 (`PixelChoice`), la choisie remplie d'or avec
+ * sa coche et un texte en gras, puis la phrase qui confirme le choix
  * (« 3 fois par semaine », « Tous les jours »).
  *
  * Avec `creationDay` (aujourd'hui, quand c'est le jour de création de l'habitude), la phrase annonce
@@ -190,14 +157,14 @@ export function WeeklyTargetPicker({
       creationWeekTarget: creationWeekTargetOf(value, creationDay),
     });
   return (
-    <View>
-      <Text style={[typography.label, styles.title]}>{WEEKLY_TARGET_TITLE}</Text>
+    <View style={styles.block}>
+      <Text style={styles.title}>{WEEKLY_TARGET_TITLE}</Text>
       {largeText ? (
         <Stepper value={value} onChange={onChange} />
       ) : (
         <Pills value={value} onChange={onChange} />
       )}
-      <Text testID="weekly-target-phrase" style={[typography.notice, styles.phrase]}>
+      <Text testID="weekly-target-phrase" style={styles.phrase}>
         {weeklyTargetPhrase(value)}
         {note && <Text style={styles.note}>{` · ${note}`}</Text>}
       </Text>
@@ -205,35 +172,33 @@ export function WeeklyTargetPicker({
   );
 }
 
+/** Le pixel d'art, arrondi au pixel physique du téléphone. */
+const LINE = artPixelSize(2);
+
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  title: { color: colors.muted, fontWeight: '600', marginTop: 10, marginBottom: 6 },
-  pills: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  pill: {
-    borderWidth: 2,
-    borderColor: colors.line,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pillSelected: { backgroundColor: colors.accent, borderColor: colors.accent },
-  pillText: { ...typography.button, color: colors.text },
-  pillTextSelected: { color: colors.onAccent, fontWeight: '700' },
+  block: { gap: 6 },
+  title: { fontFamily: textFont.semiBold, fontSize: 13, lineHeight: 17, color: roles.parchment },
+  pills: { flexDirection: 'row', gap: 4 },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   step: {
     width: STEP_SIZE,
     height: STEP_SIZE,
-    borderRadius: radii.button + 2,
-    borderWidth: 2,
-    borderColor: colors.line,
-    backgroundColor: colors.background,
+    borderColor: roles.line,
+    backgroundColor: roles.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   stepDisabled: { opacity: 0.45 },
-  stepText: { ...typography.screenTitle, color: colors.text },
-  value: { ...typography.screenTitle, color: colors.text, minWidth: 30, textAlign: 'center' },
-  phrase: { color: colors.text, marginTop: 8, minHeight: 20 },
-  note: { color: colors.muted },
+  stepText: { ...pixelTypography.screenTitle, color: roles.light },
+  value: { ...pixelTypography.screenTitle, color: roles.light, minWidth: 30, textAlign: 'center' },
+  phrase: {
+    fontFamily: textFont.semiBold,
+    fontSize: 14,
+    lineHeight: 20,
+    color: roles.light,
+    minHeight: 20,
+  },
+  note: { fontFamily: textFont.medium, fontSize: 13, color: roles.parchment },
 });
 // Stryker restore all

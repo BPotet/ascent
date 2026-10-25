@@ -7,7 +7,11 @@ import { HabitName } from '../../../domain/habit/HabitName';
 import type { Difficulty } from '../../../domain/habit/Difficulty';
 import type { UpdateHabitInput } from '../../../application/useCases/updateHabit';
 import type { EditableSettings, UpdateHabitOutcome } from '../state/useEditHabit';
+import { artPalette } from '../pixelArt/artPalette';
+import { pixelFont, textFont } from '../pixelArt/pixelTypography';
 import { EditHabitSheet } from './EditHabitSheet';
+
+const { roles } = artPalette;
 
 const nbsp = ' ';
 const monday = Day.of(2026, 10, 5);
@@ -96,7 +100,7 @@ describe('EditHabitSheet', () => {
       'accessibilityHint',
       'Demande une confirmation avant de supprimer définitivement l’habitude.',
     );
-    expect(screen.getByTestId('trash-glyph', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByTestId('trash-icon', { includeHiddenElements: true })).toBeTruthy();
   });
 
   it.each(['Cuisiner', '  Cuisiner ', 'Cuisiner​'])(
@@ -257,7 +261,7 @@ describe('EditHabitSheet', () => {
       expect(info()).toHaveAccessibleName(message);
       expect(info()).toHaveProp('accessibilityLiveRegion', 'polite');
       expect(AccessibilityInfo.announceForAccessibility).toHaveBeenLastCalledWith(message);
-      expect(screen.getByTestId('info-glyph', { includeHiddenElements: true })).toBeTruthy();
+      expect(screen.getByTestId('info-icon', { includeHiddenElements: true })).toBeTruthy();
       expect(saveButton()).toBeEnabled();
     });
 
@@ -551,5 +555,37 @@ describe('EditHabitSheet', () => {
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onSave).not.toHaveBeenCalled();
+  });
+});
+
+describe('EditHabitSheet in pixel art (E3, #73)', () => {
+  it('opens prefilled, « Enregistrer » hatched while nothing changes, « Supprimer l’habitude » visible', async () => {
+    await open();
+
+    expect(screen.getByRole('header', { name: 'Modifier l’habitude' })).toHaveStyle({
+      fontFamily: pixelFont,
+    });
+    expect(saveButton()).toBeDisabled();
+    expect(
+      screen.getByTestId('pixel-button-hatching', { includeHiddenElements: true }),
+    ).toBeTruthy();
+    const remove = screen.getByRole('button', { name: 'Supprimer l’habitude' });
+    expect(screen.getByText('Supprimer l’habitude')).toHaveStyle({ color: roles.error });
+    expect(remove).toHaveStyle({ minHeight: 48 });
+  });
+
+  it('writes what changes in a blue frame, in the text font', async () => {
+    await open();
+
+    await fireEvent.press(option('Difficile'));
+
+    expect(info()).toHaveStyle({ borderColor: roles.blue });
+    const message =
+      'S’applique à toute cette semaine : les suivis de la semaine rapporteront +20 XP. Les semaines passées ne changent pas.';
+    expect(screen.getByText(message)).toHaveStyle({
+      fontFamily: textFont.medium,
+      fontSize: 13,
+      color: roles.light,
+    });
   });
 });
