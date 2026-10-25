@@ -878,10 +878,10 @@ function whiff(
 
 /**
  * L'arrêt sur image (parade parfaite, frappe parfaite, cassure) : le temps du combat s'arrête,
- * toutes les échéances qui suivent sont décalées. Une seule fois par instant.
+ * toutes les échéances qui suivent sont décalées. Une seule fois par instant : chaque cas ne
+ * l'appelle qu'une fois (une frappe parfaite qui brise la garde n'en lance qu'un).
  */
 function startHitStop(battle: Battle, events: Events, at: number): Battle {
-  if (battle.hitStop?.at === at) return battle;
   const until = at + HIT_STOP_MS;
   events.push({ type: 'hitStopStarted', at, until });
   const later = (instant: number) => (instant >= at ? instant + HIT_STOP_MS : instant);
