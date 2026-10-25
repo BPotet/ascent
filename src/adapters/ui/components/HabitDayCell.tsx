@@ -9,11 +9,11 @@ import { formatDayAndMonth } from '../format/formatDay';
 import { useReducedMotion } from '../state/useReducedMotion';
 import { colors } from '../theme/colors';
 import { useCellHeight } from './cellSize';
-import type { ShownXpChange } from './CharacterBar';
+import type { ShownXpChange } from '../state/xpFeedback';
 import { CheckGlyph, CrossGlyph, DotGlyph } from './Glyph';
-import { bounce } from './HabitRow';
+import { bounce } from './bounce';
 import { CORRECTED, CorrectedMark } from './CorrectedMark';
-import { XpFloat } from './XpFloat';
+import { XpFloat } from './legacy/XpFloat';
 
 /** Ce qu'une case de la Vue Semaine lit au lecteur d'écran quand un tap ne la change pas. */
 export const UNAVAILABLE = 'indisponible';

@@ -8,7 +8,7 @@ import type { Habit, HabitId } from '../../../domain/habit/Habit';
 import { isClosedDay } from '../../../domain/day/DayClosing';
 import { weeklyTargetChangeAppliesThisWeek } from '../../../domain/habit/WeekSettings';
 import { Week } from '../../../domain/week/Week';
-import { ADD_HABIT_LABEL } from '../components/AddHabitButton';
+import { ADD_HABIT_LABEL } from '../format/addHabit';
 import { Button } from '../components/Button';
 import { useCellHeight } from '../components/cellSize';
 import { CharacterBar } from '../components/CharacterBar';
@@ -16,14 +16,14 @@ import { PlusGlyph } from '../components/Glyph';
 import { LinkButton } from '../components/LinkButton';
 import { PeriodNavigator } from '../components/PeriodNavigator';
 import { Screen } from '../components/Screen';
-import { StateMessage } from '../components/StateMessage';
+import { StateMessage } from '../components/legacy/StateMessage';
+import { Toast } from '../components/legacy/Toast';
 import {
   targetToastOf,
-  Toast,
   type ToastAction,
   type ToastTarget,
   type ToastVariant,
-} from '../components/Toast';
+} from '../format/toast';
 import { HabitWeekCard, WeekDaysHeader, WeekLegend } from '../components/WeekGrid';
 import {
   CHECK_IN_SAVE_FAILED,
@@ -93,7 +93,7 @@ function LoadingView() {
       testID="week-view-loading"
       style={styles.loading}
     >
-      <CharacterBar xp={null} change={null} />
+      <CharacterBar xp={null} change={null} compact />
       <View style={styles.skeletonNav}>
         <View style={[styles.skeleton, styles.skeletonArrow]} />
         <View style={[styles.skeleton, styles.skeletonTitle]} />
@@ -343,7 +343,7 @@ export function WeekViewScreen({
   const { view } = state;
   return (
     <Screen layout="top" testID="week-view">
-      <CharacterBar xp={experience.xp} change={experience.change} />
+      <CharacterBar xp={experience.xp} change={experience.change} compact />
       <Navigator view={view} onPrevious={previous} onNext={next} />
       {view.rows.length === 0 ? (
         <StateMessage

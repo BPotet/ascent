@@ -7,29 +7,28 @@ import type { Day } from '../../../domain/day/Day';
 import type { Habit, HabitId } from '../../../domain/habit/Habit';
 import type { Week } from '../../../domain/week/Week';
 import { MAX_HABITS } from '../../../domain/habit/HabitRules';
-import { ADD_HABIT_LABEL, AddHabitButton, HABIT_LIMIT_MESSAGE } from '../components/AddHabitButton';
-import { Button } from '../components/Button';
+import { AddHabitButton } from '../components/AddHabitButton';
 import { CharacterBar } from '../components/CharacterBar';
 import { DayHeader } from '../components/DayHeader';
-import { PlusGlyph } from '../components/Glyph';
 import { GoalsReachedNotice } from '../components/GoalsReachedNotice';
 import { HabitRow } from '../components/HabitRow';
 import { Notice } from '../components/Notice';
 import { Screen } from '../components/Screen';
 import { StateMessage } from '../components/StateMessage';
+import { Toast } from '../components/Toast';
 import { WhatsNewCard } from '../components/WhatsNewCard';
 import { YesterdayReminderBanner } from '../components/YesterdayReminderBanner';
-import {
-  targetToastOf,
-  Toast,
-  type ToastAction,
-  type ToastTarget,
-  type ToastVariant,
-} from '../components/Toast';
+import { ADD_HABIT_LABEL, HABIT_LIMIT_MESSAGE } from '../format/addHabit';
 import { CHECK_IN_SAVE_FAILED, correctionMessage } from '../format/checkInMessages';
 import { formatDayAndMonth } from '../format/formatDay';
 import type { WeeklyProgressShown } from '../format/formatWeeklyTarget';
 import type { TargetFeedback } from '../format/targetFeedback';
+import {
+  targetToastOf,
+  type ToastAction,
+  type ToastTarget,
+  type ToastVariant,
+} from '../format/toast';
 import { useCheckInHint } from '../state/useCheckInHint';
 import { useCreateHabit } from '../state/useCreateHabit';
 import { useDayView } from '../state/useDayView';
@@ -43,9 +42,11 @@ import {
 import { useTodayChange } from '../state/useTodayChange';
 import { useWhatsNewCard } from '../state/useWhatsNewCard';
 import { useYesterdayReminder } from '../state/useYesterdayReminder';
-import { colors } from '../theme/colors';
-import { radii, spacing } from '../theme/metrics';
-import { typography } from '../theme/typography';
+import { artPalette } from '../pixelArt/artPalette';
+import { PixelButton } from '../pixelArt/PixelButton';
+import { PixelFrame } from '../pixelArt/PixelFrame';
+import { pixelTypography } from '../pixelArt/pixelTypography';
+import { PixelSkeleton } from '../pixelArt/PixelSkeleton';
 import {
   type DeletedHabit,
   deletedMessage,
@@ -87,7 +88,16 @@ interface ToastContent {
   readonly announcement?: string;
 }
 
-function LoadingView() {
+const { roles } = artPalette;
+
+/** Le nombre de lignes que réserve le squelette de chargement. */
+const SKELETON_ROWS = 5;
+
+/**
+ * Le chargement : l'en-tête du personnage tout de suite, et un squelette au pixel d'art qui réserve
+ * la place du titre, du compteur et des lignes (sans clignoter en mouvement réduit).
+ */
+function LoadingView({ xp }: { readonly xp: number | null }) {
   return (
     <View
       accessible
@@ -97,26 +107,30 @@ function LoadingView() {
       testID="day-view-loading"
       style={styles.loading}
     >
-      <CharacterBar xp={null} change={null} />
-      <View style={styles.loadingHeader}>
-        <View>
-          <View style={[styles.skeleton, styles.skeletonTitle]} />
-          <View style={[styles.skeleton, styles.skeletonDate]} />
-        </View>
-        <View style={[styles.skeleton, styles.skeletonCount]} />
-      </View>
-      {[0, 1, 2, 3].map((index) => (
-        <View key={index} style={styles.skeletonRow}>
-          <View style={[styles.skeleton, styles.skeletonCheck]} />
-          <View style={styles.skeletonTexts}>
-            <View style={[styles.skeleton, styles.skeletonName]} />
-            <View testID="day-view-loading-secondary-line" style={styles.skeletonLine}>
-              <View style={[styles.skeleton, styles.skeletonIcon]} />
-              <View style={[styles.skeleton, styles.skeletonStatus]} />
-            </View>
+      <CharacterBar xp={xp} change={null} />
+      <View>
+        <View style={styles.loadingHeader}>
+          <View>
+            <PixelSkeleton width={150} height={26} />
+            <View style={styles.skeletonGap} />
+            <PixelSkeleton width={120} height={12} />
           </View>
+          <PixelSkeleton width={80} height={22} />
         </View>
-      ))}
+        <View style={styles.list}>
+          {Array.from({ length: SKELETON_ROWS }, (_, index) => (
+            <PixelFrame key={index} style={styles.skeletonRow}>
+              <PixelSkeleton width={44} height={44} />
+              <View style={styles.skeletonTexts}>
+                <PixelSkeleton width="62%" height={14} />
+                <View testID="day-view-loading-secondary-line">
+                  <PixelSkeleton width="44%" height={10} />
+                </View>
+              </View>
+            </PixelFrame>
+          ))}
+        </View>
+      </View>
     </View>
   );
 }
@@ -128,6 +142,34 @@ function weeklyProgressShownOf({
   targetReached,
 }: DayViewHabit): WeeklyProgressShown | undefined {
   return weekTarget === null ? undefined : { weeklyProgress, weekTarget, targetReached };
+}
+
+/** La place d'une ligne dans la liste : son haut et sa hauteur, en dp. */
+interface RowPlace {
+  readonly y: number;
+  readonly height: number;
+}
+
+/**
+ * L'espace sous la dernière ligne de la liste, que couvre le bouton flottant « Ajouter une
+ * habitude » : une ligne révélée par le défilement s'arrête au-dessus.
+ */
+const LIST_BOTTOM_SPACE = 112;
+
+/**
+ * Le défilement qui montre une ligne sous le bord de l'écran ou sous le bouton flottant, juste
+ * assez pour voir son bas au-dessus du bouton ; `null` si elle est déjà visible (ou si la hauteur
+ * visible n'est pas encore connue).
+ */
+function revealOffsetOf(
+  { y, height }: RowPlace,
+  shown: { readonly offset: number; readonly height: number },
+): number | null {
+  const bottom = y + height + LIST_BOTTOM_SPACE;
+  if (shown.height === 0 || bottom <= shown.offset + shown.height) {
+    return null;
+  }
+  return bottom - shown.height;
 }
 
 function HabitList({
@@ -152,6 +194,25 @@ function HabitList({
   readonly onEdit: (row: DayViewHabit) => void;
 }) {
   const scroll = useRef<ScrollView>(null);
+  /** La place de chaque ligne dans la liste, et la partie de la liste à l'écran. */
+  const rows = useRef(new Map<HabitId, RowPlace>());
+  const shown = useRef({ offset: 0, height: 0 });
+  /** L'habitude créée déjà révélée : elle ne bouge plus ensuite, sous le doigt du joueur. */
+  const revealed = useRef<HabitId | null>(null);
+  // Une habitude créée, en bas de la liste, n'y est montrée que si elle est sous le bord de
+  // l'écran ou sous le bouton, et juste assez : les encarts du haut (aide, « Toutes faites »)
+  // restent à l'écran. Le défilement est immédiat, et fait une seule fois.
+  const reveal = () => {
+    if (highlighted?.reveal !== true || revealed.current === highlighted.id) {
+      return;
+    }
+    const row = rows.current.get(highlighted.id);
+    const offset = row && revealOffsetOf(row, shown.current);
+    if (offset !== undefined && offset !== null) {
+      revealed.current = highlighted.id;
+      scroll.current?.scrollTo({ y: offset, animated: false });
+    }
+  };
   const { doneCount, expectedCount } = view;
   const activeCount = view.habits.length;
   // Seules les habitudes attendues comptent (#25) : sans aucune, « Objectifs de la semaine
@@ -159,6 +220,14 @@ function HabitList({
   const allDone = expectedCount > 0 && doneCount === expectedCount;
   const goalsReached = activeCount > 0 && expectedCount === 0;
   const count = view.habitCount;
+  // « Toutes faites » et « Objectifs de la semaine atteints » apparaissent en haut de la liste : la
+  // liste y remonte s'ils naissent au-dessus de la partie à l'écran.
+  const topMoment = allDone || goalsReached;
+  useEffect(() => {
+    if (topMoment && shown.current.offset > 0) {
+      scroll.current?.scrollTo({ y: 0, animated: true });
+    }
+  }, [topMoment]);
   return (
     <>
       <DayHeader
@@ -170,11 +239,14 @@ function HabitList({
       <ScrollView
         ref={scroll}
         contentContainerStyle={styles.list}
-        onContentSizeChange={() => {
-          if (highlighted?.reveal === true) {
-            scroll.current?.scrollToEnd();
-          }
+        onContentSizeChange={reveal}
+        onLayout={({ nativeEvent }) => {
+          shown.current = { ...shown.current, height: nativeEvent.layout.height };
         }}
+        onScroll={({ nativeEvent }) => {
+          shown.current = { ...shown.current, offset: nativeEvent.contentOffset.y };
+        }}
+        scrollEventThrottle={16}
         testID="day-view-list"
       >
         {whatsNew}
@@ -193,13 +265,19 @@ function HabitList({
             targetFlash={targetFlashOn(targetFlash, habitDay)}
             onToggle={onToggle}
             onEdit={() => onEdit(habitDay)}
+            onLayout={({ nativeEvent: { layout } }) => {
+              rows.current.set(habitDay.habit.id, { y: layout.y, height: layout.height });
+              if (habitDay.habit.id === highlighted?.id) {
+                reveal();
+              }
+            }}
           />
         ))}
         <View style={styles.section}>
-          <Text style={[typography.label, styles.sectionTitle]}>Habitudes</Text>
+          <Text style={[pixelTypography.label, styles.sectionTitle]}>Habitudes</Text>
           <Text
             accessibilityLabel={`${count} ${count > 1 ? 'habitudes' : 'habitude'} sur ${MAX_HABITS}`}
-            style={[typography.label, view.canAddHabit ? styles.sectionCount : styles.full]}
+            style={[pixelTypography.label, view.canAddHabit ? styles.sectionCount : styles.full]}
           >
             {`${count}/${MAX_HABITS}`}
           </Text>
@@ -370,27 +448,29 @@ export function DayViewScreen({
 
   if (state.status === 'loading') {
     return (
-      <Screen layout="top" testID="day-view">
-        <LoadingView />
+      <Screen layout="top" testID="day-view" background={roles.night}>
+        <LoadingView xp={experience.xp} />
       </Screen>
     );
   }
 
   if (state.status === 'failed') {
     return (
-      <Screen layout="top" testID="day-view">
+      <Screen layout="top" testID="day-view" background={roles.night}>
+        <CharacterBar xp={experience.xp} change={null} />
         <StateMessage
           alert
           illustration="alert"
           title="Impossible de charger tes habitudes."
           text="Une erreur est survenue en lisant tes données sur ce téléphone."
           action={
-            <Button
+            <PixelButton
               label="Réessayer"
               onPress={() => {
                 void reload();
                 void experience.reload();
               }}
+              style={styles.retry}
             />
           }
           testID="day-view-error"
@@ -402,18 +482,18 @@ export function DayViewScreen({
   const { view } = state;
   const empty = view.habitCount === 0;
   return (
-    <Screen layout="top" testID="day-view">
+    <Screen layout="top" testID="day-view" background={roles.night}>
       <CharacterBar xp={experience.xp} change={experience.change} />
       {empty ? (
         <StateMessage
-          illustration="summit"
+          illustration="character"
           title="Aucune habitude pour l’instant"
           text="Crée ta première habitude et commence à gagner de l’expérience."
           action={
-            <Button
+            <PixelButton
               label={ADD_HABIT_LABEL}
+              icon="plus"
               onPress={openSheet}
-              icon={<PlusGlyph color={colors.onAccent} />}
               testID="add-habit"
             />
           }
@@ -499,47 +579,40 @@ export function DayViewScreen({
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  list: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: 112 },
+  list: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: LIST_BOTTOM_SPACE, gap: 8 },
   section: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'space-between',
-    marginTop: 6,
+    paddingTop: 8,
     marginHorizontal: 2,
   },
-  sectionTitle: { color: colors.muted },
-  sectionCount: { color: colors.muted },
-  full: { color: colors.xp, fontWeight: '600' },
+  sectionTitle: {
+    color: roles.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    fontSize: 12,
+  },
+  sectionCount: { color: roles.muted, fontSize: 12 },
+  full: { color: roles.gold, fontSize: 12 },
+  retry: { minWidth: 180 },
   loading: { flex: 1 },
   loadingHeader: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    marginHorizontal: spacing.lg,
-    paddingTop: 6,
-    paddingBottom: spacing.sm,
-    marginBottom: spacing.md,
+    paddingTop: 12,
+    paddingBottom: 10,
+    paddingHorizontal: 16,
   },
-  skeleton: { backgroundColor: colors.skeleton, borderRadius: spacing.sm },
-  skeletonTitle: { width: 150, height: 24 },
-  skeletonDate: { width: 120, height: 13, marginTop: spacing.sm },
-  skeletonCount: { width: 90, height: 20 },
+  skeletonGap: { height: 8 },
   skeletonRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    marginHorizontal: spacing.lg,
-    marginBottom: 10,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: 14,
-    borderRadius: radii.row,
-    backgroundColor: colors.surface,
+    gap: 12,
+    minHeight: 72,
+    padding: 12,
   },
-  skeletonCheck: { width: 44, height: 44, borderRadius: 22 },
-  skeletonTexts: { flex: 1 },
-  skeletonName: { width: '65%', height: 14 },
-  skeletonLine: { flexDirection: 'row', gap: 6, marginTop: spacing.sm },
-  skeletonIcon: { width: 20, height: 11 },
-  skeletonStatus: { width: '46%', height: 11 },
+  skeletonTexts: { flex: 1, gap: 8 },
 });
 // Stryker restore all

@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import { currentBuildChannel } from '../../adapters/device/build/buildChannel';
 import { TabBar, type TabKey } from '../../adapters/ui/components/TabBar';
 import { TrialBattleEntry } from '../../adapters/ui/components/TrialBattleEntry';
-import { colors } from '../../adapters/ui/theme/colors';
+import { artPalette } from '../../adapters/ui/pixelArt/artPalette';
 
 /** La route de chaque onglet, dans l'ordre de la barre. */
 const ROUTES = { day: 'index', week: 'week', month: 'month' } as const satisfies Record<
@@ -21,7 +21,7 @@ function tabOf(route: string | undefined): TabKey {
 // Stryker disable all: apparence de la navigation, vérifiée par la conformité aux maquettes.
 const screenOptions = {
   headerShown: false,
-  sceneStyle: { backgroundColor: colors.background },
+  sceneStyle: { backgroundColor: artPalette.roles.night },
 } as const;
 // Stryker restore all
 

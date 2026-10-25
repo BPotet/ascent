@@ -43,7 +43,13 @@
 | **Carte de nouveauté** (`WhatsNewCard`) | La carte d'information unique de la Vue Journée, affichée à la première ouverture d'une version qui apporte une nouveauté à un joueur qui a déjà des habitudes. Fermable ; elle ne revient jamais. | Défini |
 | **Rappel d'hier** (`YesterdayReminder`) | Le bandeau discret en haut de la Vue Journée quand hier compte au moins une habitude attendue « pas fait » : « Hier : 1/2 faites » (habitudes faites / habitudes attendues), avec l'action « Corriger » qui ouvre la Vue Semaine sur la semaine d'hier. Le joueur peut le fermer pour la journée ; il revient le lendemain pour la nouvelle veille. | Défini |
 | **Vue Semaine** (`WeekView`) | L'écran qui montre, pour chaque habitude existante, l'état du suivi des 7 jours d'une semaine, sa progression de la semaine et, le cas échéant, « Objectif atteint ». | Défini |
-| **Barre d'onglets** (`TabBar`) | La barre en bas de l'écran qui passe d'une vue à l'autre : onglets **Journée**, **Semaine** et **Mois**. L'onglet de la vue affichée a un fond et un libellé en gras. | Défini |
+| **Barre d'onglets** (`TabBar`) | La barre en bas de l'écran qui passe d'une vue à l'autre : onglets **Journée**, **Semaine** et **Mois** (l'onglet **Tour** arrivera avec l'épique #30). L'onglet de la vue affichée a un fond, un trait d'or en haut et un libellé en gras, pas seulement une couleur. | Défini |
+| **En-tête du personnage** (`CharacterBar`) | Le haut commun de la Vue Journée, de la Vue Semaine et de la Vue Mois : le personnage en pixels, devant le ciel du jour et la tour au loin, et l'expérience du personnage (« Expérience du personnage », « 340 XP »). Ni niveau, ni jauge d'expérience dans l'épique #71. | Défini |
+| **Ciel du jour** (`DaySky`, règle `daySkyOf`, cas d'usage `getDaySky`, dessin `paintDaySky`) | Le décor de l'en-tête du personnage : un ciel de nuit qui s'éclaire d'un cran à chaque habitude faite, selon le rapport habitudes faites / habitudes attendues d'aujourd'hui (`DaySky.light`, de 0 à 1). Ciel de nuit sans habitude active ; le soleil se lève derrière la tour quand toutes les habitudes attendues sont faites, ou quand aucune n'est attendue (objectifs de la semaine atteints). | Défini |
+| **Crans de la semaine** (`WeekNotches`) | L'affichage de la progression de la semaine d'une habitude : un cran par « fait » attendu par l'objectif de la semaine, vert quand il est fait, doré quand l'objectif est atteint, « +N » au-delà. Toujours accompagnés du texte (« 2/5 cette semaine ») ou de l'annonce : seuls, ils ne portent aucun sens. | Défini |
+| **Envol** (`XpFloat`) | Le changement d'expérience d'un suivi qui s'envole au-dessus de la case touchée : « +10 XP » en or, « −10 XP » en gris. Jamais en mouvement réduit. | Défini |
+| **Pastille d'expérience** (`XpChangePill`) | Le changement d'expérience montré près de l'expérience, dans l'en-tête du personnage : « +10 XP », et « +30 XP prime » pour la prime d'objectif. | Défini |
+| **Étincelle** (`Burst`, sprite `burstSprite`) | L'éclat de 3 images autour de la case d'une habitude qui passe à « fait ». Décorative, jamais au retour en arrière ni en mouvement réduit. | Défini |
 | **Révision du suivi** (`TrackingRevision`) | Le compteur, partagé par les vues affichées, qui avance à chaque habitude créée, modifiée (nom ou réglages) ou supprimée, ou suivi enregistré : les autres vues se rechargent pour rester à jour. | Défini |
 | **Vue Mois** (`MonthView`) | L'écran qui montre un mois du calendrier : pour chaque jour, l'état de chaque habitude et le compteur « habitudes faites / habitudes attendues », ou le drapeau « Objectifs atteints » pour un jour suivi sans habitude attendue ; et, sous la grille, la section **Objectifs par semaine** (`targetsByWeek`) : pour chaque semaine qui a au moins un jour dans le mois, jusqu'à la semaine en cours, une ligne (`WeekTargetsRow`) avec le nombre d'habitudes à objectif atteint sur celles qui ont un objectif de la semaine (« Semaine du 5 octobre · 3/4 objectifs atteints », « Cette semaine · 1/4 objectifs atteints », avec le drapeau quand tous sont atteints) ; une semaine où aucune habitude n'a d'objectif n'a pas de ligne, et la section n'apparaît pas sans ligne. Toucher une ligne ouvre la Vue Semaine sur cette semaine. | Défini |
 | **Jour du mois** (`MonthDay`) | Un jour de la Vue Mois : l'état de chaque habitude existante ce jour-là, le compteur « habitudes faites / habitudes attendues » et la marque « corrigé » si l'une de ses cases la porte. Il est « à venir » après aujourd'hui, neutre sans habitude active, suivi (`tracked`) sinon. Un jour suivi sans habitude attendue porte le drapeau « Objectifs atteints » à la place du compteur. | Défini |
@@ -57,6 +63,20 @@
 | **Quête** (`Quest`) | Un objectif narratif composé d'étapes, lié à l'histoire. | À préciser (lien avec les habitudes) |
 | **Histoire** (`Story`, côté jeu : `Lore`) | Le récit et l'univers d'Ascent. Dans le code, utiliser `Lore` pour éviter la confusion avec une *story* de développement. | À préciser (univers, ton) |
 | **Verrou** (`AppLock`) | La protection d'accès à l'application sur le téléphone. | À préciser (PIN, biométrie) |
+
+## Interface
+
+| Terme | Définition | Statut |
+|---|---|---|
+| **Identité pixel art** (`pixelArt`, dossier `src/adapters/ui/pixelArt/`) | Le style de la tour étendu à toute l'app (épique #71, ADR 0007) : une nuit bleue, une lumière chaude venue d'en haut à droite, des sprites au pixel d'art cernés d'encre, des cadres crantés, deux polices. | Défini |
+| **Pixel d'art** (`artPixel` : `ART_PIXEL` = 2 dp, `ArtScale` = 2 ou 3, `artPixelSize`) | L'unité du dessin : 2 dp dans toute l'interface (échelle ×2), 3 dp pour les grands moments (×3). Arrondi à un nombre entier de pixels physiques ; jamais d'échelle fractionnaire. | Défini |
+| **Palette d'art** (`artPalette` : `artPalette.tints`, `artPalette.roles`) | Les 31 teintes des sprites et du décor, reprises du prototype de la tour (`tints`), et les rôles d'interface qui en sont tirés (`roles` : nuit, surface, trait, encre, lumière, « fait », erreur…). | Défini |
+| **Police pixel** (`pixelFont`) | Pixelify Sans 700 : titres, chiffres de jeu, mots isolés, à 18 px au moins. Elle ne porte jamais une phrase et passe à la ligne plutôt que de rétrécir. | Défini |
+| **Police de texte** (`textFont`) | Inter : tout ce qui se lit (noms d'habitude, phrases, aides, erreurs, libellés d'onglets et de boutons). | Défini |
+| **Sprite** (`Sprite`) | Une image en pixels d'art dessinée par le code (personnage, tour, ciel, étincelle, icônes, emblème). Les écrans ne la connaissent que par son nom : un pack ou un artiste pourra la remplacer sans changer les écrans. | Défini |
+| **Cadre cranté** (`PixelFrame`) | Le cadre de l'identité pixel art : trait de 2 dp, coins coupés d'un pixel d'art, arête haute éclairée, bas dans l'ombre. | Défini |
+
+> Le mot « cran » a trois sens : le **cadre cranté** (`PixelFrame`), les **crans de la semaine** (`WeekNotches`) et le ciel du jour qui s'éclaire « d'un cran » (`DaySky.light`). Les identifiants les séparent.
 
 ## Combat
 

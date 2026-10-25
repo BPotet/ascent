@@ -12,8 +12,8 @@
  *
  * Correspondance des libellés :
  * - « le feedback « +10 XP » » est la pastille du suivi dans l'en-tête, « +15 XP prime » la seconde ;
- * - « l'éclat doré » est l'éclat du badge (`target-burst`), joué quand le mouvement n'est pas
- *   réduit ;
+ * - « l'éclat doré » est l'allumage du badge en 3 paliers (`target-burst`), joué quand le
+ *   mouvement n'est pas réduit ;
  * - le message est le toast de F1 : son titre, puis l'habitude, sa progression et la prime, lus
  *   « Objectif de la semaine atteint · Courir 5 km 3/3 · +15 XP prime » ; pour une semaine close, le
  *   scénario n'en donne que le titre ;
@@ -244,13 +244,13 @@ const steps: StepDefinitions = ({ given, when, then }) => {
     await waitFor(() =>
       expect(screen.getByTestId('toast')).toHaveTextContent(toastStartsWith(text)),
     );
-    expect(screen.getByTestId('toast-goal-icon')).toBeOnTheScreen();
+    expect(screen.getByTestId('toast-goal-icon', hidden)).toBeTruthy();
   });
   then(/^le message discret « ([^»]+) » s'affiche$/, async (text: string) => {
     await waitFor(() =>
       expect(screen.getByTestId('toast')).toHaveTextContent(toastStartsWith(text)),
     );
-    expect(screen.queryByTestId('toast-goal-icon')).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('toast-goal-icon', hidden)).toBeNull();
   });
   then(/^le téléphone vibre légèrement$/, async () => {
     // La vibration du suivi, puis la seconde de F1.
@@ -323,8 +323,10 @@ const steps: StepDefinitions = ({ given, when, then }) => {
         await screen.findByTestId(`habit-target-reached-${habit.id}`, hidden),
       ).toBeOnTheScreen();
       expect(screen.queryByTestId('target-burst', hidden)).not.toBeOnTheScreen();
-      expect(await screen.findByTestId('toast-goal-icon')).toBeOnTheScreen();
-      expect(screen.getByTestId('xp-change-bonus', hidden)).toHaveStyle({ opacity: 1 });
+      expect(await screen.findByTestId('toast-goal-icon', hidden)).toBeTruthy();
+      expect(screen.getByTestId('xp-change-bonus', hidden)).toHaveStyle({
+        transform: [{ translateY: 0 }],
+      });
     },
   );
   then(

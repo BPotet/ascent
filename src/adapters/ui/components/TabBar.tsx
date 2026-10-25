@@ -1,75 +1,41 @@
-import type { ReactElement } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors } from '../theme/colors';
-import { spacing } from '../theme/metrics';
-import { typography } from '../theme/typography';
+import { artPalette } from '../pixelArt/artPalette';
+import { artPixelSize } from '../pixelArt/artPixel';
+import { PixelIcon } from '../pixelArt/PixelIcon';
+import { pixelTypography } from '../pixelArt/pixelTypography';
+import type { IconName } from '../pixelArt/sprites/icons';
 
-/** Les vues que la barre d'onglets propose. */
-export type TabKey = 'day' | 'week' | 'month';
+const { roles } = artPalette;
 
-/** Le libellé de chaque onglet (maquette, « Barre d'onglets »). */
-export const TAB_LABELS: Readonly<Record<TabKey, string>> = {
-  day: 'Journée',
-  week: 'Semaine',
-  month: 'Mois',
-};
-
-// Stryker disable all: pictogrammes purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
-const RAYS = [0, 45, 90, 135];
-
-function DayIcon({ color }: { readonly color: string }) {
-  return (
-    <View style={icons.box}>
-      {RAYS.map((angle) => (
-        <View key={angle} style={[icons.ray, { transform: [{ rotate: `${angle}deg` }] }]}>
-          <View style={[icons.rayEnd, { backgroundColor: color }]} />
-          <View style={[icons.rayEnd, { backgroundColor: color }]} />
-        </View>
-      ))}
-      <View style={[icons.sun, { borderColor: color }]} />
-    </View>
-  );
-}
-
-function WeekIcon({ color }: { readonly color: string }) {
-  return (
-    <View style={[icons.week, { borderColor: color }]}>
-      {[0, 1, 2].map((index) => (
-        <View key={index} style={[icons.weekLine, { backgroundColor: color }]} />
-      ))}
-    </View>
-  );
-}
-
-function MonthIcon({ color }: { readonly color: string }) {
-  return (
-    <View style={icons.box}>
-      <View style={[icons.month, { borderColor: color }]}>
-        <View style={[icons.monthTop, { backgroundColor: color }]} />
-        <View style={icons.monthDots}>
-          {[0, 1, 2, 3, 4].map((index) => (
-            <View key={index} style={[icons.monthDot, { backgroundColor: color }]} />
-          ))}
-        </View>
-      </View>
-    </View>
-  );
-}
-
-const ICONS: Readonly<Record<TabKey, (props: { readonly color: string }) => ReactElement>> = {
-  day: DayIcon,
-  week: WeekIcon,
-  month: MonthIcon,
-};
-// Stryker restore all
+/** Le pixel d'art, arrondi au pixel physique du téléphone (traits, crans, pas des envols). */
+const LINE = artPixelSize(2);
 
 /**
- * Barre d'onglets en bas de l'écran, à portée du pouce : une vue par onglet (`tabs`, dans l'ordre).
- * L'onglet de la vue affichée (`current`) a un fond et un libellé en gras, pas seulement une couleur,
- * et il est « sélectionné » pour le lecteur d'écran. Toucher un onglet appelle `onSelect` : c'est
- * l'assemblage (routes) qui change de vue.
+ * Les onglets de la barre d'onglets : leur libellé et leur icône (maquette, « Barre d'onglets »).
+ * Un onglet de plus (Tour, épique #30) n'est qu'une ligne de plus ici, avec son icône.
+ */
+const TABS = {
+  day: { label: 'Journée', icon: 'tDay' },
+  week: { label: 'Semaine', icon: 'tWeek' },
+  month: { label: 'Mois', icon: 'tMonth' },
+} as const satisfies Record<string, { readonly label: string; readonly icon: IconName }>;
+
+/** Les vues que la barre d'onglets propose. */
+export type TabKey = keyof typeof TABS;
+
+/** Le libellé de chaque onglet. */
+export const TAB_LABELS = Object.fromEntries(
+  Object.entries(TABS).map(([tab, { label }]) => [tab, label]),
+) as Readonly<Record<TabKey, string>>;
+
+/**
+ * Barre d'onglets (`TabBar`) en bas de l'écran, à portée du pouce : une vue par onglet (`tabs`,
+ * dans l'ordre), avec son icône en pixels de 24 dp et son libellé en police de texte. L'onglet de la
+ * vue affichée (`current`) a un fond, un trait d'or de 4 dp en haut et un libellé en gras, pas
+ * seulement une couleur, et il est « sélectionné » pour le lecteur d'écran. Chaque onglet fait 56 dp
+ * de haut. Toucher un onglet appelle `onSelect` : c'est l'assemblage (routes) qui change de vue.
  */
 export function TabBar({
   tabs,
@@ -85,37 +51,37 @@ export function TabBar({
     <View
       accessibilityRole="tablist"
       testID="tab-bar"
-      style={[styles.bar, { paddingBottom: Math.max(bottom, spacing.sm) }]}
+      style={[styles.bar, { paddingBottom: Math.max(bottom, 8) }]}
     >
+      <View style={styles.line} />
+      <View style={styles.shade} />
       {tabs.map((tab) => {
         const selected = tab === current;
-        const color = selected ? colors.accent : colors.muted;
-        const Icon = ICONS[tab];
+        const { label, icon } = TABS[tab];
         return (
           <Pressable
             key={tab}
             accessibilityRole="tab"
-            accessibilityLabel={TAB_LABELS[tab]}
+            accessibilityLabel={label}
             accessibilityState={{ selected }}
             onPress={() => onSelect(tab)}
             testID={`tab-${tab}`}
-            style={styles.tab}
+            style={[styles.tab, selected && styles.selected]}
           >
-            <View
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
+            {selected && <View testID={`tab-line-${tab}`} style={styles.activeLine} />}
+            <PixelIcon
+              name={icon}
+              color={selected ? roles.gold : roles.muted}
+              secondColor={selected ? roles.light : roles.parchment}
               testID={`tab-icon-${tab}`}
-              style={[styles.icon, selected && styles.iconSelected]}
-            >
-              <Icon color={color} />
-            </View>
+            />
             <Text
               style={[
-                selected ? typography.tabActive : typography.tab,
-                selected ? styles.labelSelected : styles.label,
+                selected ? pixelTypography.tabActive : pixelTypography.tab,
+                { color: selected ? roles.gold : roles.parchment },
               ]}
             >
-              {TAB_LABELS[tab]}
+              {label}
             </Text>
           </Pressable>
         );
@@ -128,60 +94,44 @@ export function TabBar({
 const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
+    gap: 4,
     paddingTop: 6,
-    paddingHorizontal: 10,
-    backgroundColor: colors.tabBar,
-    borderTopWidth: 1,
-    borderTopColor: colors.line,
+    paddingHorizontal: 8,
+    backgroundColor: roles.night,
+  },
+  line: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: LINE,
+    backgroundColor: roles.line,
+  },
+  shade: {
+    position: 'absolute',
+    top: LINE,
+    left: 0,
+    right: 0,
+    height: LINE,
+    backgroundColor: roles.ink,
   },
   tab: {
     flex: 1,
-    minHeight: 52,
+    minHeight: 56,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 3,
-    borderRadius: 14,
+    borderWidth: LINE,
+    borderColor: 'transparent',
   },
-  icon: {
-    width: 58,
-    height: 30,
-    borderRadius: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconSelected: { backgroundColor: colors.tabActiveSoft },
-  label: { color: colors.muted },
-  labelSelected: { color: colors.text },
-});
-
-const icons = StyleSheet.create({
-  box: { width: 22, height: 22, alignItems: 'center', justifyContent: 'center' },
-  sun: { width: 9, height: 9, borderRadius: 4.5, borderWidth: 2 },
-  ray: {
+  selected: { backgroundColor: roles.surface, borderColor: roles.line },
+  activeLine: {
     position: 'absolute',
-    width: 2,
-    height: 19,
-    justifyContent: 'space-between',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 2 * LINE,
+    backgroundColor: roles.gold,
   },
-  rayEnd: { width: 2, height: 2.4, borderRadius: 1 },
-  week: {
-    width: 18,
-    height: 14,
-    borderRadius: 3,
-    borderWidth: 2,
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
-  },
-  weekLine: { width: 1.6, height: '100%' },
-  month: { width: 18, height: 16, borderRadius: 3, borderWidth: 2, overflow: 'hidden' },
-  monthTop: { height: 2.5 },
-  monthDots: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 2,
-    paddingTop: 2,
-    paddingHorizontal: 1.5,
-  },
-  monthDot: { width: 2.4, height: 2, borderRadius: 1 },
 });
 // Stryker restore all

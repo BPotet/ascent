@@ -26,6 +26,7 @@ import { prepareAscentDatabase } from '../../src/adapters/persistence/sqlite/pre
 import type { SqlDatabase, SqlValue } from '../../src/adapters/persistence/sqlite/SqlDatabase';
 import { SqliteUnitOfWork } from '../../src/adapters/persistence/sqlite/SqliteUnitOfWork';
 import { openNodeSqliteDatabase } from '../../src/adapters/persistence/testing/nodeSqliteDatabase';
+import { pixelFont, textFont } from '../../src/adapters/ui/pixelArt/pixelTypography';
 import { fonts } from '../../src/adapters/ui/theme/typography';
 import { createHabit } from '../../src/application/useCases/createHabit';
 import { introduceTargetBonus } from '../../src/application/useCases/introduceTargetBonus';
@@ -271,9 +272,43 @@ describe('app startup', () => {
     await renderRouter(appDirectory);
     await emptyDayViewIsShown();
 
-    for (const font of Object.values(fonts)) {
+    for (const font of [...Object.values(fonts), pixelFont, ...Object.values(textFont)]) {
       expect(isLoaded(font)).toBe(true);
     }
+  });
+
+  it('shows the title of the startup screen only once the fonts are loaded, never in the system font', async () => {
+    const opening = deferred();
+    openDatabase.mockReturnValue(opening.promise);
+    let fontsLoaded: () => void = () => undefined;
+    jest.mocked(loadAsync).mockReturnValueOnce(
+      new Promise<void>((done) => {
+        fontsLoaded = done;
+      }),
+    );
+
+    await renderRouter(appDirectory);
+
+    expect(screen.getByLabelText('Chargement')).toBeOnTheScreen();
+    expect(screen.queryByText('Ascent')).not.toBeOnTheScreen();
+    await act(async () => fontsLoaded());
+    expect(screen.getByText('Ascent')).toHaveStyle({ fontFamily: pixelFont });
+
+    await act(async () => opening.resolve(await openRealDatabase()));
+    await emptyDayViewIsShown();
+  });
+
+  it('shows the title of the startup screen when the fonts cannot be loaded', async () => {
+    const opening = deferred();
+    openDatabase.mockReturnValue(opening.promise);
+    jest.mocked(loadAsync).mockRejectedValueOnce(new Error('font file is corrupted'));
+
+    await renderRouter(appDirectory);
+    await act(async () => undefined);
+
+    expect(screen.getByText('Ascent')).toBeOnTheScreen();
+    await act(async () => opening.resolve(await openRealDatabase()));
+    await emptyDayViewIsShown();
   });
 
   it('starts with the system font when the fonts cannot be loaded', async () => {

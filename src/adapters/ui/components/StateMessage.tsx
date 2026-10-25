@@ -1,25 +1,30 @@
 import type { ReactNode } from 'react';
-import { Image, type ImageSourcePropType, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { colors } from '../theme/colors';
-import { spacing } from '../theme/metrics';
-import { typography } from '../theme/typography';
+import { artPalette } from '../pixelArt/artPalette';
+import { pixelTypography } from '../pixelArt/pixelTypography';
+import { alertEmblem } from '../pixelArt/sprites/alertEmblem';
+import { characterSprite } from '../pixelArt/sprites/characterSprite';
+import { toPixelImage } from '../pixelArt/sprites/Sprite';
+import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
 
+// Stryker disable all: illustrations purement visuelles, vérifiées par la conformité aux maquettes.
 /**
- * Illustrations des états de la maquette validée, exportées de ses SVG (1x, 2x, 3x) :
- * `summit` (montagne, état vide) et `alert` (grande icône d'alerte de 56 pt, erreur).
+ * Les illustrations des états, dessinées par le code : le personnage qui attend, à ×3 (vide), et
+ * l'emblème d'alerte, à ×2 (erreur).
  */
 const illustrations = {
-  summit: { source: require('../assets/summit.png'), width: 180, height: 130 },
-  alert: { source: require('../assets/alert.png'), width: 56, height: 56 },
-} as const satisfies Record<string, { source: ImageSourcePropType; width: number; height: number }>;
+  character: { sprite: 'character-0', draw: () => toPixelImage(characterSprite(0)), scale: 3 },
+  alert: { sprite: 'alert-emblem', draw: () => toPixelImage(alertEmblem()), scale: 2 },
+} as const;
+// Stryker restore all
 
 export type Illustration = keyof typeof illustrations;
 
 /**
- * État plein écran d'une vue (vide, erreur) : une illustration, un titre, une explication et une
- * seule action. `alert` fait annoncer l'état au lecteur d'écran (erreur). L'illustration est
- * décorative : le lecteur d'écran ne la lit pas.
+ * État plein écran d'une vue (vide, erreur), dans l'identité pixel art : une illustration, un titre
+ * en police pixel, une explication en police de texte et une seule action. `alert` fait annoncer
+ * l'état au lecteur d'écran (erreur). L'illustration est décorative.
  */
 export function StateMessage({
   illustration,
@@ -36,17 +41,14 @@ export function StateMessage({
   readonly alert?: boolean;
   readonly testID?: string;
 }) {
+  const { sprite, draw, scale } = illustrations[illustration];
   return (
     <View style={styles.state} testID={testID}>
-      <Image
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        source={illustrations[illustration].source}
+      <SpriteCanvas
+        sprite={sprite}
+        draw={draw}
+        scale={scale}
         testID={`illustration-${illustration}`}
-        style={{
-          width: illustrations[illustration].width,
-          height: illustrations[illustration].height,
-        }}
       />
       <View
         accessible
@@ -55,8 +57,8 @@ export function StateMessage({
         accessibilityLabel={`${title} ${text}`}
         style={styles.texts}
       >
-        <Text style={[typography.stateTitle, styles.title]}>{title}</Text>
-        <Text style={[typography.body, styles.text]}>{text}</Text>
+        <Text style={[pixelTypography.stateTitle, styles.title]}>{title}</Text>
+        <Text style={[pixelTypography.body, styles.text]}>{text}</Text>
       </View>
       {action}
     </View>
@@ -69,12 +71,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: 28,
     paddingBottom: 120,
-    gap: 10,
+    gap: 12,
   },
-  texts: { alignItems: 'center', gap: spacing.md, marginTop: spacing.sm },
-  title: { color: colors.text, textAlign: 'center' },
-  text: { color: colors.muted, textAlign: 'center' },
+  texts: { alignItems: 'center', gap: 12, maxWidth: 320 },
+  title: { color: artPalette.roles.light, textAlign: 'center' },
+  text: { color: artPalette.roles.parchment, textAlign: 'center' },
 });
 // Stryker restore all

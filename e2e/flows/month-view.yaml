@@ -41,6 +41,9 @@ tags:
 - tapOn:
     id: 'new-habit-name'
 - inputText: 'Cuisiner'
+# Le clavier se ferme avant la création, comme dans les autres parcours : sinon, il glisse encore
+# sur le bas de l'écran pendant le tap sur la ligne (émulateur de 320 × 640 dp).
+- hideKeyboard
 - tapOn:
     id: 'create-habit'
 - extendedWaitUntil:

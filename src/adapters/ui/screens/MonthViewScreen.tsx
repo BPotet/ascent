@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { dayDetailOf, type DayDetail } from '../../../application/useCases/getDayDetail';
 import type { MonthView } from '../../../application/useCases/getMonthView';
 import type { Week } from '../../../domain/week/Week';
-import { ADD_HABIT_LABEL } from '../components/AddHabitButton';
+import { ADD_HABIT_LABEL } from '../format/addHabit';
 import { Button } from '../components/Button';
 import { CharacterBar } from '../components/CharacterBar';
 import { PlusGlyph } from '../components/Glyph';
@@ -12,7 +12,7 @@ import { LinkButton } from '../components/LinkButton';
 import { MONTH_DAY_HEIGHT, MonthDaysHeader, MonthGrid, MonthLegend } from '../components/MonthGrid';
 import { PeriodNavigator } from '../components/PeriodNavigator';
 import { Screen } from '../components/Screen';
-import { StateMessage } from '../components/StateMessage';
+import { StateMessage } from '../components/legacy/StateMessage';
 import { TargetsByWeekSection, WEEK_TARGETS_ROW_HEIGHT } from '../components/TargetsByWeekSection';
 import { monthLabel, monthSubtitle, monthTitle } from '../format/formatMonth';
 import { useExperience } from '../state/Experience';
@@ -44,7 +44,7 @@ function LoadingView() {
       testID="month-view-loading"
       style={styles.loading}
     >
-      <CharacterBar xp={null} change={null} />
+      <CharacterBar xp={null} change={null} compact />
       <View style={styles.skeletonNav}>
         <View style={[styles.skeleton, styles.skeletonArrow]} />
         <View style={[styles.skeleton, styles.skeletonTitle]} />
@@ -136,7 +136,7 @@ export function MonthViewScreen({
   const { view } = state;
   return (
     <Screen layout="top" testID="month-view">
-      <CharacterBar xp={experience.xp} change={experience.change} />
+      <CharacterBar xp={experience.xp} change={experience.change} compact />
       <PeriodNavigator
         title={monthTitle(view.month)}
         subtitle={monthSubtitle(view)}

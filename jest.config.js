@@ -33,8 +33,16 @@ if (!transformIgnorePatterns.some((pattern) => pattern.includes('@shopify/react-
 // Projets qui rendent des écrans : délai de test explicite et taille de texte habituelle (voir les
 // fichiers), et simulations de Gesture Handler et de Reanimated, dont les modules natifs n'existent
 // pas sous Jest. Skia n'en fait pas partie : seul son test de fumée le charge (test/setup/skia.smoke.test.tsx).
+//
+// `SpriteCanvas`, le seul module du pixel art qui importe Skia, est remplacé par sa simulation
+// (`pixelArt/testing/fakeSpriteCanvas.tsx`) partout où un écran l'importe. Son test de fumée, dans
+// son dossier (`./SpriteCanvas`), garde le vrai module.
 const screenSetup = {
   transformIgnorePatterns,
+  moduleNameMapper: {
+    '^(?:\\.\\./)+(?:.+/)?pixelArt/SpriteCanvas$':
+      '<rootDir>/src/adapters/ui/pixelArt/testing/fakeSpriteCanvas.tsx',
+  },
   setupFiles: ['react-native-gesture-handler/jestSetup.js'],
   setupFilesAfterEnv: [
     '<rootDir>/test/setup/screenTestTimeout.ts',
@@ -62,8 +70,8 @@ module.exports = {
       ...base,
       displayName: 'bdd',
       testMatch: ['<rootDir>/features/**/*.steps.{ts,tsx}'],
-      moduleNameMapper: { '^uuid$': cucumberUuid },
       ...screenSetup,
+      moduleNameMapper: { ...screenSetup.moduleNameMapper, '^uuid$': cucumberUuid },
     },
   ],
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.test.{ts,tsx}', '!src/**/testing/**'],

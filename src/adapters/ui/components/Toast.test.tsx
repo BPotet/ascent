@@ -3,12 +3,16 @@ import { AccessibilityInfo } from 'react-native';
 
 import {
   TARGET_TOAST_DURATION_MS,
-  Toast,
   TOAST_DURATION_MS,
   TOAST_WITH_ACTION_DURATION_MS,
-} from './Toast';
+} from '../format/toast';
+import { artPalette } from '../pixelArt/artPalette';
+import { pixelFont } from '../pixelArt/pixelTypography';
+import { Toast } from './Toast';
 
-describe('Toast', () => {
+const { roles } = artPalette;
+
+describe('Toast (pixel art)', () => {
   beforeEach(() => {
     jest.useFakeTimers();
   });
@@ -119,9 +123,17 @@ describe('Toast', () => {
       expect(screen.getByTestId('toast')).toHaveTextContent(
         'Objectif de la semaine atteint\nCourir 5 km 3/3 · +15 XP prime',
       );
-      expect(screen.getByText('+15 XP prime')).toHaveStyle({ color: '#FFC94D' });
-      expect(screen.getByTestId('toast')).toHaveStyle({ borderColor: '#FFC94D' });
-      expect(screen.getByTestId('toast-goal-icon')).toBeOnTheScreen();
+      expect(screen.getByText('+15 XP prime')).toHaveStyle({ color: roles.gold });
+      expect(screen.getByText('Objectif de la semaine atteint')).toHaveStyle({
+        fontFamily: pixelFont,
+        fontSize: 18,
+        color: roles.gold,
+      });
+      expect(screen.getByTestId('toast')).toHaveStyle({
+        borderColor: roles.gold,
+        backgroundColor: roles.goldMessageBg,
+      });
+      expect(screen.getByTestId('toast-goal-icon', { includeHiddenElements: true })).toBeTruthy();
       expect(AccessibilityInfo.announceForAccessibility).toHaveBeenLastCalledWith(announcement);
       expect(TARGET_TOAST_DURATION_MS).toBe(4000);
 
@@ -149,7 +161,8 @@ describe('Toast', () => {
       expect(screen.getByTestId('toast')).toHaveTextContent(
         'Objectif de la semaine plus atteint · Courir 5 km 2/3 · −15 XP prime',
       );
-      expect(screen.queryByTestId('toast-goal-icon')).not.toBeOnTheScreen();
+      expect(screen.queryByTestId('toast-goal-icon', { includeHiddenElements: true })).toBeNull();
+      expect(screen.getByTestId('toast')).toHaveStyle({ backgroundColor: roles.raised });
       await act(() => jest.advanceTimersByTime(TOAST_DURATION_MS));
       expect(onHide).toHaveBeenCalledTimes(1);
     });
@@ -193,7 +206,11 @@ describe('Toast', () => {
       await render(<Toast message="Habitude créée" onHide={jest.fn()} />);
 
       expect(screen.getByTestId('toast')).not.toHaveProp('pointerEvents', 'none');
-      expect(screen.getByTestId('toast')).toHaveStyle({ backgroundColor: '#EEF1F7' });
+      expect(screen.getByTestId('toast')).toHaveStyle({
+        backgroundColor: roles.light,
+        borderColor: roles.ink,
+      });
+      expect(screen.getByText('Habitude créée')).toHaveStyle({ color: roles.ink });
     });
   });
 });

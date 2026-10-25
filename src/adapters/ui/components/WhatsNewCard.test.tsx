@@ -47,7 +47,7 @@ describe('WhatsNewCard', () => {
 
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onAdjust).not.toHaveBeenCalled();
-    expect(close).toHaveStyle({ minWidth: 44, minHeight: 44 });
+    expect(close).toHaveStyle({ minWidth: 48, minHeight: 48 });
     expect(screen.getByTestId('whats-new-adjust')).toBeOnTheScreen();
     expect(screen.getByTestId('whats-new-close')).toBeOnTheScreen();
   });

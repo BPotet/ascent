@@ -1,65 +1,56 @@
-import { useEffect, useState } from 'react';
-import { Animated, Easing, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { formatXpChange } from '../format/formatXp';
-import { colors } from '../theme/colors';
-import { fonts, typography } from '../theme/typography';
-import type { ShownXpChange } from './CharacterBar';
+import { artPalette } from '../pixelArt/artPalette';
+import { artPixelSize } from '../pixelArt/artPixel';
+import { pixelTypography } from '../pixelArt/pixelTypography';
+import { useArtFrames } from '../pixelArt/useArtFrames';
+import { useReducedMotion } from '../state/useReducedMotion';
+import type { ShownXpChange } from '../state/xpFeedback';
 
-/** Durée de l'envol de « +20 XP » au-dessus de la case touchée (maquette). */
-export const XP_FLOAT_DURATION_MS = 900;
+const { roles } = artPalette;
+
+/** Le pixel d'art, arrondi au pixel physique du téléphone (traits, crans, pas des envols). */
+const LINE = artPixelSize(2);
+
+/** Les images de l'envol : il monte de 2 dp par image pendant 10 images, puis disparaît. */
+export const XP_FLOAT_FRAMES = 10;
 
 function Flight({ amount }: { readonly amount: number }) {
-  const [progress] = useState(() => new Animated.Value(0));
-
-  useEffect(() => {
-    const flight = Animated.timing(progress, {
-      toValue: 1,
-      duration: XP_FLOAT_DURATION_MS,
-      easing: Easing.out(Easing.ease),
-      useNativeDriver: true,
-    });
-    flight.start();
-    return () => flight.stop();
-  }, [progress]);
-
-  // Stryker disable all: trajectoire purement visuelle, celle de la maquette (`rise`).
-  const opacity = progress.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0, 1, 0] });
-  const translateY = progress.interpolate({ inputRange: [0, 0.2, 1], outputRange: [8, -4, -46] });
-  const scale = progress.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0.8, 1.1, 1] });
-  // Stryker restore all
+  const frame = useArtFrames(XP_FLOAT_FRAMES + 1);
+  if (frame >= XP_FLOAT_FRAMES) {
+    return null;
+  }
   return (
-    <Animated.View
+    <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       pointerEvents="none"
       testID="xp-float"
-      style={[styles.float, { opacity, transform: [{ translateY }, { scale }] }]}
+      style={[styles.float, { transform: [{ translateY: -frame * LINE }] }]}
     >
-      <Animated.Text
-        style={[typography.xpChange, styles.text, amount > 0 ? styles.gain : styles.loss]}
+      <Text
+        style={[
+          pixelTypography.xpChange,
+          styles.text,
+          { color: amount > 0 ? roles.gold : roles.muted },
+        ]}
       >
         {formatXpChange(amount)}
-      </Animated.Text>
-    </Animated.View>
+      </Text>
+    </View>
   );
 }
 
 /**
- * L'envol du feedback d'expérience au-dessus de la case touchée : « +20 XP » en or, « −20 XP » en
- * gris discret, qui monte et s'efface en `XP_FLOAT_DURATION_MS`. Rejoué à chaque nouveau
- * changement (`change.id`). Seule la part du suivi s'envole : la prime d'objectif (`change.bonus`,
- * #26) a sa pastille dans l'en-tête et le badge « Objectif atteint ». Rien quand le mouvement est
- * réduit (`reducedMotion`, lu par la case, toujours affichée) : l'en-tête montre la nouvelle
- * expérience et le lecteur d'écran l'annonce.
+ * L'envol (`XpFloat`) au-dessus de la case touchée : « +10 XP » en or, « −10 XP » en gris, jamais en
+ * rouge, en police pixel 18, qui monte de 2 dp par image (12 images par seconde) pendant 10 images.
+ * Rejoué à chaque nouveau changement (`change.id`). Seule la part du suivi s'envole : la prime a sa
+ * pastille dans l'en-tête. Rien en mouvement réduit : l'en-tête montre la nouvelle expérience et le
+ * lecteur d'écran l'annonce.
  */
-export function XpFloat({
-  change,
-  reducedMotion,
-}: {
-  readonly change: ShownXpChange | undefined;
-  readonly reducedMotion: boolean;
-}) {
+export function XpFloat({ change }: { readonly change: ShownXpChange | undefined }) {
+  const reducedMotion = useReducedMotion();
   const amount = change === undefined ? 0 : change.amount - (change.bonus ?? 0);
   if (change === undefined || reducedMotion || amount === 0) {
     return null;
@@ -78,12 +69,9 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   text: {
-    fontSize: 15,
-    textShadowColor: 'rgba(0,0,0,0.7)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 10,
+    textShadowColor: roles.ink,
+    textShadowOffset: { width: LINE, height: LINE },
+    textShadowRadius: 0,
   },
-  gain: { color: colors.xp },
-  loss: { color: colors.muted, fontFamily: fonts.soraSemiBold },
 });
 // Stryker restore all

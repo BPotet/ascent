@@ -828,6 +828,11 @@ describe('WeekViewScreen and the experience', () => {
         screen.getAllByTestId('character-bar').map((bar) => bar.props.accessibilityLabel),
       ).toEqual(['Expérience du personnage : 30 XP', 'Expérience du personnage : 30 XP']),
     );
+    // L'en-tête du personnage en pixel art, plus bas dans la Vue Semaine (#72).
+    expect(screen.getAllByTestId('character-bar').map((bar) => bar.props.style)).toEqual([
+      expect.arrayContaining([{ minHeight: 132 }]),
+      expect.arrayContaining([{ minHeight: 92 }]),
+    ]);
   });
 
   it('reads the experience again with « Réessayer »', async () => {

@@ -1,5 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
+import { artPalette } from '../pixelArt/artPalette';
+import { textFont } from '../pixelArt/pixelTypography';
 import { YesterdayReminderBanner } from './YesterdayReminderBanner';
 
 describe('YesterdayReminderBanner', () => {
@@ -38,9 +40,34 @@ describe('YesterdayReminderBanner', () => {
     expect(onDismiss).not.toHaveBeenCalled();
 
     const close = screen.getByRole('button', { name: 'Fermer le rappel d’hier' });
-    expect(close).toHaveStyle({ minWidth: 44, minHeight: 44 });
+    expect(close).toHaveStyle({ minWidth: 48, minHeight: 48 });
+    expect(screen.getByRole('button', { name: 'Corriger' })).toHaveStyle({ minHeight: 48 });
     await fireEvent.press(close);
     expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('is a notched frame, in the text font, with « Corriger » in gold', async () => {
+    await render(
+      <YesterdayReminderBanner
+        doneCount={1}
+        expectedCount={2}
+        onCorrect={jest.fn()}
+        onDismiss={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('yesterday-reminder')).toHaveStyle({
+      borderColor: artPalette.roles.line,
+      borderWidth: 2,
+    });
+    expect(screen.getByText('Hier : 1/2 faites. Un oubli ?')).toHaveStyle({
+      fontFamily: textFont.medium,
+    });
+    expect(screen.getByText('Corriger')).toHaveStyle({
+      fontFamily: textFont.bold,
+      color: artPalette.roles.gold,
+      textDecorationLine: 'underline',
+    });
   });
 
   it('offers no « Corriger » when the app gives no way to correct', async () => {

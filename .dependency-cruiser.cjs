@@ -66,6 +66,34 @@ module.exports = {
       to: { dependencyTypes: ['npm-dev'] },
     },
     {
+      name: 'pixel-art-skia-in-one-place',
+      comment:
+        "Dans l'interface, seuls `pixelArt/SpriteCanvas.tsx` et le combat (`battle/`) importent Skia (ADR 0007).",
+      severity: 'error',
+      from: {
+        path: '^src/adapters/ui/',
+        pathNot: [
+          '^src/adapters/ui/pixelArt/SpriteCanvas(\\.smoke\\.test)?\\.tsx$',
+          '^src/adapters/ui/battle/',
+        ],
+      },
+      to: { path: '^node_modules/@shopify/react-native-skia/' },
+    },
+    {
+      name: 'no-legacy-in-pixel-art',
+      comment:
+        "Le pixel art et les écrans redessinés n'importent pas l'ancien thème de `components/legacy/` (ADR 0007). #73 supprime cette règle avec le dossier.",
+      severity: 'error',
+      from: {
+        path: [
+          '^src/adapters/ui/pixelArt/',
+          '^src/adapters/ui/components/(AddHabitButton|CharacterBar|DayHeader|DifficultyIcon|GoalsReachedNotice|HabitRow|Notice|StateMessage|TabBar|TargetReachedBadge|Toast|WhatsNewCard|XpFloat|YesterdayReminderBanner)(\\.test)?\\.tsx$',
+          '^src/adapters/ui/screens/(DayViewScreen|StartupScreen)(\\.test)?\\.tsx$',
+        ],
+      },
+      to: { path: '^src/adapters/ui/components/legacy/' },
+    },
+    {
       name: 'test-helpers-stay-in-tests',
       comment: 'Les aides de test (`testing/`) ne sont jamais importées par le code livré.',
       severity: 'error',

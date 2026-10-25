@@ -20,11 +20,11 @@ import { colors } from '../theme/colors';
 import { radii, spacing } from '../theme/metrics';
 import { typography } from '../theme/typography';
 import { CheckGlyph, CrossGlyph, DotGlyph, PencilGlyph, SmallCheckGlyph } from './Glyph';
-import { editHabitLabel } from './HabitRow';
+import { editHabitLabel } from '../format/habitDayLabel';
 import { CORRECTED, CorrectedMark } from './CorrectedMark';
-import { DifficultyLabel } from './DifficultyIcon';
+import { DifficultyLabel } from './legacy/DifficultyIcon';
 import { HabitDayCell } from './HabitDayCell';
-import { TargetBurst } from './TargetReachedBadge';
+import { TargetBurst } from './legacy/TargetReachedBadge';
 
 /** Cache un élément décoratif au lecteur d'écran (Android et iOS). */
 const decorative = {
