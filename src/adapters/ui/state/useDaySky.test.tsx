@@ -38,6 +38,8 @@ describe('useDaySky', () => {
     haptics: silentHaptics(),
   });
 
+  afterEach(() => jest.restoreAllMocks());
+
   beforeEach(async () => {
     unitOfWork = new InMemoryUnitOfWork();
     clock = settableClock(wednesday);
@@ -113,7 +115,6 @@ describe('useDaySky', () => {
     await act(async () => answerSlowly({ light: 0.1 }));
 
     expect(light()).toBe('0.5');
-    jest.restoreAllMocks();
   });
 
   it('keeps its last sky when it cannot be read', async () => {
