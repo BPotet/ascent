@@ -23,7 +23,6 @@ import { renderScreen } from '../testing/renderScreen';
 import {
   DayViewScreen,
   HIGHLIGHT_DURATION_MS,
-  LIST_BOTTOM_SPACE,
   listBottomSpaceOf,
   REVEAL_CHECK_MS,
   revealOffsetOf,
@@ -308,9 +307,8 @@ describe('DayViewScreen', () => {
       await layout('day-view-list', 0, 400);
 
       await createMeditation();
-      // La ligne (150 à 226) et la place du bouton et du message (152) tiennent dans les 400 dp.
-      await layout('habit-card-2', 150, 76);
-      await fireEvent(list(), 'contentSizeChange', 390, 420);
+      await layout('habit-card-2', 180, 76);
+      await fireEvent(list(), 'contentSizeChange', 390, 380);
 
       expect(scrollTo).not.toHaveBeenCalled();
       expect(scrollToEnd).not.toHaveBeenCalled();
@@ -326,12 +324,11 @@ describe('DayViewScreen', () => {
 
       await createMeditation();
       await layout('habit-card-2', 340, 76);
-      await fireEvent(list(), 'contentSizeChange', 390, 610);
+      await fireEvent(list(), 'contentSizeChange', 390, 560);
 
-      // Le bas de la ligne (340 + 76), plus la place du bouton et du message de création (152),
-      // moins la hauteur visible (300). Sans animation : la ligne est en place avant que le joueur
-      // la touche.
-      expect(scrollTo).toHaveBeenCalledWith({ y: 268, animated: false });
+      // Le bas de la ligne (340 + 76), plus la place du bouton flottant avant sa mesure (80), moins
+      // la hauteur visible (300). Sans animation : la ligne est en place avant que le joueur la touche.
+      expect(scrollTo).toHaveBeenCalledWith({ y: 196, animated: false });
       expect(scrollToEnd).not.toHaveBeenCalled();
     });
 
@@ -343,12 +340,11 @@ describe('DayViewScreen', () => {
       await layout('day-view-list', 0, 300);
 
       await createMeditation();
-      // La ligne est à l'écran (160 à 236), mais sous le bouton et le message, qui couvrent les 152
-      // derniers dp.
+      // La ligne est à l'écran (160 à 236), mais sous le bouton, qui couvre les 80 derniers dp.
       await layout('habit-card-2', 160, 76);
-      await fireEvent(list(), 'contentSizeChange', 390, 430);
+      await fireEvent(list(), 'contentSizeChange', 390, 360);
 
-      expect(scrollTo).toHaveBeenCalledWith({ y: 88, animated: false });
+      expect(scrollTo).toHaveBeenCalledWith({ y: 16, animated: false });
     });
 
     it('does not move the new habit again once it is revealed', async () => {
@@ -358,11 +354,11 @@ describe('DayViewScreen', () => {
       await screen.findByText('Cuisiner');
       await layout('day-view-list', 0, 300);
       await createMeditation();
-      await fireEvent(list(), 'contentSizeChange', 390, 610);
+      await fireEvent(list(), 'contentSizeChange', 390, 560);
       await layout('habit-card-2', 340, 76);
       expect(scrollTo).toHaveBeenCalledTimes(1);
       // La liste a défilé : la ligne est à l'écran.
-      await fireEvent.scroll(list(), { nativeEvent: { contentOffset: { x: 0, y: 268 } } });
+      await fireEvent.scroll(list(), { nativeEvent: { contentOffset: { x: 0, y: 196 } } });
 
       // La ligne bouge (une aide apparaît au-dessus) : elle n'est plus déplacée sous le doigt.
       await layout('habit-card-2', 420, 76);
@@ -378,10 +374,10 @@ describe('DayViewScreen', () => {
       await screen.findByText('Cuisiner');
       await layout('day-view-list', 0, 300);
       await createMeditation();
-      await fireEvent.scroll(list(), { nativeEvent: { contentOffset: { x: 0, y: 268 } } });
+      await fireEvent.scroll(list(), { nativeEvent: { contentOffset: { x: 0, y: 196 } } });
 
       await layout('habit-card-2', 340, 76);
-      await fireEvent(list(), 'contentSizeChange', 390, 610);
+      await fireEvent(list(), 'contentSizeChange', 390, 560);
 
       expect(scrollTo).not.toHaveBeenCalled();
     });
@@ -415,15 +411,15 @@ describe('DayViewScreen', () => {
       const bottomSpace = () =>
         StyleSheet.flatten(list().props.contentContainerStyle).paddingBottom as number;
 
-      it('reserves under the list the room of the floating button and of the creation message', async () => {
+      it('reserves under the list the real footprint of the floating button, not 112 dp', async () => {
         await given('Cuisiner');
         await show();
         await screen.findByText('Cuisiner');
 
         await layout('add-habit', 568, 56);
 
-        // Le message à 84 dp du bas, sur deux lignes (60 dp), et 8 dp d'écart : 152 dp.
-        expect(bottomSpace()).toBe(152);
+        // 16 dp sous le bouton, ses 56 dp et 8 dp d'écart : 80 dp, et non 112.
+        expect(bottomSpace()).toBe(80);
         expect(StyleSheet.flatten(list().props.contentContainerStyle).flexGrow).toBe(1);
       });
 
@@ -432,13 +428,13 @@ describe('DayViewScreen', () => {
         await show();
         await screen.findByText('Cuisiner');
 
-        await layout('add-habit', 484, 140);
+        await layout('add-habit', 524, 100);
 
-        // 16 dp sous le bouton, ses 140 dp et 8 dp d'écart.
-        expect(bottomSpace()).toBe(164);
+        // 16 dp sous le bouton, ses 100 dp et 8 dp d'écart.
+        expect(bottomSpace()).toBe(124);
       });
 
-      it('reveals a new habit just above the button and the message, not to the bottom', async () => {
+      it('reveals a new habit just above the button, without cutting the hint at the top', async () => {
         const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
         await given('Cuisiner');
         await show();
@@ -449,10 +445,10 @@ describe('DayViewScreen', () => {
 
         await createMeditation();
         await layout('habit-card-2', 280, 76);
-        await fireEvent(list(), 'contentSizeChange', 390, 548);
+        await fireEvent(list(), 'contentSizeChange', 390, 474);
 
-        // Le bas de la ligne (356), plus 152 dp, moins 360 : 148 dp.
-        expect(scrollTo).toHaveBeenCalledWith({ y: 148, animated: false });
+        // Le bas de la ligne (356), plus 80 dp, moins 360 : 76 dp, et non 108 avec les 112 dp.
+        expect(scrollTo).toHaveBeenCalledWith({ y: 76, animated: false });
       });
 
       it('does not ask for a scroll beyond the content it knows, and follows the content when it grows', async () => {
@@ -470,10 +466,10 @@ describe('DayViewScreen', () => {
         await layout('habit-card-3', 324, 76);
         expect(scrollTo).not.toHaveBeenCalled();
 
-        await fireEvent(list(), 'contentSizeChange', 390, 592);
+        await fireEvent(list(), 'contentSizeChange', 390, 518);
 
-        // Le bas de la ligne (400), plus 152 dp, moins 360 : 192 dp.
-        expect(scrollTo).toHaveBeenCalledWith({ y: 192, animated: false });
+        // Le bas de la ligne (400), plus 80 dp, moins 360 : 120 dp.
+        expect(scrollTo).toHaveBeenCalledWith({ y: 120, animated: false });
       });
 
       it('asks again when a scroll is cut short by Android, then stops once the row is shown', async () => {
@@ -485,7 +481,7 @@ describe('DayViewScreen', () => {
         await layout('add-habit', 568, 56);
 
         await createMeditation();
-        await fireEvent(list(), 'contentSizeChange', 390, 592);
+        await fireEvent(list(), 'contentSizeChange', 390, 518);
         await layout('habit-card-3', 324, 76);
         expect(scrollTo).toHaveBeenCalledTimes(1);
 
@@ -496,10 +492,10 @@ describe('DayViewScreen', () => {
         await waitFor(() => expect(scrollTo).toHaveBeenCalledTimes(3), {
           timeout: REVEAL_CHECK_MS * 4,
         });
-        expect(scrollTo).toHaveBeenLastCalledWith({ y: 192, animated: false });
+        expect(scrollTo).toHaveBeenLastCalledWith({ y: 120, animated: false });
 
         // Cette fois, la liste a défilé : plus rien n'est demandé, même quand le contenu change.
-        await fireEvent.scroll(list(), { nativeEvent: { contentOffset: { x: 0, y: 192 } } });
+        await fireEvent.scroll(list(), { nativeEvent: { contentOffset: { x: 0, y: 120 } } });
         await fireEvent(list(), 'contentSizeChange', 390, 700);
         await new Promise((done) => setTimeout(done, REVEAL_CHECK_MS * 2));
         expect(scrollTo).toHaveBeenCalledTimes(3);
@@ -513,7 +509,7 @@ describe('DayViewScreen', () => {
         await layout('day-view-list', 0, 360);
 
         await createMeditation();
-        await fireEvent(list(), 'contentSizeChange', 390, 592);
+        await fireEvent(list(), 'contentSizeChange', 390, 518);
         await layout('habit-card-3', 324, 76);
         for (let attempt = 0; attempt < 8; attempt += 1) {
           await fireEvent.scroll(list(), { nativeEvent: { contentOffset: { x: 0, y: 0 } } });
@@ -534,7 +530,7 @@ describe('DayViewScreen', () => {
         await layout('add-habit', 568, 56);
         await layout('day-view-section', 120, 24);
 
-        // Le libellé finit à 144 dp, et la liste garde ses 152 derniers dp pour le bouton.
+        // Le libellé finit à 144 dp, et la liste garde ses 80 derniers dp pour le bouton.
         expect(144).toBeLessThanOrEqual(360 - bottomSpace());
         expect(screen.getByText('Habitudes')).toBeOnTheScreen();
         expect(screen.getByLabelText('1 habitude sur 10')).toBeOnTheScreen();
@@ -2091,15 +2087,13 @@ describe('DayViewScreen in pixel art (#72)', () => {
 });
 
 describe('listBottomSpaceOf', () => {
-  it('reserves at least the room of the floating button and of the creation message', () => {
-    expect(LIST_BOTTOM_SPACE).toBe(152);
-    expect(listBottomSpaceOf(56)).toBe(152);
-    expect(listBottomSpaceOf(undefined)).toBe(152);
+  it('reserves the bottom of the screen, the floating button and a gap', () => {
+    expect(listBottomSpaceOf(56)).toBe(80);
+    expect(listBottomSpaceOf(100)).toBe(124);
   });
 
-  it('follows a floating button grown with the text: the bottom of the screen, the button and a gap', () => {
-    expect(listBottomSpaceOf(128)).toBe(152);
-    expect(listBottomSpaceOf(140)).toBe(164);
+  it('reserves the room of a 56 dp button before it is measured', () => {
+    expect(listBottomSpaceOf(undefined)).toBe(80);
   });
 });
 

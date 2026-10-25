@@ -153,13 +153,6 @@ interface RowPlace {
 /** La hauteur du bouton flottant avant sa mesure : 56 dp. */
 const FAB_HEIGHT = 56;
 
-/**
- * L'espace réservé sous la dernière ligne de la liste, au moins : le bouton flottant « Ajouter une
- * habitude » et, au-dessus de lui, le message d'une habitude créée (à 84 dp du bas, sur deux
- * lignes : 60 dp), plus un écart de 8 dp. Une habitude créée est révélée au-dessus des deux.
- */
-export const LIST_BOTTOM_SPACE = 152;
-
 /** Le délai après lequel le défilement de révélation vérifie qu'il a bien eu lieu. */
 export const REVEAL_CHECK_MS = 120;
 
@@ -167,17 +160,17 @@ export const REVEAL_CHECK_MS = 120;
 const REVEAL_ATTEMPTS = 5;
 
 /**
- * L'espace sous la dernière ligne de la liste : `LIST_BOTTOM_SPACE`, ou plus si le bouton flottant
- * grandit avec le texte (la marge du bas de l'écran, 16, le bouton, `fabHeight`, mesuré, et un
- * écart, 8). Le libellé « Habitudes » reste ainsi au-dessus du bouton, en bas de la liste.
+ * L'espace sous la dernière ligne de la liste : la marge du bas de l'écran (16), le bouton
+ * flottant (`fabHeight`, mesuré, car il grandit avec le texte) et un écart (8). Le libellé
+ * « Habitudes » reste ainsi au-dessus du bouton, en bas de la liste.
  */
 export function listBottomSpaceOf(fabHeight: number | undefined): number {
-  return Math.max(LIST_BOTTOM_SPACE, 16 + (fabHeight ?? FAB_HEIGHT) + 8);
+  return 16 + (fabHeight ?? FAB_HEIGHT) + 8;
 }
 
 /**
- * Le défilement qui montre une ligne sous le bord de l'écran, sous le bouton flottant ou sous le
- * message de création, juste assez pour voir son bas au-dessus d'eux (`bottomSpace`,
+ * Le défilement qui montre une ligne sous le bord de l'écran ou sous le bouton flottant, juste
+ * assez pour voir son bas au-dessus de lui (`bottomSpace`,
  * `listBottomSpaceOf`) ; `null` si elle est déjà visible (ou si la hauteur visible n'est pas encore
  * connue).
  */
@@ -230,7 +223,7 @@ function HabitList({
   const check = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(check.current), []);
   // Une habitude créée, en bas de la liste, n'y est montrée que si elle est sous le bord de
-  // l'écran, sous le bouton ou sous le message de création, et juste assez : les encarts du haut
+  // l'écran ou sous le bouton, et juste assez : les encarts du haut
   // (aide, « Toutes faites ») restent à l'écran. Le défilement est immédiat.
   // Sous Android, il peut être demandé avant que la ligne ne soit montée : il s'arrête alors au
   // bas de l'ancien contenu, sans erreur ni nouvel événement. Il est donc vérifié par la position
