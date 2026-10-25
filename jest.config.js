@@ -6,8 +6,6 @@
  */
 const path = require('node:path');
 
-const { coverageThreshold } = require('./scripts/ci/coverage-threshold.cjs');
-
 // Fuseau fixe, avec heure d'été, pour que les tests soient les mêmes sur toute machine et en CI, et
 // que les changements d'heure (jour de 23 h ou 25 h) puissent être testés. Hérité par les workers.
 process.env.TZ = 'Europe/Paris';
@@ -79,5 +77,8 @@ module.exports = {
   collectCoverageFrom: ['src/**/*.{ts,tsx}', '!src/**/*.test.{ts,tsx}', '!src/**/testing/**'],
   coverageDirectory: 'coverage',
   coverageReporters: ['text-summary', 'text', 'lcov'],
-  coverageThreshold: coverageThreshold(process.env),
+  coverageThreshold: {
+    global: { statements: 80, branches: 80, functions: 80, lines: 80 },
+    './src/domain/': { statements: 95, branches: 95, functions: 95, lines: 95 },
+  },
 };

@@ -129,11 +129,7 @@ jobs:
           cache: npm
       - run: npm ci
       # Une seule exécution des trois projets Jest (unit, integration, bdd) avec les seuils de couverture.
-      # Mode prototype (label `prototype`) : tous les tests tournent, seul le seuil du domaine reste
-      # (scripts/ci/coverage-threshold.cjs).
       - name: Unit, integration and BDD tests with coverage thresholds
-        env:
-          PROTOTYPE_MODE: ${{ contains(github.event.pull_request.labels.*.name, 'prototype') }}
         run: npm run test:coverage -- --ci
       - uses: actions/upload-artifact@v4
         with:
@@ -145,7 +141,8 @@ jobs:
   # applique les seuils au total des shards. Les écrans (src/adapters/ui/, src/app/) ne sont mutés
   # qu'à la demande du propriétaire : label `mutation:ui` sur la PR, ou entrée `ui-mutation` d'un
   # lancement manuel. Une PR en mode prototype (label `prototype`) saute le plan, donc les shards et
-  # le job final : un check sauté compte comme réussi pour la protection de branche.
+  # le job final : un check sauté compte comme réussi pour la protection de branche. Les seuils de
+  # couverture restent. Release, hotfix et lancement manuel ignorent le label : ils mutent tout.
   mutation-plan:
     name: Mutation plan
     # En PR vers develop : le code nouveau. Sur release/* et hotfix/* (et à la demande) : tout le code.
@@ -294,11 +291,6 @@ jobs:
       - name: Analyse and wait for the quality gate
         if: env.SONAR_TOKEN != ''
         uses: SonarSource/sonarqube-scan-action@v5
-        # Mode prototype (label `prototype`) : la couverture du code nouveau ne compte pas.
-        with:
-          args: >-
-            ${{ contains(github.event.pull_request.labels.*.name, 'prototype')
-              && '-Dsonar.coverage.exclusions=**/*' || '' }}
 
   android-apk:
     name: Android APK
