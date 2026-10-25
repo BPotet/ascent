@@ -59,4 +59,23 @@ describe('HabitDayBox', () => {
 
     expect(screen.getByTestId('box', hidden)).toHaveProp('accessibilityElementsHidden', true);
   });
+
+  it.each<[CheckInStatus, string | null]>([
+    ['done', 'check-mark'],
+    ['missed', 'cross-mark'],
+    ['upcoming', 'dot-mark'],
+    ['notStarted', 'dash-mark'],
+    ['pending', null],
+  ])(
+    'is 24 dp in the legend of the week view, with the small « %s » mark',
+    async (status, mark) => {
+      await render(<HabitDayBox status={status} size={24} testID="box" />);
+
+      expect(screen.getByTestId('box', hidden)).toHaveStyle({ width: 24, height: 24 });
+      expect(shownMarks()).toEqual(mark === null ? [] : [mark]);
+      if (mark !== null) {
+        expect(screen.getByTestId(mark, hidden)).toHaveStyle({ width: 16, height: 16 });
+      }
+    },
+  );
 });

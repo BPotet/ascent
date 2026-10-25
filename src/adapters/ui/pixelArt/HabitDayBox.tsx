@@ -8,8 +8,19 @@ import type { IconName } from './sprites/icons';
 
 const { roles } = artPalette;
 
-/** La taille de la case dessinée : 44 dp dans la Vue Journée, 40 dp dans la Vue Semaine (#73). */
-export type BoxSize = 44 | 40;
+/**
+ * La taille de la case dessinée : 44 dp dans la Vue Journée, 40 dp dans la Vue Semaine, 24 dp dans
+ * la légende de la Vue Semaine, avec les petites marques.
+ */
+export type BoxSize = 44 | 40 | 24;
+
+/** Les petites marques (8 × 8 pixels d'art) de la case de 24 dp. */
+const SMALL_MARKS: Readonly<Partial<Record<IconName, IconName>>> = {
+  check12: 'check8',
+  cross12: 'cross8',
+  dot12: 'dot8',
+  dash12: 'dash8',
+};
 
 // Stryker disable all: valeurs purement visuelles, vérifiées par la conformité aux maquettes (barrière 10 bis).
 /** Le dessin de chaque état : fond, trait, ombre ou lumière intérieure, et sa marque. */
@@ -112,7 +123,7 @@ export function HabitDayBox({
       )}
       {look.mark !== null && (
         <PixelIcon
-          name={look.mark.icon}
+          name={size === 24 ? (SMALL_MARKS[look.mark.icon] ?? look.mark.icon) : look.mark.icon}
           color={look.mark.color}
           testID={look.mark.testID}
           style={{ transform: [{ translateY: lifted ? -line : 0 }] }}

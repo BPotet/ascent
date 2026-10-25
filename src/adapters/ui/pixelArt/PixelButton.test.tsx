@@ -1,4 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { createRef } from 'react';
+import type { View } from 'react-native';
 
 import { artPalette } from './artPalette';
 import { PixelButton } from './PixelButton';
@@ -61,5 +63,42 @@ describe('PixelButton', () => {
     await fireEvent(button, 'pressOut');
 
     expect(button).toHaveStyle({ transform: [{ translateY: 0 }] });
+  });
+
+  it('has a danger variant in the error red, its label always written', async () => {
+    await render(<PixelButton label="Supprimer" variant="danger" onPress={jest.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'Supprimer' })).toHaveStyle({
+      backgroundColor: roles.errorBg,
+      borderColor: roles.curse,
+    });
+    expect(screen.getByText('Supprimer')).toHaveStyle({ color: roles.pink });
+  });
+
+  it('is hatched and announced disabled in the danger variant too', async () => {
+    await render(<PixelButton label="Supprimer" variant="danger" disabled onPress={jest.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'Supprimer' })).toBeDisabled();
+    expect(
+      screen.getByTestId('pixel-button-hatching', { includeHiddenElements: true }),
+    ).toBeTruthy();
+  });
+
+  it('reads its hint after its label', async () => {
+    await render(
+      <PixelButton label="Supprimer" accessibilityHint="Définitif." onPress={jest.fn()} />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Supprimer' })).toHaveProp(
+      'accessibilityHint',
+      'Définitif.',
+    );
+  });
+
+  it('lets the screen place the screen reader on it', async () => {
+    const ref = createRef<View>();
+    await render(<PixelButton ref={ref} label="Annuler" onPress={jest.fn()} />);
+
+    expect(ref.current).not.toBeNull();
   });
 });
