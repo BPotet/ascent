@@ -1392,6 +1392,21 @@ describe('WeekViewScreen in pixel art (E4, #73)', () => {
     );
   });
 
+  it('plays no spark when a failed save puts « fait » back on the cell', async () => {
+    withMotion();
+    await givenTheBackground();
+    await show();
+    dependencies.unitOfWork.failWrites();
+
+    await fireEvent.press(cell(cooking, october(12)));
+
+    expect(await screen.findByText('La correction n’a pas été enregistrée.')).toBeOnTheScreen();
+    await waitFor(() =>
+      expect(labelOf(cooking, october(12))).toBe('Cuisiner, lundi 12 octobre, fait'),
+    );
+    expect(screen.queryByTestId('habit-burst', hidden)).toBeNull();
+  });
+
   it('neither bursts nor flies when the motion is reduced, the vibration stays', async () => {
     await givenTheBackground();
     await show();

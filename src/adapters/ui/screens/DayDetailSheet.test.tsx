@@ -652,6 +652,20 @@ describe('DayDetailSheet in pixel art (E5, #73)', () => {
     expect(await screen.findByTestId('habit-burst', hidden)).toBeTruthy();
   });
 
+  it('plays no spark when a failed save puts « fait » back on the row', async () => {
+    withMotion();
+    await open(october(12));
+    dependencies.unitOfWork.failWrites();
+
+    await fireEvent.press(row(/^Cuisiner, lundi 12 octobre/u));
+
+    expect(
+      await screen.findByRole('alert', { name: 'La correction n’a pas été enregistrée.' }),
+    ).toBeOnTheScreen();
+    await waitFor(() => expect(row(/^Cuisiner, lundi 12 octobre, fait/u)).toBeChecked());
+    expect(screen.queryByTestId('habit-burst', hidden)).toBeNull();
+  });
+
   it('shows the mark « corrigé » on the box of a corrected day, and writes it', async () => {
     await open(october(8));
 

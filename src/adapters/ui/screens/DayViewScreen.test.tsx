@@ -1921,6 +1921,21 @@ describe('DayViewScreen in pixel art (#72)', () => {
     );
   });
 
+  it('plays no spark when a failed save puts « fait » back on the row', async () => {
+    withMotion();
+    await createHabit(dependencies, 'Cuisiner');
+    await toggleCheckIn(dependencies, 1, wednesday);
+    await show();
+    await waitFor(() => expect(screen.getByTestId('xp-counter')).toHaveTextContent('10 XP'));
+    dependencies.unitOfWork.failWrites();
+
+    await fireEvent.press(switchOf('Cuisiner'));
+
+    await screen.findByText('Le suivi n’a pas été enregistré.');
+    await waitFor(() => expect(switchOf('Cuisiner')).toBeChecked());
+    expect(screen.queryByTestId('habit-burst', hidden)).toBeNull();
+  });
+
   it('shows « −10 XP » in grey, without spark nor vibration, when a habit goes back', async () => {
     withMotion();
     await createHabit(dependencies, 'Cuisiner');

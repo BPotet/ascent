@@ -27,7 +27,7 @@ const BOX_SIZE = 40;
  * d'écran lit la même annonce qu'avant #73 (`habitDayCellAccessibilityLabel`). Un « fait » gardé sur
  * un jour après `today` (horloge reculée, R7) est atténué.
  *
- * Retours de jeu, ceux de la Vue Journée : la case qui passe à « fait » joue l'étincelle et relève
+ * Retours de jeu, ceux de la Vue Journée : le tap qui passe la case à « fait » joue l'étincelle et relève
  * sa coche d'un pixel d'art pendant 2 images (`Burst`), jamais par une mise à l'échelle ;
  * `xpChange` fait s'envoler le changement d'expérience (« +20 XP », ou « −20 XP »). Rien de tout
  * cela en mouvement réduit.
@@ -49,7 +49,7 @@ export function HabitDayCell({
   readonly onNotStartedPress?: (habitDay: HabitDay) => void;
 }) {
   const { habit, day, status, editable, corrected } = habitDay;
-  const bursts = useBurst(status);
+  const { bursts, tap } = useBurst(status);
   const iso = day.toIsoString();
   const explainsTap = !editable && status === 'notStarted' && onNotStartedPress !== undefined;
 
@@ -58,6 +58,7 @@ export function HabitDayCell({
       onNotStartedPress?.(habitDay);
       return;
     }
+    tap();
     onToggle?.(habitDay);
   };
 

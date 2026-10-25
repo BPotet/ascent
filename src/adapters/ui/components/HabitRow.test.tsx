@@ -168,6 +168,15 @@ describe('HabitRow (pixel art)', () => {
     expect(burst()).toBeNull();
   });
 
+  it('plays no spark when the row becomes « fait » without a tap (a failed save puts it back)', async () => {
+    await render(<HabitRow habitDay={habitDay('pending')} onToggle={jest.fn()} />);
+    await act(async () => undefined);
+
+    await screen.rerender(<HabitRow habitDay={habitDay('done')} onToggle={jest.fn()} />);
+
+    expect(burst()).toBeNull();
+  });
+
   it('neither bursts nor lifts when the motion is reduced', async () => {
     jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockResolvedValue(true);
     await render(<HabitRow habitDay={habitDay('pending')} onToggle={jest.fn()} />);

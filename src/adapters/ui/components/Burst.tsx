@@ -41,16 +41,22 @@ export function Burst({
 }
 
 /**
- * Le nombre d'étincelles à jouer sur une case dont l'état est `status` : il augmente chaque fois
- * que la case passe à « fait » (la clé de `Burst`, qui rejoue l'étincelle), jamais quand elle
- * apparaît, ni au retour en arrière, ni en mouvement réduit.
+ * L'étincelle d'une case dont l'état est `status`, partie du tap (`tap`) qui la passe à « fait »,
+ * avant l'enregistrement, comme dans la Vue Journée depuis #72 : `bursts` augmente à chaque tel tap
+ * (c'est la clé de `Burst`, qui rejoue l'étincelle). Rien au tap qui la ramène en arrière, rien en
+ * mouvement réduit, et jamais quand l'état change sans tap : un échec d'enregistrement qui remet
+ * « fait », ou un rechargement.
  */
-export function useBurst(status: CheckInStatus): number {
+export function useBurst(status: CheckInStatus): {
+  readonly bursts: number;
+  readonly tap: () => void;
+} {
   const reducedMotion = useReducedMotion();
-  const [shown, setShown] = useState({ status, bursts: 0 });
-  if (shown.status !== status) {
-    const plays = status === 'done' && !reducedMotion;
-    setShown({ status, bursts: shown.bursts + (plays ? 1 : 0) });
-  }
-  return shown.bursts;
+  const [bursts, setBursts] = useState(0);
+  const tap = () => {
+    if (status !== 'done' && !reducedMotion) {
+      setBursts((count) => count + 1);
+    }
+  };
+  return { bursts, tap };
 }

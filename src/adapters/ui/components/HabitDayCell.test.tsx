@@ -133,6 +133,7 @@ describe('HabitDayCell', () => {
     await render(<HabitDayCell habitDay={habitDay('pending', true)} today={wednesday} />);
     await act(async () => undefined);
 
+    await fireEvent.press(cell());
     await screen.rerender(<HabitDayCell habitDay={habitDay('done', true)} today={wednesday} />);
 
     expect(burst()?.props.sprite).toBe('burst-0');
@@ -162,7 +163,26 @@ describe('HabitDayCell', () => {
     await waitFor(() => expect(AccessibilityInfo.isReduceMotionEnabled).toHaveBeenCalled());
     await act(async () => undefined);
 
+    await fireEvent.press(cell());
     await screen.rerender(<HabitDayCell habitDay={habitDay('done', true)} today={wednesday} />);
+
+    expect(burst()).toBeNull();
+  });
+
+  it('plays no spark when it becomes « fait » without a tap (a failed save puts it back)', async () => {
+    await render(<HabitDayCell habitDay={habitDay('missed', true)} today={thursday} />);
+    await act(async () => undefined);
+
+    await screen.rerender(<HabitDayCell habitDay={habitDay('done', true)} today={thursday} />);
+
+    expect(burst()).toBeNull();
+  });
+
+  it('plays no spark at the tap that takes « fait » back', async () => {
+    await render(<HabitDayCell habitDay={habitDay('done', true)} today={thursday} />);
+    await act(async () => undefined);
+
+    await fireEvent.press(cell());
 
     expect(burst()).toBeNull();
   });

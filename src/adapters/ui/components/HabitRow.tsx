@@ -114,7 +114,7 @@ export function HabitRow({
   const { habit, status, editable, corrected } = habitDay;
   const done = status === 'done';
   const reached = weeklyProgress?.targetReached === true;
-  const bursts = useBurst(status);
+  const { bursts, tap } = useBurst(status);
 
   const box = (lifted: boolean) => (
     <HabitDayBox status={status} lifted={lifted} testID={`habit-check-${habit.id}`} />
@@ -137,7 +137,10 @@ export function HabitRow({
         })}
         accessibilityState={{ checked: done, disabled: !editable }}
         disabled={!editable}
-        onPress={() => onToggle?.(habitDay)}
+        onPress={() => {
+          tap();
+          onToggle?.(habitDay);
+        }}
         testID={`habit-row-${habit.id}`}
         style={styles.row}
       >
