@@ -7,7 +7,12 @@ import { Habit } from '../../../domain/habit/Habit';
 import { HabitName } from '../../../domain/habit/HabitName';
 import type { WeeklyTarget } from '../../../domain/habit/WeeklyTarget';
 import type { CreateHabitOutcome } from '../state/useCreateHabit';
+import { artPalette } from '../pixelArt/artPalette';
+import { pixelFont, textFont } from '../pixelArt/pixelTypography';
 import { NewHabitSheet } from './NewHabitSheet';
+
+const { roles } = artPalette;
+const hidden = { includeHiddenElements: true };
 
 const nbsp = '\u00A0';
 const wednesday = Day.of(2026, 10, 14);
@@ -475,12 +480,12 @@ describe('NewHabitSheet', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('offers touch targets of at least 44 points', async () => {
+  it('offers touch targets of at least 48 dp', async () => {
     await open();
 
-    expect(createButton()).toHaveStyle({ minHeight: 52 });
-    expect(screen.getByRole('button', { name: 'Annuler' })).toHaveStyle({ minHeight: 52 });
-    expect(field()).toHaveStyle({ height: 52 });
+    expect(createButton()).toHaveStyle({ minHeight: 48 });
+    expect(screen.getByRole('button', { name: 'Annuler' })).toHaveStyle({ minHeight: 48 });
+    expect(field()).toHaveStyle({ minHeight: 52 });
   });
 
   it('slides in, unless the player asked to reduce motion', async () => {
@@ -530,7 +535,7 @@ describe('NewHabitSheet', () => {
         const emit = spyOnKeyboard();
         await open();
         const avoiding = screen.getByTestId('new-habit-keyboard-avoiding');
-        const sheet = screen.getByTestId('new-habit-sheet-content');
+        const sheet = screen.getByTestId('new-habit-sheet-content-body');
 
         // « padding » : the whole sheet is pushed up by the height of the keyboard.
         expect(avoiding).toHaveStyle({ paddingBottom: 0 });
@@ -545,5 +550,89 @@ describe('NewHabitSheet', () => {
         expect(sheet).toHaveStyle({ paddingBottom: 36 });
       },
     );
+  });
+
+  describe('in pixel art (E2, #73)', () => {
+    const fieldFrame = () => screen.getByTestId('new-habit-name-frame');
+
+    it('opens in a pixel sheet, its title in the pixel font, the label in the text font', async () => {
+      await open();
+
+      expect(
+        within(screen.getByTestId('new-habit-sheet-content')).getByTestId(
+          'pixel-sheet-grab',
+          hidden,
+        ),
+      ).toBeTruthy();
+      expect(screen.getByRole('header', { name: 'Nouvelle habitude' })).toHaveStyle({
+        fontFamily: pixelFont,
+        fontSize: 22,
+      });
+      expect(screen.getByText('Nom de l’habitude')).toHaveStyle({ fontFamily: textFont.semiBold });
+      expect(field()).toHaveStyle({ fontFamily: textFont.medium, fontSize: 16 });
+    });
+
+    it('frames the focused field with gold, in an inset frame', async () => {
+      await open();
+
+      expect(fieldFrame()).toHaveStyle({ borderColor: roles.gold, backgroundColor: roles.night });
+      await fireEvent(field(), 'blur');
+      expect(fieldFrame()).toHaveStyle({ borderColor: roles.line });
+      await fireEvent(field(), 'focus');
+      expect(fieldFrame()).toHaveStyle({ borderColor: roles.gold });
+    });
+
+    it('chooses Moyenne and 7 by default, by a gold frame, a tick and a bold text', async () => {
+      await open();
+
+      expect(option('Moyenne')).toBeChecked();
+      expect(
+        screen.getByRole('radio', { name: '7 fois par semaine, tous les jours' }),
+      ).toBeChecked();
+      expect(screen.getByTestId('choice-frame-difficulty-option-medium')).toHaveStyle({
+        borderColor: roles.gold,
+      });
+      expect(screen.getAllByTestId('choice-tick', hidden)).toHaveLength(2);
+    });
+
+    it('frames a duplicate name in red, with an icon and the current message, the button hatched', async () => {
+      await open(async () => ({ ok: false, reason: 'duplicate' }) as const);
+
+      await type('cuisiner');
+      await fireEvent.press(createButton());
+
+      await waitFor(() => expect(fieldFrame()).toHaveStyle({ borderColor: roles.curse }));
+      expect(screen.getByTestId('field-error-icon', hidden)).toBeTruthy();
+      expect(screen.getByText(`Tu as déjà une habitude «${nbsp}Cuisiner${nbsp}».`)).toHaveStyle({
+        fontFamily: textFont.semiBold,
+        color: roles.error,
+      });
+      expect(createButton()).toBeDisabled();
+      expect(screen.getByTestId('pixel-button-hatching', hidden)).toBeTruthy();
+    });
+
+    it('writes the counter in the text font', async () => {
+      await open();
+
+      await type('Méditer');
+
+      expect(screen.getByText('7/40')).toHaveStyle({ fontFamily: textFont.medium });
+    });
+
+    it('shows a failed save in an error frame, keeping the name and the settings', async () => {
+      await open(async () => ({ ok: false, reason: 'saveFailed' }));
+      await type('Méditer 10 minutes');
+      await fireEvent.press(option('Facile'));
+
+      await fireEvent.press(createButton());
+
+      const alert = await screen.findByRole('alert', {
+        name: 'L’habitude n’a pas pu être créée. Réessaie.',
+      });
+      expect(alert).toHaveStyle({ backgroundColor: roles.errorBg, borderColor: roles.curse });
+      expect(field()).toHaveDisplayValue('Méditer 10 minutes');
+      expect(option('Facile')).toBeChecked();
+      expect(createButton()).toBeEnabled();
+    });
   });
 });

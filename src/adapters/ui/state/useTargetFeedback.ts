@@ -4,8 +4,6 @@ import type { UpdateHabitResult } from '../../../application/useCases/updateHabi
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import type { Day } from '../../../domain/day/Day';
 import { Week } from '../../../domain/week/Week';
-import { TARGET_BONUS_DELAY_MS } from '../components/CharacterBar';
-import { TARGET_BURST_DURATION_MS } from '../components/TargetReachedBadge';
 import {
   type TargetFeedback,
   targetFeedbackOf,
@@ -14,6 +12,7 @@ import {
 import { useDependencies } from './Dependencies';
 import { keyOf } from './habitDayKey';
 import { useReducedMotion } from './useReducedMotion';
+import { TARGET_BONUS_DELAY_MS, TARGET_BURST_DURATION_MS } from './xpFeedback';
 
 /** La case dont le badge (ou la puce) s'éclaire, le temps de l'éclat ; `id` change à chaque fois. */
 export interface TargetFlash {

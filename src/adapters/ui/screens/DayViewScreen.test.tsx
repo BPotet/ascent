@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react-native';
 
 import { useState } from 'react';
-import { AccessibilityInfo, ScrollView } from 'react-native';
+import { AccessibilityInfo, Dimensions, ScrollView, StyleSheet } from 'react-native';
 
 import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../../application/testing/settableClock';
@@ -15,11 +15,20 @@ import { getDayView } from '../../../application/useCases/getDayView';
 import { Day } from '../../../domain/day/Day';
 import { HabitName } from '../../../domain/habit/HabitName';
 import { Week } from '../../../domain/week/Week';
-import { TOAST_DURATION_MS } from '../components/Toast';
+import { TOAST_DURATION_MS } from '../format/toast';
+import { artPalette } from '../pixelArt/artPalette';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { reduceMotionInEachTest, withMotion } from '../testing/motion';
 import { renderScreen } from '../testing/renderScreen';
-import { DayViewScreen, HIGHLIGHT_DURATION_MS } from './DayViewScreen';
+import {
+  DayViewScreen,
+  HIGHLIGHT_DURATION_MS,
+  listBottomSpaceOf,
+  REVEAL_CHECK_MS,
+  revealOffsetOf,
+} from './DayViewScreen';
+
+const { roles } = artPalette;
 
 const nbsp = ' ';
 const tuesday = Day.of(2026, 10, 13);
@@ -255,7 +264,7 @@ describe('DayViewScreen', () => {
       'Habitude créée · objectif 5 cette semaine',
       { exact: true },
     );
-    expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: '#7C9CFF' });
+    expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: roles.gold });
     expect(await names()).toEqual(['Cuisiner']);
   });
 
@@ -268,24 +277,320 @@ describe('DayViewScreen', () => {
     await fireEvent(screen.getByLabelText('Nom de l’habitude'), 'submitEditing');
 
     await waitFor(() => expect(rowNames()).toEqual(['Cuisiner', 'Lire 20 minutes']));
-    expect(screen.getByTestId('habit-card-2')).toHaveStyle({ borderColor: '#7C9CFF' });
-    expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: 'transparent' });
+    expect(screen.getByTestId('habit-card-2')).toHaveStyle({ borderColor: roles.gold });
+    expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: roles.line });
   });
 
-  it('scrolls to the new habit, and only to a new habit', async () => {
-    const scrollToEnd = jest.spyOn(ScrollView.prototype, 'scrollToEnd');
-    await given('Cuisiner');
-    await show();
-    await screen.findByText('Cuisiner');
-    await fireEvent(screen.getByTestId('day-view-list'), 'contentSizeChange', 390, 900);
-    expect(scrollToEnd).not.toHaveBeenCalled();
+  describe('reveals a new habit without hiding the top of the list', () => {
+    const layout = (testID: string, y: number, height: number) =>
+      fireEvent(screen.getByTestId(testID), 'layout', {
+        nativeEvent: { layout: { x: 0, y, width: 390, height } },
+      });
+    const list = () => screen.getByTestId('day-view-list');
 
-    await openSheetAndType('Méditer');
-    await fireEvent.press(screen.getByRole('button', { name: 'Créer l’habitude' }));
-    await screen.findByText('Méditer');
-    await fireEvent(screen.getByTestId('day-view-list'), 'contentSizeChange', 390, 1000);
+    // Les espions du prototype gardent leurs appels d'un test à l'autre : on part de zéro.
+    beforeEach(() => jest.clearAllMocks());
+    afterEach(() => jest.restoreAllMocks());
 
-    expect(scrollToEnd).toHaveBeenCalled();
+    async function createMeditation(): Promise<void> {
+      await openSheetAndType('Méditer');
+      await fireEvent.press(screen.getByRole('button', { name: 'Créer l’habitude' }));
+      await screen.findByText('Méditer');
+    }
+
+    it('does not scroll when the new habit is already on the screen, so that the hint and « Toutes faites » stay visible', async () => {
+      const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+      const scrollToEnd = jest.spyOn(ScrollView.prototype, 'scrollToEnd');
+      await given('Cuisiner');
+      await show();
+      await screen.findByText('Cuisiner');
+      await layout('day-view-list', 0, 400);
+
+      await createMeditation();
+      await layout('habit-card-2', 180, 76);
+      await fireEvent(list(), 'contentSizeChange', 390, 380);
+
+      expect(scrollTo).not.toHaveBeenCalled();
+      expect(scrollToEnd).not.toHaveBeenCalled();
+    });
+
+    it('scrolls just enough to show a new habit below the fold, not to the bottom', async () => {
+      const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+      const scrollToEnd = jest.spyOn(ScrollView.prototype, 'scrollToEnd');
+      await given('Cuisiner');
+      await show();
+      await screen.findByText('Cuisiner');
+      await layout('day-view-list', 0, 300);
+
+      await createMeditation();
+      await layout('habit-card-2', 340, 76);
+      await fireEvent(list(), 'contentSizeChange', 390, 560);
+
+      // Le bas de la ligne (340 + 76), plus la place du bouton flottant avant sa mesure (80), moins
+      // la hauteur visible (300). Sans animation : la ligne est en place avant que le joueur la touche.
+      expect(scrollTo).toHaveBeenCalledWith({ y: 196, animated: false });
+      expect(scrollToEnd).not.toHaveBeenCalled();
+    });
+
+    it('reveals a new habit hidden under the floating button above it', async () => {
+      const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+      await given('Cuisiner');
+      await show();
+      await screen.findByText('Cuisiner');
+      await layout('day-view-list', 0, 300);
+
+      await createMeditation();
+      // La ligne est à l'écran (160 à 236), mais sous le bouton, qui couvre les 80 derniers dp.
+      await layout('habit-card-2', 160, 76);
+      await fireEvent(list(), 'contentSizeChange', 390, 360);
+
+      expect(scrollTo).toHaveBeenCalledWith({ y: 16, animated: false });
+    });
+
+    it('does not move the new habit again once it is revealed', async () => {
+      const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+      await given('Cuisiner');
+      await show();
+      await screen.findByText('Cuisiner');
+      await layout('day-view-list', 0, 300);
+      await createMeditation();
+      await fireEvent(list(), 'contentSizeChange', 390, 560);
+      await layout('habit-card-2', 340, 76);
+      expect(scrollTo).toHaveBeenCalledTimes(1);
+      // La liste a défilé : la ligne est à l'écran.
+      await fireEvent.scroll(list(), { nativeEvent: { contentOffset: { x: 0, y: 196 } } });
+
+      // La ligne bouge (une aide apparaît au-dessus) : elle n'est plus déplacée sous le doigt.
+      await layout('habit-card-2', 420, 76);
+      await fireEvent(list(), 'contentSizeChange', 390, 700);
+
+      expect(scrollTo).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not scroll again once the new habit is on the screen', async () => {
+      const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+      await given('Cuisiner');
+      await show();
+      await screen.findByText('Cuisiner');
+      await layout('day-view-list', 0, 300);
+      await createMeditation();
+      await fireEvent.scroll(list(), { nativeEvent: { contentOffset: { x: 0, y: 196 } } });
+
+      await layout('habit-card-2', 340, 76);
+      await fireEvent(list(), 'contentSizeChange', 390, 560);
+
+      expect(scrollTo).not.toHaveBeenCalled();
+    });
+
+    it('scrolls back to the top when « Toutes faites » appears, so that the moment is seen', async () => {
+      const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+      await given('Cuisiner');
+      await show();
+      await screen.findByText('Cuisiner');
+      await fireEvent.scroll(list(), { nativeEvent: { contentOffset: { x: 0, y: 40 } } });
+
+      await fireEvent.press(screen.getByRole('switch', { name: /^Cuisiner, /u }));
+
+      await screen.findByTestId('all-done');
+      expect(scrollTo).toHaveBeenCalledWith({ y: 0, animated: true });
+    });
+
+    it('stays in place when « Toutes faites » appears at the top of the screen', async () => {
+      const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+      await given('Cuisiner');
+      await show();
+      await screen.findByText('Cuisiner');
+
+      await fireEvent.press(screen.getByRole('switch', { name: /^Cuisiner, /u }));
+
+      await screen.findByTestId('all-done');
+      expect(scrollTo).not.toHaveBeenCalled();
+    });
+
+    describe('on a small screen of 320 × 640 (review of #75)', () => {
+      const bottomSpace = () =>
+        StyleSheet.flatten(list().props.contentContainerStyle).paddingBottom as number;
+
+      it('reserves under the list the real footprint of the floating button, not 112 dp', async () => {
+        await given('Cuisiner');
+        await show();
+        await screen.findByText('Cuisiner');
+
+        await layout('add-habit', 568, 56);
+
+        // 16 dp sous le bouton, ses 56 dp et 8 dp d'écart : 80 dp, et non 112.
+        expect(bottomSpace()).toBe(80);
+        expect(StyleSheet.flatten(list().props.contentContainerStyle).flexGrow).toBe(1);
+      });
+
+      it('follows a floating button that grows with the text', async () => {
+        await given('Cuisiner');
+        await show();
+        await screen.findByText('Cuisiner');
+
+        await layout('add-habit', 524, 100);
+
+        // 16 dp sous le bouton, ses 100 dp et 8 dp d'écart.
+        expect(bottomSpace()).toBe(124);
+      });
+
+      it('reveals a new habit just above the button, without cutting the hint at the top', async () => {
+        const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+        await given('Cuisiner');
+        await show();
+        await screen.findByText('Cuisiner');
+        // 640 dp de haut : l'en-tête, le titre du jour et la barre d'onglets laissent 360 dp.
+        await layout('day-view-list', 0, 360);
+        await layout('add-habit', 568, 56);
+
+        await createMeditation();
+        await layout('habit-card-2', 280, 76);
+        await fireEvent(list(), 'contentSizeChange', 390, 474);
+
+        // Le bas de la ligne (356), plus 80 dp, moins 360 : 76 dp, et non 108 avec les 112 dp.
+        expect(scrollTo).toHaveBeenCalledWith({ y: 76, animated: false });
+      });
+
+      it('does not ask for a scroll beyond the content it knows, and follows the content when it grows', async () => {
+        const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+        await given('Cuisiner', 'Lire');
+        await show();
+        await screen.findByText('Lire');
+        await layout('day-view-list', 0, 360);
+        await layout('add-habit', 568, 56);
+        // Le contenu avant la création : 2 lignes, le libellé et la marge du bouton.
+        await fireEvent(list(), 'contentSizeChange', 390, 330);
+
+        await createMeditation();
+        // La ligne est placée avant que le contenu ne grandisse : aucun défilement n'est possible.
+        await layout('habit-card-3', 324, 76);
+        expect(scrollTo).not.toHaveBeenCalled();
+
+        await fireEvent(list(), 'contentSizeChange', 390, 518);
+
+        // Le bas de la ligne (400), plus 80 dp, moins 360 : 120 dp.
+        expect(scrollTo).toHaveBeenCalledWith({ y: 120, animated: false });
+      });
+
+      it('asks again when a scroll is cut short by Android, then stops once the row is shown', async () => {
+        const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+        await given('Cuisiner', 'Lire');
+        await show();
+        await screen.findByText('Lire');
+        await layout('day-view-list', 0, 360);
+        await layout('add-habit', 568, 56);
+
+        await createMeditation();
+        await fireEvent(list(), 'contentSizeChange', 390, 518);
+        await layout('habit-card-3', 324, 76);
+        expect(scrollTo).toHaveBeenCalledTimes(1);
+
+        // La ligne n'était pas encore montée : Android s'est arrêté au bas de l'ancien contenu, sans
+        // autre événement. Après REVEAL_CHECK_MS, le défilement est redemandé.
+        await fireEvent.scroll(list(), { nativeEvent: { contentOffset: { x: 0, y: 0 } } });
+        expect(scrollTo).toHaveBeenCalledTimes(2);
+        await waitFor(() => expect(scrollTo).toHaveBeenCalledTimes(3), {
+          timeout: REVEAL_CHECK_MS * 4,
+        });
+        expect(scrollTo).toHaveBeenLastCalledWith({ y: 120, animated: false });
+
+        // Cette fois, la liste a défilé : plus rien n'est demandé, même quand le contenu change.
+        await fireEvent.scroll(list(), { nativeEvent: { contentOffset: { x: 0, y: 120 } } });
+        await fireEvent(list(), 'contentSizeChange', 390, 700);
+        await new Promise((done) => setTimeout(done, REVEAL_CHECK_MS * 2));
+        expect(scrollTo).toHaveBeenCalledTimes(3);
+      });
+
+      it('never asks more than 5 times, and leaves the list to a player who scrolls', async () => {
+        const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+        await given('Cuisiner', 'Lire');
+        await show();
+        await screen.findByText('Lire');
+        await layout('day-view-list', 0, 360);
+
+        await createMeditation();
+        await fireEvent(list(), 'contentSizeChange', 390, 518);
+        await layout('habit-card-3', 324, 76);
+        for (let attempt = 0; attempt < 8; attempt += 1) {
+          await fireEvent.scroll(list(), { nativeEvent: { contentOffset: { x: 0, y: 0 } } });
+        }
+        expect(scrollTo).toHaveBeenCalledTimes(5);
+
+        scrollTo.mockClear();
+        await fireEvent(list(), 'scrollBeginDrag');
+        await fireEvent(list(), 'contentSizeChange', 390, 700);
+        expect(scrollTo).not.toHaveBeenCalled();
+      });
+
+      it('ends the reveal on a position received within 1 dp of the target, even if a row then changes height', async () => {
+        const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+        await given('Cuisiner', 'Lire');
+        await show();
+        await screen.findByText('Lire');
+        await layout('day-view-list', 0, 360);
+        await layout('add-habit', 568, 56);
+
+        await createMeditation();
+        await fireEvent(list(), 'contentSizeChange', 390, 518);
+        await layout('habit-card-3', 324, 76);
+        expect(scrollTo).toHaveBeenCalledTimes(1);
+
+        // La liste s'est arrêtée à moins d'1 dp de la cible (120) : la révélation est finie.
+        await fireEvent.scroll(list(), { nativeEvent: { contentOffset: { x: 0, y: 119.5 } } });
+        // L'aide disparaît, la ligne change de hauteur : la liste ne bouge plus sous le doigt.
+        await layout('habit-card-3', 324, 100);
+        await fireEvent(list(), 'contentSizeChange', 390, 542);
+        await new Promise((done) => setTimeout(done, REVEAL_CHECK_MS * 2));
+        expect(scrollTo).toHaveBeenCalledTimes(1);
+      });
+
+      it('leaves the list to a player who touches it while a reveal is pending', async () => {
+        const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+        await given('Cuisiner', 'Lire');
+        await show();
+        await screen.findByText('Lire');
+        await layout('day-view-list', 0, 360);
+        await layout('add-habit', 568, 56);
+        await fireEvent(list(), 'contentSizeChange', 390, 330);
+
+        await createMeditation();
+        await layout('habit-card-3', 324, 76);
+        expect(scrollTo).not.toHaveBeenCalled();
+
+        // Le joueur touche une ligne avant que le contenu ne grandisse : plus aucun défilement.
+        await fireEvent(list(), 'touchStart');
+        await fireEvent(list(), 'contentSizeChange', 390, 518);
+        await new Promise((done) => setTimeout(done, REVEAL_CHECK_MS * 2));
+        expect(scrollTo).not.toHaveBeenCalled();
+      });
+
+      it('keeps the label « Habitudes » and its counter above the button at the end of the list', async () => {
+        await given('Cuisiner');
+        await show();
+        await screen.findByText('Cuisiner');
+        await layout('day-view-list', 0, 360);
+        await layout('add-habit', 568, 56);
+        await layout('day-view-section', 120, 24);
+
+        // Le libellé finit à 144 dp, et la liste garde ses 80 derniers dp pour le bouton.
+        expect(144).toBeLessThanOrEqual(360 - bottomSpace());
+        expect(screen.getByText('Habitudes')).toBeOnTheScreen();
+        expect(screen.getByLabelText('1 habitude sur 10')).toBeOnTheScreen();
+      });
+    });
+
+    it('never scrolls for a habit that is not new', async () => {
+      const scrollTo = jest.spyOn(ScrollView.prototype, 'scrollTo');
+      await given('Cuisiner');
+      await show();
+      await screen.findByText('Cuisiner');
+      await layout('day-view-list', 0, 100);
+
+      await layout('habit-card-1', 340, 76);
+      await fireEvent(list(), 'contentSizeChange', 390, 900);
+
+      expect(scrollTo).not.toHaveBeenCalled();
+    });
   });
 
   it('stops highlighting the new habit and hides the message after a moment', async () => {
@@ -298,7 +603,7 @@ describe('DayViewScreen', () => {
       await screen.findByText('Cuisiner');
 
       await act(() => jest.advanceTimersByTime(HIGHLIGHT_DURATION_MS));
-      expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: 'transparent' });
+      expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: roles.line });
       await act(() => jest.advanceTimersByTime(TOAST_DURATION_MS - HIGHLIGHT_DURATION_MS));
       expect(screen.queryByTestId('toast')).not.toBeOnTheScreen();
     } finally {
@@ -428,7 +733,12 @@ describe('DayViewScreen', () => {
       expect(screen.getByLabelText('1 habitude faite sur 2 attendues')).toHaveTextContent(
         '1/2 faites',
       );
-      expect(screen.getByTestId('day-progress')).toHaveStyle({ width: '50%' });
+      expect(
+        within(screen.getByLabelText('1 habitude faite sur 2 attendues')).getAllByTestId(
+          'week-notch-on',
+          { includeHiddenElements: true },
+        ),
+      ).toHaveLength(1);
       expect(await storedStatuses()).toEqual(['Cuisiner: done', 'Budget du jour: pending']);
       expect(screen.queryByTestId('toast')).not.toBeOnTheScreen();
 
@@ -881,7 +1191,7 @@ describe('DayViewScreen and editing a habit', () => {
       }),
     ).toBeChecked();
     expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
-    expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: '#7C9CFF' });
+    expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: roles.gold });
     expect(toast()).toHaveTextContent('Habitude renommée');
     expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP');
     expect(await names()).toEqual(['Cuisiner maison', 'Budget du jour']);
@@ -987,7 +1297,7 @@ describe('DayViewScreen and editing a habit', () => {
       expect(await peaksOf(1)).toBe(3);
       expect(screen.queryByTestId('edit-habit-sheet')).not.toBeOnTheScreen();
       expect(toast()).toHaveTextContent(`Habitude modifiée · +20 XP`);
-      expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: '#7C9CFF' });
+      expect(screen.getByTestId('habit-card-1')).toHaveStyle({ borderColor: roles.gold });
       expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 40 XP');
       expect(screen.getByTestId('xp-change', { includeHiddenElements: true })).toHaveTextContent(
         '+20 XP',
@@ -1238,7 +1548,7 @@ describe('DayViewScreen and the weekly progress (E1)', () => {
 
     await show();
 
-    expect(screen.getAllByTestId('day-view-loading-secondary-line')).toHaveLength(4);
+    expect(screen.getAllByTestId('day-view-loading-secondary-line')).toHaveLength(5);
     jest.restoreAllMocks();
   });
 
@@ -1634,5 +1944,216 @@ describe('DayViewScreen and the target bonus (#26)', () => {
 
     await waitFor(() => expect(xpBar()).toHaveAccessibleName('Expérience du personnage : 20 XP'));
     expect(toast()).toHaveTextContent('Habitude supprimée · −25 XP');
+  });
+});
+
+describe('DayViewScreen in pixel art (#72)', () => {
+  const hidden = { includeHiddenElements: true };
+  const names = ['Cuisiner', 'Budget du jour', 'Courir 5 km', 'Me coucher avant 23 h', 'Lire'];
+  const sky = () => screen.getByTestId('day-sky', hidden).props.sprite as string;
+  const switchOf = (name: string) =>
+    screen.getByRole('switch', { name: new RegExp(`^${name}, `, 'u') });
+
+  async function twoOfFiveDone() {
+    await given(...names);
+    await toggleCheckIn(dependencies, 1, wednesday);
+    await toggleCheckIn(dependencies, 2, wednesday);
+    await show();
+    await screen.findByText('Cuisiner');
+  }
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('dresses the day view in the pixel art identity', async () => {
+    await twoOfFiveDone();
+
+    expect(screen.getByTestId('day-view')).toHaveStyle({ backgroundColor: roles.night });
+    expect(screen.getByRole('header', { name: 'Aujourd’hui' })).toHaveStyle({
+      fontFamily: 'PixelifySans_700Bold',
+    });
+    expect(screen.getByText('2/5')).toHaveStyle({
+      fontFamily: 'PixelifySans_700Bold',
+      fontSize: 22,
+    });
+    expect(screen.getByText('faites')).toHaveStyle({ fontSize: 18 });
+    expect(screen.getByText('Cuisiner')).toHaveStyle({ fontFamily: 'Inter_600SemiBold' });
+    screen
+      .getAllByTestId(/^(day-sky|character-sprite)$/u, hidden)
+      .forEach((sprite) => expect([2, 3]).toContain(sprite.props.scale));
+  });
+
+  it('lights the day sky one notch with a third habit done, and raises the sun when all are done', async () => {
+    await twoOfFiveDone();
+    await waitFor(() => expect(sky()).toMatch(/^day-sky:0\.4:/u));
+
+    await fireEvent.press(switchOf('Courir 5 km'));
+    await waitFor(() => expect(sky()).toMatch(/^day-sky:0\.6:/u));
+
+    await fireEvent.press(switchOf('Me coucher avant 23 h'));
+    await waitFor(() => expect(screen.getByText('4/5')).toBeOnTheScreen());
+    await fireEvent.press(switchOf('Lire'));
+    await waitFor(() => expect(sky()).toMatch(/^day-sky:1:/u));
+    expect(screen.getByText('Toutes faites')).toHaveStyle({ fontFamily: 'PixelifySans_700Bold' });
+  });
+
+  it('waits for the first habit with the character at ×3 under a night sky, and a single button', async () => {
+    await show();
+    await screen.findByTestId('day-view-empty');
+
+    expect(screen.getByTestId('illustration-character', hidden).props.scale).toBe(3);
+    await waitFor(() => expect(sky()).toMatch(/^day-sky:0:/u));
+    expect(screen.getAllByRole('button', { name: 'Ajouter une habitude' })).toHaveLength(1);
+  });
+
+  it('shows the alert emblem, the message in the text font and « Réessayer » when the habits cannot be read', async () => {
+    dependencies.unitOfWork.failReads();
+    await show();
+
+    await screen.findByTestId('day-view-error');
+    expect(screen.getByTestId('illustration-alert', hidden).props.sprite).toBe('alert-emblem');
+    expect(
+      screen.getByText('Une erreur est survenue en lisant tes données sur ce téléphone.'),
+    ).toHaveStyle({
+      fontFamily: 'Inter_400Regular',
+    });
+    expect(screen.getByRole('button', { name: 'Réessayer' })).toHaveStyle({ minHeight: 48 });
+  });
+
+  it('plays the game feedback of a habit done: spark, check, pill, experience and counter', async () => {
+    withMotion();
+    await createHabit(dependencies, 'Cuisiner');
+    await createHabit(dependencies, 'Lire');
+    await show();
+    await screen.findByText('Cuisiner');
+    await waitFor(() => expect(screen.getByTestId('xp-counter')).toHaveTextContent('0 XP'));
+
+    await fireEvent.press(switchOf('Cuisiner'));
+
+    expect(screen.getByTestId('habit-burst', hidden).props.sprite).toBe('burst-0');
+    await waitFor(() => expect(screen.getByTestId('xp-counter')).toHaveTextContent('10 XP'));
+    expect(screen.getByTestId('check-mark', hidden)).toBeTruthy();
+    expect(screen.getByTestId('xp-change', hidden)).toHaveTextContent('+10 XP');
+    expect(screen.getByLabelText('1 habitude faite sur 2 attendues')).toBeOnTheScreen();
+    expect(dependencies.haptics.success).toHaveBeenCalledTimes(1);
+    expect(AccessibilityInfo.announceForAccessibility).toHaveBeenCalledWith(
+      '+10 points d’expérience. Total : 10 XP.',
+    );
+  });
+
+  it('plays no spark when a failed save puts « fait » back on the row', async () => {
+    withMotion();
+    await createHabit(dependencies, 'Cuisiner');
+    await toggleCheckIn(dependencies, 1, wednesday);
+    await show();
+    await waitFor(() => expect(screen.getByTestId('xp-counter')).toHaveTextContent('10 XP'));
+    dependencies.unitOfWork.failWrites();
+
+    await fireEvent.press(switchOf('Cuisiner'));
+
+    await screen.findByText('Le suivi n’a pas été enregistré.');
+    await waitFor(() => expect(switchOf('Cuisiner')).toBeChecked());
+    expect(screen.queryByTestId('habit-burst', hidden)).toBeNull();
+  });
+
+  it('shows « −10 XP » in grey, without spark nor vibration, when a habit goes back', async () => {
+    withMotion();
+    await createHabit(dependencies, 'Cuisiner');
+    await toggleCheckIn(dependencies, 1, wednesday);
+    await show();
+    await waitFor(() => expect(screen.getByTestId('xp-counter')).toHaveTextContent('10 XP'));
+
+    await fireEvent.press(switchOf('Cuisiner'));
+
+    await waitFor(() => expect(screen.getByTestId('xp-counter')).toHaveTextContent('0 XP'));
+    expect(screen.queryByTestId('habit-burst', hidden)).toBeNull();
+    expect(screen.getByTestId('xp-float', hidden)).toHaveTextContent('−10 XP');
+    expect(dependencies.haptics.success).not.toHaveBeenCalled();
+    expect(screen.getByTestId('habit-check-1', hidden)).toHaveStyle({ borderColor: roles.gold });
+  });
+
+  it('puts everything back, without any bonus, when a check-in is not saved', async () => {
+    await createHabit(dependencies, 'Cuisiner', 'medium', 1);
+    await show();
+    await screen.findByText('Cuisiner');
+    dependencies.unitOfWork.failWrites();
+
+    await fireEvent.press(switchOf('Cuisiner'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('toast')).toHaveTextContent(/^Le suivi n’a pas été enregistré\./u),
+    );
+    expect(screen.getByRole('button', { name: 'Réessayer' })).toBeOnTheScreen();
+    expect(switchOf('Cuisiner')).not.toBeChecked();
+    expect(screen.getByTestId('xp-counter')).toHaveTextContent('0 XP');
+    expect(screen.queryByTestId('xp-change-bonus', hidden)).toBeNull();
+    expect(screen.queryByTestId('habit-target-reached-1', hidden)).toBeNull();
+  });
+
+  it('shows the final states at once when the motion is reduced', async () => {
+    await createHabit(dependencies, 'Courir 5 km', 'hard', 1);
+    await show();
+    await screen.findByText('Courir 5 km');
+
+    await fireEvent.press(switchOf('Courir 5 km'));
+
+    await waitFor(() => expect(screen.getByTestId('habit-target-reached-1', hidden)).toBeTruthy());
+    expect(screen.queryByTestId('habit-burst', hidden)).toBeNull();
+    expect(screen.queryByTestId('xp-float', hidden)).toBeNull();
+    expect(screen.getByTestId('xp-change', hidden)).toHaveTextContent('+20 XP');
+    expect(screen.getByTestId('habit-target-reached-1', hidden)).toHaveStyle({
+      borderColor: roles.goldDark,
+    });
+    expect(dependencies.haptics.success).toHaveBeenCalledTimes(2);
+  });
+
+  it('lets the text grow at 200 %, pixel font included, without scaling any sprite', async () => {
+    Dimensions.set({
+      window: { ...Dimensions.get('window'), fontScale: 2 },
+      screen: { ...Dimensions.get('screen'), fontScale: 2 },
+    });
+    await twoOfFiveDone();
+
+    [screen.getByRole('header', { name: 'Aujourd’hui' }), screen.getByText('2/5')].forEach(
+      (text) => {
+        expect(text.props.numberOfLines).toBeUndefined();
+        expect(text.props.adjustsFontSizeToFit).toBeUndefined();
+        expect(text.props.allowFontScaling).not.toBe(false);
+      },
+    );
+    screen
+      .getAllByTestId(/^(day-sky|character-sprite)$/u, hidden)
+      .forEach((sprite) => expect(sprite.props.scale).toBe(2));
+  });
+});
+
+describe('listBottomSpaceOf', () => {
+  it('reserves the bottom of the screen, the floating button and a gap', () => {
+    expect(listBottomSpaceOf(56)).toBe(80);
+    expect(listBottomSpaceOf(100)).toBe(124);
+  });
+
+  it('reserves the room of a 56 dp button before it is measured', () => {
+    expect(listBottomSpaceOf(undefined)).toBe(80);
+  });
+});
+
+describe('revealOffsetOf', () => {
+  it('scrolls just enough to see the bottom of the row above the button, on a 320 × 640 screen', () => {
+    expect(revealOffsetOf({ y: 280, height: 76 }, { offset: 0, height: 360 }, 80)).toBe(76);
+  });
+
+  it('does not scroll for a row already seen above the button', () => {
+    expect(revealOffsetOf({ y: 180, height: 76 }, { offset: 0, height: 360 }, 80)).toBeNull();
+    expect(revealOffsetOf({ y: 204, height: 76 }, { offset: 0, height: 360 }, 80)).toBeNull();
+  });
+
+  it('waits for the height of the list to be known', () => {
+    expect(revealOffsetOf({ y: 280, height: 76 }, { offset: 0, height: 0 }, 80)).toBeNull();
+  });
+
+  it('counts the scrolling already done', () => {
+    expect(revealOffsetOf({ y: 280, height: 76 }, { offset: 100, height: 360 }, 80)).toBeNull();
   });
 });

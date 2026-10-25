@@ -7,29 +7,28 @@ import type { Day } from '../../../domain/day/Day';
 import type { Habit, HabitId } from '../../../domain/habit/Habit';
 import type { Week } from '../../../domain/week/Week';
 import { MAX_HABITS } from '../../../domain/habit/HabitRules';
-import { ADD_HABIT_LABEL, AddHabitButton, HABIT_LIMIT_MESSAGE } from '../components/AddHabitButton';
-import { Button } from '../components/Button';
+import { AddHabitButton } from '../components/AddHabitButton';
 import { CharacterBar } from '../components/CharacterBar';
 import { DayHeader } from '../components/DayHeader';
-import { PlusGlyph } from '../components/Glyph';
 import { GoalsReachedNotice } from '../components/GoalsReachedNotice';
 import { HabitRow } from '../components/HabitRow';
 import { Notice } from '../components/Notice';
 import { Screen } from '../components/Screen';
 import { StateMessage } from '../components/StateMessage';
+import { Toast } from '../components/Toast';
 import { WhatsNewCard } from '../components/WhatsNewCard';
 import { YesterdayReminderBanner } from '../components/YesterdayReminderBanner';
-import {
-  targetToastOf,
-  Toast,
-  type ToastAction,
-  type ToastTarget,
-  type ToastVariant,
-} from '../components/Toast';
+import { ADD_HABIT_LABEL, HABIT_LIMIT_MESSAGE } from '../format/addHabit';
 import { CHECK_IN_SAVE_FAILED, correctionMessage } from '../format/checkInMessages';
 import { formatDayAndMonth } from '../format/formatDay';
 import type { WeeklyProgressShown } from '../format/formatWeeklyTarget';
 import type { TargetFeedback } from '../format/targetFeedback';
+import {
+  targetToastOf,
+  type ToastAction,
+  type ToastTarget,
+  type ToastVariant,
+} from '../format/toast';
 import { useCheckInHint } from '../state/useCheckInHint';
 import { useCreateHabit } from '../state/useCreateHabit';
 import { useDayView } from '../state/useDayView';
@@ -43,9 +42,11 @@ import {
 import { useTodayChange } from '../state/useTodayChange';
 import { useWhatsNewCard } from '../state/useWhatsNewCard';
 import { useYesterdayReminder } from '../state/useYesterdayReminder';
-import { colors } from '../theme/colors';
-import { radii, spacing } from '../theme/metrics';
-import { typography } from '../theme/typography';
+import { artPalette } from '../pixelArt/artPalette';
+import { PixelButton } from '../pixelArt/PixelButton';
+import { PixelFrame } from '../pixelArt/PixelFrame';
+import { pixelTypography } from '../pixelArt/pixelTypography';
+import { PixelSkeleton } from '../pixelArt/PixelSkeleton';
 import {
   type DeletedHabit,
   deletedMessage,
@@ -87,7 +88,16 @@ interface ToastContent {
   readonly announcement?: string;
 }
 
-function LoadingView() {
+const { roles } = artPalette;
+
+/** Le nombre de lignes que réserve le squelette de chargement. */
+const SKELETON_ROWS = 5;
+
+/**
+ * Le chargement : l'en-tête du personnage tout de suite, et un squelette au pixel d'art qui réserve
+ * la place du titre, du compteur et des lignes (sans clignoter en mouvement réduit).
+ */
+function LoadingView({ xp }: { readonly xp: number | null }) {
   return (
     <View
       accessible
@@ -97,26 +107,30 @@ function LoadingView() {
       testID="day-view-loading"
       style={styles.loading}
     >
-      <CharacterBar xp={null} change={null} />
-      <View style={styles.loadingHeader}>
-        <View>
-          <View style={[styles.skeleton, styles.skeletonTitle]} />
-          <View style={[styles.skeleton, styles.skeletonDate]} />
-        </View>
-        <View style={[styles.skeleton, styles.skeletonCount]} />
-      </View>
-      {[0, 1, 2, 3].map((index) => (
-        <View key={index} style={styles.skeletonRow}>
-          <View style={[styles.skeleton, styles.skeletonCheck]} />
-          <View style={styles.skeletonTexts}>
-            <View style={[styles.skeleton, styles.skeletonName]} />
-            <View testID="day-view-loading-secondary-line" style={styles.skeletonLine}>
-              <View style={[styles.skeleton, styles.skeletonIcon]} />
-              <View style={[styles.skeleton, styles.skeletonStatus]} />
-            </View>
+      <CharacterBar xp={xp} change={null} />
+      <View>
+        <View style={styles.loadingHeader}>
+          <View>
+            <PixelSkeleton width={150} height={26} />
+            <View style={styles.skeletonGap} />
+            <PixelSkeleton width={120} height={12} />
           </View>
+          <PixelSkeleton width={80} height={22} />
         </View>
-      ))}
+        <View style={styles.list}>
+          {Array.from({ length: SKELETON_ROWS }, (_, index) => (
+            <PixelFrame key={index} style={styles.skeletonRow}>
+              <PixelSkeleton width={44} height={44} />
+              <View style={styles.skeletonTexts}>
+                <PixelSkeleton width="62%" height={14} />
+                <View testID="day-view-loading-secondary-line">
+                  <PixelSkeleton width="44%" height={10} />
+                </View>
+              </View>
+            </PixelFrame>
+          ))}
+        </View>
+      </View>
     </View>
   );
 }
@@ -130,8 +144,51 @@ function weeklyProgressShownOf({
   return weekTarget === null ? undefined : { weeklyProgress, weekTarget, targetReached };
 }
 
+/** La place d'une ligne dans la liste : son haut et sa hauteur, en dp. */
+interface RowPlace {
+  readonly y: number;
+  readonly height: number;
+}
+
+/** La hauteur du bouton flottant avant sa mesure : 56 dp. */
+const FAB_HEIGHT = 56;
+
+/** Le délai après lequel le défilement de révélation vérifie qu'il a bien eu lieu. */
+export const REVEAL_CHECK_MS = 120;
+
+/** Le nombre de défilements de révélation, au plus, pour une même habitude créée. */
+const REVEAL_ATTEMPTS = 5;
+
+/**
+ * L'espace sous la dernière ligne de la liste : la marge du bas de l'écran (16), le bouton
+ * flottant (`fabHeight`, mesuré, car il grandit avec le texte) et un écart (8). Le libellé
+ * « Habitudes » reste ainsi au-dessus du bouton, en bas de la liste.
+ */
+export function listBottomSpaceOf(fabHeight: number | undefined): number {
+  return 16 + (fabHeight ?? FAB_HEIGHT) + 8;
+}
+
+/**
+ * Le défilement qui montre une ligne sous le bord de l'écran ou sous le bouton flottant, juste
+ * assez pour voir son bas au-dessus de lui (`bottomSpace`,
+ * `listBottomSpaceOf`) ; `null` si elle est déjà visible (ou si la hauteur visible n'est pas encore
+ * connue).
+ */
+export function revealOffsetOf(
+  { y, height }: RowPlace,
+  shown: { readonly offset: number; readonly height: number },
+  bottomSpace: number,
+): number | null {
+  const bottom = y + height + bottomSpace;
+  if (shown.height === 0 || bottom <= shown.offset + shown.height) {
+    return null;
+  }
+  return bottom - shown.height;
+}
+
 function HabitList({
   view,
+  bottomSpace,
   highlighted,
   xpChange,
   targetFlash,
@@ -142,6 +199,8 @@ function HabitList({
   onEdit,
 }: {
   readonly view: DayView;
+  /** L'espace réservé sous la liste, pour le bouton et le message (`listBottomSpaceOf`). */
+  readonly bottomSpace: number;
   readonly highlighted: Highlight | null;
   readonly xpChange: XpChange | null;
   readonly targetFlash: TargetFlash | null;
@@ -152,6 +211,66 @@ function HabitList({
   readonly onEdit: (row: DayViewHabit) => void;
 }) {
   const scroll = useRef<ScrollView>(null);
+  /** La place de chaque ligne dans la liste, et la partie de la liste à l'écran. */
+  const rows = useRef(new Map<HabitId, RowPlace>());
+  const shown = useRef({ offset: 0, height: 0 });
+  /** La hauteur du contenu de la liste, telle que la liste l'a reçue. */
+  const contentHeight = useRef(0);
+  /** L'habitude créée déjà révélée (ou laissée au joueur) : elle ne bouge plus sous son doigt. */
+  const revealed = useRef<HabitId | null>(null);
+  /** Les défilements déjà demandés pour l'habitude créée, et la vérification à venir. */
+  const attempts = useRef<{ id: HabitId | null; count: number }>({ id: null, count: 0 });
+  const check = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(check.current), []);
+  // Une habitude créée, en bas de la liste, n'y est montrée que si elle est sous le bord de
+  // l'écran ou sous le bouton, et juste assez : les encarts du haut
+  // (aide, « Toutes faites ») restent à l'écran. Le défilement est immédiat.
+  // Sous Android, il peut être demandé avant que la ligne ne soit montée : il s'arrête alors au
+  // bas de l'ancien contenu, sans erreur ni nouvel événement. Il est donc vérifié par la position
+  // reçue (`onScroll`) et redemandé, au prochain événement de mise en page ou après
+  // `REVEAL_CHECK_MS`, `REVEAL_ATTEMPTS` fois au plus. Il est fini dès que la ligne est à l'écran,
+  // que la liste est à sa cible (à 1 dp près), ou dès que le joueur touche la liste.
+  const finish = (id: HabitId | null) => {
+    revealed.current = id;
+    clearTimeout(check.current);
+  };
+  const reveal = () => {
+    if (highlighted?.reveal !== true || revealed.current === highlighted.id) {
+      return;
+    }
+    const { id } = highlighted;
+    const row = rows.current.get(id);
+    if (row === undefined || shown.current.height === 0) {
+      return;
+    }
+    const wanted = revealOffsetOf(row, shown.current, bottomSpace);
+    if (wanted === null) {
+      finish(id);
+      return;
+    }
+    // Pas plus loin que le contenu connu : il grandira, et le défilement suivra.
+    const reachable =
+      contentHeight.current > 0 ? contentHeight.current - shown.current.height : wanted;
+    const target = Math.min(wanted, reachable);
+    if (target <= shown.current.offset + 1) {
+      // À sa cible, à 1 dp près : la révélation est finie, sauf si le contenu doit encore grandir.
+      if (target === wanted) {
+        finish(id);
+      }
+      return;
+    }
+    if (attempts.current.id !== id) {
+      attempts.current = { id, count: 0 };
+    }
+    if (attempts.current.count >= REVEAL_ATTEMPTS) {
+      finish(id);
+      return;
+    }
+    attempts.current.count += 1;
+    scroll.current?.scrollTo({ y: target, animated: false });
+    clearTimeout(check.current);
+    check.current = setTimeout(reveal, REVEAL_CHECK_MS);
+  };
   const { doneCount, expectedCount } = view;
   const activeCount = view.habits.length;
   // Seules les habitudes attendues comptent (#25) : sans aucune, « Objectifs de la semaine
@@ -159,6 +278,14 @@ function HabitList({
   const allDone = expectedCount > 0 && doneCount === expectedCount;
   const goalsReached = activeCount > 0 && expectedCount === 0;
   const count = view.habitCount;
+  // « Toutes faites » et « Objectifs de la semaine atteints » apparaissent en haut de la liste : la
+  // liste y remonte s'ils naissent au-dessus de la partie à l'écran.
+  const topMoment = allDone || goalsReached;
+  useEffect(() => {
+    if (topMoment && shown.current.offset > 0) {
+      scroll.current?.scrollTo({ y: 0, animated: true });
+    }
+  }, [topMoment]);
   return (
     <>
       <DayHeader
@@ -169,12 +296,30 @@ function HabitList({
       />
       <ScrollView
         ref={scroll}
-        contentContainerStyle={styles.list}
-        onContentSizeChange={() => {
-          if (highlighted?.reveal === true) {
-            scroll.current?.scrollToEnd();
+        contentContainerStyle={[styles.list, styles.fill, { paddingBottom: bottomSpace }]}
+        onContentSizeChange={(_width, height) => {
+          contentHeight.current = height;
+          reveal();
+        }}
+        onLayout={({ nativeEvent }) => {
+          shown.current = { ...shown.current, height: nativeEvent.layout.height };
+        }}
+        onScroll={({ nativeEvent }) => {
+          shown.current = { ...shown.current, offset: nativeEvent.contentOffset.y };
+          // La position reçue confirme (ou non) le défilement de révélation en cours.
+          if (attempts.current.id === highlighted?.id) {
+            reveal();
           }
         }}
+        onScrollBeginDrag={() => {
+          // Le joueur fait défiler lui-même : la révélation s'arrête là.
+          finish(highlighted?.id ?? null);
+        }}
+        onTouchStart={() => {
+          // Le joueur touche une ligne ou la liste : elle ne bouge plus sous son doigt.
+          finish(highlighted?.id ?? null);
+        }}
+        scrollEventThrottle={16}
         testID="day-view-list"
       >
         {whatsNew}
@@ -193,13 +338,19 @@ function HabitList({
             targetFlash={targetFlashOn(targetFlash, habitDay)}
             onToggle={onToggle}
             onEdit={() => onEdit(habitDay)}
+            onLayout={({ nativeEvent: { layout } }) => {
+              rows.current.set(habitDay.habit.id, { y: layout.y, height: layout.height });
+              if (habitDay.habit.id === highlighted?.id) {
+                reveal();
+              }
+            }}
           />
         ))}
-        <View style={styles.section}>
-          <Text style={[typography.label, styles.sectionTitle]}>Habitudes</Text>
+        <View testID="day-view-section" style={styles.section}>
+          <Text style={[pixelTypography.label, styles.sectionTitle]}>Habitudes</Text>
           <Text
             accessibilityLabel={`${count} ${count > 1 ? 'habitudes' : 'habitude'} sur ${MAX_HABITS}`}
-            style={[typography.label, view.canAddHabit ? styles.sectionCount : styles.full]}
+            style={[pixelTypography.label, view.canAddHabit ? styles.sectionCount : styles.full]}
           >
             {`${count}/${MAX_HABITS}`}
           </Text>
@@ -270,6 +421,7 @@ export function DayViewScreen({
   const hint = useCheckInHint();
   const whatsNew = useWhatsNewCard();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [fabHeight, setFabHeight] = useState<number | undefined>(undefined);
 
   const [seenRequest, setSeenRequest] = useState<string | number | undefined>(undefined);
   if (newHabitRequest !== seenRequest) {
@@ -370,27 +522,29 @@ export function DayViewScreen({
 
   if (state.status === 'loading') {
     return (
-      <Screen layout="top" testID="day-view">
-        <LoadingView />
+      <Screen layout="top" testID="day-view" background={roles.night}>
+        <LoadingView xp={experience.xp} />
       </Screen>
     );
   }
 
   if (state.status === 'failed') {
     return (
-      <Screen layout="top" testID="day-view">
+      <Screen layout="top" testID="day-view" background={roles.night}>
+        <CharacterBar xp={experience.xp} change={null} />
         <StateMessage
           alert
           illustration="alert"
           title="Impossible de charger tes habitudes."
           text="Une erreur est survenue en lisant tes données sur ce téléphone."
           action={
-            <Button
+            <PixelButton
               label="Réessayer"
               onPress={() => {
                 void reload();
                 void experience.reload();
               }}
+              style={styles.retry}
             />
           }
           testID="day-view-error"
@@ -402,18 +556,18 @@ export function DayViewScreen({
   const { view } = state;
   const empty = view.habitCount === 0;
   return (
-    <Screen layout="top" testID="day-view">
+    <Screen layout="top" testID="day-view" background={roles.night}>
       <CharacterBar xp={experience.xp} change={experience.change} />
       {empty ? (
         <StateMessage
-          illustration="summit"
+          illustration="character"
           title="Aucune habitude pour l’instant"
           text="Crée ta première habitude et commence à gagner de l’expérience."
           action={
-            <Button
+            <PixelButton
               label={ADD_HABIT_LABEL}
+              icon="plus"
               onPress={openSheet}
-              icon={<PlusGlyph color={colors.onAccent} />}
               testID="add-habit"
             />
           }
@@ -423,6 +577,7 @@ export function DayViewScreen({
         <>
           <HabitList
             view={view}
+            bottomSpace={listBottomSpaceOf(fabHeight)}
             highlighted={highlighted}
             xpChange={experience.change}
             targetFlash={target.flash}
@@ -457,6 +612,7 @@ export function DayViewScreen({
             canAddHabit={view.canAddHabit}
             onPress={openSheet}
             onLimitPress={() => showToast(HABIT_LIMIT_MESSAGE)}
+            onLayout={({ nativeEvent }) => setFabHeight(nativeEvent.layout.height)}
           />
         </>
       )}
@@ -499,47 +655,42 @@ export function DayViewScreen({
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  list: { paddingHorizontal: spacing.lg, paddingTop: spacing.xs, paddingBottom: 112 },
+  list: { paddingHorizontal: 16, paddingTop: 4, gap: 8 },
+  /** La liste prend toute la hauteur visible, même courte : sa marge basse reste réservée. */
+  fill: { flexGrow: 1 },
   section: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'space-between',
-    marginTop: 6,
+    paddingTop: 8,
     marginHorizontal: 2,
   },
-  sectionTitle: { color: colors.muted },
-  sectionCount: { color: colors.muted },
-  full: { color: colors.xp, fontWeight: '600' },
+  sectionTitle: {
+    color: roles.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    fontSize: 12,
+  },
+  sectionCount: { color: roles.muted, fontSize: 12 },
+  full: { color: roles.gold, fontSize: 12 },
+  retry: { minWidth: 180 },
   loading: { flex: 1 },
   loadingHeader: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    marginHorizontal: spacing.lg,
-    paddingTop: 6,
-    paddingBottom: spacing.sm,
-    marginBottom: spacing.md,
+    paddingTop: 12,
+    paddingBottom: 10,
+    paddingHorizontal: 16,
   },
-  skeleton: { backgroundColor: colors.skeleton, borderRadius: spacing.sm },
-  skeletonTitle: { width: 150, height: 24 },
-  skeletonDate: { width: 120, height: 13, marginTop: spacing.sm },
-  skeletonCount: { width: 90, height: 20 },
+  skeletonGap: { height: 8 },
   skeletonRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    marginHorizontal: spacing.lg,
-    marginBottom: 10,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: 14,
-    borderRadius: radii.row,
-    backgroundColor: colors.surface,
+    gap: 12,
+    minHeight: 72,
+    padding: 12,
   },
-  skeletonCheck: { width: 44, height: 44, borderRadius: 22 },
-  skeletonTexts: { flex: 1 },
-  skeletonName: { width: '65%', height: 14 },
-  skeletonLine: { flexDirection: 'row', gap: 6, marginTop: spacing.sm },
-  skeletonIcon: { width: 20, height: 11 },
-  skeletonStatus: { width: '46%', height: 11 },
+  skeletonTexts: { flex: 1, gap: 8 },
 });
 // Stryker restore all

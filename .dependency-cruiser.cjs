@@ -66,6 +66,32 @@ module.exports = {
       to: { dependencyTypes: ['npm-dev'] },
     },
     {
+      name: 'pixel-art-skia-in-one-place',
+      comment:
+        "Dans l'interface, seuls `pixelArt/SpriteCanvas.tsx` et le combat (`battle/`) importent Skia (ADR 0007).",
+      severity: 'error',
+      from: {
+        path: '^src/adapters/ui/',
+        pathNot: [
+          '^src/adapters/ui/pixelArt/SpriteCanvas(\\.smoke\\.test)?\\.tsx$',
+          '^src/adapters/ui/battle/',
+        ],
+      },
+      to: { path: '^node_modules/@shopify/react-native-skia/' },
+    },
+    {
+      name: 'habit-screens-in-pixel-art',
+      comment:
+        "Les écrans d'habitudes, leurs composants et le pixel art n'importent pas l'ancien thème (`theme/colors`, `theme/metrics`, `theme/typography`). Seuls le combat d'essai et la sonde de toucher le gardent, jusqu'à l'épique #30 (ADR 0007, avenant de #73).",
+      severity: 'error',
+      from: {
+        path: '^src/adapters/ui/(pixelArt|components|screens|format|state)/',
+        pathNot:
+          '^src/adapters/ui/(components/(Button|Screen|TrialBattleEntry)|screens/(TouchProbeScreen|TrialBattleScreen))(\\.test)?\\.tsx$',
+      },
+      to: { path: '^src/adapters/ui/theme/(colors|metrics|typography)\\.ts$' },
+    },
+    {
       name: 'test-helpers-stay-in-tests',
       comment: 'Les aides de test (`testing/`) ne sont jamais importées par le code livré.',
       severity: 'error',

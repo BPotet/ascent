@@ -1,21 +1,33 @@
-import { useCallback, useState } from 'react';
-import type { LayoutChangeEvent } from 'react-native';
+import { useWindowDimensions } from 'react-native';
 
-import { MIN_TOUCH_SIZE } from '../theme/metrics';
+/** La largeur d'une colonne de la Vue Semaine et de la Vue Mois, au plus : 48 dp. */
+export const MAX_COLUMN_WIDTH = 48;
 
 /**
- * La hauteur d'une case de la Vue Semaine, d'après la largeur de sa colonne : carrée quand la
- * colonne fait au moins 44 pt, sinon 44 pt de haut sur la largeur de la colonne (comme la grille
- * `1fr` + `min-height: 44px` de la maquette). La case ne dépasse jamais sa colonne : sur un écran
- * étroit (320 dp), les 7 cases restent côte à côte dans la carte.
+ * La place autour des 7 colonnes d'une carte de la Vue Semaine : les marges de la liste (2 × 16),
+ * le trait de la carte (2 × 2) et sa marge intérieure (2 × 2). Les colonnes font 48 dp à partir
+ * d'un écran de 376 dp.
  */
-export function useCellHeight(): {
-  readonly height: number;
-  readonly onLayout: (event: LayoutChangeEvent) => void;
-} {
-  const [height, setHeight] = useState(MIN_TOUCH_SIZE);
-  const onLayout = useCallback((event: LayoutChangeEvent) => {
-    setHeight(Math.max(MIN_TOUCH_SIZE, Math.round(event.nativeEvent.layout.width)));
-  }, []);
-  return { height, onLayout };
+export const WEEK_CARD_CHROME = 40;
+
+/** La place autour des 7 colonnes de la grille de la Vue Mois : les marges de la liste (2 × 16). */
+export const MONTH_CHROME = 32;
+
+/**
+ * La largeur d'une colonne pour 7 colonnes dans `innerWidth` dp : 48 dp au plus, moins sur un
+ * écran étroit (environ 45,7 dp pour 320 dp, 40 dp pour 280 dp). Les colonnes ne dépassent jamais
+ * la place : ni défilement horizontal, ni zone de toucher qui empiète sur le jour voisin (ADR 0007,
+ * avenant de #73).
+ */
+export function weekColumnWidth(innerWidth: number): number {
+  return Math.min(MAX_COLUMN_WIDTH, innerWidth / 7);
+}
+
+/**
+ * La largeur des colonnes d'après la largeur de l'écran, moins la place `chrome` autour d'elles.
+ * Les cases, l'en-tête des jours et le squelette s'alignent dessus.
+ */
+export function useWeekColumnWidth(chrome: number): number {
+  const { width } = useWindowDimensions();
+  return weekColumnWidth(width - chrome);
 }

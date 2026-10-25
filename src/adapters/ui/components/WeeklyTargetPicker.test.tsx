@@ -1,9 +1,13 @@
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
-import { Dimensions, StyleSheet } from 'react-native';
+import { Dimensions } from 'react-native';
 
 import { Day } from '../../../domain/day/Day';
 import type { WeeklyTarget } from '../../../domain/habit/WeeklyTarget';
+import { artPalette } from '../pixelArt/artPalette';
+import { textFont } from '../pixelArt/pixelTypography';
 import { WeeklyTargetPicker } from './WeeklyTargetPicker';
+
+const { roles } = artPalette;
 
 async function show(value: WeeklyTarget = 7) {
   const onChange = jest.fn();
@@ -105,65 +109,53 @@ describe('WeeklyTargetPicker', () => {
     expect(onChange).toHaveBeenCalledWith(3);
   });
 
-  it('offers 44 × 44 pt round options, the chosen one filled', async () => {
+  it('offers options of 48 dp high, the chosen one filled with gold, with its tick and a bold text', async () => {
     await show(5);
 
-    expect(option(1)).toHaveStyle({ width: 44, height: 44, borderRadius: 22 });
-    expect(option(5)).toHaveStyle({ backgroundColor: '#7C9CFF', borderColor: '#7C9CFF' });
-    expect(option(1)).toHaveStyle({ backgroundColor: '#0F1420', borderColor: '#2E3950' });
-    expect(within(option(5)).getByText('5')).toHaveStyle({ color: '#0B1020', fontWeight: '700' });
-    expect(within(option(1)).getByText('1')).toHaveStyle({ color: '#EEF1F7' });
+    expect(option(1)).toHaveStyle({ minHeight: 48 });
+    expect(screen.getByTestId('choice-frame-weekly-target-option-5')).toHaveStyle({
+      backgroundColor: roles.gold,
+      borderColor: roles.gold,
+    });
+    expect(screen.getByTestId('choice-frame-weekly-target-option-1')).toHaveStyle({
+      borderColor: roles.line,
+    });
+    expect(within(option(5)).getByText('5')).toHaveStyle({
+      color: roles.ink,
+      fontFamily: textFont.bold,
+    });
+    expect(
+      within(option(5)).getByTestId('choice-tick', { includeHiddenElements: true }),
+    ).toBeTruthy();
+    expect(within(option(1)).getByText('1')).toHaveStyle({
+      color: roles.light,
+      fontFamily: textFont.semiBold,
+    });
   });
 
   describe('on a narrow screen (320 dp)', () => {
-    // 320 dp moins les marges du panneau : environ 280 pt pour la rangée, moins que 7 × 44 pt.
-    const ROW_WIDTH = 280;
-
-    async function layOut(width: number) {
-      await fireEvent(screen.getByTestId('weekly-target-picker'), 'layout', {
-        nativeEvent: { layout: { x: 0, y: 0, width, height: 44 } },
-      });
-    }
-
-    it('keeps the seven options, the 7th included, within the row', async () => {
+    it('shares the row between the seven options, the 7th included, without any touch area beyond its own', async () => {
       await show(3);
-      await layOut(ROW_WIDTH);
 
-      const widths = [1, 2, 3, 4, 5, 6, 7].map(
-        (target) => StyleSheet.flatten(option(target).props.style).width as number,
-      );
-      expect(widths.reduce((sum, width) => sum + width, 0) + 6 * 2).toBeLessThanOrEqual(ROW_WIDTH);
-      expect(option(7)).toHaveStyle({ width: 38, height: 38, borderRadius: 19 });
+      expect(screen.getByTestId('weekly-target-picker')).toHaveStyle({
+        flexDirection: 'row',
+        gap: 4,
+      });
+      for (const target of [1, 7]) {
+        expect(option(target)).toHaveStyle({ flex: 1, minHeight: 48 });
+        expect(option(target)).not.toHaveProp('hitSlop', expect.anything());
+      }
       expect(
         screen.getByRole('radio', { name: '7 fois par semaine, tous les jours' }),
       ).toBeOnTheScreen();
     });
 
-    it('gives each option a touch area of at least 44 pt', async () => {
-      await show(3);
-      await layOut(ROW_WIDTH);
-
-      for (const target of [1, 7]) {
-        const { width } = StyleSheet.flatten(option(target).props.style) as { width: number };
-        expect(width + 2 * (option(target).props.hitSlop as number)).toBeGreaterThanOrEqual(44);
-      }
-    });
-
     it('chooses the 7th option touched', async () => {
       const onChange = await show(3);
-      await layOut(ROW_WIDTH);
 
       await fireEvent.press(option(7));
 
       expect(onChange).toHaveBeenCalledWith(7);
-    });
-
-    it('keeps the 44 pt options of the mockup when the row is wide enough (390 pt)', async () => {
-      await show(3);
-      await layOut(350);
-
-      expect(option(7)).toHaveStyle({ width: 44, height: 44, borderRadius: 22 });
-      expect(option(7).props.hitSlop).toBe(0);
     });
   });
 

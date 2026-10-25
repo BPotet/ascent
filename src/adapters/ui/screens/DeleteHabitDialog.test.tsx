@@ -2,7 +2,11 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-
 import { AccessibilityInfo } from 'react-native';
 
 import type { DeleteHabitOutcome } from '../state/useEditHabit';
+import { artPalette } from '../pixelArt/artPalette';
+import { pixelFont, textFont } from '../pixelArt/pixelTypography';
 import { DeleteHabitDialog, deleteHabitBody, deleteHabitTitle } from './DeleteHabitDialog';
+
+const { roles } = artPalette;
 
 const nbsp = ' ';
 const KEPT = 'Ses suivis seront effacés. L’expérience gagnée les jours passés reste acquise';
@@ -196,7 +200,43 @@ describe('DeleteHabitDialog', () => {
   it('offers touch targets of at least 44 points', async () => {
     await open();
 
-    expect(deleteButton()).toHaveStyle({ minHeight: 52 });
-    expect(screen.getByRole('button', { name: 'Annuler' })).toHaveStyle({ minHeight: 52 });
+    expect(deleteButton()).toHaveStyle({ minHeight: 48 });
+    expect(screen.getByRole('button', { name: 'Annuler' })).toHaveStyle({ minHeight: 48 });
+  });
+});
+
+describe('DeleteHabitDialog in pixel art (E3, #73)', () => {
+  it('opens in a raised frame, its title in the pixel font and its text in the text font', async () => {
+    await open(10);
+
+    expect(screen.getByTestId('delete-habit-dialog-frame')).toHaveStyle({
+      backgroundColor: roles.raised,
+    });
+    expect(screen.getByRole('header')).toHaveStyle({ fontFamily: pixelFont });
+    expect(screen.getByText(deleteHabitBody(10))).toHaveStyle({ fontFamily: textFont.regular });
+  });
+
+  it('puts « Annuler » on the left and « Supprimer » in the error red, with its label', async () => {
+    await open();
+
+    const buttons = screen.getAllByRole('button').map((button) => button.props.accessibilityLabel);
+    expect(buttons).toEqual(['Annuler', 'Supprimer']);
+    expect(deleteButton()).toHaveStyle({
+      backgroundColor: roles.errorBg,
+      borderColor: roles.curse,
+    });
+    expect(screen.getByText('Supprimer')).toHaveStyle({ color: roles.pink });
+    expect(screen.getByRole('button', { name: 'Annuler' })).toHaveStyle({
+      backgroundColor: roles.surface,
+    });
+  });
+
+  it('deletes nothing with « Annuler »', async () => {
+    const { onConfirm, onCancel } = await open();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Annuler' }));
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
   });
 });

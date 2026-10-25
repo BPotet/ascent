@@ -1,13 +1,13 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
-import { AccessibilityInfo, Animated } from 'react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
 
 import type { CheckInStatus } from '../../../domain/checkIn/CheckInStatus';
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
 import { Day } from '../../../domain/day/Day';
 import { Habit } from '../../../domain/habit/Habit';
 import { HabitName } from '../../../domain/habit/HabitName';
+import { artPalette } from '../pixelArt/artPalette';
 import { HabitDayCell } from './HabitDayCell';
-import { BOUNCE_DURATION_MS } from './HabitRow';
 
 const wednesday = Day.of(2026, 10, 14);
 const thursday = Day.of(2026, 10, 15);
@@ -27,15 +27,20 @@ const habitDay = (
 });
 
 const hidden = { includeHiddenElements: true } as const;
+const { roles } = artPalette;
 const cell = () => screen.getByTestId('cell-7-2026-10-14');
+const box = () => screen.getByTestId('cell-box-7-2026-10-14', hidden);
+const burst = () => within(cell()).queryByTestId('habit-burst', hidden);
 const marks = () =>
-  ['check-mark', 'cross-mark', 'dot-mark', 'pending-ring'].filter(
+  ['check-mark', 'cross-mark', 'dot-mark', 'dash-mark'].filter(
     (mark) => within(cell()).queryByTestId(mark, hidden) !== null,
   );
 
 describe('HabitDayCell', () => {
   afterEach(() => {
     jest.restoreAllMocks();
+    jest.useRealTimers();
+    jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockResolvedValue(false);
   });
 
   it.each([
@@ -76,18 +81,23 @@ describe('HabitDayCell', () => {
   });
 
   it.each([
-    ['done', true, ['check-mark'], { backgroundColor: '#3DDC97', borderColor: '#3DDC97' }],
-    ['pending', true, ['pending-ring'], { borderColor: '#7C9CFF', borderStyle: 'solid' }],
-    ['missed', true, ['cross-mark'], { backgroundColor: '#222B3D', borderColor: 'transparent' }],
-    ['upcoming', false, [], { borderStyle: 'dashed', borderColor: '#3A4560' }],
-    ['notStarted', false, ['dot-mark'], { borderColor: 'transparent' }],
+    ['done', true, ['check-mark'], { backgroundColor: roles.doneBg, borderColor: roles.done }],
+    ['pending', true, [], { backgroundColor: roles.night, borderColor: roles.gold }],
+    [
+      'missed',
+      true,
+      ['cross-mark'],
+      { backgroundColor: roles.missedBg, borderColor: roles.missedLine },
+    ],
+    ['upcoming', false, ['dot-mark'], { borderColor: roles.raised }],
+    ['notStarted', false, ['dash-mark'], { borderColor: 'transparent' }],
   ] as const)(
-    'gives « %s » its own shape, not only a color',
+    'gives « %s » its own sign, not only a color',
     async (status, editable, expected, style) => {
       await render(<HabitDayCell habitDay={habitDay(status, editable)} today={wednesday} />);
 
       expect(marks()).toEqual(expected);
-      expect(cell()).toHaveStyle(style);
+      expect(box()).toHaveStyle({ width: 40, height: 40, ...style });
     },
   );
 
@@ -98,6 +108,7 @@ describe('HabitDayCell', () => {
 
     expect(cell()).toHaveStyle({ opacity: 0.6 });
     expect(marks()).toEqual(['check-mark']);
+    expect(box()).toHaveStyle({ backgroundColor: roles.doneBg });
   });
 
   it('does not dim a « fait » of today or of a closed day', async () => {
@@ -106,8 +117,7 @@ describe('HabitDayCell', () => {
     expect(cell()).not.toHaveStyle({ opacity: 0.6 });
   });
 
-  it('toggles the cell when touched, and bounces it for 320 ms', async () => {
-    const timing = jest.spyOn(Animated, 'timing');
+  it('toggles the cell when touched', async () => {
     const onToggle = jest.fn();
     await render(
       <HabitDayCell habitDay={habitDay('pending', true)} today={wednesday} onToggle={onToggle} />,
@@ -116,23 +126,65 @@ describe('HabitDayCell', () => {
     await fireEvent.press(cell());
 
     expect(onToggle).toHaveBeenCalledWith(habitDay('pending', true));
-    const durations = timing.mock.calls.map(([, config]) => config.duration ?? 0);
-    expect(durations.reduce((total, duration) => total + duration, 0)).toBe(BOUNCE_DURATION_MS);
   });
 
-  it('does not bounce when the player asked to reduce motion', async () => {
-    jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockResolvedValueOnce(true);
-    const timing = jest.spyOn(Animated, 'timing');
-    const onToggle = jest.fn();
-    await render(
-      <HabitDayCell habitDay={habitDay('pending', true)} today={wednesday} onToggle={onToggle} />,
-    );
+  it('bursts a spark and lifts its check by one art pixel when it becomes « fait », as in the day view', async () => {
+    jest.useFakeTimers();
+    await render(<HabitDayCell habitDay={habitDay('pending', true)} today={wednesday} />);
+    await act(async () => undefined);
+
+    await fireEvent.press(cell());
+    await screen.rerender(<HabitDayCell habitDay={habitDay('done', true)} today={wednesday} />);
+
+    expect(burst()?.props.sprite).toBe('burst-0');
+    expect(screen.getByTestId('check-mark', hidden)).toHaveStyle({
+      transform: [{ translateY: -2 }],
+    });
+    await act(async () => jest.advanceTimersByTime(83));
+    await act(async () => jest.advanceTimersByTime(83));
+    await act(async () => jest.advanceTimersByTime(83));
+    expect(burst()).toBeNull();
+    expect(screen.getByTestId('check-mark', hidden)).toHaveStyle({
+      transform: [{ translateY: 0 }],
+    });
+  });
+
+  it('never scales the cell: no bounce by a scale', async () => {
+    await render(<HabitDayCell habitDay={habitDay('done', true)} today={wednesday} />);
+
+    expect(screen.getByTestId('cell-slot-7-2026-10-14')).not.toHaveStyle({
+      transform: [{ scale: 1 }],
+    });
+  });
+
+  it('neither bursts nor lifts when the player asked to reduce motion', async () => {
+    jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockResolvedValue(true);
+    await render(<HabitDayCell habitDay={habitDay('pending', true)} today={wednesday} />);
     await waitFor(() => expect(AccessibilityInfo.isReduceMotionEnabled).toHaveBeenCalled());
+    await act(async () => undefined);
+
+    await fireEvent.press(cell());
+    await screen.rerender(<HabitDayCell habitDay={habitDay('done', true)} today={wednesday} />);
+
+    expect(burst()).toBeNull();
+  });
+
+  it('plays no spark when it becomes « fait » without a tap (a failed save puts it back)', async () => {
+    await render(<HabitDayCell habitDay={habitDay('missed', true)} today={thursday} />);
+    await act(async () => undefined);
+
+    await screen.rerender(<HabitDayCell habitDay={habitDay('done', true)} today={thursday} />);
+
+    expect(burst()).toBeNull();
+  });
+
+  it('plays no spark at the tap that takes « fait » back', async () => {
+    await render(<HabitDayCell habitDay={habitDay('done', true)} today={thursday} />);
+    await act(async () => undefined);
 
     await fireEvent.press(cell());
 
-    expect(onToggle).toHaveBeenCalled();
-    expect(timing).not.toHaveBeenCalled();
+    expect(burst()).toBeNull();
   });
 
   it.each([
@@ -165,13 +217,13 @@ describe('HabitDayCell', () => {
     expect(screen.getByRole('switch', { name: label })).toBeOnTheScreen();
   });
 
-  it('shows the mark « corrigé » as a light dot in the corner of the cell, not only a color', async () => {
+  it('shows the mark « corrigé » as a light square in the corner of the cell, not only a color', async () => {
     const { rerender } = await render(
       <HabitDayCell habitDay={habitDay('missed', true, wednesday, true)} today={thursday} />,
     );
 
     const mark = within(cell()).getByTestId('corrected-mark', hidden);
-    expect(mark).toHaveStyle({ position: 'absolute', backgroundColor: '#C9D5FF' });
+    expect(mark).toHaveStyle({ position: 'absolute', backgroundColor: roles.light });
     expect(marks()).toEqual(['cross-mark']);
 
     await rerender(
@@ -180,8 +232,7 @@ describe('HabitDayCell', () => {
     expect(within(cell()).queryByTestId('corrected-mark', hidden)).toBeNull();
   });
 
-  it('tells about a tap on a « hors habitude » cell, without changing nor bouncing it', async () => {
-    const timing = jest.spyOn(Animated, 'timing');
+  it('tells about a tap on a « hors habitude » cell, without changing nor bursting it', async () => {
     const onToggle = jest.fn();
     const onNotStartedPress = jest.fn();
     await render(
@@ -198,7 +249,24 @@ describe('HabitDayCell', () => {
 
     expect(onNotStartedPress).toHaveBeenCalledWith(habitDay('notStarted', false));
     expect(onToggle).not.toHaveBeenCalled();
-    expect(timing).not.toHaveBeenCalled();
+    expect(burst()).toBeNull();
+  });
+
+  it('keeps a touch surface over the whole « hors habitude » cell, for the tap that explains it on Android', async () => {
+    await render(
+      <HabitDayCell
+        habitDay={habitDay('notStarted', false)}
+        today={wednesday}
+        onNotStartedPress={jest.fn()}
+      />,
+    );
+
+    // Annoncée indisponible, la case est désactivée pour Android, qui ne la prend jamais pour cible
+    // d'un toucher : seule une vue enfant, réelle (non aplatie), peut recevoir le tap qui l'explique.
+    const surface = within(cell()).getByTestId('cell-touch-7-2026-10-14');
+    expect(surface).toHaveProp('collapsable', false);
+    expect(surface).not.toHaveProp('pointerEvents', expect.anything());
+    expect(surface).toHaveStyle({ width: '100%', minHeight: 48 });
   });
 
   it('says nothing about a tap on a « à venir » cell', async () => {
@@ -216,33 +284,21 @@ describe('HabitDayCell', () => {
     expect(onNotStartedPress).not.toHaveBeenCalled();
   });
 
-  const layOut = (width: number) =>
-    fireEvent(screen.getByTestId('cell-slot-7-2026-10-14'), 'layout', {
-      nativeEvent: { layout: { x: 0, y: 0, width, height: 44 } },
-    });
-
-  it('is 44 pt high and as wide as its column before the layout is known', async () => {
+  it('is as wide as its column, 48 dp at most, and 48 dp high at least, its drawn box 40 dp', async () => {
     await render(<HabitDayCell habitDay={habitDay('pending', true)} today={wednesday} />);
 
-    expect(cell()).toHaveStyle({ width: '100%', height: 44 });
-    expect(cell()).not.toHaveStyle({ aspectRatio: 1 });
+    expect(screen.getByTestId('cell-slot-7-2026-10-14')).toHaveStyle({ width: 48 });
+    expect(cell()).toHaveStyle({ minHeight: 48 });
+    expect(box()).toHaveStyle({ width: 40, height: 40 });
   });
 
-  it('never gets wider than its column on a narrow screen, and stays 44 pt high', async () => {
-    await render(<HabitDayCell habitDay={habitDay('pending', true)} today={wednesday} />);
+  it('takes the width of its column on a narrow screen, never more: no tap reaches the next day', async () => {
+    await render(
+      <HabitDayCell habitDay={habitDay('pending', true)} today={wednesday} columnWidth={40} />,
+    );
 
-    await layOut(35.6);
-
-    expect(cell()).toHaveStyle({ width: '100%', height: 44 });
-    expect(screen.getByTestId('cell-slot-7-2026-10-14')).toHaveStyle({ flex: 1, minWidth: 0 });
-  });
-
-  it('is square when its column is wider than 44 pt', async () => {
-    await render(<HabitDayCell habitDay={habitDay('pending', true)} today={wednesday} />);
-
-    await layOut(51.6);
-
-    expect(cell()).toHaveStyle({ width: '100%', height: 52 });
+    expect(screen.getByTestId('cell-slot-7-2026-10-14')).toHaveStyle({ width: 40 });
+    expect(cell()).not.toHaveProp('hitSlop', expect.anything());
   });
 
   it('lets the change of experience fly up from the case', async () => {

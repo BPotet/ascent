@@ -11,6 +11,7 @@ import { updateHabit } from '../../../application/useCases/updateHabit';
 import { Day } from '../../../domain/day/Day';
 import type { HabitId } from '../../../domain/habit/Habit';
 import { Week } from '../../../domain/week/Week';
+import { artPalette } from '../pixelArt/artPalette';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { reduceMotionInEachTest, withMotion } from '../testing/motion';
 import { renderScreen } from '../testing/renderScreen';
@@ -104,18 +105,11 @@ describe('WeekViewScreen', () => {
     await renderScreen(<WeekViewScreen />, dependencies);
 
     expect(screen.getByLabelText('Chargement de tes habitudes')).toBeBusy();
-    const [slot] = screen.getAllByTestId('skeleton-cell', { includeHiddenElements: true });
-    if (slot === undefined) {
-      throw new Error('No skeleton cell');
-    }
-    await fireEvent(slot, 'layout', {
-      nativeEvent: { layout: { x: 0, y: 0, width: 35, height: 0 } },
-    });
-    expect(slot.children[0]).toHaveStyle({ width: '100%', height: 44 });
-    await fireEvent(slot, 'layout', {
-      nativeEvent: { layout: { x: 0, y: 0, width: 50, height: 0 } },
-    });
-    expect(slot.children[0]).toHaveStyle({ width: '100%', height: 50 });
+    const slots = screen.getAllByTestId('skeleton-cell', { includeHiddenElements: true });
+    expect(slots).toHaveLength(4 * 7);
+    // Les cases du squelette prennent la place des vraies : colonnes de 48 dp, cases de 40 dp.
+    expect(slots[0]).toHaveStyle({ width: 48, minHeight: 48 });
+    expect(slots[0]?.children[0]).toHaveStyle({ width: 40, height: 40 });
     await act(async () => read());
     expect(await screen.findByText('Ta semaine est vide')).toBeOnTheScreen();
   });
@@ -137,7 +131,7 @@ describe('WeekViewScreen', () => {
       expect(within(card).getAllByRole('switch')).toHaveLength(7);
     }
     expect(screen.getByTestId('weekday-2026-10-14', { includeHiddenElements: true })).toHaveStyle({
-      backgroundColor: '#7C9CFF',
+      backgroundColor: artPalette.roles.gold,
     });
   });
 
@@ -828,6 +822,11 @@ describe('WeekViewScreen and the experience', () => {
         screen.getAllByTestId('character-bar').map((bar) => bar.props.accessibilityLabel),
       ).toEqual(['Expérience du personnage : 30 XP', 'Expérience du personnage : 30 XP']),
     );
+    // L'en-tête du personnage en pixel art, plus bas dans la Vue Semaine (#72).
+    expect(screen.getAllByTestId('character-bar').map((bar) => bar.props.style)).toEqual([
+      expect.arrayContaining([{ minHeight: 132 }]),
+      expect.arrayContaining([{ minHeight: 92 }]),
+    ]);
   });
 
   it('reads the experience again with « Réessayer »', async () => {
@@ -1142,7 +1141,7 @@ describe('WeekViewScreen and the weekly target (E4)', () => {
     await waitFor(() => expect(chip(cooking)).toHaveTextContent('2/7'));
   });
 
-  it('turns the chip green once the target is reached, with a green border', async () => {
+  it('turns the chip gold once the target is reached, with a dark gold border', async () => {
     dependencies.clock.setToday(october(12));
     const created = await createHabit(dependencies, 'Courir 5 km', 'hard', 1);
     dependencies.clock.setToday(wednesday);
@@ -1165,7 +1164,7 @@ describe('WeekViewScreen and the weekly target (E4)', () => {
     await fireEvent.press(previousButton());
 
     await waitFor(() => expect(chip(cooking)).toHaveTextContent('1/7'));
-    expect(screen.getByText('1/7')).toHaveStyle({ color: '#B4BDCE' });
+    expect(screen.getByText('1/7')).toHaveStyle({ color: artPalette.roles.muted });
     expect(chip(budget)).not.toBeOnTheScreen();
   });
 
@@ -1266,7 +1265,7 @@ describe('WeekViewScreen and the target bonus (#26)', () => {
     expect(dependencies.haptics.success).toHaveBeenCalledTimes(2);
   });
 
-  it('bursts the chip of the card when the motion is not reduced', async () => {
+  it('lights the chip of the card up when the motion is not reduced', async () => {
     withMotion();
     await givenRunning(october(12), october(13));
     await show();
@@ -1327,5 +1326,113 @@ describe('WeekViewScreen and the target bonus (#26)', () => {
       await screen.findByText('Correction enregistrée · vendredi 9 octobre'),
     ).toBeOnTheScreen();
     expect(screen.queryByTestId('xp-change-bonus', hidden)).not.toBeOnTheScreen();
+  });
+});
+
+describe('WeekViewScreen in pixel art (E4, #73)', () => {
+  const hidden = { includeHiddenElements: true };
+  const { roles } = artPalette;
+
+  it('shows the view on the night of the pixel art', async () => {
+    await givenTheBackground();
+    await show();
+
+    expect(screen.getByTestId('week-view')).toHaveStyle({ backgroundColor: roles.night });
+  });
+
+  it('shows the character and « Ajouter une habitude » in the empty week', async () => {
+    await show(jest.fn());
+
+    expect(
+      within(screen.getByTestId('week-view-empty')).getByTestId('illustration-character', hidden),
+    ).toBeTruthy();
+    expect(screen.getByTestId('add-habit')).toHaveStyle({ backgroundColor: roles.gold });
+  });
+
+  it('shows the alert emblem, the message in the text font and « Réessayer » when the week cannot be read', async () => {
+    await givenTheBackground();
+    dependencies.unitOfWork.failReads();
+
+    await show();
+
+    expect(await screen.findByRole('alert')).toBeOnTheScreen();
+    expect(screen.getByTestId('illustration-alert', hidden)).toBeTruthy();
+    expect(
+      screen.getByText('Une erreur est survenue en lisant tes données sur ce téléphone.'),
+    ).toHaveStyle({ fontFamily: 'Inter_400Regular' });
+    expect(screen.getByRole('button', { name: 'Réessayer' })).toHaveStyle({
+      backgroundColor: roles.gold,
+    });
+  });
+
+  it('keeps a still skeleton while loading when the motion is reduced', async () => {
+    jest.spyOn(dependencies.unitOfWork, 'run').mockReturnValue(new Promise(() => undefined));
+
+    await renderScreen(<WeekViewScreen />, dependencies);
+    await act(async () => undefined);
+
+    const [slot] = screen.getAllByTestId('skeleton-cell', hidden);
+    expect(slot?.children[0]).toHaveStyle({ opacity: 1 });
+  });
+
+  it('bursts the corrected case and lets « +10 XP » fly up from it, as in the day view', async () => {
+    withMotion();
+    await givenTheBackground();
+    await show();
+
+    await fireEvent.press(cell(cooking, october(13)));
+
+    await waitFor(() =>
+      expect(within(cell(cooking, october(13))).getByTestId('habit-burst', hidden)).toBeTruthy(),
+    );
+    await waitFor(() =>
+      expect(within(cell(cooking, october(13))).getByTestId('xp-float', hidden)).toHaveTextContent(
+        '+10 XP',
+      ),
+    );
+  });
+
+  it('plays no spark when a failed save puts « fait » back on the cell', async () => {
+    withMotion();
+    await givenTheBackground();
+    await show();
+    dependencies.unitOfWork.failWrites();
+
+    await fireEvent.press(cell(cooking, october(12)));
+
+    expect(await screen.findByText('La correction n’a pas été enregistrée.')).toBeOnTheScreen();
+    await waitFor(() =>
+      expect(labelOf(cooking, october(12))).toBe('Cuisiner, lundi 12 octobre, fait'),
+    );
+    expect(screen.queryByTestId('habit-burst', hidden)).toBeNull();
+  });
+
+  it('neither bursts nor flies when the motion is reduced, the vibration stays', async () => {
+    await givenTheBackground();
+    await show();
+
+    await fireEvent.press(cell(cooking, october(13)));
+
+    await waitFor(() =>
+      expect(labelOf(cooking, october(13))).toBe('Cuisiner, mardi 13 octobre, fait, corrigé'),
+    );
+    expect(screen.queryByTestId('habit-burst', hidden)).toBeNull();
+    expect(screen.queryByTestId('xp-float', hidden)).toBeNull();
+    await waitFor(() => expect(dependencies.haptics.success).toHaveBeenCalled());
+  });
+
+  it('writes the hint and the link back in the text font', async () => {
+    await givenTheBackground();
+    await show();
+    await fireEvent.press(previousButton());
+
+    const back = await screen.findByRole('button', { name: 'Revenir à cette semaine' });
+    expect(within(back).getByText('Revenir à cette semaine')).toHaveStyle({
+      fontFamily: 'Inter_700Bold',
+      color: roles.gold,
+    });
+    expect(screen.getByText('Tape une case d’un jour passé pour corriger un oubli.')).toHaveStyle({
+      fontFamily: 'Inter_500Medium',
+    });
   });
 });

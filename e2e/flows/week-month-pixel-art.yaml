@@ -1,0 +1,279 @@
+# Story #73 : la Semaine, le Mois et les panneaux d'habitude en pixel art.
+# Limite : Maestro ne pilote pas la date du téléphone. Sur une app fraîchement installée, l'habitude
+# créée n'a aucun jour clos : la correction d'un jour passé, sa marque « corrigé », le chargement et
+# les erreurs de lecture et d'enregistrement sont couverts par les scénarios BDD
+# (`features/week-month-pixel-art.feature`) et les tests d'intégration. Ici, le tap sur la case
+# d'aujourd'hui joue le même retour qu'une correction.
+# Parcours : Vue Semaine vide (E4) → « Nouvelle habitude » vide, saisie (Difficile, objectif 1),
+# créée : la Journée avec l'aide au premier usage (E2) → doublon refusé (E2) → « Lire », révélée
+# au-dessus du bouton et du message, et touchée aussitôt (E2) → Vue Semaine, puis la
+# case d'aujourd'hui qui atteint l'objectif (E4) → « Modifier l'habitude » ouvert, difficulté
+# modifiée, enregistré, puis confirmation de suppression annulée (E3) → Vue Mois, objectifs par semaine,
+# Détail du jour avec un tap (E5).
+# Captures pour la comparaison avec la maquette (E2, E3, E4, E5).
+appId: com.bpotet.ascent
+name: La Semaine, le Mois et les panneaux d'habitude en pixel art
+tags:
+  - story-73
+---
+- runFlow: ../subflows/launch-fresh.yaml
+
+# E4 · Vide : le personnage, le message et « Ajouter une habitude ».
+- tapOn:
+    id: 'tab-week'
+- extendedWaitUntil:
+    visible:
+      id: 'week-view-empty'
+    timeout: 10000
+- assertVisible: 'Ta semaine est vide.*'
+- assertVisible:
+    id: 'add-habit'
+- takeScreenshot: week-month-pixel-art-E4-1-empty
+
+# E2 · Vide, valeurs par défaut : Moyenne choisie, le champ prêt à la saisie (clavier ouvert). Pas
+# de `hideKeyboard` ici : tant que le clavier n'est pas affiché, il enverrait « Retour » à Android,
+# qui fermerait le panneau.
+- tapOn:
+    id: 'tab-day'
+- extendedWaitUntil:
+    visible:
+      id: 'day-view-empty'
+    timeout: 10000
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- assertVisible:
+    id: 'difficulty-option-medium'
+    checked: true
+- takeScreenshot: week-month-pixel-art-E2-1-empty-defaults
+
+# E2 · Saisi, réglages choisis : « Courir 5 km », Difficile, 1 fois par semaine.
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Courir 5 km'
+- hideKeyboard
+- assertVisible:
+    id: 'weekly-target-option-7'
+    checked: true
+- tapOn:
+    id: 'difficulty-option-hard'
+- tapOn:
+    id: 'weekly-target-option-1'
+- assertVisible:
+    id: 'difficulty-option-hard'
+    checked: true
+- assertVisible: '11/40'
+- takeScreenshot: week-month-pixel-art-E2-2-typed-settings
+
+# E2 · Succès : la Journée, la ligne créée bordée d'or, « Habitude créée » et l'aide au premier usage
+# au-dessus du bouton flottant (marge calée sur son emprise réelle, revue de #75).
+# Le cadre d'or (1,8 s) et le message (2,8 s) sont brefs : la capture suit leur apparition.
+- tapOn:
+    id: 'create-habit'
+- extendedWaitUntil:
+    visible: 'Habitude créée.*'
+    timeout: 10000
+- takeScreenshot: week-month-pixel-art-E2-3-created-day-view
+- assertNotVisible: 'Nouvelle habitude'
+- assertVisible:
+    id: 'check-in-hint'
+- assertVisible: 'Courir 5 km, .+, à faire, .+, Difficile, 20 XP par suivi'
+
+# E2 · Erreur : le doublon « courir 5 km », validé au clavier (↵) comme aujourd'hui : cadre rouge,
+# icône et message actuel, bouton hachuré.
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'courir 5 km'
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: 'Tu as déjà une habitude[\s\u00A0]+«[\s\u00A0]*Courir 5 km[\s\u00A0]*»\.'
+    timeout: 10000
+- takeScreenshot: week-month-pixel-art-E2-4-duplicate
+# Le panneau se ferme par « Annuler », une fois le clavier fermé s'il l'est encore.
+- runFlow:
+    when:
+      visible:
+        id: 'new-habit-keyboard-avoiding'
+    commands:
+      - hideKeyboard
+- runFlow:
+    when:
+      visible: 'Annuler'
+    commands:
+      - tapOn: 'Annuler'
+- extendedWaitUntil:
+    notVisible: 'Nouvelle habitude'
+    timeout: 10000
+
+# E2 · Une seconde habitude, créée au bas de la liste : la liste défile pour la montrer au-dessus du
+# bouton flottant et du message « Habitude créée ». La capture suit la création ; la ligne se
+# touche aussitôt (« fait », puis de nouveau « à faire »), sans toucher le bouton.
+- tapOn:
+    id: 'add-habit'
+- extendedWaitUntil:
+    visible: 'Nouvelle habitude'
+    timeout: 10000
+- tapOn:
+    id: 'new-habit-name'
+- inputText: 'Lire'
+- hideKeyboard
+- tapOn:
+    id: 'create-habit'
+- extendedWaitUntil:
+    visible: 'Habitude créée.*'
+    timeout: 10000
+- takeScreenshot: week-month-pixel-art-E2-5-created-revealed
+- assertVisible: 'Lire, .+, à faire, .+'
+- tapOn:
+    id: 'habit-row-2'
+- extendedWaitUntil:
+    visible: 'Lire, .+, fait, .+'
+    timeout: 10000
+- assertNotVisible: 'Nouvelle habitude'
+- tapOn:
+    id: 'habit-row-2'
+- extendedWaitUntil:
+    visible: 'Lire, .+, à faire, .+'
+    timeout: 10000
+
+# E4 · Cette semaine : la carte, ses 7 cases et la puce « 0/1 ».
+- tapOn:
+    id: 'tab-week'
+- extendedWaitUntil:
+    visible:
+      id: 'week-card-1'
+    timeout: 10000
+- assertVisible: '0 sur 1'
+- assertVisible: 'Courir 5 km, .+, à faire'
+- takeScreenshot: week-month-pixel-art-E4-2-this-week
+
+# E4 · Correction · objectif atteint : la case, son étincelle et « +20 XP », la puce d'or et le
+# message de la prime (20 XP + prime de 10 XP).
+- tapOn: 'Courir 5 km, .+, à faire'
+- takeScreenshot: week-month-pixel-art-E4-3-target-reached-feedback
+- extendedWaitUntil:
+    visible: '1 sur 1, objectif atteint'
+    timeout: 10000
+- assertVisible:
+    id: 'week-card-reached-1'
+- extendedWaitUntil:
+    visible: 'Expérience du personnage : 30 XP'
+    timeout: 10000
+- takeScreenshot: week-month-pixel-art-E4-4-target-reached
+
+# E3 · Ouvert, inchangé : depuis le nom, prérempli, « Enregistrer » hachuré.
+- tapOn:
+    id: 'edit-habit-1'
+- extendedWaitUntil:
+    visible:
+      id: 'edit-habit-sheet-content'
+    timeout: 10000
+- assertVisible:
+    id: 'difficulty-option-hard'
+    checked: true
+- assertVisible:
+    id: 'delete-habit'
+- takeScreenshot: week-month-pixel-art-E3-1-open-unchanged
+
+# E3 · Difficulté modifiée : le message d'information actuel.
+- tapOn:
+    id: 'difficulty-option-medium'
+- extendedWaitUntil:
+    visible:
+      id: 'difficulty-change-info'
+    timeout: 10000
+- takeScreenshot: week-month-pixel-art-E3-2-difficulty-changed
+
+# E3 · Succès : « Habitude modifiée » et la variation de l'expérience.
+- extendedWaitUntil:
+    visible:
+      id: 'save-habit'
+    timeout: 10000
+- tapOn:
+    id: 'save-habit'
+- extendedWaitUntil:
+    visible: 'Habitude modifiée.*'
+    timeout: 10000
+- takeScreenshot: week-month-pixel-art-E3-4-saved
+- extendedWaitUntil:
+    notVisible:
+      id: 'edit-habit-sheet-content'
+    timeout: 10000
+
+# E3 · Confirmation de suppression : « Annuler » à gauche, « Supprimer » en rouge. « Annuler »
+# ferme la confirmation et le panneau, comme aujourd'hui (`HabitEditing`) : rien n'est supprimé.
+- tapOn:
+    id: 'edit-habit-1'
+- extendedWaitUntil:
+    visible:
+      id: 'delete-habit'
+    timeout: 10000
+- tapOn:
+    id: 'delete-habit'
+- extendedWaitUntil:
+    visible:
+      id: 'confirm-delete-habit'
+    timeout: 10000
+- takeScreenshot: week-month-pixel-art-E3-3-delete-confirmation
+- tapOn: 'Annuler'
+- extendedWaitUntil:
+    notVisible:
+      id: 'confirm-delete-habit'
+    timeout: 10000
+- extendedWaitUntil:
+    notVisible:
+      id: 'edit-habit-sheet-content'
+    timeout: 10000
+- assertVisible:
+    id: 'week-card-1'
+
+# E5 · Ce mois-ci : la grille, aujourd'hui dans le cadre d'or.
+- tapOn:
+    id: 'tab-month'
+- extendedWaitUntil:
+    visible:
+      id: 'month-grid'
+    timeout: 10000
+- assertVisible: '.+, aujourd’hui, 1 habitude faite sur .+'
+- takeScreenshot: week-month-pixel-art-E5-1-this-month
+
+# E5 · Objectifs par semaine, sous la grille.
+- scrollUntilVisible:
+    element:
+      id: 'targets-by-week'
+    direction: DOWN
+- assertVisible: 'Cette semaine, 1 objectif atteint sur 2, ouvrir la semaine'
+- takeScreenshot: week-month-pixel-art-E5-2-targets-by-week
+
+# E5 · Détail du jour : le panneau et ses lignes en pixel art, puis un tap et son retour de jeu.
+- scrollUntilVisible:
+    element:
+      text: '.+, aujourd’hui, 1 habitude faite sur .+'
+    direction: UP
+- tapOn: '.+, aujourd’hui, 1 habitude faite sur .+'
+- extendedWaitUntil:
+    visible:
+      id: 'day-detail-panel'
+    timeout: 10000
+- takeScreenshot: week-month-pixel-art-E5-3-day-detail
+- tapOn: 'Courir 5 km, .+, fait, .+'
+- extendedWaitUntil:
+    visible: 'Courir 5 km, .+, à faire, .+'
+    timeout: 10000
+- tapOn: 'Courir 5 km, .+, à faire, .+'
+- takeScreenshot: week-month-pixel-art-E5-4-day-detail-tap
+- extendedWaitUntil:
+    visible: 'Courir 5 km, .+, fait, .+'
+    timeout: 10000
+- tapOn: 'Fermer'
+- extendedWaitUntil:
+    notVisible:
+      id: 'day-detail-panel'
+    timeout: 10000

@@ -141,10 +141,15 @@ tags:
     id: 'tab-week'
 - extendedWaitUntil:
     visible:
-      id: 'week-card-3'
+      id: 'week-card-1'
     timeout: 10000
 - assertVisible:
     id: 'week-progress-1'
+# Sous l'en-tête du personnage en pixel art (#72), la 3e carte peut être sous le bord de l'écran.
+- scrollUntilVisible:
+    element:
+      id: 'week-card-3'
+    direction: DOWN
 - assertVisible:
     id: 'week-card-reached-3'
 - takeScreenshot: weekly-target-E4-1-week-view-progress

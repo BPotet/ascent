@@ -12,14 +12,17 @@ import {
 
 import type { Habit } from '../../../domain/habit/Habit';
 import { HabitName, habitNameLength, MAX_HABIT_NAME_LENGTH } from '../../../domain/habit/HabitName';
-import { HABIT_LIMIT_MESSAGE } from '../components/AddHabitButton';
-import { Button } from '../components/Button';
-import { AlertGlyph } from '../components/Glyph';
+import { HABIT_LIMIT_MESSAGE } from '../format/addHabit';
+import { artPalette } from '../pixelArt/artPalette';
+import { PixelButton } from '../pixelArt/PixelButton';
+import { PixelFrame } from '../pixelArt/PixelFrame';
+import { PixelIcon } from '../pixelArt/PixelIcon';
+import { PixelSheet } from '../pixelArt/PixelSheet';
+import { pixelFont, textFont } from '../pixelArt/pixelTypography';
 import { useKeyboardVisible } from '../state/useKeyboardVisible';
 import { useReducedMotion } from '../state/useReducedMotion';
-import { colors } from '../theme/colors';
-import { radii, spacing } from '../theme/metrics';
-import { typography } from '../theme/typography';
+
+const { roles } = artPalette;
 
 export const TOO_LONG_MESSAGE = `Le nom compte ${MAX_HABIT_NAME_LENGTH} caractères au plus.`;
 export const EMPTY_NAME_MESSAGE = 'Le nom ne peut pas être vide.';
@@ -59,7 +62,10 @@ function cleanedName(raw: string): string | null {
 
 /**
  * Le panneau du bas où l'on saisit le nom d'une habitude, commun à « Nouvelle habitude » et à
- * « Modifier l'habitude » : mêmes règles et mêmes messages. Le compteur suit la règle du domaine
+ * « Modifier l'habitude » : mêmes règles et mêmes messages. Dans l'identité pixel art (E2, E3) :
+ * un panneau cranté (`PixelSheet`), le titre en police pixel, le champ dans un cadre creux, d'or
+ * quand il a le focus et rouge quand le nom est refusé, l'erreur avec son icône, et le bouton
+ * principal hachuré tant qu'il est indisponible. Le compteur suit la règle du domaine
  * (`habitNameLength`) ; un nom trop long collé est gardé tel quel et expliqué, sans être tronqué.
  * Après un refus ou un échec d'enregistrement, la saisie est conservée.
  *
@@ -111,6 +117,7 @@ export function HabitNameSheet({
   const [name, setName] = useState(initialName);
   const [failure, setFailure] = useState<HabitNameFailure | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [focused, setFocused] = useState(autoFocus);
 
   const editing = initialName !== '';
   const length = habitNameLength(name);
@@ -173,34 +180,44 @@ export function HabitNameSheet({
           testID={`${testID}-scrim`}
           style={styles.scrim}
         />
-        <View
+        <PixelSheet
           accessibilityViewIsModal
           style={[styles.sheet, keyboardVisible && styles.sheetAboveKeyboard]}
           testID={`${testID}-sheet-content`}
         >
-          <View style={styles.grab} />
-          <Text accessibilityRole="header" style={[typography.sheetTitle, styles.title]}>
+          <Text accessibilityRole="header" style={styles.title}>
             {title}
           </Text>
-          <Text nativeID={`${testID}-name-label`} style={[typography.label, styles.label]}>
+          <Text nativeID={`${testID}-name-label`} style={styles.label}>
             Nom de l’habitude
           </Text>
-          <TextInput
-            accessibilityLabel="Nom de l’habitude"
-            accessibilityLabelledBy={`${testID}-name-label`}
-            autoFocus={autoFocus}
-            autoCapitalize="sentences"
-            autoComplete="off"
-            onChangeText={changeName}
-            onSubmitEditing={submit}
-            placeholder="Ex. Cuisiner"
-            placeholderTextColor={colors.placeholder}
-            returnKeyType="done"
-            submitBehavior="submit"
-            testID={`${testID}-name`}
-            value={name}
-            style={[typography.input, styles.field, fieldError !== null && styles.invalid]}
-          />
+          <PixelFrame
+            variant="inset"
+            tone={fieldError !== null ? 'error' : focused ? 'gold' : 'default'}
+            under={roles.surface}
+            testID={`${testID}-name-frame`}
+            style={styles.fieldFrame}
+          >
+            <TextInput
+              accessibilityLabel="Nom de l’habitude"
+              accessibilityLabelledBy={`${testID}-name-label`}
+              autoFocus={autoFocus}
+              autoCapitalize="sentences"
+              autoComplete="off"
+              onBlur={() => setFocused(false)}
+              onChangeText={changeName}
+              onFocus={() => setFocused(true)}
+              onSubmitEditing={submit}
+              placeholder="Ex. Cuisiner"
+              placeholderTextColor={roles.muted}
+              returnKeyType="done"
+              selectionColor={roles.gold}
+              submitBehavior="submit"
+              testID={`${testID}-name`}
+              value={name}
+              style={styles.field}
+            />
+          </PixelFrame>
           <View style={styles.help}>
             <View style={styles.error}>
               {fieldError !== null && (
@@ -211,46 +228,51 @@ export function HabitNameSheet({
                   accessibilityLiveRegion="assertive"
                   style={styles.errorRow}
                 >
-                  <AlertGlyph color={colors.danger} size={14} />
-                  <Text style={[typography.label, styles.errorText]}>{fieldError}</Text>
+                  <PixelIcon name="alert8" color={roles.error} testID="field-error-icon" />
+                  <Text style={styles.errorText}>{fieldError}</Text>
                 </View>
               )}
             </View>
             <Text
               accessibilityLabel={`${length} caractères sur ${MAX_HABIT_NAME_LENGTH}`}
-              style={[typography.label, tooLong ? styles.countOver : styles.count]}
+              style={[styles.count, tooLong && styles.countOver]}
             >
               {`${length}/${MAX_HABIT_NAME_LENGTH}`}
             </Text>
           </View>
           {settings}
           {alertMessage !== null && (
-            <View
+            <PixelFrame
               accessible
               accessibilityRole="alert"
               accessibilityLabel={alertMessage}
               accessibilityLiveRegion="assertive"
+              tone="error"
+              background={roles.errorBg}
+              under={roles.surface}
               style={styles.alert}
             >
-              <AlertGlyph color={colors.onDangerSoft} />
-              <Text style={[typography.toast, styles.alertText]}>{alertMessage}</Text>
-            </View>
+              <PixelIcon name="alert" color={roles.error} />
+              <Text style={styles.alertText}>{alertMessage}</Text>
+            </PixelFrame>
           )}
           <View style={styles.actions}>
-            <View style={styles.action}>
-              <Button label="Annuler" variant="ghost" onPress={onClose} />
-            </View>
-            <View style={styles.action}>
-              <Button
-                label={submitLabel}
-                onPress={submit}
-                disabled={!canSubmit}
-                testID={submitTestID}
-              />
-            </View>
+            <PixelButton
+              label="Annuler"
+              variant="secondary"
+              onPress={onClose}
+              style={styles.action}
+            />
+            <PixelButton
+              label={submitLabel}
+              onPress={submit}
+              disabled={!canSubmit}
+              testID={submitTestID}
+              style={styles.action}
+            />
           </View>
           {footer}
-        </View>
+        </PixelSheet>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -259,65 +281,47 @@ export function HabitNameSheet({
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'flex-end' },
-  scrim: { ...StyleSheet.absoluteFill, backgroundColor: colors.scrim },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radii.sheet,
-    borderTopRightRadius: radii.sheet,
-    borderTopWidth: 1,
-    borderColor: colors.line,
-    paddingTop: spacing.sm,
-    paddingHorizontal: 20,
-    paddingBottom: 36,
-  },
+  scrim: { ...StyleSheet.absoluteFill, backgroundColor: roles.scrim },
+  sheet: { paddingTop: 6, paddingHorizontal: 16, paddingBottom: 36, gap: 10 },
   /** Sans clavier, le bas du panneau laisse la place à la barre du téléphone ; avec, il se resserre. */
-  sheetAboveKeyboard: { paddingBottom: spacing.lg },
-  grab: {
-    width: 40,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: colors.grab,
-    alignSelf: 'center',
-    marginBottom: 14,
-  },
-  title: { color: colors.text, marginBottom: spacing.lg },
-  label: { color: colors.muted, marginBottom: 6 },
+  sheetAboveKeyboard: { paddingBottom: 16 },
+  title: { fontFamily: pixelFont, fontSize: 22, lineHeight: 26, color: roles.light },
+  label: { fontFamily: textFont.semiBold, fontSize: 13, lineHeight: 17, color: roles.parchment },
+  fieldFrame: { paddingHorizontal: 14 },
   field: {
-    height: 52,
-    paddingHorizontal: 14,
-    borderWidth: 2,
-    borderColor: colors.accent,
-    borderRadius: radii.field,
-    backgroundColor: colors.background,
-    color: colors.text,
+    minHeight: 52,
+    fontFamily: textFont.medium,
+    fontSize: 16,
+    color: roles.light,
+    paddingVertical: 0,
   },
-  invalid: { borderColor: colors.danger },
   help: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: spacing.sm,
-    minHeight: 22,
-    marginTop: 6,
+    gap: 8,
+    minHeight: 16,
+    marginTop: -4,
   },
   error: { flex: 1 },
-  errorRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
-  errorText: { color: colors.danger, flex: 1 },
-  count: { color: colors.muted },
-  countOver: { color: colors.danger },
-  alert: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    marginTop: 10,
-    paddingVertical: 10,
-    paddingHorizontal: spacing.md,
-    borderRadius: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.dangerLine,
-    backgroundColor: colors.dangerSoft,
+  errorRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  errorText: {
+    flex: 1,
+    fontFamily: textFont.semiBold,
+    fontSize: 12,
+    lineHeight: 16,
+    color: roles.error,
   },
-  alertText: { color: colors.onDangerSoft, flex: 1 },
-  actions: { flexDirection: 'row', gap: 10, marginTop: spacing.lg },
+  count: { fontFamily: textFont.medium, fontSize: 12, lineHeight: 16, color: roles.parchment },
+  countOver: { color: roles.error },
+  alert: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10 },
+  alertText: {
+    flex: 1,
+    fontFamily: textFont.semiBold,
+    fontSize: 13,
+    lineHeight: 18,
+    color: roles.pink,
+  },
+  actions: { flexDirection: 'row', gap: 8, marginTop: 4 },
   action: { flex: 1 },
 });
 // Stryker restore all

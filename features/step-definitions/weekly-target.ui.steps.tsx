@@ -48,6 +48,7 @@ import { HabitName } from '../../src/domain/habit/HabitName';
 import type { WeeklyTarget } from '../../src/domain/habit/WeeklyTarget';
 import { Week } from '../../src/domain/week/Week';
 import { frenchDay } from '../support/frenchDay';
+import { artPalette } from '../../src/adapters/ui/pixelArt/artPalette';
 
 const YEAR = 2026;
 
@@ -258,7 +259,10 @@ async function expectChip(
   const shown = await screen.findByTestId(`week-progress-${id}`);
   expect(shown).toHaveTextContent(chip);
   const text = within(shown).getByText(chip);
-  const expected = { verte: '#8FE8BF', grise: '#B4BDCE', neutre: '#EEF1F7' }[colour];
+  // Depuis l'identité pixel art (#73), la puce d'un objectif atteint (« verte » dans les scénarios
+  // de #24) est en or, comme dans la maquette ; la grise est en `muted`, la neutre en `light`.
+  const { roles } = artPalette;
+  const expected = { verte: roles.gold, grise: roles.muted, neutre: roles.light }[colour];
   expect(text).toHaveStyle({ color: expected });
   if (colour === 'verte') {
     expect(screen.getByTestId(`week-card-reached-${id}`)).toBeOnTheScreen();

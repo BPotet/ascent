@@ -209,7 +209,9 @@ const steps: StepDefinitions = ({ given, when, then }) => {
   });
   then("elle affiche l'état vide qui invite à créer une première habitude", () => {
     expect(screen.getByTestId('day-view-empty')).toBeOnTheScreen();
-    expect(screen.getByTestId('illustration-summit', { includeHiddenElements: true })).toBeTruthy();
+    expect(
+      screen.getByTestId('illustration-character', { includeHiddenElements: true }),
+    ).toBeTruthy();
     expect(screen.getByText('Aucune habitude pour l’instant')).toBeOnTheScreen();
     expect(
       screen.getByText('Crée ta première habitude et commence à gagner de l’expérience.'),
