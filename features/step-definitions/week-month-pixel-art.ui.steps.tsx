@@ -17,8 +17,9 @@
  * - « l'expérience retirée, comme aujourd'hui » : la fenêtre de « Budget du jour », « fait »
  *   aujourd'hui, qui annonce les 5 XP retirés ;
  * - « les règles actuelles » sont vérifiées par les features de #2, #22, #24 à #27, inchangées ; ce
- *   scénario refait le tour d'une correction, d'une création, d'une modification et d'une
- *   suppression sur les écrans redessinés, et compte l'expérience qu'elles donnent.
+ *   scénario fait une correction sur la Vue Semaine redessinée, puis une création, une
+ *   modification et une suppression par les cas d'usage (leurs panneaux ont leurs propres
+ *   scénarios ci-dessus), et compte l'expérience qu'elles donnent.
  */
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react-native';
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
@@ -108,6 +109,11 @@ beforeEach(() => {
 afterEach(() => {
   reduceMotion().mockResolvedValue(false);
   jest.useRealTimers();
+  // La taille de texte habituelle, après le scénario à 200 %.
+  Dimensions.set({
+    window: { ...Dimensions.get('window'), fontScale: 1 },
+    screen: { ...Dimensions.get('screen'), fontScale: 1 },
+  });
 });
 
 const habitNamed = (name: string): Habit => {
@@ -205,8 +211,26 @@ async function tapCell(name: string, day: Day): Promise<void> {
   await fireEvent.press(cellOf(name, day));
 }
 
-/** Vérifie que l'écran affiché est dans l'identité pixel art. */
-function expectPixelArt(): void {
+/**
+ * Les cases (ou points) et une icône en pixels attendues sur chacun des écrans ouverts, dans
+ * l'ordre : Vue Semaine, Vue Mois, Détail du jour, « Nouvelle habitude », « Modifier l'habitude ».
+ */
+const PIXEL_MARKS: readonly (readonly [RegExp, string])[] = [
+  [/^cell-box-/u, 'pencil-icon'],
+  [/^month-dot-/u, 'chevron-icon'],
+  [/^habit-check-/u, 'check-mark'],
+  [/^choice-tick$/u, 'difficulty-peak'],
+  [/^choice-tick$/u, 'trash-icon'],
+];
+
+/** Vérifie que l'écran affiché est dans l'identité pixel art, avec ses cases et son icône en pixels. */
+function expectPixelArt([boxes, icon]: readonly [RegExp, string]): void {
+  expect(screen.getAllByTestId(boxes, hidden).length).toBeGreaterThan(0);
+  // Une icône en pixels : des suites de pixels d'art, de 2 dp de haut.
+  const [drawn] = screen.getAllByTestId(icon, hidden);
+  const runs = (drawn as TestInstance).children as TestInstance[];
+  expect(runs.length).toBeGreaterThan(0);
+  runs.forEach((run) => expect(run).toHaveStyle({ height: 2 }));
   const nights = screen.queryAllByTestId(/^(week|month|day)-view$/u);
   nights.forEach((view) => expect(view).toHaveStyle({ backgroundColor: roles.night }));
   expect(screen.getAllByTestId('pixel-frame-corner', hidden).length).toBeGreaterThan(0);
@@ -246,9 +270,9 @@ const steps: StepDefinitions = ({ given, when, then }) => {
   then(
     "l'écran s'affiche dans l'identité pixel art : palette d'art, cadres crantés, boutons, cases et icônes en pixels",
     async () => {
-      for (const view of world.views) {
+      for (const [index, view] of world.views.entries()) {
         await view();
-        expectPixelArt();
+        expectPixelArt(PIXEL_MARKS[index] ?? [/^$/u, '']);
       }
     },
   );

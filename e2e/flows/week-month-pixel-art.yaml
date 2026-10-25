@@ -29,7 +29,9 @@ tags:
     id: 'add-habit'
 - takeScreenshot: week-month-pixel-art-E4-1-empty
 
-# E2 · Vide, valeurs par défaut : Moyenne et 7 choisis.
+# E2 · Vide, valeurs par défaut : Moyenne choisie, le champ prêt à la saisie (clavier ouvert). Pas
+# de `hideKeyboard` ici : tant que le clavier n'est pas affiché, il enverrait « Retour » à Android,
+# qui fermerait le panneau.
 - tapOn:
     id: 'tab-day'
 - extendedWaitUntil:
@@ -41,12 +43,8 @@ tags:
 - extendedWaitUntil:
     visible: 'Nouvelle habitude'
     timeout: 10000
-- hideKeyboard
 - assertVisible:
     id: 'difficulty-option-medium'
-    checked: true
-- assertVisible:
-    id: 'weekly-target-option-7'
     checked: true
 - takeScreenshot: week-month-pixel-art-E2-1-empty-defaults
 
@@ -55,6 +53,9 @@ tags:
     id: 'new-habit-name'
 - inputText: 'Courir 5 km'
 - hideKeyboard
+- assertVisible:
+    id: 'weekly-target-option-7'
+    checked: true
 - tapOn:
     id: 'difficulty-option-hard'
 - tapOn:
@@ -80,7 +81,8 @@ tags:
 - assertVisible: 'Courir 5 km, .+, à faire, .+, Difficile, 20 XP par suivi'
 - takeScreenshot: week-month-pixel-art-E2-3-created-day-view
 
-# E2 · Erreur : le doublon « courir 5 km », cadre rouge, icône et message actuel, bouton hachuré.
+# E2 · Erreur : le doublon « courir 5 km », validé au clavier (↵) comme aujourd'hui : cadre rouge,
+# icône et message actuel, bouton hachuré.
 - tapOn:
     id: 'add-habit'
 - extendedWaitUntil:
@@ -89,14 +91,23 @@ tags:
 - tapOn:
     id: 'new-habit-name'
 - inputText: 'courir 5 km'
-- hideKeyboard
-- tapOn:
-    id: 'create-habit'
+- pressKey: Enter
 - extendedWaitUntil:
     visible: 'Tu as déjà une habitude .Courir 5 km.\.'
     timeout: 10000
 - takeScreenshot: week-month-pixel-art-E2-4-duplicate
-- tapOn: 'Annuler'
+# Le panneau se ferme par « Annuler », une fois le clavier fermé s'il l'est encore.
+- runFlow:
+    when:
+      visible:
+        id: 'new-habit-keyboard-avoiding'
+    commands:
+      - hideKeyboard
+- runFlow:
+    when:
+      visible: 'Annuler'
+    commands:
+      - tapOn: 'Annuler'
 - extendedWaitUntil:
     notVisible: 'Nouvelle habitude'
     timeout: 10000

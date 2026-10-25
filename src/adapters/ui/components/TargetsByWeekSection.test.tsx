@@ -110,12 +110,18 @@ describe('TargetsByWeekSection', () => {
     }
   });
 
-  it('moves the row 2 dp down while it is pressed', async () => {
+  it('moves the row 2 dp down while it is pressed, and back up when released', async () => {
     await render(<TargetsByWeekSection rows={october} today={today} />);
 
     await fireEvent(line('2026-10-12'), 'pressIn');
 
     expect(within(line('2026-10-12')).getByTestId('week-targets-frame')).toHaveStyle({
+      transform: [{ translateY: 2 }],
+    });
+
+    await fireEvent(line('2026-10-12'), 'pressOut');
+
+    expect(within(line('2026-10-12')).getByTestId('week-targets-frame')).not.toHaveStyle({
       transform: [{ translateY: 2 }],
     });
   });
