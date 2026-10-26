@@ -416,8 +416,9 @@ En local, le dev lance `npm run verify`, mais pas `npm run mutation:changed`.
 
 **Sortie du mode prototype**
 
-- Le mode ne vaut que pour la PR. Sur `develop`, la CI ne connaît pas le label. La branche `release/*` garde toutes les barrières, dont la mutation de tout le code hors écrans. Un prototype non repris bloque donc la release : c'est voulu.
-- Une épique qui contient une story `prototype` n'est publiée qu'une fois sa story « version définitive » mergée, ou le code du prototype retiré.
+- Le mode ne vaut que pour la PR. Sur `develop`, la CI ne connaît pas le label. La branche `release/*` garde toutes les barrières, dont la mutation de tout le code **hors écrans**.
+- Cette mutation ne suffit pas : `src/adapters/ui/` et `src/app/` n'y sont pas mutés, donc un prototype d'écrans passerait la release. C'est `/release` qui vérifie la règle suivante.
+- **Aucune release tant qu'un prototype non repris est dans `develop`** : une story `prototype` fermée dont ni la version définitive ni la tâche de retrait n'est mergée. Une release publie tout `develop`, quelle que soit l'épique terminée. Un hotfix part de `main` : il n'est pas concerné.
 - Prototype jugé bon : le PM crée la story « version définitive » dès que le propriétaire l'a jugé bon sur la preview. Elle remet toutes les barrières sur le code concerné.
 - Prototype jugé mauvais : son code est retiré par une tâche `type:chore`.
 
@@ -495,7 +496,7 @@ Conservation des artefacts (stockage GitHub Actions limité) : l'APK est gardé 
 ### Releases
 
 - Une release est déclenchée **automatiquement**, sans validation du propriétaire, par l'orchestrateur **quand une épique est terminée**. Le propriétaire peut aussi en demander une à tout moment.
-- Une épique qui contient une story `prototype` n'est terminée qu'une fois sa story « version définitive » mergée, ou le code du prototype retiré (voir « Mode prototype »).
+- Aucune release tant qu'un prototype non repris est dans `develop` : une story `prototype` fermée dont ni la version définitive ni la tâche de retrait n'est mergée. `/release` le vérifie avant de créer la branche et, sinon, s'arrête et prévient le propriétaire (voir « Mode prototype »). Un hotfix n'est pas concerné.
 - Le numéro de version est calculé à partir des commits Conventional Commits depuis la dernière version : `BREAKING CHANGE` → MAJOR, `feat` → MINOR, `fix` → PATCH.
 - La branche `release/x.y.z` ne reçoit que la préparation de la version (changelog, numéro de version) et des corrections de bugs trouvés pendant la release, jamais de nouvelle fonctionnalité.
 - `release/*` et `hotfix/*` sont mergées dans `main` avec un **commit de merge** (pas de squash), pour garder l'historique, puis réintégrées dans `develop`.
