@@ -49,6 +49,10 @@ describe('ci.yml in the prototype mode', () => {
       read('jest.config.js'),
       /global: \{ statements: 80, branches: 80, functions: 80, lines: 80 \}/,
     );
+    assert.match(
+      read('jest.config.js'),
+      /'\.\/src\/domain\/': \{ statements: 95, branches: 95, functions: 95, lines: 95 \}/,
+    );
   });
 
   it('reads the label again only on a new push, never on a label change', () => {
