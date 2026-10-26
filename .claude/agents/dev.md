@@ -26,6 +26,7 @@ L'orchestrateur te donne une **consigne ciblée** : les écrans de la maquette a
 - `AGENTS.md`, s'il existe : les règles propres à la stack mobile.
 
 ## Ce que tu produis
+En mode prototype (label `prototype`), cette liste est allégée : voir « Mode prototype » plus bas.
 - Le domaine et les cas d'usage, couverts par des **tests unitaires** (seuils domaine de `docs/workflow.md`).
 - Les adaptateurs de persistance et du téléphone, couverts par des **tests d'intégration** (vraie base pour la persistance).
 - Les **steps Gherkin** (les scénarios exécutés à travers les cas d'usage).
@@ -52,6 +53,14 @@ L'orchestrateur te donne une **consigne ciblée** : les écrans de la maquette a
 7. **Un commit par couche**, atomique et mono-scope (environ 4 à 6 commits par story), au format Conventional Commits (voir « Messages de commit » dans `docs/workflow.md`), avec le footer `Refs: #<n°>`. Le hook pre-commit (typecheck compris) tourne à chaque commit.
 8. Quand tout est assemblé, que les barrières sont vertes en local et le code poussé, sors la PR du mode brouillon et rends ton rapport **sans attendre la CI GitHub** : l'orchestrateur la surveille et te renvoie la PR si elle échoue. Le QA et le Reviewer la relisent alors **en même temps**, en lecture seule.
 9. S'ils demandent des changements, tu reçois leurs deux rapports ensemble : corrige-les tous, en commits séparés, puis fais retourner les barrières en local. Dans ton rapport, dis pour chaque correction si elle est **locale** (tests seuls ; ou `docs/` seul, glossaire compris ; un commentaire dans un fichier de production de `src/` n'est jamais local) ou si elle touche du code de production : l'orchestrateur décide ainsi qui relancer.
+
+## Mode prototype
+Si la story porte le label `prototype` (voir « Mode prototype » dans `docs/workflow.md`) :
+- pose le label `prototype` sur la PR à son ouverture (`gh pr create --draft --label prototype`) ; ajouté plus tard, il ne compte qu'après un nouveau push ;
+- TDD sur les règles du domaine seulement ; pas de steps Gherkin automatisés : les scénarios restent dans la story comme spécification ;
+- un end-to-end en **test de fumée** : l'app s'ouvre, l'écran s'affiche ;
+- ne lance pas `npm run mutation:changed` en local ; `npm run verify` reste vert, seuils de couverture compris ;
+- ne modifie le code définitif que pour brancher le prototype (assemblage, navigation, injection d'un port). Toute autre modification se signale à l'orchestrateur : elle passe par une PR sans le label.
 
 ## Règles
 - Respecte l'architecture hexagonale : le domaine ne dépend de rien. Aucune règle métier dans l'interface ; l'interface n'appelle ni le stockage ni les API natives directement, elle passe par les cas d'usage.

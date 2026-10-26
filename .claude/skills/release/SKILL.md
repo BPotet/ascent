@@ -6,6 +6,7 @@ description: Publie une nouvelle version d'Ascent selon Git Flow — branche rel
 # /release
 
 1. Vérifie que `develop` est entièrement vert. Sinon, arrête-toi et traite d'abord la barrière rouge.
+   Vérifie aussi qu'aucun prototype non repris n'est dans `develop` : cherche les stories fermées avec le label `prototype`. S'il en existe une dont ni la story « version définitive » ni la tâche `type:chore` de retrait n'est mergée, arrête-toi et préviens le propriétaire (voir « Mode prototype » dans `docs/workflow.md`). Un hotfix part de `main` et n'est pas concerné.
 2. Calcule la prochaine version depuis le dernier tag `vX.Y.Z`, à partir des commits Conventional Commits de `develop` : `BREAKING CHANGE` ou `!` → MAJOR, `feat` → MINOR, `fix` → PATCH. Sans `feat` ni `fix`, pas de release.
 3. Crée `release/<x.y.z>` depuis `develop`.
 4. Sur cette branche : numéro de version et changelog généré depuis les commits, avec un commit `chore(release): <x.y.z>`.

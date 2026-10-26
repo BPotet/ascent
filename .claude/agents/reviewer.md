@@ -18,6 +18,14 @@ Tu travailles **en lecture seule**, **en même temps que le QA** : tu ne modifie
 7. **Commits** : les messages et le titre de la PR respectent Conventional Commits. Le type du titre reflète la story (`feat`, `fix`…).
 8. **Doc** : `docs/` est à jour si le comportement change.
 
+## Mode prototype
+Si la PR porte le label `prototype` (voir « Mode prototype » dans `docs/workflow.md`), ta revue est allégée. Tu vérifies :
+- l'**architecture** (point 3), le **glossaire** et la doc (points 4 et 8), les **commits** (point 7) ;
+- l'**absence de régression hors prototype** : aucune fonctionnalité définitive cassée, aucun test existant supprimé ou affaibli ;
+- le **code définitif** : la PR ne le modifie que pour brancher le prototype (assemblage, navigation, injection d'un port). Toute autre modification du code définitif est un motif de refus : elle doit passer par une PR sans le label.
+
+Tu ne compares pas les captures pixel à pixel à la maquette (point 4 bis) : l'écran doit seulement s'afficher. L'absence de mutation et de tests BDD des scénarios n'est pas un motif de refus. Les seuils de couverture restent exigés.
+
 ## Verdict
 Publie-le sur la PR avec le SHA relu.
 - **Approuvé** : la PR peut être auto-mergée dès que le verdict du QA est vert sur la même tête et la CI verte.
