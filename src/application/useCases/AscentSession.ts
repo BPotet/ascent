@@ -1,12 +1,15 @@
 import {
   abandonAscent,
+  chooseBoon,
   chooseExit,
   endFloorBattle,
   startAscent,
   type Ascent,
 } from '../../domain/ascent/Ascent';
+import { boonModifiers } from '../../domain/ascent/boons';
 import { resumeBattle, startBattle, type Battle } from '../../domain/battle/Battle';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
+import type { HeroKind } from '../../domain/battle/combatants';
 import { BattleSession, type BattleSessionDependencies } from './BattleSession';
 
 /** La clé de l'ascension en cours dans le stockage clé-valeur (prototype #91). */
@@ -41,7 +44,15 @@ function parse(raw: string | null): SavedAscent | null {
   try {
     const saved = JSON.parse(raw) as Partial<SavedAscent> | null;
     if (saved?.version !== SAVE_VERSION || typeof saved.ascent?.floor !== 'number') return null;
-    return { version: SAVE_VERSION, ascent: saved.ascent, battle: saved.battle ?? null };
+    // Une sauvegarde de #91 n'a ni héros choisi, ni bienfaits, ni offre (#92).
+    const ascent: Ascent = saved.ascent;
+    const old: Partial<Ascent> & { readonly hero: Partial<Ascent['hero']> } = ascent;
+    const hero = { ...ascent.hero, kind: old.hero.kind ?? 'sentinel', boons: old.hero.boons ?? [] };
+    return {
+      version: SAVE_VERSION,
+      ascent: { ...ascent, hero, boonOffer: old.boonOffer ?? null },
+      battle: saved.battle ?? null,
+    };
   } catch {
     return null;
   }
@@ -85,9 +96,14 @@ export class AscentSession {
     };
   }
 
-  /** Commence une ascension, avec une graine au hasard. */
-  begin(): Ascent {
-    return this.update(startAscent(this.dependencies.seeds.next()), null);
+  /** Commence une ascension avec le héros choisi, et une graine au hasard. */
+  begin(hero: HeroKind = 'sentinel'): Ascent {
+    return this.update(startAscent(this.dependencies.seeds.next(), hero), null);
+  }
+
+  chooseBoon(index: number): void {
+    if (this.ascent === null) return;
+    this.update(chooseBoon(this.ascent, index), null);
   }
 
   chooseExit(index: number): void {
@@ -126,12 +142,14 @@ export class AscentSession {
       createBattle: (options) => {
         if (this.battle !== null)
           return { battle: resumeBattle(this.battle, options.at), events: [] };
-        const encounter = this.ascent!.encounter!;
+        const { encounter, hero } = this.ascent!;
         return startBattle({
           ...options,
-          seed: encounter.battleSeed,
-          heroHp: this.ascent!.hero.hp,
-          enemies: encounter.enemies,
+          seed: encounter!.battleSeed,
+          hero: hero.kind,
+          heroHp: hero.hp,
+          modifiers: boonModifiers(hero.boons),
+          enemies: encounter!.enemies,
           // L'ordre d'action par Initiative (P13, P14), comme le combat d'essai de #90.
           initiative: true,
         });
