@@ -58,13 +58,16 @@ describe('ascent routes', () => {
     builtFor(initialChannel);
   });
 
-  it('offers the Tour tab on the preview build, and starts an ascent from the tower foot', async () => {
+  it('offers the Tour tab on the preview build, and starts an ascent with a hero from the tower foot', async () => {
     builtFor('preview');
     await renderRouter(appDirectory);
     await dayViewIsShown();
 
     await fireEvent.press(screen.getByRole('tab', { name: 'Tour' }));
     await fireEvent.press(await screen.findByRole('button', { name: "Commencer l'ascension" }));
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Continuer avec la Sentinelle' }),
+    );
 
     expect(await screen.findByRole('header', { name: 'Étage 1' })).toBeOnTheScreen();
     expect(screen.getByTestId('ascent-status')).toHaveTextContent(/^Palier 1 · Étage 1 sur 6/);
