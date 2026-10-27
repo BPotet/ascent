@@ -41,6 +41,7 @@ import {
   restoreGuard,
   type Stunned,
 } from './guard';
+import { NO_MODIFIERS, type HeroModifiers } from './heroModifiers';
 import { drawIntent, raisedHp, type GuardIntent, type Intent, type RaiseIntent } from './intents';
 import {
   BULWARK_DAMAGE_PERCENT,
@@ -238,6 +239,8 @@ export interface Battle {
   readonly hitStop: { readonly at: number; readonly until: number } | null;
   /** La bulle d'aide de la phase ennemie reste à montrer avant la première transition. */
   readonly defenseHintPending: boolean;
+  /** Les modificateurs du héros (prototype #92) ; absents, aucun effet. */
+  readonly modifiers?: HeroModifiers;
 }
 
 /** Un nouvel état et les événements produits, dans l'ordre. */
@@ -286,6 +289,8 @@ export interface BattleOptions extends TrialBattleOptions {
   readonly heroHp?: number;
   /** Le groupe d'ennemis, de gauche à droite, dans l'ordre du tirage. */
   readonly enemies: readonly EnemyKind[];
+  /** Les modificateurs du héros (bienfaits, prototype #92) ; par défaut, aucun. */
+  readonly modifiers?: HeroModifiers;
 }
 
 /** Au plus 3 ennemis se battent en même temps (P3b). */
@@ -328,6 +333,7 @@ export function startBattle({
   initiative = false,
   heroHp,
   enemies: group,
+  modifiers,
 }: BattleOptions): BattleUpdate {
   const { maxHp } = HEROES[hero];
   const events: Events = [];
@@ -352,6 +358,7 @@ export function startBattle({
       offBalanceUntil: null,
       hitStop: null,
       defenseHintPending: defenseHint,
+      ...(modifiers !== undefined && { modifiers }),
     },
     events,
     at,
@@ -367,6 +374,11 @@ export function startBattle({
 /** Le profil du héros joué. */
 export function heroProfile(battle: Battle): HeroProfile {
   return HEROES[battle.heroKind];
+}
+
+/** Les modificateurs du héros du combat ; un combat sauvegardé sans eux n'en a aucun. */
+function heroModifiers(battle: Battle): HeroModifiers {
+  return battle.modifiers ?? NO_MODIFIERS;
 }
 
 export function isStanding(enemy: EnemyState): boolean {
@@ -622,7 +634,11 @@ function stunTurn(
   if (isRestoreDue(stun, battle.heroActions)) {
     const until = at + GUARD_RESTORE_MS;
     events.push({ type: 'guardRestored', at, enemy, until, inPlaceOfAction: true });
-    const restored = { ...restoreGuard(state), intent: null, guardRestore: { since: at, until } };
+    const restored = {
+      ...restoreGuard(state, heroModifiers(battle).guardRestorePercent ?? 100),
+      intent: null,
+      guardRestore: { since: at, until },
+    };
     return {
       ...withEnemy(battle, enemy, restored),
       phase: { kind: 'enemy', step: { kind: 'guardRestore', enemy, since: at, until } },
@@ -689,7 +705,10 @@ function endHeroAction(battle: Battle, events: Events): Battle {
     if (stun === null || !stun.actionLost || !isRestoreDue(stun, battle.heroActions)) return enemy;
     const until = at + GUARD_RESTORE_MS;
     events.push({ type: 'guardRestored', at, enemy: index, until, inPlaceOfAction: false });
-    return { ...restoreGuard(enemy), guardRestore: { since: at, until } };
+    return {
+      ...restoreGuard(enemy, heroModifiers(battle).guardRestorePercent ?? 100),
+      guardRestore: { since: at, until },
+    };
   });
   const restored = { ...battle, enemies };
   if (isWon(restored)) return finish(restored, events, 'victory', at);
@@ -871,7 +890,11 @@ function resolveBlow(
  */
 function heroDamage(battle: Battle, damage: number, ...percents: readonly number[]): number {
   const reduction =
-    100 - Math.min(heroProfile(battle).damageReductionPercent, MAX_DAMAGE_REDUCTION_PERCENT);
+    100 -
+    Math.min(
+      heroProfile(battle).damageReductionPercent + heroModifiers(battle).damageReductionPoints,
+      MAX_DAMAGE_REDUCTION_PERCENT,
+    );
   const bulwark = battle.hero.bulwark ? [BULWARK_DAMAGE_PERCENT] : [];
   return scaleDamage(damage, ...percents, reduction, ...bulwark);
 }
@@ -902,14 +925,25 @@ function hitEnemy(
 ): { readonly battle: Battle; readonly broken: boolean } {
   const hit = blowOnEnemy(battle.enemies[index]!, blow, battle.heroActions);
   const damaged = withEnemy(battle, index, shiftPhase(hit.enemy, events, index, context.at));
-  if (hit.broken)
+  if (hit.broken) {
     events.push({ type: 'guardBroken', at: context.at, enemy: index, by: context.by });
-  if (!hit.fallen) return { battle: damaged, broken: hit.broken };
+    return { battle: onGuardBreak(damaged, events, context.at), broken: true };
+  }
+  if (!hit.fallen) return { battle: damaged, broken: false };
   events.push({ type: 'enemyDefeated', at: context.at, enemy: index });
   const [next] = standingEnemies(damaged);
   if (battle.target !== index || next === undefined) return { battle: damaged, broken: false };
   events.push({ type: 'targetChanged', at: context.at, enemy: next });
   return { battle: { ...damaged, target: next }, broken: false };
+}
+
+/** Les effets d'une garde brisée (Cœur de braise, #92) : l'Élan gagné et les PV rendus. */
+function onGuardBreak(battle: Battle, events: Events, at: number): Battle {
+  const { momentum, heal } = heroModifiers(battle).onGuardBreak;
+  let gained = battle;
+  for (let point = 0; point < momentum; point += 1) gained = gainMomentumAt(gained, events, at);
+  const { hero } = gained;
+  return { ...gained, hero: { ...hero, hp: Math.min(hero.maxHp, hero.hp + heal) } };
 }
 
 /**
@@ -934,6 +968,7 @@ function counterAttack(battle: Battle, events: Events): Battle {
     guardDamage: hero.guardDamage,
     counterPercent: hero.counterPercent,
     stunned: battle.enemies[step.enemy]!.stun !== null,
+    modifiers: heroModifiers(battle),
   });
   events.push({
     type: 'counterAttacked',
@@ -1148,8 +1183,9 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
   const blow = strikeBlow({
     attackPower: hero.attackPower,
     guardDamage: hero.guardDamage,
-    multiplier: strikeMultiplier(judgement),
+    multiplier: strikeMultiplier(judgement, heroModifiers(battle).perfectStrikeBonusPercents),
     stunned: battle.enemies[phase.enemy]!.stun !== null,
+    modifiers: heroModifiers(battle),
   });
   events.push({
     type: 'strikeResolved',

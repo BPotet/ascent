@@ -5,6 +5,7 @@
  */
 import { scaleDamage, type PressJudgement } from './rules';
 import { STUNNED_DAMAGE_PERCENT } from './guard';
+import { NO_MODIFIERS, type HeroModifiers } from './heroModifiers';
 
 /** La préparation de la frappe (C6.1). */
 export const STRIKE_WIND_UP_MS = 700;
@@ -32,6 +33,11 @@ export function strikeMultiplier(
   return judgement === 'good' ? GOOD_STRIKE_PERCENT : PLAIN_STRIKE_PERCENT;
 }
 
+/** Le multiplicateur d'étourdi d'un coup, en % : 150 (plus les bonus) sur un étourdi, 100 sinon. */
+function stunnedPercent(stunned: boolean, modifiers: HeroModifiers): number {
+  return stunned ? STUNNED_DAMAGE_PERCENT + modifiers.stunnedBonusPercent : 100;
+}
+
 /** Les PV et les points de garde qu'un coup retire à un ennemi. */
 export interface EnemyBlow {
   readonly hp: number;
@@ -47,15 +53,17 @@ export function strikeBlow({
   guardDamage,
   multiplier,
   stunned,
+  modifiers = NO_MODIFIERS,
 }: {
   readonly attackPower: number;
   readonly guardDamage: number;
   readonly multiplier: number;
   readonly stunned: boolean;
+  readonly modifiers?: HeroModifiers;
 }): EnemyBlow {
   return {
-    hp: scaleDamage(attackPower, multiplier, stunned ? STUNNED_DAMAGE_PERCENT : 100),
-    guard: stunned ? 0 : scaleDamage(guardDamage, multiplier),
+    hp: scaleDamage(attackPower, multiplier, stunnedPercent(stunned, modifiers)),
+    guard: stunned ? 0 : scaleDamage(guardDamage, multiplier, ...modifiers.guardDamagePercents),
   };
 }
 
@@ -73,19 +81,24 @@ export function counterBlow({
   guardDamage,
   counterPercent,
   stunned,
+  modifiers = NO_MODIFIERS,
 }: {
   readonly attackPower: number;
   readonly guardDamage: number;
   readonly counterPercent: number;
   readonly stunned: boolean;
+  readonly modifiers?: HeroModifiers;
 }): EnemyBlow {
   return {
     hp: scaleDamage(
       attackPower,
       COUNTER_BASE_PERCENT,
       counterPercent,
-      stunned ? STUNNED_DAMAGE_PERCENT : 100,
+      ...modifiers.counterPercents,
+      stunnedPercent(stunned, modifiers),
     ),
-    guard: stunned ? 0 : scaleDamage(guardDamage, COUNTER_GUARD_PERCENT),
+    guard: stunned
+      ? 0
+      : scaleDamage(guardDamage, COUNTER_GUARD_PERCENT, ...modifiers.guardDamagePercents),
   };
 }

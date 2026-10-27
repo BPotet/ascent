@@ -56,7 +56,14 @@ export function isRestoreDue(stun: Stunned, heroActions: number): boolean {
   return heroActions > stun.heroAction;
 }
 
-/** Le retour en garde (C5.5) : la garde revient à son maximum, l'étourdissement s'arrête. */
-export function restoreGuard<Enemy extends GuardedEnemy>(enemy: Enemy): Enemy {
-  return { ...enemy, guard: enemy.maxGuard, stun: null };
+/**
+ * Le retour en garde (C5.5) : la garde revient à son maximum (ou à `percent` % de son maximum,
+ * arrondi à l'entier inférieur, au moins 1 : Givre persistant, #92), l'étourdissement s'arrête.
+ */
+export function restoreGuard<Enemy extends GuardedEnemy>(enemy: Enemy, percent = 100): Enemy {
+  return {
+    ...enemy,
+    guard: Math.max(1, Math.floor((enemy.maxGuard * percent) / 100)),
+    stun: null,
+  };
 }
