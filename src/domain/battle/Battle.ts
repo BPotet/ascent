@@ -41,7 +41,7 @@ import {
   restoreGuard,
   type Stunned,
 } from './guard';
-import { NO_MODIFIERS, type HeroModifiers } from './heroModifiers';
+import { NO_MODIFIERS, combineModifiers, type HeroModifiers } from './heroModifiers';
 import { heroInitiative } from './initiative';
 import { drawIntent, raisedHp, type GuardIntent, type Intent, type RaiseIntent } from './intents';
 import {
@@ -384,7 +384,8 @@ export function heroProfile(battle: Battle): HeroProfile {
 
 /** Les modificateurs du héros dans ce combat (prototype #93). */
 function heroModifiers(battle: Battle): HeroModifiers {
-  return battle.modifiers ?? NO_MODIFIERS;
+  // Un combat sauvegardé avant #92 n'a pas tous les champs : les absents sont neutres.
+  return battle.modifiers === undefined ? NO_MODIFIERS : combineModifiers(battle.modifiers);
 }
 
 export function isStanding(enemy: EnemyState): boolean {

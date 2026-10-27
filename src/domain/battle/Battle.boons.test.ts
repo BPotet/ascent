@@ -5,6 +5,7 @@ import {
   heroAction,
   nextDeadline,
   pressStrike,
+  resumeBattle,
   startBattle,
   type Battle,
   type BattleUpdate,
@@ -128,6 +129,23 @@ describe('Battle with the hero modifiers (P18)', () => {
     );
 
     expect(battle.enemies[0]!.guard).toBe(7);
+  });
+
+  it('resumes a battle saved by #93 alone, without the boon fields, up to a broken guard', () => {
+    const {
+      counterPercents: _counter,
+      stunnedBonusPercent: _stunned,
+      guardRestorePercent: _restore,
+      onGuardBreak: _break,
+      ...itemsOnly
+    } = { ...NO_MODIFIERS, guardDamagePercents: [130] };
+    const saved = JSON.parse(JSON.stringify({ ...start(), modifiers: itemsOnly })) as Battle;
+
+    const { battle, events } = playUntil(resumeBattle(saved, 0), has('guardRestored'));
+
+    expect(has('guardBroken')(events)).toBe(true);
+    expect(battle.hero.momentum).toBeGreaterThan(0);
+    expect(battle.enemies[0]!.guard).toBe(15);
   });
 
   it('keeps the modifiers in the battle, to resume it as it was', () => {
