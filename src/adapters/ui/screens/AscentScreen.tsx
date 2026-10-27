@@ -3,9 +3,11 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
 import type { Ascent } from '../../../domain/ascent/Ascent';
+import { BoonChoicePanel } from '../battle/BoonChoicePanel';
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
 import { exitLabel, floorLine, goldText } from '../format/ascentText';
+import { ownedBoonsLine } from '../format/boonText';
 import { useAscent } from '../state/useAscent';
 import { battleColors } from '../theme/battleColors';
 import { TrialBattleScreen } from './TrialBattleScreen';
@@ -195,14 +197,32 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
     );
   }
 
+  const gained =
+    ascent.lastGold > 0 ? (
+      <Text style={styles.gold}>{`Étage franchi · +${goldText(ascent.lastGold)}`}</Text>
+    ) : null;
+
+  if (ascent.boonOffer !== null) {
+    return (
+      <Screen layout="top" background={battleColors.background} testID="ascent-boons">
+        <Header ascent={ascent} onPause={leave} />
+        {gained}
+        <BoonChoicePanel
+          key={ascent.floor}
+          offer={ascent.boonOffer}
+          onChoose={(index) => session.chooseBoon(index)}
+        />
+      </Screen>
+    );
+  }
+
   const boss = ascent.exits.some((exit) => exit.kind === 'boss');
   return (
     <Screen layout="top" background={battleColors.background} testID="ascent-exits">
       <Header ascent={ascent} onPause={leave} />
       <ScrollView contentContainerStyle={styles.exits}>
-        {ascent.lastGold > 0 ? (
-          <Text style={styles.gold}>{`Étage franchi · +${goldText(ascent.lastGold)}`}</Text>
-        ) : null}
+        {gained}
+        <Text style={styles.line}>{ownedBoonsLine(ascent.hero.boons)}</Text>
         <Text accessibilityRole="header" style={styles.title}>
           {boss ? 'Dernière porte' : 'Choisis ta sortie'}
         </Text>

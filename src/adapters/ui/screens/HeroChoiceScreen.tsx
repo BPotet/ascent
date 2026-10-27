@@ -54,16 +54,23 @@ function HeroOption({
 }
 
 /**
- * Le choix du héros (`HeroChoice`) avant le combat d'essai (prototype #90, maquette H1, H2) : la
+ * Le choix du héros (`HeroChoice`) avant le combat d'essai (prototype #90, maquette H1, H2) ou au
+ * pied de la tour (prototype #92, maquette H3, avec son titre, sa note et son bouton) : la
  * Sentinelle ou l'Errante, avec son équipement de base, son pouvoir et son trait. Rien n'est lancé
- * avant « Commencer le combat ».
+ * avant le bouton.
  */
 export function HeroChoiceScreen({
   onStart,
   onClose,
+  title = TRIAL_BATTLE_TITLE,
+  note = 'Choisis ton héros pour ce combat.',
+  confirmLabel = () => 'Commencer le combat',
 }: {
   readonly onStart: (hero: HeroKind) => void;
   readonly onClose: () => void;
+  readonly title?: string;
+  readonly note?: string;
+  readonly confirmLabel?: (hero: HeroKind) => string;
 }) {
   const [hero, setHero] = useState<HeroKind>('sentinel');
   return (
@@ -78,7 +85,7 @@ export function HeroChoiceScreen({
           <PixelIcon name="left" color={roles.light} />
         </Pressable>
         <Text accessibilityRole="header" style={styles.title}>
-          {TRIAL_BATTLE_TITLE}
+          {title}
         </Text>
       </View>
       <ScrollView contentContainerStyle={styles.body}>
@@ -92,11 +99,11 @@ export function HeroChoiceScreen({
             />
           ))}
         </View>
-        <Text style={styles.note}>Choisis ton héros pour ce combat.</Text>
+        <Text style={styles.note}>{note}</Text>
       </ScrollView>
       <View style={styles.footer}>
         <PixelButton
-          label="Commencer le combat"
+          label={confirmLabel(hero)}
           onPress={() => onStart(hero)}
           testID="hero-choice-start"
         />

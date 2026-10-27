@@ -38,5 +38,7 @@ export const battleColors = {
   coach: '#EEEAE0',
   onCoach: '#141826',
   hatch: 'rgba(255,157,176,0.22)',
+  /** Les raretés (maquette #88) : Commun, Rare, Épique, aussi écrites en mot et en losanges. */
+  rarity: { common: '#C3C7D3', rare: '#7C9CFF', epic: '#C49BFF' },
 } as const;
 // Stryker restore all
