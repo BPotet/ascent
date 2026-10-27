@@ -397,7 +397,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   then('une bulle explique Parade et Esquive avant la transition de phase', () => {
     expect(screen.getByTestId('battle-hint-defense')).toHaveTextContent(
-      "Lis son gesteTouche Parade quand l'anneau se ferme. Sceau rouge : Esquive.",
+      "Lis son gesteTouche Parade au moment de l'impact. Sceau rouge : Esquive.",
     );
     expect(screen.queryByTestId('phase-banner')).toBeNull();
   });

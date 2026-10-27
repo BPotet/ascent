@@ -11,8 +11,8 @@ export const BATTLE_HINTS = {
   },
   defense: {
     title: 'Lis son geste',
-    // Aides visuelles Légères (le défaut) : la bulle parle de l'anneau (maquette, `pcoach`).
-    text: "Touche Parade quand l'anneau se ferme. Sceau rouge : Esquive.",
+    // Le coup se lit par l'animation seule, sans anneau (ADR 0006, décision du propriétaire du 27/10, #101).
+    text: "Touche Parade au moment de l'impact. Sceau rouge : Esquive.",
     arrow: '50%',
   },
 } as const;

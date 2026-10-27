@@ -7,7 +7,6 @@ import { FRAME_MS, enemyPose, restPose } from './enemyPose';
 import { heroFrame } from './heroFrame';
 import { glintSprites, hurtLevel, impactFlash, sparkFrame } from './sceneEffects';
 import { PLATE_HEIGHT, sceneGeometry } from './sceneGeometry';
-import { LIGHT_AIDS_RING_MS, timingRing } from './timingRing';
 
 const STEP_IN_AT = 1_000;
 const WIND_UP_AT = 1_400;
@@ -284,64 +283,6 @@ describe('heroFrame (pxHeroFrame)', () => {
   });
 });
 
-describe('timingRing (Light visual aids)', () => {
-  it('appears 450 ms before the impact, at 2.6 times its size, and closes right at the impact', () => {
-    expect(LIGHT_AIDS_RING_MS).toBe(450);
-    expect(timingRing(BASIC, 2_049, false)).toBeNull();
-    expect(timingRing(BASIC, 2_050, false)).toMatchObject({ scale: 2.6, perilous: false });
-    expect(timingRing(BASIC, 2_050, false)!.opacity).toBeCloseTo(0.3);
-    expect(timingRing(BASIC, 2_500, false)).toMatchObject({
-      scale: 1,
-      opacity: 1,
-      guideOpacity: 0,
-    });
-  });
-
-  it('closes at a constant speed', () => {
-    expect(timingRing(BASIC, 2_275, false)!.scale).toBeCloseTo(1.8);
-    expect(timingRing(BASIC, 2_275, false)!.guideOpacity).toBeCloseTo(0.75);
-  });
-
-  it('fades out in 120 ms after the impact', () => {
-    expect(timingRing(BASIC, 2_560, false)!.opacity).toBeCloseTo(0.5);
-    expect(timingRing(BASIC, 2_620, false)).toBeNull();
-  });
-
-  it('shows the second ring of a double attack when the first one is gone, closing 420 ms later', () => {
-    const double = attack('double', [2_400, 2_820]);
-    expect(timingRing(double, 2_519, false)!.scale).toBeLessThan(1);
-    const second = timingRing(double, 2_520, false)!;
-    expect(second.scale).toBeCloseTo(1 + 1.6 * (1 - 120 / 420));
-    expect(timingRing(double, 2_820, false)!.scale).toBe(1);
-  });
-
-  it('only appears after the summit of the false start of a feint, then closes at the impact', () => {
-    const feint = attack('feint', [3_000], { feintAt: 2_700 });
-    expect(timingRing(feint, 2_699, false)).toBeNull();
-    expect(timingRing(feint, 2_700, false)!.scale).toBeCloseTo(2.6);
-    expect(timingRing(feint, 3_000, false)!.scale).toBe(1);
-  });
-
-  it('is red for a perilous attack', () => {
-    expect(timingRing(PERILOUS, 2_600, false)!.perilous).toBe(true);
-  });
-
-  it('never appears outside the wind-up: step in, Guard, Raise, no attack', () => {
-    expect(timingRing(STEP_IN, 1_399, false)).toBeNull();
-    expect(timingRing({ ...STEP_IN, kind: 'support' }, 1_500, false)).toBeNull();
-    expect(timingRing(null, 1_500, false)).toBeNull();
-  });
-
-  it('freezes during a hit stop', () => {
-    const stopped = { ...attack('double', [2_490, 2_910]), hitStopAt: 2_400, hitStopUntil: 2_490 };
-    expect(timingRing(stopped, 2_450, false)).toEqual(timingRing(stopped, 2_490, false));
-  });
-
-  it('starts from 1.8 with reduced motion', () => {
-    expect(timingRing(BASIC, 2_050, true)!.scale).toBeCloseTo(1.8);
-  });
-});
-
 describe('scene effects', () => {
   it('flashes on the hero for 160 ms at each impact, in 3 steps, never at the false start', () => {
     const feint = attack('feint', [3_000], { feintAt: 2_200 });
@@ -416,18 +357,18 @@ describe('sceneGeometry', () => {
     expect(sceneGeometry(390, 440, 3).enemies[0]!.pedestal).toBe('enemy');
   });
 
-  it('places the hero from behind at the bottom left, at 3 dp, and the ring on its chest', () => {
+  it('places the hero from behind at the bottom left, at 3 dp, its chest at 42 % of its height', () => {
     const geometry = sceneGeometry(390, 440, 3);
     expect(geometry.hero).toMatchObject({ x: 4, width: 108, height: 132, scale: 3 });
     expect(geometry.hero.y + 132).toBe(440 - 12 + 4);
-    expect(geometry.ring).toEqual({ x: 4 + 54, y: 440 - 144 + Math.round(132 * 0.42), size: 76 });
+    expect(geometry.chest).toEqual({ x: 4 + 54, y: 440 - 144 + Math.round(132 * 0.42) });
     expect(sceneGeometry(320, 440, 3).hero).toMatchObject({ width: 72, height: 88, scale: 2 });
   });
 
-  it('aims each enemy at the hero: the reach vector goes from its body to the ring', () => {
+  it('aims each enemy at the hero: the reach vector goes from its body to the chest of the hero', () => {
     const geometry = sceneGeometry(390, 440, 3);
     const [first] = geometry.enemies;
-    expect(first!.reach.x).toBe(geometry.ring.x - (first!.sprite.x + 44));
+    expect(first!.reach.x).toBe(geometry.chest.x - (first!.sprite.x + 44));
     expect(first!.reach.y).toBeGreaterThan(0);
   });
 });

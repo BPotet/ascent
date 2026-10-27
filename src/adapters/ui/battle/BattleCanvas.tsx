@@ -1,24 +1,19 @@
 /**
  * La scène du combat en pixel art 2.5D (ADR 0008) : un seul canevas Skia qui dessine le décor, les
- * socles, les ennemis (l'ennemi actif en dernier), le héros, les effets et l'anneau. Les images
- * des personnages et des effets viennent d'atlas précalculés au montage ; l'`Atlas` de Skia les
- * dessine, et chaque image est choisie sur le fil UI par les fonctions pures de `scene/`, calées
- * sur les instants nominaux des événements de combat : aucun rendu React par image.
+ * socles, les ennemis (l'ennemi actif en dernier), le héros et les effets, sans anneau (ADR 0006).
+ * Les images des personnages et des effets viennent d'atlas précalculés au montage ; l'`Atlas` de
+ * Skia les dessine, et chaque image est choisie sur le fil UI par les fonctions pures de `scene/`,
+ * calées sur les instants nominaux des événements de combat : aucun rendu React par image.
  *
  * Sous Jest, Skia reste limité à son test de fumée : les tests d'écran simulent ce module.
  */
 import {
   Atlas,
-  BlurMask,
   Canvas,
-  Circle,
   ColorMatrix,
-  DashPathEffect,
   FilterMode,
-  Group,
   Image,
   MipmapMode,
-  Rect,
   useRSXformBuffer,
   useRectBuffer,
   type SkImage,
@@ -34,7 +29,6 @@ import {
 } from 'react-native-reanimated';
 
 import type { EnemyKind } from '../../../domain/battle/combatants';
-import { artPalette } from '../pixelArt/artPalette';
 import { toSkImage } from '../pixelArt/SpriteCanvas';
 import type { Point } from '../pixelArt/sprites/Sprite';
 import { atlasRect, battleAtlas, type AtlasTable } from '../pixelArt/sprites/battle/battleAtlas';
@@ -56,7 +50,6 @@ import { enemyPose, restPose } from './scene/enemyPose';
 import { heroFrame } from './scene/heroFrame';
 import type { EnemySlot, SceneGeometry } from './scene/sceneGeometry';
 import { glintSprites, hurtLevel, impactFlash, sparkFrame } from './scene/sceneEffects';
-import { timingRing } from './scene/timingRing';
 import type { FrameMeter, HeroPose, SceneEnemy, SceneSpark, SceneTimeline } from './sceneTypes';
 
 export interface BattleSceneProps {
@@ -129,9 +122,6 @@ const DIMMED_OPACITY = 0.3;
 const FADED = [
   0.106, 0.358, 0.036, 0, 0, 0.106, 0.358, 0.036, 0, 0, 0.106, 0.358, 0.036, 0, 0, 0, 0, 0, 1, 0,
 ];
-const RING_GOLD = artPalette.roles.gold;
-const RING_RED = artPalette.tints[22] ?? '#FF3B3B';
-const NOTCH_RIM = artPalette.tints[25] ?? '#FFD0D8';
 /** Les places de l'atlas des effets : éclair, étincelle, deux reflets, trois étoiles. */
 const EFFECT_SLOTS = 7;
 const EFFECT_ORDER: readonly EffectKind[] = [
@@ -143,12 +133,6 @@ const EFFECT_ORDER: readonly EffectKind[] = [
   'glintDull',
   'stars',
 ];
-const NOTCHES = [
-  [0, -1],
-  [1, 0],
-  [0, 1],
-  [-1, 0],
-] as const;
 const NO_ENEMY: SceneEnemy = {
   kind: 'ghoul',
   standing: false,
@@ -351,126 +335,6 @@ function VignetteLayer({
   return <ArtImage image={image} x={0} y={0} opacity={opacity} />;
 }
 
-/**
- * L'anneau (aides visuelles Légères), en interface nette par-dessus la scène, à la cadence de
- * l'écran : un cercle de 3 px couleur lumière avec un halo, le contour d'arrivée en pointillés, et
- * en rouge avec quatre crans en losange pour un coup imparable. Il ne capte jamais le toucher.
- */
-function Ring({
-  center,
-  size,
-  timeline,
-  clock,
-  reducedMotion,
-}: {
-  readonly center: { readonly x: number; readonly y: number };
-  readonly size: number;
-  readonly timeline: SharedValue<SceneTimeline | null>;
-  readonly clock: SharedValue<number>;
-  readonly reducedMotion: boolean;
-}) {
-  const look = useDerivedValue(
-    () => timingRing(timeline.get(), clock.get(), reducedMotion),
-    [timeline, clock, reducedMotion],
-  );
-  const transform = useDerivedValue(
-    () => [{ translateX: center.x }, { translateY: center.y }, { scale: look.get()?.scale ?? 1 }],
-    [look, center],
-  );
-  const gold = useDerivedValue(() => {
-    const current = look.get();
-    return current === null || current.perilous ? 0 : current.opacity;
-  }, [look]);
-  const red = useDerivedValue(() => {
-    const current = look.get();
-    return current !== null && current.perilous ? current.opacity : 0;
-  }, [look]);
-  const guideGold = useDerivedValue(() => {
-    const current = look.get();
-    return current === null || current.perilous ? 0 : current.guideOpacity;
-  }, [look]);
-  const guideRed = useDerivedValue(() => {
-    const current = look.get();
-    return current !== null && current.perilous ? current.guideOpacity : 0;
-  }, [look]);
-  const radius = size / 2 - 1.5;
-  const halo = reducedMotion ? null : <BlurMask blur={5} style="normal" />;
-  return (
-    <>
-      <Group transform={[{ translateX: center.x }, { translateY: center.y }]}>
-        {[
-          [RING_GOLD, guideGold],
-          [RING_RED, guideRed],
-        ].map(([color, opacity]) => (
-          <Circle
-            key={String(color)}
-            cx={0}
-            cy={0}
-            r={radius}
-            style="stroke"
-            strokeWidth={2}
-            color={color as string}
-            opacity={opacity as SharedValue<number>}
-          >
-            <DashPathEffect intervals={[6, 5]} />
-          </Circle>
-        ))}
-      </Group>
-      <Group transform={transform}>
-        <Group opacity={gold}>
-          <Circle
-            cx={0}
-            cy={0}
-            r={radius}
-            style="stroke"
-            strokeWidth={6}
-            color={RING_GOLD}
-            opacity={0.35}
-          >
-            {halo}
-          </Circle>
-          <Circle cx={0} cy={0} r={radius} style="stroke" strokeWidth={3} color={RING_GOLD} />
-        </Group>
-        <Group opacity={red}>
-          <Circle
-            cx={0}
-            cy={0}
-            r={radius}
-            style="stroke"
-            strokeWidth={6}
-            color={RING_RED}
-            opacity={0.4}
-          >
-            {halo}
-          </Circle>
-          <Circle cx={0} cy={0} r={radius} style="stroke" strokeWidth={3} color={RING_RED} />
-          {NOTCHES.map(([x, y]) => (
-            <Group
-              key={`${x}:${y}`}
-              transform={[
-                { translateX: x * radius },
-                { translateY: y * radius },
-                { rotate: Math.PI / 4 },
-              ]}
-            >
-              <Rect x={-4.5} y={-4.5} width={9} height={9} color={RING_RED} />
-              <Rect
-                x={-4.5}
-                y={-4.5}
-                width={9}
-                height={9}
-                style="stroke"
-                strokeWidth={1.5}
-                color={NOTCH_RIM}
-              />
-            </Group>
-          ))}
-        </Group>
-      </Group>
-    </>
-  );
-}
-
 /** La scène du combat : un seul canevas Skia, sous les colonnes des ennemis et les boutons. */
 export function BattleScene({
   width,
@@ -520,8 +384,8 @@ export function BattleScene({
     if (gap > frameMeter.worstGap.get()) frameMeter.worstGap.set(gap);
   });
 
-  const { hero, ring, enemies: slots } = geometry;
-  const stage = stageImage(width, height, geometry.feetY, ring.x);
+  const { hero, chest, enemies: slots } = geometry;
+  const stage = stageImage(width, height, geometry.feetY, chest.x);
   const vignettes = useMemo(
     () =>
       [0, 1, 2, 3, 4].map((level) =>
@@ -559,8 +423,8 @@ export function BattleScene({
 
   const target = slots[strikeTarget] ?? NO_SLOT;
   const lunge = {
-    x: (target.sprite.x + 44 - ring.x) * 0.4,
-    y: (target.sprite.y + 104 - ring.y) * 0.4,
+    x: (target.sprite.x + 44 - chest.x) * 0.4,
+    y: (target.sprite.y + 104 - chest.y) * 0.4,
   };
   const heroLook = useDerivedValue<SpriteLook>(() => {
     'worklet';
@@ -592,11 +456,11 @@ export function BattleScene({
       if (placed.length < EFFECT_SLOTS * 4) placed.push(EFFECT_ORDER.indexOf(kind), frame, x, y);
     };
     const flash = impactFlash(current, now);
-    if (flash !== null) place('flash', flash, ring.x, ring.y);
+    if (flash !== null) place('flash', flash, chest.x, chest.y);
     const sparkNow = sharedSpark.get();
     const sparkStep = sparkFrame(sparkNow, now);
     if (sparkNow !== null && sparkStep !== null) {
-      place(sparkNow.kind === 'gold' ? 'gold' : 'steel', sparkStep, ring.x, ring.y - 8);
+      place(sparkNow.kind === 'gold' ? 'gold' : 'steel', sparkStep, chest.x, chest.y - 8);
     }
     if (current !== null && current.kind === 'attack') {
       const kind = kinds[current.enemy];
@@ -617,7 +481,7 @@ export function BattleScene({
       place('stars', turn, slot.sprite.x + headX * 2, slot.sprite.y + (headY - 4) * 2 - hop);
     }
     return placed;
-  }, [clock, sharedTimeline, sharedSpark, ring, kinds, anchors, stunned, hops, slots, looks]);
+  }, [clock, sharedTimeline, sharedSpark, chest, kinds, anchors, stunned, hops, slots, looks]);
   const effectSprites = useRectBuffer(EFFECT_SLOTS, (rect, slot) => {
     'worklet';
     const placed = effects.get();
@@ -700,13 +564,6 @@ export function BattleScene({
       {vignettes.map((image, level) => (
         <VignetteLayer key={level} image={image} level={level} current={vignetteLevel} />
       ))}
-      <Ring
-        center={ring}
-        size={ring.size}
-        timeline={sharedTimeline}
-        clock={clock}
-        reducedMotion={reducedMotion}
-      />
     </Canvas>
   );
 }

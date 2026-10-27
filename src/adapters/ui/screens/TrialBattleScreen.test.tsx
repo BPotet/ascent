@@ -299,7 +299,7 @@ describe('TrialBattleScreen', () => {
       await test.runUntil(() => test.battle().phase.kind === 'defenseHint');
 
       expect(screen.getByTestId('battle-hint-defense')).toHaveTextContent(
-        "Lis son gesteTouche Parade quand l'anneau se ferme. Sceau rouge : Esquive.",
+        "Lis son gesteTouche Parade au moment de l'impact. Sceau rouge : Esquive.",
       );
       expect(screen.queryByTestId('phase-banner')).toBeNull();
       expect(within(pad()).getByRole('button', { name: 'Parade' })).toBeDisabled();

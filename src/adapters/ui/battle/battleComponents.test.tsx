@@ -257,10 +257,11 @@ describe('BattleHintBubble', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('tells to parry when the ring closes, and to dodge a red seal (Light visual aids)', () => {
+  it('tells to parry at the impact and to dodge a red seal, without a ring (#101)', () => {
     expect(BATTLE_HINTS.defense.text).toBe(
-      "Touche Parade quand l'anneau se ferme. Sceau rouge : Esquive.",
+      "Touche Parade au moment de l'impact. Sceau rouge : Esquive.",
     );
+    expect(BATTLE_HINTS.defense.text).not.toMatch(/anneau/iu);
   });
 });
 

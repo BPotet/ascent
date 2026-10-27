@@ -6,6 +6,7 @@
   sur les tests end-to-end du combat
 - **Contexte produit** : épique #30 « Première ascension », story #81 « Combat complet (2/2) : le
   combat en pixel art 2.5D »
+- **Avenant** : 27 octobre 2026, plus d'anneau (bug #101, voir en fin de document)
 
 ## Contexte
 
@@ -50,3 +51,12 @@ une image d'impact calée sur l'instant de l'impact, un reflet de 90 ms et un an
   250 ms sous Jest, à mesurer sur le téléphone du propriétaire) ; les images perdues pendant les
   actions des ennemis sont relevées dans le panneau Mesures. Repli : des atlas construits
   personnage par personnage, et des effets réduits.
+
+## Avenant du 27 octobre 2026 — plus d'anneau (bug #101)
+
+Décision du propriétaire du 27 octobre 2026, conforme à l'ADR 0006 (« Le combat se lit par
+l'animation seule ») : l'anneau n'est plus dessiné, à aucun niveau d'aides visuelles. `timingRing`
+et le composant `Ring` sont supprimés ; les § 1, 4 et 7 et la première conséquence ne concernent
+plus l'anneau. Le reflet, le sceau, la palette rouge et les sons restent ; les fenêtres, les durées et
+le jugement des appuis ne changent pas. Le point de la scène sur le buste du héros, qui sert à la
+ruée des ennemis, à l'éclair d'impact et à l'étincelle de parade, s'appelle `chest`.

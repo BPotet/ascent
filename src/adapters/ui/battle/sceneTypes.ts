@@ -29,8 +29,8 @@ export interface SceneEnemy {
 }
 
 /**
- * L'action de l'ennemi actif, sur la base de l'horloge de combat : la scène en tire sa pose, son
- * anneau, ses reflets et l'éclair d'impact à chaque image. `attack` reste `null` pendant l'avancée :
+ * L'action de l'ennemi actif, sur la base de l'horloge de combat : la scène en tire sa pose, ses
+ * reflets et l'éclair d'impact à chaque image. `attack` reste `null` pendant l'avancée :
  * rien ne distingue alors un coup d'un autre (C2.8).
  */
 export interface SceneTimeline {
