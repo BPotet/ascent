@@ -41,6 +41,13 @@ combat, sont couverts par les tests d'intégration.
 
 Sélecteurs : privilégier les textes visibles (libellés du glossaire) et les `testID` des écrans.
 
+Attentes (#86) : l'émulateur de la CI est parfois très lent. Un message bref (toast) est attendu par
+son texte exact avec `extendedWaitUntil` (10 s), jamais par `id: toast` suivi d'un `assertVisible`
+sur son texte ; les autres vérifications portent sur des états durables (libellé de la ligne,
+expérience). Quand « Toutes faites » apparaît, la liste de la Vue Journée remonte et la dernière
+habitude peut passer sous le bouton flottant « Ajouter une habitude », qui prendrait le toucher de
+« ⋯ » : `target-bonus.yaml` amène d'abord la liste en bas (`swipe` sur `day-view-list`).
+
 Libellés des lignes de la Vue Journée (lecteur d'écran) : `<nom>, <jour>, <état>[, corrigé], <progression>, <Difficulté>, <X> XP par suivi[, objectif atteint]`,
 par exemple `Lire, mercredi 21 octobre, à faire, 2 sur 5 cette semaine, Moyenne, 10 XP par suivi`. La
 progression de la semaine est `<N> sur <objectif> cette semaine`, puis `<N> fois cette semaine`
