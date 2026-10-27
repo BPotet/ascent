@@ -193,10 +193,8 @@ tags:
 - tapOn:
     id: 'save-habit'
 - extendedWaitUntil:
-    visible:
-      id: 'toast'
+    visible: 'Habitude modifiée'
     timeout: 10000
-- assertVisible: 'Habitude modifiée'
 - extendedWaitUntil:
     visible: 'Courir 5 km, .+, à faire, 0 sur \d cette semaine, Moyenne, 10 XP par suivi'
     timeout: 10000

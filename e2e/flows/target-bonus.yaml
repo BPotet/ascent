@@ -64,13 +64,13 @@ tags:
 - extendedWaitUntil:
     visible: 'Objectif de la semaine atteint\sLire 1/1 · \+5 XP prime'
     timeout: 10000
-- takeScreenshot: target-bonus-E1-1-target-reached
-
-# Le message ne masque pas la barre d'onglets : elle se touche sans attendre sa fin (D5).
+# Le message ne masque pas la barre d'onglets : elle se touche sans attendre sa fin (D5). Le
+# message est bref : sa présence est vérifiée avant la capture, puis l'onglet est touché.
 - assertVisible:
     id: 'toast'
 - assertVisible:
     id: 'tab-week'
+- takeScreenshot: target-bonus-E1-1-target-reached
 - tapOn:
     id: 'tab-week'
 - extendedWaitUntil:
