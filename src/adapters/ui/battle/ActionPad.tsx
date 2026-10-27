@@ -166,14 +166,15 @@ function PowerKey({
   readonly now: () => number;
   readonly onPower: (touchStartedAt: number, releasedAt: number) => void;
 }) {
-  const disabled = locked || slot.missing > 0;
+  const active = slot.active === true;
+  const disabled = locked || slot.missing > 0 || active;
   const gesture = useReleaseGesture(POWER_GESTURE_TEST_ID, uiNow, onPower);
   return (
     <GestureDetector gesture={gesture}>
       <View
         accessible
         accessibilityRole="button"
-        accessibilityLabel={powerButtonLabel(slot.power, slot.missing)}
+        accessibilityLabel={powerButtonLabel(slot.power, slot.missing, active)}
         accessibilityState={{ disabled }}
         accessibilityActions={[{ name: 'activate' }]}
         onAccessibilityAction={() => {
@@ -184,7 +185,11 @@ function PowerKey({
       >
         <Text style={[styles.keyText, styles.onSecondary]}>Pouvoir</Text>
         <Text style={styles.keyNote}>
-          {slot.missing > 0 ? missingMomentumText(slot.missing) : powerCostText(slot.power)}
+          {active
+            ? 'Actif'
+            : slot.missing > 0
+              ? missingMomentumText(slot.missing)
+              : powerCostText(slot.power)}
         </Text>
       </View>
     </GestureDetector>
