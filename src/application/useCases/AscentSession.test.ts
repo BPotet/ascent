@@ -250,16 +250,16 @@ describe('AscentSession: hero and boons (prototype #92)', () => {
   it('begins the ascent with the chosen hero', async () => {
     const { session, store } = setUp(42);
 
-    const ascent = session.begin('wanderer');
+    const ascent = session.begin({ hero: 'wanderer' });
     await flush();
 
-    expect(ascent).toEqual(startAscent(42, 'wanderer'));
+    expect(ascent).toEqual(startAscent(42, { hero: 'wanderer' }));
     expect(saved(store)?.ascent.hero.kind).toBe('wanderer');
   });
 
   it('fights with the hero of the ascent and the modifiers of his boons', async () => {
     const { session, store } = setUp();
-    const ascent = startAscent(5, 'wanderer');
+    const ascent = startAscent(5, { hero: 'wanderer' });
     const withBoons = { ...ascent, hero: { ...ascent.hero, boons: ['perfectEcho'] } };
     store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: withBoons, battle: null }));
     await session.load();

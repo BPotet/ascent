@@ -5,11 +5,11 @@ import {
   endFloorBattle,
   startAscent,
   type Ascent,
+  type AscentLaunch,
 } from '../../domain/ascent/Ascent';
 import { boonModifiers } from '../../domain/ascent/boons';
 import { resumeBattle, startBattle, type Battle } from '../../domain/battle/Battle';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
-import type { HeroKind } from '../../domain/battle/combatants';
 import { BattleSession, type BattleSessionDependencies } from './BattleSession';
 
 /** La clé de l'ascension en cours dans le stockage clé-valeur (prototype #91). */
@@ -44,15 +44,15 @@ function parse(raw: string | null): SavedAscent | null {
   try {
     const saved = JSON.parse(raw) as Partial<SavedAscent> | null;
     if (saved?.version !== SAVE_VERSION || typeof saved.ascent?.floor !== 'number') return null;
-    // Une sauvegarde de #91 n'a ni héros choisi, ni bienfaits, ni offre (#92).
-    const ascent: Ascent = saved.ascent;
-    const old: Partial<Ascent> & { readonly hero: Partial<Ascent['hero']> } = ascent;
-    const hero = { ...ascent.hero, kind: old.hero.kind ?? 'sentinel', boons: old.hero.boons ?? [] };
-    return {
-      version: SAVE_VERSION,
-      ascent: { ...ascent, hero, boonOffer: old.boonOffer ?? null },
-      battle: saved.battle ?? null,
-    };
+    // Une ascension sauvegardée avant #92 : la Sentinelle, sans bienfait ni offre.
+    const stored: Partial<Ascent> = saved.ascent;
+    const storedHero: Partial<Ascent['hero']> = saved.ascent.hero;
+    const ascent = {
+      boonOffer: null,
+      ...stored,
+      hero: { kind: 'sentinel', boons: [], ...storedHero },
+    } as Ascent;
+    return { version: SAVE_VERSION, ascent, battle: saved.battle ?? null };
   } catch {
     return null;
   }
@@ -96,9 +96,9 @@ export class AscentSession {
     };
   }
 
-  /** Commence une ascension avec le héros choisi, et une graine au hasard. */
-  begin(hero: HeroKind = 'sentinel'): Ascent {
-    return this.update(startAscent(this.dependencies.seeds.next(), hero), null);
+  /** Commence une ascension, avec une graine au hasard et le héros choisi. */
+  begin(launch: AscentLaunch = {}): Ascent {
+    return this.update(startAscent(this.dependencies.seeds.next(), launch), null);
   }
 
   chooseBoon(index: number): void {
@@ -142,14 +142,15 @@ export class AscentSession {
       createBattle: (options) => {
         if (this.battle !== null)
           return { battle: resumeBattle(this.battle, options.at), events: [] };
-        const { encounter, hero } = this.ascent!;
+        const ascent = this.ascent!;
+        const encounter = ascent.encounter!;
         return startBattle({
           ...options,
-          seed: encounter!.battleSeed,
-          hero: hero.kind,
-          heroHp: hero.hp,
-          modifiers: boonModifiers(hero.boons),
-          enemies: encounter!.enemies,
+          seed: encounter.battleSeed,
+          hero: ascent.hero.kind,
+          heroHp: ascent.hero.hp,
+          modifiers: boonModifiers(ascent.hero.boons),
+          enemies: encounter.enemies,
           // L'ordre d'action par Initiative (P13, P14), comme le combat d'essai de #90.
           initiative: true,
         });
