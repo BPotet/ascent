@@ -1,11 +1,20 @@
 import {
   abandonAscent,
+  chooseBlessing,
   chooseExit,
   endFloorBattle,
+  equipItem,
+  leaveItem,
+  lootStream,
   startAscent,
   type Ascent,
+  type AscentLaunch,
 } from '../../domain/ascent/Ascent';
+import { blessingModifiers } from '../../domain/ascent/blessings';
+import { STARTING_EQUIPMENT, itemModifiers } from '../../domain/ascent/items';
 import { resumeBattle, startBattle, type Battle } from '../../domain/battle/Battle';
+import { SENTINEL } from '../../domain/battle/combatants';
+import { combineModifiers } from '../../domain/battle/heroModifiers';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
 import { BattleSession, type BattleSessionDependencies } from './BattleSession';
 
@@ -41,7 +50,19 @@ function parse(raw: string | null): SavedAscent | null {
   try {
     const saved = JSON.parse(raw) as Partial<SavedAscent> | null;
     if (saved?.version !== SAVE_VERSION || typeof saved.ascent?.floor !== 'number') return null;
-    return { version: SAVE_VERSION, ascent: saved.ascent, battle: saved.battle ?? null };
+    // Une ascension sauvegardée avant #93 : Neutre, sans bénédiction, avec l'équipement de base.
+    const stored: Partial<Ascent> = saved.ascent;
+    const ascent = {
+      gauge: 0,
+      blessings: [],
+      blessingRarities: [],
+      blessingOffer: null,
+      equipment: STARTING_EQUIPMENT,
+      foundItem: null,
+      lootRandom: lootStream(saved.ascent.seed),
+      ...stored,
+    } as Ascent;
+    return { version: SAVE_VERSION, ascent, battle: saved.battle ?? null };
   } catch {
     return null;
   }
@@ -85,9 +106,24 @@ export class AscentSession {
     };
   }
 
-  /** Commence une ascension, avec une graine au hasard. */
-  begin(): Ascent {
-    return this.update(startAscent(this.dependencies.seeds.next()), null);
+  /** Commence une ascension, avec une graine au hasard, la jauge scellée et les bénédictions. */
+  begin(launch: AscentLaunch = {}): Ascent {
+    return this.update(startAscent(this.dependencies.seeds.next(), launch), null);
+  }
+
+  chooseBlessing(index: number): void {
+    if (this.ascent === null) return;
+    this.update(chooseBlessing(this.ascent, index), this.battle);
+  }
+
+  equipItem(): void {
+    if (this.ascent === null) return;
+    this.update(equipItem(this.ascent), this.battle);
+  }
+
+  leaveItem(): void {
+    if (this.ascent === null) return;
+    this.update(leaveItem(this.ascent), this.battle);
   }
 
   chooseExit(index: number): void {
@@ -126,11 +162,20 @@ export class AscentSession {
       createBattle: (options) => {
         if (this.battle !== null)
           return { battle: resumeBattle(this.battle, options.at), events: [] };
-        const encounter = this.ascent!.encounter!;
+        const ascent = this.ascent!;
+        const encounter = ascent.encounter!;
         return startBattle({
           ...options,
           seed: encounter.battleSeed,
-          heroHp: this.ascent!.hero.hp,
+          heroHp: ascent.hero.hp,
+          heroMaxHp: ascent.hero.maxHp,
+          modifiers: combineModifiers(
+            blessingModifiers(ascent.blessings, {
+              firstBattle: ascent.floor === 1,
+              attackPower: SENTINEL.attackPower,
+            }),
+            itemModifiers(ascent.equipment),
+          ),
           enemies: encounter.enemies,
           // L'ordre d'action par Initiative (P13, P14), comme le combat d'essai de #90.
           initiative: true,
