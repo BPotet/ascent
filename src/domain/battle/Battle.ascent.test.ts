@@ -14,7 +14,7 @@ import {
   type EnemyState,
 } from './Battle';
 import type { BattleEvent } from './BattleEvent';
-import { ENEMIES, type EnemyKind } from './combatants';
+import { ENEMIES, ENEMY_INITIATIVE, type EnemyKind } from './combatants';
 import { drawIntent } from './intents';
 import { seedRandom } from './SeededRandom';
 import { DEFAULT_TRIAL_TUNING } from './TrialTuning';
@@ -240,6 +240,30 @@ describe('Boss phase shift (P6)', () => {
     );
 
     expect(events.some((event) => event.type === 'bossPhaseShifted')).toBe(false);
+  });
+
+  it('has the Initiative of P13: 6 for the Fallen Knight and the bosses, 9 for a boss in phase 2', () => {
+    expect(ENEMY_INITIATIVE).toMatchObject({ fallenKnight: 6, ossuaryWarden: 6, facelessPrior: 6 });
+    expect(ENEMIES.ossuaryWarden.phase2Initiative).toBe(9);
+    expect(ENEMIES.facelessPrior.phase2Initiative).toBe(9);
+  });
+
+  it('acts before the Wanderer (Initiative 7) only from the round after its phase shift', () => {
+    const { battle: initial } = startBattle({
+      seed: 7,
+      tuning: DEFAULT_TRIAL_TUNING,
+      defenseHint: false,
+      at: 0,
+      hero: 'wanderer',
+      initiative: true,
+      enemies: ['ossuaryWarden'],
+    });
+    expect(initial.turn.order).toEqual(['hero', 0]);
+
+    const shifted = playUntil(withEnemy(initial, 0, { phase2: true }), roundStarted(2)).battle;
+
+    expect(shifted.turn.order).toEqual([0, 'hero']);
+    expect(playUntil(initial, roundStarted(2)).battle.turn.order).toEqual(['hero', 0]);
   });
 
   it('draws among its 2 moves in phase 1, and among its 4 moves in phase 2', () => {

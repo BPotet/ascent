@@ -546,12 +546,18 @@ function startRound(previous: Battle, events: Events, at: number): Battle {
   };
 }
 
+/** L'Initiative d'un ennemi : celle de sa phase 2 pour un boss qui a changé de phase (P13). */
+function enemyInitiative(enemy: EnemyState): number {
+  const phase2 = enemy.phase2 === true ? ENEMIES[enemy.kind].phase2Initiative : undefined;
+  return phase2 ?? ENEMY_INITIATIVE[enemy.kind];
+}
+
 /** L'ordre d'action de la manche, figé jusqu'à la suivante (P14). */
 function roundOrder(battle: Battle, enemies: readonly EnemyState[]): Actor[] {
   if (!battle.initiative) return actionOrder(enemies);
   return initiativeOrder(
     startingInitiative(battle.heroKind),
-    enemies.map((enemy) => ({ hp: enemy.hp, initiative: ENEMY_INITIATIVE[enemy.kind] })),
+    enemies.map((enemy) => ({ hp: enemy.hp, initiative: enemyInitiative(enemy) })),
   );
 }
 

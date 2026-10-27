@@ -132,6 +132,8 @@ export interface EnemyProfile {
   readonly phase2Moves?: readonly Move[];
   /** Les PV à partir desquels un boss change de phase (150 ou moins). */
   readonly phaseShiftHp?: number;
+  /** L'Initiative d'un boss en phase 2 (P13), à partir de la manche qui suit le changement. */
+  readonly phase2Initiative?: number;
 }
 
 /** Le changement de phase d'un boss : à 150 PV ou moins (P6). */
@@ -189,6 +191,7 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
       { attack: 'perilous', damage: 15 },
     ],
     phaseShiftHp: BOSS_PHASE_SHIFT_HP,
+    phase2Initiative: 9,
     supports: false,
   },
   facelessPrior: {
@@ -203,6 +206,7 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
       { attack: 'perilous', damage: 14 },
     ],
     phaseShiftHp: BOSS_PHASE_SHIFT_HP,
+    phase2Initiative: 9,
     supports: false,
   },
 };
