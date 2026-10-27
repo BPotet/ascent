@@ -47,15 +47,25 @@ export function strikeBlow({
   guardDamage,
   multiplier,
   stunned,
+  attackPercents = [],
+  guardPercents = [],
 }: {
   readonly attackPower: number;
   readonly guardDamage: number;
   readonly multiplier: number;
   readonly stunned: boolean;
+  /** Les pourcentages des objets (#93), dans le même calcul. */
+  readonly attackPercents?: readonly number[];
+  readonly guardPercents?: readonly number[];
 }): EnemyBlow {
   return {
-    hp: scaleDamage(attackPower, multiplier, stunned ? STUNNED_DAMAGE_PERCENT : 100),
-    guard: stunned ? 0 : scaleDamage(guardDamage, multiplier),
+    hp: scaleDamage(
+      attackPower,
+      multiplier,
+      ...attackPercents,
+      stunned ? STUNNED_DAMAGE_PERCENT : 100,
+    ),
+    guard: stunned ? 0 : scaleDamage(guardDamage, multiplier, ...guardPercents),
   };
 }
 
@@ -73,19 +83,25 @@ export function counterBlow({
   guardDamage,
   counterPercent,
   stunned,
+  attackPercents = [],
+  guardPercents = [],
 }: {
   readonly attackPower: number;
   readonly guardDamage: number;
   readonly counterPercent: number;
   readonly stunned: boolean;
+  /** Les pourcentages des objets (#93), dans le même calcul. */
+  readonly attackPercents?: readonly number[];
+  readonly guardPercents?: readonly number[];
 }): EnemyBlow {
   return {
     hp: scaleDamage(
       attackPower,
       COUNTER_BASE_PERCENT,
       counterPercent,
+      ...attackPercents,
       stunned ? STUNNED_DAMAGE_PERCENT : 100,
     ),
-    guard: stunned ? 0 : scaleDamage(guardDamage, COUNTER_GUARD_PERCENT),
+    guard: stunned ? 0 : scaleDamage(guardDamage, COUNTER_GUARD_PERCENT, ...guardPercents),
   };
 }

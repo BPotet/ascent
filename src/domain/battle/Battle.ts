@@ -41,9 +41,12 @@ import {
   restoreGuard,
   type Stunned,
 } from './guard';
+import { NO_MODIFIERS, type HeroModifiers } from './heroModifiers';
+import { heroInitiative } from './initiative';
 import { drawIntent, raisedHp, type GuardIntent, type Intent, type RaiseIntent } from './intents';
 import {
   BULWARK_DAMAGE_PERCENT,
+  MOMENTUM_MAX,
   MOMENTUM_START,
   POWERS,
   gainMomentum,
@@ -219,6 +222,8 @@ export interface Battle {
   readonly heroKind: HeroKind;
   /** L'ordre d'action par Initiative (prototype #90), sinon le héros d'abord. */
   readonly initiative: boolean;
+  /** Les modificateurs du héros (prototype #93) ; absents, aucun. */
+  readonly modifiers?: HeroModifiers;
   readonly hero: HeroState;
   /** La première ligne (`FrontLine`) : au plus 3 ennemis qui se battent en même temps (P3b). */
   readonly enemies: readonly EnemyState[];
@@ -284,6 +289,10 @@ export interface TrialBattleOptions {
 export interface BattleOptions extends TrialBattleOptions {
   /** Les PV du héros au début du combat ; par défaut ses PV max. */
   readonly heroHp?: number;
+  /** Les PV max du héros (prototype #93 : Vigueur, fatigue) ; par défaut ceux du héros. */
+  readonly heroMaxHp?: number;
+  /** Les modificateurs du héros (prototype #93) ; par défaut, aucun. */
+  readonly modifiers?: HeroModifiers;
   /** Le groupe d'ennemis, de gauche à droite, dans l'ordre du tirage. */
   readonly enemies: readonly EnemyKind[];
 }
@@ -327,9 +336,12 @@ export function startBattle({
   hero = 'sentinel',
   initiative = false,
   heroHp,
+  heroMaxHp,
+  modifiers,
   enemies: group,
 }: BattleOptions): BattleUpdate {
-  const { maxHp } = HEROES[hero];
+  const maxHp = heroMaxHp ?? HEROES[hero].maxHp;
+  const momentum = Math.min(MOMENTUM_MAX, MOMENTUM_START + (modifiers?.startingMomentum ?? 0));
   const events: Events = [];
   const enemies = group.slice(0, FRONT_LINE_SIZE).map(freshEnemy);
   const battle = startRound(
@@ -341,7 +353,8 @@ export function startBattle({
       round: 0,
       heroKind: hero,
       initiative,
-      hero: { hp: heroHp ?? maxHp, maxHp, momentum: MOMENTUM_START, bulwark: false },
+      ...(modifiers && { modifiers }),
+      hero: { hp: heroHp ?? maxHp, maxHp, momentum, bulwark: false },
       enemies,
       reserve: group.slice(FRONT_LINE_SIZE),
       target: 0,
@@ -367,6 +380,11 @@ export function startBattle({
 /** Le profil du héros joué. */
 export function heroProfile(battle: Battle): HeroProfile {
   return HEROES[battle.heroKind];
+}
+
+/** Les modificateurs du héros dans ce combat (prototype #93). */
+function heroModifiers(battle: Battle): HeroModifiers {
+  return battle.modifiers ?? NO_MODIFIERS;
 }
 
 export function isStanding(enemy: EnemyState): boolean {
@@ -556,7 +574,7 @@ function enemyInitiative(enemy: EnemyState): number {
 function roundOrder(battle: Battle, enemies: readonly EnemyState[]): Actor[] {
   if (!battle.initiative) return actionOrder(enemies);
   return initiativeOrder(
-    startingInitiative(battle.heroKind),
+    heroInitiative(startingInitiative(battle.heroKind), heroModifiers(battle).initiative),
     enemies.map((enemy) => ({ hp: enemy.hp, initiative: enemyInitiative(enemy) })),
   );
 }
@@ -871,7 +889,11 @@ function resolveBlow(
  */
 function heroDamage(battle: Battle, damage: number, ...percents: readonly number[]): number {
   const reduction =
-    100 - Math.min(heroProfile(battle).damageReductionPercent, MAX_DAMAGE_REDUCTION_PERCENT);
+    100 -
+    Math.min(
+      heroProfile(battle).damageReductionPercent + heroModifiers(battle).damageReductionPoints,
+      MAX_DAMAGE_REDUCTION_PERCENT,
+    );
   const bulwark = battle.hero.bulwark ? [BULWARK_DAMAGE_PERCENT] : [];
   return scaleDamage(damage, ...percents, reduction, ...bulwark);
 }
@@ -929,11 +951,14 @@ function counterAttack(battle: Battle, events: Events): Battle {
   const step = currentAttack(battle);
   const counter = step.counter!;
   const hero = heroProfile(battle);
+  const modifiers = heroModifiers(battle);
   const blow = counterBlow({
-    attackPower: hero.attackPower,
+    attackPower: hero.attackPower + modifiers.attackFlat,
     guardDamage: hero.guardDamage,
     counterPercent: hero.counterPercent,
     stunned: battle.enemies[step.enemy]!.stun !== null,
+    attackPercents: modifiers.attackPercents,
+    guardPercents: modifiers.guardDamagePercents,
   });
   events.push({
     type: 'counterAttacked',
@@ -1067,7 +1092,9 @@ function judgeDefense(battle: Battle, events: Events, button: DefenseButton, at:
   }
   const parried = startHitStop(
     gainMomentumAt(
-      resolveBlow(battle, events, { ...blow, outcome: 'perfectParry', damage: 0 }),
+      healOnPerfectParry(
+        resolveBlow(battle, events, { ...blow, outcome: 'perfectParry', damage: 0 }),
+      ),
       events,
       at,
     ),
@@ -1082,6 +1109,13 @@ function judgeDefense(battle: Battle, events: Events, button: DefenseButton, at:
     ...attack,
     counter: { at: counterAt, until: counterAt + COUNTER_MS, done: false },
   });
+}
+
+/** Le Bouclier du veilleur (prototype #93) : des PV rendus, sans dépasser les PV max. */
+function healOnPerfectParry(battle: Battle): Battle {
+  const { hero } = battle;
+  const hp = Math.min(hero.maxHp, hero.hp + heroModifiers(battle).healOnPerfectParry);
+  return hp === hero.hp ? battle : { ...battle, hero: { ...hero, hp } };
 }
 
 /**
@@ -1145,11 +1179,14 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
   const hero = heroProfile(battle);
   const hit = phase.hit ?? 1;
   const judgement = phase.press?.judgement ?? null;
+  const modifiers = heroModifiers(battle);
   const blow = strikeBlow({
-    attackPower: hero.attackPower,
+    attackPower: hero.attackPower + modifiers.attackFlat,
     guardDamage: hero.guardDamage,
-    multiplier: strikeMultiplier(judgement),
+    multiplier: strikeMultiplier(judgement, modifiers.perfectStrikeBonusPercents),
     stunned: battle.enemies[phase.enemy]!.stun !== null,
+    attackPercents: modifiers.attackPercents,
+    guardPercents: modifiers.guardDamagePercents,
   });
   events.push({
     type: 'strikeResolved',
