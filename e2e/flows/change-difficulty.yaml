@@ -102,23 +102,23 @@ tags:
 # Enregistrée : « Habitude modifiée » avec le gain ; la case du jour vaut désormais 20 XP.
 # Le gain dépend de l'objectif atteint (prime réévaluée), lu sur la ligne avant d'ouvrir le
 # panneau, qui la cache : il est gardé dans `output.targetReached`. Le message ne dure que 2,8 s :
-# il est vérifié dès qu'il apparaît.
+# son texte exact est la condition attendue, vérifiée dès qu'il apparaît.
 - tapOn:
     id: 'save-habit'
-- extendedWaitUntil:
-    visible:
-      id: 'toast'
-    timeout: 10000
 - runFlow:
     when:
       true: ${output.targetReached}
     commands:
-      - assertVisible: 'Habitude modifiée · \+15 XP'
+      - extendedWaitUntil:
+          visible: 'Habitude modifiée · \+15 XP'
+          timeout: 10000
 - runFlow:
     when:
       true: ${!output.targetReached}
     commands:
-      - assertVisible: 'Habitude modifiée · \+10 XP'
+      - extendedWaitUntil:
+          visible: 'Habitude modifiée · \+10 XP'
+          timeout: 10000
 - takeScreenshot: difficulty-E7-3-updated-toast
 - extendedWaitUntil:
     notVisible:
