@@ -1,0 +1,3127 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atelier de l'ascension</title>
+<!--
+  Atelier de l'ascension (épiques #88 et #89, stories #90 à #93). Deux onglets :
+  - Codex : le contenu de l'ascension (ennemis, Élites, boss, héros, objets, bienfaits, bénédictions), une entrée par élément ;
+  - Équilibrage : la simulation, qui lit les entrées actives du Codex.
+  Règles P1 à P33 du Game Designer, révision du 26/10/2026. Toutes les valeurs sont provisoires.
+  Page autonome : aucune dépendance externe.
+  Base de l'artefact : collection `codex` (une entrée par document), documents `assets/<id>` (propositions d'asset),
+  `workshop/current` et collection `workshop-history` (réglages de l'Équilibrage). Sans base, la page marche seule.
+  API : getModel() renvoie l'état courant (règles + codex) ; applyModel(obj) le recharge.
+-->
+<style>
+:root {
+  --bg: #0E1120; --surface: #181D2E; --surface-2: #20263B; --line: #313A55;
+  --gold: #F2D49B; --text: #EEEAE0; --muted: #A3A7B8; --on-gold: #2A1C05;
+  --favor: #6FD3A0; --curse: #E0607A; --guard: #8FB8C9; --accent: #7C9CFF;
+  --common: #B9BCC8; --rare: #7C9CFF; --epic: #C99BFF; --warn: #FFB46B;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+}
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 16px 64px; }
+header.top { padding: 20px 0 8px; }
+h1 { font-size: 22px; margin: 0 0 4px; color: var(--gold); letter-spacing: .2px; }
+h2 { font-size: 18px; margin: 0 0 4px; color: var(--gold); }
+h3 { font-size: 15px; margin: 0 0 6px; }
+p { margin: 0 0 8px; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.tag { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.tag.prov { border-color: var(--warn); color: var(--warn); }
+.tag.common { border-color: var(--common); color: var(--common); }
+.tag.rare { border-color: var(--rare); color: var(--rare); }
+.tag.epic { border-color: var(--epic); color: var(--epic); }
+.tag.new { border-color: var(--favor); color: var(--favor); }
+.bar-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0 4px; }
+button {
+  font: inherit; font-size: 14px; border-radius: 10px; padding: 8px 12px; cursor: pointer;
+  border: 1px solid var(--gold); background: transparent; color: var(--gold);
+}
+button.primary { background: var(--gold); color: var(--on-gold); font-weight: 600; }
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+nav.toc { position: sticky; top: 0; z-index: 5; background: rgba(14,17,32,.96); border-bottom: 1px solid var(--line); margin: 0 -16px; padding: 8px 16px; display: flex; gap: 6px; flex-wrap: wrap; }
+nav.toc a { color: var(--text); text-decoration: none; font-size: 13px; padding: 3px 9px; border: 1px solid var(--line); border-radius: 999px; }
+nav.toc a:hover { border-color: var(--gold); }
+#status { font-size: 13px; color: var(--muted); }
+#status.busy { color: var(--warn); }
+section { margin-top: 28px; scroll-margin-top: 56px; }
+.lead { color: var(--muted); font-size: 14px; margin-bottom: 12px; }
+.grid { display: grid; gap: 10px; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .grid.two { grid-template-columns: 1fr 1fr; } .grid.three { grid-template-columns: 1fr 1fr 1fr; } }
+.grid.kpi { grid-template-columns: 1fr 1fr; }
+@media (min-width: 760px) { .grid.kpi { grid-template-columns: repeat(4, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px; min-width: 0; }
+.card.hero { border-color: rgba(242,212,155,.45); }
+.card .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.kpi .card { padding: 10px; }
+.kpi .label { font-size: 12px; color: var(--muted); }
+.kpi .value { font-size: 24px; font-weight: 700; color: var(--gold); line-height: 1.15; }
+.kpi .cmp { font-size: 12px; color: var(--muted); }
+.kpi .target { font-size: 12px; margin-top: 2px; }
+.ok { color: var(--favor); } .ko { color: var(--curse); } .meh { color: var(--warn); }
+.up { color: var(--favor); } .down { color: var(--curse); }
+/* champs */
+.field { display: grid; grid-template-columns: 1fr 72px; grid-template-rows: auto auto; column-gap: 8px; align-items: center; padding: 5px 0; border-top: 1px solid rgba(49,58,85,.6); }
+.field:first-of-type { border-top: 0; }
+.f-label { font-size: 14px; min-width: 0; }
+.f-gd { grid-column: 1; font-size: 12px; color: var(--muted); }
+.field input, .field select { grid-row: 1 / span 2; grid-column: 2; width: 72px; }
+input[type=number], select {
+  font: inherit; font-size: 15px; background: var(--bg); color: var(--text); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 6px; min-width: 0; text-align: right;
+}
+select { text-align: left; }
+.field.mod input, .field.mod select, .lever.mod input[type=number] { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
+.field.mod .f-gd, .lever.mod .f-gd { color: var(--gold); }
+.field.wide { grid-template-columns: 1fr 140px; }
+.field.wide select { width: 140px; }
+/* leviers */
+.lever { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+.lever .row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.lever .name { font-weight: 600; font-size: 14px; }
+.lever output { font-variant-numeric: tabular-nums; color: var(--gold); font-weight: 700; }
+.lever input[type=range] { width: 100%; accent-color: var(--gold); margin: 6px 0 2px; }
+.lever .effect { font-size: 13px; color: var(--muted); }
+.lever .f-gd { font-size: 12px; color: var(--muted); }
+/* barres */
+.bars { display: grid; gap: 8px; }
+.brow { display: grid; grid-template-columns: 96px 1fr 58px; gap: 8px; align-items: center; font-size: 13px; }
+.brow .track { position: relative; height: 16px; background: var(--surface-2); border-radius: 6px; overflow: hidden; }
+.brow .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--gold); border-radius: 6px; }
+.brow .fill.hot { background: var(--curse); }
+.brow .mark { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--text); opacity: .75; }
+.brow .num { text-align: right; font-variant-numeric: tabular-nums; }
+.brow .sub { grid-column: 2 / span 2; font-size: 12px; color: var(--muted); margin-top: -4px; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 6px 0 10px; }
+.legend i { display: inline-block; width: 14px; height: 8px; border-radius: 3px; background: var(--gold); margin-right: 5px; vertical-align: middle; }
+.legend i.mk { width: 2px; height: 12px; background: var(--text); }
+/* carte du palier */
+.floor { position: relative; }
+.floor .num { font-size: 12px; color: var(--muted); }
+.doors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 6px 0; }
+.door { border: 1px solid var(--line); border-radius: 10px; padding: 6px; text-align: center; background: var(--surface-2); min-width: 0; }
+.door .t { font-size: 12px; color: var(--muted); }
+.door .p { font-size: 18px; font-weight: 700; }
+.door.combat .p { color: var(--text); } .door.elite .p { color: var(--curse); } .door.campfire .p { color: var(--warn); }
+.sizes { display: flex; height: 22px; border-radius: 6px; overflow: hidden; margin: 6px 0 2px; border: 1px solid var(--line); }
+.sizes span { display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--on-gold); min-width: 0; overflow: hidden; }
+.sizes .s1 { background: #F7E6C4; } .sizes .s2 { background: #F2D49B; } .sizes .s3 { background: #E6B86A; } .sizes .s4 { background: #D9904A; } .sizes .s5 { background: #E0607A; color: #fff; }
+.climb { text-align: center; color: var(--muted); font-size: 12px; margin: -2px 0; }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 0 12px; margin-top: 8px; }
+details > summary { cursor: pointer; padding: 10px 0; font-size: 14px; color: var(--gold); list-style-position: inside; }
+details[open] > summary { border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+details .inner { padding-bottom: 10px; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 6px 0; text-align: center; }
+.stat { background: var(--surface-2); border-radius: 8px; padding: 4px 2px; min-width: 0; }
+.stat b { display: block; font-size: 17px; }
+.stat span { font-size: 11px; color: var(--muted); }
+.stat.hp b { color: var(--hp, #E9DFC8); } .stat.guard b { color: var(--guard); } .stat.ini b { color: var(--accent); }
+.moves { font-size: 13px; color: var(--muted); }
+/* ordre */
+.order { display: grid; gap: 4px; }
+.orow { display: grid; grid-template-columns: 28px 1fr 34px; gap: 8px; align-items: center; font-size: 13px; }
+.orow .rk { color: var(--muted); text-align: right; }
+.orow .ob { height: 20px; border-radius: 6px; background: var(--surface-2); position: relative; overflow: hidden; }
+.orow .ob span { position: absolute; inset: 0 auto 0 0; background: rgba(143,184,201,.35); border-radius: 6px; }
+.orow .ob em { position: relative; padding-left: 6px; font-style: normal; line-height: 20px; white-space: nowrap; }
+.orow.hero .ob span { background: rgba(242,212,155,.55); }
+.orow .iv { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* jauge */
+.gauge { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.gstep { border-radius: 10px; padding: 8px 4px; text-align: center; font-size: 12px; border: 1px solid var(--line); background: var(--surface-2); min-width: 0; }
+.gstep b { display: block; font-size: 18px; }
+.gstep.f2, .gstep.f1 { border-color: var(--favor); } .gstep.f2 b, .gstep.f1 b { color: var(--favor); }
+.gstep.c1, .gstep.c2 { border-color: var(--curse); } .gstep.c1 b, .gstep.c2 b { color: var(--curse); }
+.gstep.cur { box-shadow: 0 0 0 2px var(--gold); }
+.gstep div { margin-top: 3px; color: var(--muted); }
+table.mini { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.mini th, table.mini td { padding: 4px 3px; border-top: 1px solid var(--line); text-align: right; }
+table.mini th:first-child, table.mini td:first-child { text-align: left; }
+table.mini input { width: 56px; font-size: 14px; padding: 4px; }
+table.mini td.mod input { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
+.note { font-size: 13px; color: var(--muted); border-left: 3px solid var(--line); padding-left: 10px; margin: 8px 0; }
+.changed { border-left-color: var(--favor); }
+textarea { width: 100%; min-height: 160px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; font: 12px/1.4 ui-monospace, Menlo, monospace; padding: 8px; }
+.fell { display: flex; height: 18px; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); margin-top: 6px; }
+.fell span { min-width: 0; font-size: 10px; display: flex; align-items: center; justify-content: center; color: #fff; overflow: hidden; }
+</style>
+
+<style>
+/* ===== Onglets ===== */
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); margin: 6px 0 0; }
+.tabs button[role=tab] {
+  border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; color: var(--muted);
+  padding: 10px 14px; font-size: 15px; font-weight: 600;
+}
+.tabs button[role=tab][aria-selected=true] { color: var(--gold); border-bottom-color: var(--gold); }
+.dbstate { font-size: 12px; margin: 0 0 6px auto; align-self: center; white-space: normal; max-width: 100%; }
+.panel[hidden] { display: none; }
+/* ===== Codex ===== */
+.cx-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0 8px; }
+.cx-bar .grow { grid-column: 1 / -1; }
+@media (min-width: 720px) { .cx-bar { grid-template-columns: 1fr auto auto; } .cx-bar .grow { grid-column: auto; } }
+input[type=text], input[type=search], textarea.desc, .cx-bar select, .sheet select, .asset textarea {
+  font: inherit; font-size: 15px; background: var(--bg); color: var(--text); border: 1px solid var(--line);
+  border-radius: 8px; padding: 7px 8px; width: 100%; min-width: 0; text-align: left;
+}
+textarea.desc, .asset textarea { min-height: 72px; font: inherit; font-size: 14px; resize: vertical; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 13px; padding: 4px 10px; border-radius: 999px; border-color: var(--line); color: var(--text); }
+.chip[aria-pressed=true] { background: var(--gold); border-color: var(--gold); color: var(--on-gold); font-weight: 600; }
+.chips.dim .chip { opacity: .5; }
+.cx-add { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin: 10px 0 0; align-items: center; }
+.cx-add .msg { grid-column: 1 / -1; }
+@media (min-width: 720px) { .cx-add { grid-template-columns: 240px auto 1fr; } .cx-add .msg { grid-column: auto; } }
+.cx-layout { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); margin-top: 12px; }
+@media (min-width: 900px) {
+  .cx-layout { grid-template-columns: 320px minmax(0, 1fr); align-items: start; }
+  .cx-list { position: sticky; top: 8px; max-height: calc(100vh - 16px); overflow-y: auto; padding-right: 4px; }
+  .sheet .back { display: none; }
+}
+.cx-gh { font-size: 13px; color: var(--muted); font-weight: 600; margin: 12px 0 6px; text-transform: uppercase; letter-spacing: .5px; }
+.cx-gh:first-child { margin-top: 0; }
+.cx-items { display: grid; gap: 6px; }
+.cx-item {
+  display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 10px; align-items: center; width: 100%;
+  text-align: left; border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 12px; padding: 8px;
+}
+.cx-item[aria-current=true] { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
+.cx-item.retired { opacity: .55; }
+.cx-item .n { font-weight: 600; overflow-wrap: anywhere; }
+.cx-item .c { font: 12px ui-monospace, Menlo, monospace; color: var(--muted); overflow-wrap: anywhere; }
+.meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.thumb { width: 40px; height: 40px; border-radius: 8px; background: var(--surface-2); display: flex; align-items: center; justify-content: center; overflow: hidden; color: var(--muted); font-weight: 700; }
+canvas.px { image-rendering: pixelated; image-rendering: crisp-edges; display: block; }
+.tag.st-draft { border-color: var(--warn); color: var(--warn); }
+.tag.st-active { border-color: var(--favor); color: var(--favor); }
+.tag.st-retired { color: var(--muted); }
+.tag.as-demande { border-color: var(--warn); color: var(--warn); }
+.tag.as-propose { border-color: var(--accent); color: var(--accent); }
+.tag.as-valide { border-color: var(--favor); color: var(--favor); }
+.tag.as-refaire { border-color: var(--curse); color: var(--curse); }
+.sheet { padding: 14px; }
+.sheet-head { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 12px; align-items: center; }
+.sheet-head .thumb { width: 56px; height: 56px; }
+.sheet-head h2 { overflow-wrap: anywhere; }
+.sheet h3 { margin-top: 18px; color: var(--gold); font-size: 14px; text-transform: uppercase; letter-spacing: .5px; }
+.sheet .bar-actions button { font-size: 13px; padding: 6px 10px; }
+button.danger { border-color: var(--curse); color: var(--curse); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.frow { display: grid; gap: 4px; padding: 6px 0; }
+.frow .f-hint { font-size: 12px; color: var(--muted); }
+.frow .f-hint.ko { color: var(--curse); }
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.seg button { font-size: 13px; padding: 6px 4px; border-color: var(--line); color: var(--text); }
+.seg button[aria-pressed=true] { background: var(--gold); color: var(--on-gold); border-color: var(--gold); font-weight: 600; }
+.issues { margin: 10px 0 0; display: grid; gap: 4px; }
+.issue { font-size: 13px; border-left: 3px solid var(--warn); padding: 2px 0 2px 8px; color: var(--text); }
+.issue.info { border-left-color: var(--line); color: var(--muted); }
+.issue.bad { border-left-color: var(--curse); }
+.rows-ed { display: grid; gap: 6px; margin: 6px 0; }
+.mrow { display: grid; grid-template-columns: minmax(0, 1fr) 60px 52px 34px; gap: 6px; align-items: center; }
+.erow { display: grid; grid-template-columns: minmax(0, 1fr) 72px 34px; gap: 6px; align-items: center; }
+.rrow { display: grid; grid-template-columns: 58px minmax(0, 1fr) 64px; gap: 6px; align-items: center; }
+.mrow.hd, .erow.hd, .rrow.hd { font-size: 12px; color: var(--muted); }
+.mrow input, .erow input, .rrow input { width: 100%; }
+.mrow select, .erow select, .rrow select { width: 100%; font-size: 14px; padding: 6px 4px; }
+.mrow button, .erow button { padding: 6px 0; font-size: 15px; border-color: var(--line); color: var(--muted); }
+.rowwarn { grid-column: 1 / -1; font-size: 12px; color: var(--curse); margin-top: -2px; }
+.phase { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 6px; }
+.mres { grid-column: 1 / -1; font-size: 13px; color: var(--accent); margin-top: -2px; overflow-wrap: anywhere; }
+.mmod { display: grid; gap: 4px; }
+.mmod label { display: grid; grid-template-columns: minmax(0, 1fr) 140px; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+.mmod label select, .mmod label input { width: 100%; font-size: 14px; }
+.mmod .f-hint { font-size: 12px; color: var(--muted); margin: 0; }
+.f-share { grid-column: 1; font-size: 12px; color: var(--accent); }
+.lever .f-share { display: block; }
+.mtext { grid-column: 1 / -1; display: grid; gap: 4px; padding-bottom: 8px; border-bottom: 1px dashed var(--line); }
+.mrow .mtext input, .mtext textarea { font-size: 14px; }
+textarea.desc.short { min-height: 52px; field-sizing: content; }
+.asset { display: grid; gap: 10px; }
+.asset-stage { background: var(--surface-2); border: 1px dashed var(--line); border-radius: 12px; min-height: 160px; display: flex; align-items: center; justify-content: center; padding: 10px; }
+.asset-stage canvas { max-width: 100%; height: auto; }
+.asset-thumbs { display: flex; flex-wrap: wrap; gap: 6px; }
+.asset-thumbs button { padding: 4px; border-color: var(--line); border-radius: 8px; background: var(--surface-2); }
+.asset-thumbs button[aria-pressed=true] { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; }
+.sim-warn { border-left: 3px solid var(--curse); padding: 6px 10px; font-size: 13px; background: var(--surface); border-radius: 0 8px 8px 0; margin-top: 10px; }
+.sim-warn p { margin: 0 0 2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <h1>Atelier de l'ascension</h1>
+  <p class="muted small">Palier 1, les Catacombes. Le <b>Codex</b> décrit le contenu de l'ascension ; l'<b>Équilibrage</b> rejoue la tour avec les entrées actives du Codex. <span class="tag prov">Toutes les valeurs sont provisoires</span></p>
+  <div class="tabs" role="tablist" aria-label="Onglets de l'atelier">
+    <button type="button" role="tab" id="t-codex" aria-controls="tab-codex" aria-selected="true">Codex</button>
+    <button type="button" role="tab" id="t-balance" aria-controls="tab-balance" aria-selected="false" tabindex="-1">Équilibrage</button>
+    <span id="dbstate" class="tag dbstate" role="status" aria-live="polite">Valeurs du Game Designer</span>
+  </div>
+</header>
+
+<!-- ======================= Codex ======================= -->
+<div id="tab-codex" class="panel" role="tabpanel" aria-labelledby="t-codex">
+  <div class="cx-bar">
+    <input id="cx-search" class="grow" type="search" placeholder="Rechercher un nom, un code, une description" aria-label="Rechercher dans le Codex">
+    <select id="cx-sort" aria-label="Trier la liste">
+      <option value="order">Ordre d'ajout</option>
+      <option value="rarity-desc">Rareté : Épique d'abord</option>
+      <option value="rarity-asc">Rareté : Commun d'abord</option>
+      <option value="name">Nom</option>
+    </select>
+    <select id="cx-status" aria-label="Filtrer par statut">
+      <option value="all">Tous les statuts</option>
+      <option value="active">Actifs</option>
+      <option value="draft">Brouillons</option>
+      <option value="retired">Retirés</option>
+    </select>
+  </div>
+  <div class="chips" id="cx-cats" role="group" aria-label="Catégories"></div>
+  <div class="cx-add">
+    <select id="cx-add-cat" aria-label="Catégorie de la nouvelle entrée"></select>
+    <button id="cx-add" type="button" class="primary">Ajouter</button>
+    <span id="cx-msg" class="small muted msg" role="status" aria-live="polite"></span>
+  </div>
+  <div class="cx-layout">
+    <div class="cx-list" id="cx-list" aria-label="Entrées du Codex"></div>
+    <div class="card sheet" id="cx-sheet" tabindex="-1"></div>
+  </div>
+</div>
+
+<!-- ======================= Équilibrage ======================= -->
+<div id="tab-balance" class="panel" role="tabpanel" aria-labelledby="t-balance" hidden>
+  <p class="small" style="margin-top:12px">Bougez un levier : la tour est rejouée des centaines de fois et les résultats changent en direct. En or, <b>vos valeurs</b> ; en petit, celles du <b>Game Designer</b> (GD). Le contenu (ennemis, boss, héros, objets, bienfaits, bénédictions) vient des entrées <b>actives</b> du Codex.</p>
+  <div class="bar-actions">
+    <button id="reset" class="primary" type="button">Revenir aux valeurs du Game Designer</button>
+    <span id="modcount" class="tag">0 valeur modifiée</span>
+    <span id="status" role="status" aria-live="polite"></span>
+  </div>
+  <div class="bar-actions" id="save-bar" hidden>
+    <input id="save-note" type="text" placeholder="Note pour l'équipe (facultatif)" aria-label="Note jointe aux réglages" style="flex:1 1 200px">
+    <button id="save" type="button">Enregistrer mes réglages</button>
+    <span id="save-msg" class="small muted" role="status" aria-live="polite"></span>
+  </div>
+<nav class="toc" aria-label="Sections">
+  <a href="#verdict">Verdict</a><a href="#joueur">Joueur simulé</a><a href="#leviers">Leviers</a><a href="#carte">Carte</a><a href="#difficulte">Difficulté</a><a href="#ordre">Initiative</a><a href="#heros">Héros</a><a href="#ennemis">Ennemis</a><a href="#butin">Bienfaits et objets</a><a href="#jauge">Jauge</a><a href="#donnees">Données</a>
+</nav>
+
+<section id="verdict">
+  <h2>Le verdict</h2>
+  <p class="lead">Ce que vit un joueur moyen sur une ascension complète, avec vos valeurs. Les cibles viennent de la note d'équilibrage.</p>
+  <div id="sim-warn"></div>
+  <div class="grid kpi" id="kpis"></div>
+  <div class="card" style="margin-top:10px">
+    <h3>Où l'on tombe</h3>
+    <p class="small muted">Part des ascensions qui finissent à chaque étage. En vert, la victoire.</p>
+    <div id="fell"></div>
+  </div>
+</section>
+
+<section id="joueur">
+  <h2>Le joueur simulé</h2>
+  <p class="lead">Ce ne sont pas des règles du jeu, mais les hypothèses de la simulation. Les deux colonnes (vous et GD) utilisent le même joueur.</p>
+  <div class="grid two">
+    <div class="card"><h3>Habileté</h3><div id="player-skill"></div></div>
+    <div class="card"><h3>Choix et journée d'hier</h3><div id="player-choices"></div></div>
+  </div>
+  <p class="note">Défense : le joueur pare les coups normaux et esquive les coups imparables. « Dans la fenêtre » compte les parades bonnes et parfaites et les esquives réussies. Attaque : il frappe l'ennemi étourdi, sinon le plus faible. Pouvoirs : un héros à Rempart le pose sous le seuil de PV indiqué ; un héros à Pas de l'ombre le lance quand son Élan est plein. Bienfaits : choisis au hasard parmi les 3. Objets : toujours équipés.</p>
+</section>
+
+<section id="leviers">
+  <h2>Les leviers d'équilibrage</h2>
+  <p class="lead">Les réglages qui pèsent le plus, du plus utile au plus fin. Chacun dit ce qu'il doit changer.</p>
+  <div class="grid two" id="levers"></div>
+</section>
+
+<section id="carte">
+  <h2>La carte du palier</h2>
+  <p class="lead">On monte de bas en haut. À chaque étage de sorties, deux portes de types différents. Les pourcentages disent la chance qu'une porte soit proposée, garantie du Feu de camp comprise.</p>
+  <div id="map"></div>
+  <details><summary>Composition des groupes d'ennemis</summary><div class="inner" id="group-rules"></div></details>
+</section>
+
+<section id="difficulte">
+  <h2>Difficulté par rencontre</h2>
+  <p class="lead">PV perdus par le héros dans un combat seul, en partant à PV pleins, sans bienfait ni objet. Barre : vos valeurs ; trait blanc : valeurs GD. En rouge, au-delà de 60 %.</p>
+  <div class="legend"><span><i></i>vous</span><span><i class="mk"></i>GD</span></div>
+  <div class="card"><div class="bars" id="difficulty"></div></div>
+</section>
+
+<section id="ordre">
+  <h2>L'ordre d'action</h2>
+  <p class="lead">Initiative décroissante. À égalité, le héros passe avant ; les ennemis, de gauche à droite. Les héros sont montrés avec leur Initiative de base, sans objet ni bénédiction.</p>
+  <div class="card"><div class="order" id="order"></div></div>
+</section>
+
+<section id="heros">
+  <h2>Les héros</h2>
+  <div class="grid two" id="heroes"></div>
+  <details><summary>Règles communes du combat</summary><div class="inner" id="combat-rules"></div></details>
+</section>
+
+<section id="ennemis">
+  <h2>Les ennemis</h2>
+  <p class="lead">Coups : dégâts et poids de tirage (deux coups de poids 1 sortent une fois sur deux).</p>
+  <div class="grid three" id="enemies"></div>
+  <h3 style="margin-top:16px">Les Élites et les boss</h3>
+  <div class="grid three" id="bosses"></div>
+</section>
+
+<section id="butin">
+  <h2>Bienfaits et objets</h2>
+  <p class="lead">Un bienfait parmi 3 après chaque combat gagné, boss excepté. Un objet trouvé est montré, puis équipé ou laissé.</p>
+  <div class="card" id="loot-rules"></div>
+  <h3 style="margin-top:14px">Bienfaits</h3>
+  <div class="grid three" id="boons"></div>
+  <h3 style="margin-top:14px">Objets</h3>
+  <div class="grid three" id="items"></div>
+</section>
+
+<section id="jauge">
+  <h2>La jauge et les bénédictions</h2>
+  <p class="lead">La jauge lit la journée d'hier : r = habitudes faites ÷ habitudes attendues. Elle ne touche jamais les ennemis, ni rien qui survive à l'ascension.</p>
+  <div class="card"><div class="gauge" id="gauge"></div></div>
+  <div class="grid two" style="margin-top:10px">
+    <div class="card"><h3>Effets de chaque palier de jauge</h3><div id="gauge-fields"></div></div>
+    <div class="card"><h3>Bénédictions de départ</h3><p class="small muted">Une par habitude faite hier, 3 au plus. Rareté selon la difficulté de l'habitude : Facile, Commune ; Moyenne, Rare ; Difficile, Épique.</p><div id="blessings"></div></div>
+  </div>
+</section>
+
+<section id="donnees">
+  <h2>Durées et données</h2>
+  <details><summary>Hypothèses de durée (secondes)</summary><div class="inner" id="timing"></div></details>
+  <details><summary>Toutes les valeurs (JSON)</summary><div class="inner">
+    <p class="small muted">Copiez ce texte pour envoyer vos réglages et le Codex, ou collez-en un et chargez-le.</p>
+    <textarea id="json" spellcheck="false" aria-label="Valeurs au format JSON"></textarea>
+    <div class="bar-actions"><button type="button" id="json-load">Charger ce texte</button><span id="json-msg" class="small muted"></span></div>
+  </div></details>
+</section>
+</div>
+</div>
+<script>
+// ===== Contenu du Game Designer : copie de codex-seed.json (règles P1 à P33, révision du 26/10/2026). =====
+// Sert quand la base de l'artefact est vide ou absente. Tout est provisoire.
+const CODEX_SEED = {"codex":{"ghoul":{"id":"ghoul","category":"enemy","name":"Goule","code":"ghoul","rarity":null,"tier":1,"status":"active","order":1,"description":"Ce qui reste des fossoyeurs des Catacombes. Elle ne se souvient que de la faim, et creuse encore.","stats":{"maxHp":50,"maxGuard":15,"initiative":4,"role":null,"guardIntentChancePercent":0,"drawWeight":3,"groupCap":5,"moves":[{"attack":"basic","damage":5,"weight":1,"name":"Griffes de fossoyeur","description":"La Goule se ramasse sur elle-même, les doigts crochus levés, puis se jette d'un seul élan. Une anticipation franche, un reflet blanc, un seul impact : parez à l'arrivée de la ruée."},{"attack":"double","damage":3,"weight":1,"name":"Pelletées","description":"Elle frappe deux fois de suite, comme on creuse, le bras qui retombe à peine relevé. Le reflet se dédouble avant le premier impact : il faut parer les deux pour lui rendre le coup."}]}},"specter":{"id":"specter","category":"enemy","name":"Spectre","code":"specter","rarity":null,"tier":1,"status":"active","order":2,"description":"Un souffle froid qui porte un visage emprunté. Il frappe avant qu'on l'ait vu venir, et ne frappe jamais deux fois de la même façon.","stats":{"maxHp":35,"maxGuard":10,"initiative":8,"role":null,"guardIntentChancePercent":0,"drawWeight":2,"groupCap":1,"moves":[{"attack":"delayed","damage":6,"weight":1,"name":"Souffle retenu","description":"Le Spectre recule et reste suspendu, tremblant, bien plus longtemps qu'on ne l'attend. Ne parez pas pendant l'hésitation : attendez que la ruée parte."},{"attack":"feint","damage":6,"weight":1,"name":"Visage emprunté","description":"Il s'élance, puis s'arrête court au milieu de sa préparation, le temps qu'un autre visage passe sur le sien. Un reflet terne marque cette fausse ruée : qui pare là pare le vide. Le vrai coup vient ensuite."},{"attack":"perilous","damage":9,"weight":1,"name":"Étreinte glacée","description":"Sa forme vire au rouge et le sceau pulse au-dessus de lui pendant toute la préparation. Aucune parade ne retient ce froid : esquivez."}]}},"necromancer":{"id":"necromancer","category":"enemy","name":"Nécromancien","code":"necromancer","rarity":null,"tier":1,"status":"active","order":3,"description":"Il garde les morts comme d'autres gardent un troupeau. Tant qu'il veille, rien de ce qui tombe ne reste tombé.","stats":{"maxHp":45,"maxGuard":12,"initiative":3,"role":"support","guardIntentChancePercent":33,"drawWeight":1,"groupCap":1,"moves":[{"attack":"basic","damage":4,"weight":1,"name":"Bâton des veilles","description":"Il lève son bâton sans hâte et l'abat d'un coup sec, comme on frappe à une porte. Une préparation lente et lisible, un seul impact."}],"roleDescription":"Quand un allié tombe, il tend la main vers lui et le mort se relève, une seule fois, à la moitié de ses forces : une flèche vers le haut l'annonce. Quand sa garde est entamée, il passe son bâton en travers et la referme. Tant qu'il reste debout, rien de ce qui tombe ne reste tombé."}},"fallenKnight":{"id":"fallenKnight","category":"elite","name":"Le Chevalier déchu","code":"fallenKnight","rarity":null,"tier":1,"status":"active","order":4,"description":"Il a juré de défendre la porte de la tour. Il la défend encore, contre tous ceux qui montent, sans se rappeler pour qui.","stats":{"maxHp":200,"maxGuard":45,"initiative":6,"moves":[{"attack":"basic","damage":8,"weight":1,"name":"Taille du serment","description":"Le Chevalier lève l'épée à deux mains au-dessus du heaume et l'abat droit devant lui. Lourd mais loyal : la lame tombe d'un seul trait, sans détour."},{"attack":"delayed","damage":8,"weight":1,"name":"Garde tenue","description":"Il arme son coup et le garde levé, immobile, comme s'il attendait un ordre qui ne viendra plus. La lame tremble pendant l'hésitation : parez à la ruée, pas avant."},{"attack":"perilous","damage":12,"weight":1,"name":"Charge de la porte","description":"Il baisse l'épaule derrière son écu fendu, sa silhouette rougit et le sceau s'allume au-dessus de lui. On ne pare pas une porte qui s'effondre : esquivez."}]}},"ossuaryWarden":{"id":"ossuaryWarden","category":"boss","name":"La Gardienne des ossuaires","code":"ossuaryWarden","rarity":null,"tier":1,"status":"active","order":5,"description":"Elle range les os des oubliés depuis des siècles, lentement, un par un. Chaque intrus est une place de plus sur ses étagères.","stats":{"maxHp":300,"maxGuard":60,"phaseShiftPercent":50,"phases":[{"initiative":6,"moves":[{"attack":"basic","damage":9,"weight":1,"name":"Fémur","description":"Elle frappe avec un long fémur, d'un geste ample et patient. Une anticipation large, un reflet blanc, un seul impact."},{"attack":"delayed","damage":10,"weight":1,"name":"Pesée","description":"Elle soupèse l'intrus du regard, l'os levé, et suspend son geste longtemps. Laissez passer l'hésitation : la ruée part quand on ne l'attend plus."}],"phaseDescription":"Elle va et vient entre ses étagères, un os à la main, sans colère. Ses gestes sont amples et lents : c'est le moment d'apprendre son rythme."},{"initiative":9,"moves":[{"attack":"basic","damage":9,"weight":1,"name":"Fémur","description":"Elle frappe avec un long fémur, d'un geste ample et patient. Une anticipation large, un reflet blanc, un seul impact."},{"attack":"delayed","damage":10,"weight":1,"name":"Pesée","description":"Elle soupèse l'intrus du regard, l'os levé, et suspend son geste longtemps. Laissez passer l'hésitation : la ruée part quand on ne l'attend plus."},{"attack":"double","damage":6,"weight":1,"name":"Deux tibias","description":"Elle frappe des deux mains, un os dans chacune, l'un juste après l'autre. Le reflet se dédouble : deux impacts, deux parades."},{"attack":"perilous","damage":15,"weight":1,"name":"Mise en ossuaire","description":"Elle ouvre grand les bras, comme pour ranger l'intrus avec les autres. Sa silhouette rougit et le sceau pulse au-dessus d'elle : ce geste-là ne se pare pas, esquivez."}],"phaseDescription":"Sous la moitié de ses PV, les étagères s'effondrent derrière elle et les os roulent à ses pieds. Sa garde revient entière, elle agit plus tôt, et elle prend un os dans chaque main : elle ne range plus, elle veut en finir."}]}},"facelessPrior":{"id":"facelessPrior","category":"boss","name":"Le Prieur sans visage","code":"facelessPrior","rarity":null,"tier":1,"status":"active","order":6,"description":"Il a prié si longtemps qu'il a oublié son nom, puis ses traits. Ses gestes mentent, et sa voix aussi.","stats":{"maxHp":300,"maxGuard":60,"phaseShiftPercent":50,"phases":[{"initiative":6,"moves":[{"attack":"feint","damage":8,"weight":1,"name":"Fausse bénédiction","description":"Il lève la main comme pour bénir, s'élance, puis s'arrête court. Un reflet terne marque la fausse ruée : ne parez pas, le vrai coup vient juste après."},{"attack":"double","damage":5,"weight":1,"name":"Chapelet de fer","description":"Il fouette deux fois avec son chapelet, à un souffle d'intervalle. Le reflet se dédouble avant le premier impact."}],"phaseDescription":"Il prie à mi-voix, la tête basse sous sa capuche. Ses gestes commencent comme des bénédictions et finissent en coups : regardez ses mains, jamais son attitude."},{"initiative":9,"moves":[{"attack":"feint","damage":8,"weight":1,"name":"Fausse bénédiction","description":"Il lève la main comme pour bénir, s'élance, puis s'arrête court. Un reflet terne marque la fausse ruée : ne parez pas, le vrai coup vient juste après."},{"attack":"double","damage":5,"weight":1,"name":"Chapelet de fer","description":"Il fouette deux fois avec son chapelet, à un souffle d'intervalle. Le reflet se dédouble avant le premier impact."},{"attack":"delayed","damage":10,"weight":1,"name":"Silence du chœur","description":"Il se fige, les bras ouverts, et le silence dure plus longtemps qu'une prière. Laissez passer l'hésitation : la ruée part quand le silence se rompt."},{"attack":"perilous","damage":14,"weight":1,"name":"Absolution","description":"Il joint les mains au-dessus de sa tête vide, sa silhouette rougit et le sceau pulse au-dessus de lui. Ce pardon-là ne se pare pas : esquivez."}],"phaseDescription":"Sous la moitié de ses PV, sa capuche tombe : il n'y a rien dessous. Sa garde revient entière, sa prière monte et il agit plus tôt. À ses mensonges s'ajoutent des gestes qui attendent et d'autres qui ne se parent pas."}]}},"sentinel":{"id":"sentinel","category":"hero","name":"La Sentinelle","code":"sentinel","rarity":null,"tier":1,"status":"active","order":7,"description":"Elle a tenu un rempart que tous avaient abandonné. Elle ne recule pas : elle attend le coup, et le rend.","stats":{"maxHp":80,"initiative":5,"attackPower":10,"hits":1,"guardDamage":12,"damageReductionPercent":10,"counterPercent":130,"powerCost":1,"power":"bulwark","dodgeMomentum":false,"powerName":"Rempart","powerDescription":"Elle plante son bouclier devant elle et y met tout son poids. Le prochain coup qu'elle subit ne lui fait que la moitié de ses dégâts, après sa réduction.","traitDescription":"Elle encaisse sans plier : chaque coup reçu perd une part de ses dégâts, et une parade parfaite lui fait rendre le coup, contre-attaque ×1,3."}},"wanderer":{"id":"wanderer","category":"hero","name":"L'Errante","code":"wanderer","rarity":null,"tier":1,"status":"active","order":8,"description":"Elle n'a jamais eu de maison, seulement des chemins. Elle ne pare pas les coups : quand ils tombent, elle n'est déjà plus là.","stats":{"maxHp":60,"initiative":7,"attackPower":6,"hits":2,"guardDamage":5,"damageReductionPercent":0,"counterPercent":200,"powerCost":2,"power":"shadowStep","dodgeMomentum":true,"powerName":"Pas de l'ombre","powerDescription":"Elle se fond dans sa propre ombre et attend. Sa prochaine esquive complète déclenche une contre-attaque, comme si le coup l'avait traversée sans la trouver.","traitDescription":"Elle ne pare pas, elle n'est déjà plus là : chaque esquive dans la fenêtre lui donne +1 Élan, et sa contre-attaque frappe ×2."}},"axe":{"id":"axe","category":"weapon","name":"Hache","code":"axe","rarity":"common","tier":1,"status":"active","order":9,"description":"Une hache de bûcheron, ébréchée sur les boucliers des morts. Elle fend la garde plus que la chair.","stats":{"initiative":-1,"effects":[{"effect":"guardDamagePercent","value":130}]}},"leather":{"id":"leather","category":"armor","name":"Cuir","code":"leather","rarity":"common","tier":1,"status":"active","order":10,"description":"Une armure souple, tannée par les années et la pluie. Elle laisse au bras la liberté de frapper juste.","stats":{"initiative":1,"effects":[{"effect":"perfectStrikeBonus","value":20}]}},"chainmail":{"id":"chainmail","category":"armor","name":"Mailles","code":"chainmail","rarity":"common","tier":1,"status":"active","order":11,"description":"Des anneaux rouillés, lourds sur les épaules. Ils retiennent ce que la lame de l'autre ne retient pas.","stats":{"initiative":-1,"effects":[{"effect":"damageReductionPoints","value":5}]}},"hammer":{"id":"hammer","category":"weapon","name":"Marteau","code":"hammer","rarity":"rare","tier":1,"status":"active","order":12,"description":"Un marteau de forge, trop lourd pour un combat rapide. Il blesse peu, mais aucune garde ne lui résiste longtemps.","stats":{"initiative":-2,"effects":[{"effect":"guardDamagePercent","value":160},{"effect":"attackPercent","value":80}]}},"watchmanShield":{"id":"watchmanShield","category":"armor","name":"Bouclier du veilleur","code":"watchmanShield","rarity":"rare","tier":1,"status":"active","order":13,"description":"Le bouclier d'un guetteur mort à son poste. Chaque coup bien paré lui rend un peu de la chaleur qu'il a perdue.","stats":{"initiative":-1,"effects":[{"effect":"healPerPerfectParry","value":3}]}},"hasteAmulet":{"id":"hasteAmulet","category":"accessory","name":"Amulette de Hâte","code":"hasteAmulet","rarity":"rare","tier":1,"status":"active","order":14,"description":"Un pendentif de verre où tourne un sable qui ne tombe jamais. Celui qui le porte agit avant les autres.","stats":{"initiative":2,"effects":[]}},"perfectEcho":{"id":"perfectEcho","category":"boon","name":"Écho parfait","code":"perfectEcho","rarity":"common","tier":1,"status":"active","order":15,"description":"Le coup paré revient, plus fort, comme une voix qui roule sous les voûtes d'une crypte.","stats":{"family":"echo","effects":[{"effect":"counterPercent","value":150}]}},"shatteringEmber":{"id":"shatteringEmber","category":"boon","name":"Braise brisante","code":"shatteringEmber","rarity":"common","tier":1,"status":"active","order":16,"description":"Une braise logée dans le fil de l'arme. Au contact, les gardes éclatent comme du verre froid.","stats":{"family":"ember","effects":[{"effect":"guardDamagePercent","value":130}]}},"frostSkin":{"id":"frostSkin","category":"boon","name":"Peau de givre","code":"frostSkin","rarity":"common","tier":1,"status":"active","order":17,"description":"Un froid qui durcit la peau et ralentit la douleur. On sent les coups, de loin.","stats":{"family":"frost","effects":[{"effect":"damageReductionPoints","value":10}]}},"trueEdge":{"id":"trueEdge","category":"boon","name":"Lame juste","code":"trueEdge","rarity":"rare","tier":1,"status":"active","order":18,"description":"Le geste parfait trouve la faille, et la faille s'élargit d'elle-même.","stats":{"family":"echo","effects":[{"effect":"perfectStrikeBonus","value":50}]}},"blazingEmber":{"id":"blazingEmber","category":"boon","name":"Braise ardente","code":"blazingEmber","rarity":"rare","tier":1,"status":"active","order":19,"description":"Quand l'ennemi chancelle, le feu le mord deux fois plus fort.","stats":{"family":"ember","effects":[{"effect":"stunnedDamagePercent","value":200}]}},"lingeringFrost":{"id":"lingeringFrost","category":"boon","name":"Givre persistant","code":"lingeringFrost","rarity":"rare","tier":1,"status":"active","order":20,"description":"Le givre reste dans les jointures de l'ennemi. Il se relève, mais à moitié protégé.","stats":{"family":"frost","effects":[{"effect":"guardRestorePercent","value":50}]}},"emberHeart":{"id":"emberHeart","category":"boon","name":"Cœur de braise","code":"emberHeart","rarity":"epic","tier":1,"status":"active","order":21,"description":"Chaque garde brisée attise un feu dans la poitrine. Il réchauffe les plaies et pousse en avant.","stats":{"family":"ember","effects":[{"effect":"momentumOnBreak","value":1},{"effect":"healOnBreak","value":5}]}},"vigor":{"id":"vigor","category":"blessing","name":"Vigueur","code":"vigor","rarity":null,"tier":1,"status":"active","order":22,"description":"Une nuit de vrai sommeil, un repas pris à l'heure. Le corps s'en souvient, même au fond de la tour.","stats":{"ranks":{"common":{"effect":"maxHpPercent","value":6},"rare":{"effect":"maxHpPercent","value":10},"epic":{"effect":"maxHpPercent","value":15}}}},"momentum":{"id":"momentum","category":"blessing","name":"Élan","code":"momentum","rarity":null,"tier":1,"status":"active","order":23,"description":"L'habitude tenue hier fait le premier pas d'aujourd'hui.","stats":{"ranks":{"common":{"effect":"firstCombatMomentum","value":1},"rare":{"effect":"startMomentum","value":1},"epic":{"effect":"startMomentum","value":2}}}},"edge":{"id":"edge","category":"blessing","name":"Tranchant","code":"edge","rarity":null,"tier":1,"status":"active","order":24,"description":"La rigueur de la veille affûte la lame. Elle coupe ce qu'on n'osait pas toucher.","stats":{"ranks":{"common":{"effect":"attackBonusPercent","value":10},"rare":{"effect":"attackBonusPercent","value":20},"epic":{"effect":"attackBonusPercent","value":30}}}},"aegis":{"id":"aegis","category":"blessing","name":"Égide","code":"aegis","rarity":null,"tier":1,"status":"active","order":25,"description":"Ce qu'on a protégé hier nous protège aujourd'hui.","stats":{"ranks":{"common":{"effect":"damageReductionPoints","value":5},"rare":{"effect":"damageReductionPoints","value":10},"epic":{"effect":"damageReductionPoints","value":15}}}},"haste":{"id":"haste","category":"blessing","name":"Hâte","code":"haste","rarity":null,"tier":1,"status":"active","order":26,"description":"Celui qui s'est levé tôt hier se lève encore avant les autres.","stats":{"ranks":{"common":{"effect":"initiative","value":1},"rare":{"effect":"initiative","value":2},"epic":{"effect":"initiative","value":3}}}}}};
+
+// ===== Règles du Game Designer (hors contenu). Pourcentages en entiers, comme dans le domaine. =====
+const GAME_DESIGNER_RULES = {
+  combat: {
+    perfectStrikePercent: 150, goodStrikePercent: 120, stunnedDamagePercent: 150, goodParryPercent: 25,
+    counterBasePercent: 50, momentumStart: 1, momentumMax: 5, respitePercent: 10, bulwarkPercent: 50,
+    guardIntentPercent: 30, raiseHpPercent: 50, maxDamageReductionPercent: 40, frontLine: 3, reinforceAtStanding: 1, reinforceOnePerRound: 1,
+  },
+  tier: {
+    floors: [
+      { kind: 'combat', groupSizeWeights: [4, 10, 6, 0, 0] },
+      { kind: 'exit', doorWeights: { combat: 30, elite: 10, campfire: 10 }, groupSizeWeights: [1, 6, 9, 4, 0] },
+      { kind: 'exit', doorWeights: { combat: 30, elite: 15, campfire: 10 }, groupSizeWeights: [0, 5, 9, 5, 1] },
+      { kind: 'exit', doorWeights: { combat: 30, elite: 15, campfire: 10 }, groupSizeWeights: [0, 4, 8, 7, 1] },
+      { kind: 'exit', doorWeights: { combat: 25, elite: 20, campfire: 5 }, groupSizeWeights: [0, 2, 8, 8, 2] },
+      { kind: 'boss' },
+    ],
+    campfireGuaranteeFloor: 3,
+    maxGroupsOfFive: 1,
+  },
+  campfire: { healPercent: 40 },
+  rewards: {
+    goldPerEnemy: 3, goldBonusMin: 2, goldBonusMax: 6, goldElite: 25, goldBoss: 40,
+    dropChanceAtThree: 40, dropChancePerEnemy: 10, rareChancePercent: 30,
+    boonRarityWeights: { common: 6, rare: 3, epic: 1 },
+  },
+  fateGauge: {
+    thresholdsPercent: { plus2: 100, plus1: 75, zero: 50, minus1: 25 },
+    fatiguePercent: { minus1: 10, minus2: 20 },
+    dropChanceBonus: { plus1: 15, plus2: 30 },
+    rarityShift: { plus2: 10, plus1: 5, minus1: -5, minus2: -10 },
+  },
+  blessings: { maxCount: 3 },
+  // Hypothèses de la simulation : ce ne sont pas des règles du jeu.
+  player: {
+    hero: 'sentinel', inWindowPercent: 60, perfectPercent: 25, feintPenalty: 15,
+    strikePerfectPercent: 30, strikeGoodPercent: 40,
+    campfireBelowPercent: 60, eliteAbovePercent: 80, bulwarkBelowPercent: 40,
+    fateLevel: 0, blessingCount: 2, blessingRarity: 'rare', runs: 400,
+  },
+  timing: {
+    heroAttackSec: 4.5, heroPowerSec: 2.5, enemyAttackSec: 4, counterSec: 0.6, enemySupportSec: 1.6,
+    lostActionSec: 0.3, roundSec: 1.5, combatOpenSec: 6, choiceSec: 8, campfireSec: 8, blessingSec: 15,
+  },
+};
+
+// ===== Le Codex : catégories, valeurs fermées, effets que la simulation sait calculer =====
+const CATEGORIES = [
+  { id: 'enemy', label: 'Ennemis', one: 'Ennemi', fresh: 'Nouvel ennemi', rarity: false },
+  { id: 'elite', label: 'Élites', one: 'Élite', fresh: 'Nouvelle élite', rarity: false },
+  { id: 'boss', label: 'Boss', one: 'Boss', fresh: 'Nouveau boss', rarity: false },
+  { id: 'hero', label: 'Héros', one: 'Héros', fresh: 'Nouveau héros', rarity: false },
+  { id: 'weapon', label: 'Armes', one: 'Arme', fresh: 'Nouvelle arme', rarity: true, item: true },
+  { id: 'armor', label: 'Armures', one: 'Armure', fresh: 'Nouvelle armure', rarity: true, item: true },
+  { id: 'accessory', label: 'Accessoires', one: 'Accessoire', fresh: 'Nouvel accessoire', rarity: true, item: true },
+  { id: 'boon', label: 'Bienfaits', one: 'Bienfait', fresh: 'Nouveau bienfait', rarity: true },
+  { id: 'blessing', label: 'Bénédictions de départ', one: 'Bénédiction', fresh: 'Nouvelle bénédiction', rarity: false },
+];
+const CAT = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]));
+const RARITIES = ['common', 'rare', 'epic'];
+const RARITY_RANK = { common: 1, rare: 2, epic: 3 };
+const STATUSES = { draft: 'Brouillon', active: 'Actif', retired: 'Retiré' };
+const ASSET_STATUSES = ['aucun', 'demandé', 'proposé', 'validé', 'à refaire'];
+const ASSET_CLASS = { aucun: '', demandé: 'as-demande', proposé: 'as-propose', validé: 'as-valide', 'à refaire': 'as-refaire' };
+const ATTACKS = ['basic', 'double', 'delayed', 'feint', 'perilous', 'delayedPerilous'];
+// Les coups qui ne se parent pas : on les esquive.
+const UNBLOCKABLE = ['perilous', 'delayedPerilous'];
+const BOON_FAMILIES = { echo: 'Écho', ember: 'Braise', frost: 'Givre' };
+const HERO_POWERS = { bulwark: 'Rempart', shadowStep: "Pas de l'ombre" };
+const ENEMY_ROLES = { none: 'Aucun', support: 'Soutien' };
+// Liste fermée des effets. Chaque effet dit comment la simulation le combine.
+const EFFECTS = {
+  guardDamagePercent: { label: 'Brise-garde ×', unit: '%', dflt: 130, min: 0, max: 400, rule: 'multiplie le Brise-garde (130 = ×1,3)' },
+  attackPercent: { label: 'Attaque ×', unit: '%', dflt: 100, min: 0, max: 400, rule: 'multiplie l’Attaque (80 = ×0,8)' },
+  attackBonusPercent: { label: 'Attaque +', unit: '%', dflt: 10, min: 0, max: 200, rule: 's’ajoute à l’Attaque de base, arrondi à l’entier le plus proche, au moins +1' },
+  perfectStrikeBonus: { label: 'Frappe parfaite +', unit: 'pts', dflt: 20, min: 0, max: 300, rule: 's’ajoute au multiplicateur de frappe parfaite (20 = +0,2)' },
+  counterPercent: { label: 'Contre-attaque ×', unit: '%', dflt: 150, min: 0, max: 400, rule: 'multiplie la contre-attaque du héros' },
+  stunnedDamagePercent: { label: 'Dégâts sur un étourdi', unit: '%', dflt: 200, min: 100, max: 400, rule: 'remplace le multiplicateur d’étourdi (le plus fort l’emporte)' },
+  damageReductionPoints: { label: 'Réduction des dégâts +', unit: 'pts', dflt: 5, min: 0, max: 40, rule: 's’ajoute à la réduction des dégâts, plafonnée à 40 %' },
+  healPerPerfectParry: { label: 'Soin par parade parfaite', unit: 'PV', dflt: 3, min: 0, max: 30, rule: 'chaque impact paré parfaitement soigne' },
+  guardRestorePercent: { label: 'Garde au retour d’étourdissement', unit: '%', dflt: 50, min: 1, max: 100, rule: 'l’ennemi revient en garde avec cette part de sa garde max (la plus faible l’emporte)' },
+  momentumOnBreak: { label: 'Élan par cassure de garde', unit: 'Élan', dflt: 1, min: 0, max: 5, rule: 'chaque garde brisée par le héros donne de l’Élan' },
+  healOnBreak: { label: 'Soin par cassure de garde', unit: 'PV', dflt: 5, min: 0, max: 50, rule: 'chaque garde brisée par le héros soigne' },
+  maxHpPercent: { label: 'PV max +', unit: '%', dflt: 10, min: 0, max: 100, rule: 's’ajoute aux PV max, avant la fatigue' },
+  startMomentum: { label: 'Élan de départ, chaque combat', unit: 'Élan', dflt: 1, min: 0, max: 5, rule: 's’ajoute à l’Élan de départ de chaque combat' },
+  firstCombatMomentum: { label: 'Élan au 1er combat', unit: 'Élan', dflt: 1, min: 0, max: 5, rule: 's’ajoute à l’Élan de départ du 1er combat seulement' },
+  initiative: { label: 'Initiative +', unit: '', dflt: 1, min: -5, max: 10, rule: 's’ajoute à l’Initiative du héros (plancher 0)' },
+};
+
+// Liste fermée des mécaniques d'ennemi (trait) et de coup (modificateur). Absentes d'une entrée : aucun effet.
+const SELF_REVIVE = {
+  label: 'Se relève seul', dflt: { times: 1, hpPercent: 50 }, times: { min: 1, max: 3 }, hpPercent: { min: 1, max: 100 },
+  rule: 'Quand il tombe, il se relève aussitôt de lui-même, avec cette part de ses PV max (entier inférieur, au moins 1) et sa garde entière, autant de fois que réglé ; ensuite il tombe pour de bon. À l’écran, une annonce : « Il se relève ». Il compte alors comme relevé : le Nécromancien ne le relève jamais en plus.',
+};
+const BLEED = {
+  label: 'Saignement', dflt: { damage: 2, rounds: 3 }, damage: { min: 1, max: 10 }, rounds: { min: 1, max: 5 },
+  rule: 'Si un impact touche le héros (bonne parade ou coup reçu ; ni parade parfaite, ni esquive), il saigne : il perd ces PV au début de chacune des manches suivantes, pendant ce nombre de manches. Ni la réduction des dégâts ni le Rempart ne le diminuent. Il ne se cumule pas : un nouveau saignement garde la durée restante la plus longue et les dégâts les plus forts. Il ne fait jamais tomber le héros sous 1 PV et s’arrête à la fin du combat.',
+};
+function clampInt(v, lim, fallback) { return Math.min(lim.max, Math.max(lim.min, Math.round(num(v, fallback)))); }
+// Remet d'aplomb les mécaniques lues dans la base ; une valeur illisible retire la mécanique.
+function boundMechanics(s) {
+  if ('selfRevive' in s) {
+    const v = s.selfRevive;
+    if (v && typeof v === 'object' && !Array.isArray(v)) s.selfRevive = { times: clampInt(v.times, SELF_REVIVE.times, 1), hpPercent: clampInt(v.hpPercent, SELF_REVIVE.hpPercent, 50) };
+    else delete s.selfRevive;
+  }
+  const lists = [s.moves, ...(Array.isArray(s.phases) ? s.phases.map((ph) => ph && ph.moves) : [])];
+  for (const l of lists) if (Array.isArray(l)) for (const m of l) {
+    if (!m || typeof m !== 'object' || !('bleed' in m)) continue;
+    const b = m.bleed;
+    if (b && typeof b === 'object' && !Array.isArray(b)) m.bleed = { damage: clampInt(b.damage, BLEED.damage, 2), rounds: clampInt(b.rounds, BLEED.rounds, 3) };
+    else delete m.bleed;
+  }
+}
+
+function clone(value) { return JSON.parse(JSON.stringify(value)); }
+function num(v, fallback = 0) { const n = Number(v); return Number.isFinite(n) ? n : fallback; }
+
+function templateStats(category) {
+  switch (category) {
+    case 'enemy': return { maxHp: 40, maxGuard: 12, initiative: 5, role: null, guardIntentChancePercent: 0, drawWeight: 1, groupCap: 1, moves: [{ attack: 'basic', damage: 5, weight: 1 }] };
+    case 'elite': return { maxHp: 180, maxGuard: 40, initiative: 6, moves: [{ attack: 'basic', damage: 8, weight: 1 }, { attack: 'perilous', damage: 12, weight: 1 }] };
+    case 'boss': return { maxHp: 300, maxGuard: 60, phaseShiftPercent: 50, phases: [
+      { initiative: 6, moves: [{ attack: 'basic', damage: 9, weight: 1 }, { attack: 'delayed', damage: 10, weight: 1 }] },
+      { initiative: 9, moves: [{ attack: 'basic', damage: 9, weight: 1 }, { attack: 'delayed', damage: 10, weight: 1 }, { attack: 'perilous', damage: 14, weight: 1 }] },
+    ] };
+    case 'hero': return { maxHp: 70, initiative: 6, attackPower: 8, hits: 1, guardDamage: 8, damageReductionPercent: 0, counterPercent: 150, powerCost: 1, power: 'bulwark', dodgeMomentum: false };
+    case 'weapon': case 'armor': case 'accessory': return { initiative: 0, effects: [] };
+    case 'boon': return { family: 'echo', effects: [{ effect: 'counterPercent', value: 150 }] };
+    case 'blessing': return { ranks: { common: { effect: 'maxHpPercent', value: 5 }, rare: { effect: 'maxHpPercent', value: 10 }, epic: { effect: 'maxHpPercent', value: 15 } } };
+    default: return {};
+  }
+}
+
+// Textes libres facultatifs (contenu, jamais lus par la simulation) : noms et descriptions des coups, des pouvoirs, du trait, du rôle et des phases.
+const TEXT_NAME_MAX = 120;
+const TEXT_DESC_MAX = 600;
+function boundText(obj, key, max) {
+  if (!obj || typeof obj !== 'object' || !(key in obj)) return;
+  if (typeof obj[key] === 'string') obj[key] = obj[key].slice(0, max); else delete obj[key];
+}
+function boundMoveTexts(moves) {
+  if (Array.isArray(moves)) for (const m of moves) { boundText(m, 'name', TEXT_NAME_MAX); boundText(m, 'description', TEXT_DESC_MAX); }
+}
+function boundStatTexts(s) {
+  boundMoveTexts(s.moves);
+  if (Array.isArray(s.phases)) for (const ph of s.phases) { boundText(ph, 'phaseDescription', TEXT_DESC_MAX); if (ph && typeof ph === 'object') boundMoveTexts(ph.moves); }
+  boundText(s, 'powerName', TEXT_NAME_MAX);
+  for (const k of ['powerDescription', 'traitDescription', 'roleDescription']) boundText(s, k, TEXT_DESC_MAX);
+}
+
+// Remet d'aplomb une entrée lue dans la base (donnée non sûre) : champs manquants, types, valeurs fermées.
+function normalizeEntry(raw, id) {
+  const e = raw && typeof raw === 'object' ? clone(raw) : {};
+  e.id = id;
+  if (!CAT[e.category]) e.category = 'enemy';
+  e.name = typeof e.name === 'string' && e.name.trim() ? e.name.slice(0, 80) : CAT[e.category].fresh;
+  e.code = typeof e.code === 'string' ? e.code.slice(0, 60) : id;
+  e.description = typeof e.description === 'string' ? e.description.slice(0, 2000) : '';
+  e.rarity = CAT[e.category].rarity ? (RARITY_RANK[e.rarity] ? e.rarity : 'common') : null;
+  e.tier = Math.max(1, Math.round(num(e.tier, 1)));
+  if (!STATUSES[e.status]) e.status = 'draft';
+  e.order = num(e.order, 0);
+  const base = templateStats(e.category);
+  const s = e.stats && typeof e.stats === 'object' && !Array.isArray(e.stats) ? e.stats : {};
+  for (const k of Object.keys(base)) {
+    if (s[k] === undefined) s[k] = base[k];
+    else if (Array.isArray(base[k]) && !Array.isArray(s[k])) s[k] = base[k];
+  }
+  if (e.category === 'blessing') {
+    if (!s.ranks || typeof s.ranks !== 'object') s.ranks = base.ranks;
+    for (const r of RARITIES) if (!s.ranks[r] || typeof s.ranks[r] !== 'object') s.ranks[r] = base.ranks[r];
+  }
+  if (e.category === 'boss') {
+    while (s.phases.length < 2) s.phases.push(clone(base.phases[s.phases.length]));
+    s.phases = s.phases.map((ph, i) => (ph && typeof ph === 'object' ? ph : clone(base.phases[Math.min(i, 1)])));
+    for (const ph of s.phases) if (!Array.isArray(ph.moves)) ph.moves = [];
+  }
+  boundStatTexts(s);
+  boundMechanics(s);
+  e.stats = s;
+  return e;
+}
+function normalizeCodex(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const id of Object.keys(raw)) {
+    if (!/^[A-Za-z][A-Za-z0-9_-]{0,79}$/.test(id)) continue;
+    out[id] = normalizeEntry(raw[id], id);
+  }
+  return out;
+}
+function byOrder(a, b) { return num(a.order) - num(b.order) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0); }
+
+const GAME_DESIGNER_MODEL = Object.assign(clone(GAME_DESIGNER_RULES), { codex: normalizeCodex(CODEX_SEED.codex) });
+
+// ---------- du Codex à la simulation ----------
+function cleanMoves(moves) {
+  return (Array.isArray(moves) ? moves : [])
+    .filter((m) => m && ATTACKS.includes(m.attack))
+    .map((m) => {
+      const out = { attack: m.attack, damage: Math.max(0, num(m.damage)), weight: Math.max(0, num(m.weight)) };
+      if (typeof m.name === 'string' && m.name.trim()) out.name = m.name.trim(); // affichage seulement, ignoré par la simulation
+      if (m.bleed && typeof m.bleed === 'object') out.bleed = { damage: clampInt(m.bleed.damage, BLEED.damage, 2), rounds: clampInt(m.bleed.rounds, BLEED.rounds, 3) };
+      return out;
+    });
+}
+function knownEffects(list) {
+  return (Array.isArray(list) ? list : [])
+    .filter((x) => x && EFFECTS[x.effect] && Number.isFinite(Number(x.value)))
+    .map((x) => ({ effect: x.effect, value: Number(x.value) }));
+}
+function isSimulated(e) { return e && e.status === 'active' && e.tier === 1; }
+
+// Le modèle de simulation : les règles, plus le contenu compilé depuis les entrées actives du palier 1.
+function buildSimModel(m) {
+  const sm = {};
+  for (const k of Object.keys(m)) if (k !== 'codex') sm[k] = m[k];
+  sm.heroes = {}; sm.enemies = {}; sm.elites = {}; sm.bosses = {}; sm.items = {}; sm.boons = {}; sm.blessingFamilies = {};
+  const entries = Object.values(m.codex || {}).filter(isSimulated).sort(byOrder);
+  for (const e of entries) {
+    const s = e.stats || {};
+    if (e.category === 'hero') {
+      sm.heroes[e.id] = {
+        maxHp: Math.max(1, num(s.maxHp, 1)), initiative: num(s.initiative), attackPower: Math.max(1, num(s.attackPower, 1)),
+        hits: Math.max(1, Math.round(num(s.hits, 1))), guardDamage: Math.max(0, num(s.guardDamage)),
+        damageReductionPercent: num(s.damageReductionPercent), counterPercent: num(s.counterPercent, 100), powerCost: num(s.powerCost),
+        power: HERO_POWERS[s.power] ? s.power : 'bulwark', dodgeMomentum: !!s.dodgeMomentum,
+      };
+    } else if (e.category === 'enemy' || e.category === 'elite') {
+      (e.category === 'enemy' ? sm.enemies : sm.elites)[e.id] = {
+        maxHp: Math.max(1, num(s.maxHp, 1)), maxGuard: Math.max(1, num(s.maxGuard, 1)), initiative: num(s.initiative),
+        moves: cleanMoves(s.moves), role: s.role === 'support' ? 'support' : null,
+        guardIntentChancePercent: num(s.guardIntentChancePercent), drawWeight: Math.max(0, num(s.drawWeight)), groupCap: Math.max(0, Math.round(num(s.groupCap))),
+        selfRevive: s.selfRevive && typeof s.selfRevive === 'object'
+          ? { times: clampInt(s.selfRevive.times, SELF_REVIVE.times, 1), hpPercent: clampInt(s.selfRevive.hpPercent, SELF_REVIVE.hpPercent, 50) } : null,
+      };
+    } else if (e.category === 'boss') {
+      const phases = (Array.isArray(s.phases) ? s.phases : []).slice(0, 2).map((ph) => ({ initiative: num(ph && ph.initiative), moves: cleanMoves(ph && ph.moves) }));
+      if (phases.length) sm.bosses[e.id] = { maxHp: Math.max(1, num(s.maxHp, 1)), maxGuard: Math.max(1, num(s.maxGuard, 1)), phaseShiftPercent: num(s.phaseShiftPercent, 50), phases };
+    } else if (CAT[e.category].item) {
+      sm.items[e.id] = { slot: e.category, rarity: e.rarity, initiative: num(s.initiative), effects: knownEffects(s.effects) };
+    } else if (e.category === 'boon') {
+      sm.boons[e.id] = { rarity: e.rarity, family: s.family, effects: knownEffects(s.effects) };
+    } else if (e.category === 'blessing') {
+      const ranks = {};
+      for (const r of RARITIES) {
+        const k = s.ranks && s.ranks[r];
+        ranks[r] = knownEffects(k ? [k] : []);
+      }
+      sm.blessingFamilies[e.id] = ranks;
+    }
+  }
+  sm.heroIds = Object.keys(sm.heroes);
+  sm.enemyIds = Object.keys(sm.enemies);
+  sm.eliteIds = Object.keys(sm.elites);
+  sm.bossIds = Object.keys(sm.bosses);
+  sm.player = Object.assign({}, m.player);
+  if (!sm.heroes[sm.player.hero]) sm.player.hero = sm.heroIds[0] || null;
+  return sm;
+}
+
+const DOOR_TYPES = ['combat', 'elite', 'campfire'];
+
+// --- hasard à graine (mulberry32), pour comparer les deux jeux de valeurs à hasard égal ---
+function makeRandom(seed) {
+  let a = seed >>> 0;
+  const next = () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  return {
+    next,
+    chance: (percent) => next() * 100 < percent,
+    int: (min, max) => min + Math.floor(next() * (max - min + 1)),
+    weighted(entries) { // [[valeur, poids], ...]
+      const total = entries.reduce((s, [, w]) => s + Math.max(0, w), 0);
+      if (total <= 0) return entries.length ? entries[0][0] : null;
+      let roll = next() * total;
+      for (const [value, w] of entries) { roll -= Math.max(0, w); if (roll < 0) return value; }
+      return entries[entries.length - 1][0];
+    },
+  };
+}
+
+// Même calcul que le domaine : un seul arrondi à l'entier inférieur, au moins 1.
+function scaleDamage(base, ...percents) {
+  if (base <= 0 || percents.some((p) => p <= 0)) return 0;
+  const scaled = percents.reduce((product, p) => product * p, base);
+  return Math.max(1, Math.floor(scaled / 100 ** percents.length));
+}
+
+// Sans Élite active, la porte Élite n'existe pas.
+function effectiveDoorWeights(model, floor) {
+  const w = Object.assign({}, floor.doorWeights);
+  if (model.eliteIds && !model.eliteIds.length) w.elite = 0;
+  return w;
+}
+
+// ---------- probabilités exactes des portes ----------
+function doorPairProbabilities(weights) {
+  const present = { combat: 0, elite: 0, campfire: 0 };
+  const total = DOOR_TYPES.reduce((s, t) => s + Math.max(0, weights[t]), 0);
+  if (total <= 0) return present;
+  for (const first of DOOR_TYPES) {
+    const p1 = Math.max(0, weights[first]) / total;
+    if (p1 === 0) continue;
+    present[first] += p1;
+    const rest = total - Math.max(0, weights[first]);
+    for (const second of DOOR_TYPES) {
+      if (second === first) continue;
+      const p2 = rest > 0 ? Math.max(0, weights[second]) / rest : 0;
+      present[second] += p1 * p2;
+    }
+  }
+  return present;
+}
+
+// Chance qu'un type de porte soit proposé à chaque étage de sorties, garantie du Feu de camp comprise.
+function doorOfferProbabilities(model) {
+  const floors = model.tier.floors;
+  const guarantee = model.tier.campfireGuaranteeFloor;
+  let noCampfireYet = 1;
+  return floors.map((floor, index) => {
+    if (floor.kind !== 'exit') return null;
+    const w = effectiveDoorWeights(model, floor);
+    const normal = doorPairProbabilities(w);
+    let result = normal;
+    if (guarantee === index + 1) {
+      const ce = Math.max(0, w.combat) + Math.max(0, w.elite);
+      const forced = { campfire: 1, combat: ce > 0 ? Math.max(0, w.combat) / ce : 0, elite: ce > 0 ? Math.max(0, w.elite) / ce : 0 };
+      result = {};
+      for (const t of DOOR_TYPES) result[t] = (1 - noCampfireYet) * normal[t] + noCampfireYet * forced[t];
+    }
+    noCampfireYet *= 1 - result.campfire;
+    return result;
+  });
+}
+
+function sizeProbabilities(weights) {
+  const total = weights.reduce((s, w) => s + Math.max(0, w), 0);
+  return weights.map((w) => (total > 0 ? Math.max(0, w) / total : 0));
+}
+
+// ---------- tirages du palier ----------
+function drawGroupSize(model, floorIndex, rng, groupsOfFiveFought) {
+  const weights = model.tier.floors[floorIndex].groupSizeWeights;
+  let size = rng.weighted(weights.map((w, i) => [i + 1, w]));
+  if (size === 5 && groupsOfFiveFought >= model.tier.maxGroupsOfFive) size = 4;
+  return size || 1;
+}
+
+// Chaque ennemi est tiré de gauche à droite avec son poids ; un type à son plafond n'est plus tiré ;
+// un ennemi seul n'est jamais un soutien.
+function drawGroup(model, size, rng) {
+  const kinds = model.enemyIds;
+  if (!kinds.length) return [];
+  const fallback = kinds.find((k) => model.enemies[k].role !== 'support') || kinds[0];
+  const counts = {};
+  const group = [];
+  for (let i = 0; i < size; i += 1) {
+    const allowed = kinds.filter((k) => (counts[k] || 0) < model.enemies[k].groupCap && !(size === 1 && model.enemies[k].role === 'support'));
+    const pool = allowed.length ? allowed : [fallback];
+    const kind = rng.weighted(pool.map((k) => [k, model.enemies[k].drawWeight]));
+    counts[kind] = (counts[kind] || 0) + 1;
+    group.push(kind);
+  }
+  return group;
+}
+
+function drawDoors(model, floorIndex, rng, campfireOfferedBefore) {
+  const w = effectiveDoorWeights(model, model.tier.floors[floorIndex]);
+  if (!campfireOfferedBefore && model.tier.campfireGuaranteeFloor === floorIndex + 1) {
+    const other = rng.weighted([['combat', w.combat], ['elite', w.elite]]);
+    return rng.next() < 0.5 ? ['campfire', other] : [other, 'campfire'];
+  }
+  const first = rng.weighted(DOOR_TYPES.map((t) => [t, w[t]]));
+  const second = rng.weighted(DOOR_TYPES.filter((t) => t !== first).map((t) => [t, w[t]]));
+  return [first, second];
+}
+
+// À poids égal ; sans consommer de hasard quand il n'y a qu'un candidat (Élite) ou en le consommant toujours (boss).
+function pickEqual(ids, rng, alwaysRoll) {
+  if (!ids.length) return null;
+  if (ids.length === 1 && !alwaysRoll) return ids[0];
+  return ids[Math.min(ids.length - 1, Math.floor(rng.next() * ids.length))];
+}
+
+// ---------- héros : valeurs effectives ----------
+function heroStats(model, kit) {
+  const base = model.heroes[kit.hero];
+  const fate = model.fateGauge;
+  const fatigue = kit.fateLevel === -1 ? fate.fatiguePercent.minus1 : kit.fateLevel === -2 ? fate.fatiguePercent.minus2 : 0;
+  const effects = [];
+  for (const family of Object.keys(kit.blessings)) {
+    const ranks = model.blessingFamilies[family];
+    if (ranks && ranks[kit.blessings[family]]) effects.push(...ranks[kit.blessings[family]]);
+  }
+  const items = kit.items.map((id) => model.items[id]).filter(Boolean);
+  for (const it of items) effects.push(...it.effects);
+  for (const id of kit.boons) if (model.boons[id]) effects.push(...model.boons[id].effects);
+  const sum = (k) => effects.reduce((s, x) => s + (x.effect === k ? x.value : 0), 0);
+  const prod = (k) => effects.reduce((p, x) => p * (x.effect === k ? x.value / 100 : 1), 1);
+  const values = (k) => effects.filter((x) => x.effect === k).map((x) => x.value);
+
+  const maxHp = Math.max(1, Math.floor((base.maxHp * (100 + sum('maxHpPercent')) * (100 - fatigue)) / 10000));
+  const edge = sum('attackBonusPercent');
+  let attack = base.attackPower + (edge > 0 ? Math.max(1, Math.round((base.attackPower * edge) / 100)) : 0);
+  attack = Math.max(1, Math.floor(attack * prod('attackPercent') + 1e-9));
+  const guardDamage = Math.max(1, Math.floor(base.guardDamage * prod('guardDamagePercent') + 1e-9));
+  const reduction = Math.min(model.combat.maxDamageReductionPercent, base.damageReductionPercent + sum('damageReductionPoints'));
+  const stunned = values('stunnedDamagePercent');
+  const restore = values('guardRestorePercent');
+  return {
+    hero: kit.hero, power: base.power, dodgeMomentum: base.dodgeMomentum, maxHp, attack, hits: base.hits, guardDamage, reduction,
+    counterPercent: base.counterPercent * prod('counterPercent'),
+    perfectStrikePercent: model.combat.perfectStrikePercent + sum('perfectStrikeBonus'),
+    stunnedPercent: stunned.length ? Math.max(...stunned) : model.combat.stunnedDamagePercent,
+    initiative: Math.max(0, base.initiative + sum('initiative') + items.reduce((s, it) => s + it.initiative, 0)),
+    powerCost: base.powerCost,
+    healPerPerfectParry: sum('healPerPerfectParry'),
+    breakMomentum: sum('momentumOnBreak'), breakHeal: sum('healOnBreak'),
+    lingeringFrost: restore.length ? Math.min(...restore) : null,
+    // Élan de bénédiction : « au 1er combat » ou « à chaque combat ».
+    momentumFirst: sum('firstCombatMomentum'),
+    momentumEach: sum('startMomentum'),
+  };
+}
+
+// ---------- combat ----------
+function makeEnemy(model, ref, slot) {
+  if (ref.type === 'boss') {
+    const b = model.bosses[ref.id];
+    return { id: ref.id, boss: b, phase: 0, maxHp: b.maxHp, hp: b.maxHp, maxGuard: b.maxGuard, guard: b.maxGuard,
+      initiative: b.phases[0].initiative, moves: b.phases[0].moves, stun: null, raised: false, fallen: false, slot, pendingGuardReset: false };
+  }
+  const p = ref.type === 'elite' ? model.elites[ref.id] : model.enemies[ref.id];
+  return { id: ref.id, maxHp: p.maxHp, hp: p.maxHp, maxGuard: p.maxGuard, guard: p.maxGuard, initiative: p.initiative,
+    moves: p.moves, support: p.role === 'support', guardChance: p.guardIntentChancePercent || 0, stun: null, raised: false, fallen: false, slot,
+    revives: p.selfRevive ? p.selfRevive.times : 0, reviveHpPercent: p.selfRevive ? p.selfRevive.hpPercent : 0 };
+}
+
+function impactCount(attack) { return attack === 'double' ? 2 : 1; }
+
+function runCombat(model, stats, state, refs, rng) {
+  const c = model.combat;
+  const pl = model.player;
+  const t = model.timing;
+  const enemies = refs.map((ref, i) => makeEnemy(model, ref, i));
+  const front = Math.max(1, Math.round(c.frontLine));
+  const line = enemies.slice(0, front);
+  const reserve = enemies.slice(front);
+  let hp = state.hp;
+  let momentum = Math.min(c.momentumMax, c.momentumStart + stats.momentumEach + (state.combats === 0 ? stats.momentumFirst : 0));
+  let bulwark = false;
+  let shadowStep = false;
+  let heroActions = 0;
+  let rounds = 0;
+  let seconds = t.combatOpenSec;
+  let lost = 0;
+  let bleed = { damage: 0, rounds: 0 }; // Saignement du héros : un seul à la fois, jamais cumulé.
+  let bled = 0; let revived = 0; let allyRaised = 0;
+
+  const alive = () => line.filter((e) => !e.fallen);
+  const done = () => alive().length === 0 && reserve.length === 0;
+
+  function restoreDue() {
+    for (const e of line) {
+      if (!e.fallen && e.stun && e.stun.actionLost && heroActions > e.stun.heroAction) {
+        const full = e.pendingGuardReset || !stats.lingeringFrost;
+        e.guard = full ? e.maxGuard : Math.max(1, Math.floor((e.maxGuard * stats.lingeringFrost) / 100));
+        e.pendingGuardReset = false;
+        e.stun = null;
+        seconds += 0.4;
+      }
+    }
+  }
+
+  function hitEnemy(e, hpLoss, guardLoss) {
+    e.hp = Math.max(0, e.hp - hpLoss);
+    if (e.hp === 0) {
+      // Se relève seul : aussitôt, sans action ; il compte alors comme relevé (le Nécromancien ne le relève plus).
+      if (e.revives > 0) {
+        e.revives -= 1; e.raised = true; revived += 1;
+        e.hp = Math.max(1, Math.floor((e.maxHp * e.reviveHpPercent) / 100));
+        e.guard = e.maxGuard; e.stun = null;
+        seconds += t.enemySupportSec;
+        return;
+      }
+      e.fallen = true; e.stun = null; return;
+    }
+    if (e.boss && e.phase === 0 && e.boss.phases[1] && e.hp <= Math.floor((e.maxHp * e.boss.phaseShiftPercent) / 100)) {
+      e.phase = 1;
+      e.moves = e.boss.phases[1].moves;
+      e.nextInitiative = e.boss.phases[1].initiative;
+      if (e.stun) e.pendingGuardReset = true; else e.guard = e.maxGuard;
+      seconds += 2;
+      return;
+    }
+    if (!e.stun) {
+      e.guard = Math.max(0, e.guard - guardLoss);
+      if (e.guard === 0) {
+        e.stun = { actionLost: false, heroAction: heroActions };
+        if (stats.breakMomentum || stats.breakHeal) {
+          momentum = Math.min(c.momentumMax, momentum + stats.breakMomentum);
+          hp = Math.min(stats.maxHp, hp + stats.breakHeal);
+        }
+      }
+    }
+  }
+
+  function strikeMultiplier() {
+    const roll = rng.next() * 100;
+    if (roll < pl.strikePerfectPercent) return stats.perfectStrikePercent;
+    if (roll < pl.strikePerfectPercent + pl.strikeGoodPercent) return c.goodStrikePercent;
+    return 100;
+  }
+
+  function pickTarget() {
+    const targets = alive();
+    const stunned = targets.filter((e) => e.stun);
+    const pool = stunned.length ? stunned : targets;
+    return pool.reduce((best, e) => (e.hp < best.hp ? e : best), pool[0]);
+  }
+
+  function counter(e) {
+    if (!e || e.fallen) return;
+    const stunPct = e.stun ? stats.stunnedPercent : 100;
+    hitEnemy(e, scaleDamage(stats.attack, c.counterBasePercent, Math.round(stats.counterPercent), stunPct), e.stun ? 0 : stats.guardDamage);
+    seconds += t.counterSec;
+  }
+
+  function heroTurn() {
+    if (stats.power === 'bulwark' && !bulwark && momentum >= stats.powerCost && hp * 100 < stats.maxHp * pl.bulwarkBelowPercent) {
+      momentum -= stats.powerCost; bulwark = true; seconds += t.heroPowerSec; heroActions += 1; return;
+    }
+    if (stats.power === 'shadowStep' && !shadowStep && momentum >= c.momentumMax) {
+      momentum -= stats.powerCost; shadowStep = true; seconds += t.heroPowerSec; heroActions += 1; return;
+    }
+    const target = pickTarget();
+    if (!target) { seconds += t.heroPowerSec; heroActions += 1; return; }
+    for (let h = 0; h < stats.hits; h += 1) {
+      if (target.fallen) break;
+      const m = strikeMultiplier();
+      const stunPct = target.stun ? stats.stunnedPercent : 100;
+      hitEnemy(target, scaleDamage(stats.attack, m, stunPct), target.stun ? 0 : scaleDamage(stats.guardDamage, m));
+    }
+    momentum = Math.min(c.momentumMax, momentum + 1);
+    seconds += t.heroAttackSec;
+    heroActions += 1;
+  }
+
+  function defendImpact(attack) {
+    // Renvoie 'perfect' | 'good' | 'dodge' | 'miss'.
+    const window = Math.max(0, pl.inWindowPercent - (attack === 'feint' ? pl.feintPenalty : 0));
+    const roll = rng.next() * 100;
+    if (roll >= window) return 'miss';
+    if (UNBLOCKABLE.includes(attack)) return 'dodge';
+    const perfectShare = pl.inWindowPercent > 0 ? (pl.perfectPercent / pl.inWindowPercent) * window : 0;
+    return roll < perfectShare ? 'perfect' : 'good';
+  }
+
+  function enemyTurn(e) {
+    if (e.stun && !e.stun.actionLost) { e.stun.actionLost = true; seconds += t.lostActionSec; return; }
+    if (e.support) {
+      const fallenAlly = line.find((a) => a !== e && a.fallen && !a.raised);
+      if (fallenAlly) {
+        fallenAlly.fallen = false; fallenAlly.raised = true; fallenAlly.stun = null;
+        fallenAlly.hp = Math.max(1, Math.floor((fallenAlly.maxHp * c.raiseHpPercent) / 100));
+        fallenAlly.guard = fallenAlly.maxGuard;
+        allyRaised += 1;
+        seconds += t.enemySupportSec; return;
+      }
+      if (!e.stun && e.guard < e.maxGuard && rng.chance(e.guardChance)) {
+        e.guard = Math.min(e.maxGuard, e.guard + Math.floor((e.maxGuard * c.guardIntentPercent) / 100));
+        seconds += t.enemySupportSec; return;
+      }
+    }
+    // Sans coup, l'ennemi ne fait rien.
+    if (!e.moves.length) { seconds += t.lostActionSec; return; }
+    const move = rng.weighted(e.moves.map((m) => [m, m.weight]));
+    seconds += t.enemyAttackSec;
+    let allPerfect = true;
+    let allDodged = true;
+    let tookDamage = false;
+    for (let i = 0; i < impactCount(move.attack); i += 1) {
+      const outcome = defendImpact(move.attack);
+      if (outcome !== 'perfect') allPerfect = false;
+      if (outcome !== 'dodge') allDodged = false;
+      let damage = 0;
+      if (outcome === 'perfect') {
+        momentum = Math.min(c.momentumMax, momentum + 1);
+        if (stats.healPerPerfectParry) hp = Math.min(stats.maxHp, hp + stats.healPerPerfectParry);
+      } else if (outcome === 'dodge') {
+        if (stats.dodgeMomentum) momentum = Math.min(c.momentumMax, momentum + 1);
+      } else {
+        const part = outcome === 'good' ? c.goodParryPercent : 100;
+        damage = scaleDamage(move.damage, part, 100 - stats.reduction, bulwark ? c.bulwarkPercent : 100);
+      }
+      if (damage > 0) { tookDamage = true; hp -= damage; lost += damage; }
+      // Saignement : seulement si l'impact touche ; un nouveau garde la durée et les dégâts les plus forts.
+      if (move.bleed && (outcome === 'good' || outcome === 'miss')) {
+        bleed = { damage: Math.max(bleed.rounds > 0 ? bleed.damage : 0, move.bleed.damage), rounds: Math.max(bleed.rounds, move.bleed.rounds) };
+      }
+      if (hp <= 0) return;
+    }
+    if (tookDamage) bulwark = false;
+    if (allPerfect) counter(e);
+    else if (allDodged && shadowStep) { shadowStep = false; counter(e); }
+  }
+
+  while (hp > 0 && !done() && rounds < 200) {
+    rounds += 1;
+    seconds += t.roundSec;
+    if (bleed.rounds > 0) { // ne fait jamais tomber sous 1 PV
+      const loss = Math.min(bleed.damage, Math.max(0, hp - 1));
+      hp -= loss; lost += loss; bled += loss; bleed.rounds -= 1;
+    }
+    // Renforts : un ennemi de la réserve prend la place du tombé le plus à gauche.
+    if (reserve.length && (alive().length <= c.reinforceAtStanding || alive().length === 0)) {
+      for (let i = 0; i < line.length && reserve.length; i += 1) {
+        if (line[i].fallen) { line[i] = reserve.shift(); seconds += 0.8; if (c.reinforceOnePerRound) break; }
+      }
+    }
+    for (const e of line) if (e.nextInitiative !== undefined) { e.initiative = e.nextInitiative; delete e.nextInitiative; }
+    const order = [{ hero: true, initiative: stats.initiative, slot: -1 }]
+      .concat(alive().map((e) => ({ enemy: e, initiative: e.initiative, slot: line.indexOf(e) })))
+      .sort((a, b) => b.initiative - a.initiative || (a.hero ? -1 : b.hero ? 1 : a.slot - b.slot));
+    for (const actor of order) {
+      if (hp <= 0 || done()) break;
+      if (actor.hero) { heroTurn(); restoreDue(); }
+      else if (!actor.enemy.fallen) enemyTurn(actor.enemy);
+    }
+  }
+  const won = hp > 0 && done();
+  return { won, hp: Math.max(0, hp), rounds, seconds, lost, bled, revived, allyRaised };
+}
+
+// ---------- ascension ----------
+function pickBlessings(model, rng) {
+  const families = Object.keys(model.blessingFamilies);
+  const chosen = {};
+  const count = Math.min(model.player.blessingCount, model.blessings.maxCount, families.length);
+  const pool = families.slice();
+  for (let i = 0; i < count; i += 1) {
+    const k = rng.int(0, pool.length - 1);
+    chosen[pool[k]] = model.player.blessingRarity;
+    pool.splice(k, 1);
+  }
+  return chosen;
+}
+
+function fateKey(level) { return { 2: 'plus2', 1: 'plus1', '-1': 'minus1', '-2': 'minus2' }[level]; }
+
+function lootAfterWin(model, kit, rng, size, elite) {
+  const r = model.rewards;
+  const key = fateKey(model.player.fateLevel);
+  const dropBonus = key && model.fateGauge.dropChanceBonus[key] ? model.fateGauge.dropChanceBonus[key] : 0;
+  const shift = key && model.fateGauge.rarityShift[key] ? model.fateGauge.rarityShift[key] : 0;
+  // Bienfait : 1 parmi 3, choisi au hasard dans l'offre.
+  const offer = [];
+  const available = Object.keys(model.boons).filter((id) => !kit.boons.includes(id));
+  for (let i = 0; i < 3 && available.length; i += 1) {
+    const id = rng.weighted(available.map((b) => [b, r.boonRarityWeights[model.boons[b].rarity] || 0]));
+    offer.push(id);
+    available.splice(available.indexOf(id), 1);
+  }
+  if (offer.length) kit.boons.push(offer[rng.int(0, offer.length - 1)]);
+  // Objet : pas d'Épique au palier 1 (P20).
+  const chance = elite ? 100 : Math.min(100, Math.max(0, r.dropChanceAtThree + r.dropChancePerEnemy * (size - 3) + dropBonus));
+  let item = null;
+  if (rng.chance(chance)) {
+    const rarity = elite || rng.chance(r.rareChancePercent + shift) ? 'rare' : 'common';
+    const pool = Object.keys(model.items).filter((id) => model.items[id].rarity === rarity && !kit.items.includes(id));
+    if (pool.length) {
+      item = pool[rng.int(0, pool.length - 1)];
+      const slot = model.items[item].slot;
+      kit.items = kit.items.filter((id) => model.items[id].slot !== slot).concat(item);
+    }
+  }
+  return { gold: elite ? r.goldElite : r.goldPerEnemy * size + rng.int(r.goldBonusMin, r.goldBonusMax), item };
+}
+
+function runAscent(model, rng) {
+  const pl = model.player;
+  const t = model.timing;
+  const kit = { hero: pl.hero, fateLevel: pl.fateLevel, blessings: pickBlessings(model, rng), boons: [], items: [] };
+  let stats = heroStats(model, kit);
+  const state = { hp: stats.maxHp, combats: 0 };
+  const log = { seconds: (pl.blessingCount > 0 ? t.blessingSec : 0), fives: 0, campfireOffered: false, campfireTaken: 0,
+    eliteTaken: 0, combatTaken: 0, hpBeforeBoss: null, hpBeforeBossPercent: null, reachedBoss: false, won: false, fellAt: null, gold: 0, boons: 0, items: 0 };
+
+  function fight(refs, floorNumber) {
+    const result = runCombat(model, stats, state, refs, rng);
+    log.seconds += result.seconds;
+    state.combats += 1;
+    if (!result.won) { log.fellAt = floorNumber; return false; }
+    state.hp = Math.min(stats.maxHp, result.hp + Math.floor((stats.maxHp * model.combat.respitePercent) / 100));
+    return true;
+  }
+
+  function winRewards(size, elite) {
+    const loot = lootAfterWin(model, kit, rng, size, elite);
+    log.gold += loot.gold; log.boons += 1; if (loot.item) log.items += 1;
+    log.seconds += t.choiceSec * (loot.item ? 2 : 1);
+    const oldMax = stats.maxHp;
+    stats = heroStats(model, kit);
+    state.hp = Math.min(stats.maxHp, state.hp + Math.max(0, stats.maxHp - oldMax));
+  }
+
+  const floors = model.tier.floors;
+  for (let f = 0; f < floors.length; f += 1) {
+    const floor = floors[f];
+    if (floor.kind === 'boss') {
+      log.reachedBoss = true;
+      log.hpBeforeBoss = state.hp;
+      log.hpBeforeBossPercent = (state.hp * 100) / stats.maxHp;
+      const bossId = pickEqual(model.bossIds, rng, true);
+      log.boss = bossId;
+      if (bossId && !fight([{ type: 'boss', id: bossId }], f + 1)) return log;
+      log.won = true; log.gold += model.rewards.goldBoss;
+      return log;
+    }
+    if (floor.kind === 'combat') {
+      const size = drawGroupSize(model, f, rng, log.fives);
+      const group = drawGroup(model, size, rng);
+      if (size === 5) log.fives += 1;
+      log.combatTaken += 1;
+      if (!fight(group.map((id) => ({ type: 'enemy', id })), f + 1)) return log;
+      winRewards(size, false);
+      continue;
+    }
+    // Sortie : deux portes, choisies selon le profil du joueur simulé.
+    const doors = drawDoors(model, f, rng, log.campfireOffered);
+    const sizes = {};
+    if (doors.includes('combat')) sizes.combat = drawGroupSize(model, f, rng, log.fives);
+    if (doors.includes('campfire')) log.campfireOffered = true;
+    const hpPct = (state.hp * 100) / stats.maxHp;
+    let choice;
+    const has = (d) => doors.includes(d);
+    if (has('combat') && has('elite')) choice = hpPct >= pl.eliteAbovePercent ? 'elite' : 'combat';
+    else if (has('combat') && has('campfire')) choice = hpPct < pl.campfireBelowPercent || (sizes.combat === 5 && hpPct < pl.eliteAbovePercent) ? 'campfire' : 'combat';
+    else choice = hpPct < pl.eliteAbovePercent ? 'campfire' : 'elite';
+    if (choice === 'elite' && !model.eliteIds.length) choice = has('combat') ? 'combat' : 'campfire';
+    log.seconds += t.choiceSec * 0.6;
+    if (choice === 'campfire') {
+      log.campfireTaken += 1;
+      state.hp = Math.min(stats.maxHp, state.hp + Math.floor((stats.maxHp * model.campfire.healPercent) / 100));
+      log.seconds += t.campfireSec;
+    } else if (choice === 'elite') {
+      log.eliteTaken += 1;
+      const eliteId = pickEqual(model.eliteIds, rng, false);
+      if (!fight([{ type: 'elite', id: eliteId }], f + 1)) return log;
+      winRewards(3, true);
+    } else {
+      const size = sizes.combat;
+      if (size === 5) log.fives += 1;
+      log.combatTaken += 1;
+      if (!fight(drawGroup(model, size, rng).map((id) => ({ type: 'enemy', id })), f + 1)) return log;
+      winRewards(size, false);
+    }
+  }
+  return log;
+}
+
+// Combats isolés, à PV pleins, sans bienfait ni objet : la difficulté brute de chaque rencontre.
+function encounterStats(model, refsFactory, runs, seed) {
+  const rng = makeRandom(seed);
+  const kit = { hero: model.player.hero, fateLevel: 0, blessings: {}, boons: [], items: [] };
+  const stats = heroStats(model, kit);
+  let wins = 0; let rounds = 0; let seconds = 0; let lost = 0;
+  for (let i = 0; i < runs; i += 1) {
+    const r = runCombat(model, stats, { hp: stats.maxHp, combats: 1 }, refsFactory(rng), rng);
+    if (r.won) wins += 1;
+    rounds += r.rounds; seconds += r.seconds; lost += r.lost;
+  }
+  return { win: wins / runs, rounds: rounds / runs, minutes: seconds / runs / 60, lostPercent: (lost / runs) * 100 / stats.maxHp, maxHp: stats.maxHp };
+}
+
+// Ce qui empêche ou fausse la simulation, en termes produit.
+function simWarnings(sm) {
+  const w = [];
+  if (!sm.heroIds.length) w.push({ bad: true, text: 'Aucun héros actif dans le Codex : la simulation ne peut pas tourner.' });
+  if (!sm.enemyIds.length) w.push({ bad: true, text: 'Aucun ennemi actif : les combats ordinaires sont vides (gagnés d’office).' });
+  else if (!sm.enemyIds.some((k) => sm.enemies[k].role !== 'support')) w.push({ text: 'Tous les ennemis actifs sont des soutiens : un ennemi seul en sera quand même un.' });
+  if (!sm.eliteIds.length) w.push({ text: 'Aucune Élite active : la porte Élite n’est jamais proposée.' });
+  if (!sm.bossIds.length) w.push({ bad: true, text: 'Aucun boss actif : l’ascension est gagnée dès le dernier étage atteint.' });
+  if (!Object.keys(sm.boons).length) w.push({ text: 'Aucun bienfait actif : aucune offre après les combats.' });
+  return w;
+}
+
+function simulate(model, seed) {
+  const sm = buildSimModel(model);
+  if (!sm.player.hero) return null;
+  const runs = Math.max(50, Math.min(3000, sm.player.runs | 0));
+  const rng = makeRandom(seed);
+  const agg = { runs, won: 0, reachedBoss: 0, bossWins: 0, minutes: [], hpBeforeBoss: 0, hpBeforeBossPercent: 0, fives: 0,
+    campfireOffered: 0, campfireTaken: 0, eliteTaken: 0, fellAt: sm.tier.floors.map(() => 0), boons: 0, items: 0, winMinutes: [] };
+  for (let i = 0; i < runs; i += 1) {
+    const log = runAscent(sm, rng);
+    const min = log.seconds / 60;
+    agg.minutes.push(min);
+    if (log.won) { agg.won += 1; agg.winMinutes.push(min); }
+    if (log.reachedBoss) {
+      agg.reachedBoss += 1; agg.hpBeforeBoss += log.hpBeforeBoss; agg.hpBeforeBossPercent += log.hpBeforeBossPercent;
+      if (log.won) agg.bossWins += 1;
+    }
+    if (log.fives > 0) agg.fives += 1;
+    if (log.campfireOffered) agg.campfireOffered += 1;
+    agg.campfireTaken += log.campfireTaken;
+    agg.eliteTaken += log.eliteTaken;
+    agg.boons += log.boons; agg.items += log.items;
+    if (log.fellAt) agg.fellAt[log.fellAt - 1] += 1;
+  }
+  const winSorted = agg.winMinutes.slice().sort((a, b) => a - b);
+  const q = (arr, p) => (arr.length ? arr[Math.min(arr.length - 1, Math.floor(p * arr.length))] : 0);
+  const encounters = {};
+  const n = 150;
+  sm.tier.floors.forEach((floor, f) => {
+    if (floor.kind === 'boss') return;
+    encounters['floor' + (f + 1)] = encounterStats(sm, (r) => drawGroup(sm, drawGroupSize(sm, f, r, 0), r).map((id) => ({ type: 'enemy', id })), n, seed + f + 1);
+  });
+  for (let size = 1; size <= 5; size += 1) {
+    encounters['size' + size] = encounterStats(sm, (r) => drawGroup(sm, size, r).map((id) => ({ type: 'enemy', id })), n, seed + 10 + size);
+  }
+  sm.eliteIds.forEach((id, i) => { encounters['elite:' + id] = encounterStats(sm, () => [{ type: 'elite', id }], n, seed + 20 + i * 7); });
+  sm.bossIds.forEach((id, i) => { encounters['boss:' + id] = encounterStats(sm, () => [{ type: 'boss', id }], n, seed + 21 + i); });
+  return {
+    runs,
+    hero: sm.player.hero,
+    winRate: agg.won / runs,
+    reachBoss: agg.reachedBoss / runs,
+    bossWin: agg.reachedBoss ? agg.bossWins / agg.reachedBoss : 0,
+    minutesMean: agg.minutes.reduce((s, m) => s + m, 0) / runs,
+    winMinutesMedian: q(winSorted, 0.5), winMinutesP90: q(winSorted, 0.9), winMinutesMax: winSorted.length ? winSorted[winSorted.length - 1] : 0,
+    hpBeforeBoss: agg.reachedBoss ? agg.hpBeforeBoss / agg.reachedBoss : 0,
+    hpBeforeBossPercent: agg.reachedBoss ? agg.hpBeforeBossPercent / agg.reachedBoss : 0,
+    fivesRate: agg.fives / runs,
+    campfireOffered: agg.campfireOffered / runs,
+    campfireTaken: agg.campfireTaken / runs,
+    eliteTaken: agg.eliteTaken / runs,
+    boons: agg.boons / runs, items: agg.items / runs,
+    fellAt: agg.fellAt.map((c) => c / runs),
+    encounters,
+  };
+}
+
+// ======================= Onglet Équilibrage =======================
+const NAMES = {
+  combat: 'Combat', elite: 'Élite', campfire: 'Feu de camp',
+  common: 'Commun', rare: 'Rare', epic: 'Épique',
+  weapon: 'Arme', armor: 'Armure', accessory: 'Accessoire',
+};
+const RARITY_FEM = { common: 'Commune', rare: 'Rare', epic: 'Épique' };
+const ATTACK_NAMES = { basic: 'coup simple', double: 'double frappe (×2 impacts)', delayed: 'coup retardé', feint: 'coup trompeur', perilous: 'coup imparable', delayedPerilous: 'coup retardé imparable' };
+const SEED = 20261026;
+// Clés de l'ancien format (contenu figé dans le modèle), reprises dans le Codex à la lecture.
+const LEGACY_KEYS = ['heroes', 'enemies', 'elite', 'bosses', 'boons', 'items'];
+
+let model = clone(GAME_DESIGNER_MODEL);
+const registry = []; // { path, row, input, output }
+let gdCache = { key: null, result: null };
+let timer = null;
+let balanceStale = true;
+
+function nameOf(id) { return (model.codex[id] && model.codex[id].name) || (GAME_DESIGNER_MODEL.codex[id] && GAME_DESIGNER_MODEL.codex[id].name) || id; }
+function shortName(id) { return nameOf(id).replace(/^(La |Le |Les |L['’])/, ''); }
+// « du Chevalier déchu », « de la Gardienne… », « de l'Errante », « de Goule ».
+function ofName(id) {
+  const n = nameOf(id);
+  if (/^Le /.test(n)) return 'du ' + n.slice(3);
+  if (/^La /.test(n)) return 'de la ' + n.slice(3);
+  if (/^Les /.test(n)) return 'des ' + n.slice(4);
+  if (/^L['’]/.test(n)) return 'de l’' + n.slice(2);
+  return (/^[AEIOUYÉÈÊÂÎÔH]/i.test(n) ? 'd’' : 'de ') + n;
+}
+function getPath(obj, path) { return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj); }
+function setPath(obj, path, value) {
+  const keys = path.split('.');
+  let o = obj;
+  for (let i = 0; i < keys.length - 1; i += 1) o = o[keys[i]];
+  o[keys[keys.length - 1]] = value;
+}
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function fr(n, digits = 0) { return Number(n).toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits }); }
+function pct(x) { return fr(Math.round(x * 100)) + ' %'; }
+function mins(x) { return fr(x, 1) + ' min'; }
+function sameValue(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+// « Poids 3 → 50 % » : ce que donne un poids parmi les poids qu'on tire ensemble.
+function shareText(w, total, suffix) {
+  const v = Math.max(0, num(w));
+  return 'Poids ' + fr(v, Number.isInteger(v) ? 0 : 1) + ' → ' + (total > 0 ? fr(Math.round((v * 100) / total)) : '0') + ' %' + (suffix || '');
+}
+function sumWeights(list) { return list.reduce((t, w) => t + Math.max(0, num(w)), 0); }
+// Part de tirage d'un ennemi parmi les ennemis actifs (lui compris, même en brouillon), avant plafonds.
+function drawShareText(selfId, w) {
+  let total = Math.max(0, num(w));
+  for (const x of Object.values(model.codex)) if (x.id !== selfId && x.category === 'enemy' && isSimulated(x)) total += Math.max(0, num(x.stats.drawWeight));
+  const self = model.codex[selfId];
+  return shareText(w, total, ' de chaque tirage' + (self && !isSimulated(self) ? ', s’il était actif' : ''));
+}
+// Un coup : impacts × dégâts, et la part du temps que lui donne son poids.
+function moveShare(moves, m) {
+  const total = sumWeights(moves.filter((x) => x && ATTACKS.includes(x.attack)).map((x) => x.weight));
+  return total > 0 && ATTACKS.includes(m.attack) ? Math.max(0, num(m.weight)) / total : 0;
+}
+function moveResult(moves, m) {
+  if (!m || !ATTACKS.includes(m.attack)) return '';
+  const n = impactCount(m.attack);
+  const d = Math.max(0, num(m.damage));
+  const share = moveShare(moves, m);
+  let txt = n + ' × ' + fr(d) + ' = ' + fr(n * d) + ' · ' + (share > 0 ? fr(Math.round(share * 100)) + ' % du temps' : 'jamais tiré');
+  if (m.bleed) txt += ' · saignement ' + m.bleed.damage + ' PV × ' + m.bleed.rounds + ' manches';
+  if (UNBLOCKABLE.includes(m.attack)) txt += ' · à esquiver';
+  return txt;
+}
+
+// ---------- état : règles + codex ----------
+function mergeInto(target, source) {
+  if (source == null || typeof source !== 'object') return target;
+  for (const key of Object.keys(source)) {
+    const value = source[key];
+    if (Array.isArray(value)) target[key] = clone(value);
+    else if (value && typeof value === 'object' && target[key] && typeof target[key] === 'object') mergeInto(target[key], value);
+    else target[key] = value;
+  }
+  return target;
+}
+function rulesOf(m) { const r = {}; for (const k of Object.keys(m)) if (k !== 'codex') r[k] = m[k]; return clone(r); }
+
+// Reprend dans le Codex des réglages enregistrés à l'ancien format (avant le Codex). Renvoie les entrées changées.
+const LEGACY_EFFECT = { momentum: 'momentumOnBreak', heal: 'healOnBreak' };
+function applyLegacy(obj, codex) {
+  const touched = [];
+  const put = (id, fn) => {
+    const e = codex[id];
+    if (!e) return;
+    const before = JSON.stringify(e);
+    fn(e.stats, e);
+    if (JSON.stringify(e) !== before) touched.push(id);
+  };
+  const plain = (v) => (v && typeof v === 'object' ? v : {});
+  for (const group of ['heroes', 'enemies', 'bosses']) {
+    for (const [id, v] of Object.entries(plain(obj[group]))) put(id, (s) => Object.assign(s, clone(plain(v))));
+  }
+  for (const [id, v] of Object.entries(plain(obj.elite))) put(id, (s) => Object.assign(s, clone(plain(v))));
+  const tier = plain(obj.tier);
+  for (const [id, w] of Object.entries(plain(tier.enemyWeights))) put(id, (s) => { s.drawWeight = num(w); });
+  for (const [id, c] of Object.entries(plain(tier.enemyCaps))) put(id, (s) => { s.groupCap = num(c); });
+  const effectsFrom = (s, v, skip) => {
+    for (const [k, value] of Object.entries(plain(v))) {
+      if (skip.includes(k) || typeof value !== 'number') continue;
+      const effect = LEGACY_EFFECT[k] || k;
+      const found = s.effects.find((x) => x.effect === effect);
+      if (found) found.value = value; else s.effects.push({ effect, value });
+    }
+  };
+  for (const [id, v] of Object.entries(plain(obj.boons))) put(id, (s, e) => { if (RARITY_RANK[v.rarity]) e.rarity = v.rarity; effectsFrom(s, v, ['rarity']); });
+  for (const [id, v] of Object.entries(plain(obj.items))) put(id, (s, e) => {
+    if (RARITY_RANK[v.rarity]) e.rarity = v.rarity;
+    if (typeof v.initiative === 'number') s.initiative = v.initiative;
+    effectsFrom(s, v, ['rarity', 'slot', 'initiative']);
+  });
+  for (const [fam, v] of Object.entries(plain(obj.blessings))) {
+    if (fam === 'maxCount') continue;
+    put(fam, (s) => { for (const r of RARITIES) if (typeof plain(v)[r] === 'number' && s.ranks[r]) s.ranks[r].value = v[r]; });
+  }
+  return touched;
+}
+
+function getModel() { return clone(model); }
+// obj : des règles, éventuellement un codex complet (qui remplace l'actuel), éventuellement l'ancien format.
+function applyModel(obj, opt = {}) {
+  obj = obj && typeof obj === 'object' ? obj : {};
+  const rules = {};
+  for (const k of Object.keys(obj)) if (k !== 'codex' && !LEGACY_KEYS.includes(k)) rules[k] = obj[k];
+  const codex = obj.codex && typeof obj.codex === 'object' ? normalizeCodex(obj.codex) : model.codex;
+  model = mergeInto(clone(GAME_DESIGNER_RULES), rules);
+  delete model.tier.enemyWeights; delete model.tier.enemyCaps;
+  model.blessings = { maxCount: num(model.blessings && model.blessings.maxCount, 3) };
+  model.codex = codex;
+  const touched = opt.legacy === false ? [] : applyLegacy(obj, model.codex);
+  refreshAll();
+  if (touched.length && typeof onLegacyApplied === 'function') onLegacyApplied(touched);
+  return getModel();
+}
+window.getModel = getModel;
+window.applyModel = applyModel;
+
+// ---------- champs ----------
+function refreshRow(entry) {
+  const mod = !sameValue(getPath(model, entry.path), getPath(GAME_DESIGNER_MODEL, entry.path));
+  entry.row.classList.toggle('mod', mod);
+  if (entry.cell) entry.cell.classList.toggle('mod', mod);
+}
+function syncInputs(path, except) {
+  for (const entry of registry) {
+    if (entry.path !== path) continue;
+    const v = getPath(model, path);
+    if (entry.input !== except) entry.input.value = v;
+    if (entry.output) entry.output.textContent = entry.format(v);
+    refreshRow(entry);
+  }
+}
+function onChange(path, raw, input, opt) {
+  let v = opt.text ? raw : parseFloat(raw);
+  if (!opt.text) {
+    if (!Number.isFinite(v)) return;
+    if (opt.min != null) v = Math.max(opt.min, v);
+    if (opt.max != null) v = Math.min(opt.max, v);
+  }
+  setPath(model, path, v);
+  syncInputs(path, input);
+  if (path.startsWith('codex.')) codexEditedFromBalance(path.split('.')[1]);
+  changed();
+}
+function gdText(path, unit = '') {
+  const v = getPath(GAME_DESIGNER_MODEL, path);
+  if (v === undefined) return 'GD : nouveau';
+  if (path === 'player.hero') return 'GD : ' + nameOf(v);
+  return 'GD : ' + (typeof v === 'number' ? fr(v, Number.isInteger(v) ? 0 : 1) : NAMES[v] || v) + unit;
+}
+function field(parent, path, label, opt = {}) {
+  const row = el('label', 'field');
+  row.append(el('span', 'f-label', label));
+  let input;
+  if (opt.options) {
+    input = el('select');
+    for (const [value, text] of opt.options) {
+      const o = el('option', null, text);
+      o.value = value;
+      input.append(o);
+    }
+    row.classList.add('wide');
+    input.addEventListener('change', () => onChange(path, input.value, input, { text: !opt.numeric }));
+  } else {
+    input = el('input');
+    input.type = 'number';
+    input.inputMode = 'decimal';
+    input.step = opt.step || 1;
+    if (opt.min != null) input.min = opt.min;
+    if (opt.max != null) input.max = opt.max;
+    input.addEventListener('input', () => onChange(path, input.value, input, opt));
+  }
+  input.value = getPath(model, path);
+  input.setAttribute('aria-label', label);
+  row.append(input);
+  row.append(el('span', 'f-gd', gdText(path, opt.unit)));
+  const entry = { path, row, input };
+  if (opt.share) { entry.share = opt.share; entry.shareEl = el('span', 'f-share', opt.share(getPath(model, path))); row.append(entry.shareEl); }
+  parent.append(row);
+  registry.push(entry);
+  refreshRow(entry);
+  return row;
+}
+function lever(parent, path, label, opt) {
+  const box = el('div', 'lever');
+  const top = el('div', 'row');
+  top.append(el('span', 'name', label));
+  const out = el('output');
+  const format = (v) => fr(v) + (opt.unit || '');
+  out.textContent = format(getPath(model, path));
+  top.append(out);
+  box.append(top);
+  const range = el('input');
+  range.type = 'range';
+  range.min = opt.min; range.max = opt.max; range.step = opt.step || 1;
+  range.value = getPath(model, path);
+  range.setAttribute('aria-label', label);
+  range.addEventListener('input', () => onChange(path, range.value, range, opt));
+  box.append(range);
+  box.append(el('div', 'f-gd', gdText(path, opt.unit)));
+  const entry = { path, row: box, input: range, output: out, format };
+  if (opt.share) { entry.share = opt.share; entry.shareEl = el('div', 'f-share', opt.share(getPath(model, path))); box.append(entry.shareEl); }
+  box.append(el('div', 'effect', opt.effect));
+  parent.append(box);
+  registry.push(entry);
+  refreshRow(entry);
+}
+
+// ---------- construction ----------
+function buildPlayer(sm) {
+  const skill = document.getElementById('player-skill');
+  const choices = document.getElementById('player-choices');
+  skill.textContent = ''; choices.textContent = '';
+  field(skill, 'player.inWindowPercent', 'Coups défendus dans la fenêtre', { min: 0, max: 100, unit: ' %' });
+  field(skill, 'player.perfectPercent', 'dont parades parfaites', { min: 0, max: 100, unit: ' %' });
+  field(skill, 'player.feintPenalty', 'Coup trompeur : défense en moins', { min: 0, max: 100, unit: ' pts' });
+  field(skill, 'player.strikePerfectPercent', 'Frappes parfaites', { min: 0, max: 100, unit: ' %' });
+  field(skill, 'player.strikeGoodPercent', 'Bonnes frappes', { min: 0, max: 100, unit: ' %' });
+  const heroOptions = sm.heroIds.map((id) => [id, nameOf(id)]);
+  if (model.player.hero && !sm.heroes[model.player.hero]) heroOptions.push([model.player.hero, nameOf(model.player.hero) + ' (inactif)']);
+  field(choices, 'player.hero', 'Héros joué', { options: heroOptions.length ? heroOptions : [['', 'aucun héros actif']] });
+  field(choices, 'player.campfireBelowPercent', 'Prend le Feu de camp sous', { min: 0, max: 100, unit: ' % PV' });
+  field(choices, 'player.eliteAbovePercent', "Prend l'Élite au-dessus de", { min: 0, max: 101, unit: ' % PV' });
+  field(choices, 'player.bulwarkBelowPercent', 'Rempart sous', { min: 0, max: 100, unit: ' % PV' });
+  field(choices, 'player.fateLevel', "Jauge d'hier", { options: [['2', '+2 (faveur pleine)'], ['1', '+1'], ['0', 'Neutre'], ['-1', '−1'], ['-2', '−2']], numeric: true });
+  field(choices, 'player.blessingCount', 'Bénédictions de départ', { min: 0, max: 3 });
+  field(choices, 'player.blessingRarity', 'Leur rareté', { options: [['common', 'Commune'], ['rare', 'Rare'], ['epic', 'Épique']] });
+  field(choices, 'player.runs', 'Ascensions simulées', { min: 50, max: 3000, step: 50 });
+}
+
+function buildLevers(sm) {
+  const p = document.getElementById('levers');
+  p.textContent = '';
+  for (const id of sm.bossIds) {
+    lever(p, `codex.${id}.stats.maxHp`, 'PV ' + ofName(id), { min: 150, max: 450, step: 10, unit: ' PV', effect: 'Durée et chance de battre ce boss. −30 PV ≈ −2 manches.' });
+  }
+  lever(p, 'campfire.healPercent', 'Soin du Feu de camp', { min: 0, max: 100, step: 5, unit: ' %', effect: 'Plus haut : le Feu de camp vaut davantage qu’un bienfait. Plus bas : on combat plus souvent.' });
+  lever(p, 'tier.floors.4.doorWeights.campfire', 'Feu de camp juste avant le boss (poids)', { min: 0, max: 40, share: doorShare(sm, 4, 'campfire'), effect: 'À 0, jamais de soin avant le boss. À 5, rare (≈ 1 fois sur 4).' });
+  lever(p, 'tier.floors.4.groupSizeWeights.4', 'Groupe de 5 au dernier étage (poids)', { min: 0, max: 10, share: sizeShare(4), effect: 'Fréquence du pire combat. Plafonné à 1 groupe de 5 par ascension.' });
+  lever(p, 'combat.frontLine', 'Ennemis en ligne au plus', { min: 1, max: 5, effect: 'Au-delà, les ennemis attendent en réserve. À 5, plus de réserve : le groupe de 5 devient très dur.' });
+  lever(p, 'combat.respitePercent', 'Répit après chaque victoire', { min: 0, max: 30, unit: ' %', effect: 'Le soin gratuit entre deux combats. Plus haut : moins besoin du Feu de camp.' });
+  lever(p, 'rewards.dropChanceAtThree', "Chance d'objet (groupe de 3)", { min: 0, max: 100, step: 5, unit: ' %', effect: 'Richesse du build. +10 points par ennemi au-delà de 3, −10 en dessous.' });
+  lever(p, 'combat.stunnedDamagePercent', 'Dégâts sur un étourdi', { min: 100, max: 250, step: 10, unit: ' %', effect: 'Récompense de la cassure de garde. Accélère tous les combats.' });
+  lever(p, 'combat.perfectStrikePercent', 'Frappe parfaite', { min: 100, max: 250, step: 10, unit: ' %', effect: 'Récompense du rythme en attaque.' });
+  for (const id of sm.heroIds) {
+    const effect = id === 'wanderer' ? 'Son point faible : elle n’a aucune réduction des dégâts.' : 'Sa marge d’erreur sur toute l’ascension.';
+    lever(p, `codex.${id}.stats.maxHp`, 'PV ' + ofName(id), { min: 40, max: 120, step: 5, unit: ' PV', effect });
+  }
+  for (const id of sm.eliteIds) {
+    lever(p, `codex.${id}.stats.maxHp`, 'PV ' + ofName(id), { min: 100, max: 300, step: 10, unit: ' PV', effect: 'Prix de l’Élite : son objet Rare est garanti.' });
+  }
+}
+
+function doorShare(sm, f, t) {
+  return (v) => {
+    const w = effectiveDoorWeights(sm, model.tier.floors[f]);
+    return shareText(t === 'elite' && sm.eliteIds && !sm.eliteIds.length ? 0 : v, sumWeights(DOOR_TYPES.map((d) => w[d])), ' (1re porte)');
+  };
+}
+function sizeShare(f) { return (v) => shareText(v, sumWeights(model.tier.floors[f].groupSizeWeights)); }
+
+function buildMap(sm) {
+  const map = document.getElementById('map');
+  map.textContent = '';
+  const floors = model.tier.floors;
+  for (let f = floors.length - 1; f >= 0; f -= 1) {
+    const floor = floors[f];
+    const card = el('div', 'card floor');
+    const head = el('div', 'head');
+    const bosses = sm.bossIds.map(shortName).join(' ou ');
+    const title = floor.kind === 'boss' ? 'Boss : ' + (bosses ? bosses + (sm.bossIds.length > 1 ? ', à égalité' : '') : 'aucun boss actif')
+      : floor.kind === 'combat' ? 'Combat imposé' : 'Sorties : 2 portes';
+    head.append(el('h3', null, 'Étage ' + (f + 1) + ' · ' + title));
+    if (floor.kind === 'exit' && f === floors.length - 2) head.append(el('span', 'tag new', 'plus de halte imposée'));
+    card.append(head);
+    const dyn = el('div');
+    dyn.id = 'floor-dyn-' + f;
+    card.append(dyn);
+    if (floor.kind !== 'boss') {
+      const det = el('details');
+      det.append(el('summary', null, 'Régler cet étage'));
+      const inner = el('div', 'inner');
+      if (floor.kind === 'exit') {
+        inner.append(el('p', 'small muted', 'Poids des portes (la 1re parmi les trois, la 2e parmi les deux autres). Le pourcentage est la chance d’être la 1re porte ; la chance d’être proposée, l’une ou l’autre, est affichée au-dessus.'));
+        for (const t of DOOR_TYPES) field(inner, `tier.floors.${f}.doorWeights.${t}`, 'Poids ' + NAMES[t], { min: 0, max: 100, share: doorShare(sm, f, t) });
+      }
+      inner.append(el('p', 'small muted', 'Poids de la taille du groupe.'));
+      for (let s = 0; s < 5; s += 1) field(inner, `tier.floors.${f}.groupSizeWeights.${s}`, (s + 1) + (s ? ' ennemis' : ' ennemi'), { min: 0, max: 50, share: sizeShare(f) });
+      det.append(inner);
+      card.append(det);
+    }
+    map.append(card);
+    if (f > 0) map.append(el('div', 'climb', '▲'));
+  }
+  const rules = document.getElementById('group-rules');
+  rules.textContent = '';
+  rules.append(el('p', 'small muted', 'Chaque ennemi actif du Codex est tiré de gauche à droite avec son poids. Un type qui atteint son plafond n’est plus tiré. Un ennemi seul n’est jamais un soutien. Le pourcentage est la part de chaque tirage, avant plafonds.'));
+  for (const k of sm.enemyIds) field(rules, `codex.${k}.stats.drawWeight`, 'Poids ' + nameOf(k), { min: 0, max: 20, share: (v) => shareText(v, sumWeights(sm.enemyIds.map((id) => (id === k ? v : model.codex[id].stats.drawWeight)))) });
+  for (const k of sm.enemyIds) field(rules, `codex.${k}.stats.groupCap`, 'Plafond ' + nameOf(k), { min: 0, max: 5 });
+  field(rules, 'tier.maxGroupsOfFive', 'Groupes de 5 par ascension, au plus', { min: 0, max: 4 });
+  field(rules, 'tier.campfireGuaranteeFloor', 'Feu de camp garanti au plus tard à', { options: [['0', 'aucune garantie'], ['2', 'étage 2'], ['3', 'étage 3'], ['4', 'étage 4'], ['5', 'étage 5']], numeric: true });
+  field(rules, 'combat.reinforceAtStanding', 'Renfort quand il reste debout', { min: 0, max: 4, unit: ' ennemi(s)' });
+  field(rules, 'combat.reinforceOnePerRound', 'Un seul renfort par manche (1 = oui)', { min: 0, max: 1 });
+}
+
+function statBox(parent, label, value, cls) {
+  const s = el('div', 'stat ' + (cls || ''));
+  s.append(el('b', null, value));
+  s.append(el('span', null, label));
+  parent.append(s);
+}
+
+function powerNameOf(id, power) {
+  const s = model.codex[id] && model.codex[id].stats;
+  return s && typeof s.powerName === 'string' && s.powerName.trim() ? s.powerName.trim() : HERO_POWERS[power];
+}
+
+function heroTrait(h) {
+  const power = h.power === 'shadowStep'
+    ? 'Pas de l’ombre (la prochaine esquive complète déclenche une contre-attaque)'
+    : 'Rempart (le prochain coup subi fait 50 % de dégâts)';
+  return (h.dodgeMomentum ? 'Chaque esquive dans la fenêtre donne +1 Élan. ' : '') + 'Contre-attaque ×' + fr(h.counterPercent / 100, 1) + '. Pouvoir : ' + power + '.';
+}
+
+function buildHeroes(sm) {
+  const p = document.getElementById('heroes');
+  p.textContent = '';
+  for (const h of sm.heroIds) {
+    const c = el('div', 'card hero');
+    const head = el('div', 'head');
+    head.append(el('h3', null, nameOf(h)));
+    head.append(el('span', 'tag', powerNameOf(h, sm.heroes[h].power)));
+    c.append(head);
+    const st = el('div', 'stats');
+    st.dataset.hero = h;
+    c.append(st);
+    c.append(el('p', 'small muted', heroTrait(sm.heroes[h])));
+    const base = 'codex.' + h + '.stats.';
+    field(c, base + 'maxHp', 'PV max', { min: 1, max: 300 });
+    field(c, base + 'initiative', 'Initiative', { min: 0, max: 20 });
+    field(c, base + 'attackPower', 'Attaque (par coup)', { min: 1, max: 50 });
+    field(c, base + 'hits', 'Coups par attaque', { min: 1, max: 4 });
+    field(c, base + 'guardDamage', 'Brise-garde (par coup)', { min: 0, max: 60 });
+    field(c, base + 'damageReductionPercent', 'Réduction des dégâts', { min: 0, max: 40, unit: ' %' });
+    field(c, base + 'counterPercent', 'Multiplicateur de contre-attaque', { min: 0, max: 400, step: 10, unit: ' %' });
+    field(c, base + 'powerCost', 'Coût du pouvoir', { min: 0, max: 5, unit: ' Élan' });
+    p.append(c);
+  }
+  if (!sm.heroIds.length) p.append(el('p', 'small muted', 'Aucun héros actif dans le Codex.'));
+  const r = document.getElementById('combat-rules');
+  r.textContent = '';
+  field(r, 'combat.goodStrikePercent', 'Bonne frappe', { min: 100, max: 250, step: 10, unit: ' %' });
+  field(r, 'combat.perfectStrikePercent', 'Frappe parfaite', { min: 100, max: 300, step: 10, unit: ' %' });
+  field(r, 'combat.stunnedDamagePercent', 'Dégâts sur un étourdi', { min: 100, max: 300, step: 10, unit: ' %' });
+  field(r, 'combat.goodParryPercent', 'Dégâts subis sur bonne parade', { min: 0, max: 100, unit: ' %' });
+  field(r, 'combat.counterBasePercent', 'Contre-attaque (part de l’Attaque)', { min: 0, max: 200, step: 5, unit: ' %' });
+  field(r, 'combat.bulwarkPercent', 'Rempart : dégâts subis', { min: 0, max: 100, step: 5, unit: ' %' });
+  field(r, 'combat.momentumStart', 'Élan au début du combat', { min: 0, max: 5 });
+  field(r, 'combat.momentumMax', "Plafond d'Élan", { min: 1, max: 9 });
+  field(r, 'combat.respitePercent', 'Répit après une victoire', { min: 0, max: 50, unit: ' % PV max' });
+  field(r, 'combat.maxDamageReductionPercent', 'Plafond de réduction des dégâts', { min: 0, max: 90, unit: ' %' });
+  field(r, 'combat.guardIntentPercent', 'Intention Garde (soutiens)', { min: 0, max: 100, unit: ' % garde' });
+  field(r, 'combat.raiseHpPercent', 'Allié relevé à', { min: 1, max: 100, unit: ' % PV' });
+  field(r, 'combat.frontLine', 'Ennemis en ligne au plus', { min: 1, max: 5 });
+}
+
+function movesEditor(parent, base, moves) {
+  (Array.isArray(moves) ? moves : []).forEach((m, i) => {
+    if (!m || !ATTACK_NAMES[m.attack]) return;
+    field(parent, `${base}.${i}.damage`, 'Dégâts par impact : ' + ATTACK_NAMES[m.attack], { min: 0, max: 60 });
+    field(parent, `${base}.${i}.weight`, 'Poids : ' + ATTACK_NAMES[m.attack], { min: 0, max: 10,
+      share: () => { const list = getPath(model, base); return shareText(list[i].weight, sumWeights(list.filter((x) => x && ATTACKS.includes(x.attack)).map((x) => x.weight))); } });
+  });
+}
+
+function enemyCard(parent, id, extra) {
+  const c = el('div', 'card');
+  const head = el('div', 'head');
+  head.append(el('h3', null, nameOf(id)));
+  if (extra) head.append(el('span', 'tag', extra));
+  c.append(head);
+  const st = el('div', 'stats');
+  st.dataset.foe = id;
+  c.append(st);
+  const mv = el('p', 'moves');
+  mv.dataset.foeMoves = id;
+  c.append(mv);
+  const det = el('details');
+  det.append(el('summary', null, 'Régler'));
+  const inner = el('div', 'inner');
+  det.append(inner);
+  c.append(det);
+  parent.append(c);
+  return inner;
+}
+
+function buildEnemies(sm) {
+  const p = document.getElementById('enemies');
+  p.textContent = '';
+  for (const k of sm.enemyIds) {
+    const base = `codex.${k}.stats`;
+    const inner = enemyCard(p, k, [sm.enemies[k].role === 'support' ? 'relève, garde' : null, sm.enemies[k].selfRevive ? 'se relève seul' : null].filter(Boolean).join(' · ') || null);
+    field(inner, `${base}.maxHp`, 'PV', { min: 1, max: 400 });
+    field(inner, `${base}.maxGuard`, 'Garde', { min: 1, max: 100 });
+    field(inner, `${base}.initiative`, 'Initiative', { min: 0, max: 20 });
+    if (sm.enemies[k].role === 'support') field(inner, `${base}.guardIntentChancePercent`, 'Garde quand il le peut', { min: 0, max: 100, unit: ' %' });
+    movesEditor(inner, `${base}.moves`, model.codex[k].stats.moves);
+  }
+  if (!sm.enemyIds.length) p.append(el('p', 'small muted', 'Aucun ennemi actif dans le Codex.'));
+  const b = document.getElementById('bosses');
+  b.textContent = '';
+  for (const id of sm.eliteIds) {
+    const base = `codex.${id}.stats`;
+    const inner = enemyCard(b, id, 'Élite' + (sm.elites[id].selfRevive ? ' · se relève seul' : ''));
+    field(inner, `${base}.maxHp`, 'PV', { min: 1, max: 600, step: 10 });
+    field(inner, `${base}.maxGuard`, 'Garde', { min: 1, max: 150 });
+    field(inner, `${base}.initiative`, 'Initiative', { min: 0, max: 20 });
+    movesEditor(inner, `${base}.moves`, model.codex[id].stats.moves);
+  }
+  for (const id of sm.bossIds) {
+    const base = `codex.${id}.stats`;
+    const bi = enemyCard(b, id, 'Boss');
+    field(bi, `${base}.maxHp`, 'PV', { min: 1, max: 900, step: 10 });
+    field(bi, `${base}.maxGuard`, 'Garde', { min: 1, max: 200 });
+    field(bi, `${base}.phaseShiftPercent`, 'Changement de phase sous', { min: 0, max: 100, unit: ' % PV' });
+    model.codex[id].stats.phases.slice(0, 2).forEach((ph, i) => {
+      bi.append(el('p', 'small muted', 'Phase ' + (i + 1)));
+      field(bi, `${base}.phases.${i}.initiative`, 'Initiative', { min: 0, max: 20 });
+      movesEditor(bi, `${base}.phases.${i}.moves`, ph.moves);
+    });
+  }
+}
+
+function effectFields(card, id, effects) {
+  (Array.isArray(effects) ? effects : []).forEach((x, i) => {
+    const def = x && EFFECTS[x.effect];
+    if (!def) { card.append(el('p', 'small ko', 'Effet inconnu « ' + String(x && x.effect) + ' » : ignoré.')); return; }
+    field(card, `codex.${id}.stats.effects.${i}.value`, def.label, { min: def.min, max: def.max, unit: def.unit ? ' ' + def.unit : '' });
+  });
+}
+
+function buildLoot(sm) {
+  const rules = document.getElementById('loot-rules');
+  rules.textContent = '';
+  rules.append(el('h3', null, 'Récompenses d’un combat gagné'));
+  field(rules, 'rewards.dropChanceAtThree', "Chance d'objet, groupe de 3", { min: 0, max: 100, unit: ' %' });
+  field(rules, 'rewards.dropChancePerEnemy', 'par ennemi de plus (ou de moins)', { min: 0, max: 50, unit: ' pts' });
+  field(rules, 'rewards.rareChancePercent', 'Objet Rare', { min: 0, max: 100, unit: ' %' });
+  // Chaque bienfait actif est tiré avec le poids de sa rareté : la part d'une rareté tient compte du nombre de bienfaits de cette rareté.
+  const boonCount = (r) => Object.values(sm.boons).filter((x) => x.rarity === r).length;
+  const boonShare = (r) => (v) => {
+    const total = RARITIES.reduce((t, x) => t + Math.max(0, num(x === r ? v : model.rewards.boonRarityWeights[x])) * boonCount(x), 0);
+    const n = boonCount(r);
+    return shareText(v, n ? total / n : 0, ' (' + n + ' actif' + (n > 1 ? 's' : '') + ', 1er bienfait proposé)');
+  };
+  field(rules, 'rewards.boonRarityWeights.common', 'Poids d’un bienfait Commun', { min: 0, max: 20, share: boonShare('common') });
+  field(rules, 'rewards.boonRarityWeights.rare', 'Poids d’un bienfait Rare', { min: 0, max: 20, share: boonShare('rare') });
+  field(rules, 'rewards.boonRarityWeights.epic', 'Poids d’un bienfait Épique', { min: 0, max: 20, share: boonShare('epic') });
+  field(rules, 'rewards.goldPerEnemy', 'Or par ennemi', { min: 0, max: 20 });
+  field(rules, 'rewards.goldElite', 'Or de l’Élite', { min: 0, max: 100 });
+  field(rules, 'rewards.goldBoss', 'Or du boss', { min: 0, max: 200 });
+  rules.append(el('p', 'note', 'L’Élite donne toujours un objet Rare. Le Feu de camp et le boss n’en donnent pas. Aucun objet Épique n’est tiré au palier 1. L’Or ne sert à rien dans le prototype : il sert à juger la sensation de perte à la chute.'));
+
+  const boons = document.getElementById('boons');
+  boons.textContent = '';
+  for (const id of Object.keys(sm.boons)) {
+    const e = model.codex[id];
+    const c = el('div', 'card');
+    const head = el('div', 'head');
+    head.append(el('h3', null, e.name));
+    head.append(el('span', 'tag ' + e.rarity, NAMES[e.rarity]));
+    c.append(head);
+    c.append(el('p', 'small muted', 'Famille ' + (BOON_FAMILIES[e.stats.family] || '?')));
+    effectFields(c, id, e.stats.effects);
+    boons.append(c);
+  }
+  const items = document.getElementById('items');
+  items.textContent = '';
+  for (const id of Object.keys(sm.items)) {
+    const e = model.codex[id];
+    const c = el('div', 'card');
+    const head = el('div', 'head');
+    head.append(el('h3', null, e.name));
+    head.append(el('span', 'tag ' + e.rarity, NAMES[e.rarity]));
+    c.append(head);
+    c.append(el('p', 'small muted', NAMES[e.category]));
+    effectFields(c, id, e.stats.effects);
+    field(c, `codex.${id}.stats.initiative`, 'Initiative', { min: -5, max: 5 });
+    items.append(c);
+  }
+}
+
+function buildGauge(sm) {
+  const g = document.getElementById('gauge-fields');
+  g.textContent = '';
+  field(g, 'fateGauge.thresholdsPercent.plus1', '+1 à partir de r =', { min: 0, max: 100, unit: ' %' });
+  field(g, 'fateGauge.thresholdsPercent.zero', 'Neutre à partir de', { min: 0, max: 100, unit: ' %' });
+  field(g, 'fateGauge.thresholdsPercent.minus1', '−1 à partir de', { min: 0, max: 100, unit: ' %' });
+  field(g, 'fateGauge.fatiguePercent.minus1', 'Fatigue à −1 (PV max)', { min: 0, max: 50, unit: ' %' });
+  field(g, 'fateGauge.fatiguePercent.minus2', 'Fatigue à −2 (PV max)', { min: 0, max: 50, unit: ' %' });
+  field(g, 'fateGauge.dropChanceBonus.plus1', "Chance d'objet à +1", { min: 0, max: 60, unit: ' pts' });
+  field(g, 'fateGauge.dropChanceBonus.plus2', "Chance d'objet à +2", { min: 0, max: 60, unit: ' pts' });
+  field(g, 'fateGauge.rarityShift.plus2', 'Décalage de rareté à +2', { min: -30, max: 30, unit: ' pts' });
+  field(g, 'fateGauge.rarityShift.plus1', 'Décalage de rareté à +1', { min: -30, max: 30, unit: ' pts' });
+  field(g, 'fateGauge.rarityShift.minus1', 'Décalage de rareté à −1', { min: -30, max: 30, unit: ' pts' });
+  field(g, 'fateGauge.rarityShift.minus2', 'Décalage de rareté à −2', { min: -30, max: 30, unit: ' pts' });
+
+  const b = document.getElementById('blessings');
+  b.textContent = '';
+  const table = el('table', 'mini');
+  const thead = el('tr');
+  for (const h of ['Famille', 'Commune', 'Rare', 'Épique']) thead.append(el('th', null, h));
+  table.append(thead);
+  for (const fam of Object.keys(sm.blessingFamilies)) {
+    const ranks = model.codex[fam].stats.ranks;
+    const tr = el('tr');
+    const name = el('td');
+    name.append(el('span', null, nameOf(fam)));
+    const def = EFFECTS[ranks.rare && ranks.rare.effect];
+    name.append(el('div', 'small muted', def ? def.label.replace(/ [+×]$/, '') : 'effet inconnu'));
+    tr.append(name);
+    for (const r of RARITIES) {
+      const td = el('td');
+      const input = el('input');
+      input.type = 'number'; input.inputMode = 'decimal'; input.min = 0; input.max = 100;
+      const path = `codex.${fam}.stats.ranks.${r}.value`;
+      input.value = getPath(model, path);
+      const rdef = EFFECTS[ranks[r] && ranks[r].effect];
+      input.setAttribute('aria-label', nameOf(fam) + ' ' + RARITY_FEM[r] + (rdef ? ' : ' + rdef.label : ''));
+      input.title = gdText(path) + (rdef ? ' · ' + rdef.label : '');
+      input.addEventListener('input', () => onChange(path, input.value, input, { min: 0, max: 100 }));
+      td.append(input);
+      tr.append(td);
+      const entry = { path, row: td, input, cell: td };
+      registry.push(entry);
+      refreshRow(entry);
+    }
+    table.append(tr);
+  }
+  b.append(table);
+  b.append(el('p', 'small muted', 'Élan Commune : au 1er combat seulement ; Rare et Épique : à chaque combat. Survolez une case pour la valeur GD. Les effets se règlent dans le Codex.'));
+}
+
+function buildTiming() {
+  const t = document.getElementById('timing');
+  t.textContent = '';
+  t.append(el('p', 'small muted', 'Calées pour que le boss dure environ 4 minutes et un groupe de 3 environ 2 à 2,5 minutes (simulation du 23/10 sur #33).'));
+  const labels = {
+    heroAttackSec: 'Attaque du héros (choix compris)', heroPowerSec: 'Pouvoir du héros', enemyAttackSec: 'Coup d’un ennemi',
+    counterSec: 'Contre-attaque', enemySupportSec: 'Garde ou Relever', lostActionSec: 'Action perdue', roundSec: 'Par manche (transitions)',
+    combatOpenSec: 'Entrée et sortie d’un combat', choiceSec: 'Un écran de choix', campfireSec: 'Feu de camp', blessingSec: 'Choix des bénédictions',
+  };
+  for (const k of Object.keys(labels)) field(t, 'timing.' + k, labels[k], { min: 0, max: 60, step: 0.1, unit: ' s' });
+}
+
+function buildAll() {
+  registry.length = 0;
+  const sm = buildSimModel(model);
+  buildPlayer(sm);
+  buildLevers(sm);
+  buildMap(sm);
+  buildHeroes(sm);
+  buildEnemies(sm);
+  buildLoot(sm);
+  buildGauge(sm);
+  buildTiming();
+  renderInstant();
+  balanceStale = false;
+}
+
+// ---------- rendu instantané (sans simulation) ----------
+function movesText(moves) {
+  const total = moves.reduce((s, m) => s + Math.max(0, m.weight), 0) || 1;
+  if (!moves.length) return 'aucun coup';
+  return moves.map((m) => `${m.name ? '« ' + m.name + ' », ' : ''}${ATTACK_NAMES[m.attack].replace(' (×2 impacts)', '')} ${m.attack === 'double' ? m.damage + ' + ' + m.damage : m.damage}${m.bleed ? ', saignement ' + m.bleed.damage + ' × ' + m.bleed.rounds : ''} (${Math.round((Math.max(0, m.weight) * 100) / total)} %)`).join(' · ');
+}
+
+function renderInstant() {
+  const sm = buildSimModel(model);
+  const offers = doorOfferProbabilities(sm);
+  model.tier.floors.forEach((floor, f) => {
+    const dyn = document.getElementById('floor-dyn-' + f);
+    if (!dyn) return;
+    dyn.textContent = '';
+    if (floor.kind === 'boss') {
+      dyn.append(el('p', 'small muted', 'Seul dans son combat. Pas de Feu de camp imposé avant lui : le soin est un choix du joueur aux étages précédents.'));
+      return;
+    }
+    if (floor.kind === 'exit') {
+      const doors = el('div', 'doors');
+      for (const t of DOOR_TYPES) {
+        const d = el('div', 'door ' + t);
+        d.append(el('div', 't', NAMES[t]));
+        d.append(el('div', 'p', pct(offers[f][t])));
+        doors.append(d);
+      }
+      dyn.append(doors);
+      if (model.tier.campfireGuaranteeFloor === f + 1) dyn.append(el('p', 'small', 'Garantie : si aucun Feu de camp n’a été proposé avant, une des deux portes en est un.'));
+    }
+    const probs = sizeProbabilities(floor.groupSizeWeights);
+    const bar = el('div', 'sizes');
+    bar.setAttribute('aria-label', 'Taille des groupes');
+    probs.forEach((p, i) => {
+      if (p <= 0) return;
+      const s = el('span', 's' + (i + 1), p >= 0.08 ? (i + 1) + ' : ' + Math.round(p * 100) + '%' : String(i + 1));
+      s.style.width = (p * 100) + '%';
+      bar.append(s);
+    });
+    dyn.append(el('div', 'small muted', floor.kind === 'combat' ? 'Taille du groupe' : 'Taille du groupe derrière la porte Combat (annoncée sur la porte)'));
+    dyn.append(bar);
+    const mean = probs.reduce((s, p, i) => s + p * (i + 1), 0);
+    const line = el('div', 'small');
+    line.id = 'floor-sim-' + f;
+    line.textContent = 'En moyenne ' + fr(mean, 1) + ' ennemis.';
+    dyn.append(line);
+  });
+
+  document.querySelectorAll('#tab-balance [data-hero]').forEach((box) => {
+    const s = sm.heroes[box.dataset.hero];
+    if (!s) return;
+    box.textContent = '';
+    statBox(box, 'PV', s.maxHp, 'hp');
+    statBox(box, 'Attaque', s.hits > 1 ? s.attackPower + '×' + s.hits : s.attackPower);
+    statBox(box, 'Brise-garde', s.hits > 1 ? s.guardDamage + '×' + s.hits : s.guardDamage, 'guard');
+    statBox(box, 'Initiative', s.initiative, 'ini');
+  });
+  const foe = (id) => sm.enemies[id] || sm.elites[id] || sm.bosses[id];
+  document.querySelectorAll('#tab-balance [data-foe]').forEach((box) => {
+    const e = foe(box.dataset.foe);
+    if (!e) return;
+    box.textContent = '';
+    statBox(box, 'PV', e.maxHp, 'hp');
+    statBox(box, 'Garde', e.maxGuard, 'guard');
+    statBox(box, 'Initiative', e.phases ? e.phases.map((p) => p.initiative).join(' → ') : e.initiative, 'ini');
+    statBox(box, 'Coups', e.phases ? e.phases.map((p) => p.moves.length).join(' → ') : e.moves.length);
+  });
+  document.querySelectorAll('#tab-balance [data-foe-moves]').forEach((p) => {
+    const e = foe(p.dataset.foeMoves);
+    if (!e) return;
+    p.textContent = e.phases ? e.phases.map((ph, i) => 'Phase ' + (i + 1) + ' : ' + movesText(ph.moves)).join('. ') : movesText(e.moves);
+  });
+
+  // ordre d'action
+  const order = document.getElementById('order');
+  order.textContent = '';
+  const actors = [
+    ...sm.heroIds.map((id) => ({ name: nameOf(id), ini: sm.heroes[id].initiative, hero: true })),
+    ...sm.enemyIds.map((id, i) => ({ name: nameOf(id), ini: sm.enemies[id].initiative, slot: i })),
+    ...sm.eliteIds.map((id, i) => ({ name: shortName(id).replace(/^./, (c) => c.toUpperCase()), ini: sm.elites[id].initiative, slot: 100 + i })),
+    ...sm.bossIds.flatMap((id, j) => sm.bosses[id].phases.map((ph, i) => ({ name: shortName(id).replace(/^./, (c) => c.toUpperCase()) + ', phase ' + (i + 1), ini: ph.initiative, slot: 200 + j * 4 + i }))),
+  ].sort((a, b) => b.ini - a.ini || (a.hero && !b.hero ? -1 : !a.hero && b.hero ? 1 : (a.slot || 0) - (b.slot || 0)));
+  const maxIni = Math.max(1, ...actors.map((a) => a.ini));
+  actors.forEach((a, i) => {
+    const r = el('div', 'orow' + (a.hero ? ' hero' : ''));
+    r.append(el('span', 'rk', String(i + 1)));
+    const ob = el('div', 'ob');
+    const fill = el('span');
+    fill.style.width = (Math.max(0, a.ini) * 100) / maxIni + '%';
+    ob.append(fill);
+    ob.append(el('em', null, a.name));
+    r.append(ob);
+    r.append(el('span', 'iv', String(a.ini)));
+    order.append(r);
+  });
+
+  // jauge
+  const gauge = document.getElementById('gauge');
+  gauge.textContent = '';
+  const g = model.fateGauge;
+  const steps = [
+    { lvl: -2, cls: 'c2', rule: 'r < ' + g.thresholdsPercent.minus1 + ' %', fx: ['PV max −' + g.fatiguePercent.minus2 + ' %', 'Rare ' + (model.rewards.rareChancePercent + g.rarityShift.minus2) + ' %'] },
+    { lvl: -1, cls: 'c1', rule: 'r ≥ ' + g.thresholdsPercent.minus1 + ' %', fx: ['PV max −' + g.fatiguePercent.minus1 + ' %', 'Rare ' + (model.rewards.rareChancePercent + g.rarityShift.minus1) + ' %'] },
+    { lvl: 0, cls: 'n', rule: 'r ≥ ' + g.thresholdsPercent.zero + ' %', fx: ['aucun effet', 'Rare ' + model.rewards.rareChancePercent + ' %'] },
+    { lvl: 1, cls: 'f1', rule: 'r ≥ ' + g.thresholdsPercent.plus1 + ' %', fx: ['objet +' + g.dropChanceBonus.plus1 + ' pts', 'Rare ' + (model.rewards.rareChancePercent + g.rarityShift.plus1) + ' %'] },
+    { lvl: 2, cls: 'f2', rule: 'r = 100 %', fx: ['objet +' + g.dropChanceBonus.plus2 + ' pts', 'Rare ' + (model.rewards.rareChancePercent + g.rarityShift.plus2) + ' %'] },
+  ];
+  for (const s of steps) {
+    const d = el('div', 'gstep ' + s.cls + (Number(model.player.fateLevel) === s.lvl ? ' cur' : ''));
+    d.append(el('b', null, s.lvl > 0 ? '+' + s.lvl : s.lvl < 0 ? '−' + -s.lvl : '0'));
+    d.append(el('div', null, s.rule));
+    for (const fx of s.fx) d.append(el('div', null, fx));
+    gauge.append(d);
+  }
+
+  for (const en of registry) if (en.shareEl) en.shareEl.textContent = en.share(getPath(model, en.path));
+
+  const mod = registry.filter((e) => e.row.classList.contains('mod') && !e.path.startsWith('player.') && !e.path.startsWith('timing.'));
+  const uniq = new Set(mod.map((e) => e.path)).size;
+  document.getElementById('modcount').textContent = uniq + (uniq > 1 ? ' valeurs de jeu modifiées' : ' valeur de jeu modifiée');
+  document.getElementById('modcount').classList.toggle('prov', uniq > 0);
+  const json = document.getElementById('json');
+  if (document.activeElement !== json) json.value = JSON.stringify(model, null, 1);
+
+  const warn = document.getElementById('sim-warn');
+  warn.textContent = '';
+  const list = simWarnings(sm);
+  if (list.length) {
+    const box = el('div', 'sim-warn');
+    for (const w of list) box.append(el('p', w.bad ? 'ko' : 'meh', w.text));
+    warn.append(box);
+  }
+}
+
+// ---------- simulation et rendu ----------
+function gdModelForCompare() {
+  const gd = clone(GAME_DESIGNER_MODEL);
+  gd.player = clone(model.player);
+  gd.timing = clone(model.timing);
+  return gd;
+}
+
+function kpi(parent, label, mine, gd, fmt, target, better) {
+  const c = el('div', 'card');
+  c.append(el('div', 'label', label));
+  c.append(el('div', 'value', fmt(mine)));
+  if (gd != null) {
+    const delta = mine - gd;
+    const same = Math.abs(delta) < 1e-9 || fmt(mine) === fmt(gd);
+    const span = el('div', 'cmp');
+    span.append(document.createTextNode('GD : ' + fmt(gd)));
+    if (!same && better) {
+      const good = better === 'up' ? delta > 0 : better === 'down' ? delta < 0 : null;
+      span.append(el('span', good == null ? '' : good ? 'up' : 'down', '  ' + (delta > 0 ? '▲' : '▼')));
+    }
+    c.append(span);
+  }
+  if (target) {
+    const ok = target.test(mine);
+    c.append(el('div', 'target ' + (ok === true ? 'ok' : ok === false ? 'ko' : 'meh'), target.text));
+  }
+  parent.append(c);
+}
+
+function renderSim(mine, gd) {
+  const k = document.getElementById('kpis');
+  k.textContent = '';
+  const fell = document.getElementById('fell');
+  fell.textContent = '';
+  const d = document.getElementById('difficulty');
+  d.textContent = '';
+  if (!mine) {
+    k.append(el('p', 'small ko', 'Pas de simulation : activez au moins un héros dans le Codex.'));
+    return;
+  }
+  const G = (key) => (gd ? gd[key] : null);
+  kpi(k, 'Durée d’une ascension gagnée (médiane)', mine.winMinutesMedian, G('winMinutesMedian'), mins,
+    { text: 'cible : environ 15 min', test: (v) => (v >= 12.5 && v <= 17 ? true : v >= 11 && v <= 18.5 ? null : false) });
+  kpi(k, 'Ascension longue (9 sur 10 sous)', mine.winMinutesP90, G('winMinutesP90'), mins,
+    { text: 'cible : 18 min au plus', test: (v) => (v <= 18 ? true : v <= 20 ? null : false) });
+  kpi(k, 'Victoire de l’ascension', mine.winRate, G('winRate'), pct,
+    { text: 'cible : 30 à 50 % au début', test: (v) => (v >= 0.3 && v <= 0.5 ? true : v >= 0.2 && v <= 0.6 ? null : false) }, 'up');
+  kpi(k, 'Boss battu, une fois atteint', mine.bossWin, G('bossWin'), pct,
+    { text: 'repère : 55 à 75 %', test: (v) => (v >= 0.55 && v <= 0.75 ? true : v >= 0.4 && v <= 0.85 ? null : false) }, 'up');
+  kpi(k, 'PV avant le boss', mine.hpBeforeBossPercent / 100, gd ? gd.hpBeforeBossPercent / 100 : null, pct,
+    { text: 'repère : 55 à 80 %', test: (v) => (v >= 0.55 && v <= 0.8 ? true : v >= 0.45 ? null : false) }, 'up');
+  kpi(k, 'Atteindre le boss', mine.reachBoss, G('reachBoss'), pct, null, 'up');
+  kpi(k, 'Groupe de 5 affronté', mine.fivesRate, G('fivesRate'), pct,
+    { text: 'cible : rare, moins de 10 %', test: (v) => (v < 0.1 ? true : v < 0.15 ? null : false) });
+  kpi(k, 'Feu de camp proposé', mine.campfireOffered, G('campfireOffered'), pct, null);
+  kpi(k, 'Feux de camp pris', mine.campfireTaken, G('campfireTaken'), (v) => fr(v, 2), null);
+  kpi(k, 'Élites affrontées', mine.eliteTaken, G('eliteTaken'), (v) => fr(v, 2), null);
+  kpi(k, 'Bienfaits par ascension', mine.boons, G('boons'), (v) => fr(v, 1), null, 'up');
+  kpi(k, 'Objets par ascension', mine.items, G('items'), (v) => fr(v, 1), null, 'up');
+
+  // où l'on tombe
+  const row = el('div', 'fell');
+  const colors = ['#5B6B9A', '#6E6BA0', '#8A6A9E', '#A6668F', '#C2637F', '#E0607A'];
+  mine.fellAt.forEach((p, i) => {
+    if (p <= 0) return;
+    const s = el('span', null, p >= 0.06 ? 'É' + (i + 1) + ' ' + Math.round(p * 100) + '%' : '');
+    s.style.width = p * 100 + '%';
+    s.style.background = colors[i % colors.length];
+    s.title = 'Chute à l’étage ' + (i + 1) + ' : ' + pct(p);
+    row.append(s);
+  });
+  const w = el('span', null, mine.winRate >= 0.08 ? 'victoire ' + Math.round(mine.winRate * 100) + '%' : '');
+  w.style.width = mine.winRate * 100 + '%';
+  w.style.background = '#2F8A63';
+  row.append(w);
+  fell.append(row);
+  fell.append(el('p', 'small muted', 'Chutes par étage : ' + mine.fellAt.map((p, i) => 'É' + (i + 1) + ' ' + pct(p)).join(' · ') + '.'));
+
+  // difficulté
+  const rows = [];
+  model.tier.floors.forEach((floor, f) => { if (floor.kind !== 'boss') rows.push(['floor' + (f + 1), 'Étage ' + (f + 1)]); });
+  for (let s = 1; s <= 5; s += 1) rows.push(['size' + s, 'Groupe de ' + s]);
+  for (const key of Object.keys(mine.encounters)) {
+    if (key.startsWith('elite:')) rows.push([key, shortName(key.slice(6)).replace(/^./, (c) => c.toUpperCase())]);
+  }
+  for (const key of Object.keys(mine.encounters)) {
+    if (key.startsWith('boss:')) rows.push([key, shortName(key.slice(5)).replace(/^./, (c) => c.toUpperCase())]);
+  }
+  for (const [key, label] of rows) {
+    const m = mine.encounters[key];
+    const g = gd && gd.encounters[key];
+    if (!m) continue;
+    const r = el('div', 'brow');
+    r.append(el('span', null, label));
+    const track = el('div', 'track');
+    const lost = Math.min(100, m.lostPercent);
+    const fill = el('div', 'fill' + (lost > 60 ? ' hot' : ''));
+    fill.style.width = lost + '%';
+    track.append(fill);
+    if (g) {
+      const mk = el('div', 'mark');
+      mk.style.left = 'calc(' + Math.min(100, g.lostPercent) + '% - 1px)';
+      track.append(mk);
+    }
+    track.setAttribute('role', 'img');
+    track.setAttribute('aria-label', label + ' : ' + Math.round(lost) + ' % des PV perdus' + (g ? ', GD ' + Math.round(Math.min(100, g.lostPercent)) + ' %' : ''));
+    r.append(track);
+    r.append(el('span', 'num', Math.round(lost) + ' %'));
+    r.append(el('span', 'sub', 'victoire ' + pct(m.win) + ' · ' + fr(m.rounds, 0) + ' manches · ' + mins(m.minutes)));
+    d.append(r);
+  }
+
+  model.tier.floors.forEach((floor, f) => {
+    const line = document.getElementById('floor-sim-' + f);
+    const m = mine.encounters['floor' + (f + 1)];
+    if (!line || !m) return;
+    const probs = sizeProbabilities(floor.groupSizeWeights);
+    const mean = probs.reduce((s, p, i) => s + p * (i + 1), 0);
+    line.textContent = 'En moyenne ' + fr(mean, 1) + ' ennemis · combat seul à PV pleins : ' + Math.round(Math.min(100, m.lostPercent)) + ' % des PV perdus, ' + mins(m.minutes) + '.';
+  });
+}
+
+let lastMine = null;
+function runSimulation() {
+  const status = document.getElementById('status');
+  const gdModel = gdModelForCompare();
+  const key = JSON.stringify([gdModel.player, gdModel.timing]);
+  const t0 = performance.now();
+  const mine = simulate(model, SEED);
+  if (gdCache.key !== key) gdCache = { key, result: sameValue(gdModel, model) ? mine : simulate(gdModel, SEED) };
+  lastMine = mine;
+  renderSim(mine, gdCache.result);
+  status.classList.remove('busy');
+  status.textContent = mine ? mine.runs + ' ascensions simulées en ' + Math.round(performance.now() - t0) + ' ms.' : 'Simulation impossible.';
+}
+
+function balanceVisible() { return !document.getElementById('tab-balance').hidden; }
+
+function scheduleSimulation(delay = 250) {
+  const status = document.getElementById('status');
+  clearTimeout(timer);
+  if (!balanceVisible()) { status.textContent = ''; timer = null; return; }
+  status.classList.add('busy');
+  status.textContent = 'Calcul…';
+  timer = setTimeout(runSimulation, delay);
+}
+
+function changed() {
+  renderInstant();
+  scheduleSimulation();
+}
+
+// Reconstruit ce qui est visible : l'Équilibrage tout de suite s'il est affiché, sinon à son ouverture.
+function refreshAll() {
+  if (balanceVisible()) { buildAll(); scheduleSimulation(0); } else balanceStale = true;
+  if (typeof renderCodex === 'function') renderCodex();
+}
+
+document.getElementById('json-load').addEventListener('click', () => {
+  const msg = document.getElementById('json-msg');
+  try {
+    const before = clone(model.codex);
+    applyModel(JSON.parse(document.getElementById('json').value));
+    const ids = new Set([...Object.keys(before), ...Object.keys(model.codex)]);
+    for (const id of ids) if (!sameValue(before[id], model.codex[id])) queueCodexWrite(id);
+    msg.textContent = 'Valeurs chargées.';
+  } catch (err) {
+    msg.textContent = 'Texte illisible : ' + err.message;
+  }
+});
+
+// ======================= Onglet Codex =======================
+const ATTACK_LABELS = { basic: 'Coup simple', double: 'Double frappe', delayed: 'Coup retardé', feint: 'Coup trompeur', perilous: 'Coup imparable', delayedPerilous: 'Coup retardé imparable' };
+const ui = { cat: 'enemy', query: '', sort: 'order', status: 'all', selected: null, confirmDelete: null, assetPick: {}, noteDraft: {} };
+const store = { db: null, readOnly: false, saved: {}, assets: {}, timers: {}, inflight: {}, again: {}, bootstrap: false, state: 'local' };
+let codexStale = false;
+let sheetRefs = {};
+let assetZoneDirty = false;
+
+function $(id) { return document.getElementById(id); }
+function normText(s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+
+// ---------- noms de code ----------
+function deriveCode(name) {
+  const words = String(name || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9]+/g, ' ').trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return 'nouvelleEntree';
+  let code = words.map((w, i) => (i ? w[0].toUpperCase() + w.slice(1).toLowerCase() : w.toLowerCase())).join('');
+  if (/^[0-9]/.test(code)) code = 'n' + code;
+  return code.slice(0, 60);
+}
+function codeTaken(code, selfId) { return Object.values(model.codex).find((e) => e.id !== selfId && e.code === code); }
+function uniqueCode(base, selfId) {
+  let code = base; let n = 2;
+  while (codeTaken(code, selfId)) { code = base + n; n += 1; }
+  return code;
+}
+function uniqueId(base) {
+  let id = /^[A-Za-z]/.test(base) ? base : 'e' + base;
+  const b = id; let n = 2;
+  while (model.codex[id] || id in store.saved) { id = b + n; n += 1; }
+  return id;
+}
+function nextOrder() { return Object.values(model.codex).reduce((m, e) => Math.max(m, num(e.order)), 0) + 1; }
+
+// ---------- diagnostic d'une entrée ----------
+function entryIssues(e) {
+  const out = [];
+  const s = e.stats || {};
+  if (!/^[a-z][A-Za-z0-9]*$/.test(e.code)) out.push({ level: 'bad', text: 'Nom de code invalide : une minuscule, puis des lettres et des chiffres, sans espace ni accent (camelCase).' });
+  const twin = codeTaken(e.code, e.id);
+  if (twin) out.push({ level: 'bad', text: 'Ce nom de code est déjà pris par « ' + twin.name + ' ».' });
+  const unknownEffects = [];
+  if (Array.isArray(s.effects)) for (const x of s.effects) if (!x || !EFFECTS[x.effect]) unknownEffects.push(String(x && x.effect));
+  if (e.category === 'blessing' && s.ranks) for (const r of RARITIES) if (!s.ranks[r] || !EFFECTS[s.ranks[r].effect]) unknownEffects.push(String(s.ranks[r] && s.ranks[r].effect));
+  for (const u of unknownEffects) out.push({ level: 'bad', text: 'Effet inconnu « ' + u + ' » : ignoré par la simulation. Choisissez un effet de la liste.' });
+  const moveLists = e.category === 'boss' ? (s.phases || []).map((p) => p && p.moves) : (e.category === 'enemy' || e.category === 'elite') ? [s.moves] : [];
+  moveLists.forEach((moves, i) => {
+    const where = e.category === 'boss' ? ' en phase ' + (i + 1) : '';
+    const list = Array.isArray(moves) ? moves : [];
+    const unknown = list.filter((m) => !m || !ATTACKS.includes(m.attack));
+    if (unknown.length) out.push({ level: 'bad', text: 'Type d’attaque inconnu' + where + ' : coup ignoré par la simulation.' });
+    if (!list.some((m) => m && ATTACKS.includes(m.attack) && num(m.weight) > 0)) out.push({ level: 'warn', text: 'Aucun coup utilisable' + where + ' : il ne frappera jamais.' });
+  });
+  if (e.category === 'enemy' && num(s.drawWeight) <= 0) out.push({ level: 'warn', text: 'Poids de tirage à 0 : il n’apparaît jamais dans les groupes.' });
+  if (e.category === 'enemy' && num(s.groupCap) <= 0) out.push({ level: 'warn', text: 'Plafond à 0 : il n’apparaît jamais dans les groupes.' });
+  if (CAT[e.category].item && e.rarity === 'epic') out.push({ level: 'warn', text: 'Objet Épique : jamais tiré au palier 1 (règle P20). Il ne sert pas dans la simulation.' });
+  if (e.category === 'boon' && !BOON_FAMILIES[s.family]) out.push({ level: 'warn', text: 'Famille inconnue « ' + String(s.family) + ' ».' });
+  if (e.tier !== 1) out.push({ level: 'warn', text: 'Palier ' + e.tier + ' : la simulation ne joue que le palier 1.' });
+  if (e.status === 'draft') out.push({ level: 'info', text: 'Brouillon : hors de la simulation. Passez-le en « Actif » pour l’y inclure.' });
+  else if (e.status === 'retired') out.push({ level: 'info', text: 'Retiré : hors de la simulation.' });
+  else if (e.tier === 1) out.push({ level: 'info', text: 'Actif : inclus dans la simulation de l’Équilibrage.' });
+  return out;
+}
+
+// ---------- assets ----------
+function assetOf(id) { const a = store.assets[id]; return a && typeof a === 'object' ? a : {}; }
+function proposalsOf(a) {
+  const list = Array.isArray(a.proposals) ? a.proposals : [];
+  const out = [];
+  list.forEach((p, index) => { if (p && Array.isArray(p.rows) && Array.isArray(p.palette)) out.push({ p, index }); });
+  return out.slice(-24);
+}
+function assetStatus(a) {
+  if (ASSET_STATUSES.includes(a.status)) return a.status;
+  return proposalsOf(a).length ? 'proposé' : 'aucun';
+}
+function shownProposal(id) {
+  const a = assetOf(id);
+  const ps = proposalsOf(a);
+  if (!ps.length) return null;
+  const want = Number.isInteger(ui.assetPick[id]) ? ui.assetPick[id] : Number.isInteger(a.chosen) ? a.chosen : null;
+  return ps.find((x) => x.index === want) || ps[ps.length - 1];
+}
+// Dessine une proposition en pixels nets. `rows` : un caractère par pixel, « . » transparent, 0-9 puis a-z = index de palette.
+function drawProposal(canvas, p, box) {
+  const rows = p.rows.filter((r) => typeof r === 'string').slice(0, 256);
+  const h = Math.min(256, Math.max(Number.isInteger(p.h) ? p.h : 0, rows.length));
+  const w = Math.min(256, Math.max(Number.isInteger(p.w) ? p.w : 0, ...rows.map((r) => r.length), 1));
+  const pal = p.palette.map((c) => (typeof c === 'string' && /^#[0-9a-fA-F]{6}$/.test(c) ? c : null));
+  const scale = Math.max(1, Math.floor(box / Math.max(w, h, 1)));
+  canvas.width = w * scale; canvas.height = Math.max(1, h) * scale;
+  canvas.style.width = canvas.width + 'px'; canvas.style.height = canvas.height + 'px';
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  ctx.imageSmoothingEnabled = false;
+  for (let y = 0; y < Math.min(h, rows.length); y += 1) {
+    const row = rows[y];
+    for (let x = 0; x < Math.min(w, row.length); x += 1) {
+      const ch = row[x];
+      if (ch === '.' || ch === ' ') continue;
+      const idx = parseInt(ch, 36);
+      const color = Number.isFinite(idx) ? pal[idx] : null;
+      if (!color) continue;
+      ctx.fillStyle = color;
+      ctx.fillRect(x * scale, y * scale, scale, scale);
+    }
+  }
+}
+function thumbFor(e, size) {
+  const box = el('div', 'thumb');
+  const shown = shownProposal(e.id);
+  if (shown) {
+    const c = el('canvas', 'px');
+    c.setAttribute('aria-hidden', 'true');
+    drawProposal(c, shown.p, size - 4);
+    box.append(c);
+  } else {
+    box.textContent = (e.name || '?').replace(/^(La |Le |Les |L['’])/, '').charAt(0).toUpperCase();
+    box.setAttribute('aria-hidden', 'true');
+  }
+  return box;
+}
+function tagsFor(e) {
+  const meta = el('div', 'meta');
+  if (e.rarity) meta.append(el('span', 'tag ' + e.rarity, NAMES[e.rarity]));
+  meta.append(el('span', 'tag st-' + e.status, STATUSES[e.status]));
+  const as = assetStatus(assetOf(e.id));
+  meta.append(el('span', 'tag ' + ASSET_CLASS[as], 'asset : ' + as));
+  return meta;
+}
+
+// ---------- liste ----------
+function visibleEntries() {
+  const q = normText(ui.query.trim());
+  let list = Object.values(model.codex).filter((e) => (q || ui.cat === 'all' || e.category === ui.cat) && (ui.status === 'all' || e.status === ui.status));
+  if (q) list = list.filter((e) => normText(e.name + ' ' + e.code + ' ' + e.description + ' ' + entryTexts(e)).includes(q));
+  if (ui.sort === 'name') list.sort((a, b) => a.name.localeCompare(b.name, 'fr') || byOrder(a, b));
+  else if (ui.sort === 'rarity-desc' || ui.sort === 'rarity-asc') {
+    const dir = ui.sort === 'rarity-desc' ? -1 : 1;
+    list.sort((a, b) => {
+      const ra = RARITY_RANK[a.rarity] || 0; const rb = RARITY_RANK[b.rarity] || 0;
+      if (!ra !== !rb) return ra ? -1 : 1; // sans rareté : en fin de liste
+      return (ra - rb) * dir || byOrder(a, b);
+    });
+  } else list.sort(byOrder);
+  return list;
+}
+function renderCats() {
+  const box = $('cx-cats');
+  box.textContent = '';
+  box.classList.toggle('dim', !!ui.query.trim());
+  const all = Object.values(model.codex);
+  const chip = (id, label, count) => {
+    const b = el('button', 'chip', label + ' · ' + count);
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(ui.cat === id));
+    b.addEventListener('click', () => {
+      ui.cat = id;
+      if (id !== 'all') $('cx-add-cat').value = id;
+      renderCats(); renderList();
+    });
+    box.append(b);
+  };
+  chip('all', 'Tout', all.length);
+  for (const c of CATEGORIES) chip(c.id, c.label, all.filter((e) => e.category === c.id).length);
+}
+function renderList() {
+  const box = $('cx-list');
+  box.textContent = '';
+  const list = visibleEntries();
+  if (!list.length) {
+    box.append(el('p', 'small muted', ui.query.trim() ? 'Aucune entrée ne correspond à « ' + ui.query.trim() + ' ».' : 'Aucune entrée ici. « Ajouter » en crée une.'));
+    return;
+  }
+  const groups = CATEGORIES.map((c) => [c, list.filter((e) => e.category === c.id)]).filter(([, l]) => l.length);
+  for (const [c, l] of groups) {
+    box.append(el('h3', 'cx-gh', c.label));
+    const items = el('div', 'cx-items');
+    for (const e of l) {
+      const b = el('button', 'cx-item' + (e.status === 'retired' ? ' retired' : ''));
+      b.type = 'button';
+      b.dataset.id = e.id;
+      if (e.id === ui.selected) b.setAttribute('aria-current', 'true');
+      b.append(thumbFor(e, 40));
+      const txt = el('div');
+      txt.append(el('div', 'n', e.name));
+      txt.append(el('div', 'c', e.code));
+      txt.append(tagsFor(e));
+      b.append(txt);
+      b.addEventListener('click', () => selectEntry(e.id, true));
+      items.append(b);
+    }
+    box.append(items);
+  }
+}
+function selectEntry(id, scroll) {
+  ui.selected = id;
+  ui.confirmDelete = null;
+  renderList();
+  renderSheet();
+  if (scroll && window.matchMedia('(max-width: 899px)').matches) {
+    const sheet = $('cx-sheet');
+    sheet.scrollIntoView({ block: 'start' });
+    sheet.focus({ preventScroll: true });
+  }
+}
+
+// ---------- fiche ----------
+function numInput(value, label, opt, onVal) {
+  const input = el('input');
+  input.type = 'number'; input.inputMode = 'decimal'; input.step = opt.step || 1;
+  if (opt.min != null) input.min = opt.min;
+  if (opt.max != null) input.max = opt.max;
+  input.value = value == null ? '' : value;
+  input.setAttribute('aria-label', label);
+  input.addEventListener('input', () => {
+    let v = parseFloat(input.value);
+    if (!Number.isFinite(v)) return;
+    if (opt.min != null) v = Math.max(opt.min, v);
+    if (opt.max != null) v = Math.min(opt.max, v);
+    if (opt.int) v = Math.round(v);
+    onVal(v);
+  });
+  return input;
+}
+function selectInput(options, value, label, onVal) {
+  const sel = el('select');
+  for (const [v, text] of options) { const o = el('option', null, text); o.value = v; sel.append(o); }
+  if (!options.some(([v]) => v === value)) { const o = el('option', null, 'inconnu : ' + value); o.value = String(value); sel.append(o); }
+  sel.value = String(value);
+  sel.setAttribute('aria-label', label);
+  sel.addEventListener('change', () => onVal(sel.value));
+  return sel;
+}
+function gdStat(e, path) {
+  const gd = GAME_DESIGNER_MODEL.codex[e.id];
+  return gd && gd.category === e.category ? getPath(gd.stats, path) : undefined;
+}
+function sheetNum(parent, e, path, label, opt = {}) {
+  const row = el('label', 'field');
+  row.append(el('span', 'f-label', label));
+  const gdv = gdStat(e, path);
+  const mark = () => row.classList.toggle('mod', gdv !== undefined && getPath(e.stats, path) !== gdv);
+  const share = opt.share ? el('span', 'f-share') : null;
+  const showShare = () => { if (share) share.textContent = opt.share(getPath(e.stats, path)); };
+  row.append(numInput(getPath(e.stats, path), label, opt, (v) => { setPath(e.stats, path, v); mark(); showShare(); codexEdited(e.id); }));
+  row.append(el('span', 'f-gd', gdv === undefined ? (opt.unit || '').trim() : 'GD : ' + fr(gdv, Number.isInteger(gdv) ? 0 : 1) + (opt.unit || '')));
+  if (share) { showShare(); row.append(share); }
+  mark();
+  parent.append(row);
+}
+function sheetSelect(parent, label, options, value, onVal) {
+  const row = el('label', 'field wide');
+  row.append(el('span', 'f-label', label));
+  row.append(selectInput(options, value, label, onVal));
+  row.append(el('span', 'f-gd', ''));
+  parent.append(row);
+}
+function frow(parent, label, control, hint) {
+  const w = el('label', 'frow');
+  w.append(el('span', 'f-label', label));
+  w.append(control);
+  let h = null;
+  if (hint !== undefined) { h = el('span', 'f-hint', hint); w.append(h); }
+  parent.append(w);
+  return h;
+}
+function smallButton(text, cls, onClick, label) {
+  const b = el('button', cls || '', text);
+  b.type = 'button';
+  if (label) b.setAttribute('aria-label', label);
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+// Un texte libre facultatif : vide, la clé disparaît de l'entrée.
+function textInput(e, obj, key, max, label, opt = {}) {
+  const c = opt.multi ? el('textarea', 'desc short') : el('input');
+  if (!opt.multi) c.type = 'text';
+  c.maxLength = max;
+  c.value = typeof obj[key] === 'string' ? obj[key] : '';
+  if (opt.multi) c.rows = Math.min(8, Math.max(2, Math.ceil(c.value.length / 40) + 1)); // repli sans field-sizing
+  if (opt.placeholder) c.placeholder = opt.placeholder;
+  c.setAttribute('aria-label', label);
+  c.addEventListener('input', () => {
+    const v = c.value.slice(0, max);
+    if (v.trim()) obj[key] = v; else delete obj[key];
+    codexEdited(e.id);
+  });
+  return c;
+}
+function textRow(parent, e, obj, key, max, label, opt = {}) {
+  return frow(parent, label, textInput(e, obj, key, max, label, opt), opt.hint);
+}
+function entryTexts(e) {
+  const s = e.stats || {};
+  const out = [s.powerName, s.powerDescription, s.traitDescription, s.roleDescription];
+  const lists = [s.moves, ...(Array.isArray(s.phases) ? s.phases.map((p) => { out.push(p && p.phaseDescription); return p && p.moves; }) : [])];
+  for (const l of lists) if (Array.isArray(l)) for (const m of l) if (m) out.push(m.name, m.description);
+  return out.filter((t) => typeof t === 'string').join(' ');
+}
+
+function movesEd(parent, e, path) {
+  const moves = getPath(e.stats, path);
+  const wrap = el('div', 'rows-ed');
+  const hd = el('div', 'mrow hd');
+  hd.append(el('span', null, 'Type de coup'), el('span', null, 'Dégâts par impact'), el('span', null, 'Poids'), el('span'));
+  wrap.append(hd);
+  const results = [];
+  const refresh = () => moves.forEach((m, i) => { if (results[i]) results[i].textContent = moveResult(moves, m); });
+  moves.forEach((m, i) => {
+    const row = el('div', 'mrow');
+    const n = i + 1;
+    row.append(selectInput(ATTACKS.map((a) => [a, ATTACK_LABELS[a]]), m.attack, 'Coup ' + n + ' : type', (v) => { m.attack = v; codexEdited(e.id, true); }));
+    row.append(numInput(m.damage, 'Coup ' + n + ' : dégâts par impact', { min: 0, max: 99 }, (v) => { m.damage = v; refresh(); codexEdited(e.id); }));
+    row.append(numInput(m.weight, 'Coup ' + n + ' : poids', { min: 0, max: 20 }, (v) => { m.weight = v; refresh(); codexEdited(e.id); }));
+    row.append(smallButton('×', '', () => { moves.splice(i, 1); codexEdited(e.id, true); }, 'Retirer le coup ' + n));
+    if (!ATTACKS.includes(m.attack)) row.append(el('div', 'rowwarn', 'Type d’attaque inconnu : coup ignoré par la simulation.'));
+    else { results[i] = el('div', 'mres'); results[i].setAttribute('aria-live', 'polite'); row.append(results[i]); }
+    const txt = el('div', 'mtext');
+    // Modificateur de coup (liste fermée) : aucun ou Saignement.
+    const mod = el('div', 'mmod');
+    const lab = (text, control) => { const l = el('label'); l.append(el('span', null, text), control); return l; };
+    mod.append(lab('Effet du coup', selectInput([['none', 'Aucun'], ['bleed', BLEED.label]], m.bleed ? 'bleed' : 'none', 'Coup ' + n + ' : effet',
+      (v) => { if (v === 'bleed') m.bleed = clone(BLEED.dflt); else delete m.bleed; codexEdited(e.id, true); })));
+    if (m.bleed) {
+      mod.append(lab('Saignement : PV par manche', numInput(m.bleed.damage, 'Coup ' + n + ' : saignement, PV par manche', { min: BLEED.damage.min, max: BLEED.damage.max, int: true }, (v) => { m.bleed.damage = v; refresh(); codexEdited(e.id); })));
+      mod.append(lab('Saignement : manches', numInput(m.bleed.rounds, 'Coup ' + n + ' : saignement, manches', { min: BLEED.rounds.min, max: BLEED.rounds.max, int: true }, (v) => { m.bleed.rounds = v; refresh(); codexEdited(e.id); })));
+      mod.append(el('p', 'f-hint', BLEED.rule));
+    }
+    txt.append(mod);
+    txt.append(textInput(e, m, 'name', TEXT_NAME_MAX, 'Coup ' + n + ' : nom', { placeholder: 'Nom du coup (facultatif)' }));
+    txt.append(textInput(e, m, 'description', TEXT_DESC_MAX, 'Coup ' + n + ' : description', { multi: true, placeholder: 'Ce qu’on voit à l’écran, et comment le lire (facultatif)' }));
+    row.append(txt);
+    wrap.append(row);
+  });
+  refresh();
+  parent.append(wrap);
+  const add = smallButton('Ajouter un coup', '', () => { moves.push({ attack: 'basic', damage: 5, weight: 1 }); codexEdited(e.id, true); });
+  add.style.fontSize = '13px';
+  parent.append(add);
+  parent.append(el('p', 'small muted', 'Chaque ligne affiche impacts × dégâts par impact, et la part du temps que lui donne son poids : deux coups de poids 1 sortent chacun 50 % du temps. La double frappe porte deux impacts. Le coup imparable s’esquive, il ne se pare pas. Le coup retardé imparable tient une hésitation comme le coup retardé, avec le sceau rouge du début à la fin : on l’esquive, après l’hésitation. Le type fixe le calcul ; le nom et la description sont du contenu.'));
+}
+
+function effectOptions() { return Object.keys(EFFECTS).map((k) => [k, EFFECTS[k].label + (EFFECTS[k].unit ? ' (' + EFFECTS[k].unit + ')' : '')]); }
+
+function effectsEd(parent, e) {
+  const list = e.stats.effects;
+  const wrap = el('div', 'rows-ed');
+  const hd = el('div', 'erow hd');
+  hd.append(el('span', null, 'Effet'), el('span', null, 'Valeur'), el('span'));
+  wrap.append(hd);
+  list.forEach((x, i) => {
+    const row = el('div', 'erow');
+    const n = i + 1;
+    const def = EFFECTS[x.effect];
+    row.append(selectInput(effectOptions(), x.effect, 'Effet ' + n, (v) => { x.effect = v; if (!def && EFFECTS[v]) x.value = EFFECTS[v].dflt; codexEdited(e.id, true); }));
+    row.append(numInput(x.value, 'Effet ' + n + ' : valeur', { min: def ? def.min : -999, max: def ? def.max : 999 }, (v) => { x.value = v; codexEdited(e.id); }));
+    row.append(smallButton('×', '', () => { list.splice(i, 1); codexEdited(e.id, true); }, 'Retirer l’effet ' + n));
+    row.append(el('div', def ? 'f-hint small muted' : 'rowwarn', def ? def.rule : 'Effet inconnu : ignoré par la simulation.'));
+    row.lastChild.style.gridColumn = '1 / -1';
+    wrap.append(row);
+  });
+  if (!list.length) wrap.append(el('p', 'small muted', 'Aucun effet.'));
+  parent.append(wrap);
+  const add = smallButton('Ajouter un effet', '', () => {
+    const used = new Set(list.map((x) => x.effect));
+    const k = Object.keys(EFFECTS).find((key) => !used.has(key)) || 'initiative';
+    list.push({ effect: k, value: EFFECTS[k].dflt });
+    codexEdited(e.id, true);
+  });
+  add.style.fontSize = '13px';
+  parent.append(add);
+}
+
+function ranksEd(parent, e) {
+  const ranks = e.stats.ranks;
+  const wrap = el('div', 'rows-ed');
+  const hd = el('div', 'rrow hd');
+  hd.append(el('span', null, 'Rareté'), el('span', null, 'Effet'), el('span', null, 'Valeur'));
+  wrap.append(hd);
+  for (const r of RARITIES) {
+    const k = ranks[r];
+    const def = EFFECTS[k.effect];
+    const row = el('div', 'rrow');
+    row.append(el('span', 'tag ' + r, RARITY_FEM[r]));
+    row.append(selectInput(effectOptions(), k.effect, RARITY_FEM[r] + ' : effet', (v) => { k.effect = v; codexEdited(e.id, true); }));
+    const gdv = gdStat(e, 'ranks.' + r + '.value');
+    const inp = numInput(k.value, RARITY_FEM[r] + ' : valeur', { min: def ? def.min : -999, max: def ? def.max : 999 }, (v) => { k.value = v; inp.title = gdv === undefined ? '' : 'GD : ' + gdv; codexEdited(e.id); });
+    if (gdv !== undefined) inp.title = 'GD : ' + gdv;
+    row.append(inp);
+    if (!def) row.append(el('div', 'rowwarn', 'Effet inconnu : ignoré par la simulation.'));
+    wrap.append(row);
+  }
+  parent.append(wrap);
+  parent.append(el('p', 'small muted', 'Une bénédiction est une famille : le joueur en reçoit une par habitude faite hier, de la rareté de cette habitude (Facile : Commune ; Moyenne : Rare ; Difficile : Épique).'));
+}
+
+function valuesEd(parent, e) {
+  const c = e.category;
+  const s = e.stats;
+  if (c === 'enemy' || c === 'elite') {
+    sheetNum(parent, e, 'maxHp', 'PV', { min: 1, max: 999 });
+    sheetNum(parent, e, 'maxGuard', 'Garde', { min: 1, max: 300 });
+    sheetNum(parent, e, 'initiative', 'Initiative', { min: 0, max: 20 });
+    if (c === 'enemy') {
+      sheetNum(parent, e, 'drawWeight', 'Poids de tirage dans les groupes', { min: 0, max: 20, share: (v) => drawShareText(e.id, v) });
+      sheetNum(parent, e, 'groupCap', 'Plafond par groupe', { min: 0, max: 5, int: true });
+      sheetSelect(parent, 'Rôle', Object.entries(ENEMY_ROLES), s.role === 'support' ? 'support' : 'none', (v) => { s.role = v === 'support' ? 'support' : null; codexEdited(e.id, true); });
+      if (s.role === 'support') sheetNum(parent, e, 'guardIntentChancePercent', 'Garde quand il le peut', { min: 0, max: 100, unit: ' %' });
+      if (s.role === 'support') textRow(parent, e, s, 'roleDescription', TEXT_DESC_MAX, 'Le soutien à l’écran', { multi: true, placeholder: 'Ce qu’il fait quand il relève ou garde (facultatif)' });
+      parent.append(el('p', 'small muted', s.role === 'support'
+        ? 'Soutien : à son tour, il relève un allié tombé qui n’a jamais été relevé, ni par lui ni de lui-même (à la moitié de ses PV) ; sinon il peut garder ; sinon il frappe. Un ennemi seul n’est jamais un soutien.'
+        : 'Tiré de gauche à droite avec ce poids parmi les ennemis actifs, sans dépasser son plafond dans un même groupe. Le pourcentage est la part de chaque tirage, avant plafonds.'));
+    } else parent.append(el('p', 'small muted', 'Tirée à poids égal parmi les Élites actives quand le joueur prend la porte Élite. Elle donne toujours un objet Rare.'));
+    // Trait d'ennemi (liste fermée) : Se relève seul.
+    sheetSelect(parent, SELF_REVIVE.label, [['no', 'Non'], ['yes', 'Oui']], s.selfRevive ? 'yes' : 'no', (v) => { if (v === 'yes') s.selfRevive = clone(SELF_REVIVE.dflt); else delete s.selfRevive; codexEdited(e.id, true); });
+    if (s.selfRevive) {
+      sheetNum(parent, e, 'selfRevive.times', 'Se relève : nombre de fois', { min: SELF_REVIVE.times.min, max: SELF_REVIVE.times.max, int: true });
+      sheetNum(parent, e, 'selfRevive.hpPercent', 'Se relève : PV au retour', { min: SELF_REVIVE.hpPercent.min, max: SELF_REVIVE.hpPercent.max, int: true, unit: ' % PV max' });
+      parent.append(el('p', 'small muted', SELF_REVIVE.rule));
+    }
+    movesEd(parent, e, 'moves');
+  } else if (c === 'boss') {
+    sheetNum(parent, e, 'maxHp', 'PV', { min: 1, max: 999, step: 10 });
+    sheetNum(parent, e, 'maxGuard', 'Garde', { min: 1, max: 300 });
+    sheetNum(parent, e, 'phaseShiftPercent', 'Changement de phase sous', { min: 0, max: 100, unit: ' % PV' });
+    parent.append(el('p', 'small muted', 'Tiré à poids égal parmi les boss actifs. À ce seuil, il passe en phase 2 : nouvelle Initiative, nouveaux coups, garde remise au maximum.'));
+    s.phases.slice(0, 2).forEach((ph, i) => {
+      const box = el('div', 'phase');
+      box.append(el('p', 'small', 'Phase ' + (i + 1)));
+      sheetNum(box, e, 'phases.' + i + '.initiative', 'Initiative', { min: 0, max: 20 });
+      textRow(box, e, ph, 'phaseDescription', TEXT_DESC_MAX, 'Phase ' + (i + 1) + ' à l’écran', { multi: true,
+        placeholder: i === 0 ? 'Son allure à l’ouverture du combat (facultatif)' : 'Ce qui change au passage en phase 2 (facultatif)' });
+      movesEd(box, e, 'phases.' + i + '.moves');
+      parent.append(box);
+    });
+  } else if (c === 'hero') {
+    sheetNum(parent, e, 'maxHp', 'PV max', { min: 1, max: 300 });
+    sheetNum(parent, e, 'initiative', 'Initiative', { min: 0, max: 20 });
+    sheetNum(parent, e, 'attackPower', 'Attaque (par coup)', { min: 1, max: 50 });
+    sheetNum(parent, e, 'hits', 'Coups par attaque', { min: 1, max: 4, int: true });
+    sheetNum(parent, e, 'guardDamage', 'Brise-garde (par coup)', { min: 0, max: 60 });
+    sheetNum(parent, e, 'damageReductionPercent', 'Réduction des dégâts', { min: 0, max: 40, unit: ' %' });
+    sheetNum(parent, e, 'counterPercent', 'Multiplicateur de contre-attaque', { min: 0, max: 400, step: 10, unit: ' %' });
+    sheetNum(parent, e, 'powerCost', 'Coût du pouvoir', { min: 0, max: 5, unit: ' Élan' });
+    sheetSelect(parent, 'Pouvoir', Object.entries(HERO_POWERS), s.power, (v) => { s.power = v; codexEdited(e.id, true); });
+    textRow(parent, e, s, 'powerName', TEXT_NAME_MAX, 'Nom du pouvoir', { placeholder: HERO_POWERS[s.power] || '', hint: 'Vide : « ' + (HERO_POWERS[s.power] || '') + ' ». Le pouvoir calculé reste celui choisi ci-dessus.' });
+    textRow(parent, e, s, 'powerDescription', TEXT_DESC_MAX, 'Description du pouvoir', { multi: true, placeholder: 'Ce qu’on voit, et ce qu’il fait (facultatif)' });
+    textRow(parent, e, s, 'traitDescription', TEXT_DESC_MAX, 'Trait passif', { multi: true, placeholder: 'Par exemple : chaque esquive donne +1 Élan (facultatif)' });
+    sheetSelect(parent, 'Esquive : +1 Élan', [['yes', 'Oui'], ['no', 'Non']], s.dodgeMomentum ? 'yes' : 'no', (v) => { s.dodgeMomentum = v === 'yes'; codexEdited(e.id, true); });
+    parent.append(el('p', 'small muted', 'Rempart : le prochain coup subi fait 50 % de dégâts. Pas de l’ombre : la prochaine esquive complète déclenche une contre-attaque.'));
+  } else if (CAT[c].item) {
+    sheetNum(parent, e, 'initiative', 'Initiative', { min: -5, max: 5 });
+    parent.append(el('h3', null, 'Effets'));
+    effectsEd(parent, e);
+  } else if (c === 'boon') {
+    sheetSelect(parent, 'Famille', Object.entries(BOON_FAMILIES), s.family, (v) => { s.family = v; codexEdited(e.id, true); });
+    parent.append(el('h3', null, 'Effets'));
+    effectsEd(parent, e);
+  } else if (c === 'blessing') {
+    ranksEd(parent, e);
+  }
+}
+
+function renderIssues() {
+  const box = sheetRefs.issues;
+  const e = model.codex[ui.selected];
+  if (!box || !e) return;
+  box.textContent = '';
+  for (const i of entryIssues(e)) box.append(el('div', 'issue ' + (i.level === 'bad' ? 'bad' : i.level === 'info' ? 'info' : ''), i.text));
+}
+function refreshSheetLive() {
+  const e = model.codex[ui.selected];
+  if (!e || !sheetRefs.title) return;
+  sheetRefs.title.textContent = e.name;
+  sheetRefs.tags.replaceWith(sheetRefs.tags = tagsFor(e));
+  renderIssues();
+}
+
+function renderSheet() {
+  const box = $('cx-sheet');
+  box.textContent = '';
+  sheetRefs = {};
+  const e = model.codex[ui.selected];
+  if (!e) { box.append(el('p', 'muted', 'Choisissez une entrée dans la liste, ou ajoutez-en une.')); return; }
+  const head = el('div', 'sheet-head');
+  head.append(thumbFor(e, 56));
+  const ht = el('div');
+  ht.append(el('p', 'small muted', CAT[e.category].one + ' · palier ' + e.tier));
+  sheetRefs.title = el('h2', null, e.name);
+  ht.append(sheetRefs.title);
+  sheetRefs.tags = tagsFor(e);
+  ht.append(sheetRefs.tags);
+  head.append(ht);
+  box.append(head);
+
+  const acts = el('div', 'bar-actions');
+  acts.append(smallButton('Dupliquer', '', () => duplicateEntry(e.id)));
+  if (e.status === 'retired') acts.append(smallButton('Réactiver', '', () => setStatus(e, 'active')));
+  else acts.append(smallButton('Retirer', '', () => setStatus(e, 'retired')));
+  if (e.status !== 'active') {
+    if (ui.confirmDelete === e.id) {
+      acts.append(smallButton('Confirmer la suppression', 'danger', () => deleteEntry(e.id)));
+      acts.append(smallButton('Annuler', '', () => { ui.confirmDelete = null; renderSheet(); }));
+    } else acts.append(smallButton('Supprimer', 'danger', () => { ui.confirmDelete = e.id; renderSheet(); }));
+  }
+  box.append(acts);
+  sheetRefs.issues = el('div', 'issues');
+  box.append(sheetRefs.issues);
+  renderIssues();
+
+  // Identité
+  box.append(el('h3', null, 'Identité'));
+  const name = el('input'); name.type = 'text'; name.value = e.name; name.maxLength = 80;
+  const code = el('input'); code.type = 'text'; code.value = e.code; code.maxLength = 60; code.spellcheck = false; code.autocapitalize = 'off';
+  code.style.fontFamily = 'ui-monospace, Menlo, monospace';
+  name.addEventListener('input', () => {
+    const auto = e.code === deriveCode(e.name) || e.code === uniqueCode(deriveCode(e.name), e.id);
+    e.name = name.value.slice(0, 80);
+    if (auto) { e.code = uniqueCode(deriveCode(e.name), e.id); code.value = e.code; }
+    codexEdited(e.id);
+  });
+  frow(box, 'Nom', name);
+  const codeHint = frow(box, 'Nom de code', code, 'Déduit du nom tant que vous ne le modifiez pas. Utilisé dans le code du jeu.');
+  code.addEventListener('input', () => { e.code = code.value.trim(); codeHint.classList.toggle('ko', !/^[a-z][A-Za-z0-9]*$/.test(e.code) || !!codeTaken(e.code, e.id)); codexEdited(e.id); });
+  const desc = el('textarea', 'desc'); desc.value = e.description; desc.maxLength = 2000;
+  desc.addEventListener('input', () => { e.description = desc.value; codexEdited(e.id); });
+  frow(box, 'Description', desc, 'Fantasy mélancolique, sérieuse. Elle guide aussi la proposition d’asset.');
+  if (CAT[e.category].rarity) {
+    sheetSelect(box, 'Rareté', RARITIES.map((r) => [r, NAMES[r]]), e.rarity, (v) => { e.rarity = v; codexEdited(e.id, true); });
+  }
+  const tierRow = el('label', 'field');
+  tierRow.append(el('span', 'f-label', 'Palier'));
+  tierRow.append(numInput(e.tier, 'Palier', { min: 1, max: 9, int: true }, (v) => { e.tier = v; codexEdited(e.id); }));
+  tierRow.append(el('span', 'f-gd', '1 pour l’instant'));
+  box.append(tierRow);
+  const seg = el('div', 'seg');
+  seg.setAttribute('role', 'group');
+  seg.setAttribute('aria-label', 'Statut');
+  for (const st of Object.keys(STATUSES)) {
+    const b = smallButton(STATUSES[st], '', () => setStatus(e, st));
+    b.setAttribute('aria-pressed', String(e.status === st));
+    seg.append(b);
+  }
+  const segRow = el('div', 'frow');
+  segRow.append(el('span', 'f-label', 'Statut'), seg, el('span', 'f-hint', 'Seules les entrées actives entrent dans la simulation.'));
+  box.append(segRow);
+
+  // Valeurs
+  box.append(el('h3', null, 'Valeurs'));
+  valuesEd(box, e);
+
+  // Asset
+  box.append(el('h3', null, 'Asset'));
+  const zone = el('div', 'asset');
+  zone.id = 'cx-asset';
+  box.append(zone);
+  renderAssetZone();
+
+  const back = smallButton('Revenir à la liste', 'back', () => {
+    const item = $('cx-list').querySelector('[aria-current="true"]');
+    (item || $('cx-list')).scrollIntoView({ block: 'center' });
+    if (item) item.focus({ preventScroll: true });
+  });
+  back.style.marginTop = '16px';
+  box.append(back);
+}
+
+function renderAssetZone() {
+  const zone = $('cx-asset');
+  const e = model.codex[ui.selected];
+  if (!zone || !e) return;
+  if (zone.contains(document.activeElement) && document.activeElement.tagName === 'TEXTAREA') { assetZoneDirty = true; return; }
+  assetZoneDirty = false;
+  zone.textContent = '';
+  const id = e.id;
+  const a = assetOf(id);
+  const ps = proposalsOf(a);
+  const shown = shownProposal(id);
+  const status = assetStatus(a);
+
+  const stage = el('div', 'asset-stage');
+  if (shown) {
+    const c = el('canvas', 'px');
+    c.setAttribute('role', 'img');
+    c.setAttribute('aria-label', 'Proposition d’asset pour ' + e.name);
+    drawProposal(c, shown.p, 192);
+    stage.append(c);
+  } else stage.append(el('p', 'small muted', status === 'demandé' ? 'Proposition demandée : elle apparaîtra ici.' : 'Aucune proposition pour l’instant.'));
+  zone.append(stage);
+
+  if (ps.length > 1) {
+    const thumbs = el('div', 'asset-thumbs');
+    ps.forEach((x, n) => {
+      const b = el('button');
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(shown && shown.index === x.index));
+      b.setAttribute('aria-label', 'Proposition ' + (n + 1) + (a.chosen === x.index ? ', choisie' : ''));
+      const c = el('canvas', 'px');
+      drawProposal(c, x.p, 44);
+      b.append(c);
+      b.addEventListener('click', () => {
+        ui.assetPick[id] = x.index;
+        renderAssetZone();
+        if (canWrite()) assetAction(id, { chosen: x.index }, 'Proposition ' + (n + 1) + ' choisie.');
+      });
+      thumbs.append(b);
+    });
+    zone.append(thumbs);
+  }
+  const info = el('div', 'meta');
+  info.append(el('span', 'tag ' + ASSET_CLASS[status], 'Statut : ' + status));
+  if (shown) {
+    const n = ps.indexOf(shown) + 1;
+    let txt = 'Proposition ' + n + ' sur ' + ps.length;
+    if (typeof shown.p.by === 'string' && shown.p.by) txt += ' · par ' + shown.p.by.slice(0, 60);
+    if (shown.p.at) { const d = new Date(shown.p.at); if (!Number.isNaN(d.getTime())) txt += ' · le ' + d.toLocaleDateString('fr-FR'); }
+    if (a.chosen === shown.index) txt += ' · choisie';
+    info.append(el('span', 'small muted', txt));
+  }
+  zone.append(info);
+
+  const note = el('textarea');
+  note.value = ui.noteDraft[id] != null ? ui.noteDraft[id] : (typeof a.note === 'string' ? a.note : '');
+  note.placeholder = '« plus massif », « tons verts »…';
+  note.maxLength = 500;
+  note.addEventListener('input', () => { ui.noteDraft[id] = note.value; });
+  note.addEventListener('blur', () => { if (assetZoneDirty) setTimeout(renderAssetZone, 0); });
+  frow(zone, 'Note pour l’équipe', note);
+
+  const acts = el('div', 'bar-actions');
+  const msg = el('span', 'small muted');
+  msg.setAttribute('role', 'status');
+  const noteText = () => (ui.noteDraft[id] != null ? ui.noteDraft[id] : (typeof a.note === 'string' ? a.note : '')).slice(0, 500);
+  const ask = smallButton('Demander une proposition', 'primary', () => assetAction(id, { status: 'demandé', note: noteText() }, 'Demande enregistrée. L’équipe proposera un asset d’après le nom, la description et la note.', true));
+  const redo = smallButton('À refaire', '', () => assetAction(id, { status: 'à refaire', note: noteText() }, 'Enregistré : la proposition est à refaire.', true));
+  const ok = smallButton('Valider cette proposition', '', () => assetAction(id, { status: 'validé', chosen: shown.index }, 'Proposition validée.'));
+  if (!ps.length) { redo.disabled = true; ok.disabled = true; }
+  if (!canWrite()) {
+    for (const b of [ask, redo, ok]) b.disabled = true;
+    msg.textContent = store.readOnly ? 'Lecture seule : vous ne pouvez pas modifier les assets.' : 'Les demandes d’asset passent par la base de l’atelier, sur claude.ai.';
+  }
+  acts.append(ask, redo, ok);
+  zone.append(acts, msg);
+  sheetRefs.assetMsg = msg;
+}
+
+function canWrite() { return !!store.db && !store.readOnly; }
+
+async function assetAction(id, patch, okText, clearDraft) {
+  const msg = sheetRefs.assetMsg;
+  if (!canWrite()) return;
+  if (msg) msg.textContent = 'Enregistrement…';
+  try {
+    const ref = store.db.collection('assets').doc(id);
+    const snap = await ref.get();
+    // On ne touche jamais aux propositions : mise à jour partielle si le document existe.
+    if (snap.exists) await ref.update(patch); else await ref.set(patch);
+    store.assets[id] = Object.assign({}, snap.exists ? snap.data() : {}, patch);
+    if (clearDraft) delete ui.noteDraft[id];
+    delete ui.assetPick[id];
+    if (ui.selected === id) { renderAssetZone(); refreshSheetLive(); }
+    renderList();
+    if (sheetRefs.assetMsg) sheetRefs.assetMsg.textContent = okText;
+  } catch (err) {
+    handleWriteError(err);
+    if (sheetRefs.assetMsg) sheetRefs.assetMsg.textContent = isRefusal(err) ? 'Lecture seule : demande non enregistrée.' : 'Enregistrement impossible pour l’instant. Réessayez.';
+  }
+}
+
+// ---------- actions sur les entrées ----------
+function codexEdited(id, structural) {
+  queueCodexWrite(id);
+  balanceStale = true;
+  renderList();
+  renderCats();
+  if (structural) renderSheet(); else refreshSheetLive();
+}
+function codexEditedFromBalance(id) { queueCodexWrite(id); codexStale = true; }
+function setStatus(e, st) {
+  if (!STATUSES[st] || e.status === st) return;
+  e.status = st;
+  ui.confirmDelete = null;
+  codexEdited(e.id, true);
+  setCodexMsg('« ' + e.name + ' » : ' + STATUSES[st].toLowerCase() + '.');
+}
+function addEntry(category) {
+  const c = CAT[category];
+  if (!c) return;
+  const id = uniqueId(deriveCode(c.fresh));
+  model.codex[id] = normalizeEntry({
+    category, name: c.fresh, code: uniqueCode(deriveCode(c.fresh), id), description: '',
+    rarity: c.rarity ? 'common' : null, tier: 1, status: 'draft', order: nextOrder(), stats: templateStats(category),
+  }, id);
+  ui.query = ''; $('cx-search').value = '';
+  if (ui.cat !== 'all') ui.cat = category;
+  ui.selected = id;
+  codexEdited(id, true);
+  setCodexMsg(c.fresh + ' ajouté en brouillon.');
+  const input = $('cx-sheet').querySelector('input[type=text]');
+  if (input) { input.focus(); input.select(); }
+}
+function duplicateEntry(srcId) {
+  const src = model.codex[srcId];
+  if (!src) return;
+  const copy = clone(src);
+  copy.name = (src.name + ' (copie)').slice(0, 80);
+  const id = uniqueId(deriveCode(copy.name));
+  copy.id = id;
+  copy.code = uniqueCode(deriveCode(copy.name), id);
+  copy.status = 'draft';
+  copy.order = nextOrder();
+  model.codex[id] = normalizeEntry(copy, id);
+  ui.selected = id;
+  codexEdited(id, true);
+  setCodexMsg('Copie créée en brouillon. L’asset n’est pas copié.');
+}
+function deleteEntry(id) {
+  const e = model.codex[id];
+  if (!e || e.status === 'active') return;
+  const list = visibleEntries();
+  const at = list.findIndex((x) => x.id === id);
+  delete model.codex[id];
+  ui.confirmDelete = null;
+  const next = list[at + 1] || list[at - 1];
+  ui.selected = next ? next.id : null;
+  queueCodexWrite(id, 0);
+  balanceStale = true;
+  renderCodex();
+  setCodexMsg('« ' + e.name + ' » supprimé.');
+}
+
+function renderCodex() {
+  if (!model.codex[ui.selected]) {
+    const first = visibleEntries()[0] || Object.values(model.codex).sort(byOrder)[0];
+    ui.selected = first ? first.id : null;
+  }
+  renderCats();
+  renderList();
+  renderSheet();
+  codexStale = false;
+}
+function setCodexMsg(text) { $('cx-msg').textContent = text; }
+
+// ---------- base de l'artefact ----------
+function isRefusal(err) { return !!err && (err.code === 'not_granted' || err.code === 'revoked'); }
+function setDbState(state, detail) {
+  store.state = state;
+  const b = $('dbstate');
+  const map = {
+    local: ['Hors base : non enregistré', 'prov'],
+    loading: ['Lecture de la base…', ''],
+    ok: ['Enregistré dans la base', 'st-active'],
+    saving: ['Enregistrement…', ''],
+    ro: ['Lecture seule', 'prov'],
+    error: ['Enregistrement impossible', 'prov'],
+  };
+  const [text, cls] = map[state] || map.local;
+  b.textContent = text;
+  b.className = 'tag dbstate ' + cls;
+  b.title = detail || '';
+}
+function setReadOnly() {
+  if (store.readOnly) return;
+  store.readOnly = true;
+  setDbState('ro', 'Vous pouvez essayer des valeurs ici, mais rien n’est enregistré.');
+  if ($('cx-asset')) renderAssetZone();
+}
+function handleWriteError(err) {
+  if (isRefusal(err)) { setReadOnly(); return; }
+  setDbState('error', err && err.code === 'quota_exceeded' ? 'La base de l’atelier est pleine.' : 'Réessayez dans un instant.');
+}
+function queueCodexWrite(id, delay = 700) {
+  if (!canWrite()) return;
+  if (store.bootstrap) {
+    clearTimeout(store.timers.__all);
+    store.timers.__all = setTimeout(flushAllCodex, delay);
+    return;
+  }
+  clearTimeout(store.timers[id]);
+  store.timers[id] = setTimeout(() => writeCodex(id), delay);
+}
+// Écrit toutes les entrées qui diffèrent de la base (première écriture d'une base vide, ou « Enregistrer mes réglages »).
+async function flushAllCodex() {
+  if (!canWrite()) return;
+  const ids = new Set([...Object.keys(model.codex), ...Object.keys(store.saved)]);
+  for (const id of ids) {
+    clearTimeout(store.timers[id]);
+    await writeCodex(id);
+    if (store.readOnly) return;
+  }
+  if (store.state !== 'error') store.bootstrap = false;
+}
+async function writeCodex(id) {
+  if (!canWrite()) return;
+  if (store.inflight[id]) { store.again[id] = true; return; }
+  const entry = model.codex[id];
+  const json = entry ? JSON.stringify(entry) : null;
+  const known = id in store.saved ? store.saved[id] : null;
+  if (json === known) return;
+  store.inflight[id] = true;
+  setDbState('saving');
+  try {
+    const ref = store.db.collection('codex').doc(id);
+    if (entry) { await ref.set(JSON.parse(json)); store.saved[id] = json; } else { await ref.delete(); delete store.saved[id]; }
+    setDbState('ok');
+  } catch (err) {
+    handleWriteError(err);
+  } finally {
+    store.inflight[id] = false;
+    if (store.again[id]) { store.again[id] = false; writeCodex(id); }
+  }
+}
+function subscribeAssets() {
+  const col = store.db.collection('assets');
+  const apply = (qs) => {
+    const next = {};
+    for (const d of (qs && qs.docs) || []) { const data = d.data(); if (data && typeof data === 'object') next[d.id] = data; }
+    store.assets = next;
+    renderList();
+    if ($('cx-asset')) { renderAssetZone(); refreshSheetLive(); }
+  };
+  const fail = (err) => { if (isRefusal(err)) setReadOnly(); };
+  if (typeof col.onSnapshot === 'function') col.onSnapshot(apply, fail);
+  else col.get().then(apply, fail);
+}
+function onLegacyApplied(ids) {
+  $('save-msg').textContent = 'Réglages d’avant le Codex repris (' + ids.length + ' entrées) : « Enregistrer mes réglages » les conserve.';
+}
+
+// ---------- onglets ----------
+function selectTab(tab) {
+  const isBalance = tab === 'balance';
+  $('t-codex').setAttribute('aria-selected', String(!isBalance));
+  $('t-balance').setAttribute('aria-selected', String(isBalance));
+  $('t-codex').tabIndex = isBalance ? -1 : 0;
+  $('t-balance').tabIndex = isBalance ? 0 : -1;
+  $('tab-codex').hidden = isBalance;
+  $('tab-balance').hidden = !isBalance;
+  try { history.replaceState(null, '', isBalance ? '#equilibrage' : '#codex'); } catch (err) { /* cadre sans historique */ }
+  if (isBalance) { if (balanceStale) buildAll(); else renderInstant(); scheduleSimulation(0); } else if (codexStale) renderCodex();
+}
+
+// ---------- branchements ----------
+$('t-codex').addEventListener('click', () => selectTab('codex'));
+$('t-balance').addEventListener('click', () => selectTab('balance'));
+for (const id of ['t-codex', 't-balance']) {
+  $(id).addEventListener('keydown', (ev) => {
+    if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return;
+    const to = id === 't-codex' ? 'balance' : 'codex';
+    selectTab(to);
+    $(to === 'balance' ? 't-balance' : 't-codex').focus();
+    ev.preventDefault();
+  });
+}
+$('cx-search').addEventListener('input', (ev) => { ui.query = ev.target.value; renderCats(); renderList(); });
+$('cx-sort').addEventListener('change', (ev) => { ui.sort = ev.target.value; renderList(); });
+$('cx-status').addEventListener('change', (ev) => { ui.status = ev.target.value; renderList(); });
+for (const c of CATEGORIES) { const o = el('option', null, c.one); o.value = c.id; $('cx-add-cat').append(o); }
+$('cx-add').addEventListener('click', () => addEntry($('cx-add-cat').value));
+
+$('reset').addEventListener('click', () => {
+  const touched = [];
+  for (const id of Object.keys(GAME_DESIGNER_MODEL.codex)) {
+    const e = model.codex[id];
+    const gd = GAME_DESIGNER_MODEL.codex[id];
+    if (!e || e.category !== gd.category) continue;
+    if (!sameValue(e.stats, gd.stats) || e.rarity !== gd.rarity) { e.stats = clone(gd.stats); e.rarity = gd.rarity; touched.push(id); }
+  }
+  applyModel({ player: clone(model.player), timing: clone(model.timing) }, { legacy: false });
+  for (const id of touched) queueCodexWrite(id);
+  codexStale = true;
+});
+
+async function connectDb() {
+  const api = window.claude;
+  if (!api || typeof api.use !== 'function') { setDbState('local'); return; }
+  let db = null;
+  try { db = await api.use('db'); } catch (err) { db = null; }
+  if (!db) { setDbState('local'); return; }
+  store.db = db;
+  setDbState('loading');
+  let codexEmpty = true;
+  try {
+    const qs = await db.collection('codex').get();
+    const docs = (qs && qs.docs) || [];
+    const codex = {};
+    for (const d of docs) {
+      const raw = d.data();
+      if (!raw || typeof raw !== 'object' || !/^[A-Za-z][A-Za-z0-9_-]{0,79}$/.test(d.id)) continue;
+      codex[d.id] = normalizeEntry(raw, d.id);
+      store.saved[d.id] = JSON.stringify(codex[d.id]);
+    }
+    if (Object.keys(codex).length) { codexEmpty = false; model.codex = codex; }
+  } catch (err) {
+    if (isRefusal(err)) setReadOnly(); else setCodexMsg('Codex illisible dans la base : valeurs du Game Designer affichées.');
+  }
+  store.bootstrap = codexEmpty;
+
+  const msg = $('save-msg');
+  const note = $('save-note');
+  const current = db.doc('workshop/current');
+  const when = (iso) => new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
+  let loaded = false;
+  try {
+    const snap = await current.get();
+    const data = snap.exists ? snap.data() : null;
+    if (data && typeof data.model === 'string') {
+      const obj = JSON.parse(data.model);
+      if (obj && typeof obj === 'object') {
+        delete obj.codex;
+        applyModel(obj, { legacy: codexEmpty });
+        loaded = true;
+        note.value = typeof data.note === 'string' ? data.note : '';
+        if (!msg.textContent) msg.textContent = 'Réglages enregistrés le ' + when(data.savedAt) + ' rechargés.';
+      }
+    }
+  } catch (err) {
+    if (isRefusal(err)) setReadOnly(); else msg.textContent = 'Réglages enregistrés illisibles : valeurs du Game Designer affichées.';
+  }
+  if (!loaded) refreshAll();
+  renderCodex();
+  subscribeAssets();
+  if (!store.readOnly) setDbState('ok');
+
+  $('save-bar').hidden = false;
+  const button = $('save');
+  button.addEventListener('click', async () => {
+    if (store.readOnly) { msg.textContent = 'Lecture seule : copiez le JSON en bas de page pour transmettre vos réglages.'; return; }
+    button.disabled = true;
+    msg.textContent = 'Enregistrement…';
+    const entry = { model: JSON.stringify(rulesOf(model)), codex: JSON.stringify(model.codex), note: note.value.slice(0, 500), savedAt: new Date().toISOString() };
+    try {
+      await current.set(entry);
+      await db.collection('workshop-history').add(entry);
+      await flushAllCodex();
+      msg.textContent = store.readOnly ? 'Lecture seule : réglages non enregistrés.' : 'Enregistré le ' + when(entry.savedAt) + '. L’équipe peut relire ces réglages.';
+    } catch (err) {
+      handleWriteError(err);
+      msg.textContent = isRefusal(err)
+        ? 'Lecture seule : enregistrement réservé. Copiez le JSON en bas de page pour transmettre vos réglages.'
+        : 'Enregistrement impossible pour l’instant. Réessayez plus tard.';
+    } finally {
+      button.disabled = false;
+    }
+  });
+}
+
+// ---------- démarrage ----------
+window.atelier = { getModel, applyModel, simulate: () => simulate(model, SEED), buildSimModel: () => buildSimModel(model), EFFECTS, selectTab };
+applyModel({}, { legacy: false });
+selectTab(location.hash === '#equilibrage' ? 'balance' : 'codex');
+setDbState('local');
+connectDb();
+</script>
+</body>
+</html>
