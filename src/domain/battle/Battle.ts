@@ -101,6 +101,8 @@ export interface EnemyState {
   readonly raisedRound: number | null;
   /** Le dernier retour en garde, pour l'animation du relèvement. */
   readonly guardRestore: { readonly since: number; readonly until: number } | null;
+  /** Un boss passé en phase 2 (`BossPhaseShift`, P6). */
+  readonly phase2?: boolean;
 }
 
 export interface ImpactState {
@@ -218,7 +220,10 @@ export interface Battle {
   /** L'ordre d'action par Initiative (prototype #90), sinon le héros d'abord. */
   readonly initiative: boolean;
   readonly hero: HeroState;
+  /** La première ligne (`FrontLine`) : au plus 3 ennemis qui se battent en même temps (P3b). */
   readonly enemies: readonly EnemyState[];
+  /** La réserve (`EnemyReserve`) : les ennemis du groupe qui attendent, dans l'ordre du tirage. */
+  readonly reserve: readonly EnemyKind[];
   readonly target: number;
   readonly phase: BattlePhase;
   /** L'ordre d'action de la manche et la place de celui qui agit. */
@@ -275,22 +280,19 @@ export interface TrialBattleOptions {
   readonly initiative?: boolean;
 }
 
-/**
- * Le combat d'essai : la Sentinelle (ou l'Errante) contre la Goule, le Spectre et le
- * Nécromancien, en phase du héros (C1). Avec l'Initiative, le premier de l'ordre ouvre le combat.
- */
-export function startTrialBattle({
-  seed,
-  tuning,
-  defenseHint,
-  at,
-  inputOffset = 0,
-  hero = 'sentinel',
-  initiative = false,
-}: TrialBattleOptions): BattleUpdate {
-  const { maxHp } = HEROES[hero];
-  const events: Events = [];
-  const enemies = TRIAL_BATTLE_ENEMIES.map((kind): EnemyState => ({
+/** Un combat de l'ascension : le héros avec ses PV, contre un groupe d'ennemis (#91). */
+export interface BattleOptions extends TrialBattleOptions {
+  /** Les PV du héros au début du combat ; par défaut ses PV max. */
+  readonly heroHp?: number;
+  /** Le groupe d'ennemis, de gauche à droite, dans l'ordre du tirage. */
+  readonly enemies: readonly EnemyKind[];
+}
+
+/** Au plus 3 ennemis se battent en même temps (P3b). */
+export const FRONT_LINE_SIZE = 3;
+
+function freshEnemy(kind: EnemyKind): EnemyState {
+  return {
     kind,
     hp: ENEMIES[kind].maxHp,
     maxHp: ENEMIES[kind].maxHp,
@@ -301,7 +303,35 @@ export function startTrialBattle({
     raised: false,
     raisedRound: null,
     guardRestore: null,
-  }));
+  };
+}
+
+/**
+ * Le combat d'essai : la Sentinelle (ou l'Errante) contre la Goule, le Spectre et le
+ * Nécromancien, en phase du héros (C1). Avec l'Initiative, le premier de l'ordre ouvre le combat.
+ */
+export function startTrialBattle(options: TrialBattleOptions): BattleUpdate {
+  return startBattle({ ...options, enemies: TRIAL_BATTLE_ENEMIES });
+}
+
+/**
+ * Un combat, en phase du héros (C1) : la première ligne (les 3 premiers ennemis) et la réserve
+ * (les suivants), l'Élan à 1 (P8).
+ */
+export function startBattle({
+  seed,
+  tuning,
+  defenseHint,
+  at,
+  inputOffset = 0,
+  hero = 'sentinel',
+  initiative = false,
+  heroHp,
+  enemies: group,
+}: BattleOptions): BattleUpdate {
+  const { maxHp } = HEROES[hero];
+  const events: Events = [];
+  const enemies = group.slice(0, FRONT_LINE_SIZE).map(freshEnemy);
   const battle = startRound(
     {
       now: at,
@@ -311,8 +341,9 @@ export function startTrialBattle({
       round: 0,
       heroKind: hero,
       initiative,
-      hero: { hp: maxHp, maxHp, momentum: MOMENTUM_START, bulwark: false },
+      hero: { hp: heroHp ?? maxHp, maxHp, momentum: MOMENTUM_START, bulwark: false },
       enemies,
+      reserve: group.slice(FRONT_LINE_SIZE),
       target: 0,
       phase: { kind: 'hero', since: at, announced: false },
       turn: { order: [], position: 0 },
@@ -473,7 +504,24 @@ function fallenAlly(battle: Battle, enemy: number): number | null {
   return ally < 0 ? null : ally;
 }
 
-function startRound(battle: Battle, events: Events, at: number): Battle {
+/**
+ * Le renfort (P3b) : s'il ne reste qu'un ennemi debout ou aucun, le 1er de la réserve prend la
+ * place du tombé le plus à gauche, qui ne peut plus être relevé ; un seul par manche.
+ */
+function reinforce(battle: Battle, events: Events, at: number): Battle {
+  const [kind, ...reserve] = battle.reserve;
+  if (kind === undefined || standingEnemies(battle).length > 1) return battle;
+  const slot = battle.enemies.findIndex((enemy) => !isStanding(enemy));
+  events.push({ type: 'reinforcementEntered', at, enemy: slot, kind });
+  const reinforced = { ...withEnemy(battle, slot, freshEnemy(kind)), reserve };
+  if (isStanding(reinforced.enemies[reinforced.target]!)) return reinforced;
+  events.push({ type: 'targetChanged', at, enemy: slot });
+  return { ...reinforced, target: slot };
+}
+
+function startRound(previous: Battle, events: Events, at: number): Battle {
+  // Le renfort entre avant les tirages : l'ordre de la manche est calculé après (P3b).
+  const battle = reinforce(previous, events, at);
   let random = battle.random;
   // Tous les tirages au début de la manche, ennemis debout de gauche à droite (C2.1).
   const enemies = battle.enemies.map((enemy, index) => {
@@ -482,6 +530,7 @@ function startRound(battle: Battle, events: Events, at: number): Battle {
       fallenAlly: fallenAlly(battle, index),
       stunned: enemy.stun !== null,
       guardDamaged: enemy.guard < enemy.maxGuard,
+      phase2: enemy.phase2 === true,
     });
     random = drawn.random;
     return { ...enemy, intent: drawn.intent };
@@ -497,12 +546,18 @@ function startRound(battle: Battle, events: Events, at: number): Battle {
   };
 }
 
+/** L'Initiative d'un ennemi : celle de sa phase 2 pour un boss qui a changé de phase (P13). */
+function enemyInitiative(enemy: EnemyState): number {
+  const phase2 = enemy.phase2 === true ? ENEMIES[enemy.kind].phase2Initiative : undefined;
+  return phase2 ?? ENEMY_INITIATIVE[enemy.kind];
+}
+
 /** L'ordre d'action de la manche, figé jusqu'à la suivante (P14). */
 function roundOrder(battle: Battle, enemies: readonly EnemyState[]): Actor[] {
   if (!battle.initiative) return actionOrder(enemies);
   return initiativeOrder(
     startingInitiative(battle.heroKind),
-    enemies.map((enemy) => ({ hp: enemy.hp, initiative: ENEMY_INITIATIVE[enemy.kind] })),
+    enemies.map((enemy) => ({ hp: enemy.hp, initiative: enemyInitiative(enemy) })),
   );
 }
 
@@ -596,6 +651,11 @@ function clearOffBalance(battle: Battle, events: Events, at: number): Battle {
   return { ...battle, offBalanceUntil: null };
 }
 
+/** La victoire : aucun ennemi debout et la réserve vide (P3b). */
+function isWon(battle: Battle): boolean {
+  return standingEnemies(battle).length === 0 && battle.reserve.length === 0;
+}
+
 /** Le répit (C11) : +10 % des PV max à la victoire, sans dépasser le maximum. */
 export const RESPITE_PERCENT = 10;
 
@@ -632,7 +692,7 @@ function endHeroAction(battle: Battle, events: Events): Battle {
     return { ...restoreGuard(enemy), guardRestore: { since: at, until } };
   });
   const restored = { ...battle, enemies };
-  if (standingEnemies(restored).length === 0) return finish(restored, events, 'victory', at);
+  if (isWon(restored)) return finish(restored, events, 'victory', at);
   return nextTurn(restored, events, at);
 }
 
@@ -841,7 +901,7 @@ function hitEnemy(
   context: { readonly at: number; readonly by: 'strike' | 'counter' },
 ): { readonly battle: Battle; readonly broken: boolean } {
   const hit = blowOnEnemy(battle.enemies[index]!, blow, battle.heroActions);
-  const damaged = withEnemy(battle, index, hit.enemy);
+  const damaged = withEnemy(battle, index, shiftPhase(hit.enemy, events, index, context.at));
   if (hit.broken)
     events.push({ type: 'guardBroken', at: context.at, enemy: index, by: context.by });
   if (!hit.fallen) return { battle: damaged, broken: hit.broken };
@@ -850,6 +910,19 @@ function hitEnemy(
   if (battle.target !== index || next === undefined) return { battle: damaged, broken: false };
   events.push({ type: 'targetChanged', at: context.at, enemy: next });
   return { battle: { ...damaged, target: next }, broken: false };
+}
+
+/**
+ * Le changement de phase d'un boss (P6) : à 150 PV ou moins, une fois ; sa garde revient à son
+ * maximum s'il n'est pas étourdi (sinon à son retour en garde). L'ordre de la manche ne change pas.
+ */
+function shiftPhase(enemy: EnemyState, events: Events, index: number, at: number): EnemyState {
+  const { phaseShiftHp } = ENEMIES[enemy.kind];
+  if (phaseShiftHp === undefined || enemy.phase2 || enemy.hp === 0 || enemy.hp > phaseShiftHp) {
+    return enemy;
+  }
+  events.push({ type: 'bossPhaseShifted', at, enemy: index });
+  return { ...enemy, phase2: true, guard: enemy.stun === null ? enemy.maxGuard : enemy.guard };
 }
 
 function counterAttack(battle: Battle, events: Events): Battle {
@@ -883,7 +956,7 @@ function attackEnd(step: AttackStep): number {
 function endEnemyStep(battle: Battle, events: Events): Battle {
   const step = enemyStep(battle);
   const at = step.kind === 'attack' ? attackEnd(step) : (step as { readonly until: number }).until;
-  if (standingEnemies(battle).length === 0) return finish(battle, events, 'victory', at);
+  if (isWon(battle)) return finish(battle, events, 'victory', at);
   return nextTurn(battle, events, at);
 }
 
@@ -1245,4 +1318,79 @@ export function dismissDefenseHint(battle: Battle, at: number): BattleUpdate {
   const events = [...advanced.events];
   const shown = { ...advanced.battle, defenseHintPending: false };
   return { battle: startTransition(shown, events, 'enemy', dismissedAt), events };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Reprise
+
+/** Décale de `delta` ms les instants d'une étape ennemie. */
+function shiftStep(step: EnemyStep, delta: number): EnemyStep {
+  if (step.kind !== 'attack')
+    return { ...step, since: step.since + delta, until: step.until + delta };
+  return {
+    ...step,
+    startedAt: step.startedAt + delta,
+    feintAt: step.feintAt === null ? null : step.feintAt + delta,
+    feintShown: false,
+    // Un impact déjà jugé garde son issue : il n'est pas rejugé.
+    impacts: step.impacts.map((impact) => ({
+      ...impact,
+      at: impact.at + delta,
+      landed: impact.outcome !== null,
+      lost: impact.outcome === null ? false : impact.lost,
+    })),
+    resolvedAt: step.resolvedAt + delta,
+    counter:
+      step.counter === null
+        ? null
+        : { ...step.counter, at: step.counter.at + delta, until: step.counter.until + delta },
+  };
+}
+
+function stepStart(step: EnemyStep): number {
+  return step.kind === 'attack' ? step.startedAt : step.since;
+}
+
+function resumedPhase(phase: BattlePhase, at: number): BattlePhase {
+  switch (phase.kind) {
+    case 'hero':
+    case 'defenseHint':
+      return { ...phase, since: at };
+    case 'heroStrike': {
+      if (phase.resolved) return { ...phase, until: at };
+      const delta = at - phase.since;
+      return {
+        ...phase,
+        since: at,
+        impactAt: phase.impactAt + delta,
+        until: phase.until + delta,
+        press: null,
+      };
+    }
+    case 'heroPower':
+    case 'transition':
+      return { ...phase, since: at, until: at + phase.until - phase.since };
+    case 'enemy':
+      return { kind: 'enemy', step: shiftStep(phase.step, at - stepStart(phase.step)) };
+    default:
+      // Un combat fini reste fini.
+      return phase;
+  }
+}
+
+/**
+ * La reprise d'un combat sauvegardé (P32), à l'instant `at` : l'action en cours repart du début
+ * de sa préparation, avec le même tirage ; un impact déjà jugé reste acquis. Le déséquilibre,
+ * l'arrêt sur image et l'animation du retour en garde sont effacés. Les instants sauvés ne valent
+ * rien après un redémarrage (base monotone) : tout repart de `at`.
+ */
+export function resumeBattle(battle: Battle, at: number): Battle {
+  return {
+    ...battle,
+    now: at,
+    offBalanceUntil: null,
+    hitStop: null,
+    enemies: battle.enemies.map((enemy) => ({ ...enemy, guardRestore: null })),
+    phase: resumedPhase(battle.phase, at),
+  };
 }

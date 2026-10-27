@@ -28,6 +28,8 @@ export interface TrialBattleDisplay {
   readonly hurtAt: number | null;
   /** L'instant de la chute de chaque ennemi brisé, par place. */
   readonly downSince: Readonly<Record<number, number>>;
+  /** Le nombre de renforts entrés à chaque place : un renfort a sa propre colonne. */
+  readonly arrivals: Readonly<Record<number, number>>;
   readonly shakeKey: number;
 }
 
@@ -40,6 +42,7 @@ export const INITIAL_DISPLAY: TrialBattleDisplay = {
   spark: null,
   hurtAt: null,
   downSince: {},
+  arrivals: {},
   shakeKey: 0,
 };
 
@@ -122,6 +125,15 @@ export function displayOf(
     if (pose !== null) display = { ...display, heroPose: pose, heroPoseSince: event.at };
     const spark = sparkOf(event);
     if (spark !== null) display = { ...display, spark };
+    if (event.type === 'reinforcementEntered') {
+      // Le renfort entre debout, sans l'animation de chute de l'ennemi qu'il remplace.
+      const { [event.enemy]: _fallen, ...downSince } = display.downSince;
+      display = {
+        ...display,
+        downSince,
+        arrivals: { ...display.arrivals, [event.enemy]: (display.arrivals[event.enemy] ?? 0) + 1 },
+      };
+    }
     if (event.type === 'guardBroken') {
       display = { ...display, downSince: { ...display.downSince, [event.enemy]: event.at } };
     }

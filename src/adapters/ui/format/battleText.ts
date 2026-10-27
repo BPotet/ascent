@@ -28,6 +28,9 @@ export const ENEMY_NAMES: Readonly<Record<EnemyKind, string>> = {
   ghoul: 'Goule',
   specter: 'Spectre',
   necromancer: 'Nécromancien',
+  fallenKnight: 'Chevalier déchu',
+  ossuaryWarden: 'Gardienne des ossuaires',
+  facelessPrior: 'Prieur sans visage',
 };
 
 /** Le genre du nom de l'ennemi, pour « étourdie », « tombée »… */
@@ -35,6 +38,9 @@ const FEMININE: Readonly<Record<EnemyKind, boolean>> = {
   ghoul: true,
   specter: false,
   necromancer: false,
+  fallenKnight: false,
+  ossuaryWarden: true,
+  facelessPrior: false,
 };
 
 export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {

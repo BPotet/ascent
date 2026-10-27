@@ -20,6 +20,8 @@ const TABS = {
   day: { label: 'Journée', icon: 'tDay' },
   week: { label: 'Semaine', icon: 'tWeek' },
   month: { label: 'Mois', icon: 'tMonth' },
+  // La tour (prototype #91, build de preview seulement) : icône provisoire.
+  tower: { label: 'Tour', icon: 'iAttack' },
 } as const satisfies Record<string, { readonly label: string; readonly icon: IconName }>;
 
 /** Les vues que la barre d'onglets propose. */

@@ -7,15 +7,22 @@ import { TrialBattleEntry } from '../../adapters/ui/components/TrialBattleEntry'
 import { artPalette } from '../../adapters/ui/pixelArt/artPalette';
 
 /** La route de chaque onglet, dans l'ordre de la barre. */
-const ROUTES = { day: 'index', week: 'week', month: 'month' } as const satisfies Record<
-  TabKey,
-  string
->;
-const TABS = Object.keys(ROUTES) as TabKey[];
+const ROUTES = {
+  day: 'index',
+  week: 'week',
+  month: 'month',
+  tower: 'tower',
+} as const satisfies Record<TabKey, string>;
+/** Les onglets du build de production ; la Tour (prototype #91) s'ajoute dans le build de preview. */
+const PRODUCTION_TABS: readonly TabKey[] = ['day', 'week', 'month'];
+
+function tabsOfBuild(): readonly TabKey[] {
+  return currentBuildChannel() === 'preview' ? [...PRODUCTION_TABS, 'tower'] : PRODUCTION_TABS;
+}
 
 /** L'onglet de la route affichée ; la Vue Journée tant qu'aucune route n'est encore affichée. */
 function tabOf(route: string | undefined): TabKey {
-  return TABS.find((tab) => ROUTES[tab] === route) ?? 'day';
+  return tabsOfBuild().find((tab) => ROUTES[tab] === route) ?? 'day';
 }
 
 // Stryker disable all: apparence de la navigation, vérifiée par la conformité aux maquettes.
@@ -41,7 +48,7 @@ export default function TabsLayout() {
             <TrialBattleEntry onPress={() => router.push('/trial-battle')} />
           ) : null}
           <TabBar
-            tabs={TABS}
+            tabs={tabsOfBuild()}
             current={tabOf(state.routes[state.index]?.name)}
             onSelect={(tab) => navigation.navigate(ROUTES[tab])}
           />
@@ -51,6 +58,7 @@ export default function TabsLayout() {
       <Tabs.Screen name={ROUTES.day} />
       <Tabs.Screen name={ROUTES.week} />
       <Tabs.Screen name={ROUTES.month} />
+      <Tabs.Screen name={ROUTES.tower} />
     </Tabs>
   );
 }

@@ -502,6 +502,10 @@ const ART: Readonly<Record<BattleCharacter, CharacterArt>> = {
   ghoul: GHOUL,
   specter: SPECTER,
   necromancer: NECROMANCER,
+  // Sprites provisoires des ennemis de l'ascension (prototype #91), repris du combat d'essai.
+  fallenKnight: GHOUL,
+  ossuaryWarden: NECROMANCER,
+  facelessPrior: SPECTER,
   hero: HERO,
 };
 

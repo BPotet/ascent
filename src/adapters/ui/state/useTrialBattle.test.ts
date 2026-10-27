@@ -50,6 +50,7 @@ describe('displayOf (display state of the trial battle)', () => {
       spark: null,
       hurtAt: null,
       downSince: {},
+      arrivals: {},
       shakeKey: 0,
     });
   });
@@ -210,6 +211,18 @@ describe('displayOf (display state of the trial battle)', () => {
       expect(displayOf(previous, snapshot([event]), false).heroPose).toBe(after);
     },
   );
+  it('gives a reinforcement its own column, without the fall of the enemy it replaces', () => {
+    const previous = { ...INITIAL_DISPLAY, downSince: { 0: 500, 1: 600 } };
+
+    const display = displayOf(
+      previous,
+      snapshot([{ type: 'reinforcementEntered', at: 900, enemy: 0, kind: 'ghoul' }]),
+      false,
+    );
+
+    expect(display.downSince).toEqual({ 1: 600 });
+    expect(display.arrivals).toEqual({ 0: 1 });
+  });
 });
 
 describe('announcementsOf (screen reader)', () => {
