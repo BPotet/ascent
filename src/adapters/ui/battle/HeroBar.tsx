@@ -1,8 +1,9 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import type { HeroState } from '../../../domain/battle/Battle';
+import type { HeroKind } from '../../../domain/battle/combatants';
 import { MOMENTUM_MAX } from '../../../domain/battle/momentum';
-import { HERO_NAME, heroHpText, momentumLabel } from '../format/battleText';
+import { HERO_NAMES, POWER_NAMES, heroHpText, momentumLabel } from '../format/battleText';
 import { battleColors } from '../theme/battleColors';
 
 /** La part des PV sous laquelle la barre passe en alerte (maquette : 30 %). */
@@ -27,13 +28,24 @@ function MomentumDiamonds({ momentum }: { readonly momentum: number }) {
   );
 }
 
-/** La barre du héros : son nom, ses PV et son Élan (C3). */
-export function HeroBar({ hero }: { readonly hero: HeroState }) {
+/** La barre du héros : son nom, ses PV et son Élan (C3), et son pouvoir actif. */
+export function HeroBar({
+  hero,
+  kind = 'sentinel',
+}: {
+  readonly hero: HeroState;
+  readonly kind?: HeroKind;
+}) {
   const ratio = hero.hp / hero.maxHp;
-  const label = `${HERO_NAME}, PV ${hero.hp} sur ${hero.maxHp}, ${momentumLabel(hero.momentum)}${hero.bulwark ? ', Rempart' : ''}`;
+  const name = HERO_NAMES[kind];
+  const active = [
+    ...(hero.bulwark ? [POWER_NAMES.bulwark] : []),
+    ...(hero.shadowStep === true ? [POWER_NAMES.shadowStep] : []),
+  ];
+  const label = `${name}, PV ${hero.hp} sur ${hero.maxHp}, ${momentumLabel(hero.momentum)}${active.map((power) => `, ${power}`).join('')}`;
   return (
     <View accessible accessibilityLabel={label} testID="battle-hero-bar" style={styles.bar}>
-      <Text style={styles.name}>{HERO_NAME}</Text>
+      <Text style={styles.name}>{name}</Text>
       <View style={styles.row}>
         <View style={styles.track}>
           <View

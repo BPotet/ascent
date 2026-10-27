@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { BattleOutcome } from '../../../domain/battle/BattleEvent';
+import type { HeroKind } from '../../../domain/battle/combatants';
 import { Button } from '../components/Button';
 import { endLine, endTitle, respiteText } from '../format/battleText';
 import { battleColors } from '../theme/battleColors';
@@ -17,9 +18,11 @@ export function BattleEndPanel({
   respite,
   onReplay,
   onClose,
+  hero = 'sentinel',
   children,
 }: {
   readonly outcome: BattleOutcome;
+  readonly hero?: HeroKind;
   /** Les PV regagnés par le répit, `null` sans répit. */
   readonly respite: number | null;
   readonly onReplay: () => void;
@@ -35,7 +38,7 @@ export function BattleEndPanel({
         >
           {endTitle(outcome)}
         </Text>
-        <Text style={styles.line}>{endLine(outcome)}</Text>
+        <Text style={styles.line}>{endLine(outcome, hero)}</Text>
         {respite === null ? null : <Text style={styles.respite}>{respiteText(respite)}</Text>}
       </View>
       <View style={styles.actions}>

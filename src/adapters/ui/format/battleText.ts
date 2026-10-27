@@ -7,7 +7,15 @@ import type {
   PhaseDirection,
   WhiffReason,
 } from '../../../domain/battle/BattleEvent';
-import type { EnemyKind } from '../../../domain/battle/combatants';
+import type { Actor } from '../../../domain/battle/actionOrder';
+import {
+  HEROES,
+  startingInitiative,
+  type Armor,
+  type EnemyKind,
+  type HeroKind,
+  type Weapon,
+} from '../../../domain/battle/combatants';
 import type { Stunned } from '../../../domain/battle/guard';
 import { MOMENTUM_MAX, POWERS, type PowerKind } from '../../../domain/battle/momentum';
 import type { ShownIntent } from '../../../domain/battle/shownIntent';
@@ -37,7 +45,85 @@ export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {
   perilous: 'coup imparable',
 };
 
-export const POWER_NAMES: Readonly<Record<PowerKind, string>> = { bulwark: 'Rempart' };
+export const POWER_NAMES: Readonly<Record<PowerKind, string>> = {
+  bulwark: 'Rempart',
+  shadowStep: "Pas de l'ombre",
+};
+
+/** Les héros, leur équipement de base, leur pouvoir et leur trait (prototype #90, maquette H1, H2). */
+export const HERO_NAMES: Readonly<Record<HeroKind, string>> = {
+  sentinel: 'La Sentinelle',
+  wanderer: "L'Errante",
+};
+
+const HERO_STYLES: Readonly<Record<HeroKind, string>> = {
+  sentinel: 'Parade et contre-attaque',
+  wanderer: 'Esquive et rythme',
+};
+
+const HERO_TRAITS: Readonly<Record<HeroKind, string>> = {
+  sentinel: 'Contre-attaque ×1,3',
+  wanderer: 'Chaque impact esquivé dans la fenêtre de parade : +1 Élan',
+};
+
+export const WEAPON_NAMES: Readonly<Record<Weapon, string>> = {
+  shortSword: 'Épée courte',
+  twinDaggers: 'Dagues jumelles',
+};
+
+export const ARMOR_NAMES: Readonly<Record<Armor, string>> = {
+  dentedCuirass: 'Cuirasse cabossée',
+  wornCloak: 'Cape usée',
+};
+
+const POWER_EFFECTS: Readonly<Record<PowerKind, string>> = {
+  bulwark: 'le prochain coup subi fait −50 %',
+  shadowStep: "ta prochaine esquive de tous les impacts d'un coup contre-attaque",
+};
+
+/** La fiche d'un héros sur l'écran du choix du héros. */
+export interface HeroCard {
+  readonly name: string;
+  readonly style: string;
+  readonly stats: string;
+  readonly kit: string;
+  readonly power: string;
+  readonly trait: string;
+  readonly label: string;
+}
+
+export function heroCard(kind: HeroKind): HeroCard {
+  const hero = HEROES[kind];
+  const attack = hero.hits > 1 ? `${hero.attackPower} × ${hero.hits}` : `${hero.attackPower}`;
+  const weapon = WEAPON_NAMES[hero.startingKit.weapon];
+  const armor = ARMOR_NAMES[hero.startingKit.armor];
+  const power = POWER_NAMES[hero.power];
+  const cost = POWERS[hero.power].cost;
+  const initiative = startingInitiative(kind);
+  return {
+    name: HERO_NAMES[kind],
+    style: HERO_STYLES[kind],
+    stats: `${hero.maxHp} PV · Attaque ${attack} · Initiative ${initiative}`,
+    kit: `${weapon} · ${armor}`,
+    power: `${power} (${cost} Élan) : ${POWER_EFFECTS[hero.power]}`,
+    trait: HERO_TRAITS[kind],
+    label: `${HERO_NAMES[kind]}, ${HERO_STYLES[kind]}. ${hero.maxHp} PV, Attaque ${attack}, Initiative ${initiative}. Arme ${weapon}, armure ${armor}, pouvoir ${power}. ${HERO_TRAITS[kind]}`,
+  };
+}
+
+/**
+ * La frise d'action lue au lecteur d'écran (maquette, `friseLabel`) : « Ordre d'action. Manche 1 :
+ * Spectre, toi, Goule. Manche suivante : Spectre, toi, Goule. »
+ */
+export function actionTrackLabel(
+  round: number,
+  current: readonly Actor[],
+  next: readonly Actor[],
+  enemies: readonly EnemyKind[],
+): string {
+  const name = (actor: Actor) => (actor === 'hero' ? 'toi' : ENEMY_NAMES[enemies[actor]!]);
+  return `Ordre d'action. Manche ${round} : ${current.map(name).join(', ')}. Manche suivante : ${next.map(name).join(', ')}.`;
+}
 
 export const SEAL_LABEL = 'Sceau rouge : coup imparable';
 
@@ -123,8 +209,9 @@ export function missingMomentumText(missing: number): string {
   return `Il manque ${missing} Élan`;
 }
 
-export function powerButtonLabel(power: PowerKind, missing: number): string {
+export function powerButtonLabel(power: PowerKind, missing: number, active = false): string {
   const label = `Pouvoir : ${POWER_NAMES[power]}, ${POWERS[power].cost} Élan`;
+  if (active) return `${label}, actif`;
   return missing > 0 ? `${label}, indisponible : il manque ${missing} Élan` : label;
 }
 
@@ -281,10 +368,10 @@ export function endTitle(outcome: BattleOutcome): string {
   return outcome === 'victory' ? 'Combat gagné' : 'Combat perdu';
 }
 
-export function endLine(outcome: BattleOutcome): string {
+export function endLine(outcome: BattleOutcome, hero: HeroKind = 'sentinel'): string {
   return outcome === 'victory'
     ? 'La Goule, le Spectre et le Nécromancien sont tombés.'
-    : 'La Sentinelle est tombée.';
+    : `${HERO_NAMES[hero]} est tombée.`;
 }
 
 /** Le répit regagné à la victoire : « Répit +8 PV ». */
