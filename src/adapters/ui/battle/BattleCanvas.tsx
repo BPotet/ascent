@@ -112,7 +112,14 @@ interface SpriteLook {
 }
 
 // Stryker disable all: dessin de la scène, vérifié par la conformité aux maquettes (barrière 10 bis).
-const ENEMY_KINDS: readonly EnemyKind[] = ['ghoul', 'specter', 'necromancer'];
+const ENEMY_KINDS: readonly EnemyKind[] = [
+  'ghoul',
+  'specter',
+  'necromancer',
+  'fallenKnight',
+  'ossuaryWarden',
+  'facelessPrior',
+];
 const PEDESTALS: readonly PedestalKind[] = ['enemy', 'single', 'hero'];
 const NEAREST = { filter: FilterMode.Nearest, mipmap: MipmapMode.None } as const;
 /** Une image de plus de 1,5 fois 60 Hz est comptée comme perdue. */

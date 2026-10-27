@@ -1,4 +1,5 @@
 import type { AttackKind } from './attacks';
+import type { EnemyKind } from './combatants';
 import type { PowerKind } from './momentum';
 import type { PressJudgement } from './rules';
 
@@ -175,4 +176,13 @@ export type BattleEvent =
       readonly guardDamage: number;
       readonly until: number;
     }
-  | { readonly type: 'battleEnded'; readonly at: number; readonly outcome: BattleOutcome };
+  | { readonly type: 'battleEnded'; readonly at: number; readonly outcome: BattleOutcome }
+  /** Le renfort (`Reinforcement`) : l'ennemi `kind` de la réserve prend la place `enemy` (P3b). */
+  | {
+      readonly type: 'reinforcementEntered';
+      readonly at: number;
+      readonly enemy: number;
+      readonly kind: EnemyKind;
+    }
+  /** Le changement de phase d'un boss (`BossPhaseShift`, P6). */
+  | { readonly type: 'bossPhaseShifted'; readonly at: number; readonly enemy: number };

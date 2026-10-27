@@ -68,6 +68,8 @@ export interface IntentContext {
   readonly stunned: boolean;
   /** Sa garde est sous son maximum. */
   readonly guardDamaged: boolean;
+  /** Un boss en phase 2 : ses coups de phase 2 s'ajoutent (P6). */
+  readonly phase2?: boolean;
 }
 
 /**
@@ -81,7 +83,8 @@ export function drawIntent(
   random: RandomState,
   context: IntentContext,
 ): { readonly intent: Intent; readonly random: RandomState } {
-  const { moves, maxGuard, supports } = ENEMIES[kind];
+  const { maxGuard, supports, phase2Moves = [] } = ENEMIES[kind];
+  const moves = context.phase2 ? [...ENEMIES[kind].moves, ...phase2Moves] : ENEMIES[kind].moves;
   const moveDraw = nextRandom(random);
   const windUpDraw = nextRandom(moveDraw.state);
   const feintDraw = nextRandom(windUpDraw.state);

@@ -28,7 +28,8 @@ export const MAX_DAMAGE_REDUCTION_PERCENT = 40;
 /** La part des dégâts subis sur une bonne parade (C8). */
 export const GOOD_PARRY_PERCENT = 25;
 
-export type EnemyKind = 'ghoul' | 'specter' | 'necromancer';
+export type EnemyKind =
+  'ghoul' | 'specter' | 'necromancer' | 'fallenKnight' | 'ossuaryWarden' | 'facelessPrior';
 
 /** Un coup qu'un ennemi peut porter, avec ses dégâts. */
 export interface Move {
@@ -42,7 +43,14 @@ export interface EnemyProfile {
   readonly moves: readonly Move[];
   /** Il tire aussi les intentions Garde et Relever (le Nécromancien). */
   readonly supports: boolean;
+  /** Les coups qui s'ajoutent en phase 2 (boss, `BossPhaseShift`). */
+  readonly phase2Moves?: readonly Move[];
+  /** Les PV à partir desquels un boss change de phase (150 ou moins). */
+  readonly phaseShiftHp?: number;
 }
+
+/** Le changement de phase d'un boss : à 150 PV ou moins (P6). */
+export const BOSS_PHASE_SHIFT_HP = 150;
 
 /** Le premier jeu d'ennemis du palier 1, PV ×2,5 (décision du propriétaire du 23/10/2026). */
 export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
@@ -71,6 +79,46 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     maxGuard: 12,
     moves: [{ attack: 'basic', damage: 4 }],
     supports: true,
+  },
+  // L'Élite (P4), prototype #91.
+  fallenKnight: {
+    maxHp: 200,
+    maxGuard: 45,
+    moves: [
+      { attack: 'basic', damage: 8 },
+      { attack: 'delayed', damage: 8 },
+      { attack: 'perilous', damage: 12 },
+    ],
+    supports: false,
+  },
+  // Les boss (P6), prototype #91 : ½ par coup en phase 1, ¼ en phase 2.
+  ossuaryWarden: {
+    maxHp: 300,
+    maxGuard: 60,
+    moves: [
+      { attack: 'basic', damage: 9 },
+      { attack: 'delayed', damage: 10 },
+    ],
+    phase2Moves: [
+      { attack: 'double', damage: 6 },
+      { attack: 'perilous', damage: 15 },
+    ],
+    phaseShiftHp: BOSS_PHASE_SHIFT_HP,
+    supports: false,
+  },
+  facelessPrior: {
+    maxHp: 300,
+    maxGuard: 60,
+    moves: [
+      { attack: 'feint', damage: 8 },
+      { attack: 'double', damage: 5 },
+    ],
+    phase2Moves: [
+      { attack: 'delayed', damage: 10 },
+      { attack: 'perilous', damage: 14 },
+    ],
+    phaseShiftHp: BOSS_PHASE_SHIFT_HP,
+    supports: false,
   },
 };
 
