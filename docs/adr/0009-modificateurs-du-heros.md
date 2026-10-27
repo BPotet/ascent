@@ -20,11 +20,14 @@ celui du combat d'essai et de la version définitive : il ne doit pas changer sa
 1. Un seul type, `HeroModifiers` (`src/domain/battle/heroModifiers.ts`), est le point d'entrée de
    tout effet de build dans le combat. Les multiplicateurs y sont des **listes de pourcentages**,
    passées telles quelles à `scaleDamage` : un seul arrondi par valeur.
-2. `NO_MODIFIERS` est neutre ; `combineModifiers` met les listes bout à bout, additionne les
-   points et garde le plus petit retour en garde. Chaque source produit des `HeroModifiers` (`boonModifiers`, plus tard `itemModifiers`),
-   et la session d'ascension les combine.
+2. `NO_MODIFIERS` est neutre ; `combineModifiers` prend des modificateurs partiels, met les listes
+   bout à bout, additionne les points et garde le plus petit retour en garde. Chaque source produit
+   ses modificateurs (`blessingModifiers`, `itemModifiers` de #93, `boonModifiers` de #92), et la
+   session d'ascension les combine pour chaque combat.
 3. Le combat porte ses modificateurs (`Battle.modifiers`, facultatif) : il est sauvegardé et repris
-   avec eux. Un combat sans modificateurs (combat d'essai, sauvegarde de #91) n'en a aucun.
+   avec eux. Un combat sans modificateurs (combat d'essai, sauvegarde de #91) n'en a aucun ; un
+   combat sauvegardé avec une partie des champs (build avec #93 seule) est complété à la lecture,
+   les champs absents étant neutres.
 4. Les fonctions du combat (`strikeBlow`, `counterBlow`, `restoreGuard`) reçoivent des paramètres
    facultatifs, neutres par défaut. `restoreGuard` sans pourcentage garde 100 % : Relever et le
    changement de phase du boss ne sont pas touchés.
