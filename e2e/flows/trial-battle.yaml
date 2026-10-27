@@ -1,68 +1,47 @@
-# Stories #31, #32 et #81 (combat complet, parties A et B) : test de fumée du combat d'essai, ouvert
-# depuis son point d'entrée provisoire (build de preview), avec la scène en pixel art 2.5D.
+# Stories #31, #32, #81 (combat complet, parties A et B) et prototype #90 (Initiative, frise
+# d'action et l'Errante) : test de fumée du combat d'essai, ouvert depuis son point d'entrée
+# provisoire (build de preview), avec la scène en pixel art 2.5D.
 # Décision du propriétaire du 25/10 : le gameplay du combat (timing, parade, frappe, transitions)
 # se teste à la main sur l'APK ; l'e2e vérifie seulement que le combat s'ouvre et s'affiche ; les
 # règles sont couvertes par les tests unitaires, d'intégration et BDD.
-# Parcours : installation neuve → « Combat d'essai » → bulle d'aide F2 (capture), fermée → phase du
-# héros (F1, capture) : « Attaquer », « Pouvoir », les trois ennemis avec leur garde et leur
-# intention, la barre du héros et son Élan → un toucher sur « Attaquer ».
-# Aucune attente ne dépend du timing du combat : la phase du héros dure jusqu'au toucher, et rien
-# n'est vérifié après lui. Les réglages d'essai et le panneau Mesures ne s'ouvrent qu'à la fin d'un
-# combat : ils sont vérifiés par les tests d'intégration, pas ici.
+# Parcours : installation neuve → « Combat d'essai » → choix du héros (H1, capture) → « Commencer
+# le combat » → la scène, la frise d'action et la barre du héros (capture).
+# Avec l'Initiative, le Spectre agit avant le héros : la phase en cours à l'ouverture dépend du
+# timing du combat. Seuls des éléments présents dans toutes les phases sont vérifiés, sans aucune
+# attente liée au timing ni toucher dans le combat.
 appId: com.bpotet.ascent
 name: Combat d'essai du build de preview
 tags:
   - story-31
   - story-32
   - story-81
+  - story-90
 ---
 - runFlow: ../subflows/launch-fresh.yaml
 
 - tapOn: "Combat d'essai"
+
+# H1 : le choix du héros, la Sentinelle sélectionnée par défaut.
 - extendedWaitUntil:
     visible:
-      id: 'battle-attack-button'
+      id: 'hero-choice-start'
     timeout: 15000
+- assertVisible:
+    id: 'hero-choice-sentinel'
+- assertVisible:
+    id: 'hero-choice-wanderer'
+- takeScreenshot: trial-battle-h1-hero-choice
+- tapOn:
+    id: 'hero-choice-start'
 
-# F2 : la bulle d'aide de la première phase du héros, fermée si elle est là.
-- runFlow:
-    when:
-      visible:
-        id: 'battle-hint-hero'
-    commands:
-      - takeScreenshot: trial-battle-f2-first-use
-      - tapOn:
-          id: 'battle-hint-hero'
-- assertNotVisible:
-    id: 'battle-hint-hero'
-
-# F1 : la phase du héros, stable jusqu'au toucher. La Goule est présélectionnée ; chaque ennemi
-# montre sa garde et la catégorie de son intention, jamais le type de coup ni les dégâts.
-- assertVisible: 'Phase du héros|PHASE DU HÉROS'
-# La scène 2.5D : décor, socles (celui de la Goule éclairé), sprites, plaques.
+# Le combat : la scène 2.5D, la frise d'action et la barre du héros, visibles dans toutes les
+# phases du combat.
+- extendedWaitUntil:
+    visible:
+      id: 'battle-scene-frame'
+    timeout: 15000
 - assertVisible:
-    id: 'battle-scene-frame'
-- assertVisible:
-    id: 'enemy-ghoul'
-    text: 'Goule, cible, 50 PV sur 50, garde 15 sur 15, intention : attaque'
-- assertVisible:
-    id: 'enemy-specter'
-    text: 'Spectre, 35 PV sur 35, garde 10 sur 10, intention : attaque'
-- assertVisible:
-    id: 'enemy-necromancer'
-    text: 'Nécromancien, 45 PV sur 45, garde 12 sur 12, intention : .*'
+    id: 'battle-action-track'
 - assertVisible:
     id: 'battle-hero-bar'
-    text: 'La Sentinelle, PV 80 sur 80, Élan 1 sur 5'
-- assertVisible:
-    id: 'battle-power-button'
-    text: 'Pouvoir : Rempart, 1 Élan'
-- assertVisible:
-    id: 'battle-attack-button'
-    text: 'Attaquer, cible : Goule'
-- takeScreenshot: trial-battle-f1-hero-phase
-
-# Un toucher sur « Attaquer » : le combat continue, sans vérification après le toucher (tout ce
-# qui suit dépend du timing du combat).
-- tapOn:
-    id: 'battle-attack-button'
+- takeScreenshot: trial-battle-f2-action-track
