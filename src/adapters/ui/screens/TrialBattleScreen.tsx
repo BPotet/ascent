@@ -47,6 +47,8 @@ export interface TrialBattleScreenProps {
   readonly soundLatencies?: () => readonly number[];
   /** La latence attendue du son de combat, en ms (panneau Mesures). */
   readonly expectedSoundLatency?: () => number;
+  /** Le titre de l'en-tête ; par défaut « Combat d'essai ». */
+  readonly title?: string;
 }
 
 /** La ligne au-dessus des boutons s'efface pendant le temps mort et le déséquilibre. */
@@ -83,6 +85,7 @@ export function TrialBattleScreen({
   uiNow = uiThreadNow,
   soundLatencies = NO_LATENCIES,
   expectedSoundLatency = DEFAULT_LATENCY,
+  title = TRIAL_BATTLE_TITLE,
 }: TrialBattleScreenProps) {
   const reducedMotion = useReducedMotion();
   const display = useTrialBattle(session, reducedMotion);
@@ -201,7 +204,7 @@ export function TrialBattleScreen({
     <Screen layout="top" testID="trial-battle">
       <View style={styles.header}>
         <Text accessibilityRole="header" style={styles.title}>
-          {TRIAL_BATTLE_TITLE}
+          {title}
         </Text>
       </View>
       <Animated.View
@@ -242,7 +245,8 @@ export function TrialBattleScreen({
         <View style={styles.foes} pointerEvents="box-none">
           {view.enemies.map((enemy, index) => (
             <EnemyColumn
-              key={enemy.kind}
+              // Par place : un groupe compte plusieurs Goules, et un renfort prend une place.
+              key={index}
               view={enemy}
               index={index}
               slot={geometry.enemies[index]!}
