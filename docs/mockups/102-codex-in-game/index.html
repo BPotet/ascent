@@ -985,13 +985,13 @@ h3.k-big{font-size:34px;margin:0}
 <body>
 <div class="wrap">
 <header>
-  <div class="eyebrow">Ascent · Maquette · Épique #102 · mode prototype</div>
+  <div class="eyebrow">Ascent · Maquette · Épiques #102 et #104 · mode prototype</div>
   <h1>Le Codex dans la tour</h1>
   <p class="lead">Ce que le joueur voit de nouveau quand la tour lit le Codex de l'Atelier de l'ascension : un ennemi qui se relève seul, le Saignement sur le héros, le coup retardé imparable, et les nouvelles entrées (Squelette, Villageois fou, Les Jumeaux, Arbalète, Armure de chevalier noir) dans les écrans existants. Tout le reste de la tour est inchangé : voir la maquette des épiques #88 et #89.</p>
   <div class="meta">
     <span class="tag">Version 1 · 27 oct. 2026 · pixel art</span>
     <span class="tag warn">À valider par le propriétaire</span>
-    <span class="tag warn">Combat sans anneau (#101)</span>
+    <span class="tag warn">Combat sans anneau (#101)</span><span class="tag">v1.1 · décisions du Game Designer S2, D6</span>
     <a class="tag" href="https://claude.ai/artifact/JmM3TGPcWAejHxryFQpj63">Atelier de l'ascension</a>
     <button class="themebtn" id="themeBtn" type="button" aria-label="Thème de la page">Thème : auto</button>
   </div>
@@ -1030,9 +1030,9 @@ h3.k-big{font-size:34px;margin:0}
     <div class="panel">
       <h3 class="pg" style="margin-top:0">Annotations</h3>
       <ul class="tight">
-        <li>Chaque écran porte son code (N, R, S, D), son état et la story qui le livre. Les stories ne sont pas encore numérotées : <span class="story prov">Codex</span> <span class="story prov">Se relève</span> <span class="story prov">Saignement</span> <span class="story prov">Retardé imparable</span>, à remplacer par leurs numéros après le découpage.</li>
+        <li>Chaque écran porte son code (N, R, S, D), son état et la story qui le livre. <a class="story" href="https://github.com/BPotet/ascent/issues/102">#102</a> : la story « la tour joue l'export du Codex ». <a class="story" href="https://github.com/BPotet/ascent/issues/106">#106</a> Se relève, <a class="story" href="https://github.com/BPotet/ascent/issues/107">#107</a> Saignement, <a class="story" href="https://github.com/BPotet/ascent/issues/108">#108</a> Retardé imparable : l'épique des mécaniques <a class="story" href="https://github.com/BPotet/ascent/issues/104">#104</a>.</li>
         <li>L'encadré bleu rappelle la <b>règle</b> du glossaire que l'écran illustre.</li>
-        <li>Les chiffres viennent du Codex (brouillons du propriétaire au 27/10) ; ceux marqués « indicatif » sont à confirmer par le Game Designer.</li>
+        <li>Les chiffres viennent du Codex (brouillons du propriétaire au 27/10).</li>
         <li>« Lecteur d'écran · » montre ce qui est dit, il n'est pas affiché en jeu.</li>
       </ul>
     </div>
@@ -1049,7 +1049,7 @@ h3.k-big{font-size:34px;margin:0}
   <p class="lead">À recopier dans la section « Notes UX » de chaque story, une fois découpées et numérotées.</p>
   <div class="cols uxnotes" style="margin-top:16px">
     <div class="panel">
-      <h3 class="pg">Le Codex dans la tour <span class="story prov">Codex</span></h3>
+      <h3 class="pg">La tour joue l'export du Codex <span class="story">#102</span></h3>
       <div class="sec">Écrans</div><p class="note" style="margin:4px 0 0"><a class="sid" href="#N1">N1</a> <a class="sid" href="#N2">N2</a> <a class="sid" href="#N3">N3</a> <a class="sid" href="#N4">N4</a> <a class="sid" href="#N5">N5</a></p>
       <div class="sec">Parcours</div>
       <ol><li>Une porte Combat ou Élite tire ses ennemis dans l'export du Codex (entrées Actives).</li><li>Le combat les montre avec leur nom, leurs PV, leur garde, leur Initiative dans la frise.</li><li>Après une Élite ou un combat, « Objet trouvé » peut proposer une arme ou une armure du Codex.</li></ol>
@@ -1058,14 +1058,14 @@ h3.k-big{font-size:34px;margin:0}
       <div class="sec">Feedback de jeu</div><p class="note" style="margin:4px 0 0">Celui des objets trouvés (#88) : lueur de rareté, comparaison avec l'objet porté, écarts au signe et à la couleur.</p>
     </div>
     <div class="panel">
-      <h3 class="pg">Se relève seul <span class="story prov">Se relève</span></h3>
+      <h3 class="pg">Se relève seul <span class="story">#106</span></h3>
       <div class="sec">Écrans</div><p class="note" style="margin:4px 0 0"><a class="sid" href="#R1">R1</a> <a class="sid" href="#R2">R2</a> <a class="sid" href="#R3">R3</a> <a class="sid" href="#R4">R4</a></p>
       <div class="sec">Parcours</div>
-      <ol><li>Une frappe ou une contre-attaque met le Squelette à 0 PV : il s'effondre en tas d'os (R1).</li><li>Aussitôt, les os se rassemblent : « Il se relève », PV et garde remontent (R2).</li><li>Il porte l'étiquette « Relevé » jusqu'à la fin du combat (R3).</li><li>À 0 PV la fois suivante, il tombe pour de bon, sans annonce (R4).</li></ol>
+      <ol><li>Une frappe ou une contre-attaque met le Squelette à 0 PV, ici par l'Errante qui agit avant lui : il s'effondre en tas d'os (R1).</li><li>Aussitôt, les os se rassemblent : « Il se relève », PV et garde remontent (R2).</li><li>Il n'agit pas dans cette manche : cercle barré, et il sort de la frise de la manche en cours (R2). Il porte l'étiquette « Relevé » jusqu'à la fin du combat (R3).</li><li>À 0 PV la fois suivante, il tombe pour de bon, sans annonce (R4).</li></ol>
       <div class="sec">Feedback de jeu</div><p class="note" style="margin:4px 0 0">Tas d'os (250 ms), os qui remontent (400 ms), annonce « Il se relève » (1,1 s, comme « Cassure »), son de cliquetis d'os (à ajouter au Son de combat), PV qui se remplissent de 0 à 17. Pas de vibration. Durées proposées, à régler en jouant.</p>
     </div>
     <div class="panel">
-      <h3 class="pg">Saignement <span class="story prov">Saignement</span></h3>
+      <h3 class="pg">Saignement <span class="story">#107</span></h3>
       <div class="sec">Écrans</div><p class="note" style="margin:4px 0 0"><a class="sid" href="#S1">S1</a> <a class="sid" href="#S2">S2</a> <a class="sid" href="#S3">S3</a> <a class="sid" href="#S4">S4</a> <a class="sid" href="#S5">S5</a></p>
       <div class="sec">Parcours</div>
       <ol><li>Un impact qui saigne touche le héros (bonne parade ou coup reçu) : gouttes sur le héros, étiquette « Saignement ×3 » sous ses PV (S1).</li><li>Au début de chaque manche suivante : « −2 » et une goutte au-dessus du héros, l'étiquette décompte (S2).</li><li>La dernière perte retire l'étiquette et les gouttes (S5). La fin du combat aussi.</li></ol>
@@ -1073,7 +1073,7 @@ h3.k-big{font-size:34px;margin:0}
       <div class="sec">Feedback de jeu</div><p class="note" style="margin:4px 0 0">Gouttes rouge sang (pas le rouge du sceau), son de goutte sourde à chaque perte (à ajouter au Son de combat), sans vibration ni bannière.</p>
     </div>
     <div class="panel">
-      <h3 class="pg">Coup retardé imparable <span class="story prov">Retardé imparable</span></h3>
+      <h3 class="pg">Coup retardé imparable <span class="story">#108</span></h3>
       <div class="sec">Écrans</div><p class="note" style="margin:4px 0 0"><a class="sid" href="#D1">D1</a> <a class="sid" href="#D2">D2</a> <a class="sid" href="#D3">D3</a> <a class="sid" href="#D4">D4</a> <a class="sid" href="#D5">D5</a></p>
       <div class="sec">Parcours</div>
       <ol><li>Préparation : palette rouge, sceau qui pulse en grand, contour rouge de l'intention, son du sceau (D1).</li><li>Hésitation : pose tenue et tremblante, le sceau pulse toujours (D2).</li><li>Ruée : reflet rouge 150 ms avant l'impact (D3).</li><li>Esquive : aucun dégât (D4). Parade : elle échoue, coup reçu (D5).</li></ol>
@@ -1094,8 +1094,6 @@ h3.k-big{font-size:34px;margin:0}
 <section id="questions">
   <h2 class="pg">Questions ouvertes</h2>
   <div class="panel" style="margin-top:16px"><ol class="tight">
-    <li><b>Game Designer</b> : un ennemi qui s'est relevé seul pendant la phase du héros joue-t-il son action de la manche ? La maquette garde son intention (R2, R3) ; s'il la perd, il montre le cercle barré.</li>
-    <li><b>Game Designer</b> : le coup retardé imparable vaut-il 1,5 fois ses dégâts, comme le coup imparable ? D5 affiche un chiffre indicatif.</li>
     <li><b>Propriétaire</b> : annoncer à l'avance qu'un ennemi se relève (une étiquette « Se relève » sous son nom) ? La maquette ne le montre pas : le joueur le découvre, puis le Bestiaire pourra le dire.</li>
     <li><b>Propriétaire</b> : valider dans l'Atelier les assets du Squelette, du Villageois fou, des Jumeaux et de l'Arbalète, sinon ils entrent en silhouette provisoire. L'Armure de chevalier noir n'a pas d'asset, et sa description est inachevée.</li>
     <li><b>Glossaire</b> : ajouter « Export du Codex », l'étiquette « Relevé » et les deux sons (cliquetis d'os, goutte) au Son de combat ; retirer l'anneau de la Préparation (#101).</li>
@@ -2013,7 +2011,7 @@ const bleedChip=(n,isNew)=>`<span class="pchip bleed${isNew?' new':''}" role="im
 const bleedMarks=()=>`<span class="bleedmk" aria-hidden="true"><svg style="left:2px;top:6px" width="10" height="14" viewBox="0 0 5 7" shape-rendering="crispEdges"><path d="M2 0h1v2h1v1h1v3h-1v1h-3v-1h-1v-3h1v-1h1z" fill="#06070C"/><path d="M2 1h1v2h1v3h-3v-3h1z" fill="#B32E3C"/></svg><svg style="left:16px;top:20px" width="8" height="12" viewBox="0 0 5 7" shape-rendering="crispEdges"><path d="M2 0h1v2h1v1h1v3h-1v1h-3v-1h-1v-3h1v-1h1z" fill="#06070C"/><path d="M2 1h1v2h1v3h-3v-3h1z" fill="#8A1E2A"/></svg><svg style="left:6px;top:32px" width="6" height="10" viewBox="0 0 5 7" shape-rendering="crispEdges"><path d="M2 0h1v2h1v1h1v3h-1v1h-3v-1h-1v-3h1v-1h1z" fill="#06070C"/><path d="M2 1h1v2h1v3h-3v-3h1z" fill="#B32E3C"/></svg></span>`;
 const BONES=`<span class="bones" aria-hidden="true"><i style="left:10px;top:44px"></i><i class="v" style="left:24px;top:30px"></i><i style="left:60px;top:38px"></i><i class="v" style="left:72px;top:20px"></i><i style="left:40px;top:14px"></i><i class="v" style="left:14px;top:12px"></i></span>`;
 function cmb(c={}){
- const foes=c.foes,ph=c.phase||'hero',act=c.active,h=HEROES[0];
+ const foes=c.foes,ph=c.phase||'hero',act=c.active,h=HEROES[c.hero||0];
  const enemyLike=ph==='enemy';
  const foeO=(e,i)=>{const o=(c.fo&&c.fo[i])||{},isAct=act===i&&enemyLike;
   return {sel:(ph==='hero'||ph==='strike')&&(c.target??0)===i&&!e.dead,pick:ph==='hero'&&!e.dead,active:isAct,dim:enemyLike&&act!=null&&act!==i,peril:!!o.peril,ep:enemyLike,
@@ -2029,14 +2027,14 @@ function cmb(c={}){
  const say=c.say?`<div class="ptagz sr-say">${c.say}</div>`:'';
  const tag=c.tag?`<div class="ptagz">${c.tag}</div>`:'';
  const fl=(c.floats||[]).map(([at,t,cl])=>`<span class="pfloat ${cl||''}" data-at="${at}" aria-hidden="true">${cl&&cl.includes('bl')?DROP(2):''}${t}</span>`).join('');
- const hb={name:h.name,hp:c.hp??56,hpMax:c.hpMax??80,elan:c.elan??2,chips:[]};
+ const hb={name:h.name,hp:c.hp??56,hpMax:c.hpMax??h.hp,elan:c.elan??2,chips:[]};
  let box=PXL.heroBox(hb);if(c.bleed)box=box.replace(/<\/div>$/,bleedChip(c.bleed,c.bleedNew)+'</div>');
  const hfig=`<div class="hfig"><canvas width="36" height="44" data-spr="hero3|${c.pose||'idle0'}|0|0" aria-hidden="true"></canvas>${c.bleed?bleedMarks():''}</div>`;
  const fh=foes.map((e,i)=>{let s=PXL.foeHTML({...e,reinf:!!e.tag},i,foeO(e,i));if(e.tag)s=s.replace('<em class="ptag in">Renfort</em>',`<em class="ptag in">${e.tag}</em>`);if(e.bones)s=s.replace('<span class="pfin"',BONES+'<span class="pfin"');return s}).join('');
  const scene=`<div class="pst${enemyLike?' ep':''}" data-spec="${esc(JSON.stringify(spec))}"><canvas class="bg" width="1" height="1" aria-hidden="true"></canvas><div class="pfoes${foes.length===1?' n1':''}">${fh}</div>${ban}<canvas class="fx" width="1" height="1" aria-hidden="true"></canvas>${fl}<div class="phero">${hfig}<div class="pinfo">${box}</div></div>${tag}${say}</div>`;
  const t=foes[tg];let zone='';
- if(ph==='hero')zone=PXL.padHTML('hero',{zl:c.zl||(t?`Cible : <b>${t.name}</b>`:''),pow:POW[0],elan:hb.elan});
- else if(ph==='strike')zone=PXL.padHTML('strike',{imps:[700],fill:c.fill??.6,peak:c.peak,press:c.peak,zl:c.zl});
+ if(ph==='hero')zone=PXL.padHTML('hero',{zl:c.zl||(t?`Cible : <b>${t.name}</b>`:''),pow:POW[c.hero||0],elan:hb.elan});
+ else if(ph==='strike')zone=PXL.padHTML('strike',{imps:c.hero===1?[700,1000]:[700],fill:c.fill??.6,peak:c.peak,press:c.peak,zl:c.zl});
  else if(ph==='enemy')zone=PXL.padHTML('enemy',{press:c.press});
  else if(ph==='won')zone=`<div class="k-row k-pf" role="status">${I('coin',C.coin,C.goldD,3)}<span class="t"><b class="k-gain">+${c.gain||25} Or</b><span class="k-small">${c.next||'Un objet Rare t\'attend'}</span></span></div><button class="k-pb pri big block">Continuer</button>`;
  return chrome(`<div class="pxb">${top}${rl}${friseH}${scene}<div class="pzone">${zone}</div></div>`);
@@ -2052,7 +2050,7 @@ function objet2(c){
 /* ---------- Galerie ---------- */
 const g=(k,o={})=>foe(k,o);
 const KG=()=>[g('skel',{hp:8}),g('villager',{hp:35}),g('goule',{hp:50})];
-const PST=['Codex','Se relève','Saignement','Retardé imparable'];
+const PST=['#102','Se relève','Saignement','Retardé imparable'];
 const RB=t=>`<p class="rulebox"><b>Règle.</b> ${t}</p>`;
 const G2=[
  ['n','N1','Combat · Squelette, Villageois fou, Goule',[0],"Un groupe tiré de l'export du Codex, à l'étage 2. Sprites de l'Atelier (la proposition choisie). Frise : le Squelette (Initiative 6) a agi ; toi (5), le Villageois fou (5), la Goule (4). Rien n'annonce ni le saignement, ni le retour du Squelette : ils se découvrent en jeu.",RB("Seules les entrées « Actif » du Codex sont lues. Poids de tirage (drawWeight) et plafond par groupe (groupCap : 1 Squelette, 1 Villageois fou au plus)."),()=>cmb({foes:KG(),round:1,frise:['h* V G','K h V G'],hp:66})],
@@ -2061,8 +2059,8 @@ const G2=[
  ['n','N4','Objet trouvé · Arbalète',[0],"Après les Jumeaux : un Rare garanti. L'Arbalète, avec son sprite de l'Atelier. Effet : Initiative +1, comparé à l'Épée courte portée.",RB("Les objets et leurs effets viennent de l'export, dans la liste fermée de l'Atelier (initiative). Un effet inconnu est ignoré."),()=>objet2({name:'Arbalète',kind:'Arme',r:'rare',icon:'sword',img:assetURL('crossbow',3),txt:'Elle tire avant que l\'autre ait levé son arme.',stat:'Initiative <span class="up">+1</span>',cur:['Épée courte','Brise-garde 12 · Initiative 0'],from:'Élite vaincue',coins:35})],
  ['n','N5','Objet trouvé · sans asset',[0],"L'Armure de chevalier noir n'a pas d'asset : l'icône de son type, en silhouette. Épique (trois losanges). Écarts au signe et à la couleur.",RB("Réduction des dégâts +20 (plafond 40 %), Attaque +1 % (au moins +1), Initiative −2, d'après le Codex."),()=>objet2({name:'Armure de chevalier noir',kind:'Armure',r:'epic',icon:'armor',txt:'Lourde, et lente.',stat:'Réduction <span class="up">+20 %</span> · Attaque <span class="up">+1</span> · Initiative <span class="down">−2</span>',cur:['Cuirasse cabossée','Aucun effet · Initiative 0'],from:'Combat gagné',coins:51})],
 
- ['r','R1','Le Squelette tombe',[1],"Frappe en rythme : −10, le Squelette passe à 0 PV. Il s'effondre en tas d'os (250 ms). Rien d'autre encore : le joueur croit l'avoir vaincu.",RB("Quand il tombe, il se relève aussitôt de lui-même, sans action."),()=>cmb({phase:'strike',fill:1,peak:true,foes:[g('skel',{hp:0}),g('villager',{hp:35}),g('goule')],fo:[{f:'down'}],floats:[['foe:0','−10','big']],round:1,frise:['h* V G','K h V G'],hp:66,zl:'Bonne frappe'})],
- ['r','R2','Il se relève',[1],"Les os remontent et se rassemblent (400 ms), puis « Il se relève » en grand, avec le son de cliquetis d'os. Ses PV se remplissent de 0 à 17 sur 35, sa garde revient entière (10/10). L'étiquette « Relevé » apparaît sous son nom. Annonce aussi en phase ennemie (après une contre-attaque).",RB("Il revient avec 50 % de ses PV max (entier inférieur, au moins 1 : 17 sur 35) et sa garde entière, 1 fois par combat (times, 3 au plus)."),()=>cmb({foes:[g('skel',{hp:17,tag:'Relevé',bones:true}),g('villager',{hp:35}),g('goule')],fo:[{f:'rise'}],ban:['Il se relève','rise','Squelette · 17/35 PV'],say:'Squelette se relève, 17 PV sur 35',round:1,frise:['h* V G','K h V G'],hp:66,zl:'&nbsp;'})],
+ ['r','R1','Le Squelette tombe',[1],"L'Errante (Initiative 7) agit avant le Squelette (6) : frise « toi, Squelette, Villageois fou, Goule ». Sa frappe en rythme (deux dagues, −6) met le Squelette à 0 PV avant qu'il ait agi. Il s'effondre en tas d'os (250 ms). Rien d'autre encore : le joueur croit l'avoir vaincu.",RB("Quand il tombe, il se relève aussitôt de lui-même, sans action."),()=>cmb({hero:1,phase:'strike',fill:1,peak:true,foes:[g('skel',{hp:0}),g('villager',{hp:35}),g('goule')],fo:[{f:'down'}],floats:[['foe:0','−6','big']],round:1,frise:['h* K V G','h K V G'],hp:52,zl:'Bonne frappe'})],
+ ['r','R2','Il se relève',[1],"Les os remontent et se rassemblent (400 ms), puis « Il se relève » en grand, avec le son de cliquetis d'os. Ses PV se remplissent de 0 à 17 sur 35, sa garde revient entière (10/10). L'étiquette « Relevé » apparaît sous son nom. Il n'agit pas dans cette manche : son intention devient le cercle barré et son portrait sort de la frise de la manche en cours (il reste dans « suiv. »). Annonce aussi en phase ennemie (après une contre-attaque).",RB("Il revient avec 50 % de ses PV max (entier inférieur, au moins 1 : 17 sur 35) et sa garde entière, 1 fois par combat (times, 3 au plus). Il n'agit pas dans la manche où il se relève (Game Designer, S2)."),()=>cmb({foes:[g('skel',{hp:17,tag:'Relevé',bones:true,intent:'skip'}),g('villager',{hp:35}),g('goule')],fo:[{f:'rise'}],ban:['Il se relève','rise','Squelette · 17/35 PV'],say:'Squelette se relève, 17 PV sur 35, n’agit pas cette manche',round:1,frise:['h* V G','h K V G'],hp:52,hero:1,zl:'&nbsp;'})],
  ['r','R3','Relevé, le Nécromancien ne le relève pas',[1],"Manche suivante, autre groupe : le Squelette debout porte « Relevé ». Le Nécromancien a une alliée tombée jamais relevée (la Goule) : c'est elle qu'il relève, jamais le Squelette.",RB("Il compte alors comme relevé : le Nécromancien ne le relève jamais en plus."),()=>cmb({foes:[g('skel',{hp:17,tag:'Relevé'}),g('goule',{hp:0,dead:true,intent:null}),g('necro',{intent:'raise'})],target:0,round:2,frise:['h* K N','K h N'],hp:61})],
  ['r','R4','Il tombe pour de bon',[1],"À 0 PV, la fois suivante : il tombe, grisé, comme tout ennemi vaincu. Aucune annonce. La frise le retire.",RB("Ensuite, il tombe pour de bon."),()=>cmb({phase:'strike',fill:1,peak:true,foes:[g('skel',{hp:0,dead:true,intent:null,tag:'Relevé'}),g('goule',{hp:0,dead:true,intent:null}),g('necro',{hp:45})],floats:[['foe:0','−10','big']],round:3,frise:['h* N','h N'],hp:61,zl:'Bonne frappe',target:0})],
 
@@ -2076,12 +2074,13 @@ const G2=[
  ['d','D2','Hésitation · le sceau pulse toujours',[3],"La pose tenue et tremblante du coup retardé. C'est la différence avec le coup retardé simple : le sceau ne s'éteint pas pendant l'hésitation, il pulse jusqu'à l'impact. Toucher Esquive maintenant serait trop tôt.",RB("Le sceau pulse pendant toute sa préparation, hésitation comprise."),()=>cmb({phase:'enemy',active:0,loc:['Élite','Les Jumeaux · Étage 3 sur 6'],foes:[g('twins',{hp:162,g:24})],fo:[{f:'hes',red:true,peril:true,tier:1}],round:2,frise:['J* h','J h'],hp:58,tag:'Hésitation · 2 images en alternance'})],
  ['d','D3','Ruée · reflet rouge',[3],"La ruée part : les Jumeaux plongent vers le héros, reflet rouge 150 ms avant l'impact, son du reflet rouge. Le sceau pulse jusqu'à l'impact. C'est le moment d'esquiver.",RB("Reflet rouge pour un coup imparable. Aucun anneau, à aucun niveau d'aides visuelles (#101)."),()=>cmb({phase:'enemy',active:0,loc:['Élite','Les Jumeaux · Étage 3 sur 6'],foes:[g('twins',{hp:162,g:24})],fo:[{f:'lunge',red:true,peril:true,tier:1,p:.45}],glints:[{foe:0,type:'red',k:2}],round:2,frise:['J* h','J h'],hp:58})],
  ['d','D4','Esquive · aucun dégât',[3],"Esquive dans la fenêtre : la Sentinelle s'écarte, aucun dégât, son et vibration d'esquive. Le sceau et la palette rouge s'éteignent à l'impact.",RB("L'esquive ne prend aucun dégât dans la fenêtre de parade, même sur un coup imparable, sans contre-attaque."),()=>cmb({phase:'enemy',active:0,press:'dodge',loc:['Élite','Les Jumeaux · Étage 3 sur 6'],foes:[g('twins',{hp:162,g:24})],fo:[{f:'impact',p:.5,tier:1}],pose:'dodge1',round:2,frise:['J* h','J h'],hp:58,say:'Esquive, aucun dégât'})],
- ['d','D5','Parade · elle échoue',[3],"Parade touchée : elle échoue, c'est un coup reçu. Éclair d'impact, vignette rouge, « −13 » (indicatif), son et vibration du touché. Pas de saignement : l'Onde de choc n'en porte pas.",RB("La parade échoue sur un coup imparable. Dégâts à confirmer par le Game Designer (×1,5 comme le coup imparable ?)."),()=>cmb({phase:'enemy',active:0,press:'parry',loc:['Élite','Les Jumeaux · Étage 3 sur 6'],foes:[g('twins',{hp:162,g:24})],fo:[{f:'impact',p:.5,tier:1}],pose:'hit1',hurt:.6,flash:.5,floats:[['hero','−13','me']],round:2,frise:['J* h','J h'],hp:45,say:'Coup imparable : la parade échoue, 13 dégâts'})]
+ ['d','D5','Parade · elle échoue',[3],"Parade touchée : elle échoue, c'est un coup reçu. Éclair d'impact, vignette rouge, « −10 », son et vibration du touché. Pas de saignement : l'Onde de choc n'en porte pas.",RB("La parade échoue sur un coup imparable. Le coup retardé imparable n'a pas le ×1,5 du coup imparable : ses dégâts sont ceux du Codex, 10 (Game Designer, D6)."),()=>cmb({phase:'enemy',active:0,press:'parry',loc:['Élite','Les Jumeaux · Étage 3 sur 6'],foes:[g('twins',{hp:162,g:24})],fo:[{f:'impact',p:.5,tier:1}],pose:'hit1',hurt:.6,flash:.5,floats:[['hero','−10','me']],round:2,frise:['J* h','J h'],hp:48,say:'Coup imparable : la parade échoue, 10 dégâts'})]
 ];
 G2.forEach(([grp,id,state,sts,note,rule,fn])=>{
  const host=document.querySelector(`.gallery[data-group="${grp}"]`);if(!host)return;
  const fig=document.createElement('figure');fig.className='frame';fig.id=id;
- const tags=sts.map(n=>`<span class="story prov" title="Story à numéroter">${PST[n]}</span>`).join('');
+ const SN=[102,106,107,108],ST=['Épique #102 · la tour joue l\'export du Codex','Épique #104 · Se relève seul','Épique #104 · Saignement','Épique #104 · Coup retardé imparable'];
+ const tags=sts.map(n=>`<a class="story" href="https://github.com/BPotet/ascent/issues/${SN[n]}" title="${ST[n]}">#${SN[n]}</a>`).join('');
  let html='';try{html=fn();}catch(e){html='<p style="color:#fff;padding:60px 20px">'+esc(String(e))+'</p>';console.error(id,e);}
  let srTxt='';html=html.replace(/<div class="ptagz sr-say">([\s\S]*?)<\/div>/,(m,t)=>{srTxt=t;return '';});
  if(srTxt)rule+=`<p class="note"><b>Lecteur d'écran :</b> « ${srTxt} »</p>`;
