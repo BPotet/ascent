@@ -1265,6 +1265,7 @@ function resumedPhase(phase: BattlePhase, at: number): BattlePhase {
     case 'enemy':
       return { kind: 'enemy', step: shiftStep(phase.step, at - stepStart(phase.step)) };
     default:
+      // Un combat fini reste fini.
       return phase;
   }
 }
@@ -1276,7 +1277,6 @@ function resumedPhase(phase: BattlePhase, at: number): BattlePhase {
  * rien après un redémarrage (base monotone) : tout repart de `at`.
  */
 export function resumeBattle(battle: Battle, at: number): Battle {
-  if (battle.phase.kind === 'over') return battle;
   return {
     ...battle,
     now: at,

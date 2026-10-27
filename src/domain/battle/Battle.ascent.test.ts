@@ -152,6 +152,20 @@ describe('Reinforcement (P3b)', () => {
     expect(battle.reserve).toEqual([]);
   });
 
+  it('moves the target to the reinforcement when the target has fallen elsewhere', () => {
+    const { battle: initial } = start(['ghoul', 'specter', 'ghoul', 'necromancer']);
+    const last = {
+      ...withEnemy(withEnemy(withEnemy(initial, 0, { hp: 0 }), 1, { hp: 0 }), 2, { hp: 1 }),
+      target: 2,
+    };
+
+    const { battle, events } = playUntil(last, roundStarted(2));
+
+    expect(battle.enemies[0]!.kind).toBe('necromancer');
+    expect(battle.target).toBe(0);
+    expect(events).toContainEqual(expect.objectContaining({ type: 'targetChanged', enemy: 0 }));
+  });
+
   it('ends the battle in victory once the front line is down and the reserve is empty', () => {
     const { battle: initial } = start(['ghoul', 'specter', 'ghoul', 'necromancer']);
     const last = withEnemy(withEnemy(withEnemy(initial, 1, { hp: 0 }), 2, { hp: 0 }), 0, {
@@ -317,6 +331,36 @@ describe('resumeBattle (P32)', () => {
 
     expect(resumed.phase).toMatchObject({ kind: 'heroStrike', since: 1_000, press: null });
     expect(nextDeadline(resumed)!.at).toBeGreaterThan(1_000);
+  });
+
+  it('restarts a phase transition, a step in and a resolved strike from the resume', () => {
+    const { battle: initial } = start(['ghoul']);
+    const striking = heroAction(initial, {
+      action: { kind: 'attack' },
+      touchStartedAt: 50,
+      releasedAt: 100,
+    }).battle;
+    const strike = striking.phase as Extract<Battle['phase'], { kind: 'heroStrike' }>;
+    const resolved = advance(striking, strike.impactAt + 200).battle;
+    const transition = advance(resolved, nextDeadline(resolved)!.at).battle;
+    const stepIn = advance(transition, nextDeadline(transition)!.at).battle;
+
+    expect(resumeBattle(resolved, 5_000).phase).toMatchObject({ kind: 'heroStrike', until: 5_000 });
+    expect(resumeBattle(transition, 5_000).phase).toEqual({
+      kind: 'transition',
+      to: 'enemy',
+      since: 5_000,
+      until: 5_000 + DEFAULT_TRIAL_TUNING.phaseTransitionMs,
+    });
+    expect(resumeBattle(stepIn, 5_000).phase).toEqual({
+      kind: 'enemy',
+      step: {
+        kind: 'stepIn',
+        enemy: 0,
+        since: 5_000,
+        until: 5_000 + DEFAULT_TRIAL_TUNING.stepInMs,
+      },
+    });
   });
 
   it('leaves a finished battle as it is', () => {
