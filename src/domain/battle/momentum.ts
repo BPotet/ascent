@@ -3,11 +3,15 @@
 export const MOMENTUM_START = 1;
 export const MOMENTUM_MAX = 5;
 
-/** Les pouvoirs du héros : le Rempart (`Bulwark`), pouvoir de base de la Sentinelle. */
-export type PowerKind = 'bulwark';
+/**
+ * Les pouvoirs du héros : le Rempart (`Bulwark`), pouvoir de base de la Sentinelle, et Pas de
+ * l'ombre (`ShadowStep`), celui de l'Errante (prototype #90, P11).
+ */
+export type PowerKind = 'bulwark' | 'shadowStep';
 
 export const POWERS: Readonly<Record<PowerKind, { readonly cost: number }>> = {
   bulwark: { cost: 1 },
+  shadowStep: { cost: 2 },
 };
 
 /** Le Rempart : le prochain coup subi fait 50 % de ses dégâts. */

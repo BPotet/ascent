@@ -9,7 +9,7 @@
  * qu'entre deux actions jouées de camps différents (`lastPlayed`) : une action perdue et un
  * retour en garde n'en déclenchent pas.
  */
-import { actionOrder, type Actor } from './actionOrder';
+import { actionOrder, initiativeOrder, type Actor } from './actionOrder';
 import { ATTACKS, type AttackKind } from './attacks';
 import type {
   BattleEvent,
@@ -23,11 +23,15 @@ import type {
 } from './BattleEvent';
 import {
   ENEMIES,
+  ENEMY_INITIATIVE,
   GOOD_PARRY_PERCENT,
+  HEROES,
   MAX_DAMAGE_REDUCTION_PERCENT,
-  SENTINEL,
   TRIAL_BATTLE_ENEMIES,
+  startingInitiative,
   type EnemyKind,
+  type HeroKind,
+  type HeroProfile,
 } from './combatants';
 import {
   GUARD_RESTORE_MS,
@@ -76,6 +80,8 @@ export interface HeroState {
   readonly momentum: number;
   /** Le Rempart est actif : le prochain coup subi fait 50 % de dégâts en moins. */
   readonly bulwark: boolean;
+  /** Pas de l'ombre est actif (l'Errante, prototype #90, P11) ; absent s'il ne l'a jamais été. */
+  readonly shadowStep?: boolean;
 }
 
 export interface EnemyState {
@@ -179,6 +185,8 @@ export type BattlePhase =
       readonly resolved: boolean;
       /** La fin de l'action : fin de la fenêtre de l'impact, puis la récupération. */
       readonly until: number;
+      /** Le rang du coup, pour un héros qui frappe plusieurs fois (prototype #90). */
+      readonly hit?: number;
     }
   | {
       readonly kind: 'heroPower';
@@ -205,6 +213,10 @@ export interface Battle {
   /** Le décalage (`InputOffset`), fixé à 0 ms dans #31. */
   readonly inputOffset: number;
   readonly round: number;
+  /** Le héros joué (prototype #90). */
+  readonly heroKind: HeroKind;
+  /** L'ordre d'action par Initiative (prototype #90), sinon le héros d'abord. */
+  readonly initiative: boolean;
   readonly hero: HeroState;
   readonly enemies: readonly EnemyState[];
   readonly target: number;
@@ -257,11 +269,15 @@ export interface TrialBattleOptions {
   /** L'instant de départ, sur la base de l'horloge de combat. */
   readonly at: number;
   readonly inputOffset?: number;
+  /** Le héros joué (prototype #90) ; la Sentinelle par défaut. */
+  readonly hero?: HeroKind;
+  /** L'ordre d'action par Initiative (prototype #90) ; par défaut, le héros d'abord. */
+  readonly initiative?: boolean;
 }
 
 /**
- * Le combat d'essai : la Sentinelle contre la Goule, le Spectre et le Nécromancien, en phase du
- * héros (C1).
+ * Le combat d'essai : la Sentinelle (ou l'Errante) contre la Goule, le Spectre et le
+ * Nécromancien, en phase du héros (C1). Avec l'Initiative, le premier de l'ordre ouvre le combat.
  */
 export function startTrialBattle({
   seed,
@@ -269,7 +285,10 @@ export function startTrialBattle({
   defenseHint,
   at,
   inputOffset = 0,
+  hero = 'sentinel',
+  initiative = false,
 }: TrialBattleOptions): BattleUpdate {
+  const { maxHp } = HEROES[hero];
   const events: Events = [];
   const enemies = TRIAL_BATTLE_ENEMIES.map((kind): EnemyState => ({
     kind,
@@ -290,7 +309,9 @@ export function startTrialBattle({
       tuning,
       inputOffset,
       round: 0,
-      hero: { hp: SENTINEL.maxHp, maxHp: SENTINEL.maxHp, momentum: MOMENTUM_START, bulwark: false },
+      heroKind: hero,
+      initiative,
+      hero: { hp: maxHp, maxHp, momentum: MOMENTUM_START, bulwark: false },
       enemies,
       target: 0,
       phase: { kind: 'hero', since: at, announced: false },
@@ -304,12 +325,18 @@ export function startTrialBattle({
     events,
     at,
   );
+  if (battle.turn.order[0] !== 'hero') return { battle: playTurn(battle, events, at), events };
   events.push({ type: 'heroPhaseStarted', at, announced: false });
   return { battle, events };
 }
 
 // ---------------------------------------------------------------------------------------------
 // Lecture
+
+/** Le profil du héros joué. */
+export function heroProfile(battle: Battle): HeroProfile {
+  return HEROES[battle.heroKind];
+}
 
 export function isStanding(enemy: EnemyState): boolean {
   return enemy.hp > 0;
@@ -466,8 +493,22 @@ function startRound(battle: Battle, events: Events, at: number): Battle {
     enemies,
     random,
     round,
-    turn: { order: actionOrder(enemies), position: 0 },
+    turn: { order: roundOrder(battle, enemies), position: 0 },
   };
+}
+
+/** L'ordre d'action de la manche, figé jusqu'à la suivante (P14). */
+function roundOrder(battle: Battle, enemies: readonly EnemyState[]): Actor[] {
+  if (!battle.initiative) return actionOrder(enemies);
+  return initiativeOrder(
+    startingInitiative(battle.heroKind),
+    enemies.map((enemy) => ({ hp: enemy.hp, initiative: ENEMY_INITIATIVE[enemy.kind] })),
+  );
+}
+
+/** L'ordre de la manche suivante sur l'état courant : l'aperçu de la frise d'action (#90). */
+export function nextRoundOrder(battle: Battle): Actor[] {
+  return roundOrder(battle, battle.enemies);
 }
 
 /** Celui qui agit à la place courante de l'ordre d'action, à l'instant `at`. */
@@ -769,7 +810,8 @@ function resolveBlow(
  * est actif ; un seul arrondi.
  */
 function heroDamage(battle: Battle, damage: number, ...percents: readonly number[]): number {
-  const reduction = 100 - Math.min(SENTINEL.damageReductionPercent, MAX_DAMAGE_REDUCTION_PERCENT);
+  const reduction =
+    100 - Math.min(heroProfile(battle).damageReductionPercent, MAX_DAMAGE_REDUCTION_PERCENT);
   const bulwark = battle.hero.bulwark ? [BULWARK_DAMAGE_PERCENT] : [];
   return scaleDamage(damage, ...percents, reduction, ...bulwark);
 }
@@ -813,10 +855,11 @@ function hitEnemy(
 function counterAttack(battle: Battle, events: Events): Battle {
   const step = currentAttack(battle);
   const counter = step.counter!;
+  const hero = heroProfile(battle);
   const blow = counterBlow({
-    attackPower: SENTINEL.attackPower,
-    guardDamage: SENTINEL.guardDamage,
-    counterPercent: SENTINEL.counterPercent,
+    attackPower: hero.attackPower,
+    guardDamage: hero.guardDamage,
+    counterPercent: hero.counterPercent,
     stunned: battle.enemies[step.enemy]!.stun !== null,
   });
   events.push({
@@ -926,8 +969,13 @@ function judgeDefense(battle: Battle, events: Events, button: DefenseButton, at:
   if (judgement === 'miss') return whiff(battle, events, button, delta < 0 ? 'early' : 'late', at);
 
   const blow = { index, button, delta, at };
-  if (button === 'dodge')
-    return resolveBlow(battle, events, { ...blow, outcome: 'dodge', damage: 0 });
+  if (button === 'dodge') {
+    return afterDodge(
+      resolveBlow(battle, events, { ...blow, outcome: 'dodge', damage: 0 }),
+      events,
+      at,
+    );
+  }
   if (ATTACKS[step.attack].perilous) {
     // Une parade sur un coup imparable échoue : dégâts entiers et déséquilibre (C8).
     const hurt = resolveBlow(battle, events, {
@@ -961,6 +1009,21 @@ function judgeDefense(battle: Battle, events: Events, button: DefenseButton, at:
     ...attack,
     counter: { at: counterAt, until: counterAt + COUNTER_MS, done: false },
   });
+}
+
+/**
+ * Après une esquive (prototype #90) : le trait de l'Errante (+1 Élan), puis Pas de l'ombre, qui
+ * contre-attaque quand tous les impacts du coup sont esquivés (P11) et prend fin.
+ */
+function afterDodge(battle: Battle, events: Events, at: number): Battle {
+  const dodged = heroProfile(battle).dodgeMomentum ? gainMomentumAt(battle, events, at) : battle;
+  const attack = currentAttack(dodged);
+  if (dodged.hero.shadowStep !== true) return dodged;
+  if (!attack.impacts.every((impact) => impact.outcome === 'dodge')) return dodged;
+  return withStep(
+    { ...dodged, hero: { ...dodged.hero, shadowStep: false } },
+    { ...attack, counter: { at, until: at + COUNTER_MS, done: false } },
+  );
 }
 
 /** L'instant d'un appui : jamais avant l'état du moteur ; pendant un arrêt sur image, son début. */
@@ -1006,10 +1069,12 @@ export function pressDefense(
  */
 function resolveStrike(battle: Battle, events: Events, at: number): Battle {
   const phase = battle.phase as StrikePhase;
+  const hero = heroProfile(battle);
+  const hit = phase.hit ?? 1;
   const judgement = phase.press?.judgement ?? null;
   const blow = strikeBlow({
-    attackPower: SENTINEL.attackPower,
-    guardDamage: SENTINEL.guardDamage,
+    attackPower: hero.attackPower,
+    guardDamage: hero.guardDamage,
     multiplier: strikeMultiplier(judgement),
     stunned: battle.enemies[phase.enemy]!.stun !== null,
   });
@@ -1021,15 +1086,55 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
     delta: phase.press?.delta ?? null,
     damage: blow.hp,
     guardDamage: blow.guard,
+    ...(hero.hits > 1 && { hit }),
   });
-  const hit = hitEnemy(
+  const struck = hitEnemy(
     { ...battle, phase: { ...phase, resolved: true } },
     events,
     phase.enemy,
     blow,
     { at, by: 'strike' },
   );
-  return judgement === 'perfect' || hit.broken ? startHitStop(hit.battle, events, at) : hit.battle;
+  const stopped = judgement === 'perfect' || struck.broken;
+  const resolved = stopped ? startHitStop(struck.battle, events, at) : struck.battle;
+  if (hit >= hero.hits || !isStanding(resolved.enemies[phase.enemy]!)) return resolved;
+  // Le coup suivant (les Dagues jumelles), décalé par l'arrêt sur image ; perdu si la cible tombe.
+  const impactAt = phase.impactAt + hero.hitIntervalMs + (stopped ? HIT_STOP_MS : 0);
+  return startStrike(resolved, events, { enemy: phase.enemy, at, impactAt, hit: hit + 1 });
+}
+
+/** Un coup de la frappe en rythme commence : son impact, et sa récupération après la fenêtre. */
+function startStrike(
+  battle: Battle,
+  events: Events,
+  {
+    enemy,
+    at,
+    impactAt,
+    hit,
+  }: {
+    readonly enemy: number;
+    readonly at: number;
+    readonly impactAt: number;
+    readonly hit: number;
+  },
+): Battle {
+  const until = missDeadline(impactAt, battle.inputOffset) + STRIKE_RECOVERY_MS;
+  const multiple = heroProfile(battle).hits > 1;
+  events.push({ type: 'strikeStarted', at, enemy, impactAt, until, ...(multiple && { hit }) });
+  return {
+    ...battle,
+    phase: {
+      kind: 'heroStrike',
+      enemy,
+      since: at,
+      impactAt,
+      press: null,
+      resolved: false,
+      until,
+      ...(multiple && { hit }),
+    },
+  };
 }
 
 /**
@@ -1063,19 +1168,13 @@ function startHeroAction(battle: Battle, phase: BattlePhase): Battle {
 }
 
 function attack(battle: Battle, events: Events, at: number): Battle {
-  const impactAt = at + STRIKE_WIND_UP_MS;
-  const until = missDeadline(impactAt, battle.inputOffset) + STRIKE_RECOVERY_MS;
-  events.push({ type: 'strikeStarted', at, enemy: battle.target, impactAt, until });
-  const striking = startHeroAction(battle, {
-    kind: 'heroStrike',
+  const struck = startStrike(battle, events, {
     enemy: battle.target,
-    since: at,
-    impactAt,
-    press: null,
-    resolved: false,
-    until,
+    at,
+    impactAt: at + STRIKE_WIND_UP_MS,
+    hit: 1,
   });
-  return gainMomentumAt(striking, events, at);
+  return gainMomentumAt(startHeroAction(struck, struck.phase), events, at);
 }
 
 function activatePower(battle: Battle, events: Events, power: PowerKind, at: number): Battle {
@@ -1083,10 +1182,11 @@ function activatePower(battle: Battle, events: Events, power: PowerKind, at: num
   const momentum = battle.hero.momentum - POWERS[power].cost;
   events.push({ type: 'powerUsed', at, power, until });
   events.push({ type: 'momentumChanged', at, momentum });
-  return startHeroAction(
-    { ...battle, hero: { ...battle.hero, momentum, bulwark: true } },
-    { kind: 'heroPower', power, since: at, until },
-  );
+  const hero =
+    power === 'shadowStep'
+      ? { ...battle.hero, momentum, shadowStep: true }
+      : { ...battle.hero, momentum, bulwark: true };
+  return startHeroAction({ ...battle, hero }, { kind: 'heroPower', power, since: at, until });
 }
 
 /**
@@ -1123,7 +1223,12 @@ export function heroAction(
       return { battle: { ...current, target: action.enemy }, events };
     }
     case 'power':
-      if (missingMomentum(current.hero.momentum, action.power) > 0) {
+      // Seul le pouvoir du héros, avec assez d'Élan ; Pas de l'ombre est indisponible s'il est actif.
+      if (
+        action.power !== heroProfile(current).power ||
+        missingMomentum(current.hero.momentum, action.power) > 0 ||
+        (action.power === 'shadowStep' && current.hero.shadowStep === true)
+      ) {
         return ignored(advanced, at, 'power', 'notAvailable');
       }
       return { battle: activatePower(current, events, action.power, at), events };
