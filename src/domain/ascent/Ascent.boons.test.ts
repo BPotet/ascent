@@ -25,7 +25,7 @@ function climbTo(ascent: Ascent, floor: number): Ascent {
 
 describe('the hero of the ascent', () => {
   it('starts with the Errante at 60 HP, without boon', () => {
-    expect(startAscent(5, 'wanderer')).toMatchObject({
+    expect(startAscent(5, { hero: 'wanderer' })).toMatchObject({
       hero: { kind: 'wanderer', hp: 60, maxHp: 60, boons: [] },
       boonOffer: null,
     });
@@ -96,6 +96,6 @@ describe('boons after a won battle (P16, P17)', () => {
   it('loses the boons with a fall: the next ascent starts without boon (P8)', () => {
     const offered = chooseBoon(won(startAscent(9)), 0);
     expect(abandonAscent(offered).outcome).toBe('fall');
-    expect(startAscent(10, 'sentinel').hero.boons).toEqual([]);
+    expect(startAscent(10, { hero: 'sentinel' }).hero.boons).toEqual([]);
   });
 });

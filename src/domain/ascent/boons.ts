@@ -4,7 +4,7 @@
  * modificateurs du héros. Aucun ne touche l'Initiative.
  */
 import type { RandomState } from '../battle/SeededRandom';
-import { NO_MODIFIERS, combineModifiers, type HeroModifiers } from '../battle/heroModifiers';
+import { combineModifiers, type HeroModifiers } from '../battle/heroModifiers';
 import { drawWeighted, type Drawn, type Weighted } from './draw';
 import type { Rarity } from './rarity';
 
@@ -23,44 +23,44 @@ export type BoonFamily = 'frost' | 'ember' | 'echo';
 export interface Boon {
   readonly family: BoonFamily;
   readonly rarity: Rarity;
-  readonly modifiers: HeroModifiers;
+  readonly modifiers: Partial<HeroModifiers>;
 }
 
 export const BOONS: Readonly<Record<BoonKind, Boon>> = {
   perfectEcho: {
     family: 'echo',
     rarity: 'common',
-    modifiers: { ...NO_MODIFIERS, counterPercents: [150] },
+    modifiers: { counterPercents: [150] },
   },
   shatteringEmber: {
     family: 'ember',
     rarity: 'common',
-    modifiers: { ...NO_MODIFIERS, guardDamagePercents: [130] },
+    modifiers: { guardDamagePercents: [130] },
   },
   frostSkin: {
     family: 'frost',
     rarity: 'common',
-    modifiers: { ...NO_MODIFIERS, damageReductionPoints: 10 },
+    modifiers: { damageReductionPoints: 10 },
   },
   trueEdge: {
     family: 'echo',
     rarity: 'rare',
-    modifiers: { ...NO_MODIFIERS, perfectStrikeBonusPercents: [50] },
+    modifiers: { perfectStrikeBonusPercents: [50] },
   },
   blazingEmber: {
     family: 'ember',
     rarity: 'rare',
-    modifiers: { ...NO_MODIFIERS, stunnedBonusPercent: 50 },
+    modifiers: { stunnedBonusPercent: 50 },
   },
   lingeringFrost: {
     family: 'frost',
     rarity: 'rare',
-    modifiers: { ...NO_MODIFIERS, guardRestorePercent: 50 },
+    modifiers: { guardRestorePercent: 50 },
   },
   emberHeart: {
     family: 'ember',
     rarity: 'epic',
-    modifiers: { ...NO_MODIFIERS, onGuardBreak: { momentum: 1, heal: 5 } },
+    modifiers: { onGuardBreak: { momentum: 1, heal: 5 } },
   },
 };
 
@@ -94,8 +94,5 @@ export function drawBoonOffer(
 
 /** Les modificateurs du héros donnés par ses bienfaits. */
 export function boonModifiers(boons: readonly BoonKind[]): HeroModifiers {
-  return boons.reduce(
-    (modifiers, kind) => combineModifiers(modifiers, BOONS[kind].modifiers),
-    NO_MODIFIERS,
-  );
+  return combineModifiers(...boons.map((kind) => BOONS[kind].modifiers));
 }

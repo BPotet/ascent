@@ -56,6 +56,11 @@ export interface Ascent {
   readonly outcome: 'victory' | 'fall' | null;
 }
 
+/** Le lancement de l'ascension : le héros choisi au pied de la tour (#92), la Sentinelle par défaut. */
+export interface AscentLaunch {
+  readonly hero?: HeroKind;
+}
+
 /** L'issue d'un combat d'étage. */
 export interface FloorBattleResult {
   readonly outcome: 'victory' | 'defeat';
@@ -85,7 +90,8 @@ function combat(size: number, random: RandomState): Drawn<Encounter> {
  * L'ascension commence : le héros choisi (la Sentinelle par défaut) à PV max, sans bienfait,
  * l'étage 1, un combat dont la taille est tirée.
  */
-export function startAscent(seed: AscentSeed, heroKind: HeroKind = 'sentinel'): Ascent {
+export function startAscent(seed: AscentSeed, launch: AscentLaunch = {}): Ascent {
+  const { hero: heroKind = 'sentinel' } = launch;
   const { maxHp } = HEROES[heroKind];
   const size = drawGroupSize(1, seedRandom(seed), false);
   const first = combat(size.value, size.random);

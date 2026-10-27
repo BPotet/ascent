@@ -1,57 +1,44 @@
-// Les modificateurs du héros (`HeroModifiers`, prototype #92, règles P18 et P21 de #88).
-import { NO_MODIFIERS, combineModifiers, type HeroModifiers } from './heroModifiers';
+import { NO_MODIFIERS, combineModifiers } from './heroModifiers';
 
-const ECHO: HeroModifiers = { ...NO_MODIFIERS, counterPercents: [150] };
+describe('hero modifiers (P18, P21)', () => {
+  it('are neutral by default', () => {
+    expect(combineModifiers()).toEqual(NO_MODIFIERS);
+  });
 
-describe('HeroModifiers (P18)', () => {
-  it('changes nothing by default', () => {
-    expect(NO_MODIFIERS).toEqual({
-      counterPercents: [],
-      guardDamagePercents: [],
-      damageReductionPoints: 0,
-      perfectStrikeBonusPercents: [],
-      stunnedBonusPercent: 0,
-      guardRestorePercent: null,
-      onGuardBreak: { momentum: 0, heal: 0 },
+  it('concatenate the lists and add the numbers', () => {
+    expect(
+      combineModifiers(
+        { perfectStrikeBonusPercents: [20], initiative: 2, guardDamagePercents: [130] },
+        { perfectStrikeBonusPercents: [50], initiative: -1, damageReductionPoints: 5 },
+        { attackFlat: 2, attackPercents: [80], startingMomentum: 1, healOnPerfectParry: 3 },
+      ),
+    ).toEqual({
+      ...NO_MODIFIERS,
+      attackFlat: 2,
+      attackPercents: [80],
+      guardDamagePercents: [130],
+      perfectStrikeBonusPercents: [20, 50],
+      damageReductionPoints: 5,
+      initiative: 1,
+      startingMomentum: 1,
+      healOnPerfectParry: 3,
     });
   });
 
-  it('keeps every multiplier and adds the points, for a single calculation', () => {
-    const combined = combineModifiers(
-      {
-        ...ECHO,
-        guardDamagePercents: [130],
-        damageReductionPoints: 10,
-        perfectStrikeBonusPercents: [20],
-        stunnedBonusPercent: 50,
-        onGuardBreak: { momentum: 1, heal: 5 },
-      },
-      {
-        ...ECHO,
-        damageReductionPoints: 5,
-        perfectStrikeBonusPercents: [50],
-        stunnedBonusPercent: 10,
-        onGuardBreak: { momentum: 1, heal: 2 },
-      },
-    );
-
-    expect(combined).toEqual({
+  it('combine the boon effects (#92): lists, sums, and the smallest guard restore', () => {
+    expect(
+      combineModifiers(
+        { counterPercents: [150], stunnedBonusPercent: 50, guardRestorePercent: 70 },
+        { counterPercents: [150], onGuardBreak: { momentum: 1, heal: 5 } },
+        { guardRestorePercent: 50, onGuardBreak: { momentum: 1, heal: 2 } },
+      ),
+    ).toEqual({
+      ...NO_MODIFIERS,
       counterPercents: [150, 150],
-      guardDamagePercents: [130],
-      damageReductionPoints: 15,
-      perfectStrikeBonusPercents: [20, 50],
-      stunnedBonusPercent: 60,
-      guardRestorePercent: null,
+      stunnedBonusPercent: 50,
+      guardRestorePercent: 50,
       onGuardBreak: { momentum: 2, heal: 7 },
     });
-  });
-
-  it('keeps the smallest guard restore', () => {
-    const half = { ...NO_MODIFIERS, guardRestorePercent: 50 };
-
-    expect(combineModifiers(half, NO_MODIFIERS).guardRestorePercent).toBe(50);
-    expect(combineModifiers(NO_MODIFIERS, half).guardRestorePercent).toBe(50);
-    expect(combineModifiers({ ...NO_MODIFIERS, guardRestorePercent: 70 }, half)).toEqual(half);
-    expect(combineModifiers(half, { ...NO_MODIFIERS, guardRestorePercent: 70 })).toEqual(half);
+    expect(combineModifiers({ guardRestorePercent: 50 }, {}).guardRestorePercent).toBe(50);
   });
 });

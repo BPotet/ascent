@@ -1,6 +1,7 @@
 // Les bienfaits (`Boon`, prototype #92, règles P17 et P18 de #88).
 import { seedRandom } from '../battle/SeededRandom';
-import { NO_MODIFIERS } from '../battle/heroModifiers';
+import { NO_MODIFIERS, combineModifiers } from '../battle/heroModifiers';
+import { strikeMultiplier } from '../battle/strike';
 import {
   BOONS,
   BOON_KINDS,
@@ -33,7 +34,14 @@ describe('the 7 boons (section 4)', () => {
     expect(boonModifiers(['blazingEmber']).stunnedBonusPercent).toBe(50);
     expect(boonModifiers(['lingeringFrost']).guardRestorePercent).toBe(50);
     expect(boonModifiers(['emberHeart']).onGuardBreak).toEqual({ momentum: 1, heal: 5 });
-    expect(Object.keys(NO_MODIFIERS)).not.toContain('initiative');
+    expect(boonModifiers(BOON_KINDS).initiative).toBe(0);
+  });
+
+  it('adds Lame juste to the Cuir of #93 in the perfect strike: 1.5 + 0.2 + 0.5 = 2.2 (P21)', () => {
+    const cuir = { perfectStrikeBonusPercents: [20] };
+    const build = combineModifiers(cuir, boonModifiers(['trueEdge']));
+
+    expect(strikeMultiplier('perfect', build.perfectStrikeBonusPercents)).toBe(220);
   });
 
   it('combines the owned boons, and none without boon', () => {

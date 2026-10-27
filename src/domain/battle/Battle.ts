@@ -220,6 +220,8 @@ export interface Battle {
   readonly heroKind: HeroKind;
   /** L'ordre d'action par Initiative (prototype #90), sinon le héros d'abord. */
   readonly initiative: boolean;
+  /** Les modificateurs du héros (prototype #93) ; absents, aucun. */
+  readonly modifiers?: HeroModifiers;
   readonly hero: HeroState;
   /** La première ligne (`FrontLine`) : au plus 3 ennemis qui se battent en même temps (P3b). */
   readonly enemies: readonly EnemyState[];
@@ -239,8 +241,6 @@ export interface Battle {
   readonly hitStop: { readonly at: number; readonly until: number } | null;
   /** La bulle d'aide de la phase ennemie reste à montrer avant la première transition. */
   readonly defenseHintPending: boolean;
-  /** Les modificateurs du héros (prototype #92) ; absents, aucun effet. */
-  readonly modifiers?: HeroModifiers;
 }
 
 /** Un nouvel état et les événements produits, dans l'ordre. */
@@ -287,10 +287,10 @@ export interface TrialBattleOptions {
 export interface BattleOptions extends TrialBattleOptions {
   /** Les PV du héros au début du combat ; par défaut ses PV max. */
   readonly heroHp?: number;
+  /** Les modificateurs du héros (prototype #93) ; par défaut, aucun. */
+  readonly modifiers?: HeroModifiers;
   /** Le groupe d'ennemis, de gauche à droite, dans l'ordre du tirage. */
   readonly enemies: readonly EnemyKind[];
-  /** Les modificateurs du héros (bienfaits, prototype #92) ; par défaut, aucun. */
-  readonly modifiers?: HeroModifiers;
 }
 
 /** Au plus 3 ennemis se battent en même temps (P3b). */
@@ -332,8 +332,8 @@ export function startBattle({
   hero = 'sentinel',
   initiative = false,
   heroHp,
-  enemies: group,
   modifiers,
+  enemies: group,
 }: BattleOptions): BattleUpdate {
   const { maxHp } = HEROES[hero];
   const events: Events = [];
@@ -347,6 +347,7 @@ export function startBattle({
       round: 0,
       heroKind: hero,
       initiative,
+      ...(modifiers && { modifiers }),
       hero: { hp: heroHp ?? maxHp, maxHp, momentum: MOMENTUM_START, bulwark: false },
       enemies,
       reserve: group.slice(FRONT_LINE_SIZE),
@@ -358,7 +359,6 @@ export function startBattle({
       offBalanceUntil: null,
       hitStop: null,
       defenseHintPending: defenseHint,
-      ...(modifiers !== undefined && { modifiers }),
     },
     events,
     at,
@@ -376,7 +376,7 @@ export function heroProfile(battle: Battle): HeroProfile {
   return HEROES[battle.heroKind];
 }
 
-/** Les modificateurs du héros du combat ; un combat sauvegardé sans eux n'en a aucun. */
+/** Les modificateurs du héros dans ce combat (prototype #93). */
 function heroModifiers(battle: Battle): HeroModifiers {
   return battle.modifiers ?? NO_MODIFIERS;
 }
@@ -937,7 +937,7 @@ function hitEnemy(
   return { battle: { ...damaged, target: next }, broken: false };
 }
 
-/** Les effets d'une garde brisée (Cœur de braise, #92) : l'Élan gagné et les PV rendus. */
+/** Cœur de braise (prototype #92) : à chaque garde brisée, l'Élan gagné et les PV rendus. */
 function onGuardBreak(battle: Battle, events: Events, at: number): Battle {
   const { momentum, heal } = heroModifiers(battle).onGuardBreak;
   let gained = battle;
@@ -963,12 +963,15 @@ function counterAttack(battle: Battle, events: Events): Battle {
   const step = currentAttack(battle);
   const counter = step.counter!;
   const hero = heroProfile(battle);
+  const modifiers = heroModifiers(battle);
   const blow = counterBlow({
     attackPower: hero.attackPower,
     guardDamage: hero.guardDamage,
     counterPercent: hero.counterPercent,
     stunned: battle.enemies[step.enemy]!.stun !== null,
-    modifiers: heroModifiers(battle),
+    guardPercents: modifiers.guardDamagePercents,
+    counterPercents: modifiers.counterPercents,
+    stunnedBonusPercent: modifiers.stunnedBonusPercent,
   });
   events.push({
     type: 'counterAttacked',
@@ -1180,12 +1183,14 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
   const hero = heroProfile(battle);
   const hit = phase.hit ?? 1;
   const judgement = phase.press?.judgement ?? null;
+  const modifiers = heroModifiers(battle);
   const blow = strikeBlow({
     attackPower: hero.attackPower,
     guardDamage: hero.guardDamage,
-    multiplier: strikeMultiplier(judgement, heroModifiers(battle).perfectStrikeBonusPercents),
+    multiplier: strikeMultiplier(judgement, modifiers.perfectStrikeBonusPercents),
     stunned: battle.enemies[phase.enemy]!.stun !== null,
-    modifiers: heroModifiers(battle),
+    guardPercents: modifiers.guardDamagePercents,
+    stunnedBonusPercent: modifiers.stunnedBonusPercent,
   });
   events.push({
     type: 'strikeResolved',
