@@ -62,10 +62,8 @@ tags:
     timeout: 10000
 - assertVisible: 'Expérience du personnage : 15 XP'
 - extendedWaitUntil:
-    visible:
-      id: 'toast'
+    visible: 'Objectif de la semaine atteint\sLire 1/1 · \+5 XP prime'
     timeout: 10000
-- assertVisible: 'Objectif de la semaine atteint\sLire 1/1 · \+5 XP prime'
 - takeScreenshot: target-bonus-E1-1-target-reached
 
 # Le message ne masque pas la barre d'onglets : elle se touche sans attendre sa fin (D5).
@@ -110,7 +108,9 @@ tags:
       id: 'xp-counter'
       text: '0 XP'
     timeout: 10000
-- assertVisible: 'Objectif de la semaine plus atteint · Lire 0/1 · −5 XP prime'
+- extendedWaitUntil:
+    visible: 'Objectif de la semaine plus atteint · Lire 0/1 · −5 XP prime'
+    timeout: 10000
 
 # Un dernier tap : 15 XP, F1 de nouveau.
 - tapOn:
@@ -186,6 +186,23 @@ tags:
             id: 'xp-counter'
             text: '25 XP'
           timeout: 10000
+      # « Méditer » faite, « Toutes faites » naît en haut de la liste, qui remonte en douceur :
+      # « Méditer » glisse sous le bouton flottant « Ajouter une habitude », qui prendrait le
+      # toucher de « ⋯ ». La liste est d'abord amenée en bas, où elle réserve la place du bouton.
+      - extendedWaitUntil:
+          visible:
+            id: 'all-done'
+          timeout: 10000
+      - swipe:
+          from:
+            id: 'day-view-list'
+          direction: UP
+      - waitForAnimationToEnd:
+          timeout: 5000
+      - extendedWaitUntil:
+          visible:
+            id: 'edit-habit-2'
+          timeout: 10000
       - tapOn:
           id: 'edit-habit-2'
       - extendedWaitUntil:
@@ -204,10 +221,8 @@ tags:
       - tapOn:
           id: 'save-habit'
       - extendedWaitUntil:
-          visible:
-            id: 'toast'
+          visible: 'Objectif de la semaine atteint\sMéditer 1/1 · \+5 XP prime'
           timeout: 10000
-      - assertVisible: 'Objectif de la semaine atteint\sMéditer 1/1 · \+5 XP prime'
       - takeScreenshot: target-bonus-E7-1-target-lowered-reached
       - extendedWaitUntil:
           visible: 'Méditer, .+, fait, 1 sur 1 cette semaine, Moyenne, 10 XP par suivi, objectif atteint'
