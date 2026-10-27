@@ -132,6 +132,8 @@ export class AscentSession {
           seed: encounter.battleSeed,
           heroHp: this.ascent!.hero.hp,
           enemies: encounter.enemies,
+          // L'ordre d'action par Initiative (P13, P14), comme le combat d'essai de #90.
+          initiative: true,
         });
       },
     });
