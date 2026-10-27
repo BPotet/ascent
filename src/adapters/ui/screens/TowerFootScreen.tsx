@@ -46,7 +46,7 @@ export function TowerFootScreen({
   const inProgress = ascent !== null && ascent.outcome === null;
   const start = (hero: HeroKind) => {
     setChoosing(false);
-    session.begin(hero);
+    session.begin({ hero });
     onEnter();
   };
 

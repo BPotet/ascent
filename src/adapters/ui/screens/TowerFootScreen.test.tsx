@@ -25,7 +25,7 @@ describe('TowerFootScreen', () => {
     await fireEvent.press(screen.getByRole('radio', { name: /^L'Errante/ }));
     await fireEvent.press(screen.getByRole('button', { name: "Continuer avec l'Errante" }));
 
-    expect(session.current()).toEqual(startAscent(42, 'wanderer'));
+    expect(session.current()).toEqual(startAscent(42, { hero: 'wanderer' }));
     expect(onEnter).toHaveBeenCalledTimes(1);
   });
 
@@ -40,7 +40,7 @@ describe('TowerFootScreen', () => {
   });
 
   it('shows the hero of the ascent in progress, without a way to change him', async () => {
-    await show({ saved: startAscent(3, 'wanderer') });
+    await show({ saved: startAscent(3, { hero: 'wanderer' }) });
 
     expect(await screen.findByText("L'Errante")).toBeOnTheScreen();
     expect(screen.queryByRole('radio')).not.toBeOnTheScreen();
