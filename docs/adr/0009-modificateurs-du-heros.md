@@ -20,8 +20,8 @@ celui du combat d'essai et de la version définitive : il ne doit pas changer sa
 1. Un seul type, `HeroModifiers` (`src/domain/battle/heroModifiers.ts`), est le point d'entrée de
    tout effet de build dans le combat. Les multiplicateurs y sont des **listes de pourcentages**,
    passées telles quelles à `scaleDamage` : un seul arrondi par valeur.
-2. `NO_MODIFIERS` est neutre ; `combineModifiers` met les listes bout à bout et additionne les
-   points. Chaque source produit des `HeroModifiers` (`boonModifiers`, plus tard `itemModifiers`),
+2. `NO_MODIFIERS` est neutre ; `combineModifiers` met les listes bout à bout, additionne les
+   points et garde le plus petit retour en garde. Chaque source produit des `HeroModifiers` (`boonModifiers`, plus tard `itemModifiers`),
    et la session d'ascension les combine.
 3. Le combat porte ses modificateurs (`Battle.modifiers`, facultatif) : il est sauvegardé et repris
    avec eux. Un combat sans modificateurs (combat d'essai, sauvegarde de #91) n'en a aucun.
@@ -35,5 +35,6 @@ celui du combat d'essai et de la version définitive : il ne doit pas changer sa
   calcul à part dans le moteur.
 - Sans modificateurs, le combat d'essai et le combat définitif ne changent pas d'un chiffre : leurs
   tests restent verts sans modification.
-- L'Initiative n'est pas dans `HeroModifiers` : aucun bienfait ne la touche (P18). Les bénédictions
-  de #93 qui la changent passent par un champ ajouté par cette story.
+- Le type est partagé avec #93 (objets et bénédictions : Attaque, Initiative, Élan de départ, soin
+  sur parade parfaite) ; `combineModifiers` prend des modificateurs partiels. Aucun bienfait ne
+  touche l'Initiative (P18).
