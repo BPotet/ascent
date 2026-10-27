@@ -24,7 +24,7 @@ async function show(current: TabKey, onSelect = jest.fn(), bottom = 0) {
 }
 
 describe('TabBar', () => {
-  it('names the views « Journée », « Semaine » and « Mois »', () => {
+  it('names the views « Journée », « Semaine », « Mois » and « Tour »', () => {
     expect(TAB_LABELS).toEqual({ day: 'Journée', week: 'Semaine', month: 'Mois', tower: 'Tour' });
   });
 
