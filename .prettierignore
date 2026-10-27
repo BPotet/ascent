@@ -8,5 +8,6 @@ android
 ios
 package-lock.json
 docs/mockups
+docs/game-design
 # La documentation Markdown est rédigée à la main (tableaux, français) : Prettier ne la reformate pas.
 *.md
