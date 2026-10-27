@@ -1,14 +1,22 @@
 import {
   abandonAscent,
   chooseBoon,
+  chooseBlessing,
   chooseExit,
   endFloorBattle,
+  equipItem,
+  leaveItem,
+  lootStream,
   startAscent,
   type Ascent,
   type AscentLaunch,
 } from '../../domain/ascent/Ascent';
 import { boonModifiers } from '../../domain/ascent/boons';
+import { blessingModifiers } from '../../domain/ascent/blessings';
+import { STARTING_EQUIPMENT, itemModifiers } from '../../domain/ascent/items';
 import { resumeBattle, startBattle, type Battle } from '../../domain/battle/Battle';
+import { HEROES } from '../../domain/battle/combatants';
+import { combineModifiers } from '../../domain/battle/heroModifiers';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
 import { BattleSession, type BattleSessionDependencies } from './BattleSession';
 
@@ -44,11 +52,19 @@ function parse(raw: string | null): SavedAscent | null {
   try {
     const saved = JSON.parse(raw) as Partial<SavedAscent> | null;
     if (saved?.version !== SAVE_VERSION || typeof saved.ascent?.floor !== 'number') return null;
-    // Une ascension sauvegardée avant #92 : la Sentinelle, sans bienfait ni offre.
+    // Une ascension sauvegardée avant #93 : Neutre, sans bénédiction, avec l'équipement de base ;
+    // avant #92 : la Sentinelle, sans bienfait ni offre.
     const stored: Partial<Ascent> = saved.ascent;
     const storedHero: Partial<Ascent['hero']> = saved.ascent.hero;
     const ascent = {
       boonOffer: null,
+      gauge: 0,
+      blessings: [],
+      blessingRarities: [],
+      blessingOffer: null,
+      equipment: STARTING_EQUIPMENT,
+      foundItem: null,
+      lootRandom: lootStream(saved.ascent.seed),
       ...stored,
       hero: { kind: 'sentinel', boons: [], ...storedHero },
     } as Ascent;
@@ -96,9 +112,27 @@ export class AscentSession {
     };
   }
 
-  /** Commence une ascension, avec une graine au hasard et le héros choisi. */
+  /**
+   * Commence une ascension, avec une graine au hasard, le héros choisi, la jauge scellée et les
+   * bénédictions.
+   */
   begin(launch: AscentLaunch = {}): Ascent {
     return this.update(startAscent(this.dependencies.seeds.next(), launch), null);
+  }
+
+  chooseBlessing(index: number): void {
+    if (this.ascent === null) return;
+    this.update(chooseBlessing(this.ascent, index), this.battle);
+  }
+
+  equipItem(): void {
+    if (this.ascent === null) return;
+    this.update(equipItem(this.ascent), this.battle);
+  }
+
+  leaveItem(): void {
+    if (this.ascent === null) return;
+    this.update(leaveItem(this.ascent), this.battle);
   }
 
   chooseBoon(index: number): void {
@@ -149,7 +183,15 @@ export class AscentSession {
           seed: encounter.battleSeed,
           hero: ascent.hero.kind,
           heroHp: ascent.hero.hp,
-          modifiers: boonModifiers(ascent.hero.boons),
+          heroMaxHp: ascent.hero.maxHp,
+          modifiers: combineModifiers(
+            blessingModifiers(ascent.blessings, {
+              firstBattle: ascent.floor === 1,
+              attackPower: HEROES[ascent.hero.kind].attackPower,
+            }),
+            itemModifiers(ascent.equipment),
+            boonModifiers(ascent.hero.boons),
+          ),
           enemies: encounter.enemies,
           // L'ordre d'action par Initiative (P13, P14), comme le combat d'essai de #90.
           initiative: true,

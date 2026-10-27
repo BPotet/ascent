@@ -3,10 +3,18 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
 import type { Ascent } from '../../../domain/ascent/Ascent';
+import { ITEMS } from '../../../domain/ascent/items';
 import { BoonChoicePanel } from '../battle/BoonChoicePanel';
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
-import { exitLabel, floorLine, goldText } from '../format/ascentText';
+import {
+  blessingText,
+  exitLabel,
+  floorLine,
+  goldText,
+  itemText,
+  wornText,
+} from '../format/ascentText';
 import { ownedBoonsLine } from '../format/boonText';
 import { useAscent } from '../state/useAscent';
 import { battleColors } from '../theme/battleColors';
@@ -177,6 +185,30 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
     );
   }
 
+  if (ascent.blessingOffer !== null) {
+    const rarity = ascent.blessingRarities[0]!;
+    const total = ascent.blessings.length + ascent.blessingRarities.length;
+    return (
+      <Screen layout="top" background={battleColors.background} testID="ascent-blessing">
+        <Header ascent={ascent} onPause={leave} />
+        <ScrollView contentContainerStyle={styles.exits}>
+          <Text accessibilityRole="header" style={styles.title}>
+            {`Bénédiction ${ascent.blessings.length + 1} sur ${total}`}
+          </Text>
+          <Text style={styles.line}>Choisis-en une. Elle dure toute l&apos;ascension.</Text>
+          {ascent.blessingOffer.map((family, index) => (
+            <Button
+              key={family}
+              label={blessingText({ family, rarity })}
+              testID={`blessing-${index}`}
+              onPress={() => session.chooseBlessing(index)}
+            />
+          ))}
+        </ScrollView>
+      </Screen>
+    );
+  }
+
   if (ascent.encounter !== null) {
     return (
       <Screen layout="top" background={battleColors.background} testID="ascent-battle">
@@ -197,10 +229,33 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
     );
   }
 
+  // En fin de combat : l'Or, puis l'objet trouvé (#93), puis le bienfait (#92), puis les sorties.
   const gained =
     ascent.lastGold > 0 ? (
       <Text style={styles.gold}>{`Étage franchi · +${goldText(ascent.lastGold)}`}</Text>
     ) : null;
+
+  if (ascent.foundItem !== null) {
+    const { slot } = ITEMS[ascent.foundItem];
+    return (
+      <Screen layout="top" background={battleColors.background} testID="ascent-item">
+        <Header ascent={ascent} onPause={leave} />
+        {gained}
+        <View style={styles.center}>
+          <Text accessibilityRole="header" style={styles.title}>
+            Objet trouvé
+          </Text>
+          <Text style={styles.gold}>{itemText(ascent.foundItem)}</Text>
+          <Text style={styles.line}>{`Tu portes : ${wornText(ascent.equipment, slot)}`}</Text>
+          <Text style={styles.line}>Un objet laissé ne revient pas.</Text>
+          <View style={styles.row}>
+            <Button label="Laisser" variant="ghost" onPress={() => session.leaveItem()} />
+            <Button label="Équiper" onPress={() => session.equipItem()} />
+          </View>
+        </View>
+      </Screen>
+    );
+  }
 
   if (ascent.boonOffer !== null) {
     return (
@@ -260,4 +315,5 @@ const styles = StyleSheet.create({
   line: { color: battleColors.muted, fontSize: 15, textAlign: 'center' },
   gold: { color: battleColors.light, fontSize: 17, textAlign: 'center' },
   exits: { padding: 24, gap: 14 },
+  row: { flexDirection: 'row', justifyContent: 'center', gap: 12 },
 });

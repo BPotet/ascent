@@ -52,6 +52,7 @@ export function strikeBlow({
   guardDamage,
   multiplier,
   stunned,
+  attackPercents = [],
   guardPercents = [],
   stunnedBonusPercent = 0,
 }: {
@@ -59,12 +60,18 @@ export function strikeBlow({
   readonly guardDamage: number;
   readonly multiplier: number;
   readonly stunned: boolean;
-  /** Les pourcentages des bienfaits (#92), dans le même calcul. */
+  /** Les pourcentages des objets (#93) et des bienfaits (#92), dans le même calcul. */
+  readonly attackPercents?: readonly number[];
   readonly guardPercents?: readonly number[];
   readonly stunnedBonusPercent?: number;
 }): EnemyBlow {
   return {
-    hp: scaleDamage(attackPower, multiplier, stunnedPercent(stunned, stunnedBonusPercent)),
+    hp: scaleDamage(
+      attackPower,
+      multiplier,
+      ...attackPercents,
+      stunnedPercent(stunned, stunnedBonusPercent),
+    ),
     guard: stunned ? 0 : scaleDamage(guardDamage, multiplier, ...guardPercents),
   };
 }
@@ -83,6 +90,7 @@ export function counterBlow({
   guardDamage,
   counterPercent,
   stunned,
+  attackPercents = [],
   guardPercents = [],
   counterPercents = [],
   stunnedBonusPercent = 0,
@@ -91,7 +99,8 @@ export function counterBlow({
   readonly guardDamage: number;
   readonly counterPercent: number;
   readonly stunned: boolean;
-  /** Les pourcentages des bienfaits (#92), dans le même calcul. */
+  /** Les pourcentages des objets (#93) et des bienfaits (#92), dans le même calcul. */
+  readonly attackPercents?: readonly number[];
   readonly guardPercents?: readonly number[];
   readonly counterPercents?: readonly number[];
   readonly stunnedBonusPercent?: number;
@@ -101,6 +110,7 @@ export function counterBlow({
       attackPower,
       COUNTER_BASE_PERCENT,
       counterPercent,
+      ...attackPercents,
       ...counterPercents,
       stunnedPercent(stunned, stunnedBonusPercent),
     ),

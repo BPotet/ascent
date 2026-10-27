@@ -42,9 +42,11 @@ import {
   type Stunned,
 } from './guard';
 import { NO_MODIFIERS, type HeroModifiers } from './heroModifiers';
+import { heroInitiative } from './initiative';
 import { drawIntent, raisedHp, type GuardIntent, type Intent, type RaiseIntent } from './intents';
 import {
   BULWARK_DAMAGE_PERCENT,
+  MOMENTUM_MAX,
   MOMENTUM_START,
   POWERS,
   gainMomentum,
@@ -287,6 +289,8 @@ export interface TrialBattleOptions {
 export interface BattleOptions extends TrialBattleOptions {
   /** Les PV du héros au début du combat ; par défaut ses PV max. */
   readonly heroHp?: number;
+  /** Les PV max du héros (prototype #93 : Vigueur, fatigue) ; par défaut ceux du héros. */
+  readonly heroMaxHp?: number;
   /** Les modificateurs du héros (prototype #93) ; par défaut, aucun. */
   readonly modifiers?: HeroModifiers;
   /** Le groupe d'ennemis, de gauche à droite, dans l'ordre du tirage. */
@@ -332,10 +336,12 @@ export function startBattle({
   hero = 'sentinel',
   initiative = false,
   heroHp,
+  heroMaxHp,
   modifiers,
   enemies: group,
 }: BattleOptions): BattleUpdate {
-  const { maxHp } = HEROES[hero];
+  const maxHp = heroMaxHp ?? HEROES[hero].maxHp;
+  const momentum = Math.min(MOMENTUM_MAX, MOMENTUM_START + (modifiers?.startingMomentum ?? 0));
   const events: Events = [];
   const enemies = group.slice(0, FRONT_LINE_SIZE).map(freshEnemy);
   const battle = startRound(
@@ -348,7 +354,7 @@ export function startBattle({
       heroKind: hero,
       initiative,
       ...(modifiers && { modifiers }),
-      hero: { hp: heroHp ?? maxHp, maxHp, momentum: MOMENTUM_START, bulwark: false },
+      hero: { hp: heroHp ?? maxHp, maxHp, momentum, bulwark: false },
       enemies,
       reserve: group.slice(FRONT_LINE_SIZE),
       target: 0,
@@ -568,7 +574,7 @@ function enemyInitiative(enemy: EnemyState): number {
 function roundOrder(battle: Battle, enemies: readonly EnemyState[]): Actor[] {
   if (!battle.initiative) return actionOrder(enemies);
   return initiativeOrder(
-    startingInitiative(battle.heroKind),
+    heroInitiative(startingInitiative(battle.heroKind), heroModifiers(battle).initiative),
     enemies.map((enemy) => ({ hp: enemy.hp, initiative: enemyInitiative(enemy) })),
   );
 }
@@ -965,10 +971,11 @@ function counterAttack(battle: Battle, events: Events): Battle {
   const hero = heroProfile(battle);
   const modifiers = heroModifiers(battle);
   const blow = counterBlow({
-    attackPower: hero.attackPower,
+    attackPower: hero.attackPower + modifiers.attackFlat,
     guardDamage: hero.guardDamage,
     counterPercent: hero.counterPercent,
     stunned: battle.enemies[step.enemy]!.stun !== null,
+    attackPercents: modifiers.attackPercents,
     guardPercents: modifiers.guardDamagePercents,
     counterPercents: modifiers.counterPercents,
     stunnedBonusPercent: modifiers.stunnedBonusPercent,
@@ -1105,7 +1112,9 @@ function judgeDefense(battle: Battle, events: Events, button: DefenseButton, at:
   }
   const parried = startHitStop(
     gainMomentumAt(
-      resolveBlow(battle, events, { ...blow, outcome: 'perfectParry', damage: 0 }),
+      healOnPerfectParry(
+        resolveBlow(battle, events, { ...blow, outcome: 'perfectParry', damage: 0 }),
+      ),
       events,
       at,
     ),
@@ -1120,6 +1129,13 @@ function judgeDefense(battle: Battle, events: Events, button: DefenseButton, at:
     ...attack,
     counter: { at: counterAt, until: counterAt + COUNTER_MS, done: false },
   });
+}
+
+/** Le Bouclier du veilleur (prototype #93) : des PV rendus, sans dépasser les PV max. */
+function healOnPerfectParry(battle: Battle): Battle {
+  const { hero } = battle;
+  const hp = Math.min(hero.maxHp, hero.hp + heroModifiers(battle).healOnPerfectParry);
+  return hp === hero.hp ? battle : { ...battle, hero: { ...hero, hp } };
 }
 
 /**
@@ -1185,10 +1201,11 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
   const judgement = phase.press?.judgement ?? null;
   const modifiers = heroModifiers(battle);
   const blow = strikeBlow({
-    attackPower: hero.attackPower,
+    attackPower: hero.attackPower + modifiers.attackFlat,
     guardDamage: hero.guardDamage,
     multiplier: strikeMultiplier(judgement, modifiers.perfectStrikeBonusPercents),
     stunned: battle.enemies[phase.enemy]!.stun !== null,
+    attackPercents: modifiers.attackPercents,
     guardPercents: modifiers.guardDamagePercents,
     stunnedBonusPercent: modifiers.stunnedBonusPercent,
   });

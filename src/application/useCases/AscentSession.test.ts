@@ -246,6 +246,92 @@ describe('AscentSession', () => {
   });
 });
 
+describe('AscentSession with the gauge, the blessings and the items (#93)', () => {
+  it('begins with the sealed gauge and the blessings, and saves each choice', async () => {
+    const { session, store } = setUp(42);
+    const ascent = session.begin({ gauge: -1, blessings: ['rare'] });
+    expect(ascent).toEqual(startAscent(42, { gauge: -1, blessings: ['rare'] }));
+    expect(ascent.hero.maxHp).toBe(72);
+
+    session.chooseBlessing(0);
+    await flush();
+
+    expect(session.current()!.blessings).toEqual([
+      { family: ascent.blessingOffer![0], rarity: 'rare' },
+    ]);
+    expect(saved(store)?.ascent).toEqual(session.current());
+  });
+
+  it('equips or leaves a found item', async () => {
+    const { session, store } = setUp();
+    store.values.set(
+      ASCENT_KEY,
+      JSON.stringify({
+        version: 1,
+        ascent: { ...startAscent(5), encounter: null, foundItem: 'axe' },
+        battle: null,
+      }),
+    );
+    await session.load();
+
+    session.equipItem();
+    expect(session.current()).toMatchObject({ foundItem: null, equipment: { weapon: 'axe' } });
+
+    await session.load();
+    session.leaveItem();
+    expect(session.current()).toMatchObject({ foundItem: null, equipment: { weapon: null } });
+  });
+
+  it('fights with the max HP and the modifiers of the blessings and the items', async () => {
+    const { session, store } = setUp();
+    store.values.set(
+      ASCENT_KEY,
+      JSON.stringify({
+        version: 1,
+        ascent: {
+          ...startAscent(5, { gauge: 1 }),
+          hero: { hp: 70, maxHp: 79 },
+          blessings: [{ family: 'haste', rarity: 'rare' }],
+          equipment: { weapon: 'axe', armor: null, accessory: 'hasteAmulet' },
+        },
+        battle: null,
+      }),
+    );
+    await session.load();
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    const { battle } = battleSession.current()!;
+    expect(battle.hero).toMatchObject({ hp: 70, maxHp: 79 });
+    expect(battle.modifiers).toMatchObject({ initiative: 3, guardDamagePercents: [130] });
+  });
+
+  it('resumes an ascent saved before the gauge, Neutral with the base kit', async () => {
+    const { session, store } = setUp();
+    const {
+      gauge: _gauge,
+      blessings: _blessings,
+      blessingRarities: _rarities,
+      blessingOffer: _offer,
+      equipment: _equipment,
+      foundItem: _found,
+      lootRandom: _loot,
+      ...older
+    } = startAscent(5);
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: older, battle: null }));
+
+    expect(await session.load()).toEqual(startAscent(5));
+  });
+
+  it('ignores the choices without an ascent', () => {
+    const { session } = setUp();
+    session.chooseBlessing(0);
+    session.equipItem();
+    session.leaveItem();
+    expect(session.current()).toBeNull();
+  });
+});
+
 describe('AscentSession: hero and boons (prototype #92)', () => {
   it('begins the ascent with the chosen hero', async () => {
     const { session, store } = setUp(42);
@@ -269,6 +355,7 @@ describe('AscentSession: hero and boons (prototype #92)', () => {
 
     const { battle } = battleSession.current()!;
     expect(battle.heroKind).toBe('wanderer');
+    expect(battle.hero.maxHp).toBe(60);
     expect(battle.modifiers?.counterPercents).toEqual([150]);
   });
 
@@ -303,5 +390,22 @@ describe('AscentSession: hero and boons (prototype #92)', () => {
     });
     session.chooseBoon(0);
     expect(session.current()?.hero.boons).toEqual([]);
+  });
+
+  it('combines the boons with the items in battle: Cuir + Lame juste (P21)', async () => {
+    const { session, store } = setUp();
+    const ascent = startAscent(5);
+    const build = {
+      ...ascent,
+      hero: { ...ascent.hero, boons: ['trueEdge'] },
+      equipment: { ...ascent.equipment, armor: 'leather' },
+    };
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: build, battle: null }));
+    await session.load();
+
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    expect(battleSession.current()!.battle.modifiers?.perfectStrikeBonusPercents).toEqual([20, 50]);
   });
 });

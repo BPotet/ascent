@@ -2,6 +2,7 @@
 import { seedRandom } from '../battle/SeededRandom';
 import { NO_MODIFIERS, combineModifiers } from '../battle/heroModifiers';
 import { strikeMultiplier } from '../battle/strike';
+import { STARTING_EQUIPMENT, itemModifiers } from './items';
 import {
   BOONS,
   BOON_KINDS,
@@ -37,8 +38,8 @@ describe('the 7 boons (section 4)', () => {
     expect(boonModifiers(BOON_KINDS).initiative).toBe(0);
   });
 
-  it('adds Lame juste to the Cuir of #93 in the perfect strike: 1.5 + 0.2 + 0.5 = 2.2 (P21)', () => {
-    const cuir = { perfectStrikeBonusPercents: [20] };
+  it('adds Lame juste to the Cuir in the perfect strike: 1.5 + 0.2 + 0.5 = 2.2 (P21)', () => {
+    const cuir = itemModifiers({ ...STARTING_EQUIPMENT, armor: 'leather' });
     const build = combineModifiers(cuir, boonModifiers(['trueEdge']));
 
     expect(strikeMultiplier('perfect', build.perfectStrikeBonusPercents)).toBe(220);
