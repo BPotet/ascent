@@ -43,7 +43,7 @@
 | **Carte de nouveauté** (`WhatsNewCard`) | La carte d'information unique de la Vue Journée, affichée à la première ouverture d'une version qui apporte une nouveauté à un joueur qui a déjà des habitudes. Fermable ; elle ne revient jamais. | Défini |
 | **Rappel d'hier** (`YesterdayReminder`) | Le bandeau discret en haut de la Vue Journée quand hier compte au moins une habitude attendue « pas fait » : « Hier : 1/2 faites » (habitudes faites / habitudes attendues), avec l'action « Corriger » qui ouvre la Vue Semaine sur la semaine d'hier. Le joueur peut le fermer pour la journée ; il revient le lendemain pour la nouvelle veille. | Défini |
 | **Vue Semaine** (`WeekView`) | L'écran qui montre, pour chaque habitude existante, l'état du suivi des 7 jours d'une semaine, sa progression de la semaine et, le cas échéant, « Objectif atteint ». | Défini |
-| **Barre d'onglets** (`TabBar`) | La barre en bas de l'écran qui passe d'une vue à l'autre : onglets **Journée**, **Semaine** et **Mois** (l'onglet **Tour** arrivera avec l'épique #30). L'onglet de la vue affichée a un fond, un trait d'or en haut et un libellé en gras, pas seulement une couleur. | Défini |
+| **Barre d'onglets** (`TabBar`) | La barre en bas de l'écran qui passe d'une vue à l'autre : onglets **Journée**, **Semaine** et **Mois**, et **Tour** (le **Pied de la tour**) dans le build de preview seulement tant que l'ascension est un prototype (#91). L'onglet de la vue affichée a un fond, un trait d'or en haut et un libellé en gras, pas seulement une couleur. | Défini |
 | **En-tête du personnage** (`CharacterBar`) | Le haut commun de la Vue Journée, de la Vue Semaine et de la Vue Mois : le personnage en pixels, devant le ciel du jour et la tour au loin, et l'expérience du personnage (« Expérience du personnage », « 340 XP »). Ni niveau, ni jauge d'expérience dans l'épique #71. | Défini |
 | **Ciel du jour** (`DaySky`, règle `daySkyOf`, cas d'usage `getDaySky`, dessin `paintDaySky`) | Le décor de l'en-tête du personnage : un ciel de nuit qui s'éclaire d'un cran à chaque habitude faite, selon le rapport habitudes faites / habitudes attendues d'aujourd'hui (`DaySky.light`, de 0 à 1). Ciel de nuit sans habitude active ; le soleil se lève derrière la tour quand toutes les habitudes attendues sont faites, ou quand aucune n'est attendue (objectifs de la semaine atteints). | Défini |
 | **Crans de la semaine** (`WeekNotches`) | L'affichage de la progression de la semaine d'une habitude : un cran par « fait » attendu par l'objectif de la semaine, vert quand il est fait, doré quand l'objectif est atteint, « +N » au-delà. Toujours accompagnés du texte (« 2/5 cette semaine ») ou de l'annonce : seuls, ils ne portent aucun sens. | Défini |
@@ -174,6 +174,33 @@ Termes de l'épique #30 (« La première ascension »), introduits par la story 
 | **Étincelle de parade** (`ParrySpark`) | L'effet sur le héros à une parade : dorée à rayons pour une parade parfaite, bleu acier pour une bonne parade. Ne pas confondre avec l'**Étincelle** (`Burst`) d'une habitude faite, ni avec les **Éclats** (monnaie). | Défini |
 | **Éclair d'impact** (`ImpactFlash`) | Le bref éclair clair (160 ms) sur le héros à chaque impact, jamais à la fausse amorce. | Défini |
 | **Mouvement réduit** (`ReducedMotion`) | Le mode, suivi du réglage système, où les amplitudes des animations du combat sont réduites sans changer leurs durées ; l'anneau et le sceau restent. | Défini |
+
+## Ascension
+
+Termes de l'épique #88 (prototype de l'ascension), introduits par la story #91. Règles provisoires, à régler en jouant.
+
+| Terme | Définition | Statut |
+|---|---|---|
+| **Ascension** (`Ascent`) | Une partie dans la tour : gravir les étages d'un palier, du premier combat au boss. Une seule ascension est en cours à la fois ; elle est sauvegardée après chaque choix, chaque impact jugé et chaque action résolue. | Défini |
+| **Graine de l'ascension** (`AscentSeed`) | Le nombre qui détermine tous les tirages d'une ascension : sorties, groupes d'ennemis, Or, boss et graine de chaque combat. Un tirage révélé n'est jamais relancé. | Défini |
+| **Pied de la tour** (`TowerFoot`) | L'écran de l'onglet **Tour** : « Commencer l'ascension », ou « Reprendre l'ascension » et « Abandonner l'ascension » quand une ascension est en cours. | Défini |
+| **Palier** (`Tier`) | Une partie de la tour, avec ses ennemis et son boss. Le palier 1 est **les Catacombes** (`Catacombs`). | Défini |
+| **Étage** (`Floor`) | Une étape d'un palier : 6 dans les Catacombes. L'étage 1 est un combat imposé, les étages 2 à 5 se choisissent par une sortie, l'étage 6 est le boss. | Défini |
+| **Sortie** (`Exit`) | Une des 2 portes proposées après un étage, de types distincts : **Combat**, **Élite** ou **Feu de camp** ; après l'étage 5, la seule porte mène au boss. La porte Combat annonce la **taille du groupe**, pas sa composition. | Défini |
+| **Garantie du Feu de camp** (`CampfireGuarantee`) | Si l'étage 2 n'a proposé aucun Feu de camp, une des 2 portes de l'étage 3 en est un. Elle porte sur la proposition, jamais sur le soin. | Défini |
+| **Groupe d'ennemis** (`EnemyGroup`) | Les 1 à 5 ennemis d'un combat ordinaire, tirés selon l'étage : au plus 1 Spectre et 1 Nécromancien, jamais un Nécromancien seul, au plus un groupe de 5 par ascension. Sa **taille** (`GroupSize`) est le nombre d'ennemis. | Défini |
+| **Première ligne** (`FrontLine`) | Les ennemis d'un groupe qui se battent en même temps : 3 au plus. | Défini |
+| **Réserve** (`EnemyReserve`) | Les ennemis d'un groupe qui attendent, dans l'ordre du tirage. Le combat n'est gagné que lorsque la première ligne est tombée et la réserve vide. | Défini |
+| **Renfort** (`Reinforcement`) | Au début d'une manche, s'il ne reste qu'un ennemi debout ou aucun, le 1er ennemi de la réserve prend la place du tombé le plus à gauche, qui ne peut plus être relevé ; un seul par manche, avant le calcul de l'ordre de la manche. | Défini |
+| **Élite** (`Elite`) | Un combat plus dur, derrière une porte Élite : **le Chevalier déchu** (`FallenKnight`), 200 PV, garde 45 ; coup simple de 8, coup retardé de 8, coup imparable de 12. | Défini |
+| **Feu de camp** (`Campfire`) | Une porte qui soigne 40 % des PV max du héros, entier inférieur, sans dépasser le maximum ; ni Or, ni rien d'autre. | Défini |
+| **Boss** (`Boss`) | Le combat de l'étage 6, tiré à égalité : **la Gardienne des ossuaires** (`OssuaryWarden` : coup simple de 9, coup retardé de 10) ou **le Prieur sans visage** (`FacelessPrior` : coup trompeur de 8, double frappe de 5 + 5). 300 PV, garde 60. | Défini |
+| **Changement de phase** (`BossPhaseShift`) | Quand les PV du boss passent à 150 ou moins : sa garde revient à son maximum (s'il est étourdi, à son retour en garde) et ses coups de phase 2 s'ajoutent (Gardienne : double frappe de 6 + 6, coup imparable de 15 ; Prieur : coup retardé de 10, coup imparable de 14), tirés à un quart chacun. L'ordre de la manche ne change pas. | Défini |
+| **Or** (`Gold`) | Gagné pendant l'ascension : 3 par ennemi + 2 à 6 pour un combat ordinaire, 25 pour l'Élite, 40 pour le boss. Affiché pendant l'ascension et au bilan, perdu à la fin de l'ascension. | Défini |
+| **Chute** (`Fall`) | La fin d'une ascension quand le héros tombe à 0 PV : tout est perdu, la suivante repart de l'étage 1. | Défini |
+| **Abandon** (`Abandon`) | « Abandonner l'ascension », après confirmation : même effet qu'une chute. | Défini |
+| **Pause** (`Pause`) | Quitter l'écran de l'ascension ou passer en arrière-plan : l'ascension est sauvegardée. La reprise d'un combat repart de l'action en cours, au début de sa préparation, avec le même tirage ; un impact déjà jugé reste acquis. | Défini |
+| **Compte à rebours de reprise** (`ResumeCountdown`) | Les 3 s qui précèdent la reprise d'un combat, sans aucun appui. | Défini |
 
 ## Workflow de développement
 
