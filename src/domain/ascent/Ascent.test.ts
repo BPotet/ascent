@@ -1,6 +1,7 @@
 import {
   TOP_FLOOR,
   abandonAscent,
+  chooseBoon,
   chooseExit,
   endFloorBattle,
   startAscent,
@@ -9,8 +10,11 @@ import {
 
 const SEEDS = Array.from({ length: 200 }, (_, index) => index * 2_654_435_761 + 11);
 
-const won = (ascent: Ascent, heroHp = ascent.hero.hp) =>
-  endFloorBattle(ascent, { outcome: 'victory', heroHp });
+/** Le combat gagné, puis le 1er bienfait de l'offre pris (#92). */
+const won = (ascent: Ascent, heroHp = ascent.hero.hp) => {
+  const ended = endFloorBattle(ascent, { outcome: 'victory', heroHp });
+  return ended.boonOffer === null ? ended : chooseBoon(ended, 0);
+};
 
 /** Une ascension aux sorties de l'étage, prises par `pick` jusqu'à l'étage `floor`. */
 function climbTo(seed: number, floor: number, pick: (ascent: Ascent) => number = () => 0): Ascent {
