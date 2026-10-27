@@ -245,8 +245,9 @@ export function TrialBattleScreen({
         <View style={styles.foes} pointerEvents="box-none">
           {view.enemies.map((enemy, index) => (
             <EnemyColumn
-              // Par place : un groupe compte plusieurs Goules, et un renfort prend une place.
-              key={index}
+              // Par place et par arrivée : un groupe compte plusieurs Goules, et un renfort a sa
+              // propre colonne, sans l'état de l'ennemi tombé qu'il remplace.
+              key={`${index}:${display.arrivals[index] ?? 0}`}
               view={enemy}
               index={index}
               slot={geometry.enemies[index]!}
