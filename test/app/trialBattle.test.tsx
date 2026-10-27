@@ -50,10 +50,14 @@ async function dayViewIsShown(): Promise<void> {
   expect(screen.queryByTestId('trial-battle')).not.toBeOnTheScreen();
 }
 
-/** Le combat d'essai, en phase du héros. */
+/**
+ * Le combat d'essai, après le choix du héros (prototype #90). Avec l'Initiative, le Spectre agit
+ * avant le héros : la barre du héros est vérifiée, pas la phase du héros.
+ */
 async function trialBattleIsShown(): Promise<void> {
+  await fireEvent.press(await screen.findByRole('button', { name: 'Commencer le combat' }));
   expect(await screen.findByRole('header', { name: "Combat d'essai" })).toBeOnTheScreen();
-  expect(await screen.findByRole('button', { name: 'Attaquer, cible : Goule' })).toBeOnTheScreen();
+  expect(await screen.findByTestId('battle-hero-bar')).toBeOnTheScreen();
   expect(screen.queryByTestId('day-view-empty')).not.toBeOnTheScreen();
 }
 
