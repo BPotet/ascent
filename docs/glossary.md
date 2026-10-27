@@ -187,6 +187,7 @@ Termes de l'épique #88 (prototype de l'ascension), introduits par la story #91.
 | **Palier** (`Tier`) | Une partie de la tour, avec ses ennemis et son boss. Le palier 1 est **les Catacombes** (`Catacombs`). | Défini |
 | **Étage** (`Floor`) | Une étape d'un palier : 6 dans les Catacombes. L'étage 1 est un combat imposé, les étages 2 à 5 se choisissent par une sortie, l'étage 6 est le boss. | Défini |
 | **Sortie** (`Exit`) | Une des 2 portes proposées après un étage, de types distincts : **Combat**, **Élite** ou **Feu de camp** ; après l'étage 5, la seule porte mène au boss. La porte Combat annonce la **taille du groupe**, pas sa composition. | Défini |
+| **Combat d'étage** (`Encounter`) | Le combat derrière une porte Combat, Élite ou boss (et le combat imposé de l'étage 1) : son type, son groupe d'ennemis de gauche à droite et sa graine du combat, tirés à l'entrée de l'étage. | Défini |
 | **Garantie du Feu de camp** (`CampfireGuarantee`) | Si l'étage 2 n'a proposé aucun Feu de camp, une des 2 portes de l'étage 3 en est un. Elle porte sur la proposition, jamais sur le soin. | Défini |
 | **Groupe d'ennemis** (`EnemyGroup`) | Les 1 à 5 ennemis d'un combat ordinaire, tirés selon l'étage : au plus 1 Spectre et 1 Nécromancien, jamais un Nécromancien seul, au plus un groupe de 5 par ascension. Sa **taille** (`GroupSize`) est le nombre d'ennemis. | Défini |
 | **Première ligne** (`FrontLine`) | Les ennemis d'un groupe qui se battent en même temps : 3 au plus. | Défini |
