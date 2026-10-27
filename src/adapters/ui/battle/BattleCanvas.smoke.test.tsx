@@ -60,6 +60,19 @@ function props(change: Partial<BattleSceneProps> = {}): BattleSceneProps {
   };
 }
 
+/** Les types des éléments Skia dessinés par la scène (`skCircle`, `skAtlas`…). */
+function drawnTypes(): string[] {
+  const types: string[] = [];
+  const visit = (node: NonNullable<ReturnType<typeof screen.toJSON>> | string) => {
+    if (typeof node === 'string') return;
+    types.push(node.type);
+    node.children?.forEach(visit);
+  };
+  const tree = screen.toJSON();
+  if (tree !== null) visit(tree);
+  return types;
+}
+
 describe('BattleScene with Skia', () => {
   it('prepares the atlases of the scene once, as Skia images', () => {
     const prepared = prepareBattleScene();
@@ -70,12 +83,19 @@ describe('BattleScene with Skia', () => {
     expect(prepareBattleScene()).toBe(prepared);
   });
 
-  it('mounts the stage, the pedestals, the enemies, the hero, the effects and the ring, hidden from the screen reader', async () => {
+  it('mounts the stage, the pedestals, the enemies, the hero and the effects, hidden from the screen reader', async () => {
     await render(<BattleScene {...props()} />);
 
     const canvas = screen.getByTestId('battle-canvas', { includeHiddenElements: true });
     expect(canvas).toHaveProp('accessibilityElementsHidden', true);
     expect(canvas).toHaveProp('pointerEvents', 'none');
+    expect(drawnTypes()).toContain('skAtlas');
+  });
+
+  it('draws no timing ring while an enemy prepares a perilous attack: the attack reads by its animation alone (#101)', async () => {
+    await render(<BattleScene {...props()} />);
+
+    expect(drawnTypes()).not.toContain('skCircle');
   });
 
   it('mounts at rest, without an enemy action, and for a fallen hero', async () => {

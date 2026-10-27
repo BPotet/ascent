@@ -26,8 +26,8 @@ export interface SceneGeometry {
   /** Le héros de dos, à 3 dp par pixel d'art (2 dp sur un écran étroit). */
   readonly hero: SceneRect & { readonly scale: 2 | 3 };
   readonly heroPedestalAt: { readonly x: number; readonly y: number };
-  /** Le centre de l'anneau (le buste du héros) et sa taille de fermeture. */
-  readonly ring: { readonly x: number; readonly y: number; readonly size: number };
+  /** Le buste du héros : là où frappent les ennemis et où paraissent l'éclair et l'étincelle. */
+  readonly chest: { readonly x: number; readonly y: number };
   /** Le bas des pieds des ennemis, pour l'horizon du décor. */
   readonly feetY: number;
   /** Le bas des plaques : la scène ne rétrécit jamais en dessous sur l'écran de fin. */
@@ -46,7 +46,6 @@ const TOP = 2;
 const RIGHT = 4;
 const HERO_LEFT = 4;
 const HERO_BOTTOM = 12;
-const RING_SIZE = 76;
 /** Le décalage des colonnes : en diagonale, la plus à gauche la plus près du héros. */
 const OFFSETS: Readonly<Record<number, readonly number[]>> = { 3: [34, 16, 0], 2: [16, 0] };
 // Stryker restore all
@@ -56,7 +55,7 @@ const snap = (value: number) => Math.round(value / 2) * 2;
 /**
  * La géométrie de la scène (`sceneGeometry`), commune au canevas et aux colonnes des ennemis, d'après
  * la maquette : les ennemis de trois quarts face en haut à droite, en diagonale ; le héros de dos en
- * bas à gauche ; l'anneau sur son buste (42 % de sa hauteur). Les sprites sont calés sur 2 dp.
+ * bas à gauche ; son buste à 42 % de sa hauteur. Les sprites sont calés sur 2 dp.
  */
 export function sceneGeometry(width: number, height: number, count: number): SceneGeometry {
   const narrow = width < 360;
@@ -67,10 +66,9 @@ export function sceneGeometry(width: number, height: number, count: number): Sce
   const heroWidth = 36 * scale;
   const heroHeight = 44 * scale;
   const heroTop = height - HERO_BOTTOM - heroHeight;
-  const ring = {
+  const chest = {
     x: HERO_LEFT + heroWidth / 2,
     y: heroTop + Math.round(heroHeight * 0.42),
-    size: RING_SIZE,
   };
   const offsets = OFFSETS[count] ?? [0];
   const enemies = Array.from({ length: count }, (_, index): EnemySlot => {
@@ -91,8 +89,8 @@ export function sceneGeometry(width: number, height: number, count: number): Sce
       pedestal: count === 1 ? 'single' : 'enemy',
       pedestalAt: { x: snap(center), y: figureBottom - 2 },
       reach: {
-        x: ring.x - (sprite.x + SPRITE_WIDTH / 2),
-        y: ring.y - (figureTop + FIGURE_HEIGHT * 0.6),
+        x: chest.x - (sprite.x + SPRITE_WIDTH / 2),
+        y: chest.y - (figureTop + FIGURE_HEIGHT * 0.6),
       },
       plateBottom: figureBottom + GAP + PLATE_HEIGHT,
     };
@@ -101,7 +99,7 @@ export function sceneGeometry(width: number, height: number, count: number): Sce
     enemies,
     hero: { x: HERO_LEFT, y: heroTop + 4, width: heroWidth, height: heroHeight, scale },
     heroPedestalAt: { x: HERO_LEFT + heroWidth / 2, y: height - HERO_BOTTOM - 6 },
-    ring,
+    chest,
     feetY: Math.min(...enemies.map((enemy) => enemy.sprite.y + SPRITE_HEIGHT), height) + 14,
     platesBottom: Math.max(0, ...enemies.map((enemy) => enemy.plateBottom)),
   };
