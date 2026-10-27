@@ -2,14 +2,25 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
+import type { FateGaugeReading } from '../../../application/useCases/fateGauge';
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
-import { TIER_LINE, TOWER_TITLE, floorLine, goldText } from '../format/ascentText';
+import {
+  TIER_LINE,
+  TOWER_TITLE,
+  floorLine,
+  gaugeEffects,
+  gaugeReason,
+  gaugeWord,
+  goldText,
+} from '../format/ascentText';
 import { useAscent } from '../state/useAscent';
+import { useFateGauge } from '../state/useFateGauge';
 import { battleColors } from '../theme/battleColors';
 
 /**
- * Le pied de la tour (`TowerFoot`, prototype #91) : « Commencer l'ascension », ou, quand une
+ * Le pied de la tour (`TowerFoot`, prototypes #91 et #93) : la jauge du jour, d'après hier, et
+ * « Commencer l'ascension », qui la scelle ; ou, quand une
  * ascension est en cours (une seule à la fois), « Reprendre l'ascension » et « Abandonner
  * l'ascension », avec confirmation. `onEnter` ouvre l'ascension.
  */
@@ -23,6 +34,7 @@ export function TowerFootScreen({
   const ascent = useAscent(session);
   const [loaded, setLoaded] = useState(ascent !== null);
   const [confirming, setConfirming] = useState(false);
+  const { reading, seal } = useFateGauge();
 
   useEffect(() => {
     if (loaded) return;
@@ -33,8 +45,9 @@ export function TowerFootScreen({
   }, [session, loaded]);
 
   const inProgress = ascent !== null && ascent.outcome === null;
-  const start = () => {
-    session.begin();
+  const start = (reading: FateGaugeReading) => {
+    session.begin({ gauge: reading.gauge, blessings: reading.blessings });
+    seal(reading);
     onEnter();
   };
 
@@ -50,6 +63,7 @@ export function TowerFootScreen({
             <Text style={styles.status}>
               {`${floorLine(ascent.floor)} · ${ascent.hero.hp}/${ascent.hero.maxHp} PV · ${goldText(ascent.gold)}`}
             </Text>
+            <Text style={styles.line}>{`Jauge de l'ascension : ${gaugeWord(ascent.gauge)}`}</Text>
             {confirming ? (
               <View style={styles.actions}>
                 <Text style={styles.line}>
@@ -83,7 +97,18 @@ export function TowerFootScreen({
                 {`Ascension terminée : ${goldText(ascent.gold)}, perdus à la fin.`}
               </Text>
             )}
-            <Button label="Commencer l'ascension" onPress={start} />
+            {reading === null ? null : (
+              <>
+                <Text style={styles.status}>{`Jauge du jour : ${gaugeWord(reading.gauge)}`}</Text>
+                <Text style={styles.line}>{gaugeReason(reading)}</Text>
+                {gaugeEffects(reading).map((effect) => (
+                  <Text key={effect} style={styles.line}>
+                    {effect}
+                  </Text>
+                ))}
+                <Button label="Commencer l'ascension" onPress={() => start(reading)} />
+              </>
+            )}
           </View>
         )}
       </View>

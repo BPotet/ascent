@@ -139,3 +139,48 @@ describe('AscentScreen', () => {
     expect(screen.getByText('Le boss des Catacombes est vaincu.')).toBeOnTheScreen();
   });
 });
+
+describe('AscentScreen with blessings and found items (#93)', () => {
+  it('offers the starting blessings one after the other, before the first battle', async () => {
+    const { session } = await show(startAscent(42, { gauge: -1, blessings: ['epic', 'rare'] }));
+
+    expect(screen.getByRole('header', { name: 'Bénédiction 1 sur 2' })).toBeOnTheScreen();
+    const family = session.current()!.blessingOffer![0]!;
+    fireEvent.press(screen.getByTestId('blessing-0'));
+
+    expect(session.current()!.blessings).toEqual([{ family, rarity: 'epic' }]);
+    expect(await screen.findByRole('header', { name: 'Bénédiction 2 sur 2' })).toBeOnTheScreen();
+    fireEvent.press(screen.getByTestId('blessing-2'));
+
+    expect(await screen.findByRole('header', { name: 'Étage 1' })).toBeOnTheScreen();
+  });
+
+  it('shows a found item compared to the worn one, and equips it', async () => {
+    const { session } = await show({
+      ...between(startAscent(42), [{ kind: 'combat', groupSize: 2 }]),
+      foundItem: 'axe',
+    });
+
+    expect(screen.getByRole('header', { name: 'Objet trouvé' })).toBeOnTheScreen();
+    expect(
+      screen.getByText('Hache · Arme · Commun · Brise-garde ×1,3 · Initiative −1'),
+    ).toBeOnTheScreen();
+    expect(screen.getByText('Tu portes : Épée courte · Initiative 0')).toBeOnTheScreen();
+    fireEvent.press(screen.getByRole('button', { name: 'Équiper' }));
+
+    expect(session.current()!.equipment.weapon).toBe('axe');
+    expect(await screen.findByRole('header', { name: 'Choisis ta sortie' })).toBeOnTheScreen();
+  });
+
+  it('loses a left item and keeps the equipment', async () => {
+    const { session } = await show({
+      ...between(startAscent(42), [{ kind: 'combat', groupSize: 2 }]),
+      foundItem: 'hasteAmulet',
+    });
+
+    expect(screen.getByText('Tu portes : Aucun accessoire')).toBeOnTheScreen();
+    fireEvent.press(screen.getByRole('button', { name: 'Laisser' }));
+
+    expect(session.current()).toMatchObject({ foundItem: null, equipment: { accessory: null } });
+  });
+});
