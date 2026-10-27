@@ -51,6 +51,8 @@ export type BattleEvent =
       readonly enemy: number;
       readonly impactAt: number;
       readonly until: number;
+      /** Le rang du coup (1, 2), pour un héros qui frappe plusieurs fois (prototype #90). */
+      readonly hit?: number;
     }
   | {
       readonly type: 'strikeResolved';
@@ -61,6 +63,8 @@ export type BattleEvent =
       readonly delta: number | null;
       readonly damage: number;
       readonly guardDamage: number;
+      /** Le rang du coup (1, 2), pour un héros qui frappe plusieurs fois (prototype #90). */
+      readonly hit?: number;
     }
   | {
       readonly type: 'powerUsed';

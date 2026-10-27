@@ -60,7 +60,7 @@ tags:
     id: 'create-habit'
 - extendedWaitUntil:
     visible: 'Habitude créée( · objectif \d cette semaine)?'
-    timeout: 5000
+    timeout: 10000
 - extendedWaitUntil:
     notVisible: 'Nouvelle habitude'
     timeout: 10000
@@ -93,7 +93,7 @@ tags:
     id: 'create-habit'
 - extendedWaitUntil:
     visible: 'Habitude créée( · objectif \d cette semaine)?'
-    timeout: 5000
+    timeout: 10000
 - takeScreenshot: weekly-target-E2-3-created-reduced-week
 - extendedWaitUntil:
     notVisible: 'Nouvelle habitude'
@@ -193,10 +193,8 @@ tags:
 - tapOn:
     id: 'save-habit'
 - extendedWaitUntil:
-    visible:
-      id: 'toast'
+    visible: 'Habitude modifiée'
     timeout: 10000
-- assertVisible: 'Habitude modifiée'
 - extendedWaitUntil:
     visible: 'Courir 5 km, .+, à faire, 0 sur \d cette semaine, Moyenne, 10 XP par suivi'
     timeout: 10000

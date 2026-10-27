@@ -1,6 +1,12 @@
-import type { Battle, EnemyState } from '../../../domain/battle/Battle';
+import type { Actor } from '../../../domain/battle/actionOrder';
+import {
+  heroProfile,
+  nextRoundOrder,
+  type Battle,
+  type EnemyState,
+} from '../../../domain/battle/Battle';
 import type { PhaseDirection } from '../../../domain/battle/BattleEvent';
-import { SENTINEL, type EnemyKind } from '../../../domain/battle/combatants';
+import type { EnemyKind } from '../../../domain/battle/combatants';
 import { POWERS, missingMomentum, type PowerKind } from '../../../domain/battle/momentum';
 import { shownIntent, type ShownIntent } from '../../../domain/battle/shownIntent';
 import {
@@ -22,6 +28,18 @@ export interface PowerSlot {
   readonly power: PowerKind;
   readonly cost: number;
   readonly missing: number;
+  /** Pas de l'ombre est actif : indisponible jusqu'à son emploi (prototype #90). */
+  readonly active?: true;
+}
+
+/**
+ * La frise d'action (prototype #90, maquette F2, F6) : le combattant en cours et ceux qui n'ont
+ * pas encore agi dans la manche, ennemis debout seulement, puis l'aperçu de la manche suivante.
+ */
+export interface ActionTrackView {
+  readonly round: number;
+  readonly current: readonly Actor[];
+  readonly next: readonly Actor[];
 }
 
 /**
@@ -113,8 +131,24 @@ const STRIKE_LINE: ZoneLine = {
 };
 
 function powerSlot(battle: Battle): PowerSlot {
-  const { power } = SENTINEL;
-  return { power, cost: POWERS[power].cost, missing: missingMomentum(battle.hero.momentum, power) };
+  const { power } = heroProfile(battle);
+  return {
+    power,
+    cost: POWERS[power].cost,
+    missing: missingMomentum(battle.hero.momentum, power),
+    ...(power === 'shadowStep' && battle.hero.shadowStep === true && { active: true as const }),
+  };
+}
+
+/** La frise d'action d'un état du combat ; vide à la fin du combat. */
+export function actionTrackView(battle: Battle): ActionTrackView {
+  if (battle.phase.kind === 'over') return { round: battle.round, current: [], next: [] };
+  const standing = (actor: Actor) => actor === 'hero' || battle.enemies[actor]!.hp > 0;
+  return {
+    round: battle.round,
+    current: battle.turn.order.slice(battle.turn.position).filter(standing),
+    next: nextRoundOrder(battle),
+  };
 }
 
 function targetLine(battle: Battle): ZoneLine | null {

@@ -130,7 +130,7 @@ export class AscentSession {
         return startBattle({
           ...options,
           seed: encounter.battleSeed,
-          hero: this.ascent!.hero,
+          heroHp: this.ascent!.hero.hp,
           enemies: encounter.enemies,
         });
       },

@@ -27,7 +27,7 @@ function start(enemies: readonly EnemyKind[], hero = { hp: 50, maxHp: 80 }): Bat
     tuning: DEFAULT_TRIAL_TUNING,
     defenseHint: false,
     at: 0,
-    hero,
+    heroHp: hero.hp,
     enemies,
   });
 }

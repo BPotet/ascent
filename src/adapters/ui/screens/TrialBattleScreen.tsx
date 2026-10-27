@@ -5,7 +5,9 @@ import Animated, { useSharedValue } from 'react-native-reanimated';
 import { DEFAULT_SOUND_LATENCY_MS } from '../../../application/ports/BattleSound';
 import type { BattleSession } from '../../../application/useCases/BattleSession';
 import type { BattleEvent, DefenseButton } from '../../../domain/battle/BattleEvent';
+import { HEROES } from '../../../domain/battle/combatants';
 import { ActionPad } from '../battle/ActionPad';
+import { ActionTrack } from '../battle/ActionTrack';
 import { BattleScene, prepareBattleScene } from '../battle/BattleCanvas';
 import { DamageFloat, FeedbackLabel, useShake } from '../battle/BattleEffects';
 import { BattleEndPanel } from '../battle/BattleEndPanel';
@@ -25,7 +27,7 @@ import {
 import { Screen } from '../components/Screen';
 import { ENEMY_NAMES, TRIAL_BATTLE_TITLE } from '../format/battleText';
 import { toBattleInstant } from '../state/battleTouch';
-import { battleView, type BattleView } from '../state/battleView';
+import { actionTrackView, battleView, type BattleView } from '../state/battleView';
 import { useBattleMeasures } from '../state/useBattleMeasures';
 import { useReducedMotion } from '../state/useReducedMotion';
 import { jsThreadNow, uiThreadNow } from '../state/useTouchProbe';
@@ -109,6 +111,7 @@ export function TrialBattleScreen({
   }, []);
 
   const { record } = measures;
+  const heroKind = display.snapshot?.battle.heroKind ?? 'sentinel';
   const onDefense = useCallback(
     (button: DefenseButton, touchedAt: number) => {
       record(touchedAt);
@@ -126,11 +129,11 @@ export function TrialBattleScreen({
   const onPower = useCallback(
     (touchStartedAt: number, releasedAt: number) =>
       session.heroAction(
-        { kind: 'power', power: 'bulwark' },
+        { kind: 'power', power: HEROES[heroKind].power },
         toBattleInstant(touchStartedAt),
         toBattleInstant(releasedAt),
       ),
-    [session],
+    [session, heroKind],
   );
   const onAttack = useCallback(
     (touchStartedAt: number, releasedAt: number) =>
@@ -207,6 +210,12 @@ export function TrialBattleScreen({
           {title}
         </Text>
       </View>
+      {battle.initiative && over === null ? (
+        <ActionTrack
+          track={actionTrackView(battle)}
+          enemies={battle.enemies.map((enemy) => enemy.kind)}
+        />
+      ) : null}
       <Animated.View
         onLayout={onSceneLayout}
         testID="battle-scene-frame"
@@ -287,7 +296,7 @@ export function TrialBattleScreen({
       </Animated.View>
       {over === null ? (
         <>
-          <HeroBar hero={battle.hero} />
+          <HeroBar hero={battle.hero} kind={heroKind} />
           <View style={styles.zone}>
             <Text
               testID="battle-zone-line"
@@ -314,7 +323,13 @@ export function TrialBattleScreen({
           </View>
         </>
       ) : (
-        <BattleEndPanel outcome={over} respite={respite} onReplay={replay} onClose={onClose}>
+        <BattleEndPanel
+          outcome={over}
+          respite={respite}
+          hero={heroKind}
+          onReplay={replay}
+          onClose={onClose}
+        >
           {trialTools ? (
             <>
               <TrialTuningPanel tuning={tuning.tuning} onStep={tuning.step} />

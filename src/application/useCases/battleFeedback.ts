@@ -67,7 +67,8 @@ export function feedbackFor(event: BattleEvent): BattleFeedback {
     case 'allyRaised':
       return { sound: 'raise', haptic: null };
     case 'powerUsed':
-      return { sound: event.power, haptic: null };
+      // Pas de l'ombre (prototype #90) n'a pas de son propre : il reprend celui du Rempart.
+      return { sound: 'bulwark', haptic: null };
     default:
       return NONE;
   }

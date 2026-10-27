@@ -60,7 +60,7 @@ function savedBattle(
     tuning: DEFAULT_TRIAL_TUNING,
     defenseHint: false,
     at: 0,
-    hero: { hp: heroHp, maxHp: 80 },
+    heroHp,
     enemies: ['ghoul'],
   });
   return { ...battle, enemies: [{ ...battle.enemies[0]!, hp: enemyHp }] };
