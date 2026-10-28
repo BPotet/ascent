@@ -1,4 +1,4 @@
-import { startTrialBattle, type Battle } from '../../../domain/battle/Battle';
+import { startBattle, startTrialBattle, type Battle } from '../../../domain/battle/Battle';
 import type { BattleEvent } from '../../../domain/battle/BattleEvent';
 import { DEFAULT_TRIAL_TUNING } from '../../../domain/battle/TrialTuning';
 import {
@@ -126,6 +126,23 @@ describe('battle texts', () => {
     expect(enemyLabel({ ...ghoul, kind: 'specter', hp: 0 }, null, false)).toBe('Spectre, tombé');
   });
 
+  it('reads « relevé » for an enemy that has revived by itself (#106)', () => {
+    const skeleton = {
+      ...ghoul,
+      kind: 'skeleton',
+      hp: 17,
+      maxHp: 35,
+      guard: 10,
+      maxGuard: 10,
+    } as const;
+    expect(enemyLabel({ ...skeleton, selfRevives: 1 }, null, false)).toBe(
+      'Squelette, relevé, 17 PV sur 35, garde 10 sur 10',
+    );
+    expect(enemyLabel({ ...skeleton, selfRevives: 0 }, null, false)).toBe(
+      'Squelette, 17 PV sur 35, garde 10 sur 10',
+    );
+  });
+
   it('names the target in the label of « Attaquer »', () => {
     expect(attackButtonLabel('Spectre')).toBe('Attaquer, cible : Spectre');
   });
@@ -164,6 +181,10 @@ describe('battle texts', () => {
         { tone: 'break', title: 'Cassure' },
       ],
       [strike('perfect', 15), { tone: 'perfect', title: 'Frappe parfaite' }],
+      [
+        { type: 'enemySelfRevived', at: 0, enemy: 0, hp: 17 },
+        { tone: 'rise', title: 'Il se relève' },
+      ],
     ] as [BattleEvent, unknown][])('shows %j', (event, text) => {
       expect(feedbackText(event)).toEqual(text);
     });
@@ -287,6 +308,20 @@ describe('battle texts', () => {
       { type: 'respite', at: 0, gain: 0, heroHp: 80 },
     ] as BattleEvent[])('reads nothing for $type', (event) => {
       expect(announcement(event, battle)).toBeNull();
+    });
+
+    it('reads the Skeleton that revives with its HP (#106)', () => {
+      const withSkeleton = startBattle({
+        seed: 1,
+        tuning: DEFAULT_TRIAL_TUNING,
+        defenseHint: false,
+        at: 0,
+        enemies: ['skeleton'],
+      }).battle;
+
+      expect(
+        announcement({ type: 'enemySelfRevived', at: 0, enemy: 0, hp: 17 }, withSkeleton),
+      ).toBe('Squelette se relève, 17 PV sur 35');
     });
   });
 

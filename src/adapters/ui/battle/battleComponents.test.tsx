@@ -30,6 +30,7 @@ const ghoul: EnemyView = {
   intent: { category: 'attack' },
   active: false,
   dimmed: false,
+  tag: null,
   label: 'Goule, 38 PV sur 50, garde 15 sur 15, intention : attaque',
 };
 
@@ -124,6 +125,12 @@ describe('EnemyColumn', () => {
     expect(style('enemy-ghoul').opacity).toBeUndefined();
     expect(style('enemy-ghoul-hp').width).toBe('76%');
     expect(style('enemy-ghoul-guard').width).toBe('100%');
+  });
+
+  it('shows the « Relevé » tag under the name of an enemy that revived by itself (#106)', async () => {
+    await renderColumn({ view: { ...ghoul, tag: 'Relevée' } });
+
+    expect(screen.getByText('Relevée')).toBeOnTheScreen();
   });
 
   it('shows the shield and its gain for a Guard intent', async () => {
