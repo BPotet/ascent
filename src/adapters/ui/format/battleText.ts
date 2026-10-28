@@ -144,6 +144,11 @@ function damages(count: number): string {
   return `${count} ${count > 1 ? 'dégâts' : 'dégât'}`;
 }
 
+/** L'étiquette du Saignement sous les PV du héros (prototype #107) : « Saignement ×3 ». */
+export function bleedChipText(rounds: number): string {
+  return `Saignement ×${rounds}`;
+}
+
 /** Les PV sous un ennemi : « 38/50 PV ». */
 export function enemyHpText(hp: number, maxHp: number): string {
   return `${hp}/${maxHp} PV`;
@@ -292,6 +297,10 @@ export function damageFloat(event: BattleEvent): DamageFloat | null {
       return { at: event.enemy, text: `−${event.damage}`, big: false, kind: 'damage' };
     case 'guardRaised':
       return { at: event.enemy, text: `+${event.gain}`, big: false, kind: 'guard' };
+    case 'bleedTicked':
+      return event.loss > 0
+        ? { at: 'hero', text: `−${event.loss}`, big: false, kind: 'damage' }
+        : null;
     default:
       return null;
   }
@@ -367,6 +376,12 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
       return event.gain > 0 ? `Répit, plus ${event.gain} PV` : null;
     case 'battleEnded':
       return `${endTitle(event.outcome)}.`;
+    case 'heroBleeding':
+      return `Saignement : moins ${event.damage} PV pendant ${event.rounds} manches`;
+    case 'bleedTicked':
+      return event.roundsLeft > 0
+        ? `Saignement, ${damages(event.loss)}, encore ${event.roundsLeft} ${event.roundsLeft > 1 ? 'manches' : 'manche'}`
+        : `Saignement, ${damages(event.loss)}. Saignement terminé`;
     default:
       return null;
   }

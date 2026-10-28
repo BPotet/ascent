@@ -9,6 +9,7 @@ import { DamageFloat, FeedbackLabel } from './BattleEffects';
 import { BattleEndPanel } from './BattleEndPanel';
 import { BATTLE_HINTS, BattleHintBubble } from './BattleHintBubble';
 import { EnemyColumn } from './EnemyColumn';
+import { BleedDrops } from './BleedChip';
 import { HeroBar } from './HeroBar';
 import { PhaseBanner } from './PhaseBanner';
 import { sceneGeometry } from './scene/sceneGeometry';
@@ -88,6 +89,31 @@ describe('HeroBar', () => {
     expect(
       screen.getByLabelText('La Sentinelle, PV 56 sur 80, Élan 2 sur 5, Rempart'),
     ).toBeOnTheScreen();
+  });
+
+  it('shows the Bleed chip under the HP while the hero bleeds (prototype #107)', async () => {
+    await render(<HeroBar hero={{ ...sentinel, bleed: { damage: 2, rounds: 3 } }} />);
+
+    expect(screen.getByText('Saignement ×3', { includeHiddenElements: true })).toBeTruthy();
+    expect(
+      screen.getByLabelText('La Sentinelle, PV 56 sur 80, Élan 2 sur 5, Saignement ×3'),
+    ).toBeOnTheScreen();
+  });
+
+  it('shows no Bleed chip when the hero does not bleed', async () => {
+    await render(<HeroBar hero={sentinel} />);
+
+    expect(screen.queryByText(/Saignement/, { includeHiddenElements: true })).toBeNull();
+  });
+});
+
+describe('BleedDrops', () => {
+  it('draws the drops on the hero, hidden from the screen reader', async () => {
+    await render(<BleedDrops />);
+
+    expect(
+      screen.getAllByTestId('battle-bleed-drop', { includeHiddenElements: true }),
+    ).toHaveLength(3);
   });
 });
 
