@@ -32,23 +32,26 @@ describe('Group size (P3)', () => {
 describe('Group composition (P3)', () => {
   const groups = (size: number) => SEEDS.map((seed) => drawGroup(size, seedRandom(seed)).value);
 
-  it('draws as many enemies as the size, with at most 1 Specter and 1 Necromancer', () => {
+  it('draws as many enemies as the size, with at most 1 Specter, 1 Necromancer and 1 Skeleton', () => {
     for (const size of [1, 2, 3, 4, 5]) {
       for (const group of groups(size)) {
         expect(group).toHaveLength(size);
         expect(group.filter((kind) => kind === 'specter').length).toBeLessThanOrEqual(1);
         expect(group.filter((kind) => kind === 'necromancer').length).toBeLessThanOrEqual(1);
+        expect(group.filter((kind) => kind === 'skeleton').length).toBeLessThanOrEqual(1);
       }
     }
   });
 
   it('fills the rest with Ghouls, and every type is possible', () => {
     const five = groups(5);
-    expect(five.every((group) => group.filter((kind) => kind === 'ghoul').length >= 3)).toBe(true);
-    expect(new Set(groups(3).flat())).toEqual(new Set(['ghoul', 'specter', 'necromancer']));
+    expect(five.every((group) => group.filter((kind) => kind === 'ghoul').length >= 2)).toBe(true);
+    expect(new Set(groups(3).flat())).toEqual(
+      new Set(['ghoul', 'specter', 'necromancer', 'skeleton']),
+    );
   });
 
-  it('never draws a lone Necromancer', () => {
-    expect(new Set(groups(1).flat())).toEqual(new Set(['ghoul', 'specter']));
+  it('never draws a lone Necromancer, but a lone Skeleton can be', () => {
+    expect(new Set(groups(1).flat())).toEqual(new Set(['ghoul', 'specter', 'skeleton']));
   });
 });
