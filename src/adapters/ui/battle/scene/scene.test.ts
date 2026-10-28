@@ -140,6 +140,16 @@ describe('enemyPose (pxAct, actPose)', () => {
     expect(hesitation).toEqual(['hes', 'ant2', 'hes', 'ant2']);
   });
 
+  it('D1, D2: a delayed perilous attack hesitates like a delayed attack, red all along', () => {
+    const shockwave = attack('delayedPerilous', [3_100], { enemy: 1 });
+    const hesitation = [9, 10, 11, 12].map((frame) =>
+      enemyPose(shockwave, WIND_UP_AT + frame * FRAME_MS + 1, false),
+    );
+    expect(hesitation.map((pose) => pose.frame)).toEqual(['hes', 'ant2', 'hes', 'ant2']);
+    expect(hesitation.every((pose) => pose.red)).toBe(true);
+    expect(enemyPose(shockwave, WIND_UP_AT, false).red).toBe(true);
+  });
+
   it('P13: a feint rushes short, to 74 % at the summit of its false start, without an impact frame', () => {
     const feint = attack('feint', [3_000], { feintAt: 2_200, enemy: 1 });
     expect(enemyPose(feint, 2_150, false)).toMatchObject({ frame: 'feint0', tier: 2 });

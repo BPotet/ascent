@@ -264,6 +264,17 @@ describe('battle texts', () => {
         },
         'Spectre, coup imparable, esquive',
       ],
+      [
+        {
+          type: 'windUpStarted',
+          at: 0,
+          enemy: 1,
+          attack: 'delayedPerilous',
+          impacts: [900],
+          feintAt: null,
+        },
+        'Spectre, coup retardé imparable, esquive',
+      ],
       [blow('perfectParry', 0), 'Parade parfaite'],
       [blow('parry', 1), 'Parade, 1 dégât'],
       [blow('dodge', 0), 'Esquive, aucun dégât'],

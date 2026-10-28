@@ -1,8 +1,8 @@
 /**
- * Les cinq types de coups ennemis (C10) : leur préparation de base, leurs impacts et leur
+ * Les six types de coups ennemis (C10, #108) : leur préparation de base, leurs impacts et leur
  * particularité. Ils se lisent par l'animation seule, sans anneau.
  */
-export type AttackKind = 'basic' | 'double' | 'delayed' | 'feint' | 'perilous';
+export type AttackKind = 'basic' | 'double' | 'delayed' | 'feint' | 'perilous' | 'delayedPerilous';
 
 export interface AttackProfile {
   /** La préparation (`WindUp`) de base, avant la variation de ×0,8 à ×1,2. */
@@ -23,6 +23,8 @@ export const ATTACKS: Readonly<Record<AttackKind, AttackProfile>> = {
   delayed: { windUpMs: 1_700, hitOffsetsMs: [0], feint: false, perilous: false },
   feint: { windUpMs: 1_600, hitOffsetsMs: [0], feint: true, perilous: false },
   perilous: { windUpMs: 1_300, hitOffsetsMs: [0], feint: false, perilous: true },
+  // Le coup retardé imparable (D1) : l'hésitation du coup retardé, la parade du coup imparable.
+  delayedPerilous: { windUpMs: 1_700, hitOffsetsMs: [0], feint: false, perilous: true },
 };
 
 /** La variation de la préparation, tirée au début de la manche (C10). */

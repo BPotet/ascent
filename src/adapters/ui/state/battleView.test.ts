@@ -30,7 +30,7 @@ function withEnemy(battle: Battle, enemy: number, change: Partial<EnemyState>): 
 const hero = { kind: 'hero', since: 0, announced: false } as const;
 const bulwark = { power: 'bulwark', cost: 1, missing: 0 } as const;
 
-const attack = (attackKind: 'basic' | 'perilous') =>
+const attack = (attackKind: 'basic' | 'perilous' | 'delayedPerilous') =>
   ({
     kind: 'enemy',
     step: {
@@ -183,6 +183,8 @@ describe('battleView', () => {
       sealed: null,
     });
     expect(battleView(inPhase(attack('perilous'), inEnemyPhase)).sealed).toBe(1);
+    // Le coup retardé imparable : le sceau, toute l'étape, hésitation comprise (D2).
+    expect(battleView(inPhase(attack('delayedPerilous'), inEnemyPhase)).sealed).toBe(1);
   });
 
   it('hatches the defense buttons during off-balance', () => {

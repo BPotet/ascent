@@ -8,6 +8,7 @@ import {
 } from './attacks';
 import { ENEMIES, type Bleed, type EnemyKind } from './combatants';
 import { nextRandom, type RandomState } from './SeededRandom';
+import { pickWeighted } from './weighted';
 
 /** L'intention Attaque (`AttackIntent`) : le coup, ses dégâts et ses tirages, jamais montrés. */
 export interface AttackIntent {
@@ -102,8 +103,11 @@ export function drawIntent(
   ) {
     return drawn({ category: 'guard', gain: guardGain(maxGuard) });
   }
-  // Un tirage est dans [0, 1) : l'indice reste dans la liste.
-  const move = moves[Math.floor(moveDraw.value * moves.length)]!;
+  // Le coup selon les poids (K6) ; à poids égaux, c'est ⌊tirage × nombre de coups⌋.
+  const move = pickWeighted(
+    moves.map((candidate) => [candidate, candidate.weight ?? 1] as const),
+    moveDraw.value,
+  );
   const factor = WIND_UP_MIN_FACTOR + (WIND_UP_MAX_FACTOR - WIND_UP_MIN_FACTOR) * windUpDraw.value;
   return drawn({
     category: 'attack',

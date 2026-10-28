@@ -526,6 +526,8 @@ const ART: Readonly<Record<BattleCharacter, CharacterArt>> = {
   necromancer: NECROMANCER,
   // Sprites provisoires des ennemis de l'ascension (prototype #91), repris du combat d'essai.
   fallenKnight: GHOUL,
+  // Silhouette provisoire des Jumeaux (prototype #108) : l'asset de l'Atelier n'est pas validé.
+  twins: silhouette(GHOUL),
   ossuaryWarden: NECROMANCER,
   facelessPrior: SPECTER,
   // Sprite provisoire du Villageois fou (prototype #107) : l'asset de l'Atelier n'est pas validé.

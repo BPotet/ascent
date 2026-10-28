@@ -1,4 +1,4 @@
-import type { AttackKind } from '../../../domain/battle/attacks';
+import { ATTACKS, type AttackKind } from '../../../domain/battle/attacks';
 import type { Battle } from '../../../domain/battle/Battle';
 import type {
   BattleEvent,
@@ -29,6 +29,7 @@ export const ENEMY_NAMES: Readonly<Record<EnemyKind, string>> = {
   specter: 'Spectre',
   necromancer: 'Nécromancien',
   fallenKnight: 'Chevalier déchu',
+  twins: 'Les Jumeaux',
   ossuaryWarden: 'Gardienne des ossuaires',
   facelessPrior: 'Prieur sans visage',
   skeleton: 'Squelette',
@@ -41,6 +42,7 @@ const FEMININE: Readonly<Record<EnemyKind, boolean>> = {
   specter: false,
   necromancer: false,
   fallenKnight: false,
+  twins: false,
   ossuaryWarden: true,
   facelessPrior: false,
   skeleton: false,
@@ -53,6 +55,7 @@ export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {
   delayed: 'coup retardé',
   feint: 'coup trompeur',
   perilous: 'coup imparable',
+  delayedPerilous: 'coup retardé imparable',
 };
 
 export const POWER_NAMES: Readonly<Record<PowerKind, string>> = {
@@ -364,7 +367,7 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
     case 'heroPhaseStarted':
       return event.announced ? phaseAnnouncement('hero') : null;
     case 'windUpStarted':
-      return `${name(event.enemy)}, ${ATTACK_NAMES[event.attack]}${event.attack === 'perilous' ? ', esquive' : ''}`;
+      return `${name(event.enemy)}, ${ATTACK_NAMES[event.attack]}${ATTACKS[event.attack].perilous ? ', esquive' : ''}`;
     case 'blowResolved':
       return blowAnnouncement(event.outcome, event.damage);
     case 'counterAttacked':

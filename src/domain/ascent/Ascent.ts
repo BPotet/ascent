@@ -17,6 +17,7 @@ import type { Drawn } from './draw';
 import { fatiguePercent, type FateGauge } from './fateGauge';
 import { STARTING_EQUIPMENT, drawLoot, equip, type Equipment, type ItemKind } from './items';
 import type { Rarity } from './rarity';
+import { ELITES, drawElite } from './elites';
 import { drawGroup, drawGroupSize } from './enemyGroup';
 import { drawExitKinds, type Exit } from './exits';
 import { BOSS_GOLD, ELITE_GOLD, campfireHeal, drawBoss, drawCombatGold } from './rewards';
@@ -243,7 +244,8 @@ export function chooseExit(ascent: Ascent, index: number): Ascent {
       };
     }
     case 'elite': {
-      const drawn = encounter('elite', ['fallenKnight'], ascent.random);
+      const elite = drawElite(ELITES, ascent.random);
+      const drawn = encounter('elite', [elite.value], elite.random);
       return { ...entered, random: drawn.random, encounter: drawn.value };
     }
     case 'boss': {

@@ -118,6 +118,7 @@ export type EnemyKind =
   | 'specter'
   | 'necromancer'
   | 'fallenKnight'
+  | 'twins'
   | 'ossuaryWarden'
   | 'facelessPrior'
   | 'skeleton'
@@ -133,6 +134,8 @@ export interface Bleed {
 export interface Move {
   readonly attack: AttackKind;
   readonly damage: number;
+  /** Son poids dans le tirage du coup (K6) : 1 par défaut. */
+  readonly weight?: number;
   /** Le Saignement qu'il inflige au héros (prototype #107). */
   readonly bleed?: Bleed;
 }
@@ -192,6 +195,17 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
       { attack: 'basic', damage: 8 },
       { attack: 'delayed', damage: 8 },
       { attack: 'perilous', damage: 12 },
+    ],
+    supports: false,
+  },
+  // La 2e Élite, prototype #108 : les valeurs du Codex (`twins`), dégâts tels quels (D6).
+  twins: {
+    maxHp: 200,
+    maxGuard: 30,
+    moves: [
+      { attack: 'double', damage: 6, weight: 2 },
+      { attack: 'delayedPerilous', damage: 10 },
+      { attack: 'basic', damage: 5 },
     ],
     supports: false,
   },
@@ -256,6 +270,7 @@ export const ENEMY_INITIATIVE: Readonly<Record<EnemyKind, number>> = {
   specter: 8,
   necromancer: 3,
   fallenKnight: 6,
+  twins: 7,
   ossuaryWarden: 6,
   facelessPrior: 6,
   skeleton: 6,
