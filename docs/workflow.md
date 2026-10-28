@@ -9,6 +9,7 @@ Inspiré de la [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD). GitH
 3. **Les barrières de qualité remplacent la relecture humaine.** Une PR n'est mergée que si toutes sont au vert.
 4. **Le glossaire est la source de vérité** du vocabulaire. Les docs, le code et les tests l'utilisent tel quel.
 5. **Une story = une branche = une PR.**
+6. **L'Atelier de l'ascension est la source de vérité du game design** : c'est la partie « métier », où le propriétaire et le Game Designer travaillent ensemble (voir « Atelier de l'ascension » ci-dessous).
 
 ## Schéma du flow
 
@@ -205,14 +206,26 @@ Le propriétaire décrit la feature dans le chat. L'orchestrateur crée une issu
 
 **✋ Le propriétaire valide les stories et les maquettes.** Sans validation, rien ne part en développement.
 
+#### Atelier de l'ascension
+
+Décision du propriétaire du 28/10/2026. L'**Atelier de l'ascension** (page publiée, source `docs/game-design/88-ascension-prototype.html`) est l'espace de travail commun du propriétaire et du Game Designer pour le contenu du jeu. Son **Codex** fait foi pour les ennemis, Élites, boss, héros, objets, bienfaits et bénédictions : stats, coups, effets, descriptions et assets. L'onglet Équilibrage sert à en vérifier les chiffres.
+
+- **Le Codex ne se branche pas au jeu.** Le jeu n'en lit aucun export : son contenu est codé par le dev, à partir des valeurs du Codex, dans une story normale.
+- **Statuts** : seule une entrée **Active** est attendue dans le jeu. Un **Brouillon** est une idée en cours ; une entrée **Retirée** sort du jeu.
+- **Du Codex à une story.** Quand le propriétaire passe une entrée en Active, ou change une entrée Active, l'orchestrateur relit la base de l'Atelier et compare le Codex au jeu. Chaque écart devient une story, ajoutée à une épique en cours ou à une nouvelle épique (`/define-feature`). La story cite le **nom de code** de chaque entrée et ses valeurs du Codex, recopiées au moment de la validation : ce sont elles que le dev code et que les tests vérifient.
+- **Une mécanique nouvelle** (un champ du Codex que le jeu ne sait pas encore jouer, comme Se relève seul) passe par les règles du Game Designer, puis par une story.
+- **Le Game Designer** part du Codex. L'orchestrateur lui donne un instantané JSON de la base de l'Atelier. Il ne change jamais une entrée du propriétaire sans son accord : il propose ses changements en Brouillon, ou en commentaire sur l'épique.
+- **L'orchestrateur** est le seul à écrire dans la base de l'Atelier, et seulement à la demande du propriétaire ou pour une proposition en Brouillon. Il ne modifie jamais une entrée Active sans son accord.
+
 #### Découpage en stories
 
-Chaque story repasse par toutes les étapes et toutes les barrières de qualité. Des stories qui s'attendent les unes les autres font donc attendre l'épique entière. Le découpage suit quatre règles :
+Chaque story repasse par toutes les étapes et toutes les barrières de qualité. Des stories qui s'attendent les unes les autres font donc attendre l'épique entière. Le découpage suit cinq règles :
 
-1. **Une story est visible et autonome.** Elle livre quelque chose de visible pour le joueur, et elle ne dépend du code d'aucune autre story pas encore mergée.
-2. **Pas de chaîne entre stories.** Si une story B a besoin du code d'une story A, A et B ne forment qu'une seule story.
-3. **Seules les stories indépendantes se préparent à l'avance.** Les notes techniques (Ready) et l'analyse d'impact (Impact) ne sont préparées à l'avance que pour des stories indépendantes entre elles.
-4. **Une épique compte en général 2 à 3 stories.** Au-delà, elle est probablement trop grosse : elle se coupe en deux épiques.
+1. **Une story est visible et autonome.** Elle livre quelque chose de visible pour le joueur, et elle ne dépend du code d'aucune autre story pas encore mergée, sauf de la story socle de son épique (règle 3).
+2. **Pas de chaîne entre stories.** Si une story B a besoin du code d'une story A, A et B ne forment qu'une seule story. La seule exception est la story socle.
+3. **Une story socle au plus par épique.** Quand plusieurs stories ont besoin du même code et que les fondre en une seule donnerait une story trop grosse, ce code devient une **story socle**, développée en premier. Les autres stories de l'épique ne dépendent que du socle, jamais entre elles : elles démarrent une fois le socle mergé et se développent en parallèle. Le socle livre lui aussi quelque chose de visible pour le joueur. Une épique n'est pas coupée en deux pour éviter un socle.
+4. **Seules les stories indépendantes se préparent à l'avance.** Les notes techniques (Ready) et l'analyse d'impact (Impact) ne sont préparées à l'avance que pour des stories indépendantes entre elles. Les stories qui dépendent du socle se préparent une fois le socle mergé.
+5. **Une épique compte en général 2 à 3 stories, 4 avec une story socle.** Au-delà, elle est probablement trop grosse : elle se coupe en deux épiques.
 
 Exemple : l'épique #22 a été découpée en 5 stories chaînées (#23 seule ; #24 avant #25 et #26 ; #26 avant #27). Avec ces règles, elle en aurait compté 3 : la **difficulté** (#23) ; l'**objectif hebdomadaire** et l'habitude dont l'**objectif de la semaine** est atteint qui ne compte plus comme manquée (#24 + #25) ; la prime d'expérience de l'**objectif atteint** et son affichage dans la **Vue Mois** (#26 + #27). Ces règles valent pour les épiques découpées à partir de maintenant : les stories déjà validées de #22 restent telles quelles.
 

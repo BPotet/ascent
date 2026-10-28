@@ -7,7 +7,7 @@ description: Étape 2 du workflow Ascent. Fait découper une épique en stories 
 
 1. Passe l'épique en `status:specifying`.
 2. Lance l'agent **game-designer** si l'épique touche la progression ou le monde de jeu, et l'agent **ux** si elle a une partie visible. Ils peuvent travailler en parallèle.
-3. Lance l'agent **pm** avec leurs apports pour produire les stories (template `.github/ISSUE_TEMPLATE/story.md`, critères en Gherkin), selon les règles de « Découpage en stories » de `docs/workflow.md`. Vérifie le découpage : aucune story ne dépend du code d'une autre story pas encore mergée, et l'épique compte en général 2 à 3 stories. Au-delà, propose au propriétaire de couper l'épique en deux épiques.
+3. Lance l'agent **pm** avec leurs apports pour produire les stories (template `.github/ISSUE_TEMPLATE/story.md`, critères en Gherkin), selon les règles de « Découpage en stories » de `docs/workflow.md`. Vérifie le découpage : aucune story ne dépend du code d'une autre story pas encore mergée, sauf de la story socle de l'épique (une au plus), et l'épique compte en général 2 à 3 stories, 4 avec une story socle. Au-delà, propose au propriétaire de couper l'épique en deux épiques.
 3 bis. Si l'épique a une partie visible : l'agent **ux** produit les **maquettes** (`docs/mockups/<n°-épique>-<slug>/index.html`). Publie la page en lien privé consultable sur téléphone, et ajoute le lien à l'issue épique.
 4. Crée chaque story en **sous-issue** de l'épique, avec les labels `type:story` et `status:awaiting-approval`.
 5. Passe l'épique en `status:awaiting-approval`.
