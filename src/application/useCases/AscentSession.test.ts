@@ -303,7 +303,7 @@ describe('AscentSession with the gauge, the blessings and the items (#93)', () =
 
     const { battle } = battleSession.current()!;
     expect(battle.hero).toMatchObject({ hp: 70, maxHp: 79 });
-    expect(battle.modifiers).toMatchObject({ initiative: 3, guardDamagePercents: [130] });
+    expect(battle.modifiers).toMatchObject({ initiative: 3, guardDamagePercents: [110] });
   });
 
   it('resumes an ascent saved before the gauge, Neutral with the base kit', async () => {
@@ -407,5 +407,90 @@ describe('AscentSession: hero and boons (prototype #92)', () => {
     await battleSession.start();
 
     expect(battleSession.current()!.battle.modifiers?.perfectStrikeBonusPercents).toEqual([20, 50]);
+  });
+
+  describe('a save from before the workshop values (#105)', () => {
+    /** Écrite à la main, comme avant #105 : Égide (`aegis`) choisie et dans l'offre en cours. */
+    const before = (overrides: object = {}) =>
+      JSON.stringify({
+        version: 1,
+        ascent: {
+          ...startAscent(5),
+          blessings: [{ family: 'aegis', rarity: 'rare' }],
+          blessingRarities: ['common'],
+          blessingOffer: ['vigor', 'aegis', 'haste'],
+          equipment: { weapon: 'axe', armor: null, accessory: null },
+          ...overrides,
+        },
+        battle: null,
+      });
+
+    it('reads Aegis as Protection, in the chosen blessings and in the offer', async () => {
+      const { session, store } = setUp();
+      store.values.set(ASCENT_KEY, before());
+
+      const ascent = await session.load();
+
+      expect(ascent).toMatchObject({
+        blessings: [{ family: 'protection', rarity: 'rare' }],
+        blessingOffer: ['vigor', 'protection', 'haste'],
+        equipment: { weapon: 'axe' },
+      });
+    });
+
+    it('fights the next battle with the Rusted axe x1.1 and the same Protection reduction', async () => {
+      const { session, store } = setUp();
+      store.values.set(ASCENT_KEY, before({ blessingRarities: [], blessingOffer: null }));
+      await session.load();
+
+      const battleSession = session.battleSession();
+      await battleSession.start();
+
+      expect(battleSession.current()!.battle.modifiers).toMatchObject({
+        guardDamagePercents: [110],
+        damageReductionPoints: 10,
+        initiative: -1,
+      });
+    });
+
+    it('finishes a battle in progress with its starting values, the next one with the new ones', async () => {
+      const { session, store, clock } = setUp();
+      const ascent = {
+        ...startAscent(5),
+        equipment: { weapon: 'hammer', armor: null, accessory: null },
+      };
+      const oldHammer = { guardDamagePercents: [160], attackPercents: [80], initiative: -2 };
+      const battle = savedBattle(ascent as Ascent, { heroHp: 70, enemyHp: 1 });
+      store.values.set(
+        ASCENT_KEY,
+        JSON.stringify({
+          version: 1,
+          ascent,
+          battle: { ...battle, modifiers: { ...battle.modifiers, ...oldHammer } },
+        }),
+      );
+      await session.load();
+      const resumed = session.battleSession();
+      await resumed.start();
+      expect(resumed.current()!.battle.modifiers).toMatchObject(oldHammer);
+
+      await playToTheEnd(resumed, clock);
+      // La graine 5 : Mailles trouvées (laissées), puis Lame juste, puis la porte Combat.
+      expect(session.current()).toMatchObject({
+        foundItem: 'chainmail',
+        exits: [{ kind: 'combat' }, { kind: 'campfire' }],
+      });
+      session.leaveItem();
+      session.chooseBoon(0);
+      session.chooseExit(0);
+      const next = session.battleSession();
+      await next.start();
+
+      expect(next.current()!.battle.modifiers).toMatchObject({
+        guardDamagePercents: [160],
+        attackPercents: [],
+        initiative: -1,
+      });
+    });
   });
 });

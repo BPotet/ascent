@@ -12,7 +12,7 @@ import {
   type AscentLaunch,
 } from '../../domain/ascent/Ascent';
 import { boonModifiers } from '../../domain/ascent/boons';
-import { blessingModifiers } from '../../domain/ascent/blessings';
+import { blessingModifiers, type BlessingFamily } from '../../domain/ascent/blessings';
 import { STARTING_EQUIPMENT, itemModifiers } from '../../domain/ascent/items';
 import { resumeBattle, startBattle, type Battle } from '../../domain/battle/Battle';
 import { HEROES } from '../../domain/battle/combatants';
@@ -47,13 +47,17 @@ const SAVED_ON: ReadonlySet<BattleEvent['type']> = new Set([
 
 type Listener = (ascent: Ascent | null) => void;
 
+/** Égide (`aegis`), sauvegardée avant #105, est relue comme Protection. */
+const protection = (family: BlessingFamily): BlessingFamily =>
+  (family as string) === 'aegis' ? 'protection' : family;
+
 function parse(raw: string | null): SavedAscent | null {
   if (raw === null) return null;
   try {
     const saved = JSON.parse(raw) as Partial<SavedAscent> | null;
     if (saved?.version !== SAVE_VERSION || typeof saved.ascent?.floor !== 'number') return null;
     // Une ascension sauvegardée avant #93 : Neutre, sans bénédiction, avec l'équipement de base ;
-    // avant #92 : la Sentinelle, sans bienfait ni offre.
+    // avant #92 : la Sentinelle, sans bienfait ni offre ; avant #105 : Égide au lieu de Protection.
     const stored: Partial<Ascent> = saved.ascent;
     const storedHero: Partial<Ascent['hero']> = saved.ascent.hero;
     const ascent = {
@@ -68,7 +72,15 @@ function parse(raw: string | null): SavedAscent | null {
       ...stored,
       hero: { kind: 'sentinel', boons: [], ...storedHero },
     } as Ascent;
-    return { version: SAVE_VERSION, ascent, battle: saved.battle ?? null };
+    const renamed: Ascent = {
+      ...ascent,
+      blessings: ascent.blessings.map((blessing) => ({
+        ...blessing,
+        family: protection(blessing.family),
+      })),
+      blessingOffer: ascent.blessingOffer?.map(protection) ?? null,
+    };
+    return { version: SAVE_VERSION, ascent: renamed, battle: saved.battle ?? null };
   } catch {
     return null;
   }
