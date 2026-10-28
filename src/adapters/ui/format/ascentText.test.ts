@@ -7,6 +7,7 @@ import {
   gaugeReason,
   gaugeWord,
   goldText,
+  itemDescription,
   itemText,
   wornText,
 } from './ascentText';
@@ -100,5 +101,10 @@ describe('gauge, blessing and item texts (#93)', () => {
     expect(wornText({ weapon: 'axe', armor: null, accessory: null }, 'weapon')).toBe(
       'Hache rouillée · Arme · Commun · Brise-garde ×1,1 · Initiative −1',
     );
+  });
+
+  it('gives the Black knight armor its provisional line, and no line to the other items', () => {
+    expect(itemDescription('blackKnightArmor')).toBe('Lourde et lente.');
+    expect(itemDescription('crossbow')).toBeNull();
   });
 });

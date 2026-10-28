@@ -1,6 +1,7 @@
 import { alertEmblem } from './alertEmblem';
 import { BURST_FRAMES, burstSprite } from './burstSprite';
 import { characterSprite } from './characterSprite';
+import { itemSilhouette } from './itemSilhouettes';
 import type { Sprite } from './Sprite';
 
 const INK = 1;
@@ -57,5 +58,17 @@ describe('the sprites drawn by code', () => {
     frames.forEach((sprite) => expect(sprite.pixels[16 * 32 + 16]).toBe(0));
     expect(frames[1]?.pixels).not.toEqual(frames[0]?.pixels);
     expect(frames[2]?.pixels).not.toEqual(frames[1]?.pixels);
+  });
+
+  it('draws the provisional silhouette of an item, dark with the eyes only, one per slot', () => {
+    const EYES = 9;
+    const sprites = (['weapon', 'armor', 'accessory'] as const).map(itemSilhouette);
+    sprites.forEach((sprite) => {
+      expect(sprite).toMatchObject({ width: 20, height: 20 });
+      expect(outlined(sprite)).toBe(true);
+      expect(sprite.pixels.filter((code) => code === EYES)).toHaveLength(2);
+      expect(new Set(sprite.pixels)).toEqual(new Set([0, 1, 2, EYES]));
+    });
+    expect(new Set(sprites.map((sprite) => sprite.pixels.join()))).toHaveProperty('size', 3);
   });
 });

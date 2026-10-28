@@ -12,10 +12,14 @@ import {
   exitLabel,
   floorLine,
   goldText,
+  itemDescription,
   itemText,
   wornText,
 } from '../format/ascentText';
 import { ownedBoonsLine } from '../format/boonText';
+import { itemSilhouette } from '../pixelArt/sprites/itemSilhouettes';
+import { toPixelImage } from '../pixelArt/sprites/Sprite';
+import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
 import { useAscent } from '../state/useAscent';
 import { battleColors } from '../theme/battleColors';
 import { TrialBattleScreen } from './TrialBattleScreen';
@@ -237,6 +241,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
 
   if (ascent.foundItem !== null) {
     const { slot } = ITEMS[ascent.foundItem];
+    const description = itemDescription(ascent.foundItem);
     return (
       <Screen layout="top" background={battleColors.background} testID="ascent-item">
         <Header ascent={ascent} onPause={leave} />
@@ -245,7 +250,14 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
           <Text accessibilityRole="header" style={styles.title}>
             Objet trouvé
           </Text>
+          <SpriteCanvas
+            sprite={`item-silhouette-${slot}`}
+            draw={() => toPixelImage(itemSilhouette(slot))}
+            scale={3}
+            testID="item-silhouette"
+          />
           <Text style={styles.gold}>{itemText(ascent.foundItem)}</Text>
+          {description !== null && <Text style={styles.line}>{description}</Text>}
           <Text style={styles.line}>{`Tu portes : ${wornText(ascent.equipment, slot)}`}</Text>
           <Text style={styles.line}>Un objet laissé ne revient pas.</Text>
           <View style={styles.row}>

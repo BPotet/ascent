@@ -145,6 +145,15 @@ const ITEM_EFFECTS: Readonly<Record<ItemKind, string | null>> = {
   crossbow: null,
   blackKnightArmor: 'Réduction des dégâts +20 points, Attaque +1',
 };
+/** Le libellé court d'un objet, provisoire (#105) ; les autres objets n'en ont pas. */
+const ITEM_DESCRIPTIONS: Partial<Readonly<Record<ItemKind, string>>> = {
+  blackKnightArmor: 'Lourde et lente.',
+};
+
+export function itemDescription(item: ItemKind): string | null {
+  return ITEM_DESCRIPTIONS[item] ?? null;
+}
+
 const SLOT_NAMES: Readonly<Record<ItemSlot, string>> = {
   weapon: 'Arme',
   armor: 'Armure',
