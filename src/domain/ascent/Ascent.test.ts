@@ -7,6 +7,7 @@ import {
   startAscent,
   type Ascent,
 } from './Ascent';
+import { ELITES, drawElite } from './elites';
 
 const SEEDS = Array.from({ length: 200 }, (_, index) => index * 2_654_435_761 + 11);
 
@@ -81,7 +82,7 @@ describe('endFloorBattle and chooseExit (P1, P2, P7)', () => {
     }
   });
 
-  it('fights the Fallen Knight behind an Elite door, for 25 Gold', () => {
+  it('fights the Elite drawn with the seed of the ascent behind an Elite door, for 25 Gold (K8)', () => {
     const ascent = SEEDS.map((seed) => won(startAscent(seed))).find((candidate) =>
       candidate.exits.some((exit) => exit.kind === 'elite'),
     )!;
@@ -90,7 +91,8 @@ describe('endFloorBattle and chooseExit (P1, P2, P7)', () => {
       ascent.exits.findIndex((exit) => exit.kind === 'elite'),
     );
 
-    expect(entered.encounter).toMatchObject({ kind: 'elite', enemies: ['fallenKnight'] });
+    const elite = drawElite(ELITES, ascent.random);
+    expect(entered.encounter).toMatchObject({ kind: 'elite', enemies: [elite.value] });
     expect(won(entered).gold - ascent.gold).toBe(25);
   });
 
