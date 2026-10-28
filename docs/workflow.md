@@ -207,12 +207,13 @@ Le propriétaire décrit la feature dans le chat. L'orchestrateur crée une issu
 
 #### Découpage en stories
 
-Chaque story repasse par toutes les étapes et toutes les barrières de qualité. Des stories qui s'attendent les unes les autres font donc attendre l'épique entière. Le découpage suit quatre règles :
+Chaque story repasse par toutes les étapes et toutes les barrières de qualité. Des stories qui s'attendent les unes les autres font donc attendre l'épique entière. Le découpage suit cinq règles :
 
-1. **Une story est visible et autonome.** Elle livre quelque chose de visible pour le joueur, et elle ne dépend du code d'aucune autre story pas encore mergée.
-2. **Pas de chaîne entre stories.** Si une story B a besoin du code d'une story A, A et B ne forment qu'une seule story.
-3. **Seules les stories indépendantes se préparent à l'avance.** Les notes techniques (Ready) et l'analyse d'impact (Impact) ne sont préparées à l'avance que pour des stories indépendantes entre elles.
-4. **Une épique compte en général 2 à 3 stories.** Au-delà, elle est probablement trop grosse : elle se coupe en deux épiques.
+1. **Une story est visible et autonome.** Elle livre quelque chose de visible pour le joueur, et elle ne dépend du code d'aucune autre story pas encore mergée, sauf de la story socle de son épique (règle 3).
+2. **Pas de chaîne entre stories.** Si une story B a besoin du code d'une story A, A et B ne forment qu'une seule story. La seule exception est la story socle.
+3. **Une story socle au plus par épique.** Quand plusieurs stories ont besoin du même code et que les fondre en une seule donnerait une story trop grosse, ce code devient une **story socle**, développée en premier. Les autres stories de l'épique ne dépendent que du socle, jamais entre elles : elles démarrent une fois le socle mergé et se développent en parallèle. Le socle livre lui aussi quelque chose de visible pour le joueur. Une épique n'est pas coupée en deux pour éviter un socle.
+4. **Seules les stories indépendantes se préparent à l'avance.** Les notes techniques (Ready) et l'analyse d'impact (Impact) ne sont préparées à l'avance que pour des stories indépendantes entre elles. Les stories qui dépendent du socle se préparent une fois le socle mergé.
+5. **Une épique compte en général 2 à 3 stories, 4 avec une story socle.** Au-delà, elle est probablement trop grosse : elle se coupe en deux épiques.
 
 Exemple : l'épique #22 a été découpée en 5 stories chaînées (#23 seule ; #24 avant #25 et #26 ; #26 avant #27). Avec ces règles, elle en aurait compté 3 : la **difficulté** (#23) ; l'**objectif hebdomadaire** et l'habitude dont l'**objectif de la semaine** est atteint qui ne compte plus comme manquée (#24 + #25) ; la prime d'expérience de l'**objectif atteint** et son affichage dans la **Vue Mois** (#26 + #27). Ces règles valent pour les épiques découpées à partir de maintenant : les stories déjà validées de #22 restent telles quelles.
 

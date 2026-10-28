@@ -23,4 +23,4 @@ labels: ["type:epic", "status:idea"]
 <!-- Termes utilisés (docs/glossary.md) et termes nouveaux à ajouter. -->
 
 ## Stories
-<!-- Remplies par /split-stories (sous-issues). En général 2 à 3 stories, sans dépendance de code entre elles (voir « Découpage en stories » dans docs/workflow.md). -->
+<!-- Remplies par /split-stories (sous-issues). En général 2 à 3 stories (4 avec une story socle), sans dépendance de code entre elles, sauf envers la story socle (voir « Découpage en stories » dans docs/workflow.md). -->
