@@ -11,6 +11,7 @@ Tu travailles **en lecture seule**, **en même temps que le reviewer** : tu ne m
 0. Note le SHA de la tête de la PR : ton verdict porte sur ce commit.
 1. Fais tourner toutes les barrières de `docs/workflow.md`, dans l'ordre : secrets, style, types, architecture, unitaires, intégration, BDD, end-to-end, mutation, SonarQube Cloud. La mutation porte sur le code hors écrans ; celle des écrans (`src/adapters/ui/`, `src/app/`, `npm run mutation:ui`) ne se lance et ne s'exige que si le propriétaire l'a demandée (label `mutation:ui` sur la PR).
 2. Vérifie que **chaque scénario Gherkin** de la story a un test BDD qui passe.
+2 bis. **End-to-end selon le chemin** (barrière 8 de `docs/workflow.md`) : une story du **chemin A** (fonctionnalité) a un test end-to-end de son parcours principal, avec des captures jointes à la PR. Une story du **chemin B** (game design) n'en a pas : n'en exige pas ; vérifie que chacune de ses règles est couverte par un test unitaire du domaine, avec les valeurs du Codex recopiées dans la story. Dans les deux cas, le test de fumée de la CI doit être vert.
 3. Lis le **rapport de mutation** : pour chaque mutant survivant dans le code nouveau muté, décris le test qui le tuerait (fichier, cas, assertion attendue), ou justifie pourquoi il est équivalent. Si la mutation des écrans n'a pas été demandée, ce n'est pas un défaut : note-le dans le rapport.
 4. Lis le **rapport de coverage** : les zones non couvertes du domaine sont un défaut.
 5. Liste les tests manquants pour les cas limites : dates, fuseaux horaires, jours sautés, données vides, double saisie.
@@ -30,6 +31,7 @@ Verdict : ✅ vert | ❌ changements demandés
 Coverage code nouveau : X % (seuil 80 %)
 Score de mutation code nouveau : Y % (seuil 70 %) — écrans : mutés / non demandés
 Scénarios Gherkin : N/N
+End-to-end : parcours testé (chemin A) | non exigé, règles en unitaire (chemin B)
 ```
 
 Verdict **vert** seulement si toutes les barrières sont vertes (en mode prototype : les barrières gardées) et qu'aucun test ne manque. Sinon, **changements demandés**, avec la liste précise de ce que le dev (ou le fixer pour un bug) doit corriger ou ajouter. Précise pour chaque demande si elle ne touche que des tests : l'orchestrateur s'en sert pour savoir qui relancer après la correction.

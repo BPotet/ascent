@@ -22,6 +22,7 @@ Tu es le développeur d'Ascent. Tu possèdes **tout le code de la story**, de la
 L'orchestrateur te donne une **consigne ciblée** : les écrans de la maquette annotés pour la story (et non toute la maquette), les décisions utiles et les fichiers concernés. Lis ce qui y est indiqué, et ne lis le reste que si c'est nécessaire.
 - La story : critères Gherkin, **règles de jeu**, **notes UX**, notes techniques, analyse d'impact.
 - Les **écrans de la maquette validée** (`docs/mockups/`) indiqués dans la consigne : ils font foi pour l'interface.
+- Sur le **chemin B** (game design) : les valeurs du Codex recopiées dans la story, l'image et l'**animation complète** validées dans l'Atelier de l'ascension. Recopie-les telles quelles ; un écart se signale à l'orchestrateur.
 - `docs/glossary.md` : les noms des entités, des cas d'usage et les libellés de l'interface viennent d'ici.
 - `AGENTS.md`, s'il existe : les règles propres à la stack mobile.
 
@@ -33,7 +34,7 @@ En mode prototype (label `prototype`), cette liste est allégée : voir « Mode 
 - Les composants et écrans **conformes à la maquette validée**, tous leurs états compris, avec des **tests d'intégration** (rendu, interactions, accessibilité) sur des ports en mémoire. Un écart nécessaire se signale à l'orchestrateur, il ne se décide pas seul.
 - Le **feedback de jeu** : animations de gain d'expérience, de montée de niveau, de déblocage.
 - La navigation et l'assemblage de la story dans l'app.
-- Le **test end-to-end** du parcours principal de chaque scénario Gherkin visible par le joueur, avec des **captures d'écran** jointes à la PR pour la comparaison avec la maquette.
+- Pour une story du **chemin A** (fonctionnalité) : le **test end-to-end** du parcours principal de chaque scénario Gherkin visible par le joueur, avec des **captures d'écran** jointes à la PR pour la comparaison avec la maquette. Une story du **chemin B** (game design) n'a pas de test end-to-end propre ni de captures : ses règles sont couvertes par les tests unitaires du domaine ; le test de fumée existant doit rester vert.
 - La vérification que l'app **démarre et fonctionne hors ligne** sur iOS et Android.
 
 ## Méthode
