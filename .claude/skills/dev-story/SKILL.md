@@ -1,18 +1,20 @@
 ---
 name: dev-story
-description: Étapes 3 à 8 du workflow Ascent. Mène une story validée (status:ready) jusqu'à l'auto-merge dans develop — notes d'architecture, analyse d'impact GitNexus, implémentation TDD, barrières de qualité, review. À utiliser sur une story en status:ready.
+description: Étapes 3 à 8 du workflow Ascent, pour les deux chemins. Mène une story validée (status:ready) jusqu'à l'auto-merge dans develop — notes d'architecture, analyse d'impact GitNexus, implémentation TDD, barrières de qualité, review. À utiliser sur une story en status:ready.
 ---
 
 # /dev-story <n° story>
 
 Prérequis : la story est en `status:ready`. Sinon, arrête-toi et lance `/backlog`.
 
+**Chemin de la story** (voir « Deux chemins pour une idée » dans les principes de `docs/workflow.md`) : une story du **chemin A** (fonctionnalité) vient de `/split-stories` ; une story du **chemin B** (game design) vient de l'Atelier de l'ascension, écrite par le PM à partir du contenu validé. Dis le chemin à l'**architect**, au **dev**, au **qa** et au **reviewer** dans leur consigne. Sur le chemin B : pas de test end-to-end propre (règles en tests unitaires du domaine, Équilibrage de l'Atelier comme contrôle ; le test de fumée reste dans la CI), pas de captures end-to-end ; la consigne du dev cite les valeurs du Codex de la story, l'image et l'animation complète validées dans l'Atelier, et la maquette s'il y a une mécanique nouvelle.
+
 **Mode prototype** : si la story porte le label `prototype` (posé seulement sur décision du propriétaire), dis-le au **dev**, au **qa** et au **reviewer** dans leur consigne. Le dev pose le même label sur la PR à son ouverture ; vérifie qu'il y est avant de lancer **qa** et **reviewer**. Ajouté ou retiré après coup, il ne compte qu'après un nouveau push. Les barrières sont alors celles de « Mode prototype » dans `docs/workflow.md` : pas de mutation des lignes changées, pas de scénarios Gherkin automatisés, end-to-end en test de fumée, QA et review allégés ; les seuils de couverture restent. Aucune release tant qu'un prototype non repris est dans `develop` (`/release` le vérifie) : quand le propriétaire juge le prototype bon sur la preview, fais créer la story « version définitive » par le **pm** ; jugé mauvais, ouvre une tâche `type:chore` pour retirer son code.
 
 1. **Ready** : lance l'agent **architect** pour ajouter les notes techniques à la story.
 2. **Impact** : passe en `status:impact-analysis` et lance l'agent **impact-analyst**.
    - Impact fort : lance **pm** et **architect** pour décider. Si le périmètre validé change, repasse la story en `status:awaiting-approval`, préviens le propriétaire et arrête-toi. Sinon, reprends à l'étape 1.
-3. **Implement** : passe en `status:in-progress` et lance l'agent **dev** avec une **consigne ciblée** : les écrans de la maquette annotés pour la story (et non toute la maquette), les décisions utiles (règles de jeu, notes techniques, analyse d'impact) et les fichiers concernés. Il lit ce qui est indiqué, et ne lit le reste que si c'est nécessaire.
+3. **Implement** : passe en `status:in-progress` et lance l'agent **dev** avec une **consigne ciblée** : les écrans de la maquette annotés pour la story (et non toute la maquette) ou, sur le chemin B, le contenu validé dans l'Atelier, les décisions utiles (règles de jeu, notes techniques, analyse d'impact) et les fichiers concernés. Il lit ce qui est indiqué, et ne lit le reste que si c'est nécessaire.
    Il implémente toute la story en **TDD par couche** (un commit par couche, environ 4 à 6 commits), ouvre la PR en brouillon puis l'en sort quand les barrières sont vertes en local et le code poussé, et rend son rapport **sans attendre la CI GitHub**, ce qui ouvre l'étape 4.
    **Surveille la CI** de la PR : si elle échoue, renvoie au **dev** le check en échec et son log ; après sa correction, relance **qa** et **reviewer** selon la règle de l'étape 4. Si la CI échoue alors que **qa** et **reviewer** tournent déjà, attends leurs verdicts et renvoie tous les retours ensemble (check en échec, log et rapports) au **dev** : ce renvoi compte comme un tour.
    S'il signale un besoin hors du périmètre de la story, traite-le comme un changement de périmètre (escalade PM et Architect).
@@ -23,4 +25,4 @@ Prérequis : la story est en `status:ready`. Sinon, arrête-toi et lance `/backl
 5. **Merge** : quand, sur la **tête courante** de la PR, le verdict du QA est vert, la review approuvée (rendus sur ce commit ou reconduits) et la CI entièrement verte, active l'auto-merge (squash) de la PR ; si un commit est poussé ensuite, désactive-le jusqu'aux nouveaux verdicts. Son titre, au format Conventional Commits, devient le commit sur `develop`. Elle ferme l'issue.
    - **Mutation des écrans** : pose le label `mutation:ui` sur la PR **seulement si le propriétaire le demande** (voir « Mutation des écrans à la demande » dans `docs/workflow.md`). Quand il est posé, attends que le check `Screen mutation tests (StrykerJS)` soit vert avant d'activer l'auto-merge (désactive-le s'il était déjà actif) : ce check n'est pas exigé par la protection de branche. S'il est rouge, renvoie au **dev**, puis relance **qa** et **reviewer** selon la règle de l'étape 4.
 6. Si c'était la dernière story de l'épique, lance `/release` ; il s'arrête si un prototype non repris est dans `develop`.
-7. Annonce au propriétaire, en une ou deux phrases produit, ce qui est maintenant disponible dans l'app.
+7. Annonce au propriétaire, en une ou deux phrases produit, ce qui est maintenant disponible dans l'app. Ses retours après avoir joué s'orientent ainsi : jeu → Atelier de l'ascension ; app → nouvelle épique (`/define-feature`) ; panne → `/fix-bug`.

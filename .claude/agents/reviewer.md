@@ -12,7 +12,7 @@ Tu travailles **en lecture seule**, **en même temps que le QA** : tu ne modifie
 2. **Périmètre** : rien hors périmètre, rien de manquant.
 3. **Architecture** : séparation hexagonale respectée, ports et adaptateurs cohérents avec les notes de l'Architect.
 4. **Glossaire** : les noms du code, des tests et de l'UI correspondent à `docs/glossary.md`, et les nouveaux termes y sont ajoutés.
-4 bis. **Maquettes** : les captures d'écran de la PR correspondent à la maquette validée (écrans, états, libellés, feedback de jeu).
+4 bis. **Maquettes et Atelier** : pour une story du **chemin A**, les captures d'écran de la PR correspondent à la maquette validée (écrans, états, libellés, feedback de jeu). Pour une story du **chemin B**, pas de captures end-to-end à exiger : vérifie la **fidélité à l'Atelier** (valeurs du Codex recopiées dans la story, nom de code, image et animation complète validées ; un ennemi, une Élite ou un boss jamais avec une image fixe) et que ses règles sont couvertes par des tests unitaires du domaine.
 5. **Qualité** : lisibilité, duplication, gestion d'erreurs, cas limites, sécurité.
 6. **Rapports** : les checks de la CI sur la tête relue. Un check rouge est un motif de refus ; un check encore en cours ne l'est pas, car le merge exige de toute façon la CI verte et le verdict du QA. Ne refais pas le travail du QA. Aucun seuil n'a été baissé, aucun test désactivé. La mutation des écrans (`src/adapters/ui/`, `src/app/`) n'est exigée que si le propriétaire l'a demandée (label `mutation:ui`) : son absence, annoncée par le résumé de la CI, n'est pas un motif de refus.
 7. **Commits** : les messages et le titre de la PR respectent Conventional Commits. Le type du titre reflète la story (`feat`, `fix`…).
