@@ -29,6 +29,7 @@ export const ENEMY_NAMES: Readonly<Record<EnemyKind, string>> = {
   specter: 'Spectre',
   necromancer: 'Nécromancien',
   fallenKnight: 'Chevalier déchu',
+  twins: 'Les Jumeaux',
   ossuaryWarden: 'Gardienne des ossuaires',
   facelessPrior: 'Prieur sans visage',
 };
@@ -39,6 +40,7 @@ const FEMININE: Readonly<Record<EnemyKind, boolean>> = {
   specter: false,
   necromancer: false,
   fallenKnight: false,
+  twins: false,
   ossuaryWarden: true,
   facelessPrior: false,
 };
@@ -49,6 +51,7 @@ export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {
   delayed: 'coup retardé',
   feint: 'coup trompeur',
   perilous: 'coup imparable',
+  delayedPerilous: 'coup retardé imparable',
 };
 
 export const POWER_NAMES: Readonly<Record<PowerKind, string>> = {

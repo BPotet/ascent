@@ -114,12 +114,20 @@ export const MAX_DAMAGE_REDUCTION_PERCENT = 40;
 export const GOOD_PARRY_PERCENT = 25;
 
 export type EnemyKind =
-  'ghoul' | 'specter' | 'necromancer' | 'fallenKnight' | 'ossuaryWarden' | 'facelessPrior';
+  | 'ghoul'
+  | 'specter'
+  | 'necromancer'
+  | 'fallenKnight'
+  | 'twins'
+  | 'ossuaryWarden'
+  | 'facelessPrior';
 
 /** Un coup qu'un ennemi peut porter, avec ses dégâts. */
 export interface Move {
   readonly attack: AttackKind;
   readonly damage: number;
+  /** Son poids dans le tirage du coup (K6) : 1 par défaut. */
+  readonly weight?: number;
 }
 
 export interface EnemyProfile {
@@ -178,6 +186,17 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     ],
     supports: false,
   },
+  // La 2e Élite, prototype #108 : les valeurs du Codex (`twins`), dégâts tels quels (D6).
+  twins: {
+    maxHp: 200,
+    maxGuard: 30,
+    moves: [
+      { attack: 'double', damage: 6, weight: 2 },
+      { attack: 'delayedPerilous', damage: 10 },
+      { attack: 'basic', damage: 5 },
+    ],
+    supports: false,
+  },
   // Les boss (P6), prototype #91 : ½ par coup en phase 1, ¼ en phase 2.
   ossuaryWarden: {
     maxHp: 300,
@@ -220,6 +239,7 @@ export const ENEMY_INITIATIVE: Readonly<Record<EnemyKind, number>> = {
   specter: 8,
   necromancer: 3,
   fallenKnight: 6,
+  twins: 7,
   ossuaryWarden: 6,
   facelessPrior: 6,
 };

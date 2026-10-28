@@ -80,6 +80,38 @@ describe('drawIntent (C2.1, C10)', () => {
     ).toBe('double');
   });
 
+  it('draws the move at equal weights as before, ⌊draw × count⌋: the seeds of the battles do not move (K6)', () => {
+    const cases: readonly (readonly [EnemyKind, boolean])[] = [
+      ['ghoul', false],
+      ['specter', false],
+      ['fallenKnight', false],
+      ['ossuaryWarden', true],
+    ];
+    for (const [kind, phase2] of cases) {
+      const moves = phase2
+        ? [...ENEMIES[kind].moves, ...(ENEMIES[kind].phase2Moves ?? [])]
+        : ENEMIES[kind].moves;
+      for (const seed of SEEDS) {
+        const random = seedRandom(seed);
+        const { intent } = drawIntent(kind, random, { ...CALM, phase2 });
+        const move = moves[Math.floor(nextRandom(random).value * moves.length)]!;
+        expect(intent).toMatchObject({ attack: move.attack, damage: move.damage });
+      }
+    }
+  });
+
+  it('draws the moves by weight: the double attack of the Twins, of weight 2, twice as often (K6)', () => {
+    const between = (low: number, high: number) =>
+      attackOf(
+        'twins',
+        seedWithFirstDraw((value) => value >= low && value < high),
+      ).attack;
+
+    expect(between(0, 0.5)).toBe('double');
+    expect(between(0.5, 0.75)).toBe('delayedPerilous');
+    expect(between(0.75, 1)).toBe('basic');
+  });
+
   describe('the Necromancer (C2)', () => {
     const low = seedWithFirstDraw((value) => value < 1 / 3);
     const high = seedWithFirstDraw((value) => value >= 1 / 3);

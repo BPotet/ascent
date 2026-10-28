@@ -110,6 +110,7 @@ const ENEMY_KINDS: readonly EnemyKind[] = [
   'specter',
   'necromancer',
   'fallenKnight',
+  'twins',
   'ossuaryWarden',
   'facelessPrior',
 ];

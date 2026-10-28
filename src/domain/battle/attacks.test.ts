@@ -14,6 +14,7 @@ describe('attacks (C10)', () => {
       delayed: { windUpMs: 1_700, hitOffsetsMs: [0], feint: false, perilous: false },
       feint: { windUpMs: 1_600, hitOffsetsMs: [0], feint: true, perilous: false },
       perilous: { windUpMs: 1_300, hitOffsetsMs: [0], feint: false, perilous: true },
+      delayedPerilous: { windUpMs: 1_700, hitOffsetsMs: [0], feint: false, perilous: true },
     });
   });
 
