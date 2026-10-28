@@ -43,6 +43,7 @@ describe('Group composition (P3)', () => {
       ['ghoul', 3],
       ['specter', 2],
       ['necromancer', 1],
+      ['skeleton', 3],
       ['madVillager', 2],
     ]);
   });
@@ -51,7 +52,7 @@ describe('Group composition (P3)', () => {
     for (const size of [1, 2, 3, 4, 5]) {
       for (const group of groups(size)) {
         expect(group).toHaveLength(size);
-        for (const capped of ['specter', 'necromancer', 'madVillager']) {
+        for (const capped of ['specter', 'necromancer', 'skeleton', 'madVillager']) {
           expect(group.filter((kind) => kind === capped).length).toBeLessThanOrEqual(1);
         }
       }
@@ -59,14 +60,18 @@ describe('Group composition (P3)', () => {
   });
 
   it('fills the rest with Ghouls, and every type is possible', () => {
+    // 4 types plafonnés à 1 : un groupe de 5 compte toujours au moins 1 Goule.
     const five = groups(5);
-    expect(five.every((group) => group.filter((kind) => kind === 'ghoul').length >= 2)).toBe(true);
+    expect(five.every((group) => group.filter((kind) => kind === 'ghoul').length >= 1)).toBe(true);
+    expect(five.some((group) => group.filter((kind) => kind === 'ghoul').length === 1)).toBe(true);
     expect(new Set(groups(3).flat())).toEqual(
-      new Set(['ghoul', 'specter', 'necromancer', 'madVillager']),
+      new Set(['ghoul', 'specter', 'necromancer', 'skeleton', 'madVillager']),
     );
   });
 
-  it('never draws a lone Necromancer', () => {
-    expect(new Set(groups(1).flat())).toEqual(new Set(['ghoul', 'specter', 'madVillager']));
+  it('never draws a lone Necromancer, but a lone Skeleton can be', () => {
+    expect(new Set(groups(1).flat())).toEqual(
+      new Set(['ghoul', 'specter', 'skeleton', 'madVillager']),
+    );
   });
 });

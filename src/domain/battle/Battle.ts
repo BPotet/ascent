@@ -67,6 +67,7 @@ import {
   type PressJudgement,
 } from './rules';
 import { seedRandom, type BattleSeed, type RandomState } from './SeededRandom';
+import { selfRevive } from './selfRevive';
 import {
   STRIKE_RECOVERY_MS,
   STRIKE_WIND_UP_MS,
@@ -110,6 +111,8 @@ export interface EnemyState {
   readonly guardRestore: { readonly since: number; readonly until: number } | null;
   /** Un boss passé en phase 2 (`BossPhaseShift`, P6). */
   readonly phase2?: boolean;
+  /** Le nombre de relèves faites dans ce combat (`SelfRevive`, #106) ; absent, 0. */
+  readonly selfRevives?: number;
 }
 
 export interface ImpactState {
@@ -966,6 +969,10 @@ function hitEnemy(
   context: { readonly at: number; readonly by: 'strike' | 'counter' },
 ): { readonly battle: Battle; readonly broken: boolean } {
   const hit = blowOnEnemy(battle.enemies[index]!, blow, battle.heroActions);
+  const revived = hit.fallen ? selfRevive(hit.enemy, ENEMIES[hit.enemy.kind]) : null;
+  if (revived !== null) {
+    return { battle: reviveSelf(battle, events, index, revived, context.at), broken: false };
+  }
   const damaged = withEnemy(battle, index, shiftPhase(hit.enemy, events, index, context.at));
   if (hit.broken) {
     events.push({ type: 'guardBroken', at: context.at, enemy: index, by: context.by });
@@ -977,6 +984,28 @@ function hitEnemy(
   if (battle.target !== index || next === undefined) return { battle: damaged, broken: false };
   events.push({ type: 'targetChanged', at: context.at, enemy: next });
   return { battle: { ...damaged, target: next }, broken: false };
+}
+
+/**
+ * L'ennemi se relève seul (#106) : ni chute ni cassure (S3, S4), la remontée du retour en garde
+ * (R2). S'il n'a pas encore agi dans la manche, il n'y agit pas (S2).
+ */
+function reviveSelf(
+  battle: Battle,
+  events: Events,
+  index: number,
+  enemy: EnemyState,
+  at: number,
+): Battle {
+  events.push({ type: 'enemySelfRevived', at, enemy: index, hp: enemy.hp });
+  const revived = { ...enemy, guardRestore: { since: at, until: at + GUARD_RESTORE_MS } };
+  const { order, position } = battle.turn;
+  const pending = order.indexOf(index, position + 1);
+  if (pending < 0) return withEnemy(battle, index, revived);
+  return {
+    ...withEnemy(battle, index, { ...revived, raisedRound: battle.round }),
+    turn: { order: order.filter((_, place) => place !== pending), position },
+  };
 }
 
 /** Cœur de braise (prototype #92) : à chaque garde brisée, l'Élan gagné et les PV rendus. */

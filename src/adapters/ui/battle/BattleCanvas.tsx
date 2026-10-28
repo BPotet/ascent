@@ -112,6 +112,7 @@ const ENEMY_KINDS: readonly EnemyKind[] = [
   'fallenKnight',
   'ossuaryWarden',
   'facelessPrior',
+  'skeleton',
   'madVillager',
 ];
 const PEDESTALS: readonly PedestalKind[] = ['enemy', 'single', 'hero'];

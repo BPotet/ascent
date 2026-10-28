@@ -190,6 +190,13 @@ export type BattleEvent =
     }
   /** Le changement de phase d'un boss (`BossPhaseShift`, P6). */
   | { readonly type: 'bossPhaseShifted'; readonly at: number; readonly enemy: number }
+  /** Se relève seul (`SelfRevive`, #106) : l'ennemi tombé se relève avec `hp` PV. */
+  | {
+      readonly type: 'enemySelfRevived';
+      readonly at: number;
+      readonly enemy: number;
+      readonly hp: number;
+    }
   /** Le héros saigne (prototype #107) : la marque apparaît, ou celle en cours est mise à jour. */
   | {
       readonly type: 'heroBleeding';

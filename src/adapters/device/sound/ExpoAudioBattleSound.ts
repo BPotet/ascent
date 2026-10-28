@@ -31,6 +31,7 @@ export const BATTLE_SOUND_FILES: Readonly<Record<BattleSoundCue, number>> = {
   glintDouble: require('./assets/glint-double.wav'),
   glintPerilous: require('./assets/glint-perilous.wav'),
   glintDull: require('./assets/glint-dull.wav'),
+  boneRattle: require('./assets/bone-rattle.wav'),
   bleed: require('./assets/bleed.wav'),
 };
 

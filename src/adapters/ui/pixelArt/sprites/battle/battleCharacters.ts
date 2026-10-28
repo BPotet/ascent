@@ -498,6 +498,28 @@ const HERO: CharacterArt = {
   },
 };
 
+/** Les yeux, seuls gardés par une silhouette. */
+const EYES = 8;
+/** La teinte sombre d'une silhouette. */
+const SHADOW = 2;
+
+/**
+ * Une silhouette provisoire (maquette #102, N2) : l'art `art` redessiné sombre, les yeux seuls
+ * gardés, pour un ennemi dont l'asset n'est pas encore validé dans l'Atelier.
+ */
+function silhouette(art: CharacterArt): CharacterArt {
+  return {
+    ...art,
+    draw(g, p) {
+      const drawn = art.draw(g, p);
+      g.pixels.forEach((code, index) => {
+        if (code !== 0 && code !== EYES) g.pixels[index] = SHADOW;
+      });
+      return { ...drawn, smearCode: SHADOW };
+    },
+  };
+}
+
 const ART: Readonly<Record<BattleCharacter, CharacterArt>> = {
   ghoul: GHOUL,
   specter: SPECTER,
@@ -509,6 +531,8 @@ const ART: Readonly<Record<BattleCharacter, CharacterArt>> = {
   // Sprite provisoire du Villageois fou (prototype #107) : l'asset de l'Atelier n'est pas validé.
   madVillager: GHOUL,
   hero: HERO,
+  // Le Squelette (#106) : silhouette provisoire, son asset est encore « proposé ».
+  skeleton: silhouette(GHOUL),
 };
 
 /** Un point du dessin, dans le sprite fini (2 pixels d'art de marge). */

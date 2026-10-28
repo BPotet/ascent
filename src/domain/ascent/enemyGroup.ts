@@ -29,8 +29,17 @@ export function drawGroupSize(
   );
 }
 
-/** Les poids de composition, dans l'ordre du Codex : Goule 3, Spectre 2, Nécromancien 1, Villageois fou 2. */
-export const KIND_WEIGHTS = { ghoul: 3, specter: 2, necromancer: 1, madVillager: 2 } as const;
+/**
+ * Les poids de composition, dans l'ordre du Codex : Goule 3, Spectre 2, Nécromancien 1,
+ * Squelette 3, Villageois fou 2.
+ */
+export const KIND_WEIGHTS = {
+  ghoul: 3,
+  specter: 2,
+  necromancer: 1,
+  skeleton: 3,
+  madVillager: 2,
+} as const;
 
 /**
  * La composition d'un groupe de `size` ennemis, tirée de gauche à droite : au plus 1 de chaque
