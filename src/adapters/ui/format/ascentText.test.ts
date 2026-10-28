@@ -1,4 +1,5 @@
 import {
+  blessingLines,
   blessingText,
   enemiesText,
   exitLabel,
@@ -22,11 +23,17 @@ describe('ascent texts', () => {
 
   it('announces the group size on a Combat door, not its composition', () => {
     expect(exitLabel({ kind: 'combat', groupSize: 4 })).toBe('Combat · 4 ennemis');
-    expect(exitLabel({ kind: 'elite', groupSize: null })).toBe('Élite · le Chevalier déchu');
     expect(exitLabel({ kind: 'campfire', groupSize: null })).toBe(
       'Feu de camp · soin de 40 % des PV',
     );
     expect(exitLabel({ kind: 'boss', groupSize: null })).toBe('Affronter le boss');
+  });
+
+  it('announces the Rare item the Elite door guarantees, not the Elite drawn behind it (#120)', () => {
+    const label = exitLabel({ kind: 'elite', groupSize: null });
+
+    expect(label).toBe('Élite · objet Rare garanti');
+    expect(label).not.toMatch(/Chevalier déchu|Jumeaux/u);
   });
 });
 
@@ -77,6 +84,13 @@ describe('gauge, blessing and item texts (#93)', () => {
     expect(blessingText({ family: 'protection', rarity: 'rare' })).toBe(
       'Protection · Rare · Réduction des dégâts +10 points',
     );
+  });
+
+  it('splits a blessing in two lines for its button, family and rarity, then effect (#120)', () => {
+    const blessing = { family: 'haste', rarity: 'rare' } as const;
+
+    expect(blessingLines(blessing)).toEqual(['Hâte · Rare', 'Initiative +2 dans chaque combat']);
+    expect(blessingLines(blessing).join(' · ')).toBe(blessingText(blessing));
   });
 
   it('names the items, worn or found, with their effect and Initiative', () => {
