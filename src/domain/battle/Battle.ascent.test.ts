@@ -3,6 +3,8 @@
 import { ATTACKS, type AttackKind } from './attacks';
 import {
   FRONT_LINE_SIZE,
+  PHASE_TRANSITION_MS,
+  STEP_IN_MS,
   advance,
   heroAction,
   nextDeadline,
@@ -17,14 +19,12 @@ import type { BattleEvent } from './BattleEvent';
 import { ENEMIES, ENEMY_INITIATIVE, type EnemyKind } from './combatants';
 import { drawIntent } from './intents';
 import { seedRandom } from './SeededRandom';
-import { DEFAULT_TRIAL_TUNING } from './TrialTuning';
 
 const GROUP_OF_5: readonly EnemyKind[] = ['ghoul', 'specter', 'ghoul', 'ghoul', 'necromancer'];
 
 function start(enemies: readonly EnemyKind[], hero = { hp: 50, maxHp: 80 }): BattleUpdate {
   return startBattle({
     seed: 7,
-    tuning: DEFAULT_TRIAL_TUNING,
     defenseHint: false,
     at: 0,
     heroHp: hero.hp,
@@ -251,7 +251,6 @@ describe('Boss phase shift (P6)', () => {
   it('acts before the Wanderer (Initiative 7) only from the round after its phase shift', () => {
     const { battle: initial } = startBattle({
       seed: 7,
-      tuning: DEFAULT_TRIAL_TUNING,
       defenseHint: false,
       at: 0,
       hero: 'wanderer',
@@ -374,7 +373,7 @@ describe('resumeBattle (P32)', () => {
       kind: 'transition',
       to: 'enemy',
       since: 5_000,
-      until: 5_000 + DEFAULT_TRIAL_TUNING.phaseTransitionMs,
+      until: 5_000 + PHASE_TRANSITION_MS,
     });
     expect(resumeBattle(stepIn, 5_000).phase).toEqual({
       kind: 'enemy',
@@ -382,9 +381,31 @@ describe('resumeBattle (P32)', () => {
         kind: 'stepIn',
         enemy: 0,
         since: 5_000,
-        until: 5_000 + DEFAULT_TRIAL_TUNING.stepInMs,
+        until: 5_000 + STEP_IN_MS,
       },
     });
+  });
+
+  it('holds 800 ms of transition and 400 ms of step-in, even when the save still has a trial tuning', () => {
+    const { battle: initial } = start(['ghoul']);
+    // Un combat sauvegardé avant #121 avec des réglages d'essai changés : le champ reste, inerte.
+    const saved = { ...initial, tuning: { phaseTransitionMs: 1_200, stepInMs: 100 } } as Battle;
+    const striking = heroAction(resumeBattle(saved, 0), {
+      action: { kind: 'attack' },
+      touchStartedAt: 50,
+      releasedAt: 100,
+    }).battle;
+    const strike = striking.phase as Extract<Battle['phase'], { kind: 'heroStrike' }>;
+    const resolved = advance(striking, strike.impactAt + 200).battle;
+    const transition = advance(resolved, nextDeadline(resolved)!.at).battle;
+    const stepIn = advance(transition, nextDeadline(transition)!.at).battle;
+
+    expect(transition.phase).toMatchObject({ kind: 'transition' });
+    const { since, until } = transition.phase as Extract<Battle['phase'], { kind: 'transition' }>;
+    expect(until - since).toBe(800);
+    expect(stepIn.phase).toMatchObject({ kind: 'enemy', step: { kind: 'stepIn' } });
+    const step = (stepIn.phase as Extract<Battle['phase'], { kind: 'enemy' }>).step;
+    expect(step.kind === 'stepIn' && step.until - step.since).toBe(400);
   });
 
   it('leaves a finished battle as it is', () => {

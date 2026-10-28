@@ -13,12 +13,10 @@ import {
 import type { BattleEvent } from './BattleEvent';
 import type { HeroKind } from './combatants';
 import { NO_MODIFIERS, type HeroModifiers } from './heroModifiers';
-import { DEFAULT_TRIAL_TUNING } from './TrialTuning';
 
 function start(modifiers: Partial<HeroModifiers> = {}, hero: HeroKind = 'sentinel'): Battle {
   return startBattle({
     seed: 7,
-    tuning: DEFAULT_TRIAL_TUNING,
     defenseHint: false,
     at: 0,
     hero,

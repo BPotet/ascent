@@ -1,10 +1,6 @@
 import { ATTACKS, FEINT_MAX_FRACTION, FEINT_MIN_FRACTION, shortestWindUpMs } from './attacks';
-import {
-  ENEMIES,
-  MAX_DAMAGE_REDUCTION_PERCENT,
-  SENTINEL,
-  TRIAL_BATTLE_ENEMIES,
-} from './combatants';
+import { ENEMIES, MAX_DAMAGE_REDUCTION_PERCENT, SENTINEL } from './combatants';
+import { TEST_BATTLE_ENEMIES } from './testing/testBattle';
 
 describe('attacks (C10)', () => {
   it('gives each attack its base wind-up and impacts', () => {
@@ -27,7 +23,7 @@ describe('attacks (C10)', () => {
   });
 });
 
-describe('combatants of the trial battle', () => {
+describe('combatants of the test battle', () => {
   it('sets the Sentinel: 80 HP, attack 10, guard damage 12, 10 % damage reduction, counter ×1.3, Bulwark', () => {
     expect(SENTINEL).toEqual({
       maxHp: 80,
@@ -41,7 +37,7 @@ describe('combatants of the trial battle', () => {
   });
 
   it('opposes a Ghoul, a Specter and a Necromancer, from left to right', () => {
-    expect(TRIAL_BATTLE_ENEMIES).toEqual(['ghoul', 'specter', 'necromancer']);
+    expect(TEST_BATTLE_ENEMIES).toEqual(['ghoul', 'specter', 'necromancer']);
   });
 
   it('gives the Ghoul 50 HP, guard 15, a basic attack of 5 and a double attack of 3 + 3', () => {

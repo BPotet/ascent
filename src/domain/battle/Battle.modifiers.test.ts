@@ -12,14 +12,12 @@ import {
 } from './Battle';
 import type { BattleEvent } from './BattleEvent';
 import { NO_MODIFIERS, combineModifiers, type HeroModifiers } from './heroModifiers';
-import { DEFAULT_TRIAL_TUNING } from './TrialTuning';
 
 type EventOf<Type extends BattleEvent['type']> = Extract<BattleEvent, { type: Type }>;
 
 function start(modifiers?: Partial<HeroModifiers>, options: Partial<BattleOptions> = {}) {
   return startBattle({
     seed: 7,
-    tuning: DEFAULT_TRIAL_TUNING,
     defenseHint: false,
     at: 0,
     enemies: ['ghoul', 'specter', 'necromancer'],

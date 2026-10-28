@@ -276,6 +276,3 @@ export const ENEMY_INITIATIVE: Readonly<Record<EnemyKind, number>> = {
   skeleton: 6,
   madVillager: 5,
 };
-
-/** Les ennemis du combat d'essai, de gauche à droite : la Goule, le Spectre et le Nécromancien. */
-export const TRIAL_BATTLE_ENEMIES: readonly EnemyKind[] = ['ghoul', 'specter', 'necromancer'];

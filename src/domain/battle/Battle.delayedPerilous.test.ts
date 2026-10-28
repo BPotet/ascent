@@ -14,13 +14,11 @@ import {
 import type { BattleEvent, DefenseButton } from './BattleEvent';
 import { ENEMIES, ENEMY_INITIATIVE, type HeroKind } from './combatants';
 import { glintsOf } from './glints';
-import { DEFAULT_TRIAL_TUNING } from './TrialTuning';
 
 /** Les Jumeaux, qui tirent l'Onde de choc de 10, contre le héros qui attaque le premier. */
 function toShockwave(hero: HeroKind, change: Partial<HeroState> = {}): Battle {
   const { battle: started } = startBattle({
     seed: 7,
-    tuning: DEFAULT_TRIAL_TUNING,
     defenseHint: false,
     at: 0,
     hero,
