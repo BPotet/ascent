@@ -29,12 +29,12 @@ export function drawGroupSize(
   );
 }
 
-/** Les poids de composition : Goule 3, Spectre 2, Nécromancien 1. */
-const KIND_WEIGHTS = { ghoul: 3, specter: 2, necromancer: 1 } as const;
+/** Les poids de composition, dans l'ordre du Codex : Goule 3, Spectre 2, Nécromancien 1, Villageois fou 2. */
+export const KIND_WEIGHTS = { ghoul: 3, specter: 2, necromancer: 1, madVillager: 2 } as const;
 
 /**
- * La composition d'un groupe de `size` ennemis, tirée de gauche à droite : au plus 1 Spectre et
- * 1 Nécromancien (un type à son plafond n'est plus tiré) ; un ennemi seul n'est jamais un
+ * La composition d'un groupe de `size` ennemis, tirée de gauche à droite : au plus 1 de chaque
+ * type sauf la Goule (un type à son plafond n'est plus tiré) ; un ennemi seul n'est jamais un
  * Nécromancien.
  */
 export function drawGroup(size: number, random: RandomState): Drawn<EnemyKind[]> {

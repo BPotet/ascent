@@ -6,6 +6,7 @@ import {
   WIND_UP_MIN_FACTOR,
   type AttackKind,
 } from './attacks';
+import type { Bleed } from './bleed';
 import { ENEMIES, type EnemyKind } from './combatants';
 import { nextRandom, type RandomState } from './SeededRandom';
 
@@ -18,6 +19,8 @@ export interface AttackIntent {
   readonly windUpMs: number;
   /** La position de la fausse amorce dans la préparation, de 35 % à 60 % (tirée pour tout coup). */
   readonly feintFraction: number;
+  /** Le Saignement du coup (prototype #107) ; absent, il ne saigne pas. */
+  readonly bleed?: Bleed;
 }
 
 /** L'intention Garde (`GuardIntent`) : la garde remonte de `gain` points. */
@@ -109,5 +112,6 @@ export function drawIntent(
     damage: move.damage,
     windUpMs: Math.round(ATTACKS[move.attack].windUpMs * factor),
     feintFraction: FEINT_MIN_FRACTION + (FEINT_MAX_FRACTION - FEINT_MIN_FRACTION) * feintDraw.value,
+    ...(move.bleed && { bleed: move.bleed }),
   });
 }

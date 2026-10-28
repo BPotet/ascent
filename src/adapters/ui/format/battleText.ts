@@ -31,6 +31,7 @@ export const ENEMY_NAMES: Readonly<Record<EnemyKind, string>> = {
   fallenKnight: 'Chevalier déchu',
   ossuaryWarden: 'Gardienne des ossuaires',
   facelessPrior: 'Prieur sans visage',
+  madVillager: 'Villageois fou',
 };
 
 /** Le genre du nom de l'ennemi, pour « étourdie », « tombée »… */
@@ -41,6 +42,7 @@ const FEMININE: Readonly<Record<EnemyKind, boolean>> = {
   fallenKnight: false,
   ossuaryWarden: true,
   facelessPrior: false,
+  madVillager: false,
 };
 
 export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {

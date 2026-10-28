@@ -1,4 +1,5 @@
 import type { AttackKind } from './attacks';
+import type { Bleed } from './bleed';
 import { heroInitiative } from './initiative';
 import type { PowerKind } from './momentum';
 
@@ -114,12 +115,20 @@ export const MAX_DAMAGE_REDUCTION_PERCENT = 40;
 export const GOOD_PARRY_PERCENT = 25;
 
 export type EnemyKind =
-  'ghoul' | 'specter' | 'necromancer' | 'fallenKnight' | 'ossuaryWarden' | 'facelessPrior';
+  | 'ghoul'
+  | 'specter'
+  | 'necromancer'
+  | 'fallenKnight'
+  | 'ossuaryWarden'
+  | 'facelessPrior'
+  | 'madVillager';
 
 /** Un coup qu'un ennemi peut porter, avec ses dégâts. */
 export interface Move {
   readonly attack: AttackKind;
   readonly damage: number;
+  /** Le Saignement qu'il inflige au héros (prototype #107). */
+  readonly bleed?: Bleed;
 }
 
 export interface EnemyProfile {
@@ -209,6 +218,16 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     phase2Initiative: 9,
     supports: false,
   },
+  // Le Villageois fou, valeurs du Codex (prototype #107) : la Fourche, puis le Coup de manche.
+  madVillager: {
+    maxHp: 35,
+    maxGuard: 12,
+    moves: [
+      { attack: 'basic', damage: 5, bleed: { damage: 2, rounds: 3 } },
+      { attack: 'basic', damage: 5 },
+    ],
+    supports: false,
+  },
 };
 
 /**
@@ -222,6 +241,7 @@ export const ENEMY_INITIATIVE: Readonly<Record<EnemyKind, number>> = {
   fallenKnight: 6,
   ossuaryWarden: 6,
   facelessPrior: 6,
+  madVillager: 5,
 };
 
 /** Les ennemis du combat d'essai, de gauche à droite : la Goule, le Spectre et le Nécromancien. */

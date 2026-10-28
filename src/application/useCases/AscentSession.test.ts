@@ -123,7 +123,7 @@ describe('AscentSession', () => {
   });
 
   it('starts the floor battle with the hero and the enemies of the ascent, and saves it as it goes', async () => {
-    const { session, store } = setUp(42);
+    const { session, store } = setUp(5);
     const ascent = session.begin();
     const battleSession = session.battleSession();
 
