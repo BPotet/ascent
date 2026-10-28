@@ -5,15 +5,15 @@
  * multiplient ensuite en un seul calcul, arrondi une seule fois (P18, P21).
  */
 export interface HeroModifiers {
-  /** Un ajout fixe à l'Attaque, avant les pourcentages (Tranchant). */
+  /** Un ajout fixe à l'Attaque, avant les pourcentages (Tranchant, Armure de chevalier noir). */
   readonly attackFlat: number;
-  /** Les pourcentages de l'Attaque (Marteau 80). */
+  /** Les pourcentages de l'Attaque. */
   readonly attackPercents: readonly number[];
-  /** Les pourcentages du Brise-garde (Hache 130, Marteau 160). */
+  /** Les pourcentages du Brise-garde (Hache rouillée 110, Marteau 160). */
   readonly guardDamagePercents: readonly number[];
   /** Les bonus du multiplicateur de frappe parfaite, en points de % (Cuir 20). */
   readonly perfectStrikeBonusPercents: readonly number[];
-  /** Les points de réduction des dégâts, sous le plafond de 40 % (Égide, Mailles). */
+  /** Les points de réduction des dégâts, sous le plafond de 40 % (Protection, Mailles, Armure de chevalier noir). */
   readonly damageReductionPoints: number;
   /** Le bonus d'Initiative : arme, armure, accessoire et Hâte (P15). */
   readonly initiative: number;

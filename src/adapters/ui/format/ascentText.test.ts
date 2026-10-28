@@ -7,6 +7,7 @@ import {
   gaugeReason,
   gaugeWord,
   goldText,
+  itemDescription,
   itemText,
   wornText,
 } from './ascentText';
@@ -73,15 +74,17 @@ describe('gauge, blessing and item texts (#93)', () => {
     expect(blessingText({ family: 'edge', rarity: 'common' })).toBe(
       'Tranchant · Commune · Attaque +10 %',
     );
-    expect(blessingText({ family: 'aegis', rarity: 'rare' })).toBe(
-      'Égide · Rare · Réduction des dégâts +10 points',
+    expect(blessingText({ family: 'protection', rarity: 'rare' })).toBe(
+      'Protection · Rare · Réduction des dégâts +10 points',
     );
   });
 
   it('names the items, worn or found, with their effect and Initiative', () => {
     expect(itemText('hasteAmulet')).toBe('Amulette de Hâte · Accessoire · Rare · Initiative +2');
-    expect(itemText('hammer')).toBe(
-      'Marteau · Arme · Rare · Brise-garde ×1,6, Attaque ×0,8 · Initiative −2',
+    expect(itemText('hammer')).toBe('Marteau · Arme · Commun · Brise-garde ×1,6 · Initiative −1');
+    expect(itemText('crossbow')).toBe('Arbalète · Arme · Rare · Initiative +1');
+    expect(itemText('blackKnightArmor')).toBe(
+      'Armure de chevalier noir · Armure · Rare · Réduction des dégâts +20 points, Attaque +1 · Initiative −2',
     );
     expect(itemText('leather')).toBe(
       'Cuir · Armure · Commun · Frappe parfaite +0,2 · Initiative +1',
@@ -96,7 +99,12 @@ describe('gauge, blessing and item texts (#93)', () => {
       'Cuirasse cabossée · Initiative 0',
     );
     expect(wornText({ weapon: 'axe', armor: null, accessory: null }, 'weapon')).toBe(
-      'Hache · Arme · Commun · Brise-garde ×1,3 · Initiative −1',
+      'Hache rouillée · Arme · Commun · Brise-garde ×1,1 · Initiative −1',
     );
+  });
+
+  it('gives the Black knight armor its provisional line, and no line to the other items', () => {
+    expect(itemDescription('blackKnightArmor')).toBe('Lourde et lente.');
+    expect(itemDescription('crossbow')).toBeNull();
   });
 });

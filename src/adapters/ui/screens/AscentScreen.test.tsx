@@ -181,13 +181,36 @@ describe('AscentScreen with blessings and found items (#93)', () => {
 
     expect(screen.getByRole('header', { name: 'Objet trouvé' })).toBeOnTheScreen();
     expect(
-      screen.getByText('Hache · Arme · Commun · Brise-garde ×1,3 · Initiative −1'),
+      screen.getByText('Hache rouillée · Arme · Commun · Brise-garde ×1,1 · Initiative −1'),
     ).toBeOnTheScreen();
+    expect(screen.getByTestId('item-silhouette', { includeHiddenElements: true })).toHaveProp(
+      'sprite',
+      'item-silhouette-weapon',
+    );
     expect(screen.getByText('Tu portes : Épée courte · Initiative 0')).toBeOnTheScreen();
     fireEvent.press(screen.getByRole('button', { name: 'Équiper' }));
 
     expect(session.current()!.equipment.weapon).toBe('axe');
     expect(await screen.findByRole('header', { name: 'Choisis ta sortie' })).toBeOnTheScreen();
+  });
+
+  it('shows the Black knight armor in silhouette, with its provisional line and its numbers', async () => {
+    await show({
+      ...between(startAscent(42), [{ kind: 'combat', groupSize: 2 }]),
+      foundItem: 'blackKnightArmor',
+    });
+
+    expect(screen.getByTestId('item-silhouette', { includeHiddenElements: true })).toHaveProp(
+      'sprite',
+      'item-silhouette-armor',
+    );
+    expect(screen.getByText('Lourde et lente.')).toBeOnTheScreen();
+    expect(
+      screen.getByText(
+        'Armure de chevalier noir · Armure · Rare · Réduction des dégâts +20 points, Attaque +1 · Initiative −2',
+      ),
+    ).toBeOnTheScreen();
+    expect(screen.getByText('Tu portes : Cuirasse cabossée · Initiative 0')).toBeOnTheScreen();
   });
 
   it('loses a left item and keeps the equipment', async () => {
