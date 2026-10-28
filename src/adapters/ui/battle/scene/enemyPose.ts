@@ -100,7 +100,7 @@ export function enemyPose(timeline: SceneTimeline, now: number, reduced: boolean
     const frame = stepFrame(Math.floor(Math.max(0, t - timeline.stepInAt) / FRAME_MS));
     return pose(frame, 1, false, ADVANCE * ease(progress), 0, motion);
   }
-  const red = timeline.attack === 'perilous';
+  const red = timeline.attack === 'perilous' || timeline.attack === 'delayedPerilous';
   const { impacts } = timeline;
   let j = -1;
   for (let n = 0; n < impacts.length; n += 1) {
@@ -151,7 +151,7 @@ export function enemyPose(timeline: SceneTimeline, now: number, reduced: boolean
     frame = n < 1 ? 'rec0' : 'ant2';
     tier = 1;
     reach = rest - (rest - (ADVANCE - BACK)) * ease(progress);
-  } else if (timeline.attack === 'delayed') {
+  } else if (timeline.attack === 'delayed' || timeline.attack === 'delayedPerilous') {
     if (q < 0.45) {
       frame = q < 0.15 ? 'ant0' : q < 0.3 ? 'ant1' : 'ant2';
       tier = q < 0.3 ? 0 : 1;

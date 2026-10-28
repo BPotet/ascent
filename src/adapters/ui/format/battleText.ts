@@ -1,4 +1,4 @@
-import type { AttackKind } from '../../../domain/battle/attacks';
+import { ATTACKS, type AttackKind } from '../../../domain/battle/attacks';
 import type { Battle } from '../../../domain/battle/Battle';
 import type {
   BattleEvent,
@@ -341,7 +341,7 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
     case 'heroPhaseStarted':
       return event.announced ? phaseAnnouncement('hero') : null;
     case 'windUpStarted':
-      return `${name(event.enemy)}, ${ATTACK_NAMES[event.attack]}${event.attack === 'perilous' ? ', esquive' : ''}`;
+      return `${name(event.enemy)}, ${ATTACK_NAMES[event.attack]}${ATTACKS[event.attack].perilous ? ', esquive' : ''}`;
     case 'blowResolved':
       return blowAnnouncement(event.outcome, event.damage);
     case 'counterAttacked':

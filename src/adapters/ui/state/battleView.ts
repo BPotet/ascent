@@ -1,4 +1,5 @@
 import type { Actor } from '../../../domain/battle/actionOrder';
+import { ATTACKS } from '../../../domain/battle/attacks';
 import {
   heroProfile,
   nextRoundOrder,
@@ -289,7 +290,7 @@ export function battleView(battle: Battle): BattleView {
           lock: null,
           offBalance: battle.offBalanceUntil !== null,
         },
-        sealed: step.kind === 'attack' && step.attack === 'perilous' ? step.enemy : null,
+        sealed: step.kind === 'attack' && ATTACKS[step.attack].perilous ? step.enemy : null,
       };
     }
     case 'over':
