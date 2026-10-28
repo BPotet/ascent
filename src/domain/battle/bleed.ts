@@ -1,10 +1,5 @@
 import type { BlowOutcome } from './BattleEvent';
-
-/** Le Saignement (`Bleed`, prototype #107) : `damage` PV perdus au début de `rounds` manches. */
-export interface Bleed {
-  readonly damage: number;
-  readonly rounds: number;
-}
+import type { Bleed } from './combatants';
 
 /** Les issues d'un impact qui font saigner (B1) : ni la parade parfaite ni l'esquive. */
 export const BLEEDING_OUTCOMES: readonly BlowOutcome[] = ['parry', 'suffered', 'perilousParry'];

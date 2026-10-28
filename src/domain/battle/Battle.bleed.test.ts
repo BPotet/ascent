@@ -13,8 +13,7 @@ import {
   type HeroState,
 } from './Battle';
 import type { BattleEvent, DefenseButton } from './BattleEvent';
-import type { Bleed } from './bleed';
-import type { EnemyKind } from './combatants';
+import type { Bleed, EnemyKind } from './combatants';
 import { NO_MODIFIERS, type HeroModifiers } from './heroModifiers';
 import { DEFAULT_TRIAL_TUNING } from './TrialTuning';
 

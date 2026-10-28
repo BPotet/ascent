@@ -1,5 +1,4 @@
 import type { AttackKind } from './attacks';
-import type { Bleed } from './bleed';
 import { heroInitiative } from './initiative';
 import type { PowerKind } from './momentum';
 
@@ -122,6 +121,12 @@ export type EnemyKind =
   | 'ossuaryWarden'
   | 'facelessPrior'
   | 'madVillager';
+
+/** Le Saignement (`Bleed`, prototype #107) : `damage` PV perdus au début de `rounds` manches. */
+export interface Bleed {
+  readonly damage: number;
+  readonly rounds: number;
+}
 
 /** Un coup qu'un ennemi peut porter, avec ses dégâts. */
 export interface Move {

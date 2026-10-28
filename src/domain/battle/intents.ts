@@ -6,8 +6,7 @@ import {
   WIND_UP_MIN_FACTOR,
   type AttackKind,
 } from './attacks';
-import type { Bleed } from './bleed';
-import { ENEMIES, type EnemyKind } from './combatants';
+import { ENEMIES, type Bleed, type EnemyKind } from './combatants';
 import { nextRandom, type RandomState } from './SeededRandom';
 
 /** L'intention Attaque (`AttackIntent`) : le coup, ses dégâts et ses tirages, jamais montrés. */

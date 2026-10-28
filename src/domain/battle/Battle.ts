@@ -29,6 +29,7 @@ import {
   MAX_DAMAGE_REDUCTION_PERCENT,
   TRIAL_BATTLE_ENEMIES,
   startingInitiative,
+  type Bleed,
   type EnemyKind,
   type HeroKind,
   type HeroProfile,
@@ -75,7 +76,7 @@ import {
   type EnemyBlow,
 } from './strike';
 import type { TrialTuning } from './TrialTuning';
-import { bleedsOn, mergeBleed, tickBleed, type Bleed } from './bleed';
+import { bleedsOn, mergeBleed, tickBleed } from './bleed';
 
 export interface HeroState {
   readonly hp: number;
