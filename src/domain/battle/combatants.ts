@@ -120,12 +120,21 @@ export type EnemyKind =
   | 'fallenKnight'
   | 'ossuaryWarden'
   | 'facelessPrior'
-  | 'skeleton';
+  | 'skeleton'
+  | 'madVillager';
+
+/** Le Saignement (`Bleed`, prototype #107) : `damage` PV perdus au début de `rounds` manches. */
+export interface Bleed {
+  readonly damage: number;
+  readonly rounds: number;
+}
 
 /** Un coup qu'un ennemi peut porter, avec ses dégâts. */
 export interface Move {
   readonly attack: AttackKind;
   readonly damage: number;
+  /** Le Saignement qu'il inflige au héros (prototype #107). */
+  readonly bleed?: Bleed;
 }
 
 export interface EnemyProfile {
@@ -226,6 +235,16 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     supports: false,
     selfRevive: { times: 1, hpPercent: 50 },
   },
+  // Le Villageois fou, valeurs du Codex (prototype #107) : la Fourche, puis le Coup de manche.
+  madVillager: {
+    maxHp: 35,
+    maxGuard: 12,
+    moves: [
+      { attack: 'basic', damage: 5, bleed: { damage: 2, rounds: 3 } },
+      { attack: 'basic', damage: 5 },
+    ],
+    supports: false,
+  },
 };
 
 /**
@@ -240,6 +259,7 @@ export const ENEMY_INITIATIVE: Readonly<Record<EnemyKind, number>> = {
   ossuaryWarden: 6,
   facelessPrior: 6,
   skeleton: 6,
+  madVillager: 5,
 };
 
 /** Les ennemis du combat d'essai, de gauche à droite : la Goule, le Spectre et le Nécromancien. */

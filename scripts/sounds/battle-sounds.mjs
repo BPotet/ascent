@@ -101,6 +101,8 @@ export const CUES = {
     [750, 0.04, 'square', 0.05, 0.14],
     [1_050, 0.05, 'square', 0.05, 0.21],
   ],
+  // #107 : la goutte sourde du Saignement, une note grave qui tombe.
+  bleed: [[420, 0.16, 'sine', 0.16, 0, 180]],
 };
 
 const WAVES = {

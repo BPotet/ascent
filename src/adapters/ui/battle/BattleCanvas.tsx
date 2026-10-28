@@ -113,6 +113,7 @@ const ENEMY_KINDS: readonly EnemyKind[] = [
   'ossuaryWarden',
   'facelessPrior',
   'skeleton',
+  'madVillager',
 ];
 const PEDESTALS: readonly PedestalKind[] = ['enemy', 'single', 'hero'];
 const NEAREST = { filter: FilterMode.Nearest, mipmap: MipmapMode.None } as const;

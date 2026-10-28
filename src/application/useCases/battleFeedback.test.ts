@@ -155,6 +155,19 @@ describe('feedbackFor (sounds and vibrations of a battle)', () => {
     expect(toEnemy.haptic).toBe('enemyPhase');
     expect(toHero.sound).not.toBe(toEnemy.sound);
   });
+
+  it('plays the drop, without vibration, when the hero starts bleeding or loses HP to it', () => {
+    const drop = { sound: 'bleed', haptic: null };
+
+    expect(feedbackFor({ type: 'heroBleeding', at: 0, damage: 2, rounds: 3 })).toEqual(drop);
+    expect(feedbackFor({ type: 'bleedTicked', at: 0, loss: 2, heroHp: 48, roundsLeft: 2 })).toEqual(
+      drop,
+    );
+    expect(feedbackFor({ type: 'bleedTicked', at: 0, loss: 0, heroHp: 1, roundsLeft: 1 })).toEqual({
+      sound: null,
+      haptic: null,
+    });
+  });
 });
 
 describe('GLINT_CUES (the sound of each glint, C2.10)', () => {

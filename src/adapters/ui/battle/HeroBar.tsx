@@ -3,8 +3,15 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { HeroState } from '../../../domain/battle/Battle';
 import type { HeroKind } from '../../../domain/battle/combatants';
 import { MOMENTUM_MAX } from '../../../domain/battle/momentum';
-import { HERO_NAMES, POWER_NAMES, heroHpText, momentumLabel } from '../format/battleText';
+import {
+  HERO_NAMES,
+  POWER_NAMES,
+  bleedChipText,
+  heroHpText,
+  momentumLabel,
+} from '../format/battleText';
 import { battleColors } from '../theme/battleColors';
+import { BleedChip } from './BleedChip';
 
 /** La part des PV sous laquelle la barre passe en alerte (maquette : 30 %). */
 const LOW_HP_RATIO = 0.3;
@@ -41,6 +48,7 @@ export function HeroBar({
   const active = [
     ...(hero.bulwark ? [POWER_NAMES.bulwark] : []),
     ...(hero.shadowStep === true ? [POWER_NAMES.shadowStep] : []),
+    ...(hero.bleed ? [bleedChipText(hero.bleed.rounds)] : []),
   ];
   const label = `${name}, PV ${hero.hp} sur ${hero.maxHp}, ${momentumLabel(hero.momentum)}${active.map((power) => `, ${power}`).join('')}`;
   return (
@@ -55,6 +63,7 @@ export function HeroBar({
         </View>
         <Text style={styles.hpText}>{heroHpText(hero.hp, hero.maxHp)}</Text>
       </View>
+      {hero.bleed ? <BleedChip rounds={hero.bleed.rounds} /> : null}
       <MomentumDiamonds momentum={hero.momentum} />
     </View>
   );

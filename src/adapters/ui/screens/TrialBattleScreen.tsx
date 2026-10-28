@@ -10,6 +10,7 @@ import { ActionPad } from '../battle/ActionPad';
 import { ActionTrack } from '../battle/ActionTrack';
 import { BattleScene, prepareBattleScene } from '../battle/BattleCanvas';
 import { DamageFloat, FeedbackLabel, useShake } from '../battle/BattleEffects';
+import { BleedDrops } from '../battle/BleedChip';
 import { BattleEndPanel } from '../battle/BattleEndPanel';
 import { BattleHintBubble } from '../battle/BattleHintBubble';
 import { EnemyColumn } from '../battle/EnemyColumn';
@@ -272,6 +273,7 @@ export function TrialBattleScreen({
         {display.feedback === null || over !== null ? null : (
           <FeedbackLabel key={display.feedback.key} texts={display.feedback.texts} />
         )}
+        {battle.hero.bleed ? <BleedDrops /> : null}
         {heroFloat === null ? null : (
           <View pointerEvents="none" style={styles.heroFloat}>
             <DamageFloat key={heroFloat.key} float={heroFloat.float} />

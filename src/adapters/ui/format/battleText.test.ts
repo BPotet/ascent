@@ -2,8 +2,10 @@ import { startBattle, startTrialBattle, type Battle } from '../../../domain/batt
 import type { BattleEvent } from '../../../domain/battle/BattleEvent';
 import { DEFAULT_TRIAL_TUNING } from '../../../domain/battle/TrialTuning';
 import {
+  ENEMY_NAMES,
   announcement,
   attackButtonLabel,
+  bleedChipText,
   damageFloat,
   endLine,
   endTitle,
@@ -339,5 +341,46 @@ describe('battle texts', () => {
 
   it('writes the HP of the hero', () => {
     expect(heroHpText(56, 80)).toBe('PV 56/80');
+  });
+
+  describe('the Bleed (prototype #107)', () => {
+    const ticked = (loss: number, roundsLeft: number): BattleEvent => ({
+      type: 'bleedTicked',
+      at: 0,
+      loss,
+      heroHp: 48,
+      roundsLeft,
+    });
+
+    it('writes the chip with the rounds left', () => {
+      expect(bleedChipText(3)).toBe('Saignement ×3');
+    });
+
+    it('shows the loss above the hero, nothing at the 1 HP floor', () => {
+      expect(damageFloat(ticked(2, 2))).toEqual({
+        at: 'hero',
+        text: '−2',
+        big: false,
+        kind: 'damage',
+      });
+      expect(damageFloat(ticked(0, 1))).toBeNull();
+    });
+
+    it.each([
+      [
+        { type: 'heroBleeding', at: 0, damage: 2, rounds: 3 },
+        'Saignement : moins 2 PV pendant 3 manches',
+      ],
+      [ticked(2, 2), 'Saignement, 2 dégâts, encore 2 manches'],
+      [ticked(1, 1), 'Saignement, 1 dégât, encore 1 manche'],
+      [ticked(2, 0), 'Saignement, 2 dégâts. Saignement terminé'],
+    ] as [BattleEvent, string][])('reads %j', (event, sentence) => {
+      expect(announcement(event, battle)).toBe(sentence);
+    });
+
+    it('names the Mad villager, a masculine name', () => {
+      expect(ENEMY_NAMES.madVillager).toBe('Villageois fou');
+      expect(stunnedLabel('madVillager')).toBe('Étourdi ×1,5');
+    });
   });
 });

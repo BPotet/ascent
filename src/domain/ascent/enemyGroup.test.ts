@@ -1,5 +1,11 @@
 import { seedRandom } from '../battle/SeededRandom';
-import { GROUP_SIZE_WEIGHTS, drawGroup, drawGroupSize, sizeWeights } from './enemyGroup';
+import {
+  GROUP_SIZE_WEIGHTS,
+  KIND_WEIGHTS,
+  drawGroup,
+  drawGroupSize,
+  sizeWeights,
+} from './enemyGroup';
 
 const SEEDS = Array.from({ length: 600 }, (_, index) => index * 2_654_435_761);
 
@@ -32,26 +38,40 @@ describe('Group size (P3)', () => {
 describe('Group composition (P3)', () => {
   const groups = (size: number) => SEEDS.map((seed) => drawGroup(size, seedRandom(seed)).value);
 
-  it('draws as many enemies as the size, with at most 1 Specter, 1 Necromancer and 1 Skeleton', () => {
+  it('has the weights of the Codex, in its order', () => {
+    expect(Object.entries(KIND_WEIGHTS)).toEqual([
+      ['ghoul', 3],
+      ['specter', 2],
+      ['necromancer', 1],
+      ['skeleton', 3],
+      ['madVillager', 2],
+    ]);
+  });
+
+  it('draws as many enemies as the size, with at most 1 of each type but the Ghoul', () => {
     for (const size of [1, 2, 3, 4, 5]) {
       for (const group of groups(size)) {
         expect(group).toHaveLength(size);
-        expect(group.filter((kind) => kind === 'specter').length).toBeLessThanOrEqual(1);
-        expect(group.filter((kind) => kind === 'necromancer').length).toBeLessThanOrEqual(1);
-        expect(group.filter((kind) => kind === 'skeleton').length).toBeLessThanOrEqual(1);
+        for (const capped of ['specter', 'necromancer', 'skeleton', 'madVillager']) {
+          expect(group.filter((kind) => kind === capped).length).toBeLessThanOrEqual(1);
+        }
       }
     }
   });
 
   it('fills the rest with Ghouls, and every type is possible', () => {
+    // 4 types plafonnés à 1 : un groupe de 5 compte toujours au moins 1 Goule.
     const five = groups(5);
-    expect(five.every((group) => group.filter((kind) => kind === 'ghoul').length >= 2)).toBe(true);
+    expect(five.every((group) => group.filter((kind) => kind === 'ghoul').length >= 1)).toBe(true);
+    expect(five.some((group) => group.filter((kind) => kind === 'ghoul').length === 1)).toBe(true);
     expect(new Set(groups(3).flat())).toEqual(
-      new Set(['ghoul', 'specter', 'necromancer', 'skeleton']),
+      new Set(['ghoul', 'specter', 'necromancer', 'skeleton', 'madVillager']),
     );
   });
 
   it('never draws a lone Necromancer, but a lone Skeleton can be', () => {
-    expect(new Set(groups(1).flat())).toEqual(new Set(['ghoul', 'specter', 'skeleton']));
+    expect(new Set(groups(1).flat())).toEqual(
+      new Set(['ghoul', 'specter', 'skeleton', 'madVillager']),
+    );
   });
 });

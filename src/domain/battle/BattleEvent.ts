@@ -196,4 +196,19 @@ export type BattleEvent =
       readonly at: number;
       readonly enemy: number;
       readonly hp: number;
+    }
+  /** Le héros saigne (prototype #107) : la marque apparaît, ou celle en cours est mise à jour. */
+  | {
+      readonly type: 'heroBleeding';
+      readonly at: number;
+      readonly damage: number;
+      readonly rounds: number;
+    }
+  /** La perte du Saignement au début d'une manche ; `roundsLeft` vaut 0 quand il prend fin. */
+  | {
+      readonly type: 'bleedTicked';
+      readonly at: number;
+      readonly loss: number;
+      readonly heroHp: number;
+      readonly roundsLeft: number;
     };
