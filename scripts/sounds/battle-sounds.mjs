@@ -94,6 +94,8 @@ export const CUES = {
   ],
   'glint-perilous': [[1_500, 0.16, 'sawtooth', 0.07, 0, 900]],
   'glint-dull': [[520, 0.07, 'square', 0.035, 0, 380]],
+  // #107 : la goutte sourde du Saignement, une note grave qui tombe.
+  bleed: [[420, 0.16, 'sine', 0.16, 0, 180]],
 };
 
 const WAVES = {

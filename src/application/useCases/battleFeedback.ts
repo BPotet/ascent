@@ -69,6 +69,11 @@ export function feedbackFor(event: BattleEvent): BattleFeedback {
     case 'powerUsed':
       // Pas de l'ombre (prototype #90) n'a pas de son propre : il reprend celui du Rempart.
       return { sound: 'bulwark', haptic: null };
+    // La goutte du Saignement (prototype #107), sans vibration ; rien au plancher de 1 PV.
+    case 'heroBleeding':
+      return { sound: 'bleed', haptic: null };
+    case 'bleedTicked':
+      return event.loss > 0 ? { sound: 'bleed', haptic: null } : NONE;
     default:
       return NONE;
   }

@@ -1,7 +1,8 @@
 /**
  * Les sons du combat : un par résultat, un pour le sceau, un par sens de l'annonce de phase, ceux
  * du combat complet (#32) : frappe, frappe parfaite, cassure de garde, action perdue, retour en
- * garde, garde levée, allié relevé et Rempart, et un par type de reflet (#81, C2.10).
+ * garde, garde levée, allié relevé et Rempart, un par type de reflet (#81, C2.10), et la goutte
+ * du Saignement (prototype #107).
  */
 export type BattleSoundCue =
   | 'perfectParry'
@@ -25,7 +26,8 @@ export type BattleSoundCue =
   | 'glint'
   | 'glintDouble'
   | 'glintPerilous'
-  | 'glintDull';
+  | 'glintDull'
+  | 'bleed';
 
 export const BATTLE_SOUND_CUES: readonly BattleSoundCue[] = [
   'perfectParry',
@@ -50,6 +52,7 @@ export const BATTLE_SOUND_CUES: readonly BattleSoundCue[] = [
   'glintDouble',
   'glintPerilous',
   'glintDull',
+  'bleed',
 ];
 
 /**
