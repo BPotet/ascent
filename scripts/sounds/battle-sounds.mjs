@@ -94,6 +94,13 @@ export const CUES = {
   ],
   'glint-perilous': [[1_500, 0.16, 'sawtooth', 0.07, 0, 900]],
   'glint-dull': [[520, 0.07, 'square', 0.035, 0, 380]],
+  // #106 : le cliquetis d'os de l'ennemi qui se relève seul ; la maquette n'en a pas, des claquements secs.
+  'bone-rattle': [
+    [900, 0.04, 'square', 0.05, 0],
+    [1_200, 0.04, 'square', 0.05, 0.07],
+    [750, 0.04, 'square', 0.05, 0.14],
+    [1_050, 0.05, 'square', 0.05, 0.21],
+  ],
 };
 
 const WAVES = {
