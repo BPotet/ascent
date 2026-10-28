@@ -8,7 +8,14 @@ import { favorDropBonus, rarityShift, type FateGauge } from './fateGauge';
 import type { Rarity } from './rarity';
 
 export type ItemKind =
-  'axe' | 'hammer' | 'leather' | 'chainmail' | 'watchmanShield' | 'hasteAmulet';
+  | 'axe'
+  | 'hammer'
+  | 'leather'
+  | 'chainmail'
+  | 'watchmanShield'
+  | 'hasteAmulet'
+  | 'crossbow'
+  | 'blackKnightArmor';
 export type ItemSlot = 'weapon' | 'armor' | 'accessory';
 
 export interface ItemProfile {
@@ -18,13 +25,13 @@ export interface ItemProfile {
   readonly effects: Partial<HeroModifiers>;
 }
 
-/** Le catalogue (P20). */
+/** Le catalogue (P20 ; valeurs du Codex de l'Atelier, #105), dans l'ordre du Codex. */
 export const ITEMS: Readonly<Record<ItemKind, ItemProfile>> = {
   axe: {
     slot: 'weapon',
     rarity: 'common',
     initiative: -1,
-    effects: { guardDamagePercents: [130] },
+    effects: { guardDamagePercents: [110] },
   },
   leather: {
     slot: 'armor',
@@ -40,9 +47,9 @@ export const ITEMS: Readonly<Record<ItemKind, ItemProfile>> = {
   },
   hammer: {
     slot: 'weapon',
-    rarity: 'rare',
-    initiative: -2,
-    effects: { guardDamagePercents: [160], attackPercents: [80] },
+    rarity: 'common',
+    initiative: -1,
+    effects: { guardDamagePercents: [160] },
   },
   watchmanShield: {
     slot: 'armor',
@@ -51,6 +58,13 @@ export const ITEMS: Readonly<Record<ItemKind, ItemProfile>> = {
     effects: { healOnPerfectParry: 3 },
   },
   hasteAmulet: { slot: 'accessory', rarity: 'rare', initiative: 2, effects: {} },
+  crossbow: { slot: 'weapon', rarity: 'rare', initiative: 1, effects: {} },
+  blackKnightArmor: {
+    slot: 'armor',
+    rarity: 'rare',
+    initiative: -2,
+    effects: { damageReductionPoints: 20, attackFlat: 1 },
+  },
 };
 
 /** L'équipement porté ; `null` : l'équipement de base du héros (ou l'accessoire vide). */
@@ -79,7 +93,7 @@ const RARE_CHANCE = 30;
 
 /**
  * Un objet tiré : la rareté (toujours Rare après une Élite), puis un objet à égalité parmi ceux de
- * cette rareté que le héros ne porte pas ; s'il porte les 3 Rares, un Commun.
+ * cette rareté que le héros ne porte pas ; s'il porte tous les Rares, un Commun.
  */
 export function drawItem(
   gauge: FateGauge,

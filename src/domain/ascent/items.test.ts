@@ -49,9 +49,34 @@ describe('the item draw (P20)', () => {
     expect(draws(0, false, worn)).not.toContain('axe');
   });
 
-  it('draws a Common when the three Rares are worn', () => {
-    const worn = { weapon: 'hammer', armor: 'watchmanShield', accessory: 'hasteAmulet' } as const;
-    expect(new Set(draws(0, true, worn))).toEqual(new Set(['axe', 'leather', 'chainmail']));
+  it('draws the Crossbow or the Black knight armor among the Rares, never an Epic', () => {
+    const elite = new Set(draws(0, true));
+    expect(elite).toEqual(
+      new Set(['watchmanShield', 'hasteAmulet', 'crossbow', 'blackKnightArmor']),
+    );
+    expect(new Set(draws(0, false).map((item) => ITEMS[item].rarity))).toEqual(
+      new Set(['common', 'rare']),
+    );
+  });
+
+  it('draws the Hammer as a Common', () => {
+    expect(ITEMS.hammer.rarity).toBe('common');
+    expect(draws(0, false)).toContain('hammer');
+  });
+
+  it('draws a Rare not worn: one armor among the Rares is always left', () => {
+    const worn = {
+      weapon: 'crossbow',
+      armor: 'blackKnightArmor',
+      accessory: 'hasteAmulet',
+    } as const;
+    expect(new Set(draws(0, true, worn))).toEqual(new Set(['watchmanShield']));
+    const allRares = {
+      weapon: 'crossbow',
+      armor: 'watchmanShield',
+      accessory: 'hasteAmulet',
+    } as const;
+    expect(new Set(draws(0, true, allRares))).toEqual(new Set(['blackKnightArmor']));
   });
 });
 
@@ -98,18 +123,26 @@ describe('equipment (P21)', () => {
     expect(
       itemModifiers({ weapon: 'hammer', armor: 'leather', accessory: 'hasteAmulet' }),
     ).toMatchObject({
-      attackPercents: [80],
+      attackPercents: [],
       guardDamagePercents: [160],
       perfectStrikeBonusPercents: [20],
-      initiative: 1,
+      initiative: 2,
     });
     expect(itemModifiers({ weapon: 'axe', armor: 'chainmail', accessory: null })).toMatchObject({
-      guardDamagePercents: [130],
+      guardDamagePercents: [110],
       damageReductionPoints: 5,
       initiative: -2,
     });
     expect(itemModifiers({ weapon: null, armor: 'watchmanShield', accessory: null })).toMatchObject(
       { healOnPerfectParry: 3, initiative: -1 },
     );
+  });
+
+  it('gives the Crossbow Initiative +1, the Black knight armor 20 points, Attack +1, Initiative −2', () => {
+    expect(ITEMS.crossbow).toEqual({ slot: 'weapon', rarity: 'rare', initiative: 1, effects: {} });
+    expect(ITEMS.blackKnightArmor).toMatchObject({ slot: 'armor', rarity: 'rare' });
+    expect(
+      itemModifiers({ weapon: 'crossbow', armor: 'blackKnightArmor', accessory: null }),
+    ).toMatchObject({ damageReductionPoints: 20, attackFlat: 1, initiative: -1 });
   });
 });

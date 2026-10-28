@@ -62,7 +62,7 @@ describe('starting blessings (P25)', () => {
       expect(offer).not.toContain('vigor');
     }
     expect(new Set(drawBlessingOffer(['vigor', 'haste'], seedRandom(1)).value)).toEqual(
-      new Set(['momentum', 'edge', 'aegis']),
+      new Set(['momentum', 'edge', 'protection']),
     );
     expect(BLESSING_FAMILIES).toHaveLength(5);
   });
@@ -100,7 +100,7 @@ describe('the battle modifiers of the blessings', () => {
   const all = (rarity: 'common' | 'rare' | 'epic') =>
     BLESSING_FAMILIES.map((family) => ({ family, rarity }));
 
-  it('turns Edge, Aegis, Haste and Momentum into modifiers', () => {
+  it('turns Edge, Protection, Haste and Momentum into modifiers', () => {
     expect(blessingModifiers(all('rare'), { firstBattle: false, attackPower: 10 })).toMatchObject({
       attackFlat: 2,
       damageReductionPoints: 10,
@@ -110,6 +110,15 @@ describe('the battle modifiers of the blessings', () => {
     expect(blessingModifiers(all('epic'), { firstBattle: false, attackPower: 10 })).toMatchObject({
       startingMomentum: 2,
     });
+    expect(
+      (['common', 'rare', 'epic'] as const).map(
+        (rarity) =>
+          blessingModifiers([{ family: 'protection', rarity }], {
+            firstBattle: false,
+            attackPower: 10,
+          }).damageReductionPoints,
+      ),
+    ).toEqual([5, 10, 15]);
   });
 
   it('changes nothing without blessings', () => {

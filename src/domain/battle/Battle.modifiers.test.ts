@@ -109,6 +109,8 @@ describe('the hero modifiers in battle (P15, P18, P21, P25, P26)', () => {
     expect(suffered({})).toBe(9);
     expect(suffered({ damageReductionPoints: 5 })).toBe(8);
     expect(suffered({ damageReductionPoints: 50 })).toBe(6);
+    // Armure de chevalier noir 20 + Protection Épique 15 + Peau de givre 10 : 45 points, 40 %.
+    expect(suffered({ damageReductionPoints: 20 + 15 + 10 })).toBe(6);
   });
 
   it('heals 3 HP per perfectly parried impact with the Watchman shield, up to the maximum', () => {
