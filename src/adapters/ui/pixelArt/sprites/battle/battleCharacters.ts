@@ -498,6 +498,28 @@ const HERO: CharacterArt = {
   },
 };
 
+/** Les yeux, seuls gardés par une silhouette. */
+const EYES = 8;
+/** La teinte sombre d'une silhouette. */
+const SHADOW = 2;
+
+/**
+ * Une silhouette provisoire (maquette #102, N2) : l'art `art` redessiné sombre, les yeux seuls
+ * gardés, pour un ennemi dont l'asset n'est pas encore validé dans l'Atelier.
+ */
+function silhouette(art: CharacterArt): CharacterArt {
+  return {
+    ...art,
+    draw(g, p) {
+      const drawn = art.draw(g, p);
+      g.pixels.forEach((code, index) => {
+        if (code !== 0 && code !== EYES) g.pixels[index] = SHADOW;
+      });
+      return { ...drawn, smearCode: SHADOW };
+    },
+  };
+}
+
 const ART: Readonly<Record<BattleCharacter, CharacterArt>> = {
   ghoul: GHOUL,
   specter: SPECTER,
@@ -505,7 +527,7 @@ const ART: Readonly<Record<BattleCharacter, CharacterArt>> = {
   // Sprites provisoires des ennemis de l'ascension (prototype #91), repris du combat d'essai.
   fallenKnight: GHOUL,
   // Silhouette provisoire des Jumeaux (prototype #108) : l'asset de l'Atelier n'est pas validé.
-  twins: NECROMANCER,
+  twins: silhouette(GHOUL),
   ossuaryWarden: NECROMANCER,
   facelessPrior: SPECTER,
   hero: HERO,
