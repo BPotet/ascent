@@ -103,6 +103,12 @@ describe('feedbackFor (sounds and vibrations of a battle)', () => {
       null,
     ],
     [
+      'an enemy that revives by itself, without vibration (#106)',
+      { type: 'enemySelfRevived', at: 0, enemy: 0, hp: 17 } as BattleEvent,
+      'boneRattle',
+      null,
+    ],
+    [
       'the Bulwark',
       { type: 'powerUsed', at: 0, power: 'bulwark', until: 500 } as BattleEvent,
       'bulwark',

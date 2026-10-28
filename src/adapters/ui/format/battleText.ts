@@ -31,6 +31,7 @@ export const ENEMY_NAMES: Readonly<Record<EnemyKind, string>> = {
   fallenKnight: 'Chevalier déchu',
   ossuaryWarden: 'Gardienne des ossuaires',
   facelessPrior: 'Prieur sans visage',
+  skeleton: 'Squelette',
 };
 
 /** Le genre du nom de l'ennemi, pour « étourdie », « tombée »… */
@@ -41,6 +42,7 @@ const FEMININE: Readonly<Record<EnemyKind, boolean>> = {
   fallenKnight: false,
   ossuaryWarden: true,
   facelessPrior: false,
+  skeleton: false,
 };
 
 export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {
@@ -157,6 +159,14 @@ export function stunnedLabel(kind: EnemyKind): string {
   return `${agreed(kind, 'Étourdi')} ×1,5`;
 }
 
+/** L'étiquette d'un ennemi qui s'est relevé seul (#106) : « Relevé », ou `null`. */
+export function selfRevivedTag(enemy: {
+  readonly kind: EnemyKind;
+  readonly selfRevives?: number;
+}): string | null {
+  return (enemy.selfRevives ?? 0) > 0 ? agreed(enemy.kind, 'Relevé') : null;
+}
+
 /** Le nombre d'une intention (C2.2) : « +N » pour Garde et Soin, aucun sinon. */
 export function intentNumber(intent: ShownIntent): string | null {
   return intent.category === 'guard' || intent.category === 'heal' ? `+${intent.gain}` : null;
@@ -187,11 +197,13 @@ export function enemyLabel(
     readonly guard: number;
     readonly maxGuard: number;
     readonly stun: Stunned | null;
+    readonly selfRevives?: number;
   },
   intent: ShownIntent | null,
   isTarget: boolean,
 ): string {
-  const name = ENEMY_NAMES[enemy.kind];
+  const tag = selfRevivedTag(enemy);
+  const name = `${ENEMY_NAMES[enemy.kind]}${tag === null ? '' : `, ${tag.toLowerCase()}`}`;
   if (enemy.hp <= 0) return `${name}, ${agreed(enemy.kind, 'tombé')}`;
   const guard =
     enemy.stun === null
@@ -239,11 +251,12 @@ export function phaseAnnouncement(to: PhaseDirection): string {
 
 /**
  * Le mot d'un résultat sur la scène. La phase ennemie est épurée : seuls « Parfait », « Parfait ·
- * contre-attaque » et « Cassure » s'y écrivent ; « Frappe parfaite » en phase du héros. Jamais
+ * contre-attaque », « Cassure » et « Il se relève » (#106) s'y écrivent ; « Frappe parfaite » en
+ * phase du héros. Jamais
  * « Critique ».
  */
 export interface FeedbackText {
-  readonly tone: 'perfect' | 'break';
+  readonly tone: 'perfect' | 'break' | 'rise';
   readonly title: string;
 }
 
@@ -256,6 +269,8 @@ export function feedbackText(event: BattleEvent): FeedbackText | null {
       return { tone: 'perfect', title: 'Parfait · contre-attaque' };
     case 'guardBroken':
       return { tone: 'break', title: 'Cassure' };
+    case 'enemySelfRevived':
+      return { tone: 'rise', title: 'Il se relève' };
     case 'strikeResolved':
       return event.judgement === 'perfect' ? { tone: 'perfect', title: 'Frappe parfaite' } : null;
     default:
@@ -359,6 +374,8 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
       return `${name(event.enemy)} relève sa garde, plus ${event.gain}`;
     case 'allyRaised':
       return `${name(event.enemy)} relève ${name(event.ally)}, ${event.hp} PV`;
+    case 'enemySelfRevived':
+      return `${name(event.enemy)} se relève, ${event.hp} PV sur ${battle.enemies[event.enemy]!.maxHp}`;
     case 'powerUsed':
       return POWER_NAMES[event.power];
     case 'respite':

@@ -114,7 +114,13 @@ export const MAX_DAMAGE_REDUCTION_PERCENT = 40;
 export const GOOD_PARRY_PERCENT = 25;
 
 export type EnemyKind =
-  'ghoul' | 'specter' | 'necromancer' | 'fallenKnight' | 'ossuaryWarden' | 'facelessPrior';
+  | 'ghoul'
+  | 'specter'
+  | 'necromancer'
+  | 'fallenKnight'
+  | 'ossuaryWarden'
+  | 'facelessPrior'
+  | 'skeleton';
 
 /** Un coup qu'un ennemi peut porter, avec ses dégâts. */
 export interface Move {
@@ -134,6 +140,8 @@ export interface EnemyProfile {
   readonly phaseShiftHp?: number;
   /** L'Initiative d'un boss en phase 2 (P13), à partir de la manche qui suit le changement. */
   readonly phase2Initiative?: number;
+  /** Se relève seul (`SelfRevive`, #106) : `times` fois par combat, à `hpPercent` % de ses PV max. */
+  readonly selfRevive?: { readonly times: number; readonly hpPercent: number };
 }
 
 /** Le changement de phase d'un boss : à 150 PV ou moins (P6). */
@@ -209,6 +217,15 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     phase2Initiative: 9,
     supports: false,
   },
+  // Le Squelette (#106) : valeurs du Codex (`nouvelEnnemi`, Actif) recopiées le 28/10/2026.
+  skeleton: {
+    maxHp: 35,
+    maxGuard: 10,
+    // Tir à l'arc.
+    moves: [{ attack: 'basic', damage: 5 }],
+    supports: false,
+    selfRevive: { times: 1, hpPercent: 50 },
+  },
 };
 
 /**
@@ -222,6 +239,7 @@ export const ENEMY_INITIATIVE: Readonly<Record<EnemyKind, number>> = {
   fallenKnight: 6,
   ossuaryWarden: 6,
   facelessPrior: 6,
+  skeleton: 6,
 };
 
 /** Les ennemis du combat d'essai, de gauche à droite : la Goule, le Spectre et le Nécromancien. */
