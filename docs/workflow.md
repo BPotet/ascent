@@ -9,6 +9,7 @@ Inspiré de la [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD). GitH
 3. **Les barrières de qualité remplacent la relecture humaine.** Une PR n'est mergée que si toutes sont au vert.
 4. **Le glossaire est la source de vérité** du vocabulaire. Les docs, le code et les tests l'utilisent tel quel.
 5. **Une story = une branche = une PR.**
+6. **L'Atelier de l'ascension est la source de vérité du game design** : c'est la partie « métier », où le propriétaire et le Game Designer travaillent ensemble (voir « Atelier de l'ascension » ci-dessous).
 
 ## Schéma du flow
 
@@ -204,6 +205,17 @@ Le propriétaire décrit la feature dans le chat. L'orchestrateur crée une issu
 - Le statut passe à `status:awaiting-approval`. L'orchestrateur résume les stories au propriétaire et lui donne le lien vers les maquettes.
 
 **✋ Le propriétaire valide les stories et les maquettes.** Sans validation, rien ne part en développement.
+
+#### Atelier de l'ascension
+
+Décision du propriétaire du 28/10/2026. L'**Atelier de l'ascension** (page publiée, source `docs/game-design/88-ascension-prototype.html`) est l'espace de travail commun du propriétaire et du Game Designer pour le contenu du jeu. Son **Codex** fait foi pour les ennemis, Élites, boss, héros, objets, bienfaits et bénédictions : stats, coups, effets, descriptions et assets. L'onglet Équilibrage sert à en vérifier les chiffres.
+
+- **Le Codex ne se branche pas au jeu.** Le jeu n'en lit aucun export : son contenu est codé par le dev, à partir des valeurs du Codex, dans une story normale.
+- **Statuts** : seule une entrée **Active** est attendue dans le jeu. Un **Brouillon** est une idée en cours ; une entrée **Retirée** sort du jeu.
+- **Du Codex à une story.** Quand le propriétaire passe une entrée en Active, ou change une entrée Active, l'orchestrateur relit la base de l'Atelier et compare le Codex au jeu. Chaque écart devient une story, ajoutée à une épique en cours ou à une nouvelle épique (`/define-feature`). La story cite le **nom de code** de chaque entrée et ses valeurs du Codex, recopiées au moment de la validation : ce sont elles que le dev code et que les tests vérifient.
+- **Une mécanique nouvelle** (un champ du Codex que le jeu ne sait pas encore jouer, comme Se relève seul) passe par les règles du Game Designer, puis par une story.
+- **Le Game Designer** part du Codex. L'orchestrateur lui donne un instantané JSON de la base de l'Atelier. Il ne change jamais une entrée du propriétaire sans son accord : il propose ses changements en Brouillon, ou en commentaire sur l'épique.
+- **L'orchestrateur** est le seul à écrire dans la base de l'Atelier, et seulement à la demande du propriétaire ou pour une proposition en Brouillon. Il ne modifie jamais une entrée Active sans son accord.
 
 #### Découpage en stories
 
