@@ -9,6 +9,7 @@ import { DamageFloat, FeedbackLabel } from './BattleEffects';
 import { BattleEndPanel } from './BattleEndPanel';
 import { BATTLE_HINTS, BattleHintBubble } from './BattleHintBubble';
 import { EnemyColumn } from './EnemyColumn';
+import { BleedDrops } from './BleedChip';
 import { HeroBar } from './HeroBar';
 import { PhaseBanner } from './PhaseBanner';
 import { sceneGeometry } from './scene/sceneGeometry';
@@ -30,6 +31,7 @@ const ghoul: EnemyView = {
   intent: { category: 'attack' },
   active: false,
   dimmed: false,
+  tag: null,
   label: 'Goule, 38 PV sur 50, garde 15 sur 15, intention : attaque',
 };
 
@@ -89,6 +91,31 @@ describe('HeroBar', () => {
       screen.getByLabelText('La Sentinelle, PV 56 sur 80, Élan 2 sur 5, Rempart'),
     ).toBeOnTheScreen();
   });
+
+  it('shows the Bleed chip under the HP while the hero bleeds (prototype #107)', async () => {
+    await render(<HeroBar hero={{ ...sentinel, bleed: { damage: 2, rounds: 3 } }} />);
+
+    expect(screen.getByText('Saignement ×3', { includeHiddenElements: true })).toBeTruthy();
+    expect(
+      screen.getByLabelText('La Sentinelle, PV 56 sur 80, Élan 2 sur 5, Saignement ×3'),
+    ).toBeOnTheScreen();
+  });
+
+  it('shows no Bleed chip when the hero does not bleed', async () => {
+    await render(<HeroBar hero={sentinel} />);
+
+    expect(screen.queryByText(/Saignement/, { includeHiddenElements: true })).toBeNull();
+  });
+});
+
+describe('BleedDrops', () => {
+  it('draws the drops on the hero, hidden from the screen reader', async () => {
+    await render(<BleedDrops />);
+
+    expect(
+      screen.getAllByTestId('battle-bleed-drop', { includeHiddenElements: true }),
+    ).toHaveLength(3);
+  });
 });
 
 describe('EnemyColumn', () => {
@@ -124,6 +151,12 @@ describe('EnemyColumn', () => {
     expect(style('enemy-ghoul').opacity).toBeUndefined();
     expect(style('enemy-ghoul-hp').width).toBe('76%');
     expect(style('enemy-ghoul-guard').width).toBe('100%');
+  });
+
+  it('shows the « Relevé » tag under the name of an enemy that revived by itself (#106)', async () => {
+    await renderColumn({ view: { ...ghoul, tag: 'Relevée' } });
+
+    expect(screen.getByText('Relevée')).toBeOnTheScreen();
   });
 
   it('shows the shield and its gain for a Guard intent', async () => {

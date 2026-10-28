@@ -38,6 +38,11 @@ export const battleColors = {
   coach: '#EEEAE0',
   onCoach: '#141826',
   hatch: 'rgba(255,157,176,0.22)',
+  /** Rouge sang du Saignement (prototype #107), jamais le rouge du sceau. */
+  blood: '#B32E3C',
+  bloodDark: '#8A1E2A',
+  bloodSoft: 'rgba(179,46,60,0.3)',
+  onBlood: '#FFC2C9',
   /** Les raretés (maquette #88) : Commun, Rare, Épique, aussi écrites en mot et en losanges. */
   rarity: { common: '#C3C7D3', rare: '#7C9CFF', epic: '#C49BFF' },
 } as const;

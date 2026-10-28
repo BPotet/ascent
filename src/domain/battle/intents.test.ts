@@ -1,5 +1,5 @@
 import { ATTACKS } from './attacks';
-import { ENEMIES, type EnemyKind } from './combatants';
+import { ENEMIES, ENEMY_INITIATIVE, type EnemyKind } from './combatants';
 import {
   GUARD_INTENT_PERCENT,
   HEAL_INTENT_PERCENT,
@@ -179,5 +179,28 @@ describe('gains of the intents (C2)', () => {
     expect(RAISE_HP_PERCENT).toBe(50);
     expect(raisedHp(50)).toBe(25);
     expect(raisedHp(35)).toBe(17);
+  });
+});
+
+describe('the Mad villager (prototype #107, Codex values)', () => {
+  it('has 35 HP, a guard of 12 and an Initiative of 5', () => {
+    expect(ENEMIES.madVillager).toMatchObject({ maxHp: 35, maxGuard: 12, supports: false });
+    expect(ENEMY_INITIATIVE.madVillager).toBe(5);
+  });
+
+  it('draws the Pitchfork, which bleeds, or the Haft blow, at equal odds', () => {
+    const drawn = SEEDS.map((seed) => attackOf('madVillager', seed));
+    const pitchforks = drawn.filter((intent) => intent.bleed !== undefined);
+
+    expect(new Set(drawn.map((intent) => `${intent.attack} ${intent.damage}`))).toEqual(
+      new Set(['basic 5']),
+    );
+    expect(pitchforks[0]?.bleed).toEqual({ damage: 2, rounds: 3 });
+    expect(pitchforks.length / drawn.length).toBeGreaterThan(0.4);
+    expect(pitchforks.length / drawn.length).toBeLessThan(0.6);
+  });
+
+  it('copies no bleed for a move without one', () => {
+    expect(attackOf('ghoul', 1)).not.toHaveProperty('bleed');
   });
 });

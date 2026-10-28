@@ -189,4 +189,26 @@ export type BattleEvent =
       readonly kind: EnemyKind;
     }
   /** Le changement de phase d'un boss (`BossPhaseShift`, P6). */
-  | { readonly type: 'bossPhaseShifted'; readonly at: number; readonly enemy: number };
+  | { readonly type: 'bossPhaseShifted'; readonly at: number; readonly enemy: number }
+  /** Se relève seul (`SelfRevive`, #106) : l'ennemi tombé se relève avec `hp` PV. */
+  | {
+      readonly type: 'enemySelfRevived';
+      readonly at: number;
+      readonly enemy: number;
+      readonly hp: number;
+    }
+  /** Le héros saigne (prototype #107) : la marque apparaît, ou celle en cours est mise à jour. */
+  | {
+      readonly type: 'heroBleeding';
+      readonly at: number;
+      readonly damage: number;
+      readonly rounds: number;
+    }
+  /** La perte du Saignement au début d'une manche ; `roundsLeft` vaut 0 quand il prend fin. */
+  | {
+      readonly type: 'bleedTicked';
+      readonly at: number;
+      readonly loss: number;
+      readonly heroHp: number;
+      readonly roundsLeft: number;
+    };

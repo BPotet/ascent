@@ -29,6 +29,7 @@ import {
   MAX_DAMAGE_REDUCTION_PERCENT,
   TRIAL_BATTLE_ENEMIES,
   startingInitiative,
+  type Bleed,
   type EnemyKind,
   type HeroKind,
   type HeroProfile,
@@ -66,6 +67,7 @@ import {
   type PressJudgement,
 } from './rules';
 import { seedRandom, type BattleSeed, type RandomState } from './SeededRandom';
+import { selfRevive } from './selfRevive';
 import {
   STRIKE_RECOVERY_MS,
   STRIKE_WIND_UP_MS,
@@ -75,6 +77,7 @@ import {
   type EnemyBlow,
 } from './strike';
 import type { TrialTuning } from './TrialTuning';
+import { bleedsOn, mergeBleed, tickBleed } from './bleed';
 
 export interface HeroState {
   readonly hp: number;
@@ -85,6 +88,8 @@ export interface HeroState {
   readonly bulwark: boolean;
   /** Pas de l'ombre est actif (l'Errante, prototype #90, P11) ; absent s'il ne l'a jamais été. */
   readonly shadowStep?: boolean;
+  /** Le Saignement en cours (prototype #107) ; absent, le héros ne saigne pas. */
+  readonly bleed?: Bleed;
 }
 
 export interface EnemyState {
@@ -106,6 +111,8 @@ export interface EnemyState {
   readonly guardRestore: { readonly since: number; readonly until: number } | null;
   /** Un boss passé en phase 2 (`BossPhaseShift`, P6). */
   readonly phase2?: boolean;
+  /** Le nombre de relèves faites dans ce combat (`SelfRevive`, #106) ; absent, 0. */
+  readonly selfRevives?: number;
 }
 
 export interface ImpactState {
@@ -145,6 +152,8 @@ export interface AttackStep {
   /** L'instant nominal où le dernier impact est résolu (impact + 160 ms + max(0, −décalage)). */
   readonly resolvedAt: number;
   readonly counter: CounterState | null;
+  /** Le Saignement du coup (prototype #107). */
+  readonly bleed?: Bleed;
 }
 
 /** L'effet d'une intention Garde ou Relever, après l'avancée. */
@@ -538,9 +547,20 @@ function reinforce(battle: Battle, events: Events, at: number): Battle {
   return { ...reinforced, target: slot };
 }
 
+/** La perte du Saignement (B2), avant le renfort et les tirages ; ni réduction ni Rempart (B3). */
+function bleedHero(battle: Battle, events: Events, at: number): Battle {
+  const { hero } = battle;
+  if (hero.bleed === undefined) return battle;
+  const { loss, bleed } = tickBleed(hero.hp, hero.bleed);
+  const { bleed: _, ...rest } = hero;
+  const heroHp = hero.hp - loss;
+  events.push({ type: 'bleedTicked', at, loss, heroHp, roundsLeft: bleed?.rounds ?? 0 });
+  return { ...battle, hero: { ...rest, hp: heroHp, ...(bleed && { bleed }) } };
+}
+
 function startRound(previous: Battle, events: Events, at: number): Battle {
   // Le renfort entre avant les tirages : l'ordre de la manche est calculé après (P3b).
-  const battle = reinforce(previous, events, at);
+  const battle = reinforce(bleedHero(previous, events, at), events, at);
   let random = battle.random;
   // Tous les tirages au début de la manche, ennemis debout de gauche à droite (C2.1).
   const enemies = battle.enemies.map((enemy, index) => {
@@ -683,7 +703,9 @@ function isWon(battle: Battle): boolean {
 export const RESPITE_PERCENT = 10;
 
 function finish(battle: Battle, events: Events, outcome: BattleOutcome, at: number): Battle {
-  let settled = clearOffBalance(battle, events, at);
+  // Le Saignement s'arrête à la fin du combat (B6).
+  const { bleed: _, ...hero } = battle.hero;
+  let settled = clearOffBalance({ ...battle, hero }, events, at);
   if (outcome === 'victory') {
     const { hero } = settled;
     const heroHp = Math.min(hero.maxHp, hero.hp + Math.floor((hero.maxHp * RESPITE_PERCENT) / 100));
@@ -795,6 +817,7 @@ function startAttack(
     })),
     resolvedAt: missDeadline(impacts.at(-1)!, battle.inputOffset),
     counter: null,
+    ...(intent.bleed && { bleed: intent.bleed }),
   });
 }
 
@@ -884,11 +907,26 @@ function resolveBlow(
     heroHp,
   });
   const bulwark = battle.hero.bulwark && blow.damage === 0;
+  const hero = { ...battle.hero, hp: heroHp, bulwark };
   const resolved = withStep(
-    { ...battle, hero: { ...battle.hero, hp: heroHp, bulwark } },
+    { ...battle, hero: bleedOn(hero, step, blow.outcome, events, blow.at) },
     withImpact(step, blow.index, { outcome: blow.outcome }),
   );
   return heroHp === 0 ? finish(resolved, events, 'defeat', blow.at) : resolved;
+}
+
+/** Un coup qui saigne fait saigner le héros encore debout, selon l'issue de l'impact (B1, B4). */
+function bleedOn(
+  hero: HeroState,
+  step: AttackStep,
+  outcome: BlowOutcome,
+  events: Events,
+  at: number,
+): HeroState {
+  if (step.bleed === undefined || hero.hp === 0 || !bleedsOn(outcome)) return hero;
+  const bleed = mergeBleed(hero.bleed, step.bleed);
+  events.push({ type: 'heroBleeding', at, ...bleed });
+  return { ...hero, bleed };
 }
 
 /**
@@ -931,6 +969,10 @@ function hitEnemy(
   context: { readonly at: number; readonly by: 'strike' | 'counter' },
 ): { readonly battle: Battle; readonly broken: boolean } {
   const hit = blowOnEnemy(battle.enemies[index]!, blow, battle.heroActions);
+  const revived = hit.fallen ? selfRevive(hit.enemy, ENEMIES[hit.enemy.kind]) : null;
+  if (revived !== null) {
+    return { battle: reviveSelf(battle, events, index, revived, context.at), broken: false };
+  }
   const damaged = withEnemy(battle, index, shiftPhase(hit.enemy, events, index, context.at));
   if (hit.broken) {
     events.push({ type: 'guardBroken', at: context.at, enemy: index, by: context.by });
@@ -942,6 +984,28 @@ function hitEnemy(
   if (battle.target !== index || next === undefined) return { battle: damaged, broken: false };
   events.push({ type: 'targetChanged', at: context.at, enemy: next });
   return { battle: { ...damaged, target: next }, broken: false };
+}
+
+/**
+ * L'ennemi se relève seul (#106) : ni chute ni cassure (S3, S4), la remontée du retour en garde
+ * (R2). S'il n'a pas encore agi dans la manche, il n'y agit pas (S2).
+ */
+function reviveSelf(
+  battle: Battle,
+  events: Events,
+  index: number,
+  enemy: EnemyState,
+  at: number,
+): Battle {
+  events.push({ type: 'enemySelfRevived', at, enemy: index, hp: enemy.hp });
+  const revived = { ...enemy, guardRestore: { since: at, until: at + GUARD_RESTORE_MS } };
+  const { order, position } = battle.turn;
+  const pending = order.indexOf(index, position + 1);
+  if (pending < 0) return withEnemy(battle, index, revived);
+  return {
+    ...withEnemy(battle, index, { ...revived, raisedRound: battle.round }),
+    turn: { order: order.filter((_, place) => place !== pending), position },
+  };
 }
 
 /** Cœur de braise (prototype #92) : à chaque garde brisée, l'Élan gagné et les PV rendus. */

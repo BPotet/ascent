@@ -43,6 +43,7 @@ const SAVED_ON: ReadonlySet<BattleEvent['type']> = new Set([
   'heroPhaseStarted',
   'stepInStarted',
   'battleEnded',
+  'enemySelfRevived',
 ]);
 
 type Listener = (ascent: Ascent | null) => void;
