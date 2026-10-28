@@ -123,7 +123,8 @@ describe('AscentSession', () => {
   });
 
   it('starts the floor battle with the hero and the enemies of the ascent, and saves it as it goes', async () => {
-    const { session, store } = setUp(42);
+    // Une graine où le héros ouvre le combat : la sauvegarde part avec la phase du héros.
+    const { session, store } = setUp(1);
     const ascent = session.begin();
     const battleSession = session.battleSession();
 
@@ -156,6 +157,43 @@ describe('AscentSession', () => {
       phase: { kind: 'hero', since: clock.now() },
     });
     expect(battleSession.current()!.battle.enemies[0]!.hp).toBe(20);
+  });
+
+  it('saves when the Skeleton revives, and resumes it as revived (#106, S8)', async () => {
+    const { session, store, clock } = setUp();
+    const { battle: initial } = startBattle({
+      seed: 3,
+      tuning: DEFAULT_TRIAL_TUNING,
+      defenseHint: false,
+      at: 0,
+      enemies: ['skeleton', 'ghoul'],
+    });
+    const battle = {
+      ...initial,
+      enemies: [{ ...initial.enemies[0]!, hp: 1 }, initial.enemies[1]!],
+    };
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: startAscent(5), battle }));
+    await session.load();
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    const at = clock.now() + 50;
+    clock.advanceTo(at);
+    battleSession.heroAction({ kind: 'attack' }, at - 20, at);
+    clock.advanceTo(clock.pending()[0]!);
+    await flush();
+
+    expect(saved(store)?.battle?.enemies[0]).toMatchObject({
+      hp: 17,
+      raised: true,
+      selfRevives: 1,
+    });
+    const resumed = setUp();
+    resumed.store.values.set(ASCENT_KEY, store.values.get(ASCENT_KEY)!);
+    await resumed.session.load();
+    const resumedBattle = resumed.session.battleSession();
+    await resumedBattle.start();
+    expect(resumedBattle.current()!.battle.enemies[0]).toMatchObject({ selfRevives: 1 });
   });
 
   it('earns the Gold and offers the exits when the floor battle is won', async () => {

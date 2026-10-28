@@ -530,7 +530,11 @@ const ART: Readonly<Record<BattleCharacter, CharacterArt>> = {
   twins: silhouette(GHOUL),
   ossuaryWarden: NECROMANCER,
   facelessPrior: SPECTER,
+  // Sprite provisoire du Villageois fou (prototype #107) : l'asset de l'Atelier n'est pas validé.
+  madVillager: GHOUL,
   hero: HERO,
+  // Le Squelette (#106) : silhouette provisoire, son asset est encore « proposé ».
+  skeleton: silhouette(GHOUL),
 };
 
 /** Un point du dessin, dans le sprite fini (2 pixels d'art de marge). */

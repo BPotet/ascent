@@ -15,6 +15,7 @@ import {
   enemyHpText,
   enemyLabel,
   guardText,
+  selfRevivedTag,
   stunnedLabel,
 } from '../format/battleText';
 
@@ -99,6 +100,8 @@ export interface EnemyView {
   readonly intent: ShownIntent | null;
   readonly active: boolean;
   readonly dimmed: boolean;
+  /** L'étiquette sous le nom : « Relevé » pour un ennemi qui s'est relevé seul (#106), ou `null`. */
+  readonly tag: string | null;
   readonly label: string;
 }
 
@@ -200,6 +203,7 @@ function enemyView(
     intent,
     active: active === index,
     dimmed: active !== null && active !== index,
+    tag: selfRevivedTag(enemy),
     label: enemyLabel(enemy, intent, target),
   };
 }

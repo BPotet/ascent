@@ -119,6 +119,7 @@ const styles = StyleSheet.create({
   },
   perfect: { color: battleColors.light, fontSize: 32, lineHeight: 36 },
   break: { color: battleColors.light, fontSize: 34, lineHeight: 38, letterSpacing: 1 },
+  rise: { color: battleColors.light, fontSize: 30, lineHeight: 34, letterSpacing: 1 },
   float: { position: 'absolute', top: 6, alignSelf: 'center', zIndex: 8 },
   floatText: {
     color: battleColors.text,

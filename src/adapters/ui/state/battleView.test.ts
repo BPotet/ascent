@@ -251,8 +251,16 @@ describe('battleView', () => {
         intent: { category: 'attack' },
         active: false,
         dimmed: false,
+        tag: null,
         label: expect.stringMatching(/^Goule, cible, 50 PV sur 50, garde 15 sur 15/),
       });
+    });
+
+    it('tags an enemy that has revived by itself « Relevé », even in the enemy phase (#106)', () => {
+      const revived = withEnemy(inPhase(attack('basic'), inEnemyPhase), 0, { selfRevives: 1 });
+
+      expect(battleView(revived).enemies[0]).toMatchObject({ tag: 'Relevée' });
+      expect(battleView(revived).enemies[0]!.label).toMatch(/^Goule, relevée, /);
     });
 
     it('hides the names and the HP figures in the enemy phase, but not the screen reader label', () => {

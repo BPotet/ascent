@@ -127,6 +127,7 @@ export function EnemyColumn({
           {view.name === null ? null : (
             <Text style={[styles.name, view.target && styles.targetName]}>{view.name}</Text>
           )}
+          {view.tag === null ? null : <Text style={styles.tag}>{view.tag}</Text>}
           <View style={[styles.track, view.stunned && styles.stunnedTrack]}>
             <View
               testID={`enemy-${kind}-guard`}
@@ -211,5 +212,6 @@ const styles = StyleSheet.create({
   stunnedText: { color: battleColors.onLight },
   name: { color: battleColors.text, fontSize: 12, fontWeight: '600' },
   targetName: { color: battleColors.light },
+  tag: { color: battleColors.light, fontSize: 11, fontWeight: '700' },
 });
 // Stryker restore all

@@ -103,6 +103,12 @@ describe('feedbackFor (sounds and vibrations of a battle)', () => {
       null,
     ],
     [
+      'an enemy that revives by itself, without vibration (#106)',
+      { type: 'enemySelfRevived', at: 0, enemy: 0, hp: 17 } as BattleEvent,
+      'boneRattle',
+      null,
+    ],
+    [
       'the Bulwark',
       { type: 'powerUsed', at: 0, power: 'bulwark', until: 500 } as BattleEvent,
       'bulwark',
@@ -148,6 +154,19 @@ describe('feedbackFor (sounds and vibrations of a battle)', () => {
     expect(toHero.haptic).toBeNull();
     expect(toEnemy.haptic).toBe('enemyPhase');
     expect(toHero.sound).not.toBe(toEnemy.sound);
+  });
+
+  it('plays the drop, without vibration, when the hero starts bleeding or loses HP to it', () => {
+    const drop = { sound: 'bleed', haptic: null };
+
+    expect(feedbackFor({ type: 'heroBleeding', at: 0, damage: 2, rounds: 3 })).toEqual(drop);
+    expect(feedbackFor({ type: 'bleedTicked', at: 0, loss: 2, heroHp: 48, roundsLeft: 2 })).toEqual(
+      drop,
+    );
+    expect(feedbackFor({ type: 'bleedTicked', at: 0, loss: 0, heroHp: 1, roundsLeft: 1 })).toEqual({
+      sound: null,
+      haptic: null,
+    });
   });
 });
 

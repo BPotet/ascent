@@ -120,7 +120,15 @@ export type EnemyKind =
   | 'fallenKnight'
   | 'twins'
   | 'ossuaryWarden'
-  | 'facelessPrior';
+  | 'facelessPrior'
+  | 'skeleton'
+  | 'madVillager';
+
+/** Le Saignement (`Bleed`, prototype #107) : `damage` PV perdus au début de `rounds` manches. */
+export interface Bleed {
+  readonly damage: number;
+  readonly rounds: number;
+}
 
 /** Un coup qu'un ennemi peut porter, avec ses dégâts. */
 export interface Move {
@@ -128,6 +136,8 @@ export interface Move {
   readonly damage: number;
   /** Son poids dans le tirage du coup (K6) : 1 par défaut. */
   readonly weight?: number;
+  /** Le Saignement qu'il inflige au héros (prototype #107). */
+  readonly bleed?: Bleed;
 }
 
 export interface EnemyProfile {
@@ -142,6 +152,8 @@ export interface EnemyProfile {
   readonly phaseShiftHp?: number;
   /** L'Initiative d'un boss en phase 2 (P13), à partir de la manche qui suit le changement. */
   readonly phase2Initiative?: number;
+  /** Se relève seul (`SelfRevive`, #106) : `times` fois par combat, à `hpPercent` % de ses PV max. */
+  readonly selfRevive?: { readonly times: number; readonly hpPercent: number };
 }
 
 /** Le changement de phase d'un boss : à 150 PV ou moins (P6). */
@@ -228,6 +240,25 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     phase2Initiative: 9,
     supports: false,
   },
+  // Le Squelette (#106) : valeurs du Codex (`nouvelEnnemi`, Actif) recopiées le 28/10/2026.
+  skeleton: {
+    maxHp: 35,
+    maxGuard: 10,
+    // Tir à l'arc.
+    moves: [{ attack: 'basic', damage: 5 }],
+    supports: false,
+    selfRevive: { times: 1, hpPercent: 50 },
+  },
+  // Le Villageois fou, valeurs du Codex (prototype #107) : la Fourche, puis le Coup de manche.
+  madVillager: {
+    maxHp: 35,
+    maxGuard: 12,
+    moves: [
+      { attack: 'basic', damage: 5, bleed: { damage: 2, rounds: 3 } },
+      { attack: 'basic', damage: 5 },
+    ],
+    supports: false,
+  },
 };
 
 /**
@@ -242,6 +273,8 @@ export const ENEMY_INITIATIVE: Readonly<Record<EnemyKind, number>> = {
   twins: 7,
   ossuaryWarden: 6,
   facelessPrior: 6,
+  skeleton: 6,
+  madVillager: 5,
 };
 
 /** Les ennemis du combat d'essai, de gauche à droite : la Goule, le Spectre et le Nécromancien. */
