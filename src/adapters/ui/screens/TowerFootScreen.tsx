@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
 import type { FateGaugeReading } from '../../../application/useCases/fateGauge';
+import type { HeroKind } from '../../../domain/battle/combatants';
 import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
 import {
@@ -14,15 +15,23 @@ import {
   gaugeWord,
   goldText,
 } from '../format/ascentText';
+import { HERO_NAMES } from '../format/battleText';
 import { useAscent } from '../state/useAscent';
 import { useFateGauge } from '../state/useFateGauge';
 import { battleColors } from '../theme/battleColors';
+import { HeroChoiceScreen } from './HeroChoiceScreen';
+
+/** « la Sentinelle », « l'Errante » : le héros dans une phrase. */
+function heroInSentence(hero: HeroKind): string {
+  const name = HERO_NAMES[hero];
+  return name.charAt(0).toLowerCase() + name.slice(1);
+}
 
 /**
- * Le pied de la tour (`TowerFoot`, prototypes #91 et #93) : la jauge du jour, d'après hier, et
- * « Commencer l'ascension », qui la scelle ; ou, quand une
- * ascension est en cours (une seule à la fois), « Reprendre l'ascension » et « Abandonner
- * l'ascension », avec confirmation. `onEnter` ouvre l'ascension.
+ * Le pied de la tour (`TowerFoot`, prototypes #91 à #93) : la jauge du jour, d'après hier, et
+ * « Commencer l'ascension », puis le choix du héros, qui scelle la jauge ; ou, quand une ascension
+ * est en cours (une seule à la fois), son héros, qui ne change plus, « Reprendre l'ascension » et
+ * « Abandonner l'ascension », avec confirmation. `onEnter` ouvre l'ascension.
  */
 export function TowerFootScreen({
   session,
@@ -35,6 +44,7 @@ export function TowerFootScreen({
   const [loaded, setLoaded] = useState(ascent !== null);
   const [confirming, setConfirming] = useState(false);
   const { reading, seal } = useFateGauge();
+  const [choosing, setChoosing] = useState<FateGaugeReading | null>(null);
 
   useEffect(() => {
     if (loaded) return;
@@ -45,11 +55,24 @@ export function TowerFootScreen({
   }, [session, loaded]);
 
   const inProgress = ascent !== null && ascent.outcome === null;
-  const start = (reading: FateGaugeReading) => {
-    session.begin({ gauge: reading.gauge, blessings: reading.blessings });
+  const start = (reading: FateGaugeReading, hero: HeroKind) => {
+    setChoosing(null);
+    session.begin({ hero, gauge: reading.gauge, blessings: reading.blessings });
     seal(reading);
     onEnter();
   };
+
+  if (choosing !== null && !inProgress) {
+    return (
+      <HeroChoiceScreen
+        title="Choisir un héros"
+        note="Il ne change plus jusqu'à la fin de l'ascension."
+        confirmLabel={(hero) => `Continuer avec ${heroInSentence(hero)}`}
+        onStart={(hero) => start(choosing, hero)}
+        onClose={() => setChoosing(null)}
+      />
+    );
+  }
 
   return (
     <Screen layout="top" background={battleColors.background} testID="tower-foot">
@@ -60,6 +83,7 @@ export function TowerFootScreen({
         <Text style={styles.line}>{TIER_LINE}</Text>
         {!loaded ? null : inProgress ? (
           <>
+            <Text style={styles.status}>{HERO_NAMES[ascent.hero.kind]}</Text>
             <Text style={styles.status}>
               {`${floorLine(ascent.floor)} · ${ascent.hero.hp}/${ascent.hero.maxHp} PV · ${goldText(ascent.gold)}`}
             </Text>
@@ -106,7 +130,7 @@ export function TowerFootScreen({
                     {effect}
                   </Text>
                 ))}
-                <Button label="Commencer l'ascension" onPress={() => start(reading)} />
+                <Button label="Commencer l'ascension" onPress={() => setChoosing(reading)} />
               </>
             )}
           </View>

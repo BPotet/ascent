@@ -32,6 +32,11 @@ export function strikeMultiplier(
   return judgement === 'good' ? GOOD_STRIKE_PERCENT : PLAIN_STRIKE_PERCENT;
 }
 
+/** Le multiplicateur d'étourdi d'un coup, en % : 150 (plus Braise ardente, #92) sur un étourdi. */
+function stunnedPercent(stunned: boolean, stunnedBonusPercent: number): number {
+  return stunned ? STUNNED_DAMAGE_PERCENT + stunnedBonusPercent : 100;
+}
+
 /** Les PV et les points de garde qu'un coup retire à un ennemi. */
 export interface EnemyBlow {
   readonly hp: number;
@@ -49,21 +54,23 @@ export function strikeBlow({
   stunned,
   attackPercents = [],
   guardPercents = [],
+  stunnedBonusPercent = 0,
 }: {
   readonly attackPower: number;
   readonly guardDamage: number;
   readonly multiplier: number;
   readonly stunned: boolean;
-  /** Les pourcentages des objets (#93), dans le même calcul. */
+  /** Les pourcentages des objets (#93) et des bienfaits (#92), dans le même calcul. */
   readonly attackPercents?: readonly number[];
   readonly guardPercents?: readonly number[];
+  readonly stunnedBonusPercent?: number;
 }): EnemyBlow {
   return {
     hp: scaleDamage(
       attackPower,
       multiplier,
       ...attackPercents,
-      stunned ? STUNNED_DAMAGE_PERCENT : 100,
+      stunnedPercent(stunned, stunnedBonusPercent),
     ),
     guard: stunned ? 0 : scaleDamage(guardDamage, multiplier, ...guardPercents),
   };
@@ -85,14 +92,18 @@ export function counterBlow({
   stunned,
   attackPercents = [],
   guardPercents = [],
+  counterPercents = [],
+  stunnedBonusPercent = 0,
 }: {
   readonly attackPower: number;
   readonly guardDamage: number;
   readonly counterPercent: number;
   readonly stunned: boolean;
-  /** Les pourcentages des objets (#93), dans le même calcul. */
+  /** Les pourcentages des objets (#93) et des bienfaits (#92), dans le même calcul. */
   readonly attackPercents?: readonly number[];
   readonly guardPercents?: readonly number[];
+  readonly counterPercents?: readonly number[];
+  readonly stunnedBonusPercent?: number;
 }): EnemyBlow {
   return {
     hp: scaleDamage(
@@ -100,7 +111,8 @@ export function counterBlow({
       COUNTER_BASE_PERCENT,
       counterPercent,
       ...attackPercents,
-      stunned ? STUNNED_DAMAGE_PERCENT : 100,
+      ...counterPercents,
+      stunnedPercent(stunned, stunnedBonusPercent),
     ),
     guard: stunned ? 0 : scaleDamage(guardDamage, COUNTER_GUARD_PERCENT, ...guardPercents),
   };

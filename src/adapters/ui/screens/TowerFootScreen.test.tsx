@@ -20,13 +20,34 @@ async function show(options: Parameters<typeof ascentSetUp>[0] = {}) {
 }
 
 describe('TowerFootScreen', () => {
-  it('starts an ascent from the tower foot', async () => {
+  it('starts an ascent with the chosen hero, from the tower foot', async () => {
     const { session, onEnter } = await show({ seed: 42 });
 
-    fireEvent.press(await screen.findByRole('button', { name: "Commencer l'ascension" }));
+    await fireEvent.press(await screen.findByRole('button', { name: "Commencer l'ascension" }));
+    expect(screen.getByRole('header', { name: 'Choisir un héros' })).toBeOnTheScreen();
+    expect(screen.getByText("Il ne change plus jusqu'à la fin de l'ascension.")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('radio', { name: /^L'Errante/ }));
+    await fireEvent.press(screen.getByRole('button', { name: "Continuer avec l'Errante" }));
 
-    expect(session.current()).toEqual(startAscent(42));
+    expect(session.current()).toEqual(startAscent(42, { hero: 'wanderer' }));
     expect(onEnter).toHaveBeenCalledTimes(1);
+  });
+
+  it('goes back from the hero choice without starting an ascent', async () => {
+    const { session } = await show();
+
+    await fireEvent.press(await screen.findByRole('button', { name: "Commencer l'ascension" }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Retour' }));
+
+    expect(session.current()).toBeNull();
+    expect(screen.getByRole('button', { name: "Commencer l'ascension" })).toBeOnTheScreen();
+  });
+
+  it('shows the hero of the ascent in progress, without a way to change him', async () => {
+    await show({ saved: startAscent(3, { hero: 'wanderer' }) });
+
+    expect(await screen.findByText("L'Errante")).toBeOnTheScreen();
+    expect(screen.queryByRole('radio')).not.toBeOnTheScreen();
   });
 
   it('only offers to resume or abandon while an ascent is in progress', async () => {
@@ -95,6 +116,9 @@ describe('TowerFootScreen with the fate gauge (#93)', () => {
     await act(async () => {
       fireEvent.press(screen.getByRole('button', { name: "Commencer l'ascension" }));
     });
+    await act(async () => {
+      fireEvent.press(screen.getByRole('button', { name: 'Continuer avec la Sentinelle' }));
+    });
 
     expect(session.current()).toMatchObject({
       gauge: 1,
@@ -111,6 +135,9 @@ describe('TowerFootScreen with the fate gauge (#93)', () => {
 
     await act(async () => {
       fireEvent.press(screen.getByRole('button', { name: "Commencer l'ascension" }));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole('button', { name: 'Continuer avec la Sentinelle' }));
     });
     await act(async () => {
       session.pause();

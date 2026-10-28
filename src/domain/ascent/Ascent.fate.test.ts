@@ -1,6 +1,7 @@
 // Prototype #93 : la jauge, les bénédictions de départ, la fatigue et les objets dans l'ascension.
 import {
   chooseBlessing,
+  chooseBoon,
   chooseExit,
   endFloorBattle,
   equipItem,
@@ -36,8 +37,8 @@ describe('the gauge at the start of the ascent (P26, P30)', () => {
   });
 
   it('tires the Sentinel to 72 max HP at -1, 64 at -2, and starts at max HP', () => {
-    expect(startAscent(5, { gauge: -1 }).hero).toEqual({ hp: 72, maxHp: 72 });
-    expect(startAscent(5, { gauge: -2 }).hero).toEqual({ hp: 64, maxHp: 64 });
+    expect(startAscent(5, { gauge: -1 }).hero).toMatchObject({ hp: 72, maxHp: 72 });
+    expect(startAscent(5, { gauge: -2 }).hero).toMatchObject({ hp: 64, maxHp: 64 });
   });
 
   it('keeps the draws of the floors whatever the gauge', () => {
@@ -76,7 +77,7 @@ describe('starting blessings (P25)', () => {
       const ascent = startAscent(seed, { gauge: -1, blessings: ['rare'] });
       const vigor = ascent.blessingOffer!.indexOf('vigor');
       if (vigor < 0) continue;
-      expect(chooseBlessing(ascent, vigor).hero).toEqual({ hp: 79, maxHp: 79 });
+      expect(chooseBlessing(ascent, vigor).hero).toMatchObject({ hp: 79, maxHp: 79 });
       return;
     }
     throw new Error('no offer with Vigor');
@@ -120,6 +121,7 @@ describe('found items (P19, P20, P21)', () => {
   });
 
   it('leaves the found item when a door is taken', () => {
-    expect(chooseExit(afterElite(5), 0).foundItem).toBeNull();
+    // Le bienfait est pris d'abord (#92) : les portes attendent l'offre.
+    expect(chooseExit(chooseBoon(afterElite(5), 0), 0).foundItem).toBeNull();
   });
 });

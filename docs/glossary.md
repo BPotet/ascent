@@ -95,7 +95,7 @@ Termes de l'épique #30 (« La première ascension »), introduits par la story 
 | **Pas de l'ombre** (`ShadowStep`) | Le pouvoir de base de l'Errante (prototype #90) : 2 Élan ; la prochaine esquive de tous les impacts d'un coup déclenche une contre-attaque. Actif jusqu'à son emploi ou la fin du combat, indisponible tant qu'il est actif. Une double frappe esquivée à moitié ne le consomme pas. Il reprend le son du Rempart. | Défini (prototype) |
 | **Initiative** (`Initiative`, règle `heroInitiative`) | La caractéristique qui fixe l'ordre d'action dans la manche. Celle du héros vaut celle du héros, plus celles de son arme, de son armure, de son accessoire et de la bénédiction Hâte (#93), plancher 0, sans plafond. Valeurs : Spectre 8, Errante 7, Sentinelle 5, Goule 4, Nécromancien 3. Elle se lit sur la fiche du héros, jamais dans la frise d'action. | Défini (prototype) |
 | **Équipement de base** (`StartingKit`) | L'**Arme** (`Weapon`) et l'**Armure** (`Armor`) avec lesquelles un héros commence : **Épée courte** (`ShortSword`) et **Cuirasse cabossée** (`DentedCuirass`) pour la Sentinelle, **Dagues jumelles** (`TwinDaggers`) et **Cape usée** (`WornCloak`) pour l'Errante. Toutes à Initiative 0, sans autre effet (le nombre de coups est celui du héros). | Défini (prototype) |
-| **Choix du héros** (`HeroChoice`) | L'écran qui s'ouvre avant le combat d'essai (prototype #90) : la Sentinelle ou l'Errante, avec PV, Attaque, Initiative, équipement de base, pouvoir et trait ; rien n'est lancé avant « Commencer le combat ». Le choix n'est pas mémorisé. | Défini (prototype) |
+| **Choix du héros** (`HeroChoice`) | L'écran qui s'ouvre avant le combat d'essai (prototype #90) et, au pied de la tour, après « Commencer l'ascension » (prototype #92) : la Sentinelle ou l'Errante, avec PV, Attaque, Initiative, équipement de base, pouvoir et trait ; rien n'est lancé avant le bouton (« Commencer le combat », ou « Continuer avec … »). Pour le combat d'essai, le choix n'est pas mémorisé ; pour l'ascension, le héros est sauvegardé avec elle et ne change plus jusqu'à sa fin. | Défini (prototype) |
 | **Frise d'action** (`ActionTrack`) | La bande sous le titre du combat (prototype #90) : le combattant qui agit, puis ceux qui n'ont pas encore agi dans la manche, puis « suiv. » et l'aperçu de la manche suivante. Qui agit et quand, jamais quoi, sans chiffre d'Initiative. Un combattant qui a agi en sort ; un ennemi tombé sort aussitôt de la manche et de l'aperçu. | Défini (prototype) |
 | **Ennemi** (`Enemy`) | Un adversaire du héros dans un combat. Il remplace le terme « Monstre ». | Défini |
 | **Goule** (`Ghoul`) | Ennemi du palier 1 : 50 PV, garde 15 ; coup simple de 5, double frappe de 3 + 3, tirés à une chance sur deux. Initiative 4 (prototype #90). | Défini |
@@ -183,13 +183,13 @@ Termes de l'épique #30 (« La première ascension »), introduits par la story 
 
 ## Ascension
 
-Termes de l'épique #88 (prototype de l'ascension), introduits par la story #91. Règles provisoires, à régler en jouant.
+Termes de l'épique #88 (prototype de l'ascension), introduits par les stories #91 et #92. Règles provisoires, à régler en jouant.
 
 | Terme | Définition | Statut |
 |---|---|---|
 | **Ascension** (`Ascent`) | Une partie dans la tour : gravir les étages d'un palier, du premier combat au boss. Une seule ascension est en cours à la fois ; elle est sauvegardée après chaque choix, chaque impact jugé et chaque action résolue. | Défini |
 | **Graine de l'ascension** (`AscentSeed`) | Le nombre qui détermine tous les tirages d'une ascension : sorties, groupes d'ennemis, Or, boss et graine de chaque combat. Un tirage révélé n'est jamais relancé. | Défini |
-| **Pied de la tour** (`TowerFoot`) | L'écran de l'onglet **Tour** : « Commencer l'ascension », ou « Reprendre l'ascension » et « Abandonner l'ascension » quand une ascension est en cours. | Défini |
+| **Pied de la tour** (`TowerFoot`) | L'écran de l'onglet **Tour** : la **Jauge** du jour et « Commencer l'ascension », qui ouvre le **Choix du héros** puis scelle la jauge ; ou, quand une ascension est en cours, son héros, « Reprendre l'ascension » et « Abandonner l'ascension ». | Défini |
 | **Palier** (`Tier`) | Une partie de la tour, avec ses ennemis et son boss. Le palier 1 est **les Catacombes** (`Catacombs`). | Défini |
 | **Étage** (`Floor`) | Une étape d'un palier : 6 dans les Catacombes. L'étage 1 est un combat imposé, les étages 2 à 5 se choisissent par une sortie, l'étage 6 est le boss. | Défini |
 | **Sortie** (`Exit`) | Une des 2 portes proposées après un étage, de types distincts : **Combat**, **Élite** ou **Feu de camp** ; après l'étage 5, la seule porte mène au boss. La porte Combat annonce la **taille du groupe**, pas sa composition. | Défini |
@@ -208,6 +208,15 @@ Termes de l'épique #88 (prototype de l'ascension), introduits par la story #91.
 | **Abandon** (`Abandon`) | « Abandonner l'ascension », après confirmation : même effet qu'une chute. | Défini |
 | **Pause** (`Pause`) | Quitter l'écran de l'ascension ou passer en arrière-plan : l'ascension est sauvegardée. La reprise d'un combat repart de l'action en cours, au début de sa préparation, avec le même tirage ; un impact déjà jugé reste acquis. | Défini |
 | **Compte à rebours de reprise** (`ResumeCountdown`) | Les 3 s qui précèdent la reprise d'un combat, sans aucun appui. | Défini |
+| **Bienfait** (`Boon`) | Un effet de build choisi 1 parmi 3 après chaque combat gagné, ordinaire ou Élite, sauf le boss (story #92) : 3 bienfaits distincts, jamais déjà possédés, tirés avec la graine de l'ascension, sur le flux des bénédictions et du butin, après l'objet trouvé (poids selon la **Rareté** : Commun 6, Rare 3, Épique 1), sans relance. Il dure jusqu'à la fin de l'ascension et se perd à la chute, à l'abandon et à la fin. Aucun ne touche l'Initiative. | Défini (prototype) |
+| **Famille de bienfaits** (`BoonFamily`) | **Givre** (`Frost`), **Braise** (`Ember`) ou **Écho** (`Echo`). | Défini (prototype) |
+| **Écho parfait** (`PerfectEcho`) | Bienfait Écho, Commun : la contre-attaque fait ×1,5 (Sentinelle : 6 → 9 PV). | Défini (prototype) |
+| **Braise brisante** (`ShatteringEmber`) | Bienfait Braise, Commun : Brise-garde ×1,3 (Sentinelle 15, Errante 6 par coup). | Défini (prototype) |
+| **Peau de givre** (`FrostSkin`) | Bienfait Givre, Commun : réduction des dégâts +10 points, plafonnée à 40 %. | Défini (prototype) |
+| **Lame juste** (`TrueEdge`) | Bienfait Écho, Rare : +0,5 au **Multiplicateur de frappe parfaite** (2 au lieu de 1,5). | Défini (prototype) |
+| **Braise ardente** (`BlazingEmber`) | Bienfait Braise, Rare : un ennemi étourdi subit ×2 au lieu de ×1,5. | Défini (prototype) |
+| **Givre persistant** (`LingeringFrost`) | Bienfait Givre, Rare : un ennemi étourdi se relève avec la moitié de sa garde, entier inférieur, au moins 1 ; pas au changement de phase du boss. | Défini (prototype) |
+| **Cœur de braise** (`EmberHeart`) | Bienfait Braise, Épique : chaque garde brisée donne +1 Élan et rend 5 PV, sans dépasser le maximum. | Défini (prototype) |
 
 ### Jauge, bénédictions et objets
 
@@ -221,13 +230,13 @@ Termes de l'épique #89, introduits par la story #93 (prototype). Règles provis
 | **Neutre** (`Neutral`) | Une jauge à 0 : aucun effet de jauge. | Défini (prototype) |
 | **Scellement de la jauge** (`GaugeSeal`) | La jauge et les raretés des bénédictions se figent au lancement de la 1re ascension du jour ; après, une correction d'hier ne change que l'Xp. Un scellement d'un autre jour est ignoré. | Défini (prototype) |
 | **Fatigue** (`Fatigue`) | Les PV max réduits de 10 % à −1, de 20 % à −2 (le plafond). PV max = base × (1 + Vigueur) × (1 − fatigue), entier inférieur ; le héros part à PV max. | Défini (prototype) |
-| **Rareté** (`Rarity`) | **Commun** (`Common`), **Rare** (`Rare`) ou **Épique** (`Epic`) ; au féminin pour une bénédiction. | Défini (prototype) |
+| **Rareté** (`Rarity`) | **Commun** (`Common`), **Rare** (`Rare`) ou **Épique** (`Epic`) ; au féminin pour une bénédiction. Elle se lit au mot, aux losanges (1, 2 ou 3) et à la couleur. | Défini (prototype) |
 | **Bénédiction de départ** (`StartingBlessing`) | Un bonus pour toute l'ascension : une par habitude faite hier, 3 au plus (les plus difficiles, puis les plus anciennes, puis par nom), rareté selon la difficulté (Facile → Commune, Moyenne → Rare, Difficile → Épique). Chacune se choisit 1 parmi 3 familles distinctes, jamais une famille déjà prise. Une reprise n'en propose aucune. | Défini (prototype) |
 | **Famille de bénédiction** (`BlessingFamily`) | **Vigueur** (`Vigor` : PV max +6/+10/+15 %), **Élan** (`Momentum` : +1 Élan au 1er combat / +1 Élan de départ à chaque combat / +2), **Tranchant** (`Edge` : Attaque +10/+20/+30 %, arrondie au plus proche, au moins +1), **Égide** (`Aegis` : réduction des dégâts +5/+10/+15 points), **Hâte** (`Haste` : Initiative +1/+2/+3). La famille Élan donne de l'Élan : le même mot est voulu. | Défini (prototype) |
 | **Objet** (`Item`) | Une pièce d'équipement trouvée dans la tour, à **équiper** ou **laisser** (un objet laissé est perdu). Le héros porte 1 arme, 1 armure et 1 **accessoire** (`Accessory`, vide au départ). **Hache** (`Axe`, arme, Commun : Brise-garde ×1,3, Initiative −1), **Cuir** (`Leather`, armure, Commun : frappe parfaite +0,2, +1), **Mailles** (`Chainmail`, armure, Commun : réduction +5 points, −1), **Marteau** (`Hammer`, arme, Rare : Brise-garde ×1,6, Attaque ×0,8, −2), **Bouclier du veilleur** (`WatchmanShield`, armure, Rare : chaque impact paré parfaitement rend 3 PV, −1), **Amulette de Hâte** (`HasteAmulet`, accessoire, Rare : Initiative +2). Perdus à la fin de l'ascension. | Défini (prototype) |
 | **Chance d'objet** (`DropChance`) | Après un combat ordinaire gagné : 40 % pour 3 ennemis, 10 points de plus ou de moins par ennemi, plus la faveur, 100 % au plus. Toujours un objet Rare après l'Élite ; rien au Feu de camp ni au boss. L'objet tiré n'est jamais un objet déjà porté. | Défini (prototype) |
 | **Décalage de rareté** (`RarityShift`) | Les points ajoutés à la chance de Rare d'un objet (30 %) selon la jauge : +5 par cran de faveur, −5 par cran de malédiction. | Défini (prototype) |
-| **Modificateurs du héros** (`HeroModifiers`) | Ce que les objets, les bénédictions et les bienfaits changent au héros dans un combat, combinés en un seul jeu (`combineModifiers`) ; les pourcentages se multiplient en un seul calcul, arrondi une fois. | Défini (prototype) |
+| **Modificateurs du héros** (`HeroModifiers`) | Ce que les objets, les bénédictions et les bienfaits changent au héros dans un combat, combinés en un seul jeu (`combineModifiers`) ; les pourcentages se multiplient en un seul calcul, arrondi une fois, et la réduction des dégâts reste plafonnée à 40 %. Voir l'ADR 0009. | Défini (prototype) |
 
 ## Workflow de développement
 

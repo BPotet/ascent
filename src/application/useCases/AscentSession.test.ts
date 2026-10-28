@@ -331,3 +331,81 @@ describe('AscentSession with the gauge, the blessings and the items (#93)', () =
     expect(session.current()).toBeNull();
   });
 });
+
+describe('AscentSession: hero and boons (prototype #92)', () => {
+  it('begins the ascent with the chosen hero', async () => {
+    const { session, store } = setUp(42);
+
+    const ascent = session.begin({ hero: 'wanderer' });
+    await flush();
+
+    expect(ascent).toEqual(startAscent(42, { hero: 'wanderer' }));
+    expect(saved(store)?.ascent.hero.kind).toBe('wanderer');
+  });
+
+  it('fights with the hero of the ascent and the modifiers of his boons', async () => {
+    const { session, store } = setUp();
+    const ascent = startAscent(5, { hero: 'wanderer' });
+    const withBoons = { ...ascent, hero: { ...ascent.hero, boons: ['perfectEcho'] } };
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: withBoons, battle: null }));
+    await session.load();
+
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    const { battle } = battleSession.current()!;
+    expect(battle.heroKind).toBe('wanderer');
+    expect(battle.hero.maxHp).toBe(60);
+    expect(battle.modifiers?.counterPercents).toEqual([150]);
+  });
+
+  it('chooses a boon of the offer, publishes and saves it', async () => {
+    const { session, store } = setUp();
+    const ascent = { ...startAscent(5), encounter: null, boonOffer: ['frostSkin', 'trueEdge'] };
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent, battle: null }));
+    await session.load();
+    const published: (Ascent | null)[] = [];
+    session.subscribe((current) => published.push(current));
+
+    session.chooseBoon(1);
+    await flush();
+
+    expect(published).toEqual([session.current()]);
+    expect(saved(store)?.ascent).toMatchObject({
+      hero: { boons: ['trueEdge'] },
+      boonOffer: null,
+    });
+  });
+
+  it('resumes a save of #91 with the Sentinel, without boon nor offer', async () => {
+    const { session, store } = setUp();
+    const { hero, boonOffer, ...ascent } = startAscent(5);
+    const old = { ...ascent, hero: { hp: 41, maxHp: hero.maxHp } };
+    expect(boonOffer).toBeNull();
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: old, battle: null }));
+
+    expect(await session.load()).toEqual({
+      ...startAscent(5),
+      hero: { kind: 'sentinel', hp: 41, maxHp: 80, boons: [] },
+    });
+    session.chooseBoon(0);
+    expect(session.current()?.hero.boons).toEqual([]);
+  });
+
+  it('combines the boons with the items in battle: Cuir + Lame juste (P21)', async () => {
+    const { session, store } = setUp();
+    const ascent = startAscent(5);
+    const build = {
+      ...ascent,
+      hero: { ...ascent.hero, boons: ['trueEdge'] },
+      equipment: { ...ascent.equipment, armor: 'leather' },
+    };
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: build, battle: null }));
+    await session.load();
+
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    expect(battleSession.current()!.battle.modifiers?.perfectStrikeBonusPercents).toEqual([20, 50]);
+  });
+});

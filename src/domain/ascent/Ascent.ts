@@ -3,9 +3,9 @@
  * de l'étage 1 au boss de l'étage 6, en choisissant ses sorties. Un état immuable et sérialisable ;
  * tous les tirages viennent de la graine de l'ascension (P9), et un tirage révélé est gardé.
  */
-import type { EnemyKind } from '../battle/combatants';
-import { SENTINEL } from '../battle/combatants';
+import { HEROES, type EnemyKind, type HeroKind } from '../battle/combatants';
 import { nextRandom, seedRandom, type BattleSeed, type RandomState } from '../battle/SeededRandom';
+import { drawBoonOffer, type BoonKind } from './boons';
 import {
   drawBlessingOffer,
   heroMaxHp,
@@ -41,7 +41,15 @@ export interface Ascent {
   readonly random: RandomState;
   /** L'étage (`Floor`), de 1 à 6. */
   readonly floor: number;
-  readonly hero: { readonly hp: number; readonly maxHp: number };
+  /** Le héros choisi au pied de la tour (#92), ses PV et ses bienfaits. */
+  readonly hero: {
+    readonly kind: HeroKind;
+    readonly hp: number;
+    readonly maxHp: number;
+    readonly boons: readonly BoonKind[];
+  };
+  /** L'offre de bienfaits en attente (#92), `null` sans offre. */
+  readonly boonOffer: readonly BoonKind[] | null;
   /** L'Or (`Gold`) gagné pendant l'ascension, perdu à la fin. */
   readonly gold: number;
   /** L'Or du dernier étage franchi (0 après un Feu de camp). */
@@ -72,8 +80,12 @@ export interface Ascent {
   readonly lootRandom: RandomState;
 }
 
-/** Le lancement de l'ascension (#93) : la jauge scellée et les raretés des bénédictions. */
+/**
+ * Le lancement de l'ascension : le héros choisi au pied de la tour (#92, la Sentinelle par
+ * défaut), la jauge scellée et les raretés des bénédictions (#93).
+ */
 export interface AscentLaunch {
+  readonly hero?: HeroKind;
   readonly gauge?: FateGauge;
   readonly blessings?: readonly Rarity[];
 }
@@ -109,20 +121,21 @@ function combat(size: number, random: RandomState): Drawn<Encounter> {
 }
 
 /**
- * L'ascension commence : la Sentinelle à PV max (fatigue comprise), l'étage 1, un combat dont la
- * taille est tirée, et la première offre de bénédiction s'il y en a.
+ * L'ascension commence : le héros choisi à PV max (fatigue comprise), sans bienfait, l'étage 1,
+ * un combat dont la taille est tirée, et la première offre de bénédiction s'il y en a.
  */
 export function startAscent(seed: AscentSeed, launch: AscentLaunch = {}): Ascent {
-  const { gauge = 0, blessings = [] } = launch;
+  const { hero: heroKind = 'sentinel', gauge = 0, blessings = [] } = launch;
   const size = drawGroupSize(1, seedRandom(seed), false);
   const first = combat(size.value, size.random);
-  const maxHp = heroMaxHp(SENTINEL.maxHp, 0, fatiguePercent(gauge));
+  const maxHp = heroMaxHp(HEROES[heroKind].maxHp, 0, fatiguePercent(gauge));
   const offer = blessings.length > 0 ? drawBlessingOffer([], lootStream(seed)) : null;
   return {
     seed,
     random: first.random,
     floor: 1,
-    hero: { hp: maxHp, maxHp },
+    hero: { kind: heroKind, hp: maxHp, maxHp, boons: [] },
+    boonOffer: null,
     gold: 0,
     lastGold: 0,
     exits: [],
@@ -150,7 +163,11 @@ export function chooseBlessing(ascent: Ascent, index: number): Ascent {
   const [rarity, ...rest] = ascent.blessingRarities;
   if (family === undefined || rarity === undefined) return ascent;
   const blessings = [...ascent.blessings, { family, rarity }];
-  const maxHp = heroMaxHp(SENTINEL.maxHp, vigorPercent(blessings), fatiguePercent(ascent.gauge));
+  const maxHp = heroMaxHp(
+    HEROES[ascent.hero.kind].maxHp,
+    vigorPercent(blessings),
+    fatiguePercent(ascent.gauge),
+  );
   const offer =
     rest.length > 0
       ? drawBlessingOffer(
@@ -164,7 +181,7 @@ export function chooseBlessing(ascent: Ascent, index: number): Ascent {
     blessingRarities: rest,
     blessingOffer: offer?.value ?? null,
     lootRandom: offer?.random ?? ascent.lootRandom,
-    hero: { hp: maxHp, maxHp },
+    hero: { ...ascent.hero, hp: maxHp, maxHp },
   };
 }
 
@@ -205,7 +222,7 @@ function withExits(ascent: Ascent, floor: number): Ascent {
 /** Le joueur franchit la porte `index` : le combat de l'étage suivant, ou le Feu de camp. */
 export function chooseExit(ascent: Ascent, index: number): Ascent {
   const exit = ascent.exits[index];
-  if (exit === undefined || ascent.outcome !== null) return ascent;
+  if (exit === undefined || ascent.outcome !== null || ascent.boonOffer !== null) return ascent;
   const floor = ascent.floor + 1;
   // Une porte franchie laisse l'objet trouvé, s'il en reste un.
   const entered = { ...ascent, floor, exits: [], foundItem: null };
@@ -238,8 +255,8 @@ export function chooseExit(ascent: Ascent, index: number): Ascent {
 }
 
 /**
- * La fin du combat de l'étage (P7, P8) : la chute à 0 PV ; sinon l'Or du combat, puis la victoire
- * de l'ascension au boss, ou les sorties vers l'étage suivant.
+ * La fin du combat de l'étage (P7, P8, P16) : la chute à 0 PV ; sinon l'Or du combat, puis la
+ * victoire de l'ascension au boss, ou l'offre de bienfaits et les sorties vers l'étage suivant.
  */
 export function endFloorBattle(ascent: Ascent, result: FloorBattleResult): Ascent {
   const { encounter: current } = ascent;
@@ -266,7 +283,23 @@ export function endFloorBattle(ascent: Ascent, result: FloorBattleResult): Ascen
     lootRandom: loot.random,
   };
   if (current.kind === 'boss') return { ...earned, encounter: null, outcome: 'victory' };
-  return withExits(earned, ascent.floor + 1);
+  // L'offre de bienfaits suit l'objet trouvé, sur le même flux : les portes ne bougent pas (P9).
+  const offer = drawBoonOffer(hero.boons, earned.lootRandom);
+  return withExits(
+    { ...earned, lootRandom: offer.random, boonOffer: offer.value },
+    ascent.floor + 1,
+  );
+}
+
+/** Le joueur prend le bienfait `index` de l'offre (P16) ; il le garde jusqu'à la fin. */
+export function chooseBoon(ascent: Ascent, index: number): Ascent {
+  const boon = ascent.boonOffer?.[index];
+  if (boon === undefined) return ascent;
+  return {
+    ...ascent,
+    hero: { ...ascent.hero, boons: [...ascent.hero.boons, boon] },
+    boonOffer: null,
+  };
 }
 
 /** L'abandon (`Abandon`) : il a le même effet qu'une chute (P33). */

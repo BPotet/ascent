@@ -138,6 +138,24 @@ describe('AscentScreen', () => {
     expect(screen.getByRole('header', { name: 'Victoire !' })).toBeOnTheScreen();
     expect(screen.getByText('Le boss des Catacombes est vaincu.')).toBeOnTheScreen();
   });
+
+  it('offers 3 boons after a won battle, then the exits with the owned boons (#92)', async () => {
+    const offered = {
+      ...between(startAscent(42), [{ kind: 'campfire', groupSize: null }], 8),
+      boonOffer: ['perfectEcho', 'frostSkin', 'emberHeart'] as const,
+    };
+    const { session } = await show(offered);
+
+    expect(await screen.findByText('Étage franchi · +8 Or')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('radio', { name: /^Peau de givre/ }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Prendre' }));
+    await act(async () => {
+      fireEvent.press(screen.getByRole('button', { name: 'Continuer' }));
+    });
+
+    expect(session.current()?.hero.boons).toEqual(['frostSkin']);
+    expect(await screen.findByText('Bienfaits : Peau de givre')).toBeOnTheScreen();
+  });
 });
 
 describe('AscentScreen with blessings and found items (#93)', () => {

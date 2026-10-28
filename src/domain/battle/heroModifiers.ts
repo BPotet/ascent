@@ -1,6 +1,6 @@
 /**
  * Les modificateurs du héros (`HeroModifiers`, épique #89, prototype) : ce que les objets, les
- * bénédictions de départ et les bienfaits changent au héros dans un combat. Ils se combinent en un
+ * bénédictions de départ et les bienfaits (#92) changent au héros dans un combat. Ils se combinent en un
  * seul jeu (`combineModifiers`) : listes concaténées, nombres additionnés. Les pourcentages se
  * multiplient ensuite en un seul calcul, arrondi une seule fois (P18, P21).
  */
@@ -21,6 +21,14 @@ export interface HeroModifiers {
   readonly startingMomentum: number;
   /** Les PV rendus par impact paré parfaitement (Bouclier du veilleur). */
   readonly healOnPerfectParry: number;
+  /** Les pourcentages des PV de la contre-attaque (Écho parfait 150, #92). */
+  readonly counterPercents: readonly number[];
+  /** Ajouté aux 150 % du multiplicateur d'étourdi (Braise ardente 50, #92). */
+  readonly stunnedBonusPercent: number;
+  /** La garde au retour en garde d'un étourdi, en % de son maximum (Givre persistant 50, #92) ; `null` : 100 %. */
+  readonly guardRestorePercent: number | null;
+  /** À chaque garde brisée : l'Élan gagné et les PV rendus (Cœur de braise, #92). */
+  readonly onGuardBreak: { readonly momentum: number; readonly heal: number };
 }
 
 export const NO_MODIFIERS: HeroModifiers = {
@@ -32,7 +40,17 @@ export const NO_MODIFIERS: HeroModifiers = {
   initiative: 0,
   startingMomentum: 0,
   healOnPerfectParry: 0,
+  counterPercents: [],
+  stunnedBonusPercent: 0,
+  guardRestorePercent: null,
+  onGuardBreak: { momentum: 0, heal: 0 },
 };
+
+/** Le plus petit pourcentage de retour en garde, `null` s'il n'y en a aucun. */
+function smallestRestore(a: number | null, b: number | null | undefined): number | null {
+  if (b === undefined || b === null) return a;
+  return a === null ? b : Math.min(a, b);
+}
 
 export function combineModifiers(...all: readonly Partial<HeroModifiers>[]): HeroModifiers {
   return all.reduce<HeroModifiers>(
@@ -48,6 +66,13 @@ export function combineModifiers(...all: readonly Partial<HeroModifiers>[]): Her
       initiative: sum.initiative + (each.initiative ?? 0),
       startingMomentum: sum.startingMomentum + (each.startingMomentum ?? 0),
       healOnPerfectParry: sum.healOnPerfectParry + (each.healOnPerfectParry ?? 0),
+      counterPercents: [...sum.counterPercents, ...(each.counterPercents ?? [])],
+      stunnedBonusPercent: sum.stunnedBonusPercent + (each.stunnedBonusPercent ?? 0),
+      guardRestorePercent: smallestRestore(sum.guardRestorePercent, each.guardRestorePercent),
+      onGuardBreak: {
+        momentum: sum.onGuardBreak.momentum + (each.onGuardBreak?.momentum ?? 0),
+        heal: sum.onGuardBreak.heal + (each.onGuardBreak?.heal ?? 0),
+      },
     }),
     NO_MODIFIERS,
   );

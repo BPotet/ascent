@@ -13,6 +13,7 @@ describe('hero modifiers (P18, P21)', () => {
         { attackFlat: 2, attackPercents: [80], startingMomentum: 1, healOnPerfectParry: 3 },
       ),
     ).toEqual({
+      ...NO_MODIFIERS,
       attackFlat: 2,
       attackPercents: [80],
       guardDamagePercents: [130],
@@ -22,5 +23,22 @@ describe('hero modifiers (P18, P21)', () => {
       startingMomentum: 1,
       healOnPerfectParry: 3,
     });
+  });
+
+  it('combine the boon effects (#92): lists, sums, and the smallest guard restore', () => {
+    expect(
+      combineModifiers(
+        { counterPercents: [150], stunnedBonusPercent: 50, guardRestorePercent: 70 },
+        { counterPercents: [150], onGuardBreak: { momentum: 1, heal: 5 } },
+        { guardRestorePercent: 50, onGuardBreak: { momentum: 1, heal: 2 } },
+      ),
+    ).toEqual({
+      ...NO_MODIFIERS,
+      counterPercents: [150, 150],
+      stunnedBonusPercent: 50,
+      guardRestorePercent: 50,
+      onGuardBreak: { momentum: 2, heal: 7 },
+    });
+    expect(combineModifiers({ guardRestorePercent: 50 }, {}).guardRestorePercent).toBe(50);
   });
 });

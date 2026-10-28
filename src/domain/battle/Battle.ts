@@ -41,7 +41,7 @@ import {
   restoreGuard,
   type Stunned,
 } from './guard';
-import { NO_MODIFIERS, type HeroModifiers } from './heroModifiers';
+import { NO_MODIFIERS, combineModifiers, type HeroModifiers } from './heroModifiers';
 import { heroInitiative } from './initiative';
 import { drawIntent, raisedHp, type GuardIntent, type Intent, type RaiseIntent } from './intents';
 import {
@@ -384,7 +384,8 @@ export function heroProfile(battle: Battle): HeroProfile {
 
 /** Les modificateurs du héros dans ce combat (prototype #93). */
 function heroModifiers(battle: Battle): HeroModifiers {
-  return battle.modifiers ?? NO_MODIFIERS;
+  // Un combat sauvegardé avant #92 n'a pas tous les champs : les absents sont neutres.
+  return battle.modifiers === undefined ? NO_MODIFIERS : combineModifiers(battle.modifiers);
 }
 
 export function isStanding(enemy: EnemyState): boolean {
@@ -640,7 +641,11 @@ function stunTurn(
   if (isRestoreDue(stun, battle.heroActions)) {
     const until = at + GUARD_RESTORE_MS;
     events.push({ type: 'guardRestored', at, enemy, until, inPlaceOfAction: true });
-    const restored = { ...restoreGuard(state), intent: null, guardRestore: { since: at, until } };
+    const restored = {
+      ...restoreGuard(state, heroModifiers(battle).guardRestorePercent ?? 100),
+      intent: null,
+      guardRestore: { since: at, until },
+    };
     return {
       ...withEnemy(battle, enemy, restored),
       phase: { kind: 'enemy', step: { kind: 'guardRestore', enemy, since: at, until } },
@@ -707,7 +712,10 @@ function endHeroAction(battle: Battle, events: Events): Battle {
     if (stun === null || !stun.actionLost || !isRestoreDue(stun, battle.heroActions)) return enemy;
     const until = at + GUARD_RESTORE_MS;
     events.push({ type: 'guardRestored', at, enemy: index, until, inPlaceOfAction: false });
-    return { ...restoreGuard(enemy), guardRestore: { since: at, until } };
+    return {
+      ...restoreGuard(enemy, heroModifiers(battle).guardRestorePercent ?? 100),
+      guardRestore: { since: at, until },
+    };
   });
   const restored = { ...battle, enemies };
   if (isWon(restored)) return finish(restored, events, 'victory', at);
@@ -924,14 +932,25 @@ function hitEnemy(
 ): { readonly battle: Battle; readonly broken: boolean } {
   const hit = blowOnEnemy(battle.enemies[index]!, blow, battle.heroActions);
   const damaged = withEnemy(battle, index, shiftPhase(hit.enemy, events, index, context.at));
-  if (hit.broken)
+  if (hit.broken) {
     events.push({ type: 'guardBroken', at: context.at, enemy: index, by: context.by });
-  if (!hit.fallen) return { battle: damaged, broken: hit.broken };
+    return { battle: onGuardBreak(damaged, events, context.at), broken: true };
+  }
+  if (!hit.fallen) return { battle: damaged, broken: false };
   events.push({ type: 'enemyDefeated', at: context.at, enemy: index });
   const [next] = standingEnemies(damaged);
   if (battle.target !== index || next === undefined) return { battle: damaged, broken: false };
   events.push({ type: 'targetChanged', at: context.at, enemy: next });
   return { battle: { ...damaged, target: next }, broken: false };
+}
+
+/** Cœur de braise (prototype #92) : à chaque garde brisée, l'Élan gagné et les PV rendus. */
+function onGuardBreak(battle: Battle, events: Events, at: number): Battle {
+  const { momentum, heal } = heroModifiers(battle).onGuardBreak;
+  let gained = battle;
+  for (let point = 0; point < momentum; point += 1) gained = gainMomentumAt(gained, events, at);
+  const { hero } = gained;
+  return { ...gained, hero: { ...hero, hp: Math.min(hero.maxHp, hero.hp + heal) } };
 }
 
 /**
@@ -959,6 +978,8 @@ function counterAttack(battle: Battle, events: Events): Battle {
     stunned: battle.enemies[step.enemy]!.stun !== null,
     attackPercents: modifiers.attackPercents,
     guardPercents: modifiers.guardDamagePercents,
+    counterPercents: modifiers.counterPercents,
+    stunnedBonusPercent: modifiers.stunnedBonusPercent,
   });
   events.push({
     type: 'counterAttacked',
@@ -1187,6 +1208,7 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
     stunned: battle.enemies[phase.enemy]!.stun !== null,
     attackPercents: modifiers.attackPercents,
     guardPercents: modifiers.guardDamagePercents,
+    stunnedBonusPercent: modifiers.stunnedBonusPercent,
   });
   events.push({
     type: 'strikeResolved',
