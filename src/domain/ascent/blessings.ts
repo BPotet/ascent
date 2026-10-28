@@ -6,13 +6,13 @@ import type { RandomState } from '../battle/SeededRandom';
 import { drawInt, type Drawn } from './draw';
 import type { Rarity } from './rarity';
 
-/** Les familles de bénédiction (`BlessingFamily`) : Vigueur, Élan, Tranchant, Égide, Hâte. */
-export type BlessingFamily = 'vigor' | 'momentum' | 'edge' | 'aegis' | 'haste';
+/** Les familles de bénédiction (`BlessingFamily`) : Vigueur, Élan, Tranchant, Protection, Hâte. */
+export type BlessingFamily = 'vigor' | 'momentum' | 'edge' | 'protection' | 'haste';
 export const BLESSING_FAMILIES: readonly BlessingFamily[] = [
   'vigor',
   'momentum',
   'edge',
-  'aegis',
+  'protection',
   'haste',
 ];
 
@@ -23,7 +23,7 @@ export interface StartingBlessing {
 
 /**
  * L'effet de chaque famille, selon la rareté : Vigueur (PV max, %), Élan (Élan de départ ; la
- * Commune au 1er combat seulement), Tranchant (Attaque, %), Égide (points de réduction), Hâte
+ * Commune au 1er combat seulement), Tranchant (Attaque, %), Protection (points de réduction), Hâte
  * (Initiative).
  */
 export const BLESSING_EFFECTS: Readonly<Record<BlessingFamily, Readonly<Record<Rarity, number>>>> =
@@ -31,7 +31,7 @@ export const BLESSING_EFFECTS: Readonly<Record<BlessingFamily, Readonly<Record<R
     vigor: { common: 6, rare: 10, epic: 15 },
     momentum: { common: 1, rare: 1, epic: 2 },
     edge: { common: 10, rare: 20, epic: 30 },
-    aegis: { common: 5, rare: 10, epic: 15 },
+    protection: { common: 5, rare: 10, epic: 15 },
     haste: { common: 1, rare: 2, epic: 3 },
   };
 
@@ -114,7 +114,7 @@ export function blessingModifiers(
   const everyBattle = momentum !== undefined && (momentum.rarity !== 'common' || firstBattle);
   return {
     attackFlat: edge === undefined ? 0 : edgeAttack(attackPower, edge.rarity) - attackPower,
-    damageReductionPoints: effectOf(blessings, 'aegis'),
+    damageReductionPoints: effectOf(blessings, 'protection'),
     initiative: effectOf(blessings, 'haste'),
     startingMomentum: everyBattle ? effectOf(blessings, 'momentum') : 0,
   };

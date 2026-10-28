@@ -98,7 +98,7 @@ const FAMILY_NAMES: Readonly<Record<BlessingFamily, string>> = {
   vigor: 'Vigueur',
   momentum: 'Élan',
   edge: 'Tranchant',
-  aegis: 'Égide',
+  protection: 'Protection',
   haste: 'Hâte',
 };
 
@@ -113,7 +113,7 @@ function blessingEffect({ family, rarity }: StartingBlessing): string {
         : `+${value} Élan de départ à chaque combat`;
     case 'edge':
       return `Attaque +${value} %`;
-    case 'aegis':
+    case 'protection':
       return `Réduction des dégâts +${value} points`;
     case 'haste':
       return `Initiative +${value} dans chaque combat`;
@@ -126,20 +126,24 @@ export function blessingText(blessing: StartingBlessing): string {
 }
 
 const ITEM_NAMES: Readonly<Record<ItemKind, string>> = {
-  axe: 'Hache',
+  axe: 'Hache rouillée',
   hammer: 'Marteau',
   leather: 'Cuir',
   chainmail: 'Mailles',
   watchmanShield: 'Bouclier du veilleur',
   hasteAmulet: 'Amulette de Hâte',
+  crossbow: 'Arbalète',
+  blackKnightArmor: 'Armure de chevalier noir',
 };
 const ITEM_EFFECTS: Readonly<Record<ItemKind, string | null>> = {
-  axe: 'Brise-garde ×1,3',
-  hammer: 'Brise-garde ×1,6, Attaque ×0,8',
+  axe: 'Brise-garde ×1,1',
+  hammer: 'Brise-garde ×1,6',
   leather: 'Frappe parfaite +0,2',
   chainmail: 'Réduction des dégâts +5 points',
   watchmanShield: 'Chaque parade parfaite rend 3 PV',
   hasteAmulet: null,
+  crossbow: null,
+  blackKnightArmor: 'Réduction des dégâts +20 points, Attaque +1',
 };
 const SLOT_NAMES: Readonly<Record<ItemSlot, string>> = {
   weapon: 'Arme',
