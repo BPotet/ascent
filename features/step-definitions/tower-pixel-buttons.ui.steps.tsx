@@ -149,7 +149,9 @@ async function fingerDown(testId: string) {
 
 /**
  * Le doigt se pose (`State.BEGAN`) ou se lève (`State.END`) sur la touche dont le geste est
- * `testId`, sans aller plus loin : `fireGestureHandler` mène toujours un toucher à son terme.
+ * `testId`, sans aller plus loin. L'événement passe par le même canal que `fireGestureHandler`
+ * (`DeviceEventEmitter`), mais `fireGestureHandler` ajoute toujours `ACTIVE` et `END` à un geste
+ * Tap : le doigt serait levé, et la touche remonterait, avant la vérification.
  */
 async function fingerState(testId: string, state: typeof State.BEGAN | typeof State.END) {
   const { handlerTag } = getByGestureTestId(testId);
@@ -181,8 +183,20 @@ beforeEach(() => {
   onClose = jest.fn();
 });
 
+/**
+ * Une image du fil UI simulé : sous Jest, Reanimated branche le style animé d'une vue
+ * (`useAnimatedStyle`) une image après son montage (`scheduleOnUI`, un `setTimeout` de 0 ms).
+ * Avant cette image, un appui ne change pas encore le style lu par `getAnimatedStyle`.
+ */
+async function uiFrame() {
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  });
+}
+
 async function showPad(pad: Pad) {
   await render(<TowerCombat pad={pad} enemies={enemies} />);
+  await uiFrame();
 }
 
 const steps: StepDefinitions = ({ given, when, then, and }) => {
