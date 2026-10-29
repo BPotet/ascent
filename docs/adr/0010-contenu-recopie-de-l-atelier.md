@@ -85,3 +85,43 @@ comme au § 1 (`atelier/data/wanderer.ts`, `atelier/data/sentinel.ts`).
 - **Palette.** Les teintes absentes de `artPalette` y sont ajoutées à la fin, comme au § 4 : les
   6 teintes de la Sentinelle 2.5D (codes 32 à 37, après `#5A1420`). Les codes existants ne bougent
   pas.
+
+## Avenant du 29/10/2026 (#139)
+
+Les Jumeaux (`twins`, entrée `nouvelleElite`) et la Gardienne des ossuaires (`ossuaryWarden`) ont
+leur animation complète, recopiée comme au § 1 (`atelier/data/twins.ts`,
+`atelier/data/ossuaryWarden.ts`), avec leurs **poses d'un coup**.
+
+- **§ 1 Format.** La clé `animation.attackPoses` de l'export est recopiée telle quelle
+  (`FullAnimation.attackPoses`, type `AttackPoses`). Ses clés sont des types de coup du domaine
+  (`AttackKind`) : `basic` (Carreau d'arbalète) et `delayedPerilous` (Onde de choc) pour les
+  Jumeaux ; `double` (Deux tibias) et `perilous` (Mise en ossuaire) pour la Gardienne. Pour une
+  entité, un type de coup ne correspond qu'à un coup : le type suffit, sans nom de coup dans le
+  domaine. Chaque entrée a le nom du coup dans l'Atelier (`move`, jamais affiché), les lignes
+  (`frames`) et les ancrages (`anchors`) de ses poses, à la taille de l'entité, et peut avoir une
+  portée (`reach`) et une élévation par pose (`lift`, en pixels d'art entiers).
+- **Choix de la pose.** La scène choisit l'image comme avant (`enemyPose`), aux mêmes instants ;
+  seule sa source change. L'image vient des poses d'un coup quand l'action est une attaque, que
+  l'ennemi a des poses d'un coup pour ce type de coup et que l'image en fait partie : anticipation,
+  hésitation, ruée, impact, récupération, 2ᵉ segment d'une double frappe et reflet tenu compris.
+  Jamais pendant l'avancée (le type de coup reste caché, C2.8), une Garde, un Relever ou au repos.
+- **Portée.** `reach` remplace le haut de la ruée (0,85) pour ce coup : la ruée va jusqu'à
+  `reach`, l'impact s'y tient, puis la récupération revient comme avant. Le Carreau d'arbalète
+  s'arrête à mi-chemin (0,5). L'avancée ne change pas.
+- **§ 3 Élévation.** `lift` est un décalage de la scène vers le haut, à 2 dp par pixel d'art : il
+  ne grandit pas la case (`battleCell`). Le reflet suit, puisqu'il part de la place de l'image. En
+  mouvement réduit, la portée est au quart comme avant, l'élévation au quart arrondi au pixel d'art.
+- **§ 4 Palette rouge.** La règle ne change pas : une pose d'un coup est peinte avec `red` pendant
+  un coup imparable d'une entité qui joue sa palette rouge. L'atlas a une case rouge pour chaque
+  pose de l'Onde de choc et de Mise en ossuaire, aucune pour le Carreau d'arbalète ni Deux tibias.
+- **Atlas.** Chaque pose d'un coup a sa case, au seul palier 0 (les paliers d'une pose recopiée
+  sont des copies identiques, ADR 0008 § 5). La table (`AtlasTable.attacks`) les numérote à la
+  suite des images ; `atlasRect` la lit sur le fil UI, sans concaténation de chaîne. Les ancrages
+  des poses d'un coup, la portée et les élévations sont préparés sur le fil JS
+  (`prepareBattleScene`, `attackMotion`).
+- **Conséquences.** Le registre des animations complètes couvre tous les ennemis
+  (`satisfies Record<EnemyKind, …>`) : l'oubli d'un ennemi futur casse la compilation. Le dessin des
+  ennemis par le code est supprimé (`OLD_GHOUL`, `NECROMANCER`, `silhouette`, `CharacterArt` et le
+  chemin dessiné de `battleCharacters.ts`). La tâche `type:chore` de l'avenant #138 garde le reste :
+  les options de personnage de `finish`, les paliers de liseré de l'atlas, le paramètre `tier` et
+  la mise à jour de l'ADR 0008 § 5.
