@@ -206,7 +206,7 @@ export class AscentSession {
             boonModifiers(ascent.hero.boons),
           ),
           enemies: encounter.enemies,
-          // L'ordre d'action par Initiative (P13, P14), comme le combat d'essai de #90.
+          // L'ordre d'action par Initiative (P13, P14), ajouté par #90.
           initiative: true,
         });
       },

@@ -1,27 +1,23 @@
 // Réservé aux tests : un constructeur de combat qui pose les états des scénarios (« la garde du
-// Spectre est à 8 », « la Goule est étourdie »…) sur le combat d'essai, sans événement.
+// Spectre est à 8 », « la Goule est étourdie »…) sur le combat de test, sans événement.
 import { actionOrder } from '../../domain/battle/actionOrder';
 import { ATTACKS, type AttackKind } from '../../domain/battle/attacks';
-import {
-  startTrialBattle,
-  type Battle,
-  type EnemyState,
-  type HeroState,
-} from '../../domain/battle/Battle';
+import type { Battle, EnemyState, HeroState } from '../../domain/battle/Battle';
 import { ENEMIES } from '../../domain/battle/combatants';
 import type { Intent } from '../../domain/battle/intents';
+import { startTestBattle } from '../../domain/battle/testing/testBattle';
 import type { BattleFactory } from '../useCases/BattleSession';
 
 /** Un changement de l'état d'un combat, sans événement. */
 export type BattleChange = (battle: Battle) => Battle;
 
 /**
- * Le combat d'essai, changé dès sa création : l'ordre d'action de la première manche suit les
+ * Le combat de test (`startTestBattle`), changé dès sa création : l'ordre d'action de la première manche suit les
  * ennemis debout après les changements, comme s'ils étaient ainsi au début de la manche.
  */
 export function battleWith(...changes: readonly BattleChange[]): BattleFactory {
   return (options) => {
-    const update = startTrialBattle(options);
+    const update = startTestBattle(options);
     const battle = changeBattle(update.battle, ...changes);
     return {
       ...update,

@@ -5,16 +5,14 @@ import {
   nextDeadline,
   pressDefense,
   pressStrike,
-  startTrialBattle,
   type AttackStep,
   type Battle,
+  type BattleStartOptions,
   type BattleUpdate,
   type HeroAction,
-  type TrialBattleOptions,
 } from '../../domain/battle/Battle';
 import type { BattleEvent, DefenseButton } from '../../domain/battle/BattleEvent';
 import { glintsOf } from '../../domain/battle/glints';
-import { DEFAULT_TRIAL_TUNING } from '../../domain/battle/TrialTuning';
 import type { BattleClock } from '../ports/BattleClock';
 import type { BattleHaptics } from '../ports/BattleHaptics';
 import type { BattleSound } from '../ports/BattleSound';
@@ -22,7 +20,6 @@ import type { KeyValueStore } from '../ports/KeyValueStore';
 import type { SeedSource } from '../ports/SeedSource';
 import { GLINT_CUES, feedbackFor } from './battleFeedback';
 import { dismissBattleHint, getBattleHint, type BattleHintKind } from './battleHints';
-import { getTrialTuning } from './trialTuning';
 
 /** La garde de réordonnancement (`ReorderGuard`) par défaut, en ms. */
 export const REORDER_GUARD_MS = 32;
@@ -47,31 +44,20 @@ export interface BattleSnapshot {
   readonly heroHint: boolean;
 }
 
-/** Les mesures du combat, pour le panneau Mesures du build de preview. */
-export interface BattleMeasures {
-  /** Les appuis reçus avec un instant antérieur à l'état du moteur, redatés à cet état. */
-  readonly redatedPresses: number;
-  /** L'écart de chaque appui jugé (parade ou esquive), en ms. */
-  readonly deltas: readonly number[];
-  /** L'écart du premier appui de chaque frappe en rythme, en ms (mesuré à part). */
-  readonly strikeDeltas: readonly number[];
-}
-
 type Listener = (snapshot: BattleSnapshot) => void;
 
-/** Crée un combat ; par défaut, le combat d'essai. */
-export type BattleFactory = (options: TrialBattleOptions) => BattleUpdate;
+/** Crée le combat, par exemple celui d'un étage de l'ascension. */
+export type BattleFactory = (options: BattleStartOptions) => BattleUpdate;
 
 export interface BattleSessionOptions {
   /** La garde de réordonnancement, en ms (32 par défaut). */
   readonly reorderGuardMs?: number;
-  readonly createBattle?: BattleFactory;
+  readonly createBattle: BattleFactory;
 }
 
 /**
- * Session de combat (`BattleSession`) : le cas d'usage qui mène un combat d'essai. Il crée le
- * combat (graine de la source de graine, réglages d'essai et bulles déjà vues lus dans le
- * stockage), reçoit les appuis datés au toucher, fait avancer le moteur à chaque échéance par
+ * Session de combat (`BattleSession`) : le cas d'usage qui mène un combat. Il crée le combat
+ * (graine de la source de graine, bulles déjà vues lues dans le stockage), reçoit les appuis datés au toucher, fait avancer le moteur à chaque échéance par
  * l'horloge de combat, joue les sons et les vibrations dès le jugement, et publie l'état et les
  * événements aux abonnés.
  *
@@ -90,41 +76,30 @@ export class BattleSession {
   /** Les reflets déjà joués ou passés, par attaque (`startedAt:index`). */
   private readonly doneGlints = new Set<string>();
   private heroHintPending = false;
-  private redatedPresses = 0;
-  private deltas: number[] = [];
-  private strikeDeltas: number[] = [];
   private disposed = false;
   private readonly reorderGuardMs: number;
   private readonly createBattle: BattleFactory;
 
   constructor(
     private readonly dependencies: BattleSessionDependencies,
-    {
-      reorderGuardMs = REORDER_GUARD_MS,
-      createBattle = startTrialBattle,
-    }: BattleSessionOptions = {},
+    { reorderGuardMs = REORDER_GUARD_MS, createBattle }: BattleSessionOptions,
   ) {
     this.reorderGuardMs = reorderGuardMs;
     this.createBattle = createBattle;
   }
 
-  /** Commence un nouveau combat (au montage de l'écran, ou « Rejouer »), même après `dispose`. */
+  /** Commence un nouveau combat (au montage de l'écran), même après `dispose`. */
   async start(): Promise<BattleSnapshot> {
-    // Un écran remonté (ou « Rejouer ») reprend une session arrêtée.
+    // Un écran remonté (l'ascension reprise après une pause) reprend une session arrêtée.
     this.disposed = false;
-    const [tuning, heroHint, defenseHint] = await Promise.all([
-      this.read(getTrialTuning, DEFAULT_TRIAL_TUNING),
+    const [heroHint, defenseHint] = await Promise.all([
       this.read((dependencies) => getBattleHint(dependencies, 'hero'), true),
       this.read((dependencies) => getBattleHint(dependencies, 'defense'), true),
     ]);
     this.heroHintPending = heroHint;
-    this.redatedPresses = 0;
-    this.deltas = [];
-    this.strikeDeltas = [];
     this.doneGlints.clear();
     const update = this.createBattle({
       seed: this.dependencies.seeds.next(),
-      tuning,
       defenseHint,
       at: this.dependencies.clock.now(),
     });
@@ -147,15 +122,15 @@ export class BattleSession {
 
   /** Un appui sur « Parade » ou « Esquive », daté à l'instant où le doigt s'est posé. */
   pressDefense(button: DefenseButton, touchedAt: number): void {
-    const battle = this.dated(touchedAt);
-    if (battle === null) return;
+    const battle = this.snapshot?.battle;
+    if (battle === undefined) return;
     this.apply(pressDefense(battle, { button, at: touchedAt }));
   }
 
   /** Un appui sur « Frapper », daté à l'instant où le doigt s'est posé. */
   pressStrike(touchedAt: number): void {
-    const battle = this.dated(touchedAt);
-    if (battle === null) return;
+    const battle = this.snapshot?.battle;
+    if (battle === undefined) return;
     this.apply(pressStrike(battle, { at: touchedAt }));
   }
 
@@ -188,14 +163,6 @@ export class BattleSession {
     this.apply(dismissDefenseHint(battle, this.dependencies.clock.now()));
   }
 
-  measures(): BattleMeasures {
-    return {
-      redatedPresses: this.redatedPresses,
-      deltas: [...this.deltas],
-      strikeDeltas: [...this.strikeDeltas],
-    };
-  }
-
   /** Arrête le combat : plus aucune échéance, plus aucun abonné. */
   dispose(): void {
     this.disposed = true;
@@ -204,14 +171,6 @@ export class BattleSession {
     this.cancelGlintTimer?.();
     this.cancelGlintTimer = null;
     this.listeners.clear();
-  }
-
-  /** Le combat en cours, après avoir compté un appui daté avant l'état du moteur. */
-  private dated(touchedAt: number): Battle | null {
-    const battle = this.snapshot?.battle;
-    if (battle === undefined) return null;
-    if (touchedAt < battle.now && !isInHitStop(battle, touchedAt)) this.redatedPresses += 1;
-    return battle;
   }
 
   private dismissHeroHintIfShown(): void {
@@ -247,10 +206,6 @@ export class BattleSession {
       const { sound, haptic } = feedbackFor(event);
       if (sound !== null) this.dependencies.sound.play(sound);
       if (haptic !== null) this.dependencies.haptics.play(haptic);
-      if (event.type === 'blowResolved' && event.delta !== null) this.deltas.push(event.delta);
-      if (event.type === 'strikeResolved' && event.delta !== null) {
-        this.strikeDeltas.push(event.delta);
-      }
     }
     this.snapshot = { battle, events, heroHint: this.heroHintShown(battle) };
     this.schedule(battle);
@@ -298,8 +253,4 @@ export class BattleSession {
 /** La clé d'un reflet : son attaque (son début) et sa place dans l'attaque. */
 function glintKey(step: AttackStep, index: number): string {
   return `${step.startedAt}:${index}`;
-}
-
-function isInHitStop(battle: Battle, at: number): boolean {
-  return battle.hitStop !== null && at >= battle.hitStop.at && at < battle.hitStop.until;
 }
