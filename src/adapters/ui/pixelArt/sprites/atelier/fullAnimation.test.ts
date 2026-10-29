@@ -1,4 +1,4 @@
-// Le contenu recopié de l'Atelier (#119, #137, #138, ADR 0010) : les animations complètes des
+// Le contenu recopié de l'Atelier (#119, #137, #138, #139, ADR 0010) : les animations complètes des
 // ennemis, les images validées des objets, et leur conversion en sprites.
 import { artPalette } from '../../artPalette';
 import type { Sprite } from '../Sprite';
@@ -9,9 +9,11 @@ import { GHOUL_ANIMATION } from './data/ghoul';
 import { ITEM_IMAGES } from './data/itemImages';
 import { MAD_VILLAGER_ANIMATION } from './data/madVillager';
 import { NECROMANCER_ANIMATION } from './data/necromancer';
+import { OSSUARY_WARDEN_ANIMATION } from './data/ossuaryWarden';
 import { SENTINEL_ANIMATION } from './data/sentinel';
 import { SKELETON_ANIMATION } from './data/skeleton';
 import { SPECTER_ANIMATION } from './data/specter';
+import { TWINS_ANIMATION } from './data/twins';
 import { WANDERER_ANIMATION } from './data/wanderer';
 import {
   animationSprite,
@@ -30,6 +32,8 @@ const ANIMATIONS = [
   ['specter', SPECTER_ANIMATION, 2],
   ['fallenKnight', FALLEN_KNIGHT_ANIMATION, 2],
   ['facelessPrior', FACELESS_PRIOR_ANIMATION, 2],
+  ['twins', TWINS_ANIMATION, 2],
+  ['ossuaryWarden', OSSUARY_WARDEN_ANIMATION, 2],
 ] as const;
 
 /**
@@ -158,7 +162,9 @@ describe.each([
   ['Specter', SPECTER_ANIMATION, [44, 52]],
   ['Fallen knight', FALLEN_KNIGHT_ANIMATION, [44, 54]],
   ['Faceless prior', FACELESS_PRIOR_ANIMATION, [52, 62]],
-] as const)('the %s in its cell of the battle (#138)', (_, animation, cell) => {
+  ['Twins', TWINS_ANIMATION, [54, 54]],
+  ['Ossuary warden', OSSUARY_WARDEN_ANIMATION, [52, 62]],
+] as const)('the %s in its cell of the battle (#138, #139)', (_, animation, cell) => {
   const full: FullAnimation<(typeof ENEMY_FRAMES)[number]> = animation;
 
   it('has a cell at its own size', () => {
@@ -181,6 +187,131 @@ describe.each([
         }
       }
       expect(anchors).toEqual(full.anchors[pose]);
+    }
+  });
+});
+
+// Les poses d'un coup (`attackPoses`, #139) : recopiées telles quelles, par type de coup.
+describe.each([
+  ['Twins', TWINS_ANIMATION, 18, ['basic', 'delayedPerilous']],
+  ['Ossuary warden', OSSUARY_WARDEN_ANIMATION, 16, ['double', 'perilous']],
+] as const)('the attack poses of the %s (#139)', (_, animation, tints, kinds) => {
+  const full: FullAnimation<(typeof ENEMY_FRAMES)[number]> = animation;
+  const attackPoses = Object.entries(full.attackPoses ?? {});
+
+  it('has a palette and a red palette of the same tints, and attack poses for its attack kinds', () => {
+    expect([full.pal.length, full.red?.length]).toEqual([tints, tints]);
+    expect(Object.keys(full.attackPoses ?? {}).sort()).toEqual([...kinds].sort());
+  });
+
+  it('gives each attack pose h lines of w characters of the palette, and its anchors', () => {
+    for (const [kind, poses] of attackPoses) {
+      expect([kind, Object.keys(poses.anchors).sort()]).toEqual([
+        kind,
+        Object.keys(poses.frames).sort(),
+      ]);
+      for (const [pose, rows] of Object.entries(poses.frames)) {
+        expect(ENEMY_FRAMES).toContain(pose);
+        expect([kind, pose, rows!.length]).toEqual([kind, pose, full.h]);
+        for (const row of rows!) {
+          expect([kind, pose, row.length]).toEqual([kind, pose, full.w]);
+          expect(row).toMatch(/^[.0-9a-z]*$/);
+          for (const char of row.replaceAll('.', '')) {
+            expect(parseInt(char, 36)).toBeLessThan(full.pal.length);
+          }
+        }
+      }
+      const inside = ([x, y]: readonly [number, number]) =>
+        x >= 0 && y >= 0 && x < full.w && y < full.h;
+      for (const { eye, head, tips } of Object.values(poses.anchors)) {
+        expect(tips).toHaveLength(2);
+        expect([eye, head, ...tips].map(inside)).toEqual([true, true, true, true]);
+      }
+    }
+  });
+
+  it('draws each attack pose itself, never as the pose of the full animation nor one shifted', () => {
+    for (const [kind, poses] of attackPoses) {
+      for (const [pose, rows] of Object.entries(poses.frames)) {
+        expect([kind, pose, rows]).not.toEqual([kind, pose, full.frames[pose as 'idle0']]);
+        const own = { ...full, frames: { ...full.frames, [pose]: rows } };
+        const sprite = animationSprite(own, pose as 'idle0').sprite;
+        for (const other of ENEMY_FRAMES) {
+          const target = animationSprite(full, other).sprite.pixels;
+          for (const [dx, dy] of [
+            [1, 0],
+            [-1, 0],
+            [0, 1],
+            [0, -1],
+          ] as const) {
+            expect([kind, pose, other, dx, dy, shifted(sprite, dx, dy)]).not.toEqual([
+              kind,
+              pose,
+              other,
+              dx,
+              dy,
+              target,
+            ]);
+          }
+        }
+      }
+    }
+  });
+});
+
+describe('the reach and the lift of the attack poses (#139)', () => {
+  it('names the moves of the Atelier, one per attack kind', () => {
+    expect([
+      TWINS_ANIMATION.attackPoses.basic.move,
+      TWINS_ANIMATION.attackPoses.delayedPerilous.move,
+      OSSUARY_WARDEN_ANIMATION.attackPoses.double.move,
+      OSSUARY_WARDEN_ANIMATION.attackPoses.perilous.move,
+    ]).toEqual(["Carreau d'arbalète", 'Onde de choc', 'Deux tibias', 'Mise en ossuaire']);
+  });
+
+  it('gives the poses of the crossbow bolt and of the shockwave of the Twins', () => {
+    const { basic, delayedPerilous } = TWINS_ANIMATION.attackPoses;
+    expect(Object.keys(basic.frames)).toEqual(['ant0', 'ant1', 'ant2', 'impact', 'lunge', 'rec0']);
+    expect(Object.keys(delayedPerilous.frames)).toEqual([
+      'ant0',
+      'ant1',
+      'ant2',
+      'hes',
+      'impact',
+      'lunge',
+    ]);
+    // L'œil du Carreau d'arbalète est sur l'arbalète, tenue au bout du bras.
+    expect(basic.anchors.ant2.eye).toEqual([6, 29]);
+  });
+
+  it('reaches half of the way for the crossbow bolt only, and lifts the shockwave pose by pose', () => {
+    const full: readonly FullAnimation[] = [TWINS_ANIMATION, OSSUARY_WARDEN_ANIMATION];
+    const reaches = full.flatMap((animation) =>
+      Object.entries(animation.attackPoses ?? {}).map(([kind, poses]) => [kind, poses.reach]),
+    );
+    expect(reaches).toEqual([
+      ['basic', 0.5],
+      ['delayedPerilous', undefined],
+      ['double', undefined],
+      ['perilous', undefined],
+    ]);
+    expect(TWINS_ANIMATION.attackPoses.delayedPerilous.lift).toEqual({
+      ant0: 0,
+      ant1: 6,
+      ant2: 14,
+      hes: 15,
+      lunge: 5,
+      impact: 0,
+    });
+    const lifts = full.flatMap((animation) =>
+      Object.values(animation.attackPoses ?? {}).filter((poses) => poses.lift !== undefined),
+    );
+    expect(lifts).toHaveLength(1);
+  });
+
+  it('has no attack poses for the other entities of the Atelier', () => {
+    for (const [name, animation] of ANIMATIONS.slice(0, -2)) {
+      expect([name, Object.hasOwn(animation, 'attackPoses')]).toEqual([name, false]);
     }
   });
 });
@@ -323,6 +454,108 @@ describe('a pose in its red palette (#138)', () => {
     expect(
       animationSprite(filled(44, 52, ['#ff3b3b']), 'ant1', undefined, { red: true }).sprite.pixels,
     ).toEqual(new Uint8Array(44 * 52).fill(22));
+  });
+});
+
+describe('a pose of an attack (#139)', () => {
+  /** Une animation pleine de la teinte 0, avec des poses d'un coup simple pleines de la teinte 1. */
+  function withAttack(w: number, h: number, rows?: readonly string[]): FullAnimation {
+    const own = rows ?? Array.from({ length: h }, () => '1'.repeat(w));
+    return {
+      ...filled(w, h, ['#ff3b3b', '#ffd0d8']),
+      pal: ['#06070c', '#bfe6da'],
+      attackPoses: {
+        basic: {
+          move: 'Coup',
+          frames: { ant2: own },
+          anchors: { ant2: { eye: [1, 2], head: [3, 4], tips: [[5, 6]] } },
+        },
+      },
+    };
+  }
+
+  it('paints a pose of the attack line for line, its anchors moved in the cell', () => {
+    const { sprite, anchors } = animationSprite(withAttack(44, 52), 'ant2', [52, 62], {
+      attack: 'basic',
+    });
+    expect([at(sprite, 4, 10), at(sprite, 47, 61), at(sprite, 3, 61)]).toEqual([
+      codeOf('#bfe6da'),
+      codeOf('#bfe6da'),
+      0,
+    ]);
+    expect(anchors).toEqual({ eye: [5, 12], head: [7, 14], tips: [[9, 16]] });
+    for (const pose of ['basic', 'delayedPerilous'] as const) {
+      const poses = TWINS_ANIMATION.attackPoses[pose];
+      for (const [frame, rows] of Object.entries(poses.frames)) {
+        const shown = animationSprite(TWINS_ANIMATION, frame as 'ant0', undefined, {
+          attack: pose,
+        });
+        for (let y = 0; y < 54; y += 1) {
+          for (let x = 0; x < 54; x += 1) {
+            const expected = expectedCode(rows, TWINS_ANIMATION.pal, x, y);
+            if (at(shown.sprite, x, y) !== expected) throw new Error(`${frame} (${x}, ${y})`);
+          }
+        }
+        expect(shown.anchors).toEqual(poses.anchors[frame as 'ant0']);
+      }
+    }
+  });
+
+  it('takes a pose the attack does not have from the full animation', () => {
+    const animation = withAttack(44, 52);
+    for (const frame of ['ant1', 'rec1', 'idle0'] as const) {
+      expect(animationSprite(animation, frame, undefined, { attack: 'basic' })).toEqual(
+        animationSprite(animation, frame),
+      );
+    }
+    const twins: FullAnimation = TWINS_ANIMATION;
+    expect(animationSprite(twins, 'rec0', undefined, { attack: 'delayedPerilous' })).toEqual(
+      animationSprite(twins, 'rec0'),
+    );
+  });
+
+  it('takes every pose from the full animation for an attack kind without attack poses', () => {
+    const animation = withAttack(44, 52);
+    expect(animationSprite(animation, 'ant2', undefined, { attack: 'double' })).toEqual(
+      animationSprite(animation, 'ant2'),
+    );
+    expect(animationSprite(animation, 'ant2', undefined, { attack: null })).toEqual(
+      animationSprite(animation, 'ant2'),
+    );
+    expect(animationSprite(GHOUL_ANIMATION, 'ant2', undefined, { attack: 'basic' })).toEqual(
+      animationSprite(GHOUL_ANIMATION, 'ant2'),
+    );
+    expect(animationSprite(withAttack(44, 52), 'ant2', undefined, { attack: 'basic' })).not.toEqual(
+      animationSprite(withAttack(44, 52), 'ant2'),
+    );
+  });
+
+  it('paints a pose of the attack with the red palette, tint for tint', () => {
+    const { sprite } = animationSprite(withAttack(44, 52), 'ant2', undefined, {
+      attack: 'basic',
+      red: true,
+    });
+    expect(sprite.pixels).toEqual(new Uint8Array(44 * 52).fill(codeOf('#ffd0d8')));
+    const { perilous } = OSSUARY_WARDEN_ANIMATION.attackPoses;
+    const shown = animationSprite(OSSUARY_WARDEN_ANIMATION, 'lunge', undefined, {
+      attack: 'perilous',
+      red: true,
+    });
+    for (let y = 0; y < 62; y += 1) {
+      for (let x = 0; x < 52; x += 1) {
+        const expected = expectedCode(perilous.frames.lunge, OSSUARY_WARDEN_ANIMATION.red, x, y);
+        if (at(shown.sprite, x, y) !== expected) throw new Error(`lunge (${x}, ${y})`);
+      }
+    }
+  });
+
+  it('refuses a pose of the attack of another size than the entity', () => {
+    const lines = (w: number, h: number) => Array.from({ length: h }, () => '1'.repeat(w));
+    for (const rows of [lines(44, 51), lines(43, 52), [...lines(44, 51), '1'.repeat(45)]]) {
+      expect(() =>
+        animationSprite(withAttack(44, 52, rows), 'ant2', undefined, { attack: 'basic' }),
+      ).toThrow('The pose ant2 is not 44 × 52');
+    }
   });
 });
 

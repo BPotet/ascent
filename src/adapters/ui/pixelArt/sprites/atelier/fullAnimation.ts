@@ -1,3 +1,4 @@
+import type { AttackKind } from '../../../../../domain/battle/attacks';
 import { artPalette } from '../../artPalette';
 import { grid, type Point, type Sprite } from '../Sprite';
 
@@ -24,6 +25,26 @@ export interface AnimationAnchors {
 }
 
 /**
+ * Les poses d'un coup (`attackPoses`, voir `docs/glossary.md`) d'une entité, pour un type de coup :
+ * les poses propres à ce coup, qui remplacent pour lui celles de son animation complète, avec
+ * leurs ancrages, à la taille de l'entité (`w` × `h`).
+ */
+export interface AttackPoses<Frame extends string = string> {
+  /** Le nom du coup dans l'Atelier ; il sert à la lecture des données et n'est jamais affiché. */
+  readonly move: string;
+  readonly frames: Readonly<Partial<Record<Frame, readonly string[]>>>;
+  /** Les ancrages de chaque pose du coup : une entrée par pose de `frames`. */
+  readonly anchors: Readonly<Partial<Record<Frame, AnimationAnchors>>>;
+  /**
+   * La portée du coup : un facteur sur son chemin vers le héros, de la fin du recul de
+   * l'anticipation au retour (ruée, impact, récupération comprises), l'avancée exceptée. Absente, 1.
+   */
+  readonly reach?: number;
+  /** L'élévation de chaque pose, en pixels d'art entiers, vers le haut. Absente, 0. */
+  readonly lift?: Readonly<Partial<Record<Frame, number>>>;
+}
+
+/**
  * L'animation complète (`FullAnimation`, voir `docs/glossary.md`) d'un ennemi ou d'un héros : ses
  * poses, leurs ancrages, sa palette et sa palette rouge (celle du coup imparable, mêmes indices
  * que `pal`).
@@ -39,6 +60,8 @@ export interface FullAnimation<Frame extends string = string> {
   readonly red?: readonly string[];
   readonly frames: Readonly<Record<Frame, readonly string[]>>;
   readonly anchors: Readonly<Record<Frame, AnimationAnchors>>;
+  /** Les poses d'un coup, par type de coup : absentes pour la plupart des entités (#139). */
+  readonly attackPoses?: Readonly<Partial<Record<AttackKind, AttackPoses<Frame>>>>;
 }
 
 /** L'image d'un asset validé (`AssetImage`) : un objet, une image fixe. */
@@ -99,25 +122,37 @@ export function assetSprite(image: AssetImage): Sprite {
  * par défaut) : une pose plus petite y est centrée en largeur et calée en bas, sans mise à
  * l'échelle, et ses ancrages sont décalés d'autant. Une pose plus grande que la case est refusée.
  * Avec `red`, la pose est peinte avec sa palette rouge, même indice pour même pixel ; sans palette
- * rouge, elle garde sa palette.
+ * rouge, elle garde sa palette. Avec `attack`, une pose des poses de ce coup (`attackPoses`) est
+ * prise à la place de celle de l'animation complète, avec ses ancrages ; une pose absente du coup
+ * vient de l'animation complète. Une pose du coup qui n'est pas à la taille de l'entité est
+ * refusée.
  */
 export function animationSprite<Frame extends string>(
   animation: FullAnimation<Frame>,
   frame: Frame,
   [width, height]: Point = battleCell(animation),
-  { red = false }: { readonly red?: boolean } = {},
+  {
+    red = false,
+    attack = null,
+  }: { readonly red?: boolean; readonly attack?: AttackKind | null } = {},
 ): { readonly sprite: Sprite; readonly anchors: AnimationAnchors } {
-  const rows = Object.hasOwn(animation.frames, frame) ? animation.frames[frame] : undefined;
+  const own = attack === null ? undefined : animation.attackPoses?.[attack];
+  const ownRows = own?.frames[frame];
+  const rows =
+    ownRows ?? (Object.hasOwn(animation.frames, frame) ? animation.frames[frame] : undefined);
   if (rows === undefined) throw new Error(`The animation has no pose ${frame}`);
   if (animation.w > width || animation.h > height) {
     throw new Error(`The poses (${animation.w} × ${animation.h}) are larger than the cell`);
+  }
+  if (rows.length !== animation.h || rows.some((row) => row.length !== animation.w)) {
+    throw new Error(`The pose ${frame} is not ${animation.w} × ${animation.h}`);
   }
   const left = Math.floor((width - animation.w) / 2);
   const top = height - animation.h;
   const sprite = grid(width, height);
   const palette = red && animation.red !== undefined ? animation.red : animation.pal;
   paint(sprite, rows, palette, left, top);
-  const { eye, head, tips } = animation.anchors[frame];
+  const { eye, head, tips } = own?.anchors[frame] ?? animation.anchors[frame];
   const moved = ([x, y]: Point): Point => [x + left, y + top];
   return { sprite, anchors: { eye: moved(eye), head: moved(head), tips: tips.map(moved) } };
 }

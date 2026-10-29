@@ -381,11 +381,12 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and("le Nécromancien n'est plus dessiné avec son dessin d'avant", () => {
-    // Le dessin d'avant ne sert plus qu'au sprite provisoire de la Gardienne des ossuaires (#139).
+    // Le dessin d'avant est supprimé avec tout le dessin des ennemis par le code (#139) : le
+    // liseré d'un dessin, ajouté au palier 2, ne s'ajoute plus, et chaque pose est celle recopiée.
     for (const frame of ENEMY_FRAMES) {
-      expect([frame, battleSprite('necromancer', frame).sprite]).not.toEqual([
+      expect([frame, battleSprite('necromancer', frame, { tier: 2 }).sprite]).toEqual([
         frame,
-        battleSprite('ossuaryWarden', frame).sprite,
+        copied('necromancer', frame),
       ]);
     }
   });
@@ -611,10 +612,10 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   // --- Les entités hors de cette story ---
 
   given(
-    /^(le Spectre, le Chevalier déchu, Les Jumeaux, le Prieur sans visage, la Gardienne des ossuaires), (la Sentinelle) ou (l'Errante)$/,
+    /^(le Spectre, le Chevalier déchu, le Prieur sans visage), (la Sentinelle) ou (l'Errante)$/,
     (enemies: string, sentinel: string, wanderer: string) => {
       world.kinds = enemies.split(', ').map((name) => KIND_OF_NAME[name.replace(/^(le|la) /, '')]!);
-      expect(world.kinds).toHaveLength(5);
+      expect(world.kinds).toHaveLength(3);
       world.heroes = [sentinel, wanderer].map((name) => HERO_OF_NAME[name.toLowerCase()]!);
       expect(world.heroes).toEqual(['sentinel', 'wanderer']);
     },

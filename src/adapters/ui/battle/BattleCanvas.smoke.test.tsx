@@ -7,7 +7,7 @@ import '@shopify/react-native-skia/jestSetup';
 
 import { act, render, screen } from '@testing-library/react-native';
 
-import { poseAnchors } from '../pixelArt/sprites/battle/battleCharacters';
+import { attackMotion, poseAnchors } from '../pixelArt/sprites/battle/battleCharacters';
 import { BattleScene, prepareBattleScene, type BattleSceneProps } from './BattleCanvas';
 import { enemyPose } from './scene/enemyPose';
 import { sceneGeometry, spriteOrigin } from './scene/sceneGeometry';
@@ -91,12 +91,16 @@ describe('BattleScene with Skia', () => {
     expect(prepareBattleScene()).toBe(prepared);
   });
 
-  it('prepares the anchors of each pose: those of the full animation, or those of today', () => {
+  it('prepares the anchors of each pose: those of the full animation, pose by pose', () => {
     const { anchors } = prepareBattleScene();
 
     expect(anchors.ghoul.hurt).toEqual(poseAnchors('ghoul', 'hurt'));
     expect(anchors.madVillager.lunge).toEqual(poseAnchors('madVillager', 'lunge'));
-    expect(anchors.ossuaryWarden.idle0).toEqual(anchors.ossuaryWarden.ant2);
+    // Les Jumeaux et la Gardienne ne sont plus dessinés par le code (#139) : leurs ancrages ne sont
+    // plus ceux de `ant2` pour toute pose, mais ceux de chaque pose recopiée.
+    expect(anchors.ossuaryWarden.idle0).toEqual(poseAnchors('ossuaryWarden', 'idle0'));
+    expect(anchors.ossuaryWarden.idle0).not.toEqual(anchors.ossuaryWarden.ant2);
+    expect(anchors.twins.down).toEqual(poseAnchors('twins', 'down'));
   });
 
   it('mounts the Ghoul and the Mad villager with their full animation, one of them stunned', async () => {
@@ -144,7 +148,37 @@ describe('BattleScene with Skia', () => {
     ]).toEqual([44, 54]);
   });
 
-  it.each(['facelessPrior', 'fallenKnight'] as const)(
+  it('prepares the Twins in a cell of 54 × 54 and the Ossuary warden in one of 52 × 62, with their attack poses (#139)', () => {
+    const { characters, attackAnchors, motions } = prepareBattleScene();
+
+    expect([characters.twins.table.cellWidth, characters.twins.table.cellHeight]).toEqual([54, 54]);
+    expect(characters.twins.image?.width()).toBe(8 * 54);
+    expect([
+      characters.ossuaryWarden.table.cellWidth,
+      characters.ossuaryWarden.table.cellHeight,
+    ]).toEqual([52, 62]);
+    expect(Object.keys(characters.twins.table.attacks).sort()).toEqual([
+      'basic',
+      'delayedPerilous',
+    ]);
+    expect(attackAnchors.twins.basic?.ant2).toEqual(poseAnchors('twins', 'ant2', 'basic'));
+    expect(attackAnchors.ossuaryWarden.perilous?.lunge).toEqual(
+      poseAnchors('ossuaryWarden', 'lunge', 'perilous'),
+    );
+    expect(Object.keys(attackAnchors.twins.delayedPerilous ?? {}).sort()).toEqual([
+      'ant0',
+      'ant1',
+      'ant2',
+      'hes',
+      'impact',
+      'lunge',
+    ]);
+    expect(attackAnchors.ghoul).toEqual({});
+    expect(motions.twins).toBe(attackMotion('twins'));
+    expect(motions.specter).toEqual({});
+  });
+
+  it.each(['facelessPrior', 'fallenKnight', 'twins', 'ossuaryWarden'] as const)(
     'mounts the %s alone, on the single pedestal, preparing its perilous attack',
     async (kind) => {
       await render(
@@ -351,6 +385,105 @@ describe('BattleScene: the glint and the stars follow the displayed pose', () =>
     expect(effectsPlaced()).toEqual([
       [2, 0, origin.x + 2 * x - side, origin.y + 2 * (y - 4) - side],
     ]);
+  });
+
+  describe('the Twins alone, with their attack poses (#139)', () => {
+    const single = sceneGeometry(390, 440, 1);
+    const { sprite, reach } = single.enemies[0]!;
+    const origin = spriteOrigin(sprite, 54, 54);
+    const motion = attackMotion('twins');
+
+    /** L'action des Jumeaux : le Carreau d'arbalète ou l'Onde de choc, préparés à 1 000 ms. */
+    function twinsAttack(attack: 'basic' | 'delayedPerilous'): SceneTimeline {
+      const impact = attack === 'basic' ? 2_300 : 2_700;
+      return {
+        enemy: 0,
+        kind: 'attack',
+        attack,
+        stepInAt: 1_000,
+        windUpAt: 1_000,
+        windUpMs: impact - 1_000,
+        until: impact + 160,
+        impacts: [impact],
+        feintAt: null,
+        glints: [{ at: impact - 150, kind: attack === 'basic' ? 'white' : 'red', impact: 0 }],
+        hitStopAt: 0,
+        hitStopUntil: 0,
+      };
+    }
+
+    async function show(timeline: SceneTimeline, now: number) {
+      await render(
+        <BattleScene
+          {...props({
+            geometry: single,
+            enemies: [
+              {
+                ...ENEMIES[0]!,
+                kind: 'twins',
+                target: false,
+                dimmed: false,
+                active: true,
+                down: false,
+              },
+            ],
+            timeline,
+            spark: null,
+            uiNow: () => now,
+          })}
+        />,
+      );
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+      // Le dernier rendu : les effets, les Jumeaux, le héros.
+      const [, body] = buffers.slice(-3);
+      return written(body)[0]!;
+    }
+
+    /** La place des Jumeaux à une image : leur case, leur ruée et leur élévation, en dp. */
+    function placed(timeline: SceneTimeline, now: number) {
+      const pose = enemyPose(timeline, now, false, motion);
+      return {
+        pose,
+        x: origin.x + Math.round((reach.x * pose.reach + pose.jitter) / 2) * 2,
+        y: origin.y + Math.round((reach.y * pose.reach) / 2) * 2 - pose.lift * 2,
+      };
+    }
+
+    it('lifts the Twins by the lift of the shown pose of the shockwave, 2 dp per art pixel', async () => {
+      const shockwave = twinsAttack('delayedPerilous');
+      // L'hésitation, puis la ruée : élevés de 15, puis de 5 pixels d'art.
+      for (const now of [1_000 + 9 * 83 + 1, 2_650]) {
+        const { pose, x, y } = placed(shockwave, now);
+        expect(pose.poses).toBe('delayedPerilous');
+        expect(pose.lift).toBeGreaterThan(0);
+        expect(await show(shockwave, now)).toEqual([2, 0, x, y]);
+      }
+    });
+
+    it('places the glint of the crossbow bolt on the crossbow, from the anchors of the attack pose', async () => {
+      const bolt = twinsAttack('basic');
+      const now = bolt.glints[0]!.at + 10;
+      const { pose, x, y } = placed(bolt, now);
+      expect([pose.frame, pose.poses, pose.lift]).toEqual(['ant2', 'basic', 0]);
+      expect(await show(bolt, now)).toEqual([2, 0, x, y]);
+      const [eyeX, eyeY] = poseAnchors('twins', 'ant2', 'basic').eye!;
+      expect([eyeX, eyeY]).not.toEqual(poseAnchors('twins', 'ant2').eye);
+      const side = table.glintWhite[2];
+      expect(effectsPlaced()).toEqual([[2, 0, x + 2 * eyeX + 1 - side, y + 2 * eyeY + 1 - side]]);
+    });
+
+    it('lifts the red glint of the shockwave with the Twins', async () => {
+      const shockwave = twinsAttack('delayedPerilous');
+      const now = shockwave.glints[0]!.at + 10;
+      const { pose, x, y } = placed(shockwave, now);
+      expect([pose.frame, pose.poses, pose.lift]).toEqual(['ant2', 'delayedPerilous', 14]);
+      expect(await show(shockwave, now)).toEqual([2, 0, x, y]);
+      const [eyeX, eyeY] = poseAnchors('twins', 'ant2', 'delayedPerilous').eye!;
+      const side = table.glintRed[2];
+      expect(effectsPlaced()).toEqual([[2, 0, x + 2 * eyeX + 1 - side, y + 2 * eyeY + 1 - side]]);
+    });
   });
 
   it('places the stars on the head of the stunned Mad villager: hurt for 200 ms, then down', async () => {

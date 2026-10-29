@@ -289,8 +289,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     const [kind] = world.kinds as [EnemyKind];
     for (const frame of ENEMY_FRAMES) {
       // Plus aucun dessin par le code, ni l'ancien ni un autre : le liseré d'un dessin, ajouté au
-      // palier 2, ne s'y ajoute plus. Le dessin du Spectre (#81) n'existe plus ; l'ancien dessin
-      // de la Goule ne sert plus qu'à la silhouette des Jumeaux.
+      // palier 2, ne s'y ajoute plus. Le dessin des ennemis par le code n'existe plus (#139).
       expect(battleSprite(kind, frame, { tier: 2 }).sprite).toEqual(
         battleSprite(kind, frame).sprite,
       );
@@ -566,19 +565,16 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   // --- Les entités hors de cette story ---
 
-  given(
-    "Les Jumeaux, la Gardienne des ossuaires, le Squelette, le Nécromancien, la Sentinelle ou l'Errante",
-    () => {
-      world.kinds = ['twins', 'ossuaryWarden', 'skeleton', 'necromancer'];
-      // Les héroïnes ne sont pas des ennemis : aucune animation d'ennemi ne les touche.
-      expect(ANIMATED_ENEMIES).not.toContain('sentinel');
-      expect(ANIMATED_ENEMIES).not.toContain('wanderer');
-    },
-  );
+  given("le Squelette, le Nécromancien, la Sentinelle ou l'Errante", () => {
+    world.kinds = ['skeleton', 'necromancer'];
+    // Les héroïnes ne sont pas des ennemis : aucune animation d'ennemi ne les touche.
+    expect(ANIMATED_ENEMIES).not.toContain('sentinel');
+    expect(ANIMATED_ENEMIES).not.toContain('wanderer');
+  });
 
   when('il apparaît dans la tour', async () => {
-    world.scene = await showBattle(['twins', 'ossuaryWarden', 'skeleton']);
-    expect(world.scene).toHaveLength(3);
+    world.scene = await showBattle(['skeleton', 'necromancer']);
+    expect(world.scene).toHaveLength(2);
   });
 
   then("il garde son sprite actuel ou sa silhouette provisoire, comme aujourd'hui", () => {
@@ -596,27 +592,6 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       }
     }
   });
-
-  and(
-    "les ennemis encore dessinés gardent leurs poses rouges, leur liseré et leur traînée d'aujourd'hui",
-    () => {
-      // Les silhouettes provisoires (#106, #108) restent sombres, rouge ou non, comme aujourd'hui.
-      const silhouettes: readonly EnemyKind[] = ['twins', 'skeleton'];
-      const drawn = world.kinds.filter((kind) => !ANIMATED_ENEMIES.includes(kind));
-      for (const kind of drawn) {
-        const plain = battleSprite(kind, 'ant1').sprite;
-        const rimmed = battleSprite(kind, 'ant1', { tier: 2 }).sprite;
-        expect([kind, rimmed]).not.toEqual([kind, plain]);
-        if (!silhouettes.includes(kind)) {
-          const red = battleSprite(kind, 'ant1', { tier: 2, red: true }).sprite;
-          expect([kind, red]).not.toEqual([kind, rimmed]);
-        }
-        const lunge = battleSprite(kind, 'lunge', { tier: 2, red: true }).sprite.pixels;
-        // La traînée de la ruée, dans le rouge clair du coup imparable (30).
-        expect([kind, lunge.includes(30)]).toEqual([kind, true]);
-      }
-    },
-  );
 
   // --- Jamais d'échelle fractionnaire ---
 

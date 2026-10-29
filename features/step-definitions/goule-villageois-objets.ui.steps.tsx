@@ -71,9 +71,6 @@ const ANIMATIONS: Readonly<Record<Animated, FullAnimation<EnemyFrame>>> = {
   madVillager: MAD_VILLAGER_ANIMATION,
 };
 const ANIMATED: readonly Animated[] = ['ghoul', 'madVillager'];
-const KIND_OF_NAME: Readonly<Record<string, EnemyKind>> = Object.fromEntries(
-  Object.entries(ENEMY_NAMES).map(([kind, name]) => [name, kind as EnemyKind]),
-);
 const KIND_OF_ITEM: Readonly<Record<string, ItemKind>> = Object.fromEntries(
   (Object.keys(ITEM_IMAGES) as ItemKind[]).map((kind) => [itemText(kind).split(' · ')[0], kind]),
 );
@@ -676,22 +673,6 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     }
   });
 
-  and(
-    "les ennemis sans animation complète validée gardent leur liseré et leur traînée d'aujourd'hui",
-    () => {
-      const count = (sprite: Sprite, ...codes: number[]) =>
-        Array.from(sprite.pixels).filter((code) => codes.includes(code)).length;
-      // La Gardienne des ossuaires, dessinée par le code (#138) : liseré d'or, traînée de l'orbe.
-      const gold = (tier: 0 | 2) =>
-        count(battleSprite('ossuaryWarden', 'ant1', { tier }).sprite, 7, 8);
-      expect(gold(2)).toBeGreaterThan(gold(0));
-      const red = { tier: 2, red: true } as const;
-      const lunge = battleSprite('ossuaryWarden', 'lunge', red).sprite;
-      const still = battleSprite('ossuaryWarden', 'ant2', red).sprite;
-      expect(count(lunge, 30)).toBeGreaterThan(count(still, 30));
-    },
-  );
-
   // --- « Objet trouvé » ---
 
   when(/^l'objet trouvé est ([^,]+)$/, async (name: string) => {
@@ -719,59 +700,6 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     const description = DESCRIPTION_OF_ITEM[world.item!] ?? null;
     expect(itemDescription(world.item!)).toBe(description);
     if (description !== null) expect(screen.getByText(description)).toBeOnTheScreen();
-  });
-
-  // --- Les ennemis sans animation complète ---
-
-  given(
-    /^un ennemi, une Élite ou un boss dont l'animation complète n'est pas validée \((.+)\)$/,
-    (names: string) => {
-      world.kinds = names.split(', ').map((name) => KIND_OF_NAME[name.replace(/^(le|la) /, '')]!);
-      expect(world.kinds).toHaveLength(2);
-    },
-  );
-
-  when('il apparaît dans la tour', async () => {
-    const labels: string[] = [];
-    for (let start = 0; start < world.kinds.length; start += 3) {
-      const group = world.kinds.slice(start, start + 3);
-      await showBattle(group);
-      for (const kind of group) {
-        labels.push(screen.getByTestId(`enemy-${kind}`).props.accessibilityLabel as string);
-      }
-      await cleanup();
-    }
-    world.read.labels = labels;
-  });
-
-  then('il garde son sprite actuel ou sa silhouette provisoire', () => {
-    for (const kind of world.kinds) {
-      // Dessiné par le code : il garde son liseré, absent des poses recopiées.
-      expect(battleSprite(kind, 'ant1', { tier: 2 }).sprite).not.toEqual(
-        battleSprite(kind, 'ant1').sprite,
-      );
-    }
-  });
-
-  and("Les Jumeaux gardent leur silhouette tirée de l'ancien dessin de la Goule", () => {
-    const shape = (kind: EnemyKind, frame: EnemyFrame) =>
-      Array.from(battleSprite(kind, frame).sprite.pixels, (code) => (code === 0 ? 0 : 1));
-    for (const frame of ENEMY_FRAMES) {
-      // Tirée de l'ancien dessin : ni de l'animation complète de la Goule, ni du dessin du
-      // Nécromancien (#81) que garde la Gardienne, tous deux à la même taille.
-      expect(shape('twins', frame)).toHaveLength(shape('ghoul', frame).length);
-      expect(shape('twins', frame)).not.toEqual(shape('ghoul', frame));
-      expect(shape('twins', frame)).toHaveLength(shape('ossuaryWarden', frame).length);
-      expect(shape('twins', frame)).not.toEqual(shape('ossuaryWarden', frame));
-    }
-  });
-
-  and('son nom et ses chiffres restent affichés', () => {
-    world.kinds.forEach((kind, index) => {
-      const { maxHp } = ENEMIES[kind];
-      expect(world.read.labels[index]).toContain(ENEMY_NAMES[kind]);
-      expect(world.read.labels[index]).toContain(`${maxHp} PV sur ${maxHp}`);
-    });
   });
 
   // --- Les héros ---

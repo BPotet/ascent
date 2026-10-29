@@ -69,8 +69,9 @@ Fonctionnalité: Le Squelette et le Nécromancien animés, et l'image de l'Armur
     Quand il prépare un coup
     Alors aucune pose rouge n'est jouée
 
+  # Ajusté par #139 : Les Jumeaux et la Gardienne des ossuaires ont leur animation complète.
   Scénario: Limite — les entités hors de cette story
-    Étant donné le Spectre, le Chevalier déchu, Les Jumeaux, le Prieur sans visage, la Gardienne des ossuaires, la Sentinelle ou l'Errante
+    Étant donné le Spectre, le Chevalier déchu, le Prieur sans visage, la Sentinelle ou l'Errante
     Quand il apparaît dans la tour
     Alors il garde son sprite actuel ou sa silhouette provisoire, comme aujourd'hui
 
