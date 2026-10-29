@@ -105,9 +105,11 @@ leur animation complète, recopiée comme au § 1 (`atelier/data/twins.ts`,
   l'ennemi a des poses d'un coup pour ce type de coup et que l'image en fait partie : anticipation,
   hésitation, ruée, impact, récupération, 2ᵉ segment d'une double frappe et reflet tenu compris.
   Jamais pendant l'avancée (le type de coup reste caché, C2.8), une Garde, un Relever ou au repos.
-- **Portée.** `reach` remplace le haut de la ruée (0,85) pour ce coup : la ruée va jusqu'à
-  `reach`, l'impact s'y tient, puis la récupération revient comme avant. Le Carreau d'arbalète
-  s'arrête à mi-chemin (0,5). L'avancée ne change pas.
+- **Portée.** `reach` multiplie le chemin du coup vers le héros, comme dans l'aperçu de l'Atelier
+  (1 par défaut). L'avancée ne change pas : le type de coup n'y est pas connu (C2.8). Le recul de
+  l'anticipation part de l'avancée (0,3), sans saut, jusqu'à `(0,3 − 0,14) × reach` ; la ruée,
+  l'impact, la récupération, la fausse ruée et le retour sont multipliés par `reach`. Pour le
+  Carreau d'arbalète (0,5) : recul 0,08, impact 0,425, fin de la récupération 0,15.
 - **§ 3 Élévation.** `lift` est un décalage de la scène vers le haut, à 2 dp par pixel d'art : il
   ne grandit pas la case (`battleCell`). Le reflet suit, puisqu'il part de la place de l'image. En
   mouvement réduit, la portée est au quart comme avant, l'élévation au quart arrondi au pixel d'art.
