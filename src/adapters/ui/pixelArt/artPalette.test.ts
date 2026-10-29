@@ -19,11 +19,13 @@ describe('artPalette', () => {
   const { roles, tints } = artPalette;
 
   it('keeps the tints of the tower prototype, 0 being transparent', () => {
-    expect(tints).toHaveLength(31);
+    expect(tints).toHaveLength(32);
     expect(tints[0]).toBeNull();
     expect(tints[1]).toBe('#06070C');
     expect(tints[8]).toBe('#F2D49B');
     expect(tints[30]).toBe('#FF8E8E');
+    // La palette rouge du Chevalier déchu et du Prieur sans visage (#138), ajoutée en fin.
+    expect(tints[31]).toBe('#5A1420');
     tints.slice(1).forEach((tint) => expect(tint).toMatch(/^#[0-9A-F]{6}$/));
   });
 

@@ -10,7 +10,7 @@ import { act, render, screen } from '@testing-library/react-native';
 import { poseAnchors } from '../pixelArt/sprites/battle/battleCharacters';
 import { BattleScene, prepareBattleScene, type BattleSceneProps } from './BattleCanvas';
 import { enemyPose } from './scene/enemyPose';
-import { sceneGeometry } from './scene/sceneGeometry';
+import { sceneGeometry, spriteOrigin } from './scene/sceneGeometry';
 import type { SceneEnemy, SceneTimeline } from './sceneTypes';
 
 // Les tampons de transformations de l'`Atlas`, remplacés dans le dernier bloc de tests : chaque
@@ -93,7 +93,7 @@ describe('BattleScene with Skia', () => {
 
     expect(anchors.ghoul.hurt).toEqual(poseAnchors('ghoul', 'hurt'));
     expect(anchors.madVillager.lunge).toEqual(poseAnchors('madVillager', 'lunge'));
-    expect(anchors.specter.idle0).toEqual(anchors.specter.ant2);
+    expect(anchors.ossuaryWarden.idle0).toEqual(anchors.ossuaryWarden.ant2);
   });
 
   it('mounts the Ghoul and the Mad villager with their full animation, one of them stunned', async () => {
@@ -126,6 +126,37 @@ describe('BattleScene with Skia', () => {
 
     expect(drawnTypes()).toContain('skAtlas');
   });
+
+  it('prepares the atlas of each enemy at the size of its cell: 52 × 62 for the Faceless prior (#138)', () => {
+    const { characters } = prepareBattleScene();
+
+    expect(characters.facelessPrior.image?.width()).toBe(8 * 52);
+    expect([
+      characters.facelessPrior.table.cellWidth,
+      characters.facelessPrior.table.cellHeight,
+    ]).toEqual([52, 62]);
+    expect([
+      characters.fallenKnight.table.cellWidth,
+      characters.fallenKnight.table.cellHeight,
+    ]).toEqual([44, 54]);
+  });
+
+  it.each(['facelessPrior', 'fallenKnight'] as const)(
+    'mounts the %s alone, on the single pedestal, preparing its perilous attack',
+    async (kind) => {
+      await render(
+        <BattleScene
+          {...props({
+            geometry: sceneGeometry(390, 440, 1),
+            enemies: [{ ...ENEMIES[1]!, kind }],
+            timeline: { ...props().timeline!, enemy: 0 },
+          })}
+        />,
+      );
+
+      expect(drawnTypes()).toContain('skAtlas');
+    },
+  );
 
   it('mounts the stage, the pedestals, the enemies, the hero and the effects, hidden from the screen reader', async () => {
     await render(<BattleScene {...props()} />);
@@ -255,6 +286,48 @@ describe('BattleScene: the glint and the stars follow the displayed pose', () =>
     expect(effectsPlaced()).toEqual(
       tips.map(([x, y]) => [2, 0, bodyX! + 2 * x + 1 - side, bodyY! + 2 * y + 1 - side]),
     );
+  });
+
+  it('sets the Faceless prior whole on its place, feet on the pedestal, and its stars on its head (#138)', async () => {
+    const single = sceneGeometry(390, 440, 1);
+    const { sprite } = single.enemies[0]!;
+    const origin = spriteOrigin(sprite, 52, 62);
+    const prior = (change: Partial<SceneEnemy>): SceneEnemy => ({
+      ...ENEMIES[0]!,
+      kind: 'facelessPrior',
+      target: false,
+      dimmed: false,
+      ...change,
+    });
+    const show = async (change: Partial<SceneEnemy>) => {
+      await render(
+        <BattleScene
+          {...props({
+            geometry: single,
+            enemies: [prior(change)],
+            timeline: null,
+            spark: null,
+            uiNow: () => NOW,
+          })}
+        />,
+      );
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+    };
+
+    await show({});
+    // Le dernier rendu : les effets, le Prieur, le héros.
+    const [, body] = buffers.slice(-3);
+    expect(written(body)).toEqual([[2, 0, origin.x, origin.y]]);
+    expect(origin).toEqual({ x: sprite.x - 8, y: sprite.y - 20 });
+
+    await show({ down: true, downSince: NOW - 1_000 });
+    const side = table.stars[2];
+    const [x, y] = poseAnchors('facelessPrior', 'down').head;
+    expect(effectsPlaced()).toEqual([
+      [2, 0, origin.x + 2 * x - side, origin.y + 2 * (y - 4) - side],
+    ]);
   });
 
   it('places the stars on the head of the stunned Mad villager: hurt for 200 ms, then down', async () => {

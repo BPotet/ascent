@@ -46,3 +46,20 @@ le code (`pxlib`, ADR 0008).
   Jumeaux auront leur animation complète.
 - L'ADR 0008 § 5 (atlas précalculés) s'applique toujours : l'atlas d'un personnage animé garde ses
   cases de liseré et de rouge, copies identiques de la pose.
+
+## Avenant du 29/10/2026 (#138)
+
+- **§ 3 Case du combat.** La case du combat fait au moins 44 × 52 pixels d'art, à la taille de
+  l'animation complète si elle est plus grande (`battleCell`), à 2 dp. Une pose plus petite que sa
+  case y est centrée en largeur et calée en bas, ses ancrages décalés d'autant. La scène garde
+  88 × 104 dp par ennemi : une case plus grande y est centrée en largeur et calée en bas
+  (`spriteOrigin`), pieds sur le socle, sans réduction ni rognage. `spriteOrigin` est calculée sur
+  le fil JS, hors des worklets de la scène.
+- **§ 4 Palette rouge.** Une entité qui a un coup imparable, phase 2 comprise (lu dans `ENEMIES`
+  et `ATTACKS`), affiche pendant ce coup ses poses d'attaque (`RED_FRAMES`) peintes avec `red` au
+  lieu de `pal`, sans liseré ni traînée. Une entité sans coup imparable ne convertit pas sa palette
+  rouge ; une palette rouge absente vaut « pas de pose rouge ». `#5A1420` entre dans la palette
+  d'art, en fin de `tints` (code 31).
+- **Conséquences.** Le dessin du Spectre (#81) est supprimé. Le dessin par le code des ennemis
+  (`CharacterArt`, `finish` pour un personnage) n'a plus d'utilisateur une fois #137 et #139
+  mergées : une tâche `type:chore` le retire après l'épique #136. Le héros relève de #140.

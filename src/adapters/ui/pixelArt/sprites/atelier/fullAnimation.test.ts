@@ -1,16 +1,20 @@
-// Le contenu recopié de l'Atelier (#119, #137, ADR 0010) : les animations complètes des ennemis,
-// les images validées des objets, et leur conversion en sprites.
+// Le contenu recopié de l'Atelier (#119, #137, #138, ADR 0010) : les animations complètes des
+// ennemis, les images validées des objets, et leur conversion en sprites.
 import { artPalette } from '../../artPalette';
 import type { Sprite } from '../Sprite';
 import { ENEMY_FRAMES } from '../battle/battleCharacters';
+import { FACELESS_PRIOR_ANIMATION } from './data/facelessPrior';
+import { FALLEN_KNIGHT_ANIMATION } from './data/fallenKnight';
 import { GHOUL_ANIMATION } from './data/ghoul';
 import { ITEM_IMAGES } from './data/itemImages';
 import { MAD_VILLAGER_ANIMATION } from './data/madVillager';
 import { NECROMANCER_ANIMATION } from './data/necromancer';
 import { SKELETON_ANIMATION } from './data/skeleton';
+import { SPECTER_ANIMATION } from './data/specter';
 import {
   animationSprite,
   assetSprite,
+  battleCell,
   tintCode,
   type AssetImage,
   type FullAnimation,
@@ -21,6 +25,9 @@ const ANIMATIONS = [
   ['madVillager', MAD_VILLAGER_ANIMATION, 1],
   ['skeleton', SKELETON_ANIMATION, 2],
   ['necromancer', NECROMANCER_ANIMATION, 2],
+  ['specter', SPECTER_ANIMATION, 2],
+  ['fallenKnight', FALLEN_KNIGHT_ANIMATION, 2],
+  ['facelessPrior', FACELESS_PRIOR_ANIMATION, 2],
 ] as const;
 
 /**
@@ -65,15 +72,19 @@ describe('the tints of the Atelier', () => {
     expect(tintCode('#06070c')).toBe(1);
     expect(tintCode('#06070C')).toBe(1);
     expect(tintCode('#bfe6da')).toBe(20);
+    expect(tintCode('#5a1420')).toBe(31);
   });
 
   it('refuses a tint that is not in the art palette', () => {
-    expect(() => tintCode('#5a1420')).toThrow('#5a1420');
+    expect(() => tintCode('#123456')).toThrow('#123456');
   });
 
   it('finds every tint of the validated content in the art palette', () => {
     const palettes = [
       ...ANIMATIONS.map(([, animation]) => animation.pal),
+      ...ANIMATIONS.map(
+        ([, animation]: readonly [string, FullAnimation, number]) => animation.red ?? [],
+      ),
       ...Object.values(ITEM_IMAGES).map((image) => image.palette),
     ];
     for (const tint of palettes.flat()) {
@@ -100,14 +111,16 @@ describe.each(ANIMATIONS)('the full animation of the %s', (name, animation, tips
     }
   });
 
-  it('gives each pose its anchors inside the image, with its tips', () => {
-    const inside = ([x, y]: readonly [number, number]) =>
-      x >= 0 && y >= 0 && x < full.w && y < full.h;
+  it('gives each pose its eye and head inside the image, its tips inside the cell', () => {
+    const inside = ([x, y]: readonly [number, number], margin = 0) =>
+      x >= -margin && y >= -margin && x < full.w + margin && y < full.h + margin;
     const tipsInside = !WITHOUT_DOUBLE_STRIKE.includes(name);
     for (const { eye, head, tips: points } of Object.values(full.anchors)) {
       expect(points).toHaveLength(tips);
       for (const point of [eye, head]) expect(inside(point)).toBe(true);
-      if (tipsInside) for (const point of points) expect(inside(point)).toBe(true);
+      // Copiées telles quelles : une pointe peut déborder de la pose de 2 pixels d'art (#138).
+      if (tipsInside)
+        for (const point of points) expect([point, inside(point, 2)]).toEqual([point, true]);
     }
   });
 
@@ -135,6 +148,37 @@ describe.each(ANIMATIONS)('the full animation of the %s', (name, animation, tips
           ]);
         }
       }
+    }
+  });
+});
+
+describe.each([
+  ['Specter', SPECTER_ANIMATION, [44, 52]],
+  ['Fallen knight', FALLEN_KNIGHT_ANIMATION, [44, 54]],
+  ['Faceless prior', FACELESS_PRIOR_ANIMATION, [52, 62]],
+] as const)('the %s in its cell of the battle (#138)', (_, animation, cell) => {
+  const full: FullAnimation<(typeof ENEMY_FRAMES)[number]> = animation;
+
+  it('has a cell at its own size', () => {
+    expect([full.w, full.h]).toEqual(cell);
+    expect(battleCell(full)).toEqual(cell);
+  });
+
+  it.each([
+    ['palette', false],
+    ['red palette', true],
+  ] as const)('copies each pose pixel for pixel, in its %s', (__, red) => {
+    const palette = red ? full.red! : full.pal;
+    for (const pose of ENEMY_FRAMES) {
+      const { sprite, anchors } = animationSprite(full, pose, undefined, { red });
+      expect([sprite.width, sprite.height]).toEqual(cell);
+      for (let y = 0; y < full.h; y += 1) {
+        for (let x = 0; x < full.w; x += 1) {
+          const expected = expectedCode(full.frames[pose], palette, x, y);
+          if (at(sprite, x, y) !== expected) throw new Error(`${pose} (${x}, ${y})`);
+        }
+      }
+      expect(anchors).toEqual(full.anchors[pose]);
     }
   });
 });
@@ -202,6 +246,81 @@ describe('a pose in the 44 × 52 cell of the battle', () => {
 
   it('refuses a pose the animation does not have', () => {
     expect(() => animationSprite(GHOUL_ANIMATION as FullAnimation, 'raise')).toThrow('raise');
+  });
+});
+
+/** Une animation de `w` × `h` dont toutes les poses sont pleines de la teinte 0. */
+function filled(w: number, h: number, red?: readonly string[]): FullAnimation {
+  const rows = Array.from({ length: h }, () => '0'.repeat(w));
+  const anchors = { eye: [0, 0], head: [0, 0], tips: [] } as const;
+  return {
+    w,
+    h,
+    pal: ['#06070c'],
+    ...(red === undefined ? {} : { red }),
+    frames: Object.fromEntries(ENEMY_FRAMES.map((frame) => [frame, rows])),
+    anchors: Object.fromEntries(ENEMY_FRAMES.map((frame) => [frame, anchors])),
+  };
+}
+
+describe('the cell of the battle, at the size of the entity (#138)', () => {
+  it('is at least 44 × 52 art pixels, larger for a larger entity', () => {
+    expect(battleCell(GHOUL_ANIMATION)).toEqual([44, 52]);
+    expect(battleCell(MAD_VILLAGER_ANIMATION)).toEqual([44, 52]);
+    expect(battleCell(filled(30, 30))).toEqual([44, 52]);
+    expect(battleCell(filled(44, 54))).toEqual([44, 54]);
+    expect(battleCell(filled(52, 62))).toEqual([52, 62]);
+    expect(battleCell(filled(54, 50))).toEqual([54, 52]);
+  });
+
+  it('copies a larger entity whole, in its own cell, without refusing it', () => {
+    const { sprite, anchors } = animationSprite(filled(52, 62), 'idle0');
+    expect([sprite.width, sprite.height]).toEqual([52, 62]);
+    expect(sprite.pixels.every((code) => code === 1)).toBe(true);
+    expect(anchors.eye).toEqual([0, 0]);
+  });
+
+  it('centres a smaller pose in width and sets it on the bottom of a larger cell', () => {
+    const { sprite, anchors } = animationSprite(filled(44, 52), 'idle0', [52, 62]);
+    expect(at(sprite, 3, 61)).toBe(0);
+    expect(at(sprite, 4, 10)).toBe(1);
+    expect(at(sprite, 4, 9)).toBe(0);
+    expect(at(sprite, 47, 61)).toBe(1);
+    expect(at(sprite, 48, 61)).toBe(0);
+    expect(anchors.eye).toEqual([4, 10]);
+  });
+});
+
+describe('a pose in its red palette (#138)', () => {
+  it('paints each pose with the red palette instead of the palette, tint for tint', () => {
+    for (const pose of ENEMY_FRAMES) {
+      const { sprite, anchors } = animationSprite(GHOUL_ANIMATION, pose, undefined, { red: true });
+      const red = GHOUL_ANIMATION.red;
+      for (let y = 0; y < 52; y += 1) {
+        for (let x = 0; x < 44; x += 1) {
+          const expected = expectedCode(GHOUL_ANIMATION.frames[pose], red, x, y);
+          if (at(sprite, x, y) !== expected) throw new Error(`${pose} (${x}, ${y})`);
+        }
+      }
+      expect(anchors).toEqual(animationSprite(GHOUL_ANIMATION, pose).anchors);
+    }
+  });
+
+  it('keeps the palette without red, or without a red palette', () => {
+    const plain = animationSprite(GHOUL_ANIMATION, 'ant1').sprite;
+    expect(animationSprite(GHOUL_ANIMATION, 'ant1', undefined, { red: false }).sprite).toEqual(
+      plain,
+    );
+    expect(animationSprite(GHOUL_ANIMATION, 'ant1', undefined, { red: true }).sprite).not.toEqual(
+      plain,
+    );
+    const withoutRed = filled(44, 52);
+    expect(animationSprite(withoutRed, 'ant1', undefined, { red: true }).sprite).toEqual(
+      animationSprite(withoutRed, 'ant1').sprite,
+    );
+    expect(
+      animationSprite(filled(44, 52, ['#ff3b3b']), 'ant1', undefined, { red: true }).sprite.pixels,
+    ).toEqual(new Uint8Array(44 * 52).fill(22));
   });
 });
 
