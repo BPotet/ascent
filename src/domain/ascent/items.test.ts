@@ -49,34 +49,49 @@ describe('the item draw (P20)', () => {
     expect(draws(0, false, worn)).not.toContain('axe');
   });
 
-  it('draws the Crossbow or the Black knight armor among the Rares, never an Epic', () => {
+  it('draws the Hammer, the Crossbow or the Black knight armor among the Rares, never an Epic', () => {
     const elite = new Set(draws(0, true));
     expect(elite).toEqual(
-      new Set(['watchmanShield', 'hasteAmulet', 'crossbow', 'blackKnightArmor']),
+      new Set(['hammer', 'watchmanShield', 'hasteAmulet', 'crossbow', 'blackKnightArmor']),
     );
     expect(new Set(draws(0, false).map((item) => ITEMS[item].rarity))).toEqual(
       new Set(['common', 'rare']),
     );
   });
 
-  it('draws the Hammer as a Common', () => {
-    expect(ITEMS.hammer.rarity).toBe('common');
-    expect(draws(0, false)).toContain('hammer');
+  it('draws the Hammer as a Rare, never as a Common', () => {
+    expect(ITEMS.hammer).toEqual({
+      slot: 'weapon',
+      rarity: 'rare',
+      initiative: -1,
+      effects: { guardDamagePercents: [160] },
+    });
+    expect(draws(0, true)).toContain('hammer');
+    const commonWeapons = (Object.keys(ITEMS) as ItemKind[]).filter(
+      (item) => ITEMS[item].slot === 'weapon' && ITEMS[item].rarity === 'common',
+    );
+    expect(commonWeapons).toEqual(['axe']);
   });
 
-  it('draws a Rare not worn: one armor among the Rares is always left', () => {
+  it('never draws the Hammer when worn', () => {
+    const worn = { ...STARTING_EQUIPMENT, weapon: 'hammer' } as const;
+    expect(draws(0, true, worn)).not.toContain('hammer');
+    expect(draws(2, false, worn)).not.toContain('hammer');
+  });
+
+  it('draws a Rare not worn: the Rares left free are drawn', () => {
     const worn = {
       weapon: 'crossbow',
       armor: 'blackKnightArmor',
       accessory: 'hasteAmulet',
     } as const;
-    expect(new Set(draws(0, true, worn))).toEqual(new Set(['watchmanShield']));
+    expect(new Set(draws(0, true, worn))).toEqual(new Set(['watchmanShield', 'hammer']));
     const allRares = {
       weapon: 'crossbow',
       armor: 'watchmanShield',
       accessory: 'hasteAmulet',
     } as const;
-    expect(new Set(draws(0, true, allRares))).toEqual(new Set(['blackKnightArmor']));
+    expect(new Set(draws(0, true, allRares))).toEqual(new Set(['blackKnightArmor', 'hammer']));
   });
 });
 
