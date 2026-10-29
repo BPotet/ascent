@@ -7,6 +7,7 @@ import '@shopify/react-native-skia/jestSetup';
 
 import { render, screen } from '@testing-library/react-native';
 
+import { poseAnchors } from '../pixelArt/sprites/battle/battleCharacters';
 import { BattleScene, prepareBattleScene, type BattleSceneProps } from './BattleCanvas';
 import { sceneGeometry } from './scene/sceneGeometry';
 import type { SceneEnemy } from './sceneTypes';
@@ -81,6 +82,45 @@ describe('BattleScene with Skia', () => {
     expect(prepared.hero.image?.height()).toBeGreaterThan(0);
     expect(prepared.effects.image?.width()).toBeGreaterThan(0);
     expect(prepareBattleScene()).toBe(prepared);
+  });
+
+  it('prepares the anchors of each pose: those of the full animation, or those of today', () => {
+    const { anchors } = prepareBattleScene();
+
+    expect(anchors.ghoul.hurt).toEqual(poseAnchors('ghoul', 'hurt'));
+    expect(anchors.madVillager.lunge).toEqual(poseAnchors('madVillager', 'lunge'));
+    expect(anchors.specter.idle0).toEqual(anchors.specter.ant2);
+  });
+
+  it('mounts the Ghoul and the Mad villager with their full animation, one of them stunned', async () => {
+    const group: SceneEnemy[] = (['ghoul', 'madVillager'] as const).map((kind, index) => ({
+      ...ENEMIES[index]!,
+      kind,
+      down: index === 1,
+    }));
+    await render(
+      <BattleScene
+        {...props({
+          enemies: group,
+          timeline: {
+            enemy: 0,
+            kind: 'attack',
+            attack: 'double',
+            stepInAt: 1_000,
+            windUpAt: 1_000,
+            windUpMs: 1_300,
+            until: 2_700,
+            impacts: [2_300, 2_500],
+            feintAt: null,
+            glints: [{ at: 2_150, kind: 'double', impact: 0 }],
+            hitStopAt: 0,
+            hitStopUntil: 0,
+          },
+        })}
+      />,
+    );
+
+    expect(drawnTypes()).toContain('skAtlas');
   });
 
   it('mounts the stage, the pedestals, the enemies, the hero and the effects, hidden from the screen reader', async () => {

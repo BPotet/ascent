@@ -32,7 +32,13 @@ import type { EnemyKind } from '../../../domain/battle/combatants';
 import { toSkImage } from '../pixelArt/SpriteCanvas';
 import type { Point } from '../pixelArt/sprites/Sprite';
 import { atlasRect, battleAtlas, type AtlasTable } from '../pixelArt/sprites/battle/battleAtlas';
-import { battleSprite, type BattleCharacter } from '../pixelArt/sprites/battle/battleCharacters';
+import {
+  ENEMY_FRAMES,
+  poseAnchors,
+  type BattleCharacter,
+  type BattleFrame,
+  type EnemyFrame,
+} from '../pixelArt/sprites/battle/battleCharacters';
 import {
   effectTableRect,
   effectsAtlas,
@@ -80,7 +86,7 @@ interface PreparedAtlas {
   readonly table: AtlasTable;
 }
 
-/** Les ancrages d'un ennemi : l'œil et les griffes de sa pose pleine, la tête quand il est à terre. */
+/** Les ancrages d'une pose d'un ennemi : l'œil et les pointes (le reflet), la tête (les étoiles). */
 interface EnemyAnchors {
   readonly eye: Point | null;
   readonly tips: readonly Point[];
@@ -89,15 +95,16 @@ interface EnemyAnchors {
 
 export interface PreparedScene {
   readonly characters: Readonly<Record<EnemyKind, PreparedAtlas>>;
-  readonly anchors: Readonly<Record<EnemyKind, EnemyAnchors>>;
+  /** Les ancrages de chaque pose de chaque ennemi (`poseAnchors`). */
+  readonly anchors: Readonly<Record<EnemyKind, Readonly<Record<EnemyFrame, EnemyAnchors>>>>;
   readonly hero: PreparedAtlas;
   readonly effects: { readonly image: SkImage | null; readonly table: EffectTable };
   readonly pedestals: Readonly<Record<string, SkImage | null>>;
 }
 
 /** Ce qu'un personnage affiche à une image : son image dans l'atlas et sa place, en dp. */
-interface SpriteLook {
-  readonly frame: string;
+interface SpriteLook<Frame extends BattleFrame = BattleFrame> {
+  readonly frame: Frame;
   readonly tier: number;
   readonly red: boolean;
   readonly x: number;
@@ -176,11 +183,11 @@ export function prepareBattleScene(): PreparedScene {
       PreparedAtlas
     >,
     anchors: Object.fromEntries(
-      ENEMY_KINDS.map((kind) => {
-        const { eye, tips } = battleSprite(kind, 'ant2').anchors;
-        return [kind, { eye, tips, head: battleSprite(kind, 'down').anchors.head ?? [22, 22] }];
-      }),
-    ) as Record<EnemyKind, EnemyAnchors>,
+      ENEMY_KINDS.map((kind) => [
+        kind,
+        Object.fromEntries(ENEMY_FRAMES.map((frame) => [frame, poseAnchors(kind, frame)])),
+      ]),
+    ) as Record<EnemyKind, Record<EnemyFrame, EnemyAnchors>>,
     hero: atlasOf('hero'),
     effects: { image: toSkImage(effects), table: effects.table },
     pedestals: Object.fromEntries(
@@ -255,14 +262,14 @@ function Pedestal({
 }
 
 /** Un personnage, dessiné par l'`Atlas` de Skia : son image et sa place changent sur le fil UI. */
-function AtlasSprite({
+function AtlasSprite<Frame extends BattleFrame>({
   atlas,
   look,
   scale,
   faded = false,
 }: {
   readonly atlas: PreparedAtlas;
-  readonly look: DerivedValue<SpriteLook>;
+  readonly look: DerivedValue<SpriteLook<Frame>>;
   readonly scale: number;
   readonly faded?: boolean;
 }) {
@@ -299,10 +306,10 @@ function useEnemyLook(
   clock: SharedValue<number>,
   timeline: SharedValue<SceneTimeline | null>,
   reducedMotion: boolean,
-): DerivedValue<SpriteLook> {
+): DerivedValue<SpriteLook<EnemyFrame>> {
   const { standing, down, losingAction, rising, downSince } = enemy;
   const { sprite, reach } = slot;
-  return useDerivedValue<SpriteLook>(() => {
+  return useDerivedValue<SpriteLook<EnemyFrame>>(() => {
     'worklet';
     const now = clock.get();
     const current = timeline.get();
@@ -469,7 +476,7 @@ export function BattleScene({
       const kind = kinds[current.enemy];
       const look = looks[current.enemy]?.get();
       if (kind !== undefined && look !== undefined) {
-        for (const glint of glintSprites(current.glints, now, anchors[kind])) {
+        for (const glint of glintSprites(current.glints, now, anchors[kind][look.frame])) {
           place(glint.effect, glint.frame, look.x + glint.x * 2 + 1, look.y + glint.y * 2 + 1);
         }
       }
@@ -477,8 +484,11 @@ export function BattleScene({
     for (let index = 0; index < kinds.length; index += 1) {
       const kind = kinds[index];
       const slot = slots[index];
-      if (stunned[index] !== true || kind === undefined || slot === undefined) continue;
-      const [headX, headY] = anchors[kind].head;
+      const look = looks[index];
+      const shown = stunned[index] === true && kind !== undefined && slot !== undefined;
+      if (!shown || look === undefined) continue;
+      // Les étoiles suivent la tête de la pose affichée : `hurt`, puis `down`.
+      const [headX, headY] = anchors[kind][look.get().frame].head;
       const turn = Math.floor(now / 125) % 4;
       const hop = hops[index] === true ? 4 : 0;
       place('stars', turn, slot.sprite.x + headX * 2, slot.sprite.y + (headY - 4) * 2 - hop);

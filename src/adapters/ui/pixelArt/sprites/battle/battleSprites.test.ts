@@ -1,9 +1,14 @@
 // Les sprites du combat en pixel art 2.5D (#81), portés de `pxlib` dans la maquette v4.1.
+import type { EnemyKind } from '../../../../../domain/battle/combatants';
+import { animationSprite } from '../atelier/fullAnimation';
+import { GHOUL_ANIMATION } from '../atelier/data/ghoul';
+import { MAD_VILLAGER_ANIMATION } from '../atelier/data/madVillager';
 import {
   ENEMY_FRAMES,
   HERO_FRAMES,
   RED_FRAMES,
   battleSprite,
+  poseAnchors,
   type BattleCharacter,
 } from './battleCharacters';
 import { battleAtlas, frameRect } from './battleAtlas';
@@ -100,16 +105,16 @@ describe('the battle characters (pxlib)', () => {
   });
 
   it('rims an enemy in dotted then full gold from tier 1, and smears the rush', () => {
+    const count = (pixels: Uint8Array, ...codes: number[]) =>
+      Array.from(pixels).filter((code) => codes.includes(code)).length;
     const gold = (tier: 0 | 1 | 2) =>
-      Array.from(battleSprite('ghoul', 'ant1', { tier }).sprite.pixels).filter(
-        (code) => code === 7 || code === 8,
-      ).length;
+      count(battleSprite('specter', 'ant1', { tier }).sprite.pixels, 7, 8);
     expect(gold(1)).toBeGreaterThan(gold(0));
     expect(gold(2)).toBeGreaterThan(gold(1));
-    const still = battleSprite('ghoul', 'ant2', { tier: 2 }).sprite.pixels;
-    const lunge = battleSprite('ghoul', 'lunge', { tier: 2 }).sprite.pixels;
-    expect(codesOf(lunge).has(14)).toBe(true);
-    expect(still).not.toEqual(lunge);
+    const still = battleSprite('specter', 'ant2', { tier: 2 }).sprite.pixels;
+    const lunge = battleSprite('specter', 'lunge', { tier: 2 }).sprite.pixels;
+    // La traînée de la ruée, dans la teinte claire du Spectre.
+    expect(count(lunge, 17)).toBeGreaterThan(count(still, 17) + 20);
   });
 
   it('shifts the hesitation one art pixel from the full wind-up', () => {
@@ -117,6 +122,98 @@ describe('the battle characters (pxlib)', () => {
     const hes = battleSprite('specter', 'hes').sprite.pixels;
     expect(hes).not.toEqual(ant2);
   });
+});
+
+describe('the full animations of the Atelier in battle (#119)', () => {
+  const ANIMATED = [
+    ['ghoul', GHOUL_ANIMATION],
+    ['madVillager', MAD_VILLAGER_ANIMATION],
+  ] as const;
+  /** Les ennemis encore dessinés par le code, l'ancien dessin de la Goule compris. */
+  const DRAWN: readonly EnemyKind[] = [
+    'specter',
+    'necromancer',
+    'fallenKnight',
+    'twins',
+    'skeleton',
+    'ossuaryWarden',
+    'facelessPrior',
+  ];
+
+  it.each(ANIMATED)(
+    'shows each pose of the %s as copied, in the 44 × 52 cell, without rim, smear or red',
+    (character, animation) => {
+      for (const frame of ENEMY_FRAMES) {
+        const copied = animationSprite(animation, frame);
+        for (const look of [{}, { tier: 1 }, { tier: 2 }, { tier: 2, red: true }] as const) {
+          const image = battleSprite(character, frame, look);
+          expect([frame, look, image.sprite]).toEqual([frame, look, copied.sprite]);
+          expect(image.anchors).toEqual(copied.anchors);
+        }
+      }
+    },
+  );
+
+  it('no longer draws the Mad villager as a Ghoul, nor the Ghoul with its old drawing', () => {
+    for (const frame of ENEMY_FRAMES) {
+      const ghoul = battleSprite('ghoul', frame).sprite.pixels;
+      expect(battleSprite('madVillager', frame).sprite.pixels).not.toEqual(ghoul);
+      expect(battleSprite('fallenKnight', frame).sprite.pixels).not.toEqual(ghoul);
+    }
+  });
+
+  it('keeps the hesitation as its own pose, not the full wind-up shifted by one art pixel', () => {
+    const ant2 = battleSprite('ghoul', 'ant2').sprite;
+    const hes = battleSprite('ghoul', 'hes').sprite.pixels;
+    const shifted = ant2.pixels.map((_, index) =>
+      index % ant2.width === 0 ? 0 : (ant2.pixels[index - 1] ?? 0),
+    );
+    expect(hes).not.toEqual(shifted);
+    expect(hes).not.toEqual(ant2.pixels);
+  });
+
+  it('shows the resting pose for a frame the animation does not have', () => {
+    expect(battleSprite('ghoul', 'raise')).toEqual(battleSprite('ghoul', 'idle0'));
+  });
+
+  it('gives the anchors of the pose shown to the Ghoul and the Mad villager', () => {
+    expect(poseAnchors('ghoul', 'ant2')).toEqual({
+      eye: [15, 18],
+      head: [22, 14],
+      tips: [
+        [19, 3],
+        [9, 35],
+      ],
+    });
+    expect(poseAnchors('ghoul', 'down').head).toEqual([20, 24]);
+    // Le Villageois fou est calé de (2, 2) dans la case : une seule pointe, sa fourche.
+    expect(poseAnchors('madVillager', 'ant2')).toEqual({
+      eye: [22, 11],
+      head: [22, 3],
+      tips: [[20, 28]],
+    });
+    for (const [character] of ANIMATED) {
+      for (const frame of ENEMY_FRAMES) {
+        expect(poseAnchors(character, frame)).toEqual(battleSprite(character, frame).anchors);
+      }
+    }
+  });
+
+  it.each(DRAWN)(
+    'keeps the anchors of today for the %s, whatever the pose: the full wind-up and the down head',
+    (character) => {
+      const windUp = battleSprite(character, 'ant2').anchors;
+      const today = {
+        eye: windUp.eye,
+        tips: windUp.tips,
+        head: battleSprite(character, 'down').anchors.head,
+      };
+      expect(today.head).not.toBeNull();
+      for (const frame of ENEMY_FRAMES) {
+        expect([frame, poseAnchors(character, frame)]).toEqual([frame, today]);
+      }
+    },
+  );
 });
 
 describe('the battle atlases', () => {
