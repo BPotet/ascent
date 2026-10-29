@@ -755,9 +755,12 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     const shape = (kind: EnemyKind, frame: EnemyFrame) =>
       Array.from(battleSprite(kind, frame).sprite.pixels, (code) => (code === 0 ? 0 : 1));
     for (const frame of ENEMY_FRAMES) {
-      // Tirée de l'ancien dessin, pas de l'animation complète de la Goule, à la même taille.
+      // Tirée de l'ancien dessin : ni de l'animation complète de la Goule, ni du dessin du
+      // Nécromancien (#81) que garde la Gardienne, tous deux à la même taille.
       expect(shape('twins', frame)).toHaveLength(shape('ghoul', frame).length);
       expect(shape('twins', frame)).not.toEqual(shape('ghoul', frame));
+      expect(shape('twins', frame)).toHaveLength(shape('ossuaryWarden', frame).length);
+      expect(shape('twins', frame)).not.toEqual(shape('ossuaryWarden', frame));
     }
   });
 

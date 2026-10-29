@@ -289,7 +289,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     const [kind] = world.kinds as [EnemyKind];
     for (const frame of ENEMY_FRAMES) {
       // Plus aucun dessin par le code, ni l'ancien ni un autre : le liseré d'un dessin, ajouté au
-      // palier 2, ne s'y ajoute plus. Les dessins d'avant n'existent plus dans le code.
+      // palier 2, ne s'y ajoute plus. Le dessin du Spectre (#81) n'existe plus ; l'ancien dessin
+      // de la Goule ne sert plus qu'à la silhouette des Jumeaux.
       expect(battleSprite(kind, frame, { tier: 2 }).sprite).toEqual(
         battleSprite(kind, frame).sprite,
       );
