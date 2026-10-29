@@ -9,6 +9,7 @@ import { MAD_VILLAGER_ANIMATION } from './data/madVillager';
 import {
   animationSprite,
   assetSprite,
+  battleCell,
   tintCode,
   type AssetImage,
   type FullAnimation,
@@ -175,6 +176,81 @@ describe('a pose in the 44 × 52 cell of the battle', () => {
 
   it('refuses a pose the animation does not have', () => {
     expect(() => animationSprite(GHOUL_ANIMATION as FullAnimation, 'raise')).toThrow('raise');
+  });
+});
+
+/** Une animation de `w` × `h` dont toutes les poses sont pleines de la teinte 0. */
+function filled(w: number, h: number, red?: readonly string[]): FullAnimation {
+  const rows = Array.from({ length: h }, () => '0'.repeat(w));
+  const anchors = { eye: [0, 0], head: [0, 0], tips: [] } as const;
+  return {
+    w,
+    h,
+    pal: ['#06070c'],
+    ...(red === undefined ? {} : { red }),
+    frames: Object.fromEntries(ENEMY_FRAMES.map((frame) => [frame, rows])),
+    anchors: Object.fromEntries(ENEMY_FRAMES.map((frame) => [frame, anchors])),
+  };
+}
+
+describe('the cell of the battle, at the size of the entity (#138)', () => {
+  it('is at least 44 × 52 art pixels, larger for a larger entity', () => {
+    expect(battleCell(GHOUL_ANIMATION)).toEqual([44, 52]);
+    expect(battleCell(MAD_VILLAGER_ANIMATION)).toEqual([44, 52]);
+    expect(battleCell(filled(30, 30))).toEqual([44, 52]);
+    expect(battleCell(filled(44, 54))).toEqual([44, 54]);
+    expect(battleCell(filled(52, 62))).toEqual([52, 62]);
+    expect(battleCell(filled(54, 50))).toEqual([54, 52]);
+  });
+
+  it('copies a larger entity whole, in its own cell, without refusing it', () => {
+    const { sprite, anchors } = animationSprite(filled(52, 62), 'idle0');
+    expect([sprite.width, sprite.height]).toEqual([52, 62]);
+    expect(sprite.pixels.every((code) => code === 1)).toBe(true);
+    expect(anchors.eye).toEqual([0, 0]);
+  });
+
+  it('centres a smaller pose in width and sets it on the bottom of a larger cell', () => {
+    const { sprite, anchors } = animationSprite(filled(44, 52), 'idle0', [52, 62]);
+    expect(at(sprite, 3, 61)).toBe(0);
+    expect(at(sprite, 4, 10)).toBe(1);
+    expect(at(sprite, 4, 9)).toBe(0);
+    expect(at(sprite, 47, 61)).toBe(1);
+    expect(at(sprite, 48, 61)).toBe(0);
+    expect(anchors.eye).toEqual([4, 10]);
+  });
+});
+
+describe('a pose in its red palette (#138)', () => {
+  it('paints each pose with the red palette instead of the palette, tint for tint', () => {
+    for (const pose of ENEMY_FRAMES) {
+      const { sprite, anchors } = animationSprite(GHOUL_ANIMATION, pose, undefined, { red: true });
+      const red = GHOUL_ANIMATION.red;
+      for (let y = 0; y < 52; y += 1) {
+        for (let x = 0; x < 44; x += 1) {
+          const expected = expectedCode(GHOUL_ANIMATION.frames[pose], red, x, y);
+          if (at(sprite, x, y) !== expected) throw new Error(`${pose} (${x}, ${y})`);
+        }
+      }
+      expect(anchors).toEqual(animationSprite(GHOUL_ANIMATION, pose).anchors);
+    }
+  });
+
+  it('keeps the palette without red, or without a red palette', () => {
+    const plain = animationSprite(GHOUL_ANIMATION, 'ant1').sprite;
+    expect(animationSprite(GHOUL_ANIMATION, 'ant1', undefined, { red: false }).sprite).toEqual(
+      plain,
+    );
+    expect(animationSprite(GHOUL_ANIMATION, 'ant1', undefined, { red: true }).sprite).not.toEqual(
+      plain,
+    );
+    const withoutRed = filled(44, 52);
+    expect(animationSprite(withoutRed, 'ant1', undefined, { red: true }).sprite).toEqual(
+      animationSprite(withoutRed, 'ant1').sprite,
+    );
+    expect(
+      animationSprite(filled(44, 52, ['#ff3b3b']), 'ant1', undefined, { red: true }).sprite.pixels,
+    ).toEqual(new Uint8Array(44 * 52).fill(22));
   });
 });
 

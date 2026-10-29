@@ -28,7 +28,8 @@ export interface FullAnimation<Frame extends string = string> {
   readonly w: number;
   readonly h: number;
   readonly pal: readonly string[];
-  readonly red: readonly string[];
+  /** La palette rouge, absente quand l'Atelier n'en donne pas (pas de coup imparable). */
+  readonly red?: readonly string[];
   readonly frames: Readonly<Record<Frame, readonly string[]>>;
   readonly anchors: Readonly<Record<Frame, AnimationAnchors>>;
 }
@@ -41,8 +42,16 @@ export interface AssetImage {
   readonly rows: readonly string[];
 }
 
-/** La case d'un ennemi dans la scène du combat, en pixels d'art. */
+/** La case d'un ennemi dans la scène du combat, en pixels d'art : au moins 44 × 52. */
 const BATTLE_CELL: Point = [44, 52];
+
+/**
+ * La case du combat d'une animation complète (`battleCell`, ADR 0010 § 3) : 44 × 52 pixels d'art,
+ * ou la taille de l'entité si elle est plus grande, en largeur comme en hauteur.
+ */
+export function battleCell(animation: FullAnimation): Point {
+  return [Math.max(BATTLE_CELL[0], animation.w), Math.max(BATTLE_CELL[1], animation.h)];
+}
 
 /** Le code `artPalette.tints` d'une teinte de l'Atelier, sans tenir compte de la casse. */
 export function tintCode(tint: string): number {
@@ -79,14 +88,17 @@ export function assetSprite(image: AssetImage): Sprite {
 }
 
 /**
- * La pose `frame` d'une animation complète, dans une case de `cell` pixels d'art (celle du combat
+ * La pose `frame` d'une animation complète, dans une case de `cell` pixels d'art (sa case du combat
  * par défaut) : une pose plus petite y est centrée en largeur et calée en bas, sans mise à
  * l'échelle, et ses ancrages sont décalés d'autant. Une pose plus grande que la case est refusée.
+ * Avec `red`, la pose est peinte avec sa palette rouge, même indice pour même pixel ; sans palette
+ * rouge, elle garde sa palette.
  */
 export function animationSprite<Frame extends string>(
   animation: FullAnimation<Frame>,
   frame: Frame,
-  [width, height]: Point = BATTLE_CELL,
+  [width, height]: Point = battleCell(animation),
+  { red = false }: { readonly red?: boolean } = {},
 ): { readonly sprite: Sprite; readonly anchors: AnimationAnchors } {
   const rows = Object.hasOwn(animation.frames, frame) ? animation.frames[frame] : undefined;
   if (rows === undefined) throw new Error(`The animation has no pose ${frame}`);
@@ -96,7 +108,8 @@ export function animationSprite<Frame extends string>(
   const left = Math.floor((width - animation.w) / 2);
   const top = height - animation.h;
   const sprite = grid(width, height);
-  paint(sprite, rows, animation.pal, left, top);
+  const palette = red && animation.red !== undefined ? animation.red : animation.pal;
+  paint(sprite, rows, palette, left, top);
   const { eye, head, tips } = animation.anchors[frame];
   const moved = ([x, y]: Point): Point => [x + left, y + top];
   return { sprite, anchors: { eye: moved(eye), head: moved(head), tips: tips.map(moved) } };
