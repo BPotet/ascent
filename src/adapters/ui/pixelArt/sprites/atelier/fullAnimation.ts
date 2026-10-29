@@ -36,8 +36,8 @@ export interface AttackPoses<Frame extends string = string> {
   /** Les ancrages de chaque pose du coup : une entrée par pose de `frames`. */
   readonly anchors: Readonly<Partial<Record<Frame, AnimationAnchors>>>;
   /**
-   * La portée de la ruée : la part du chemin vers le héros à l'impact, qui remplace le haut de la
-   * ruée pour ce coup. Absente, celle d'aujourd'hui.
+   * La portée du coup : un facteur sur son chemin vers le héros, de la fin du recul de
+   * l'anticipation au retour (ruée, impact, récupération comprises), l'avancée exceptée. Absente, 1.
    */
   readonly reach?: number;
   /** L'élévation de chaque pose, en pixels d'art entiers, vers le haut. Absente, 0. */

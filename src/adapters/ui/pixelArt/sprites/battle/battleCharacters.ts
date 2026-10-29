@@ -218,9 +218,9 @@ export function poseAnchors(
 
 /**
  * Le mouvement d'un coup qui a des poses d'un coup (#139), en nombres seuls pour la scène : sa
- * portée (`reach`, la part du chemin vers le héros à l'impact, `null` pour celle d'aujourd'hui) et
- * l'élévation de chacune de ses poses (`lift`, en pixels d'art, 0 par défaut). Une image absente de
- * `lift` n'est pas une pose du coup.
+ * portée (`reach`, un facteur sur le chemin du coup vers le héros, l'avancée exceptée ; `null` pour
+ * le chemin d'aujourd'hui) et l'élévation de chacune de ses poses (`lift`, en pixels d'art, 0 par
+ * défaut). Une image absente de `lift` n'est pas une pose du coup.
  */
 export interface AttackMotion {
   readonly reach: number | null;

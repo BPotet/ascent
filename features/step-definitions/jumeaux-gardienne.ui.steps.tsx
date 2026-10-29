@@ -541,12 +541,23 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       const bolt = attackTimeline('basic');
       const motion = attackMotion('twins');
       expect(motion.basic?.reach).toBe(0.5);
-      expect(enemyPose(bolt, IMPACT, false, motion).reach).toBeCloseTo(0.5);
+      // La portée de l'Atelier multiplie le chemin du coup : la ruée va à la moitié de celle
+      // d'aujourd'hui (0,85 × 0,5), sans changer l'avancée.
+      expect(enemyPose(bolt, IMPACT, false, motion).reach).toBeCloseTo(0.85 * 0.5);
       let farthest = 0;
+      let today = 0;
       for (let now = WIND_UP_AT; now < END; now += 1) {
         farthest = Math.max(farthest, enemyPose(bolt, now, false, motion).reach);
+        today = Math.max(today, enemyPose(bolt, now, false).reach);
       }
-      expect(farthest).toBeCloseTo(0.5);
+      expect(farthest).toBeCloseTo(today * 0.5);
+      expect(farthest).toBeCloseTo(0.425);
+      const stepIn = { ...STEP_IN, attack: null };
+      for (let now = STEP_IN_AT; now < WIND_UP_AT; now += 5) {
+        expect(enemyPose(stepIn, now, false, motion).reach).toBe(
+          enemyPose(stepIn, now, false).reach,
+        );
+      }
     },
   );
 

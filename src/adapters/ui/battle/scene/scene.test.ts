@@ -283,21 +283,59 @@ describe('enemyPose with attack poses (#139)', () => {
     expect(seen).toContain(kind === 'basic' ? 'rec1:null' : 'rec0:null');
   });
 
-  it('reaches only half of the way for the crossbow bolt, from the rush to the impact', () => {
-    expect(enemyPose(BOLT, 2_500, false, TWINS).reach).toBeCloseTo(0.5);
-    expect(enemyPose(BOLT, 2_500, false).reach).toBeCloseTo(0.85);
-    // La ruée part du même point et monte sans saut jusqu'à la moitié du chemin.
-    expect(enemyPose(BOLT, 2_420, false, TWINS).reach).toBeCloseTo(0.3 - 0.14);
-    expect(enemyPose(BOLT, 2_499, false, TWINS).reach).toBeCloseTo(0.16 + 0.34 * (79 / 80) ** 2);
-    for (const now of instants(WIND_UP_AT, END)) {
-      expect(enemyPose(BOLT, now, false, TWINS).reach).toBeLessThanOrEqual(0.5 + 1e-9);
+  it('multiplies the way of the crossbow bolt by its reach of 0.5, from the recoil to the return', () => {
+    // Le recul de l'anticipation part de l'avancée (0,3), sans saut, jusqu'à (0,3 − 0,14) × 0,5.
+    expect(enemyPose(BOLT, WIND_UP_AT, false, TWINS).reach).toBeCloseTo(0.3);
+    expect(enemyPose(BOLT, 2_419, false, TWINS).reach).toBeCloseTo(0.08, 2);
+    for (const now of instants(WIND_UP_AT, 2_420)) {
+      const plain = enemyPose(BOLT, now, false).reach;
+      expect([now, enemyPose(BOLT, now, false, TWINS).reach]).toEqual([
+        now,
+        expect.closeTo(0.3 - ((0.3 - plain) * (0.3 - 0.08)) / 0.14, 6),
+      ]);
     }
-    // Puis la récupération revient au repos comme aujourd'hui, depuis la moitié du chemin.
-    expect(enemyPose(BOLT, 2_585, false, TWINS).reach).toBeCloseTo(0.5 - (0.5 - 0.3) * 0.75);
-    expect(enemyPose(BOLT, 2_585, false).reach).toBeCloseTo(0.85 - (0.85 - 0.3) * 0.75);
-    expect(enemyPose(BOLT, 2_670, false, TWINS).reach).toBeCloseTo(0.3);
-    // Le coup sans portée de l'Atelier garde celle d'aujourd'hui.
-    expect(enemyPose(SHOCKWAVE, 3_100, false, TWINS).reach).toBeCloseTo(0.85);
+    // Puis la ruée, l'impact, la récupération et le retour : la moitié de ceux d'aujourd'hui.
+    for (const now of instants(2_420, END)) {
+      expect([now, enemyPose(BOLT, now, false, TWINS).reach]).toEqual([
+        now,
+        expect.closeTo(enemyPose(BOLT, now, false).reach * 0.5, 6),
+      ]);
+    }
+    expect(enemyPose(BOLT, 2_420, false, TWINS).reach).toBeCloseTo(0.08);
+    expect(enemyPose(BOLT, 2_500, false, TWINS).reach).toBeCloseTo(0.425);
+    expect(enemyPose(BOLT, 2_585, false, TWINS).reach).toBeCloseTo((0.85 - 0.55 * 0.75) * 0.5);
+    expect(enemyPose(BOLT, 2_670, false, TWINS).reach).toBeCloseTo(0.15);
+    for (const now of instants(WIND_UP_AT, END)) {
+      expect(enemyPose(BOLT, now, false, TWINS).reach).toBeLessThanOrEqual(0.425 + 1e-9);
+    }
+    // Le coup sans portée de l'Atelier garde le chemin d'aujourd'hui.
+    for (const now of instants(WIND_UP_AT, END)) {
+      expect([now, enemyPose(SHOCKWAVE, now, false, TWINS).reach]).toEqual([
+        now,
+        enemyPose(SHOCKWAVE, now, false).reach,
+      ]);
+    }
+  });
+
+  it('multiplies the second segment of a double attack and the false rush by the reach too', () => {
+    const scaled: AttackMotions = {
+      double: { reach: 0.5, lift: {} },
+      feint: { reach: 0.5, lift: {} },
+    };
+    const feint = attack('feint', [3_000], { feintAt: 2_200 });
+    // Après la fausse ruée, l'anticipation reprend : elle seule part de l'avancée.
+    for (const [timeline, from, to] of [
+      [SHINBONES, 2_320, END],
+      [feint, 2_120, 2_390],
+      [feint, 2_920, END],
+    ] as const) {
+      for (const now of instants(from, to)) {
+        expect([now, enemyPose(timeline, now, false, scaled).reach]).toEqual([
+          now,
+          expect.closeTo(enemyPose(timeline, now, false).reach * 0.5, 6),
+        ]);
+      }
+    }
   });
 
   it('lifts each pose of the shockwave by its lift, in whole art pixels', () => {
@@ -312,7 +350,7 @@ describe('enemyPose with attack poses (#139)', () => {
   });
 
   it('with reduced motion, covers a quarter of the reach and lifts by a quarter, rounded to the art pixel', () => {
-    expect(enemyPose(BOLT, 2_500, true, TWINS).reach).toBeCloseTo(0.5 * 0.25);
+    expect(enemyPose(BOLT, 2_500, true, TWINS).reach).toBeCloseTo(0.425 * 0.25);
     const lifts: Partial<Record<EnemyFrame, number>> = {};
     for (const now of instants(WIND_UP_AT, END)) {
       const full = enemyPose(SHOCKWAVE, now, false, TWINS);

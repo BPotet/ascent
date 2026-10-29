@@ -77,8 +77,18 @@ function pose(
   return { frame, tier, red, reach: reach * motion, jitter: jitter * motion, poses: null, lift: 0 };
 }
 
-/** L'image de l'ennemi actif à l'instant `now`, le haut de sa ruée en `hit`. */
-function framePose(timeline: SceneTimeline, now: number, reduced: boolean, hit: number): EnemyPose {
+/**
+ * L'image de l'ennemi actif à l'instant `now`. La portée `scale` multiplie le chemin de l'attaque
+ * (#139) : le recul de l'anticipation part de l'avancée, sans saut, jusqu'à
+ * `(ADVANCE − BACK) × scale` ; la ruée, l'impact, la récupération, la fausse ruée et le retour sont
+ * multipliés.
+ */
+function framePose(
+  timeline: SceneTimeline,
+  now: number,
+  reduced: boolean,
+  scale: number,
+): EnemyPose {
   'worklet';
   const t = sceneInstant(timeline, now);
   const motion = reduced ? REDUCED_MOTION : 1;
@@ -120,13 +130,13 @@ function framePose(timeline: SceneTimeline, now: number, reduced: boolean, hit: 
           : since < RETURN_MS
             ? stepFrame(3 - (Math.floor(since / FRAME_MS) % 4))
             : 'idle0';
-    return pose(frame, 1, red, ADVANCE * (1 - clamp01(since / RETURN_MS)), 0, motion);
+    return pose(frame, 1, red, ADVANCE * (1 - clamp01(since / RETURN_MS)) * scale, 0, motion);
   }
   const impact = impacts[j] ?? t;
   const rest = j < impacts.length - 1 ? ADVANCE - 0.06 : ADVANCE;
   if (t >= impact) {
     const recovery = clamp01((t - impact) / RECOVERY_MS);
-    return pose('impact', 2, red, hit - (hit - rest) * ease(recovery), 0, motion);
+    return pose('impact', 2, red, (HIT - (HIT - rest) * ease(recovery)) * scale, 0, motion);
   }
   if (t >= impact - RUSH_MS) {
     const rush = (t - (impact - RUSH_MS)) / RUSH_MS;
@@ -134,7 +144,7 @@ function framePose(timeline: SceneTimeline, now: number, reduced: boolean, hit: 
       'lunge',
       2,
       red,
-      ADVANCE - BACK + (hit - (ADVANCE - BACK)) * rush * rush,
+      (ADVANCE - BACK + (HIT - (ADVANCE - BACK)) * rush * rush) * scale,
       0,
       motion,
     );
@@ -148,10 +158,12 @@ function framePose(timeline: SceneTimeline, now: number, reduced: boolean, hit: 
   let tier: 0 | 1 | 2;
   let jitter = 0;
   let reach: number;
+  // Le recul de l'anticipation, de l'avancée au point de départ de la ruée.
+  const recoil = ADVANCE - (ADVANCE - BACK) * scale;
   if (timeline.attack === 'double' && j === 1) {
     frame = n < 1 ? 'rec0' : 'ant2';
     tier = 1;
-    reach = rest - (rest - (ADVANCE - BACK)) * ease(progress);
+    reach = (rest - (rest - (ADVANCE - BACK)) * ease(progress)) * scale;
   } else if (timeline.attack === 'delayed' || timeline.attack === 'delayedPerilous') {
     if (q < 0.45) {
       frame = q < 0.15 ? 'ant0' : q < 0.3 ? 'ant1' : 'ant2';
@@ -160,11 +172,11 @@ function framePose(timeline: SceneTimeline, now: number, reduced: boolean, hit: 
       frame = n % 2 === 1 ? 'hes' : 'ant2';
       tier = 1;
     }
-    reach = ADVANCE - BACK * ease(clamp01(progress / 0.45));
+    reach = ADVANCE - recoil * ease(clamp01(progress / 0.45));
   } else {
     frame = q < 0.2 ? 'ant0' : q < 0.5 ? 'ant1' : 'ant2';
     tier = q < 0.2 ? 0 : q < 0.6 ? 1 : 2;
-    reach = ADVANCE - BACK * ease(progress);
+    reach = ADVANCE - recoil * ease(progress);
   }
   if (red) {
     tier = tier === 0 ? 1 : tier;
@@ -175,7 +187,7 @@ function framePose(timeline: SceneTimeline, now: number, reduced: boolean, hit: 
     if (fromFeint >= -RUSH_MS && fromFeint < FEINT_RETURN_MS) {
       const rise =
         fromFeint < 0 ? (1 + fromFeint / RUSH_MS) ** 2 : 1 - ease(fromFeint / FEINT_RETURN_MS);
-      reach = ADVANCE - BACK + (FEINT_REACH - (ADVANCE - BACK)) * rise;
+      reach = (ADVANCE - BACK + (FEINT_REACH - (ADVANCE - BACK)) * rise) * scale;
       if (fromFeint < 0) {
         frame = 'feint0';
         tier = 2;
@@ -207,8 +219,8 @@ function framePose(timeline: SceneTimeline, now: number, reduced: boolean, hit: 
  * Avec la table `motions` de l'ennemi actif (#139), l'image choisie, aux mêmes instants, vient des
  * poses d'un coup quand l'attaque en a pour elle : `poses` donne alors le type de coup, et `lift`
  * son élévation (le quart, arrondi au pixel d'art, en mouvement réduit). La portée du coup, quand
- * l'Atelier en donne une, remplace le haut de la ruée. Jamais pendant l'avancée, une Garde ou un
- * Relever : le type de coup n'y est pas connu.
+ * l'Atelier en donne une, multiplie le chemin de l'attaque, l'avancée exceptée. Jamais pendant
+ * l'avancée, une Garde ou un Relever : le type de coup n'y est pas connu.
  */
 export function enemyPose(
   timeline: SceneTimeline,
@@ -219,7 +231,7 @@ export function enemyPose(
   'worklet';
   const own =
     timeline.kind === 'attack' && timeline.attack !== null ? motions[timeline.attack] : undefined;
-  const shown = framePose(timeline, now, reduced, own?.reach ?? HIT);
+  const shown = framePose(timeline, now, reduced, own?.reach ?? 1);
   const lift = own?.lift[shown.frame];
   if (lift === undefined) return shown;
   const scaled = reduced ? Math.round(lift * REDUCED_MOTION) : lift;
