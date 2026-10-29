@@ -1,13 +1,18 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { Instrumenter } from '@stryker-mutator/instrumenter';
 import {
   assertMatches,
   buildPlan,
+  CHUNK_LINES,
+  chunkAtStatements,
   classify,
   escapeGlob,
   isRetained,
   mutateEntries,
+  outline,
   parseDiff,
+  PARTS,
   screenFiles,
   split,
   toMatrix,
@@ -233,6 +238,175 @@ describe('split', () => {
   });
 });
 
+// Issue #131 : un gros fichier du domaine est coupé en plages de lignes, entre deux instructions
+// de premier niveau seulement (avenant du 29 octobre 2026 à l'ADR 0004).
+describe('chunkAtStatements', () => {
+  const ranges = (...pairs) => pairs.map(([start, end]) => ({ start, end }));
+
+  /** Vrai si les plages couvrent les lignes 1 à `lineCount`, sans trou ni recouvrement. */
+  function assertCovers(chunks, lineCount) {
+    assert.equal(chunks[0].start, 1);
+    assert.equal(chunks.at(-1).end, lineCount);
+    for (let index = 1; index < chunks.length; index += 1) {
+      assert.equal(chunks[index].start, chunks[index - 1].end + 1);
+    }
+  }
+
+  it('keeps a small file whole', () => {
+    const file = { lineCount: 40, statements: ranges([1, 10], [12, 39]) };
+    assert.deepEqual(chunkAtStatements(file, 50), ranges([1, 40]));
+  });
+
+  it('covers every line, contiguously, cutting only between statements', () => {
+    const statements = ranges([1, 3], [5, 20], [22, 40], [42, 60], [62, 75], [77, 90]);
+    const chunks = chunkAtStatements({ lineCount: 92, statements }, 30);
+    assertCovers(chunks, 92);
+    assert.ok(chunks.length > 1);
+    for (const { start, end } of chunks) {
+      assert.ok(end - start + 1 <= 30, `${start}-${end} is longer than 30 lines`);
+      assert.ok(
+        statements.every(
+          (s) => s.end < start || s.start > end || (s.start >= start && s.end <= end),
+        ),
+        `${start}-${end} cuts a statement`,
+      );
+    }
+  });
+
+  it('attaches comments and blank lines between statements to a range', () => {
+    // Lignes 11 à 14 : commentaire et lignes vides entre les deux instructions.
+    const chunks = chunkAtStatements({ lineCount: 30, statements: ranges([1, 10], [15, 30]) }, 12);
+    assert.deepEqual(chunks, ranges([1, 10], [11, 30]));
+  });
+
+  it('keeps a statement longer than the limit whole', () => {
+    const chunks = chunkAtStatements(
+      { lineCount: 120, statements: ranges([1, 5], [7, 100], [102, 120]) },
+      20,
+    );
+    assert.deepEqual(chunks, ranges([1, 5], [6, 100], [101, 120]));
+  });
+
+  it('never cuts between two statements that share a line', () => {
+    const chunks = chunkAtStatements({ lineCount: 30, statements: ranges([1, 10], [10, 30]) }, 12);
+    assert.deepEqual(chunks, ranges([1, 30]));
+  });
+});
+
+describe('outline', () => {
+  it('reads the line ranges of the top-level statements with the TypeScript compiler', () => {
+    const source = [
+      "import { a } from './a';", // 1
+      '', // 2
+      '/** A doc comment. */', // 3
+      'export function f(x: number): number {', // 4
+      '  return x + a;', // 5
+      '}', // 6
+      'const o = {', // 7
+      '  k: 1,', // 8
+      '}; export const p = 2;', // 9
+      '', // 10
+    ].join('\n');
+    assert.deepEqual(outline(source, 'x.ts'), {
+      lineCount: 10,
+      statements: [
+        { start: 1, end: 1 },
+        { start: 4, end: 6 },
+        { start: 7, end: 9 },
+        { start: 9, end: 9 },
+      ],
+    });
+  });
+});
+
+// Test de non-régression de l'issue #131 : Stryker ne garde un mutant que si son nœud est
+// entièrement dans une plage (`locationIncluded`). Les mutants du fichier entier doivent être
+// exactement la réunion des mutants des plages du plan : aucun perdu, aucun compté deux fois.
+describe('no mutant lost when a domain file is cut', () => {
+  const SAMPLE = `import { clamp } from './clamp';
+
+/** Les points gagnés pour une série. */
+export function streakPoints(days: number, bonus: boolean): number {
+  if (days <= 0) {
+    return 0;
+  }
+  const base = days * 10 + (bonus ? 5 : 0);
+  return clamp(base, 0, 100);
+}
+
+export const LEVELS = {
+  novice: { min: 0, label: 'Novice' },
+  adept: { min: 100, label: 'Adept' },
+  master: { min: 500, label: 'Master' },
+};
+
+// Un bloc sur plusieurs lignes, avec des boucles et des conditions imbriquées.
+export function levelOf(xp: number): string {
+  let found = 'novice';
+  for (const [name, level] of Object.entries(LEVELS)) {
+    if (xp >= level.min && name !== '') {
+      found = name;
+    }
+  }
+  while (found.length > 20) {
+    found = found.slice(1);
+  }
+  return found;
+}
+
+export const isMaster = (xp: number): boolean => levelOf(xp) === 'master' || xp > 1000;
+
+export class Counter {
+  private count = 0;
+
+  increment(by = 1): number {
+    this.count += by;
+    return this.count;
+  }
+}
+`;
+  const silent = { debug() {}, info() {}, warn() {}, error() {}, isDebugEnabled: () => false };
+
+  /** Les plages d'une entrée `fichier:début-fin`, lues comme Stryker (`project-reader.js`). */
+  const strykerRange = ({ start, end }) => ({
+    start: { line: start - 1, column: 0 },
+    end: { line: end - 1, column: Number.MAX_SAFE_INTEGER },
+  });
+
+  async function mutants(mutate) {
+    const instrumenter = new Instrumenter(silent);
+    const result = await instrumenter.instrument([{ name: 'sample.ts', content: SAMPLE, mutate }], {
+      plugins: null,
+      excludedMutations: [],
+      ignorers: [],
+    });
+    return result.mutants.map(
+      ({ mutatorName, replacement, location: { start, end } }) =>
+        `${start.line}:${start.column}-${end.line}:${end.column} ${mutatorName} ${replacement}`,
+    );
+  }
+
+  it('finds exactly the mutants of the whole file in the ranges of the plan', async () => {
+    const chunks = chunkAtStatements(outline(SAMPLE, 'sample.ts'), 8);
+    assert.ok(chunks.length >= 4, `expected several ranges, got ${chunks.length}`);
+    const whole = await mutants(true);
+    const perRange = [];
+    for (const chunk of chunks) perRange.push(...(await mutants([strykerRange(chunk)])));
+    assert.ok(whole.length > 30, `expected a meaningful sample, got ${whole.length} mutants`);
+    assert.deepEqual([...perRange].sort(), [...whole].sort());
+  });
+
+  it('would lose mutants with a cut inside a statement', async () => {
+    // Témoin : couper `levelOf` en son milieu perd les mutants qui traversent la coupe.
+    const whole = await mutants(true);
+    const cut = [
+      ...(await mutants([strykerRange({ start: 1, end: 24 })])),
+      ...(await mutants([strykerRange({ start: 25, end: 44 })])),
+    ];
+    assert.ok(cut.length < whole.length);
+  });
+});
+
 describe('buildPlan', () => {
   const change = (file, ranges, extra = {}) => ({
     file,
@@ -418,6 +592,106 @@ describe('buildPlan', () => {
         { id: 'ui-1', scope: 'ui', thresholdClass: 'newCode', config: 'stryker.ui.config.mjs' },
         { id: 'ui-2', scope: 'ui', thresholdClass: 'newCode', config: 'stryker.ui.config.mjs' },
       ],
+    );
+  });
+
+  // Issue #131 : `Battle.ts` (1 512 lignes, 1 226 mutants) dépassait le délai d'un shard.
+  const bigDomainFile = (file = 'src/domain/battle/Battle.ts', lineCount = 1512) => ({
+    file,
+    added: false,
+    ranges: [{ start: 40, end: 45 }],
+    weight: 6,
+    lineCount,
+    // Une instruction de premier niveau de 9 lignes toutes les 10 lignes.
+    statements: Array.from({ length: Math.floor(lineCount / 10) }, (_, index) => ({
+      start: index * 10 + 1,
+      end: index * 10 + 9,
+    })),
+  });
+
+  it('cuts a large domain file into ranges spread over several domain shards', () => {
+    const shards = buildPlan({ mode: 'changed', changes: [bigDomainFile()] });
+    assert.ok(shards.length > 1);
+    assert.ok(shards.length <= PARTS.changed.domain);
+    assert.deepEqual(
+      shards.map((shard) => shard.id),
+      shards.map((_, index) => `domain-${index + 1}`),
+    );
+    for (const shard of shards) {
+      assert.equal(shard.scope, 'domain');
+      assert.equal(shard.thresholdClass, 'domain');
+      assert.equal(shard.config, 'stryker.domain.config.mjs');
+    }
+    const chunks = shards
+      .flatMap((shard) => shard.mutate)
+      .map((entry) => {
+        const match = /^src\/domain\/battle\/Battle\.ts:(\d+)-(\d+)$/.exec(entry);
+        assert.ok(match, entry);
+        return { start: Number(match[1]), end: Number(match[2]) };
+      })
+      .sort((a, b) => a.start - b.start);
+    assert.equal(chunks[0].start, 1);
+    assert.equal(chunks.at(-1).end, 1512);
+    for (let index = 1; index < chunks.length; index += 1) {
+      assert.equal(chunks[index].start, chunks[index - 1].end + 1);
+    }
+    assert.ok(chunks.every(({ start, end }) => end - start + 1 <= CHUNK_LINES.domain));
+  });
+
+  it('cuts the domain into more shards in full mode', () => {
+    const changes = [
+      { ...bigDomainFile(), added: true, ranges: [], weight: 1512 },
+      { ...bigDomainFile('src/domain/hero/Hero.ts', 900), added: true, ranges: [], weight: 900 },
+    ];
+    const shards = buildPlan({ mode: 'full', changes });
+    assert.equal(shards.length, PARTS.full.domain);
+    assert.ok(PARTS.full.domain > PARTS.changed.domain);
+  });
+
+  it('weighs a domain file by its mutated lines, not only by its added lines', () => {
+    const small = (file, lineCount, added) => ({
+      file,
+      added: false,
+      ranges: [{ start: 1, end: added }],
+      weight: added,
+      lineCount,
+      statements: [{ start: 1, end: lineCount }],
+    });
+    const shards = buildPlan({
+      mode: 'changed',
+      changes: [
+        small('src/domain/a/A.ts', 200, 1),
+        small('src/domain/b/B.ts', 10, 9),
+        small('src/domain/c/C.ts', 10, 8),
+      ],
+    });
+    // Pondérés par leurs lignes ajoutées, B et C passeraient avant A : A, le plus long à muter,
+    // doit être seul dans sa part.
+    assert.deepEqual(shards[0].mutate, ['src/domain/a/A.ts']);
+  });
+
+  it('never cuts a file outside the domain', () => {
+    const core = {
+      ...bigDomainFile('src/application/useCases/big.ts'),
+      added: true,
+      ranges: [],
+      weight: 1512,
+    };
+    const shards = buildPlan({ mode: 'full', changes: [core] });
+    assert.deepEqual(
+      shards.map((shard) => shard.mutate),
+      [['src/application/useCases/big.ts']],
+    );
+  });
+
+  it('keeps a single domain shard for a small domain change', () => {
+    const shards = buildPlan({
+      mode: 'changed',
+      changes: [{ ...bigDomainFile('src/domain/habit/Habit.ts', 120) }],
+    });
+    assert.deepEqual(
+      shards.map(({ id, mutate }) => ({ id, mutate })),
+      [{ id: 'domain', mutate: ['src/domain/habit/Habit.ts'] }],
     );
   });
 

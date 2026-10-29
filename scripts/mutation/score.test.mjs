@@ -34,7 +34,12 @@ describe('score', () => {
   let output;
 
   // Écrit un shard comme un artefact téléchargé : dans un sous-dossier propre.
-  function shard(id, thresholdClass, counts, { expectedShards, withReport = true } = {}) {
+  function shard(
+    id,
+    thresholdClass,
+    counts,
+    { expectedShards, withReport = true, file = `src/${id}.ts` } = {},
+  ) {
     const shardDir = path.join(dir, `mutation-shard-${id}`);
     mkdirSync(shardDir, { recursive: true });
     writeFileSync(
@@ -42,10 +47,7 @@ describe('score', () => {
       JSON.stringify({ id, thresholdClass, mutate: [], expectedShards }),
     );
     if (withReport) {
-      writeFileSync(
-        path.join(shardDir, 'mutation.json'),
-        JSON.stringify(report(`src/${id}.ts`, counts)),
-      );
+      writeFileSync(path.join(shardDir, 'mutation.json'), JSON.stringify(report(file, counts)));
     }
   }
 
@@ -86,6 +88,16 @@ describe('score', () => {
     shard('core', 'newCode', { Killed: 100 }, { expectedShards: 2 });
     assert.equal(await run(), 1);
     assert.match(output, /Domain, total\*\* .* 84\.00 % \| 85 % \| \*\*fail\*\*/);
+  });
+
+  // Issue #131 : un gros fichier du domaine est coupé en plages, mutées dans plusieurs shards.
+  it('adds up the mutants of one domain file reported by several shards', async () => {
+    const file = 'src/domain/battle/Battle.ts';
+    shard('domain-1', 'domain', { Killed: 50, Survived: 10 }, { expectedShards: 2, file });
+    shard('domain-2', 'domain', { Killed: 35, Timeout: 5 }, { expectedShards: 2, file });
+    assert.equal(await run(), 0);
+    assert.match(output, /Domain \/ domain-1 \| 50 \| 0 \| 10 \| 0 \| 83\.33 %/);
+    assert.match(output, /Domain, total\*\* \| 85 \| 5 \| 10 \| 0 \| 90\.00 % \| 85 % \| pass/);
   });
 
   it('passes when there is no valid mutant', async () => {
