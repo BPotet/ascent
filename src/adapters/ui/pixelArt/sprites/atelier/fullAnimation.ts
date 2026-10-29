@@ -81,7 +81,7 @@ export function assetSprite(image: AssetImage): Sprite {
 /**
  * La pose `frame` d'une animation complète, dans une case de `cell` pixels d'art (celle du combat
  * par défaut) : une pose plus petite y est centrée en largeur et calée en bas, sans mise à
- * l'échelle, et ses ancrages sont décalés d'autant.
+ * l'échelle, et ses ancrages sont décalés d'autant. Une pose plus grande que la case est refusée.
  */
 export function animationSprite<Frame extends string>(
   animation: FullAnimation<Frame>,
@@ -90,6 +90,9 @@ export function animationSprite<Frame extends string>(
 ): { readonly sprite: Sprite; readonly anchors: AnimationAnchors } {
   const rows = Object.hasOwn(animation.frames, frame) ? animation.frames[frame] : undefined;
   if (rows === undefined) throw new Error(`The animation has no pose ${frame}`);
+  if (animation.w > width || animation.h > height) {
+    throw new Error(`The poses (${animation.w} × ${animation.h}) are larger than the cell`);
+  }
   const left = Math.floor((width - animation.w) / 2);
   const top = height - animation.h;
   const sprite = grid(width, height);

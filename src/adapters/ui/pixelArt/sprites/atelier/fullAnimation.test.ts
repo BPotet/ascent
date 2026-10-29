@@ -161,6 +161,17 @@ describe('a pose in the 44 × 52 cell of the battle', () => {
     expect(at(sprite, 6, 1)).toBe(codeOf(MAD_VILLAGER_ANIMATION.pal[0]!));
   });
 
+  it('refuses a cell smaller than the poses, in width or in height', () => {
+    const { w, h } = MAD_VILLAGER_ANIMATION;
+    expect(() => animationSprite(MAD_VILLAGER_ANIMATION, 'idle0', [w - 1, h])).toThrow(
+      'larger than the cell',
+    );
+    expect(() => animationSprite(MAD_VILLAGER_ANIMATION, 'idle0', [w, h - 1])).toThrow(
+      'larger than the cell',
+    );
+    expect(animationSprite(MAD_VILLAGER_ANIMATION, 'idle0', [w, h]).sprite.width).toBe(w);
+  });
+
   it('refuses a pose the animation does not have', () => {
     expect(() => animationSprite(GHOUL_ANIMATION as FullAnimation, 'raise')).toThrow('raise');
   });
