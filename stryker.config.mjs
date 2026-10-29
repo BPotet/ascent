@@ -29,4 +29,9 @@ export default {
   tempDirName: '.stryker-tmp',
   concurrency: 4,
   timeoutMS: 10000,
+  // Garde-fou contre un « dry run » bloqué, pas un seuil (issue #145, avenant du 29 octobre 2026 à
+  // docs/adr/0004-mutation-en-ci.md). Le délai par défaut de Stryker, 5 minutes, ne suffit pas aux
+  // écrans : environ 3 minutes mesurées pour `core` (run 40816846129), plus de 5 pour les écrans
+  // (run 40922772417). 20 minutes laissent au moins 35 minutes aux mutants dans un job de 60.
+  dryRunTimeoutMinutes: 20,
 };

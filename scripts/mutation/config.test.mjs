@@ -1,13 +1,14 @@
 // Scénario « En local » de l'issue #54 : `npm run mutation:changed`, `npm run mutation` et
 // `npm run verify:full` ne mutent pas les écrans ; `npm run mutation:ui` les mute à la demande.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import baseConfig from '../../stryker.config.mjs';
+import domainConfig from '../../stryker.domain.config.mjs';
 import uiConfig from '../../stryker.ui.config.mjs';
-import { isRetained } from './plan.mjs';
+import { classify, isRetained } from './plan.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const { scripts } = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'));
@@ -54,5 +55,40 @@ describe('stryker.ui.config.mjs', () => {
       assert.equal(isRetained(file, uiConfig.mutate), false, file);
     }
     assert.deepEqual(uiConfig.thresholds, baseConfig.thresholds);
+  });
+});
+
+// Issue #145 : le « dry run » des écrans dépassait le délai par défaut de Stryker (5 minutes).
+describe('dry run timeout', () => {
+  it('is 20 minutes in the three configs', () => {
+    for (const config of [baseConfig, domainConfig, uiConfig]) {
+      assert.equal(config.dryRunTimeoutMinutes, 20);
+    }
+  });
+});
+
+// Issue #145 : les données recopiées de l'Atelier (ADR 0010) sortent de la liste `mutate` des
+// écrans. Ce n'est sans effet sur le score que si tous leurs mutants sont déjà ignorés.
+describe('Atelier data', () => {
+  const dir = 'src/adapters/ui/pixelArt/sprites/atelier/data';
+  const files = readdirSync(resolve(root, dir)).map((name) => `${dir}/${name}`);
+
+  it('is left out of the screen mutation and of the plan', () => {
+    assert.ok(files.length > 0);
+    for (const file of files) {
+      assert.equal(isRetained(file, uiConfig.mutate), false, file);
+      assert.equal(classify(file), null, file);
+    }
+    assert.equal(
+      isRetained('src/adapters/ui/pixelArt/sprites/atelier/fullAnimation.ts', uiConfig.mutate),
+      true,
+    );
+  });
+
+  it('has every mutant disabled, so that leaving it out hides no executable mutant', () => {
+    for (const file of files) {
+      const [first] = readFileSync(resolve(root, file), 'utf8').split('\n');
+      assert.equal(first.trim(), '// Stryker disable all', file);
+    }
   });
 });
