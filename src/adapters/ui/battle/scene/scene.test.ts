@@ -317,6 +317,36 @@ describe('enemyPose with attack poses (#139)', () => {
     }
   });
 
+  it('multiplies the recoil of a delayed attack by the reach, hesitation included', () => {
+    const delayed = attack('delayed', [3_100]);
+    const halved: AttackMotions = {
+      delayed: { reach: 0.5, lift: {} },
+      delayedPerilous: { reach: 0.5, lift: {} },
+    };
+    // Le recul dure 45 % de l'anticipation (1 620 ms), puis l'hésitation tient jusqu'à la ruée.
+    const recoilEnd = WIND_UP_AT + 0.45 * 1_620;
+    expect(enemyPose(delayed, WIND_UP_AT, false, halved).reach).toBeCloseTo(0.3);
+    let last = 0.3;
+    for (const now of instants(WIND_UP_AT + 5, recoilEnd)) {
+      const { reach } = enemyPose(delayed, now, false, halved);
+      expect([now, reach < last, reach > 0.08 - 1e-9]).toEqual([now, true, true]);
+      last = reach;
+    }
+    for (const now of instants(Math.ceil(recoilEnd), 3_020)) {
+      expect([now, enemyPose(delayed, now, false, halved).reach]).toEqual([
+        now,
+        expect.closeTo(0.08, 6),
+      ]);
+    }
+    expect(enemyPose(delayed, 3_100, false, halved).reach).toBeCloseTo(0.425);
+    // Sans table : de 0,3 à 0,16, comme aujourd'hui.
+    expect(enemyPose(delayed, WIND_UP_AT, false).reach).toBeCloseTo(0.3);
+    expect(enemyPose(delayed, Math.ceil(recoilEnd), false).reach).toBeCloseTo(0.16);
+    expect(enemyPose(delayed, 3_000, false).reach).toBeCloseTo(0.16);
+    expect(enemyPose(delayed, WIND_UP_AT + 300, false).reach).toBeLessThan(0.3);
+    expect(enemyPose(delayed, WIND_UP_AT + 300, false).reach).toBeGreaterThan(0.16);
+  });
+
   it('multiplies the second segment of a double attack and the false rush by the reach too', () => {
     const scaled: AttackMotions = {
       double: { reach: 0.5, lift: {} },
