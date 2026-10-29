@@ -25,6 +25,7 @@ import {
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize, notchedCorners } from '../pixelArt/artPixel';
 import { PixelFrame } from '../pixelArt/PixelFrame';
+import { PixelIcon } from '../pixelArt/PixelIcon';
 import { pixelFont, textFont } from '../pixelArt/pixelTypography';
 import type { ActionPad as Pad, LockSpan, PowerSlot } from '../state/battleView';
 import { battleColors } from '../theme/battleColors';
@@ -363,13 +364,18 @@ function PowerKey({
     >
       {hatched ? <Hatching testID="battle-power-hatching" color={UNAVAILABLE_HATCH} /> : null}
       <Text style={[styles.keyText, { color: look.text }]}>Pouvoir</Text>
-      <Text style={[styles.keyNote, { color: look.note }]}>
-        {active
-          ? 'Actif'
-          : slot.missing > 0
-            ? missingMomentumText(slot.missing)
-            : powerCostText(slot.power)}
-      </Text>
+      <View style={styles.noteRow}>
+        {active ? (
+          <PixelIcon name="check8" color={look.note} testID="battle-power-active-check" />
+        ) : null}
+        <Text style={[styles.keyNote, { color: look.note }]}>
+          {active
+            ? 'Actif'
+            : slot.missing > 0
+              ? missingMomentumText(slot.missing)
+              : powerCostText(slot.power)}
+        </Text>
+      </View>
     </PixelKey>
   );
 }
@@ -470,7 +476,7 @@ export function ActionPad({
           under={battleColors.background}
           background={roles.errorBg}
           testID="battle-off-balance-tag"
-          style={[styles.tag, styles.offTag]}
+          style={[styles.tag, styles.offTag, styles.offLine]}
         >
           <Text accessibilityLiveRegion="polite" testID="battle-off-balance" style={styles.offText}>
             Déséquilibré
@@ -524,7 +530,7 @@ export function ActionPad({
 }
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
-/** Les hachures d'une touche indisponible : celles du bouton pixel inactif. */
+/** Les hachures d'une touche indisponible : celles du bouton pixel inactif (`PixelButton`, `hatch`). */
 const UNAVAILABLE_HATCH = 'rgba(62,72,112,0.35)';
 
 const styles = StyleSheet.create({
@@ -545,6 +551,7 @@ const styles = StyleSheet.create({
   secondary: { flex: 1 },
   locked: { opacity: 0.4 },
   keyText: { fontFamily: pixelFont, fontSize: 24, lineHeight: 28, textAlign: 'center' },
+  noteRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   keyNote: { fontFamily: textFont.semiBold, fontSize: 12, lineHeight: 15, textAlign: 'center' },
   strike: { flex: 1 },
   strikeFill: {
@@ -583,6 +590,8 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   lockTag: { transform: [{ translateX: -52 }] },
+  // Le trait sombre de la pastille de la maquette (C6), plus doux que le rouge d'erreur.
+  offLine: { borderColor: '#7A3446' },
   offTag: { transform: [{ translateX: -60 }] },
   tagText: { color: battleColors.text, fontFamily: textFont.bold, fontSize: 13, lineHeight: 17 },
   offText: { color: roles.pink, fontFamily: textFont.bold, fontSize: 13, lineHeight: 17 },

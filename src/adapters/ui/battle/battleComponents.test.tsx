@@ -1,7 +1,8 @@
 // Les composants du combat d'essai, rendus seuls (la scène Skia n'en fait pas partie).
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
+import { artPalette } from '../pixelArt/artPalette';
 import type { EnemyView } from '../state/battleView';
 import { battleColors } from '../theme/battleColors';
 import { ActionPad } from './ActionPad';
@@ -464,5 +465,30 @@ describe('ActionPad', () => {
       ['parry', 4_321],
       ['dodge', 4_321],
     ]);
+  });
+
+  it('ticks the active power, written « Actif », in a gold frame (C7b, #120)', async () => {
+    await render(
+      <ActionPad
+        pad={{
+          kind: 'hero',
+          locked: false,
+          lock: null,
+          power: { power: 'shadowStep', cost: 2, missing: 0, active: true },
+        }}
+        {...padProps()}
+      />,
+    );
+
+    const power = screen.getByTestId('battle-power-button');
+    expect(
+      within(power).getByTestId('battle-power-active-check', { includeHiddenElements: true }),
+    ).toBeTruthy();
+    expect(power).toHaveTextContent('PouvoirActif');
+    expect(power.props.accessibilityState).toEqual({ disabled: true });
+    expect(style('battle-power-button').borderColor).toBe(artPalette.roles.gold);
+    expect(
+      screen.queryByTestId('battle-power-hatching', { includeHiddenElements: true }),
+    ).toBeNull();
   });
 });
