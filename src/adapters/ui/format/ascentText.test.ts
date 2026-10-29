@@ -81,7 +81,7 @@ describe('gauge, blessing and item texts (#93)', () => {
 
   it('names the items, worn or found, with their effect and Initiative', () => {
     expect(itemText('hasteAmulet')).toBe('Amulette de Hâte · Accessoire · Rare · Initiative +2');
-    expect(itemText('hammer')).toBe('Marteau · Arme · Commun · Brise-garde ×1,6 · Initiative −1');
+    expect(itemText('hammer')).toBe('Marteau · Arme · Rare · Brise-garde ×1,6 · Initiative −1');
     expect(itemText('crossbow')).toBe('Arbalète · Arme · Rare · Initiative +1');
     expect(itemText('blackKnightArmor')).toBe(
       'Armure de chevalier noir · Armure · Rare · Réduction des dégâts +20 points, Attaque +1 · Initiative −2',
@@ -103,8 +103,11 @@ describe('gauge, blessing and item texts (#93)', () => {
     );
   });
 
-  it('gives the Black knight armor its provisional line, and no line to the other items', () => {
+  it('gives the Black knight armor its provisional line, the Hammer its description, and no line to the other items', () => {
     expect(itemDescription('blackKnightArmor')).toBe('Lourde et lente.');
+    expect(itemDescription('hammer')).toBe(
+      'Un marteau de forge, trop lourd pour un combat rapide. Aucune garde ne lui résiste longtemps.',
+    );
     expect(itemDescription('crossbow')).toBeNull();
   });
 });
