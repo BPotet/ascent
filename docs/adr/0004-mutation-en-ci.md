@@ -411,7 +411,7 @@ Trois constats :
    surtout de deux fichiers ajoutés, `atelier/data/ossuaryWarden.ts` (2 156 lignes) et
    `atelier/data/twins.ts` (1 937 lignes) : un fichier ajouté est muté en entier (décision 1), mais
    ces données recopiées de l'Atelier commencent par `// Stryker disable all` (exclusion par
-   commentaire de l'ADR 0001, appliquée au dessin par l'ADR 0006 ; voir ADR 0010 § 7). Tous leurs
+   commentaire de l'ADR 0001, appliquée au dessin par l'ADR 0006 ; voir ADR 0010 § 8). Tous leurs
    mutants sont `Ignored` : ni placés dans le code (`@stryker-mutator/instrumenter` 10.0.0), ni
    exécutés, ni comptés dans le score.
 3. **La répartition des écrans est mal pesée.** Le découpage en plages des avenants #131 et #134 ne
