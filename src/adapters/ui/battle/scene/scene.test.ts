@@ -229,6 +229,22 @@ describe('enemyPose with attack poses (#139)', () => {
     }
   });
 
+  it('takes the attack poses for an attack only, even if a step-in or a lean-in carried an attack kind', () => {
+    const support: SceneTimeline = { ...STEP_IN, kind: 'support', until: WIND_UP_AT + 400 };
+    for (const now of instants(STEP_IN_AT, WIND_UP_AT + 400)) {
+      for (const timeline of [
+        { ...STEP_IN, attack: 'basic' as const },
+        { ...support, attack: 'basic' as const },
+      ]) {
+        expect([now, enemyPose(timeline, now, false, TWINS)]).toMatchObject([
+          now,
+          { poses: null, lift: 0 },
+        ]);
+      }
+    }
+    expect(enemyPose({ ...support, attack: 'basic' }, WIND_UP_AT, false, TWINS).frame).toBe('ant1');
+  });
+
   it('shows the same frames at the same instants as without attack poses: the durations do not change', () => {
     for (const [timeline, motion] of [
       [BOLT, TWINS],
