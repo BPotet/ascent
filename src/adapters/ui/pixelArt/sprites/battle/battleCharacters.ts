@@ -1,4 +1,4 @@
-import type { EnemyKind } from '../../../../../domain/battle/combatants';
+import type { EnemyKind, HeroKind } from '../../../../../domain/battle/combatants';
 import {
   claws,
   ell,
@@ -9,16 +9,16 @@ import {
   poly,
   px,
   rect,
-  shear,
   type Point,
   type Sprite,
 } from '../Sprite';
 import { GHOUL_ANIMATION } from '../atelier/data/ghoul';
 import { MAD_VILLAGER_ANIMATION } from '../atelier/data/madVillager';
 import { animationSprite, type FullAnimation } from '../atelier/fullAnimation';
+import { HERO_ANIMATIONS, HERO_CELL, isHero } from './heroAnimations';
 
-/** Un personnage du combat : un ennemi de trois quarts face, ou la Sentinelle de dos. */
-export type BattleCharacter = EnemyKind | 'hero';
+/** Un personnage du combat : un ennemi de trois quarts face, ou l'héroïne de dos. */
+export type BattleCharacter = EnemyKind | HeroKind;
 
 /** Les images d'un ennemi (maquette, `pxlib`) : repos, avancée, préparation, ruée, impact… */
 export type EnemyFrame =
@@ -40,7 +40,7 @@ export type EnemyFrame =
   | 'hurt'
   | 'down';
 
-/** Les images de la Sentinelle : repos, frappe, parade, esquive, touchée, déséquilibrée. */
+/** Les images d'une héroïne : repos, garde levée, frappe, parade, esquive, touchée, déséquilibrée. */
 export type HeroFrame =
   | 'idle0'
   | 'idle1'
@@ -155,12 +155,6 @@ interface Pose {
   readonly orb: number;
   readonly A: Point;
   readonly bA: number;
-  readonly sh: number;
-  readonly H: Point;
-  readonly T: Point;
-  readonly cape: number;
-  readonly cr: number;
-  readonly gl: number;
   readonly smear: number;
   readonly dx: number;
 }
@@ -200,12 +194,6 @@ const NEUTRAL: Pose = {
   orb: 0,
   A: [0, 0],
   bA: 0,
-  sh: 0,
-  H: [0, 0],
-  T: [0, 0],
-  cape: 0,
-  cr: 0,
-  gl: 0,
   smear: 0,
   dx: 0,
 };
@@ -432,79 +420,6 @@ const NECROMANCER: CharacterArt = {
   },
 };
 
-const HERO: CharacterArt = {
-  width: 32,
-  height: 40,
-  base: { by: 0, sh: 0, H: [25, 24], T: [29, 39], cape: 0, cr: 0, gl: 0 },
-  frames: {
-    idle0: {},
-    idle1: { by: 1, cape: 1, H: [25, 25] },
-    raise: { by: -1, H: [24, 12], T: [26, 0] },
-    raiseG: { by: -1, H: [24, 12], T: [26, 0], gl: 1 },
-    atk0: { by: -2, H: [22, 10], T: [21, 0] },
-    atk1: { by: -3, H: [19, 9], T: [15, 0] },
-    parry0: { by: 1, cr: 1, H: [25, 10], T: [6, 7] },
-    parry1: { by: 2, cr: 2, H: [26, 10], T: [5, 6] },
-    dodge0: { by: 1, sh: -3, H: [24, 22], T: [30, 34] },
-    dodge1: { by: 2, sh: -5, cr: 1, H: [24, 23], T: [30, 35] },
-    hit0: { by: 1, sh: 2, H: [26, 27], T: [31, 38] },
-    hit1: { by: 2, sh: 3, cr: 1, H: [26, 28], T: [31, 39] },
-    off0: { by: 1, sh: 2, H: [24, 28], T: [18, 39] },
-    off1: { by: 1, sh: -2, H: [24, 28], T: [18, 39] },
-  },
-  draw(g, p) {
-    const b = p.by;
-    const cr = p.cr;
-    rect(g, 19 + cr, 32 + b, 4, 8 - b, 2);
-    rect(g, 19 + cr, 38, 5, 2, 1);
-    rect(g, 9 - cr, 31 + b, 5, 9 - b, 3);
-    rect(g, 8 - cr, 38, 6, 2, 2);
-    poly(
-      g,
-      [
-        [10, 13 + b],
-        [24, 12 + b],
-        [27, 34 + b],
-        [5, 35 + b],
-      ],
-      26,
-    );
-    for (let x = 5, k = 0; x < 27; x += 4, k += 1) {
-      const down = (k + p.cape) % 2 ? 3 : 2;
-      poly(
-        g,
-        [
-          [x, 34 + b],
-          [x + 4, 34 + b],
-          [x + 2, 34 + b + down],
-        ],
-        26,
-      );
-    }
-    line(g, 12, 17 + b, 9, 34 + b, 15, 1);
-    line(g, 20, 16 + b, 23, 33 + b, 15, 1);
-    limb(g, [24, 15 + b], p.H, 1, 1, 10, 2);
-    ell(g, 23, 13 + b, 2, 2, 10);
-    ell(g, 9, 15 + b, 4, 3, 10);
-    limb(g, [8, 17 + b], [5, 27 + b], 1, -1, 10, 3);
-    ell(g, 17, 8 + b, 5, 5, 10);
-    rect(g, 13, 12 + b, 8, 2, 4);
-    rect(g, 20, 7 + b, 2, 3, 4);
-    line(g, 16, 1 + b, 18, 4 + b, 7, 2);
-    const [hx, hy] = p.H;
-    const [tx, ty] = p.T;
-    const dx = tx - hx;
-    const dy = ty - hy;
-    const norm = Math.hypot(dx, dy) || 1;
-    const nx = -dy / norm;
-    const ny = dx / norm;
-    line(g, hx, hy, tx, ty, p.gl ? 9 : 11, 1);
-    line(g, hx + nx * 2, hy + ny * 2, hx - nx * 2, hy - ny * 2, 7, 1);
-    if (p.sh) shear(g, p.sh, 31 + b);
-    return { smear: null, smearCode: 0, halo: null, eye: null, tips: [], head: null };
-  },
-};
-
 /** Les yeux, seuls gardés par une silhouette. */
 const EYES = 8;
 /** La teinte sombre d'une silhouette. */
@@ -535,6 +450,10 @@ const FULL_ANIMATIONS: Readonly<Record<'ghoul' | 'madVillager', FullAnimation<En
 
 type AnimatedCharacter = keyof typeof FULL_ANIMATIONS;
 
+function isHeroFrame(frame: BattleFrame): frame is HeroFrame {
+  return (HERO_FRAMES as readonly string[]).includes(frame);
+}
+
 function isAnimated(character: BattleCharacter): character is AnimatedCharacter {
   return Object.hasOwn(FULL_ANIMATIONS, character);
 }
@@ -544,7 +463,7 @@ function isEnemyFrame(frame: BattleFrame): frame is EnemyFrame {
 }
 
 /** Les personnages encore dessinés par le code : une seule source d'image par personnage. */
-const ART: Readonly<Record<Exclude<BattleCharacter, AnimatedCharacter>, CharacterArt>> = {
+const ART: Readonly<Record<Exclude<EnemyKind, AnimatedCharacter>, CharacterArt>> = {
   specter: SPECTER,
   necromancer: NECROMANCER,
   // Sprites provisoires des ennemis de l'ascension (prototype #91), repris du combat d'essai.
@@ -553,7 +472,6 @@ const ART: Readonly<Record<Exclude<BattleCharacter, AnimatedCharacter>, Characte
   twins: silhouette(OLD_GHOUL),
   ossuaryWarden: NECROMANCER,
   facelessPrior: SPECTER,
-  hero: HERO,
   // Le Squelette (#106) : silhouette provisoire, son asset est encore « proposé ».
   skeleton: silhouette(OLD_GHOUL),
 };
@@ -563,14 +481,19 @@ const finished = ([x, y]: Point): Point => [x + 2, y + 2];
 
 /**
  * L'image `frame` d'un personnage du combat. Avec une animation complète, la pose recopiée telle
- * quelle, sans liseré ni rouge (ADR 0010) ; sinon le dessin (`spectre3`, `necro3`, `hero3` de la
- * maquette), fini avec son liseré `tier` et, pour un coup imparable, la palette rouge.
+ * quelle, sans liseré ni rouge (ADR 0010) : dans la case du héros pour une héroïne (#140), celle
+ * d'un ennemi sinon ; sans animation complète, le dessin (`spectre3`, `necro3` de la maquette),
+ * fini avec son liseré `tier` et, pour un coup imparable, la palette rouge.
  */
 export function battleSprite(
   character: BattleCharacter,
   frame: BattleFrame,
   { tier = 0, red = false }: CharacterLook = {},
 ): CharacterImage {
+  if (isHero(character)) {
+    const animation: FullAnimation<HeroFrame> = HERO_ANIMATIONS[character];
+    return animationSprite(animation, isHeroFrame(frame) ? frame : 'idle0', HERO_CELL);
+  }
   if (isAnimated(character)) {
     return animationSprite(FULL_ANIMATIONS[character], isEnemyFrame(frame) ? frame : 'idle0');
   }
@@ -596,7 +519,7 @@ export function battleSprite(
 /** Le dessin brut d'une image, avant finition : fait une fois, il sert à toutes ses variantes. */
 const drawnFrames = new Map<string, { inner: Sprite; drawn: Drawn; dx: number }>();
 
-function drawnFrame(character: Exclude<BattleCharacter, AnimatedCharacter>, frame: BattleFrame) {
+function drawnFrame(character: Exclude<EnemyKind, AnimatedCharacter>, frame: BattleFrame) {
   const key = `${character}|${frame}`;
   const cached = drawnFrames.get(key);
   if (cached !== undefined) return cached;

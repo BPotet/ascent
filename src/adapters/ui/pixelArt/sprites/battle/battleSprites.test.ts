@@ -3,6 +3,10 @@ import type { EnemyKind } from '../../../../../domain/battle/combatants';
 import { animationSprite } from '../atelier/fullAnimation';
 import { GHOUL_ANIMATION } from '../atelier/data/ghoul';
 import { MAD_VILLAGER_ANIMATION } from '../atelier/data/madVillager';
+import { SENTINEL_ANIMATION } from '../atelier/data/sentinel';
+import { WANDERER_ANIMATION } from '../atelier/data/wanderer';
+import { artPalette } from '../../artPalette';
+import { toRgba, type Sprite } from '../Sprite';
 import {
   ENEMY_FRAMES,
   HERO_FRAMES,
@@ -12,6 +16,7 @@ import {
   type BattleCharacter,
 } from './battleCharacters';
 import { battleAtlas, frameRect } from './battleAtlas';
+import { HERO_ANIMATIONS, HERO_CELL, isHero } from './heroAnimations';
 import { EFFECT_KINDS, effectsAtlas, effectRect, sealSprite, vignetteImage } from './battleEffects';
 import { paintBattleStage, pedestalImage } from './battleStage';
 
@@ -34,13 +39,6 @@ describe('the battle characters (pxlib)', () => {
       }
     },
   );
-
-  it('draws the Sentinel from behind in every frame, 36 × 44 art pixels with the outline', () => {
-    for (const frame of HERO_FRAMES) {
-      const { sprite } = battleSprite('hero', frame);
-      expect([frame, sprite.width, sprite.height]).toEqual([frame, 36, 44]);
-    }
-  });
 
   it('lists the frames of the mockup', () => {
     expect(ENEMY_FRAMES).toEqual([
@@ -217,12 +215,13 @@ describe('the full animations of the Atelier in battle (#119)', () => {
 });
 
 describe('the battle atlases', () => {
-  it.each([...ENEMIES, 'hero'] as const)(
+  it.each([...ENEMIES, 'sentinel', 'wanderer'] as const)(
     'packs every frame of the %s, each at its rectangle',
     (character: BattleCharacter) => {
       const atlas = battleAtlas(character);
-      const frames = character === 'hero' ? HERO_FRAMES : ENEMY_FRAMES;
-      const [cellWidth, cellHeight] = character === 'hero' ? [36, 44] : [44, 52];
+      const hero = character === 'sentinel' || character === 'wanderer';
+      const frames = hero ? HERO_FRAMES : ENEMY_FRAMES;
+      const [cellWidth, cellHeight] = hero ? [36, 44] : [44, 52];
       for (const frame of frames) {
         const rect = frameRect(character, frame, 0, false);
         expect(rect.width).toBe(cellWidth);
@@ -332,4 +331,96 @@ describe('the battle effects (precomputed, never painted per frame)', () => {
     expect([sealSprite(8).width, sealSprite(10).width, sealSprite(5).width]).toEqual([19, 23, 13]);
     expect(codesOf(sealSprite(8).pixels)).toEqual(new Set([1, 22, 25]));
   });
+});
+
+describe('the heroines with their full animation in battle (#140)', () => {
+  const HEROINES = [
+    ['sentinel', SENTINEL_ANIMATION],
+    ['wanderer', WANDERER_ANIMATION],
+  ] as const;
+
+  /** La pose recopiée de l'Atelier, telle quelle dans la case de 36 × 44, sans passer par le code testé. */
+  function copied(rows: readonly string[], pal: readonly string[]): Sprite {
+    const pixels = new Uint8Array(36 * 44);
+    rows.forEach((row, y) =>
+      Array.from(row).forEach((char, x) => {
+        if (char === '.') return;
+        const tint = pal[parseInt(char, 36)]!.toLowerCase();
+        pixels[y * 36 + x] = artPalette.tints.findIndex((known) => known?.toLowerCase() === tint);
+      }),
+    );
+    return { width: 36, height: 44, pixels };
+  }
+
+  /** Les pixels RGBA de la case d'une variante dans l'atlas de son personnage. */
+  function atlasCell(character: BattleCharacter, frame: string, tier: 0 | 1 | 2): Uint8Array {
+    const atlas = battleAtlas(character);
+    const rect = frameRect(character, frame as never, tier, false);
+    const cell = new Uint8Array(rect.width * rect.height * 4);
+    for (let row = 0; row < rect.height; row += 1) {
+      const start = ((rect.y + row) * atlas.width + rect.x) * 4;
+      cell.set(atlas.rgba.subarray(start, start + rect.width * 4), row * rect.width * 4);
+    }
+    return cell;
+  }
+
+  it('recognises the two heroines, and only them, in their 36 × 44 cell', () => {
+    expect(Object.keys(HERO_ANIMATIONS).sort()).toEqual(['sentinel', 'wanderer']);
+    expect([isHero('sentinel'), isHero('wanderer')]).toEqual([true, true]);
+    expect([isHero('ghoul'), isHero('specter'), isHero('hero')]).toEqual([false, false, false]);
+    expect(HERO_CELL).toEqual([36, 44]);
+  });
+
+  it.each(HEROINES)(
+    'shows each pose of the %s as copied, 36 × 44, without rim, smear or red',
+    (character, animation) => {
+      for (const frame of HERO_FRAMES) {
+        const pose = copied(animation.frames[frame], animation.pal);
+        for (const look of [{}, { tier: 1 }, { tier: 2 }, { tier: 2, red: true }] as const) {
+          const { sprite } = battleSprite(character, frame, look);
+          expect([frame, look, sprite]).toEqual([frame, look, pose]);
+        }
+      }
+    },
+  );
+
+  it.each(HEROINES)(
+    'shows the raiseG pose of the %s pixel for pixel, its gleaming cell identical to the plain one',
+    (character, animation) => {
+      const pose = toRgba(copied(animation.frames.raiseG, animation.pal));
+      expect(atlasCell(character, 'raiseG', 1)).toEqual(pose);
+      expect(atlasCell(character, 'raiseG', 0)).toEqual(pose);
+      expect(atlasCell(character, 'raise', 1)).toEqual(atlasCell(character, 'raise', 0));
+    },
+  );
+
+  it('no longer draws the Wanderer as the Sentinel', () => {
+    for (const frame of HERO_FRAMES) {
+      expect(battleSprite('wanderer', frame).sprite.pixels).not.toEqual(
+        battleSprite('sentinel', frame).sprite.pixels,
+      );
+    }
+  });
+
+  it('shows the resting pose of a heroine for a frame of the enemies', () => {
+    expect(battleSprite('wanderer', 'lunge')).toEqual(battleSprite('wanderer', 'idle0'));
+  });
+
+  it.each(HEROINES)(
+    'packs the 14 poses of the %s in its own atlas, kept for the whole launch',
+    (character, animation) => {
+      const atlas = battleAtlas(character);
+      expect(battleAtlas(character)).toBe(atlas);
+      expect(atlas).not.toBe(battleAtlas(character === 'sentinel' ? 'wanderer' : 'sentinel'));
+      expect(atlas.table.frames).toEqual(
+        Object.fromEntries(HERO_FRAMES.map((frame, index) => [frame, index])),
+      );
+      for (const frame of HERO_FRAMES) {
+        expect([frame, atlasCell(character, frame, 0)]).toEqual([
+          frame,
+          toRgba(copied(animation.frames[frame], animation.pal)),
+        ]);
+      }
+    },
+  );
 });

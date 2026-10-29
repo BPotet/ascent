@@ -28,7 +28,7 @@ import {
   type SharedValue,
 } from 'react-native-reanimated';
 
-import type { EnemyKind } from '../../../domain/battle/combatants';
+import type { EnemyKind, HeroKind } from '../../../domain/battle/combatants';
 import { toSkImage } from '../pixelArt/SpriteCanvas';
 import type { Point } from '../pixelArt/sprites/Sprite';
 import { atlasRect, battleAtlas, type AtlasTable } from '../pixelArt/sprites/battle/battleAtlas';
@@ -52,6 +52,7 @@ import {
   pedestalImage,
   type PedestalKind,
 } from '../pixelArt/sprites/battle/battleStage';
+import { HERO_ANIMATIONS } from '../pixelArt/sprites/battle/heroAnimations';
 import { enemyPose, restPose } from './scene/enemyPose';
 import { heroFrame } from './scene/heroFrame';
 import type { EnemySlot, SceneGeometry } from './scene/sceneGeometry';
@@ -64,6 +65,8 @@ export interface BattleSceneProps {
   /** La géométrie commune à la scène et aux colonnes des ennemis. */
   readonly geometry: SceneGeometry;
   readonly enemies: readonly SceneEnemy[];
+  /** L'héroïne de l'ascension, dessinée avec son animation complète (#140). */
+  readonly heroKind: HeroKind;
   readonly heroPose: HeroPose;
   readonly heroPoseSince: number;
   /** L'ennemi visé par la frappe du héros (son élan va vers lui). */
@@ -96,7 +99,8 @@ export interface PreparedScene {
   readonly characters: Readonly<Record<EnemyKind, PreparedAtlas>>;
   /** Les ancrages de chaque pose de chaque ennemi (`poseAnchors`). */
   readonly anchors: Readonly<Record<EnemyKind, Readonly<Record<EnemyFrame, EnemyAnchors>>>>;
-  readonly hero: PreparedAtlas;
+  /** L'atlas de chaque héroïne, toutes préparées : celle de l'ascension est choisie au rendu. */
+  readonly heroes: Readonly<Record<HeroKind, PreparedAtlas>>;
   readonly effects: { readonly image: SkImage | null; readonly table: EffectTable };
   readonly pedestals: Readonly<Record<string, SkImage | null>>;
 }
@@ -185,7 +189,9 @@ export function prepareBattleScene(): PreparedScene {
         Object.fromEntries(ENEMY_FRAMES.map((frame) => [frame, poseAnchors(kind, frame)])),
       ]),
     ) as Record<EnemyKind, Record<EnemyFrame, EnemyAnchors>>,
-    hero: atlasOf('hero'),
+    heroes: Object.fromEntries(
+      (Object.keys(HERO_ANIMATIONS) as HeroKind[]).map((kind) => [kind, atlasOf(kind)]),
+    ) as Record<HeroKind, PreparedAtlas>,
     effects: { image: toSkImage(effects), table: effects.table },
     pedestals: Object.fromEntries(
       PEDESTALS.flatMap((kind) =>
@@ -348,6 +354,7 @@ export function BattleScene({
   height,
   geometry,
   enemies,
+  heroKind,
   heroPose,
   heroPoseSince,
   strikeTarget,
@@ -551,7 +558,7 @@ export function BattleScene({
           />
         );
       })}
-      <AtlasSprite atlas={scene.hero} look={heroLook} scale={hero.scale} />
+      <AtlasSprite atlas={scene.heroes[heroKind]} look={heroLook} scale={hero.scale} />
       <Atlas
         image={scene.effects.image}
         sprites={effectSprites}

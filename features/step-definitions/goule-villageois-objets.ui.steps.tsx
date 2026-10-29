@@ -304,6 +304,7 @@ async function renderScene(enemies: SceneEnemy[]) {
       height={440}
       geometry={geometry}
       enemies={enemies}
+      heroKind="sentinel"
       heroPose="idle"
       heroPoseSince={0}
       strikeTarget={0}
@@ -797,9 +798,11 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then('le héros garde son sprite actuel ou sa silhouette provisoire', () => {
-    const raise = battleSprite('hero', 'raise').sprite;
-    expect([raise.width, raise.height]).toEqual([36, 44]);
-    expect(battleSprite('hero', 'raise', { tier: 1 }).sprite).not.toEqual(raise);
+    // Hors de cette story : seule la case du héros, 36 × 44, est vérifiée (son dessin vient de #140).
+    for (const hero of world.heroes) {
+      const raise = battleSprite(hero, 'raise').sprite;
+      expect([raise.width, raise.height]).toEqual([36, 44]);
+    }
   });
 
   // --- Jamais d'échelle fractionnaire ---

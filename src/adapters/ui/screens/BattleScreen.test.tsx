@@ -688,3 +688,20 @@ describe('BattleScreen', () => {
     });
   });
 });
+
+describe('BattleScreen: the heroine of the ascent in the scene (#140)', () => {
+  it('gives the scene the heroine of the battle, the Sentinel by default', async () => {
+    await renderBattle({ seed: 1 });
+
+    expect(sceneProps().heroKind).toBe('sentinel');
+  });
+
+  it('gives the scene the Wanderer when she is the heroine of the battle', async () => {
+    await renderBattle({
+      seed: 1,
+      createBattle: battleWith((battle) => ({ ...battle, heroKind: 'wanderer' })),
+    });
+
+    expect(sceneProps().heroKind).toBe('wanderer');
+  });
+});
