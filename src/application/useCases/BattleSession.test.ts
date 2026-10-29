@@ -97,7 +97,7 @@ function toGhoulWindUp(context: ReturnType<typeof setUp>, at = 2_000): number {
 }
 
 describe('BattleSession', () => {
-  it('starts a trial battle at the clock instant, from the seed source', async () => {
+  it('starts a battle at the clock instant, from the seed source', async () => {
     const context = setUp({ seed: 77, start: 1_234 });
 
     const snapshot = await context.session.start();

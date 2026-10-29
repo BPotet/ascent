@@ -28,7 +28,7 @@ type EventOf<Type extends BattleEvent['type']> = Extract<BattleEvent, { type: Ty
 const CALM = { fallenAlly: null, stunned: false, guardDamaged: false } as const;
 
 /** Les gardes max du combat de test : Goule, Spectre, Nécromancien. */
-const TRIAL_GUARDS = [15, 10, 12] as const;
+const TEST_BATTLE_GUARDS = [15, 10, 12] as const;
 
 /** Un ennemi changé (PV, garde…), sans événement. */
 function changeEnemy(enemy: number, change: Partial<EnemyState>): (battle: Battle) => Battle {
@@ -1508,9 +1508,9 @@ describe('over about 500 seeds', () => {
 
   it('breaks a guard only when it falls to 0, and a break costs exactly one action (C5.10)', () => {
     for (const play of allPlays()) {
-      const guards: number[] = [...TRIAL_GUARDS];
-      const stunned = TRIAL_GUARDS.map(() => false);
-      const lostSlots = TRIAL_GUARDS.map(() => 0);
+      const guards: number[] = [...TEST_BATTLE_GUARDS];
+      const stunned = TEST_BATTLE_GUARDS.map(() => false);
+      const lostSlots = TEST_BATTLE_GUARDS.map(() => 0);
       for (const event of play.events) {
         switch (event.type) {
           case 'strikeResolved':
@@ -1530,13 +1530,13 @@ describe('over about 500 seeds', () => {
             if (event.inPlaceOfAction) lostSlots[event.enemy]! += 1;
             expect(lostSlots[event.enemy]).toBe(1);
             stunned[event.enemy] = false;
-            guards[event.enemy] = TRIAL_GUARDS[event.enemy]!;
+            guards[event.enemy] = TEST_BATTLE_GUARDS[event.enemy]!;
             break;
           case 'guardRaised':
             guards[event.enemy] = event.guard;
             break;
           case 'allyRaised':
-            guards[event.ally] = TRIAL_GUARDS[event.ally]!;
+            guards[event.ally] = TEST_BATTLE_GUARDS[event.ally]!;
             break;
           case 'enemyDefeated':
             stunned[event.enemy] = false;
