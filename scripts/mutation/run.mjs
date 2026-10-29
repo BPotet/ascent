@@ -46,7 +46,7 @@ const mode = process.env.MUTATION_MODE === 'full' || args.includes('--full') ? '
 const baseRef = process.env.BASE_REF || 'origin/develop';
 
 async function plan(ui) {
-  const { base, changes } = await collectChanges({ mode, baseRef });
+  const { base, changes } = await collectChanges({ mode, baseRef, ui });
   return {
     base,
     shards: buildPlan({ mode, ui, changes }),
