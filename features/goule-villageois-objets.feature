@@ -84,7 +84,7 @@ Fonctionnalité: La Goule et le Villageois fou animés, et les images validées 
       | Arbalète             |
 
   Scénario: Limite — un ennemi sans animation complète validée
-    Étant donné un ennemi, une Élite ou un boss dont l'animation complète n'est pas validée (Les Jumeaux, le Squelette, le Spectre, le Chevalier déchu, le Prieur sans visage, le Nécromancien, la Gardienne des ossuaires)
+    Étant donné un ennemi, une Élite ou un boss dont l'animation complète n'est pas validée (Les Jumeaux, le Spectre, le Chevalier déchu, le Prieur sans visage, la Gardienne des ossuaires)
     Quand il apparaît dans la tour
     Alors il garde son sprite actuel ou sa silhouette provisoire
     Et le Chevalier déchu garde l'ancien dessin de la Goule comme sprite provisoire

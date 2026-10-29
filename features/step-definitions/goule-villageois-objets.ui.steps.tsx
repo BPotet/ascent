@@ -722,7 +722,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     /^un ennemi, une Élite ou un boss dont l'animation complète n'est pas validée \((.+)\)$/,
     (names: string) => {
       world.kinds = names.split(', ').map((name) => KIND_OF_NAME[name.replace(/^(le|la) /, '')]!);
-      expect(world.kinds).toHaveLength(7);
+      expect(world.kinds).toHaveLength(5);
     },
   );
 
@@ -752,8 +752,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     const shape = (kind: EnemyKind, frame: EnemyFrame) =>
       Array.from(battleSprite(kind, frame).sprite.pixels, (code) => (code === 0 ? 0 : 1));
     for (const frame of ENEMY_FRAMES) {
-      // Les silhouettes provisoires du Squelette et des Jumeaux sont celles de l'ancien dessin.
-      expect(shape('fallenKnight', frame)).toEqual(shape('skeleton', frame));
+      // La silhouette provisoire des Jumeaux est celle de l'ancien dessin.
       expect(shape('fallenKnight', frame)).toEqual(shape('twins', frame));
       expect(shape('fallenKnight', frame)).not.toEqual(shape('ghoul', frame));
     }
