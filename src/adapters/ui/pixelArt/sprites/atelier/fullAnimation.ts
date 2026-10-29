@@ -21,14 +21,16 @@ export interface AnimationAnchors {
 }
 
 /**
- * L'animation complète (`FullAnimation`, voir `docs/glossary.md`) d'un ennemi : ses poses, leurs
- * ancrages, sa palette et sa palette rouge (celle du coup imparable, mêmes indices que `pal`).
+ * L'animation complète (`FullAnimation`, voir `docs/glossary.md`) d'un ennemi ou d'un héros : ses
+ * poses, leurs ancrages, sa palette et sa palette rouge (celle du coup imparable, mêmes indices
+ * que `pal`).
  */
 export interface FullAnimation<Frame extends string = string> {
   readonly w: number;
   readonly h: number;
   readonly pal: readonly string[];
-  readonly red: readonly string[];
+  /** Absente pour un héros, qui n'a pas de poses rouges. */
+  readonly red?: readonly string[];
   readonly frames: Readonly<Record<Frame, readonly string[]>>;
   readonly anchors: Readonly<Record<Frame, AnimationAnchors>>;
 }

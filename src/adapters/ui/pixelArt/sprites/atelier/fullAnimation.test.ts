@@ -2,10 +2,12 @@
 // Villageois fou, les images validées des objets, et leur conversion en sprites.
 import { artPalette } from '../../artPalette';
 import type { Sprite } from '../Sprite';
-import { ENEMY_FRAMES } from '../battle/battleCharacters';
+import { ENEMY_FRAMES, HERO_FRAMES } from '../battle/battleCharacters';
 import { GHOUL_ANIMATION } from './data/ghoul';
 import { ITEM_IMAGES } from './data/itemImages';
 import { MAD_VILLAGER_ANIMATION } from './data/madVillager';
+import { SENTINEL_ANIMATION } from './data/sentinel';
+import { WANDERER_ANIMATION } from './data/wanderer';
 import {
   animationSprite,
   assetSprite,
@@ -206,5 +208,84 @@ describe('the validated images of the items', () => {
   it('refuses a character that is not a tint of the palette', () => {
     const image: AssetImage = { w: 2, h: 1, palette: ['#06070c'], rows: ['.1'] };
     expect(() => assetSprite(image)).toThrow('1');
+  });
+});
+
+// L'animation complète des héroïnes (#140) : le format du héros, 36 × 44, 14 poses, sans rouge.
+describe.each([
+  ['Wanderer', WANDERER_ANIMATION, 12, 2],
+  ['Sentinel', SENTINEL_ANIMATION, 19, 1],
+] as const)('the full animation of the heroine %s (#140)', (_, animation, tints, tips) => {
+  const full: FullAnimation = animation;
+  const HERO_CELL = [36, 44] as const;
+
+  it('has exactly the 14 poses of the hero, each of 44 lines of 36 characters', () => {
+    expect([full.w, full.h, full.pal.length]).toEqual([36, 44, tints]);
+    expect(Object.keys(full.frames).sort()).toEqual([...HERO_FRAMES].sort());
+    expect(Object.keys(full.anchors).sort()).toEqual([...HERO_FRAMES].sort());
+    for (const [pose, rows] of Object.entries(full.frames)) {
+      expect([pose, rows.length]).toEqual([pose, 44]);
+      for (const row of rows) {
+        expect([pose, row.length]).toEqual([pose, 36]);
+        expect(row).toMatch(/^[.0-9a-z]*$/);
+        for (const char of row.replaceAll('.', '')) {
+          expect(parseInt(char, 36)).toBeLessThan(full.pal.length);
+        }
+      }
+    }
+  });
+
+  it('has no red palette: a hero has no red pose', () => {
+    expect(Object.hasOwn(full, 'red')).toBe(false);
+  });
+
+  it('gives each pose its eye and its head inside the image, and the tips of the export', () => {
+    const inside = ([x, y]: readonly [number, number]) =>
+      x >= 0 && y >= 0 && x < full.w && y < full.h;
+    for (const { eye, head, tips: points } of Object.values(full.anchors)) {
+      expect(points).toHaveLength(tips);
+      expect([inside(eye), inside(head)]).toEqual([true, true]);
+    }
+  });
+
+  it('finds every tint of the heroine in the art palette', () => {
+    for (const tint of full.pal) expect([tint, codeOf(tint) > 0]).toEqual([tint, true]);
+  });
+
+  it('copies each pose pixel for pixel in the 36 × 44 cell of the hero, anchors unmoved', () => {
+    for (const pose of HERO_FRAMES) {
+      const { sprite, anchors } = animationSprite(full, pose, HERO_CELL);
+      expect([sprite.width, sprite.height]).toEqual([36, 44]);
+      for (let y = 0; y < 44; y += 1) {
+        for (let x = 0; x < 36; x += 1) {
+          const expected = expectedCode(full.frames[pose]!, full.pal, x, y);
+          if (at(sprite, x, y) !== expected) throw new Error(`${pose} (${x}, ${y})`);
+        }
+      }
+      expect(anchors).toEqual(full.anchors[pose]);
+    }
+  });
+
+  it('obtains no pose by shifting another one by one art pixel', () => {
+    for (const pose of HERO_FRAMES) {
+      const sprite = animationSprite(full, pose, HERO_CELL).sprite;
+      for (const other of HERO_FRAMES) {
+        const target = animationSprite(full, other, HERO_CELL).sprite.pixels;
+        for (const [dx, dy] of [
+          [1, 0],
+          [-1, 0],
+          [0, 1],
+          [0, -1],
+        ] as const) {
+          expect([pose, other, dx, dy, shifted(sprite, dx, dy)]).not.toEqual([
+            pose,
+            other,
+            dx,
+            dy,
+            target,
+          ]);
+        }
+      }
+    }
   });
 });

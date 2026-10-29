@@ -1,7 +1,7 @@
 // Stryker disable all: valeurs purement visuelles, vérifiées par la conformité aux maquettes (barrière 10 bis).
 /**
  * La palette d'art (`artPalette`, voir `docs/glossary.md`, #72) : les teintes du prototype de la
- * tour (31 codes, transparent compris), qui servent aux sprites et au décor, et les rôles d'interface qui en sont tirés (maquette
+ * tour (31 codes, transparent compris, puis celles du contenu de l'Atelier, ajoutées à la fin), qui servent aux sprites et au décor, et les rôles d'interface qui en sont tirés (maquette
  * `docs/mockups/71-pixel-art/`, « Palette et rôles »). Les contrastes documentés sont vérifiés par
  * `artPalette.test.ts`.
  */
@@ -42,6 +42,13 @@ export const artPalette = {
     '#C9C2B0',
     '#B32E3C',
     '#FF8E8E',
+    // La Sentinelle 2.5D (#140), à la suite : les codes existants ne bougent pas.
+    '#8A6A42',
+    '#B4B9C8',
+    '#646B80',
+    '#222C52',
+    '#3B5089',
+    '#323A62',
   ],
   /** Les rôles d'interface. */
   roles: {

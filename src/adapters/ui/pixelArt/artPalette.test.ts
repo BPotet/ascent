@@ -19,12 +19,55 @@ describe('artPalette', () => {
   const { roles, tints } = artPalette;
 
   it('keeps the tints of the tower prototype, 0 being transparent', () => {
-    expect(tints).toHaveLength(31);
+    expect(tints).toHaveLength(37);
     expect(tints[0]).toBeNull();
     expect(tints[1]).toBe('#06070C');
     expect(tints[8]).toBe('#F2D49B');
     expect(tints[30]).toBe('#FF8E8E');
     tints.slice(1).forEach((tint) => expect(tint).toMatch(/^#[0-9A-F]{6}$/));
+  });
+
+  it('keeps the code of every tint, the tints of the Sentinel 2.5D (#140) added at the end', () => {
+    expect(tints.slice(1, 31)).toEqual([
+      '#06070C',
+      '#10131F',
+      '#1C2133',
+      '#2A3150',
+      '#3E4870',
+      '#6B5A7A',
+      '#B98E5A',
+      '#F2D49B',
+      '#FFF3D6',
+      '#8C93A8',
+      '#D9DCE6',
+      '#3E4639',
+      '#646D58',
+      '#949B7E',
+      '#252B48',
+      '#47527A',
+      '#8995BE',
+      '#2A1F36',
+      '#4A3660',
+      '#BFE6DA',
+      '#5B4636',
+      '#FF3B3B',
+      '#8A1E2A',
+      '#E0607A',
+      '#FFD0D8',
+      '#2C3D6B',
+      '#4B63A0',
+      '#C9C2B0',
+      '#B32E3C',
+      '#FF8E8E',
+    ]);
+    expect(tints.slice(31, 37)).toEqual([
+      '#8A6A42',
+      '#B4B9C8',
+      '#646B80',
+      '#222C52',
+      '#3B5089',
+      '#323A62',
+    ]);
   });
 
   it('gives the interface roles of the mockup', () => {
