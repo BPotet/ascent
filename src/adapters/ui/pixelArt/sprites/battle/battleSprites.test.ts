@@ -25,7 +25,7 @@ import {
   type BattleCharacter,
   type EnemyFrame,
 } from './battleCharacters';
-import { battleAtlas, frameRect } from './battleAtlas';
+import { atlasRect, battleAtlas, frameRect } from './battleAtlas';
 import { HERO_ANIMATIONS, HERO_CELL, isHero } from './heroAnimations';
 import { EFFECT_KINDS, effectsAtlas, effectRect, sealSprite, vignetteImage } from './battleEffects';
 import { paintBattleStage, pedestalImage } from './battleStage';
@@ -468,6 +468,87 @@ describe('the battle atlases', () => {
   it('falls back to the nearest tier drawn for a frame', () => {
     expect(frameRect('ghoul', 'lunge', 0, false)).toEqual(frameRect('ghoul', 'lunge', 2, false));
     expect(frameRect('ghoul', 'down', 2, false)).toEqual(frameRect('ghoul', 'down', 0, false));
+  });
+
+  describe('the attack poses (#139)', () => {
+    /** Les pixels RGBA d'un rectangle de l'atlas de `character`. */
+    function cellAt(character: BattleCharacter, rect: ReturnType<typeof frameRect>): Uint8Array {
+      const atlas = battleAtlas(character);
+      const cell = new Uint8Array(rect.width * rect.height * 4);
+      for (let row = 0; row < rect.height; row += 1) {
+        const start = ((rect.y + row) * atlas.width + rect.x) * 4;
+        cell.set(atlas.rgba.subarray(start, start + rect.width * 4), row * rect.width * 4);
+      }
+      return cell;
+    }
+
+    it.each([
+      ['twins', 'basic', ['ant0', 'ant1', 'ant2', 'impact', 'lunge', 'rec0'], false],
+      ['twins', 'delayedPerilous', ['ant0', 'ant1', 'ant2', 'hes', 'impact', 'lunge'], true],
+      ['ossuaryWarden', 'double', ['ant0', 'ant1', 'ant2', 'impact', 'lunge', 'rec0'], false],
+      ['ossuaryWarden', 'perilous', ['ant0', 'ant1', 'ant2', 'impact', 'lunge', 'rec0'], true],
+    ] as const)(
+      'gives each attack pose of the %s for %s its own cell, red only for a perilous attack',
+      (character, attack, frames, red) => {
+        const { table } = battleAtlas(character);
+        expect(Object.keys(table.attacks[attack] ?? {}).sort()).toEqual([...frames].sort());
+        for (const frame of frames) {
+          const own = frameRect(character, frame, 2, false, attack);
+          expect([frame, own]).not.toEqual([frame, frameRect(character, frame, 2, false)]);
+          expect(cellAt(character, own)).toEqual(
+            toRgba(battleSprite(character, frame, { attack }).sprite),
+          );
+          // Un seul palier : les paliers d'une pose recopiée sont des copies identiques.
+          for (const tier of [0, 1] as const) {
+            expect(frameRect(character, frame, tier, false, attack)).toEqual(own);
+          }
+          const asked = frameRect(character, frame, 1, true, attack);
+          if (red) {
+            expect([frame, asked]).not.toEqual([frame, own]);
+            expect(cellAt(character, asked)).toEqual(
+              toRgba(battleSprite(character, frame, { attack, red: true }).sprite),
+            );
+          } else {
+            expect([frame, asked]).toEqual([frame, own]);
+          }
+        }
+      },
+    );
+
+    it('falls back to the full animation for a pose the attack does not have, or an attack without poses', () => {
+      for (const [character, frame, attack] of [
+        ['twins', 'rec1', 'basic'],
+        ['twins', 'rec0', 'delayedPerilous'],
+        ['twins', 'idle0', 'basic'],
+        ['twins', 'ant2', 'double'],
+        ['ossuaryWarden', 'ant2', 'basic'],
+        ['ossuaryWarden', 'hes', 'delayed'],
+        ['ghoul', 'ant2', 'basic'],
+      ] as const) {
+        for (const red of [false, true]) {
+          expect([
+            character,
+            frame,
+            attack,
+            red,
+            frameRect(character, frame, 1, red, attack),
+          ]).toEqual([character, frame, attack, red, frameRect(character, frame, 1, red)]);
+        }
+      }
+      expect(battleAtlas('ghoul').table.attacks).toEqual({});
+      expect(battleAtlas('sentinel').table.attacks).toEqual({});
+    });
+
+    it('reads the attack poses from the table alone, without an attack as before', () => {
+      const { table } = battleAtlas('twins');
+      expect(atlasRect(table, 'ant2', 2, false, null)).toEqual(atlasRect(table, 'ant2', 2, false));
+      expect(atlasRect(table, 'ant2', 2, false, 'basic')).toEqual(
+        frameRect('twins', 'ant2', 2, false, 'basic'),
+      );
+      expect(atlasRect(table, 'nothing', 0, false, 'basic')).toEqual(
+        atlasRect(table, 'idle0', 0, false),
+      );
+    });
   });
 
   it('keeps one atlas per character for the whole launch', () => {

@@ -160,7 +160,7 @@ export const ANIMATED_ENEMIES = Object.keys(FULL_ANIMATIONS) as readonly EnemyKi
  * Un ennemi joue sa palette rouge (ADR 0010 § 4) s'il a un coup imparable, phase 2 comprise : lu
  * dans le domaine, sans liste en double.
  */
-function playsRed(kind: EnemyKind): boolean {
+export function playsRed(kind: EnemyKind): boolean {
   const { moves, phase2Moves = [] } = ENEMIES[kind];
   return [...moves, ...phase2Moves].some((move) => ATTACKS[move.attack].perilous);
 }
