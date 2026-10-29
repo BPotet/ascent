@@ -127,3 +127,10 @@ leur animation complète, recopiée comme au § 1 (`atelier/data/twins.ts`,
   chemin dessiné de `battleCharacters.ts`). La tâche `type:chore` de l'avenant #138 garde le reste :
   les options de personnage de `finish`, les paliers de liseré de l'atlas, le paramètre `tier` et
   la mise à jour de l'ADR 0008 § 5.
+
+## 8. Mutation (#145, 29 octobre 2026)
+
+Les données sont exclues de la mutation des écrans (`stryker.ui.config.mjs`, issue #145), mais pas
+la conversion. Le script de recopie, non versionné, écrit `// Stryker disable all` en première ligne
+de chaque fichier de données : un test (`scripts/mutation/config.test.mjs`) fait échouer la CI
+sinon, car l'exclusion cacherait alors des mutants exécutables.

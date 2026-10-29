@@ -400,6 +400,29 @@ describe('mutantLines', () => {
     assert.ok(mutants.some(({ start, end }) => start === 2 && end === 2));
     assert.ok(mutants.every(({ start, end }) => start >= 1 && end <= 2 && start <= end));
   });
+
+  // Issue #145 : un mutant ignoré n'est ni placé dans le code, ni exécuté. Il ne coûte rien.
+  it('leaves out the mutants disabled by a comment', async () => {
+    const byFile = await mutantLines([
+      { name: 'src/data.ts', content: '// Stryker disable all\nexport const a = 1 + 2;\n' },
+      {
+        name: 'src/Screen.tsx',
+        content: [
+          'export const big = (x: number) => <Text>{x > 1 ? 1 : 2}</Text>;',
+          '// Stryker disable next-line all',
+          'export const c = 3 - 1;',
+          '',
+        ].join('\n'),
+      },
+    ]);
+    assert.deepEqual(byFile.get('src/data.ts'), []);
+    const screen = byFile.get('src/Screen.tsx');
+    assert.ok(screen.length > 0);
+    assert.ok(
+      screen.every(({ start }) => start === 1),
+      JSON.stringify(screen),
+    );
+  });
 });
 
 // Test de non-régression de l'issue #131 : Stryker ne garde un mutant que si son nœud est
@@ -557,6 +580,96 @@ export const done = (session: Session): boolean => session.current >= Session.LI
       ...(await mutants([strykerRange({ start: 25, end: 44 })])),
     ];
     assert.ok(cut.length < whole.length);
+  });
+});
+
+// Issue #145 : en PR, les plages de lignes nouvelles d'un écran sont réparties une à une entre les
+// parts. Les mutants de toutes les parts doivent être exactement ceux des plages d'origine.
+describe('no mutant lost when the ranges of a screen are spread', () => {
+  const SCREEN = `import { useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
+
+type Props = { hp: number; max: number; onHit: (damage: number) => void };
+
+export function HealthBar({ hp, max, onHit }: Props) {
+  const [hits, setHits] = useState(0);
+  const ratio = max > 0 ? Math.min(hp / max, 1) : 0;
+  const color = ratio > 0.5 ? 'green' : ratio > 0.2 ? 'orange' : 'red';
+  return (
+    <View style={{ width: \`\${ratio * 100}%\`, backgroundColor: color }}>
+      <Pressable
+        onPress={() => {
+          setHits(hits + 1);
+          onHit(hits >= 3 ? 2 : 1);
+        }}
+      >
+        <Text>{hp <= 0 ? 'KO' : \`\${hp}/\${max}\`}</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+export const frameOf = (tick: number, frames: number): number =>
+  frames <= 1 ? 0 : Math.floor(tick / 4) % frames;
+
+export function pose(state: string, tick: number): { x: number; y: number } {
+  if (state === 'attack' && tick < 10) {
+    return { x: tick * 2, y: -1 };
+  }
+  switch (state) {
+    case 'hurt':
+      return { x: -2, y: 0 };
+    case 'idle':
+      return { x: 0, y: Math.sin(tick / 8) > 0 ? 1 : 0 };
+    default:
+      return { x: 0, y: 0 };
+  }
+}
+`;
+  const FILE = 'src/adapters/ui/battle/HealthBar.tsx';
+  // Les plages d'un diff : disjointes, et souvent au milieu d'une instruction.
+  const RANGES = [
+    { start: 8, end: 9 },
+    { start: 11, end: 11 },
+    { start: 14, end: 15 },
+    { start: 18, end: 18 },
+    { start: 24, end: 25 },
+    { start: 28, end: 30 },
+    { start: 34, end: 35 },
+  ];
+  const silent = { debug() {}, info() {}, warn() {}, error() {}, isDebugEnabled: () => false };
+  const strykerRange = ({ start, end }) => ({
+    start: { line: start - 1, column: 0 },
+    end: { line: end - 1, column: Number.MAX_SAFE_INTEGER },
+  });
+  const rangeOf = (entry) => {
+    const [, start, end] = /:(\d+)-(\d+)$/.exec(entry);
+    return { start: Number(start), end: Number(end) };
+  };
+
+  async function executable(ranges) {
+    const result = await new Instrumenter(silent).instrument(
+      [{ name: FILE, content: SCREEN, mutate: ranges.map(strykerRange) }],
+      { plugins: null, excludedMutations: [], ignorers: [] },
+    );
+    return result.mutants
+      .filter((mutant) => mutant.status !== 'Ignored')
+      .map(
+        ({ mutatorName, replacement, location: { start, end } }) =>
+          `${start.line}:${start.column}-${end.line}:${end.column} ${mutatorName} ${replacement}`,
+      );
+  }
+
+  it('finds exactly the mutants of the original ranges in the shards of the plan', async () => {
+    const mutants = (await mutantLines([{ name: FILE, content: SCREEN }])).get(FILE);
+    const change = { file: FILE, added: false, ranges: RANGES, weight: 14, mutants };
+    const shards = buildPlan({ mode: 'changed', ui: 'only', changes: [change] });
+    assert.ok(shards.length >= 4, `expected the ranges spread, got ${shards.length} shard(s)`);
+    const original = await executable(RANGES);
+    const spread = [];
+    for (const shard of shards) spread.push(...(await executable(shard.mutate.map(rangeOf))));
+    assert.ok(original.length > 30, `expected a meaningful sample, got ${original.length}`);
+    assert.deepEqual([...spread].sort(), [...original].sort());
   });
 });
 
@@ -913,6 +1026,97 @@ describe('buildPlan', () => {
       shards.map(({ id, mutate }) => ({ id, mutate })),
       [{ id: 'domain', mutate: ['src/domain/habit/Habit.ts'] }],
     );
+  });
+
+  // Issue #145 : en PR, un écran est pesé en mutants exécutables, plage par plage.
+  const mutantsAt = (...lines) => lines.map((line) => ({ start: line, end: line }));
+
+  it('spreads the ranges of one screen over several parts, weighed by their mutants', () => {
+    assert.equal(PARTS.changed.ui, 8);
+    const screen = change(
+      'src/adapters/ui/battle/BattleCanvas.tsx',
+      [
+        { start: 10, end: 12 },
+        { start: 40, end: 40 },
+        { start: 90, end: 99 },
+      ],
+      // 5 mutants à la ligne 11, 4 à la ligne 40, 1 dans la longue plage 90-99.
+      { mutants: mutantsAt(11, 11, 11, 11, 11, 40, 40, 40, 40, 95) },
+    );
+    const shards = buildPlan({ mode: 'changed', ui: 'only', changes: [screen] });
+    assert.deepEqual(
+      shards.map(({ id, mutate }) => ({ id, mutate })),
+      [
+        { id: 'ui-1', mutate: ['src/adapters/ui/battle/BattleCanvas.tsx:10-12'] },
+        { id: 'ui-2', mutate: ['src/adapters/ui/battle/BattleCanvas.tsx:40-40'] },
+        { id: 'ui-3', mutate: ['src/adapters/ui/battle/BattleCanvas.tsx:90-99'] },
+      ],
+    );
+  });
+
+  it('balances the screen ranges by mutants, not by lines', () => {
+    const shards = buildPlan({
+      mode: 'changed',
+      ui: 'only',
+      changes: [
+        change('src/adapters/ui/A.tsx', [{ start: 1, end: 200 }], { mutants: mutantsAt(5) }),
+        ...Array.from({ length: 9 }, (_, index) =>
+          change(`src/adapters/ui/B${index}.tsx`, [{ start: 1, end: 1 }], {
+            mutants: mutantsAt(1, 1, 1),
+          }),
+        ),
+      ],
+    });
+    // Pesé en lignes, A serait seul dans sa part ; pesé en mutants, il est le plus léger.
+    assert.equal(shards.length, PARTS.changed.ui);
+    assert.deepEqual(shards[1].mutate, [
+      'src/adapters/ui/B1.tsx:1-1',
+      'src/adapters/ui/A.tsx:1-200',
+    ]);
+  });
+
+  it('keeps a single screen shard for a small screen change, without ranges that mutate nothing', () => {
+    const shards = buildPlan({
+      mode: 'changed',
+      ui: 'only',
+      changes: [
+        change('src/adapters/ui/HabitCard.tsx', [{ start: 3, end: 4 }], { mutants: mutantsAt(3) }),
+        change('src/adapters/ui/theme.ts', [{ start: 1, end: 9 }], { mutants: [] }),
+        change('src/adapters/ui/Badge.tsx', [{ start: 7, end: 7 }], { mutants: mutantsAt(1, 20) }),
+      ],
+    });
+    assert.deepEqual(
+      shards.map(({ id, mutate }) => ({ id, mutate })),
+      [{ id: 'ui', mutate: ['src/adapters/ui/HabitCard.tsx:3-4'] }],
+    );
+  });
+
+  it('cuts an added screen with many mutants into ranges, each under the limit', () => {
+    assert.equal(CHUNK_MUTANTS.ui, 10);
+    const added = {
+      ...fullCoreFile('src/adapters/ui/battle/TwinsWarden.tsx', 60, 3 * CHUNK_MUTANTS.ui),
+      ranges: [],
+    };
+    const shards = buildPlan({ mode: 'changed', ui: 'only', changes: [added] });
+    const chunks = shards
+      .flatMap((shard) => shard.mutate)
+      .map((entry) => {
+        const match = /^src\/adapters\/ui\/battle\/TwinsWarden\.tsx:(\d+)-(\d+)$/.exec(entry);
+        assert.ok(match, entry);
+        return { start: Number(match[1]), end: Number(match[2]) };
+      })
+      .sort((a, b) => a.start - b.start);
+    assert.ok(shards.length >= 3, `expected several shards, got ${shards.length}`);
+    assert.equal(chunks[0].start, 1);
+    assert.equal(chunks.at(-1).end, 60);
+    let total = 0;
+    for (const [index, { start, end }] of chunks.entries()) {
+      if (index > 0) assert.equal(start, chunks[index - 1].end + 1);
+      const count = added.mutants.filter((m) => m.start >= start && m.end <= end).length;
+      assert.ok(count <= CHUNK_MUTANTS.ui, `${start}-${end}: ${count} mutants`);
+      total += count;
+    }
+    assert.equal(total, added.mutants.length);
   });
 
   it('rejects an unknown screen option', () => {
