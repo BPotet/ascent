@@ -25,7 +25,7 @@ export interface ItemProfile {
   readonly effects: Partial<HeroModifiers>;
 }
 
-/** Le catalogue (P20 ; valeurs du Codex de l'Atelier, #105), dans l'ordre du Codex. */
+/** Le catalogue (P20 ; valeurs du Codex de l'Atelier, #105, #129), dans l'ordre du Codex. */
 export const ITEMS: Readonly<Record<ItemKind, ItemProfile>> = {
   axe: {
     slot: 'weapon',
@@ -47,7 +47,7 @@ export const ITEMS: Readonly<Record<ItemKind, ItemProfile>> = {
   },
   hammer: {
     slot: 'weapon',
-    rarity: 'common',
+    rarity: 'rare',
     initiative: -1,
     effects: { guardDamagePercents: [160] },
   },

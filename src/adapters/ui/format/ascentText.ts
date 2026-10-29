@@ -156,8 +156,10 @@ const ITEM_EFFECTS: Readonly<Record<ItemKind, string | null>> = {
   crossbow: null,
   blackKnightArmor: 'Réduction des dégâts +20 points, Attaque +1',
 };
-/** Le libellé court d'un objet, provisoire (#105) ; les autres objets n'en ont pas. */
+/** La description d'un objet (Armure de chevalier noir provisoire, #105 ; Marteau, #129) ; les autres objets n'en ont pas. */
 const ITEM_DESCRIPTIONS: Partial<Readonly<Record<ItemKind, string>>> = {
+  hammer:
+    'Un marteau de forge, trop lourd pour un combat rapide. Aucune garde ne lui résiste longtemps.',
   blackKnightArmor: 'Lourde et lente.',
 };
 
