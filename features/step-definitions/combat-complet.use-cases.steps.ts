@@ -6,7 +6,7 @@
  *
  * Correspondance métier : « le joueur touche « Frapper » » = un appui sur « Frapper » daté à
  * l'instant où le doigt se pose ; « la Goule est étourdie » = étourdie pendant une action passée
- * du héros, son action déjà perdue ; « le combat commence » = un nouveau combat d'essai.
+ * du héros, son action déjà perdue ; « le combat commence » = un nouveau combat de test.
  */
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
 
@@ -24,7 +24,7 @@ import {
   silentBattleHaptics,
   silentBattleSound,
 } from '../../src/application/testing/recordingBattleFeedback';
-import { seedFor } from '../../src/application/testing/trialBattleSeeds';
+import { seedFor } from '../../src/application/testing/battleSeeds';
 import { BATTLE_HINT_SEEN_KEYS } from '../../src/application/useCases/battleHints';
 import { BattleSession, type BattleSnapshot } from '../../src/application/useCases/BattleSession';
 import { actionOrder } from '../../src/domain/battle/actionOrder';

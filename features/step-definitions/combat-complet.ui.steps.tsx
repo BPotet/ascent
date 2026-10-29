@@ -1,6 +1,6 @@
 /**
- * Scénarios d'interface (`@ui`) de « Combat complet » (#32) : exécutés à travers l'écran du combat
- * d'essai (`TrialBattleScreen`), sur une vraie session de combat, l'horloge de combat manuelle,
+ * Scénarios d'interface (`@ui`) de « Combat complet » (#32) : exécutés à travers l'écran de
+ * combat (`BattleScreen`), sur une vraie session de combat, l'horloge de combat manuelle,
  * une graine du combat fixée et un constructeur de combat qui pose les états des scénarios. Les
  * touchers sont simulés par Gesture Handler. La scène reste dessinée comme aujourd'hui et Skia est
  * simulé sous Jest : « à terre », « étoiles », « premier plan » et « estompés » se vérifient sur ce
@@ -10,7 +10,7 @@ import { screen, within } from '@testing-library/react-native';
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
 import { AccessibilityInfo, StyleSheet } from 'react-native';
 
-import { renderTrialBattle, type TrialBattleTest } from '../../src/adapters/ui/testing/trialBattle';
+import { renderBattle, type BattleScreenTest } from '../../src/adapters/ui/testing/battleScreen';
 import { battleView } from '../../src/adapters/ui/state/battleView';
 import {
   battleWith,
@@ -22,11 +22,11 @@ import {
   targetOn,
   type BattleChange,
 } from '../../src/application/testing/battleBuilder';
-import { seedFor, type FirstRound } from '../../src/application/testing/trialBattleSeeds';
-import { advance, heroAction, startTrialBattle } from '../../src/domain/battle/Battle';
+import { seedFor, type FirstRound } from '../../src/application/testing/battleSeeds';
+import { advance, heroAction } from '../../src/domain/battle/Battle';
 import type { BattleEvent } from '../../src/domain/battle/BattleEvent';
 import { actionOrder } from '../../src/domain/battle/actionOrder';
-import { DEFAULT_TRIAL_TUNING } from '../../src/domain/battle/TrialTuning';
+import { startTestBattle } from '../../src/domain/battle/testing/testBattle';
 
 jest.mock('../../src/adapters/ui/battle/BattleCanvas', () =>
   jest.requireActual('../../src/adapters/ui/battle/testing/fakeBattleCanvas'),
@@ -42,7 +42,7 @@ const KINDS = ['ghoul', 'specter', 'necromancer'] as const;
 const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
 
 interface World {
-  test: TrialBattleTest | null;
+  test: BattleScreenTest | null;
   changes: BattleChange[];
   firstRound: FirstRound;
   impact: number;
@@ -58,15 +58,15 @@ beforeEach(() => {
 });
 
 /** L'écran du combat, ouvert avec les états posés par les étapes précédentes. */
-async function open(): Promise<TrialBattleTest> {
-  world.test ??= await renderTrialBattle({
+async function open(): Promise<BattleScreenTest> {
+  world.test ??= await renderBattle({
     seed: seedFor(world.firstRound),
     createBattle: battleWith(...world.changes),
   });
   return world.test;
 }
 
-function test(): TrialBattleTest {
+function test(): BattleScreenTest {
   return world.test!;
 }
 
@@ -141,12 +141,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   );
 
   and("l'ordre d'action du #31 : la Sentinelle, puis les ennemis debout de gauche à droite", () => {
-    const { battle } = startTrialBattle({
-      seed: 1,
-      tuning: DEFAULT_TRIAL_TUNING,
-      defenseHint: false,
-      at: 0,
-    });
+    const { battle } = startTestBattle({ seed: 1, defenseHint: false, at: 0 });
     expect(actionOrder(battle.enemies)).toEqual(['hero', GHOUL, SPECTER, NECROMANCER]);
   });
 
@@ -502,12 +497,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   and('sa garde remonte aussi à son maximum à son retour en garde, après un étourdissement', () => {
     // Le Nécromancien étourdi, son action perdue : la prochaine action du héros le relève.
-    const started = startTrialBattle({
-      seed: 1,
-      tuning: DEFAULT_TRIAL_TUNING,
-      defenseHint: false,
-      at: 0,
-    });
+    const started = startTestBattle({ seed: 1, defenseHint: false, at: 0 });
     const battle = changeBattle(
       started.battle,
       stunnedEnemy(NECROMANCER, { actionLost: true, heroAction: 0 }),

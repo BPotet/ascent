@@ -8,11 +8,11 @@ Fonctionnalité: Prototype jouable du combat
 
   # Les scénarios sans tag passent par la session de combat (cas d'usage), avec l'horloge de
   # combat manuelle et une graine du combat fixée : leurs instants sont exacts à la milliseconde.
-  # Les scénarios `@ui` passent par l'écran du combat d'essai, sur la même session ; le scénario
+  # Les scénarios `@ui` passent par l'écran de combat, sur la même session ; le scénario
   # `@adr` lit l'ADR du moteur de combat.
 
   Contexte:
-    Étant donné le combat d'essai : la Sentinelle (80 PV, Attaque 10, réduction des dégâts 10 %) contre la Goule (50 PV), le Spectre (35 PV) et le Nécromancien (45 PV)
+    Étant donné le combat contre la Goule, le Spectre et le Nécromancien : la Sentinelle (80 PV, Attaque 10, réduction des dégâts 10 %) contre la Goule (50 PV), le Spectre (35 PV) et le Nécromancien (45 PV)
     Et le décalage vaut 0 ms
 
   Scénario: Une manche se déroule dans l'ordre (C1, C12)
@@ -174,13 +174,13 @@ Fonctionnalité: Prototype jouable du combat
     Quand une transition de phase vers la phase ennemie commence
     Alors la bannière et la vibration restent
 
-  Scénario: Victoire du combat d'essai (C11)
+  Scénario: Victoire (C11)
     Étant donné la Goule, le Spectre et le Nécromancien sont à 0 PV
-    Alors le combat est gagné et le joueur peut rejouer
+    Alors le combat est gagné
 
-  Scénario: Défaite du combat d'essai
+  Scénario: Défaite
     Étant donné la Sentinelle tombe à 0 PV
-    Alors le combat est perdu et le joueur peut rejouer
+    Alors le combat est perdu
 
   @ui
   Scénario: Mouvement réduit
@@ -195,11 +195,6 @@ Fonctionnalité: Prototype jouable du combat
     Alors une bulle explique Parade et Esquive avant la transition de phase
     Et la transition de phase ne commence qu'à la fermeture de la bulle
     Et au combat suivant, la bulle n'apparaît plus
-
-  @ui
-  Scénario: Les valeurs de la transition se règlent pour l'essai (C12)
-    Étant donné le build de preview du prototype
-    Alors la durée de la transition de phase (800 ms par défaut) et celle de l'avancée (400 ms par défaut) se changent sans nouvelle version
 
   @adr
   # Vérifié sur l'ADR du moteur de combat : il consigne chaque point demandé. Les chiffres

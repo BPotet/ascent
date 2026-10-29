@@ -6,7 +6,7 @@ Fonctionnalité: Combat complet
 
   # Les scénarios sans tag passent par la session de combat (cas d'usage), avec l'horloge de
   # combat manuelle et une graine du combat fixée : leurs instants sont exacts à la milliseconde.
-  # Les scénarios `@ui` passent par l'écran du combat d'essai, sur la même session. La scène reste
+  # Les scénarios `@ui` passent par l'écran de combat, sur la même session. La scène reste
   # dessinée comme aujourd'hui (#81 la dessine en pixel art) : ses états se vérifient sur ce que
   # l'écran lui passe.
 
