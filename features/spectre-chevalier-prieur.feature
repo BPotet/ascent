@@ -72,11 +72,12 @@ Fonctionnalité: Le Spectre, le Chevalier déchu et le Prieur sans visage animé
     Et la Goule, le Villageois fou et les entités de 44 × 52 ou moins gardent leur place d'aujourd'hui
 
   # Ajusté par #139 : Les Jumeaux et la Gardienne des ossuaires ont leur animation complète.
+  # Retirée par #139 : l'étape « les ennemis encore dessinés gardent leurs poses rouges, leur
+  # liseré et leur traînée d'aujourd'hui ». Plus aucun ennemi n'est dessiné par le code.
   Scénario: Limite — les entités hors de cette story
     Étant donné le Squelette, le Nécromancien, la Sentinelle ou l'Errante
     Quand il apparaît dans la tour
     Alors il garde son sprite actuel ou sa silhouette provisoire, comme aujourd'hui
-    Et les ennemis encore dessinés gardent leurs poses rouges, leur liseré et leur traînée d'aujourd'hui
 
   Scénario: Limite — jamais d'échelle fractionnaire
     Étant donné le Spectre, le Chevalier déchu ou le Prieur sans visage avec son image validée

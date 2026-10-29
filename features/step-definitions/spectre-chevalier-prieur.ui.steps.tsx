@@ -593,17 +593,6 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     }
   });
 
-  and(
-    "les ennemis encore dessinés gardent leurs poses rouges, leur liseré et leur traînée d'aujourd'hui",
-    () => {
-      // Plus aucun ennemi n'est dessiné par le code depuis #139 : tous ont leur animation complète,
-      // sans liseré ni traînée.
-      const drawn = world.kinds.filter((kind) => !ANIMATED_ENEMIES.includes(kind));
-      expect(drawn).toEqual([]);
-      expect([...ANIMATED_ENEMIES].sort()).toEqual(Object.keys(ENEMIES).sort());
-    },
-  );
-
   // --- Jamais d'échelle fractionnaire ---
 
   given('le Spectre, le Chevalier déchu ou le Prieur sans visage avec son image validée', () => {
