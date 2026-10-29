@@ -485,3 +485,27 @@ testés par `npm run test:scripts`.
   aura son propre avenant si le propriétaire la demande.
 - Mesures du run de vérification (PR #144 mise à jour après le correctif : durée du « dry run »,
   durée de chaque shard `ui-*`) : à reporter ici et sur l'issue #145.
+
+### Mesures du correctif (plan sur la tête `f63a08fb` de la PR #144)
+
+- **Plan** (`MUTATION_UI=true BASE_REF=origin/develop node scripts/mutation/run.mjs --plan`) :
+  8 shards `ui-1` à `ui-8`, aucun fichier `atelier/data/`. 102 mutants exécutables en tout
+  (`enemyPose.ts` 55, `fullAnimation.ts` 21, `battleCharacters.ts` 20, `battleAtlas.ts` 6),
+  répartis en 17, 14, 12, 12, 12, 12, 12 et 11. `BattleCanvas.tsx` n'apparaît plus : ses
+  21 plages tombent toutes dans son bloc `// Stryker disable all`, sans mutant exécutable ; une
+  plage sans mutant exécutable ne mute rien et n'entre pas dans le plan.
+- **Contrôle avec Stryker** (« dry run » local sur toutes les plages d'origine, plan de Stryker
+  relevé avant le premier mutant) : 191 mutants, dont 89 ignorés et 102 exécutés, comme le compte
+  du plan. « Dry run » : 3 974 tests en 10 min 21 s (net 451 s).
+- **Mutants statiques** : 37 des 102 (`fullAnimation.ts` 19, `battleCharacters.ts` 18), estimés
+  par Stryker à 308 s chacun (toute la suite), contre 68 s en moyenne pour les autres. Ils ne se
+  lisent pas dans le source : ces modules sont exécutés à la collecte de certains tests, et seule
+  la couverture du « dry run » le révèle. Le plan ne peut donc pas les peser à part. Le poids en
+  mutants traite chaque mutant comme s'il pouvait l'être : même si tous les mutants d'une part
+  étaient statiques, une part de 17 mutants prendrait environ 48 minutes (5 tours de 4 processus à
+  308 s × 1,4, plus 12 minutes de « dry run »). `ignoreStatic` reste désactivé : il changerait ce
+  qui est mesuré.
+- **Durées estimées** par part, avec le `netTime` de Stryker × 1,4 (facteur calé sur le run local
+  du dev : 32 mutants en environ 48 minutes) sur 4 processus, plus 12 minutes de « dry run » :
+  19, 41, 34, 17, 23, 28, 18 et 19 minutes. La plus longue (`ui-2`, une seule plage de
+  `battleCharacters.ts`, 14 mutants statiques) reste sous 45 minutes.
