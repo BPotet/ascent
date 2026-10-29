@@ -159,8 +159,8 @@ limité à son test de fumée : les tests d'écran simulent `BattleScene`. Le re
   `tools:node="remove"`). Le combat joue des sons locaux préchargés, sans flux réseau ni lecture
   en arrière-plan : il n'a besoin ni de garder l'appareil éveillé, ni d'observer le réseau.
 - **Vérification** : `aapt dump permissions` (résumé du job `android-apk`) ne doit plus les
-  lister, et le parcours e2e `trial-battle.yaml`, qui joue les sons du combat, doit passer sans
-  plantage. Une `SecurityException` de `media3` annulerait le retrait.
+  lister, et le parcours e2e `trial-battle.yaml` (parcours retiré par #121), qui joue les sons du
+  combat, doit passer sans plantage. Une `SecurityException` de `media3` annulerait le retrait.
 - **Vérifié** sur la PR #53 (exécution 39797532219, commit `839a270`) : `aapt` ne liste plus ni
   `WAKE_LOCK` ni `ACCESS_NETWORK_STATE`, et le parcours e2e (deux combats complets, sons joués)
   passe sans plantage.

@@ -104,8 +104,7 @@ Décidé par l'Architect (notes techniques de #73), colonnes confirmées par le 
 - **Le rebond par mise à l'échelle de la Vue Semaine est retiré** (§3) : une case qui passe à
   « fait » joue l'étincelle (`Burst`) et relève sa coche d'un pixel d'art pendant 2 images, comme
   dans la Vue Journée.
-- **`theme/` et Sora restent**, pour le combat, la sonde de toucher et l'entrée du combat d'essai
-  seulement. Leur retrait viendra avec l'épique #30.
+- **`theme/` et Sora restent**, pour le combat et la sonde de toucher seulement. Leur retrait viendra avec l'épique #30.
 - **Les colonnes de la Vue Semaine et de la Vue Mois font au plus 48 dp** :
   `weekColumnWidth(largeur) = min(48, largeur / 7)`. La cible d'une case de la Semaine fait 48 dp
   de haut au moins, celle d'un jour du Mois 58 dp (`minHeight`) ; la case dessinée garde 40 × 40 dp.
