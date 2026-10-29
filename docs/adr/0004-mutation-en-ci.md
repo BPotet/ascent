@@ -6,6 +6,7 @@
 - **Contexte produit** : PR #29 (story #23)
 - **Avenant** : 22 octobre 2026, mutation des écrans à la demande (issue #54, voir en fin de document)
 - **Révisé** : 22 octobre 2026, le groupe `core` est réparti en parts parallèles (voir en fin de document)
+- **Avenant** : 29 octobre 2026, le domaine est réparti en parts, un gros fichier coupé en plages de lignes (issue #131, voir en fin de document)
 
 ## Contexte
 
@@ -193,3 +194,92 @@ et 98 lignes ; le plan complet, six parts de 336 à 344 lignes.
 - Un fichier très modifié reste dans une seule part : le shard le plus long est au moins celui de
   ce fichier.
 - `PARTS` reste un réglage à recalibrer d'après la durée des shards en CI, pas un seuil.
+
+## Avenant du 29 octobre 2026 — le domaine en parts, un gros fichier coupé en plages de lignes
+
+- **Décideur** : Architect
+- **Contexte produit** : issue #131 ; constat sur la PR #126 (rapport QA du 29 octobre 2026)
+
+### Contexte
+
+Sur la PR #126, le shard `domain` a été annulé à son délai de 60 minutes, sans score. Il mutait
+`src/domain/battle/Battle.ts` en entier (décision 2) : 1 512 lignes, 1 226 mutants, environ 3 h en
+local. Le temps vient surtout des mutants qui rendent une boucle du moteur infinie (81 sur les 212
+premiers) : chacun coûte le délai `timeoutMS` (10 s) et un redémarrage du processus de test. Ils
+comptent comme détectés : le score partiel était d'environ 98 %.
+
+Le problème était masqué : les PR précédentes sur `Battle.ts` (#95, #96, #99, #100, #112, #114)
+étaient en mode `prototype`, sans mutation. Il frappera toute PR qui modifie ce fichier (#128 la
+première). La release est aussi exposée : tout le domaine (52 fichiers, environ 5 200 lignes) est
+muté dans un seul shard limité à 120 minutes, alors que `Battle.ts` seul en demande environ 180.
+
+La décision 3 interdisait de couper un fichier entre deux parts. Hors domaine, cela ne coûte rien :
+seules les lignes nouvelles sont mutées. Dans le domaine, un seul gros fichier fixe la durée du
+shard.
+
+### Décision
+
+1. **Un gros fichier du domaine est muté en plusieurs plages de lignes, réparties entre les
+   parts.** Au-delà de `CHUNK_LINES.domain` lignes (250 au départ), le plan coupe le fichier en
+   plages contiguës qui le couvrent de la première à la dernière ligne. Le fichier reste muté
+   **en entier** (décision 2 inchangée), sur plusieurs shards.
+2. **On ne coupe qu'entre deux instructions de premier niveau** (déclarations de fonctions, de
+   types, de constantes, imports), lues avec l'API du compilateur TypeScript. Stryker ne garde un
+   mutant que si son nœud est **entièrement** dans une plage (`locationIncluded` de
+   `@stryker-mutator/instrumenter`) : une coupe au milieu d'une fonction perdrait en silence les
+   mutants qui la traversent, par exemple le bloc vidé de cette fonction. Aucun mutant ne traverse
+   deux instructions de premier niveau : chaque mutant est donc compté une fois, et une seule.
+   Une instruction plus longue que la limite reste entière.
+3. **Le domaine est réparti en parts comme le reste** : `PARTS.changed.domain` passe de 1 à 6,
+   `PARTS.full.domain` de 1 à 8. Le poids d'un élément du domaine est son nombre de lignes mutées
+   (fichier entier ou plage), et non plus ses seules lignes ajoutées. `split()` garde ses règles :
+   une PR qui ne touche qu'un petit fichier du domaine garde un unique shard `domain`.
+4. **Rien d'autre ne change** : seuils (85 % pour le domaine, 70 % pour le code nouveau), portée de
+   la mesure (fichiers du domaine modifiés en entier en PR, tout le domaine en release), score
+   calculé au job final sur le total des shards (`score.mjs` additionne déjà les compteurs, quel
+   que soit le découpage), délais des jobs (60 minutes en PR, 120 hors PR).
+
+Mise en œuvre : `scripts/mutation/plan.mjs` (une fonction pure de découpage, la lecture des
+instructions avec le compilateur TypeScript regroupée avec les autres effets de bord), testé par
+`npm run test:scripts`, dont un test qui compare, avec `@stryker-mutator/instrumenter`, les
+mutants d'un fichier entier à la réunion des mutants de ses plages. `docs/workflow.md` dit que le
+domaine est lui aussi réparti en parts.
+
+Estimation pour `Battle.ts` : 6 plages d'environ 250 lignes, soit environ 30 minutes de mutation
+chacune, plus le coût fixe d'un shard du domaine (installation et « dry run » des seuls tests
+unitaires), sous le délai de 60 minutes. Les valeurs de `PARTS.*.domain` et de
+`CHUNK_LINES.domain` sont à recalibrer d'après les durées mesurées en CI : sur la PR du correctif
+par un lancement manuel du workflow (mode `full`), puis sur la PR #126.
+
+### Alternatives rejetées
+
+- **Relever `timeout-minutes` du shard `domain`** : il faudrait plus de 3 h par PR, et la durée
+  grandit avec `Battle.ts`. Déjà rejeté dans la décision initiale (« Allonger seulement le
+  délai »).
+- **Ne muter que les lignes changées du domaine en PR** : la mesure change. `docs/workflow.md`
+  dit que le score du domaine porte sur les fichiers du domaine modifiés : un mutant survivant
+  dans une fonction inchangée d'un fichier modifié ne serait plus vu avant la release. C'est une
+  règle validée par le propriétaire ; elle ne change pas pour un problème de durée.
+- **Couper à un nombre fixe de lignes (`Battle.ts:1-500`, …)** : une coupe dans une fonction
+  perd des mutants sans erreur (décision 2 ci-dessus).
+- **Baisser `timeoutMS`** : des mutants lents mais survivants deviendraient des timeouts, comptés
+  comme détectés : le score monterait artificiellement.
+- **`--incremental` avec un cache** : reste une piste pour plus tard ; il ne résout pas une PR qui
+  modifie beaucoup un gros fichier.
+
+### Conséquences
+
+- La règle « une part ne coupe jamais un fichier » (décision 3) ne vaut plus que hors domaine. Un
+  fichier coupé n'est toujours muté qu'une fois : chaque mutant est dans une seule plage.
+- Une PR qui modifie `Battle.ts` lance jusqu'à 9 shards de mutation (`domain-1` à `domain-6`,
+  `core-1` à `core-3`), 11 avec les écrans demandés ; une release jusqu'à 14 (24 avec les écrans
+  demandés, au-delà des 20 jobs simultanés de GitHub : un peu d'attente). Le « dry run » des tests
+  unitaires est payé une fois par shard : plus de minutes de CI, gratuites pour un dépôt public.
+- Un fichier coupé apparaît dans plusieurs rapports de shard ; le résumé de la CI liste ses
+  mutants non tués shard par shard.
+- Une seule instruction de premier niveau très longue (plus de 60 minutes de mutation à elle seule)
+  resterait un shard trop long. Si cela arrive, on recoupe aux frontières des membres de cette
+  instruction, par un nouvel avenant.
+- Mesures à prendre sur la PR du correctif et sur #126 ; si un shard `domain-*` approche encore son
+  délai, on recalibre `CHUNK_LINES.domain` et `PARTS.*.domain`, qui sont des réglages et non des
+  seuils.

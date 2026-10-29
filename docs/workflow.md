@@ -430,6 +430,8 @@ En **mode prototype** (label `prototype`), sur la PR seulement, quelques barriè
 > Le score du code nouveau est calculé sur l'ensemble des mutants des lignes ajoutées ou modifiées hors domaine, tous jobs confondus. Le score du domaine porte sur les fichiers du domaine modifiés (PR) ou sur tout le domaine (release). Voir l'[ADR 0004](adr/0004-mutation-en-ci.md).
 >
 > Par défaut, la mutation porte sur `src/domain/`, `src/application/`, `src/adapters/persistence/` et `src/adapters/device/`. Les écrans n'entrent dans le score du code nouveau que lorsque leur mutation est demandée ; les seuils sont alors les mêmes.
+>
+> Les données recopiées de l'Atelier (`src/adapters/ui/pixelArt/sprites/atelier/data/`) sont exclues de la détection de duplication : ce sont des données, recopiées telles quelles (ADR 0010).
 
 ### Mutation des écrans à la demande
 
@@ -555,7 +557,7 @@ gitGraph
 
 | Déclencheur | Ce qui tourne | Résultat |
 |---|---|---|
-| **PR vers `develop`** (`feature/`, `bugfix/`, `chore/`, `docs/`) | Toutes les barrières de qualité : commits, secrets, style, types, architecture, unitaires, intégration, BDD, mutation sur le code nouveau hors écrans (lignes ajoutées ou modifiées ; fichiers du domaine modifiés en entier), en jobs parallèles (le code hors domaine et hors écrans en 3 parts, 6 en release : voir l'[ADR 0004](adr/0004-mutation-en-ci.md)), écrans compris seulement avec le label `mutation:ui`, SonarQube Cloud. End-to-end sur une plateforme. Avec le label `prototype`, sans mutation (voir « Mode prototype »). | Auto-merge (squash) si tout est vert et les verdicts du QA et du Reviewer verts sur la tête de la PR |
+| **PR vers `develop`** (`feature/`, `bugfix/`, `chore/`, `docs/`) | Toutes les barrières de qualité : commits, secrets, style, types, architecture, unitaires, intégration, BDD, mutation sur le code nouveau hors écrans (lignes ajoutées ou modifiées ; fichiers du domaine modifiés en entier), en jobs parallèles (le domaine en 6 parts, 8 en release, un gros fichier du domaine étant coupé en plages de lignes entre deux instructions de premier niveau ; le code hors domaine et hors écrans en 3 parts, 6 en release : voir l'[ADR 0004](adr/0004-mutation-en-ci.md)), écrans compris seulement avec le label `mutation:ui`, SonarQube Cloud. End-to-end sur une plateforme. Avec le label `prototype`, sans mutation (voir « Mode prototype »). | Auto-merge (squash) si tout est vert et les verdicts du QA et du Reviewer verts sur la tête de la PR |
 | **Push sur `develop`** | Les mêmes barrières sur le résultat du merge, sauf la mutation (déjà faite par la PR), puis un **build de preview** installable sur le téléphone du propriétaire | Le propriétaire peut essayer la prochaine version |
 | **Branche `release/x.y.z`** | Suite complète : end-to-end **iOS et Android**, mutation sur tout le code hors écrans, SonarQube Cloud. Génération du changelog. Build de production. | Merge dans `main` si tout est vert |
 | **Merge sur `main`** | Tag `vX.Y.Z`, GitHub Release avec le changelog, build de production distribué | Nouvelle version publiée |

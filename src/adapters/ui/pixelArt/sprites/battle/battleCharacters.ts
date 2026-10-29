@@ -13,6 +13,9 @@ import {
   type Point,
   type Sprite,
 } from '../Sprite';
+import { GHOUL_ANIMATION } from '../atelier/data/ghoul';
+import { MAD_VILLAGER_ANIMATION } from '../atelier/data/madVillager';
+import { animationSprite, type FullAnimation } from '../atelier/fullAnimation';
 
 /** Un personnage du combat : un ennemi de trois quarts face, ou la Sentinelle de dos. */
 export type BattleCharacter = EnemyKind | 'hero';
@@ -222,7 +225,11 @@ function withHesitation(
   return { ...frames, hes: { ...frames.ant2, dx: 1 } };
 }
 
-const GHOUL: CharacterArt = {
+/**
+ * L'ancien dessin de la Goule (#81) : sprite provisoire du Chevalier déchu, base des silhouettes
+ * provisoires du Squelette et des Jumeaux.
+ */
+const OLD_GHOUL: CharacterArt = {
   width: 40,
   height: 48,
   base: { by: 0, w: 0, hx: 0, hy: 0, L: [9, 40], R: [31, 40], bL: 2, bR: 2, lf: 47, rf: 47, mo: 1 },
@@ -520,35 +527,53 @@ function silhouette(art: CharacterArt): CharacterArt {
   };
 }
 
-const ART: Readonly<Record<BattleCharacter, CharacterArt>> = {
-  ghoul: GHOUL,
+/** Les ennemis dont l'animation complète est validée dans l'Atelier (#119, ADR 0010). */
+const FULL_ANIMATIONS: Readonly<Record<'ghoul' | 'madVillager', FullAnimation<EnemyFrame>>> = {
+  ghoul: GHOUL_ANIMATION,
+  madVillager: MAD_VILLAGER_ANIMATION,
+};
+
+type AnimatedCharacter = keyof typeof FULL_ANIMATIONS;
+
+function isAnimated(character: BattleCharacter): character is AnimatedCharacter {
+  return Object.hasOwn(FULL_ANIMATIONS, character);
+}
+
+function isEnemyFrame(frame: BattleFrame): frame is EnemyFrame {
+  return (ENEMY_FRAMES as readonly string[]).includes(frame);
+}
+
+/** Les personnages encore dessinés par le code : une seule source d'image par personnage. */
+const ART: Readonly<Record<Exclude<BattleCharacter, AnimatedCharacter>, CharacterArt>> = {
   specter: SPECTER,
   necromancer: NECROMANCER,
   // Sprites provisoires des ennemis de l'ascension (prototype #91), repris du combat d'essai.
-  fallenKnight: GHOUL,
+  fallenKnight: OLD_GHOUL,
   // Silhouette provisoire des Jumeaux (prototype #108) : l'asset de l'Atelier n'est pas validé.
-  twins: silhouette(GHOUL),
+  twins: silhouette(OLD_GHOUL),
   ossuaryWarden: NECROMANCER,
   facelessPrior: SPECTER,
-  // Sprite provisoire du Villageois fou (prototype #107) : l'asset de l'Atelier n'est pas validé.
-  madVillager: GHOUL,
   hero: HERO,
   // Le Squelette (#106) : silhouette provisoire, son asset est encore « proposé ».
-  skeleton: silhouette(GHOUL),
+  skeleton: silhouette(OLD_GHOUL),
 };
 
 /** Un point du dessin, dans le sprite fini (2 pixels d'art de marge). */
 const finished = ([x, y]: Point): Point => [x + 2, y + 2];
 
 /**
- * L'image `frame` d'un personnage du combat (`goule3`, `spectre3`, `necro3`, `hero3` de la
- * maquette) : finie avec son liseré `tier` et, pour un coup imparable, la palette rouge.
+ * L'image `frame` d'un personnage du combat. Avec une animation complète, la pose recopiée telle
+ * quelle, sans liseré ni rouge (ADR 0010) ; sinon le dessin (`spectre3`, `necro3`, `hero3` de la
+ * maquette), fini avec son liseré `tier` et, pour un coup imparable, la palette rouge.
  */
 export function battleSprite(
   character: BattleCharacter,
   frame: BattleFrame,
   { tier = 0, red = false }: CharacterLook = {},
 ): CharacterImage {
+  if (isAnimated(character)) {
+    return animationSprite(FULL_ANIMATIONS[character], isEnemyFrame(frame) ? frame : 'idle0');
+  }
   const { inner, drawn, dx } = drawnFrame(character, frame);
   const sprite = finish(inner, {
     dx,
@@ -571,7 +596,7 @@ export function battleSprite(
 /** Le dessin brut d'une image, avant finition : fait une fois, il sert à toutes ses variantes. */
 const drawnFrames = new Map<string, { inner: Sprite; drawn: Drawn; dx: number }>();
 
-function drawnFrame(character: BattleCharacter, frame: BattleFrame) {
+function drawnFrame(character: Exclude<BattleCharacter, AnimatedCharacter>, frame: BattleFrame) {
   const key = `${character}|${frame}`;
   const cached = drawnFrames.get(key);
   if (cached !== undefined) return cached;
@@ -581,5 +606,23 @@ function drawnFrame(character: BattleCharacter, frame: BattleFrame) {
   const drawn = { inner, drawn: art.draw(inner, pose), dx: pose.dx };
   drawnFrames.set(key, drawn);
   return drawn;
+}
+
+/** Les ancrages qui servent au combat : le reflet (l'œil, les pointes) et les étoiles (la tête). */
+export interface PoseAnchors {
+  readonly eye: Point | null;
+  readonly tips: readonly Point[];
+  readonly head: Point;
+}
+
+/**
+ * Les ancrages de la pose `frame` d'un ennemi (`poseAnchors`) : ceux de la pose, pour une
+ * animation complète ; pour un ennemi dessiné, ceux d'avant #119, quelle que soit la pose : l'œil
+ * et les pointes de `ant2`, la tête de `down`.
+ */
+export function poseAnchors(character: EnemyKind, frame: EnemyFrame): PoseAnchors {
+  if (isAnimated(character)) return animationSprite(FULL_ANIMATIONS[character], frame).anchors;
+  const { eye, tips } = battleSprite(character, 'ant2').anchors;
+  return { eye, tips, head: battleSprite(character, 'down').anchors.head ?? [22, 22] };
 }
 // Stryker restore all
