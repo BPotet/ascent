@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
 import type { Ascent } from '../../../domain/ascent/Ascent';
 import { ITEMS } from '../../../domain/ascent/items';
 import { BoonChoicePanel } from '../battle/BoonChoicePanel';
-import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
 import {
+  blessingLines,
   blessingText,
   exitLabel,
   floorLine,
@@ -17,12 +17,16 @@ import {
   wornText,
 } from '../format/ascentText';
 import { ownedBoonsLine } from '../format/boonText';
+import { artPalette } from '../pixelArt/artPalette';
+import { PixelButton } from '../pixelArt/PixelButton';
+import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypography';
 import { itemSilhouette } from '../pixelArt/sprites/itemSilhouettes';
 import { toPixelImage } from '../pixelArt/sprites/Sprite';
 import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
 import { useAscent } from '../state/useAscent';
-import { battleColors } from '../theme/battleColors';
 import { BattleScreen } from './BattleScreen';
+
+const { roles } = artPalette;
 
 /** Le compte à rebours de reprise (`ResumeCountdown`, P32), en secondes. */
 export const RESUME_COUNTDOWN_S = 3;
@@ -60,9 +64,13 @@ function Header({
         {parts.join(' · ')}
       </Text>
       {onPause === undefined ? null : (
-        <Pressable accessibilityRole="button" onPress={onPause} style={styles.pause}>
-          <Text style={styles.pauseLabel}>Pause</Text>
-        </Pressable>
+        <PixelButton
+          label="Pause"
+          variant="secondary"
+          onPress={onPause}
+          testID="ascent-pause"
+          style={styles.pause}
+        />
       )}
     </View>
   );
@@ -154,9 +162,9 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
 
   if (ascent === null) {
     return (
-      <Screen layout="top" background={battleColors.background} testID="ascent">
+      <Screen layout="top" background={roles.night} testID="ascent">
         <View style={styles.center}>
-          <Button label="Retour au pied de la tour" onPress={onLeave} />
+          <PixelButton label="Retour au pied de la tour" onPress={onLeave} />
         </View>
       </Screen>
     );
@@ -165,7 +173,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
   if (ascent.outcome !== null) {
     const victory = ascent.outcome === 'victory';
     return (
-      <Screen layout="top" background={battleColors.background} testID="ascent-end">
+      <Screen layout="top" background={roles.night} testID="ascent-end">
         <View style={styles.center}>
           <Text accessibilityRole="header" style={[styles.big, !victory && styles.fall]}>
             {victory ? 'Victoire !' : 'Chute'}
@@ -175,7 +183,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
           </Text>
           <Text style={styles.gold}>{`Or gagné : ${goldText(ascent.gold)}`}</Text>
           <Text style={styles.line}>L&apos;Or est perdu à la fin de l&apos;ascension.</Text>
-          <Button
+          <PixelButton
             label="Retour au pied de la tour"
             onPress={() => {
               session.leave();
@@ -191,7 +199,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
     const rarity = ascent.blessingRarities[0]!;
     const total = ascent.blessings.length + ascent.blessingRarities.length;
     return (
-      <Screen layout="top" background={battleColors.background} testID="ascent-blessing">
+      <Screen layout="top" background={roles.night} testID="ascent-blessing">
         <Header ascent={ascent} onPause={leave} />
         <ScrollView contentContainerStyle={styles.exits}>
           <Text accessibilityRole="header" style={styles.title}>
@@ -199,11 +207,14 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
           </Text>
           <Text style={styles.line}>Choisis-en une. Elle dure toute l&apos;ascension.</Text>
           {ascent.blessingOffer.map((family, index) => (
-            <Button
+            <PixelButton
               key={family}
               label={blessingText({ family, rarity })}
+              text={blessingLines({ family, rarity }).join('\n')}
+              variant="secondary"
               testID={`blessing-${index}`}
               onPress={() => session.chooseBlessing(index)}
+              style={styles.blessing}
             />
           ))}
         </ScrollView>
@@ -213,7 +224,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
 
   if (ascent.encounter !== null) {
     return (
-      <Screen layout="top" background={battleColors.background} testID="ascent-battle">
+      <Screen layout="top" background={roles.night} testID="ascent-battle">
         {paused ? null : counting ? (
           <>
             <Header ascent={ascent} onPause={leave} />
@@ -241,7 +252,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
     const { slot } = ITEMS[ascent.foundItem];
     const description = itemDescription(ascent.foundItem);
     return (
-      <Screen layout="top" background={battleColors.background} testID="ascent-item">
+      <Screen layout="top" background={roles.night} testID="ascent-item">
         <Header ascent={ascent} onPause={leave} />
         {gained}
         <View style={styles.center}>
@@ -259,8 +270,13 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
           <Text style={styles.line}>{`Tu portes : ${wornText(ascent.equipment, slot)}`}</Text>
           <Text style={styles.line}>Un objet laissé ne revient pas.</Text>
           <View style={styles.row}>
-            <Button label="Laisser" variant="ghost" onPress={() => session.leaveItem()} />
-            <Button label="Équiper" onPress={() => session.equipItem()} />
+            <PixelButton
+              label="Laisser"
+              variant="secondary"
+              onPress={() => session.leaveItem()}
+              style={styles.half}
+            />
+            <PixelButton label="Équiper" onPress={() => session.equipItem()} style={styles.half} />
           </View>
         </View>
       </Screen>
@@ -269,7 +285,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
 
   if (ascent.boonOffer !== null) {
     return (
-      <Screen layout="top" background={battleColors.background} testID="ascent-boons">
+      <Screen layout="top" background={roles.night} testID="ascent-boons">
         <Header ascent={ascent} onPause={leave} />
         {gained}
         <BoonChoicePanel
@@ -283,7 +299,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
 
   const boss = ascent.exits.some((exit) => exit.kind === 'boss');
   return (
-    <Screen layout="top" background={battleColors.background} testID="ascent-exits">
+    <Screen layout="top" background={roles.night} testID="ascent-exits">
       <Header ascent={ascent} onPause={leave} />
       <ScrollView contentContainerStyle={styles.exits}>
         {gained}
@@ -292,10 +308,10 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
           {boss ? 'Dernière porte' : 'Choisis ta sortie'}
         </Text>
         {ascent.exits.map((exit, index) => (
-          <Button
+          <PixelButton
             key={`${ascent.floor}-${index}`}
             label={exitLabel(exit)}
-            variant={exit.kind === 'campfire' ? 'ghost' : 'primary'}
+            variant={exit.kind === 'campfire' ? 'secondary' : 'primary'}
             testID={`ascent-exit-${index}`}
             onPress={() => session.chooseExit(index)}
           />
@@ -315,15 +331,40 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     gap: 8,
   },
-  status: { flex: 1, color: battleColors.text, fontSize: 13 },
-  pause: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
-  pauseLabel: { color: battleColors.light, fontSize: 14, fontWeight: '600' },
+  status: {
+    flex: 1,
+    fontFamily: textFont.semiBold,
+    fontSize: 13,
+    lineHeight: 18,
+    color: roles.parchment,
+  },
+  pause: { minWidth: 84, paddingHorizontal: 14 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'stretch', padding: 24, gap: 12 },
-  title: { color: battleColors.light, fontSize: 22, fontWeight: '700', textAlign: 'center' },
-  big: { color: battleColors.light, fontSize: 40, fontWeight: '700', textAlign: 'center' },
-  fall: { color: battleColors.curse },
-  line: { color: battleColors.muted, fontSize: 15, textAlign: 'center' },
-  gold: { color: battleColors.light, fontSize: 17, textAlign: 'center' },
+  title: {
+    fontFamily: pixelFont,
+    fontSize: 22,
+    lineHeight: 26,
+    color: roles.light,
+    textAlign: 'center',
+  },
+  big: {
+    fontFamily: pixelFont,
+    fontSize: 40,
+    lineHeight: 46,
+    color: roles.light,
+    textAlign: 'center',
+  },
+  fall: { color: roles.error },
+  line: { ...pixelTypography.body, color: roles.parchment, textAlign: 'center' },
+  gold: {
+    fontFamily: pixelFont,
+    fontSize: 18,
+    lineHeight: 22,
+    color: roles.gold,
+    textAlign: 'center',
+  },
   exits: { padding: 24, gap: 14 },
+  blessing: { justifyContent: 'flex-start', paddingVertical: 10 },
   row: { flexDirection: 'row', justifyContent: 'center', gap: 12 },
+  half: { flex: 1 },
 });

@@ -1,5 +1,9 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { artPalette } from '../pixelArt/artPalette';
+import { artPixelSize } from '../pixelArt/artPixel';
+import { PixelFrame } from '../pixelArt/PixelFrame';
+import { pixelFont, textFont } from '../pixelArt/pixelTypography';
 import { battleColors } from '../theme/battleColors';
 
 /** Les bulles d'aide du combat (F2, P9) : leur titre, leur texte et la place de leur flèche. */
@@ -17,7 +21,11 @@ export const BATTLE_HINTS = {
   },
 } as const;
 
-/** Une bulle d'aide de première utilisation : la toucher la ferme. */
+/**
+ * Une bulle d'aide de première utilisation, en cadre cranté clair (#120) : la toucher la ferme, ce
+ * qu'elle écrit aussi (« Touche pour fermer. »). Cette mention est posée sur le cadre, hors du
+ * bouton : le lecteur d'écran la reçoit déjà par l'indication du bouton.
+ */
 export function BattleHintBubble({
   kind,
   onClose,
@@ -27,18 +35,36 @@ export function BattleHintBubble({
 }) {
   const { title, text, arrow } = BATTLE_HINTS[kind];
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${title}. ${text}`}
-      accessibilityHint="Touche pour fermer l'aide."
-      onPress={onClose}
-      testID={`battle-hint-${kind}`}
-      style={styles.bubble}
-    >
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.text}>{text}</Text>
-      <View testID="battle-hint-arrow" style={[styles.arrow, { left: arrow }]} />
-    </Pressable>
+    <View pointerEvents="box-none" style={styles.bubble}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${title}. ${text}`}
+        accessibilityHint="Touche pour fermer l'aide."
+        onPress={onClose}
+        testID={`battle-hint-${kind}`}
+      >
+        <PixelFrame
+          variant="inset"
+          background={battleColors.coach}
+          under={battleColors.background}
+          testID="battle-hint-frame"
+          style={styles.frame}
+        >
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.text}>{text}</Text>
+          <View pointerEvents="none" style={styles.shade} />
+        </PixelFrame>
+        <View testID="battle-hint-arrow" style={[styles.arrow, { left: arrow }]} />
+      </Pressable>
+      <View
+        pointerEvents="none"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={styles.closeSlot}
+      >
+        <Text style={styles.close}>Touche pour fermer.</Text>
+      </View>
+    </View>
   );
 }
 
@@ -50,17 +76,40 @@ const styles = StyleSheet.create({
     right: 16,
     top: '57%',
     zIndex: 65,
-    backgroundColor: battleColors.coach,
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    shadowColor: '#000000',
-    shadowOpacity: 0.5,
-    shadowRadius: 15,
     elevation: 12,
   },
-  title: { color: battleColors.onCoach, fontSize: 16, fontWeight: '700', marginBottom: 2 },
-  text: { color: battleColors.onCoach, fontSize: 15, lineHeight: 21, fontWeight: '500' },
+  // Le trait d'encre ; l'ombre basse est celle du cadre.
+  // La place du bas laissée à « Touche pour fermer. » (6 + 16 dp).
+  frame: {
+    borderColor: artPalette.roles.ink,
+    paddingTop: 12,
+    paddingBottom: 34,
+    paddingHorizontal: 14,
+  },
+  // L'ombre basse claire de la maquette (C8), sous le trait d'encre.
+  shade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 2 * artPixelSize(2),
+    backgroundColor: '#B9B2A2',
+  },
+  closeSlot: { position: 'absolute', left: 16, bottom: 14 },
+  title: {
+    color: battleColors.onCoach,
+    fontFamily: pixelFont,
+    fontSize: 18,
+    lineHeight: 22,
+    marginBottom: 2,
+  },
+  text: { color: battleColors.onCoach, fontFamily: textFont.medium, fontSize: 15, lineHeight: 21 },
+  close: {
+    color: '#4A4F5C',
+    fontFamily: textFont.semiBold,
+    fontSize: 12,
+    lineHeight: 16,
+  },
   arrow: {
     position: 'absolute',
     bottom: -8,

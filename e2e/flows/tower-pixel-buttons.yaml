@@ -1,0 +1,71 @@
+# Story #120 (prototype) : les boutons de l'onglet Tour en pixel art, et le combat de l'étage avec
+# ses touches pixel. Chemin A : parcours propre, qui sert aussi de test de fumée du combat.
+# Le parcours ne dépend pas du hasard de l'ascension : la porte Élite (B6), qui dépend de la graine,
+# est vérifiée en intégration (`AscentScreen.test.tsx`). Le gameplay du combat se teste à la main
+# sur l'APK (décision du propriétaire du 25/10) : aucune attente liée au timing du combat.
+# Parcours : installation neuve → onglet Tour, pied de la tour (B1, capture) → « Commencer
+# l'ascension » → choix du héros → bénédictions éventuelles → combat de l'étage (C1, capture) →
+# « Pause » → ascension en cours (B2, capture) → « Abandonner l'ascension » → confirmation (B3,
+# capture) → « Abandonner » → de nouveau « Commencer l'ascension ».
+appId: com.bpotet.ascent
+name: Les boutons de l'onglet Tour en pixel art
+tags:
+  - story-120
+---
+- runFlow: ../subflows/launch-fresh.yaml
+
+- tapOn:
+    id: 'tab-tower'
+
+# B1 : le pied de la tour, « Commencer l'ascension » en bouton pixel or.
+- extendedWaitUntil:
+    visible: "Commencer l'ascension"
+    timeout: 15000
+- takeScreenshot: tower-b1-foot
+- tapOn: "Commencer l'ascension"
+
+# Le choix du héros (déjà en pixel art, #90).
+- extendedWaitUntil:
+    visible:
+      id: 'hero-choice-start'
+    timeout: 15000
+- tapOn:
+    id: 'hero-choice-start'
+
+# B5 : les bénédictions de départ, s'il y en a (aucune sans habitude hier).
+- repeat:
+    while:
+      visible:
+        id: 'ascent-blessing'
+    commands:
+      - tapOn:
+          id: 'blessing-0'
+
+# C1 : le combat de l'étage, ses touches pixel et « Pause ».
+- extendedWaitUntil:
+    visible:
+      id: 'battle-pad'
+    timeout: 15000
+- assertVisible:
+    id: 'ascent-pause'
+- takeScreenshot: tower-c1-battle
+- tapOn:
+    id: 'ascent-pause'
+
+# B2 : l'ascension en cours, « Reprendre » en or, « Abandonner l'ascension » en surface.
+- extendedWaitUntil:
+    visible: "Reprendre l'ascension"
+    timeout: 15000
+- assertVisible: "Abandonner l'ascension"
+- takeScreenshot: tower-b2-in-progress
+- tapOn: "Abandonner l'ascension"
+
+# B3 : la confirmation, « Annuler » en surface et « Abandonner » en danger.
+- assertVisible: 'Annuler'
+- assertVisible: 'Abandonner'
+- takeScreenshot: tower-b3-confirm
+- tapOn: 'Abandonner'
+
+- extendedWaitUntil:
+    visible: "Commencer l'ascension"
+    timeout: 15000

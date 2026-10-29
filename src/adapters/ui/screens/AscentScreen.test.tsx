@@ -1,6 +1,8 @@
 import { act, fireEvent, screen } from '@testing-library/react-native';
 
 import { startAscent, type Ascent } from '../../../domain/ascent/Ascent';
+import { artPalette } from '../pixelArt/artPalette';
+import { MIN_TARGET_SIZE } from '../pixelArt/PixelButton';
 import { ascentSetUp } from '../testing/ascent';
 import { renderScreen } from '../testing/renderScreen';
 import { AscentScreen, RESUME_COUNTDOWN_S } from './AscentScreen';
@@ -77,6 +79,34 @@ describe('AscentScreen', () => {
     expect(session.current()?.encounter?.enemies).toHaveLength(4);
     expect(await screen.findByRole('header', { name: 'Étage 2' })).toBeOnTheScreen();
     expect(screen.getByTestId('ascent-status')).toHaveTextContent(/\+1 en réserve$/);
+  });
+
+  it('announces the Rare item behind the Elite door, then enters the Elite battle (#120)', async () => {
+    const { session } = await show(
+      between(startAscent(42), [
+        { kind: 'combat', groupSize: 3 },
+        { kind: 'elite', groupSize: null },
+      ]),
+    );
+
+    expect(screen.getByTestId('ascent-exits')).toHaveStyle({
+      backgroundColor: artPalette.roles.night,
+    });
+    const elite = screen.getByRole('button', { name: 'Élite · objet Rare garanti' });
+    expect(elite).toHaveTextContent('Élite · objet Rare garanti', { exact: true });
+    expect(screen.queryByText(/Chevalier déchu|Jumeaux/u)).toBeNull();
+    fireEvent.press(elite);
+
+    expect(session.current()?.encounter?.kind).toBe('elite');
+    expect(await screen.findByRole('header', { name: 'Étage 2' })).toBeOnTheScreen();
+  });
+
+  it('shows « Pause » as a pixel button of 48 dp at least (#120)', async () => {
+    await show(between(startAscent(42), [{ kind: 'campfire', groupSize: null }]));
+
+    const pause = screen.getByTestId('ascent-pause');
+    expect(pause).toHaveAccessibleName('Pause');
+    expect(pause).toHaveStyle({ minHeight: MIN_TARGET_SIZE });
   });
 
   it('shows the last door before the boss', async () => {

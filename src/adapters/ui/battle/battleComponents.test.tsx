@@ -1,7 +1,11 @@
 // Les composants de l'écran de combat, rendus seuls (la scène Skia n'en fait pas partie).
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
+import { DeviceEventEmitter, StyleSheet } from 'react-native';
+import { State } from 'react-native-gesture-handler';
+import { getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
+import { getAnimatedStyle } from 'react-native-reanimated';
 
+import { artPalette } from '../pixelArt/artPalette';
 import type { EnemyView } from '../state/battleView';
 import { battleColors } from '../theme/battleColors';
 import { ActionPad } from './ActionPad';
@@ -440,5 +444,48 @@ describe('ActionPad', () => {
       ['parry', 4_321],
       ['dodge', 4_321],
     ]);
+  });
+
+  it('ticks the active power, written « Actif », in a gold frame, unhatched and not pressed down (C7b, #120)', async () => {
+    await render(
+      <ActionPad
+        pad={{
+          kind: 'hero',
+          locked: false,
+          lock: null,
+          power: { power: 'shadowStep', cost: 2, missing: 0, active: true },
+        }}
+        {...padProps()}
+      />,
+    );
+
+    const power = screen.getByTestId('battle-power-button');
+    expect(
+      within(power).getByTestId('battle-power-active-check', { includeHiddenElements: true }),
+    ).toBeTruthy();
+    expect(power).toHaveTextContent('PouvoirActif');
+    expect(power.props.accessibilityState).toEqual({ disabled: true });
+    expect(style('battle-power-button').borderColor).toBe(artPalette.roles.gold);
+    expect(
+      screen.queryByTestId('battle-power-hatching', { includeHiddenElements: true }),
+    ).toBeNull();
+
+    // Une image du fil UI : Reanimated branche le style animé (`setTimeout` de 0 ms), puis le
+    // doigt se pose sur la touche désactivée, sans se lever.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const { handlerTag } = getByGestureTestId('battle-power-look');
+    await act(async () => {
+      DeviceEventEmitter.emit('onGestureHandlerStateChange', {
+        handlerTag,
+        state: State.BEGAN,
+        oldState: State.UNDETERMINED,
+      });
+    });
+    expect(getAnimatedStyle(power)).toMatchObject({ transform: [{ translateY: 0 }] });
+    expect(
+      getAnimatedStyle(screen.getByTestId('battle-power-edge', { includeHiddenElements: true })),
+    ).toMatchObject({ backgroundColor: artPalette.roles.raised });
   });
 });

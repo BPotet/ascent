@@ -4,7 +4,6 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { AscentSession } from '../../../application/useCases/AscentSession';
 import type { FateGaugeReading } from '../../../application/useCases/fateGauge';
 import type { HeroKind } from '../../../domain/battle/combatants';
-import { Button } from '../components/Button';
 import { Screen } from '../components/Screen';
 import {
   TIER_LINE,
@@ -16,10 +15,14 @@ import {
   goldText,
 } from '../format/ascentText';
 import { HERO_NAMES } from '../format/battleText';
+import { artPalette } from '../pixelArt/artPalette';
+import { PixelButton } from '../pixelArt/PixelButton';
+import { pixelTypography, textFont } from '../pixelArt/pixelTypography';
 import { useAscent } from '../state/useAscent';
 import { useFateGauge } from '../state/useFateGauge';
-import { battleColors } from '../theme/battleColors';
 import { HeroChoiceScreen } from './HeroChoiceScreen';
+
+const { roles } = artPalette;
 
 /** « la Sentinelle », « l'Errante » : le héros dans une phrase. */
 function heroInSentence(hero: HeroKind): string {
@@ -75,7 +78,7 @@ export function TowerFootScreen({
   }
 
   return (
-    <Screen layout="top" background={battleColors.background} testID="tower-foot">
+    <Screen layout="top" background={roles.night} testID="tower-foot">
       <View style={styles.content}>
         <Text accessibilityRole="header" style={styles.title}>
           {TOWER_TITLE}
@@ -93,8 +96,12 @@ export function TowerFootScreen({
                 <Text style={styles.line}>
                   Abandonner ? L&apos;ascension se termine comme une chute : l&apos;Or est perdu.
                 </Text>
-                <Button label="Annuler" variant="ghost" onPress={() => setConfirming(false)} />
-                <Button
+                <PixelButton
+                  label="Annuler"
+                  variant="secondary"
+                  onPress={() => setConfirming(false)}
+                />
+                <PixelButton
                   label="Abandonner"
                   variant="danger"
                   onPress={() => {
@@ -105,10 +112,10 @@ export function TowerFootScreen({
               </View>
             ) : (
               <View style={styles.actions}>
-                <Button label="Reprendre l'ascension" onPress={onEnter} />
-                <Button
+                <PixelButton label="Reprendre l'ascension" onPress={onEnter} />
+                <PixelButton
                   label="Abandonner l'ascension"
-                  variant="dangerText"
+                  variant="secondary"
                   onPress={() => setConfirming(true)}
                 />
               </View>
@@ -130,7 +137,7 @@ export function TowerFootScreen({
                     {effect}
                   </Text>
                 ))}
-                <Button label="Commencer l'ascension" onPress={() => setChoosing(reading)} />
+                <PixelButton label="Commencer l'ascension" onPress={() => setChoosing(reading)} />
               </>
             )}
           </View>
@@ -143,8 +150,14 @@ export function TowerFootScreen({
 // Stryker disable all: styles d'un écran de prototype.
 const styles = StyleSheet.create({
   content: { flex: 1, justifyContent: 'center', padding: 24, gap: 12 },
-  title: { color: battleColors.light, fontSize: 28, fontWeight: '700', textAlign: 'center' },
-  line: { color: battleColors.muted, fontSize: 15, textAlign: 'center' },
-  status: { color: battleColors.text, fontSize: 16, textAlign: 'center' },
+  title: { ...pixelTypography.screenTitle, color: roles.light, textAlign: 'center' },
+  line: { ...pixelTypography.body, color: roles.parchment, textAlign: 'center' },
+  status: {
+    fontFamily: textFont.semiBold,
+    fontSize: 16,
+    lineHeight: 22,
+    color: roles.light,
+    textAlign: 'center',
+  },
   actions: { gap: 12, marginTop: 16 },
 });

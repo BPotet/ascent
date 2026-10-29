@@ -4,7 +4,10 @@ import { GestureDetector } from 'react-native-gesture-handler';
 
 import type { IntentCategory } from '../../../domain/battle/shownIntent';
 import { intentNumber } from '../format/battleText';
+import { artPalette } from '../pixelArt/artPalette';
+import { PixelFrame } from '../pixelArt/PixelFrame';
 import { PixelIcon } from '../pixelArt/PixelIcon';
+import { textFont } from '../pixelArt/pixelTypography';
 import type { IconName } from '../pixelArt/sprites/icons';
 import type { EnemyView } from '../state/battleView';
 import { battleColors } from '../theme/battleColors';
@@ -34,8 +37,10 @@ const INTENT_ICONS: Readonly<Record<IntentCategory, IconName>> = {
  * de PV, son nom, sa garde (ou « Étourdie ×1,5 ») et le sceau rouge d'un coup imparable. En phase
  * ennemie épurée, le nom et les chiffres sont masqués. L'ennemi actif a son intention cernée de
  * lumière (de rouge sous le sceau) et sa plaque à 45 % ; les autres s'estompent. L'ennemi est
- * annoncé en entier au lecteur d'écran. Son sprite, ses étoiles et son socle sont dessinés par la
- * scène, derrière, à la place que donne `sceneGeometry`.
+ * annoncé en entier au lecteur d'écran. Sa plaque est en cadre cranté ; la cible a un double cadre
+ * d'or, une flèche au-dessus de son intention et son nom en gras, jamais la couleur seule (#120).
+ * Son sprite, ses étoiles et son socle sont dessinés par la scène, derrière, à la place que donne
+ * `sceneGeometry`.
  */
 export function EnemyColumn({
   view,
@@ -85,6 +90,15 @@ export function EnemyColumn({
           !view.standing && styles.down,
         ]}
       >
+        {view.target ? (
+          <View
+            pointerEvents="none"
+            testID={`enemy-${kind}-target-arrow`}
+            style={styles.targetArrow}
+          >
+            <PixelIcon name="right" color={artPalette.roles.gold} style={styles.pointDown} />
+          </View>
+        ) : null}
         <View
           {...(intent === null ? {} : { testID: `enemy-${kind}-intent` })}
           style={[
@@ -109,37 +123,40 @@ export function EnemyColumn({
           {sealed ? <PerilSeal reducedMotion={reducedMotion} /> : null}
           {float === null ? null : <DamageFloat key={float.key} float={float.float} />}
         </View>
-        <View
+        <PixelFrame
+          tone={view.target ? 'gold' : 'default'}
+          under={battleColors.background}
           testID={`enemy-${kind}-plate`}
-          style={[
-            styles.plate,
-            view.target && styles.targetPlate,
-            view.active && styles.activePlate,
-          ]}
+          style={[styles.plate, view.active && styles.activePlate]}
         >
-          <View style={styles.track}>
-            <View
-              testID={`enemy-${kind}-hp`}
-              style={[styles.hp, { width: `${Math.round(100 * view.hpRatio)}%` }]}
-            />
-            {view.hpText === null ? null : <Text style={styles.barText}>{view.hpText}</Text>}
-          </View>
-          {view.name === null ? null : (
-            <Text style={[styles.name, view.target && styles.targetName]}>{view.name}</Text>
-          )}
-          {view.tag === null ? null : <Text style={styles.tag}>{view.tag}</Text>}
-          <View style={[styles.track, view.stunned && styles.stunnedTrack]}>
-            <View
-              testID={`enemy-${kind}-guard`}
-              style={[styles.guard, { width: `${Math.round(100 * view.guardRatio)}%` }]}
-            />
-            {view.guardText === null ? null : (
-              <Text style={[styles.barText, view.stunned && styles.stunnedText]}>
-                {view.guardText}
-              </Text>
+          <View
+            testID={`enemy-${kind}-ring`}
+            style={[styles.ring, view.target && styles.targetRing]}
+          >
+            <View style={styles.track}>
+              <View
+                testID={`enemy-${kind}-hp`}
+                style={[styles.hp, { width: `${Math.round(100 * view.hpRatio)}%` }]}
+              />
+              {view.hpText === null ? null : <Text style={styles.barText}>{view.hpText}</Text>}
+            </View>
+            {view.name === null ? null : (
+              <Text style={[styles.name, view.target && styles.targetName]}>{view.name}</Text>
             )}
+            {view.tag === null ? null : <Text style={styles.tag}>{view.tag}</Text>}
+            <View style={[styles.track, view.stunned && styles.stunnedTrack]}>
+              <View
+                testID={`enemy-${kind}-guard`}
+                style={[styles.guard, { width: `${Math.round(100 * view.guardRatio)}%` }]}
+              />
+              {view.guardText === null ? null : (
+                <Text style={[styles.barText, view.stunned && styles.stunnedText]}>
+                  {view.guardText}
+                </Text>
+              )}
+            </View>
           </View>
-        </View>
+        </PixelFrame>
       </View>
     </GestureDetector>
   );
@@ -180,18 +197,20 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   figure: { width: 88, height: 104, alignItems: 'center' },
-  plate: {
-    width: '100%',
-    minHeight: 56,
+  plate: { width: '100%', minHeight: 56 },
+  // Le second trait, d'or pour la cible : le double cadre d'or (C2).
+  ring: {
+    flexGrow: 1,
     gap: 2,
-    padding: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: battleColors.line,
-    backgroundColor: battleColors.badge,
+    paddingHorizontal: 3,
+    paddingVertical: 2,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  targetPlate: { borderColor: battleColors.light },
+  targetRing: { borderColor: artPalette.roles.gold },
   activePlate: { opacity: 0.45 },
+  targetArrow: { position: 'absolute', top: -16, alignSelf: 'center', zIndex: 4 },
+  pointDown: { transform: [{ rotate: '90deg' }] },
   track: {
     height: 14,
     borderRadius: 3,
@@ -210,8 +229,8 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   stunnedText: { color: battleColors.onLight },
-  name: { color: battleColors.text, fontSize: 12, fontWeight: '600' },
-  targetName: { color: battleColors.light },
+  name: { color: battleColors.text, fontFamily: textFont.semiBold, fontSize: 12, lineHeight: 15 },
+  targetName: { color: battleColors.light, fontFamily: textFont.bold },
   tag: { color: battleColors.light, fontSize: 11, fontWeight: '700' },
 });
 // Stryker restore all
