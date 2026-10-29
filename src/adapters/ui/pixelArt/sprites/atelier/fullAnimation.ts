@@ -16,7 +16,10 @@ export interface AnimationAnchors {
   readonly eye: Point;
   /** Le haut de la tête : les étoiles de l'étourdissement. */
   readonly head: Point;
-  /** Les pointes : le reflet double d'une double frappe. */
+  /**
+   * Les pointes : le reflet double d'une double frappe. Une pointe peut sortir de l'image ; elle ne
+   * sert qu'au reflet double d'une double frappe.
+   */
   readonly tips: readonly Point[];
 }
 
@@ -28,7 +31,8 @@ export interface FullAnimation<Frame extends string = string> {
   readonly w: number;
   readonly h: number;
   readonly pal: readonly string[];
-  readonly red: readonly string[];
+  /** La palette rouge, absente quand l'Atelier n'en donne pas (pas de coup imparable). */
+  readonly red?: readonly string[];
   readonly frames: Readonly<Record<Frame, readonly string[]>>;
   readonly anchors: Readonly<Record<Frame, AnimationAnchors>>;
 }

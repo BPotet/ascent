@@ -362,15 +362,18 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   and(
     "l'image de la Hache rouillée, des Mailles, du Cuir, du Marteau, du Bouclier du veilleur, de l'Amulette de Hâte et de l'Arbalète est validée dans l'Atelier au 29/10/2026",
     () => {
-      expect(Object.keys(KIND_OF_ITEM).sort()).toEqual([
-        'Amulette de Hâte',
-        'Arbalète',
-        'Bouclier du veilleur',
-        'Cuir',
-        'Hache rouillée',
-        'Mailles',
-        'Marteau',
-      ]);
+      // D'autres images validées s'ajoutent ensuite, l'Armure de chevalier noir (#137) comprise.
+      expect(Object.keys(KIND_OF_ITEM)).toEqual(
+        expect.arrayContaining([
+          'Amulette de Hâte',
+          'Arbalète',
+          'Bouclier du veilleur',
+          'Cuir',
+          'Hache rouillée',
+          'Mailles',
+          'Marteau',
+        ]),
+      );
     },
   );
 
@@ -690,13 +693,6 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     await showItem(KIND_OF_ITEM[name]!);
   });
 
-  when(
-    "l'objet trouvé est l'Armure de chevalier noir, dont l'image n'est pas validée dans l'Atelier",
-    async () => {
-      await showItem('blackKnightArmor');
-    },
-  );
-
   then(
     /^l'écran « Objet trouvé » montre l'image validée de (.+) \(24 × 24 pixels d'art\), à 3 dp par pixel d'art, soit 72 dp$/,
     (name: string) => {
@@ -719,25 +715,6 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     expect(itemDescription(world.item!)).toBe(description);
     if (description !== null) expect(screen.getByText(description)).toBeOnTheScreen();
   });
-
-  then(
-    "l'écran « Objet trouvé » montre toujours la silhouette provisoire de l'emplacement armure",
-    () => {
-      expect(screen.getByTestId('item-silhouette', { includeHiddenElements: true })).toHaveProp(
-        'sprite',
-        'item-silhouette-armor',
-      );
-      expect(screen.queryByTestId('item-image', { includeHiddenElements: true })).toBeNull();
-    },
-  );
-
-  and(
-    'son nom, ses chiffres et son libellé provisoire « Lourde et lente. » restent affichés',
-    () => {
-      expect(screen.getByText(itemText('blackKnightArmor'))).toBeOnTheScreen();
-      expect(screen.getByText('Lourde et lente.')).toBeOnTheScreen();
-    },
-  );
 
   // --- Les ennemis sans animation complète ---
 

@@ -8,11 +8,13 @@
  * - `watchmanShield`
  * - `hasteAmulet`
  * - `nouvelleArme`, nom de code `crossbow`
+ * - `nouvelleArmure`, nom de code `blackKnightArmor` (voir `blackKnightArmor.ts`)
  * clé `proposals[chosen]`.
  * Ne pas retoucher à la main : toute retouche passe par l'Atelier.
  */
 import type { ItemKind } from '../../../../../../domain/ascent/items';
 import type { AssetImage } from '../fullAnimation';
+import { BLACK_KNIGHT_ARMOR_IMAGE } from './blackKnightArmor';
 
 /** Les images validées des objets ; un objet absent garde la silhouette de son emplacement. */
 export const ITEM_IMAGES: Readonly<Partial<Record<ItemKind, AssetImage>>> = {
@@ -289,4 +291,5 @@ export const ITEM_IMAGES: Readonly<Partial<Record<ItemKind, AssetImage>>> = {
       '........................',
     ],
   },
+  blackKnightArmor: BLACK_KNIGHT_ARMOR_IMAGE,
 };
