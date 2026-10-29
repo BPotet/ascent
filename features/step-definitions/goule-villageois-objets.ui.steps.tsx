@@ -76,6 +76,11 @@ const KIND_OF_NAME: Readonly<Record<string, EnemyKind>> = Object.fromEntries(
 const KIND_OF_ITEM: Readonly<Record<string, ItemKind>> = Object.fromEntries(
   (Object.keys(ITEM_IMAGES) as ItemKind[]).map((kind) => [itemText(kind).split(' · ')[0], kind]),
 );
+/** La description des objets à image validée qui en ont une (#129). */
+const DESCRIPTION_OF_ITEM: Partial<Readonly<Record<ItemKind, string>>> = {
+  hammer:
+    'Un marteau de forge, trop lourd pour un combat rapide. Aucune garde ne lui résiste longtemps.',
+};
 /** Le début de l'action et son premier impact, sur l'horloge de combat. */
 const STEP_IN_AT = 0;
 const WIND_UP_AT = 600;
@@ -711,7 +716,10 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   and("le nom, les chiffres et le texte de l'objet ne changent pas", () => {
     expect(screen.getByText(itemText(world.item!))).toBeOnTheScreen();
-    expect(itemDescription(world.item!)).toBeNull();
+    // Seul le Marteau a une description parmi ces objets (#129) : elle reste affichée telle quelle.
+    const description = DESCRIPTION_OF_ITEM[world.item!] ?? null;
+    expect(itemDescription(world.item!)).toBe(description);
+    if (description !== null) expect(screen.getByText(description)).toBeOnTheScreen();
   });
 
   then(
