@@ -226,8 +226,9 @@ describe('the full animations of the Atelier in battle (#119, #137, #138)', () =
   });
 
   it('gives every animated enemy that plays its red palette a red palette, tint for tint', () => {
-    for (const [kind, animation] of ANIMATED) {
-      if (!hasPerilous(kind)) continue;
+    const kinds = ANIMATED.filter(([kind]) => hasPerilous(kind));
+    expect(kinds).not.toHaveLength(0);
+    for (const [kind, animation] of kinds) {
       expect([kind, animation.red?.length]).toEqual([kind, animation.pal.length]);
       const plain = battleSprite(kind, 'ant1').sprite;
       expect([kind, battleSprite(kind, 'ant1', { red: true }).sprite]).not.toEqual([kind, plain]);
