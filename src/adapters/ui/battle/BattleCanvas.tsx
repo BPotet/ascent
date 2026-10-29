@@ -28,13 +28,16 @@ import {
   type SharedValue,
 } from 'react-native-reanimated';
 
+import type { AttackKind } from '../../../domain/battle/attacks';
 import type { EnemyKind, HeroKind } from '../../../domain/battle/combatants';
 import { toSkImage } from '../pixelArt/SpriteCanvas';
 import type { Point } from '../pixelArt/sprites/Sprite';
 import { atlasRect, battleAtlas, type AtlasTable } from '../pixelArt/sprites/battle/battleAtlas';
 import {
   ENEMY_FRAMES,
+  attackMotion,
   poseAnchors,
+  type AttackMotions,
   type BattleCharacter,
   type BattleFrame,
   type EnemyFrame,
@@ -95,10 +98,19 @@ interface EnemyAnchors {
   readonly head: Point;
 }
 
+/** Les ancrages des poses d'un coup d'un ennemi : type de coup, puis pose. */
+type AttackAnchors = Readonly<
+  Partial<Record<AttackKind, Readonly<Partial<Record<EnemyFrame, EnemyAnchors>>>>>
+>;
+
 export interface PreparedScene {
   readonly characters: Readonly<Record<EnemyKind, PreparedAtlas>>;
   /** Les ancrages de chaque pose de chaque ennemi (`poseAnchors`). */
   readonly anchors: Readonly<Record<EnemyKind, Readonly<Record<EnemyFrame, EnemyAnchors>>>>;
+  /** Les ancrages de chaque pose d'un coup de chaque ennemi (#139). */
+  readonly attackAnchors: Readonly<Record<EnemyKind, AttackAnchors>>;
+  /** La portée et l'élévation des coups qui ont des poses d'un coup, par ennemi (#139). */
+  readonly motions: Readonly<Record<EnemyKind, AttackMotions>>;
   /** L'atlas de chaque héroïne, toutes préparées : celle de l'ascension est choisie au rendu. */
   readonly heroes: Readonly<Record<HeroKind, PreparedAtlas>>;
   readonly effects: { readonly image: SkImage | null; readonly table: EffectTable };
@@ -110,6 +122,8 @@ interface SpriteLook<Frame extends BattleFrame = BattleFrame> {
   readonly frame: Frame;
   readonly tier: number;
   readonly red: boolean;
+  /** Le type de coup dont l'image vient (ses poses d'un coup), `null` pour l'animation complète. */
+  readonly poses: AttackKind | null;
   readonly x: number;
   readonly y: number;
 }
@@ -189,6 +203,26 @@ export function prepareBattleScene(): PreparedScene {
         Object.fromEntries(ENEMY_FRAMES.map((frame) => [frame, poseAnchors(kind, frame)])),
       ]),
     ) as Record<EnemyKind, Record<EnemyFrame, EnemyAnchors>>,
+    attackAnchors: Object.fromEntries(
+      ENEMY_KINDS.map((kind) => [
+        kind,
+        Object.fromEntries(
+          Object.entries(attackMotion(kind)).map(([attack, motion]) => [
+            attack,
+            Object.fromEntries(
+              Object.keys(motion?.lift ?? {}).map((frame) => [
+                frame,
+                poseAnchors(kind, frame as EnemyFrame, attack as AttackKind),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
+    ) as Record<EnemyKind, AttackAnchors>,
+    motions: Object.fromEntries(ENEMY_KINDS.map((kind) => [kind, attackMotion(kind)])) as Record<
+      EnemyKind,
+      AttackMotions
+    >,
     heroes: Object.fromEntries(
       (Object.keys(HERO_ANIMATIONS) as HeroKind[]).map((kind) => [kind, atlasOf(kind)]),
     ) as Record<HeroKind, PreparedAtlas>,
@@ -280,7 +314,7 @@ function AtlasSprite<Frame extends BattleFrame>({
   const sprites = useRectBuffer(1, (rect) => {
     'worklet';
     const current = look.get();
-    const cell = atlasRect(table, current.frame, current.tier, current.red);
+    const cell = atlasRect(table, current.frame, current.tier, current.red, current.poses);
     rect.setXYWH(cell.x, cell.y, cell.width, cell.height);
   });
   const transforms = useRSXformBuffer(1, (transform) => {
@@ -303,13 +337,15 @@ function AtlasSprite<Frame extends BattleFrame>({
 
 /**
  * La pose d'un ennemi à chaque image : active (son action), ou au repos. Sa case part de `origin`,
- * calculée sur le fil JS (`spriteOrigin`), jamais dans le worklet.
+ * calculée sur le fil JS (`spriteOrigin`), jamais dans le worklet. Une pose d'un coup élevée
+ * (`lift`, #139) monte de 2 dp par pixel d'art.
  */
 function useEnemyLook(
   enemy: SceneEnemy,
   index: number,
   slot: EnemySlot,
   origin: { readonly x: number; readonly y: number },
+  motions: AttackMotions,
   clock: SharedValue<number>,
   timeline: SharedValue<SceneTimeline | null>,
   reducedMotion: boolean,
@@ -322,18 +358,32 @@ function useEnemyLook(
     const now = clock.get();
     const current = timeline.get();
     if (current !== null && current.enemy === index && standing) {
-      const pose = enemyPose(current, now, reducedMotion);
+      const pose = enemyPose(current, now, reducedMotion, motions);
       return {
         frame: pose.frame,
         tier: pose.tier,
         red: pose.red,
+        poses: pose.poses,
         x: x + Math.round((reach.x * pose.reach + pose.jitter) / 2) * 2,
-        y: y + Math.round((reach.y * pose.reach) / 2) * 2,
+        y: y + Math.round((reach.y * pose.reach) / 2) * 2 - pose.lift * 2,
       };
     }
     const rest = restPose({ standing, down, losingAction, rising, downSince }, index, now);
-    return { frame: rest.frame, tier: 0, red: false, x, y };
-  }, [clock, timeline, index, standing, down, losingAction, rising, downSince, x, y, reach]);
+    return { frame: rest.frame, tier: 0, red: false, poses: null, x, y };
+  }, [
+    clock,
+    timeline,
+    index,
+    standing,
+    down,
+    losingAction,
+    rising,
+    downSince,
+    x,
+    y,
+    reach,
+    motions,
+  ]);
 }
 
 /** Un palier de la vignette rouge, visible seulement à son palier. */
@@ -411,6 +461,7 @@ export function BattleScene({
       0,
       slots[0] ?? NO_SLOT,
       origins[0]!,
+      scene.motions[(enemies[0] ?? NO_ENEMY).kind],
       clock,
       sharedTimeline,
       reducedMotion,
@@ -420,6 +471,7 @@ export function BattleScene({
       1,
       slots[1] ?? NO_SLOT,
       origins[1]!,
+      scene.motions[(enemies[1] ?? NO_ENEMY).kind],
       clock,
       sharedTimeline,
       reducedMotion,
@@ -429,6 +481,7 @@ export function BattleScene({
       2,
       slots[2] ?? NO_SLOT,
       origins[2]!,
+      scene.motions[(enemies[2] ?? NO_ENEMY).kind],
       clock,
       sharedTimeline,
       reducedMotion,
@@ -450,6 +503,7 @@ export function BattleScene({
       frame: current.frame,
       tier: current.tier,
       red: false,
+      poses: null,
       x: hero.x + Math.round((-22 * dodge + lunge.x * toward) / 2) * 2,
       y: hero.y + Math.round((10 * dodge + lunge.y * toward) / 2) * 2,
     };
@@ -458,7 +512,7 @@ export function BattleScene({
   // Les effets : [effet, image, x, y] par place, l'effet −1 pour une place vide.
   const effectTable = scene.effects.table;
   const kinds = enemies.map((enemy) => enemy.kind);
-  const { anchors } = scene;
+  const { anchors, attackAnchors } = scene;
   const stunned = enemies.map((enemy) => enemy.down && enemy.standing);
   const hops = enemies.map((enemy) => enemy.losingAction);
   const effects = useDerivedValue(() => {
@@ -480,7 +534,11 @@ export function BattleScene({
       const kind = kinds[current.enemy];
       const look = looks[current.enemy]?.get();
       if (kind !== undefined && look !== undefined) {
-        for (const glint of glintSprites(current.glints, now, anchors[kind][look.frame])) {
+        // Les ancrages de la pose affichée : celle d'un coup quand elle en vient (#139).
+        const shown =
+          (look.poses === null ? undefined : attackAnchors[kind][look.poses]?.[look.frame]) ??
+          anchors[kind][look.frame];
+        for (const glint of glintSprites(current.glints, now, shown)) {
           place(glint.effect, glint.frame, look.x + glint.x * 2 + 1, look.y + glint.y * 2 + 1);
         }
       }
@@ -498,7 +556,19 @@ export function BattleScene({
       place('stars', turn, origin.x + headX * 2, origin.y + (headY - 4) * 2 - hop);
     }
     return placed;
-  }, [clock, sharedTimeline, sharedSpark, chest, kinds, anchors, stunned, hops, origins, looks]);
+  }, [
+    clock,
+    sharedTimeline,
+    sharedSpark,
+    chest,
+    kinds,
+    anchors,
+    attackAnchors,
+    stunned,
+    hops,
+    origins,
+    looks,
+  ]);
   const effectSprites = useRectBuffer(EFFECT_SLOTS, (rect, slot) => {
     'worklet';
     const placed = effects.get();
