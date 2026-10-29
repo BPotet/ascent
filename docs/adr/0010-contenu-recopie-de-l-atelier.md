@@ -85,3 +85,10 @@ comme au § 1 (`atelier/data/wanderer.ts`, `atelier/data/sentinel.ts`).
 - **Palette.** Les teintes absentes de `artPalette` y sont ajoutées à la fin, comme au § 4 : les
   6 teintes de la Sentinelle 2.5D (codes 32 à 37, après `#5A1420`). Les codes existants ne bougent
   pas.
+
+## 8. Mutation (#145, 29 octobre 2026)
+
+Les données sont exclues de la mutation des écrans (`stryker.ui.config.mjs`, issue #145), mais pas
+la conversion. Le script de recopie, non versionné, écrit `// Stryker disable all` en première ligne
+de chaque fichier de données : un test (`scripts/mutation/config.test.mjs`) fait échouer la CI
+sinon, car l'exclusion cacherait alors des mutants exécutables.

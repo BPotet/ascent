@@ -29,14 +29,19 @@ const CONFIGS = { domain: DOMAIN_CONFIG, core: BASE_CONFIG, ui: UI_CONFIG };
 // entier ; au-delà de `CHUNK_LINES.domain` lignes, il est coupé en plages (voir
 // `chunkAtStatements()`) réparties entre les parts. `Battle.ts` (environ 1 500 lignes) prenait
 // environ 3 h dans un seul shard.
+// `ui` (avenant du 29 octobre 2026, issue #145) : en PR, les écrans sont pesés en mutants
+// exécutables, et chaque plage de lignes nouvelles est un élément à part. Environ 3 minutes par
+// mutant d'écran (couvert par de nombreux tests de rendu) : 8 parts font environ 11 mutants par
+// part pour une PR comme #144, soit environ 35 minutes, plus le « dry run ».
 export const PARTS = {
-  changed: { domain: 6, core: 3, ui: 2 },
+  changed: { domain: 6, core: 3, ui: 8 },
   full: { domain: 8, core: 10, ui: 10 },
 };
 export const CHUNK_LINES = { domain: 250 };
 // En release, un fichier `core` de plus de `CHUNK_MUTANTS.core` mutants est coupé en plages (issue
-// #134 : `BattleSession.ts`, 213 mutants, presque entièrement une seule classe).
-export const CHUNK_MUTANTS = { core: 100 };
+// #134 : `BattleSession.ts`, 213 mutants, presque entièrement une seule classe). En PR, un écran
+// ajouté de plus de `CHUNK_MUTANTS.ui` mutants est coupé de même (issue #145).
+export const CHUNK_MUTANTS = { core: 100, ui: 10 };
 
 const SCOPES = ['domain', 'core', 'ui'];
 
@@ -290,6 +295,25 @@ function wholeFileItems(change, max, size) {
   }));
 }
 
+/**
+ * Les éléments d'un écran en PR, pesés en mutants exécutables : un fichier ajouté est coupé au-delà
+ * de `CHUNK_MUTANTS.ui` mutants ; sinon, chaque plage de lignes nouvelles est un élément. Stryker ne
+ * garde un mutant que s'il tient entièrement dans une plage, et les plages du diff sont disjointes :
+ * les répartir entre les parts ne perd ni ne double aucun mutant. Un élément sans mutant
+ * exécutable ne mute rien : il est laissé de côté, pour ne pas payer un « dry run » pour rien.
+ */
+function screenItems(change) {
+  const size = mutantsIn(change.mutants);
+  const items = change.added
+    ? wholeFileItems(change, CHUNK_MUTANTS.ui, size)
+    : change.ranges.map((range) => ({
+        file: change.file,
+        weight: size(range),
+        mutate: mutateEntries({ ...change, ranges: [range] }, { whole: false }),
+      }));
+  return items.filter((item) => item.weight > 0);
+}
+
 const compare = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 
 /**
@@ -342,6 +366,11 @@ export function buildPlan({ mode, changes, ui = 'exclude', scopeOf = classify })
       byScope.core.push(...wholeFileItems(change, CHUNK_MUTANTS.core, mutantsIn(change.mutants)));
       continue;
     }
+    if (scope === 'ui' && mode === 'changed' && change.mutants) {
+      // Pesé en mutants exécutables, plage par plage (issue #145).
+      byScope.ui.push(...screenItems(change));
+      continue;
+    }
     const mutate = mutateEntries(change, { whole: mode === 'full' });
     if (mutate.length === 0) continue; // seulement des lignes supprimées
     byScope[scope].push({ file: change.file, weight: change.weight, mutate });
@@ -389,8 +418,10 @@ const silentLogger = {
 };
 
 /**
- * Les plages de lignes (de 1) des mutants de chaque fichier `{ name, content }`, par nom, comptés
- * avec l'instrumenter de Stryker (même version que Stryker, même mutateur que `stryker.config.mjs`).
+ * Les plages de lignes (de 1) des mutants exécutables de chaque fichier `{ name, content }`, par
+ * nom, comptés avec l'instrumenter de Stryker (même version que Stryker, même mutateur que
+ * `stryker.config.mjs`). Les mutants ignorés (`// Stryker disable`) ne sont ni placés dans le code
+ * ni exécutés : ils ne coûtent rien et ne sont pas comptés (issue #145).
  */
 export async function mutantLines(files) {
   const { mutants } = await new Instrumenter(silentLogger).instrument(
@@ -402,17 +433,21 @@ export async function mutantLines(files) {
     },
   );
   const byFile = new Map(files.map((file) => [file.name, []]));
-  for (const { fileName, location } of mutants) {
+  for (const { fileName, location, status } of mutants) {
+    if (status === 'Ignored') continue;
     byFile.get(fileName).push({ start: location.start.line + 1, end: location.end.line + 1 });
   }
   return byFile;
 }
 
-/** Ajoute à chaque fichier `core` ses mutants (`mutantLines()`). */
-async function withMutants(changes, cwd, scopeOf) {
-  const core = changes.filter((change) => scopeOf(change.file) === 'core');
+/** Ajoute à chaque fichier des groupes `scopes` ses mutants (`mutantLines()`). */
+async function withMutants(changes, cwd, scopeOf, scopes) {
+  const counted = changes.filter((change) => scopes.includes(scopeOf(change.file)));
   const byFile = await mutantLines(
-    core.map(({ file }) => ({ name: file, content: readFileSync(path.join(cwd, file), 'utf8') })),
+    counted.map(({ file }) => ({
+      name: file,
+      content: readFileSync(path.join(cwd, file), 'utf8'),
+    })),
   );
   return changes.map((change) =>
     byFile.has(change.file) ? { ...change, mutants: byFile.get(change.file) } : change,
@@ -421,15 +456,17 @@ async function withMutants(changes, cwd, scopeOf) {
 
 /**
  * Seuls effets de bord du plan. Mode `changed` : diff depuis la base de fusion avec `baseRef`.
- * Mode `full` : tous les fichiers suivis de `src/`, en entier. Les fichiers du domaine, et en mode
- * `full` ceux du groupe `core`, sont lus avec le compilateur TypeScript pour pouvoir être coupés ;
- * en mode `full`, les mutants des fichiers `core` sont comptés pour les peser.
+ * Mode `full` : tous les fichiers suivis de `src/`, en entier. Les fichiers du domaine, en mode
+ * `full` ceux du groupe `core`, et en mode `changed` les écrans quand `ui` les demande, sont lus
+ * avec le compilateur TypeScript pour pouvoir être coupés, et (sauf le domaine) leurs mutants sont
+ * comptés pour les peser.
  */
 export async function collectChanges({
   mode,
   baseRef = 'origin/develop',
   cwd = process.cwd(),
   scopeOf = classify,
+  ui = 'exclude',
 }) {
   if (mode === 'full') {
     const files = git(['ls-files', 'src'], cwd).split('\n').filter(Boolean);
@@ -440,7 +477,7 @@ export async function collectChanges({
       weight: readFileSync(path.join(cwd, file), 'utf8').split('\n').length,
     }));
     const outlined = withOutlines(changes, cwd, scopeOf, ['domain', 'core']);
-    return { base: '', changes: await withMutants(outlined, cwd, scopeOf) };
+    return { base: '', changes: await withMutants(outlined, cwd, scopeOf, ['core']) };
   }
   const base = git(['merge-base', baseRef, 'HEAD'], cwd).trim();
   const diff = git(
@@ -460,5 +497,7 @@ export async function collectChanges({
     ],
     cwd,
   );
-  return { base, changes: withOutlines(parseDiff(diff), cwd, scopeOf, ['domain']) };
+  const screens = UI_OPTIONS[ui]?.includes('ui') ? ['ui'] : [];
+  const outlined = withOutlines(parseDiff(diff), cwd, scopeOf, ['domain', ...screens]);
+  return { base, changes: await withMutants(outlined, cwd, scopeOf, screens) };
 }
