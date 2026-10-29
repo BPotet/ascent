@@ -90,10 +90,10 @@ Fonctionnalité: La Goule et le Villageois fou animés, et les images validées 
     Et son nom, ses chiffres et son libellé provisoire « Lourde et lente. » restent affichés
 
   Scénario: Limite — un ennemi sans animation complète validée
-    Étant donné un ennemi, une Élite ou un boss dont l'animation complète n'est pas validée (Les Jumeaux, le Squelette, le Spectre, le Chevalier déchu, le Prieur sans visage, le Nécromancien, la Gardienne des ossuaires)
+    Étant donné un ennemi, une Élite ou un boss dont l'animation complète n'est pas validée (Les Jumeaux, le Squelette, le Nécromancien, la Gardienne des ossuaires)
     Quand il apparaît dans la tour
     Alors il garde son sprite actuel ou sa silhouette provisoire
-    Et le Chevalier déchu garde l'ancien dessin de la Goule comme sprite provisoire
+    Et Les Jumeaux et le Squelette gardent leur silhouette tirée de l'ancien dessin de la Goule
     Et son nom et ses chiffres restent affichés
 
   Scénario: Limite — les héros

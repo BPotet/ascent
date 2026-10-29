@@ -676,11 +676,14 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     () => {
       const count = (sprite: Sprite, ...codes: number[]) =>
         Array.from(sprite.pixels).filter((code) => codes.includes(code)).length;
-      const gold = (tier: 0 | 2) => count(battleSprite('specter', 'ant1', { tier }).sprite, 7, 8);
+      // La Gardienne des ossuaires, dessinée par le code (#138) : liseré d'or, traînée de l'orbe.
+      const gold = (tier: 0 | 2) =>
+        count(battleSprite('ossuaryWarden', 'ant1', { tier }).sprite, 7, 8);
       expect(gold(2)).toBeGreaterThan(gold(0));
-      const lunge = battleSprite('specter', 'lunge', { tier: 2 }).sprite;
-      const still = battleSprite('specter', 'ant2', { tier: 2 }).sprite;
-      expect(count(lunge, 17)).toBeGreaterThan(count(still, 17) + 20);
+      const red = { tier: 2, red: true } as const;
+      const lunge = battleSprite('ossuaryWarden', 'lunge', red).sprite;
+      const still = battleSprite('ossuaryWarden', 'ant2', red).sprite;
+      expect(count(lunge, 30)).toBeGreaterThan(count(still, 30));
     },
   );
 
@@ -745,7 +748,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     /^un ennemi, une Élite ou un boss dont l'animation complète n'est pas validée \((.+)\)$/,
     (names: string) => {
       world.kinds = names.split(', ').map((name) => KIND_OF_NAME[name.replace(/^(le|la) /, '')]!);
-      expect(world.kinds).toHaveLength(7);
+      expect(world.kinds).toHaveLength(4);
     },
   );
 
@@ -771,16 +774,18 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     }
   });
 
-  and("le Chevalier déchu garde l'ancien dessin de la Goule comme sprite provisoire", () => {
-    const shape = (kind: EnemyKind, frame: EnemyFrame) =>
-      Array.from(battleSprite(kind, frame).sprite.pixels, (code) => (code === 0 ? 0 : 1));
-    for (const frame of ENEMY_FRAMES) {
-      // Les silhouettes provisoires du Squelette et des Jumeaux sont celles de l'ancien dessin.
-      expect(shape('fallenKnight', frame)).toEqual(shape('skeleton', frame));
-      expect(shape('fallenKnight', frame)).toEqual(shape('twins', frame));
-      expect(shape('fallenKnight', frame)).not.toEqual(shape('ghoul', frame));
-    }
-  });
+  and(
+    "Les Jumeaux et le Squelette gardent leur silhouette tirée de l'ancien dessin de la Goule",
+    () => {
+      const shape = (kind: EnemyKind, frame: EnemyFrame) =>
+        Array.from(battleSprite(kind, frame).sprite.pixels, (code) => (code === 0 ? 0 : 1));
+      for (const frame of ENEMY_FRAMES) {
+        // Les silhouettes provisoires du Squelette et des Jumeaux sont celles de l'ancien dessin.
+        expect(shape('skeleton', frame)).toEqual(shape('twins', frame));
+        expect(shape('skeleton', frame)).not.toEqual(shape('ghoul', frame));
+      }
+    },
+  );
 
   and('son nom et ses chiffres restent affichés', () => {
     world.kinds.forEach((kind, index) => {
