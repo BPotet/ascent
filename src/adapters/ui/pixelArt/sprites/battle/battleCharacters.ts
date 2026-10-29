@@ -1,25 +1,15 @@
-import { ATTACKS } from '../../../../../domain/battle/attacks';
+import { ATTACKS, type AttackKind } from '../../../../../domain/battle/attacks';
 import { ENEMIES, type EnemyKind, type HeroKind } from '../../../../../domain/battle/combatants';
-import {
-  claws,
-  ell,
-  finish,
-  grid,
-  limb,
-  line,
-  poly,
-  px,
-  rect,
-  type Point,
-  type Sprite,
-} from '../Sprite';
+import type { Point, Sprite } from '../Sprite';
 import { FACELESS_PRIOR_ANIMATION } from '../atelier/data/facelessPrior';
 import { FALLEN_KNIGHT_ANIMATION } from '../atelier/data/fallenKnight';
 import { GHOUL_ANIMATION } from '../atelier/data/ghoul';
 import { MAD_VILLAGER_ANIMATION } from '../atelier/data/madVillager';
 import { NECROMANCER_ANIMATION } from '../atelier/data/necromancer';
+import { OSSUARY_WARDEN_ANIMATION } from '../atelier/data/ossuaryWarden';
 import { SKELETON_ANIMATION } from '../atelier/data/skeleton';
 import { SPECTER_ANIMATION } from '../atelier/data/specter';
+import { TWINS_ANIMATION } from '../atelier/data/twins';
 import { animationSprite, type FullAnimation } from '../atelier/fullAnimation';
 import { HERO_ANIMATIONS, HERO_CELL, isHero } from './heroAnimations';
 
@@ -136,248 +126,21 @@ export interface CharacterImage {
 }
 
 export interface CharacterLook {
-  /** Le liseré : 0 aucun, 1 pointillé, 2 plein. */
+  /**
+   * Le liseré demandé par la scène : 0 aucun, 1 pointillé, 2 plein. Une pose recopiée n'en a
+   * jamais (ADR 0010).
+   */
   readonly tier?: 0 | 1 | 2;
   /** La palette rouge du coup imparable. */
   readonly red?: boolean;
-}
-
-// Stryker disable all: dessin de la scène, celui de la maquette (`pxlib`, ADR 0006 § 9).
-/** Les paramètres d'une image : ceux de la maquette, entiers, en pixels d'art. */
-interface Pose {
-  readonly by: number;
-  readonly w: number;
-  readonly hx: number;
-  readonly hy: number;
-  readonly L: Point;
-  readonly R: Point;
-  readonly bL: number;
-  readonly bR: number;
-  readonly lf: number;
-  readonly rf: number;
-  readonly mo: number;
-  readonly hem: number;
-  readonly st: readonly [number, number, number, number];
-  readonly orb: number;
-  readonly A: Point;
-  readonly bA: number;
-  readonly smear: number;
-  readonly dx: number;
-}
-
-/** Ce que le dessin rend : la traînée, le halo et les ancrages, en pixels d'art du dessin. */
-interface Drawn {
-  readonly smear: readonly Point[] | null;
-  readonly smearCode: number;
-  readonly halo: readonly [number, number, number] | null;
-  readonly eye: Point | null;
-  readonly tips: readonly Point[];
-  readonly head: Point | null;
-}
-
-interface CharacterArt {
-  readonly width: number;
-  readonly height: number;
-  readonly base: Partial<Pose>;
-  readonly frames: Readonly<Record<string, Partial<Pose>>>;
-  readonly draw: (sprite: Sprite, pose: Pose) => Drawn;
-}
-
-const NEUTRAL: Pose = {
-  by: 0,
-  w: 0,
-  hx: 0,
-  hy: 0,
-  L: [0, 0],
-  R: [0, 0],
-  bL: 0,
-  bR: 0,
-  lf: 0,
-  rf: 0,
-  mo: 0,
-  hem: 0,
-  st: [0, 0, 0, 0],
-  orb: 0,
-  A: [0, 0],
-  bA: 0,
-  smear: 0,
-  dx: 0,
-};
-
-/** La pointe d'une griffe : `length` pixels d'art au-delà de la main, dans l'axe du bras. */
-function tipOf(elbow: Point, hand: Point, length = 3): Point {
-  const dx = hand[0] - elbow[0];
-  const dy = hand[1] - elbow[1];
-  const norm = Math.hypot(dx, dy) || 1;
-  return [Math.round(hand[0] + (dx / norm) * length), Math.round(hand[1] + (dy / norm) * length)];
-}
-
-/** L'hésitation du coup retardé : l'image `ant2`, décalée d'un pixel d'art. */
-function withHesitation(
-  frames: Readonly<Record<string, Partial<Pose>>>,
-): Readonly<Record<string, Partial<Pose>>> {
-  return { ...frames, hes: { ...frames.ant2, dx: 1 } };
+  /** Le type de coup préparé : ses poses d'un coup remplacent celles de l'animation complète. */
+  readonly attack?: AttackKind | null;
 }
 
 /**
- * L'ancien dessin de la Goule (#81) : base de la silhouette provisoire des Jumeaux.
+ * L'animation complète de chaque ennemi, validée dans l'Atelier (#119, #137, #138, #139, ADR 0010) :
+ * tous les ennemis, aucun n'est plus dessiné par le code.
  */
-const OLD_GHOUL: CharacterArt = {
-  width: 40,
-  height: 48,
-  base: { by: 0, w: 0, hx: 0, hy: 0, L: [9, 40], R: [31, 40], bL: 2, bR: 2, lf: 47, rf: 47, mo: 1 },
-  frames: withHesitation({
-    idle0: {},
-    idle1: { by: 1, L: [9, 41], R: [31, 41] },
-    step0: { by: -1, lf: 45 },
-    step1: {},
-    step2: { by: -1, rf: 45 },
-    ant0: { by: -1, w: 1, L: [7, 30], R: [33, 30] },
-    ant1: { by: -2, w: 1, hy: -1, L: [5, 20], R: [35, 20] },
-    ant2: { by: -3, w: 2, hy: -2, L: [3, 9], R: [37, 9], bL: 3, bR: 3, mo: 2 },
-    lunge: { by: 2, w: 1, hy: 1, L: [2, 31], R: [38, 31], bL: 1, bR: 1, mo: 2, smear: 1 },
-    impact: { by: 3, w: 1, hy: 2, L: [6, 47], R: [34, 47], bL: 1, bR: 1, mo: 2 },
-    rec0: { by: 2, L: [10, 43], R: [30, 43] },
-    rec1: { by: 1, L: [9, 42], R: [31, 42] },
-    feint0: { by: 1, w: 1, L: [6, 26], R: [34, 26], mo: 2 },
-    feint1: { by: 2, hy: 1, L: [13, 31], R: [27, 31], bL: 5, bR: 5 },
-    hurt: { by: 3, hx: -2, hy: 2, L: [10, 45], R: [32, 43] },
-    down: { by: 6, hx: -1, hy: 3, L: [8, 46], R: [32, 46], bL: 1, bR: 1 },
-  }),
-  draw(g, p) {
-    const b = p.by;
-    const w = p.w;
-    const rightHand: Point = [p.R[0] - 2, p.R[1] - 1];
-    const e2 = limb(g, [27 + w, 24 + b], rightHand, p.bR, 1, 12, 2);
-    claws(g, e2, rightHand, 14, 3);
-    line(g, 25, 36 + b, 26, p.rf - 1, 12, 3);
-    ell(g, 25, 23 + b, 7, 6, 13);
-    ell(g, 20, 30 + b, 9 + w, 9, 13);
-    line(g, 15, 36 + b, 13, p.lf, 12, 3);
-    rect(g, 11 - w, 34 + b, 19 + 2 * w, 3, 3);
-    for (let x = 11 - w; x < 30 + w; x += 3) {
-      px(g, x + 1, 37 + b, 3);
-      px(g, x + 1, 38 + b, 3);
-    }
-    const e1 = limb(g, [11 - w, 26 + b], p.L, p.bL, -1, 13, 3);
-    claws(g, e1, p.L, 28, 3);
-    const hx = 14 + p.hx;
-    const hy = 21 + b + p.hy;
-    ell(g, hx, hy, 5, 4, 13);
-    px(g, hx - 3, hy - 1, 8);
-    px(g, hx + 1, hy - 1, 8);
-    rect(g, hx - 4, hy + 2, 4, p.mo, 1);
-    return {
-      smear: p.smear
-        ? [p.L, rightHand, [hx - 3, hy - 4], [hx + 2, hy - 4], [11 - w, 24 + b], [29 + w, 22 + b]]
-        : null,
-      smearCode: 14,
-      halo: null,
-      eye: [hx - 3, hy - 1],
-      tips: [tipOf(e1, p.L), tipOf(e2, rightHand)],
-      head: [hx, hy - 5],
-    };
-  },
-};
-
-/**
- * Le dessin du Nécromancien (#81), remplacé par son animation complète (#137) : il ne sert plus
- * qu'au sprite provisoire de la Gardienne des ossuaires.
- */
-const NECROMANCER: CharacterArt = {
-  width: 40,
-  height: 48,
-  base: { by: 0, w: 0, st: [34, 47, 34, 7], orb: 2, A: [11, 31], bA: 1 },
-  frames: withHesitation({
-    idle0: {},
-    idle1: { by: 1, st: [34, 47, 34, 8] },
-    step0: { by: -1, w: -1 },
-    step1: {},
-    step2: { by: -1, w: 1 },
-    ant0: { by: -1, st: [35, 40, 36, 4], A: [8, 24] },
-    ant1: { by: -2, w: 1, st: [34, 30, 32, 2], A: [5, 18], orb: 3 },
-    ant2: { by: -3, w: 2, st: [38, 26, 26, 3], A: [3, 12], orb: 3 },
-    lunge: { by: 2, w: 1, st: [32, 8, 14, 40], A: [8, 34], orb: 3, smear: 1 },
-    impact: { by: 3, w: 1, st: [33, 10, 12, 44], A: [10, 38], orb: 3 },
-    rec0: { by: 2, st: [34, 30, 22, 43], A: [9, 34] },
-    rec1: { by: 1, st: [34, 44, 32, 10], A: [10, 32] },
-    feint0: { by: 1, st: [36, 30, 30, 4], A: [6, 22], orb: 3 },
-    feint1: { by: 2, st: [34, 24, 24, 17], A: [12, 28] },
-    hurt: { by: 3, st: [36, 47, 38, 10], A: [12, 40] },
-    down: { by: 6, st: [38, 47, 22, 34], A: [12, 44], orb: 1 },
-  }),
-  draw(g, p) {
-    const b = p.by;
-    const w = p.w;
-    const [sx, sy, tx, ty] = p.st;
-    const hand: Point = [Math.round(sx + (tx - sx) * 0.45), Math.round(sy + (ty - sy) * 0.45)];
-    line(g, sx, sy, tx, ty, 21, 2);
-    limb(g, [25, 19 + b], hand, 1, 1, 18, 3);
-    rect(g, hand[0] - 1, hand[1] - 1, 2, 2, 28);
-    poly(
-      g,
-      [
-        [14, 14 + b],
-        [24, 14 + b],
-        [32 + w, 48],
-        [8 - w, 48],
-      ],
-      19,
-    );
-    line(g, 18, 22 + b, 17, 46, 18, 1);
-    limb(g, [14, 19 + b], p.A, p.bA, -1, 19, 3);
-    rect(g, p.A[0] - 1, p.A[1] - 1, 2, 2, 28);
-    poly(
-      g,
-      [
-        [11, 18 + b],
-        [27, 18 + b],
-        [22, 1 + b],
-      ],
-      18,
-    );
-    ell(g, 17, 13 + b, 3, 3, 1);
-    px(g, 16, 13 + b, 20);
-    px(g, 18, 13 + b, 20);
-    ell(g, tx, ty, p.orb, p.orb, 20);
-    px(g, tx, ty, 9);
-    return {
-      smear: p.smear ? [[tx, ty], p.A, [20, 6 + b]] : null,
-      smearCode: 20,
-      halo: [tx, ty, p.orb],
-      eye: [tx, ty],
-      tips: [
-        [16, 13 + b],
-        [18, 13 + b],
-      ],
-      head: [19, b + 2],
-    };
-  },
-};
-
-/** Les yeux, seuls gardés par une silhouette. */
-const EYES = 8;
-/** La teinte sombre d'une silhouette. */
-const SHADOW = 2;
-
-/**
- * Une silhouette provisoire (maquette #102, N2) : l'art `art` redessiné sombre, les yeux seuls
- * gardés, pour un ennemi dont l'asset n'est pas encore validé dans l'Atelier.
- */
-function silhouette(art: CharacterArt): CharacterArt {
-  return {
-    ...art,
-    draw(g, p) {
-      const drawn = art.draw(g, p);
-      g.pixels.forEach((code, index) => {
-        if (code !== 0 && code !== EYES) g.pixels[index] = SHADOW;
-      });
-      return { ...drawn, smearCode: SHADOW };
-    },
-  };
-}
-
-/** Les ennemis dont l'animation complète est validée dans l'Atelier (#119, #137, #138, ADR 0010). */
 const FULL_ANIMATIONS = {
   ghoul: GHOUL_ANIMATION,
   madVillager: MAD_VILLAGER_ANIMATION,
@@ -386,9 +149,9 @@ const FULL_ANIMATIONS = {
   specter: SPECTER_ANIMATION,
   fallenKnight: FALLEN_KNIGHT_ANIMATION,
   facelessPrior: FACELESS_PRIOR_ANIMATION,
-} satisfies Partial<Record<EnemyKind, FullAnimation<EnemyFrame>>>;
-
-type AnimatedCharacter = keyof typeof FULL_ANIMATIONS;
+  twins: TWINS_ANIMATION,
+  ossuaryWarden: OSSUARY_WARDEN_ANIMATION,
+} satisfies Record<EnemyKind, FullAnimation<EnemyFrame>>;
 
 /** Les ennemis animés (`ANIMATED_ENEMIES`) : les clés du registre des animations complètes. */
 export const ANIMATED_ENEMIES = Object.keys(FULL_ANIMATIONS) as readonly EnemyKind[];
@@ -406,83 +169,32 @@ function isHeroFrame(frame: BattleFrame): frame is HeroFrame {
   return (HERO_FRAMES as readonly string[]).includes(frame);
 }
 
-function isAnimated(character: BattleCharacter): character is AnimatedCharacter {
-  return Object.hasOwn(FULL_ANIMATIONS, character);
-}
-
 function isEnemyFrame(frame: BattleFrame): frame is EnemyFrame {
   return (ENEMY_FRAMES as readonly string[]).includes(frame);
 }
 
-/** Les personnages encore dessinés par le code : une seule source d'image par personnage. */
-const ART: Readonly<Record<Exclude<EnemyKind, AnimatedCharacter>, CharacterArt>> = {
-  // Silhouette provisoire des Jumeaux (prototype #108) : l'asset de l'Atelier n'est pas validé.
-  twins: silhouette(OLD_GHOUL),
-  // Sprite provisoire du boss de l'ascension (prototype #91), repris du combat d'essai.
-  ossuaryWarden: NECROMANCER,
-};
-
-/** Un point du dessin, dans le sprite fini (2 pixels d'art de marge). */
-const finished = ([x, y]: Point): Point => [x + 2, y + 2];
-
 /**
- * L'image `frame` d'un personnage du combat. Avec une animation complète, la pose recopiée telle
- * quelle, sans liseré ni traînée, peinte avec sa palette rouge pour un coup imparable si l'ennemi
- * la joue (ADR 0010), dans la case du héros pour une héroïne (#140), sans rouge ; sinon le dessin
- * (`necro3` de la maquette), fini avec son liseré `tier` et, pour un coup imparable, la palette
- * rouge.
+ * L'image `frame` d'un personnage du combat : la pose recopiée telle quelle de son animation
+ * complète, sans liseré ni traînée (ADR 0010). Pour un ennemi, dans sa case du combat, peinte avec
+ * sa palette rouge pour un coup imparable s'il la joue, et prise dans ses poses d'un coup quand le
+ * coup `attack` en a pour cette image (#139). Pour une héroïne, dans la case du héros, sans rouge
+ * (#140).
  */
 export function battleSprite(
   character: BattleCharacter,
   frame: BattleFrame,
-  { tier = 0, red = false }: CharacterLook = {},
+  { red = false, attack = null }: CharacterLook = {},
 ): CharacterImage {
   if (isHero(character)) {
     const animation: FullAnimation<HeroFrame> = HERO_ANIMATIONS[character];
     return animationSprite(animation, isHeroFrame(frame) ? frame : 'idle0', HERO_CELL);
   }
-  if (isAnimated(character)) {
-    return animationSprite(
-      FULL_ANIMATIONS[character],
-      isEnemyFrame(frame) ? frame : 'idle0',
-      undefined,
-      {
-        red: red && playsRed(character),
-      },
-    );
-  }
-  const { inner, drawn, dx } = drawnFrame(character, frame);
-  const sprite = finish(inner, {
-    dx,
-    red,
-    tier,
-    smear: drawn.smear,
-    smearCode: drawn.smearCode,
-    halo: drawn.halo,
-  });
-  return {
-    sprite,
-    anchors: {
-      eye: drawn.eye === null ? null : finished(drawn.eye),
-      tips: drawn.tips.map(finished),
-      head: drawn.head === null ? null : finished(drawn.head),
-    },
-  };
-}
-
-/** Le dessin brut d'une image, avant finition : fait une fois, il sert à toutes ses variantes. */
-const drawnFrames = new Map<string, { inner: Sprite; drawn: Drawn; dx: number }>();
-
-function drawnFrame(character: Exclude<EnemyKind, AnimatedCharacter>, frame: BattleFrame) {
-  const key = `${character}|${frame}`;
-  const cached = drawnFrames.get(key);
-  if (cached !== undefined) return cached;
-  const art = ART[character];
-  const pose: Pose = { ...NEUTRAL, ...art.base, ...(art.frames[frame] ?? art.frames.idle0) };
-  const inner = grid(art.width, art.height);
-  const drawn = { inner, drawn: art.draw(inner, pose), dx: pose.dx };
-  drawnFrames.set(key, drawn);
-  return drawn;
+  return animationSprite(
+    FULL_ANIMATIONS[character],
+    isEnemyFrame(frame) ? frame : 'idle0',
+    undefined,
+    { red: red && playsRed(character), attack },
+  );
 }
 
 /** Les ancrages qui servent au combat : le reflet (l'œil, les pointes) et les étoiles (la tête). */
@@ -493,13 +205,49 @@ export interface PoseAnchors {
 }
 
 /**
- * Les ancrages de la pose `frame` d'un ennemi (`poseAnchors`) : ceux de la pose, pour une
- * animation complète ; pour un ennemi dessiné, ceux d'avant #119, quelle que soit la pose : l'œil
- * et les pointes de `ant2`, la tête de `down`.
+ * Les ancrages de la pose `frame` d'un ennemi (`poseAnchors`) : ceux de la pose affichée, prise
+ * dans ses poses d'un coup quand le coup `attack` en a pour cette image.
  */
-export function poseAnchors(character: EnemyKind, frame: EnemyFrame): PoseAnchors {
-  if (isAnimated(character)) return animationSprite(FULL_ANIMATIONS[character], frame).anchors;
-  const { eye, tips } = battleSprite(character, 'ant2').anchors;
-  return { eye, tips, head: battleSprite(character, 'down').anchors.head ?? [22, 22] };
+export function poseAnchors(
+  character: EnemyKind,
+  frame: EnemyFrame,
+  attack: AttackKind | null = null,
+): PoseAnchors {
+  return animationSprite(FULL_ANIMATIONS[character], frame, undefined, { attack }).anchors;
 }
-// Stryker restore all
+
+/**
+ * Le mouvement d'un coup qui a des poses d'un coup (#139), en nombres seuls pour la scène : sa
+ * portée (`reach`, la part du chemin vers le héros à l'impact, `null` pour celle d'aujourd'hui) et
+ * l'élévation de chacune de ses poses (`lift`, en pixels d'art, 0 par défaut). Une image absente de
+ * `lift` n'est pas une pose du coup.
+ */
+export interface AttackMotion {
+  readonly reach: number | null;
+  readonly lift: Readonly<Partial<Record<EnemyFrame, number>>>;
+}
+
+/** Le mouvement de chaque coup d'un ennemi qui a des poses d'un coup. */
+export type AttackMotions = Readonly<Partial<Record<AttackKind, AttackMotion>>>;
+
+const motions = new Map<EnemyKind, AttackMotions>();
+
+/** Le mouvement des coups de l'ennemi `kind` qui ont des poses d'un coup (`attackMotion`). */
+export function attackMotion(kind: EnemyKind): AttackMotions {
+  const cached = motions.get(kind);
+  if (cached !== undefined) return cached;
+  const { attackPoses = {} } = FULL_ANIMATIONS[kind] as FullAnimation<EnemyFrame>;
+  const motion = Object.fromEntries(
+    Object.entries(attackPoses).map(([attack, poses]) => [
+      attack,
+      {
+        reach: poses.reach ?? null,
+        lift: Object.fromEntries(
+          Object.keys(poses.frames).map((frame) => [frame, poses.lift?.[frame as EnemyFrame] ?? 0]),
+        ),
+      },
+    ]),
+  );
+  motions.set(kind, motion);
+  return motion;
+}

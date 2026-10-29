@@ -91,12 +91,16 @@ describe('BattleScene with Skia', () => {
     expect(prepareBattleScene()).toBe(prepared);
   });
 
-  it('prepares the anchors of each pose: those of the full animation, or those of today', () => {
+  it('prepares the anchors of each pose: those of the full animation, pose by pose', () => {
     const { anchors } = prepareBattleScene();
 
     expect(anchors.ghoul.hurt).toEqual(poseAnchors('ghoul', 'hurt'));
     expect(anchors.madVillager.lunge).toEqual(poseAnchors('madVillager', 'lunge'));
-    expect(anchors.ossuaryWarden.idle0).toEqual(anchors.ossuaryWarden.ant2);
+    // Les Jumeaux et la Gardienne ne sont plus dessinés par le code (#139) : leurs ancrages ne sont
+    // plus ceux de `ant2` pour toute pose, mais ceux de chaque pose recopiée.
+    expect(anchors.ossuaryWarden.idle0).toEqual(poseAnchors('ossuaryWarden', 'idle0'));
+    expect(anchors.ossuaryWarden.idle0).not.toEqual(anchors.ossuaryWarden.ant2);
+    expect(anchors.twins.down).toEqual(poseAnchors('twins', 'down'));
   });
 
   it('mounts the Ghoul and the Mad villager with their full animation, one of them stunned', async () => {

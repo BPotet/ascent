@@ -64,7 +64,6 @@ Fonctionnalité: La Goule et le Villageois fou animés, et les images validées 
     Quand il prépare un coup ou avance vers le héros
     Alors chaque pose s'affiche telle que validée dans l'Atelier, pixel pour pixel
     Et elle ne s'entoure d'aucun liseré d'or et ne laisse aucune traînée
-    Et les ennemis sans animation complète validée gardent leur liseré et leur traînée d'aujourd'hui
 
   Plan du Scénario: L'image validée d'un objet sur « Objet trouvé »
     Étant donné un combat gagné
@@ -83,12 +82,9 @@ Fonctionnalité: La Goule et le Villageois fou animés, et les images validées 
       | Amulette de Hâte     |
       | Arbalète             |
 
-  Scénario: Limite — un ennemi sans animation complète validée
-    Étant donné un ennemi, une Élite ou un boss dont l'animation complète n'est pas validée (Les Jumeaux, la Gardienne des ossuaires)
-    Quand il apparaît dans la tour
-    Alors il garde son sprite actuel ou sa silhouette provisoire
-    Et Les Jumeaux gardent leur silhouette tirée de l'ancien dessin de la Goule
-    Et son nom et ses chiffres restent affichés
+  # Retirés par #139 : le scénario « Limite — un ennemi sans animation complète validée (Les
+  # Jumeaux, la Gardienne des ossuaires) » et l'étape « les ennemis sans animation complète validée
+  # gardent leur liseré et leur traînée d'aujourd'hui ». Plus aucun ennemi n'est dessiné par le code.
 
   # Adapté par #140
   Scénario: Limite — les héros
