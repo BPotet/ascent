@@ -24,7 +24,6 @@ const ENEMIES: SceneEnemy[] = (['ghoul', 'specter', 'necromancer'] as const).map
 }));
 
 function props(change: Partial<BattleSceneProps> = {}): BattleSceneProps {
-  const shared = (value: number) => ({ value, get: () => value, set: jest.fn() });
   return {
     width: 390,
     height: 440,
@@ -55,7 +54,6 @@ function props(change: Partial<BattleSceneProps> = {}): BattleSceneProps {
       'worklet';
       return 2_200;
     },
-    frameMeter: { frames: shared(0), dropped: shared(0), worstGap: shared(0) },
     ...change,
   };
 }

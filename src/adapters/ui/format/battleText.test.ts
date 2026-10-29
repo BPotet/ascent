@@ -1,13 +1,12 @@
-import { startBattle, startTrialBattle, type Battle } from '../../../domain/battle/Battle';
+import { startBattle, type Battle } from '../../../domain/battle/Battle';
 import type { BattleEvent } from '../../../domain/battle/BattleEvent';
-import { DEFAULT_TRIAL_TUNING } from '../../../domain/battle/TrialTuning';
+import { startTestBattle } from '../../../domain/battle/testing/testBattle';
 import {
   ENEMY_NAMES,
   announcement,
   attackButtonLabel,
   bleedChipText,
   damageFloat,
-  endLine,
   endTitle,
   enemyHpText,
   enemyLabel,
@@ -21,13 +20,11 @@ import {
   phaseBanner,
   powerButtonLabel,
   powerCostText,
-  respiteText,
   stunnedLabel,
 } from './battleText';
 
-const battle: Battle = startTrialBattle({
+const battle: Battle = startTestBattle({
   seed: 1,
-  tuning: DEFAULT_TRIAL_TUNING,
   defenseHint: false,
   at: 0,
 }).battle;
@@ -326,7 +323,6 @@ describe('battle texts', () => {
     it('reads the Skeleton that revives with its HP (#106)', () => {
       const withSkeleton = startBattle({
         seed: 1,
-        tuning: DEFAULT_TRIAL_TUNING,
         defenseHint: false,
         at: 0,
         enemies: ['skeleton'],
@@ -338,16 +334,8 @@ describe('battle texts', () => {
     });
   });
 
-  it('ends the battle with its outcome and the respite', () => {
-    expect([endTitle('victory'), endLine('victory')]).toEqual([
-      'Combat gagné',
-      'La Goule, le Spectre et le Nécromancien sont tombés.',
-    ]);
-    expect([endTitle('defeat'), endLine('defeat')]).toEqual([
-      'Combat perdu',
-      'La Sentinelle est tombée.',
-    ]);
-    expect(respiteText(8)).toBe('Répit +8 PV');
+  it('ends the battle with its outcome', () => {
+    expect([endTitle('victory'), endTitle('defeat')]).toEqual(['Combat gagné', 'Combat perdu']);
   });
 
   it('writes the HP of the hero', () => {

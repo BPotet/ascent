@@ -1,4 +1,4 @@
-// Aide aux tests de l'écran du combat d'essai : une session de combat sur l'horloge de combat
+// Aide aux tests de l'écran de combat : une session de combat sur l'horloge de combat
 // manuelle, une graine fixée, un son et une vibration qui notent ce qu'on leur demande, et des
 // touchers simulés par Gesture Handler. Les deux horloges de l'écran (fil JS et fil UI) lisent
 // l'horloge manuelle : la méthode de datation (a), base commune.
@@ -24,6 +24,7 @@ import {
 } from '../../../application/useCases/BattleSession';
 import type { AttackStep } from '../../../domain/battle/Battle';
 import type { DefenseButton } from '../../../domain/battle/BattleEvent';
+import { startTestBattle } from '../../../domain/battle/testing/testBattle';
 import { Day } from '../../../domain/day/Day';
 import {
   ATTACK_GESTURE_TEST_ID,
@@ -41,8 +42,10 @@ export interface TrialBattleOptions {
   readonly seed: number;
   /** Les bulles d'aide ont déjà été vues (par défaut : oui). */
   readonly hintsSeen?: boolean;
-  readonly trialTools?: boolean;
+  /** Par défaut, le combat de test (`startTestBattle`). */
   readonly createBattle?: BattleFactory;
+  /** Le titre de l'en-tête ; par défaut « Étage 1 ». */
+  readonly title?: string;
   readonly keyValueStore?: ReturnType<typeof memoryKeyValueStore>;
 }
 
@@ -60,8 +63,8 @@ export async function settle(): Promise<void> {
 export async function renderTrialBattle({
   seed,
   hintsSeen = true,
-  trialTools = false,
-  createBattle,
+  createBattle = startTestBattle,
+  title = 'Étage 1',
   keyValueStore = memoryKeyValueStore(),
 }: TrialBattleOptions) {
   if (hintsSeen) {
@@ -73,25 +76,17 @@ export async function renderTrialBattle({
   const haptics = silentBattleHaptics();
   const session = new BattleSession(
     { clock, seeds: new FixedSeedSource(seed, seed + 1), sound, haptics, keyValueStore },
-    createBattle === undefined ? {} : { createBattle },
+    { createBattle },
   );
   const snapshots: BattleSnapshot[] = [];
   session.subscribe((snapshot) => snapshots.push(snapshot));
-  const onClose = jest.fn();
   const now = () => clock.now();
   // L'horloge du fil UI suit l'horloge de combat ; les étapes d'un geste qui suivent son début
   // peuvent la faire avancer seule (`uiAhead`), sans déclencher les échéances du combat.
   let uiAhead = 0;
   const uiNow = () => clock.now() + uiAhead;
   await renderScreen(
-    <TrialBattleScreen
-      session={session}
-      onClose={onClose}
-      trialTools={trialTools}
-      now={now}
-      uiNow={uiNow}
-      soundLatencies={() => [12, 18, 40]}
-    />,
+    <TrialBattleScreen session={session} title={title} now={now} uiNow={uiNow} />,
     {
       clock: settableClock(Day.of(2026, 10, 22)),
       unitOfWork: new InMemoryUnitOfWork(),
@@ -208,7 +203,6 @@ export async function renderTrialBattle({
     sound,
     haptics,
     keyValueStore,
-    onClose,
     snapshots,
     battle,
     attackStep,

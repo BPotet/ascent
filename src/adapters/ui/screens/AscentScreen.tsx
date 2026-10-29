@@ -93,8 +93,6 @@ function FloorBattle({
       />
       <TrialBattleScreen
         session={battleSession}
-        onClose={() => undefined}
-        trialTools={false}
         title={ascent.encounter?.kind === 'boss' ? 'Le boss' : `Étage ${ascent.floor}`}
       />
     </View>

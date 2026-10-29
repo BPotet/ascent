@@ -15,11 +15,9 @@ import {
   targetOn,
   type BattleChange,
 } from '../../../application/testing/battleBuilder';
-import { seedFor } from '../../../application/testing/trialBattleSeeds';
+import { seedFor } from '../../../application/testing/battleSeeds';
 import { BATTLE_HINT_SEEN_KEYS } from '../../../application/useCases/battleHints';
-import { TRIAL_TUNING_KEY } from '../../../application/useCases/trialTuning';
 import { glintsOf } from '../../../domain/battle/glints';
-import { sceneGeometry } from '../battle/scene/sceneGeometry';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { reduceMotionInEachTest, withMotion } from '../testing/motion';
 import { renderTrialBattle, type TrialBattleTest } from '../testing/trialBattle';
@@ -60,7 +58,7 @@ describe('TrialBattleScreen', () => {
     it('shows the three enemies with their guard and their intent category, the Sentinel and her momentum', async () => {
       await renderTrialBattle({ seed: seedFor({ ghoul: 'basic', specter: 'delayed' }) });
 
-      expect(screen.getByRole('header', { name: "Combat d'essai" })).toBeOnTheScreen();
+      expect(screen.getByRole('header', { name: 'Étage 1' })).toBeOnTheScreen();
       expect(screen.getByTestId('battle-phase')).toHaveTextContent('Phase du héros');
       expect(
         screen.getByRole('button', {
@@ -618,7 +616,7 @@ describe('TrialBattleScreen', () => {
     });
   });
 
-  describe('end of the battle (F8)', () => {
+  describe('end of the battle', () => {
     /** Des ennemis à 10 PV : une frappe chacun. */
     const weakEnemies = battleWith(
       enemyWith(GHOUL, { hp: 10 }),
@@ -634,33 +632,17 @@ describe('TrialBattleScreen', () => {
       await test.runUntil(() => test.battle().phase.kind === 'over');
     }
 
-    it('is won with the respite, and the player can replay from the start', async () => {
-      const test = await renderTrialBattle({ seed: 3, createBattle: weakEnemies });
-
-      await win(test);
-
-      expect(screen.getByRole('header', { name: 'Combat gagné' })).toBeOnTheScreen();
-      expect(
-        screen.getByText('La Goule, le Spectre et le Nécromancien sont tombés.'),
-      ).toBeOnTheScreen();
-      const respite = events(test).find((event) => event.type === 'respite');
-      expect(respite).toBeDefined();
-      expect(announce).toHaveBeenCalledWith('Combat gagné.');
+    /** Sous la scène, plus rien : ni barre du héros, ni zone d'action, ni écran de fin. */
+    function expectNothingUnderTheScene(): void {
+      expect(screen.queryByTestId('battle-pad')).toBeNull();
+      expect(screen.queryByTestId('battle-zone-line')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Rejouer' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Quitter' })).toBeNull();
       expect(screen.queryByTestId('trial-tuning-panel')).toBeNull();
       expect(screen.queryByTestId('battle-measures-panel')).toBeNull();
+    }
 
-      await act(async () => {
-        fireEvent.press(screen.getByRole('button', { name: 'Rejouer' }));
-      });
-
-      expect(
-        await screen.findByRole('button', { name: 'Attaquer, cible : Goule' }),
-      ).toBeOnTheScreen();
-      expect(test.battle().round).toBe(1);
-      expect(screen.queryByTestId('battle-feedback')).toBeNull();
-    });
-
-    it('shows the respite gained after a victory', async () => {
+    it('announces the victory and its respite, and shows nothing under the scene', async () => {
       const test = await renderTrialBattle({
         seed: 3,
         createBattle: battleWith(
@@ -673,11 +655,24 @@ describe('TrialBattleScreen', () => {
 
       await win(test);
 
-      expect(screen.getByText('Répit +8 PV')).toBeOnTheScreen();
+      expect(announce).toHaveBeenCalledWith('Combat gagné.');
       expect(announce).toHaveBeenCalledWith('Répit, plus 8 PV');
+      expect(screen.queryByText('Combat gagné')).toBeNull();
+      expect(screen.queryByText(/Répit/u)).toBeNull();
+      expectNothingUnderTheScene();
     });
 
-    it('is lost when the Sentinel falls, and the player can replay or leave', async () => {
+    it('keeps the scene of a won battle, without the feedback words', async () => {
+      const test = await renderTrialBattle({ seed: 3, createBattle: weakEnemies });
+
+      await win(test);
+
+      expect(screen.getByTestId('battle-scene-frame')).toBeOnTheScreen();
+      expect(screen.queryByTestId('battle-feedback')).toBeNull();
+      expectNothingUnderTheScene();
+    });
+
+    it('shows the fallen hero when the battle is lost, and nothing under the scene', async () => {
       const test = await renderTrialBattle({
         seed: seedFor({ ghoul: 'basic' }),
         createBattle: battleWith(heroWith({ hp: 4 })),
@@ -686,65 +681,10 @@ describe('TrialBattleScreen', () => {
 
       await test.runUntil(() => test.battle().phase.kind === 'over');
 
-      expect(screen.getByRole('header', { name: 'Combat perdu' })).toBeOnTheScreen();
-      expect(screen.getByText('La Sentinelle est tombée.')).toBeOnTheScreen();
-      expect(screen.queryByText(/Répit/u)).toBeNull();
+      expect(announce).toHaveBeenCalledWith('Combat perdu.');
+      expect(screen.queryByText('La Sentinelle est tombée.')).toBeNull();
       expect(sceneProps().heroPose).toBe('fallen');
-      // Les plaques des ennemis restent entières : la scène ne rétrécit plus sous leur bas.
-      expect(
-        StyleSheet.flatten(screen.getByTestId('battle-scene-frame').props.style),
-      ).toMatchObject({ flexShrink: 0, minHeight: sceneGeometry(390, 440, 3).platesBottom + 8 });
-      await fireEvent.press(screen.getByRole('button', { name: 'Quitter' }));
-      expect(test.onClose).toHaveBeenCalledTimes(1);
-    });
-
-    it('offers the trial tuning and the measures on the preview build', async () => {
-      const keyValueStore = memoryKeyValueStore();
-      const test = await renderTrialBattle({
-        seed: 3,
-        trialTools: true,
-        keyValueStore,
-        createBattle: weakEnemies,
-      });
-      await test.attack();
-      await test.strike(test.clock.now() + 700 - 20);
-      const impact = await test.toWindUpOf(SPECTER);
-      await test.touchDefense('parry', impact - 30);
-      await win(test);
-
-      expect(screen.getByTestId('trial-tuning-phaseTransitionMs')).toHaveTextContent('800 ms');
-      expect(screen.getByTestId('trial-tuning-stepInMs')).toHaveTextContent('400 ms');
-      await act(async () => {
-        fireEvent.press(screen.getByRole('button', { name: 'Allonger la transition de phase' }));
-      });
-      await act(async () => {
-        fireEvent.press(screen.getByRole('button', { name: "Raccourcir l'avancée" }));
-      });
-      expect(screen.getByTestId('trial-tuning-phaseTransitionMs')).toHaveTextContent('850 ms');
-      expect(screen.getByTestId('trial-tuning-stepInMs')).toHaveTextContent('350 ms');
-      expect(JSON.parse(keyValueStore.values.get(TRIAL_TUNING_KEY)!)).toEqual({
-        phaseTransitionMs: 850,
-        stepInMs: 350,
-      });
-
-      const measures = screen.getByTestId('battle-measures-panel');
-      expect(measures).toHaveTextContent(/Toucher → JS \(2 appuis\) : médiane 0 ms, p95 0 ms/u);
-      expect(measures).toHaveTextContent(/Méthode recalculée : a/u);
-      expect(measures).toHaveTextContent(/Appuis redatés : 0/u);
-      expect(measures).toHaveTextContent(/Latence du son : médiane 18 ms, p95 40 ms/u);
-      expect(measures).toHaveTextContent(/Écarts jugés \(1\) : médiane 30 ms/u);
-      expect(measures).toHaveTextContent(/Écarts des frappes \(1\) : médiane 20 ms/u);
-      expect(screen.queryByText(/preview\/|sonde/iu)).toBeNull();
-
-      await act(async () => {
-        fireEvent.press(screen.getByRole('button', { name: 'Rejouer' }));
-      });
-      await test.attack();
-      await test.runUntil(() => test.battle().phase.kind === 'transition');
-      expect(
-        (test.battle().phase as { until: number }).until -
-          (test.battle().phase as { since: number }).since,
-      ).toBe(850);
+      expectNothingUnderTheScene();
     });
   });
 });

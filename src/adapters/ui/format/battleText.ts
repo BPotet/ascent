@@ -20,9 +20,8 @@ import type { Stunned } from '../../../domain/battle/guard';
 import { MOMENTUM_MAX, POWERS, type PowerKind } from '../../../domain/battle/momentum';
 import type { ShownIntent } from '../../../domain/battle/shownIntent';
 
-/** Les libellés du combat d'essai, tirés du glossaire et de la maquette de l'épique #30. */
+/** Les libellés du combat, tirés du glossaire et de la maquette de l'épique #30. */
 export const HERO_NAME = 'La Sentinelle';
-export const TRIAL_BATTLE_TITLE = "Combat d'essai";
 
 export const ENEMY_NAMES: Readonly<Record<EnemyKind, string>> = {
   ghoul: 'Goule',
@@ -409,17 +408,6 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
 
 export function endTitle(outcome: BattleOutcome): string {
   return outcome === 'victory' ? 'Combat gagné' : 'Combat perdu';
-}
-
-export function endLine(outcome: BattleOutcome, hero: HeroKind = 'sentinel'): string {
-  return outcome === 'victory'
-    ? 'La Goule, le Spectre et le Nécromancien sont tombés.'
-    : `${HERO_NAMES[hero]} est tombée.`;
-}
-
-/** Le répit regagné à la victoire : « Répit +8 PV ». */
-export function respiteText(gain: number): string {
-  return `Répit +${gain} PV`;
 }
 
 export function heroHpText(hp: number, maxHp: number): string {
