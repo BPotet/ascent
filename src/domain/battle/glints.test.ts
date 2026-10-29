@@ -1,8 +1,8 @@
 // Le reflet (`Glint`, C2.10) : un bref point de lumière sur l'ennemi, 150 ms avant chaque impact.
 import type { AttackKind } from './attacks';
-import { pressDefense, startTrialBattle, type AttackStep, type Battle } from './Battle';
+import { pressDefense, type AttackStep, type Battle } from './Battle';
+import { startTestBattle } from './testing/testBattle';
 import { GLINT_LEAD_MS, glintsOf } from './glints';
-import { DEFAULT_TRIAL_TUNING } from './TrialTuning';
 
 function attackStep(
   attack: AttackKind,
@@ -66,9 +66,8 @@ describe('glints (C2.10)', () => {
   });
 
   it('follows the impacts moved by a hit stop: a perfect parry delays the second glint by 90 ms', () => {
-    const start = startTrialBattle({
+    const start = startTestBattle({
       seed: 1,
-      tuning: DEFAULT_TRIAL_TUNING,
       defenseHint: false,
       at: 0,
     }).battle;

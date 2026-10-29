@@ -1,16 +1,10 @@
-import {
-  startTrialBattle,
-  type AttackStep,
-  type Battle,
-  type EnemyStep,
-} from '../../../../domain/battle/Battle';
+import { type AttackStep, type Battle, type EnemyStep } from '../../../../domain/battle/Battle';
 import { glintsOf } from '../../../../domain/battle/glints';
-import { DEFAULT_TRIAL_TUNING } from '../../../../domain/battle/TrialTuning';
+import { startTestBattle } from '../../../../domain/battle/testing/testBattle';
 import { sceneTimeline } from './sceneTimeline';
 
-const START = startTrialBattle({
+const START = startTestBattle({
   seed: 3,
-  tuning: DEFAULT_TRIAL_TUNING,
   defenseHint: false,
   at: 0,
 }).battle;

@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { HeroKind } from '../../../domain/battle/combatants';
 import { Screen } from '../components/Screen';
-import { TRIAL_BATTLE_TITLE, heroCard } from '../format/battleText';
+import { heroCard } from '../format/battleText';
 import { artPalette } from '../pixelArt/artPalette';
 import { MIN_TARGET_SIZE, PixelButton } from '../pixelArt/PixelButton';
 import { PixelFrame } from '../pixelArt/PixelFrame';
@@ -54,23 +54,22 @@ function HeroOption({
 }
 
 /**
- * Le choix du héros (`HeroChoice`) avant le combat d'essai (prototype #90, maquette H1, H2) ou au
- * pied de la tour (prototype #92, maquette H3, avec son titre, sa note et son bouton) : la
- * Sentinelle ou l'Errante, avec son équipement de base, son pouvoir et son trait. Rien n'est lancé
- * avant le bouton.
+ * Le choix du héros (`HeroChoice`) au pied de la tour (prototype #92, maquette H3, avec son titre,
+ * sa note et son bouton) : la Sentinelle ou l'Errante, avec son équipement de base, son pouvoir et
+ * son trait. Rien n'est lancé avant le bouton.
  */
 export function HeroChoiceScreen({
   onStart,
   onClose,
-  title = TRIAL_BATTLE_TITLE,
-  note = 'Choisis ton héros pour ce combat.',
-  confirmLabel = () => 'Commencer le combat',
+  title,
+  note,
+  confirmLabel,
 }: {
   readonly onStart: (hero: HeroKind) => void;
   readonly onClose: () => void;
-  readonly title?: string;
-  readonly note?: string;
-  readonly confirmLabel?: (hero: HeroKind) => string;
+  readonly title: string;
+  readonly note: string;
+  readonly confirmLabel: (hero: HeroKind) => string;
 }) {
   const [hero, setHero] = useState<HeroKind>('sentinel');
   return (

@@ -26,7 +26,7 @@ import { itemSilhouette } from '../pixelArt/sprites/itemSilhouettes';
 import { toPixelImage } from '../pixelArt/sprites/Sprite';
 import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
 import { useAscent } from '../state/useAscent';
-import { TrialBattleScreen } from './TrialBattleScreen';
+import { BattleScreen } from './BattleScreen';
 
 const { roles } = artPalette;
 
@@ -101,10 +101,8 @@ function FloorBattle({
         extra={reserve > 0 ? `+${reserve} en réserve` : null}
         onPause={onPause}
       />
-      <TrialBattleScreen
+      <BattleScreen
         session={battleSession}
-        onClose={() => undefined}
-        trialTools={false}
         title={ascent.encounter?.kind === 'boss' ? 'Le boss' : `Étage ${ascent.floor}`}
       />
     </View>

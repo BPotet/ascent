@@ -15,7 +15,6 @@ import {
 import type { BattleEvent, DefenseButton } from './BattleEvent';
 import type { Bleed, EnemyKind } from './combatants';
 import { NO_MODIFIERS, type HeroModifiers } from './heroModifiers';
-import { DEFAULT_TRIAL_TUNING } from './TrialTuning';
 
 const PITCHFORK_BLEED: Bleed = { damage: 2, rounds: 3 };
 
@@ -26,7 +25,6 @@ function start(
 ): Battle {
   const { battle } = startBattle({
     seed: 7,
-    tuning: DEFAULT_TRIAL_TUNING,
     defenseHint: false,
     at: 0,
     heroHp: 50,

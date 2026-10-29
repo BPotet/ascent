@@ -8,9 +8,8 @@ import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber'
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { startTrialBattle } from '../../src/domain/battle/Battle';
-import { SENTINEL, TRIAL_BATTLE_ENEMIES } from '../../src/domain/battle/combatants';
-import { DEFAULT_TRIAL_TUNING } from '../../src/domain/battle/TrialTuning';
+import { SENTINEL } from '../../src/domain/battle/combatants';
+import { TEST_BATTLE_ENEMIES, startTestBattle } from '../../src/domain/battle/testing/testBattle';
 
 const ADR_DIRECTORY = path.resolve(__dirname, '../../docs/adr');
 
@@ -25,22 +24,17 @@ function headings(text: string): string[] {
 }
 
 const steps: StepDefinitions = ({ given, and, then }) => {
-  // Le contexte commun : le combat d'essai dont l'ADR consigne les conclusions.
+  // Le contexte commun : le combat dont l'ADR consigne les conclusions.
   given(
-    /^le combat d'essai : la Sentinelle \(.+\) contre la Goule \(50 PV\), le Spectre \(35 PV\) et le Nécromancien \(45 PV\)$/u,
+    /^le combat contre la Goule, le Spectre et le Nécromancien : la Sentinelle \(.+\) contre la Goule \(50 PV\), le Spectre \(35 PV\) et le Nécromancien \(45 PV\)$/u,
     () => {
       expect(SENTINEL.maxHp).toBe(80);
-      expect(TRIAL_BATTLE_ENEMIES).toEqual(['ghoul', 'specter', 'necromancer']);
+      expect(TEST_BATTLE_ENEMIES).toEqual(['ghoul', 'specter', 'necromancer']);
     },
   );
 
   and('le décalage vaut 0 ms', () => {
-    const { battle } = startTrialBattle({
-      seed: 1,
-      tuning: DEFAULT_TRIAL_TUNING,
-      defenseHint: false,
-      at: 0,
-    });
+    const { battle } = startTestBattle({ seed: 1, defenseHint: false, at: 0 });
     expect(battle.inputOffset).toBe(0);
   });
 

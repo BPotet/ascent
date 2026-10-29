@@ -8,18 +8,17 @@ import {
   nextDeadline,
   pressDefense,
   pressStrike,
-  startTrialBattle,
   type Battle,
   type BattleUpdate,
   type EnemyState,
 } from './Battle';
+import { startTestBattle } from './testing/testBattle';
 import type { BattleEvent, DefenseButton } from './BattleEvent';
 import { ATTACKS } from './attacks';
 import { ENEMIES } from './combatants';
 import type { Intent } from './intents';
 import { nextRandom, type RandomState } from './SeededRandom';
 import { shownIntent } from './shownIntent';
-import { DEFAULT_TRIAL_TUNING } from './TrialTuning';
 
 type EventOf<Type extends BattleEvent['type']> = Extract<BattleEvent, { type: Type }>;
 
@@ -83,9 +82,7 @@ class BattlePlay {
   }
 
   static start(seed = 7, defenseHint = false): BattlePlay {
-    return new BattlePlay(
-      startTrialBattle({ seed, tuning: DEFAULT_TRIAL_TUNING, defenseHint, at: 0 }),
-    ).with(...calmIntents);
+    return new BattlePlay(startTestBattle({ seed, defenseHint, at: 0 })).with(...calmIntents);
   }
 
   private record(events: readonly BattleEvent[]): this {

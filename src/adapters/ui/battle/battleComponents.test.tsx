@@ -1,4 +1,4 @@
-// Les composants du combat d'essai, rendus seuls (la scène Skia n'en fait pas partie).
+// Les composants de l'écran de combat, rendus seuls (la scène Skia n'en fait pas partie).
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { DeviceEventEmitter, StyleSheet } from 'react-native';
 import { State } from 'react-native-gesture-handler';
@@ -10,7 +10,6 @@ import type { EnemyView } from '../state/battleView';
 import { battleColors } from '../theme/battleColors';
 import { ActionPad } from './ActionPad';
 import { DamageFloat, FeedbackLabel } from './BattleEffects';
-import { BattleEndPanel } from './BattleEndPanel';
 import { BATTLE_HINTS, BattleHintBubble } from './BattleHintBubble';
 import { EnemyColumn } from './EnemyColumn';
 import { BleedDrops } from './BleedChip';
@@ -46,8 +45,6 @@ function style(testID: string) {
     screen.getByTestId(testID, { includeHiddenElements: true }).props.style,
   );
 }
-
-const noop = () => undefined;
 
 function padProps() {
   return {
@@ -336,27 +333,6 @@ describe('FeedbackLabel and DamageFloat', () => {
     const plain = StyleSheet.flatten(screen.getByText('−10').props.style).fontSize;
 
     expect(big).toBeGreaterThan(plain);
-  });
-});
-
-describe('BattleEndPanel', () => {
-  it('shows the respite after a victory', async () => {
-    await render(<BattleEndPanel outcome="victory" respite={8} onReplay={noop} onClose={noop} />);
-
-    expect(screen.getByText('Combat gagné')).toBeOnTheScreen();
-    expect(screen.getByText('Répit +8 PV')).toBeOnTheScreen();
-  });
-
-  it('shows no respite after a defeat', async () => {
-    await render(<BattleEndPanel outcome="defeat" respite={null} onReplay={noop} onClose={noop} />);
-
-    expect(screen.queryByText(/Répit/)).toBeNull();
-  });
-
-  it('fills the room left under the scene, and scrolls its panels', async () => {
-    await render(<BattleEndPanel outcome="defeat" respite={null} onReplay={noop} onClose={noop} />);
-
-    expect(style('battle-end').flex).toBe(1);
   });
 });
 

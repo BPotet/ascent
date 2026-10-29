@@ -2,7 +2,7 @@
  * Scénarios d'interface (`@ui`) de « Prototype jouable du combat » (#31, adaptés par #32 : trois
  * ennemis, frappe en rythme, phase ennemie épurée où les résultats se lisent aux chiffres et au
  * lecteur d'écran, et une garde qu'une contre-attaque peut briser) : exécutés à travers
- * l'écran du combat d'essai (`TrialBattleScreen`), sur une vraie session de combat, l'horloge de
+ * l'écran de combat (`BattleScreen`), sur une vraie session de combat, l'horloge de
  * combat manuelle et une graine du combat fixée. Les touchers sont simulés par Gesture Handler. La
  * scène Skia est simulée (Skia reste limité à son test de fumée sous Jest) : elle expose la pose
  * du héros et la préparation en cours.
@@ -17,12 +17,12 @@ import { AccessibilityInfo } from 'react-native';
 import * as battleEffects from '../../src/adapters/ui/battle/BattleEffects';
 
 import { battleWith, enemyWith } from '../../src/application/testing/battleBuilder';
-import { seedFor, type FirstRound } from '../../src/application/testing/trialBattleSeeds';
+import { seedFor, type FirstRound } from '../../src/application/testing/battleSeeds';
 import type { BattleFactory } from '../../src/application/useCases/BattleSession';
 import { BATTLE_HINT_SEEN_KEYS } from '../../src/application/useCases/battleHints';
 import type { BattleEvent } from '../../src/domain/battle/BattleEvent';
 import { memoryKeyValueStore } from '../../src/adapters/ui/testing/memoryKeyValueStore';
-import { renderTrialBattle, type TrialBattleTest } from '../../src/adapters/ui/testing/trialBattle';
+import { renderBattle, type BattleScreenTest } from '../../src/adapters/ui/testing/battleScreen';
 
 jest.mock('../../src/adapters/ui/battle/BattleCanvas', () =>
   jest.requireActual('../../src/adapters/ui/battle/testing/fakeBattleCanvas'),
@@ -34,12 +34,6 @@ const NECROMANCER = 2;
 
 /** La Goule garde une garde qu'aucun coup ne brise : la contre-attaque reste celle de #31. */
 const sturdyGhoul = battleWith(enemyWith(GHOUL, { guard: 99 }));
-/** Des ennemis à 10 PV : le combat se gagne en trois frappes. */
-const weakEnemies = battleWith(
-  enemyWith(GHOUL, { hp: 10 }),
-  enemyWith(SPECTER, { hp: 10 }),
-  enemyWith(NECROMANCER, { hp: 10 }),
-);
 
 const reduceMotion = () => jest.mocked(AccessibilityInfo.isReduceMotionEnabled);
 const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
@@ -48,7 +42,7 @@ const shake = jest.spyOn(battleEffects, 'useShake');
 const lastShake = () => shake.mock.calls.at(-1)?.[0];
 
 interface World {
-  test: TrialBattleTest;
+  test: BattleScreenTest;
   impact: number;
   reference: number;
   heroHp: number;
@@ -69,18 +63,15 @@ afterEach(() => {
 async function open({
   firstRound = {},
   hintsSeen = true,
-  trialTools = false,
   createBattle,
 }: {
   readonly firstRound?: FirstRound;
   readonly hintsSeen?: boolean;
-  readonly trialTools?: boolean;
   readonly createBattle?: BattleFactory;
-} = {}): Promise<TrialBattleTest> {
-  world.test = await renderTrialBattle({
+} = {}): Promise<BattleScreenTest> {
+  world.test = await renderBattle({
     seed: seedFor(firstRound),
     hintsSeen,
-    trialTools,
     keyValueStore: world.keyValueStore,
     ...(createBattle === undefined ? {} : { createBattle }),
   });
@@ -121,14 +112,14 @@ function lockedWithoutHatching(names: readonly string[]): void {
 
 const steps: StepDefinitions = ({ given, when, then, and }) => {
   given(
-    /^le combat d'essai : la Sentinelle .+ contre la Goule \(50 PV\), le Spectre \(35 PV\) et le Nécromancien \(45 PV\)$/u,
+    /^le combat contre la Goule, le Spectre et le Nécromancien : la Sentinelle .+ contre la Goule \(50 PV\), le Spectre \(35 PV\) et le Nécromancien \(45 PV\)$/u,
     () => {
       // L'écran s'ouvre à l'étape suivante, avec la première manche voulue par le scénario.
     },
   );
 
   and('le décalage vaut 0 ms', () => {
-    // Le décalage est vérifié par le premier écran ouvert (combat d'essai, décalage de 0 ms).
+    // Le décalage est vérifié par le premier écran ouvert (décalage de 0 ms).
   });
 
   // --- Coups de la Goule et du Spectre ------------------------------------------------------
@@ -426,46 +417,6 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     await test.runUntil(() => test.battle().phase.kind === 'transition');
     expect(screen.queryByTestId('battle-hint-defense')).toBeNull();
   });
-
-  // --- Réglages d'essai (C12) ---------------------------------------------------------------
-
-  given('le build de preview du prototype', async () => {
-    const test = await open({ trialTools: true, createBattle: weakEnemies });
-    for (let round = 0; test.battle().phase.kind !== 'over' && round < 8; round += 1) {
-      await test.runUntil(() => ['hero', 'over'].includes(test.battle().phase.kind));
-      if (test.battle().phase.kind === 'hero') await test.attack();
-    }
-    await test.runUntil(() => test.battle().phase.kind === 'over');
-  });
-
-  then(
-    /^la durée de la transition de phase \(800 ms par défaut\) et celle de l'avancée \(400 ms par défaut\) se changent sans nouvelle version$/u,
-    async () => {
-      expect(screen.getByTestId('trial-tuning-phaseTransitionMs')).toHaveTextContent('800 ms');
-      expect(screen.getByTestId('trial-tuning-stepInMs')).toHaveTextContent('400 ms');
-      for (let step = 0; step < 4; step += 1) {
-        await act(async () => {
-          fireEvent.press(screen.getByRole('button', { name: 'Allonger la transition de phase' }));
-        });
-      }
-      await act(async () => {
-        fireEvent.press(screen.getByRole('button', { name: "Raccourcir l'avancée" }));
-      });
-      expect(screen.getByTestId('trial-tuning-phaseTransitionMs')).toHaveTextContent('1 000 ms');
-      expect(screen.getByTestId('trial-tuning-stepInMs')).toHaveTextContent('350 ms');
-
-      await act(async () => {
-        fireEvent.press(screen.getByRole('button', { name: 'Rejouer' }));
-      });
-      const { test } = world;
-      await toEnemyTransition();
-      expect(test.battle().phase).toMatchObject({ until: world.reference + 1_000 });
-      await test.runUntil(() => test.battle().phase.kind === 'enemy');
-      expect(test.battle().phase).toMatchObject({
-        step: { kind: 'stepIn', until: world.reference + 1_000 + 350 },
-      });
-    },
-  );
 };
 
 // Seuls les scénarios d'interface (`@ui`) : les autres passent par la session de combat.

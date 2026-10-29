@@ -27,7 +27,6 @@ import {
   GOOD_PARRY_PERCENT,
   HEROES,
   MAX_DAMAGE_REDUCTION_PERCENT,
-  TRIAL_BATTLE_ENEMIES,
   startingInitiative,
   type Bleed,
   type EnemyKind,
@@ -76,7 +75,6 @@ import {
   strikeMultiplier,
   type EnemyBlow,
 } from './strike';
-import type { TrialTuning } from './TrialTuning';
 import { bleedsOn, mergeBleed, tickBleed } from './bleed';
 
 export interface HeroState {
@@ -223,7 +221,6 @@ export interface Battle {
   /** L'instant jusqu'où le moteur a avancé. */
   readonly now: number;
   readonly random: RandomState;
-  readonly tuning: TrialTuning;
   /** Le décalage (`InputOffset`), fixé à 0 ms dans #31. */
   readonly inputOffset: number;
   readonly round: number;
@@ -280,9 +277,15 @@ interface Deadline extends BattleDeadline {
 // ---------------------------------------------------------------------------------------------
 // Création
 
-export interface TrialBattleOptions {
+/** La transition de phase (`PhaseTransition`), en ms : une durée fixe (C12, #121). */
+export const PHASE_TRANSITION_MS = 800;
+
+/** L'avancée (`StepIn`) d'un ennemi, en ms : une durée fixe (C12, #121). */
+export const STEP_IN_MS = 400;
+
+/** Le départ d'un combat, sans son groupe d'ennemis. */
+export interface BattleStartOptions {
   readonly seed: BattleSeed;
-  readonly tuning: TrialTuning;
   /** Montrer la bulle d'aide de la phase ennemie avant la première transition. */
   readonly defenseHint: boolean;
   /** L'instant de départ, sur la base de l'horloge de combat. */
@@ -295,7 +298,7 @@ export interface TrialBattleOptions {
 }
 
 /** Un combat de l'ascension : le héros avec ses PV, contre un groupe d'ennemis (#91). */
-export interface BattleOptions extends TrialBattleOptions {
+export interface BattleOptions extends BattleStartOptions {
   /** Les PV du héros au début du combat ; par défaut ses PV max. */
   readonly heroHp?: number;
   /** Les PV max du héros (prototype #93 : Vigueur, fatigue) ; par défaut ceux du héros. */
@@ -325,20 +328,11 @@ function freshEnemy(kind: EnemyKind): EnemyState {
 }
 
 /**
- * Le combat d'essai : la Sentinelle (ou l'Errante) contre la Goule, le Spectre et le
- * Nécromancien, en phase du héros (C1). Avec l'Initiative, le premier de l'ordre ouvre le combat.
- */
-export function startTrialBattle(options: TrialBattleOptions): BattleUpdate {
-  return startBattle({ ...options, enemies: TRIAL_BATTLE_ENEMIES });
-}
-
-/**
  * Un combat, en phase du héros (C1) : la première ligne (les 3 premiers ennemis) et la réserve
  * (les suivants), l'Élan à 1 (P8).
  */
 export function startBattle({
   seed,
-  tuning,
   defenseHint,
   at,
   inputOffset = 0,
@@ -357,7 +351,6 @@ export function startBattle({
     {
       now: at,
       random: seedRandom(seed),
-      tuning,
       inputOffset,
       round: 0,
       heroKind: hero,
@@ -718,7 +711,7 @@ function finish(battle: Battle, events: Events, outcome: BattleOutcome, at: numb
 
 function startTransition(battle: Battle, events: Events, to: PhaseDirection, at: number): Battle {
   const settled = clearOffBalance(battle, events, at);
-  const until = at + battle.tuning.phaseTransitionMs;
+  const until = at + PHASE_TRANSITION_MS;
   events.push({ type: 'phaseTransitionStarted', at, to, until });
   return { ...settled, phase: { kind: 'transition', to, since: at, until } };
 }
@@ -745,7 +738,7 @@ function endHeroAction(battle: Battle, events: Events): Battle {
 }
 
 function startStepIn(battle: Battle, events: Events, enemy: number, at: number): Battle {
-  const until = at + battle.tuning.stepInMs;
+  const until = at + STEP_IN_MS;
   events.push({ type: 'stepInStarted', at, enemy, until });
   return {
     ...battle,

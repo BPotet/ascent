@@ -1,8 +1,7 @@
 // Réservé aux tests : une graine du combat dont la première manche annonce les coups voulus.
 import type { AttackKind } from '../../domain/battle/attacks';
-import { startTrialBattle } from '../../domain/battle/Battle';
 import type { Intent } from '../../domain/battle/intents';
-import { DEFAULT_TRIAL_TUNING } from '../../domain/battle/TrialTuning';
+import { startTestBattle } from '../../domain/battle/testing/testBattle';
 
 /** Les coups voulus à la première manche, par ennemi (Goule, Spectre). */
 export interface FirstRound {
@@ -17,12 +16,7 @@ function attacks(intent: Intent | null, wanted: AttackKind | undefined): boolean
 /** La plus petite graine dont la première manche annonce `wanted`. */
 export function seedFor(wanted: FirstRound): number {
   for (let seed = 1; seed < 10_000; seed += 1) {
-    const [ghoul, specter] = startTrialBattle({
-      seed,
-      tuning: DEFAULT_TRIAL_TUNING,
-      defenseHint: false,
-      at: 0,
-    }).battle.enemies;
+    const [ghoul, specter] = startTestBattle({ seed, defenseHint: false, at: 0 }).battle.enemies;
     if (attacks(ghoul!.intent, wanted.ghoul) && attacks(specter!.intent, wanted.specter)) {
       return seed;
     }

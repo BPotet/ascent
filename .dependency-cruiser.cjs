@@ -82,12 +82,12 @@ module.exports = {
     {
       name: 'habit-screens-in-pixel-art',
       comment:
-        "Les écrans d'habitudes, leurs composants et le pixel art n'importent pas l'ancien thème (`theme/colors`, `theme/metrics`, `theme/typography`). Seuls le combat d'essai et la sonde de toucher le gardent, jusqu'à l'épique #30 (ADR 0007, avenant de #73).",
+        "Les écrans d'habitudes, leurs composants et le pixel art n'importent pas l'ancien thème (`theme/colors`, `theme/metrics`, `theme/typography`). Seuls `Button`, `Screen` et la sonde de toucher le gardent, jusqu'à l'épique #30 (ADR 0007, avenant de #73 ; l'écran de combat en sort avec #121).",
       severity: 'error',
       from: {
         path: '^src/adapters/ui/(pixelArt|components|screens|format|state)/',
         pathNot:
-          '^src/adapters/ui/(components/(Button|Screen|TrialBattleEntry)|screens/(TouchProbeScreen|TrialBattleScreen))(\\.test)?\\.tsx$',
+          '^src/adapters/ui/(components/(Button|Screen)|screens/TouchProbeScreen)(\\.test)?\\.tsx$',
       },
       to: { path: '^src/adapters/ui/theme/(colors|metrics|typography)\\.ts$' },
     },

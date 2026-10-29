@@ -1,15 +1,9 @@
-import {
-  startTrialBattle,
-  type Battle,
-  type BattlePhase,
-  type EnemyState,
-} from '../../../domain/battle/Battle';
-import { DEFAULT_TRIAL_TUNING } from '../../../domain/battle/TrialTuning';
+import { type Battle, type BattlePhase, type EnemyState } from '../../../domain/battle/Battle';
+import { startTestBattle } from '../../../domain/battle/testing/testBattle';
 import { battleView } from './battleView';
 
-const started = startTrialBattle({
+const started = startTestBattle({
   seed: 1,
-  tuning: DEFAULT_TRIAL_TUNING,
   defenseHint: false,
   at: 0,
 }).battle;

@@ -1,5 +1,5 @@
 /**
- * Test d'intégration de l'assemblage de l'ascension (prototype #91), d'après celui du combat d'essai (#31) : les vraies routes de `src/app`, une
+ * Test d'intégration de l'assemblage de l'ascension (prototype #91) : les vraies routes de `src/app`, une
  * vraie base SQLite (node:sqlite à la place d'expo-sqlite), les vrais adaptateurs du téléphone. Le
  * canal du build est la variable que l'action de build Android pose avant Metro
  * (EXPO_PUBLIC_ASCENT_CHANNEL). La scène Skia est simulée (Skia reste limité à son test de fumée).
@@ -43,7 +43,7 @@ function builtFor(channel: string | undefined): void {
 /** L'accueil : la Vue Journée, vide sur une base neuve. */
 async function dayViewIsShown(): Promise<void> {
   expect(await screen.findByTestId('day-view-empty')).toBeOnTheScreen();
-  expect(screen.queryByTestId('trial-battle')).not.toBeOnTheScreen();
+  expect(screen.queryByTestId('battle-screen')).not.toBeOnTheScreen();
 }
 
 describe('ascent routes', () => {
@@ -71,6 +71,11 @@ describe('ascent routes', () => {
 
     expect(await screen.findByRole('header', { name: 'Étage 1' })).toBeOnTheScreen();
     expect(screen.getByTestId('ascent-status')).toHaveTextContent(/^Palier 1 · Étage 1 sur 6/);
+    // Le combat de l'ascension, sans rien du combat d'essai retiré par #121.
+    expect(screen.getByTestId('battle-screen')).toBeOnTheScreen();
+    expect(screen.getByTestId('battle-hero-bar')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Rejouer' })).not.toBeOnTheScreen();
+    expect(screen.queryByText(/Réglages d'essai/u)).not.toBeOnTheScreen();
     await fireEvent.press(screen.getByRole('button', { name: 'Pause' }));
     expect(await screen.findByRole('button', { name: "Reprendre l'ascension" })).toBeOnTheScreen();
   });

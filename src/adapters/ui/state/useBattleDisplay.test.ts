@@ -1,12 +1,11 @@
 import type { BattleSnapshot } from '../../../application/useCases/BattleSession';
-import { startTrialBattle, type Battle } from '../../../domain/battle/Battle';
+import { type Battle } from '../../../domain/battle/Battle';
 import type { BattleEvent, BlowOutcome } from '../../../domain/battle/BattleEvent';
-import { DEFAULT_TRIAL_TUNING } from '../../../domain/battle/TrialTuning';
-import { INITIAL_DISPLAY, announcementsOf, displayOf } from './useTrialBattle';
+import { startTestBattle } from '../../../domain/battle/testing/testBattle';
+import { INITIAL_DISPLAY, announcementsOf, displayOf } from './useBattleDisplay';
 
-const started = startTrialBattle({
+const started = startTestBattle({
   seed: 1,
-  tuning: DEFAULT_TRIAL_TUNING,
   defenseHint: false,
   at: 0,
 }).battle;
@@ -39,7 +38,7 @@ const perfectStrike: BattleEvent = {
   guardDamage: 18,
 };
 
-describe('displayOf (display state of the trial battle)', () => {
+describe('displayOf (display state of the battle screen)', () => {
   it('starts idle, without feedback, float, spark, vignette nor shake', () => {
     expect(INITIAL_DISPLAY).toEqual({
       snapshot: null,

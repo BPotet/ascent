@@ -1,8 +1,8 @@
 // Ce que montre l'intention d'un ennemi (#32, règles C2.2 et C5.7).
-import { startTrialBattle, type Battle, type EnemyState } from './Battle';
+import { type Battle, type EnemyState } from './Battle';
+import { startTestBattle } from './testing/testBattle';
 import type { Intent } from './intents';
 import { shownIntent } from './shownIntent';
-import { DEFAULT_TRIAL_TUNING } from './TrialTuning';
 
 const ATTACK: Intent = {
   category: 'attack',
@@ -12,11 +12,10 @@ const ATTACK: Intent = {
   feintFraction: 0.5,
 };
 
-/** Le combat d'essai, avec la Goule (indice 0) changée. */
+/** Le combat de test, avec la Goule (indice 0) changée. */
 function withGhoul(change: Partial<EnemyState>, battle: Partial<Battle> = {}): Battle {
-  const started = startTrialBattle({
+  const started = startTestBattle({
     seed: 7,
-    tuning: DEFAULT_TRIAL_TUNING,
     defenseHint: false,
     at: 0,
   }).battle;

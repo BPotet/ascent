@@ -1,12 +1,13 @@
-import { startTrialBattle, type AttackStep } from '../../domain/battle/Battle';
+import type { AttackStep } from '../../domain/battle/Battle';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
+import { startTestBattle } from '../../domain/battle/testing/testBattle';
 import type { KeyValueStore } from '../ports/KeyValueStore';
 import { FixedSeedSource } from '../testing/FixedSeedSource';
 import { ManualBattleClock } from '../testing/ManualBattleClock';
 import { silentBattleHaptics, silentBattleSound } from '../testing/recordingBattleFeedback';
 import { attackIntentOf, battleWith, enemyWith } from '../testing/battleBuilder';
 import { DEFAULT_SOUND_LATENCY_MS } from '../ports/BattleSound';
-import { seedFor } from '../testing/trialBattleSeeds';
+import { seedFor } from '../testing/battleSeeds';
 import { BATTLE_HINT_SEEN_KEYS } from './battleHints';
 import {
   BattleSession,
@@ -15,7 +16,6 @@ import {
   type BattleFactory,
   type BattleSnapshot,
 } from './BattleSession';
-import { TRIAL_TUNING_KEY } from './trialTuning';
 
 function mapStore(): KeyValueStore & { values: Map<string, string>; fail: boolean } {
   const values = new Map<string, string>();
@@ -97,7 +97,7 @@ function toGhoulWindUp(context: ReturnType<typeof setUp>, at = 2_000): number {
 }
 
 describe('BattleSession', () => {
-  it('starts a trial battle at the clock instant, from the seed source', async () => {
+  it('starts a battle at the clock instant, from the seed source', async () => {
     const context = setUp({ seed: 77, start: 1_234 });
 
     const snapshot = await context.session.start();
@@ -154,7 +154,7 @@ describe('BattleSession', () => {
     }
 
     it('dates the press at the touch, and plays the perfect strike', async () => {
-      const context = setUp({ createBattle: startTrialBattle });
+      const context = setUp({ createBattle: startTestBattle });
       const impact = await striking(context);
 
       context.clock.advanceTo(impact + 30);
@@ -168,11 +168,6 @@ describe('BattleSession', () => {
       ]);
       expect(context.sound.played).toEqual(['perfectStrike', 'guardBreak']);
       expect(context.haptics.played).toEqual(['perfectStrike', 'guardBreak']);
-      expect(context.session.measures()).toEqual({
-        redatedPresses: 0,
-        deltas: [],
-        strikeDeltas: [20],
-      });
     });
 
     it('still judges a strike dated just before the end of its window and received just after it', async () => {
@@ -188,7 +183,7 @@ describe('BattleSession', () => {
       });
     });
 
-    it('counts a strike press dated before the engine state', async () => {
+    it('judges a strike press dated before the engine state at that state', async () => {
       const context = setUp();
       const impact = await striking(context);
       context.clock.advanceTo(impact - 100);
@@ -196,7 +191,6 @@ describe('BattleSession', () => {
 
       context.session.pressStrike(impact - 200);
 
-      expect(context.session.measures().redatedPresses).toBe(1);
       expect(context.session.current()!.battle.phase).toMatchObject({
         press: { at: impact - 100, delta: -100, judgement: 'good' },
       });
@@ -232,11 +226,6 @@ describe('BattleSession', () => {
       outcome: 'parry',
       delta: 155,
     });
-    expect(context.session.measures()).toEqual({
-      redatedPresses: 0,
-      deltas: [155],
-      strikeDeltas: [],
-    });
   });
 
   it('can take another reorder guard', async () => {
@@ -249,7 +238,7 @@ describe('BattleSession', () => {
         haptics: context.haptics,
         keyValueStore: context.keyValueStore,
       },
-      { reorderGuardMs: 50 },
+      { reorderGuardMs: 50, createBattle: startTestBattle },
     );
     await session.start();
     context.clock.advanceTo(2_000);
@@ -267,7 +256,7 @@ describe('BattleSession', () => {
     expect(context.clock.pending()).toEqual([impact + 210]);
   });
 
-  it('counts a press dated before the engine state, and judges it at that state', async () => {
+  it('judges a press dated before the engine state at that state', async () => {
     const context = setUp();
     await context.session.start();
     const impact = toGhoulWindUp(context);
@@ -276,14 +265,13 @@ describe('BattleSession', () => {
 
     context.session.pressDefense('parry', impact + 10);
 
-    expect(context.session.measures().redatedPresses).toBe(1);
     expect(context.session.current()!.events).toEqual([
       { type: 'whiffed', at: impact + 40, button: 'parry', reason: 'empty' },
       { type: 'offBalanceStarted', at: impact + 40, until: impact + 490 },
     ]);
   });
 
-  it('does not count a press during a hit-stop as redated', async () => {
+  it('dates a press during a hit-stop at the start of the hit-stop', async () => {
     const context = setUp();
     await context.session.start();
     const impact = toGhoulWindUp(context);
@@ -295,7 +283,6 @@ describe('BattleSession', () => {
 
     context.session.pressDefense('dodge', impact + 20);
 
-    expect(context.session.measures().redatedPresses).toBe(0);
     expect(
       context.session.current()!.events.find((event) => event.type === 'whiffed'),
     ).toMatchObject({
@@ -318,10 +305,10 @@ describe('BattleSession', () => {
     expect(context.haptics.played).toEqual(['enemyPhase', 'perfectParry']);
   });
 
-  it('applies the trial tuning saved for the next battle', async () => {
+  it('ignores the trial tuning already saved on the phone (#121)', async () => {
     const context = setUp();
     context.keyValueStore.values.set(
-      TRIAL_TUNING_KEY,
+      'battle.trialTuning',
       JSON.stringify({ phaseTransitionMs: 1_200, stepInMs: 100 }),
     );
     await context.session.start();
@@ -330,15 +317,21 @@ describe('BattleSession', () => {
     context.session.heroAction({ kind: 'attack' }, 1_940, 2_000);
     context.clock.advanceTo(5_000);
 
+    expect(context.events().find((event) => event.type === 'phaseTransitionStarted')).toEqual({
+      type: 'phaseTransitionStarted',
+      at: 3_180,
+      to: 'enemy',
+      until: 3_980,
+    });
     expect(context.events().find((event) => event.type === 'stepInStarted')).toEqual({
       type: 'stepInStarted',
-      at: 4_380,
+      at: 3_980,
       enemy: 0,
-      until: 4_480,
+      until: 4_380,
     });
   });
 
-  it('starts a new battle with the next seed and resets the measures', async () => {
+  it('starts a new battle with the next seed', async () => {
     const context = setUp();
     const first = await context.session.start();
     const impact = toGhoulWindUp(context);
@@ -349,7 +342,6 @@ describe('BattleSession', () => {
 
     expect(second.battle.random).not.toBe(first.battle.random);
     expect(second.battle.phase).toEqual({ kind: 'hero', since: impact, announced: false });
-    expect(context.session.measures()).toEqual({ redatedPresses: 0, deltas: [], strikeDeltas: [] });
     expect(context.clock.pending()).toEqual([]);
   });
 
@@ -370,7 +362,7 @@ describe('BattleSession', () => {
 
   it('creates its battle with the factory it is given', async () => {
     const context = setUp();
-    const createBattle = jest.fn(startTrialBattle);
+    const createBattle = jest.fn(startTestBattle);
     const session = new BattleSession(
       {
         clock: context.clock,
@@ -386,7 +378,6 @@ describe('BattleSession', () => {
 
     expect(createBattle).toHaveBeenCalledWith({
       seed: 42,
-      tuning: { phaseTransitionMs: 800, stepInMs: 400 },
       defenseHint: false,
       at: 1_000,
     });
@@ -439,23 +430,26 @@ describe('BattleSession', () => {
   it('advances the battle to the present when its timer fires late', async () => {
     let now = 1_000;
     const timers: (() => void)[] = [];
-    const session = new BattleSession({
-      clock: {
-        now: () => now,
-        setTimer: (_at, callback) => {
-          timers.push(callback);
-          return () => undefined;
+    const session = new BattleSession(
+      {
+        clock: {
+          now: () => now,
+          setTimer: (_at, callback) => {
+            timers.push(callback);
+            return () => undefined;
+          },
         },
+        seeds: new FixedSeedSource(seedFor({ ghoul: 'basic' })),
+        sound: silentBattleSound(),
+        haptics: silentBattleHaptics(),
+        keyValueStore: (() => {
+          const store = mapStore();
+          seenHints(store);
+          return store;
+        })(),
       },
-      seeds: new FixedSeedSource(seedFor({ ghoul: 'basic' })),
-      sound: silentBattleSound(),
-      haptics: silentBattleHaptics(),
-      keyValueStore: (() => {
-        const store = mapStore();
-        seenHints(store);
-        return store;
-      })(),
-    });
+      { createBattle: startTestBattle },
+    );
     await session.start();
     now = 2_000;
     session.heroAction({ kind: 'attack' }, 1_940, 2_000);
@@ -466,48 +460,6 @@ describe('BattleSession', () => {
 
     expect(session.current()!.battle.now).toBe(3_500);
     expect(session.current()!.battle.phase).toMatchObject({ kind: 'transition' });
-  });
-
-  describe('presses redated by the engine state', () => {
-    /** Parade parfaite à l'impact : arrêt sur image de `impact` à `impact + 90`. */
-    async function afterPerfectParry(clockAt: (impact: number) => number) {
-      const context = setUp();
-      await context.session.start();
-      const impact = toGhoulWindUp(context);
-      context.clock.advanceTo(impact);
-      context.session.pressDefense('parry', impact);
-      context.clock.advanceTo(clockAt(impact));
-      return { context, impact };
-    }
-
-    it('does not count a press dated at the start of the hit-stop', async () => {
-      const { context, impact } = await afterPerfectParry((impact) => impact + 95);
-
-      context.session.pressDefense('dodge', impact);
-
-      expect(context.session.measures().redatedPresses).toBe(0);
-    });
-
-    it('counts a press dated before the hit-stop', async () => {
-      const { context, impact } = await afterPerfectParry((impact) => impact + 95);
-
-      context.session.pressDefense('dodge', impact - 100);
-
-      expect(context.session.measures().redatedPresses).toBe(1);
-    });
-
-    it('counts a press dated at the end of the hit-stop, before the engine state', async () => {
-      const { context, impact } = await afterPerfectParry((impact) => impact + 600);
-      expect(context.session.current()!.battle.now).toBeGreaterThan(impact + 90);
-      expect(context.session.current()!.battle.hitStop).toEqual({
-        at: impact,
-        until: impact + 90,
-      });
-
-      context.session.pressDefense('dodge', impact + 90);
-
-      expect(context.session.measures().redatedPresses).toBe(1);
-    });
   });
 
   describe('hints (bulles d’aide du combat)', () => {
@@ -565,7 +517,7 @@ describe('BattleSession', () => {
         },
         {
           createBattle: (options) => {
-            const update = startTrialBattle(options);
+            const update = startTestBattle(options);
             const enemies = update.battle.enemies.map((enemy, index) =>
               index === 0 ? { ...enemy, hp: 10 } : enemy,
             );
@@ -628,7 +580,7 @@ describe('BattleSession', () => {
       expect(context.keyValueStore.values.has(BATTLE_HINT_SEEN_KEYS.defense)).toBe(false);
     });
 
-    it('shows the hints and the default tuning when the storage cannot be read', async () => {
+    it('shows the hints when the storage cannot be read', async () => {
       const context = setUp();
       context.keyValueStore.fail = true;
 
@@ -636,7 +588,6 @@ describe('BattleSession', () => {
 
       expect(snapshot.heroHint).toBe(true);
       expect(snapshot.battle.defenseHintPending).toBe(true);
-      expect(snapshot.battle.tuning).toEqual({ phaseTransitionMs: 800, stepInMs: 400 });
       // L'échec d'écriture de la bulle vue n'empêche pas de jouer.
       expect(() => context.session.dismissHint('hero')).not.toThrow();
       await Promise.resolve();

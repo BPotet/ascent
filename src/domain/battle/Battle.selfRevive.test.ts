@@ -14,12 +14,10 @@ import {
 import type { BattleEvent } from './BattleEvent';
 import { ENEMY_INITIATIVE, type EnemyKind, type HeroKind } from './combatants';
 import { shownIntent } from './shownIntent';
-import { DEFAULT_TRIAL_TUNING } from './TrialTuning';
 
 function start(enemies: readonly EnemyKind[], hero: HeroKind = 'sentinel'): Battle {
   return startBattle({
     seed: 7,
-    tuning: DEFAULT_TRIAL_TUNING,
     defenseHint: false,
     at: 0,
     hero,

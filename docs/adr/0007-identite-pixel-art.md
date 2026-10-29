@@ -98,12 +98,13 @@ Décidé par l'Architect (notes techniques de #73), colonnes confirmées par le 
 - **Une nouvelle règle protège les écrans d'habitudes** : `habit-screens-in-pixel-art` interdit à
   `pixelArt/`, `components/`, `screens/`, `format/` et `state/` d'importer l'ancien thème
   (`theme/colors`, `theme/metrics`, `theme/typography`), sauf au combat et à la sonde de toucher
-  (`Button`, `Screen`, `TrialBattleEntry`, `TouchProbeScreen`, `TrialBattleScreen`).
+  (`Button`, `Screen`, `TrialBattleEntry`, `TouchProbeScreen`, `TrialBattleScreen`). Avenant de
+  #121 : l'entrée du combat d'essai est retirée, et l'écran de combat sort de l'exception ; restent
+  `Button`, `Screen` et `TouchProbeScreen`.
 - **Le rebond par mise à l'échelle de la Vue Semaine est retiré** (§3) : une case qui passe à
   « fait » joue l'étincelle (`Burst`) et relève sa coche d'un pixel d'art pendant 2 images, comme
   dans la Vue Journée.
-- **`theme/` et Sora restent**, pour le combat, la sonde de toucher et l'entrée du combat d'essai
-  seulement. Leur retrait viendra avec l'épique #30.
+- **`theme/` et Sora restent**, pour le combat et la sonde de toucher seulement. Leur retrait viendra avec l'épique #30.
 - **Les colonnes de la Vue Semaine et de la Vue Mois font au plus 48 dp** :
   `weekColumnWidth(largeur) = min(48, largeur / 7)`. La cible d'une case de la Semaine fait 48 dp
   de haut au moins, celle d'un jour du Mois 58 dp (`minHeight`) ; la case dessinée garde 40 × 40 dp.

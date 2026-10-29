@@ -1,27 +1,25 @@
 // Prototype #90 : l'Initiative (P13, P14) et l'Errante (section 2, P10, P11) dans le moteur du
-// combat, activables par les options du combat d'essai. Sans elles, rien ne change (Battle.test.ts).
+// combat, activables par les options du combat. Sans elles, rien ne change (Battle.test.ts).
 import {
   advance,
   heroAction,
   nextRoundOrder,
   pressDefense,
   pressStrike,
-  startTrialBattle,
   type AttackStep,
   type Battle,
   type HeroAction,
-  type TrialBattleOptions,
+  type BattleStartOptions,
 } from './Battle';
+import { startTestBattle } from './testing/testBattle';
 import type { BattleEvent } from './BattleEvent';
 import { HEROES } from './combatants';
-import { DEFAULT_TRIAL_TUNING } from './TrialTuning';
 
 type EventOf<Type extends BattleEvent['type']> = Extract<BattleEvent, { type: Type }>;
 
-function start(options: Partial<TrialBattleOptions> = {}) {
-  return startTrialBattle({
+function start(options: Partial<BattleStartOptions> = {}) {
+  return startTestBattle({
     seed: 7,
-    tuning: DEFAULT_TRIAL_TUNING,
     defenseHint: false,
     at: 0,
     ...options,
@@ -60,7 +58,7 @@ function withHero(battle: Battle, change: Partial<Battle['hero']>): Battle {
   return { ...battle, hero: { ...battle.hero, ...change } };
 }
 
-describe('the trial battle with Initiative (P13, P14)', () => {
+describe('the test battle with Initiative (P13, P14)', () => {
   it('lets the Specter open the battle: Specter, Sentinel, Ghoul, Necromancer', () => {
     const { battle, events } = start({ initiative: true });
 

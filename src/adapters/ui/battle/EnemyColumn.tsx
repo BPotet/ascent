@@ -14,7 +14,7 @@ import { battleColors } from '../theme/battleColors';
 import { DamageFloat } from './BattleEffects';
 import { PerilSeal } from './PerilSeal';
 import type { EnemySlot } from './scene/sceneGeometry';
-import type { TrialBattleDisplay } from '../state/useTrialBattle';
+import type { BattleDisplay } from '../state/useBattleDisplay';
 import { useReleaseGesture } from './touchGestures';
 
 /** L'identifiant du geste de la colonne d'un ennemi, pour `getByGestureTestId` dans les tests. */
@@ -60,7 +60,7 @@ export function EnemyColumn({
   readonly sealed: boolean;
   readonly reducedMotion?: boolean;
   /** Le chiffre qui s'envole au-dessus de lui, s'il est pour lui. */
-  readonly float: TrialBattleDisplay['float'];
+  readonly float: BattleDisplay['float'];
   readonly uiNow: () => number;
   readonly now: () => number;
   readonly onTarget: (enemy: number, touchStartedAt: number, releasedAt: number) => void;

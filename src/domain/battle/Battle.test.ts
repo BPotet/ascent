@@ -9,7 +9,8 @@ import {
   nextDeadline,
   pressDefense,
   pressStrike,
-  startTrialBattle,
+  PHASE_TRANSITION_MS,
+  STEP_IN_MS,
   type Battle,
   type BattleUpdate,
   type EnemyState,
@@ -19,15 +20,15 @@ import { ATTACKS } from './attacks';
 import { ENEMIES } from './combatants';
 import { drawIntent, type Intent } from './intents';
 import { seedRandom } from './SeededRandom';
-import { DEFAULT_TRIAL_TUNING, type TrialTuning } from './TrialTuning';
+import { startTestBattle } from './testing/testBattle';
 
 type EventOf<Type extends BattleEvent['type']> = Extract<BattleEvent, { type: Type }>;
 
 /** Le contexte de tirage d'un ennemi debout, garde pleine, sans allié tombé. */
 const CALM = { fallenAlly: null, stunned: false, guardDamaged: false } as const;
 
-/** Les gardes max du combat d'essai : Goule, Spectre, Nécromancien. */
-const TRIAL_GUARDS = [15, 10, 12] as const;
+/** Les gardes max du combat de test : Goule, Spectre, Nécromancien. */
+const TEST_BATTLE_GUARDS = [15, 10, 12] as const;
 
 /** Un ennemi changé (PV, garde…), sans événement. */
 function changeEnemy(enemy: number, change: Partial<EnemyState>): (battle: Battle) => Battle {
@@ -73,18 +74,16 @@ class BattlePlay {
 
   static start({
     seed = 7,
-    tuning = DEFAULT_TRIAL_TUNING,
     defenseHint = false,
     at = 0,
     inputOffset = 0,
   }: {
     readonly seed?: number;
-    readonly tuning?: TrialTuning;
     readonly defenseHint?: boolean;
     readonly at?: number;
     readonly inputOffset?: number;
   } = {}): BattlePlay {
-    return new BattlePlay(startTrialBattle({ seed, tuning, defenseHint, at, inputOffset }));
+    return new BattlePlay(startTestBattle({ seed, defenseHint, at, inputOffset }));
   }
 
   private record(events: readonly BattleEvent[]): this {
@@ -203,7 +202,7 @@ const DOUBLE_IMPACT = GHOUL_WIND_UP_AT + 1_000;
 const ROUND_END = 8_560;
 const HERO_PHASE_2 = ROUND_END + 800;
 
-describe('startTrialBattle', () => {
+describe('startTestBattle', () => {
   it('opposes the Sentinel to a Ghoul, a Specter and a Necromancer, in the hero phase of round 1', () => {
     const play = BattlePlay.start({ at: 250 });
 
@@ -251,12 +250,10 @@ describe('startTrialBattle', () => {
     expect(play.battle.random).toBe(necromancer.random);
   });
 
-  it('keeps the input offset and the tuning it is given', () => {
-    const tuning = { phaseTransitionMs: 1_000, stepInMs: 200 };
-    const play = BattlePlay.start({ inputOffset: -20, tuning });
+  it('keeps the input offset it is given', () => {
+    const play = BattlePlay.start({ inputOffset: -20 });
 
     expect(play.battle.inputOffset).toBe(-20);
-    expect(play.battle.tuning).toBe(tuning);
   });
 
   it('waits for the player in the hero phase: no deadline', () => {
@@ -357,18 +354,22 @@ describe('the order of a round (C1, C12)', () => {
     ]);
   });
 
-  it('applies the trial tuning of the transition and of the step-in', () => {
-    const play = BattlePlay.start({ tuning: { phaseTransitionMs: 1_000, stepInMs: 250 } })
-      .with(fixedIntent(0, 'basic'))
-      .attack(ATTACK_AT)
-      .advance(4_000);
+  it('holds the phase transition 800 ms and the step-in 400 ms, the values of the glossary', () => {
+    expect([PHASE_TRANSITION_MS, STEP_IN_MS]).toEqual([800, 400]);
+
+    const play = BattlePlay.start().with(fixedIntent(0, 'basic')).attack(ATTACK_AT).advance(4_000);
 
     expect(play.lastOf('phaseTransitionStarted')).toMatchObject({
       at: HERO_ACTION_END,
-      until: HERO_ACTION_END + 1_000,
+      until: HERO_ACTION_END + PHASE_TRANSITION_MS,
     });
-    expect(play.lastOf('stepInStarted')).toMatchObject({ at: 3_180, until: 3_430 });
-    expect(play.lastOf('windUpStarted')).toMatchObject({ at: 3_430 });
+    expect(play.lastOf('stepInStarted')).toMatchObject({
+      at: HERO_ACTION_END + PHASE_TRANSITION_MS,
+      until: HERO_ACTION_END + PHASE_TRANSITION_MS + STEP_IN_MS,
+    });
+    expect(play.lastOf('windUpStarted')).toMatchObject({
+      at: HERO_ACTION_END + PHASE_TRANSITION_MS + STEP_IN_MS,
+    });
   });
 
   it('skips the dead enemies in the enemy phase', () => {
@@ -1507,9 +1508,9 @@ describe('over about 500 seeds', () => {
 
   it('breaks a guard only when it falls to 0, and a break costs exactly one action (C5.10)', () => {
     for (const play of allPlays()) {
-      const guards: number[] = [...TRIAL_GUARDS];
-      const stunned = TRIAL_GUARDS.map(() => false);
-      const lostSlots = TRIAL_GUARDS.map(() => 0);
+      const guards: number[] = [...TEST_BATTLE_GUARDS];
+      const stunned = TEST_BATTLE_GUARDS.map(() => false);
+      const lostSlots = TEST_BATTLE_GUARDS.map(() => 0);
       for (const event of play.events) {
         switch (event.type) {
           case 'strikeResolved':
@@ -1529,13 +1530,13 @@ describe('over about 500 seeds', () => {
             if (event.inPlaceOfAction) lostSlots[event.enemy]! += 1;
             expect(lostSlots[event.enemy]).toBe(1);
             stunned[event.enemy] = false;
-            guards[event.enemy] = TRIAL_GUARDS[event.enemy]!;
+            guards[event.enemy] = TEST_BATTLE_GUARDS[event.enemy]!;
             break;
           case 'guardRaised':
             guards[event.enemy] = event.guard;
             break;
           case 'allyRaised':
-            guards[event.ally] = TRIAL_GUARDS[event.ally]!;
+            guards[event.ally] = TEST_BATTLE_GUARDS[event.ally]!;
             break;
           case 'enemyDefeated':
             stunned[event.enemy] = false;

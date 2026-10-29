@@ -1,57 +1,39 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
-import Animated, { useSharedValue } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
-import { DEFAULT_SOUND_LATENCY_MS } from '../../../application/ports/BattleSound';
 import type { BattleSession } from '../../../application/useCases/BattleSession';
-import type { BattleEvent, DefenseButton } from '../../../domain/battle/BattleEvent';
+import type { DefenseButton } from '../../../domain/battle/BattleEvent';
 import { HEROES } from '../../../domain/battle/combatants';
 import { ActionPad } from '../battle/ActionPad';
 import { ActionTrack } from '../battle/ActionTrack';
 import { BattleScene, prepareBattleScene } from '../battle/BattleCanvas';
 import { DamageFloat, FeedbackLabel, useShake } from '../battle/BattleEffects';
 import { BleedDrops } from '../battle/BleedChip';
-import { BattleEndPanel } from '../battle/BattleEndPanel';
 import { BattleHintBubble } from '../battle/BattleHintBubble';
 import { EnemyColumn } from '../battle/EnemyColumn';
 import { HeroBar } from '../battle/HeroBar';
 import { PhaseBanner } from '../battle/PhaseBanner';
 import { sceneGeometry } from '../battle/scene/sceneGeometry';
 import { sceneTimeline } from '../battle/scene/sceneTimeline';
-import type { FrameMeter, SceneEnemy } from '../battle/sceneTypes';
-import {
-  BattleMeasuresPanel,
-  TrialTuningPanel,
-  measureLines,
-  type FrameStats,
-} from '../battle/TrialToolsPanels';
+import type { SceneEnemy } from '../battle/sceneTypes';
 import { Screen } from '../components/Screen';
-import { ENEMY_NAMES, TRIAL_BATTLE_TITLE } from '../format/battleText';
+import { ENEMY_NAMES } from '../format/battleText';
 import { toBattleInstant } from '../state/battleTouch';
 import { actionTrackView, battleView, type BattleView } from '../state/battleView';
-import { useBattleMeasures } from '../state/useBattleMeasures';
 import { useReducedMotion } from '../state/useReducedMotion';
 import { jsThreadNow, uiThreadNow } from '../state/useTouchProbe';
-import { useTrialBattle } from '../state/useTrialBattle';
-import { useTrialTuning } from '../state/useTrialTuning';
+import { useBattleDisplay } from '../state/useBattleDisplay';
 import { battleColors } from '../theme/battleColors';
 
-export interface TrialBattleScreenProps {
+export interface BattleScreenProps {
   readonly session: BattleSession;
-  /** Quitter le combat d'essai. */
-  readonly onClose: () => void;
-  /** Le build de preview : panneaux Réglages d'essai et Mesures sur l'écran de fin. */
-  readonly trialTools: boolean;
+  /** Le titre de l'en-tête : « Étage 3 », « Le boss ». */
+  readonly title: string;
   /** L'horloge du fil JS, sur la base de l'horloge de combat. Par défaut `performance.now()`. */
   readonly now?: () => number;
   /** L'horloge du fil UI, lue dans les worklets des gestes : ce doit être un worklet. */
   readonly uiNow?: () => number;
-  /** Les latences mesurées du son de combat, en ms. */
-  readonly soundLatencies?: () => readonly number[];
-  /** La latence attendue du son de combat, en ms (panneau Mesures). */
-  readonly expectedSoundLatency?: () => number;
-  /** Le titre de l'en-tête ; par défaut « Combat d'essai ». */
-  readonly title?: string;
 }
 
 /** La ligne au-dessus des boutons s'efface pendant le temps mort et le déséquilibre. */
@@ -60,72 +42,42 @@ function lineHidden(pad: BattleView['pad']): boolean {
   return pad.locked || (pad.kind === 'defense' && pad.offBalance);
 }
 
-/** Les PV regagnés par le répit de la victoire, `null` sans répit (ou s'il ne rend rien). */
-function respiteOf(events: readonly BattleEvent[]): number | null {
-  const respite = events.find((event) => event.type === 'respite');
-  return respite?.type === 'respite' && respite.gain > 0 ? respite.gain : null;
-}
-
 /** La hauteur de la scène de la maquette (cadre de 390 × 844 pt). */
 const SCENE_HEIGHT = 440;
-const NO_LATENCIES = () => [];
-
-const DEFAULT_LATENCY = () => DEFAULT_SOUND_LATENCY_MS;
-/** Sur l'écran de fin, la scène garde ce jeu sous le bas des plaques des ennemis. */
-const END_SCENE_MARGIN = 8;
 
 /**
- * L'écran du combat d'essai (#31 et #32, maquette de l'épique #30, écrans F0 à F8 et P0 à P15) :
- * la scène, les colonnes des ennemis, la barre du héros et la zone d'action ancrée en bas.
- * L'écran ne contient aucune règle : il envoie les touchers datés à la session de combat et
- * affiche ses états (`battleView`) et ses événements.
+ * L'écran de combat (#31 et #32, maquette de l'épique #30, écrans F0 à F7 et P0 à P15), ouvert par
+ * l'ascension : la scène, les colonnes des ennemis, la barre du héros et la zone d'action ancrée en
+ * bas. L'écran ne contient aucune règle : il envoie les touchers datés à la session de combat et
+ * affiche ses états (`battleView`) et ses événements. Le combat fini, rien ne s'affiche sous la
+ * scène : l'ascension prend la suite.
  */
-export function TrialBattleScreen({
+export function BattleScreen({
   session,
-  onClose,
-  trialTools,
+  title,
   now = jsThreadNow,
   uiNow = uiThreadNow,
-  soundLatencies = NO_LATENCIES,
-  expectedSoundLatency = DEFAULT_LATENCY,
-  title = TRIAL_BATTLE_TITLE,
-}: TrialBattleScreenProps) {
+}: BattleScreenProps) {
   const reducedMotion = useReducedMotion();
-  const display = useTrialBattle(session, reducedMotion);
-  const measures = useBattleMeasures({ now, uiNow });
-  const tuning = useTrialTuning();
+  const display = useBattleDisplay(session, reducedMotion);
   const shake = useShake(display.shakeKey);
   const { width: screenWidth } = useWindowDimensions();
   const [sceneHeight, setSceneHeight] = useState(SCENE_HEIGHT);
-  const frames = useSharedValue(0);
-  const dropped = useSharedValue(0);
-  const worstGap = useSharedValue(0);
-  const frameMeter: FrameMeter = useMemo(
-    () => ({ frames, dropped, worstGap }),
-    [frames, dropped, worstGap],
-  );
-  const [frameStats, setFrameStats] = useState<FrameStats>({ frames: 0, dropped: 0, worstGap: 0 });
 
   // Les atlas de la scène sont faits pendant « Préparation du combat… », jamais pendant le combat.
   useEffect(() => {
     prepareBattleScene();
   }, []);
 
-  const { record } = measures;
   const heroKind = display.snapshot?.battle.heroKind ?? 'sentinel';
   const onDefense = useCallback(
-    (button: DefenseButton, touchedAt: number) => {
-      record(touchedAt);
-      session.pressDefense(button, toBattleInstant(touchedAt));
-    },
-    [record, session],
+    (button: DefenseButton, touchedAt: number) =>
+      session.pressDefense(button, toBattleInstant(touchedAt)),
+    [session],
   );
   const onStrike = useCallback(
-    (touchedAt: number) => {
-      record(touchedAt);
-      session.pressStrike(toBattleInstant(touchedAt));
-    },
-    [record, session],
+    (touchedAt: number) => session.pressStrike(toBattleInstant(touchedAt)),
+    [session],
   );
   const onPower = useCallback(
     (touchStartedAt: number, releasedAt: number) =>
@@ -154,32 +106,14 @@ export function TrialBattleScreen({
       ),
     [session],
   );
-  const replay = useCallback(() => {
-    measures.reset();
-    frames.set(0);
-    dropped.set(0);
-    worstGap.set(0);
-    display.replay();
-  }, [display, frames, dropped, worstGap, measures]);
-
   const battle = display.snapshot?.battle ?? null;
   const view = useMemo(() => (battle === null ? null : battleView(battle)), [battle]);
   const timeline = useMemo(() => (battle === null ? null : sceneTimeline(battle)), [battle]);
   const over = battle?.phase.kind === 'over' ? battle.phase.outcome : null;
 
-  // Les images comptées sur le fil UI sont relues à la fin du combat, pour le panneau Mesures.
-  useEffect(
-    () =>
-      session.subscribe(({ events }) => {
-        if (!events.some((event) => event.type === 'battleEnded')) return;
-        setFrameStats({ frames: frames.get(), dropped: dropped.get(), worstGap: worstGap.get() });
-      }),
-    [session, frames, dropped, worstGap],
-  );
-
   if (battle === null || view === null) {
     return (
-      <Screen testID="trial-battle-loading">
+      <Screen testID="battle-loading">
         <Text style={styles.loading}>Préparation du combat…</Text>
       </Screen>
     );
@@ -199,13 +133,12 @@ export function TrialBattleScreen({
   const geometry = sceneGeometry(screenWidth, sceneHeight, enemies.length);
   const strikeImpactAt = battle.phase.kind === 'heroStrike' ? battle.phase.impactAt : null;
   const heroFloat = display.float?.float.at === 'hero' ? display.float : null;
-  const respite = respiteOf(display.snapshot?.events ?? []);
   const targetName = ENEMY_NAMES[battle.enemies[battle.target]!.kind];
   const onSceneLayout = (event: LayoutChangeEvent) =>
     setSceneHeight(event.nativeEvent.layout.height);
 
   return (
-    <Screen layout="top" testID="trial-battle">
+    <Screen layout="top" testID="battle-screen">
       <View style={styles.header}>
         <Text accessibilityRole="header" style={styles.title}>
           {title}
@@ -220,13 +153,7 @@ export function TrialBattleScreen({
       <Animated.View
         onLayout={onSceneLayout}
         testID="battle-scene-frame"
-        style={[
-          styles.scene,
-          over === null
-            ? null
-            : { flexShrink: 0, minHeight: geometry.platesBottom + END_SCENE_MARGIN },
-          reducedMotion ? null : shake,
-        ]}
+        style={[styles.scene, reducedMotion ? null : shake]}
       >
         <BattleScene
           width={screenWidth}
@@ -242,7 +169,6 @@ export function TrialBattleScreen({
           hurtAt={display.hurtAt}
           reducedMotion={reducedMotion}
           uiNow={uiNow}
-          frameMeter={frameMeter}
         />
         {view.phase === null ? null : (
           <Text
@@ -324,30 +250,7 @@ export function TrialBattleScreen({
             />
           </View>
         </>
-      ) : (
-        <BattleEndPanel
-          outcome={over}
-          respite={respite}
-          hero={heroKind}
-          onReplay={replay}
-          onClose={onClose}
-        >
-          {trialTools ? (
-            <>
-              <TrialTuningPanel tuning={tuning.tuning} onStep={tuning.step} />
-              <BattleMeasuresPanel
-                lines={measureLines({
-                  touch: measures.report,
-                  session: session.measures(),
-                  frames: frameStats,
-                  soundLatencies: soundLatencies(),
-                  expectedSoundLatency: expectedSoundLatency(),
-                })}
-              />
-            </>
-          ) : null}
-        </BattleEndPanel>
-      )}
+      ) : null}
     </Screen>
   );
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer } from 'react';
+import { useEffect, useReducer } from 'react';
 import { AccessibilityInfo } from 'react-native';
 
 import type { BattleSession, BattleSnapshot } from '../../../application/useCases/BattleSession';
@@ -12,8 +12,8 @@ import {
   type FeedbackText,
 } from '../format/battleText';
 
-/** L'état d'affichage de l'écran du combat d'essai, tiré des événements de combat. */
-export interface TrialBattleDisplay {
+/** L'état d'affichage de l'écran de combat, tiré des événements de combat. */
+export interface BattleDisplay {
   readonly snapshot: BattleSnapshot | null;
   /** Les derniers mots du combat (« Parfait », « Frappe parfaite », « Cassure »). */
   readonly feedback: { readonly texts: readonly FeedbackText[]; readonly key: number } | null;
@@ -33,7 +33,7 @@ export interface TrialBattleDisplay {
   readonly shakeKey: number;
 }
 
-export const INITIAL_DISPLAY: TrialBattleDisplay = {
+export const INITIAL_DISPLAY: BattleDisplay = {
   snapshot: null,
   feedback: null,
   float: null,
@@ -107,11 +107,11 @@ function wordsOf(events: readonly BattleEvent[]): FeedbackText[] {
 }
 
 export function displayOf(
-  previous: TrialBattleDisplay,
+  previous: BattleDisplay,
   snapshot: BattleSnapshot,
   reducedMotion: boolean,
-): TrialBattleDisplay {
-  let display: TrialBattleDisplay = { ...previous, snapshot };
+): BattleDisplay {
+  let display: BattleDisplay = { ...previous, snapshot };
   const texts = wordsOf(snapshot.events);
   if (texts.length > 0) {
     display = { ...display, feedback: { texts, key: (display.feedback?.key ?? 0) + 1 } };
@@ -154,35 +154,27 @@ export function announcementsOf(snapshot: BattleSnapshot): string[] {
   return snapshot.events.flatMap((event) => announcement(event, snapshot.battle) ?? []);
 }
 
-type Action =
-  | {
-      readonly type: 'snapshot';
-      readonly snapshot: BattleSnapshot;
-      readonly reducedMotion: boolean;
-    }
-  | { readonly type: 'reset' };
+interface Action {
+  readonly snapshot: BattleSnapshot;
+  readonly reducedMotion: boolean;
+}
 
-function reduce(display: TrialBattleDisplay, action: Action): TrialBattleDisplay {
-  return action.type === 'reset'
-    ? INITIAL_DISPLAY
-    : displayOf(display, action.snapshot, action.reducedMotion);
+function reduce(display: BattleDisplay, action: Action): BattleDisplay {
+  return displayOf(display, action.snapshot, action.reducedMotion);
 }
 
 /**
- * Le combat d'essai affiché : la session est démarrée au montage, chaque mise à jour devient un
- * état d'affichage (mot, chiffre, pose du héros, étincelle, vignette, secousse) et des annonces au
+ * Le combat affiché : la session est démarrée au montage, chaque mise à jour devient un état
+ * d'affichage (mot, chiffre, pose du héros, étincelle, vignette, secousse) et des annonces au
  * lecteur d'écran. Avec « réduire les animations », ni vignette ni secousse ; le son et la
- * vibration ne changent pas (la session les joue). `replay` commence un nouveau combat.
+ * vibration ne changent pas (la session les joue).
  */
-export function useTrialBattle(
-  session: BattleSession,
-  reducedMotion: boolean,
-): TrialBattleDisplay & { readonly replay: () => void } {
+export function useBattleDisplay(session: BattleSession, reducedMotion: boolean): BattleDisplay {
   const [display, dispatch] = useReducer(reduce, INITIAL_DISPLAY);
 
   useEffect(() => {
     const unsubscribe = session.subscribe((snapshot) => {
-      dispatch({ type: 'snapshot', snapshot, reducedMotion });
+      dispatch({ snapshot, reducedMotion });
       for (const announcement of announcementsOf(snapshot)) {
         AccessibilityInfo.announceForAccessibility(announcement);
       }
@@ -195,10 +187,5 @@ export function useTrialBattle(
     return () => session.dispose();
   }, [session]);
 
-  const replay = useCallback(() => {
-    dispatch({ type: 'reset' });
-    session.start().catch(() => undefined);
-  }, [session]);
-
-  return { ...display, replay };
+  return display;
 }

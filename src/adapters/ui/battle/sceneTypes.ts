@@ -55,16 +55,3 @@ export interface SceneSpark {
   readonly kind: 'gold' | 'steel';
   readonly at: number;
 }
-
-/** Une valeur partagée avec le fil UI (Reanimated), lue et écrite par `get` et `set`. */
-export interface SharedNumber {
-  get(): number;
-  set(value: number): void;
-}
-
-/** Le compte des images pendant les préparations et l'éclat (panneau Mesures). */
-export interface FrameMeter {
-  readonly frames: SharedNumber;
-  readonly dropped: SharedNumber;
-  readonly worstGap: SharedNumber;
-}

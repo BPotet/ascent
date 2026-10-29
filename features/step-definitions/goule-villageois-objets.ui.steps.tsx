@@ -296,7 +296,6 @@ async function renderScene(enemies: SceneEnemy[]) {
   const { BattleScene, prepareBattleScene } = jest.requireActual<typeof RealBattleCanvas>(
     '../../src/adapters/ui/battle/BattleCanvas',
   );
-  const shared = (value: number) => ({ value, get: () => value, set: jest.fn() });
   const geometry = sceneGeometry(390, 440, enemies.length);
   await cleanup();
   await render(
@@ -317,7 +316,6 @@ async function renderScene(enemies: SceneEnemy[]) {
         'worklet';
         return 1_000;
       }}
-      frameMeter={{ frames: shared(0), dropped: shared(0), worstGap: shared(0) }}
     />,
   );
   return { scene: prepareBattleScene(), geometry };

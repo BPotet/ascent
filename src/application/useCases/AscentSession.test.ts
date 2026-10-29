@@ -1,6 +1,6 @@
 import { startAscent, type Ascent } from '../../domain/ascent/Ascent';
 import { startBattle, type Battle } from '../../domain/battle/Battle';
-import { DEFAULT_TRIAL_TUNING } from '../../domain/battle/TrialTuning';
+import type { BattleEvent } from '../../domain/battle/BattleEvent';
 import { FixedSeedSource } from '../testing/FixedSeedSource';
 import { ManualBattleClock } from '../testing/ManualBattleClock';
 import { silentBattleHaptics, silentBattleSound } from '../testing/recordingBattleFeedback';
@@ -57,7 +57,6 @@ function savedBattle(
 ): Battle {
   const { battle } = startBattle({
     seed: 3,
-    tuning: DEFAULT_TRIAL_TUNING,
     defenseHint: false,
     at: 0,
     heroHp,
@@ -163,7 +162,6 @@ describe('AscentSession', () => {
     const { session, store, clock } = setUp();
     const { battle: initial } = startBattle({
       seed: 3,
-      tuning: DEFAULT_TRIAL_TUNING,
       defenseHint: false,
       at: 0,
       enemies: ['skeleton', 'ghoul'],
@@ -281,6 +279,57 @@ describe('AscentSession', () => {
 
     expect(session.current()).toBeNull();
     expect(store.values.has(ASCENT_KEY)).toBe(false);
+  });
+});
+
+/**
+ * Les durées d'un combat d'étage : le héros attaque, puis l'horloge avance jusqu'à la 1re avancée
+ * d'un ennemi. Renvoie la durée de la transition de phase et celle de l'avancée.
+ */
+async function phaseDurations(battleSession: BattleSession, clock: ManualBattleClock) {
+  const events: BattleEvent[] = [];
+  battleSession.subscribe((snapshot) => events.push(...snapshot.events));
+  const at = clock.now() + 50;
+  clock.advanceTo(at);
+  battleSession.heroAction({ kind: 'attack' }, at - 20, at);
+  for (let guard = 0; guard < 20; guard += 1) {
+    const transition = events.find((event) => event.type === 'phaseTransitionStarted');
+    const stepIn = events.find((event) => event.type === 'stepInStarted');
+    if (transition !== undefined && stepIn !== undefined) {
+      return { transition: transition.until - transition.at, stepIn: stepIn.until - stepIn.at };
+    }
+    clock.advanceTo(clock.pending()[0]!);
+    await flush();
+  }
+  throw new Error('No enemy stepped in');
+}
+
+describe('AscentSession: the trial tuning is gone (#121)', () => {
+  const TRIAL_TUNING = JSON.stringify({ phaseTransitionMs: 1_200, stepInMs: 100 });
+
+  it('holds 800 ms of phase transition and 400 ms of step-in, whatever the saved trial tuning', async () => {
+    const { session, store, clock } = setUp(1);
+    store.values.set('battle.trialTuning', TRIAL_TUNING);
+    session.begin();
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    expect(await phaseDurations(battleSession, clock)).toEqual({ transition: 800, stepIn: 400 });
+  });
+
+  it('resumes a saved battle that still carries a trial tuning at 800 ms and 400 ms', async () => {
+    const { session, store, clock } = setUp();
+    const ascent = startAscent(5);
+    const battle = {
+      ...savedBattle(ascent, { heroHp: 70, enemyHp: 50 }),
+      tuning: { phaseTransitionMs: 1_200, stepInMs: 100 },
+    };
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent, battle }));
+    await session.load();
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    expect(await phaseDurations(battleSession, clock)).toEqual({ transition: 800, stepIn: 400 });
   });
 });
 

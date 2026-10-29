@@ -7,8 +7,8 @@
  * Correspondance métier des étapes d'interface : « affiche la catégorie de son intention » = ce que
  * montre l'intention tirée au début de la manche (`shownIntent`) ; « l'annonce de phase s'affiche pendant toute sa durée » = la session est en
  * transition de phase vers ce sens, de son début à sa fin ; « le joueur touche » = un appui daté à
- * l'instant où le doigt se pose (un doigt maintenu ne produit pas de nouvel appui) ; « le joueur
- * peut rejouer » = un nouveau combat commence. Les scénarios `@ui` passent par l'écran.
+ * l'instant où le doigt se pose (un doigt maintenu ne produit pas de nouvel appui). Les scénarios
+ * `@ui` passent par l'écran.
  */
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
 
@@ -19,7 +19,7 @@ import {
   silentBattleSound,
 } from '../../src/application/testing/recordingBattleFeedback';
 import { changeBattle, enemyWith } from '../../src/application/testing/battleBuilder';
-import { seedFor, type FirstRound } from '../../src/application/testing/trialBattleSeeds';
+import { seedFor, type FirstRound } from '../../src/application/testing/battleSeeds';
 import type { KeyValueStore } from '../../src/application/ports/KeyValueStore';
 import { BATTLE_HINT_SEEN_KEYS } from '../../src/application/useCases/battleHints';
 import {
@@ -27,7 +27,8 @@ import {
   type BattleFactory,
   type BattleSnapshot,
 } from '../../src/application/useCases/BattleSession';
-import { startTrialBattle, type AttackStep, type Battle } from '../../src/domain/battle/Battle';
+import type { AttackStep, Battle } from '../../src/domain/battle/Battle';
+import { startTestBattle } from '../../src/domain/battle/testing/testBattle';
 import type { BattleEvent } from '../../src/domain/battle/BattleEvent';
 import { ENEMIES, SENTINEL } from '../../src/domain/battle/combatants';
 import { shownIntent } from '../../src/domain/battle/shownIntent';
@@ -81,17 +82,17 @@ function memoryStore(): KeyValueStore {
   };
 }
 
-/** Un combat d'essai dont l'état de départ est changé (un ennemi déjà tombé, des PV en moins…). */
+/** Un combat de test dont l'état de départ est changé (un ennemi déjà tombé, des PV en moins…). */
 function changedBattle(change: (battle: Battle) => Battle): BattleFactory {
   return (options) => {
-    const update = startTrialBattle(options);
+    const update = startTestBattle(options);
     return { ...update, battle: change(update.battle) };
   };
 }
 
 async function startBattle(
   firstRound: FirstRound | { readonly seed: number } = {},
-  createBattle?: BattleFactory,
+  createBattle: BattleFactory = startTestBattle,
 ): Promise<void> {
   const clock = new ManualBattleClock(1_000);
   const sound = silentBattleSound();
@@ -99,7 +100,7 @@ async function startBattle(
   const seed = 'seed' in firstRound ? firstRound.seed : seedFor(firstRound);
   const session = new BattleSession(
     { clock, seeds: new FixedSeedSource(seed), sound, haptics, keyValueStore: memoryStore() },
-    createBattle === undefined ? {} : { createBattle },
+    { createBattle },
   );
   const published: BattleSnapshot[] = [];
   session.subscribe((snapshot) => published.push(snapshot));
@@ -190,7 +191,7 @@ function ms(text: string): number {
 
 const steps: StepDefinitions = ({ given, when, then, and }) => {
   given(
-    /^le combat d'essai : la Sentinelle \(80 PV, Attaque 10, réduction des dégâts 10 %\) contre la Goule \(50 PV\), le Spectre \(35 PV\) et le Nécromancien \(45 PV\)$/u,
+    /^le combat contre la Goule, le Spectre et le Nécromancien : la Sentinelle \(80 PV, Attaque 10, réduction des dégâts 10 %\) contre la Goule \(50 PV\), le Spectre \(35 PV\) et le Nécromancien \(45 PV\)$/u,
     async () => {
       await startBattle();
       expect(SENTINEL).toMatchObject({ maxHp: 80, attackPower: 10, damageReductionPercent: 10 });
@@ -691,7 +692,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     // combat part avec 10 PV par ennemi, et une frappe sans appui fait tomber chacun.
     let first = true;
     await startBattle({}, (options) => {
-      const update = startTrialBattle(options);
+      const update = startTestBattle(options);
       if (!first) return update;
       first = false;
       return {
@@ -711,14 +712,13 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     expect(battle().enemies.map((enemy) => enemy.hp)).toEqual([0, 0, 0]);
   });
 
-  then('le combat est gagné et le joueur peut rejouer', async () => {
+  then('le combat est gagné', () => {
     expect(battle().phase).toMatchObject({ kind: 'over', outcome: 'victory' });
     expect(world.sound.played.at(-1)).toBe('victory');
-    await replays();
   });
 
   given('la Sentinelle tombe à 0 PV', async () => {
-    // Le combat d'essai ne se perd pas en n'attaquant que (80 PV, 12 dégâts par manche au plus) :
+    // Ce combat ne se perd pas en n'attaquant que (80 PV, 12 dégâts par manche au plus) :
     // la Sentinelle part ici avec 4 PV, et ne pare pas le coup simple de la Goule (4 dégâts).
     await startBattle(
       { ghoul: 'basic' },
@@ -729,10 +729,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     expect(battle().hero.hp).toBe(0);
   });
 
-  then('le combat est perdu et le joueur peut rejouer', async () => {
+  then('le combat est perdu', () => {
     expect(battle().phase).toMatchObject({ kind: 'over', outcome: 'defeat' });
     expect(world.sound.played.at(-1)).toBe('defeat');
-    await replays();
   });
 };
 
@@ -741,26 +740,21 @@ async function basicWindUps(): Promise<number[]> {
   const windUps: number[] = [];
   for (let seed = 1; windUps.length < 10 && seed < 500; seed += 1) {
     const clock = new ManualBattleClock(0);
-    const session = new BattleSession({
-      clock,
-      seeds: new FixedSeedSource(seed),
-      sound: silentBattleSound(),
-      haptics: silentBattleHaptics(),
-      keyValueStore: memoryStore(),
-    });
+    const session = new BattleSession(
+      {
+        clock,
+        seeds: new FixedSeedSource(seed),
+        sound: silentBattleSound(),
+        haptics: silentBattleHaptics(),
+        keyValueStore: memoryStore(),
+      },
+      { createBattle: startTestBattle },
+    );
     const { battle: started } = await session.start();
     const ghoul = started.enemies[GHOUL]!.intent!;
     if (ghoul.category === 'attack' && ghoul.attack === 'basic') windUps.push(ghoul.windUpMs);
   }
   return windUps;
-}
-
-/** « Rejouer » : un nouveau combat d'essai commence, au complet. */
-async function replays(): Promise<void> {
-  const snapshot = await world.session.start();
-  expect(snapshot.battle.phase.kind).toBe('hero');
-  expect(snapshot.battle.round).toBe(1);
-  expect(snapshot.battle.enemies.map((enemy) => enemy.hp)).toEqual([50, 35, 45]);
 }
 
 // Les scénarios d'interface (`@ui`) sont laissés aux étapes de l'écran, celui de l'ADR (`@adr`) à

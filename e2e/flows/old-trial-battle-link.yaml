@@ -1,0 +1,27 @@
+# Story #121 : le combat d'essai est retiré du build de preview (décision du propriétaire du
+# 28/10/2026). Parcours sans timing : installation neuve, accueil (Vue Journée vide) sans bouton
+# « Combat d'essai » au-dessus de la barre d'onglets → capture, pour comparer la barre d'onglets et
+# la hauteur de la liste à la Vue Journée du build de production → l'ancien lien
+# ascent://trial-battle ramène à l'accueil, sans erreur.
+# L'APK de la CI est construit sur le canal preview (action build-android-apk, sans canal précisé) :
+# sur le build de production, le même lien ramène aussi à l'accueil (test/app/oldTrialBattleLink.test.tsx).
+appId: com.bpotet.ascent
+name: Ancien lien du combat d'essai
+tags:
+  - story-121
+---
+- runFlow: ../subflows/launch-fresh.yaml
+
+- assertNotVisible: "Combat d'essai"
+- assertVisible:
+    id: 'tab-bar'
+- takeScreenshot: day-view-without-trial-entry
+
+- openLink: ascent://trial-battle
+- extendedWaitUntil:
+    visible:
+      id: 'day-view-empty'
+    timeout: 15000
+- assertNotVisible: "Combat d'essai"
+- assertNotVisible:
+    id: 'hero-choice'

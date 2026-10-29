@@ -8,6 +8,7 @@
 - **Contexte produit** : épique #30, story #31 (prototype jouable du combat)
 - **Numéro** : fixé au merge ; 0006 si aucun autre ADR n'est mergé avant.
 - **Avenant** : 25 octobre 2026, durées internes du combat complet (story #32, voir § 7)
+- **Avenant** : 29 octobre 2026, retrait du combat d'essai (story #121, voir « Avenant de #121 »)
 
 ## Contexte
 
@@ -158,8 +159,8 @@ limité à son test de fumée : les tests d'écran simulent `BattleScene`. Le re
   `tools:node="remove"`). Le combat joue des sons locaux préchargés, sans flux réseau ni lecture
   en arrière-plan : il n'a besoin ni de garder l'appareil éveillé, ni d'observer le réseau.
 - **Vérification** : `aapt dump permissions` (résumé du job `android-apk`) ne doit plus les
-  lister, et le parcours e2e `trial-battle.yaml`, qui joue les sons du combat, doit passer sans
-  plantage. Une `SecurityException` de `media3` annulerait le retrait.
+  lister, et le parcours e2e `trial-battle.yaml` (parcours retiré par #121), qui joue les sons du
+  combat, doit passer sans plantage. Une `SecurityException` de `media3` annulerait le retrait.
 - **Vérifié** sur la PR #53 (exécution 39797532219, commit `839a270`) : `aapt` ne liste plus ni
   `WAKE_LOCK` ni `ACCESS_NETWORK_STATE`, et le parcours e2e (deux combats complets, sons joués)
   passe sans plantage.
@@ -279,6 +280,22 @@ Pour la transition de phase et l'avancée, après l'essai des réglages d'essai 
 **800 ms et 400 ms** (règle C12 validée) tant que l'essai ne dit pas autre chose. Toute autre
 valeur change le périmètre validé (#32, #34 et #39 citent ces durées) et repasse par le
 propriétaire.
+
+### Avenant de #121 : retrait du combat d'essai
+
+Décision du propriétaire du 28 octobre 2026 (#118, #121) : le combat d'essai est retiré, et tous
+les combats passent par l'ascension.
+
+- **Les durées sont des constantes du domaine** : `PHASE_TRANSITION_MS = 800` (transition de
+  phase) et `STEP_IN_MS = 400` (avancée), dans `src/domain/battle/Battle.ts`. Le combat ne porte
+  plus de réglages (`Battle.tuning` disparaît). Un combat sauvegardé qui garde un champ `tuning`
+  reprend à 800 et 400 ms par construction ; la clé `battle.trialTuning` déjà enregistrée sur un
+  téléphone n'est plus lue ni écrite. Pas de migration.
+- **Les réglages d'essai et le panneau Mesures sont retirés**, avec l'écran de fin du combat
+  d'essai.
+- **Les mesures de datation sur téléphone passent désormais par la sonde de toucher** (ADR 0005),
+  qui reste dans le build de preview.
+- **Les chiffres déjà consignés ici restent la référence** : ils ne sont pas refaits.
 
 ## Décision : poursuivre ou ajuster
 

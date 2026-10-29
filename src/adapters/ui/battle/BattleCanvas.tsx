@@ -56,7 +56,7 @@ import { enemyPose, restPose } from './scene/enemyPose';
 import { heroFrame } from './scene/heroFrame';
 import type { EnemySlot, SceneGeometry } from './scene/sceneGeometry';
 import { glintSprites, hurtLevel, impactFlash, sparkFrame } from './scene/sceneEffects';
-import type { FrameMeter, HeroPose, SceneEnemy, SceneSpark, SceneTimeline } from './sceneTypes';
+import type { HeroPose, SceneEnemy, SceneSpark, SceneTimeline } from './sceneTypes';
 
 export interface BattleSceneProps {
   readonly width: number;
@@ -77,7 +77,6 @@ export interface BattleSceneProps {
   readonly reducedMotion: boolean;
   /** L'horloge du fil UI : un worklet, sur la base de l'horloge de combat (méthode a). */
   readonly uiNow: () => number;
-  readonly frameMeter: FrameMeter;
 }
 
 /** Un atlas prêt à dessiner : son image Skia et sa table. */
@@ -125,8 +124,6 @@ const ENEMY_KINDS: readonly EnemyKind[] = [
 ];
 const PEDESTALS: readonly PedestalKind[] = ['enemy', 'single', 'hero'];
 const NEAREST = { filter: FilterMode.Nearest, mipmap: MipmapMode.None } as const;
-/** Une image de plus de 1,5 fois 60 Hz est comptée comme perdue. */
-const DROPPED_FRAME_MS = 25;
 /** Les autres ennemis : à 30 %, désaturés et assombris (maquette, `.pfoe.dim`). */
 const DIMMED_OPACITY = 0.3;
 const FADED = [
@@ -360,11 +357,9 @@ export function BattleScene({
   hurtAt,
   reducedMotion,
   uiNow,
-  frameMeter,
 }: BattleSceneProps) {
   const scene = prepareBattleScene();
   const clock = useSharedValue(0);
-  const lastFrame = useSharedValue(0);
   const sharedTimeline = useSharedValue<SceneTimeline | null>(timeline);
   const sharedSpark = useSharedValue<SceneSpark | null>(spark);
   const sharedHurt = useSharedValue<number | null>(hurtAt);
@@ -378,20 +373,9 @@ export function BattleScene({
     [sharedHero, heroPose, heroPoseSince, strikeImpactAt],
   );
 
-  // L'horloge de la scène, lue à chaque image sur le fil UI ; les images perdues sont comptées
-  // pendant les actions des ennemis et les étincelles (panneau Mesures).
+  // L'horloge de la scène, lue à chaque image sur le fil UI.
   useFrameCallback(() => {
-    const now = uiNow();
-    const previous = lastFrame.get();
-    lastFrame.set(now);
-    clock.set(now);
-    const recent = sharedSpark.get();
-    const measuring = sharedTimeline.get() !== null || (recent !== null && now - recent.at < 450);
-    if (previous === 0 || !measuring) return;
-    const gap = now - previous;
-    frameMeter.frames.set(frameMeter.frames.get() + 1);
-    if (gap > DROPPED_FRAME_MS) frameMeter.dropped.set(frameMeter.dropped.get() + 1);
-    if (gap > frameMeter.worstGap.get()) frameMeter.worstGap.set(gap);
+    clock.set(uiNow());
   });
 
   const { hero, chest, enemies: slots } = geometry;
