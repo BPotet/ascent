@@ -7,6 +7,7 @@
 - **Avenant** : 22 octobre 2026, mutation des écrans à la demande (issue #54, voir en fin de document)
 - **Révisé** : 22 octobre 2026, le groupe `core` est réparti en parts parallèles (voir en fin de document)
 - **Avenant** : 29 octobre 2026, le domaine est réparti en parts, un gros fichier coupé en plages de lignes (issue #131, voir en fin de document)
+- **Avenant** : 29 octobre 2026, le `core` de la release est pesé en mutants et coupé en plages, jusqu'entre les membres d'une classe (issue #134, voir en fin de document)
 
 ## Contexte
 
@@ -283,3 +284,103 @@ par un lancement manuel du workflow (mode `full`), puis sur la PR #126.
 - Mesures à prendre sur la PR du correctif et sur #126 ; si un shard `domain-*` approche encore son
   délai, on recalibre `CHUNK_LINES.domain` et `PARTS.*.domain`, qui sont des réglages et non des
   seuils.
+
+## Avenant du 29 octobre 2026 — le `core` de la release pesé en mutants, coupé jusqu'entre les membres d'une classe
+
+- **Décideur** : Architect
+- **Contexte produit** : issue #134 ; constat sur le run [40804197216](https://github.com/BPotet/ascent/actions/runs/40804197216) (mode `full`, `develop` en `0b9bca3c`)
+
+### Contexte
+
+En release, le shard `core-1` a été annulé à son délai de 120 minutes (120 min 26 s, à 268 mutants
+sur 276), et le job de score final était rouge : toute release l'aurait été. Les autres shards
+`core-*` finissaient entre 49 et 105 minutes de mutation. Les shards `domain-*` tenaient (35
+minutes au plus).
+
+| Shard | Lignes (poids) | Mutants | Timeouts | Mutation | Par mutant |
+|---|---|---|---|---|---|
+| `core-1` | 589 | 276 | ≥ 17 | annulé à 120 min 26 s | ~26 s |
+| `core-2` | 589 | 234 | 14 | 105 min | ~27 s |
+| `core-3` | 589 | 157 | 24 | 102 min | ~39 s |
+| `core-4` | 583 | 247 | 25 | 103 min | ~25 s |
+| `core-5` | 588 | 164 | 9 | 51 min | ~19 s |
+| `core-6` | 587 | 175 | 10 | 49 min | ~17 s |
+
+Trois causes :
+
+1. **Le calibrage reposait sur environ 10 s par mutant** (révision du 22 octobre 2026). Mesuré : 17
+   à 39 s. La config `core` exécute les trois projets Jest, écrans compris, et chaque timeout coûte
+   un redémarrage du processus de test. Le « dry run » coûte 2 à 3 min 30 par shard (3 714 tests).
+2. **Le poids ne mesurait pas le coût** : `split()` équilibrait les lignes (583 à 589 par part),
+   mais les parts allaient de 157 à 276 mutants. `battleFeedback.ts` a plus de mutants (103) que de
+   lignes (83).
+3. **Un fichier presque indivisible** : `BattleSession.ts` (213 mutants) est en quasi-totalité une
+   seule instruction de premier niveau, la classe `BattleSession`. Même le découpage de l'avenant
+   précédent ne la coupait pas : seule, elle demandait 90 à 140 minutes. Augmenter le nombre de
+   parts ne suffisait donc pas. `AscentSession.ts` (163 mutants, une classe) est le suivant.
+
+### Décision
+
+1. **En release, le poids d'un élément `core` est son nombre de mutants**, et non plus son nombre
+   de lignes. Les mutants sont comptés au moment du plan avec `@stryker-mutator/instrumenter`
+   (même version que Stryker, même mutateur que `stryker.config.mjs`) : le compte est exact. Les
+   règles de `split()` ne changent pas. En PR, le poids d'un élément `core` reste son nombre de
+   lignes nouvelles.
+2. **En release, un fichier `core` de plus de `CHUNK_MUTANTS.core` mutants (100 au départ) est
+   coupé en plages de lignes**, réparties entre les parts, comme un gros fichier du domaine
+   (avenant précédent). Le fichier reste muté **en entier**, sur plusieurs shards. La règle « une
+   part ne coupe jamais un fichier » (décision 3) ne vaut plus qu'en PR pour le `core`, où seules
+   les lignes nouvelles sont mutées.
+3. **Une classe plus grande que la limite est coupée entre deux de ses membres** (propriétés,
+   constructeur, accesseurs, méthodes), et non plus seulement entre deux instructions de premier
+   niveau : c'est le recoupage que l'avenant précédent prévoyait. L'en-tête de la classe va au
+   premier membre, son accolade fermante au dernier. Aucun mutant de Stryker ne traverse deux
+   membres d'une classe : chaque mutant reste compté une fois, et une seule. Une classe plus petite
+   que la limite reste entière. La règle vaut aussi pour le domaine, mesuré en lignes, mais aucune
+   classe du domaine ne dépasse aujourd'hui `CHUNK_LINES.domain` : son plan ne change pas.
+4. **`PARTS.full.core` passe de 6 à 10** : environ 125 mutants par part, soit environ 55 minutes au
+   rythme moyen mesuré et 80 au pire rythme mesuré (39 s par mutant), plus le coût fixe.
+   `PARTS.changed.core` reste à 3.
+5. **Rien d'autre ne change** : seuils (85 % pour le domaine, 70 % pour le code nouveau), `timeoutMS`
+   (10 000), délais des jobs (60 minutes en PR, 120 hors PR), portée de la mesure (tout le `core`
+   en entier en release), score calculé au job final sur le total des shards.
+
+Mise en œuvre : `scripts/mutation/plan.mjs` (`outline()` lit aussi les membres d'une classe,
+`chunkAtStatements()` reçoit la mesure d'une plage, `mutantLines()` compte les mutants, regroupé
+avec les autres effets de bord dans `collectChanges()`), testé par `npm run test:scripts`, dont le
+test qui compare, avec l'instrumenter, les mutants d'un fichier entier à la réunion des mutants de
+ses plages, sur un échantillon où une classe est coupée entre ses membres. Vérifié aussi à la main
+sur `BattleSession.ts`, `AscentSession.ts` et `battleFeedback.ts` : mêmes mutants, coupés ou non.
+
+Plan du mode `full` sur `develop` (`0b9bca3c`) : 10 shards `core` de 125 à 126 mutants (1 253 au
+total) ; `BattleSession.ts` en 3 plages (97, 100 et 16 mutants), `AscentSession.ts` en 2 (93 et
+70), `battleFeedback.ts` en 2 (21 et 82) ; aucun élément au-dessus de 100 mutants. Les 8 shards
+`domain` sont identiques à ceux d'avant.
+
+### Alternatives rejetées
+
+- **Augmenter seulement `PARTS.full.core`** : `BattleSession.ts`, indivisible, restait un shard de
+  90 à 140 minutes.
+- **Relever `timeout-minutes` des shards hors PR, ou baisser `timeoutMS`** : rejeté par la décision
+  initiale et par l'avenant précédent ; baisser `timeoutMS` ferait monter le score artificiellement.
+- **Ajouter un `CHUNK_LINES.core`** : la densité de mutants varie d'un fichier à l'autre (0,7 à 1,2
+  mutant par ligne) ; une limite en mutants borne directement la durée d'un élément.
+- **Couper à l'intérieur d'une méthode** : perd des mutants sans erreur (avenant précédent,
+  décision 2).
+- **Retirer les écrans des projets Jest de la config `core`** : moins de tests, donc un score qui
+  peut changer ; hors du périmètre d'un correctif de répartition.
+
+### Conséquences
+
+- Une release lance jusqu'à 18 shards de mutation (`domain-1` à `domain-8`, `core-1` à `core-10`),
+  sous la limite de 20 jobs simultanés de GitHub, avec un peu d'attente possible pendant les autres
+  jobs ; 28 avec les écrans demandés. Le coût fixe est payé 10 fois pour `core` : plus de minutes
+  de CI, gratuites pour un dépôt public.
+- Le plan instrumente les fichiers `core` en mode `full` (environ 2 secondes), dans le job
+  `mutation-plan` et dans chaque shard, qui recalcule le plan : même version, même résultat.
+- Un fichier `core` coupé apparaît dans plusieurs rapports de shard, comme un fichier du domaine.
+- Une méthode de plus de `CHUNK_MUTANTS.core` mutants resterait un élément entier. `PARTS.full.core`
+  et `CHUNK_MUTANTS.core` restent des réglages à recalibrer d'après les durées mesurées en CI, pas
+  des seuils.
+- Mesures du run de vérification (mode `full`, sur la PR du correctif) : à reporter ici et sur
+  l'issue #134.

@@ -1,9 +1,11 @@
 // Plan de la mutation en CI (docs/adr/0004-mutation-en-ci.md) : quels fichiers, quelles lignes, dans
-// quel shard. Fonctions pures ; les seuls effets de bord (appels à git, lecture des fichiers et de
-// leurs instructions avec le compilateur TypeScript) sont regroupés dans `collectChanges()`.
+// quel shard. Fonctions pures ; les seuls effets de bord (appels à git, lecture des fichiers, de
+// leurs instructions avec le compilateur TypeScript et de leurs mutants avec l'instrumenter de
+// Stryker) sont regroupés dans `collectChanges()`.
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { Instrumenter } from '@stryker-mutator/instrumenter';
 import { Minimatch, minimatch } from 'minimatch';
 import ts from 'typescript';
 import baseConfig from '../../stryker.config.mjs';
@@ -16,19 +18,25 @@ export const UI_CONFIG = 'stryker.ui.config.mjs';
 const CONFIGS = { domain: DOMAIN_CONFIG, core: BASE_CONFIG, ui: UI_CONFIG };
 
 // Réglages de la répartition, pas des seuils : nombre de parts (shards) par groupe et par mode.
-// `core` (révision du 22 octobre 2026 de l'ADR 0004) : environ 10 s par mutant en CI, plus un coût
-// fixe d'environ 5 minutes par shard (installation et « dry run » de toute la suite Jest). 3 parts
-// en PR ramènent les ~25 minutes d'un seul shard à environ 10 ; au-delà, le coût fixe domine. En
-// release, ~7 fois plus de lignes : 6 parts d'environ 20 minutes au lieu de 2 de près d'une heure.
+// `core` (révision du 22 octobre 2026 de l'ADR 0004) : un coût fixe d'environ 5 minutes par shard
+// (installation et « dry run » de toute la suite Jest). 3 parts en PR ramènent les ~25 minutes d'un
+// seul shard à environ 10 ; au-delà, le coût fixe domine. En release (avenant du 29 octobre 2026,
+// issue #134), 17 à 39 s par mutant mesurés (run 40804197216 : la config `core` exécute les trois
+// projets Jest, et chaque timeout redémarre un processus de test), pour 1 253 mutants : 6 parts
+// dépassaient le délai de 120 minutes. 10 parts d'environ 125 mutants, pesés par leur nombre de
+// mutants (voir `CHUNK_MUTANTS`), soit environ 55 minutes, 80 au pire rythme mesuré.
 // `domain` (avenant du 29 octobre 2026, issue #131) : un fichier du domaine modifié est muté en
 // entier ; au-delà de `CHUNK_LINES.domain` lignes, il est coupé en plages (voir
 // `chunkAtStatements()`) réparties entre les parts. `Battle.ts` (environ 1 500 lignes) prenait
 // environ 3 h dans un seul shard.
 export const PARTS = {
   changed: { domain: 6, core: 3, ui: 2 },
-  full: { domain: 8, core: 6, ui: 10 },
+  full: { domain: 8, core: 10, ui: 10 },
 };
 export const CHUNK_LINES = { domain: 250 };
+// En release, un fichier `core` de plus de `CHUNK_MUTANTS.core` mutants est coupé en plages (issue
+// #134 : `BattleSession.ts`, 213 mutants, presque entièrement une seule classe).
+export const CHUNK_MUTANTS = { core: 100 };
 
 const SCOPES = ['domain', 'core', 'ui'];
 
@@ -183,17 +191,35 @@ export function mutateEntries(change, { whole }) {
   return entries;
 }
 
+const lineSpan = ({ start, end }) => end - start + 1;
+
+/**
+ * Les unités d'une instruction entre lesquelles on peut couper : l'instruction entière, ou, pour une
+ * classe plus grande que `max`, ses membres (l'en-tête de la classe va au premier, son accolade
+ * fermante au dernier). Aucun mutant ne traverse deux membres d'une classe.
+ */
+function cuttableUnits(statement, max, size) {
+  const { start, end, members = [] } = statement;
+  if (members.length === 0 || size({ start, end }) <= max) return [{ start, end }];
+  return members.map((member, index) => ({
+    start: index === 0 ? start : member.start,
+    end: index === members.length - 1 ? end : member.end,
+  }));
+}
+
 /**
  * Les plages de lignes d'un fichier `{ lineCount, statements }` (voir `outline()`) : contiguës, de
- * la ligne 1 à `lineCount`, d'au plus `maxLines` lignes, coupées seulement entre deux instructions
- * de premier niveau. Stryker ne mute un nœud que s'il est entièrement dans une plage : une coupe
- * dans une instruction perdrait ses mutants en silence. Une instruction plus longue que `maxLines`
- * reste entière ; les commentaires et lignes vides entre deux instructions vont à la suivante.
+ * la ligne 1 à `lineCount`, d'au plus `max` (mesuré par `size`, en lignes par défaut), coupées
+ * seulement entre deux instructions de premier niveau, ou entre deux membres d'une classe plus
+ * grande que `max`. Stryker ne mute un nœud que s'il est entièrement dans une plage : une coupe
+ * dans une instruction perdrait ses mutants en silence. Une unité plus grande que `max` reste
+ * entière ; les commentaires et lignes vides entre deux unités vont à la suivante.
  */
-export function chunkAtStatements({ lineCount, statements }, maxLines) {
-  // Des instructions qui partagent une ligne ne peuvent pas être séparées par une plage de lignes.
+export function chunkAtStatements({ lineCount, statements }, max, size = lineSpan) {
+  // Des unités qui partagent une ligne ne peuvent pas être séparées par une plage de lignes.
   const units = [];
-  for (const { start, end } of [...statements].sort((a, b) => a.start - b.start)) {
+  const sorted = [...statements].sort((a, b) => a.start - b.start);
+  for (const { start, end } of sorted.flatMap((s) => cuttableUnits(s, max, size))) {
     const last = units.at(-1);
     if (last && start <= last.end) last.end = Math.max(last.end, end);
     else units.push({ start, end });
@@ -203,7 +229,7 @@ export function chunkAtStatements({ lineCount, statements }, maxLines) {
   for (let index = 1; index < units.length; index += 1) {
     // Les lignes après la dernière instruction vont à la dernière plage.
     const end = index === units.length - 1 ? lineCount : units[index].end;
-    if (end - start + 1 > maxLines) {
+    if (size({ start, end }) > max) {
       const cut = units[index - 1].end + 1;
       chunks.push({ start, end: cut - 1 });
       start = cut;
@@ -215,38 +241,51 @@ export function chunkAtStatements({ lineCount, statements }, maxLines) {
 
 /**
  * Le nombre de lignes d'un fichier et les plages de lignes (de 1) de ses instructions de premier
- * niveau, lues avec le compilateur TypeScript, sans les commentaires qui les précèdent.
+ * niveau, avec, pour une classe, celles de ses membres (`members`), lues avec le compilateur
+ * TypeScript, sans les commentaires qui les précèdent.
  */
 export function outline(source, fileName) {
   const file = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true);
   const line = (position) => file.getLineAndCharacterOfPosition(position).line + 1;
+  const span = (node) => ({ start: line(node.getStart(file)), end: line(node.getEnd()) });
   return {
     lineCount: line(file.getEnd()),
-    statements: file.statements.map((statement) => ({
-      start: line(statement.getStart(file)),
-      end: line(statement.getEnd()),
-    })),
+    statements: file.statements.map((statement) =>
+      ts.isClassDeclaration(statement)
+        ? { ...span(statement), members: statement.members.map(span) }
+        : span(statement),
+    ),
   };
 }
 
+/** Le nombre de mutants `{ start, end }` entièrement dans une plage de lignes. */
+const mutantsIn =
+  (mutants) =>
+  ({ start, end }) =>
+    mutants.filter((mutant) => mutant.start >= start && mutant.end <= end).length;
+
 /**
- * Les éléments à répartir pour un fichier du domaine, muté en entier : le fichier, ou une plage
- * par élément s'il dépasse `CHUNK_LINES.domain` lignes. Le poids est le nombre de lignes mutées.
- * Sans `statements` (rien de lu par `outline()`), le fichier n'est pas coupé.
+ * Les éléments à répartir pour un fichier muté en entier : le fichier, ou une plage par élément
+ * s'il dépasse `max`, mesuré par `size`. Le poids d'un élément est sa mesure. Sans `statements`
+ * (rien de lu par `outline()`), le fichier n'est pas coupé.
  */
-function domainItems(change) {
+function wholeFileItems(change, max, size) {
   const lineCount = change.lineCount ?? change.weight;
   const chunks = change.statements
-    ? chunkAtStatements({ lineCount, statements: change.statements }, CHUNK_LINES.domain)
+    ? chunkAtStatements({ lineCount, statements: change.statements }, max, size)
     : [{ start: 1, end: lineCount }];
   if (chunks.length === 1) {
     return [
-      { file: change.file, weight: lineCount, mutate: mutateEntries(change, { whole: true }) },
+      {
+        file: change.file,
+        weight: size(chunks[0]),
+        mutate: mutateEntries(change, { whole: true }),
+      },
     ];
   }
   return chunks.map((range) => ({
     file: change.file,
-    weight: range.end - range.start + 1,
+    weight: size(range),
     mutate: mutateEntries({ ...change, added: false, ranges: [range] }, { whole: false }),
   }));
 }
@@ -294,7 +333,13 @@ export function buildPlan({ mode, changes, ui = 'exclude', scopeOf = classify })
     const scope = scopeOf(change.file);
     if (!scopes.includes(scope)) continue;
     if (scope === 'domain') {
-      byScope.domain.push(...domainItems(change));
+      // Pesé en lignes mutées, coupé au-delà de `CHUNK_LINES.domain` lignes.
+      byScope.domain.push(...wholeFileItems(change, CHUNK_LINES.domain, lineSpan));
+      continue;
+    }
+    if (scope === 'core' && mode === 'full' && change.mutants) {
+      // Pesé en mutants, coupé au-delà de `CHUNK_MUTANTS.core` mutants (issue #134).
+      byScope.core.push(...wholeFileItems(change, CHUNK_MUTANTS.core, mutantsIn(change.mutants)));
       continue;
     }
     const mutate = mutateEntries(change, { whole: mode === 'full' });
@@ -326,21 +371,61 @@ function git(args, cwd) {
   return execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
 }
 
-/** Ajoute à chaque fichier du domaine son nombre de lignes et ses instructions (`outline()`). */
-function withOutlines(changes, cwd, scopeOf) {
+/** Ajoute à chaque fichier des groupes `scopes` son nombre de lignes et ses instructions (`outline()`). */
+function withOutlines(changes, cwd, scopeOf, scopes) {
   return changes.map((change) =>
-    scopeOf(change.file) === 'domain'
+    scopes.includes(scopeOf(change.file))
       ? { ...change, ...outline(readFileSync(path.join(cwd, change.file), 'utf8'), change.file) }
       : change,
   );
 }
 
+const silentLogger = {
+  debug() {},
+  info() {},
+  warn() {},
+  error() {},
+  isDebugEnabled: () => false,
+};
+
+/**
+ * Les plages de lignes (de 1) des mutants de chaque fichier `{ name, content }`, par nom, comptés
+ * avec l'instrumenter de Stryker (même version que Stryker, même mutateur que `stryker.config.mjs`).
+ */
+export async function mutantLines(files) {
+  const { mutants } = await new Instrumenter(silentLogger).instrument(
+    files.map((file) => ({ ...file, mutate: true })),
+    {
+      plugins: baseConfig.mutator?.plugins ?? null,
+      excludedMutations: baseConfig.mutator?.excludedMutations ?? [],
+      ignorers: [],
+    },
+  );
+  const byFile = new Map(files.map((file) => [file.name, []]));
+  for (const { fileName, location } of mutants) {
+    byFile.get(fileName).push({ start: location.start.line + 1, end: location.end.line + 1 });
+  }
+  return byFile;
+}
+
+/** Ajoute à chaque fichier `core` ses mutants (`mutantLines()`). */
+async function withMutants(changes, cwd, scopeOf) {
+  const core = changes.filter((change) => scopeOf(change.file) === 'core');
+  const byFile = await mutantLines(
+    core.map(({ file }) => ({ name: file, content: readFileSync(path.join(cwd, file), 'utf8') })),
+  );
+  return changes.map((change) =>
+    byFile.has(change.file) ? { ...change, mutants: byFile.get(change.file) } : change,
+  );
+}
+
 /**
  * Seuls effets de bord du plan. Mode `changed` : diff depuis la base de fusion avec `baseRef`.
- * Mode `full` : tous les fichiers suivis de `src/`, en entier, pondérés par leur nombre de lignes.
- * Les fichiers du domaine sont lus avec le compilateur TypeScript pour pouvoir être coupés.
+ * Mode `full` : tous les fichiers suivis de `src/`, en entier. Les fichiers du domaine, et en mode
+ * `full` ceux du groupe `core`, sont lus avec le compilateur TypeScript pour pouvoir être coupés ;
+ * en mode `full`, les mutants des fichiers `core` sont comptés pour les peser.
  */
-export function collectChanges({
+export async function collectChanges({
   mode,
   baseRef = 'origin/develop',
   cwd = process.cwd(),
@@ -354,7 +439,8 @@ export function collectChanges({
       ranges: [],
       weight: readFileSync(path.join(cwd, file), 'utf8').split('\n').length,
     }));
-    return { base: '', changes: withOutlines(changes, cwd, scopeOf) };
+    const outlined = withOutlines(changes, cwd, scopeOf, ['domain', 'core']);
+    return { base: '', changes: await withMutants(outlined, cwd, scopeOf) };
   }
   const base = git(['merge-base', baseRef, 'HEAD'], cwd).trim();
   const diff = git(
@@ -374,5 +460,5 @@ export function collectChanges({
     ],
     cwd,
   );
-  return { base, changes: withOutlines(parseDiff(diff), cwd, scopeOf) };
+  return { base, changes: withOutlines(parseDiff(diff), cwd, scopeOf, ['domain']) };
 }
