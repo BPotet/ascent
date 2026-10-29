@@ -1,3 +1,4 @@
+import type { AttackKind } from '../../../../../domain/battle/attacks';
 import { artPalette } from '../../artPalette';
 import { grid, type Point, type Sprite } from '../Sprite';
 
@@ -24,6 +25,26 @@ export interface AnimationAnchors {
 }
 
 /**
+ * Les poses d'un coup (`attackPoses`, voir `docs/glossary.md`) d'une entité, pour un type de coup :
+ * les poses propres à ce coup, qui remplacent pour lui celles de son animation complète, avec
+ * leurs ancrages, à la taille de l'entité (`w` × `h`).
+ */
+export interface AttackPoses<Frame extends string = string> {
+  /** Le nom du coup dans l'Atelier ; il sert à la lecture des données et n'est jamais affiché. */
+  readonly move: string;
+  readonly frames: Readonly<Partial<Record<Frame, readonly string[]>>>;
+  /** Les ancrages de chaque pose du coup : une entrée par pose de `frames`. */
+  readonly anchors: Readonly<Partial<Record<Frame, AnimationAnchors>>>;
+  /**
+   * La portée de la ruée : la part du chemin vers le héros à l'impact, qui remplace le haut de la
+   * ruée pour ce coup. Absente, celle d'aujourd'hui.
+   */
+  readonly reach?: number;
+  /** L'élévation de chaque pose, en pixels d'art entiers, vers le haut. Absente, 0. */
+  readonly lift?: Readonly<Partial<Record<Frame, number>>>;
+}
+
+/**
  * L'animation complète (`FullAnimation`, voir `docs/glossary.md`) d'un ennemi ou d'un héros : ses
  * poses, leurs ancrages, sa palette et sa palette rouge (celle du coup imparable, mêmes indices
  * que `pal`).
@@ -39,6 +60,8 @@ export interface FullAnimation<Frame extends string = string> {
   readonly red?: readonly string[];
   readonly frames: Readonly<Record<Frame, readonly string[]>>;
   readonly anchors: Readonly<Record<Frame, AnimationAnchors>>;
+  /** Les poses d'un coup, par type de coup : absentes pour la plupart des entités (#139). */
+  readonly attackPoses?: Readonly<Partial<Record<AttackKind, AttackPoses<Frame>>>>;
 }
 
 /** L'image d'un asset validé (`AssetImage`) : un objet, une image fixe. */
