@@ -45,8 +45,8 @@ const args = process.argv.slice(2);
 const mode = process.env.MUTATION_MODE === 'full' || args.includes('--full') ? 'full' : 'changed';
 const baseRef = process.env.BASE_REF || 'origin/develop';
 
-function plan(ui) {
-  const { base, changes } = collectChanges({ mode, baseRef });
+async function plan(ui) {
+  const { base, changes } = await collectChanges({ mode, baseRef });
   return {
     base,
     shards: buildPlan({ mode, ui, changes }),
@@ -88,7 +88,7 @@ function runShard(shard, expectedShards) {
 
 async function main() {
   const ui = uiOption({ env: process.env, args });
-  const { base, shards, notice } = plan(ui);
+  const { base, shards, notice } = await plan(ui);
   const since = mode === 'full' ? '(full mode)' : `${baseRef} (${base})`;
 
   if (args.includes('--plan')) {

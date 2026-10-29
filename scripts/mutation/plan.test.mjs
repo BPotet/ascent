@@ -5,10 +5,12 @@ import {
   assertMatches,
   buildPlan,
   CHUNK_LINES,
+  CHUNK_MUTANTS,
   chunkAtStatements,
   classify,
   escapeGlob,
   isRetained,
+  mutantLines,
   mutateEntries,
   outline,
   parseDiff,
@@ -291,6 +293,50 @@ describe('chunkAtStatements', () => {
     const chunks = chunkAtStatements({ lineCount: 30, statements: ranges([1, 10], [10, 30]) }, 12);
     assert.deepEqual(chunks, ranges([1, 30]));
   });
+
+  it('keeps a range exactly at the limit whole', () => {
+    const chunks = chunkAtStatements({ lineCount: 20, statements: ranges([1, 9], [10, 20]) }, 20);
+    assert.deepEqual(chunks, ranges([1, 20]));
+  });
+
+  // Issue #134 : `BattleSession.ts` est presque entièrement une seule classe.
+  const withMembers = (start, end, ...members) => ({ start, end, members: ranges(...members) });
+
+  it('cuts a class longer than the limit between its members', () => {
+    const statements = [
+      { start: 1, end: 2 },
+      withMembers(4, 60, [5, 6], [8, 25], [27, 44], [46, 59]),
+    ];
+    const chunks = chunkAtStatements({ lineCount: 61, statements }, 25);
+    assert.deepEqual(chunks, ranges([1, 25], [26, 44], [45, 61]));
+  });
+
+  it('keeps a class within the limit whole, members or not', () => {
+    const statements = [{ start: 1, end: 10 }, withMembers(12, 30, [13, 14], [16, 20], [22, 29])];
+    const chunks = chunkAtStatements({ lineCount: 30, statements }, 20);
+    assert.deepEqual(chunks, ranges([1, 10], [11, 30]));
+  });
+
+  it('keeps a class without members whole', () => {
+    const chunks = chunkAtStatements({ lineCount: 50, statements: [withMembers(1, 50)] }, 10);
+    assert.deepEqual(chunks, ranges([1, 50]));
+  });
+
+  it('measures the ranges with the given size, the number of mutants for the core', () => {
+    // Un mutant par ligne de 1 à 10, aucun ensuite : la limite de 6 coupe après 6 lignes, puis
+    // garde les lignes 7 à 40 ensemble (4 mutants seulement).
+    const statements = Array.from({ length: 20 }, (_, index) => ({
+      start: index * 2 + 1,
+      end: index * 2 + 2,
+    }));
+    const mutants = Array.from({ length: 10 }, (_, index) => ({
+      start: index + 1,
+      end: index + 1,
+    }));
+    const size = ({ start, end }) => mutants.filter((m) => m.start >= start && m.end <= end).length;
+    const chunks = chunkAtStatements({ lineCount: 40, statements }, 6, size);
+    assert.deepEqual(chunks, ranges([1, 6], [7, 40]));
+  });
 });
 
 describe('outline', () => {
@@ -316,6 +362,43 @@ describe('outline', () => {
         { start: 9, end: 9 },
       ],
     });
+  });
+
+  it('reads the members of a class declaration', () => {
+    const source = [
+      'export class A {', // 1
+      '  private x = 1;', // 2
+      '', // 3
+      '  /** A method. */', // 4
+      '  m(): number {', // 5
+      '    return this.x;', // 6
+      '  }', // 7
+      '}', // 8
+    ].join('\n');
+    assert.deepEqual(outline(source, 'a.ts').statements, [
+      {
+        start: 1,
+        end: 8,
+        members: [
+          { start: 2, end: 2 },
+          { start: 5, end: 7 },
+        ],
+      },
+    ]);
+  });
+});
+
+describe('mutantLines', () => {
+  it('gives the line ranges of the mutants of each file, as the instrumenter of Stryker', async () => {
+    const byFile = await mutantLines([
+      { name: 'src/a.ts', content: 'export const f = (x: number) =>\n  x > 1;\n' },
+      { name: 'src/types.ts', content: 'export type T = { a: number };\n' },
+    ]);
+    assert.deepEqual(byFile.get('src/types.ts'), []);
+    const mutants = byFile.get('src/a.ts');
+    assert.ok(mutants.length >= 3, `expected several mutants, got ${mutants.length}`);
+    assert.ok(mutants.some(({ start, end }) => start === 2 && end === 2));
+    assert.ok(mutants.every(({ start, end }) => start >= 1 && end <= 2 && start <= end));
   });
 });
 
@@ -373,9 +456,9 @@ export class Counter {
     end: { line: end - 1, column: Number.MAX_SAFE_INTEGER },
   });
 
-  async function mutants(mutate) {
+  async function mutants(mutate, content = SAMPLE) {
     const instrumenter = new Instrumenter(silent);
-    const result = await instrumenter.instrument([{ name: 'sample.ts', content: SAMPLE, mutate }], {
+    const result = await instrumenter.instrument([{ name: 'sample.ts', content, mutate }], {
       plugins: null,
       excludedMutations: [],
       ignorers: [],
@@ -392,6 +475,76 @@ export class Counter {
     const whole = await mutants(true);
     const perRange = [];
     for (const chunk of chunks) perRange.push(...(await mutants([strykerRange(chunk)])));
+    assert.ok(whole.length > 30, `expected a meaningful sample, got ${whole.length} mutants`);
+    assert.deepEqual([...perRange].sort(), [...whole].sort());
+  });
+
+  // Issue #134 : une classe plus longue que la limite est coupée entre deux de ses membres.
+  const CLASS_SAMPLE = `import { clamp } from './clamp';
+
+type Listener = (value: number) => void;
+
+/** Une session : propriétés, constructeur, accesseurs, méthodes et fonctions fléchées. */
+export class Session {
+  private value = 0;
+  private readonly listeners = new Set<Listener>();
+  static readonly LIMIT = 100;
+  #ticks = [1, 2, 3];
+
+  constructor(
+    private readonly step: number,
+    private readonly label = 'session',
+  ) {
+    if (step <= 0) {
+      throw new Error('A positive step is expected.');
+    }
+  }
+
+  get current(): number {
+    return this.value;
+  }
+
+  set current(value: number) {
+    this.value = clamp(value, 0, Session.LIMIT);
+  }
+
+  /** Avance d'un pas, et prévient les abonnés. */
+  advance(times = 1): number {
+    for (let index = 0; index < times; index += 1) {
+      this.value = Math.min(this.value + this.step, Session.LIMIT);
+    }
+    this.listeners.forEach((listener) => listener(this.value));
+    return this.value;
+  }
+
+  readonly subscribe = (listener: Listener): (() => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  describe(): string {
+    return this.value > 50 && this.label !== '' ? \`\${this.label}: high\` : 'low';
+  }
+
+  private static isEven(value: number): boolean {
+    return value % 2 === 0 || value === -0;
+  }
+}
+
+export const done = (session: Session): boolean => session.current >= Session.LIMIT;
+`;
+
+  it('finds exactly the mutants of the whole file when a class is cut between its members', async () => {
+    const file = outline(CLASS_SAMPLE, 'sample.ts');
+    const session = file.statements.find((statement) => statement.members);
+    const chunks = chunkAtStatements(file, 12);
+    const inside = chunks.filter(({ start }) => start > session.start && start <= session.end);
+    assert.ok(inside.length >= 3, `expected cuts inside the class, got ${inside.length}`);
+    const whole = await mutants(true, CLASS_SAMPLE);
+    const perRange = [];
+    for (const chunk of chunks) {
+      perRange.push(...(await mutants([strykerRange(chunk)], CLASS_SAMPLE)));
+    }
     assert.ok(whole.length > 30, `expected a meaningful sample, got ${whole.length} mutants`);
     assert.deepEqual([...perRange].sort(), [...whole].sort());
   });
@@ -511,11 +664,13 @@ describe('buildPlan', () => {
     assert.equal(shards.flatMap((shard) => shard.mutate).length, 8);
   });
 
-  it('splits the core into 6 shards in full mode', () => {
+  // Issue #134 : à 17 à 39 s par mutant, 6 parts ne tenaient pas dans le délai de 120 minutes.
+  it('splits the core into 10 shards in full mode', () => {
     const shards = buildPlan({ mode: 'full', changes: coreFiles(12) });
+    assert.equal(PARTS.full.core, 10);
     assert.deepEqual(
       shards.map((shard) => shard.id),
-      Array.from({ length: 6 }, (_, index) => `core-${index + 1}`),
+      Array.from({ length: 10 }, (_, index) => `core-${index + 1}`),
     );
     assert.ok(shards.every((shard) => shard.thresholdClass === 'newCode'));
   });
@@ -670,17 +825,82 @@ describe('buildPlan', () => {
     assert.deepEqual(shards[0].mutate, ['src/domain/a/A.ts']);
   });
 
-  it('never cuts a file outside the domain', () => {
-    const core = {
-      ...bigDomainFile('src/application/useCases/big.ts'),
-      added: true,
-      ranges: [],
-      weight: 1512,
-    };
-    const shards = buildPlan({ mode: 'full', changes: [core] });
+  // Issue #134 : en release, un élément `core` pèse son nombre de mutants, et un fichier `core`
+  // de plus de `CHUNK_MUTANTS.core` mutants est coupé en plages.
+  const fullCoreFile = (file, lineCount, mutantCount) => ({
+    file,
+    added: true,
+    ranges: [],
+    weight: lineCount,
+    lineCount,
+    // Une instruction de premier niveau de 9 lignes toutes les 10 lignes.
+    statements: Array.from({ length: Math.floor(lineCount / 10) }, (_, index) => ({
+      start: index * 10 + 1,
+      end: index * 10 + 9,
+    })),
+    // Des mutants d'une ligne, répartis sur les instructions.
+    mutants: Array.from({ length: mutantCount }, (_, index) => {
+      const line = (index % Math.floor(lineCount / 10)) * 10 + 1 + (index % 9);
+      return { start: line, end: line };
+    }),
+  });
+
+  it('weighs a core file by its mutants in full mode', () => {
+    const shards = buildPlan({
+      mode: 'full',
+      changes: [
+        fullCoreFile('src/application/a.ts', 300, 10),
+        fullCoreFile('src/application/b.ts', 80, 90),
+        fullCoreFile('src/application/c.ts', 100, 50),
+        fullCoreFile('src/application/d.ts', 100, 45),
+      ],
+    });
+    // Les parts suivent le poids décroissant. Pondérés par leurs lignes, A viendrait en premier.
     assert.deepEqual(
       shards.map((shard) => shard.mutate),
-      [['src/application/useCases/big.ts']],
+      [
+        ['src/application/b.ts'],
+        ['src/application/c.ts'],
+        ['src/application/d.ts'],
+        ['src/application/a.ts'],
+      ],
+    );
+  });
+
+  it('cuts a core file with many mutants into ranges in full mode, each under the limit', () => {
+    const big = fullCoreFile('src/application/useCases/big.ts', 600, 3 * CHUNK_MUTANTS.core);
+    const shards = buildPlan({ mode: 'full', changes: [big] });
+    const chunks = shards
+      .flatMap((shard) => shard.mutate)
+      .map((entry) => {
+        const match = /^src\/application\/useCases\/big\.ts:(\d+)-(\d+)$/.exec(entry);
+        assert.ok(match, entry);
+        return { start: Number(match[1]), end: Number(match[2]) };
+      })
+      .sort((a, b) => a.start - b.start);
+    assert.ok(shards.length >= 3, `expected several shards, got ${shards.length}`);
+    assert.equal(chunks[0].start, 1);
+    assert.equal(chunks.at(-1).end, 600);
+    let total = 0;
+    for (const [index, { start, end }] of chunks.entries()) {
+      if (index > 0) assert.equal(start, chunks[index - 1].end + 1);
+      const count = big.mutants.filter((m) => m.start >= start && m.end <= end).length;
+      assert.ok(count <= CHUNK_MUTANTS.core, `${start}-${end}: ${count} mutants`);
+      total += count;
+    }
+    assert.equal(total, big.mutants.length);
+  });
+
+  it('never cuts a core file on a pull request', () => {
+    const core = {
+      ...fullCoreFile('src/application/useCases/big.ts', 600, 3 * CHUNK_MUTANTS.core),
+      added: false,
+      ranges: [{ start: 1, end: 600 }],
+    };
+    const shards = buildPlan({ mode: 'changed', changes: [core] });
+    assert.deepEqual(
+      shards.map((shard) => shard.mutate),
+      [['src/application/useCases/big.ts:1-600']],
     );
   });
 
