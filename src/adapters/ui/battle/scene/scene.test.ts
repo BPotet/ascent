@@ -292,7 +292,9 @@ describe('enemyPose with attack poses (#139)', () => {
     for (const now of instants(WIND_UP_AT, END)) {
       expect(enemyPose(BOLT, now, false, TWINS).reach).toBeLessThanOrEqual(0.5 + 1e-9);
     }
-    // Puis la récupération revient au repos comme aujourd'hui.
+    // Puis la récupération revient au repos comme aujourd'hui, depuis la moitié du chemin.
+    expect(enemyPose(BOLT, 2_585, false, TWINS).reach).toBeCloseTo(0.5 - (0.5 - 0.3) * 0.75);
+    expect(enemyPose(BOLT, 2_585, false).reach).toBeCloseTo(0.85 - (0.85 - 0.3) * 0.75);
     expect(enemyPose(BOLT, 2_670, false, TWINS).reach).toBeCloseTo(0.3);
     // Le coup sans portée de l'Atelier garde celle d'aujourd'hui.
     expect(enemyPose(SHOCKWAVE, 3_100, false, TWINS).reach).toBeCloseTo(0.85);
