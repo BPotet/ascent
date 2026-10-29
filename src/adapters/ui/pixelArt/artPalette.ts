@@ -42,6 +42,8 @@ export const artPalette = {
     '#C9C2B0',
     '#B32E3C',
     '#FF8E8E',
+    // La palette rouge du Chevalier déchu et du Prieur sans visage (#138, ADR 0010 § 4).
+    '#5A1420',
     // La Sentinelle 2.5D (#140), à la suite : les codes existants ne bougent pas.
     '#8A6A42',
     '#B4B9C8',

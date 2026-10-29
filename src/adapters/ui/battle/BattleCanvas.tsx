@@ -55,7 +55,7 @@ import {
 import { HERO_ANIMATIONS } from '../pixelArt/sprites/battle/heroAnimations';
 import { enemyPose, restPose } from './scene/enemyPose';
 import { heroFrame } from './scene/heroFrame';
-import type { EnemySlot, SceneGeometry } from './scene/sceneGeometry';
+import { spriteOrigin, type EnemySlot, type SceneGeometry } from './scene/sceneGeometry';
 import { glintSprites, hurtLevel, impactFlash, sparkFrame } from './scene/sceneEffects';
 import type { HeroPose, SceneEnemy, SceneSpark, SceneTimeline } from './sceneTypes';
 
@@ -301,17 +301,22 @@ function AtlasSprite<Frame extends BattleFrame>({
   );
 }
 
-/** La pose d'un ennemi à chaque image : active (son action), ou au repos. */
+/**
+ * La pose d'un ennemi à chaque image : active (son action), ou au repos. Sa case part de `origin`,
+ * calculée sur le fil JS (`spriteOrigin`), jamais dans le worklet.
+ */
 function useEnemyLook(
   enemy: SceneEnemy,
   index: number,
   slot: EnemySlot,
+  origin: { readonly x: number; readonly y: number },
   clock: SharedValue<number>,
   timeline: SharedValue<SceneTimeline | null>,
   reducedMotion: boolean,
 ): DerivedValue<SpriteLook<EnemyFrame>> {
   const { standing, down, losingAction, rising, downSince } = enemy;
-  const { sprite, reach } = slot;
+  const { reach } = slot;
+  const { x, y } = origin;
   return useDerivedValue<SpriteLook<EnemyFrame>>(() => {
     'worklet';
     const now = clock.get();
@@ -322,13 +327,13 @@ function useEnemyLook(
         frame: pose.frame,
         tier: pose.tier,
         red: pose.red,
-        x: sprite.x + Math.round((reach.x * pose.reach + pose.jitter) / 2) * 2,
-        y: sprite.y + Math.round((reach.y * pose.reach) / 2) * 2,
+        x: x + Math.round((reach.x * pose.reach + pose.jitter) / 2) * 2,
+        y: y + Math.round((reach.y * pose.reach) / 2) * 2,
       };
     }
     const rest = restPose({ standing, down, losingAction, rising, downSince }, index, now);
-    return { frame: rest.frame, tier: 0, red: false, x: sprite.x, y: sprite.y };
-  }, [clock, timeline, index, standing, down, losingAction, rising, downSince, sprite, reach]);
+    return { frame: rest.frame, tier: 0, red: false, x, y };
+  }, [clock, timeline, index, standing, down, losingAction, rising, downSince, x, y, reach]);
 }
 
 /** Un palier de la vignette rouge, visible seulement à son palier. */
@@ -394,12 +399,18 @@ export function BattleScene({
       ),
     [width, height],
   );
+  // L'origine de chaque case, à la taille de l'entité (ADR 0010 § 3), calculée hors des worklets.
+  const origins = [0, 1, 2].map((index) => {
+    const { table } = scene.characters[(enemies[index] ?? NO_ENEMY).kind];
+    return spriteOrigin((slots[index] ?? NO_SLOT).sprite, table.cellWidth, table.cellHeight);
+  });
   // Trois ennemis au plus : un crochet par place, dans le même ordre à chaque rendu.
   const looks = [
     useEnemyLook(
       enemies[0] ?? NO_ENEMY,
       0,
       slots[0] ?? NO_SLOT,
+      origins[0]!,
       clock,
       sharedTimeline,
       reducedMotion,
@@ -408,6 +419,7 @@ export function BattleScene({
       enemies[1] ?? NO_ENEMY,
       1,
       slots[1] ?? NO_SLOT,
+      origins[1]!,
       clock,
       sharedTimeline,
       reducedMotion,
@@ -416,6 +428,7 @@ export function BattleScene({
       enemies[2] ?? NO_ENEMY,
       2,
       slots[2] ?? NO_SLOT,
+      origins[2]!,
       clock,
       sharedTimeline,
       reducedMotion,
@@ -474,18 +487,18 @@ export function BattleScene({
     }
     for (let index = 0; index < kinds.length; index += 1) {
       const kind = kinds[index];
-      const slot = slots[index];
+      const origin = origins[index];
       const look = looks[index];
-      const shown = stunned[index] === true && kind !== undefined && slot !== undefined;
+      const shown = stunned[index] === true && kind !== undefined && origin !== undefined;
       if (!shown || look === undefined) continue;
       // Les étoiles suivent la tête de la pose affichée : `hurt`, puis `down`.
       const [headX, headY] = anchors[kind][look.get().frame].head;
       const turn = Math.floor(now / 125) % 4;
       const hop = hops[index] === true ? 4 : 0;
-      place('stars', turn, slot.sprite.x + headX * 2, slot.sprite.y + (headY - 4) * 2 - hop);
+      place('stars', turn, origin.x + headX * 2, origin.y + (headY - 4) * 2 - hop);
     }
     return placed;
-  }, [clock, sharedTimeline, sharedSpark, chest, kinds, anchors, stunned, hops, slots, looks]);
+  }, [clock, sharedTimeline, sharedSpark, chest, kinds, anchors, stunned, hops, origins, looks]);
   const effectSprites = useRectBuffer(EFFECT_SLOTS, (rect, slot) => {
     'worklet';
     const placed = effects.get();

@@ -19,16 +19,18 @@ describe('artPalette', () => {
   const { roles, tints } = artPalette;
 
   it('keeps the tints of the tower prototype, 0 being transparent', () => {
-    expect(tints).toHaveLength(37);
+    expect(tints).toHaveLength(38);
     expect(tints[0]).toBeNull();
     expect(tints[1]).toBe('#06070C');
     expect(tints[8]).toBe('#F2D49B');
     expect(tints[30]).toBe('#FF8E8E');
+    // La palette rouge du Chevalier déchu et du Prieur sans visage (#138), ajoutée en fin.
+    expect(tints[31]).toBe('#5A1420');
     tints.slice(1).forEach((tint) => expect(tint).toMatch(/^#[0-9A-F]{6}$/));
   });
 
   it('keeps the code of every tint, the tints of the Sentinel 2.5D (#140) added at the end', () => {
-    expect(tints.slice(1, 31)).toEqual([
+    expect(tints.slice(1, 32)).toEqual([
       '#06070C',
       '#10131F',
       '#1C2133',
@@ -59,8 +61,9 @@ describe('artPalette', () => {
       '#C9C2B0',
       '#B32E3C',
       '#FF8E8E',
+      '#5A1420',
     ]);
-    expect(tints.slice(31, 37)).toEqual([
+    expect(tints.slice(32, 38)).toEqual([
       '#8A6A42',
       '#B4B9C8',
       '#646B80',
