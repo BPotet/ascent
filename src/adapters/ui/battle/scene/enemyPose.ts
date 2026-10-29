@@ -1,4 +1,5 @@
-import type { EnemyFrame } from '../../pixelArt/sprites/battle/battleCharacters';
+import type { AttackKind } from '../../../../domain/battle/attacks';
+import type { AttackMotions, EnemyFrame } from '../../pixelArt/sprites/battle/battleCharacters';
 import type { SceneEnemy, SceneTimeline } from '../sceneTypes';
 
 /** Une image dure 83 ms : 12 images par seconde, comptées depuis l'instant nominal (ADR 0008). */
@@ -6,7 +7,9 @@ export const FRAME_MS = 1_000 / 12;
 
 /**
  * La pose d'un ennemi à une image : son image, son liseré, sa palette rouge, sa portée (la part du
- * chemin vers le héros, 0,85 au plus) et son tremblement, en dp.
+ * chemin vers le héros, 0,85 au plus) et son tremblement, en dp. `poses` est le type de coup dont
+ * l'image vient (ses poses d'un coup, #139), `null` pour l'animation complète ; `lift` est
+ * l'élévation de l'image, en pixels d'art entiers.
  */
 export interface EnemyPose {
   readonly frame: EnemyFrame;
@@ -14,6 +17,8 @@ export interface EnemyPose {
   readonly red: boolean;
   readonly reach: number;
   readonly jitter: number;
+  readonly poses: AttackKind | null;
+  readonly lift: number;
 }
 
 // Stryker disable all: poses de la maquette (`pxAct`, `actPose`), mutées seulement avec `mutation:ui`.
@@ -30,6 +35,8 @@ const GLINT_HOLD_MS = 70;
 const SUPPORT_REACH = 0.12;
 /** Avec « réduire les animations », l'ennemi ne parcourt qu'un quart du chemin. */
 const REDUCED_MOTION = 0.25;
+/** Sans poses d'un coup : la table d'un ennemi qui n'en a pas. */
+const NO_MOTIONS: AttackMotions = {};
 // Stryker restore all
 
 function clamp01(value: number): number {
@@ -67,17 +74,11 @@ function pose(
   motion: number,
 ): EnemyPose {
   'worklet';
-  return { frame, tier, red, reach: reach * motion, jitter: jitter * motion };
+  return { frame, tier, red, reach: reach * motion, jitter: jitter * motion, poses: null, lift: 0 };
 }
 
-/**
- * La pose de l'ennemi actif (`enemyPose`, `pxAct` et `actPose` de la maquette) : l'avancée en
- * `step*` sans rouge (C2.8) ; l'anticipation propre à chaque coup, dont l'hésitation du coup
- * retardé ; la ruée, une seule image `lunge` sur [impact − 80, impact[ ; l'image `impact` à
- * l'impact ; la récupération en 170 ms, le retour en 250 ms. La fausse ruée s'arrête à 74 % de la
- * distance, sans image d'impact. Le rouge du coup imparable commence avec la préparation.
- */
-export function enemyPose(timeline: SceneTimeline, now: number, reduced: boolean): EnemyPose {
+/** L'image de l'ennemi actif à l'instant `now`, le haut de sa ruée en `hit`. */
+function framePose(timeline: SceneTimeline, now: number, reduced: boolean, hit: number): EnemyPose {
   'worklet';
   const t = sceneInstant(timeline, now);
   const motion = reduced ? REDUCED_MOTION : 1;
@@ -125,7 +126,7 @@ export function enemyPose(timeline: SceneTimeline, now: number, reduced: boolean
   const rest = j < impacts.length - 1 ? ADVANCE - 0.06 : ADVANCE;
   if (t >= impact) {
     const recovery = clamp01((t - impact) / RECOVERY_MS);
-    return pose('impact', 2, red, HIT - (HIT - rest) * ease(recovery), 0, motion);
+    return pose('impact', 2, red, hit - (hit - rest) * ease(recovery), 0, motion);
   }
   if (t >= impact - RUSH_MS) {
     const rush = (t - (impact - RUSH_MS)) / RUSH_MS;
@@ -133,7 +134,7 @@ export function enemyPose(timeline: SceneTimeline, now: number, reduced: boolean
       'lunge',
       2,
       red,
-      ADVANCE - BACK + (HIT - (ADVANCE - BACK)) * rush * rush,
+      ADVANCE - BACK + (hit - (ADVANCE - BACK)) * rush * rush,
       0,
       motion,
     );
@@ -194,6 +195,35 @@ export function enemyPose(timeline: SceneTimeline, now: number, reduced: boolean
     }
   }
   return pose(frame, tier, red, reach, jitter, motion);
+}
+
+/**
+ * La pose de l'ennemi actif (`enemyPose`, `pxAct` et `actPose` de la maquette) : l'avancée en
+ * `step*` sans rouge (C2.8) ; l'anticipation propre à chaque coup, dont l'hésitation du coup
+ * retardé ; la ruée, une seule image `lunge` sur [impact − 80, impact[ ; l'image `impact` à
+ * l'impact ; la récupération en 170 ms, le retour en 250 ms. La fausse ruée s'arrête à 74 % de la
+ * distance, sans image d'impact. Le rouge du coup imparable commence avec la préparation.
+ *
+ * Avec la table `motions` de l'ennemi actif (#139), l'image choisie, aux mêmes instants, vient des
+ * poses d'un coup quand l'attaque en a pour elle : `poses` donne alors le type de coup, et `lift`
+ * son élévation (le quart, arrondi au pixel d'art, en mouvement réduit). La portée du coup, quand
+ * l'Atelier en donne une, remplace le haut de la ruée. Jamais pendant l'avancée, une Garde ou un
+ * Relever : le type de coup n'y est pas connu.
+ */
+export function enemyPose(
+  timeline: SceneTimeline,
+  now: number,
+  reduced: boolean,
+  motions: AttackMotions = NO_MOTIONS,
+): EnemyPose {
+  'worklet';
+  const own =
+    timeline.kind === 'attack' && timeline.attack !== null ? motions[timeline.attack] : undefined;
+  const shown = framePose(timeline, now, reduced, own?.reach ?? HIT);
+  const lift = own?.lift[shown.frame];
+  if (lift === undefined) return shown;
+  const scaled = reduced ? Math.round(lift * REDUCED_MOTION) : lift;
+  return { ...shown, poses: timeline.attack, lift: scaled };
 }
 
 /** La pose d'un ennemi qui n'agit pas : son image, ses étoiles (position 0 à 3) et leur saut. */

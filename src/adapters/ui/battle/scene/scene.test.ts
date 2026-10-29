@@ -2,6 +2,11 @@
 // fil UI, vérifiées ici aux instants des écrans de la maquette v4.1.
 import type { AttackKind } from '../../../../domain/battle/attacks';
 import { glintsOf } from '../../../../domain/battle/glints';
+import {
+  attackMotion,
+  type AttackMotions,
+  type EnemyFrame,
+} from '../../pixelArt/sprites/battle/battleCharacters';
 import type { SceneTimeline } from '../sceneTypes';
 import { FRAME_MS, enemyPose, restPose } from './enemyPose';
 import { heroFrame } from './heroFrame';
@@ -200,6 +205,161 @@ describe('enemyPose (pxAct, actPose)', () => {
   });
 });
 
+describe('enemyPose with attack poses (#139)', () => {
+  const TWINS = attackMotion('twins');
+  const WARDEN = attackMotion('ossuaryWarden');
+  const BOLT = attack('basic', [2_500]);
+  const SHOCKWAVE = attack('delayedPerilous', [3_100]);
+  const SHINBONES = attack('double', [2_400, 2_820]);
+  const BURIAL = attack('perilous', [2_700]);
+  const END = 3_600;
+
+  /** Chaque instant de `from` à `to`, de 5 en 5 ms. */
+  const instants = (from: number, to: number) =>
+    Array.from({ length: Math.ceil((to - from) / 5) }, (_, index) => from + index * 5);
+
+  it('never takes an attack pose while stepping in, leaning in or before the wind-up (C2.8)', () => {
+    const support: SceneTimeline = { ...STEP_IN, kind: 'support', until: WIND_UP_AT + 400 };
+    for (const motion of [TWINS, WARDEN]) {
+      for (const now of instants(STEP_IN_AT, WIND_UP_AT + 400)) {
+        for (const timeline of [STEP_IN, support, { ...BOLT, windUpAt: WIND_UP_AT + 400 }]) {
+          expect(enemyPose(timeline, now, false, motion)).toMatchObject({ poses: null, lift: 0 });
+        }
+      }
+    }
+  });
+
+  it('shows the same frames at the same instants as without attack poses: the durations do not change', () => {
+    for (const [timeline, motion] of [
+      [BOLT, TWINS],
+      [SHOCKWAVE, TWINS],
+      [SHINBONES, WARDEN],
+      [BURIAL, WARDEN],
+    ] as const) {
+      for (const now of instants(WIND_UP_AT, END)) {
+        const { frame, tier, red, jitter } = enemyPose(timeline, now, false);
+        expect([now, enemyPose(timeline, now, false, motion)]).toMatchObject([
+          now,
+          { frame, tier, red, jitter },
+        ]);
+      }
+    }
+  });
+
+  it.each([
+    ['basic', ['ant0', 'ant1', 'ant2', 'lunge', 'impact', 'rec0']],
+    ['delayedPerilous', ['ant0', 'ant1', 'ant2', 'hes', 'lunge', 'impact']],
+  ] as const)('takes the %s poses of the Twins for its own frames only', (kind, own) => {
+    const timeline = kind === 'basic' ? BOLT : SHOCKWAVE;
+    const seen = new Set<string>();
+    for (const now of instants(WIND_UP_AT, END)) {
+      const pose = enemyPose(timeline, now, false, TWINS);
+      seen.add(`${pose.frame}:${pose.poses}`);
+      expect([now, pose.frame, pose.poses]).toEqual([
+        now,
+        pose.frame,
+        (own as readonly EnemyFrame[]).includes(pose.frame) ? kind : null,
+      ]);
+    }
+    for (const frame of own) expect(seen).toContain(`${frame}:${kind}`);
+    // Les images absentes du coup viennent de l'animation complète.
+    expect(seen).toContain('idle0:null');
+    expect(seen).toContain(kind === 'basic' ? 'rec1:null' : 'rec0:null');
+  });
+
+  it('reaches only half of the way for the crossbow bolt, from the rush to the impact', () => {
+    expect(enemyPose(BOLT, 2_500, false, TWINS).reach).toBeCloseTo(0.5);
+    expect(enemyPose(BOLT, 2_500, false).reach).toBeCloseTo(0.85);
+    // La ruée part du même point et monte sans saut jusqu'à la moitié du chemin.
+    expect(enemyPose(BOLT, 2_420, false, TWINS).reach).toBeCloseTo(0.3 - 0.14);
+    expect(enemyPose(BOLT, 2_499, false, TWINS).reach).toBeCloseTo(0.16 + 0.34 * (79 / 80) ** 2);
+    for (const now of instants(WIND_UP_AT, END)) {
+      expect(enemyPose(BOLT, now, false, TWINS).reach).toBeLessThanOrEqual(0.5 + 1e-9);
+    }
+    // Puis la récupération revient au repos comme aujourd'hui.
+    expect(enemyPose(BOLT, 2_670, false, TWINS).reach).toBeCloseTo(0.3);
+    // Le coup sans portée de l'Atelier garde celle d'aujourd'hui.
+    expect(enemyPose(SHOCKWAVE, 3_100, false, TWINS).reach).toBeCloseTo(0.85);
+  });
+
+  it('lifts each pose of the shockwave by its lift, in whole art pixels', () => {
+    const lifts: Partial<Record<EnemyFrame, number[]>> = {};
+    for (const now of instants(WIND_UP_AT, END)) {
+      const { frame, lift, poses } = enemyPose(SHOCKWAVE, now, false, TWINS);
+      if (poses !== null) lifts[frame] = [...new Set([...(lifts[frame] ?? []), lift])];
+      else expect([now, lift]).toEqual([now, 0]);
+    }
+    expect(lifts).toEqual({ ant0: [0], ant1: [6], ant2: [14], hes: [15], lunge: [5], impact: [0] });
+    expect(enemyPose(BOLT, 2_400, false, TWINS).lift).toBe(0);
+  });
+
+  it('with reduced motion, covers a quarter of the reach and lifts by a quarter, rounded to the art pixel', () => {
+    expect(enemyPose(BOLT, 2_500, true, TWINS).reach).toBeCloseTo(0.5 * 0.25);
+    const lifts: Partial<Record<EnemyFrame, number>> = {};
+    for (const now of instants(WIND_UP_AT, END)) {
+      const full = enemyPose(SHOCKWAVE, now, false, TWINS);
+      const reduced = enemyPose(SHOCKWAVE, now, true, TWINS);
+      expect([now, reduced.frame, reduced.poses, reduced.red]).toEqual([
+        now,
+        full.frame,
+        full.poses,
+        full.red,
+      ]);
+      if (reduced.poses !== null) lifts[reduced.frame] = reduced.lift;
+    }
+    expect(lifts).toEqual({ ant0: 0, ant1: 2, ant2: 4, hes: 4, lunge: 1, impact: 0 });
+  });
+
+  it('keeps the attack poses for the second segment of the two shinbones and for the held glint', () => {
+    expect(enemyPose(SHINBONES, 2_570, false, WARDEN)).toMatchObject({
+      frame: 'rec0',
+      poses: 'double',
+    });
+    expect(enemyPose(SHINBONES, 2_660, false, WARDEN)).toMatchObject({
+      frame: 'ant2',
+      poses: 'double',
+    });
+    // Le reflet double, tenu 70 ms sur la pose pleine.
+    const glint = SHINBONES.glints[1]!.at;
+    expect(enemyPose(SHINBONES, glint + 10, false, WARDEN)).toMatchObject({
+      frame: 'ant2',
+      poses: 'double',
+    });
+  });
+
+  it('plays the attack poses of the Ossuary warden for its phase 2 moves only, the ossuary burial in red', () => {
+    for (const now of instants(WIND_UP_AT, END)) {
+      const burial = enemyPose(BURIAL, now, false, WARDEN);
+      if (burial.poses !== null)
+        expect([now, burial.poses, burial.red]).toEqual([now, 'perilous', true]);
+      for (const timeline of [BASIC, attack('delayed', [3_100])]) {
+        expect([now, enemyPose(timeline, now, false, WARDEN).poses]).toEqual([now, null]);
+      }
+    }
+    expect(enemyPose(BURIAL, 2_700, false, WARDEN).poses).toBe('perilous');
+    expect(enemyPose(SHINBONES, 2_400, false, WARDEN).poses).toBe('double');
+  });
+
+  it('never takes an attack pose for the frames of a feint', () => {
+    const feint = attack('feint', [3_000], { feintAt: 2_200 });
+    const motion: AttackMotions = { feint: { reach: null, lift: { ant1: 3, ant2: 3 } } };
+    expect(enemyPose(feint, 2_150, false, motion)).toMatchObject({ frame: 'feint0', poses: null });
+    expect(enemyPose(feint, 2_210, false, motion)).toMatchObject({ frame: 'feint1', poses: null });
+    expect(enemyPose(feint, 2_300, false, motion)).toMatchObject({
+      frame: 'ant2',
+      poses: 'feint',
+      lift: 3,
+    });
+  });
+
+  it('takes no attack pose without the table of the active enemy', () => {
+    for (const now of instants(WIND_UP_AT, END)) {
+      expect(enemyPose(SHOCKWAVE, now, false)).toMatchObject({ poses: null, lift: 0 });
+      expect(enemyPose(SHOCKWAVE, now, false, {})).toMatchObject({ poses: null, lift: 0 });
+    }
+  });
+});
+
 describe('restPose', () => {
   const standing = {
     standing: true,
@@ -388,6 +548,9 @@ describe('sceneGeometry', () => {
     // Le Prieur sans visage (52 × 62) : 8 dp à gauche, 20 dp plus haut.
     const prior = spriteOrigin(sprite, 52, 62);
     expect(prior).toEqual({ x: sprite.x - 8, y: sprite.y - 20 });
+    // Les Jumeaux (54 × 54) : 10 dp à gauche, 4 dp plus haut ; la Gardienne (52 × 62), comme le
+    // Prieur (#139).
+    expect(spriteOrigin(sprite, 54, 54)).toEqual({ x: sprite.x - 10, y: sprite.y - 4 });
     // Le Chevalier déchu (44 × 54) : 4 dp plus haut.
     expect(spriteOrigin(sprite, 44, 54)).toEqual({ x: sprite.x, y: sprite.y - 4 });
     // Une largeur impaire en pixels d'art reste sur la grille de 2 dp.
