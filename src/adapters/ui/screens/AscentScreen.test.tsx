@@ -183,15 +183,31 @@ describe('AscentScreen with blessings and found items (#93)', () => {
     expect(
       screen.getByText('Hache rouillée · Arme · Commun · Brise-garde ×1,1 · Initiative −1'),
     ).toBeOnTheScreen();
-    expect(screen.getByTestId('item-silhouette', { includeHiddenElements: true })).toHaveProp(
-      'sprite',
-      'item-silhouette-weapon',
-    );
+    // L'image validée dans l'Atelier (#119), 24 × 24 pixels d'art à 3 dp : 72 dp.
+    const image = screen.getByTestId('item-image', { includeHiddenElements: true });
+    expect(image).toHaveProp('sprite', 'item-axe');
+    expect(image).toHaveProp('scale', 3);
+    expect(image).toHaveProp('pixelWidth', 24);
+    expect(image).toHaveProp('pixelHeight', 24);
+    expect(screen.queryByTestId('item-silhouette', { includeHiddenElements: true })).toBeNull();
     expect(screen.getByText('Tu portes : Épée courte · Initiative 0')).toBeOnTheScreen();
     fireEvent.press(screen.getByRole('button', { name: 'Équiper' }));
 
     expect(session.current()!.equipment.weapon).toBe('axe');
     expect(await screen.findByRole('header', { name: 'Choisis ta sortie' })).toBeOnTheScreen();
+  });
+
+  it('shows the validated image of the Crossbow, with its name and numbers (#119)', async () => {
+    await show({
+      ...between(startAscent(42), [{ kind: 'combat', groupSize: 2 }]),
+      foundItem: 'crossbow',
+    });
+
+    expect(screen.getByTestId('item-image', { includeHiddenElements: true })).toHaveProp(
+      'sprite',
+      'item-crossbow',
+    );
+    expect(screen.getByText('Arbalète · Arme · Rare · Initiative +1')).toBeOnTheScreen();
   });
 
   it('shows the Black knight armor in silhouette, with its provisional line and its numbers', async () => {
@@ -204,6 +220,7 @@ describe('AscentScreen with blessings and found items (#93)', () => {
       'sprite',
       'item-silhouette-armor',
     );
+    expect(screen.queryByTestId('item-image', { includeHiddenElements: true })).toBeNull();
     expect(screen.getByText('Lourde et lente.')).toBeOnTheScreen();
     expect(
       screen.getByText(
