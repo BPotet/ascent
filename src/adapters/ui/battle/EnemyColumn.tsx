@@ -38,8 +38,9 @@ const INTENT_ICONS: Readonly<Record<IntentCategory, IconName>> = {
  * ennemie épurée, le nom et les chiffres sont masqués. L'ennemi actif a son intention cernée de
  * lumière (de rouge sous le sceau) et sa plaque à 45 % ; les autres s'estompent. L'ennemi est
  * annoncé en entier au lecteur d'écran. Sa plaque est en cadre cranté ; la cible a un double cadre
- * d'or, une flèche au-dessus de son intention et son nom en gras, jamais la couleur seule (#120). Son sprite, ses étoiles et son socle sont dessinés par la
- * scène, derrière, à la place que donne `sceneGeometry`.
+ * d'or, une flèche au-dessus de son intention et son nom en gras, jamais la couleur seule (#120).
+ * Son sprite, ses étoiles et son socle sont dessinés par la scène, derrière, à la place que donne
+ * `sceneGeometry`.
  */
 export function EnemyColumn({
   view,
