@@ -51,10 +51,11 @@ describe('the tints of the Atelier', () => {
     expect(tintCode('#06070c')).toBe(1);
     expect(tintCode('#06070C')).toBe(1);
     expect(tintCode('#bfe6da')).toBe(20);
+    expect(tintCode('#5a1420')).toBe(31);
   });
 
   it('refuses a tint that is not in the art palette', () => {
-    expect(() => tintCode('#5a1420')).toThrow('#5a1420');
+    expect(() => tintCode('#123456')).toThrow('#123456');
   });
 
   it('finds every tint of the validated content in the art palette', () => {
