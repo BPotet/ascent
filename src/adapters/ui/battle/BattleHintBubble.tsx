@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { artPalette } from '../pixelArt/artPalette';
+import { artPixelSize } from '../pixelArt/artPixel';
 import { PixelFrame } from '../pixelArt/PixelFrame';
 import { pixelFont, textFont } from '../pixelArt/pixelTypography';
 import { battleColors } from '../theme/battleColors';
@@ -51,6 +52,7 @@ export function BattleHintBubble({
         >
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.text}>{text}</Text>
+          <View pointerEvents="none" style={styles.shade} />
         </PixelFrame>
         <View testID="battle-hint-arrow" style={[styles.arrow, { left: arrow }]} />
       </Pressable>
@@ -83,6 +85,15 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 34,
     paddingHorizontal: 14,
+  },
+  // L'ombre basse claire de la maquette (C8), sous le trait d'encre.
+  shade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 2 * artPixelSize(2),
+    backgroundColor: '#B9B2A2',
   },
   closeSlot: { position: 'absolute', left: 16, bottom: 14 },
   title: {
