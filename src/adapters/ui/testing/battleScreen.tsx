@@ -33,12 +33,12 @@ import {
   STRIKE_GESTURE_TEST_ID,
 } from '../battle/ActionPad';
 import { enemyGestureTestId } from '../battle/EnemyColumn';
-import { TrialBattleScreen } from '../screens/TrialBattleScreen';
+import { BattleScreen } from '../screens/BattleScreen';
 import { memoryKeyValueStore } from './memoryKeyValueStore';
 import { renderScreen } from './renderScreen';
 import { silentHaptics } from './silentHaptics';
 
-export interface TrialBattleOptions {
+export interface BattleScreenOptions {
   readonly seed: number;
   /** Les bulles d'aide ont déjà été vues (par défaut : oui). */
   readonly hintsSeen?: boolean;
@@ -49,7 +49,7 @@ export interface TrialBattleOptions {
   readonly keyValueStore?: ReturnType<typeof memoryKeyValueStore>;
 }
 
-export type TrialBattleTest = Awaited<ReturnType<typeof renderTrialBattle>>;
+export type BattleScreenTest = Awaited<ReturnType<typeof renderBattle>>;
 
 type GestureHandlers = Record<string, ((...args: unknown[]) => void) | undefined>;
 
@@ -60,13 +60,13 @@ export async function settle(): Promise<void> {
   });
 }
 
-export async function renderTrialBattle({
+export async function renderBattle({
   seed,
   hintsSeen = true,
   createBattle = startTestBattle,
   title = 'Étage 1',
   keyValueStore = memoryKeyValueStore(),
-}: TrialBattleOptions) {
+}: BattleScreenOptions) {
   if (hintsSeen) {
     keyValueStore.values.set(BATTLE_HINT_SEEN_KEYS.hero, '1');
     keyValueStore.values.set(BATTLE_HINT_SEEN_KEYS.defense, '1');
@@ -85,16 +85,13 @@ export async function renderTrialBattle({
   // peuvent la faire avancer seule (`uiAhead`), sans déclencher les échéances du combat.
   let uiAhead = 0;
   const uiNow = () => clock.now() + uiAhead;
-  await renderScreen(
-    <TrialBattleScreen session={session} title={title} now={now} uiNow={uiNow} />,
-    {
-      clock: settableClock(Day.of(2026, 10, 22)),
-      unitOfWork: new InMemoryUnitOfWork(),
-      keyValueStore,
-      haptics: silentHaptics(),
-    },
-  );
-  await screen.findByTestId('trial-battle');
+  await renderScreen(<BattleScreen session={session} title={title} now={now} uiNow={uiNow} />, {
+    clock: settableClock(Day.of(2026, 10, 22)),
+    unitOfWork: new InMemoryUnitOfWork(),
+    keyValueStore,
+    haptics: silentHaptics(),
+  });
+  await screen.findByTestId('battle-screen');
 
   /** Avance l'horloge de combat ; les échéances atteintes sont publiées. */
   async function advanceTo(at: number): Promise<void> {

@@ -2,7 +2,7 @@ import type { BattleSnapshot } from '../../../application/useCases/BattleSession
 import { type Battle } from '../../../domain/battle/Battle';
 import type { BattleEvent, BlowOutcome } from '../../../domain/battle/BattleEvent';
 import { startTestBattle } from '../../../domain/battle/testing/testBattle';
-import { INITIAL_DISPLAY, announcementsOf, displayOf } from './useTrialBattle';
+import { INITIAL_DISPLAY, announcementsOf, displayOf } from './useBattleDisplay';
 
 const started = startTestBattle({
   seed: 1,

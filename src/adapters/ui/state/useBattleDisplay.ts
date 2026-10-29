@@ -13,7 +13,7 @@ import {
 } from '../format/battleText';
 
 /** L'état d'affichage de l'écran de combat, tiré des événements de combat. */
-export interface TrialBattleDisplay {
+export interface BattleDisplay {
   readonly snapshot: BattleSnapshot | null;
   /** Les derniers mots du combat (« Parfait », « Frappe parfaite », « Cassure »). */
   readonly feedback: { readonly texts: readonly FeedbackText[]; readonly key: number } | null;
@@ -33,7 +33,7 @@ export interface TrialBattleDisplay {
   readonly shakeKey: number;
 }
 
-export const INITIAL_DISPLAY: TrialBattleDisplay = {
+export const INITIAL_DISPLAY: BattleDisplay = {
   snapshot: null,
   feedback: null,
   float: null,
@@ -107,11 +107,11 @@ function wordsOf(events: readonly BattleEvent[]): FeedbackText[] {
 }
 
 export function displayOf(
-  previous: TrialBattleDisplay,
+  previous: BattleDisplay,
   snapshot: BattleSnapshot,
   reducedMotion: boolean,
-): TrialBattleDisplay {
-  let display: TrialBattleDisplay = { ...previous, snapshot };
+): BattleDisplay {
+  let display: BattleDisplay = { ...previous, snapshot };
   const texts = wordsOf(snapshot.events);
   if (texts.length > 0) {
     display = { ...display, feedback: { texts, key: (display.feedback?.key ?? 0) + 1 } };
@@ -159,7 +159,7 @@ interface Action {
   readonly reducedMotion: boolean;
 }
 
-function reduce(display: TrialBattleDisplay, action: Action): TrialBattleDisplay {
+function reduce(display: BattleDisplay, action: Action): BattleDisplay {
   return displayOf(display, action.snapshot, action.reducedMotion);
 }
 
@@ -169,7 +169,7 @@ function reduce(display: TrialBattleDisplay, action: Action): TrialBattleDisplay
  * lecteur d'écran. Avec « réduire les animations », ni vignette ni secousse ; le son et la
  * vibration ne changent pas (la session les joue).
  */
-export function useTrialBattle(session: BattleSession, reducedMotion: boolean): TrialBattleDisplay {
+export function useBattleDisplay(session: BattleSession, reducedMotion: boolean): BattleDisplay {
   const [display, dispatch] = useReducer(reduce, INITIAL_DISPLAY);
 
   useEffect(() => {

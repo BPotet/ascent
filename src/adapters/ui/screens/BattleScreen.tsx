@@ -23,10 +23,10 @@ import { toBattleInstant } from '../state/battleTouch';
 import { actionTrackView, battleView, type BattleView } from '../state/battleView';
 import { useReducedMotion } from '../state/useReducedMotion';
 import { jsThreadNow, uiThreadNow } from '../state/useTouchProbe';
-import { useTrialBattle } from '../state/useTrialBattle';
+import { useBattleDisplay } from '../state/useBattleDisplay';
 import { battleColors } from '../theme/battleColors';
 
-export interface TrialBattleScreenProps {
+export interface BattleScreenProps {
   readonly session: BattleSession;
   /** Le titre de l'en-tête : « Étage 3 », « Le boss ». */
   readonly title: string;
@@ -52,14 +52,14 @@ const SCENE_HEIGHT = 440;
  * affiche ses états (`battleView`) et ses événements. Le combat fini, rien ne s'affiche sous la
  * scène : l'ascension prend la suite.
  */
-export function TrialBattleScreen({
+export function BattleScreen({
   session,
   title,
   now = jsThreadNow,
   uiNow = uiThreadNow,
-}: TrialBattleScreenProps) {
+}: BattleScreenProps) {
   const reducedMotion = useReducedMotion();
-  const display = useTrialBattle(session, reducedMotion);
+  const display = useBattleDisplay(session, reducedMotion);
   const shake = useShake(display.shakeKey);
   const { width: screenWidth } = useWindowDimensions();
   const [sceneHeight, setSceneHeight] = useState(SCENE_HEIGHT);
@@ -113,7 +113,7 @@ export function TrialBattleScreen({
 
   if (battle === null || view === null) {
     return (
-      <Screen testID="trial-battle-loading">
+      <Screen testID="battle-loading">
         <Text style={styles.loading}>Préparation du combat…</Text>
       </Screen>
     );
@@ -138,7 +138,7 @@ export function TrialBattleScreen({
     setSceneHeight(event.nativeEvent.layout.height);
 
   return (
-    <Screen layout="top" testID="trial-battle">
+    <Screen layout="top" testID="battle-screen">
       <View style={styles.header}>
         <Text accessibilityRole="header" style={styles.title}>
           {title}

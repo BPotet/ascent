@@ -22,7 +22,7 @@ import { toPixelImage } from '../pixelArt/sprites/Sprite';
 import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
 import { useAscent } from '../state/useAscent';
 import { battleColors } from '../theme/battleColors';
-import { TrialBattleScreen } from './TrialBattleScreen';
+import { BattleScreen } from './BattleScreen';
 
 /** Le compte à rebours de reprise (`ResumeCountdown`, P32), en secondes. */
 export const RESUME_COUNTDOWN_S = 3;
@@ -91,7 +91,7 @@ function FloorBattle({
         extra={reserve > 0 ? `+${reserve} en réserve` : null}
         onPause={onPause}
       />
-      <TrialBattleScreen
+      <BattleScreen
         session={battleSession}
         title={ascent.encounter?.kind === 'boss' ? 'Le boss' : `Étage ${ascent.floor}`}
       />

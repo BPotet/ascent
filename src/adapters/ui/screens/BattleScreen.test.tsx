@@ -1,4 +1,4 @@
-// L'écran du combat d'essai (#31, combat complet #32), sur une vraie session de combat, l'horloge
+// L'écran de combat (#31, combat complet #32), sur une vraie session de combat, l'horloge
 // de combat manuelle et une graine fixée. Les touchers sont simulés par Gesture Handler
 // (fireGestureHandler, qui complète toujours la séquence d'un geste) : la datation au début du
 // toucher se prouve par une horloge qui avance à chaque étape du geste qui suit son début
@@ -20,7 +20,7 @@ import { BATTLE_HINT_SEEN_KEYS } from '../../../application/useCases/battleHints
 import { glintsOf } from '../../../domain/battle/glints';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { reduceMotionInEachTest, withMotion } from '../testing/motion';
-import { renderTrialBattle, type TrialBattleTest } from '../testing/trialBattle';
+import { renderBattle, type BattleScreenTest } from '../testing/battleScreen';
 
 jest.mock('../battle/BattleCanvas', () => jest.requireActual('../battle/testing/fakeBattleCanvas'));
 
@@ -49,14 +49,14 @@ function sceneProps(): Record<string, unknown> {
   >;
 }
 
-function events(test: TrialBattleTest) {
+function events(test: BattleScreenTest) {
   return test.snapshots.flatMap((snapshot) => snapshot.events);
 }
 
-describe('TrialBattleScreen', () => {
+describe('BattleScreen', () => {
   describe('hero phase (F1)', () => {
     it('shows the three enemies with their guard and their intent category, the Sentinel and her momentum', async () => {
-      await renderTrialBattle({ seed: seedFor({ ghoul: 'basic', specter: 'delayed' }) });
+      await renderBattle({ seed: seedFor({ ghoul: 'basic', specter: 'delayed' }) });
 
       expect(screen.getByRole('header', { name: 'Étage 1' })).toBeOnTheScreen();
       expect(screen.getByTestId('battle-phase')).toHaveTextContent('Phase du héros');
@@ -84,7 +84,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('shows the shield and the gain of the Guard intent of the Necromancer (C2.2)', async () => {
-      await renderTrialBattle({
+      await renderBattle({
         seed: 1,
         createBattle: battleWith(
           enemyWith(NECROMANCER, { guard: 8, intent: { category: 'guard', gain: 3 } }),
@@ -100,7 +100,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('starts the timed strike on release: « Frapper » replaces the buttons', async () => {
-      const test = await renderTrialBattle({ seed: 1 });
+      const test = await renderBattle({ seed: 1 });
 
       await test.attack(10_100, 10_400);
 
@@ -122,7 +122,7 @@ describe('TrialBattleScreen', () => {
 
     it('dates « Frapper » when the finger touches, and rewards a perfect strike (F4)', async () => {
       withMotion();
-      const test = await renderTrialBattle({ seed: 1, createBattle: sturdyGhoul });
+      const test = await renderBattle({ seed: 1, createBattle: sturdyGhoul });
       await test.attack(10_100, 10_180);
 
       // Chaque étape du geste après son début avance l'horloge de 100 ms : daté à la fin,
@@ -138,7 +138,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('does not attack when the finger leaves the button before the release', async () => {
-      const test = await renderTrialBattle({ seed: 1 });
+      const test = await renderBattle({ seed: 1 });
 
       await test.release('battle-attack', 10_100, 10_300, false);
 
@@ -146,7 +146,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('changes the target with a touch on the column of an enemy', async () => {
-      const test = await renderTrialBattle({ seed: 1 });
+      const test = await renderBattle({ seed: 1 });
 
       await test.touchEnemy(SPECTER);
 
@@ -159,7 +159,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('targets, attacks and strikes with the screen reader', async () => {
-      const test = await renderTrialBattle({ seed: 1 });
+      const test = await renderBattle({ seed: 1 });
 
       await act(async () => {
         fireEvent(screen.getByTestId('enemy-specter'), 'accessibilityAction', {
@@ -184,7 +184,7 @@ describe('TrialBattleScreen', () => {
 
   describe('momentum and power (C3)', () => {
     it('uses the Bulwark: 1 momentum, then the enemy phase', async () => {
-      const test = await renderTrialBattle({ seed: 1 });
+      const test = await renderBattle({ seed: 1 });
 
       await test.power();
 
@@ -198,7 +198,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('keeps Pouvoir visible but unavailable without momentum, telling what it misses', async () => {
-      await renderTrialBattle({ seed: 1, createBattle: battleWith(heroWith({ momentum: 0 })) });
+      await renderBattle({ seed: 1, createBattle: battleWith(heroWith({ momentum: 0 })) });
 
       expect(
         screen.getByRole('button', {
@@ -211,7 +211,7 @@ describe('TrialBattleScreen', () => {
 
   describe('guard break and stun (F5, P3b)', () => {
     it('stuns the Specter: « Cassure », « Étourdi ×1,5 » and the barred circle', async () => {
-      const test = await renderTrialBattle({
+      const test = await renderBattle({
         seed: 1,
         createBattle: battleWith(targetOn(SPECTER)),
       });
@@ -236,7 +236,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('plays the lost action of a stunned enemy without transition nor pill (F5b)', async () => {
-      const test = await renderTrialBattle({
+      const test = await renderBattle({
         seed: 1,
         createBattle: battleWith(stunnedEnemy(GHOUL), sturdy(SPECTER), targetOn(SPECTER)),
       });
@@ -255,7 +255,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('announces « À toi » without transition when every enemy lost its action (P15)', async () => {
-      const test = await renderTrialBattle({
+      const test = await renderBattle({
         seed: 1,
         createBattle: battleWith(
           stunnedEnemy(GHOUL),
@@ -278,7 +278,7 @@ describe('TrialBattleScreen', () => {
   describe('first use (F2, P9)', () => {
     it('shows the hero hint at the first battle, until it is closed', async () => {
       const keyValueStore = memoryKeyValueStore();
-      await renderTrialBattle({ seed: 1, hintsSeen: false, keyValueStore });
+      await renderBattle({ seed: 1, hintsSeen: false, keyValueStore });
 
       const hint = screen.getByRole('button', {
         name: 'Première ascension. Touche un ennemi pour le viser, puis Attaquer.',
@@ -292,7 +292,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('shows the defense hint before the transition, which starts only when it is closed', async () => {
-      const test = await renderTrialBattle({ seed: 1, hintsSeen: false });
+      const test = await renderBattle({ seed: 1, hintsSeen: false });
       await test.attack();
       await test.runUntil(() => test.battle().phase.kind === 'defenseHint');
 
@@ -313,7 +313,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('shows no hint once they are seen', async () => {
-      await renderTrialBattle({ seed: 1 });
+      await renderBattle({ seed: 1 });
 
       expect(screen.queryByTestId('battle-hint-hero')).toBeNull();
     });
@@ -321,7 +321,7 @@ describe('TrialBattleScreen', () => {
 
   describe('phase transition (P0, F0)', () => {
     it('announces the enemy phase and shows its buttons inactive, without hatching', async () => {
-      const test = await renderTrialBattle({ seed: 1 });
+      const test = await renderBattle({ seed: 1 });
 
       await test.attack();
       await test.runUntil(() => test.battle().phase.kind === 'transition');
@@ -340,7 +340,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('announces the hero phase and shows « Attaquer » and « Pouvoir » inactive, at their place', async () => {
-      const test = await renderTrialBattle({ seed: 1, createBattle: onlyGhoul });
+      const test = await renderBattle({ seed: 1, createBattle: onlyGhoul });
       await test.toWindUpOf(GHOUL);
 
       await test.runUntil(() => test.battle().phase.kind === 'transition');
@@ -355,7 +355,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('ignores a touch on a button during the transition, without off-balance', async () => {
-      const test = await renderTrialBattle({ seed: 1 });
+      const test = await renderBattle({ seed: 1 });
       await test.attack();
       await test.runUntil(() => test.battle().phase.kind === 'transition');
 
@@ -369,7 +369,7 @@ describe('TrialBattleScreen', () => {
 
   describe('trimmed enemy phase (P1, P2)', () => {
     it('creates no new gesture from one snapshot to the next', async () => {
-      const test = await renderTrialBattle({ seed: seedFor({ ghoul: 'double' }) });
+      const test = await renderBattle({ seed: seedFor({ ghoul: 'double' }) });
       await test.attack();
       await test.runUntil(() => test.battle().phase.kind === 'enemy');
       const tap = jest.spyOn(Gesture, 'Tap');
@@ -383,7 +383,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('hides the names, the HP figures and the line; the active enemy in front, the others faded', async () => {
-      const test = await renderTrialBattle({ seed: seedFor({ ghoul: 'double' }) });
+      const test = await renderBattle({ seed: seedFor({ ghoul: 'double' }) });
       await test.attack();
       await test.runUntil(() => test.battle().phase.kind === 'enemy');
 
@@ -413,7 +413,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('shows the red seal over an enemy that prepares a perilous attack, never during its step in, read by the screen reader', async () => {
-      const test = await renderTrialBattle({ seed: seedFor({ specter: 'perilous' }) });
+      const test = await renderBattle({ seed: seedFor({ specter: 'perilous' }) });
 
       await test.attack();
       await test.runUntil(() => {
@@ -435,7 +435,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('gives the scene the glints of the wind-up, computed by the domain (C2.10)', async () => {
-      const test = await renderTrialBattle({ seed: seedFor({ ghoul: 'double' }) });
+      const test = await renderBattle({ seed: seedFor({ ghoul: 'double' }) });
 
       await test.toWindUpOf(GHOUL);
 
@@ -449,7 +449,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('says that a perilous attack must be dodged when it is parried (P8)', async () => {
-      const test = await renderTrialBattle({ seed: seedFor({ specter: 'perilous' }) });
+      const test = await renderBattle({ seed: seedFor({ specter: 'perilous' }) });
       const impact = await test.toWindUpOf(SPECTER);
 
       await test.touchDefense('parry', impact - 20);
@@ -462,7 +462,7 @@ describe('TrialBattleScreen', () => {
 
   describe('defense buttons (P3 to P7)', () => {
     it('dates a press when the finger touches, not when it is released', async () => {
-      const test = await renderTrialBattle({ seed: seedFor({ ghoul: 'basic' }) });
+      const test = await renderBattle({ seed: seedFor({ ghoul: 'basic' }) });
       const impact = await test.toWindUpOf(GHOUL);
 
       // Chaque étape du geste après son début avance l'horloge de 100 ms : daté à la fin, l'appui
@@ -475,7 +475,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('judges two simultaneous touches on Parade and Esquive, each one', async () => {
-      const test = await renderTrialBattle({ seed: seedFor({ ghoul: 'double' }) });
+      const test = await renderBattle({ seed: seedFor({ ghoul: 'double' }) });
       const impact = await test.toWindUpOf(GHOUL);
 
       await test.touchDefense('dodge', impact - 10);
@@ -490,7 +490,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('presses with the screen reader', async () => {
-      const test = await renderTrialBattle({ seed: seedFor({ ghoul: 'basic' }) });
+      const test = await renderBattle({ seed: seedFor({ ghoul: 'basic' }) });
       const impact = await test.toWindUpOf(GHOUL);
       await test.advanceTo(impact);
 
@@ -506,7 +506,7 @@ describe('TrialBattleScreen', () => {
 
     it('rewards a perfect parry: « Parfait », freeze, flash, sound, vibration, then the counter', async () => {
       withMotion();
-      const test = await renderTrialBattle({
+      const test = await renderBattle({
         seed: seedFor({ ghoul: 'basic' }),
         createBattle: sturdyGhoul,
       });
@@ -532,7 +532,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('breaks the guard with the counter: « Cassure », the only word, and « Étourdie ×1,5 » (P3b)', async () => {
-      const test = await renderTrialBattle({
+      const test = await renderBattle({
         seed: seedFor({ ghoul: 'basic' }),
         createBattle: battleWith(
           enemyWith(GHOUL, { guard: 10 }),
@@ -554,7 +554,7 @@ describe('TrialBattleScreen', () => {
 
     it('shows a good parry and a hit by their figures only, above the hero', async () => {
       withMotion();
-      const test = await renderTrialBattle({ seed: seedFor({ ghoul: 'double' }) });
+      const test = await renderBattle({ seed: seedFor({ ghoul: 'double' }) });
       const impact = await test.toWindUpOf(GHOUL);
 
       await test.touchDefense('parry', impact + 120);
@@ -573,7 +573,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('greys and hatches the buttons while off-balance, still active, then clears them', async () => {
-      const test = await renderTrialBattle({ seed: seedFor({ ghoul: 'basic' }) });
+      const test = await renderBattle({ seed: seedFor({ ghoul: 'basic' }) });
       const impact = await test.toWindUpOf(GHOUL);
 
       await test.touchDefense('parry', impact - 400);
@@ -596,7 +596,7 @@ describe('TrialBattleScreen', () => {
     reduceMotionInEachTest();
 
     it('shows the banner without slide, and a perfect parry without flash nor shake', async () => {
-      const test = await renderTrialBattle({
+      const test = await renderBattle({
         seed: seedFor({ ghoul: 'basic' }),
         createBattle: sturdyGhoul,
       });
@@ -624,7 +624,7 @@ describe('TrialBattleScreen', () => {
       enemyWith(NECROMANCER, { hp: 10 }),
     );
 
-    async function win(test: TrialBattleTest): Promise<void> {
+    async function win(test: BattleScreenTest): Promise<void> {
       for (let round = 0; test.battle().phase.kind !== 'over' && round < 8; round += 1) {
         await test.runUntil(() => ['hero', 'over'].includes(test.battle().phase.kind));
         if (test.battle().phase.kind === 'hero') await test.attack();
@@ -643,7 +643,7 @@ describe('TrialBattleScreen', () => {
     }
 
     it('announces the victory and its respite, and shows nothing under the scene', async () => {
-      const test = await renderTrialBattle({
+      const test = await renderBattle({
         seed: 3,
         createBattle: battleWith(
           enemyWith(GHOUL, { hp: 10 }),
@@ -663,7 +663,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('keeps the scene of a won battle, without the feedback words', async () => {
-      const test = await renderTrialBattle({ seed: 3, createBattle: weakEnemies });
+      const test = await renderBattle({ seed: 3, createBattle: weakEnemies });
 
       await win(test);
 
@@ -673,7 +673,7 @@ describe('TrialBattleScreen', () => {
     });
 
     it('shows the fallen hero when the battle is lost, and nothing under the scene', async () => {
-      const test = await renderTrialBattle({
+      const test = await renderBattle({
         seed: seedFor({ ghoul: 'basic' }),
         createBattle: battleWith(heroWith({ hp: 4 })),
       });
