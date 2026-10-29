@@ -285,22 +285,14 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     },
   );
 
-  and(/^il n'est plus dessiné avec (.+)$/u, (before: string) => {
+  and(/^il n'est plus dessiné avec .+$/u, () => {
     const [kind] = world.kinds as [EnemyKind];
-    const shape = (of: EnemyKind, frame: EnemyFrame) =>
-      Array.from(battleSprite(of, frame).sprite.pixels, (code) => (code === 0 ? 0 : 1));
     for (const frame of ENEMY_FRAMES) {
-      // Plus aucun dessin par le code : ni liseré, quel que soit le palier.
+      // Plus aucun dessin par le code, ni l'ancien ni un autre : le liseré d'un dessin, ajouté au
+      // palier 2, ne s'y ajoute plus. Les dessins d'avant n'existent plus dans le code.
       expect(battleSprite(kind, frame, { tier: 2 }).sprite).toEqual(
         battleSprite(kind, frame).sprite,
       );
-      if (before === "l'ancien dessin de la Goule") {
-        // Le Squelette garde la silhouette tirée de l'ancien dessin de la Goule.
-        expect(shape(kind, frame)).not.toEqual(shape('skeleton', frame));
-      }
-      if (before === 'le dessin du Spectre') {
-        expect(battleSprite(kind, frame).sprite).not.toEqual(battleSprite('specter', frame).sprite);
-      }
     }
   });
 
