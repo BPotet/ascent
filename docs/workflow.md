@@ -430,6 +430,8 @@ En **mode prototype** (label `prototype`), sur la PR seulement, quelques barriè
 > Le score du code nouveau est calculé sur l'ensemble des mutants des lignes ajoutées ou modifiées hors domaine, tous jobs confondus. Le score du domaine porte sur les fichiers du domaine modifiés (PR) ou sur tout le domaine (release). Voir l'[ADR 0004](adr/0004-mutation-en-ci.md).
 >
 > Par défaut, la mutation porte sur `src/domain/`, `src/application/`, `src/adapters/persistence/` et `src/adapters/device/`. Les écrans n'entrent dans le score du code nouveau que lorsque leur mutation est demandée ; les seuils sont alors les mêmes.
+>
+> Les données recopiées de l'Atelier (`src/adapters/ui/pixelArt/sprites/atelier/data/`) sont exclues de la détection de duplication : ce sont des données, recopiées telles quelles (ADR 0010).
 
 ### Mutation des écrans à la demande
 
