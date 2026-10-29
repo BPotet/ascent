@@ -8,6 +8,7 @@
 - **Révisé** : 22 octobre 2026, le groupe `core` est réparti en parts parallèles (voir en fin de document)
 - **Avenant** : 29 octobre 2026, le domaine est réparti en parts, un gros fichier coupé en plages de lignes (issue #131, voir en fin de document)
 - **Avenant** : 29 octobre 2026, le `core` de la release est pesé en mutants et coupé en plages, jusqu'entre les membres d'une classe (issue #134, voir en fin de document)
+- **Avenant** : 29 octobre 2026, délai du « dry run » fixé, écrans pesés en mutants et répartis plage par plage (issue #145, voir en fin de document)
 
 ## Contexte
 
@@ -384,3 +385,103 @@ total) ; `BattleSession.ts` en 3 plages (97, 100 et 16 mutants), `AscentSession.
   des seuils.
 - Mesures du run de vérification (mode `full`, sur la PR du correctif) : à reporter ici et sur
   l'issue #134.
+
+## Avenant du 29 octobre 2026 — délai du « dry run », écrans pesés en mutants et répartis plage par plage
+
+- **Décideur** : Architect
+- **Contexte produit** : issue #145 ; constat sur la PR #144 (story #139), run [40922772417](https://github.com/BPotet/ascent/actions/runs/40922772417)
+
+### Contexte
+
+Sur la PR #144, avec le label `mutation:ui`, les deux shards `ui-1` et `ui-2` échouent avant le
+premier mutant : `Initial test run timed out!` après 5 minutes, le délai par défaut de Stryker
+(`dryRunTimeoutMinutes`), qu'aucune config ne fixait. Le check exigé `Mutation tests (StrykerJS)`
+est rouge sans mesure. Le même échec touche toutes les têtes de la PR et le workflow
+`Screen mutation`.
+
+Trois constats :
+
+1. **Le « dry run » des écrans dépasse 5 minutes.** Il passe toute la suite Jest (les trois
+   projets) dans un seul processus, avec la couverture par test. Pour `core`, environ 3 minutes
+   (run 40816846129, `core-2` : Stryker complet en 3 min 17 s, sans mutant). Pour les écrans, le
+   code instrumenté (`BattleCanvas.tsx`, `enemyPose.ts`, l'atlas) tourne à chaque image des combats
+   rendus par les tests d'intégration et BDD : le total dépasse 5 minutes.
+2. **Les « 2 102 mutants » de `ui-1` ne sont pas un écran muté en entier.** `BattleCanvas.tsx` n'est
+   muté que sur ses lignes nouvelles (22 plages). Les 2 102 mutants (1 956 pour `ui-2`) viennent
+   surtout de deux fichiers ajoutés, `atelier/data/ossuaryWarden.ts` (2 156 lignes) et
+   `atelier/data/twins.ts` (1 937 lignes) : un fichier ajouté est muté en entier (décision 1), mais
+   ces données recopiées de l'Atelier commencent par `// Stryker disable all` (ADR 0010). Tous leurs
+   mutants sont `Ignored` : ni placés dans le code (`@stryker-mutator/instrumenter` 10.0.0), ni
+   exécutés, ni comptés dans le score.
+3. **La répartition des écrans est mal pesée.** Le découpage en plages des avenants #131 et #134 ne
+   vaut pas pour `ui`. En PR, un fichier d'écran est un seul élément, pesé en lignes ajoutées. Les
+   deux fichiers de données (environ 2 000 lignes, aucun mutant exécuté) prennent chacun un shard,
+   et `ui-2` reçoit les 47 mutants exécutables de quatre fichiers. Or un mutant d'écran coûte
+   environ 3 minutes (mesure locale du dev : 32 mutants en un peu moins de 2 h). Il est couvert par
+   de nombreux tests de rendu, et chaque timeout redémarre un processus Jest. `ui-2` demanderait
+   environ 2 h 20, pour un délai de 60 minutes : relever seulement le délai du « dry run » ne
+   suffit pas.
+
+### Décision
+
+1. **`dryRunTimeoutMinutes` passe de 5 (défaut de Stryker) à 20**, dans `stryker.config.mjs`. Le
+   réglage vaut pour les trois groupes. C'est un garde-fou contre un « dry run » bloqué, pas un
+   seuil. 20 minutes, c'est environ 6 fois le « dry run » mesuré pour `core`, et au moins
+   35 minutes restent pour les mutants dans un job de 60 minutes.
+2. **Les données recopiées de l'Atelier (`src/adapters/ui/pixelArt/sprites/atelier/data/`) sortent
+   de la liste `mutate` de `stryker.ui.config.mjs`.** Le score ne change pas : tous leurs mutants
+   sont déjà ignorés. Un test vérifie que chaque fichier de ce dossier commence par
+   `// Stryker disable all`. Sinon, l'exclusion cacherait des mutants exécutables, et le test
+   échoue.
+3. **Les écrans sont pesés en mutants exécutables**, comptés au moment du plan avec
+   l'instrumenter, comme le `core` de la release (avenant #134). Les mutants ignorés ne comptent
+   plus dans aucun poids : ils ne coûtent rien.
+4. **En PR, chaque plage de lignes nouvelles d'un écran est un élément à part.** Les plages d'un
+   même fichier peuvent aller dans des parts différentes. Aucun mutant n'est perdu ni compté deux
+   fois : Stryker ne garde un mutant que s'il tient entièrement dans **une** plage, et les plages du
+   diff sont disjointes. La règle « une part ne coupe jamais un fichier » (décision 3) ne vaut donc
+   plus que pour le `core` en PR. Un fichier d'écran ajouté, muté en entier, est coupé comme un
+   fichier `core` en release, au-delà de `CHUNK_MUTANTS.ui` mutants (10 au départ).
+5. **`PARTS.changed.ui` passe de 2 à 8** : environ 11 mutants par part pour une PR comme #144, soit
+   environ 35 minutes, plus un « dry run » de 10 minutes au plus. `split()` garde ses règles : une
+   petite PR d'écrans garde un seul shard `ui`.
+6. **Rien d'autre ne change** : les seuils (85 % pour le domaine, 70 % pour le code nouveau, écrans
+   compris quand ils sont mutés), `timeoutMS` (10 000), les délais des jobs (60 minutes en PR, 120
+   hors PR), les tests exécutés (les trois projets Jest, sans `findRelatedTests`) et la portée de
+   la mesure (lignes nouvelles des écrans en PR).
+
+Mise en œuvre : `stryker.config.mjs`, `stryker.ui.config.mjs` et `scripts/mutation/plan.mjs`
+(`mutantLines()` ignore les mutants désactivés ; les écrans sont comptés dans `collectChanges()`),
+testés par `npm run test:scripts`.
+
+### Alternatives rejetées
+
+- **Relever seulement `dryRunTimeoutMinutes`** : `ui-2` resterait d'environ 2 h 20 pour un délai de
+  60 minutes.
+- **Ne lancer que les tests liés** (`findRelatedTests`, ou un seul projet Jest pour les écrans) :
+  `findRelatedTests` ignore les routes chargées dynamiquement par expo-router. Moins de tests, c'est
+  moins de mutants tués, donc un score qui peut changer. Déjà rejeté dans la décision initiale
+  (« Réduire les tests du shard `ui` »).
+- **Relever `timeout-minutes` des shards, ou baisser `timeoutMS`** : rejetés par la décision
+  initiale et les avenants précédents ; baisser `timeoutMS` ferait monter le score artificiellement.
+- **Retirer le `// Stryker disable all` des données** : des milliers de mutants sur des pixels,
+  sans test qui puisse les tuer de façon utile. ADR 0010 inchangé.
+
+### Conséquences
+
+- Une PR avec `mutation:ui` lance jusqu'à 8 shards d'écrans, et jusqu'à 17 shards de mutation si
+  elle touche aussi `Battle.ts` (`domain-1` à `domain-6`, `core-1` à `core-3`), sous la limite de
+  20 jobs simultanés de GitHub. Le « dry run » est payé une fois par shard : plus de minutes de CI,
+  gratuites pour un dépôt public.
+- Un écran dont les plages sont réparties apparaît dans plusieurs rapports de shard, comme un
+  fichier coupé du domaine ou du `core`.
+- Le plan instrumente les écrans modifiés en PR (quelques secondes), dans `mutation-plan` et dans
+  chaque shard, qui recalcule le plan : même version, même résultat.
+- `dryRunTimeoutMinutes`, `PARTS.changed.ui` et `CHUNK_MUTANTS.ui` sont des réglages à recalibrer
+  d'après les durées mesurées en CI, pas des seuils.
+- **Risque connu, hors périmètre** : la mutation de tous les écrans (lancement manuel avec
+  `ui-mutation`, `npm run mutation:ui -- --full`) ne tiendra pas en 10 parts de 120 minutes à
+  environ 3 minutes par mutant. Elle n'est lancée qu'à la demande et n'est exigée nulle part. Elle
+  aura son propre avenant si le propriétaire la demande.
+- Mesures du run de vérification (PR #144 mise à jour après le correctif : durée du « dry run »,
+  durée de chaque shard `ui-*`) : à reporter ici et sur l'issue #145.
