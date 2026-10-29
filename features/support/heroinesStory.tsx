@@ -71,8 +71,6 @@ export interface DrawnHero {
   readonly rect: readonly number[];
   /** `[échelle, 0, x, y]`, en dp. */
   readonly transform: readonly number[];
-  /** La place du héros d'aujourd'hui sur cet écran. */
-  readonly geometry: ReturnType<typeof sceneGeometry>;
 }
 
 type Fill = (target: { set?: unknown; setXYWH?: unknown }, place: number) => void;
@@ -86,14 +84,12 @@ export async function drawHero({
   heroPose,
   now,
   width = 390,
-  strikeImpactAt = null,
   reducedMotion = false,
 }: {
   readonly heroKind: HeroKind;
   readonly heroPose: HeroPose;
   readonly now: number;
   readonly width?: number;
-  readonly strikeImpactAt?: number | null;
   readonly reducedMotion?: boolean;
 }): Promise<DrawnHero> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- l'objet du module, pour l'espionner
@@ -130,7 +126,7 @@ export async function drawHero({
         heroPose={heroPose}
         heroPoseSince={0}
         strikeTarget={0}
-        strikeImpactAt={strikeImpactAt}
+        strikeImpactAt={null}
         timeline={null}
         spark={null}
         hurtAt={null}
@@ -151,7 +147,7 @@ export async function drawHero({
     last(rects).fill({ setXYWH: (...values: number[]) => (rect = values) }, 0);
     let transform: number[] = [];
     last(transforms).fill({ set: (...values: number[]) => (transform = values) }, 0);
-    return { rect, transform, geometry };
+    return { rect, transform };
   } finally {
     rectSpy.mockRestore();
     transformSpy.mockRestore();

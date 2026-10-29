@@ -58,6 +58,7 @@ import {
   type Move,
 } from '../../src/domain/battle/combatants';
 import { glintsOf } from '../../src/domain/battle/glints';
+import { copiedPose } from '../support/heroinesStory';
 
 jest.mock('../../src/adapters/ui/battle/BattleCanvas', () =>
   jest.requireActual('../../src/adapters/ui/battle/testing/fakeBattleCanvas'),
@@ -797,13 +798,16 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     world.heroes = ['sentinel', 'wanderer'];
   });
 
-  then('le héros garde son sprite actuel ou sa silhouette provisoire', () => {
-    // Hors de cette story : seule la case du héros, 36 × 44, est vérifiée (son dessin vient de #140).
-    for (const hero of world.heroes) {
-      const raise = battleSprite(hero, 'raise').sprite;
-      expect([raise.width, raise.height]).toEqual([36, 44]);
-    }
-  });
+  then(
+    "le héros s'affiche dans sa case de 36 × 44 pixels d'art, avec son animation complète (#140)",
+    () => {
+      for (const hero of world.heroes) {
+        const raise = battleSprite(hero, 'raise').sprite;
+        expect([raise.width, raise.height]).toEqual([36, 44]);
+        expect([hero, raise]).toEqual([hero, copiedPose(hero, 'raise')]);
+      }
+    },
+  );
 
   // --- Jamais d'échelle fractionnaire ---
 
