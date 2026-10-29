@@ -15,6 +15,8 @@ import {
 } from '../Sprite';
 import { GHOUL_ANIMATION } from '../atelier/data/ghoul';
 import { MAD_VILLAGER_ANIMATION } from '../atelier/data/madVillager';
+import { NECROMANCER_ANIMATION } from '../atelier/data/necromancer';
+import { SKELETON_ANIMATION } from '../atelier/data/skeleton';
 import { animationSprite, type FullAnimation } from '../atelier/fullAnimation';
 
 /** Un personnage du combat : un ennemi de trois quarts face, ou la Sentinelle de dos. */
@@ -226,8 +228,8 @@ function withHesitation(
 }
 
 /**
- * L'ancien dessin de la Goule (#81) : sprite provisoire du Chevalier déchu, base des silhouettes
- * provisoires du Squelette et des Jumeaux.
+ * L'ancien dessin de la Goule (#81) : sprite provisoire du Chevalier déchu, base de la silhouette
+ * provisoire des Jumeaux.
  */
 const OLD_GHOUL: CharacterArt = {
   width: 40,
@@ -361,6 +363,10 @@ const SPECTER: CharacterArt = {
   },
 };
 
+/**
+ * Le dessin du Nécromancien (#81), remplacé par son animation complète (#137) : il ne sert plus
+ * qu'au sprite provisoire de la Gardienne des ossuaires.
+ */
 const NECROMANCER: CharacterArt = {
   width: 40,
   height: 48,
@@ -528,10 +534,12 @@ function silhouette(art: CharacterArt): CharacterArt {
 }
 
 /** Les ennemis dont l'animation complète est validée dans l'Atelier (#119, ADR 0010). */
-const FULL_ANIMATIONS: Readonly<Record<'ghoul' | 'madVillager', FullAnimation<EnemyFrame>>> = {
+const FULL_ANIMATIONS = {
   ghoul: GHOUL_ANIMATION,
   madVillager: MAD_VILLAGER_ANIMATION,
-};
+  skeleton: SKELETON_ANIMATION,
+  necromancer: NECROMANCER_ANIMATION,
+} satisfies Partial<Record<EnemyKind, FullAnimation<EnemyFrame>>>;
 
 type AnimatedCharacter = keyof typeof FULL_ANIMATIONS;
 
@@ -546,7 +554,6 @@ function isEnemyFrame(frame: BattleFrame): frame is EnemyFrame {
 /** Les personnages encore dessinés par le code : une seule source d'image par personnage. */
 const ART: Readonly<Record<Exclude<BattleCharacter, AnimatedCharacter>, CharacterArt>> = {
   specter: SPECTER,
-  necromancer: NECROMANCER,
   // Sprites provisoires des ennemis de l'ascension (prototype #91), repris du combat d'essai.
   fallenKnight: OLD_GHOUL,
   // Silhouette provisoire des Jumeaux (prototype #108) : l'asset de l'Atelier n'est pas validé.
@@ -554,8 +561,6 @@ const ART: Readonly<Record<Exclude<BattleCharacter, AnimatedCharacter>, Characte
   ossuaryWarden: NECROMANCER,
   facelessPrior: SPECTER,
   hero: HERO,
-  // Le Squelette (#106) : silhouette provisoire, son asset est encore « proposé ».
-  skeleton: silhouette(OLD_GHOUL),
 };
 
 /** Un point du dessin, dans le sprite fini (2 pixels d'art de marge). */

@@ -3,6 +3,8 @@ import type { EnemyKind } from '../../../../../domain/battle/combatants';
 import { animationSprite } from '../atelier/fullAnimation';
 import { GHOUL_ANIMATION } from '../atelier/data/ghoul';
 import { MAD_VILLAGER_ANIMATION } from '../atelier/data/madVillager';
+import { NECROMANCER_ANIMATION } from '../atelier/data/necromancer';
+import { SKELETON_ANIMATION } from '../atelier/data/skeleton';
 import {
   ENEMY_FRAMES,
   HERO_FRAMES,
@@ -128,14 +130,14 @@ describe('the full animations of the Atelier in battle (#119)', () => {
   const ANIMATED = [
     ['ghoul', GHOUL_ANIMATION],
     ['madVillager', MAD_VILLAGER_ANIMATION],
+    ['skeleton', SKELETON_ANIMATION],
+    ['necromancer', NECROMANCER_ANIMATION],
   ] as const;
   /** Les ennemis encore dessinés par le code, l'ancien dessin de la Goule compris. */
   const DRAWN: readonly EnemyKind[] = [
     'specter',
-    'necromancer',
     'fallenKnight',
     'twins',
-    'skeleton',
     'ossuaryWarden',
     'facelessPrior',
   ];
@@ -162,6 +164,20 @@ describe('the full animations of the Atelier in battle (#119)', () => {
     }
   });
 
+  it('no longer shows the Skeleton as a silhouette of the old Ghoul, nor the Necromancer drawn (#137)', () => {
+    const shape = (character: EnemyKind, frame: (typeof ENEMY_FRAMES)[number]) =>
+      Array.from(battleSprite(character, frame).sprite.pixels, (code) => (code === 0 ? 0 : 1));
+    for (const frame of ENEMY_FRAMES) {
+      // L'ancien dessin de la Goule reste celui du Chevalier déchu ; celui du Nécromancien (#81),
+      // celui de la Gardienne des ossuaires.
+      expect([frame, shape('skeleton', frame)]).not.toEqual([frame, shape('fallenKnight', frame)]);
+      expect([frame, battleSprite('necromancer', frame).sprite]).not.toEqual([
+        frame,
+        battleSprite('ossuaryWarden', frame).sprite,
+      ]);
+    }
+  });
+
   it('keeps the hesitation as its own pose, not the full wind-up shifted by one art pixel', () => {
     const ant2 = battleSprite('ghoul', 'ant2').sprite;
     const hes = battleSprite('ghoul', 'hes').sprite.pixels;
@@ -176,7 +192,7 @@ describe('the full animations of the Atelier in battle (#119)', () => {
     expect(battleSprite('ghoul', 'raise')).toEqual(battleSprite('ghoul', 'idle0'));
   });
 
-  it('gives the anchors of the pose shown to the Ghoul and the Mad villager', () => {
+  it('gives the anchors of the pose shown to the enemies of the Atelier', () => {
     expect(poseAnchors('ghoul', 'ant2')).toEqual({
       eye: [15, 18],
       head: [22, 14],
@@ -192,6 +208,25 @@ describe('the full animations of the Atelier in battle (#119)', () => {
       head: [22, 3],
       tips: [[20, 28]],
     });
+    // Le Squelette est calé de (2, 4) dans la case ; le Nécromancien l'occupe pile (#137).
+    expect(poseAnchors('skeleton', 'ant2')).toEqual({
+      eye: [21, 16],
+      head: [23, 11],
+      tips: [
+        [4, 26],
+        [10, 14],
+      ],
+    });
+    expect(poseAnchors('skeleton', 'down').head).toEqual([21, 28]);
+    expect(poseAnchors('necromancer', 'ant2')).toEqual({
+      eye: [18, 17],
+      head: [27, 5],
+      tips: [
+        [7, 9],
+        [7, 4],
+      ],
+    });
+    expect(poseAnchors('necromancer', 'down').head).toEqual([19, 26]);
     for (const [character] of ANIMATED) {
       for (const frame of ENEMY_FRAMES) {
         expect(poseAnchors(character, frame)).toEqual(battleSprite(character, frame).anchors);
