@@ -9,6 +9,7 @@
 - **Avenant** : 29 octobre 2026, le domaine est réparti en parts, un gros fichier coupé en plages de lignes (issue #131, voir en fin de document)
 - **Avenant** : 29 octobre 2026, le `core` de la release est pesé en mutants et coupé en plages, jusqu'entre les membres d'une classe (issue #134, voir en fin de document)
 - **Avenant** : 29 octobre 2026, délai du « dry run » fixé, écrans pesés en mutants et répartis plage par plage (issue #145, voir en fin de document)
+- **Avenant** : 29 octobre 2026, délai par mutant propre aux écrans (issue #147, voir en fin de document)
 
 ## Contexte
 
@@ -515,3 +516,117 @@ testés par `npm run test:scripts`.
   cas, si tous les mutants d'une part étaient statiques, est d'environ 48 minutes : au-delà du
   seuil de recalibrage de 45 minutes, mais sous le délai de 60. La mesure en CI sur #144
   tranchera.
+
+## Avenant du 29 octobre 2026 — délai par mutant propre aux écrans
+
+- **Décideur** : Architect
+- **Contexte produit** : issue #147 ; constat sur la PR #144 (run
+  [40932624384](https://github.com/BPotet/ascent/actions/runs/40932624384), tête `96c28cac`) et
+  rapport QA
+
+### Contexte
+
+Après le correctif de l'issue #145, la mutation des écrans de la PR #144 a tourné jusqu'au bout :
+8 shards de 14 à 37 minutes, « dry run » de 5 à 8 minutes. Mais sur 92 mutants exécutés, **82
+finissent en timeout** (10 tués, 0 survivant) : le score affiché est de 100 %. Les shards affichent
+souvent « Ran 0.00 tests per mutant ». Le QA a montré que deux de ces « timeouts » sont de vrais
+survivants (`enemyPose.ts:175`).
+
+Stryker donne à chaque mutant le délai `timeoutFactor × net + timeoutMS + overhead` : 1,5 fois le
+temps des tests couvrants, plus `timeoutMS` (10 s), plus le surcoût mesuré une fois, pendant le
+« dry run ». Un run coupé par ce délai est un `Timeout`, compté comme détecté, et ne rapporte aucun
+test. Mesures en local sur la même tête (4 cœurs, 16 Go, comme un runner GitHub) :
+
+| Mesure | Délai de Stryker | Run réel | Résultat |
+|---|---|---|---|
+| `enemyPose.ts:175`, 3 mutants, réglages actuels | 289 s | coupé | 3 timeouts, score 100 % |
+| Même ligne, `timeoutMS` à 1 h | 3 889 s | 394 s | **3 survivants**, 48 tests par mutant, score 0 % |
+| `enemyPose.ts:170-180`, un seul processus, `timeoutMS` à 1 h | 3 873 s | 387 s, puis 245 et 254 s | premier run froid, suivants chauds |
+| `battleCharacters.ts:211-252`, 14 mutants statiques, réglages actuels | 696 s | 4 min 30 à 9 min 30 | 6 tués, 7 erreurs, 1 timeout par limite de passages |
+| Jest sans Stryker, 256 fichiers, aucun test exécuté | — | 174 s | coût fixe d'un run |
+| Jest sans Stryker, les 5 fichiers des tests couvrants de la ligne 175 | — | 7 s | — |
+
+Trois constats :
+
+1. **Un run de mutant d'écran coûte presque autant que le délai, même dans le meilleur cas.** Sans
+   `findRelatedTests` (décision initiale, à cause des routes d'expo-router), Jest prépare à chaque
+   mutant les 256 fichiers de test des trois projets, puis n'exécute que les tests couvrants.
+   Ce coût fixe (174 s) est à peu près le surcoût du « dry run » (180 s). Un run dans un processus
+   chaud tient donc juste : 245 à 254 s pour un délai de 273 s.
+2. **Le premier run d'un processus neuf est bien plus lent** (387 s) : les tests couvrants des
+   écrans sont de lourds rendus de combat, et ils tournent dans un processus froid. Les processus de
+   mutation démarrent tous froids.
+3. **Chaque timeout redémarre le processus** : le mutant suivant tombe sur un processus froid,
+   dépasse à son tour, et ainsi de suite. En CI, presque tous les mutants d'écran finissent en
+   timeout, par vagues régulières de 4 (150 à 170 s pour `ui-4`, environ 470 s pour les mutants
+   statiques de `ui-2`, soit les délais calculés).
+
+Le domaine (projet `unit` seul, sans React Native) et le `core` (tests couvrants légers, 17 à 39 s
+par mutant mesurés dans l'avenant #134) ne montrent pas cette cascade.
+
+### Décision
+
+1. **Les écrans ont leur propre délai par mutant : `timeoutMS` passe de 10 000 à 600 000 (10
+   minutes) dans `stryker.ui.config.mjs`.** `stryker.config.mjs` et `stryker.domain.config.mjs`
+   gardent 10 000. Délais attendus en CI : environ 13 minutes pour un mutant d'écran ordinaire,
+   environ 18 pour un mutant statique, au moins deux fois le run réel estimé, premier run froid
+   compris. Une fois ce premier run fini, le processus reste chaud : la cascade ne démarre plus.
+2. **La règle de Stryker ne change pas : un timeout compte comme détecté.** C'est le comportement
+   standard, et une vraie boucle infinie doit rester détectée. Ce qui change, c'est qu'un run normal
+   n'est plus coupé. Les boucles infinies sont le plus souvent arrêtées avant le délai par la
+   limite de passages de Stryker (100 fois les passages du « dry run »), dont le `statusReason`
+   (« Hit limit reached ») les distingue.
+3. **Le résumé de la mutation distingue les deux sortes de timeout** (`scripts/mutation/score.mjs`) :
+   par **délai** (sans `statusReason`) et par **limite de passages**. Il avertit, sans bloquer, si
+   les timeouts par délai dépassent 10 % des mutants exécutés d'une classe : c'est le signe qu'un
+   délai est à recalibrer. Le score ne change pas.
+4. **Rien d'autre ne change** : les seuils (85 % pour le domaine, 70 % pour le code nouveau,
+   écrans compris quand ils sont mutés), les tests exécutés (les trois projets Jest, sans
+   `findRelatedTests`), la portée de la mesure, les délais des jobs (60 minutes en PR, 120 hors PR)
+   et `dryRunTimeoutMinutes` (20).
+
+Mise en œuvre : `stryker.ui.config.mjs` et `scripts/mutation/score.mjs`, testés par
+`npm run test:scripts` (`config.test.mjs` : le délai de chaque config ; `score.test.mjs` : le
+partage des timeouts et l'avertissement).
+
+### Alternatives rejetées
+
+- **Compter un timeout comme non détecté, ou l'exclure du score** : contraire au comportement
+  standard de Stryker. Une vraie boucle infinie passerait pour un survivant.
+- **Relever `timeoutMS` pour tout le code** : le domaine et le `core` n'ont pas ce défaut. Leurs
+  timeouts sont surtout des boucles infinies (`Battle.ts`), qui coûteraient chacune 10 minutes au
+  lieu de 10 secondes.
+- **Relever seulement `timeoutFactor`** : il ne multiplie que le temps des tests couvrants, pas le
+  coût fixe ni le surcoût d'un processus froid. Il faudrait un facteur démesuré pour les mutants
+  statiques.
+- **Baisser `concurrency`** : en local, 3 runs froids en parallèle durent 394 s, un run seul 387 s.
+  La concurrence n'est pas la cause, et les shards seraient plus longs.
+- **Ne charger que les fichiers de test liés au mutant** (`findRelatedTests`, avec un
+  `dependencyExtractor` Jest qui rattacherait aux routes les 13 fichiers de test qui les chargent
+  dynamiquement) : un run passerait d'environ 233 s à environ 66 s. Mais les tests exécutés
+  changent, et il faudrait prouver que chaque test couvrant reste chargé. C'est une optimisation
+  possible, dans sa propre issue, pas un correctif.
+- **`ignoreStatic`** : il ignore des mutants, ce qui fausse la mesure (déjà rejeté).
+
+### Conséquences
+
+- Le score des écrans redevient probant : un mutant survivant y apparaît comme survivant. Une PR
+  dont les écrans ont trop de survivants voit le check de mutation passer au rouge.
+- Un run de mutant d'écran va jusqu'au bout : le premier run de chaque processus est plus long
+  qu'un timeout d'aujourd'hui, les suivants à peu près aussi longs. Si un shard `ui-*` dépasse
+  45 minutes, on recalibre `PARTS.changed.ui`, ou on coupe une plage de lignes nouvelles d'écran de
+  plus de `CHUNK_MUTANTS.ui` mutants entre deux instructions de premier niveau ou deux membres d'une
+  classe, comme un fichier d'écran ajouté (avenant #145). Ce sont des réglages, pas des seuils, et
+  le recalibrage se trace ici.
+- Une boucle infinie lente, non arrêtée par la limite de passages, coûte jusqu'au délai complet
+  (10 minutes et plus) à un processus.
+- `timeoutMS` des écrans est un réglage à recalibrer d'après les mesures en CI, comme `PARTS`.
+- Le `core` paie le même coût fixe par mutant. Au prochain run `full`, si le résumé montre plus de
+  10 % de timeouts par délai dans le `core`, une issue suivra.
+
+### Mesures du correctif
+
+À reporter par le Fixer (issue #147, « Vérification ») : sur une PR de vérification qui reprend la
+tête `96c28cac` de #144, avant les tests ajoutés par le QA, les mutants de `enemyPose.ts:175`
+doivent apparaître `Survived`. Pour chaque shard `ui-*` : durée, et partage entre tués, timeouts
+par délai, timeouts par limite de passages, survivants et erreurs ; « Ran N tests per mutant ».
