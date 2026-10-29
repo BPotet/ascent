@@ -1,4 +1,5 @@
-import type { EnemyKind } from '../../../../../domain/battle/combatants';
+import { ATTACKS } from '../../../../../domain/battle/attacks';
+import { ENEMIES, type EnemyKind } from '../../../../../domain/battle/combatants';
 import {
   claws,
   ell,
@@ -13,8 +14,11 @@ import {
   type Point,
   type Sprite,
 } from '../Sprite';
+import { FACELESS_PRIOR_ANIMATION } from '../atelier/data/facelessPrior';
+import { FALLEN_KNIGHT_ANIMATION } from '../atelier/data/fallenKnight';
 import { GHOUL_ANIMATION } from '../atelier/data/ghoul';
 import { MAD_VILLAGER_ANIMATION } from '../atelier/data/madVillager';
+import { SPECTER_ANIMATION } from '../atelier/data/specter';
 import { animationSprite, type FullAnimation } from '../atelier/fullAnimation';
 
 /** Un personnage du combat : un ennemi de trois quarts face, ou la Sentinelle de dos. */
@@ -226,8 +230,7 @@ function withHesitation(
 }
 
 /**
- * L'ancien dessin de la Goule (#81) : sprite provisoire du Chevalier déchu, base des silhouettes
- * provisoires du Squelette et des Jumeaux.
+ * L'ancien dessin de la Goule (#81) : base des silhouettes provisoires du Squelette et des Jumeaux.
  */
 const OLD_GHOUL: CharacterArt = {
   width: 40,
@@ -283,80 +286,6 @@ const OLD_GHOUL: CharacterArt = {
       eye: [hx - 3, hy - 1],
       tips: [tipOf(e1, p.L), tipOf(e2, rightHand)],
       head: [hx, hy - 5],
-    };
-  },
-};
-
-const SPECTER: CharacterArt = {
-  width: 40,
-  height: 48,
-  base: { by: 0, w: 0, hem: 0, L: [8, 30], R: [32, 30], bL: 1, bR: 1, mo: 0 },
-  frames: withHesitation({
-    idle0: {},
-    idle1: { by: -1, hem: 1 },
-    step0: { by: -1 },
-    step1: { hem: 1 },
-    step2: { by: -1, hem: 2 },
-    ant0: { by: -1, w: 1, L: [5, 24], R: [35, 24] },
-    ant1: { by: -2, w: 2, hem: 1, L: [3, 16], R: [37, 16] },
-    ant2: { by: -3, w: 3, hem: 2, L: [3, 5], R: [37, 5], bL: 2, bR: 2, mo: 1 },
-    lunge: { by: 3, w: 1, L: [2, 28], R: [38, 28], mo: 1, smear: 1 },
-    impact: { by: 4, w: 2, L: [6, 46], R: [34, 46], bL: 0, bR: 0, mo: 2 },
-    rec0: { by: 2, w: 1, L: [10, 36], R: [30, 36] },
-    rec1: { by: 1, hem: 1, L: [9, 33], R: [31, 33] },
-    feint0: { by: 1, w: 1, L: [6, 22], R: [34, 22], mo: 1 },
-    feint1: { by: 2, w: 1, L: [14, 26], R: [26, 26], bL: 4, bR: 4, mo: 1 },
-    hurt: { by: 3, hem: 2, L: [9, 38], R: [33, 36] },
-    down: { by: 6, hem: 2, L: [8, 44], R: [32, 44] },
-  }),
-  draw(g, p) {
-    const b = p.by;
-    const w = p.w;
-    const top = 6 + b;
-    const hem = 40 + b;
-    const rightHand: Point = [p.R[0] - 2, p.R[1] - 1];
-    const e2 = limb(g, [27 + w, top + 13], rightHand, p.bR, 1, 15, 2);
-    claws(g, e2, rightHand, 16, 2);
-    ell(g, 19, top + 8, 9 + w, 8, 16);
-    poly(
-      g,
-      [
-        [10 - w, top + 8],
-        [28 + w, top + 8],
-        [32 + w, hem - 1],
-        [7 - w, hem],
-      ],
-      16,
-    );
-    line(g, 15, top + 15, 13, hem - 1, 15, 1);
-    line(g, 23, top + 15, 26, hem - 2, 15, 1);
-    for (let x = 7 - w, k = 0; x < 32 + w; x += 4, k += 1) {
-      const down = [4, 2, 3][(k + p.hem) % 3] ?? 2;
-      poly(
-        g,
-        [
-          [x, hem],
-          [x + 4, hem],
-          [x + 2, hem + down],
-        ],
-        16,
-      );
-    }
-    const e1 = limb(g, [11 - w, top + 13], p.L, p.bL, -1, 16, 2);
-    claws(g, e1, p.L, 17, 2);
-    ell(g, 16, top + 8, 5, 4, 15);
-    rect(g, 12, top + 7, 2, 1, 9);
-    px(g, 18, top + 7, 9);
-    if (p.mo) rect(g, 13, top + 10, 4, p.mo, 1);
-    return {
-      smear: p.smear
-        ? [p.L, rightHand, [12, top + 2], [19, top], [25, top + 2], [10 - w, top + 9]]
-        : null,
-      smearCode: 17,
-      halo: null,
-      eye: [12, top + 7],
-      tips: [tipOf(e1, p.L, 2), tipOf(e2, rightHand, 2)],
-      head: [17, top],
     };
   },
 };
@@ -527,13 +456,33 @@ function silhouette(art: CharacterArt): CharacterArt {
   };
 }
 
-/** Les ennemis dont l'animation complète est validée dans l'Atelier (#119, ADR 0010). */
-const FULL_ANIMATIONS: Readonly<Record<'ghoul' | 'madVillager', FullAnimation<EnemyFrame>>> = {
+/** Les ennemis dont l'animation complète est validée dans l'Atelier (#119, #138, ADR 0010). */
+const FULL_ANIMATIONS: Readonly<
+  Record<
+    'ghoul' | 'madVillager' | 'specter' | 'fallenKnight' | 'facelessPrior',
+    FullAnimation<EnemyFrame>
+  >
+> = {
   ghoul: GHOUL_ANIMATION,
   madVillager: MAD_VILLAGER_ANIMATION,
+  specter: SPECTER_ANIMATION,
+  fallenKnight: FALLEN_KNIGHT_ANIMATION,
+  facelessPrior: FACELESS_PRIOR_ANIMATION,
 };
 
 type AnimatedCharacter = keyof typeof FULL_ANIMATIONS;
+
+/** Les ennemis animés (`ANIMATED_ENEMIES`) : les clés du registre des animations complètes. */
+export const ANIMATED_ENEMIES = Object.keys(FULL_ANIMATIONS) as readonly EnemyKind[];
+
+/**
+ * Un ennemi joue sa palette rouge (ADR 0010 § 4) s'il a un coup imparable, phase 2 comprise : lu
+ * dans le domaine, sans liste en double.
+ */
+function playsRed(kind: EnemyKind): boolean {
+  const { moves, phase2Moves = [] } = ENEMIES[kind];
+  return [...moves, ...phase2Moves].some((move) => ATTACKS[move.attack].perilous);
+}
 
 function isAnimated(character: BattleCharacter): character is AnimatedCharacter {
   return Object.hasOwn(FULL_ANIMATIONS, character);
@@ -545,14 +494,11 @@ function isEnemyFrame(frame: BattleFrame): frame is EnemyFrame {
 
 /** Les personnages encore dessinés par le code : une seule source d'image par personnage. */
 const ART: Readonly<Record<Exclude<BattleCharacter, AnimatedCharacter>, CharacterArt>> = {
-  specter: SPECTER,
   necromancer: NECROMANCER,
-  // Sprites provisoires des ennemis de l'ascension (prototype #91), repris du combat d'essai.
-  fallenKnight: OLD_GHOUL,
   // Silhouette provisoire des Jumeaux (prototype #108) : l'asset de l'Atelier n'est pas validé.
   twins: silhouette(OLD_GHOUL),
+  // Sprite provisoire du boss de l'ascension (prototype #91), repris du combat d'essai.
   ossuaryWarden: NECROMANCER,
-  facelessPrior: SPECTER,
   hero: HERO,
   // Le Squelette (#106) : silhouette provisoire, son asset est encore « proposé ».
   skeleton: silhouette(OLD_GHOUL),
@@ -563,8 +509,9 @@ const finished = ([x, y]: Point): Point => [x + 2, y + 2];
 
 /**
  * L'image `frame` d'un personnage du combat. Avec une animation complète, la pose recopiée telle
- * quelle, sans liseré ni rouge (ADR 0010) ; sinon le dessin (`spectre3`, `necro3`, `hero3` de la
- * maquette), fini avec son liseré `tier` et, pour un coup imparable, la palette rouge.
+ * quelle, sans liseré ni traînée, peinte avec sa palette rouge pour un coup imparable si l'ennemi
+ * la joue (ADR 0010) ; sinon le dessin (`necro3`, `hero3` de la maquette), fini avec son liseré
+ * `tier` et, pour un coup imparable, la palette rouge.
  */
 export function battleSprite(
   character: BattleCharacter,
@@ -572,7 +519,14 @@ export function battleSprite(
   { tier = 0, red = false }: CharacterLook = {},
 ): CharacterImage {
   if (isAnimated(character)) {
-    return animationSprite(FULL_ANIMATIONS[character], isEnemyFrame(frame) ? frame : 'idle0');
+    return animationSprite(
+      FULL_ANIMATIONS[character],
+      isEnemyFrame(frame) ? frame : 'idle0',
+      undefined,
+      {
+        red: red && playsRed(character),
+      },
+    );
   }
   const { inner, drawn, dx } = drawnFrame(character, frame);
   const sprite = finish(inner, {

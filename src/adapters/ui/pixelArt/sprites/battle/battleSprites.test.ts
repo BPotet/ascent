@@ -1,15 +1,21 @@
 // Les sprites du combat en pixel art 2.5D (#81), portés de `pxlib` dans la maquette v4.1.
-import type { EnemyKind } from '../../../../../domain/battle/combatants';
-import { animationSprite } from '../atelier/fullAnimation';
+import { ATTACKS } from '../../../../../domain/battle/attacks';
+import { ENEMIES as PROFILES, type EnemyKind } from '../../../../../domain/battle/combatants';
+import { animationSprite, type FullAnimation } from '../atelier/fullAnimation';
+import { FACELESS_PRIOR_ANIMATION } from '../atelier/data/facelessPrior';
+import { FALLEN_KNIGHT_ANIMATION } from '../atelier/data/fallenKnight';
 import { GHOUL_ANIMATION } from '../atelier/data/ghoul';
 import { MAD_VILLAGER_ANIMATION } from '../atelier/data/madVillager';
+import { SPECTER_ANIMATION } from '../atelier/data/specter';
 import {
+  ANIMATED_ENEMIES,
   ENEMY_FRAMES,
   HERO_FRAMES,
   RED_FRAMES,
   battleSprite,
   poseAnchors,
   type BattleCharacter,
+  type EnemyFrame,
 } from './battleCharacters';
 import { battleAtlas, frameRect } from './battleAtlas';
 import { EFFECT_KINDS, effectsAtlas, effectRect, sealSprite, vignetteImage } from './battleEffects';
@@ -93,13 +99,16 @@ describe('the battle characters (pxlib)', () => {
     },
   );
 
+  // Dessinée par le code jusqu'à #139 : la Gardienne des ossuaires, avec le dessin du Nécromancien.
   it('shows red only in the red palette, on the frames of the wind-up', () => {
     for (const frame of ENEMY_FRAMES) {
-      const plain = codesOf(battleSprite('specter', frame, { tier: 2 }).sprite.pixels);
+      const plain = codesOf(battleSprite('ossuaryWarden', frame, { tier: 2 }).sprite.pixels);
       expect(RED_CODES.some((code) => plain.has(code))).toBe(false);
     }
     for (const frame of RED_FRAMES) {
-      const red = codesOf(battleSprite('specter', frame, { tier: 2, red: true }).sprite.pixels);
+      const red = codesOf(
+        battleSprite('ossuaryWarden', frame, { tier: 2, red: true }).sprite.pixels,
+      );
       expect(RED_CODES.some((code) => red.has(code))).toBe(true);
     }
   });
@@ -108,44 +117,64 @@ describe('the battle characters (pxlib)', () => {
     const count = (pixels: Uint8Array, ...codes: number[]) =>
       Array.from(pixels).filter((code) => codes.includes(code)).length;
     const gold = (tier: 0 | 1 | 2) =>
-      count(battleSprite('specter', 'ant1', { tier }).sprite.pixels, 7, 8);
+      count(battleSprite('ossuaryWarden', 'ant1', { tier }).sprite.pixels, 7, 8);
     expect(gold(1)).toBeGreaterThan(gold(0));
     expect(gold(2)).toBeGreaterThan(gold(1));
-    const still = battleSprite('specter', 'ant2', { tier: 2 }).sprite.pixels;
-    const lunge = battleSprite('specter', 'lunge', { tier: 2 }).sprite.pixels;
-    // La traînée de la ruée, dans la teinte claire du Spectre.
-    expect(count(lunge, 17)).toBeGreaterThan(count(still, 17) + 20);
+    const look = { tier: 2, red: true } as const;
+    const still = battleSprite('ossuaryWarden', 'ant2', look).sprite.pixels;
+    const lunge = battleSprite('ossuaryWarden', 'lunge', look).sprite.pixels;
+    // La traînée de la ruée : rouge clair (30) en rouge, la teinte de l'orbe (20) sinon.
+    expect(count(still, 30)).toBe(0);
+    expect(count(lunge, 30)).toBeGreaterThan(0);
+    const plain = battleSprite('ossuaryWarden', 'lunge', { tier: 2 }).sprite.pixels;
+    lunge.forEach((code, index) => {
+      if (code === 30) expect(plain[index]).toBe(20);
+    });
   });
 
   it('shifts the hesitation one art pixel from the full wind-up', () => {
-    const ant2 = battleSprite('specter', 'ant2').sprite.pixels;
-    const hes = battleSprite('specter', 'hes').sprite.pixels;
+    const ant2 = battleSprite('ossuaryWarden', 'ant2').sprite.pixels;
+    const hes = battleSprite('ossuaryWarden', 'hes').sprite.pixels;
     expect(hes).not.toEqual(ant2);
   });
 });
 
-describe('the full animations of the Atelier in battle (#119)', () => {
-  const ANIMATED = [
-    ['ghoul', GHOUL_ANIMATION],
-    ['madVillager', MAD_VILLAGER_ANIMATION],
-  ] as const;
+describe('the full animations of the Atelier in battle (#119, #138)', () => {
+  /** Les animations recopiées, une ligne par entité. */
+  const COPIED: Partial<Readonly<Record<EnemyKind, FullAnimation<EnemyFrame>>>> = {
+    ghoul: GHOUL_ANIMATION,
+    madVillager: MAD_VILLAGER_ANIMATION,
+    specter: SPECTER_ANIMATION,
+    fallenKnight: FALLEN_KNIGHT_ANIMATION,
+    facelessPrior: FACELESS_PRIOR_ANIMATION,
+  };
+  /** Les ennemis animés, tirés du registre : chacun avec son animation recopiée. */
+  const ANIMATED = ANIMATED_ENEMIES.map((kind) => [kind, COPIED[kind]!] as const);
   /** Les ennemis encore dessinés par le code, l'ancien dessin de la Goule compris. */
-  const DRAWN: readonly EnemyKind[] = [
-    'specter',
-    'necromancer',
-    'fallenKnight',
-    'twins',
-    'skeleton',
-    'ossuaryWarden',
-    'facelessPrior',
-  ];
+  const DRAWN = (Object.keys(PROFILES) as EnemyKind[]).filter(
+    (kind) => !ANIMATED_ENEMIES.includes(kind),
+  );
+  /** Un coup de l'ennemi, phase 2 comprise, est imparable : il joue sa palette rouge. */
+  const hasPerilous = (kind: EnemyKind) =>
+    [...PROFILES[kind].moves, ...(PROFILES[kind].phase2Moves ?? [])].some(
+      (move) => ATTACKS[move.attack].perilous,
+    );
+
+  it('animates the Ghoul, the Mad villager, the Specter, the Fallen knight and the Faceless prior', () => {
+    expect(ANIMATED_ENEMIES).toEqual(
+      expect.arrayContaining(['ghoul', 'madVillager', 'specter', 'fallenKnight', 'facelessPrior']),
+    );
+    for (const [kind, animation] of ANIMATED)
+      expect([kind, animation]).toEqual([kind, COPIED[kind]]);
+    expect(DRAWN.length + ANIMATED.length).toBe(Object.keys(PROFILES).length);
+  });
 
   it.each(ANIMATED)(
-    'shows each pose of the %s as copied, in the 44 × 52 cell, without rim, smear or red',
+    'shows each pose of the %s as copied, in its cell, without rim or smear, whatever the tier',
     (character, animation) => {
       for (const frame of ENEMY_FRAMES) {
         const copied = animationSprite(animation, frame);
-        for (const look of [{}, { tier: 1 }, { tier: 2 }, { tier: 2, red: true }] as const) {
+        for (const look of [{}, { tier: 1 }, { tier: 2 }, { tier: 2, red: false }] as const) {
           const image = battleSprite(character, frame, look);
           expect([frame, look, image.sprite]).toEqual([frame, look, copied.sprite]);
           expect(image.anchors).toEqual(copied.anchors);
@@ -153,6 +182,53 @@ describe('the full animations of the Atelier in battle (#119)', () => {
       }
     },
   );
+
+  it.each(ANIMATED)(
+    'shows the %s in its red palette for a perilous attack only if one of its moves is perilous',
+    (character, animation) => {
+      const red = hasPerilous(character);
+      for (const frame of ENEMY_FRAMES) {
+        const copied = animationSprite(animation, frame, undefined, { red });
+        for (const tier of [0, 1, 2] as const) {
+          const image = battleSprite(character, frame, { tier, red: true });
+          expect([frame, tier, image.sprite]).toEqual([frame, tier, copied.sprite]);
+          expect(image.anchors).toEqual(copied.anchors);
+        }
+      }
+    },
+  );
+
+  it('plays the red palette of the Specter, the Fallen knight and the Faceless prior (phase 2), never that of the Ghoul or the Mad villager', () => {
+    const turnsRed = (kind: EnemyKind) =>
+      !battleSprite(kind, 'ant1', { red: true }).sprite.pixels.every(
+        (code, index) => code === battleSprite(kind, 'ant1').sprite.pixels[index],
+      );
+    expect(
+      ['specter', 'fallenKnight', 'facelessPrior'].map((kind) => turnsRed(kind as EnemyKind)),
+    ).toEqual([true, true, true]);
+    expect([turnsRed('ghoul'), turnsRed('madVillager')]).toEqual([false, false]);
+    expect(PROFILES.facelessPrior.moves.some((move) => ATTACKS[move.attack].perilous)).toBe(false);
+  });
+
+  it('gives every animated enemy that plays its red palette a red palette, tint for tint', () => {
+    for (const [kind, animation] of ANIMATED) {
+      if (!hasPerilous(kind)) continue;
+      expect([kind, animation.red?.length]).toEqual([kind, animation.pal.length]);
+      const plain = battleSprite(kind, 'ant1').sprite;
+      expect([kind, battleSprite(kind, 'ant1', { red: true }).sprite]).not.toEqual([kind, plain]);
+    }
+  });
+
+  it('no longer draws the Specter, the Fallen knight nor the Faceless prior with a provisional sprite', () => {
+    const shape = (kind: EnemyKind, frame: EnemyFrame) =>
+      Array.from(battleSprite(kind, frame).sprite.pixels, (code) => (code === 0 ? 0 : 1));
+    expect(battleSprite('facelessPrior', 'idle0').sprite).not.toEqual(
+      battleSprite('specter', 'idle0').sprite,
+    );
+    for (const frame of ENEMY_FRAMES) {
+      expect(shape('fallenKnight', frame)).not.toEqual(shape('skeleton', frame));
+    }
+  });
 
   it('no longer draws the Mad villager as a Ghoul, nor the Ghoul with its old drawing', () => {
     for (const frame of ENEMY_FRAMES) {
@@ -217,6 +293,36 @@ describe('the full animations of the Atelier in battle (#119)', () => {
 });
 
 describe('the battle atlases', () => {
+  it('sizes the cell of each enemy to its full animation: 44 × 54 for the Fallen knight, 52 × 62 for the Faceless prior', () => {
+    for (const [character, cell] of [
+      ['specter', [44, 52]],
+      ['fallenKnight', [44, 54]],
+      ['facelessPrior', [52, 62]],
+    ] as const) {
+      const atlas = battleAtlas(character);
+      expect([character, atlas.table.cellWidth, atlas.table.cellHeight]).toEqual([
+        character,
+        ...cell,
+      ]);
+      expect(atlas.width).toBe(8 * cell[0]);
+      for (const frame of ENEMY_FRAMES) {
+        const rect = frameRect(character, frame, 2, true);
+        expect([rect.width, rect.height]).toEqual(cell);
+        expect(rect.y + rect.height).toBeLessThanOrEqual(atlas.height);
+      }
+    }
+  });
+
+  it.each(['specter', 'fallenKnight', 'facelessPrior'] as const)(
+    'gives a red frame of the %s its own rectangle, and down falls back to the plain one',
+    (character) => {
+      expect(frameRect(character, 'ant1', 1, true)).not.toEqual(
+        frameRect(character, 'ant1', 1, false),
+      );
+      expect(frameRect(character, 'down', 0, true)).toEqual(frameRect(character, 'down', 0, false));
+    },
+  );
+
   it.each([...ENEMIES, 'hero'] as const)(
     'packs every frame of the %s, each at its rectangle',
     (character: BattleCharacter) => {
@@ -248,10 +354,12 @@ describe('the battle atlases', () => {
   });
 
   it('gives a red frame its own rectangle, and falls back to the plain one without red', () => {
-    expect(frameRect('specter', 'ant1', 1, true)).not.toEqual(
-      frameRect('specter', 'ant1', 1, false),
+    expect(frameRect('ossuaryWarden', 'ant1', 1, true)).not.toEqual(
+      frameRect('ossuaryWarden', 'ant1', 1, false),
     );
-    expect(frameRect('specter', 'down', 0, true)).toEqual(frameRect('specter', 'down', 0, false));
+    expect(frameRect('ossuaryWarden', 'down', 0, true)).toEqual(
+      frameRect('ossuaryWarden', 'down', 0, false),
+    );
   });
 
   it('falls back to the nearest tier drawn for a frame', () => {

@@ -93,7 +93,7 @@ describe('BattleScene with Skia', () => {
 
     expect(anchors.ghoul.hurt).toEqual(poseAnchors('ghoul', 'hurt'));
     expect(anchors.madVillager.lunge).toEqual(poseAnchors('madVillager', 'lunge'));
-    expect(anchors.specter.idle0).toEqual(anchors.specter.ant2);
+    expect(anchors.ossuaryWarden.idle0).toEqual(anchors.ossuaryWarden.ant2);
   });
 
   it('mounts the Ghoul and the Mad villager with their full animation, one of them stunned', async () => {

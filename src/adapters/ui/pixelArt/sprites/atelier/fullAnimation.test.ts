@@ -1,11 +1,15 @@
-// Le contenu recopié de l'Atelier (#119, ADR 0010) : l'animation complète de la Goule et du
-// Villageois fou, les images validées des objets, et leur conversion en sprites.
+// Le contenu recopié de l'Atelier (#119, #138, ADR 0010) : l'animation complète de la Goule, du
+// Villageois fou, du Spectre, du Chevalier déchu et du Prieur sans visage, les images validées des
+// objets, et leur conversion en sprites.
 import { artPalette } from '../../artPalette';
 import type { Sprite } from '../Sprite';
 import { ENEMY_FRAMES } from '../battle/battleCharacters';
+import { FACELESS_PRIOR_ANIMATION } from './data/facelessPrior';
+import { FALLEN_KNIGHT_ANIMATION } from './data/fallenKnight';
 import { GHOUL_ANIMATION } from './data/ghoul';
 import { ITEM_IMAGES } from './data/itemImages';
 import { MAD_VILLAGER_ANIMATION } from './data/madVillager';
+import { SPECTER_ANIMATION } from './data/specter';
 import {
   animationSprite,
   assetSprite,
@@ -18,6 +22,9 @@ import {
 const ANIMATIONS = [
   ['ghoul', GHOUL_ANIMATION, 2],
   ['madVillager', MAD_VILLAGER_ANIMATION, 1],
+  ['specter', SPECTER_ANIMATION, 2],
+  ['fallenKnight', FALLEN_KNIGHT_ANIMATION, 2],
+  ['facelessPrior', FACELESS_PRIOR_ANIMATION, 2],
 ] as const;
 
 /** Le code `artPalette` d'une teinte, cherché ici sans passer par le module testé. */
@@ -62,6 +69,7 @@ describe('the tints of the Atelier', () => {
   it('finds every tint of the validated content in the art palette', () => {
     const palettes = [
       ...ANIMATIONS.map(([, animation]) => animation.pal),
+      ...ANIMATIONS.map(([, animation]) => animation.red),
       ...Object.values(ITEM_IMAGES).map((image) => image.palette),
     ];
     for (const tint of palettes.flat()) {
@@ -88,12 +96,14 @@ describe.each(ANIMATIONS)('the full animation of the %s', (_, animation, tips) =
     }
   });
 
-  it('gives each pose its anchors inside the image, with its tips', () => {
-    const inside = ([x, y]: readonly [number, number]) =>
-      x >= 0 && y >= 0 && x < full.w && y < full.h;
+  it('gives each pose its eye and head inside the image, its tips inside the cell', () => {
+    const inside = ([x, y]: readonly [number, number], margin = 0) =>
+      x >= -margin && y >= -margin && x < full.w + margin && y < full.h + margin;
     for (const { eye, head, tips: points } of Object.values(full.anchors)) {
       expect(points).toHaveLength(tips);
-      for (const point of [eye, head, ...points]) expect(inside(point)).toBe(true);
+      for (const point of [eye, head]) expect(inside(point)).toBe(true);
+      // Copiées telles quelles : une pointe peut déborder de la pose de 2 pixels d'art (#138).
+      for (const point of points) expect([point, inside(point, 2)]).toEqual([point, true]);
     }
   });
 
@@ -121,6 +131,37 @@ describe.each(ANIMATIONS)('the full animation of the %s', (_, animation, tips) =
           ]);
         }
       }
+    }
+  });
+});
+
+describe.each([
+  ['Specter', SPECTER_ANIMATION, [44, 52]],
+  ['Fallen knight', FALLEN_KNIGHT_ANIMATION, [44, 54]],
+  ['Faceless prior', FACELESS_PRIOR_ANIMATION, [52, 62]],
+] as const)('the %s in its cell of the battle (#138)', (_, animation, cell) => {
+  const full: FullAnimation<(typeof ENEMY_FRAMES)[number]> = animation;
+
+  it('has a cell at its own size', () => {
+    expect([full.w, full.h]).toEqual(cell);
+    expect(battleCell(full)).toEqual(cell);
+  });
+
+  it.each([
+    ['palette', false],
+    ['red palette', true],
+  ] as const)('copies each pose pixel for pixel, in its %s', (__, red) => {
+    const palette = red ? full.red! : full.pal;
+    for (const pose of ENEMY_FRAMES) {
+      const { sprite, anchors } = animationSprite(full, pose, undefined, { red });
+      expect([sprite.width, sprite.height]).toEqual(cell);
+      for (let y = 0; y < full.h; y += 1) {
+        for (let x = 0; x < full.w; x += 1) {
+          const expected = expectedCode(full.frames[pose], palette, x, y);
+          if (at(sprite, x, y) !== expected) throw new Error(`${pose} (${x}, ${y})`);
+        }
+      }
+      expect(anchors).toEqual(full.anchors[pose]);
     }
   });
 });
