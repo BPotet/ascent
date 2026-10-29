@@ -6,7 +6,7 @@ import type { SceneTimeline } from '../sceneTypes';
 import { FRAME_MS, enemyPose, restPose } from './enemyPose';
 import { heroFrame } from './heroFrame';
 import { glintSprites, hurtLevel, impactFlash, sparkFrame } from './sceneEffects';
-import { PLATE_HEIGHT, sceneGeometry } from './sceneGeometry';
+import { PLATE_HEIGHT, sceneGeometry, spriteOrigin } from './sceneGeometry';
 
 const STEP_IN_AT = 1_000;
 const WIND_UP_AT = 1_400;
@@ -373,6 +373,35 @@ describe('sceneGeometry', () => {
     expect(geometry.hero.y + 132).toBe(440 - 12 + 4);
     expect(geometry.chest).toEqual({ x: 4 + 54, y: 440 - 144 + Math.round(132 * 0.42) });
     expect(sceneGeometry(320, 440, 3).hero).toMatchObject({ width: 72, height: 88, scale: 2 });
+  });
+
+  it('keeps the place of today for a cell of 44 × 52 art pixels', () => {
+    for (const count of [1, 2, 3]) {
+      for (const { sprite } of sceneGeometry(390, 440, count).enemies) {
+        expect(spriteOrigin(sprite, 44, 52)).toEqual({ x: sprite.x, y: sprite.y });
+      }
+    }
+  });
+
+  it('centres a larger cell in width and sets it on the bottom of the place, at 2 dp (#138)', () => {
+    const { sprite } = sceneGeometry(390, 440, 1).enemies[0]!;
+    // Le Prieur sans visage (52 × 62) : 8 dp à gauche, 20 dp plus haut.
+    const prior = spriteOrigin(sprite, 52, 62);
+    expect(prior).toEqual({ x: sprite.x - 8, y: sprite.y - 20 });
+    // Le Chevalier déchu (44 × 54) : 4 dp plus haut.
+    expect(spriteOrigin(sprite, 44, 54)).toEqual({ x: sprite.x, y: sprite.y - 4 });
+    // Une largeur impaire en pixels d'art reste sur la grille de 2 dp.
+    expect(spriteOrigin(sprite, 47, 52)).toEqual({ x: sprite.x - 2, y: sprite.y });
+    for (const [width, height] of [
+      [52, 62],
+      [44, 54],
+      [54, 54],
+    ] as const) {
+      const origin = spriteOrigin(sprite, width, height);
+      expect([origin.x % 2, origin.y % 2]).toEqual([0, 0]);
+      // Les pieds sur le socle : le bas de la case tombe sur le bas de la place.
+      expect(origin.y + height * 2).toBe(sprite.y + sprite.height);
+    }
   });
 
   it('aims each enemy at the hero: the reach vector goes from its body to the chest of the hero', () => {

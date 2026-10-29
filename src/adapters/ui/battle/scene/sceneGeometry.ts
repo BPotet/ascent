@@ -104,3 +104,20 @@ export function sceneGeometry(width: number, height: number, count: number): Sce
     platesBottom: Math.max(0, ...enemies.map((enemy) => enemy.plateBottom)),
   };
 }
+
+/**
+ * L'origine d'une case du combat dans la place d'un ennemi (`spriteOrigin`, ADR 0010 § 3), en dp :
+ * une case plus grande que 44 × 52 pixels d'art y est centrée en largeur et calée en bas, pieds sur
+ * le socle, à 2 dp par pixel d'art. Pour 44 × 52, l'origine est celle de la place. Appelée sur le
+ * fil JS, jamais dans un worklet.
+ */
+export function spriteOrigin(
+  sprite: SceneRect,
+  cellWidth: number,
+  cellHeight: number,
+): { readonly x: number; readonly y: number } {
+  return {
+    x: sprite.x - Math.floor((cellWidth - 44) / 2) * 2,
+    y: sprite.y - (cellHeight - 52) * 2,
+  };
+}
