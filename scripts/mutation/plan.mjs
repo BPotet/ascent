@@ -1,10 +1,11 @@
 // Plan de la mutation en CI (docs/adr/0004-mutation-en-ci.md) : quels fichiers, quelles lignes, dans
-// quel shard. Fonctions pures ; les seuls effets de bord (appels à git, lecture des fichiers) sont
-// regroupés dans `collectChanges()`.
+// quel shard. Fonctions pures ; les seuls effets de bord (appels à git, lecture des fichiers et de
+// leurs instructions avec le compilateur TypeScript) sont regroupés dans `collectChanges()`.
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { Minimatch, minimatch } from 'minimatch';
+import ts from 'typescript';
 import baseConfig from '../../stryker.config.mjs';
 import domainConfig from '../../stryker.domain.config.mjs';
 import uiConfig from '../../stryker.ui.config.mjs';
@@ -19,10 +20,15 @@ const CONFIGS = { domain: DOMAIN_CONFIG, core: BASE_CONFIG, ui: UI_CONFIG };
 // fixe d'environ 5 minutes par shard (installation et « dry run » de toute la suite Jest). 3 parts
 // en PR ramènent les ~25 minutes d'un seul shard à environ 10 ; au-delà, le coût fixe domine. En
 // release, ~7 fois plus de lignes : 6 parts d'environ 20 minutes au lieu de 2 de près d'une heure.
+// `domain` (avenant du 29 octobre 2026, issue #131) : un fichier du domaine modifié est muté en
+// entier ; au-delà de `CHUNK_LINES.domain` lignes, il est coupé en plages (voir
+// `chunkAtStatements()`) réparties entre les parts. `Battle.ts` (environ 1 500 lignes) prenait
+// environ 3 h dans un seul shard.
 export const PARTS = {
-  changed: { domain: 1, core: 3, ui: 2 },
-  full: { domain: 1, core: 6, ui: 10 },
+  changed: { domain: 6, core: 3, ui: 2 },
+  full: { domain: 8, core: 6, ui: 10 },
 };
+export const CHUNK_LINES = { domain: 250 };
 
 const SCOPES = ['domain', 'core', 'ui'];
 
@@ -178,13 +184,86 @@ export function mutateEntries(change, { whole }) {
 }
 
 /**
- * Répartit des fichiers pondérés en `parts` parts, sans couper un fichier : gloutonne et
- * déterministe (poids décroissant puis chemin ; la part la plus légère, puis d'indice le plus bas).
- * Les parts vides sont supprimées.
+ * Les plages de lignes d'un fichier `{ lineCount, statements }` (voir `outline()`) : contiguës, de
+ * la ligne 1 à `lineCount`, d'au plus `maxLines` lignes, coupées seulement entre deux instructions
+ * de premier niveau. Stryker ne mute un nœud que s'il est entièrement dans une plage : une coupe
+ * dans une instruction perdrait ses mutants en silence. Une instruction plus longue que `maxLines`
+ * reste entière ; les commentaires et lignes vides entre deux instructions vont à la suivante.
+ */
+export function chunkAtStatements({ lineCount, statements }, maxLines) {
+  // Des instructions qui partagent une ligne ne peuvent pas être séparées par une plage de lignes.
+  const units = [];
+  for (const { start, end } of [...statements].sort((a, b) => a.start - b.start)) {
+    const last = units.at(-1);
+    if (last && start <= last.end) last.end = Math.max(last.end, end);
+    else units.push({ start, end });
+  }
+  const chunks = [];
+  let start = 1;
+  for (let index = 1; index < units.length; index += 1) {
+    // Les lignes après la dernière instruction vont à la dernière plage.
+    const end = index === units.length - 1 ? lineCount : units[index].end;
+    if (end - start + 1 > maxLines) {
+      const cut = units[index - 1].end + 1;
+      chunks.push({ start, end: cut - 1 });
+      start = cut;
+    }
+  }
+  chunks.push({ start, end: lineCount });
+  return chunks;
+}
+
+/**
+ * Le nombre de lignes d'un fichier et les plages de lignes (de 1) de ses instructions de premier
+ * niveau, lues avec le compilateur TypeScript, sans les commentaires qui les précèdent.
+ */
+export function outline(source, fileName) {
+  const file = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true);
+  const line = (position) => file.getLineAndCharacterOfPosition(position).line + 1;
+  return {
+    lineCount: line(file.getEnd()),
+    statements: file.statements.map((statement) => ({
+      start: line(statement.getStart(file)),
+      end: line(statement.getEnd()),
+    })),
+  };
+}
+
+/**
+ * Les éléments à répartir pour un fichier du domaine, muté en entier : le fichier, ou une plage
+ * par élément s'il dépasse `CHUNK_LINES.domain` lignes. Le poids est le nombre de lignes mutées.
+ * Sans `statements` (rien de lu par `outline()`), le fichier n'est pas coupé.
+ */
+function domainItems(change) {
+  const lineCount = change.lineCount ?? change.weight;
+  const chunks = change.statements
+    ? chunkAtStatements({ lineCount, statements: change.statements }, CHUNK_LINES.domain)
+    : [{ start: 1, end: lineCount }];
+  if (chunks.length === 1) {
+    return [
+      { file: change.file, weight: lineCount, mutate: mutateEntries(change, { whole: true }) },
+    ];
+  }
+  return chunks.map((range) => ({
+    file: change.file,
+    weight: range.end - range.start + 1,
+    mutate: mutateEntries({ ...change, added: false, ranges: [range] }, { whole: false }),
+  }));
+}
+
+const compare = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
+/**
+ * Répartit des éléments pondérés en `parts` parts, sans couper un élément : gloutonne et
+ * déterministe (poids décroissant, chemin puis entrées ; la part la plus légère, puis d'indice le
+ * plus bas). Les parts vides sont supprimées.
  */
 export function split(items, parts) {
   const sorted = [...items].sort(
-    (a, b) => b.weight - a.weight || (a.file < b.file ? -1 : a.file > b.file ? 1 : 0),
+    (a, b) =>
+      b.weight - a.weight ||
+      compare(a.file, b.file) ||
+      compare(String(a.mutate ?? ''), String(b.mutate ?? '')),
   );
   const buckets = Array.from({ length: Math.max(1, parts) }, () => ({ weight: 0, items: [] }));
   for (const item of sorted) {
@@ -214,8 +293,11 @@ export function buildPlan({ mode, changes, ui = 'exclude', scopeOf = classify })
   for (const change of changes) {
     const scope = scopeOf(change.file);
     if (!scopes.includes(scope)) continue;
-    const whole = mode === 'full' || scope === 'domain';
-    const mutate = mutateEntries(change, { whole });
+    if (scope === 'domain') {
+      byScope.domain.push(...domainItems(change));
+      continue;
+    }
+    const mutate = mutateEntries(change, { whole: mode === 'full' });
     if (mutate.length === 0) continue; // seulement des lignes supprimées
     byScope[scope].push({ file: change.file, weight: change.weight, mutate });
   }
@@ -244,11 +326,26 @@ function git(args, cwd) {
   return execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
 }
 
+/** Ajoute à chaque fichier du domaine son nombre de lignes et ses instructions (`outline()`). */
+function withOutlines(changes, cwd, scopeOf) {
+  return changes.map((change) =>
+    scopeOf(change.file) === 'domain'
+      ? { ...change, ...outline(readFileSync(path.join(cwd, change.file), 'utf8'), change.file) }
+      : change,
+  );
+}
+
 /**
  * Seuls effets de bord du plan. Mode `changed` : diff depuis la base de fusion avec `baseRef`.
  * Mode `full` : tous les fichiers suivis de `src/`, en entier, pondérés par leur nombre de lignes.
+ * Les fichiers du domaine sont lus avec le compilateur TypeScript pour pouvoir être coupés.
  */
-export function collectChanges({ mode, baseRef = 'origin/develop', cwd = process.cwd() }) {
+export function collectChanges({
+  mode,
+  baseRef = 'origin/develop',
+  cwd = process.cwd(),
+  scopeOf = classify,
+}) {
   if (mode === 'full') {
     const files = git(['ls-files', 'src'], cwd).split('\n').filter(Boolean);
     const changes = files.map((file) => ({
@@ -257,7 +354,7 @@ export function collectChanges({ mode, baseRef = 'origin/develop', cwd = process
       ranges: [],
       weight: readFileSync(path.join(cwd, file), 'utf8').split('\n').length,
     }));
-    return { base: '', changes };
+    return { base: '', changes: withOutlines(changes, cwd, scopeOf) };
   }
   const base = git(['merge-base', baseRef, 'HEAD'], cwd).trim();
   const diff = git(
@@ -277,5 +374,5 @@ export function collectChanges({ mode, baseRef = 'origin/develop', cwd = process
     ],
     cwd,
   );
-  return { base, changes: parseDiff(diff) };
+  return { base, changes: withOutlines(parseDiff(diff), cwd, scopeOf) };
 }
