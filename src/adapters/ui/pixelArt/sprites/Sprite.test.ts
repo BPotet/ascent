@@ -15,7 +15,6 @@ import {
   poly,
   px,
   rect,
-  shear,
   toRgba,
 } from './Sprite';
 
@@ -154,17 +153,6 @@ describe('the sprite engine', () => {
       '.........',
       '.........',
     ]);
-  });
-
-  it('shears the rows above a line, more at the top', () => {
-    const sprite = grid(4, 3);
-    rect(sprite, 0, 0, 1, 3, SURFACE);
-    shear(sprite, 2, 2);
-    expect(rowsOf(sprite)).toEqual(['..3.', '.3..', '3...']);
-    const back = grid(4, 1);
-    rect(back, 2, 0, 1, 1, SURFACE);
-    shear(back, -2, 1);
-    expect(rowsOf(back)).toEqual(['3...']);
   });
 
   describe('finish options (pxlib, battle)', () => {

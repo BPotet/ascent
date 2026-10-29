@@ -7,6 +7,7 @@ import {
   type BattleCharacter,
   type BattleFrame,
 } from './battleCharacters';
+import { isHero } from './heroAnimations';
 
 /** Un rectangle d'un atlas, en pixels d'art. */
 export interface AtlasRect {
@@ -65,7 +66,7 @@ interface Variant {
 }
 
 function variantsOf(character: BattleCharacter): Variant[] {
-  if (character === 'hero') {
+  if (isHero(character)) {
     return [
       ...HERO_FRAMES.map((frame) => ({ frame, tier: 0 as const, red: false })),
       { frame: 'raise', tier: 1, red: false },
@@ -127,7 +128,7 @@ export function battleAtlas(character: BattleCharacter): BattleAtlas {
       );
     }
   });
-  const names = character === 'hero' ? HERO_FRAMES : ENEMY_FRAMES;
+  const names = isHero(character) ? HERO_FRAMES : ENEMY_FRAMES;
   const frames = Object.fromEntries(names.map((name, index) => [name, index]));
   const slots = names.flatMap((frame) =>
     [0, 1, 2].flatMap((tier) =>

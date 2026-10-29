@@ -200,23 +200,6 @@ export function claws(
   }
 }
 
-/**
- * Penche les lignes au-dessus de `bottom` : le haut glisse de `amount` pixels d'art, le bas ne
- * bouge pas (l'esquive et le recul du héros).
- */
-export function shear(sprite: Sprite, amount: number, bottom: number): void {
-  const { width, pixels } = sprite;
-  for (let y = 0; y < bottom; y += 1) {
-    const shift = Math.round((amount * (bottom - y)) / bottom);
-    if (shift === 0) continue;
-    const row = pixels.slice(y * width, (y + 1) * width);
-    for (let x = 0; x < width; x += 1) {
-      const from = x - shift;
-      pixels[y * width + x] = from >= 0 && from < width ? (row[from] ?? 0) : 0;
-    }
-  }
-}
-
 // Stryker disable all: éclairage purement visuel, celui de la maquette.
 /** Les teintes qui ne s'éclairent ni ne s'assombrissent (encre, or, lumière, rouges vifs). */
 const UNLIT = new Set([1, 7, 8, 9, 20, 22, 25, 30]);

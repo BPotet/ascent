@@ -36,6 +36,7 @@ function props(change: Partial<BattleSceneProps> = {}): BattleSceneProps {
     height: 440,
     geometry: sceneGeometry(390, 440, 3),
     enemies: ENEMIES,
+    heroKind: 'sentinel',
     heroPose: 'idle',
     heroPoseSince: 0,
     strikeTarget: 0,
@@ -83,7 +84,9 @@ describe('BattleScene with Skia', () => {
     const prepared = prepareBattleScene();
 
     expect(prepared.characters.ghoul.image?.width()).toBe(352);
-    expect(prepared.hero.image?.height()).toBeGreaterThan(0);
+    expect(prepared.heroes.sentinel.image?.height()).toBe(88);
+    expect(prepared.heroes.wanderer.image?.height()).toBe(88);
+    expect(prepared.heroes.wanderer.image).not.toBe(prepared.heroes.sentinel.image);
     expect(prepared.effects.image?.width()).toBeGreaterThan(0);
     expect(prepareBattleScene()).toBe(prepared);
   });
@@ -166,6 +169,26 @@ describe('BattleScene with Skia', () => {
     expect(canvas).toHaveProp('pointerEvents', 'none');
     expect(drawnTypes()).toContain('skAtlas');
   });
+
+  it.each(['wanderer', 'sentinel'] as const)(
+    'draws the hero with the atlas of the %s, the heroine of the ascent (#140)',
+    async (heroKind) => {
+      const { heroes } = prepareBattleScene();
+      await render(<BattleScene {...props({ heroKind })} />);
+
+      const atlases: unknown[] = [];
+      const visit = (node: NonNullable<ReturnType<typeof screen.toJSON>> | string) => {
+        if (typeof node === 'string') return;
+        if (node.type === 'skAtlas') atlases.push(node.props.image);
+        node.children?.forEach(visit);
+      };
+      const tree = screen.toJSON();
+      if (tree !== null && !Array.isArray(tree)) visit(tree);
+      const other = heroKind === 'wanderer' ? 'sentinel' : 'wanderer';
+      expect(atlases).toContain(heroes[heroKind].image);
+      expect(atlases).not.toContain(heroes[other].image);
+    },
+  );
 
   it('draws no timing ring while an enemy prepares a perilous attack: the attack reads by its animation alone (#101)', async () => {
     await render(<BattleScene {...props()} />);

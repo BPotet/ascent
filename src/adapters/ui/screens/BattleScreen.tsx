@@ -160,6 +160,7 @@ export function BattleScreen({
           height={sceneHeight}
           geometry={geometry}
           enemies={enemies}
+          heroKind={heroKind}
           heroPose={display.heroPose}
           heroPoseSince={display.heroPoseSince}
           strikeTarget={battle.target}

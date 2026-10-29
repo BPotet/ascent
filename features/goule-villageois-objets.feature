@@ -90,10 +90,11 @@ Fonctionnalité: La Goule et le Villageois fou animés, et les images validées 
     Et Les Jumeaux gardent leur silhouette tirée de l'ancien dessin de la Goule
     Et son nom et ses chiffres restent affichés
 
+  # Adapté par #140
   Scénario: Limite — les héros
     Étant donné une ascension avec la Sentinelle ou l'Errante
     Quand le combat s'affiche
-    Alors le héros garde son sprite actuel ou sa silhouette provisoire
+    Alors le héros s'affiche dans sa case de 36 × 44 pixels d'art, avec son animation complète (#140)
 
   Scénario: Limite — jamais d'échelle fractionnaire
     Étant donné la Goule, le Villageois fou ou un objet affiché avec son image validée

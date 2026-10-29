@@ -9,13 +9,14 @@ export function prepareBattleScene(): null {
 }
 
 export function BattleScene(props: BattleSceneProps) {
-  const { heroPose, heroPoseSince, timeline, reducedMotion, enemies, spark, hurtAt } = props;
+  const { heroKind, heroPose, heroPoseSince, timeline, reducedMotion, enemies, spark, hurtAt } =
+    props;
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       testID="battle-scene"
-      {...{ heroPose, heroPoseSince, timeline, reducedMotion, enemies, spark, hurtAt }}
+      {...{ heroKind, heroPose, heroPoseSince, timeline, reducedMotion, enemies, spark, hurtAt }}
     />
   );
 }
