@@ -26,18 +26,14 @@ construit sur le canal `preview` ; sur un build de production, le lien ramène �
 local, lancer l'app avec `EXPO_PUBLIC_ASCENT_CHANNEL=preview` (par exemple
 `EXPO_PUBLIC_ASCENT_CHANNEL=preview npx expo run:android --variant release`) pour ouvrir la sonde.
 
-Le combat d'essai (`trial-battle.yaml`, stories #31 et #32) s'ouvre par le bouton « Combat d'essai », au-dessus
-de la barre d'onglets : il n'existe que dans le build de preview (canal `preview`), et la story #33 le
-remplacera. Le bouton est dans le flux de la mise en page : en preview, il réduit la hauteur de la liste
-de la Vue Journée, et `weekly-target.yaml` remonte donc jusqu'à la première habitude avant de la
-modifier. Décision du propriétaire du 25/10 : le gameplay du combat (timing, parade, frappe,
-transitions) se teste à la main sur l'APK ; l'e2e vérifie seulement que le combat s'ouvre et s'affiche ;
-les règles sont couvertes par les tests unitaires, d'intégration et BDD. Le parcours est donc un test de
-fumée : il ouvre le combat, capture et ferme la bulle d'aide (F2), vérifie la phase du héros (
-« Attaquer », « Pouvoir », les trois ennemis avec leur garde et leur intention, la barre du héros et son Élan),
-la capture (F1), puis touche « Attaquer » une fois sans rien vérifier ensuite. Aucune attente ne dépend
-du timing du combat. Les réglages d'essai et le panneau Mesures, qui ne s'ouvrent qu'à la fin d'un
-combat, sont couverts par les tests d'intégration.
+Le combat d'essai et son bouton « Combat d'essai », au-dessus de la barre d'onglets du build de
+preview, sont retirés (#121, décision du propriétaire du 28/10/2026) : la barre d'onglets et la liste
+de la Vue Journée ont la même place en preview et en production. `old-trial-battle-link.yaml` vérifie
+l'accueil sans ce bouton, en capture la Vue Journée (`day-view-without-trial-entry`, à comparer à
+celle du build de production), puis ouvre l'ancien lien `ascent://trial-battle`, qui ramène à
+l'accueil. C'est un parcours sans timing. Décision du propriétaire du 25/10 : le gameplay du combat
+(timing, parade, frappe, transitions) se teste à la main sur l'APK ; les règles sont couvertes par
+les tests unitaires, d'intégration et BDD. Les combats passent par l'onglet Tour (ascension).
 
 Sélecteurs : privilégier les textes visibles (libellés du glossaire) et les `testID` des écrans.
 

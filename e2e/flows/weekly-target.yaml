@@ -162,8 +162,7 @@ tags:
     visible:
       id: 'habit-progress-3'
     timeout: 10000
-# Dans le build de preview, l'entrée « Combat d'essai » réduit la liste : la première carte peut
-# être au-dessus de la partie visible.
+# La liste peut avoir défilé : la première carte peut être au-dessus de la partie visible.
 - scrollUntilVisible:
     element:
       id: 'edit-habit-1'
