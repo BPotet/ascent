@@ -1,4 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
+
+import { artPalette } from '../pixelArt/artPalette';
+import { pixelFont } from '../pixelArt/pixelTypography';
 
 import { BoonChoicePanel } from './BoonChoicePanel';
 
@@ -27,5 +30,31 @@ describe('BoonChoicePanel', () => {
     expect(onChoose).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByRole('button', { name: 'Continuer' }));
     expect(onChoose).toHaveBeenCalledWith(0);
+  });
+
+  it('hatches « Prendre » until a card is chosen, then ticks the chosen card and its name in gold (#120)', async () => {
+    await render(
+      <BoonChoicePanel
+        offer={['perfectEcho', 'lingeringFrost', 'emberHeart']}
+        onChoose={jest.fn()}
+      />,
+    );
+
+    const take = () => screen.getByRole('button', { name: 'Prendre' });
+    expect(take()).toBeDisabled();
+    expect(within(take()).getByTestId('pixel-button-hatching')).toBeOnTheScreen();
+    expect(screen.queryByTestId('boon-tick', { includeHiddenElements: true })).toBeNull();
+
+    await fireEvent.press(screen.getByRole('radio', { name: /^Givre persistant/ }));
+
+    const chosen = screen.getByRole('radio', { name: /^Givre persistant/ });
+    expect(within(chosen).getByTestId('boon-tick', { includeHiddenElements: true })).toBeTruthy();
+    expect(within(chosen).getByText('Givre persistant')).toHaveStyle({
+      color: artPalette.roles.gold,
+      fontFamily: pixelFont,
+    });
+    expect(screen.getAllByTestId('boon-tick', { includeHiddenElements: true })).toHaveLength(1);
+    expect(take()).toBeEnabled();
+    expect(within(take()).queryByTestId('pixel-button-hatching')).toBeNull();
   });
 });

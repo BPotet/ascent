@@ -25,13 +25,16 @@ export function enemiesText(count: number): string {
   return count === 1 ? '1 ennemi' : `${count} ennemis`;
 }
 
-/** Le libellé d'une porte : la porte Combat annonce la taille du groupe, pas sa composition. */
+/**
+ * Le libellé d'une porte : la porte Combat annonce la taille du groupe, pas sa composition ; la
+ * porte Élite, son objet Rare garanti, pas l'Élite, tirée à l'entrée de l'étage (#120).
+ */
 export function exitLabel(exit: Exit): string {
   switch (exit.kind) {
     case 'combat':
       return `Combat · ${enemiesText(exit.groupSize ?? 0)}`;
     case 'elite':
-      return 'Élite · le Chevalier déchu';
+      return 'Élite · objet Rare garanti';
     case 'campfire':
       return 'Feu de camp · soin de 40 % des PV';
     case 'boss':
@@ -120,9 +123,17 @@ function blessingEffect({ family, rarity }: StartingBlessing): string {
   }
 }
 
+/** Les deux lignes du bouton d'une bénédiction (#120) : « Hâte · Rare », puis son effet. */
+export function blessingLines(blessing: StartingBlessing): readonly [string, string] {
+  return [
+    `${FAMILY_NAMES[blessing.family]} · ${FEMININE_RARITY[blessing.rarity]}`,
+    blessingEffect(blessing),
+  ];
+}
+
 /** Une bénédiction de départ : « Hâte · Rare · Initiative +2 dans chaque combat ». */
 export function blessingText(blessing: StartingBlessing): string {
-  return `${FAMILY_NAMES[blessing.family]} · ${FEMININE_RARITY[blessing.rarity]} · ${blessingEffect(blessing)}`;
+  return blessingLines(blessing).join(' · ');
 }
 
 const ITEM_NAMES: Readonly<Record<ItemKind, string>> = {
