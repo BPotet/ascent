@@ -2,9 +2,15 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { BoonKind } from '../../../domain/ascent/boons';
-import { Button } from '../components/Button';
 import { boonCard } from '../format/boonText';
+import { artPalette } from '../pixelArt/artPalette';
+import { PixelButton } from '../pixelArt/PixelButton';
+import { PixelFrame } from '../pixelArt/PixelFrame';
+import { PixelIcon } from '../pixelArt/PixelIcon';
+import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypography';
 import { battleColors } from '../theme/battleColors';
+
+const { roles } = artPalette;
 
 function BoonOption({
   kind,
@@ -23,11 +29,22 @@ function BoonOption({
       accessibilityLabel={card.label}
       accessibilityState={{ checked, selected: checked }}
       onPress={onPress}
-      style={[styles.card, checked && styles.checked]}
+      style={styles.card}
     >
-      <Text style={[styles.tag, { color }]}>{card.tag}</Text>
-      <Text style={styles.name}>{card.name}</Text>
-      <Text style={styles.effect}>{card.effect}</Text>
+      <PixelFrame
+        tone={checked ? 'gold' : 'default'}
+        {...(checked && { background: roles.goldBg })}
+        style={styles.frame}
+      >
+        <Text style={[styles.tag, { color }]}>{card.tag}</Text>
+        <Text style={[styles.name, checked && styles.checkedName]}>{card.name}</Text>
+        <Text style={styles.effect}>{card.effect}</Text>
+        {checked && (
+          <View pointerEvents="none" style={styles.tick}>
+            <PixelIcon name="check8" color={roles.ink} testID="boon-tick" />
+          </View>
+        )}
+      </PixelFrame>
     </Pressable>
   );
 }
@@ -58,7 +75,7 @@ export function BoonChoicePanel({
           <Text style={styles.effect}>{card.effect}</Text>
           <Text style={styles.sub}>Bienfait obtenu.</Text>
         </View>
-        <Button label="Continuer" onPress={() => onChoose(selected)} />
+        <PixelButton label="Continuer" onPress={() => onChoose(selected)} />
       </View>
     );
   }
@@ -83,7 +100,7 @@ export function BoonChoicePanel({
           ))}
         </View>
       </ScrollView>
-      <Button label="Prendre" disabled={selected === null} onPress={() => setTaken(true)} />
+      <PixelButton label="Prendre" disabled={selected === null} onPress={() => setTaken(true)} />
     </View>
   );
 }
@@ -93,19 +110,29 @@ const styles = StyleSheet.create({
   body: { flex: 1, padding: 16, paddingBottom: 34, gap: 12 },
   center: { flex: 1, justifyContent: 'center', gap: 12 },
   list: { gap: 8 },
-  title: { color: battleColors.light, fontSize: 22, fontWeight: '700', textAlign: 'center' },
-  sub: { color: battleColors.muted, fontSize: 14, textAlign: 'center' },
-  card: {
-    minHeight: 88,
-    padding: 12,
-    gap: 4,
-    backgroundColor: battleColors.surface,
-    borderWidth: 2,
-    borderColor: battleColors.line,
+  title: {
+    fontFamily: pixelFont,
+    fontSize: 22,
+    lineHeight: 26,
+    color: roles.light,
+    textAlign: 'center',
   },
-  checked: { borderColor: battleColors.light, backgroundColor: battleColors.surfaceRaised },
-  tag: { fontSize: 12, fontWeight: '700' },
-  name: { color: battleColors.text, fontSize: 18, fontWeight: '700' },
-  effect: { color: battleColors.muted, fontSize: 14 },
+  sub: { ...pixelTypography.body, fontSize: 14, color: roles.parchment, textAlign: 'center' },
+  card: { minHeight: 88 },
+  frame: { flexGrow: 1, gap: 3, paddingVertical: 12, paddingLeft: 14, paddingRight: 40 },
+  tag: { fontFamily: textFont.bold, fontSize: 12, lineHeight: 16 },
+  name: { fontFamily: pixelFont, fontSize: 20, lineHeight: 24, color: roles.light },
+  checkedName: { color: roles.gold },
+  effect: { fontFamily: textFont.medium, fontSize: 14, lineHeight: 20, color: roles.parchment },
+  tick: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: roles.gold,
+  },
 });
 // Stryker restore all

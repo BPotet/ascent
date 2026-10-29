@@ -82,3 +82,13 @@ jusqu'à 1). Le texte affiché est `Semaine du 5 octobre` puis `3/4 objectifs at
 atteint`). Toucher une ligne ouvre la Vue Semaine sur sa semaine.
 
 Vérifier la syntaxe sans émulateur : `maestro check-syntax e2e/flows/<parcours>.yaml`.
+
+## Onglet Tour
+
+`tower-pixel-buttons.yaml` (#120) parcourt l'onglet Tour du build de preview : le pied de la tour
+(B1), le choix du héros, les bénédictions éventuelles (`blessing-0` tant que `ascent-blessing` est
+affiché), le combat de l'étage (C1, `battle-pad`, « Pause » par `ascent-pause`), l'ascension en
+cours (B2) et la confirmation d'abandon (B3). Ses captures (`tower-b1-foot`, `tower-c1-battle`,
+`tower-b2-in-progress`, `tower-b3-confirm`) servent à la comparaison avec la maquette
+`docs/mockups/118-tower-pixel-art/`. Le parcours n'attend rien du timing du combat et ne dépend pas
+de la graine de l'ascension : la porte Élite est vérifiée en intégration.
