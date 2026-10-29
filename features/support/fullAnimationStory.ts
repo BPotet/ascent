@@ -1,7 +1,8 @@
 // Les outils des scénarios de « Le Spectre, le Chevalier déchu et le Prieur sans visage animés »
 // (#138) : la pose recopiée de l'Atelier, peinte avec sa palette ou sa palette rouge, sa case dans
 // l'atlas que la scène dessine, et les poses que la scène choisit au fil d'une action construite
-// ici. Ils valent pour toute entité animée, à la taille de sa case du combat (`battleCell`).
+// ici. Ils valent pour toute entité animée, à la taille de sa case du combat (`battleCell`), poses
+// d'un coup comprises (#139).
 import { enemyPose, restPose } from '../../src/adapters/ui/battle/scene/enemyPose';
 import type { SceneTimeline } from '../../src/adapters/ui/battle/sceneTypes';
 import { artPalette } from '../../src/adapters/ui/pixelArt/artPalette';
@@ -11,7 +12,10 @@ import {
   type FullAnimation,
 } from '../../src/adapters/ui/pixelArt/sprites/atelier/fullAnimation';
 import { atlasRect, battleAtlas } from '../../src/adapters/ui/pixelArt/sprites/battle/battleAtlas';
-import type { EnemyFrame } from '../../src/adapters/ui/pixelArt/sprites/battle/battleCharacters';
+import type {
+  AttackMotions,
+  EnemyFrame,
+} from '../../src/adapters/ui/pixelArt/sprites/battle/battleCharacters';
 import type { AttackKind } from '../../src/domain/battle/attacks';
 import type { AttackStep } from '../../src/domain/battle/Battle';
 import type { EnemyKind, Move } from '../../src/domain/battle/combatants';
@@ -35,19 +39,22 @@ const codeOf = (tint: string) =>
 
 /**
  * La pose recopiée de l'Atelier, dans la case du combat de l'entité, centrée en largeur et calée
- * en bas, peinte avec sa palette, ou sa palette rouge avec `red`.
+ * en bas, peinte avec sa palette, ou sa palette rouge avec `red`. Avec `attack`, la pose de ses
+ * poses d'un coup quand il en a une pour cette image (#139).
  */
 export function copiedPose(
   animation: FullAnimation<EnemyFrame>,
   frame: EnemyFrame,
   red = false,
+  attack: AttackKind | null = null,
 ): Sprite {
   const [width, height] = battleCell(animation);
   const { w, h, pal, frames } = animation;
   const palette = red ? animation.red! : pal;
   const left = Math.floor((width - w) / 2);
   const pixels = new Uint8Array(width * height);
-  frames[frame].forEach((row, y) =>
+  const own = attack === null ? undefined : animation.attackPoses?.[attack]?.frames[frame];
+  (own ?? frames[frame]).forEach((row, y) =>
     Array.from(row).forEach((char, x) => {
       if (char !== '.') {
         pixels[(y + height - h) * width + x + left] = codeOf(palette[parseInt(char, 36)]!);
@@ -57,25 +64,31 @@ export function copiedPose(
   return { width, height, pixels };
 }
 
-/** Les ancrages recopiés d'une pose, dans la case du combat de l'entité. */
-export function copiedAnchors(animation: FullAnimation<EnemyFrame>, frame: EnemyFrame) {
+/** Les ancrages recopiés d'une pose, dans la case du combat de l'entité, poses d'un coup comprises. */
+export function copiedAnchors(
+  animation: FullAnimation<EnemyFrame>,
+  frame: EnemyFrame,
+  attack: AttackKind | null = null,
+) {
   const [width, height] = battleCell(animation);
   const left = Math.floor((width - animation.w) / 2);
   const top = height - animation.h;
   const moved = ([x, y]: readonly [number, number]) => [x + left, y + top];
-  const { eye, head, tips } = animation.anchors[frame];
+  const own = attack === null ? undefined : animation.attackPoses?.[attack]?.anchors[frame];
+  const { eye, head, tips } = own ?? animation.anchors[frame];
   return { eye: moved(eye), head: moved(head), tips: tips.map(moved) };
 }
 
-/** Les pixels de la case d'une variante dans l'atlas que la scène dessine. */
+/** Les pixels de la case d'une variante dans l'atlas que la scène dessine, pose d'un coup comprise. */
 export function atlasCell(
   kind: EnemyKind,
   frame: EnemyFrame,
   tier: number,
   red: boolean,
+  attack: AttackKind | null = null,
 ): Uint8Array {
   const atlas = battleAtlas(kind);
-  const rect = atlasRect(atlas.table, frame, tier, red);
+  const rect = atlasRect(atlas.table, frame, tier, red, attack);
   const cell = new Uint8Array(rect.width * rect.height * 4);
   for (let row = 0; row < rect.height; row += 1) {
     const start = ((rect.y + row) * atlas.width + rect.x) * 4;
@@ -143,6 +156,40 @@ export function posesOf(
     const last = shown[shown.length - 1];
     if (last?.frame !== frame || last.tier !== tier || last.red !== red) {
       shown.push({ frame, tier, red });
+    }
+  }
+  return shown;
+}
+
+/** Une pose montrée par la scène avec la table de l'ennemi actif : sa source et son élévation. */
+export interface AttackShownPose extends ShownPose {
+  readonly poses: AttackKind | null;
+  readonly lift: number;
+}
+
+/**
+ * Les poses de l'action avec la table `motions` de l'ennemi actif (#139), de `from` à `to`,
+ * chacune notée une fois quand elle change.
+ */
+export function attackPosesOf(
+  timeline: SceneTimeline,
+  motions: AttackMotions,
+  from: number,
+  to: number,
+  reduced = false,
+): AttackShownPose[] {
+  const shown: AttackShownPose[] = [];
+  for (let now = from; now < to; now += 1) {
+    const { frame, tier, red, poses, lift } = enemyPose(timeline, now, reduced, motions);
+    const last = shown[shown.length - 1];
+    if (
+      last?.frame !== frame ||
+      last.tier !== tier ||
+      last.red !== red ||
+      last.poses !== poses ||
+      last.lift !== lift
+    ) {
+      shown.push({ frame, tier, red, poses, lift });
     }
   }
   return shown;
