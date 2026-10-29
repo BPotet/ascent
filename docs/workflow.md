@@ -520,7 +520,7 @@ Règles vérifiées par les tests d'architecture :
 - Seuls `adapters` et `app` connaissent le framework et les bibliothèques natives.
 - `domain` et `application` n'utilisent ni minuteur, ni horloge directe, ni hasard (`setTimeout`, `setInterval`, `requestAnimationFrame`, `performance`, `Math.random`) : le temps et le hasard passent par des ports. Vérifié par ESLint (barrière Style).
 - Dans `src/adapters/ui/`, seuls `pixelArt/SpriteCanvas.tsx` (et son test de fumée) et le combat (`battle/`) importent Skia (`pixel-art-skia-in-one-place`, [ADR 0007](adr/0007-identite-pixel-art.md)).
-- Dans `src/adapters/ui/`, `pixelArt/`, `components/`, `screens/`, `format/` et `state/` n'importent pas l'ancien thème (`theme/colors`, `theme/metrics`, `theme/typography`), sauf le combat d'essai et la sonde de toucher (`Button`, `Screen`, `TrialBattleEntry`, `TouchProbeScreen`, `TrialBattleScreen`), jusqu'à l'épique #30 (`habit-screens-in-pixel-art`, [ADR 0007](adr/0007-identite-pixel-art.md)).
+- Dans `src/adapters/ui/`, `pixelArt/`, `components/`, `screens/`, `format/` et `state/` n'importent pas l'ancien thème (`theme/colors`, `theme/metrics`, `theme/typography`), sauf `Button`, `Screen` et la sonde de toucher (`TouchProbeScreen`), jusqu'à l'épique #30 (`habit-screens-in-pixel-art`, [ADR 0007](adr/0007-identite-pixel-art.md)).
 
 Conséquence pour les tests : le domaine et les cas d'usage se testent en unitaire, sans framework. Les adaptateurs se testent en intégration. Les parcours complets se testent en BDD et, pour le chemin A, en end-to-end.
 
