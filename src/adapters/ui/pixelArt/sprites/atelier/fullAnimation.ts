@@ -16,7 +16,10 @@ export interface AnimationAnchors {
   readonly eye: Point;
   /** Le haut de la tête : les étoiles de l'étourdissement. */
   readonly head: Point;
-  /** Les pointes : le reflet double d'une double frappe. */
+  /**
+   * Les pointes : le reflet double d'une double frappe. Une pointe peut sortir de l'image ; elle ne
+   * sert qu'au reflet double d'une double frappe.
+   */
   readonly tips: readonly Point[];
 }
 

@@ -1,13 +1,24 @@
 import { act, fireEvent, screen } from '@testing-library/react-native';
 
 import { startAscent, type Ascent } from '../../../domain/ascent/Ascent';
+import type { ItemKind } from '../../../domain/ascent/items';
 import { artPalette } from '../pixelArt/artPalette';
 import { MIN_TARGET_SIZE } from '../pixelArt/PixelButton';
+import { ITEM_IMAGES } from '../pixelArt/sprites/atelier/data/itemImages';
+import type { AssetImage } from '../pixelArt/sprites/atelier/fullAnimation';
 import { ascentSetUp } from '../testing/ascent';
 import { renderScreen } from '../testing/renderScreen';
 import { AscentScreen, RESUME_COUNTDOWN_S } from './AscentScreen';
 
 jest.mock('../battle/BattleCanvas', () => jest.requireActual('../battle/testing/fakeBattleCanvas'));
+// Les images validées, dans une copie qu'un test peut vider : tous les objets ont aujourd'hui leur
+// image, mais un objet futur du Codex peut arriver sans (#137).
+jest.mock('../pixelArt/sprites/atelier/data/itemImages', () => ({
+  ITEM_IMAGES: {
+    ...jest.requireActual<{ ITEM_IMAGES: object }>('../pixelArt/sprites/atelier/data/itemImages')
+      .ITEM_IMAGES,
+  },
+}));
 
 function visibility() {
   let listener: ((visible: boolean) => void) | null = null;
@@ -240,17 +251,18 @@ describe('AscentScreen with blessings and found items (#93)', () => {
     expect(screen.getByText('Arbalète · Arme · Rare · Initiative +1')).toBeOnTheScreen();
   });
 
-  it('shows the Black knight armor in silhouette, with its provisional line and its numbers', async () => {
+  it('shows the validated image of the Black knight armor, with its line and its numbers (#137)', async () => {
     await show({
       ...between(startAscent(42), [{ kind: 'combat', groupSize: 2 }]),
       foundItem: 'blackKnightArmor',
     });
 
-    expect(screen.getByTestId('item-silhouette', { includeHiddenElements: true })).toHaveProp(
-      'sprite',
-      'item-silhouette-armor',
-    );
-    expect(screen.queryByTestId('item-image', { includeHiddenElements: true })).toBeNull();
+    const image = screen.getByTestId('item-image', { includeHiddenElements: true });
+    expect(image).toHaveProp('sprite', 'item-blackKnightArmor');
+    expect(image).toHaveProp('scale', 3);
+    expect(image).toHaveProp('pixelWidth', 24);
+    expect(image).toHaveProp('pixelHeight', 24);
+    expect(screen.queryByTestId('item-silhouette', { includeHiddenElements: true })).toBeNull();
     expect(screen.getByText('Lourde et lente.')).toBeOnTheScreen();
     expect(
       screen.getByText(
@@ -258,6 +270,27 @@ describe('AscentScreen with blessings and found items (#93)', () => {
       ),
     ).toBeOnTheScreen();
     expect(screen.getByText('Tu portes : Cuirasse cabossée · Initiative 0')).toBeOnTheScreen();
+  });
+
+  it('shows an item without a validated image in the silhouette of its slot', async () => {
+    const images = ITEM_IMAGES as Partial<Record<ItemKind, AssetImage>>;
+    const armor = images.blackKnightArmor!;
+    delete images.blackKnightArmor;
+    try {
+      await show({
+        ...between(startAscent(42), [{ kind: 'combat', groupSize: 2 }]),
+        foundItem: 'blackKnightArmor',
+      });
+
+      expect(screen.getByTestId('item-silhouette', { includeHiddenElements: true })).toHaveProp(
+        'sprite',
+        'item-silhouette-armor',
+      );
+      expect(screen.queryByTestId('item-image', { includeHiddenElements: true })).toBeNull();
+      expect(screen.getByText('Lourde et lente.')).toBeOnTheScreen();
+    } finally {
+      images.blackKnightArmor = armor;
+    }
   });
 
   it('loses a left item and keeps the equipment', async () => {

@@ -6,6 +6,8 @@ import { FACELESS_PRIOR_ANIMATION } from '../atelier/data/facelessPrior';
 import { FALLEN_KNIGHT_ANIMATION } from '../atelier/data/fallenKnight';
 import { GHOUL_ANIMATION } from '../atelier/data/ghoul';
 import { MAD_VILLAGER_ANIMATION } from '../atelier/data/madVillager';
+import { NECROMANCER_ANIMATION } from '../atelier/data/necromancer';
+import { SKELETON_ANIMATION } from '../atelier/data/skeleton';
 import { SPECTER_ANIMATION } from '../atelier/data/specter';
 import {
   ANIMATED_ENEMIES,
@@ -139,11 +141,13 @@ describe('the battle characters (pxlib)', () => {
   });
 });
 
-describe('the full animations of the Atelier in battle (#119, #138)', () => {
+describe('the full animations of the Atelier in battle (#119, #137, #138)', () => {
   /** Les animations recopiées, une ligne par entité. */
   const COPIED: Partial<Readonly<Record<EnemyKind, FullAnimation<EnemyFrame>>>> = {
     ghoul: GHOUL_ANIMATION,
     madVillager: MAD_VILLAGER_ANIMATION,
+    skeleton: SKELETON_ANIMATION,
+    necromancer: NECROMANCER_ANIMATION,
     specter: SPECTER_ANIMATION,
     fallenKnight: FALLEN_KNIGHT_ANIMATION,
     facelessPrior: FACELESS_PRIOR_ANIMATION,
@@ -160,9 +164,17 @@ describe('the full animations of the Atelier in battle (#119, #138)', () => {
       (move) => ATTACKS[move.attack].perilous,
     );
 
-  it('animates the Ghoul, the Mad villager, the Specter, the Fallen knight and the Faceless prior', () => {
+  it('animates the Ghoul, the Mad villager, the Skeleton, the Necromancer, the Specter, the Fallen knight and the Faceless prior', () => {
     expect(ANIMATED_ENEMIES).toEqual(
-      expect.arrayContaining(['ghoul', 'madVillager', 'specter', 'fallenKnight', 'facelessPrior']),
+      expect.arrayContaining([
+        'ghoul',
+        'madVillager',
+        'skeleton',
+        'necromancer',
+        'specter',
+        'fallenKnight',
+        'facelessPrior',
+      ]),
     );
     for (const [kind, animation] of ANIMATED)
       expect([kind, animation]).toEqual([kind, COPIED[kind]]);
@@ -198,7 +210,7 @@ describe('the full animations of the Atelier in battle (#119, #138)', () => {
     },
   );
 
-  it('plays the red palette of the Specter, the Fallen knight and the Faceless prior (phase 2), never that of the Ghoul or the Mad villager', () => {
+  it('plays the red palette of the Specter, the Fallen knight and the Faceless prior (phase 2), never that of the Ghoul, the Mad villager or the Necromancer', () => {
     const turnsRed = (kind: EnemyKind) =>
       !battleSprite(kind, 'ant1', { red: true }).sprite.pixels.every(
         (code, index) => code === battleSprite(kind, 'ant1').sprite.pixels[index],
@@ -207,6 +219,9 @@ describe('the full animations of the Atelier in battle (#119, #138)', () => {
       ['specter', 'fallenKnight', 'facelessPrior'].map((kind) => turnsRed(kind as EnemyKind)),
     ).toEqual([true, true, true]);
     expect([turnsRed('ghoul'), turnsRed('madVillager')]).toEqual([false, false]);
+    // L'Atelier donne une palette rouge au Nécromancien, mais il n'a pas de coup imparable (#137).
+    expect(NECROMANCER_ANIMATION.red).toHaveLength(NECROMANCER_ANIMATION.pal.length);
+    expect(turnsRed('necromancer')).toBe(false);
     expect(PROFILES.facelessPrior.moves.some((move) => ATTACKS[move.attack].perilous)).toBe(false);
   });
 
@@ -238,6 +253,20 @@ describe('the full animations of the Atelier in battle (#119, #138)', () => {
     }
   });
 
+  it('no longer shows the Skeleton as a silhouette of the old Ghoul, nor the Necromancer drawn (#137)', () => {
+    const shape = (character: EnemyKind, frame: (typeof ENEMY_FRAMES)[number]) =>
+      Array.from(battleSprite(character, frame).sprite.pixels, (code) => (code === 0 ? 0 : 1));
+    for (const frame of ENEMY_FRAMES) {
+      // L'ancien dessin de la Goule reste la silhouette des Jumeaux ; celui du Nécromancien (#81),
+      // le sprite de la Gardienne des ossuaires.
+      expect([frame, shape('skeleton', frame)]).not.toEqual([frame, shape('twins', frame)]);
+      expect([frame, battleSprite('necromancer', frame).sprite]).not.toEqual([
+        frame,
+        battleSprite('ossuaryWarden', frame).sprite,
+      ]);
+    }
+  });
+
   it('keeps the hesitation as its own pose, not the full wind-up shifted by one art pixel', () => {
     const ant2 = battleSprite('ghoul', 'ant2').sprite;
     const hes = battleSprite('ghoul', 'hes').sprite.pixels;
@@ -252,7 +281,7 @@ describe('the full animations of the Atelier in battle (#119, #138)', () => {
     expect(battleSprite('ghoul', 'raise')).toEqual(battleSprite('ghoul', 'idle0'));
   });
 
-  it('gives the anchors of the pose shown to the Ghoul and the Mad villager', () => {
+  it('gives the anchors of the pose shown to the enemies of the Atelier', () => {
     expect(poseAnchors('ghoul', 'ant2')).toEqual({
       eye: [15, 18],
       head: [22, 14],
@@ -268,6 +297,25 @@ describe('the full animations of the Atelier in battle (#119, #138)', () => {
       head: [22, 3],
       tips: [[20, 28]],
     });
+    // Le Squelette est calé de (2, 4) dans la case ; le Nécromancien l'occupe pile (#137).
+    expect(poseAnchors('skeleton', 'ant2')).toEqual({
+      eye: [21, 16],
+      head: [23, 11],
+      tips: [
+        [4, 26],
+        [10, 14],
+      ],
+    });
+    expect(poseAnchors('skeleton', 'down').head).toEqual([21, 28]);
+    expect(poseAnchors('necromancer', 'ant2')).toEqual({
+      eye: [18, 17],
+      head: [27, 5],
+      tips: [
+        [7, 9],
+        [7, 4],
+      ],
+    });
+    expect(poseAnchors('necromancer', 'down').head).toEqual([19, 26]);
     for (const [character] of ANIMATED) {
       for (const frame of ENEMY_FRAMES) {
         expect(poseAnchors(character, frame)).toEqual(battleSprite(character, frame).anchors);

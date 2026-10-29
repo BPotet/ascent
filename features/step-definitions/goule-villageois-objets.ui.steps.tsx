@@ -362,15 +362,18 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   and(
     "l'image de la Hache rouillée, des Mailles, du Cuir, du Marteau, du Bouclier du veilleur, de l'Amulette de Hâte et de l'Arbalète est validée dans l'Atelier au 29/10/2026",
     () => {
-      expect(Object.keys(KIND_OF_ITEM).sort()).toEqual([
-        'Amulette de Hâte',
-        'Arbalète',
-        'Bouclier du veilleur',
-        'Cuir',
-        'Hache rouillée',
-        'Mailles',
-        'Marteau',
-      ]);
+      // D'autres images validées s'ajoutent ensuite, l'Armure de chevalier noir (#137) comprise.
+      expect(Object.keys(KIND_OF_ITEM)).toEqual(
+        expect.arrayContaining([
+          'Amulette de Hâte',
+          'Arbalète',
+          'Bouclier du veilleur',
+          'Cuir',
+          'Hache rouillée',
+          'Mailles',
+          'Marteau',
+        ]),
+      );
     },
   );
 
@@ -693,13 +696,6 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     await showItem(KIND_OF_ITEM[name]!);
   });
 
-  when(
-    "l'objet trouvé est l'Armure de chevalier noir, dont l'image n'est pas validée dans l'Atelier",
-    async () => {
-      await showItem('blackKnightArmor');
-    },
-  );
-
   then(
     /^l'écran « Objet trouvé » montre l'image validée de (.+) \(24 × 24 pixels d'art\), à 3 dp par pixel d'art, soit 72 dp$/,
     (name: string) => {
@@ -723,32 +719,13 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     if (description !== null) expect(screen.getByText(description)).toBeOnTheScreen();
   });
 
-  then(
-    "l'écran « Objet trouvé » montre toujours la silhouette provisoire de l'emplacement armure",
-    () => {
-      expect(screen.getByTestId('item-silhouette', { includeHiddenElements: true })).toHaveProp(
-        'sprite',
-        'item-silhouette-armor',
-      );
-      expect(screen.queryByTestId('item-image', { includeHiddenElements: true })).toBeNull();
-    },
-  );
-
-  and(
-    'son nom, ses chiffres et son libellé provisoire « Lourde et lente. » restent affichés',
-    () => {
-      expect(screen.getByText(itemText('blackKnightArmor'))).toBeOnTheScreen();
-      expect(screen.getByText('Lourde et lente.')).toBeOnTheScreen();
-    },
-  );
-
   // --- Les ennemis sans animation complète ---
 
   given(
     /^un ennemi, une Élite ou un boss dont l'animation complète n'est pas validée \((.+)\)$/,
     (names: string) => {
       world.kinds = names.split(', ').map((name) => KIND_OF_NAME[name.replace(/^(le|la) /, '')]!);
-      expect(world.kinds).toHaveLength(4);
+      expect(world.kinds).toHaveLength(2);
     },
   );
 
@@ -774,18 +751,15 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     }
   });
 
-  and(
-    "Les Jumeaux et le Squelette gardent leur silhouette tirée de l'ancien dessin de la Goule",
-    () => {
-      const shape = (kind: EnemyKind, frame: EnemyFrame) =>
-        Array.from(battleSprite(kind, frame).sprite.pixels, (code) => (code === 0 ? 0 : 1));
-      for (const frame of ENEMY_FRAMES) {
-        // Les silhouettes provisoires du Squelette et des Jumeaux sont celles de l'ancien dessin.
-        expect(shape('skeleton', frame)).toEqual(shape('twins', frame));
-        expect(shape('skeleton', frame)).not.toEqual(shape('ghoul', frame));
-      }
-    },
-  );
+  and("Les Jumeaux gardent leur silhouette tirée de l'ancien dessin de la Goule", () => {
+    const shape = (kind: EnemyKind, frame: EnemyFrame) =>
+      Array.from(battleSprite(kind, frame).sprite.pixels, (code) => (code === 0 ? 0 : 1));
+    for (const frame of ENEMY_FRAMES) {
+      // Tirée de l'ancien dessin, pas de l'animation complète de la Goule, à la même taille.
+      expect(shape('twins', frame)).toHaveLength(shape('ghoul', frame).length);
+      expect(shape('twins', frame)).not.toEqual(shape('ghoul', frame));
+    }
+  });
 
   and('son nom et ses chiffres restent affichés', () => {
     world.kinds.forEach((kind, index) => {

@@ -1,6 +1,5 @@
-// Le contenu recopié de l'Atelier (#119, #138, ADR 0010) : l'animation complète de la Goule, du
-// Villageois fou, du Spectre, du Chevalier déchu et du Prieur sans visage, les images validées des
-// objets, et leur conversion en sprites.
+// Le contenu recopié de l'Atelier (#119, #137, #138, ADR 0010) : les animations complètes des
+// ennemis, les images validées des objets, et leur conversion en sprites.
 import { artPalette } from '../../artPalette';
 import type { Sprite } from '../Sprite';
 import { ENEMY_FRAMES } from '../battle/battleCharacters';
@@ -9,6 +8,8 @@ import { FALLEN_KNIGHT_ANIMATION } from './data/fallenKnight';
 import { GHOUL_ANIMATION } from './data/ghoul';
 import { ITEM_IMAGES } from './data/itemImages';
 import { MAD_VILLAGER_ANIMATION } from './data/madVillager';
+import { NECROMANCER_ANIMATION } from './data/necromancer';
+import { SKELETON_ANIMATION } from './data/skeleton';
 import { SPECTER_ANIMATION } from './data/specter';
 import {
   animationSprite,
@@ -22,10 +23,22 @@ import {
 const ANIMATIONS = [
   ['ghoul', GHOUL_ANIMATION, 2],
   ['madVillager', MAD_VILLAGER_ANIMATION, 1],
+  ['skeleton', SKELETON_ANIMATION, 2],
+  ['necromancer', NECROMANCER_ANIMATION, 2],
   ['specter', SPECTER_ANIMATION, 2],
   ['fallenKnight', FALLEN_KNIGHT_ANIMATION, 2],
   ['facelessPrior', FACELESS_PRIOR_ANIMATION, 2],
 ] as const;
+
+/**
+ * Les ennemis sans double frappe : leurs pointes, qui ne servent qu'au reflet double d'une double
+ * frappe, ne sont jamais dessinées et peuvent sortir de l'image. Celles du Squelette en sortent
+ * dans `ant0`, `ant1`, `feint0` et `feint1` (#137).
+ */
+const WITHOUT_DOUBLE_STRIKE: readonly string[] = ['skeleton'];
+
+/** Les ennemis sans palette rouge dans l'Atelier : ils n'ont pas de coup imparable (#137). */
+const WITHOUT_RED: readonly string[] = ['skeleton'];
 
 /** Le code `artPalette` d'une teinte, cherché ici sans passer par le module testé. */
 const codeOf = (tint: string) =>
@@ -69,7 +82,9 @@ describe('the tints of the Atelier', () => {
   it('finds every tint of the validated content in the art palette', () => {
     const palettes = [
       ...ANIMATIONS.map(([, animation]) => animation.pal),
-      ...ANIMATIONS.map(([, animation]) => animation.red),
+      ...ANIMATIONS.map(
+        ([, animation]: readonly [string, FullAnimation, number]) => animation.red ?? [],
+      ),
       ...Object.values(ITEM_IMAGES).map((image) => image.palette),
     ];
     for (const tint of palettes.flat()) {
@@ -78,7 +93,7 @@ describe('the tints of the Atelier', () => {
   });
 });
 
-describe.each(ANIMATIONS)('the full animation of the %s', (_, animation, tips) => {
+describe.each(ANIMATIONS)('the full animation of the %s', (name, animation, tips) => {
   const full: FullAnimation = animation;
 
   it('has exactly the 17 poses of the battle, each of h lines of w characters', () => {
@@ -99,16 +114,18 @@ describe.each(ANIMATIONS)('the full animation of the %s', (_, animation, tips) =
   it('gives each pose its eye and head inside the image, its tips inside the cell', () => {
     const inside = ([x, y]: readonly [number, number], margin = 0) =>
       x >= -margin && y >= -margin && x < full.w + margin && y < full.h + margin;
+    const tipsInside = !WITHOUT_DOUBLE_STRIKE.includes(name);
     for (const { eye, head, tips: points } of Object.values(full.anchors)) {
       expect(points).toHaveLength(tips);
       for (const point of [eye, head]) expect(inside(point)).toBe(true);
       // Copiées telles quelles : une pointe peut déborder de la pose de 2 pixels d'art (#138).
-      for (const point of points) expect([point, inside(point, 2)]).toEqual([point, true]);
+      if (tipsInside)
+        for (const point of points) expect([point, inside(point, 2)]).toEqual([point, true]);
     }
   });
 
-  it('keeps the red palette, one tint per tint of the palette', () => {
-    expect(full.red).toHaveLength(full.pal.length);
+  it('keeps the red palette when the Atelier gives one, one tint per tint of the palette', () => {
+    expect(full.red?.length).toBe(WITHOUT_RED.includes(name) ? undefined : full.pal.length);
   });
 
   it('obtains no pose by shifting another one by one art pixel', () => {
@@ -167,36 +184,48 @@ describe.each([
 });
 
 describe('a pose in the 44 × 52 cell of the battle', () => {
-  it('copies a pose of the Ghoul pixel for pixel, at the size of the cell', () => {
-    for (const pose of ENEMY_FRAMES) {
-      const { sprite, anchors } = animationSprite(GHOUL_ANIMATION, pose);
-      expect([sprite.width, sprite.height]).toEqual([44, 52]);
-      for (let y = 0; y < 52; y += 1) {
-        for (let x = 0; x < 44; x += 1) {
-          const expected = expectedCode(GHOUL_ANIMATION.frames[pose], GHOUL_ANIMATION.pal, x, y);
-          if (at(sprite, x, y) !== expected) throw new Error(`${pose} (${x}, ${y})`);
+  it.each([
+    ['Ghoul', GHOUL_ANIMATION],
+    ['Necromancer', NECROMANCER_ANIMATION],
+  ] as const)(
+    'copies a pose of the %s pixel for pixel, at the size of the cell',
+    (_, animation: FullAnimation) => {
+      for (const pose of ENEMY_FRAMES) {
+        const { sprite, anchors } = animationSprite(animation, pose);
+        expect([sprite.width, sprite.height]).toEqual([44, 52]);
+        for (let y = 0; y < 52; y += 1) {
+          for (let x = 0; x < 44; x += 1) {
+            const expected = expectedCode(animation.frames[pose]!, animation.pal, x, y);
+            if (at(sprite, x, y) !== expected) throw new Error(`${pose} (${x}, ${y})`);
+          }
         }
+        expect(anchors).toEqual(animation.anchors[pose]);
       }
-      expect(anchors).toEqual(GHOUL_ANIMATION.anchors[pose]);
-    }
-  });
+    },
+  );
 
-  it('centres a smaller pose in width and sets it on the bottom, anchors moved along', () => {
-    for (const pose of ENEMY_FRAMES) {
-      const { sprite, anchors } = animationSprite(MAD_VILLAGER_ANIMATION, pose);
-      expect([sprite.width, sprite.height]).toEqual([44, 52]);
-      const rows = MAD_VILLAGER_ANIMATION.frames[pose];
-      for (let y = 0; y < 52; y += 1) {
-        for (let x = 0; x < 44; x += 1) {
-          const expected = expectedCode(rows, MAD_VILLAGER_ANIMATION.pal, x - 2, y - 2);
-          if (at(sprite, x, y) !== expected) throw new Error(`${pose} (${x}, ${y})`);
+  it.each([
+    ['Mad villager', MAD_VILLAGER_ANIMATION, 2, 2],
+    ['Skeleton', SKELETON_ANIMATION, 2, 4],
+  ] as const)(
+    'centres the smaller %s in width and sets it on the bottom, anchors moved along',
+    (_, animation: FullAnimation, left, top) => {
+      for (const pose of ENEMY_FRAMES) {
+        const { sprite, anchors } = animationSprite(animation, pose);
+        expect([sprite.width, sprite.height]).toEqual([44, 52]);
+        const rows = animation.frames[pose]!;
+        for (let y = 0; y < 52; y += 1) {
+          for (let x = 0; x < 44; x += 1) {
+            const expected = expectedCode(rows, animation.pal, x - left, y - top);
+            if (at(sprite, x, y) !== expected) throw new Error(`${pose} (${x}, ${y})`);
+          }
         }
+        const { eye, head, tips } = animation.anchors[pose]!;
+        const moved = ([x, y]: readonly [number, number]) => [x + left, y + top];
+        expect(anchors).toEqual({ eye: moved(eye), head: moved(head), tips: tips.map(moved) });
       }
-      const { eye, head, tips } = MAD_VILLAGER_ANIMATION.anchors[pose];
-      const moved = ([x, y]: readonly [number, number]) => [x + 2, y + 2];
-      expect(anchors).toEqual({ eye: moved(eye), head: moved(head), tips: tips.map(moved) });
-    }
-  });
+    },
+  );
 
   it('copies the pose itself in a cell of its own size', () => {
     const { sprite } = animationSprite(MAD_VILLAGER_ANIMATION, 'idle0', [40, 50]);
@@ -296,9 +325,10 @@ describe('a pose in its red palette (#138)', () => {
 });
 
 describe('the validated images of the items', () => {
-  it('has the 7 validated items, without the Black knight armor', () => {
+  it('has the 8 validated items, the Black knight armor included', () => {
     expect(Object.keys(ITEM_IMAGES).sort()).toEqual([
       'axe',
+      'blackKnightArmor',
       'chainmail',
       'crossbow',
       'hammer',
