@@ -6,8 +6,13 @@ import { afterEach, beforeEach, describe, it } from 'node:test';
 import { main, undetectedMutants } from './score.mjs';
 
 const THRESHOLDS = { domain: 85, newCode: 70 };
+const HIT_LIMIT = 'Hit limit reached (5640/5600)';
 
-/** Un rapport Stryker minimal : `counts` donne le nombre de mutants par statut. */
+/**
+ * Un rapport Stryker minimal : `counts` donne le nombre de mutants par statut. `HitLimit` donne
+ * des `Timeout` arrêtés par la limite de passages (avec leur `statusReason`) ; un `Timeout` seul
+ * est coupé par le délai, sans `statusReason`, comme dans les rapports de Stryker.
+ */
 function report(file, counts) {
   let id = 0;
   const mutants = Object.entries(counts).flatMap(([status, count]) =>
@@ -17,7 +22,7 @@ function report(file, counts) {
         id: String(id),
         mutatorName: 'ConditionalExpression',
         replacement: 'true',
-        status,
+        ...(status === 'HitLimit' ? { status: 'Timeout', statusReason: HIT_LIMIT } : { status }),
         location: { start: { line: id, column: 1 }, end: { line: id, column: 5 } },
       };
     }),
@@ -138,6 +143,43 @@ describe('score', () => {
     shard('core', 'newCode', { Killed: 10 }, { expectedShards: 1 });
     assert.equal(await run(), 0);
     assert.doesNotMatch(output, /Screen mutation/);
+  });
+
+  // Issue #147 : un timeout par délai n'est pas une boucle infinie arrêtée par la limite de passages.
+  it('splits the timeouts of each class between the delay and the hit limit', async () => {
+    shard('core', 'newCode', { Killed: 40, Timeout: 1, HitLimit: 1 }, { expectedShards: 2 });
+    shard('ui-1', 'newCode', { Killed: 8, Timeout: 2, HitLimit: 3 }, { expectedShards: 2 });
+    assert.equal(await run(), 0);
+    assert.match(
+      output,
+      /New code \(outside the domain\), total\*\* \| 48 \| 7 \| 0 \| 0 \| 100\.00 %/,
+    );
+    assert.match(
+      output,
+      /^- New code \(outside the domain\): 3 timeout\(s\) by delay, 4 by hit limit, of 55 mutant\(s\) run \(5\.45 %\)\.$/m,
+    );
+    assert.match(
+      output,
+      /^- New code \(outside the domain\) \/ ui-1: 2 by delay, 3 by hit limit\.$/m,
+    );
+    assert.doesNotMatch(output, /Warning/);
+  });
+
+  it('warns, without failing, above 10 % of timeouts by delay in a class', async () => {
+    shard('domain', 'domain', { Killed: 90, Timeout: 10 }, { expectedShards: 2 });
+    shard('ui-1', 'newCode', { Killed: 10, Timeout: 82 }, { expectedShards: 2 });
+    assert.equal(await run(), 0);
+    assert.doesNotMatch(output, /Warning\*\*: Domain/);
+    assert.match(
+      output,
+      /^> \*\*Warning\*\*: New code \(outside the domain\): 82 of 92 mutant\(s\) run \(89\.13 %\) timed out by delay, above 10 %\. The per-mutant timeout may be too short: these mutants count as detected without any failing test\.$/m,
+    );
+  });
+
+  it('does not warn for timeouts by hit limit', async () => {
+    shard('core', 'newCode', { Killed: 5, HitLimit: 5 }, { expectedShards: 1 });
+    assert.equal(await run(), 0);
+    assert.doesNotMatch(output, /Warning/);
   });
 
   it('lists the survived and no-coverage mutants', () => {
