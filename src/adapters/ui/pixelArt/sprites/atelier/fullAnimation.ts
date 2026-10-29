@@ -122,25 +122,37 @@ export function assetSprite(image: AssetImage): Sprite {
  * par défaut) : une pose plus petite y est centrée en largeur et calée en bas, sans mise à
  * l'échelle, et ses ancrages sont décalés d'autant. Une pose plus grande que la case est refusée.
  * Avec `red`, la pose est peinte avec sa palette rouge, même indice pour même pixel ; sans palette
- * rouge, elle garde sa palette.
+ * rouge, elle garde sa palette. Avec `attack`, une pose des poses de ce coup (`attackPoses`) est
+ * prise à la place de celle de l'animation complète, avec ses ancrages ; une pose absente du coup
+ * vient de l'animation complète. Une pose du coup qui n'est pas à la taille de l'entité est
+ * refusée.
  */
 export function animationSprite<Frame extends string>(
   animation: FullAnimation<Frame>,
   frame: Frame,
   [width, height]: Point = battleCell(animation),
-  { red = false }: { readonly red?: boolean } = {},
+  {
+    red = false,
+    attack = null,
+  }: { readonly red?: boolean; readonly attack?: AttackKind | null } = {},
 ): { readonly sprite: Sprite; readonly anchors: AnimationAnchors } {
-  const rows = Object.hasOwn(animation.frames, frame) ? animation.frames[frame] : undefined;
+  const own = attack === null ? undefined : animation.attackPoses?.[attack];
+  const ownRows = own?.frames[frame];
+  const rows =
+    ownRows ?? (Object.hasOwn(animation.frames, frame) ? animation.frames[frame] : undefined);
   if (rows === undefined) throw new Error(`The animation has no pose ${frame}`);
   if (animation.w > width || animation.h > height) {
     throw new Error(`The poses (${animation.w} × ${animation.h}) are larger than the cell`);
+  }
+  if (rows.length !== animation.h || rows.some((row) => row.length !== animation.w)) {
+    throw new Error(`The pose ${frame} is not ${animation.w} × ${animation.h}`);
   }
   const left = Math.floor((width - animation.w) / 2);
   const top = height - animation.h;
   const sprite = grid(width, height);
   const palette = red && animation.red !== undefined ? animation.red : animation.pal;
   paint(sprite, rows, palette, left, top);
-  const { eye, head, tips } = animation.anchors[frame];
+  const { eye, head, tips } = own?.anchors[frame] ?? animation.anchors[frame];
   const moved = ([x, y]: Point): Point => [x + left, y + top];
   return { sprite, anchors: { eye: moved(eye), head: moved(head), tips: tips.map(moved) } };
 }

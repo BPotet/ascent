@@ -457,6 +457,108 @@ describe('a pose in its red palette (#138)', () => {
   });
 });
 
+describe('a pose of an attack (#139)', () => {
+  /** Une animation pleine de la teinte 0, avec des poses d'un coup simple pleines de la teinte 1. */
+  function withAttack(w: number, h: number, rows?: readonly string[]): FullAnimation {
+    const own = rows ?? Array.from({ length: h }, () => '1'.repeat(w));
+    return {
+      ...filled(w, h, ['#ff3b3b', '#ffd0d8']),
+      pal: ['#06070c', '#bfe6da'],
+      attackPoses: {
+        basic: {
+          move: 'Coup',
+          frames: { ant2: own },
+          anchors: { ant2: { eye: [1, 2], head: [3, 4], tips: [[5, 6]] } },
+        },
+      },
+    };
+  }
+
+  it('paints a pose of the attack line for line, its anchors moved in the cell', () => {
+    const { sprite, anchors } = animationSprite(withAttack(44, 52), 'ant2', [52, 62], {
+      attack: 'basic',
+    });
+    expect([at(sprite, 4, 10), at(sprite, 47, 61), at(sprite, 3, 61)]).toEqual([
+      codeOf('#bfe6da'),
+      codeOf('#bfe6da'),
+      0,
+    ]);
+    expect(anchors).toEqual({ eye: [5, 12], head: [7, 14], tips: [[9, 16]] });
+    for (const pose of ['basic', 'delayedPerilous'] as const) {
+      const poses = TWINS_ANIMATION.attackPoses[pose];
+      for (const [frame, rows] of Object.entries(poses.frames)) {
+        const shown = animationSprite(TWINS_ANIMATION, frame as 'ant0', undefined, {
+          attack: pose,
+        });
+        for (let y = 0; y < 54; y += 1) {
+          for (let x = 0; x < 54; x += 1) {
+            const expected = expectedCode(rows, TWINS_ANIMATION.pal, x, y);
+            if (at(shown.sprite, x, y) !== expected) throw new Error(`${frame} (${x}, ${y})`);
+          }
+        }
+        expect(shown.anchors).toEqual(poses.anchors[frame as 'ant0']);
+      }
+    }
+  });
+
+  it('takes a pose the attack does not have from the full animation', () => {
+    const animation = withAttack(44, 52);
+    for (const frame of ['ant1', 'rec1', 'idle0'] as const) {
+      expect(animationSprite(animation, frame, undefined, { attack: 'basic' })).toEqual(
+        animationSprite(animation, frame),
+      );
+    }
+    const twins: FullAnimation = TWINS_ANIMATION;
+    expect(animationSprite(twins, 'rec0', undefined, { attack: 'delayedPerilous' })).toEqual(
+      animationSprite(twins, 'rec0'),
+    );
+  });
+
+  it('takes every pose from the full animation for an attack kind without attack poses', () => {
+    const animation = withAttack(44, 52);
+    expect(animationSprite(animation, 'ant2', undefined, { attack: 'double' })).toEqual(
+      animationSprite(animation, 'ant2'),
+    );
+    expect(animationSprite(animation, 'ant2', undefined, { attack: null })).toEqual(
+      animationSprite(animation, 'ant2'),
+    );
+    expect(animationSprite(GHOUL_ANIMATION, 'ant2', undefined, { attack: 'basic' })).toEqual(
+      animationSprite(GHOUL_ANIMATION, 'ant2'),
+    );
+    expect(animationSprite(withAttack(44, 52), 'ant2', undefined, { attack: 'basic' })).not.toEqual(
+      animationSprite(withAttack(44, 52), 'ant2'),
+    );
+  });
+
+  it('paints a pose of the attack with the red palette, tint for tint', () => {
+    const { sprite } = animationSprite(withAttack(44, 52), 'ant2', undefined, {
+      attack: 'basic',
+      red: true,
+    });
+    expect(sprite.pixels).toEqual(new Uint8Array(44 * 52).fill(codeOf('#ffd0d8')));
+    const { perilous } = OSSUARY_WARDEN_ANIMATION.attackPoses;
+    const shown = animationSprite(OSSUARY_WARDEN_ANIMATION, 'lunge', undefined, {
+      attack: 'perilous',
+      red: true,
+    });
+    for (let y = 0; y < 62; y += 1) {
+      for (let x = 0; x < 52; x += 1) {
+        const expected = expectedCode(perilous.frames.lunge, OSSUARY_WARDEN_ANIMATION.red, x, y);
+        if (at(shown.sprite, x, y) !== expected) throw new Error(`lunge (${x}, ${y})`);
+      }
+    }
+  });
+
+  it('refuses a pose of the attack of another size than the entity', () => {
+    const lines = (w: number, h: number) => Array.from({ length: h }, () => '1'.repeat(w));
+    for (const rows of [lines(44, 51), lines(43, 52), [...lines(44, 51), '1'.repeat(45)]]) {
+      expect(() =>
+        animationSprite(withAttack(44, 52, rows), 'ant2', undefined, { attack: 'basic' }),
+      ).toThrow('The pose ant2 is not 44 × 52');
+    }
+  });
+});
+
 describe('the validated images of the items', () => {
   it('has the 8 validated items, the Black knight armor included', () => {
     expect(Object.keys(ITEM_IMAGES).sort()).toEqual([
