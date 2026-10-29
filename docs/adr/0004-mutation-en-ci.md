@@ -410,7 +410,8 @@ Trois constats :
    muté que sur ses lignes nouvelles (22 plages). Les 2 102 mutants (1 956 pour `ui-2`) viennent
    surtout de deux fichiers ajoutés, `atelier/data/ossuaryWarden.ts` (2 156 lignes) et
    `atelier/data/twins.ts` (1 937 lignes) : un fichier ajouté est muté en entier (décision 1), mais
-   ces données recopiées de l'Atelier commencent par `// Stryker disable all` (ADR 0010). Tous leurs
+   ces données recopiées de l'Atelier commencent par `// Stryker disable all` (exclusion par
+   commentaire de l'ADR 0001, appliquée au dessin par l'ADR 0006 ; voir ADR 0010 § 7). Tous leurs
    mutants sont `Ignored` : ni placés dans le code (`@stryker-mutator/instrumenter` 10.0.0), ni
    exécutés, ni comptés dans le score.
 3. **La répartition des écrans est mal pesée.** Le découpage en plages des avenants #131 et #134 ne
@@ -465,7 +466,7 @@ testés par `npm run test:scripts`.
 - **Relever `timeout-minutes` des shards, ou baisser `timeoutMS`** : rejetés par la décision
   initiale et les avenants précédents ; baisser `timeoutMS` ferait monter le score artificiellement.
 - **Retirer le `// Stryker disable all` des données** : des milliers de mutants sur des pixels,
-  sans test qui puisse les tuer de façon utile. ADR 0010 inchangé.
+  sans test qui puisse les tuer de façon utile.
 
 ### Conséquences
 
@@ -509,3 +510,8 @@ testés par `npm run test:scripts`.
   du dev : 32 mutants en environ 48 minutes) sur 4 processus, plus 12 minutes de « dry run » :
   19, 41, 34, 17, 23, 28, 18 et 19 minutes. La plus longue (`ui-2`, une seule plage de
   `battleCharacters.ts`, 14 mutants statiques) reste sous 45 minutes.
+- **Limites** : une plage d'un écran modifié n'est jamais coupée. Une part peut donc dépasser
+  l'objectif d'environ 12 mutants (`ui-1` : une seule plage de `enemyPose.ts`, 17 mutants). Le pire
+  cas, si tous les mutants d'une part étaient statiques, est d'environ 48 minutes : au-delà du
+  seuil de recalibrage de 45 minutes, mais sous le délai de 60. La mesure en CI sur #144
+  tranchera.

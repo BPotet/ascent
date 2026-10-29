@@ -37,6 +37,11 @@ le code (`pxlib`, ADR 0008).
    pour les étoiles), quelle que soit la pose.
 6. **Duplication.** Les données sont exclues de la détection de duplication de Sonar, mais pas la
    conversion (`atelier/fullAnimation.ts`), mesurée et couverte comme le reste du code.
+7. **Mutation.** Les données sont exclues de la mutation des écrans (`stryker.ui.config.mjs`, issue
+   #145), mais pas la conversion. Le script de recopie, non versionné, écrit
+   `// Stryker disable all` en première ligne de chaque fichier de données : un test
+   (`scripts/mutation/config.test.mjs`) fait échouer la CI sinon, car l'exclusion cacherait alors
+   des mutants exécutables.
 
 ## Conséquences
 
