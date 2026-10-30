@@ -482,3 +482,155 @@ describe('AscentScreen with the loadout button (#159)', () => {
     );
   });
 });
+
+describe('AscentScreen pausing the battle with the loadout sheet (#159)', () => {
+  const COMBAT_LABEL =
+    'Équipement : 1 bénédiction de départ. Ouvre la liste. Met le combat en pause';
+  const hasted = (): Ascent => ({
+    ...startAscent(42),
+    blessings: [{ family: 'haste', rarity: 'rare' }],
+  });
+
+  /** Une ascension dont le combat a commencé : l'écran s'ouvre sur le compte à rebours. */
+  async function showStartedBattle() {
+    return show(hasted(), async (current) => {
+      await current.battleSession().start();
+    });
+  }
+
+  async function wait(seconds: number) {
+    for (let second = 0; second < seconds; second += 1) {
+      await act(async () => {
+        jest.advanceTimersByTime(1_000);
+      });
+    }
+  }
+
+  const countdown = () => screen.queryByTestId('ascent-countdown');
+  const sheetTitle = () => screen.queryByRole('header', { name: 'Équipement' });
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('shows « Équipement » in the header of the battle, read as pausing the battle', async () => {
+    await showStartedBattle();
+    expect(screen.getByTestId('ascent-loadout')).toHaveAccessibleName(COMBAT_LABEL);
+    await wait(RESUME_COUNTDOWN_S);
+
+    expect(await screen.findByRole('header', { name: 'Étage 1' })).toBeOnTheScreen();
+    const button = screen.getByTestId('ascent-loadout');
+    expect(button).toHaveAccessibleName(COMBAT_LABEL);
+    expect(button).toHaveStyle({ minHeight: MIN_TARGET_SIZE });
+  });
+
+  it('pauses the battle like « Pause » when opened, then counts down 3 s on close before resuming', async () => {
+    const { session } = await showStartedBattle();
+    await wait(RESUME_COUNTDOWN_S);
+    expect(await screen.findByRole('header', { name: 'Étage 1' })).toBeOnTheScreen();
+    const pause = jest.spyOn(session, 'pause');
+
+    await fireEvent.press(screen.getByTestId('ascent-loadout'));
+
+    expect(pause).toHaveBeenCalledTimes(1);
+    expect(session.resuming()).toBe(true);
+    expect(screen.queryByRole('header', { name: 'Étage 1' })).toBeNull();
+    expect(countdown()).toBeNull();
+    expect(sheetTitle()).toBeOnTheScreen();
+    expect(screen.getByRole('status')).toHaveTextContent('Combat en pause');
+    // L'en-tête reste derrière le voile, rendu au niveau de l'écran.
+    expect(screen.getByTestId('ascent-status')).toBeOnTheScreen();
+    expect(screen.getByTestId('ascent-loadout')).toBeOnTheScreen();
+    const focus = jest.mocked(AccessibilityInfo.sendAccessibilityEvent);
+    focus.mockClear();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Fermer' }));
+
+    expect(sheetTitle()).toBeNull();
+    expect(countdown()).toHaveTextContent(`Reprise dans${RESUME_COUNTDOWN_S}`);
+    expect(focus.mock.calls.at(-1)?.[0]).toMatchObject({ props: { testID: 'ascent-loadout' } });
+    await wait(RESUME_COUNTDOWN_S);
+    expect(await screen.findByRole('header', { name: 'Étage 1' })).toBeOnTheScreen();
+  });
+
+  it('closes with the back gesture first, without leaving the screen', async () => {
+    const { onLeave } = await showStartedBattle();
+    await wait(RESUME_COUNTDOWN_S);
+    await fireEvent.press(await screen.findByTestId('ascent-loadout'));
+
+    await fireEvent(screen.getByTestId('loadout-sheet'), 'requestClose');
+
+    expect(sheetTitle()).toBeNull();
+    expect(countdown()).toBeOnTheScreen();
+    expect(onLeave).not.toHaveBeenCalled();
+  });
+
+  it('waits for the sheet to close before counting down, when the app comes back from the background', async () => {
+    const { app } = await showStartedBattle();
+    await wait(RESUME_COUNTDOWN_S);
+    await fireEvent.press(await screen.findByTestId('ascent-loadout'));
+
+    await app.set(false);
+    await app.set(true);
+
+    expect(sheetTitle()).toBeOnTheScreen();
+    expect(countdown()).toBeNull();
+    expect(screen.queryByRole('header', { name: 'Étage 1' })).toBeNull();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Fermer' }));
+
+    expect(countdown()).toHaveTextContent(`Reprise dans${RESUME_COUNTDOWN_S}`);
+    await wait(RESUME_COUNTDOWN_S);
+    expect(await screen.findByRole('header', { name: 'Étage 1' })).toBeOnTheScreen();
+  });
+
+  it('starts the countdown again from 3 when opened during the countdown', async () => {
+    await showStartedBattle();
+    await wait(RESUME_COUNTDOWN_S - 1);
+    expect(countdown()).toHaveTextContent('Reprise dans1');
+
+    await fireEvent.press(screen.getByTestId('ascent-loadout'));
+
+    expect(sheetTitle()).toBeOnTheScreen();
+    expect(screen.getByRole('status')).toHaveTextContent('Combat en pause');
+    expect(countdown()).toBeNull();
+    await wait(RESUME_COUNTDOWN_S);
+    expect(screen.queryByRole('header', { name: 'Étage 1' })).toBeNull();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Fermer' }));
+
+    expect(countdown()).toHaveTextContent(`Reprise dans${RESUME_COUNTDOWN_S}`);
+    await wait(RESUME_COUNTDOWN_S);
+    expect(await screen.findByRole('header', { name: 'Étage 1' })).toBeOnTheScreen();
+  });
+
+  it('pauses nothing from the choice of a blessing, before the first battle', async () => {
+    const { session } = await show(startAscent(42, { gauge: -1, blessings: ['rare'] }));
+    const pause = jest.spyOn(session, 'pause');
+
+    await fireEvent.press(screen.getByTestId('ascent-loadout'));
+
+    expect(screen.getByTestId('ascent-loadout')).toHaveAccessibleName(
+      'Équipement : vide. Ouvre la liste',
+    );
+    expect(sheetTitle()).toBeOnTheScreen();
+    expect(screen.queryByText('Combat en pause')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Fermer' }));
+    expect(pause).not.toHaveBeenCalled();
+    expect(screen.getByRole('header', { name: 'Bénédiction 1 sur 1' })).toBeOnTheScreen();
+  });
+
+  it('keeps « Pause » leaving to the tower foot', async () => {
+    const { onLeave, session } = await showStartedBattle();
+    await wait(RESUME_COUNTDOWN_S);
+
+    await fireEvent.press(await screen.findByRole('button', { name: 'Pause' }));
+
+    expect(onLeave).toHaveBeenCalledTimes(1);
+    expect(session.resuming()).toBe(true);
+  });
+});

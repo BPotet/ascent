@@ -1,4 +1,4 @@
-import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
+import { type Ref, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
@@ -93,10 +93,14 @@ function FloorBattle({
   session,
   ascent,
   onPause,
+  onLoadout,
+  loadoutRef,
 }: {
   readonly session: AscentSession;
   readonly ascent: Ascent;
   readonly onPause: () => void;
+  readonly onLoadout: () => void;
+  readonly loadoutRef: Ref<View>;
 }) {
   const battleSession = useMemo(() => session.battleSession(), [session]);
   const [reserve, setReserve] = useState(0);
@@ -110,6 +114,9 @@ function FloorBattle({
         ascent={ascent}
         extra={reserve > 0 ? `+${reserve} en réserve` : null}
         onPause={onPause}
+        onLoadout={onLoadout}
+        combat
+        loadoutRef={loadoutRef}
       />
       <BattleScreen
         session={battleSession}
@@ -148,8 +155,22 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
   const [counting, setCounting] = useState(() => session.resuming());
   const [paused, setPaused] = useState(false);
   const [mount, setMount] = useState(0);
-  const [loadoutOpen, setLoadoutOpen] = useState(false);
+  const [sheet, setSheet] = useState<'closed' | 'calm' | 'battle'>('closed');
+  const loadoutOpen = sheet !== 'closed';
   const opener = useRef<View>(null);
+  // La feuille de l'Équipement ouverte en combat retient le combat en pause (#159).
+  const sheetHolds = useRef(false);
+
+  /**
+   * Le seul point qui décide de la reprise du combat après une pause (P33, #159) : rien tant que la
+   * feuille de l'Équipement retient le combat ; sinon le compte à rebours, si un combat est à
+   * reprendre, puis le combat remonté, qui reprend l'action en cours avec le même tirage.
+   */
+  const resumeUnlessHeld = useCallback(() => {
+    if (sheetHolds.current) return;
+    setCounting(session.resuming());
+    setMount((count) => count + 1);
+  }, [session]);
 
   useEffect(
     () =>
@@ -160,10 +181,9 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
           return;
         }
         setPaused(false);
-        setCounting(session.resuming());
-        setMount((count) => count + 1);
+        resumeUnlessHeld();
       }),
-    [session, visibility],
+    [session, visibility, resumeUnlessHeld],
   );
 
   // Quitter l'écran (Pause, retour arrière) met en pause et sauvegarde (P33).
@@ -174,10 +194,21 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
     onLeave();
   };
 
-  // La feuille de l'Équipement (#159), hors combat : rien n'est mis en pause, l'écran garde son état.
-  const openLoadout = () => setLoadoutOpen(true);
+  // La feuille de l'Équipement (#159) : hors combat, rien n'est mis en pause et l'écran garde son
+  // état ; en combat, elle met le combat en pause, exactement comme « Pause », et sa fermeture le
+  // reprend.
+  const openLoadout = () => setSheet('calm');
+  const openLoadoutInBattle = () => {
+    session.pause();
+    sheetHolds.current = true;
+    setSheet('battle');
+  };
   const closeLoadout = () => {
-    setLoadoutOpen(false);
+    setSheet('closed');
+    if (sheetHolds.current) {
+      sheetHolds.current = false;
+      resumeUnlessHeld();
+    }
     if (opener.current !== null) AccessibilityInfo.sendAccessibilityEvent(opener.current, 'focus');
   };
 
@@ -220,7 +251,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
   const loadoutSheet = (
     <LoadoutSheet
       loadout={loadoutOf(ascent)}
-      combat={false}
+      combat={sheet === 'battle'}
       visible={loadoutOpen}
       onClose={closeLoadout}
     />
@@ -245,10 +276,17 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
   if (ascent.encounter !== null) {
     return (
       <Screen layout="top" background={roles.night} testID="ascent-battle">
-        {paused ? null : counting ? (
+        {/* Le combat n'est rendu que s'il n'est ni en pause, ni retenu par la feuille, ni en reprise. */}
+        {paused ? null : loadoutOpen || counting ? (
           <>
-            <Header ascent={ascent} onPause={leave} />
-            <Countdown onDone={() => setCounting(false)} />
+            <Header
+              ascent={ascent}
+              onPause={leave}
+              onLoadout={openLoadoutInBattle}
+              combat
+              loadoutRef={opener}
+            />
+            {loadoutOpen ? null : <Countdown onDone={() => setCounting(false)} />}
           </>
         ) : (
           <FloorBattle
@@ -256,8 +294,11 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
             session={session}
             ascent={ascent}
             onPause={leave}
+            onLoadout={openLoadoutInBattle}
+            loadoutRef={opener}
           />
         )}
+        {loadoutSheet}
       </Screen>
     );
   }
