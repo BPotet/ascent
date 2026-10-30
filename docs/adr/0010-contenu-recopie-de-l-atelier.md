@@ -149,6 +149,14 @@ la conversion. Le script de recopie, non versionné, écrit `// Stryker disable 
 de chaque fichier de données : un test (`scripts/mutation/config.test.mjs`) fait échouer la CI
 sinon, car l'exclusion cacherait alors des mutants exécutables.
 
+## Avenant du 30/10/2026 (#152) : le nom de code d'un objet est stable
+
+Le nom de code d'un objet (`ItemKind`) est un **identifiant de sauvegarde** : l'ascension le garde
+dans `equipment` et `foundItem` (`ascent.current`, `SAVE_VERSION = 1`). Seul son **nom affiché**
+suit l'Atelier. Quand le Codex en déduit un autre d'un nouveau nom (`armureDeChevalierDechu` pour
+l'Armure de chevalier déchu), le jeu garde l'ancien (`blackKnightArmor`), et l'Atelier est réaligné
+sur le jeu. Le nom de code ne change qu'avec une migration de sauvegarde, sur une story dédiée.
+
 ## Avenant du 30/10/2026 (#155) : la pose `bash` et l'écu du Rempart validés
 
 Il **lève l'avenant au § 7 du 30/10/2026 (#128)** : la pose et l'écu demandés à l'Atelier sont
@@ -178,4 +186,3 @@ validés par le propriétaire le 30/10/2026 et recopiés comme au § 1.
   recoloration. Le dessin de l'écu par le code (`ShieldGlyph`, l'ancien `shield`) est supprimé.
 - **Ce qui reste dessiné par le code.** Les 4 éclats d'argent (`silverShard`), l'onde d'argent et le
   choc de bouclier : l'Atelier n'en a pas d'image.
-

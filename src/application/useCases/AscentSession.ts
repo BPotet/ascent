@@ -15,7 +15,6 @@ import { boonModifiers } from '../../domain/ascent/boons';
 import { blessingModifiers, type BlessingFamily } from '../../domain/ascent/blessings';
 import { STARTING_EQUIPMENT, itemModifiers } from '../../domain/ascent/items';
 import { resumeBattle, startBattle, type Battle } from '../../domain/battle/Battle';
-import { HEROES } from '../../domain/battle/combatants';
 import { combineModifiers } from '../../domain/battle/heroModifiers';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
 import { BattleSession, type BattleSessionDependencies } from './BattleSession';
@@ -199,10 +198,7 @@ export class AscentSession {
           heroHp: ascent.hero.hp,
           heroMaxHp: ascent.hero.maxHp,
           modifiers: combineModifiers(
-            blessingModifiers(ascent.blessings, {
-              firstBattle: ascent.floor === 1,
-              attackPower: HEROES[ascent.hero.kind].attackPower,
-            }),
+            blessingModifiers(ascent.blessings, { firstBattle: ascent.floor === 1 }),
             itemModifiers(ascent.equipment),
             boonModifiers(ascent.hero.boons),
           ),

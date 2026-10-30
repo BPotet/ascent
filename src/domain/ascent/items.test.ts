@@ -153,11 +153,21 @@ describe('equipment (P21)', () => {
     );
   });
 
-  it('gives the Crossbow Initiative +1, the Black knight armor 20 points, Attack +1, Initiative −2', () => {
+  it('gives the Crossbow Initiative +1, the Fallen knight armor 20 points, Attack +5 %, Initiative −2', () => {
     expect(ITEMS.crossbow).toEqual({ slot: 'weapon', rarity: 'rare', initiative: 1, effects: {} });
-    expect(ITEMS.blackKnightArmor).toMatchObject({ slot: 'armor', rarity: 'rare' });
+    expect(ITEMS.blackKnightArmor).toEqual({
+      slot: 'armor',
+      rarity: 'rare',
+      initiative: -2,
+      effects: { damageReductionPoints: 20, attackBonusPercent: 5 },
+    });
     expect(
       itemModifiers({ weapon: 'crossbow', armor: 'blackKnightArmor', accessory: null }),
-    ).toMatchObject({ damageReductionPoints: 20, attackFlat: 1, initiative: -1 });
+    ).toMatchObject({
+      damageReductionPoints: 20,
+      attackBonusPercent: 5,
+      attackFlat: 0,
+      initiative: -1,
+    });
   });
 });
