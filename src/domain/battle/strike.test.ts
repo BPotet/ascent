@@ -77,5 +77,18 @@ describe('timed strike (C6)', () => {
         guard: 0,
       });
     });
+
+    it('scales its HP and its guard damage by the given shares, still with one rounding', () => {
+      // 10 × 50 % × 130 % × 50 % = 3,25 ; 12 × 25 % = 3.
+      expect(
+        counterBlow({
+          ...SENTINEL_STRIKE,
+          counterPercent: 130,
+          stunned: false,
+          hpPercent: 50,
+          guardPercent: 25,
+        }),
+      ).toEqual({ hp: 3, guard: 3 });
+    });
   });
 });
