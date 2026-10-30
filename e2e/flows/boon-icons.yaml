@@ -1,0 +1,91 @@
+# Story #157 : les icônes des bienfaits dans le choix d'un bienfait et aux sorties (chemin A).
+# Ces écrans ne s'ouvrent qu'après un combat gagné, et le combat se teste à la main (décision du
+# propriétaire du 25/10). Le parcours passe donc par la planche des icônes, outil du build de
+# preview ouvert par le lien profond ascent://preview/icon-board (décision de l'orchestrateur du
+# 30/10/2026 sur #157) : elle rend les vrais écrans avec des données fixes, sans rien changer pour
+# le joueur. Sur le build de production, le même lien ramène à l'accueil (test/app/iconBoard.test.tsx).
+# Captures à comparer à la maquette `docs/mockups/153-boon-blessing-icons/` : 1A, 1B, 1D, 1E, 2B,
+# 2C et 2D. Sur 2D, la porte du boss doit rester visible sans défilement.
+appId: com.bpotet.ascent
+name: Les icônes des bienfaits
+tags:
+  - story-157
+---
+- runFlow: ../subflows/launch-fresh.yaml
+
+- openLink: ascent://preview/icon-board
+- extendedWaitUntil:
+    visible: 'Planche des icônes'
+    timeout: 15000
+- assertVisible: 'Outil du build de preview'
+
+# 1A : rien de choisi, trois raretés ; « Prendre » inactif.
+- tapOn: "Choix d'un bienfait"
+- extendedWaitUntil:
+    visible: 'Choisis un bienfait'
+    timeout: 10000
+- assertVisible: 'Écho parfait, Écho, Commun.*'
+- assertVisible: 'Givre persistant, Givre, Rare.*'
+- assertVisible: 'Cœur de braise, Braise, Épique.*'
+- assertVisible:
+    text: 'Prendre'
+    enabled: false
+- takeScreenshot: boon-icons-1a-choice
+
+# 1B : une carte choisie.
+- tapOn: 'Givre persistant, Givre, Rare.*'
+- assertVisible:
+    text: 'Prendre'
+    enabled: true
+- takeScreenshot: boon-icons-1b-chosen
+
+# 1D : Givre persistant obtenu, 24 × 24 à ×4.
+- tapOn: 'Prendre'
+- extendedWaitUntil:
+    visible: 'Bienfait obtenu : Givre persistant, Givre, Rare.*'
+    timeout: 10000
+- assertVisible: 'Continuer'
+- takeScreenshot: boon-icons-1d-obtained-rare
+- tapOn: 'Continuer'
+
+# 1E : Écho parfait obtenu, 16 × 16 à ×6.
+- extendedWaitUntil:
+    visible: "Choix d'un bienfait"
+    timeout: 10000
+- tapOn: "Choix d'un bienfait"
+- tapOn: 'Écho parfait, Écho, Commun.*'
+- tapOn: 'Prendre'
+- extendedWaitUntil:
+    visible: 'Bienfait obtenu : Écho parfait, Écho, Commun.*'
+    timeout: 10000
+- takeScreenshot: boon-icons-1e-obtained-common
+- tapOn: 'Continuer'
+
+# 2B : aucun bienfait, sans pastille vide.
+- tapOn: 'Sorties · aucun bienfait'
+- extendedWaitUntil:
+    visible: 'Aucun bienfait'
+    timeout: 10000
+- assertVisible: 'Choisis ta sortie'
+- takeScreenshot: boon-icons-2b-no-boon
+- tapOn: 'Retour'
+
+# 2C : deux bienfaits de raretés différentes, dans l'ordre gagné, sur 2 colonnes.
+- tapOn: 'Sorties · deux bienfaits'
+- extendedWaitUntil:
+    visible: 'Bienfaits : Écho parfait, Commun ; Givre persistant, Rare'
+    timeout: 10000
+- assertVisible: 'Choisis ta sortie'
+- takeScreenshot: boon-icons-2c-two-boons
+- tapOn: 'Retour'
+
+# 2D : dernière porte, 5 bienfaits sur 2 colonnes et 3 rangs ; la porte du boss sans défilement.
+- tapOn: 'Dernière porte · 5 bienfaits'
+- extendedWaitUntil:
+    visible: 'Bienfaits : Écho parfait, Commun ; Givre persistant, Rare ; Braise brisante, Commun ; Braise ardente, Rare ; Cœur de braise, Épique'
+    timeout: 10000
+- assertVisible: 'Dernière porte'
+- assertVisible: 'Affronter le boss'
+- takeScreenshot: boon-icons-2d-last-door
+- tapOn: 'Retour'
+- assertVisible: 'Planche des icônes'

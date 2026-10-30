@@ -26,6 +26,12 @@ construit sur le canal `preview` ; sur un build de production, le lien ramène �
 local, lancer l'app avec `EXPO_PUBLIC_ASCENT_CHANNEL=preview` (par exemple
 `EXPO_PUBLIC_ASCENT_CHANNEL=preview npx expo run:android --variant release`) pour ouvrir la sonde.
 
+La planche des icônes (`boon-icons.yaml`, outil du build de preview, #157) s'ouvre de la même
+façon, par le lien profond `ascent://preview/icon-board`. Elle rend les vrais écrans du choix d'un
+bienfait et des sorties avec des données fixes, que le parcours ne peut pas atteindre sans gagner un
+combat : ses captures (1A, 1B, 1D, 1E, 2B, 2C et 2D) se comparent à la maquette
+`docs/mockups/153-boon-blessing-icons/`.
+
 Le combat d'essai et son bouton « Combat d'essai », au-dessus de la barre d'onglets du build de
 preview, sont retirés (#121, décision du propriétaire du 28/10/2026) : la barre d'onglets et la liste
 de la Vue Journée ont la même place en preview et en production. `old-trial-battle-link.yaml` vérifie
