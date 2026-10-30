@@ -3,8 +3,12 @@ import { PixelRatio } from 'react-native';
 /** Le pixel d'art (`artPixel`) : 2 dp dans toute l'interface (échelle ×2). */
 export const ART_PIXEL = 2;
 
-/** L'échelle d'un sprite : ×2 partout, ×3 pour les grands moments (personnage des états vides). */
-export type ArtScale = 2 | 3;
+/**
+ * L'échelle d'un sprite : ×2 partout, ×3 pour les grands moments (personnage des états vides), ×1
+ * seulement pour une image recopiée de l'Atelier placée dans une ligne de texte plus basse que son
+ * ×2 (l'écu du Rempart devant un chiffre ou dans une étiquette, #155, avenant à l'ADR 0007 § 3).
+ */
+export type ArtScale = 1 | 2 | 3;
 
 /**
  * La taille d'un pixel d'art à l'échelle `scale`, en dp, arrondie à un nombre entier de pixels

@@ -17,7 +17,7 @@ describe('artPixelSize', () => {
         .spyOn(PixelRatio, 'roundToNearestPixel')
         .mockImplementation((size) => Math.round(size * density) / density);
 
-      for (const scale of [2, 3] as const) {
+      for (const scale of [1, 2, 3] as const) {
         const physical = artPixelSize(scale) * density;
         expect(physical).toBeCloseTo(Math.round(physical), 9);
         expect(Math.abs(artPixelSize(scale) - scale)).toBeLessThanOrEqual(0.5 / density);
@@ -27,7 +27,15 @@ describe('artPixelSize', () => {
 
   it('is exactly the scale on a whole density', () => {
     jest.spyOn(PixelRatio, 'roundToNearestPixel').mockImplementation((size) => size);
+    expect(artPixelSize(1)).toBe(1);
     expect(artPixelSize(2)).toBe(2);
     expect(artPixelSize(3)).toBe(3);
+  });
+
+  it('rounds the ×1 art pixel of an image of the Atelier to 3 physical pixels at 2.625 (#155)', () => {
+    jest
+      .spyOn(PixelRatio, 'roundToNearestPixel')
+      .mockImplementation((size) => Math.round(size * 2.625) / 2.625);
+    expect(artPixelSize(1) * 2.625).toBeCloseTo(3, 9);
   });
 });
