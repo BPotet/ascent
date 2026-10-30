@@ -58,6 +58,9 @@ export function feedbackFor(event: BattleEvent): BattleFeedback {
         : { sound: 'strike', haptic: null };
     case 'guardBroken':
       return { sound: 'guardBreak', haptic: 'guardBreak' };
+    // Le choc de bouclier de la Riposte du Rempart (#128) ; son usure garde le son du touché.
+    case 'bulwarkCountered':
+      return { sound: 'shieldClash', haptic: 'bulwarkCounter' };
     case 'actionLost':
       return { sound: 'lostAction', haptic: null };
     case 'guardRestored':

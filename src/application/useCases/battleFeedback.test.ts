@@ -115,6 +115,25 @@ describe('feedbackFor (sounds and vibrations of a battle)', () => {
       null,
     ],
     [
+      'the Bulwark riposte: the shield clash, with a short vibration (#128)',
+      {
+        type: 'bulwarkCountered',
+        at: 0,
+        enemy: 0,
+        damage: 3,
+        guardDamage: 3,
+        until: 400,
+      } as BattleEvent,
+      'shieldClash',
+      'bulwarkCounter',
+    ],
+    [
+      'a guard broken by the Bulwark riposte, like any guard break',
+      { type: 'guardBroken', at: 0, enemy: 0, by: 'bulwarkCounter' } as BattleEvent,
+      'guardBreak',
+      'guardBreak',
+    ],
+    [
       'the hero phase announced without transition',
       { type: 'heroPhaseStarted', at: 0, announced: true } as BattleEvent,
       'heroPhase',
@@ -137,6 +156,8 @@ describe('feedbackFor (sounds and vibrations of a battle)', () => {
       guardDamage: 12,
       until: 400,
     } as BattleEvent,
+    // L'usure du Rempart n'a pas de son à part : celui du touché suffit (#128).
+    { type: 'bulwarkWorn', at: 0, enemy: 0 } as BattleEvent,
     { type: 'pressIgnored', at: 0, button: 'parry', reason: 'phaseTransition' } as BattleEvent,
     { type: 'offBalanceStarted', at: 0, until: 450 } as BattleEvent,
     { type: 'strikeStarted', at: 0, enemy: 0, impactAt: 700, until: 1_180 } as BattleEvent,
