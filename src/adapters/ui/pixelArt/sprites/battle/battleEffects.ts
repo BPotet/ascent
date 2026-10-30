@@ -4,7 +4,8 @@ import type { AtlasRect } from './battleAtlas';
 /**
  * Les effets du combat et leur nombre d'images : l'éclair d'impact (3 paliers), les étincelles de
  * parade dorée à rayons et bleu acier (5 images), les reflets blanc, rouge et terne (3 images de
- * 30 ms ; le reflet double est le blanc, aux deux griffes) et les étoiles (4 positions).
+ * 30 ms ; le reflet double est le blanc, aux deux griffes), les étoiles (4 positions), l'écu du
+ * Rempart (entier, fendu) et l'éclat d'argent (#128).
  */
 export const EFFECT_KINDS = {
   flash: 3,
@@ -14,6 +15,8 @@ export const EFFECT_KINDS = {
   glintRed: 3,
   glintDull: 3,
   stars: 4,
+  shield: 2,
+  silverShard: 1,
 } as const;
 
 export type EffectKind = keyof typeof EFFECT_KINDS;
@@ -38,6 +41,8 @@ const SIDES: Readonly<Record<EffectKind, number>> = {
   glintRed: 9,
   glintDull: 9,
   stars: 21,
+  shield: 15,
+  silverShard: 5,
 };
 
 /** Un pixel `code` en `(x, y)` relatif au centre de la case. */
@@ -179,6 +184,73 @@ function stars(turn: number): Sprite {
   return sprite;
 }
 
+/** L'écu du Rempart est dans la largeur (12 pixels d'art) et toute la hauteur (15) de sa case. */
+const SHIELD_WIDTH = 12;
+
+/** Un pixel de l'écu, dans sa forme : un bouclier droit en haut, en pointe en bas. */
+function inShield(x: number, y: number): boolean {
+  if (y < 0 || y >= SIDES.shield || x < 0 || x >= SHIELD_WIDTH) return false;
+  const half = y < 8 ? 6 : 6 - (y - 7) * 0.8;
+  return Math.abs(x + 0.5 - 6) <= half;
+}
+
+const NEIGHBOURS = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+] as const;
+
+/** Le pixel `(x, y)` est sur le bord de l'écu. */
+function onShieldEdge(x: number, y: number): boolean {
+  return NEIGHBOURS.some(([u, v]) => !inShield(x + u, y + v));
+}
+
+/** La fente de l'écu usé, de haut en bas. */
+const CRACK = [
+  [6, 0],
+  [6, 1],
+  [5, 2],
+  [5, 3],
+  [6, 4],
+  [7, 5],
+  [7, 6],
+  [6, 7],
+  [6, 8],
+  [5, 9],
+  [5, 10],
+  [6, 11],
+  [6, 12],
+] as const;
+
+/**
+ * L'écu du Rempart (#128), dessiné d'après la maquette (`ecu`), provisoire tant que l'Atelier ne
+ * l'a pas validé : un contour d'argent, doublé de son trait, entier (0) ou fendu (1).
+ */
+function shield(frame: number): Sprite {
+  const sprite = grid(SIDES.shield, SIDES.shield);
+  const left = (SIDES.shield - SHIELD_WIDTH) >> 1;
+  for (let y = 0; y < SIDES.shield; y += 1) {
+    for (let x = 0; x < SHIELD_WIDTH; x += 1) {
+      if (!inShield(x, y)) continue;
+      if (onShieldEdge(x, y)) px(sprite, left + x, y, 11);
+      else if (NEIGHBOURS.some(([u, v]) => inShield(x + u, y + v) && onShieldEdge(x + u, y + v))) {
+        px(sprite, left + x, y, 10);
+      }
+    }
+  }
+  if (frame === 1) for (const [x, y] of CRACK) px(sprite, left + x, y, 1);
+  return sprite;
+}
+
+/** Un éclat d'argent, cerné d'encre (#128). */
+function silverShard(): Sprite {
+  const sprite = grid(SIDES.silverShard, SIDES.silverShard);
+  rect(sprite, 0, 0, SIDES.silverShard, SIDES.silverShard, 1);
+  rect(sprite, 1, 1, SIDES.silverShard - 2, SIDES.silverShard - 2, 11);
+  return sprite;
+}
+
 const PAINTERS: Readonly<Record<EffectKind, (frame: number) => Sprite>> = {
   flash,
   gold: goldSpark,
@@ -187,6 +259,8 @@ const PAINTERS: Readonly<Record<EffectKind, (frame: number) => Sprite>> = {
   glintRed: (k) => glint('red', k),
   glintDull: (k) => glint('dull', k),
   stars,
+  shield,
+  silverShard,
 };
 
 let effects: EffectsAtlas | null = null;

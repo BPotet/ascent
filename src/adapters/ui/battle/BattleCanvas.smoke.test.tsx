@@ -354,6 +354,46 @@ describe('BattleScene: the glint and the stars follow the displayed pose', () =>
     );
   });
 
+  it('holds the Bulwark shield in front of the Sentinel, at her scale, and bursts silver shards on the struck enemy (#128)', async () => {
+    const { hero } = geometry;
+    const scene = async (change: Partial<BattleSceneProps>) => {
+      await render(
+        <BattleScene
+          {...props({
+            geometry,
+            enemies: ENEMIES.slice(0, 2),
+            timeline: null,
+            spark: null,
+            uiNow: () => NOW,
+            ...change,
+          })}
+        />,
+      );
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+    };
+
+    await scene({ bulwark: true });
+    // La case de l'écu (15 pixels d'art) part de (27, 12) dans celle du héros, sur des pixels entiers.
+    expect(table.shield[2]).toBe(15);
+    expect(effectsPlaced()).toEqual([[3, 0, hero.x + 81, hero.y + 36]]);
+
+    await scene({ riposte: { at: NOW, enemy: 1 } });
+    const { sprite } = geometry.enemies[1]!;
+    const [x, y] = [sprite.x + 44, sprite.y + Math.round(104 * 0.55)];
+    const side = table.silverShard[2];
+    expect(effectsPlaced()).toEqual(
+      [
+        [0, -12],
+        [12, 0],
+        [0, 12],
+        [-12, 0],
+      ].map(([dx, dy]) => [2, 0, x + dx! - side, y + dy! - side]),
+    );
+    expect(drawnTypes()).toContain('skPath');
+  });
+
   it('sets the Faceless prior whole on its place, feet on the pedestal, and its stars on its head (#138)', async () => {
     const single = sceneGeometry(390, 440, 1);
     const { sprite } = single.enemies[0]!;

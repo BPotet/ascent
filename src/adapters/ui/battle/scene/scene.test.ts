@@ -9,8 +9,17 @@ import {
 } from '../../pixelArt/sprites/battle/battleCharacters';
 import type { SceneTimeline } from '../sceneTypes';
 import { FRAME_MS, enemyPose, restPose } from './enemyPose';
-import { heroFrame } from './heroFrame';
-import { glintSprites, hurtLevel, impactFlash, sparkFrame } from './sceneEffects';
+import { BASH_ADVANCE_DP, BASH_FRAME, heroFrame } from './heroFrame';
+import {
+  bulwarkShards,
+  bulwarkShield,
+  glintSprites,
+  hurtLevel,
+  impactFlash,
+  riposteBurst,
+  riposteWave,
+  sparkFrame,
+} from './sceneEffects';
 import { PLATE_HEIGHT, sceneGeometry, spriteOrigin } from './sceneGeometry';
 
 const STEP_IN_AT = 1_000;
@@ -578,6 +587,18 @@ describe('heroFrame (pxHeroFrame)', () => {
     expect(heroFrame('strike', 0, 160, null).lunge).toBeCloseTo(1);
     expect(heroFrame('strike', 0, 320, null)).toMatchObject({ lunge: 0 });
   });
+
+  it('bashes with its shield in place for 400 ms: the validated parry1 pose, 4 dp forward and back (#128)', () => {
+    expect(BASH_FRAME).toBe('parry1');
+    expect(BASH_ADVANCE_DP).toBe(4);
+    expect(heroFrame('bash', 0, 10, null)).toMatchObject({ frame: 'parry1', lunge: 0, dodge: 0 });
+    expect(heroFrame('bash', 0, 200, null).frame).toBe('parry1');
+    expect(heroFrame('bash', 0, 200, null).push).toBeCloseTo(1);
+    expect(heroFrame('bash', 0, 100, null).push).toBeCloseTo(Math.SQRT1_2);
+    expect(heroFrame('bash', 0, 400, null)).toMatchObject({ push: 0 });
+    expect(heroFrame('bash', 0, 400, null).frame).toMatch(/^idle/u);
+    expect(heroFrame('strike', 0, 160, null).push).toBe(0);
+  });
 });
 
 describe('scene effects', () => {
@@ -699,5 +720,76 @@ describe('sceneGeometry', () => {
     const [first] = geometry.enemies;
     expect(first!.reach.x).toBe(geometry.chest.x - (first!.sprite.x + 44));
     expect(first!.reach.y).toBeGreaterThan(0);
+  });
+});
+
+describe('the Bulwark in the scene (#128, provisional until the Workshop)', () => {
+  it('holds the shield, still, while the Bulwark is up; cracks it for one frame (83 ms) when it wears; then nothing', () => {
+    expect([0, 250, 10_000].map((now) => bulwarkShield(true, null, now))).toEqual([0, 0, 0]);
+    expect(bulwarkShield(false, null, 1_000)).toBeNull();
+    expect(bulwarkShield(false, 1_000, 999)).toBe(0);
+    expect(bulwarkShield(false, 1_000, 1_000)).toBe(1);
+    expect(bulwarkShield(false, 1_000, 1_083)).toBe(1);
+    expect(bulwarkShield(false, 1_000, 1_084)).toBeNull();
+  });
+
+  it('shatters the shield in 4 silver shards that spread for 500 ms, in 5 steps', () => {
+    expect(bulwarkShards(null, 1_000, false)).toEqual([]);
+    expect(bulwarkShards(1_000, 1_083, false)).toEqual([]);
+    expect(bulwarkShards(1_000, 1_084, false)).toEqual([
+      [-14, -14],
+      [18, -17],
+      [-9, 23],
+      [19, 19],
+    ]);
+    expect(bulwarkShards(1_000, 1_583, false)).toEqual([
+      [-25, -28],
+      [31, -28],
+      [-17, 36],
+      [33, 30],
+    ]);
+    expect(bulwarkShards(1_000, 1_584, false)).toEqual([]);
+  });
+
+  it('barely spreads the shards with reduced motion, for the same time', () => {
+    expect(bulwarkShards(1_000, 1_583, true)).toEqual([
+      [-14, -14],
+      [19, -17],
+      [-9, 24],
+      [20, 20],
+    ]);
+    expect(bulwarkShards(1_000, 1_584, true)).toEqual([]);
+  });
+
+  it('sends the silver wave to the enemy in 6 steps of 50 ms, and keeps it until the end of the riposte', () => {
+    const riposte = { at: 2_000 };
+    expect(riposteWave(null, 2_000, false)).toBeNull();
+    expect(riposteWave(riposte, 1_999, false)).toBeNull();
+    expect(riposteWave(riposte, 2_000, false)).toBeCloseTo(1 / 6);
+    expect(riposteWave(riposte, 2_100, false)).toBeCloseTo(3 / 6);
+    expect(riposteWave(riposte, 2_399, false)).toBe(1);
+    expect(riposteWave(riposte, 2_400, false)).toBeNull();
+    // Mouvement réduit : l'onde part déjà presque à l'ennemi.
+    expect(riposteWave(riposte, 2_000, true)).toBeCloseTo(0.75 + 0.25 / 6);
+  });
+
+  it('bursts 4 silver shards on the enemy in 3 steps of 100 ms', () => {
+    const riposte = { at: 2_000 };
+    expect(riposteBurst(null, 2_000, false)).toEqual([]);
+    expect(riposteBurst(riposte, 1_999, false)).toEqual([]);
+    expect(riposteBurst(riposte, 2_000, false)).toEqual([
+      [0, -12],
+      [12, 0],
+      [0, 12],
+      [-12, 0],
+    ]);
+    expect(riposteBurst(riposte, 2_399, false)).toEqual([
+      [0, -20],
+      [20, 0],
+      [0, 20],
+      [-20, 0],
+    ]);
+    expect(riposteBurst(riposte, 2_400, false)).toEqual([]);
+    expect(riposteBurst(riposte, 2_000, true)[1]).toEqual([18, 0]);
   });
 });

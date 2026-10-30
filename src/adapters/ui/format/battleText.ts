@@ -89,7 +89,9 @@ export const ARMOR_NAMES: Readonly<Record<Armor, string>> = {
 };
 
 const POWER_EFFECTS: Readonly<Record<PowerKind, string>> = {
-  bulwark: 'le prochain coup subi fait −50 %',
+  // La `powerDescription` du Codex (`sentinel`), recopiée mot pour mot le 29/10/2026 (#128).
+  bulwark:
+    "Elle plante son bouclier devant elle et y met tout son poids. Le prochain coup qu'elle subit ne lui fait que la moitié de ses dégâts, après sa réduction, et elle riposte aussitôt, moins fort qu'une contre-attaque.",
   shadowStep: "ta prochaine esquive de tous les impacts d'un coup contre-attaque",
 };
 
@@ -151,6 +153,11 @@ function damages(count: number): string {
 /** L'étiquette du Saignement sous les PV du héros (prototype #107) : « Saignement ×3 ». */
 export function bleedChipText(rounds: number): string {
   return `Saignement ×${rounds}`;
+}
+
+/** L'étiquette du Rempart sous les PV du héros (#128) : « Rempart », puis « Rempart usé ». */
+export function bulwarkChipText(worn: boolean): string {
+  return worn ? 'Rempart usé' : POWER_NAMES.bulwark;
 }
 
 /** Les PV sous un ennemi : « 38/50 PV ». */
@@ -260,12 +267,11 @@ export function phaseAnnouncement(to: PhaseDirection): string {
 
 /**
  * Le mot d'un résultat sur la scène. La phase ennemie est épurée : seuls « Parfait », « Parfait ·
- * contre-attaque », « Cassure » et « Il se relève » (#106) s'y écrivent ; « Frappe parfaite » en
- * phase du héros. Jamais
- * « Critique ».
+ * contre-attaque », « Riposte » (précédé de l'écu, #128), « Cassure » et « Il se relève » (#106)
+ * s'y écrivent ; « Frappe parfaite » en phase du héros. Jamais « Critique ».
  */
 export interface FeedbackText {
-  readonly tone: 'perfect' | 'break' | 'rise';
+  readonly tone: 'perfect' | 'break' | 'rise' | 'riposte';
   readonly title: string;
 }
 
@@ -276,6 +282,8 @@ export function feedbackText(event: BattleEvent): FeedbackText | null {
       return event.outcome === 'perfectParry' ? { tone: 'perfect', title: 'Parfait' } : null;
     case 'counterAttacked':
       return { tone: 'perfect', title: 'Parfait · contre-attaque' };
+    case 'bulwarkCountered':
+      return { tone: 'riposte', title: 'Riposte' };
     case 'guardBroken':
       return { tone: 'break', title: 'Cassure' };
     case 'enemySelfRevived':
@@ -294,7 +302,8 @@ export interface DamageFloat {
   readonly text: string;
   /** Agrandi pour une frappe parfaite (C6.7). */
   readonly big: boolean;
-  readonly kind: 'damage' | 'guard';
+  /** Des dégâts, de la garde, ou les dégâts de la Riposte du Rempart, précédés de l'écu (#128). */
+  readonly kind: 'damage' | 'guard' | 'riposte';
 }
 
 export function damageFloat(event: BattleEvent): DamageFloat | null {
@@ -312,6 +321,8 @@ export function damageFloat(event: BattleEvent): DamageFloat | null {
       };
     case 'counterAttacked':
       return { at: event.enemy, text: `−${event.damage}`, big: false, kind: 'damage' };
+    case 'bulwarkCountered':
+      return { at: event.enemy, text: `−${event.damage}`, big: false, kind: 'riposte' };
     case 'guardRaised':
       return { at: event.enemy, text: `+${event.gain}`, big: false, kind: 'guard' };
     case 'bleedTicked':
@@ -371,6 +382,11 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
       return blowAnnouncement(event.outcome, event.damage);
     case 'counterAttacked':
       return `Contre-attaque, ${damages(event.damage)}`;
+    // Le nom de l'ennemi est dit : la riposte ne vise pas forcément la cible choisie (#128).
+    case 'bulwarkWorn':
+      return 'Rempart usé.';
+    case 'bulwarkCountered':
+      return `Riposte du Rempart, ${name(event.enemy)}, ${damages(event.damage)}`;
     case 'whiffed':
       return `${WHIFF_TITLES[event.reason]}, déséquilibré`;
     case 'pressIgnored':

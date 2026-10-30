@@ -132,7 +132,7 @@ export function BattleScreen({
   }));
   const geometry = sceneGeometry(screenWidth, sceneHeight, enemies.length);
   const strikeImpactAt = battle.phase.kind === 'heroStrike' ? battle.phase.impactAt : null;
-  const heroFloat = display.float?.float.at === 'hero' ? display.float : null;
+  const { heroFloat } = display;
   const targetName = ENEMY_NAMES[battle.enemies[battle.target]!.kind];
   const onSceneLayout = (event: LayoutChangeEvent) =>
     setSceneHeight(event.nativeEvent.layout.height);
@@ -168,6 +168,9 @@ export function BattleScreen({
           timeline={timeline}
           spark={display.spark}
           hurtAt={display.hurtAt}
+          bulwark={battle.hero.bulwark}
+          bulwarkWornAt={display.bulwarkWornAt}
+          riposte={display.riposte}
           reducedMotion={reducedMotion}
           uiNow={uiNow}
         />
@@ -202,7 +205,7 @@ export function BattleScreen({
         )}
         {battle.hero.bleed ? <BleedDrops /> : null}
         {heroFloat === null ? null : (
-          <View pointerEvents="none" style={styles.heroFloat}>
+          <View pointerEvents="none" testID="battle-hero-float" style={styles.heroFloat}>
             <DamageFloat key={heroFloat.key} float={heroFloat.float} />
           </View>
         )}
@@ -225,7 +228,11 @@ export function BattleScreen({
       </Animated.View>
       {over === null ? (
         <>
-          <HeroBar hero={battle.hero} kind={heroKind} />
+          <HeroBar
+            hero={battle.hero}
+            kind={heroKind}
+            bulwarkWorn={display.bulwarkWornAt !== null}
+          />
           <View style={styles.zone}>
             <Text
               testID="battle-zone-line"

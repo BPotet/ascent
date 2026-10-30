@@ -51,6 +51,9 @@ describe('displayOf (display state of the battle screen)', () => {
       downSince: {},
       arrivals: {},
       shakeKey: 0,
+      bulwarkWornAt: null,
+      riposte: null,
+      heroFloat: null,
     });
   });
 
@@ -173,6 +176,100 @@ describe('displayOf (display state of the battle screen)', () => {
     expect(display.feedback?.texts).toEqual([{ tone: 'break', title: 'Cassure' }]);
   });
 
+  describe('the Bulwark riposte (#128)', () => {
+    const riposte: BattleEvent = {
+      type: 'bulwarkCountered',
+      at: 2_000,
+      enemy: 0,
+      damage: 3,
+      guardDamage: 3,
+      until: 2_400,
+    };
+
+    it('shows « Riposte » and « −3 » with the shield, the shield bash and the wave toward the enemy', () => {
+      const display = displayOf(INITIAL_DISPLAY, snapshot([riposte]), false);
+
+      expect(display.feedback?.texts).toEqual([{ tone: 'riposte', title: 'Riposte' }]);
+      expect(display.float?.float).toEqual({ at: 0, text: '−3', big: false, kind: 'riposte' });
+      expect([display.heroPose, display.heroPoseSince]).toEqual(['bash', 2_000]);
+      expect(display.riposte).toEqual({ at: 2_000, enemy: 0 });
+      expect(display.shakeKey).toBe(0);
+      expect(display.hurtAt).toBeNull();
+    });
+
+    it('keeps the figure of the hit on the hero when the riposte flies on the enemy at the same instant', () => {
+      const display = displayOf(
+        INITIAL_DISPLAY,
+        snapshot([
+          blow('suffered', 2, 2_000),
+          { type: 'bulwarkWorn', at: 2_000, enemy: 0 },
+          riposte,
+        ]),
+        false,
+      );
+
+      expect(display.heroFloat).toEqual({
+        float: { at: 'hero', text: '−2', big: false, kind: 'damage' },
+        key: 1,
+      });
+      expect(display.float).toEqual({
+        float: { at: 0, text: '−3', big: false, kind: 'riposte' },
+        key: 2,
+      });
+    });
+
+    it('shows « Cassure » in place of « Riposte » when the riposte breaks the guard', () => {
+      const display = displayOf(
+        INITIAL_DISPLAY,
+        snapshot([riposte, { type: 'guardBroken', at: 2_000, enemy: 0, by: 'bulwarkCounter' }]),
+        false,
+      );
+
+      expect(display.feedback?.texts).toEqual([{ tone: 'break', title: 'Cassure' }]);
+    });
+
+    it('keeps the instant the Bulwark wore until the end of the blow', () => {
+      const worn = displayOf(
+        INITIAL_DISPLAY,
+        snapshot([blow('suffered', 2, 1_500), { type: 'bulwarkWorn', at: 1_500, enemy: 1 }]),
+        false,
+      );
+      expect(worn.bulwarkWornAt).toBe(1_500);
+
+      const riposted = displayOf(worn, snapshot([riposte]), false);
+      expect(riposted.bulwarkWornAt).toBe(1_500);
+    });
+
+    it.each([
+      { type: 'stepInStarted', at: 2_400, enemy: 1, until: 2_800 },
+      {
+        type: 'windUpStarted',
+        at: 2_400,
+        enemy: 1,
+        attack: 'basic',
+        impacts: [3_500],
+        feintAt: null,
+      },
+      { type: 'phaseTransitionStarted', at: 2_400, to: 'hero', until: 3_200 },
+      { type: 'heroPhaseStarted', at: 2_400, announced: true },
+      { type: 'battleEnded', at: 2_400, outcome: 'victory' },
+    ] as BattleEvent[])('forgets the worn Bulwark at the end of the blow: $type', (event) => {
+      const worn = { ...INITIAL_DISPLAY, bulwarkWornAt: 1_500 };
+      expect(displayOf(worn, snapshot([event]), false).bulwarkWornAt).toBeNull();
+    });
+
+    it('keeps the worn Bulwark through the other events of the blow', () => {
+      const worn = { ...INITIAL_DISPLAY, bulwarkWornAt: 1_500 };
+      expect(
+        displayOf(
+          worn,
+          snapshot([{ type: 'impactLanded', at: 1_900, enemy: 0, index: 1, lost: false }]),
+          false,
+        ).bulwarkWornAt,
+      ).toBe(1_500);
+    });
+  });
+
   it('keeps the feedback of an event without text', () => {
     const shown = displayOf(INITIAL_DISPLAY, snapshot([blow('perfectParry')]), false);
     const after = displayOf(shown, snapshot([{ type: 'feintStarted', at: 0, enemy: 1 }]), false);
@@ -252,6 +349,33 @@ describe('announcementsOf (screen reader)', () => {
       'Cassure, Goule étourdie',
       "Goule, étourdie, n'agit pas",
       'Combat perdu.',
+    ]);
+  });
+});
+
+describe('announcementsOf: the Bulwark riposte (#128)', () => {
+  it('reads the wear after the hit, then the riposte before the guard break', () => {
+    expect(
+      announcementsOf(
+        snapshot([
+          blow('suffered', 2),
+          { type: 'bulwarkWorn', at: 1_000, enemy: 0 },
+          {
+            type: 'bulwarkCountered',
+            at: 1_160,
+            enemy: 0,
+            damage: 3,
+            guardDamage: 3,
+            until: 1_560,
+          },
+          { type: 'guardBroken', at: 1_160, enemy: 0, by: 'bulwarkCounter' },
+        ]),
+      ),
+    ).toEqual([
+      'Touché, 2 dégâts',
+      'Rempart usé.',
+      'Riposte du Rempart, Goule, 3 dégâts',
+      'Cassure, Goule étourdie',
     ]);
   });
 });
