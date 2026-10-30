@@ -549,6 +549,16 @@ describe('the battle atlases', () => {
         atlasRect(table, 'idle0', 0, false),
       );
     });
+
+    it('reads no attack poses without an attack kind, not even an entry named null', () => {
+      // `null` n'est pas un type de coup : il n'est jamais lu comme la clé « null » de la table.
+      const { table } = battleAtlas('twins');
+      const loose = { ...table, attacks: { ...table.attacks, null: table.attacks.basic! } };
+      expect(atlasRect(loose, 'ant2', 2, false, null)).toEqual(atlasRect(table, 'ant2', 2, false));
+      expect(atlasRect(loose, 'ant2', 2, false, null)).not.toEqual(
+        atlasRect(table, 'ant2', 2, false, 'basic'),
+      );
+    });
   });
 
   it('keeps one atlas per character for the whole launch', () => {

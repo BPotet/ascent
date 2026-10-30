@@ -374,6 +374,41 @@ describe('enemyPose with attack poses (#139)', () => {
     }
   });
 
+  it('covers the exact way of the rush, of the return and of the second segment, times the reach', () => {
+    // La ruée du carreau (impact à 2 500 ms) : de 0,16 à 0,85 en carré du temps, ici à mi-chemin.
+    expect(enemyPose(BOLT, 2_460, false).reach).toBeCloseTo(0.16 + 0.69 * 0.25, 9);
+    expect(enemyPose(BOLT, 2_460, false, TWINS).reach).toBeCloseTo((0.16 + 0.69 * 0.25) * 0.5, 9);
+    // Le retour, après la récupération (2 670 ms) : de 0,3 à 0 en 250 ms, linéaire.
+    expect(enemyPose(BOLT, 2_795, false).reach).toBeCloseTo(0.15, 9);
+    expect(enemyPose(BOLT, 2_795, false, TWINS).reach).toBeCloseTo(0.075, 9);
+    expect(enemyPose(BOLT, 2_920, false, TWINS).reach).toBe(0);
+    // Le second coup des deux tibias (2 820 ms) : de l'avancée (0,3) à 0,16, de 2 570 à 2 740 ms.
+    const halved: AttackMotions = { double: { reach: 0.5, lift: {} } };
+    expect(enemyPose(SHINBONES, 2_570, false, halved).reach).toBeCloseTo(0.15, 9);
+    expect(enemyPose(SHINBONES, 2_655, false).reach).toBeCloseTo(0.3 - 0.14 * 0.75, 9);
+    expect(enemyPose(SHINBONES, 2_655, false, halved).reach).toBeCloseTo(
+      (0.3 - 0.14 * 0.75) * 0.5,
+      9,
+    );
+  });
+
+  it('reads no attack poses without an attack kind, not even an entry named null', () => {
+    // `null` n'est pas un type de coup : il n'est jamais lu comme la clé « null » de la table.
+    const loose = { basic: { reach: 0.5, lift: {} }, null: { reach: 2, lift: { ant0: 7 } } };
+    const unknown: SceneTimeline = { ...BOLT, attack: null };
+    for (const now of instants(WIND_UP_AT, END)) {
+      expect([now, enemyPose(unknown, now, false, loose)]).toEqual([
+        now,
+        enemyPose(unknown, now, false),
+      ]);
+    }
+    expect(enemyPose(unknown, WIND_UP_AT, false, loose)).toMatchObject({
+      frame: 'ant0',
+      poses: null,
+      lift: 0,
+    });
+  });
+
   it('lifts each pose of the shockwave by its lift, in whole art pixels', () => {
     const lifts: Partial<Record<EnemyFrame, number[]>> = {};
     for (const now of instants(WIND_UP_AT, END)) {
