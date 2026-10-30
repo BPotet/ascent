@@ -88,7 +88,8 @@ describe('BattleScene with Skia', () => {
     const prepared = prepareBattleScene();
 
     expect(prepared.characters.ghoul.image?.width()).toBe(352);
-    expect(prepared.heroes.sentinel.image?.height()).toBe(88);
+    // La Sentinelle a 17 cases (ses 15 poses, dont `bash`, et 2 liserés), sur 3 lignes de 8 (#155).
+    expect(prepared.heroes.sentinel.image?.height()).toBe(132);
     expect(prepared.heroes.wanderer.image?.height()).toBe(88);
     expect(prepared.heroes.wanderer.image).not.toBe(prepared.heroes.sentinel.image);
     expect(prepared.effects.image?.width()).toBeGreaterThan(0);

@@ -27,9 +27,10 @@ const codeOf = (tint: string) =>
 
 /** La pose recopiée de l'Atelier, telle quelle, dans la case de 36 × 44 du héros. */
 export function copiedPose(kind: HeroKind, frame: HeroFrame): Sprite {
-  const { pal, frames } = ANIMATION_OF[kind];
+  const { pal } = ANIMATION_OF[kind];
+  const frames: Readonly<Record<string, readonly string[]>> = ANIMATION_OF[kind].frames;
   const pixels = new Uint8Array(36 * 44);
-  frames[frame].forEach((row, y) =>
+  frames[frame]!.forEach((row, y) =>
     Array.from(row).forEach((char, x) => {
       if (char !== '.') pixels[y * 36 + x] = codeOf(pal[parseInt(char, 36)]!);
     }),

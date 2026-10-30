@@ -21,6 +21,7 @@ import {
   HERO_FRAMES,
   attackMotion,
   battleSprite,
+  heroFrames,
   poseAnchors,
   type BattleCharacter,
   type EnemyFrame,
@@ -84,6 +85,12 @@ describe('the battle characters (pxlib)', () => {
       'off0',
       'off1',
     ]);
+  });
+
+  it('gives the Sentinel her own bash pose after the 14 of the hero, and the Wanderer none (#155)', () => {
+    expect(HERO_FRAMES).toHaveLength(14);
+    expect(heroFrames('sentinel')).toEqual([...HERO_FRAMES, 'bash']);
+    expect(heroFrames('wanderer')).toEqual(HERO_FRAMES);
   });
 
   it.each(ENEMIES)(
@@ -420,7 +427,7 @@ describe('the battle atlases', () => {
     (character: BattleCharacter) => {
       const atlas = battleAtlas(character);
       const hero = character === 'sentinel' || character === 'wanderer';
-      const frames = hero ? HERO_FRAMES : ENEMY_FRAMES;
+      const frames = hero ? heroFrames(character) : ENEMY_FRAMES;
       const [cellWidth, cellHeight] = hero ? [36, 44] : [44, 52];
       for (const frame of frames) {
         const rect = frameRect(character, frame, 0, false);
@@ -699,8 +706,9 @@ describe('the heroines with their full animation in battle (#140)', () => {
   it.each(HEROINES)(
     'shows each pose of the %s as copied, 36 × 44, without rim, smear or red',
     (character, animation) => {
-      for (const frame of HERO_FRAMES) {
-        const pose = copied(animation.frames[frame], animation.pal);
+      const frames: Readonly<Record<string, readonly string[]>> = animation.frames;
+      for (const frame of heroFrames(character)) {
+        const pose = copied(frames[frame]!, animation.pal);
         for (const look of [{}, { tier: 1 }, { tier: 2 }, { tier: 2, red: true }] as const) {
           const { sprite } = battleSprite(character, frame, look);
           expect([frame, look, sprite]).toEqual([frame, look, pose]);
@@ -732,20 +740,37 @@ describe('the heroines with their full animation in battle (#140)', () => {
   });
 
   it.each(HEROINES)(
-    'packs the 14 poses of the %s in its own atlas, kept for the whole launch',
+    'packs the poses of the %s in its own atlas, kept for the whole launch',
     (character, animation) => {
       const atlas = battleAtlas(character);
+      const frames: Readonly<Record<string, readonly string[]>> = animation.frames;
       expect(battleAtlas(character)).toBe(atlas);
       expect(atlas).not.toBe(battleAtlas(character === 'sentinel' ? 'wanderer' : 'sentinel'));
       expect(atlas.table.frames).toEqual(
-        Object.fromEntries(HERO_FRAMES.map((frame, index) => [frame, index])),
+        Object.fromEntries(heroFrames(character).map((frame, index) => [frame, index])),
       );
-      for (const frame of HERO_FRAMES) {
+      for (const frame of heroFrames(character)) {
         expect([frame, atlasCell(character, frame, 0)]).toEqual([
           frame,
-          toRgba(copied(animation.frames[frame], animation.pal)),
+          toRgba(copied(frames[frame]!, animation.pal)),
         ]);
       }
     },
   );
+
+  it('shows the bash pose of the Sentinel as copied, in her atlas too (#155)', () => {
+    const pose = copied(SENTINEL_ANIMATION.frames.bash, SENTINEL_ANIMATION.pal);
+    expect(battleSprite('sentinel', 'bash').sprite).toEqual(pose);
+    expect(battleSprite('sentinel', 'bash').sprite).not.toEqual(
+      battleSprite('sentinel', 'parry1').sprite,
+    );
+    expect(atlasCell('sentinel', 'bash', 0)).toEqual(toRgba(pose));
+    expect(battleAtlas('sentinel').table.frames.bash).toBe(14);
+  });
+
+  it('shows the resting pose of the Wanderer for bash, which she does not have (#155)', () => {
+    expect(battleSprite('wanderer', 'bash')).toEqual(battleSprite('wanderer', 'idle0'));
+    expect(Object.hasOwn(battleAtlas('wanderer').table.frames, 'bash')).toBe(false);
+    expect(atlasCell('wanderer', 'bash', 0)).toEqual(atlasCell('wanderer', 'idle0', 0));
+  });
 });
