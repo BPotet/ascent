@@ -1,7 +1,13 @@
 // Les sprites du combat en pixel art 2.5D (#81), portés de `pxlib` dans la maquette v4.1.
 import { ATTACKS } from '../../../../../domain/battle/attacks';
 import { ENEMIES as PROFILES, type EnemyKind } from '../../../../../domain/battle/combatants';
-import { animationSprite, type FullAnimation } from '../atelier/fullAnimation';
+import {
+  animationSprite,
+  assetSprite,
+  type AssetImage,
+  type FullAnimation,
+} from '../atelier/fullAnimation';
+import { BULWARK_SHIELD } from '../atelier/data/bulwarkShield';
 import { FACELESS_PRIOR_ANIMATION } from '../atelier/data/facelessPrior';
 import { FALLEN_KNIGHT_ANIMATION } from '../atelier/data/fallenKnight';
 import { GHOUL_ANIMATION } from '../atelier/data/ghoul';
@@ -21,6 +27,7 @@ import {
   HERO_FRAMES,
   attackMotion,
   battleSprite,
+  heroFrames,
   poseAnchors,
   type BattleCharacter,
   type EnemyFrame,
@@ -84,6 +91,12 @@ describe('the battle characters (pxlib)', () => {
       'off0',
       'off1',
     ]);
+  });
+
+  it('gives the Sentinel her own bash pose after the 14 of the hero, and the Wanderer none (#155)', () => {
+    expect(HERO_FRAMES).toHaveLength(14);
+    expect(heroFrames('sentinel')).toEqual([...HERO_FRAMES, 'bash']);
+    expect(heroFrames('wanderer')).toEqual(HERO_FRAMES);
   });
 
   it.each(ENEMIES)(
@@ -420,7 +433,7 @@ describe('the battle atlases', () => {
     (character: BattleCharacter) => {
       const atlas = battleAtlas(character);
       const hero = character === 'sentinel' || character === 'wanderer';
-      const frames = hero ? HERO_FRAMES : ENEMY_FRAMES;
+      const frames = hero ? heroFrames(character) : ENEMY_FRAMES;
       const [cellWidth, cellHeight] = hero ? [36, 44] : [44, 52];
       for (const frame of frames) {
         const rect = frameRect(character, frame, 0, false);
@@ -619,24 +632,49 @@ describe('the battle effects (precomputed, never painted per frame)', () => {
     });
   });
 
-  it('paints the Bulwark shield in silver, whole then cracked with ink, and a silver shard (#128)', () => {
+  it('copies the Bulwark shield of the Atelier, whole then cracked, in its 15 × 15 cell (#155)', () => {
     const atlas = effectsAtlas();
-    const codeAt = (kind: 'shield' | 'silverShard', frame: number, x: number, y: number) => {
+    const cell = (kind: 'shield' | 'silverShard', frame: number) => {
       const rect = effectRect(kind, frame);
+      return Array.from({ length: rect.height }, (_, row) => {
+        const start = ((rect.y + row) * atlas.width + rect.x) * 4;
+        return Array.from(atlas.rgba.subarray(start, start + rect.width * 4));
+      });
+    };
+    /** L'image recopiée, posée à `x = 1` dans une case de 15 × 15, sans passer par l'atlas. */
+    const placed = (image: AssetImage) => {
+      const sprite = assetSprite(image);
+      const pixels = new Uint8Array(15 * 15);
+      for (let y = 0; y < 15; y += 1) {
+        for (let x = 0; x < 12; x += 1) pixels[y * 15 + x + 1] = sprite.pixels[y * 12 + x]!;
+      }
+      const rgba = toRgba({ width: 15, height: 15, pixels });
+      return Array.from({ length: 15 }, (_, row) =>
+        Array.from(rgba.subarray(row * 15 * 4, (row + 1) * 15 * 4)),
+      );
+    };
+    expect(effectRect('shield', 0).width).toBe(15);
+    expect(cell('shield', 0)).toEqual(placed(BULWARK_SHIELD.whole));
+    expect(cell('shield', 1)).toEqual(placed(BULWARK_SHIELD.cracked));
+    for (const frame of [0, 1]) {
+      for (const row of cell('shield', frame)) {
+        for (const column of [0, 13, 14]) expect(row[column * 4 + 3]).toBe(0);
+      }
+    }
+  });
+
+  it('still draws the silver shard with the code: silver, outlined with ink (#128)', () => {
+    const atlas = effectsAtlas();
+    const codeAt = (x: number, y: number) => {
+      const rect = effectRect('silverShard', 0);
       const offset = ((rect.y + y) * atlas.width + rect.x + x) * 4;
       return Array.from(atlas.rgba.subarray(offset, offset + 4));
     };
-    const silver = [0xd9, 0xdc, 0xe6, 255];
-    const ink = [0x06, 0x07, 0x0c, 255];
-    // Le haut de l'écu, au milieu : argent entier, encre de la fente.
-    expect(codeAt('shield', 0, 7, 0)).toEqual(silver);
-    expect(codeAt('shield', 1, 7, 0)).toEqual(ink);
-    // La pointe, en bas au milieu ; les coins du bas restent vides.
-    expect(codeAt('shield', 0, 7, 13)[3]).toBe(255);
-    expect(codeAt('shield', 0, 7, 14)[3]).toBe(0);
-    expect(codeAt('shield', 0, 1, 13)[3]).toBe(0);
-    expect(codeAt('silverShard', 0, 2, 2)).toEqual(silver);
-    expect(codeAt('silverShard', 0, 0, 0)).toEqual(ink);
+    expect(effectRect('silverShard', 0).width).toBe(5);
+    expect(codeAt(2, 2)).toEqual([0xd9, 0xdc, 0xe6, 255]);
+    expect(codeAt(1, 3)).toEqual([0xd9, 0xdc, 0xe6, 255]);
+    expect(codeAt(0, 0)).toEqual([0x06, 0x07, 0x0c, 255]);
+    expect(codeAt(4, 2)).toEqual([0x06, 0x07, 0x0c, 255]);
   });
 
   it('paints the red vignette of a blow in 5 steps, at the size of the stage', () => {
@@ -699,8 +737,9 @@ describe('the heroines with their full animation in battle (#140)', () => {
   it.each(HEROINES)(
     'shows each pose of the %s as copied, 36 × 44, without rim, smear or red',
     (character, animation) => {
-      for (const frame of HERO_FRAMES) {
-        const pose = copied(animation.frames[frame], animation.pal);
+      const frames: Readonly<Record<string, readonly string[]>> = animation.frames;
+      for (const frame of heroFrames(character)) {
+        const pose = copied(frames[frame]!, animation.pal);
         for (const look of [{}, { tier: 1 }, { tier: 2 }, { tier: 2, red: true }] as const) {
           const { sprite } = battleSprite(character, frame, look);
           expect([frame, look, sprite]).toEqual([frame, look, pose]);
@@ -732,20 +771,37 @@ describe('the heroines with their full animation in battle (#140)', () => {
   });
 
   it.each(HEROINES)(
-    'packs the 14 poses of the %s in its own atlas, kept for the whole launch',
+    'packs the poses of the %s in its own atlas, kept for the whole launch',
     (character, animation) => {
       const atlas = battleAtlas(character);
+      const frames: Readonly<Record<string, readonly string[]>> = animation.frames;
       expect(battleAtlas(character)).toBe(atlas);
       expect(atlas).not.toBe(battleAtlas(character === 'sentinel' ? 'wanderer' : 'sentinel'));
       expect(atlas.table.frames).toEqual(
-        Object.fromEntries(HERO_FRAMES.map((frame, index) => [frame, index])),
+        Object.fromEntries(heroFrames(character).map((frame, index) => [frame, index])),
       );
-      for (const frame of HERO_FRAMES) {
+      for (const frame of heroFrames(character)) {
         expect([frame, atlasCell(character, frame, 0)]).toEqual([
           frame,
-          toRgba(copied(animation.frames[frame], animation.pal)),
+          toRgba(copied(frames[frame]!, animation.pal)),
         ]);
       }
     },
   );
+
+  it('shows the bash pose of the Sentinel as copied, in her atlas too (#155)', () => {
+    const pose = copied(SENTINEL_ANIMATION.frames.bash, SENTINEL_ANIMATION.pal);
+    expect(battleSprite('sentinel', 'bash').sprite).toEqual(pose);
+    expect(battleSprite('sentinel', 'bash').sprite).not.toEqual(
+      battleSprite('sentinel', 'parry1').sprite,
+    );
+    expect(atlasCell('sentinel', 'bash', 0)).toEqual(toRgba(pose));
+    expect(battleAtlas('sentinel').table.frames.bash).toBe(14);
+  });
+
+  it('shows the resting pose of the Wanderer for bash, which she does not have (#155)', () => {
+    expect(battleSprite('wanderer', 'bash')).toEqual(battleSprite('wanderer', 'idle0'));
+    expect(Object.hasOwn(battleAtlas('wanderer').table.frames, 'bash')).toBe(false);
+    expect(atlasCell('wanderer', 'bash', 0)).toEqual(atlasCell('wanderer', 'idle0', 0));
+  });
 });

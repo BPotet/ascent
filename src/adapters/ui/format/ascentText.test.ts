@@ -115,7 +115,7 @@ describe('gauge, blessing and item texts (#93)', () => {
     expect(itemText('hammer')).toBe('Marteau · Arme · Rare · Brise-garde ×1,6 · Initiative −1');
     expect(itemText('crossbow')).toBe('Arbalète · Arme · Rare · Initiative +1');
     expect(itemText('blackKnightArmor')).toBe(
-      'Armure de chevalier noir · Armure · Rare · Réduction des dégâts +20 points, Attaque +1 · Initiative −2',
+      'Armure de chevalier déchu · Armure · Rare · Réduction des dégâts +20 points, Attaque +5 % · Initiative −2',
     );
     expect(itemText('leather')).toBe(
       'Cuir · Armure · Commun · Frappe parfaite +0,2 · Initiative +1',
@@ -134,8 +134,10 @@ describe('gauge, blessing and item texts (#93)', () => {
     );
   });
 
-  it('gives the Black knight armor its provisional line, the Hammer its description, and no line to the other items', () => {
-    expect(itemDescription('blackKnightArmor')).toBe('Lourde et lente.');
+  it('gives the Fallen knight armor and the Hammer their description, and no line to the other items', () => {
+    expect(itemDescription('blackKnightArmor')).toBe(
+      "L'armure d'un chevalier déchu. Trouvée dans une salle jadis emplie d'écuyers.",
+    );
     expect(itemDescription('hammer')).toBe(
       'Un marteau de forge, trop lourd pour un combat rapide. Aucune garde ne lui résiste longtemps.',
     );

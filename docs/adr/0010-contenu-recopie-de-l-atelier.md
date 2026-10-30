@@ -88,6 +88,8 @@ comme au § 1 (`atelier/data/wanderer.ts`, `atelier/data/sentinel.ts`).
 
 ### Avenant au § 7 du 30/10/2026 (#128) : pose demandée à l'Atelier, pas encore validée
 
+_Levé par l'avenant du 30/10/2026 (#155), en fin de document._
+
 Une pose du héros demandée à l'Atelier et pas encore validée est remplacée par une pose validée de
 son animation complète. Cette pose est nommée par une seule constante : pour la Riposte du Rempart,
 `BASH_FRAME = 'parry1'` (`battle/scene/heroFrame.ts`), le bouclier levé devant elle, tenu pendant le
@@ -146,6 +148,44 @@ Les données sont exclues de la mutation des écrans (`stryker.ui.config.mjs`, i
 la conversion. Le script de recopie, non versionné, écrit `// Stryker disable all` en première ligne
 de chaque fichier de données : un test (`scripts/mutation/config.test.mjs`) fait échouer la CI
 sinon, car l'exclusion cacherait alors des mutants exécutables.
+
+## Avenant du 30/10/2026 (#152) : le nom de code d'un objet est stable
+
+Le nom de code d'un objet (`ItemKind`) est un **identifiant de sauvegarde** : l'ascension le garde
+dans `equipment` et `foundItem` (`ascent.current`, `SAVE_VERSION = 1`). Seul son **nom affiché**
+suit l'Atelier. Quand le Codex en déduit un autre d'un nouveau nom (`armureDeChevalierDechu` pour
+l'Armure de chevalier déchu), le jeu garde l'ancien (`blackKnightArmor`), et l'Atelier est réaligné
+sur le jeu. Le nom de code ne change qu'avec une migration de sauvegarde, sur une story dédiée.
+
+## Avenant du 30/10/2026 (#155) : la pose `bash` et l'écu du Rempart validés
+
+Il **lève l'avenant au § 7 du 30/10/2026 (#128)** : la pose et l'écu demandés à l'Atelier sont
+validés par le propriétaire le 30/10/2026 et recopiés comme au § 1.
+
+- **Pose `bash`.** Recopiée de `assets/sentinel` version 26 (`animation.frames.bash` et
+  `animation.anchors.bash`) dans `atelier/data/sentinel.ts`, à sa place alphabétique. La palette ne
+  change pas (19 teintes). La scène montre `bash` pendant le coup de bouclier, aux mêmes moments et
+  pour la même durée (400 ms, une avance de 4 dp et un retour, `BASH_ADVANCE_DP`). `BASH_FRAME`
+  est supprimée.
+- **Poses propres à une héroïne.** `HERO_FRAMES` reste **les 14 poses du héros**, communes aux deux
+  héroïnes, contrairement à ce que prévoyait l'avenant de #128 (15 poses). Les poses propres à une
+  héroïne passent par `heroFrames(kind)` (`battleCharacters.ts`) : les 14 poses du héros, plus
+  `bash` pour la Sentinelle. La table `OWN_HERO_FRAMES` est typée sur `HeroKind` : l'oubli d'une
+  héroïne future casse la compilation. L'atlas d'une héroïne range `heroFrames(kind)` (17 cases
+  pour la Sentinelle, 16 pour l'Errante). L'Errante n'a ni pose ni case `bash` : si on la lui
+  demande, elle montre `idle0`. Seule la Sentinelle a le Rempart (domaine), donc seule elle reçoit
+  `bash`.
+- **Écu du Rempart (`BulwarkShield`).** Recopié de `assets/bulwarkShield` version 1 dans
+  `atelier/data/bulwarkShield.ts` : les deux propositions validées, `proposals[0]` « entier »
+  (`whole`) et `proposals[1]` « fendu » (`cracked`), deux `AssetImage` de 12 × 15, dont les 6
+  teintes sont déjà dans `artPalette`. Sur la scène, l'effet `shield` de l'atlas des effets les
+  copie telles quelles dans sa case de 15 × 15, à une colonne du bord gauche, à l'échelle du héros.
+  Dans l'interface, `BulwarkShieldGlyph` les rend par des `View` (`AssetRows`, ADR 0007 § 2), à ×2
+  devant « Riposte » et à ×1 devant le chiffre de la riposte et dans l'étiquette du Rempart
+  (ADR 0007 § 3). L'écu fendu s'affiche tel quel, sans opacité : une opacité serait une
+  recoloration. Le dessin de l'écu par le code (`ShieldGlyph`, l'ancien `shield`) est supprimé.
+- **Ce qui reste dessiné par le code.** Les 4 éclats d'argent (`silverShard`), l'onde d'argent et le
+  choc de bouclier : l'Atelier n'en a pas d'image.
 
 ## 9. Icônes (#157, 30 octobre 2026)
 

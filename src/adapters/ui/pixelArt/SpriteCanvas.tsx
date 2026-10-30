@@ -22,7 +22,10 @@ export interface SpriteCanvasProps {
   readonly sprite: string;
   /** Dessine l'image du sprite ; appelé une seule fois par nom. */
   readonly draw: () => PixelImage;
-  /** L'échelle du pixel d'art : ×2, ×3 pour les grands moments, ×4 ou ×6 pour une icône à 96 dp. */
+  /**
+   * L'échelle du pixel d'art : ×2, ×3 pour les grands moments, ×4 ou ×6 pour une icône à 96 dp, ×1
+   * pour une image de l'Atelier dans une ligne de texte.
+   */
   readonly scale: ArtScale;
   readonly style?: StyleProp<ViewStyle>;
   readonly testID?: string;

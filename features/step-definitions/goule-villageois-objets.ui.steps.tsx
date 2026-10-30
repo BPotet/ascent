@@ -361,7 +361,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   and(
     "l'image de la Hache rouillée, des Mailles, du Cuir, du Marteau, du Bouclier du veilleur, de l'Amulette de Hâte et de l'Arbalète est validée dans l'Atelier au 29/10/2026",
     () => {
-      // D'autres images validées s'ajoutent ensuite, l'Armure de chevalier noir (#137) comprise.
+      // D'autres images validées s'ajoutent ensuite, l'Armure de chevalier déchu (#137, #152) comprise.
       expect(Object.keys(KIND_OF_ITEM)).toEqual(
         expect.arrayContaining([
           'Amulette de Hâte',

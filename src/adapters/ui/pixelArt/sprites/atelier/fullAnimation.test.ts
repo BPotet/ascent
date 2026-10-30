@@ -2,10 +2,11 @@
 // ennemis, les images validées des objets, et leur conversion en sprites.
 import { artPalette } from '../../artPalette';
 import type { Sprite } from '../Sprite';
-import { ENEMY_FRAMES, HERO_FRAMES } from '../battle/battleCharacters';
+import { ENEMY_FRAMES, HERO_FRAMES, heroFrames, type HeroFrame } from '../battle/battleCharacters';
 import { FACELESS_PRIOR_ANIMATION } from './data/facelessPrior';
 import { FALLEN_KNIGHT_ANIMATION } from './data/fallenKnight';
 import { GHOUL_ANIMATION } from './data/ghoul';
+import { BULWARK_SHIELD } from './data/bulwarkShield';
 import { ITEM_IMAGES } from './data/itemImages';
 import { MAD_VILLAGER_ANIMATION } from './data/madVillager';
 import { NECROMANCER_ANIMATION } from './data/necromancer';
@@ -605,18 +606,19 @@ describe('the validated images of the items', () => {
   });
 });
 
-// L'animation complète des héroïnes (#140) : le format du héros, 36 × 44, 14 poses, sans rouge.
+// L'animation complète des héroïnes (#140) : le format du héros, 36 × 44, les 14 poses du héros
+// (plus `bash` pour la Sentinelle, #155), sans rouge.
 describe.each([
-  ['Wanderer', WANDERER_ANIMATION, 12, 2],
-  ['Sentinel', SENTINEL_ANIMATION, 19, 1],
-] as const)('the full animation of the heroine %s (#140)', (_, animation, tints, tips) => {
+  ['Wanderer', WANDERER_ANIMATION, 12, 2, HERO_FRAMES],
+  ['Sentinel', SENTINEL_ANIMATION, 19, 1, heroFrames('sentinel')],
+] as const)('the full animation of the heroine %s (#140)', (_, animation, tints, tips, poses) => {
   const full: FullAnimation = animation;
   const HERO_CELL = [36, 44] as const;
 
-  it('has exactly the 14 poses of the hero, each of 44 lines of 36 characters', () => {
+  it('has exactly the poses of the heroine: the 14 of the hero, plus bash for the Sentinel, each of 44 lines of 36 characters', () => {
     expect([full.w, full.h, full.pal.length]).toEqual([36, 44, tints]);
-    expect(Object.keys(full.frames).sort()).toEqual([...HERO_FRAMES].sort());
-    expect(Object.keys(full.anchors).sort()).toEqual([...HERO_FRAMES].sort());
+    expect(Object.keys(full.frames).sort()).toEqual([...poses].sort());
+    expect(Object.keys(full.anchors).sort()).toEqual([...poses].sort());
     for (const [pose, rows] of Object.entries(full.frames)) {
       expect([pose, rows.length]).toEqual([pose, 44]);
       for (const row of rows) {
@@ -647,7 +649,7 @@ describe.each([
   });
 
   it('copies each pose pixel for pixel in the 36 × 44 cell of the hero, anchors unmoved', () => {
-    for (const pose of HERO_FRAMES) {
+    for (const pose of poses) {
       const { sprite, anchors } = animationSprite(full, pose, HERO_CELL);
       expect([sprite.width, sprite.height]).toEqual([36, 44]);
       for (let y = 0; y < 44; y += 1) {
@@ -661,9 +663,9 @@ describe.each([
   });
 
   it('obtains no pose by shifting another one by one art pixel', () => {
-    for (const pose of HERO_FRAMES) {
+    for (const pose of poses) {
       const sprite = animationSprite(full, pose, HERO_CELL).sprite;
-      for (const other of HERO_FRAMES) {
+      for (const other of poses) {
         const target = animationSprite(full, other, HERO_CELL).sprite.pixels;
         for (const [dx, dy] of [
           [1, 0],
@@ -681,5 +683,55 @@ describe.each([
         }
       }
     }
+  });
+});
+
+// La pose `bash` de la Sentinelle (#155) : recopiée de `assets/sentinel` version 26 de l'Atelier.
+describe('the bash pose of the Sentinel (#155)', () => {
+  const full: FullAnimation<HeroFrame> = SENTINEL_ANIMATION;
+
+  it('is the shield bash of the Atelier, with its anchors', () => {
+    expect(full.anchors.bash).toEqual({ head: [21, 4], eye: [25, 11], tips: [[23, 42]] });
+    expect(full.frames.bash[14]).toBe('...........00000043333e333d000000000');
+    expect(full.frames.bash[43]).toBe('.......................0............');
+  });
+
+  it('is neither the parry pose nor the pose with the sword down', () => {
+    expect(full.frames.bash).not.toEqual(full.frames.parry1);
+    expect(full.frames.bash).not.toEqual(full.frames.off0);
+  });
+
+  it('keeps the 19 tints of the Sentinel, unchanged', () => {
+    expect(full.pal).toHaveLength(19);
+  });
+});
+
+// L'écu du Rempart (#155) : recopié de `assets/bulwarkShield` version 1, entier et fendu.
+describe('the Bulwark shield of the Atelier (#155)', () => {
+  const SILVER = ['#06070c', '#d9dce6', '#8c93a8', '#b4b9c8', '#646b80', '#fff3d6'];
+
+  it.each(Object.entries(BULWARK_SHIELD))(
+    'draws the %s shield in 15 lines of 12 characters of its 6 tints, all in the art palette',
+    (_, image: AssetImage) => {
+      expect([image.w, image.h, image.rows.length]).toEqual([12, 15, 15]);
+      expect(image.palette).toEqual(SILVER);
+      for (const tint of image.palette) expect([tint, codeOf(tint) > 0]).toEqual([tint, true]);
+      for (const row of image.rows) {
+        expect(row).toMatch(/^[.0-5]{12}$/);
+      }
+      const sprite = assetSprite(image);
+      for (let y = 0; y < 15; y += 1) {
+        for (let x = 0; x < 12; x += 1) {
+          expect(at(sprite, x, y)).toBe(expectedCode(image.rows, image.palette, x, y));
+        }
+      }
+    },
+  );
+
+  it('has exactly the whole and the cracked shields, the cracked one drawn apart', () => {
+    expect(Object.keys(BULWARK_SHIELD).sort()).toEqual(['cracked', 'whole']);
+    expect(BULWARK_SHIELD.cracked.rows).not.toEqual(BULWARK_SHIELD.whole.rows);
+    expect(BULWARK_SHIELD.whole.rows[0]).toBe('000000000000');
+    expect(BULWARK_SHIELD.cracked.rows[0]).toBe('0000000.....');
   });
 });

@@ -145,7 +145,7 @@ const ITEM_NAMES: Readonly<Record<ItemKind, string>> = {
   watchmanShield: 'Bouclier du veilleur',
   hasteAmulet: 'Amulette de Hâte',
   crossbow: 'Arbalète',
-  blackKnightArmor: 'Armure de chevalier noir',
+  blackKnightArmor: 'Armure de chevalier déchu',
 };
 const ITEM_EFFECTS: Readonly<Record<ItemKind, string | null>> = {
   axe: 'Brise-garde ×1,1',
@@ -155,13 +155,13 @@ const ITEM_EFFECTS: Readonly<Record<ItemKind, string | null>> = {
   watchmanShield: 'Chaque parade parfaite rend 3 PV',
   hasteAmulet: null,
   crossbow: null,
-  blackKnightArmor: 'Réduction des dégâts +20 points, Attaque +1',
+  blackKnightArmor: 'Réduction des dégâts +20 points, Attaque +5 %',
 };
-/** La description d'un objet (Armure de chevalier noir provisoire, #105 ; Marteau, #129) ; les autres objets n'en ont pas. */
+/** La description d'un objet (Marteau, #129 ; Armure de chevalier déchu, #152), recopiée de l'Atelier ; les autres objets n'en ont pas. */
 const ITEM_DESCRIPTIONS: Partial<Readonly<Record<ItemKind, string>>> = {
   hammer:
     'Un marteau de forge, trop lourd pour un combat rapide. Aucune garde ne lui résiste longtemps.',
-  blackKnightArmor: 'Lourde et lente.',
+  blackKnightArmor: "L'armure d'un chevalier déchu. Trouvée dans une salle jadis emplie d'écuyers.",
 };
 
 export function itemDescription(item: ItemKind): string | null {

@@ -1,4 +1,6 @@
 import { bay, grid, px, rect, toRgba, type PixelImage, type Sprite } from '../Sprite';
+import { BULWARK_SHIELD } from '../atelier/data/bulwarkShield';
+import { assetSprite } from '../atelier/fullAnimation';
 import type { AtlasRect } from './battleAtlas';
 
 /**
@@ -184,62 +186,18 @@ function stars(turn: number): Sprite {
   return sprite;
 }
 
-/** L'écu du Rempart est dans la largeur (12 pixels d'art) et toute la hauteur (15) de sa case. */
-const SHIELD_WIDTH = 12;
-
-/** Un pixel de l'écu, dans sa forme : un bouclier droit en haut, en pointe en bas. */
-function inShield(x: number, y: number): boolean {
-  if (y < 0 || y >= SIDES.shield || x < 0 || x >= SHIELD_WIDTH) return false;
-  const half = y < 8 ? 6 : 6 - (y - 7) * 0.8;
-  return Math.abs(x + 0.5 - 6) <= half;
-}
-
-const NEIGHBOURS = [
-  [1, 0],
-  [-1, 0],
-  [0, 1],
-  [0, -1],
-] as const;
-
-/** Le pixel `(x, y)` est sur le bord de l'écu. */
-function onShieldEdge(x: number, y: number): boolean {
-  return NEIGHBOURS.some(([u, v]) => !inShield(x + u, y + v));
-}
-
-/** La fente de l'écu usé, de haut en bas. */
-const CRACK = [
-  [6, 0],
-  [6, 1],
-  [5, 2],
-  [5, 3],
-  [6, 4],
-  [7, 5],
-  [7, 6],
-  [6, 7],
-  [6, 8],
-  [5, 9],
-  [5, 10],
-  [6, 11],
-  [6, 12],
-] as const;
-
 /**
- * L'écu du Rempart (#128), dessiné d'après la maquette (`ecu`), provisoire tant que l'Atelier ne
- * l'a pas validé : un contour d'argent, doublé de son trait, entier (0) ou fendu (1).
+ * L'écu du Rempart (#128), recopié de l'Atelier (#155) : l'image entière (0) ou fendue (1), de
+ * 12 × 15, posée telle quelle dans sa case de 15 × 15, à une colonne du bord gauche.
  */
 function shield(frame: number): Sprite {
   const sprite = grid(SIDES.shield, SIDES.shield);
-  const left = (SIDES.shield - SHIELD_WIDTH) >> 1;
-  for (let y = 0; y < SIDES.shield; y += 1) {
-    for (let x = 0; x < SHIELD_WIDTH; x += 1) {
-      if (!inShield(x, y)) continue;
-      if (onShieldEdge(x, y)) px(sprite, left + x, y, 11);
-      else if (NEIGHBOURS.some(([u, v]) => inShield(x + u, y + v) && onShieldEdge(x + u, y + v))) {
-        px(sprite, left + x, y, 10);
-      }
+  const image = assetSprite(frame === 0 ? BULWARK_SHIELD.whole : BULWARK_SHIELD.cracked);
+  for (let y = 0; y < image.height; y += 1) {
+    for (let x = 0; x < image.width; x += 1) {
+      px(sprite, 1 + x, y, image.pixels[y * image.width + x]!);
     }
   }
-  if (frame === 1) for (const [x, y] of CRACK) px(sprite, left + x, y, 1);
   return sprite;
 }
 

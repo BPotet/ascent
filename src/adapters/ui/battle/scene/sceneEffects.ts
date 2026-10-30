@@ -112,9 +112,9 @@ function amplitude(reducedMotion: boolean): number {
 }
 
 /**
- * L'écu du Rempart devant le héros (#128, provisoire tant que l'Atelier ne l'a pas validé) : `0`
- * entier et fixe, sans pulsation, tant que le Rempart est actif ; `1` fendu pendant une image
- * (83 ms) quand il s'use ; `null` ensuite (il éclate) ou sans Rempart.
+ * L'écu du Rempart devant le héros (#128, image validée dans l'Atelier, #155) : `0` entier et
+ * fixe, sans pulsation, tant que le Rempart est actif ; `1` fendu pendant une image (83 ms) quand
+ * il s'use ; `null` ensuite (il éclate) ou sans Rempart.
  */
 export function bulwarkShield(active: boolean, wornAt: number | null, now: number): 0 | 1 | null {
   'worklet';
