@@ -1,5 +1,5 @@
 import { act, fireEvent, screen, within } from '@testing-library/react-native';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, Dimensions } from 'react-native';
 
 import { startAscent, type Ascent } from '../../../domain/ascent/Ascent';
 import type { ItemKind } from '../../../domain/ascent/items';
@@ -632,5 +632,55 @@ describe('AscentScreen pausing the battle with the loadout sheet (#159)', () => 
 
     expect(onLeave).toHaveBeenCalledTimes(1);
     expect(session.resuming()).toBe(true);
+  });
+});
+
+describe('AscentScreen header on a narrow phone (#159)', () => {
+  const initial = Dimensions.get('window');
+
+  function windowWidth(width: number) {
+    Dimensions.set({
+      window: { ...Dimensions.get('window'), width },
+      screen: { ...Dimensions.get('screen'), width },
+    });
+  }
+
+  afterEach(() => {
+    windowWidth(initial.width);
+  });
+
+  it('puts the status on its own line above « Équipement » and « Pause » under 375 dp, the battle keeping its place', async () => {
+    windowWidth(320);
+    await show(startAscent(42));
+
+    expect(await screen.findByTestId('battle-pad')).toBeOnTheScreen();
+    const buttons = screen.getByTestId('ascent-header-buttons');
+    expect(within(buttons).getByTestId('ascent-loadout')).toHaveStyle({
+      minHeight: MIN_TARGET_SIZE,
+    });
+    expect(within(buttons).getByTestId('ascent-pause')).toHaveStyle({ minHeight: MIN_TARGET_SIZE });
+    expect(within(buttons).queryByTestId('ascent-status')).toBeNull();
+    expect(screen.getByTestId('ascent-header')).toHaveStyle({ flexDirection: 'column' });
+    expect(screen.getByTestId('ascent-status')).not.toHaveStyle({ flex: 1 });
+  });
+
+  it('puts the status on its own line in large text too', async () => {
+    windowWidth(390);
+    Dimensions.set({
+      window: { ...Dimensions.get('window'), fontScale: 1.3 },
+      screen: { ...Dimensions.get('screen'), fontScale: 1.3 },
+    });
+    await show(between(startAscent(42), [{ kind: 'combat', groupSize: 2 }]));
+
+    expect(screen.getByTestId('ascent-header-buttons')).toBeOnTheScreen();
+  });
+
+  it('keeps the status beside the buttons from 375 dp', async () => {
+    windowWidth(390);
+    await show(between(startAscent(42), [{ kind: 'combat', groupSize: 2 }]));
+
+    expect(screen.queryByTestId('ascent-header-buttons')).toBeNull();
+    expect(screen.getByTestId('ascent-header')).toHaveStyle({ flexDirection: 'row' });
+    expect(screen.getByTestId('ascent-status')).toHaveStyle({ flex: 1 });
   });
 });

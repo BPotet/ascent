@@ -1,5 +1,5 @@
 import { type Ref, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
 import type { Ascent } from '../../../domain/ascent/Ascent';
@@ -21,6 +21,7 @@ import { itemSilhouette } from '../pixelArt/sprites/itemSilhouettes';
 import { toPixelImage } from '../pixelArt/sprites/Sprite';
 import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
 import { useAscent } from '../state/useAscent';
+import { useLargeText } from '../state/useLargeText';
 import { BattleScreen } from './BattleScreen';
 
 const { roles } = artPalette;
@@ -38,6 +39,14 @@ export interface AscentScreenProps {
   readonly visibility: AscentVisibility;
   /** Quitter l'écran de l'ascension : retour au pied de la tour. */
   readonly onLeave: () => void;
+}
+
+/** En deçà de cette largeur d'écran, en dp, le statut de l'en-tête passe au-dessus des boutons. */
+export const NARROW_HEADER_WIDTH = 375;
+
+function useStackedHeader(): boolean {
+  const { width } = useWindowDimensions();
+  return useLargeText() || width < NARROW_HEADER_WIDTH;
 }
 
 function Header({
@@ -62,11 +71,8 @@ function Header({
     goldText(ascent.gold),
     ...(extra ? [extra] : []),
   ];
-  return (
-    <View style={styles.header}>
-      <Text testID="ascent-status" style={styles.status}>
-        {parts.join(' · ')}
-      </Text>
+  const buttons = (
+    <>
       {onLoadout === undefined ? null : (
         <LoadoutButton
           {...(loadoutRef !== undefined && { ref: loadoutRef })}
@@ -83,6 +89,23 @@ function Header({
           testID="ascent-pause"
           style={styles.pause}
         />
+      )}
+    </>
+  );
+  // Sur un téléphone étroit ou en grand texte, le statut passe sur sa propre ligne, au-dessus des
+  // deux boutons : à côté d'eux, il s'étirerait sur plusieurs lignes et repousserait la scène (#159).
+  const stacked = useStackedHeader();
+  return (
+    <View testID="ascent-header" style={[styles.header, stacked && styles.headerStacked]}>
+      <Text testID="ascent-status" style={[styles.status, stacked && styles.statusStacked]}>
+        {parts.join(' · ')}
+      </Text>
+      {stacked ? (
+        <View testID="ascent-header-buttons" style={styles.headerButtons}>
+          {buttons}
+        </View>
+      ) : (
+        buttons
       )}
     </View>
   );
@@ -403,6 +426,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: roles.parchment,
   },
+  headerStacked: { flexDirection: 'column', alignItems: 'stretch', paddingVertical: 4, gap: 4 },
+  statusStacked: { flex: 0 },
+  headerButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
   pause: { minWidth: 84, paddingHorizontal: 14 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'stretch', padding: 24, gap: 12 },
   title: {
