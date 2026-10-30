@@ -31,6 +31,24 @@ function paeth(left: number, up: number, upLeft: number): number {
   return pb <= pc ? up : upLeft;
 }
 
+/** Le prédicteur des cinq filtres de rangée : aucun, gauche, haut, moyenne, Paeth. */
+function predict(filter: number | undefined, left: number, up: number, upLeft: number): number {
+  switch (filter) {
+    case 0:
+      return 0;
+    case 1:
+      return left;
+    case 2:
+      return up;
+    case 3:
+      return (left + up) >> 1;
+    case 4:
+      return paeth(left, up, upLeft);
+    default:
+      throw new Error(`filtre de rangée inconnu : ${filter}`);
+  }
+}
+
 export function decodePng(file: Buffer): DecodedPng {
   if (!SIGNATURE.every((byte, i) => file[i] === byte)) throw new Error('signature PNG absente');
   let width = 0;
@@ -70,9 +88,7 @@ export function decodePng(file: Buffer): DecodedPng {
       const up = y > 0 ? pixels[line - stride + x]! : 0;
       const upLeft =
         x >= BYTES_PER_PIXEL && y > 0 ? pixels[line - stride + x - BYTES_PER_PIXEL]! : 0;
-      const predictor = [0, left, up, (left + up) >> 1, paeth(left, up, upLeft)][filter!];
-      if (predictor === undefined) throw new Error(`filtre de rangée inconnu : ${filter}`);
-      pixels[line + x] = (value + predictor) & 0xff;
+      pixels[line + x] = (value + predict(filter, left, up, upLeft)) & 0xff;
     }
   }
   return { width, height, data: pixels };

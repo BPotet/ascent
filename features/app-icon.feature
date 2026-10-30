@@ -46,3 +46,15 @@ Fonctionnalité: Icône de l'application et écran de démarrage
     Quand le script de génération est lancé
     Alors il s'arrête en erreur en nommant le calque et la rangée fautifs
     Et aucune image existante n'est remplacée
+
+  Scénario: app.json référence les images
+    Quand on lit app.json
+    Alors expo.icon vaut "./assets/icon.png"
+    Et expo.android.adaptiveIcon référence l'avant-plan, le fond et le monochrome générés, avec backgroundColor "#0F1420"
+    Et expo.web.favicon vaut "./assets/favicon.png"
+    Et expo.plugins contient expo-splash-screen avec image "./assets/splash-icon.png", imageWidth 216, backgroundColor "#0F1420" et resizeMode "contain"
+
+  # Le scénario « Le joueur lance l'app (test de fumée end-to-end) » de #166 est le parcours Maestro
+  # e2e/flows/launch.yaml (tag smoke) : l'app s'ouvre sur une installation neuve et la Vue Journée
+  # s'affiche, ce qui prouve que l'écran de démarrage se cache et que l'app ne plante pas. Maestro ne
+  # voit pas l'écran de démarrage natif (fenêtre système) : il n'a ni assertion ni capture ici.

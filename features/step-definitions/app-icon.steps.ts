@@ -66,7 +66,8 @@ const pixelAt = (image: DecodedPng, x: number, y: number): Rgba => {
   const i = (y * image.width + x) * 4;
   return [image.data[i]!, image.data[i + 1]!, image.data[i + 2]!, image.data[i + 3]!];
 };
-const same = (a: Rgba, b: Rgba): boolean => a.every((value, i) => value === b[i]);
+const same = (a: Rgba, b: Rgba): boolean =>
+  a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && a[3] === b[3];
 
 /** Le pixel d'art de l'icône complète : l'avant-plan s'il est opaque, sinon le fond. */
 function iconArt(grid: Grid, x: number, y: number): Rgba {
@@ -104,6 +105,13 @@ let grid: Grid;
 let out = '';
 let images: Record<string, DecodedPng> = {};
 let expectedIcon: Rgba[] = [];
+type ExpoConfig = {
+  icon: string;
+  android: { adaptiveIcon: Record<string, string> };
+  web: { favicon: string };
+  plugins: unknown[];
+};
+let appJson: ExpoConfig;
 let invalidRuns: { status: number; stderr: string; out: string; before: Map<string, Buffer> }[] =
   [];
 
@@ -301,6 +309,46 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       }
     }
   });
+
+  // Scénario : app.json référence les images.
+  when('on lit app.json', () => {
+    appJson = JSON.parse(readFileSync(path.join(ROOT, 'app.json'), 'utf8')).expo as ExpoConfig;
+  });
+
+  then('expo.icon vaut "./assets/icon.png"', () => {
+    expect(appJson.icon).toBe('./assets/icon.png');
+  });
+
+  and(
+    'expo.android.adaptiveIcon référence l\'avant-plan, le fond et le monochrome générés, avec backgroundColor "#0F1420"',
+    () => {
+      expect(appJson.android.adaptiveIcon).toEqual({
+        backgroundColor: '#0F1420',
+        foregroundImage: './assets/android-icon-foreground.png',
+        backgroundImage: './assets/android-icon-background.png',
+        monochromeImage: './assets/android-icon-monochrome.png',
+      });
+    },
+  );
+
+  and('expo.web.favicon vaut "./assets/favicon.png"', () => {
+    expect(appJson.web.favicon).toBe('./assets/favicon.png');
+  });
+
+  and(
+    'expo.plugins contient expo-splash-screen avec image "./assets/splash-icon.png", imageWidth 216, backgroundColor "#0F1420" et resizeMode "contain"',
+    () => {
+      expect(appJson.plugins).toContainEqual([
+        'expo-splash-screen',
+        {
+          image: './assets/splash-icon.png',
+          imageWidth: 216,
+          backgroundColor: '#0F1420',
+          resizeMode: 'contain',
+        },
+      ]);
+    },
+  );
 };
 
 autoBindSteps([loadFeature('features/app-icon.feature')], [steps]);

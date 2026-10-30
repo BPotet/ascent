@@ -20,6 +20,10 @@ Avec un émulateur ou un téléphone branché et l'APK installé :
 maestro test e2e/flows
 ```
 
+Pour construire l'app soi-même (`npx expo run:android`), passer `EXPO_IMAGE_UTILS_NO_SHARP=1`,
+comme le build de la CI : si `sharp` est installé sur la machine, le prebuild lisserait l'icône de
+l'application et l'écran de démarrage (#166, ADR 0011).
+
 La sonde de toucher (`preview-touch-probe.yaml`, outil du build de preview) s'ouvre par le lien
 profond `ascent://preview/touch-probe` (`openLink`) : aucun bouton n'y mène. L'APK de la CI est
 construit sur le canal `preview` ; sur un build de production, le lien ramène à l'accueil. En
