@@ -12,7 +12,7 @@ export interface HeroModifiers {
    * chevalier déchu, #152), appliqué par `heroAttack`. À ne pas confondre avec `attackPercents`.
    */
   readonly attackBonusPercent: number;
-  /** Les multiplicateurs des dégâts de l'Attaque, en % (Marteau 80), passés à `scaleDamage`. */
+  /** Les multiplicateurs des dégâts de l'Attaque, en %, passés à `scaleDamage` (ancien Marteau 80, avant #129). */
   readonly attackPercents: readonly number[];
   /** Les pourcentages du Brise-garde (Hache rouillée 110, Marteau 160). */
   readonly guardDamagePercents: readonly number[];
