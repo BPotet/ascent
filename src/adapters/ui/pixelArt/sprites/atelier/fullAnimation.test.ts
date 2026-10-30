@@ -6,6 +6,7 @@ import { ENEMY_FRAMES, HERO_FRAMES, heroFrames, type HeroFrame } from '../battle
 import { FACELESS_PRIOR_ANIMATION } from './data/facelessPrior';
 import { FALLEN_KNIGHT_ANIMATION } from './data/fallenKnight';
 import { GHOUL_ANIMATION } from './data/ghoul';
+import { BULWARK_SHIELD } from './data/bulwarkShield';
 import { ITEM_IMAGES } from './data/itemImages';
 import { MAD_VILLAGER_ANIMATION } from './data/madVillager';
 import { NECROMANCER_ANIMATION } from './data/necromancer';
@@ -702,5 +703,35 @@ describe('the bash pose of the Sentinel (#155)', () => {
 
   it('keeps the 19 tints of the Sentinel, unchanged', () => {
     expect(full.pal).toHaveLength(19);
+  });
+});
+
+// L'écu du Rempart (#155) : recopié de `assets/bulwarkShield` version 1, entier et fendu.
+describe('the Bulwark shield of the Atelier (#155)', () => {
+  const SILVER = ['#06070c', '#d9dce6', '#8c93a8', '#b4b9c8', '#646b80', '#fff3d6'];
+
+  it.each(Object.entries(BULWARK_SHIELD))(
+    'draws the %s shield in 15 lines of 12 characters of its 6 tints, all in the art palette',
+    (_, image: AssetImage) => {
+      expect([image.w, image.h, image.rows.length]).toEqual([12, 15, 15]);
+      expect(image.palette).toEqual(SILVER);
+      for (const tint of image.palette) expect([tint, codeOf(tint) > 0]).toEqual([tint, true]);
+      for (const row of image.rows) {
+        expect(row).toMatch(/^[.0-5]{12}$/);
+      }
+      const sprite = assetSprite(image);
+      for (let y = 0; y < 15; y += 1) {
+        for (let x = 0; x < 12; x += 1) {
+          expect(at(sprite, x, y)).toBe(expectedCode(image.rows, image.palette, x, y));
+        }
+      }
+    },
+  );
+
+  it('has exactly the whole and the cracked shields, the cracked one drawn apart', () => {
+    expect(Object.keys(BULWARK_SHIELD).sort()).toEqual(['cracked', 'whole']);
+    expect(BULWARK_SHIELD.cracked.rows).not.toEqual(BULWARK_SHIELD.whole.rows);
+    expect(BULWARK_SHIELD.whole.rows[0]).toBe('000000000000');
+    expect(BULWARK_SHIELD.cracked.rows[0]).toBe('0000000.....');
   });
 });
