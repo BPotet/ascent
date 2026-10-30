@@ -1,11 +1,12 @@
 // Les composants de l'écran de combat, rendus seuls (la scène Skia n'en fait pas partie).
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
-import { DeviceEventEmitter, StyleSheet } from 'react-native';
+import { DeviceEventEmitter, PixelRatio, StyleSheet, type ViewStyle } from 'react-native';
 import { State } from 'react-native-gesture-handler';
 import { getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 import { getAnimatedStyle } from 'react-native-reanimated';
 
 import { artPalette } from '../pixelArt/artPalette';
+import { BULWARK_SHIELD } from '../pixelArt/sprites/atelier/data/bulwarkShield';
 import type { EnemyView } from '../state/battleView';
 import { battleColors } from '../theme/battleColors';
 import { ActionPad } from './ActionPad';
@@ -18,6 +19,37 @@ import { PhaseBanner } from './PhaseBanner';
 import { sceneGeometry } from './scene/sceneGeometry';
 
 const SLOT = sceneGeometry(390, 440, 3).enemies[0]!;
+
+const hiddenToo = { includeHiddenElements: true };
+
+/** Les teintes de l'écu du Rempart recopié de l'Atelier, telles que `artPalette` les écrit. */
+const SHIELD_TINTS = new Set<unknown>(
+  [...BULWARK_SHIELD.whole.palette, ...BULWARK_SHIELD.cracked.palette].map((tint) =>
+    artPalette.tints.find((known) => known?.toLowerCase() === tint.toLowerCase()),
+  ),
+);
+
+/**
+ * L'écu du Rempart rendu (#155) : sa taille, en dp, et les couleurs de ses pixels, qui doivent
+ * toutes être des teintes de l'écu recopié ; aucune opacité.
+ */
+function shieldGlyph(testID: 'battle-shield-glyph' | 'battle-shield-glyph-cracked') {
+  const glyph = screen.getByTestId(testID, hiddenToo);
+  const style = StyleSheet.flatten(glyph.props.style as ViewStyle);
+  const colors = (glyph.children as unknown as { props: { style: ViewStyle } }[]).map(
+    ({ props }) => StyleSheet.flatten(props.style).backgroundColor,
+  );
+  return { glyph, size: [style.width, style.height], opacity: style.opacity, colors };
+}
+
+/** L'écu est le premier enfant de `container`, devant `text`. */
+function expectShieldBefore(container: ReturnType<typeof screen.getByTestId>, text: string) {
+  const [first, ...rest] = container.children as unknown as {
+    props: { testID?: string; children?: unknown };
+  }[];
+  expect(first?.props.testID).toMatch(/^battle-shield-glyph/u);
+  expect(rest.some((child) => child.props.children === text)).toBe(true);
+}
 
 const ghoul: EnemyView = {
   kind: 'ghoul',
@@ -109,6 +141,41 @@ describe('HeroBar', () => {
       screen.getByTestId('battle-shield-glyph-cracked', { includeHiddenElements: true }),
     ).toBeTruthy();
     expect(screen.getByLabelText('La Sentinelle, PV 56 sur 80, Élan 2 sur 5')).toBeOnTheScreen();
+  });
+
+  it('shows the whole shield of the Atelier at ×1 in the « Rempart » chip (#155)', async () => {
+    jest.spyOn(PixelRatio, 'roundToNearestPixel').mockImplementation((size) => size);
+    await render(<HeroBar hero={{ ...sentinel, bulwark: true }} />);
+
+    const { glyph, size, opacity, colors } = shieldGlyph('battle-shield-glyph');
+    expect([size, opacity]).toEqual([[12, 15], undefined]);
+    expect(colors.every((color) => SHIELD_TINTS.has(color))).toBe(true);
+    expectShieldBefore(screen.getByTestId('battle-bulwark-chip', hiddenToo), 'Rempart');
+    expect(glyph).toBeTruthy();
+    jest.restoreAllMocks();
+  });
+
+  it('shows the cracked shield of the Atelier at ×1, as it is, in the « Rempart usé » chip (#155)', async () => {
+    jest.spyOn(PixelRatio, 'roundToNearestPixel').mockImplementation((size) => size);
+    await render(<HeroBar hero={sentinel} bulwarkWorn />);
+
+    const { size, opacity, colors } = shieldGlyph('battle-shield-glyph-cracked');
+    expect([size, opacity]).toEqual([[12, 15], undefined]);
+    // Telle quelle : ses teintes, ni grisée ni atténuée.
+    expect(colors.every((color) => SHIELD_TINTS.has(color))).toBe(true);
+    const { palette, rows } = BULWARK_SHIELD.cracked;
+    const used = new Set(
+      [...rows.join('').replaceAll('.', '')].map((char) =>
+        artPalette.tints.find(
+          (known) => known?.toLowerCase() === palette[parseInt(char, 36)]!.toLowerCase(),
+        ),
+      ),
+    );
+    expect(new Set(colors)).toEqual(used);
+    const chip = screen.getByTestId('battle-bulwark-chip', hiddenToo);
+    expect(StyleSheet.flatten(chip.props.style).opacity).toBeUndefined();
+    expectShieldBefore(chip, 'Rempart usé');
+    jest.restoreAllMocks();
   });
 
   it('shows no Bulwark chip without the Bulwark', async () => {
@@ -357,6 +424,29 @@ describe('FeedbackLabel and DamageFloat', () => {
     expect(StyleSheet.flatten(screen.getByText('Riposte').props.style).color).toBe(
       artPalette.roles.bulwarkText,
     );
+  });
+
+  it('writes « Riposte » after the whole shield of the Atelier, at ×2: 24 × 30 dp (#155)', async () => {
+    jest.spyOn(PixelRatio, 'roundToNearestPixel').mockImplementation((size) => size);
+    await render(<FeedbackLabel texts={[{ tone: 'riposte', title: 'Riposte' }]} />);
+
+    const { glyph, size, colors } = shieldGlyph('battle-shield-glyph');
+    expect(size).toEqual([24, 30]);
+    expect(colors.length).toBeGreaterThan(0);
+    expect(colors.every((color) => SHIELD_TINTS.has(color))).toBe(true);
+    expectShieldBefore(glyph.parent as never, 'Riposte');
+    jest.restoreAllMocks();
+  });
+
+  it('writes the figure of the riposte after the whole shield of the Atelier, at ×1: 12 × 15 dp (#155)', async () => {
+    jest.spyOn(PixelRatio, 'roundToNearestPixel').mockImplementation((size) => size);
+    await render(<DamageFloat float={{ at: 0, text: '−3', big: false, kind: 'riposte' }} />);
+
+    const { glyph, size, colors } = shieldGlyph('battle-shield-glyph');
+    expect(size).toEqual([12, 15]);
+    expect(colors.every((color) => SHIELD_TINTS.has(color))).toBe(true);
+    expectShieldBefore(glyph.parent as never, '−3');
+    jest.restoreAllMocks();
   });
 
   it('writes the figure of the riposte after the shield, at normal size (#128)', async () => {

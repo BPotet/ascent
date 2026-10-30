@@ -2,12 +2,12 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { bulwarkChipText } from '../format/battleText';
 import { artPalette } from '../pixelArt/artPalette';
-import { ShieldGlyph } from './BattleGlyphs';
+import { BulwarkShieldGlyph } from './BattleGlyphs';
 
 /**
  * L'étiquette du Rempart sous les PV du héros (#128, maquette R1, R2), sur le modèle de celle du
  * Saignement : l'écu et « Rempart » tant qu'il est actif, puis l'écu fendu et « Rempart usé » le
- * temps du coup qui l'use. Pas une cible tactile ; la barre du héros la lit dans son étiquette.
+ * temps du coup qui l'use. L'écu est l'image de l'Atelier à ×1, fendue telle quelle (#155). Pas une cible tactile ; la barre du héros la lit dans son étiquette.
  */
 export function BulwarkChip({ worn }: { readonly worn: boolean }) {
   return (
@@ -17,11 +17,7 @@ export function BulwarkChip({ worn }: { readonly worn: boolean }) {
       accessibilityElementsHidden
       style={[styles.chip, worn && styles.worn]}
     >
-      <ShieldGlyph
-        color={worn ? artPalette.roles.muted : artPalette.roles.bulwark}
-        size={10}
-        cracked={worn}
-      />
+      <BulwarkShieldGlyph scale={1} cracked={worn} />
       <Text style={[styles.text, worn && styles.wornText]}>{bulwarkChipText(worn)}</Text>
     </View>
   );

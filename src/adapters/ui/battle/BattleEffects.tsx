@@ -11,7 +11,7 @@ import Animated, {
 import type { DamageFloat as Float, FeedbackText } from '../format/battleText';
 import { artPalette } from '../pixelArt/artPalette';
 import { battleColors } from '../theme/battleColors';
-import { ShieldGlyph } from './BattleGlyphs';
+import { BulwarkShieldGlyph } from './BattleGlyphs';
 
 /** Le texte d'effet reste lisible un instant, puis s'efface (maquette : 0,7 s en tout). */
 const FEEDBACK_HOLD_MS = 450;
@@ -42,7 +42,7 @@ export function FeedbackLabel({ texts }: { readonly texts: readonly FeedbackText
         text.tone === 'riposte' ? (
           // « Riposte », précédé de l'écu (#128) : jamais l'argent seul.
           <View key={text.title} style={styles.withShield}>
-            <ShieldGlyph color={artPalette.roles.bulwark} size={22} />
+            <BulwarkShieldGlyph scale={2} />
             <Text style={[styles.title, styles.riposte]}>{text.title}</Text>
           </View>
         ) : (
@@ -74,7 +74,7 @@ export function DamageFloat({ float }: { readonly float: Float }) {
   }, [rise]);
   return (
     <Animated.View pointerEvents="none" style={[styles.float, styles.withShield, style]}>
-      {float.kind === 'riposte' ? <ShieldGlyph color={artPalette.roles.bulwark} size={12} /> : null}
+      {float.kind === 'riposte' ? <BulwarkShieldGlyph scale={1} /> : null}
       <Text
         style={[
           styles.floatText,

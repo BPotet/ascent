@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
-import { artPalette } from '../pixelArt/artPalette';
+import { AssetRows } from '../pixelArt/AssetRows';
+import { BULWARK_SHIELD } from '../pixelArt/sprites/atelier/data/bulwarkShield';
 
 // Stryker disable all: pictogrammes purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 /** Pictogrammes du combat, décoratifs : le cadenas de « Attends » est écrit à côté. */
@@ -33,58 +34,28 @@ export function LockGlyph({ color }: { readonly color: string }) {
 }
 
 /**
- * L'écu du Rempart (#128) : un bouclier en pointe, plein, ou fendu quand le Rempart s'use. La forme
- * dit l'état ; l'argent n'est jamais montré sans lui. `size` est sa largeur, en dp.
+ * L'écu du Rempart (`BulwarkShield`, #128) : l'image validée dans l'Atelier (#155), entière, ou
+ * fendue quand le Rempart s'use, telle quelle, ni redessinée ni recolorée (ADR 0010). ×2 devant
+ * « Riposte », ×1 devant le chiffre de la riposte et dans l'étiquette du Rempart. L'argent n'est
+ * jamais montré sans lui. Décoratif.
  */
-export function ShieldGlyph({
-  color,
-  size,
+export function BulwarkShieldGlyph({
   cracked = false,
+  scale,
 }: {
-  readonly color: string;
-  readonly size: number;
   readonly cracked?: boolean;
+  readonly scale: 1 | 2;
 }) {
-  const height = Math.round(size * 1.2);
-  const top = Math.round(height * 0.58);
   return (
-    <View
+    <AssetRows
+      image={cracked ? BULWARK_SHIELD.cracked : BULWARK_SHIELD.whole}
+      scale={scale}
       testID={cracked ? 'battle-shield-glyph-cracked' : 'battle-shield-glyph'}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      style={{ width: size, height }}
-    >
-      <View style={{ width: size, height: top, backgroundColor: color }} />
-      <View
-        style={[
-          styles.point,
-          {
-            borderLeftWidth: size / 2,
-            borderRightWidth: size / 2,
-            borderTopWidth: height - top,
-            borderTopColor: color,
-          },
-        ]}
-      />
-      {cracked ? <View style={[styles.crack, { left: size / 2 - 1, height }]} /> : null}
-    </View>
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  point: {
-    width: 0,
-    height: 0,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-  },
-  crack: {
-    position: 'absolute',
-    top: 0,
-    width: 2,
-    backgroundColor: artPalette.roles.ink,
-    transform: [{ skewX: '-18deg' }],
-  },
   lockArc: {
     width: 8,
     height: 7,
