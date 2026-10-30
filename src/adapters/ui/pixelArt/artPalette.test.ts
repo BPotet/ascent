@@ -19,7 +19,7 @@ describe('artPalette', () => {
   const { roles, tints } = artPalette;
 
   it('keeps the tints of the tower prototype, 0 being transparent', () => {
-    expect(tints).toHaveLength(38);
+    expect(tints).toHaveLength(42);
     expect(tints[0]).toBeNull();
     expect(tints[1]).toBe('#06070C');
     expect(tints[8]).toBe('#F2D49B');
@@ -73,6 +73,12 @@ describe('artPalette', () => {
     ]);
   });
 
+  it('adds the 4 tints of the 16 × 16 icons at the end, without moving the other codes (#157)', () => {
+    const icons = ['#DEE0E7', '#C3C7D3', '#EEA8B6', '#F8E7C8'];
+    expect(tints.slice(-icons.length)).toEqual(icons);
+    expect(tints.slice(0, -icons.length)).not.toEqual(expect.arrayContaining(icons));
+  });
+
   it('gives the interface roles of the mockup', () => {
     expect(roles).toMatchObject({
       ink: '#06070C',
@@ -92,6 +98,23 @@ describe('artPalette', () => {
 
   it('gives the silver of the Bulwark, never without its shield (#128)', () => {
     expect([roles.bulwark, roles.bulwarkText]).toEqual(['#D9DCE6', '#E6EAF2']);
+  });
+
+  it('gives the rarities and the icon well of the mockup #153 (#157)', () => {
+    expect([roles.rarityCommon, roles.rarityRare, roles.rarityEpic, roles.well]).toEqual([
+      '#C3C7D3',
+      '#7C9CFF',
+      '#C49BFF',
+      '#0B0D18',
+    ]);
+  });
+
+  it.each([
+    ['common', roles.rarityCommon],
+    ['rare', roles.rarityRare],
+    ['epic', roles.rarityEpic],
+  ])('gives the %s rarity a contrast of at least 6.1:1 on the surface (#157)', (_, rarity) => {
+    expect(contrast(rarity, roles.surface)).toBeGreaterThanOrEqual(6.1);
   });
 
   it.each([

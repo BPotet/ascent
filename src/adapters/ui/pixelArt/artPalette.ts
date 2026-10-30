@@ -51,6 +51,11 @@ export const artPalette = {
     '#222C52',
     '#3B5089',
     '#323A62',
+    // Les icônes de 16 × 16 (#157) : Écho parfait, puis Vigueur et Élan, à la suite.
+    '#DEE0E7',
+    '#C3C7D3',
+    '#EEA8B6',
+    '#F8E7C8',
   ],
   /** Les rôles d'interface. */
   roles: {
@@ -118,6 +123,14 @@ export const artPalette = {
     bulwark: '#D9DCE6',
     /** Texte du Rempart : l'étiquette, « Riposte » et son chiffre (#128). */
     bulwarkText: '#E6EAF2',
+    /** Rareté Commun : trait de l'écrin et libellé, jamais sans le mot et les losanges (#157). */
+    rarityCommon: '#C3C7D3',
+    /** Rareté Rare : trait de l'écrin et libellé, jamais sans le mot et les losanges (#157). */
+    rarityRare: '#7C9CFF',
+    /** Rareté Épique : trait de l'écrin et libellé, jamais sans le mot et les losanges (#157). */
+    rarityEpic: '#C49BFF',
+    /** Fond de l'écrin d'une icône (#157). */
+    well: '#0B0D18',
   },
 } as const;
 // Stryker restore all

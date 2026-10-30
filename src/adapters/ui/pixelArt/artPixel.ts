@@ -3,8 +3,11 @@ import { PixelRatio } from 'react-native';
 /** Le pixel d'art (`artPixel`) : 2 dp dans toute l'interface (échelle ×2). */
 export const ART_PIXEL = 2;
 
-/** L'échelle d'un sprite : ×2 partout, ×3 pour les grands moments (personnage des états vides). */
-export type ArtScale = 2 | 3;
+/**
+ * L'échelle d'un sprite : ×2 partout, ×3 pour les grands moments (personnage des états vides) ; ×4
+ * et ×6 pour une icône de bienfait ou de bénédiction à 96 dp (#157).
+ */
+export type ArtScale = 2 | 3 | 4 | 6;
 
 /**
  * La taille d'un pixel d'art à l'échelle `scale`, en dp, arrondie à un nombre entier de pixels
