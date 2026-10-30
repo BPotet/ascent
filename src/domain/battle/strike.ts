@@ -125,3 +125,27 @@ export function counterBlow({
     guard: stunned ? 0 : scaleDamage(guardDamage, guardPercent, ...guardPercents),
   };
 }
+
+/** Les parts de la Riposte du Rempart (#128), recopiées du Codex. */
+export interface BulwarkCounterShares {
+  /** La part des PV de la contre-attaque que vaut la riposte, en %. */
+  readonly bulwarkCounterPercent: number;
+  /** La part du Brise-garde que retire la riposte, en %. */
+  readonly bulwarkCounterGuardPercent: number;
+}
+
+/**
+ * La Riposte du Rempart (#128, R4) : le calcul de la contre-attaque, PV × `bulwarkCounterPercent`
+ * et Brise-garde × `bulwarkCounterGuardPercent` (0 sur un étourdi), un seul arrondi, minimum 1.
+ */
+export function bulwarkCounterBlow({
+  bulwarkCounterPercent,
+  bulwarkCounterGuardPercent,
+  ...counter
+}: Parameters<typeof counterBlow>[0] & BulwarkCounterShares): EnemyBlow {
+  return counterBlow({
+    ...counter,
+    hpPercent: bulwarkCounterPercent,
+    guardPercent: bulwarkCounterGuardPercent,
+  });
+}

@@ -16,6 +16,7 @@ import type {
   BattleOutcome,
   BlowOutcome,
   DefenseButton,
+  GuardBreaker,
   IgnoredReason,
   PhaseDirection,
   PlayerButton,
@@ -70,6 +71,7 @@ import { selfRevive } from './selfRevive';
 import {
   STRIKE_RECOVERY_MS,
   STRIKE_WIND_UP_MS,
+  bulwarkCounterBlow,
   counterBlow,
   strikeBlow,
   strikeMultiplier,
@@ -127,6 +129,8 @@ export interface CounterState {
   readonly at: number;
   readonly until: number;
   readonly done: boolean;
+  /** La Riposte du Rempart (#128) ; absent, une contre-attaque (un combat sauvé avant compris). */
+  readonly by?: 'bulwark';
 }
 
 /** L'avancée (`StepIn`) d'un ennemi, avant sa préparation ou l'effet de son intention. */
@@ -434,13 +438,14 @@ function attackDeadlines(battle: Battle, step: AttackStep): Deadline[] {
       });
     }
   });
-  if (step.counter !== null && !step.counter.done) {
-    deadlines.push({ at: step.counter.at, awaitsPress: false, apply: counterAttack });
-  }
-  const resolved = step.impacts.every((impact) => impact.outcome !== null);
-  if (resolved && (step.counter === null || step.counter.done)) {
-    deadlines.push({ at: attackEnd(step), awaitsPress: false, apply: endEnemyStep });
-  }
+  // La contre-attaque, la riposte (#128, R1) et la fin du coup attendent tous ses impacts.
+  if (step.impacts.some((impact) => impact.outcome === null)) return deadlines;
+  const { counter } = step;
+  deadlines.push(
+    counter !== null && !counter.done
+      ? { at: counter.at, awaitsPress: false, apply: counterAttack }
+      : { at: attackEnd(step), awaitsPress: false, apply: endEnemyStep },
+  );
   return deadlines;
 }
 
@@ -899,13 +904,23 @@ function resolveBlow(
     damage: blow.damage,
     heroHp,
   });
-  const bulwark = battle.hero.bulwark && blow.damage === 0;
-  const hero = { ...battle.hero, hp: heroHp, bulwark };
+  // Le Rempart s'use au premier impact qui fait des dégâts, et la riposte part à la fin du coup.
+  const worn = battle.hero.bulwark && blow.damage > 0;
+  if (worn) events.push({ type: 'bulwarkWorn', at: blow.at, enemy: step.enemy });
+  const hero = { ...battle.hero, hp: heroHp, bulwark: battle.hero.bulwark && !worn };
   const resolved = withStep(
     { ...battle, hero: bleedOn(hero, step, blow.outcome, events, blow.at) },
-    withImpact(step, blow.index, { outcome: blow.outcome }),
+    {
+      ...withImpact(step, blow.index, { outcome: blow.outcome }),
+      ...(worn && heroProfile(battle).bulwarkCounter && { counter: bulwarkCounter(step) }),
+    },
   );
   return heroHp === 0 ? finish(resolved, events, 'defeat', blow.at) : resolved;
+}
+
+/** La Riposte du Rempart (#128, R1) : à la fin du coup, quand aurait lieu une contre-attaque. */
+function bulwarkCounter(step: AttackStep): CounterState {
+  return { at: step.resolvedAt, until: step.resolvedAt + COUNTER_MS, done: false, by: 'bulwark' };
 }
 
 /** Un coup qui saigne fait saigner le héros encore debout, selon l'issue de l'impact (B1, B4). */
@@ -959,7 +974,7 @@ function hitEnemy(
   events: Events,
   index: number,
   blow: EnemyBlow,
-  context: { readonly at: number; readonly by: 'strike' | 'counter' },
+  context: { readonly at: number; readonly by: GuardBreaker },
 ): { readonly battle: Battle; readonly broken: boolean } {
   const hit = blowOnEnemy(battle.enemies[index]!, blow, battle.heroActions);
   const revived = hit.fallen ? selfRevive(hit.enemy, ENEMIES[hit.enemy.kind]) : null;
@@ -1023,12 +1038,16 @@ function shiftPhase(enemy: EnemyState, events: Events, index: number, at: number
   return { ...enemy, phase2: true, guard: enemy.stun === null ? enemy.maxGuard : enemy.guard };
 }
 
+/**
+ * La contre-attaque, ou la Riposte du Rempart (#128, R4, R5) : sur l'ennemi qui a porté le coup,
+ * sans Élan ; une cassure, une chute ou une victoire suivent les règles d'une frappe.
+ */
 function counterAttack(battle: Battle, events: Events): Battle {
   const step = currentAttack(battle);
   const counter = step.counter!;
   const hero = heroProfile(battle);
   const modifiers = heroModifiers(battle);
-  const blow = counterBlow({
+  const input = {
     attackPower: hero.attackPower + modifiers.attackFlat,
     guardDamage: hero.guardDamage,
     counterPercent: hero.counterPercent,
@@ -1037,9 +1056,13 @@ function counterAttack(battle: Battle, events: Events): Battle {
     guardPercents: modifiers.guardDamagePercents,
     counterPercents: modifiers.counterPercents,
     stunnedBonusPercent: modifiers.stunnedBonusPercent,
-  });
+  };
+  const riposte = counter.by === 'bulwark';
+  const blow = riposte
+    ? bulwarkCounterBlow({ ...input, ...hero.bulwarkCounter! })
+    : counterBlow(input);
   events.push({
-    type: 'counterAttacked',
+    type: riposte ? 'bulwarkCountered' : 'counterAttacked',
     at: counter.at,
     enemy: step.enemy,
     damage: blow.hp,
@@ -1047,7 +1070,8 @@ function counterAttack(battle: Battle, events: Events): Battle {
     until: counter.until,
   });
   const countered = withStep(battle, { ...step, counter: { ...counter, done: true } });
-  const hit = hitEnemy(countered, events, step.enemy, blow, { at: counter.at, by: 'counter' });
+  const by = riposte ? 'bulwarkCounter' : 'counter';
+  const hit = hitEnemy(countered, events, step.enemy, blow, { at: counter.at, by });
   return hit.broken ? startHitStop(hit.battle, events, counter.at) : hit.battle;
 }
 

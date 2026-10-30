@@ -23,8 +23,11 @@ export type WhiffReason = 'early' | 'late' | 'empty';
 /** Un toucher du joueur : un bouton de défense, « Attaquer », une cible, « Frapper » ou un pouvoir. */
 export type PlayerButton = DefenseButton | 'attack' | 'target' | 'strike' | 'power';
 
-/** Ce qui brise la garde d'un ennemi : une frappe en rythme ou une contre-attaque (C5.1). */
-export type GuardBreaker = 'strike' | 'counter';
+/**
+ * Ce qui brise la garde d'un ennemi : une frappe en rythme, une contre-attaque (C5.1) ou la Riposte
+ * du Rempart (#128).
+ */
+export type GuardBreaker = 'strike' | 'counter' | 'bulwarkCounter';
 
 /**
  * Pourquoi un toucher n'a aucun effet : pendant la transition de phase ou la bulle d'aide, pendant
@@ -174,6 +177,17 @@ export type BattleEvent =
   | { readonly type: 'hitStopStarted'; readonly at: number; readonly until: number }
   | {
       readonly type: 'counterAttacked';
+      readonly at: number;
+      readonly enemy: number;
+      readonly damage: number;
+      readonly guardDamage: number;
+      readonly until: number;
+    }
+  /** Le Rempart s'use (#128, R1), au même instant que le `blowResolved` de l'impact qui l'use. */
+  | { readonly type: 'bulwarkWorn'; readonly at: number; readonly enemy: number }
+  /** La Riposte du Rempart (#128) sur l'ennemi `enemy`, qui a porté le coup. */
+  | {
+      readonly type: 'bulwarkCountered';
       readonly at: number;
       readonly enemy: number;
       readonly damage: number;

@@ -5,6 +5,7 @@ import {
   PLAIN_STRIKE_PERCENT,
   STRIKE_RECOVERY_MS,
   STRIKE_WIND_UP_MS,
+  bulwarkCounterBlow,
   counterBlow,
   strikeBlow,
   strikeMultiplier,
@@ -89,6 +90,66 @@ describe('timed strike (C6)', () => {
           guardPercent: 25,
         }),
       ).toEqual({ hp: 3, guard: 3 });
+    });
+  });
+
+  describe('bulwarkCounterBlow, the Bulwark riposte (#128, R4)', () => {
+    const SENTINEL_RIPOSTE = {
+      ...SENTINEL_STRIKE,
+      counterPercent: 130,
+      bulwarkCounterPercent: 50,
+      bulwarkCounterGuardPercent: 25,
+    };
+
+    it('deals 3 HP and 3 guard points for the Sentinel without a boon', () => {
+      // 10 × 50 % × 130 % × 50 % = 3,25 ; 12 × 25 % = 3.
+      expect(bulwarkCounterBlow({ ...SENTINEL_RIPOSTE, stunned: false })).toEqual({
+        hp: 3,
+        guard: 3,
+      });
+    });
+
+    it('deals 4 HP and no guard damage to a stunned enemy', () => {
+      // 10 × 50 % × 130 % × 50 % × 150 % = 4,875.
+      expect(bulwarkCounterBlow({ ...SENTINEL_RIPOSTE, stunned: true })).toEqual({
+        hp: 4,
+        guard: 0,
+      });
+    });
+
+    it('rounds once, at the end: 10 × 50 % × 130 % × 50 % × 160 % = 5.2, not 3 × 160 %', () => {
+      expect(
+        bulwarkCounterBlow({ ...SENTINEL_RIPOSTE, stunned: false, attackPercents: [160] }).hp,
+      ).toBe(5);
+    });
+
+    it('removes at least 1 HP and 1 guard point', () => {
+      expect(
+        bulwarkCounterBlow({
+          ...SENTINEL_RIPOSTE,
+          attackPower: 1,
+          guardDamage: 1,
+          stunned: false,
+        }),
+      ).toEqual({ hp: 1, guard: 1 });
+    });
+
+    it('takes the items and the boons like the counter: attack, counter, guard damage, Blazing Ember', () => {
+      expect(
+        bulwarkCounterBlow({
+          ...SENTINEL_RIPOSTE,
+          attackPower: 12,
+          stunned: false,
+          attackPercents: [120],
+          counterPercents: [150],
+          guardPercents: [160],
+        }),
+        // 12 × 50 % × 130 % × 50 % × 120 % × 150 % = 7,02 ; 12 × 25 % × 160 % = 4,8.
+      ).toEqual({ hp: 7, guard: 4 });
+      expect(
+        bulwarkCounterBlow({ ...SENTINEL_RIPOSTE, stunned: true, stunnedBonusPercent: 50 }).hp,
+        // 10 × 50 % × 130 % × 50 % × 200 % = 6,5.
+      ).toBe(6);
     });
   });
 });

@@ -1515,6 +1515,7 @@ describe('over about 500 seeds', () => {
         switch (event.type) {
           case 'strikeResolved':
           case 'counterAttacked':
+          case 'bulwarkCountered':
             guards[event.enemy] = Math.max(0, guards[event.enemy]! - event.guardDamage);
             break;
           case 'guardBroken':
