@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { type Ref, useEffect, useMemo, useRef, useState } from 'react';
+import { AccessibilityInfo, StyleSheet, Text, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
 import type { Ascent } from '../../../domain/ascent/Ascent';
 import { ITEMS } from '../../../domain/ascent/items';
+import { loadoutOf } from '../../../domain/ascent/loadout';
 import { BoonChoicePanel } from '../battle/BoonChoicePanel';
 import { BlessingChoice } from '../components/BlessingChoice';
 import { ExitChoice } from '../components/ExitChoice';
+import { LoadoutButton } from '../components/LoadoutButton';
+import { LoadoutSheet } from '../components/LoadoutSheet';
 import { Screen } from '../components/Screen';
 import { floorLine, goldText, itemDescription, itemText, wornText } from '../format/ascentText';
 import { artPalette } from '../pixelArt/artPalette';
@@ -41,10 +44,17 @@ function Header({
   ascent,
   extra,
   onPause,
+  onLoadout,
+  combat = false,
+  loadoutRef,
 }: {
   readonly ascent: Ascent;
   readonly extra?: string | null;
   readonly onPause?: () => void;
+  /** Le bouton « Équipement » (#159) : ce qu'il ouvre, s'il met le combat en pause, et son focus. */
+  readonly onLoadout?: () => void;
+  readonly combat?: boolean;
+  readonly loadoutRef?: Ref<View>;
 }) {
   const parts = [
     floorLine(ascent.floor),
@@ -57,6 +67,14 @@ function Header({
       <Text testID="ascent-status" style={styles.status}>
         {parts.join(' · ')}
       </Text>
+      {onLoadout === undefined ? null : (
+        <LoadoutButton
+          {...(loadoutRef !== undefined && { ref: loadoutRef })}
+          loadout={loadoutOf(ascent)}
+          combat={combat}
+          onPress={onLoadout}
+        />
+      )}
       {onPause === undefined ? null : (
         <PixelButton
           label="Pause"
@@ -130,6 +148,8 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
   const [counting, setCounting] = useState(() => session.resuming());
   const [paused, setPaused] = useState(false);
   const [mount, setMount] = useState(0);
+  const [loadoutOpen, setLoadoutOpen] = useState(false);
+  const opener = useRef<View>(null);
 
   useEffect(
     () =>
@@ -152,6 +172,13 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
   const leave = () => {
     session.pause();
     onLeave();
+  };
+
+  // La feuille de l'Équipement (#159), hors combat : rien n'est mis en pause, l'écran garde son état.
+  const openLoadout = () => setLoadoutOpen(true);
+  const closeLoadout = () => {
+    setLoadoutOpen(false);
+    if (opener.current !== null) AccessibilityInfo.sendAccessibilityEvent(opener.current, 'focus');
   };
 
   if (ascent === null) {
@@ -189,10 +216,20 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
     );
   }
 
+  // Une seule feuille de l'Équipement, au niveau de l'écran, quel que soit l'écran de l'ascension.
+  const loadoutSheet = (
+    <LoadoutSheet
+      loadout={loadoutOf(ascent)}
+      combat={false}
+      visible={loadoutOpen}
+      onClose={closeLoadout}
+    />
+  );
+
   if (ascent.blessingOffer !== null) {
     return (
       <Screen layout="top" background={roles.night} testID="ascent-blessing">
-        <Header ascent={ascent} onPause={leave} />
+        <Header ascent={ascent} onPause={leave} onLoadout={openLoadout} loadoutRef={opener} />
         <BlessingChoice
           offer={ascent.blessingOffer}
           rarity={ascent.blessingRarities[0]!}
@@ -200,6 +237,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
           total={ascent.blessings.length + ascent.blessingRarities.length}
           onChoose={(index) => session.chooseBlessing(index)}
         />
+        {loadoutSheet}
       </Screen>
     );
   }
@@ -236,7 +274,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
     const image = ITEM_IMAGES[ascent.foundItem];
     return (
       <Screen layout="top" background={roles.night} testID="ascent-item">
-        <Header ascent={ascent} onPause={leave} />
+        <Header ascent={ascent} onPause={leave} onLoadout={openLoadout} loadoutRef={opener} />
         {gained}
         <View style={styles.center}>
           <Text accessibilityRole="header" style={styles.title}>
@@ -272,6 +310,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
             <PixelButton label="Équiper" onPress={() => session.equipItem()} style={styles.half} />
           </View>
         </View>
+        {loadoutSheet}
       </Screen>
     );
   }
@@ -279,20 +318,21 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
   if (ascent.boonOffer !== null) {
     return (
       <Screen layout="top" background={roles.night} testID="ascent-boons">
-        <Header ascent={ascent} onPause={leave} />
+        <Header ascent={ascent} onPause={leave} onLoadout={openLoadout} loadoutRef={opener} />
         {gained}
         <BoonChoicePanel
           key={ascent.floor}
           offer={ascent.boonOffer}
           onChoose={(index) => session.chooseBoon(index)}
         />
+        {loadoutSheet}
       </Screen>
     );
   }
 
   return (
     <Screen layout="top" background={roles.night} testID="ascent-exits">
-      <Header ascent={ascent} onPause={leave} />
+      <Header ascent={ascent} onPause={leave} onLoadout={openLoadout} loadoutRef={opener} />
       <ExitChoice
         key={ascent.floor}
         boons={ascent.hero.boons}
@@ -300,6 +340,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
         banner={gained}
         onChoose={(index) => session.chooseExit(index)}
       />
+      {loadoutSheet}
     </Screen>
   );
 }

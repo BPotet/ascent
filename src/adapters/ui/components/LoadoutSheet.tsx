@@ -26,6 +26,7 @@ import { blessingIcon, boonIcon, type GameIcon } from '../pixelArt/sprites/gameI
 import { useReducedMotion } from '../state/useReducedMotion';
 import { IconWell, RARITY_COLORS } from './IconWell';
 import { LoadoutHeading, LoadoutNone } from './LoadoutChip';
+import { SCROLL_HINT_HEIGHT, ScrollHint } from './ScrollHint';
 
 const { roles } = artPalette;
 
@@ -113,24 +114,6 @@ function Part({
   );
 }
 
-/** Le bas de la liste qui défile : un dégradé vers la surface et « ▼ Fais défiler », non lus. */
-function ScrollHint() {
-  return (
-    <View
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      pointerEvents="none"
-      testID="loadout-sheet-more"
-      style={styles.more}
-    >
-      {[0.25, 0.5, 0.75, 1].map((opacity) => (
-        <View key={opacity} style={[styles.fade, { opacity }]} />
-      ))}
-      <Text style={styles.moreText}>▼ Fais défiler</Text>
-    </View>
-  );
-}
-
 /**
  * La feuille de l'Équipement (#159) : le titre, qui reçoit le focus à l'ouverture, le sous-titre,
  * « Combat en pause » en combat, puis les bénédictions de départ et les bienfaits, chacun avec son
@@ -209,7 +192,7 @@ export function LoadoutSheet({
                 ))}
               </Part>
             </ScrollView>
-            {many && <ScrollHint />}
+            {many && <ScrollHint under={roles.surface} testID="loadout-sheet-more" />}
           </View>
           <PixelButton label="Fermer" variant="secondary" onPress={onClose} />
         </PixelSheet>
@@ -246,7 +229,7 @@ const styles = StyleSheet.create({
   list: { flexShrink: 1 },
   listContent: { gap: 6, paddingBottom: 8 },
   // Le dernier bienfait remonte au-dessus du dégradé en fin de défilement.
-  listMore: { paddingBottom: 56 },
+  listMore: { paddingBottom: SCROLL_HINT_HEIGHT },
   part: { gap: 6 },
   row: {
     flexDirection: 'row',
@@ -259,23 +242,5 @@ const styles = StyleSheet.create({
   name: { fontFamily: pixelFont, fontSize: 18, lineHeight: 22, color: roles.light },
   tag: { fontFamily: textFont.bold, fontSize: 12, lineHeight: 16 },
   effect: { fontFamily: textFont.medium, fontSize: 13, lineHeight: 18, color: roles.parchment },
-  more: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 56,
-    justifyContent: 'flex-end',
-  },
-  fade: { flex: 1, backgroundColor: roles.surface },
-  moreText: {
-    position: 'absolute',
-    right: 0,
-    bottom: 4,
-    fontFamily: textFont.bold,
-    fontSize: 12,
-    lineHeight: 16,
-    color: roles.gold,
-  },
 });
 // Stryker restore all
