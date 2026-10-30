@@ -18,6 +18,11 @@ export const REPORTS_DIR = 'reports/mutation';
 const FIELDS = ['killed', 'timeout', 'survived', 'noCoverage', 'totalDetected', 'totalValid'];
 const CLASSES = ['domain', 'newCode'];
 const REPORTED_STATUSES = ['Survived', 'NoCoverage'];
+// Issue #147 : un `Timeout` arrêté par la limite de passages porte ce `statusReason` ; sans lui,
+// c'est le délai par mutant qui a coupé le run. Au-delà de cette part des mutants exécutés, le
+// résumé avertit que le délai est sans doute trop court.
+const HIT_LIMIT = /^Hit limit reached/;
+const DELAY_TIMEOUT_WARNING = 10;
 
 /** Les `plan.json` sous `dir`, à toute profondeur (les artefacts téléchargés sont dans des sous-dossiers). */
 export function findPlans(dir) {
@@ -56,6 +61,15 @@ export function shardMetrics(report) {
   return Object.fromEntries(FIELDS.map((field) => [field, metrics[field]]));
 }
 
+/** Les timeouts d'un rapport, partagés entre délai et limite de passages. */
+export function timeoutCauses(report) {
+  const timeouts = Object.values(report.files ?? {})
+    .flatMap(({ mutants }) => mutants)
+    .filter((mutant) => mutant.status === 'Timeout');
+  const hitLimit = timeouts.filter((mutant) => HIT_LIMIT.test(mutant.statusReason ?? '')).length;
+  return { delay: timeouts.length - hitLimit, hitLimit };
+}
+
 /** Les mutants non tués, au format `fichier:ligne — mutateur — remplacement`. */
 export function undetectedMutants(report) {
   return Object.entries(report.files ?? {}).flatMap(([file, { mutants }]) =>
@@ -79,6 +93,7 @@ export function score(shards, thresholds) {
         threshold: thresholds[name],
         shards: [],
         total: Object.fromEntries(FIELDS.map((field) => [field, 0])),
+        timeouts: { delay: 0, hitLimit: 0 },
       },
     ]),
   );
@@ -87,24 +102,33 @@ export function score(shards, thresholds) {
     if (!target)
       throw new Error(`Shard "${plan.id}": unknown threshold class "${plan.thresholdClass}".`);
     const metrics = shardMetrics(report);
-    target.shards.push({ id: plan.id, metrics, undetected: undetectedMutants(report) });
+    const timeouts = timeoutCauses(report);
+    target.shards.push({ id: plan.id, metrics, timeouts, undetected: undetectedMutants(report) });
     for (const field of FIELDS) target.total[field] += metrics[field];
+    target.timeouts.delay += timeouts.delay;
+    target.timeouts.hitLimit += timeouts.hitLimit;
   }
   for (const target of Object.values(classes)) {
     const { totalDetected, totalValid } = target.total;
     target.score = totalValid === 0 ? null : (totalDetected / totalValid) * 100;
     // Comparaison en entiers : pas d'arrondi flottant à la frontière du seuil.
     target.passed = totalValid === 0 || totalDetected * 100 >= target.threshold * totalValid;
+    // Mutants exécutés : ceux dont les tests ont tourné jusqu'à un verdict ou un timeout.
+    const { killed, timeout, survived } = target.total;
+    target.run = killed + timeout + survived;
+    target.delayWarning = target.timeouts.delay * 100 > DELAY_TIMEOUT_WARNING * target.run;
   }
   return { classes: Object.values(classes), passed: Object.values(classes).every((c) => c.passed) };
 }
 
 const LABELS = { domain: 'Domain', newCode: 'New code (outside the domain)' };
 
+function ratio(part, whole) {
+  return whole === 0 ? 'n/a' : `${((part / whole) * 100).toFixed(2)} %`;
+}
+
 function percent(metrics) {
-  return metrics.totalValid === 0
-    ? 'n/a'
-    : `${((metrics.totalDetected / metrics.totalValid) * 100).toFixed(2)} %`;
+  return ratio(metrics.totalDetected, metrics.totalValid);
 }
 
 function row(name, metrics, threshold, verdict) {
@@ -130,6 +154,15 @@ export function renderSummary(result, errors = [], { notice = '' } = {}) {
   if (notice) lines.push(`> ${notice}`, '');
   for (const error of errors) lines.push(`- **Error**: ${error}`);
   if (errors.length > 0) lines.push('');
+  const warnings = result.classes.filter((target) => target.delayWarning);
+  for (const target of warnings) {
+    lines.push(
+      `> **Warning**: ${LABELS[target.name]}: ${target.timeouts.delay} of ${target.run} mutant(s) run ` +
+        `(${ratio(target.timeouts.delay, target.run)}) timed out by delay, above ${DELAY_TIMEOUT_WARNING} %. ` +
+        'The per-mutant timeout may be too short: these mutants count as detected without any failing test.',
+      '',
+    );
+  }
   lines.push(
     '| Class / shard | Killed | Timeout | Survived | No coverage | Score | Threshold | Verdict |',
     '|---|---:|---:|---:|---:|---:|---:|---|',
@@ -141,6 +174,19 @@ export function renderSummary(result, errors = [], { notice = '' } = {}) {
     const verdict =
       target.total.totalValid === 0 ? 'pass (no mutant)' : target.passed ? 'pass' : '**fail**';
     lines.push(row(`**${LABELS[target.name]}, total**`, target.total, target.threshold, verdict));
+  }
+  lines.push('', '### Timeouts by delay and by hit limit', '');
+  for (const target of result.classes) {
+    const { delay, hitLimit } = target.timeouts;
+    lines.push(
+      `- ${LABELS[target.name]}: ${delay} timeout(s) by delay, ${hitLimit} by hit limit, ` +
+        `of ${target.run} mutant(s) run (${ratio(delay, target.run)}).`,
+    );
+    for (const shard of target.shards) {
+      lines.push(
+        `- ${LABELS[target.name]} / ${shard.id}: ${shard.timeouts.delay} by delay, ${shard.timeouts.hitLimit} by hit limit.`,
+      );
+    }
   }
   const undetected = result.classes.flatMap((target) =>
     target.shards.flatMap((shard) => shard.undetected),

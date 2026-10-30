@@ -67,6 +67,17 @@ describe('dry run timeout', () => {
   });
 });
 
+// Issue #147 : le délai par mutant de Stryker coupait les runs normaux des mutants d'écran.
+describe('per-mutant timeout', () => {
+  it('is 10 minutes for the screens', () => {
+    assert.equal(uiConfig.timeoutMS, 600_000);
+  });
+
+  it('stays 10 seconds for the domain and the rest of the new code', () => {
+    for (const config of [baseConfig, domainConfig]) assert.equal(config.timeoutMS, 10_000);
+  });
+});
+
 // Issue #145 : les données recopiées de l'Atelier (ADR 0010) sortent de la liste `mutate` des
 // écrans. Ce n'est sans effet sur le score que si tous leurs mutants sont déjà ignorés.
 describe('Atelier data', () => {
