@@ -41,3 +41,17 @@ celui du combat d'essai et de la version définitive : il ne doit pas changer sa
 - Le type est partagé avec #93 (objets et bénédictions : Attaque, Initiative, Élan de départ, soin
   sur parade parfaite) ; `combineModifiers` prend des modificateurs partiels. Aucun bienfait ne
   touche l'Initiative (P18).
+
+## Avenant du 30/10/2026 (#152) : le bonus d'Attaque en %
+
+- Les bonus de la caractéristique Attaque en % (Tranchant, Armure de chevalier déchu) sont des
+  **points additionnés** dans un champ à part, `attackBonusPercent`. `heroAttack` les applique à
+  l'Attaque de base en un seul calcul, **arrondi au plus proche, au moins +1** :
+  `attackPower + max(1, round(attackPower × bonus / 100))` si le bonus est positif.
+- Ils ne passent pas par `attackPercents`, qui reste la liste des **multiplicateurs de dégâts**
+  passés à `scaleDamage` (ancien Marteau ×0,8, porté par les combats sauvegardés avant #129),
+  arrondis à l'entier inférieur.
+- `attackFlat` est gardé : plus aucune source ne le produit, mais un combat sauvegardé avant #152
+  le porte (Tranchant, ancienne armure) et finit avec ses valeurs de départ. `combineModifiers`
+  lit `attackBonusPercent ?? 0`, donc un combat sauvegardé sans ce champ le reçoit neutre.
+- `blessingModifiers` ne reçoit plus l'Attaque de base ; `edgeAttack` est remplacée par `heroAttack`.
