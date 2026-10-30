@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import type { Rarity } from '../../../domain/ascent/rarity';
 import { useLargeText } from '../state/useLargeText';
@@ -63,14 +63,20 @@ export function LoadoutChip({ icon, rarity, name, rarityLine, framed = false }: 
 
 /** Ce que prend une pastille autour de son nom : l'écrin, l'écart, la marge et le trait, en dp. */
 const CHIP_CHROME = 70;
-/** La place minimale du nom et de « ◆◆ Rare » : en deçà, ils se couperaient au milieu d'un mot. */
-const MIN_NAME_WIDTH = 64;
+/**
+ * La place minimale du nom et de « ◆◆ Rare », à la taille de texte habituelle : le mot le plus long
+ * (« Protection », 66,2 dp en Inter gras 13) y tient ; en deçà, il se couperait au milieu.
+ */
+const MIN_NAME_WIDTH = 68;
 /** L'écart entre deux colonnes, en dp (`styles.row`). */
 const COLUMN_GAP = 8;
 
-/** Deux colonnes laissent-elles assez de place au nom, dans une grille large de `width` dp ? */
-function twoColumnsFit(width: number): boolean {
-  return (width - COLUMN_GAP) / 2 - CHIP_CHROME >= MIN_NAME_WIDTH;
+/**
+ * Deux colonnes laissent-elles assez de place au nom, dans une grille large de `width` dp, à la
+ * taille de texte `fontScale` du téléphone ?
+ */
+function twoColumnsFit(width: number, fontScale: number): boolean {
+  return (width - COLUMN_GAP) / 2 - CHIP_CHROME >= MIN_NAME_WIDTH * fontScale;
 }
 
 /** Les pastilles par rangs de `columns`. */
@@ -99,8 +105,9 @@ export function LoadoutChipGrid({
   readonly framed?: boolean;
 }) {
   const largeText = useLargeText();
+  const { fontScale } = useWindowDimensions();
   const [width, setWidth] = useState<number | null>(null);
-  const columns = largeText || (width !== null && !twoColumnsFit(width)) ? 1 : 2;
+  const columns = largeText || (width !== null && !twoColumnsFit(width, fontScale)) ? 1 : 2;
   return (
     <View
       accessible

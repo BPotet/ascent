@@ -125,6 +125,23 @@ describe('LoadoutChipGrid (#157)', () => {
     expect(screen.getAllByTestId('loadout-chip-row', hidden)).toHaveLength(3);
   });
 
+  it.each([
+    [1.15, 1, 5],
+    [1, 2, 3],
+  ])(
+    'leaves room to the longest names in the text size of the phone: 284 dp at %s gives %s column(s) (#159)',
+    async (fontScale, _, rows) => {
+      largeText(fontScale);
+      await render(<LoadoutChipGrid label={label} chips={FIVE} />);
+
+      await fireEvent(screen.getByTestId('loadout-chip-grid'), 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 284, height: 0 } },
+      });
+
+      expect(screen.getAllByTestId('loadout-chip-row', hidden)).toHaveLength(rows);
+    },
+  );
+
   it('puts its chips on the surface, their notches cut in the night, by default', async () => {
     await render(<LoadoutChipGrid label={label} chips={FIVE.slice(0, 1)} />);
 
