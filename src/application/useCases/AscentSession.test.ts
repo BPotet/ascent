@@ -542,6 +542,29 @@ describe('AscentSession: hero and boons (prototype #92)', () => {
     expect(battleSession.current()!.battle.modifiers?.perfectStrikeBonusPercents).toEqual([20, 50]);
   });
 
+  it('resumes a save with the armor worn: the next battle adds its Attack +5 % to the Edge (#152)', async () => {
+    const { session, store } = setUp();
+    const ascent = {
+      ...startAscent(5),
+      blessings: [{ family: 'edge', rarity: 'rare' }],
+      blessingRarities: [],
+      blessingOffer: null,
+      equipment: { weapon: null, armor: 'blackKnightArmor', accessory: null },
+    };
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent, battle: null }));
+
+    expect(await session.load()).toMatchObject({ equipment: { armor: 'blackKnightArmor' } });
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    expect(battleSession.current()!.battle.modifiers).toMatchObject({
+      attackFlat: 0,
+      attackBonusPercent: 25,
+      damageReductionPoints: 20,
+      initiative: -2,
+    });
+  });
+
   describe('a save from before the workshop values (#105)', () => {
     /** Écrite à la main, comme avant #105 : Égide (`aegis`) choisie et dans l'offre en cours. */
     const before = (overrides: object = {}) =>
