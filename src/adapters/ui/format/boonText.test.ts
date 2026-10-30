@@ -1,12 +1,5 @@
 import { BOON_KINDS } from '../../../domain/ascent/boons';
-import {
-  BOON_NAMES,
-  boonCard,
-  boonChip,
-  boonObtainedLabel,
-  ownedBoonsLabel,
-  ownedBoonsLine,
-} from './boonText';
+import { BOON_NAMES, boonCard, boonChip, boonObtainedLabel, ownedBoonsLabel } from './boonText';
 
 describe('boonText', () => {
   it('names the 7 boons', () => {
@@ -32,13 +25,6 @@ describe('boonText', () => {
     });
     expect(boonCard('lingeringFrost').tag).toBe('◆◆ Givre · Rare');
     expect(boonCard('emberHeart').tag).toBe('◆◆◆ Braise · Épique');
-  });
-
-  it('lists the owned boons', () => {
-    expect(ownedBoonsLine([])).toBe('Aucun bienfait');
-    expect(ownedBoonsLine(['perfectEcho', 'lingeringFrost'])).toBe(
-      'Bienfaits : Écho parfait, Givre persistant',
-    );
   });
 
   it('writes the loadout chip of a boon: name, then diamonds and rarity (#157)', () => {

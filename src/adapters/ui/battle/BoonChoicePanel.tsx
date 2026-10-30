@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { BoonKind } from '../../../domain/ascent/boons';
-import { boonCard } from '../format/boonText';
+import { IconWell, RARITY_COLORS } from '../components/IconWell';
+import { boonCard, boonObtainedLabel } from '../format/boonText';
 import { artPalette } from '../pixelArt/artPalette';
 import { PixelButton } from '../pixelArt/PixelButton';
 import { PixelFrame } from '../pixelArt/PixelFrame';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypography';
-import { battleColors } from '../theme/battleColors';
+import { boonIcon } from '../pixelArt/sprites/gameIcons';
 
 const { roles } = artPalette;
 
@@ -22,7 +23,7 @@ function BoonOption({
   readonly onPress: () => void;
 }) {
   const card = boonCard(kind);
-  const color = battleColors.rarity[card.rarity];
+  const color = RARITY_COLORS[card.rarity];
   return (
     <Pressable
       accessibilityRole="radio"
@@ -36,9 +37,17 @@ function BoonOption({
         {...(checked && { background: roles.goldBg })}
         style={styles.frame}
       >
-        <Text style={[styles.tag, { color }]}>{card.tag}</Text>
-        <Text style={[styles.name, checked && styles.checkedName]}>{card.name}</Text>
-        <Text style={styles.effect}>{card.effect}</Text>
+        <IconWell
+          icon={boonIcon(kind)}
+          rarity={card.rarity}
+          size="card"
+          under={checked ? roles.goldBg : roles.surface}
+        />
+        <View style={styles.text}>
+          <Text style={[styles.tag, { color }]}>{card.tag}</Text>
+          <Text style={[styles.name, checked && styles.checkedName]}>{card.name}</Text>
+          <Text style={styles.effect}>{card.effect}</Text>
+        </View>
         {checked && (
           <View pointerEvents="none" style={styles.tick}>
             <PixelIcon name="check8" color={roles.ink} testID="boon-tick" />
@@ -51,7 +60,9 @@ function BoonOption({
 
 /**
  * Le choix d'un bienfait (prototype #92, maquette B1 à B3) : 3 cartes, toucher une carte puis
- * « Prendre » ; puis le bienfait obtenu, et « Continuer » le garde pour l'ascension.
+ * « Prendre » ; puis le bienfait obtenu, et « Continuer » le garde pour l'ascension. Chaque carte
+ * porte l'icône du bienfait dans son écrin, et « Bienfait obtenu. » la montre en grand (#157,
+ * maquette 1A à 1E).
  */
 export function BoonChoicePanel({
   offer,
@@ -64,16 +75,25 @@ export function BoonChoicePanel({
   const [taken, setTaken] = useState(false);
 
   if (taken && selected !== null) {
-    const card = boonCard(offer[selected]!);
+    const kind = offer[selected]!;
+    const card = boonCard(kind);
     return (
       <View style={styles.body} testID="boon-obtained">
-        <View style={styles.center}>
-          <Text style={[styles.tag, { color: battleColors.rarity[card.rarity] }]}>{card.tag}</Text>
-          <Text accessibilityRole="header" accessibilityLiveRegion="polite" style={styles.title}>
-            {card.name}
+        <View
+          accessible
+          accessibilityLabel={boonObtainedLabel(kind)}
+          accessibilityLiveRegion="polite"
+          style={styles.center}
+        >
+          <View style={styles.large}>
+            <IconWell icon={boonIcon(kind)} rarity={card.rarity} size="large" under={roles.night} />
+          </View>
+          <Text style={[styles.tag, styles.centered, { color: RARITY_COLORS[card.rarity] }]}>
+            {card.tag}
           </Text>
-          <Text style={styles.effect}>{card.effect}</Text>
-          <Text style={styles.sub}>Bienfait obtenu.</Text>
+          <Text style={[styles.title, styles.bigTitle]}>{card.name}</Text>
+          <Text style={[styles.effect, styles.centered]}>{card.effect}</Text>
+          <Text style={[styles.sub, styles.obtained]}>Bienfait obtenu.</Text>
         </View>
         <PixelButton label="Continuer" onPress={() => onChoose(selected)} />
       </View>
@@ -119,7 +139,20 @@ const styles = StyleSheet.create({
   },
   sub: { ...pixelTypography.body, fontSize: 14, color: roles.parchment, textAlign: 'center' },
   card: { minHeight: 88 },
-  frame: { flexGrow: 1, gap: 3, paddingVertical: 12, paddingLeft: 14, paddingRight: 40 },
+  frame: {
+    flexGrow: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingVertical: 12,
+    paddingLeft: 12,
+    paddingRight: 40,
+  },
+  text: { flex: 1, gap: 2 },
+  large: { alignSelf: 'center' },
+  bigTitle: { fontSize: 28, lineHeight: 32 },
+  centered: { textAlign: 'center' },
+  obtained: { fontFamily: textFont.semiBold, color: roles.done },
   tag: { fontFamily: textFont.bold, fontSize: 12, lineHeight: 16 },
   name: { fontFamily: pixelFont, fontSize: 20, lineHeight: 24, color: roles.light },
   checkedName: { color: roles.gold },

@@ -195,7 +195,30 @@ describe('AscentScreen', () => {
     });
 
     expect(session.current()?.hero.boons).toEqual(['frostSkin']);
-    expect(await screen.findByText('Bienfaits : Peau de givre')).toBeOnTheScreen();
+    expect(await screen.findByLabelText('Bienfaits : Peau de givre, Commun')).toBeOnTheScreen();
+  });
+
+  it('shows the owned boons in chips at the exits, in the order won, without the starting blessings (#157)', async () => {
+    const ascent = startAscent(42);
+    await show({
+      ...between(ascent, [{ kind: 'combat', groupSize: 2 }]),
+      blessings: [{ family: 'haste', rarity: 'rare' }],
+      hero: { ...ascent.hero, boons: ['perfectEcho', 'lingeringFrost'] },
+    });
+
+    expect(
+      await screen.findByLabelText('Bienfaits : Écho parfait, Commun ; Givre persistant, Rare'),
+    ).toBeOnTheScreen();
+    expect(screen.getAllByTestId('loadout-chip', { includeHiddenElements: true })).toHaveLength(2);
+    expect(screen.queryByText('Hâte', { includeHiddenElements: true })).toBeNull();
+    expect(screen.getByTestId('ascent-exit-0')).toBeOnTheScreen();
+  });
+
+  it('writes « Aucun bienfait » at the exits, without an empty chip (#157)', async () => {
+    await show(between(startAscent(42), [{ kind: 'combat', groupSize: 2 }]));
+
+    expect(await screen.findByText('Aucun bienfait')).toBeOnTheScreen();
+    expect(screen.queryByTestId('loadout-chip', { includeHiddenElements: true })).toBeNull();
   });
 });
 

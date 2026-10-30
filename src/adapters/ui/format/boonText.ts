@@ -68,10 +68,3 @@ export function boonChip(kind: BoonKind): LoadoutChipText {
 export function ownedBoonsLabel(boons: readonly BoonKind[]): string {
   return `Bienfaits : ${boons.map((kind) => boonChip(kind).label).join(' ; ')}`;
 }
-
-/** Les bienfaits possédés, sous le héros : « Bienfaits : Écho parfait, Givre persistant ». */
-export function ownedBoonsLine(boons: readonly BoonKind[]): string {
-  return boons.length === 0
-    ? 'Aucun bienfait'
-    : `Bienfaits : ${boons.map((kind) => BOON_NAMES[kind]).join(', ')}`;
-}
