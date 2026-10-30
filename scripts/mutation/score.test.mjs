@@ -148,11 +148,16 @@ describe('score', () => {
   // Issue #147 : un timeout par délai n'est pas une boucle infinie arrêtée par la limite de passages.
   it('splits the timeouts of each class between the delay and the hit limit', async () => {
     shard('core', 'newCode', { Killed: 40, Timeout: 1, HitLimit: 1 }, { expectedShards: 2 });
-    shard('ui-1', 'newCode', { Killed: 8, Timeout: 2, HitLimit: 3 }, { expectedShards: 2 });
+    shard(
+      'ui-1',
+      'newCode',
+      { Killed: 8, Timeout: 2, HitLimit: 3, NoCoverage: 2 },
+      { expectedShards: 2 },
+    );
     assert.equal(await run(), 0);
     assert.match(
       output,
-      /New code \(outside the domain\), total\*\* \| 48 \| 7 \| 0 \| 0 \| 100\.00 %/,
+      /New code \(outside the domain\), total\*\* \| 48 \| 7 \| 0 \| 2 \| 96\.49 %/,
     );
     assert.match(
       output,
@@ -180,6 +185,10 @@ describe('score', () => {
     shard('core', 'newCode', { Killed: 5, HitLimit: 5 }, { expectedShards: 1 });
     assert.equal(await run(), 0);
     assert.doesNotMatch(output, /Warning/);
+    assert.match(
+      output,
+      /^- Domain: 0 timeout\(s\) by delay, 0 by hit limit, of 0 mutant\(s\) run \(n\/a\)\.$/m,
+    );
   });
 
   it('lists the survived and no-coverage mutants', () => {
