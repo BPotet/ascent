@@ -4,7 +4,7 @@ import { Dimensions, StyleSheet } from 'react-native';
 import { blessingChip } from '../format/ascentText';
 import { boonChip, ownedBoonsLabel } from '../format/boonText';
 import { artPalette } from '../pixelArt/artPalette';
-import { LoadoutChip, LoadoutChipGrid, type LoadoutChipItem } from './LoadoutChip';
+import { LoadoutChip, LoadoutChipGrid, LoadoutHeading, type LoadoutChipItem } from './LoadoutChip';
 import { blessingIcon, boonIcon } from '../pixelArt/sprites/gameIcons';
 
 const { roles } = artPalette;
@@ -103,5 +103,28 @@ describe('LoadoutChipGrid (#157)', () => {
     await render(<LoadoutChipGrid label={label} chips={FIVE} />);
 
     expect(screen.getAllByTestId('loadout-chip-row', hidden)).toHaveLength(3);
+  });
+});
+
+describe('LoadoutHeading (#158)', () => {
+  it('writes its title and its count, hidden from the screen reader without a label', async () => {
+    await render(<LoadoutHeading title="Bienfaits" count="2" />);
+
+    expect(screen.queryByText('Bienfaits')).toBeNull();
+    expect(screen.getByText('Bienfaits', hidden)).toHaveStyle({
+      textTransform: 'uppercase',
+      color: roles.muted,
+    });
+    expect(screen.getByText('2', hidden)).toHaveStyle({ color: roles.muted });
+  });
+
+  it('is read in one sentence with a label', async () => {
+    await render(
+      <LoadoutHeading title="Déjà choisie" count="1 sur 3" label="Déjà choisie, 1 sur 3" />,
+    );
+
+    expect(screen.getByLabelText('Déjà choisie, 1 sur 3')).toBeOnTheScreen();
+    expect(screen.queryByText('Déjà choisie')).toBeNull();
+    expect(screen.getByText('1 sur 3', hidden)).toBeTruthy();
   });
 });

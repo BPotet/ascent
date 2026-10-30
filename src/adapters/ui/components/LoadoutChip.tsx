@@ -92,6 +92,39 @@ export function LoadoutChipGrid({
   );
 }
 
+/**
+ * L'en-tête d'une section d'équipement (#158) : le titre en majuscules grises à gauche, le compte à
+ * droite (« Bienfaits », « 2 »). Sans `label`, il est caché au lecteur d'écran ; avec, il est lu
+ * d'un trait.
+ */
+export function LoadoutHeading({
+  title,
+  count,
+  label,
+}: {
+  readonly title: string;
+  readonly count: string;
+  readonly label?: string;
+}) {
+  const heading = (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={styles.heading}
+    >
+      <Text style={styles.headingText}>{title}</Text>
+      <Text style={styles.count}>{count}</Text>
+    </View>
+  );
+  return label === undefined ? (
+    heading
+  ) : (
+    <View accessible accessibilityLabel={label}>
+      {heading}
+    </View>
+  );
+}
+
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
   chip: {
@@ -110,6 +143,16 @@ const styles = StyleSheet.create({
   rarity: { fontFamily: textFont.bold, fontSize: 11, lineHeight: 14 },
   corner: { position: 'absolute', backgroundColor: roles.night },
   grid: { gap: 8 },
+  heading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  headingText: {
+    fontFamily: textFont.bold,
+    fontSize: 12,
+    lineHeight: 16,
+    letterSpacing: 0.72,
+    textTransform: 'uppercase',
+    color: roles.muted,
+  },
+  count: { fontFamily: textFont.semiBold, fontSize: 12, lineHeight: 16, color: roles.muted },
   row: { flexDirection: 'row', gap: 8 },
   cell: { flex: 1 },
 });

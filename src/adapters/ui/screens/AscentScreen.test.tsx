@@ -1,4 +1,4 @@
-import { act, fireEvent, screen } from '@testing-library/react-native';
+import { act, fireEvent, screen, within } from '@testing-library/react-native';
 
 import { startAscent, type Ascent } from '../../../domain/ascent/Ascent';
 import type { ItemKind } from '../../../domain/ascent/items';
@@ -235,6 +235,22 @@ describe('AscentScreen with blessings and found items (#93)', () => {
     fireEvent.press(screen.getByTestId('blessing-2'));
 
     expect(await screen.findByRole('header', { name: 'Étage 1' })).toBeOnTheScreen();
+  });
+
+  it('shows the blessing already chosen in a chip on the next choice (#158)', async () => {
+    const { session } = await show(startAscent(42, { gauge: -1, blessings: ['epic', 'rare'] }));
+    const family = session.current()!.blessingOffer![1]!;
+
+    fireEvent.press(screen.getByTestId('blessing-1'));
+
+    expect(await screen.findByRole('header', { name: 'Bénédiction 2 sur 2' })).toBeOnTheScreen();
+    expect(screen.getByLabelText('Déjà choisie, 1 sur 2')).toBeOnTheScreen();
+    const chip = screen.getByTestId('loadout-chip', { includeHiddenElements: true });
+    expect(
+      within(chip).getByTestId('icon-well-icon', { includeHiddenElements: true }).props.sprite,
+    ).toBe(`blessing-icon:${family}`);
+    expect(within(chip).getByText('◆◆◆ Épique', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByTestId('ascent-status')).toBeOnTheScreen();
   });
 
   it('shows a found item compared to the worn one, and equips it', async () => {

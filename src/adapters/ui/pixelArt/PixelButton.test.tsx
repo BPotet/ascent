@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { createRef } from 'react';
-import type { View } from 'react-native';
+import { Text, type View } from 'react-native';
 
 import { artPalette } from './artPalette';
 import { PixelButton } from './PixelButton';
@@ -93,6 +93,24 @@ describe('PixelButton', () => {
       'accessibilityHint',
       'Définitif.',
     );
+  });
+
+  it('shows its children instead of its label, read by its label, still moving down (#158)', async () => {
+    await render(
+      <PixelButton label="Hâte · Rare" variant="secondary" onPress={jest.fn()}>
+        <Text>Hâte</Text>
+        <Text>◆◆ Rare</Text>
+      </PixelButton>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Hâte · Rare' });
+    expect(screen.getByText('Hâte')).toBeOnTheScreen();
+    expect(screen.getByText('◆◆ Rare')).toBeOnTheScreen();
+    expect(screen.queryByText('Hâte · Rare')).toBeNull();
+
+    await fireEvent(button, 'pressIn');
+
+    expect(button).toHaveStyle({ transform: [{ translateY: 2 }] });
   });
 
   it('lets the screen place the screen reader on it', async () => {

@@ -20,6 +20,8 @@ describe('IconBoardScreen (#157)', () => {
       'Sorties · aucun bienfait',
       'Sorties · deux bienfaits',
       'Dernière porte · 5 bienfaits',
+      'Bénédictions · 3 sur 3',
+      'Bénédiction · 1 sur 1',
       'Fermer',
     ]);
   });
@@ -82,6 +84,75 @@ describe('IconBoardScreen (#157)', () => {
 
     await fireEvent.press(screen.getByTestId('ascent-exit-0'));
 
+    expect(screen.getByRole('header', { name: 'Planche des icônes' })).toBeOnTheScreen();
+  });
+
+  it('chains the blessing choices 3A, 3B and 3C at each touch, then comes back to the board (#158)', async () => {
+    await open('Bénédictions · 3 sur 3');
+
+    expect(screen.getByRole('header', { name: 'Bénédiction 1 sur 3' })).toBeOnTheScreen();
+    expect(
+      screen.getAllByRole('button', { name: /Rare · / }).map((b) => b.props.accessibilityLabel),
+    ).toEqual([
+      'Hâte · Rare · Initiative +2 dans chaque combat',
+      'Vigueur · Rare · PV max +10 %',
+      'Tranchant · Rare · Attaque +20 %',
+    ]);
+    expect(screen.queryByLabelText(/^Déjà choisie/)).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('blessing-2'));
+    expect(screen.getByRole('header', { name: 'Bénédiction 2 sur 3' })).toBeOnTheScreen();
+    expect(screen.getByLabelText('Déjà choisie, 1 sur 3')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Bénédictions de départ : Hâte, Rare')).toBeOnTheScreen();
+    expect(
+      screen.getAllByRole('button', { name: /Commune · / }).map((b) => b.props.accessibilityLabel),
+    ).toEqual([
+      expect.stringMatching(/^Élan · /),
+      expect.stringMatching(/^Protection · /),
+      expect.stringMatching(/^Vigueur · /),
+    ]);
+
+    await fireEvent.press(screen.getByTestId('blessing-0'));
+    expect(screen.getByRole('header', { name: 'Bénédiction 3 sur 3' })).toBeOnTheScreen();
+    expect(
+      screen.getByLabelText('Bénédictions de départ : Hâte, Rare ; Vigueur, Commune'),
+    ).toBeOnTheScreen();
+    expect(
+      screen.getAllByRole('button', { name: /Épique · / }).map((b) => b.props.accessibilityLabel),
+    ).toEqual([
+      expect.stringMatching(/^Élan · /),
+      expect.stringMatching(/^Tranchant · /),
+      expect.stringMatching(/^Protection · /),
+    ]);
+
+    await fireEvent.press(screen.getByTestId('blessing-1'));
+    expect(screen.getByRole('header', { name: 'Planche des icônes' })).toBeOnTheScreen();
+  });
+
+  it('starts the blessing choices again from 3A (#158)', async () => {
+    await open('Bénédictions · 3 sur 3');
+    await fireEvent.press(screen.getByTestId('blessing-0'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Retour' }));
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Bénédictions · 3 sur 3' }));
+
+    expect(screen.getByRole('header', { name: 'Bénédiction 1 sur 3' })).toBeOnTheScreen();
+  });
+
+  it('shows the single blessing choice 3D, without any blessing already chosen (#158)', async () => {
+    await open('Bénédiction · 1 sur 1');
+
+    expect(screen.getByRole('header', { name: 'Bénédiction 1 sur 1' })).toBeOnTheScreen();
+    expect(
+      screen.getAllByRole('button', { name: /Commune · / }).map((b) => b.props.accessibilityLabel),
+    ).toEqual([
+      expect.stringMatching(/^Élan · /),
+      expect.stringMatching(/^Vigueur · /),
+      expect.stringMatching(/^Protection · /),
+    ]);
+    expect(screen.queryByText(/Déjà choisie/, hidden)).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('blessing-0'));
     expect(screen.getByRole('header', { name: 'Planche des icônes' })).toBeOnTheScreen();
   });
 });

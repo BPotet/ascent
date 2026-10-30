@@ -10,7 +10,7 @@ import { artPixelSize, notchedCorners } from '../pixelArt/artPixel';
 import { PixelButton } from '../pixelArt/PixelButton';
 import { pixelFont, textFont } from '../pixelArt/pixelTypography';
 import { boonIcon } from '../pixelArt/sprites/gameIcons';
-import { LoadoutChipGrid } from './LoadoutChip';
+import { LoadoutChipGrid, LoadoutHeading } from './LoadoutChip';
 
 const { roles } = artPalette;
 
@@ -33,14 +33,7 @@ function OwnedBoons({ boons }: { readonly boons: readonly BoonKind[] }) {
   }
   return (
     <View style={styles.section}>
-      <View
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        style={styles.heading}
-      >
-        <Text style={styles.headingText}>Bienfaits</Text>
-        <Text style={styles.count}>{boons.length}</Text>
-      </View>
+      <LoadoutHeading title="Bienfaits" count={String(boons.length)} />
       <LoadoutChipGrid
         label={ownedBoonsLabel(boons)}
         chips={boons.map((kind) => ({ key: kind, icon: boonIcon(kind), ...boonChip(kind) }))}
@@ -89,16 +82,6 @@ export function ExitChoice({
 const styles = StyleSheet.create({
   exits: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 24, gap: 12 },
   section: { gap: 6 },
-  heading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
-  headingText: {
-    fontFamily: textFont.bold,
-    fontSize: 12,
-    lineHeight: 16,
-    letterSpacing: 0.72,
-    textTransform: 'uppercase',
-    color: roles.muted,
-  },
-  count: { fontFamily: textFont.semiBold, fontSize: 12, lineHeight: 16, color: roles.muted },
   none: {
     paddingVertical: 8,
     paddingHorizontal: 10,

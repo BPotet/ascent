@@ -7,7 +7,8 @@ import {
 import type { Exit } from '../../../domain/ascent/exits';
 import { fatiguePercent, type FateGauge } from '../../../domain/ascent/fateGauge';
 import { ITEMS, type Equipment, type ItemKind, type ItemSlot } from '../../../domain/ascent/items';
-import { loadoutChipText, rarityName, type LoadoutChipText } from './rarityText';
+import type { Rarity } from '../../../domain/ascent/rarity';
+import { loadoutChipText, rarityLine, rarityName, type LoadoutChipText } from './rarityText';
 
 /** Les libellés de l'ascension (prototype #91), tirés du glossaire et de la maquette de #88. */
 export const TOWER_TITLE = 'La tour';
@@ -116,17 +117,36 @@ function blessingEffect({ family, rarity }: StartingBlessing): string {
   }
 }
 
-/** Les deux lignes du bouton d'une bénédiction (#120) : « Hâte · Rare », puis son effet. */
-export function blessingLines(blessing: StartingBlessing): readonly [string, string] {
-  return [
-    `${FAMILY_NAMES[blessing.family]} · ${rarityName(blessing.rarity, 'feminine')}`,
-    blessingEffect(blessing),
-  ];
-}
-
 /** Une bénédiction de départ : « Hâte · Rare · Initiative +2 dans chaque combat ». */
 export function blessingText(blessing: StartingBlessing): string {
-  return blessingLines(blessing).join(' · ');
+  return `${FAMILY_NAMES[blessing.family]} · ${rarityName(blessing.rarity, 'feminine')} · ${blessingEffect(blessing)}`;
+}
+
+/**
+ * Le bouton d'une bénédiction de départ (#158) : le nom de sa famille, la rareté en losanges et en
+ * mot au féminin sur sa propre ligne (« ◆◆ Rare »), l'effet, et le libellé lu, inchangé.
+ */
+export interface BlessingCard {
+  readonly name: string;
+  readonly rarity: Rarity;
+  readonly rarityLine: string;
+  readonly effect: string;
+  readonly label: string;
+}
+
+export function blessingCard(blessing: StartingBlessing): BlessingCard {
+  return {
+    name: FAMILY_NAMES[blessing.family],
+    rarity: blessing.rarity,
+    rarityLine: rarityLine(blessing.rarity, 'feminine'),
+    effect: blessingEffect(blessing),
+    label: blessingText(blessing),
+  };
+}
+
+/** L'en-tête des bénédictions déjà choisies : « Déjà choisie », « Déjà choisies » (#158). */
+export function takenBlessingsHeading(count: number): string {
+  return count > 1 ? 'Déjà choisies' : 'Déjà choisie';
 }
 
 /**
@@ -135,6 +155,14 @@ export function blessingText(blessing: StartingBlessing): string {
  */
 export function blessingChip(blessing: StartingBlessing): LoadoutChipText {
   return loadoutChipText(FAMILY_NAMES[blessing.family], blessing.rarity, 'feminine');
+}
+
+/**
+ * Les bénédictions de départ, lues d'un trait dans l'ordre du choix : « Bénédictions de départ :
+ * Hâte, Rare ; Vigueur, Commune » (#158).
+ */
+export function startingBlessingsLabel(blessings: readonly StartingBlessing[]): string {
+  return `Bénédictions de départ : ${blessings.map((blessing) => blessingChip(blessing).label).join(' ; ')}`;
 }
 
 const ITEM_NAMES: Readonly<Record<ItemKind, string>> = {

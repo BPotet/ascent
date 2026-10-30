@@ -295,7 +295,7 @@ Termes de l'épique #89, introduits par la story #93 (prototype). Règles provis
 | **Build de production** | La version de l'app publiée depuis `main`. Elle n'a aucune fonction réservée au build de preview. |
 | **Canal du build** (`BuildChannel`) | `preview` ou `production`, fixé à la construction de l'APK. Absent ou inconnu, il vaut `production`. |
 | **Sonde de toucher** (`TouchProbe`) | Un outil du build de preview, ouvert seulement par le lien `ascent://preview/touch-probe`. Il mesure l'écart entre l'instant d'un toucher et l'horloge JS, et en déduit la méthode de datation des appuis. |
-| **Planche des icônes** (`IconBoard`) | Un outil du build de preview, ouvert seulement par le lien `ascent://preview/icon-board` (#157). Il rend les vrais écrans du choix d'un bienfait et des sorties avec des données fixes, pour les captures du test end-to-end, sans combat à gagner. |
+| **Planche des icônes** (`IconBoard`) | Un outil du build de preview, ouvert seulement par le lien `ascent://preview/icon-board` (#157). Il rend les vrais écrans du choix d'un bienfait, des sorties et du choix d'une bénédiction de départ (#158) avec des données fixes, pour les captures du test end-to-end, sans combat à gagner ni habitude faite hier. |
 | **Méthode de datation** (`TimingMethod`) | La façon de dater un appui, retenue par la sonde de toucher : (a) dans le geste, sur le fil UI, quand son horloge a la même base que l'horloge JS (écart compris entre −2 ms et 500 ms) ; sinon (b) de même, recalée par un décalage calibré entre les deux horloges ; sinon (c) à la réception par le JS. |
 | **Escalade** | L'arrêt de la boucle automatique, avec un commentaire sur l'issue pour demander une décision humaine. |
 
