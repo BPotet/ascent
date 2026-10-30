@@ -101,6 +101,15 @@ describe('ExpoAudioBattleSound', () => {
     expect(playerOf('hit').calls).toEqual([]);
   });
 
+  it('preloads and plays the shield clash of the Bulwark riposte (#128)', () => {
+    const sound = new ExpoAudioBattleSound();
+
+    sound.play('shieldClash');
+
+    expect(playerOf('shieldClash').calls).toEqual(['seekTo', 'play']);
+    expect(playerOf('bulwark').calls).toEqual([]);
+  });
+
   it('measures the sound latency with the monotonic clock of the phone by default', () => {
     const now = jest
       .spyOn(performance, 'now')

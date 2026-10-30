@@ -103,6 +103,13 @@ export const CUES = {
   ],
   // #107 : la goutte sourde du Saignement, une note grave qui tombe.
   bleed: [[420, 0.16, 'sine', 0.16, 0, 180]],
+  // #128 : le choc de bouclier de la Riposte du Rempart, grave et mat (bois cerclé de fer), sans
+  // glissando aigu : on ne le confond ni avec la parade parfaite ni avec la cassure.
+  'shield-clash': [
+    [180, 0.04, 'square', 0.06, 0],
+    [130, 0.15, 'triangle', 0.2, 0],
+    [85, 0.15, 'sine', 0.18, 0],
+  ],
 };
 
 const WAVES = {
