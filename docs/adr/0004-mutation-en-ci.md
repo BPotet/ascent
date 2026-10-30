@@ -626,7 +626,27 @@ partage des timeouts et l'avertissement).
 
 ### Mesures du correctif
 
-À reporter par le Fixer (issue #147, « Vérification ») : sur une PR de vérification qui reprend la
-tête `96c28cac` de #144, avant les tests ajoutés par le QA, les mutants de `enemyPose.ts:175`
-doivent apparaître `Survived`. Pour chaque shard `ui-*` : durée, et partage entre tués, timeouts
-par délai, timeouts par limite de passages, survivants et erreurs ; « Ran N tests per mutant ».
+**Mesure locale, pas la barrière de CI** (30 octobre 2026, branche du correctif, PR #148) : plan
+`changed` de #144 déjà dans `develop` (base `733458d0`, tête `6f03c09d`), 102 mutants, mutés en
+deux plages avec `stryker.ui.config.mjs` corrigé (`timeoutMS` 600 000), 4 cœurs, 16 Go,
+`concurrency` 4 (4 processus).
+
+| Plage | Mutants | « Dry run » | Durée | Tués | Timeouts par délai | Timeouts par limite de passages | Survivants | Erreurs | Tests par mutant |
+|---|---:|---|---|---:|---:|---:|---:|---:|---:|
+| `enemyPose.ts` | 55 | 10 min 47 (overhead 179 s) | 67 min 38 | 48 | 0 | 0 | 7 | 0 | 65,25 |
+| `battleCharacters.ts`, `fullAnimation.ts`, `battleAtlas.ts` | 47 | 9 min 58 (overhead 165 s) | 89 min 29 | 29 | 0 | 1 | 2 | 15 | 1 788,83 |
+
+- Sur les 102 mutants : **0 timeout par délai**, 1 timeout par limite de passages
+  (`battleCharacters.ts:251`, `Hit limit reached (5674/5600)`), contre 82 timeouts sur 92 en CI
+  avant le correctif.
+- Score réel des écrans de #144 : **89,66 %** (78 détectés sur 87 valides), au-dessus de 70 %.
+- **9 survivants**, listés dans l'issue #149 (tests à ajouter). Sur cette tête, les mutants de
+  `enemyPose.ts:175` sont tués par les tests ajoutés par le QA.
+- **15 erreurs d'exécution**, toutes dans la seconde plage : elles sortent du score, comme le veut
+  Stryker.
+
+**Mesure CI : à faire** (issue #147, « Vérification », points 2 et 3). Sur une PR de
+vérification qui reprend la tête `96c28cac` de #144, avant les tests ajoutés par le QA, les
+mutants de `enemyPose.ts:175` doivent apparaître `Survived`. Pour chaque shard `ui-*` : durée, et
+partage entre tués, timeouts par délai, timeouts par limite de passages, survivants et erreurs ;
+« Ran N tests per mutant ».
