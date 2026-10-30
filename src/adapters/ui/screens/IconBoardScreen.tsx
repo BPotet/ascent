@@ -35,9 +35,10 @@ const ENTRIES: readonly (readonly [Board, string])[] = [
  * Une entrée de l'Équipement (#159) : le vrai pied de la tour ou le vrai écran de l'ascension, sur
  * une ascension fixe, ouverte dans sa propre session en mémoire.
  */
-type LoadoutBoard = 'foot3' | 'foot8' | 'battle8' | 'exits8' | 'boons3';
+type LoadoutBoard = 'foot1' | 'foot3' | 'foot8' | 'battle8' | 'exits8' | 'boons3';
 
 const LOADOUT_ENTRIES: readonly (readonly [LoadoutBoard, string])[] = [
+  ['foot1', 'Équipement · 1 · pied de la tour'],
   ['foot3', 'Équipement · 3 · pied de la tour'],
   ['foot8', 'Équipement · 8 · pied de la tour'],
   ['battle8', 'Équipement · 8 · combat'],
@@ -93,7 +94,10 @@ const ONE_BLESSING: BlessingStep = {
   total: 1,
 };
 
-/** Les ascensions de la maquette #153 : un Équipement de 3 (4A), le build le plus long (4D, 5A). */
+/**
+ * Les ascensions de la maquette #153 : une seule bénédiction (4C), un Équipement de 3 (4A), le build
+ * le plus long (4D, 5A).
+ */
 function withLoadout(
   floor: number,
   blessings: Ascent['blessings'],
@@ -115,6 +119,7 @@ const between = (ascent: Ascent, exits: readonly Exit[]): Ascent => ({
   lastGold: 10,
 });
 const LOADOUT_ASCENTS: Readonly<Record<LoadoutBoard, Ascent>> = {
+  foot1: withLoadout(1, [HASTE], []),
   foot3: THREE,
   foot8: EIGHT,
   battle8: { ...EIGHT, floor: 2 },

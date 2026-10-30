@@ -52,6 +52,7 @@ describe('IconBoardScreen (#157)', () => {
       'Dernière porte · 5 bienfaits',
       'Bénédictions · 3 sur 3',
       'Bénédiction · 1 sur 1',
+      'Équipement · 1 · pied de la tour',
       'Équipement · 3 · pied de la tour',
       'Équipement · 8 · pied de la tour',
       'Équipement · 8 · combat',
@@ -210,6 +211,14 @@ describe('IconBoardScreen with the loadout (#159)', () => {
       [{ family: 'haste', rarity: 'rare' }],
       ['perfectEcho', 'lingeringFrost'],
     ]);
+  });
+
+  it('opens the real tower foot with a single starting blessing (4C)', async () => {
+    await open('Équipement · 1 · pied de la tour');
+
+    expect(await screen.findByText('Équipement · 1')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Bénédictions de départ : Hâte, Rare')).toBeOnTheScreen();
+    expect(screen.getByText('Aucun bienfait')).toBeOnTheScreen();
   });
 
   it('opens the longest build at the tower foot, then the ascent, and comes back to the board on « Pause »', async () => {

@@ -54,7 +54,7 @@ tour et le vrai écran de l'ascension sur des ascensions fixes, chacune dans une
 (jamais l'ascension du joueur). « Pause » ramène à la planche ; depuis le pied de la tour,
 « Reprendre l'ascension » puis « Pause ». Le menu de la planche défile (`scrollUntilVisible`). Les
 titres de section sont écrits en capitales : leurs sélecteurs ignorent la casse (`(?iu)`). Captures :
-4A, 4B, 4D, 4E, 5A à 5G.
+4A à 4E, 5A à 5G.
 
 Le combat d'essai et son bouton « Combat d'essai », au-dessus de la barre d'onglets du build de
 preview, sont retirés (#121, décision du propriétaire du 28/10/2026) : la barre d'onglets et la liste

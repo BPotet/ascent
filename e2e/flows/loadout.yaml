@@ -5,7 +5,7 @@
 #    mène au pied de la tour, avec « Équipement · 0 » (4B).
 # 2. La planche des icônes (ascent://preview/icon-board), pour les états pleins qu'on n'atteint pas
 #    sans gagner de combat : ses entrées « Équipement · … » ouvrent le vrai pied de la tour et le vrai
-#    écran de l'ascension sur des ascensions fixes, en mémoire (4A, 4D, 4E, 5A, 5C, 5F, 5G).
+#    écran de l'ascension sur des ascensions fixes, en mémoire (4A, 4C, 4D, 4E, 5A, 5C, 5F, 5G).
 # Le gameplay du combat se teste à la main sur l'APK (décision du 25/10) : la capture 5D se prend dès
 # l'apparition de « Reprise dans », la vérification qui dure est le retour de `battle-pad`.
 # Les titres de section sont écrits en capitales : leurs sélecteurs ignorent la casse.
@@ -95,6 +95,30 @@ tags:
 # --- 2. La planche des icônes ----------------------------------------------------------------
 
 - openLink: ascent://preview/icon-board
+- extendedWaitUntil:
+    visible: 'Planche des icônes'
+    timeout: 15000
+
+# 4C : le pied de la tour, une seule bénédiction, aucun bienfait encore.
+- scrollUntilVisible:
+    element:
+      text: 'Équipement · 1 · pied de la tour'
+    direction: DOWN
+- tapOn: 'Équipement · 1 · pied de la tour'
+- extendedWaitUntil:
+    visible: "Reprendre l'ascension"
+    timeout: 15000
+- assertVisible: '(?iu)Équipement · 1'
+- assertVisible: 'Bénédictions de départ : Hâte, Rare'
+- assertVisible: 'Aucun bienfait'
+- takeScreenshot: loadout-4c-foot-1
+- tapOn: "Reprendre l'ascension"
+- extendedWaitUntil:
+    visible:
+      id: 'ascent-pause'
+    timeout: 15000
+- tapOn:
+    id: 'ascent-pause'
 - extendedWaitUntil:
     visible: 'Planche des icônes'
     timeout: 15000
