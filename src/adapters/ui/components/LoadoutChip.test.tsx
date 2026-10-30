@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 
 import { blessingChip } from '../format/ascentText';
@@ -101,6 +101,26 @@ describe('LoadoutChipGrid (#157)', () => {
   it('keeps 2 columns just under the large text', async () => {
     largeText(1.29);
     await render(<LoadoutChipGrid label={label} chips={FIVE} />);
+
+    expect(screen.getAllByTestId('loadout-chip-row', hidden)).toHaveLength(3);
+  });
+
+  it('falls to 1 column when its width leaves too little room to the names (#159)', async () => {
+    await render(<LoadoutChipGrid label={label} chips={FIVE} />);
+
+    await fireEvent(screen.getByTestId('loadout-chip-grid'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 244, height: 0 } },
+    });
+
+    expect(screen.getAllByTestId('loadout-chip-row', hidden)).toHaveLength(5);
+  });
+
+  it('keeps 2 columns when its width leaves room to the names, as at the exits (#159)', async () => {
+    await render(<LoadoutChipGrid label={label} chips={FIVE} />);
+
+    await fireEvent(screen.getByTestId('loadout-chip-grid'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 288, height: 0 } },
+    });
 
     expect(screen.getAllByTestId('loadout-chip-row', hidden)).toHaveLength(3);
   });

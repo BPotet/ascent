@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import type { Rarity } from '../../../domain/ascent/rarity';
@@ -60,6 +61,18 @@ export function LoadoutChip({ icon, rarity, name, rarityLine, framed = false }: 
   );
 }
 
+/** Ce que prend une pastille autour de son nom : l'écrin, l'écart, la marge et le trait, en dp. */
+const CHIP_CHROME = 70;
+/** La place minimale du nom et de « ◆◆ Rare » : en deçà, ils se couperaient au milieu d'un mot. */
+const MIN_NAME_WIDTH = 64;
+/** L'écart entre deux colonnes, en dp (`styles.row`). */
+const COLUMN_GAP = 8;
+
+/** Deux colonnes laissent-elles assez de place au nom, dans une grille large de `width` dp ? */
+function twoColumnsFit(width: number): boolean {
+  return (width - COLUMN_GAP) / 2 - CHIP_CHROME >= MIN_NAME_WIDTH;
+}
+
 /** Les pastilles par rangs de `columns`. */
 function rowsOf<T>(items: readonly T[], columns: number): T[][] {
   const rows: T[][] = [];
@@ -70,7 +83,9 @@ function rowsOf<T>(items: readonly T[], columns: number): T[][] {
 }
 
 /**
- * La grille des pastilles d'équipement : 2 colonnes, ou 1 quand le texte du téléphone est agrandi.
+ * La grille des pastilles d'équipement : 2 colonnes, ou 1 quand le texte du téléphone est agrandi
+ * ou quand la grille mesurée est trop étroite pour leurs noms (#159, dans le cadre de l'ascension
+ * d'un téléphone étroit).
  * Elle est lue d'un trait (`label`), ses pastilles cachées au lecteur d'écran. `framed` pose les
  * pastilles dans un cadre (#159).
  */
@@ -83,9 +98,16 @@ export function LoadoutChipGrid({
   readonly chips: readonly LoadoutChipItem[];
   readonly framed?: boolean;
 }) {
-  const columns = useLargeText() ? 1 : 2;
+  const largeText = useLargeText();
+  const [width, setWidth] = useState<number | null>(null);
+  const columns = largeText || (width !== null && !twoColumnsFit(width)) ? 1 : 2;
   return (
-    <View accessible accessibilityLabel={label} testID="loadout-chip-grid">
+    <View
+      accessible
+      accessibilityLabel={label}
+      testID="loadout-chip-grid"
+      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+    >
       <View
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
@@ -192,7 +214,7 @@ const styles = StyleSheet.create({
     color: roles.muted,
   },
   count: { fontFamily: textFont.semiBold, fontSize: 12, lineHeight: 16, color: roles.muted },
-  row: { flexDirection: 'row', gap: 8 },
+  row: { flexDirection: 'row', gap: COLUMN_GAP },
   none: {
     paddingVertical: 10,
     paddingHorizontal: 12,
