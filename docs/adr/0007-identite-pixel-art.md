@@ -53,6 +53,18 @@ Le **pixel d'art** vaut 2 dp (`ART_PIXEL`), 3 dp pour les grands moments (`ArtSc
 un sprite reste net. Aucun sprite n'est mis à l'échelle de façon fractionnaire, ni agrandi par une
 animation : un rebond est une image dessinée un pixel d'art plus haut.
 
+#### Avenant du 30 octobre 2026 : les icônes de bienfait et de bénédiction (#157)
+
+`ArtScale` vaut 2, 3, 4 ou 6. Une icône de bienfait ou de bénédiction a une **taille commune de
+48 dp** : une icône de 24 × 24 est dessinée à ×2, une de 16 × 16 à ×3 ; au grand moment (« Bienfait
+obtenu »), 96 dp, à ×4 ou ×6. Une seule fonction calcule l'échelle d'une icône
+(`iconScale(image, dp)` = `dp / image.w`) : elle refuse une icône qui n'est pas carrée et toute
+échelle autre que 2, 3, 4 ou 6, fractionnaire ou non. Sur une densité fractionnaire, le pixel d'art
+entier prime sur les 48 dp exacts (environ 46 à 49 dp à 2,625) ; l'**écrin** (`IconWell`) garde sa
+taille fixe et centre l'icône. Ces icônes passent par `SpriteCanvas` (§ 2), pas par des `View` :
+`PixelIcon` et les petites images dans une ligne de texte gardent les `View`, l'écrin les icônes de
+48 dp et plus (au plus 5 canevas sur « Dernière porte »).
+
 ### 4. Deux polices
 
 - **Police pixel** (`pixelFont`, Pixelify Sans 700) : titres, chiffres de jeu, mots isolés, jamais
