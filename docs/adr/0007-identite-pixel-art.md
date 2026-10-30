@@ -45,6 +45,15 @@ Les écrans ne connaissent que des noms (`characterSprite`, icône `check12`…)
   pixels de même couleur. Une Vue Journée a trois ou quatre icônes par ligne : en Skia, ce serait une
   quarantaine de canevas.
 
+#### Avenant du 30 octobre 2026 (#155) : une image de l'Atelier en `View`
+
+- **`AssetRows`** (des `View`) rend une image recopiée de l'Atelier (`AssetImage`, ADR 0010 § 1)
+  dans l'interface, avec le même découpage que `PixelIcon` (une `View` par suite horizontale de
+  pixels de même indice, `.` transparent). Chaque couleur est la teinte de `artPalette` de l'indice
+  (`tintCode`, ADR 0010 § 3), sans teinte libre : l'image n'est ni redessinée ni recolorée. Elle est
+  décorative. Premier usage : l'écu du Rempart (`BulwarkShieldGlyph`), trois fois au plus à l'écran,
+  dans des vues animées et brèves, où trois canevas Skia seraient trop lourds.
+
 ### 3. Le pixel d'art arrondi au pixel physique
 
 Le **pixel d'art** vaut 2 dp (`ART_PIXEL`), 3 dp pour les grands moments (`ArtScale` = 2 ou 3).
@@ -52,6 +61,14 @@ Le **pixel d'art** vaut 2 dp (`ART_PIXEL`), 3 dp pour les grands moments (`ArtSc
 (`PixelRatio.roundToNearestPixel`) : sur une densité fractionnaire (2,625 sur beaucoup d'Android),
 un sprite reste net. Aucun sprite n'est mis à l'échelle de façon fractionnaire, ni agrandi par une
 animation : un rebond est une image dessinée un pixel d'art plus haut.
+
+#### Avenant du 30 octobre 2026 (#155) : l'échelle ×1
+
+`ArtScale` vaut 1, 2 ou 3. **×1 est réservé à une image recopiée de l'Atelier placée dans une ligne
+de texte plus basse que son ×2** : l'écu du Rempart (12 × 15 pixels d'art) devant le chiffre de la
+riposte et dans l'étiquette du Rempart, soit 12 × 15 dp, au lieu de 24 × 30 dp qui doubleraient la
+hauteur de la ligne. `artPixelSize(1)` arrondit 1 dp au pixel physique comme les autres échelles :
+3 pixels physiques à 2,625, l'image reste nette. Partout ailleurs, l'interface reste à ×2.
 
 ### 4. Deux polices
 
