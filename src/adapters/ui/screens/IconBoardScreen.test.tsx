@@ -1,17 +1,47 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, screen, within } from '@testing-library/react-native';
 
+import type { AscentSession } from '../../../application/useCases/AscentSession';
+import type { Ascent } from '../../../domain/ascent/Ascent';
+import { ascentSetUp } from '../testing/ascent';
+import { renderScreen } from '../testing/renderScreen';
 import { IconBoardScreen } from './IconBoardScreen';
+
+jest.mock('../battle/BattleCanvas', () => jest.requireActual('../battle/testing/fakeBattleCanvas'));
 
 const hidden = { includeHiddenElements: true } as const;
 
+/** Les ascensions ouvertes par la planche, chacune dans sa session en mémoire. */
+let opened: { saved: Ascent; session: AscentSession }[] = [];
+
+async function openAscent(saved: Ascent): Promise<AscentSession> {
+  const { session } = ascentSetUp({ saved });
+  await session.load();
+  opened.push({ saved, session });
+  return session;
+}
+
+async function renderBoard(onClose: () => void = jest.fn()) {
+  opened = [];
+  await renderScreen(
+    <IconBoardScreen
+      onClose={onClose}
+      openAscent={openAscent}
+      visibility={{ onChange: () => () => {} }}
+    />,
+    ascentSetUp().dependencies,
+  );
+}
+
 async function open(entry: string) {
-  await render(<IconBoardScreen onClose={jest.fn()} />);
-  await fireEvent.press(screen.getByRole('button', { name: entry }));
+  await renderBoard();
+  await act(async () => {
+    fireEvent.press(screen.getByRole('button', { name: entry }));
+  });
 }
 
 describe('IconBoardScreen (#157)', () => {
   it('lists the screens of the boon icons, as a tool of the preview build', async () => {
-    await render(<IconBoardScreen onClose={jest.fn()} />);
+    await renderBoard();
 
     expect(screen.getByRole('header', { name: 'Planche des icônes' })).toBeOnTheScreen();
     expect(screen.getByText('Outil du build de preview')).toBeOnTheScreen();
@@ -22,13 +52,18 @@ describe('IconBoardScreen (#157)', () => {
       'Dernière porte · 5 bienfaits',
       'Bénédictions · 3 sur 3',
       'Bénédiction · 1 sur 1',
+      'Équipement · 3 · pied de la tour',
+      'Équipement · 8 · pied de la tour',
+      'Équipement · 8 · combat',
+      'Équipement · 8 · sorties',
+      "Équipement · 3 · choix d'un bienfait",
       'Fermer',
     ]);
   });
 
   it('closes the board', async () => {
     const onClose = jest.fn();
-    await render(<IconBoardScreen onClose={onClose} />);
+    await renderBoard(onClose);
 
     await fireEvent.press(screen.getByRole('button', { name: 'Fermer' }));
 
@@ -154,5 +189,90 @@ describe('IconBoardScreen (#157)', () => {
 
     await fireEvent.press(screen.getByTestId('blessing-0'));
     expect(screen.getByRole('header', { name: 'Planche des icônes' })).toBeOnTheScreen();
+  });
+});
+
+describe('IconBoardScreen with the loadout (#159)', () => {
+  const loadoutOf = (ascent: Ascent) => [ascent.blessings, ascent.hero.boons];
+
+  it('opens the real tower foot on a fixed ascent with a loadout of 3, in memory', async () => {
+    await open('Équipement · 3 · pied de la tour');
+
+    expect(await screen.findByTestId('tower-foot')).toBeOnTheScreen();
+    expect(
+      within(screen.getByTestId('loadout-section')).getByText('Équipement · 3'),
+    ).toBeOnTheScreen();
+    expect(screen.getByLabelText('Bénédictions de départ : Hâte, Rare')).toBeOnTheScreen();
+    expect(
+      screen.getByLabelText('Bienfaits : Écho parfait, Commun ; Givre persistant, Rare'),
+    ).toBeOnTheScreen();
+    expect(loadoutOf(opened[0]!.saved)).toEqual([
+      [{ family: 'haste', rarity: 'rare' }],
+      ['perfectEcho', 'lingeringFrost'],
+    ]);
+  });
+
+  it('opens the longest build at the tower foot, then the ascent, and comes back to the board on « Pause »', async () => {
+    await open('Équipement · 8 · pied de la tour');
+
+    expect(await screen.findByTestId('tower-foot-more', hidden)).toBeOnTheScreen();
+    expect(screen.getByText('Équipement · 8')).toBeOnTheScreen();
+    await act(async () => {
+      fireEvent.press(screen.getByRole('button', { name: "Reprendre l'ascension" }));
+    });
+    expect(await screen.findByTestId('ascent-loadout')).toBeOnTheScreen();
+
+    await act(async () => {
+      fireEvent.press(screen.getByRole('button', { name: 'Pause' }));
+    });
+    expect(screen.getByRole('header', { name: 'Planche des icônes' })).toBeOnTheScreen();
+  });
+
+  it('opens the real battle with the longest build, the button pausing it', async () => {
+    await open('Équipement · 8 · combat');
+
+    expect(await screen.findByTestId('ascent-battle')).toBeOnTheScreen();
+    expect(screen.getByTestId('ascent-loadout')).toHaveAccessibleName(
+      'Équipement : 3 bénédictions de départ, 5 bienfaits. Ouvre la liste. Met le combat en pause',
+    );
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('ascent-loadout'));
+    });
+    expect(screen.getByRole('status')).toHaveTextContent('Combat en pause');
+  });
+
+  it('opens the real last door with the longest build', async () => {
+    await open('Équipement · 8 · sorties');
+
+    expect(await screen.findByRole('header', { name: 'Dernière porte' })).toBeOnTheScreen();
+    expect(screen.getByTestId('ascent-loadout')).toHaveAccessibleName(
+      'Équipement : 3 bénédictions de départ, 5 bienfaits. Ouvre la liste',
+    );
+  });
+
+  it('opens the real boon choice with a loadout of 3', async () => {
+    await open("Équipement · 3 · choix d'un bienfait");
+
+    expect(await screen.findByRole('header', { name: 'Choisis un bienfait' })).toBeOnTheScreen();
+    expect(screen.getAllByRole('radio').map((card) => card.props.accessibilityLabel)).toEqual([
+      expect.stringMatching(/^Braise brisante, /),
+      expect.stringMatching(/^Lame juste, /),
+      expect.stringMatching(/^Braise ardente, /),
+    ]);
+    expect(within(screen.getByTestId('ascent-loadout')).getByText('3', hidden)).toBeTruthy();
+  });
+
+  it('opens each ascent in a session of its own', async () => {
+    await open('Équipement · 8 · sorties');
+    await screen.findByTestId('ascent-loadout');
+    await act(async () => {
+      fireEvent.press(screen.getByRole('button', { name: 'Pause' }));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole('button', { name: 'Équipement · 8 · combat' }));
+    });
+
+    expect(opened).toHaveLength(2);
+    expect(opened[0]!.session).not.toBe(opened[1]!.session);
   });
 });
