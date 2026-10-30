@@ -36,6 +36,14 @@ bienfait et des sorties avec des données fixes, que le parcours ne peut pas att
 combat : ses captures (1A, 1B, 1D, 1E, 2B, 2C et 2D) se comparent à la maquette
 `docs/mockups/153-boon-blessing-icons/`.
 
+Le choix d'une bénédiction de départ (`blessing-icons.yaml`, #158) passe par la même planche : il ne
+s'ouvre qu'avec des habitudes faites hier, ce qu'une installation neuve n'a pas. L'entrée
+« Bénédictions · 3 sur 3 » enchaîne les écrans 3A, 3B et 3C sur des données fixes, un toucher par
+écran, puis revient au menu ; « Bénédiction · 1 sur 1 » montre l'écran 3D. Ses captures (3A à 3D)
+se comparent à la même maquette ; sur 3A, le bouton Hâte est au repos, et non enfoncé comme dans la
+maquette. Les sélecteurs des boutons se terminent par `.*`, le `+` des effets étant un caractère de
+regex. Le vrai parcours reste couvert par `tower-pixel-buttons.yaml` (boucle sur `blessing-0`).
+
 Le combat d'essai et son bouton « Combat d'essai », au-dessus de la barre d'onglets du build de
 preview, sont retirés (#121, décision du propriétaire du 28/10/2026) : la barre d'onglets et la liste
 de la Vue Journée ont la même place en preview et en production. `old-trial-battle-link.yaml` vérifie
