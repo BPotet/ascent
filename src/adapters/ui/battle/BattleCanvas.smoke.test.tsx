@@ -271,7 +271,12 @@ describe('BattleScene: the glint and the stars follow the displayed pose', () =>
   /** Dans la fenêtre de 90 ms du reflet double, déjà dans la ruée : l'image `lunge`, pas `ant2`. */
   const NOW = 2_225;
   const geometry = sceneGeometry(390, 440, 2);
-  const { table } = prepareBattleScene().effects;
+  // Préparée avant les tests, jamais à la collecte : un mutant qui fait échouer la préparation des
+  // atlas fait échouer les tests (il est tué), au lieu d'une erreur d'exécution hors du score (#149).
+  let table: ReturnType<typeof prepareBattleScene>['effects']['table'];
+  beforeAll(() => {
+    ({ table } = prepareBattleScene().effects);
+  });
 
   beforeEach(() => {
     buffers = [];

@@ -206,8 +206,14 @@ describe('enemyPose (pxAct, actPose)', () => {
 });
 
 describe('enemyPose with attack poses (#139)', () => {
-  const TWINS = attackMotion('twins');
-  const WARDEN = attackMotion('ossuaryWarden');
+  // Lues avant les tests, jamais à la collecte : un mutant qui fait échouer `attackMotion` fait
+  // échouer les tests (il est tué), au lieu d'une erreur d'exécution hors du score (#149).
+  let TWINS: AttackMotions;
+  let WARDEN: AttackMotions;
+  beforeAll(() => {
+    TWINS = attackMotion('twins');
+    WARDEN = attackMotion('ossuaryWarden');
+  });
   const BOLT = attack('basic', [2_500]);
   const SHOCKWAVE = attack('delayedPerilous', [3_100]);
   const SHINBONES = attack('double', [2_400, 2_820]);
