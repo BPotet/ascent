@@ -78,6 +78,7 @@
     "mutation:score": "node scripts/mutation/score.mjs",
     "commitlint:range": "commitlint --from origin/develop --to HEAD --verbose",
     "secrets": "node scripts/gitleaks.mjs",
+    "app-icon": "node scripts/app-icon/generate.mjs",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm run arch && npm run test:coverage && npm run test:scripts",
     "verify:full": "npm run verify && npm run mutation:domain && npm run mutation"
   },
