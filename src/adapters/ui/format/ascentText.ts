@@ -117,17 +117,9 @@ function blessingEffect({ family, rarity }: StartingBlessing): string {
   }
 }
 
-/** Les deux lignes du bouton d'une bénédiction (#120) : « Hâte · Rare », puis son effet. */
-export function blessingLines(blessing: StartingBlessing): readonly [string, string] {
-  return [
-    `${FAMILY_NAMES[blessing.family]} · ${rarityName(blessing.rarity, 'feminine')}`,
-    blessingEffect(blessing),
-  ];
-}
-
 /** Une bénédiction de départ : « Hâte · Rare · Initiative +2 dans chaque combat ». */
 export function blessingText(blessing: StartingBlessing): string {
-  return blessingLines(blessing).join(' · ');
+  return `${FAMILY_NAMES[blessing.family]} · ${rarityName(blessing.rarity, 'feminine')} · ${blessingEffect(blessing)}`;
 }
 
 /**

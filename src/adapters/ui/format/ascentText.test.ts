@@ -1,7 +1,6 @@
 import {
   blessingCard,
   blessingChip,
-  blessingLines,
   blessingText,
   enemiesText,
   exitLabel,
@@ -88,13 +87,6 @@ describe('gauge, blessing and item texts (#93)', () => {
     expect(blessingText({ family: 'protection', rarity: 'rare' })).toBe(
       'Protection · Rare · Réduction des dégâts +10 points',
     );
-  });
-
-  it('splits a blessing in two lines for its button, family and rarity, then effect (#120)', () => {
-    const blessing = { family: 'haste', rarity: 'rare' } as const;
-
-    expect(blessingLines(blessing)).toEqual(['Hâte · Rare', 'Initiative +2 dans chaque combat']);
-    expect(blessingLines(blessing).join(' · ')).toBe(blessingText(blessing));
   });
 
   it('writes the loadout chip of a blessing: its family, then the rarity in the feminine (#157)', () => {

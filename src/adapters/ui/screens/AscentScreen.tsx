@@ -1,21 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
 import type { Ascent } from '../../../domain/ascent/Ascent';
 import { ITEMS } from '../../../domain/ascent/items';
 import { BoonChoicePanel } from '../battle/BoonChoicePanel';
+import { BlessingChoice } from '../components/BlessingChoice';
 import { ExitChoice } from '../components/ExitChoice';
 import { Screen } from '../components/Screen';
-import {
-  blessingLines,
-  blessingText,
-  floorLine,
-  goldText,
-  itemDescription,
-  itemText,
-  wornText,
-} from '../format/ascentText';
+import { floorLine, goldText, itemDescription, itemText, wornText } from '../format/ascentText';
 import { artPalette } from '../pixelArt/artPalette';
 import { PixelButton } from '../pixelArt/PixelButton';
 import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypography';
@@ -197,28 +190,16 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
   }
 
   if (ascent.blessingOffer !== null) {
-    const rarity = ascent.blessingRarities[0]!;
-    const total = ascent.blessings.length + ascent.blessingRarities.length;
     return (
       <Screen layout="top" background={roles.night} testID="ascent-blessing">
         <Header ascent={ascent} onPause={leave} />
-        <ScrollView contentContainerStyle={styles.exits}>
-          <Text accessibilityRole="header" style={styles.title}>
-            {`Bénédiction ${ascent.blessings.length + 1} sur ${total}`}
-          </Text>
-          <Text style={styles.line}>Choisis-en une. Elle dure toute l&apos;ascension.</Text>
-          {ascent.blessingOffer.map((family, index) => (
-            <PixelButton
-              key={family}
-              label={blessingText({ family, rarity })}
-              text={blessingLines({ family, rarity }).join('\n')}
-              variant="secondary"
-              testID={`blessing-${index}`}
-              onPress={() => session.chooseBlessing(index)}
-              style={styles.blessing}
-            />
-          ))}
-        </ScrollView>
+        <BlessingChoice
+          offer={ascent.blessingOffer}
+          rarity={ascent.blessingRarities[0]!}
+          taken={ascent.blessings}
+          total={ascent.blessings.length + ascent.blessingRarities.length}
+          onChoose={(index) => session.chooseBlessing(index)}
+        />
       </Screen>
     );
   }
@@ -357,7 +338,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   fall: { color: roles.error },
-  exits: { padding: 24, gap: 14 },
   line: { ...pixelTypography.body, color: roles.parchment, textAlign: 'center' },
   gold: {
     fontFamily: pixelFont,
@@ -366,7 +346,6 @@ const styles = StyleSheet.create({
     color: roles.gold,
     textAlign: 'center',
   },
-  blessing: { justifyContent: 'flex-start', paddingVertical: 10 },
   row: { flexDirection: 'row', justifyContent: 'center', gap: 12 },
   half: { flex: 1 },
 });
