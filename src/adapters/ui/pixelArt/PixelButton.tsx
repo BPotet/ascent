@@ -1,4 +1,4 @@
-import { type Ref, useState } from 'react';
+import { type ReactNode, type Ref, useState } from 'react';
 import { Pressable, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { artPalette } from './artPalette';
@@ -47,7 +47,8 @@ const LOOKS = {
 /**
  * Un bouton de l'identité pixel art (`PixelButton`) : cadre cranté, 48 dp de haut au moins, libellé
  * en police de texte, `icon` devant le libellé. Enfoncé, il descend de 2 dp. Désactivé, il est
- * hachuré et annoncé désactivé. `text` remplace le libellé affiché, sans changer le libellé lu.
+ * hachuré et annoncé désactivé. `text` remplace le libellé affiché, sans changer le libellé lu ;
+ * `children` le remplace par un contenu libre (#158), le libellé lu restant `label`.
  * `ref` permet à un écran d'y placer le lecteur d'écran (action par défaut d'une fenêtre).
  */
 export function PixelButton({
@@ -61,6 +62,7 @@ export function PixelButton({
   style,
   testID,
   ref,
+  children,
 }: {
   readonly label: string;
   readonly text?: string;
@@ -72,6 +74,7 @@ export function PixelButton({
   readonly style?: StyleProp<ViewStyle>;
   readonly testID?: string;
   readonly ref?: Ref<View>;
+  readonly children?: ReactNode;
 }) {
   const [pressed, setPressed] = useState(false);
   const look = LOOKS[variant];
@@ -117,7 +120,7 @@ export function PixelButton({
         </>
       )}
       {icon !== undefined && <PixelIcon name={icon} color={textColor} testID="pixel-button-icon" />}
-      <Text style={[pixelTypography.button, { color: textColor }]}>{text}</Text>
+      {children ?? <Text style={[pixelTypography.button, { color: textColor }]}>{text}</Text>}
       {notchedCorners(line).map((corner, index) => (
         <View key={index} pointerEvents="none" style={[styles.corner, corner]} />
       ))}
