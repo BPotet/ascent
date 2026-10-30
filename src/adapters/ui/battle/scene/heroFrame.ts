@@ -15,12 +15,6 @@ export interface HeroLook {
   readonly push: number;
 }
 
-/**
- * L'image du coup de bouclier (#128, avenant à l'ADR 0010 § 7) : la pose `bash` n'est pas encore
- * validée dans l'Atelier ; on montre `parry1`, déjà validée (bouclier levé devant elle, #140). Une
- * story du chemin B remplacera cette seule constante après la validation.
- */
-export const BASH_FRAME: HeroFrame = 'parry1';
 /** L'avance du coup de bouclier, en dp : elle reste à sa place (aller et retour). */
 export const BASH_ADVANCE_DP = 4;
 
@@ -44,7 +38,7 @@ function look(frame: HeroFrame, tier: 0 | 1 = 0, dodge = 0, lunge = 0, push = 0)
  * L'image du héros (`heroFrame`, `pxHeroFrame` de la maquette) pour sa pose `pose`, prise à
  * `since` : parade en deux images (250 ms), touché (300 ms), déséquilibre qui vacille, esquive
  * (300 ms, aller et retour), arme levée pour la frappe en rythme (la lame brille près de l'impact),
- * frappe vers la cible (320 ms), coup de bouclier sur place (400 ms, `BASH_FRAME` tenue). Tombé, il
+ * frappe vers la cible (320 ms), coup de bouclier sur place (400 ms, pose `bash` tenue, #155). Tombé, il
  * garde `hit1` (pose de défaite, à confirmer par l'UX).
  */
 export function heroFrame(
@@ -78,7 +72,7 @@ export function heroFrame(
     );
   }
   if (pose === 'bash' && elapsed < BASH_MS) {
-    return look(BASH_FRAME, 0, 0, 0, Math.sin((Math.PI * elapsed) / BASH_MS));
+    return look('bash', 0, 0, 0, Math.sin((Math.PI * elapsed) / BASH_MS));
   }
   return look(Math.floor(now / 250) % 2 === 1 ? 'idle1' : 'idle0');
 }

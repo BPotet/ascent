@@ -2,10 +2,10 @@ import { ATTACKS, type AttackKind } from '../../../../../domain/battle/attacks';
 import { toRgba, type PixelImage } from '../Sprite';
 import {
   ENEMY_FRAMES,
-  HERO_FRAMES,
   RED_FRAMES,
   attackMotion,
   battleSprite,
+  heroFrames,
   playsRed,
   type BattleCharacter,
   type BattleFrame,
@@ -93,7 +93,12 @@ function attackVariants(character: BattleCharacter): Variant[] {
 function variantsOf(character: BattleCharacter): Variant[] {
   if (isHero(character)) {
     return [
-      ...HERO_FRAMES.map((frame) => ({ frame, tier: 0 as const, red: false, attack: null })),
+      ...heroFrames(character).map((frame) => ({
+        frame,
+        tier: 0 as const,
+        red: false,
+        attack: null,
+      })),
       { frame: 'raise', tier: 1, red: false, attack: null },
       { frame: 'raiseG', tier: 1, red: false, attack: null },
     ];
@@ -159,7 +164,7 @@ export function battleAtlas(character: BattleCharacter): BattleAtlas {
       );
     }
   });
-  const names = isHero(character) ? HERO_FRAMES : ENEMY_FRAMES;
+  const names = isHero(character) ? heroFrames(character) : ENEMY_FRAMES;
   const frames = Object.fromEntries(names.map((name, index) => [name, index]));
   // Les poses d'un coup, numérotées à la suite des images, dans l'ordre de leurs variantes.
   const posed: { readonly frame: BattleFrame; readonly attack: AttackKind | null }[] = [

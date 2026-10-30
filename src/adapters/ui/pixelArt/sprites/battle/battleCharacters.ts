@@ -36,7 +36,10 @@ export type EnemyFrame =
   | 'hurt'
   | 'down';
 
-/** Les images d'une héroïne : repos, garde levée, frappe, parade, esquive, touchée, déséquilibrée. */
+/**
+ * Les images d'une héroïne : repos, garde levée, frappe, parade, esquive, touchée, déséquilibrée,
+ * et le coup de bouclier (`bash`), propre à la Sentinelle (#155).
+ */
 export type HeroFrame =
   | 'idle0'
   | 'idle1'
@@ -51,7 +54,8 @@ export type HeroFrame =
   | 'hit0'
   | 'hit1'
   | 'off0'
-  | 'off1';
+  | 'off1'
+  | 'bash';
 
 export type BattleFrame = EnemyFrame | HeroFrame;
 
@@ -91,6 +95,20 @@ export const HERO_FRAMES: readonly HeroFrame[] = [
   'off0',
   'off1',
 ];
+
+/**
+ * Les poses propres à une héroïne, en plus des 14 poses du héros : le coup de bouclier de la
+ * Sentinelle (#155). Une héroïne future doit y figurer, même sans pose propre.
+ */
+const OWN_HERO_FRAMES = {
+  sentinel: ['bash'],
+  wanderer: [],
+} satisfies Record<HeroKind, readonly HeroFrame[]>;
+
+/** Les poses d'une héroïne (`heroFrames`) : les 14 poses du héros, puis les siennes. */
+export function heroFrames(kind: HeroKind): readonly HeroFrame[] {
+  return [...HERO_FRAMES, ...OWN_HERO_FRAMES[kind]];
+}
 
 /** Les images d'une attaque, les seules qui existent aussi en palette rouge (coup imparable). */
 export const RED_FRAMES: readonly EnemyFrame[] = [
@@ -165,10 +183,6 @@ export function playsRed(kind: EnemyKind): boolean {
   return [...moves, ...phase2Moves].some((move) => ATTACKS[move.attack].perilous);
 }
 
-function isHeroFrame(frame: BattleFrame): frame is HeroFrame {
-  return (HERO_FRAMES as readonly string[]).includes(frame);
-}
-
 function isEnemyFrame(frame: BattleFrame): frame is EnemyFrame {
   return (ENEMY_FRAMES as readonly string[]).includes(frame);
 }
@@ -178,7 +192,7 @@ function isEnemyFrame(frame: BattleFrame): frame is EnemyFrame {
  * complète, sans liseré ni traînée (ADR 0010). Pour un ennemi, dans sa case du combat, peinte avec
  * sa palette rouge pour un coup imparable s'il la joue, et prise dans ses poses d'un coup quand le
  * coup `attack` en a pour cette image (#139). Pour une héroïne, dans la case du héros, sans rouge
- * (#140).
+ * (#140) : une pose qu'elle n'a pas (une image d'ennemi, ou `bash` pour l'Errante) montre `idle0`.
  */
 export function battleSprite(
   character: BattleCharacter,
@@ -186,8 +200,9 @@ export function battleSprite(
   { red = false, attack = null }: CharacterLook = {},
 ): CharacterImage {
   if (isHero(character)) {
-    const animation: FullAnimation<HeroFrame> = HERO_ANIMATIONS[character];
-    return animationSprite(animation, isHeroFrame(frame) ? frame : 'idle0', HERO_CELL);
+    const animation: FullAnimation = HERO_ANIMATIONS[character];
+    const own = (heroFrames(character) as readonly string[]).includes(frame);
+    return animationSprite(animation, own ? frame : 'idle0', HERO_CELL);
   }
   return animationSprite(
     FULL_ANIMATIONS[character],

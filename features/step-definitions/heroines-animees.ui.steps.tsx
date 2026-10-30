@@ -27,6 +27,7 @@ import { atlasRect, battleAtlas } from '../../src/adapters/ui/pixelArt/sprites/b
 import {
   HERO_FRAMES,
   battleSprite,
+  heroFrames,
   type HeroFrame,
 } from '../../src/adapters/ui/pixelArt/sprites/battle/battleCharacters';
 import { AscentScreen } from '../../src/adapters/ui/screens/AscentScreen';
@@ -176,7 +177,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   and(
     "l'image 2.5D légère et l'animation complète de la Sentinelle (sentinel) sont validées dans l'Atelier",
     () => {
-      expect(Object.keys(ANIMATION_OF.sentinel.frames).sort()).toEqual([...HERO_FRAMES].sort());
+      expect(Object.keys(ANIMATION_OF.sentinel.frames).sort()).toEqual(
+        [...heroFrames('sentinel')].sort(),
+      );
       expect(ANIMATION_OF.sentinel.pal).toHaveLength(19);
     },
   );

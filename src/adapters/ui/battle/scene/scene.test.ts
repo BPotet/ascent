@@ -9,7 +9,7 @@ import {
 } from '../../pixelArt/sprites/battle/battleCharacters';
 import type { SceneTimeline } from '../sceneTypes';
 import { FRAME_MS, enemyPose, restPose } from './enemyPose';
-import { BASH_ADVANCE_DP, BASH_FRAME, heroFrame } from './heroFrame';
+import { BASH_ADVANCE_DP, heroFrame } from './heroFrame';
 import {
   bulwarkShards,
   bulwarkShield,
@@ -588,11 +588,11 @@ describe('heroFrame (pxHeroFrame)', () => {
     expect(heroFrame('strike', 0, 320, null)).toMatchObject({ lunge: 0 });
   });
 
-  it('bashes with its shield in place for 400 ms: the validated parry1 pose, 4 dp forward and back (#128)', () => {
-    expect(BASH_FRAME).toBe('parry1');
+  it('bashes with its shield in place for 400 ms: the validated bash pose, 4 dp forward and back (#128, #155)', () => {
     expect(BASH_ADVANCE_DP).toBe(4);
-    expect(heroFrame('bash', 0, 10, null)).toMatchObject({ frame: 'parry1', lunge: 0, dodge: 0 });
-    expect(heroFrame('bash', 0, 200, null).frame).toBe('parry1');
+    expect(heroFrame('bash', 0, 10, null)).toMatchObject({ frame: 'bash', lunge: 0, dodge: 0 });
+    expect(heroFrame('bash', 0, 200, null).frame).toBe('bash');
+    expect(heroFrame('bash', 0, 399, null).frame).toBe('bash');
     expect(heroFrame('bash', 0, 200, null).push).toBeCloseTo(1);
     expect(heroFrame('bash', 0, 100, null).push).toBeCloseTo(Math.SQRT1_2);
     expect(heroFrame('bash', 0, 400, null)).toMatchObject({ push: 0 });
