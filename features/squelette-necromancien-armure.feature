@@ -3,11 +3,11 @@
 # et les étoiles se vérifient sur les fonctions pures de la scène et sur les sprites ; « Objet
 # trouvé », le combat et le lecteur d'écran à travers l'écran de l'ascension (`AscentScreen`).
 
-Fonctionnalité: Le Squelette et le Nécromancien animés, et l'image de l'Armure de chevalier noir
+Fonctionnalité: Le Squelette et le Nécromancien animés, et l'image de l'Armure de chevalier déchu
 
   Contexte:
     Étant donné que l'image et l'animation complète du Squelette (skeleton) et du Nécromancien (necromancer) sont validées dans l'Atelier de l'ascension au 29/10/2026
-    Et que l'image de l'Armure de chevalier noir (blackKnightArmor) est validée dans l'Atelier au 29/10/2026
+    Et que l'image de l'Armure de chevalier déchu (blackKnightArmor) est validée dans l'Atelier au 29/10/2026
     Et que l'animation complète et l'image sont recopiées telles quelles dans le code
 
   Scénario: Le Squelette et le Nécromancien en combat
@@ -51,12 +51,12 @@ Fonctionnalité: Le Squelette et le Nécromancien animés, et l'image de l'Armur
     Alors le reflet part de son œil ou de la pointe de son arme, selon les ancrages de la pose affichée
     Et les étoiles tournent au-dessus de sa tête, selon l'ancrage de la pose affichée
 
-  Scénario: L'image validée de l'Armure de chevalier noir sur « Objet trouvé »
+  Scénario: L'image validée de l'Armure de chevalier déchu sur « Objet trouvé »
     Étant donné un combat gagné
-    Quand l'objet trouvé est l'Armure de chevalier noir
+    Quand l'objet trouvé est l'Armure de chevalier déchu
     Alors l'écran « Objet trouvé » montre son image validée (24 × 24 pixels d'art), à 3 dp par pixel d'art, soit 72 dp
     Et la silhouette provisoire de l'emplacement armure n'apparaît plus
-    Et son nom, ses chiffres et son libellé « Lourde et lente. » ne changent pas
+    Et son nom, ses chiffres et sa description sont ceux de l'Atelier
 
   Scénario: Limite — le Squelette, plus petit que la case du combat
     Étant donné un Squelette en combat
@@ -76,7 +76,7 @@ Fonctionnalité: Le Squelette et le Nécromancien animés, et l'image de l'Armur
     Alors il garde son sprite actuel ou sa silhouette provisoire, comme aujourd'hui
 
   Scénario: Limite — jamais d'échelle fractionnaire
-    Étant donné le Squelette, le Nécromancien ou l'Armure de chevalier noir affiché avec son image validée
+    Étant donné le Squelette, le Nécromancien ou l'Armure de chevalier déchu affiché avec son image validée
     Quand il s'affiche
     Alors il est à 2 dp par pixel d'art en scène, 3 dp sur l'écran « Objet trouvé », jamais à une autre échelle
 
@@ -88,6 +88,6 @@ Fonctionnalité: Le Squelette et le Nécromancien animés, et l'image de l'Armur
 
   Scénario: Limite — lecteur d'écran
     Étant donné que le lecteur d'écran est actif
-    Quand le joueur parcourt un combat contre le Squelette ou le Nécromancien, ou l'écran « Objet trouvé » de l'Armure de chevalier noir
+    Quand le joueur parcourt un combat contre le Squelette ou le Nécromancien, ou l'écran « Objet trouvé » de l'Armure de chevalier déchu
     Alors l'image et ses poses ne sont pas lues : elles sont décoratives
     Et le lecteur d'écran lit toujours le nom, les PV, la garde et l'intention de l'ennemi, ou le nom et les chiffres de l'objet
