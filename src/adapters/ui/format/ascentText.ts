@@ -7,7 +7,7 @@ import {
 import type { Exit } from '../../../domain/ascent/exits';
 import { fatiguePercent, type FateGauge } from '../../../domain/ascent/fateGauge';
 import { ITEMS, type Equipment, type ItemKind, type ItemSlot } from '../../../domain/ascent/items';
-import type { Rarity } from '../../../domain/ascent/rarity';
+import { loadoutChipText, rarityName, type LoadoutChipText } from './rarityText';
 
 /** Les libellés de l'ascension (prototype #91), tirés du glossaire et de la maquette de #88. */
 export const TOWER_TITLE = 'La tour';
@@ -90,13 +90,6 @@ export function gaugeEffects({
   ];
 }
 
-const FEMININE_RARITY: Readonly<Record<Rarity, string>> = {
-  common: 'Commune',
-  rare: 'Rare',
-  epic: 'Épique',
-};
-const RARITY: Readonly<Record<Rarity, string>> = { common: 'Commun', rare: 'Rare', epic: 'Épique' };
-
 const FAMILY_NAMES: Readonly<Record<BlessingFamily, string>> = {
   vigor: 'Vigueur',
   momentum: 'Élan',
@@ -126,7 +119,7 @@ function blessingEffect({ family, rarity }: StartingBlessing): string {
 /** Les deux lignes du bouton d'une bénédiction (#120) : « Hâte · Rare », puis son effet. */
 export function blessingLines(blessing: StartingBlessing): readonly [string, string] {
   return [
-    `${FAMILY_NAMES[blessing.family]} · ${FEMININE_RARITY[blessing.rarity]}`,
+    `${FAMILY_NAMES[blessing.family]} · ${rarityName(blessing.rarity, 'feminine')}`,
     blessingEffect(blessing),
   ];
 }
@@ -134,6 +127,14 @@ export function blessingLines(blessing: StartingBlessing): readonly [string, str
 /** Une bénédiction de départ : « Hâte · Rare · Initiative +2 dans chaque combat ». */
 export function blessingText(blessing: StartingBlessing): string {
   return blessingLines(blessing).join(' · ');
+}
+
+/**
+ * La pastille d'équipement d'une bénédiction de départ : le nom de sa famille, la rareté au
+ * féminin (« Hâte », « ◆◆ Rare », lu « Hâte, Rare ») (#157).
+ */
+export function blessingChip(blessing: StartingBlessing): LoadoutChipText {
+  return loadoutChipText(FAMILY_NAMES[blessing.family], blessing.rarity, 'feminine');
 }
 
 const ITEM_NAMES: Readonly<Record<ItemKind, string>> = {
@@ -190,7 +191,7 @@ export function itemText(item: ItemKind): string {
   return [
     ITEM_NAMES[item],
     SLOT_NAMES[slot],
-    RARITY[rarity],
+    rarityName(rarity),
     ...(effect === null ? [] : [effect]),
     `Initiative ${signed(initiative)}`,
   ].join(' · ');

@@ -1,5 +1,6 @@
 import { BOONS, type BoonFamily, type BoonKind } from '../../../domain/ascent/boons';
 import type { Rarity } from '../../../domain/ascent/rarity';
+import { loadoutChipText, rarityMarks, rarityName, type LoadoutChipText } from './rarityText';
 
 /** Les textes des bienfaits (prototype #92), tirés du glossaire et de la maquette de #88. */
 export const BOON_NAMES: Readonly<Record<BoonKind, string>> = {
@@ -28,16 +29,6 @@ const FAMILY_NAMES: Readonly<Record<BoonFamily, string>> = {
   echo: 'Écho',
 };
 
-/** La rareté d'un bienfait, au masculin. */
-const RARITY_NAMES: Readonly<Record<Rarity, string>> = {
-  common: 'Commun',
-  rare: 'Rare',
-  epic: 'Épique',
-};
-
-/** Les losanges de la rareté : 1, 2 ou 3. */
-const RARITY_MARKS: Readonly<Record<Rarity, string>> = { common: '◆', rare: '◆◆', epic: '◆◆◆' };
-
 /** La carte d'un bienfait : nom, famille et rareté (en mot et en losanges), effet. */
 export interface BoonCard {
   readonly name: string;
@@ -53,11 +44,29 @@ export function boonCard(kind: BoonKind): BoonCard {
   const effect = BOON_EFFECTS[kind];
   return {
     name,
-    tag: `${RARITY_MARKS[rarity]} ${FAMILY_NAMES[family]} · ${RARITY_NAMES[rarity]}`,
+    tag: `${rarityMarks(rarity)} ${FAMILY_NAMES[family]} · ${rarityName(rarity)}`,
     effect,
     rarity,
-    label: `${name}, ${FAMILY_NAMES[family]}, ${RARITY_NAMES[rarity]}. ${effect}`,
+    label: `${name}, ${FAMILY_NAMES[family]}, ${rarityName(rarity)}. ${effect}`,
   };
+}
+
+/** Ce que le lecteur d'écran annonce sur « Bienfait obtenu. » : le bienfait, puis son effet. */
+export function boonObtainedLabel(kind: BoonKind): string {
+  return `Bienfait obtenu : ${boonCard(kind).label}`;
+}
+
+/** La pastille d'équipement d'un bienfait : « Givre persistant », « ◆◆ Rare » (#157). */
+export function boonChip(kind: BoonKind): LoadoutChipText {
+  return loadoutChipText(BOON_NAMES[kind], BOONS[kind].rarity);
+}
+
+/**
+ * La section « Bienfaits » des sorties, lue d'un trait, dans l'ordre où les bienfaits ont été
+ * gagnés : « Bienfaits : Écho parfait, Commun ; Givre persistant, Rare ».
+ */
+export function ownedBoonsLabel(boons: readonly BoonKind[]): string {
+  return `Bienfaits : ${boons.map((kind) => boonChip(kind).label).join(' ; ')}`;
 }
 
 /** Les bienfaits possédés, sous le héros : « Bienfaits : Écho parfait, Givre persistant ». */

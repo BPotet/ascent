@@ -1,4 +1,5 @@
 import {
+  blessingChip,
   blessingLines,
   blessingText,
   enemiesText,
@@ -91,6 +92,22 @@ describe('gauge, blessing and item texts (#93)', () => {
 
     expect(blessingLines(blessing)).toEqual(['Hâte · Rare', 'Initiative +2 dans chaque combat']);
     expect(blessingLines(blessing).join(' · ')).toBe(blessingText(blessing));
+  });
+
+  it('writes the loadout chip of a blessing: its family, then the rarity in the feminine (#157)', () => {
+    expect(blessingChip({ family: 'haste', rarity: 'rare' })).toEqual({
+      name: 'Hâte',
+      rarity: 'rare',
+      rarityLine: '◆◆ Rare',
+      label: 'Hâte, Rare',
+    });
+    expect(blessingChip({ family: 'vigor', rarity: 'common' })).toEqual({
+      name: 'Vigueur',
+      rarity: 'common',
+      rarityLine: '◆ Commune',
+      label: 'Vigueur, Commune',
+    });
+    expect(blessingChip({ family: 'protection', rarity: 'epic' }).rarityLine).toBe('◆◆◆ Épique');
   });
 
   it('names the items, worn or found, with their effect and Initiative', () => {

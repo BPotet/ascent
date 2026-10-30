@@ -1,5 +1,12 @@
 import { BOON_KINDS } from '../../../domain/ascent/boons';
-import { BOON_NAMES, boonCard, ownedBoonsLine } from './boonText';
+import {
+  BOON_NAMES,
+  boonCard,
+  boonChip,
+  boonObtainedLabel,
+  ownedBoonsLabel,
+  ownedBoonsLine,
+} from './boonText';
 
 describe('boonText', () => {
   it('names the 7 boons', () => {
@@ -31,6 +38,32 @@ describe('boonText', () => {
     expect(ownedBoonsLine([])).toBe('Aucun bienfait');
     expect(ownedBoonsLine(['perfectEcho', 'lingeringFrost'])).toBe(
       'Bienfaits : Écho parfait, Givre persistant',
+    );
+  });
+
+  it('writes the loadout chip of a boon: name, then diamonds and rarity (#157)', () => {
+    expect(boonChip('lingeringFrost')).toEqual({
+      name: 'Givre persistant',
+      rarity: 'rare',
+      rarityLine: '◆◆ Rare',
+      label: 'Givre persistant, Rare',
+    });
+    expect(boonChip('perfectEcho').rarityLine).toBe('◆ Commun');
+    expect(boonChip('emberHeart').rarityLine).toBe('◆◆◆ Épique');
+  });
+
+  it('reads the owned boons in one sentence, in the order they were won (#157)', () => {
+    expect(ownedBoonsLabel(['perfectEcho', 'lingeringFrost'])).toBe(
+      'Bienfaits : Écho parfait, Commun ; Givre persistant, Rare',
+    );
+    expect(ownedBoonsLabel(['lingeringFrost', 'perfectEcho'])).toBe(
+      'Bienfaits : Givre persistant, Rare ; Écho parfait, Commun',
+    );
+  });
+
+  it('announces the boon obtained, then its effect (#157)', () => {
+    expect(boonObtainedLabel('lingeringFrost')).toBe(
+      'Bienfait obtenu : Givre persistant, Givre, Rare. Un ennemi étourdi se relève avec la moitié de sa garde seulement.',
     );
   });
 });
