@@ -5,15 +5,20 @@
  * multiplient ensuite en un seul calcul, arrondi une seule fois (P18, P21).
  */
 export interface HeroModifiers {
-  /** Un ajout fixe à l'Attaque, avant les pourcentages (Tranchant, Armure de chevalier noir). */
+  /** Un ajout fixe à l'Attaque, porté par les combats sauvegardés avant #152. */
   readonly attackFlat: number;
-  /** Les pourcentages de l'Attaque. */
+  /**
+   * Le bonus de la caractéristique Attaque, en points de % additionnés (Tranchant, Armure de
+   * chevalier déchu, #152), appliqué par `heroAttack`. À ne pas confondre avec `attackPercents`.
+   */
+  readonly attackBonusPercent: number;
+  /** Les multiplicateurs des dégâts de l'Attaque, en % (Marteau 80), passés à `scaleDamage`. */
   readonly attackPercents: readonly number[];
   /** Les pourcentages du Brise-garde (Hache rouillée 110, Marteau 160). */
   readonly guardDamagePercents: readonly number[];
   /** Les bonus du multiplicateur de frappe parfaite, en points de % (Cuir 20). */
   readonly perfectStrikeBonusPercents: readonly number[];
-  /** Les points de réduction des dégâts, sous le plafond de 40 % (Protection, Mailles, Armure de chevalier noir). */
+  /** Les points de réduction des dégâts, sous le plafond de 40 % (Protection, Mailles, Armure de chevalier déchu). */
   readonly damageReductionPoints: number;
   /** Le bonus d'Initiative : arme, armure, accessoire et Hâte (P15). */
   readonly initiative: number;
@@ -33,6 +38,7 @@ export interface HeroModifiers {
 
 export const NO_MODIFIERS: HeroModifiers = {
   attackFlat: 0,
+  attackBonusPercent: 0,
   attackPercents: [],
   guardDamagePercents: [],
   perfectStrikeBonusPercents: [],
@@ -56,6 +62,7 @@ export function combineModifiers(...all: readonly Partial<HeroModifiers>[]): Her
   return all.reduce<HeroModifiers>(
     (sum, each) => ({
       attackFlat: sum.attackFlat + (each.attackFlat ?? 0),
+      attackBonusPercent: sum.attackBonusPercent + (each.attackBonusPercent ?? 0),
       attackPercents: [...sum.attackPercents, ...(each.attackPercents ?? [])],
       guardDamagePercents: [...sum.guardDamagePercents, ...(each.guardDamagePercents ?? [])],
       perfectStrikeBonusPercents: [
@@ -76,4 +83,14 @@ export function combineModifiers(...all: readonly Partial<HeroModifiers>[]): Her
     }),
     NO_MODIFIERS,
   );
+}
+
+/**
+ * L'Attaque du héros (#152) : les % d'Attaque additionnés s'appliquent à l'Attaque de base en un seul
+ * calcul, arrondis au plus proche, au moins +1 ; puis l'ajout fixe d'un combat sauvegardé.
+ */
+export function heroAttack(attackPower: number, modifiers: HeroModifiers): number {
+  const bonus = modifiers.attackBonusPercent;
+  const fromPercent = bonus > 0 ? Math.max(1, Math.round((attackPower * bonus) / 100)) : 0;
+  return attackPower + fromPercent + modifiers.attackFlat;
 }

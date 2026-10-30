@@ -92,6 +92,10 @@ describe('the hero modifiers in battle (P15, P18, P21, P25, P26)', () => {
 
   it('applies the Axe to the Guard damage and the Edge to the Attack', () => {
     expect(strike(start({ guardDamagePercents: [130] }).battle, false).guardDamage).toBe(15);
+    expect(strike(start({ attackBonusPercent: 20 }).battle, false).damage).toBe(12);
+  });
+
+  it('finishes a battle saved before #152 with its flat Attack addition', () => {
     expect(strike(start({ attackFlat: 2 }).battle, false).damage).toBe(12);
   });
 
@@ -107,7 +111,7 @@ describe('the hero modifiers in battle (P15, P18, P21, P25, P26)', () => {
     expect(suffered({})).toBe(9);
     expect(suffered({ damageReductionPoints: 5 })).toBe(8);
     expect(suffered({ damageReductionPoints: 50 })).toBe(6);
-    // Armure de chevalier noir 20 + Protection Épique 15 + Peau de givre 10 : 45 points, 40 %.
+    // Armure de chevalier déchu 20 + Protection Épique 15 + Peau de givre 10 : 45 points, 40 %.
     expect(suffered({ damageReductionPoints: 20 + 15 + 10 })).toBe(6);
   });
 
