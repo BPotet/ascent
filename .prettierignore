@@ -11,3 +11,5 @@ docs/mockups
 docs/game-design
 # La documentation Markdown est rédigée à la main (tableaux, français) : Prettier ne la reformate pas.
 *.md
+# Grille figée de l'icône de l'application (#166) : son sha256 est vérifié, Prettier ne la reformate pas.
+scripts/app-icon/A.json

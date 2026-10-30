@@ -80,6 +80,9 @@
 | **Squelette de chargement** (`PixelSkeleton`) | Les blocs au pixel d'art qui réservent la place de ce qui charge (lignes, cartes, cases, jours), pour que rien ne saute à l'affichage. Ils clignotent par paliers, et restent fixes en mouvement réduit. Décoratifs. Ne pas confondre avec l'ennemi **Squelette** (`Skeleton`). | Défini |
 | **Panneau** (`PixelSheet`) | Le cadre d'un panneau du bas (« Nouvelle habitude », « Modifier l'habitude », Détail du jour) : la surface, les coins hauts crantés et la poignée. | Défini |
 | **Option** (`PixelChoice`) | Une option d'un choix unique (difficulté, objectif hebdomadaire) : choisie, elle a un cadre d'or, une coche et un texte en gras, jamais la couleur seule. | Défini |
+| **Icône de l'application** (`AppIcon`) | L'image d'Ascent sur l'écran d'accueil du téléphone (icône adaptative Android : avant-plan, fond et monochrome), reprise à l'écran de démarrage et en favicon web. Proposition A, la tour sous la nuit (#166, ADR 0011). | Défini |
+| **Écran de démarrage** (`SplashScreen`) | L'écran affiché pendant le lancement de l'app, avec l'image de l'icône seule sur le fond de l'app (`#0F1420`). Ne pas confondre avec l'écran de chargement que l'app affiche ensuite, la grande tour (`StartupLoadingScreen`). | Défini |
+| **Grille figée** | L'export texte d'une image validée par le propriétaire (un caractère par pixel d'art, palette d'art en tête), versé dans le dépôt avec son sha256 ; le code en tire les images sans retouche. Exemple : `scripts/app-icon/A-export.txt`. | Défini |
 
 > Le mot « cran » a trois sens : le **cadre cranté** (`PixelFrame`), les **crans de la semaine** (`WeekNotches`) et le ciel du jour qui s'éclaire « d'un cran » (`DaySky.light`). Les identifiants les séparent.
 
