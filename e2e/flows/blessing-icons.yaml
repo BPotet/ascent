@@ -1,0 +1,70 @@
+# Story #158 : les icônes des bénédictions de départ dans leur choix (chemin A).
+# Le choix d'une bénédiction ne s'ouvre qu'avec des habitudes faites hier, ce qu'une installation
+# neuve n'a pas. Le parcours passe donc par la planche des icônes, outil du build de preview ouvert
+# par le lien profond ascent://preview/icon-board (#157) : elle rend le vrai choix d'une bénédiction
+# avec des données fixes, sans rien changer pour le joueur. Le vrai parcours reste couvert par
+# `tower-pixel-buttons.yaml` (boucle sur `blessing-0`).
+# Captures à comparer à la maquette `docs/mockups/153-boon-blessing-icons/` : 3A, 3B, 3C et 3D. La
+# maquette montre Hâte enfoncé sur 3A : la capture montre le bouton au repos.
+# Dans les sélecteurs, le `+` des effets est un caractère de regex : ils se terminent par `.*`.
+appId: com.bpotet.ascent
+name: Les icônes des bénédictions de départ
+tags:
+  - story-158
+---
+- runFlow: ../subflows/launch-fresh.yaml
+
+- openLink: ascent://preview/icon-board
+- extendedWaitUntil:
+    visible: 'Planche des icônes'
+    timeout: 15000
+
+# 3A : Bénédiction 1 sur 3, rareté Rare, aucune prise.
+- tapOn: 'Bénédictions · 3 sur 3'
+- extendedWaitUntil:
+    visible: 'Bénédiction 1 sur 3'
+    timeout: 10000
+- assertVisible: 'Hâte · Rare · .*'
+- assertVisible: 'Vigueur · Rare · .*'
+- assertVisible: 'Tranchant · Rare · .*'
+- assertNotVisible: 'Déjà choisie.*'
+- takeScreenshot: blessing-icons-3a
+
+# 3B : Bénédiction 2 sur 3, rareté Commune, la Hâte prise en pastille, un seul toucher.
+- tapOn: 'Hâte · Rare · .*'
+- extendedWaitUntil:
+    visible: 'Bénédiction 2 sur 3'
+    timeout: 10000
+- assertVisible: 'Déjà choisie, 1 sur 3'
+- assertVisible: 'Bénédictions de départ : Hâte, Rare'
+- assertVisible: 'Élan · Commune · .*'
+- takeScreenshot: blessing-icons-3b
+
+# 3C : Bénédiction 3 sur 3, rareté Épique, deux prises de raretés différentes.
+- tapOn: 'Vigueur · Commune · .*'
+- extendedWaitUntil:
+    visible: 'Bénédiction 3 sur 3'
+    timeout: 10000
+- assertVisible: 'Déjà choisies, 2 sur 3'
+- assertVisible: 'Bénédictions de départ : Hâte, Rare ; Vigueur, Commune'
+- assertVisible: 'Élan · Épique · .*'
+- takeScreenshot: blessing-icons-3c
+
+# Après la dernière, retour au menu de la planche.
+- tapOn: 'Élan · Épique · .*'
+- extendedWaitUntil:
+    visible: 'Planche des icônes'
+    timeout: 10000
+
+# 3D : Bénédiction 1 sur 1, une seule bénédiction, aucune prise.
+- tapOn: 'Bénédiction · 1 sur 1'
+- extendedWaitUntil:
+    visible: 'Bénédiction 1 sur 1'
+    timeout: 10000
+- assertVisible: 'Élan · Commune · .*'
+- assertVisible: 'Vigueur · Commune · .*'
+- assertVisible: 'Protection · Commune · .*'
+- assertNotVisible: 'Déjà choisie.*'
+- takeScreenshot: blessing-icons-3d
+- tapOn: 'Retour'
+- assertVisible: 'Planche des icônes'

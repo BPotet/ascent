@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import type { BlessingFamily, StartingBlessing } from '../../../domain/ascent/blessings';
 import type { BoonKind } from '../../../domain/ascent/boons';
 import type { Exit } from '../../../domain/ascent/exits';
+import type { Rarity } from '../../../domain/ascent/rarity';
 import { BoonChoicePanel } from '../battle/BoonChoicePanel';
+import { BlessingChoice } from '../components/BlessingChoice';
 import { ExitChoice } from '../components/ExitChoice';
 import { Screen } from '../components/Screen';
 import { artPalette } from '../pixelArt/artPalette';
@@ -13,13 +16,15 @@ import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypograph
 const { roles } = artPalette;
 
 /** Une planche : un écran de la maquette #153, rendu avec les vrais composants et des données fixes. */
-type Board = 'boons' | 'noBoon' | 'twoBoons' | 'lastDoor';
+type Board = 'boons' | 'noBoon' | 'twoBoons' | 'lastDoor' | 'blessings' | 'oneBlessing';
 
 const ENTRIES: readonly (readonly [Board, string])[] = [
   ['boons', "Choix d'un bienfait"],
   ['noBoon', 'Sorties · aucun bienfait'],
   ['twoBoons', 'Sorties · deux bienfaits'],
   ['lastDoor', 'Dernière porte · 5 bienfaits'],
+  ['blessings', 'Bénédictions · 3 sur 3'],
+  ['oneBlessing', 'Bénédiction · 1 sur 1'],
 ];
 
 // Stryker disable all: données fixes d'un outil du build de preview.
@@ -30,7 +35,10 @@ const DOORS: readonly Exit[] = [
   { kind: 'campfire', groupSize: null },
 ];
 const EXITS: Readonly<
-  Record<Exclude<Board, 'boons'>, { boons: readonly BoonKind[]; exits: readonly Exit[] }>
+  Record<
+    Exclude<Board, 'boons' | 'blessings' | 'oneBlessing'>,
+    { boons: readonly BoonKind[]; exits: readonly Exit[] }
+  >
 > = {
   noBoon: { boons: [], exits: DOORS },
   twoBoons: { boons: ['perfectEcho', 'lingeringFrost'], exits: DOORS },
@@ -39,16 +47,49 @@ const EXITS: Readonly<
     exits: [{ kind: 'boss', groupSize: null }],
   },
 };
+
+/** Un écran du choix d'une bénédiction (#158) : l'offre, sa rareté, les prises, le total. */
+interface BlessingStep {
+  readonly offer: readonly BlessingFamily[];
+  readonly rarity: Rarity;
+  readonly taken: readonly StartingBlessing[];
+  readonly total: number;
+}
+const HASTE: StartingBlessing = { family: 'haste', rarity: 'rare' };
+/** Les écrans 3A, 3B et 3C, enchaînés : les prises sont fixes, pas le bouton touché. */
+const BLESSING_STEPS: readonly BlessingStep[] = [
+  { offer: ['haste', 'vigor', 'edge'], rarity: 'rare', taken: [], total: 3 },
+  { offer: ['momentum', 'protection', 'vigor'], rarity: 'common', taken: [HASTE], total: 3 },
+  {
+    offer: ['momentum', 'edge', 'protection'],
+    rarity: 'epic',
+    taken: [HASTE, { family: 'vigor', rarity: 'common' }],
+    total: 3,
+  },
+];
+/** L'écran 3D : une seule bénédiction. */
+const ONE_BLESSING: BlessingStep = {
+  offer: ['momentum', 'vigor', 'protection'],
+  rarity: 'common',
+  taken: [],
+  total: 1,
+};
 // Stryker restore all
 
 /**
  * La planche des icônes (`IconBoard`, voir `docs/glossary.md`), outil du build de preview (#157) :
- * les écrans du choix d'un bienfait et des sorties, rendus avec les vrais composants et des
- * données fixes, pour les captures end-to-end comparées à la maquette (aucun combat à gagner).
+ * les écrans du choix d'un bienfait, des sorties et du choix d'une bénédiction de départ (#158),
+ * rendus avec les vrais composants et des données fixes, pour les captures end-to-end comparées à
+ * la maquette (aucun combat à gagner, aucune habitude faite hier).
  */
 export function IconBoardScreen({ onClose }: { readonly onClose: () => void }) {
   const [board, setBoard] = useState<Board | null>(null);
+  const [step, setStep] = useState(0);
   const back = () => setBoard(null);
+  const open = (entry: Board) => {
+    setStep(0);
+    setBoard(entry);
+  };
 
   if (board === null) {
     return (
@@ -63,7 +104,7 @@ export function IconBoardScreen({ onClose }: { readonly onClose: () => void }) {
               key={entry}
               label={label}
               variant="secondary"
-              onPress={() => setBoard(entry)}
+              onPress={() => open(entry)}
             />
           ))}
           <PixelButton label="Fermer" onPress={onClose} />
@@ -84,6 +125,14 @@ export function IconBoardScreen({ onClose }: { readonly onClose: () => void }) {
           {gained}
           <BoonChoicePanel offer={OFFER} onChoose={back} />
         </>
+      ) : board === 'blessings' ? (
+        <BlessingChoice
+          key={step}
+          {...BLESSING_STEPS[step]!}
+          onChoose={() => (step + 1 < BLESSING_STEPS.length ? setStep(step + 1) : back())}
+        />
+      ) : board === 'oneBlessing' ? (
+        <BlessingChoice {...ONE_BLESSING} onChoose={back} />
       ) : (
         <ExitChoice {...EXITS[board]} banner={gained} onChoose={back} />
       )}
