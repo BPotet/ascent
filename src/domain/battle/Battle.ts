@@ -42,7 +42,7 @@ import {
   restoreGuard,
   type Stunned,
 } from './guard';
-import { NO_MODIFIERS, combineModifiers, type HeroModifiers } from './heroModifiers';
+import { NO_MODIFIERS, combineModifiers, heroAttack, type HeroModifiers } from './heroModifiers';
 import { heroInitiative } from './initiative';
 import { drawIntent, raisedHp, type GuardIntent, type Intent, type RaiseIntent } from './intents';
 import {
@@ -1048,7 +1048,7 @@ function counterAttack(battle: Battle, events: Events): Battle {
   const hero = heroProfile(battle);
   const modifiers = heroModifiers(battle);
   const input = {
-    attackPower: hero.attackPower + modifiers.attackFlat,
+    attackPower: heroAttack(hero.attackPower, modifiers),
     guardDamage: hero.guardDamage,
     counterPercent: hero.counterPercent,
     stunned: battle.enemies[step.enemy]!.stun !== null,
@@ -1283,7 +1283,7 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
   const judgement = phase.press?.judgement ?? null;
   const modifiers = heroModifiers(battle);
   const blow = strikeBlow({
-    attackPower: hero.attackPower + modifiers.attackFlat,
+    attackPower: heroAttack(hero.attackPower, modifiers),
     guardDamage: hero.guardDamage,
     multiplier: strikeMultiplier(judgement, modifiers.perfectStrikeBonusPercents),
     stunned: battle.enemies[phase.enemy]!.stun !== null,

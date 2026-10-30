@@ -2,7 +2,7 @@
  * @jest-environment ./test/setup/skiaEnvironment.js
  */
 /*
- * Scénarios de « Le Squelette et le Nécromancien animés, et l'image de l'Armure de chevalier noir »
+ * Scénarios de « Le Squelette et le Nécromancien animés, et l'image de l'Armure de chevalier déchu »
  * (#137, chemin B). Correspondance, sur le modèle de #119 :
  * - « s'affiche avec son image validée », « joue les poses », « centrée et calée en bas » : la
  *   pose que la scène choisit à chaque instant (`enemyPose` sur une action construite ici,
@@ -304,7 +304,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   );
 
   and(
-    "l'image de l'Armure de chevalier noir (blackKnightArmor) est validée dans l'Atelier au 29/10/2026",
+    "l'image de l'Armure de chevalier déchu (blackKnightArmor) est validée dans l'Atelier au 29/10/2026",
     () => {
       expect(ITEM_IMAGES.blackKnightArmor).toBe(BLACK_KNIGHT_ARMOR_IMAGE);
     },
@@ -523,7 +523,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   // --- « Objet trouvé » ---
 
-  when("l'objet trouvé est l'Armure de chevalier noir", async () => {
+  when("l'objet trouvé est l'Armure de chevalier déchu", async () => {
     await showArmor();
   });
 
@@ -542,13 +542,17 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     expect(screen.queryByTestId('item-silhouette', { includeHiddenElements: true })).toBeNull();
   });
 
-  and('son nom, ses chiffres et son libellé « Lourde et lente. » ne changent pas', () => {
+  and("son nom, ses chiffres et sa description sont ceux de l'Atelier", () => {
     expect(
       screen.getByText(
-        'Armure de chevalier noir · Armure · Rare · Réduction des dégâts +20 points, Attaque +1 · Initiative −2',
+        'Armure de chevalier déchu · Armure · Rare · Réduction des dégâts +20 points, Attaque +5 % · Initiative −2',
       ),
     ).toBeOnTheScreen();
-    expect(screen.getByText('Lourde et lente.')).toBeOnTheScreen();
+    expect(
+      screen.getByText(
+        "L'armure d'un chevalier déchu. Trouvée dans une salle jadis emplie d'écuyers.",
+      ),
+    ).toBeOnTheScreen();
   });
 
   // --- Le Squelette dans la case du combat ---
@@ -652,7 +656,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   // --- Jamais d'échelle fractionnaire ---
 
   given(
-    "le Squelette, le Nécromancien ou l'Armure de chevalier noir affiché avec son image validée",
+    "le Squelette, le Nécromancien ou l'Armure de chevalier déchu affiché avec son image validée",
     () => undefined,
   );
 
@@ -711,7 +715,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   given("le lecteur d'écran est actif", () => undefined);
 
   when(
-    "le joueur parcourt un combat contre le Squelette ou le Nécromancien, ou l'écran « Objet trouvé » de l'Armure de chevalier noir",
+    "le joueur parcourt un combat contre le Squelette ou le Nécromancien, ou l'écran « Objet trouvé » de l'Armure de chevalier déchu",
     async () => {
       await showBattle(ANIMATED);
       world.read.hidden.push(

@@ -84,11 +84,6 @@ export function drawBlessingOffer(
   return { value: offer, random: state };
 }
 
-/** L'Attaque avec Tranchant : arrondie à l'entier le plus proche, au moins +1. */
-export function edgeAttack(base: number, rarity: Rarity): number {
-  return base + Math.max(1, Math.round((base * BLESSING_EFFECTS.edge[rarity]) / 100));
-}
-
 /** Les PV max : base × (1 + Vigueur) × (1 − fatigue), arrondis une fois à l'entier inférieur. */
 export function heroMaxHp(base: number, vigor: number, fatigue: number): number {
   return Math.floor((base * (100 + vigor) * (100 - fatigue)) / 10_000);
@@ -104,16 +99,18 @@ export function vigorPercent(blessings: readonly StartingBlessing[]): number {
   return effectOf(blessings, 'vigor');
 }
 
-/** Ce que les bénédictions changent au héros dans un combat. */
+/**
+ * Ce que les bénédictions changent au héros dans un combat. Tranchant donne un bonus d'Attaque en %,
+ * additionné à celui des objets avant l'arrondi (`heroAttack`, #152).
+ */
 export function blessingModifiers(
   blessings: readonly StartingBlessing[],
-  { firstBattle, attackPower }: { readonly firstBattle: boolean; readonly attackPower: number },
+  { firstBattle }: { readonly firstBattle: boolean },
 ): Partial<HeroModifiers> {
-  const edge = blessings.find((each) => each.family === 'edge');
   const momentum = blessings.find((each) => each.family === 'momentum');
   const everyBattle = momentum !== undefined && (momentum.rarity !== 'common' || firstBattle);
   return {
-    attackFlat: edge === undefined ? 0 : edgeAttack(attackPower, edge.rarity) - attackPower,
+    attackBonusPercent: effectOf(blessings, 'edge'),
     damageReductionPoints: effectOf(blessings, 'protection'),
     initiative: effectOf(blessings, 'haste'),
     startingMomentum: everyBattle ? effectOf(blessings, 'momentum') : 0,

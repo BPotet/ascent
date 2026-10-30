@@ -146,3 +146,11 @@ Les données sont exclues de la mutation des écrans (`stryker.ui.config.mjs`, i
 la conversion. Le script de recopie, non versionné, écrit `// Stryker disable all` en première ligne
 de chaque fichier de données : un test (`scripts/mutation/config.test.mjs`) fait échouer la CI
 sinon, car l'exclusion cacherait alors des mutants exécutables.
+
+## Avenant du 30/10/2026 (#152) : le nom de code d'un objet est stable
+
+Le nom de code d'un objet (`ItemKind`) est un **identifiant de sauvegarde** : l'ascension le garde
+dans `equipment` et `foundItem` (`ascent.current`, `SAVE_VERSION = 1`). Seul son **nom affiché**
+suit l'Atelier. Quand le Codex en déduit un autre d'un nouveau nom (`armureDeChevalierDechu` pour
+l'Armure de chevalier déchu), le jeu garde l'ancien (`blackKnightArmor`), et l'Atelier est réaligné
+sur le jeu. Le nom de code ne change qu'avec une migration de sauvegarde, sur une story dédiée.

@@ -251,7 +251,7 @@ describe('AscentScreen with blessings and found items (#93)', () => {
     expect(screen.getByText('Arbalète · Arme · Rare · Initiative +1')).toBeOnTheScreen();
   });
 
-  it('shows the validated image of the Black knight armor, with its line and its numbers (#137)', async () => {
+  it('shows the validated image of the Fallen knight armor, with its description and its numbers (#137, #152)', async () => {
     await show({
       ...between(startAscent(42), [{ kind: 'combat', groupSize: 2 }]),
       foundItem: 'blackKnightArmor',
@@ -263,10 +263,14 @@ describe('AscentScreen with blessings and found items (#93)', () => {
     expect(image).toHaveProp('pixelWidth', 24);
     expect(image).toHaveProp('pixelHeight', 24);
     expect(screen.queryByTestId('item-silhouette', { includeHiddenElements: true })).toBeNull();
-    expect(screen.getByText('Lourde et lente.')).toBeOnTheScreen();
     expect(
       screen.getByText(
-        'Armure de chevalier noir · Armure · Rare · Réduction des dégâts +20 points, Attaque +1 · Initiative −2',
+        "L'armure d'un chevalier déchu. Trouvée dans une salle jadis emplie d'écuyers.",
+      ),
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByText(
+        'Armure de chevalier déchu · Armure · Rare · Réduction des dégâts +20 points, Attaque +5 % · Initiative −2',
       ),
     ).toBeOnTheScreen();
     expect(screen.getByText('Tu portes : Cuirasse cabossée · Initiative 0')).toBeOnTheScreen();
@@ -287,7 +291,11 @@ describe('AscentScreen with blessings and found items (#93)', () => {
         'item-silhouette-armor',
       );
       expect(screen.queryByTestId('item-image', { includeHiddenElements: true })).toBeNull();
-      expect(screen.getByText('Lourde et lente.')).toBeOnTheScreen();
+      expect(
+        screen.getByText(
+          "L'armure d'un chevalier déchu. Trouvée dans une salle jadis emplie d'écuyers.",
+        ),
+      ).toBeOnTheScreen();
     } finally {
       images.blackKnightArmor = armor;
     }

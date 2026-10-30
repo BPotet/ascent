@@ -5,7 +5,6 @@ import {
   blessingModifiers,
   blessingRarities,
   drawBlessingOffer,
-  edgeAttack,
   heroMaxHp,
   vigorPercent,
 } from './blessings';
@@ -67,13 +66,14 @@ describe('starting blessings (P25)', () => {
     expect(BLESSING_FAMILIES).toHaveLength(5);
   });
 
-  it('rounds the Edge Attack to the nearest, at least +1', () => {
+  it('gives the Edge as an Attack bonus in %, added to the items before rounding (#152)', () => {
     expect(
-      [10, 10, 10].map((base, i) => edgeAttack(base, (['common', 'rare', 'epic'] as const)[i]!)),
-    ).toEqual([11, 12, 13]);
-    expect(edgeAttack(6, 'common')).toBe(7);
-    expect(edgeAttack(6, 'rare')).toBe(7);
-    expect(edgeAttack(6, 'epic')).toBe(8);
+      (['common', 'rare', 'epic'] as const).map(
+        (rarity) =>
+          blessingModifiers([{ family: 'edge', rarity }], { firstBattle: false })
+            .attackBonusPercent,
+      ),
+    ).toEqual([10, 20, 30]);
   });
 });
 
@@ -101,13 +101,13 @@ describe('the battle modifiers of the blessings', () => {
     BLESSING_FAMILIES.map((family) => ({ family, rarity }));
 
   it('turns Edge, Protection, Haste and Momentum into modifiers', () => {
-    expect(blessingModifiers(all('rare'), { firstBattle: false, attackPower: 10 })).toMatchObject({
-      attackFlat: 2,
+    expect(blessingModifiers(all('rare'), { firstBattle: false })).toMatchObject({
+      attackBonusPercent: 20,
       damageReductionPoints: 10,
       initiative: 2,
       startingMomentum: 1,
     });
-    expect(blessingModifiers(all('epic'), { firstBattle: false, attackPower: 10 })).toMatchObject({
+    expect(blessingModifiers(all('epic'), { firstBattle: false })).toMatchObject({
       startingMomentum: 2,
     });
     expect(
@@ -115,15 +115,14 @@ describe('the battle modifiers of the blessings', () => {
         (rarity) =>
           blessingModifiers([{ family: 'protection', rarity }], {
             firstBattle: false,
-            attackPower: 10,
           }).damageReductionPoints,
       ),
     ).toEqual([5, 10, 15]);
   });
 
   it('changes nothing without blessings', () => {
-    expect(blessingModifiers([], { firstBattle: true, attackPower: 10 })).toEqual({
-      attackFlat: 0,
+    expect(blessingModifiers([], { firstBattle: true })).toEqual({
+      attackBonusPercent: 0,
       damageReductionPoints: 0,
       initiative: 0,
       startingMomentum: 0,
@@ -131,11 +130,7 @@ describe('the battle modifiers of the blessings', () => {
   });
 
   it('gives the Common Momentum to the first battle only', () => {
-    expect(
-      blessingModifiers(all('common'), { firstBattle: true, attackPower: 10 }).startingMomentum,
-    ).toBe(1);
-    expect(
-      blessingModifiers(all('common'), { firstBattle: false, attackPower: 10 }).startingMomentum,
-    ).toBe(0);
+    expect(blessingModifiers(all('common'), { firstBattle: true }).startingMomentum).toBe(1);
+    expect(blessingModifiers(all('common'), { firstBattle: false }).startingMomentum).toBe(0);
   });
 });
