@@ -1,4 +1,5 @@
 import {
+  blessingCard,
   blessingChip,
   blessingLines,
   blessingText,
@@ -11,6 +12,8 @@ import {
   goldText,
   itemDescription,
   itemText,
+  startingBlessingsLabel,
+  takenBlessingsHeading,
   wornText,
 } from './ascentText';
 
@@ -108,6 +111,48 @@ describe('gauge, blessing and item texts (#93)', () => {
       label: 'Vigueur, Commune',
     });
     expect(blessingChip({ family: 'protection', rarity: 'epic' }).rarityLine).toBe('◆◆◆ Épique');
+  });
+
+  it('writes the button of a blessing: family, rarity on its own line in the feminine, effect (#158)', () => {
+    expect(blessingCard({ family: 'haste', rarity: 'rare' })).toEqual({
+      name: 'Hâte',
+      rarity: 'rare',
+      rarityLine: '◆◆ Rare',
+      effect: 'Initiative +2 dans chaque combat',
+      label: 'Hâte · Rare · Initiative +2 dans chaque combat',
+    });
+    expect(blessingCard({ family: 'vigor', rarity: 'common' })).toMatchObject({
+      name: 'Vigueur',
+      rarityLine: '◆ Commune',
+      effect: 'PV max +6 %',
+    });
+    expect(blessingCard({ family: 'momentum', rarity: 'epic' }).rarityLine).toBe('◆◆◆ Épique');
+  });
+
+  it('reads the button of a blessing as before (#158)', () => {
+    for (const blessing of [
+      { family: 'edge', rarity: 'common' },
+      { family: 'protection', rarity: 'epic' },
+    ] as const) {
+      expect(blessingCard(blessing).label).toBe(blessingText(blessing));
+    }
+  });
+
+  it('heads the blessings already chosen in the singular, then the plural (#158)', () => {
+    expect(takenBlessingsHeading(1)).toBe('Déjà choisie');
+    expect(takenBlessingsHeading(2)).toBe('Déjà choisies');
+  });
+
+  it('reads the starting blessings in one sentence, in the order chosen (#158)', () => {
+    expect(startingBlessingsLabel([{ family: 'haste', rarity: 'rare' }])).toBe(
+      'Bénédictions de départ : Hâte, Rare',
+    );
+    expect(
+      startingBlessingsLabel([
+        { family: 'haste', rarity: 'rare' },
+        { family: 'vigor', rarity: 'common' },
+      ]),
+    ).toBe('Bénédictions de départ : Hâte, Rare ; Vigueur, Commune');
   });
 
   it('names the items, worn or found, with their effect and Initiative', () => {
