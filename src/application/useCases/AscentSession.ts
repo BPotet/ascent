@@ -39,6 +39,7 @@ const SAVED_ON: ReadonlySet<BattleEvent['type']> = new Set([
   'guardRaised',
   'allyRaised',
   'counterAttacked',
+  'bulwarkCountered',
   'reinforcementEntered',
   'heroPhaseStarted',
   'stepInStarted',

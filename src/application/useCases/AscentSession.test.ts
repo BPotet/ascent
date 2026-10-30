@@ -194,6 +194,52 @@ describe('AscentSession', () => {
     expect(resumedBattle.current()!.battle.enemies[0]).toMatchObject({ selfRevives: 1 });
   });
 
+  it('saves after the Bulwark riposte, with the HP it took (#128)', async () => {
+    const { session, store, clock } = setUp();
+    const { battle: initial } = startBattle({
+      seed: 3,
+      defenseHint: false,
+      at: 0,
+      heroHp: 49,
+      enemies: ['ghoul'],
+    });
+    // La Goule a frappé : l'impact a usé le Rempart, la riposte est programmée.
+    const battle: Battle = {
+      ...initial,
+      lastPlayed: 'enemy',
+      phase: {
+        kind: 'enemy',
+        step: {
+          kind: 'attack',
+          enemy: 0,
+          attack: 'basic',
+          damage: 5,
+          startedAt: 0,
+          feintAt: null,
+          feintShown: false,
+          impacts: [{ at: 1_100, landed: true, lost: false, outcome: 'suffered' }],
+          resolvedAt: 1_260,
+          counter: { at: 1_260, until: 1_660, done: false, by: 'bulwark' },
+        },
+      },
+    };
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: startAscent(5), battle }));
+    await session.load();
+    const battleSession = session.battleSession();
+    await battleSession.start();
+    await flush();
+    const startedAt = clock.now();
+
+    // La reprise repart du début de la préparation : la riposte part 1 260 ms plus tard.
+    clock.advanceTo(startedAt + 1_259);
+    await flush();
+    expect(saved(store)?.battle?.enemies[0]).toMatchObject({ hp: 50, guard: 15 });
+
+    clock.advanceTo(startedAt + 1_260);
+    await flush();
+    expect(saved(store)?.battle?.enemies[0]).toMatchObject({ hp: 47, guard: 12 });
+  });
+
   it('earns the Gold and offers the exits when the floor battle is won', async () => {
     const { session, store, clock } = setUp();
     const ascent = startAscent(5);

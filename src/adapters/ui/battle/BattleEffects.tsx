@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -9,7 +9,9 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import type { DamageFloat as Float, FeedbackText } from '../format/battleText';
+import { artPalette } from '../pixelArt/artPalette';
 import { battleColors } from '../theme/battleColors';
+import { ShieldGlyph } from './BattleGlyphs';
 
 /** Le texte d'effet reste lisible un instant, puis s'efface (maquette : 0,7 s en tout). */
 const FEEDBACK_HOLD_MS = 450;
@@ -36,11 +38,19 @@ export function FeedbackLabel({ texts }: { readonly texts: readonly FeedbackText
   }, [opacity]);
   return (
     <Animated.View pointerEvents="none" testID="battle-feedback" style={[styles.feedback, fade]}>
-      {texts.map((text) => (
-        <Text key={text.title} style={[styles.title, styles[text.tone]]}>
-          {text.title}
-        </Text>
-      ))}
+      {texts.map((text) =>
+        text.tone === 'riposte' ? (
+          // « Riposte », précédé de l'écu (#128) : jamais l'argent seul.
+          <View key={text.title} style={styles.withShield}>
+            <ShieldGlyph color={artPalette.roles.bulwark} size={22} />
+            <Text style={[styles.title, styles.riposte]}>{text.title}</Text>
+          </View>
+        ) : (
+          <Text key={text.title} style={[styles.title, styles[text.tone]]}>
+            {text.title}
+          </Text>
+        ),
+      )}
     </Animated.View>
   );
 }
@@ -63,11 +73,13 @@ export function DamageFloat({ float }: { readonly float: Float }) {
     return { opacity: 1 - rise.get() * rise.get(), transform: [{ translateY: -24 * rise.get() }] };
   }, [rise]);
   return (
-    <Animated.View pointerEvents="none" style={[styles.float, style]}>
+    <Animated.View pointerEvents="none" style={[styles.float, styles.withShield, style]}>
+      {float.kind === 'riposte' ? <ShieldGlyph color={artPalette.roles.bulwark} size={12} /> : null}
       <Text
         style={[
           styles.floatText,
           float.kind === 'guard' && styles.floatGuard,
+          float.kind === 'riposte' && styles.floatRiposte,
           float.at === 'hero' && styles.floatHero,
           float.big && styles.floatBig,
         ]}
@@ -120,6 +132,8 @@ const styles = StyleSheet.create({
   perfect: { color: battleColors.light, fontSize: 32, lineHeight: 36 },
   break: { color: battleColors.light, fontSize: 34, lineHeight: 38, letterSpacing: 1 },
   rise: { color: battleColors.light, fontSize: 30, lineHeight: 34, letterSpacing: 1 },
+  riposte: { color: artPalette.roles.bulwarkText, fontSize: 30, lineHeight: 34, letterSpacing: 1 },
+  withShield: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   float: { position: 'absolute', top: 6, alignSelf: 'center', zIndex: 8 },
   floatText: {
     color: battleColors.text,
@@ -131,6 +145,7 @@ const styles = StyleSheet.create({
   },
   floatHero: { color: battleColors.miss },
   floatGuard: { color: battleColors.guard },
+  floatRiposte: { color: artPalette.roles.bulwarkText },
   floatBig: { color: battleColors.light, fontSize: 32 },
 });
 // Stryker restore all

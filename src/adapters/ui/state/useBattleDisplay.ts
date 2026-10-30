@@ -31,6 +31,15 @@ export interface BattleDisplay {
   /** Le nombre de renforts entrés à chaque place : un renfort a sa propre colonne. */
   readonly arrivals: Readonly<Record<number, number>>;
   readonly shakeKey: number;
+  /** L'instant où le Rempart s'est usé (#128), jusqu'à la fin du coup ; `null` sinon. */
+  readonly bulwarkWornAt: number | null;
+  /** La dernière Riposte du Rempart (#128) : l'onde va de l'écu à l'ennemi qui a frappé. */
+  readonly riposte: { readonly at: number; readonly enemy: number } | null;
+  /**
+   * Le dernier chiffre sur le héros : il reste visible quand un chiffre sur un ennemi part au même
+   * instant (le touché qui use le Rempart, puis la riposte, #128).
+   */
+  readonly heroFloat: { readonly float: DamageFloat; readonly key: number } | null;
 }
 
 export const INITIAL_DISPLAY: BattleDisplay = {
@@ -44,6 +53,9 @@ export const INITIAL_DISPLAY: BattleDisplay = {
   downSince: {},
   arrivals: {},
   shakeKey: 0,
+  bulwarkWornAt: null,
+  riposte: null,
+  heroFloat: null,
 };
 
 const POSE_OF_OUTCOME: Readonly<Record<BlowOutcome, HeroPose>> = {
@@ -64,6 +76,9 @@ function poseAfter(event: BattleEvent, pose: HeroPose): HeroPose | null {
     case 'strikeResolved':
     case 'counterAttacked':
       return 'strike';
+    // Le coup de bouclier, sur place (#128).
+    case 'bulwarkCountered':
+      return 'bash';
     case 'strikeStarted':
       return 'raise';
     // Un coup reçu reste visible pendant l'avancée suivante ou la transition vers le héros.
@@ -98,12 +113,29 @@ function hurts(event: BattleEvent): boolean {
 
 /**
  * Les mots d'une mise à jour : « Frappe parfaite » puis « Cassure » quand la frappe brise la garde
- * (F4, F5) ; « Cassure » seul quand c'est la contre-attaque (P3b).
+ * (F4, F5) ; « Cassure » seul quand c'est la contre-attaque (P3b) ou la riposte (#128).
  */
 function wordsOf(events: readonly BattleEvent[]): FeedbackText[] {
   const texts = events.flatMap((event) => feedbackText(event) ?? []);
   const broken = texts.some((text) => text.tone === 'break');
-  return broken ? texts.filter((text) => text.title !== 'Parfait · contre-attaque') : texts;
+  return broken
+    ? texts.filter((text) => text.title !== 'Parfait · contre-attaque' && text.tone !== 'riposte')
+    : texts;
+}
+
+/** Les événements qui finissent un coup ennemi : « Rempart usé » disparaît (#128). */
+const BLOW_ENDS: ReadonlySet<BattleEvent['type']> = new Set([
+  'stepInStarted',
+  'windUpStarted',
+  'phaseTransitionStarted',
+  'heroPhaseStarted',
+  'battleEnded',
+]);
+
+/** L'instant d'usure du Rempart après un événement : posé à l'usure, oublié à la fin du coup. */
+function bulwarkWornAfter(event: BattleEvent, wornAt: number | null): number | null {
+  if (event.type === 'bulwarkWorn') return event.at;
+  return BLOW_ENDS.has(event.type) ? null : wornAt;
 }
 
 export function displayOf(
@@ -119,12 +151,17 @@ export function displayOf(
   for (const event of snapshot.events) {
     const float = damageFloat(event);
     if (float !== null) {
-      display = { ...display, float: { float, key: (display.float?.key ?? 0) + 1 } };
+      const flying = { float, key: (display.float?.key ?? 0) + 1 };
+      display = { ...display, float: flying, ...(float.at === 'hero' && { heroFloat: flying }) };
     }
     const pose = poseAfter(event, display.heroPose);
     if (pose !== null) display = { ...display, heroPose: pose, heroPoseSince: event.at };
     const spark = sparkOf(event);
     if (spark !== null) display = { ...display, spark };
+    display = { ...display, bulwarkWornAt: bulwarkWornAfter(event, display.bulwarkWornAt) };
+    if (event.type === 'bulwarkCountered') {
+      display = { ...display, riposte: { at: event.at, enemy: event.enemy } };
+    }
     if (event.type === 'reinforcementEntered') {
       // Le renfort entre debout, sans l'animation de chute de l'ennemi qu'il remplace.
       const { [event.enemy]: _fallen, ...downSince } = display.downSince;

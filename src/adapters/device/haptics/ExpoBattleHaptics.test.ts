@@ -15,7 +15,7 @@ const flush = () => new Promise<void>((resolve) => setImmediate(resolve));
 describe('ExpoBattleHaptics', () => {
   beforeEach(() => impact.mockClear());
 
-  it('vibrates strongly for a perfect parry and a guard break, shortly for a perfect strike, lightly for the enemy phase', () => {
+  it('vibrates strongly for a perfect parry and a guard break, shortly for a perfect strike and the Bulwark riposte, lightly for the enemy phase', () => {
     expect(BATTLE_HAPTIC_STYLES).toEqual({
       perfectParry: ImpactFeedbackStyle.Heavy,
       dodge: ImpactFeedbackStyle.Light,
@@ -23,6 +23,7 @@ describe('ExpoBattleHaptics', () => {
       enemyPhase: ImpactFeedbackStyle.Soft,
       guardBreak: ImpactFeedbackStyle.Heavy,
       perfectStrike: ImpactFeedbackStyle.Rigid,
+      bulwarkCounter: ImpactFeedbackStyle.Rigid,
     });
   });
 

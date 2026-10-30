@@ -83,7 +83,8 @@ export const COUNTER_GUARD_PERCENT = 100;
 
 /**
  * La contre-attaque (C8) : 50 % de l'Attaque × le trait × le multiplicateur d'étourdi, et 100 % du
- * Brise-garde (0 sur un étourdi). Le multiplicateur de frappe ne s'y applique pas (C6.6).
+ * Brise-garde (0 sur un étourdi). Le multiplicateur de frappe ne s'y applique pas (C6.6). Les parts
+ * `hpPercent` et `guardPercent` règlent les PV et la garde d'un coup qui en dérive.
  */
 export function counterBlow({
   attackPower,
@@ -94,6 +95,8 @@ export function counterBlow({
   guardPercents = [],
   counterPercents = [],
   stunnedBonusPercent = 0,
+  hpPercent = 100,
+  guardPercent = COUNTER_GUARD_PERCENT,
 }: {
   readonly attackPower: number;
   readonly guardDamage: number;
@@ -104,16 +107,45 @@ export function counterBlow({
   readonly guardPercents?: readonly number[];
   readonly counterPercents?: readonly number[];
   readonly stunnedBonusPercent?: number;
+  /** La part des PV, après les 50 % de base et le trait : 100 % pour la contre-attaque. */
+  readonly hpPercent?: number;
+  /** La part du Brise-garde : 100 % pour la contre-attaque. */
+  readonly guardPercent?: number;
 }): EnemyBlow {
   return {
     hp: scaleDamage(
       attackPower,
       COUNTER_BASE_PERCENT,
       counterPercent,
+      hpPercent,
       ...attackPercents,
       ...counterPercents,
       stunnedPercent(stunned, stunnedBonusPercent),
     ),
-    guard: stunned ? 0 : scaleDamage(guardDamage, COUNTER_GUARD_PERCENT, ...guardPercents),
+    guard: stunned ? 0 : scaleDamage(guardDamage, guardPercent, ...guardPercents),
   };
+}
+
+/** Les parts de la Riposte du Rempart (#128), recopiées du Codex. */
+export interface BulwarkCounterShares {
+  /** La part des PV de la contre-attaque que vaut la riposte, en %. */
+  readonly bulwarkCounterPercent: number;
+  /** La part du Brise-garde que retire la riposte, en %. */
+  readonly bulwarkCounterGuardPercent: number;
+}
+
+/**
+ * La Riposte du Rempart (#128, R4) : le calcul de la contre-attaque, PV × `bulwarkCounterPercent`
+ * et Brise-garde × `bulwarkCounterGuardPercent` (0 sur un étourdi), un seul arrondi, minimum 1.
+ */
+export function bulwarkCounterBlow({
+  bulwarkCounterPercent,
+  bulwarkCounterGuardPercent,
+  ...counter
+}: Parameters<typeof counterBlow>[0] & BulwarkCounterShares): EnemyBlow {
+  return counterBlow({
+    ...counter,
+    hpPercent: bulwarkCounterPercent,
+    guardPercent: bulwarkCounterGuardPercent,
+  });
 }

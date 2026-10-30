@@ -90,7 +90,12 @@ describe('artPalette', () => {
     });
   });
 
+  it('gives the silver of the Bulwark, never without its shield (#128)', () => {
+    expect([roles.bulwark, roles.bulwarkText]).toEqual(['#D9DCE6', '#E6EAF2']);
+  });
+
   it.each([
+    ['the Bulwark chip', roles.bulwarkText, roles.raised, 10.5],
     ['main text', roles.light, roles.surface, 14.5],
     ['secondary text', roles.parchment, roles.surface, 9.0],
     ['discreet text on the surface', roles.muted, roles.surface, 5.2],

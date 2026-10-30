@@ -93,6 +93,30 @@ describe('HeroBar', () => {
     ).toBeOnTheScreen();
   });
 
+  it('shows the « Rempart » chip, with its shield, under the HP while the Bulwark is up (#128)', async () => {
+    await render(<HeroBar hero={{ ...sentinel, bulwark: true }} />);
+
+    expect(screen.getByText('Rempart', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByTestId('battle-shield-glyph', { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.queryByText('Rempart usé', { includeHiddenElements: true })).toBeNull();
+  });
+
+  it('shows « Rempart usé » with a cracked shield while the blow that wore it lasts (#128)', async () => {
+    await render(<HeroBar hero={sentinel} bulwarkWorn />);
+
+    expect(screen.getByText('Rempart usé', { includeHiddenElements: true })).toBeTruthy();
+    expect(
+      screen.getByTestId('battle-shield-glyph-cracked', { includeHiddenElements: true }),
+    ).toBeTruthy();
+    expect(screen.getByLabelText('La Sentinelle, PV 56 sur 80, Élan 2 sur 5')).toBeOnTheScreen();
+  });
+
+  it('shows no Bulwark chip without the Bulwark', async () => {
+    await render(<HeroBar hero={sentinel} />);
+
+    expect(screen.queryByText(/Rempart/, { includeHiddenElements: true })).toBeNull();
+  });
+
   it('shows the Bleed chip under the HP while the hero bleeds (prototype #107)', async () => {
     await render(<HeroBar hero={{ ...sentinel, bleed: { damage: 2, rounds: 3 } }} />);
 
@@ -323,6 +347,29 @@ describe('FeedbackLabel and DamageFloat', () => {
     );
 
     expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Frappe parfaiteCassure');
+  });
+
+  it('writes « Riposte » after the shield, in silver (#128)', async () => {
+    await render(<FeedbackLabel texts={[{ tone: 'riposte', title: 'Riposte' }]} />);
+
+    expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Riposte');
+    expect(screen.getByTestId('battle-shield-glyph', { includeHiddenElements: true })).toBeTruthy();
+    expect(StyleSheet.flatten(screen.getByText('Riposte').props.style).color).toBe(
+      artPalette.roles.bulwarkText,
+    );
+  });
+
+  it('writes the figure of the riposte after the shield, at normal size (#128)', async () => {
+    await render(<DamageFloat float={{ at: 0, text: '−3', big: false, kind: 'riposte' }} />);
+    const riposte = StyleSheet.flatten(screen.getByText('−3').props.style);
+    expect(screen.getByTestId('battle-shield-glyph', { includeHiddenElements: true })).toBeTruthy();
+
+    await render(<DamageFloat float={{ at: 0, text: '−10', big: false, kind: 'damage' }} />);
+    const plain = StyleSheet.flatten(screen.getByText('−10').props.style);
+
+    expect(riposte.fontSize).toBe(plain.fontSize);
+    expect(riposte.color).toBe(artPalette.roles.bulwarkText);
+    expect(screen.queryByTestId('battle-shield-glyph', { includeHiddenElements: true })).toBeNull();
   });
 
   it('enlarges the figure of a perfect strike', async () => {

@@ -114,6 +114,10 @@ export const artPalette = {
     shard: '#FF9F5A',
     /** Coup imparable dans la tour, rien d'autre. */
     seal: '#FF3B3B',
+    /** L'argent du Rempart (#128) : l'écu et la riposte, jamais sans la forme de l'écu. */
+    bulwark: '#D9DCE6',
+    /** Texte du Rempart : l'étiquette, « Riposte » et son chiffre (#128). */
+    bulwarkText: '#E6EAF2',
   },
 } as const;
 // Stryker restore all

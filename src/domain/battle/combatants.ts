@@ -1,6 +1,7 @@
 import type { AttackKind } from './attacks';
 import { heroInitiative } from './initiative';
 import type { PowerKind } from './momentum';
+import type { BulwarkCounterShares } from './strike';
 
 /** Les héros jouables : la Sentinelle (`Sentinel`) et, en prototype (#90), l'Errante (`Wanderer`). */
 export type HeroKind = 'sentinel' | 'wanderer';
@@ -41,6 +42,8 @@ export interface HeroProfile {
   /** La contre-attaque vaut 50 % de l'Attaque, × ce pourcentage. */
   readonly counterPercent: number;
   readonly power: PowerKind;
+  /** La Riposte du Rempart (#128) ; absente, le Rempart ne riposte pas. */
+  readonly bulwarkCounter?: BulwarkCounterShares;
   /** Le trait de l'Errante : chaque impact esquivé dans la fenêtre de parade donne +1 Élan. */
   readonly dodgeMomentum: boolean;
   readonly startingKit: StartingKit;
@@ -48,7 +51,8 @@ export interface HeroProfile {
 
 /**
  * La Sentinelle (`Sentinel`) : 80 PV, Attaque 10 (1 coup), Brise-garde 12, réduction des dégâts
- * 10 % (plafonnée à 40 %), trait « contre-attaque ×1,3 », pouvoir de base Rempart.
+ * 10 % (plafonnée à 40 %), trait « contre-attaque ×1,3 », pouvoir de base Rempart, qui riposte
+ * (#128).
  */
 export const SENTINEL: {
   readonly maxHp: number;
@@ -57,6 +61,7 @@ export const SENTINEL: {
   readonly damageReductionPercent: number;
   readonly counterPercent: number;
   readonly power: PowerKind;
+  readonly bulwarkCounter: BulwarkCounterShares;
 } = {
   maxHp: 80,
   attackPower: 10,
@@ -66,6 +71,8 @@ export const SENTINEL: {
   /** Le trait : la contre-attaque vaut 50 % de l'Attaque, × 1,3. */
   counterPercent: 130,
   power: 'bulwark',
+  /** Les valeurs du Codex (`sentinel`), recopiées le 29/10/2026 (#128). */
+  bulwarkCounter: { bulwarkCounterPercent: 50, bulwarkCounterGuardPercent: 25 },
 };
 
 /**

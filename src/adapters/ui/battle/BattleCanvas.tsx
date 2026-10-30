@@ -11,9 +11,12 @@ import {
   Atlas,
   Canvas,
   ColorMatrix,
+  DashPathEffect,
   FilterMode,
   Image,
   MipmapMode,
+  Path,
+  Skia,
   useRSXformBuffer,
   useRectBuffer,
   type SkImage,
@@ -30,6 +33,7 @@ import {
 
 import type { AttackKind } from '../../../domain/battle/attacks';
 import type { EnemyKind, HeroKind } from '../../../domain/battle/combatants';
+import { artPalette } from '../pixelArt/artPalette';
 import { toSkImage } from '../pixelArt/SpriteCanvas';
 import type { Point } from '../pixelArt/sprites/Sprite';
 import { atlasRect, battleAtlas, type AtlasTable } from '../pixelArt/sprites/battle/battleAtlas';
@@ -57,9 +61,18 @@ import {
 } from '../pixelArt/sprites/battle/battleStage';
 import { HERO_ANIMATIONS } from '../pixelArt/sprites/battle/heroAnimations';
 import { enemyPose, restPose } from './scene/enemyPose';
-import { heroFrame } from './scene/heroFrame';
 import { spriteOrigin, type EnemySlot, type SceneGeometry } from './scene/sceneGeometry';
-import { glintSprites, hurtLevel, impactFlash, sparkFrame } from './scene/sceneEffects';
+import { BASH_ADVANCE_DP, heroFrame } from './scene/heroFrame';
+import {
+  bulwarkShards,
+  bulwarkShield,
+  glintSprites,
+  hurtLevel,
+  impactFlash,
+  riposteBurst,
+  riposteWave,
+  sparkFrame,
+} from './scene/sceneEffects';
 import type { HeroPose, SceneEnemy, SceneSpark, SceneTimeline } from './sceneTypes';
 
 export interface BattleSceneProps {
@@ -80,6 +93,12 @@ export interface BattleSceneProps {
   readonly timeline: SceneTimeline | null;
   readonly spark: SceneSpark | null;
   readonly hurtAt: number | null;
+  /** Le Rempart est actif : son écu est devant le héros (#128). Par défaut, non. */
+  readonly bulwark?: boolean;
+  /** L'instant où le Rempart s'est usé (l'écu se fend puis éclate), `null` sinon. */
+  readonly bulwarkWornAt?: number | null;
+  /** La dernière Riposte du Rempart : l'onde va de l'écu à l'ennemi `enemy`. */
+  readonly riposte?: { readonly at: number; readonly enemy: number } | null;
   readonly reducedMotion: boolean;
   /** L'horloge du fil UI : un worklet, sur la base de l'horloge de combat (méthode a). */
   readonly uiNow: () => number;
@@ -147,8 +166,13 @@ const DIMMED_OPACITY = 0.3;
 const FADED = [
   0.106, 0.358, 0.036, 0, 0, 0.106, 0.358, 0.036, 0, 0, 0.106, 0.358, 0.036, 0, 0, 0, 0, 0, 1, 0,
 ];
-/** Les places de l'atlas des effets : éclair, étincelle, deux reflets, trois étoiles. */
-const EFFECT_SLOTS = 7;
+/**
+ * Les places de l'atlas des effets : éclair, étincelle, deux reflets, trois étoiles, l'écu du
+ * Rempart, ses 4 éclats et les 4 éclats de la riposte sur l'ennemi (#128).
+ */
+const EFFECT_SLOTS = 16;
+/** Les nombres d'une place : effet, image, x, y, échelle. */
+const EFFECT_FIELDS = 5;
 const EFFECT_ORDER: readonly EffectKind[] = [
   'flash',
   'gold',
@@ -157,7 +181,18 @@ const EFFECT_ORDER: readonly EffectKind[] = [
   'glintRed',
   'glintDull',
   'stars',
+  'shield',
+  'silverShard',
 ];
+/**
+ * L'écu du Rempart, en pixels d'art du héros (maquette, `.aura`) : le centre de sa case de 15, calé
+ * sur un pixel entier, et le départ de l'onde.
+ */
+const SHIELD_CENTER = { x: 34.5, y: 19.5 } as const;
+const WAVE_START = { x: 40, y: 17 } as const;
+/** L'onde d'argent en pointillé (maquette, `.wave`) : 8 dp de haut, traits de 10 dp tous les 16 dp. */
+const WAVE_WIDTH = 8;
+const WAVE_DASHES = [10, 6];
 const NO_ENEMY: SceneEnemy = {
   kind: 'ghoul',
   standing: false,
@@ -417,6 +452,9 @@ export function BattleScene({
   timeline,
   spark,
   hurtAt,
+  bulwark = false,
+  bulwarkWornAt = null,
+  riposte = null,
   reducedMotion,
   uiNow,
 }: BattleSceneProps) {
@@ -426,10 +464,15 @@ export function BattleScene({
   const sharedSpark = useSharedValue<SceneSpark | null>(spark);
   const sharedHurt = useSharedValue<number | null>(hurtAt);
   const sharedHero = useSharedValue({ pose: heroPose, since: heroPoseSince, strikeImpactAt });
+  const sharedBulwark = useSharedValue({ active: bulwark, wornAt: bulwarkWornAt, riposte });
 
   useEffect(() => sharedTimeline.set(timeline), [sharedTimeline, timeline]);
   useEffect(() => sharedSpark.set(spark), [sharedSpark, spark]);
   useEffect(() => sharedHurt.set(hurtAt), [sharedHurt, hurtAt]);
+  useEffect(
+    () => sharedBulwark.set({ active: bulwark, wornAt: bulwarkWornAt, riposte }),
+    [sharedBulwark, bulwark, bulwarkWornAt, riposte],
+  );
   useEffect(
     () => sharedHero.set({ pose: heroPose, since: heroPoseSince, strikeImpactAt }),
     [sharedHero, heroPose, heroPoseSince, strikeImpactAt],
@@ -499,12 +542,14 @@ export function BattleScene({
     const current = heroFrame(pose, since, clock.get(), impactAt);
     const dodge = reducedMotion ? current.dodge * 0.3 : current.dodge;
     const toward = reducedMotion ? current.lunge * 0.2 : current.lunge;
+    // Le coup de bouclier, sur place : 4 dp en avant et retour, au quart en mouvement réduit.
+    const push = BASH_ADVANCE_DP * current.push * (reducedMotion ? 0.25 : 1);
     return {
       frame: current.frame,
       tier: current.tier,
       red: false,
       poses: null,
-      x: hero.x + Math.round((-22 * dodge + lunge.x * toward) / 2) * 2,
+      x: hero.x + Math.round((-22 * dodge + lunge.x * toward + push) / 2) * 2,
       y: hero.y + Math.round((10 * dodge + lunge.y * toward) / 2) * 2,
     };
   }, [sharedHero, clock, hero, lunge, reducedMotion]);
@@ -515,14 +560,37 @@ export function BattleScene({
   const { anchors, attackAnchors } = scene;
   const stunned = enemies.map((enemy) => enemy.down && enemy.standing);
   const hops = enemies.map((enemy) => enemy.losingAction);
+  // L'écu du Rempart devant le héros, à son échelle ; la riposte vise le centre d'un ennemi.
+  const shieldAt = {
+    x: hero.x + SHIELD_CENTER.x * hero.scale,
+    y: hero.y + SHIELD_CENTER.y * hero.scale,
+  };
+  const enemyCenters = slots.map((slot) => ({
+    x: slot.sprite.x + slot.sprite.width / 2,
+    y: slot.sprite.y + Math.round(slot.sprite.height * 0.55),
+  }));
   const effects = useDerivedValue(() => {
     'worklet';
     const now = clock.get();
     const current = sharedTimeline.get();
     const placed: number[] = [];
-    const place = (kind: EffectKind, frame: number, x: number, y: number) => {
-      if (placed.length < EFFECT_SLOTS * 4) placed.push(EFFECT_ORDER.indexOf(kind), frame, x, y);
+    const place = (kind: EffectKind, frame: number, x: number, y: number, scale = 2) => {
+      if (placed.length < EFFECT_SLOTS * EFFECT_FIELDS) {
+        placed.push(EFFECT_ORDER.indexOf(kind), frame, x, y, scale);
+      }
     };
+    const { active, wornAt, riposte: lastRiposte } = sharedBulwark.get();
+    const shieldFrame = bulwarkShield(active, wornAt, now);
+    if (shieldFrame !== null) place('shield', shieldFrame, shieldAt.x, shieldAt.y, hero.scale);
+    for (const [dx, dy] of bulwarkShards(wornAt, now, reducedMotion)) {
+      place('silverShard', 0, shieldAt.x + dx, shieldAt.y + dy);
+    }
+    const struck = lastRiposte === null ? undefined : enemyCenters[lastRiposte.enemy];
+    if (struck !== undefined) {
+      for (const [dx, dy] of riposteBurst(lastRiposte, now, reducedMotion)) {
+        place('silverShard', 0, struck.x + dx, struck.y + dy);
+      }
+    }
     const flash = impactFlash(current, now);
     if (flash !== null) place('flash', flash, chest.x, chest.y);
     const sparkNow = sharedSpark.get();
@@ -560,6 +628,11 @@ export function BattleScene({
     clock,
     sharedTimeline,
     sharedSpark,
+    sharedBulwark,
+    shieldAt,
+    enemyCenters,
+    hero,
+    reducedMotion,
     chest,
     kinds,
     anchors,
@@ -572,26 +645,43 @@ export function BattleScene({
   const effectSprites = useRectBuffer(EFFECT_SLOTS, (rect, slot) => {
     'worklet';
     const placed = effects.get();
-    const kind = EFFECT_ORDER[placed[slot * 4] ?? -1];
+    const kind = EFFECT_ORDER[placed[slot * EFFECT_FIELDS] ?? -1];
     if (kind === undefined) {
       rect.setXYWH(0, 0, 0, 0);
       return;
     }
-    const cell = effectTableRect(effectTable, kind, placed[slot * 4 + 1] ?? 0);
+    const cell = effectTableRect(effectTable, kind, placed[slot * EFFECT_FIELDS + 1] ?? 0);
     rect.setXYWH(cell.x, cell.y, cell.width, cell.height);
   });
   const effectTransforms = useRSXformBuffer(EFFECT_SLOTS, (transform, slot) => {
     'worklet';
     const placed = effects.get();
-    const kind = EFFECT_ORDER[placed[slot * 4] ?? -1];
+    const at = slot * EFFECT_FIELDS;
+    const kind = EFFECT_ORDER[placed[at] ?? -1];
     if (kind === undefined) {
       transform.set(0, 0, 0, 0);
       return;
     }
-    // Centré sur son point, à 2 dp par pixel d'art.
-    const side = effectTable[kind][2];
-    transform.set(2, 0, (placed[slot * 4 + 2] ?? 0) - side, (placed[slot * 4 + 3] ?? 0) - side);
+    // Centré sur son point, à 2 dp par pixel d'art (l'écu, à l'échelle du héros).
+    const scale = placed[at + 4] ?? 2;
+    const half = (effectTable[kind][2] * scale) / 2;
+    transform.set(scale, 0, (placed[at + 2] ?? 0) - half, (placed[at + 3] ?? 0) - half);
   });
+  // L'onde d'argent de la riposte, en pointillé, de l'écu à l'ennemi qui a frappé (#128).
+  const struckAt = riposte === null ? undefined : enemyCenters[riposte.enemy];
+  const toX = struckAt?.x ?? null;
+  const toY = struckAt?.y ?? null;
+  const wavePath = useMemo(() => {
+    const path = Skia.Path.Make();
+    if (toX === null || toY === null) return path;
+    path.moveTo(hero.x + WAVE_START.x * hero.scale, hero.y + WAVE_START.y * hero.scale);
+    path.lineTo(toX, toY);
+    return path;
+  }, [hero, toX, toY]);
+  const waveEnd = useDerivedValue(
+    () => riposteWave(sharedBulwark.get().riposte, clock.get(), reducedMotion) ?? 0,
+    [sharedBulwark, clock, reducedMotion],
+  );
   const vignetteLevel = useDerivedValue(
     () => hurtLevel(sharedHurt.get(), clock.get()) ?? -1,
     [sharedHurt, clock],
@@ -642,6 +732,16 @@ export function BattleScene({
         );
       })}
       <AtlasSprite atlas={scene.heroes[heroKind]} look={heroLook} scale={hero.scale} />
+      <Path
+        path={wavePath}
+        style="stroke"
+        strokeWidth={WAVE_WIDTH}
+        color={artPalette.roles.bulwark}
+        start={0}
+        end={waveEnd}
+      >
+        <DashPathEffect intervals={WAVE_DASHES} />
+      </Path>
       <Atlas
         image={scene.effects.image}
         sprites={effectSprites}

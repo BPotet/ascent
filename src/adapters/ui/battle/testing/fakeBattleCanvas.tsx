@@ -9,14 +9,26 @@ export function prepareBattleScene(): null {
 }
 
 export function BattleScene(props: BattleSceneProps) {
-  const { heroKind, heroPose, heroPoseSince, timeline, reducedMotion, enemies, spark, hurtAt } =
-    props;
+  const {
+    heroKind,
+    heroPose,
+    heroPoseSince,
+    timeline,
+    reducedMotion,
+    enemies,
+    spark,
+    hurtAt,
+    bulwark,
+    bulwarkWornAt,
+    riposte,
+  } = props;
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       testID="battle-scene"
       {...{ heroKind, heroPose, heroPoseSince, timeline, reducedMotion, enemies, spark, hurtAt }}
+      {...{ bulwark, bulwarkWornAt, riposte }}
     />
   );
 }

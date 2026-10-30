@@ -39,6 +39,7 @@ describe('provisional battle sounds', () => {
       'perfect-strike.wav',
       'raise.wav',
       'seal.wav',
+      'shield-clash.wav',
       'strike.wav',
       'victory.wav',
       'whiff.wav',
@@ -80,6 +81,16 @@ describe('provisional battle sounds', () => {
 
   it('makes the dull glint a square sound sliding from 520 to 380 Hz, like the mockup', () => {
     assert.deepEqual(CUES['glint-dull'], [[520, 0.07, 'square', 0.035, 0, 380]]);
+  });
+
+  it('makes the shield clash low and dull: under 200 Hz, about 150 ms, without a slide (#128)', () => {
+    const notes = CUES['shield-clash'];
+    assert.ok(notes.every(([frequency]) => frequency < 200));
+    assert.ok(
+      notes.every((note) => note.length === 5),
+      'no sliding note',
+    );
+    assert.equal(Math.max(...notes.map(([, duration, , , at]) => at + duration)), 0.15);
   });
 
   it('slides a note to its last frequency (exponential ramp)', () => {

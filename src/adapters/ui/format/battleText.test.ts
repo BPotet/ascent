@@ -6,12 +6,14 @@ import {
   announcement,
   attackButtonLabel,
   bleedChipText,
+  bulwarkChipText,
   damageFloat,
   endTitle,
   enemyHpText,
   enemyLabel,
   feedbackText,
   guardText,
+  heroCard,
   heroHpText,
   intentNumber,
   intentSpeech,
@@ -60,6 +62,15 @@ function strike(
     guardDamage: 12,
   };
 }
+
+const riposte: BattleEvent = {
+  type: 'bulwarkCountered',
+  at: 0,
+  enemy: 0,
+  damage: 3,
+  guardDamage: 3,
+  until: 400,
+};
 
 const ghoul = { kind: 'ghoul', hp: 38, maxHp: 50, guard: 15, maxGuard: 15, stun: null } as const;
 
@@ -184,6 +195,7 @@ describe('battle texts', () => {
         { type: 'enemySelfRevived', at: 0, enemy: 0, hp: 17 },
         { tone: 'rise', title: 'Il se relève' },
       ],
+      [riposte, { tone: 'riposte', title: 'Riposte' }],
     ] as [BattleEvent, unknown][])('shows %j', (event, text) => {
       expect(feedbackText(event)).toEqual(text);
     });
@@ -198,6 +210,7 @@ describe('battle texts', () => {
       { type: 'whiffed', at: 0, button: 'parry', reason: 'early' },
       { type: 'pressIgnored', at: 0, button: 'parry', reason: 'offBalance' },
       { type: 'heroPhaseStarted', at: 0, announced: true },
+      { type: 'bulwarkWorn', at: 0, enemy: 0 },
     ] as BattleEvent[])('shows no word for $type', (event) => {
       expect(feedbackText(event)).toBeNull();
     });
@@ -222,6 +235,11 @@ describe('battle texts', () => {
         { type: 'guardRaised', at: 0, enemy: 2, gain: 3, guard: 7 },
         { at: 2, text: '+3', big: false, kind: 'guard' },
       ],
+      // La Riposte du Rempart (#128) : précédé de l'écu, jamais agrandi.
+      [
+        { ...riposte, enemy: 1, damage: 4 },
+        { at: 1, text: '−4', big: false, kind: 'riposte' },
+      ],
     ] as [BattleEvent, unknown][])('flies %j', (event, float) => {
       expect(damageFloat(event)).toEqual(float);
     });
@@ -230,6 +248,7 @@ describe('battle texts', () => {
       blow('dodge', 0),
       blow('perfectParry', 0),
       { type: 'feintStarted', at: 0, enemy: 0 },
+      { type: 'bulwarkWorn', at: 0, enemy: 0 },
     ] as BattleEvent[])('flies nothing for $type without damage', (event) => {
       expect(damageFloat(event)).toBeNull();
     });
@@ -304,6 +323,9 @@ describe('battle texts', () => {
         'Nécromancien relève Goule, 25 PV',
       ],
       [{ type: 'powerUsed', at: 0, power: 'bulwark', until: 500 }, 'Rempart'],
+      [{ type: 'bulwarkWorn', at: 0, enemy: 0 }, 'Rempart usé.'],
+      [riposte, 'Riposte du Rempart, Goule, 3 dégâts'],
+      [{ ...riposte, enemy: 1, damage: 1 }, 'Riposte du Rempart, Spectre, 1 dégât'],
       [{ type: 'respite', at: 0, gain: 8, heroHp: 58 }, 'Répit, plus 8 PV'],
       [{ type: 'battleEnded', at: 0, outcome: 'defeat' }, 'Combat perdu.'],
     ] as [BattleEvent, string][])('reads %j', (event, sentence) => {
@@ -332,6 +354,16 @@ describe('battle texts', () => {
         announcement({ type: 'enemySelfRevived', at: 0, enemy: 0, hp: 17 }, withSkeleton),
       ).toBe('Squelette se relève, 17 PV sur 35');
     });
+  });
+
+  it('describes the Bulwark of the Sentinel by the text of the Codex (#128)', () => {
+    expect(heroCard('sentinel').power).toBe(
+      "Rempart (1 Élan) : Elle plante son bouclier devant elle et y met tout son poids. Le prochain coup qu'elle subit ne lui fait que la moitié de ses dégâts, après sa réduction, et elle riposte aussitôt, moins fort qu'une contre-attaque.",
+    );
+  });
+
+  it('writes the Bulwark chip, then « Rempart usé » once it wears (#128)', () => {
+    expect([bulwarkChipText(false), bulwarkChipText(true)]).toEqual(['Rempart', 'Rempart usé']);
   });
 
   it('ends the battle with its outcome', () => {

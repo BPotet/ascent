@@ -4,10 +4,11 @@ import type { Glint } from '../../../domain/battle/glints';
 
 /**
  * La pose du héros dans la scène (maquette, `pxHeroFrame`) : repos, arme levée pour la frappe en
- * rythme, frappe, parade, parade parfaite, touché, déséquilibré, esquive, tombé.
+ * rythme, frappe, parade, parade parfaite, touché, déséquilibré, esquive, tombé, et le coup de
+ * bouclier de la Riposte du Rempart (#128).
  */
 export type HeroPose =
-  'idle' | 'raise' | 'strike' | 'parry' | 'counter' | 'hit' | 'off' | 'dodge' | 'fallen';
+  'idle' | 'raise' | 'strike' | 'parry' | 'counter' | 'hit' | 'off' | 'dodge' | 'fallen' | 'bash';
 
 /** Un ennemi tel que la scène le dessine. */
 export interface SceneEnemy {

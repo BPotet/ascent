@@ -12,6 +12,30 @@ const GLINT_FRAME_MS = 30;
 const SPARK_MS = 400;
 const HURT_MS = 450;
 const HURT_STEP_MS = 90;
+/** Le Rempart (#128) : éclats sur 500 ms en 5 pas ; onde en 6 pas de 50 ms ; éclats d'impact en 3 pas. */
+const SHARDS_MS = 500;
+const SHARD_STEPS = 5;
+const RIPOSTE_MS = 400;
+const WAVE_STEP_MS = 50;
+const WAVE_STEPS = 6;
+const BURST_STEP_MS = 100;
+const BURST_STEPS = 3;
+/** En mouvement réduit, les amplitudes sont au quart ; les durées ne changent pas. */
+const REDUCED_AMPLITUDE = 0.25;
+/** Les 4 éclats de l'écu (maquette, `.shard`) : départ autour du centre de l'écu, puis écart, en dp. */
+const SHARDS: readonly (readonly [number, number, number, number])[] = [
+  [-11, -10, -14, -18],
+  [15, -14, 16, -14],
+  [-7, 20, -10, 16],
+  [15, 16, 18, 14],
+];
+/** Les 4 éclats d'argent sur l'ennemi (maquette, `.burst`), en dp de son centre. */
+const BURST: readonly (readonly [number, number])[] = [
+  [0, -20],
+  [20, 0],
+  [0, 20],
+  [-20, 0],
+];
 // Stryker restore all
 
 /**
@@ -80,4 +104,75 @@ export function hurtLevel(hurtAt: number | null, now: number): number | null {
   const since = now - hurtAt;
   if (since < 0 || since >= HURT_MS) return null;
   return Math.min(4, Math.floor(since / HURT_STEP_MS));
+}
+
+function amplitude(reducedMotion: boolean): number {
+  'worklet';
+  return reducedMotion ? REDUCED_AMPLITUDE : 1;
+}
+
+/**
+ * L'écu du Rempart devant le héros (#128, provisoire tant que l'Atelier ne l'a pas validé) : `0`
+ * entier et fixe, sans pulsation, tant que le Rempart est actif ; `1` fendu pendant une image
+ * (83 ms) quand il s'use ; `null` ensuite (il éclate) ou sans Rempart.
+ */
+export function bulwarkShield(active: boolean, wornAt: number | null, now: number): 0 | 1 | null {
+  'worklet';
+  if (wornAt !== null && now < wornAt + FRAME_MS) return now < wornAt ? 0 : 1;
+  return active ? 0 : null;
+}
+
+/**
+ * Les 4 éclats d'argent de l'écu qui éclate (#128) : après la fente, ils s'écartent pendant 500 ms
+ * en 5 pas. Leurs places en dp, depuis le centre de l'écu ; aucune hors de ce temps.
+ */
+export function bulwarkShards(
+  wornAt: number | null,
+  now: number,
+  reducedMotion: boolean,
+): (readonly [number, number])[] {
+  'worklet';
+  if (wornAt === null) return [];
+  const since = now - wornAt - FRAME_MS;
+  if (since < 0 || since >= SHARDS_MS) return [];
+  const spread =
+    (amplitude(reducedMotion) * (Math.floor((since * SHARD_STEPS) / SHARDS_MS) + 1)) / SHARD_STEPS;
+  return SHARDS.map(([x, y, dx, dy]) => [Math.round(x + dx * spread), Math.round(y + dy * spread)]);
+}
+
+/**
+ * La part de l'onde d'argent dessinée, de l'écu à l'ennemi (#128) : 6 pas de 50 ms, puis entière
+ * jusqu'à la fin de la riposte. En mouvement réduit, elle part déjà aux trois quarts.
+ */
+export function riposteWave(
+  riposte: { readonly at: number } | null,
+  now: number,
+  reducedMotion: boolean,
+): number | null {
+  'worklet';
+  if (riposte === null) return null;
+  const since = now - riposte.at;
+  if (since < 0 || since >= RIPOSTE_MS) return null;
+  const start = 1 - amplitude(reducedMotion);
+  const step = Math.min(WAVE_STEPS, Math.floor(since / WAVE_STEP_MS) + 1);
+  return start + ((1 - start) * step) / WAVE_STEPS;
+}
+
+/**
+ * Les 4 éclats d'argent sur l'ennemi touché par la riposte (#128) : ils s'ouvrent en 3 pas de
+ * 100 ms et restent jusqu'à la fin de la riposte. Leurs places en dp, depuis son centre.
+ */
+export function riposteBurst(
+  riposte: { readonly at: number } | null,
+  now: number,
+  reducedMotion: boolean,
+): (readonly [number, number])[] {
+  'worklet';
+  if (riposte === null) return [];
+  const since = now - riposte.at;
+  if (since < 0 || since >= RIPOSTE_MS) return [];
+  const start = 1 - 0.6 * amplitude(reducedMotion);
+  const step = Math.min(BURST_STEPS, Math.floor(since / BURST_STEP_MS) + 1);
+  const scale = start + ((1 - start) * step) / BURST_STEPS;
+  return BURST.map(([x, y]) => [Math.round(x * scale), Math.round(y * scale)]);
 }

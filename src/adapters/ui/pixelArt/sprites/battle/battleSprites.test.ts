@@ -614,7 +614,29 @@ describe('the battle effects (precomputed, never painted per frame)', () => {
       glintRed: 3,
       glintDull: 3,
       stars: 4,
+      shield: 2,
+      silverShard: 1,
     });
+  });
+
+  it('paints the Bulwark shield in silver, whole then cracked with ink, and a silver shard (#128)', () => {
+    const atlas = effectsAtlas();
+    const codeAt = (kind: 'shield' | 'silverShard', frame: number, x: number, y: number) => {
+      const rect = effectRect(kind, frame);
+      const offset = ((rect.y + y) * atlas.width + rect.x + x) * 4;
+      return Array.from(atlas.rgba.subarray(offset, offset + 4));
+    };
+    const silver = [0xd9, 0xdc, 0xe6, 255];
+    const ink = [0x06, 0x07, 0x0c, 255];
+    // Le haut de l'écu, au milieu : argent entier, encre de la fente.
+    expect(codeAt('shield', 0, 7, 0)).toEqual(silver);
+    expect(codeAt('shield', 1, 7, 0)).toEqual(ink);
+    // La pointe, en bas au milieu ; les coins du bas restent vides.
+    expect(codeAt('shield', 0, 7, 13)[3]).toBe(255);
+    expect(codeAt('shield', 0, 7, 14)[3]).toBe(0);
+    expect(codeAt('shield', 0, 1, 13)[3]).toBe(0);
+    expect(codeAt('silverShard', 0, 2, 2)).toEqual(silver);
+    expect(codeAt('silverShard', 0, 0, 0)).toEqual(ink);
   });
 
   it('paints the red vignette of a blow in 5 steps, at the size of the stage', () => {

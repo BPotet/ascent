@@ -32,6 +32,8 @@ describe('combatants of the test battle', () => {
       damageReductionPercent: 10,
       counterPercent: 130,
       power: 'bulwark',
+      // Les valeurs du Codex (`sentinel`), recopiées le 29/10/2026 (#128).
+      bulwarkCounter: { bulwarkCounterPercent: 50, bulwarkCounterGuardPercent: 25 },
     });
     expect(MAX_DAMAGE_REDUCTION_PERCENT).toBe(40);
   });

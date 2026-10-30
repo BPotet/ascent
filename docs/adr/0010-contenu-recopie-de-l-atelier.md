@@ -86,6 +86,18 @@ comme au § 1 (`atelier/data/wanderer.ts`, `atelier/data/sentinel.ts`).
   6 teintes de la Sentinelle 2.5D (codes 32 à 37, après `#5A1420`). Les codes existants ne bougent
   pas.
 
+### Avenant au § 7 du 30/10/2026 (#128) : pose demandée à l'Atelier, pas encore validée
+
+Une pose du héros demandée à l'Atelier et pas encore validée est remplacée par une pose validée de
+son animation complète. Cette pose est nommée par une seule constante : pour la Riposte du Rempart,
+`BASH_FRAME = 'parry1'` (`battle/scene/heroFrame.ts`), le bouclier levé devant elle, tenu pendant le
+coup de bouclier (une avance de 4 dp et un retour, `BASH_ADVANCE_DP`). Elle n'est jamais dessinée,
+déplacée ni déformée par le code : la scène la place seulement. Une story du chemin B la remplace
+après la validation : elle recopie la pose `bash` dans `atelier/data/sentinel.ts`, l'ajoute à
+`HERO_FRAMES` (15 poses) et change cette seule constante. L'écu du Rempart (entier, fendu) est un
+effet de la scène, dessiné d'après la maquette (`battleEffects.ts`, `shield`) et marqué provisoire :
+il suit la même règle quand l'Atelier valide son image.
+
 ## Avenant du 29/10/2026 (#139)
 
 Les Jumeaux (`twins`, entrée `nouvelleElite`) et la Gardienne des ossuaires (`ossuaryWarden`) ont
