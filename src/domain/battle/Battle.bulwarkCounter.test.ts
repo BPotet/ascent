@@ -363,6 +363,38 @@ describe('Bulwark riposte (#128)', () => {
     expect(test.battle.target).toBe(MAD_VILLAGER);
   });
 
+  describe('the riposte takes the items and the boons, like the counter (R4)', () => {
+    it('adds the flat attack before the shares: (10 + 4) × 50 % × 130 % × 50 % = 4.55', () => {
+      const test = RiposteTest.start({ modifiers: { ...NO_MODIFIERS, attackFlat: 4 } });
+
+      test.toEndOfBlow();
+
+      expect(test.all('bulwarkCountered')).toEqual([
+        expect.objectContaining({ damage: 4, guardDamage: 3 }),
+      ]);
+    });
+
+    it('deals 4 HP and no guard damage to an enemy stunned during its blow (rule of the domain)', () => {
+      const test = RiposteTest.start();
+      test.advance(test.step.resolvedAt - 1);
+      const ghoul = test.battle.enemies[GHOUL]!;
+      test.battle = {
+        ...test.battle,
+        enemies: test.battle.enemies.map((enemy, index) =>
+          index === GHOUL
+            ? { ...ghoul, guard: 0, stun: { actionLost: true, heroAction: 0 } }
+            : enemy,
+        ),
+      };
+
+      test.toEndOfBlow();
+
+      expect(test.all('bulwarkCountered')).toEqual([
+        expect.objectContaining({ damage: 4, guardDamage: 0 }),
+      ]);
+    });
+  });
+
   describe('what the riposte does to the enemy (R5, R6)', () => {
     it('breaks the guard like any blow: stun, hit stop, and Ember Heart gives 1 momentum and 5 HP', () => {
       const test = RiposteTest.start({ attacker: { guard: 3 }, modifiers: EMBER_HEART });
