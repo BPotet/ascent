@@ -7,7 +7,11 @@ import '@shopify/react-native-skia/jestSetup';
 
 import { act, render, screen } from '@testing-library/react-native';
 
-import { attackMotion, poseAnchors } from '../pixelArt/sprites/battle/battleCharacters';
+import {
+  attackMotion,
+  poseAnchors,
+  type AttackMotions,
+} from '../pixelArt/sprites/battle/battleCharacters';
 import { BattleScene, prepareBattleScene, type BattleSceneProps } from './BattleCanvas';
 import { enemyPose } from './scene/enemyPose';
 import { sceneGeometry, spriteOrigin } from './scene/sceneGeometry';
@@ -396,7 +400,11 @@ describe('BattleScene: the glint and the stars follow the displayed pose', () =>
     const single = sceneGeometry(390, 440, 1);
     const { sprite, reach } = single.enemies[0]!;
     const origin = spriteOrigin(sprite, 54, 54);
-    const motion = attackMotion('twins');
+    // Lue avant les tests, jamais à la collecte (#149), comme la table des effets.
+    let motion: AttackMotions;
+    beforeAll(() => {
+      motion = attackMotion('twins');
+    });
 
     /** L'action des Jumeaux : le Carreau d'arbalète ou l'Onde de choc, préparés à 1 000 ms. */
     function twinsAttack(attack: 'basic' | 'delayedPerilous'): SceneTimeline {
