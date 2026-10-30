@@ -5,18 +5,17 @@ import type { AscentSession } from '../../../application/useCases/AscentSession'
 import type { Ascent } from '../../../domain/ascent/Ascent';
 import { ITEMS } from '../../../domain/ascent/items';
 import { BoonChoicePanel } from '../battle/BoonChoicePanel';
+import { ExitChoice } from '../components/ExitChoice';
 import { Screen } from '../components/Screen';
 import {
   blessingLines,
   blessingText,
-  exitLabel,
   floorLine,
   goldText,
   itemDescription,
   itemText,
   wornText,
 } from '../format/ascentText';
-import { ownedBoonsLine } from '../format/boonText';
 import { artPalette } from '../pixelArt/artPalette';
 import { PixelButton } from '../pixelArt/PixelButton';
 import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypography';
@@ -310,26 +309,16 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
     );
   }
 
-  const boss = ascent.exits.some((exit) => exit.kind === 'boss');
   return (
     <Screen layout="top" background={roles.night} testID="ascent-exits">
       <Header ascent={ascent} onPause={leave} />
-      <ScrollView contentContainerStyle={styles.exits}>
-        {gained}
-        <Text style={styles.line}>{ownedBoonsLine(ascent.hero.boons)}</Text>
-        <Text accessibilityRole="header" style={styles.title}>
-          {boss ? 'Dernière porte' : 'Choisis ta sortie'}
-        </Text>
-        {ascent.exits.map((exit, index) => (
-          <PixelButton
-            key={`${ascent.floor}-${index}`}
-            label={exitLabel(exit)}
-            variant={exit.kind === 'campfire' ? 'secondary' : 'primary'}
-            testID={`ascent-exit-${index}`}
-            onPress={() => session.chooseExit(index)}
-          />
-        ))}
-      </ScrollView>
+      <ExitChoice
+        key={ascent.floor}
+        boons={ascent.hero.boons}
+        exits={ascent.exits}
+        banner={gained}
+        onChoose={(index) => session.chooseExit(index)}
+      />
     </Screen>
   );
 }
@@ -368,6 +357,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   fall: { color: roles.error },
+  exits: { padding: 24, gap: 14 },
   line: { ...pixelTypography.body, color: roles.parchment, textAlign: 'center' },
   gold: {
     fontFamily: pixelFont,
@@ -376,7 +366,6 @@ const styles = StyleSheet.create({
     color: roles.gold,
     textAlign: 'center',
   },
-  exits: { padding: 24, gap: 14 },
   blessing: { justifyContent: 'flex-start', paddingVertical: 10 },
   row: { flexDirection: 'row', justifyContent: 'center', gap: 12 },
   half: { flex: 1 },

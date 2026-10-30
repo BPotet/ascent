@@ -151,7 +151,11 @@ describe('touch probe route', () => {
         readFileSync(file, 'utf8').includes('preview/touch-probe'),
     );
 
-    expect(sourceFiles(routeDirectory)).toEqual([path.join(routeDirectory, 'touch-probe.tsx')]);
+    // Les outils du build de preview : la sonde de toucher et la planche des icônes (#157).
+    expect(sourceFiles(routeDirectory).sort()).toEqual([
+      path.join(routeDirectory, 'icon-board.tsx'),
+      path.join(routeDirectory, 'touch-probe.tsx'),
+    ]);
     expect(linking).toEqual([]);
   });
 });

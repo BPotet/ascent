@@ -186,3 +186,25 @@ validés par le propriétaire le 30/10/2026 et recopiés comme au § 1.
   recoloration. Le dessin de l'écu par le code (`ShieldGlyph`, l'ancien `shield`) est supprimé.
 - **Ce qui reste dessiné par le code.** Les 4 éclats d'argent (`silverShard`), l'onde d'argent et le
   choc de bouclier : l'Atelier n'en a pas d'image.
+
+## 9. Icônes (#157, 30 octobre 2026)
+
+Les 12 icônes validées dans l'Atelier le 30/10/2026 sont recopiées par le script de recopie, en
+lecture seule, clé `proposals[chosen]` (`w`, `h`, `palette`, `rows`), en `AssetImage` :
+
+- les 7 **icônes de bienfait** dans `sprites/atelier/data/boonIcons.ts` (`BOON_ICONS`) ;
+- les 5 **icônes de bénédiction** dans `sprites/atelier/data/blessingIcons.ts` (`BLESSING_ICONS`),
+  une par famille, la même pour ses trois raretés. L'entrée `aegis` de l'Atelier est la famille
+  `protection` (ex-« Égide », #105) : la correspondance est écrite en tête du fichier, comme
+  `nouvelleArme` → `crossbow` dans `itemImages.ts`.
+
+Les deux registres sont typés `Readonly<Record<BoonKind | BlessingFamily, AssetImage>>`, sans
+`Partial` : l'oubli d'un bienfait ou d'une famille casse la compilation. Leur première ligne est
+`// Stryker disable all` (§ 8). Les données sont identiques, pixel pour pixel, à la constante `ICONS`
+de la maquette validée (`docs/mockups/153-boon-blessing-icons/index.html`), qui sert de référence
+versionnée au test de fidélité (`features/icones-bienfaits.feature`).
+
+Les icônes de 16 × 16 apportent 4 teintes absentes de la palette d'art : `#DEE0E7` et `#C3C7D3`
+(Écho parfait), `#EEA8B6` (Vigueur), `#F8E7C8` (Élan). Elles s'ajoutent à la fin de `tints` (§ 4) :
+les codes existants ne bougent pas, et les tests passent par `tintCode`, jamais par un code écrit en
+dur. Une icône validée de nouveau plus tard entre par une story du chemin B.

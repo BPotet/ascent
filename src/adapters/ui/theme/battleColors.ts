@@ -43,7 +43,5 @@ export const battleColors = {
   bloodDark: '#8A1E2A',
   bloodSoft: 'rgba(179,46,60,0.3)',
   onBlood: '#FFC2C9',
-  /** Les raretés (maquette #88) : Commun, Rare, Épique, aussi écrites en mot et en losanges. */
-  rarity: { common: '#C3C7D3', rare: '#7C9CFF', epic: '#C49BFF' },
 } as const;
 // Stryker restore all
