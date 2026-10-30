@@ -530,6 +530,19 @@ describe('a pose of an attack (#139)', () => {
     );
   });
 
+  it('reads no attack poses without an attack kind, not even an entry named null', () => {
+    // `null` n'est pas un type de coup : il n'est jamais lu comme la clé « null » des poses.
+    const { attackPoses } = withAttack(44, 52);
+    const poses = { ...attackPoses, null: attackPoses?.basic };
+    const animation: FullAnimation = { ...withAttack(44, 52), attackPoses: poses };
+    expect(animationSprite(animation, 'ant2', undefined, { attack: null })).toEqual(
+      animationSprite(animation, 'ant2'),
+    );
+    expect(animationSprite(animation, 'ant2', undefined, { attack: null })).not.toEqual(
+      animationSprite(animation, 'ant2', undefined, { attack: 'basic' }),
+    );
+  });
+
   it('paints a pose of the attack with the red palette, tint for tint', () => {
     const { sprite } = animationSprite(withAttack(44, 52), 'ant2', undefined, {
       attack: 'basic',
