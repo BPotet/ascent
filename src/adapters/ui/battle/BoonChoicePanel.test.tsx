@@ -2,10 +2,10 @@ import { fireEvent, render, screen, within } from '@testing-library/react-native
 import { StyleSheet } from 'react-native';
 
 import { artPalette } from '../pixelArt/artPalette';
-import { artPixelSize } from '../pixelArt/artPixel';
 import { pixelFont } from '../pixelArt/pixelTypography';
 
 import { BoonChoicePanel } from './BoonChoicePanel';
+import { wellOf } from '../testing/iconWell';
 
 describe('BoonChoicePanel', () => {
   it('offers 3 boons, and takes one in two steps: the card, then « Prendre »', async () => {
@@ -65,22 +65,6 @@ describe('BoonChoicePanel', () => {
     const hidden = { includeHiddenElements: true } as const;
     const OFFER = ['perfectEcho', 'lingeringFrost', 'emberHeart'] as const;
 
-    /** L'écrin d'un élément : son style, et le nom, l'échelle et la taille rendue de son icône. */
-    function wellOf(element: ReturnType<typeof screen.getByTestId>) {
-      const well = within(element).getByTestId('icon-well', hidden);
-      const icon = within(well).getByTestId('icon-well-icon', hidden).props as {
-        sprite: string;
-        scale: 2 | 3 | 4 | 6;
-        pixelWidth: number;
-      };
-      return {
-        style: StyleSheet.flatten(well.props.style),
-        sprite: icon.sprite,
-        scale: icon.scale,
-        size: icon.pixelWidth * artPixelSize(icon.scale),
-      };
-    }
-
     it('shows on the left of each card its 48 dp icon, in a 56 dp well of the colour of its rarity', async () => {
       await render(<BoonChoicePanel offer={OFFER} onChoose={jest.fn()} />);
 
@@ -96,9 +80,9 @@ describe('BoonChoicePanel', () => {
         roles.rarityRare,
         roles.rarityEpic,
       ]);
-      wells.forEach(({ style, size }) => {
+      wells.forEach(({ style, width }) => {
         expect(style).toMatchObject({ width: 56, height: 56 });
-        expect(size).toBe(48);
+        expect(width).toBe(48);
       });
       expect(wells.map(({ scale }) => scale)).toEqual([3, 2, 2]);
     });
@@ -148,7 +132,7 @@ describe('BoonChoicePanel', () => {
 
         const obtained = screen.getByTestId('boon-obtained');
         const well = wellOf(obtained);
-        expect(well).toMatchObject({ sprite: `boon-icon:${kind}`, scale, size: 96 });
+        expect(well).toMatchObject({ sprite: `boon-icon:${kind}`, scale, width: 96 });
         expect(well.style).toMatchObject({ width: 112, height: 112, borderColor: color });
         expect(within(obtained).getByTestId('icon-well-double', hidden)).toBeTruthy();
       },

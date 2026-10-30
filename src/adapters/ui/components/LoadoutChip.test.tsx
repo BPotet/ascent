@@ -104,6 +104,26 @@ describe('LoadoutChipGrid (#157)', () => {
 
     expect(screen.getAllByTestId('loadout-chip-row', hidden)).toHaveLength(3);
   });
+
+  it('puts its chips on the surface, their notches cut in the night, by default', async () => {
+    await render(<LoadoutChipGrid label={label} chips={FIVE.slice(0, 1)} />);
+
+    const chip = screen.getByTestId('loadout-chip', hidden);
+    expect(StyleSheet.flatten(chip.props.style)).toMatchObject({ backgroundColor: roles.surface });
+    expect(
+      StyleSheet.flatten(screen.getAllByTestId('loadout-chip-corner', hidden)[0]!.props.style),
+    ).toMatchObject({ backgroundColor: roles.night });
+  });
+
+  it('puts its chips on the darker background of a frame, their notches cut in the frame (#159)', async () => {
+    await render(<LoadoutChipGrid label={label} chips={FIVE.slice(0, 1)} framed />);
+
+    const chip = screen.getByTestId('loadout-chip', hidden);
+    expect(StyleSheet.flatten(chip.props.style)).toMatchObject({ backgroundColor: roles.sunken });
+    expect(
+      StyleSheet.flatten(screen.getAllByTestId('loadout-chip-corner', hidden)[0]!.props.style),
+    ).toMatchObject({ backgroundColor: roles.surface });
+  });
 });
 
 describe('LoadoutHeading (#158)', () => {

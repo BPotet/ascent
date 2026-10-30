@@ -131,6 +131,8 @@ export const artPalette = {
     rarityEpic: '#C49BFF',
     /** Fond de l'écrin d'une icône (#157). */
     well: '#0B0D18',
+    /** Fond d'une pastille d'équipement posée dans un cadre (Équipement du pied de la tour, #159). */
+    sunken: '#141829',
   },
 } as const;
 // Stryker restore all
