@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import type { Rarity } from '../../../domain/ascent/rarity';
 import { useLargeText } from '../state/useLargeText';
@@ -17,6 +18,8 @@ export interface LoadoutChipProps {
   readonly name: string;
   /** La rareté en losanges et en mot : « ◆◆ Rare », « ◆ Commune ». */
   readonly rarityLine: string;
+  /** Posée dans un cadre (#159) : un fond plus sombre, ses coins coupés dans la surface du cadre. */
+  readonly framed?: boolean;
 }
 
 /** Une pastille de la grille : sa clé et son libellé lu, en plus de ce qu'elle montre. */
@@ -30,23 +33,50 @@ export interface LoadoutChipItem extends LoadoutChipProps {
  * (qui passe à la ligne, jamais coupé) et la rareté, pour un bienfait ou une bénédiction de départ.
  * Ce n'est pas un bouton.
  */
-export function LoadoutChip({ icon, rarity, name, rarityLine }: LoadoutChipProps) {
+export function LoadoutChip({ icon, rarity, name, rarityLine, framed = false }: LoadoutChipProps) {
   const line = artPixelSize(2);
+  const background = framed ? roles.sunken : roles.surface;
   return (
     <View
       testID="loadout-chip"
-      style={[styles.chip, { borderWidth: line, borderColor: roles.line }]}
+      style={[
+        styles.chip,
+        { borderWidth: line, borderColor: roles.line, backgroundColor: background },
+      ]}
     >
-      <IconWell icon={icon} rarity={rarity} size="chip" />
+      <IconWell icon={icon} rarity={rarity} size="chip" under={background} />
       <View style={styles.text}>
         <Text style={styles.name}>{name}</Text>
         <Text style={[styles.rarity, { color: RARITY_COLORS[rarity] }]}>{rarityLine}</Text>
       </View>
       {notchedCorners(line).map((corner, index) => (
-        <View key={index} pointerEvents="none" style={[styles.corner, corner]} />
+        <View
+          key={index}
+          pointerEvents="none"
+          testID="loadout-chip-corner"
+          style={[styles.corner, corner, { backgroundColor: framed ? roles.surface : roles.night }]}
+        />
       ))}
     </View>
   );
+}
+
+/** Ce que prend une pastille autour de son nom : l'écrin, l'écart, la marge et le trait, en dp. */
+const CHIP_CHROME = 70;
+/**
+ * La place minimale du nom et de « ◆◆ Rare », à la taille de texte habituelle : le mot le plus long
+ * (« Protection », 66,2 dp en Inter gras 13) y tient ; en deçà, il se couperait au milieu.
+ */
+const MIN_NAME_WIDTH = 68;
+/** L'écart entre deux colonnes, en dp (`styles.row`). */
+const COLUMN_GAP = 8;
+
+/**
+ * Deux colonnes laissent-elles assez de place au nom, dans une grille large de `width` dp, à la
+ * taille de texte `fontScale` du téléphone ?
+ */
+function twoColumnsFit(width: number, fontScale: number): boolean {
+  return (width - COLUMN_GAP) / 2 - CHIP_CHROME >= MIN_NAME_WIDTH * fontScale;
 }
 
 /** Les pastilles par rangs de `columns`. */
@@ -59,19 +89,32 @@ function rowsOf<T>(items: readonly T[], columns: number): T[][] {
 }
 
 /**
- * La grille des pastilles d'équipement : 2 colonnes, ou 1 quand le texte du téléphone est agrandi.
- * Elle est lue d'un trait (`label`), ses pastilles cachées au lecteur d'écran.
+ * La grille des pastilles d'équipement : 2 colonnes, ou 1 quand le texte du téléphone est agrandi
+ * ou quand la grille mesurée est trop étroite pour leurs noms (#159, dans le cadre de l'ascension
+ * d'un téléphone étroit).
+ * Elle est lue d'un trait (`label`), ses pastilles cachées au lecteur d'écran. `framed` pose les
+ * pastilles dans un cadre (#159).
  */
 export function LoadoutChipGrid({
   label,
   chips,
+  framed = false,
 }: {
   readonly label: string;
   readonly chips: readonly LoadoutChipItem[];
+  readonly framed?: boolean;
 }) {
-  const columns = useLargeText() ? 1 : 2;
+  const largeText = useLargeText();
+  const { fontScale } = useWindowDimensions();
+  const [width, setWidth] = useState<number | null>(null);
+  const columns = largeText || (width !== null && !twoColumnsFit(width, fontScale)) ? 1 : 2;
   return (
-    <View accessible accessibilityLabel={label} testID="loadout-chip-grid">
+    <View
+      accessible
+      accessibilityLabel={label}
+      testID="loadout-chip-grid"
+      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+    >
       <View
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
@@ -81,7 +124,7 @@ export function LoadoutChipGrid({
           <View key={row[0]!.key} testID="loadout-chip-row" style={styles.row}>
             {row.map(({ key, label: _label, ...chip }) => (
               <View key={key} style={styles.cell}>
-                <LoadoutChip {...chip} />
+                <LoadoutChip {...chip} framed={framed} />
               </View>
             ))}
             {row.length < columns && <View style={styles.cell} />}
@@ -125,6 +168,32 @@ export function LoadoutHeading({
   );
 }
 
+/**
+ * Le message d'une section d'équipement vide (« Aucun bienfait »), dans un cadre discret, sans
+ * pastille vide (#159). `under` est la couleur sous le cadre, qui coupe ses coins.
+ */
+export function LoadoutNone({
+  text,
+  under = roles.surface,
+}: {
+  readonly text: string;
+  readonly under?: string;
+}) {
+  const line = artPixelSize(2);
+  return (
+    <View testID="loadout-none" style={[styles.none, { borderWidth: line }]}>
+      <Text style={styles.noneText}>{text}</Text>
+      {notchedCorners(line).map((corner, index) => (
+        <View
+          key={index}
+          pointerEvents="none"
+          style={[styles.corner, corner, { backgroundColor: under }]}
+        />
+      ))}
+    </View>
+  );
+}
+
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
   chip: {
@@ -136,12 +205,11 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     paddingLeft: 0,
     paddingRight: 6,
-    backgroundColor: roles.surface,
   },
   text: { flex: 1, gap: 1 },
   name: { fontFamily: textFont.bold, fontSize: 13, lineHeight: 16, color: roles.light },
   rarity: { fontFamily: textFont.bold, fontSize: 11, lineHeight: 14 },
-  corner: { position: 'absolute', backgroundColor: roles.night },
+  corner: { position: 'absolute' },
   grid: { gap: 8 },
   heading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   headingText: {
@@ -153,7 +221,14 @@ const styles = StyleSheet.create({
     color: roles.muted,
   },
   count: { fontFamily: textFont.semiBold, fontSize: 12, lineHeight: 16, color: roles.muted },
-  row: { flexDirection: 'row', gap: 8 },
+  row: { flexDirection: 'row', gap: COLUMN_GAP },
+  none: {
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderColor: roles.raised,
+    backgroundColor: 'rgba(10,12,22,0.5)',
+  },
+  noneText: { fontFamily: textFont.medium, fontSize: 13, lineHeight: 18, color: roles.parchment },
   cell: { flex: 1 },
 });
 // Stryker restore all

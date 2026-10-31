@@ -44,6 +44,18 @@ se comparent à la même maquette ; sur 3A, le bouton Hâte est au repos, et non
 maquette. Les sélecteurs des boutons se terminent par `.*`, le `+` des effets étant un caractère de
 regex. Le vrai parcours reste couvert par `tower-pixel-buttons.yaml` (boucle sur `blessing-0`).
 
+L'Équipement (`loadout.yaml`, #159) suit d'abord le vrai parcours, sans timing : sur une
+installation neuve, ni bénédiction ni bienfait. Le bouton « Équipement » du combat de l'étage 1 est
+vérifié par son libellé lu (5B) ; le toucher met le combat en pause et ouvre la feuille vide (5E) ;
+« Fermer » lance « Reprise dans 3 », capturé dès son apparition (5D), et la vérification qui dure
+est le retour de `battle-pad` ; « Pause » mène au pied de la tour avec « Équipement · 0 » (4B). Les
+états pleins passent par la même planche : ses entrées « Équipement · … » ouvrent le vrai pied de la
+tour et le vrai écran de l'ascension sur des ascensions fixes, chacune dans une session en mémoire
+(jamais l'ascension du joueur). « Pause » ramène à la planche ; depuis le pied de la tour,
+« Reprendre l'ascension » puis « Pause ». Le menu de la planche défile (`scrollUntilVisible`). Les
+titres de section sont écrits en capitales : leurs sélecteurs ignorent la casse (`(?iu)`). Captures :
+4A à 4E, 5A à 5G.
+
 Le combat d'essai et son bouton « Combat d'essai », au-dessus de la barre d'onglets du build de
 preview, sont retirés (#121, décision du propriétaire du 28/10/2026) : la barre d'onglets et la liste
 de la Vue Journée ont la même place en preview et en production. `old-trial-battle-link.yaml` vérifie

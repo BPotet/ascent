@@ -1,0 +1,265 @@
+# Story #159 : l'Équipement, au pied de la tour et dans l'en-tête de l'ascension (chemin A).
+# 1. Le vrai parcours, sans timing : installation neuve, donc ni bénédiction ni bienfait. Le combat
+#    de l'étage 1 montre « Équipement » à 0 (5B) ; le toucher met le combat en pause et ouvre la
+#    feuille vide (5E) ; « Fermer » lance « Reprise dans 3 » (5D), puis le combat revient ; « Pause »
+#    mène au pied de la tour, avec « Équipement · 0 » (4B).
+# 2. La planche des icônes (ascent://preview/icon-board), pour les états pleins qu'on n'atteint pas
+#    sans gagner de combat : ses entrées « Équipement · … » ouvrent le vrai pied de la tour et le vrai
+#    écran de l'ascension sur des ascensions fixes, en mémoire (4A, 4C, 4D, 4E, 5A, 5C, 5F, 5G).
+# Le gameplay du combat se teste à la main sur l'APK (décision du 25/10) : la capture 5D se prend dès
+# l'apparition de « Reprise dans », la vérification qui dure est le retour de `battle-pad`.
+# Les titres de section sont écrits en capitales : leurs sélecteurs ignorent la casse.
+# Captures à comparer à la maquette `docs/mockups/153-boon-blessing-icons/` : 4A à 4E, 5A à 5G.
+appId: com.bpotet.ascent
+name: L'Équipement
+tags:
+  - story-159
+---
+- runFlow: ../subflows/launch-fresh.yaml
+
+# --- 1. Le vrai parcours ---------------------------------------------------------------------
+
+- tapOn:
+    id: 'tab-tower'
+- extendedWaitUntil:
+    visible: "Commencer l'ascension"
+    timeout: 15000
+# Avant l'ascension, le pied de la tour ne change pas.
+- assertNotVisible: '(?iu)Équipement.*'
+- tapOn: "Commencer l'ascension"
+- extendedWaitUntil:
+    visible:
+      id: 'hero-choice-start'
+    timeout: 15000
+- tapOn:
+    id: 'hero-choice-start'
+- repeat:
+    while:
+      visible:
+        id: 'ascent-blessing'
+    commands:
+      - tapOn:
+          id: 'blessing-0'
+
+# 5B : le combat de l'étage 1, « Équipement » à 0 grisé, à côté de « Pause ».
+- extendedWaitUntil:
+    visible:
+      id: 'battle-pad'
+    timeout: 15000
+- assertVisible:
+    id: 'ascent-loadout'
+    text: 'Équipement : vide. Ouvre la liste. Met le combat en pause'
+- takeScreenshot: loadout-5b-battle-empty
+
+# 5E : la feuille vide, le combat en pause.
+- tapOn:
+    id: 'ascent-loadout'
+- extendedWaitUntil:
+    visible: 'Combat en pause'
+    timeout: 10000
+- assertVisible: "Aucune bénédiction de départ : aucune habitude faite hier ne l'a donnée."
+- assertVisible: "Aucun bienfait pour l'instant. Gagne un combat pour en choisir un."
+- assertNotVisible:
+    id: 'battle-pad'
+- takeScreenshot: loadout-5e-sheet-empty
+
+# 5D : la reprise après la feuille, puis le combat revient.
+- tapOn: 'Fermer'
+- extendedWaitUntil:
+    visible: 'Reprise dans'
+    timeout: 5000
+- takeScreenshot: loadout-5d-countdown
+- extendedWaitUntil:
+    visible:
+      id: 'battle-pad'
+    timeout: 15000
+
+# 4B : « Pause », le pied de la tour avec un Équipement vide, sans « Voir le détail ».
+- tapOn:
+    id: 'ascent-pause'
+- extendedWaitUntil:
+    visible: "Reprendre l'ascension"
+    timeout: 15000
+- assertVisible: '(?iu)Équipement · 0'
+- assertVisible: 'Aucune bénédiction de départ'
+- assertVisible: 'Aucun bienfait'
+- assertNotVisible: 'Voir le détail'
+- assertVisible: "Abandonner l'ascension"
+- takeScreenshot: loadout-4b-foot-empty
+- tapOn: "Abandonner l'ascension"
+- tapOn: 'Abandonner'
+- extendedWaitUntil:
+    visible: "Commencer l'ascension"
+    timeout: 15000
+
+# --- 2. La planche des icônes ----------------------------------------------------------------
+
+- openLink: ascent://preview/icon-board
+- extendedWaitUntil:
+    visible: 'Planche des icônes'
+    timeout: 15000
+
+# 4C : le pied de la tour, une seule bénédiction, aucun bienfait encore.
+- scrollUntilVisible:
+    element:
+      text: 'Équipement · 1 · pied de la tour'
+    direction: DOWN
+- tapOn: 'Équipement · 1 · pied de la tour'
+- extendedWaitUntil:
+    visible: "Reprendre l'ascension"
+    timeout: 15000
+- assertVisible: '(?iu)Équipement · 1'
+- assertVisible: 'Bénédictions de départ : Hâte, Rare'
+- assertVisible: 'Aucun bienfait'
+- takeScreenshot: loadout-4c-foot-1
+- tapOn: "Reprendre l'ascension"
+- extendedWaitUntil:
+    visible:
+      id: 'ascent-pause'
+    timeout: 15000
+- tapOn:
+    id: 'ascent-pause'
+- extendedWaitUntil:
+    visible: 'Planche des icônes'
+    timeout: 15000
+
+# 4A : le pied de la tour, un Équipement de 3 (Hâte Rare, Écho parfait, Givre persistant).
+- scrollUntilVisible:
+    element:
+      text: 'Équipement · 3 · pied de la tour'
+    direction: DOWN
+- tapOn: 'Équipement · 3 · pied de la tour'
+- extendedWaitUntil:
+    visible: "Reprendre l'ascension"
+    timeout: 15000
+- assertVisible: '(?iu)Équipement · 3'
+- assertVisible: 'Bénédictions de départ : Hâte, Rare'
+- assertVisible: 'Bienfaits : Écho parfait, Commun ; Givre persistant, Rare'
+- assertVisible: 'Voir le détail'
+- takeScreenshot: loadout-4a-foot-3
+# Retour à la planche : l'ascension, puis « Pause ».
+- tapOn: "Reprendre l'ascension"
+- extendedWaitUntil:
+    visible:
+      id: 'ascent-pause'
+    timeout: 15000
+- tapOn:
+    id: 'ascent-pause'
+- extendedWaitUntil:
+    visible: 'Planche des icônes'
+    timeout: 15000
+
+# 4D : le build le plus long, le cadre défile, les boutons restent en bas.
+- scrollUntilVisible:
+    element:
+      text: 'Équipement · 8 · pied de la tour'
+    direction: DOWN
+- tapOn: 'Équipement · 8 · pied de la tour'
+- extendedWaitUntil:
+    visible: "Reprendre l'ascension"
+    timeout: 15000
+- assertVisible: "Abandonner l'ascension"
+- takeScreenshot: loadout-4d-foot-8
+
+# 4E : la feuille ouverte depuis le pied de la tour, sans pause.
+- tapOn: 'Voir le détail'
+- extendedWaitUntil:
+    visible: "Tes bénédictions et tes bienfaits, jusqu'à la fin de l'ascension."
+    timeout: 10000
+- assertNotVisible: 'Combat en pause'
+- takeScreenshot: loadout-4e-sheet-foot
+- tapOn: 'Fermer'
+- tapOn: "Reprendre l'ascension"
+- extendedWaitUntil:
+    visible:
+      id: 'ascent-pause'
+    timeout: 15000
+- tapOn:
+    id: 'ascent-pause'
+- extendedWaitUntil:
+    visible: 'Planche des icônes'
+    timeout: 15000
+
+# 5A : le combat avec 8 ; on touche « Équipement » sans attendre.
+- scrollUntilVisible:
+    element:
+      text: 'Équipement · 8 · combat'
+    direction: DOWN
+- tapOn: 'Équipement · 8 · combat'
+- extendedWaitUntil:
+    visible:
+      id: 'battle-pad'
+    timeout: 15000
+- assertVisible:
+    id: 'ascent-loadout'
+    text: 'Équipement : 3 bénédictions de départ, 5 bienfaits. Ouvre la liste. Met le combat en pause'
+- takeScreenshot: loadout-5a-battle-8
+
+# 5C : la feuille en combat, « Combat en pause » en tête ; « Fermer » lance le compte à rebours.
+- tapOn:
+    id: 'ascent-loadout'
+- extendedWaitUntil:
+    visible: 'Combat en pause'
+    timeout: 10000
+- takeScreenshot: loadout-5c-sheet-battle
+- tapOn: 'Fermer'
+- extendedWaitUntil:
+    visible: 'Reprise dans'
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: 'battle-pad'
+    timeout: 15000
+- tapOn:
+    id: 'ascent-pause'
+- extendedWaitUntil:
+    visible: 'Planche des icônes'
+    timeout: 15000
+
+# 5F : la dernière porte, le même bouton hors combat : la feuille, sans pause.
+- scrollUntilVisible:
+    element:
+      text: 'Équipement · 8 · sorties'
+    direction: DOWN
+- tapOn: 'Équipement · 8 · sorties'
+- extendedWaitUntil:
+    visible: 'Dernière porte'
+    timeout: 15000
+- assertVisible:
+    id: 'ascent-loadout'
+    text: 'Équipement : 3 bénédictions de départ, 5 bienfaits. Ouvre la liste'
+- takeScreenshot: loadout-5f-exits
+- tapOn:
+    id: 'ascent-loadout'
+- extendedWaitUntil:
+    visible: "Tes bénédictions et tes bienfaits, jusqu'à la fin de l'ascension."
+    timeout: 10000
+- assertNotVisible: 'Combat en pause'
+- takeScreenshot: loadout-5f-sheet
+- tapOn: 'Fermer'
+- assertNotVisible: 'Reprise dans'
+- assertVisible: 'Dernière porte'
+- tapOn:
+    id: 'ascent-pause'
+- extendedWaitUntil:
+    visible: 'Planche des icônes'
+    timeout: 15000
+
+# 5G : le choix d'un bienfait, avec un Équipement de 3.
+- scrollUntilVisible:
+    element:
+      text: "Équipement · 3 · choix d'un bienfait"
+    direction: DOWN
+- tapOn: "Équipement · 3 · choix d'un bienfait"
+- extendedWaitUntil:
+    visible: 'Choisis un bienfait'
+    timeout: 15000
+- assertVisible:
+    id: 'ascent-loadout'
+    text: 'Équipement : 1 bénédiction de départ, 2 bienfaits. Ouvre la liste'
+- takeScreenshot: loadout-5g-boons
+- tapOn:
+    id: 'ascent-pause'
+- extendedWaitUntil:
+    visible: 'Planche des icônes'
+    timeout: 15000

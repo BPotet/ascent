@@ -4,30 +4,11 @@ import { StyleSheet } from 'react-native';
 import type { BlessingFamily, StartingBlessing } from '../../../domain/ascent/blessings';
 import type { Rarity } from '../../../domain/ascent/rarity';
 import { artPalette } from '../pixelArt/artPalette';
-import { artPixelSize } from '../pixelArt/artPixel';
 import { BlessingChoice } from './BlessingChoice';
+import { wellOf } from '../testing/iconWell';
 
 const { roles } = artPalette;
 const hidden = { includeHiddenElements: true } as const;
-
-type Element = ReturnType<typeof screen.getByTestId>;
-
-/** L'écrin d'un bouton, et le nom et la taille rendue de son icône. */
-function wellOf(button: Element) {
-  const well = within(button).getByTestId('icon-well', hidden);
-  const icon = within(well).getByTestId('icon-well-icon', hidden).props as {
-    sprite: string;
-    scale: 2 | 3 | 4 | 6;
-    pixelWidth: number;
-    pixelHeight: number;
-  };
-  return {
-    style: StyleSheet.flatten(well.props.style),
-    sprite: icon.sprite,
-    width: icon.pixelWidth * artPixelSize(icon.scale),
-    height: icon.pixelHeight * artPixelSize(icon.scale),
-  };
-}
 
 async function show({
   offer = ['haste', 'vigor', 'edge'],

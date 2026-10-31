@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react-native';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 
 import { blessingChip } from '../format/ascentText';
@@ -103,6 +103,63 @@ describe('LoadoutChipGrid (#157)', () => {
     await render(<LoadoutChipGrid label={label} chips={FIVE} />);
 
     expect(screen.getAllByTestId('loadout-chip-row', hidden)).toHaveLength(3);
+  });
+
+  it('falls to 1 column when its width leaves too little room to the names (#159)', async () => {
+    await render(<LoadoutChipGrid label={label} chips={FIVE} />);
+
+    await fireEvent(screen.getByTestId('loadout-chip-grid'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 244, height: 0 } },
+    });
+
+    expect(screen.getAllByTestId('loadout-chip-row', hidden)).toHaveLength(5);
+  });
+
+  it('keeps 2 columns when its width leaves room to the names, as at the exits (#159)', async () => {
+    await render(<LoadoutChipGrid label={label} chips={FIVE} />);
+
+    await fireEvent(screen.getByTestId('loadout-chip-grid'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 288, height: 0 } },
+    });
+
+    expect(screen.getAllByTestId('loadout-chip-row', hidden)).toHaveLength(3);
+  });
+
+  it.each([
+    [1.15, 1, 5],
+    [1, 2, 3],
+  ])(
+    'leaves room to the longest names in the text size of the phone: 284 dp at %s gives %s column(s) (#159)',
+    async (fontScale, _, rows) => {
+      largeText(fontScale);
+      await render(<LoadoutChipGrid label={label} chips={FIVE} />);
+
+      await fireEvent(screen.getByTestId('loadout-chip-grid'), 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 284, height: 0 } },
+      });
+
+      expect(screen.getAllByTestId('loadout-chip-row', hidden)).toHaveLength(rows);
+    },
+  );
+
+  it('puts its chips on the surface, their notches cut in the night, by default', async () => {
+    await render(<LoadoutChipGrid label={label} chips={FIVE.slice(0, 1)} />);
+
+    const chip = screen.getByTestId('loadout-chip', hidden);
+    expect(StyleSheet.flatten(chip.props.style)).toMatchObject({ backgroundColor: roles.surface });
+    expect(
+      StyleSheet.flatten(screen.getAllByTestId('loadout-chip-corner', hidden)[0]!.props.style),
+    ).toMatchObject({ backgroundColor: roles.night });
+  });
+
+  it('puts its chips on the darker background of a frame, their notches cut in the frame (#159)', async () => {
+    await render(<LoadoutChipGrid label={label} chips={FIVE.slice(0, 1)} framed />);
+
+    const chip = screen.getByTestId('loadout-chip', hidden);
+    expect(StyleSheet.flatten(chip.props.style)).toMatchObject({ backgroundColor: roles.sunken });
+    expect(
+      StyleSheet.flatten(screen.getAllByTestId('loadout-chip-corner', hidden)[0]!.props.style),
+    ).toMatchObject({ backgroundColor: roles.surface });
   });
 });
 

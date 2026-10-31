@@ -109,12 +109,25 @@ describe('artPalette', () => {
     ]);
   });
 
+  it('gives the darker background of a chip in a frame, from the mockup #153 (#159)', () => {
+    expect(roles.sunken).toBe('#141829');
+  });
+
   it.each([
     ['common', roles.rarityCommon],
     ['rare', roles.rarityRare],
     ['epic', roles.rarityEpic],
   ])('gives the %s rarity a contrast of at least 6.1:1 on the surface (#157)', (_, rarity) => {
     expect(contrast(rarity, roles.surface)).toBeGreaterThanOrEqual(6.1);
+  });
+
+  it.each([
+    ['common', roles.rarityCommon],
+    ['rare', roles.rarityRare],
+    ['epic', roles.rarityEpic],
+    ['main text', roles.light],
+  ])('gives the %s a contrast of at least 4.5:1 on a chip in a frame (#159)', (_, text) => {
+    expect(contrast(text, roles.sunken)).toBeGreaterThanOrEqual(4.5);
   });
 
   it.each([

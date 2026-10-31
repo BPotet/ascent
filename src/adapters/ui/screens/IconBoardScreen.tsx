@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import type { AscentSession } from '../../../application/useCases/AscentSession';
+import { startAscent, type Ascent } from '../../../domain/ascent/Ascent';
 import type { BlessingFamily, StartingBlessing } from '../../../domain/ascent/blessings';
 import type { BoonKind } from '../../../domain/ascent/boons';
 import type { Exit } from '../../../domain/ascent/exits';
@@ -12,6 +14,8 @@ import { Screen } from '../components/Screen';
 import { artPalette } from '../pixelArt/artPalette';
 import { PixelButton } from '../pixelArt/PixelButton';
 import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypography';
+import { AscentScreen, type AscentVisibility } from './AscentScreen';
+import { TowerFootScreen } from './TowerFootScreen';
 
 const { roles } = artPalette;
 
@@ -25,6 +29,21 @@ const ENTRIES: readonly (readonly [Board, string])[] = [
   ['lastDoor', 'Dernière porte · 5 bienfaits'],
   ['blessings', 'Bénédictions · 3 sur 3'],
   ['oneBlessing', 'Bénédiction · 1 sur 1'],
+];
+
+/**
+ * Une entrée de l'Équipement (#159) : le vrai pied de la tour ou le vrai écran de l'ascension, sur
+ * une ascension fixe, ouverte dans sa propre session en mémoire.
+ */
+type LoadoutBoard = 'foot1' | 'foot3' | 'foot8' | 'battle8' | 'exits8' | 'boons3';
+
+const LOADOUT_ENTRIES: readonly (readonly [LoadoutBoard, string])[] = [
+  ['foot1', 'Équipement · 1 · pied de la tour'],
+  ['foot3', 'Équipement · 3 · pied de la tour'],
+  ['foot8', 'Équipement · 8 · pied de la tour'],
+  ['battle8', 'Équipement · 8 · combat'],
+  ['exits8', 'Équipement · 8 · sorties'],
+  ['boons3', "Équipement · 3 · choix d'un bienfait"],
 ];
 
 // Stryker disable all: données fixes d'un outil du build de preview.
@@ -74,27 +93,101 @@ const ONE_BLESSING: BlessingStep = {
   taken: [],
   total: 1,
 };
+
+/**
+ * Les ascensions de la maquette #153 : une seule bénédiction (4C), un Équipement de 3 (4A), le build
+ * le plus long (4D, 5A).
+ */
+function withLoadout(
+  floor: number,
+  blessings: Ascent['blessings'],
+  boons: Ascent['hero']['boons'],
+): Ascent {
+  const ascent = startAscent(42);
+  return { ...ascent, floor, blessings, hero: { ...ascent.hero, boons } };
+}
+const THREE = withLoadout(3, [HASTE], ['perfectEcho', 'lingeringFrost']);
+const EIGHT = withLoadout(
+  6,
+  [{ family: 'protection', rarity: 'epic' }, HASTE, { family: 'vigor', rarity: 'common' }],
+  ['perfectEcho', 'lingeringFrost', 'shatteringEmber', 'blazingEmber', 'emberHeart'],
+);
+const between = (ascent: Ascent, exits: readonly Exit[]): Ascent => ({
+  ...ascent,
+  encounter: null,
+  exits,
+  lastGold: 10,
+});
+const LOADOUT_ASCENTS: Readonly<Record<LoadoutBoard, Ascent>> = {
+  foot1: withLoadout(1, [HASTE], []),
+  foot3: THREE,
+  foot8: EIGHT,
+  battle8: { ...EIGHT, floor: 2 },
+  exits8: between({ ...EIGHT, floor: 5 }, [{ kind: 'boss', groupSize: null }]),
+  boons3: {
+    ...between(THREE, DOORS),
+    boonOffer: ['shatteringEmber', 'trueEdge', 'blazingEmber'],
+  },
+};
 // Stryker restore all
+
+/** Le vrai écran ouvert par une entrée de l'Équipement, et sa session. */
+interface OpenAscent {
+  readonly screen: 'foot' | 'ascent';
+  readonly session: AscentSession;
+}
 
 /**
  * La planche des icônes (`IconBoard`, voir `docs/glossary.md`), outil du build de preview (#157) :
  * les écrans du choix d'un bienfait, des sorties et du choix d'une bénédiction de départ (#158),
  * rendus avec les vrais composants et des données fixes, pour les captures end-to-end comparées à
- * la maquette (aucun combat à gagner, aucune habitude faite hier).
+ * la maquette (aucun combat à gagner, aucune habitude faite hier). Les entrées « Équipement · … »
+ * (#159) ouvrent le vrai pied de la tour et le vrai écran de l'ascension sur des ascensions fixes,
+ * chacune dans une session neuve en mémoire (`openAscent`) ; quitter l'ascension revient à la planche.
  */
-export function IconBoardScreen({ onClose }: { readonly onClose: () => void }) {
+export function IconBoardScreen({
+  onClose,
+  openAscent,
+  visibility,
+}: {
+  readonly onClose: () => void;
+  /** Ouvre une ascension fixe dans une session neuve, en mémoire : jamais celle du joueur (#159). */
+  readonly openAscent: (saved: Ascent) => Promise<AscentSession>;
+  readonly visibility: AscentVisibility;
+}) {
   const [board, setBoard] = useState<Board | null>(null);
   const [step, setStep] = useState(0);
+  const [ascent, setAscent] = useState<OpenAscent | null>(null);
   const back = () => setBoard(null);
   const open = (entry: Board) => {
     setStep(0);
     setBoard(entry);
   };
+  const openLoadout = (entry: LoadoutBoard) => {
+    void openAscent(LOADOUT_ASCENTS[entry]).then((session) =>
+      setAscent({ screen: entry.startsWith('foot') ? 'foot' : 'ascent', session }),
+    );
+  };
+
+  if (ascent !== null) {
+    return ascent.screen === 'foot' ? (
+      <TowerFootScreen
+        session={ascent.session}
+        onEnter={() => setAscent({ ...ascent, screen: 'ascent' })}
+      />
+    ) : (
+      <AscentScreen
+        session={ascent.session}
+        visibility={visibility}
+        onLeave={() => setAscent(null)}
+      />
+    );
+  }
 
   if (board === null) {
     return (
       <Screen layout="top" background={roles.night} testID="icon-board">
-        <View style={styles.menu}>
+        <ScrollView contentContainerStyle={styles.menu}>
           <Text accessibilityRole="header" style={styles.title}>
             Planche des icônes
           </Text>
@@ -107,8 +200,16 @@ export function IconBoardScreen({ onClose }: { readonly onClose: () => void }) {
               onPress={() => open(entry)}
             />
           ))}
+          {LOADOUT_ENTRIES.map(([entry, label]) => (
+            <PixelButton
+              key={entry}
+              label={label}
+              variant="secondary"
+              onPress={() => openLoadout(entry)}
+            />
+          ))}
           <PixelButton label="Fermer" onPress={onClose} />
-        </View>
+        </ScrollView>
       </Screen>
     );
   }

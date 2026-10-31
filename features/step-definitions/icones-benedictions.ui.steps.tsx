@@ -13,18 +13,18 @@
  */
 import { act, fireEvent, screen, within } from '@testing-library/react-native';
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
-import { PixelRatio, StyleSheet } from 'react-native';
+import { PixelRatio } from 'react-native';
 
 import { chooseBlessing, startAscent, type Ascent } from '../../src/domain/ascent/Ascent';
 import type { BlessingFamily, StartingBlessing } from '../../src/domain/ascent/blessings';
 import type { Rarity } from '../../src/domain/ascent/rarity';
 import { artPalette } from '../../src/adapters/ui/pixelArt/artPalette';
-import { artPixelSize } from '../../src/adapters/ui/pixelArt/artPixel';
 import { BLESSING_ICONS } from '../../src/adapters/ui/pixelArt/sprites/atelier/data/blessingIcons';
 import { blessingIcon } from '../../src/adapters/ui/pixelArt/sprites/gameIcons';
 import { AscentScreen } from '../../src/adapters/ui/screens/AscentScreen';
 import { ascentSetUp } from '../../src/adapters/ui/testing/ascent';
 import { renderScreen } from '../../src/adapters/ui/testing/renderScreen';
+import { wellOf } from '../../src/adapters/ui/testing/iconWell';
 
 jest.mock('../../src/adapters/ui/battle/BattleCanvas', () =>
   jest.requireActual('../../src/adapters/ui/battle/testing/fakeBattleCanvas'),
@@ -41,23 +41,6 @@ function atDensity(density: number) {
   jest
     .spyOn(PixelRatio, 'roundToNearestPixel')
     .mockImplementation((size) => Math.round(size * density) / density);
-}
-
-/** L'écrin d'un élément, et le nom et la taille rendue de son icône. */
-function wellOf(element: Element) {
-  const well = within(element).getByTestId('icon-well', hidden);
-  const icon = within(well).getByTestId('icon-well-icon', hidden).props as {
-    sprite: string;
-    scale: 2 | 3 | 4 | 6;
-    pixelWidth: number;
-    pixelHeight: number;
-  };
-  return {
-    style: StyleSheet.flatten(well.props.style),
-    sprite: icon.sprite,
-    width: icon.pixelWidth * artPixelSize(icon.scale),
-    height: icon.pixelHeight * artPixelSize(icon.scale),
-  };
 }
 
 /** Les textes d'un bouton de bénédiction, dans l'ordre. */

@@ -1,4 +1,5 @@
 import { act, fireEvent, screen, within } from '@testing-library/react-native';
+import { AccessibilityInfo, Dimensions } from 'react-native';
 
 import { startAscent, type Ascent } from '../../../domain/ascent/Ascent';
 import type { ItemKind } from '../../../domain/ascent/items';
@@ -350,5 +351,336 @@ describe('AscentScreen with blessings and found items (#93)', () => {
     fireEvent.press(screen.getByRole('button', { name: 'Laisser' }));
 
     expect(session.current()).toMatchObject({ foundItem: null, equipment: { accessory: null } });
+  });
+});
+
+describe('AscentScreen with the loadout button (#159)', () => {
+  const MAX_BLESSINGS: Ascent['blessings'] = [
+    { family: 'protection', rarity: 'epic' },
+    { family: 'haste', rarity: 'rare' },
+    { family: 'vigor', rarity: 'common' },
+  ];
+  const MAX_BOONS: Ascent['hero']['boons'] = [
+    'perfectEcho',
+    'lingeringFrost',
+    'shatteringEmber',
+    'blazingEmber',
+    'emberHeart',
+  ];
+  const MAX_LABEL = 'Équipement : 3 bénédictions de départ, 5 bienfaits. Ouvre la liste';
+
+  function withLoadout(
+    ascent: Ascent,
+    blessings: Ascent['blessings'],
+    boons: Ascent['hero']['boons'],
+  ): Ascent {
+    return { ...ascent, blessings, hero: { ...ascent.hero, boons } };
+  }
+
+  const exits = (ascent: Ascent) => between(ascent, [{ kind: 'combat', groupSize: 2 }]);
+
+  it.each([
+    [
+      'the choice of a blessing',
+      'ascent-blessing',
+      withLoadout(startAscent(42, { gauge: -1, blessings: ['epic'] }), MAX_BLESSINGS, MAX_BOONS),
+    ],
+    [
+      'the choice of a boon',
+      'ascent-boons',
+      {
+        ...exits(withLoadout(startAscent(42), MAX_BLESSINGS, MAX_BOONS)),
+        boonOffer: ['frostSkin', 'trueEdge', 'emberHeart'] as const,
+      },
+    ],
+    [
+      'the found item',
+      'ascent-item',
+      {
+        ...exits(withLoadout(startAscent(42), MAX_BLESSINGS, MAX_BOONS)),
+        foundItem: 'axe' as const,
+      },
+    ],
+    ['the exits', 'ascent-exits', exits(withLoadout(startAscent(42), MAX_BLESSINGS, MAX_BOONS))],
+  ])('shows « Équipement » and its number next to « Pause » on %s', async (_, testID, saved) => {
+    await show(saved);
+
+    expect(screen.getByTestId(testID)).toBeOnTheScreen();
+    const button = screen.getByTestId('ascent-loadout');
+    expect(button).toHaveAccessibleName(MAX_LABEL);
+    expect(button).toHaveStyle({ minHeight: MIN_TARGET_SIZE });
+    expect(within(button).getByText('8', { includeHiddenElements: true })).toBeTruthy();
+    const header = screen.getAllByRole('button').map((element) => element.props.testID);
+    expect(header.indexOf('ascent-loadout')).toBe(header.indexOf('ascent-pause') - 1);
+  });
+
+  it('has no loadout button on the end of the ascent', async () => {
+    await show({ ...startAscent(42), outcome: 'victory', encounter: null });
+
+    expect(screen.queryByTestId('ascent-loadout')).toBeNull();
+  });
+
+  it('opens the sheet out of combat without pausing, the chosen card staying chosen, and gives the focus back', async () => {
+    const { session } = await show({
+      ...exits(withLoadout(startAscent(42), [{ family: 'haste', rarity: 'rare' }], [])),
+      boonOffer: ['perfectEcho', 'frostSkin', 'emberHeart'],
+    });
+    const pause = jest.spyOn(session, 'pause');
+    await fireEvent.press(screen.getByRole('radio', { name: /^Peau de givre/ }));
+
+    await fireEvent.press(screen.getByTestId('ascent-loadout'));
+
+    expect(screen.getByRole('header', { name: 'Équipement' })).toBeOnTheScreen();
+    expect(screen.queryByText('Combat en pause')).toBeNull();
+    expect(pause).not.toHaveBeenCalled();
+    const focus = jest.mocked(AccessibilityInfo.sendAccessibilityEvent);
+    focus.mockClear();
+
+    await fireEvent(screen.getByTestId('loadout-sheet'), 'requestClose');
+
+    expect(screen.queryByRole('header', { name: 'Équipement' })).toBeNull();
+    expect(screen.queryByTestId('ascent-countdown')).toBeNull();
+    expect(screen.getByRole('radio', { name: /^Peau de givre/ })).toBeChecked();
+    expect(focus.mock.calls[0]?.[0]).toMatchObject({ props: { testID: 'ascent-loadout' } });
+    expect(pause).not.toHaveBeenCalled();
+  });
+
+  it('counts one more on the screen after the boon is taken', async () => {
+    await show({
+      ...exits(
+        withLoadout(
+          startAscent(42),
+          [{ family: 'haste', rarity: 'rare' }],
+          ['perfectEcho', 'lingeringFrost'],
+        ),
+      ),
+      boonOffer: ['frostSkin', 'trueEdge', 'emberHeart'],
+    });
+    const count = () =>
+      within(screen.getByTestId('ascent-loadout')).getByTestId('loadout-count', {
+        includeHiddenElements: true,
+      });
+    expect(count()).toHaveTextContent('3');
+
+    await fireEvent.press(screen.getByRole('radio', { name: /^Peau de givre/ }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Prendre' }));
+    expect(count()).toHaveTextContent('3');
+    await act(async () => {
+      fireEvent.press(screen.getByRole('button', { name: 'Continuer' }));
+    });
+
+    expect(await screen.findByTestId('ascent-exits')).toBeOnTheScreen();
+    expect(count()).toHaveTextContent('4');
+    await fireEvent.press(screen.getByTestId('ascent-loadout'));
+    expect(screen.getAllByTestId('loadout-row').map((row) => row.props.accessibilityLabel)).toEqual(
+      [
+        expect.stringMatching(/^Hâte/u),
+        expect.stringMatching(/^Écho parfait/u),
+        expect.stringMatching(/^Givre persistant/u),
+        expect.stringMatching(/^Peau de givre/u),
+      ],
+    );
+  });
+});
+
+describe('AscentScreen pausing the battle with the loadout sheet (#159)', () => {
+  const COMBAT_LABEL =
+    'Équipement : 1 bénédiction de départ. Ouvre la liste. Met le combat en pause';
+  const hasted = (): Ascent => ({
+    ...startAscent(42),
+    blessings: [{ family: 'haste', rarity: 'rare' }],
+  });
+
+  /** Une ascension dont le combat a commencé : l'écran s'ouvre sur le compte à rebours. */
+  async function showStartedBattle() {
+    return show(hasted(), async (current) => {
+      await current.battleSession().start();
+    });
+  }
+
+  async function wait(seconds: number) {
+    for (let second = 0; second < seconds; second += 1) {
+      await act(async () => {
+        jest.advanceTimersByTime(1_000);
+      });
+    }
+  }
+
+  const countdown = () => screen.queryByTestId('ascent-countdown');
+  const sheetTitle = () => screen.queryByRole('header', { name: 'Équipement' });
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('shows « Équipement » in the header of the battle, read as pausing the battle', async () => {
+    await showStartedBattle();
+    expect(screen.getByTestId('ascent-loadout')).toHaveAccessibleName(COMBAT_LABEL);
+    await wait(RESUME_COUNTDOWN_S);
+
+    expect(await screen.findByRole('header', { name: 'Étage 1' })).toBeOnTheScreen();
+    const button = screen.getByTestId('ascent-loadout');
+    expect(button).toHaveAccessibleName(COMBAT_LABEL);
+    expect(button).toHaveStyle({ minHeight: MIN_TARGET_SIZE });
+  });
+
+  it('pauses the battle like « Pause » when opened, then counts down 3 s on close before resuming', async () => {
+    const { session } = await showStartedBattle();
+    await wait(RESUME_COUNTDOWN_S);
+    expect(await screen.findByRole('header', { name: 'Étage 1' })).toBeOnTheScreen();
+    const pause = jest.spyOn(session, 'pause');
+
+    await fireEvent.press(screen.getByTestId('ascent-loadout'));
+
+    expect(pause).toHaveBeenCalledTimes(1);
+    expect(session.resuming()).toBe(true);
+    expect(screen.queryByRole('header', { name: 'Étage 1' })).toBeNull();
+    expect(countdown()).toBeNull();
+    expect(sheetTitle()).toBeOnTheScreen();
+    expect(screen.getByRole('status')).toHaveTextContent('Combat en pause');
+    // L'en-tête reste derrière le voile, rendu au niveau de l'écran.
+    expect(screen.getByTestId('ascent-status')).toBeOnTheScreen();
+    expect(screen.getByTestId('ascent-loadout')).toBeOnTheScreen();
+    const focus = jest.mocked(AccessibilityInfo.sendAccessibilityEvent);
+    focus.mockClear();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Fermer' }));
+
+    expect(sheetTitle()).toBeNull();
+    expect(countdown()).toHaveTextContent(`Reprise dans${RESUME_COUNTDOWN_S}`);
+    expect(focus.mock.calls.at(-1)?.[0]).toMatchObject({ props: { testID: 'ascent-loadout' } });
+    await wait(RESUME_COUNTDOWN_S);
+    expect(await screen.findByRole('header', { name: 'Étage 1' })).toBeOnTheScreen();
+  });
+
+  it('closes with the back gesture first, without leaving the screen', async () => {
+    const { onLeave } = await showStartedBattle();
+    await wait(RESUME_COUNTDOWN_S);
+    await fireEvent.press(await screen.findByTestId('ascent-loadout'));
+
+    await fireEvent(screen.getByTestId('loadout-sheet'), 'requestClose');
+
+    expect(sheetTitle()).toBeNull();
+    expect(countdown()).toBeOnTheScreen();
+    expect(onLeave).not.toHaveBeenCalled();
+  });
+
+  it('waits for the sheet to close before counting down, when the app comes back from the background', async () => {
+    const { app } = await showStartedBattle();
+    await wait(RESUME_COUNTDOWN_S);
+    await fireEvent.press(await screen.findByTestId('ascent-loadout'));
+
+    await app.set(false);
+    await app.set(true);
+
+    expect(sheetTitle()).toBeOnTheScreen();
+    expect(countdown()).toBeNull();
+    expect(screen.queryByRole('header', { name: 'Étage 1' })).toBeNull();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Fermer' }));
+
+    expect(countdown()).toHaveTextContent(`Reprise dans${RESUME_COUNTDOWN_S}`);
+    await wait(RESUME_COUNTDOWN_S);
+    expect(await screen.findByRole('header', { name: 'Étage 1' })).toBeOnTheScreen();
+  });
+
+  it('starts the countdown again from 3 when opened during the countdown', async () => {
+    await showStartedBattle();
+    await wait(RESUME_COUNTDOWN_S - 1);
+    expect(countdown()).toHaveTextContent('Reprise dans1');
+
+    await fireEvent.press(screen.getByTestId('ascent-loadout'));
+
+    expect(sheetTitle()).toBeOnTheScreen();
+    expect(screen.getByRole('status')).toHaveTextContent('Combat en pause');
+    expect(countdown()).toBeNull();
+    await wait(RESUME_COUNTDOWN_S);
+    expect(screen.queryByRole('header', { name: 'Étage 1' })).toBeNull();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Fermer' }));
+
+    expect(countdown()).toHaveTextContent(`Reprise dans${RESUME_COUNTDOWN_S}`);
+    await wait(RESUME_COUNTDOWN_S);
+    expect(await screen.findByRole('header', { name: 'Étage 1' })).toBeOnTheScreen();
+  });
+
+  it('pauses nothing from the choice of a blessing, before the first battle', async () => {
+    const { session } = await show(startAscent(42, { gauge: -1, blessings: ['rare'] }));
+    const pause = jest.spyOn(session, 'pause');
+
+    await fireEvent.press(screen.getByTestId('ascent-loadout'));
+
+    expect(screen.getByTestId('ascent-loadout')).toHaveAccessibleName(
+      'Équipement : vide. Ouvre la liste',
+    );
+    expect(sheetTitle()).toBeOnTheScreen();
+    expect(screen.queryByText('Combat en pause')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Fermer' }));
+    expect(pause).not.toHaveBeenCalled();
+    expect(screen.getByRole('header', { name: 'Bénédiction 1 sur 1' })).toBeOnTheScreen();
+  });
+
+  it('keeps « Pause » leaving to the tower foot', async () => {
+    const { onLeave, session } = await showStartedBattle();
+    await wait(RESUME_COUNTDOWN_S);
+
+    await fireEvent.press(await screen.findByRole('button', { name: 'Pause' }));
+
+    expect(onLeave).toHaveBeenCalledTimes(1);
+    expect(session.resuming()).toBe(true);
+  });
+});
+
+describe('AscentScreen header on a narrow phone (#159)', () => {
+  const initial = Dimensions.get('window');
+
+  function windowWidth(width: number) {
+    Dimensions.set({
+      window: { ...Dimensions.get('window'), width },
+      screen: { ...Dimensions.get('screen'), width },
+    });
+  }
+
+  afterEach(() => {
+    windowWidth(initial.width);
+  });
+
+  it('puts the status on its own line above « Équipement » and « Pause » under 375 dp, the battle keeping its place', async () => {
+    windowWidth(320);
+    await show(startAscent(42));
+
+    expect(await screen.findByTestId('battle-pad')).toBeOnTheScreen();
+    const buttons = screen.getByTestId('ascent-header-buttons');
+    expect(within(buttons).getByTestId('ascent-loadout')).toHaveStyle({
+      minHeight: MIN_TARGET_SIZE,
+    });
+    expect(within(buttons).getByTestId('ascent-pause')).toHaveStyle({ minHeight: MIN_TARGET_SIZE });
+    expect(within(buttons).queryByTestId('ascent-status')).toBeNull();
+    expect(screen.getByTestId('ascent-header')).toHaveStyle({ flexDirection: 'column' });
+    expect(screen.getByTestId('ascent-status')).not.toHaveStyle({ flex: 1 });
+  });
+
+  it('puts the status on its own line in large text too', async () => {
+    windowWidth(390);
+    Dimensions.set({
+      window: { ...Dimensions.get('window'), fontScale: 1.3 },
+      screen: { ...Dimensions.get('screen'), fontScale: 1.3 },
+    });
+    await show(between(startAscent(42), [{ kind: 'combat', groupSize: 2 }]));
+
+    expect(screen.getByTestId('ascent-header-buttons')).toBeOnTheScreen();
+  });
+
+  it('keeps the status beside the buttons from 375 dp', async () => {
+    windowWidth(390);
+    await show(between(startAscent(42), [{ kind: 'combat', groupSize: 2 }]));
+
+    expect(screen.queryByTestId('ascent-header-buttons')).toBeNull();
+    expect(screen.getByTestId('ascent-header')).toHaveStyle({ flexDirection: 'row' });
+    expect(screen.getByTestId('ascent-status')).toHaveStyle({ flex: 1 });
   });
 });

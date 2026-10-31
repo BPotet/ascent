@@ -11,11 +11,27 @@ import path from 'node:path';
 
 import { openAscentDatabase } from '../../src/adapters/persistence/sqlite/openAscentDatabase';
 import { prepareAscentDatabase } from '../../src/adapters/persistence/sqlite/prepareAscentDatabase';
+import { SqliteKeyValueStore } from '../../src/adapters/persistence/sqlite/SqliteKeyValueStore';
 import { openNodeSqliteDatabase } from '../../src/adapters/persistence/testing/nodeSqliteDatabase';
+import { ASCENT_KEY } from '../../src/application/useCases/AscentSession';
 
 jest.mock('../../src/adapters/persistence/sqlite/openAscentDatabase', () => ({
   openAscentDatabase: jest.fn(),
 }));
+// expo-audio n'a pas de module natif sous Jest : un lecteur simulé, qui ne joue rien. La planche
+// ouvre ses ascensions avec les sons du combat (#159).
+jest.mock('expo-audio', () => ({
+  createAudioPlayer: jest.fn(() => ({
+    addListener: jest.fn(),
+    seekTo: jest.fn(async () => undefined),
+    play: jest.fn(),
+    remove: jest.fn(),
+  })),
+  setAudioModeAsync: jest.fn(async () => undefined),
+}));
+jest.mock('../../src/adapters/ui/battle/BattleCanvas', () =>
+  jest.requireActual('../../src/adapters/ui/battle/testing/fakeBattleCanvas'),
+);
 
 const openDatabase = jest.mocked(openAscentDatabase);
 // Chemin absolu : sous StrykerJS, les routes doivent être chargées depuis son bac à sable.
@@ -52,9 +68,16 @@ function sourceFiles(directory: string): string[] {
 describe('icon board route (#157)', () => {
   const initialChannel = process.env.EXPO_PUBLIC_ASCENT_CHANNEL;
 
+  /** La base de l'app, telle que la route l'a ouverte. */
+  let appDatabase: Awaited<ReturnType<typeof prepareAscentDatabase>> | null = null;
+
   beforeEach(() => {
+    appDatabase = null;
     openDatabase.mockReset();
-    openDatabase.mockImplementation(() => prepareAscentDatabase(openNodeSqliteDatabase()));
+    openDatabase.mockImplementation(async () => {
+      appDatabase = await prepareAscentDatabase(openNodeSqliteDatabase());
+      return appDatabase;
+    });
   });
 
   afterEach(() => {
@@ -85,6 +108,28 @@ describe('icon board route (#157)', () => {
       await fireEvent.press(screen.getByRole('button', { name: 'Fermer' }));
 
       await dayViewIsShown();
+    });
+  });
+
+  describe('with the loadout entries (#159)', () => {
+    beforeEach(() => {
+      builtFor('preview');
+    });
+
+    it('opens the real ascent on a fixed ascent in memory, without touching the ascent of the player', async () => {
+      await renderRouter(appDirectory, { initialUrl: ICON_BOARD_URL });
+      await iconBoardIsShown();
+
+      await fireEvent.press(screen.getByRole('button', { name: 'Équipement · 8 · sorties' }));
+      expect(await screen.findByRole('header', { name: 'Dernière porte' })).toBeOnTheScreen();
+      expect(screen.getByTestId('ascent-loadout')).toHaveAccessibleName(
+        'Équipement : 3 bénédictions de départ, 5 bienfaits. Ouvre la liste',
+      );
+      // « Pause » sauvegarde l'ascension de la planche, dans sa mémoire à elle.
+      await fireEvent.press(screen.getByRole('button', { name: 'Pause' }));
+
+      await iconBoardIsShown();
+      expect(await new SqliteKeyValueStore(appDatabase!).get(ASCENT_KEY)).toBeNull();
     });
   });
 

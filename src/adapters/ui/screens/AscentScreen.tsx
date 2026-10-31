@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { type Ref, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AccessibilityInfo, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
 import type { Ascent } from '../../../domain/ascent/Ascent';
 import { ITEMS } from '../../../domain/ascent/items';
+import { loadoutOf } from '../../../domain/ascent/loadout';
 import { BoonChoicePanel } from '../battle/BoonChoicePanel';
 import { BlessingChoice } from '../components/BlessingChoice';
 import { ExitChoice } from '../components/ExitChoice';
+import { LoadoutButton } from '../components/LoadoutButton';
+import { LoadoutSheet } from '../components/LoadoutSheet';
 import { Screen } from '../components/Screen';
 import { floorLine, goldText, itemDescription, itemText, wornText } from '../format/ascentText';
 import { artPalette } from '../pixelArt/artPalette';
@@ -18,6 +21,7 @@ import { itemSilhouette } from '../pixelArt/sprites/itemSilhouettes';
 import { toPixelImage } from '../pixelArt/sprites/Sprite';
 import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
 import { useAscent } from '../state/useAscent';
+import { useLargeText } from '../state/useLargeText';
 import { BattleScreen } from './BattleScreen';
 
 const { roles } = artPalette;
@@ -37,14 +41,29 @@ export interface AscentScreenProps {
   readonly onLeave: () => void;
 }
 
+/** En deçà de cette largeur d'écran, en dp, le statut de l'en-tête passe au-dessus des boutons. */
+export const NARROW_HEADER_WIDTH = 375;
+
+function useStackedHeader(): boolean {
+  const { width } = useWindowDimensions();
+  return useLargeText() || width < NARROW_HEADER_WIDTH;
+}
+
 function Header({
   ascent,
   extra,
   onPause,
+  onLoadout,
+  combat = false,
+  loadoutRef,
 }: {
   readonly ascent: Ascent;
   readonly extra?: string | null;
   readonly onPause?: () => void;
+  /** Le bouton « Équipement » (#159) : ce qu'il ouvre, s'il met le combat en pause, et son focus. */
+  readonly onLoadout?: () => void;
+  readonly combat?: boolean;
+  readonly loadoutRef?: Ref<View>;
 }) {
   const parts = [
     floorLine(ascent.floor),
@@ -52,11 +71,16 @@ function Header({
     goldText(ascent.gold),
     ...(extra ? [extra] : []),
   ];
-  return (
-    <View style={styles.header}>
-      <Text testID="ascent-status" style={styles.status}>
-        {parts.join(' · ')}
-      </Text>
+  const buttons = (
+    <>
+      {onLoadout === undefined ? null : (
+        <LoadoutButton
+          {...(loadoutRef !== undefined && { ref: loadoutRef })}
+          loadout={loadoutOf(ascent)}
+          combat={combat}
+          onPress={onLoadout}
+        />
+      )}
       {onPause === undefined ? null : (
         <PixelButton
           label="Pause"
@@ -65,6 +89,23 @@ function Header({
           testID="ascent-pause"
           style={styles.pause}
         />
+      )}
+    </>
+  );
+  // Sur un téléphone étroit ou en grand texte, le statut passe sur sa propre ligne, au-dessus des
+  // deux boutons : à côté d'eux, il s'étirerait sur plusieurs lignes et repousserait la scène (#159).
+  const stacked = useStackedHeader();
+  return (
+    <View testID="ascent-header" style={[styles.header, stacked && styles.headerStacked]}>
+      <Text testID="ascent-status" style={[styles.status, stacked && styles.statusStacked]}>
+        {parts.join(' · ')}
+      </Text>
+      {stacked ? (
+        <View testID="ascent-header-buttons" style={styles.headerButtons}>
+          {buttons}
+        </View>
+      ) : (
+        buttons
       )}
     </View>
   );
@@ -75,10 +116,14 @@ function FloorBattle({
   session,
   ascent,
   onPause,
+  onLoadout,
+  loadoutRef,
 }: {
   readonly session: AscentSession;
   readonly ascent: Ascent;
   readonly onPause: () => void;
+  readonly onLoadout: () => void;
+  readonly loadoutRef: Ref<View>;
 }) {
   const battleSession = useMemo(() => session.battleSession(), [session]);
   const [reserve, setReserve] = useState(0);
@@ -92,6 +137,9 @@ function FloorBattle({
         ascent={ascent}
         extra={reserve > 0 ? `+${reserve} en réserve` : null}
         onPause={onPause}
+        onLoadout={onLoadout}
+        combat
+        loadoutRef={loadoutRef}
       />
       <BattleScreen
         session={battleSession}
@@ -130,6 +178,22 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
   const [counting, setCounting] = useState(() => session.resuming());
   const [paused, setPaused] = useState(false);
   const [mount, setMount] = useState(0);
+  const [sheet, setSheet] = useState<'closed' | 'calm' | 'battle'>('closed');
+  const loadoutOpen = sheet !== 'closed';
+  const opener = useRef<View>(null);
+  // La feuille de l'Équipement ouverte en combat retient le combat en pause (#159).
+  const sheetHolds = useRef(false);
+
+  /**
+   * Le seul point qui décide de la reprise du combat après une pause (P33, #159) : rien tant que la
+   * feuille de l'Équipement retient le combat ; sinon le compte à rebours, si un combat est à
+   * reprendre, puis le combat remonté, qui reprend l'action en cours avec le même tirage.
+   */
+  const resumeUnlessHeld = useCallback(() => {
+    if (sheetHolds.current) return;
+    setCounting(session.resuming());
+    setMount((count) => count + 1);
+  }, [session]);
 
   useEffect(
     () =>
@@ -140,10 +204,9 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
           return;
         }
         setPaused(false);
-        setCounting(session.resuming());
-        setMount((count) => count + 1);
+        resumeUnlessHeld();
       }),
-    [session, visibility],
+    [session, visibility, resumeUnlessHeld],
   );
 
   // Quitter l'écran (Pause, retour arrière) met en pause et sauvegarde (P33).
@@ -152,6 +215,24 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
   const leave = () => {
     session.pause();
     onLeave();
+  };
+
+  // La feuille de l'Équipement (#159) : hors combat, rien n'est mis en pause et l'écran garde son
+  // état ; en combat, elle met le combat en pause, exactement comme « Pause », et sa fermeture le
+  // reprend.
+  const openLoadout = () => setSheet('calm');
+  const openLoadoutInBattle = () => {
+    session.pause();
+    sheetHolds.current = true;
+    setSheet('battle');
+  };
+  const closeLoadout = () => {
+    setSheet('closed');
+    if (sheetHolds.current) {
+      sheetHolds.current = false;
+      resumeUnlessHeld();
+    }
+    if (opener.current !== null) AccessibilityInfo.sendAccessibilityEvent(opener.current, 'focus');
   };
 
   if (ascent === null) {
@@ -189,10 +270,20 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
     );
   }
 
+  // Une seule feuille de l'Équipement, au niveau de l'écran, quel que soit l'écran de l'ascension.
+  const loadoutSheet = (
+    <LoadoutSheet
+      loadout={loadoutOf(ascent)}
+      combat={sheet === 'battle'}
+      visible={loadoutOpen}
+      onClose={closeLoadout}
+    />
+  );
+
   if (ascent.blessingOffer !== null) {
     return (
       <Screen layout="top" background={roles.night} testID="ascent-blessing">
-        <Header ascent={ascent} onPause={leave} />
+        <Header ascent={ascent} onPause={leave} onLoadout={openLoadout} loadoutRef={opener} />
         <BlessingChoice
           offer={ascent.blessingOffer}
           rarity={ascent.blessingRarities[0]!}
@@ -200,6 +291,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
           total={ascent.blessings.length + ascent.blessingRarities.length}
           onChoose={(index) => session.chooseBlessing(index)}
         />
+        {loadoutSheet}
       </Screen>
     );
   }
@@ -207,10 +299,17 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
   if (ascent.encounter !== null) {
     return (
       <Screen layout="top" background={roles.night} testID="ascent-battle">
-        {paused ? null : counting ? (
+        {/* Le combat n'est rendu que s'il n'est ni en pause, ni retenu par la feuille, ni en reprise. */}
+        {paused ? null : loadoutOpen || counting ? (
           <>
-            <Header ascent={ascent} onPause={leave} />
-            <Countdown onDone={() => setCounting(false)} />
+            <Header
+              ascent={ascent}
+              onPause={leave}
+              onLoadout={openLoadoutInBattle}
+              combat
+              loadoutRef={opener}
+            />
+            {loadoutOpen ? null : <Countdown onDone={() => setCounting(false)} />}
           </>
         ) : (
           <FloorBattle
@@ -218,8 +317,11 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
             session={session}
             ascent={ascent}
             onPause={leave}
+            onLoadout={openLoadoutInBattle}
+            loadoutRef={opener}
           />
         )}
+        {loadoutSheet}
       </Screen>
     );
   }
@@ -236,7 +338,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
     const image = ITEM_IMAGES[ascent.foundItem];
     return (
       <Screen layout="top" background={roles.night} testID="ascent-item">
-        <Header ascent={ascent} onPause={leave} />
+        <Header ascent={ascent} onPause={leave} onLoadout={openLoadout} loadoutRef={opener} />
         {gained}
         <View style={styles.center}>
           <Text accessibilityRole="header" style={styles.title}>
@@ -272,6 +374,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
             <PixelButton label="Équiper" onPress={() => session.equipItem()} style={styles.half} />
           </View>
         </View>
+        {loadoutSheet}
       </Screen>
     );
   }
@@ -279,20 +382,21 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
   if (ascent.boonOffer !== null) {
     return (
       <Screen layout="top" background={roles.night} testID="ascent-boons">
-        <Header ascent={ascent} onPause={leave} />
+        <Header ascent={ascent} onPause={leave} onLoadout={openLoadout} loadoutRef={opener} />
         {gained}
         <BoonChoicePanel
           key={ascent.floor}
           offer={ascent.boonOffer}
           onChoose={(index) => session.chooseBoon(index)}
         />
+        {loadoutSheet}
       </Screen>
     );
   }
 
   return (
     <Screen layout="top" background={roles.night} testID="ascent-exits">
-      <Header ascent={ascent} onPause={leave} />
+      <Header ascent={ascent} onPause={leave} onLoadout={openLoadout} loadoutRef={opener} />
       <ExitChoice
         key={ascent.floor}
         boons={ascent.hero.boons}
@@ -300,6 +404,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
         banner={gained}
         onChoose={(index) => session.chooseExit(index)}
       />
+      {loadoutSheet}
     </Screen>
   );
 }
@@ -321,6 +426,9 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: roles.parchment,
   },
+  headerStacked: { flexDirection: 'column', alignItems: 'stretch', paddingVertical: 4, gap: 4 },
+  statusStacked: { flex: 0 },
+  headerButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
   pause: { minWidth: 84, paddingHorizontal: 14 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'stretch', padding: 24, gap: 12 },
   title: {

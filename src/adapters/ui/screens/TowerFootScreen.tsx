@@ -1,10 +1,15 @@
-import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
 import type { FateGaugeReading } from '../../../application/useCases/fateGauge';
+import type { Ascent } from '../../../domain/ascent/Ascent';
+import { loadoutOf, loadoutSize } from '../../../domain/ascent/loadout';
 import type { HeroKind } from '../../../domain/battle/combatants';
+import { LoadoutSection } from '../components/LoadoutSection';
+import { LoadoutSheet } from '../components/LoadoutSheet';
 import { Screen } from '../components/Screen';
+import { ScrollHint } from '../components/ScrollHint';
 import {
   TIER_LINE,
   TOWER_TITLE,
@@ -17,6 +22,7 @@ import {
 import { HERO_NAMES } from '../format/battleText';
 import { artPalette } from '../pixelArt/artPalette';
 import { PixelButton } from '../pixelArt/PixelButton';
+import { PixelFrame } from '../pixelArt/PixelFrame';
 import { pixelTypography, textFont } from '../pixelArt/pixelTypography';
 import { useAscent } from '../state/useAscent';
 import { useFateGauge } from '../state/useFateGauge';
@@ -28,6 +34,84 @@ const { roles } = artPalette;
 function heroInSentence(hero: HeroKind): string {
   const name = HERO_NAMES[hero];
   return name.charAt(0).toLowerCase() + name.slice(1);
+}
+
+/** Au-delà de ce nombre d'entrées, le cadre de l'ascension annonce qu'il défile (maquette #153). */
+const SCROLL_HINT_BEYOND = 5;
+
+/**
+ * L'ascension en cours au pied de la tour : son cadre défile (héros, étage, PV, Or, jauge, puis
+ * l'Équipement, #159), « Reprendre » et « Abandonner » restent en bas, à portée du pouce. « Voir le
+ * détail » ouvre la feuille de l'Équipement, sans pause ; sa fermeture rend le focus au lien.
+ */
+function AscentInProgress({
+  ascent,
+  onEnter,
+  onAbandon,
+}: {
+  readonly ascent: Ascent;
+  readonly onEnter: () => void;
+  readonly onAbandon: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [detail, setDetail] = useState(false);
+  const link = useRef<View>(null);
+  const loadout = loadoutOf(ascent);
+  const closeDetail = () => {
+    setDetail(false);
+    if (link.current !== null) AccessibilityInfo.sendAccessibilityEvent(link.current, 'focus');
+  };
+  return (
+    <>
+      <View style={styles.scrollArea}>
+        <ScrollView testID="tower-foot-scroll" contentContainerStyle={styles.scroll}>
+          <Text accessibilityRole="header" style={styles.title}>
+            {TOWER_TITLE}
+          </Text>
+          <Text style={styles.line}>{TIER_LINE}</Text>
+          <PixelFrame testID="tower-foot-ascent" style={styles.frame}>
+            <View style={styles.hero}>
+              <Text style={styles.status}>{HERO_NAMES[ascent.hero.kind]}</Text>
+              <Text style={styles.status}>
+                {`${floorLine(ascent.floor)} · ${ascent.hero.hp}/${ascent.hero.maxHp} PV · ${goldText(ascent.gold)}`}
+              </Text>
+              <Text style={styles.line}>{`Jauge de l'ascension : ${gaugeWord(ascent.gauge)}`}</Text>
+            </View>
+            <LoadoutSection ref={link} loadout={loadout} onDetail={() => setDetail(true)} />
+          </PixelFrame>
+        </ScrollView>
+        {loadoutSize(loadout) > SCROLL_HINT_BEYOND && (
+          <ScrollHint under={roles.night} testID="tower-foot-more" />
+        )}
+      </View>
+      {confirming ? (
+        <View style={styles.bottom}>
+          <Text style={styles.line}>
+            Abandonner ? L&apos;ascension se termine comme une chute : l&apos;Or est perdu.
+          </Text>
+          <PixelButton label="Annuler" variant="secondary" onPress={() => setConfirming(false)} />
+          <PixelButton
+            label="Abandonner"
+            variant="danger"
+            onPress={() => {
+              setConfirming(false);
+              onAbandon();
+            }}
+          />
+        </View>
+      ) : (
+        <View style={styles.bottom}>
+          <PixelButton label="Reprendre l'ascension" onPress={onEnter} />
+          <PixelButton
+            label="Abandonner l'ascension"
+            variant="secondary"
+            onPress={() => setConfirming(true)}
+          />
+        </View>
+      )}
+      <LoadoutSheet loadout={loadout} combat={false} visible={detail} onClose={closeDetail} />
+    </>
+  );
 }
 
 /**
@@ -45,7 +129,6 @@ export function TowerFootScreen({
 }) {
   const ascent = useAscent(session);
   const [loaded, setLoaded] = useState(ascent !== null);
-  const [confirming, setConfirming] = useState(false);
   const { reading, seal } = useFateGauge();
   const [choosing, setChoosing] = useState<FateGaugeReading | null>(null);
 
@@ -77,6 +160,14 @@ export function TowerFootScreen({
     );
   }
 
+  if (loaded && inProgress) {
+    return (
+      <Screen layout="top" background={roles.night} testID="tower-foot">
+        <AscentInProgress ascent={ascent} onEnter={onEnter} onAbandon={() => session.abandon()} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen layout="top" background={roles.night} testID="tower-foot">
       <View style={styles.content}>
@@ -84,44 +175,7 @@ export function TowerFootScreen({
           {TOWER_TITLE}
         </Text>
         <Text style={styles.line}>{TIER_LINE}</Text>
-        {!loaded ? null : inProgress ? (
-          <>
-            <Text style={styles.status}>{HERO_NAMES[ascent.hero.kind]}</Text>
-            <Text style={styles.status}>
-              {`${floorLine(ascent.floor)} · ${ascent.hero.hp}/${ascent.hero.maxHp} PV · ${goldText(ascent.gold)}`}
-            </Text>
-            <Text style={styles.line}>{`Jauge de l'ascension : ${gaugeWord(ascent.gauge)}`}</Text>
-            {confirming ? (
-              <View style={styles.actions}>
-                <Text style={styles.line}>
-                  Abandonner ? L&apos;ascension se termine comme une chute : l&apos;Or est perdu.
-                </Text>
-                <PixelButton
-                  label="Annuler"
-                  variant="secondary"
-                  onPress={() => setConfirming(false)}
-                />
-                <PixelButton
-                  label="Abandonner"
-                  variant="danger"
-                  onPress={() => {
-                    setConfirming(false);
-                    session.abandon();
-                  }}
-                />
-              </View>
-            ) : (
-              <View style={styles.actions}>
-                <PixelButton label="Reprendre l'ascension" onPress={onEnter} />
-                <PixelButton
-                  label="Abandonner l'ascension"
-                  variant="secondary"
-                  onPress={() => setConfirming(true)}
-                />
-              </View>
-            )}
-          </>
-        ) : (
+        {!loaded ? null : (
           <View style={styles.actions}>
             {ascent === null ? null : (
               <Text style={styles.status}>
@@ -160,4 +214,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   actions: { gap: 12, marginTop: 16 },
+  scrollArea: { flex: 1 },
+  scroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    gap: 12,
+  },
+  frame: { paddingTop: 8 },
+  hero: { paddingHorizontal: 14, gap: 2 },
+  bottom: { gap: 12, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 16 },
 });

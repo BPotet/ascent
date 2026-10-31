@@ -1,8 +1,9 @@
-import { act, fireEvent, screen } from '@testing-library/react-native';
+import { act, fireEvent, screen, within } from '@testing-library/react-native';
+import { AccessibilityInfo } from 'react-native';
 
 import type { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { GAUGE_SEAL_KEY } from '../../../application/useCases/fateGauge';
-import { startAscent } from '../../../domain/ascent/Ascent';
+import { startAscent, type Ascent } from '../../../domain/ascent/Ascent';
 import { Day } from '../../../domain/day/Day';
 import { HabitName } from '../../../domain/habit/HabitName';
 import { ascentSetUp } from '../testing/ascent';
@@ -112,6 +113,7 @@ describe('TowerFootScreen with the fate gauge (#93)', () => {
     expect(await screen.findByText('Jauge du jour : Faveur')).toBeOnTheScreen();
     expect(screen.getByText("D'après hier : 3 habitudes sur 4.")).toBeOnTheScreen();
     expect(screen.getByText('3 bénédictions de départ')).toBeOnTheScreen();
+    expect(screen.queryByTestId('loadout-section')).toBeNull();
 
     await act(async () => {
       fireEvent.press(screen.getByRole('button', { name: "Commencer l'ascension" }));
@@ -144,5 +146,115 @@ describe('TowerFootScreen with the fate gauge (#93)', () => {
     });
 
     expect(screen.getByText("Jauge de l'ascension : Malédiction")).toBeOnTheScreen();
+  });
+});
+
+describe('TowerFootScreen with the loadout (#159)', () => {
+  const hidden = { includeHiddenElements: true } as const;
+
+  function inProgress(blessings: Ascent['blessings'], boons: Ascent['hero']['boons']): Ascent {
+    const ascent = startAscent(3);
+    return { ...ascent, blessings, hero: { ...ascent.hero, boons } };
+  }
+
+  const THREE = inProgress(
+    [{ family: 'haste', rarity: 'rare' }],
+    ['perfectEcho', 'lingeringFrost'],
+  );
+  const MAX = inProgress(
+    [
+      { family: 'protection', rarity: 'epic' },
+      { family: 'haste', rarity: 'rare' },
+      { family: 'vigor', rarity: 'common' },
+    ],
+    ['perfectEcho', 'lingeringFrost', 'shatteringEmber', 'blazingEmber', 'emberHeart'],
+  );
+
+  it('shows the loadout in the frame of the ascent in progress, under the gauge', async () => {
+    await show({ saved: THREE });
+
+    const section = await screen.findByTestId('loadout-section');
+    expect(within(section).getByText('Équipement · 3')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Bénédictions de départ : Hâte, Rare')).toBeOnTheScreen();
+    expect(
+      screen.getByLabelText('Bienfaits : Écho parfait, Commun ; Givre persistant, Rare'),
+    ).toBeOnTheScreen();
+    const frame = screen.getByTestId('tower-foot-ascent');
+    expect(within(frame).getByText("Jauge de l'ascension : Neutre")).toBeOnTheScreen();
+    expect(within(frame).getByTestId('loadout-section')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: "Reprendre l'ascension" })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: "Abandonner l'ascension" })).toBeOnTheScreen();
+  });
+
+  it('keeps « Reprendre » and « Abandonner » out of the scrolled frame, at the bottom', async () => {
+    await show({ saved: MAX });
+
+    const scroll = await screen.findByTestId('tower-foot-scroll');
+    expect(within(scroll).getByTestId('loadout-section')).toBeOnTheScreen();
+    expect(within(scroll).queryByRole('button', { name: "Reprendre l'ascension" })).toBeNull();
+    expect(within(scroll).queryByRole('button', { name: "Abandonner l'ascension" })).toBeNull();
+    expect(screen.getByRole('button', { name: "Reprendre l'ascension" })).toBeOnTheScreen();
+  });
+
+  it('hints « Fais défiler » on the longest build only', async () => {
+    await show({ saved: MAX });
+    expect(await screen.findByTestId('tower-foot-more', hidden)).toHaveTextContent(
+      '▼ Fais défiler',
+    );
+  });
+
+  it('hints nothing on a short build', async () => {
+    await show({ saved: THREE });
+
+    await screen.findByTestId('loadout-section');
+    expect(screen.queryByTestId('tower-foot-more', hidden)).toBeNull();
+  });
+
+  it('opens the loadout sheet with « Voir le détail », without pausing, and gives the focus back on close', async () => {
+    await show({ saved: THREE });
+    const detail = await screen.findByRole('button', { name: "Voir le détail de l'Équipement" });
+
+    await fireEvent.press(detail);
+
+    expect(screen.getByRole('header', { name: 'Équipement' })).toBeOnTheScreen();
+    expect(screen.queryByText('Combat en pause')).toBeNull();
+    expect(screen.getAllByTestId('loadout-row')).toHaveLength(3);
+    const focus = jest.mocked(AccessibilityInfo.sendAccessibilityEvent);
+    focus.mockClear();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Fermer' }));
+
+    expect(screen.queryByRole('header', { name: 'Équipement' })).toBeNull();
+    expect(focus).toHaveBeenCalledTimes(1);
+    expect(focus.mock.calls[0]?.[1]).toBe('focus');
+    expect(focus.mock.calls[0]?.[0]).toMatchObject({ props: { testID: 'loadout-detail' } });
+  });
+
+  it('tells an empty loadout, without « Voir le détail »', async () => {
+    await show({ saved: startAscent(3) });
+
+    expect(await screen.findByText('Équipement · 0')).toBeOnTheScreen();
+    expect(screen.getByText('Aucune bénédiction de départ')).toBeOnTheScreen();
+    expect(screen.getByText('Aucun bienfait')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: "Voir le détail de l'Équipement" })).toBeNull();
+  });
+
+  it('keeps the confirmation of the abandon at the bottom', async () => {
+    await show({ saved: THREE });
+
+    await fireEvent.press(await screen.findByRole('button', { name: "Abandonner l'ascension" }));
+
+    const scroll = screen.getByTestId('tower-foot-scroll');
+    expect(within(scroll).queryByRole('button', { name: 'Abandonner' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Abandonner' })).toBeOnTheScreen();
+    expect(screen.getByTestId('loadout-section')).toBeOnTheScreen();
+  });
+
+  it('shows no loadout before the ascent', async () => {
+    await show();
+
+    expect(await screen.findByRole('button', { name: "Commencer l'ascension" })).toBeOnTheScreen();
+    expect(screen.queryByTestId('loadout-section')).toBeNull();
+    expect(screen.queryByText(/Équipement/u)).toBeNull();
   });
 });

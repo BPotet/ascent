@@ -34,6 +34,7 @@ import { boonIcon, iconScale } from '../../src/adapters/ui/pixelArt/sprites/game
 import { AscentScreen } from '../../src/adapters/ui/screens/AscentScreen';
 import { ascentSetUp } from '../../src/adapters/ui/testing/ascent';
 import { renderScreen } from '../../src/adapters/ui/testing/renderScreen';
+import { wellOf } from '../../src/adapters/ui/testing/iconWell';
 
 jest.mock('../../src/adapters/ui/battle/BattleCanvas', () =>
   jest.requireActual('../../src/adapters/ui/battle/testing/fakeBattleCanvas'),
@@ -71,25 +72,6 @@ function atDensity(density: number) {
   jest
     .spyOn(PixelRatio, 'roundToNearestPixel')
     .mockImplementation((size) => Math.round(size * density) / density);
-}
-
-/** L'écrin d'un élément, et le nom, l'échelle et la taille rendue de son icône. */
-function wellOf(element: Element) {
-  const well = within(element).getByTestId('icon-well', hidden);
-  const icon = within(well).getByTestId('icon-well-icon', hidden).props as {
-    sprite: string;
-    scale: 2 | 3 | 4 | 6;
-    pixelWidth: number;
-    pixelHeight: number;
-  };
-  return {
-    well,
-    style: StyleSheet.flatten(well.props.style),
-    sprite: icon.sprite,
-    scale: icon.scale,
-    width: icon.pixelWidth * artPixelSize(icon.scale),
-    height: icon.pixelHeight * artPixelSize(icon.scale),
-  };
 }
 
 function card(name: string): Element {
