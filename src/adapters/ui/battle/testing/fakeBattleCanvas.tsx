@@ -2,9 +2,14 @@
 // expose ses entrées pour que les tests d'écran vérifient ce que la scène reçoit.
 import { View } from 'react-native';
 
+import type { EnemyKind } from '../../../../domain/battle/combatants';
 import type { BattleSceneProps } from '../BattleCanvas';
 
-export function prepareBattleScene(): null {
+/** Les types d'ennemis demandés à la préparation de la scène (#38), lus par les tests d'écran. */
+export const preparedKinds: EnemyKind[][] = [];
+
+export function prepareBattleScene(kinds: readonly EnemyKind[]): null {
+  preparedKinds.push([...kinds]);
   return null;
 }
 

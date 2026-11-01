@@ -4,7 +4,7 @@ import Animated from 'react-native-reanimated';
 
 import type { BattleSession } from '../../../application/useCases/BattleSession';
 import type { DefenseButton } from '../../../domain/battle/BattleEvent';
-import { HEROES } from '../../../domain/battle/combatants';
+import { HEROES, type EnemyKind } from '../../../domain/battle/combatants';
 import { ActionPad } from '../battle/ActionPad';
 import { ActionTrack } from '../battle/ActionTrack';
 import { BattleScene, prepareBattleScene } from '../battle/BattleCanvas';
@@ -64,10 +64,14 @@ export function BattleScreen({
   const { width: screenWidth } = useWindowDimensions();
   const [sceneHeight, setSceneHeight] = useState(SCENE_HEIGHT);
 
-  // Les atlas de la scène sont faits pendant « Préparation du combat… », jamais pendant le combat.
+  const battle = display.snapshot?.battle ?? null;
+  // Les atlas de la scène sont faits avant le combat, jamais pendant la phase ennemie : ceux de
+  // tous les ennemis du combat, première ligne et réserve, aspect de phase 2 compris (#38).
+  const battleKinds =
+    battle === null ? '' : [...battle.enemies.map((enemy) => enemy.kind), ...battle.reserve].join();
   useEffect(() => {
-    prepareBattleScene();
-  }, []);
+    if (battleKinds !== '') prepareBattleScene(battleKinds.split(',') as EnemyKind[]);
+  }, [battleKinds]);
 
   const heroKind = display.snapshot?.battle.heroKind ?? 'sentinel';
   const onDefense = useCallback(
@@ -106,7 +110,6 @@ export function BattleScreen({
       ),
     [session],
   );
-  const battle = display.snapshot?.battle ?? null;
   const view = useMemo(() => (battle === null ? null : battleView(battle)), [battle]);
   const timeline = useMemo(() => (battle === null ? null : sceneTimeline(battle)), [battle]);
   const over = battle?.phase.kind === 'over' ? battle.phase.outcome : null;
@@ -128,6 +131,7 @@ export function BattleScreen({
     down: enemy.stunned,
     losingAction: enemy.losingAction,
     rising: enemy.rising,
+    phase2: enemy.phase2 === true,
     downSince: display.downSince[index] ?? null,
   }));
   const geometry = sceneGeometry(screenWidth, sceneHeight, enemies.length);

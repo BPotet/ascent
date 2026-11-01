@@ -317,7 +317,7 @@ async function renderScene(enemies: SceneEnemy[]) {
       }}
     />,
   );
-  return { scene: prepareBattleScene(), geometry };
+  return { scene: prepareBattleScene(enemies.map((enemy) => enemy.kind)), geometry };
 }
 
 const sceneEnemy = (kind: EnemyKind, change: Partial<SceneEnemy>): SceneEnemy => ({
@@ -617,7 +617,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
         enemies.forEach((enemy) => {
           const atlas = nodes.find(
             (node) =>
-              node.type === 'skAtlas' && node.props.image === scene.characters[enemy.kind].image,
+              node.type === 'skAtlas' && node.props.image === scene.characters[enemy.kind]?.image,
           )!;
           const faded = enemy.dimmed || !enemy.standing;
           expect([enemy.kind, atlas.props.opacity]).toEqual([enemy.kind, faded ? 0.3 : 1]);

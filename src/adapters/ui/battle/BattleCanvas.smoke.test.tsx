@@ -22,6 +22,18 @@ import type { SceneEnemy, SceneTimeline } from './sceneTypes';
 // eslint-disable-next-line @typescript-eslint/no-require-imports -- l'objet du module, pour l'espionner
 const skia: { useRSXformBuffer: unknown } = require('@shopify/react-native-skia');
 
+/** Les ennemis joués par ces tests : leurs atlas sont préparés à la demande (#38). */
+const PLAYED = [
+  'ghoul',
+  'specter',
+  'necromancer',
+  'madVillager',
+  'facelessPrior',
+  'fallenKnight',
+  'twins',
+  'ossuaryWarden',
+] as const;
+
 const ENEMIES: SceneEnemy[] = (['ghoul', 'specter', 'necromancer'] as const).map((kind, index) => ({
   kind,
   standing: true,
@@ -83,29 +95,72 @@ function drawnTypes(): string[] {
   return types;
 }
 
+describe('BattleScene with Skia, its enemies prepared on demand (#38)', () => {
+  it('prepares the enemies asked for only, once each, the phase 2 aspect of a boss included', () => {
+    const scene = prepareBattleScene(['ghoul']);
+    expect(scene.characters.stoneSaint).toBeUndefined();
+
+    const again = prepareBattleScene(['stoneSaint', 'hourRinger', 'ashBramble']);
+
+    expect(again).toBe(scene);
+    expect(again.characters.ghoul).toBeDefined();
+    expect([
+      again.characters.stoneSaint?.table.cellWidth,
+      again.characters.stoneSaint?.table.cellHeight,
+    ]).toEqual([48, 58]);
+    expect(again.phase2.characters.hourRinger?.image).not.toBe(again.characters.hourRinger?.image);
+    expect(again.phase2.characters.stoneSaint).toBeUndefined();
+    expect(again.phase2.anchors.hourRinger?.idle0).toEqual(
+      poseAnchors('hourRinger', 'idle0', null, true),
+    );
+    expect(again.phase2.motions.hourRinger).toBe(attackMotion('hourRinger', true));
+    expect(again.extras.ashBramble).toEqual(['rise0', 'rise1']);
+    expect(again.anchors.ashBramble?.rise0).toEqual(poseAnchors('ashBramble', 'rise0'));
+  });
+
+  it.each([
+    ['bronzeWarden', false],
+    ['stoneSaint', false],
+    ['hourRinger', true],
+    ['ashGleaner', false],
+  ] as const)('mounts the %s alone, phase 2: %s', async (kind, phase2) => {
+    await render(
+      <BattleScene
+        {...props({
+          geometry: sceneGeometry(390, 440, 1),
+          enemies: [{ ...ENEMIES[1]!, kind, phase2 }],
+          timeline: { ...props().timeline!, enemy: 0 },
+        })}
+      />,
+    );
+
+    expect(drawnTypes()).toContain('skAtlas');
+  });
+});
+
 describe('BattleScene with Skia', () => {
   it('prepares the atlases of the scene once, as Skia images', () => {
-    const prepared = prepareBattleScene();
+    const prepared = prepareBattleScene(PLAYED);
 
-    expect(prepared.characters.ghoul.image?.width()).toBe(352);
+    expect(prepared.characters.ghoul!.image?.width()).toBe(352);
     // La Sentinelle a 17 cases (ses 15 poses, dont `bash`, et 2 liserés), sur 3 lignes de 8 (#155).
     expect(prepared.heroes.sentinel.image?.height()).toBe(132);
     expect(prepared.heroes.wanderer.image?.height()).toBe(88);
     expect(prepared.heroes.wanderer.image).not.toBe(prepared.heroes.sentinel.image);
     expect(prepared.effects.image?.width()).toBeGreaterThan(0);
-    expect(prepareBattleScene()).toBe(prepared);
+    expect(prepareBattleScene(PLAYED)).toBe(prepared);
   });
 
   it('prepares the anchors of each pose: those of the full animation, pose by pose', () => {
-    const { anchors } = prepareBattleScene();
+    const { anchors } = prepareBattleScene(PLAYED);
 
-    expect(anchors.ghoul.hurt).toEqual(poseAnchors('ghoul', 'hurt'));
-    expect(anchors.madVillager.lunge).toEqual(poseAnchors('madVillager', 'lunge'));
+    expect(anchors.ghoul!.hurt).toEqual(poseAnchors('ghoul', 'hurt'));
+    expect(anchors.madVillager!.lunge).toEqual(poseAnchors('madVillager', 'lunge'));
     // Les Jumeaux et la Gardienne ne sont plus dessinés par le code (#139) : leurs ancrages ne sont
     // plus ceux de `ant2` pour toute pose, mais ceux de chaque pose recopiée.
-    expect(anchors.ossuaryWarden.idle0).toEqual(poseAnchors('ossuaryWarden', 'idle0'));
-    expect(anchors.ossuaryWarden.idle0).not.toEqual(anchors.ossuaryWarden.ant2);
-    expect(anchors.twins.down).toEqual(poseAnchors('twins', 'down'));
+    expect(anchors.ossuaryWarden!.idle0).toEqual(poseAnchors('ossuaryWarden', 'idle0'));
+    expect(anchors.ossuaryWarden!.idle0).not.toEqual(anchors.ossuaryWarden!.ant2);
+    expect(anchors.twins!.down).toEqual(poseAnchors('twins', 'down'));
   });
 
   it('mounts the Ghoul and the Mad villager with their full animation, one of them stunned', async () => {
@@ -140,37 +195,39 @@ describe('BattleScene with Skia', () => {
   });
 
   it('prepares the atlas of each enemy at the size of its cell: 52 × 62 for the Faceless prior (#138)', () => {
-    const { characters } = prepareBattleScene();
+    const { characters } = prepareBattleScene(PLAYED);
 
-    expect(characters.facelessPrior.image?.width()).toBe(8 * 52);
+    expect(characters.facelessPrior!.image?.width()).toBe(8 * 52);
     expect([
-      characters.facelessPrior.table.cellWidth,
-      characters.facelessPrior.table.cellHeight,
+      characters.facelessPrior!.table.cellWidth,
+      characters.facelessPrior!.table.cellHeight,
     ]).toEqual([52, 62]);
     expect([
-      characters.fallenKnight.table.cellWidth,
-      characters.fallenKnight.table.cellHeight,
+      characters.fallenKnight!.table.cellWidth,
+      characters.fallenKnight!.table.cellHeight,
     ]).toEqual([44, 54]);
   });
 
   it('prepares the Twins in a cell of 54 × 54 and the Ossuary warden in one of 52 × 62, with their attack poses (#139)', () => {
-    const { characters, attackAnchors, motions } = prepareBattleScene();
+    const { characters, attackAnchors, motions } = prepareBattleScene(PLAYED);
 
-    expect([characters.twins.table.cellWidth, characters.twins.table.cellHeight]).toEqual([54, 54]);
-    expect(characters.twins.image?.width()).toBe(8 * 54);
+    expect([characters.twins!.table.cellWidth, characters.twins!.table.cellHeight]).toEqual([
+      54, 54,
+    ]);
+    expect(characters.twins!.image?.width()).toBe(8 * 54);
     expect([
-      characters.ossuaryWarden.table.cellWidth,
-      characters.ossuaryWarden.table.cellHeight,
+      characters.ossuaryWarden!.table.cellWidth,
+      characters.ossuaryWarden!.table.cellHeight,
     ]).toEqual([52, 62]);
-    expect(Object.keys(characters.twins.table.attacks).sort()).toEqual([
+    expect(Object.keys(characters.twins!.table.attacks).sort()).toEqual([
       'basic',
       'delayedPerilous',
     ]);
-    expect(attackAnchors.twins.basic?.ant2).toEqual(poseAnchors('twins', 'ant2', 'basic'));
-    expect(attackAnchors.ossuaryWarden.perilous?.lunge).toEqual(
+    expect(attackAnchors.twins!.basic?.ant2).toEqual(poseAnchors('twins', 'ant2', 'basic'));
+    expect(attackAnchors.ossuaryWarden!.perilous?.lunge).toEqual(
       poseAnchors('ossuaryWarden', 'lunge', 'perilous'),
     );
-    expect(Object.keys(attackAnchors.twins.delayedPerilous ?? {}).sort()).toEqual([
+    expect(Object.keys(attackAnchors.twins!.delayedPerilous ?? {}).sort()).toEqual([
       'ant0',
       'ant1',
       'ant2',
@@ -212,7 +269,7 @@ describe('BattleScene with Skia', () => {
   it.each(['wanderer', 'sentinel'] as const)(
     'draws the hero with the atlas of the %s, the heroine of the ascent (#140)',
     async (heroKind) => {
-      const { heroes } = prepareBattleScene();
+      const { heroes } = prepareBattleScene(PLAYED);
       await render(<BattleScene {...props({ heroKind })} />);
 
       const atlases: unknown[] = [];
@@ -280,7 +337,7 @@ describe('BattleScene: the glint and the stars follow the displayed pose', () =>
   // atlas fait échouer les tests (il est tué), au lieu d'une erreur d'exécution hors du score (#149).
   let table: ReturnType<typeof prepareBattleScene>['effects']['table'];
   beforeAll(() => {
-    ({ table } = prepareBattleScene().effects);
+    ({ table } = prepareBattleScene(PLAYED).effects);
   });
 
   beforeEach(() => {

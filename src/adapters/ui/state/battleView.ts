@@ -96,7 +96,14 @@ export interface EnemyView {
   readonly guardText: string | null;
   readonly stunned: boolean;
   readonly losingAction: boolean;
-  readonly rising: { readonly since: number; readonly until: number } | null;
+  /** Le retour en garde, et s'il vient de Se relève seul (#38). */
+  readonly rising: {
+    readonly since: number;
+    readonly until: number;
+    readonly selfRevive: boolean;
+  } | null;
+  /** Un boss passé en phase 2 (#38) ; absent, non. */
+  readonly phase2?: boolean;
   readonly intent: ShownIntent | null;
   readonly active: boolean;
   readonly dimmed: boolean;
@@ -199,7 +206,15 @@ function enemyView(
     stunned,
     losingAction:
       phase.kind === 'enemy' && phase.step.kind === 'lostAction' && phase.step.enemy === index,
-    rising: enemy.guardRestore,
+    rising:
+      enemy.guardRestore === null
+        ? null
+        : {
+            since: enemy.guardRestore.since,
+            until: enemy.guardRestore.until,
+            selfRevive: enemy.guardRestore.cause === 'selfRevive',
+          },
+    phase2: enemy.phase2 === true,
     intent,
     active: active === index,
     dimmed: active !== null && active !== index,

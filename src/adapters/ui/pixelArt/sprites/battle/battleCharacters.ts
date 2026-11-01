@@ -22,7 +22,7 @@ import { THORN_PILGRIM_ANIMATION } from '../atelier/data/thornPilgrim';
 import { TWINS_ANIMATION } from '../atelier/data/twins';
 import { WISH_GRANTER_ANIMATION } from '../atelier/data/wishGranter';
 import { WISH_GRANTER_PHASE2 } from '../atelier/data/wishGranterPhase2';
-import { animationSprite, type FullAnimation } from '../atelier/fullAnimation';
+import { animationSprite, type ExtraFrame, type FullAnimation } from '../atelier/fullAnimation';
 import { HERO_ANIMATIONS, HERO_CELL, isHero } from './heroAnimations';
 
 /** Un personnage du combat : un ennemi de trois quarts face, ou l'héroïne de dos. */
@@ -69,7 +69,13 @@ export type HeroFrame =
   | 'off1'
   | 'bash';
 
-export type BattleFrame = EnemyFrame | HeroFrame;
+/** Une image d'un ennemi dans la scène : ses 17 images, ou une de ses poses en plus (#38). */
+export type SceneFrame = EnemyFrame | ExtraFrame;
+
+export type BattleFrame = EnemyFrame | HeroFrame | ExtraFrame;
+
+/** Les poses en plus (#38), dans l'ordre de l'atlas. */
+export const EXTRA_FRAMES: readonly ExtraFrame[] = ['rise0', 'rise1', 'guard', 'raiseAlly'];
 
 export const ENEMY_FRAMES: readonly EnemyFrame[] = [
   'idle0',
@@ -165,6 +171,8 @@ export interface CharacterLook {
   readonly red?: boolean;
   /** Le type de coup préparé : ses poses d'un coup remplacent celles de l'animation complète. */
   readonly attack?: AttackKind | null;
+  /** Un boss en phase 2 : les poses de son aspect de phase 2, s'il en a un (#38). */
+  readonly phase2?: boolean;
 }
 
 /**
@@ -210,29 +218,50 @@ function isEnemyFrame(frame: BattleFrame): frame is EnemyFrame {
   return (ENEMY_FRAMES as readonly string[]).includes(frame);
 }
 
+/** Un boss qui a un aspect de phase 2 (#38). */
+export function hasPhase2(kind: EnemyKind): boolean {
+  return (FULL_ANIMATIONS[kind] as FullAnimation<EnemyFrame>).phase2 !== undefined;
+}
+
+/** Les poses en plus de l'ennemi `kind` (#38), celles de son aspect de phase 2 avec `phase2`. */
+export function enemyExtraFrames(kind: EnemyKind, phase2 = false): readonly ExtraFrame[] {
+  const animation: FullAnimation<EnemyFrame> = FULL_ANIMATIONS[kind];
+  const { frames } = (phase2 ? animation.phase2 : undefined) ?? animation;
+  return EXTRA_FRAMES.filter((frame) => Object.hasOwn(frames, frame));
+}
+
+/** L'image d'un ennemi à dessiner : la sienne, ou `idle0` pour une image qu'il n'a pas. */
+function enemyFrameOf(kind: EnemyKind, frame: BattleFrame, phase2: boolean): SceneFrame {
+  if (isEnemyFrame(frame)) return frame;
+  const extra = frame as ExtraFrame;
+  return enemyExtraFrames(kind, phase2).includes(extra) ? extra : 'idle0';
+}
+
 /**
  * L'image `frame` d'un personnage du combat : la pose recopiée telle quelle de son animation
  * complète, sans liseré ni traînée (ADR 0010). Pour un ennemi, dans sa case du combat, peinte avec
  * sa palette rouge pour un coup imparable s'il la joue, et prise dans ses poses d'un coup quand le
  * coup `attack` en a pour cette image (#139). Pour une héroïne, dans la case du héros, sans rouge
  * (#140) : une pose qu'elle n'a pas (une image d'ennemi, ou `bash` pour l'Errante) montre `idle0`.
+ * Un ennemi montre ses poses en plus (#38), ou `idle0` s'il ne les a pas ; avec `phase2`, un boss
+ * prend son aspect de phase 2.
  */
 export function battleSprite(
   character: BattleCharacter,
   frame: BattleFrame,
-  { red = false, attack = null }: CharacterLook = {},
+  { red = false, attack = null, phase2 = false }: CharacterLook = {},
 ): CharacterImage {
   if (isHero(character)) {
     const animation: FullAnimation = HERO_ANIMATIONS[character];
     const own = (heroFrames(character) as readonly string[]).includes(frame);
     return animationSprite(animation, own ? frame : 'idle0', HERO_CELL);
   }
-  return animationSprite(
-    FULL_ANIMATIONS[character],
-    isEnemyFrame(frame) ? frame : 'idle0',
-    undefined,
-    { red: red && playsRed(character), attack },
-  );
+  const animation: FullAnimation<EnemyFrame> = FULL_ANIMATIONS[character];
+  return animationSprite(animation, enemyFrameOf(character, frame, phase2), undefined, {
+    red: red && playsRed(character),
+    attack,
+    phase2,
+  });
 }
 
 /** Les ancrages qui servent au combat : le reflet (l'œil, les pointes) et les étoiles (la tête). */
@@ -244,14 +273,17 @@ export interface PoseAnchors {
 
 /**
  * Les ancrages de la pose `frame` d'un ennemi (`poseAnchors`) : ceux de la pose affichée, prise
- * dans ses poses d'un coup quand le coup `attack` en a pour cette image.
+ * dans ses poses d'un coup quand le coup `attack` en a pour cette image, et dans son aspect de
+ * phase 2 avec `phase2` (#38).
  */
 export function poseAnchors(
   character: EnemyKind,
-  frame: EnemyFrame,
+  frame: SceneFrame,
   attack: AttackKind | null = null,
+  phase2 = false,
 ): PoseAnchors {
-  return animationSprite(FULL_ANIMATIONS[character], frame, undefined, { attack }).anchors;
+  const animation: FullAnimation<EnemyFrame> = FULL_ANIMATIONS[character];
+  return animationSprite(animation, frame, undefined, { attack, phase2 }).anchors;
 }
 
 /**
@@ -268,13 +300,19 @@ export interface AttackMotion {
 /** Le mouvement de chaque coup d'un ennemi qui a des poses d'un coup. */
 export type AttackMotions = Readonly<Partial<Record<AttackKind, AttackMotion>>>;
 
-const motions = new Map<EnemyKind, AttackMotions>();
+const motions = new Map<string, AttackMotions>();
 
-/** Le mouvement des coups de l'ennemi `kind` qui ont des poses d'un coup (`attackMotion`). */
-export function attackMotion(kind: EnemyKind): AttackMotions {
-  const cached = motions.get(kind);
+/**
+ * Le mouvement des coups de l'ennemi `kind` qui ont des poses d'un coup (`attackMotion`), ceux de
+ * son aspect de phase 2 avec `phase2` (#38) ; sans aspect de phase 2, ceux de la phase 1.
+ */
+export function attackMotion(kind: EnemyKind, phase2 = false): AttackMotions {
+  const shifted = phase2 && hasPhase2(kind);
+  const key = shifted ? `${kind}:phase2` : kind;
+  const cached = motions.get(key);
   if (cached !== undefined) return cached;
-  const { attackPoses = {} } = FULL_ANIMATIONS[kind] as FullAnimation<EnemyFrame>;
+  const animation: FullAnimation<EnemyFrame> = FULL_ANIMATIONS[kind];
+  const { attackPoses = {} } = (shifted ? animation.phase2 : undefined) ?? animation;
   const motion = Object.fromEntries(
     Object.entries(attackPoses).map(([attack, poses]) => [
       attack,
@@ -286,6 +324,6 @@ export function attackMotion(kind: EnemyKind): AttackMotions {
       },
     ]),
   );
-  motions.set(kind, motion);
+  motions.set(key, motion);
   return motion;
 }

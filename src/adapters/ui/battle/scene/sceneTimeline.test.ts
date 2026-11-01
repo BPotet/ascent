@@ -80,6 +80,28 @@ describe('sceneTimeline', () => {
       ),
     ).toMatchObject({ kind: 'support', enemy: 2, stepInAt: 2_000, until: 2_400, impacts: [] });
     expect(
+      sceneTimeline(
+        inStep({
+          kind: 'support',
+          enemy: 2,
+          intent: { category: 'guard', gain: 4 },
+          since: 2_000,
+          until: 2_400,
+        }),
+      )?.support,
+    ).toBe('guard');
+    expect(
+      sceneTimeline(
+        inStep({
+          kind: 'support',
+          enemy: 2,
+          intent: { category: 'raise', ally: 0 },
+          since: 2_000,
+          until: 2_400,
+        }),
+      )?.support,
+    ).toBe('raise');
+    expect(
       sceneTimeline(inStep({ kind: 'lostAction', enemy: 0, since: 0, until: 250 })),
     ).toBeNull();
     expect(

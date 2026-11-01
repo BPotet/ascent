@@ -36,6 +36,7 @@ export function sceneTimeline(battle: Battle): SceneTimeline | null {
         ...quiet,
         enemy: step.enemy,
         kind: 'support',
+        support: step.intent.category === 'guard' ? 'guard' : 'raise',
         stepInAt: step.since,
         windUpAt: step.since,
         until: step.until,

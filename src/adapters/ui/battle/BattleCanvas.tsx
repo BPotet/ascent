@@ -37,14 +37,18 @@ import { artPalette } from '../pixelArt/artPalette';
 import { toSkImage } from '../pixelArt/SpriteCanvas';
 import type { Point } from '../pixelArt/sprites/Sprite';
 import { atlasRect, battleAtlas, type AtlasTable } from '../pixelArt/sprites/battle/battleAtlas';
+import type { ExtraFrame } from '../pixelArt/sprites/atelier/fullAnimation';
 import {
   ENEMY_FRAMES,
   attackMotion,
+  enemyExtraFrames,
+  hasPhase2,
   poseAnchors,
   type AttackMotions,
   type BattleCharacter,
   type BattleFrame,
   type EnemyFrame,
+  type SceneFrame,
 } from '../pixelArt/sprites/battle/battleCharacters';
 import {
   effectTableRect,
@@ -122,14 +126,29 @@ type AttackAnchors = Readonly<
   Partial<Record<AttackKind, Readonly<Partial<Record<EnemyFrame, EnemyAnchors>>>>>
 >;
 
-export interface PreparedScene {
-  readonly characters: Readonly<Record<EnemyKind, PreparedAtlas>>;
+/** Les ancrages de chaque pose d'un ennemi, poses en plus comprises (#38). */
+type PoseAnchorTable = Readonly<Record<EnemyFrame, EnemyAnchors>> &
+  Readonly<Partial<Record<ExtraFrame, EnemyAnchors>>>;
+
+/**
+ * Les ennemis préparés (#38, avenant à l'ADR 0008 § 5) : par type, à la demande. Un type absent ne
+ * se dessine pas ; il ne peut pas arriver, la scène prépare ceux qu'elle montre.
+ */
+interface PreparedEnemies {
+  readonly characters: Partial<Record<EnemyKind, PreparedAtlas>>;
   /** Les ancrages de chaque pose de chaque ennemi (`poseAnchors`). */
-  readonly anchors: Readonly<Record<EnemyKind, Readonly<Record<EnemyFrame, EnemyAnchors>>>>;
+  readonly anchors: Partial<Record<EnemyKind, PoseAnchorTable>>;
   /** Les ancrages de chaque pose d'un coup de chaque ennemi (#139). */
-  readonly attackAnchors: Readonly<Record<EnemyKind, AttackAnchors>>;
+  readonly attackAnchors: Partial<Record<EnemyKind, AttackAnchors>>;
   /** La portée et l'élévation des coups qui ont des poses d'un coup, par ennemi (#139). */
-  readonly motions: Readonly<Record<EnemyKind, AttackMotions>>;
+  readonly motions: Partial<Record<EnemyKind, AttackMotions>>;
+}
+
+export interface PreparedScene extends PreparedEnemies {
+  /** L'aspect de phase 2 des boss qui en ont un (#38), aux mêmes tables. */
+  readonly phase2: PreparedEnemies;
+  /** Les poses en plus de chaque ennemi (#38). */
+  readonly extras: Partial<Record<EnemyKind, readonly ExtraFrame[]>>;
   /** L'atlas de chaque héroïne, toutes préparées : celle de l'ascension est choisie au rendu. */
   readonly heroes: Readonly<Record<HeroKind, PreparedAtlas>>;
   readonly effects: { readonly image: SkImage | null; readonly table: EffectTable };
@@ -148,17 +167,6 @@ interface SpriteLook<Frame extends BattleFrame = BattleFrame> {
 }
 
 // Stryker disable all: dessin de la scène, vérifié par la conformité aux maquettes (barrière 10 bis).
-const ENEMY_KINDS: readonly EnemyKind[] = [
-  'ghoul',
-  'specter',
-  'necromancer',
-  'fallenKnight',
-  'twins',
-  'ossuaryWarden',
-  'facelessPrior',
-  'skeleton',
-  'madVillager',
-];
 const PEDESTALS: readonly PedestalKind[] = ['enemy', 'single', 'hero'];
 const NEAREST = { filter: FilterMode.Nearest, mipmap: MipmapMode.None } as const;
 /** Les autres ennemis : à 30 %, désaturés et assombris (maquette, `.pfoe.dim`). */
@@ -215,64 +223,87 @@ const NO_SLOT: EnemySlot = {
 
 let prepared: PreparedScene | null = null;
 
-/**
- * Prépare les atlas de la scène (`prepareBattleScene`) : les personnages, leurs ancrages, les
- * effets et les socles, en images Skia. Fait une fois par lancement (cache de module), pendant
- * « Préparation du combat… », jamais pendant la phase ennemie ; « Rejouer » les garde.
- */
-export function prepareBattleScene(): PreparedScene {
-  if (prepared !== null) return prepared;
-  const atlasOf = (character: BattleCharacter): PreparedAtlas => {
-    const atlas = battleAtlas(character);
-    return { image: toSkImage(atlas), table: atlas.table };
-  };
-  const effects = effectsAtlas();
-  prepared = {
-    characters: Object.fromEntries(ENEMY_KINDS.map((kind) => [kind, atlasOf(kind)])) as Record<
-      EnemyKind,
-      PreparedAtlas
-    >,
-    anchors: Object.fromEntries(
-      ENEMY_KINDS.map((kind) => [
-        kind,
-        Object.fromEntries(ENEMY_FRAMES.map((frame) => [frame, poseAnchors(kind, frame)])),
-      ]),
-    ) as Record<EnemyKind, Record<EnemyFrame, EnemyAnchors>>,
-    attackAnchors: Object.fromEntries(
-      ENEMY_KINDS.map((kind) => [
-        kind,
-        Object.fromEntries(
-          Object.entries(attackMotion(kind)).map(([attack, motion]) => [
-            attack,
-            Object.fromEntries(
-              Object.keys(motion?.lift ?? {}).map((frame) => [
-                frame,
-                poseAnchors(kind, frame as EnemyFrame, attack as AttackKind),
-              ]),
-            ),
-          ]),
-        ),
-      ]),
-    ) as Record<EnemyKind, AttackAnchors>,
-    motions: Object.fromEntries(ENEMY_KINDS.map((kind) => [kind, attackMotion(kind)])) as Record<
-      EnemyKind,
-      AttackMotions
-    >,
-    heroes: Object.fromEntries(
-      (Object.keys(HERO_ANIMATIONS) as HeroKind[]).map((kind) => [kind, atlasOf(kind)]),
-    ) as Record<HeroKind, PreparedAtlas>,
-    effects: { image: toSkImage(effects), table: effects.table },
-    pedestals: Object.fromEntries(
-      PEDESTALS.flatMap((kind) =>
-        [false, true].map((selected) => [
-          `${kind}-${selected ? 1 : 0}`,
-          toSkImage(pedestalImage(kind, selected)),
+/** Un atlas en image Skia, avec sa table. */
+function atlasOf(character: BattleCharacter, phase2 = false): PreparedAtlas {
+  const atlas = battleAtlas(character, { phase2 });
+  return { image: toSkImage(atlas), table: atlas.table };
+}
+
+/** Prépare l'ennemi `kind` dans `tables`, phase 1 ou aspect de phase 2. */
+function prepareEnemy(tables: PreparedEnemies, kind: EnemyKind, phase2: boolean): void {
+  const frames: readonly SceneFrame[] = [...ENEMY_FRAMES, ...enemyExtraFrames(kind, phase2)];
+  tables.characters[kind] = atlasOf(kind, phase2);
+  tables.anchors[kind] = Object.fromEntries(
+    frames.map((frame) => [frame, poseAnchors(kind, frame, null, phase2)]),
+  ) as PoseAnchorTable;
+  const motions = attackMotion(kind, phase2);
+  tables.attackAnchors[kind] = Object.fromEntries(
+    Object.entries(motions).map(([attack, motion]) => [
+      attack,
+      Object.fromEntries(
+        Object.keys(motion?.lift ?? {}).map((frame) => [
+          frame,
+          poseAnchors(kind, frame as EnemyFrame, attack as AttackKind, phase2),
         ]),
       ),
-    ),
-  };
+    ]),
+  );
+  tables.motions[kind] = motions;
+}
+
+const emptyTables = (): PreparedEnemies => ({
+  characters: {},
+  anchors: {},
+  attackAnchors: {},
+  motions: {},
+});
+
+/**
+ * Prépare les atlas de la scène (`prepareBattleScene`) : les héroïnes, les effets et les socles une
+ * fois par lancement (cache de module) ; les ennemis par type, à la demande (#38, avenant à
+ * l'ADR 0008 § 5), ceux de `kinds` (première ligne et réserve du combat), aspect de phase 2
+ * compris. Pendant « Préparation du combat… », jamais pendant la phase ennemie ; « Rejouer » les
+ * garde.
+ */
+export function prepareBattleScene(kinds: readonly EnemyKind[]): PreparedScene {
+  if (prepared === null) {
+    const effects = effectsAtlas();
+    prepared = {
+      ...emptyTables(),
+      phase2: emptyTables(),
+      extras: {},
+      heroes: Object.fromEntries(
+        (Object.keys(HERO_ANIMATIONS) as HeroKind[]).map((kind) => [kind, atlasOf(kind)]),
+      ) as Record<HeroKind, PreparedAtlas>,
+      effects: { image: toSkImage(effects), table: effects.table },
+      pedestals: Object.fromEntries(
+        PEDESTALS.flatMap((kind) =>
+          [false, true].map((selected) => [
+            `${kind}-${selected ? 1 : 0}`,
+            toSkImage(pedestalImage(kind, selected)),
+          ]),
+        ),
+      ),
+    };
+  }
+  for (const kind of kinds) {
+    if (prepared.characters[kind] !== undefined) continue;
+    prepareEnemy(prepared, kind, false);
+    prepared.extras[kind] = enemyExtraFrames(kind);
+    if (hasPhase2(kind)) prepareEnemy(prepared.phase2, kind, true);
+  }
   return prepared;
 }
+
+/** Les tables d'un ennemi à dessiner : celles de son aspect de phase 2 quand il y est passé. */
+function tablesOf(scene: PreparedScene, enemy: SceneEnemy): PreparedEnemies {
+  return enemy.phase2 === true && scene.phase2.characters[enemy.kind] !== undefined
+    ? scene.phase2
+    : scene;
+}
+
+const NO_EXTRAS: readonly ExtraFrame[] = [];
+const NO_MOTIONS: AttackMotions = {};
 
 const stages = new Map<string, SkImage | null>();
 
@@ -334,7 +365,7 @@ function Pedestal({
 }
 
 /** Un personnage, dessiné par l'`Atlas` de Skia : son image et sa place changent sur le fil UI. */
-function AtlasSprite<Frame extends BattleFrame>({
+function AtlasSprite<Frame extends BattleFrame | SceneFrame>({
   atlas,
   look,
   scale,
@@ -381,19 +412,20 @@ function useEnemyLook(
   slot: EnemySlot,
   origin: { readonly x: number; readonly y: number },
   motions: AttackMotions,
+  extras: readonly ExtraFrame[],
   clock: SharedValue<number>,
   timeline: SharedValue<SceneTimeline | null>,
   reducedMotion: boolean,
-): DerivedValue<SpriteLook<EnemyFrame>> {
+): DerivedValue<SpriteLook<SceneFrame>> {
   const { standing, down, losingAction, rising, downSince } = enemy;
   const { reach } = slot;
   const { x, y } = origin;
-  return useDerivedValue<SpriteLook<EnemyFrame>>(() => {
+  return useDerivedValue<SpriteLook<SceneFrame>>(() => {
     'worklet';
     const now = clock.get();
     const current = timeline.get();
     if (current !== null && current.enemy === index && standing) {
-      const pose = enemyPose(current, now, reducedMotion, motions);
+      const pose = enemyPose(current, now, reducedMotion, motions, extras);
       return {
         frame: pose.frame,
         tier: pose.tier,
@@ -403,7 +435,7 @@ function useEnemyLook(
         y: y + Math.round((reach.y * pose.reach) / 2) * 2 - pose.lift * 2,
       };
     }
-    const rest = restPose({ standing, down, losingAction, rising, downSince }, index, now);
+    const rest = restPose({ standing, down, losingAction, rising, downSince }, index, now, extras);
     return { frame: rest.frame, tier: 0, red: false, poses: null, x, y };
   }, [
     clock,
@@ -418,6 +450,7 @@ function useEnemyLook(
     y,
     reach,
     motions,
+    extras,
   ]);
 }
 
@@ -458,7 +491,7 @@ export function BattleScene({
   reducedMotion,
   uiNow,
 }: BattleSceneProps) {
-  const scene = prepareBattleScene();
+  const scene = prepareBattleScene(enemies.map((enemy) => enemy.kind));
   const clock = useSharedValue(0);
   const sharedTimeline = useSharedValue<SceneTimeline | null>(timeline);
   const sharedSpark = useSharedValue<SceneSpark | null>(spark);
@@ -492,11 +525,21 @@ export function BattleScene({
       ),
     [width, height],
   );
+  // Les tables de chaque place : celles de l'aspect de phase 2 d'un boss qui y est passé (#38).
+  const tables = [0, 1, 2].map((index) => tablesOf(scene, enemies[index] ?? NO_ENEMY));
+  const kindAt = (index: number) => (enemies[index] ?? NO_ENEMY).kind;
   // L'origine de chaque case, à la taille de l'entité (ADR 0010 § 3), calculée hors des worklets.
   const origins = [0, 1, 2].map((index) => {
-    const { table } = scene.characters[(enemies[index] ?? NO_ENEMY).kind];
-    return spriteOrigin((slots[index] ?? NO_SLOT).sprite, table.cellWidth, table.cellHeight);
+    const table = tables[index]!.characters[kindAt(index)]?.table;
+    return spriteOrigin(
+      (slots[index] ?? NO_SLOT).sprite,
+      table?.cellWidth ?? 44,
+      table?.cellHeight ?? 52,
+    );
   });
+  const motionsAt = (index: number) => tables[index]!.motions[kindAt(index)] ?? NO_MOTIONS;
+  const extrasAt = (index: number) =>
+    enemies[index]?.phase2 === true ? NO_EXTRAS : (scene.extras[kindAt(index)] ?? NO_EXTRAS);
   // Trois ennemis au plus : un crochet par place, dans le même ordre à chaque rendu.
   const looks = [
     useEnemyLook(
@@ -504,7 +547,8 @@ export function BattleScene({
       0,
       slots[0] ?? NO_SLOT,
       origins[0]!,
-      scene.motions[(enemies[0] ?? NO_ENEMY).kind],
+      motionsAt(0),
+      extrasAt(0),
       clock,
       sharedTimeline,
       reducedMotion,
@@ -514,7 +558,8 @@ export function BattleScene({
       1,
       slots[1] ?? NO_SLOT,
       origins[1]!,
-      scene.motions[(enemies[1] ?? NO_ENEMY).kind],
+      motionsAt(1),
+      extrasAt(1),
       clock,
       sharedTimeline,
       reducedMotion,
@@ -524,7 +569,8 @@ export function BattleScene({
       2,
       slots[2] ?? NO_SLOT,
       origins[2]!,
-      scene.motions[(enemies[2] ?? NO_ENEMY).kind],
+      motionsAt(2),
+      extrasAt(2),
       clock,
       sharedTimeline,
       reducedMotion,
@@ -557,7 +603,9 @@ export function BattleScene({
   // Les effets : [effet, image, x, y] par place, l'effet −1 pour une place vide.
   const effectTable = scene.effects.table;
   const kinds = enemies.map((enemy) => enemy.kind);
-  const { anchors, attackAnchors } = scene;
+  // Les ancrages de la pose affichée de chaque place, aspect de phase 2 compris (#38).
+  const anchors = tables.map((table, index) => table.anchors[kindAt(index)]);
+  const attackAnchors = tables.map((table, index) => table.attackAnchors[kindAt(index)]);
   const stunned = enemies.map((enemy) => enemy.down && enemy.standing);
   const hops = enemies.map((enemy) => enemy.losingAction);
   // L'écu du Rempart devant le héros, à son échelle ; la riposte vise le centre d'un ennemi.
@@ -603,10 +651,11 @@ export function BattleScene({
       const look = looks[current.enemy]?.get();
       if (kind !== undefined && look !== undefined) {
         // Les ancrages de la pose affichée : celle d'un coup quand elle en vient (#139).
+        const own = attackAnchors[current.enemy];
         const shown =
-          (look.poses === null ? undefined : attackAnchors[kind][look.poses]?.[look.frame]) ??
-          anchors[kind][look.frame];
-        for (const glint of glintSprites(current.glints, now, shown)) {
+          (look.poses === null ? undefined : own?.[look.poses]?.[look.frame as EnemyFrame]) ??
+          anchors[current.enemy]?.[look.frame];
+        for (const glint of shown === undefined ? [] : glintSprites(current.glints, now, shown)) {
           place(glint.effect, glint.frame, look.x + glint.x * 2 + 1, look.y + glint.y * 2 + 1);
         }
       }
@@ -618,7 +667,9 @@ export function BattleScene({
       const shown = stunned[index] === true && kind !== undefined && origin !== undefined;
       if (!shown || look === undefined) continue;
       // Les étoiles suivent la tête de la pose affichée : `hurt`, puis `down`.
-      const [headX, headY] = anchors[kind][look.get().frame].head;
+      const head = anchors[index]?.[look.get().frame]?.head;
+      if (head === undefined) continue;
+      const [headX, headY] = head;
       const turn = Math.floor(now / 125) % 4;
       const hop = hops[index] === true ? 4 : 0;
       place('stars', turn, origin.x + headX * 2, origin.y + (headY - 4) * 2 - hop);
@@ -705,7 +756,7 @@ export function BattleScene({
         const slot = slots[index];
         return slot === undefined || !enemy.standing ? null : (
           <Pedestal
-            key={enemy.kind}
+            key={`${index}-${enemy.kind}`}
             kind={slot.pedestal}
             selected={enemy.target}
             at={slot.pedestalAt}
@@ -721,10 +772,12 @@ export function BattleScene({
       />
       {order.map(({ enemy, index }) => {
         const look = looks[index];
-        return look === undefined ? null : (
+        const atlas = tables[index]?.characters[enemy.kind];
+        // Un nouvel atlas (l'aspect de phase 2, #38) remonte le personnage avec sa table.
+        return look === undefined || atlas === undefined ? null : (
           <AtlasSprite
-            key={enemy.kind}
-            atlas={scene.characters[enemy.kind]}
+            key={`${index}-${enemy.kind}-${enemy.phase2 === true ? 2 : 1}`}
+            atlas={atlas}
             look={look}
             scale={2}
             faded={enemy.dimmed || !enemy.standing}
