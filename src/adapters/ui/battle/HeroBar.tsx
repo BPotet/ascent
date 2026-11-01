@@ -107,8 +107,8 @@ export function HeroBar({
   const name = HERO_NAMES[kind];
   const active = [
     ...(hero.bulwark ? [POWER_NAMES.bulwark] : []),
-    ...(hero.shadowStep === true ? [POWER_NAMES.shadowStep] : []),
     ...(hero.bleed ? [bleedChipText(hero.bleed.rounds)] : []),
+    ...(hero.shadowStep === true ? [POWER_NAMES.shadowStep] : []),
   ];
   const label = `${name}, PV ${hero.hp} sur ${hero.maxHp}, ${momentumLabel(hero.momentum)}${active.map((power) => `, ${power}`).join('')}`;
   return (
@@ -124,8 +124,8 @@ export function HeroBar({
         <Text style={styles.hpText}>{heroHpText(hero.hp, hero.maxHp)}</Text>
       </View>
       {hero.bulwark || bulwarkWorn ? <BulwarkChip worn={!hero.bulwark} /> : null}
-      {hero.shadowStep === true ? <ShadowStepChip fresh={shadowStepNew} /> : null}
       {hero.bleed ? <BleedChip rounds={hero.bleed.rounds} /> : null}
+      {hero.shadowStep === true ? <ShadowStepChip fresh={shadowStepNew} /> : null}
       <MomentumDiamonds momentum={hero.momentum} reducedMotion={reducedMotion} />
     </View>
   );

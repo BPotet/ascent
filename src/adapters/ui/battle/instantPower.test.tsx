@@ -176,6 +176,24 @@ describe("the « Pas de l'ombre » chip under the HP (E2 to E4, E6)", () => {
     expect(contrast(battleColors.onShadowStep, battleColors.shadowStepBg)).toBeGreaterThan(10.2);
   });
 
+  it('comes after the Bleed chip, and is read last (E2, chips of the mockup)', async () => {
+    await render(
+      <HeroBar
+        hero={{ ...wanderer, shadowStep: true, bleed: { damage: 2, rounds: 3 } }}
+        kind="wanderer"
+      />,
+    );
+
+    const bar = screen.getByTestId('battle-hero-bar');
+    const chips = screen
+      .getAllByTestId(/^battle-(bleed|shadow-step)-chip$/u, hiddenToo)
+      .map((chip) => chip.props.testID);
+    expect(chips).toEqual(['battle-bleed-chip', 'battle-shadow-step-chip']);
+    expect(bar.props.accessibilityLabel).toBe(
+      "L'Errante, PV 41 sur 55, Élan 0 sur 5, Saignement ×3, Pas de l'ombre",
+    );
+  });
+
   it('is gone once the Shadow Step is used', async () => {
     await render(<HeroBar hero={{ ...wanderer, shadowStep: false }} kind="wanderer" />);
 
