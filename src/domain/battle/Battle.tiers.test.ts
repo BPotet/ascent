@@ -308,6 +308,15 @@ describe('the phase shift at 50 % of the HP of a boss (#38)', () => {
     expect(events).toContainEqual(expect.objectContaining({ type: 'bossPhaseShifted' }));
   });
 
+  it('never shifts a boss that falls with the blow', () => {
+    const battle = withEnemy(start(['ashGardener']), 0, { hp: 1, guard: 0 });
+
+    const { battle: struck, events } = playUntil(battle, struckOnce);
+
+    expect(struck.enemies[0]!.hp).toBe(0);
+    expect(events.map((event) => event.type)).not.toContain('bossPhaseShifted');
+  });
+
   it('keeps the Ash gardener in phase 1 above 210 HP', () => {
     const battle = withEnemy(start(['ashGardener']), 0, { hp: 221, guard: 40 });
 
