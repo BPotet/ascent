@@ -208,3 +208,41 @@ Les icônes de 16 × 16 apportent 4 teintes absentes de la palette d'art : `#DEE
 (Écho parfait), `#EEA8B6` (Vigueur), `#F8E7C8` (Élan). Elles s'ajoutent à la fin de `tints` (§ 4) :
 les codes existants ne bougent pas, et les tests passent par `tintCode`, jamais par un code écrit en
 dur. Une icône validée de nouveau plus tard entre par une story du chemin B.
+
+## Avenant du 1er novembre 2026 (#38) : aspect de phase 2, poses en plus, teintes
+
+Les 10 entrées des paliers 2 et 3 (export de l'Atelier du 01/11/2026) sont recopiées par le script
+de recopie, clé `animation` de `assets/<id>`, dans `sprites/atelier/data/<id>.ts` ; l'en-tête cite le
+document et sa sha256. Le champ `icon` (statut `proposé`) n'est pas recopié.
+
+1. **Aspect de phase 2.** `FullAnimation.phase2?: AnimationPhase2` = `{ frames, anchors,
+   attackPoses? }`, au format d'une animation complète, sans `w`, `h`, `pal` ni `red` : ceux de la
+   phase 1 valent pour lui, palette rouge comprise.
+   - La Jardinière des cendres le porte dans `animation.phase2`, recopié tel quel.
+   - Le Sonneur des heures et Celle qui exauce le portent dans un document à part,
+     `assets/<id>Phase2` (`{ of, phase2 }`), recopié dans son propre fichier
+     (`hourRingerPhase2.ts`, `wishGranterPhase2.ts`) qui exporte un `AnimationPhase2` ; le registre
+     les joint (`{ ...HOUR_RINGER_ANIMATION, phase2: HOUR_RINGER_PHASE2 }`). La clé `phase2Doc`,
+     pointeur de l'Atelier, n'est pas recopiée.
+   - **Règle d'affichage** : après le changement de phase (`EnemyState.phase2`), toutes les poses du
+     boss viennent de son aspect de phase 2, avec ses ancrages ; pour un coup, ce sont les poses d'un
+     coup de la phase 2. Une pose absente de ces poses vient de l'animation complète de phase 2,
+     jamais de la phase 1. L'atlas de l'aspect de phase 2 est un second atlas. La bascule a lieu à
+     l'instant du changement de phase, sur la pose en cours. Sans aspect de phase 2 (la Gardienne,
+     le Prieur), rien ne change.
+2. **Poses en plus** (`ExtraFrame` = `rise0`, `rise1`, `guard`, `raiseAlly`), facultatives dans
+   `frames` et `anchors`. L'atlas leur donne une case au palier 0, jamais rouge.
+   - Se relève seul : `down`, `rise0`, `rise1` (133 ms chacune), puis `idle0`, pour une relève de Se
+     relève seul (`guardRestore.cause: 'selfRevive'`) d'une entité qui a `rise0` et `rise1`. Un
+     retour en garde après étourdissement garde `down`, `hurt`, `idle0`.
+   - Garde et Relever : au milieu de l'action de soutien (de 25 % à 75 %), `guard` pour une Garde et
+     `raiseAlly` pour un Relever (`SceneTimeline.support`), si l'entité les a ; sinon `ant1`.
+   - Une pose en plus absente de l'entité est refusée par son nom ; dans la scène, elle montre `idle0`.
+   - L'œil de `rise0` de la Ronce de cendre est hors de l'image (y = 52), tel que copié : il n'est
+     jamais lu.
+3. **Grandes cases** : rien de nouveau. Le Veilleur d'airain (48 × 54) et le Saint de pierre
+   (48 × 58) s'affichent à leur taille, calés en bas de leur case, à 2 dp par pixel d'art
+   (`battleCell`, `spriteOrigin`, avenant #138).
+4. **Teintes** : `#D9733A`, `#5E8F82` et `#3D5E57` s'ajoutent à la fin de `artPalette.tints`, aux
+   codes 42, 43 et 44 ; les codes existants ne bougent pas (§ 4).
+
