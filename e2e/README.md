@@ -61,8 +61,10 @@ timing : sur une installation neuve, le pied de la tour montre « 0 Éclat ». L
 la victoire sur un boss ou la fin d'une ascension ne s'atteignent pas sans gagner de combats : la
 même planche les ouvre sur des ascensions fixes, chacune dans une session en mémoire avec un Total
 d'Éclats fixe (jamais celle du joueur) : « Boss vaincu · palier 1 » (X3), puis « Continuer vers le
-palier 2 » (C4), « Chute · 10 Éclats » (X6), « Sommet atteint » (X7) et « Pied de la tour · 22
-Éclats ». Les Éclats gagnés en grand se vérifient par leur libellé lu (« 8 Éclats gagnés, gardés
+palier 2 » (C4, puis « Entrer » et « Pause » pour revenir à la planche), « Chute · 10 Éclats »
+(X6), « Sommet atteint » (X7) et, en dernier, « Pied de la tour · 22 Éclats » : sans ascension, ce
+pied de la tour n'a pas de bouton vers la planche, et le lien profond de la planche, déjà ouverte,
+ne la remonte pas. Les Éclats gagnés en grand se vérifient par leur libellé lu (« 8 Éclats gagnés, gardés
 pour toujours ») ; le `+` de l'Or est échappé (`\+40 Or`). Captures : le pied de la
 tour, X3, C4, X6 et X7, à comparer à la maquette `docs/mockups/30-premiere-ascension/`.
 

@@ -32,24 +32,6 @@ tags:
     visible: 'Planche des icônes'
     timeout: 15000
 
-# Le pied de la tour avec 22 Éclats, sans ascension.
-- scrollUntilVisible:
-    element:
-      text: 'Pied de la tour · 22 Éclats'
-    direction: DOWN
-- tapOn: 'Pied de la tour · 22 Éclats'
-- extendedWaitUntil:
-    visible: "Commencer l'ascension"
-    timeout: 15000
-- assertVisible:
-    id: 'tower-foot-shards'
-    text: '22 Éclats'
-- takeScreenshot: tiers-foot-22-shards
-- openLink: ascent://preview/icon-board
-- extendedWaitUntil:
-    visible: 'Planche des icônes'
-    timeout: 15000
-
 # X3 : le boss du palier 1 vaincu, +8 Éclats en grand et +40 Or.
 - scrollUntilVisible:
     element:
@@ -71,7 +53,14 @@ tags:
     timeout: 10000
 - assertVisible: 'Palier 2'
 - takeScreenshot: tiers-c4-tier-two
-- openLink: ascent://preview/icon-board
+# Retour à la planche : « Entrer », puis « Pause » sur le combat de l'étage 1 du palier 2.
+- tapOn: 'Entrer'
+- extendedWaitUntil:
+    visible:
+      id: 'ascent-pause'
+    timeout: 15000
+- tapOn:
+    id: 'ascent-pause'
 - extendedWaitUntil:
     visible: 'Planche des icônes'
     timeout: 15000
@@ -110,3 +99,18 @@ tags:
 - extendedWaitUntil:
     visible: 'Planche des icônes'
     timeout: 15000
+
+# Le pied de la tour avec 22 Éclats, sans ascension : en dernier, sans retour à la planche. Le lien
+# profond vers la planche, déjà ouverte, ne la remonte pas : le pied de la tour resterait affiché.
+- scrollUntilVisible:
+    element:
+      text: 'Pied de la tour · 22 Éclats'
+    direction: DOWN
+- tapOn: 'Pied de la tour · 22 Éclats'
+- extendedWaitUntil:
+    visible: "Commencer l'ascension"
+    timeout: 15000
+- assertVisible:
+    id: 'tower-foot-shards'
+    text: '22 Éclats'
+- takeScreenshot: tiers-foot-22-shards
