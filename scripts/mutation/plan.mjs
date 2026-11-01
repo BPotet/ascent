@@ -41,7 +41,13 @@ export const CHUNK_LINES = { domain: 250 };
 // En release, un fichier `core` de plus de `CHUNK_MUTANTS.core` mutants est coupé en plages (issue
 // #134 : `BattleSession.ts`, 213 mutants, presque entièrement une seule classe). En PR, un écran
 // ajouté de plus de `CHUNK_MUTANTS.ui` mutants est coupé de même (issue #145).
-export const CHUNK_MUTANTS = { core: 100, ui: 10 };
+// En PR, un fichier `core` est réparti comme un écran, plage par plage, pesé en mutants, et un
+// fichier `core` ajouté est coupé au-delà de `CHUNK_MUTANTS.changedCore` mutants (PR #180, story
+// #38). Un seul fichier `core` modifié, `AscentSession.ts` (92 mutants, couverts par environ 180
+// tests chacun), tenait dans un seul shard et dépassait le délai de 60 minutes (run 41334805050 :
+// « dry run » de 11 minutes, puis 73 mutants en 47 minutes). Environ 30 mutants par part, soit
+// environ 20 minutes à ce rythme, plus le « dry run ».
+export const CHUNK_MUTANTS = { core: 100, ui: 10, changedCore: 30 };
 
 const SCOPES = ['domain', 'core', 'ui'];
 
@@ -296,16 +302,17 @@ function wholeFileItems(change, max, size) {
 }
 
 /**
- * Les éléments d'un écran en PR, pesés en mutants exécutables : un fichier ajouté est coupé au-delà
- * de `CHUNK_MUTANTS.ui` mutants ; sinon, chaque plage de lignes nouvelles est un élément. Stryker ne
+ * Les éléments d'un fichier en PR (un écran, ou un fichier `core`), pesés en mutants exécutables :
+ * un fichier ajouté est coupé au-delà de `max` mutants ; sinon, chaque plage de lignes nouvelles
+ * est un élément. Stryker ne
  * garde un mutant que s'il tient entièrement dans une plage, et les plages du diff sont disjointes :
  * les répartir entre les parts ne perd ni ne double aucun mutant. Un élément sans mutant
  * exécutable ne mute rien : il est laissé de côté, pour ne pas payer un « dry run » pour rien.
  */
-function screenItems(change) {
+function changedItems(change, max) {
   const size = mutantsIn(change.mutants);
   const items = change.added
-    ? wholeFileItems(change, CHUNK_MUTANTS.ui, size)
+    ? wholeFileItems(change, max, size)
     : change.ranges.map((range) => ({
         file: change.file,
         weight: size(range),
@@ -368,7 +375,12 @@ export function buildPlan({ mode, changes, ui = 'exclude', scopeOf = classify })
     }
     if (scope === 'ui' && mode === 'changed' && change.mutants) {
       // Pesé en mutants exécutables, plage par plage (issue #145).
-      byScope.ui.push(...screenItems(change));
+      byScope.ui.push(...changedItems(change, CHUNK_MUTANTS.ui));
+      continue;
+    }
+    if (scope === 'core' && mode === 'changed' && change.mutants) {
+      // Pesé en mutants exécutables, plage par plage (PR #180).
+      byScope.core.push(...changedItems(change, CHUNK_MUTANTS.changedCore));
       continue;
     }
     const mutate = mutateEntries(change, { whole: mode === 'full' });
@@ -456,10 +468,10 @@ async function withMutants(changes, cwd, scopeOf, scopes) {
 
 /**
  * Seuls effets de bord du plan. Mode `changed` : diff depuis la base de fusion avec `baseRef`.
- * Mode `full` : tous les fichiers suivis de `src/`, en entier. Les fichiers du domaine, en mode
- * `full` ceux du groupe `core`, et en mode `changed` les écrans quand `ui` les demande, sont lus
- * avec le compilateur TypeScript pour pouvoir être coupés, et (sauf le domaine) leurs mutants sont
- * comptés pour les peser.
+ * Mode `full` : tous les fichiers suivis de `src/`, en entier. Les fichiers du domaine, ceux du
+ * groupe `core`, et en mode `changed` les écrans quand `ui` les demande, sont lus avec le
+ * compilateur TypeScript pour pouvoir être coupés, et (sauf le domaine) leurs mutants sont comptés
+ * pour les peser.
  */
 export async function collectChanges({
   mode,
@@ -497,7 +509,7 @@ export async function collectChanges({
     ],
     cwd,
   );
-  const screens = UI_OPTIONS[ui]?.includes('ui') ? ['ui'] : [];
-  const outlined = withOutlines(parseDiff(diff), cwd, scopeOf, ['domain', ...screens]);
-  return { base, changes: await withMutants(outlined, cwd, scopeOf, screens) };
+  const counted = UI_OPTIONS[ui]?.filter((scope) => scope !== 'domain') ?? [];
+  const outlined = withOutlines(parseDiff(diff), cwd, scopeOf, ['domain', ...counted]);
+  return { base, changes: await withMutants(outlined, cwd, scopeOf, counted) };
 }

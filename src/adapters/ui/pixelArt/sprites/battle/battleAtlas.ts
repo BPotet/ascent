@@ -5,6 +5,8 @@ import {
   RED_FRAMES,
   attackMotion,
   battleSprite,
+  enemyExtraFrames,
+  hasPhase2,
   heroFrames,
   playsRed,
   type BattleCharacter,
@@ -78,9 +80,9 @@ interface Variant {
  * d'une pose recopiée sont des copies identiques), et sa variante rouge pour un coup imparable
  * d'un ennemi qui joue sa palette rouge.
  */
-function attackVariants(character: BattleCharacter): Variant[] {
+function attackVariants(character: BattleCharacter, phase2: boolean): Variant[] {
   if (isHero(character)) return [];
-  return Object.entries(attackMotion(character)).flatMap(([attack, motion]) => {
+  return Object.entries(attackMotion(character, phase2)).flatMap(([attack, motion]) => {
     const kind = attack as AttackKind;
     const red = ATTACKS[kind].perilous && playsRed(character);
     return Object.keys(motion?.lift ?? {}).flatMap((frame) => [
@@ -90,7 +92,13 @@ function attackVariants(character: BattleCharacter): Variant[] {
   });
 }
 
-function variantsOf(character: BattleCharacter): Variant[] {
+/** Les images d'un personnage, dans l'ordre de l'atlas : celles du combat, puis ses poses en plus. */
+function framesOf(character: BattleCharacter, phase2: boolean): readonly BattleFrame[] {
+  if (isHero(character)) return heroFrames(character);
+  return [...ENEMY_FRAMES, ...enemyExtraFrames(character, phase2)];
+}
+
+function variantsOf(character: BattleCharacter, phase2: boolean): Variant[] {
   if (isHero(character)) {
     return [
       ...heroFrames(character).map((frame) => ({
@@ -103,14 +111,17 @@ function variantsOf(character: BattleCharacter): Variant[] {
       { frame: 'raiseG', tier: 1, red: false, attack: null },
     ];
   }
+  // Les poses en plus (#38) : une case au palier 0, jamais rouges.
   return [
-    ...ENEMY_FRAMES.flatMap((frame) =>
+    ...framesOf(character, phase2).flatMap((frame) =>
       (ENEMY_TIERS[frame] ?? [0]).flatMap((tier) => [
         { frame, tier, red: false, attack: null },
-        ...(RED_FRAMES.includes(frame) ? [{ frame, tier, red: true, attack: null }] : []),
+        ...(RED_FRAMES.includes(frame as EnemyFrame)
+          ? [{ frame, tier, red: true, attack: null }]
+          : []),
       ]),
     ),
-    ...attackVariants(character),
+    ...attackVariants(character, phase2),
   ];
 }
 
@@ -132,19 +143,25 @@ function nearest(variants: readonly Variant[], wanted: Variant): number {
   return best;
 }
 
-const atlases = new Map<BattleCharacter, BattleAtlas>();
+const atlases = new Map<string, BattleAtlas>();
 
 /**
- * L'atlas d'un personnage : toutes ses images, paliers de liseré et palette rouge compris, dans
- * une seule image RGBA, avec sa table. Fait une fois par lancement (cache de module), au montage
- * de l'écran du combat, jamais pendant la phase ennemie.
+ * L'atlas d'un personnage : toutes ses images, paliers de liseré et palette rouge compris, poses en
+ * plus comprises (#38), dans une seule image RGBA, avec sa table. Avec `phase2`, celui de l'aspect
+ * de phase 2 d'un boss, s'il en a un (#38), sinon le même. Fait une fois par lancement (cache de
+ * module), pendant « Préparation du combat… », jamais pendant la phase ennemie.
  */
-export function battleAtlas(character: BattleCharacter): BattleAtlas {
-  const cached = atlases.get(character);
+export function battleAtlas(
+  character: BattleCharacter,
+  { phase2 = false }: { readonly phase2?: boolean } = {},
+): BattleAtlas {
+  const shifted = phase2 && !isHero(character) && hasPhase2(character);
+  const key = shifted ? `${character}:phase2` : character;
+  const cached = atlases.get(key);
   if (cached !== undefined) return cached;
-  const variants = variantsOf(character);
+  const variants = variantsOf(character, shifted);
   const images = variants.map(({ frame, tier, red, attack }) =>
-    battleSprite(character, frame, { tier, red, attack }),
+    battleSprite(character, frame, { tier, red, attack, phase2: shifted }),
   );
   const { width: cellWidth, height: cellHeight } = images[0]!.sprite;
   const rows = Math.ceil(variants.length / COLUMNS);
@@ -164,7 +181,7 @@ export function battleAtlas(character: BattleCharacter): BattleAtlas {
       );
     }
   });
-  const names = isHero(character) ? heroFrames(character) : ENEMY_FRAMES;
+  const names = framesOf(character, shifted);
   const frames = Object.fromEntries(names.map((name, index) => [name, index]));
   // Les poses d'un coup, numérotées à la suite des images, dans l'ordre de leurs variantes.
   const posed: { readonly frame: BattleFrame; readonly attack: AttackKind | null }[] = [
@@ -188,7 +205,7 @@ export function battleAtlas(character: BattleCharacter): BattleAtlas {
     rgba,
     table: { cellWidth, cellHeight, frames, attacks, slots, cells },
   };
-  atlases.set(character, atlas);
+  atlases.set(key, atlas);
   return atlas;
 }
 // Stryker restore all
@@ -224,6 +241,7 @@ export function frameRect(
   tier: 0 | 1 | 2,
   red: boolean,
   attack: AttackKind | null = null,
+  phase2 = false,
 ): AtlasRect {
-  return atlasRect(battleAtlas(character).table, frame, tier, red, attack);
+  return atlasRect(battleAtlas(character, { phase2 }).table, frame, tier, red, attack);
 }

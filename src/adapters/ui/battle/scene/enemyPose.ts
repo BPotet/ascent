@@ -1,5 +1,10 @@
 import type { AttackKind } from '../../../../domain/battle/attacks';
-import type { AttackMotions, EnemyFrame } from '../../pixelArt/sprites/battle/battleCharacters';
+import type { ExtraFrame } from '../../pixelArt/sprites/atelier/fullAnimation';
+import type {
+  AttackMotions,
+  EnemyFrame,
+  SceneFrame,
+} from '../../pixelArt/sprites/battle/battleCharacters';
 import type { SceneEnemy, SceneTimeline } from '../sceneTypes';
 
 /** Une image dure 83 ms : 12 images par seconde, comptées depuis l'instant nominal (ADR 0008). */
@@ -11,8 +16,8 @@ export const FRAME_MS = 1_000 / 12;
  * l'image vient (ses poses d'un coup, #139), `null` pour l'animation complète ; `lift` est
  * l'élévation de l'image, en pixels d'art entiers.
  */
-export interface EnemyPose {
-  readonly frame: EnemyFrame;
+export interface EnemyPose<Frame extends SceneFrame = EnemyFrame> {
+  readonly frame: Frame;
   readonly tier: 0 | 1 | 2;
   readonly red: boolean;
   readonly reach: number;
@@ -37,6 +42,10 @@ const SUPPORT_REACH = 0.12;
 const REDUCED_MOTION = 0.25;
 /** Sans poses d'un coup : la table d'un ennemi qui n'en a pas. */
 const NO_MOTIONS: AttackMotions = {};
+/** Sans poses en plus (#38). */
+const NO_EXTRAS: readonly ExtraFrame[] = [];
+/** Une image du relèvement : 133 ms. */
+const RISE_FRAME_MS = 133;
 // Stryker restore all
 
 function clamp01(value: number): number {
@@ -66,13 +75,13 @@ export function sceneInstant(timeline: SceneTimeline, now: number): number {
 }
 
 function pose(
-  frame: EnemyFrame,
+  frame: SceneFrame,
   tier: 0 | 1 | 2,
   red: boolean,
   reach: number,
   jitter: number,
   motion: number,
-): EnemyPose {
+): EnemyPose<SceneFrame> {
   'worklet';
   return { frame, tier, red, reach: reach * motion, jitter: jitter * motion, poses: null, lift: 0 };
 }
@@ -83,12 +92,21 @@ function pose(
  * `(ADVANCE − BACK) × scale` ; la ruée, l'impact, la récupération, la fausse ruée et le retour sont
  * multipliés.
  */
+/** La pose du milieu d'une Garde ou d'un Relever : `guard`, `raiseAlly` si l'entité l'a (#38). */
+function supportFrame(timeline: SceneTimeline, extras: readonly ExtraFrame[]): SceneFrame {
+  'worklet';
+  if (timeline.support === 'guard' && extras.includes('guard')) return 'guard';
+  if (timeline.support === 'raise' && extras.includes('raiseAlly')) return 'raiseAlly';
+  return 'ant1';
+}
+
 function framePose(
   timeline: SceneTimeline,
   now: number,
   reduced: boolean,
   scale: number,
-): EnemyPose {
+  extras: readonly ExtraFrame[],
+): EnemyPose<SceneFrame> {
   'worklet';
   const t = sceneInstant(timeline, now);
   const motion = reduced ? REDUCED_MOTION : 1;
@@ -96,7 +114,7 @@ function framePose(
     const q = clamp01((t - timeline.stepInAt) / Math.max(1, timeline.until - timeline.stepInAt));
     const middle = q > 0.25 && q < 0.75;
     return pose(
-      middle ? 'ant1' : 'ant0',
+      middle ? supportFrame(timeline, extras) : 'ant0',
       1,
       false,
       SUPPORT_REACH * Math.sin(Math.PI * q),
@@ -221,26 +239,43 @@ function framePose(
  * son élévation (le quart, arrondi au pixel d'art, en mouvement réduit). La portée du coup, quand
  * l'Atelier en donne une, multiplie le chemin de l'attaque, l'avancée exceptée. Jamais pendant
  * l'avancée, une Garde ou un Relever : le type de coup n'y est pas connu.
+ *
+ * Avec ses poses en plus `extras` (#38), le milieu d'une Garde montre `guard`, celui d'un Relever
+ * `raiseAlly`, à la place de `ant1`.
  */
 export function enemyPose(
   timeline: SceneTimeline,
   now: number,
   reduced: boolean,
+  motions?: AttackMotions,
+): EnemyPose;
+export function enemyPose(
+  timeline: SceneTimeline,
+  now: number,
+  reduced: boolean,
+  motions: AttackMotions,
+  extras: readonly ExtraFrame[],
+): EnemyPose<SceneFrame>;
+export function enemyPose(
+  timeline: SceneTimeline,
+  now: number,
+  reduced: boolean,
   motions: AttackMotions = NO_MOTIONS,
-): EnemyPose {
+  extras: readonly ExtraFrame[] = NO_EXTRAS,
+): EnemyPose<SceneFrame> {
   'worklet';
   const own =
     timeline.kind === 'attack' && timeline.attack !== null ? motions[timeline.attack] : undefined;
-  const shown = framePose(timeline, now, reduced, own?.reach ?? 1);
-  const lift = own?.lift[shown.frame];
+  const shown = framePose(timeline, now, reduced, own?.reach ?? 1, extras);
+  const lift = own?.lift[shown.frame as EnemyFrame];
   if (lift === undefined) return shown;
   const scaled = reduced ? Math.round(lift * REDUCED_MOTION) : lift;
   return { ...shown, poses: timeline.attack, lift: scaled };
 }
 
 /** La pose d'un ennemi qui n'agit pas : son image, ses étoiles (position 0 à 3) et leur saut. */
-export interface RestPose {
-  readonly frame: EnemyFrame;
+export interface RestPose<Frame extends SceneFrame = EnemyFrame> {
+  readonly frame: Frame;
   readonly stars: number | null;
   readonly hop: boolean;
 }
@@ -249,19 +284,35 @@ export interface RestPose {
  * La pose d'un ennemi au repos (`restPose`) : il respire (`idle0`, `idle1` toutes les 250 ms, chacun
  * à son rythme) ; étourdi, il est à terre (`hurt` 200 ms à la chute, puis `down`) et ses étoiles
  * tournent (4 positions, toutes les 125 ms), en sautant de 2 px quand il perd son action ; il se
- * relève (`down`, `hurt`, puis `idle0`) ; tombé pour de bon, il reste `hurt`.
+ * relève (`down`, `hurt`, puis `idle0`) ; tombé pour de bon, il reste `hurt`. Une relève de Se
+ * relève seul d'une entité qui a ses poses en plus `rise0` et `rise1` (#38) joue `down`, `rise0`,
+ * `rise1`, 133 ms chacune, puis `idle0`.
  */
 export function restPose(
   enemy: Pick<SceneEnemy, 'standing' | 'down' | 'losingAction' | 'rising' | 'downSince'>,
   index: number,
   now: number,
-): RestPose {
+): RestPose;
+export function restPose(
+  enemy: Pick<SceneEnemy, 'standing' | 'down' | 'losingAction' | 'rising' | 'downSince'>,
+  index: number,
+  now: number,
+  extras: readonly ExtraFrame[] | undefined,
+): RestPose<SceneFrame>;
+export function restPose(
+  enemy: Pick<SceneEnemy, 'standing' | 'down' | 'losingAction' | 'rising' | 'downSince'>,
+  index: number,
+  now: number,
+  extras: readonly ExtraFrame[] = NO_EXTRAS,
+): RestPose<SceneFrame> {
   'worklet';
   if (!enemy.standing) return { frame: 'hurt', stars: null, hop: false };
   if (enemy.rising !== null) {
-    const since = now - enemy.rising.since;
-    const frame: EnemyFrame = since < 133 ? 'down' : since < 266 ? 'hurt' : 'idle0';
-    return { frame, stars: null, hop: false };
+    const step = Math.floor((now - enemy.rising.since) / RISE_FRAME_MS);
+    const rises =
+      enemy.rising.selfRevive === true && extras.includes('rise0') && extras.includes('rise1');
+    const frames: readonly SceneFrame[] = rises ? ['down', 'rise0', 'rise1'] : ['down', 'hurt'];
+    return { frame: frames[Math.max(0, step)] ?? 'idle0', stars: null, hop: false };
   }
   if (enemy.down) {
     const since = enemy.downSince === null ? Infinity : now - enemy.downSince;

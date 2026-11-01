@@ -165,20 +165,19 @@ describe('AscentScreen', () => {
       session.abandon();
     });
 
-    expect(screen.getByRole('header', { name: 'Chute' })).toBeOnTheScreen();
-    expect(screen.getByText("Tombé à l'étage 3.")).toBeOnTheScreen();
-    expect(screen.getByText('Or gagné : 30 Or')).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: "Fin de l'ascension" })).toBeOnTheScreen();
+    expect(screen.getByText('La Sentinelle est tombée au palier 1, étage 3.')).toBeOnTheScreen();
+    expect(screen.getByTestId('ascent-end-lost')).toHaveTextContent(/^L'Or \(30 Or\)/);
     fireEvent.press(screen.getByRole('button', { name: 'Retour au pied de la tour' }));
 
     expect(session.current()).toBeNull();
     expect(onLeave).toHaveBeenCalledTimes(1);
   });
 
-  it('shows a victory over the boss', async () => {
+  it('shows the Summit reached for a victory (#38)', async () => {
     await show({ ...startAscent(42), outcome: 'victory', encounter: null, gold: 80 });
 
-    expect(screen.getByRole('header', { name: 'Victoire !' })).toBeOnTheScreen();
-    expect(screen.getByText('Le boss des Catacombes est vaincu.')).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Sommet atteint' })).toBeOnTheScreen();
   });
 
   it('offers 3 boons after a won battle, then the exits with the owned boons (#92)', async () => {

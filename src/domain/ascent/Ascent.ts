@@ -1,7 +1,8 @@
 /**
- * L'ascension (`Ascent`, #91, prototype) : gravir les 6 étages des Catacombes, du combat imposé
- * de l'étage 1 au boss de l'étage 6, en choisissant ses sorties. Un état immuable et sérialisable ;
- * tous les tirages viennent de la graine de l'ascension (P9), et un tirage révélé est gardé.
+ * L'ascension (`Ascent`, #91, #38) : gravir les trois paliers, les Catacombes, les Jardins de cendre
+ * et le Beffroi, de 6 étages chacun, du combat imposé de l'étage 1 au boss de l'étage 6, en
+ * choisissant ses sorties, jusqu'au Sommet. Un état immuable et sérialisable ; tous les tirages
+ * viennent de la graine de l'ascension (P9), et un tirage révélé est gardé.
  */
 import { HEROES, type EnemyKind, type HeroKind } from '../battle/combatants';
 import { nextRandom, seedRandom, type BattleSeed, type RandomState } from '../battle/SeededRandom';
@@ -17,10 +18,12 @@ import type { Drawn } from './draw';
 import { fatiguePercent, type FateGauge } from './fateGauge';
 import { STARTING_EQUIPMENT, drawLoot, equip, type Equipment, type ItemKind } from './items';
 import type { Rarity } from './rarity';
-import { ELITES, drawElite } from './elites';
+import { drawElite } from './elites';
 import { drawGroup, drawGroupSize } from './enemyGroup';
 import { drawExitKinds, type Exit } from './exits';
-import { BOSS_GOLD, ELITE_GOLD, campfireHeal, drawBoss, drawCombatGold } from './rewards';
+import { bossGold, campfireHeal, drawBoss, drawCombatGold, eliteGold } from './rewards';
+import { shardAwards, type ShardAward } from './shards';
+import { TIERS, TOP_TIER, type Tier } from './tiers';
 
 /** La graine de l'ascension (`AscentSeed`). */
 export type AscentSeed = number;
@@ -37,10 +40,24 @@ export interface Encounter {
   readonly battleSeed: BattleSeed;
 }
 
+/**
+ * Le Passage de palier (`TierTransition`, #38) en cours, vers le palier `to` : l'écran du boss
+ * vaincu (`bossDefeated`), puis l'écran de transition (`announce`).
+ */
+export interface TierPassage {
+  readonly to: 2 | 3;
+  readonly step: 'bossDefeated' | 'announce';
+}
+
+/** Le soin du Passage de palier, en % des PV max (#38). */
+export const TIER_PASSAGE_HEAL_PERCENT = 30;
+
 export interface Ascent {
   readonly seed: AscentSeed;
   readonly random: RandomState;
-  /** L'étage (`Floor`), de 1 à 6. */
+  /** Le palier (`Tier`, #38), de 1 à 3. */
+  readonly tier: Tier;
+  /** L'étage (`Floor`), de 1 à 6, dans son palier. */
   readonly floor: number;
   /** Le héros choisi au pied de la tour (#92), ses PV et ses bienfaits. */
   readonly hero: {
@@ -79,6 +96,10 @@ export interface Ascent {
   readonly foundItem: ItemKind | null;
   /** Le flux de hasard des bénédictions et du butin, dérivé de la graine (P9). */
   readonly lootRandom: RandomState;
+  /** Les Éclats gagnés pendant l'ascension (#38) : ils restent après une chute. */
+  readonly shardAwards: readonly ShardAward[];
+  /** Le Passage de palier en cours, `null` sans passage (#38). */
+  readonly passage: TierPassage | null;
 }
 
 /**
@@ -116,8 +137,8 @@ function encounter(
   return { value: { kind, enemies, battleSeed: seed.value }, random: seed.random };
 }
 
-function combat(size: number, random: RandomState): Drawn<Encounter> {
-  const group = drawGroup(size, random);
+function combat(size: number, random: RandomState, tier: Tier): Drawn<Encounter> {
+  const group = drawGroup(size, random, tier);
   return encounter('combat', group.value, group.random);
 }
 
@@ -128,12 +149,13 @@ function combat(size: number, random: RandomState): Drawn<Encounter> {
 export function startAscent(seed: AscentSeed, launch: AscentLaunch = {}): Ascent {
   const { hero: heroKind = 'sentinel', gauge = 0, blessings = [] } = launch;
   const size = drawGroupSize(1, seedRandom(seed), false);
-  const first = combat(size.value, size.random);
+  const first = combat(size.value, size.random, 1);
   const maxHp = heroMaxHp(HEROES[heroKind].maxHp, 0, fatiguePercent(gauge));
   const offer = blessings.length > 0 ? drawBlessingOffer([], lootStream(seed)) : null;
   return {
     seed,
     random: first.random,
+    tier: 1,
     floor: 1,
     hero: { kind: heroKind, hp: maxHp, maxHp, boons: [] },
     boonOffer: null,
@@ -151,6 +173,8 @@ export function startAscent(seed: AscentSeed, launch: AscentLaunch = {}): Ascent
     equipment: STARTING_EQUIPMENT,
     foundItem: null,
     lootRandom: offer?.random ?? lootStream(seed),
+    shardAwards: [],
+    passage: null,
   };
 }
 
@@ -207,7 +231,7 @@ function withExits(ascent: Ascent, floor: number): Ascent {
   let random = kinds.random;
   const exits = kinds.value.map((kind): Exit => {
     if (kind !== 'combat') return { kind, groupSize: null };
-    const size = drawGroupSize(floor, random, ascent.fiveFaced);
+    const size = drawGroupSize(floor, random, ascent.fiveFaced, ascent.tier);
     random = size.random;
     return { kind, groupSize: size.value };
   });
@@ -224,6 +248,7 @@ function withExits(ascent: Ascent, floor: number): Ascent {
 export function chooseExit(ascent: Ascent, index: number): Ascent {
   const exit = ascent.exits[index];
   if (exit === undefined || ascent.outcome !== null || ascent.boonOffer !== null) return ascent;
+  const { tier } = ascent;
   const floor = ascent.floor + 1;
   // Une porte franchie laisse l'objet trouvé, s'il en reste un.
   const entered = { ...ascent, floor, exits: [], foundItem: null };
@@ -235,7 +260,7 @@ export function chooseExit(ascent: Ascent, index: number): Ascent {
       );
     case 'combat': {
       const size = exit.groupSize!;
-      const drawn = combat(size, ascent.random);
+      const drawn = combat(size, ascent.random, tier);
       return {
         ...entered,
         random: drawn.random,
@@ -244,12 +269,12 @@ export function chooseExit(ascent: Ascent, index: number): Ascent {
       };
     }
     case 'elite': {
-      const elite = drawElite(ELITES, ascent.random);
+      const elite = drawElite(TIERS[tier].elites, ascent.random);
       const drawn = encounter('elite', [elite.value], elite.random);
       return { ...entered, random: drawn.random, encounter: drawn.value };
     }
     case 'boss': {
-      const boss = drawBoss(ascent.random);
+      const boss = drawBoss(ascent.random, TIERS[tier].bosses);
       const drawn = encounter('boss', [boss.value], boss.random);
       return { ...entered, random: drawn.random, encounter: drawn.value };
     }
@@ -257,20 +282,21 @@ export function chooseExit(ascent: Ascent, index: number): Ascent {
 }
 
 /**
- * La fin du combat de l'étage (P7, P8, P16) : la chute à 0 PV ; sinon l'Or du combat, puis la
- * victoire de l'ascension au boss, ou l'offre de bienfaits et les sorties vers l'étage suivant.
+ * La fin du combat de l'étage (P7, P8, P16, #38) : la chute à 0 PV ; sinon l'Or du combat et ses
+ * Éclats, puis le Passage de palier après le boss du palier 1 ou 2 (+30 % des PV max), la victoire
+ * au boss du palier 3 (le Sommet), ou l'offre de bienfaits et les sorties vers l'étage suivant.
  */
 export function endFloorBattle(ascent: Ascent, result: FloorBattleResult): Ascent {
-  const { encounter: current } = ascent;
+  const { encounter: current, tier } = ascent;
   if (current === null || ascent.outcome !== null) return ascent;
   const hero = { ...ascent.hero, hp: result.heroHp };
   if (result.outcome === 'defeat') {
     return { ...ascent, hero, encounter: null, outcome: 'fall' };
   }
   let random = ascent.random;
-  let gold = current.kind === 'elite' ? ELITE_GOLD : BOSS_GOLD;
+  let gold = current.kind === 'elite' ? eliteGold(tier) : bossGold(tier);
   if (current.kind === 'combat') {
-    const drawn = drawCombatGold(current.enemies.length, random);
+    const drawn = drawCombatGold(current.enemies.length, random, TIERS[tier].goldPercent);
     gold = drawn.value;
     random = drawn.random;
   }
@@ -283,14 +309,59 @@ export function endFloorBattle(ascent: Ascent, result: FloorBattleResult): Ascen
     lastGold: gold,
     foundItem: loot.value,
     lootRandom: loot.random,
+    shardAwards: [
+      ...ascent.shardAwards,
+      ...shardAwards(ascent.seed, tier, ascent.floor, current.kind),
+    ],
   };
-  if (current.kind === 'boss') return { ...earned, encounter: null, outcome: 'victory' };
+  if (current.kind === 'boss') {
+    if (tier === TOP_TIER) return { ...earned, encounter: null, outcome: 'victory' };
+    const healed = Math.floor((hero.maxHp * TIER_PASSAGE_HEAL_PERCENT) / 100);
+    return {
+      ...earned,
+      hero: { ...hero, hp: Math.min(hero.maxHp, hero.hp + healed) },
+      encounter: null,
+      passage: { to: (tier + 1) as TierPassage['to'], step: 'bossDefeated' },
+    };
+  }
   // L'offre de bienfaits suit l'objet trouvé, sur le même flux : les portes ne bougent pas (P9).
   const offer = drawBoonOffer(hero.boons, earned.lootRandom);
   return withExits(
-    { ...earned, lootRandom: offer.random, boonOffer: offer.value },
+    {
+      ...earned,
+      lootRandom: offer.random,
+      boonOffer: offer.value.length > 0 ? offer.value : null,
+    },
     ascent.floor + 1,
   );
+}
+
+/** L'écran du boss vaincu est passé : l'écran de transition vers le palier suivant (#38). */
+export function acknowledgeBossVictory(ascent: Ascent): Ascent {
+  if (ascent.passage?.step !== 'bossDefeated') return ascent;
+  return { ...ascent, passage: { ...ascent.passage, step: 'announce' } };
+}
+
+/**
+ * L'écran de transition est passé (#38) : l'étage 1 du palier suivant, sur un combat imposé dont la
+ * taille et les ennemis sont tirés avec les poids du palier. Le héros garde tout ; la Garantie du
+ * Feu de camp vaut de nouveau.
+ */
+export function enterNextTier(ascent: Ascent): Ascent {
+  if (ascent.passage?.step !== 'announce') return ascent;
+  const tier = ascent.passage.to;
+  const size = drawGroupSize(1, ascent.random, ascent.fiveFaced, tier);
+  const first = combat(size.value, size.random, tier);
+  return {
+    ...ascent,
+    tier,
+    floor: 1,
+    random: first.random,
+    encounter: first.value,
+    exits: [],
+    campfireOffered: false,
+    passage: null,
+  };
 }
 
 /** Le joueur prend le bienfait `index` de l'offre (P16) ; il le garde jusqu'à la fin. */

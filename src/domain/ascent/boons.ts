@@ -77,14 +77,21 @@ export function boonWeights(owned: readonly BoonKind[]): Weighted<BoonKind> {
   ]);
 }
 
-/** L'offre de bienfaits (P17) : 3 tirages pondérés sans remise, sans relance. */
+/** Le nombre de bienfaits d'une offre (P17). */
+const OFFER_SIZE = 3;
+
+/**
+ * L'offre de bienfaits (P17) : 3 tirages pondérés sans remise, sans relance ; s'il en reste moins
+ * de 3 (#38), ceux qui restent, et aucun s'il n'en reste pas.
+ */
 export function drawBoonOffer(
   owned: readonly BoonKind[],
   random: RandomState,
 ): Drawn<readonly BoonKind[]> {
   const offer: BoonKind[] = [];
   let state = random;
-  for (let count = 0; count < 3; count += 1) {
+  const size = Math.min(OFFER_SIZE, boonWeights(owned).length);
+  for (let count = 0; count < size; count += 1) {
     const drawn = drawWeighted(boonWeights([...owned, ...offer]), state);
     offer.push(drawn.value);
     state = drawn.random;

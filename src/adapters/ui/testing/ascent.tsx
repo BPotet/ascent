@@ -8,7 +8,11 @@ import {
   silentBattleSound,
 } from '../../../application/testing/recordingBattleFeedback';
 import { settableClock } from '../../../application/testing/settableClock';
-import { ASCENT_KEY, AscentSession } from '../../../application/useCases/AscentSession';
+import {
+  ASCENT_KEY,
+  AscentSession,
+  SHARD_TOTAL_KEY,
+} from '../../../application/useCases/AscentSession';
 import { BATTLE_HINT_SEEN_KEYS } from '../../../application/useCases/battleHints';
 import type { Ascent } from '../../../domain/ascent/Ascent';
 import { Day } from '../../../domain/day/Day';
@@ -16,8 +20,23 @@ import type { Dependencies } from '../state/Dependencies';
 import { memoryKeyValueStore } from './memoryKeyValueStore';
 import { silentHaptics } from './silentHaptics';
 
-export function ascentSetUp({ seed = 42, saved }: { seed?: number; saved?: Ascent } = {}) {
+export function ascentSetUp({
+  seed = 42,
+  saved,
+  shards,
+}: {
+  seed?: number;
+  saved?: Ascent;
+  /** Le Total d'Éclats déjà stocké (#38) ; absent, aucun. */
+  shards?: number;
+} = {}) {
   const keyValueStore = memoryKeyValueStore();
+  if (shards !== undefined) {
+    keyValueStore.values.set(
+      SHARD_TOTAL_KEY,
+      JSON.stringify({ version: 1, total: shards, seed: null, awarded: [] }),
+    );
+  }
   keyValueStore.values.set(BATTLE_HINT_SEEN_KEYS.hero, '1');
   keyValueStore.values.set(BATTLE_HINT_SEEN_KEYS.defense, '1');
   if (saved !== undefined) {

@@ -60,3 +60,22 @@ et le composant `Ring` sont supprimés ; les § 1, 4 et 7 et la première consé
 plus l'anneau. Le reflet, le sceau, la palette rouge et les sons restent ; les fenêtres, les durées et
 le jugement des appuis ne changent pas. Le point de la scène sur le buste du héros, qui sert à la
 ruée des ennemis, à l'éclair d'impact et à l'étincelle de parade, s'appelle `chest`.
+
+## Avenant du 1er novembre 2026 au § 5 — atlas des ennemis à la demande (#38)
+
+Avec les paliers 2 et 3, le jeu passe de 9 à 19 ennemis et 3 aspects de phase 2 ; #171 et #172 en
+ajouteront. Préparer tous les atlas à chaque lancement coûterait environ 2,5 fois plus de temps et de
+mémoire. Le § 5 devient :
+
+- `prepareBattleScene(kinds)` prépare les héroïnes, les effets et les socles **une fois par
+  lancement**, comme avant ;
+- les ennemis sont préparés **par type, à la demande**, dans un cache de module : ceux du combat
+  d'étage (première ligne et réserve), aspect de phase 2 d'un boss compris. L'écran du combat les
+  demande dès que le combat est connu, avant la première phase ennemie ; la scène prépare aussi ceux
+  qu'elle montre ;
+- la liste écrite à la main des types d'ennemis (`ENEMY_KINDS`) disparaît : les types viennent du
+  combat ;
+- les tables de la scène préparée (`characters`, `anchors`, `attackAnchors`, `motions`) deviennent
+  partielles par type ; celles de l'aspect de phase 2 sont rangées à part (`phase2`). Un type absent
+  ne se dessine pas ; il ne peut pas arriver.
+

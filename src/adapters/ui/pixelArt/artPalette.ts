@@ -56,6 +56,11 @@ export const artPalette = {
     '#C3C7D3',
     '#EEA8B6',
     '#F8E7C8',
+    // Les paliers 2 et 3 (#38) : la braise (Ronce, Épouvantail, Jardinière, Sonneur), puis le
+    // vert-de-gris du bronze (Veilleur, Sonneur), à la suite.
+    '#D9733A',
+    '#5E8F82',
+    '#3D5E57',
   ],
   /** Les rôles d'interface. */
   roles: {

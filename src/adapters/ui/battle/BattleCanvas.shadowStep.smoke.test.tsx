@@ -69,7 +69,7 @@ function atlases(): { readonly image: unknown; readonly matrices: unknown[] }[] 
 }
 
 describe('BattleScene: the shadow of the Shadow Step (#173)', () => {
-  const { heroes } = prepareBattleScene();
+  const { heroes } = prepareBattleScene(['ghoul']);
 
   it('draws the Wanderer twice while it is active: her violet shadow first, then herself', async () => {
     await render(<BattleScene {...props({ shadowStep: { castAt: 1_000 } })} />);

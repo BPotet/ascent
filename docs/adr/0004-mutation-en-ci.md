@@ -10,6 +10,7 @@
 - **Avenant** : 29 octobre 2026, le `core` de la release est pesé en mutants et coupé en plages, jusqu'entre les membres d'une classe (issue #134, voir en fin de document)
 - **Avenant** : 29 octobre 2026, délai du « dry run » fixé, écrans pesés en mutants et répartis plage par plage (issue #145, voir en fin de document)
 - **Avenant** : 29 octobre 2026, délai par mutant propre aux écrans (issue #147, voir en fin de document)
+- **Avenant** : 1er novembre 2026, en PR, un fichier `core` est réparti plage par plage, pesé en mutants (PR #180, voir en fin de document)
 
 ## Contexte
 
@@ -650,3 +651,36 @@ vérification qui reprend la tête `96c28cac` de #144, avant les tests ajoutés 
 mutants de `enemyPose.ts:175` doivent apparaître `Survived`. Pour chaque shard `ui-*` : durée, et
 partage entre tués, timeouts par délai, timeouts par limite de passages, survivants et erreurs ;
 « Ran N tests per mutant ».
+
+## Avenant du 1er novembre 2026 — en PR, un fichier `core` réparti plage par plage
+
+- **Décideur** : Dev (correctif de CI de la PR #180), à confirmer par l'Architect
+- **Contexte produit** : PR #180 (story #38) ; constat sur le run [41334805050](https://github.com/BPotet/ascent/actions/runs/41334805050)
+
+### Contexte
+
+La PR #180 ne modifie qu'un fichier `core`, `AscentSession.ts`. En PR, un fichier `core` n'était
+jamais coupé (décision 1 de la révision du 22 octobre 2026) : ses 92 mutants formaient un seul
+shard `core`, annulé à son délai de 60 minutes. « Dry run » de 10 min 53 s (4 723 tests), puis 73
+mutants sur 92 en 47 minutes : chaque mutant de `AscentSession` est couvert par environ 180 tests,
+dont des scénarios BDD qui rendent les écrans de l'ascension. En local, le même shard a pris
+60 min 22 s.
+
+### Décision
+
+1. **En PR, un fichier `core` est réparti comme un écran** (avenant de l'issue #145) : chaque plage
+   de lignes nouvelles est un élément, pesé en mutants exécutables comptés par l'instrumenter ; une
+   plage sans mutant n'est pas mutée. Un fichier `core` ajouté est coupé au-delà de
+   `CHUNK_MUTANTS.changedCore` mutants (30). Les plages du diff sont disjointes et Stryker ne garde
+   un mutant que s'il tient dans une plage : aucun mutant n'est perdu ni compté deux fois.
+2. **Rien d'autre ne change** : `PARTS.changed.core` (3), seuils, `timeoutMS`, délais des jobs,
+   tests exécutés, portée de la mesure.
+
+Plan de la PR #180 : `core-1` à `core-3`, de 31, 31 et 30 mutants, soit environ 20 minutes de
+mutation chacun au rythme mesuré, plus le « dry run ».
+
+### Alternatives rejetées
+
+- **Relever `timeout-minutes`** : rejeté par la décision initiale.
+- **Retirer des tests de la config `core`** : moins de tests, donc un score qui peut changer.
+

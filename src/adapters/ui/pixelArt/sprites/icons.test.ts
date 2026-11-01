@@ -46,6 +46,11 @@ describe('the icons', () => {
     );
   });
 
+  it('has the Shard glyph, small and large, and the Gold coin of the tiers (#38)', () => {
+    expect(iconNames).toEqual(expect.arrayContaining(['shard8', 'shard12', 'coin8']));
+    expect(ICONS.shard12).toHaveLength(12);
+  });
+
   it('mirrors « left » into « right »', () => {
     ICONS.left.forEach((row, index) =>
       expect(ICONS.right[index]).toBe([...row].reverse().join('')),

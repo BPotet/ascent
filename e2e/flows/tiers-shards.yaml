@@ -1,0 +1,116 @@
+# Story #38 : trois paliers jusqu'au sommet, et les premiers Éclats (chemin B, captures des écrans).
+# 1. Le vrai parcours, sans timing : installation neuve, le pied de la tour montre « 0 Éclat ».
+# 2. La planche des icônes (ascent://preview/icon-board), pour les écrans qu'on n'atteint pas sans
+#    gagner de combats : ses entrées ouvrent le vrai écran de l'ascension sur des ascensions fixes,
+#    et le vrai pied de la tour, chacun dans une session en mémoire, jamais celle du joueur.
+# Le gameplay du combat se teste à la main sur l'APK (décision du 25/10) : aucun combat n'est joué.
+# Captures à comparer à la maquette `docs/mockups/30-premiere-ascension/` : le pied de la tour (T),
+# X3, C4, X6 et X7. Le coffre, le camp, la Forgeronne et les statistiques n'y sont pas repris.
+appId: com.bpotet.ascent
+name: Les paliers et les Éclats
+tags:
+  - story-38
+---
+- runFlow: ../subflows/launch-fresh.yaml
+
+# --- 1. Le vrai parcours ---------------------------------------------------------------------
+
+- tapOn:
+    id: 'tab-tower'
+- extendedWaitUntil:
+    visible: "Commencer l'ascension"
+    timeout: 15000
+- assertVisible:
+    id: 'tower-foot-shards'
+    text: '0 Éclat'
+- takeScreenshot: tiers-foot-0-shard
+
+# --- 2. La planche des icônes ----------------------------------------------------------------
+
+- openLink: ascent://preview/icon-board
+- extendedWaitUntil:
+    visible: 'Planche des icônes'
+    timeout: 15000
+
+# X3 : le boss du palier 1 vaincu, +8 Éclats en grand et +40 Or.
+- scrollUntilVisible:
+    element:
+      text: 'Boss vaincu · palier 1'
+    direction: DOWN
+- tapOn: 'Boss vaincu · palier 1'
+- extendedWaitUntil:
+    visible:
+      id: 'ascent-boss-defeated'
+    timeout: 15000
+- assertVisible: 'Palier 1 franchi'
+- assertVisible: '8 Éclats gagnés, gardés pour toujours'
+- assertVisible: '\+40 Or'
+- takeScreenshot: tiers-x3-boss-defeated
+# C4 : « Continuer vers le palier 2 » mène à l'écran de transition.
+- tapOn: 'Continuer vers le palier 2'
+- extendedWaitUntil:
+    visible: 'Les Jardins de cendre'
+    timeout: 10000
+- assertVisible: 'Palier 2'
+- takeScreenshot: tiers-c4-tier-two
+# Retour à la planche : « Entrer », puis « Pause » sur le combat de l'étage 1 du palier 2.
+- tapOn: 'Entrer'
+- extendedWaitUntil:
+    visible:
+      id: 'ascent-pause'
+    timeout: 15000
+- tapOn:
+    id: 'ascent-pause'
+- extendedWaitUntil:
+    visible: 'Planche des icônes'
+    timeout: 15000
+
+# X6 : la chute au palier 2, 10 Éclats gardés, l'Or perdu.
+- scrollUntilVisible:
+    element:
+      text: 'Chute · 10 Éclats'
+    direction: DOWN
+- tapOn: 'Chute · 10 Éclats'
+- extendedWaitUntil:
+    visible: "Fin de l'ascension"
+    timeout: 15000
+- assertVisible: '10 Éclats gagnés'
+- assertVisible: 'Total : 44 Éclats'
+- takeScreenshot: tiers-x6-fall
+- tapOn: 'Retour au pied de la tour'
+- extendedWaitUntil:
+    visible: 'Planche des icônes'
+    timeout: 15000
+
+# X7 : le Sommet atteint, +54 Éclats dont 10 pour le Sommet.
+- scrollUntilVisible:
+    element:
+      text: 'Sommet atteint'
+    direction: DOWN
+- tapOn: 'Sommet atteint'
+- extendedWaitUntil:
+    visible:
+      id: 'ascent-end'
+    timeout: 15000
+- assertVisible: '54 Éclats gagnés'
+- assertVisible: 'Dont 10 pour le Sommet · Total : 54 Éclats'
+- takeScreenshot: tiers-x7-summit
+- tapOn: 'Retour au pied de la tour'
+- extendedWaitUntil:
+    visible: 'Planche des icônes'
+    timeout: 15000
+
+# Le pied de la tour avec 22 Éclats, sans ascension : en dernier, sans retour à la planche. Le lien
+# profond vers la planche, déjà ouverte, ne la remonte pas : le pied de la tour resterait affiché.
+- scrollUntilVisible:
+    element:
+      text: 'Pied de la tour · 22 Éclats'
+    direction: DOWN
+- tapOn: 'Pied de la tour · 22 Éclats'
+- extendedWaitUntil:
+    visible: "Commencer l'ascension"
+    timeout: 15000
+- assertVisible:
+    id: 'tower-foot-shards'
+    text: '22 Éclats'
+- takeScreenshot: tiers-foot-22-shards

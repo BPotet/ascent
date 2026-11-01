@@ -162,13 +162,14 @@ describe('endFloorBattle and chooseExit (P1, P2, P7)', () => {
 });
 
 describe('End of the ascent (P8, P33)', () => {
-  it('ends in victory when the boss is beaten, with its 40 Gold', () => {
+  it('goes on to the Tier transition when the boss of tier 1 is beaten, with its 40 Gold (#38)', () => {
     const boss = climbTo(3, TOP_FLOOR);
     const before = boss.gold;
 
     const ended = won(boss);
 
-    expect(ended.outcome).toBe('victory');
+    expect(ended.outcome).toBeNull();
+    expect(ended.passage).toEqual({ to: 2, step: 'bossDefeated' });
     expect(ended.gold).toBe(before + 40);
     expect(ended.exits).toEqual([]);
   });

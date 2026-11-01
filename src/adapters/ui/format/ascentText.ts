@@ -1,4 +1,5 @@
 import { TOP_FLOOR } from '../../../domain/ascent/Ascent';
+import type { Tier } from '../../../domain/ascent/tiers';
 import {
   BLESSING_EFFECTS,
   type BlessingFamily,
@@ -12,10 +13,54 @@ import { loadoutChipText, rarityLine, rarityName, type LoadoutChipText } from '.
 
 /** Les libellés de l'ascension (prototype #91), tirés du glossaire et de la maquette de #88. */
 export const TOWER_TITLE = 'La tour';
-export const TIER_LINE = 'Palier 1 · les Catacombes · 6 étages';
 
-export function floorLine(floor: number): string {
-  return `Palier 1 · Étage ${floor} sur ${TOP_FLOOR}`;
+/** Les noms des paliers (#38), validés dans l'Atelier. */
+export const TIER_NAMES: Readonly<Record<Tier, string>> = {
+  1: 'Les Catacombes',
+  2: 'Les Jardins de cendre',
+  3: 'Le Beffroi',
+};
+
+/** Le nom d'un palier dans une phrase : « les Jardins de cendre ». */
+function tierInSentence(tier: Tier): string {
+  const name = TIER_NAMES[tier];
+  return name.charAt(0).toLowerCase() + name.slice(1);
+}
+
+/** Le palier et ses étages : « Palier 2 · les Jardins de cendre · 6 étages ». */
+export function tierLine(tier: Tier): string {
+  return `Palier ${tier} · ${tierInSentence(tier)} · ${TOP_FLOOR} étages`;
+}
+
+export const TIER_LINE = tierLine(1);
+
+export function floorLine(floor: number, tier: Tier = 1): string {
+  return `Palier ${tier} · Étage ${floor} sur ${TOP_FLOOR}`;
+}
+
+/** Les Éclats (#38) : « 0 Éclat », « 1 Éclat », « 22 Éclats ». */
+export function shardText(shards: number): string {
+  return `${shards} ${shards > 1 ? 'Éclats' : 'Éclat'}`;
+}
+
+/** Les Éclats gagnés : « 10 Éclats gagnés », « 0 Éclat gagné ». */
+export function shardsWonText(shards: number): string {
+  return `${shardText(shards)} ${shards > 1 ? 'gagnés' : 'gagné'}`;
+}
+
+/** L'annonce de l'écran du boss vaincu (X3). */
+export function bossDefeatedAnnouncement(shards: number): string {
+  return `${shardsWonText(shards)}, gardés pour toujours`;
+}
+
+/** L'annonce de l'écran de transition (C4) : « Palier 2, les Jardins de cendre ». */
+export function tierAnnouncement(tier: Tier): string {
+  return `Palier ${tier}, ${tierInSentence(tier)}`;
+}
+
+/** L'annonce du Sommet atteint (X7) : les Éclats du boss du palier 3 et du Sommet. */
+export function summitAnnouncement(shards: number): string {
+  return `${shardsWonText(shards)}, Sommet atteint`;
 }
 
 export function goldText(gold: number): string {

@@ -958,6 +958,8 @@ describe('buildPlan', () => {
     }),
   });
 
+  const mutantsAt = (...lines) => lines.map((line) => ({ start: line, end: line }));
+
   it('weighs a core file by its mutants in full mode', () => {
     const shards = buildPlan({
       mode: 'full',
@@ -1004,7 +1006,7 @@ describe('buildPlan', () => {
     assert.equal(total, big.mutants.length);
   });
 
-  it('never cuts a core file on a pull request', () => {
+  it('never cuts a range of new lines of a core file on a pull request', () => {
     const core = {
       ...fullCoreFile('src/application/useCases/big.ts', 600, 3 * CHUNK_MUTANTS.core),
       added: false,
@@ -1015,6 +1017,80 @@ describe('buildPlan', () => {
       shards.map((shard) => shard.mutate),
       [['src/application/useCases/big.ts:1-600']],
     );
+  });
+
+  // PR #180 : `AscentSession.ts`, seul fichier `core` modifié, dépassait à lui seul le délai de 60
+  // minutes. En PR, un fichier `core` est réparti plage par plage, pesé en mutants, comme un écran.
+  it('spreads the ranges of one core file over the core parts on a pull request, weighed by their mutants', () => {
+    assert.equal(PARTS.changed.core, 3);
+    const core = change(
+      'src/application/useCases/AscentSession.ts',
+      [
+        { start: 10, end: 12 },
+        { start: 40, end: 40 },
+        { start: 90, end: 99 },
+        { start: 120, end: 121 },
+        { start: 200, end: 200 },
+      ],
+      // 5 mutants à la ligne 11, 4 à la ligne 40, 3 dans 90-99, 1 à la ligne 120, aucun à 200.
+      { mutants: mutantsAt(11, 11, 11, 11, 11, 40, 40, 40, 40, 91, 95, 99, 120) },
+    );
+    const shards = buildPlan({ mode: 'changed', changes: [core] });
+    assert.deepEqual(
+      shards.map(({ id, scope, thresholdClass, config, mutate }) => ({
+        id,
+        scope,
+        thresholdClass,
+        config,
+        mutate,
+      })),
+      [
+        ['core-1', ['src/application/useCases/AscentSession.ts:10-12']],
+        ['core-2', ['src/application/useCases/AscentSession.ts:40-40']],
+        [
+          'core-3',
+          [
+            'src/application/useCases/AscentSession.ts:90-99',
+            'src/application/useCases/AscentSession.ts:120-121',
+          ],
+        ],
+      ].map(([id, mutate]) => ({
+        id,
+        scope: 'core',
+        thresholdClass: 'newCode',
+        config: 'stryker.config.mjs',
+        mutate,
+      })),
+    );
+  });
+
+  it('cuts an added core file with many mutants into ranges on a pull request, each under the limit', () => {
+    assert.equal(CHUNK_MUTANTS.changedCore, 30);
+    const added = fullCoreFile(
+      'src/application/useCases/New.ts',
+      300,
+      3 * CHUNK_MUTANTS.changedCore,
+    );
+    const shards = buildPlan({ mode: 'changed', changes: [added] });
+    const chunks = shards
+      .flatMap((shard) => shard.mutate)
+      .map((entry) => {
+        const match = /^src\/application\/useCases\/New\.ts:(\d+)-(\d+)$/.exec(entry);
+        assert.ok(match, entry);
+        return { start: Number(match[1]), end: Number(match[2]) };
+      })
+      .sort((a, b) => a.start - b.start);
+    assert.equal(shards.length, PARTS.changed.core);
+    assert.equal(chunks[0].start, 1);
+    assert.equal(chunks.at(-1).end, 300);
+    let total = 0;
+    for (const [index, { start, end }] of chunks.entries()) {
+      if (index > 0) assert.equal(start, chunks[index - 1].end + 1);
+      const count = added.mutants.filter((m) => m.start >= start && m.end <= end).length;
+      assert.ok(count <= CHUNK_MUTANTS.changedCore, `${start}-${end}: ${count} mutants`);
+      total += count;
+    }
+    assert.equal(total, added.mutants.length);
   });
 
   it('keeps a single domain shard for a small domain change', () => {
@@ -1029,7 +1105,6 @@ describe('buildPlan', () => {
   });
 
   // Issue #145 : en PR, un écran est pesé en mutants exécutables, plage par plage.
-  const mutantsAt = (...lines) => lines.map((line) => ({ start: line, end: line }));
 
   it('spreads the ranges of one screen over several parts, weighed by their mutants', () => {
     assert.equal(PARTS.changed.ui, 8);

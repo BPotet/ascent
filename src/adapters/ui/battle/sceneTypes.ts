@@ -33,8 +33,17 @@ export interface SceneEnemy {
   readonly down: boolean;
   /** Il perd son action : ses étoiles sautent. */
   readonly losingAction: boolean;
-  /** Son relèvement (retour en garde) : à terre, à genoux, debout. */
-  readonly rising: { readonly since: number; readonly until: number } | null;
+  /**
+   * Son relèvement (retour en garde) : à terre, à genoux, debout ; `selfRevive` pour une relève de
+   * Se relève seul (#38), qui joue `rise0` et `rise1` quand l'entité les a.
+   */
+  readonly rising: {
+    readonly since: number;
+    readonly until: number;
+    readonly selfRevive?: boolean;
+  } | null;
+  /** Un boss passé en phase 2 : il prend son aspect de phase 2, s'il en a un (#38). */
+  readonly phase2?: boolean;
   /** L'instant de sa chute (cassure de garde), `null` s'il est inconnu. */
   readonly downSince: number | null;
 }
@@ -48,6 +57,8 @@ export interface SceneTimeline {
   readonly enemy: number;
   readonly kind: 'stepIn' | 'attack' | 'support';
   readonly attack: AttackKind | null;
+  /** L'intention d'une action de soutien (#38) : sa pose `guard` ou `raiseAlly`. */
+  readonly support?: 'guard' | 'raise' | null;
   readonly stepInAt: number;
   readonly windUpAt: number;
   readonly windUpMs: number;

@@ -410,7 +410,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   when('ses PV passent à 150 ou moins', () => {
-    expect(ENEMIES.facelessPrior.phaseShiftHp).toBe(150);
+    expect(ENEMIES.facelessPrior.phaseShiftPercent).toBe(50);
   });
 
   then("le changement de phase se joue comme aujourd'hui", () => {

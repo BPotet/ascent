@@ -628,7 +628,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   when('ses PV passent à 150 ou moins', () => {
-    expect(ENEMIES.ossuaryWarden.phaseShiftHp).toBe(150);
+    expect(ENEMIES.ossuaryWarden.phaseShiftPercent).toBe(50);
     // Le premier hasard qui tire Deux tibias, puis Mise en ossuaire, en phase 2.
     for (let seed = 1; seed <= 200 && world.phase2.length === 0; seed += 1) {
       const fight = wardenInPhase2(seed);

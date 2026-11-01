@@ -8,6 +8,7 @@ import {
 } from './attacks';
 import { ENEMIES, type Bleed, type EnemyKind } from './combatants';
 import { nextRandom, type RandomState } from './SeededRandom';
+import { scaleByPercent } from './tierMultiplier';
 import { pickWeighted } from './weighted';
 
 /** L'intention Attaque (`AttackIntent`) : le coup, ses dégâts et ses tirages, jamais montrés. */
@@ -73,20 +74,26 @@ export interface IntentContext {
   readonly guardDamaged: boolean;
   /** Un boss en phase 2 : ses coups de phase 2 s'ajoutent (P6). */
   readonly phase2?: boolean;
+  /** Sa garde max, celle du palier (#38) ; absente, celle de son profil. */
+  readonly maxGuard?: number;
+  /** Le pourcentage des dégâts de ses coups, celui du palier (#38) ; absent, 100. */
+  readonly damagePercent?: number;
 }
 
 /**
  * Les tirages d'un ennemi (C2.1, C10) : toujours trois valeurs, dans le même ordre, quelle que
  * soit l'intention, étourdi compris : le coup (ou la catégorie), la durée de préparation, puis la
- * position de la fausse amorce. Le Nécromancien relève un allié tombé jamais relevé ; sinon, s'il
- * n'est pas étourdi et que sa garde est entamée, il garde si le premier tirage est sous 1/3.
+ * position de la fausse amorce. Un soutien relève un allié tombé jamais relevé ; sinon, s'il n'est
+ * pas étourdi et que sa garde est entamée, il garde si le premier tirage est sous 1/3, de 30 % de
+ * sa garde max du palier. Les dégâts du coup sont ceux du palier (#38), jamais son Saignement.
  */
 export function drawIntent(
   kind: EnemyKind,
   random: RandomState,
   context: IntentContext,
 ): { readonly intent: Intent; readonly random: RandomState } {
-  const { maxGuard, supports, phase2Moves = [] } = ENEMIES[kind];
+  const { supports, phase2Moves = [] } = ENEMIES[kind];
+  const { maxGuard = ENEMIES[kind].maxGuard, damagePercent = 100 } = context;
   const moves = context.phase2 ? [...ENEMIES[kind].moves, ...phase2Moves] : ENEMIES[kind].moves;
   const moveDraw = nextRandom(random);
   const windUpDraw = nextRandom(moveDraw.state);
@@ -112,7 +119,7 @@ export function drawIntent(
   return drawn({
     category: 'attack',
     attack: move.attack,
-    damage: move.damage,
+    damage: scaleByPercent(move.damage, damagePercent),
     windUpMs: Math.round(ATTACKS[move.attack].windUpMs * factor),
     feintFraction: FEINT_MIN_FRACTION + (FEINT_MAX_FRACTION - FEINT_MIN_FRACTION) * feintDraw.value,
     ...(move.bleed && { bleed: move.bleed }),

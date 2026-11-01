@@ -242,6 +242,7 @@ describe('battleView', () => {
         stunned: false,
         losingAction: false,
         rising: null,
+        phase2: false,
         intent: { category: 'attack' },
         active: false,
         dimmed: false,
@@ -285,7 +286,23 @@ describe('battleView', () => {
         withEnemy(inPhase(hero), 0, { guardRestore: { since: 100, until: 500 } }),
       ).enemies;
 
-      expect(ghoul!.rising).toEqual({ since: 100, until: 500 });
+      expect(ghoul!.rising).toEqual({ since: 100, until: 500, selfRevive: false });
+    });
+
+    it('says when the rising is a Self revive, for its rising poses (#38)', () => {
+      const [ghoul] = battleView(
+        withEnemy(inPhase(hero), 0, {
+          guardRestore: { since: 100, until: 500, cause: 'selfRevive' },
+        }),
+      ).enemies;
+
+      expect(ghoul!.rising).toEqual({ since: 100, until: 500, selfRevive: true });
+    });
+
+    it('says when a boss has shifted to phase 2, for its phase 2 aspect (#38)', () => {
+      const [ghoul] = battleView(withEnemy(inPhase(hero), 0, { phase2: true })).enemies;
+
+      expect(ghoul!.phase2).toBe(true);
     });
 
     it('shows a fallen enemy without intent', () => {

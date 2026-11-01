@@ -20,6 +20,7 @@ import { BATTLE_HINT_SEEN_KEYS } from '../../../application/useCases/battleHints
 import { glintsOf } from '../../../domain/battle/glints';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { reduceMotionInEachTest, withMotion } from '../testing/motion';
+import { preparedKinds } from '../battle/testing/fakeBattleCanvas';
 import { renderBattle, type BattleScreenTest } from '../testing/battleScreen';
 
 jest.mock('../battle/BattleCanvas', () => jest.requireActual('../battle/testing/fakeBattleCanvas'));
@@ -703,5 +704,25 @@ describe('BattleScreen: the heroine of the ascent in the scene (#140)', () => {
     });
 
     expect(sceneProps().heroKind).toBe('wanderer');
+  });
+});
+
+describe('BattleScreen: the atlases prepared on demand (#38)', () => {
+  it('prepares the enemies of the battle, its front line and its reserve, before they show', async () => {
+    preparedKinds.length = 0;
+
+    await renderBattle({
+      seed: 1,
+      createBattle: battleWith((battle) => ({ ...battle, reserve: ['ashBramble'] })),
+    });
+
+    expect(preparedKinds).toContainEqual(['ghoul', 'specter', 'necromancer', 'ashBramble']);
+  });
+
+  it('tells the scene that a boss has shifted to phase 2 (#38)', async () => {
+    await renderBattle({ seed: 1, createBattle: battleWith(enemyWith(GHOUL, { phase2: true })) });
+
+    const [ghoul] = sceneProps().enemies as { readonly phase2: boolean }[];
+    expect(ghoul!.phase2).toBe(true);
   });
 });
