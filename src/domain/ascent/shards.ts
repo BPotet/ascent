@@ -7,7 +7,6 @@
  * les ascensions. Chaque gain a un identifiant déterministe ; un gain déjà crédité pour la graine
  * de l'ascension ne l'est jamais une deuxième fois.
  */
-import type { Encounter } from './Ascent';
 import { TIERS, TOP_TIER, type Tier } from './tiers';
 
 /** Les Éclats d'une Élite, à tout palier. */
@@ -27,7 +26,7 @@ export function shardAwards(
   seed: number,
   tier: Tier,
   floor: number,
-  kind: Encounter['kind'],
+  kind: 'combat' | 'elite' | 'boss',
 ): ShardAward[] {
   if (kind === 'combat') return [];
   const prefix = `${seed}:${tier}:${floor}`;
