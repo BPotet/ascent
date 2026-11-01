@@ -1,9 +1,11 @@
 import {
   abandonAscent,
+  acknowledgeBossVictory,
   chooseBoon,
   chooseBlessing,
   chooseExit,
   endFloorBattle,
+  enterNextTier,
   equipItem,
   leaveItem,
   lootStream,
@@ -14,6 +16,14 @@ import {
 import { boonModifiers } from '../../domain/ascent/boons';
 import { blessingModifiers, type BlessingFamily } from '../../domain/ascent/blessings';
 import { STARTING_EQUIPMENT, itemModifiers } from '../../domain/ascent/items';
+import {
+  EMPTY_SHARD_TOTAL,
+  creditShards,
+  parseShardTotal,
+  serializeShardTotal,
+  type ShardTotal,
+} from '../../domain/ascent/shards';
+import { TIERS } from '../../domain/ascent/tiers';
 import { resumeBattle, startBattle, type Battle } from '../../domain/battle/Battle';
 import { combineModifiers } from '../../domain/battle/heroModifiers';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
@@ -22,6 +32,10 @@ import { BattleSession, type BattleSessionDependencies } from './BattleSession';
 /** La clé de l'ascension en cours dans le stockage clé-valeur (prototype #91). */
 export const ASCENT_KEY = 'ascent.current';
 const SAVE_VERSION = 1;
+/** La clé du Total d'Éclats (#38, ADR 0012) : jamais effacée par l'application. */
+export const SHARD_TOTAL_KEY = 'shards.total';
+/** La copie d'un Total d'Éclats illisible, avant qu'il ne reparte de 0. */
+export const UNREADABLE_SHARD_TOTAL_KEY = 'shards.total.unreadable';
 
 /** Ce qui est sauvegardé : l'ascension et le combat en cours (P31). */
 interface SavedAscent {
@@ -47,6 +61,7 @@ const SAVED_ON: ReadonlySet<BattleEvent['type']> = new Set([
 ]);
 
 type Listener = (ascent: Ascent | null) => void;
+type ShardListener = (total: number) => void;
 
 /** Égide (`aegis`), sauvegardée avant #105, est relue comme Protection. */
 const protection = (family: BlessingFamily): BlessingFamily =>
@@ -58,7 +73,8 @@ function parse(raw: string | null): SavedAscent | null {
     const saved = JSON.parse(raw) as Partial<SavedAscent> | null;
     if (saved?.version !== SAVE_VERSION || typeof saved.ascent?.floor !== 'number') return null;
     // Une ascension sauvegardée avant #93 : Neutre, sans bénédiction, avec l'équipement de base ;
-    // avant #92 : la Sentinelle, sans bienfait ni offre ; avant #105 : Égide au lieu de Protection.
+    // avant #92 : la Sentinelle, sans bienfait ni offre ; avant #105 : Égide au lieu de Protection ;
+    // avant #38 : au palier 1, sans Éclat ni Passage de palier.
     const stored: Partial<Ascent> = saved.ascent;
     const storedHero: Partial<Ascent['hero']> = saved.ascent.hero;
     const ascent = {
@@ -70,6 +86,9 @@ function parse(raw: string | null): SavedAscent | null {
       equipment: STARTING_EQUIPMENT,
       foundItem: null,
       lootRandom: lootStream(saved.ascent.seed),
+      tier: 1,
+      shardAwards: [],
+      passage: null,
       ...stored,
       hero: { kind: 'sentinel', boons: [], ...storedHero },
     } as Ascent;
@@ -93,16 +112,29 @@ function parse(raw: string | null): SavedAscent | null {
  * à l'action en cours). Elle sauvegarde l'ascension en JSON dans le stockage clé-valeur après
  * chaque choix et à chaque impact jugé ou action résolue ; les écritures passent l'une après
  * l'autre, la dernière gagne. Une seule ascension en cours (P33) ; elle est effacée à la fin.
+ *
+ * Elle tient aussi le Total d'Éclats (#38, ADR 0012), sous sa propre clé, jamais effacée : à une
+ * victoire qui rapporte des Éclats, le total est écrit, l'écriture attendue, puis l'ascension est
+ * sauvegardée et publiée. Un total qui n'a pas pu être écrit l'est à la sauvegarde suivante.
  */
 export class AscentSession {
   private ascent: Ascent | null = null;
   private battle: Battle | null = null;
   private readonly listeners = new Set<Listener>();
+  private readonly shardListeners = new Set<ShardListener>();
   private writing: Promise<void> = Promise.resolve();
+  private shards: ShardTotal = EMPTY_SHARD_TOTAL;
+  /** Le dernier Total d'Éclats écrit dans le stockage. */
+  private storedShards: ShardTotal = EMPTY_SHARD_TOTAL;
+  /** La fin d'un combat, le temps que ses Éclats soient écrits. */
+  private settling = false;
 
   constructor(private readonly dependencies: BattleSessionDependencies) {}
 
-  /** L'ascension en cours sauvegardée, `null` s'il n'y en a pas (une valeur illisible est effacée). */
+  /**
+   * L'ascension en cours sauvegardée, `null` s'il n'y en a pas (une valeur illisible est effacée),
+   * et le Total d'Éclats : les Éclats de l'ascension qu'il n'a pas encore sont crédités.
+   */
   async load(): Promise<Ascent | null> {
     const { keyValueStore } = this.dependencies;
     const raw = await keyValueStore.get(ASCENT_KEY).catch(() => null);
@@ -110,7 +142,13 @@ export class AscentSession {
     if (saved === null && raw !== null) await keyValueStore.remove(ASCENT_KEY).catch(() => null);
     this.ascent = saved?.ascent ?? null;
     this.battle = saved?.battle ?? null;
+    await this.loadShards();
+    if (this.ascent !== null) {
+      this.shards = creditShards(this.shards, this.ascent.seed, this.ascent.shardAwards);
+    }
+    if (this.shards !== this.storedShards) await this.writeShards();
     this.publish();
+    this.publishShards();
     return this.ascent;
   }
 
@@ -122,6 +160,19 @@ export class AscentSession {
     this.listeners.add(listener);
     return () => {
       this.listeners.delete(listener);
+    };
+  }
+
+  /** Le Total d'Éclats du joueur (#38), gardé entre les ascensions. */
+  shardTotal(): number {
+    return this.shards.total;
+  }
+
+  /** Prévient `listener` du Total d'Éclats, à chaque crédit. */
+  subscribeShards(listener: ShardListener): () => void {
+    this.shardListeners.add(listener);
+    return () => {
+      this.shardListeners.delete(listener);
     };
   }
 
@@ -163,6 +214,18 @@ export class AscentSession {
     this.update(abandonAscent(this.ascent), null);
   }
 
+  /** L'écran du boss vaincu est passé : l'écran de transition vers le palier suivant (#38). */
+  acknowledgeBossVictory(): void {
+    if (this.ascent === null) return;
+    this.update(acknowledgeBossVictory(this.ascent), null);
+  }
+
+  /** L'écran de transition est passé : l'étage 1 du palier suivant (#38). */
+  enterNextTier(): void {
+    if (this.ascent === null) return;
+    this.update(enterNextTier(this.ascent), null);
+  }
+
   /** Un combat est à reprendre : sa reprise commence par le compte à rebours (P32). */
   resuming(): boolean {
     return this.battle !== null && this.battle.phase.kind !== 'over';
@@ -198,11 +261,16 @@ export class AscentSession {
           heroHp: ascent.hero.hp,
           heroMaxHp: ascent.hero.maxHp,
           modifiers: combineModifiers(
-            blessingModifiers(ascent.blessings, { firstBattle: ascent.floor === 1 }),
+            // Le premier combat : l'étage 1 du palier 1 seulement (#38).
+            blessingModifiers(ascent.blessings, {
+              firstBattle: ascent.tier === 1 && ascent.floor === 1,
+            }),
             itemModifiers(ascent.equipment),
             boonModifiers(ascent.hero.boons),
           ),
           enemies: encounter.enemies,
+          // Le multiplicateur de palier : les combats ordinaires seulement, jamais l'Élite ni le boss.
+          ...(encounter.kind === 'combat' && { tierMultiplier: TIERS[ascent.tier].multiplier }),
           // L'ordre d'action par Initiative (P13, P14), ajouté par #90.
           initiative: true,
         });
@@ -213,14 +281,51 @@ export class AscentSession {
   }
 
   private onBattle(battle: Battle, events: readonly BattleEvent[]): void {
-    if (this.ascent === null || this.ascent.encounter === null) return;
+    if (this.ascent === null || this.ascent.encounter === null || this.settling) return;
     this.battle = battle;
     const ended = battle.phase.kind === 'over' ? battle.phase.outcome : null;
     if (ended !== null) {
-      this.update(endFloorBattle(this.ascent, { outcome: ended, heroHp: battle.hero.hp }), null);
+      const next = endFloorBattle(this.ascent, { outcome: ended, heroHp: battle.hero.hp });
+      const credited = creditShards(this.shards, next.seed, next.shardAwards);
+      if (credited === this.shards) {
+        this.update(next, null);
+        return;
+      }
+      // Les Éclats sont écrits avant l'écran qui suit la victoire (ADR 0012).
+      this.settling = true;
+      this.shards = credited;
+      void this.writeShards().then(() => {
+        this.settling = false;
+        this.publishShards();
+        this.update(next, null);
+      });
       return;
     }
     if (events.some((event) => SAVED_ON.has(event.type))) this.save();
+  }
+
+  /** Le Total d'Éclats stocké ; une valeur illisible est gardée à part, et le total repart de 0. */
+  private async loadShards(): Promise<void> {
+    const { keyValueStore } = this.dependencies;
+    const raw = await keyValueStore.get(SHARD_TOTAL_KEY).catch(() => null);
+    const { total, unreadable } = parseShardTotal(raw);
+    this.shards = total;
+    this.storedShards = unreadable ? { ...EMPTY_SHARD_TOTAL } : total;
+    if (unreadable && raw !== null) {
+      await keyValueStore.set(UNREADABLE_SHARD_TOTAL_KEY, raw).catch(() => undefined);
+    }
+  }
+
+  /** Écrit le Total d'Éclats, après les écritures en attente ; un échec sera réessayé. */
+  private writeShards(): Promise<void> {
+    const { keyValueStore } = this.dependencies;
+    const total = this.shards;
+    const write = this.writing.then(async () => {
+      await keyValueStore.set(SHARD_TOTAL_KEY, serializeShardTotal(total));
+      this.storedShards = total;
+    });
+    this.writing = write.catch(() => undefined);
+    return this.writing;
   }
 
   private update(ascent: Ascent, battle: Battle | null): Ascent {
@@ -234,6 +339,7 @@ export class AscentSession {
   private save(): void {
     const { keyValueStore } = this.dependencies;
     const { ascent, battle } = this;
+    if (this.shards !== this.storedShards) void this.writeShards();
     const write =
       ascent === null || ascent.outcome !== null
         ? () => keyValueStore.remove(ASCENT_KEY)
@@ -248,5 +354,9 @@ export class AscentSession {
 
   private publish(): void {
     for (const listener of [...this.listeners]) listener(this.ascent);
+  }
+
+  private publishShards(): void {
+    for (const listener of [...this.shardListeners]) listener(this.shards.total);
   }
 }
