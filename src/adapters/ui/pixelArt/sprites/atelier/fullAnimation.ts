@@ -45,9 +45,31 @@ export interface AttackPoses<Frame extends string = string> {
 }
 
 /**
+ * Les poses en plus (`ExtraFrame`, #38) : celles que certaines entités ont en plus des 17 poses du
+ * combat. `rise0` et `rise1` pendant Se relève seul, `guard` et `raiseAlly` pendant les intentions
+ * Garde et Relever. Facultatives dans `frames` et `anchors`.
+ */
+export type ExtraFrame = 'rise0' | 'rise1' | 'guard' | 'raiseAlly';
+
+/** Des poses, puis leurs ancrages, une entrée par pose, poses en plus facultatives. */
+type Poses<Frame extends string, Value> = Readonly<Record<Frame, Value>> &
+  Readonly<Partial<Record<ExtraFrame, Value>>>;
+
+/**
+ * L'aspect de phase 2 (`AnimationPhase2`, #38, avenant à l'ADR 0010) : les poses, leurs ancrages et
+ * les poses d'un coup qu'un boss prend à son changement de phase, au format d'une animation
+ * complète, sans taille ni palette : celles de la phase 1 valent pour lui, palette rouge comprise.
+ */
+export interface AnimationPhase2<Frame extends string = string> {
+  readonly frames: Poses<Frame, readonly string[]>;
+  readonly anchors: Poses<Frame, AnimationAnchors>;
+  readonly attackPoses?: Readonly<Partial<Record<AttackKind, AttackPoses<Frame>>>>;
+}
+
+/**
  * L'animation complète (`FullAnimation`, voir `docs/glossary.md`) d'un ennemi ou d'un héros : ses
  * poses, leurs ancrages, sa palette et sa palette rouge (celle du coup imparable, mêmes indices
- * que `pal`).
+ * que `pal`), et, pour un boss, son aspect de phase 2.
  */
 export interface FullAnimation<Frame extends string = string> {
   readonly w: number;
@@ -58,10 +80,12 @@ export interface FullAnimation<Frame extends string = string> {
    * qui n'a pas de poses rouges.
    */
   readonly red?: readonly string[];
-  readonly frames: Readonly<Record<Frame, readonly string[]>>;
-  readonly anchors: Readonly<Record<Frame, AnimationAnchors>>;
+  readonly frames: Poses<Frame, readonly string[]>;
+  readonly anchors: Poses<Frame, AnimationAnchors>;
   /** Les poses d'un coup, par type de coup : absentes pour la plupart des entités (#139). */
   readonly attackPoses?: Readonly<Partial<Record<AttackKind, AttackPoses<Frame>>>>;
+  /** L'aspect de phase 2 d'un boss (#38) ; absent, le boss garde ses poses après le changement. */
+  readonly phase2?: AnimationPhase2<Frame>;
 }
 
 /** L'image d'un asset validé (`AssetImage`) : un objet, une image fixe. */
@@ -125,21 +149,30 @@ export function assetSprite(image: AssetImage): Sprite {
  * rouge, elle garde sa palette. Avec `attack`, une pose des poses de ce coup (`attackPoses`) est
  * prise à la place de celle de l'animation complète, avec ses ancrages ; une pose absente du coup
  * vient de l'animation complète. Une pose du coup qui n'est pas à la taille de l'entité est
- * refusée.
+ * refusée. Avec `phase2` (#38), toutes les poses viennent de l'aspect de phase 2 quand l'entité en
+ * a un, poses d'un coup comprises, jamais de la phase 1 ; sans aspect de phase 2, rien ne change.
+ * Une pose en plus (`ExtraFrame`) absente de l'entité est refusée, par son nom.
  */
 export function animationSprite<Frame extends string>(
   animation: FullAnimation<Frame>,
-  frame: Frame,
+  frame: Frame | ExtraFrame,
   [width, height]: Point = battleCell(animation),
   {
     red = false,
     attack = null,
-  }: { readonly red?: boolean; readonly attack?: AttackKind | null } = {},
+    phase2 = false,
+  }: {
+    readonly red?: boolean;
+    readonly attack?: AttackKind | null;
+    readonly phase2?: boolean;
+  } = {},
 ): { readonly sprite: Sprite; readonly anchors: AnimationAnchors } {
-  const own = attack === null ? undefined : animation.attackPoses?.[attack];
-  const ownRows = own?.frames[frame];
-  const rows =
-    ownRows ?? (Object.hasOwn(animation.frames, frame) ? animation.frames[frame] : undefined);
+  const source: AnimationPhase2<Frame> = (phase2 ? animation.phase2 : undefined) ?? animation;
+  const own = attack === null ? undefined : source.attackPoses?.[attack];
+  const poses: Readonly<Partial<Record<string, readonly string[]>>> = source.frames;
+  const posed: Readonly<Partial<Record<string, AnimationAnchors>>> = source.anchors;
+  const ownRows = own?.frames[frame as Frame];
+  const rows = ownRows ?? (Object.hasOwn(poses, frame) ? poses[frame] : undefined);
   if (rows === undefined) throw new Error(`The animation has no pose ${frame}`);
   if (animation.w > width || animation.h > height) {
     throw new Error(`The poses (${animation.w} × ${animation.h}) are larger than the cell`);
@@ -147,12 +180,16 @@ export function animationSprite<Frame extends string>(
   if (rows.length !== animation.h || rows.some((row) => row.length !== animation.w)) {
     throw new Error(`The pose ${frame} is not ${animation.w} × ${animation.h}`);
   }
+  const shown =
+    (ownRows === undefined ? undefined : own?.anchors[frame as Frame]) ??
+    (Object.hasOwn(posed, frame) ? posed[frame] : undefined);
+  if (shown === undefined) throw new Error(`The animation has no anchors for the pose ${frame}`);
   const left = Math.floor((width - animation.w) / 2);
   const top = height - animation.h;
   const sprite = grid(width, height);
   const palette = red && animation.red !== undefined ? animation.red : animation.pal;
   paint(sprite, rows, palette, left, top);
-  const { eye, head, tips } = own?.anchors[frame] ?? animation.anchors[frame];
+  const { eye, head, tips } = shown;
   const moved = ([x, y]: Point): Point => [x + left, y + top];
   return { sprite, anchors: { eye: moved(eye), head: moved(head), tips: tips.map(moved) } };
 }
