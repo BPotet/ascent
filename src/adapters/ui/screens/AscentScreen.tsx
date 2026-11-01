@@ -260,8 +260,8 @@ function TierAnnounce({
 
 /**
  * La fin de l'ascension (X6) ou le Sommet atteint (X7) (#38, maquette 30) : les Éclats gagnés en
- * grand, le Total d'Éclats, ce qui reste (vert) et ce qui est perdu (rouge). Le camp, la Forgeronne
- * et les statistiques de la maquette (#40) ne sont pas repris.
+ * grand, le Total d'Éclats, ce qui reste (vert) et ce qui est perdu (rouge). Le camp et la Forgeronne
+ * (#40) ne sont pas repris, ni la grille de statistiques de la maquette, que la story ne demande pas.
  */
 function AscentEnd({
   ascent,

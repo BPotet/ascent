@@ -196,6 +196,22 @@ describe('the Shard total of the session (#38)', () => {
     expect(totals).toEqual([8]);
   });
 
+  it('no longer tells a subscriber gone, and still tells the others', async () => {
+    const store = mapStore();
+    const { session, clock } = await loaded(store, BOSS_OF_TIER_1);
+    const gone: number[] = [];
+    const staying: number[] = [];
+    const unsubscribe = session.subscribeShards((total) => gone.push(total));
+    session.subscribeShards((total) => staying.push(total));
+
+    unsubscribe();
+    await playToTheEnd(session.battleSession(), clock);
+    await flush();
+
+    expect(gone).toEqual([]);
+    expect(staying).toEqual([8]);
+  });
+
   it('credits 2 Shards for an Elite before the loot screen', async () => {
     const store = mapStore();
 
@@ -345,6 +361,23 @@ describe('the end of a battle in the session (#38)', () => {
     await flush();
     expect(session.current()).toBe(shown);
     expect(store.values.get(ASCENT_KEY)).toBe(saved);
+    expect(published).toEqual([{ to: 2, step: 'bossDefeated' }]);
+  });
+
+  it('ignores a battle published again after the return to the tower foot', async () => {
+    const store = mapStore();
+    const { session, clock } = await loaded(store, ascentAt(1, 'combat', ['ghoul']));
+    const battleSession = session.battleSession();
+    await playToTheEnd(battleSession, clock);
+    await flush();
+    session.leave();
+    const saved = store.values.get(ASCENT_KEY);
+
+    expect(() => battleSession.dismissHint('hero')).not.toThrow();
+    await flush();
+
+    expect(session.current()).toBeNull();
+    expect(store.values.get(ASCENT_KEY)).toBe(saved);
   });
 
   it('plays the next battle once the Shards are written', async () => {
@@ -374,6 +407,20 @@ describe('the keys of the Shard total (#38, ADR 0012)', () => {
 
     expect(store.values.get('shards.total.unreadable')).toBe('{oops');
     expect(JSON.parse(store.values.get('shards.total')!)).toMatchObject({ total: 0 });
+  });
+
+  it('never keeps aside nor writes again a readable Shard total', async () => {
+    const store = mapStore();
+    const stored = JSON.stringify({ version: 1, total: 22, seed: 1, awarded: [] });
+    store.values.set('shards.total', stored);
+    const { session } = setUp(store);
+
+    await session.load();
+    await flush();
+
+    expect(session.shardTotal()).toBe(22);
+    expect(store.values.has('shards.total.unreadable')).toBe(false);
+    expect(store.values.get('shards.total')).toBe(stored);
   });
 
   it('starts from 0 when the total cannot be read, without keeping nor writing anything', async () => {
