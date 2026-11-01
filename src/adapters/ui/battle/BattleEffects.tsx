@@ -122,6 +122,16 @@ export function useShake(shakeKey: number) {
 }
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
+/**
+ * Le contour d'encre des chiffres et mots de scène (maquette #174) : opaque, sans décalage, pour
+ * rester lisible sur tout fond de palier (#176).
+ */
+const INK_OUTLINE = {
+  textShadowColor: artPalette.roles.ink,
+  textShadowRadius: 2,
+  textShadowOffset: { width: 0, height: 0 },
+} as const;
+
 const styles = StyleSheet.create({
   feedback: {
     position: 'absolute',
@@ -137,8 +147,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 26,
     fontWeight: '700',
-    textShadowColor: 'rgba(0,0,0,0.8)',
-    textShadowRadius: 14,
+    ...INK_OUTLINE,
   },
   perfect: { color: battleColors.light, fontSize: 32, lineHeight: 36 },
   break: { color: battleColors.light, fontSize: 34, lineHeight: 38, letterSpacing: 1 },
@@ -151,8 +160,7 @@ const styles = StyleSheet.create({
     color: battleColors.text,
     fontSize: 20,
     fontWeight: '800',
-    textShadowColor: 'rgba(0,0,0,0.85)',
-    textShadowRadius: 6,
+    ...INK_OUTLINE,
     fontVariant: ['tabular-nums'],
   },
   floatHero: { color: battleColors.miss },
