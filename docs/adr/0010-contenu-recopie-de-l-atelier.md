@@ -46,6 +46,12 @@ le code (`pxlib`, ADR 0008).
   Jumeaux auront leur animation complète.
 - L'ADR 0008 § 5 (atlas précalculés) s'applique toujours : l'atlas d'un personnage animé garde ses
   cases de liseré et de rouge, copies identiques de la pose.
+- Une valeur de héros changée dans le Codex ne touche pas une ascension en cours (#173, l'Errante
+  passée de 60 à 55 PV) : les PV et les PV max sont figés dans la sauvegarde (`ascent.current`)
+  jusqu'à la fin de l'ascension, et ne sont recalculés depuis `HEROES` qu'au début de l'ascension
+  et au choix de la bénédiction de départ. Les règles de combat (coût d'un pouvoir, pouvoir
+  instantané) sont celles de la version installée, tout de suite, y compris dans le combat repris.
+  Aucune migration ni changement de version de sauvegarde.
 
 ## Avenant du 29/10/2026 (#138)
 
