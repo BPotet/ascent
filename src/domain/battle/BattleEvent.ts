@@ -73,7 +73,10 @@ export type BattleEvent =
       readonly type: 'powerUsed';
       readonly at: number;
       readonly power: PowerKind;
+      /** La fin de l'action ; un pouvoir instantané n'en a pas : `at`. */
       readonly until: number;
+      /** Un pouvoir instantané (#173) : la phase du héros continue. */
+      readonly instant?: true;
     }
   | { readonly type: 'momentumChanged'; readonly at: number; readonly momentum: number }
   | {

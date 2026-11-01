@@ -32,6 +32,10 @@ export interface PowerSlot {
   readonly missing: number;
   /** Pas de l'ombre est actif : indisponible jusqu'à son emploi (prototype #90). */
   readonly active?: true;
+  /** Un pouvoir instantané (#173) : il ne prend pas l'action du héros. */
+  readonly instant?: true;
+  /** Le pouvoir instantané vient d'être lancé dans cette phase du héros (#173). */
+  readonly instantCast?: true;
 }
 
 /**
@@ -141,13 +145,22 @@ const STRIKE_LINE: ZoneLine = {
   after: ' quand la barre atteint le trait.',
 };
 
+/** La ligne d'aide juste après un pouvoir instantané (#173, maquette E2). */
+const INSTANT_LINE: ZoneLine = { before: '', strong: 'Toujours à toi', after: ' : attaque.' };
+
+function instantCast(battle: Battle): boolean {
+  return battle.phase.kind === 'hero' && battle.phase.instantPowerUsed === true;
+}
+
 function powerSlot(battle: Battle): PowerSlot {
-  const { power } = heroProfile(battle);
+  const { power, powerInstant } = heroProfile(battle);
   return {
     power,
     cost: POWERS[power].cost,
     missing: missingMomentum(battle.hero.momentum, power),
     ...(power === 'shadowStep' && battle.hero.shadowStep === true && { active: true as const }),
+    ...(powerInstant && { instant: true as const }),
+    ...(instantCast(battle) && { instantCast: true as const }),
   };
 }
 
@@ -259,7 +272,7 @@ export function battleView(battle: Battle): BattleView {
           ? { to: 'hero', since: phase.since, until: phase.since + ANNOUNCED_BANNER_MS }
           : null,
         pad: heroPad(false, null),
-        line: targetLine(battle),
+        line: instantCast(battle) ? INSTANT_LINE : targetLine(battle),
         heroActions: true,
       };
     case 'heroStrike':

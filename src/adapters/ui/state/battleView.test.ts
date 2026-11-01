@@ -312,6 +312,50 @@ describe('battleView', () => {
     });
   });
 
+  describe('the instant Shadow Step of the Wanderer (#173)', () => {
+    const wanderer = (phase: BattlePhase, hero: Partial<Battle['hero']> = {}): Battle =>
+      inPhase(phase, { heroKind: 'wanderer', hero: { ...started.hero, ...hero } });
+
+    it('marks the power slot instant, never the Bulwark', () => {
+      expect(battleView(wanderer(hero, { momentum: 3 })).pad).toMatchObject({
+        kind: 'hero',
+        power: { power: 'shadowStep', cost: 3, missing: 0, instant: true },
+      });
+      expect(battleView(wanderer(hero, { momentum: 2 })).pad).toMatchObject({
+        power: { missing: 1, instant: true },
+      });
+      const sentinel = battleView(inPhase(hero)).pad;
+      expect(sentinel.kind === 'hero' && sentinel.power.instant).toBeFalsy();
+    });
+
+    it('keeps the hero phase after the cast: active, unlocked, and « Toujours à toi : attaque. »', () => {
+      const view = battleView(
+        wanderer({ ...hero, instantPowerUsed: true }, { momentum: 0, shadowStep: true }),
+      );
+
+      expect(view).toMatchObject({
+        phase: 'hero',
+        banner: null,
+        pad: {
+          kind: 'hero',
+          locked: false,
+          lock: null,
+          power: { active: true, instant: true, instantCast: true },
+        },
+        line: { before: '', strong: 'Toujours à toi', after: ' : attaque.' },
+        heroActions: true,
+      });
+    });
+
+    it('keeps the target line when the Shadow Step was cast in an earlier phase', () => {
+      const view = battleView(wanderer(hero, { momentum: 3, shadowStep: true }));
+
+      expect(view.pad).toMatchObject({ power: { active: true } });
+      expect(view.pad.kind === 'hero' && view.pad.power.instantCast).toBeFalsy();
+      expect(view.line).toEqual({ before: 'Cible : ', strong: 'Goule', after: '' });
+    });
+  });
+
   it('shows no button at the end of the battle', () => {
     expect(battleView(inPhase({ kind: 'over', outcome: 'victory', at: 0 }))).toMatchObject({
       phase: null,

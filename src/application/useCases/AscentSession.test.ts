@@ -488,7 +488,7 @@ describe('AscentSession: hero and boons (prototype #92)', () => {
 
     const { battle } = battleSession.current()!;
     expect(battle.heroKind).toBe('wanderer');
-    expect(battle.hero.maxHp).toBe(60);
+    expect(battle.hero.maxHp).toBe(55);
     expect(battle.modifiers?.counterPercents).toEqual([150]);
   });
 

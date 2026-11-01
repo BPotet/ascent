@@ -110,6 +110,12 @@ export function BattleScreen({
       ),
     [session],
   );
+  // L'ombre de Pas de l'ombre (#173), tant qu'il est actif : elle glisse depuis le dernier lancer.
+  const shadowStepActive = battle?.hero.shadowStep === true;
+  const shadowStep = useMemo(
+    () => (shadowStepActive ? { castAt: display.shadowStepAt } : null),
+    [shadowStepActive, display.shadowStepAt],
+  );
   const view = useMemo(() => (battle === null ? null : battleView(battle)), [battle]);
   const timeline = useMemo(() => (battle === null ? null : sceneTimeline(battle)), [battle]);
   const over = battle?.phase.kind === 'over' ? battle.phase.outcome : null;
@@ -175,6 +181,7 @@ export function BattleScreen({
           bulwark={battle.hero.bulwark}
           bulwarkWornAt={display.bulwarkWornAt}
           riposte={display.riposte}
+          shadowStep={shadowStep}
           reducedMotion={reducedMotion}
           uiNow={uiNow}
         />
@@ -236,6 +243,8 @@ export function BattleScreen({
             hero={battle.hero}
             kind={heroKind}
             bulwarkWorn={display.bulwarkWornAt !== null}
+            shadowStepNew={view.pad.kind === 'hero' && view.pad.power.instantCast === true}
+            reducedMotion={reducedMotion}
           />
           <View style={styles.zone}>
             <Text

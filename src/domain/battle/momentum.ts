@@ -11,7 +11,7 @@ export type PowerKind = 'bulwark' | 'shadowStep';
 
 export const POWERS: Readonly<Record<PowerKind, { readonly cost: number }>> = {
   bulwark: { cost: 1 },
-  shadowStep: { cost: 2 },
+  shadowStep: { cost: 3 },
 };
 
 /** Le Rempart : le prochain coup subi fait 50 % de ses dégâts. */

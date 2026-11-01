@@ -40,6 +40,8 @@ export interface BattleDisplay {
    * instant (le touché qui use le Rempart, puis la riposte, #128).
    */
   readonly heroFloat: { readonly float: DamageFloat; readonly key: number } | null;
+  /** L'instant du dernier lancer instantané de Pas de l'ombre (#173) : son ombre glisse. */
+  readonly shadowStepAt: number | null;
 }
 
 export const INITIAL_DISPLAY: BattleDisplay = {
@@ -56,6 +58,7 @@ export const INITIAL_DISPLAY: BattleDisplay = {
   bulwarkWornAt: null,
   riposte: null,
   heroFloat: null,
+  shadowStepAt: null,
 };
 
 const POSE_OF_OUTCOME: Readonly<Record<BlowOutcome, HeroPose>> = {
@@ -79,6 +82,9 @@ function poseAfter(event: BattleEvent, pose: HeroPose): HeroPose | null {
     // Le coup de bouclier, sur place (#128).
     case 'bulwarkCountered':
       return 'bash';
+    // Le lancer d'un pouvoir instantané : les lames levées (#173).
+    case 'powerUsed':
+      return event.instant === true ? 'cast' : null;
     case 'strikeStarted':
       return 'raise';
     // Un coup reçu reste visible pendant l'avancée suivante ou la transition vers le héros.
@@ -159,6 +165,9 @@ export function displayOf(
     const spark = sparkOf(event);
     if (spark !== null) display = { ...display, spark };
     display = { ...display, bulwarkWornAt: bulwarkWornAfter(event, display.bulwarkWornAt) };
+    if (event.type === 'powerUsed' && event.instant === true) {
+      display = { ...display, shadowStepAt: event.at };
+    }
     if (event.type === 'bulwarkCountered') {
       display = { ...display, riposte: { at: event.at, enemy: event.enemy } };
     }

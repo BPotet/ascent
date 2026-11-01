@@ -16,28 +16,37 @@ import { BulwarkShieldGlyph } from './BattleGlyphs';
 /** Le texte d'effet reste lisible un instant, puis s'efface (maquette : 0,7 s en tout). */
 const FEEDBACK_HOLD_MS = 450;
 const FEEDBACK_FADE_MS = 250;
+/** Le mot de Pas de l'ombre reste moins longtemps : 600 ms en tout (#173). */
+const SHADOW_STEP_HOLD_MS = 350;
 
 /**
  * Le mot d'un résultat (« Parfait », « Cassure », « Frappe parfaite »), au centre de la scène. Il
- * s'efface de lui-même ; un nouveau résultat le remplace (l'écran le remonte).
+ * s'efface de lui-même ; un nouveau résultat le remplace (l'écran le remonte). « Pas de l'ombre »
+ * (#173) s'écrit près de l'Errante, 600 ms.
  */
 export function FeedbackLabel({ texts }: { readonly texts: readonly FeedbackText[] }) {
   const opacity = useSharedValue(1);
+  const shadowStep = texts.some((text) => text.tone === 'shadowStep');
+  const hold = shadowStep ? SHADOW_STEP_HOLD_MS : FEEDBACK_HOLD_MS;
   useEffect(() => {
     opacity.set(
       withSequence(
         withTiming(1, { duration: 0 }),
-        withDelay(FEEDBACK_HOLD_MS, withTiming(0, { duration: FEEDBACK_FADE_MS })),
+        withDelay(hold, withTiming(0, { duration: FEEDBACK_FADE_MS })),
       ),
     );
-  }, [opacity]);
+  }, [opacity, hold]);
   // Dépendances explicites : le code instrumenté par Stryker n'est plus reconnu comme worklet.
   const fade = useAnimatedStyle(() => {
     'worklet';
     return { opacity: opacity.get() };
   }, [opacity]);
   return (
-    <Animated.View pointerEvents="none" testID="battle-feedback" style={[styles.feedback, fade]}>
+    <Animated.View
+      pointerEvents="none"
+      testID="battle-feedback"
+      style={[styles.feedback, shadowStep && styles.nearHero, fade]}
+    >
       {texts.map((text) =>
         text.tone === 'riposte' ? (
           // « Riposte », précédé de l'écu (#128) : jamais l'argent seul.
@@ -122,6 +131,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 7,
   },
+  // Le mot de Pas de l'ombre, près de l'Errante (maquette E2, `.fword.shade`).
+  nearHero: { top: 'auto', bottom: 122, left: 96 },
   title: {
     fontSize: 22,
     lineHeight: 26,
@@ -133,6 +144,7 @@ const styles = StyleSheet.create({
   break: { color: battleColors.light, fontSize: 34, lineHeight: 38, letterSpacing: 1 },
   rise: { color: battleColors.light, fontSize: 30, lineHeight: 34, letterSpacing: 1 },
   riposte: { color: artPalette.roles.bulwarkText, fontSize: 30, lineHeight: 34, letterSpacing: 1 },
+  shadowStep: { color: battleColors.onShadowStep, fontSize: 24, lineHeight: 28 },
   withShield: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   float: { position: 'absolute', top: 6, alignSelf: 'center', zIndex: 8 },
   floatText: {

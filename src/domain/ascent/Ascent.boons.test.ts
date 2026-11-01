@@ -24,9 +24,9 @@ function climbTo(ascent: Ascent, floor: number): Ascent {
 }
 
 describe('the hero of the ascent', () => {
-  it('starts with the Errante at 60 HP, without boon', () => {
+  it('starts with the Errante at 55 HP, without boon', () => {
     expect(startAscent(5, { hero: 'wanderer' })).toMatchObject({
-      hero: { kind: 'wanderer', hp: 60, maxHp: 60, boons: [] },
+      hero: { kind: 'wanderer', hp: 55, maxHp: 55, boons: [] },
       boonOffer: null,
     });
   });
