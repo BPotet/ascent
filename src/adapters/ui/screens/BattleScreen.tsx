@@ -116,6 +116,10 @@ export function BattleScreen({
     () => (shadowStepActive ? { castAt: display.shadowStepAt } : null),
     [shadowStepActive, display.shadowStepAt],
   );
+  // La Brûlure sur la scène (#171) : les charges du combat ; un combat repris n'a ni prise ni fumée.
+  const burnStacks = battle?.hero.burn ?? 0;
+  const { burnFx } = display;
+  const burn = useMemo(() => ({ stacks: burnStacks, ...burnFx }), [burnStacks, burnFx]);
   const view = useMemo(() => (battle === null ? null : battleView(battle)), [battle]);
   const timeline = useMemo(() => (battle === null ? null : sceneTimeline(battle)), [battle]);
   const over = battle?.phase.kind === 'over' ? battle.phase.outcome : null;
@@ -142,7 +146,7 @@ export function BattleScreen({
   }));
   const geometry = sceneGeometry(screenWidth, sceneHeight, enemies.length);
   const strikeImpactAt = battle.phase.kind === 'heroStrike' ? battle.phase.impactAt : null;
-  const { heroFloat } = display;
+  const { heroFloat, burnFloat } = display;
   const targetName = ENEMY_NAMES[battle.enemies[battle.target]!.kind];
   const onSceneLayout = (event: LayoutChangeEvent) =>
     setSceneHeight(event.nativeEvent.layout.height);
@@ -182,6 +186,7 @@ export function BattleScreen({
           bulwarkWornAt={display.bulwarkWornAt}
           riposte={display.riposte}
           shadowStep={shadowStep}
+          burn={burn}
           reducedMotion={reducedMotion}
           uiNow={uiNow}
         />
@@ -220,6 +225,16 @@ export function BattleScreen({
             <DamageFloat key={heroFloat.key} float={heroFloat.float} />
           </View>
         )}
+        {burnFloat === null ? null : (
+          <View pointerEvents="none" testID="battle-burn-float" style={styles.burnFloat}>
+            <DamageFloat
+              key={burnFloat.key}
+              float={burnFloat.float}
+              delayMs={burnFloat.delayMs}
+              reducedMotion={reducedMotion}
+            />
+          </View>
+        )}
         {view.banner === null ? null : (
           <PhaseBanner
             key={view.banner.since}
@@ -244,6 +259,7 @@ export function BattleScreen({
             kind={heroKind}
             bulwarkWorn={display.bulwarkWornAt !== null}
             shadowStepNew={view.pad.kind === 'hero' && view.pad.power.instantCast === true}
+            burnRing={display.burnRing}
             reducedMotion={reducedMotion}
           />
           <View style={styles.zone}>
@@ -326,6 +342,8 @@ const styles = StyleSheet.create({
   },
   hidden: { opacity: 0 },
   heroFloat: { position: 'absolute', left: 40, bottom: 150, width: 80, zIndex: 8 },
+  // Le chiffre de la Brûlure, à droite de celui du Saignement (maquette 170, B5).
+  burnFloat: { position: 'absolute', left: 86, bottom: 128, width: 80, zIndex: 8 },
   strong: { color: battleColors.text, fontWeight: '600' },
 });
 // Stryker restore all

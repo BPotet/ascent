@@ -14,12 +14,14 @@ import {
   HERO_NAMES,
   POWER_NAMES,
   bleedChipText,
+  burnLabel,
   heroHpText,
   momentumLabel,
 } from '../format/battleText';
 import { battleColors } from '../theme/battleColors';
 import { BleedChip } from './BleedChip';
 import { BulwarkChip } from './BulwarkChip';
+import { BurnChip, type BurnRing } from './BurnChip';
 import { ShadowStepChip } from './ShadowStepChip';
 
 /** La part des PV sous laquelle la barre passe en alerte (maquette : 30 %). */
@@ -88,19 +90,22 @@ function MomentumDiamonds({
  * La barre du héros : son nom, ses PV et son Élan (C3), et son pouvoir actif. L'étiquette du
  * Rempart montre « Rempart usé » tant que dure le coup qui l'a usé (`bulwarkWorn`, #128) ; celle
  * de Pas de l'ombre reste jusqu'à son emploi, son trait éclairé juste après le lancer
- * (`shadowStepNew`, #173).
+ * (`shadowStepNew`, #173). L'étiquette de la Brûlure est à droite de celle du Saignement, cerclée à
+ * chaque prise ou extinction (`burnRing`, #171).
  */
 export function HeroBar({
   hero,
   kind = 'sentinel',
   bulwarkWorn = false,
   shadowStepNew = false,
+  burnRing = null,
   reducedMotion = false,
 }: {
   readonly hero: HeroState;
   readonly kind?: HeroKind;
   readonly bulwarkWorn?: boolean;
   readonly shadowStepNew?: boolean;
+  readonly burnRing?: BurnRing | null;
   readonly reducedMotion?: boolean;
 }) {
   const ratio = hero.hp / hero.maxHp;
@@ -108,6 +113,7 @@ export function HeroBar({
   const active = [
     ...(hero.bulwark ? [POWER_NAMES.bulwark] : []),
     ...(hero.bleed ? [bleedChipText(hero.bleed.rounds)] : []),
+    ...(hero.burn === undefined ? [] : [burnLabel(hero.burn)]),
     ...(hero.shadowStep === true ? [POWER_NAMES.shadowStep] : []),
   ];
   const label = `${name}, PV ${hero.hp} sur ${hero.maxHp}, ${momentumLabel(hero.momentum)}${active.map((power) => `, ${power}`).join('')}`;
@@ -124,7 +130,12 @@ export function HeroBar({
         <Text style={styles.hpText}>{heroHpText(hero.hp, hero.maxHp)}</Text>
       </View>
       {hero.bulwark || bulwarkWorn ? <BulwarkChip worn={!hero.bulwark} /> : null}
-      {hero.bleed ? <BleedChip rounds={hero.bleed.rounds} /> : null}
+      {hero.bleed || hero.burn !== undefined ? (
+        <View testID="battle-hero-ailments" style={styles.ailments}>
+          {hero.bleed ? <BleedChip rounds={hero.bleed.rounds} /> : null}
+          {hero.burn === undefined ? null : <BurnChip stacks={hero.burn} ring={burnRing} />}
+        </View>
+      ) : null}
       {hero.shadowStep === true ? <ShadowStepChip fresh={shadowStepNew} /> : null}
       <MomentumDiamonds momentum={hero.momentum} reducedMotion={reducedMotion} />
     </View>
@@ -133,6 +144,7 @@ export function HeroBar({
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
+  ailments: { flexDirection: 'row', gap: 6 },
   bar: {
     minHeight: 62,
     paddingTop: 8,

@@ -51,5 +51,17 @@ export const battleColors = {
   onShadowStep: '#DCCFEA',
   /** Trait de l'étiquette juste après le lancer. */
   shadowStepNew: '#B9A6CF',
+  /**
+   * L'orange braise de la Brûlure (#171, maquette 170) : jamais le rouge du sceau, ni le rouge sang
+   * du Saignement, ni l'or des Étincelles. Trait et fond de l'étiquette, son texte (10,1:1).
+   */
+  burn: '#D9733A',
+  burnBg: '#3A2014',
+  onBurn: '#FFC9A3',
+  /** Le trait de l'étiquette cerclée à une prise, puis à une extinction (fumée grise). */
+  burnRing: '#FF9F5A',
+  burnSmoke: '#C3C7D3',
+  /** Le chiffre « −N » de la Brûlure (7,0:1 sur la scène). */
+  burnNumber: '#FF9F5A',
 } as const;
 // Stryker restore all

@@ -1,9 +1,14 @@
 import { useEffect, useReducer } from 'react';
 import { AccessibilityInfo } from 'react-native';
 
+import {
+  BURN_OUT_AFTER_BLOW_MS,
+  BURN_OUT_AFTER_CRACKLE_MS,
+} from '../../../application/useCases/battleFeedback';
 import type { BattleSession, BattleSnapshot } from '../../../application/useCases/BattleSession';
 import type { BattleEvent, BlowOutcome } from '../../../domain/battle/BattleEvent';
-import type { HeroPose, SceneSpark } from '../battle/sceneTypes';
+import type { BurnRing } from '../battle/BurnChip';
+import type { HeroPose, SceneBurn, SceneSpark } from '../battle/sceneTypes';
 import {
   announcement,
   damageFloat,
@@ -42,7 +47,20 @@ export interface BattleDisplay {
   readonly heroFloat: { readonly float: DamageFloat; readonly key: number } | null;
   /** L'instant du dernier lancer instantané de Pas de l'ombre (#173) : son ombre glisse. */
   readonly shadowStepAt: number | null;
+  /** La dernière prise et la dernière extinction de la Brûlure, pour la scène (#171). */
+  readonly burnFx: Pick<SceneBurn, 'lit' | 'out'>;
+  /** Le dernier cercle de l'étiquette de la Brûlure (#171). */
+  readonly burnRing: BurnRing | null;
+  /** Le dernier « −N » de la Brûlure, à part des autres chiffres sur le héros (#171). */
+  readonly burnFloat: {
+    readonly float: DamageFloat;
+    readonly key: number;
+    readonly delayMs: number;
+  } | null;
 }
+
+/** Le chiffre de la Brûlure monte après celui du Saignement d'un même début de manche (B5). */
+export const BURN_FLOAT_AFTER_BLEED_MS = 300;
 
 export const INITIAL_DISPLAY: BattleDisplay = {
   snapshot: null,
@@ -59,6 +77,9 @@ export const INITIAL_DISPLAY: BattleDisplay = {
   riposte: null,
   heroFloat: null,
   shadowStepAt: null,
+  burnFx: { lit: null, out: null },
+  burnRing: null,
+  burnFloat: null,
 };
 
 const POSE_OF_OUTCOME: Readonly<Record<BlowOutcome, HeroPose>> = {
@@ -144,19 +165,67 @@ function bulwarkWornAfter(event: BattleEvent, wornAt: number | null): number | n
   return BLOW_ENDS.has(event.type) ? null : wornAt;
 }
 
+const nextRing = (display: BattleDisplay, kind: BurnRing['kind']): BurnRing => ({
+  kind,
+  key: (display.burnRing?.key ?? 0) + 1,
+});
+
+/**
+ * La Brûlure d'un événement (#171) : les flammes allumées depuis la 1re nouvelle charge, la
+ * dernière flamme en fumée après le son de la parade ou le crépitement, toutes ensemble à la fin
+ * du combat (les charges d'avant, lues dans la mise à jour précédente) ; l'étiquette cerclée.
+ */
+function burnAfter(display: BattleDisplay, event: BattleEvent, burnBefore: number): BattleDisplay {
+  switch (event.type) {
+    case 'heroBurning':
+      return {
+        ...display,
+        burnFx: { ...display.burnFx, lit: { at: event.at, from: event.stacks - event.added } },
+        burnRing: nextRing(display, 'new'),
+      };
+    case 'burnExtinguished': {
+      const delay = event.cause === 'blow' ? BURN_OUT_AFTER_BLOW_MS : BURN_OUT_AFTER_CRACKLE_MS;
+      return {
+        ...display,
+        burnFx: { ...display.burnFx, out: { at: event.at + delay, slots: [event.stacks] } },
+        burnRing: nextRing(display, 'down'),
+      };
+    }
+    case 'burnCleared':
+      return {
+        ...display,
+        burnFx: {
+          ...display.burnFx,
+          out: { at: event.at, slots: Array.from({ length: burnBefore }, (_, slot) => slot) },
+        },
+      };
+    default:
+      return display;
+  }
+}
+
 export function displayOf(
   previous: BattleDisplay,
   snapshot: BattleSnapshot,
   reducedMotion: boolean,
 ): BattleDisplay {
   let display: BattleDisplay = { ...previous, snapshot };
+  const burnBefore = previous.snapshot?.battle.hero.burn ?? 0;
+  const bled = snapshot.events.some((event) => event.type === 'bleedTicked' && event.loss > 0);
   const texts = wordsOf(snapshot.events);
   if (texts.length > 0) {
     display = { ...display, feedback: { texts, key: (display.feedback?.key ?? 0) + 1 } };
   }
   for (const event of snapshot.events) {
+    display = burnAfter(display, event, burnBefore);
     const float = damageFloat(event);
-    if (float !== null) {
+    if (float?.kind === 'burn') {
+      const key = (display.burnFloat?.key ?? 0) + 1;
+      display = {
+        ...display,
+        burnFloat: { float, key, delayMs: bled ? BURN_FLOAT_AFTER_BLEED_MS : 0 },
+      };
+    } else if (float !== null) {
       const flying = { float, key: (display.float?.key ?? 0) + 1 };
       display = { ...display, float: flying, ...(float.at === 'hero' && { heroFloat: flying }) };
     }
