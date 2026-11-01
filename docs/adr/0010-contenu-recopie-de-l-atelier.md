@@ -252,3 +252,27 @@ document et sa sha256. Le champ `icon` (statut `proposé`) n'est pas recopié.
 4. **Teintes** : `#D9733A`, `#5E8F82` et `#3D5E57` s'ajoutent à la fin de `artPalette.tints`, aux
    codes 42, 43 et 44 ; les codes existants ne bougent pas (§ 4).
 
+
+## Avenant du 1er novembre 2026 (#171) : un effet en séquences, un id qui n'est pas le nom de code
+
+Les 4 porteurs de la Brûlure (export de l'Atelier du 01/11/2026) sont recopiés comme au § 1, clé
+`animation` de `assets/<id>`, dans `sprites/atelier/data/<nom de code>.ts`, l'en-tête citant le
+document et sa sha256 : l'Embrasé, la Gargouille, le Fondeur de cloches (l'élévation `lift` de 9 sur
+la pose `lunge` de la Coulée, par les poses d'un coup) et le Brûleur de ronces. L'Embrasé et le
+Brûleur de ronces, qui ont un coup imparable, jouent leur palette rouge (§ 4). Les flammes des
+porteurs font partie de leurs poses validées : le code n'en dessine aucune.
+
+1. **Id et nom de code.** L'id de l'Atelier `smolderingBrand` correspond au nom de code
+   `burningHusk` (identifiant de sauvegarde, ADR 0012 § 2) : le fichier s'appelle `burningHusk.ts`
+   et la correspondance est écrite dans son en-tête, comme `nouvelleArme` → `crossbow`.
+2. **Un effet en plusieurs séquences.** `assets/burn` (version 2, choix 0, animation `validé`) est
+   recopié dans `atelier/data/burn.ts` (`BURN_EFFECT`, type `EffectAnimation`) : sa palette (`pal`)
+   et ses séquences (`EffectSequence`) `burn` (la flamme d'une charge, 3 images de 8 × 11, avec la
+   case du héros `cell` de 36 × 44 et les 5 places `slots`), `burnHit` (l'éclat de braise, 2 images
+   de 16 × 16) et `burnOut` (la fumée, 3 images de 8 × 11). La proposition `proposals[0]` n'est pas
+   recopiée : la séquence `burn` la contient. Les images entrent dans l'atlas des effets
+   (`battleEffects.ts`, `EFFECT_KINDS`), copiées telles quelles, centrées en largeur dans une case
+   carrée de 11 ou 16, comme l'écu du Rempart. Dans l'interface, l'étiquette et le chiffre de la
+   Brûlure montrent la 1re image de `burn` par des `View` (`AssetRows`, ADR 0007 § 2), à ×1.
+3. **Teintes.** Toutes les teintes des 4 porteurs et de l'effet sont déjà dans `artPalette` : aucune
+   n'est ajoutée.
