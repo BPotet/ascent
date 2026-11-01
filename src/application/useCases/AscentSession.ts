@@ -128,6 +128,12 @@ export class AscentSession {
   private storedShards: ShardTotal = EMPTY_SHARD_TOTAL;
   /** La fin d'un combat, le temps que ses Éclats soient écrits. */
   private settling = false;
+  /**
+   * Faux quand un Total d'Éclats illisible n'a pas pu être gardé à part : la valeur stockée n'est
+   * alors jamais écrasée pendant cette session (ADR 0012), les Éclats ne vivent qu'en mémoire, et
+   * le chargement suivant réessaie.
+   */
+  private shardsWritable = true;
 
   constructor(private readonly dependencies: BattleSessionDependencies) {}
 
@@ -310,16 +316,23 @@ export class AscentSession {
     const raw = await keyValueStore.get(SHARD_TOTAL_KEY).catch(() => null);
     const { total, unreadable } = parseShardTotal(raw);
     this.shards = total;
-    this.storedShards = unreadable ? { ...EMPTY_SHARD_TOTAL } : total;
-    if (unreadable && raw !== null) {
-      await keyValueStore.set(UNREADABLE_SHARD_TOTAL_KEY, raw).catch(() => undefined);
-    }
+    this.storedShards = total;
+    this.shardsWritable = true;
+    if (!unreadable || raw === null) return;
+    // La valeur illisible est d'abord gardée à part ; seulement alors le total stocké repart de 0.
+    const kept = await keyValueStore.set(UNREADABLE_SHARD_TOTAL_KEY, raw).then(
+      () => true,
+      () => false,
+    );
+    if (kept) this.storedShards = { ...EMPTY_SHARD_TOTAL };
+    else this.shardsWritable = false;
   }
 
   /** Écrit le Total d'Éclats, après les écritures en attente ; un échec sera réessayé. */
   private writeShards(): Promise<void> {
     const { keyValueStore } = this.dependencies;
     const total = this.shards;
+    if (!this.shardsWritable) return this.writing;
     const write = this.writing.then(async () => {
       await keyValueStore.set(SHARD_TOTAL_KEY, serializeShardTotal(total));
       this.storedShards = total;
@@ -339,7 +352,7 @@ export class AscentSession {
   private save(): void {
     const { keyValueStore } = this.dependencies;
     const { ascent, battle } = this;
-    if (this.shards !== this.storedShards) void this.writeShards();
+    if (this.shardsWritable && this.shards !== this.storedShards) void this.writeShards();
     const write =
       ascent === null || ascent.outcome !== null
         ? () => keyValueStore.remove(ASCENT_KEY)

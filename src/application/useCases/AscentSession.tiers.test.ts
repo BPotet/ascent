@@ -275,6 +275,23 @@ describe('the Shard total of the session (#38)', () => {
   });
 });
 
+describe('an unreadable Shard total that cannot be kept aside (#38)', () => {
+  it('never overwrites the stored value, even after a credit, and shows the Shards of the session', async () => {
+    const store = mapStore();
+    store.values.set(SHARD_TOTAL_KEY, '{oops');
+    store.failTimes(UNREADABLE_SHARD_TOTAL_KEY, 1);
+
+    const { session } = await beat(store, BOSS_OF_TIER_1);
+    session.pause();
+    await flush();
+
+    expect(store.values.get(SHARD_TOTAL_KEY)).toBe('{oops');
+    expect(store.values.has(UNREADABLE_SHARD_TOTAL_KEY)).toBe(false);
+    expect(session.shardTotal()).toBe(8);
+    expect(session.current()?.passage).toEqual({ to: 2, step: 'bossDefeated' });
+  });
+});
+
 describe('the Tier transition in the session (#38)', () => {
   it('saves the defeated boss screen and resumes on it, without a battle to resume', async () => {
     const store = mapStore();
