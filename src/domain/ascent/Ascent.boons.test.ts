@@ -83,7 +83,7 @@ describe('boons after a won battle (P16, P17)', () => {
 
     const boss = climbTo(startAscent(3), TOP_FLOOR);
     const ended = won(boss);
-    expect(ended.outcome).toBe('victory');
+    expect(ended.passage).toEqual({ to: 2, step: 'bossDefeated' });
     expect(ended.boonOffer).toBeNull();
   });
 
