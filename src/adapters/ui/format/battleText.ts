@@ -33,6 +33,17 @@ export const ENEMY_NAMES: Readonly<Record<EnemyKind, string>> = {
   facelessPrior: 'Prieur sans visage',
   skeleton: 'Squelette',
   madVillager: 'Villageois fou',
+  // Les paliers 2 et 3 (#38) : les noms du Codex, sans article comme au palier 1.
+  thornPilgrim: 'Pèlerin enronce',
+  ashBramble: 'Ronce de cendre',
+  ashGleaner: 'Glaneuse de cendre',
+  bronzeWarden: "Veilleur d'airain",
+  scarecrow: 'Épouvantail',
+  firstPilgrim: 'Premier Pèlerin',
+  stoneSaint: 'Saint de pierre',
+  ashGardener: 'Jardinière des cendres',
+  hourRinger: 'Sonneur des heures',
+  wishGranter: 'Celle qui exauce',
 };
 
 /** Le genre du nom de l'ennemi, pour « étourdie », « tombée »… */
@@ -46,6 +57,16 @@ const FEMININE: Readonly<Record<EnemyKind, boolean>> = {
   facelessPrior: false,
   skeleton: false,
   madVillager: false,
+  thornPilgrim: false,
+  ashBramble: true,
+  ashGleaner: true,
+  bronzeWarden: false,
+  scarecrow: false,
+  firstPilgrim: false,
+  stoneSaint: false,
+  ashGardener: true,
+  hourRinger: false,
+  wishGranter: true,
 };
 
 export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {

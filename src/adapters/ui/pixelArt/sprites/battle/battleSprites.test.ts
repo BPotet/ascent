@@ -8,6 +8,18 @@ import {
   type FullAnimation,
 } from '../atelier/fullAnimation';
 import { BULWARK_SHIELD } from '../atelier/data/bulwarkShield';
+import { ASH_BRAMBLE_ANIMATION } from '../atelier/data/ashBramble';
+import { ASH_GARDENER_ANIMATION } from '../atelier/data/ashGardener';
+import { ASH_GLEANER_ANIMATION } from '../atelier/data/ashGleaner';
+import { BRONZE_WARDEN_ANIMATION } from '../atelier/data/bronzeWarden';
+import { FIRST_PILGRIM_ANIMATION } from '../atelier/data/firstPilgrim';
+import { HOUR_RINGER_ANIMATION } from '../atelier/data/hourRinger';
+import { HOUR_RINGER_PHASE2 } from '../atelier/data/hourRingerPhase2';
+import { SCARECROW_ANIMATION } from '../atelier/data/scarecrow';
+import { STONE_SAINT_ANIMATION } from '../atelier/data/stoneSaint';
+import { THORN_PILGRIM_ANIMATION } from '../atelier/data/thornPilgrim';
+import { WISH_GRANTER_ANIMATION } from '../atelier/data/wishGranter';
+import { WISH_GRANTER_PHASE2 } from '../atelier/data/wishGranterPhase2';
 import { FACELESS_PRIOR_ANIMATION } from '../atelier/data/facelessPrior';
 import { FALLEN_KNIGHT_ANIMATION } from '../atelier/data/fallenKnight';
 import { GHOUL_ANIMATION } from '../atelier/data/ghoul';
@@ -125,6 +137,16 @@ describe('the full animations of the Atelier in battle (#119, #137, #138, #139)'
     facelessPrior: FACELESS_PRIOR_ANIMATION,
     twins: TWINS_ANIMATION,
     ossuaryWarden: OSSUARY_WARDEN_ANIMATION,
+    thornPilgrim: THORN_PILGRIM_ANIMATION,
+    ashBramble: ASH_BRAMBLE_ANIMATION,
+    ashGleaner: ASH_GLEANER_ANIMATION,
+    bronzeWarden: BRONZE_WARDEN_ANIMATION,
+    scarecrow: SCARECROW_ANIMATION,
+    firstPilgrim: FIRST_PILGRIM_ANIMATION,
+    stoneSaint: STONE_SAINT_ANIMATION,
+    ashGardener: ASH_GARDENER_ANIMATION,
+    hourRinger: { ...HOUR_RINGER_ANIMATION, phase2: HOUR_RINGER_PHASE2 },
+    wishGranter: { ...WISH_GRANTER_ANIMATION, phase2: WISH_GRANTER_PHASE2 },
   };
   /** Les ennemis animés, tirés du registre : chacun avec son animation recopiée. */
   const ANIMATED = ANIMATED_ENEMIES.map((kind) => [kind, COPIED[kind]] as const);

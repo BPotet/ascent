@@ -189,7 +189,11 @@ describe('Boss phase shift (P6)', () => {
       { attack: 'delayed', damage: 8 },
       { attack: 'perilous', damage: 12 },
     ]);
-    expect(ENEMIES.ossuaryWarden).toMatchObject({ maxHp: 300, maxGuard: 60, phaseShiftHp: 150 });
+    expect(ENEMIES.ossuaryWarden).toMatchObject({
+      maxHp: 300,
+      maxGuard: 60,
+      phaseShiftPercent: 50,
+    });
     expect(ENEMIES.ossuaryWarden.moves).toEqual([
       { attack: 'basic', damage: 9 },
       { attack: 'delayed', damage: 10 },
@@ -198,7 +202,11 @@ describe('Boss phase shift (P6)', () => {
       { attack: 'double', damage: 6 },
       { attack: 'perilous', damage: 15 },
     ]);
-    expect(ENEMIES.facelessPrior).toMatchObject({ maxHp: 300, maxGuard: 60, phaseShiftHp: 150 });
+    expect(ENEMIES.facelessPrior).toMatchObject({
+      maxHp: 300,
+      maxGuard: 60,
+      phaseShiftPercent: 50,
+    });
     expect(ENEMIES.facelessPrior.moves).toEqual([
       { attack: 'feint', damage: 8 },
       { attack: 'double', damage: 5 },

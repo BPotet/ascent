@@ -1,15 +1,27 @@
 import { ATTACKS, type AttackKind } from '../../../../../domain/battle/attacks';
 import { ENEMIES, type EnemyKind, type HeroKind } from '../../../../../domain/battle/combatants';
 import type { Point, Sprite } from '../Sprite';
+import { ASH_BRAMBLE_ANIMATION } from '../atelier/data/ashBramble';
+import { ASH_GARDENER_ANIMATION } from '../atelier/data/ashGardener';
+import { ASH_GLEANER_ANIMATION } from '../atelier/data/ashGleaner';
+import { BRONZE_WARDEN_ANIMATION } from '../atelier/data/bronzeWarden';
 import { FACELESS_PRIOR_ANIMATION } from '../atelier/data/facelessPrior';
 import { FALLEN_KNIGHT_ANIMATION } from '../atelier/data/fallenKnight';
+import { FIRST_PILGRIM_ANIMATION } from '../atelier/data/firstPilgrim';
 import { GHOUL_ANIMATION } from '../atelier/data/ghoul';
+import { HOUR_RINGER_ANIMATION } from '../atelier/data/hourRinger';
+import { HOUR_RINGER_PHASE2 } from '../atelier/data/hourRingerPhase2';
 import { MAD_VILLAGER_ANIMATION } from '../atelier/data/madVillager';
 import { NECROMANCER_ANIMATION } from '../atelier/data/necromancer';
 import { OSSUARY_WARDEN_ANIMATION } from '../atelier/data/ossuaryWarden';
+import { SCARECROW_ANIMATION } from '../atelier/data/scarecrow';
 import { SKELETON_ANIMATION } from '../atelier/data/skeleton';
 import { SPECTER_ANIMATION } from '../atelier/data/specter';
+import { STONE_SAINT_ANIMATION } from '../atelier/data/stoneSaint';
+import { THORN_PILGRIM_ANIMATION } from '../atelier/data/thornPilgrim';
 import { TWINS_ANIMATION } from '../atelier/data/twins';
+import { WISH_GRANTER_ANIMATION } from '../atelier/data/wishGranter';
+import { WISH_GRANTER_PHASE2 } from '../atelier/data/wishGranterPhase2';
 import { animationSprite, type FullAnimation } from '../atelier/fullAnimation';
 import { HERO_ANIMATIONS, HERO_CELL, isHero } from './heroAnimations';
 
@@ -156,8 +168,8 @@ export interface CharacterLook {
 }
 
 /**
- * L'animation complète de chaque ennemi, validée dans l'Atelier (#119, #137, #138, #139, ADR 0010) :
- * tous les ennemis, aucun n'est plus dessiné par le code.
+ * L'animation complète de chaque ennemi, validée dans l'Atelier (#119, #137, #138, #139, #38, ADR
+ * 0010) : tous les ennemis, aucun n'est plus dessiné par le code.
  */
 const FULL_ANIMATIONS = {
   ghoul: GHOUL_ANIMATION,
@@ -169,6 +181,17 @@ const FULL_ANIMATIONS = {
   facelessPrior: FACELESS_PRIOR_ANIMATION,
   twins: TWINS_ANIMATION,
   ossuaryWarden: OSSUARY_WARDEN_ANIMATION,
+  // Les paliers 2 et 3 (#38) ; l'aspect de phase 2 d'un boss recopié à part y est joint.
+  thornPilgrim: THORN_PILGRIM_ANIMATION,
+  ashBramble: ASH_BRAMBLE_ANIMATION,
+  ashGleaner: ASH_GLEANER_ANIMATION,
+  bronzeWarden: BRONZE_WARDEN_ANIMATION,
+  scarecrow: SCARECROW_ANIMATION,
+  firstPilgrim: FIRST_PILGRIM_ANIMATION,
+  stoneSaint: STONE_SAINT_ANIMATION,
+  ashGardener: ASH_GARDENER_ANIMATION,
+  hourRinger: { ...HOUR_RINGER_ANIMATION, phase2: HOUR_RINGER_PHASE2 },
+  wishGranter: { ...WISH_GRANTER_ANIMATION, phase2: WISH_GRANTER_PHASE2 },
 } satisfies Record<EnemyKind, FullAnimation<EnemyFrame>>;
 
 /** Les ennemis animés (`ANIMATED_ENEMIES`) : les clés du registre des animations complètes. */

@@ -78,6 +78,7 @@ import {
   type EnemyBlow,
 } from './strike';
 import { bleedsOn, mergeBleed, tickBleed } from './bleed';
+import { NO_TIER_MULTIPLIER, scaleByPercent, type TierMultiplier } from './tierMultiplier';
 
 export interface HeroState {
   readonly hp: number;
@@ -107,8 +108,15 @@ export interface EnemyState {
   readonly raised: boolean;
   /** La manche où il a été relevé : il n'y agit pas. */
   readonly raisedRound: number | null;
-  /** Le dernier retour en garde, pour l'animation du relèvement. */
-  readonly guardRestore: { readonly since: number; readonly until: number } | null;
+  /**
+   * Le dernier retour en garde, pour l'animation du relèvement ; `cause` dit une relève de Se relève
+   * seul (#38), absente pour un retour en garde après étourdissement.
+   */
+  readonly guardRestore: {
+    readonly since: number;
+    readonly until: number;
+    readonly cause?: 'selfRevive';
+  } | null;
   /** Un boss passé en phase 2 (`BossPhaseShift`, P6). */
   readonly phase2?: boolean;
   /** Le nombre de relèves faites dans ce combat (`SelfRevive`, #106) ; absent, 0. */
@@ -234,6 +242,8 @@ export interface Battle {
   readonly initiative: boolean;
   /** Les modificateurs du héros (prototype #93) ; absents, aucun. */
   readonly modifiers?: HeroModifiers;
+  /** Le multiplicateur de palier d'un combat ordinaire (#38) ; absent, × 1 (palier 1). */
+  readonly tierMultiplier?: TierMultiplier;
   readonly hero: HeroState;
   /** La première ligne (`FrontLine`) : au plus 3 ennemis qui se battent en même temps (P3b). */
   readonly enemies: readonly EnemyState[];
@@ -311,18 +321,26 @@ export interface BattleOptions extends BattleStartOptions {
   readonly modifiers?: HeroModifiers;
   /** Le groupe d'ennemis, de gauche à droite, dans l'ordre du tirage. */
   readonly enemies: readonly EnemyKind[];
+  /** Le multiplicateur de palier d'un combat ordinaire (#38) ; par défaut, × 1. */
+  readonly tierMultiplier?: TierMultiplier;
 }
 
 /** Au plus 3 ennemis se battent en même temps (P3b). */
 export const FRONT_LINE_SIZE = 3;
 
-function freshEnemy(kind: EnemyKind): EnemyState {
+/** Un ennemi qui entre, à PV et garde max, multipliés par le palier d'un combat ordinaire (#38). */
+function freshEnemy(
+  kind: EnemyKind,
+  { hpPercent, guardPercent }: TierMultiplier = NO_TIER_MULTIPLIER,
+): EnemyState {
+  const maxHp = scaleByPercent(ENEMIES[kind].maxHp, hpPercent);
+  const maxGuard = scaleByPercent(ENEMIES[kind].maxGuard, guardPercent);
   return {
     kind,
-    hp: ENEMIES[kind].maxHp,
-    maxHp: ENEMIES[kind].maxHp,
-    guard: ENEMIES[kind].maxGuard,
-    maxGuard: ENEMIES[kind].maxGuard,
+    hp: maxHp,
+    maxHp,
+    guard: maxGuard,
+    maxGuard,
     intent: null,
     stun: null,
     raised: false,
@@ -346,11 +364,12 @@ export function startBattle({
   heroMaxHp,
   modifiers,
   enemies: group,
+  tierMultiplier,
 }: BattleOptions): BattleUpdate {
   const maxHp = heroMaxHp ?? HEROES[hero].maxHp;
   const momentum = Math.min(MOMENTUM_MAX, MOMENTUM_START + (modifiers?.startingMomentum ?? 0));
   const events: Events = [];
-  const enemies = group.slice(0, FRONT_LINE_SIZE).map(freshEnemy);
+  const enemies = group.slice(0, FRONT_LINE_SIZE).map((kind) => freshEnemy(kind, tierMultiplier));
   const battle = startRound(
     {
       now: at,
@@ -360,6 +379,7 @@ export function startBattle({
       heroKind: hero,
       initiative,
       ...(modifiers && { modifiers }),
+      ...(tierMultiplier && { tierMultiplier }),
       hero: { hp: heroHp ?? maxHp, maxHp, momentum, bulwark: false },
       enemies,
       reserve: group.slice(FRONT_LINE_SIZE),
@@ -539,7 +559,8 @@ function reinforce(battle: Battle, events: Events, at: number): Battle {
   if (kind === undefined || standingEnemies(battle).length > 1) return battle;
   const slot = battle.enemies.findIndex((enemy) => !isStanding(enemy));
   events.push({ type: 'reinforcementEntered', at, enemy: slot, kind });
-  const reinforced = { ...withEnemy(battle, slot, freshEnemy(kind)), reserve };
+  const entering = freshEnemy(kind, battle.tierMultiplier);
+  const reinforced = { ...withEnemy(battle, slot, entering), reserve };
   if (isStanding(reinforced.enemies[reinforced.target]!)) return reinforced;
   events.push({ type: 'targetChanged', at, enemy: slot });
   return { ...reinforced, target: slot };
@@ -568,6 +589,8 @@ function startRound(previous: Battle, events: Events, at: number): Battle {
       stunned: enemy.stun !== null,
       guardDamaged: enemy.guard < enemy.maxGuard,
       phase2: enemy.phase2 === true,
+      maxGuard: enemy.maxGuard,
+      damagePercent: battle.tierMultiplier?.hpPercent ?? 100,
     });
     random = drawn.random;
     return { ...enemy, intent: drawn.intent };
@@ -1006,7 +1029,8 @@ function reviveSelf(
   at: number,
 ): Battle {
   events.push({ type: 'enemySelfRevived', at, enemy: index, hp: enemy.hp });
-  const revived = { ...enemy, guardRestore: { since: at, until: at + GUARD_RESTORE_MS } };
+  const guardRestore = { since: at, until: at + GUARD_RESTORE_MS, cause: 'selfRevive' as const };
+  const revived = { ...enemy, guardRestore };
   const { order, position } = battle.turn;
   const pending = order.indexOf(index, position + 1);
   if (pending < 0) return withEnemy(battle, index, revived);
@@ -1026,14 +1050,14 @@ function onGuardBreak(battle: Battle, events: Events, at: number): Battle {
 }
 
 /**
- * Le changement de phase d'un boss (P6) : à 150 PV ou moins, une fois ; sa garde revient à son
- * maximum s'il n'est pas étourdi (sinon à son retour en garde). L'ordre de la manche ne change pas.
+ * Le changement de phase d'un boss (P6, #38) : à 50 % de ses PV max ou moins (150 de 300, 210 de
+ * 420), une fois ; sa garde revient à son maximum s'il n'est pas étourdi (sinon à son retour en
+ * garde). L'ordre de la manche ne change pas.
  */
 function shiftPhase(enemy: EnemyState, events: Events, index: number, at: number): EnemyState {
-  const { phaseShiftHp } = ENEMIES[enemy.kind];
-  if (phaseShiftHp === undefined || enemy.phase2 || enemy.hp === 0 || enemy.hp > phaseShiftHp) {
-    return enemy;
-  }
+  const { phaseShiftPercent } = ENEMIES[enemy.kind];
+  if (phaseShiftPercent === undefined || enemy.phase2 || enemy.hp === 0) return enemy;
+  if (enemy.hp > scaleByPercent(enemy.maxHp, phaseShiftPercent)) return enemy;
   events.push({ type: 'bossPhaseShifted', at, enemy: index });
   return { ...enemy, phase2: true, guard: enemy.stun === null ? enemy.maxGuard : enemy.guard };
 }
