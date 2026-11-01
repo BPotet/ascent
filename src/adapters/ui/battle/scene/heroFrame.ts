@@ -25,6 +25,8 @@ const DODGE_MS = 300;
 const STRIKE_MS = 320;
 /** Le coup de bouclier dure la riposte (`COUNTER_MS`). */
 const BASH_MS = 400;
+/** Le lancer d'un pouvoir instantané (#173) : la pose `raiseG`, 500 ms. */
+const CAST_MS = 500;
 /** La lame brille à 160 ms de l'impact de la frappe en rythme. */
 const GLEAM_MS = 160;
 // Stryker restore all
@@ -38,7 +40,8 @@ function look(frame: HeroFrame, tier: 0 | 1 = 0, dodge = 0, lunge = 0, push = 0)
  * L'image du héros (`heroFrame`, `pxHeroFrame` de la maquette) pour sa pose `pose`, prise à
  * `since` : parade en deux images (250 ms), touché (300 ms), déséquilibre qui vacille, esquive
  * (300 ms, aller et retour), arme levée pour la frappe en rythme (la lame brille près de l'impact),
- * frappe vers la cible (320 ms), coup de bouclier sur place (400 ms, pose `bash` tenue, #155). Tombé, il
+ * frappe vers la cible (320 ms), coup de bouclier sur place (400 ms, pose `bash` tenue, #155), lancer
+ * d'un pouvoir instantané (500 ms, lames levées qui brillent, #173). Tombé, il
  * garde `hit1` (pose de défaite, à confirmer par l'UX).
  */
 export function heroFrame(
@@ -71,6 +74,7 @@ export function heroFrame(
       Math.sin((Math.PI * elapsed) / STRIKE_MS),
     );
   }
+  if (pose === 'cast' && elapsed < CAST_MS) return look('raiseG', 1);
   if (pose === 'bash' && elapsed < BASH_MS) {
     return look('bash', 0, 0, 0, Math.sin((Math.PI * elapsed) / BASH_MS));
   }

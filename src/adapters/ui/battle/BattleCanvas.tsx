@@ -63,6 +63,7 @@ import { HERO_ANIMATIONS } from '../pixelArt/sprites/battle/heroAnimations';
 import { enemyPose, restPose } from './scene/enemyPose';
 import { spriteOrigin, type EnemySlot, type SceneGeometry } from './scene/sceneGeometry';
 import { BASH_ADVANCE_DP, heroFrame } from './scene/heroFrame';
+import { SHADOW_STEP_MATRIX, shadowStepGhost, type ShadowStepScene } from './scene/shadowStep';
 import {
   bulwarkShards,
   bulwarkShield,
@@ -99,6 +100,8 @@ export interface BattleSceneProps {
   readonly bulwarkWornAt?: number | null;
   /** La dernière Riposte du Rempart : l'onde va de l'écu à l'ennemi `enemy`. */
   readonly riposte?: { readonly at: number; readonly enemy: number } | null;
+  /** Pas de l'ombre est actif (#173) : l'ombre violette derrière l'Errante. Par défaut, non. */
+  readonly shadowStep?: ShadowStepScene | null;
   readonly reducedMotion: boolean;
   /** L'horloge du fil UI : un worklet, sur la base de l'horloge de combat (méthode a). */
   readonly uiNow: () => number;
@@ -163,6 +166,8 @@ const PEDESTALS: readonly PedestalKind[] = ['enemy', 'single', 'hero'];
 const NEAREST = { filter: FilterMode.Nearest, mipmap: MipmapMode.None } as const;
 /** Les autres ennemis : à 30 %, désaturés et assombris (maquette, `.pfoe.dim`). */
 const DIMMED_OPACITY = 0.3;
+/** L'ombre de Pas de l'ombre : chaque pixel en violet (#173). */
+const SHADE = [...SHADOW_STEP_MATRIX];
 const FADED = [
   0.106, 0.358, 0.036, 0, 0, 0.106, 0.358, 0.036, 0, 0, 0.106, 0.358, 0.036, 0, 0, 0, 0, 0, 1, 0,
 ];
@@ -339,11 +344,14 @@ function AtlasSprite<Frame extends BattleFrame>({
   look,
   scale,
   faded = false,
+  shade,
 }: {
   readonly atlas: PreparedAtlas;
   readonly look: DerivedValue<SpriteLook<Frame>>;
   readonly scale: number;
   readonly faded?: boolean;
+  /** L'ombre de Pas de l'ombre (#173) : le sprite peint en violet, à cette opacité. */
+  readonly shade?: DerivedValue<number>;
 }) {
   const { table } = atlas;
   const sprites = useRectBuffer(1, (rect) => {
@@ -363,9 +371,10 @@ function AtlasSprite<Frame extends BattleFrame>({
       sprites={sprites}
       transforms={transforms}
       sampling={NEAREST}
-      opacity={faded ? DIMMED_OPACITY : 1}
+      opacity={shade ?? (faded ? DIMMED_OPACITY : 1)}
     >
       {faded ? <ColorMatrix matrix={FADED} /> : null}
+      {shade ? <ColorMatrix matrix={SHADE} /> : null}
     </Atlas>
   );
 }
@@ -455,6 +464,7 @@ export function BattleScene({
   bulwark = false,
   bulwarkWornAt = null,
   riposte = null,
+  shadowStep = null,
   reducedMotion,
   uiNow,
 }: BattleSceneProps) {
@@ -465,6 +475,8 @@ export function BattleScene({
   const sharedHurt = useSharedValue<number | null>(hurtAt);
   const sharedHero = useSharedValue({ pose: heroPose, since: heroPoseSince, strikeImpactAt });
   const sharedBulwark = useSharedValue({ active: bulwark, wornAt: bulwarkWornAt, riposte });
+  const sharedShadowStep = useSharedValue(shadowStep);
+  useEffect(() => sharedShadowStep.set(shadowStep), [sharedShadowStep, shadowStep]);
 
   useEffect(() => sharedTimeline.set(timeline), [sharedTimeline, timeline]);
   useEffect(() => sharedSpark.set(spark), [sharedSpark, spark]);
@@ -553,6 +565,16 @@ export function BattleScene({
       y: hero.y + Math.round((10 * dodge + lunge.y * toward) / 2) * 2,
     };
   }, [sharedHero, clock, hero, lunge, reducedMotion]);
+  // L'ombre de Pas de l'ombre (#173) : l'image de l'Errante, glissée derrière elle.
+  const ghost = useDerivedValue(
+    () => shadowStepGhost(sharedShadowStep.get(), clock.get(), reducedMotion),
+    [sharedShadowStep, clock, reducedMotion],
+  );
+  const ghostLook = useDerivedValue<SpriteLook>(
+    () => ({ ...heroLook.get(), x: heroLook.get().x + (ghost.get()?.dx ?? 0) }),
+    [heroLook, ghost],
+  );
+  const ghostOpacity = useDerivedValue(() => ghost.get()?.opacity ?? 0, [ghost]);
 
   // Les effets : [effet, image, x, y] par place, l'effet −1 pour une place vide.
   const effectTable = scene.effects.table;
@@ -731,6 +753,14 @@ export function BattleScene({
           />
         );
       })}
+      {shadowStep === null ? null : (
+        <AtlasSprite
+          atlas={scene.heroes[heroKind]}
+          look={ghostLook}
+          scale={hero.scale}
+          shade={ghostOpacity}
+        />
+      )}
       <AtlasSprite atlas={scene.heroes[heroKind]} look={heroLook} scale={hero.scale} />
       <Path
         path={wavePath}

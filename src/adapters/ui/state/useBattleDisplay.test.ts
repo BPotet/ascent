@@ -54,6 +54,7 @@ describe('displayOf (display state of the battle screen)', () => {
       bulwarkWornAt: null,
       riposte: null,
       heroFloat: null,
+      shadowStepAt: null,
     });
   });
 

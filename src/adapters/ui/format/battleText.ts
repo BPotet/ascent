@@ -282,7 +282,7 @@ export function phaseAnnouncement(to: PhaseDirection): string {
  * s'y écrivent ; « Frappe parfaite » en phase du héros. Jamais « Critique ».
  */
 export interface FeedbackText {
-  readonly tone: 'perfect' | 'break' | 'rise' | 'riposte';
+  readonly tone: 'perfect' | 'break' | 'rise' | 'riposte' | 'shadowStep';
   readonly title: string;
 }
 
@@ -295,6 +295,11 @@ export function feedbackText(event: BattleEvent): FeedbackText | null {
       return { tone: 'perfect', title: 'Parfait · contre-attaque' };
     case 'bulwarkCountered':
       return { tone: 'riposte', title: 'Riposte' };
+    // Le mot de scène d'un pouvoir instantané (#173), sans bande ni bannière.
+    case 'powerUsed':
+      return event.instant === true
+        ? { tone: 'shadowStep', title: POWER_NAMES[event.power] }
+        : null;
     case 'guardBroken':
       return { tone: 'break', title: 'Cassure' };
     case 'enemySelfRevived':

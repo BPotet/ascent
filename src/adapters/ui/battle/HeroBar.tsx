@@ -1,4 +1,11 @@
+import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 
 import type { HeroState } from '../../../domain/battle/Battle';
 import type { HeroKind } from '../../../domain/battle/combatants';
@@ -18,21 +25,61 @@ import { ShadowStepChip } from './ShadowStepChip';
 /** La part des PV sous laquelle la barre passe en alerte (maquette : 30 %). */
 const LOW_HP_RATIO = 0.3;
 
+/** Un losange d'Élan dépensé se vide en 150 ms (#173, maquette E2). */
+const DRAIN_MS = 150;
+
+/**
+ * Un losange d'Élan : son plein apparaît d'un coup ; dépensé, il se vide après les losanges à sa
+ * gauche, un à un, ou tous ensemble en mouvement réduit (#173).
+ */
+function Diamond({
+  index,
+  momentum,
+  reducedMotion,
+}: {
+  readonly index: number;
+  readonly momentum: number;
+  readonly reducedMotion: boolean;
+}) {
+  const full = index < momentum;
+  const fill = useSharedValue(full ? 1 : 0);
+  useEffect(() => {
+    if (full) {
+      fill.set(1);
+      return;
+    }
+    const delay = reducedMotion ? 0 : (index - momentum) * DRAIN_MS;
+    fill.set(withDelay(delay, withTiming(0, { duration: DRAIN_MS })));
+  }, [fill, full, index, momentum, reducedMotion]);
+  // Dépendances explicites : le code instrumenté par Stryker n'est plus reconnu comme worklet.
+  const shown = useAnimatedStyle(() => {
+    'worklet';
+    return { opacity: fill.get() };
+  }, [fill]);
+  return (
+    <View
+      testID={full ? 'battle-momentum-full' : 'battle-momentum-empty'}
+      style={[styles.diamond, styles.empty]}
+    >
+      <Animated.View testID="battle-momentum-fill" style={[styles.full, shown]} />
+    </View>
+  );
+}
+
 /** L'Élan en losanges, les pleins d'abord (maquette F1). Décoratif : la barre est lue en entier. */
-function MomentumDiamonds({ momentum }: { readonly momentum: number }) {
+function MomentumDiamonds({
+  momentum,
+  reducedMotion,
+}: {
+  readonly momentum: number;
+  readonly reducedMotion: boolean;
+}) {
   return (
     <View style={styles.momentum}>
       <Text style={styles.momentumLabel}>Élan</Text>
-      {Array.from({ length: MOMENTUM_MAX }, (_, index) => {
-        const full = index < momentum;
-        return (
-          <View
-            key={index}
-            testID={full ? 'battle-momentum-full' : 'battle-momentum-empty'}
-            style={[styles.diamond, full ? styles.full : styles.empty]}
-          />
-        );
-      })}
+      {Array.from({ length: MOMENTUM_MAX }, (_, index) => (
+        <Diamond key={index} index={index} momentum={momentum} reducedMotion={reducedMotion} />
+      ))}
     </View>
   );
 }
@@ -48,11 +95,13 @@ export function HeroBar({
   kind = 'sentinel',
   bulwarkWorn = false,
   shadowStepNew = false,
+  reducedMotion = false,
 }: {
   readonly hero: HeroState;
   readonly kind?: HeroKind;
   readonly bulwarkWorn?: boolean;
   readonly shadowStepNew?: boolean;
+  readonly reducedMotion?: boolean;
 }) {
   const ratio = hero.hp / hero.maxHp;
   const name = HERO_NAMES[kind];
@@ -77,7 +126,7 @@ export function HeroBar({
       {hero.bulwark || bulwarkWorn ? <BulwarkChip worn={!hero.bulwark} /> : null}
       {hero.shadowStep === true ? <ShadowStepChip fresh={shadowStepNew} /> : null}
       {hero.bleed ? <BleedChip rounds={hero.bleed.rounds} /> : null}
-      <MomentumDiamonds momentum={hero.momentum} />
+      <MomentumDiamonds momentum={hero.momentum} reducedMotion={reducedMotion} />
     </View>
   );
 }
@@ -111,7 +160,15 @@ const styles = StyleSheet.create({
   momentum: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   momentumLabel: { color: battleColors.muted, fontSize: 12, fontWeight: '600', marginRight: 2 },
   diamond: { width: 9, height: 9, transform: [{ rotate: '45deg' }], borderWidth: 1.5 },
-  full: { backgroundColor: battleColors.light, borderColor: battleColors.light },
+  // Le plein couvre aussi le trait du losange.
+  full: {
+    position: 'absolute',
+    top: -1.5,
+    left: -1.5,
+    right: -1.5,
+    bottom: -1.5,
+    backgroundColor: battleColors.light,
+  },
   empty: { borderColor: battleColors.secondaryLine },
 });
 // Stryker restore all
