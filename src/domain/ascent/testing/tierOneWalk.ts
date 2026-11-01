@@ -1,3 +1,4 @@
+// Stryker disable all: aide de test, jamais du code du jeu ; ses mutants ne mesurent rien.
 /**
  * Aide de test (#38, « palier 1 inchangé ») : une ascension rejouée au palier 1, du combat imposé
  * de l'étage 1 au boss, avec des choix fixés par la graine, et le seuil du changement de phase des
