@@ -19,7 +19,7 @@ describe('artPalette', () => {
   const { roles, tints } = artPalette;
 
   it('keeps the tints of the tower prototype, 0 being transparent', () => {
-    expect(tints).toHaveLength(42);
+    expect(tints).toHaveLength(45);
     expect(tints[0]).toBeNull();
     expect(tints[1]).toBe('#06070C');
     expect(tints[8]).toBe('#F2D49B');
@@ -27,6 +27,10 @@ describe('artPalette', () => {
     // La palette rouge du Chevalier déchu et du Prieur sans visage (#138), ajoutée en fin.
     expect(tints[31]).toBe('#5A1420');
     tints.slice(1).forEach((tint) => expect(tint).toMatch(/^#[0-9A-F]{6}$/));
+  });
+
+  it('adds the 3 tints of the tiers two and three at the end, codes 42 to 44 (#38)', () => {
+    expect(tints.slice(42)).toEqual(['#D9733A', '#5E8F82', '#3D5E57']);
   });
 
   it('keeps the code of every tint, the tints of the Sentinel 2.5D (#140) added at the end', () => {
@@ -73,10 +77,10 @@ describe('artPalette', () => {
     ]);
   });
 
-  it('adds the 4 tints of the 16 × 16 icons at the end, without moving the other codes (#157)', () => {
+  it('adds the 4 tints of the 16 × 16 icons at codes 38 to 41, without moving the other codes (#157)', () => {
     const icons = ['#DEE0E7', '#C3C7D3', '#EEA8B6', '#F8E7C8'];
-    expect(tints.slice(-icons.length)).toEqual(icons);
-    expect(tints.slice(0, -icons.length)).not.toEqual(expect.arrayContaining(icons));
+    expect(tints.slice(38, 42)).toEqual(icons);
+    expect(tints.slice(0, 38)).not.toEqual(expect.arrayContaining(icons));
   });
 
   it('gives the interface roles of the mockup', () => {
