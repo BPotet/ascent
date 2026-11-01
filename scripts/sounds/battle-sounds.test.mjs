@@ -21,9 +21,12 @@ describe('provisional battle sounds', () => {
       'bleed.wav',
       'bone-rattle.wav',
       'bulwark.wav',
+      'burn-crackle.wav',
+      'burn-out.wav',
       'defeat.wav',
       'dodge.wav',
       'enemy-phase.wav',
+      'flame-breath.wav',
       'glint-double.wav',
       'glint-dull.wav',
       'glint-perilous.wav',
@@ -91,6 +94,26 @@ describe('provisional battle sounds', () => {
       'no sliding note',
     );
     assert.equal(Math.max(...notes.map(([, duration, , , at]) => at + duration)), 0.15);
+  });
+
+  const lasts = (notes) => Math.max(...notes.map(([, duration, , , at]) => at + duration));
+
+  it('makes the flame breath of the Burn short, over the hit or the parry (#171)', () => {
+    assert.ok(lasts(CUES['flame-breath']) <= 0.2);
+  });
+
+  it('makes the crackle of the Burn dry, 400 ms long, more discreet than the hit (#171)', () => {
+    const notes = CUES['burn-crackle'];
+    const [[, , , hitVolume]] = CUES.hit;
+    assert.ok(Math.abs(lasts(notes) - 0.4) < 1e-9);
+    assert.ok(notes.length > 3, 'several dry clicks');
+    assert.ok(notes.every(([, duration, , volume]) => duration <= 0.05 && volume < hitVolume));
+  });
+
+  it('makes a flame go out with a brief, high and soft « pschht » (#171)', () => {
+    const notes = CUES['burn-out'];
+    assert.ok(lasts(notes) <= 0.15);
+    assert.ok(notes.every(([frequency, , , volume]) => frequency >= 1_000 && volume <= 0.06));
   });
 
   it('slides a note to its last frequency (exponential ramp)', () => {
