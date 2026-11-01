@@ -15,7 +15,7 @@ import type { BattleEvent, DefenseButton } from '../../domain/battle/BattleEvent
 import { glintsOf } from '../../domain/battle/glints';
 import type { BattleClock } from '../ports/BattleClock';
 import type { BattleHaptics } from '../ports/BattleHaptics';
-import type { BattleSound } from '../ports/BattleSound';
+import type { BattleSound, BattleSoundCue } from '../ports/BattleSound';
 import type { KeyValueStore } from '../ports/KeyValueStore';
 import type { SeedSource } from '../ports/SeedSource';
 import { GLINT_CUES, feedbackFor } from './battleFeedback';
@@ -73,6 +73,8 @@ export class BattleSession {
   private readonly listeners = new Set<Listener>();
   private cancelTimer: (() => void) | null = null;
   private cancelGlintTimer: (() => void) | null = null;
+  /** Les sons différés en attente (#171), annulés à `dispose`. */
+  private readonly delayedSounds = new Set<() => void>();
   /** Les reflets déjà joués ou passés, par attaque (`startedAt:index`). */
   private readonly doneGlints = new Set<string>();
   private heroHintPending = false;
@@ -170,6 +172,8 @@ export class BattleSession {
     this.cancelTimer = null;
     this.cancelGlintTimer?.();
     this.cancelGlintTimer = null;
+    for (const cancel of this.delayedSounds) cancel();
+    this.delayedSounds.clear();
     this.listeners.clear();
   }
 
@@ -199,12 +203,23 @@ export class BattleSession {
     return this.heroHintPending && battle.phase.kind === 'hero' && battle.round === 1;
   }
 
+  /** Un son différé (#171) : joué `delayMs` ms plus tard par l'horloge de combat. */
+  private playLater(sound: BattleSoundCue, delayMs: number): void {
+    const { clock } = this.dependencies;
+    const cancel = clock.setTimer(clock.now() + delayMs, () => {
+      this.delayedSounds.delete(cancel);
+      this.dependencies.sound.play(sound);
+    });
+    this.delayedSounds.add(cancel);
+  }
+
   private apply(update: BattleUpdate): void {
     if (this.disposed) return;
     const { battle, events } = update;
     for (const event of events) {
-      const { sound, haptic } = feedbackFor(event);
-      if (sound !== null) this.dependencies.sound.play(sound);
+      const { sound, haptic, delayMs } = feedbackFor(event);
+      if (sound !== null && delayMs !== undefined) this.playLater(sound, delayMs);
+      else if (sound !== null) this.dependencies.sound.play(sound);
       if (haptic !== null) this.dependencies.haptics.play(haptic);
     }
     this.snapshot = { battle, events, heroHint: this.heroHintShown(battle) };

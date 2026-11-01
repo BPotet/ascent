@@ -158,6 +158,39 @@ describe('AscentSession', () => {
     expect(battleSession.current()!.battle.enemies[0]!.hp).toBe(20);
   });
 
+  it('resumes a battle saved with 3 stacks of Burn with its 3 stacks, and saves them again (#171)', async () => {
+    const { session, store } = setUp();
+    const battle = savedBattle(startAscent(5), { heroHp: 33, enemyHp: 20 });
+    store.values.set(
+      ASCENT_KEY,
+      JSON.stringify({
+        version: 1,
+        ascent: startAscent(5),
+        battle: { ...battle, hero: { ...battle.hero, burn: 3 } },
+      }),
+    );
+    await session.load();
+
+    const battleSession = session.battleSession();
+    await battleSession.start();
+    await flush();
+
+    expect(battleSession.current()!.battle.hero).toMatchObject({ hp: 33, burn: 3 });
+    expect(saved(store)?.battle?.hero.burn).toBe(3);
+  });
+
+  it('resumes a battle saved before the Burn without Burn (#171)', async () => {
+    const { session, store } = setUp();
+    const battle = savedBattle(startAscent(5), { heroHp: 33, enemyHp: 20 });
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: startAscent(5), battle }));
+    await session.load();
+
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    expect(battleSession.current()!.battle.hero).not.toHaveProperty('burn');
+  });
+
   it('saves when the Skeleton revives, and resumes it as revived (#106, S8)', async () => {
     const { session, store, clock } = setUp();
     const { battle: initial } = startBattle({

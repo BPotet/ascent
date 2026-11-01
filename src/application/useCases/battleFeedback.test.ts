@@ -1,5 +1,10 @@
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
-import { GLINT_CUES, feedbackFor } from './battleFeedback';
+import {
+  BURN_OUT_AFTER_BLOW_MS,
+  BURN_OUT_AFTER_CRACKLE_MS,
+  GLINT_CUES,
+  feedbackFor,
+} from './battleFeedback';
 
 const blow = (outcome: Extract<BattleEvent, { type: 'blowResolved' }>['outcome']): BattleEvent => ({
   type: 'blowResolved',
@@ -211,5 +216,48 @@ describe('GLINT_CUES (the sound of each glint, C2.10)', () => {
       red: 'glintPerilous',
       dull: 'glintDull',
     });
+  });
+});
+
+describe('the sounds of the Burn (#171)', () => {
+  it('plays the flame breath over the hit or the parry, without a vibration, even at 5 stacks', () => {
+    expect(feedbackFor({ type: 'heroBurning', at: 0, added: 2, stacks: 2 })).toEqual({
+      sound: 'flameBreath',
+      haptic: null,
+    });
+    expect(feedbackFor({ type: 'heroBurning', at: 0, added: 0, stacks: 5 })).toEqual({
+      sound: 'flameBreath',
+      haptic: null,
+    });
+  });
+
+  it('crackles at the start of a round, and stays silent on the floor of 1 HP', () => {
+    expect(feedbackFor({ type: 'burnTicked', at: 0, loss: 3, heroHp: 40, stacks: 3 })).toEqual({
+      sound: 'burnCrackle',
+      haptic: null,
+    });
+    expect(feedbackFor({ type: 'burnTicked', at: 0, loss: 0, heroHp: 1, stacks: 3 })).toEqual({
+      sound: null,
+      haptic: null,
+    });
+  });
+
+  it('puts a flame out 80 ms after the parry sound, 400 ms after the crackle', () => {
+    expect(BURN_OUT_AFTER_BLOW_MS).toBe(80);
+    expect(BURN_OUT_AFTER_CRACKLE_MS).toBe(400);
+    expect(feedbackFor({ type: 'burnExtinguished', at: 0, stacks: 1, cause: 'blow' })).toEqual({
+      sound: 'burnOut',
+      haptic: null,
+      delayMs: 80,
+    });
+    expect(feedbackFor({ type: 'burnExtinguished', at: 0, stacks: 0, cause: 'round' })).toEqual({
+      sound: 'burnOut',
+      haptic: null,
+      delayMs: 400,
+    });
+  });
+
+  it('plays nothing when the flames go out together at the end of the battle', () => {
+    expect(feedbackFor({ type: 'burnCleared', at: 0 })).toEqual({ sound: null, haptic: null });
   });
 });

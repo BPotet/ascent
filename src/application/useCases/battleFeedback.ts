@@ -8,7 +8,14 @@ import type { BattleSoundCue } from '../ports/BattleSound';
 export interface BattleFeedback {
   readonly sound: BattleSoundCue | null;
   readonly haptic: BattleHapticCue | null;
+  /** Le son part `delayMs` ms après l'événement (#171) ; absent, aussitôt. */
+  readonly delayMs?: number;
 }
+
+/** L'extinction d'une flamme suit le son de la parade parfaite ou de l'esquive (#171). */
+export const BURN_OUT_AFTER_BLOW_MS = 80;
+/** L'extinction d'une flamme au début de la manche suit le crépitement (#171). */
+export const BURN_OUT_AFTER_CRACKLE_MS = 400;
 
 /** Le son de chaque reflet (C2.10), joué par la session de combat en avance de sa latence. */
 export const GLINT_CUES: Readonly<Record<GlintKind, BattleSoundCue>> = {
@@ -79,6 +86,19 @@ export function feedbackFor(event: BattleEvent): BattleFeedback {
       return { sound: 'bleed', haptic: null };
     case 'bleedTicked':
       return event.loss > 0 ? { sound: 'bleed', haptic: null } : NONE;
+    // La Brûlure (#171), sans vibration : le souffle de flamme par-dessus le touché ou la parade,
+    // même à 5 charges ; le crépitement, rien au plancher de 1 PV ; l'extinction, différée. Rien
+    // quand les flammes s'éteignent ensemble à la fin du combat.
+    case 'heroBurning':
+      return { sound: 'flameBreath', haptic: null };
+    case 'burnTicked':
+      return event.loss > 0 ? { sound: 'burnCrackle', haptic: null } : NONE;
+    case 'burnExtinguished':
+      return {
+        sound: 'burnOut',
+        haptic: null,
+        delayMs: event.cause === 'blow' ? BURN_OUT_AFTER_BLOW_MS : BURN_OUT_AFTER_CRACKLE_MS,
+      };
     default:
       return NONE;
   }
