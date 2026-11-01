@@ -1,10 +1,11 @@
 // Les écrans des paliers et des Éclats (#38, maquette 30) : le boss vaincu (X3), la transition de
 // palier (C4), la fin de l'ascension (X6) et le Sommet atteint (X7), sur une vraie session.
 import { act, fireEvent, screen } from '@testing-library/react-native';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, StyleSheet, View } from 'react-native';
 
 import { startAscent, type Ascent } from '../../../domain/ascent/Ascent';
 import type { ShardAward } from '../../../domain/ascent/shards';
+import { artPalette } from '../pixelArt/artPalette';
 import { ascentSetUp } from '../testing/ascent';
 import { renderScreen } from '../testing/renderScreen';
 import { AscentScreen } from './AscentScreen';
@@ -14,9 +15,18 @@ jest.mock('../battle/BattleCanvas', () => jest.requireActual('../battle/testing/
 const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
 beforeEach(() => announce.mockClear());
 
-async function show(saved: Ascent, shards?: number) {
+type MeasureInWindow = (
+  callback: (x: number, y: number, width: number, height: number) => void,
+) => void;
+
+async function show(
+  saved: Ascent,
+  prepare?: (session: ReturnType<typeof ascentSetUp>['session']) => Promise<void>,
+  shards?: number,
+) {
   const setUp = ascentSetUp({ saved, ...(shards !== undefined && { shards }) });
   await setUp.session.load();
+  await prepare?.(setUp.session);
   const onLeave = jest.fn();
   await renderScreen(
     <AscentScreen
@@ -127,7 +137,7 @@ describe('the end of the ascent (X6, X7, #38)', () => {
       shardAwards: [award('1:6:boss', 8), award('2:3:elite', 2)],
     };
 
-    await show(fallen, 34);
+    await show(fallen, undefined, 34);
 
     expect(screen.getByTestId('ascent-end')).toBeOnTheScreen();
     expect(screen.getByRole('header', { name: "Fin de l'ascension" })).toBeOnTheScreen();
@@ -174,5 +184,94 @@ describe('the end of the ascent (X6, X7, #38)', () => {
 
     expect(session.current()).toBeNull();
     expect(onLeave).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('the tier backdrop behind the battle (#176)', () => {
+  const hidden = { includeHiddenElements: true } as const;
+  const backdrop = () => screen.getByTestId('tier-backdrop', hidden);
+
+  /** L'ascension au palier `tier`, devant un combat de `kind`. */
+  function before(tier: 1 | 2 | 3, kind: 'combat' | 'elite' | 'boss' = 'combat'): Ascent {
+    const enemies = { 1: 'ghoul', 2: 'ashBramble', 3: 'firstPilgrim' } as const;
+    return {
+      ...startAscent(42),
+      tier,
+      floor: kind === 'boss' ? 6 : 3,
+      encounter: { kind, enemies: [enemies[tier]], battleSeed: 3 },
+    };
+  }
+
+  it.each([1, 2, 3] as const)('shows the backdrop of tier %i behind its battle', async (tier) => {
+    await show(before(tier));
+
+    expect(await screen.findByTestId('battle-screen')).toBeOnTheScreen();
+    expect(backdrop()).toHaveProp('tier', tier);
+  });
+
+  it.each(['elite', 'boss'] as const)(
+    'keeps the backdrop of the tier for a battle of kind %s',
+    async (kind) => {
+      await show(before(3, kind));
+
+      await screen.findByTestId('battle-screen');
+      expect(backdrop()).toHaveProp('tier', 3);
+    },
+  );
+
+  it('hides the backdrop from the screen reader and from the touches', async () => {
+    await show(before(2));
+
+    expect(backdrop()).toHaveProp('accessibilityElementsHidden', true);
+    expect(backdrop()).toHaveProp('importantForAccessibility', 'no-hide-descendants');
+    expect(backdrop()).toHaveProp('pointerEvents', 'none');
+    expect(screen.queryByTestId('tier-backdrop')).toBeNull();
+  });
+
+  it('lets the backdrop show through the screen of the ascent, on the night of the container', async () => {
+    await show(before(1));
+
+    expect(StyleSheet.flatten(screen.getByTestId('ascent-battle').props.style)).toMatchObject({
+      backgroundColor: 'transparent',
+    });
+    expect(
+      StyleSheet.flatten(screen.getByTestId('ascent-battle-backdrop', hidden).props.style),
+    ).toMatchObject({ backgroundColor: artPalette.roles.night });
+  });
+
+  it('keeps the backdrop during the resume countdown, veiled all over', async () => {
+    jest.useFakeTimers();
+    try {
+      await show(before(2), async (session) => {
+        await session.battleSession().start();
+      });
+
+      expect(screen.getByTestId('ascent-countdown')).toBeOnTheScreen();
+      expect(backdrop()).toHaveProp('tier', 2);
+      expect(backdrop()).toHaveProp('scene', null);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('veils above and under the scene frame once it is measured', async () => {
+    const measure = jest
+      .spyOn(
+        (View as unknown as { prototype: { measureInWindow: MeasureInWindow } }).prototype,
+        'measureInWindow',
+      )
+      .mockImplementation((callback) => callback(0, 150, 390, 440));
+    try {
+      await show(before(1));
+      expect(backdrop()).toHaveProp('scene', null);
+
+      await fireEvent(await screen.findByTestId('battle-scene-frame'), 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 440 } },
+      });
+
+      expect(backdrop()).toHaveProp('scene', { top: 150, bottom: 590 });
+    } finally {
+      measure.mockRestore();
+    }
   });
 });

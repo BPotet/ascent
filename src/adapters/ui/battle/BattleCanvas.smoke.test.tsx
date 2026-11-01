@@ -257,7 +257,7 @@ describe('BattleScene with Skia', () => {
     },
   );
 
-  it('mounts the stage, the pedestals, the enemies, the hero and the effects, hidden from the screen reader', async () => {
+  it('mounts the pedestals, the enemies, the hero and the effects on a transparent scene, hidden from the screen reader', async () => {
     await render(<BattleScene {...props()} />);
 
     const canvas = screen.getByTestId('battle-canvas', { includeHiddenElements: true });
