@@ -35,12 +35,6 @@ export interface TierBackdropProps {
   readonly scene: SceneArea | null;
 }
 
-// Stryker disable all: dessin du fond, vérifié par la conformité aux maquettes (barrière 10 bis).
-const NEAREST = { filter: FilterMode.Nearest, mipmap: MipmapMode.None } as const;
-/** La nuit du voile, transparente : l'autre bout d'un fondu. */
-const VEIL_CLEAR = 'rgba(14,17,32,0)';
-const { backdropVeil: VEIL } = artPalette.roles;
-
 /** L'image Skia de chaque palier, faite au premier combat de ce palier (environ 15 000 pixels). */
 const images = new Map<Tier, SkImage | null>();
 
@@ -49,6 +43,12 @@ export function tierBackdropImage(tier: Tier): SkImage | null {
   if (!images.has(tier)) images.set(tier, toSkImage(backdropImage(tier)));
   return images.get(tier) ?? null;
 }
+
+// Stryker disable all: dessin du fond, vérifié par la conformité aux maquettes (barrière 10 bis).
+const NEAREST = { filter: FilterMode.Nearest, mipmap: MipmapMode.None } as const;
+/** La nuit du voile, transparente : l'autre bout d'un fondu. */
+const VEIL_CLEAR = 'rgba(14,17,32,0)';
+const { backdropVeil: VEIL } = artPalette.roles;
 
 /**
  * Le fond de palier et son voile de lisibilité, en `StyleSheet.absoluteFill` derrière l'écran de
