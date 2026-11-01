@@ -19,8 +19,10 @@ describe('shadowStepGhost (the violet shadow of the Shadow Step)', () => {
     expect(at(60_000)).toEqual({ dx: -12, opacity: 0.75 });
   });
 
-  it('stays in place without sliding with reduced motion', () => {
-    expect(shadowStepGhost({ castAt: 1_000 }, 1_000, true)).toEqual({ dx: -12, opacity: 0.75 });
+  it('is set at once at 3 dp, without sliding, with reduced motion', () => {
+    expect(shadowStepGhost({ castAt: 1_000 }, 1_000, true)).toEqual({ dx: -3, opacity: 0.75 });
+    expect(shadowStepGhost({ castAt: 1_000 }, 60_000, true)).toEqual({ dx: -3, opacity: 0.75 });
+    expect(shadowStepGhost({ castAt: null }, 5, true)).toEqual({ dx: -3, opacity: 0.75 });
   });
 
   it('is already in place when the cast is not known (a resumed battle)', () => {

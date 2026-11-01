@@ -18,6 +18,8 @@ const GHOST_MS = 500;
 const GHOST_STEPS = 5;
 const GHOST_FROM = 0.9;
 const GHOST_TO = 0.75;
+/** En mouvement réduit, l'ombre se pose au quart de son écart : 3 dp (maquette, `--amp: .25`). */
+const REDUCED_AMPLITUDE = 0.25;
 // Stryker restore all
 
 /** Une couleur `#RRGGBB` en ses trois canaux, de 0 à 1. */
@@ -57,8 +59,9 @@ export const SHADOW_STEP_MATRIX: readonly number[] = [
 
 /**
  * L'ombre violette de Pas de l'ombre (#173, maquette E2) tant qu'il est actif : elle glisse de
- * 12 dp derrière l'Errante en 500 ms, puis y reste. En mouvement réduit, ou sans instant de lancer
- * connu (un combat repris), elle est posée sans glisser. `null` : pas d'ombre.
+ * 12 dp derrière l'Errante en 500 ms, puis y reste. Sans instant de lancer connu (un combat
+ * repris), elle est posée à 12 dp sans glisser ; en mouvement réduit, posée tout de suite à 3 dp.
+ * `null` : pas d'ombre.
  */
 export function shadowStepGhost(
   shadowStep: ShadowStepScene | null,
@@ -72,7 +75,7 @@ export function shadowStepGhost(
   const step = Math.min(GHOST_STEPS, Math.max(0, Math.floor((elapsed * GHOST_STEPS) / GHOST_MS)));
   const part = step / GHOST_STEPS;
   return {
-    dx: 0 - Math.round((GHOST_DP * part) / 2) * 2,
+    dx: 0 - Math.round((GHOST_DP * part) / 2) * 2 * (reducedMotion ? REDUCED_AMPLITUDE : 1),
     opacity: GHOST_FROM + (GHOST_TO - GHOST_FROM) * part,
   };
 }
