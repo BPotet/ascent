@@ -56,6 +56,16 @@ tour et le vrai écran de l'ascension sur des ascensions fixes, chacune dans une
 titres de section sont écrits en capitales : leurs sélecteurs ignorent la casse (`(?iu)`). Captures :
 4A à 4E, 5A à 5G.
 
+Les paliers et les Éclats (`tiers-shards.yaml`, #38) suivent d'abord le vrai parcours, sans
+timing : sur une installation neuve, le pied de la tour montre « 0 Éclat ». Les écrans qui suivent
+la victoire sur un boss ou la fin d'une ascension ne s'atteignent pas sans gagner de combats : la
+même planche les ouvre sur des ascensions fixes, chacune dans une session en mémoire avec un Total
+d'Éclats fixe (jamais celle du joueur) : « Boss vaincu · palier 1 » (X3), puis « Continuer vers le
+palier 2 » (C4), « Chute · 10 Éclats » (X6), « Sommet atteint » (X7) et « Pied de la tour · 22
+Éclats ». Les Éclats gagnés en grand se vérifient par leur libellé lu (« 8 Éclats gagnés, gardés
+pour toujours ») ; le `+` de l'Or est échappé (`\+40 Or`). Captures : le pied de la
+tour, X3, C4, X6 et X7, à comparer à la maquette `docs/mockups/30-premiere-ascension/`.
+
 Le combat d'essai et son bouton « Combat d'essai », au-dessus de la barre d'onglets du build de
 preview, sont retirés (#121, décision du propriétaire du 28/10/2026) : la barre d'onglets et la liste
 de la Vue Journée ont la même place en preview et en production. `old-trial-battle-link.yaml` vérifie
