@@ -232,6 +232,7 @@ export function BattleScreen({
             hero={battle.hero}
             kind={heroKind}
             bulwarkWorn={display.bulwarkWornAt !== null}
+            shadowStepNew={view.pad.kind === 'hero' && view.pad.power.instantCast === true}
           />
           <View style={styles.zone}>
             <Text

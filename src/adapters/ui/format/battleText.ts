@@ -92,7 +92,9 @@ const POWER_EFFECTS: Readonly<Record<PowerKind, string>> = {
   // La `powerDescription` du Codex (`sentinel`), recopiée mot pour mot le 29/10/2026 (#128).
   bulwark:
     "Elle plante son bouclier devant elle et y met tout son poids. Le prochain coup qu'elle subit ne lui fait que la moitié de ses dégâts, après sa réduction, et elle riposte aussitôt, moins fort qu'une contre-attaque.",
-  shadowStep: "ta prochaine esquive de tous les impacts d'un coup contre-attaque",
+  // La `powerDescription` du Codex (`wanderer` v3), recopiée mot pour mot le 01/11/2026 (#173).
+  shadowStep:
+    "Elle se fond dans sa propre ombre sans s'arrêter, et frappe dans le même élan. Sa prochaine esquive complète déclenche une contre-attaque, comme si le coup l'avait traversée sans la trouver.",
 };
 
 /** La fiche d'un héros sur l'écran du choix du héros. */
@@ -233,9 +235,13 @@ export function attackButtonLabel(targetName: string): string {
   return `Attaquer, cible : ${targetName}`;
 }
 
-/** Le pouvoir et son coût, sous « Pouvoir » : « Rempart · 1 Élan ». */
-export function powerCostText(power: PowerKind): string {
-  return `${POWER_NAMES[power]} · ${POWERS[power].cost} Élan`;
+/**
+ * Le pouvoir et son coût, sous « Pouvoir » : « Rempart · 1 Élan ». Un pouvoir instantané (#173)
+ * a son nom sur sa propre ligne, et son coût dit « 3 Élan · Instantané ».
+ */
+export function powerCostText(power: PowerKind, instant = false): string {
+  const cost = `${POWERS[power].cost} Élan`;
+  return instant ? `${cost} · Instantané` : `${POWER_NAMES[power]} · ${cost}`;
 }
 
 /** L'Élan qui manque à un pouvoir : « Il manque 1 Élan ». */
@@ -243,8 +249,13 @@ export function missingMomentumText(missing: number): string {
   return `Il manque ${missing} Élan`;
 }
 
-export function powerButtonLabel(power: PowerKind, missing: number, active = false): string {
-  const label = `Pouvoir : ${POWER_NAMES[power]}, ${POWERS[power].cost} Élan`;
+export function powerButtonLabel(
+  power: PowerKind,
+  missing: number,
+  active = false,
+  instant = false,
+): string {
+  const label = `Pouvoir : ${POWER_NAMES[power]}, ${POWERS[power].cost} Élan${instant ? ', instantané' : ''}`;
   if (active) return `${label}, actif`;
   return missing > 0 ? `${label}, indisponible : il manque ${missing} Élan` : label;
 }
@@ -406,7 +417,9 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
     case 'enemySelfRevived':
       return `${name(event.enemy)} se relève, ${event.hp} PV sur ${battle.enemies[event.enemy]!.maxHp}`;
     case 'powerUsed':
-      return POWER_NAMES[event.power];
+      return event.instant === true
+        ? `${POWER_NAMES[event.power]} actif. Toujours à toi : vise et attaque.`
+        : POWER_NAMES[event.power];
     case 'respite':
       return event.gain > 0 ? `Répit, plus ${event.gain} PV` : null;
     case 'battleEnded':

@@ -13,6 +13,7 @@ import {
 import { battleColors } from '../theme/battleColors';
 import { BleedChip } from './BleedChip';
 import { BulwarkChip } from './BulwarkChip';
+import { ShadowStepChip } from './ShadowStepChip';
 
 /** La part des PV sous laquelle la barre passe en alerte (maquette : 30 %). */
 const LOW_HP_RATIO = 0.3;
@@ -38,16 +39,20 @@ function MomentumDiamonds({ momentum }: { readonly momentum: number }) {
 
 /**
  * La barre du héros : son nom, ses PV et son Élan (C3), et son pouvoir actif. L'étiquette du
- * Rempart montre « Rempart usé » tant que dure le coup qui l'a usé (`bulwarkWorn`, #128).
+ * Rempart montre « Rempart usé » tant que dure le coup qui l'a usé (`bulwarkWorn`, #128) ; celle
+ * de Pas de l'ombre reste jusqu'à son emploi, son trait éclairé juste après le lancer
+ * (`shadowStepNew`, #173).
  */
 export function HeroBar({
   hero,
   kind = 'sentinel',
   bulwarkWorn = false,
+  shadowStepNew = false,
 }: {
   readonly hero: HeroState;
   readonly kind?: HeroKind;
   readonly bulwarkWorn?: boolean;
+  readonly shadowStepNew?: boolean;
 }) {
   const ratio = hero.hp / hero.maxHp;
   const name = HERO_NAMES[kind];
@@ -70,6 +75,7 @@ export function HeroBar({
         <Text style={styles.hpText}>{heroHpText(hero.hp, hero.maxHp)}</Text>
       </View>
       {hero.bulwark || bulwarkWorn ? <BulwarkChip worn={!hero.bulwark} /> : null}
+      {hero.shadowStep === true ? <ShadowStepChip fresh={shadowStepNew} /> : null}
       {hero.bleed ? <BleedChip rounds={hero.bleed.rounds} /> : null}
       <MomentumDiamonds momentum={hero.momentum} />
     </View>

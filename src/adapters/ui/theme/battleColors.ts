@@ -43,5 +43,13 @@ export const battleColors = {
   bloodDark: '#8A1E2A',
   bloodSoft: 'rgba(179,46,60,0.3)',
   onBlood: '#FFC2C9',
+  /** L'ombre violette de Pas de l'ombre (#173) : trait de l'étiquette, ombre de l'Errante. */
+  shadowStep: '#6B5A7A',
+  /** Fond de l'étiquette « Pas de l'ombre ». */
+  shadowStepBg: '#2A2236',
+  /** Texte de Pas de l'ombre : l'étiquette et la mention « Instantané », jamais sans le croissant. */
+  onShadowStep: '#DCCFEA',
+  /** Trait de l'étiquette juste après le lancer. */
+  shadowStepNew: '#B9A6CF',
 } as const;
 // Stryker restore all
