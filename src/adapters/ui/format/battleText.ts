@@ -44,6 +44,11 @@ export const ENEMY_NAMES: Readonly<Record<EnemyKind, string>> = {
   ashGardener: 'Jardinière des cendres',
   hourRinger: 'Sonneur des heures',
   wishGranter: 'Celle qui exauce',
+  // La Brûlure (#171) : le Brûleur de ronces sans article, comme dans la maquette (initiale B).
+  burningHusk: 'Embrasé',
+  gargoyle: 'Gargouille',
+  bellFounder: 'Fondeur de cloches',
+  brambleBurner: 'Brûleur de ronces',
 };
 
 /** Le genre du nom de l'ennemi, pour « étourdie », « tombée »… */
@@ -67,6 +72,10 @@ const FEMININE: Readonly<Record<EnemyKind, boolean>> = {
   ashGardener: true,
   hourRinger: false,
   wishGranter: true,
+  burningHusk: false,
+  gargoyle: true,
+  bellFounder: false,
+  brambleBurner: false,
 };
 
 export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {

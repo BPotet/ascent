@@ -405,10 +405,17 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(
-    /^chaque ennemi est une Goule, un Villageois fou, un Pèlerin enronce, une Ronce de cendre ou une Glaneuse de cendre$/u,
+    /^chaque ennemi est une Goule, un Villageois fou, un Pèlerin enronce, une Ronce de cendre, une Glaneuse de cendre ou un Embrasé \(#171\)$/u,
     () => {
       expect(new Set(groups(2).flat())).toEqual(
-        new Set(['ghoul', 'madVillager', 'thornPilgrim', 'ashBramble', 'ashGleaner']),
+        new Set([
+          'ghoul',
+          'madVillager',
+          'thornPilgrim',
+          'ashBramble',
+          'ashGleaner',
+          'burningHusk',
+        ]),
       );
     },
   );
@@ -421,10 +428,10 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(
-    /^chaque ennemi est un Squelette, un Spectre, un Nécromancien ou un Veilleur d'airain$/u,
+    /^chaque ennemi est un Squelette, un Spectre, un Nécromancien, un Veilleur d'airain, une Gargouille ou un Fondeur de cloches \(#171\)$/u,
     () => {
       expect(new Set(groups(3).flat())).toEqual(
-        new Set(['skeleton', 'specter', 'necromancer', 'bronzeWarden']),
+        new Set(['skeleton', 'specter', 'necromancer', 'bronzeWarden', 'gargoyle', 'bellFounder']),
       );
     },
   );
@@ -437,6 +444,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       'thornPilgrim',
       'ashBramble',
       'ashGleaner',
+      'burningHusk',
     ] as const) {
       expect(drawn).not.toContain(kind);
     }

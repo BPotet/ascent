@@ -20,6 +20,10 @@ import { STONE_SAINT_ANIMATION } from '../atelier/data/stoneSaint';
 import { THORN_PILGRIM_ANIMATION } from '../atelier/data/thornPilgrim';
 import { WISH_GRANTER_ANIMATION } from '../atelier/data/wishGranter';
 import { WISH_GRANTER_PHASE2 } from '../atelier/data/wishGranterPhase2';
+import { BELL_FOUNDER_ANIMATION } from '../atelier/data/bellFounder';
+import { BRAMBLE_BURNER_ANIMATION } from '../atelier/data/brambleBurner';
+import { BURNING_HUSK_ANIMATION } from '../atelier/data/burningHusk';
+import { GARGOYLE_ANIMATION } from '../atelier/data/gargoyle';
 import { FACELESS_PRIOR_ANIMATION } from '../atelier/data/facelessPrior';
 import { FALLEN_KNIGHT_ANIMATION } from '../atelier/data/fallenKnight';
 import { GHOUL_ANIMATION } from '../atelier/data/ghoul';
@@ -147,6 +151,11 @@ describe('the full animations of the Atelier in battle (#119, #137, #138, #139)'
     ashGardener: ASH_GARDENER_ANIMATION,
     hourRinger: { ...HOUR_RINGER_ANIMATION, phase2: HOUR_RINGER_PHASE2 },
     wishGranter: { ...WISH_GRANTER_ANIMATION, phase2: WISH_GRANTER_PHASE2 },
+    // La Brûlure (#171).
+    burningHusk: BURNING_HUSK_ANIMATION,
+    gargoyle: GARGOYLE_ANIMATION,
+    bellFounder: BELL_FOUNDER_ANIMATION,
+    brambleBurner: BRAMBLE_BURNER_ANIMATION,
   };
   /** Les ennemis animés, tirés du registre : chacun avec son animation recopiée. */
   const ANIMATED = ANIMATED_ENEMIES.map((kind) => [kind, COPIED[kind]] as const);

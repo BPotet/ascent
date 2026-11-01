@@ -236,3 +236,42 @@ describe('the Mad villager (prototype #107, Codex values)', () => {
     expect(attackOf('ghoul', 1)).not.toHaveProperty('bleed');
   });
 });
+
+describe('the Burn of a move (#171)', () => {
+  const atTier = (kind: EnemyKind, seed: number, damagePercent: number): AttackIntent => {
+    const { intent } = drawIntent(kind, seedRandom(seed), { ...CALM, damagePercent });
+    if (intent.category !== 'attack') throw new Error(`${kind} did not attack`);
+    return intent;
+  };
+
+  it('copies the stacks of the move, never multiplied by the tier', () => {
+    const torches = SEEDS.map((seed) => atTier('brambleBurner', seed, 175)).filter(
+      (intent) => intent.burn !== undefined,
+    );
+    const hands = SEEDS.map((seed) => atTier('burningHusk', seed, 135)).filter(
+      (intent) => intent.burn !== undefined,
+    );
+
+    expect(
+      new Set(torches.map(({ attack, damage, burn }) => `${attack} ${damage} ${burn}`)),
+    ).toEqual(new Set(['basic 17 2']));
+    expect(new Set(hands.map(({ attack, damage, burn }) => `${attack} ${damage} ${burn}`))).toEqual(
+      new Set(['basic 5 1']),
+    );
+  });
+
+  it('draws the Ember hand twice as often as the Blaze, which does not burn', () => {
+    const drawn = SEEDS.map((seed) => attackOf('burningHusk', seed));
+    const hands = drawn.filter((intent) => intent.burn === 1);
+
+    expect(drawn.filter((intent) => intent.attack === 'perilous')).toEqual(
+      drawn.filter((intent) => intent.burn === undefined),
+    );
+    expect(hands.length / drawn.length).toBeGreaterThan(0.6);
+    expect(hands.length / drawn.length).toBeLessThan(0.73);
+  });
+
+  it('copies no burn for a move without one', () => {
+    expect(attackOf('ghoul', 1)).not.toHaveProperty('burn');
+  });
+});

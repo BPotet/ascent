@@ -55,29 +55,32 @@ describe('the tiers (#38)', () => {
     ]);
   });
 
-  it('draws the enemies of tier 2 in the order of the story, the Ash gleaner never alone', () => {
+  it('draws the enemies of tier 2 in the order of the stories, the Ash gleaner never alone', () => {
     expect(TIERS[2].enemies).toEqual([
       { kind: 'ghoul', weight: 3, cap: 5 },
       { kind: 'thornPilgrim', weight: 2, cap: 1 },
       { kind: 'madVillager', weight: 2, cap: 1 },
       { kind: 'ashBramble', weight: 2, cap: 1 },
       { kind: 'ashGleaner', weight: 1, cap: 1, neverAlone: true },
+      { kind: 'burningHusk', weight: 2, cap: 1 },
     ]);
   });
 
-  it('draws the enemies of tier 3 in the order of the story, the Necromancer never alone', () => {
+  it('draws the enemies of tier 3 in the order of the stories, the Necromancer never alone', () => {
     expect(TIERS[3].enemies).toEqual([
       { kind: 'skeleton', weight: 3, cap: 1 },
       { kind: 'bronzeWarden', weight: 2, cap: 1 },
       { kind: 'specter', weight: 2, cap: 1 },
       { kind: 'necromancer', weight: 1, cap: 1, neverAlone: true },
+      { kind: 'gargoyle', weight: 2, cap: 1 },
+      { kind: 'bellFounder', weight: 2, cap: 1 },
     ]);
   });
 
   it('has its Elites and its bosses', () => {
     expect([TIERS[1].elites, TIERS[2].elites, TIERS[3].elites]).toEqual([
       ['fallenKnight', 'twins'],
-      ['scarecrow'],
+      ['scarecrow', 'brambleBurner'],
       ['firstPilgrim', 'stoneSaint'],
     ]);
     expect([TIERS[1].bosses, TIERS[2].bosses, TIERS[3].bosses]).toEqual([

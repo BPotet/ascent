@@ -228,4 +228,34 @@ export type BattleEvent =
       readonly loss: number;
       readonly heroHp: number;
       readonly roundsLeft: number;
-    };
+    }
+  /**
+   * Le héros brûle (#171) : `added` charges allumées par un impact, 0 à 5 charges (le coup se voit
+   * quand même) ; `stacks`, le total après la prise.
+   */
+  | {
+      readonly type: 'heroBurning';
+      readonly at: number;
+      readonly added: number;
+      readonly stacks: number;
+    }
+  /** La perte de la Brûlure au début d'une manche ; `stacks`, les charges avant l'extinction. */
+  | {
+      readonly type: 'burnTicked';
+      readonly at: number;
+      readonly loss: number;
+      readonly heroHp: number;
+      readonly stacks: number;
+    }
+  /**
+   * Une charge de Brûlure s'éteint, par un impact paré parfaitement ou esquivé (`blow`) ou au début
+   * d'une manche (`round`) ; `stacks`, les charges qui restent.
+   */
+  | {
+      readonly type: 'burnExtinguished';
+      readonly at: number;
+      readonly stacks: number;
+      readonly cause: 'blow' | 'round';
+    }
+  /** Toutes les charges s'éteignent ensemble à la fin du combat. */
+  | { readonly type: 'burnCleared'; readonly at: number };

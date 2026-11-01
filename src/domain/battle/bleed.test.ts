@@ -1,9 +1,9 @@
 // Le Saignement (`Bleed`, prototype #107) : règles B1, B4 et B5.
-import { BLEEDING_OUTCOMES, bleedsOn, mergeBleed, tickBleed } from './bleed';
+import { HERO_TOUCHED_OUTCOMES, bleedsOn, mergeBleed, tickBleed } from './bleed';
 
 describe('bleedsOn (B1)', () => {
   it('bleeds on a good parry, a suffered blow and a parry on a perilous blow', () => {
-    expect(BLEEDING_OUTCOMES).toEqual(['parry', 'suffered', 'perilousParry']);
+    expect(HERO_TOUCHED_OUTCOMES).toEqual(['parry', 'suffered', 'perilousParry']);
     expect(bleedsOn('parry')).toBe(true);
     expect(bleedsOn('suffered')).toBe(true);
     expect(bleedsOn('perilousParry')).toBe(true);

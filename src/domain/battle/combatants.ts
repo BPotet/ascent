@@ -147,7 +147,12 @@ export type EnemyKind =
   | 'stoneSaint'
   | 'ashGardener'
   | 'hourRinger'
-  | 'wishGranter';
+  | 'wishGranter'
+  // La Brûlure (#171) : l'Embrasé, la Gargouille, le Fondeur de cloches, puis l'Élite.
+  | 'burningHusk'
+  | 'gargoyle'
+  | 'bellFounder'
+  | 'brambleBurner';
 
 /** Le Saignement (`Bleed`, prototype #107) : `damage` PV perdus au début de `rounds` manches. */
 export interface Bleed {
@@ -163,6 +168,8 @@ export interface Move {
   readonly weight?: number;
   /** Le Saignement qu'il inflige au héros (prototype #107). */
   readonly bleed?: Bleed;
+  /** Les charges de Brûlure qu'il allume (`stacks` du modificateur `burn` du Codex, #171), 1 à 3. */
+  readonly burn?: number;
 }
 
 export interface EnemyProfile {
@@ -411,6 +418,51 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     phase2Initiative: 9,
     supports: false,
   },
+  // La Brûlure (#171) : valeurs du Codex de l'Atelier recopiées le 01/11/2026, à l'échelle du
+  // palier 1 pour les ennemis ordinaires, telles quelles pour l'Élite. « Une chance sur deux » et
+  // « un tiers chacun » : des coups à poids égaux. Le nom de code de `codex/smolderingBrand` est
+  // `burningHusk`.
+  // `codex/smolderingBrand` (2256be2b…): Main de braise (poids 2), puis Embrasement.
+  burningHusk: {
+    maxHp: 20,
+    maxGuard: 8,
+    moves: [
+      { attack: 'basic', damage: 4, weight: 2, burn: 1 },
+      { attack: 'perilous', damage: 8 },
+    ],
+    supports: false,
+  },
+  // `codex/gargoyle` (65e5fd1d…): Piqué de pierre, puis Gueule de feu.
+  gargoyle: {
+    maxHp: 30,
+    maxGuard: 22,
+    moves: [
+      { attack: 'feint', damage: 5 },
+      { attack: 'delayed', damage: 3, burn: 1 },
+    ],
+    supports: false,
+  },
+  // `codex/bellFounder` (3b84a4e7…): Marteau de fonte, puis Coulée.
+  bellFounder: {
+    maxHp: 42,
+    maxGuard: 14,
+    moves: [
+      { attack: 'double', damage: 3 },
+      { attack: 'delayed', damage: 4, burn: 1 },
+    ],
+    supports: false,
+  },
+  // `codex/brambleBurner` (250002c1…), Élite : Torche, Fagot d'épines, Feu de broussailles.
+  brambleBurner: {
+    maxHp: 210,
+    maxGuard: 40,
+    moves: [
+      { attack: 'basic', damage: 10, burn: 2 },
+      { attack: 'double', damage: 6, bleed: { damage: 2, rounds: 3 } },
+      { attack: 'delayedPerilous', damage: 15 },
+    ],
+    supports: false,
+  },
 };
 
 /**
@@ -438,4 +490,9 @@ export const ENEMY_INITIATIVE: Readonly<Record<EnemyKind, number>> = {
   ashGardener: 4,
   hourRinger: 5,
   wishGranter: 6,
+  // La Brûlure (#171), celles du Codex.
+  burningHusk: 7,
+  gargoyle: 7,
+  bellFounder: 4,
+  brambleBurner: 6,
 };
