@@ -241,8 +241,11 @@ export function attackButtonLabel(targetName: string): string {
  */
 export function powerCostText(power: PowerKind, instant = false): string {
   const cost = `${POWERS[power].cost} Élan`;
-  return instant ? `${cost} · Instantané` : `${POWER_NAMES[power]} · ${cost}`;
+  return instant ? `${cost} · ${INSTANT_WORD}` : `${POWER_NAMES[power]} · ${cost}`;
 }
+
+/** La mention d'un pouvoir instantané sur la touche Pouvoir (#173), toujours avec le croissant. */
+export const INSTANT_WORD = 'Instantané';
 
 /** L'Élan qui manque à un pouvoir : « Il manque 1 Élan ». */
 export function missingMomentumText(missing: number): string {

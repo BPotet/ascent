@@ -18,6 +18,7 @@ import Animated, {
 
 import type { DefenseButton } from '../../../domain/battle/BattleEvent';
 import {
+  INSTANT_WORD,
   POWER_NAMES,
   attackButtonLabel,
   missingMomentumText,
@@ -393,17 +394,18 @@ function PowerKey({
 }
 
 /**
- * Le pouvoir instantané disponible (#173, maquette E1) : son nom, puis « 3 Élan · Instantané »
- * avec le croissant, en violet clair.
+ * Le pouvoir instantané disponible (#173, maquette E1) : son nom, puis « 3 Élan · ☾Instantané »
+ * sur une ligne, en violet clair, le croissant juste avant le mot.
  */
 function InstantNote({ slot, look }: { readonly slot: PowerSlot; readonly look: KeyLook }) {
   return (
     <>
       <Text style={[styles.keyNote, { color: look.note }]}>{POWER_NAMES[slot.power]}</Text>
-      <View style={styles.noteRow}>
+      <View testID="battle-power-instant-row" style={styles.instantRow}>
+        <Text style={[styles.keyNote, styles.instant]}>{`${slot.cost} Élan · `}</Text>
         <CrescentGlyph background={look.background} testID="battle-power-crescent" />
         <Text testID="battle-power-instant" style={[styles.keyNote, styles.instant]}>
-          {powerCostText(slot.power, true)}
+          {INSTANT_WORD}
         </Text>
       </View>
     </>
@@ -592,6 +594,7 @@ const styles = StyleSheet.create({
   locked: { opacity: 0.4 },
   keyText: { fontFamily: pixelFont, fontSize: 24, lineHeight: 28, textAlign: 'center' },
   noteRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  instantRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   keyNote: { fontFamily: textFont.semiBold, fontSize: 12, lineHeight: 15, textAlign: 'center' },
   instant: { fontFamily: textFont.bold, color: battleColors.onShadowStep },
   strike: { flex: 1 },

@@ -59,6 +59,19 @@ describe('the Power key of an instant power (E1, E5, E6)', () => {
     expect(style('battle-power-instant')).toMatchObject({ color: battleColors.onShadowStep });
   });
 
+  it('puts the crescent right before « Instantané », after « 3 Élan · », on one line (E1)', async () => {
+    await render(<ActionPad pad={heroPad(ready)} {...padProps()} />);
+
+    const row = screen.getByTestId('battle-power-instant-row', hiddenToo);
+    expect(row).toHaveTextContent('3 Élan · Instantané');
+    expect(StyleSheet.flatten(row.props.style)).toMatchObject({ flexDirection: 'row' });
+    const parts = row.children.map((part) =>
+      typeof part === 'string' ? part : (part.props.testID ?? part.props.children),
+    );
+    expect(parts).toEqual(['3 Élan · ', 'battle-power-crescent', 'battle-power-instant']);
+    expect(screen.getByTestId('battle-power-instant', hiddenToo)).toHaveTextContent('Instantané');
+  });
+
   it('writes « Instantané » readable on the key: #DCCFEA on #1C2133, 10.8:1', () => {
     expect(battleColors.onShadowStep).toBe('#DCCFEA');
     expect(contrast(battleColors.onShadowStep, '#1C2133')).toBeGreaterThan(10.7);
