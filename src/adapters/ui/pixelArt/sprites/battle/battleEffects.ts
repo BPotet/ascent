@@ -1,5 +1,6 @@
 import { bay, grid, px, rect, toRgba, type PixelImage, type Sprite } from '../Sprite';
 import { BULWARK_SHIELD } from '../atelier/data/bulwarkShield';
+import { BURN_EFFECT } from '../atelier/data/burn';
 import { assetSprite } from '../atelier/fullAnimation';
 import type { AtlasRect } from './battleAtlas';
 
@@ -7,7 +8,8 @@ import type { AtlasRect } from './battleAtlas';
  * Les effets du combat et leur nombre d'images : l'éclair d'impact (3 paliers), les étincelles de
  * parade dorée à rayons et bleu acier (5 images), les reflets blanc, rouge et terne (3 images de
  * 30 ms ; le reflet double est le blanc, aux deux griffes), les étoiles (4 positions), l'écu du
- * Rempart (entier, fendu) et l'éclat d'argent (#128).
+ * Rempart (entier, fendu), l'éclat d'argent (#128), et l'effet de la Brûlure recopié de l'Atelier
+ * (#171) : la flamme d'une charge (3 images), l'éclat de braise (2) et la fumée (3).
  */
 export const EFFECT_KINDS = {
   flash: 3,
@@ -19,6 +21,9 @@ export const EFFECT_KINDS = {
   stars: 4,
   shield: 2,
   silverShard: 1,
+  burn: 3,
+  burnHit: 2,
+  burnOut: 3,
 } as const;
 
 export type EffectKind = keyof typeof EFFECT_KINDS;
@@ -45,6 +50,9 @@ const SIDES: Readonly<Record<EffectKind, number>> = {
   stars: 21,
   shield: 15,
   silverShard: 5,
+  burn: 11,
+  burnHit: 16,
+  burnOut: 11,
 };
 
 /** Un pixel `code` en `(x, y)` relatif au centre de la case. */
@@ -209,6 +217,22 @@ function silverShard(): Sprite {
   return sprite;
 }
 
+/**
+ * Une image de l'effet de la Brûlure (#171), recopiée de l'Atelier, posée telle quelle dans sa case
+ * carrée, centrée en largeur (une colonne à gauche pour les images de 8 × 11).
+ */
+function burnEffect(kind: 'burn' | 'burnHit' | 'burnOut', frame: number): Sprite {
+  const { w, h, frames } = BURN_EFFECT.effects[kind];
+  const side = SIDES[kind];
+  const sprite = grid(side, side);
+  const image = assetSprite({ w, h, palette: BURN_EFFECT.pal, rows: frames[frame]! });
+  const left = (side - w) >> 1;
+  for (let y = 0; y < h; y += 1) {
+    for (let x = 0; x < w; x += 1) px(sprite, left + x, y, image.pixels[y * w + x]!);
+  }
+  return sprite;
+}
+
 const PAINTERS: Readonly<Record<EffectKind, (frame: number) => Sprite>> = {
   flash,
   gold: goldSpark,
@@ -219,6 +243,9 @@ const PAINTERS: Readonly<Record<EffectKind, (frame: number) => Sprite>> = {
   stars,
   shield,
   silverShard,
+  burn: (k) => burnEffect('burn', k),
+  burnHit: (k) => burnEffect('burnHit', k),
+  burnOut: (k) => burnEffect('burnOut', k),
 };
 
 let effects: EffectsAtlas | null = null;
