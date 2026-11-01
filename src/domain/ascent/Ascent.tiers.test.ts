@@ -115,6 +115,13 @@ describe('beating the boss of tier 1 no longer ends the ascent (#38)', () => {
     });
   });
 
+  it('ignores the transition screens without a Tier transition in progress', () => {
+    const climbing = startAscent(3);
+
+    expect(acknowledgeBossVictory(climbing)).toBe(climbing);
+    expect(enterNextTier(climbing)).toBe(climbing);
+  });
+
   it('ignores the choice of a door or a battle end during the Tier transition', () => {
     const beaten = won(toBoss(startAscent(3)));
 
