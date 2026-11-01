@@ -4,11 +4,13 @@ import { act, fireEvent, screen } from '@testing-library/react-native';
 import { AccessibilityInfo, StyleSheet, View } from 'react-native';
 
 import { startAscent, type Ascent } from '../../../domain/ascent/Ascent';
+import type { ManualBattleClock } from '../../../application/testing/ManualBattleClock';
+import type { BattleSession } from '../../../application/useCases/BattleSession';
 import type { ShardAward } from '../../../domain/ascent/shards';
 import { artPalette } from '../pixelArt/artPalette';
 import { ascentSetUp } from '../testing/ascent';
 import { renderScreen } from '../testing/renderScreen';
-import { AscentScreen } from './AscentScreen';
+import { AscentScreen, RESUME_COUNTDOWN_S } from './AscentScreen';
 
 jest.mock('../battle/BattleCanvas', () => jest.requireActual('../battle/testing/fakeBattleCanvas'));
 
@@ -273,5 +275,163 @@ describe('the tier backdrop behind the battle (#176)', () => {
     } finally {
       measure.mockRestore();
     }
+  });
+
+  describe('once the scene is measured', () => {
+    let measure: jest.SpyInstance;
+    let battles: jest.SpyInstance<BattleSession, []>;
+
+    /** Le cadre de la scène mesuré dans la fenêtre : du haut `top` au bas `bottom`. */
+    function measuredAt(top: number, bottom: number) {
+      measure.mockImplementation((callback: Parameters<MeasureInWindow>[0]) =>
+        callback(0, top, 390, bottom - top),
+      );
+    }
+
+    /** La mise en page du cadre de la scène affiché : il est mesuré. */
+    async function layOutScene() {
+      await fireEvent(await screen.findByTestId('battle-scene-frame'), 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 440 } },
+      });
+    }
+
+    /**
+     * Le combat affiché, mené jusqu'à la victoire sur l'horloge de combat : le héros attaque à son
+     * tour, sur la dernière session de combat que l'écran a ouverte (`battles`).
+     */
+    async function win(
+      battles: jest.SpyInstance<BattleSession, []>,
+      clock: ManualBattleClock,
+    ): Promise<void> {
+      const battle = battles.mock.results.at(-1)!.value as BattleSession;
+      for (let guard = 0; guard < 400; guard += 1) {
+        const current = battle.current()!.battle;
+        if (current.phase.kind === 'over') break;
+        await act(async () => {
+          if (current.phase.kind === 'hero') {
+            const at = clock.now() + 50;
+            clock.advanceTo(at);
+            battle.heroAction({ kind: 'attack' }, at - 20, at);
+          } else {
+            clock.advanceTo(clock.pending()[0]!);
+          }
+          for (let index = 0; index < 10; index += 1) await Promise.resolve();
+        });
+      }
+      expect(battle.current()!.battle.phase).toMatchObject({ kind: 'over', outcome: 'victory' });
+    }
+
+    beforeEach(() => {
+      measure = jest.spyOn(
+        (View as unknown as { prototype: { measureInWindow: MeasureInWindow } }).prototype,
+        'measureInWindow',
+      );
+      measuredAt(150, 590);
+    });
+
+    afterEach(() => measure.mockRestore());
+
+    it('veils all over again while the loadout sheet holds the battle', async () => {
+      jest.useFakeTimers();
+      try {
+        await show({ ...before(1), blessings: [{ family: 'haste', rarity: 'rare' }] });
+        await layOutScene();
+        expect(backdrop()).toHaveProp('scene', { top: 150, bottom: 590 });
+
+        await fireEvent.press(screen.getByTestId('ascent-loadout'));
+
+        expect(screen.queryByTestId('battle-scene-frame')).toBeNull();
+        expect(backdrop()).toHaveProp('scene', null);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('veils all over again during the countdown after a pause, then waits for the new frame', async () => {
+      jest.useFakeTimers();
+      try {
+        const app = { listener: (_visible: boolean) => undefined as void };
+        const setUp = ascentSetUp({ saved: before(2) });
+        await setUp.session.load();
+        await renderScreen(
+          <AscentScreen
+            session={setUp.session}
+            visibility={{
+              onChange: (listener) => {
+                app.listener = listener;
+                return () => undefined;
+              },
+            }}
+            onLeave={() => undefined}
+          />,
+          setUp.dependencies,
+        );
+        await layOutScene();
+        expect(backdrop()).toHaveProp('scene', { top: 150, bottom: 590 });
+
+        await act(async () => app.listener(false));
+        expect(backdrop()).toHaveProp('scene', null);
+        await act(async () => app.listener(true));
+        expect(screen.getByTestId('ascent-countdown')).toBeOnTheScreen();
+        expect(backdrop()).toHaveProp('scene', null);
+
+        for (let second = 0; second < RESUME_COUNTDOWN_S; second += 1) {
+          await act(async () => {
+            jest.advanceTimersByTime(1_000);
+          });
+        }
+        expect(screen.getByTestId('battle-scene-frame')).toBeOnTheScreen();
+        expect(backdrop()).toHaveProp('scene', null);
+        measuredAt(170, 570);
+        await layOutScene();
+        expect(backdrop()).toHaveProp('scene', { top: 170, bottom: 570 });
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('waits for the frame of the next floor battle, the frame of the last one no longer counting', async () => {
+      const { session, clock } = await show(before(1), async (current) => {
+        battles = jest.spyOn(current, 'battleSession');
+      });
+      await layOutScene();
+      expect(backdrop()).toHaveProp('scene', { top: 150, bottom: 590 });
+
+      await win(battles, clock);
+      await act(async () => {
+        if (session.current()!.boonOffer !== null) session.chooseBoon(0);
+        if (session.current()!.foundItem !== null) session.leaveItem();
+        session.chooseExit(session.current()!.exits.findIndex((exit) => exit.kind === 'combat'));
+      });
+
+      expect(session.current()).toMatchObject({ tier: 1, floor: 4 });
+      expect(await screen.findByTestId('battle-scene-frame')).toBeOnTheScreen();
+      expect(backdrop()).toHaveProp('scene', null);
+      measuredAt(160, 580);
+      await layOutScene();
+      expect(backdrop()).toHaveProp('scene', { top: 160, bottom: 580 });
+    });
+
+    it('waits for the frame of the first battle of the next tier, on its own backdrop', async () => {
+      const { session, clock } = await show(before(1, 'boss'), async (current) => {
+        battles = jest.spyOn(current, 'battleSession');
+      });
+      await layOutScene();
+      expect(backdrop()).toHaveProp('scene', { top: 150, bottom: 590 });
+
+      await win(battles, clock);
+      await act(async () => {
+        session.acknowledgeBossVictory();
+        session.enterNextTier();
+      });
+
+      expect(session.current()).toMatchObject({ tier: 2, floor: 1 });
+      expect(await screen.findByTestId('battle-scene-frame')).toBeOnTheScreen();
+      expect(backdrop()).toHaveProp('tier', 2);
+      expect(backdrop()).toHaveProp('scene', null);
+      measuredAt(160, 580);
+      await layOutScene();
+      expect(backdrop()).toHaveProp('scene', { top: 160, bottom: 580 });
+    });
   });
 });

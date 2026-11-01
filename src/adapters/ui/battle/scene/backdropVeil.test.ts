@@ -38,6 +38,19 @@ describe('backdropVeil', () => {
     ]);
   });
 
+  it('veils a scene measured upside down from its top, without any fade', () => {
+    expect(backdropVeil(WINDOW, { top: 600, bottom: 500 })).toEqual({
+      bands: [
+        { y: 0, height: 600 },
+        { y: 600, height: 244 },
+      ],
+      fades: [
+        { y: 600, height: 0, opaque: 'top' },
+        { y: 600, height: 0, opaque: 'bottom' },
+      ],
+    });
+  });
+
   it('clamps a scene measured out of the window', () => {
     const veil = backdropVeil(WINDOW, { top: -10, bottom: 900 });
 
