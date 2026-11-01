@@ -42,6 +42,11 @@ export interface HeroProfile {
   /** La contre-attaque vaut 50 % de l'Attaque, × ce pourcentage. */
   readonly counterPercent: number;
   readonly power: PowerKind;
+  /**
+   * Le pouvoir instantané (`powerInstant`, #173) : il se lance pendant la phase du héros, avant
+   * son action, sans être une action (ni durée d'action, ni transition de phase).
+   */
+  readonly powerInstant: boolean;
   /** La Riposte du Rempart (#128) ; absente, le Rempart ne riposte pas. */
   readonly bulwarkCounter?: BulwarkCounterShares;
   /** Le trait de l'Errante : chaque impact esquivé dans la fenêtre de parade donne +1 Élan. */
@@ -77,9 +82,9 @@ export const SENTINEL: {
 
 /**
  * Les héros (section 2 des règles du prototype #88, provisoires). La Sentinelle, avec son
- * Initiative et son équipement de base. L'Errante : 60 PV, Attaque 6 × 2 coups (le 2e à +300 ms),
- * Brise-garde 5 par coup, aucune réduction, contre-attaque à 200 % (P10), trait d'esquive, Pas de
- * l'ombre.
+ * Initiative et son équipement de base. L'Errante (Codex `wanderer` v3, #173) : 55 PV, Attaque 6 ×
+ * 2 coups (le 2e à +300 ms), Brise-garde 5 par coup, aucune réduction, contre-attaque à 200 % (P10),
+ * trait d'esquive, Pas de l'ombre en pouvoir instantané.
  */
 export const HEROES: Readonly<Record<HeroKind, HeroProfile>> = {
   sentinel: {
@@ -87,11 +92,12 @@ export const HEROES: Readonly<Record<HeroKind, HeroProfile>> = {
     initiative: 5,
     hits: 1,
     hitIntervalMs: 0,
+    powerInstant: false,
     dodgeMomentum: false,
     startingKit: { weapon: 'shortSword', armor: 'dentedCuirass' },
   },
   wanderer: {
-    maxHp: 60,
+    maxHp: 55,
     initiative: 7,
     attackPower: 6,
     hits: 2,
@@ -100,6 +106,7 @@ export const HEROES: Readonly<Record<HeroKind, HeroProfile>> = {
     damageReductionPercent: 0,
     counterPercent: 200,
     power: 'shadowStep',
+    powerInstant: true,
     dodgeMomentum: true,
     startingKit: { weapon: 'twinDaggers', armor: 'wornCloak' },
   },

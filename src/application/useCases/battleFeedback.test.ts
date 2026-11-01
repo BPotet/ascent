@@ -115,6 +115,18 @@ describe('feedbackFor (sounds and vibrations of a battle)', () => {
       null,
     ],
     [
+      'the instant Shadow Step: the sound of the Bulwark, without vibration (#173)',
+      {
+        type: 'powerUsed',
+        at: 0,
+        power: 'shadowStep',
+        until: 0,
+        instant: true,
+      } as BattleEvent,
+      'bulwark',
+      null,
+    ],
+    [
       'the Bulwark riposte: the shield clash, with a short vibration (#128)',
       {
         type: 'bulwarkCountered',

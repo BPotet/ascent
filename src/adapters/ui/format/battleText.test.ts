@@ -362,6 +362,46 @@ describe('battle texts', () => {
     );
   });
 
+  describe('the instant Shadow Step of the Wanderer (#173)', () => {
+    it('writes « 3 Élan · Instantané » under its name, the Bulwark unchanged', () => {
+      expect(powerCostText('shadowStep', true)).toBe('3 Élan · Instantané');
+      expect(powerCostText('bulwark')).toBe('Rempart · 1 Élan');
+    });
+
+    it('reads the key as instant, then active or missing momentum', () => {
+      expect(powerButtonLabel('shadowStep', 0, false, true)).toBe(
+        "Pouvoir : Pas de l'ombre, 3 Élan, instantané",
+      );
+      expect(powerButtonLabel('shadowStep', 0, true, true)).toBe(
+        "Pouvoir : Pas de l'ombre, 3 Élan, instantané, actif",
+      );
+      expect(powerButtonLabel('shadowStep', 1, false, true)).toBe(
+        "Pouvoir : Pas de l'ombre, 3 Élan, instantané, indisponible : il manque 1 Élan",
+      );
+      expect(powerButtonLabel('bulwark', 0)).toBe('Pouvoir : Rempart, 1 Élan');
+    });
+
+    it('announces that the hero phase goes on, the Bulwark unchanged', () => {
+      expect(
+        announcement(
+          { type: 'powerUsed', at: 0, power: 'shadowStep', until: 0, instant: true },
+          battle,
+        ),
+      ).toBe("Pas de l'ombre actif. Toujours à toi : vise et attaque.");
+      expect(announcement({ type: 'powerUsed', at: 0, power: 'bulwark', until: 500 }, battle)).toBe(
+        'Rempart',
+      );
+    });
+
+    it('describes the Wanderer with 55 HP and the Shadow Step by the text of the Codex', () => {
+      expect(heroCard('wanderer').stats).toBe('55 PV · Attaque 6 × 2 · Initiative 7');
+      expect(heroCard('wanderer').power).toBe(
+        "Pas de l'ombre (3 Élan) : Elle se fond dans sa propre ombre sans s'arrêter, et frappe dans le même élan. Sa prochaine esquive complète déclenche une contre-attaque, comme si le coup l'avait traversée sans la trouver.",
+      );
+      expect(heroCard('wanderer').label).toContain('55 PV');
+    });
+  });
+
   it('writes the Bulwark chip, then « Rempart usé » once it wears (#128)', () => {
     expect([bulwarkChipText(false), bulwarkChipText(true)]).toEqual(['Rempart', 'Rempart usé']);
   });

@@ -106,11 +106,11 @@ describe('the test battle with Initiative (P13, P14)', () => {
 });
 
 describe('the Wanderer (section 2)', () => {
-  it('starts with 60 HP, the twin daggers, the worn cloak and the shadow step', () => {
+  it('starts with 55 HP, the twin daggers, the worn cloak and the shadow step', () => {
     const { battle } = start({ hero: 'wanderer' });
 
     expect(battle.heroKind).toBe('wanderer');
-    expect(battle.hero).toMatchObject({ hp: 60, maxHp: 60, momentum: 1 });
+    expect(battle.hero).toMatchObject({ hp: 55, maxHp: 55, momentum: 1 });
     expect(HEROES.wanderer).toMatchObject({
       initiative: 7,
       attackPower: 6,
@@ -180,7 +180,7 @@ describe('the Wanderer (section 2)', () => {
     const suffered = advance(battle, 2_200);
 
     expect(eventsOf(suffered.events, 'blowResolved')).toEqual([
-      expect.objectContaining({ outcome: 'suffered', damage: 5, heroHp: 55 }),
+      expect.objectContaining({ outcome: 'suffered', damage: 5, heroHp: 50 }),
     ]);
   });
 
@@ -215,8 +215,8 @@ describe('the Wanderer (section 2)', () => {
 });
 
 describe('the shadow step (P11)', () => {
-  it('costs 2 momentum and stays active', () => {
-    const battle = withHero(start({ hero: 'wanderer' }).battle, { momentum: 2 });
+  it('costs 3 momentum and stays active', () => {
+    const battle = withHero(start({ hero: 'wanderer' }).battle, { momentum: 3 });
     const used = act(battle, { kind: 'power', power: 'shadowStep' }, 1_000);
 
     expect(used.battle.hero).toMatchObject({ momentum: 0, shadowStep: true, bulwark: false });
@@ -225,7 +225,7 @@ describe('the shadow step (P11)', () => {
     ]);
   });
 
-  it('is unavailable without 2 momentum, or while it is active', () => {
+  it('is unavailable without 3 momentum, or while it is active', () => {
     const battle = start({ hero: 'wanderer' }).battle;
     const ignored = expect.objectContaining({ type: 'pressIgnored', reason: 'notAvailable' });
 

@@ -190,6 +190,8 @@ export type BattlePhase =
       readonly since: number;
       /** Elle commence sans transition de phase, par l'annonce « À toi ». */
       readonly announced: boolean;
+      /** Un pouvoir instantané vient d'être lancé (#173) : le héros choisit encore son action. */
+      readonly instantPowerUsed?: true;
     }
   | {
       /** La frappe en rythme (`TimedStrike`) : sa préparation, son impact, sa récupération. */
@@ -521,6 +523,7 @@ export function advance(battle: Battle, until: number): BattleUpdate {
 // Manche et ordre d'action
 
 type StrikePhase = Extract<BattlePhase, { kind: 'heroStrike' }>;
+type HeroPhase = Extract<BattlePhase, { kind: 'hero' }>;
 
 /** Le premier allié tombé jamais relevé de `enemy`, `null` s'il n'y en a pas. */
 function fallenAlly(battle: Battle, enemy: number): number | null {
@@ -1390,15 +1393,26 @@ function attack(battle: Battle, events: Events, at: number): Battle {
   return gainMomentumAt(startHeroAction(struck, struck.phase), events, at);
 }
 
-function activatePower(battle: Battle, events: Events, power: PowerKind, at: number): Battle {
-  const until = at + HERO_ACTION_MS;
+/**
+ * Un pouvoir : il coûte son Élan. Un pouvoir instantané (#173) n'est pas une action : la phase du
+ * héros continue, sans durée d'action ni transition, et le héros choisit encore son action.
+ */
+function activatePower(
+  battle: Battle,
+  events: Events,
+  { power, phase }: { readonly power: PowerKind; readonly phase: HeroPhase },
+  at: number,
+): Battle {
+  const instant = heroProfile(battle).powerInstant;
+  const until = instant ? at : at + HERO_ACTION_MS;
   const momentum = battle.hero.momentum - POWERS[power].cost;
-  events.push({ type: 'powerUsed', at, power, until });
+  events.push({ type: 'powerUsed', at, power, until, ...(instant && { instant }) });
   events.push({ type: 'momentumChanged', at, momentum });
   const hero =
     power === 'shadowStep'
       ? { ...battle.hero, momentum, shadowStep: true }
       : { ...battle.hero, momentum, bulwark: true };
+  if (instant) return { ...battle, hero, phase: { ...phase, instantPowerUsed: true } };
   return startHeroAction({ ...battle, hero }, { kind: 'heroPower', power, since: at, until });
 }
 
@@ -1444,7 +1458,10 @@ export function heroAction(
       ) {
         return ignored(advanced, at, 'power', 'notAvailable');
       }
-      return { battle: activatePower(current, events, action.power, at), events };
+      return {
+        battle: activatePower(current, events, { power: action.power, phase }, at),
+        events,
+      };
     case 'attack':
       return { battle: attack(current, events, at), events };
   }
