@@ -2,18 +2,33 @@ import { type Ref, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { AccessibilityInfo, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
-import type { Ascent } from '../../../domain/ascent/Ascent';
+import type { Ascent, TierPassage } from '../../../domain/ascent/Ascent';
 import { ITEMS } from '../../../domain/ascent/items';
 import { loadoutOf } from '../../../domain/ascent/loadout';
+import { SUMMIT_SHARDS, shardSum } from '../../../domain/ascent/shards';
 import { BoonChoicePanel } from '../battle/BoonChoicePanel';
 import { BlessingChoice } from '../components/BlessingChoice';
 import { ExitChoice } from '../components/ExitChoice';
 import { LoadoutButton } from '../components/LoadoutButton';
 import { LoadoutSheet } from '../components/LoadoutSheet';
 import { Screen } from '../components/Screen';
-import { floorLine, goldText, itemDescription, itemText, wornText } from '../format/ascentText';
+import {
+  TIER_NAMES,
+  bossDefeatedAnnouncement,
+  floorLine,
+  goldText,
+  itemDescription,
+  itemText,
+  shardText,
+  shardsWonText,
+  summitAnnouncement,
+  tierAnnouncement,
+  wornText,
+} from '../format/ascentText';
+import { HERO_NAMES } from '../format/battleText';
 import { artPalette } from '../pixelArt/artPalette';
 import { PixelButton } from '../pixelArt/PixelButton';
+import { PixelIcon } from '../pixelArt/PixelIcon';
 import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypography';
 import { ITEM_IMAGES } from '../pixelArt/sprites/atelier/data/itemImages';
 import { assetSprite } from '../pixelArt/sprites/atelier/fullAnimation';
@@ -22,6 +37,7 @@ import { toPixelImage } from '../pixelArt/sprites/Sprite';
 import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
 import { useAscent } from '../state/useAscent';
 import { useLargeText } from '../state/useLargeText';
+import { useShardTotal } from '../state/useShardTotal';
 import { BattleScreen } from './BattleScreen';
 
 const { roles } = artPalette;
@@ -66,7 +82,7 @@ function Header({
   readonly loadoutRef?: Ref<View>;
 }) {
   const parts = [
-    floorLine(ascent.floor),
+    floorLine(ascent.floor, ascent.tier),
     `${ascent.hero.hp}/${ascent.hero.maxHp} PV`,
     goldText(ascent.gold),
     ...(extra ? [extra] : []),
@@ -167,6 +183,136 @@ function Countdown({ onDone }: { readonly onDone: () => void }) {
   );
 }
 
+/** Annonce `message` au lecteur d'écran, une fois, à l'affichage de l'écran. */
+function useAnnouncement(message: string): void {
+  useEffect(() => {
+    AccessibilityInfo.announceForAccessibility(message);
+  }, [message]);
+}
+
+/** Les Éclats en grand : l'éclat de cristal et « +8 », lus d'un trait. */
+function BigShards({ shards, label }: { readonly shards: number; readonly label: string }) {
+  return (
+    <View accessible accessibilityLabel={label} style={styles.bigShards}>
+      <PixelIcon name="shard12" color={roles.shard} secondColor={roles.light} />
+      <Text style={styles.shards}>{`+${shards}`}</Text>
+    </View>
+  );
+}
+
+/**
+ * L'écran du boss vaincu (X3, #38, maquette 30) : les Éclats du boss en grand, gardés pour
+ * toujours, l'Or, puis « Continuer vers le palier N » ou « Faire une pause ». Le coffre et le
+ * bienfait de la maquette (#37) ne sont pas repris.
+ */
+function BossDefeated({
+  ascent,
+  passage,
+  onContinue,
+  onPause,
+}: {
+  readonly ascent: Ascent;
+  readonly passage: TierPassage;
+  readonly onContinue: () => void;
+  readonly onPause: () => void;
+}) {
+  const shards = ascent.shardAwards.at(-1)?.amount ?? 0;
+  useAnnouncement(bossDefeatedAnnouncement(shards));
+  return (
+    <View style={styles.center}>
+      <Text style={styles.label}>Boss vaincu</Text>
+      <Text accessibilityRole="header" style={styles.big}>
+        {`Palier ${ascent.tier} franchi`}
+      </Text>
+      <BigShards shards={shards} label={bossDefeatedAnnouncement(shards)} />
+      <Text style={styles.line}>Éclats · gardés pour toujours, même si tu tombes.</Text>
+      <View style={styles.reward}>
+        <PixelIcon name="coin8" color={roles.gold} secondColor={roles.light} />
+        <Text style={styles.gold}>{`+${goldText(ascent.lastGold)}`}</Text>
+      </View>
+      <PixelButton label={`Continuer vers le palier ${passage.to}`} onPress={onContinue} />
+      <PixelButton label="Faire une pause" variant="secondary" onPress={onPause} />
+    </View>
+  );
+}
+
+/** L'écran de transition (C4, #38, maquette 30) : le palier franchi, puis le palier suivant. */
+function TierAnnounce({
+  passage,
+  onEnter,
+}: {
+  readonly passage: TierPassage;
+  readonly onEnter: () => void;
+}) {
+  useAnnouncement(tierAnnouncement(passage.to));
+  return (
+    <View style={styles.center}>
+      <Text style={styles.label}>{`Palier ${passage.to - 1} franchi`}</Text>
+      <Text style={[styles.label, styles.light]}>{`Palier ${passage.to}`}</Text>
+      <Text accessibilityRole="header" style={styles.big}>
+        {TIER_NAMES[passage.to]}
+      </Text>
+      <Text style={styles.line}>Les ennemis y sont plus forts.</Text>
+      <PixelButton label="Entrer" onPress={onEnter} />
+    </View>
+  );
+}
+
+/**
+ * La fin de l'ascension (X6) ou le Sommet atteint (X7) (#38, maquette 30) : les Éclats gagnés en
+ * grand, le Total d'Éclats, ce qui reste (vert) et ce qui est perdu (rouge). Le camp, la Forgeronne
+ * et les statistiques de la maquette (#40) ne sont pas repris.
+ */
+function AscentEnd({
+  ascent,
+  shardTotal,
+  onLeave,
+}: {
+  readonly ascent: Ascent;
+  readonly shardTotal: number;
+  readonly onLeave: () => void;
+}) {
+  const summit = ascent.outcome === 'victory';
+  const won = shardSum(ascent.shardAwards);
+  const hero = HERO_NAMES[ascent.hero.kind];
+  const total = `Total : ${shardText(shardTotal)}`;
+  return (
+    <View style={styles.center}>
+      {summit ? <SummitAnnouncement ascent={ascent} /> : null}
+      <Text accessibilityRole="header" style={styles.big}>
+        {summit ? 'Sommet atteint' : "Fin de l'ascension"}
+      </Text>
+      <Text style={styles.line}>
+        {summit
+          ? `Les trois paliers franchis avec ${hero.charAt(0).toLowerCase()}${hero.slice(1)}.`
+          : `${hero} est tombée au palier ${ascent.tier}, étage ${ascent.floor}.`}
+      </Text>
+      <Text style={styles.label}>Éclats gagnés</Text>
+      <BigShards shards={won} label={shardsWonText(won)} />
+      <Text style={styles.line}>
+        {summit ? `Dont ${SUMMIT_SHARDS} pour le Sommet · ${total}` : total}
+      </Text>
+      <View style={styles.reward} testID="ascent-end-kept">
+        <PixelIcon name="check8" color={roles.done} />
+        <Text style={[styles.line, styles.kept]}>Tu gardes tes Éclats.</Text>
+      </View>
+      <View style={styles.reward} testID="ascent-end-lost">
+        <PixelIcon name="cross8" color={roles.error} />
+        <Text style={[styles.line, styles.lost]}>
+          {`L'Or (${goldText(ascent.gold)}), l'équipement et les bienfaits de cette ascension sont perdus.`}
+        </Text>
+      </View>
+      <PixelButton label="Retour au pied de la tour" onPress={onLeave} />
+    </View>
+  );
+}
+
+/** L'annonce du Sommet : les Éclats du boss du palier 3 et du Sommet, gagnés d'un coup. */
+function SummitAnnouncement({ ascent }: { readonly ascent: Ascent }) {
+  useAnnouncement(summitAnnouncement(shardSum(ascent.shardAwards.slice(-2))));
+  return null;
+}
+
 /**
  * L'écran de l'ascension (prototype #91) : le combat de l'étage, le choix de sortie (la porte
  * Combat annonce la taille du groupe), et le bilan de fin (victoire, chute ; l'Or est perdu à la
@@ -175,6 +321,7 @@ function Countdown({ onDone }: { readonly onDone: () => void }) {
  */
 export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps) {
   const ascent = useAscent(session);
+  const shardTotal = useShardTotal(session);
   const [counting, setCounting] = useState(() => session.resuming());
   const [paused, setPaused] = useState(false);
   const [mount, setMount] = useState(0);
@@ -246,26 +393,35 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
   }
 
   if (ascent.outcome !== null) {
-    const victory = ascent.outcome === 'victory';
     return (
       <Screen layout="top" background={roles.night} testID="ascent-end">
-        <View style={styles.center}>
-          <Text accessibilityRole="header" style={[styles.big, !victory && styles.fall]}>
-            {victory ? 'Victoire !' : 'Chute'}
-          </Text>
-          <Text style={styles.line}>
-            {victory ? 'Le boss des Catacombes est vaincu.' : `Tombé à l'étage ${ascent.floor}.`}
-          </Text>
-          <Text style={styles.gold}>{`Or gagné : ${goldText(ascent.gold)}`}</Text>
-          <Text style={styles.line}>L&apos;Or est perdu à la fin de l&apos;ascension.</Text>
-          <PixelButton
-            label="Retour au pied de la tour"
-            onPress={() => {
-              session.leave();
-              onLeave();
-            }}
-          />
-        </View>
+        <AscentEnd
+          ascent={ascent}
+          shardTotal={shardTotal}
+          onLeave={() => {
+            session.leave();
+            onLeave();
+          }}
+        />
+      </Screen>
+    );
+  }
+
+  // Le Passage de palier (#38) : l'écran du boss vaincu, puis celui de la transition.
+  if (ascent.passage !== null) {
+    const { passage } = ascent;
+    return passage.step === 'bossDefeated' ? (
+      <Screen layout="top" background={roles.night} testID="ascent-boss-defeated">
+        <BossDefeated
+          ascent={ascent}
+          passage={passage}
+          onContinue={() => session.acknowledgeBossVictory()}
+          onPause={leave}
+        />
+      </Screen>
+    ) : (
+      <Screen layout="top" background={roles.night} testID="ascent-tier">
+        <TierAnnounce passage={passage} onEnter={() => session.enterNextTier()} />
       </Screen>
     );
   }
@@ -313,7 +469,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
           </>
         ) : (
           <FloorBattle
-            key={`${ascent.floor}-${mount}`}
+            key={`${ascent.tier}-${ascent.floor}-${mount}`}
             session={session}
             ascent={ascent}
             onPause={leave}
@@ -445,7 +601,19 @@ const styles = StyleSheet.create({
     color: roles.light,
     textAlign: 'center',
   },
-  fall: { color: roles.error },
+  label: {
+    fontFamily: pixelFont,
+    fontSize: 14,
+    lineHeight: 18,
+    color: roles.parchment,
+    textAlign: 'center',
+  },
+  light: { color: roles.light },
+  bigShards: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  shards: { fontFamily: pixelFont, fontSize: 48, lineHeight: 54, color: roles.shard },
+  reward: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  kept: { color: roles.done, flexShrink: 1 },
+  lost: { color: roles.error, flexShrink: 1 },
   line: { ...pixelTypography.body, color: roles.parchment, textAlign: 'center' },
   gold: {
     fontFamily: pixelFont,

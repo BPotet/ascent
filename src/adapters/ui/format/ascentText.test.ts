@@ -4,7 +4,14 @@ import {
   blessingText,
   enemiesText,
   exitLabel,
+  TIER_LINE,
+  TIER_NAMES,
+  bossDefeatedAnnouncement,
   floorLine,
+  shardText,
+  summitAnnouncement,
+  tierAnnouncement,
+  tierLine,
   gaugeEffects,
   gaugeReason,
   gaugeWord,
@@ -179,5 +186,33 @@ describe('gauge, blessing and item texts (#93)', () => {
       'Un marteau de forge, trop lourd pour un combat rapide. Aucune garde ne lui résiste longtemps.',
     );
     expect(itemDescription('crossbow')).toBeNull();
+  });
+});
+
+describe('tier and Shard texts (#38)', () => {
+  it('names the three tiers', () => {
+    expect([1, 2, 3].map((tier) => TIER_NAMES[tier as 1])).toEqual([
+      'Les Catacombes',
+      'Les Jardins de cendre',
+      'Le Beffroi',
+    ]);
+    expect(tierLine(2)).toBe('Palier 2 · les Jardins de cendre · 6 étages');
+    expect(TIER_LINE).toBe('Palier 1 · les Catacombes · 6 étages');
+  });
+
+  it('names the floor of a tier out of 6', () => {
+    expect(floorLine(3, 2)).toBe('Palier 2 · Étage 3 sur 6');
+    expect(floorLine(6, 3)).toBe('Palier 3 · Étage 6 sur 6');
+  });
+
+  it('counts the Shards: « 0 Éclat », « 1 Éclat », « 22 Éclats »', () => {
+    expect([0, 1, 2, 22].map(shardText)).toEqual(['0 Éclat', '1 Éclat', '2 Éclats', '22 Éclats']);
+  });
+
+  it('tells the screen reader the Shards of the boss, the next tier and the Summit', () => {
+    expect(bossDefeatedAnnouncement(12)).toBe('12 Éclats gagnés, gardés pour toujours');
+    expect(tierAnnouncement(2)).toBe('Palier 2, les Jardins de cendre');
+    expect(tierAnnouncement(3)).toBe('Palier 3, le Beffroi');
+    expect(summitAnnouncement(28)).toBe('28 Éclats gagnés, Sommet atteint');
   });
 });

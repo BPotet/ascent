@@ -18,14 +18,18 @@ import {
   gaugeReason,
   gaugeWord,
   goldText,
+  shardText,
+  tierLine,
 } from '../format/ascentText';
 import { HERO_NAMES } from '../format/battleText';
 import { artPalette } from '../pixelArt/artPalette';
 import { PixelButton } from '../pixelArt/PixelButton';
 import { PixelFrame } from '../pixelArt/PixelFrame';
+import { PixelIcon } from '../pixelArt/PixelIcon';
 import { pixelTypography, textFont } from '../pixelArt/pixelTypography';
 import { useAscent } from '../state/useAscent';
 import { useFateGauge } from '../state/useFateGauge';
+import { useShardTotal } from '../state/useShardTotal';
 import { HeroChoiceScreen } from './HeroChoiceScreen';
 
 const { roles } = artPalette;
@@ -34,6 +38,24 @@ const { roles } = artPalette;
 function heroInSentence(hero: HeroKind): string {
   const name = HERO_NAMES[hero];
   return name.charAt(0).toLowerCase() + name.slice(1);
+}
+
+/**
+ * Le Total d'Éclats (#38, maquette 30) : l'éclat de cristal et « 22 Éclats », « 0 Éclat », toujours
+ * visible, ascension en cours ou non.
+ */
+function ShardChip({ total }: { readonly total: number }) {
+  return (
+    <View
+      accessible
+      accessibilityLabel={shardText(total)}
+      testID="tower-foot-shards"
+      style={styles.shards}
+    >
+      <PixelIcon name="shard8" color={roles.shard} secondColor={roles.light} />
+      <Text style={styles.shardText}>{shardText(total)}</Text>
+    </View>
+  );
 }
 
 /** Au-delà de ce nombre d'entrées, le cadre de l'ascension annonce qu'il défile (maquette #153). */
@@ -46,10 +68,12 @@ const SCROLL_HINT_BEYOND = 5;
  */
 function AscentInProgress({
   ascent,
+  shards,
   onEnter,
   onAbandon,
 }: {
   readonly ascent: Ascent;
+  readonly shards: number;
   readonly onEnter: () => void;
   readonly onAbandon: () => void;
 }) {
@@ -68,12 +92,13 @@ function AscentInProgress({
           <Text accessibilityRole="header" style={styles.title}>
             {TOWER_TITLE}
           </Text>
-          <Text style={styles.line}>{TIER_LINE}</Text>
+          <ShardChip total={shards} />
+          <Text style={styles.line}>{tierLine(ascent.tier)}</Text>
           <PixelFrame testID="tower-foot-ascent" style={styles.frame}>
             <View style={styles.hero}>
               <Text style={styles.status}>{HERO_NAMES[ascent.hero.kind]}</Text>
               <Text style={styles.status}>
-                {`${floorLine(ascent.floor)} · ${ascent.hero.hp}/${ascent.hero.maxHp} PV · ${goldText(ascent.gold)}`}
+                {`${floorLine(ascent.floor, ascent.tier)} · ${ascent.hero.hp}/${ascent.hero.maxHp} PV · ${goldText(ascent.gold)}`}
               </Text>
               <Text style={styles.line}>{`Jauge de l'ascension : ${gaugeWord(ascent.gauge)}`}</Text>
             </View>
@@ -128,6 +153,7 @@ export function TowerFootScreen({
   readonly onEnter: () => void;
 }) {
   const ascent = useAscent(session);
+  const shards = useShardTotal(session);
   const [loaded, setLoaded] = useState(ascent !== null);
   const { reading, seal } = useFateGauge();
   const [choosing, setChoosing] = useState<FateGaugeReading | null>(null);
@@ -163,7 +189,12 @@ export function TowerFootScreen({
   if (loaded && inProgress) {
     return (
       <Screen layout="top" background={roles.night} testID="tower-foot">
-        <AscentInProgress ascent={ascent} onEnter={onEnter} onAbandon={() => session.abandon()} />
+        <AscentInProgress
+          ascent={ascent}
+          shards={shards}
+          onEnter={onEnter}
+          onAbandon={() => session.abandon()}
+        />
       </Screen>
     );
   }
@@ -174,6 +205,7 @@ export function TowerFootScreen({
         <Text accessibilityRole="header" style={styles.title}>
           {TOWER_TITLE}
         </Text>
+        {!loaded ? null : <ShardChip total={shards} />}
         <Text style={styles.line}>{TIER_LINE}</Text>
         {!loaded ? null : (
           <View style={styles.actions}>
@@ -225,4 +257,16 @@ const styles = StyleSheet.create({
   frame: { paddingTop: 8 },
   hero: { paddingHorizontal: 14, gap: 2 },
   bottom: { gap: 12, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 16 },
+  shards: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 2,
+    borderColor: roles.line,
+    backgroundColor: roles.surface,
+  },
+  shardText: { fontFamily: textFont.semiBold, fontSize: 13, lineHeight: 18, color: roles.shard },
 });

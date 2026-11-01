@@ -11,12 +11,15 @@ jest.mock('../battle/BattleCanvas', () => jest.requireActual('../battle/testing/
 const hidden = { includeHiddenElements: true } as const;
 
 /** Les ascensions ouvertes par la planche, chacune dans sa session en mémoire. */
-let opened: { saved: Ascent; session: AscentSession }[] = [];
+let opened: { saved: Ascent | null; shards: number | undefined; session: AscentSession }[] = [];
 
-async function openAscent(saved: Ascent): Promise<AscentSession> {
-  const { session } = ascentSetUp({ saved });
+async function openAscent(saved: Ascent | null, shards?: number): Promise<AscentSession> {
+  const { session } = ascentSetUp({
+    ...(saved !== null && { saved }),
+    ...(shards !== undefined && { shards }),
+  });
   await session.load();
-  opened.push({ saved, session });
+  opened.push({ saved, shards, session });
   return session;
 }
 
@@ -58,6 +61,11 @@ describe('IconBoardScreen (#157)', () => {
       'Équipement · 8 · combat',
       'Équipement · 8 · sorties',
       "Équipement · 3 · choix d'un bienfait",
+      'Boss vaincu · palier 1',
+      'Palier 2 · Les Jardins de cendre',
+      'Chute · 10 Éclats',
+      'Sommet atteint',
+      'Pied de la tour · 22 Éclats',
       'Fermer',
     ]);
   });
@@ -207,7 +215,7 @@ describe('IconBoardScreen with the loadout (#159)', () => {
     expect(
       screen.getByLabelText('Bienfaits : Écho parfait, Commun ; Givre persistant, Rare'),
     ).toBeOnTheScreen();
-    expect(loadoutOf(opened[0]!.saved)).toEqual([
+    expect(loadoutOf(opened[0]!.saved!)).toEqual([
       [{ family: 'haste', rarity: 'rare' }],
       ['perfectEcho', 'lingeringFrost'],
     ]);
@@ -283,5 +291,44 @@ describe('IconBoardScreen with the loadout (#159)', () => {
 
     expect(opened).toHaveLength(2);
     expect(opened[0]!.session).not.toBe(opened[1]!.session);
+  });
+});
+
+describe('IconBoardScreen with the tiers and the Shards (#38)', () => {
+  it('opens the real defeated boss screen of tier 1, with its 8 Shards (X3)', async () => {
+    await open('Boss vaincu · palier 1');
+
+    expect(await screen.findByTestId('ascent-boss-defeated')).toBeOnTheScreen();
+    expect(screen.getByLabelText('8 Éclats gagnés, gardés pour toujours')).toBeOnTheScreen();
+    expect(screen.getByText('+40 Or')).toBeOnTheScreen();
+  });
+
+  it('opens the real transition screen to the Ash gardens (C4)', async () => {
+    await open('Palier 2 · Les Jardins de cendre');
+
+    expect(await screen.findByRole('header', { name: 'Les Jardins de cendre' })).toBeOnTheScreen();
+  });
+
+  it('opens the real end of the ascent after a fall at tier 2, with 10 Shards (X6)', async () => {
+    await open('Chute · 10 Éclats');
+
+    expect(await screen.findByRole('header', { name: "Fin de l'ascension" })).toBeOnTheScreen();
+    expect(screen.getByLabelText('10 Éclats gagnés')).toBeOnTheScreen();
+    expect(screen.getByText('La Sentinelle est tombée au palier 2, étage 4.')).toBeOnTheScreen();
+  });
+
+  it('opens the real Summit reached (X7)', async () => {
+    await open('Sommet atteint');
+
+    expect(await screen.findByRole('header', { name: 'Sommet atteint' })).toBeOnTheScreen();
+    expect(screen.getByLabelText('54 Éclats gagnés')).toBeOnTheScreen();
+    expect(screen.getByText('Dont 10 pour le Sommet · Total : 54 Éclats')).toBeOnTheScreen();
+  });
+
+  it('opens the real tower foot with 22 Shards and no ascent, in memory', async () => {
+    await open('Pied de la tour · 22 Éclats');
+
+    expect(await screen.findByTestId('tower-foot-shards')).toHaveTextContent('22 Éclats');
+    expect(opened[0]).toMatchObject({ saved: null, shards: 22 });
   });
 });

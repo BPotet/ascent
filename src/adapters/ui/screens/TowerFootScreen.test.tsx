@@ -258,3 +258,25 @@ describe('TowerFootScreen with the loadout (#159)', () => {
     expect(screen.queryByText(/Équipement/u)).toBeNull();
   });
 });
+
+describe('TowerFootScreen: the Shard total and the tier (#38)', () => {
+  it('shows « 0 Éclat » at the first opening, before any Shard', async () => {
+    await show();
+
+    expect(await screen.findByLabelText('0 Éclat')).toHaveTextContent('0 Éclat');
+  });
+
+  it('shows the Shard total of the player, « 22 Éclats »', async () => {
+    await show({ shards: 22 });
+
+    expect(await screen.findByTestId('tower-foot-shards')).toHaveTextContent('22 Éclats');
+  });
+
+  it('shows the Shard total and the tier of the ascent in progress', async () => {
+    await show({ saved: { ...startAscent(3), tier: 2, floor: 3 }, shards: 12 });
+
+    expect(await screen.findByTestId('tower-foot-shards')).toHaveTextContent('12 Éclats');
+    expect(screen.getByText('Palier 2 · les Jardins de cendre · 6 étages')).toBeOnTheScreen();
+    expect(screen.getByText('Palier 2 · Étage 3 sur 6 · 80/80 PV · 0 Or')).toBeOnTheScreen();
+  });
+});

@@ -298,6 +298,42 @@ const DRAWN = {
     '............',
   ],
   // Les catégories d'intention du combat (#32, C2.2) : lame, bouclier, cœur, flèche, cercle barré.
+  // L'Éclat (#38) : un cristal, sa facette éclairée en `Y` (maquette 30, icône `shard`).
+  shard8: [
+    '...XX...',
+    '..XYXX..',
+    '.XYXXXX.',
+    'XXXXXXXX',
+    '.XXXXXX.',
+    '..XXXX..',
+    '...XX...',
+    '........',
+  ],
+  shard12: [
+    '.....XX.....',
+    '....XYXX....',
+    '...XYXXXX...',
+    '..XYXXXXXX..',
+    '.XYXXXXXXXX.',
+    'XXXXXXXXXXXX',
+    '.XXXXXXXXXX.',
+    '..XXXXXXXX..',
+    '...XXXXXX...',
+    '....XXXX....',
+    '.....XX.....',
+    '............',
+  ],
+  // L'Or (#38) : une pièce, son reflet en `Y` (maquette 30, icône `coin`).
+  coin8: [
+    '..XXXX..',
+    '.XYYXXX.',
+    'XYXXXXXX',
+    'XYXXXXXX',
+    'XXXXXXXX',
+    'XXXXXXXX',
+    '.XXXXXX.',
+    '..XXXX..',
+  ],
   iAttack: [
     '..........XX',
     '.........XXX',

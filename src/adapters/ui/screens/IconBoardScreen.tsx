@@ -7,6 +7,7 @@ import type { BlessingFamily, StartingBlessing } from '../../../domain/ascent/bl
 import type { BoonKind } from '../../../domain/ascent/boons';
 import type { Exit } from '../../../domain/ascent/exits';
 import type { Rarity } from '../../../domain/ascent/rarity';
+import type { ShardAward } from '../../../domain/ascent/shards';
 import { BoonChoicePanel } from '../battle/BoonChoicePanel';
 import { BlessingChoice } from '../components/BlessingChoice';
 import { ExitChoice } from '../components/ExitChoice';
@@ -35,7 +36,19 @@ const ENTRIES: readonly (readonly [Board, string])[] = [
  * Une entrée de l'Équipement (#159) : le vrai pied de la tour ou le vrai écran de l'ascension, sur
  * une ascension fixe, ouverte dans sa propre session en mémoire.
  */
-type LoadoutBoard = 'foot1' | 'foot3' | 'foot8' | 'battle8' | 'exits8' | 'boons3';
+type LoadoutBoard =
+  | 'foot1'
+  | 'foot3'
+  | 'foot8'
+  | 'battle8'
+  | 'exits8'
+  | 'boons3'
+  // Les paliers et les Éclats (#38) : X3, C4, X6, X7 et le Total d'Éclats au pied de la tour.
+  | 'bossDefeated'
+  | 'tierTwo'
+  | 'fall10'
+  | 'summit'
+  | 'foot22';
 
 const LOADOUT_ENTRIES: readonly (readonly [LoadoutBoard, string])[] = [
   ['foot1', 'Équipement · 1 · pied de la tour'],
@@ -44,6 +57,11 @@ const LOADOUT_ENTRIES: readonly (readonly [LoadoutBoard, string])[] = [
   ['battle8', 'Équipement · 8 · combat'],
   ['exits8', 'Équipement · 8 · sorties'],
   ['boons3', "Équipement · 3 · choix d'un bienfait"],
+  ['bossDefeated', 'Boss vaincu · palier 1'],
+  ['tierTwo', 'Palier 2 · Les Jardins de cendre'],
+  ['fall10', 'Chute · 10 Éclats'],
+  ['summit', 'Sommet atteint'],
+  ['foot22', 'Pied de la tour · 22 Éclats'],
 ];
 
 // Stryker disable all: données fixes d'un outil du build de preview.
@@ -118,7 +136,23 @@ const between = (ascent: Ascent, exits: readonly Exit[]): Ascent => ({
   exits,
   lastGold: 10,
 });
-const LOADOUT_ASCENTS: Readonly<Record<LoadoutBoard, Ascent>> = {
+/** Les Éclats d'une ascension de la planche (#38), par palier, étage et gain. */
+const shard = (id: string, amount: number): ShardAward => ({ id: `42:${id}`, amount });
+const BOSS_ONE = shard('1:6:boss', 8);
+/** Le boss du palier 1 vaincu, 40 Or : l'écran du boss vaincu, puis la transition. */
+const beaten = (step: 'bossDefeated' | 'announce'): Ascent => ({
+  ...startAscent(42),
+  floor: 6,
+  encounter: null,
+  lastGold: 40,
+  gold: 95,
+  shardAwards: [BOSS_ONE],
+  passage: { to: 2, step },
+});
+/** Le Total d'Éclats stocké avant chaque ascension de la planche (#38). */
+const BOARD_SHARDS: Partial<Readonly<Record<LoadoutBoard, number>>> = { fall10: 34, foot22: 22 };
+
+const LOADOUT_ASCENTS: Readonly<Record<LoadoutBoard, Ascent | null>> = {
   foot1: withLoadout(1, [HASTE], []),
   foot3: THREE,
   foot8: EIGHT,
@@ -128,6 +162,35 @@ const LOADOUT_ASCENTS: Readonly<Record<LoadoutBoard, Ascent>> = {
     ...between(THREE, DOORS),
     boonOffer: ['shatteringEmber', 'trueEdge', 'blazingEmber'],
   },
+  bossDefeated: beaten('bossDefeated'),
+  tierTwo: beaten('announce'),
+  fall10: {
+    ...startAscent(42),
+    tier: 2,
+    floor: 4,
+    encounter: null,
+    gold: 23,
+    outcome: 'fall',
+    shardAwards: [BOSS_ONE, shard('2:3:elite', 2)],
+  },
+  summit: {
+    ...startAscent(42),
+    tier: 3,
+    floor: 6,
+    encounter: null,
+    gold: 214,
+    outcome: 'victory',
+    shardAwards: [
+      shard('1:3:elite', 2),
+      BOSS_ONE,
+      shard('2:4:elite', 2),
+      shard('2:6:boss', 12),
+      shard('3:2:elite', 2),
+      shard('3:6:boss', 18),
+      { id: '42:summit', amount: 10 },
+    ],
+  },
+  foot22: null,
 };
 // Stryker restore all
 
@@ -151,8 +214,11 @@ export function IconBoardScreen({
   visibility,
 }: {
   readonly onClose: () => void;
-  /** Ouvre une ascension fixe dans une session neuve, en mémoire : jamais celle du joueur (#159). */
-  readonly openAscent: (saved: Ascent) => Promise<AscentSession>;
+  /**
+   * Ouvre une ascension fixe (ou aucune) dans une session neuve, en mémoire, avec un Total d'Éclats
+   * fixe (#38) : jamais celle du joueur (#159).
+   */
+  readonly openAscent: (saved: Ascent | null, shards?: number) => Promise<AscentSession>;
   readonly visibility: AscentVisibility;
 }) {
   const [board, setBoard] = useState<Board | null>(null);
@@ -164,7 +230,7 @@ export function IconBoardScreen({
     setBoard(entry);
   };
   const openLoadout = (entry: LoadoutBoard) => {
-    void openAscent(LOADOUT_ASCENTS[entry]).then((session) =>
+    void openAscent(LOADOUT_ASCENTS[entry], BOARD_SHARDS[entry]).then((session) =>
       setAscent({ screen: entry.startsWith('foot') ? 'foot' : 'ascent', session }),
     );
   };
