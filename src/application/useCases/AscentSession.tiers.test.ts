@@ -21,7 +21,10 @@ import {
 import { BATTLE_HINT_SEEN_KEYS } from './battleHints';
 import type { BattleSession } from './BattleSession';
 
-/** Un stockage en mémoire ; `hold` retient l'écriture d'une clé jusqu'à `release`. */
+/**
+ * Un stockage en mémoire ; `hold` retient l'écriture d'une clé jusqu'à `release`, `failReads` fait
+ * échouer sa lecture.
+ */
 function mapStore() {
   const values = new Map<string, string>([
     [BATTLE_HINT_SEEN_KEYS.hero, '1'],
@@ -29,6 +32,7 @@ function mapStore() {
   ]);
   const held = new Map<string, () => void>();
   const failing = new Map<string, number>();
+  const unreadable = new Set<string>();
   return {
     values,
     hold: (key: string) => held.set(key, () => undefined),
@@ -38,7 +42,11 @@ function mapStore() {
       resume?.();
     },
     failTimes: (key: string, times: number) => failing.set(key, times),
-    get: async (key: string) => values.get(key) ?? null,
+    failReads: (key: string) => unreadable.add(key),
+    get: async (key: string) => {
+      if (unreadable.has(key)) throw new Error('The store failed');
+      return values.get(key) ?? null;
+    },
     set: async (key: string, value: string) => {
       const failures = failing.get(key) ?? 0;
       if (failures > 0) {
@@ -292,6 +300,98 @@ describe('an unreadable Shard total that cannot be kept aside (#38)', () => {
   });
 });
 
+describe('the end of a battle in the session (#38)', () => {
+  it('shows the next screen at once after an ordinary battle won, without writing any Shard', async () => {
+    const store = mapStore();
+    store.hold(SHARD_TOTAL_KEY);
+    const { session, clock } = await loaded(store, ascentAt(1, 'combat', ['ghoul']));
+    const gold = session.current()!.gold;
+    const published: (Ascent | null)[] = [];
+    session.subscribe((ascent) => published.push(ascent));
+
+    await playToTheEnd(session.battleSession(), clock);
+
+    expect(published).toHaveLength(1);
+    expect(session.current()!.gold).toBeGreaterThan(gold);
+    expect(store.values.has(SHARD_TOTAL_KEY)).toBe(false);
+  });
+
+  it('stays on the battle while the Shards are written, and ends it only once', async () => {
+    const store = mapStore();
+    store.hold(SHARD_TOTAL_KEY);
+    const { session, clock } = await loaded(store, BOSS_OF_TIER_1);
+    const gold = session.current()!.gold;
+    const published: (TierPassage | null)[] = [];
+    session.subscribe((ascent) => published.push(ascent?.passage ?? null));
+    const battleSession = session.battleSession();
+    await playToTheEnd(battleSession, clock);
+
+    // Le combat terminé est publié une deuxième fois pendant l'écriture.
+    battleSession.dismissHint('hero');
+    await flush();
+
+    expect(session.current()).toMatchObject({ passage: null, encounter: { kind: 'boss' } });
+    store.release(SHARD_TOTAL_KEY);
+    await flush();
+    expect(published).toEqual([{ to: 2, step: 'bossDefeated' }]);
+    expect(session.shardTotal()).toBe(8);
+    expect(session.current()!.gold).toBeGreaterThan(gold);
+    expect(savedShards(store)).toMatchObject({ total: 8 });
+
+    // Le même combat, terminé une fois de plus sur l'écran du boss vaincu, est ignoré.
+    const shown = session.current();
+    const saved = store.values.get(ASCENT_KEY);
+    battleSession.dismissHint('hero');
+    await flush();
+    expect(session.current()).toBe(shown);
+    expect(store.values.get(ASCENT_KEY)).toBe(saved);
+  });
+
+  it('plays the next battle once the Shards are written', async () => {
+    const store = mapStore();
+    const { session, clock } = await beat(store, BOSS_OF_TIER_1);
+    session.acknowledgeBossVictory();
+    session.enterNextTier();
+    const before = session.current()!;
+
+    await playToTheEnd(session.battleSession(), clock);
+    await flush();
+
+    expect(before).toMatchObject({ tier: 2, floor: 1, encounter: { kind: 'combat' } });
+    expect(session.current()).not.toBe(before);
+    expect(session.current()!.encounter).toBeNull();
+  });
+});
+
+describe('the keys of the Shard total (#38, ADR 0012)', () => {
+  it('reads the total under "shards.total" and keeps an unreadable one under "shards.total.unreadable"', async () => {
+    const store = mapStore();
+    store.values.set('shards.total', '{oops');
+    const { session } = setUp(store);
+
+    await session.load();
+    await flush();
+
+    expect(store.values.get('shards.total.unreadable')).toBe('{oops');
+    expect(JSON.parse(store.values.get('shards.total')!)).toMatchObject({ total: 0 });
+  });
+
+  it('starts from 0 when the total cannot be read, without keeping nor writing anything', async () => {
+    const store = mapStore();
+    const stored = JSON.stringify({ version: 1, total: 22, seed: 1, awarded: [] });
+    store.values.set(SHARD_TOTAL_KEY, stored);
+    store.failReads(SHARD_TOTAL_KEY);
+    const { session } = setUp(store);
+
+    await session.load();
+    await flush();
+
+    expect(session.shardTotal()).toBe(0);
+    expect(store.values.has(UNREADABLE_SHARD_TOTAL_KEY)).toBe(false);
+    expect(store.values.get(SHARD_TOTAL_KEY)).toBe(stored);
+  });
+});
+
 describe('the Tier transition in the session (#38)', () => {
   it('saves the defeated boss screen and resumes on it, without a battle to resume', async () => {
     const store = mapStore();
@@ -345,10 +445,10 @@ describe('the Tier transition in the session (#38)', () => {
   });
 
   it('plays the Common Momentum blessing at floor 1 of tier 1 only, not at floor 1 of tier 2', async () => {
-    const momentumAt = async (tier: 1 | 2) => {
+    const momentumAt = async (tier: 1 | 2, floor = 1) => {
       const ascent: Ascent = {
         ...ascentAt(tier, 'combat', ['ghoul']),
-        floor: 1,
+        floor,
         blessings: [{ family: 'momentum', rarity: 'common' }],
       };
       const { session } = await loaded(mapStore(), ascent, null);
@@ -359,6 +459,7 @@ describe('the Tier transition in the session (#38)', () => {
 
     expect(await momentumAt(1)).toBe(1);
     expect(await momentumAt(2)).toBe(0);
+    expect(await momentumAt(1, 2)).toBe(0);
   });
 
   it('reads an ascent saved before #38 at tier 1, without Shards nor transition', async () => {
