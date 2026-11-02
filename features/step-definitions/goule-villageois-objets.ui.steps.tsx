@@ -22,8 +22,10 @@ import '@shopify/react-native-skia/jestSetup';
 
 import { cleanup, render, screen } from '@testing-library/react-native';
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
+import { StyleSheet, View } from 'react-native';
 
 import type * as RealBattleCanvas from '../../src/adapters/ui/battle/BattleCanvas';
+import { EnemyColumn } from '../../src/adapters/ui/battle/EnemyColumn';
 import { FRAME_MS, enemyPose, restPose } from '../../src/adapters/ui/battle/scene/enemyPose';
 import { glintSprites } from '../../src/adapters/ui/battle/scene/sceneEffects';
 import { sceneGeometry } from '../../src/adapters/ui/battle/scene/sceneGeometry';
@@ -32,6 +34,7 @@ import { itemDescription, itemText } from '../../src/adapters/ui/format/ascentTe
 import { ENEMY_NAMES } from '../../src/adapters/ui/format/battleText';
 import { artPalette } from '../../src/adapters/ui/pixelArt/artPalette';
 import { toRgba, type Sprite } from '../../src/adapters/ui/pixelArt/sprites/Sprite';
+import { GROUND_SHADOW_OPACITY } from '../../src/adapters/ui/pixelArt/sprites/battle/battleStage';
 import { GHOUL_ANIMATION } from '../../src/adapters/ui/pixelArt/sprites/atelier/data/ghoul';
 import { ITEM_IMAGES } from '../../src/adapters/ui/pixelArt/sprites/atelier/data/itemImages';
 import { MAD_VILLAGER_ANIMATION } from '../../src/adapters/ui/pixelArt/sprites/atelier/data/madVillager';
@@ -320,6 +323,70 @@ async function renderScene(enemies: SceneEnemy[]) {
   return { scene: prepareBattleScene(enemies.map((enemy) => enemy.kind)), geometry };
 }
 
+/**
+ * Les colonnes des ennemis de la scène (#184) : seule celle de la cible a l'état « choisie », le
+ * double cadre d'or de sa plaque et la flèche ; aucune autre.
+ */
+async function expectOnlyTargetMarked(enemies: SceneEnemy[]): Promise<void> {
+  const slots = sceneGeometry(390, 440, enemies.length).enemies;
+  await cleanup();
+  await render(
+    <View>
+      {enemies.map((enemy, index) => (
+        <EnemyColumn
+          key={enemy.kind}
+          view={{
+            kind: enemy.kind,
+            name: ENEMY_NAMES[enemy.kind],
+            standing: enemy.standing,
+            target: enemy.target,
+            hpRatio: enemy.standing ? 1 : 0,
+            hpText: null,
+            guardRatio: 1,
+            guardText: null,
+            stunned: enemy.down,
+            losingAction: false,
+            rising: null,
+            intent: null,
+            active: enemy.active,
+            dimmed: enemy.dimmed,
+            tag: null,
+            label: ENEMY_NAMES[enemy.kind],
+          }}
+          index={index}
+          slot={slots[index]!}
+          sealed={false}
+          float={null}
+          uiNow={() => 0}
+          now={() => 0}
+          onTarget={() => undefined}
+        />
+      ))}
+    </View>,
+  );
+  const hidden = { includeHiddenElements: true } as const;
+  const borderOf = (testID: string) =>
+    StyleSheet.flatten(screen.getByTestId(testID, hidden).props.style).borderColor;
+  for (const { kind, target } of enemies) {
+    expect([kind, screen.getByTestId(`enemy-${kind}`, hidden).props.accessibilityState]).toEqual([
+      kind,
+      expect.objectContaining({ selected: target }),
+    ]);
+    expect([kind, borderOf(`enemy-${kind}-plate`) === artPalette.roles.gold]).toEqual([
+      kind,
+      target,
+    ]);
+    expect([kind, borderOf(`enemy-${kind}-ring`) === artPalette.roles.gold]).toEqual([
+      kind,
+      target,
+    ]);
+    expect([kind, screen.queryByTestId(`enemy-${kind}-target-arrow`, hidden) !== null]).toEqual([
+      kind,
+      target,
+    ]);
+  }
+}
+
 const sceneEnemy = (kind: EnemyKind, change: Partial<SceneEnemy>): SceneEnemy => ({
   kind,
   standing: true,
@@ -598,6 +665,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     "la pose affichée est marquée comme aujourd'hui : la cible, l'estompe, ou l'estompe désaturée d'un ennemi tombé",
     async () => {
       const check = async (enemies: SceneEnemy[]) => {
+        await expectOnlyTargetMarked(enemies);
         const { scene, geometry } = await renderScene(enemies);
         const nodes = drawn();
         // Ajusté par #184 : plus de socle doré. Chaque ennemi, debout ou tombé, a la même ombre au
@@ -610,7 +678,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
               y: groundShadowAt.y - 10,
               width: 64,
               height: 10,
-              opacity: shadows[0]!.props.opacity,
+              opacity: GROUND_SHADOW_OPACITY,
             }),
           ),
         );

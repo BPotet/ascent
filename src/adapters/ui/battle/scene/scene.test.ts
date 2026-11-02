@@ -676,9 +676,10 @@ describe('sceneGeometry', () => {
   it('sets the ground shadow of each enemy under its feet, the same for 1, 2 or 3 enemies (#184)', () => {
     for (const count of [1, 2, 3]) {
       for (const { sprite, groundShadowAt } of sceneGeometry(390, 440, count).enemies) {
-        // Centrée sous la place, son bas 3 dp sous le bas du sprite (maquette, `.sock`), sur 2 dp.
+        // Centrée sous la place, son bas 3 dp sous le bas du sprite (maquette, `.sock`), calés sur
+        // 2 dp : 4 dp.
         expect(groundShadowAt.x).toBe(sprite.x + sprite.width / 2);
-        expect(Math.abs(groundShadowAt.y - (sprite.y + sprite.height + 3))).toBeLessThanOrEqual(1);
+        expect(groundShadowAt.y).toBe(sprite.y + sprite.height + 4);
         expect([groundShadowAt.x % 2, groundShadowAt.y % 2]).toEqual([0, 0]);
       }
     }
