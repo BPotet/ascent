@@ -129,7 +129,8 @@ export function BattleScreen({
   const burn = useMemo(() => ({ stacks: burnStacks, ...burnFx }), [burnStacks, burnFx]);
   const view = useMemo(() => (battle === null ? null : battleView(battle)), [battle]);
   const timeline = useMemo(() => (battle === null ? null : sceneTimeline(battle)), [battle]);
-  // La frise ne change qu'avec le combat : elle garde ainsi sa frise précédente d'un instantané à l'autre.
+  // La frise ne change qu'avec le combat : elle garde ainsi sa frise précédente d'un instantané à
+  // l'autre. Elle existe dès que le combat existe (`battle` non nul plus bas).
   const track = useMemo(() => (battle === null ? null : actionTrackView(battle)), [battle]);
   const over = battle?.phase.kind === 'over' ? battle.phase.outcome : null;
 
@@ -170,7 +171,7 @@ export function BattleScreen({
         </Text>
       </View>
       {battle.initiative && over === null ? (
-        <ActionTrack track={track ?? actionTrackView(battle)} reducedMotion={reducedMotion} />
+        <ActionTrack track={track!} reducedMotion={reducedMotion} />
       ) : null}
       <Animated.View
         ref={sceneFrame}
