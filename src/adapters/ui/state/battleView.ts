@@ -7,7 +7,7 @@ import {
   type EnemyState,
 } from '../../../domain/battle/Battle';
 import type { PhaseDirection } from '../../../domain/battle/BattleEvent';
-import type { EnemyKind } from '../../../domain/battle/combatants';
+import type { EnemyKind, HeroKind } from '../../../domain/battle/combatants';
 import { POWERS, missingMomentum, type PowerKind } from '../../../domain/battle/momentum';
 import { shownIntent, type ShownIntent } from '../../../domain/battle/shownIntent';
 import {
@@ -39,13 +39,23 @@ export interface PowerSlot {
 }
 
 /**
+ * Une case de la frise d'action (#175) : qui agit (`actor`, le héros ou l'indice de l'ennemi), le
+ * combattant qu'elle montre (`fighter`, son nom de code) et s'il a changé de phase (`phase2`).
+ */
+export interface TrackEntry {
+  readonly actor: Actor;
+  readonly fighter: HeroKind | EnemyKind;
+  readonly phase2: boolean;
+}
+
+/**
  * La frise d'action (prototype #90, maquette F2, F6) : le combattant en cours et ceux qui n'ont
  * pas encore agi dans la manche, ennemis debout seulement, puis l'aperçu de la manche suivante.
  */
 export interface ActionTrackView {
   readonly round: number;
-  readonly current: readonly Actor[];
-  readonly next: readonly Actor[];
+  readonly current: readonly TrackEntry[];
+  readonly next: readonly TrackEntry[];
 }
 
 /**
@@ -164,14 +174,22 @@ function powerSlot(battle: Battle): PowerSlot {
   };
 }
 
+/** La case de `actor` dans la frise d'action : le héros, ou l'ennemi à cet indice. */
+export function trackEntry(battle: Battle, actor: Actor): TrackEntry {
+  if (actor === 'hero') return { actor, fighter: battle.heroKind, phase2: false };
+  const enemy = battle.enemies[actor]!;
+  return { actor, fighter: enemy.kind, phase2: enemy.phase2 === true };
+}
+
 /** La frise d'action d'un état du combat ; vide à la fin du combat. */
 export function actionTrackView(battle: Battle): ActionTrackView {
   if (battle.phase.kind === 'over') return { round: battle.round, current: [], next: [] };
   const standing = (actor: Actor) => actor === 'hero' || battle.enemies[actor]!.hp > 0;
+  const entry = (actor: Actor) => trackEntry(battle, actor);
   return {
     round: battle.round,
-    current: battle.turn.order.slice(battle.turn.position).filter(standing),
-    next: nextRoundOrder(battle),
+    current: battle.turn.order.slice(battle.turn.position).filter(standing).map(entry),
+    next: nextRoundOrder(battle).map(entry),
   };
 }
 

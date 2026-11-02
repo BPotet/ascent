@@ -56,15 +56,15 @@ export function ActionTrack({
   return (
     <View
       accessible
-      accessibilityLabel={actionTrackLabel(track.round, track.current, track.next, enemies)}
+      accessibilityLabel={actionTrackLabel(track.round, track.current, track.next)}
       testID="battle-action-track"
       style={styles.track}
     >
-      {track.current.map((actor, index) => (
+      {track.current.map(({ actor }, index) => (
         <Portrait key={`current-${actor}`} actor={actor} enemies={enemies} current={index === 0} />
       ))}
       {track.next.length === 0 ? null : <Text style={styles.separator}>suiv.</Text>}
-      {track.next.map((actor) => (
+      {track.next.map(({ actor }) => (
         <Portrait key={`next-${actor}`} actor={actor} enemies={enemies} next />
       ))}
     </View>
