@@ -34,10 +34,12 @@ describe('the Elites and the bosses of each tier (#38)', () => {
     expect(drawn.filter((elite) => elite === 'firstPilgrim').length).toBeGreaterThan(120);
   });
 
-  it('does not draw the Scarecrow, alone at tier 2: the random state stays', () => {
-    const random = seedRandom(4);
+  it('draws the Scarecrow or the Bramble burner at tier 2, evenly (#171)', () => {
+    const drawn = SEEDS.map((seed) => drawElite(TIERS[2].elites, seedRandom(seed)).value);
 
-    expect(drawElite(TIERS[2].elites, random)).toEqual({ value: 'scarecrow', random });
+    expect(new Set(drawn)).toEqual(new Set(['scarecrow', 'brambleBurner']));
+    expect(drawn.filter((elite) => elite === 'brambleBurner').length).toBeGreaterThan(120);
+    expect(drawn.filter((elite) => elite === 'brambleBurner').length).toBeLessThan(180);
   });
 
   it('draws the Hour ringer or the Wish granter at tier 3, evenly', () => {

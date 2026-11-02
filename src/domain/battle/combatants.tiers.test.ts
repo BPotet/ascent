@@ -163,3 +163,59 @@ describe('the bosses of the tiers two and three (#38)', () => {
     expect(ENEMIES.facelessPrior.phaseShiftPercent).toBe(50);
   });
 });
+
+// La Brûlure (#171) : les valeurs du Codex de l'Atelier du 01/11/2026, à l'échelle du palier 1.
+describe('the carriers of the Burn (#171)', () => {
+  it('gives the burningHusk (Embrasé) 20 HP, 8 guard, Initiative 7, its burning hand twice as often', () => {
+    expect(ENEMIES.burningHusk).toEqual({
+      maxHp: 20,
+      maxGuard: 8,
+      moves: [
+        { attack: 'basic', damage: 4, weight: 2, burn: 1 },
+        { attack: 'perilous', damage: 8 },
+      ],
+      supports: false,
+    });
+    expect(ENEMY_INITIATIVE.burningHusk).toBe(7);
+  });
+
+  it('gives the Gargoyle 30 HP, 22 guard, Initiative 7, its dive and its burning maw', () => {
+    expect(ENEMIES.gargoyle).toEqual({
+      maxHp: 30,
+      maxGuard: 22,
+      moves: [
+        { attack: 'feint', damage: 5 },
+        { attack: 'delayed', damage: 3, burn: 1 },
+      ],
+      supports: false,
+    });
+    expect(ENEMY_INITIATIVE.gargoyle).toBe(7);
+  });
+
+  it('gives the Bell founder 42 HP, 14 guard, Initiative 4, its hammer and its burning pour', () => {
+    expect(ENEMIES.bellFounder).toEqual({
+      maxHp: 42,
+      maxGuard: 14,
+      moves: [
+        { attack: 'double', damage: 3 },
+        { attack: 'delayed', damage: 4, burn: 1 },
+      ],
+      supports: false,
+    });
+    expect(ENEMY_INITIATIVE.bellFounder).toBe(4);
+  });
+
+  it('gives the Bramble burner, an Elite, 210 HP, 40 guard, Initiative 6, a third each', () => {
+    expect(ENEMIES.brambleBurner).toEqual({
+      maxHp: 210,
+      maxGuard: 40,
+      moves: [
+        { attack: 'basic', damage: 10, burn: 2 },
+        { attack: 'double', damage: 6, bleed: { damage: 2, rounds: 3 } },
+        { attack: 'delayedPerilous', damage: 15 },
+      ],
+      supports: false,
+    });
+    expect(ENEMY_INITIATIVE.brambleBurner).toBe(6);
+  });
+});

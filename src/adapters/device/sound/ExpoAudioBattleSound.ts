@@ -34,6 +34,9 @@ export const BATTLE_SOUND_FILES: Readonly<Record<BattleSoundCue, number>> = {
   boneRattle: require('./assets/bone-rattle.wav'),
   bleed: require('./assets/bleed.wav'),
   shieldClash: require('./assets/shield-clash.wav'),
+  flameBreath: require('./assets/flame-breath.wav'),
+  burnCrackle: require('./assets/burn-crackle.wav'),
+  burnOut: require('./assets/burn-out.wav'),
 };
 
 /** La latence attendue est la médiane des 20 dernières mesures, dès qu'il y en a 5. */

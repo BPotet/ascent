@@ -78,6 +78,7 @@ import {
   type EnemyBlow,
 } from './strike';
 import { bleedsOn, mergeBleed, tickBleed } from './bleed';
+import { burnAtRoundStart, burnOnBlow } from './burn';
 import { NO_TIER_MULTIPLIER, scaleByPercent, type TierMultiplier } from './tierMultiplier';
 
 export interface HeroState {
@@ -91,6 +92,8 @@ export interface HeroState {
   readonly shadowStep?: boolean;
   /** Le Saignement en cours (prototype #107) ; absent, le héros ne saigne pas. */
   readonly bleed?: Bleed;
+  /** Les charges de Brûlure (#171), de 1 à 5 ; absent, le héros ne brûle pas (jamais 0). */
+  readonly burn?: number;
 }
 
 export interface EnemyState {
@@ -164,6 +167,8 @@ export interface AttackStep {
   readonly counter: CounterState | null;
   /** Le Saignement du coup (prototype #107). */
   readonly bleed?: Bleed;
+  /** Les charges de Brûlure du coup (#171). */
+  readonly burn?: number;
 }
 
 /** L'effet d'une intention Garde ou Relever, après l'avancée. */
@@ -580,9 +585,24 @@ function bleedHero(battle: Battle, events: Events, at: number): Battle {
   return { ...battle, hero: { ...rest, hp: heroHp, ...(bleed && { bleed }) } };
 }
 
+/** Les charges de Brûlure du héros : `undefined` retire la clé (jamais 0). */
+function withBurn(hero: HeroState, stacks: number | undefined): HeroState {
+  const { burn: _, ...rest } = hero;
+  return stacks === undefined ? rest : { ...rest, burn: stacks };
+}
+
+/** La perte de la Brûlure (#171), après le Saignement ; ni réduction ni Rempart (4). */
+function burnHero(battle: Battle, events: Events, at: number): Battle {
+  const { hero } = battle;
+  if (hero.burn === undefined) return battle;
+  const burnt = burnAtRoundStart(hero.hp, hero.burn, at);
+  events.push(...burnt.events);
+  return { ...battle, hero: withBurn({ ...hero, hp: hero.hp - burnt.loss }, burnt.stacks) };
+}
+
 function startRound(previous: Battle, events: Events, at: number): Battle {
   // Le renfort entre avant les tirages : l'ordre de la manche est calculé après (P3b).
-  const battle = reinforce(bleedHero(previous, events, at), events, at);
+  const battle = reinforce(burnHero(bleedHero(previous, events, at), events, at), events, at);
   let random = battle.random;
   // Tous les tirages au début de la manche, ennemis debout de gauche à droite (C2.1).
   const enemies = battle.enemies.map((enemy, index) => {
@@ -727,8 +747,9 @@ function isWon(battle: Battle): boolean {
 export const RESPITE_PERCENT = 10;
 
 function finish(battle: Battle, events: Events, outcome: BattleOutcome, at: number): Battle {
-  // Le Saignement s'arrête à la fin du combat (B6).
-  const { bleed: _, ...hero } = battle.hero;
+  // Le Saignement s'arrête à la fin du combat (B6), la Brûlure aussi, avant le répit (#171).
+  if (battle.hero.burn !== undefined) events.push({ type: 'burnCleared', at });
+  const { bleed: _, burn: __, ...hero } = battle.hero;
   let settled = clearOffBalance({ ...battle, hero }, events, at);
   if (outcome === 'victory') {
     const { hero } = settled;
@@ -842,6 +863,7 @@ function startAttack(
     resolvedAt: missDeadline(impacts.at(-1)!, battle.inputOffset),
     counter: null,
     ...(intent.bleed && { bleed: intent.bleed }),
+    ...(intent.burn !== undefined && { burn: intent.burn }),
   });
 }
 
@@ -935,7 +957,10 @@ function resolveBlow(
   if (worn) events.push({ type: 'bulwarkWorn', at: blow.at, enemy: step.enemy });
   const hero = { ...battle.hero, hp: heroHp, bulwark: battle.hero.bulwark && !worn };
   const resolved = withStep(
-    { ...battle, hero: bleedOn(hero, step, blow.outcome, events, blow.at) },
+    {
+      ...battle,
+      hero: burnOn(bleedOn(hero, step, blow.outcome, events, blow.at), step, blow, events),
+    },
     {
       ...withImpact(step, blow.index, { outcome: blow.outcome }),
       ...(worn && heroProfile(battle).bulwarkCounter && { counter: bulwarkCounter(step) }),
@@ -961,6 +986,22 @@ function bleedOn(
   const bleed = mergeBleed(hero.bleed, step.bleed);
   events.push({ type: 'heroBleeding', at, ...bleed });
   return { ...hero, bleed };
+}
+
+/** La Brûlure d'un impact sur le héros encore debout (#171) : prise ou extinction. */
+function burnOn(
+  hero: HeroState,
+  step: AttackStep,
+  blow: { readonly outcome: BlowOutcome; readonly at: number },
+  events: Events,
+): HeroState {
+  if (hero.hp === 0) return hero;
+  const burnt = burnOnBlow(hero.burn, {
+    ...blow,
+    ...(step.burn !== undefined && { burn: step.burn }),
+  });
+  events.push(...burnt.events);
+  return withBurn(hero, burnt.stacks);
 }
 
 /**

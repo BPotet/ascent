@@ -110,6 +110,23 @@ export const CUES = {
     [130, 0.15, 'triangle', 0.2, 0],
     [85, 0.15, 'sine', 0.18, 0],
   ],
+  // #171 : la Brûlure. Le souffle de flamme, court, par-dessus le touché ou la parade : deux notes
+  // qui montent, comme une flamme qui prend.
+  'flame-breath': [
+    [220, 0.18, 'sawtooth', 0.05, 0, 520],
+    [140, 0.16, 'triangle', 0.06, 0.01, 260],
+  ],
+  // Le crépitement du début de manche : des claquements secs sur 400 ms, plus discrets que le touché.
+  'burn-crackle': [
+    [1_100, 0.03, 'square', 0.03, 0],
+    [800, 0.03, 'square', 0.025, 0.08],
+    [1_300, 0.03, 'square', 0.03, 0.17],
+    [900, 0.03, 'square', 0.025, 0.25],
+    [1_200, 0.03, 'square', 0.02, 0.32],
+    [1_000, 0.03, 'square', 0.02, 0.37],
+  ],
+  // L'extinction d'une flamme : un « pschht » bref, aigu et doux, qui retombe.
+  'burn-out': [[2_600, 0.12, 'sine', 0.05, 0, 1_400]],
 };
 
 const WAVES = {

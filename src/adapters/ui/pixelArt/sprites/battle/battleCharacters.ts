@@ -22,6 +22,10 @@ import { THORN_PILGRIM_ANIMATION } from '../atelier/data/thornPilgrim';
 import { TWINS_ANIMATION } from '../atelier/data/twins';
 import { WISH_GRANTER_ANIMATION } from '../atelier/data/wishGranter';
 import { WISH_GRANTER_PHASE2 } from '../atelier/data/wishGranterPhase2';
+import { BELL_FOUNDER_ANIMATION } from '../atelier/data/bellFounder';
+import { BRAMBLE_BURNER_ANIMATION } from '../atelier/data/brambleBurner';
+import { BURNING_HUSK_ANIMATION } from '../atelier/data/burningHusk';
+import { GARGOYLE_ANIMATION } from '../atelier/data/gargoyle';
 import { animationSprite, type ExtraFrame, type FullAnimation } from '../atelier/fullAnimation';
 import { HERO_ANIMATIONS, HERO_CELL, isHero } from './heroAnimations';
 
@@ -200,6 +204,11 @@ const FULL_ANIMATIONS = {
   ashGardener: ASH_GARDENER_ANIMATION,
   hourRinger: { ...HOUR_RINGER_ANIMATION, phase2: HOUR_RINGER_PHASE2 },
   wishGranter: { ...WISH_GRANTER_ANIMATION, phase2: WISH_GRANTER_PHASE2 },
+  // La Brûlure (#171).
+  burningHusk: BURNING_HUSK_ANIMATION,
+  gargoyle: GARGOYLE_ANIMATION,
+  bellFounder: BELL_FOUNDER_ANIMATION,
+  brambleBurner: BRAMBLE_BURNER_ANIMATION,
 } satisfies Record<EnemyKind, FullAnimation<EnemyFrame>>;
 
 /** Les ennemis animés (`ANIMATED_ENEMIES`) : les clés du registre des animations complètes. */

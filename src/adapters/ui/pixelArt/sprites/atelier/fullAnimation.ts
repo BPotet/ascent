@@ -96,6 +96,27 @@ export interface AssetImage {
   readonly rows: readonly string[];
 }
 
+/**
+ * Une séquence d'un effet de l'Atelier (`EffectSequence`, #171) : ses images de `w` × `h`, au format
+ * d'une pose, dans la palette de l'effet. Une séquence posée sur une entité donne sa case (`cell`,
+ * celle de l'entité) et ses places (`slots`, le coin haut gauche de chaque image dans la case).
+ */
+export interface EffectSequence {
+  /** Le nom de la séquence dans l'Atelier ; il n'est jamais affiché. */
+  readonly move: string;
+  readonly w: number;
+  readonly h: number;
+  readonly cell?: Point;
+  readonly slots?: readonly Point[];
+  readonly frames: readonly (readonly string[])[];
+}
+
+/** Un effet animé de l'Atelier (`EffectAnimation`, #171) : sa palette et ses séquences. */
+export interface EffectAnimation<Sequence extends string = string> {
+  readonly pal: readonly string[];
+  readonly effects: Readonly<Record<Sequence, EffectSequence>>;
+}
+
 /** La case d'un ennemi dans la scène du combat, en pixels d'art : au moins 44 × 52. */
 const BATTLE_CELL: Point = [44, 52];
 

@@ -78,7 +78,8 @@ import {
   riposteWave,
   sparkFrame,
 } from './scene/sceneEffects';
-import type { HeroPose, SceneEnemy, SceneSpark, SceneTimeline } from './sceneTypes';
+import { burnFlames, burnHitFrame } from './scene/burnFlames';
+import type { HeroPose, SceneBurn, SceneEnemy, SceneSpark, SceneTimeline } from './sceneTypes';
 
 export interface BattleSceneProps {
   readonly width: number;
@@ -106,6 +107,8 @@ export interface BattleSceneProps {
   readonly riposte?: { readonly at: number; readonly enemy: number } | null;
   /** Pas de l'ombre est actif (#173) : l'ombre violette derrière l'Errante. Par défaut, non. */
   readonly shadowStep?: ShadowStepScene | null;
+  /** La Brûlure du héros (#171) : ses flammes, l'éclat de braise et la fumée. Par défaut, aucune. */
+  readonly burn?: SceneBurn | null;
   readonly reducedMotion: boolean;
   /** L'horloge du fil UI : un worklet, sur la base de l'horloge de combat (méthode a). */
   readonly uiNow: () => number;
@@ -181,9 +184,10 @@ const FADED = [
 ];
 /**
  * Les places de l'atlas des effets : éclair, étincelle, deux reflets, trois étoiles, l'écu du
- * Rempart, ses 4 éclats et les 4 éclats de la riposte sur l'ennemi (#128).
+ * Rempart, ses 4 éclats, les 4 éclats de la riposte sur l'ennemi (#128), et la Brûlure (#171) : 5
+ * flammes ou fumées et l'éclat de braise.
  */
-const EFFECT_SLOTS = 16;
+const EFFECT_SLOTS = 22;
 /** Les nombres d'une place : effet, image, x, y, échelle. */
 const EFFECT_FIELDS = 5;
 const EFFECT_ORDER: readonly EffectKind[] = [
@@ -196,6 +200,9 @@ const EFFECT_ORDER: readonly EffectKind[] = [
   'stars',
   'shield',
   'silverShard',
+  'burn',
+  'burnHit',
+  'burnOut',
 ];
 /**
  * L'écu du Rempart, en pixels d'art du héros (maquette, `.aura`) : le centre de sa case de 15, calé
@@ -486,6 +493,7 @@ export function BattleScene({
   bulwarkWornAt = null,
   riposte = null,
   shadowStep = null,
+  burn = null,
   reducedMotion,
   uiNow,
 }: BattleSceneProps) {
@@ -498,6 +506,8 @@ export function BattleScene({
   const sharedBulwark = useSharedValue({ active: bulwark, wornAt: bulwarkWornAt, riposte });
   const sharedShadowStep = useSharedValue(shadowStep);
   useEffect(() => sharedShadowStep.set(shadowStep), [sharedShadowStep, shadowStep]);
+  const sharedBurn = useSharedValue(burn);
+  useEffect(() => sharedBurn.set(burn), [sharedBurn, burn]);
 
   useEffect(() => sharedTimeline.set(timeline), [sharedTimeline, timeline]);
   useEffect(() => sharedSpark.set(spark), [sharedSpark, spark]);
@@ -648,8 +658,23 @@ export function BattleScene({
         place('silverShard', 0, struck.x + dx, struck.y + dy);
       }
     }
+    // La Brûlure (#171) : les flammes suivent le héros, à son échelle ; l'éclat de braise, au torse.
+    const burning = sharedBurn.get();
+    const { x: heroX, y: heroY } = heroLook.get();
+    for (const flame of burnFlames(burning, now, reducedMotion)) {
+      place(
+        flame.effect,
+        flame.frame,
+        heroX + flame.x * hero.scale,
+        heroY + flame.y * hero.scale,
+        hero.scale,
+      );
+    }
     const flash = impactFlash(current, now);
     if (flash !== null) place('flash', flash, chest.x, chest.y);
+    // L'éclat de braise par-dessus l'éclair d'impact (B1) : l'atlas dessine les places dans l'ordre.
+    const ember = burnHitFrame(burning?.lit ?? null, now);
+    if (ember !== null) place('burnHit', ember, chest.x, chest.y, hero.scale);
     const sparkNow = sharedSpark.get();
     const sparkStep = sparkFrame(sparkNow, now);
     if (sparkNow !== null && sparkStep !== null) {
@@ -689,6 +714,8 @@ export function BattleScene({
     sharedTimeline,
     sharedSpark,
     sharedBulwark,
+    sharedBurn,
+    heroLook,
     shieldAt,
     enemyCenters,
     hero,

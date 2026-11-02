@@ -38,14 +38,16 @@ describe('the enemies drawn at tiers 2 and 3 (#38)', () => {
     const drawn = new Set(groups(2, 4).flat());
 
     expect(drawn).toEqual(
-      new Set(['ghoul', 'madVillager', 'thornPilgrim', 'ashBramble', 'ashGleaner']),
+      new Set(['ghoul', 'madVillager', 'thornPilgrim', 'ashBramble', 'ashGleaner', 'burningHusk']),
     );
   });
 
   it('draws only the enemies of tier 3, every one of them, never a Ghoul nor one of tier 2', () => {
     const drawn = new Set(groups(3, 3).flat());
 
-    expect(drawn).toEqual(new Set(['skeleton', 'specter', 'necromancer', 'bronzeWarden']));
+    expect(drawn).toEqual(
+      new Set(['skeleton', 'specter', 'necromancer', 'bronzeWarden', 'gargoyle', 'bellFounder']),
+    );
   });
 
   it('keeps each cap: at most 1 of each enemy, the Ghoul excepted (5 at most)', () => {

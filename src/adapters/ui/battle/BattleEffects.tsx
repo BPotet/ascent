@@ -12,6 +12,7 @@ import type { DamageFloat as Float, FeedbackText } from '../format/battleText';
 import { artPalette } from '../pixelArt/artPalette';
 import { battleColors } from '../theme/battleColors';
 import { BulwarkShieldGlyph } from './BattleGlyphs';
+import { BurnFlame } from './BurnChip';
 
 /** Le texte d'effet reste lisible un instant, puis s'efface (maquette : 0,7 s en tout). */
 const FEEDBACK_HOLD_MS = 450;
@@ -71,25 +72,43 @@ const FLOAT_MS = 700;
  * Un chiffre qui s'envole au-dessus du héros ou d'un ennemi (« −4 », « +3 ») : les dégâts se
  * lisent après coup, jamais avant (C2.5). Agrandi pour une frappe parfaite (C6.7).
  */
-export function DamageFloat({ float }: { readonly float: Float }) {
+export function DamageFloat({
+  float,
+  delayMs = 0,
+  reducedMotion = false,
+}: {
+  readonly float: Float;
+  /** Le chiffre attend avant de monter (la Brûlure après le Saignement, #171). */
+  readonly delayMs?: number;
+  /** En mouvement réduit, le chiffre de la Brûlure monte au quart (#171). */
+  readonly reducedMotion?: boolean;
+}) {
   const rise = useSharedValue(0);
+  const shown = useSharedValue(delayMs > 0 ? 0 : 1);
+  const height = reducedMotion ? 6 : 24;
   useEffect(() => {
-    rise.set(withTiming(1, { duration: FLOAT_MS }));
-  }, [rise]);
+    rise.set(withDelay(delayMs, withTiming(1, { duration: FLOAT_MS })));
+    shown.set(withDelay(delayMs, withTiming(1, { duration: 0 })));
+  }, [rise, shown, delayMs]);
   // Dépendances explicites : le code instrumenté par Stryker n'est plus reconnu comme worklet.
   const style = useAnimatedStyle(() => {
     'worklet';
-    return { opacity: 1 - rise.get() * rise.get(), transform: [{ translateY: -24 * rise.get() }] };
-  }, [rise]);
+    return {
+      opacity: shown.get() * (1 - rise.get() * rise.get()),
+      transform: [{ translateY: -height * rise.get() }],
+    };
+  }, [rise, shown, height]);
   return (
     <Animated.View pointerEvents="none" style={[styles.float, styles.withShield, style]}>
       {float.kind === 'riposte' ? <BulwarkShieldGlyph scale={1} /> : null}
+      {float.kind === 'burn' ? <BurnFlame /> : null}
       <Text
         style={[
           styles.floatText,
           float.kind === 'guard' && styles.floatGuard,
           float.kind === 'riposte' && styles.floatRiposte,
           float.at === 'hero' && styles.floatHero,
+          float.kind === 'burn' && styles.floatBurn,
           float.big && styles.floatBig,
         ]}
       >
@@ -166,6 +185,7 @@ const styles = StyleSheet.create({
   floatHero: { color: battleColors.miss },
   floatGuard: { color: battleColors.guard },
   floatRiposte: { color: artPalette.roles.bulwarkText },
+  floatBurn: { color: battleColors.burnNumber },
   floatBig: { color: battleColors.light, fontSize: 32 },
 });
 // Stryker restore all

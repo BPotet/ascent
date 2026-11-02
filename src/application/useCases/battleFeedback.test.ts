@@ -1,5 +1,12 @@
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
-import { GLINT_CUES, feedbackFor } from './battleFeedback';
+import {
+  BURN_AFTER_BLEED_MS,
+  BURN_OUT_AFTER_BLOW_MS,
+  BURN_OUT_AFTER_CRACKLE_MS,
+  GLINT_CUES,
+  feedbackFor,
+  feedbacksFor,
+} from './battleFeedback';
 
 const blow = (outcome: Extract<BattleEvent, { type: 'blowResolved' }>['outcome']): BattleEvent => ({
   type: 'blowResolved',
@@ -211,5 +218,84 @@ describe('GLINT_CUES (the sound of each glint, C2.10)', () => {
       red: 'glintPerilous',
       dull: 'glintDull',
     });
+  });
+});
+
+describe('the sounds of the Burn (#171)', () => {
+  it('plays the flame breath over the hit or the parry, without a vibration, even at 5 stacks', () => {
+    expect(feedbackFor({ type: 'heroBurning', at: 0, added: 2, stacks: 2 })).toEqual({
+      sound: 'flameBreath',
+      haptic: null,
+    });
+    expect(feedbackFor({ type: 'heroBurning', at: 0, added: 0, stacks: 5 })).toEqual({
+      sound: 'flameBreath',
+      haptic: null,
+    });
+  });
+
+  it('crackles at the start of every round where the hero burns, on the floor of 1 HP too (B7)', () => {
+    expect(feedbackFor({ type: 'burnTicked', at: 0, loss: 3, heroHp: 40, stacks: 3 })).toEqual({
+      sound: 'burnCrackle',
+      haptic: null,
+    });
+    expect(feedbackFor({ type: 'burnTicked', at: 0, loss: 0, heroHp: 1, stacks: 3 })).toEqual({
+      sound: 'burnCrackle',
+      haptic: null,
+    });
+  });
+
+  it('puts a flame out 80 ms after the parry sound, 800 ms after the crackle (B7)', () => {
+    expect(BURN_OUT_AFTER_BLOW_MS).toBe(80);
+    expect(BURN_OUT_AFTER_CRACKLE_MS).toBe(800);
+    expect(feedbackFor({ type: 'burnExtinguished', at: 0, stacks: 1, cause: 'blow' })).toEqual({
+      sound: 'burnOut',
+      haptic: null,
+      delayMs: 80,
+    });
+    expect(feedbackFor({ type: 'burnExtinguished', at: 0, stacks: 0, cause: 'round' })).toEqual({
+      sound: 'burnOut',
+      haptic: null,
+      delayMs: 800,
+    });
+  });
+
+  it('crackles 700 ms after the drop of the Bleed of the same round, and puts out at 1 500 ms (B5)', () => {
+    const bleeding: BattleEvent = {
+      type: 'bleedTicked',
+      at: 0,
+      loss: 2,
+      heroHp: 42,
+      roundsLeft: 2,
+    };
+    const ticked: BattleEvent = { type: 'burnTicked', at: 0, loss: 3, heroHp: 39, stacks: 3 };
+    const out: BattleEvent = { type: 'burnExtinguished', at: 0, stacks: 2, cause: 'round' };
+
+    expect(BURN_AFTER_BLEED_MS).toBe(700);
+    expect(
+      feedbacksFor([bleeding, ticked, out]).map(({ sound, delayMs }) => [sound, delayMs]),
+    ).toEqual([
+      ['bleed', undefined],
+      ['burnCrackle', 700],
+      ['burnOut', 1_500],
+    ]);
+    expect(feedbacksFor([ticked, out]).map(({ delayMs }) => delayMs)).toEqual([undefined, 800]);
+  });
+
+  it('keeps the Burn on time when the Bleed takes nothing on the floor of 1 HP', () => {
+    const silent: BattleEvent = { type: 'bleedTicked', at: 0, loss: 0, heroHp: 1, roundsLeft: 2 };
+    const ticked: BattleEvent = { type: 'burnTicked', at: 0, loss: 0, heroHp: 1, stacks: 2 };
+
+    expect(feedbacksFor([silent, ticked]).map(({ delayMs }) => delayMs)).toEqual([
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it('delays nothing else in an update', () => {
+    expect(feedbacksFor([blow('perfectParry')])).toEqual([feedbackFor(blow('perfectParry'))]);
+  });
+
+  it('plays nothing when the flames go out together at the end of the battle', () => {
+    expect(feedbackFor({ type: 'burnCleared', at: 0 })).toEqual({ sound: null, haptic: null });
   });
 });

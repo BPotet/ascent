@@ -120,6 +120,49 @@ describe('the enemies of an ordinary battle, multiplied by the tier (#38)', () =
     ]);
   });
 
+  it('gives the burningHusk (Embrasé) 27 HP and 10 guard at tier 2, its hand 5 and its blaze 10 (#171)', () => {
+    const battle = start(['burningHusk'], TIER_2);
+    const damages = (seed: number) => {
+      const { intent } = drawIntent('burningHusk', seedRandom(seed), {
+        fallenAlly: null,
+        stunned: false,
+        guardDamaged: false,
+        damagePercent: TIER_2.hpPercent,
+      });
+      return intent.category === 'attack' ? `${intent.attack} ${intent.damage} ${intent.burn}` : '';
+    };
+
+    expect(battle.enemies.map(({ maxHp, maxGuard }) => [maxHp, maxGuard])).toEqual([[27, 10]]);
+    expect(new Set(Array.from({ length: 60 }, (_, seed) => damages(seed)))).toEqual(
+      new Set(['basic 5 1', 'perilous 10 undefined']),
+    );
+  });
+
+  it('gives the Gargoyle 52 HP and 33 guard, the Bell founder 73 HP and 21 guard at tier 3 (#171)', () => {
+    const battle = start(['gargoyle', 'bellFounder'], TIER_3);
+    const burning = (kind: EnemyKind) =>
+      new Set(
+        Array.from({ length: 60 }, (_, seed) => {
+          const { intent } = drawIntent(kind, seedRandom(seed), {
+            fallenAlly: null,
+            stunned: false,
+            guardDamaged: false,
+            damagePercent: TIER_3.hpPercent,
+          });
+          return intent.category === 'attack' && intent.burn !== undefined
+            ? `${intent.damage} ${intent.burn}`
+            : null;
+        }).filter((each) => each !== null),
+      );
+
+    expect(battle.enemies.map(({ maxHp, maxGuard }) => [maxHp, maxGuard])).toEqual([
+      [52, 33],
+      [73, 21],
+    ]);
+    expect(burning('gargoyle')).toEqual(new Set(['5 1']));
+    expect(burning('bellFounder')).toEqual(new Set(['7 1']));
+  });
+
   it('keeps the values of the Codex without a tier multiplier', () => {
     const battle = start(['ghoul', 'thornPilgrim']);
 

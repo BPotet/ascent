@@ -44,6 +44,11 @@ export const ENEMY_NAMES: Readonly<Record<EnemyKind, string>> = {
   ashGardener: 'Jardinière des cendres',
   hourRinger: 'Sonneur des heures',
   wishGranter: 'Celle qui exauce',
+  // La Brûlure (#171) : le Brûleur de ronces sans article, comme dans la maquette (initiale B).
+  burningHusk: 'Embrasé',
+  gargoyle: 'Gargouille',
+  bellFounder: 'Fondeur de cloches',
+  brambleBurner: 'Brûleur de ronces',
 };
 
 /** Le genre du nom de l'ennemi, pour « étourdie », « tombée »… */
@@ -67,6 +72,10 @@ const FEMININE: Readonly<Record<EnemyKind, boolean>> = {
   ashGardener: true,
   hourRinger: false,
   wishGranter: true,
+  burningHusk: false,
+  gargoyle: true,
+  bellFounder: false,
+  brambleBurner: false,
 };
 
 export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {
@@ -176,6 +185,25 @@ function damages(count: number): string {
 /** L'étiquette du Saignement sous les PV du héros (prototype #107) : « Saignement ×3 ». */
 export function bleedChipText(rounds: number): string {
   return `Saignement ×${rounds}`;
+}
+
+/** L'étiquette de la Brûlure sous les PV du héros (#171) : « Brûlure ×3 ». */
+export function burnChipText(stacks: number): string {
+  return `Brûlure ×${stacks}`;
+}
+
+function stacksText(stacks: number): string {
+  return `${stacks} ${stacks > 1 ? 'charges' : 'charge'}`;
+}
+
+/** La Brûlure lue dans l'étiquette de la barre du héros (#171) : « Brûlure, 2 charges ». */
+export function burnLabel(stacks: number): string {
+  return `Brûlure, ${stacksText(stacks)}`;
+}
+
+/** Les charges de Brûlure et les dégâts qu'elles feront (#171) : « Brûlure, 3 charges, 3 dégâts ». */
+function burnStacksAnnouncement(stacks: number): string {
+  return `${burnLabel(stacks)}, ${damages(stacks)}`;
 }
 
 /** L'étiquette du Rempart sous les PV du héros (#128) : « Rempart », puis « Rempart usé ». */
@@ -342,8 +370,11 @@ export interface DamageFloat {
   readonly text: string;
   /** Agrandi pour une frappe parfaite (C6.7). */
   readonly big: boolean;
-  /** Des dégâts, de la garde, ou les dégâts de la Riposte du Rempart, précédés de l'écu (#128). */
-  readonly kind: 'damage' | 'guard' | 'riposte';
+  /**
+   * Des dégâts, de la garde, les dégâts de la Riposte du Rempart, précédés de l'écu (#128), ou la
+   * perte de la Brûlure, précédée d'une flamme (#171).
+   */
+  readonly kind: 'damage' | 'guard' | 'riposte' | 'burn';
 }
 
 export function damageFloat(event: BattleEvent): DamageFloat | null {
@@ -368,6 +399,10 @@ export function damageFloat(event: BattleEvent): DamageFloat | null {
     case 'bleedTicked':
       return event.loss > 0
         ? { at: 'hero', text: `−${event.loss}`, big: false, kind: 'damage' }
+        : null;
+    case 'burnTicked':
+      return event.loss > 0
+        ? { at: 'hero', text: `−${event.loss}`, big: false, kind: 'burn' }
         : null;
     default:
       return null;
@@ -459,6 +494,15 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
       return event.roundsLeft > 0
         ? `Saignement, ${damages(event.loss)}, encore ${event.roundsLeft} ${event.roundsLeft > 1 ? 'manches' : 'manche'}`
         : `Saignement, ${damages(event.loss)}. Saignement terminé`;
+    // La Brûlure (#171) ; rien quand les flammes s'éteignent à la fin du combat (`burnCleared`).
+    case 'heroBurning':
+      return burnStacksAnnouncement(event.stacks);
+    case 'burnTicked':
+      return event.loss > 0 ? `Brûlure, moins ${event.loss} PV` : null;
+    case 'burnExtinguished':
+      return event.cause === 'blow' && event.stacks > 0
+        ? `Une flamme s'éteint. ${burnStacksAnnouncement(event.stacks)}`
+        : "Une flamme s'éteint";
     default:
       return null;
   }

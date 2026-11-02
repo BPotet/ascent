@@ -110,6 +110,18 @@ describe('ExpoAudioBattleSound', () => {
     expect(playerOf('bulwark').calls).toEqual([]);
   });
 
+  it.each(['flameBreath', 'burnCrackle', 'burnOut'] as const)(
+    'preloads and plays the %s of the Burn (#171)',
+    (cue) => {
+      const sound = new ExpoAudioBattleSound();
+
+      sound.play(cue);
+
+      expect(playerOf(cue).calls).toEqual(['seekTo', 'play']);
+      expect(playerOf('hit').calls).toEqual([]);
+    },
+  );
+
   it('measures the sound latency with the monotonic clock of the phone by default', () => {
     const now = jest
       .spyOn(performance, 'now')

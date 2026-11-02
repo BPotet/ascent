@@ -4,7 +4,7 @@ import type { BattleEvent } from '../../domain/battle/BattleEvent';
 import { FixedSeedSource } from '../testing/FixedSeedSource';
 import { ManualBattleClock } from '../testing/ManualBattleClock';
 import { silentBattleHaptics, silentBattleSound } from '../testing/recordingBattleFeedback';
-import { ASCENT_KEY, AscentSession } from './AscentSession';
+import { ASCENT_KEY, AscentSession, BURN_SMOKE_HOLD_MS } from './AscentSession';
 import { BATTLE_HINT_SEEN_KEYS } from './battleHints';
 import type { BattleSession } from './BattleSession';
 
@@ -78,6 +78,22 @@ async function playToTheEnd(battleSession: BattleSession, clock: ManualBattleClo
       clock.advanceTo(clock.pending()[0]!);
     }
     await flush();
+  }
+  throw new Error('The battle never ended');
+}
+
+/** Le combat joué jusqu'à sa fin, sans rendre la main : rien d'asynchrone ne passe entre-temps. */
+function playUntilOver(battleSession: BattleSession, clock: ManualBattleClock): Battle {
+  for (let guard = 0; guard < 200; guard += 1) {
+    const { battle } = battleSession.current()!;
+    if (battle.phase.kind === 'over') return battle;
+    if (battle.phase.kind === 'hero') {
+      const at = clock.now() + 50;
+      clock.advanceTo(at);
+      battleSession.heroAction({ kind: 'attack' }, at - 20, at);
+    } else {
+      clock.advanceTo(clock.pending()[0]!);
+    }
   }
   throw new Error('The battle never ended');
 }
@@ -156,6 +172,155 @@ describe('AscentSession', () => {
       phase: { kind: 'hero', since: clock.now() },
     });
     expect(battleSession.current()!.battle.enemies[0]!.hp).toBe(20);
+  });
+
+  it('resumes a battle saved with 3 stacks of Burn with its 3 stacks, and saves them again (#171)', async () => {
+    const { session, store } = setUp();
+    const battle = savedBattle(startAscent(5), { heroHp: 33, enemyHp: 20 });
+    store.values.set(
+      ASCENT_KEY,
+      JSON.stringify({
+        version: 1,
+        ascent: startAscent(5),
+        battle: { ...battle, hero: { ...battle.hero, burn: 3 } },
+      }),
+    );
+    await session.load();
+
+    const battleSession = session.battleSession();
+    await battleSession.start();
+    await flush();
+
+    expect(battleSession.current()!.battle.hero).toMatchObject({ hp: 33, burn: 3 });
+    expect(saved(store)?.battle?.hero.burn).toBe(3);
+  });
+
+  it('leaves a battle won while burning once its flames have gone out, 360 ms later (#171)', async () => {
+    const { session, store, clock } = setUp();
+    const ascent = startAscent(5);
+    const battle = savedBattle(ascent, { heroHp: 33, enemyHp: 1 });
+    store.values.set(
+      ASCENT_KEY,
+      JSON.stringify({
+        version: 1,
+        ascent,
+        battle: { ...battle, hero: { ...battle.hero, burn: 2 } },
+      }),
+    );
+    await session.load();
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    const won = await playToTheEnd(battleSession, clock);
+    const endedAt = clock.now();
+
+    expect(won.phase).toMatchObject({ kind: 'over', outcome: 'victory' });
+    expect(session.current()!.encounter).not.toBeNull();
+    clock.advanceTo(endedAt + 359);
+    await flush();
+    expect(session.current()!.encounter).not.toBeNull();
+    clock.advanceTo(endedAt + BURN_SMOKE_HOLD_MS);
+    await flush();
+    expect(BURN_SMOKE_HOLD_MS).toBe(360);
+    expect(session.current()!.encounter).toBeNull();
+  });
+
+  it('leaves a battle won without Burn at once (#171)', async () => {
+    const { session, store, clock } = setUp();
+    const ascent = startAscent(5);
+    const battle = savedBattle(ascent, { heroHp: 33, enemyHp: 1 });
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent, battle }));
+    await session.load();
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    playUntilOver(battleSession, clock);
+
+    // Aussitôt, sans attendre aucune écriture ni aucun minuteur.
+    expect(session.current()!.encounter).toBeNull();
+  });
+
+  it('leaves an Elite won while burning once its Shards are written and its smoke gone (#171)', async () => {
+    const { session, store, clock } = setUp();
+    const ascent: Ascent = {
+      ...startAscent(5),
+      floor: 3,
+      encounter: { kind: 'elite', enemies: ['fallenKnight'], battleSeed: 3 },
+    };
+    const { battle } = startBattle({
+      seed: 3,
+      defenseHint: false,
+      at: 0,
+      heroHp: 50,
+      enemies: ['fallenKnight'],
+    });
+    const burning: Battle = {
+      ...battle,
+      hero: { ...battle.hero, burn: 2 },
+      enemies: [{ ...battle.enemies[0]!, hp: 1 }],
+    };
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent, battle: burning }));
+    await session.load();
+    const totals: number[] = [];
+    session.subscribeShards((total) => totals.push(total));
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    playUntilOver(battleSession, clock);
+    const endedAt = clock.now();
+    await flush();
+
+    expect(session.current()!.encounter).not.toBeNull();
+    clock.advanceTo(endedAt + 359);
+    await flush();
+    expect(session.current()!.encounter).not.toBeNull();
+    clock.advanceTo(endedAt + 360);
+    await flush();
+    expect(session.current()!.encounter).toBeNull();
+    expect(session.shardTotal()).toBe(2);
+    expect(totals.at(-1)).toBe(2);
+  });
+
+  it('shows the fall of a hero who burns once the smoke is gone too, 360 ms later (#171)', async () => {
+    const { session, store, clock } = setUp();
+    const ascent = startAscent(5);
+    const battle = savedBattle(ascent, { heroHp: 1, enemyHp: 999 });
+    const burning: Battle = {
+      ...battle,
+      hero: { ...battle.hero, burn: 2 },
+      enemies: [{ ...battle.enemies[0]!, guard: 999 }],
+    };
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent, battle: burning }));
+    await session.load();
+    const published: (Ascent | null)[] = [];
+    session.subscribe((current) => published.push(current));
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    const fallen = playUntilOver(battleSession, clock);
+    const endedAt = clock.now();
+    await flush();
+
+    expect(fallen.phase).toMatchObject({ kind: 'over', outcome: 'defeat' });
+    expect(published).toEqual([]);
+    clock.advanceTo(endedAt + 359);
+    await flush();
+    expect(published).toEqual([]);
+    clock.advanceTo(endedAt + 360);
+    await flush();
+    expect(published).toHaveLength(1);
+  });
+
+  it('resumes a battle saved before the Burn without Burn (#171)', async () => {
+    const { session, store } = setUp();
+    const battle = savedBattle(startAscent(5), { heroHp: 33, enemyHp: 20 });
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: startAscent(5), battle }));
+    await session.load();
+
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    expect(battleSession.current()!.battle.hero).not.toHaveProperty('burn');
   });
 
   it('saves when the Skeleton revives, and resumes it as revived (#106, S8)', async () => {

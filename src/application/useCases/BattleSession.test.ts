@@ -5,7 +5,7 @@ import type { KeyValueStore } from '../ports/KeyValueStore';
 import { FixedSeedSource } from '../testing/FixedSeedSource';
 import { ManualBattleClock } from '../testing/ManualBattleClock';
 import { silentBattleHaptics, silentBattleSound } from '../testing/recordingBattleFeedback';
-import { attackIntentOf, battleWith, enemyWith } from '../testing/battleBuilder';
+import { attackIntentOf, battleWith, enemyWith, heroWith } from '../testing/battleBuilder';
 import { DEFAULT_SOUND_LATENCY_MS } from '../ports/BattleSound';
 import { seedFor } from '../testing/battleSeeds';
 import { BATTLE_HINT_SEEN_KEYS } from './battleHints';
@@ -767,6 +767,93 @@ describe('BattleSession', () => {
       late.fireGlintAt(late.glintAt + 60);
 
       expect(late.sound.played.filter((cue) => cue.startsWith('glint'))).toEqual(['glint']);
+    });
+  });
+
+  describe('the delayed sounds of the Burn (#171)', () => {
+    const burning = battleWith(enemyWith(0, { guard: 99 }), heroWith({ burn: 2 }));
+
+    it('plays the sound of a flame going out 80 ms after a perfect parry', async () => {
+      const context = setUp({ createBattle: burning });
+      await context.session.start();
+      const impact = toGhoulWindUp(context);
+      context.clock.advanceTo(impact);
+
+      context.session.pressDefense('parry', impact);
+
+      expect(context.sound.played.slice(-1)).toEqual(['perfectParry']);
+      expect(context.clock.pending()).toContain(impact + 80);
+      context.clock.advanceTo(impact + 79);
+      expect(context.sound.played).not.toContain('burnOut');
+      context.clock.advanceTo(impact + 80);
+      expect(context.sound.played.slice(-1)).toEqual(['burnOut']);
+    });
+
+    it('cancels the delayed sound when the battle screen is left', async () => {
+      const context = setUp({ createBattle: burning });
+      await context.session.start();
+      const impact = toGhoulWindUp(context);
+      context.clock.advanceTo(impact);
+      context.session.pressDefense('parry', impact);
+
+      context.session.dispose();
+
+      expect(context.clock.pending()).not.toContain(impact + 80);
+      context.clock.advanceTo(impact + 1_000);
+      expect(context.sound.played).not.toContain('burnOut');
+    });
+
+    it('plays each delayed sound once, one per flame put out', async () => {
+      const context = setUp({
+        createBattle: battleWith(
+          enemyWith(0, { guard: 99 }),
+          attackIntentOf(0, 'double'),
+          heroWith({ burn: 3 }),
+        ),
+      });
+      await context.session.start();
+      toGhoulWindUp(context);
+      const first = attackStep(context.session).impacts[0]!.at;
+
+      context.clock.advanceTo(first);
+      context.session.pressDefense('parry', first);
+      // L'arrêt sur image de la parade parfaite repousse le 2e impact.
+      const second = attackStep(context.session).impacts[1]!.at;
+      context.clock.advanceTo(second);
+      context.session.pressDefense('parry', second);
+      context.clock.advanceTo(second + 80);
+
+      expect(context.sound.played.filter((cue) => cue === 'burnOut')).toHaveLength(2);
+    });
+
+    it('crackles 700 ms after the Bleed of the round, and puts the flame out 800 ms later (B5)', async () => {
+      const idle = { stun: { actionLost: false, heroAction: 999 } };
+      const context = setUp({
+        createBattle: battleWith(
+          enemyWith(0, idle),
+          enemyWith(1, idle),
+          enemyWith(2, idle),
+          heroWith({ burn: 2, bleed: { damage: 2, rounds: 3 } }),
+        ),
+      });
+      await context.session.start();
+      context.clock.advanceTo(2_000);
+      context.session.heroAction({ kind: 'attack' }, 1_940, 2_000);
+      const ticked = () => context.events().find(({ type }) => type === 'bleedTicked');
+      for (let guard = 0; guard < 50 && ticked() === undefined; guard += 1) {
+        context.clock.advanceTo(context.clock.pending()[0]!);
+      }
+      const at = context.clock.now();
+
+      expect(context.sound.played).toContain('bleed');
+      context.clock.advanceTo(at + 699);
+      expect(context.sound.played).not.toContain('burnCrackle');
+      context.clock.advanceTo(at + 700);
+      expect(context.sound.played).toContain('burnCrackle');
+      context.clock.advanceTo(at + 1_499);
+      expect(context.sound.played).not.toContain('burnOut');
+      context.clock.advanceTo(at + 1_500);
+      expect(context.sound.played).toContain('burnOut');
     });
   });
 });

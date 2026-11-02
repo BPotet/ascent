@@ -22,6 +22,8 @@ export interface AttackIntent {
   readonly feintFraction: number;
   /** Le Saignement du coup (prototype #107) ; absent, il ne saigne pas. */
   readonly bleed?: Bleed;
+  /** Les charges de Brûlure du coup (#171), jamais multipliées par le palier ; absent, il ne brûle pas. */
+  readonly burn?: number;
 }
 
 /** L'intention Garde (`GuardIntent`) : la garde remonte de `gain` points. */
@@ -85,7 +87,8 @@ export interface IntentContext {
  * soit l'intention, étourdi compris : le coup (ou la catégorie), la durée de préparation, puis la
  * position de la fausse amorce. Un soutien relève un allié tombé jamais relevé ; sinon, s'il n'est
  * pas étourdi et que sa garde est entamée, il garde si le premier tirage est sous 1/3, de 30 % de
- * sa garde max du palier. Les dégâts du coup sont ceux du palier (#38), jamais son Saignement.
+ * sa garde max du palier. Les dégâts du coup sont ceux du palier (#38), jamais son Saignement ni
+ * sa Brûlure.
  */
 export function drawIntent(
   kind: EnemyKind,
@@ -123,5 +126,6 @@ export function drawIntent(
     windUpMs: Math.round(ATTACKS[move.attack].windUpMs * factor),
     feintFraction: FEINT_MIN_FRACTION + (FEINT_MAX_FRACTION - FEINT_MIN_FRACTION) * feintDraw.value,
     ...(move.bleed && { bleed: move.bleed }),
+    ...(move.burn !== undefined && { burn: move.burn }),
   });
 }

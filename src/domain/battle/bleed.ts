@@ -1,11 +1,14 @@
 import type { BlowOutcome } from './BattleEvent';
 import type { Bleed } from './combatants';
 
-/** Les issues d'un impact qui font saigner (B1) : ni la parade parfaite ni l'esquive. */
-export const BLEEDING_OUTCOMES: readonly BlowOutcome[] = ['parry', 'suffered', 'perilousParry'];
+/**
+ * Les issues d'un impact qui touchent le héros : ni la parade parfaite ni l'esquive. Elles font
+ * saigner (B1) et brûler (#171).
+ */
+export const HERO_TOUCHED_OUTCOMES: readonly BlowOutcome[] = ['parry', 'suffered', 'perilousParry'];
 
 export function bleedsOn(outcome: BlowOutcome): boolean {
-  return BLEEDING_OUTCOMES.includes(outcome);
+  return HERO_TOUCHED_OUTCOMES.includes(outcome);
 }
 
 /** Un nouveau saignement ne s'additionne pas (B4) : les dégâts et la durée les plus forts. */

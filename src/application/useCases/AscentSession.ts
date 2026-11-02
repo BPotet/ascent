@@ -37,6 +37,12 @@ export const SHARD_TOTAL_KEY = 'shards.total';
 /** La copie d'un Total d'Éclats illisible, avant qu'il ne reparte de 0. */
 export const UNREADABLE_SHARD_TOTAL_KEY = 'shards.total.unreadable';
 
+/**
+ * La fumée des flammes de la Brûlure à la fin du combat (#171, 3 images de 120 ms) : l'écran qui
+ * suit le combat attend qu'elle soit partie.
+ */
+export const BURN_SMOKE_HOLD_MS = 360;
+
 /** Ce qui est sauvegardé : l'ascension et le combat en cours (P31). */
 interface SavedAscent {
   readonly version: typeof SAVE_VERSION;
@@ -293,21 +299,34 @@ export class AscentSession {
     if (ended !== null) {
       const next = endFloorBattle(this.ascent, { outcome: ended, heroHp: battle.hero.hp });
       const credited = creditShards(this.shards, next.seed, next.shardAwards);
-      if (credited === this.shards) {
+      const waits: Promise<void>[] = [];
+      // Les Éclats sont écrits avant l'écran qui suit la victoire (ADR 0012).
+      if (credited !== this.shards) {
+        this.shards = credited;
+        waits.push(this.writeShards().then(() => this.publishShards()));
+      }
+      // Les flammes de la Brûlure partent en fumée avant l'écran qui suit le combat (#171).
+      if (events.some((event) => event.type === 'burnCleared')) waits.push(this.smokeGone());
+      if (waits.length === 0) {
         this.update(next, null);
         return;
       }
-      // Les Éclats sont écrits avant l'écran qui suit la victoire (ADR 0012).
       this.settling = true;
-      this.shards = credited;
-      void this.writeShards().then(() => {
+      void Promise.all(waits).then(() => {
         this.settling = false;
-        this.publishShards();
         this.update(next, null);
       });
       return;
     }
     if (events.some((event) => SAVED_ON.has(event.type))) this.save();
+  }
+
+  /** La fin de la fumée des flammes de la Brûlure, sur l'horloge de combat (#171). */
+  private smokeGone(): Promise<void> {
+    const { clock } = this.dependencies;
+    return new Promise((resolve) => {
+      clock.setTimer(clock.now() + BURN_SMOKE_HOLD_MS, resolve);
+    });
   }
 
   /** Le Total d'Éclats stocké ; une valeur illisible est gardée à part, et le total repart de 0. */
