@@ -667,12 +667,30 @@ describe('sceneGeometry', () => {
     expect(geometry.platesBottom).toBe(sceneGeometry(390, 260, 3).platesBottom);
   });
 
-  it('puts a single enemy further right, on a wider pedestal', () => {
+  it('puts a single enemy further right', () => {
     const [single] = sceneGeometry(390, 440, 1).enemies;
     expect(single!.column.x).toBe(Math.round(390 * 0.44));
     expect(single!.column.y).toBe(2);
-    expect(single!.pedestal).toBe('single');
-    expect(sceneGeometry(390, 440, 3).enemies[0]!.pedestal).toBe('enemy');
+  });
+
+  it('sets the ground shadow of each enemy under its feet, the same for 1, 2 or 3 enemies (#184)', () => {
+    for (const count of [1, 2, 3]) {
+      for (const { sprite, groundShadowAt } of sceneGeometry(390, 440, count).enemies) {
+        // Centrée sous la place, son bas 3 dp sous le bas du sprite (maquette, `.sock`), sur 2 dp.
+        expect(groundShadowAt.x).toBe(sprite.x + sprite.width / 2);
+        expect(Math.abs(groundShadowAt.y - (sprite.y + sprite.height + 3))).toBeLessThanOrEqual(1);
+        expect([groundShadowAt.x % 2, groundShadowAt.y % 2]).toEqual([0, 0]);
+      }
+    }
+  });
+
+  it('sets the ground shadow of the hero under its feet, centred, at 3 dp and at 2 dp (#184)', () => {
+    for (const width of [412, 360, 320]) {
+      const { hero, heroGroundShadowAt } = sceneGeometry(width, 440, 3);
+      expect(heroGroundShadowAt).toEqual({ x: hero.x + hero.width / 2, y: hero.y + hero.height });
+    }
+    expect(sceneGeometry(412, 440, 3).heroGroundShadowAt).toEqual({ x: 4 + 54, y: 440 - 12 + 4 });
+    expect(sceneGeometry(320, 440, 3).heroGroundShadowAt).toEqual({ x: 4 + 36, y: 440 - 12 + 4 });
   });
 
   it('places the hero from behind at the bottom left, at 3 dp, its chest at 42 % of its height', () => {
@@ -710,7 +728,7 @@ describe('sceneGeometry', () => {
     ] as const) {
       const origin = spriteOrigin(sprite, width, height);
       expect([origin.x % 2, origin.y % 2]).toEqual([0, 0]);
-      // Les pieds sur le socle : le bas de la case tombe sur le bas de la place.
+      // Les pieds sur leur ombre au sol : le bas de la case tombe sur le bas de la place.
       expect(origin.y + height * 2).toBe(sprite.y + sprite.height);
     }
   });

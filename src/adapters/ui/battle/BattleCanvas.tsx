@@ -227,8 +227,7 @@ const NO_ENEMY: SceneEnemy = {
 const NO_SLOT: EnemySlot = {
   column: { x: 0, y: 0, width: 0 },
   sprite: { x: 0, y: 0, width: 0, height: 0 },
-  pedestal: 'enemy',
-  pedestalAt: { x: 0, y: 0 },
+  groundShadowAt: { x: 0, y: 0 },
   reach: { x: 0, y: 0 },
   plateBottom: 0,
 };
@@ -792,9 +791,9 @@ export function BattleScene({
         return slot === undefined || !enemy.standing ? null : (
           <Pedestal
             key={`${index}-${enemy.kind}`}
-            kind={slot.pedestal}
+            kind={slots.length === 1 ? 'single' : 'enemy'}
             selected={enemy.target}
-            at={slot.pedestalAt}
+            at={slot.groundShadowAt}
             images={scene.pedestals}
           />
         );
@@ -802,7 +801,7 @@ export function BattleScene({
       <Pedestal
         kind="hero"
         selected={false}
-        at={geometry.heroPedestalAt}
+        at={geometry.heroGroundShadowAt}
         images={scene.pedestals}
       />
       {order.map(({ enemy, index }) => {

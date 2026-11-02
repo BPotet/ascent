@@ -601,7 +601,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
         const { scene, geometry } = await renderScene(enemies);
         const nodes = drawn();
         // Les socles des ennemis debout, dans l'ordre : doré pour la cible.
-        const pedestals = enemies.map((_, index) => geometry.enemies[index]!.pedestal);
+        const pedestals = enemies.map(() => (geometry.enemies.length === 1 ? 'single' : 'enemy'));
         const selected = nodes
           .filter((node) =>
             pedestals.some((kind) =>

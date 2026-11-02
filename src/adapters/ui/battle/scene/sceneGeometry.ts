@@ -1,5 +1,3 @@
-import type { PedestalKind } from '../../pixelArt/sprites/battle/battleStage';
-
 /** Un rectangle de la scène, en dp. */
 export interface SceneRect {
   readonly x: number;
@@ -8,14 +6,13 @@ export interface SceneRect {
   readonly height: number;
 }
 
-/** La place d'un ennemi : sa colonne (intention, figure, plaque), son sprite et son socle. */
+/** La place d'un ennemi : sa colonne (intention, figure, plaque), son sprite et son ombre au sol. */
 export interface EnemySlot {
   readonly column: { readonly x: number; readonly y: number; readonly width: number };
   /** Le sprite, à 2 dp par pixel d'art : 88 × 104. */
   readonly sprite: SceneRect;
-  readonly pedestal: PedestalKind;
-  /** Le centre de son socle. */
-  readonly pedestalAt: { readonly x: number; readonly y: number };
+  /** Le milieu du bas de son ombre au sol (#184), sous ses pieds. */
+  readonly groundShadowAt: { readonly x: number; readonly y: number };
   /** Le chemin de son corps jusqu'au héros : la portée de la pose le multiplie. */
   readonly reach: { readonly x: number; readonly y: number };
   readonly plateBottom: number;
@@ -25,7 +22,8 @@ export interface SceneGeometry {
   readonly enemies: readonly EnemySlot[];
   /** Le héros de dos, à 3 dp par pixel d'art (2 dp sur un écran étroit). */
   readonly hero: SceneRect & { readonly scale: 2 | 3 };
-  readonly heroPedestalAt: { readonly x: number; readonly y: number };
+  /** Le milieu du bas de l'ombre au sol du héros (#184), sous ses pieds. */
+  readonly heroGroundShadowAt: { readonly x: number; readonly y: number };
   /** Le buste du héros : là où frappent les ennemis et où paraissent l'éclair et l'étincelle. */
   readonly chest: { readonly x: number; readonly y: number };
   /** Le bas des pieds des ennemis, pour l'horizon du décor. */
@@ -46,6 +44,8 @@ const TOP = 2;
 const RIGHT = 4;
 const HERO_LEFT = 4;
 const HERO_BOTTOM = 12;
+/** Le bas de l'ombre au sol sous le bas du sprite : 3 dp (maquette, `.sock`), calés sur 2 dp. */
+const GROUND_SHADOW_DROP = 4;
 /** Le décalage des colonnes : en diagonale, la plus à gauche la plus près du héros. */
 const OFFSETS: Readonly<Record<number, readonly number[]>> = { 3: [34, 16, 0], 2: [16, 0] };
 // Stryker restore all
@@ -86,8 +86,7 @@ export function sceneGeometry(width: number, height: number, count: number): Sce
     return {
       column: { x, y, width: columnWidth },
       sprite,
-      pedestal: count === 1 ? 'single' : 'enemy',
-      pedestalAt: { x: snap(center), y: figureBottom - 2 },
+      groundShadowAt: { x: snap(center), y: sprite.y + SPRITE_HEIGHT + GROUND_SHADOW_DROP },
       reach: {
         x: chest.x - (sprite.x + SPRITE_WIDTH / 2),
         y: chest.y - (figureTop + FIGURE_HEIGHT * 0.6),
@@ -98,7 +97,8 @@ export function sceneGeometry(width: number, height: number, count: number): Sce
   return {
     enemies,
     hero: { x: HERO_LEFT, y: heroTop + 4, width: heroWidth, height: heroHeight, scale },
-    heroPedestalAt: { x: HERO_LEFT + heroWidth / 2, y: height - HERO_BOTTOM - 6 },
+    // Le bas de sa place : un pixel d'art sous ses pieds.
+    heroGroundShadowAt: { x: HERO_LEFT + heroWidth / 2, y: heroTop + 4 + heroHeight },
     chest,
     feetY: Math.min(...enemies.map((enemy) => enemy.sprite.y + SPRITE_HEIGHT), height) + 14,
     platesBottom: Math.max(0, ...enemies.map((enemy) => enemy.plateBottom)),
@@ -108,7 +108,7 @@ export function sceneGeometry(width: number, height: number, count: number): Sce
 /**
  * L'origine d'une case du combat dans la place d'un ennemi (`spriteOrigin`, ADR 0010 § 3), en dp :
  * une case plus grande que 44 × 52 pixels d'art y est centrée en largeur et calée en bas, pieds sur
- * le socle, à 2 dp par pixel d'art. Pour 44 × 52, l'origine est celle de la place. Appelée sur le
+ * son ombre au sol, à 2 dp par pixel d'art. Pour 44 × 52, l'origine est celle de la place. Appelée sur le
  * fil JS, jamais dans un worklet.
  */
 export function spriteOrigin(

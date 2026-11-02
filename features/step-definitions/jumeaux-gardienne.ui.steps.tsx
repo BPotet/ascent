@@ -373,12 +373,12 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
         ENEMY_FRAMES.map((frame) => ({ frame, tier: 0, red: false, poses: null, lift: 0 })),
       );
       // Sa case, en entier, à 2 dp par pixel d'art, les pieds sur le bas de sa place, sur le socle.
-      const { sprite, pedestalAt } = sceneGeometry(390, 440, 1).enemies[0]!;
+      const { sprite, groundShadowAt } = sceneGeometry(390, 440, 1).enemies[0]!;
       const { cellWidth, cellHeight } = battleAtlas(kind).table;
       expect([cellWidth, cellHeight]).toEqual([Number(width), Number(height)]);
       const origin = spriteOrigin(sprite, cellWidth, cellHeight);
       expect(origin.y + cellHeight * 2).toBe(sprite.y + sprite.height);
-      expect(Math.abs(origin.x + cellWidth - pedestalAt.x)).toBeLessThanOrEqual(2);
+      expect(Math.abs(origin.x + cellWidth - groundShadowAt.x)).toBeLessThanOrEqual(2);
       expect(origin.y).toBeGreaterThanOrEqual(0);
     },
   );
