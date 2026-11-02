@@ -5,7 +5,7 @@
  *   scène choisit à chaque instant (`enemyPose` sur une action construite ici, `restPose` au
  *   repos), puis son image (`battleSprite`) et sa case dans l'atlas que la scène dessine
  *   (`battleAtlas`), comparées aux lignes recopiées de l'Atelier, avec `pal` ou `red` ;
- * - « à 2 dp par pixel d'art », « pieds sur son socle » : la place d'un ennemi dans la scène
+ * - « à 2 dp par pixel d'art », « pieds sur son ombre au sol » : la place d'un ennemi dans la scène
  *   (`sceneGeometry`) et l'origine de sa case (`spriteOrigin`) ;
  * - « le reflet » et « les étoiles » : les ancrages de la pose affichée (`poseAnchors`), tels que la
  *   scène les place (`glintSprites`) ;
@@ -531,13 +531,13 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     },
   );
 
-  and('ses pieds reposent sur son socle, comme ceux des autres ennemis', () => {
+  and('ses pieds reposent sur son ombre au sol, comme ceux des autres ennemis', () => {
     for (const count of [1, 2, 3]) {
       for (const { sprite, groundShadowAt } of sceneGeometry(390, 440, count).enemies) {
         for (const kind of world.kinds) {
           const { cellWidth, cellHeight } = battleAtlas(kind).table;
           const origin = spriteOrigin(sprite, cellWidth, cellHeight);
-          // Le bas de sa case tombe sur le bas de la place, centrée sur le socle.
+          // Le bas de sa case tombe sur le bas de la place, centrée sur son ombre au sol.
           expect(origin.y + cellHeight * 2).toBe(sprite.y + sprite.height);
           expect(Math.abs(origin.x + cellWidth - groundShadowAt.x)).toBeLessThanOrEqual(2);
           expect([origin.x % 2, origin.y % 2]).toEqual([0, 0]);

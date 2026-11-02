@@ -11,10 +11,11 @@ Fonctionnalité: Les Jumeaux et la Gardienne des ossuaires animés, avec les pos
     Étant donné que l'image et l'animation complète des Jumeaux (twins) et de la Gardienne des ossuaires (ossuaryWarden) sont validées dans l'Atelier de l'ascension au 29/10/2026
     Et que l'animation complète, palette rouge et poses d'un coup comprises, est recopiée telle quelle dans le code
 
+  # Ajusté par #184 : les socles sont retirés, remplacés par l'ombre au sol.
   Plan du Scénario: Chacun en combat avec son image validée
     Étant donné une ascension en cours
     Quand le joueur entre dans un <combat> contre <entité>
-    Alors <entité> s'affiche en entier avec son image validée (<taille> pixels d'art), à 2 dp par pixel d'art, pieds sur son socle
+    Alors <entité> s'affiche en entier avec son image validée (<taille> pixels d'art), à 2 dp par pixel d'art, pieds sur son ombre au sol
     Et <entité> n'est plus dessiné avec <dessin d'avant>
 
     Exemples:
