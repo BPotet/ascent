@@ -59,7 +59,7 @@ export function burnOnBlow(
     };
   }
   if (current === undefined || !extinguishesOn(outcome)) return { stacks: current, events: [] };
-  return extinguish(current, at, 'blow');
+  return extinguished(current - 1, at, 'blow');
 }
 
 /** Le début d'une manche (2, 5) : la perte de PV, puis une charge s'éteint. */
@@ -68,14 +68,14 @@ export function burnAtRoundStart(
   current: number,
   at: number,
 ): BurnChange & { readonly loss: number } {
-  const { loss } = tickBurn(hp, current);
+  const { loss, stacks } = tickBurn(hp, current);
   const ticked: BattleEvent = { type: 'burnTicked', at, loss, heroHp: hp - loss, stacks: current };
-  const out = extinguish(current, at, 'round');
+  const out = extinguished(stacks, at, 'round');
   return { loss, stacks: out.stacks, events: [ticked, ...out.events] };
 }
 
-function extinguish(current: number, at: number, cause: 'blow' | 'round'): BurnChange {
-  const stacks = current - 1;
+/** Une charge vient de s'éteindre : il en reste `stacks` ; à 0, le héros ne brûle plus. */
+function extinguished(stacks: number, at: number, cause: 'blow' | 'round'): BurnChange {
   return {
     stacks: stacks > 0 ? stacks : undefined,
     events: [{ type: 'burnExtinguished', at, stacks, cause }],
