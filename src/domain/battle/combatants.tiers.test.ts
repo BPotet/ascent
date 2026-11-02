@@ -166,7 +166,7 @@ describe('the bosses of the tiers two and three (#38)', () => {
 
 // La Brûlure (#171) : les valeurs du Codex de l'Atelier du 01/11/2026, à l'échelle du palier 1.
 describe('the carriers of the Burn (#171)', () => {
-  it('gives the Smoldering husk 20 HP, 8 guard, Initiative 7, its burning hand twice as often', () => {
+  it('gives the burningHusk (Embrasé) 20 HP, 8 guard, Initiative 7, its burning hand twice as often', () => {
     expect(ENEMIES.burningHusk).toEqual({
       maxHp: 20,
       maxGuard: 8,

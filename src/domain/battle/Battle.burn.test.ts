@@ -218,8 +218,11 @@ describe('Burn trigger (1)', () => {
       blowsResolved(1),
     );
 
+    const types = events.map((event) => event.type);
     expect(battle.phase).toMatchObject({ kind: 'over', outcome: 'defeat' });
     expect(ofType(events, 'heroBurning')).toEqual([]);
+    expect(ofType(events, 'burnCleared')).toHaveLength(1);
+    expect(types.indexOf('burnCleared')).toBeLessThan(types.indexOf('battleEnded'));
     expect(battle.hero).not.toHaveProperty('burn');
   });
 });

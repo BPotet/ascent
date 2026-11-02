@@ -120,7 +120,7 @@ describe('the enemies of an ordinary battle, multiplied by the tier (#38)', () =
     ]);
   });
 
-  it('gives the Smoldering husk 27 HP and 10 guard at tier 2, its hand 5 and its blaze 10 (#171)', () => {
+  it('gives the burningHusk (Embrasé) 27 HP and 10 guard at tier 2, its hand 5 and its blaze 10 (#171)', () => {
     const battle = start(['burningHusk'], TIER_2);
     const damages = (seed: number) => {
       const { intent } = drawIntent('burningHusk', seedRandom(seed), {
