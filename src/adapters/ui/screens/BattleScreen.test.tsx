@@ -4,7 +4,7 @@
 // toucher se prouve par une horloge qui avance à chaque étape du geste qui suit son début
 // (ADR 0005, § 2). La scène dessinée est simulée : seul ce qui est hors de la scène est vérifié.
 import { act, fireEvent, screen, within } from '@testing-library/react-native';
-import { AccessibilityInfo, StyleSheet } from 'react-native';
+import { AccessibilityInfo, StyleSheet, View } from 'react-native';
 import { Gesture } from 'react-native-gesture-handler';
 
 import {
@@ -16,12 +16,30 @@ import {
   type BattleChange,
 } from '../../../application/testing/battleBuilder';
 import { seedFor } from '../../../application/testing/battleSeeds';
+import { FixedSeedSource } from '../../../application/testing/FixedSeedSource';
+import { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
+import { ManualBattleClock } from '../../../application/testing/ManualBattleClock';
+import {
+  silentBattleHaptics,
+  silentBattleSound,
+} from '../../../application/testing/recordingBattleFeedback';
+import { settableClock } from '../../../application/testing/settableClock';
 import { BATTLE_HINT_SEEN_KEYS } from '../../../application/useCases/battleHints';
+import { BattleSession } from '../../../application/useCases/BattleSession';
 import { glintsOf } from '../../../domain/battle/glints';
+import { startTestBattle } from '../../../domain/battle/testing/testBattle';
+import { Day } from '../../../domain/day/Day';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { reduceMotionInEachTest, withMotion } from '../testing/motion';
 import { preparedKinds } from '../battle/testing/fakeBattleCanvas';
 import { renderBattle, type BattleScreenTest } from '../testing/battleScreen';
+import { renderScreen } from '../testing/renderScreen';
+import { silentHaptics } from '../testing/silentHaptics';
+import { BattleScreen } from './BattleScreen';
+
+type MeasureInWindow = (
+  callback: (x: number, y: number, width: number, height: number) => void,
+) => void;
 
 jest.mock('../battle/BattleCanvas', () => jest.requireActual('../battle/testing/fakeBattleCanvas'));
 
@@ -724,5 +742,84 @@ describe('BattleScreen: the atlases prepared on demand (#38)', () => {
 
     const [ghoul] = sceneProps().enemies as { readonly phase2: boolean }[];
     expect(ghoul!.phase2).toBe(true);
+  });
+});
+
+describe('BattleScreen on the tier backdrop (#176)', () => {
+  /** Le cadre mesuré dans la fenêtre : `measureInWindow` des vues, simulé sous Jest. */
+  function measuredAt(y: number, height: number) {
+    return jest
+      .spyOn(
+        (View as unknown as { prototype: { measureInWindow: MeasureInWindow } }).prototype,
+        'measureInWindow',
+      )
+      .mockImplementation((callback) => callback(0, y, 390, height));
+  }
+
+  afterEach(() => jest.restoreAllMocks());
+
+  it('lets the tier backdrop show through the battle screen, which has no background of its own', async () => {
+    await renderBattle({ seed: 1 });
+
+    expect(StyleSheet.flatten(screen.getByTestId('battle-screen').props.style)).toMatchObject({
+      backgroundColor: 'transparent',
+    });
+  });
+
+  it('lets the tier backdrop show through « Préparation du combat… » too', async () => {
+    const keyValueStore = memoryKeyValueStore();
+    // La lecture des bulles d'aide ne répond pas : le combat reste en préparation.
+    keyValueStore.get = () => new Promise<string | null>(() => undefined);
+    const session = new BattleSession(
+      {
+        clock: new ManualBattleClock(0),
+        seeds: new FixedSeedSource(1),
+        sound: silentBattleSound(),
+        haptics: silentBattleHaptics(),
+        keyValueStore,
+      },
+      { createBattle: startTestBattle },
+    );
+    await renderScreen(<BattleScreen session={session} title="Étage 1" />, {
+      clock: settableClock(Day.of(2026, 11, 1)),
+      unitOfWork: new InMemoryUnitOfWork(),
+      keyValueStore,
+      haptics: silentHaptics(),
+    });
+
+    expect(screen.getByText('Préparation du combat…')).toBeOnTheScreen();
+    expect(StyleSheet.flatten(screen.getByTestId('battle-loading').props.style)).toMatchObject({
+      backgroundColor: 'transparent',
+    });
+  });
+
+  it('gives the frame of the scene, measured in the window, at each layout', async () => {
+    const measure = measuredAt(150, 440);
+    const onSceneArea = jest.fn();
+    await renderBattle({ seed: 1, onSceneArea });
+
+    await fireEvent(screen.getByTestId('battle-scene-frame'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 440 } },
+    });
+
+    expect(measure).toHaveBeenCalled();
+    expect(onSceneArea).toHaveBeenLastCalledWith(150, 590);
+
+    measure.mockImplementation((callback) => callback(0, 190, 390, 400));
+    await fireEvent(screen.getByTestId('battle-scene-frame'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 400 } },
+    });
+    expect(onSceneArea).toHaveBeenLastCalledWith(190, 590);
+  });
+
+  it('still lays the scene out without anyone to tell its frame', async () => {
+    measuredAt(150, 440);
+    await renderBattle({ seed: 1 });
+
+    await fireEvent(screen.getByTestId('battle-scene-frame'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 300 } },
+    });
+
+    expect(screen.getByTestId('battle-scene-frame')).toBeOnTheScreen();
   });
 });

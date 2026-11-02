@@ -47,6 +47,8 @@ export interface BattleScreenOptions {
   /** Le titre de l'en-tête ; par défaut « Étage 1 ». */
   readonly title?: string;
   readonly keyValueStore?: ReturnType<typeof memoryKeyValueStore>;
+  /** Reçoit le cadre de la scène mesuré dans la fenêtre (#176). */
+  readonly onSceneArea?: (top: number, bottom: number) => void;
 }
 
 export type BattleScreenTest = Awaited<ReturnType<typeof renderBattle>>;
@@ -66,6 +68,7 @@ export async function renderBattle({
   createBattle = startTestBattle,
   title = 'Étage 1',
   keyValueStore = memoryKeyValueStore(),
+  onSceneArea,
 }: BattleScreenOptions) {
   if (hintsSeen) {
     keyValueStore.values.set(BATTLE_HINT_SEEN_KEYS.hero, '1');
@@ -85,12 +88,21 @@ export async function renderBattle({
   // peuvent la faire avancer seule (`uiAhead`), sans déclencher les échéances du combat.
   let uiAhead = 0;
   const uiNow = () => clock.now() + uiAhead;
-  await renderScreen(<BattleScreen session={session} title={title} now={now} uiNow={uiNow} />, {
-    clock: settableClock(Day.of(2026, 10, 22)),
-    unitOfWork: new InMemoryUnitOfWork(),
-    keyValueStore,
-    haptics: silentHaptics(),
-  });
+  await renderScreen(
+    <BattleScreen
+      session={session}
+      title={title}
+      now={now}
+      uiNow={uiNow}
+      {...(onSceneArea !== undefined && { onSceneArea })}
+    />,
+    {
+      clock: settableClock(Day.of(2026, 10, 22)),
+      unitOfWork: new InMemoryUnitOfWork(),
+      keyValueStore,
+      haptics: silentHaptics(),
+    },
+  );
   await screen.findByTestId('battle-screen');
 
   /** Avance l'horloge de combat ; les échéances atteintes sont publiées. */

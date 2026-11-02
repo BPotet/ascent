@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import Animated from 'react-native-reanimated';
 
@@ -34,6 +34,11 @@ export interface BattleScreenProps {
   readonly now?: () => number;
   /** L'horloge du fil UI, lue dans les worklets des gestes : ce doit être un worklet. */
   readonly uiNow?: () => number;
+  /**
+   * Reçoit le haut et le bas du cadre de la scène, mesurés dans la fenêtre à chaque mise en page
+   * (#176) : le voile de lisibilité du fond de palier s'arrête à ses bords.
+   */
+  readonly onSceneArea?: (top: number, bottom: number) => void;
 }
 
 /** La ligne au-dessus des boutons s'efface pendant le temps mort et le déséquilibre. */
@@ -57,12 +62,14 @@ export function BattleScreen({
   title,
   now = jsThreadNow,
   uiNow = uiThreadNow,
+  onSceneArea,
 }: BattleScreenProps) {
   const reducedMotion = useReducedMotion();
   const display = useBattleDisplay(session, reducedMotion);
   const shake = useShake(display.shakeKey);
   const { width: screenWidth } = useWindowDimensions();
   const [sceneHeight, setSceneHeight] = useState(SCENE_HEIGHT);
+  const sceneFrame = useRef<View>(null);
 
   const battle = display.snapshot?.battle ?? null;
   // Les atlas de la scène sont faits avant le combat, jamais pendant la phase ennemie : ceux de
@@ -126,7 +133,7 @@ export function BattleScreen({
 
   if (battle === null || view === null) {
     return (
-      <Screen testID="battle-loading">
+      <Screen background="transparent" testID="battle-loading">
         <Text style={styles.loading}>Préparation du combat…</Text>
       </Screen>
     );
@@ -148,11 +155,13 @@ export function BattleScreen({
   const strikeImpactAt = battle.phase.kind === 'heroStrike' ? battle.phase.impactAt : null;
   const { heroFloat, burnFloat } = display;
   const targetName = ENEMY_NAMES[battle.enemies[battle.target]!.kind];
-  const onSceneLayout = (event: LayoutChangeEvent) =>
+  const onSceneLayout = (event: LayoutChangeEvent) => {
     setSceneHeight(event.nativeEvent.layout.height);
+    sceneFrame.current?.measureInWindow((_x, y, _width, height) => onSceneArea?.(y, y + height));
+  };
 
   return (
-    <Screen layout="top" testID="battle-screen">
+    <Screen layout="top" background="transparent" testID="battle-screen">
       <View style={styles.header}>
         <Text accessibilityRole="header" style={styles.title}>
           {title}
@@ -165,6 +174,7 @@ export function BattleScreen({
         />
       ) : null}
       <Animated.View
+        ref={sceneFrame}
         onLayout={onSceneLayout}
         testID="battle-scene-frame"
         style={[styles.scene, reducedMotion ? null : shake]}

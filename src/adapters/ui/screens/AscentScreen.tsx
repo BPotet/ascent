@@ -7,6 +7,8 @@ import { ITEMS } from '../../../domain/ascent/items';
 import { loadoutOf } from '../../../domain/ascent/loadout';
 import { SUMMIT_SHARDS, shardSum } from '../../../domain/ascent/shards';
 import { BoonChoicePanel } from '../battle/BoonChoicePanel';
+import type { SceneArea } from '../battle/scene/backdropVeil';
+import { TierBackdrop } from '../battle/TierBackdrop';
 import { BlessingChoice } from '../components/BlessingChoice';
 import { ExitChoice } from '../components/ExitChoice';
 import { LoadoutButton } from '../components/LoadoutButton';
@@ -134,12 +136,14 @@ function FloorBattle({
   onPause,
   onLoadout,
   loadoutRef,
+  onSceneArea,
 }: {
   readonly session: AscentSession;
   readonly ascent: Ascent;
   readonly onPause: () => void;
   readonly onLoadout: () => void;
   readonly loadoutRef: Ref<View>;
+  readonly onSceneArea: (top: number, bottom: number) => void;
 }) {
   const battleSession = useMemo(() => session.battleSession(), [session]);
   const [reserve, setReserve] = useState(0);
@@ -160,6 +164,7 @@ function FloorBattle({
       <BattleScreen
         session={battleSession}
         title={ascent.encounter?.kind === 'boss' ? 'Le boss' : `Étage ${ascent.floor}`}
+        onSceneArea={onSceneArea}
       />
     </View>
   );
@@ -330,6 +335,14 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
   const opener = useRef<View>(null);
   // La feuille de l'Équipement ouverte en combat retient le combat en pause (#159).
   const sheetHolds = useRef(false);
+  // Le cadre de la scène du combat monté (#176), retenu avec la clé de ce combat : celui d'un combat
+  // précédent ne vaut plus.
+  const [measured, setMeasured] = useState<{ key: string; area: SceneArea } | null>(null);
+  const battleKey = ascent === null ? '' : `${ascent.tier}-${ascent.floor}-${mount}`;
+  const onSceneArea = useCallback(
+    (top: number, bottom: number) => setMeasured({ key: battleKey, area: { top, bottom } }),
+    [battleKey],
+  );
 
   /**
    * Le seul point qui décide de la reprise du combat après une pause (P33, #159) : rien tant que la
@@ -453,32 +466,40 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
   }
 
   if (ascent.encounter !== null) {
+    // Le combat n'est rendu que s'il n'est ni en pause, ni retenu par la feuille, ni en reprise.
+    const fighting = !paused && !loadoutOpen && !counting;
+    // Le fond de palier reste le même pendant le compte à rebours, la feuille et la pause (#176) ;
+    // tant que la scène du combat n'est pas mesurée, son voile couvre tout l'écran.
+    const scene = fighting && measured?.key === battleKey ? measured.area : null;
     return (
-      <Screen layout="top" background={roles.night} testID="ascent-battle">
-        {/* Le combat n'est rendu que s'il n'est ni en pause, ni retenu par la feuille, ni en reprise. */}
-        {paused ? null : loadoutOpen || counting ? (
-          <>
-            <Header
+      <View style={styles.battle} testID="ascent-battle-backdrop">
+        <TierBackdrop tier={ascent.tier} scene={scene} />
+        <Screen layout="top" background="transparent" testID="ascent-battle">
+          {paused ? null : loadoutOpen || counting ? (
+            <>
+              <Header
+                ascent={ascent}
+                onPause={leave}
+                onLoadout={openLoadoutInBattle}
+                combat
+                loadoutRef={opener}
+              />
+              {loadoutOpen ? null : <Countdown onDone={() => setCounting(false)} />}
+            </>
+          ) : (
+            <FloorBattle
+              key={battleKey}
+              session={session}
               ascent={ascent}
               onPause={leave}
               onLoadout={openLoadoutInBattle}
-              combat
               loadoutRef={opener}
+              onSceneArea={onSceneArea}
             />
-            {loadoutOpen ? null : <Countdown onDone={() => setCounting(false)} />}
-          </>
-        ) : (
-          <FloorBattle
-            key={`${ascent.tier}-${ascent.floor}-${mount}`}
-            session={session}
-            ascent={ascent}
-            onPause={leave}
-            onLoadout={openLoadoutInBattle}
-            loadoutRef={opener}
-          />
-        )}
-        {loadoutSheet}
-      </Screen>
+          )}
+          {loadoutSheet}
+        </Screen>
+      </View>
     );
   }
 
@@ -624,4 +645,5 @@ const styles = StyleSheet.create({
   },
   row: { flexDirection: 'row', justifyContent: 'center', gap: 12 },
   half: { flex: 1 },
+  battle: { flex: 1, backgroundColor: roles.night },
 });

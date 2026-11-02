@@ -7,6 +7,8 @@
 - **Contexte produit** : épique #30 « Première ascension », story #81 « Combat complet (2/2) : le
   combat en pixel art 2.5D »
 - **Avenant** : 27 octobre 2026, plus d'anneau (bug #101, voir en fin de document)
+- **Avenant** : 1er novembre 2026, le décor sort de la scène : le fond de palier (#176, voir en fin
+  de document)
 
 ## Contexte
 
@@ -79,3 +81,34 @@ mémoire. Le § 5 devient :
   partielles par type ; celles de l'aspect de phase 2 sont rangées à part (`phase2`). Un type absent
   ne se dessine pas ; il ne peut pas arriver.
 
+## Avenant du 1er novembre 2026 — le fond de palier remplace le décor de la scène (#176)
+
+Chaque palier a son fond, choisi dans l'Atelier (ADR 0010, avenant #176). Le décor quitte la scène :
+
+- **Le fond de palier** (`TierBackdrop`) est un canevas Skia **statique**, sous tout l'écran de
+  combat (`StyleSheet.absoluteFill` dans un conteneur de la couleur de la nuit), hors de la vue qui
+  tremble. Il n'a ni valeur partagée ni rappel par image : il ne se redessine qu'au changement de
+  palier, de mesure de la scène ou de taille de fenêtre. Il est masqué au lecteur d'écran et ne
+  reçoit aucun toucher.
+- **Placement** (`backdropPlacement`) : le fond remplit la hauteur et se centre, ses côtés rognés.
+  Un pixel d'art vaut un **nombre entier de pixels physiques**, arrondi au-dessus
+  (`ceil(hauteur × ratio / 160)`), comme le veut l'ADR 0007 § 3 ; le surplus est rogné à parts
+  égales en haut et en bas. Sur 390 × 844 à ×3, cela donne 16 pixels physiques par pixel d'art et
+  environ 73 pixels d'art visibles en largeur (74 dans la maquette, qui met à l'échelle de façon
+  fractionnaire). Sur un écran plus large que l'image, la nuit apparaît sur les côtés.
+- **Image** : une image Skia par palier, faite au premier combat de ce palier et gardée dans un cache
+  de module. Elle n'entre dans aucun atlas : les atlas des personnages, des héroïnes et des effets ne
+  changent pas. Si Skia ne peut pas la faire, seul le voile est dessiné et la nuit reste visible.
+- **Voile de lisibilité** (`backdropVeil`) : la nuit à 90 %, dessinée dans le même canevas, au-dessus
+  et en dessous du cadre de la scène, avec des fondus de 24 et 28 dp dans la scène. L'écran de combat
+  mesure ce cadre dans la fenêtre à chaque mise en page (`onSceneArea`, `measureInWindow`) ; tant
+  qu'il n'est pas mesuré, le voile couvre tout l'écran.
+- **La scène** devient transparente : `paintBattleStage` et son cache sont supprimés. Les **socles
+  restent** dans la scène : leur bord d'or marque la cible. Les `Screen` de l'écran de combat n'ont
+  plus de fond propre (`background="transparent"`).
+- **Lisibilité dans la scène** : la plaque des ennemis reste pleine (la surface) ; les chiffres et
+  mots de scène passent d'une ombre floue à un contour d'encre opaque, sans décalage.
+
+Deux canevas Skia se superposent désormais (le fond, puis la scène). Leur ordre sur Android se
+vérifie sur l'APK ; si le fond passait devant, le repli serait de dessiner le fond et le voile dans
+le canevas de la scène étendu à tout l'écran, sans tremblement, par un nouvel avenant.

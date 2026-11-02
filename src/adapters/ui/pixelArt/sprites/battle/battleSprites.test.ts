@@ -51,7 +51,7 @@ import {
 import { atlasRect, battleAtlas, frameRect } from './battleAtlas';
 import { HERO_ANIMATIONS, HERO_CELL, isHero } from './heroAnimations';
 import { EFFECT_KINDS, effectsAtlas, effectRect, sealSprite, vignetteImage } from './battleEffects';
-import { paintBattleStage, pedestalImage } from './battleStage';
+import { pedestalImage } from './battleStage';
 
 const ENEMIES = ['ghoul', 'specter', 'necromancer'] as const;
 
@@ -611,18 +611,6 @@ describe('the battle atlases', () => {
 });
 
 describe('the battle stage', () => {
-  it('paints the stage in art pixels of 2 dp, fully opaque', () => {
-    const stage = paintBattleStage(390, 440, 250);
-    expect([stage.width, stage.height]).toEqual([195, 220]);
-    for (let index = 3; index < stage.rgba.length; index += 4) {
-      expect(stage.rgba[index]).toBe(255);
-    }
-  });
-
-  it('paints the same stage for the same size', () => {
-    expect(paintBattleStage(320, 400, 230).rgba).toEqual(paintBattleStage(320, 400, 230).rgba);
-  });
-
   it('draws the pedestals apart, wider for a single enemy and for the hero, gold when targeted', () => {
     const plain = pedestalImage('enemy', false);
     const target = pedestalImage('enemy', true);

@@ -1,7 +1,7 @@
 // Stryker disable all: valeurs purement visuelles, vérifiées par la conformité aux maquettes (barrière 10 bis).
 /**
  * La palette d'art (`artPalette`, voir `docs/glossary.md`, #72) : les teintes du prototype de la
- * tour (31 codes, transparent compris, puis celles du contenu de l'Atelier, ajoutées à la fin), qui servent aux sprites et au décor, et les rôles d'interface qui en sont tirés (maquette
+ * tour (31 codes, transparent compris, puis celles du contenu de l'Atelier et des fonds de palier, ajoutées à la fin), qui servent aux sprites et au décor, et les rôles d'interface qui en sont tirés (maquette
  * `docs/mockups/71-pixel-art/`, « Palette et rôles »). Les contrastes documentés sont vérifiés par
  * `artPalette.test.ts`.
  */
@@ -61,6 +61,34 @@ export const artPalette = {
     '#D9733A',
     '#5E8F82',
     '#3D5E57',
+    // Les fonds de palier (#176) : les Catacombes, les Jardins de cendre, puis le Beffroi, à la
+    // suite. Une teinte déjà connue d'un palier précédent n'est pas reprise.
+    '#0E1120',
+    '#161A2C',
+    '#1A1522',
+    '#3A2C3A',
+    '#6E4A44',
+    '#5B4E4A',
+    '#8E8574',
+    '#0F1118',
+    '#191920',
+    '#23232B',
+    '#323139',
+    '#47454D',
+    '#68646A',
+    '#958F8A',
+    '#221B1C',
+    '#3A2A27',
+    '#6A2E22',
+    '#B0482A',
+    '#56618A',
+    '#B4BCCF',
+    '#241B19',
+    '#3B2A1C',
+    '#6B4A2A',
+    '#9A6A3A',
+    '#D0A066',
+    '#4F7A6E',
   ],
   /** Les rôles d'interface. */
   roles: {
@@ -138,6 +166,11 @@ export const artPalette = {
     well: '#0B0D18',
     /** Fond d'une pastille d'équipement posée dans un cadre (Équipement du pied de la tour, #159). */
     sunken: '#141829',
+    /**
+     * Le voile de lisibilité (`backdropVeil`, #176) : la nuit de la maquette à 90 %, sous l'en-tête
+     * et la zone du pouce de l'écran de combat, posé sur le fond de palier.
+     */
+    backdropVeil: 'rgba(14,17,32,0.9)',
   },
 } as const;
 // Stryker restore all

@@ -253,6 +253,25 @@ document et sa sha256. Le champ `icon` (statut `proposé`) n'est pas recopié.
    codes 42, 43 et 44 ; les codes existants ne bougent pas (§ 4).
 
 
+## Avenant du 1er novembre 2026 (#176) : les fonds de palier
+
+Les fonds de palier (`assets/backdropTier1` à `backdropTier3`, export de l'Atelier du 01/11/2026)
+sont des images fixes, choisies et validées par le propriétaire.
+
+1. **Recopie.** Le script de recopie (non versionné) recopie `proposals[chosen]` de chaque document,
+   ses clés `w`, `h`, `palette` et `rows` telles quelles, dans un fichier par document :
+   `sprites/atelier/data/backdropTier1.ts` à `backdropTier3.ts`, qui exportent un `AssetImage`
+   (`BACKDROP_TIER_1`…). L'en-tête cite le document, sa sha256, celle de la fiche `codex/<id>` et le
+   nom de la proposition ; ni ce nom ni `by` ne sont recopiés dans les données. La première ligne
+   est `// Stryker disable all` (§ 8). Le registre `TIER_BACKDROPS` les rassemble, typé
+   `Record<Tier, AssetImage>` : un palier sans fond ne compile pas.
+2. **Teintes.** Les 26 teintes des fonds absentes de la palette d'art s'ajoutent à la fin de
+   `artPalette.tints`, dans l'ordre des paliers, sans doublon ; les codes existants ne bougent pas
+   (§ 4). Un fond est opaque partout : il n'a aucun `.`.
+3. **Fidélité.** Les trois fonds recopiés sont identiques, pixel pour pixel, à ceux de la maquette
+   validée (`docs/mockups/174-tier-identity/`, `ART.bd1` à `ART.bd3`) : mêmes lignes, même palette.
+   Un test le vérifie à chaque exécution.
+
 ## Avenant du 1er novembre 2026 (#171) : un effet en séquences, un id qui n'est pas le nom de code
 
 Les 4 porteurs de la Brûlure (export de l'Atelier du 01/11/2026) sont recopiés comme au § 1, clé
