@@ -34,6 +34,23 @@ describe('SpriteCanvas with Skia', () => {
     expect(canvas).toHaveProp('accessibilityElementsHidden', true);
   });
 
+  it('draws a portrait at its exact size in dp, whatever the density (#175)', async () => {
+    jest.spyOn(PixelRatio, 'roundToNearestPixel').mockImplementation((size) => size * 1.14);
+    await render(
+      <SpriteCanvas
+        sprite="portrait-test"
+        draw={() => toPixelImage(characterSprite(1))}
+        size={24}
+        testID="sprite"
+      />,
+    );
+
+    const canvas = screen.getByTestId('sprite', { includeHiddenElements: true });
+    expect(canvas).toHaveStyle({ width: 24, height: 32 });
+    const [image] = canvas.children as { props: Record<string, unknown> }[];
+    expect(image?.props).toMatchObject({ width: 24, height: 32 });
+  });
+
   it('draws the image without smoothing (nearest neighbour, no mipmap), on the whole canvas', async () => {
     await render(
       <SpriteCanvas

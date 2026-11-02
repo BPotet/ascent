@@ -1,7 +1,8 @@
 // Réservé aux tests : `SpriteCanvas` sans Skia (limité à son test de fumée sous Jest), branché par
 // `jest.config.js` dans les projets `integration` et `bdd`. Il dessine le sprite (une fois par nom,
 // comme le vrai) et expose son nom, son échelle et sa taille en pixels d'art, pour que les tests
-// d'écran vérifient ce qui est dessiné, sans Skia.
+// d'écran vérifient ce qui est dessiné, sans Skia. Un portrait de la Frise d'action expose sa taille
+// exacte (`size`) à la place de l'échelle.
 import { View } from 'react-native';
 
 import type * as RealSpriteCanvas from '../SpriteCanvas';
@@ -23,6 +24,7 @@ export function SpriteCanvas({
   sprite,
   draw,
   scale,
+  size,
   style,
   testID,
 }: RealSpriteCanvas.SpriteCanvasProps) {
@@ -34,7 +36,8 @@ export function SpriteCanvas({
       pointerEvents="none"
       testID={testID ?? 'sprite-canvas'}
       style={style}
-      {...{ sprite, scale, pixelWidth: width, pixelHeight: height }}
+      {...{ sprite, pixelWidth: width, pixelHeight: height }}
+      {...(size === undefined ? { scale } : { size })}
     />
   );
 }
