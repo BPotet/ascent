@@ -14,6 +14,7 @@ import {
 } from '../pixelArt/sprites/battle/battleCharacters';
 import { BattleScene, prepareBattleScene, type BattleSceneProps } from './BattleCanvas';
 import { enemyPose } from './scene/enemyPose';
+import { GROUND_SHADOW_OPACITY } from '../pixelArt/sprites/battle/battleStage';
 import { sceneGeometry, spriteOrigin } from './scene/sceneGeometry';
 import type { SceneEnemy, SceneTimeline } from './sceneTypes';
 
@@ -241,7 +242,7 @@ describe('BattleScene with Skia', () => {
   });
 
   it.each(['facelessPrior', 'fallenKnight', 'twins', 'ossuaryWarden'] as const)(
-    'mounts the %s alone, on the single pedestal, preparing its perilous attack',
+    'mounts the %s alone, on its ground shadow, preparing its perilous attack',
     async (kind) => {
       await render(
         <BattleScene
@@ -257,7 +258,7 @@ describe('BattleScene with Skia', () => {
     },
   );
 
-  it('mounts the pedestals, the enemies, the hero and the effects on a transparent scene, hidden from the screen reader', async () => {
+  it('mounts the ground shadows, the enemies, the hero and the effects on a transparent scene, hidden from the screen reader', async () => {
     await render(<BattleScene {...props()} />);
 
     const canvas = screen.getByTestId('battle-canvas', { includeHiddenElements: true });
@@ -306,6 +307,113 @@ describe('BattleScene with Skia', () => {
     );
 
     expect(screen.getByTestId('battle-canvas', { includeHiddenElements: true })).toBeOnTheScreen();
+  });
+});
+
+describe('BattleScene: a ground shadow under each character, no pedestal (#184)', () => {
+  interface DrawnNode {
+    readonly type: string;
+    readonly props: Record<string, unknown>;
+  }
+  /** Les éléments Skia dessinés, dans l'ordre du dessin. */
+  function drawnNodes(): DrawnNode[] {
+    const nodes: DrawnNode[] = [];
+    const visit = (node: NonNullable<ReturnType<typeof screen.toJSON>> | string) => {
+      if (typeof node === 'string') return;
+      nodes.push({ type: node.type, props: node.props });
+      node.children?.forEach(visit);
+    };
+    const tree = screen.toJSON();
+    if (tree !== null && !Array.isArray(tree)) visit(tree);
+    return nodes;
+  }
+
+  it('prepares one ground shadow image for the whole launch, and no pedestal', () => {
+    const scene = prepareBattleScene(PLAYED);
+
+    expect([scene.groundShadow?.width(), scene.groundShadow?.height()]).toEqual([32, 5]);
+    expect(scene).not.toHaveProperty('pedestals');
+    expect(prepareBattleScene(PLAYED).groundShadow).toBe(scene.groundShadow);
+  });
+
+  it.each([
+    ['at 3 dp', 390, 3],
+    ['at 2 dp, on a narrow screen', 320, 2],
+  ] as const)(
+    'draws the same shadow under each enemy, standing or fallen, target or not, and under the hero %s, before the sprites',
+    async (_, width, scale) => {
+      const geometry = sceneGeometry(width, 440, 3);
+      const enemies = ENEMIES.map((enemy, index) => ({ ...enemy, standing: index !== 2 }));
+      await render(<BattleScene {...props({ width, geometry, enemies })} />);
+      const { groundShadow } = prepareBattleScene(PLAYED);
+
+      const nodes = drawnNodes();
+      const shadows = nodes.filter((node) => node.props.image === groundShadow);
+      const at = [
+        ...geometry.enemies.map((slot) => slot.groundShadowAt),
+        geometry.heroGroundShadowAt,
+      ];
+      const sizes = [2, 2, 2, scale];
+      expect(
+        shadows.map(({ type, props: drawn }) => [
+          type,
+          drawn.x,
+          drawn.y,
+          drawn.width,
+          drawn.height,
+        ]),
+      ).toEqual(
+        at.map((point, index) => [
+          'skImage',
+          point.x - 16 * sizes[index]!,
+          point.y - 5 * sizes[index]!,
+          32 * sizes[index]!,
+          5 * sizes[index]!,
+        ]),
+      );
+      expect(shadows.map((node) => node.props.opacity)).toEqual(
+        Array(4).fill(GROUND_SHADOW_OPACITY),
+      );
+      const lastShadow = nodes.lastIndexOf(shadows.at(-1)!);
+      expect(nodes.findIndex((node) => node.type === 'skAtlas')).toBeGreaterThan(lastShadow);
+      // Aucune autre image sous les personnages : plus de socle, doré ou non.
+      expect(
+        nodes
+          .slice(0, lastShadow)
+          .filter((node) => node.type === 'skImage' && !shadows.includes(node)),
+      ).toEqual([]);
+    },
+  );
+
+  it('keeps the same shadows when the target changes, and draws them for a boss alone', async () => {
+    const shadowsOf = () =>
+      drawnNodes()
+        .filter((node) => node.props.image === prepareBattleScene(PLAYED).groundShadow)
+        .map((node) => node.props);
+
+    await render(<BattleScene {...props()} />);
+    const before = shadowsOf();
+    await render(
+      <BattleScene
+        {...props({ enemies: ENEMIES.map((enemy, index) => ({ ...enemy, target: index === 2 })) })}
+      />,
+    );
+    expect(shadowsOf()).toEqual(before);
+
+    const single = sceneGeometry(390, 440, 1);
+    await render(
+      <BattleScene
+        {...props({
+          geometry: single,
+          enemies: [{ ...ENEMIES[1]!, kind: 'facelessPrior' }],
+          timeline: null,
+        })}
+      />,
+    );
+    expect(shadowsOf().map((drawn) => [drawn.x, drawn.width])).toEqual([
+      [single.enemies[0]!.groundShadowAt.x - 32, 64],
+      [single.heroGroundShadowAt.x - 48, 96],
+    ]);
   });
 });
 
@@ -452,7 +560,7 @@ describe('BattleScene: the glint and the stars follow the displayed pose', () =>
     expect(drawnTypes()).toContain('skPath');
   });
 
-  it('sets the Faceless prior whole on its place, feet on the pedestal, and its stars on its head (#138)', async () => {
+  it('sets the Faceless prior whole on its place, feet on its ground shadow, and its stars on its head (#138)', async () => {
     const single = sceneGeometry(390, 440, 1);
     const { sprite } = single.enemies[0]!;
     const origin = spriteOrigin(sprite, 52, 62);

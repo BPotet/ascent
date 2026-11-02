@@ -51,7 +51,7 @@ import {
 import { atlasRect, battleAtlas, frameRect } from './battleAtlas';
 import { HERO_ANIMATIONS, HERO_CELL, isHero } from './heroAnimations';
 import { EFFECT_KINDS, effectsAtlas, effectRect, sealSprite, vignetteImage } from './battleEffects';
-import { GROUND_SHADOW_OPACITY, groundShadowImage, pedestalImage } from './battleStage';
+import { GROUND_SHADOW_OPACITY, groundShadowImage } from './battleStage';
 
 const ENEMIES = ['ghoul', 'specter', 'necromancer'] as const;
 
@@ -645,23 +645,6 @@ describe('the ground shadow (#184)', () => {
       for (let x = 0; x < 16; x += 1) expect(alphaAt(x, y)).toBe(alphaAt(31 - x, y));
     }
     expect(groundShadowImage()).toEqual(shadow);
-  });
-});
-
-describe('the battle stage', () => {
-  it('draws the pedestals apart, wider for a single enemy and for the hero, gold when targeted', () => {
-    const plain = pedestalImage('enemy', false);
-    const target = pedestalImage('enemy', true);
-    expect([plain.width, plain.height]).toEqual([53, 21]);
-    expect([pedestalImage('single', false).width, pedestalImage('hero', false).width]).toEqual([
-      65, 69,
-    ]);
-    expect(target.rgba).not.toEqual(plain.rgba);
-    const transparent = Array.from(
-      { length: plain.width * plain.height },
-      (_, index) => plain.rgba[index * 4 + 3],
-    ).filter((alpha) => alpha === 0);
-    expect(transparent.length).toBeGreaterThan(0);
   });
 });
 

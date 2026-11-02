@@ -600,19 +600,19 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       const check = async (enemies: SceneEnemy[]) => {
         const { scene, geometry } = await renderScene(enemies);
         const nodes = drawn();
-        // Les socles des ennemis debout, dans l'ordre : doré pour la cible.
-        const pedestals = enemies.map(() => (geometry.enemies.length === 1 ? 'single' : 'enemy'));
-        const selected = nodes
-          .filter((node) =>
-            pedestals.some((kind) =>
-              [0, 1].some((on) => node.props.image === scene.pedestals[`${kind}-${on}`]),
-            ),
-          )
-          .map((node) =>
-            pedestals.some((kind) => node.props.image === scene.pedestals[`${kind}-1`]),
-          );
-        expect(selected).toEqual(
-          enemies.filter((enemy) => enemy.standing).map((enemy) => enemy.target),
+        // Ajusté par #184 : plus de socle doré. Chaque ennemi, debout ou tombé, a la même ombre au
+        // sol, cible ou non, à sa place ; la cible est marquée par sa colonne.
+        const shadows = nodes.filter((node) => node.props.image === scene.groundShadow);
+        expect(shadows.slice(0, enemies.length).map((node) => node.props)).toEqual(
+          geometry.enemies.map(({ groundShadowAt }) =>
+            expect.objectContaining({
+              x: groundShadowAt.x - 32,
+              y: groundShadowAt.y - 10,
+              width: 64,
+              height: 10,
+              opacity: shadows[0]!.props.opacity,
+            }),
+          ),
         );
         enemies.forEach((enemy) => {
           const atlas = nodes.find(
