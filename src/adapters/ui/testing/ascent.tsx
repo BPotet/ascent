@@ -15,6 +15,7 @@ import {
 } from '../../../application/useCases/AscentSession';
 import { BATTLE_HINT_SEEN_KEYS } from '../../../application/useCases/battleHints';
 import type { Ascent } from '../../../domain/ascent/Ascent';
+import type { Battle } from '../../../domain/battle/Battle';
 import { Day } from '../../../domain/day/Day';
 import type { Dependencies } from '../state/Dependencies';
 import { memoryKeyValueStore } from './memoryKeyValueStore';
@@ -24,9 +25,12 @@ export function ascentSetUp({
   seed = 42,
   saved,
   shards,
+  battle,
 }: {
   seed?: number;
   saved?: Ascent;
+  /** Le combat sauvegardé avec l'ascension `saved` (#175) ; absent, aucun. */
+  battle?: Battle;
   /** Le Total d'Éclats déjà stocké (#38) ; absent, aucun. */
   shards?: number;
 } = {}) {
@@ -42,7 +46,7 @@ export function ascentSetUp({
   if (saved !== undefined) {
     keyValueStore.values.set(
       ASCENT_KEY,
-      JSON.stringify({ version: 1, ascent: saved, battle: null }),
+      JSON.stringify({ version: 1, ascent: saved, battle: battle ?? null }),
     );
   }
   const clock = new ManualBattleClock(10_000);

@@ -2,6 +2,8 @@ import { act, fireEvent, screen, within } from '@testing-library/react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
 import type { Ascent } from '../../../domain/ascent/Ascent';
+import type { Battle } from '../../../domain/battle/Battle';
+import { RESUME_COUNTDOWN_S } from './AscentScreen';
 import { ascentSetUp } from '../testing/ascent';
 import { renderScreen } from '../testing/renderScreen';
 import { IconBoardScreen } from './IconBoardScreen';
@@ -11,15 +13,25 @@ jest.mock('../battle/BattleCanvas', () => jest.requireActual('../battle/testing/
 const hidden = { includeHiddenElements: true } as const;
 
 /** Les ascensions ouvertes par la planche, chacune dans sa session en mémoire. */
-let opened: { saved: Ascent | null; shards: number | undefined; session: AscentSession }[] = [];
+let opened: {
+  saved: Ascent | null;
+  shards: number | undefined;
+  battle: Battle | undefined;
+  session: AscentSession;
+}[] = [];
 
-async function openAscent(saved: Ascent | null, shards?: number): Promise<AscentSession> {
+async function openAscent(
+  saved: Ascent | null,
+  shards?: number,
+  battle?: Battle,
+): Promise<AscentSession> {
   const { session } = ascentSetUp({
     ...(saved !== null && { saved }),
     ...(shards !== undefined && { shards }),
+    ...(battle !== undefined && { battle }),
   });
   await session.load();
-  opened.push({ saved, shards, session });
+  opened.push({ saved, shards, battle, session });
   return session;
 }
 
@@ -66,6 +78,9 @@ describe('IconBoardScreen (#157)', () => {
       'Chute · 10 Éclats',
       'Sommet atteint',
       'Pied de la tour · 22 Éclats',
+      'Frise · manche et aperçu',
+      'Frise · deux Goules',
+      'Frise · boss en phase 2',
       'Fermer',
     ]);
   });
@@ -330,5 +345,73 @@ describe('IconBoardScreen with the tiers and the Shards (#38)', () => {
 
     expect(await screen.findByTestId('tower-foot-shards')).toHaveTextContent('22 Éclats');
     expect(opened[0]).toMatchObject({ saved: null, shards: 22 });
+  });
+});
+
+describe('IconBoardScreen with the portraits of the action track (#175)', () => {
+  /** Le nom du portrait de chaque case de la frise, et sa taille. */
+  function track() {
+    return screen.getAllByTestId('track-portrait', hidden).map((portrait) => ({
+      sprite: portrait.props.sprite as string,
+      big: portrait.props.scale === 2,
+    }));
+  }
+
+  it('opens the real battle of the Wanderer, her turn first, then the preview (F1)', async () => {
+    await open('Frise · manche et aperçu');
+
+    expect(await screen.findByTestId('ascent-battle')).toBeOnTheScreen();
+    expect(track()).toEqual([
+      { sprite: 'portrait:wanderer', big: true },
+      { sprite: 'portrait:skeleton', big: false },
+      { sprite: 'portrait:ghoul', big: false },
+      { sprite: 'portrait:wanderer', big: false },
+      { sprite: 'portrait:skeleton', big: false },
+      { sprite: 'portrait:ghoul', big: false },
+    ]);
+    expect(screen.getByTestId('battle-action-track')).toHaveProp(
+      'accessibilityLabel',
+      "Ordre d'action. Manche 1 : toi, Squelette, Goule. Manche suivante : toi, Squelette, Goule.",
+    );
+  });
+
+  it('opens a full track of 4 + 4 entries with two Ghouls (F2)', async () => {
+    await open('Frise · deux Goules');
+
+    expect(await screen.findByTestId('ascent-battle')).toBeOnTheScreen();
+    const sprites = track().map(({ sprite }) => sprite);
+    expect(sprites).toHaveLength(8);
+    expect(sprites.filter((sprite) => sprite === 'portrait:ghoul')).toHaveLength(4);
+    expect(screen.getByText('suiv.')).toBeOnTheScreen();
+    expect(screen.getByTestId('battle-action-track')).toHaveProp(
+      'accessibilityLabel',
+      "Ordre d'action. Manche 1 : toi, Squelette, Goule, Goule. Manche suivante : toi, Squelette, Goule, Goule.",
+    );
+  });
+
+  it('resumes a battle against the Ash gardener in phase 2, her phase 2 portrait in every entry (F4)', async () => {
+    jest.useFakeTimers();
+    try {
+      await open('Frise · boss en phase 2');
+      expect(opened[0]!.battle?.enemies[0]).toMatchObject({ kind: 'ashGardener', phase2: true });
+      for (let second = 0; second < RESUME_COUNTDOWN_S; second += 1) {
+        await act(async () => {
+          jest.advanceTimersByTime(1_000);
+        });
+      }
+      expect(screen.getByTestId('battle-screen')).toBeOnTheScreen();
+      expect(track()).toEqual([
+        { sprite: 'portrait:sentinel', big: true },
+        { sprite: 'portrait:ashGardener:phase2', big: false },
+        { sprite: 'portrait:ashGardener:phase2', big: false },
+        { sprite: 'portrait:sentinel', big: false },
+      ]);
+      expect(screen.getByTestId('battle-action-track')).toHaveProp(
+        'accessibilityLabel',
+        "Ordre d'action. Manche 1 : toi, Jardinière des cendres. Manche suivante : Jardinière des cendres, toi.",
+      );
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });

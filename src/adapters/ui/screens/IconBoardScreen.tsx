@@ -2,7 +2,15 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
-import { startAscent, type Ascent } from '../../../domain/ascent/Ascent';
+import {
+  startAscent,
+  type Ascent,
+  type AscentLaunch,
+  type Encounter,
+} from '../../../domain/ascent/Ascent';
+import type { Tier } from '../../../domain/ascent/tiers';
+import { startBattle, type Battle } from '../../../domain/battle/Battle';
+import type { EnemyKind } from '../../../domain/battle/combatants';
 import type { BlessingFamily, StartingBlessing } from '../../../domain/ascent/blessings';
 import type { BoonKind } from '../../../domain/ascent/boons';
 import type { Exit } from '../../../domain/ascent/exits';
@@ -48,7 +56,11 @@ type LoadoutBoard =
   | 'tierTwo'
   | 'fall10'
   | 'summit'
-  | 'foot22';
+  | 'foot22'
+  // Les portraits de la Frise d'action (#175) : F1, F2 (4 + 4 cases) et F4.
+  | 'trackRound'
+  | 'trackTwoGhouls'
+  | 'trackPhaseTwo';
 
 const LOADOUT_ENTRIES: readonly (readonly [LoadoutBoard, string])[] = [
   ['foot1', 'Équipement · 1 · pied de la tour'],
@@ -62,6 +74,9 @@ const LOADOUT_ENTRIES: readonly (readonly [LoadoutBoard, string])[] = [
   ['fall10', 'Chute · 10 Éclats'],
   ['summit', 'Sommet atteint'],
   ['foot22', 'Pied de la tour · 22 Éclats'],
+  ['trackRound', 'Frise · manche et aperçu'],
+  ['trackTwoGhouls', 'Frise · deux Goules'],
+  ['trackPhaseTwo', 'Frise · boss en phase 2'],
 ];
 
 // Stryker disable all: données fixes d'un outil du build de preview.
@@ -149,6 +164,21 @@ const beaten = (step: 'bossDefeated' | 'announce'): Ascent => ({
   shardAwards: [BOSS_ONE],
   passage: { to: 2, step },
 });
+/**
+ * Un combat de la Frise d'action (#175), au palier `tier` : l'héroïne agit la première et attend son
+ * attaque, la frise reste fixe pour la capture.
+ */
+const fight = (
+  launch: AscentLaunch,
+  tier: Tier,
+  kind: Encounter['kind'],
+  enemies: readonly EnemyKind[],
+): Ascent => ({
+  ...startAscent(42, launch),
+  tier,
+  floor: kind === 'boss' ? 6 : 2,
+  encounter: { kind, enemies, battleSeed: 7 },
+});
 /** Le Total d'Éclats stocké avant chaque ascension de la planche (#38). */
 const BOARD_SHARDS: Partial<Readonly<Record<LoadoutBoard, number>>> = { fall10: 34, foot22: 22 };
 
@@ -191,6 +221,27 @@ const LOADOUT_ASCENTS: Readonly<Record<LoadoutBoard, Ascent | null>> = {
     ],
   },
   foot22: null,
+  trackRound: fight({ hero: 'wanderer' }, 1, 'combat', ['skeleton', 'ghoul']),
+  trackTwoGhouls: fight({ hero: 'wanderer' }, 1, 'combat', ['skeleton', 'ghoul', 'ghoul']),
+  trackPhaseTwo: fight({}, 2, 'boss', ['ashGardener']),
+};
+
+/**
+ * Le combat sauvegardé d'une entrée (#175) : la Jardinière des cendres déjà en phase 2, au tour de
+ * la Sentinelle, qui agit avant elle dans la manche. Repris, il montre son portrait de phase 2.
+ */
+const BOARD_BATTLES: Partial<Readonly<Record<LoadoutBoard, Battle>>> = {
+  trackPhaseTwo: (() => {
+    const { battle } = startBattle({
+      seed: 7,
+      defenseHint: false,
+      at: 0,
+      initiative: true,
+      enemies: ['ashGardener'],
+    });
+    const [gardener] = battle.enemies;
+    return { ...battle, enemies: [{ ...gardener!, hp: 200, phase2: true }] };
+  })(),
 };
 // Stryker restore all
 
@@ -218,7 +269,11 @@ export function IconBoardScreen({
    * Ouvre une ascension fixe (ou aucune) dans une session neuve, en mémoire, avec un Total d'Éclats
    * fixe (#38) : jamais celle du joueur (#159).
    */
-  readonly openAscent: (saved: Ascent | null, shards?: number) => Promise<AscentSession>;
+  readonly openAscent: (
+    saved: Ascent | null,
+    shards?: number,
+    battle?: Battle,
+  ) => Promise<AscentSession>;
   readonly visibility: AscentVisibility;
 }) {
   const [board, setBoard] = useState<Board | null>(null);
@@ -230,8 +285,8 @@ export function IconBoardScreen({
     setBoard(entry);
   };
   const openLoadout = (entry: LoadoutBoard) => {
-    void openAscent(LOADOUT_ASCENTS[entry], BOARD_SHARDS[entry]).then((session) =>
-      setAscent({ screen: entry.startsWith('foot') ? 'foot' : 'ascent', session }),
+    void openAscent(LOADOUT_ASCENTS[entry], BOARD_SHARDS[entry], BOARD_BATTLES[entry]).then(
+      (session) => setAscent({ screen: entry.startsWith('foot') ? 'foot' : 'ascent', session }),
     );
   };
 
