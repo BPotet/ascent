@@ -2,6 +2,7 @@
 // pour celui qui agit et à 24 dp pour les autres, le repli sur « Toi » et l'initiale, la phrase du
 // lecteur d'écran inchangée, la sortie d'un ennemi tombé et l'entrée d'un renfort.
 import { act, render, screen, within } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { getAnimatedStyle } from 'react-native-reanimated';
 
 import { PORTRAITS } from '../pixelArt/sprites/atelier/data/portraits';
@@ -150,6 +151,30 @@ describe('ActionTrack', () => {
       ).toBe(0.6);
       await wait(260);
       expect(screen.queryAllByTestId('track-ghost', hiddenToo)).toHaveLength(0);
+    });
+
+    it('draws the next one at 48 dp, in its frame, at once when the acting enemy falls', async () => {
+      // La Goule tombe pendant son propre tour (Contre-attaque, Riposte du Rempart).
+      await render(
+        <ActionTrack
+          track={{ round: 4, current: [ghoul(0), hero, specter], next: [specter, hero, ghoul(0)] }}
+        />,
+      );
+      await screen.rerender(
+        <ActionTrack track={{ round: 4, current: [hero, specter], next: [specter, hero] }} />,
+      );
+
+      expect(screen.getAllByTestId('track-ghost', hiddenToo)).toHaveLength(2);
+      const [first] = portraits().filter(
+        (portrait) => portrait.props.sprite === 'portrait:wanderer',
+      );
+      expect(first).toHaveProp('scale', 2);
+      expect(first).not.toHaveProp('size');
+      expect(StyleSheet.flatten(entries()[0]!.props.style)).toMatchObject({
+        width: 52,
+        height: 52,
+      });
+      expect(within(entries()[0]!).getByTestId('track-current-arrow', hiddenToo)).toBeTruthy();
     });
 
     it('lets a reinforcement enter within 300 ms', async () => {

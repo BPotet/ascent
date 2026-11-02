@@ -150,7 +150,7 @@ function TrackCase({
         <>
           <View pointerEvents="none" style={styles.outerRing} />
           <View pointerEvents="none" style={styles.innerRing} />
-          <View pointerEvents="none" style={styles.arrow} />
+          <View pointerEvents="none" testID="track-current-arrow" style={styles.arrow} />
         </>
       ) : null}
       <Portrait entry={entry} current={current} portraits={portraits} />
@@ -231,13 +231,16 @@ export function ActionTrack({
   );
   const cases = (row: TrackRow) => {
     const rowGhosts = ghosts.filter((ghost) => ghost.row === row);
-    return placeGhosts(track[row], rowGhosts).map(({ entry, ghost }, index) => {
+    const placed = placeGhosts(track[row], rowGhosts);
+    // Celui qui agit : la première case qui n'est pas un fantôme (un ennemi tombé pendant son tour).
+    const acting = row === 'current' ? placed.findIndex(({ ghost }) => !ghost) : -1;
+    return placed.map(({ entry, ghost }, index) => {
       const leaving = ghost ? rowGhosts.find((one) => one.entry === entry) : undefined;
       return leaving === undefined ? (
         <TrackCase
           key={`${row}-${entryKey(entry)}`}
           entry={entry}
-          current={row === 'current' && index === 0}
+          current={index === acting}
           next={row === 'next'}
           enter={entering.has(entryKey(entry))}
           portraits={portraits}
