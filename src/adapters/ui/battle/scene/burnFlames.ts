@@ -61,7 +61,7 @@ export function burnFlames(
     if (
       lit !== null &&
       slot >= lit.from &&
-      now < lit.at + (slot - lit.from + 1) * LIGHT_STAGGER_MS
+      now < lit.at + HIT_FRAMES * HIT_FRAME_MS + (slot - lit.from) * LIGHT_STAGGER_MS
     ) {
       continue;
     }

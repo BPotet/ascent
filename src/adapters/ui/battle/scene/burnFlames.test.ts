@@ -49,7 +49,8 @@ describe('the flames of the Burn on the hero (#171)', () => {
     const lit = burning(3, { lit: { at: 1_000, from: 1 } });
     const count = (now: number) => burnFlames(lit, now, false).length;
 
-    expect([1_000, 1_079, 1_080, 1_159, 1_160].map(count)).toEqual([1, 1, 2, 2, 3]);
+    // L'éclat de braise dure 200 ms ; la 1re nouvelle flamme s'allume après lui (maquette, `--dl`).
+    expect([1_199, 1_200, 1_279, 1_280].map(count)).toEqual([1, 2, 2, 3]);
   });
 
   it('grows the flames with the crackle: their 2nd image held 300 ms (B5)', () => {
