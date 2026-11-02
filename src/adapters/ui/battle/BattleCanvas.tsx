@@ -1,6 +1,7 @@
 /**
- * La scène du combat en pixel art 2.5D (ADR 0008) : un seul canevas Skia qui dessine le décor, les
- * socles, les ennemis (l'ennemi actif en dernier), le héros et les effets, sans anneau (ADR 0006).
+ * La scène du combat en pixel art 2.5D (ADR 0008) : un seul canevas Skia, transparent, qui dessine
+ * les socles, les ennemis (l'ennemi actif en dernier), le héros et les effets, sans anneau
+ * (ADR 0006). Le décor est le fond de palier (`TierBackdrop`, #176), sous tout l'écran de combat.
  * Les images des personnages et des effets viennent d'atlas précalculés au montage ; l'`Atlas` de
  * Skia les dessine, et chaque image est choisie sur le fil UI par les fonctions pures de `scene/`,
  * calées sur les instants nominaux des événements de combat : aucun rendu React par image.
@@ -58,7 +59,6 @@ import {
   type EffectTable,
 } from '../pixelArt/sprites/battle/battleEffects';
 import {
-  paintBattleStage,
   pedestalCenter,
   pedestalImage,
   type PedestalKind,
@@ -310,18 +310,6 @@ function tablesOf(scene: PreparedScene, enemy: SceneEnemy): PreparedEnemies {
 const NO_EXTRAS: readonly ExtraFrame[] = [];
 const NO_MOTIONS: AttackMotions = {};
 
-const stages = new Map<string, SkImage | null>();
-
-/** Le décor d'une taille de scène, gardé en cache. */
-function stageImage(width: number, height: number, feetY: number, heroX: number): SkImage | null {
-  const key = `${width}x${height}:${feetY}:${heroX}`;
-  if (!stages.has(key)) {
-    if (stages.size > 4) stages.clear();
-    stages.set(key, toSkImage(paintBattleStage(width, height, feetY, heroX)));
-  }
-  return stages.get(key) ?? null;
-}
-
 /** Une image en pixels d'art de 2 dp, sans lissage. */
 function ArtImage({
   image,
@@ -529,7 +517,6 @@ export function BattleScene({
   });
 
   const { hero, chest, enemies: slots } = geometry;
-  const stage = stageImage(width, height, geometry.feetY, chest.x);
   const vignettes = useMemo(
     () =>
       [0, 1, 2, 3, 4].map((level) =>
@@ -773,7 +760,6 @@ export function BattleScene({
       testID="battle-canvas"
       style={[StyleSheet.absoluteFill, { width, height }]}
     >
-      <ArtImage image={stage} x={0} y={0} />
       {enemies.map((enemy, index) => {
         const slot = slots[index];
         return slot === undefined || !enemy.standing ? null : (

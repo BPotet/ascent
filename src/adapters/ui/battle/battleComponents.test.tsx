@@ -22,6 +22,13 @@ const SLOT = sceneGeometry(390, 440, 3).enemies[0]!;
 
 const hiddenToo = { includeHiddenElements: true };
 
+/** Le contour d'encre des chiffres et mots de scène (#176) : opaque, sans décalage. */
+const INK_OUTLINE = {
+  textShadowColor: artPalette.roles.ink,
+  textShadowRadius: 2,
+  textShadowOffset: { width: 0, height: 0 },
+};
+
 /** Les teintes de l'écu du Rempart recopié de l'Atelier, telles que `artPalette` les écrit. */
 const SHIELD_TINTS = new Set<unknown>(
   [...BULWARK_SHIELD.whole.palette, ...BULWARK_SHIELD.cracked.palette].map((tint) =>
@@ -289,6 +296,15 @@ describe('EnemyColumn', () => {
     });
   });
 
+  it('lays its name, HP and guard on a solid plate, readable on any tier backdrop (#176)', async () => {
+    await renderColumn();
+
+    expect(style('enemy-ghoul-plate').backgroundColor).toBe(artPalette.roles.surface);
+    expect(screen.getByText('Goule')).toBeOnTheScreen();
+    expect(screen.getByText('38/50 PV')).toBeOnTheScreen();
+    expect(screen.getByText('Garde 15/15')).toBeOnTheScreen();
+  });
+
   it('outlines the intent of the active enemy in light, in red once its perilous wind-up starts, its plate at 45 %', async () => {
     await renderColumn({ view: { ...ghoul, active: true } });
     expect(style('enemy-ghoul-intent').borderColor).toBe(battleColors.light);
@@ -461,6 +477,32 @@ describe('FeedbackLabel and DamageFloat', () => {
     expect(riposte.color).toBe(artPalette.roles.bulwarkText);
     expect(screen.queryByTestId('battle-shield-glyph', { includeHiddenElements: true })).toBeNull();
   });
+
+  it.each([
+    ['« Frappe parfaite »', 'Frappe parfaite', 'perfect'],
+    ['« Cassure »', 'Cassure', 'break'],
+    ['« Riposte »', 'Riposte', 'riposte'],
+  ] as const)(
+    'outlines %s in opaque ink, without offset, readable on any tier backdrop (#176)',
+    async (_, title, tone) => {
+      await render(<FeedbackLabel texts={[{ tone, title }]} />);
+
+      expect(StyleSheet.flatten(screen.getByText(title).props.style)).toMatchObject(INK_OUTLINE);
+    },
+  );
+
+  it.each([
+    ['damage', '−10', false],
+    ['damage', '−15', true],
+    ['riposte', '−3', false],
+  ] as const)(
+    'outlines a %s figure (%s) in opaque ink, without offset (#176)',
+    async (kind, text, big) => {
+      await render(<DamageFloat float={{ at: 0, text, big, kind }} />);
+
+      expect(StyleSheet.flatten(screen.getByText(text).props.style)).toMatchObject(INK_OUTLINE);
+    },
+  );
 
   it('enlarges the figure of a perfect strike', async () => {
     await render(<DamageFloat float={{ at: 0, text: '−15', big: true, kind: 'damage' }} />);

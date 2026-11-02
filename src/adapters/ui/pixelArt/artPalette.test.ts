@@ -19,7 +19,7 @@ describe('artPalette', () => {
   const { roles, tints } = artPalette;
 
   it('keeps the tints of the tower prototype, 0 being transparent', () => {
-    expect(tints).toHaveLength(45);
+    expect(tints).toHaveLength(71);
     expect(tints[0]).toBeNull();
     expect(tints[1]).toBe('#06070C');
     expect(tints[8]).toBe('#F2D49B');
@@ -29,8 +29,48 @@ describe('artPalette', () => {
     tints.slice(1).forEach((tint) => expect(tint).toMatch(/^#[0-9A-F]{6}$/));
   });
 
-  it('adds the 3 tints of the tiers two and three at the end, codes 42 to 44 (#38)', () => {
-    expect(tints.slice(42)).toEqual(['#D9733A', '#5E8F82', '#3D5E57']);
+  it('adds the 3 tints of the tiers two and three at codes 42 to 44 (#38)', () => {
+    expect(tints.slice(42, 45)).toEqual(['#D9733A', '#5E8F82', '#3D5E57']);
+  });
+
+  it('adds the 26 tints of the tier backdrops at the end, without moving the other codes (#176)', () => {
+    const backdrops = [
+      // Les Catacombes.
+      '#0E1120',
+      '#161A2C',
+      '#1A1522',
+      '#3A2C3A',
+      '#6E4A44',
+      '#5B4E4A',
+      '#8E8574',
+      // Les Jardins de cendre.
+      '#0F1118',
+      '#191920',
+      '#23232B',
+      '#323139',
+      '#47454D',
+      '#68646A',
+      '#958F8A',
+      '#221B1C',
+      '#3A2A27',
+      '#6A2E22',
+      '#B0482A',
+      // Le Beffroi.
+      '#56618A',
+      '#B4BCCF',
+      '#241B19',
+      '#3B2A1C',
+      '#6B4A2A',
+      '#9A6A3A',
+      '#D0A066',
+      '#4F7A6E',
+    ];
+    expect(tints.slice(-26)).toEqual(backdrops);
+    expect(new Set(tints).size).toBe(tints.length);
+  });
+
+  it('gives the readability veil of the tier backdrops: the night of the mockup at 90 % (#176)', () => {
+    expect(roles.backdropVeil).toBe('rgba(14,17,32,0.9)');
   });
 
   it('keeps the code of every tint, the tints of the Sentinel 2.5D (#140) added at the end', () => {

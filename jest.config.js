@@ -36,12 +36,15 @@ if (!transformIgnorePatterns.some((pattern) => pattern.includes('@shopify/react-
 //
 // `SpriteCanvas`, le seul module du pixel art qui importe Skia, est remplacé par sa simulation
 // (`pixelArt/testing/fakeSpriteCanvas.tsx`) partout où un écran l'importe. Son test de fumée, dans
-// son dossier (`./SpriteCanvas`), garde le vrai module.
+// son dossier (`./SpriteCanvas`), garde le vrai module. Il en va de même du fond de palier (#176,
+// `battle/testing/fakeTierBackdrop.tsx`).
 const screenSetup = {
   transformIgnorePatterns,
   moduleNameMapper: {
     '^(?:\\.\\./)+(?:.+/)?pixelArt/SpriteCanvas$':
       '<rootDir>/src/adapters/ui/pixelArt/testing/fakeSpriteCanvas.tsx',
+    '^(?:\\.\\./)+(?:.+/)?battle/TierBackdrop$':
+      '<rootDir>/src/adapters/ui/battle/testing/fakeTierBackdrop.tsx',
   },
   setupFiles: ['react-native-gesture-handler/jestSetup.js'],
   setupFilesAfterEnv: [
