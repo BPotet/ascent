@@ -5,7 +5,7 @@
 // remplacent par `testing/fakeSpriteCanvas.tsx` (jest.config.js). Le setup de Skia vient d'abord.
 import '@shopify/react-native-skia/jestSetup';
 
-import { FilterMode, MipmapMode } from '@shopify/react-native-skia';
+import { FilterMode, MipmapMode, Skia } from '@shopify/react-native-skia';
 import { render, screen } from '@testing-library/react-native';
 import { PixelRatio } from 'react-native';
 
@@ -49,6 +49,23 @@ describe('SpriteCanvas with Skia', () => {
     expect(canvas).toHaveStyle({ width: 24, height: 32 });
     const [image] = canvas.children as { props: Record<string, unknown> }[];
     expect(image?.props).toMatchObject({ width: 24, height: 32 });
+  });
+
+  it('keeps an empty portrait at 0 dp when Skia makes no image', async () => {
+    jest.spyOn(Skia.Image, 'MakeImage').mockReturnValue(null);
+    await render(
+      <SpriteCanvas
+        sprite="portrait-without-image"
+        draw={() => toPixelImage(characterSprite(1))}
+        size={24}
+        testID="sprite"
+      />,
+    );
+
+    expect(screen.getByTestId('sprite', { includeHiddenElements: true })).toHaveStyle({
+      width: 0,
+      height: 0,
+    });
   });
 
   it('draws the image without smoothing (nearest neighbour, no mipmap), on the whole canvas', async () => {

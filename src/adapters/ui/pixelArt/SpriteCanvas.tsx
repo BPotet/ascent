@@ -97,7 +97,9 @@ export function skImageOf(sprite: string, draw: () => PixelImage): SkImage | nul
 export function SpriteCanvas({ sprite, draw, scale, size, style, testID }: SpriteCanvasProps) {
   const image = skImageOf(sprite, draw);
   const imageWidth = image?.width() ?? 0;
-  const pixel = size === undefined ? artPixelSize(scale) : size / imageWidth;
+  // Sans image (Skia n'a rien fait), un portrait reste à 0 dp : jamais `NaN`.
+  const portraitPixel = imageWidth === 0 ? 0 : (size ?? 0) / imageWidth;
+  const pixel = size === undefined ? artPixelSize(scale) : portraitPixel;
   const width = imageWidth * pixel;
   const height = (image?.height() ?? 0) * pixel;
   return (
