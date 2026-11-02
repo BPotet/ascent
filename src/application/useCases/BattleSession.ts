@@ -18,7 +18,7 @@ import type { BattleHaptics } from '../ports/BattleHaptics';
 import type { BattleSound, BattleSoundCue } from '../ports/BattleSound';
 import type { KeyValueStore } from '../ports/KeyValueStore';
 import type { SeedSource } from '../ports/SeedSource';
-import { GLINT_CUES, feedbackFor } from './battleFeedback';
+import { GLINT_CUES, feedbacksFor } from './battleFeedback';
 import { dismissBattleHint, getBattleHint, type BattleHintKind } from './battleHints';
 
 /** La garde de réordonnancement (`ReorderGuard`) par défaut, en ms. */
@@ -216,8 +216,7 @@ export class BattleSession {
   private apply(update: BattleUpdate): void {
     if (this.disposed) return;
     const { battle, events } = update;
-    for (const event of events) {
-      const { sound, haptic, delayMs } = feedbackFor(event);
+    for (const { sound, haptic, delayMs } of feedbacksFor(events)) {
       if (sound !== null && delayMs !== undefined) this.playLater(sound, delayMs);
       else if (sound !== null) this.dependencies.sound.play(sound);
       if (haptic !== null) this.dependencies.haptics.play(haptic);

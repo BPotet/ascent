@@ -825,5 +825,35 @@ describe('BattleSession', () => {
 
       expect(context.sound.played.filter((cue) => cue === 'burnOut')).toHaveLength(2);
     });
+
+    it('crackles 700 ms after the Bleed of the round, and puts the flame out 800 ms later (B5)', async () => {
+      const idle = { stun: { actionLost: false, heroAction: 999 } };
+      const context = setUp({
+        createBattle: battleWith(
+          enemyWith(0, idle),
+          enemyWith(1, idle),
+          enemyWith(2, idle),
+          heroWith({ burn: 2, bleed: { damage: 2, rounds: 3 } }),
+        ),
+      });
+      await context.session.start();
+      context.clock.advanceTo(2_000);
+      context.session.heroAction({ kind: 'attack' }, 1_940, 2_000);
+      const ticked = () => context.events().find(({ type }) => type === 'bleedTicked');
+      for (let guard = 0; guard < 50 && ticked() === undefined; guard += 1) {
+        context.clock.advanceTo(context.clock.pending()[0]!);
+      }
+      const at = context.clock.now();
+
+      expect(context.sound.played).toContain('bleed');
+      context.clock.advanceTo(at + 699);
+      expect(context.sound.played).not.toContain('burnCrackle');
+      context.clock.advanceTo(at + 700);
+      expect(context.sound.played).toContain('burnCrackle');
+      context.clock.advanceTo(at + 1_499);
+      expect(context.sound.played).not.toContain('burnOut');
+      context.clock.advanceTo(at + 1_500);
+      expect(context.sound.played).toContain('burnOut');
+    });
   });
 });

@@ -14,8 +14,10 @@ export interface BattleFeedback {
 
 /** L'extinction d'une flamme suit le son de la parade parfaite ou de l'esquive (#171). */
 export const BURN_OUT_AFTER_BLOW_MS = 80;
-/** L'extinction d'une flamme au début de la manche suit le crépitement (#171). */
-export const BURN_OUT_AFTER_CRACKLE_MS = 400;
+/** L'extinction d'une flamme au début de la manche suit le crépitement (#171, maquette B5, B7). */
+export const BURN_OUT_AFTER_CRACKLE_MS = 800;
+/** Au début d'une manche, la Brûlure (crépitement, chiffre) suit le Saignement (maquette B5). */
+export const BURN_AFTER_BLEED_MS = 700;
 
 /** Le son de chaque reflet (C2.10), joué par la session de combat en avance de sa latence. */
 export const GLINT_CUES: Readonly<Record<GlintKind, BattleSoundCue>> = {
@@ -87,12 +89,12 @@ export function feedbackFor(event: BattleEvent): BattleFeedback {
     case 'bleedTicked':
       return event.loss > 0 ? { sound: 'bleed', haptic: null } : NONE;
     // La Brûlure (#171), sans vibration : le souffle de flamme par-dessus le touché ou la parade,
-    // même à 5 charges ; le crépitement, rien au plancher de 1 PV ; l'extinction, différée. Rien
-    // quand les flammes s'éteignent ensemble à la fin du combat.
+    // même à 5 charges ; le crépitement à chaque début de manche, plancher de 1 PV compris (B7) ;
+    // l'extinction, différée. Rien quand les flammes s'éteignent ensemble à la fin du combat.
     case 'heroBurning':
       return { sound: 'flameBreath', haptic: null };
     case 'burnTicked':
-      return event.loss > 0 ? { sound: 'burnCrackle', haptic: null } : NONE;
+      return { sound: 'burnCrackle', haptic: null };
     case 'burnExtinguished':
       return {
         sound: 'burnOut',
@@ -102,4 +104,27 @@ export function feedbackFor(event: BattleEvent): BattleFeedback {
     default:
       return NONE;
   }
+}
+
+/** Le Saignement d'un début de manche se voit et s'entend : il fait perdre des PV. */
+export function bledIn(events: readonly BattleEvent[]): boolean {
+  return events.some((event) => event.type === 'bleedTicked' && event.loss > 0);
+}
+
+/**
+ * Les sons et les vibrations d'une mise à jour, dans l'ordre de ses événements. Au début d'une
+ * manche où le héros saigne, la Brûlure attend 700 ms après le Saignement : le crépitement, puis
+ * l'extinction 800 ms plus tard (#171, maquette B5).
+ */
+export function feedbacksFor(events: readonly BattleEvent[]): BattleFeedback[] {
+  const afterBleed = bledIn(events) ? BURN_AFTER_BLEED_MS : 0;
+  return events.map((event) => {
+    const feedback = feedbackFor(event);
+    if (afterBleed === 0) return feedback;
+    if (event.type === 'burnTicked') return { ...feedback, delayMs: afterBleed };
+    if (event.type === 'burnExtinguished' && event.cause === 'round') {
+      return { ...feedback, delayMs: afterBleed + (feedback.delayMs ?? 0) };
+    }
+    return feedback;
+  });
 }

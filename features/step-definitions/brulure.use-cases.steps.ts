@@ -1,7 +1,7 @@
 /**
  * « La Brûlure » (#171) par la session de combat : les trois sons de la Brûlure, joués à leur
  * instant sur l'horloge de combat manuelle (le souffle de flamme par-dessus le touché ou la parade,
- * le crépitement, l'extinction d'une flamme 80 ms après la parade ou 400 ms après le crépitement).
+ * le crépitement, l'extinction d'une flamme 80 ms après la parade ou 800 ms après le crépitement).
  */
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
 
@@ -147,7 +147,7 @@ const steps: StepDefinitions = ({ given, when, then }) => {
 
   when("une flamme s'éteint, par la manche, une parade parfaite ou une esquive", async () => {
     const { clock } = world.round!;
-    clock.advanceTo(clock.now() + 400);
+    clock.advanceTo(clock.now() + 800);
     for (const button of ['parry', 'dodge'] as const) {
       const context = await session(burningBlow, heroWith({ burn: 2 }));
       playUntil(
@@ -166,7 +166,7 @@ const steps: StepDefinitions = ({ given, when, then }) => {
     const crackle = played.find(({ cue }) => cue === 'burnCrackle')!;
     expect(played.find(({ cue }) => cue === 'burnOut')).toEqual({
       cue: 'burnOut',
-      at: crackle.at + 400,
+      at: crackle.at + 800,
     });
     for (const { played: byBlow } of world.touched.slice(2)) {
       const defended = byBlow.find(({ cue }) => cue === 'perfectParry' || cue === 'dodge')!;
