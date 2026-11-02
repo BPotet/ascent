@@ -9,6 +9,7 @@
 - **Avenant** : 27 octobre 2026, plus d'anneau (bug #101, voir en fin de document)
 - **Avenant** : 1er novembre 2026, le décor sort de la scène : le fond de palier (#176, voir en fin
   de document)
+- **Avenant** : 2 novembre 2026, l'ombre au sol remplace les socles (#184, voir en fin de document)
 
 ## Contexte
 
@@ -112,3 +113,29 @@ Chaque palier a son fond, choisi dans l'Atelier (ADR 0010, avenant #176). Le dé
 Deux canevas Skia se superposent désormais (le fond, puis la scène). Leur ordre sur Android se
 vérifie sur l'APK ; si le fond passait devant, le repli serait de dessiner le fond et le voile dans
 le canevas de la scène étendu à tout l'écran, sans tremblement, par un nouvel avenant.
+
+## Avenant du 2 novembre 2026 au § 5 et à l'avenant #176 — l'ombre au sol remplace les socles (#184)
+
+Décision du propriétaire du 2 novembre 2026 : les socles sous les personnages sont retirés. La
+maquette validée (`docs/mockups/174-tier-identity/`, `.sock`) pose à leur place une ombre plate et
+sombre sous chaque figure.
+
+- **Les socles et leur bord d'or quittent la scène** : `pedestalImage`, `pedestalCenter` et leurs
+  trois tailles disparaissent, et avec eux le terme « socle » du code du combat.
+- **L'ombre au sol** (`groundShadowImage`) est **une seule image** de 32 × 5 pixels d'art, d'une
+  seule couleur (l'encre de la nuit, `#06070C`), opaque, à pans coupés ; son opacité de 55 %
+  (`GROUND_SHADOW_OPACITY`) est posée au dessin. Elle est préparée une fois par lancement avec les
+  héroïnes et les effets (`prepareBattleScene`, § 5) et dessinée **à l'échelle du personnage** :
+  2 dp par pixel d'art sous chaque ennemi (64 × 10 dp, comme la maquette), l'échelle du héros sous
+  lui (96 × 15 dp, ou 64 × 10 dp sur un écran étroit).
+- **Sa place** vient de `sceneGeometry` : le milieu de son bas (`groundShadowAt`,
+  `heroGroundShadowAt`), 3 dp sous le bas de la place d'un ennemi (calé sur 2 dp), au bas de la
+  place du héros. Elle a la même taille pour 1, 2 ou 3 ennemis.
+- **Chaque ennemi de la première ligne a son ombre, debout ou tombé**, comme dans la maquette. Elle
+  ne change avec aucun état (ni estompe, ni désaturation, ni rouge), ne suit ni la ruée ni la frappe,
+  n'utilise ni valeur partagée ni horloge : elle reste fixe, en mouvement réduit comme ailleurs.
+  Ordre de dessin inchangé : les ombres d'abord (ennemis, puis héros), puis les sprites.
+- **La cible n'est plus marquée dans la scène** : elle l'est seulement par sa colonne (double cadre
+  d'or de sa plaque, flèche au-dessus de son intention, nom en gras, « cible » au lecteur d'écran,
+  #120). L'ombre au sol est la même sous la cible et sous les autres.
+- Le dessin de l'ombre reste exclu de la mutation (ADR 0006 § 9) ; sa forme est testée.
