@@ -148,6 +148,21 @@ describe('Burn trigger (1)', () => {
     expect(battle.hero).not.toHaveProperty('burn');
   });
 
+  it('copies the stacks of the intent into the attack, and nothing for a blow that does not burn', () => {
+    const attackOf = (battle: Battle) => {
+      const { phase } = play(
+        battle,
+        (_, current) => current.phase.kind === 'enemy' && current.phase.step.kind === 'attack',
+      ).battle;
+      return phase.kind === 'enemy' ? phase.step : null;
+    };
+
+    expect(attackOf(intending(idle(start(['ghoul', 'ghoul']), 1), 'basic', TORCH))).toMatchObject({
+      burn: 2,
+    });
+    expect(attackOf(intending(idle(start(['ghoul', 'ghoul']), 1)))).not.toHaveProperty('burn');
+  });
+
   it('never burns on a blow that does not burn', () => {
     const { battle, events } = play(
       intending(idle(start(['ghoul', 'ghoul']), 1)),
