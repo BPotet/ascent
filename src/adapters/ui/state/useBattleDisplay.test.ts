@@ -55,7 +55,7 @@ describe('displayOf (display state of the battle screen)', () => {
       riposte: null,
       heroFloat: null,
       shadowStepAt: null,
-      burnFx: { lit: null, out: null },
+      burnFx: { lit: null, ticked: null, out: null },
       burnRing: null,
       burnFloat: null,
     });

@@ -670,10 +670,11 @@ export function BattleScene({
         hero.scale,
       );
     }
-    const ember = burnHitFrame(burning?.lit ?? null, now);
-    if (ember !== null) place('burnHit', ember, chest.x, chest.y, hero.scale);
     const flash = impactFlash(current, now);
     if (flash !== null) place('flash', flash, chest.x, chest.y);
+    // L'éclat de braise par-dessus l'éclair d'impact (B1) : l'atlas dessine les places dans l'ordre.
+    const ember = burnHitFrame(burning?.lit ?? null, now);
+    if (ember !== null) place('burnHit', ember, chest.x, chest.y, hero.scale);
     const sparkNow = sharedSpark.get();
     const sparkStep = sparkFrame(sparkNow, now);
     if (sparkNow !== null && sparkStep !== null) {

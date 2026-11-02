@@ -188,14 +188,19 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   when('un coup qui brûle le touche', async () => {
     await open(burningBlow(1));
-    expect(sceneBurn()).toEqual({ stacks: 5, lit: null, out: null });
+    expect(sceneBurn()).toEqual({ stacks: 5, lit: null, ticked: null, out: null });
     await blowOfTheGhoul();
   });
 
   then("il a toujours 5 charges et aucune flamme de plus ne s'allume", () => {
     const burning = events().find((event) => event.type === 'heroBurning');
     expect(burning).toMatchObject({ added: 0, stacks: 5 });
-    expect(sceneBurn()).toEqual({ stacks: 5, lit: { at: burning!.at, from: 5 }, out: null });
+    expect(sceneBurn()).toEqual({
+      stacks: 5,
+      lit: { at: burning!.at, from: 5 },
+      ticked: null,
+      out: null,
+    });
     const flames = burnFlames(sceneBurn(), burning!.at + 500, false);
     expect(flames.filter(({ effect }) => effect === 'burn')).toHaveLength(5);
   });
@@ -241,7 +246,11 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     async () => {
       const { battle, events: last } = world.battleSession!.current()!;
       const cleared = last.find(({ type }) => type === 'burnCleared')!;
-      expect(sceneBurn()).toEqual({ stacks: 0, lit: null, out: { at: cleared.at, slots: [0, 1] } });
+      expect(sceneBurn()).toMatchObject({
+        stacks: 0,
+        lit: null,
+        out: { at: cleared.at, slots: [0, 1] },
+      });
       expect(burnFlames(sceneBurn(), cleared.at, false).map(({ effect }) => effect)).toEqual([
         'burnOut',
         'burnOut',
@@ -276,7 +285,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and("ses flammes et l'étiquette réapparaissent telles quelles, sans animation de prise", () => {
-    expect(sceneBurn()).toEqual({ stacks: 3, lit: null, out: null });
+    expect(sceneBurn()).toEqual({ stacks: 3, lit: null, ticked: null, out: null });
     expect(screen.getByText('Brûlure ×3', hiddenToo)).toBeTruthy();
     expect(chip()).toMatchObject({ borderWidth: 1, borderColor: battleColors.burn });
   });

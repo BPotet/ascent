@@ -5,8 +5,11 @@ import type { SceneBurn } from '../sceneTypes';
 /** Une flamme boucle sur ses 3 images à 150 ms, chaque flamme 50 ms derrière la précédente. */
 const FLAME_FRAME_MS = 150;
 const FLAME_STAGGER_MS = 50;
-/** À une prise, les nouvelles flammes s'allument une à une, à 80 ms d'écart. */
+/** À une prise, après l'éclat de braise, les nouvelles flammes s'allument une à une, à 80 ms d'écart. */
 const LIGHT_STAGGER_MS = 80;
+/** Au crépitement, les flammes grandissent : leur 2e image est tenue 300 ms (maquette B5). */
+const GROW_MS = 300;
+const GROWN_FRAME = 1;
 /** L'éclat de braise : 2 images de 100 ms. */
 const HIT_FRAME_MS = 100;
 const HIT_FRAMES = 2;
@@ -35,9 +38,10 @@ function at(slot: number, effect: BurnSprite['effect'], frame: number): BurnSpri
 
 /**
  * Les flammes et la fumée de la Brûlure à l'instant `now` (#171) : une flamme par charge, la 1re
- * charge à la 1re place ; une flamme nouvelle n'apparaît qu'à son tour ; une flamme éteinte brûle
- * jusqu'à sa fumée, puis part en fumée grise. En mouvement réduit, les flammes restent sur leur 1re
- * image et l'extinction passe directement à la petite fumée.
+ * charge à la 1re place ; une flamme nouvelle n'apparaît qu'à son tour, après l'éclat de braise ;
+ * au crépitement, les flammes grandissent ; une flamme éteinte brûle jusqu'à sa fumée, puis part en
+ * fumée grise. En mouvement réduit, les flammes restent sur leur 1re image, sans agrandissement, et
+ * l'extinction passe directement à la petite fumée.
  */
 export function burnFlames(
   burn: SceneBurn | null,
@@ -46,18 +50,24 @@ export function burnFlames(
 ): BurnSprite[] {
   'worklet';
   if (burn === null) return [];
-  const { stacks, lit, out } = burn;
+  const { stacks, lit, ticked, out } = burn;
+  const grown = ticked !== null && now >= ticked && now < ticked + GROW_MS;
   const sprites: BurnSprite[] = [];
   // Une flamme éteinte brûle encore jusqu'à sa fumée ; une place rallumée depuis n'en fume pas.
   const smoking = out === null ? [] : out.slots.filter((slot) => slot >= stacks);
   const waiting = out !== null && now < out.at;
   for (let slot = 0; slot < SLOTS.length; slot += 1) {
     if (slot >= stacks && !(waiting && smoking.includes(slot))) continue;
-    if (lit !== null && slot >= lit.from && now < lit.at + (slot - lit.from) * LIGHT_STAGGER_MS) {
+    if (
+      lit !== null &&
+      slot >= lit.from &&
+      now < lit.at + (slot - lit.from + 1) * LIGHT_STAGGER_MS
+    ) {
       continue;
     }
     const step = Math.floor((now - slot * FLAME_STAGGER_MS) / FLAME_FRAME_MS);
-    sprites.push(at(slot, 'burn', reducedMotion ? 0 : ((step % 3) + 3) % 3));
+    const looped = grown ? GROWN_FRAME : ((step % 3) + 3) % 3;
+    sprites.push(at(slot, 'burn', reducedMotion ? 0 : looped));
   }
   if (out === null || now < out.at) return sprites;
   const since = now - out.at;

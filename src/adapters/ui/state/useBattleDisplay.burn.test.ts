@@ -4,12 +4,7 @@ import type { BattleSnapshot } from '../../../application/useCases/BattleSession
 import type { Battle } from '../../../domain/battle/Battle';
 import type { BattleEvent } from '../../../domain/battle/BattleEvent';
 import { startTestBattle } from '../../../domain/battle/testing/testBattle';
-import {
-  BURN_FLOAT_AFTER_BLEED_MS,
-  INITIAL_DISPLAY,
-  announcementsOf,
-  displayOf,
-} from './useBattleDisplay';
+import { INITIAL_DISPLAY, announcementsOf, displayOf } from './useBattleDisplay';
 
 const started = startTestBattle({ seed: 1, defenseHint: false, at: 0 }).battle;
 const withBurn = (burn?: number): Battle => ({
@@ -39,7 +34,7 @@ const touched: BattleEvent = {
 describe('the Burn in the display state (#171)', () => {
   it('starts without flame being lit nor put out, without ring nor number', () => {
     expect(INITIAL_DISPLAY).toMatchObject({
-      burnFx: { lit: null, out: null },
+      burnFx: { lit: null, ticked: null, out: null },
       burnRing: null,
       burnFloat: null,
     });
@@ -71,13 +66,25 @@ describe('the Burn in the display state (#171)', () => {
     expect(shown.burnRing).toEqual({ kind: 'down', key: 1 });
   });
 
-  it('puts the last flame out 400 ms after the crackle at the start of a round', () => {
+  it('grows the flames with the crackle and puts the last one out 800 ms later (B7)', () => {
     const shown = display([
       { type: 'burnTicked', at: 1_000, loss: 2, heroHp: 70, stacks: 2 },
       { type: 'burnExtinguished', at: 1_000, stacks: 1, cause: 'round' },
     ]);
 
-    expect(shown.burnFx.out).toEqual({ at: 1_400, slots: [1] });
+    expect(shown.burnFx.ticked).toBe(1_000);
+    expect(shown.burnFx.out).toEqual({ at: 1_800, slots: [1] });
+  });
+
+  it('waits 700 ms after the Bleed of the round, then puts the flame out at 1 500 ms (B5)', () => {
+    const shown = display([
+      { type: 'bleedTicked', at: 1_000, loss: 2, heroHp: 72, roundsLeft: 2 },
+      { type: 'burnTicked', at: 1_000, loss: 3, heroHp: 69, stacks: 3 },
+      { type: 'burnExtinguished', at: 1_000, stacks: 2, cause: 'round' },
+    ]);
+
+    expect(shown.burnFx.ticked).toBe(1_700);
+    expect(shown.burnFx.out).toEqual({ at: 2_500, slots: [2] });
   });
 
   it('puts every flame out together at the end of the battle, without a ring', () => {
@@ -107,18 +114,18 @@ describe('the Burn in the display state (#171)', () => {
       { type: 'burnTicked', at: 1_000, loss: 3, heroHp: 69, stacks: 3 },
     ]);
 
-    expect(BURN_FLOAT_AFTER_BLEED_MS).toBeGreaterThan(0);
     expect(shown.heroFloat?.float.text).toBe('−2');
     expect(shown.burnFloat).toMatchObject({
       float: { text: '−3' },
-      delayMs: BURN_FLOAT_AFTER_BLEED_MS,
+      delayMs: 700,
     });
   });
 
-  it('flies no number on the floor of 1 HP', () => {
-    expect(
-      display([{ type: 'burnTicked', at: 1_000, loss: 0, heroHp: 1, stacks: 2 }]).burnFloat,
-    ).toBeNull();
+  it('flies no number on the floor of 1 HP, but still grows the flames (B7)', () => {
+    const shown = display([{ type: 'burnTicked', at: 1_000, loss: 0, heroHp: 1, stacks: 2 }]);
+
+    expect(shown.burnFloat).toBeNull();
+    expect(shown.burnFx.ticked).toBe(1_000);
   });
 });
 

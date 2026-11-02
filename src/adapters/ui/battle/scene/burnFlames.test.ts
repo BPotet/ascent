@@ -11,6 +11,7 @@ const center = (slot: number) => [SLOTS[slot]![0] + 4.5, SLOTS[slot]![1] + 5.5];
 const burning = (stacks: number, change: Partial<SceneBurn> = {}): SceneBurn => ({
   stacks,
   lit: null,
+  ticked: null,
   out: null,
   ...change,
 });
@@ -44,11 +45,27 @@ describe('the flames of the Burn on the hero (#171)', () => {
     expect(burnFlames(burning(3), 275, true).map(({ frame }) => frame)).toEqual([0, 0, 0]);
   });
 
-  it('lights the new flames one by one, 80 ms apart, from the instant of the burning blow', () => {
+  it('lights the new flames one by one, 80 ms apart, after the ember burst of the blow', () => {
     const lit = burning(3, { lit: { at: 1_000, from: 1 } });
     const count = (now: number) => burnFlames(lit, now, false).length;
 
-    expect([999, 1_000, 1_079, 1_080, 1_160].map(count)).toEqual([1, 2, 2, 3, 3]);
+    expect([1_000, 1_079, 1_080, 1_159, 1_160].map(count)).toEqual([1, 1, 2, 2, 3]);
+  });
+
+  it('grows the flames with the crackle: their 2nd image held 300 ms (B5)', () => {
+    const ticked = burning(3, { ticked: 1_000 });
+    const framesAt = (now: number) => burnFlames(ticked, now, false).map(({ frame }) => frame);
+
+    expect(framesAt(1_000)).toEqual([1, 1, 1]);
+    expect(framesAt(1_299)).toEqual([1, 1, 1]);
+    expect(framesAt(1_300)).toEqual(burnFlames(burning(3), 1_300, false).map(({ frame }) => frame));
+    expect(framesAt(999)).toEqual(burnFlames(burning(3), 999, false).map(({ frame }) => frame));
+  });
+
+  it('never grows the flames with reduced motion', () => {
+    expect(
+      burnFlames(burning(3, { ticked: 1_000 }), 1_100, true).map(({ frame }) => frame),
+    ).toEqual([0, 0, 0]);
   });
 
   it('plays the ember burst of a burning blow on 2 images of 100 ms, even at 5 stacks', () => {

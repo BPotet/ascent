@@ -81,11 +81,13 @@ export interface SceneSpark {
 /**
  * La Brûlure sur le héros (#171) : ses charges, la dernière prise et la dernière extinction. La
  * scène dessine une flamme par charge ; à une prise, l'éclat de braise à `lit.at` et les flammes
- * `lit.from` et suivantes, allumées une à une ; à une extinction, les flammes `out.slots` partent
- * en fumée à `out.at`. Un combat repris n'a ni prise ni extinction : ses flammes sont là.
+ * `lit.from` et suivantes, allumées une à une ; au crépitement d'un début de manche (`ticked`), les
+ * flammes grandissent ; à une extinction, les flammes `out.slots` partent en fumée à `out.at`. Un
+ * combat repris n'a ni prise ni extinction : ses flammes sont là.
  */
 export interface SceneBurn {
   readonly stacks: number;
   readonly lit: { readonly at: number; readonly from: number } | null;
+  readonly ticked: number | null;
   readonly out: { readonly at: number; readonly slots: readonly number[] } | null;
 }
