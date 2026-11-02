@@ -161,7 +161,13 @@ function TrackCase({
       ) : null}
       <Portrait entry={entry} current={current} portraits={portraits} />
       {next ? <View pointerEvents="none" style={styles.nextVeil} /> : null}
-      {ghost ? <Animated.View pointerEvents="none" style={[styles.ghostVeil, veil]} /> : null}
+      {ghost ? (
+        <Animated.View
+          pointerEvents="none"
+          testID="track-ghost-veil"
+          style={[styles.ghostVeil, veil]}
+        />
+      ) : null}
     </Animated.View>
   );
 }

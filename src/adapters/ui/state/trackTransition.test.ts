@@ -86,6 +86,26 @@ describe('trackTransition', () => {
 });
 
 describe('placeGhosts', () => {
+  it('puts ghosts that are apart and given out of order back at their own places', () => {
+    const skeleton: TrackEntry = { actor: 2, fighter: 'skeleton', phase2: false };
+    // Avant : [Goule, toi, Spectre, Squelette, Goule(3)] ; la 1re et la 4e cases sortent.
+    expect(
+      placeGhosts(
+        [hero, specter, ghoul(3)],
+        [
+          { entry: skeleton, row: 'current', index: 3 },
+          { entry: ghoul(0), row: 'current', index: 0 },
+        ],
+      ),
+    ).toEqual([
+      { entry: ghoul(0), ghost: true },
+      { entry: hero, ghost: false },
+      { entry: specter, ghost: false },
+      { entry: skeleton, ghost: true },
+      { entry: ghoul(3), ghost: false },
+    ]);
+  });
+
   it('puts each ghost back at its former place, the others around it', () => {
     expect(placeGhosts([hero, specter], [{ entry: ghoul(0), row: 'current', index: 1 }])).toEqual([
       { entry: hero, ghost: false },

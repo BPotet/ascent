@@ -5,9 +5,10 @@ import { act, render, screen, within } from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 import { getAnimatedStyle } from 'react-native-reanimated';
 
+import { artPalette } from '../pixelArt/artPalette';
 import { PORTRAITS } from '../pixelArt/sprites/atelier/data/portraits';
 import type { ActionTrackView, TrackEntry } from '../state/battleView';
-import { ActionTrack } from './ActionTrack';
+import { ActionTrack, TRACK_LEAVE_MS } from './ActionTrack';
 
 const hiddenToo = { includeHiddenElements: true } as const;
 
@@ -38,6 +39,27 @@ async function wait(ms: number) {
 }
 
 describe('ActionTrack', () => {
+  it.each([
+    [375, 4, 6],
+    [360, 2, 4],
+  ])(
+    'spaces its entries on a screen %i dp wide: %i dp apart, « suiv. » %i dp inside',
+    async (width, gap, padding) => {
+      jest
+        .spyOn(Dimensions, 'get')
+        .mockReturnValue({ width, height: 640, scale: 2.625, fontScale: 1 });
+      await render(<ActionTrack track={F2} />);
+
+      expect(StyleSheet.flatten(screen.getByTestId('battle-action-track').props.style).gap).toBe(
+        gap,
+      );
+      expect(StyleSheet.flatten(screen.getByText('suiv.').props.style)).toMatchObject({
+        paddingHorizontal: padding,
+      });
+      jest.restoreAllMocks();
+    },
+  );
+
   it('shows the portrait of the one who acts at 48 dp, and of the others at 24 dp', async () => {
     await render(<ActionTrack track={F2} />);
 
@@ -121,7 +143,10 @@ describe('ActionTrack', () => {
 
   describe('when a fighter leaves or enters', () => {
     beforeEach(() => jest.useFakeTimers());
-    afterEach(() => jest.useRealTimers());
+    afterEach(() => {
+      jest.restoreAllMocks();
+      jest.useRealTimers();
+    });
 
     const before: ActionTrackView = {
       round: 4,
@@ -195,6 +220,32 @@ describe('ActionTrack', () => {
         jest.restoreAllMocks();
       },
     );
+
+    it('greys the ghost entry under a veil of ink at 0.4 from its 2nd step', async () => {
+      await render(<ActionTrack track={before} />);
+      await screen.rerender(<ActionTrack track={fallen} />);
+      const veil = () => screen.getAllByTestId('track-ghost-veil', hiddenToo)[0]!;
+
+      expect(Number(getAnimatedStyle(veil()).opacity)).toBe(0);
+      expect(StyleSheet.flatten(veil().props.style).backgroundColor).toBe(artPalette.roles.ink);
+      await wait(150);
+      expect(Number(getAnimatedStyle(veil()).opacity)).toBe(0.4);
+    });
+
+    it('clears the timer of a ghost entry when the track is unmounted while it leaves', async () => {
+      // Les espions sur les minuteurs simulés sont retirés après le test.
+      const set = jest.spyOn(globalThis, 'setTimeout');
+      const clear = jest.spyOn(globalThis, 'clearTimeout');
+      await render(<ActionTrack track={before} />);
+      await screen.rerender(<ActionTrack track={fallen} />);
+      const timers = set.mock.calls.flatMap(([, ms], index) =>
+        ms === TRACK_LEAVE_MS ? [set.mock.results[index]!.value as unknown] : [],
+      );
+      expect(timers).toHaveLength(2);
+
+      await screen.unmount();
+      timers.forEach((timer) => expect(clear).toHaveBeenCalledWith(timer));
+    });
 
     it('lets a reinforcement enter within 300 ms', async () => {
       await render(<ActionTrack track={fallen} />);
