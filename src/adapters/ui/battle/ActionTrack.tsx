@@ -36,6 +36,9 @@ const ENTER_STEPS = 3;
 const STEP_MS = 100;
 /** Sous cette largeur d'écran, en dp, la frise resserre ses écarts (notes techniques de #175). */
 const NARROW_SCREEN = 375;
+/** L'écart entre les cases, en dp : 4, ou 2 sous 375 dp de large. */
+const GAP = 4;
+const NARROW_GAP = 2;
 
 type Portraits = Readonly<Record<Fighter, AssetImage | null>>;
 
@@ -102,6 +105,7 @@ function TrackCase({
   next = false,
   enter = false,
   ghost = false,
+  gap = GAP,
   portraits,
 }: {
   readonly entry: TrackEntry;
@@ -109,6 +113,8 @@ function TrackCase({
   readonly next?: boolean;
   readonly enter?: boolean;
   readonly ghost?: boolean;
+  /** L'écart entre les cases, que la case fantôme résorbe en se refermant. */
+  readonly gap?: number;
   readonly portraits: Portraits;
 }) {
   const [moving] = useState(enter || ghost);
@@ -125,12 +131,12 @@ function TrackCase({
       return {
         opacity: at === 0 ? 1 : 0.6 * (1 - closing),
         width: 30 * (1 - closing),
-        marginRight: -4 * closing,
+        marginRight: -gap * closing,
       };
     }
     const shown = at / ENTER_STEPS;
     return { opacity: shown, transform: [{ translateY: 6 * (shown - 1) }] };
-  }, [step, ghost]);
+  }, [step, ghost, gap]);
   const veil = useAnimatedStyle(() => {
     'worklet';
     return { opacity: step.get() > 0 ? 0.4 : 0 };
@@ -168,10 +174,12 @@ interface Ghost extends LeavingEntry {
 /** Une case fantôme, oubliée au bout de 400 ms ; son minuteur part avec elle. */
 function GhostCase({
   ghost,
+  gap,
   portraits,
   onDone,
 }: {
   readonly ghost: Ghost;
+  readonly gap: number;
   readonly portraits: Portraits;
   readonly onDone: (id: number) => void;
 }) {
@@ -179,7 +187,15 @@ function GhostCase({
     const timer = setTimeout(() => onDone(ghost.id), TRACK_LEAVE_MS);
     return () => clearTimeout(timer);
   }, [ghost.id, onDone]);
-  return <TrackCase entry={ghost.entry} next={ghost.row === 'next'} ghost portraits={portraits} />;
+  return (
+    <TrackCase
+      entry={ghost.entry}
+      next={ghost.row === 'next'}
+      ghost
+      gap={gap}
+      portraits={portraits}
+    />
+  );
 }
 
 /** Ce que la frise montre : la frise reçue, ses cases fantômes et les renforts qui entrent. */
@@ -249,6 +265,7 @@ export function ActionTrack({
         <GhostCase
           key={`ghost-${leaving.id}`}
           ghost={leaving}
+          gap={narrow ? NARROW_GAP : GAP}
           portraits={portraits}
           onDone={forget}
         />
@@ -276,14 +293,14 @@ const styles = StyleSheet.create({
   track: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: GAP,
     height: 64,
     paddingTop: 4,
     paddingHorizontal: 16,
     paddingBottom: 10,
     overflow: 'hidden',
   },
-  narrowTrack: { gap: 2 },
+  narrowTrack: { gap: NARROW_GAP },
   entry: {
     width: 30,
     height: 30,

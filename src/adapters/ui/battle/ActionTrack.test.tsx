@@ -2,7 +2,7 @@
 // pour celui qui agit et à 24 dp pour les autres, le repli sur « Toi » et l'initiale, la phrase du
 // lecteur d'écran inchangée, la sortie d'un ennemi tombé et l'entrée d'un renfort.
 import { act, render, screen, within } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { Dimensions, StyleSheet } from 'react-native';
 import { getAnimatedStyle } from 'react-native-reanimated';
 
 import { PORTRAITS } from '../pixelArt/sprites/atelier/data/portraits';
@@ -176,6 +176,25 @@ describe('ActionTrack', () => {
       });
       expect(within(entries()[0]!).getByTestId('track-current-arrow', hiddenToo)).toBeTruthy();
     });
+
+    it.each([
+      [375, -4],
+      [360, -2],
+    ])(
+      'closes the ghost entry over the gap of the track (%i dp wide: %i dp)',
+      async (width, recoil) => {
+        jest
+          .spyOn(Dimensions, 'get')
+          .mockReturnValue({ width, height: 640, scale: 2.625, fontScale: 1 });
+        await render(<ActionTrack track={before} />);
+        await screen.rerender(<ActionTrack track={fallen} />);
+        // Au 3e palier sur 4 (300 ms), la case a fait les deux tiers de son recul.
+        await wait(350);
+        const [ghost] = screen.getAllByTestId('track-ghost', hiddenToo);
+        expect(Number(getAnimatedStyle(ghost!).marginRight)).toBeCloseTo((recoil * 2) / 3);
+        jest.restoreAllMocks();
+      },
+    );
 
     it('lets a reinforcement enter within 300 ms', async () => {
       await render(<ActionTrack track={fallen} />);
