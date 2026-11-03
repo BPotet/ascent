@@ -64,11 +64,12 @@ Fonctionnalité: Le Spectre, le Chevalier déchu et le Prieur sans visage animé
     Alors le reflet part de son œil ou de ses 2 pointes, selon les ancrages de la pose affichée
     Et les étoiles tournent au-dessus de sa tête, selon l'ancrage de la pose affichée
 
+  # Ajusté par #184 : les socles sont retirés, remplacés par l'ombre au sol.
   Scénario: Limite — une entité plus grande que 44 × 52 pixels d'art
     Étant donné le Chevalier déchu (44 × 54) ou le Prieur sans visage (52 × 62) en combat
     Quand il s'affiche, dans n'importe quelle pose
     Alors il s'affiche en entier, à sa taille, à 2 dp par pixel d'art, sans être rogné ni réduit
-    Et ses pieds reposent sur son socle, comme ceux des autres ennemis
+    Et ses pieds reposent sur son ombre au sol, comme ceux des autres ennemis
     Et la Goule, le Villageois fou et les entités de 44 × 52 ou moins gardent leur place d'aujourd'hui
 
   # Ajusté par #139 : Les Jumeaux et la Gardienne des ossuaires ont leur animation complète.

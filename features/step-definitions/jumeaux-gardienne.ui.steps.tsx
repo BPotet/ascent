@@ -8,7 +8,7 @@
  *   comparées aux lignes recopiées de l'Atelier, avec `pal` ou `red` ;
  * - « la portée » et « l'élévation » : `reach` et `lift` de la pose choisie, que la scène applique
  *   à 2 dp par pixel d'art (vérifié par le test de fumée de la scène) ;
- * - « à 2 dp par pixel d'art », « pieds sur son socle » : la place d'un ennemi dans la scène
+ * - « à 2 dp par pixel d'art », « pieds sur son ombre au sol » : la place d'un ennemi dans la scène
  *   (`sceneGeometry`) et l'origine de sa case (`spriteOrigin`) ;
  * - « le reflet » et « les étoiles » : les ancrages de la pose affichée (`poseAnchors`), tels que la
  *   scène les place (`glintSprites`) ;
@@ -362,7 +362,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   );
 
   then(
-    /^(.+) s'affiche en entier avec son image validée \((\d+) × (\d+) pixels d'art\), à 2 dp par pixel d'art, pieds sur son socle$/u,
+    /^(.+) s'affiche en entier avec son image validée \((\d+) × (\d+) pixels d'art\), à 2 dp par pixel d'art, pieds sur son ombre au sol$/u,
     (name: string, width: string, height: string) => {
       const kind = kindOf(name);
       expect(world.scene.map((enemy) => enemy.kind)).toEqual([kind]);
@@ -372,13 +372,14 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
         kind,
         ENEMY_FRAMES.map((frame) => ({ frame, tier: 0, red: false, poses: null, lift: 0 })),
       );
-      // Sa case, en entier, à 2 dp par pixel d'art, les pieds sur le bas de sa place, sur le socle.
-      const { sprite, pedestalAt } = sceneGeometry(390, 440, 1).enemies[0]!;
+      // Sa case, en entier, à 2 dp par pixel d'art, les pieds sur le bas de sa place, centrée sur
+      // son ombre au sol.
+      const { sprite, groundShadowAt } = sceneGeometry(390, 440, 1).enemies[0]!;
       const { cellWidth, cellHeight } = battleAtlas(kind).table;
       expect([cellWidth, cellHeight]).toEqual([Number(width), Number(height)]);
       const origin = spriteOrigin(sprite, cellWidth, cellHeight);
       expect(origin.y + cellHeight * 2).toBe(sprite.y + sprite.height);
-      expect(Math.abs(origin.x + cellWidth - pedestalAt.x)).toBeLessThanOrEqual(2);
+      expect(Math.abs(origin.x + cellWidth - groundShadowAt.x)).toBeLessThanOrEqual(2);
       expect(origin.y).toBeGreaterThanOrEqual(0);
     },
   );

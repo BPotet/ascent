@@ -1,6 +1,6 @@
 /**
  * La scène du combat en pixel art 2.5D (ADR 0008) : un seul canevas Skia, transparent, qui dessine
- * les socles, les ennemis (l'ennemi actif en dernier), le héros et les effets, sans anneau
+ * les ombres au sol, les ennemis (l'ennemi actif en dernier), le héros et les effets, sans anneau
  * (ADR 0006). Le décor est le fond de palier (`TierBackdrop`, #176), sous tout l'écran de combat.
  * Les images des personnages et des effets viennent d'atlas précalculés au montage ; l'`Atlas` de
  * Skia les dessine, et chaque image est choisie sur le fil UI par les fonctions pures de `scene/`,
@@ -58,11 +58,7 @@ import {
   type EffectKind,
   type EffectTable,
 } from '../pixelArt/sprites/battle/battleEffects';
-import {
-  pedestalCenter,
-  pedestalImage,
-  type PedestalKind,
-} from '../pixelArt/sprites/battle/battleStage';
+import { GROUND_SHADOW_OPACITY, groundShadowImage } from '../pixelArt/sprites/battle/battleStage';
 import { HERO_ANIMATIONS } from '../pixelArt/sprites/battle/heroAnimations';
 import { enemyPose, restPose } from './scene/enemyPose';
 import { spriteOrigin, type EnemySlot, type SceneGeometry } from './scene/sceneGeometry';
@@ -158,7 +154,8 @@ export interface PreparedScene extends PreparedEnemies {
   /** L'atlas de chaque héroïne, toutes préparées : celle de l'ascension est choisie au rendu. */
   readonly heroes: Readonly<Record<HeroKind, PreparedAtlas>>;
   readonly effects: { readonly image: SkImage | null; readonly table: EffectTable };
-  readonly pedestals: Readonly<Record<string, SkImage | null>>;
+  /** L'ombre au sol (#184), la même sous chaque personnage. */
+  readonly groundShadow: SkImage | null;
 }
 
 /** Ce qu'un personnage affiche à une image : son image dans l'atlas et sa place, en dp. */
@@ -173,7 +170,6 @@ interface SpriteLook<Frame extends BattleFrame = BattleFrame> {
 }
 
 // Stryker disable all: dessin de la scène, vérifié par la conformité aux maquettes (barrière 10 bis).
-const PEDESTALS: readonly PedestalKind[] = ['enemy', 'single', 'hero'];
 const NEAREST = { filter: FilterMode.Nearest, mipmap: MipmapMode.None } as const;
 /** Les autres ennemis : à 30 %, désaturés et assombris (maquette, `.pfoe.dim`). */
 const DIMMED_OPACITY = 0.3;
@@ -227,8 +223,7 @@ const NO_ENEMY: SceneEnemy = {
 const NO_SLOT: EnemySlot = {
   column: { x: 0, y: 0, width: 0 },
   sprite: { x: 0, y: 0, width: 0, height: 0 },
-  pedestal: 'enemy',
-  pedestalAt: { x: 0, y: 0 },
+  groundShadowAt: { x: 0, y: 0 },
   reach: { x: 0, y: 0 },
   plateBottom: 0,
 };
@@ -271,7 +266,7 @@ const emptyTables = (): PreparedEnemies => ({
 });
 
 /**
- * Prépare les atlas de la scène (`prepareBattleScene`) : les héroïnes, les effets et les socles une
+ * Prépare les atlas de la scène (`prepareBattleScene`) : les héroïnes, les effets et l'ombre au sol une
  * fois par lancement (cache de module) ; les ennemis par type, à la demande (#38, avenant à
  * l'ADR 0008 § 5), ceux de `kinds` (première ligne et réserve du combat), aspect de phase 2
  * compris. Pendant « Préparation du combat… », jamais pendant la phase ennemie ; « Rejouer » les
@@ -288,14 +283,7 @@ export function prepareBattleScene(kinds: readonly EnemyKind[]): PreparedScene {
         (Object.keys(HERO_ANIMATIONS) as HeroKind[]).map((kind) => [kind, atlasOf(kind)]),
       ) as Record<HeroKind, PreparedAtlas>,
       effects: { image: toSkImage(effects), table: effects.table },
-      pedestals: Object.fromEntries(
-        PEDESTALS.flatMap((kind) =>
-          [false, true].map((selected) => [
-            `${kind}-${selected ? 1 : 0}`,
-            toSkImage(pedestalImage(kind, selected)),
-          ]),
-        ),
-      ),
+      groundShadow: toSkImage(groundShadowImage()),
     };
   }
   for (const kind of kinds) {
@@ -317,49 +305,53 @@ function tablesOf(scene: PreparedScene, enemy: SceneEnemy): PreparedEnemies {
 const NO_EXTRAS: readonly ExtraFrame[] = [];
 const NO_MOTIONS: AttackMotions = {};
 
-/** Une image en pixels d'art de 2 dp, sans lissage. */
+/** Une image en pixels d'art, de 2 dp par défaut, sans lissage. */
 function ArtImage({
   image,
   x,
   y,
+  scale = 2,
   opacity,
 }: {
   readonly image: SkImage | null;
   readonly x: number;
   readonly y: number;
-  readonly opacity?: DerivedValue<number>;
+  readonly scale?: number;
+  readonly opacity?: DerivedValue<number> | number;
 }) {
   return (
     <Image
       image={image}
       x={x}
       y={y}
-      width={(image?.width() ?? 0) * 2}
-      height={(image?.height() ?? 0) * 2}
+      width={(image?.width() ?? 0) * scale}
+      height={(image?.height() ?? 0) * scale}
       sampling={NEAREST}
       {...(opacity === undefined ? {} : { opacity })}
     />
   );
 }
 
-/** Un socle, à sa place. */
-function Pedestal({
-  kind,
-  selected,
+/**
+ * Une ombre au sol (#184), le milieu de son bas en `at`, à l'échelle du personnage : fixe, la même
+ * dans tous ses états.
+ */
+function GroundShadow({
+  image,
   at,
-  images,
+  scale,
 }: {
-  readonly kind: PedestalKind;
-  readonly selected: boolean;
+  readonly image: SkImage | null;
   readonly at: { readonly x: number; readonly y: number };
-  readonly images: PreparedScene['pedestals'];
+  readonly scale: number;
 }) {
-  const [cx, cy] = pedestalCenter(kind);
   return (
     <ArtImage
-      image={images[`${kind}-${selected ? 1 : 0}`] ?? null}
-      x={at.x - cx * 2}
-      y={at.y - cy * 2}
+      image={image}
+      x={at.x - ((image?.width() ?? 0) * scale) / 2}
+      y={at.y - (image?.height() ?? 0) * scale}
+      scale={scale}
+      opacity={GROUND_SHADOW_OPACITY}
     />
   );
 }
@@ -789,21 +781,20 @@ export function BattleScene({
     >
       {enemies.map((enemy, index) => {
         const slot = slots[index];
-        return slot === undefined || !enemy.standing ? null : (
-          <Pedestal
+        // Debout ou tombé, chaque ennemi de la première ligne garde son ombre (#184).
+        return slot === undefined ? null : (
+          <GroundShadow
             key={`${index}-${enemy.kind}`}
-            kind={slot.pedestal}
-            selected={enemy.target}
-            at={slot.pedestalAt}
-            images={scene.pedestals}
+            image={scene.groundShadow}
+            at={slot.groundShadowAt}
+            scale={2}
           />
         );
       })}
-      <Pedestal
-        kind="hero"
-        selected={false}
-        at={geometry.heroPedestalAt}
-        images={scene.pedestals}
+      <GroundShadow
+        image={scene.groundShadow}
+        at={geometry.heroGroundShadowAt}
+        scale={hero.scale}
       />
       {order.map(({ enemy, index }) => {
         const look = looks[index];

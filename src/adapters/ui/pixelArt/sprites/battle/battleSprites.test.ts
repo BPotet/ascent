@@ -51,7 +51,7 @@ import {
 import { atlasRect, battleAtlas, frameRect } from './battleAtlas';
 import { HERO_ANIMATIONS, HERO_CELL, isHero } from './heroAnimations';
 import { EFFECT_KINDS, effectsAtlas, effectRect, sealSprite, vignetteImage } from './battleEffects';
-import { pedestalImage } from './battleStage';
+import { GROUND_SHADOW_OPACITY, groundShadowImage } from './battleStage';
 
 const ENEMIES = ['ghoul', 'specter', 'necromancer'] as const;
 
@@ -610,20 +610,41 @@ describe('the battle atlases', () => {
   });
 });
 
-describe('the battle stage', () => {
-  it('draws the pedestals apart, wider for a single enemy and for the hero, gold when targeted', () => {
-    const plain = pedestalImage('enemy', false);
-    const target = pedestalImage('enemy', true);
-    expect([plain.width, plain.height]).toEqual([53, 21]);
-    expect([pedestalImage('single', false).width, pedestalImage('hero', false).width]).toEqual([
-      65, 69,
-    ]);
-    expect(target.rgba).not.toEqual(plain.rgba);
-    const transparent = Array.from(
-      { length: plain.width * plain.height },
-      (_, index) => plain.rgba[index * 4 + 3],
-    ).filter((alpha) => alpha === 0);
-    expect(transparent.length).toBeGreaterThan(0);
+describe('the ground shadow (#184)', () => {
+  const shadow = groundShadowImage();
+  const alphaAt = (x: number, y: number) => shadow.rgba[(y * shadow.width + x) * 4 + 3];
+
+  it('is one flat image of 32 × 5 art pixels (64 × 10 dp), in the ink of the night, at 55 %', () => {
+    expect([shadow.width, shadow.height]).toEqual([32, 5]);
+    expect(GROUND_SHADOW_OPACITY).toBe(0.55);
+    const colors = new Set<string>();
+    for (let at = 0; at < shadow.width * shadow.height; at += 1) {
+      const alpha = shadow.rgba[at * 4 + 3];
+      expect([0, 255]).toContain(alpha);
+      if (alpha === 255) colors.add(Array.from(shadow.rgba.slice(at * 4, at * 4 + 3)).join(','));
+    }
+    const [r, g, b] = [1, 3, 5].map((at) => parseInt(artPalette.roles.ink.slice(at, at + 2), 16));
+    expect([...colors]).toEqual([`${r},${g},${b}`]);
+  });
+
+  it('has the cut corners of the mockup: transparent corners, a full middle row', () => {
+    for (const y of [0, 4]) {
+      for (const x of [0, 1, 2, 3, 28, 29, 30, 31]) expect(alphaAt(x, y)).toBe(0);
+      for (let x = 4; x <= 27; x += 1) expect(alphaAt(x, y)).toBe(255);
+    }
+    for (let x = 0; x < 32; x += 1) expect(alphaAt(x, 2)).toBe(255);
+    for (const y of [1, 3]) {
+      expect([alphaAt(0, y), alphaAt(31, y), alphaAt(4, y), alphaAt(27, y)]).toEqual([
+        0, 0, 255, 255,
+      ]);
+    }
+  });
+
+  it('is symmetric left to right, and the same for every character', () => {
+    for (let y = 0; y < 5; y += 1) {
+      for (let x = 0; x < 16; x += 1) expect(alphaAt(x, y)).toBe(alphaAt(31 - x, y));
+    }
+    expect(groundShadowImage()).toEqual(shadow);
   });
 });
 
