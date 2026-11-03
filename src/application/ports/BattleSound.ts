@@ -3,8 +3,9 @@
  * du combat complet (#32) : frappe, frappe parfaite, cassure de garde, action perdue, retour en
  * garde, garde levée, allié relevé et Rempart, un par type de reflet (#81, C2.10), le cliquetis
  * d'os de l'ennemi qui se relève seul (#106), la goutte du Saignement (prototype #107), le choc
- * de bouclier de la Riposte du Rempart (#128) et les trois sons de la Brûlure (#171) : le souffle
- * de flamme, le crépitement et l'extinction d'une flamme.
+ * de bouclier de la Riposte du Rempart (#128), les trois sons de la Brûlure (#171) : le souffle
+ * de flamme, le crépitement et l'extinction d'une flamme, et les deux bruissements d'ailes de
+ * l'Invocation (#172) : à l'annonce, puis, plus fort, à l'entrée des invoqués.
  */
 export type BattleSoundCue =
   | 'perfectParry'
@@ -34,7 +35,9 @@ export type BattleSoundCue =
   | 'shieldClash'
   | 'flameBreath'
   | 'burnCrackle'
-  | 'burnOut';
+  | 'burnOut'
+  | 'wingRustle'
+  | 'wingRustleLoud';
 
 export const BATTLE_SOUND_CUES: readonly BattleSoundCue[] = [
   'perfectParry',
@@ -65,6 +68,8 @@ export const BATTLE_SOUND_CUES: readonly BattleSoundCue[] = [
   'flameBreath',
   'burnCrackle',
   'burnOut',
+  'wingRustle',
+  'wingRustleLoud',
 ];
 
 /**

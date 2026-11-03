@@ -24,6 +24,9 @@ import { BELL_FOUNDER_ANIMATION } from '../atelier/data/bellFounder';
 import { BRAMBLE_BURNER_ANIMATION } from '../atelier/data/brambleBurner';
 import { BURNING_HUSK_ANIMATION } from '../atelier/data/burningHusk';
 import { GARGOYLE_ANIMATION } from '../atelier/data/gargoyle';
+import { MOTH_QUEEN_ANIMATION } from '../atelier/data/mothQueen';
+import { MOTH_QUEEN_PHASE2 } from '../atelier/data/mothQueenPhase2';
+import { MOTHKIN_ANIMATION } from '../atelier/data/mothkin';
 import { FACELESS_PRIOR_ANIMATION } from '../atelier/data/facelessPrior';
 import { FALLEN_KNIGHT_ANIMATION } from '../atelier/data/fallenKnight';
 import { GHOUL_ANIMATION } from '../atelier/data/ghoul';
@@ -156,6 +159,9 @@ describe('the full animations of the Atelier in battle (#119, #137, #138, #139)'
     gargoyle: GARGOYLE_ANIMATION,
     bellFounder: BELL_FOUNDER_ANIMATION,
     brambleBurner: BRAMBLE_BURNER_ANIMATION,
+    // L'Invocation (#172).
+    mothQueen: { ...MOTH_QUEEN_ANIMATION, phase2: MOTH_QUEEN_PHASE2 },
+    mothkin: MOTHKIN_ANIMATION,
   };
   /** Les ennemis animés, tirés du registre : chacun avec son animation recopiée. */
   const ANIMATED = ANIMATED_ENEMIES.map((kind) => [kind, COPIED[kind]] as const);
@@ -672,6 +678,7 @@ describe('the battle effects (precomputed, never painted per frame)', () => {
       burn: 3,
       burnHit: 2,
       burnOut: 3,
+      summon: 4,
     });
   });
 

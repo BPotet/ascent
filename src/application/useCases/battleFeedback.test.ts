@@ -6,6 +6,8 @@ import {
   GLINT_CUES,
   feedbackFor,
   feedbacksFor,
+  SUMMON_AFTER_BURN_MS,
+  summonEntryDelay,
 } from './battleFeedback';
 
 const blow = (outcome: Extract<BattleEvent, { type: 'blowResolved' }>['outcome']): BattleEvent => ({
@@ -297,5 +299,76 @@ describe('the sounds of the Burn (#171)', () => {
 
   it('plays nothing when the flames go out together at the end of the battle', () => {
     expect(feedbackFor({ type: 'burnCleared', at: 0 })).toEqual({ sound: null, haptic: null });
+  });
+});
+
+describe('the sounds of the Summon (#172)', () => {
+  const called: BattleEvent = {
+    type: 'summonCalled',
+    at: 0,
+    enemy: 0,
+    kind: 'mothkin',
+    slots: [1],
+  };
+  const entered = (enemy: number): BattleEvent => ({
+    type: 'summonEntered',
+    at: 0,
+    enemy,
+    kind: 'mothkin',
+  });
+
+  it('rustles the wings at the announcement, louder at the entry, without a vibration', () => {
+    expect(feedbackFor(called)).toEqual({ sound: 'wingRustle', haptic: null });
+    expect(feedbackFor(entered(1))).toEqual({ sound: 'wingRustleLoud', haptic: null });
+  });
+
+  it('plays nothing when the summoned enemies fall with the boss', () => {
+    expect(feedbackFor({ type: 'summonedFell', at: 0, enemy: 1 })).toEqual({
+      sound: null,
+      haptic: null,
+    });
+  });
+
+  it('rustles once for the entry of the whole summon', () => {
+    expect(feedbacksFor([entered(1), entered(2)]).map(({ sound }) => sound)).toEqual([
+      'wingRustleLoud',
+      null,
+    ]);
+  });
+
+  it('rustles after the drop of the Bleed and after the sounds of the Burn of the round', () => {
+    const bleeding: BattleEvent = {
+      type: 'bleedTicked',
+      at: 0,
+      loss: 2,
+      heroHp: 42,
+      roundsLeft: 2,
+    };
+    const ticked: BattleEvent = { type: 'burnTicked', at: 0, loss: 3, heroHp: 39, stacks: 3 };
+    const delay = (events: readonly BattleEvent[]) => feedbacksFor(events).at(-1)!.delayMs;
+
+    expect(SUMMON_AFTER_BURN_MS).toBe(1_000);
+    expect(delay([entered(1)])).toBeUndefined();
+    expect(delay([bleeding, entered(1)])).toBe(700);
+    expect(delay([ticked, entered(1)])).toBe(1_000);
+    expect(delay([bleeding, ticked, entered(1)])).toBe(1_700);
+  });
+
+  it('gives the entry of the summoned the delay of the sounds of the round start', () => {
+    const bleeding: BattleEvent = {
+      type: 'bleedTicked',
+      at: 0,
+      loss: 2,
+      heroHp: 42,
+      roundsLeft: 2,
+    };
+    const dry: BattleEvent = { type: 'bleedTicked', at: 0, loss: 0, heroHp: 1, roundsLeft: 2 };
+    const ticked: BattleEvent = { type: 'burnTicked', at: 0, loss: 3, heroHp: 39, stacks: 3 };
+
+    expect(summonEntryDelay([])).toBe(0);
+    expect(summonEntryDelay([bleeding])).toBe(700);
+    expect(summonEntryDelay([dry])).toBe(0);
+    expect(summonEntryDelay([ticked])).toBe(1_000);
+    expect(summonEntryDelay([bleeding, ticked])).toBe(1_700);
   });
 });

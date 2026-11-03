@@ -178,7 +178,8 @@ describe('the battles of tiers 2 and 3 (#38)', () => {
 
     expect(elites).toEqual(new Set(['firstPilgrim', 'stoneSaint']));
     expect(bosses).toEqual(new Set(['hourRinger', 'wishGranter']));
-    expect(toBoss(atTier(2)).encounter!.enemies).toEqual(['ashGardener']);
+    expect(['ashGardener', 'mothQueen']).toContain(toBoss(atTier(2)).encounter!.enemies[0]);
+    expect(toBoss(atTier(2)).encounter!.enemies).toHaveLength(1);
   });
 
   it('gives 2 Shards and 31 Gold for an Elite of tier 2, 37 Gold at tier 3', () => {

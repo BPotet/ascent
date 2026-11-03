@@ -37,7 +37,9 @@ if (!transformIgnorePatterns.some((pattern) => pattern.includes('@shopify/react-
 // `SpriteCanvas`, le seul module du pixel art qui importe Skia, est remplacé par sa simulation
 // (`pixelArt/testing/fakeSpriteCanvas.tsx`) partout où un écran l'importe. Son test de fumée, dans
 // son dossier (`./SpriteCanvas`), garde le vrai module. Il en va de même du fond de palier (#176,
-// `battle/testing/fakeTierBackdrop.tsx`).
+// `battle/testing/fakeTierBackdrop.tsx`), et de la bande de l'annonce de l'Invocation (#172,
+// `battle/testing/fakeSummonBandFade.tsx`), importée par `SummonBanner` dans son dossier
+// (`./SummonBandFade`) ; son test de fumée l'importe par `../battle/` et garde le vrai module.
 const screenSetup = {
   transformIgnorePatterns,
   moduleNameMapper: {
@@ -45,6 +47,7 @@ const screenSetup = {
       '<rootDir>/src/adapters/ui/pixelArt/testing/fakeSpriteCanvas.tsx',
     '^(?:\\.\\./)+(?:.+/)?battle/TierBackdrop$':
       '<rootDir>/src/adapters/ui/battle/testing/fakeTierBackdrop.tsx',
+    '^\\./SummonBandFade$': '<rootDir>/src/adapters/ui/battle/testing/fakeSummonBandFade.tsx',
   },
   setupFiles: ['react-native-gesture-handler/jestSetup.js'],
   setupFilesAfterEnv: [

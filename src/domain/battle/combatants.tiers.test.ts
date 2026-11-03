@@ -219,3 +219,41 @@ describe('the carriers of the Burn (#171)', () => {
     expect(ENEMY_INITIATIVE.brambleBurner).toBe(6);
   });
 });
+
+describe('the Moth queen and the Mothkin (#172)', () => {
+  it('gives the Moth queen, a boss, 400 HP, 70 guard, Initiative 8 then 11, and her summon', () => {
+    expect(ENEMIES.mothQueen).toEqual({
+      maxHp: 400,
+      maxGuard: 70,
+      moves: [
+        { attack: 'feint', damage: 11 },
+        { attack: 'double', damage: 6 },
+      ],
+      phase2Moves: [{ attack: 'perilous', damage: 19 }],
+      phaseShiftPercent: 50,
+      phase2Initiative: 11,
+      phase2Summon: { enemy: 'mothkin', count: 2 },
+      supports: false,
+    });
+    expect(ENEMY_INITIATIVE.mothQueen).toBe(8);
+  });
+
+  it('gives the Mothkin 25 HP, 6 guard, Initiative 10, its Broken flight and its Mandibles', () => {
+    expect(ENEMIES.mothkin).toEqual({
+      maxHp: 25,
+      maxGuard: 6,
+      moves: [
+        { attack: 'feint', damage: 4 },
+        { attack: 'double', damage: 3 },
+      ],
+      supports: false,
+    });
+    expect(ENEMY_INITIATIVE.mothkin).toBe(10);
+  });
+
+  it('gives a summon to the Moth queen only', () => {
+    const summoners = Object.entries(ENEMIES).filter(([, profile]) => profile.phase2Summon);
+
+    expect(summoners.map(([kind]) => kind)).toEqual(['mothQueen']);
+  });
+});

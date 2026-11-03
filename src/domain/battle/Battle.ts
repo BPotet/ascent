@@ -79,6 +79,7 @@ import {
 } from './strike';
 import { bleedsOn, mergeBleed, tickBleed } from './bleed';
 import { burnAtRoundStart, burnOnBlow } from './burn';
+import { freeSlots, type PendingSummon } from './summon';
 import { NO_TIER_MULTIPLIER, scaleByPercent, type TierMultiplier } from './tierMultiplier';
 
 export interface HeroState {
@@ -124,6 +125,8 @@ export interface EnemyState {
   readonly phase2?: boolean;
   /** Le nombre de relèves faites dans ce combat (`SelfRevive`, #106) ; absent, 0. */
   readonly selfRevives?: number;
+  /** Un ennemi invoqué (`Invoqué`, #172) : entré par une Invocation, il tombe avec le boss. */
+  readonly summoned?: true;
 }
 
 export interface ImpactState {
@@ -251,6 +254,10 @@ export interface Battle {
   readonly modifiers?: HeroModifiers;
   /** Le multiplicateur de palier d'un combat ordinaire (#38) ; absent, × 1 (palier 1). */
   readonly tierMultiplier?: TierMultiplier;
+  /** Le multiplicateur du palier des ennemis invoqués (#172) ; absent, × 1. */
+  readonly summonMultiplier?: TierMultiplier;
+  /** L'Invocation annoncée, pas encore entrée (#172) ; absente, aucune. */
+  readonly summon?: PendingSummon;
   readonly hero: HeroState;
   /** La première ligne (`FrontLine`) : au plus 3 ennemis qui se battent en même temps (P3b). */
   readonly enemies: readonly EnemyState[];
@@ -330,6 +337,11 @@ export interface BattleOptions extends BattleStartOptions {
   readonly enemies: readonly EnemyKind[];
   /** Le multiplicateur de palier d'un combat ordinaire (#38) ; par défaut, × 1. */
   readonly tierMultiplier?: TierMultiplier;
+  /**
+   * Le multiplicateur du palier des ennemis invoqués (#172), pour tout combat d'étage, boss
+   * compris (le boss, lui, n'est jamais multiplié) ; par défaut, × 1.
+   */
+  readonly summonMultiplier?: TierMultiplier;
 }
 
 /** Au plus 3 ennemis se battent en même temps (P3b). */
@@ -372,6 +384,7 @@ export function startBattle({
   modifiers,
   enemies: group,
   tierMultiplier,
+  summonMultiplier,
 }: BattleOptions): BattleUpdate {
   const maxHp = heroMaxHp ?? HEROES[hero].maxHp;
   const momentum = Math.min(MOMENTUM_MAX, MOMENTUM_START + (modifiers?.startingMomentum ?? 0));
@@ -387,6 +400,7 @@ export function startBattle({
       initiative,
       ...(modifiers && { modifiers }),
       ...(tierMultiplier && { tierMultiplier }),
+      ...(summonMultiplier && { summonMultiplier }),
       hero: { hp: heroHp ?? maxHp, maxHp, momentum, bulwark: false },
       enemies,
       reserve: group.slice(FRONT_LINE_SIZE),
@@ -419,6 +433,11 @@ export function heroProfile(battle: Battle): HeroProfile {
 function heroModifiers(battle: Battle): HeroModifiers {
   // Un combat sauvegardé avant #92 n'a pas tous les champs : les absents sont neutres.
   return battle.modifiers === undefined ? NO_MODIFIERS : combineModifiers(battle.modifiers);
+}
+
+/** L'Invocation annoncée et pas encore entrée (#172), `null` sans Invocation en attente. */
+export function pendingSummon(battle: Battle): PendingSummon | null {
+  return battle.summon ?? null;
 }
 
 export function isStanding(enemy: EnemyState): boolean {
@@ -600,9 +619,28 @@ function burnHero(battle: Battle, events: Events, at: number): Battle {
   return { ...battle, hero: withBurn({ ...hero, hp: hero.hp - burnt.loss }, burnt.stacks) };
 }
 
+/**
+ * L'entrée des invoqués (#172) : chaque place réservée reçoit un ennemi invoqué, aux valeurs du
+ * palier des invoqués, de gauche à droite, puis l'Invocation n'est plus en attente. Un tombé dont la
+ * place est reprise ne peut plus être relevé (règle 7) : il n'est plus dans la première ligne.
+ */
+function summonEnter(battle: Battle, events: Events, at: number): Battle {
+  const { summon, ...rest } = battle;
+  if (summon === undefined) return battle;
+  const enemies = [...battle.enemies];
+  for (const slot of [...summon.slots].sort((left, right) => left - right)) {
+    events.push({ type: 'summonEntered', at, enemy: slot, kind: summon.kind });
+    enemies[slot] = { ...freshEnemy(summon.kind, battle.summonMultiplier), summoned: true };
+  }
+  return { ...rest, enemies };
+}
+
 function startRound(previous: Battle, events: Events, at: number): Battle {
-  // Le renfort entre avant les tirages : l'ordre de la manche est calculé après (P3b).
-  const battle = reinforce(burnHero(bleedHero(previous, events, at), events, at), events, at);
+  // Saignement, Brûlure, entrée des invoqués, puis le renfort, avant les tirages : l'ordre de la
+  // manche est calculé après (P3b, #171, #172). Les invoqués entrent avant le renfort : celui-ci
+  // ne prend jamais une place réservée par l'Invocation (règle 7).
+  const burnt = burnHero(bleedHero(previous, events, at), events, at);
+  const battle = reinforce(summonEnter(burnt, events, at), events, at);
   let random = battle.random;
   // Tous les tirages au début de la manche, ennemis debout de gauche à droite (C2.1).
   const enemies = battle.enemies.map((enemy, index) => {
@@ -613,7 +651,8 @@ function startRound(previous: Battle, events: Events, at: number): Battle {
       guardDamaged: enemy.guard < enemy.maxGuard,
       phase2: enemy.phase2 === true,
       maxGuard: enemy.maxGuard,
-      damagePercent: battle.tierMultiplier?.hpPercent ?? 100,
+      damagePercent:
+        (enemy.summoned ? battle.summonMultiplier : battle.tierMultiplier)?.hpPercent ?? 100,
     });
     random = drawn.random;
     return { ...enemy, intent: drawn.intent };
@@ -644,9 +683,12 @@ function roundOrder(battle: Battle, enemies: readonly EnemyState[]): Actor[] {
   );
 }
 
-/** L'ordre de la manche suivante sur l'état courant : l'aperçu de la frise d'action (#90). */
+/**
+ * L'ordre de la manche suivante sur l'état courant : l'aperçu de la frise d'action (#90), les
+ * invoqués annoncés déjà à leurs places (#172).
+ */
 export function nextRoundOrder(battle: Battle): Actor[] {
-  return roundOrder(battle, battle.enemies);
+  return roundOrder(battle, summonEnter(battle, [], battle.now).enemies);
 }
 
 /** Celui qui agit à la place courante de l'ordre d'action, à l'instant `at`. */
@@ -1048,17 +1090,33 @@ function hitEnemy(
   if (revived !== null) {
     return { battle: reviveSelf(battle, events, index, revived, context.at), broken: false };
   }
-  const damaged = withEnemy(battle, index, shiftPhase(hit.enemy, events, index, context.at));
+  const damaged = shiftPhase(withEnemy(battle, index, hit.enemy), events, index, context.at);
   if (hit.broken) {
     events.push({ type: 'guardBroken', at: context.at, enemy: index, by: context.by });
     return { battle: onGuardBreak(damaged, events, context.at), broken: true };
   }
   if (!hit.fallen) return { battle: damaged, broken: false };
   events.push({ type: 'enemyDefeated', at: context.at, enemy: index });
-  const [next] = standingEnemies(damaged);
-  if (battle.target !== index || next === undefined) return { battle: damaged, broken: false };
+  const settled = fallWithSummoner(damaged, events, index, context.at);
+  const [next] = standingEnemies(settled);
+  if (battle.target !== index || next === undefined) return { battle: settled, broken: false };
   events.push({ type: 'targetChanged', at: context.at, enemy: next });
-  return { battle: { ...damaged, target: next }, broken: false };
+  return { battle: { ...settled, target: next }, broken: false };
+}
+
+/**
+ * La chute avec le boss (#172, règle 4) : quand tombe un boss qui invoque, chaque ennemi invoqué
+ * encore debout tombe avec lui, sans Or, et une Invocation encore annoncée n'entre jamais.
+ */
+function fallWithSummoner(battle: Battle, events: Events, index: number, at: number): Battle {
+  if (ENEMIES[battle.enemies[index]!.kind].phase2Summon === undefined) return battle;
+  const { summon: _, ...rest } = battle;
+  const enemies = battle.enemies.map((enemy, place) => {
+    if (enemy.summoned !== true || !isStanding(enemy)) return enemy;
+    events.push({ type: 'summonedFell', at, enemy: place });
+    return { ...enemy, hp: 0 };
+  });
+  return { ...rest, enemies };
 }
 
 /**
@@ -1096,14 +1154,22 @@ function onGuardBreak(battle: Battle, events: Events, at: number): Battle {
 /**
  * Le changement de phase d'un boss (P6, #38) : à 50 % de ses PV max ou moins (150 de 300, 210 de
  * 420), une fois ; sa garde revient à son maximum s'il n'est pas étourdi (sinon à son retour en
- * garde). L'ordre de la manche ne change pas.
+ * garde). L'ordre de la manche ne change pas. Un boss qui invoque annonce son Invocation (#172).
  */
-function shiftPhase(enemy: EnemyState, events: Events, index: number, at: number): EnemyState {
-  const { phaseShiftPercent } = ENEMIES[enemy.kind];
-  if (phaseShiftPercent === undefined || enemy.phase2 || enemy.hp === 0) return enemy;
-  if (enemy.hp > scaleByPercent(enemy.maxHp, phaseShiftPercent)) return enemy;
+function shiftPhase(battle: Battle, events: Events, index: number, at: number): Battle {
+  const enemy = battle.enemies[index]!;
+  const { phaseShiftPercent, phase2Summon } = ENEMIES[enemy.kind];
+  if (phaseShiftPercent === undefined || enemy.phase2 || enemy.hp === 0) return battle;
+  if (enemy.hp > scaleByPercent(enemy.maxHp, phaseShiftPercent)) return battle;
   events.push({ type: 'bossPhaseShifted', at, enemy: index });
-  return { ...enemy, phase2: true, guard: enemy.stun === null ? enemy.maxGuard : enemy.guard };
+  const guard = enemy.stun === null ? enemy.maxGuard : enemy.guard;
+  const shifted = withEnemy(battle, index, { ...enemy, phase2: true, guard });
+  if (phase2Summon === undefined) return shifted;
+  // Les places libres, comptées une seule fois, ici (règle 6) : sans place, rien n'est appelé.
+  const slots = freeSlots(shifted.enemies, phase2Summon.count);
+  if (slots.length === 0) return shifted;
+  events.push({ type: 'summonCalled', at, enemy: index, kind: phase2Summon.enemy, slots });
+  return { ...shifted, summon: { summoner: index, kind: phase2Summon.enemy, slots } };
 }
 
 /**

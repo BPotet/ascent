@@ -152,12 +152,25 @@ export type EnemyKind =
   | 'burningHusk'
   | 'gargoyle'
   | 'bellFounder'
-  | 'brambleBurner';
+  | 'brambleBurner'
+  // L'Invocation (#172) : la Reine des phalènes, boss du palier 2, et ses Phalénides.
+  | 'mothQueen'
+  | 'mothkin';
 
 /** Le Saignement (`Bleed`, prototype #107) : `damage` PV perdus au début de `rounds` manches. */
 export interface Bleed {
   readonly damage: number;
   readonly rounds: number;
+}
+
+/**
+ * L'Invocation (`Summon`, #172, champ `summon` d'une phase de boss du Codex) : au changement de
+ * phase, le boss appelle jusqu'à `count` ennemis `enemy` (nom de code) aux places libres de la
+ * première ligne. La règle est dans `summon.ts`.
+ */
+export interface Summon {
+  readonly enemy: EnemyKind;
+  readonly count: 1 | 2;
 }
 
 /** Un coup qu'un ennemi peut porter, avec ses dégâts. */
@@ -187,6 +200,8 @@ export interface EnemyProfile {
   readonly phaseShiftPercent?: number;
   /** L'Initiative d'un boss en phase 2 (P13), à partir de la manche qui suit le changement. */
   readonly phase2Initiative?: number;
+  /** L'Invocation de sa phase 2 (#172) ; absente, le boss n'appelle personne. */
+  readonly phase2Summon?: Summon;
   /** Se relève seul (`SelfRevive`, #106) : `times` fois par combat, à `hpPercent` % de ses PV max. */
   readonly selfRevive?: { readonly times: number; readonly hpPercent: number };
 }
@@ -463,6 +478,34 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     ],
     supports: false,
   },
+  // L'Invocation (#172) : valeurs du Codex de l'Atelier recopiées le 03/11/2026, à l'échelle du
+  // palier 1 pour la Phalénide (le palier multiplie aussi les Phalénides invoquées), telles quelles
+  // pour la Reine. « Un tiers chacun », « une chance sur deux » : des coups à poids égaux.
+  // `codex/mothQueen` (af0af679…), boss : Voile de poussière, Ailes de cendre ; en phase 2, +
+  // Flamme de la lampe et l'Invocation de deux Phalénides.
+  mothQueen: {
+    maxHp: 400,
+    maxGuard: 70,
+    moves: [
+      { attack: 'feint', damage: 11 },
+      { attack: 'double', damage: 6 },
+    ],
+    phase2Moves: [{ attack: 'perilous', damage: 19 }],
+    phaseShiftPercent: BOSS_PHASE_SHIFT_PERCENT,
+    phase2Initiative: 11,
+    phase2Summon: { enemy: 'mothkin', count: 2 },
+    supports: false,
+  },
+  // `codex/ashMoth` (593d7c38…), nom de code `mothkin` : Vol brisé, puis Mandibules.
+  mothkin: {
+    maxHp: 25,
+    maxGuard: 6,
+    moves: [
+      { attack: 'feint', damage: 4 },
+      { attack: 'double', damage: 3 },
+    ],
+    supports: false,
+  },
 };
 
 /**
@@ -495,4 +538,7 @@ export const ENEMY_INITIATIVE: Readonly<Record<EnemyKind, number>> = {
   gargoyle: 7,
   bellFounder: 4,
   brambleBurner: 6,
+  // L'Invocation (#172), celles du Codex ; 11 pour la Reine en phase 2.
+  mothQueen: 8,
+  mothkin: 10,
 };

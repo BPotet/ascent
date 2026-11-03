@@ -46,6 +46,8 @@ describe('provisional battle sounds', () => {
       'strike.wav',
       'victory.wav',
       'whiff.wav',
+      'wing-rustle-loud.wav',
+      'wing-rustle.wav',
     ]);
   });
 
@@ -114,6 +116,15 @@ describe('provisional battle sounds', () => {
     const notes = CUES['burn-out'];
     assert.ok(lasts(notes) <= 0.15);
     assert.ok(notes.every(([frequency, , , volume]) => frequency >= 1_000 && volume <= 0.06));
+  });
+
+  it('rustles the wings of the Summon softly, then louder at the entry (#172)', () => {
+    const soft = CUES['wing-rustle'];
+    const loud = CUES['wing-rustle-loud'];
+    const peak = (notes) => Math.max(...notes.map(([, , , volume]) => volume));
+    assert.ok(soft.length > 3 && loud.length > 3, 'several flutters of wings');
+    assert.ok(peak(loud) > peak(soft));
+    assert.ok(lasts(soft) <= 0.5 && lasts(loud) <= 0.6);
   });
 
   it('slides a note to its last frequency (exponential ramp)', () => {

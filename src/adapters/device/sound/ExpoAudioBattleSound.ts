@@ -37,6 +37,8 @@ export const BATTLE_SOUND_FILES: Readonly<Record<BattleSoundCue, number>> = {
   flameBreath: require('./assets/flame-breath.wav'),
   burnCrackle: require('./assets/burn-crackle.wav'),
   burnOut: require('./assets/burn-out.wav'),
+  wingRustle: require('./assets/wing-rustle.wav'),
+  wingRustleLoud: require('./assets/wing-rustle-loud.wav'),
 };
 
 /** La latence attendue est la médiane des 20 dernières mesures, dès qu'il y en a 5. */

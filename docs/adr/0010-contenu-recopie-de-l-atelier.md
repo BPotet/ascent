@@ -333,3 +333,29 @@ Les portraits de la Frise d'action sont les icônes (`icon`) validées des entr�
    pour la phase 2) de la maquette validée `docs/mockups/174-tier-identity/index.html`. Un test le
    vérifie à chaque exécution.
 6. **Teintes.** Toutes les teintes des portraits sont déjà dans `artPalette` : aucune n'est ajoutée.
+
+## Avenant du 3 novembre 2026 (#172) : l'effet d'Invocation, la Reine des phalènes et la Phalénide
+
+La Reine des phalènes et la Phalénide (export de l'Atelier du 03/11/2026) sont recopiées comme au
+§ 1, l'en-tête citant le document, sa version et sa sha256 : `atelier/data/mothQueen.ts`
+(`assets/mothQueen` version 9, clé `animation`), `atelier/data/mothQueenPhase2.ts`
+(`assets/mothQueenPhase2` version 2, clé `phase2`, joint dans le registre comme le Sonneur des heures)
+et `atelier/data/mothkin.ts` (`assets/ashMoth` version 18, clé `animation`). Leurs portraits
+validés (`icon` et `iconPhase2` de la Reine, `icon` de la Phalénide) entrent dans `portraits.ts`
+(avenant #175), par un script qui vérifie les mêmes sha256.
+
+1. **Id et nom de code.** L'id de l'Atelier `ashMoth` correspond au nom de code `mothkin`, comme
+   `smolderingBrand` → `burningHusk` (avenant #171) : le fichier s'appelle `mothkin.ts` et la
+   correspondance est écrite dans son en-tête.
+2. **Les effets d'une phase 2.** L'aspect de phase 2 (avenant #38) peut porter des effets :
+   `AnimationPhase2.effects?: { summon?: EffectSequence }`. L'effet d'Invocation est une
+   `EffectSequence` (avenant #171), sans type nouveau : 4 images de 44 × 52, **sans palette propre**
+   (il est peint avec la palette de l'entité), et le nom de code de l'ennemi qu'il appelle
+   (`EffectSequence.summons`, facultatif, jamais affiché). Il est recopié tel quel, jamais dessiné
+   par le code.
+3. **Son calage dans l'atlas des effets.** `EFFECT_KINDS.summon` (4 images) vient après les
+   effets de la Brûlure, dans une case carrée de 52 (`SIDES.summon`), **calé en bas et centré en
+   largeur**, comme la case de 44 × 52 de l'ennemi appelé dans sa place : la scène le pose au centre
+   du sprite de la place. Ce n'est pas le calage de `burnEffect` (en haut d'une case carrée).
+4. **Teintes.** Toutes les teintes de la Reine, de la Phalénide et de leurs portraits sont déjà dans
+   `artPalette` : aucune n'est ajoutée.

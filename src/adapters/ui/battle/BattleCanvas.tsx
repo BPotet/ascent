@@ -75,6 +75,7 @@ import {
   sparkFrame,
 } from './scene/sceneEffects';
 import { burnFlames, burnHitFrame } from './scene/burnFlames';
+import { summonDustFrame, summonedOpacity, type SceneSummon } from './scene/summonDust';
 import type { HeroPose, SceneBurn, SceneEnemy, SceneSpark, SceneTimeline } from './sceneTypes';
 
 export interface BattleSceneProps {
@@ -105,6 +106,11 @@ export interface BattleSceneProps {
   readonly shadowStep?: ShadowStepScene | null;
   /** La Brûlure du héros (#171) : ses flammes, l'éclat de braise et la fumée. Par défaut, aucune. */
   readonly burn?: SceneBurn | null;
+  /**
+   * L'Invocation (#172) : la poussière des places annoncées, la sortie des invoqués et leur chute
+   * avec le boss. Par défaut, aucune.
+   */
+  readonly summon?: SceneSummon | null;
   readonly reducedMotion: boolean;
   /** L'horloge du fil UI : un worklet, sur la base de l'horloge de combat (méthode a). */
   readonly uiNow: () => number;
@@ -180,10 +186,10 @@ const FADED = [
 ];
 /**
  * Les places de l'atlas des effets : éclair, étincelle, deux reflets, trois étoiles, l'écu du
- * Rempart, ses 4 éclats, les 4 éclats de la riposte sur l'ennemi (#128), et la Brûlure (#171) : 5
- * flammes ou fumées et l'éclat de braise.
+ * Rempart, ses 4 éclats, les 4 éclats de la riposte sur l'ennemi (#128), la Brûlure (#171) : 5
+ * flammes ou fumées et l'éclat de braise, et la poussière de l'Invocation sur 3 places (#172).
  */
-const EFFECT_SLOTS = 22;
+const EFFECT_SLOTS = 25;
 /** Les nombres d'une place : effet, image, x, y, échelle. */
 const EFFECT_FIELDS = 5;
 const EFFECT_ORDER: readonly EffectKind[] = [
@@ -199,6 +205,7 @@ const EFFECT_ORDER: readonly EffectKind[] = [
   'burn',
   'burnHit',
   'burnOut',
+  'summon',
 ];
 /**
  * L'écu du Rempart, en pixels d'art du héros (maquette, `.aura`) : le centre de sa case de 15, calé
@@ -220,6 +227,7 @@ const NO_ENEMY: SceneEnemy = {
   rising: null,
   downSince: null,
 };
+const NO_SUMMON: SceneSummon = { pending: [], calledAt: null, entered: {}, fell: {} };
 const NO_SLOT: EnemySlot = {
   column: { x: 0, y: 0, width: 0 },
   sprite: { x: 0, y: 0, width: 0, height: 0 },
@@ -340,10 +348,13 @@ function GroundShadow({
   image,
   at,
   scale,
+  opacity = GROUND_SHADOW_OPACITY,
 }: {
   readonly image: SkImage | null;
   readonly at: { readonly x: number; readonly y: number };
   readonly scale: number;
+  /** Son opacité : celle de l'ombre au sol, sauf un invoqué retombé en poussière (#172). */
+  readonly opacity?: DerivedValue<number> | number;
 }) {
   return (
     <ArtImage
@@ -351,7 +362,7 @@ function GroundShadow({
       x={at.x - ((image?.width() ?? 0) * scale) / 2}
       y={at.y - (image?.height() ?? 0) * scale}
       scale={scale}
-      opacity={GROUND_SHADOW_OPACITY}
+      opacity={opacity}
     />
   );
 }
@@ -363,6 +374,7 @@ function AtlasSprite<Frame extends BattleFrame | SceneFrame>({
   scale,
   faded = false,
   shade,
+  opacity,
 }: {
   readonly atlas: PreparedAtlas;
   readonly look: DerivedValue<SpriteLook<Frame>>;
@@ -370,6 +382,8 @@ function AtlasSprite<Frame extends BattleFrame | SceneFrame>({
   readonly faded?: boolean;
   /** L'ombre de Pas de l'ombre (#173) : le sprite peint en violet, à cette opacité. */
   readonly shade?: DerivedValue<number>;
+  /** L'opacité d'un ennemi qui sort de la poussière ou y retombe (#172). */
+  readonly opacity?: DerivedValue<number>;
 }) {
   const { table } = atlas;
   const sprites = useRectBuffer(1, (rect) => {
@@ -389,7 +403,7 @@ function AtlasSprite<Frame extends BattleFrame | SceneFrame>({
       sprites={sprites}
       transforms={transforms}
       sampling={NEAREST}
-      opacity={shade ?? (faded ? DIMMED_OPACITY : 1)}
+      opacity={shade ?? opacity ?? (faded ? DIMMED_OPACITY : 1)}
     >
       {faded ? <ColorMatrix matrix={FADED} /> : null}
       {shade ? <ColorMatrix matrix={SHADE} /> : null}
@@ -486,6 +500,7 @@ export function BattleScene({
   riposte = null,
   shadowStep = null,
   burn = null,
+  summon = null,
   reducedMotion,
   uiNow,
 }: BattleSceneProps) {
@@ -500,6 +515,8 @@ export function BattleScene({
   useEffect(() => sharedShadowStep.set(shadowStep), [sharedShadowStep, shadowStep]);
   const sharedBurn = useSharedValue(burn);
   useEffect(() => sharedBurn.set(burn), [sharedBurn, burn]);
+  const sharedSummon = useSharedValue(summon ?? NO_SUMMON);
+  useEffect(() => sharedSummon.set(summon ?? NO_SUMMON), [sharedSummon, summon]);
 
   useEffect(() => sharedTimeline.set(timeline), [sharedTimeline, timeline]);
   useEffect(() => sharedSpark.set(spark), [sharedSpark, spark]);
@@ -577,6 +594,54 @@ export function BattleScene({
       reducedMotion,
     ),
   ];
+
+  // L'Invocation (#172) : un invoqué paraît une fois la poussière levée, s'efface à sa chute ;
+  // l'ombre au sol d'un invoqué retombé en poussière s'efface avec lui.
+  const faded = enemies.map((enemy) => enemy.dimmed || !enemy.standing);
+  const shown0 = useDerivedValue(
+    () => summonedOpacity(sharedSummon.get(), 0, clock.get(), reducedMotion),
+    [sharedSummon, clock, reducedMotion],
+  );
+  const shown1 = useDerivedValue(
+    () => summonedOpacity(sharedSummon.get(), 1, clock.get(), reducedMotion),
+    [sharedSummon, clock, reducedMotion],
+  );
+  const shown2 = useDerivedValue(
+    () => summonedOpacity(sharedSummon.get(), 2, clock.get(), reducedMotion),
+    [sharedSummon, clock, reducedMotion],
+  );
+  const spriteOpacity0 = useDerivedValue(
+    () => shown0.get() * (faded[0] === true ? DIMMED_OPACITY : 1),
+    [shown0, faded],
+  );
+  const spriteOpacity1 = useDerivedValue(
+    () => shown1.get() * (faded[1] === true ? DIMMED_OPACITY : 1),
+    [shown1, faded],
+  );
+  const spriteOpacity2 = useDerivedValue(
+    () => shown2.get() * (faded[2] === true ? DIMMED_OPACITY : 1),
+    [shown2, faded],
+  );
+  const spriteOpacities = [spriteOpacity0, spriteOpacity1, spriteOpacity2];
+  const fellSlots = Object.keys(summon?.fell ?? {}).map(Number);
+  const summonedSlots = [...Object.keys(summon?.entered ?? {}).map(Number), ...fellSlots];
+  const shadow0 = useDerivedValue(
+    () => GROUND_SHADOW_OPACITY * (fellSlots.includes(0) ? shown0.get() : 1),
+    [shown0, fellSlots],
+  );
+  const shadow1 = useDerivedValue(
+    () => GROUND_SHADOW_OPACITY * (fellSlots.includes(1) ? shown1.get() : 1),
+    [shown1, fellSlots],
+  );
+  const shadow2 = useDerivedValue(
+    () => GROUND_SHADOW_OPACITY * (fellSlots.includes(2) ? shown2.get() : 1),
+    [shown2, fellSlots],
+  );
+  const shadowOpacities = [shadow0, shadow1, shadow2];
+  const summonCenters = slots.map((slot) => ({
+    x: slot.sprite.x + slot.sprite.width / 2,
+    y: slot.sprite.y + slot.sprite.height / 2,
+  }));
 
   const target = slots[strikeTarget] ?? NO_SLOT;
   const lunge = {
@@ -662,6 +727,13 @@ export function BattleScene({
         hero.scale,
       );
     }
+    // La poussière de l'Invocation (#172), sur la case de chaque place, sous l'éclair.
+    const summoning = sharedSummon.get();
+    for (let slot = 0; slot < summonCenters.length; slot += 1) {
+      const frame = summonDustFrame(summoning, slot, now, reducedMotion);
+      const center = summonCenters[slot];
+      if (frame !== null && center !== undefined) place('summon', frame, center.x, center.y);
+    }
     const flash = impactFlash(current, now);
     if (flash !== null) place('flash', flash, chest.x, chest.y);
     // L'éclat de braise par-dessus l'éclair d'impact (B1) : l'atlas dessine les places dans l'ordre.
@@ -707,6 +779,8 @@ export function BattleScene({
     sharedSpark,
     sharedBulwark,
     sharedBurn,
+    sharedSummon,
+    summonCenters,
     heroLook,
     shieldAt,
     enemyCenters,
@@ -781,13 +855,16 @@ export function BattleScene({
     >
       {enemies.map((enemy, index) => {
         const slot = slots[index];
-        // Debout ou tombé, chaque ennemi de la première ligne garde son ombre (#184).
+        // Debout ou tombé, chaque ennemi de la première ligne garde son ombre (#184) ; une place de
+        // poussière n'a pas d'ennemi, donc pas d'ombre, et un invoqué retombé en poussière perd la
+        // sienne (#172).
         return slot === undefined ? null : (
           <GroundShadow
             key={`${index}-${enemy.kind}`}
             image={scene.groundShadow}
             at={slot.groundShadowAt}
             scale={2}
+            {...(fellSlots.includes(index) && { opacity: shadowOpacities[index]! })}
           />
         );
       })}
@@ -807,6 +884,7 @@ export function BattleScene({
             look={look}
             scale={2}
             faded={enemy.dimmed || !enemy.standing}
+            {...(summonedSlots.includes(index) && { opacity: spriteOpacities[index]! })}
           />
         );
       })}

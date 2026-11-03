@@ -77,7 +77,7 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
       4: [0, 2, 8, 7, 0],
       5: [0, 1, 7, 9, 0],
     },
-    // La Phalénide (#172) les rejoindra avec sa story ; l'Embrasé (#171) à la fin.
+    // Dans l'ordre des stories : l'Embrasé (#171), puis la Phalénide (#172).
     enemies: [
       { kind: 'ghoul', weight: 3, cap: 5 },
       { kind: 'thornPilgrim', weight: 2, cap: 1 },
@@ -85,10 +85,11 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
       { kind: 'ashBramble', weight: 2, cap: 1 },
       { kind: 'ashGleaner', weight: 1, cap: 1, neverAlone: true },
       { kind: 'burningHusk', weight: 2, cap: 1 },
+      { kind: 'mothkin', weight: 3, cap: 2 },
     ],
-    // La Reine des phalènes (#172) les rejoindra.
     elites: ['scarecrow', 'brambleBurner'],
-    bosses: ['ashGardener'],
+    // La Reine des phalènes (#172), tirée à égalité avec la Jardinière.
+    bosses: ['ashGardener', 'mothQueen'],
     bossShards: 12,
   },
   3: {
@@ -102,7 +103,7 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
       4: [0, 0, 6, 7, 0],
       5: [0, 0, 5, 8, 0],
     },
-    // La Phalénide (#172) les rejoindra ; la Gargouille et le Fondeur de cloches (#171) à la fin.
+    // Dans l'ordre des stories : la Gargouille et le Fondeur de cloches (#171), puis la Phalénide (#172).
     enemies: [
       { kind: 'skeleton', weight: 3, cap: 1 },
       { kind: 'bronzeWarden', weight: 2, cap: 1 },
@@ -110,6 +111,7 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
       { kind: 'necromancer', weight: 1, cap: 1, neverAlone: true },
       { kind: 'gargoyle', weight: 2, cap: 1 },
       { kind: 'bellFounder', weight: 2, cap: 1 },
+      { kind: 'mothkin', weight: 3, cap: 2 },
     ],
     elites: ['firstPilgrim', 'stoneSaint'],
     bosses: ['hourRinger', 'wishGranter'],

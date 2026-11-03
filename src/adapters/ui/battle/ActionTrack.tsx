@@ -12,6 +12,7 @@ import Animated, {
 import type { EnemyKind } from '../../../domain/battle/combatants';
 import { ENEMY_NAMES, actionTrackLabel } from '../format/battleText';
 import { artPalette } from '../pixelArt/artPalette';
+import { battleColors } from '../theme/battleColors';
 import { textFont } from '../pixelArt/pixelTypography';
 import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
 import { PORTRAITS } from '../pixelArt/sprites/atelier/data/portraits';
@@ -149,14 +150,16 @@ function TrackCase({
     'worklet';
     return { opacity: step.get() > 0 ? 0.4 : 0 };
   }, [step]);
+  const pending = entry.pending === true;
   return (
     <Animated.View
-      testID={ghost ? 'track-ghost' : 'track-entry'}
+      testID={ghost ? 'track-ghost' : pending ? 'track-entry-pending' : 'track-entry'}
       style={[
         styles.entry,
         entry.actor === 'hero' && styles.hero,
         current && styles.current,
         ghost && styles.ghost,
+        pending && styles.pending,
         motion,
       ]}
     >
@@ -173,11 +176,19 @@ function TrackCase({
         saturation={shade.saturation}
         portraits={portraits}
       />
+      {pending ? (
+        <View pointerEvents="none" testID="track-pending-ring" style={styles.pendingRing} />
+      ) : null}
       {shade.veil > 0 ? (
         <View
           pointerEvents="none"
           testID="track-shade"
-          style={[styles.shade, enemyPhase && styles.wholeShade, { opacity: shade.veil }]}
+          // Un invoqué annoncé pâlit avec son contour en pointillé, en toute phase (#172).
+          style={[
+            styles.shade,
+            (enemyPhase || pending) && styles.wholeShade,
+            { opacity: shade.veil },
+          ]}
         />
       ) : null}
       {ghost ? (
@@ -353,6 +364,18 @@ const styles = StyleSheet.create({
     borderColor: roles.gold,
   },
   ghost: { overflow: 'hidden' },
+  // Un invoqué annoncé, pas encore entré (#172, maquette `.fp.summ`) : cerclé de pointillé gris.
+  pending: { borderStyle: 'dashed', borderColor: battleColors.summonDust },
+  // Son anneau intérieur de 2 dp, de fumée claire (`.fp.summ`, `inset 0 0 0 2px --smoke-l`).
+  pendingRing: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderWidth: 2,
+    borderColor: battleColors.summonTag,
+  },
   // Le double cadre de celui qui agit (maquette `.fp.cur`) : encre, puis or, autour du trait d'or.
   innerRing: {
     position: 'absolute',

@@ -258,4 +258,24 @@ export type BattleEvent =
       readonly cause: 'blow' | 'round';
     }
   /** Toutes les charges s'éteignent ensemble à la fin du combat. */
-  | { readonly type: 'burnCleared'; readonly at: number };
+  | { readonly type: 'burnCleared'; readonly at: number }
+  /**
+   * L'Invocation annoncée (#172), juste après le changement de phase du boss `enemy` : les ennemis
+   * `kind` entreront aux places `slots` de la première ligne au début de la manche suivante.
+   */
+  | {
+      readonly type: 'summonCalled';
+      readonly at: number;
+      readonly enemy: number;
+      readonly kind: EnemyKind;
+      readonly slots: readonly number[];
+    }
+  /** Un ennemi invoqué entre à la place `enemy`, au début de la manche, avant les tirages. */
+  | {
+      readonly type: 'summonEntered';
+      readonly at: number;
+      readonly enemy: number;
+      readonly kind: EnemyKind;
+    }
+  /** Un ennemi invoqué encore debout tombe avec le boss qui l'a appelé, sans Or (#172, règle 4). */
+  | { readonly type: 'summonedFell'; readonly at: number; readonly enemy: number };
