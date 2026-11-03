@@ -6,6 +6,7 @@
 import { act, fireEvent, screen, within } from '@testing-library/react-native';
 import { AccessibilityInfo, StyleSheet, View } from 'react-native';
 import { Gesture } from 'react-native-gesture-handler';
+import { getAnimatedStyle } from 'react-native-reanimated';
 
 import {
   battleWith,
@@ -29,6 +30,7 @@ import { BattleSession } from '../../../application/useCases/BattleSession';
 import { glintsOf } from '../../../domain/battle/glints';
 import { startTestBattle } from '../../../domain/battle/testing/testBattle';
 import { Day } from '../../../domain/day/Day';
+import { artPalette } from '../pixelArt/artPalette';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { reduceMotionInEachTest, withMotion } from '../testing/motion';
 import { preparedKinds } from '../battle/testing/fakeBattleCanvas';
@@ -821,5 +823,267 @@ describe('BattleScreen on the tier backdrop (#176)', () => {
     });
 
     expect(screen.getByTestId('battle-scene-frame')).toBeOnTheScreen();
+  });
+});
+
+describe('BattleScreen: the veil of the enemy phase (#188)', () => {
+  const hiddenToo = { includeHiddenElements: true } as const;
+  /** Tout le cadre de la scène. */
+  const wholeFrame = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 } as const;
+
+  function veil() {
+    return screen.queryByTestId('enemy-phase-veil', hiddenToo);
+  }
+
+  function shaking() {
+    return screen.getByTestId('battle-scene-shake', hiddenToo);
+  }
+
+  /** Le voile suit la pastille de l'en-tête : présent si et seulement si elle dit « Phase ennemie ». */
+  function expectVeilWithThePill(): void {
+    const pill = screen.queryByTestId('battle-phase');
+    const enemy = pill !== null && /Phase ennemie/u.test(String(pill.props.children));
+    if (enemy) expect(veil()).not.toBeNull();
+    else expect(veil()).toBeNull();
+  }
+
+  it('lays no veil in the hero phase', async () => {
+    await renderBattle({ seed: 1 });
+
+    expect(screen.getByTestId('battle-phase')).toHaveTextContent('Phase du héros');
+    expect(veil()).toBeNull();
+  });
+
+  it('lays no veil during the strike of the hero', async () => {
+    const test = await renderBattle({ seed: 1 });
+
+    await test.attack(10_100, 10_400);
+
+    expect(test.battle().phase.kind).toBe('heroStrike');
+    expect(veil()).toBeNull();
+  });
+
+  it('lays the veil with the defense hint, which is above it', async () => {
+    const test = await renderBattle({ seed: 1, hintsSeen: false });
+    await test.attack();
+    await test.runUntil(() => test.battle().phase.kind === 'defenseHint');
+
+    expect(screen.getByTestId('battle-phase')).toHaveTextContent('Phase ennemie');
+    expect(veil()).not.toBeNull();
+    expect(within(shaking()).getByTestId('battle-hint-defense')).toBeOnTheScreen();
+  });
+
+  it('lays the veil at the same render as « Phase ennemie », the banner above it', async () => {
+    const test = await renderBattle({ seed: 1 });
+    await test.attack();
+    await test.runUntil(() => test.battle().phase.kind === 'transition');
+
+    expect(screen.getByTestId('battle-phase')).toHaveTextContent('Phase ennemie');
+    expect(veil()).not.toBeNull();
+    expect(within(shaking()).getByTestId('phase-banner')).toBeOnTheScreen();
+    expect(within(shaking()).getByTestId('battle-phase')).toBeOnTheScreen();
+  });
+
+  it('keeps the veil while an enemy prepares a perilous attack, its seal and the enemies above it', async () => {
+    const test = await renderBattle({ seed: seedFor({ specter: 'perilous' }) });
+
+    await test.toWindUpOf(SPECTER);
+
+    expectVeilWithThePill();
+    expect(veil()).not.toBeNull();
+    expect(within(shaking()).getByLabelText('Sceau rouge : coup imparable')).toBeOnTheScreen();
+    expect(within(shaking()).getByTestId('enemy-specter')).toBeOnTheScreen();
+    expect(within(veil()!).queryAllByTestId(/./u, hiddenToo)).toHaveLength(0);
+  });
+
+  it('lifts the veil at the same render as « Phase du héros »', async () => {
+    const test = await renderBattle({ seed: 1, createBattle: onlyGhoul });
+    await test.toWindUpOf(GHOUL);
+    expect(veil()).not.toBeNull();
+
+    await test.runUntil(() => test.battle().phase.kind === 'transition');
+
+    expect(screen.getByTestId('battle-phase')).toHaveTextContent('Phase du héros');
+    expect(veil()).toBeNull();
+  });
+
+  it('lays no veil for a lost action just after the hero, without pill (C5.4)', async () => {
+    const test = await renderBattle({
+      seed: 1,
+      createBattle: battleWith(stunnedEnemy(GHOUL), sturdy(SPECTER), targetOn(SPECTER)),
+    });
+
+    await test.attack();
+    await test.runUntil(() => test.battle().phase.kind === 'enemy');
+
+    expect(screen.queryByTestId('battle-phase')).toBeNull();
+    expect(veil()).toBeNull();
+  });
+
+  it('lifts the veil when the battle is lost during the enemy phase', async () => {
+    const test = await renderBattle({
+      seed: seedFor({ ghoul: 'basic' }),
+      createBattle: battleWith(heroWith({ hp: 4 })),
+    });
+    await test.toWindUpOf(GHOUL);
+    expect(veil()).not.toBeNull();
+
+    await test.runUntil(() => test.battle().phase.kind === 'over');
+
+    expect(veil()).toBeNull();
+    expect(screen.getByTestId('battle-scene-frame')).toBeOnTheScreen();
+  });
+
+  it('lifts the veil when the battle is won', async () => {
+    const test = await renderBattle({
+      seed: 3,
+      createBattle: battleWith(
+        enemyWith(GHOUL, { hp: 10 }),
+        enemyWith(SPECTER, { hp: 0 }),
+        enemyWith(NECROMANCER, { hp: 0 }),
+      ),
+    });
+
+    await test.attack();
+    await test.runUntil(() => test.battle().phase.kind === 'over');
+
+    expect(test.battle().phase).toMatchObject({ outcome: 'victory' });
+    expect(veil()).toBeNull();
+  });
+
+  it('covers the whole fixed frame of the scene in ink at 38 %, under the shaking scene, hidden and untouchable', async () => {
+    const test = await renderBattle({ seed: seedFor({ ghoul: 'basic' }) });
+    await test.toWindUpOf(GHOUL);
+
+    const frame = screen.getByTestId('battle-scene-frame');
+    expect(within(frame).getByTestId('enemy-phase-veil', hiddenToo)).toBe(veil());
+    expect(within(shaking()).queryByTestId('enemy-phase-veil', hiddenToo)).toBeNull();
+    expect(
+      within(frame)
+        .getAllByTestId(/^(enemy-phase-veil|battle-scene-shake)$/u, hiddenToo)
+        .map((view) => view.props.testID as string),
+    ).toEqual(['enemy-phase-veil', 'battle-scene-shake']);
+    expect(artPalette.roles.enemyPhaseVeil).toBe('rgba(6,7,12,0.38)');
+    expect(StyleSheet.flatten(veil()!.props.style)).toMatchObject({
+      ...wholeFrame,
+      backgroundColor: 'rgba(6,7,12,0.38)',
+    });
+    expect(veil()).toHaveProp('pointerEvents', 'none');
+    expect(veil()).toHaveProp('accessibilityElementsHidden', true);
+    expect(veil()).toHaveProp('importantForAccessibility', 'no-hide-descendants');
+    expect(screen.queryByTestId('enemy-phase-veil')).toBeNull();
+  });
+
+  it('puts the enemies, the hero, the figures and the words of the scene above the veil', async () => {
+    const test = await renderBattle({
+      seed: seedFor({ ghoul: 'basic' }),
+      createBattle: sturdyGhoul,
+    });
+    const impact = await test.toWindUpOf(GHOUL);
+
+    await test.touchDefense('parry', impact - 50);
+    await test.advanceTo(impact + 40);
+
+    expect(veil()).not.toBeNull();
+    const scene = within(shaking());
+    expect(scene.getByTestId('battle-scene', hiddenToo)).toBeTruthy();
+    expect(scene.getByTestId('enemy-ghoul')).toBeOnTheScreen();
+    expect(scene.getByTestId('battle-feedback')).toHaveTextContent('Parfait · contre-attaque');
+    expect(scene.getByText('−6')).toBeOnTheScreen();
+  });
+
+  it('keeps the header, the action track, the hero bar and the action zone out of the frame', async () => {
+    const test = await renderBattle({
+      seed: seedFor({ ghoul: 'basic' }),
+      createBattle: battleWith((battle) => ({ ...battle, initiative: true })),
+    });
+    await test.toWindUpOf(GHOUL);
+
+    const frame = within(screen.getByTestId('battle-scene-frame'));
+    expect(veil()).not.toBeNull();
+    expect(frame.queryByRole('header')).toBeNull();
+    expect(frame.queryByTestId('battle-action-track')).toBeNull();
+    expect(frame.queryByTestId('battle-pad')).toBeNull();
+    expect(frame.queryByTestId('battle-zone-line')).toBeNull();
+    expect(frame.queryByLabelText(/^La Sentinelle, PV/u)).toBeNull();
+  });
+
+  it('shakes the scene above the veil, never the fixed frame nor the veil', async () => {
+    withMotion();
+    const test = await renderBattle({ seed: seedFor({ ghoul: 'basic' }) });
+    await test.toWindUpOf(GHOUL);
+
+    expect(getAnimatedStyle(shaking()).transform).toBeDefined();
+    expect(StyleSheet.flatten(shaking().props.style)).toMatchObject({
+      ...wholeFrame,
+      overflow: 'hidden',
+    });
+    const frame = StyleSheet.flatten(screen.getByTestId('battle-scene-frame').props.style);
+    expect(frame.transform).toBeUndefined();
+    expect(frame.overflow).toBeUndefined();
+    expect(frame).toMatchObject({ flexBasis: 440, flexGrow: 0, flexShrink: 1, minHeight: 240 });
+    expect(StyleSheet.flatten(veil()!.props.style).transform).toBeUndefined();
+  });
+
+  it('dims the action track with the veil, and gives it back with the hero phase', async () => {
+    const test = await renderBattle({
+      seed: 1,
+      createBattle: battleWith(
+        (battle) => ({ ...battle, initiative: true }),
+        enemyWith(SPECTER, { hp: 0 }),
+        enemyWith(NECROMANCER, { hp: 0 }),
+      ),
+    });
+    const track = () => screen.getByTestId('battle-action-track');
+    const shades = () => within(track()).queryAllByTestId('track-shade', hiddenToo);
+    const opacities = () =>
+      shades().map((shade) => StyleSheet.flatten(shade.props.style).opacity as number);
+    expect(shades()).not.toHaveLength(0);
+    expect(opacities().every((opacity) => opacity === 0.38)).toBe(true);
+
+    await test.attack();
+    await test.runUntil(() => test.battle().phase.kind === 'transition');
+
+    expect(opacities()).toContain(0.68);
+    expect(opacities()).not.toContain(0.38);
+
+    await test.runUntil(() => test.battle().phase.kind === 'hero');
+
+    expect(veil()).toBeNull();
+    expect(shades()).not.toHaveLength(0);
+    expect(opacities().every((opacity) => opacity === 0.38)).toBe(true);
+  });
+
+  it('lets the hero parry in the window exactly as before, the veil laid', async () => {
+    const test = await renderBattle({
+      seed: seedFor({ ghoul: 'basic' }),
+      createBattle: sturdyGhoul,
+    });
+    const impact = await test.toWindUpOf(GHOUL);
+    expect(veil()).not.toBeNull();
+
+    await test.touchDefense('parry', impact - 50);
+
+    expect(screen.getByTestId('battle-feedback')).toHaveTextContent('Parfait');
+    expect(events(test)).toContainEqual(
+      expect.objectContaining({ type: 'blowResolved', outcome: 'perfectParry', delta: -50 }),
+    );
+  });
+
+  describe('with reduced motion', () => {
+    reduceMotionInEachTest();
+
+    it('lays the same still veil, at once', async () => {
+      const test = await renderBattle({ seed: 1 });
+      await test.attack();
+      await test.runUntil(() => test.battle().phase.kind === 'transition');
+
+      expect(screen.getByTestId('phase-banner-still')).toBeOnTheScreen();
+      expect(StyleSheet.flatten(veil()!.props.style)).toMatchObject({
+        ...wholeFrame,
+        backgroundColor: 'rgba(6,7,12,0.38)',
+      });
+      expect(StyleSheet.flatten(shaking().props.style).transform).toBeUndefined();
+    });
   });
 });

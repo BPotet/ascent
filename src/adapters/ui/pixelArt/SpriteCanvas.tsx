@@ -1,6 +1,7 @@
 import {
   AlphaType,
   Canvas,
+  ColorMatrix,
   ColorType,
   FilterMode,
   Image,
@@ -11,6 +12,7 @@ import {
 import type { StyleProp, ViewStyle } from 'react-native';
 
 import { type ArtScale, artPixelSize } from './artPixel';
+import { saturationMatrix } from './saturationMatrix';
 import type { PixelImage } from './sprites/Sprite';
 
 /**
@@ -28,6 +30,12 @@ interface SpriteCanvasBase {
   readonly sprite: string;
   /** Dessine l'image du sprite ; appelé une seule fois par nom. */
   readonly draw: () => PixelImage;
+  /**
+   * La saturation de l'image (1 : intacte, 0 : gris), par une matrice de couleur. Absente ou à 1,
+   * l'image garde ses couleurs. Seuls les portraits de la Frise d'action l'utilisent, en phase
+   * ennemie (#188).
+   */
+  readonly saturation?: number;
   readonly style?: StyleProp<ViewStyle>;
   readonly testID?: string;
 }
@@ -94,7 +102,15 @@ export function skImageOf(sprite: string, draw: () => PixelImage): SkImage | nul
  * exacte `size` d'un portrait de la Frise d'action. C'est le seul
  * module du pixel art qui importe Skia. Toujours décorative : le lecteur d'écran l'ignore.
  */
-export function SpriteCanvas({ sprite, draw, scale, size, style, testID }: SpriteCanvasProps) {
+export function SpriteCanvas({
+  sprite,
+  draw,
+  scale,
+  size,
+  saturation = 1,
+  style,
+  testID,
+}: SpriteCanvasProps) {
   const image = skImageOf(sprite, draw);
   const imageWidth = image?.width() ?? 0;
   // Sans image (Skia n'a rien fait), un portrait reste à 0 dp : jamais `NaN`.
@@ -118,7 +134,9 @@ export function SpriteCanvas({ sprite, draw, scale, size, style, testID }: Sprit
         height={height}
         fit="fill"
         sampling={{ filter: FilterMode.Nearest, mipmap: MipmapMode.None }}
-      />
+      >
+        {saturation < 1 ? <ColorMatrix matrix={saturationMatrix(saturation)} /> : null}
+      </Image>
     </Canvas>
   );
 }

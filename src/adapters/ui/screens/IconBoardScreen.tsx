@@ -9,7 +9,14 @@ import {
   type Encounter,
 } from '../../../domain/ascent/Ascent';
 import type { Tier } from '../../../domain/ascent/tiers';
-import { startBattle, type Battle } from '../../../domain/battle/Battle';
+import type { AttackKind } from '../../../domain/battle/attacks';
+import {
+  advance,
+  heroAction,
+  nextDeadline,
+  startBattle,
+  type Battle,
+} from '../../../domain/battle/Battle';
 import type { EnemyKind } from '../../../domain/battle/combatants';
 import type { BlessingFamily, StartingBlessing } from '../../../domain/ascent/blessings';
 import type { BoonKind } from '../../../domain/ascent/boons';
@@ -60,7 +67,10 @@ type LoadoutBoard =
   // Les portraits de la Frise d'action (#175) : F1, F2 (4 + 4 cases) et F4.
   | 'trackRound'
   | 'trackTwoGhouls'
-  | 'trackPhaseTwo';
+  | 'trackPhaseTwo'
+  // Le voile de phase ennemie (#188) : C1 et C3 de la maquette v2 de #174, un coup imparable.
+  | 'veilTierOne'
+  | 'veilTierThree';
 
 const LOADOUT_ENTRIES: readonly (readonly [LoadoutBoard, string])[] = [
   ['foot1', 'Équipement · 1 · pied de la tour'],
@@ -77,6 +87,8 @@ const LOADOUT_ENTRIES: readonly (readonly [LoadoutBoard, string])[] = [
   ['trackRound', 'Frise · manche et aperçu'],
   ['trackTwoGhouls', 'Frise · deux Goules'],
   ['trackPhaseTwo', 'Frise · boss en phase 2'],
+  ['veilTierOne', 'Voile · coup imparable · palier 1'],
+  ['veilTierThree', 'Voile · coup imparable · palier 3'],
 ];
 
 // Stryker disable all: données fixes d'un outil du build de preview.
@@ -224,7 +236,57 @@ const LOADOUT_ASCENTS: Readonly<Record<LoadoutBoard, Ascent | null>> = {
   trackRound: fight({ hero: 'wanderer' }, 1, 'combat', ['skeleton', 'ghoul']),
   trackTwoGhouls: fight({ hero: 'wanderer' }, 1, 'combat', ['skeleton', 'ghoul', 'ghoul']),
   trackPhaseTwo: fight({}, 2, 'boss', ['ashGardener']),
+  veilTierOne: fight({}, 1, 'combat', ['specter', 'ghoul', 'ghoul']),
+  veilTierThree: fight({}, 3, 'combat', ['gargoyle', 'bellFounder', 'bronzeWarden']),
 };
+
+/**
+ * La préparation du coup imparable d'une entrée du voile (#188), en ms : bien plus longue que celle
+ * du jeu (1,3 à 2 s), pour que le parcours end-to-end voie le sceau et capture l'écran pendant la
+ * préparation, quel que soit le temps de lecture de l'émulateur. Seul l'outil de preview l'utilise.
+ */
+export const BOARD_WIND_UP_MS = 20_000;
+
+/**
+ * Un combat du voile de phase ennemie (#188) contre `enemies`, joué par le domaine (le héros attaque
+ * à chacun de ses tours) jusqu'à la préparation du coup imparable `attack` de l'ennemi `enemy`,
+ * longue de `BOARD_WIND_UP_MS`. Repris, ce coup repart du début de sa préparation : la scène est
+ * voilée, le sceau au-dessus de l'ennemi.
+ */
+function windingUp(enemies: readonly EnemyKind[], enemy: number, attack: AttackKind): Battle {
+  const { battle: started } = startBattle({
+    seed: 7,
+    defenseHint: false,
+    at: 0,
+    initiative: true,
+    enemies,
+  });
+  let battle: Battle = {
+    ...started,
+    enemies: started.enemies.map((one, index) =>
+      index === enemy && one.intent?.category === 'attack'
+        ? { ...one, intent: { ...one.intent, attack, windUpMs: BOARD_WIND_UP_MS } }
+        : one,
+    ),
+  };
+  for (let turn = 0; turn < 100; turn += 1) {
+    const { phase } = battle;
+    if (phase.kind === 'enemy' && phase.step.kind === 'attack' && phase.step.enemy === enemy) {
+      return battle;
+    }
+    const next = nextDeadline(battle)!;
+    // Un impact qui attend un appui n'est subi qu'après son échéance.
+    battle =
+      phase.kind === 'hero'
+        ? heroAction(battle, {
+            action: { kind: 'attack' },
+            touchStartedAt: battle.now,
+            releasedAt: battle.now,
+          }).battle
+        : advance(battle, next.awaitsPress ? next.at + 1 : next.at).battle;
+  }
+  throw new Error(`No wind-up of ${enemies[enemy]!}`);
+}
 
 /**
  * Le combat sauvegardé d'une entrée (#175) : la Jardinière des cendres déjà en phase 2, au tour de
@@ -242,6 +304,8 @@ const BOARD_BATTLES: Partial<Readonly<Record<LoadoutBoard, Battle>>> = {
     const [gardener] = battle.enemies;
     return { ...battle, enemies: [{ ...gardener!, hp: 200, phase2: true }] };
   })(),
+  veilTierOne: windingUp(['specter', 'ghoul', 'ghoul'], 0, 'perilous'),
+  veilTierThree: windingUp(['gargoyle', 'bellFounder', 'bronzeWarden'], 2, 'delayedPerilous'),
 };
 // Stryker restore all
 

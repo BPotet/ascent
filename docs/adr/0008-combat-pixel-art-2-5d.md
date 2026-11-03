@@ -139,3 +139,37 @@ sombre sous chaque figure.
   d'or de sa plaque, flèche au-dessus de son intention, nom en gras, « cible » au lecteur d'écran,
   #120). L'ombre au sol est la même sous la cible et sous les autres.
 - Le dessin de l'ombre reste exclu de la mutation (ADR 0006 § 9) ; sa forme est testée.
+
+## Avenant du 3 novembre 2026 — le voile de phase ennemie et le cadre de la scène dédoublé (#188)
+
+Décision du propriétaire du 3 novembre 2026 : pendant la phase ennemie, la scène s'assombrit sous un
+voile d'encre et la Frise d'action pâlit, sauf le combattant qui agit (maquettes
+`docs/mockups/170-tiers-two-three/`, `.pst .veil`, et `docs/mockups/174-tier-identity/` v2, C1, C3
+et `.frise.dimf`).
+
+- **Le cadre de la scène est dédoublé** dans l'écran de combat : une vue **fixe**
+  (`battle-scene-frame`, mesurée : `onLayout`, `measureInWindow` et `onSceneArea` de l'avenant #176
+  y restent, sans `overflow: hidden`), qui porte le voile, et au-dessus la **vue qui tremble**
+  (`battle-scene-shake`, plein cadre, rognée à ses bords), qui contient tout le reste de la scène, dans
+  le même ordre qu'avant : la scène Skia, la pastille de phase, les colonnes des ennemis, les mots de
+  scène, les chiffres, l'annonce de phase et les bulles d'aide.
+- **Le voile de phase ennemie** (`roles.enemyPhaseVeil`, l'encre `#06070C` à 38 %) est une `View`
+  plein cadre, posée sur la vue fixe, **sous** la vue qui tremble et **au-dessus** du fond de palier et
+  de son voile de lisibilité (les fondus dans la scène sont assombris aussi). Il ne tremble jamais :
+  aucune bande non voilée au bord de la scène. Il est masqué au lecteur d'écran et ne reçoit aucun
+  toucher.
+- **Une seule source** : le voile et la frise assombrie suivent la pastille de l'en-tête
+  (`battleView(battle).phase === 'enemy'`), au même rendu, sans effet ni état ni fondu, en mouvement
+  réduit comme ailleurs ; un combat repris s'affiche directement dans le bon état.
+- **La frise assombrie** (`trackShade`) : la luminosité par un voile d'encre sur la case
+  (`1 − luminosité`, jamais une opacité, ADR 0010, avenant #155), sur la case entière, cadre compris,
+  en phase ennemie ; la saturation par une matrice de couleur Skia sur le portrait
+  (`SpriteCanvas`, `saturation`, poids de luminance Rec. 709). La case de celui qui agit reste
+  intacte ; l'aperçu de la phase du héros ne change pas.
+- **Règle pour la suite** : tout nouvel élément de la scène se pose **dans la vue qui tremble** (il
+  passe au-dessus du voile) ; rien ne se pose entre le voile et elle.
+
+Une `View` semi-transparente se place désormais entre deux canevas Skia (le fond, sous l'écran, et
+la scène, dans la vue qui tremble). Leur ordre sur Android suit la hiérarchie des vues et se vérifie
+sur l'APK ; s'il ne la suivait pas, le repli serait de dessiner le voile dans le canevas de la scène,
+ou dans celui du fond en lui passant la phase, par un nouvel avenant.

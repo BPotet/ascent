@@ -20,6 +20,7 @@ import { assetSprite, type AssetImage } from '../pixelArt/sprites/atelier/fullAn
 import { trackPortrait, type Fighter } from '../pixelArt/sprites/battle/portraits';
 import { toPixelImage } from '../pixelArt/sprites/Sprite';
 import type { ActionTrackView, TrackEntry } from '../state/battleView';
+import { trackShade, type TrackShade } from './trackShade';
 import {
   placeGhosts,
   trackTransition,
@@ -64,10 +65,13 @@ function stepUp(value: SharedValue<number>, steps: number): void {
 function Portrait({
   entry,
   current,
+  saturation,
   portraits,
 }: {
   readonly entry: TrackEntry;
   readonly current: boolean;
+  /** La saturation du portrait ; seulement en phase ennemie (#188), sinon ses couleurs. */
+  readonly saturation: number;
   readonly portraits: Portraits;
 }) {
   const icon = trackPortrait(entry.fighter, entry.phase2, portraits);
@@ -87,23 +91,25 @@ function Portrait({
     );
   }
   const draw = () => toPixelImage(assetSprite(icon.image));
+  const dimmed = saturation < 1 ? { saturation } : null;
   // Celui qui agit garde le pixel d'art entier (×2) ; les autres, la taille exacte de 24 dp.
   return current ? (
     <SpriteCanvas sprite={icon.sprite} draw={draw} scale={2} testID="track-portrait" />
   ) : (
-    <SpriteCanvas sprite={icon.sprite} draw={draw} size={24} testID="track-portrait" />
+    <SpriteCanvas sprite={icon.sprite} draw={draw} size={24} testID="track-portrait" {...dimmed} />
   );
 }
 
 /**
- * Une case de la frise : le portrait du combattant dans son cadre. Un renfort (`enter`) y entre en
- * 300 ms ; la case fantôme d'un ennemi tombé (`ghost`) grise puis se referme en 400 ms. Les deux
- * animations partent au montage de la case.
+ * Une case de la frise : le portrait du combattant dans son cadre, sous son ombre (`shade`). Un
+ * renfort (`enter`) y entre en 300 ms ; la case fantôme d'un ennemi tombé (`ghost`) grise puis se
+ * referme en 400 ms. Les deux animations partent au montage de la case.
  */
 function TrackCase({
   entry,
   current = false,
-  next = false,
+  shade,
+  enemyPhase,
   enter = false,
   ghost = false,
   gap = GAP,
@@ -111,7 +117,9 @@ function TrackCase({
 }: {
   readonly entry: TrackEntry;
   readonly current?: boolean;
-  readonly next?: boolean;
+  readonly shade: TrackShade;
+  /** En phase ennemie, le voile couvre la case entière, son cadre compris (#188). */
+  readonly enemyPhase: boolean;
   readonly enter?: boolean;
   readonly ghost?: boolean;
   /** L'écart entre les cases, que la case fantôme résorbe en se refermant. */
@@ -162,8 +170,19 @@ function TrackCase({
           <View pointerEvents="none" testID="track-current-arrow" style={styles.arrow} />
         </>
       ) : null}
-      <Portrait entry={entry} current={current} portraits={portraits} />
-      {next ? <View pointerEvents="none" style={styles.nextVeil} /> : null}
+      <Portrait
+        entry={entry}
+        current={current}
+        saturation={shade.saturation}
+        portraits={portraits}
+      />
+      {shade.veil > 0 ? (
+        <View
+          pointerEvents="none"
+          testID="track-shade"
+          style={[styles.shade, enemyPhase && styles.wholeShade, { opacity: shade.veil }]}
+        />
+      ) : null}
       {ghost ? (
         <Animated.View
           pointerEvents="none"
@@ -184,11 +203,13 @@ interface Ghost extends LeavingEntry {
 function GhostCase({
   ghost,
   gap,
+  enemyPhase,
   portraits,
   onDone,
 }: {
   readonly ghost: Ghost;
   readonly gap: number;
+  readonly enemyPhase: boolean;
   readonly portraits: Portraits;
   readonly onDone: (id: number) => void;
 }) {
@@ -199,7 +220,8 @@ function GhostCase({
   return (
     <TrackCase
       entry={ghost.entry}
-      next={ghost.row === 'next'}
+      shade={trackShade(ghost.row, false, enemyPhase)}
+      enemyPhase={enemyPhase}
       ghost
       gap={gap}
       portraits={portraits}
@@ -220,15 +242,18 @@ interface Shown {
  * agit et quand, jamais quoi. Le portrait du combattant en cours en grand (48 dp), puis ceux qui
  * n'ont pas encore agi (24 dp), puis « suiv. » et l'aperçu de la manche suivante. Sans chiffre
  * d'Initiative ; elle est lue en une phrase, sans les portraits. Un ennemi tombé grise et sa case se
- * referme, un renfort entre ; d'un coup avec « réduire les animations ».
+ * referme, un renfort entre ; d'un coup avec « réduire les animations ». En phase ennemie
+ * (`enemyPhase`, #188), toutes ses cases pâlissent sauf celle de celui qui agit, d'un coup.
  */
 export function ActionTrack({
   track,
   reducedMotion = false,
+  enemyPhase = false,
   portraits = PORTRAITS,
 }: {
   readonly track: ActionTrackView;
   readonly reducedMotion?: boolean;
+  readonly enemyPhase?: boolean;
   readonly portraits?: Portraits;
 }) {
   const narrow = useWindowDimensions().width < NARROW_SCREEN;
@@ -266,7 +291,8 @@ export function ActionTrack({
           key={`${row}-${entryKey(entry)}`}
           entry={entry}
           current={index === acting}
-          next={row === 'next'}
+          shade={trackShade(row, index === acting, enemyPhase)}
+          enemyPhase={enemyPhase}
           enter={entering.has(entryKey(entry))}
           portraits={portraits}
         />
@@ -275,6 +301,7 @@ export function ActionTrack({
           key={`ghost-${leaving.id}`}
           ghost={leaving}
           gap={narrow ? NARROW_GAP : GAP}
+          enemyPhase={enemyPhase}
           portraits={portraits}
           onDone={forget}
         />
@@ -360,16 +387,18 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
     borderTopColor: roles.gold,
   },
-  // L'aperçu, plus pâle : un voile d'encre sur la case, jamais une opacité (ADR 0010, avenant #155).
-  nextVeil: {
+  // Une case plus pâle : un voile d'encre sur la case, jamais une opacité (ADR 0010, avenant #155),
+  // d'opacité 1 − luminosité (`trackShade`). En phase du héros, l'aperçu, dans son cadre.
+  shade: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
     backgroundColor: roles.ink,
-    opacity: 0.38,
   },
+  // En phase ennemie, la case entière, son cadre de 2 dp compris (#188, `filter` de `.frise.dimf`).
+  wholeShade: { top: -2, left: -2, right: -2, bottom: -2 },
   ghostVeil: {
     position: 'absolute',
     top: 0,
