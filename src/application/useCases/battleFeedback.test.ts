@@ -7,6 +7,7 @@ import {
   feedbackFor,
   feedbacksFor,
   SUMMON_AFTER_BURN_MS,
+  summonEntryDelay,
 } from './battleFeedback';
 
 const blow = (outcome: Extract<BattleEvent, { type: 'blowResolved' }>['outcome']): BattleEvent => ({
@@ -351,5 +352,23 @@ describe('the sounds of the Summon (#172)', () => {
     expect(delay([bleeding, entered(1)])).toBe(700);
     expect(delay([ticked, entered(1)])).toBe(1_000);
     expect(delay([bleeding, ticked, entered(1)])).toBe(1_700);
+  });
+
+  it('gives the entry of the summoned the delay of the sounds of the round start', () => {
+    const bleeding: BattleEvent = {
+      type: 'bleedTicked',
+      at: 0,
+      loss: 2,
+      heroHp: 42,
+      roundsLeft: 2,
+    };
+    const dry: BattleEvent = { type: 'bleedTicked', at: 0, loss: 0, heroHp: 1, roundsLeft: 2 };
+    const ticked: BattleEvent = { type: 'burnTicked', at: 0, loss: 3, heroHp: 39, stacks: 3 };
+
+    expect(summonEntryDelay([])).toBe(0);
+    expect(summonEntryDelay([bleeding])).toBe(700);
+    expect(summonEntryDelay([dry])).toBe(0);
+    expect(summonEntryDelay([ticked])).toBe(1_000);
+    expect(summonEntryDelay([bleeding, ticked])).toBe(1_700);
   });
 });

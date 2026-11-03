@@ -123,6 +123,16 @@ export function bledIn(events: readonly BattleEvent[]): boolean {
 }
 
 /**
+ * Le délai de l'entrée des invoqués dans une mise à jour (#172), en ms : après le Saignement
+ * (700 ms) puis la Brûlure (1 000 ms) de la manche. Le son et l'écran le partagent.
+ */
+export function summonEntryDelay(events: readonly BattleEvent[]): number {
+  const afterBleed = bledIn(events) ? BURN_AFTER_BLEED_MS : 0;
+  const burnt = events.some((event) => event.type === 'burnTicked');
+  return afterBleed + (burnt ? SUMMON_AFTER_BURN_MS : 0);
+}
+
+/**
  * Les sons et les vibrations d'une mise à jour, dans l'ordre de ses événements. Au début d'une
  * manche où le héros saigne, la Brûlure attend 700 ms après le Saignement : le crépitement, puis
  * l'extinction 800 ms plus tard (#171, maquette B5). L'entrée des invoqués vient ensuite (#172) :
@@ -130,8 +140,7 @@ export function bledIn(events: readonly BattleEvent[]): boolean {
  */
 export function feedbacksFor(events: readonly BattleEvent[]): BattleFeedback[] {
   const afterBleed = bledIn(events) ? BURN_AFTER_BLEED_MS : 0;
-  const burnt = events.some((event) => event.type === 'burnTicked');
-  const afterBurn = afterBleed + (burnt ? SUMMON_AFTER_BURN_MS : 0);
+  const afterBurn = summonEntryDelay(events);
   const firstEntry = events.findIndex((event) => event.type === 'summonEntered');
   return events.map((event, index) => {
     const feedback = feedbackFor(event);
