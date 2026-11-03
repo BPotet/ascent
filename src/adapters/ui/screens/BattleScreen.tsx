@@ -19,11 +19,11 @@ import { sceneTimeline } from '../battle/scene/sceneTimeline';
 import type { SceneEnemy } from '../battle/sceneTypes';
 import { Screen } from '../components/Screen';
 import { ENEMY_NAMES } from '../format/battleText';
+import { artPalette } from '../pixelArt/artPalette';
 import { toBattleInstant } from '../state/battleTouch';
 import { actionTrackView, battleView, type BattleView } from '../state/battleView';
 import { useReducedMotion } from '../state/useReducedMotion';
 import { jsThreadNow, uiThreadNow } from '../state/useTouchProbe';
-import { artPalette } from '../pixelArt/artPalette';
 import { useBattleDisplay } from '../state/useBattleDisplay';
 import { battleColors } from '../theme/battleColors';
 
