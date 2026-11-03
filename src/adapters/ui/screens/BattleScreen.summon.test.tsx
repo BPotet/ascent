@@ -1,7 +1,7 @@
 // L'écran de combat contre la Reine des phalènes (#172, maquette 170, I1 à I5) : les atlas des
 // Phalénides préparés avant le combat, l'annonce, la poussière passée à la scène, les colonnes à la
 // disposition du boss qui invoque, et la chute des Phalénides avec la Reine.
-import { screen } from '@testing-library/react-native';
+import { screen, within } from '@testing-library/react-native';
 
 import type { BattleFactory } from '../../../application/useCases/BattleSession';
 import { TIERS } from '../../../domain/ascent/tiers';
@@ -78,6 +78,20 @@ describe('BattleScreen: the Summon of the Moth queen (#172)', () => {
     expect(summon.calledAt).toEqual(expect.any(Number));
     // Une colonne par ennemi, aucune pour la poussière.
     expect(screen.getAllByTestId(/^enemy-[a-zA-Z]+$/u, hiddenToo)).toHaveLength(1);
+  });
+
+  it('puts the dust, the banner and the summoned columns in the shaking scene, above the veil (#188)', async () => {
+    const test = await renderBattle({ seed: 1, createBattle: queenAt(201) });
+    await toAnnouncement(test);
+
+    const shaking = within(screen.getByTestId('battle-scene-shake', hiddenToo));
+    expect(shaking.getByTestId('summon-banner', hiddenToo)).toBeOnTheScreen();
+    expect(
+      (shaking.getByTestId('battle-scene', hiddenToo).props as { summon: SceneSummon }).summon
+        .pending,
+    ).toEqual([1, 2]);
+    await test.runUntil(() => types(test).includes('summonEntered'));
+    expect(shaking.getAllByTestId('enemy-mothkin', hiddenToo)).toHaveLength(2);
   });
 
   it('lays the dust from the state in a resumed battle, without the banner', async () => {
