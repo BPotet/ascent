@@ -39,7 +39,8 @@ tags:
       id: 'peril-seal'
     timeout: 10000
 - takeScreenshot: veil-c1-enemy-phase-perilous
-# Le retour en phase du héros : le voile levé, l'aperçu de la frise comme avant #188.
+# Le retour en phase du héros : le voile levé, l'aperçu de la frise à 62 % de luminosité et 70 %
+# de saturation.
 - extendedWaitUntil:
     visible:
       id: 'battle-zone-line'
