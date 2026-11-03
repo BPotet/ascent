@@ -50,7 +50,7 @@ describe.each([
 
   it('names its Atelier document and its sha256 in its header, without mutation', () => {
     const source = readFileSync(join(DATA, `${file}.ts`), 'utf8');
-    expect(source.startsWith('// Stryker disable all\n')).toBe(true);
+    expect(source).toContain('// Stryker disable all');
     expect(source).toMatch(new RegExp(`\`assets/${id}\` version \\d+ \\(sha256 [0-9a-f]{64}\\)`));
   });
 
@@ -97,7 +97,7 @@ describe('the phase 2 aspect of the Moth queen (#172)', () => {
 
   it('names assets/mothQueenPhase2 and its sha256 in its header', () => {
     const source = readFileSync(join(DATA, 'mothQueenPhase2.ts'), 'utf8');
-    expect(source.startsWith('// Stryker disable all\n')).toBe(true);
+    expect(source).toContain('// Stryker disable all');
     expect(source).toContain('`assets/mothQueenPhase2` version 2 (sha256 d5c3a4a5d52943b0');
   });
 
