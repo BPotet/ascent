@@ -1108,6 +1108,9 @@ export const PORTRAITS: Readonly<Record<HeroKind | EnemyKind, AssetImage | null>
       '....03222222222224444444',
     ],
   },
+  // L'Invocation (#172) : recopiés avec l'interface de la story.
+  mothQueen: null,
+  mothkin: null,
 };
 
 /** Les portraits de phase 2 (`iconPhase2`) des boss à aspect de phase 2. */

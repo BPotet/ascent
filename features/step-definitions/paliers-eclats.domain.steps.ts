@@ -405,7 +405,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(
-    /^chaque ennemi est une Goule, un Villageois fou, un Pèlerin enronce, une Ronce de cendre, une Glaneuse de cendre ou un Embrasé \(#171\)$/u,
+    /^chaque ennemi est une Goule, un Villageois fou, un Pèlerin enronce, une Ronce de cendre, une Glaneuse de cendre, un Embrasé \(#171\) ou une Phalénide \(#172\)$/u,
     () => {
       expect(new Set(groups(2).flat())).toEqual(
         new Set([
@@ -415,6 +415,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
           'ashBramble',
           'ashGleaner',
           'burningHusk',
+          'mothkin',
         ]),
       );
     },
@@ -428,10 +429,18 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(
-    /^chaque ennemi est un Squelette, un Spectre, un Nécromancien, un Veilleur d'airain, une Gargouille ou un Fondeur de cloches \(#171\)$/u,
+    /^chaque ennemi est un Squelette, un Spectre, un Nécromancien, un Veilleur d'airain, une Gargouille, un Fondeur de cloches \(#171\) ou une Phalénide \(#172\)$/u,
     () => {
       expect(new Set(groups(3).flat())).toEqual(
-        new Set(['skeleton', 'specter', 'necromancer', 'bronzeWarden', 'gargoyle', 'bellFounder']),
+        new Set([
+          'skeleton',
+          'specter',
+          'necromancer',
+          'bronzeWarden',
+          'gargoyle',
+          'bellFounder',
+          'mothkin',
+        ]),
       );
     },
   );

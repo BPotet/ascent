@@ -63,6 +63,7 @@ describe('the tiers (#38)', () => {
       { kind: 'ashBramble', weight: 2, cap: 1 },
       { kind: 'ashGleaner', weight: 1, cap: 1, neverAlone: true },
       { kind: 'burningHusk', weight: 2, cap: 1 },
+      { kind: 'mothkin', weight: 3, cap: 2 },
     ]);
   });
 
@@ -74,6 +75,7 @@ describe('the tiers (#38)', () => {
       { kind: 'necromancer', weight: 1, cap: 1, neverAlone: true },
       { kind: 'gargoyle', weight: 2, cap: 1 },
       { kind: 'bellFounder', weight: 2, cap: 1 },
+      { kind: 'mothkin', weight: 3, cap: 2 },
     ]);
   });
 
@@ -85,7 +87,7 @@ describe('the tiers (#38)', () => {
     ]);
     expect([TIERS[1].bosses, TIERS[2].bosses, TIERS[3].bosses]).toEqual([
       ['ossuaryWarden', 'facelessPrior'],
-      ['ashGardener'],
+      ['ashGardener', 'mothQueen'],
       ['hourRinger', 'wishGranter'],
     ]);
   });

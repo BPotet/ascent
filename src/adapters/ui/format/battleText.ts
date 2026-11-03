@@ -49,6 +49,9 @@ export const ENEMY_NAMES: Readonly<Record<EnemyKind, string>> = {
   gargoyle: 'Gargouille',
   bellFounder: 'Fondeur de cloches',
   brambleBurner: 'Brûleur de ronces',
+  // L'Invocation (#172) : la Reine des phalènes avec son article, comme dans la maquette.
+  mothQueen: 'La Reine des phalènes',
+  mothkin: 'Phalénide',
 };
 
 /** Le genre du nom de l'ennemi, pour « étourdie », « tombée »… */
@@ -76,6 +79,8 @@ const FEMININE: Readonly<Record<EnemyKind, boolean>> = {
   gargoyle: true,
   bellFounder: false,
   brambleBurner: false,
+  mothQueen: true,
+  mothkin: true,
 };
 
 export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {
