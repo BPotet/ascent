@@ -17,8 +17,8 @@ describe('trackShade (the shade of an entry of the action track)', () => {
     expect(trackShade('current', false, true)).toEqual({ veil: 0.55, saturation: 0.6 });
   });
 
-  it('keeps the preview at 62 % brightness, without desaturation, in the hero phase', () => {
-    expect(trackShade('next', false, false)).toEqual({ veil: 0.38, saturation: 1 });
+  it('keeps the preview at 62 % brightness and 70 % saturation in the hero phase', () => {
+    expect(trackShade('next', false, false)).toEqual({ veil: 0.38, saturation: 0.7 });
   });
 
   it('dims the preview to 32 % brightness and 50 % saturation in the enemy phase', () => {
@@ -27,6 +27,6 @@ describe('trackShade (the shade of an entry of the action track)', () => {
 
   it('never treats an entry of the preview as the one who acts', () => {
     expect(trackShade('next', true, true)).toEqual({ veil: 0.68, saturation: 0.5 });
-    expect(trackShade('next', true, false)).toEqual({ veil: 0.38, saturation: 1 });
+    expect(trackShade('next', true, false)).toEqual({ veil: 0.38, saturation: 0.7 });
   });
 });

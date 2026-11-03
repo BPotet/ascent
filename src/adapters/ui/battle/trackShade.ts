@@ -10,8 +10,11 @@ export interface TrackShade {
 }
 
 const FULL: TrackShade = { veil: 0, saturation: 1 };
-/** L'aperçu de la phase du héros : luminosité 62 %, sans désaturation (comme avant #188). */
-const HERO_PREVIEW: TrackShade = { veil: 0.38, saturation: 1 };
+/**
+ * L'aperçu de la phase du héros : luminosité 62 % et saturation 70 % (maquette v2 de #174,
+ * `.fp.next{filter:brightness(.62) saturate(.7)}`).
+ */
+const HERO_PREVIEW: TrackShade = { veil: 0.38, saturation: 0.7 };
 /** Phase ennemie (#188, maquette v2 de #174, `.frise.dimf`) : la manche, sauf celui qui agit. */
 const ENEMY_ROUND: TrackShade = { veil: 0.55, saturation: 0.6 };
 /** Phase ennemie : l'aperçu de la manche suivante. */
