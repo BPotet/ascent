@@ -19,6 +19,7 @@ import { sceneTimeline } from '../battle/scene/sceneTimeline';
 import type { SceneEnemy } from '../battle/sceneTypes';
 import { Screen } from '../components/Screen';
 import { ENEMY_NAMES } from '../format/battleText';
+import { artPalette } from '../pixelArt/artPalette';
 import { toBattleInstant } from '../state/battleTouch';
 import { actionTrackView, battleView, type BattleView } from '../state/battleView';
 import { useReducedMotion } from '../state/useReducedMotion';
@@ -133,6 +134,8 @@ export function BattleScreen({
   // l'autre. Elle existe dès que le combat existe (`battle` non nul plus bas).
   const track = useMemo(() => (battle === null ? null : actionTrackView(battle)), [battle]);
   const over = battle?.phase.kind === 'over' ? battle.phase.outcome : null;
+  // Le voile de phase ennemie et la frise assombrie suivent la pastille de l'en-tête (#188).
+  const enemyPhase = view?.phase === 'enemy';
 
   if (battle === null || view === null) {
     return (
@@ -171,97 +174,112 @@ export function BattleScreen({
         </Text>
       </View>
       {battle.initiative && over === null ? (
-        <ActionTrack track={track!} reducedMotion={reducedMotion} />
+        <ActionTrack track={track!} reducedMotion={reducedMotion} enemyPhase={enemyPhase} />
       ) : null}
-      <Animated.View
+      {/* Le cadre fixe de la scène, mesuré, porte le voile ; la scène tremble au-dessus (ADR 0008, avenant #188). */}
+      <View
         ref={sceneFrame}
         onLayout={onSceneLayout}
         testID="battle-scene-frame"
-        style={[styles.scene, reducedMotion ? null : shake]}
+        style={styles.scene}
       >
-        <BattleScene
-          width={screenWidth}
-          height={sceneHeight}
-          geometry={geometry}
-          enemies={enemies}
-          heroKind={heroKind}
-          heroPose={display.heroPose}
-          heroPoseSince={display.heroPoseSince}
-          strikeTarget={battle.target}
-          strikeImpactAt={strikeImpactAt}
-          timeline={timeline}
-          spark={display.spark}
-          hurtAt={display.hurtAt}
-          bulwark={battle.hero.bulwark}
-          bulwarkWornAt={display.bulwarkWornAt}
-          riposte={display.riposte}
-          shadowStep={shadowStep}
-          burn={burn}
-          reducedMotion={reducedMotion}
-          uiNow={uiNow}
-        />
-        {view.phase === null ? null : (
-          <Text
-            testID="battle-phase"
-            style={[styles.phase, view.phase === 'enemy' ? styles.enemyPhase : styles.heroPhase]}
-          >
-            {view.phase === 'enemy' ? 'Phase ennemie' : 'Phase du héros'}
-          </Text>
-        )}
-        <View style={styles.foes} pointerEvents="box-none">
-          {view.enemies.map((enemy, index) => (
-            <EnemyColumn
-              // Par place et par arrivée : un groupe compte plusieurs Goules, et un renfort a sa
-              // propre colonne, sans l'état de l'ennemi tombé qu'il remplace.
-              key={`${index}:${display.arrivals[index] ?? 0}`}
-              view={enemy}
-              index={index}
-              slot={geometry.enemies[index]!}
-              sealed={view.sealed === index}
-              reducedMotion={reducedMotion}
-              float={display.float?.float.at === index ? display.float : null}
-              uiNow={uiNow}
-              now={now}
-              onTarget={onTarget}
-            />
-          ))}
-        </View>
-        {display.feedback === null || over !== null ? null : (
-          <FeedbackLabel key={display.feedback.key} texts={display.feedback.texts} />
-        )}
-        {battle.hero.bleed ? <BleedDrops /> : null}
-        {heroFloat === null ? null : (
-          <View pointerEvents="none" testID="battle-hero-float" style={styles.heroFloat}>
-            <DamageFloat key={heroFloat.key} float={heroFloat.float} />
-          </View>
-        )}
-        {burnFloat === null ? null : (
-          <View pointerEvents="none" testID="battle-burn-float" style={styles.burnFloat}>
-            <DamageFloat
-              key={burnFloat.key}
-              float={burnFloat.float}
-              delayMs={burnFloat.delayMs}
-              reducedMotion={reducedMotion}
-            />
-          </View>
-        )}
-        {view.banner === null ? null : (
-          <PhaseBanner
-            key={view.banner.since}
-            to={view.banner.to}
-            reducedMotion={reducedMotion}
-            {...(battle.phase.kind === 'hero' && {
-              hideAfterMs: view.banner.until - view.banner.since,
-            })}
+        {enemyPhase ? (
+          <View
+            pointerEvents="none"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            testID="enemy-phase-veil"
+            style={styles.enemyPhaseVeil}
           />
-        )}
-        {display.snapshot?.heroHint && view.heroActions ? (
-          <BattleHintBubble kind="hero" onClose={() => session.dismissHint('hero')} />
         ) : null}
-        {view.defenseHint ? (
-          <BattleHintBubble kind="defense" onClose={() => session.dismissHint('defense')} />
-        ) : null}
-      </Animated.View>
+        <Animated.View
+          testID="battle-scene-shake"
+          style={[styles.shake, reducedMotion ? null : shake]}
+        >
+          <BattleScene
+            width={screenWidth}
+            height={sceneHeight}
+            geometry={geometry}
+            enemies={enemies}
+            heroKind={heroKind}
+            heroPose={display.heroPose}
+            heroPoseSince={display.heroPoseSince}
+            strikeTarget={battle.target}
+            strikeImpactAt={strikeImpactAt}
+            timeline={timeline}
+            spark={display.spark}
+            hurtAt={display.hurtAt}
+            bulwark={battle.hero.bulwark}
+            bulwarkWornAt={display.bulwarkWornAt}
+            riposte={display.riposte}
+            shadowStep={shadowStep}
+            burn={burn}
+            reducedMotion={reducedMotion}
+            uiNow={uiNow}
+          />
+          {view.phase === null ? null : (
+            <Text
+              testID="battle-phase"
+              style={[styles.phase, view.phase === 'enemy' ? styles.enemyPhase : styles.heroPhase]}
+            >
+              {view.phase === 'enemy' ? 'Phase ennemie' : 'Phase du héros'}
+            </Text>
+          )}
+          <View style={styles.foes} pointerEvents="box-none">
+            {view.enemies.map((enemy, index) => (
+              <EnemyColumn
+                // Par place et par arrivée : un groupe compte plusieurs Goules, et un renfort a sa
+                // propre colonne, sans l'état de l'ennemi tombé qu'il remplace.
+                key={`${index}:${display.arrivals[index] ?? 0}`}
+                view={enemy}
+                index={index}
+                slot={geometry.enemies[index]!}
+                sealed={view.sealed === index}
+                reducedMotion={reducedMotion}
+                float={display.float?.float.at === index ? display.float : null}
+                uiNow={uiNow}
+                now={now}
+                onTarget={onTarget}
+              />
+            ))}
+          </View>
+          {display.feedback === null || over !== null ? null : (
+            <FeedbackLabel key={display.feedback.key} texts={display.feedback.texts} />
+          )}
+          {battle.hero.bleed ? <BleedDrops /> : null}
+          {heroFloat === null ? null : (
+            <View pointerEvents="none" testID="battle-hero-float" style={styles.heroFloat}>
+              <DamageFloat key={heroFloat.key} float={heroFloat.float} />
+            </View>
+          )}
+          {burnFloat === null ? null : (
+            <View pointerEvents="none" testID="battle-burn-float" style={styles.burnFloat}>
+              <DamageFloat
+                key={burnFloat.key}
+                float={burnFloat.float}
+                delayMs={burnFloat.delayMs}
+                reducedMotion={reducedMotion}
+              />
+            </View>
+          )}
+          {view.banner === null ? null : (
+            <PhaseBanner
+              key={view.banner.since}
+              to={view.banner.to}
+              reducedMotion={reducedMotion}
+              {...(battle.phase.kind === 'hero' && {
+                hideAfterMs: view.banner.until - view.banner.since,
+              })}
+            />
+          )}
+          {display.snapshot?.heroHint && view.heroActions ? (
+            <BattleHintBubble kind="hero" onClose={() => session.dismissHint('hero')} />
+          ) : null}
+          {view.defenseHint ? (
+            <BattleHintBubble kind="defense" onClose={() => session.dismissHint('defense')} />
+          ) : null}
+        </Animated.View>
+      </View>
       {over === null ? (
         <>
           <HeroBar
@@ -314,8 +332,10 @@ const styles = StyleSheet.create({
     flexGrow: 0,
     flexShrink: 1,
     minHeight: 240,
-    overflow: 'hidden',
   },
+  // La scène qui tremble, rognée à son cadre ; sans débord du voile, posé sous elle sur le cadre fixe.
+  shake: { ...StyleSheet.absoluteFill, overflow: 'hidden' },
+  enemyPhaseVeil: { ...StyleSheet.absoluteFill, backgroundColor: artPalette.roles.enemyPhaseVeil },
   phase: {
     position: 'absolute',
     top: 8,

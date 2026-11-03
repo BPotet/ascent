@@ -9,6 +9,7 @@ import { FilterMode, MipmapMode, Skia } from '@shopify/react-native-skia';
 import { render, screen } from '@testing-library/react-native';
 import { PixelRatio } from 'react-native';
 
+import { saturationMatrix } from './saturationMatrix';
 import { characterSprite } from './sprites/characterSprite';
 import { toPixelImage } from './sprites/Sprite';
 import { SpriteCanvas, skImageOf, toSkImage } from './SpriteCanvas';
@@ -89,6 +90,44 @@ describe('SpriteCanvas with Skia', () => {
       height: 64,
       fit: 'fill',
     });
+  });
+
+  it.each([[undefined], [1]])(
+    'draws the image in its own colours without a saturation below 1 (%s)',
+    async (saturation) => {
+      await render(
+        <SpriteCanvas
+          sprite="portrait-full"
+          draw={() => toPixelImage(characterSprite(1))}
+          size={24}
+          testID="sprite"
+          {...(saturation !== undefined && { saturation })}
+        />,
+      );
+
+      const [image] = screen.getByTestId('sprite', { includeHiddenElements: true }).children as {
+        props: { children?: unknown };
+      }[];
+      expect(image?.props.children ?? null).toBeNull();
+    },
+  );
+
+  it('desaturates the image with a colour matrix (#188)', async () => {
+    await render(
+      <SpriteCanvas
+        sprite="portrait-dimmed"
+        draw={() => toPixelImage(characterSprite(1))}
+        size={24}
+        saturation={0.6}
+        testID="sprite"
+      />,
+    );
+
+    const [image] = screen.getByTestId('sprite', { includeHiddenElements: true }).children as {
+      children: { props: Record<string, unknown> }[];
+    }[];
+    expect(image?.children).toHaveLength(1);
+    expect(image?.children[0]?.props.matrix).toEqual(saturationMatrix(0.6));
   });
 
   it('makes a Skia image of the pixels once per sprite name', () => {

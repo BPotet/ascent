@@ -1,12 +1,13 @@
 import { act, fireEvent, screen, within } from '@testing-library/react-native';
 
+import type { ManualBattleClock } from '../../../application/testing/ManualBattleClock';
 import type { AscentSession } from '../../../application/useCases/AscentSession';
 import type { Ascent } from '../../../domain/ascent/Ascent';
 import type { Battle } from '../../../domain/battle/Battle';
 import { RESUME_COUNTDOWN_S } from './AscentScreen';
 import { ascentSetUp } from '../testing/ascent';
 import { renderScreen } from '../testing/renderScreen';
-import { IconBoardScreen } from './IconBoardScreen';
+import { BOARD_WIND_UP_MS, IconBoardScreen } from './IconBoardScreen';
 
 jest.mock('../battle/BattleCanvas', () => jest.requireActual('../battle/testing/fakeBattleCanvas'));
 
@@ -18,6 +19,7 @@ let opened: {
   shards: number | undefined;
   battle: Battle | undefined;
   session: AscentSession;
+  clock: ManualBattleClock;
 }[] = [];
 
 async function openAscent(
@@ -25,13 +27,13 @@ async function openAscent(
   shards?: number,
   battle?: Battle,
 ): Promise<AscentSession> {
-  const { session } = ascentSetUp({
+  const { session, clock } = ascentSetUp({
     ...(saved !== null && { saved }),
     ...(shards !== undefined && { shards }),
     ...(battle !== undefined && { battle }),
   });
   await session.load();
-  opened.push({ saved, shards, battle, session });
+  opened.push({ saved, shards, battle, session, clock });
   return session;
 }
 
@@ -81,6 +83,8 @@ describe('IconBoardScreen (#157)', () => {
       'Frise · manche et aperçu',
       'Frise · deux Goules',
       'Frise · boss en phase 2',
+      'Voile · coup imparable · palier 1',
+      'Voile · coup imparable · palier 3',
       'Fermer',
     ]);
   });
@@ -414,4 +418,57 @@ describe('IconBoardScreen with the portraits of the action track (#175)', () => 
       jest.useRealTimers();
     }
   });
+});
+
+describe('IconBoardScreen with the veil of the enemy phase (#188)', () => {
+  it.each([
+    ['Voile · coup imparable · palier 1', 1, 'specter', 'perilous'],
+    ['Voile · coup imparable · palier 3', 3, 'bronzeWarden', 'delayedPerilous'],
+  ] as const)(
+    '« %s » resumes the wind-up of a perilous attack, under the veil (C1, C3)',
+    async (entry, tier, kind, attack) => {
+      jest.useFakeTimers();
+      try {
+        await open(entry);
+        const { battle, saved } = opened[0]!;
+        expect(saved).toMatchObject({ tier });
+        expect(battle?.phase).toMatchObject({ kind: 'enemy', step: { kind: 'attack', attack } });
+        const { step } = battle!.phase as {
+          step: { enemy: number; startedAt: number; impacts: readonly { at: number }[] };
+        };
+        expect(battle!.enemies[step.enemy]!.kind).toBe(kind);
+        // Une préparation de 20 s : le sceau reste assez longtemps pour la capture end-to-end.
+        expect(step.impacts[0]!.at - step.startedAt).toBe(BOARD_WIND_UP_MS);
+        expect(BOARD_WIND_UP_MS).toBe(20_000);
+        for (let second = 0; second < RESUME_COUNTDOWN_S; second += 1) {
+          await act(async () => {
+            jest.advanceTimersByTime(1_000);
+          });
+        }
+
+        expect(screen.getByTestId('battle-phase')).toHaveTextContent('Phase ennemie');
+        expect(screen.getByTestId('enemy-phase-veil', hidden)).toBeTruthy();
+        expect(screen.getByLabelText('Sceau rouge : coup imparable')).toBeOnTheScreen();
+        const [acting] = screen.getAllByTestId('track-portrait', hidden);
+        expect(acting).toHaveProp('sprite', `portrait:${kind}`);
+        expect(acting).toHaveProp('scale', 2);
+        expect(screen.getAllByTestId('track-shade', hidden).length).toBeGreaterThan(0);
+
+        // Reprise : la préparation repart du début et dure toujours 20 s sur l'horloge de combat.
+        const { clock } = opened[0]!;
+        const resumedAt = clock.now();
+        await act(async () => {
+          clock.advanceTo(resumedAt + BOARD_WIND_UP_MS - 1_000);
+        });
+        expect(screen.getByLabelText('Sceau rouge : coup imparable')).toBeOnTheScreen();
+        expect(screen.getByTestId('enemy-phase-veil', hidden)).toBeTruthy();
+        await act(async () => {
+          clock.advanceTo(resumedAt + BOARD_WIND_UP_MS + 1_000);
+        });
+        expect(screen.queryByLabelText('Sceau rouge : coup imparable')).toBeNull();
+      } finally {
+        jest.useRealTimers();
+      }
+    },
+  );
 });

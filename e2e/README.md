@@ -77,6 +77,15 @@ la frise se vérifie par son libellé lu. Captures : F1, F2 (frise pleine, 4 + 4
 comparer à la maquette `docs/mockups/174-tier-identity/`, à la largeur et à la densité de
 l'émulateur de la CI.
 
+Le voile de phase ennemie (`enemy-phase-veil.yaml`, #188) passe par la même planche : ses entrées
+« Voile · coup imparable · … » reprennent un combat sauvegardé à la préparation d'un coup imparable
+(le Spectre au palier 1, le Veilleur d'airain au palier 3), chacun dans une session en mémoire. Ce
+coup est imposé par l'entrée et sa préparation dure 20 s (`BOARD_WIND_UP_MS`, 1,3 à 2 s en jeu) :
+après « Reprise dans », elle repart du début, sous le voile, et la capture suit le sceau rouge
+(`peril-seal`), visible toute la préparation. Le héros ne se défend pas, le combat continue jusqu'à la phase du
+héros, qui attend son attaque (« Cible : … ») : la capture du retour. Captures : C1, C3 et le retour
+en phase du héros, à comparer à la maquette `docs/mockups/174-tier-identity/`.
+
 Le combat d'essai et son bouton « Combat d'essai », au-dessus de la barre d'onglets du build de
 preview, sont retirés (#121, décision du propriétaire du 28/10/2026) : la barre d'onglets et la liste
 de la Vue Journée ont la même place en preview et en production. `old-trial-battle-link.yaml` vérifie

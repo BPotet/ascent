@@ -141,6 +141,150 @@ describe('ActionTrack', () => {
     expect(screen.queryAllByTestId('track-ghost', hiddenToo)).toHaveLength(0);
   });
 
+  describe('in the enemy phase (#188, mockup v2 of #174, « .frise.dimf »)', () => {
+    /** Le voile d'encre de la case `entry`, s'il y en a un. */
+    function shade(entry: ReturnType<typeof entries>[number]) {
+      return within(entry).queryByTestId('track-shade', hiddenToo);
+    }
+
+    function shadeStyle(entry: ReturnType<typeof entries>[number]) {
+      return StyleSheet.flatten(shade(entry)!.props.style);
+    }
+
+    /** Le voile couvre la case entière, son cadre de 2 dp compris. */
+    const wholeEntry = { top: -2, left: -2, right: -2, bottom: -2 };
+
+    it('keeps the one who acts in full light, with its frames and its golden arrow', async () => {
+      await render(<ActionTrack track={F2} enemyPhase />);
+
+      const [acting] = entries();
+      expect(shade(acting!)).toBeNull();
+      expect(within(acting!).getByTestId('track-portrait', hiddenToo)).not.toHaveProp('saturation');
+      expect(within(acting!).getByTestId('track-current-arrow', hiddenToo)).toBeTruthy();
+    });
+
+    it('dims the other entries of the round, the hero included, to 45 % brightness and 60 % saturation', async () => {
+      await render(<ActionTrack track={F2} enemyPhase />);
+
+      const round = entries().slice(1, 4);
+      expect(
+        round.map((entry) => within(entry).getByTestId('track-portrait', hiddenToo).props.sprite),
+      ).toEqual(['portrait:wanderer', 'portrait:ghoul', 'portrait:ghoul']);
+      round.forEach((entry) => {
+        expect(shadeStyle(entry)).toMatchObject({
+          ...wholeEntry,
+          backgroundColor: artPalette.roles.ink,
+          opacity: 0.55,
+        });
+        expect(shade(entry)).toHaveProp('pointerEvents', 'none');
+        expect(within(entry).getByTestId('track-portrait', hiddenToo)).toHaveProp(
+          'saturation',
+          0.6,
+        );
+      });
+    });
+
+    it('dims the preview of the next round to 32 % brightness and 50 % saturation', async () => {
+      await render(<ActionTrack track={F2} enemyPhase />);
+
+      const preview = entries().slice(4);
+      expect(preview).toHaveLength(4);
+      preview.forEach((entry) => {
+        expect(shadeStyle(entry)).toMatchObject({ ...wholeEntry, opacity: 0.68 });
+        expect(within(entry).getByTestId('track-portrait', hiddenToo)).toHaveProp(
+          'saturation',
+          0.5,
+        );
+      });
+    });
+
+    it('keeps « suiv. » and the sentence of the screen reader as they are', async () => {
+      await render(<ActionTrack track={F2} />);
+      const separator = StyleSheet.flatten(screen.getByText('suiv.').props.style);
+      const label = screen.getByTestId('battle-action-track').props.accessibilityLabel as string;
+
+      await screen.rerender(<ActionTrack track={F2} enemyPhase />);
+
+      expect(StyleSheet.flatten(screen.getByText('suiv.').props.style)).toEqual(separator);
+      expect(screen.getByTestId('battle-action-track')).toHaveProp('accessibilityLabel', label);
+    });
+
+    it('only veils an entry without a portrait, « Toi » and the initials', async () => {
+      await render(<ActionTrack track={F2} portraits={NO_PORTRAITS} enemyPhase />);
+
+      const [acting, hero, , , next] = entries();
+      expect(shade(acting!)).toBeNull();
+      expect(shadeStyle(hero!)).toMatchObject({ opacity: 0.55 });
+      expect(shadeStyle(next!)).toMatchObject({ opacity: 0.68 });
+      expect(within(hero!).getByText('Toi', hiddenToo)).toBeTruthy();
+    });
+
+    it('gives back the look of the hero phase: the preview at 62 % brightness inside its frame and 70 % saturation', async () => {
+      await render(<ActionTrack track={F2} enemyPhase />);
+      await screen.rerender(<ActionTrack track={F2} />);
+
+      const [acting, ...others] = entries();
+      expect(shade(acting!)).toBeNull();
+      others.slice(0, 3).forEach((entry) => expect(shade(entry)).toBeNull());
+      others.slice(3).forEach((entry) => {
+        expect(shadeStyle(entry)).toMatchObject({
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: artPalette.roles.ink,
+          opacity: 0.38,
+        });
+        expect(within(entry).getByTestId('track-portrait', hiddenToo)).toHaveProp(
+          'saturation',
+          0.7,
+        );
+      });
+      [acting, ...others.slice(0, 3)].forEach((entry) =>
+        expect(within(entry!).getByTestId('track-portrait', hiddenToo)).not.toHaveProp(
+          'saturation',
+        ),
+      );
+    });
+
+    describe('when a fighter leaves or enters', () => {
+      beforeEach(() => jest.useFakeTimers());
+      afterEach(() => jest.useRealTimers());
+
+      it('dims the ghost entry of a fallen enemy with its row, and the reinforcement that enters', async () => {
+        const knight: TrackEntry = { actor: 2, fighter: 'fallenKnight', phase2: false };
+        await render(
+          <ActionTrack
+            track={{
+              round: 4,
+              current: [specter, hero, ghoul(2)],
+              next: [specter, hero, ghoul(2)],
+            }}
+            enemyPhase
+          />,
+        );
+        await screen.rerender(
+          <ActionTrack
+            track={{ round: 4, current: [specter, hero, knight], next: [specter, hero, knight] }}
+            enemyPhase
+          />,
+        );
+
+        const [inRound, inPreview] = screen.getAllByTestId('track-ghost', hiddenToo);
+        expect(shadeStyle(inRound!)).toMatchObject({ opacity: 0.55 });
+        expect(shadeStyle(inPreview!)).toMatchObject({ opacity: 0.68 });
+        const knights = entries().filter(
+          (entry) =>
+            within(entry).getByTestId('track-portrait', hiddenToo).props.sprite ===
+            'portrait:fallenKnight',
+        );
+        expect(knights).toHaveLength(2);
+        expect(shadeStyle(knights[0]!)).toMatchObject({ opacity: 0.55 });
+        expect(shadeStyle(knights[1]!)).toMatchObject({ opacity: 0.68 });
+      });
+    });
+  });
+
   describe('when a fighter leaves or enters', () => {
     beforeEach(() => jest.useFakeTimers());
     afterEach(() => {

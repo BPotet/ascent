@@ -171,6 +171,12 @@ export const artPalette = {
      * et la zone du pouce de l'écran de combat, posé sur le fond de palier.
      */
     backdropVeil: 'rgba(14,17,32,0.9)',
+    /**
+     * Le voile de phase ennemie (`enemyPhaseVeil`, #188) : l'encre `#06070C` à 38 % sur tout le cadre
+     * de la scène pendant la phase ennemie, au-dessus du fond de palier, sous les combattants
+     * (maquettes 170 `.pst .veil` et 174 v2, C1 et C3). À ne pas confondre avec `backdropVeil`.
+     */
+    enemyPhaseVeil: 'rgba(6,7,12,0.38)',
   },
 } as const;
 // Stryker restore all

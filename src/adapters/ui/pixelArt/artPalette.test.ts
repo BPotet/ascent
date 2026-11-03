@@ -73,6 +73,10 @@ describe('artPalette', () => {
     expect(roles.backdropVeil).toBe('rgba(14,17,32,0.9)');
   });
 
+  it('gives the veil of the enemy phase: the ink #06070C at 38 % (#188)', () => {
+    expect(roles.enemyPhaseVeil).toBe('rgba(6,7,12,0.38)');
+  });
+
   it('keeps the code of every tint, the tints of the Sentinel 2.5D (#140) added at the end', () => {
     expect(tints.slice(1, 32)).toEqual([
       '#06070C',
