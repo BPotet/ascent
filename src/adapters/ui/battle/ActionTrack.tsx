@@ -176,6 +176,9 @@ function TrackCase({
         saturation={shade.saturation}
         portraits={portraits}
       />
+      {pending ? (
+        <View pointerEvents="none" testID="track-pending-ring" style={styles.pendingRing} />
+      ) : null}
       {shade.veil > 0 ? (
         <View
           pointerEvents="none"
@@ -363,6 +366,16 @@ const styles = StyleSheet.create({
   ghost: { overflow: 'hidden' },
   // Un invoqué annoncé, pas encore entré (#172, maquette `.fp.summ`) : cerclé de pointillé gris.
   pending: { borderStyle: 'dashed', borderColor: battleColors.summonDust },
+  // Son anneau intérieur de 2 dp, de fumée claire (`.fp.summ`, `inset 0 0 0 2px --smoke-l`).
+  pendingRing: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderWidth: 2,
+    borderColor: battleColors.summonTag,
+  },
   // Le double cadre de celui qui agit (maquette `.fp.cur`) : encre, puis or, autour du trait d'or.
   innerRing: {
     position: 'absolute',

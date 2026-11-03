@@ -171,4 +171,26 @@ describe('the pending Mothkin in the preview of the action track (#172, I2)', ()
       }
     },
   );
+
+  it('rings each announced Mothkin inside with 2 dp of light smoke, under the shade (`.fp.summ`)', async () => {
+    await render(<ActionTrack track={track} />);
+
+    for (const entry of screen.getAllByTestId('track-entry-pending', hiddenToo)) {
+      const ring = within(entry).getByTestId('track-pending-ring', hiddenToo);
+      expect(ring.props.pointerEvents).toBe('none');
+      expect(StyleSheet.flatten(ring.props.style)).toMatchObject({
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        borderWidth: 2,
+        borderColor: battleColors.summonTag,
+      });
+      const children = entry.children as unknown as { props: { testID?: string } }[];
+      const order = children.map((child) => child.props.testID);
+      expect(order.indexOf('track-pending-ring')).toBeLessThan(order.indexOf('track-shade'));
+    }
+    expect(screen.getAllByTestId('track-pending-ring', hiddenToo)).toHaveLength(2);
+  });
 });
