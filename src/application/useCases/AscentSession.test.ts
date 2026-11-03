@@ -1,10 +1,16 @@
 import { startAscent, type Ascent } from '../../domain/ascent/Ascent';
+import { TIERS } from '../../domain/ascent/tiers';
 import { startBattle, type Battle } from '../../domain/battle/Battle';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
 import { FixedSeedSource } from '../testing/FixedSeedSource';
 import { ManualBattleClock } from '../testing/ManualBattleClock';
 import { silentBattleHaptics, silentBattleSound } from '../testing/recordingBattleFeedback';
-import { ASCENT_KEY, AscentSession, BURN_SMOKE_HOLD_MS } from './AscentSession';
+import {
+  ASCENT_KEY,
+  AscentSession,
+  BURN_SMOKE_HOLD_MS,
+  SUMMON_FALL_HOLD_MS,
+} from './AscentSession';
 import { BATTLE_HINT_SEEN_KEYS } from './battleHints';
 import type { BattleSession } from './BattleSession';
 
@@ -813,5 +819,127 @@ describe('AscentSession: hero and boons (prototype #92)', () => {
         initiative: -1,
       });
     });
+  });
+});
+
+describe('AscentSession: the Summon of the Moth queen (#172)', () => {
+  const bossOfTier2: Ascent = {
+    ...startAscent(5),
+    tier: 2,
+    floor: 6,
+    encounter: { kind: 'boss', enemies: ['mothQueen'], battleSeed: 3 },
+  };
+
+  /** Le combat contre la Reine, son Invocation annoncée : deux Phalénides aux places 1 et 2. */
+  function announced(): Battle {
+    const { battle } = startBattle({
+      seed: 3,
+      defenseHint: false,
+      at: 0,
+      heroHp: 60,
+      initiative: true,
+      enemies: ['mothQueen'],
+      summonMultiplier: TIERS[2].multiplier,
+    });
+    return {
+      ...battle,
+      enemies: [{ ...battle.enemies[0]!, hp: 190, phase2: true }],
+      summon: { summoner: 0, kind: 'mothkin', slots: [1, 2] },
+    };
+  }
+
+  it('gives every floor battle the multiplier of the tier for its summoned enemies, never to the boss', async () => {
+    const { session, store } = setUp();
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: bossOfTier2, battle: null }));
+    await session.load();
+
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    const { battle } = battleSession.current()!;
+    expect(battle.summonMultiplier).toEqual(TIERS[2].multiplier);
+    expect(battle.tierMultiplier).toBeUndefined();
+    expect(battle.enemies[0]).toMatchObject({ kind: 'mothQueen', maxHp: 400 });
+  });
+
+  it('resumes an announced summon, and saves the battle when the Mothkin enter', async () => {
+    const { session, store, clock } = setUp();
+    store.values.set(
+      ASCENT_KEY,
+      JSON.stringify({ version: 1, ascent: bossOfTier2, battle: announced() }),
+    );
+    await session.load();
+    const battleSession = session.battleSession();
+    await battleSession.start();
+    expect(battleSession.current()!.battle.summon).toEqual({
+      summoner: 0,
+      kind: 'mothkin',
+      slots: [1, 2],
+    });
+
+    for (let guard = 0; guard < 100 && battleSession.current()!.battle.enemies.length < 3;) {
+      guard += 1;
+      const { battle } = battleSession.current()!;
+      if (battle.phase.kind === 'hero') {
+        const at = clock.now() + 50;
+        clock.advanceTo(at);
+        battleSession.heroAction({ kind: 'attack' }, at - 20, at);
+      } else {
+        clock.advanceTo(clock.pending()[0]!);
+      }
+      await flush();
+    }
+
+    const { battle } = battleSession.current()!;
+    expect(battle.enemies.slice(1).map((enemy) => [enemy.kind, enemy.hp])).toEqual([
+      ['mothkin', 33],
+      ['mothkin', 33],
+    ]);
+    expect(saved(store)?.battle?.enemies).toHaveLength(3);
+    expect(saved(store)?.battle?.summon).toBeUndefined();
+  });
+
+  it('leaves a battle won over the Moth queen once her Mothkin have fallen, 780 ms later', async () => {
+    const { session, store, clock } = setUp();
+    const { battle } = startBattle({
+      seed: 3,
+      defenseHint: false,
+      at: 0,
+      heroHp: 50,
+      enemies: ['mothQueen', 'mothkin'],
+    });
+    const nearlyWon: Battle = {
+      ...battle,
+      enemies: [
+        { ...battle.enemies[0]!, hp: 1, phase2: true },
+        { ...battle.enemies[1]!, summoned: true, stun: { actionLost: false, heroAction: 999 } },
+      ],
+    };
+    store.values.set(
+      ASCENT_KEY,
+      JSON.stringify({ version: 1, ascent: startAscent(5), battle: nearlyWon }),
+    );
+    await session.load();
+    const published: (Ascent | null)[] = [];
+    session.subscribe((current) => published.push(current));
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    const events: BattleEvent[] = [];
+    battleSession.subscribe((snapshot) => events.push(...snapshot.events));
+    const won = playUntilOver(battleSession, clock);
+    await flush();
+    const fellAt = events.find((event) => event.type === 'summonedFell')!.at;
+
+    expect(won.phase).toMatchObject({ kind: 'over', outcome: 'victory' });
+    expect(won.enemies[1]!.hp).toBe(0);
+    expect(SUMMON_FALL_HOLD_MS).toBe(780);
+    expect(clock.now()).toBeLessThan(fellAt + 779);
+    clock.advanceTo(fellAt + 779);
+    await flush();
+    expect(published).toEqual([]);
+    clock.advanceTo(fellAt + SUMMON_FALL_HOLD_MS);
+    await flush();
+    expect(published).toHaveLength(1);
   });
 });

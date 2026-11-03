@@ -18,6 +18,11 @@ export const BURN_OUT_AFTER_BLOW_MS = 80;
 export const BURN_OUT_AFTER_CRACKLE_MS = 800;
 /** Au début d'une manche, la Brûlure (crépitement, chiffre) suit le Saignement (maquette B5). */
 export const BURN_AFTER_BLEED_MS = 700;
+/**
+ * Au début d'une manche, l'entrée des invoqués suit la Brûlure (#172) : son bruissement vient après
+ * le crépitement et l'extinction d'une flamme (800 ms plus tard).
+ */
+export const SUMMON_AFTER_BURN_MS = 1_000;
 
 /** Le son de chaque reflet (C2.10), joué par la session de combat en avance de sa latence. */
 export const GLINT_CUES: Readonly<Record<GlintKind, BattleSoundCue>> = {
@@ -101,6 +106,12 @@ export function feedbackFor(event: BattleEvent): BattleFeedback {
         haptic: null,
         delayMs: event.cause === 'blow' ? BURN_OUT_AFTER_BLOW_MS : BURN_OUT_AFTER_CRACKLE_MS,
       };
+    // L'Invocation (#172), sans vibration : un bruissement d'ailes à l'annonce, un second, plus
+    // fort, à l'entrée ; rien quand les invoqués tombent avec le boss.
+    case 'summonCalled':
+      return { sound: 'wingRustle', haptic: null };
+    case 'summonEntered':
+      return { sound: 'wingRustleLoud', haptic: null };
     default:
       return NONE;
   }
@@ -114,12 +125,20 @@ export function bledIn(events: readonly BattleEvent[]): boolean {
 /**
  * Les sons et les vibrations d'une mise à jour, dans l'ordre de ses événements. Au début d'une
  * manche où le héros saigne, la Brûlure attend 700 ms après le Saignement : le crépitement, puis
- * l'extinction 800 ms plus tard (#171, maquette B5).
+ * l'extinction 800 ms plus tard (#171, maquette B5). L'entrée des invoqués vient ensuite (#172) :
+ * un seul bruissement pour toute l'Invocation, 1 000 ms après la Brûlure de la manche.
  */
 export function feedbacksFor(events: readonly BattleEvent[]): BattleFeedback[] {
   const afterBleed = bledIn(events) ? BURN_AFTER_BLEED_MS : 0;
-  return events.map((event) => {
+  const burnt = events.some((event) => event.type === 'burnTicked');
+  const afterBurn = afterBleed + (burnt ? SUMMON_AFTER_BURN_MS : 0);
+  const firstEntry = events.findIndex((event) => event.type === 'summonEntered');
+  return events.map((event, index) => {
     const feedback = feedbackFor(event);
+    if (event.type === 'summonEntered') {
+      if (index !== firstEntry) return NONE;
+      return afterBurn === 0 ? feedback : { ...feedback, delayMs: afterBurn };
+    }
     if (afterBleed === 0) return feedback;
     if (event.type === 'burnTicked') return { ...feedback, delayMs: afterBleed };
     if (event.type === 'burnExtinguished' && event.cause === 'round') {
