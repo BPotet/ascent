@@ -4,6 +4,7 @@
 - **Date** : 14 octobre 2026
 - **Décideur** : Architect
 - **Contexte produit** : préalable à l'épique #2 (stories #3, #4, #7, #9, #5, #6, #10)
+- **Avenant** : 3 novembre 2026, plus de mutation ni de mode prototype, end-to-end réduit au test de fumée (voir en fin de document)
 
 ## Contexte
 
@@ -145,3 +146,39 @@ Seuils, tels que `docs/workflow.md` les fixe :
 | Le job `e2e-android` est **non bloquant** (`continue-on-error`) | Émulateur en CI pas encore éprouvé (temps, stabilité) | Le rendre bloquant après une série de passages verts |
 | Pas d'end-to-end ni de build **iOS** | Demande un runner macOS et un compte Apple | À décider à la première release iOS |
 | Gitleaks est **facultatif en local** (le hook prévient s'il manque, la CI bloque toujours) | Binaire hors npm, non installable dans l'environnement des agents | Installer Gitleaks sur les postes et dans l'environnement des agents |
+
+## Avenant du 3 novembre 2026 — barrières simplifiées
+
+- **Décideur** : le propriétaire, sur proposition de l'Architect
+- **Contexte produit** : décision du propriétaire du 3 novembre 2026, après explication : « on
+  devrait arrêter de faire la différence entre prototype, mettre des tests de mutation ou e2e pour
+  tout et rien dans l'app c'est giga overkill surtout pour un jeu », puis « oui supprime la
+  mutation ».
+
+### Décision
+
+1. **Plus de mode prototype.** Tout ce qui est mergé compte comme définitif et passe par les mêmes
+   barrières. Le label `prototype`, les barrières allégées et la règle qui bloquait les releases
+   tant qu'un prototype n'était pas repris disparaissent ; les prototypes déjà dans `develop` n'ont
+   plus à être repris.
+2. **Plus de tests de mutation** (barrière 9) : voir l'avenant du même jour à
+   l'[ADR 0004](0004-mutation-en-ci.md). La ligne 9 du tableau des barrières et les seuils de
+   mutation ci-dessus sont caducs, comme `npm run verify:full` et les jobs `mutation-plan`,
+   `mutation-shard` et `mutation`.
+3. **End-to-end réduit à un test de fumée** (barrière 8) : le job `e2e-android` (check
+   `End-to-end smoke test (Maestro, Android)`) installe l'APK et lance seulement
+   `e2e/flows/launch.yaml` (l'app démarre, la Vue Journée s'affiche, relance à froid). Les parcours
+   par story, leurs captures et leur publication sur la branche `e2e-screenshots` sont retirés.
+   L'écart temporaire « job non bloquant » reste, jusqu'à une série de passages verts.
+4. **Conformité aux maquettes** (barrière 10 bis) : le propriétaire juge les écrans sur l'APK de
+   preview ; des captures jointes à la PR sont facultatives.
+5. **On garde** : secrets, commits, style, types, architecture, tests unitaires, d'intégration et
+   BDD, seuils de couverture, SonarQube Cloud, glossaire, revue et QA.
+
+### Conséquences
+
+- Jobs de la CI : `changes`, `commits`, `secrets`, `static`, `tests`, `sonar`, `android-apk`,
+  `cleanup-artifacts`, `e2e-android`.
+- La CI d'une PR est plus courte : plus de parts de mutation, un seul parcours Maestro.
+- Une régression d'écran que les tests d'intégration et BDD ne voient pas n'est plus attrapée par
+  un parcours end-to-end : le propriétaire la voit sur l'APK de preview et la signale comme un bug.

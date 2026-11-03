@@ -6,8 +6,8 @@ Fonctionnalité: Les icônes des bénédictions de départ
   `docs/mockups/153-boon-blessing-icons/`, écrans 3A à 3D).
 
   # Les écrans sont rendus par `AscentScreen`, sur une ascension sauvegardée, avec la simulation de
-  # `SpriteCanvas`, qui donne le nom, l'échelle et la taille en pixels d'art de chaque icône. Les
-  # captures end-to-end passent par la planche des icônes (`e2e/flows/blessing-icons.yaml`).
+  # `SpriteCanvas`, qui donne le nom, l'échelle et la taille en pixels d'art de chaque icône. Le
+  # rendu se juge sur l'APK, par la planche des icônes (plus de captures end-to-end).
 
   Scénario: Chaque bouton de bénédiction porte l'icône de sa famille
     Étant donné le joueur a fait hier 3 habitudes et vient de choisir son héros

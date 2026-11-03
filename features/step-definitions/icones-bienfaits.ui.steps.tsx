@@ -341,7 +341,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and('la porte du boss reste visible sans défilement', () => {
-    // Vérifié sur la capture end-to-end 2D (barrière 10 bis) ; ici, la porte suit les pastilles.
+    // Jugé sur l'APK (barrière 10 bis) ; ici, la porte suit les pastilles.
     expect(screen.getByRole('button', { name: 'Affronter le boss' })).toBeOnTheScreen();
   });
 

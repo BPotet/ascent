@@ -7,7 +7,7 @@ Fonctionnalité: L'Équipement, rappel de ce que le joueur possède pendant l'as
 
   # Les écrans sont rendus par `TowerFootScreen` et `AscentScreen`, sur une ascension sauvegardée,
   # avec la simulation du canevas du combat et de `SpriteCanvas`. La reprise du combat est lue dans
-  # la sauvegarde de la session. Les captures end-to-end : `e2e/flows/loadout.yaml`.
+  # la sauvegarde de la session. Le rendu se juge sur l'APK (plus de captures end-to-end).
 
   Scénario: L'Équipement au pied de la tour pendant une ascension en cours
     Étant donné une ascension est en cours avec la bénédiction de départ Hâte (Rare)

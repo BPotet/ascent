@@ -6,7 +6,7 @@
  *
  * « À la même place que dans le build de production » : la barre d'onglets est rendue seule, avec
  * à côté d'elle, dans son parent, autant d'éléments qu'en production ; rien ne s'intercale entre
- * la liste de la Vue Journée et la barre. La place au pixel se compare sur la capture e2e.
+ * la liste de la Vue Journée et la barre. La place au pixel se juge sur l'APK.
  */
 import { fireEvent, renderRouter, screen, waitFor, within } from 'expo-router/testing-library';
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';

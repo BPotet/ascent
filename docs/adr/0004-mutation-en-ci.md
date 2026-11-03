@@ -1,6 +1,6 @@
 # ADR 0004 — Mutation en CI : lignes nouvelles, jobs parallèles
 
-- **Statut** : accepté
+- **Statut** : abandonné le 3 novembre 2026 — les tests de mutation sont retirés (voir l'avenant en fin de document)
 - **Date** : 22 octobre 2026
 - **Décideur** : Architect
 - **Contexte produit** : PR #29 (story #23)
@@ -11,6 +11,7 @@
 - **Avenant** : 29 octobre 2026, délai du « dry run » fixé, écrans pesés en mutants et répartis plage par plage (issue #145, voir en fin de document)
 - **Avenant** : 29 octobre 2026, délai par mutant propre aux écrans (issue #147, voir en fin de document)
 - **Avenant** : 1er novembre 2026, en PR, un fichier `core` est réparti plage par plage, pesé en mutants (PR #180, voir en fin de document)
+- **Avenant** : 3 novembre 2026, retrait des tests de mutation (décision du propriétaire, voir en fin de document)
 
 ## Contexte
 
@@ -684,3 +685,42 @@ mutation chacun au rythme mesuré, plus le « dry run ».
 - **Relever `timeout-minutes`** : rejeté par la décision initiale.
 - **Retirer des tests de la config `core`** : moins de tests, donc un score qui peut changer.
 
+## Avenant du 3 novembre 2026 — retrait des tests de mutation
+
+- **Décideur** : le propriétaire, sur proposition de l'Architect
+- **Contexte produit** : décision du propriétaire du 3 novembre 2026, après explication : « on
+  devrait arrêter de faire la différence entre prototype, mettre des tests de mutation ou e2e pour
+  tout et rien dans l'app c'est giga overkill surtout pour un jeu », puis « oui supprime la
+  mutation ».
+
+### Contexte
+
+Les avenants successifs de cet ADR (#54, #131, #134, #145, #147, #180) montrent le coût de la
+barrière : plan, parts parallèles, découpage en plages, délais propres, mutation des écrans à la
+demande. Chaque PR attend ses parts de mutation, souvent plus longues que tout le reste de la CI, et
+chaque nouveau type de fichier ou de test demande un réglage. Pour un jeu mobile sans serveur ni
+données sensibles, le propriétaire juge ce coût disproportionné.
+
+### Décision
+
+1. **Plus de tests de mutation**, nulle part : ni barrière, ni job CI (`mutation-plan`,
+   `mutation-shard`, `mutation`), ni workflow `Screen mutation` (`mutation-ui.yml`), ni seuils
+   (70 % et 85 %), ni label `mutation:ui`, ni scripts (`scripts/mutation/`, `stryker*.config.mjs`,
+   `npm run mutation*`, `verify:full`), ni dépendances (`@stryker-mutator/*`,
+   `mutation-testing-metrics`, `minimatch`).
+2. **On garde** : style, types, architecture, tests unitaires, d'intégration et BDD, seuils de
+   couverture (Jest et SonarQube Cloud), commits, secrets, revue et QA. Le QA vérifie que les tests
+   ont des assertions utiles, à la lecture, au lieu de lire un rapport de mutation.
+3. Cet ADR est **abandonné**. Il reste comme trace des mesures et des choix passés.
+
+### Conséquences
+
+- La CI d'une PR ne tourne plus que les barrières listées dans `docs/workflow.md` : nettement plus
+  courte, sans parts de mutation.
+- Le signal « les tests détectent vraiment les bugs » repose sur la couverture, la revue des
+  assertions par le QA et le TDD. Un test sans assertion utile reste un défaut.
+- Les commentaires `// Stryker disable …` du code (`src/`) n'ont plus d'effet. Ils sont laissés en
+  place pour ne pas créer de conflits avec les branches en cours ; ils seront retirés par une tâche
+  à part. Les passages des ADR 0001, 0006 (§ 9), 0008 et 0010 (§ 8) sur la mutation sont caducs.
+- L'environnement Jest des tests de fumée de Skia (`test/setup/skiaEnvironment.js`) n'a plus besoin
+  du mixin de `@stryker-mutator/jest-runner` : c'est celui de Skia, tel quel.

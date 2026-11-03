@@ -8,7 +8,6 @@ tags:
 ---
 - runFlow: ../subflows/launch-fresh.yaml
 - assertVisible: 'Ajouter une habitude'
-- takeScreenshot: launch-day-view-empty
 # Relance à froid : la base locale déjà migrée est rouverte.
 - stopApp
 - launchApp

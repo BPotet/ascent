@@ -225,8 +225,6 @@ Le travail dans l'Atelier (fiches, images, animations) ne porte pas de label : i
 
 Labels de type : `type:epic`, `type:story`, `type:bug`, `type:chore`.
 
-Labels de mode, sur une story ou une PR : `prototype` (voir « Mode prototype ») et `mutation:ui` (voir « Mutation des écrans à la demande »).
-
 ## Les étapes en détail
 
 ### Orienter une idée
@@ -270,7 +268,7 @@ Toute épique du chemin A avec une partie visible par le joueur a des maquettes,
 - **Contenu** : chaque écran de chaque story, avec **tous ses états** (vide, chargement, erreur, succès, première utilisation) et le **feedback de jeu** (gain d'expérience, montée de niveau, déblocage). Les vrais libellés, tirés du glossaire, pas de faux texte. Chaque écran est annoté avec le numéro de la story qu'il illustre.
 - **Consultation** : l'orchestrateur publie la page en lien privé, consultable sur téléphone, et met ce lien dans l'issue épique et dans le résumé de validation.
 - **Itérations** : les retours du propriétaire produisent une nouvelle version de la maquette, jusqu'à validation.
-- **Après validation** : la maquette est committée sur une branche `docs/<n°-épique>-mockups`, mergée dans `develop`. Elle **fait foi** pour l'interface : le dev la reproduit, et le Reviewer compare les captures d'écran de la PR avec elle.
+- **Après validation** : la maquette est committée sur une branche `docs/<n°-épique>-mockups`, mergée dans `develop`. Elle **fait foi** pour l'interface : le dev la reproduit, et le propriétaire juge l'écran livré sur l'APK de preview. Des captures jointes à la PR sont facultatives.
 - Une maquette ne fixe pas de choix technique. Les premières maquettes posent l'identité visuelle (couleurs, typographie, composants) que les suivantes réutilisent.
 
 ### Atelier de l'ascension (chemin B)
@@ -290,12 +288,12 @@ Décisions du propriétaire du 28/10/2026. L'**Atelier de l'ascension** (page pu
 - **Le Codex ne se branche pas au jeu.** Le jeu n'en lit aucun export : chaque contenu validé y entre par une story, codée par le dev à partir des valeurs du Codex.
 - **Statuts** : seule une entrée **Active** est attendue dans le jeu. Un **Brouillon** est une idée en cours ; une entrée **Retirée** sort du jeu.
 - **Du Codex à une story.** Quand le propriétaire valide un contenu (entrée passée en Active, entrée Active changée, image ou animation validée), l'orchestrateur relit la base de l'Atelier et compare le Codex au jeu. Chaque écart devient une story, rattachée à une épique de contenu en cours, ou à une nouvelle, créée par l'orchestrateur sans maquette ni `/split-stories`. La story cite le **nom de code** de chaque entrée et ses valeurs du Codex, recopiées au moment de la validation : ce sont elles que le dev code et que les tests vérifient.
-- **Tests** : une story du chemin B n'a pas de test end-to-end propre. Ses règles se vérifient en tests unitaires du domaine, et l'Équilibrage de l'Atelier sert de contrôle (voir « Barrières de qualité »).
+- **Tests** : les règles d'une story du chemin B se vérifient en tests unitaires du domaine, et l'Équilibrage de l'Atelier sert de contrôle (voir « Barrières de qualité »).
 - **Le Game Designer** part du Codex. L'orchestrateur lui donne un instantané JSON de la base de l'Atelier. Il ne change jamais une entrée du propriétaire sans son accord : il propose ses changements en Brouillon, ou en commentaire sur l'épique.
 - **L'orchestrateur** est le seul à écrire dans la base de l'Atelier, et seulement à la demande du propriétaire ou pour une proposition en Brouillon (règles du Game Designer, image ou animation de l'UX). Il ne modifie jamais une entrée Active sans son accord.
 
 ### 3. Ready
-Les deux chemins se rejoignent ici. L'**Architect** ajoute les notes techniques à chaque story : couches hexagonales touchées, ports et adaptateurs, données, plan de test, risques. Le plan de test ne prévoit un end-to-end propre que pour une story du chemin A (voir la barrière 8).
+Les deux chemins se rejoignent ici. L'**Architect** ajoute les notes techniques à chaque story : couches hexagonales touchées, ports et adaptateurs, données, plan de test, risques. Le plan de test ne prévoit pas d'end-to-end propre à la story : le test de fumée de la CI suffit (voir la barrière 8).
 
 ### 4. Impact — analyse GitNexus
 Avant toute ligne de code, l'**Impact Analyst** indexe le dépôt avec GitNexus et mesure ce que la story va toucher.
@@ -312,16 +310,16 @@ Si l'impact est fort, la story revient au **PM** et à l'**Architect**, qui la r
 ### 5. Implement — `/dev-story`
 Un seul agent, le **Dev** (full stack), implémente toute la story sur la branche `feature/<n°>-<slug>` et une PR vers `develop`. Il travaille en TDD et respecte l'architecture hexagonale.
 
-Il possède toutes les couches : `domain`, `application`, `adapters/persistence` (règles de jeu, cas d'usage, ports, base locale, migrations ; plus tard API et serveur), `adapters/ui` (composants, design system, écrans, états, feedback de jeu, accessibilité), `adapters/device` (biométrie, stockage sécurisé, notifications…), `app` (navigation, assemblage), configuration, builds et tests end-to-end.
+Il possède toutes les couches : `domain`, `application`, `adapters/persistence` (règles de jeu, cas d'usage, ports, base locale, migrations ; plus tard API et serveur), `adapters/ui` (composants, design system, écrans, états, feedback de jeu, accessibilité), `adapters/device` (biométrie, stockage sécurisé, notifications…), `app` (navigation, assemblage), configuration, builds et test de fumée end-to-end.
 
 - **Consigne ciblée** : l'orchestrateur lui donne les écrans de la maquette annotés pour la story (et non toute la maquette), les décisions utiles et les fichiers concernés. Le dev lit ce qui est indiqué, et ne lit le reste que si c'est nécessaire.
-- Il avance de l'intérieur vers l'extérieur, **couche par couche** : domaine, cas d'usage et ports, persistance, interface, puis assemblage et end-to-end.
+- Il avance de l'intérieur vers l'extérieur, **couche par couche** : domaine, cas d'usage et ports, persistance, interface, puis assemblage.
 - Il ouvre la PR en **brouillon** après son premier commit. Quand les barrières sont vertes en local et le code poussé, il la sort du brouillon et rend son rapport **sans attendre la CI GitHub**. L'orchestrateur surveille la CI et lui renvoie la PR en cas d'échec. Si la CI échoue alors que le QA et le Reviewer tournent déjà, il attend leurs verdicts et renvoie tous les retours ensemble : ce renvoi compte comme un tour.
 - Un besoin hors du périmètre de la story se signale à l'orchestrateur.
 
 #### TDD par couche
 
-Le dev ne fait pas de micro-cycles test par test. Pour chaque couche, dans l'ordre domaine → cas d'usage et ports → persistance → interface → assemblage et end-to-end :
+Le dev ne fait pas de micro-cycles test par test. Pour chaque couche, dans l'ordre domaine → cas d'usage et ports → persistance → interface → assemblage :
 
 1. il écrit d'abord **tous** les tests de la couche ;
 2. il les lance une fois et vérifie qu'ils échouent (**rouge**) ;
@@ -331,19 +329,15 @@ Le dev ne fait pas de micro-cycles test par test. Pour chaque couche, dans l'ord
 
 Le test reste écrit avant le code. Si beaucoup de tests échouent sans qu'on comprenne pourquoi, il redescend à un cycle plus fin pour cette partie. On vise environ **4 à 6 commits par story**.
 
-Le hook pre-commit (dont le typecheck) tourne à chaque commit. Hors mode prototype, les barrières et leurs seuils sont inchangés.
-
-En **mode prototype** (label `prototype`), le TDD ne porte que sur les règles du domaine. Les autres couches n'ont pas de test exigé, en dehors du test de fumée end-to-end. Les seuils de couverture restent (voir « Mode prototype »).
+Le hook pre-commit (dont le typecheck) tourne à chaque commit.
 
 ### 6 et 7. Test et Review, en parallèle
 Quand le dev sort la PR du brouillon (barrières vertes en local), l'orchestrateur passe la story en `status:review` et lance **en même temps** le **QA** (étape 6) et le **Reviewer** (étape 7, `/review-story`). Aucun des deux n'attend l'autre.
 
 Tous deux sont en **lecture seule** : ils ne modifient ni le code, ni les tests, ni la doc, et ne poussent aucun commit. Chacun publie son verdict en commentaire (ou en review) sur la PR, avec le commit relu (SHA de la tête de la PR).
 
-- **QA** : fait tourner toutes les barrières de qualité ci-dessous, en local puis en CI, lit les rapports de couverture et de mutation, et liste les tests manquants (mutants survivants, cas limites). Verdict : **vert** ou **changements demandés**.
-- **Reviewer** : vérifie la PR par rapport aux critères d'acceptation, à l'architecture, au glossaire, aux maquettes et aux rapports de la CI (coverage, mutation, Sonar). Verdict : **approuvé** ou **changements demandés**, avec des commentaires précis.
-
-En **mode prototype** (label `prototype`), l'orchestrateur vérifie d'abord que le label est sur la PR. Les deux rôles sont allégés : le QA vérifie seulement que les barrières gardées sont vertes ; le Reviewer ne compare pas les captures pixel à pixel à la maquette, et il vérifie que le code définitif n'est modifié que pour brancher le prototype (voir « Mode prototype »).
+- **QA** : fait tourner toutes les barrières de qualité ci-dessous, en local puis en CI, lit le rapport de couverture, et liste les tests manquants (règles non couvertes, cas limites). Verdict : **vert** ou **changements demandés**.
+- **Reviewer** : vérifie la PR par rapport aux critères d'acceptation, à l'architecture, au glossaire, aux maquettes et aux rapports de la CI (coverage, Sonar). Verdict : **approuvé** ou **changements demandés**, avec des commentaires précis.
 
 #### Corrections
 
@@ -382,7 +376,9 @@ La CI fabrique l'APK de preview de `develop` et l'orchestrateur en envoie le lie
 
 ## Barrières de qualité
 
-Toutes sont **bloquantes**. Les outils sont confirmés par l'Architect dans l'[ADR 0001](adr/0001-socle-technique.md), qui liste aussi les écarts temporaires. En local, `npm run verify` exécute toutes les barrières sauf la mutation et l'end-to-end ; `npm run verify:full` y ajoute la mutation, sans les écrans (voir la barrière 9).
+Toutes sont **bloquantes**. Les outils sont confirmés par l'Architect dans l'[ADR 0001](adr/0001-socle-technique.md), qui liste aussi les écarts temporaires. En local, `npm run verify` exécute toutes les barrières sauf le test de fumée end-to-end.
+
+Décision du propriétaire du 3 novembre 2026 (avenants aux [ADR 0001](adr/0001-socle-technique.md) et [ADR 0004](adr/0004-mutation-en-ci.md)) : plus de tests de mutation, plus de mode prototype, et l'end-to-end se réduit à un test de fumée. Tout ce qui est mergé compte comme définitif.
 
 | # | Barrière | Ce qu'elle garantit | Outil | Quand |
 |---|---|---|---|---|
@@ -394,27 +390,11 @@ Toutes sont **bloquantes**. Les outils sont confirmés par l'Architect dans l'[A
 | 5 | **Tests unitaires** | Domaine et cas d'usage | Jest | CI |
 | 6 | **Tests d'intégration** | Adaptateurs + base locale + écrans | Jest + React Native Testing Library | CI |
 | 7 | **Tests BDD** | Les critères d'acceptation Gherkin passent | Cucumber (`jest-cucumber`) | CI |
-| 8 | **Tests end-to-end** | Parcours réels sur l'app, pour les stories du **chemin A** (fonctionnalité). Une story du **chemin B** (game design) n'a pas de test end-to-end propre : ses règles se vérifient en tests unitaires du domaine (barrière 5), et l'Équilibrage de l'Atelier sert de contrôle. Le **test de fumée** (l'app s'ouvre) reste toujours dans la CI | Maestro (mobile) ; Playwright si une version web apparaît | CI |
-| 9 | **Tests de mutation** | Les tests détectent vraiment les bugs. Les **écrans** (`src/adapters/ui/`, `src/app/`) ne sont mutés qu'à la demande du propriétaire (voir « Mutation des écrans à la demande ») | StrykerJS | CI |
+| 8 | **Test de fumée end-to-end** | L'APK s'installe et l'app démarre (Vue Journée affichée, relance à froid). Aucune story n'a de parcours ni de captures end-to-end propres : ses règles se vérifient en tests unitaires, d'intégration et BDD (barrières 5 à 7) et, sur le chemin B, l'Équilibrage de l'Atelier sert de contrôle | Maestro (`e2e/flows/launch.yaml`) | CI |
+| 9 | ~~Tests de mutation~~ | Retirée le 3 novembre 2026, sur décision du propriétaire ([ADR 0004](adr/0004-mutation-en-ci.md)) | — | — |
 | 10 | **Coverage et qualité** | Seuils de couverture, code smells, duplication, sécurité | SonarQube Cloud | CI |
-| 10 bis | **Conformité aux maquettes** | Chemin A : les écrans livrés correspondent aux maquettes validées (captures d'écran des tests end-to-end jointes à la PR). Chemin B : pas de captures end-to-end ; le contenu livré est fidèle à l'Atelier (valeurs du Codex recopiées dans la story, image et animation complète validées) | Revue (Reviewer) | Review |
+| 10 bis | **Conformité aux maquettes** | Chemin A : les écrans livrés correspondent aux maquettes validées ; le propriétaire juge sur l'APK de preview, des captures jointes à la PR sont facultatives. Chemin B : le contenu livré est fidèle à l'Atelier (valeurs du Codex recopiées dans la story, image et animation complète validées) | Revue (Reviewer) ; le propriétaire sur l'APK | Review |
 | 11 | **Glossaire** | Les termes nouveaux ou modifiés figurent dans `docs/glossary.md` | Revue (Reviewer) | Review |
-
-En **mode prototype** (label `prototype`), sur la PR seulement, quelques barrières sont levées. `develop` et les releases gardent toutes les barrières.
-
-| # | Barrière | Sur une PR en mode prototype |
-|---|---|---|
-| 1 | Secrets | Gardée |
-| 1 bis | Commits | Gardée |
-| 2, 3, 4 | Style, types, architecture | Gardées |
-| 5 | Tests unitaires | Gardée pour les règles du domaine |
-| 6 | Tests d'intégration | Pas exigés pour le code du prototype ; les tests existants restent verts |
-| 7 | Tests BDD | Levée : les scénarios Gherkin restent dans la story comme spécification ; les tests existants restent verts |
-| 8 | Tests end-to-end | Test de fumée : l'app s'ouvre, l'écran s'affiche |
-| 9 | Tests de mutation | Levée pour les lignes changées : la CI saute les jobs de mutation |
-| 10 | Coverage et qualité | Gardée : seuils de couverture et quality gate inchangés |
-| 10 bis | Conformité aux maquettes | Levée : pas de comparaison stricte des captures |
-| 11 | Glossaire | Gardée, avec la documentation |
 
 ### Seuils (ajustables)
 
@@ -422,84 +402,16 @@ En **mode prototype** (label `prototype`), sur la PR seulement, quelques barriè
 |---|---|
 | Coverage du code nouveau | ≥ 80 % |
 | Coverage du domaine | ≥ 95 % |
-| Score de mutation du code nouveau | ≥ 70 % |
-| Score de mutation du domaine | ≥ 85 % |
 | Quality gate SonarQube Cloud | Passed |
 | Duplication du code nouveau | ≤ 3 % |
 
-> Le score du code nouveau est calculé sur l'ensemble des mutants des lignes ajoutées ou modifiées hors domaine, tous jobs confondus. Le score du domaine porte sur les fichiers du domaine modifiés (PR) ou sur tout le domaine (release). Voir l'[ADR 0004](adr/0004-mutation-en-ci.md).
->
-> Par défaut, la mutation porte sur `src/domain/`, `src/application/`, `src/adapters/persistence/` et `src/adapters/device/`. Les écrans n'entrent dans le score du code nouveau que lorsque leur mutation est demandée ; les seuils sont alors les mêmes.
->
 > Les données recopiées de l'Atelier (`src/adapters/ui/pixelArt/sprites/atelier/data/`) sont exclues de la détection de duplication : ce sont des données, recopiées telles quelles (ADR 0010).
 
-### Mutation des écrans à la demande
+### Plus de mode prototype
 
-Décision du propriétaire du 22 octobre 2026 (issue #54, avenant à l'[ADR 0004](adr/0004-mutation-en-ci.md)) : la mutation des **écrans** (`src/adapters/ui/` et `src/app/`) est trop longue pour chaque story. Elle ne tourne que dans trois cas :
+Décision du propriétaire du 3 novembre 2026 : on ne fait plus la différence entre prototype et version définitive. Tout ce qui est mergé dans `develop` compte comme **définitif** et passe par les mêmes barrières. Le label `prototype` et la règle qui bloquait les releases disparaissent : les prototypes déjà dans `develop` ne bloquent plus les releases et n'ont plus à être repris par une « version définitive ».
 
-| Cas | Comment | Ce qui est muté |
-|---|---|---|
-| **PR** | L'orchestrateur pose le label `mutation:ui` sur la PR, quand le propriétaire le demande. | À la pose du label, les lignes nouvelles des écrans (workflow `Screen mutation`) ; pour une PR vers `develop`, à chaque push suivant, le code nouveau écrans compris (CI). |
-| **Lancement manuel de la CI** | `workflow_dispatch` du workflow `CI` avec l'entrée `ui-mutation` cochée. | Tout le code, écrans compris. |
-| **En local** | `npm run mutation:ui` (lignes nouvelles depuis `origin/develop`) ; `npm run mutation:ui -- --full` pour tous les écrans. | Les écrans seuls. |
-
-Quand elle tourne, les seuils actuels s'appliquent (code nouveau : 70 %). Sinon, le résumé de la CI l'indique : « Screen mutation (…) not requested ». Ni les agents ni la review n'exigent la mutation des écrans quand elle n'a pas été demandée.
-
-Règles pour l'orchestrateur :
-
-- Il ne pose `mutation:ui` que si le propriétaire le demande, jamais de sa propre initiative.
-- Le check `Screen mutation tests (StrykerJS)` n'existe que sur le commit où le label a été posé : il ne peut pas être exigé par la protection de branche, et l'auto-merge ne l'attend pas. Quand `mutation:ui` est posé, l'orchestrateur attend donc que ce check soit **vert** avant d'activer l'auto-merge ; si l'auto-merge était déjà actif, il le désactive jusque-là. Un check rouge renvoie au dev, comme une barrière rouge, puis QA et Reviewer sont relancés selon la règle des corrections. Pour une PR vers `develop` seulement, aux pushs suivants, la mutation des écrans est comptée dans le check habituel `Mutation tests (StrykerJS)`, déjà exigé. Pour une PR de release ou de hotfix vers `main` (branche `release/*` ou `hotfix/*`), la CI ne mute pas le code de la PR (la branche est mutée à son push, sans les écrans) : les écrans n'y sont mutés que sur le commit où le label est posé.
-- Cas limite accepté : une PR **créée** avec le label déjà posé mute ses écrans deux fois (par la CI et par le workflow `Screen mutation`, que GitHub déclenche aussi à la création). Les deux résultats doivent être verts.
-
-### Mode prototype
-
-Décision du propriétaire du 25 octobre 2026 : tant qu'on explore, inutile d'empiler les tests. Le mode prototype allège les barrières d'une PR pour essayer vite une mécanique de jeu ou un rendu, avant sa version définitive.
-
-**Activation**
-
-- Une story porte le label `prototype`. L'orchestrateur le pose, sur décision du propriétaire, quand on explore une mécanique de jeu ou un rendu. Jamais de sa propre initiative.
-- Le dev pose le même label sur la PR **à son ouverture**, quand la story le porte.
-- L'orchestrateur vérifie que la PR porte le label avant de lancer le QA et le Reviewer.
-- La CI lit les labels de la PR à chaque push, à l'ouverture et à la sortie du brouillon, jamais quand un label change. Ajouter ou retirer `prototype` n'a donc d'effet qu'**après un nouveau push** : sans lui, l'auto-merge ne s'active pas.
-
-**Ce qui est levé, sur la PR seulement**
-
-- la mutation des lignes changées : la CI saute le plan, les shards et le job final ; un check sauté compte comme réussi pour la protection de branche ;
-- l'automatisation des scénarios Gherkin : ils restent dans la story comme spécification ;
-- la comparaison stricte des captures à la maquette ;
-- la QA complète : le QA vérifie seulement que les barrières gardées sont vertes.
-
-**Ce qui est gardé**
-
-- secrets (Gitleaks) ;
-- commits et titre de la PR au format Conventional Commits ;
-- style, types et architecture hexagonale (dependency-cruiser) ;
-- tests unitaires des règles du domaine ;
-- seuils de couverture et quality gate SonarQube Cloud : la couverture de `develop` est très au-dessus du seuil, un prototype ne la fait pas passer au rouge ;
-- build de l'APK ;
-- end-to-end en **test de fumée** : l'app s'ouvre, l'écran s'affiche ;
-- glossaire et documentation à jour ;
-- revue par le Reviewer, allégée : architecture, glossaire, absence de régression hors prototype et respect du code définitif (ci-dessous). Pas de conformité pixel à pixel à la maquette.
-
-En local, le dev lance `npm run verify`, mais pas `npm run mutation:changed`.
-
-**Code définitif**
-
-- Une PR `prototype` ne modifie le code définitif que pour **brancher** le prototype : assemblage, navigation, injection d'un port.
-- Toute autre modification du code définitif passe par une PR sans le label, avec toutes les barrières.
-- Le code du prototype ne casse jamais une fonctionnalité définitive : leurs tests restent verts.
-
-**Validation** : le propriétaire juge le prototype sur le **build de preview de `develop`**, après le merge. Le merge suit les règles habituelles : verdicts du QA et du Reviewer, CI verte.
-
-**Sortie du mode prototype**
-
-- Le mode ne vaut que pour la PR. Sur `develop`, la CI ne connaît pas le label. La branche `release/*` garde toutes les barrières, dont la mutation de tout le code **hors écrans**.
-- Cette mutation ne suffit pas : `src/adapters/ui/` et `src/app/` n'y sont pas mutés, donc un prototype d'écrans passerait la release. C'est `/release` qui vérifie la règle suivante.
-- **Aucune release tant qu'un prototype non repris est dans `develop`** : une story `prototype` fermée dont ni la version définitive ni la tâche de retrait n'est mergée. Une release publie tout `develop`, quelle que soit l'épique terminée. Un hotfix part de `main` : il n'est pas concerné.
-- Prototype jugé bon : le PM crée la story « version définitive » dès que le propriétaire l'a jugé bon sur la preview. Elle remet toutes les barrières sur le code concerné.
-- Prototype jugé mauvais : son code est retiré par une tâche `type:chore`.
-
-**Combat** : décision du propriétaire du 25 octobre 2026. Le gameplay du combat se teste à la main, sur l'APK. Son end-to-end reste un test de fumée. C'est aussi la règle de tout le chemin B (voir la barrière 8).
+**Combat** : décision du propriétaire du 25 octobre 2026. Le gameplay du combat se teste à la main, sur l'APK ; ses règles sont couvertes par les tests unitaires, d'intégration et BDD.
 
 ## Architecture hexagonale
 
@@ -512,7 +424,7 @@ src/
     ui/                   composants, écrans, état d'affichage
     device/               biométrie, stockage sécurisé, notifications…
   app/                    routes et assemblage
-e2e/                      tests end-to-end
+e2e/                      test de fumée end-to-end
 ```
 
 Règles vérifiées par les tests d'architecture :
@@ -524,7 +436,7 @@ Règles vérifiées par les tests d'architecture :
 - Dans `src/adapters/ui/`, seuls `pixelArt/SpriteCanvas.tsx` (et son test de fumée) et le combat (`battle/`) importent Skia (`pixel-art-skia-in-one-place`, [ADR 0007](adr/0007-identite-pixel-art.md)).
 - Dans `src/adapters/ui/`, `pixelArt/`, `components/`, `screens/`, `format/` et `state/` n'importent pas l'ancien thème (`theme/colors`, `theme/metrics`, `theme/typography`), sauf `Button`, `Screen` et la sonde de toucher (`TouchProbeScreen`), jusqu'à l'épique #30 (`habit-screens-in-pixel-art`, [ADR 0007](adr/0007-identite-pixel-art.md)).
 
-Conséquence pour les tests : le domaine et les cas d'usage se testent en unitaire, sans framework. Les adaptateurs se testent en intégration. Les parcours complets se testent en BDD et, pour le chemin A, en end-to-end.
+Conséquence pour les tests : le domaine et les cas d'usage se testent en unitaire, sans framework. Les adaptateurs se testent en intégration. Les parcours complets se testent en BDD ; l'end-to-end se limite au test de fumée.
 
 ## CI/CD et Git Flow
 
@@ -557,23 +469,22 @@ gitGraph
 
 | Déclencheur | Ce qui tourne | Résultat |
 |---|---|---|
-| **PR vers `develop`** (`feature/`, `bugfix/`, `chore/`, `docs/`) | Toutes les barrières de qualité : commits, secrets, style, types, architecture, unitaires, intégration, BDD, mutation sur le code nouveau hors écrans (lignes ajoutées ou modifiées ; fichiers du domaine modifiés en entier), en jobs parallèles (le domaine en 6 parts, 8 en release, un gros fichier du domaine étant coupé en plages de lignes entre deux instructions de premier niveau ; le code hors domaine et hors écrans en 3 parts, 10 en release, où il est pesé en mutants et où un gros fichier est coupé en plages de lignes, au besoin entre deux membres d'une classe : voir l'[ADR 0004](adr/0004-mutation-en-ci.md)), écrans compris seulement avec le label `mutation:ui` (en 8 parts, pesés en mutants, chaque plage de lignes nouvelles d'un écran pouvant aller dans une part différente, et un écran ajouté coupé en plages comme un gros fichier), SonarQube Cloud. End-to-end sur une plateforme. Avec le label `prototype`, sans mutation (voir « Mode prototype »). | Auto-merge (squash) si tout est vert et les verdicts du QA et du Reviewer verts sur la tête de la PR |
-| **Push sur `develop`** | Les mêmes barrières sur le résultat du merge, sauf la mutation (déjà faite par la PR), puis un **build de preview** installable sur le téléphone du propriétaire | Le propriétaire peut essayer la prochaine version |
-| **Branche `release/x.y.z`** | Suite complète : end-to-end **iOS et Android**, mutation sur tout le code hors écrans, SonarQube Cloud. Génération du changelog. Build de production. | Merge dans `main` si tout est vert |
+| **PR vers `develop`** (`feature/`, `bugfix/`, `chore/`, `docs/`) | Toutes les barrières de qualité : commits, secrets, style, types, architecture, unitaires, intégration, BDD avec les seuils de couverture, SonarQube Cloud. APK et test de fumée end-to-end sur Android. | Auto-merge (squash) si tout est vert et les verdicts du QA et du Reviewer verts sur la tête de la PR |
+| **Push sur `develop`** | Les mêmes barrières sur le résultat du merge, puis un **build de preview** installable sur le téléphone du propriétaire | Le propriétaire peut essayer la prochaine version |
+| **Branche `release/x.y.z`** | Les mêmes barrières, test de fumée compris, et SonarQube Cloud. Génération du changelog. Build de production. | Merge dans `main` si tout est vert |
 | **Merge sur `main`** | Tag `vX.Y.Z`, GitHub Release avec le changelog, build de production distribué | Nouvelle version publiée |
-| **Branche `hotfix/x.y.z-…`** | Suite complète, comme une release (mutation hors écrans) | Merge dans `main` (tag) puis dans `develop` |
-| **Lancement manuel** (`workflow_dispatch`) | La CI complète ; mutation sur tout le code, écrans compris si l'entrée `ui-mutation` est cochée | À la demande du propriétaire |
+| **Branche `hotfix/x.y.z-…`** | Les mêmes barrières, comme une release | Merge dans `main` (tag) puis dans `develop` |
+| **Lancement manuel** (`workflow_dispatch`) | La CI complète | À la demande du propriétaire |
 
-Changement sans code : quand un changement ne touche que de la documentation ou la configuration des agents (fichiers `.md`, `docs/`, `.claude/`, `LICENSE`), le job `Code changes` (`scripts/ci/code-changes.mjs`) saute les barrières lourdes : style, types, architecture, tests, mutation, SonarQube Cloud, APK et end-to-end. Seules les barrières commits et secrets tournent. Un check sauté compte comme réussi pour la protection de branche. Sur une PR, c'est tout le diff de la PR qui compte : un seul fichier de code relance toutes les barrières. L'APK et l'end-to-end sont aussi sautés sur une PR en brouillon (ils tournent à sa sortie de brouillon) et quand le changement ne touche pas l'app (sortie `app` du même job : seuls des tests hors `src/app/`, des scénarios, `test/`, `scripts/`, la configuration des outils de qualité, `.husky/`, les modèles d'issue et de PR, ou des workflows autres que `ci.yml` changent ; tout autre fichier, même inconnu, compte comme l'app).
+Changement sans code : quand un changement ne touche que de la documentation ou la configuration des agents (fichiers `.md`, `docs/`, `.claude/`, `LICENSE`), le job `Code changes` (`scripts/ci/code-changes.mjs`) saute les barrières lourdes : style, types, architecture, tests, SonarQube Cloud, APK et test de fumée. Seules les barrières commits et secrets tournent. Un check sauté compte comme réussi pour la protection de branche. Sur une PR, c'est tout le diff de la PR qui compte : un seul fichier de code relance toutes les barrières. L'APK et le test de fumée sont aussi sautés sur une PR en brouillon (ils tournent à sa sortie de brouillon) et quand le changement ne touche pas l'app (sortie `app` du même job : seuls des tests hors `src/app/`, des scénarios, `test/`, `scripts/`, la configuration des outils de qualité, `.husky/`, les modèles d'issue et de PR, ou des workflows autres que `ci.yml` changent ; tout autre fichier, même inconnu, compte comme l'app).
 
 Outils : GitHub Actions pour les pipelines **et** les builds. Chaque push qui touche l'app produit un APK Android en artefact (le build de preview sur `develop`) ; sinon, le dernier APK de `develop` reste celui de preview ; chaque tag `vX.Y.Z` attache l'APK à la GitHub Release. EAS Build et EAS Update ne sont pas retenus pour l'instant (voir l'[ADR 0001](adr/0001-socle-technique.md)).
 
-Conservation des artefacts (stockage GitHub Actions limité) : l'APK est gardé **1 jour** sur une PR, **7 jours** sur `develop` et **30 jours** sur `main`, `release/*` et `hotfix/*` ; les rapports de couverture, de mutation et d'end-to-end **7 jours**. Le job `Clean up old artifacts` (`scripts/ci/cleanup-artifacts.mjs`), sur chaque PR du dépôt et chaque push sur `develop`, supprime les APK devenus inutiles : il garde le plus récent de `develop`, de `main`, de chaque `release/*` et `hotfix/*` et de chaque branche qui a une PR ouverte, jamais celui d'une PR venant d'un fork. Il ne fait jamais échouer la CI. Le job `e2e-android` met aussi en cache l'image système de l'émulateur (clé `android-system-image-<API>-<cible>-<architecture>-v<N>`, environ **1,5 Go** par portée de cache, sur un quota de **10 Go** par dépôt) ; elle n'est retéléchargée, avec trois tentatives, que si le cache manque.
+Conservation des artefacts (stockage GitHub Actions limité) : l'APK est gardé **1 jour** sur une PR, **7 jours** sur `develop` et **30 jours** sur `main`, `release/*` et `hotfix/*` ; les rapports de couverture et du test de fumée **7 jours**. Le job `Clean up old artifacts` (`scripts/ci/cleanup-artifacts.mjs`), sur chaque PR du dépôt et chaque push sur `develop`, supprime les APK devenus inutiles : il garde le plus récent de `develop`, de `main`, de chaque `release/*` et `hotfix/*` et de chaque branche qui a une PR ouverte, jamais celui d'une PR venant d'un fork. Il ne fait jamais échouer la CI. Le job `e2e-android` met aussi en cache l'image système de l'émulateur (clé `android-system-image-<API>-<cible>-<architecture>-v<N>`, environ **1,5 Go** par portée de cache, sur un quota de **10 Go** par dépôt) ; elle n'est retéléchargée, avec trois tentatives, que si le cache manque.
 
 ### Releases
 
 - Une release est déclenchée **automatiquement**, sans validation du propriétaire, par l'orchestrateur **quand une épique est terminée**. Le propriétaire peut aussi en demander une à tout moment.
-- Aucune release tant qu'un prototype non repris est dans `develop` : une story `prototype` fermée dont ni la version définitive ni la tâche de retrait n'est mergée. `/release` le vérifie avant de créer la branche et, sinon, s'arrête et prévient le propriétaire (voir « Mode prototype »). Un hotfix n'est pas concerné.
 - Le numéro de version est calculé à partir des commits Conventional Commits depuis la dernière version : `BREAKING CHANGE` → MAJOR, `feat` → MINOR, `fix` → PATCH.
 - La branche `release/x.y.z` ne reçoit que la préparation de la version (changelog, numéro de version) et des corrections de bugs trouvés pendant la release, jamais de nouvelle fonctionnalité.
 - `release/*` et `hotfix/*` sont mergées dans `main` avec un **commit de merge** (pas de squash), pour garder l'historique, puis réintégrées dans `develop`.
@@ -631,4 +542,4 @@ Un bug n'est pas une story : il ne crée pas de comportement nouveau, il rétabl
 
 [Ponytail](https://github.com/DietrichGebert/ponytail) est activé pour le projet dans `.claude/settings.json`, épinglé sur une version (`ref`). Il pousse chaque agent vers le changement le plus petit qui résout la story : réutiliser l'existant, pas d'abstraction ni de dépendance non demandée. Commandes utiles : `/ponytail-review` sur une PR, `/ponytail-audit` sur le dépôt, `/ponytail-debt` pour relever les commentaires `shortcut:`.
 
-Ponytail ne remplace aucune règle de ce document : TDD, barrières de qualité, seuils de coverage et de mutation, architecture hexagonale et glossaire priment sur sa règle « un petit test suffit ». Pour monter de version, changer le `ref` dans `.claude/settings.json`.
+Ponytail ne remplace aucune règle de ce document : TDD, barrières de qualité, seuils de coverage, architecture hexagonale et glossaire priment sur sa règle « un petit test suffit ». Pour monter de version, changer le `ref` dans `.claude/settings.json`.
