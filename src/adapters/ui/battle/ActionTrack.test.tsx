@@ -219,7 +219,7 @@ describe('ActionTrack', () => {
       expect(within(hero!).getByText('Toi', hiddenToo)).toBeTruthy();
     });
 
-    it('gives back the look of the hero phase: the preview at 62 % inside its frame, without desaturation', async () => {
+    it('gives back the look of the hero phase: the preview at 62 % brightness inside its frame and 70 % saturation', async () => {
       await render(<ActionTrack track={F2} enemyPhase />);
       await screen.rerender(<ActionTrack track={F2} />);
 
@@ -235,8 +235,16 @@ describe('ActionTrack', () => {
           backgroundColor: artPalette.roles.ink,
           opacity: 0.38,
         });
+        expect(within(entry).getByTestId('track-portrait', hiddenToo)).toHaveProp(
+          'saturation',
+          0.7,
+        );
       });
-      portraits().forEach((portrait) => expect(portrait).not.toHaveProp('saturation'));
+      [acting, ...others.slice(0, 3)].forEach((entry) =>
+        expect(within(entry!).getByTestId('track-portrait', hiddenToo)).not.toHaveProp(
+          'saturation',
+        ),
+      );
     });
 
     describe('when a fighter leaves or enters', () => {

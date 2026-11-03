@@ -18,8 +18,8 @@
  * - « aucune bande non voilée » : le voile est hors de la vue qui tremble, sur le cadre fixe ;
  * - « 45 % de luminosité et 60 % de saturation » : le voile de la case (`track-shade`) à 0,55 sur
  *   la case entière, et le portrait à la saturation 0,6 ; de même 0,68 et 0,5 pour l'aperçu ;
- * - « comme aujourd'hui » (aperçu de la phase du héros) : l'aspect d'avant #188, le voile à 0,38
- *   dans le cadre, le portrait sans matrice de couleur ;
+ * - « 62 % de luminosité et 70 % de saturation » (aperçu de la phase du héros) : le voile à 0,38
+ *   dans le cadre, et le portrait à la saturation 0,7 (maquette v2 de #174, `.fp.next`) ;
  * - « le fond de palier ne peut pas être dessiné » : la simulation du fond ne dessine rien.
  */
 import { act, fireEvent, screen, within } from '@testing-library/react-native';
@@ -456,7 +456,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
           backgroundColor: artPalette.roles.ink,
           opacity: 0.38,
         });
-        expect(saturationOf(entry)).toBeUndefined();
+        expect(saturationOf(entry)).toBe(0.7);
       });
     },
   );
