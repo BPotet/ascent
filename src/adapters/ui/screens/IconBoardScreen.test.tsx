@@ -6,7 +6,7 @@ import type { Battle } from '../../../domain/battle/Battle';
 import { RESUME_COUNTDOWN_S } from './AscentScreen';
 import { ascentSetUp } from '../testing/ascent';
 import { renderScreen } from '../testing/renderScreen';
-import { IconBoardScreen } from './IconBoardScreen';
+import { BOARD_WIND_UP_MS, IconBoardScreen } from './IconBoardScreen';
 
 jest.mock('../battle/BattleCanvas', () => jest.requireActual('../battle/testing/fakeBattleCanvas'));
 
@@ -431,8 +431,13 @@ describe('IconBoardScreen with the veil of the enemy phase (#188)', () => {
         const { battle, saved } = opened[0]!;
         expect(saved).toMatchObject({ tier });
         expect(battle?.phase).toMatchObject({ kind: 'enemy', step: { kind: 'attack', attack } });
-        const { step } = battle!.phase as { step: { enemy: number } };
+        const { step } = battle!.phase as {
+          step: { enemy: number; startedAt: number; impacts: readonly { at: number }[] };
+        };
         expect(battle!.enemies[step.enemy]!.kind).toBe(kind);
+        // Une préparation de 20 s : le sceau reste assez longtemps pour la capture end-to-end.
+        expect(step.impacts[0]!.at - step.startedAt).toBe(BOARD_WIND_UP_MS);
+        expect(BOARD_WIND_UP_MS).toBe(20_000);
         for (let second = 0; second < RESUME_COUNTDOWN_S; second += 1) {
           await act(async () => {
             jest.advanceTimersByTime(1_000);

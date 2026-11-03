@@ -79,9 +79,10 @@ l'émulateur de la CI.
 
 Le voile de phase ennemie (`enemy-phase-veil.yaml`, #188) passe par la même planche : ses entrées
 « Voile · coup imparable · … » reprennent un combat sauvegardé à la préparation d'un coup imparable
-(le Spectre au palier 1, le Veilleur d'airain au palier 3), chacun dans une session en mémoire.
-Après « Reprise dans », la préparation repart du début, sous le voile : la capture suit le sceau
-rouge (`peril-seal`). Le héros ne se défend pas, le combat continue jusqu'à la phase du
+(le Spectre au palier 1, le Veilleur d'airain au palier 3), chacun dans une session en mémoire. Ce
+coup est imposé par l'entrée et sa préparation dure 20 s (`BOARD_WIND_UP_MS`, 1,3 à 2 s en jeu) :
+après « Reprise dans », elle repart du début, sous le voile, et la capture suit le sceau rouge
+(`peril-seal`), visible toute la préparation. Le héros ne se défend pas, le combat continue jusqu'à la phase du
 héros, qui attend son attaque (« Cible : … ») : la capture du retour. Captures : C1, C3 et le retour
 en phase du héros, à comparer à la maquette `docs/mockups/174-tier-identity/`.
 

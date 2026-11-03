@@ -241,9 +241,17 @@ const LOADOUT_ASCENTS: Readonly<Record<LoadoutBoard, Ascent | null>> = {
 };
 
 /**
+ * La préparation du coup imparable d'une entrée du voile (#188), en ms : bien plus longue que celle
+ * du jeu (1,3 à 2 s), pour que le parcours end-to-end voie le sceau et capture l'écran pendant la
+ * préparation, quel que soit le temps de lecture de l'émulateur. Seul l'outil de preview l'utilise.
+ */
+export const BOARD_WIND_UP_MS = 20_000;
+
+/**
  * Un combat du voile de phase ennemie (#188) contre `enemies`, joué par le domaine (le héros attaque
- * à chacun de ses tours) jusqu'à la préparation du coup imparable `attack` de l'ennemi `enemy`. Repris,
- * ce coup repart du début de sa préparation : la scène est voilée, le sceau au-dessus de l'ennemi.
+ * à chacun de ses tours) jusqu'à la préparation du coup imparable `attack` de l'ennemi `enemy`,
+ * longue de `BOARD_WIND_UP_MS`. Repris, ce coup repart du début de sa préparation : la scène est
+ * voilée, le sceau au-dessus de l'ennemi.
  */
 function windingUp(enemies: readonly EnemyKind[], enemy: number, attack: AttackKind): Battle {
   const { battle: started } = startBattle({
@@ -257,7 +265,7 @@ function windingUp(enemies: readonly EnemyKind[], enemy: number, attack: AttackK
     ...started,
     enemies: started.enemies.map((one, index) =>
       index === enemy && one.intent?.category === 'attack'
-        ? { ...one, intent: { ...one.intent, attack } }
+        ? { ...one, intent: { ...one.intent, attack, windUpMs: BOARD_WIND_UP_MS } }
         : one,
     ),
   };
