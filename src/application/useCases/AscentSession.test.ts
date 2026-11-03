@@ -1,5 +1,6 @@
 import { startAscent, type Ascent } from '../../domain/ascent/Ascent';
 import { TIERS } from '../../domain/ascent/tiers';
+import { ATTACKS } from '../../domain/battle/attacks';
 import { startBattle, type Battle } from '../../domain/battle/Battle';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
 import { FixedSeedSource } from '../testing/FixedSeedSource';
@@ -847,6 +848,57 @@ describe('AscentSession: the Summon of the Moth queen (#172)', () => {
       summon: { summoner: 0, kind: 'mothkin', slots: [1, 2] },
     };
   }
+
+  it('saves the summon called by the riposte of the Bulwark with the riposte itself', async () => {
+    const { session, store, clock } = setUp();
+    const { battle } = startBattle({
+      seed: 3,
+      defenseHint: false,
+      at: 0,
+      heroHp: 60,
+      initiative: true,
+      enemies: ['mothQueen'],
+      summonMultiplier: TIERS[2].multiplier,
+    });
+    // La Reine agit avant la Sentinelle : elle porte un coup simple de 5 sur le Rempart levé.
+    const riposting: Battle = {
+      ...battle,
+      hero: { ...battle.hero, bulwark: true },
+      enemies: [
+        {
+          ...battle.enemies[0]!,
+          hp: 202,
+          guard: 60,
+          intent: {
+            category: 'attack',
+            attack: 'basic',
+            damage: 5,
+            windUpMs: ATTACKS.basic.windUpMs,
+            feintFraction: 0.5,
+          },
+        },
+      ],
+    };
+    store.values.set(
+      ASCENT_KEY,
+      JSON.stringify({ version: 1, ascent: bossOfTier2, battle: riposting }),
+    );
+    await session.load();
+    const battleSession = session.battleSession();
+    const events: BattleEvent[] = [];
+    battleSession.subscribe((snapshot) => events.push(...snapshot.events));
+    await battleSession.start();
+
+    for (let guard = 0; guard < 50; guard += 1) {
+      if (events.some((event) => event.type === 'summonCalled')) break;
+      clock.advanceTo(clock.pending()[0]!);
+      await flush();
+    }
+
+    const called = events.findIndex((event) => event.type === 'summonCalled');
+    expect(events[called - 2]?.type).toBe('bulwarkCountered');
+    expect(saved(store)?.battle?.summon).toEqual({ summoner: 0, kind: 'mothkin', slots: [1, 2] });
+  });
 
   it('gives every floor battle the multiplier of the tier for its summoned enemies, never to the boss', async () => {
     const { session, store } = setUp();
