@@ -7,12 +7,14 @@ import {
   nextDeadline,
   nextRoundOrder,
   pendingSummon,
+  pressDefense,
   resumeBattle,
   startBattle,
   type Battle,
   type BattleUpdate,
   type EnemyState,
 } from './Battle';
+import { ATTACKS } from './attacks';
 import type { BattleEvent } from './BattleEvent';
 import type { EnemyKind, HeroKind } from './combatants';
 import type { TierMultiplier } from './tierMultiplier';
@@ -271,6 +273,43 @@ describe('the Mothkin fall with the Moth queen (#172, rule 4)', () => {
     ]);
   });
 
+  it('drops nothing else when a Mothkin falls to a blow: the other Mothkin stands', () => {
+    const { battle: inPlace } = entered();
+    const battle = withEnemy(inPlace, 1, { hp: 1, guard: 0 });
+
+    const { battle: after, events } = playUntil(battle, has('enemyDefeated'), (current) => ({
+      ...current,
+      target: 1,
+    }));
+
+    expect(events.filter((event) => event.type === 'enemyDefeated')).toEqual([
+      expect.objectContaining({ enemy: 1 }),
+    ]);
+    expect(types(events)).not.toContain('summonedFell');
+    expect(after.enemies[2]!.hp).toBeGreaterThan(0);
+    expect(after.enemies[0]!.hp).toBeGreaterThan(0);
+  });
+
+  it('never drops an enemy that was not summoned with the Queen', () => {
+    const group = withEnemy(queenAt(205, start(['mothQueen', 'ghoul', 'ghoul'])), 2, { hp: 0 });
+    const { battle: inPlace } = entered(group);
+    expect(inPlace.enemies[2]).toMatchObject({ kind: 'mothkin', summoned: true });
+    const battle = withEnemy(inPlace, 0, { hp: 1, guard: 0 });
+
+    const { battle: after, events } = playUntil(
+      battle,
+      (_, played) => played.some((event) => event.type === 'enemyDefeated' && event.enemy === 0),
+      (current) => ({ ...current, target: 0 }),
+    );
+
+    expect(events.filter((event) => event.type === 'summonedFell')).toEqual([
+      expect.objectContaining({ enemy: 2 }),
+    ]);
+    expect(after.enemies[1]).toMatchObject({ kind: 'ghoul' });
+    expect(after.enemies[1]!.hp).toBeGreaterThan(0);
+    expect(after.phase.kind).not.toBe('over');
+  });
+
   it('never summons when the blow that would shift her phase makes her fall', () => {
     const { battle, events } = playUntil(queenAt(5), has('battleEnded'));
 
@@ -371,6 +410,16 @@ describe('the free slots of the front line (#172, rule 6)', () => {
     expect(after.enemies.map((enemy) => enemy.kind)).toEqual(['mothQueen', 'mothkin', 'mothkin']);
   });
 
+  it('brings the Mothkin in from left to right, whatever the order of their slots', () => {
+    const battle = withEnemy(queenAt(205, start(['mothQueen', 'ghoul'])), 1, { hp: 0 });
+
+    const { events } = entered(battle);
+
+    expect(
+      events.flatMap((event) => (event.type === 'summonEntered' ? [event.enemy] : [])),
+    ).toEqual([1, 2]);
+  });
+
   it('never takes the slot of a fallen enemy that a Raise intent of the round targets', () => {
     const start3 = start(['mothQueen', 'necromancer', 'ghoul']);
     const battle = withEnemy(withEnemy(queenAt(205, start3), 2, { hp: 0 }), 1, {
@@ -430,5 +479,77 @@ describe('a battle saved between the announcement and the entry (#172)', () => {
     expect(pendingSummon(battle)).toBeNull();
     expect(battle).not.toHaveProperty('summon');
     expect(battle.enemies[0]).not.toHaveProperty('summoned');
+  });
+});
+
+describe('a summon called by another blow than the strike of the hero (#172)', () => {
+  /**
+   * La Reine à `hp` PV, sa garde haute, qui prépare un coup simple de 5, la Sentinelle sous le
+   * Rempart ou non : le combat va jusqu'à la préparation de la Reine.
+   */
+  function queenWindsUp(hp: number, bulwark: boolean): Played {
+    const started = queenAt(hp);
+    const intent = {
+      category: 'attack' as const,
+      attack: 'basic' as const,
+      damage: 5,
+      windUpMs: ATTACKS.basic.windUpMs,
+      feintFraction: 0.5,
+    };
+    // La Reine agit avant la Sentinelle (Initiative 8 contre 5) : le combat s'ouvre sur son coup.
+    const prepared: Battle = {
+      ...withEnemy(started, 0, { intent }),
+      hero: { ...started.hero, bulwark },
+    };
+    return playUntil(
+      prepared,
+      (current) => current.phase.kind === 'enemy' && current.phase.step.kind === 'attack',
+    );
+  }
+
+  const impactOf = (battle: Battle) =>
+    battle.phase.kind === 'enemy' && battle.phase.step.kind === 'attack'
+      ? battle.phase.step.impacts[0]!.at
+      : Number.NaN;
+
+  it('summons when the counter of a perfect parry shifts her phase', () => {
+    const { battle: windingUp } = queenWindsUp(203, false);
+    const parried = pressDefense(windingUp, { button: 'parry', at: impactOf(windingUp) - 50 });
+
+    const { battle, events } = playUntil(parried.battle, has('summonCalled'));
+
+    const all = [...parried.events, ...events];
+    expect(types(all)).toContain('counterAttacked');
+    expect(types(all).indexOf('counterAttacked')).toBeLessThan(types(all).indexOf('summonCalled'));
+    expect(pendingSummon(battle)).toEqual({ summoner: 0, kind: 'mothkin', slots: [1, 2] });
+  });
+
+  it('summons when the riposte of the Bulwark shifts her phase', () => {
+    const { battle: windingUp } = queenWindsUp(202, true);
+
+    const { battle, events } = playUntil(windingUp, has('summonCalled'));
+
+    const riposte = types(events).indexOf('bulwarkCountered');
+    expect(riposte).toBeGreaterThanOrEqual(0);
+    expect(types(events).slice(riposte + 1, riposte + 3)).toEqual([
+      'bossPhaseShifted',
+      'summonCalled',
+    ]);
+    expect(pendingSummon(battle)).toEqual({ summoner: 0, kind: 'mothkin', slots: [1, 2] });
+  });
+
+  it('summons when she is stunned at her phase shift, her guard back only when she rises', () => {
+    const stunned = withEnemy(queenAt(205), 0, {
+      guard: 0,
+      stun: { actionLost: false, heroAction: 999 },
+    });
+
+    const { battle, events } = playUntil(stunned, has('summonCalled'));
+
+    expect(battle.enemies[0]).toMatchObject({ phase2: true, guard: 0 });
+    expect(pendingSummon(battle)).toEqual({ summoner: 0, kind: 'mothkin', slots: [1, 2] });
+    const { battle: after } = playUntil(battle, has('roundStarted'));
+    expect(after.enemies.map((enemy) => enemy.kind)).toEqual(['mothQueen', 'mothkin', 'mothkin']);
+    expect(types(events)).toContain('bossPhaseShifted');
   });
 });
