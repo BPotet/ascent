@@ -15,6 +15,7 @@ import {
   SHARD_TOTAL_KEY,
 } from '../../application/useCases/AscentSession';
 import type { Ascent } from '../../domain/ascent/Ascent';
+import type { Battle } from '../../domain/battle/Battle';
 
 /** Quitter la planche : retour à l'écran d'avant, ou à l'accueil quand le lien profond l'a ouverte. */
 function close(): void {
@@ -26,7 +27,8 @@ function close(): void {
 }
 
 /**
- * Une ascension fixe de la planche (#159), ou aucune, dans une session neuve : les mêmes adaptateurs
+ * Une ascension fixe de la planche (#159), ou aucune, avec son combat sauvegardé s'il en a un (#175),
+ * dans une session neuve : les mêmes adaptateurs
  * de combat que la session de l'app, mais un stockage en mémoire, avec un Total d'Éclats fixe (#38).
  * L'ascension réelle du joueur et ses Éclats ne sont jamais lus ni écrits, même quand l'écran de
  * l'ascension met en pause et sauvegarde.
@@ -34,12 +36,13 @@ function close(): void {
 export async function openBoardAscent(
   saved: Ascent | null,
   shards?: number,
+  battle?: Battle,
 ): Promise<AscentSession> {
   const keyValueStore = new InMemoryKeyValueStore();
   if (saved !== null) {
     await keyValueStore.set(
       ASCENT_KEY,
-      JSON.stringify({ version: 1, ascent: saved, battle: null }),
+      JSON.stringify({ version: 1, ascent: saved, battle: battle ?? null }),
     );
   }
   if (shards !== undefined) {

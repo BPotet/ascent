@@ -295,3 +295,41 @@ porteurs font partie de leurs poses validées : le code n'en dessine aucune.
    Brûlure montrent la 1re image de `burn` par des `View` (`AssetRows`, ADR 0007 § 2), à ×1.
 3. **Teintes.** Toutes les teintes des 4 porteurs et de l'effet sont déjà dans `artPalette` : aucune
    n'est ajoutée.
+
+## Avenant du 2 novembre 2026 (#175) : les portraits
+
+Les portraits de la Frise d'action sont les icônes (`icon`) validées des entrées du Codex, et
+`iconPhase2` pour un boss à aspect de phase 2 (relecture de l'Atelier du 02/11/2026).
+
+1. **Recopie.** Le script de recopie (non versionné) lit chaque document `assets/<id>` cité par la
+   story et **vérifie la sha256 du JSON écrit par `get` contre celle de la story avant d'écrire quoi
+   que ce soit** : une sha256 différente l'arrête, rien n'est recopié d'un document non cité. Il
+   vérifie pour chaque `icon` et `iconPhase2` : statut `validé`, `chosen: 0`, une proposition de
+   24 × 24. Il recopie `proposals[chosen]`, clés `w`, `h`, `palette` et `rows` telles quelles (ni
+   `name`, ni `by`, ni `at`, ni `status`), dans un seul fichier,
+   `sprites/atelier/data/portraits.ts`, dont l'en-tête cite pour chaque entrée le document, sa
+   version, sa sha256, celle de la fiche `codex/<id>`, le nom de la proposition et la
+   correspondance id → nom de code (`nouvelEnnemi` → `skeleton`, `nouvelEnnemi2` → `madVillager`,
+   `nouvelleElite` → `twins`, `smolderingBrand` → `burningHusk`). Première ligne
+   `// Stryker disable all` (§ 8).
+2. **Registres.** `PORTRAITS` est typé `Readonly<Record<HeroKind | EnemyKind, AssetImage | null>>`,
+   sans `Partial` : un héros ou un ennemi oublié casse la compilation. `null` est une icône pas encore
+   validée dans l'Atelier (aucune aujourd'hui). `PHASE_2_PORTRAITS` couvre exactement les boss qui
+   ont un aspect de phase 2 (§ avenant #38), vérifié par un test. La Reine des phalènes et la
+   Phalénide entrent avec leur story (#172), par le même script.
+3. **Choix du portrait** (`trackPortrait`, `sprites/battle/portraits.ts`). En phase 2
+   (`EnemyState.phase2`), le portrait de phase 2 s'il existe, sinon celui de phase 1 (la Gardienne
+   des ossuaires et le Prieur sans visage gardent le leur). Sans portrait (`null`), la case montre ce
+   qu'elle montrait : « Toi » pour le héros, l'initiale d'un ennemi. Jamais de case vide.
+4. **Taille exacte en dp, seule exception au pixel physique entier.** Le portrait des petites cases
+   est dessiné à 24 dp exacts (×1, prop `size` de `SpriteCanvas`, typée `24` et réservée à ce
+   portrait), sans arrondi, au plus proche voisin. Arrondi (`artPixelSize(1)`), il ferait 27,4 dp à
+   la densité 2,625 et 32 dp à 1,5 : la frise pleine (4 + 4 cases) dépasserait 343 dp et la dernière
+   case de l'aperçu serait rognée, ce que la maquette validée exclut (une ligne, sans défilement).
+   Les pixels d'art sont nets aux densités entières ; aux densités fractionnaires, certains ont un
+   pixel physique de plus ou de moins. Le portrait de 48 dp de celui qui agit garde la règle (×2,
+   `artPixelSize(2)` : 45,7 dp à 2,625, 48 dp à 1,5, dans sa case de 52 dp), comme l'écrin de #157.
+5. **Fidélité.** Chaque portrait est identique, pixel pour pixel, à `ART.ic_<id>` (`ART.ic_<id>2`
+   pour la phase 2) de la maquette validée `docs/mockups/174-tier-identity/index.html`. Un test le
+   vérifie à chaque exécution.
+6. **Teintes.** Toutes les teintes des portraits sont déjà dans `artPalette` : aucune n'est ajoutée.

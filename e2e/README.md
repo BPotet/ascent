@@ -68,6 +68,15 @@ ne la remonte pas. Les Éclats gagnés en grand se vérifient par leur libellé 
 pour toujours ») ; le `+` de l'Or est échappé (`\+40 Or`). Captures : le pied de la
 tour, X3, C4, X6 et X7, à comparer à la maquette `docs/mockups/30-premiere-ascension/`.
 
+Les portraits de la Frise d'action (`track-portraits.yaml`, #175) passent par la même planche : ses
+entrées « Frise · … » ouvrent le vrai écran de l'ascension sur des combats fixes, chacun dans une
+session en mémoire. L'héroïne agit la première et attend son attaque : la frise reste fixe pendant
+la capture, aucun combat n'est joué. « Frise · boss en phase 2 » reprend un combat sauvegardé, la
+Jardinière des cendres déjà en phase 2 : la capture attend la fin de « Reprise dans ». La phrase de
+la frise se vérifie par son libellé lu. Captures : F1, F2 (frise pleine, 4 + 4 cases) et F4, à
+comparer à la maquette `docs/mockups/174-tier-identity/`, à la largeur et à la densité de
+l'émulateur de la CI.
+
 Le combat d'essai et son bouton « Combat d'essai », au-dessus de la barre d'onglets du build de
 preview, sont retirés (#121, décision du propriétaire du 28/10/2026) : la barre d'onglets et la liste
 de la Vue Journée ont la même place en preview et en production. `old-trial-battle-link.yaml` vérifie

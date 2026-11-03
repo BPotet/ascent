@@ -3,6 +3,7 @@ import type { BattleEvent } from '../../../domain/battle/BattleEvent';
 import { startTestBattle } from '../../../domain/battle/testing/testBattle';
 import {
   ENEMY_NAMES,
+  actionTrackLabel,
   announcement,
   attackButtonLabel,
   bleedChipText,
@@ -453,5 +454,25 @@ describe('battle texts', () => {
       expect(ENEMY_NAMES.madVillager).toBe('Villageois fou');
       expect(stunnedLabel('madVillager')).toBe('Étourdi ×1,5');
     });
+  });
+});
+
+describe('actionTrackLabel (#175)', () => {
+  const hero = { actor: 'hero', fighter: 'wanderer', phase2: false } as const;
+  const specter = { actor: 1, fighter: 'specter', phase2: false } as const;
+  const ghoul = (actor: number) => ({ actor, fighter: 'ghoul', phase2: false }) as const;
+
+  it('reads the same sentence as before, two Ghouls as « Goule, Goule »', () => {
+    const round = [specter, hero, ghoul(0), ghoul(2)];
+    expect(actionTrackLabel(3, round, round)).toBe(
+      "Ordre d'action. Manche 3 : Spectre, toi, Goule, Goule. Manche suivante : Spectre, toi, Goule, Goule.",
+    );
+  });
+
+  it('reads a boss in phase 2 by its name only', () => {
+    const gardener = { actor: 0, fighter: 'ashGardener', phase2: true } as const;
+    expect(actionTrackLabel(2, [gardener], [gardener, hero])).toBe(
+      "Ordre d'action. Manche 2 : Jardinière des cendres. Manche suivante : Jardinière des cendres, toi.",
+    );
   });
 });

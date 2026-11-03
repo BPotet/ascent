@@ -157,17 +157,23 @@ export function heroCard(kind: HeroKind): HeroCard {
   };
 }
 
+/** Ce que la phrase de la frise lit d'une case (`TrackEntry`) : qui agit, et son nom de code. */
+interface TrackName {
+  readonly actor: Actor;
+  readonly fighter: HeroKind | EnemyKind;
+}
+
 /**
  * La frise d'action lue au lecteur d'écran (maquette, `friseLabel`) : « Ordre d'action. Manche 1 :
  * Spectre, toi, Goule. Manche suivante : Spectre, toi, Goule. »
  */
 export function actionTrackLabel(
   round: number,
-  current: readonly Actor[],
-  next: readonly Actor[],
-  enemies: readonly EnemyKind[],
+  current: readonly TrackName[],
+  next: readonly TrackName[],
 ): string {
-  const name = (actor: Actor) => (actor === 'hero' ? 'toi' : ENEMY_NAMES[enemies[actor]!]);
+  const name = ({ actor, fighter }: TrackName) =>
+    actor === 'hero' ? 'toi' : ENEMY_NAMES[fighter as EnemyKind];
   return `Ordre d'action. Manche ${round} : ${current.map(name).join(', ')}. Manche suivante : ${next.map(name).join(', ')}.`;
 }
 

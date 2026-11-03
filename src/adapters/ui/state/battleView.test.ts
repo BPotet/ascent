@@ -1,6 +1,13 @@
-import { type Battle, type BattlePhase, type EnemyState } from '../../../domain/battle/Battle';
+import type { Actor } from '../../../domain/battle/actionOrder';
+import {
+  startBattle,
+  type Battle,
+  type BattlePhase,
+  type EnemyState,
+} from '../../../domain/battle/Battle';
+import type { EnemyKind } from '../../../domain/battle/combatants';
 import { startTestBattle } from '../../../domain/battle/testing/testBattle';
-import { battleView } from './battleView';
+import { actionTrackView, battleView } from './battleView';
 
 const started = startTestBattle({
   seed: 1,
@@ -362,5 +369,58 @@ describe('battleView', () => {
       pad: { kind: 'none' },
       line: null,
     });
+  });
+});
+
+describe('actionTrackView (#175)', () => {
+  const battleOf = (hero: 'sentinel' | 'wanderer', enemies: readonly EnemyKind[]) =>
+    startBattle({ seed: 1, defenseHint: false, at: 0, hero, initiative: true, enemies }).battle;
+
+  /** Le combat avec l'ordre de la manche en cours `order`, au début de la manche. */
+  const withOrder = (battle: Battle, order: readonly Actor[]): Battle => ({
+    ...battle,
+    turn: { order, position: 0 },
+  });
+
+  it('gives each entry its fighter: the hero kind, or the code name of the enemy', () => {
+    const battle = withOrder(battleOf('wanderer', ['ghoul', 'specter']), [1, 'hero', 0]);
+    const track = actionTrackView(battle);
+    expect(track.current).toEqual([
+      { actor: 1, fighter: 'specter', phase2: false },
+      { actor: 'hero', fighter: 'wanderer', phase2: false },
+      { actor: 0, fighter: 'ghoul', phase2: false },
+    ]);
+    expect(track.next.map((entry) => entry.fighter).sort()).toEqual(
+      ['ghoul', 'specter', 'wanderer'].sort(),
+    );
+    expect(actionTrackView(battleOf('sentinel', ['ghoul'])).next).toContainEqual({
+      actor: 'hero',
+      fighter: 'sentinel',
+      phase2: false,
+    });
+  });
+
+  it('marks the entries of a boss in phase 2, in the round and in the preview', () => {
+    const battle = withEnemy(withOrder(battleOf('sentinel', ['ashGardener']), [0, 'hero']), 0, {
+      phase2: true,
+    });
+    const track = actionTrackView(battle);
+    expect(track.current[0]).toEqual({ actor: 0, fighter: 'ashGardener', phase2: true });
+    expect(track.next).toContainEqual({ actor: 0, fighter: 'ashGardener', phase2: true });
+    expect(track.current[1]).toEqual({ actor: 'hero', fighter: 'sentinel', phase2: false });
+  });
+
+  it('leaves a fallen enemy out of the round', () => {
+    const battle = withEnemy(
+      withOrder(battleOf('sentinel', ['ghoul', 'ghoul']), [0, 'hero', 1]),
+      0,
+      { hp: 0 },
+    );
+    expect(actionTrackView(battle).current.map((entry) => entry.actor)).toEqual(['hero', 1]);
+  });
+
+  it('is empty at the end of the battle', () => {
+    const battle = { ...battleOf('sentinel', ['ghoul']), phase: { kind: 'over' } } as Battle;
+    expect(actionTrackView(battle)).toEqual({ round: battle.round, current: [], next: [] });
   });
 });
