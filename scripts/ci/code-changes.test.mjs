@@ -87,10 +87,7 @@ describe('isApp', () => {
       'test/app/startup.test.tsx',
       'test/setup/reanimated.ts',
       'scripts/ci/code-changes.mjs',
-      'scripts/mutation/run.mjs',
-      'stryker.config.mjs',
-      'stryker.ui.config.mjs',
-      'stryker.domain.config.mjs',
+      'scripts/gitleaks.mjs',
       'jest.config.js',
       'eslint.config.js',
       '.dependency-cruiser.cjs',
@@ -104,7 +101,6 @@ describe('isApp', () => {
       '.github/ISSUE_TEMPLATE/story.md',
       '.github/ISSUE_TEMPLATE/config.yml',
       '.github/pull_request_template.md',
-      '.github/workflows/mutation-ui.yml',
       '.github/workflows/pr-title.yml',
       '.github/workflows/release.yml',
       'e2e/README.md',
@@ -122,7 +118,7 @@ describe('isApp', () => {
 });
 
 describe('ci.yml', () => {
-  const gated = ['static', 'tests', 'mutation-plan'];
+  const gated = ['static', 'tests'];
 
   it('runs the heavy gates only when the code changed', () => {
     for (const name of gated) {
@@ -132,7 +128,7 @@ describe('ci.yml', () => {
     }
   });
 
-  it('builds the APK and runs the end-to-end only for app changes, never on a draft PR', () => {
+  it('builds the APK and runs the smoke test only for app changes, never on a draft PR', () => {
     for (const name of ['android-apk', 'e2e-android']) {
       const job = ci.jobs[name];
       assert.ok([job.needs].flat().includes('changes'), name);

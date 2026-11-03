@@ -1,7 +1,6 @@
 node_modules
 coverage
 reports
-.stryker-tmp
 .expo
 dist
 android
