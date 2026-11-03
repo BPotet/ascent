@@ -147,4 +147,28 @@ describe('the pending Mothkin in the preview of the action track (#172, I2)', ()
     }
     expect(screen.getAllByTestId('track-entry', hiddenToo)).toHaveLength(3);
   });
+
+  it.each([
+    ['hero', false, 0.38, 0.7],
+    ['enemy', true, 0.68, 0.5],
+  ] as const)(
+    'shades each announced Mothkin as the preview in the %s phase, its dashed outline included',
+    async (_, enemyPhase, veil, saturation) => {
+      await render(<ActionTrack track={track} enemyPhase={enemyPhase} />);
+
+      for (const entry of screen.getAllByTestId('track-entry-pending', hiddenToo)) {
+        const shade = within(entry).getByTestId('track-shade', hiddenToo);
+        expect(StyleSheet.flatten(shade.props.style)).toMatchObject({
+          opacity: veil,
+          top: -2,
+          left: -2,
+          right: -2,
+          bottom: -2,
+        });
+        expect(within(entry).getByTestId('track-portrait', hiddenToo).props.saturation).toBe(
+          saturation,
+        );
+      }
+    },
+  );
 });

@@ -180,7 +180,12 @@ function TrackCase({
         <View
           pointerEvents="none"
           testID="track-shade"
-          style={[styles.shade, enemyPhase && styles.wholeShade, { opacity: shade.veil }]}
+          // Un invoqué annoncé pâlit avec son contour en pointillé, en toute phase (#172).
+          style={[
+            styles.shade,
+            (enemyPhase || pending) && styles.wholeShade,
+            { opacity: shade.veil },
+          ]}
         />
       ) : null}
       {ghost ? (
