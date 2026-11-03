@@ -48,6 +48,13 @@ const HERO_BOTTOM = 12;
 const GROUND_SHADOW_DROP = 4;
 /** Le décalage des colonnes : en diagonale, la plus à gauche la plus près du héros. */
 const OFFSETS: Readonly<Record<number, readonly number[]>> = { 3: [34, 16, 0], 2: [16, 0] };
+/**
+ * Le boss qui invoque, à trois colonnes (#172, maquette `.pfoes.boss3`) : depuis 4 % de la largeur,
+ * le boss sur 1,25 colonne, plus haut, ses invoqués plus bas, chacun au moins 104 dp à 360 dp.
+ */
+const SUMMONER_LEFT = 0.04;
+const SUMMONER_SHARES = [1.25, 1, 1] as const;
+const SUMMONER_OFFSETS = [0, 22, 40] as const;
 // Stryker restore all
 
 const snap = (value: number) => Math.round(value / 2) * 2;
@@ -57,11 +64,25 @@ const snap = (value: number) => Math.round(value / 2) * 2;
  * la maquette : les ennemis de trois quarts face en haut à droite, en diagonale ; le héros de dos en
  * bas à gauche ; son buste à 42 % de sa hauteur. Les sprites sont calés sur 2 dp.
  */
-export function sceneGeometry(width: number, height: number, count: number): SceneGeometry {
+export function sceneGeometry(
+  width: number,
+  height: number,
+  count: number,
+  { summoner = false }: { readonly summoner?: boolean } = {},
+): SceneGeometry {
   const narrow = width < 360;
-  const left = Math.round(width * (count === 1 ? 0.44 : narrow ? 0.14 : 0.19));
+  const boss = summoner && count === 3;
+  const left = Math.round(
+    width * (boss ? SUMMONER_LEFT : count === 1 ? 0.44 : narrow ? 0.14 : 0.19),
+  );
   const columns = Math.max(1, count);
-  const columnWidth = Math.floor((width - RIGHT - left - GAP * (columns - 1)) / columns);
+  const shares: readonly number[] = boss ? SUMMONER_SHARES : Array<number>(columns).fill(1);
+  const total = shares.reduce((sum, share) => sum + share, 0);
+  const unit = (width - RIGHT - left - GAP * (columns - 1)) / total;
+  const widths = shares.map((share) => Math.floor(Math.floor(unit) * share));
+  const starts = widths.map((_, index) =>
+    widths.slice(0, index).reduce((x, columnWidth) => x + columnWidth + GAP, left),
+  );
   const scale = narrow ? 2 : 3;
   const heroWidth = 36 * scale;
   const heroHeight = 44 * scale;
@@ -70,9 +91,10 @@ export function sceneGeometry(width: number, height: number, count: number): Sce
     x: HERO_LEFT + heroWidth / 2,
     y: heroTop + Math.round(heroHeight * 0.42),
   };
-  const offsets = OFFSETS[count] ?? [0];
+  const offsets: readonly number[] = boss ? SUMMONER_OFFSETS : (OFFSETS[count] ?? [0]);
   const enemies = Array.from({ length: count }, (_, index): EnemySlot => {
-    const x = left + index * (columnWidth + GAP);
+    const columnWidth = widths[index]!;
+    const x = starts[index]!;
     const y = TOP + (offsets[index] ?? 0);
     const center = x + columnWidth / 2;
     const figureTop = y + GAP + INTENT_HEIGHT + GAP;

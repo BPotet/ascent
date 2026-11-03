@@ -38,7 +38,15 @@ describe('the enemies drawn at tiers 2 and 3 (#38)', () => {
     const drawn = new Set(groups(2, 4).flat());
 
     expect(drawn).toEqual(
-      new Set(['ghoul', 'madVillager', 'thornPilgrim', 'ashBramble', 'ashGleaner', 'burningHusk']),
+      new Set([
+        'ghoul',
+        'madVillager',
+        'thornPilgrim',
+        'ashBramble',
+        'ashGleaner',
+        'burningHusk',
+        'mothkin',
+      ]),
     );
   });
 
@@ -46,7 +54,15 @@ describe('the enemies drawn at tiers 2 and 3 (#38)', () => {
     const drawn = new Set(groups(3, 3).flat());
 
     expect(drawn).toEqual(
-      new Set(['skeleton', 'specter', 'necromancer', 'bronzeWarden', 'gargoyle', 'bellFounder']),
+      new Set([
+        'skeleton',
+        'specter',
+        'necromancer',
+        'bronzeWarden',
+        'gargoyle',
+        'bellFounder',
+        'mothkin',
+      ]),
     );
   });
 
@@ -67,6 +83,15 @@ describe('the enemies drawn at tiers 2 and 3 (#38)', () => {
     expect(groups(2, 1).flat()).not.toContain('ashGleaner');
     expect(groups(3, 1).flat()).not.toContain('necromancer');
     for (const group of [...groups(2, 2), ...groups(3, 3)]) expect(group.length).toBeGreaterThan(1);
+  });
+
+  it('draws up to 2 Mothkin in a group of tiers 2 and 3, never more (#172)', () => {
+    for (const tier of [2, 3] as const) {
+      const counts = groups(tier, 4).map(
+        (group) => group.filter((kind) => kind === 'mothkin').length,
+      );
+      expect(new Set(counts)).toEqual(new Set([0, 1, 2]));
+    }
   });
 
   it('draws the group from left to right with the same seed, the same way', () => {

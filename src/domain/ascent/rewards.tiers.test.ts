@@ -49,8 +49,15 @@ describe('the Elites and the bosses of each tier (#38)', () => {
     expect(drawn.filter((boss) => boss === 'hourRinger').length).toBeGreaterThan(120);
   });
 
-  it('meets the Ash gardener at tier 2, and the bosses of tier 1 by default', () => {
-    expect(drawBoss(seedRandom(4), TIERS[2].bosses).value).toBe('ashGardener');
+  it('draws the Ash gardener or the Moth queen at tier 2, evenly (#172)', () => {
+    const drawn = SEEDS.map((seed) => drawBoss(seedRandom(seed), TIERS[2].bosses).value);
+
+    expect(new Set(drawn)).toEqual(new Set(['ashGardener', 'mothQueen']));
+    expect(drawn.filter((boss) => boss === 'mothQueen').length).toBeGreaterThan(120);
+    expect(drawn.filter((boss) => boss === 'mothQueen').length).toBeLessThan(180);
+  });
+
+  it('draws the bosses of tier 1 by default', () => {
     expect(drawBoss(seedRandom(4))).toEqual(drawBoss(seedRandom(4), TIERS[1].bosses));
   });
 });

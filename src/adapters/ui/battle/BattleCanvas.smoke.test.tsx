@@ -724,4 +724,35 @@ describe('BattleScene: the glint and the stars follow the displayed pose', () =>
     expect(down).toEqual([starsOn(poseAnchors('madVillager', 'down').head)]);
     expect(hurt).not.toEqual(down);
   });
+
+  it('lays the dust of the Summon on the two empty slots right of the Moth queen (#172)', async () => {
+    prepareBattleScene(['mothQueen']);
+    const boss = sceneGeometry(412, 440, 3, { summoner: true });
+    const queen: SceneEnemy = { ...ENEMIES[0]!, kind: 'mothQueen', dimmed: false, down: false };
+    await render(
+      <BattleScene
+        {...props({
+          geometry: boss,
+          enemies: [queen],
+          timeline: null,
+          spark: null,
+          summon: { pending: [1, 2], calledAt: null, entered: {}, fell: {} },
+          uiNow: () => NOW,
+        })}
+      />,
+    );
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    // Le carré de 52 de l'effet, centré sur la case de 44 × 52 de la place : 4 pixels d'art à gauche.
+    const side = table.summon[2];
+    expect(side).toBe(52);
+    expect(effectsPlaced()).toEqual(
+      [1, 2].map((slot) => {
+        const { sprite } = boss.enemies[slot]!;
+        return [2, 0, sprite.x + 44 - side, sprite.y + 52 - side];
+      }),
+    );
+  });
 });

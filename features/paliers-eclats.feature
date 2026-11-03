@@ -111,13 +111,13 @@ Fonctionnalité: Trois paliers jusqu'au sommet, et les premiers Éclats
   @domain
   Scénario: Les ennemis tirés au palier 2
     Étant donné un groupe tiré au palier 2
-    Alors chaque ennemi est une Goule, un Villageois fou, un Pèlerin enronce, une Ronce de cendre, une Glaneuse de cendre ou un Embrasé (#171)
+    Alors chaque ennemi est une Goule, un Villageois fou, un Pèlerin enronce, une Ronce de cendre, une Glaneuse de cendre, un Embrasé (#171) ou une Phalénide (#172)
     Et jamais un Spectre, un Nécromancien, un Squelette ou un Veilleur d'airain
 
   @domain
   Scénario: Les ennemis tirés au palier 3
     Étant donné un groupe tiré au palier 3
-    Alors chaque ennemi est un Squelette, un Spectre, un Nécromancien, un Veilleur d'airain, une Gargouille ou un Fondeur de cloches (#171)
+    Alors chaque ennemi est un Squelette, un Spectre, un Nécromancien, un Veilleur d'airain, une Gargouille, un Fondeur de cloches (#171) ou une Phalénide (#172)
     Et jamais une Goule, un Villageois fou ni un ennemi des Jardins de cendre
 
   @domain

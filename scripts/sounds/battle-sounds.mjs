@@ -127,6 +127,24 @@ export const CUES = {
   ],
   // L'extinction d'une flamme : un « pschht » bref, aigu et doux, qui retombe.
   'burn-out': [[2_600, 0.12, 'sine', 0.05, 0, 1_400]],
+  // #172 : l'Invocation. Un bruissement d'ailes à l'annonce : des battements doux et rapides, qui
+  // glissent vers le grave, comme des ailes de poussière.
+  'wing-rustle': [
+    [700, 0.06, 'triangle', 0.025, 0, 450],
+    [820, 0.06, 'triangle', 0.025, 0.07, 500],
+    [660, 0.06, 'triangle', 0.025, 0.14, 420],
+    [780, 0.06, 'triangle', 0.02, 0.21, 480],
+    [620, 0.08, 'triangle', 0.02, 0.28, 380],
+  ],
+  // Le second, plus fort, à la sortie de la poussière : plus de battements, plus amples.
+  'wing-rustle-loud': [
+    [640, 0.07, 'sawtooth', 0.05, 0, 380],
+    [760, 0.07, 'triangle', 0.06, 0.06, 440],
+    [600, 0.07, 'sawtooth', 0.05, 0.12, 360],
+    [720, 0.07, 'triangle', 0.06, 0.18, 420],
+    [560, 0.08, 'sawtooth', 0.045, 0.24, 330],
+    [680, 0.1, 'triangle', 0.05, 0.31, 360],
+  ],
 };
 
 const WAVES = {

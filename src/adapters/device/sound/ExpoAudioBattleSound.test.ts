@@ -122,6 +122,18 @@ describe('ExpoAudioBattleSound', () => {
     },
   );
 
+  it.each(['wingRustle', 'wingRustleLoud'] as const)(
+    'preloads and plays the %s of the Summon (#172)',
+    (cue) => {
+      const sound = new ExpoAudioBattleSound();
+
+      sound.play(cue);
+
+      expect(playerOf(cue).calls).toEqual(['seekTo', 'play']);
+      expect(playerOf('hit').calls).toEqual([]);
+    },
+  );
+
   it('measures the sound latency with the monotonic clock of the phone by default', () => {
     const now = jest
       .spyOn(performance, 'now')

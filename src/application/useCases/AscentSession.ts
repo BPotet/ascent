@@ -43,6 +43,12 @@ export const UNREADABLE_SHARD_TOTAL_KEY = 'shards.total.unreadable';
  */
 export const BURN_SMOKE_HOLD_MS = 360;
 
+/**
+ * La chute des invoqués avec leur boss (#172) : 300 ms, puis l'effet d'Invocation à l'envers (3
+ * images de 160 ms). L'écran qui suit le combat attend qu'ils soient retombés en poussière.
+ */
+export const SUMMON_FALL_HOLD_MS = 780;
+
 /** Ce qui est sauvegardé : l'ascension et le combat en cours (P31). */
 interface SavedAscent {
   readonly version: typeof SAVE_VERSION;
@@ -64,6 +70,8 @@ const SAVED_ON: ReadonlySet<BattleEvent['type']> = new Set([
   'stepInStarted',
   'battleEnded',
   'enemySelfRevived',
+  // L'entrée des invoqués (#172) ; leur annonce est sauvée avec le coup qui l'a lancée.
+  'summonEntered',
 ]);
 
 type Listener = (ascent: Ascent | null) => void;
@@ -134,6 +142,8 @@ export class AscentSession {
   private storedShards: ShardTotal = EMPTY_SHARD_TOTAL;
   /** La fin d'un combat, le temps que ses Éclats soient écrits. */
   private settling = false;
+  /** L'instant où les invoqués sont tombés avec leur boss dans ce combat (#172), `null` sinon. */
+  private summonFellAt: number | null = null;
   /**
    * Faux quand un Total d'Éclats illisible n'a pas pu être gardé à part : la valeur stockée n'est
    * alors jamais écrasée pendant cette session (ADR 0012), les Éclats ne vivent qu'en mémoire, et
@@ -260,6 +270,7 @@ export class AscentSession {
    * ou commence le combat de l'étage ; elle peut être démarrée de nouveau après une pause.
    */
   battleSession(): BattleSession {
+    this.summonFellAt = null;
     const session = new BattleSession(this.dependencies, {
       createBattle: (options) => {
         if (this.battle !== null)
@@ -283,6 +294,8 @@ export class AscentSession {
           enemies: encounter.enemies,
           // Le multiplicateur de palier : les combats ordinaires seulement, jamais l'Élite ni le boss.
           ...(encounter.kind === 'combat' && { tierMultiplier: TIERS[ascent.tier].multiplier }),
+          // Les ennemis invoqués ont les valeurs du palier, dans tout combat d'étage (#172).
+          summonMultiplier: TIERS[ascent.tier].multiplier,
           // L'ordre d'action par Initiative (P13, P14), ajouté par #90.
           initiative: true,
         });
@@ -295,6 +308,8 @@ export class AscentSession {
   private onBattle(battle: Battle, events: readonly BattleEvent[]): void {
     if (this.ascent === null || this.ascent.encounter === null || this.settling) return;
     this.battle = battle;
+    const fell = events.find((event) => event.type === 'summonedFell');
+    if (fell !== undefined) this.summonFellAt = fell.at;
     const ended = battle.phase.kind === 'over' ? battle.phase.outcome : null;
     if (ended !== null) {
       const next = endFloorBattle(this.ascent, { outcome: ended, heroHp: battle.hero.hp });
@@ -306,7 +321,16 @@ export class AscentSession {
         waits.push(this.writeShards().then(() => this.publishShards()));
       }
       // Les flammes de la Brûlure partent en fumée avant l'écran qui suit le combat (#171).
-      if (events.some((event) => event.type === 'burnCleared')) waits.push(this.smokeGone());
+      const { clock } = this.dependencies;
+      if (events.some((event) => event.type === 'burnCleared')) {
+        waits.push(this.heldUntil(clock.now() + BURN_SMOKE_HOLD_MS));
+      }
+      // Les invoqués retombent en poussière avant l'écran qui suit le combat (#172) : leur chute,
+      // à celle du boss, peut précéder de peu la fin du combat (la fin de l'action du héros).
+      if (this.summonFellAt !== null) {
+        waits.push(this.heldUntil(this.summonFellAt + SUMMON_FALL_HOLD_MS));
+        this.summonFellAt = null;
+      }
       if (waits.length === 0) {
         this.update(next, null);
         return;
@@ -321,11 +345,14 @@ export class AscentSession {
     if (events.some((event) => SAVED_ON.has(event.type))) this.save();
   }
 
-  /** La fin de la fumée des flammes de la Brûlure, sur l'horloge de combat (#171). */
-  private smokeGone(): Promise<void> {
+  /**
+   * La fin d'un effet de la fin du combat, à l'instant `at` de l'horloge de combat : la fumée de la
+   * Brûlure (#171), la chute des invoqués (#172).
+   */
+  private heldUntil(at: number): Promise<void> {
     const { clock } = this.dependencies;
     return new Promise((resolve) => {
-      clock.setTimer(clock.now() + BURN_SMOKE_HOLD_MS, resolve);
+      clock.setTimer(at, resolve);
     });
   }
 

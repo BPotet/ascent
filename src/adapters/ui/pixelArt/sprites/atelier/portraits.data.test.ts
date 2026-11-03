@@ -21,6 +21,7 @@ const ATELIER_IDS: Partial<Record<HeroKind | EnemyKind, string>> = {
   madVillager: 'nouvelEnnemi2',
   twins: 'nouvelleElite',
   burningHusk: 'smolderingBrand',
+  mothkin: 'ashMoth',
 };
 
 interface MockupImage {

@@ -143,7 +143,11 @@ export function EnemyColumn({
             {view.name === null ? null : (
               <Text style={[styles.name, view.target && styles.targetName]}>{view.name}</Text>
             )}
-            {view.tag === null ? null : <Text style={styles.tag}>{view.tag}</Text>}
+            {view.tag === null ? null : (
+              <Text style={[styles.tag, view.summoned === true && styles.summonedTag]}>
+                {view.tag}
+              </Text>
+            )}
             <View style={[styles.track, view.stunned && styles.stunnedTrack]}>
               <View
                 testID={`enemy-${kind}-guard`}
@@ -232,5 +236,14 @@ const styles = StyleSheet.create({
   name: { color: battleColors.text, fontFamily: textFont.semiBold, fontSize: 12, lineHeight: 15 },
   targetName: { color: battleColors.light, fontFamily: textFont.bold },
   tag: { color: battleColors.light, fontSize: 11, fontWeight: '700' },
+  // L'étiquette « Invoquée » (#172, maquette `.ptag.summ`) : fumée sur fond sombre, cernée de gris.
+  summonedTag: {
+    color: battleColors.summonTag,
+    backgroundColor: battleColors.summonTagBackground,
+    borderWidth: 1,
+    borderColor: battleColors.summonDust,
+    paddingHorizontal: 4,
+    alignSelf: 'center',
+  },
 });
 // Stryker restore all

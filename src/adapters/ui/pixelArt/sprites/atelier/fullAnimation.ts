@@ -64,6 +64,11 @@ export interface AnimationPhase2<Frame extends string = string> {
   readonly frames: Poses<Frame, readonly string[]>;
   readonly anchors: Poses<Frame, AnimationAnchors>;
   readonly attackPoses?: Readonly<Partial<Record<AttackKind, AttackPoses<Frame>>>>;
+  /**
+   * Les effets de la phase 2 (#172, avenant à l'ADR 0010) : l'Invocation (`summon`), une séquence
+   * dans la palette de l'entité, calée en bas de la case de la place de chaque ennemi appelé.
+   */
+  readonly effects?: { readonly summon?: EffectSequence };
 }
 
 /**
@@ -108,6 +113,8 @@ export interface EffectSequence {
   readonly h: number;
   readonly cell?: Point;
   readonly slots?: readonly Point[];
+  /** Le nom de code de l'ennemi qu'appelle une séquence d'Invocation (#172) ; jamais affiché. */
+  readonly summons?: string;
   readonly frames: readonly (readonly string[])[];
 }
 
