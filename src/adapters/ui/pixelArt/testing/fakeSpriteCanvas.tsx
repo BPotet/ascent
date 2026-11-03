@@ -2,7 +2,7 @@
 // `jest.config.js` dans les projets `integration` et `bdd`. Il dessine le sprite (une fois par nom,
 // comme le vrai) et expose son nom, son échelle et sa taille en pixels d'art, pour que les tests
 // d'écran vérifient ce qui est dessiné, sans Skia. Un portrait de la Frise d'action expose sa taille
-// exacte (`size`) à la place de l'échelle.
+// exacte (`size`) à la place de l'échelle, et sa saturation (`saturation`) quand elle est donnée (#188).
 import { View } from 'react-native';
 
 import type * as RealSpriteCanvas from '../SpriteCanvas';
@@ -25,6 +25,7 @@ export function SpriteCanvas({
   draw,
   scale,
   size,
+  saturation,
   style,
   testID,
 }: RealSpriteCanvas.SpriteCanvasProps) {
@@ -38,6 +39,7 @@ export function SpriteCanvas({
       style={style}
       {...{ sprite, pixelWidth: width, pixelHeight: height }}
       {...(size === undefined ? { scale } : { size })}
+      {...(saturation !== undefined && { saturation })}
     />
   );
 }
