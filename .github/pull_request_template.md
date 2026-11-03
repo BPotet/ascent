@@ -18,9 +18,8 @@ Closes #
 - [ ] Tests unitaires
 - [ ] Tests d'intégration
 - [ ] Tests BDD (tous les scénarios Gherkin de la story)
-- [ ] Tests end-to-end
-- [ ] Tests de mutation (≥ seuil ; écrans seulement avec le label `mutation:ui`)
+- [ ] Test de fumée end-to-end (l'app s'installe et démarre)
 - [ ] SonarQube Cloud (quality gate passed, coverage ≥ seuil)
-- [ ] Captures d'écran conformes à la maquette validée
+- [ ] Écrans conformes à la maquette validée (captures facultatives)
 - [ ] Glossaire à jour
 - [ ] Documentation à jour
