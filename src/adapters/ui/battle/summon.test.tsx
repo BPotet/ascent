@@ -32,18 +32,29 @@ describe('SummonBanner (#172, I2)', () => {
     expect(screen.getByText('La Reine des phalènes change de phase', hiddenToo)).toBeOnTheScreen();
   });
 
-  it('never blocks a touch, and is unlike the phase banner: dark band, dusty dashed edges', async () => {
+  it('never blocks a touch, and is unlike the phase banner: dusty dotted edges, parchment line', async () => {
     await render(<SummonBanner title="t" line="l" reducedMotion={false} />);
 
     expect(screen.getByTestId('summon-banner-place', hiddenToo).props.pointerEvents).toBe('none');
     expect(style('summon-banner')).toMatchObject({
-      backgroundColor: battleColors.summonBand,
-      borderStyle: 'dashed',
+      borderStyle: 'dotted',
       borderColor: battleColors.summonDust,
     });
+    expect(style('summon-banner').backgroundColor).toBeUndefined();
     expect(StyleSheet.flatten(screen.getByText('t', hiddenToo).props.style).color).toBe(
       battleColors.summonText,
     );
+    expect(StyleSheet.flatten(screen.getByText('l', hiddenToo).props.style).color).toBe(
+      battleColors.summonLine,
+    );
+  });
+
+  it('lays its dark band under the text, fading out on the edges (#172, `.announce`)', async () => {
+    await render(<SummonBanner title="t" line="l" reducedMotion={false} />);
+
+    const fade = screen.getByTestId('summon-band-fade', hiddenToo);
+    expect(fade.props.color).toBe(battleColors.summonBand);
+    expect(StyleSheet.flatten(fade.props.style)).toMatchObject({ position: 'absolute' });
   });
 
   it('fades out after 1 600 ms', async () => {
