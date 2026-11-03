@@ -81,6 +81,8 @@ describe('IconBoardScreen (#157)', () => {
       'Frise · manche et aperçu',
       'Frise · deux Goules',
       'Frise · boss en phase 2',
+      'Voile · coup imparable · palier 1',
+      'Voile · coup imparable · palier 3',
       'Fermer',
     ]);
   });
@@ -414,4 +416,39 @@ describe('IconBoardScreen with the portraits of the action track (#175)', () => 
       jest.useRealTimers();
     }
   });
+});
+
+describe('IconBoardScreen with the veil of the enemy phase (#188)', () => {
+  it.each([
+    ['Voile · coup imparable · palier 1', 1, 'specter', 'perilous'],
+    ['Voile · coup imparable · palier 3', 3, 'bronzeWarden', 'delayedPerilous'],
+  ] as const)(
+    '« %s » resumes the wind-up of a perilous attack, under the veil (C1, C3)',
+    async (entry, tier, kind, attack) => {
+      jest.useFakeTimers();
+      try {
+        await open(entry);
+        const { battle, saved } = opened[0]!;
+        expect(saved).toMatchObject({ tier });
+        expect(battle?.phase).toMatchObject({ kind: 'enemy', step: { kind: 'attack', attack } });
+        const { step } = battle!.phase as { step: { enemy: number } };
+        expect(battle!.enemies[step.enemy]!.kind).toBe(kind);
+        for (let second = 0; second < RESUME_COUNTDOWN_S; second += 1) {
+          await act(async () => {
+            jest.advanceTimersByTime(1_000);
+          });
+        }
+
+        expect(screen.getByTestId('battle-phase')).toHaveTextContent('Phase ennemie');
+        expect(screen.getByTestId('enemy-phase-veil', hidden)).toBeTruthy();
+        expect(screen.getByLabelText('Sceau rouge : coup imparable')).toBeOnTheScreen();
+        const [acting] = screen.getAllByTestId('track-portrait', hidden);
+        expect(acting).toHaveProp('sprite', `portrait:${kind}`);
+        expect(acting).toHaveProp('scale', 2);
+        expect(screen.getAllByTestId('track-shade', hidden).length).toBeGreaterThan(0);
+      } finally {
+        jest.useRealTimers();
+      }
+    },
+  );
 });
