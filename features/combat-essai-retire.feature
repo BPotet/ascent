@@ -6,7 +6,7 @@ Fonctionnalité: Le combat d'essai est retiré du build de preview
 
   # Les scénarios `@ui` passent par les vraies routes de l'app (`src/app`), une vraie base SQLite
   # et le canal du build posé comme par l'action de build. La place exacte au pixel de la barre
-  # d'onglets et de la liste se compare sur la capture du parcours e2e old-trial-battle-link.
+  # d'onglets et de la liste se juge sur l'APK (plus de captures end-to-end depuis le 3/11/2026).
   # Le scénario sans tag passe par la session d'ascension (cas d'usage), avec l'horloge de combat
   # manuelle. Le bienfait et l'objet trouvé de l'ascension restent vérifiés par les tests
   # d'intégration de l'ascension (AscentSession.test.ts, AscentScreen.test.tsx), inchangés.

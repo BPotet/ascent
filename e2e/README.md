@@ -1,150 +1,31 @@
-# Tests end-to-end (Maestro)
+# Test de fumée end-to-end (Maestro)
 
-Les parcours sont dans `flows/`, un fichier YAML par parcours, écrits avec [Maestro](https://maestro.mobile.dev).
-Les sous-parcours partagés sont dans `subflows/`, hors de `flows/` pour ne pas être lancés seuls :
-`launch-fresh.yaml` lance l'app sur une installation neuve et attend la Vue Journée vide, en
-rejouant le lancement (au plus deux fois) si l'émulateur laisse un écran blanc. `expect-xp.yaml`
-vérifie l'expérience exacte du personnage après un tap qui peut atteindre un objectif de la semaine
-(voir « Prime d'objectif » plus bas).
-Ils s'exécutent sur l'APK release, sans serveur de développement.
+Décision du propriétaire du 3 novembre 2026 : l'end-to-end se réduit à un **test de fumée** rapide,
+qui vérifie que l'app s'installe et démarre. Il n'y a plus de parcours ni de captures par story :
+le propriétaire juge l'interface sur l'APK de preview.
+
+- `flows/launch.yaml` : l'app s'ouvre hors ligne sur une installation neuve, crée sa base locale et
+  affiche la Vue Journée vide ; une relance à froid rouvre la base déjà migrée. Il prouve aussi que
+  l'écran de démarrage natif se cache (#166).
+- `subflows/launch-fresh.yaml` : le lancement sur une installation neuve, rejoué au plus deux fois
+  si l'émulateur de la CI laisse un écran blanc. Il est hors de `flows/` pour ne pas être lancé seul.
+
+Le test s'exécute sur l'APK release, sans serveur de développement.
 
 ## En CI
 Le job `e2e-android` du workflow `CI` installe l'APK du job `android-apk` sur un émulateur Android
-(API 34) et lance `maestro test e2e/flows`. Les captures d'écran (`takeScreenshot`) sont publiées
-dans l'artefact `e2e-report` pour la comparaison avec les maquettes.
+(API 34) et lance `maestro test e2e/flows/launch.yaml`. Le rapport est publié dans l'artefact
+`e2e-report`.
 
 ## En local
 Avec un émulateur ou un téléphone branché et l'APK installé :
 
 ```sh
-maestro test e2e/flows
+maestro test e2e/flows/launch.yaml
 ```
 
 Pour construire l'app soi-même (`npx expo run:android`), passer `EXPO_IMAGE_UTILS_NO_SHARP=1`,
 comme le build de la CI : si `sharp` est installé sur la machine, le prebuild lisserait l'icône de
 l'application et l'écran de démarrage (#166, ADR 0011).
 
-La sonde de toucher (`preview-touch-probe.yaml`, outil du build de preview) s'ouvre par le lien
-profond `ascent://preview/touch-probe` (`openLink`) : aucun bouton n'y mène. L'APK de la CI est
-construit sur le canal `preview` ; sur un build de production, le lien ramène à l'accueil. En
-local, lancer l'app avec `EXPO_PUBLIC_ASCENT_CHANNEL=preview` (par exemple
-`EXPO_PUBLIC_ASCENT_CHANNEL=preview npx expo run:android --variant release`) pour ouvrir la sonde.
-
-La planche des icônes (`boon-icons.yaml`, outil du build de preview, #157) s'ouvre de la même
-façon, par le lien profond `ascent://preview/icon-board`. Elle rend les vrais écrans du choix d'un
-bienfait et des sorties avec des données fixes, que le parcours ne peut pas atteindre sans gagner un
-combat : ses captures (1A, 1B, 1D, 1E, 2B, 2C et 2D) se comparent à la maquette
-`docs/mockups/153-boon-blessing-icons/`.
-
-Le choix d'une bénédiction de départ (`blessing-icons.yaml`, #158) passe par la même planche : il ne
-s'ouvre qu'avec des habitudes faites hier, ce qu'une installation neuve n'a pas. L'entrée
-« Bénédictions · 3 sur 3 » enchaîne les écrans 3A, 3B et 3C sur des données fixes, un toucher par
-écran, puis revient au menu ; « Bénédiction · 1 sur 1 » montre l'écran 3D. Ses captures (3A à 3D)
-se comparent à la même maquette ; sur 3A, le bouton Hâte est au repos, et non enfoncé comme dans la
-maquette. Les sélecteurs des boutons se terminent par `.*`, le `+` des effets étant un caractère de
-regex. Le vrai parcours reste couvert par `tower-pixel-buttons.yaml` (boucle sur `blessing-0`).
-
-L'Équipement (`loadout.yaml`, #159) suit d'abord le vrai parcours, sans timing : sur une
-installation neuve, ni bénédiction ni bienfait. Le bouton « Équipement » du combat de l'étage 1 est
-vérifié par son libellé lu (5B) ; le toucher met le combat en pause et ouvre la feuille vide (5E) ;
-« Fermer » lance « Reprise dans 3 », capturé dès son apparition (5D), et la vérification qui dure
-est le retour de `battle-pad` ; « Pause » mène au pied de la tour avec « Équipement · 0 » (4B). Les
-états pleins passent par la même planche : ses entrées « Équipement · … » ouvrent le vrai pied de la
-tour et le vrai écran de l'ascension sur des ascensions fixes, chacune dans une session en mémoire
-(jamais l'ascension du joueur). « Pause » ramène à la planche ; depuis le pied de la tour,
-« Reprendre l'ascension » puis « Pause ». Le menu de la planche défile (`scrollUntilVisible`). Les
-titres de section sont écrits en capitales : leurs sélecteurs ignorent la casse (`(?iu)`). Captures :
-4A à 4E, 5A à 5G.
-
-Les paliers et les Éclats (`tiers-shards.yaml`, #38) suivent d'abord le vrai parcours, sans
-timing : sur une installation neuve, le pied de la tour montre « 0 Éclat ». Les écrans qui suivent
-la victoire sur un boss ou la fin d'une ascension ne s'atteignent pas sans gagner de combats : la
-même planche les ouvre sur des ascensions fixes, chacune dans une session en mémoire avec un Total
-d'Éclats fixe (jamais celle du joueur) : « Boss vaincu · palier 1 » (X3), puis « Continuer vers le
-palier 2 » (C4, puis « Entrer » et « Pause » pour revenir à la planche), « Chute · 10 Éclats »
-(X6), « Sommet atteint » (X7) et, en dernier, « Pied de la tour · 22 Éclats » : sans ascension, ce
-pied de la tour n'a pas de bouton vers la planche, et le lien profond de la planche, déjà ouverte,
-ne la remonte pas. Les Éclats gagnés en grand se vérifient par leur libellé lu (« 8 Éclats gagnés, gardés
-pour toujours ») ; le `+` de l'Or est échappé (`\+40 Or`). Captures : le pied de la
-tour, X3, C4, X6 et X7, à comparer à la maquette `docs/mockups/30-premiere-ascension/`.
-
-Les portraits de la Frise d'action (`track-portraits.yaml`, #175) passent par la même planche : ses
-entrées « Frise · … » ouvrent le vrai écran de l'ascension sur des combats fixes, chacun dans une
-session en mémoire. L'héroïne agit la première et attend son attaque : la frise reste fixe pendant
-la capture, aucun combat n'est joué. « Frise · boss en phase 2 » reprend un combat sauvegardé, la
-Jardinière des cendres déjà en phase 2 : la capture attend la fin de « Reprise dans ». La phrase de
-la frise se vérifie par son libellé lu. Captures : F1, F2 (frise pleine, 4 + 4 cases) et F4, à
-comparer à la maquette `docs/mockups/174-tier-identity/`, à la largeur et à la densité de
-l'émulateur de la CI.
-
-Le voile de phase ennemie (`enemy-phase-veil.yaml`, #188) passe par la même planche : ses entrées
-« Voile · coup imparable · … » reprennent un combat sauvegardé à la préparation d'un coup imparable
-(le Spectre au palier 1, le Veilleur d'airain au palier 3), chacun dans une session en mémoire. Ce
-coup est imposé par l'entrée et sa préparation dure 20 s (`BOARD_WIND_UP_MS`, 1,3 à 2 s en jeu) :
-après « Reprise dans », elle repart du début, sous le voile, et la capture suit le sceau rouge
-(`peril-seal`), visible toute la préparation. Le héros ne se défend pas, le combat continue jusqu'à la phase du
-héros, qui attend son attaque (« Cible : … ») : la capture du retour. Captures : C1, C3 et le retour
-en phase du héros, à comparer à la maquette `docs/mockups/174-tier-identity/`.
-
-Le combat d'essai et son bouton « Combat d'essai », au-dessus de la barre d'onglets du build de
-preview, sont retirés (#121, décision du propriétaire du 28/10/2026) : la barre d'onglets et la liste
-de la Vue Journée ont la même place en preview et en production. `old-trial-battle-link.yaml` vérifie
-l'accueil sans ce bouton, en capture la Vue Journée (`day-view-without-trial-entry`, à comparer à
-celle du build de production), puis ouvre l'ancien lien `ascent://trial-battle`, qui ramène à
-l'accueil. C'est un parcours sans timing. Décision du propriétaire du 25/10 : le gameplay du combat
-(timing, parade, frappe, transitions) se teste à la main sur l'APK ; les règles sont couvertes par
-les tests unitaires, d'intégration et BDD. Les combats passent par l'onglet Tour (ascension).
-
-Sélecteurs : privilégier les textes visibles (libellés du glossaire) et les `testID` des écrans.
-
-Attentes (#86) : l'émulateur de la CI est parfois très lent. Un message bref (toast) est attendu par
-son texte exact avec `extendedWaitUntil` (10 s), jamais par `id: toast` suivi d'un `assertVisible`
-sur son texte ; les autres vérifications portent sur des états durables (libellé de la ligne,
-expérience). Quand « Toutes faites » apparaît, la liste de la Vue Journée remonte et la dernière
-habitude peut passer sous le bouton flottant « Ajouter une habitude », qui prendrait le toucher de
-« ⋯ » : `target-bonus.yaml` amène d'abord la liste en bas (`swipe` sur `day-view-list`).
-
-Libellés des lignes de la Vue Journée (lecteur d'écran) : `<nom>, <jour>, <état>[, corrigé], <progression>, <Difficulté>, <X> XP par suivi[, objectif atteint]`,
-par exemple `Lire, mercredi 21 octobre, à faire, 2 sur 5 cette semaine, Moyenne, 10 XP par suivi`. La
-progression de la semaine est `<N> sur <objectif> cette semaine`, puis `<N> fois cette semaine`
-au-delà de l'objectif ; comme Maestro ne pilote pas la date, l'objectif d'une habitude créée
-pendant le parcours dépend du jour (semaine de création réduite) : les parcours l'écrivent
-`.+ cette semaine` ou `\d`. Les cases de la Vue
-Semaine ne portent pas la difficulté : `<nom>, <jour>, <état>`. Les lignes du détail du jour non plus,
-mais elles portent la progression de la semaine du jour (#27) : `<nom>, <jour>, <état>[, <progression>][, corrigé][, objectif atteint]`,
-où la progression est `<N> sur <objectif> cette semaine` pour la semaine en cours et `<N> sur <objectif> semaine du <lundi>`
-sinon (`2 sur 3 semaine du 12 octobre`) ; une habitude sans objectif de la semaine n'en a pas.
-
-Compteurs (#25) : l'en-tête de la Vue Journée affiche `<faites>/<attendues> faites`, lu
-`<N> habitude(s) faite(s) sur <M> attendue(s)` ; un jour de la Vue Mois est lu `<jour>[, aujourd’hui], <N>
-habitude(s) faite(s) sur <M> attendue(s)`, ou `<jour>, objectifs de la semaine atteints, aucune habitude
-attendue` avec le drapeau.
-
-Prime d'objectif (#26) : une habitude créée pendant le parcours a un objectif de la semaine réduit
-aux jours restants, 1 le dimanche ; son premier « fait » peut donc atteindre l'objectif et rapporter
-la prime d'objectif. **Toute assertion d'Xp exacte après un tap qui peut atteindre un objectif passe
-par `subflows/expect-xp.yaml`** (paramètres `ROW`, le libellé de la ligne sans `, objectif atteint`,
-`XP` et `XP_IF_TARGET_REACHED`) : deux branches exclusives, choisies sur le libellé
-`<ROW>, objectif atteint` lu par le lecteur d'écran, vérifient chacune une valeur exacte. Pour un
-texte (message, confirmation de suppression), la branche porte sur le libellé lu avant l'action. Le
-parcours `target-bonus.yaml` crée ses habitudes avec l'objectif 1 : il atteint l'objectif tous les
-jours. Le message « Objectif de la semaine atteint » (F1) écrit son titre sur sa propre ligne :
-`Objectif de la semaine atteint\sLire 1/1 · \+5 XP prime`.
-
-Objectifs par semaine (#27) : sous la grille de la Vue Mois, la section `targets-by-week` a une
-ligne par semaine (`week-targets-<lundi AAAA-MM-JJ>`), lue `Semaine du <jour> <mois>, <N> objectif(s)
-atteint(s) sur <M>, ouvrir la semaine`, ou `Cette semaine, …` pour la semaine en cours (singulier
-jusqu'à 1). Le texte affiché est `Semaine du 5 octobre` puis `3/4 objectifs atteints` (`0/1 objectif
-atteint`). Toucher une ligne ouvre la Vue Semaine sur sa semaine.
-
-Vérifier la syntaxe sans émulateur : `maestro check-syntax e2e/flows/<parcours>.yaml`.
-
-## Onglet Tour
-
-`tower-pixel-buttons.yaml` (#120) parcourt l'onglet Tour du build de preview : le pied de la tour
-(B1), le choix du héros, les bénédictions éventuelles (`blessing-0` tant que `ascent-blessing` est
-affiché), le combat de l'étage (C1, `battle-pad`, « Pause » par `ascent-pause`), l'ascension en
-cours (B2) et la confirmation d'abandon (B3). Ses captures (`tower-b1-foot`, `tower-c1-battle`,
-`tower-b2-in-progress`, `tower-b3-confirm`) servent à la comparaison avec la maquette
-`docs/mockups/118-tower-pixel-art/`. Le parcours n'attend rien du timing du combat et ne dépend pas
-de la graine de l'ascension : la porte Élite est vérifiée en intégration.
+Vérifier la syntaxe sans émulateur : `maestro check-syntax e2e/flows/launch.yaml`.

@@ -6,8 +6,8 @@ Fonctionnalité: Les icônes des bienfaits dans le choix d'un bienfait et aux so
 
   # Les écrans sont rendus avec les vrais composants (`BoonChoicePanel`, `ExitChoice`) et la
   # simulation de `SpriteCanvas`, qui donne le nom, l'échelle et la taille en pixels d'art de chaque
-  # icône. « La porte du boss reste visible sans défilement » se vérifie aussi sur la capture
-  # end-to-end de la planche des icônes (`e2e/flows/boon-icons.yaml`, capture 2D).
+  # icône. « La porte du boss reste visible sans défilement » se juge aussi sur l'APK, par la
+  # planche des icônes (plus de captures end-to-end).
 
   Scénario: Chaque carte du choix d'un bienfait porte son icône
     Étant donné le joueur vient de gagner un combat qui n'est pas celui du boss
