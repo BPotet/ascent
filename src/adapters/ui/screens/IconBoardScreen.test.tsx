@@ -1,5 +1,6 @@
 import { act, fireEvent, screen, within } from '@testing-library/react-native';
 
+import type { ManualBattleClock } from '../../../application/testing/ManualBattleClock';
 import type { AscentSession } from '../../../application/useCases/AscentSession';
 import type { Ascent } from '../../../domain/ascent/Ascent';
 import type { Battle } from '../../../domain/battle/Battle';
@@ -18,6 +19,7 @@ let opened: {
   shards: number | undefined;
   battle: Battle | undefined;
   session: AscentSession;
+  clock: ManualBattleClock;
 }[] = [];
 
 async function openAscent(
@@ -25,13 +27,13 @@ async function openAscent(
   shards?: number,
   battle?: Battle,
 ): Promise<AscentSession> {
-  const { session } = ascentSetUp({
+  const { session, clock } = ascentSetUp({
     ...(saved !== null && { saved }),
     ...(shards !== undefined && { shards }),
     ...(battle !== undefined && { battle }),
   });
   await session.load();
-  opened.push({ saved, shards, battle, session });
+  opened.push({ saved, shards, battle, session, clock });
   return session;
 }
 
@@ -451,6 +453,19 @@ describe('IconBoardScreen with the veil of the enemy phase (#188)', () => {
         expect(acting).toHaveProp('sprite', `portrait:${kind}`);
         expect(acting).toHaveProp('scale', 2);
         expect(screen.getAllByTestId('track-shade', hidden).length).toBeGreaterThan(0);
+
+        // Reprise : la préparation repart du début et dure toujours 20 s sur l'horloge de combat.
+        const { clock } = opened[0]!;
+        const resumedAt = clock.now();
+        await act(async () => {
+          clock.advanceTo(resumedAt + BOARD_WIND_UP_MS - 1_000);
+        });
+        expect(screen.getByLabelText('Sceau rouge : coup imparable')).toBeOnTheScreen();
+        expect(screen.getByTestId('enemy-phase-veil', hidden)).toBeTruthy();
+        await act(async () => {
+          clock.advanceTo(resumedAt + BOARD_WIND_UP_MS + 1_000);
+        });
+        expect(screen.queryByLabelText('Sceau rouge : coup imparable')).toBeNull();
       } finally {
         jest.useRealTimers();
       }

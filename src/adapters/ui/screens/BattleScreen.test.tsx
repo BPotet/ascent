@@ -1038,6 +1038,7 @@ describe('BattleScreen: the veil of the enemy phase (#188)', () => {
     const shades = () => within(track()).queryAllByTestId('track-shade', hiddenToo);
     const opacities = () =>
       shades().map((shade) => StyleSheet.flatten(shade.props.style).opacity as number);
+    expect(shades()).not.toHaveLength(0);
     expect(opacities().every((opacity) => opacity === 0.38)).toBe(true);
 
     await test.attack();
@@ -1049,6 +1050,7 @@ describe('BattleScreen: the veil of the enemy phase (#188)', () => {
     await test.runUntil(() => test.battle().phase.kind === 'hero');
 
     expect(veil()).toBeNull();
+    expect(shades()).not.toHaveLength(0);
     expect(opacities().every((opacity) => opacity === 0.38)).toBe(true);
   });
 
