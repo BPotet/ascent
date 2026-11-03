@@ -5,8 +5,8 @@ import {
   BURN_AFTER_BLEED_MS,
   BURN_OUT_AFTER_BLOW_MS,
   BURN_OUT_AFTER_CRACKLE_MS,
-  SUMMON_AFTER_BURN_MS,
   bledIn,
+  summonEntryDelay,
 } from '../../../application/useCases/battleFeedback';
 import type { BattleSession, BattleSnapshot } from '../../../application/useCases/BattleSession';
 import type { BattleEvent, BlowOutcome } from '../../../domain/battle/BattleEvent';
@@ -289,8 +289,7 @@ export function displayOf(
   let display: BattleDisplay = { ...previous, snapshot };
   const burnBefore = previous.snapshot?.battle.hero.burn ?? 0;
   const afterBleed = bledIn(snapshot.events) ? BURN_AFTER_BLEED_MS : 0;
-  const burnt = snapshot.events.some((event) => event.type === 'burnTicked');
-  const afterRound = afterBleed + (burnt ? SUMMON_AFTER_BURN_MS : 0);
+  const afterRound = summonEntryDelay(snapshot.events);
   const texts = wordsOf(snapshot.events);
   if (texts.length > 0) {
     display = { ...display, feedback: { texts, key: (display.feedback?.key ?? 0) + 1 } };
