@@ -3,8 +3,9 @@ import { StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } f
 import Animated from 'react-native-reanimated';
 
 import type { BattleSession } from '../../../application/useCases/BattleSession';
+import type { Battle } from '../../../domain/battle/Battle';
 import type { DefenseButton } from '../../../domain/battle/BattleEvent';
-import { HEROES, type EnemyKind } from '../../../domain/battle/combatants';
+import { ENEMIES, HEROES, type EnemyKind } from '../../../domain/battle/combatants';
 import { ActionPad } from '../battle/ActionPad';
 import { ActionTrack } from '../battle/ActionTrack';
 import { BattleScene, prepareBattleScene } from '../battle/BattleCanvas';
@@ -16,6 +17,7 @@ import { HeroBar } from '../battle/HeroBar';
 import { PhaseBanner } from '../battle/PhaseBanner';
 import { sceneGeometry } from '../battle/scene/sceneGeometry';
 import { sceneTimeline } from '../battle/scene/sceneTimeline';
+import { SummonBanner } from '../battle/SummonBanner';
 import type { SceneEnemy } from '../battle/sceneTypes';
 import { Screen } from '../components/Screen';
 import { ENEMY_NAMES } from '../format/battleText';
@@ -47,6 +49,16 @@ function lineHidden(pad: BattleView['pad']): boolean {
   return pad.locked || (pad.kind === 'defense' && pad.offBalance);
 }
 
+/**
+ * Les ennemis dont l'écran prépare les atlas : la première ligne et la réserve (#38), puis ceux
+ * qu'ils peuvent invoquer (#172), chacun une fois, dans cet ordre.
+ */
+function preparedKinds(battle: Battle): string {
+  const kinds = [...battle.enemies.map((enemy) => enemy.kind), ...battle.reserve];
+  const summoned = kinds.flatMap((kind) => ENEMIES[kind].phase2Summon?.enemy ?? []);
+  return [...new Set([...kinds, ...summoned])].join();
+}
+
 /** La hauteur de la scène de la maquette (cadre de 390 × 844 pt). */
 const SCENE_HEIGHT = 440;
 
@@ -73,9 +85,10 @@ export function BattleScreen({
 
   const battle = display.snapshot?.battle ?? null;
   // Les atlas de la scène sont faits avant le combat, jamais pendant la phase ennemie : ceux de
-  // tous les ennemis du combat, première ligne et réserve, aspect de phase 2 compris (#38).
-  const battleKinds =
-    battle === null ? '' : [...battle.enemies.map((enemy) => enemy.kind), ...battle.reserve].join();
+  // tous les ennemis du combat, première ligne et réserve, aspect de phase 2 compris (#38), et
+  // ceux des ennemis qu'ils peuvent invoquer (#172), une fois chacun : la clé ne change pas quand
+  // les invoqués entrent.
+  const battleKinds = battle === null ? '' : preparedKinds(battle);
   useEffect(() => {
     if (battleKinds !== '') prepareBattleScene(battleKinds.split(',') as EnemyKind[]);
   }, [battleKinds]);
@@ -128,6 +141,11 @@ export function BattleScreen({
   const { burnFx } = display;
   const burn = useMemo(() => ({ stacks: burnStacks, ...burnFx }), [burnStacks, burnFx]);
   const view = useMemo(() => (battle === null ? null : battleView(battle)), [battle]);
+  // L'Invocation sur la scène (#172) : la poussière vient de l'état, l'annonce et la sortie des
+  // événements ; un combat repris n'a pas d'annonce.
+  const dust = view?.dust;
+  const { summonFx } = display;
+  const summon = useMemo(() => ({ ...summonFx, pending: dust ?? [] }), [dust, summonFx]);
   const timeline = useMemo(() => (battle === null ? null : sceneTimeline(battle)), [battle]);
   // La frise ne change qu'avec le combat : elle garde ainsi sa frise précédente d'un instantané à
   // l'autre. Elle existe dès que le combat existe (`battle` non nul plus bas).
@@ -154,7 +172,9 @@ export function BattleScreen({
     phase2: enemy.phase2 === true,
     downSince: display.downSince[index] ?? null,
   }));
-  const geometry = sceneGeometry(screenWidth, sceneHeight, enemies.length);
+  const geometry = sceneGeometry(screenWidth, sceneHeight, view.columns, {
+    summoner: view.summonerLayout,
+  });
   const strikeImpactAt = battle.phase.kind === 'heroStrike' ? battle.phase.impactAt : null;
   const { heroFloat, burnFloat } = display;
   const targetName = ENEMY_NAMES[battle.enemies[battle.target]!.kind];
@@ -197,6 +217,7 @@ export function BattleScreen({
           riposte={display.riposte}
           shadowStep={shadowStep}
           burn={burn}
+          summon={summon}
           reducedMotion={reducedMotion}
           uiNow={uiNow}
         />
@@ -253,6 +274,14 @@ export function BattleScreen({
             {...(battle.phase.kind === 'hero' && {
               hideAfterMs: view.banner.until - view.banner.since,
             })}
+          />
+        )}
+        {display.summonBanner === null || over !== null ? null : (
+          <SummonBanner
+            key={display.summonBanner.key}
+            title={display.summonBanner.title}
+            line={display.summonBanner.line}
+            reducedMotion={reducedMotion}
           />
         )}
         {display.snapshot?.heroHint && view.heroActions ? (

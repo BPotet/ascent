@@ -5,6 +5,7 @@ import {
   BURN_AFTER_BLEED_MS,
   BURN_OUT_AFTER_BLOW_MS,
   BURN_OUT_AFTER_CRACKLE_MS,
+  SUMMON_AFTER_BURN_MS,
   bledIn,
 } from '../../../application/useCases/battleFeedback';
 import type { BattleSession, BattleSnapshot } from '../../../application/useCases/BattleSession';
@@ -12,9 +13,10 @@ import type { BattleEvent, BlowOutcome } from '../../../domain/battle/BattleEven
 import type { BurnRing } from '../battle/BurnChip';
 import type { HeroPose, SceneBurn, SceneSpark } from '../battle/sceneTypes';
 import {
-  announcement,
+  announcementsFor,
   damageFloat,
   feedbackText,
+  summonBannerText,
   type DamageFloat,
   type FeedbackText,
 } from '../format/battleText';
@@ -59,6 +61,22 @@ export interface BattleDisplay {
     readonly key: number;
     readonly delayMs: number;
   } | null;
+  /** La dernière annonce de l'Invocation (#172) : « Elle appelle les Phalénides ». */
+  readonly summonBanner: {
+    readonly key: number;
+    readonly at: number;
+    readonly title: string;
+    readonly line: string;
+  } | null;
+  /**
+   * L'Invocation sur la scène (#172) : l'instant de l'annonce (la poussière se lève), puis, par
+   * place, l'instant où l'invoqué sort de la poussière et celui où il y retombe avec son boss.
+   */
+  readonly summonFx: {
+    readonly calledAt: number | null;
+    readonly entered: Readonly<Record<number, number>>;
+    readonly fell: Readonly<Record<number, number>>;
+  };
 }
 
 export const INITIAL_DISPLAY: BattleDisplay = {
@@ -79,6 +97,8 @@ export const INITIAL_DISPLAY: BattleDisplay = {
   burnFx: { lit: null, ticked: null, out: null },
   burnRing: null,
   burnFloat: null,
+  summonBanner: null,
+  summonFx: { calledAt: null, entered: {}, fell: {} },
 };
 
 const POSE_OF_OUTCOME: Readonly<Record<BlowOutcome, HeroPose>> = {
@@ -213,6 +233,54 @@ function burnAfter(
   }
 }
 
+/**
+ * L'Invocation d'un événement (#172) : l'annonce et la poussière qui se lève ; la sortie de chaque
+ * invoqué, dans sa propre colonne, après le Saignement et la Brûlure de la manche (`afterRound`,
+ * comme son bruissement) ; sa chute avec le boss.
+ */
+function summonAfter(
+  display: BattleDisplay,
+  event: BattleEvent,
+  battle: BattleSnapshot['battle'],
+  afterRound: number,
+): BattleDisplay {
+  const { summonFx } = display;
+  switch (event.type) {
+    case 'summonCalled': {
+      const summoner = battle.enemies[event.enemy]!.kind;
+      return {
+        ...display,
+        summonBanner: {
+          key: (display.summonBanner?.key ?? 0) + 1,
+          at: event.at,
+          ...summonBannerText(summoner, event.kind, event.slots.length),
+        },
+        summonFx: { ...summonFx, calledAt: event.at },
+      };
+    }
+    case 'summonEntered': {
+      // L'invoqué entre debout, sans l'animation de chute de l'ennemi tombé qu'il remplace.
+      const { [event.enemy]: _fallen, ...downSince } = display.downSince;
+      return {
+        ...display,
+        downSince,
+        arrivals: { ...display.arrivals, [event.enemy]: (display.arrivals[event.enemy] ?? 0) + 1 },
+        summonFx: {
+          ...summonFx,
+          entered: { ...summonFx.entered, [event.enemy]: event.at + afterRound },
+        },
+      };
+    }
+    case 'summonedFell':
+      return {
+        ...display,
+        summonFx: { ...summonFx, fell: { ...summonFx.fell, [event.enemy]: event.at } },
+      };
+    default:
+      return display;
+  }
+}
+
 export function displayOf(
   previous: BattleDisplay,
   snapshot: BattleSnapshot,
@@ -221,12 +289,15 @@ export function displayOf(
   let display: BattleDisplay = { ...previous, snapshot };
   const burnBefore = previous.snapshot?.battle.hero.burn ?? 0;
   const afterBleed = bledIn(snapshot.events) ? BURN_AFTER_BLEED_MS : 0;
+  const burnt = snapshot.events.some((event) => event.type === 'burnTicked');
+  const afterRound = afterBleed + (burnt ? SUMMON_AFTER_BURN_MS : 0);
   const texts = wordsOf(snapshot.events);
   if (texts.length > 0) {
     display = { ...display, feedback: { texts, key: (display.feedback?.key ?? 0) + 1 } };
   }
   for (const event of snapshot.events) {
     display = burnAfter(display, event, burnBefore, afterBleed);
+    display = summonAfter(display, event, snapshot.battle, afterRound);
     const float = damageFloat(event);
     if (float?.kind === 'burn') {
       const key = (display.burnFloat?.key ?? 0) + 1;
@@ -275,7 +346,7 @@ export function displayOf(
 
 /** Ce que le lecteur d'écran annonce d'une mise à jour, dans l'ordre des événements. */
 export function announcementsOf(snapshot: BattleSnapshot): string[] {
-  return snapshot.events.flatMap((event) => announcement(event, snapshot.battle) ?? []);
+  return announcementsFor(snapshot.events, snapshot.battle);
 }
 
 interface Action {

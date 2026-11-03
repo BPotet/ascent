@@ -3,19 +3,20 @@ import { ATTACKS } from '../../../domain/battle/attacks';
 import {
   heroProfile,
   nextRoundOrder,
+  pendingSummon,
   type Battle,
   type EnemyState,
 } from '../../../domain/battle/Battle';
 import type { PhaseDirection } from '../../../domain/battle/BattleEvent';
-import type { EnemyKind, HeroKind } from '../../../domain/battle/combatants';
+import { ENEMIES, type EnemyKind, type HeroKind } from '../../../domain/battle/combatants';
 import { POWERS, missingMomentum, type PowerKind } from '../../../domain/battle/momentum';
 import { shownIntent, type ShownIntent } from '../../../domain/battle/shownIntent';
 import {
   ENEMY_NAMES,
   enemyHpText,
   enemyLabel,
+  enemyTag,
   guardText,
-  selfRevivedTag,
   stunnedLabel,
 } from '../format/battleText';
 
@@ -46,6 +47,8 @@ export interface TrackEntry {
   readonly actor: Actor;
   readonly fighter: HeroKind | EnemyKind;
   readonly phase2: boolean;
+  /** Un ennemi invoqué annoncé, pas encore entré (#172) : sa case est en pointillé. */
+  readonly pending?: true;
 }
 
 /**
@@ -121,8 +124,13 @@ export interface EnemyView {
   readonly intent: ShownIntent | null;
   readonly active: boolean;
   readonly dimmed: boolean;
-  /** L'étiquette sous le nom : « Relevé » pour un ennemi qui s'est relevé seul (#106), ou `null`. */
+  /**
+   * L'étiquette sous le nom : « Invoquée » pour un ennemi invoqué (#172), « Relevé » pour un ennemi
+   * qui s'est relevé seul (#106), ou `null`.
+   */
   readonly tag: string | null;
+  /** Un ennemi invoqué (#172) : son étiquette a l'allure de la poussière ; absent, non. */
+  readonly summoned?: boolean;
   readonly label: string;
 }
 
@@ -144,6 +152,12 @@ export interface BattleView {
   readonly heroActions: boolean;
   /** La phase ennemie épurée : noms, chiffres des PV et ligne d'information masqués. */
   readonly trimmed: boolean;
+  /** Les places de la poussière d'une Invocation annoncée (#172), de gauche à droite. */
+  readonly dust: readonly number[];
+  /** Les colonnes de la scène : les ennemis de la première ligne et les places de poussière. */
+  readonly columns: number;
+  /** La disposition du boss qui invoque, à trois colonnes (#172, maquette « boss3 »). */
+  readonly summonerLayout: boolean;
 }
 
 /** La durée de l'annonce « À toi » quand la phase du héros commence sans transition. */
@@ -181,6 +195,18 @@ export function trackEntry(battle: Battle, actor: Actor): TrackEntry {
   return { actor, fighter: enemy.kind, phase2: enemy.phase2 === true };
 }
 
+/**
+ * Une case de l'aperçu de la manche suivante : un ennemi invoqué annoncé y est déjà, à sa place, en
+ * pointillé (#172).
+ */
+function nextEntry(battle: Battle, actor: Actor): TrackEntry {
+  const summon = pendingSummon(battle);
+  if (actor === 'hero' || summon === null || !summon.slots.includes(actor)) {
+    return trackEntry(battle, actor);
+  }
+  return { actor, fighter: summon.kind, phase2: false, pending: true };
+}
+
 /** La frise d'action d'un état du combat ; vide à la fin du combat. */
 export function actionTrackView(battle: Battle): ActionTrackView {
   if (battle.phase.kind === 'over') return { round: battle.round, current: [], next: [] };
@@ -189,7 +215,7 @@ export function actionTrackView(battle: Battle): ActionTrackView {
   return {
     round: battle.round,
     current: battle.turn.order.slice(battle.turn.position).filter(standing).map(entry),
-    next: nextRoundOrder(battle).map(entry),
+    next: nextRoundOrder(battle).map((actor) => nextEntry(battle, actor)),
   };
 }
 
@@ -249,7 +275,8 @@ function enemyView(
     intent,
     active: active === index,
     dimmed: active !== null && active !== index,
-    tag: selfRevivedTag(enemy),
+    tag: enemyTag(enemy),
+    ...(enemy.summoned === true && { summoned: true }),
     label: enemyLabel(enemy, intent, target),
   };
 }
@@ -266,6 +293,9 @@ export function battleView(battle: Battle): BattleView {
   const enemies = battle.enemies.map((enemy, index) =>
     enemyView(battle, enemy, index, { trimmed, active }),
   );
+  const dust = [...(pendingSummon(battle)?.slots ?? [])].sort((left, right) => left - right);
+  const columns = Math.max(enemies.length, ...dust.map((slot) => slot + 1));
+  const [first] = battle.enemies;
   const base = {
     banner: null,
     line: null,
@@ -274,6 +304,10 @@ export function battleView(battle: Battle): BattleView {
     defenseHint: false,
     heroActions: false,
     trimmed,
+    dust,
+    columns,
+    summonerLayout:
+      columns === 3 && first !== undefined && ENEMIES[first.kind].phase2Summon !== undefined,
   };
   const heroPad = (locked: boolean, lock: LockSpan | null): ActionPad => ({
     kind: 'hero',

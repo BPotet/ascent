@@ -12,6 +12,7 @@ import Animated, {
 import type { EnemyKind } from '../../../domain/battle/combatants';
 import { ENEMY_NAMES, actionTrackLabel } from '../format/battleText';
 import { artPalette } from '../pixelArt/artPalette';
+import { battleColors } from '../theme/battleColors';
 import { textFont } from '../pixelArt/pixelTypography';
 import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
 import { PORTRAITS } from '../pixelArt/sprites/atelier/data/portraits';
@@ -141,14 +142,16 @@ function TrackCase({
     'worklet';
     return { opacity: step.get() > 0 ? 0.4 : 0 };
   }, [step]);
+  const pending = entry.pending === true;
   return (
     <Animated.View
-      testID={ghost ? 'track-ghost' : 'track-entry'}
+      testID={ghost ? 'track-ghost' : pending ? 'track-entry-pending' : 'track-entry'}
       style={[
         styles.entry,
         entry.actor === 'hero' && styles.hero,
         current && styles.current,
         ghost && styles.ghost,
+        pending && styles.pending,
         motion,
       ]}
     >
@@ -326,6 +329,8 @@ const styles = StyleSheet.create({
     borderColor: roles.gold,
   },
   ghost: { overflow: 'hidden' },
+  // Un invoqué annoncé, pas encore entré (#172, maquette `.fp.summ`) : cerclé de pointillé gris.
+  pending: { borderStyle: 'dashed', borderColor: battleColors.summonDust },
   // Le double cadre de celui qui agit (maquette `.fp.cur`) : encre, puis or, autour du trait d'or.
   innerRing: {
     position: 'absolute',

@@ -63,5 +63,14 @@ export const battleColors = {
   burnSmoke: '#C3C7D3',
   /** Le chiffre « −N » de la Brûlure (7,0:1 sur la scène). */
   burnNumber: '#FF9F5A',
+  /**
+   * L'Invocation (#172, maquette 170) : la bande sombre de l'annonce et son texte (15,4:1), aux bords
+   * de poussière en pointillé ; l'étiquette « Invoquée » (8,5:1), cernée de fumée.
+   */
+  summonBand: '#100E14',
+  summonText: '#ECE6D6',
+  summonDust: '#8C93A8',
+  summonTag: '#C3C7D3',
+  summonTagBackground: '#262A36',
 } as const;
 // Stryker restore all

@@ -9,6 +9,7 @@ import type {
 } from '../../../domain/battle/BattleEvent';
 import type { Actor } from '../../../domain/battle/actionOrder';
 import {
+  ENEMIES,
   HEROES,
   startingInitiative,
   type Armor,
@@ -245,6 +246,18 @@ export function selfRevivedTag(enemy: {
   return (enemy.selfRevives ?? 0) > 0 ? agreed(enemy.kind, 'Relevé') : null;
 }
 
+/**
+ * L'étiquette sous le nom d'un ennemi : « Invoquée » pour un ennemi invoqué (#172), sinon
+ * « Relevé » pour un ennemi qui s'est relevé seul (#106), ou `null`.
+ */
+export function enemyTag(enemy: {
+  readonly kind: EnemyKind;
+  readonly selfRevives?: number;
+  readonly summoned?: true;
+}): string | null {
+  return enemy.summoned === true ? agreed(enemy.kind, 'Invoqué') : selfRevivedTag(enemy);
+}
+
 /** Le nombre d'une intention (C2.2) : « +N » pour Garde et Soin, aucun sinon. */
 export function intentNumber(intent: ShownIntent): string | null {
   return intent.category === 'guard' || intent.category === 'heal' ? `+${intent.gain}` : null;
@@ -276,11 +289,12 @@ export function enemyLabel(
     readonly maxGuard: number;
     readonly stun: Stunned | null;
     readonly selfRevives?: number;
+    readonly summoned?: true;
   },
   intent: ShownIntent | null,
   isTarget: boolean,
 ): string {
-  const tag = selfRevivedTag(enemy);
+  const tag = enemyTag(enemy);
   const name = `${ENEMY_NAMES[enemy.kind]}${tag === null ? '' : `, ${tag.toLowerCase()}`}`;
   if (enemy.hp <= 0) return `${name}, ${agreed(enemy.kind, 'tombé')}`;
   const guard =
@@ -499,6 +513,9 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
       return event.gain > 0 ? `Répit, plus ${event.gain} PV` : null;
     case 'battleEnded':
       return `${endTitle(event.outcome)}.`;
+    // Le changement de phase d'un boss (#172 : seul, quand il n'invoque rien).
+    case 'bossPhaseShifted':
+      return `${name(event.enemy)} change de phase.`;
     case 'heroBleeding':
       return `Saignement : moins ${event.damage} PV pendant ${event.rounds} manches`;
     case 'bleedTicked':
@@ -517,6 +534,108 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
     default:
       return null;
   }
+}
+
+/** Un nom au pluriel : « Phalénides », « Goules ». */
+function plural(kind: EnemyKind): string {
+  return `${ENEMY_NAMES[kind]}s`;
+}
+
+/** « Elle » pour un boss au nom féminin, « Il » sinon. */
+function pronoun(kind: EnemyKind): string {
+  return FEMININE[kind] ? 'Elle' : 'Il';
+}
+
+/** « une Phalénide », « un Squelette ». */
+function oneOf(kind: EnemyKind): string {
+  return `${FEMININE[kind] ? 'une' : 'un'} ${ENEMY_NAMES[kind]}`;
+}
+
+/** « de la Goule », « du Squelette », « de l'Épouvantail », « des Jumeaux », « de la Reine… ». */
+function ofName(kind: EnemyKind): string {
+  const name = ENEMY_NAMES[kind];
+  if (name.startsWith('Les ')) return `des ${name.slice(4)}`;
+  if (name.startsWith('La ')) return `de la ${name.slice(3)}`;
+  if (/^[AEIOUÉÈ]/u.test(name)) return `de l'${name}`;
+  return `${FEMININE[kind] ? 'de la' : 'du'} ${name}`;
+}
+
+/** « tombée », « tombé », « tombés » : accordé au nom de l'ennemi. */
+function fallenWord(kind: EnemyKind): string {
+  return ENEMY_NAMES[kind].startsWith('Les ') ? 'tombés' : agreed(kind, 'tombé');
+}
+
+/**
+ * L'annonce de l'Invocation (#172, maquette 170, I2, I6) : « Elle appelle les Phalénides » pour
+ * plusieurs, « Elle appelle une Phalénide » pour une, sous « La Reine des phalènes change de phase ».
+ */
+export function summonBannerText(
+  summoner: EnemyKind,
+  kind: EnemyKind,
+  count: number,
+): { readonly title: string; readonly line: string } {
+  const called = count > 1 ? `les ${plural(kind)}` : oneOf(kind);
+  return {
+    title: `${pronoun(summoner)} appelle ${called}`,
+    line: `${ENEMY_NAMES[summoner]} change de phase`,
+  };
+}
+
+/**
+ * L'Invocation lue au lecteur d'écran, avec le changement de phase : à une place, celle d'un ennemi
+ * tombé est nommée (I6) ; à deux, les places ne sont pas nommées.
+ */
+function summonAnnouncement(
+  event: Extract<BattleEvent, { type: 'summonCalled' }>,
+  battle: Battle,
+): string {
+  const summoner = battle.enemies[event.enemy]!.kind;
+  const { title } = summonBannerText(summoner, event.kind, event.slots.length);
+  const shift = `${ENEMY_NAMES[summoner]} change de phase.`;
+  if (event.slots.length > 1) {
+    return `${shift} ${title} : deux ${plural(event.kind)} entrent à la prochaine manche.`;
+  }
+  const replaced = battle.enemies[event.slots[0]!];
+  const place =
+    replaced === undefined
+      ? ''
+      : `, à la place ${ofName(replaced.kind)} ${fallenWord(replaced.kind)}`;
+  const subject = FEMININE[event.kind] ? 'elle' : 'il';
+  return `${shift} ${title} : ${subject} entre à la prochaine manche${place}.`;
+}
+
+/**
+ * La chute des invoqués avec leur boss (#172, I5) : « La Reine des phalènes tombe. Les Phalénides
+ * tombent avec elle. », dite une fois pour tous les invoqués qui tombent ensemble.
+ */
+function summonFallAnnouncement(battle: Battle, count: number, enemy: number): string {
+  const summoner = battle.enemies.find(({ kind }) => ENEMIES[kind].phase2Summon !== undefined);
+  const boss = summoner?.kind ?? battle.enemies[enemy]!.kind;
+  const kind = battle.enemies[enemy]!.kind;
+  const with_ = `avec ${pronoun(boss).toLowerCase()}`;
+  const fall =
+    count > 1
+      ? `Les ${plural(kind)} tombent ${with_}.`
+      : `${FEMININE[kind] ? 'La' : 'Le'} ${ENEMY_NAMES[kind]} tombe ${with_}.`;
+  return `${ENEMY_NAMES[boss]} tombe. ${fall}`;
+}
+
+/**
+ * Les phrases d'une mise à jour au lecteur d'écran, dans l'ordre de ses événements : le changement
+ * de phase et l'Invocation qui le suit en une seule phrase, la chute des invoqués une seule fois.
+ */
+export function announcementsFor(events: readonly BattleEvent[], battle: Battle): string[] {
+  const fallen = events.filter((event) => event.type === 'summonedFell');
+  return events.flatMap((event, index) => {
+    if (event.type === 'bossPhaseShifted' && events[index + 1]?.type === 'summonCalled') return [];
+    if (event.type === 'summonCalled') return [summonAnnouncement(event, battle)];
+    if (event.type === 'summonedFell') {
+      return event === fallen[0]
+        ? [summonFallAnnouncement(battle, fallen.length, event.enemy)]
+        : [];
+    }
+    return announcement(event, battle) ?? [];
+  });
 }
 
 export function endTitle(outcome: BattleOutcome): string {
