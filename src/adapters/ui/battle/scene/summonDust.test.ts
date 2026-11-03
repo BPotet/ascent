@@ -1,7 +1,5 @@
 // La poussière de l'Invocation sur la scène (#172, maquette 170, I2, I3, I5, planche de l'effet) :
-// l'effet `summon` image par image, l'apparition et la chute des Phalénides, le mouvement réduit,
-// et la disposition du boss qui invoque.
-import { sceneGeometry } from './sceneGeometry';
+// l'effet `summon` image par image, l'apparition et la chute des Phalénides, et le mouvement réduit.
 import { summonDustFrame, summonedOpacity, type SceneSummon } from './summonDust';
 
 const NONE: SceneSummon = { pending: [], calledAt: null, entered: {}, fell: {} };
@@ -72,32 +70,5 @@ describe('the Mothkin coming out of the dust and falling back into it (#172)', (
   it('fades the Mothkin in over 300 ms and out over 400 ms with reduced motion', () => {
     expect(opacity(out, [4_999, 5_000, 5_150, 5_300], true)).toEqual([0, 0, 0.5, 1]);
     expect(opacity(fallen, [9_000, 9_200, 9_400], true)).toEqual([1, 0.5, 0]);
-  });
-});
-
-describe('the layout of a boss that summons (#172, maquette « boss3 »)', () => {
-  it.each([360, 412])(
-    'gives the Queen a column of 1.25 and each Mothkin at least 104 dp at %i dp',
-    (width) => {
-      const { enemies } = sceneGeometry(width, 440, 3, { summoner: true });
-      const [queen, first, second] = enemies.map((slot) => slot.column.width);
-
-      expect(first).toBeGreaterThanOrEqual(104);
-      expect(second).toBe(first);
-      expect(queen).toBe(Math.floor(first! * 1.25));
-      expect(enemies[2]!.column.x + second!).toBeLessThanOrEqual(width);
-    },
-  );
-
-  it('puts the Queen highest and the Mothkin lower, from left to right', () => {
-    const { enemies } = sceneGeometry(412, 440, 3, { summoner: true });
-
-    expect(enemies.map((slot) => slot.column.y - enemies[0]!.column.y)).toEqual([0, 22, 40]);
-    expect(enemies[0]!.column.x).toBe(Math.round(412 * 0.04));
-  });
-
-  it('keeps the layout of an ordinary battle of three', () => {
-    expect(sceneGeometry(412, 440, 3, { summoner: false })).toEqual(sceneGeometry(412, 440, 3));
-    expect(sceneGeometry(412, 440, 1, { summoner: true })).toEqual(sceneGeometry(412, 440, 1));
   });
 });

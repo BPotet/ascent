@@ -742,6 +742,33 @@ describe('sceneGeometry', () => {
   });
 });
 
+describe('sceneGeometry: the layout of a boss that summons (#172, maquette « boss3 »)', () => {
+  it.each([360, 412])(
+    'gives the Queen a column of 1.25 and each Mothkin at least 104 dp at %i dp',
+    (width) => {
+      const { enemies } = sceneGeometry(width, 440, 3, { summoner: true });
+      const [queen, first, second] = enemies.map((slot) => slot.column.width);
+
+      expect(first).toBeGreaterThanOrEqual(104);
+      expect(second).toBe(first);
+      expect(queen).toBe(Math.floor(first! * 1.25));
+      expect(enemies[2]!.column.x + second!).toBeLessThanOrEqual(width);
+    },
+  );
+
+  it('puts the Queen highest and the Mothkin lower, from left to right', () => {
+    const { enemies } = sceneGeometry(412, 440, 3, { summoner: true });
+
+    expect(enemies.map((slot) => slot.column.y - enemies[0]!.column.y)).toEqual([0, 22, 40]);
+    expect(enemies[0]!.column.x).toBe(Math.round(412 * 0.04));
+  });
+
+  it('keeps the layout of an ordinary battle of three', () => {
+    expect(sceneGeometry(412, 440, 3, { summoner: false })).toEqual(sceneGeometry(412, 440, 3));
+    expect(sceneGeometry(412, 440, 1, { summoner: true })).toEqual(sceneGeometry(412, 440, 1));
+  });
+});
+
 describe('the Bulwark in the scene (#128, provisional until the Workshop)', () => {
   it('holds the shield, still, while the Bulwark is up; cracks it for one frame (83 ms) when it wears; then nothing', () => {
     expect([0, 250, 10_000].map((now) => bulwarkShield(true, null, now))).toEqual([0, 0, 0]);
