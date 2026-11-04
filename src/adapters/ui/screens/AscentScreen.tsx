@@ -60,6 +60,8 @@ export interface AscentScreenProps {
   readonly visibility: AscentVisibility;
   /** Quitter l'écran de l'ascension : retour au pied de la tour. */
   readonly onLeave: () => void;
+  /** « Aller au camp » depuis le bilan de fin (#40, C11) ; absent, aucun bouton. */
+  readonly onCamp?: (() => void) | undefined;
   /** L'Export du journal (#196), build de preview seulement ; absent, aucun bouton. */
   readonly logExport?: LogExport | undefined;
 }
@@ -270,18 +272,21 @@ function TierAnnounce({
 
 /**
  * La fin de l'ascension (X6) ou le Sommet atteint (X7) (#38, maquette 30) : les Éclats gagnés en
- * grand, le Total d'Éclats, ce qui reste (vert) et ce qui est perdu (rouge). Le camp et la Forgeronne
- * (#40) ne sont pas repris, ni la grille de statistiques de la maquette, que la story ne demande pas.
+ * grand, le Total d'Éclats, ce qui reste (vert) et ce qui est perdu (rouge), puis « Retour au pied
+ * de la tour » et, dessous, « Aller au camp » (#40, C11). La Forgeronne n'est pas reprise, ni la
+ * grille de statistiques de la maquette, que la story ne demande pas.
  */
 function AscentEnd({
   ascent,
   shardTotal,
   onLeave,
+  onCamp,
   logExport,
 }: {
   readonly ascent: Ascent;
   readonly shardTotal: number;
   readonly onLeave: () => void;
+  readonly onCamp: (() => void) | undefined;
   readonly logExport?: LogExport | undefined;
 }) {
   const summit = ascent.outcome === 'victory';
@@ -315,6 +320,14 @@ function AscentEnd({
         </Text>
       </View>
       <PixelButton label="Retour au pied de la tour" onPress={onLeave} />
+      {onCamp === undefined ? null : (
+        <PixelButton label="Aller au camp" variant="secondary" onPress={onCamp}>
+          <View style={styles.camp}>
+            <PixelIcon name="flame8" color={roles.ember} secondColor={roles.gold} />
+            <Text style={styles.campText}>Aller au camp</Text>
+          </View>
+        </PixelButton>
+      )}
       {logExport === undefined ? null : (
         <LogExportButton logExport={logExport} revision={ascent} showCount={false} />
       )}
@@ -334,7 +347,13 @@ function SummitAnnouncement({ ascent }: { readonly ascent: Ascent }) {
  * fin). Passer en arrière-plan met en pause ; la reprise d'un combat commence par un compte à
  * rebours de 3 s, sans aucun appui.
  */
-export function AscentScreen({ session, visibility, onLeave, logExport }: AscentScreenProps) {
+export function AscentScreen({
+  session,
+  visibility,
+  onLeave,
+  onCamp,
+  logExport,
+}: AscentScreenProps) {
   const ascent = useAscent(session);
   const shardTotal = useShardTotal(session);
   const [counting, setCounting] = useState(() => session.resuming());
@@ -426,6 +445,14 @@ export function AscentScreen({ session, visibility, onLeave, logExport }: Ascent
             session.leave();
             onLeave();
           }}
+          onCamp={
+            onCamp === undefined
+              ? undefined
+              : () => {
+                  session.leave();
+                  onCamp();
+                }
+          }
         />
       </Screen>
     );
@@ -603,6 +630,8 @@ export function AscentScreen({ session, visibility, onLeave, logExport }: Ascent
 
 // Stryker disable all: styles d'un écran de prototype.
 const styles = StyleSheet.create({
+  camp: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  campText: { fontFamily: textFont.bold, fontSize: 15, lineHeight: 19, color: roles.light },
   fill: { flex: 1 },
   header: {
     flexDirection: 'row',

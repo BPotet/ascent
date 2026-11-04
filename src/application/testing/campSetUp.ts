@@ -2,6 +2,7 @@
 // en mémoire qui peut faire échouer ou retenir l'écriture d'une clé, un son et une vibration muets
 // qui notent ce qu'on leur demande.
 import type { Haptics } from '../ports/Haptics';
+import type { KeyValueStore } from '../ports/KeyValueStore';
 import { AscentSession, SHARD_TOTAL_KEY } from '../useCases/AscentSession';
 import { BATTLE_HINT_SEEN_KEYS } from '../useCases/battleHints';
 import { CampSession } from '../useCases/CampSession';
@@ -65,6 +66,19 @@ export function countingHaptics(): Haptics & { readonly successes: () => number 
     },
     successes: () => successes,
   };
+}
+
+/** Une session du camp muette sur `ascentSession` et `keyValueStore`. */
+export function campSessionOf(
+  ascentSession: AscentSession,
+  keyValueStore: KeyValueStore,
+): CampSession {
+  return new CampSession({
+    keyValueStore,
+    ascentSession,
+    sound: silentBattleSound(),
+    haptics: countingHaptics(),
+  });
 }
 
 /** Une session d'ascension et une session du camp sur `store` : une nouvelle app sur ce stockage. */

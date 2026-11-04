@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
+import type { CampSession } from '../../../application/useCases/CampSession';
 import {
   startAscent,
   type Ascent,
@@ -31,6 +32,7 @@ import { artPalette } from '../pixelArt/artPalette';
 import { PixelButton } from '../pixelArt/PixelButton';
 import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypography';
 import { AscentScreen, type AscentVisibility } from './AscentScreen';
+import { CampScreen } from './CampScreen';
 import { TowerFootScreen } from './TowerFootScreen';
 
 const { roles } = artPalette;
@@ -320,9 +322,14 @@ const BOARD_BATTLES: Partial<Readonly<Record<LoadoutBoard, Battle>>> = {
 // Stryker restore all
 
 /** Le vrai écran ouvert par une entrée de l'Équipement, et sa session. */
-interface OpenAscent {
-  readonly screen: 'foot' | 'ascent';
+/** Une ascension fixe de la planche, dans sa session neuve, avec son camp (#40). */
+export interface BoardAscent {
   readonly session: AscentSession;
+  readonly camp: CampSession;
+}
+
+interface OpenAscent extends BoardAscent {
+  readonly screen: 'foot' | 'ascent' | 'camp';
 }
 
 /**
@@ -347,7 +354,7 @@ export function IconBoardScreen({
     saved: Ascent | null,
     shards?: number,
     battle?: Battle,
-  ) => Promise<AscentSession>;
+  ) => Promise<BoardAscent>;
   readonly visibility: AscentVisibility;
 }) {
   const [board, setBoard] = useState<Board | null>(null);
@@ -360,15 +367,22 @@ export function IconBoardScreen({
   };
   const openLoadout = (entry: LoadoutBoard) => {
     void openAscent(LOADOUT_ASCENTS[entry], BOARD_SHARDS[entry], BOARD_BATTLES[entry]).then(
-      (session) => setAscent({ screen: entry.startsWith('foot') ? 'foot' : 'ascent', session }),
+      (opened) => setAscent({ screen: entry.startsWith('foot') ? 'foot' : 'ascent', ...opened }),
     );
   };
 
   if (ascent !== null) {
+    if (ascent.screen === 'camp') {
+      return (
+        <CampScreen camp={ascent.camp} onLeave={() => setAscent({ ...ascent, screen: 'foot' })} />
+      );
+    }
     return ascent.screen === 'foot' ? (
       <TowerFootScreen
         session={ascent.session}
+        camp={ascent.camp}
         onEnter={() => setAscent({ ...ascent, screen: 'ascent' })}
+        onCamp={() => setAscent({ ...ascent, screen: 'camp' })}
       />
     ) : (
       <AscentScreen

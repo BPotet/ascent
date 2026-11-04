@@ -15,7 +15,13 @@ beforeEach(() => announce.mockClear());
 async function show(logExport?: LogExport, saved = startAscent(3)) {
   const setUp = ascentSetUp({ saved });
   await renderScreen(
-    <TowerFootScreen session={setUp.session} onEnter={jest.fn()} logExport={logExport} />,
+    <TowerFootScreen
+      session={setUp.session}
+      camp={setUp.camp}
+      onEnter={jest.fn()}
+      onCamp={jest.fn()}
+      logExport={logExport}
+    />,
     setUp.dependencies,
   );
   return setUp;
@@ -127,7 +133,9 @@ describe('TowerFootScreen with the log export', () => {
     const element = (focused: boolean) => (
       <TowerFootScreen
         session={setUp.session}
+        camp={setUp.camp}
         onEnter={jest.fn()}
+        onCamp={jest.fn()}
         logExport={logExport}
         focused={focused}
       />

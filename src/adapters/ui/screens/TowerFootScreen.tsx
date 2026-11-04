@@ -2,6 +2,7 @@ import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
+import type { CampSession } from '../../../application/useCases/CampSession';
 import type { LogExport } from '../../../application/useCases/exportAscentLog';
 import type { FateGaugeReading } from '../../../application/useCases/fateGauge';
 import type { Ascent } from '../../../domain/ascent/Ascent';
@@ -29,9 +30,10 @@ import { PixelButton } from '../pixelArt/PixelButton';
 import { PixelFrame } from '../pixelArt/PixelFrame';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { pixelTypography, textFont } from '../pixelArt/pixelTypography';
+import { CAMP_TITLE } from '../format/campText';
 import { useAscent } from '../state/useAscent';
+import { useCamp } from '../state/useCamp';
 import { useFateGauge } from '../state/useFateGauge';
-import { useShardTotal } from '../state/useShardTotal';
 import { HeroChoiceScreen } from './HeroChoiceScreen';
 
 const { roles } = artPalette;
@@ -43,8 +45,9 @@ function heroInSentence(hero: HeroKind): string {
 }
 
 /**
- * Le Total d'Éclats (#38, maquette 30) : l'éclat de cristal et « 22 Éclats », « 0 Éclat », toujours
- * visible, ascension en cours ou non.
+ * Les Éclats disponibles (#38, maquette 30 ; #40, maquette 40, C1) : l'éclat de cristal et
+ * « 22 Éclats », « 0 Éclat », le même nombre qu'au camp, toujours visible, ascension en cours ou non.
+ * Sans Déblocage, c'est le Total d'Éclats.
  */
 function ShardChip({ total }: { readonly total: number }) {
   return (
@@ -60,6 +63,18 @@ function ShardChip({ total }: { readonly total: number }) {
   );
 }
 
+/** « Le camp » (#40, C1 et C2) : un bouton secondaire, avec la petite flamme de braise. */
+function CampButton({ onCamp }: { readonly onCamp: () => void }) {
+  return (
+    <PixelButton label={CAMP_TITLE} variant="secondary" onPress={onCamp}>
+      <View style={styles.camp}>
+        <PixelIcon name="flame8" color={roles.ember} secondColor={roles.gold} />
+        <Text style={styles.campText}>{CAMP_TITLE}</Text>
+      </View>
+    </PixelButton>
+  );
+}
+
 /** Au-delà de ce nombre d'entrées, le cadre de l'ascension annonce qu'il défile (maquette #153). */
 const SCROLL_HINT_BEYOND = 5;
 
@@ -72,12 +87,14 @@ function AscentInProgress({
   ascent,
   shards,
   onEnter,
+  onCamp,
   onAbandon,
   foot,
 }: {
   readonly ascent: Ascent;
   readonly shards: number;
   readonly onEnter: () => void;
+  readonly onCamp: () => void;
   readonly onAbandon: () => void;
   readonly foot: ReactNode;
 }) {
@@ -131,6 +148,7 @@ function AscentInProgress({
       ) : (
         <View style={styles.bottom}>
           <PixelButton label="Reprendre l'ascension" onPress={onEnter} />
+          <CampButton onCamp={onCamp} />
           <PixelButton
             label="Abandonner l'ascension"
             variant="secondary"
@@ -149,33 +167,43 @@ function AscentInProgress({
  * « Commencer l'ascension », puis le choix du héros, qui scelle la jauge ; ou, quand une ascension
  * est en cours (une seule à la fois), son héros, qui ne change plus, « Reprendre l'ascension » et
  * « Abandonner l'ascension », avec confirmation. `onEnter` ouvre l'ascension.
+ *
+ * « Le camp » (#40) ouvre le camp (`onCamp`), ascension en cours ou non. Les Éclats montrés sont les
+ * Éclats disponibles, et une ascension commence par le camp, avec ses Déblocages (ADR 0017) : rien
+ * ne s'affiche avant la lecture du camp.
  */
 export function TowerFootScreen({
   session,
+  camp,
   onEnter,
+  onCamp,
   logExport,
   focused = true,
 }: {
   readonly session: AscentSession;
+  readonly camp: CampSession;
   readonly onEnter: () => void;
+  readonly onCamp: () => void;
   /** L'onglet Tour est affiché ; il reste monté quand on le quitte. */
   readonly focused?: boolean;
   /** L'Export du journal (#196), build de preview seulement ; absent, aucun bouton. */
   readonly logExport?: LogExport | undefined;
 }) {
   const ascent = useAscent(session);
-  const shards = useShardTotal(session);
-  const [loaded, setLoaded] = useState(ascent !== null);
+  const campView = useCamp(camp);
+  const shards = campView.availableShards;
+  const [sessionLoaded, setLoaded] = useState(ascent !== null);
+  const loaded = sessionLoaded && campView.status === 'ready';
   const { reading, seal } = useFateGauge();
   const [choosing, setChoosing] = useState<FateGaugeReading | null>(null);
 
   useEffect(() => {
-    if (loaded) return;
+    if (sessionLoaded) return;
     session
       .load()
       .catch(() => null)
       .finally(() => setLoaded(true));
-  }, [session, loaded]);
+  }, [session, sessionLoaded]);
 
   const inProgress = ascent !== null && ascent.outcome === null;
   // « Exporter le journal », en bas, sous les actions, séparé par un filet (maquette 193, P1 à P4).
@@ -187,7 +215,9 @@ export function TowerFootScreen({
     );
   const start = (reading: FateGaugeReading, hero: HeroKind) => {
     setChoosing(null);
-    session.begin({ hero, gauge: reading.gauge, blessings: reading.blessings });
+    if (camp.beginAscent({ hero, gauge: reading.gauge, blessings: reading.blessings }) === null) {
+      return;
+    }
     seal(reading);
     onEnter();
   };
@@ -211,6 +241,7 @@ export function TowerFootScreen({
           ascent={ascent}
           shards={shards}
           onEnter={onEnter}
+          onCamp={onCamp}
           onAbandon={() => session.abandon()}
           foot={foot}
         />
@@ -245,6 +276,7 @@ export function TowerFootScreen({
                 <PixelButton label="Commencer l'ascension" onPress={() => setChoosing(reading)} />
               </>
             )}
+            <CampButton onCamp={onCamp} />
           </View>
         )}
       </View>
@@ -296,4 +328,6 @@ const styles = StyleSheet.create({
     backgroundColor: roles.surface,
   },
   shardText: { fontFamily: textFont.semiBold, fontSize: 13, lineHeight: 18, color: roles.shard },
+  camp: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  campText: { fontFamily: textFont.bold, fontSize: 15, lineHeight: 19, color: roles.light },
 });

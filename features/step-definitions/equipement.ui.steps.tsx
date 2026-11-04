@@ -106,7 +106,12 @@ async function showAscent() {
 async function showTowerFoot() {
   await unmount();
   await renderScreen(
-    <TowerFootScreen session={setUp.session} onEnter={() => {}} />,
+    <TowerFootScreen
+      session={setUp.session}
+      camp={setUp.camp}
+      onEnter={() => {}}
+      onCamp={() => {}}
+    />,
     setUp.dependencies,
   );
   rendered = true;
