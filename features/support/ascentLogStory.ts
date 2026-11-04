@@ -16,25 +16,13 @@ import { settableClock } from '../../src/application/testing/settableClock';
 import { AscentLogRecorder } from '../../src/application/useCases/AscentLogRecorder';
 import { ASCENT_KEY, AscentSession } from '../../src/application/useCases/AscentSession';
 import { ascentLogExport } from '../../src/application/useCases/exportAscentLog';
-import {
-  acknowledgeBossVictory,
-  chooseBlessing,
-  chooseBoon,
-  chooseExit,
-  endFloorBattle,
-  enterNextTier,
-  equipItem,
-  type Ascent,
-} from '../../src/domain/ascent/Ascent';
-import {
-  beginAscentLog,
-  recordAscentStep,
-  type AscentLog,
-  type AscentStep,
-} from '../../src/domain/ascentLog/AscentLog';
+import type { Ascent } from '../../src/domain/ascent/Ascent';
+import { beginAscentLog, type AscentLog } from '../../src/domain/ascentLog/AscentLog';
+import type { Battle } from '../../src/domain/battle/Battle';
+import { ENEMIES } from '../../src/domain/battle/combatants';
 import type { AscentLogExport } from '../../src/domain/ascentLog/AscentLogExport';
 import { Day } from '../../src/domain/day/Day';
-import { storyStore, type StoryStore } from './tiersStory';
+import { playToTheEnd, settleStore, storyStore, type StoryStore } from './tiersStory';
 
 export const LOG_DAY = Day.of(2026, 11, 3);
 
@@ -91,46 +79,91 @@ export async function savedWithLog(
   await story.logStore.save({ ...log, id: started.id });
 }
 
+/** Le combat sauvegardé, presque gagné : son premier ennemi à 1 PV (ses relèves faites), seul. */
+export function nearlyWon(battle: Battle): Battle {
+  const [first] = battle.enemies;
+  const selfRevives = ENEMIES[first!.kind].selfRevive?.times ?? 0;
+  const { summon: _summon, ...rest } = battle;
+  return {
+    ...rest,
+    enemies: [{ ...first!, hp: 1, ...(selfRevives > 0 && { selfRevives, raised: true }) }],
+    reserve: [],
+  };
+}
+
+const savedBattle = (story: LogStory) =>
+  (JSON.parse(story.store.values.get(ASCENT_KEY) ?? '{}') as { battle?: Battle | null }).battle ??
+  null;
+
 /**
- * Le parcours d'une ascension, transition par transition, avec le journal qui l'observe : les
- * bénédictions prises, chaque combat gagné à quelques PV de moins, le premier bienfait, l'objet
- * équipé, la porte `pick` (la première par défaut), jusqu'à `until` (le Sommet par défaut).
+ * Le combat de l'étage, commencé par la session (son début va au journal), joué jusqu'à sa
+ * première sauvegarde (un impact jugé ou une action résolue), puis rendu presque gagné dans le
+ * stockage, comme si l'app avait été fermée là.
  */
-export function climb(
-  start: Ascent,
+export async function startAndSaveBattle(story: LogStory): Promise<void> {
+  story.store.values.set(
+    ASCENT_KEY,
+    JSON.stringify({ version: 1, ascent: story.session.current(), battle: null }),
+  );
+  const battleSession = story.session.battleSession();
+  await battleSession.start();
+  const clock = story.battleClock;
+  for (let guard = 0; guard < 50 && savedBattle(story) === null; guard += 1) {
+    const { battle } = battleSession.current()!;
+    if (battle.phase.kind === 'hero') {
+      const at = clock.now() + 50;
+      clock.advanceTo(at);
+      battleSession.heroAction({ kind: 'attack' }, at - 20, at);
+    } else {
+      clock.advanceTo(clock.pending()[0]!);
+    }
+    await settleStore();
+  }
+  await story.recorder.settled();
+  const saved = JSON.parse(story.store.values.get(ASCENT_KEY)!) as { battle: Battle };
+  story.store.values.set(ASCENT_KEY, JSON.stringify({ ...saved, battle: nearlyWon(saved.battle) }));
+}
+
+/** La session rouverte sur le même stockage, après une fermeture. */
+export async function reopened(story: LogStory): Promise<LogStory> {
+  const next = logStory(story.store);
+  await next.session.load();
+  return next;
+}
+
+/**
+ * Le parcours d'une ascension à travers la session, jusqu'à `until` (le Sommet par défaut) : les
+ * bénédictions prises, chaque combat commencé par la session puis gagné de justesse, le premier
+ * bienfait, le premier objet laissé et les suivants équipés, la porte `pick` (la première par
+ * défaut), les écrans du Passage de palier. Rend la session du moment.
+ */
+export async function climb(
+  start: LogStory,
   until: (ascent: Ascent) => boolean = (ascent) => ascent.outcome !== null,
   pick: (ascent: Ascent) => number = () => 0,
-): { readonly ascent: Ascent; readonly log: AscentLog } {
-  let ascent = start;
-  let log = beginAscentLog(start, LOG_DAY);
-  const step = (kind: AscentStep['kind'], after: Ascent, full?: AscentStep) => {
-    log = recordAscentStep(log, full ?? ({ kind, before: ascent, after } as AscentStep));
-    ascent = after;
-  };
-  for (let guard = 0; guard < 200 && !until(ascent); guard += 1) {
-    if (ascent.blessingOffer !== null) step('blessingChosen', chooseBlessing(ascent, 0));
-    else if (ascent.passage?.step === 'bossDefeated')
-      step('bossAcknowledged', acknowledgeBossVictory(ascent));
-    else if (ascent.passage?.step === 'announce') step('tierEntered', enterNextTier(ascent));
+): Promise<LogStory> {
+  let story = start;
+  let itemsFound = 0;
+  for (let guard = 0; guard < 200; guard += 1) {
+    const ascent = story.session.current()!;
+    if (until(ascent)) break;
+    if (ascent.outcome !== null) throw new Error('The ascent ended before the goal');
+    if (ascent.blessingOffer !== null) story.session.chooseBlessing(0);
+    else if (ascent.passage?.step === 'bossDefeated') story.session.acknowledgeBossVictory();
+    else if (ascent.passage?.step === 'announce') story.session.enterNextTier();
     else if (ascent.encounter !== null) {
-      const vitals = { hp: ascent.hero.hp, maxHp: ascent.hero.maxHp, momentum: 1 };
-      step('battleStarted', ascent, {
-        kind: 'battleStarted',
-        hero: vitals,
-        before: ascent,
-        after: ascent,
-      });
-      const heroHp = Math.max(1, ascent.hero.hp - 3);
-      const after = endFloorBattle(ascent, { outcome: 'victory', heroHp });
-      step('battleEnded', after, {
-        kind: 'battleEnded',
-        hero: { ...vitals, hp: heroHp, momentum: 3 },
-        before: ascent,
-        after,
-      });
-    } else if (ascent.boonOffer !== null) step('boonChosen', chooseBoon(ascent, 0));
-    else if (ascent.foundItem !== null) step('itemEquipped', equipItem(ascent));
-    else step('exitChosen', chooseExit(ascent, pick(ascent)));
+      await startAndSaveBattle(story);
+      story = await reopened(story);
+      await playToTheEnd(story.session.battleSession(), story.battleClock);
+      await settleStore();
+    } else if (ascent.boonOffer !== null) story.session.chooseBoon(0);
+    else if (ascent.foundItem !== null) {
+      itemsFound += 1;
+      if (itemsFound === 1) story.session.leaveItem();
+      else story.session.equipItem();
+    } else story.session.chooseExit(pick(ascent));
   }
-  return { ascent, log };
+  await settleStore();
+  await story.recorder.settled();
+  return story;
 }

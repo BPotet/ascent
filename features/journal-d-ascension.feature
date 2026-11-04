@@ -4,9 +4,11 @@ Fonctionnalité: Exporter le journal du parcours de mes ascensions
   et les deux points d'accès, dans le build de preview seulement.
 
   # Les scénarios `@session` passent par une vraie session d'ascension, le vrai enregistreur du
-  # journal et le vrai stockage des journaux, sur un Stockage clé-valeur en mémoire (« fermée de force
-  # puis rouverte » : une nouvelle session sur le même stockage), avec un Menu de partage simulé qui
-  # garde le fichier. Les scénarios `@ui` passent en plus par l'écran de fin ou le Pied de la tour.
+  # journal et le vrai stockage des journaux, sur un Stockage clé-valeur en mémoire, avec un Menu de
+  # partage simulé qui garde le fichier. Chaque combat est commencé par la session, sauvegardé, puis
+  # repris presque gagné (« fermée puis rouverte » : une nouvelle session sur le même stockage). Les
+  # journaux déjà gardés avant le scénario (20 ascensions, journal illisible) sont posés dans le
+  # stockage. Les scénarios `@ui` passent en plus par l'écran de fin ou le Pied de la tour.
 
   Contexte:
     Étant donné l'app installée depuis le build de preview

@@ -11,13 +11,13 @@ import { startAscent, type Ascent } from '../../src/domain/ascent/Ascent';
 import type { FloorRecord } from '../../src/domain/ascentLog/AscentLog';
 import { beginAscentLog } from '../../src/domain/ascentLog/AscentLog';
 import { Day } from '../../src/domain/day/Day';
-import { startBattle } from '../../src/domain/battle/Battle';
 import {
   LOG_DAY,
   climb,
   lastExport,
   logStory,
-  savedWithLog,
+  reopened,
+  startAndSaveBattle,
   type LogStory,
 } from '../support/ascentLogStory';
 import { playToTheEnd, settleStore } from '../support/tiersStory';
@@ -49,12 +49,10 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   // --- Le parcours ---
 
   given(/^une ascension terminée au Sommet$/u, async () => {
-    const start = startAscent(3, { hero: 'wanderer', gauge: 2, blessings: ['epic', 'rare'] });
-    const climbed = climb(start);
-    expect(climbed.ascent.outcome).toBe('victory');
-    summit = climbed.ascent;
-    const started = await story.logStore.start(climbed.log, 20);
-    await story.logStore.save({ ...climbed.log, id: started.id });
+    story.session.begin({ hero: 'wanderer', gauge: 2, blessings: ['epic', 'rare'] });
+    story = await climb(story);
+    summit = story.session.current()!;
+    expect(summit.outcome).toBe('victory');
   });
 
   when(/^j'exporte le journal$/u, async () => {
@@ -120,7 +118,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       expect(floors.some((floor) => floor.boonChosen !== null)).toBe(true);
       for (const floor of floors) {
         if (floor.boonChosen !== null) expect(floor.boonsOffered).toContain(floor.boonChosen);
-        if (floor.itemFound !== null) expect(floor.itemOutcome).toBe('equipped');
+        if (floor.itemFound !== null) expect(['equipped', 'left']).toContain(floor.itemOutcome);
       }
       expect(floors.reduce((sum, floor) => sum + floor.shards, 0)).toBe(
         shardSum(summit.shardAwards),
@@ -174,9 +172,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   // --- L'abandon ---
 
   given(/^une ascension abandonnée à l'étage 2 du palier 1, après confirmation$/u, async () => {
-    const climbed = climb(startAscent(3), (ascent) => ascent.floor === 2);
-    await savedWithLog(story, climbed.ascent, climbed.log);
-    await story.session.load();
+    story.session.begin();
+    story = await climb(story, (ascent) => ascent.floor === 2);
     story.session.abandon();
   });
 
@@ -229,26 +226,20 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   let beforeClose: Ascent;
   given(/^une ascension en cours, sauvegardée pendant un combat à l'étage 3$/u, async () => {
-    const climbed = climb(
-      startAscent(3),
+    story.session.begin();
+    story = await climb(
+      story,
       (ascent) => ascent.floor === 3,
       (ascent) => ascent.exits.findIndex((exit) => exit.kind !== 'campfire'),
     );
-    beforeClose = climbed.ascent;
-    const { battle } = startBattle({
-      seed: 3,
-      defenseHint: false,
-      at: 0,
-      heroHp: 50,
-      enemies: beforeClose.encounter!.enemies,
-    });
-    const nearlyWon = { ...battle, enemies: [{ ...battle.enemies[0]!, hp: 1 }], reserve: [] };
-    await savedWithLog(story, beforeClose, climbed.log, nearlyWon);
+    beforeClose = story.session.current()!;
+    // Le combat de l'étage 3, commencé par la session, sauvegardé à sa première action, puis
+    // rendu presque gagné pour finir vite après la reprise.
+    await startAndSaveBattle(story);
   });
 
   when(/^l'app est fermée de force, puis rouverte$/u, async () => {
-    story = logStory(story.store);
-    await story.session.load();
+    story = await reopened(story);
     expect(story.session.resuming()).toBe(true);
   });
 
@@ -266,6 +257,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       await story.logExport.export();
       const [log] = ascentOf(lastExport(story), beforeClose.seed);
       expect(log!.floors.map(floorKey)).toEqual(['1-1', '1-2', '1-3', '1-4']);
+      expect(log!.floors[2]!.entry.momentum).toEqual(expect.any(Number));
       expect(log!.floors[2]!.exit).not.toBeNull();
       expect(log!.end).toMatchObject({ kind: 'abandon', floor: 4 });
     },

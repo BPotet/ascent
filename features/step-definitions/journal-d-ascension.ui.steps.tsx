@@ -142,9 +142,11 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   // --- Le Pied de la tour, ascension en cours (P1) ---
 
   given(/^une ascension en cours, en pause à l'étage 3 du palier 1$/u, async () => {
-    const climbed = climb(startAscent(3), (ascent) => ascent.floor === 3);
-    saved = climbed.ascent;
-    await savedWithLog(story, saved, climbed.log);
+    story.session.begin();
+    story = await climb(story, (ascent) => ascent.floor === 3);
+    story.session.pause();
+    await settleStore();
+    saved = story.session.current()!;
     await showTowerFoot(story.logExport);
     expect(await screen.findByRole('button', { name: "Reprendre l'ascension" })).toBeOnTheScreen();
   });
