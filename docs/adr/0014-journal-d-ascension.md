@@ -1,6 +1,6 @@
 # ADR 0014 — Le Journal d'ascension et son export
 
-- **Statut** : accepté
+- **Statut** : accepté, amendé par l'[ADR 0016](0016-journal-des-combats.md) (#197)
 - **Date** : 4 novembre 2026
 - **Décideur** : Architect (notes techniques de #196), écrit par le dev
 - **Contexte produit** : épique #193, story socle #196 « Exporter le journal du parcours de mes

@@ -18,8 +18,10 @@ import {
   ASCENT_LOG_FORMAT_VERSION,
   beginAscentLog,
   recordAscentStep,
+  recordBattlePlace,
   resumeAscentLog,
   type AscentLog,
+  type AscentLogV1,
   type AscentStep,
   type HeroVitals,
 } from './AscentLog';
@@ -376,5 +378,41 @@ describe('resumeAscentLog', () => {
       encounter: { kind: 'combat' },
       entry: { hp: walk.ascent.hero.hp, momentum: null },
     });
+  });
+});
+
+describe('the format version 2', () => {
+  it('begins a log in version 2, without battles', () => {
+    const log = beginAscentLog(startAscent(3), DAY);
+    expect(ASCENT_LOG_FORMAT_VERSION).toBe(2);
+    expect(log).toMatchObject({ formatVersion: 2, battles: [] });
+  });
+
+  it('lists each battle written apart, by its tier and floor, at its start and never twice', () => {
+    const log = beginAscentLog(startAscent(3), DAY);
+    const first = recordBattlePlace(log, { tier: 1, floor: 1 });
+    const again = recordBattlePlace(first, { tier: 1, floor: 1 });
+    const next = recordBattlePlace(again, { tier: 2, floor: 1 });
+
+    expect(again).toBe(first);
+    expect(next.battles).toEqual([
+      { tier: 1, floor: 1 },
+      { tier: 2, floor: 1 },
+    ]);
+  });
+
+  it('goes on with a log of version 1 in progress, still in version 1, without battles', () => {
+    const ascent = startAscent(3);
+    const { battles: _, ...body } = beginAscentLog(ascent, DAY);
+    const old: AscentLogV1 = { ...body, formatVersion: 1 };
+    const ended = recordAscentStep(old, {
+      kind: 'abandoned',
+      before: ascent,
+      after: abandonAscent(ascent),
+    });
+
+    expect(ended).toMatchObject({ formatVersion: 1, status: 'ended' });
+    expect(ended).not.toHaveProperty('battles');
+    expect(resumeAscentLog(old, ascent)).toBe(old);
   });
 });
