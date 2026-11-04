@@ -3,14 +3,15 @@ import { Redirect, router } from 'expo-router';
 import { currentBuildChannel } from '../../adapters/device/build/buildChannel';
 import { TowerFootScreen } from '../../adapters/ui/screens/TowerFootScreen';
 import { useDependencies } from '../../adapters/ui/state/Dependencies';
-import { sharedAscentSession } from '../ascent';
+import { ascentLogFeature, sharedAscentSession } from '../ascent';
 
 function TowerFoot() {
-  const { keyValueStore } = useDependencies();
+  const { keyValueStore, clock } = useDependencies();
   return (
     <TowerFootScreen
-      session={sharedAscentSession(keyValueStore)}
+      session={sharedAscentSession(keyValueStore, clock)}
       onEnter={() => router.push('/ascent')}
+      logExport={ascentLogFeature(keyValueStore, clock)?.logExport}
     />
   );
 }
