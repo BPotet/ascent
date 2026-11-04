@@ -37,7 +37,11 @@ describe('the texts of the camp (#40)', () => {
     expect(keeperLine(base)).toBe('Ce que tu prends ici, tu le trouveras là-haut.');
     expect(keeperLine({ ...base, ascentInProgress: true })).toBe(KEEPER_LINES.run);
     expect(keeperLine({ ...base, ascentInProgress: true, bought: true })).toBe(
-      "Ce qui brûle ici t'attend là-haut.",
+      "Ton ascension n'est pas finie. Ce que tu prends ici t'attendra à la prochaine.",
+    );
+    expect(keeperLine({ ...base, bought: true })).toBe("Ce qui brûle ici t'attend là-haut.");
+    expect(keeperLine({ ...base, ascentInProgress: true, allUnlocked: true })).toBe(
+      KEEPER_LINES.done,
     );
     expect(keeperLine({ ...base, bought: true, allUnlocked: true })).toBe(
       "Tout ce que j'avais brûle déjà dans la tour. Garde tes Éclats.",

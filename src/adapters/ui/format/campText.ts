@@ -30,8 +30,8 @@ export const KEEPER_LINES = {
 } as const;
 
 /**
- * La phrase du Gardien : tout débloqué, juste après un achat, la première visite (rien gagné ni
- * débloqué), pendant une ascension, ou d'habitude.
+ * La phrase du Gardien : tout débloqué, pendant une ascension (même après un achat, maquette C7),
+ * juste après un achat, la première visite (rien gagné ni débloqué), ou d'habitude.
  */
 export function keeperLine({
   firstVisit,
@@ -45,9 +45,9 @@ export function keeperLine({
   readonly bought: boolean;
 }): string {
   if (allUnlocked) return KEEPER_LINES.done;
+  if (ascentInProgress) return KEEPER_LINES.run;
   if (bought) return KEEPER_LINES.after;
-  if (firstVisit) return KEEPER_LINES.first;
-  return ascentInProgress ? KEEPER_LINES.run : KEEPER_LINES.usual;
+  return firstVisit ? KEEPER_LINES.first : KEEPER_LINES.usual;
 }
 
 /** La règle sous la phrase du Gardien : d'où viennent les Éclats à la première visite. */
