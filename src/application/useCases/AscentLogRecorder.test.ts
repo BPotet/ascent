@@ -1,6 +1,12 @@
-import { abandonAscent, chooseBlessing, startAscent } from '../../domain/ascent/Ascent';
+import {
+  abandonAscent,
+  chooseBlessing,
+  chooseExit,
+  endFloorBattle,
+  startAscent,
+} from '../../domain/ascent/Ascent';
 import { Day } from '../../domain/day/Day';
-import { beginAscentLog } from '../../domain/ascentLog/AscentLog';
+import { beginAscentLog, recordAscentStep } from '../../domain/ascentLog/AscentLog';
 import { memoryAscentLogStore } from '../testing/memoryAscentLogStore';
 import { settableClock } from '../testing/settableClock';
 import { AscentLogRecorder } from './AscentLogRecorder';
@@ -109,6 +115,30 @@ describe('AscentLogRecorder', () => {
     expect(store.writes.map((log) => [log.id, log.status, log.floors.length])).toEqual([
       [1, 'ended', 1],
     ]);
+  });
+
+  it('completes the missing current floor at the resume, without a duplicate floor', async () => {
+    let ascent = startAscent(5);
+    let log = beginAscentLog(ascent, DAY);
+    // Le journal écrit jusqu'à l'étage 2 ; l'ascension sauvegardée à l'étage 3.
+    for (const floor of [2, 3]) {
+      const won = endFloorBattle(ascent, { outcome: 'victory', heroHp: 50 });
+      const next = chooseExit({ ...won, boonOffer: null }, 0);
+      if (floor === 2)
+        log = recordAscentStep(log, { kind: 'exitChosen', before: won, after: next });
+      ascent = next;
+    }
+    const { store, recorder } = setUp([JSON.stringify({ ...log, id: 1 })]);
+    await recorder.resume(ascent);
+    recorder.flush();
+    await recorder.settled();
+    expect(store.writes.map((each) => each.id)).toEqual([1]);
+    expect(store.writes[0]!.floors.map((floor) => `${floor.tier}-${floor.floor}`)).toEqual([
+      '1-1',
+      '1-2',
+      '1-3',
+    ]);
+    expect(store.logs.size).toBe(1);
   });
 
   it.each([
