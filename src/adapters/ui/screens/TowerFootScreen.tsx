@@ -1,12 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
+import type { LogExport } from '../../../application/useCases/exportAscentLog';
 import type { FateGaugeReading } from '../../../application/useCases/fateGauge';
 import type { Ascent } from '../../../domain/ascent/Ascent';
 import { loadoutOf, loadoutSize } from '../../../domain/ascent/loadout';
 import type { HeroKind } from '../../../domain/battle/combatants';
 import { LoadoutSection } from '../components/LoadoutSection';
+import { LogExportButton } from '../components/LogExportButton';
 import { LoadoutSheet } from '../components/LoadoutSheet';
 import { Screen } from '../components/Screen';
 import { ScrollHint } from '../components/ScrollHint';
@@ -71,11 +73,13 @@ function AscentInProgress({
   shards,
   onEnter,
   onAbandon,
+  foot,
 }: {
   readonly ascent: Ascent;
   readonly shards: number;
   readonly onEnter: () => void;
   readonly onAbandon: () => void;
+  readonly foot: ReactNode;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [detail, setDetail] = useState(false);
@@ -134,6 +138,7 @@ function AscentInProgress({
           />
         </View>
       )}
+      {foot}
       <LoadoutSheet loadout={loadout} combat={false} visible={detail} onClose={closeDetail} />
     </>
   );
@@ -148,9 +153,12 @@ function AscentInProgress({
 export function TowerFootScreen({
   session,
   onEnter,
+  logExport,
 }: {
   readonly session: AscentSession;
   readonly onEnter: () => void;
+  /** L'Export du journal (#196), build de preview seulement ; absent, aucun bouton. */
+  readonly logExport?: LogExport | undefined;
 }) {
   const ascent = useAscent(session);
   const shards = useShardTotal(session);
@@ -167,6 +175,13 @@ export function TowerFootScreen({
   }, [session, loaded]);
 
   const inProgress = ascent !== null && ascent.outcome === null;
+  // « Exporter le journal », en bas, sous les actions, séparé par un filet (maquette 193, P1 à P4).
+  const foot =
+    !loaded || logExport === undefined ? null : (
+      <View style={styles.foot}>
+        <LogExportButton logExport={logExport} revision={ascent} showCount />
+      </View>
+    );
   const start = (reading: FateGaugeReading, hero: HeroKind) => {
     setChoosing(null);
     session.begin({ hero, gauge: reading.gauge, blessings: reading.blessings });
@@ -194,6 +209,7 @@ export function TowerFootScreen({
           shards={shards}
           onEnter={onEnter}
           onAbandon={() => session.abandon()}
+          foot={foot}
         />
       </Screen>
     );
@@ -229,6 +245,7 @@ export function TowerFootScreen({
           </View>
         )}
       </View>
+      {foot}
     </Screen>
   );
 }
@@ -257,6 +274,13 @@ const styles = StyleSheet.create({
   frame: { paddingTop: 8 },
   hero: { paddingHorizontal: 14, gap: 2 },
   bottom: { gap: 12, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 16 },
+  foot: {
+    marginHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 8,
+    borderTopWidth: 2,
+    borderTopColor: roles.surface,
+  },
   shards: {
     flexDirection: 'row',
     alignItems: 'center',
