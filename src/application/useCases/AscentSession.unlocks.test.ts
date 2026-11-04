@@ -55,6 +55,27 @@ describe('AscentSession and the Unlocks (#195)', () => {
     expect(resumed?.emberHeartOffered).toBe(false);
   });
 
+  it('keeps Cœur de braise already offered after a pause and a resume', async () => {
+    const store = mapStore();
+    store.values.set(
+      ASCENT_KEY,
+      JSON.stringify({
+        version: 1,
+        ascent: { ...startAscent(3, { unlocks: ['emberHeart'] }), emberHeartOffered: true },
+        battle: null,
+      }),
+    );
+    const session = sessionOn(store);
+    await session.load();
+
+    session.pause();
+    await flush();
+    const resumed = await sessionOn(store).load();
+
+    expect(resumed?.emberHeartOffered).toBe(true);
+    expect(resumed?.unlocks).toEqual(['emberHeart']);
+  });
+
   it('keeps Cœur de braise owned in an ascent saved before the update, with no Unlock', async () => {
     const store = mapStore();
     store.values.set(
