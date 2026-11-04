@@ -952,6 +952,12 @@ describe('a late press on a suffered impact (#207)', () => {
     expect(beforeSecond.lastOf('whiffed')).toMatchObject({ reason: 'early', delta: -170 });
   });
 
+  it('judges a press at equal distance from both impacts « trop tôt » on the coming one', () => {
+    const halfway = toGhoulWindUp('double').press('parry', DOUBLE_IMPACT + 210);
+
+    expect(halfway.lastOf('whiffed')).toMatchObject({ reason: 'early', delta: -210 });
+  });
+
   it('judges « trop tard » on the last impact of a double strike, during the next step-in', () => {
     const play = toGhoulWindUp('double').press('parry', DOUBLE_IMPACT + 420 + 200);
 
