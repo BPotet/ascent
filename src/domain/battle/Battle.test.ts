@@ -231,7 +231,12 @@ describe('startTestBattle', () => {
     expect(play.battle.hitStop).toBeNull();
     expect(play.battle.inputOffset).toBe(0);
     expect(play.events).toEqual([
-      { type: 'roundStarted', at: 250, round: 1 },
+      {
+        type: 'roundStarted',
+        at: 250,
+        round: 1,
+        intents: play.battle.enemies.map((enemy) => enemy.intent),
+      },
       { type: 'heroPhaseStarted', at: 250, announced: false },
     ]);
   });
@@ -553,7 +558,7 @@ describe('judging a defense press (C7, C8)', () => {
 
     // Le 2e impact (420 ms plus tard, décalé de 90 ms) est loin : appui raté, daté du début de l'arrêt.
     expect(play.last).toEqual([
-      { type: 'whiffed', at: GHOUL_IMPACT - 50, button: 'dodge', reason: 'early' },
+      { type: 'whiffed', at: GHOUL_IMPACT - 50, button: 'dodge', reason: 'early', delta: -460 },
       { type: 'offBalanceStarted', at: GHOUL_IMPACT - 50, until: GHOUL_IMPACT + 400 },
     ]);
   });
@@ -631,7 +636,7 @@ describe('judging a defense press (C7, C8)', () => {
   it('whiffs a press just outside the window, too early or too late', () => {
     const early = toGhoulWindUp('basic').press('parry', GHOUL_IMPACT - 161);
     expect(early.last).toEqual([
-      { type: 'whiffed', at: GHOUL_IMPACT - 161, button: 'parry', reason: 'early' },
+      { type: 'whiffed', at: GHOUL_IMPACT - 161, button: 'parry', reason: 'early', delta: -161 },
       { type: 'offBalanceStarted', at: GHOUL_IMPACT - 161, until: GHOUL_IMPACT + 289 },
     ]);
 
@@ -644,6 +649,7 @@ describe('judging a defense press (C7, C8)', () => {
       at: GHOUL_IMPACT + 140,
       button: 'parry',
       reason: 'late',
+      delta: 170,
     });
   });
 
@@ -771,7 +777,7 @@ describe('off-balance (C9)', () => {
     const play = toGhoulWindUp('basic').press('parry', GHOUL_IMPACT - 400);
 
     expect(play.last).toEqual([
-      { type: 'whiffed', at: GHOUL_IMPACT - 400, button: 'parry', reason: 'early' },
+      { type: 'whiffed', at: GHOUL_IMPACT - 400, button: 'parry', reason: 'early', delta: -400 },
       { type: 'offBalanceStarted', at: GHOUL_IMPACT - 400, until: GHOUL_IMPACT + 50 },
     ]);
 
@@ -848,7 +854,13 @@ describe('off-balance (C9)', () => {
     play.advance(GHOUL_IMPACT + 161);
 
     expect(play.last).toEqual([
-      { type: 'roundStarted', at: GHOUL_IMPACT + 160, round: 2 },
+      {
+        type: 'roundStarted',
+        at: GHOUL_IMPACT + 160,
+        round: 2,
+        // Le Spectre et le Nécromancien sont tombés : aucune intention.
+        intents: [play.battle.enemies[0]!.intent, null, null],
+      },
       { type: 'offBalanceEnded', at: GHOUL_IMPACT + 160 },
       {
         type: 'phaseTransitionStarted',
@@ -997,7 +1009,13 @@ describe('feint attack (C10)', () => {
       .press('parry', GHOUL_WIND_UP_AT + 800);
 
     expect(play.last.slice(-2)).toEqual([
-      { type: 'whiffed', at: GHOUL_WIND_UP_AT + 800, button: 'parry', reason: 'early' },
+      {
+        type: 'whiffed',
+        at: GHOUL_WIND_UP_AT + 800,
+        button: 'parry',
+        reason: 'early',
+        delta: -800,
+      },
       { type: 'offBalanceStarted', at: GHOUL_WIND_UP_AT + 800, until: GHOUL_WIND_UP_AT + 1_250 },
     ]);
   });
@@ -1364,6 +1382,7 @@ describe('edge cases of the engine', () => {
       at: DOUBLE_IMPACT + 90,
       button: 'dodge',
       reason: 'early',
+      delta: -420,
     });
   });
 

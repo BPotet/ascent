@@ -1,5 +1,6 @@
 import type { AttackKind } from './attacks';
 import type { EnemyKind } from './combatants';
+import type { Intent } from './intents';
 import type { PowerKind } from './momentum';
 import type { PressJudgement } from './rules';
 
@@ -40,7 +41,13 @@ export type IgnoredReason = 'phaseTransition' | 'offBalance' | 'notAvailable' | 
  * ms. L'interface, les sons et les vibrations ne réagissent qu'à eux.
  */
 export type BattleEvent =
-  | { readonly type: 'roundStarted'; readonly at: number; readonly round: number }
+  | {
+      readonly type: 'roundStarted';
+      readonly at: number;
+      readonly round: number;
+      /** L'intention tirée par chaque place de la première ligne, `null` pour un ennemi tombé. */
+      readonly intents: readonly (Intent | null)[];
+    }
   | {
       readonly type: 'heroPhaseStarted';
       readonly at: number;
@@ -168,6 +175,8 @@ export type BattleEvent =
       readonly at: number;
       readonly button: DefenseButton;
       readonly reason: WhiffReason;
+      /** L'écart de l'appui trop tôt ou trop tard, tel que jugé ; absent dans le vide. */
+      readonly delta?: number;
     }
   | {
       readonly type: 'pressIgnored';

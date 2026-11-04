@@ -3,6 +3,7 @@
 // chute avec la Reine, les places libres (règle 6) et les tombés qui ne se relèvent plus (règle 7).
 import {
   advance,
+  enemyInitiative,
   heroAction,
   nextDeadline,
   nextRoundOrder,
@@ -16,7 +17,7 @@ import {
 } from './Battle';
 import { ATTACKS } from './attacks';
 import type { BattleEvent } from './BattleEvent';
-import type { EnemyKind, HeroKind } from './combatants';
+import { ENEMIES, ENEMY_INITIATIVE, type EnemyKind, type HeroKind } from './combatants';
 import type { TierMultiplier } from './tierMultiplier';
 
 const TIER_2: TierMultiplier = { hpPercent: 135, guardPercent: 125 };
@@ -172,6 +173,22 @@ describe('the Moth queen calls two Mothkin at her phase shift (#172)', () => {
 
     const between = events.slice(calledAt, enteredAt);
     expect(between.some((event) => 'enemy' in event && event.enemy > 0)).toBe(false);
+  });
+
+  it('announces the drawn intents with the round, the summoned Mothkin included', () => {
+    const { battle, events } = entered();
+    const started = events.filter((event) => event.type === 'roundStarted').at(-1);
+
+    expect(started).toMatchObject({ intents: battle.enemies.map((enemy) => enemy.intent) });
+    expect(battle.enemies[1]!.intent).not.toBeNull();
+  });
+
+  it('gives the Initiative of an enemy, that of its phase 2 for a boss that shifted', () => {
+    const queen = start(['mothQueen']).enemies[0]!;
+
+    expect(enemyInitiative(queen)).toBe(ENEMY_INITIATIVE.mothQueen);
+    expect(enemyInitiative({ ...queen, phase2: true })).toBe(ENEMIES.mothQueen.phase2Initiative);
+    expect(ENEMY_INITIATIVE.mothQueen).not.toBe(ENEMIES.mothQueen.phase2Initiative);
   });
 
   it('draws their intents in the round they enter, from left to right', () => {
