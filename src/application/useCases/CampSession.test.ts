@@ -151,14 +151,14 @@ describe('CampSession (#40)', () => {
     const seen: string[][] = [];
     camp.subscribe((view) => seen.push(states(view)));
 
-    expect(camp.view().ascentInProgress).toBe(true);
+    expect(camp.view()).toMatchObject({ ascentInProgress: true, place: { tier: 1, floor: 1 } });
     expect(await camp.unlock('flamberge')).toBe('unlocked');
     expect(ascentSession.current()?.unlocks).toEqual([]);
     expect(states(camp.view())[3]).toBe('nextAscent');
 
     ascentSession.abandon();
     expect(seen.at(-1)?.[3]).toBe('unlocked');
-    expect(camp.view().ascentInProgress).toBe(false);
+    expect(camp.view()).toMatchObject({ ascentInProgress: false, place: null });
     ascentSession.leave();
 
     expect(camp.beginAscent({})?.unlocks).toEqual(['flamberge']);

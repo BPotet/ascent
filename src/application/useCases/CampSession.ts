@@ -10,6 +10,7 @@ import {
   type Camp,
   type CampOfferEntry,
 } from '../../domain/ascent/camp';
+import type { Tier } from '../../domain/ascent/tiers';
 import type { Unlock } from '../../domain/ascent/unlocks';
 import type { BattleSound } from '../ports/BattleSound';
 import type { Haptics } from '../ports/Haptics';
@@ -35,6 +36,8 @@ export interface CampView {
   readonly availableShards: number;
   readonly offer: readonly CampOfferEntry[];
   readonly ascentInProgress: boolean;
+  /** Le palier et l'étage de l'ascension en cours, pour le bandeau du camp ; `null` sans elle. */
+  readonly place: { readonly tier: Tier; readonly floor: number } | null;
   /** Le Camp n'a pas pu être lu, ou sa valeur illisible gardée à part : aucun achat. */
   readonly readOnly: boolean;
 }
@@ -71,13 +74,15 @@ export class CampSession {
   view(): CampView {
     const { ascentSession } = this.dependencies;
     const shardTotal = ascentSession.shardTotal();
-    const ascent = ascentSession.current();
+    const current = ascentSession.current();
+    const ascent = current !== null && current.outcome === null ? current : null;
     return {
       status: this.loaded ? 'ready' : 'loading',
       shardTotal,
       availableShards: availableShards(shardTotal, this.camp),
       offer: campOffer(this.camp, shardTotal, ascent),
-      ascentInProgress: ascent !== null && ascent.outcome === null,
+      ascentInProgress: ascent !== null,
+      place: ascent === null ? null : { tier: ascent.tier, floor: ascent.floor },
       readOnly: this.readOnly,
     };
   }
