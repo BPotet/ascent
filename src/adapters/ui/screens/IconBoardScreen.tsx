@@ -321,13 +321,13 @@ const BOARD_BATTLES: Partial<Readonly<Record<LoadoutBoard, Battle>>> = {
 };
 // Stryker restore all
 
-/** Le vrai écran ouvert par une entrée de l'Équipement, et sa session. */
 /** Une ascension fixe de la planche, dans sa session neuve, avec son camp (#40). */
 export interface BoardAscent {
   readonly session: AscentSession;
   readonly camp: CampSession;
 }
 
+/** Le vrai écran ouvert par une entrée de l'Équipement, et sa session. */
 interface OpenAscent extends BoardAscent {
   readonly screen: 'foot' | 'ascent' | 'camp';
 }
