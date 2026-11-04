@@ -1,4 +1,4 @@
-import type { AscentLog } from '../../domain/ascentLog/AscentLog';
+import type { AnyAscentLog, AscentLog } from '../../domain/ascentLog/AscentLog';
 
 /**
  * Le stockage des journaux d'ascension (`AscentLogStore`, #196, ADR 0014). Les journaux sont rendus
@@ -11,7 +11,7 @@ export interface AscentLogStore {
    */
   start(log: AscentLog, kept: number): Promise<AscentLog>;
   /** Remplace ce journal (même `id`) seulement. */
-  save(log: AscentLog): Promise<void>;
+  save(log: AnyAscentLog): Promise<void>;
   /** Le dernier journal ajouté, `null` sans journal. */
   latest(): Promise<string | null>;
   /** Les journaux gardés, du plus ancien au plus récent. */

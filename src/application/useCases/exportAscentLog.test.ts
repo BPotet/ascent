@@ -46,10 +46,10 @@ describe('ascentLogExport', () => {
       name: 'ascent-journal-2026-11-03.json',
       mimeType: 'application/json',
     });
-    expect(file!.contents).toContain('\n  "formatVersion": 1');
+    expect(file!.contents).toContain('\n  "formatVersion": 2');
     const parsed = JSON.parse(file!.contents) as AscentLogExport;
     expect(parsed).toMatchObject({
-      formatVersion: 1,
+      formatVersion: 2,
       appVersion: '0.3.0',
       buildChannel: 'preview',
       exportedOn: '2026-11-03',

@@ -1,6 +1,6 @@
 // Réservé aux tests : un stockage des journaux d'ascension en mémoire, qui peut retenir ou faire
 // échouer ses écritures.
-import type { AscentLog } from '../../domain/ascentLog/AscentLog';
+import type { AnyAscentLog } from '../../domain/ascentLog/AscentLog';
 import type { AscentLogStore } from '../ports/AscentLogStore';
 
 export function memoryAscentLogStore(initial: readonly string[] = []) {
@@ -9,7 +9,7 @@ export function memoryAscentLogStore(initial: readonly string[] = []) {
   let failures = 0;
   let held: Promise<void> | null = null;
   let release: () => void = () => undefined;
-  const writes: AscentLog[] = [];
+  const writes: AnyAscentLog[] = [];
   const write = async () => {
     if (held !== null) await held;
     if (failures > 0) {

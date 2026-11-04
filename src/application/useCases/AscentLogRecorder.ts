@@ -3,6 +3,7 @@ import {
   beginAscentLog,
   recordAscentStep,
   resumeAscentLog,
+  type AnyAscentLog,
   type AscentLog,
   type AscentStep,
 } from '../../domain/ascentLog/AscentLog';
@@ -17,7 +18,7 @@ export interface AscentLogRecorderDependencies {
 
 /** Une écriture du journal : l'instantané et sa révision. */
 interface Write {
-  readonly log: AscentLog;
+  readonly log: AnyAscentLog;
   readonly revision: number;
   readonly generation: number;
 }
@@ -29,7 +30,7 @@ interface Write {
  * gagne). Un échec d'écriture est avalé : l'ascension continue, la prochaine écriture réessaie.
  */
 export class AscentLogRecorder {
-  private log: AscentLog | null = null;
+  private log: AnyAscentLog | null = null;
   /** Le numéro de la dernière modification du journal, et celui de la dernière écriture demandée. */
   private revision = 0;
   private queued = 0;
@@ -44,7 +45,7 @@ export class AscentLogRecorder {
   constructor(private readonly dependencies: AscentLogRecorderDependencies) {}
 
   /** Le journal de l'ascension en cours, avec son identifiant s'il est déjà écrit. */
-  current(): AscentLog | null {
+  current(): AnyAscentLog | null {
     return this.log === null ? null : this.withId(this.log, this.generation);
   }
 
@@ -100,12 +101,12 @@ export class AscentLogRecorder {
     return this.draining;
   }
 
-  private change(log: AscentLog): void {
+  private change(log: AnyAscentLog): void {
     this.log = log;
     this.revision += 1;
   }
 
-  private withId(log: AscentLog, generation: number): AscentLog {
+  private withId<Log extends AnyAscentLog>(log: Log, generation: number): Log {
     const id = this.ids.get(generation);
     return id === undefined ? log : { ...log, id };
   }
@@ -127,7 +128,8 @@ export class AscentLogRecorder {
     const { store } = this.dependencies;
     const known = this.withId(log, generation);
     if (known.id !== null) return store.save(known);
-    const started = await store.start(log, ASCENT_LOG_KEPT);
+    // Seul un journal de version 2 commence : celui de version 1 a toujours son identifiant.
+    const started = await store.start(log as AscentLog, ASCENT_LOG_KEPT);
     if (started.id !== null) this.ids.set(generation, started.id);
   }
 }

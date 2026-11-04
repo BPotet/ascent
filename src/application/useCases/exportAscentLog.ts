@@ -39,7 +39,10 @@ export async function exportAscentLog(
   const raws = await store.readAll();
   if (raws.length === 0) return { result: 'empty', ignoredLogs: 0 };
   const today = clock.today();
-  const built = buildAscentLogExport(raws, { appVersion, buildChannel, exportedOn: today });
+  const built = buildAscentLogExport(
+    raws.map((log) => ({ log, battles: [] })),
+    { appVersion, buildChannel, exportedOn: today },
+  );
   await share.share({
     name: exportFileName(today),
     mimeType: 'application/json',

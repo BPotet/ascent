@@ -1,6 +1,6 @@
 import type { AscentLogStore } from '../../../application/ports/AscentLogStore';
 import type { KeyValueStore } from '../../../application/ports/KeyValueStore';
-import type { AscentLog } from '../../../domain/ascentLog/AscentLog';
+import type { AnyAscentLog, AscentLog } from '../../../domain/ascentLog/AscentLog';
 import { keepLatest } from '../../../domain/ascentLog/AscentLogExport';
 
 /** La clé de l'index des journaux d'ascension : les identifiants, du plus ancien au plus récent. */
@@ -58,7 +58,7 @@ export class KeyValueAscentLogStore implements AscentLogStore {
     return started;
   }
 
-  async save(log: AscentLog): Promise<void> {
+  async save(log: AnyAscentLog): Promise<void> {
     if (log.id === null) return;
     await this.keyValueStore.set(ascentLogKey(log.id), JSON.stringify(log));
   }
