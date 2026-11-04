@@ -574,15 +574,18 @@ describe('a pose of an attack (#139)', () => {
 });
 
 describe('the validated images of the items', () => {
-  it('has the 8 validated items, the Black knight armor included', () => {
+  it('has the 11 validated items, the Black knight armor and the 3 unlockable items included', () => {
     expect(Object.keys(ITEM_IMAGES).sort()).toEqual([
       'axe',
       'blackKnightArmor',
       'chainmail',
       'crossbow',
+      'flamberge',
       'hammer',
       'hasteAmulet',
+      'huntingSpear',
       'leather',
+      'watchBell',
       'watchmanShield',
     ]);
   });

@@ -187,6 +187,27 @@ describe('gauge, blessing and item texts (#93)', () => {
     );
     expect(itemDescription('crossbow')).toBeNull();
   });
+
+  it('names the three unlockable items, with their effect and their description (#195)', () => {
+    expect(itemText('huntingSpear')).toBe(
+      'Épieu de chasse · Arme · Commun · Attaque +10 % · Initiative 0',
+    );
+    expect(itemText('watchBell')).toBe(
+      'Clochette du guet · Accessoire · Rare · Contre-attaque ×1,3 · Initiative 0',
+    );
+    expect(itemText('flamberge')).toBe(
+      'Flamberge · Arme · Épique · Attaque +10 %, Frappe parfaite +0,3 · Initiative 0',
+    );
+    expect(itemDescription('huntingSpear')).toBe(
+      'Un épieu de chasseur, le fer noirci par les feux du camp. Il ne brise aucune garde : il entre.',
+    );
+    expect(itemDescription('watchBell')).toBe(
+      'Une clochette fêlée, pendue jadis au cou des guetteurs du Beffroi. Elle sonne quand le coup revient, et le coup revient plus fort.',
+    );
+    expect(itemDescription('flamberge')).toBe(
+      "Une épée à lame ondulée, trempée dans la flamme du camp. Le Gardien dit qu'elle a appartenu à quelqu'un qui est monté très haut. Elle ne pèse rien quand le geste est juste.",
+    );
+  });
 });
 
 describe('tier and Shard texts (#38)', () => {

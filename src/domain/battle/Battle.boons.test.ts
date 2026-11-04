@@ -105,6 +105,23 @@ describe('Battle with the hero modifiers (P18)', () => {
     );
   });
 
+  it("Veillée d'hiver: 1 more Momentum at the start, +10 points of reduction capped at 40 % (#195)", () => {
+    const vigil = { damageReductionPoints: 10, startingMomentum: 1 };
+    expect(start(vigil).hero.momentum).toBe(start({}).hero.momentum + 1);
+
+    const suffered = (modifiers: Partial<HeroModifiers>) =>
+      firstOf(playUntil(start(modifiers, 'wanderer'), has('blowResolved')).events, 'blowResolved');
+    const raw = suffered({}).damage;
+    expect(suffered(vigil).damage).toBe(Math.max(1, Math.floor((raw * 90) / 100)));
+    // Avec Peau de givre et l'Armure de chevalier déchu (40 points), puis au-delà : 40 % au plus.
+    expect(suffered({ ...vigil, damageReductionPoints: 40 }).damage).toBe(
+      Math.max(1, Math.floor((raw * 60) / 100)),
+    );
+    expect(suffered({ ...vigil, damageReductionPoints: 50 }).damage).toBe(
+      Math.max(1, Math.floor((raw * 60) / 100)),
+    );
+  });
+
   it('Lame juste: a perfect strike of the Sentinel deals 20 HP instead of 15', () => {
     const perfect = (modifiers: Partial<HeroModifiers>) => {
       const attacked = heroAction(start(modifiers), {

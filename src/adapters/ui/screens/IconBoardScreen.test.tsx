@@ -85,6 +85,8 @@ describe('IconBoardScreen (#157)', () => {
       'Frise · boss en phase 2',
       'Voile · coup imparable · palier 1',
       'Voile · coup imparable · palier 3',
+      "Choix d'un bienfait · Veillée d'hiver",
+      'Objet trouvé · Flamberge',
       'Fermer',
     ]);
   });
@@ -296,6 +298,24 @@ describe('IconBoardScreen with the loadout (#159)', () => {
       expect.stringMatching(/^Braise ardente, /),
     ]);
     expect(within(screen.getByTestId('ascent-loadout')).getByText('3', hidden)).toBeTruthy();
+  });
+
+  it("opens the real boon choice with Veillée d'hiver (#195)", async () => {
+    await open("Choix d'un bienfait · Veillée d'hiver");
+
+    expect(await screen.findByRole('header', { name: 'Choisis un bienfait' })).toBeOnTheScreen();
+    expect(screen.getAllByRole('radio').map((card) => card.props.accessibilityLabel)).toEqual([
+      expect.stringMatching(/^Écho parfait, /),
+      expect.stringMatching(/^Givre persistant, /),
+      expect.stringMatching(/^Veillée d'hiver, /),
+    ]);
+  });
+
+  it('opens the real found item screen with the Flamberge (#195)', async () => {
+    await open('Objet trouvé · Flamberge');
+
+    expect(await screen.findByRole('header', { name: 'Objet trouvé' })).toBeOnTheScreen();
+    expect(screen.getByText('◆◆◆ Épique')).toBeOnTheScreen();
   });
 
   it('opens each ascent in a session of its own', async () => {

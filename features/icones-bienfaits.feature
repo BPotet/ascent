@@ -59,9 +59,9 @@ Fonctionnalité: Les icônes des bienfaits dans le choix d'un bienfait et aux so
     Et à 96 dp, à ×6 et à ×4
     Et chaque pixel d'art reste entier et carré : jamais rogné, jamais étiré, jamais d'échelle fractionnaire
 
-  Scénario: Limite : les 12 icônes sont celles validées dans l'Atelier
-    Étant donné les 12 icônes au statut « validé » dans l'Atelier de l'ascension le 30/10/2026
-    Alors les 7 icônes de bienfait et les 5 icônes de bénédiction du jeu sont identiques, pixel pour pixel, à leurs données validées
+  Scénario: Limite : les 13 icônes sont celles validées dans l'Atelier
+    Étant donné les 12 icônes au statut « validé » dans l'Atelier de l'ascension le 30/10/2026, et Veillée d'hiver le 04/11/2026
+    Alors les 8 icônes de bienfait et les 5 icônes de bénédiction du jeu sont identiques, pixel pour pixel, à leurs données validées
     Et les 3 raretés d'une même famille de bénédiction partagent la même icône
 
   Scénario: Accessibilité : l'icône ne porte jamais seule le sens

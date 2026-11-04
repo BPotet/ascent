@@ -2,7 +2,7 @@ import { BOON_KINDS } from '../../../domain/ascent/boons';
 import { BOON_NAMES, boonCard, boonChip, boonObtainedLabel, ownedBoonsLabel } from './boonText';
 
 describe('boonText', () => {
-  it('names the 7 boons', () => {
+  it("names the 8 boons, Veillée d'hiver 7th and Cœur de braise last (#195)", () => {
     expect(BOON_KINDS.map((kind) => BOON_NAMES[kind])).toEqual([
       'Écho parfait',
       'Braise brisante',
@@ -10,8 +10,26 @@ describe('boonText', () => {
       'Lame juste',
       'Braise ardente',
       'Givre persistant',
+      "Veillée d'hiver",
       'Cœur de braise',
     ]);
+  });
+
+  it("writes the card of Veillée d'hiver, and keeps the one of Cœur de braise (#195)", () => {
+    expect(boonCard('winterVigil')).toEqual({
+      name: "Veillée d'hiver",
+      tag: '◆◆◆ Givre · Épique',
+      effect:
+        'Réduction des dégâts +10 points (40 % au plus) et +1 Élan au début de chaque combat.',
+      rarity: 'epic',
+      label:
+        "Veillée d'hiver, Givre, Épique. Réduction des dégâts +10 points (40 % au plus) et +1 Élan au début de chaque combat.",
+    });
+    expect(boonCard('emberHeart')).toMatchObject({
+      name: 'Cœur de braise',
+      effect: 'Chaque garde que tu brises : +1 Élan et 5 PV rendus.',
+    });
+    expect(boonChip('winterVigil').rarityLine).toBe('◆◆◆ Épique');
   });
 
   it('writes the family, the rarity and the effect of a boon', () => {

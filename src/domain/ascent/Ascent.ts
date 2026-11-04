@@ -6,7 +6,7 @@
  */
 import { HEROES, type EnemyKind, type HeroKind } from '../battle/combatants';
 import { nextRandom, seedRandom, type BattleSeed, type RandomState } from '../battle/SeededRandom';
-import { drawBoonOffer, type BoonKind } from './boons';
+import { drawBoonOffer, offerEmberHeart, type BoonKind } from './boons';
 import {
   drawBlessingOffer,
   heroMaxHp,
@@ -24,6 +24,7 @@ import { drawExitKinds, type Exit } from './exits';
 import { bossGold, campfireHeal, drawBoss, drawCombatGold, eliteGold } from './rewards';
 import { shardAwards, type ShardAward } from './shards';
 import { TIERS, TOP_TIER, type Tier } from './tiers';
+import { unlockedItems, type Unlock } from './unlocks';
 
 /** La graine de l'ascension (`AscentSeed`). */
 export type AscentSeed = number;
@@ -100,16 +101,22 @@ export interface Ascent {
   readonly shardAwards: readonly ShardAward[];
   /** Le Passage de palier en cours, `null` sans passage (#38). */
   readonly passage: TierPassage | null;
+  /** Les Déblocages de l'ascension (#195), reçus à son début et gardés jusqu'à sa fin. */
+  readonly unlocks: readonly Unlock[];
+  /** Cœur de braise a déjà été proposé dans l'ascension, pris ou non (#195). */
+  readonly emberHeartOffered: boolean;
 }
 
 /**
  * Le lancement de l'ascension : le héros choisi au pied de la tour (#92, la Sentinelle par
- * défaut), la jauge scellée et les raretés des bénédictions (#93).
+ * défaut), la jauge scellée, les raretés des bénédictions (#93) et les Déblocages (#195, aucun par
+ * défaut).
  */
 export interface AscentLaunch {
   readonly hero?: HeroKind;
   readonly gauge?: FateGauge;
   readonly blessings?: readonly Rarity[];
+  readonly unlocks?: readonly Unlock[];
 }
 
 /** Le flux de hasard des bénédictions et du butin : séparé, il ne déplace pas les autres tirages. */
@@ -147,7 +154,7 @@ function combat(size: number, random: RandomState, tier: Tier): Drawn<Encounter>
  * un combat dont la taille est tirée, et la première offre de bénédiction s'il y en a.
  */
 export function startAscent(seed: AscentSeed, launch: AscentLaunch = {}): Ascent {
-  const { hero: heroKind = 'sentinel', gauge = 0, blessings = [] } = launch;
+  const { hero: heroKind = 'sentinel', gauge = 0, blessings = [], unlocks = [] } = launch;
   const size = drawGroupSize(1, seedRandom(seed), false);
   const first = combat(size.value, size.random, 1);
   const maxHp = heroMaxHp(HEROES[heroKind].maxHp, 0, fatiguePercent(gauge));
@@ -175,6 +182,8 @@ export function startAscent(seed: AscentSeed, launch: AscentLaunch = {}): Ascent
     lootRandom: offer?.random ?? lootStream(seed),
     shardAwards: [],
     passage: null,
+    unlocks: [...new Set(unlocks)],
+    emberHeartOffered: false,
   };
 }
 
@@ -300,7 +309,13 @@ export function endFloorBattle(ascent: Ascent, result: FloorBattleResult): Ascen
     gold = drawn.value;
     random = drawn.random;
   }
-  const loot = drawLoot(current, ascent.gauge, ascent.equipment, ascent.lootRandom);
+  const loot = drawLoot(
+    current,
+    ascent.gauge,
+    ascent.equipment,
+    ascent.lootRandom,
+    unlockedItems(ascent.unlocks),
+  );
   const earned = {
     ...ascent,
     hero,
@@ -326,13 +341,30 @@ export function endFloorBattle(ascent: Ascent, result: FloorBattleResult): Ascen
   }
   // L'offre de bienfaits suit l'objet trouvé, sur le même flux : les portes ne bougent pas (P9).
   const offer = drawBoonOffer(hero.boons, earned.lootRandom);
+  const withHeart = emberHeartDrawn(ascent, current)
+    ? offerEmberHeart(offer.value, offer.random)
+    : { value: { offer: offer.value, offered: false }, random: offer.random };
   return withExits(
     {
       ...earned,
-      lootRandom: offer.random,
-      boonOffer: offer.value.length > 0 ? offer.value : null,
+      lootRandom: withHeart.random,
+      boonOffer: withHeart.value.offer.length > 0 ? withHeart.value.offer : null,
+      emberHeartOffered: ascent.emberHeartOffered || withHeart.value.offered,
     },
     ascent.floor + 1,
+  );
+}
+
+/**
+ * Cœur de braise est tiré après une Élite seulement (#195), s'il est débloqué, pas possédé et pas
+ * encore proposé dans l'ascension ; sinon, aucun tirage.
+ */
+function emberHeartDrawn(ascent: Ascent, current: Encounter): boolean {
+  return (
+    current.kind === 'elite' &&
+    ascent.unlocks.includes('emberHeart') &&
+    !ascent.hero.boons.includes('emberHeart') &&
+    !ascent.emberHeartOffered
   );
 }
 

@@ -11,6 +11,14 @@
  * - `emberHeart`
  * clé `proposals[chosen]`. Identique, pixel pour pixel, à la constante `ICONS` de la maquette
  * validée `docs/mockups/153-boon-blessing-icons/index.html`.
+ * Ajouté le 04/11/2026 (#195), par script, sha256 vérifiée avant écriture, clé `proposals[chosen]` :
+ * - `winterVigil` : `assets/winterVigil` version 2, sha256 a8265bc561533288976a16909045794185f775904cb30992168e9c0324ccef8c ;
+ *   fiche `codex/winterVigil` version 2, sha256 4c4a518a34f815965e3d63083b5172abc6fb7df7db05e9ec5924a869c8d8aa39 ;
+ *   « lanterne de veille dans la neige », identique à `ICONS.winterVigil.proposals[0]` de la maquette
+ *   validée `docs/mockups/40-camp/index.html`.
+ * - `emberHeart` relu : `assets/emberHeart` version 2, sha256 197d67c89c2a95c14bbb84475c5b8e7159b3f952dd256124e2c03e10d5133679 ;
+ *   fiche `codex/emberHeart` version 4, sha256 b9b6171413f34471910913e4723745a440709ba1636f4acde4125b12cf693428 ;
+ *   données identiques, inchangées.
  * Ne pas retoucher à la main : toute retouche passe par l'Atelier.
  */
 import type { BoonKind } from '../../../../../../domain/ascent/boons';
@@ -234,6 +242,49 @@ export const BOON_ICONS: Readonly<Record<BoonKind, AssetImage>> = {
       '........................',
       '........................',
       '........................',
+      '........................',
+      '........................',
+    ],
+  },
+  winterVigil: {
+    w: 24,
+    h: 24,
+    palette: [
+      '#06070c',
+      '#fff3d6',
+      '#f2d49b',
+      '#d9733a',
+      '#bfe6da',
+      '#8995be',
+      '#47527a',
+      '#252b48',
+      '#d9dce6',
+      '#8c93a8',
+      '#646b80',
+    ],
+    rows: [
+      '........................',
+      '...........00...........',
+      '..........0880..........',
+      '.........009900.........',
+      '........09999990...4....',
+      '....4..0aaaaaaaa0.......',
+      '.......0999988880.......',
+      '.......0a44997490.......',
+      '.......0a47777790.......',
+      '.......0a66626690...4...',
+      '.......0a66226690.......',
+      '...4...0a66216690.......',
+      '.......0a66326690.......',
+      '.......0a77337490.......',
+      '.......0a47774490.4.....',
+      '.......0a77997790.......',
+      '......0aaaaaaaaaa0......',
+      '....000999999999a000....',
+      '...055588888888888550...',
+      '..05555588888888855550..',
+      '..06666666666666666660..',
+      '...000000000000000000...',
       '........................',
       '........................',
     ],

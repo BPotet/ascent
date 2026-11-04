@@ -16,10 +16,10 @@ describe('the game icons (#157)', () => {
     ...BLESSING_FAMILIES.map((family) => [`blessing ${family}`, BLESSING_ICONS[family]] as const),
   ];
 
-  it('has an icon for each of the 7 boons and the 5 blessing families', () => {
+  it('has an icon for each of the 8 boons and the 5 blessing families', () => {
     expect(Object.keys(BOON_ICONS).sort()).toEqual([...BOON_KINDS].sort());
     expect(Object.keys(BLESSING_ICONS).sort()).toEqual([...BLESSING_FAMILIES].sort());
-    expect(icons).toHaveLength(12);
+    expect(icons).toHaveLength(13);
   });
 
   it.each(icons)('draws the %s icon square, on 16 or 24 art pixels', (_, image) => {

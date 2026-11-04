@@ -12,7 +12,7 @@ import {
   type Ascent,
   type AscentLaunch,
 } from './Ascent';
-import { BOON_KINDS, type BoonKind } from './boons';
+import { BASE_BOON_KINDS, type BoonKind } from './boons';
 import { TIERS, type Tier } from './tiers';
 
 const SEEDS = Array.from({ length: 120 }, (_, index) => index * 2_654_435_761 + 11);
@@ -267,15 +267,15 @@ describe('exhausted boons (#38)', () => {
   };
 
   it('offers the 2 boons left to a hero who owns 5 of the 7', () => {
-    const owned = BOON_KINDS.slice(0, 5);
+    const owned = BASE_BOON_KINDS.slice(0, 5);
 
     const offered = endFloorBattle(owning(owned), { outcome: 'victory', heroHp: 40 });
 
-    expect([...offered.boonOffer!].sort()).toEqual([...BOON_KINDS.slice(5)].sort());
+    expect([...offered.boonOffer!].sort()).toEqual([...BASE_BOON_KINDS.slice(5)].sort());
   });
 
   it('offers no boon to a hero who owns the 7, and the ascent goes on', () => {
-    const offered = endFloorBattle(owning(BOON_KINDS), { outcome: 'victory', heroHp: 40 });
+    const offered = endFloorBattle(owning(BASE_BOON_KINDS), { outcome: 'victory', heroHp: 40 });
 
     expect(offered.boonOffer).toBeNull();
     expect(offered.exits.length).toBeGreaterThan(0);

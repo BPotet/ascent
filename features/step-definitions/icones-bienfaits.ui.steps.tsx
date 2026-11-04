@@ -56,6 +56,7 @@ const DOORS: readonly Exit[] = [
   { kind: 'campfire', groupSize: null },
 ];
 const MOCKUP = path.join(__dirname, '../../docs/mockups/153-boon-blessing-icons/index.html');
+const CAMP_MOCKUP = path.join(__dirname, '../../docs/mockups/40-camp/index.html');
 /** L'entrée de l'Atelier (et de la maquette) de chaque famille de bénédiction. */
 const ATELIER_BLESSINGS: Readonly<Record<BlessingFamily, string>> = {
   vigor: 'vigor',
@@ -118,12 +119,24 @@ function between(boons: readonly BoonKind[]): Ascent {
   };
 }
 
+/** La constante `ICONS` d'une maquette validée (`file`). */
+function iconsOf<Icon>(file: string): Readonly<Record<string, Icon>> {
+  const html = readFileSync(file, 'utf8');
+  const json = /const ICONS=(\{.*?\});\n/.exec(html)?.[1];
+  if (json === undefined) throw new Error(`The mockup ${file} has no ICONS`);
+  return JSON.parse(json) as Record<string, Icon>;
+}
+
 /** La constante `ICONS` de la maquette validée. */
 function mockupIcons(): Readonly<Record<string, AssetImage>> {
-  const html = readFileSync(MOCKUP, 'utf8');
-  const json = /const ICONS=(\{.*?\});\n/.exec(html)?.[1];
-  if (json === undefined) throw new Error('The mockup has no ICONS');
-  return JSON.parse(json) as Record<string, AssetImage>;
+  return iconsOf<AssetImage>(MOCKUP);
+}
+
+/** L'icône de Veillée d'hiver (#195), proposition 1 validée, dans la maquette du camp. */
+function campWinterVigilIcon(): AssetImage {
+  const icons = iconsOf<{ readonly proposals: readonly AssetImage[] }>(CAMP_MOCKUP);
+  const { w, h, palette, rows } = icons.winterVigil!.proposals[0]!;
+  return { w, h, palette, rows };
 }
 
 const steps: StepDefinitions = ({ given, when, then, and }) => {
@@ -383,15 +396,23 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     },
   );
 
-  given("les 12 icônes au statut « validé » dans l'Atelier de l'ascension le 30/10/2026", () => {
-    expect(Object.keys(mockupIcons())).toHaveLength(12);
-  });
+  given(
+    "les 12 icônes au statut « validé » dans l'Atelier de l'ascension le 30/10/2026, et Veillée d'hiver le 04/11/2026",
+    () => {
+      expect(Object.keys(mockupIcons())).toHaveLength(12);
+      expect(campWinterVigilIcon().w).toBe(24);
+    },
+  );
 
   then(
-    'les 7 icônes de bienfait et les 5 icônes de bénédiction du jeu sont identiques, pixel pour pixel, à leurs données validées',
+    'les 8 icônes de bienfait et les 5 icônes de bénédiction du jeu sont identiques, pixel pour pixel, à leurs données validées',
     () => {
       const validated = mockupIcons();
-      BOON_KINDS.forEach((kind) => expect(BOON_ICONS[kind]).toEqual(validated[kind]));
+      // Les 7 icônes de #157 contre la maquette #153 ; Veillée d'hiver (#195) contre celle du camp.
+      BOON_KINDS.filter((kind) => kind !== 'winterVigil').forEach((kind) =>
+        expect(BOON_ICONS[kind]).toEqual(validated[kind]),
+      );
+      expect(BOON_ICONS.winterVigil).toEqual(campWinterVigilIcon());
       BLESSING_FAMILIES.forEach((family) =>
         expect(BLESSING_ICONS[family]).toEqual(validated[ATELIER_BLESSINGS[family]]),
       );

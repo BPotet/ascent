@@ -219,6 +219,9 @@ const ITEM_NAMES: Readonly<Record<ItemKind, string>> = {
   hasteAmulet: 'Amulette de Hâte',
   crossbow: 'Arbalète',
   blackKnightArmor: 'Armure de chevalier déchu',
+  huntingSpear: 'Épieu de chasse',
+  watchBell: 'Clochette du guet',
+  flamberge: 'Flamberge',
 };
 const ITEM_EFFECTS: Readonly<Record<ItemKind, string | null>> = {
   axe: 'Brise-garde ×1,1',
@@ -229,12 +232,24 @@ const ITEM_EFFECTS: Readonly<Record<ItemKind, string | null>> = {
   hasteAmulet: null,
   crossbow: null,
   blackKnightArmor: 'Réduction des dégâts +20 points, Attaque +5 %',
+  huntingSpear: 'Attaque +10 %',
+  watchBell: 'Contre-attaque ×1,3',
+  flamberge: 'Attaque +10 %, Frappe parfaite +0,3',
 };
-/** La description d'un objet (Marteau, #129 ; Armure de chevalier déchu, #152), recopiée de l'Atelier ; les autres objets n'en ont pas. */
+/**
+ * La description d'un objet (Marteau, #129 ; Armure de chevalier déchu, #152 ; objets à débloquer,
+ * #195), recopiée de l'Atelier ; les autres objets n'en ont pas.
+ */
 const ITEM_DESCRIPTIONS: Partial<Readonly<Record<ItemKind, string>>> = {
   hammer:
     'Un marteau de forge, trop lourd pour un combat rapide. Aucune garde ne lui résiste longtemps.',
   blackKnightArmor: "L'armure d'un chevalier déchu. Trouvée dans une salle jadis emplie d'écuyers.",
+  huntingSpear:
+    'Un épieu de chasseur, le fer noirci par les feux du camp. Il ne brise aucune garde : il entre.',
+  watchBell:
+    'Une clochette fêlée, pendue jadis au cou des guetteurs du Beffroi. Elle sonne quand le coup revient, et le coup revient plus fort.',
+  flamberge:
+    "Une épée à lame ondulée, trempée dans la flamme du camp. Le Gardien dit qu'elle a appartenu à quelqu'un qui est monté très haut. Elle ne pèse rien quand le geste est juste.",
 };
 
 export function itemDescription(item: ItemKind): string | null {

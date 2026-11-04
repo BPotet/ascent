@@ -290,6 +290,42 @@ describe('AscentScreen with blessings and found items (#93)', () => {
     expect(screen.getByText('Arbalète · Arme · Rare · Initiative +1')).toBeOnTheScreen();
   });
 
+  it('shows the Flamberge with its image, its description and « ◆◆◆ Épique » in the Epic colour (#195)', async () => {
+    await show({
+      ...between(startAscent(42), [{ kind: 'combat', groupSize: 2 }]),
+      foundItem: 'flamberge',
+    });
+
+    expect(screen.getByTestId('item-image', { includeHiddenElements: true })).toHaveProp(
+      'sprite',
+      'item-flamberge',
+    );
+    expect(screen.getByText('◆◆◆ Épique')).toHaveStyle({ color: artPalette.roles.rarityEpic });
+    expect(
+      screen.getByText(
+        'Flamberge · Arme · Épique · Attaque +10 %, Frappe parfaite +0,3 · Initiative 0',
+      ),
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByText(
+        "Une épée à lame ondulée, trempée dans la flamme du camp. Le Gardien dit qu'elle a appartenu à quelqu'un qui est monté très haut. Elle ne pèse rien quand le geste est juste.",
+      ),
+    ).toBeOnTheScreen();
+  });
+
+  it('has no rarity line for a Common or a Rare item (#195)', async () => {
+    await show({
+      ...between(startAscent(42), [{ kind: 'combat', groupSize: 2 }]),
+      foundItem: 'watchBell',
+    });
+
+    expect(screen.getByTestId('item-image', { includeHiddenElements: true })).toHaveProp(
+      'sprite',
+      'item-watchBell',
+    );
+    expect(screen.queryByText(/◆/)).toBeNull();
+  });
+
   it('shows the validated image of the Fallen knight armor, with its description and its numbers (#137, #152)', async () => {
     await show({
       ...between(startAscent(42), [{ kind: 'combat', groupSize: 2 }]),
