@@ -475,6 +475,56 @@ describe('BattleLog', () => {
     expect(actionOf(log, 'hero')).toMatchObject({ kind: 'power', t: 50 });
   });
 
+  it('replaces only the replayed impact, keeping the other impacts of the action in their order', () => {
+    const blow = (
+      index: number,
+      outcome: 'parry' | 'perfectParry',
+      delta: number,
+    ): BattleEvent => ({
+      type: 'blowResolved',
+      at: START + 1_000 + index * 400,
+      enemy: 0,
+      index,
+      outcome,
+      button: 'parry',
+      delta,
+      damage: outcome === 'parry' ? 2 : 0,
+      heroHp: 38,
+    });
+    const log = logged(
+      [roundStarted(START, 1)],
+      [blow(0, 'perfectParry', -30)],
+      [blow(1, 'parry', 120)],
+      [blow(1, 'perfectParry', 15)],
+    );
+
+    expect(actionOf(log, 0).presses).toEqual([
+      {
+        kind: 'defense',
+        t: 1_000,
+        button: 'parry',
+        enemy: 0,
+        index: 0,
+        delta: -30,
+        judgement: 'perfectParry',
+        damage: 0,
+        heroHp: 38,
+      },
+      {
+        kind: 'defense',
+        t: 1_400,
+        button: 'parry',
+        enemy: 0,
+        index: 1,
+        delta: 15,
+        judgement: 'perfectParry',
+        damage: 0,
+        heroHp: 38,
+      },
+    ]);
+    expect(log.entries).toBe(2);
+  });
+
   it('replaces a replayed impact or strike, never noting it twice', () => {
     const blow: BattleEvent = {
       type: 'blowResolved',
