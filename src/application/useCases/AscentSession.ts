@@ -77,6 +77,7 @@ const SAVED_ON: ReadonlySet<BattleEvent['type']> = new Set([
 ]);
 
 type Listener = (ascent: Ascent | null) => void;
+type ShardListener = (total: number) => void;
 
 /** Les ports de la session d'ascension ; sans `ascentLog`, aucun Journal d'ascension (#196). */
 export interface AscentSessionDependencies extends BattleSessionDependencies {
@@ -93,7 +94,6 @@ const vitalsOf = (battle: Battle): HeroVitals => ({
   maxHp: battle.hero.maxHp,
   momentum: battle.hero.momentum,
 });
-type ShardListener = (total: number) => void;
 
 /** Égide (`aegis`), sauvegardée avant #105, est relue comme Protection. */
 const protection = (family: BlessingFamily): BlessingFamily =>
@@ -373,8 +373,7 @@ export class AscentSession {
       });
       return;
     }
-    // Pendant le combat, le journal n'est pas réécrit (#196).
-    if (events.some((event) => SAVED_ON.has(event.type))) this.save(false);
+    if (events.some((event) => SAVED_ON.has(event.type))) this.save();
   }
 
   /**
@@ -432,7 +431,7 @@ export class AscentSession {
     return ascent;
   }
 
-  private save(withLog = true): void {
+  private save(): void {
     const { keyValueStore } = this.dependencies;
     const { ascent, battle } = this;
     if (this.shardsWritable && this.shards !== this.storedShards) void this.writeShards();
@@ -446,8 +445,9 @@ export class AscentSession {
             );
     // Un échec d'écriture n'arrête pas l'ascension : la suivante réessaie.
     this.writing = this.writing.then(write).catch(() => undefined);
-    // Le journal s'écrit juste après, par sa propre file : il n'attend jamais la sauvegarde (#196).
-    if (withLog) this.dependencies.ascentLog?.flush();
+    // Le journal s'écrit juste après, par sa propre file, s'il a changé : il n'attend jamais la
+    // sauvegarde (#196). Pendant un combat, seul son début (PV et Élan d'entrée) le change.
+    this.dependencies.ascentLog?.flush();
   }
 
   private publish(): void {

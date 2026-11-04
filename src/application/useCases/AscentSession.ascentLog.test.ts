@@ -1,7 +1,7 @@
 // La session d'ascension avec le Journal d'ascension (#196, ADR 0014) : le journal observe chaque
 // transition, s'écrit par sa propre file juste après la sauvegarde de l'ascension, reprend après une
 // fermeture sans doublon d'étage, et ne bloque jamais ni la sauvegarde ni le Total d'Éclats.
-import { startAscent, type Ascent } from '../../domain/ascent/Ascent';
+import { endFloorBattle, startAscent, type Ascent } from '../../domain/ascent/Ascent';
 import { beginAscentLog, type AscentLog } from '../../domain/ascentLog/AscentLog';
 import { startBattle } from '../../domain/battle/Battle';
 import { Day } from '../../domain/day/Day';
@@ -122,22 +122,119 @@ describe('AscentSession with the ascent log', () => {
     });
   });
 
-  it('does not rewrite the log during a battle', async () => {
+  it('writes the log once during a battle: its entry HP and Momentum, then nothing until its end', async () => {
     const { logs, session, clock, ascentLog } = setUp();
     session.begin();
     await ascentLog.settled();
     const battle = session.battleSession();
     await battle.start();
-    const at = clock.now() + 50;
-    clock.advanceTo(at);
-    battle.heroAction({ kind: 'attack' }, at - 20, at);
-    await flush();
-    await ascentLog.settled();
-    expect(logs.writes).toHaveLength(1);
+    for (let action = 0; action < 2; action += 1) {
+      const at = clock.now() + 50;
+      clock.advanceTo(at);
+      battle.heroAction({ kind: 'attack' }, at - 20, at);
+      await flush();
+    }
     session.pause();
     await ascentLog.settled();
     expect(logs.writes).toHaveLength(2);
-    expect(logs.writes[1]!.floors[0]!.entry.momentum).not.toBeNull();
+    expect(logs.writes[1]!.floors[0]!.entry.momentum).toEqual(expect.any(Number));
+  });
+
+  describe('records each transition through the session', () => {
+    /** La session reprend `ascent` (avec `battle`), et son journal commencé à cet étage. */
+    async function resumed(ascent: Ascent, battle: unknown = null) {
+      const values = keyValues();
+      values.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent, battle }));
+      const logs = memoryAscentLogStore([
+        JSON.stringify({ ...beginAscentLog(ascent, Day.of(2026, 11, 3)), id: 1 }),
+      ]);
+      const story = setUp(values, logs);
+      await story.session.load();
+      return story;
+    }
+
+    const won = (ascent: Ascent) => endFloorBattle(ascent, { outcome: 'victory', heroHp: 40 });
+
+    it.each([
+      ['equipped', (session: AscentSession) => session.equipItem()],
+      ['left', (session: AscentSession) => session.leaveItem()],
+    ] as const)('records an item %s', async (outcome, act) => {
+      const { session, logs, ascentLog } = await resumed({
+        ...won(startAscent(7)),
+        boonOffer: null,
+        foundItem: 'axe',
+      });
+      act(session);
+      await ascentLog.settled();
+      expect(lastLog(logs).floors[0]!.itemOutcome).toBe(outcome);
+    });
+
+    it('records the boon chosen', async () => {
+      const { session, logs, ascentLog } = await resumed({
+        ...won(startAscent(7)),
+        boonOffer: ['frostSkin', 'trueEdge'],
+      });
+      session.chooseBoon(1);
+      await ascentLog.settled();
+      expect(lastLog(logs).floors[0]!.boonChosen).toBe('trueEdge');
+    });
+
+    it('records the exit chosen and the floor it leads to', async () => {
+      const ascent: Ascent = { ...won(startAscent(7)), boonOffer: null };
+      const { session, logs, ascentLog } = await resumed(ascent);
+      session.chooseExit(0);
+      await ascentLog.settled();
+      expect(lastLog(logs).floors.map((floor) => floor.floor)).toEqual([1, 2]);
+      expect(lastLog(logs).floors[1]).toMatchObject({
+        exitsOffered: ascent.exits,
+        exitTaken: { kind: ascent.exits[0]!.kind },
+      });
+    });
+
+    it('records nothing at the boss defeated screen, then the tier passage', async () => {
+      const boss: Ascent = {
+        ...startAscent(7),
+        floor: 6,
+        encounter: null,
+        passage: { to: 2, step: 'bossDefeated' },
+      };
+      const { session, logs, ascentLog } = await resumed(boss);
+      session.acknowledgeBossVictory();
+      await ascentLog.settled();
+      expect(logs.writes).toEqual([]);
+      session.enterNextTier();
+      await ascentLog.settled();
+      expect(lastLog(logs).tierPassages).toEqual([
+        { from: 1, to: 2, heroHp: session.current()!.hero.hp },
+      ]);
+      expect(lastLog(logs).floors.at(-1)).toMatchObject({ tier: 2, floor: 1, exitTaken: null });
+    });
+
+    it('ends the log on the Summit', async () => {
+      const ascent: Ascent = {
+        ...startAscent(7),
+        tier: 3,
+        floor: 6,
+        encounter: { kind: 'boss', enemies: ['hourRinger'], battleSeed: 3 },
+      };
+      const { battle } = startBattle({
+        seed: 3,
+        defenseHint: false,
+        at: 0,
+        heroHp: 50,
+        enemies: ['hourRinger'],
+      });
+      const nearlyWon = { ...battle, enemies: [{ ...battle.enemies[0]!, hp: 1 }], reserve: [] };
+      const { session, logs, clock, ascentLog } = await resumed(ascent, nearlyWon);
+      await playToTheEnd(session.battleSession(), clock);
+      await flush();
+      await ascentLog.settled();
+      expect(session.current()?.outcome).toBe('victory');
+      expect(lastLog(logs)).toMatchObject({
+        status: 'ended',
+        end: { kind: 'summit', tier: 3, floor: 6 },
+      });
+    });
   });
 
   it('records an abandon, distinct from a fall', async () => {
