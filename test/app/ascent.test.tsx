@@ -102,8 +102,8 @@ describe('ascent routes', () => {
     expect(screen.queryByText(/Réglages d'essai/u)).not.toBeOnTheScreen();
     await fireEvent.press(screen.getByRole('button', { name: 'Pause' }));
     expect(await screen.findByRole('button', { name: "Reprendre l'ascension" })).toBeOnTheScreen();
+
     // Au pied de la tour, le journal de l'ascension en cours s'exporte (#196), en version 2 (#197).
-    // Au pied de la tour, le journal de l'ascension en cours s'exporte (#196).
     expect(
       await screen.findByText('1 ascension, celle en cours', { includeHiddenElements: true }),
     ).toBeOnTheScreen();
