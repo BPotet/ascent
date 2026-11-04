@@ -224,6 +224,59 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     expect((action.presses[whiff + 1] as DefensePressRecord).damage).toBeGreaterThan(0);
   });
 
+  // --- L'appui trop tard (#207) ---
+
+  when(
+    /^je touche « Parade » 200 ms après l'impact, une fois sa fenêtre de parade passée$/u,
+    async () => {
+      let pressed = false;
+      await fight(story, battleSession, {
+        hero: attackOnly,
+        defend: () => {
+          if (pressed) return [];
+          pressed = true;
+          return [['parry', 200]];
+        },
+        until: happened('whiffed'),
+      });
+      // Jusqu'à la sauvegarde qui suit.
+      await fight(story, battleSession, { hero: attackOnly, until: happened('blowResolved') });
+    },
+  );
+
+  then(
+    /^le journal note, sur l'attaque de cet ennemi, un appui raté « trop tard » avec l'écart \+200 ms$/u,
+    () => {
+      const battle = exportedBattle(story);
+      expect(whiffsOf(battle)).toEqual([
+        {
+          kind: 'whiff',
+          t: expect.any(Number) as number,
+          button: 'parry',
+          delta: 200,
+          judgement: 'late',
+        },
+      ]);
+      const action = actionsOf(battle).find((each) =>
+        each.presses.some((press) => press.kind === 'whiff'),
+      )!;
+      expect(action).toMatchObject({ actor: 0, kind: 'attack' });
+    },
+  );
+
+  and(/^l'impact reste noté subi une seule fois, avec ses dégâts$/u, () => {
+    const action = actionsOf(exportedBattle(story)).find((each) =>
+      each.presses.some((press) => press.kind === 'whiff'),
+    )!;
+    const first = action.presses.filter(
+      (press): press is DefensePressRecord => press.kind === 'defense' && press.index === 0,
+    );
+    expect(first).toEqual([
+      expect.objectContaining({ judgement: 'suffered', delta: null, button: null }),
+    ]);
+    expect(first[0]!.damage).toBeGreaterThan(0);
+  });
+
   // --- Les appuis ignorés ---
 
   given(/^le héros en déséquilibre après un appui raté$/u, async () => {

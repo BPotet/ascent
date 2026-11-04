@@ -286,6 +286,77 @@ describe('BattleLog', () => {
     ]);
   });
 
+  describe('a press « trop tard » on a suffered impact (#207)', () => {
+    const windUp = (enemy: number, at: number) =>
+      ({
+        type: 'windUpStarted',
+        at,
+        enemy,
+        attack: 'basic',
+        impacts: [at + 900],
+        feintAt: null,
+      }) as const;
+    const suffered = (enemy: number, at: number) =>
+      ({
+        type: 'blowResolved',
+        at,
+        enemy,
+        index: 0,
+        outcome: 'suffered',
+        button: null,
+        delta: null,
+        damage: 6,
+        heroHp: 34,
+      }) as const;
+    const late = (at: number) =>
+      ({ type: 'whiffed', at, button: 'parry', reason: 'late', delta: 200 }) as const;
+
+    it('notes it on the attack it judges, even during the step-in of the next enemy', () => {
+      const log = logged(
+        [roundStarted(START, 1, [ATTACK, ATTACK])],
+        [windUp(0, START + 1_000)],
+        [
+          suffered(0, START + 2_060),
+          { type: 'stepInStarted', at: START + 2_060, enemy: 1, until: START + 2_460 },
+        ],
+        [late(START + 2_100)],
+      );
+
+      expect(actionOf(log, 0).presses).toEqual([
+        expect.objectContaining({ kind: 'defense', judgement: 'suffered' }),
+        { kind: 'whiff', t: 2_100, button: 'parry', delta: 200, judgement: 'late' },
+      ]);
+      expect(actionOf(log, 1).presses).toEqual([]);
+    });
+
+    it('notes it on the last attack of the previous round, during the phase transition', () => {
+      const log = logged(
+        [roundStarted(START, 1)],
+        [windUp(0, START + 1_000)],
+        [suffered(0, START + 2_060), roundStarted(START + 2_060, 2)],
+        [late(START + 2_150)],
+      );
+
+      expect(log.rounds).toHaveLength(2);
+      expect(actionOf(log, 0).presses).toEqual([
+        expect.objectContaining({ kind: 'defense', judgement: 'suffered' }),
+        { kind: 'whiff', t: 2_150, button: 'parry', delta: 200, judgement: 'late' },
+      ]);
+      expect(log.rounds[1]!.actions).toEqual([]);
+      expect(log.entries).toBe(2);
+    });
+
+    it('notes it the same way when the round starts in the same update', () => {
+      const log = logged(
+        [roundStarted(START, 1)],
+        [windUp(0, START + 1_000)],
+        [suffered(0, START + 2_060), roundStarted(START + 2_060, 2), late(START + 2_150)],
+      );
+
+      expect(actionOf(log, 0).presses.at(-1)).toMatchObject({ kind: 'whiff', judgement: 'late' });
+    });
+  });
+
   it('counts the ignored presses by button and cause', () => {
     const ignored = (button: 'parry' | 'strike', reason: 'offBalance' | 'phaseTransition') =>
       ({ type: 'pressIgnored', at: START + 500, button, reason }) as const;

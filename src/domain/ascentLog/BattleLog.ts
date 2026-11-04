@@ -343,6 +343,8 @@ const closeDraft = ({ round, actions, effects, ignored }: Draft): RoundRecord =>
 /** Le journal en cours de mise à jour, le temps d'un appel. */
 class Writer {
   private readonly closed: RoundRecord[] = [];
+  /** L'avant-dernière manche du journal reçu, complétée d'un appui « trop tard » (#207). */
+  private amendedPrevious: RoundRecord | null = null;
   private draft: Draft | null;
   /** Les effets du début d'une manche, en attente de son `roundStarted`. */
   private opening: EffectRecord[] = [];
@@ -386,6 +388,7 @@ class Writer {
     if (draft === null) return this.log;
     this.attachOpening(draft);
     const earlier = this.log.rounds.length === 0 ? [] : this.log.rounds.slice(0, -1);
+    if (this.amendedPrevious !== null) earlier[earlier.length - 1] = this.amendedPrevious;
     return {
       ...this.log,
       status: this.status,
@@ -482,15 +485,18 @@ class Writer {
           heroHp: event.heroHp,
         });
         return;
-      case 'whiffed':
-        this.press(draft, draft.actions.length - 1, {
+      case 'whiffed': {
+        const whiff: WhiffRecord = {
           kind: 'whiff',
           t,
           button: event.button,
           delta: event.delta ?? null,
           judgement: event.reason,
-        });
+        };
+        if (event.reason === 'late') this.pressLate(draft, whiff);
+        else this.press(draft, draft.actions.length - 1, whiff);
         return;
+      }
       case 'pressIgnored':
         this.ignore(draft, event.button, event.reason);
         return;
@@ -548,6 +554,24 @@ class Writer {
     draft.actions[index] = { ...action, presses };
   }
 
+  /**
+   * Un appui « trop tard » rejoint l'attaque qu'il juge (#207) : la dernière préparée de la manche,
+   * sinon, pendant la transition de phase qui suit son coup, celle de la manche précédente.
+   */
+  private pressLate(draft: Draft, whiff: WhiffRecord): void {
+    const index = lastAttack(draft.actions);
+    if (index >= 0) return this.press(draft, index, whiff);
+    const fromClosed = this.closed.length > 0;
+    const round = fromClosed
+      ? this.closed.at(-1)
+      : (this.amendedPrevious ?? this.log.rounds.at(-2));
+    if (round === undefined || !round.detailed) return;
+    const previous = draftOf(round);
+    this.press(previous, lastAttack(previous.actions), whiff);
+    if (fromClosed) this.closed[this.closed.length - 1] = closeDraft(previous);
+    else this.amendedPrevious = closeDraft(previous);
+  }
+
   /** Ajoute l'effet à l'action `index`, ou à la manche hors de toute action (`-1`). */
   private effect(draft: Draft, event: EffectEvent, t: number, index: number): void {
     this.entries += 1;
@@ -572,6 +596,11 @@ class Writer {
     const counted = draft.ignored[index]!;
     draft.ignored[index] = { ...counted, count: counted.count + 1 };
   }
+}
+
+/** La dernière action dont le coup a été préparé, sinon -1. */
+function lastAttack(actions: readonly ActionRecord[]): number {
+  return actions.findLastIndex((action) => action.attack !== undefined);
 }
 
 function samePress(left: PressRecord, right: PressRecord): boolean {

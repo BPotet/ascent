@@ -873,6 +873,104 @@ describe('off-balance (C9)', () => {
   });
 });
 
+describe('a late press on a suffered impact (#207)', () => {
+  it('judges a press up to 150 ms after the window « trop tard », during the next step-in', () => {
+    const play = toGhoulWindUp('basic').advance(GHOUL_IMPACT + 161);
+    expect(play.battle.phase).toMatchObject({ kind: 'enemy', step: { kind: 'stepIn' } });
+    const hp = play.battle.hero.hp;
+
+    play.press('parry', GHOUL_IMPACT + 200);
+
+    expect(play.last).toEqual([
+      { type: 'whiffed', at: GHOUL_IMPACT + 200, button: 'parry', reason: 'late', delta: 200 },
+      { type: 'offBalanceStarted', at: GHOUL_IMPACT + 200, until: GHOUL_IMPACT + 650 },
+    ]);
+    // Le coup reste subi, sans dégâts supplémentaires.
+    expect(play.battle.hero.hp).toBe(hp);
+    expect(play.all('blowResolved').filter((blow) => blow.enemy === 0)).toHaveLength(1);
+  });
+
+  it('keeps the tolerance up to 150 ms after the window, then the press is in the void', () => {
+    const edge = toGhoulWindUp('basic').press('dodge', GHOUL_IMPACT + 310);
+    expect(edge.lastOf('whiffed')).toMatchObject({ reason: 'late', delta: 310 });
+
+    const beyond = toGhoulWindUp('basic').press('dodge', GHOUL_IMPACT + 311);
+    expect(beyond.lastOf('whiffed')).toEqual({
+      type: 'whiffed',
+      at: GHOUL_IMPACT + 311,
+      button: 'dodge',
+      reason: 'empty',
+    });
+  });
+
+  it('judges the tolerance with the input offset', () => {
+    const play = toGhoulWindUp('basic', 'delayed', { inputOffset: -40 }).press(
+      'parry',
+      GHOUL_IMPACT + 40 + 300,
+    );
+
+    expect(play.lastOf('whiffed')).toMatchObject({ reason: 'late', delta: 260 });
+  });
+
+  it('judges « trop tard » during the transition instead of ignoring the press', () => {
+    // Le Spectre et le Nécromancien sont tombés : la Goule est le dernier ennemi debout.
+    const play = BattlePlay.start()
+      .with(fixedIntent(0, 'basic'), changeEnemy(1, { hp: 0 }), changeEnemy(2, { hp: 0 }))
+      .attack(ATTACK_AT)
+      .advance(GHOUL_IMPACT + 161);
+    expect(play.battle.phase).toMatchObject({ kind: 'transition', to: 'hero' });
+
+    play.press('parry', GHOUL_IMPACT + 250);
+    expect(play.lastOf('whiffed')).toEqual({
+      type: 'whiffed',
+      at: GHOUL_IMPACT + 250,
+      button: 'parry',
+      reason: 'late',
+      delta: 250,
+    });
+
+    const beyond = BattlePlay.start()
+      .with(fixedIntent(0, 'basic'), changeEnemy(1, { hp: 0 }), changeEnemy(2, { hp: 0 }))
+      .attack(ATTACK_AT)
+      .press('parry', GHOUL_IMPACT + 311);
+    expect(beyond.last.slice(-1)).toEqual([
+      {
+        type: 'pressIgnored',
+        at: GHOUL_IMPACT + 311,
+        button: 'parry',
+        reason: 'phaseTransition',
+      },
+    ]);
+  });
+
+  it('judges a double strike against the nearest impact', () => {
+    // Impacts à DOUBLE_IMPACT et DOUBLE_IMPACT + 420 ; le 1er est subi sans appui.
+    const afterFirst = toGhoulWindUp('double').press('parry', DOUBLE_IMPACT + 190);
+    expect(afterFirst.lastOf('whiffed')).toMatchObject({ reason: 'late', delta: 190 });
+
+    const beforeSecond = toGhoulWindUp('double').press('parry', DOUBLE_IMPACT + 250);
+    expect(beforeSecond.lastOf('whiffed')).toMatchObject({ reason: 'early', delta: -170 });
+  });
+
+  it('judges a press at equal distance from both impacts « trop tôt » on the coming one', () => {
+    const halfway = toGhoulWindUp('double').press('parry', DOUBLE_IMPACT + 210);
+
+    expect(halfway.lastOf('whiffed')).toMatchObject({ reason: 'early', delta: -210 });
+  });
+
+  it('judges « trop tard » on the last impact of a double strike, during the next step-in', () => {
+    const play = toGhoulWindUp('double').press('parry', DOUBLE_IMPACT + 420 + 200);
+
+    expect(
+      play
+        .all('blowResolved')
+        .filter((blow) => blow.enemy === 0)
+        .map((blow) => blow.outcome),
+    ).toEqual(['suffered', 'suffered']);
+    expect(play.lastOf('whiffed')).toMatchObject({ reason: 'late', delta: 200 });
+  });
+});
+
 describe('phase transition (C12)', () => {
   it('ignores presses at 0, 300 and 799 ms, without off-balance or memory', () => {
     const play = BattlePlay.start().with(fixedIntent(0, 'basic')).attack(ATTACK_AT);
@@ -1488,15 +1586,21 @@ describe('over about 500 seeds', () => {
     }
   });
 
-  it('never judges a press during a phase transition', () => {
+  it('never judges a press during a phase transition, but « trop tard » in its first 150 ms', () => {
     for (const play of allPlays()) {
       const transitions = play.all('phaseTransitionStarted');
       const judged = [
-        ...play.all('whiffed'),
+        ...play.all('whiffed').filter((whiff) => whiff.reason !== 'late'),
         ...play.all('blowResolved').filter((blow) => blow.button !== null),
       ];
       for (const press of judged) {
         expect(transitions.some(({ at, until }) => press.at >= at && press.at < until)).toBe(false);
+      }
+      // La tolérance « trop tard » (#207) ne déborde jamais de 150 ms dans une transition.
+      for (const press of play.all('whiffed').filter((whiff) => whiff.reason === 'late')) {
+        expect(transitions.some(({ at, until }) => press.at > at + 150 && press.at < until)).toBe(
+          false,
+        );
       }
     }
   });

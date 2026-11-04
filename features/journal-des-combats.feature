@@ -34,6 +34,13 @@ Fonctionnalité: Le journal raconte mes combats
     Alors le journal note un appui raté « trop tôt » avec l'écart −200 ms, et un appui raté « dans le vide » sans écart
     Et le coup subi qui suit est noté avec ses dégâts
 
+  Scénario: Un appui juste après la fenêtre de parade est noté trop tard
+    Étant donné un combat d'étage contre un ennemi qui annonce l'intention Attaque
+    Quand je touche « Parade » 200 ms après l'impact, une fois sa fenêtre de parade passée
+    Et que j'exporte le journal
+    Alors le journal note, sur l'attaque de cet ennemi, un appui raté « trop tard » avec l'écart +200 ms
+    Et l'impact reste noté subi une seule fois, avec ses dégâts
+
   Scénario: Les appuis ignorés sont comptés
     Étant donné le héros en déséquilibre après un appui raté
     Quand je touche « Parade » pendant le déséquilibre
