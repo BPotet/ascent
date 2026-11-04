@@ -39,6 +39,7 @@ function setUp(
   logs: MemoryAscentLogStore = memoryAscentLogStore(),
 ) {
   const clock = new ManualBattleClock(1_000);
+  const sound = silentBattleSound();
   const ascentLog = new AscentLogRecorder({
     store: logs,
     clock: settableClock(Day.of(2026, 11, 3)),
@@ -46,12 +47,12 @@ function setUp(
   const session = new AscentSession({
     clock,
     seeds: new FixedSeedSource(7),
-    sound: silentBattleSound(),
+    sound,
     haptics: silentBattleHaptics(),
     keyValueStore: values,
     ascentLog,
   });
-  return { values, logs, clock, ascentLog, session };
+  return { values, logs, clock, ascentLog, session, sound };
 }
 
 async function flush(): Promise<void> {
@@ -76,6 +77,22 @@ async function playToTheEnd(battleSession: BattleSession, clock: ManualBattleClo
     await flush();
   }
   throw new Error('The battle never ended');
+}
+
+/** Joue `steps` pas du combat : le héros attaque à son tour, sinon le temps avance. */
+async function play(battleSession: BattleSession, clock: ManualBattleClock, steps: number) {
+  for (let step = 0; step < steps; step += 1) {
+    const { battle } = battleSession.current()!;
+    if (battle.phase.kind === 'over') return;
+    if (battle.phase.kind === 'hero') {
+      const at = clock.now() + 50;
+      clock.advanceTo(at);
+      battleSession.heroAction({ kind: 'attack' }, at - 20, at);
+    } else {
+      clock.advanceTo(clock.pending()[0]!);
+    }
+    await flush();
+  }
 }
 
 const lastLog = (logs: MemoryAscentLogStore): AscentLog =>
@@ -287,6 +304,87 @@ describe('AscentSession with the ascent log', () => {
     expect(JSON.parse(values.values.get(SHARD_TOTAL_KEY)!)).toMatchObject({ total: 2 });
     expect(JSON.parse(values.values.get(ASCENT_KEY)!)).toMatchObject({
       ascent: { floor: 3, encounter: null },
+    });
+  });
+
+  describe('the battles (#197)', () => {
+    it('records every battle update, and writes the battle at the save points only', async () => {
+      const { values, logs, session, clock, ascentLog } = setUp();
+      session.begin();
+      await ascentLog.settled();
+      const set = jest.spyOn(values, 'set');
+      const recordBattle = jest.spyOn(ascentLog, 'recordBattle');
+      const flushLog = jest.spyOn(ascentLog, 'flush');
+      const battleSession = session.battleSession();
+      let updates = 0;
+      battleSession.subscribe(() => {
+        updates += 1;
+      });
+      await battleSession.start();
+      await play(battleSession, clock, 12);
+      await ascentLog.settled();
+
+      expect(battleSession.current()!.battle.phase.kind).not.toBe('over');
+      expect(recordBattle).toHaveBeenCalledTimes(updates);
+      const saves = set.mock.calls.filter(([key]) => key === ASCENT_KEY).length;
+      expect(flushLog).toHaveBeenCalledTimes(saves);
+      expect(saves).toBeLessThan(updates);
+      expect(JSON.parse([...logs.battles.values()].at(-1)!)).toEqual(ascentLog.currentBattle());
+      expect(lastLog(logs).battles).toEqual([{ tier: 1, floor: 1 }]);
+    });
+
+    it('notes a pause and its resume as a pause, then a reload as a reopening', async () => {
+      const first = setUp();
+      first.session.begin();
+      const battleSession = first.session.battleSession();
+      await battleSession.start();
+      await play(battleSession, first.clock, 4);
+      first.session.pause();
+      battleSession.dispose();
+      first.clock.advanceTo(first.clock.now() + 30_000);
+      await first.session.battleSession().start();
+      first.session.pause();
+      await first.ascentLog.settled();
+      expect(first.ascentLog.currentBattle()!.resumes).toEqual([
+        { t: expect.any(Number) as number, cause: 'pause' },
+      ]);
+      expect(first.ascentLog.currentBattle()!.elapsedMs).toBeLessThan(30_000);
+
+      const second = setUp(first.values, first.logs);
+      await second.session.load();
+      await second.session.battleSession().start();
+      await second.ascentLog.settled();
+      expect(second.ascentLog.currentBattle()!.resumes.map((each) => each.cause)).toEqual([
+        'pause',
+        'reopen',
+      ]);
+    });
+
+    it('never delays the resume on the read of the battle in progress', async () => {
+      const first = setUp();
+      first.session.begin();
+      const battleSession = first.session.battleSession();
+      await battleSession.start();
+      first.session.pause();
+      await first.ascentLog.settled();
+      first.logs.readBattles = () => new Promise(() => undefined);
+
+      const second = setUp(first.values, first.logs);
+      await expect(second.session.load()).resolves.toMatchObject({ floor: 1 });
+      expect(second.session.resuming()).toBe(true);
+    });
+
+    it('never blocks the battle nor its sounds on a log store that never answers', async () => {
+      const { logs, session, clock, sound } = setUp();
+      logs.hold();
+      session.begin();
+      const battleSession = session.battleSession();
+      await battleSession.start();
+      await play(battleSession, clock, 12);
+
+      expect(battleSession.current()!.battle.round).toBeGreaterThan(1);
+      expect(sound.played.length).toBeGreaterThan(0);
+      expect(logs.battleWrites).toEqual([]);
     });
   });
 });

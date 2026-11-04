@@ -275,9 +275,14 @@ export class AscentSession {
     return this.battle !== null && this.battle.phase.kind !== 'over';
   }
 
-  /** La pause (`Pause`, P33) : l'ascension et le combat en cours sont sauvegardés. */
+  /**
+   * La pause (`Pause`, P33) : l'ascension et le combat en cours sont sauvegardés ; le temps du
+   * combat s'arrête pour le journal (#197).
+   */
   pause(): void {
-    if (this.ascent !== null) this.save();
+    if (this.ascent === null) return;
+    this.dependencies.ascentLog?.pauseBattle(this.dependencies.clock.now());
+    this.save();
   }
 
   /** Quitter le bilan de fin : retour au pied de la tour. */
@@ -295,8 +300,11 @@ export class AscentSession {
     this.summonFellAt = null;
     const session = new BattleSession(this.dependencies, {
       createBattle: (options) => {
-        if (this.battle !== null)
+        if (this.battle !== null) {
+          // La reprise du combat, après une pause ou une réouverture, est notée au journal (#197).
+          this.dependencies.ascentLog?.resumeBattle(options.at);
           return { battle: resumeBattle(this.battle, options.at), events: [] };
+        }
         const ascent = this.ascent!;
         const encounter = ascent.encounter!;
         const started = startBattle({
@@ -321,13 +329,19 @@ export class AscentSession {
           // L'ordre d'action par Initiative (P13, P14), ajouté par #90.
           initiative: true,
         });
-        // Un combat neuf (pas une reprise) : les PV et l'Élan de départ, pour le journal (#196).
+        // Un combat neuf (pas une reprise) : les PV et l'Élan de départ, pour le journal (#196),
+        // et le journal du combat (#197).
         this.dependencies.ascentLog?.record({
           kind: 'battleStarted',
           hero: vitalsOf(started.battle),
           before: ascent,
           after: ascent,
         });
+        this.dependencies.ascentLog?.beginBattle(
+          { tier: ascent.tier, floor: ascent.floor, encounterKind: encounter.kind },
+          started.battle,
+          options.at,
+        );
         return started;
       },
     });
@@ -337,6 +351,9 @@ export class AscentSession {
 
   private onBattle(battle: Battle, events: readonly BattleEvent[]): void {
     if (this.ascent === null || this.ascent.encounter === null || this.settling) return;
+    // Le journal note la mise à jour en mémoire, après les sons et les vibrations, sans rien écrire :
+    // il s'écrit aux points de sauvegarde du combat (#197).
+    this.dependencies.ascentLog?.recordBattle(battle, events);
     this.battle = battle;
     const fell = events.find((event) => event.type === 'summonedFell');
     if (fell !== undefined) this.summonFellAt = fell.at;
@@ -446,7 +463,7 @@ export class AscentSession {
     // Un échec d'écriture n'arrête pas l'ascension : la suivante réessaie.
     this.writing = this.writing.then(write).catch(() => undefined);
     // Le journal s'écrit juste après, par sa propre file, s'il a changé : il n'attend jamais la
-    // sauvegarde (#196). Pendant un combat, seul son début (PV et Élan d'entrée) le change.
+    // sauvegarde (#196). Pendant un combat, le combat s'écrit ainsi aux mêmes points (#197).
     this.dependencies.ascentLog?.flush();
   }
 
