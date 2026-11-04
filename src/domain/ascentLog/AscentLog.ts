@@ -1,7 +1,8 @@
 /**
  * Le Journal d'ascension (`AscentLog`, #196, ADR 0014) : le récit d'une ascension, écrit pendant
  * qu'elle se joue. Il observe l'ascension (son état avant et après chaque transition) sans rien
- * recalculer ni tirer de hasard. Immuable et sérialisable en JSON.
+ * recalculer ni tirer de hasard. Immuable et sérialisable en JSON. Depuis la version 2 du format
+ * (#197, ADR 0016), il liste aussi ses combats, écrits à part (`BattleLog`).
  *
  * Il ne contient aucune donnée des habitudes : les bénédictions de départ n'y figurent que par leur
  * famille et leur rareté.
@@ -17,9 +18,13 @@ import { shardSum } from '../ascent/shards';
 import type { Tier } from '../ascent/tiers';
 import type { HeroKind } from '../battle/combatants';
 import type { Day } from '../day/Day';
+import { BATTLE_LOG_FORMAT_VERSION, type FloorPlace } from './BattleLog';
 
-/** La version du format du journal et de l'export. Un champ ajouté la garde ; un sens changé, non. */
-export const ASCENT_LOG_FORMAT_VERSION = 1;
+/**
+ * La version du format du journal et de l'export : 2 depuis les combats (#197, ADR 0016). Un champ
+ * ajouté la garde ; un sens changé, non.
+ */
+export const ASCENT_LOG_FORMAT_VERSION = BATTLE_LOG_FORMAT_VERSION;
 
 /** L'état de la Jauge : Faveur pleine, Faveur, Neutre, Malédiction, Malédiction forte. */
 export type GaugeState = 'fullFavor' | 'favor' | 'neutral' | 'curse' | 'strongCurse';
@@ -89,8 +94,8 @@ export interface AscentEnd {
   readonly encounter?: EncounterRecord;
 }
 
-export interface AscentLog {
-  readonly formatVersion: typeof ASCENT_LOG_FORMAT_VERSION;
+/** Ce que les journaux de toutes les versions du format ont en commun. */
+interface AscentLogBody {
   /** Attribué par le stockage, `null` avant. */
   readonly id: number | null;
   readonly ascentSeed: AscentSeed;
@@ -105,6 +110,20 @@ export interface AscentLog {
   readonly status: 'inProgress' | 'ended';
   readonly end: AscentEnd | null;
 }
+
+/** Un journal écrit avant #197 : sans combats. Une ascension en cours le garde jusqu'à sa fin. */
+export interface AscentLogV1 extends AscentLogBody {
+  readonly formatVersion: 1;
+}
+
+export interface AscentLog extends AscentLogBody {
+  readonly formatVersion: typeof ASCENT_LOG_FORMAT_VERSION;
+  /** Les combats écrits à part, par leur palier et leur étage, dans l'ordre où ils ont commencé. */
+  readonly battles: readonly FloorPlace[];
+}
+
+/** Un journal de l'une ou l'autre version du format. */
+export type AnyAscentLog = AscentLogV1 | AscentLog;
 
 interface Transition {
   readonly before: Ascent;
@@ -173,14 +192,23 @@ export function beginAscentLog(ascent: Ascent, day: Day): AscentLog {
     tierPassages: [],
     status: 'inProgress',
     end: null,
+    battles: [],
   };
+}
+
+/** Le journal avec le combat de `place`, au début de ce combat ; jamais deux fois le même lieu. */
+export function recordBattlePlace(log: AscentLog, place: FloorPlace): AscentLog {
+  if (log.battles.some((each) => each.tier === place.tier && each.floor === place.floor)) {
+    return log;
+  }
+  return { ...log, battles: [...log.battles, { tier: place.tier, floor: place.floor }] };
 }
 
 const sameFloor = (record: FloorRecord, ascent: Ascent) =>
   record.tier === ascent.tier && record.floor === ascent.floor;
 
 /** Remplace l'étage de même palier et numéro, ou l'ajoute : jamais de doublon d'étage. */
-function upsertFloor(log: AscentLog, record: FloorRecord): AscentLog {
+function upsertFloor<Log extends AnyAscentLog>(log: Log, record: FloorRecord): Log {
   const index = log.floors.findIndex(
     (each) => each.tier === record.tier && each.floor === record.floor,
   );
@@ -192,16 +220,16 @@ function upsertFloor(log: AscentLog, record: FloorRecord): AscentLog {
 }
 
 /** Modifie l'étage où se trouve `ascent`, s'il est dans le journal. */
-function updateFloor(
-  log: AscentLog,
+function updateFloor<Log extends AnyAscentLog>(
+  log: Log,
   ascent: Ascent,
   change: (record: FloorRecord) => FloorRecord,
-): AscentLog {
+): Log {
   const record = log.floors.find((each) => sameFloor(each, ascent));
   return record === undefined ? log : upsertFloor(log, change(record));
 }
 
-function ended(log: AscentLog, end: AscentEnd): AscentLog {
+function ended<Log extends AnyAscentLog>(log: Log, end: AscentEnd): Log {
   return { ...log, status: 'ended', end };
 }
 
@@ -212,7 +240,7 @@ function exitTaken(before: Ascent, after: Ascent): NonNullable<FloorRecord['exit
   return { kind, groupSize: before.exits.find((each) => each.kind === kind)!.groupSize };
 }
 
-function exitChosen(log: AscentLog, before: Ascent, after: Ascent): AscentLog {
+function exitChosen<Log extends AnyAscentLog>(log: Log, before: Ascent, after: Ascent): Log {
   // Une porte franchie laisse l'objet trouvé, s'il en reste un.
   const left =
     before.foundItem === null
@@ -228,7 +256,12 @@ function exitChosen(log: AscentLog, before: Ascent, after: Ascent): AscentLog {
   });
 }
 
-function battleEnded(log: AscentLog, before: Ascent, after: Ascent, hero: HeroVitals): AscentLog {
+function battleEnded<Log extends AnyAscentLog>(
+  log: Log,
+  before: Ascent,
+  after: Ascent,
+  hero: HeroVitals,
+): Log {
   const fought = updateFloor(log, before, (record) => ({
     ...record,
     exit: hero,
@@ -247,7 +280,7 @@ function battleEnded(log: AscentLog, before: Ascent, after: Ascent, hero: HeroVi
 }
 
 /** Le journal après la transition `step` ; rien ne change si elle ne change rien. */
-export function recordAscentStep(log: AscentLog, step: AscentStep): AscentLog {
+export function recordAscentStep<Log extends AnyAscentLog>(log: Log, step: AscentStep): Log {
   const { before, after } = step;
   if (log.status === 'ended') return log;
   if (before === after && step.kind !== 'battleStarted') return log;
@@ -300,7 +333,7 @@ export function recordAscentStep(log: AscentLog, step: AscentStep): AscentLog {
  * Le journal repris avec l'ascension sauvegardée `ascent` (après une fermeture) : l'étage courant
  * est ajouté s'il manque, jamais en double.
  */
-export function resumeAscentLog(log: AscentLog, ascent: Ascent): AscentLog {
+export function resumeAscentLog<Log extends AnyAscentLog>(log: Log, ascent: Ascent): Log {
   if (log.floors.some((record) => sameFloor(record, ascent))) return log;
   return upsertFloor(log, floorRecord(ascent));
 }

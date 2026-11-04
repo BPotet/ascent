@@ -1,6 +1,7 @@
 import { startAscent } from '../../domain/ascent/Ascent';
 import { beginAscentLog } from '../../domain/ascentLog/AscentLog';
-import type { AscentLogExport } from '../../domain/ascentLog/AscentLogExport';
+import type { AscentLogExport, ExportedAscentLog } from '../../domain/ascentLog/AscentLogExport';
+import { startBattle } from '../../domain/battle/Battle';
 import { Day } from '../../domain/day/Day';
 import type { SharedFile } from '../ports/FileShare';
 import { memoryAscentLogStore } from '../testing/memoryAscentLogStore';
@@ -46,10 +47,10 @@ describe('ascentLogExport', () => {
       name: 'ascent-journal-2026-11-03.json',
       mimeType: 'application/json',
     });
-    expect(file!.contents).toContain('\n  "formatVersion": 1');
+    expect(file!.contents).toContain('\n  "formatVersion": 2');
     const parsed = JSON.parse(file!.contents) as AscentLogExport;
     expect(parsed).toMatchObject({
-      formatVersion: 1,
+      formatVersion: 2,
       appVersion: '0.3.0',
       buildChannel: 'preview',
       exportedOn: '2026-11-03',
@@ -87,5 +88,51 @@ describe('ascentLogExport', () => {
     recorder.begin(startAscent(4));
     recorder.flush();
     await expect(logExport.status()).resolves.toEqual({ count: 2, inProgress: true });
+  });
+
+  it('puts the battle in progress in the file, up to its last save, marked in progress', async () => {
+    const { store, recorder, shared, logExport } = setUp([logJson(1, 1)]);
+    const { battle, events } = startBattle({
+      seed: 3,
+      defenseHint: false,
+      at: 0,
+      enemies: ['ghoul'],
+    });
+    recorder.begin(startAscent(4));
+    recorder.beginBattle({ tier: 1, floor: 1, encounterKind: 'combat' }, battle, 0);
+    recorder.recordBattle(battle, events);
+    recorder.flush();
+    // Après la dernière sauvegarde : pas encore écrit.
+    recorder.recordBattle(battle, [{ type: 'momentumChanged', at: 100, momentum: 3 }]);
+    await logExport.export();
+
+    const { ascents } = JSON.parse(shared[0]!.contents) as AscentLogExport;
+    expect(ascents[0]).toMatchObject({ battles: [] });
+    const current = ascents[1] as ExportedAscentLog;
+    expect(current.battles).toEqual([
+      expect.objectContaining({ tier: 1, floor: 1, status: 'inProgress' }),
+    ]);
+    expect(current.battles[0]!.rounds[0]!.effects).toEqual([]);
+    expect(store.battleWrites).toHaveLength(1);
+  });
+
+  it('changes nothing when the share menu is closed without an app, and exports again', async () => {
+    const { store, recorder, shared, logExport } = setUp();
+    const { battle, events } = startBattle({
+      seed: 3,
+      defenseHint: false,
+      at: 0,
+      enemies: ['ghoul'],
+    });
+    recorder.begin(startAscent(4));
+    recorder.beginBattle({ tier: 1, floor: 1, encounterKind: 'combat' }, battle, 0);
+    recorder.recordBattle(battle, events);
+    recorder.flush();
+    await logExport.export();
+    const writes = [store.writes.length, store.battleWrites.length];
+    await logExport.export();
+
+    expect([store.writes.length, store.battleWrites.length]).toEqual(writes);
+    expect(shared[1]!.contents).toBe(shared[0]!.contents);
   });
 });

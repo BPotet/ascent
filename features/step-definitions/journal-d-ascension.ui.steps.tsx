@@ -119,7 +119,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and(/^le fichier porte la version du format et la version de l'app$/u, () => {
-    expect(lastExport(story)).toMatchObject({ formatVersion: 1, appVersion: '0.3.0' });
+    expect(lastExport(story)).toMatchObject({ formatVersion: 2, appVersion: '0.3.0' });
   });
 
   and(
@@ -254,7 +254,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     /^un journal d'ascension gardé avec une version du format que l'app ne connaît pas, ou abîmé$/u,
     async () => {
       const { id } = await story.logStore.start(beginAscentLog(startAscent(1), LOG_DAY), 20);
-      story.store.values.set(`ascent.log.${id}`, JSON.stringify({ formatVersion: 2 }));
+      story.store.values.set(`ascent.log.${id}`, JSON.stringify({ formatVersion: 9 }));
     },
   );
 

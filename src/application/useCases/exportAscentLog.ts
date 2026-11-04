@@ -1,4 +1,8 @@
-import { buildAscentLogExport, exportFileName } from '../../domain/ascentLog/AscentLogExport';
+import {
+  buildAscentLogExport,
+  exportFileName,
+  parseAscentLog,
+} from '../../domain/ascentLog/AscentLogExport';
 import type { AscentLogStore } from '../ports/AscentLogStore';
 import type { Clock } from '../ports/Clock';
 import type { FileShare } from '../ports/FileShare';
@@ -28,8 +32,9 @@ export interface AscentLogStatus {
 
 /**
  * L'Export du journal (#196) : attend que le journal de l'ascension en cours soit écrit (jusqu'à
- * sa dernière sauvegarde), lit les journaux gardés et les envoie, en JSON lisible, par le Menu de
- * partage. Ne touche ni à l'ascension ni au journal. Rejette si le partage échoue.
+ * sa dernière sauvegarde), lit les journaux gardés et leurs combats (#197), et les envoie, en JSON
+ * lisible, par le Menu de partage. Ne touche ni à l'ascension ni au journal. Rejette si le partage
+ * échoue.
  */
 export async function exportAscentLog(
   dependencies: ExportAscentLogDependencies,
@@ -38,8 +43,19 @@ export async function exportAscentLog(
   await recorder.settled();
   const raws = await store.readAll();
   if (raws.length === 0) return { result: 'empty', ignoredLogs: 0 };
+  // Les combats de chaque journal de version 2, écrits à part (#197).
+  const stored = await Promise.all(
+    raws.map(async (log) => {
+      const parsed = parseAscentLog(log);
+      const battles =
+        parsed?.formatVersion === 2 && parsed.id !== null
+          ? await store.readBattles(parsed.id, parsed.battles)
+          : [];
+      return { log, battles };
+    }),
+  );
   const today = clock.today();
-  const built = buildAscentLogExport(raws, { appVersion, buildChannel, exportedOn: today });
+  const built = buildAscentLogExport(stored, { appVersion, buildChannel, exportedOn: today });
   await share.share({
     name: exportFileName(today),
     mimeType: 'application/json',

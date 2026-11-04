@@ -658,7 +658,9 @@ function startRound(previous: Battle, events: Events, at: number): Battle {
     return { ...enemy, intent: drawn.intent };
   });
   const round = battle.round + 1;
-  events.push({ type: 'roundStarted', at, round });
+  // Les intentions tirées, annoncées avec la manche : une avance peut déjà consommer la première.
+  const intents = enemies.map((enemy) => (isStanding(enemy) ? enemy.intent : null));
+  events.push({ type: 'roundStarted', at, round, intents });
   return {
     ...battle,
     enemies,
@@ -669,7 +671,7 @@ function startRound(previous: Battle, events: Events, at: number): Battle {
 }
 
 /** L'Initiative d'un ennemi : celle de sa phase 2 pour un boss qui a changé de phase (P13). */
-function enemyInitiative(enemy: EnemyState): number {
+export function enemyInitiative(enemy: EnemyState): number {
   const phase2 = enemy.phase2 === true ? ENEMIES[enemy.kind].phase2Initiative : undefined;
   return phase2 ?? ENEMY_INITIATIVE[enemy.kind];
 }
@@ -1248,8 +1250,9 @@ function whiff(
   button: DefenseButton,
   reason: WhiffReason,
   at: number,
+  delta?: number,
 ): Battle {
-  events.push({ type: 'whiffed', at, button, reason });
+  events.push({ type: 'whiffed', at, button, reason, ...(delta !== undefined && { delta }) });
   return startOffBalance(battle, events, at);
 }
 
@@ -1300,7 +1303,9 @@ function judgeDefense(battle: Battle, events: Events, button: DefenseButton, at:
 
   const delta = pressDelta(at, battle.inputOffset, step.impacts[index]!.at);
   const judgement = judgePress(delta);
-  if (judgement === 'miss') return whiff(battle, events, button, delta < 0 ? 'early' : 'late', at);
+  if (judgement === 'miss') {
+    return whiff(battle, events, button, delta < 0 ? 'early' : 'late', at, delta);
+  }
 
   const blow = { index, button, delta, at };
   if (button === 'dodge') {
