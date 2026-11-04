@@ -8,6 +8,8 @@
 export const PERFECT_WINDOW_MS = 60;
 /** Fenêtre de parade (`ParryWindow`) : |écart| ≤ 160 ms (C7). */
 export const PARRY_WINDOW_MS = 160;
+/** Tolérance « trop tard » (`LateTolerance`) après la fenêtre de parade d'un impact subi (#207). */
+export const LATE_TOLERANCE_MS = 150;
 /** Déséquilibre (`OffBalance`) après un appui raté, relancé par chaque appui (C9). */
 export const OFF_BALANCE_MS = 450;
 /** Arrêt sur image (`HitStop`) d'une parade parfaite : le temps du combat s'arrête. */
@@ -33,6 +35,11 @@ export function judgePress(delta: number): PressJudgement {
   if (distance <= PERFECT_WINDOW_MS) return 'perfect';
   if (distance <= PARRY_WINDOW_MS) return 'good';
   return 'miss';
+}
+
+/** Un écart dans la tolérance « trop tard » : 160 ms < écart ≤ 310 ms (#207). */
+export function isWithinLateTolerance(delta: number): boolean {
+  return delta > PARRY_WINDOW_MS && delta <= PARRY_WINDOW_MS + LATE_TOLERANCE_MS;
 }
 
 /** L'instant où un impact sans appui valide est subi : impact + 160 ms + max(0, −décalage) (C7, C12). */

@@ -60,6 +60,7 @@ import {
   HIT_STOP_MS,
   OFF_BALANCE_MS,
   SUPPORT_ACTION_MS,
+  isWithinLateTolerance,
   judgePress,
   missDeadline,
   pressDelta,
@@ -273,6 +274,8 @@ export interface Battle {
   readonly heroActions: number;
   /** La fin du déséquilibre en cours, `null` sans déséquilibre. */
   readonly offBalanceUntil: number | null;
+  /** L'instant du dernier impact subi, pour la tolérance « trop tard » (#207) ; absent, aucun. */
+  readonly sufferedImpactAt?: number;
   /** Le dernier arrêt sur image. */
   readonly hitStop: { readonly at: number; readonly until: number } | null;
   /** La bulle d'aide de la phase ennemie reste à montrer avant la première transition. */
@@ -1065,14 +1068,16 @@ function heroDamage(battle: Battle, damage: number, ...percents: readonly number
 
 function sufferImpact(battle: Battle, events: Events, index: number): Battle {
   const step = currentAttack(battle);
-  return resolveBlow(battle, events, {
+  const impactAt = step.impacts[index]!.at;
+  const suffered = resolveBlow(battle, events, {
     index,
     outcome: 'suffered',
     button: null,
     delta: null,
     damage: heroDamage(battle, step.damage),
-    at: missDeadline(step.impacts[index]!.at, battle.inputOffset),
+    at: missDeadline(impactAt, battle.inputOffset),
   });
+  return { ...suffered, sufferedImpactAt: impactAt };
 }
 
 /**
@@ -1293,13 +1298,37 @@ function gainMomentumAt(battle: Battle, events: Events, at: number): Battle {
   return { ...battle, hero: { ...battle.hero, momentum } };
 }
 
+/** L'impact à juger : le premier du coup en cours encore à résoudre et pas perdu, sinon -1. */
+function pendingImpact(battle: Battle): number {
+  if (battle.phase.kind !== 'enemy') return -1;
+  const { step } = battle.phase;
+  if (step.kind !== 'attack') return -1;
+  return step.impacts.findIndex((impact) => impact.outcome === null && !impact.lost);
+}
+
+/**
+ * L'écart d'un appui « trop tard » sur le dernier impact subi (#207), sinon `null` : jusqu'à
+ * 150 ms après sa fenêtre de parade, même pendant l'avancée suivante ou la transition de phase.
+ * Sur une double frappe, l'appui est jugé contre l'impact le plus proche ; à égalité, celui à venir.
+ */
+function lateDelta(battle: Battle, at: number): number | null {
+  const { sufferedImpactAt, phase, inputOffset } = battle;
+  if (sufferedImpactAt === undefined) return null;
+  if (phase.kind !== 'enemy' && phase.kind !== 'transition') return null;
+  const delta = pressDelta(at, inputOffset, sufferedImpactAt);
+  if (!isWithinLateTolerance(delta)) return null;
+  const index = pendingImpact(battle);
+  if (index < 0) return delta;
+  const next = pressDelta(at, inputOffset, currentAttack(battle).impacts[index]!.at);
+  return delta < Math.abs(next) ? delta : null;
+}
+
 function judgeDefense(battle: Battle, events: Events, button: DefenseButton, at: number): Battle {
-  const step = enemyStep(battle);
-  const index =
-    step.kind === 'attack'
-      ? step.impacts.findIndex((impact) => impact.outcome === null && !impact.lost)
-      : -1;
-  if (step.kind !== 'attack' || index < 0) return whiff(battle, events, button, 'empty', at);
+  const late = lateDelta(battle, at);
+  if (late !== null) return whiff(battle, events, button, 'late', at, late);
+  const index = pendingImpact(battle);
+  if (index < 0) return whiff(battle, events, button, 'empty', at);
+  const step = currentAttack(battle);
 
   const delta = pressDelta(at, battle.inputOffset, step.impacts[index]!.at);
   const judgement = judgePress(delta);
@@ -1390,7 +1419,8 @@ function isDeadTime(battle: Battle): boolean {
 /**
  * Un appui sur « Parade » ou « Esquive », daté à l'instant du toucher (C7, C9, C12). Il est
  * ignoré pendant une transition de phase, sans déséquilibre ni mémoire, et relance le déséquilibre
- * en cours. Hors d'une fenêtre de parade, c'est un appui raté.
+ * en cours. Hors d'une fenêtre de parade, c'est un appui raté ; dans la tolérance « trop tard »
+ * d'un impact subi, il est trop tard, même pendant l'avancée suivante ou la transition (#207).
  */
 export function pressDefense(
   battle: Battle,
@@ -1398,8 +1428,12 @@ export function pressDefense(
 ): BattleUpdate {
   const pressedAt = datePress(battle, at);
   const advanced = advance(battle, pressedAt);
-  if (isDeadTime(advanced.battle)) return ignored(advanced, pressedAt, button, 'phaseTransition');
-  if (advanced.battle.phase.kind !== 'enemy') {
+  // La tolérance « trop tard » prime sur le temps mort de la transition de phase (#207).
+  const late = lateDelta(advanced.battle, pressedAt) !== null;
+  if (!late && isDeadTime(advanced.battle)) {
+    return ignored(advanced, pressedAt, button, 'phaseTransition');
+  }
+  if (!late && advanced.battle.phase.kind !== 'enemy') {
     return ignored(advanced, pressedAt, button, 'notAvailable');
   }
   const events = [...advanced.events];
