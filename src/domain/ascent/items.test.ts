@@ -237,6 +237,15 @@ describe('the unlockable items (#195)', () => {
     expect(share).toBeCloseTo(0.25, 1);
   });
 
+  it('draws the Watch bell on par with the other Rares once unlocked', () => {
+    const rares = draws(0, true, ['watchBell'], STARTING_EQUIPMENT, states(20, 100));
+    const kinds = [...new Set(rares)];
+    expect(kinds).toHaveLength(6);
+    for (const kind of kinds) {
+      expect(rares.filter((item) => item === kind).length / rares.length).toBeCloseTo(1 / 6, 1);
+    }
+  });
+
   it('draws the Watch bell among the Rares once unlocked, never when worn', () => {
     expect(new Set(draws(0, true, ['watchBell']))).toContain('watchBell');
     const worn = { ...STARTING_EQUIPMENT, accessory: 'watchBell' } as const;

@@ -161,6 +161,22 @@ describe('Cœur de braise after an Elite (#195)', () => {
     expect(ended.emberHeartOffered).toBe(true);
   });
 
+  it('stays offered after the Tier transition, to the end of the ascent', () => {
+    const beaten: Ascent = {
+      ...startAscent(3, HEART),
+      floor: 6,
+      encounter: null,
+      emberHeartOffered: true,
+      passage: { to: 2, step: 'bossDefeated' },
+    };
+
+    const next = enterNextTier(acknowledgeBossVictory(beaten));
+
+    expect(next.tier).toBe(2);
+    expect(next.emberHeartOffered).toBe(true);
+    expect(next.unlocks).toEqual(['emberHeart']);
+  });
+
   it('is never drawn without its Unlock, nor after an ordinary battle, nor when owned', () => {
     const state = stateWhere(under, {});
     const without = at('elite', state);
