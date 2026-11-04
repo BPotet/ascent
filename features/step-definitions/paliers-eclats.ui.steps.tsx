@@ -7,6 +7,7 @@
 import { act, fireEvent, screen } from '@testing-library/react-native';
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
 
+import { campSessionOf } from '../../src/application/testing/campSetUp';
 import { InMemoryUnitOfWork } from '../../src/application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../src/application/testing/settableClock';
 import {
@@ -294,7 +295,12 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   when(/^il ouvre le pied de la tour$/u, async () => {
     world.session = storySession(world.store).session;
     await renderScreen(
-      <TowerFootScreen session={world.session} onEnter={() => undefined} />,
+      <TowerFootScreen
+        session={world.session}
+        camp={campSessionOf(world.session, world.store)}
+        onEnter={() => undefined}
+        onCamp={() => undefined}
+      />,
       dependencies(world.store),
     );
   });

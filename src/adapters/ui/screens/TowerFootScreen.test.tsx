@@ -14,7 +14,12 @@ async function show(options: Parameters<typeof ascentSetUp>[0] = {}) {
   const setUp = ascentSetUp(options);
   const onEnter = jest.fn();
   await renderScreen(
-    <TowerFootScreen session={setUp.session} onEnter={onEnter} />,
+    <TowerFootScreen
+      session={setUp.session}
+      camp={setUp.camp}
+      onEnter={onEnter}
+      onCamp={jest.fn()}
+    />,
     setUp.dependencies,
   );
   return { ...setUp, onEnter };
@@ -101,7 +106,12 @@ describe('TowerFootScreen with the fate gauge (#93)', () => {
     }
     const onEnter = jest.fn();
     await renderScreen(
-      <TowerFootScreen session={setUp.session} onEnter={onEnter} />,
+      <TowerFootScreen
+        session={setUp.session}
+        camp={setUp.camp}
+        onEnter={onEnter}
+        onCamp={jest.fn()}
+      />,
       setUp.dependencies,
     );
     return { ...setUp, onEnter };

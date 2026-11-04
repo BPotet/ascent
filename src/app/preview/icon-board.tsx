@@ -5,15 +5,17 @@ import { MonotonicBattleClock } from '../../adapters/device/battle/MonotonicBatt
 import { RandomSeedSource } from '../../adapters/device/battle/RandomSeedSource';
 import { currentBuildChannel } from '../../adapters/device/build/buildChannel';
 import { ExpoBattleHaptics } from '../../adapters/device/haptics/ExpoBattleHaptics';
+import { ExpoHaptics } from '../../adapters/device/haptics/ExpoHaptics';
 import { appStateVisibility } from '../../adapters/device/lifecycle/appStateVisibility';
 import { ExpoAudioBattleSound } from '../../adapters/device/sound/ExpoAudioBattleSound';
 import { InMemoryKeyValueStore } from '../../adapters/persistence/memory/InMemoryKeyValueStore';
-import { IconBoardScreen } from '../../adapters/ui/screens/IconBoardScreen';
+import { IconBoardScreen, type BoardAscent } from '../../adapters/ui/screens/IconBoardScreen';
 import {
   ASCENT_KEY,
   AscentSession,
   SHARD_TOTAL_KEY,
 } from '../../application/useCases/AscentSession';
+import { CampSession } from '../../application/useCases/CampSession';
 import type { Ascent } from '../../domain/ascent/Ascent';
 import type { Battle } from '../../domain/battle/Battle';
 
@@ -37,7 +39,7 @@ export async function openBoardAscent(
   saved: Ascent | null,
   shards?: number,
   battle?: Battle,
-): Promise<AscentSession> {
+): Promise<BoardAscent> {
   const keyValueStore = new InMemoryKeyValueStore();
   if (saved !== null) {
     await keyValueStore.set(
@@ -58,8 +60,14 @@ export async function openBoardAscent(
     haptics: new ExpoBattleHaptics(),
     keyValueStore,
   });
-  await session.load();
-  return session;
+  const camp = new CampSession({
+    keyValueStore,
+    ascentSession: session,
+    sound: new ExpoAudioBattleSound(),
+    haptics: new ExpoHaptics(),
+  });
+  await Promise.all([session.load(), camp.load()]);
+  return { session, camp };
 }
 
 function IconBoard() {

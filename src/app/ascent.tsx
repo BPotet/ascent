@@ -6,6 +6,7 @@ import { RandomSeedSource } from '../adapters/device/battle/RandomSeedSource';
 import { currentAppVersion } from '../adapters/device/build/appVersion';
 import { currentBuildChannel } from '../adapters/device/build/buildChannel';
 import { ExpoBattleHaptics } from '../adapters/device/haptics/ExpoBattleHaptics';
+import { ExpoHaptics } from '../adapters/device/haptics/ExpoHaptics';
 import { appStateVisibility } from '../adapters/device/lifecycle/appStateVisibility';
 import { ExpoFileShare } from '../adapters/device/share/ExpoFileShare';
 import { ExpoAudioBattleSound } from '../adapters/device/sound/ExpoAudioBattleSound';
@@ -16,6 +17,7 @@ import type { Clock } from '../application/ports/Clock';
 import type { KeyValueStore } from '../application/ports/KeyValueStore';
 import { AscentLogRecorder } from '../application/useCases/AscentLogRecorder';
 import { AscentSession } from '../application/useCases/AscentSession';
+import { CampSession } from '../application/useCases/CampSession';
 import { ascentLogExport, type LogExport } from '../application/useCases/exportAscentLog';
 
 /** Le Journal d'ascension (#196) : l'enregistreur de la session, et l'export des deux écrans. */
@@ -25,6 +27,8 @@ export interface AscentLogFeature {
 }
 
 let shared: AscentSession | null = null;
+let sharedCamp: CampSession | null = null;
+let sound: ExpoAudioBattleSound | null = null;
 let feature: AscentLogFeature | null = null;
 
 /**
@@ -54,6 +58,12 @@ export function ascentLogFeature(
   return feature;
 }
 
+/** Les sons préchargés de l'app, partagés par l'ascension et le camp. */
+function sharedSound(): ExpoAudioBattleSound {
+  sound ??= new ExpoAudioBattleSound();
+  return sound;
+}
+
 /**
  * La session d'ascension de l'app, partagée par le pied de la tour et l'écran de l'ascension :
  * horloge de combat, graine au hasard, sons, vibrations et stockage clé-valeur de l'app. Tout est
@@ -64,12 +74,26 @@ export function sharedAscentSession(keyValueStore: KeyValueStore, clock: Clock):
   shared ??= new AscentSession({
     clock: new MonotonicBattleClock(),
     seeds: new RandomSeedSource(),
-    sound: new ExpoAudioBattleSound(),
+    sound: sharedSound(),
     haptics: new ExpoBattleHaptics(),
     keyValueStore,
     ...(ascentLog !== undefined && { ascentLog }),
   });
   return shared;
+}
+
+/**
+ * La session du camp de l'app (#40), partagée par le pied de la tour, le bilan et le camp : la même
+ * session d'ascension, le son de flamme de l'ascension, la vibration de réussite du téléphone.
+ */
+export function sharedCampSession(keyValueStore: KeyValueStore, clock: Clock): CampSession {
+  sharedCamp ??= new CampSession({
+    keyValueStore,
+    ascentSession: sharedAscentSession(keyValueStore, clock),
+    sound: sharedSound(),
+    haptics: new ExpoHaptics(),
+  });
+  return sharedCamp;
 }
 
 function leave(): void {
@@ -88,6 +112,8 @@ function Ascent() {
       session={sharedAscentSession(keyValueStore, clock)}
       visibility={visibility}
       onLeave={leave}
+      // Le camp remplace le bilan : son retour mène au pied de la tour, jamais au bilan (#40).
+      onCamp={() => router.replace('/camp')}
       logExport={ascentLogFeature(keyValueStore, clock)?.logExport}
     />
   );

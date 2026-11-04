@@ -272,6 +272,25 @@ function signed(value: number): string {
   return value > 0 ? `+${value}` : value < 0 ? `−${-value}` : '0';
 }
 
+/** Le nom d'un objet : « Épieu de chasse ». */
+export function itemName(item: ItemKind): string {
+  return ITEM_NAMES[item];
+}
+
+/** Le nom de l'emplacement d'un objet : « Arme », « Accessoire ». */
+export function slotName(slot: ItemSlot): string {
+  return SLOT_NAMES[slot];
+}
+
+/** L'effet d'un objet puis son Initiative : « Attaque +10 % · Frappe parfaite +0,3 · Initiative 0 » (#40). */
+export function itemEffectLine(item: ItemKind): string {
+  const effect = ITEM_EFFECTS[item];
+  return [
+    ...(effect === null ? [] : effect.split(', ')),
+    `Initiative ${signed(ITEMS[item].initiative)}`,
+  ].join(' · ');
+}
+
 /** Un objet : nom, emplacement, rareté, effet et Initiative. */
 export function itemText(item: ItemKind): string {
   const { slot, rarity, initiative } = ITEMS[item];

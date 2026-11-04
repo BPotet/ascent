@@ -11,9 +11,10 @@ export const TARGET_TOAST_DURATION_MS = 4000;
 
 /**
  * La forme d'un toast : `default` (clair) ; `goal`, le message F1 « Objectif de la semaine atteint »
- * (fond sombre, liseré or, drapeau) ; `soft`, le message discret du retour sous l'objectif (#26).
+ * (fond sombre, liseré or, drapeau) ; `soft`, le message discret du retour sous l'objectif (#26) ;
+ * `done`, le message vert d'un déblocage au camp (#40), 4 s.
  */
-export type ToastVariant = 'default' | 'goal' | 'soft';
+export type ToastVariant = 'default' | 'goal' | 'soft' | 'done';
 
 /** L'action proposée par un toast : un libellé court et ce qu'elle fait. */
 export interface ToastAction {
@@ -56,10 +57,10 @@ export function targetToastOf({
   };
 }
 
-/** La durée d'un toast : plus longue avec une action, ou pour F1. */
+/** La durée d'un toast : plus longue avec une action, pour F1 ou pour un déblocage au camp. */
 export function toastDurationOf(withAction: boolean, variant: ToastVariant): number {
   if (withAction) {
     return TOAST_WITH_ACTION_DURATION_MS;
   }
-  return variant === 'goal' ? TARGET_TOAST_DURATION_MS : TOAST_DURATION_MS;
+  return variant === 'goal' || variant === 'done' ? TARGET_TOAST_DURATION_MS : TOAST_DURATION_MS;
 }

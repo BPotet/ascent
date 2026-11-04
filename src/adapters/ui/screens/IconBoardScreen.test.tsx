@@ -7,7 +7,7 @@ import type { Battle } from '../../../domain/battle/Battle';
 import { RESUME_COUNTDOWN_S } from './AscentScreen';
 import { ascentSetUp } from '../testing/ascent';
 import { renderScreen } from '../testing/renderScreen';
-import { BOARD_WIND_UP_MS, IconBoardScreen } from './IconBoardScreen';
+import { BOARD_WIND_UP_MS, IconBoardScreen, type BoardAscent } from './IconBoardScreen';
 
 jest.mock('../battle/BattleCanvas', () => jest.requireActual('../battle/testing/fakeBattleCanvas'));
 
@@ -26,15 +26,15 @@ async function openAscent(
   saved: Ascent | null,
   shards?: number,
   battle?: Battle,
-): Promise<AscentSession> {
-  const { session, clock } = ascentSetUp({
+): Promise<BoardAscent> {
+  const { session, camp, clock } = ascentSetUp({
     ...(saved !== null && { saved }),
     ...(shards !== undefined && { shards }),
     ...(battle !== undefined && { battle }),
   });
   await session.load();
   opened.push({ saved, shards, battle, session, clock });
-  return session;
+  return { session, camp };
 }
 
 async function renderBoard(onClose: () => void = jest.fn()) {
@@ -240,6 +240,15 @@ describe('IconBoardScreen with the loadout (#159)', () => {
       [{ family: 'haste', rarity: 'rare' }],
       ['perfectEcho', 'lingeringFrost'],
     ]);
+  });
+
+  it('opens the camp of the fixed ascent from the tower foot, and comes back to it (#40)', async () => {
+    await open('Équipement · 1 · pied de la tour');
+
+    await fireEvent.press(await screen.findByRole('button', { name: 'Le camp' }));
+    expect(await screen.findByRole('header', { name: 'Le camp' })).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Retour au pied de la tour' }));
+    expect(await screen.findByTestId('tower-foot')).toBeOnTheScreen();
   });
 
   it('opens the real tower foot with a single starting blessing (4C)', async () => {

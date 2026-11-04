@@ -77,7 +77,12 @@ sauvegarde : on ne les renomme plus sans migration (ADR 0010, avenant #152).
 - **Lecture** : `AscentSession.load()` lit aussi le Total d'Éclats ; `shardTotal()` le rend et
   `subscribeShards()` prévient à chaque crédit. Le Pied de la tour le lit par la session partagée.
 
-### 4. Débiter le Total d'Éclats (#40)
+### 4. Débiter le Total d'Éclats (#40) — remplacé par l'ADR 0017
+
+> **Remplacé par l'[ADR 0017](0017-camp-et-eclats-disponibles.md)** (4 novembre 2026). Ce paragraphe
+> n'a jamais été codé : le Total d'Éclats n'est jamais débité ; les achats du Camp vivent sous leur
+> propre clé, `camp.unlocks`, et les Éclats disponibles sont calculés. Le texte d'origine est gardé
+> ci-dessous pour l'historique.
 
 La story qui dépense les Éclats (#40) débite la même clé : elle relit `shards.total`, retire le prix
 de `total`, et réécrit la valeur en **gardant `seed` et `awarded` tels quels**, faute de quoi un gain

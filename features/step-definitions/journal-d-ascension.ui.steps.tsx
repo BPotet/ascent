@@ -6,6 +6,7 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
 
+import { campSessionOf } from '../../src/application/testing/campSetUp';
 import { InMemoryUnitOfWork } from '../../src/application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../src/application/testing/settableClock';
 import type { LogExport } from '../../src/application/useCases/exportAscentLog';
@@ -70,7 +71,13 @@ async function showEnd(logExport: LogExport | undefined): Promise<void> {
 async function showTowerFoot(logExport: LogExport | undefined): Promise<void> {
   onEnter = jest.fn();
   await renderScreen(
-    <TowerFootScreen session={story.session} onEnter={onEnter} logExport={logExport} />,
+    <TowerFootScreen
+      session={story.session}
+      camp={campSessionOf(story.session, story.store)}
+      onEnter={onEnter}
+      onCamp={jest.fn()}
+      logExport={logExport}
+    />,
     dependencies(),
   );
 }

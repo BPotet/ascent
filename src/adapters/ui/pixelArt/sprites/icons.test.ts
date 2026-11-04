@@ -51,6 +51,11 @@ describe('the icons', () => {
     expect(ICONS.shard12).toHaveLength(12);
   });
 
+  it('has the small flame of « Le camp » (#40)', () => {
+    expect(iconNames).toContain('flame8');
+    expect(ICONS.flame8).toHaveLength(8);
+  });
+
   it('mirrors « left » into « right »', () => {
     ICONS.left.forEach((row, index) =>
       expect(ICONS.right[index]).toBe([...row].reverse().join('')),

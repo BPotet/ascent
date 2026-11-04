@@ -6,6 +6,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
 
+import { campSessionOf } from '../../src/application/testing/campSetUp';
 import { InMemoryUnitOfWork } from '../../src/application/testing/InMemoryUnitOfWork';
 import { settableClock } from '../../src/application/testing/settableClock';
 import { TowerFootScreen } from '../../src/adapters/ui/screens/TowerFootScreen';
@@ -52,7 +53,13 @@ const steps: StepDefinitions = ({ given, when, then }) => {
       (press): press is DefensePressRecord => press.kind === 'defense',
     )!;
     await renderScreen(
-      <TowerFootScreen session={story.session} onEnter={jest.fn()} logExport={story.logExport} />,
+      <TowerFootScreen
+        session={story.session}
+        camp={campSessionOf(story.session, story.store)}
+        onEnter={jest.fn()}
+        onCamp={jest.fn()}
+        logExport={story.logExport}
+      />,
       {
         clock: settableClock(LOG_DAY),
         unitOfWork: new InMemoryUnitOfWork(),

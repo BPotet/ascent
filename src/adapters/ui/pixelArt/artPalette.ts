@@ -164,6 +164,8 @@ export const artPalette = {
     rarityEpic: '#C49BFF',
     /** Fond de l'écrin d'une icône (#157). */
     well: '#0B0D18',
+    /** La braise du camp (#40) : la flamme de « Le camp » et « Aller au camp », une teinte de la palette. */
+    ember: '#D9733A',
     /** Fond d'une pastille d'équipement posée dans un cadre (Équipement du pied de la tour, #159). */
     sunken: '#141829',
     /**

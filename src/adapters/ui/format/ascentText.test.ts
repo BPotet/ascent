@@ -17,7 +17,10 @@ import {
   gaugeWord,
   goldText,
   itemDescription,
+  itemEffectLine,
+  itemName,
   itemText,
+  slotName,
   startingBlessingsLabel,
   takenBlessingsHeading,
   wornText,
@@ -152,6 +155,13 @@ describe('gauge, blessing and item texts (#93)', () => {
         { family: 'vigor', rarity: 'common' },
       ]),
     ).toBe('Bénédictions de départ : Hâte, Rare ; Vigueur, Commune');
+  });
+
+  it('gives the name, the slot and the effect line of an item, for the camp (#40)', () => {
+    expect(itemName('watchBell')).toBe('Clochette du guet');
+    expect(slotName('accessory')).toBe('Accessoire');
+    expect(itemEffectLine('hasteAmulet')).toBe('Initiative +2');
+    expect(itemEffectLine('flamberge')).toBe('Attaque +10 % · Frappe parfaite +0,3 · Initiative 0');
   });
 
   it('names the items, worn or found, with their effect and Initiative', () => {
