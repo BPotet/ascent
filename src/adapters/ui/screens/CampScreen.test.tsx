@@ -240,6 +240,38 @@ describe('CampScreen (#40)', () => {
     expect(announce).toHaveBeenCalledWith(
       'Déblocage réussi : Flamberge. Dès ta prochaine ascension. 0 Éclat disponible.',
     );
+    expect(
+      screen.getByText(
+        "Ton ascension n'est pas finie. Ce que tu prends ici t'attendra à la prochaine.",
+      ),
+    ).toBeOnTheScreen();
+    expect(screen.queryByText("Ce qui brûle ici t'attend là-haut.")).not.toBeOnTheScreen();
+  });
+
+  it('never offers to retry when the camp is read-only, and leaves the stored value alone', async () => {
+    const setUp = ascentSetUp({ shards: 82 });
+    setUp.keyValueStore.values.set(CAMP_KEY, '{oops');
+    const set = setUp.keyValueStore.set;
+    setUp.keyValueStore.set = (key, value) =>
+      key === `${CAMP_KEY}.unreadable` ? Promise.reject(new Error('full')) : set(key, value);
+    await setUp.session.load();
+    await renderScreen(<CampScreen camp={setUp.camp} onLeave={jest.fn()} />, setUp.dependencies);
+    await screen.findByTestId('camp-purse');
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: 'Débloquer Clochette du guet, 40 Éclats' }),
+    );
+    await confirm('Débloquer pour 40 Éclats');
+
+    const sheet = within(screen.getByTestId('camp-sheet'));
+    expect(sheet.getByRole('alert')).toHaveTextContent(
+      "Le déblocage n'a pas pu être enregistré. Tes Éclats sont intacts.",
+    );
+    expect(sheet.queryByRole('button', { name: 'Réessayer' })).not.toBeOnTheScreen();
+    expect(screen.getByLabelText('82 Éclats disponibles')).toBeOnTheScreen();
+    await fireEvent.press(sheet.getByRole('button', { name: 'Annuler' }));
+    expect(screen.queryByTestId('camp-sheet')).not.toBeOnTheScreen();
+    expect(setUp.keyValueStore.values.get(CAMP_KEY)).toBe('{oops');
   });
 
   it('keeps the sheet open and the Shards intact when the purchase fails, then retries (C8)', async () => {

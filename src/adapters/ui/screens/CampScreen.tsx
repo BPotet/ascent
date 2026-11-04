@@ -271,7 +271,10 @@ function ConfirmSheet({
           </View>
           <Text style={styles.sheetLine}>{sheetLine(view.ascentInProgress)}</Text>
           {error && <Band tone="error" text={SHEET_ERROR} role="alert" />}
-          <PixelButton label={error ? RETRY : confirmText(entry.price)} onPress={onConfirm} />
+          {/* Un camp en lecture seule n'enregistrera jamais l'achat : pas de « Réessayer ». */}
+          {!(error && view.readOnly) && (
+            <PixelButton label={error ? RETRY : confirmText(entry.price)} onPress={onConfirm} />
+          )}
           <PixelButton label="Annuler" variant="secondary" onPress={onCancel} />
         </PixelSheet>
       </View>
