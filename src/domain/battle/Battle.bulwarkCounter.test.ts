@@ -551,4 +551,38 @@ describe('Bulwark riposte (#128)', () => {
       expect(test.all('guardBroken')).toEqual([]);
     });
   });
+
+  describe('the tolerance « trop tard » when the riposte breaks the guard (#207)', () => {
+    /** Le combat avancé image par image (16 ms), comme l'application, puis un appui à `after`. */
+    function pressAfterImpact(after: number): RiposteTest {
+      const test = RiposteTest.start({ attacker: { guard: 3 } });
+      const impact = test.impact(0);
+      for (let frame = impact; frame < impact + after; frame += 16) test.advance(frame);
+      return test.press('parry', impact + after);
+    }
+
+    it('judges a press during the hit stop « trop tard », dated at its start', () => {
+      const test = pressAfterImpact(200);
+      const resolvedAt = test.all('blowResolved')[0]!.at;
+
+      expect(test.all('hitStopStarted')).toEqual([
+        { type: 'hitStopStarted', at: resolvedAt, until: resolvedAt + HIT_STOP_MS },
+      ]);
+      expect(test.all('whiffed')).toEqual([
+        { type: 'whiffed', at: resolvedAt, button: 'parry', reason: 'late', delta: 160 },
+      ]);
+    });
+
+    it('shifts the end of the tolerance by the hit stop', () => {
+      expect(pressAfterImpact(330).all('whiffed')).toEqual([
+        expect.objectContaining({ reason: 'late', delta: 330 }),
+      ]);
+      expect(pressAfterImpact(400).all('whiffed')).toEqual([
+        expect.objectContaining({ reason: 'late', delta: 400 }),
+      ]);
+      expect(pressAfterImpact(401).all('whiffed')).toEqual([
+        expect.objectContaining({ reason: 'empty' }),
+      ]);
+    });
+  });
 });

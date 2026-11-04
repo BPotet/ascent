@@ -37,9 +37,12 @@ export function judgePress(delta: number): PressJudgement {
   return 'miss';
 }
 
-/** Un écart dans la tolérance « trop tard » : 160 ms < écart ≤ 310 ms (#207). */
-export function isWithinLateTolerance(delta: number): boolean {
-  return delta > PARRY_WINDOW_MS && delta <= PARRY_WINDOW_MS + LATE_TOLERANCE_MS;
+/**
+ * La fin de la tolérance « trop tard » d'un impact subi (#207) : l'instant d'appui où l'écart vaut
+ * 160 + 150 = 310 ms, avant tout arrêt sur image qui la décale.
+ */
+export function lateToleranceEnd(impactAt: number, inputOffset: number): number {
+  return impactAt + PARRY_WINDOW_MS + LATE_TOLERANCE_MS - inputOffset;
 }
 
 /** L'instant où un impact sans appui valide est subi : impact + 160 ms + max(0, −décalage) (C7, C12). */

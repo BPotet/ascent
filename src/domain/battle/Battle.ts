@@ -60,8 +60,9 @@ import {
   HIT_STOP_MS,
   OFF_BALANCE_MS,
   SUPPORT_ACTION_MS,
-  isWithinLateTolerance,
+  PARRY_WINDOW_MS,
   judgePress,
+  lateToleranceEnd,
   missDeadline,
   pressDelta,
   scaleDamage,
@@ -274,8 +275,11 @@ export interface Battle {
   readonly heroActions: number;
   /** La fin du déséquilibre en cours, `null` sans déséquilibre. */
   readonly offBalanceUntil: number | null;
-  /** L'instant du dernier impact subi, pour la tolérance « trop tard » (#207) ; absent, aucun. */
-  readonly sufferedImpactAt?: number;
+  /**
+   * Le dernier impact subi et la fin de sa tolérance « trop tard », décalée par les arrêts sur
+   * image (#207) ; absent, aucun.
+   */
+  readonly sufferedImpact?: { readonly at: number; readonly lateUntil: number };
   /** Le dernier arrêt sur image. */
   readonly hitStop: { readonly at: number; readonly until: number } | null;
   /** La bulle d'aide de la phase ennemie reste à montrer avant la première transition. */
@@ -1077,7 +1081,8 @@ function sufferImpact(battle: Battle, events: Events, index: number): Battle {
     damage: heroDamage(battle, step.damage),
     at: missDeadline(impactAt, battle.inputOffset),
   });
-  return { ...suffered, sufferedImpactAt: impactAt };
+  const lateUntil = lateToleranceEnd(impactAt, battle.inputOffset);
+  return { ...suffered, sufferedImpact: { at: impactAt, lateUntil } };
 }
 
 /**
@@ -1270,7 +1275,14 @@ function startHitStop(battle: Battle, events: Events, at: number): Battle {
   const until = at + HIT_STOP_MS;
   events.push({ type: 'hitStopStarted', at, until });
   const later = (instant: number) => (instant >= at ? instant + HIT_STOP_MS : instant);
-  const stopped = { ...battle, hitStop: { at, until } };
+  const { sufferedImpact } = battle;
+  const stopped = {
+    ...battle,
+    hitStop: { at, until },
+    ...(sufferedImpact && {
+      sufferedImpact: { ...sufferedImpact, lateUntil: later(sufferedImpact.lateUntil) },
+    }),
+  };
   const { phase } = battle;
   if (phase.kind === 'heroStrike') {
     return {
@@ -1308,15 +1320,18 @@ function pendingImpact(battle: Battle): number {
 
 /**
  * L'écart d'un appui « trop tard » sur le dernier impact subi (#207), sinon `null` : jusqu'à
- * 150 ms après sa fenêtre de parade, même pendant l'avancée suivante ou la transition de phase.
- * Sur une double frappe, l'appui est jugé contre l'impact le plus proche ; à égalité, celui à venir.
+ * 150 ms après sa fenêtre de parade, plus les arrêts sur image, même pendant l'avancée suivante ou
+ * la transition de phase. Un appui daté au début d'un arrêt sur image lancé quand l'impact est
+ * subi (écart 160 ms) en fait partie. Sur une double frappe, l'appui est jugé contre l'impact le
+ * plus proche ; à égalité, celui à venir.
  */
 function lateDelta(battle: Battle, at: number): number | null {
-  const { sufferedImpactAt, phase, inputOffset } = battle;
-  if (sufferedImpactAt === undefined) return null;
+  const { sufferedImpact, phase, inputOffset, hitStop } = battle;
+  if (sufferedImpact === undefined || at > sufferedImpact.lateUntil) return null;
   if (phase.kind !== 'enemy' && phase.kind !== 'transition') return null;
-  const delta = pressDelta(at, inputOffset, sufferedImpactAt);
-  if (!isWithinLateTolerance(delta)) return null;
+  const delta = pressDelta(at, inputOffset, sufferedImpact.at);
+  const datedAtHitStop = delta === PARRY_WINDOW_MS && hitStop?.at === at;
+  if (delta <= PARRY_WINDOW_MS && !datedAtHitStop) return null;
   const index = pendingImpact(battle);
   if (index < 0) return delta;
   const next = pressDelta(at, inputOffset, currentAttack(battle).impacts[index]!.at);
