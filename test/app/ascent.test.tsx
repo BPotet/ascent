@@ -82,7 +82,7 @@ describe('ascent routes', () => {
     builtFor(initialChannel);
   });
 
-  it('offers the Tour tab on the preview build, and starts an ascent with a hero from the tower foot', async () => {
+  it('offers the Tour tab on the preview build, starts an ascent from the tower foot, and exports its log', async () => {
     builtFor('preview');
     await renderRouter(appDirectory);
     await dayViewIsShown();
@@ -102,17 +102,12 @@ describe('ascent routes', () => {
     expect(screen.queryByText(/Réglages d'essai/u)).not.toBeOnTheScreen();
     await fireEvent.press(screen.getByRole('button', { name: 'Pause' }));
     expect(await screen.findByRole('button', { name: "Reprendre l'ascension" })).toBeOnTheScreen();
-  });
 
-  it('exports the ascent log from the tower foot on the preview build (#196)', async () => {
-    builtFor('preview');
-    await renderRouter(appDirectory, { initialUrl: '/tower' });
-    // L'ascension du test précédent est en cours, et son journal est gardé.
-    const exportButton = await screen.findByRole('button', { name: 'Exporter le journal' });
+    // Au pied de la tour, le journal de l'ascension en cours s'exporte (#196).
     expect(
       await screen.findByText('1 ascension, celle en cours', { includeHiddenElements: true }),
     ).toBeOnTheScreen();
-
+    const exportButton = screen.getByRole('button', { name: 'Exporter le journal' });
     await fireEvent.press(exportButton);
 
     await waitFor(() => expect(shareAsync).toHaveBeenCalledTimes(1));
