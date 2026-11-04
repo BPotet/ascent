@@ -2,6 +2,7 @@ import { type Ref, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import { AccessibilityInfo, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
+import type { LogExport } from '../../../application/useCases/exportAscentLog';
 import type { Ascent, TierPassage } from '../../../domain/ascent/Ascent';
 import { ITEMS } from '../../../domain/ascent/items';
 import { loadoutOf } from '../../../domain/ascent/loadout';
@@ -12,6 +13,7 @@ import { TierBackdrop } from '../battle/TierBackdrop';
 import { BlessingChoice } from '../components/BlessingChoice';
 import { ExitChoice } from '../components/ExitChoice';
 import { LoadoutButton } from '../components/LoadoutButton';
+import { LogExportButton } from '../components/LogExportButton';
 import { LoadoutSheet } from '../components/LoadoutSheet';
 import { Screen } from '../components/Screen';
 import {
@@ -58,6 +60,8 @@ export interface AscentScreenProps {
   readonly visibility: AscentVisibility;
   /** Quitter l'écran de l'ascension : retour au pied de la tour. */
   readonly onLeave: () => void;
+  /** L'Export du journal (#196), build de preview seulement ; absent, aucun bouton. */
+  readonly logExport?: LogExport | undefined;
 }
 
 /** En deçà de cette largeur d'écran, en dp, le statut de l'en-tête passe au-dessus des boutons. */
@@ -273,10 +277,12 @@ function AscentEnd({
   ascent,
   shardTotal,
   onLeave,
+  logExport,
 }: {
   readonly ascent: Ascent;
   readonly shardTotal: number;
   readonly onLeave: () => void;
+  readonly logExport?: LogExport | undefined;
 }) {
   const summit = ascent.outcome === 'victory';
   const won = shardSum(ascent.shardAwards);
@@ -309,6 +315,9 @@ function AscentEnd({
         </Text>
       </View>
       <PixelButton label="Retour au pied de la tour" onPress={onLeave} />
+      {logExport === undefined ? null : (
+        <LogExportButton logExport={logExport} revision={ascent} showCount={false} />
+      )}
     </View>
   );
 }
@@ -325,7 +334,7 @@ function SummitAnnouncement({ ascent }: { readonly ascent: Ascent }) {
  * fin). Passer en arrière-plan met en pause ; la reprise d'un combat commence par un compte à
  * rebours de 3 s, sans aucun appui.
  */
-export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps) {
+export function AscentScreen({ session, visibility, onLeave, logExport }: AscentScreenProps) {
   const ascent = useAscent(session);
   const shardTotal = useShardTotal(session);
   const [counting, setCounting] = useState(() => session.resuming());
@@ -412,6 +421,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
         <AscentEnd
           ascent={ascent}
           shardTotal={shardTotal}
+          logExport={logExport}
           onLeave={() => {
             session.leave();
             onLeave();

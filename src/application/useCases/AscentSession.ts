@@ -27,6 +27,8 @@ import { TIERS } from '../../domain/ascent/tiers';
 import { resumeBattle, startBattle, type Battle } from '../../domain/battle/Battle';
 import { combineModifiers } from '../../domain/battle/heroModifiers';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
+import type { AscentStep, HeroVitals } from '../../domain/ascentLog/AscentLog';
+import type { AscentLogRecorder } from './AscentLogRecorder';
 import { BattleSession, type BattleSessionDependencies } from './BattleSession';
 
 /** La clé de l'ascension en cours dans le stockage clé-valeur (prototype #91). */
@@ -76,6 +78,22 @@ const SAVED_ON: ReadonlySet<BattleEvent['type']> = new Set([
 
 type Listener = (ascent: Ascent | null) => void;
 type ShardListener = (total: number) => void;
+
+/** Les ports de la session d'ascension ; sans `ascentLog`, aucun Journal d'ascension (#196). */
+export interface AscentSessionDependencies extends BattleSessionDependencies {
+  readonly ascentLog?: AscentLogRecorder;
+}
+
+/** La cause d'une transition, pour le Journal d'ascension (#196). */
+type Cause =
+  | { readonly kind: Exclude<AscentStep['kind'], 'battleStarted' | 'battleEnded'> }
+  | { readonly kind: 'battleEnded'; readonly hero: HeroVitals };
+
+const vitalsOf = (battle: Battle): HeroVitals => ({
+  hp: battle.hero.hp,
+  maxHp: battle.hero.maxHp,
+  momentum: battle.hero.momentum,
+});
 
 /** Égide (`aegis`), sauvegardée avant #105, est relue comme Protection. */
 const protection = (family: BlessingFamily): BlessingFamily =>
@@ -154,7 +172,7 @@ export class AscentSession {
    */
   private shardsWritable = true;
 
-  constructor(private readonly dependencies: BattleSessionDependencies) {}
+  constructor(private readonly dependencies: AscentSessionDependencies) {}
 
   /**
    * L'ascension en cours sauvegardée, `null` s'il n'y en a pas (une valeur illisible est effacée),
@@ -167,6 +185,8 @@ export class AscentSession {
     if (saved === null && raw !== null) await keyValueStore.remove(ASCENT_KEY).catch(() => null);
     this.ascent = saved?.ascent ?? null;
     this.battle = saved?.battle ?? null;
+    // Le journal reprend avec l'ascension (#196) ; une lecture qui échoue ne la bloque jamais.
+    if (this.ascent !== null) await this.dependencies.ascentLog?.resume(this.ascent);
     await this.loadShards();
     if (this.ascent !== null) {
       this.shards = creditShards(this.shards, this.ascent.seed, this.ascent.shardAwards);
@@ -206,49 +226,51 @@ export class AscentSession {
    * bénédictions.
    */
   begin(launch: AscentLaunch = {}): Ascent {
-    return this.update(startAscent(this.dependencies.seeds.next(), launch), null);
+    const ascent = startAscent(this.dependencies.seeds.next(), launch);
+    this.dependencies.ascentLog?.begin(ascent);
+    return this.update(ascent, null);
   }
 
   chooseBlessing(index: number): void {
     if (this.ascent === null) return;
-    this.update(chooseBlessing(this.ascent, index), this.battle);
+    this.update(chooseBlessing(this.ascent, index), this.battle, { kind: 'blessingChosen' });
   }
 
   equipItem(): void {
     if (this.ascent === null) return;
-    this.update(equipItem(this.ascent), this.battle);
+    this.update(equipItem(this.ascent), this.battle, { kind: 'itemEquipped' });
   }
 
   leaveItem(): void {
     if (this.ascent === null) return;
-    this.update(leaveItem(this.ascent), this.battle);
+    this.update(leaveItem(this.ascent), this.battle, { kind: 'itemLeft' });
   }
 
   chooseBoon(index: number): void {
     if (this.ascent === null) return;
-    this.update(chooseBoon(this.ascent, index), null);
+    this.update(chooseBoon(this.ascent, index), null, { kind: 'boonChosen' });
   }
 
   chooseExit(index: number): void {
     if (this.ascent === null) return;
-    this.update(chooseExit(this.ascent, index), null);
+    this.update(chooseExit(this.ascent, index), null, { kind: 'exitChosen' });
   }
 
   abandon(): void {
     if (this.ascent === null) return;
-    this.update(abandonAscent(this.ascent), null);
+    this.update(abandonAscent(this.ascent), null, { kind: 'abandoned' });
   }
 
   /** L'écran du boss vaincu est passé : l'écran de transition vers le palier suivant (#38). */
   acknowledgeBossVictory(): void {
     if (this.ascent === null) return;
-    this.update(acknowledgeBossVictory(this.ascent), null);
+    this.update(acknowledgeBossVictory(this.ascent), null, { kind: 'bossAcknowledged' });
   }
 
   /** L'écran de transition est passé : l'étage 1 du palier suivant (#38). */
   enterNextTier(): void {
     if (this.ascent === null) return;
-    this.update(enterNextTier(this.ascent), null);
+    this.update(enterNextTier(this.ascent), null, { kind: 'tierEntered' });
   }
 
   /** Un combat est à reprendre : sa reprise commence par le compte à rebours (P32). */
@@ -280,7 +302,7 @@ export class AscentSession {
           return { battle: resumeBattle(this.battle, options.at), events: [] };
         const ascent = this.ascent!;
         const encounter = ascent.encounter!;
-        return startBattle({
+        const started = startBattle({
           ...options,
           seed: encounter.battleSeed,
           hero: ascent.hero.kind,
@@ -302,6 +324,14 @@ export class AscentSession {
           // L'ordre d'action par Initiative (P13, P14), ajouté par #90.
           initiative: true,
         });
+        // Un combat neuf (pas une reprise) : les PV et l'Élan de départ, pour le journal (#196).
+        this.dependencies.ascentLog?.record({
+          kind: 'battleStarted',
+          hero: vitalsOf(started.battle),
+          before: ascent,
+          after: ascent,
+        });
+        return started;
       },
     });
     session.subscribe(({ battle, events }) => this.onBattle(battle, events));
@@ -316,6 +346,7 @@ export class AscentSession {
     const ended = battle.phase.kind === 'over' ? battle.phase.outcome : null;
     if (ended !== null) {
       const next = endFloorBattle(this.ascent, { outcome: ended, heroHp: battle.hero.hp });
+      const cause: Cause = { kind: 'battleEnded', hero: vitalsOf(battle) };
       const credited = creditShards(this.shards, next.seed, next.shardAwards);
       const waits: Promise<void>[] = [];
       // Les Éclats sont écrits avant l'écran qui suit la victoire (ADR 0012).
@@ -335,13 +366,13 @@ export class AscentSession {
         this.summonFellAt = null;
       }
       if (waits.length === 0) {
-        this.update(next, null);
+        this.update(next, null, cause);
         return;
       }
       this.settling = true;
       void Promise.all(waits).then(() => {
         this.settling = false;
-        this.update(next, null);
+        this.update(next, null, cause);
       });
       return;
     }
@@ -390,7 +421,12 @@ export class AscentSession {
     return this.writing;
   }
 
-  private update(ascent: Ascent, battle: Battle | null): Ascent {
+  private update(ascent: Ascent, battle: Battle | null, cause?: Cause): Ascent {
+    const before = this.ascent;
+    // Le journal enregistre la transition avant la sauvegarde (#196).
+    if (cause !== undefined && before !== null) {
+      this.dependencies.ascentLog?.record({ ...cause, before, after: ascent });
+    }
     this.ascent = ascent;
     this.battle = battle;
     this.save();
@@ -412,6 +448,9 @@ export class AscentSession {
             );
     // Un échec d'écriture n'arrête pas l'ascension : la suivante réessaie.
     this.writing = this.writing.then(write).catch(() => undefined);
+    // Le journal s'écrit juste après, par sa propre file, s'il a changé : il n'attend jamais la
+    // sauvegarde (#196). Pendant un combat, seul son début (PV et Élan d'entrée) le change.
+    this.dependencies.ascentLog?.flush();
   }
 
   private publish(): void {
