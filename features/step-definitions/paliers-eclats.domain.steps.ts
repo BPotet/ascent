@@ -15,7 +15,7 @@ import {
   type Ascent,
   type AscentLaunch,
 } from '../../src/domain/ascent/Ascent';
-import { BOON_KINDS } from '../../src/domain/ascent/boons';
+import { BASE_BOON_KINDS } from '../../src/domain/ascent/boons';
 import { drawElite } from '../../src/domain/ascent/elites';
 import { drawGroup, drawGroupSize } from '../../src/domain/ascent/enemyGroup';
 import { bossGold, drawBoss, drawCombatGold, eliteGold } from '../../src/domain/ascent/rewards';
@@ -625,7 +625,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   given(/^un héros qui possède (5 des 7|les 7) bienfaits$/u, (owned: string) => {
     const ascent = startAscent(3);
-    const boons = owned === 'les 7' ? BOON_KINDS : BOON_KINDS.slice(0, 5);
+    const boons = owned === 'les 7' ? BASE_BOON_KINDS : BASE_BOON_KINDS.slice(0, 5);
     world.before = { ...ascent, hero: { ...ascent.hero, boons } };
   });
 
@@ -635,7 +635,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   then(/^l'offre propose les (\d+) bienfaits restants$/u, (count: string) => {
     expect(world.ascent.boonOffer).toHaveLength(Number(count));
-    expect([...world.ascent.boonOffer!].sort()).toEqual([...BOON_KINDS.slice(5)].sort());
+    expect([...world.ascent.boonOffer!].sort()).toEqual([...BASE_BOON_KINDS.slice(5)].sort());
   });
 
   then(/^aucun écran de bienfait ne s'affiche et l'ascension continue$/u, () => {
