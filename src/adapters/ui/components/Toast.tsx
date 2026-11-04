@@ -88,9 +88,10 @@ export function Toast({
         aboveButton && styles.aboveButton,
         variant === 'goal' && styles.goal,
         variant === 'soft' && styles.soft,
+        variant === 'done' && styles.done,
       ]}
     >
-      {variant !== 'soft' && (
+      {variant !== 'soft' && variant !== 'done' && (
         <View style={[styles.shade, { backgroundColor: dark ? roles.ink : roles.parchment }]} />
       )}
       {variant === 'goal' && (
@@ -100,6 +101,9 @@ export function Toast({
           secondColor={roles.parchment}
           testID="toast-goal-icon"
         />
+      )}
+      {variant === 'done' && (
+        <PixelIcon name="check8" color={roles.done} testID="toast-done-icon" />
       )}
       {target === undefined ? (
         <Text style={[pixelTypography.notice, styles.text, dark && styles.onDark]}>{message}</Text>
@@ -154,6 +158,7 @@ const styles = StyleSheet.create({
     backgroundColor: roles.goldMessageBg,
   },
   soft: { borderColor: roles.line, backgroundColor: roles.raised },
+  done: { borderColor: roles.doneLine, backgroundColor: roles.doneBg },
   onDark: { color: roles.light },
   goalTitle: { ...pixelTypography.counterUnit, color: roles.gold },
   softTitle: { fontFamily: textFont.bold },

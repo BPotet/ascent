@@ -14,7 +14,10 @@ import {
   SHARD_TOTAL_KEY,
 } from '../../../application/useCases/AscentSession';
 import { BATTLE_HINT_SEEN_KEYS } from '../../../application/useCases/battleHints';
+import { CAMP_KEY, CampSession } from '../../../application/useCases/CampSession';
 import type { Ascent } from '../../../domain/ascent/Ascent';
+import { serializeCamp, unlockPrice } from '../../../domain/ascent/camp';
+import type { Unlock } from '../../../domain/ascent/unlocks';
 import type { Battle } from '../../../domain/battle/Battle';
 import { Day } from '../../../domain/day/Day';
 import type { Dependencies } from '../state/Dependencies';
@@ -26,6 +29,7 @@ export function ascentSetUp({
   saved,
   shards,
   battle,
+  unlocks,
 }: {
   seed?: number;
   saved?: Ascent;
@@ -33,6 +37,8 @@ export function ascentSetUp({
   battle?: Battle;
   /** Le Total d'Éclats déjà stocké (#38) ; absent, aucun. */
   shards?: number;
+  /** Les Déblocages déjà achetés au camp (#40), à leur Prix de déblocage ; absent, aucun. */
+  unlocks?: readonly Unlock[];
 } = {}) {
   const keyValueStore = memoryKeyValueStore();
   if (shards !== undefined) {
@@ -49,6 +55,12 @@ export function ascentSetUp({
       JSON.stringify({ version: 1, ascent: saved, battle: battle ?? null }),
     );
   }
+  if (unlocks !== undefined) {
+    keyValueStore.values.set(
+      CAMP_KEY,
+      serializeCamp({ unlocks: unlocks.map((unlock) => ({ unlock, price: unlockPrice(unlock) })) }),
+    );
+  }
   const clock = new ManualBattleClock(10_000);
   const session = new AscentSession({
     clock,
@@ -57,11 +69,19 @@ export function ascentSetUp({
     haptics: silentBattleHaptics(),
     keyValueStore,
   });
+  const campSound = silentBattleSound();
+  const campHaptics = silentHaptics();
+  const camp = new CampSession({
+    keyValueStore,
+    ascentSession: session,
+    sound: campSound,
+    haptics: campHaptics,
+  });
   const dependencies: Dependencies = {
     clock: settableClock(Day.of(2026, 10, 27)),
     unitOfWork: new InMemoryUnitOfWork(),
     keyValueStore,
     haptics: silentHaptics(),
   };
-  return { keyValueStore, clock, session, dependencies };
+  return { keyValueStore, clock, session, camp, campSound, campHaptics, dependencies };
 }

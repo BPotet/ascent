@@ -323,6 +323,17 @@ const DRAWN = {
     '.....XX.....',
     '............',
   ],
+  // La petite flamme de « Le camp » (#40), son cœur en `Y` (maquette 40, `flame8`).
+  flame8: [
+    '...X....',
+    '..XX.X..',
+    '..XXYX..',
+    '.XXYYX..',
+    '.XYYYXX.',
+    '.XYYYYX.',
+    '..XXXX..',
+    '........',
+  ],
   // L'Or (#38) : une pièce, son reflet en `Y` (maquette 30, icône `coin`).
   coin8: [
     '..XXXX..',

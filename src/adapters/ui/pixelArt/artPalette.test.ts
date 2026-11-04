@@ -159,6 +159,9 @@ describe('artPalette', () => {
 
   it('gives the darker background of a chip in a frame, from the mockup #153 (#159)', () => {
     expect(roles.sunken).toBe('#141829');
+    // La braise de « Le camp » (#40) : une teinte déjà connue, aucune couleur nouvelle.
+    expect(roles.ember).toBe('#D9733A');
+    expect(tints).toContain(roles.ember);
   });
 
   it.each([
