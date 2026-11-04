@@ -1,4 +1,4 @@
-import { Redirect, router } from 'expo-router';
+import { Redirect, router, useIsFocused } from 'expo-router';
 
 import { currentBuildChannel } from '../../adapters/device/build/buildChannel';
 import { TowerFootScreen } from '../../adapters/ui/screens/TowerFootScreen';
@@ -7,11 +7,13 @@ import { ascentLogFeature, sharedAscentSession } from '../ascent';
 
 function TowerFoot() {
   const { keyValueStore, clock } = useDependencies();
+  const focused = useIsFocused();
   return (
     <TowerFootScreen
       session={sharedAscentSession(keyValueStore, clock)}
       onEnter={() => router.push('/ascent')}
       logExport={ascentLogFeature(keyValueStore, clock)?.logExport}
+      focused={focused}
     />
   );
 }
