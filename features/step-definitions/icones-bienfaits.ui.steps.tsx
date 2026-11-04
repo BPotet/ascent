@@ -119,22 +119,24 @@ function between(boons: readonly BoonKind[]): Ascent {
   };
 }
 
-/** La constante `ICONS` de la maquette validée. */
-/** L'icône de Veillée d'hiver (#195), proposition 1 validée, dans la maquette du camp. */
-function campWinterVigilIcon(): AssetImage {
-  const html = readFileSync(CAMP_MOCKUP, 'utf8');
+/** La constante `ICONS` d'une maquette validée (`file`). */
+function iconsOf<Icon>(file: string): Readonly<Record<string, Icon>> {
+  const html = readFileSync(file, 'utf8');
   const json = /const ICONS=(\{.*?\});\n/.exec(html)?.[1];
-  if (json === undefined) throw new Error('The camp mockup has no ICONS');
-  const icons = JSON.parse(json) as Record<string, { readonly proposals: readonly AssetImage[] }>;
-  const { w, h, palette, rows } = icons.winterVigil!.proposals[0]!;
-  return { w, h, palette, rows };
+  if (json === undefined) throw new Error(`The mockup ${file} has no ICONS`);
+  return JSON.parse(json) as Record<string, Icon>;
 }
 
+/** La constante `ICONS` de la maquette validée. */
 function mockupIcons(): Readonly<Record<string, AssetImage>> {
-  const html = readFileSync(MOCKUP, 'utf8');
-  const json = /const ICONS=(\{.*?\});\n/.exec(html)?.[1];
-  if (json === undefined) throw new Error('The mockup has no ICONS');
-  return JSON.parse(json) as Record<string, AssetImage>;
+  return iconsOf<AssetImage>(MOCKUP);
+}
+
+/** L'icône de Veillée d'hiver (#195), proposition 1 validée, dans la maquette du camp. */
+function campWinterVigilIcon(): AssetImage {
+  const icons = iconsOf<{ readonly proposals: readonly AssetImage[] }>(CAMP_MOCKUP);
+  const { w, h, palette, rows } = icons.winterVigil!.proposals[0]!;
+  return { w, h, palette, rows };
 }
 
 const steps: StepDefinitions = ({ given, when, then, and }) => {
