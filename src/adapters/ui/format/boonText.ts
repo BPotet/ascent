@@ -10,6 +10,7 @@ export const BOON_NAMES: Readonly<Record<BoonKind, string>> = {
   trueEdge: 'Lame juste',
   blazingEmber: 'Braise ardente',
   lingeringFrost: 'Givre persistant',
+  winterVigil: "Veillée d'hiver",
   emberHeart: 'Cœur de braise',
 };
 
@@ -20,6 +21,8 @@ const BOON_EFFECTS: Readonly<Record<BoonKind, string>> = {
   trueEdge: 'Ta frappe parfaite multiplie les dégâts par 2 au lieu de 1,5.',
   blazingEmber: 'Un ennemi étourdi subit ×2 au lieu de ×1,5.',
   lingeringFrost: 'Un ennemi étourdi se relève avec la moitié de sa garde seulement.',
+  winterVigil:
+    'Réduction des dégâts +10 points (40 % au plus) et +1 Élan au début de chaque combat.',
   emberHeart: 'Chaque garde que tu brises : +1 Élan et 5 PV rendus.',
 };
 

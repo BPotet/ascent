@@ -1,6 +1,8 @@
-import { seedRandom } from '../battle/SeededRandom';
+import { nextRandom, seedRandom, type RandomState } from '../battle/SeededRandom';
 import {
+  EPIC_ITEM_CHANCE,
   ITEMS,
+  UNLOCKABLE_ITEMS,
   STARTING_EQUIPMENT,
   drawItem,
   drawLoot,
@@ -39,7 +41,9 @@ describe('the item draw (P20)', () => {
     expect(rareShare(draws(0, false))).toBeCloseTo(0.3, 1);
     expect(rareShare(draws(2, false))).toBeCloseTo(0.4, 1);
     expect(rareShare(draws(-2, false))).toBeCloseTo(0.2, 1);
-    expect(new Set(draws(0, false))).toEqual(new Set(Object.keys(ITEMS)));
+    expect(new Set(draws(0, false))).toEqual(
+      new Set(Object.keys(ITEMS).filter((item) => !UNLOCKABLE_ITEMS.includes(item as ItemKind))),
+    );
   });
 
   it('never draws an item already worn', () => {
@@ -70,7 +74,7 @@ describe('the item draw (P20)', () => {
     const commonWeapons = (Object.keys(ITEMS) as ItemKind[]).filter(
       (item) => ITEMS[item].slot === 'weapon' && ITEMS[item].rarity === 'common',
     );
-    expect(commonWeapons).toEqual(['axe']);
+    expect(commonWeapons).toEqual(['axe', 'huntingSpear']);
   });
 
   it('never draws the Hammer when worn', () => {
@@ -169,5 +173,147 @@ describe('equipment (P21)', () => {
       attackFlat: 0,
       initiative: -1,
     });
+  });
+});
+
+describe('the unlockable items (#195)', () => {
+  /** Un état du flux dont le prochain tirage, × 100, est dans [`from`, `to`). */
+  const stateWith = (from: number, to: number, skip = 0): RandomState => {
+    let found = 0;
+    for (let state = 0; ; state += 1) {
+      const percent = nextRandom(state).value * 100;
+      if (percent >= from && percent < to && (found += 1) > skip) return state;
+    }
+  };
+  const states = (from: number, to: number) =>
+    Array.from({ length: 200 }, (_, index) => stateWith(from, to, index));
+  const draws = (
+    gauge: -2 | 0 | 2,
+    elite: boolean,
+    unlocked: readonly ItemKind[],
+    equipment = STARTING_EQUIPMENT,
+    randoms: readonly RandomState[] = SEEDS.map(seedRandom),
+  ) => randoms.map((random) => drawItem(gauge, elite, equipment, random, unlocked).value);
+  const ALL = UNLOCKABLE_ITEMS;
+
+  it('gives the 3 items of the Codex their values', () => {
+    expect(UNLOCKABLE_ITEMS).toEqual(['huntingSpear', 'watchBell', 'flamberge']);
+    expect(ITEMS.huntingSpear).toEqual({
+      slot: 'weapon',
+      rarity: 'common',
+      initiative: 0,
+      effects: { attackBonusPercent: 10 },
+    });
+    expect(ITEMS.watchBell).toEqual({
+      slot: 'accessory',
+      rarity: 'rare',
+      initiative: 0,
+      effects: { counterPercents: [130] },
+    });
+    expect(ITEMS.flamberge).toEqual({
+      slot: 'weapon',
+      rarity: 'epic',
+      initiative: 0,
+      effects: { attackBonusPercent: 10, perfectStrikeBonusPercents: [30] },
+    });
+    expect(Object.keys(ITEMS).slice(-3)).toEqual(['huntingSpear', 'watchBell', 'flamberge']);
+    expect(EPIC_ITEM_CHANCE).toBe(20);
+  });
+
+  it('never drops an unlockable item without its Unlock', () => {
+    for (const gauge of [-2, 0, 2] as const) {
+      for (const elite of [true, false]) {
+        draws(gauge, elite, []).forEach((item) => expect(ALL).not.toContain(item));
+      }
+    }
+  });
+
+  it('draws the Hunting spear on par with the Commons once unlocked', () => {
+    const commons = draws(-2, false, ['huntingSpear']).filter(
+      (item) => ITEMS[item].rarity === 'common',
+    );
+    expect(new Set(commons)).toEqual(new Set(['axe', 'leather', 'chainmail', 'huntingSpear']));
+    const share = commons.filter((item) => item === 'huntingSpear').length / commons.length;
+    expect(share).toBeCloseTo(0.25, 1);
+  });
+
+  it('draws the Watch bell on par with the other Rares once unlocked', () => {
+    const rares = draws(0, true, ['watchBell'], STARTING_EQUIPMENT, states(20, 100));
+    const kinds = [...new Set(rares)];
+    expect(kinds).toHaveLength(6);
+    for (const kind of kinds) {
+      expect(rares.filter((item) => item === kind).length / rares.length).toBeCloseTo(1 / 6, 1);
+    }
+  });
+
+  it('draws the Watch bell among the Rares once unlocked, never when worn', () => {
+    expect(new Set(draws(0, true, ['watchBell']))).toContain('watchBell');
+    const worn = { ...STARTING_EQUIPMENT, accessory: 'watchBell' } as const;
+    expect(draws(0, true, ['watchBell'], worn)).not.toContain('watchBell');
+  });
+
+  it('gives the Flamberge, Epic, at an Elite when the rarity draw is under 20 %', () => {
+    expect(new Set(draws(0, true, ['flamberge'], STARTING_EQUIPMENT, states(0, 20)))).toEqual(
+      new Set(['flamberge']),
+    );
+  });
+
+  it('keeps the Rare at an Elite when the rarity draw is at 20 % or more', () => {
+    const items = draws(0, true, ['flamberge'], STARTING_EQUIPMENT, states(20, 100));
+    expect(new Set(items.map((item) => ITEMS[item].rarity))).toEqual(new Set(['rare']));
+  });
+
+  it('never shifts the 20 % with the gauge, full Favor included', () => {
+    expect(draws(2, true, ['flamberge'], STARTING_EQUIPMENT, states(20, 30))).not.toContain(
+      'flamberge',
+    );
+    expect(new Set(draws(-2, true, ['flamberge'], STARTING_EQUIPMENT, states(0, 20)))).toEqual(
+      new Set(['flamberge']),
+    );
+  });
+
+  it('never gives the Flamberge after an ordinary battle, whatever the gauge', () => {
+    for (const gauge of [-2, 0, 2] as const) {
+      expect(draws(gauge, false, ALL, STARTING_EQUIPMENT, states(0, 20))).not.toContain(
+        'flamberge',
+      );
+      expect(draws(gauge, false, ALL)).not.toContain('flamberge');
+    }
+  });
+
+  it('gives a Rare, never the Flamberge, to a hero who wears it', () => {
+    const worn = { ...STARTING_EQUIPMENT, weapon: 'flamberge' } as const;
+    const items = draws(0, true, ['flamberge'], worn, states(0, 20));
+    expect(new Set(items.map((item) => ITEMS[item].rarity))).toEqual(new Set(['rare']));
+  });
+
+  it('makes no extra draw with the Unlocks: the same stream comes out', () => {
+    for (const elite of [true, false]) {
+      SEEDS.forEach((seed) => {
+        const without = drawItem(0, elite, STARTING_EQUIPMENT, seedRandom(seed));
+        const withAll = drawItem(0, elite, STARTING_EQUIPMENT, seedRandom(seed), ALL);
+        expect(withAll.random).toBe(without.random);
+      });
+    }
+    SEEDS.forEach((seed) => {
+      const encounter = { kind: 'elite', enemies: ['twins'] } as const;
+      expect(drawLoot(encounter, 0, STARTING_EQUIPMENT, seedRandom(seed), ALL).random).toBe(
+        drawLoot(encounter, 0, STARTING_EQUIPMENT, seedRandom(seed)).random,
+      );
+    });
+  });
+
+  it('passes the Unlocks to the loot of an ordinary battle', () => {
+    const found = SEEDS.map(
+      (seed) =>
+        drawLoot(
+          { kind: 'combat', enemies: ['ghoul', 'ghoul', 'ghoul'] },
+          0,
+          STARTING_EQUIPMENT,
+          seedRandom(seed),
+          ['huntingSpear'],
+        ).value,
+    );
+    expect(found).toContain('huntingSpear');
   });
 });

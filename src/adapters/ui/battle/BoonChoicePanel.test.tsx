@@ -87,6 +87,30 @@ describe('BoonChoicePanel', () => {
       expect(wells.map(({ scale }) => scale)).toEqual([3, 2, 2]);
     });
 
+    it("shows Veillée d'hiver in an Epic well, like Cœur de braise (#195)", async () => {
+      await render(
+        <BoonChoicePanel
+          offer={['perfectEcho', 'winterVigil', 'emberHeart']}
+          onChoose={jest.fn()}
+        />,
+      );
+
+      const wells = screen.getAllByRole('radio').map(wellOf);
+      expect(wells.map(({ sprite }) => sprite)).toEqual([
+        'boon-icon:perfectEcho',
+        'boon-icon:winterVigil',
+        'boon-icon:emberHeart',
+      ]);
+      expect(wells.map(({ style }) => style.borderColor)).toEqual([
+        roles.rarityCommon,
+        roles.rarityEpic,
+        roles.rarityEpic,
+      ]);
+      expect(
+        screen.getByRole('radio', { name: /^Veillée d'hiver, Givre, Épique\. / }),
+      ).toBeOnTheScreen();
+    });
+
     it('keeps, in this order, the rarity tag, the name and the effect of a card', async () => {
       await render(<BoonChoicePanel offer={OFFER} onChoose={jest.fn()} />);
 

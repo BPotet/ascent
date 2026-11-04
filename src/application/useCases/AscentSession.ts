@@ -106,7 +106,8 @@ function parse(raw: string | null): SavedAscent | null {
     if (saved?.version !== SAVE_VERSION || typeof saved.ascent?.floor !== 'number') return null;
     // Une ascension sauvegardée avant #93 : Neutre, sans bénédiction, avec l'équipement de base ;
     // avant #92 : la Sentinelle, sans bienfait ni offre ; avant #105 : Égide au lieu de Protection ;
-    // avant #38 : au palier 1, sans Éclat ni Passage de palier.
+    // avant #38 : au palier 1, sans Éclat ni Passage de palier ; avant #195 : sans Déblocage, et
+    // Cœur de braise pas encore proposé.
     const stored: Partial<Ascent> = saved.ascent;
     const storedHero: Partial<Ascent['hero']> = saved.ascent.hero;
     const ascent = {
@@ -121,6 +122,8 @@ function parse(raw: string | null): SavedAscent | null {
       tier: 1,
       shardAwards: [],
       passage: null,
+      unlocks: [],
+      emberHeartOffered: false,
       ...stored,
       hero: { kind: 'sentinel', boons: [], ...storedHero },
     } as Ascent;
