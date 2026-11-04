@@ -23,15 +23,31 @@ export interface AscentLogExportView {
 /**
  * L'état du bouton « Exporter le journal » et de sa ligne (#196) : le statut, relu à chaque
  * changement de `revision` (l'ascension) et après chaque export ; l'export en cours ; l'erreur,
- * effacée au prochain succès ; les journaux ignorés, annoncés poliment au retour du menu.
+ * effacée au prochain succès ; les journaux ignorés, annoncés une fois au retour du menu. Quand
+ * l'écran n'est plus affiché (`active` faux), l'erreur et les journaux ignorés sont effacés ; à son
+ * retour, le statut est relu.
  */
-export function useAscentLogExport(logExport: LogExport, revision: unknown): AscentLogExportView {
+export function useAscentLogExport(
+  logExport: LogExport,
+  revision: unknown,
+  active = true,
+): AscentLogExportView {
   const [status, setStatus] = useState<AscentLogStatus | null>(null);
   const [exporting, setExporting] = useState(false);
   const [preparing, setPreparing] = useState(false);
   const [failed, setFailed] = useState(false);
   const [ignored, setIgnored] = useState(0);
+  const [wasActive, setWasActive] = useState(active);
   const mounted = useRef(true);
+
+  // L'écran quitté : l'erreur et les journaux ignorés sont effacés.
+  if (active !== wasActive) {
+    setWasActive(active);
+    if (!active) {
+      setFailed(false);
+      setIgnored(0);
+    }
+  }
   const busy = useRef(false);
 
   const refresh = useCallback(() => {
@@ -45,11 +61,11 @@ export function useAscentLogExport(logExport: LogExport, revision: unknown): Asc
 
   useEffect(() => {
     mounted.current = true;
-    refresh();
+    if (active) refresh();
     return () => {
       mounted.current = false;
     };
-  }, [refresh, revision]);
+  }, [refresh, revision, active]);
 
   const onExport = useCallback(() => {
     if (busy.current) return;

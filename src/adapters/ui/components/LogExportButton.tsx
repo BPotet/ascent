@@ -53,7 +53,7 @@ function Line({
       accessibilityLabel={text}
       accessibilityElementsHidden={hidden}
       importantForAccessibility={hidden ? 'no-hide-descendants' : 'yes'}
-      accessibilityLiveRegion={role === 'alert' ? 'assertive' : mark ? 'polite' : 'none'}
+      accessibilityLiveRegion={role === 'alert' ? 'assertive' : 'none'}
       style={styles.line}
     >
       {mark ? <PixelRows rows={MARK_ICON} color={color} /> : null}
@@ -73,15 +73,19 @@ export function LogExportButton({
   logExport,
   revision,
   showCount,
+  active = true,
 }: {
   readonly logExport: LogExport;
   /** Change avec l'ascension : le statut est relu. */
   readonly revision?: unknown;
   readonly showCount: boolean;
+  /** L'écran est affiché ; faux, l'erreur et les journaux ignorés sont effacés. */
+  readonly active?: boolean;
 }) {
   const { status, exporting, preparing, failed, ignored, onExport } = useAscentLogExport(
     logExport,
     revision,
+    active,
   );
   const empty = status?.count === 0;
   const disabled = empty || exporting;

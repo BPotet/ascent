@@ -154,9 +154,12 @@ export function TowerFootScreen({
   session,
   onEnter,
   logExport,
+  focused = true,
 }: {
   readonly session: AscentSession;
   readonly onEnter: () => void;
+  /** L'onglet Tour est affiché ; il reste monté quand on le quitte. */
+  readonly focused?: boolean;
   /** L'Export du journal (#196), build de preview seulement ; absent, aucun bouton. */
   readonly logExport?: LogExport | undefined;
 }) {
@@ -179,7 +182,7 @@ export function TowerFootScreen({
   const foot =
     !loaded || logExport === undefined ? null : (
       <View style={styles.foot}>
-        <LogExportButton logExport={logExport} revision={ascent} showCount />
+        <LogExportButton logExport={logExport} revision={ascent} showCount active={focused} />
       </View>
     );
   const start = (reading: FateGaugeReading, hero: HeroKind) => {

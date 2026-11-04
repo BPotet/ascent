@@ -120,6 +120,29 @@ describe('TowerFootScreen with the log export', () => {
     expect(screen.queryByRole('alert')).not.toBeOnTheScreen();
   });
 
+  it('clears the red error line when leaving the tower foot, and reads the status again on return', async () => {
+    const { logExport, willExport, setStatus } = fakeLogExport();
+    willExport(() => Promise.reject(new Error('No share menu')));
+    const setUp = ascentSetUp({ saved: startAscent(3) });
+    const element = (focused: boolean) => (
+      <TowerFootScreen
+        session={setUp.session}
+        onEnter={jest.fn()}
+        logExport={logExport}
+        focused={focused}
+      />
+    );
+    await renderScreen(element(true), setUp.dependencies);
+    await countLine('7 ascensions');
+    await fireEvent.press(button());
+    expect(await screen.findByRole('alert')).toBeOnTheScreen();
+    await screen.rerender(element(false));
+    expect(screen.queryByRole('alert')).not.toBeOnTheScreen();
+    setStatus({ count: 8, inProgress: false });
+    await screen.rerender(element(true));
+    expect(await countLine('8 ascensions')).toBeOnTheScreen();
+  });
+
   it('shows the gold line for the unreadable logs left out, announced politely (P4)', async () => {
     const { logExport, willExport } = fakeLogExport();
     willExport(async () => ({ result: 'shared', ignoredLogs: 1 }));
