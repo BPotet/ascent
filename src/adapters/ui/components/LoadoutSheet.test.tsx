@@ -47,6 +47,19 @@ describe('LoadoutSheet (#159)', () => {
     expect(focus.mock.calls[0]?.[1]).toBe('focus');
   });
 
+  it("shows Veillée d'hiver and Cœur de braise of a saved ascent in Epic wells (#195)", async () => {
+    await open({ blessings: [], boons: ['perfectEcho', 'emberHeart', 'winterVigil'] });
+
+    const boons = rows().slice(-2);
+    expect(boons.map((row) => wellOf(row).sprite)).toEqual([
+      'boon-icon:emberHeart',
+      'boon-icon:winterVigil',
+    ]);
+    boons.forEach((row) => expect(wellOf(row).style.borderColor).toBe(roles.rarityEpic));
+    expect(within(boons[1]!).getByText("Veillée d'hiver")).toBeOnTheScreen();
+    expect(within(boons[0]!).getByText('Cœur de braise')).toBeOnTheScreen();
+  });
+
   it('is not shown when closed', async () => {
     await render(
       <LoadoutSheet loadout={THREE} combat={false} visible={false} onClose={jest.fn()} />,

@@ -70,7 +70,10 @@ type LoadoutBoard =
   | 'trackPhaseTwo'
   // Le voile de phase ennemie (#188) : C1 et C3 de la maquette v2 de #174, un coup imparable.
   | 'veilTierOne'
-  | 'veilTierThree';
+  | 'veilTierThree'
+  // Veillée d'hiver et la Flamberge (#195).
+  | 'vigilBoons'
+  | 'flamberge';
 
 const LOADOUT_ENTRIES: readonly (readonly [LoadoutBoard, string])[] = [
   ['foot1', 'Équipement · 1 · pied de la tour'],
@@ -89,6 +92,8 @@ const LOADOUT_ENTRIES: readonly (readonly [LoadoutBoard, string])[] = [
   ['trackPhaseTwo', 'Frise · boss en phase 2'],
   ['veilTierOne', 'Voile · coup imparable · palier 1'],
   ['veilTierThree', 'Voile · coup imparable · palier 3'],
+  ['vigilBoons', "Choix d'un bienfait · Veillée d'hiver"],
+  ['flamberge', 'Objet trouvé · Flamberge'],
 ];
 
 // Stryker disable all: données fixes d'un outil du build de preview.
@@ -238,6 +243,11 @@ const LOADOUT_ASCENTS: Readonly<Record<LoadoutBoard, Ascent | null>> = {
   trackPhaseTwo: fight({}, 2, 'boss', ['ashGardener']),
   veilTierOne: fight({}, 1, 'combat', ['specter', 'ghoul', 'ghoul']),
   veilTierThree: fight({}, 3, 'combat', ['gargoyle', 'bellFounder', 'bronzeWarden']),
+  vigilBoons: {
+    ...between(startAscent(42), DOORS),
+    boonOffer: ['perfectEcho', 'lingeringFrost', 'winterVigil'],
+  },
+  flamberge: { ...between(startAscent(42), DOORS), foundItem: 'flamberge' },
 };
 
 /**

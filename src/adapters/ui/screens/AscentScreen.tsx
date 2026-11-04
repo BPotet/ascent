@@ -28,6 +28,7 @@ import {
   wornText,
 } from '../format/ascentText';
 import { HERO_NAMES } from '../format/battleText';
+import { rarityLine } from '../format/rarityText';
 import { artPalette } from '../pixelArt/artPalette';
 import { PixelButton } from '../pixelArt/PixelButton';
 import { PixelIcon } from '../pixelArt/PixelIcon';
@@ -510,7 +511,7 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
     ) : null;
 
   if (ascent.foundItem !== null) {
-    const { slot } = ITEMS[ascent.foundItem];
+    const { slot, rarity } = ITEMS[ascent.foundItem];
     const description = itemDescription(ascent.foundItem);
     const image = ITEM_IMAGES[ascent.foundItem];
     return (
@@ -536,6 +537,10 @@ export function AscentScreen({ session, visibility, onLeave }: AscentScreenProps
               scale={3}
               testID="item-image"
             />
+          )}
+          {rarity === 'epic' && (
+            // Un objet Épique (#195) : sa rareté en losanges et en mot, à la couleur Épique.
+            <Text style={styles.epic}>{rarityLine(rarity)}</Text>
           )}
           <Text style={styles.gold}>{itemText(ascent.foundItem)}</Text>
           {description !== null && <Text style={styles.line}>{description}</Text>}
@@ -636,6 +641,7 @@ const styles = StyleSheet.create({
   kept: { color: roles.done, flexShrink: 1 },
   lost: { color: roles.error, flexShrink: 1 },
   line: { ...pixelTypography.body, color: roles.parchment, textAlign: 'center' },
+  epic: { fontFamily: textFont.bold, fontSize: 12, lineHeight: 16, color: roles.rarityEpic },
   gold: {
     fontFamily: pixelFont,
     fontSize: 18,
