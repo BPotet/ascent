@@ -9,12 +9,15 @@ import {
   equipItem,
   leaveItem,
   lootStream,
+  rerollBoonOffer,
+  rerollStream,
   startAscent,
   type Ascent,
   type AscentLaunch,
 } from '../../domain/ascent/Ascent';
 import { boonModifiers } from '../../domain/ascent/boons';
 import { blessingModifiers, type BlessingFamily } from '../../domain/ascent/blessings';
+import { favorRerolls } from '../../domain/ascent/fateGauge';
 import { STARTING_EQUIPMENT, itemModifiers } from '../../domain/ascent/items';
 import {
   EMPTY_SHARD_TOTAL,
@@ -107,7 +110,8 @@ function parse(raw: string | null): SavedAscent | null {
     // Une ascension sauvegardée avant #93 : Neutre, sans bénédiction, avec l'équipement de base ;
     // avant #92 : la Sentinelle, sans bienfait ni offre ; avant #105 : Égide au lieu de Protection ;
     // avant #38 : au palier 1, sans Éclat ni Passage de palier ; avant #195 : sans Déblocage, et
-    // Cœur de braise pas encore proposé.
+    // Cœur de braise pas encore proposé ; avant #42 : les relances de sa jauge, comme si elles
+    // avaient été données au lancement (calculées après la fusion, sur la jauge sauvegardée).
     const stored: Partial<Ascent> = saved.ascent;
     const storedHero: Partial<Ascent['hero']> = saved.ascent.hero;
     const ascent = {
@@ -124,11 +128,14 @@ function parse(raw: string | null): SavedAscent | null {
       passage: null,
       unlocks: [],
       emberHeartOffered: false,
+      rerollRandom: rerollStream(saved.ascent.seed),
       ...stored,
       hero: { kind: 'sentinel', boons: [], ...storedHero },
     } as Ascent;
+    const rerolls = stored.rerolls ?? favorRerolls(ascent.gauge);
     const renamed: Ascent = {
       ...ascent,
+      rerolls,
       blessings: ascent.blessings.map((blessing) => ({
         ...blessing,
         family: protection(blessing.family),
@@ -249,6 +256,12 @@ export class AscentSession {
   chooseBoon(index: number): void {
     if (this.ascent === null) return;
     this.update(chooseBoon(this.ascent, index), null, { kind: 'boonChosen' });
+  }
+
+  /** Relance l'offre de bienfaits (#42) ; la sauvegarde suit : une relance faite reste faite. */
+  reroll(): void {
+    if (this.ascent === null) return;
+    this.update(rerollBoonOffer(this.ascent), null, { kind: 'boonOfferRerolled' });
   }
 
   chooseExit(index: number): void {
