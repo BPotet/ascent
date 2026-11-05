@@ -79,7 +79,11 @@ export async function savedWithLog(
   await story.logStore.save({ ...log, id: started.id });
 }
 
-/** Le combat sauvegardé, presque gagné : son premier ennemi à 1 PV (ses relèves faites), seul. */
+/**
+ * Le combat sauvegardé, presque gagné : son premier ennemi à 1 PV (ses relèves faites), seul, et la
+ * main rendue au héros, pour qu'aucune phase sauvegardée ne vise un ennemi retiré, quelle que soit
+ * la composition du groupe.
+ */
 export function nearlyWon(battle: Battle): Battle {
   const [first] = battle.enemies;
   const selfRevives = ENEMIES[first!.kind].selfRevive?.times ?? 0;
@@ -88,6 +92,9 @@ export function nearlyWon(battle: Battle): Battle {
     ...rest,
     enemies: [{ ...first!, hp: 1, ...(selfRevives > 0 && { selfRevives, raised: true }) }],
     reserve: [],
+    target: 0,
+    phase: { kind: 'hero', since: battle.now, announced: true },
+    turn: { order: ['hero', 0], position: 0 },
   };
 }
 

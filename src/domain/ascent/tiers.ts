@@ -77,11 +77,10 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
       4: [0, 2, 8, 7, 0],
       5: [0, 1, 7, 9, 0],
     },
-    // Dans l'ordre des stories : l'Embrasé (#171), puis la Phalénide (#172).
+    // Dans l'ordre des stories : l'Embrasé (#171), puis la Phalénide (#172). Ses propres ennemis
+    // seulement (`tierExclusive`, #213) : ni Goule ni Villageois fou, restés au palier 1.
     enemies: [
-      { kind: 'ghoul', weight: 3, cap: 5 },
       { kind: 'thornPilgrim', weight: 2, cap: 1 },
-      { kind: 'madVillager', weight: 2, cap: 1 },
       { kind: 'ashBramble', weight: 2, cap: 1 },
       { kind: 'ashGleaner', weight: 1, cap: 1, neverAlone: true },
       { kind: 'burningHusk', weight: 2, cap: 1 },

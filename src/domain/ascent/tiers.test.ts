@@ -55,11 +55,9 @@ describe('the tiers (#38)', () => {
     ]);
   });
 
-  it('draws the enemies of tier 2 in the order of the stories, the Ash gleaner never alone', () => {
+  it('draws only its own enemies at tier 2, in the order of the stories, the Ash gleaner never alone (#213)', () => {
     expect(TIERS[2].enemies).toEqual([
-      { kind: 'ghoul', weight: 3, cap: 5 },
       { kind: 'thornPilgrim', weight: 2, cap: 1 },
-      { kind: 'madVillager', weight: 2, cap: 1 },
       { kind: 'ashBramble', weight: 2, cap: 1 },
       { kind: 'ashGleaner', weight: 1, cap: 1, neverAlone: true },
       { kind: 'burningHusk', weight: 2, cap: 1 },
@@ -77,6 +75,12 @@ describe('the tiers (#38)', () => {
       { kind: 'bellFounder', weight: 2, cap: 1 },
       { kind: 'mothkin', weight: 3, cap: 2 },
     ]);
+  });
+
+  it('shares no enemy between the groups of tiers 1 and 2 (tierExclusive, #213)', () => {
+    const tierOne = new Set(TIERS[1].enemies.map(({ kind }) => kind));
+
+    expect(TIERS[2].enemies.filter(({ kind }) => tierOne.has(kind))).toEqual([]);
   });
 
   it('has its Elites and its bosses', () => {
