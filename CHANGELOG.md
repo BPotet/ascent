@@ -2,6 +2,15 @@
 
 Toutes les évolutions notables d'Ascent. Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/). Les versions sont calculées à partir des [Conventional Commits](https://www.conventionalcommits.org/fr/v1.0.0/).
 
+## [0.5.0] - 2026-11-05
+
+L'épique #205 « Les habitudes dans la tour, jauge et faveur », terminée : après le cadran de la jauge et les ennemis maudits arrivés en 0.4.0 (#41, #209), la Faveur donne maintenant des relances et une seconde chance.
+
+### Nouveautés pour le joueur
+
+- **Les relances de la Faveur** : les habitudes tenues la veille donnent 1 relance (Faveur) ou 2 (Faveur pleine) pour toute l'ascension. « Relancer » remplace l'offre de bienfaits après un combat par une nouvelle, sans les bienfaits écartés tant qu'il en reste d'autres ; Cœur de braise garde sa place. Les relances s'affichent au pied de la tour, dans l'ascension en cours et dans l'Équipement, et une relance faite reste faite, même après avoir fermé l'app (#42, #228).
+- **La seconde chance de la Faveur pleine** : une fois par ascension, quand un coup ennemi ferait tomber le héros, il se relève avec la moitié de ses PV dans un halo doré, sous le bandeau « Seconde chance » ; la Brûlure et le Saignement s'éteignent, l'Élan et le pouvoir actif restent. Elle s'affiche au pied de la tour, dans l'Équipement et en combat, prête ou utilisée ; une chute après qu'elle a servi le rappelle : « Ta seconde chance a déjà servi. » (#206, #229).
+
 ## [0.4.0] - 2026-11-05
 
 Les épiques #89 « Prototype d'une ascension complète, build et jauge », #102 « Le contenu de l'Atelier de l'ascension dans la tour », #136 « Les ennemis, les boss et les héroïnes animés », #153 « Les icônes des bienfaits et des bénédictions », #160 « Icône de l'application », #170 « Les paliers 2 et 3, jusqu'au sommet », #174 « Reconnaître chaque palier et chaque combattant d'un coup d'œil », #193 « Exporter le journal de mes ascensions », #194 « Le camp » et #210 « Paliers distincts », avec les premières stories des épiques #30, #88, #118 et #205.
