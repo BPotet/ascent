@@ -131,7 +131,7 @@ export function offerHeading(offer: readonly OfferCard[]): {
   }
   return {
     title: 'Choisis un bienfait',
-    sub: `Un seul des ${CARD_COUNTS[offer.length] ?? 'trois'}. Un bienfait dure jusqu'à la fin de l'ascension.`,
+    sub: `Un seul des ${CARD_COUNTS[offer.length]}. Un bienfait dure jusqu'à la fin de l'ascension.`,
   };
 }
 
