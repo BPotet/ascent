@@ -36,6 +36,7 @@ import {
   OPEN_DETAIL,
   SEALED_LINE,
   UNREADABLE_TEXT,
+  ascentFavorEffects,
   ascentGaugeAnnouncement,
   gaugeAnnouncement,
   gaugeChangedText,
@@ -156,18 +157,25 @@ function GaugeCard({
 /** La jauge de l'ascension en cours (G9) : gardée jusqu'à la fin de l'ascension. */
 function AscentGaugeCard({
   gauge,
+  rerolls,
+  secondChance,
   onOpen,
   ref,
 }: {
   readonly gauge: FateGauge;
+  /** Les relances qui restent (#42, G9). */
+  readonly rerolls: number;
+  /** La seconde chance encore là (#206, G9). */
+  readonly secondChance: boolean;
   readonly onOpen: () => void;
   readonly ref: Ref<View>;
 }) {
+  const favor = ascentFavorEffects({ gauge, rerolls, secondChance });
   return (
     <Pressable
       ref={ref}
       accessibilityRole="button"
-      accessibilityLabel={`${ascentGaugeAnnouncement(gauge)} ${OPEN_DETAIL}`}
+      accessibilityLabel={`${ascentGaugeAnnouncement(gauge, rerolls, secondChance)} ${OPEN_DETAIL}`}
       onPress={onOpen}
       testID="ascent-gauge-card"
       style={styles.ascentGauge}
@@ -175,6 +183,7 @@ function AscentGaugeCard({
       <GaugeHead title={ASCENT_GAUGE_TITLE} />
       <GaugeDial gauge={gauge} small />
       <Text style={styles.gaugeSoft}>{ASCENT_KEEPS_GAUGE}</Text>
+      {favor.length > 0 && <GaugeEffectList effects={favor} />}
     </Pressable>
   );
 }
@@ -283,6 +292,8 @@ function AscentInProgress({
             <AscentGaugeCard
               ref={gaugeCard}
               gauge={ascent.gauge}
+              rerolls={ascent.rerolls}
+              secondChance={ascent.secondChance}
               onOpen={() => setGaugeDetail(true)}
             />
             <LoadoutSection ref={link} loadout={loadout} onDetail={() => setDetail(true)} />

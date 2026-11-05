@@ -1,5 +1,6 @@
 import type { StartingBlessing } from '../../../domain/ascent/blessings';
-import { loadoutSize, type Loadout } from '../../../domain/ascent/loadout';
+import { loadoutSize, type Loadout, type LoadoutFavor } from '../../../domain/ascent/loadout';
+import type { IconName } from '../pixelArt/sprites/icons';
 import { rarityMarks, rarityName } from './rarityText';
 
 /** Les textes de l'Équipement (`Loadout`, #159), tirés de la maquette #153. */
@@ -43,4 +44,61 @@ export function loadoutTitle(count: number): string {
 /** La ligne de rareté d'une bénédiction dans la feuille : « ◆◆ Bénédiction · Rare ». */
 export function blessingTag({ rarity }: StartingBlessing): string {
   return `${rarityMarks(rarity)} Bénédiction · ${rarityName(rarity, 'feminine')}`;
+}
+
+/** La section de la faveur de l'ascension (#42, E1), en tête de la feuille. */
+export const FAVOR_TITLE = "Faveur de l'ascension";
+
+/** L'en-tête lu de la section : « Faveur de l'ascension, plus 2 ». */
+export function favorHeadingLabel({ gauge }: LoadoutFavor): string {
+  return `${FAVOR_TITLE}, plus ${gauge}`;
+}
+
+/** Une ligne de la faveur : son glyphe, ce qu'elle fait, son état, grise quand elle a servi. */
+export interface FavorRowText {
+  readonly key: 'rerolls' | 'secondChance';
+  readonly glyph: IconName;
+  readonly name: string;
+  readonly effect: string;
+  readonly state: string;
+  readonly used: boolean;
+  readonly label: string;
+}
+
+function favorRow(row: Omit<FavorRowText, 'label'>): FavorRowText {
+  return { ...row, label: `${row.name}, ${row.state}. ${row.effect}` };
+}
+
+/**
+ * Les lignes de la faveur (E1) : les relances et ce qui en reste (« 1 sur 2 », #42), puis, à +2, la
+ * seconde chance, « Prête » ou « Utilisée » (#206).
+ */
+export function favorRows({
+  rerollsLeft,
+  rerollsGranted,
+  secondChance,
+}: LoadoutFavor): FavorRowText[] {
+  const rows = [
+    favorRow({
+      key: 'rerolls',
+      glyph: 'reroll',
+      name: 'Relances',
+      effect: "Redonnent l'offre de bienfaits.",
+      state: `${rerollsLeft} sur ${rerollsGranted}`,
+      used: rerollsLeft === 0,
+    }),
+  ];
+  if (secondChance !== undefined) {
+    rows.push(
+      favorRow({
+        key: 'secondChance',
+        glyph: 'secondChance',
+        name: 'Seconde chance',
+        effect: 'À 0 PV, relève une fois avec 50 % des PV max.',
+        state: secondChance === 'ready' ? 'Prête' : 'Utilisée',
+        used: secondChance === 'used',
+      }),
+    );
+  }
+  return rows;
 }

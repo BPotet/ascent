@@ -380,13 +380,16 @@ export function battleView(battle: Battle): BattleView {
       // phase ennemie (C5.4).
       if (!inEnemyPhase) return { ...base, phase: null, pad: heroPad(true, null) };
       const { step } = phase;
+      // Le relèvement de la seconde chance (#206, S2, S3) : un temps mort, touches verrouillées.
+      const rise = step.kind === 'attack' ? step.secondChance : undefined;
+      const rising = rise !== undefined && battle.now < rise.until;
       return {
         ...base,
         phase: 'enemy',
         pad: {
           kind: 'defense',
-          locked: false,
-          lock: null,
+          locked: rising,
+          lock: rising ? { since: rise.since, until: rise.until } : null,
           offBalance: battle.offBalanceUntil !== null,
         },
         sealed: step.kind === 'attack' && ATTACKS[step.attack].perilous ? step.enemy : null,

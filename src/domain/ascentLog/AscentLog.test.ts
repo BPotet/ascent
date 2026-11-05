@@ -8,6 +8,7 @@ import {
   enterNextTier,
   equipItem,
   leaveItem,
+  rerollBoonOffer,
   startAscent,
   type Ascent,
 } from '../ascent/Ascent';
@@ -53,9 +54,17 @@ class Walk {
   blessing(index = 0) {
     return this.apply('blessingChosen', chooseBlessing(this.ascent, index));
   }
-  battle(outcome: 'victory' | 'defeat' = 'victory', heroHp = this.ascent.hero.hp - 5) {
+  battle(
+    outcome: 'victory' | 'defeat' = 'victory',
+    heroHp = this.ascent.hero.hp - 5,
+    secondChanceUsed?: boolean,
+  ) {
     this.apply('battleStarted', this.ascent, vitals(this.ascent, 2));
-    const after = endFloorBattle(this.ascent, { outcome, heroHp });
+    const after = endFloorBattle(this.ascent, {
+      outcome,
+      heroHp,
+      ...(secondChanceUsed !== undefined && { secondChanceUsed }),
+    });
     return this.apply('battleEnded', after, {
       hp: heroHp,
       maxHp: this.ascent.hero.maxHp,
@@ -64,6 +73,9 @@ class Walk {
   }
   boon(index = 0) {
     return this.apply('boonChosen', chooseBoon(this.ascent, index));
+  }
+  reroll() {
+    return this.apply('boonOfferRerolled', rerollBoonOffer(this.ascent));
   }
   equip() {
     return this.apply('itemEquipped', equipItem(this.ascent));
@@ -385,6 +397,77 @@ describe('recordAscentStep', () => {
     expect(json).not.toMatch(/manger|habit|checkIn|experience|xp/iu);
     expect(walk.log.blessings[0]!.chosen.rarity).toBe('rare');
     expect(Object.keys(walk.log.blessings[0]!.chosen).sort()).toEqual(['family', 'rarity']);
+  });
+});
+
+describe('the rerolled offers (#42)', () => {
+  it('records the replaced offer, and the new one as the offer the player chooses in', () => {
+    const walk = new Walk(seeded(7, 2)).battle();
+    const first = walk.ascent.boonOffer!;
+
+    walk.reroll();
+
+    expect(walk.log.floors[0]).toMatchObject({
+      rerolledOffers: [first],
+      boonsOffered: walk.ascent.boonOffer,
+    });
+  });
+
+  it('keeps each replaced offer in order, and the boon chosen is in the last offer', () => {
+    const walk = new Walk(seeded(7, 2)).battle();
+    const first = walk.ascent.boonOffer!;
+    const second = walk.reroll().ascent.boonOffer!;
+    const last = walk.reroll().ascent.boonOffer!;
+
+    walk.boon(1);
+
+    expect(walk.log.floors[0]).toMatchObject({
+      rerolledOffers: [first, second],
+      boonsOffered: last,
+      boonChosen: last[1],
+    });
+  });
+
+  it('writes no rerolled offers without reroll: the same JSON as before', () => {
+    const walk = new Walk(seeded(7, 2)).clear();
+
+    expect(walk.log.floors[0]).not.toHaveProperty('rerolledOffers');
+  });
+
+  it('writes nothing for a reroll that changes nothing', () => {
+    const walk = new Walk(seeded(7, 0)).battle();
+    const log = walk.log;
+
+    walk.reroll();
+
+    expect(walk.log).toBe(log);
+  });
+});
+
+describe('the second chance (#206)', () => {
+  it('notes the floor where it was used, in a won battle', () => {
+    const walk = new Walk(seeded(7, 2)).battle('victory', 40, true);
+
+    expect(walk.log.floors[0]).toMatchObject({ secondChanceUsed: true });
+  });
+
+  it('notes the floor of the fall after the rise', () => {
+    const walk = new Walk(seeded(7, 2)).battle('defeat', 0, true);
+
+    expect(walk.log.floors[0]).toMatchObject({ secondChanceUsed: true });
+    expect(walk.log.end).toMatchObject({ kind: 'fall' });
+  });
+
+  it('writes no key on the floors where it was not used: the same JSON as before', () => {
+    const walk = new Walk(seeded(7, 2)).clear().exit(0).battle('victory', 40, false);
+
+    for (const floor of walk.log.floors) expect(floor).not.toHaveProperty('secondChanceUsed');
+  });
+
+  it('notes it once, on its floor only', () => {
+    const walk = new Walk(seeded(7, 2)).battle('victory', 40, true).boon().exit(0).battle();
+
+    expect(walk.log.floors.map((floor) => floor.secondChanceUsed)).toEqual([true, undefined]);
   });
 });
 

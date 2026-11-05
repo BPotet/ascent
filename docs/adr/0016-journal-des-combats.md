@@ -1,6 +1,7 @@
 # ADR 0016 — Le journal des combats
 
 - **Statut** : accepté
+- **Avenant** : 5 novembre 2026, la seconde chance (#206), voir en fin de document
 - **Date** : 4 novembre 2026
 - **Décideur** : Architect (notes techniques de #197), écrit par le dev
 - **Contexte produit** : épique #193, story #197 « Le journal raconte mes combats, appui par appui »
@@ -123,3 +124,17 @@ jusqu'à sa fin, sans combats.
 - Si le journal est écrit mais pas la sauvegarde du combat, un appui raté ou ignoré d'un instant
   rejoué peut figurer deux fois : acceptable pour un outil de test.
 - Les combats joués avant cette version restent sans détail.
+
+## Avenant du 5 novembre 2026 — la seconde chance (#206)
+
+Le relèvement de la **Seconde chance** s'écrit avec les règles du § 1, sans nouvelle règle de
+rangement :
+
+- L'événement `secondChanceUsed` (`enemy`, `hp`, `cancelled`, sans ses instants `at` et `until`)
+  entre dans les effets. Il se range dans l'action de l'ennemi qui frappait, juste après l'appui
+  jugé qui a mis le héros à 0 PV (`heroHp: 0`), suivi de `burnCleared` si le héros brûlait.
+- Les appuis ignorés pendant le relèvement sont comptés sous une nouvelle cause, `'secondChance'`.
+- `HeroAtStart` reçoit un champ **facultatif** `secondChance: true` quand elle est prête au début du
+  combat ; il est absent sinon.
+- **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7) : ce sont des champs et des valeurs ajoutés. Un
+  combat d'avant se relit tel quel.

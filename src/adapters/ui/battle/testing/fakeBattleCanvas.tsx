@@ -29,6 +29,7 @@ export function BattleScene(props: BattleSceneProps) {
     shadowStep,
     burn,
     summon,
+    secondChance = null,
   } = props;
   return (
     <View
@@ -36,7 +37,7 @@ export function BattleScene(props: BattleSceneProps) {
       importantForAccessibility="no-hide-descendants"
       testID="battle-scene"
       {...{ heroKind, heroPose, heroPoseSince, timeline, reducedMotion, enemies, spark, hurtAt }}
-      {...{ bulwark, bulwarkWornAt, riposte, shadowStep, burn, summon }}
+      {...{ bulwark, bulwarkWornAt, riposte, shadowStep, burn, summon, secondChance }}
     />
   );
 }

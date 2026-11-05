@@ -1,7 +1,13 @@
 import type { FateGaugeReading } from '../../../application/useCases/fateGauge';
 import { cursedElite } from '../../../domain/ascent/cursedEnemy';
-import { fatiguePercent, type FateGauge } from '../../../domain/ascent/fateGauge';
+import {
+  fatiguePercent,
+  favorRerolls,
+  favorSecondChance,
+  type FateGauge,
+} from '../../../domain/ascent/fateGauge';
 import type { IconName } from '../pixelArt/sprites/icons';
+import { rerollCount } from './boonText';
 
 // Les textes de la jauge (#93, #41), d'après la maquette `docs/mockups/205-jauge-faveur/` : le
 // cadran au pied de la tour et son détail. Ton sans reproche : la jauge vient toujours d'hier et ne
@@ -107,6 +113,42 @@ export interface GaugeEffect {
   readonly text: string;
 }
 
+/** Les relances qui restent sur celles données : « 1 relance sur 2 » (#42). */
+function rerollsLeftText(gauge: FateGauge, rerolls: number): string {
+  return `${rerollCount(rerolls)} sur ${favorRerolls(gauge)}`;
+}
+
+/**
+ * Ce qui reste de la faveur de l'ascension en cours (#42, G9) : ses relances, grises quand elles ont
+ * toutes servi, puis, à +2, sa seconde chance, prête ou utilisée (#206). Rien sans faveur.
+ */
+export function ascentFavorEffects({
+  gauge,
+  rerolls,
+  secondChance,
+}: {
+  readonly gauge: FateGauge;
+  readonly rerolls: number;
+  readonly secondChance: boolean;
+}): GaugeEffect[] {
+  if (gauge <= 0) return [];
+  const effects: GaugeEffect[] = [
+    {
+      glyph: 'reroll',
+      tone: rerolls > 0 ? 'favor' : 'muted',
+      text: rerollsLeftText(gauge, rerolls),
+    },
+  ];
+  if (favorSecondChance(gauge)) {
+    effects.push(
+      secondChance
+        ? { glyph: 'secondChance', tone: 'favor', text: 'Seconde chance prête' }
+        : { glyph: 'secondChance', tone: 'muted', text: 'Seconde chance utilisée' },
+    );
+  }
+  return effects;
+}
+
 /**
  * Les effets de la jauge : les bénédictions de départ, puis ceux du niveau (objets plus fréquents,
  * Rares plus ou moins fréquents, fatigue, ennemis maudits). Rien à la première utilisation ; « Aucun effet
@@ -138,7 +180,13 @@ export function gaugeEffects({
     effects.push(
       { glyph: 'loot', tone: 'favor', text: 'Objets plus fréquents' },
       { glyph: 'rare', tone: 'favor', text: 'Objets Rares plus fréquents' },
+      // Les relances (#42), données au lancement.
+      { glyph: 'reroll', tone: 'favor', text: rerollCount(favorRerolls(gauge)) },
     );
+    // La seconde chance (#206), à +2 seulement.
+    if (favorSecondChance(gauge)) {
+      effects.push({ glyph: 'secondChance', tone: 'favor', text: '1 seconde chance' });
+    }
   } else if (gauge < 0) {
     effects.push(
       { glyph: 'fatigue', tone: 'curse', text: `Fatigue : PV max −${fatiguePercent(gauge)} %` },
@@ -265,7 +313,26 @@ export function gaugeAnnouncement(reading: FateGaugeReading): string {
   ].join(' ');
 }
 
-/** L'annonce de la jauge de l'ascension en cours : son mot, sa valeur, et qu'elle la garde. */
-export function ascentGaugeAnnouncement(gauge: FateGauge): string {
-  return `${ASCENT_GAUGE_TITLE} : ${gaugeWord(gauge)}, ${SPOKEN_VALUES[gauge]}. ${ASCENT_KEEPS_GAUGE}`;
+/**
+ * L'annonce de la jauge de l'ascension en cours : son mot, sa valeur, qu'elle la garde, les
+ * relances qui restent en faveur (#42), et la seconde chance à +2 (#206).
+ */
+export function ascentGaugeAnnouncement(
+  gauge: FateGauge,
+  rerolls: number,
+  secondChance: boolean,
+): string {
+  const left = rerollsLeftText(gauge, rerolls);
+  let favor: string[] = [];
+  if (favorSecondChance(gauge)) {
+    favor = secondChance
+      ? [`Il reste ${left} et la seconde chance.`]
+      : [`Il reste ${left}.`, 'La seconde chance a servi.'];
+  } else if (gauge > 0) {
+    favor = [`Il reste ${left}.`];
+  }
+  return [
+    `${ASCENT_GAUGE_TITLE} : ${gaugeWord(gauge)}, ${SPOKEN_VALUES[gauge]}. ${ASCENT_KEEPS_GAUGE}`,
+    ...favor,
+  ].join(' ');
 }

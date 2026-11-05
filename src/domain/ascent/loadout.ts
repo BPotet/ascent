@@ -7,15 +7,44 @@
 import type { Ascent } from './Ascent';
 import type { StartingBlessing } from './blessings';
 import type { BoonKind } from './boons';
+import { favorRerolls, favorSecondChance } from './fateGauge';
+
+/**
+ * La faveur de l'ascension (#42) : sa jauge, ses relances qui restent sur celles données, et sa
+ * seconde chance à +2 (#206).
+ */
+export interface LoadoutFavor {
+  readonly gauge: 1 | 2;
+  readonly rerollsLeft: number;
+  readonly rerollsGranted: number;
+  /** Seulement à +2 (#206) : prête, ou utilisée. */
+  readonly secondChance?: 'ready' | 'used';
+}
 
 export interface Loadout {
   readonly blessings: readonly StartingBlessing[];
   readonly boons: readonly BoonKind[];
+  /** Seulement pour une ascension lancée en faveur (#42). */
+  readonly favor?: LoadoutFavor;
 }
 
 /** L'Équipement de l'ascension, sans copie ni tri. */
 export function loadoutOf(ascent: Ascent): Loadout {
-  return { blessings: ascent.blessings, boons: ascent.hero.boons };
+  const { gauge } = ascent;
+  return {
+    blessings: ascent.blessings,
+    boons: ascent.hero.boons,
+    ...(gauge > 0 && {
+      favor: {
+        gauge: gauge as LoadoutFavor['gauge'],
+        rerollsLeft: ascent.rerolls,
+        rerollsGranted: favorRerolls(gauge),
+        ...(favorSecondChance(gauge) && {
+          secondChance: ascent.secondChance ? ('ready' as const) : ('used' as const),
+        }),
+      },
+    }),
+  };
 }
 
 /** Le nombre de bénédictions de départ et de bienfaits de l'Équipement. */

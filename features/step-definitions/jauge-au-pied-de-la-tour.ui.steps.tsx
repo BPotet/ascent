@@ -124,7 +124,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and(
-    /^elle liste ses effets du jour : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents$/u,
+    /^elle liste ses effets du jour : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents, 2 relances, 1 seconde chance$/u,
     async () => {
       const effects = within(await dayCard()).getByTestId('gauge-effects');
       expect(
@@ -135,6 +135,10 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
         '3 bénédictions de départ',
         'Objets plus fréquents',
         'Objets Rares plus fréquents',
+        // Les relances de la faveur (#42), validées avec la maquette 205 (G1).
+        '2 relances',
+        // La seconde chance de la faveur pleine (#206), validée avec la maquette 205 (G1).
+        '1 seconde chance',
       ]);
     },
   );
@@ -307,7 +311,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   // --- L'ascension en cours ---
 
   given(/^une ascension lancée hier avec une jauge de \+2, toujours en cours$/u, () => {
-    begin({ saved: { ...startAscent(3), gauge: 2 } });
+    begin({ saved: startAscent(3, { gauge: 2 }) });
   });
 
   and(/^la jauge d'aujourd'hui vaut −1$/u, async () => {

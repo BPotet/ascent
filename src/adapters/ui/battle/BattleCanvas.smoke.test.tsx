@@ -96,6 +96,21 @@ function drawnTypes(): string[] {
   return types;
 }
 
+describe('BattleScene with Skia: the rise of the second chance (#206)', () => {
+  it('draws the veil, the golden halo and the grey hero only during a rise', async () => {
+    await render(<BattleScene {...props()} />);
+    expect(drawnTypes()).not.toContain('skCircle');
+    const atlases = drawnTypes().filter((type) => type === 'skAtlas').length;
+
+    await render(
+      <BattleScene {...props({ heroPose: 'fallen', secondChance: { at: 2_000, until: 4_000 } })} />,
+    );
+
+    expect(drawnTypes()).toEqual(expect.arrayContaining(['skRect', 'skCircle']));
+    expect(drawnTypes().filter((type) => type === 'skAtlas')).toHaveLength(atlases + 1);
+  });
+});
+
 describe('BattleScene with Skia, its enemies prepared on demand (#38)', () => {
   it('prepares the enemies asked for only, once each, the phase 2 aspect of a boss included', () => {
     const scene = prepareBattleScene(['ghoul']);

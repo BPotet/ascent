@@ -66,3 +66,40 @@ describe('loadout (#159)', () => {
     expect(loadout.boons).toEqual([]);
   });
 });
+
+describe('the favor of the ascent in the loadout (#42)', () => {
+  it.each([1, 2] as const)(
+    'holds the rerolls left of %p given at the start under the favor',
+    (gauge) => {
+      const ascent = { ...startAscent(42, { gauge }), rerolls: gauge - 1 };
+
+      expect(loadoutOf(ascent).favor).toMatchObject({
+        gauge,
+        rerollsLeft: gauge - 1,
+        rerollsGranted: gauge,
+      });
+    },
+  );
+
+  it.each([0, -1, -2] as const)('has no favor at a gauge of %p', (gauge) => {
+    expect(loadoutOf(startAscent(42, { gauge }))).not.toHaveProperty('favor');
+  });
+});
+
+describe('the second chance of the favor in the loadout (#206)', () => {
+  it('is ready, then used, under the full favor', () => {
+    const ascent = startAscent(42, { gauge: 2 });
+
+    expect(loadoutOf(ascent).favor).toEqual({
+      gauge: 2,
+      rerollsLeft: 2,
+      rerollsGranted: 2,
+      secondChance: 'ready',
+    });
+    expect(loadoutOf({ ...ascent, secondChance: false }).favor?.secondChance).toBe('used');
+  });
+
+  it('is absent under the favor of +1', () => {
+    expect(loadoutOf(startAscent(42, { gauge: 1 })).favor).not.toHaveProperty('secondChance');
+  });
+});

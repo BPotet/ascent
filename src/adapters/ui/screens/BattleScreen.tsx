@@ -17,10 +17,12 @@ import { HeroBar } from '../battle/HeroBar';
 import { PhaseBanner } from '../battle/PhaseBanner';
 import { sceneGeometry } from '../battle/scene/sceneGeometry';
 import { sceneTimeline } from '../battle/scene/sceneTimeline';
+import { SecondChanceBanner } from '../battle/SecondChanceBanner';
 import { SummonBanner } from '../battle/SummonBanner';
 import type { SceneEnemy } from '../battle/sceneTypes';
 import { Screen } from '../components/Screen';
-import { enemyName } from '../format/battleText';
+import { SECOND_CHANCE_FREEZE_MS } from '../../../domain/battle/secondChance';
+import { SECOND_CHANCE_SPENT, enemyName } from '../format/battleText';
 import { artPalette } from '../pixelArt/artPalette';
 import { toBattleInstant } from '../state/battleTouch';
 import { actionTrackView, battleView, type BattleView } from '../state/battleView';
@@ -147,6 +149,12 @@ export function BattleScreen({
   const dust = view?.dust;
   const { summonFx } = display;
   const summon = useMemo(() => ({ ...summonFx, pending: dust ?? [] }), [dust, summonFx]);
+  // Le relèvement de la seconde chance sur la scène (#206) ; un combat repris ne le rejoue pas.
+  const rise = display.secondChance;
+  const sceneRise = useMemo(
+    () => (rise === null ? null : { at: rise.at, until: rise.until }),
+    [rise],
+  );
   const timeline = useMemo(() => (battle === null ? null : sceneTimeline(battle)), [battle]);
   // La frise ne change qu'avec le combat : elle garde ainsi sa frise précédente d'un instantané à
   // l'autre. Elle existe dès que le combat existe (`battle` non nul plus bas).
@@ -235,6 +243,7 @@ export function BattleScreen({
             shadowStep={shadowStep}
             burn={burn}
             summon={summon}
+            secondChance={sceneRise}
             reducedMotion={reducedMotion}
             uiNow={uiNow}
           />
@@ -302,6 +311,25 @@ export function BattleScreen({
               reducedMotion={reducedMotion}
             />
           )}
+          {/* Le bandeau et le « +40 » en or de la seconde chance (#206, S3), après le gel. */}
+          {rise === null || over !== null ? null : (
+            <>
+              <SecondChanceBanner
+                key={rise.key}
+                title={rise.title}
+                lines={rise.lines}
+                reducedMotion={reducedMotion}
+              />
+              <View pointerEvents="none" testID="battle-rise-float" style={styles.heroFloat}>
+                <DamageFloat
+                  key={rise.key}
+                  float={rise.float}
+                  delayMs={SECOND_CHANCE_FREEZE_MS}
+                  reducedMotion={reducedMotion}
+                />
+              </View>
+            </>
+          )}
           {display.snapshot?.heroHint && view.heroActions ? (
             <BattleHintBubble kind="hero" onClose={() => session.dismissHint('hero')} />
           ) : null}
@@ -318,6 +346,7 @@ export function BattleScreen({
             bulwarkWorn={display.bulwarkWornAt !== null}
             shadowStepNew={view.pad.kind === 'hero' && view.pad.power.instantCast === true}
             burnRing={display.burnRing}
+            rise={rise === null ? null : { key: rise.key }}
             reducedMotion={reducedMotion}
           />
           <View style={styles.zone}>
@@ -345,6 +374,10 @@ export function BattleScreen({
             />
           </View>
         </>
+      ) : null}
+      {/* La chute quand la seconde chance a déjà servi (#206, S4), sous la défaite. */}
+      {over === 'defeat' && battle.hero.secondChance === 'used' ? (
+        <Text style={styles.spent}>{SECOND_CHANCE_SPENT}</Text>
       ) : null}
     </Screen>
   );
@@ -405,5 +438,13 @@ const styles = StyleSheet.create({
   // Le chiffre de la Brûlure, à droite de celui du Saignement (maquette 170, B5).
   burnFloat: { position: 'absolute', left: 86, bottom: 128, width: 80, zIndex: 8 },
   strong: { color: battleColors.text, fontWeight: '600' },
+  spent: {
+    color: artPalette.roles.parchment,
+    fontSize: 14,
+    lineHeight: 19,
+    textAlign: 'center',
+    marginTop: 16,
+    paddingHorizontal: 16,
+  },
 });
 // Stryker restore all

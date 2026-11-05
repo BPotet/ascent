@@ -72,6 +72,38 @@ describe('the icons', () => {
     ]);
   });
 
+  it('has the reroll glyph of the mockup 205, centred on 8 × 8 art pixels (#42)', () => {
+    // `PAT.reroll` de la maquette, 7 × 8, complété d'une colonne vide à droite.
+    const pattern = [
+      '.1111..',
+      '1....1.',
+      '1...111',
+      '1......',
+      '......1',
+      '111...1',
+      '.1....1',
+      '..1111.',
+    ];
+    expect(ICONS['reroll' as never]).toEqual(pattern.map((row) => `${row.replaceAll('1', 'X')}.`));
+  });
+
+  it('has the second chance glyph of the mockup 205, centred on 8 × 8 art pixels (#206)', () => {
+    // `PAT.second` de la maquette, 7 × 8, complété d'une colonne vide à droite.
+    const pattern = [
+      '.11.11.',
+      '1111111',
+      '111.111',
+      '1.....1',
+      '111.111',
+      '.11.11.',
+      '..111..',
+      '...1...',
+    ];
+    expect(ICONS['secondChance' as never]).toEqual(
+      pattern.map((row) => `${row.replaceAll('1', 'X')}.`),
+    );
+  });
+
   it('mirrors « left » into « right »', () => {
     ICONS.left.forEach((row, index) =>
       expect(ICONS.right[index]).toBe([...row].reverse().join('')),

@@ -1,6 +1,8 @@
 # ADR 0014 — Le Journal d'ascension et son export
 
 - **Statut** : accepté, amendé par l'[ADR 0016](0016-journal-des-combats.md) (#197)
+- **Avenants** : 5 novembre 2026, les relances de l'offre de bienfaits (#42) et la seconde chance
+  (#206), voir en fin de document
 - **Date** : 4 novembre 2026
 - **Décideur** : Architect (notes techniques de #196), écrit par le dev
 - **Contexte produit** : épique #193, story socle #196 « Exporter le journal du parcours de mes
@@ -93,3 +95,30 @@ configuration ne sert qu'à **recevoir** des partages ; il n'est pas ajouté à 
   de test.
 - #197 ajoutera les combats sous une clé par combat (`ascent.log.<id>.battle.<palier>-<étage>`), pour
   qu'un combat ne réécrive jamais tout le journal, en restant en `formatVersion: 1`.
+
+## Avenant du 5 novembre 2026 — les relances de l'offre de bienfaits (#42)
+
+Une **Relance** (`Reroll`) remplace l'offre de bienfaits en attente par une nouvelle offre. Le
+journal la note par une nouvelle cause, `boonOfferRerolled`, comme les autres transitions de la
+session (état avant et après, aucun tirage).
+
+- L'étage reçoit un champ **facultatif** `rerolledOffers` : les offres remplacées, dans l'ordre. Il
+  est absent sans relance ; un journal sans relance est identique, octet pour octet, à celui d'avant.
+- `boonsOffered` reste l'offre dans laquelle le joueur choisit, donc la dernière : `boonChosen` en
+  fait toujours partie.
+- Les relances qui restent ne sont pas écrites : elles se déduisent de la jauge (`gauge`) et du
+  nombre d'offres remplacées.
+- **`formatVersion` reste 2** (§ 4) : c'est un champ ajouté, pas un sens changé. Un journal d'avant
+  se relit tel quel.
+
+## Avenant du 5 novembre 2026 — la seconde chance (#206)
+
+La **Seconde chance** (`SecondChance`) relève une fois le héros qu'un coup fait tomber à 0 PV. Le
+journal note l'étage où elle a servi, sans nouvelle cause : la transition `battleEnded` le voit sur
+l'ascension (`before.secondChance && !after.secondChance`).
+
+- L'étage reçoit un champ **facultatif** `secondChanceUsed: true`, posé que le combat soit gagné ou
+  perdu. Il est absent ailleurs ; un journal sans seconde chance utilisée est identique, octet pour
+  octet, à celui d'avant.
+- Aucune donnée des habitudes : la jauge est déjà notée (`gauge: 'fullFavor'`).
+- **`formatVersion` reste 2** (§ 4) : c'est un champ ajouté. Un journal d'avant se relit tel quel.

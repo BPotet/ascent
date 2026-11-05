@@ -16,6 +16,7 @@ import {
   announcementsFor,
   damageFloat,
   feedbackText,
+  secondChanceBannerText,
   summonBannerText,
   type DamageFloat,
   type FeedbackText,
@@ -77,6 +78,18 @@ export interface BattleDisplay {
     readonly entered: Readonly<Record<number, number>>;
     readonly fell: Readonly<Record<number, number>>;
   };
+  /**
+   * Le dernier relèvement de la seconde chance (#206, S2, S3) : de `at` à la fin du bandeau, son
+   * titre et ses lignes, et le « +40 » en or qui part après le gel.
+   */
+  readonly secondChance: {
+    readonly key: number;
+    readonly at: number;
+    readonly until: number;
+    readonly title: string;
+    readonly lines: readonly string[];
+    readonly float: DamageFloat;
+  } | null;
 }
 
 export const INITIAL_DISPLAY: BattleDisplay = {
@@ -99,6 +112,7 @@ export const INITIAL_DISPLAY: BattleDisplay = {
   burnFloat: null,
   summonBanner: null,
   summonFx: { calledAt: null, entered: {}, fell: {} },
+  secondChance: null,
 };
 
 const POSE_OF_OUTCOME: Readonly<Record<BlowOutcome, HeroPose>> = {
@@ -137,6 +151,9 @@ function poseAfter(event: BattleEvent, pose: HeroPose): HeroPose | null {
       return pose === 'off' ? 'idle' : null;
     case 'battleEnded':
       return event.outcome === 'defeat' ? 'fallen' : 'idle';
+    // Le héros tombé se relève sur la scène après le gel (#206).
+    case 'secondChanceUsed':
+      return 'fallen';
     default:
       return null;
   }
@@ -298,7 +315,18 @@ export function displayOf(
     display = burnAfter(display, event, burnBefore, afterBleed);
     display = summonAfter(display, event, snapshot.battle, afterRound);
     const float = damageFloat(event);
-    if (float?.kind === 'burn') {
+    if (event.type === 'secondChanceUsed' && float !== null) {
+      display = {
+        ...display,
+        secondChance: {
+          key: (display.secondChance?.key ?? 0) + 1,
+          at: event.at,
+          until: event.until,
+          ...secondChanceBannerText(event, snapshot.battle),
+          float,
+        },
+      };
+    } else if (float?.kind === 'burn') {
       const key = (display.burnFloat?.key ?? 0) + 1;
       display = {
         ...display,

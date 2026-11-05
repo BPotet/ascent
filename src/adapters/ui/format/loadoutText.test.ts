@@ -8,6 +8,7 @@ import {
   NO_BOON,
   NO_BOON_YET,
   blessingTag,
+  favorRows,
   loadoutButtonLabel,
   loadoutTitle,
 } from './loadoutText';
@@ -94,4 +95,46 @@ describe('the texts of the loadout (#159)', () => {
       expect(blessingTag(blessing)).toBe(tag);
     },
   );
+});
+
+describe('the rows of the favor of the ascent (#42, #206, E1)', () => {
+  it('lists the rerolls, then the second chance ready at +2', () => {
+    expect(
+      favorRows({ gauge: 2, rerollsLeft: 1, rerollsGranted: 2, secondChance: 'ready' }),
+    ).toEqual([
+      {
+        key: 'rerolls',
+        glyph: 'reroll',
+        name: 'Relances',
+        effect: "Redonnent l'offre de bienfaits.",
+        state: '1 sur 2',
+        used: false,
+        label: "Relances, 1 sur 2. Redonnent l'offre de bienfaits.",
+      },
+      {
+        key: 'secondChance',
+        glyph: 'secondChance',
+        name: 'Seconde chance',
+        effect: 'À 0 PV, relève une fois avec 50 % des PV max.',
+        state: 'Prête',
+        used: false,
+        label: 'Seconde chance, Prête. À 0 PV, relève une fois avec 50 % des PV max.',
+      },
+    ]);
+  });
+
+  it('greys the rows that have served', () => {
+    const rows = favorRows({ gauge: 2, rerollsLeft: 0, rerollsGranted: 2, secondChance: 'used' });
+
+    expect(rows.map(({ state, used }) => [state, used])).toEqual([
+      ['0 sur 2', true],
+      ['Utilisée', true],
+    ]);
+  });
+
+  it('lists the rerolls only at +1', () => {
+    expect(
+      favorRows({ gauge: 1, rerollsLeft: 1, rerollsGranted: 1 }).map(({ key }) => key),
+    ).toEqual(['rerolls']);
+  });
 });

@@ -3,7 +3,8 @@ import { AccessibilityInfo, StyleSheet, Text, useWindowDimensions, View } from '
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
 import type { LogExport } from '../../../application/useCases/exportAscentLog';
-import type { Ascent, TierPassage } from '../../../domain/ascent/Ascent';
+import { canReroll, type Ascent, type TierPassage } from '../../../domain/ascent/Ascent';
+import { favorRerolls } from '../../../domain/ascent/fateGauge';
 import { ITEMS } from '../../../domain/ascent/items';
 import { loadoutOf } from '../../../domain/ascent/loadout';
 import { SUMMIT_SHARDS, shardSum } from '../../../domain/ascent/shards';
@@ -609,6 +610,12 @@ export function AscentScreen({
           heroHp={ascent.hero.hp}
           heroMaxHp={ascent.hero.maxHp}
           onChoose={(index) => session.chooseBoon(index)}
+          reroll={{
+            left: ascent.rerolls,
+            granted: favorRerolls(ascent.gauge),
+            available: canReroll(ascent),
+          }}
+          onReroll={() => session.reroll()}
         />
         {loadoutSheet}
       </Screen>

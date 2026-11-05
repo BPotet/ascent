@@ -73,6 +73,10 @@ export interface FloorRecord {
   readonly gold: number;
   /** Les cartes de l'offre, carte Second souffle comprise (#212). */
   readonly boonsOffered: readonly OfferCard[];
+  /** Les offres remplacées par une relance, dans l'ordre (#42) ; absent sans relance. */
+  readonly rerolledOffers?: readonly (readonly OfferCard[])[];
+  /** La seconde chance a servi dans le combat de cet étage (#206) ; absent, non. */
+  readonly secondChanceUsed?: true;
   readonly boonChosen: OfferCard | null;
   readonly itemFound: ItemKind | null;
   readonly itemOutcome: 'equipped' | 'left' | null;
@@ -139,6 +143,7 @@ export type AscentStep =
         | 'itemEquipped'
         | 'itemLeft'
         | 'boonChosen'
+        | 'boonOfferRerolled'
         | 'exitChosen'
         | 'abandoned'
         | 'bossAcknowledged'
@@ -270,6 +275,7 @@ function battleEnded<Log extends AnyAscentLog>(
     boonsOffered: after.boonOffer ?? [],
     itemFound: after.foundItem,
     shards: shardSum(after.shardAwards) - shardSum(before.shardAwards),
+    ...(before.secondChance && !after.secondChance && { secondChanceUsed: true as const }),
   }));
   const place = { tier: before.tier, floor: before.floor };
   if (after.outcome === 'victory') return ended(fought, { kind: 'summit', ...place });
@@ -313,6 +319,12 @@ export function recordAscentStep<Log extends AnyAscentLog>(log: Log, step: Ascen
       return updateFloor(log, before, (record) => ({ ...record, itemOutcome: 'left' }));
     case 'boonChosen':
       return updateFloor(log, before, (record) => ({ ...record, boonChosen: chosenCard(step) }));
+    case 'boonOfferRerolled':
+      return updateFloor(log, before, (record) => ({
+        ...record,
+        rerolledOffers: [...(record.rerolledOffers ?? []), before.boonOffer!],
+        boonsOffered: after.boonOffer!,
+      }));
     case 'exitChosen':
       return exitChosen(log, before, after);
     case 'abandoned':

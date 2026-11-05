@@ -196,6 +196,39 @@ describe('AscentSession with the ascent log', () => {
       expect(lastLog(logs).floors[0]!.boonChosen).toBe('trueEdge');
     });
 
+    it('records a reroll of the offer (#42)', async () => {
+      const ascent = won(startAscent(7, { gauge: 2 }));
+      const { session, logs, ascentLog } = await resumed(ascent);
+      session.reroll();
+      await ascentLog.settled();
+      expect(lastLog(logs).floors[0]).toMatchObject({
+        rerolledOffers: [ascent.boonOffer],
+        boonsOffered: session.current()!.boonOffer,
+      });
+    });
+
+    it('records the floor where the second chance served, and its effect in the battle log (#206)', async () => {
+      const begun = startAscent(7, { gauge: 2 });
+      const { session, logs, ascentLog, clock } = await resumed({
+        ...begun,
+        hero: { ...begun.hero, hp: 1 },
+      });
+
+      await playToTheEnd(session.battleSession(), clock);
+      await ascentLog.settled();
+
+      expect(session.current()!.secondChance).toBe(false);
+      expect(lastLog(logs).floors[0]).toMatchObject({ secondChanceUsed: true });
+      const [written] = logs.battleWrites.slice(-1);
+      expect(written!.battle.hero).toMatchObject({ hp: 1, secondChance: true });
+      const effects = written!.battle.rounds.flatMap((round) =>
+        round.actions.flatMap((action) => action.effects),
+      );
+      expect(effects).toContainEqual(
+        expect.objectContaining({ type: 'secondChanceUsed', hp: begun.hero.maxHp / 2 }),
+      );
+    });
+
     it('records the exit chosen and the floor it leads to', async () => {
       const ascent: Ascent = { ...won(startAscent(7)), boonOffer: null };
       const { session, logs, ascentLog } = await resumed(ascent);

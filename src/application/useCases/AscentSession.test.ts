@@ -1,4 +1,4 @@
-import { startAscent, type Ascent } from '../../domain/ascent/Ascent';
+import { endFloorBattle, rerollStream, startAscent, type Ascent } from '../../domain/ascent/Ascent';
 import { TIERS } from '../../domain/ascent/tiers';
 import { ATTACKS } from '../../domain/battle/attacks';
 import { startBattle, type Battle } from '../../domain/battle/Battle';
@@ -635,6 +635,225 @@ describe('AscentSession with the gauge, the blessings and the items (#93)', () =
     session.equipItem();
     session.leaveItem();
     expect(session.current()).toBeNull();
+  });
+});
+
+describe('AscentSession: the rerolls of the favor (#42)', () => {
+  const offered = (gauge: 1 | 2 = 2) =>
+    endFloorBattle(startAscent(42, { gauge }), { outcome: 'victory', heroHp: 50 });
+
+  it('rerolls the offer and saves it: a reload gives the same offer and rerolls', async () => {
+    const { session, store } = setUp();
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: offered(), battle: null }));
+    await session.load();
+
+    session.reroll();
+    await flush();
+
+    const rerolled = session.current()!;
+    expect(rerolled.rerolls).toBe(1);
+    expect(rerolled.boonOffer).not.toEqual(offered().boonOffer);
+    expect(saved(store)?.ascent).toEqual(rerolled);
+    const reopened = setUp();
+    reopened.store.values.set(ASCENT_KEY, store.values.get(ASCENT_KEY)!);
+    expect(await reopened.session.load()).toEqual(rerolled);
+  });
+
+  it('keeps the rerolls left on a resume, whatever the gauge of the day', async () => {
+    const { session, store } = setUp();
+    const yesterday = { ...offered(), rerolls: 1 };
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: yesterday, battle: null }));
+
+    const resumed = await session.load();
+
+    expect(resumed).toMatchObject({ gauge: 2, rerolls: 1 });
+  });
+
+  it.each([
+    [2, 2],
+    [1, 1],
+    [0, 0],
+  ] as const)(
+    'resumes an ascent saved before the rerolls at a gauge of %p with %p rerolls',
+    async (gauge, rerolls) => {
+      const { session, store } = setUp();
+      const { rerolls: _rerolls, rerollRandom: _random, ...older } = startAscent(5, { gauge });
+      store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: older, battle: null }));
+
+      expect(await session.load()).toMatchObject({ rerolls, rerollRandom: rerollStream(5) });
+    },
+  );
+
+  it('ignores a reroll without an ascent, or without a reroll possible', async () => {
+    const { session, store } = setUp();
+    session.reroll();
+    expect(session.current()).toBeNull();
+
+    const ascent = offered();
+    store.values.set(
+      ASCENT_KEY,
+      JSON.stringify({ version: 1, ascent: { ...ascent, rerolls: 0 }, battle: null }),
+    );
+    await session.load();
+    session.reroll();
+    expect(session.current()).toMatchObject({ boonOffer: ascent.boonOffer, rerolls: 0 });
+  });
+});
+
+describe('AscentSession: the second chance of the favor (#206)', () => {
+  /** Le combat sauvé de l'ascension, contre une Goule seule : la Sentinelle à 80 PV max. */
+  function risingBattle({
+    heroHp,
+    heroMaxHp = 80,
+    enemyHp,
+    secondChance = true,
+  }: {
+    readonly heroHp: number;
+    readonly heroMaxHp?: number;
+    readonly enemyHp: number;
+    readonly secondChance?: boolean;
+  }): Battle {
+    const { battle } = startBattle({
+      seed: 3,
+      defenseHint: false,
+      at: 0,
+      heroHp,
+      heroMaxHp,
+      enemies: ['ghoul'],
+      ...(secondChance && { secondChance }),
+    });
+    return { ...battle, enemies: [{ ...battle.enemies[0]!, hp: enemyHp }] };
+  }
+
+  async function resumed(ascent: Ascent, battle: Battle) {
+    const set = setUp();
+    set.store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent, battle }));
+    await set.session.load();
+    const battleSession = set.session.battleSession();
+    await battleSession.start();
+    return { ...set, battleSession };
+  }
+
+  /** Le combat joué jusqu'à ce que le héros se relève. */
+  async function playUntilRisen(battleSession: BattleSession, clock: ManualBattleClock) {
+    for (let guard = 0; guard < 200; guard += 1) {
+      const { battle } = battleSession.current()!;
+      if (battle.hero.secondChance === 'used') return battle;
+      if (battle.phase.kind === 'hero') {
+        const at = clock.now() + 50;
+        clock.advanceTo(at);
+        battleSession.heroAction({ kind: 'attack' }, at - 20, at);
+      } else {
+        clock.advanceTo(clock.pending()[0]!);
+      }
+      await flush();
+    }
+    throw new Error('The hero never rose');
+  }
+
+  it('fights a new battle with the second chance ready at +2, and none at +1', async () => {
+    for (const [gauge, ready] of [
+      [2, true],
+      [1, false],
+    ] as const) {
+      const { session } = setUp(42);
+      session.begin({ gauge });
+      const battleSession = session.battleSession();
+      await battleSession.start();
+
+      const { hero } = battleSession.current()!.battle;
+      expect(hero.secondChance === 'ready').toBe(ready);
+      if (!ready) expect(hero).not.toHaveProperty('secondChance');
+    }
+  });
+
+  it('saves the rise at once: a reload gives 40 HP and the second chance used', async () => {
+    const ascent = startAscent(42, { gauge: 2 });
+    const { battleSession, clock, store } = await resumed(
+      ascent,
+      risingBattle({ heroHp: 1, enemyHp: 50 }),
+    );
+
+    const risen = await playUntilRisen(battleSession, clock);
+    await flush();
+
+    expect(risen.hero).toMatchObject({ hp: 40, secondChance: 'used' });
+    expect(saved(store)?.battle?.hero).toMatchObject({ hp: 40, secondChance: 'used' });
+    const reopened = await resumed(saved(store)!.ascent, saved(store)!.battle!);
+    expect(reopened.battleSession.current()!.battle.hero).toMatchObject({
+      hp: 40,
+      secondChance: 'used',
+    });
+  });
+
+  it('takes it away from the ascent at the end of the battle, and the next battle has none', async () => {
+    const ascent = startAscent(42, { gauge: 2 });
+    const { battleSession, clock, session } = await resumed(
+      ascent,
+      risingBattle({ heroHp: 1, enemyHp: 50 }),
+    );
+    await playUntilRisen(battleSession, clock);
+
+    const ended = await playToTheEnd(battleSession, clock);
+    await flush();
+
+    expect(ended.hero.secondChance).toBe('used');
+    expect(session.current()).toMatchObject({ outcome: null, secondChance: false });
+    session.chooseBoon(0);
+    session.chooseExit(session.current()!.exits.findIndex((exit) => exit.kind === 'combat'));
+    const next = session.battleSession();
+    await next.start();
+    expect(next.current()!.battle.hero).not.toHaveProperty('secondChance');
+  });
+
+  it('takes it away from the ascent when the hero falls after rising', async () => {
+    const ascent = startAscent(42, { gauge: 2 });
+    const { battleSession, clock, session } = await resumed(
+      ascent,
+      risingBattle({ heroHp: 1, heroMaxHp: 2, enemyHp: 50 }),
+    );
+
+    const ended = await playToTheEnd(battleSession, clock);
+    await flush();
+
+    expect(ended.hero).toMatchObject({ hp: 0, secondChance: 'used' });
+    expect(session.current()).toMatchObject({ outcome: 'fall', secondChance: false });
+  });
+
+  it('keeps it on a resume, whatever the gauge of the day', async () => {
+    const { session, store } = setUp();
+    const yesterday = startAscent(5, { gauge: 2 });
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: yesterday, battle: null }));
+
+    expect(await session.load()).toMatchObject({ gauge: 2, secondChance: true });
+  });
+
+  it.each([
+    [2, true],
+    [1, false],
+    [-2, false],
+  ] as const)(
+    'resumes an ascent saved before the second chance at a gauge of %p: %p',
+    async (gauge, secondChance) => {
+      const { session, store } = setUp();
+      const { secondChance: _, ...older } = startAscent(5, { gauge });
+      store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: older, battle: null }));
+
+      expect(await session.load()).toMatchObject({ secondChance });
+    },
+  );
+
+  it('keeps it for the next battles after a battle saved without it', async () => {
+    const ascent = startAscent(42, { gauge: 2 });
+    const { battleSession, clock, session } = await resumed(
+      ascent,
+      risingBattle({ heroHp: 60, enemyHp: 1, secondChance: false }),
+    );
+
+    await playToTheEnd(battleSession, clock);
+    await flush();
+
+    expect(session.current()).toMatchObject({ outcome: null, secondChance: true });
   });
 });
 

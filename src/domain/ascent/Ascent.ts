@@ -8,7 +8,9 @@ import { HEROES, type EnemyKind, type HeroKind } from '../battle/combatants';
 import { nextRandom, seedRandom, type BattleSeed, type RandomState } from '../battle/SeededRandom';
 import {
   SECOND_BREATH,
+  boonPool,
   drawBoonOffer,
+  drawRerolledOffer,
   offerEmberHeart,
   secondBreathHp,
   withSecondBreath,
@@ -24,7 +26,7 @@ import {
 } from './blessings';
 import { cursedElite, cursedOrdinary, drawCursedEnemy } from './cursedEnemy';
 import type { Drawn } from './draw';
-import { fatiguePercent, type FateGauge } from './fateGauge';
+import { fatiguePercent, favorRerolls, favorSecondChance, type FateGauge } from './fateGauge';
 import { STARTING_EQUIPMENT, drawLoot, equip, type Equipment, type ItemKind } from './items';
 import type { Rarity } from './rarity';
 import { drawElite } from './elites';
@@ -119,6 +121,12 @@ export interface Ascent {
   readonly unlocks: readonly Unlock[];
   /** Cœur de braise a déjà été proposé dans l'ascension, pris ou non (#195). */
   readonly emberHeartOffered: boolean;
+  /** Les relances qui restent (#42), données au lancement selon la jauge. */
+  readonly rerolls: number;
+  /** Le flux de hasard des relances, dérivé de la graine : seule une relance l'avance (#42). */
+  readonly rerollRandom: RandomState;
+  /** La seconde chance encore là (#206), donnée au lancement selon la jauge. */
+  readonly secondChance: boolean;
 }
 
 /**
@@ -138,10 +146,17 @@ export function lootStream(seed: AscentSeed): RandomState {
   return seedRandom((seed ^ 0x9e3779b9) >>> 0);
 }
 
+/** Le flux de hasard des relances (#42) : séparé, il ne déplace aucun autre tirage. */
+export function rerollStream(seed: AscentSeed): RandomState {
+  return seedRandom((seed ^ 0x2545f491) >>> 0);
+}
+
 /** L'issue d'un combat d'étage. */
 export interface FloorBattleResult {
   readonly outcome: 'victory' | 'defeat';
   readonly heroHp: number;
+  /** La seconde chance a servi pendant le combat (#206) ; absent, non. */
+  readonly secondChanceUsed?: boolean;
 }
 
 function drawBattleSeed(random: RandomState): Drawn<BattleSeed> {
@@ -208,6 +223,9 @@ export function startAscent(seed: AscentSeed, launch: AscentLaunch = {}): Ascent
     passage: null,
     unlocks: [...new Set(unlocks)],
     emberHeartOffered: false,
+    rerolls: favorRerolls(gauge),
+    rerollRandom: rerollStream(seed),
+    secondChance: favorSecondChance(gauge),
   };
 }
 
@@ -325,8 +343,10 @@ export function endFloorBattle(ascent: Ascent, result: FloorBattleResult): Ascen
   const { encounter: current, tier } = ascent;
   if (current === null || ascent.outcome !== null) return ascent;
   const hero = { ...ascent.hero, hp: result.heroHp };
+  // Une seconde chance utilisée le reste, même dans une chute (#206).
+  const secondChance = ascent.secondChance && result.secondChanceUsed !== true;
   if (result.outcome === 'defeat') {
-    return { ...ascent, hero, encounter: null, outcome: 'fall' };
+    return { ...ascent, hero, encounter: null, outcome: 'fall', secondChance };
   }
   let random = ascent.random;
   let gold = current.kind === 'elite' ? eliteGold(tier) : bossGold(tier);
@@ -345,6 +365,7 @@ export function endFloorBattle(ascent: Ascent, result: FloorBattleResult): Ascen
   const earned = {
     ...ascent,
     hero,
+    secondChance,
     random,
     gold: ascent.gold + gold,
     lastGold: gold,
@@ -440,6 +461,39 @@ export function chooseBoon(ascent: Ascent, index: number): Ascent {
     };
   }
   return { ...ascent, hero: { ...hero, boons: [...hero.boons, card] }, boonOffer: null };
+}
+
+/**
+ * Une relance est possible (#42) : il en reste, une offre est en attente, et au moins un bienfait
+ * de la réserve du palier n'est ni possédé ni affiché.
+ */
+export function canReroll(ascent: Ascent): boolean {
+  const offer = ascent.boonOffer;
+  return (
+    ascent.rerolls > 0 &&
+    offer !== null &&
+    boonPool(ascent.tier).some((kind) => !ascent.hero.boons.includes(kind) && !offer.includes(kind))
+  );
+}
+
+/**
+ * Le joueur relance l'offre (#42) : une nouvelle offre, tirée sur le flux des relances, et une
+ * relance de moins. Sans relance possible, rien ne change.
+ */
+export function rerollBoonOffer(ascent: Ascent): Ascent {
+  if (!canReroll(ascent)) return ascent;
+  const drawn = drawRerolledOffer(
+    ascent.hero.boons,
+    ascent.boonOffer!,
+    ascent.rerollRandom,
+    ascent.tier,
+  );
+  return {
+    ...ascent,
+    boonOffer: drawn.value,
+    rerolls: ascent.rerolls - 1,
+    rerollRandom: drawn.random,
+  };
 }
 
 /** L'abandon (`Abandon`) : il a le même effet qu'une chute (P33). */
