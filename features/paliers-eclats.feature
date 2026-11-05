@@ -225,11 +225,12 @@ Fonctionnalité: Trois paliers jusqu'au sommet, et les premiers Éclats
     Quand il gagne un combat ordinaire
     Alors l'offre propose les 2 bienfaits restants
 
+  # Depuis #212, la carte Second souffle complète l'offre : l'écran du choix s'affiche toujours.
   @domain
   Scénario: Limite — plus aucun bienfait
     Étant donné un héros qui possède les 7 bienfaits
     Quand il gagne un combat ordinaire
-    Alors aucun écran de bienfait ne s'affiche et l'ascension continue
+    Alors l'offre montre la carte « Second souffle » seule et l'ascension continue
 
   # --- Images ---
 

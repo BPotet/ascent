@@ -24,7 +24,7 @@ const SPARK_FROM = 0.4;
 const REDUCED_AMPLITUDE = 0.25;
 
 /** L'image en cours d'une animation de `count` images de `frameMs`, puis `count` à la fin. */
-function useSteps(count: number, frameMs: number): number {
+export function useSteps(count: number, frameMs: number): number {
   const [frame, setFrame] = useState(0);
   useEffect(() => {
     if (frame >= count) return;

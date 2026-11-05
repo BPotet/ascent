@@ -74,12 +74,12 @@ const rarityPercent = (state: RandomState) => nextRandom(state).value * 100;
 /** Le tirage de Cœur de braise, × 100, après le butin et l'offre d'aujourd'hui. */
 function emberHeartPercent(ascent: Ascent): number {
   const loot = drawLoot(ascent.encounter!, ascent.gauge, ascent.equipment, ascent.lootRandom);
-  return nextRandom(drawBoonOffer(ascent.hero.boons, loot.random).random).value * 100;
+  return nextRandom(drawBoonOffer(ascent.hero.boons, loot.random, 1).random).value * 100;
 }
 /** Le flux du butin après le butin et l'offre d'aujourd'hui : sans tirage de Cœur de braise. */
 function todayStream(ascent: Ascent): RandomState {
   const loot = drawLoot(ascent.encounter!, ascent.gauge, ascent.equipment, ascent.lootRandom);
-  return drawBoonOffer(ascent.hero.boons, loot.random).random;
+  return drawBoonOffer(ascent.hero.boons, loot.random, 1).random;
 }
 
 function fight(before: readonly Ascent[]): void {
@@ -123,7 +123,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   then(
     /^l'offre est tirée parmi les 7 bienfaits de base, au poids de leur rareté \(Commun 6, Rare 3, Épique 1\)$/u,
     () => {
-      expect(boonWeights([])).toEqual([
+      expect(boonWeights([], 1)).toEqual([
         ['perfectEcho', 6],
         ['shatteringEmber', 6],
         ['frostSkin', 6],
@@ -134,7 +134,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       ]);
       world.before.forEach((ascent, index) => {
         const loot = drawLoot(ascent.encounter!, 0, ascent.equipment, ascent.lootRandom);
-        expect(world.after[index]!.boonOffer).toEqual(drawBoonOffer([], loot.random).value);
+        expect(world.after[index]!.boonOffer).toEqual(drawBoonOffer([], loot.random, 1).value);
       });
     },
   );
@@ -305,8 +305,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(/^l'offre propose le bienfait de base restant et Cœur de braise$/u, () => {
+    // Puis la carte Second souffle, qui complète l'offre (#212).
     world.after.forEach((ascent) =>
-      expect(ascent.boonOffer).toEqual(['winterVigil', 'emberHeart']),
+      expect(ascent.boonOffer).toEqual(['winterVigil', 'emberHeart', 'secondBreath']),
     );
   });
 

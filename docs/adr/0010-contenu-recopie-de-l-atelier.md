@@ -359,3 +359,33 @@ validés (`icon` et `iconPhase2` de la Reine, `icon` de la Phalénide) entrent d
    du sprite de la place. Ce n'est pas le calage de `burnEffect` (en haut d'une case carrée).
 4. **Teintes.** Toutes les teintes de la Reine, de la Phalénide et de leurs portraits sont déjà dans
    `artPalette` : aucune n'est ajoutée.
+
+## Avenant du 5 novembre 2026 (#212) : les icônes des bienfaits de palier et de Second souffle
+
+Les icônes des six bienfaits de palier et de la carte Second souffle (Atelier, lues le 05/11/2026,
+version 2, proposition 1, statut `validé`) sont recopiées dans `sprites/atelier/data/boonIcons.ts`,
+clé `proposals[chosen]`, clés `w`, `h`, `palette` et `rows` seulement, comme au § 9.
+
+1. **Recopie par la conversation.** L'outil de lecture de l'Atelier refuse d'écrire ces documents en
+   fichiers : le script de recopie (§ 9) ne peut pas tourner. Les 13 documents (`codex/<id>` et
+   `assets/<id>` des six bienfaits, `assets/secondBreath`) sont lus un à un par `ArtifactData get`,
+   en lecture seule, puis recopiés à la main. La sha256 du JSON compact de `data`, clés triées
+   (`json.dumps(data, sort_keys=True, separators=(',', ':'), ensure_ascii=False)`, en UTF-8), est
+   calculée sur la copie et écrite, avec le document et sa version, dans l'en-tête du fichier et
+   dans « Données de l'Atelier » de la story. Une version autre que celle de la story arrête la
+   recopie.
+2. **Contrôle de fidélité.** Parce que la copie passe par la main, un test
+   (`tierBoons.data.test.ts`) compare chaque icône recopiée, pixel pour pixel, à `ART.i_<id>` de la
+   maquette validée versionnée `docs/mockups/210-paliers-distincts/index.html`, et vérifie ses
+   dimensions (24 × 24) et ses teintes (toutes dans `artPalette`). Un autre test compare les valeurs
+   de `BOONS` aux fiches `codex/<id>` (famille, rareté, palier, effets). Une maquette qui diffère de
+   l'Atelier arrête la story.
+3. **Second souffle hors du registre.** La carte n'est pas un `BoonKind` : son icône est une
+   constante à part, `SECOND_BREATH_ICON: AssetImage`, dans le même fichier, hors de `BOON_ICONS`
+   (toujours typé `Record<BoonKind, AssetImage>`, sans `Partial`). `codex/secondBreath` n'existe
+   pas : les règles de la carte viennent de la story.
+4. **Noms de code.** Les noms de code des six bienfaits (`thornReturn`, `hoarfrost`, `ashenBlade`,
+   `heatedBronze`, `trueHour`, `belfryFrost`) et `secondBreath` deviennent des identifiants de
+   sauvegarde (avenant #152) : ils ne changent plus.
+5. **Teintes.** Toutes les teintes des sept icônes sont déjà dans `artPalette` : aucune n'est
+   ajoutée.
