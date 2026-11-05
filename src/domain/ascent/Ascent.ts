@@ -340,7 +340,8 @@ export function endFloorBattle(ascent: Ascent, result: FloorBattleResult): Ascen
     };
   }
   // L'offre de bienfaits suit l'objet trouvé, sur le même flux : les portes ne bougent pas (P9).
-  const offer = drawBoonOffer(hero.boons, earned.lootRandom);
+  // Au palier du combat gagné (#212) : la réserve de ses bienfaits de palier.
+  const offer = drawBoonOffer(hero.boons, earned.lootRandom, tier);
   const withHeart = emberHeartDrawn(ascent, current)
     ? offerEmberHeart(offer.value, offer.random)
     : { value: { offer: offer.value, offered: false }, random: offer.random };

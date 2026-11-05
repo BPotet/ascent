@@ -12,6 +12,12 @@ export const BOON_NAMES: Readonly<Record<BoonKind, string>> = {
   lingeringFrost: 'Givre persistant',
   winterVigil: "Veillée d'hiver",
   emberHeart: 'Cœur de braise',
+  thornReturn: 'Ronce rendue',
+  hoarfrost: 'Gelée blanche',
+  ashenBlade: 'Lame de cendre',
+  heatedBronze: 'Bronze chauffé',
+  trueHour: 'Heure juste',
+  belfryFrost: 'Givre du clocher',
 };
 
 const BOON_EFFECTS: Readonly<Record<BoonKind, string>> = {
@@ -24,6 +30,14 @@ const BOON_EFFECTS: Readonly<Record<BoonKind, string>> = {
   winterVigil:
     'Réduction des dégâts +10 points (40 % au plus) et +1 Élan au début de chaque combat.',
   emberHeart: 'Chaque garde que tu brises : +1 Élan et 5 PV rendus.',
+  // Les bienfaits de palier (#212), textes de la maquette 210.
+  thornReturn: 'Ta contre-attaque fait 30 % de dégâts en plus.',
+  hoarfrost: 'Chaque impact paré parfaitement te rend 2 PV.',
+  ashenBlade: 'Attaque +25 % : tous tes coups frappent plus fort.',
+  heatedBronze: 'Attaque +10 % : tous tes coups frappent plus fort.',
+  trueHour: 'Ta frappe parfaite multiplie les dégâts par 1,8 au lieu de 1,5.',
+  belfryFrost:
+    'Réduction des dégâts +5 points (40 % au plus) et 2 PV rendus par impact paré parfaitement.',
 };
 
 const FAMILY_NAMES: Readonly<Record<BoonFamily, string>> = {

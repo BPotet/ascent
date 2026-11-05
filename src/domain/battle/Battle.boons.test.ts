@@ -4,12 +4,15 @@ import {
   advance,
   heroAction,
   nextDeadline,
+  pressDefense,
   pressStrike,
   resumeBattle,
   startBattle,
+  type AttackStep,
   type Battle,
   type BattleUpdate,
 } from './Battle';
+import { boonModifiers } from '../ascent/boons';
 import type { BattleEvent } from './BattleEvent';
 import type { HeroKind } from './combatants';
 import { NO_MODIFIERS, type HeroModifiers } from './heroModifiers';
@@ -171,3 +174,41 @@ describe('Battle with the hero modifiers (P18)', () => {
 function fullHero(): Battle['hero'] {
   return { hp: 80, maxHp: 80, momentum: 1, bulwark: false };
 }
+
+describe('the tier boons in the battle (#212)', () => {
+  /** La Sentinelle, à `hp` PV sur 80, sous un coup de la Goule dont l'impact tombe à 2 000 ms. */
+  function underAttack(battle: Battle, hp: number): Battle {
+    const step: AttackStep = {
+      kind: 'attack',
+      enemy: 0,
+      attack: 'basic',
+      damage: 10,
+      startedAt: 1_000,
+      feintAt: null,
+      feintShown: false,
+      impacts: [{ at: 2_000, landed: false, lost: false, outcome: null }],
+      resolvedAt: 2_160,
+      counter: null,
+    };
+    return {
+      ...battle,
+      hero: { ...battle.hero, hp },
+      now: 1_900,
+      lastPlayed: 'enemy',
+      phase: { kind: 'enemy', step },
+    };
+  }
+  const parried = (modifiers: Partial<HeroModifiers>, hp: number) =>
+    pressDefense(underAttack(start(modifiers), hp), { button: 'parry', at: 2_000 }).battle.hero.hp;
+
+  it('Gelée blanche: the Sentinel at 50 HP of 80 gets back 2 HP on a perfect parry', () => {
+    expect(parried(boonModifiers([]), 50)).toBe(50);
+    expect(parried(boonModifiers(['hoarfrost']), 50)).toBe(52);
+    expect(parried(boonModifiers(['hoarfrost']), 79)).toBe(80);
+  });
+
+  it('Givre du clocher: 2 HP per perfect parry, adding to Gelée blanche', () => {
+    expect(parried(boonModifiers(['belfryFrost']), 50)).toBe(52);
+    expect(parried(boonModifiers(['belfryFrost', 'hoarfrost']), 50)).toBe(54);
+  });
+});

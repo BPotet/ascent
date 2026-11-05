@@ -2,7 +2,7 @@ import { BOON_KINDS } from '../../../domain/ascent/boons';
 import { BOON_NAMES, boonCard, boonChip, boonObtainedLabel, ownedBoonsLabel } from './boonText';
 
 describe('boonText', () => {
-  it("names the 8 boons, Veillée d'hiver 7th and Cœur de braise last (#195)", () => {
+  it("names the 14 boons, Veillée d'hiver 7th, Cœur de braise 8th, then the tier boons (#195, #212)", () => {
     expect(BOON_KINDS.map((kind) => BOON_NAMES[kind])).toEqual([
       'Écho parfait',
       'Braise brisante',
@@ -12,8 +12,36 @@ describe('boonText', () => {
       'Givre persistant',
       "Veillée d'hiver",
       'Cœur de braise',
+      'Ronce rendue',
+      'Gelée blanche',
+      'Lame de cendre',
+      'Bronze chauffé',
+      'Heure juste',
+      'Givre du clocher',
     ]);
   });
+
+  it.each([
+    ['thornReturn', '◆ Écho · Commun', 'Ta contre-attaque fait 30 % de dégâts en plus.'],
+    ['hoarfrost', '◆◆ Givre · Rare', 'Chaque impact paré parfaitement te rend 2 PV.'],
+    ['ashenBlade', '◆◆◆ Braise · Épique', 'Attaque +25 % : tous tes coups frappent plus fort.'],
+    ['heatedBronze', '◆ Braise · Commun', 'Attaque +10 % : tous tes coups frappent plus fort.'],
+    [
+      'trueHour',
+      '◆◆ Écho · Rare',
+      'Ta frappe parfaite multiplie les dégâts par 1,8 au lieu de 1,5.',
+    ],
+    [
+      'belfryFrost',
+      '◆◆◆ Givre · Épique',
+      'Réduction des dégâts +5 points (40 % au plus) et 2 PV rendus par impact paré parfaitement.',
+    ],
+  ] as const)(
+    'writes the card of the tier boon %s as the mockup 210 (#212)',
+    (kind, tag, effect) => {
+      expect(boonCard(kind)).toMatchObject({ tag, effect });
+    },
+  );
 
   it("writes the card of Veillée d'hiver, and keeps the one of Cœur de braise (#195)", () => {
     expect(boonCard('winterVigil')).toEqual({

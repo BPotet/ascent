@@ -20,7 +20,7 @@ import { Dimensions, PixelRatio, StyleSheet } from 'react-native';
 
 import { startAscent, type Ascent } from '../../src/domain/ascent/Ascent';
 import { BLESSING_FAMILIES, type BlessingFamily } from '../../src/domain/ascent/blessings';
-import { BOON_KINDS, type BoonKind } from '../../src/domain/ascent/boons';
+import { BOON_KINDS, boonTier, type BoonKind } from '../../src/domain/ascent/boons';
 import type { Exit } from '../../src/domain/ascent/exits';
 import { BoonChoicePanel } from '../../src/adapters/ui/battle/BoonChoicePanel';
 import { ExitChoice } from '../../src/adapters/ui/components/ExitChoice';
@@ -409,8 +409,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     () => {
       const validated = mockupIcons();
       // Les 7 icônes de #157 contre la maquette #153 ; Veillée d'hiver (#195) contre celle du camp.
-      BOON_KINDS.filter((kind) => kind !== 'winterVigil').forEach((kind) =>
-        expect(BOON_ICONS[kind]).toEqual(validated[kind]),
+      // Les bienfaits de palier (#212) ont leur propre contrôle, contre la maquette 210.
+      BOON_KINDS.filter((kind) => kind !== 'winterVigil' && boonTier(kind) === null).forEach(
+        (kind) => expect(BOON_ICONS[kind]).toEqual(validated[kind]),
       );
       expect(BOON_ICONS.winterVigil).toEqual(campWinterVigilIcon());
       BLESSING_FAMILIES.forEach((family) =>

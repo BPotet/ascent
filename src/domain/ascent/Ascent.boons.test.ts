@@ -5,9 +5,12 @@ import {
   chooseBoon,
   chooseExit,
   endFloorBattle,
+  enterNextTier,
   startAscent,
   type Ascent,
 } from './Ascent';
+import { boonTier, type BoonKind } from './boons';
+import type { Tier } from './tiers';
 
 const won = (ascent: Ascent) =>
   endFloorBattle(ascent, { outcome: 'victory', heroHp: ascent.hero.hp });
@@ -97,5 +100,53 @@ describe('boons after a won battle (P16, P17)', () => {
     const offered = chooseBoon(won(startAscent(9)), 0);
     expect(abandonAscent(offered).outcome).toBe('fall');
     expect(startAscent(10, { hero: 'sentinel' }).hero.boons).toEqual([]);
+  });
+});
+
+describe('the tier boons in the ascent (#212)', () => {
+  const SEEDS = Array.from({ length: 120 }, (_, index) => index * 7_919 + 5);
+
+  /** L'ascension devant un combat `kind` du palier `tier`, le héros avec `boons`. */
+  const atTier = (
+    tier: Tier,
+    seed: number,
+    boons: readonly BoonKind[] = [],
+    kind: 'combat' | 'elite' = 'combat',
+  ): Ascent => {
+    const ascent = startAscent(seed);
+    return {
+      ...ascent,
+      tier,
+      floor: 3,
+      hero: { ...ascent.hero, boons },
+      encounter: { kind, enemies: kind === 'elite' ? ['twins'] : ['ghoul'], battleSeed: 1 },
+    };
+  };
+  const tiersOf = (offers: readonly (readonly BoonKind[] | null)[]) =>
+    new Set(offers.flatMap((offer) => (offer ?? []).map(boonTier)));
+
+  it('draws the offer with the tier of the won battle: tier boons from tier 2 on', () => {
+    const offers = (tier: Tier, kind: 'combat' | 'elite' = 'combat') =>
+      SEEDS.map((seed) => won(atTier(tier, seed, [], kind)).boonOffer);
+
+    expect(tiersOf(offers(1))).toEqual(new Set([null]));
+    expect(tiersOf(offers(2))).toEqual(new Set([null, 2]));
+    expect(tiersOf(offers(3))).toEqual(new Set([null, 2, 3]));
+    expect(tiersOf(offers(3, 'elite'))).toEqual(new Set([null, 2, 3]));
+  });
+
+  it('keeps a tier boon into the next tier, and never offers it again', () => {
+    const taken = {
+      ...atTier(2, 5, ['ashenBlade']),
+      passage: { to: 3, step: 'announce' },
+    } as const;
+
+    const entered = enterNextTier(taken);
+
+    expect(entered.tier).toBe(3);
+    expect(entered.hero.boons).toEqual(['ashenBlade']);
+    SEEDS.forEach((seed) =>
+      expect(won(atTier(3, seed, ['ashenBlade'])).boonOffer).not.toContain('ashenBlade'),
+    );
   });
 });

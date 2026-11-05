@@ -1,9 +1,9 @@
 import { BOON_KINDS } from '../../../../domain/ascent/boons';
 import { BLESSING_FAMILIES } from '../../../../domain/ascent/blessings';
 import { BLESSING_ICONS } from './atelier/data/blessingIcons';
-import { BOON_ICONS } from './atelier/data/boonIcons';
+import { BOON_ICONS, SECOND_BREATH_ICON } from './atelier/data/boonIcons';
 import { assetSprite, type AssetImage } from './atelier/fullAnimation';
-import { blessingIcon, boonIcon, iconScale } from './gameIcons';
+import { blessingIcon, boonIcon, iconScale, secondBreathIcon } from './gameIcons';
 
 /** Une icône carrée de `size` pixels d'art, transparente. */
 function blank(size: number, height = size): AssetImage {
@@ -14,12 +14,13 @@ describe('the game icons (#157)', () => {
   const icons = [
     ...BOON_KINDS.map((kind) => [`boon ${kind}`, BOON_ICONS[kind]] as const),
     ...BLESSING_FAMILIES.map((family) => [`blessing ${family}`, BLESSING_ICONS[family]] as const),
+    ['Second souffle', SECOND_BREATH_ICON] as const,
   ];
 
-  it('has an icon for each of the 8 boons and the 5 blessing families', () => {
+  it('has an icon for each of the 14 boons, the 5 blessing families and Second souffle (#212)', () => {
     expect(Object.keys(BOON_ICONS).sort()).toEqual([...BOON_KINDS].sort());
     expect(Object.keys(BLESSING_ICONS).sort()).toEqual([...BLESSING_FAMILIES].sort());
-    expect(icons).toHaveLength(13);
+    expect(icons).toHaveLength(20);
   });
 
   it.each(icons)('draws the %s icon square, on 16 or 24 art pixels', (_, image) => {
@@ -35,10 +36,14 @@ describe('the game icons (#157)', () => {
     expect(sprite.pixels.some((code) => code !== 0)).toBe(true);
   });
 
-  it('names the sprite of an icon after its boon or blessing family', () => {
+  it('names the sprite of an icon after its boon, its blessing family or Second souffle', () => {
     expect(boonIcon('lingeringFrost')).toEqual({
       sprite: 'boon-icon:lingeringFrost',
       image: BOON_ICONS.lingeringFrost,
+    });
+    expect(secondBreathIcon()).toEqual({
+      sprite: 'second-breath-icon',
+      image: SECOND_BREATH_ICON,
     });
     expect(blessingIcon('protection')).toEqual({
       sprite: 'blessing-icon:protection',
