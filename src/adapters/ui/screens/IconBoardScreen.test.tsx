@@ -69,6 +69,9 @@ describe('IconBoardScreen (#157)', () => {
       'Dernière porte · 5 bienfaits',
       'Bénédictions · 3 sur 3',
       'Bénédiction · 1 sur 1',
+      'Offre · palier 2',
+      'Offre · Second souffle',
+      'Offre · Second souffle seule',
       'Équipement · 1 · pied de la tour',
       'Équipement · 3 · pied de la tour',
       'Équipement · 8 · pied de la tour',
@@ -116,6 +119,40 @@ describe('IconBoardScreen (#157)', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: 'Continuer' }));
     expect(screen.getByRole('header', { name: 'Planche des icônes' })).toBeOnTheScreen();
+  });
+
+  it('shows an offer of tier 2 with Gelée blanche and its tier mark (#212)', async () => {
+    await open('Offre · palier 2');
+
+    expect(screen.getAllByRole('radio').map((card) => card.props.accessibilityLabel)).toEqual([
+      expect.stringMatching(/^Écho parfait, /),
+      expect.stringMatching(/^Gelée blanche, Givre, Rare, palier 2\. /),
+      expect.stringMatching(/^Givre persistant, /),
+    ]);
+    expect(screen.getByText('· Palier 2')).toBeOnTheScreen();
+  });
+
+  it('shows Second souffle after two tier 3 boons, then the HP given back (#212)', async () => {
+    await open('Offre · Second souffle');
+
+    expect(screen.getAllByRole('radio').map((card) => card.props.accessibilityLabel)).toEqual([
+      expect.stringMatching(/^Heure juste, /),
+      expect.stringMatching(/^Givre du clocher, /),
+      "Second souffle : rend 8 PV, de 40 à 48 PV sur 88. Ce n'est pas un bienfait.",
+    ]);
+    await fireEvent.press(screen.getByRole('radio', { name: /^Second souffle/ }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Prendre' }));
+    expect(screen.getByText('PV rendus.')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Continuer' }));
+    expect(screen.getByRole('header', { name: 'Planche des icônes' })).toBeOnTheScreen();
+  });
+
+  it('shows Second souffle alone, already checked, under « Reprends ton souffle » (#212)', async () => {
+    await open('Offre · Second souffle seule');
+
+    expect(screen.getByRole('header', { name: 'Reprends ton souffle' })).toBeOnTheScreen();
+    expect(screen.getByRole('radio', { name: /^Second souffle/ })).toBeChecked();
   });
 
   it('shows the exits without any boon', async () => {

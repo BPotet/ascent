@@ -266,18 +266,21 @@ describe('exhausted boons (#38)', () => {
     return { ...ascent, hero: { ...ascent.hero, boons } };
   };
 
-  it('offers the 2 boons left to a hero who owns 5 of the 7', () => {
+  it('offers the 2 boons left to a hero who owns 5 of the 7, then Second souffle (#212)', () => {
     const owned = BASE_BOON_KINDS.slice(0, 5);
 
     const offered = endFloorBattle(owning(owned), { outcome: 'victory', heroHp: 40 });
 
-    expect([...offered.boonOffer!].sort()).toEqual([...BASE_BOON_KINDS.slice(5)].sort());
+    expect([...offered.boonOffer!.slice(0, 2)].sort()).toEqual(
+      [...BASE_BOON_KINDS.slice(5)].sort(),
+    );
+    expect(offered.boonOffer![2]).toBe('secondBreath');
   });
 
-  it('offers no boon to a hero who owns the 7, and the ascent goes on', () => {
+  it('offers Second souffle alone to a hero who owns the 7, and the ascent goes on (#212)', () => {
     const offered = endFloorBattle(owning(BASE_BOON_KINDS), { outcome: 'victory', heroHp: 40 });
 
-    expect(offered.boonOffer).toBeNull();
+    expect(offered.boonOffer).toEqual(['secondBreath']);
     expect(offered.exits.length).toBeGreaterThan(0);
   });
 });

@@ -198,6 +198,30 @@ describe('AscentScreen', () => {
     expect(await screen.findByLabelText('Bienfaits : Peau de givre, Commun')).toBeOnTheScreen();
   });
 
+  it('offers Second souffle alone with the HP of the hero, then heals him (#212)', async () => {
+    const ascent = startAscent(42);
+    const { session } = await show({
+      ...between(ascent, [{ kind: 'campfire', groupSize: null }], 8),
+      hero: { ...ascent.hero, hp: 40, maxHp: 80 },
+      boonOffer: ['secondBreath'],
+    });
+
+    expect(await screen.findByRole('header', { name: 'Reprends ton souffle' })).toBeOnTheScreen();
+    expect(
+      screen.getByRole('radio', {
+        name: "Second souffle : rend 8 PV, de 40 à 48 PV sur 80. Ce n'est pas un bienfait.",
+      }),
+    ).toBeChecked();
+    await fireEvent.press(screen.getByRole('button', { name: 'Prendre' }));
+    expect(screen.getByLabelText('PV rendus : Second souffle, 8 PV. PV 48 sur 80.')).toBeTruthy();
+    await act(async () => {
+      fireEvent.press(screen.getByRole('button', { name: 'Continuer' }));
+    });
+
+    expect(session.current()?.hero).toMatchObject({ hp: 48, boons: [] });
+    expect(await screen.findByTestId('ascent-exit-0')).toBeOnTheScreen();
+  });
+
   it('shows the owned boons in chips at the exits, in the order won, without the starting blessings (#157)', async () => {
     const ascent = startAscent(42);
     await show({

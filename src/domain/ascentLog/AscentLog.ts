@@ -9,7 +9,7 @@
  */
 import type { Ascent, AscentSeed, Encounter } from '../ascent/Ascent';
 import type { BlessingFamily } from '../ascent/blessings';
-import type { BoonKind } from '../ascent/boons';
+import type { OfferCard } from '../ascent/boons';
 import type { Exit, ExitKind } from '../ascent/exits';
 import type { FateGauge } from '../ascent/fateGauge';
 import type { Equipment, ItemKind } from '../ascent/items';
@@ -71,8 +71,9 @@ export interface FloorRecord {
   readonly exit: HeroVitals | null;
   /** L'Or de l'étage. */
   readonly gold: number;
-  readonly boonsOffered: readonly BoonKind[];
-  readonly boonChosen: BoonKind | null;
+  /** Les cartes de l'offre, carte Second souffle comprise (#212). */
+  readonly boonsOffered: readonly OfferCard[];
+  readonly boonChosen: OfferCard | null;
   readonly itemFound: ItemKind | null;
   readonly itemOutcome: 'equipped' | 'left' | null;
   /** Les Éclats de l'étage. */

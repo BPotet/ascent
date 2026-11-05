@@ -210,6 +210,36 @@ export function offerEmberHeart(
   };
 }
 
+/**
+ * La carte de repli Second souffle (`SecondBreath`, #212) : une carte de l'offre qui n'est pas un
+ * bienfait. Ni famille, ni rareté ; jamais possédée, jamais tirée.
+ */
+export const SECOND_BREATH = 'secondBreath';
+
+/** Une carte de l'offre (#212) : un bienfait, ou la carte Second souffle. */
+export type OfferCard = BoonKind | typeof SECOND_BREATH;
+
+/**
+ * L'offre complétée par la carte de repli (#212) : une seule carte Second souffle, en dernier, si
+ * l'offre a moins de 3 cartes. Aucun tirage : les tirages de l'ascension ne changent pas.
+ */
+export function withSecondBreath(offer: readonly BoonKind[]): readonly OfferCard[] {
+  return offer.length < OFFER_SIZE ? [...offer, SECOND_BREATH] : offer;
+}
+
+/** Le soin de Second souffle, en % des PV max (#212). */
+export const SECOND_BREATH_PERCENT = 10;
+
+/** Les PV rendus par Second souffle (#212) : 10 % des PV max, entier inférieur, au moins 1. */
+export function secondBreathHeal(maxHp: number): number {
+  return Math.max(1, Math.floor((maxHp * SECOND_BREATH_PERCENT) / 100));
+}
+
+/** Les PV du héros après Second souffle (#212) : jamais au-delà du maximum. */
+export function secondBreathHp(hp: number, maxHp: number): number {
+  return Math.min(maxHp, hp + secondBreathHeal(maxHp));
+}
+
 /** Les modificateurs du héros donnés par ses bienfaits. */
 export function boonModifiers(boons: readonly BoonKind[]): HeroModifiers {
   return combineModifiers(...boons.map((kind) => BOONS[kind].modifiers));

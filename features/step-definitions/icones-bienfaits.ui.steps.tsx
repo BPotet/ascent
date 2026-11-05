@@ -150,7 +150,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   and(
     "l'écran « Choisis un bienfait » propose Écho parfait, Givre persistant et Cœur de braise",
     async () => {
-      await render(<BoonChoicePanel offer={OFFER} onChoose={jest.fn()} />);
+      await render(
+        <BoonChoicePanel offer={OFFER} onChoose={jest.fn()} heroHp={40} heroMaxHp={80} />,
+      );
       expect(screen.getByRole('header', { name: 'Choisis un bienfait' })).toBeOnTheScreen();
     },
   );
@@ -195,7 +197,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   given("l'écran « Choisis un bienfait »", async () => {
-    await render(<BoonChoicePanel offer={OFFER} onChoose={jest.fn()} />);
+    await render(<BoonChoicePanel offer={OFFER} onChoose={jest.fn()} heroHp={40} heroMaxHp={80} />);
   });
 
   when('le joueur touche la carte Givre persistant', async () => {
@@ -220,7 +222,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   given('le joueur a choisi Givre persistant', async () => {
-    await render(<BoonChoicePanel offer={OFFER} onChoose={jest.fn()} />);
+    await render(<BoonChoicePanel offer={OFFER} onChoose={jest.fn()} heroHp={40} heroMaxHp={80} />);
     await fireEvent.press(card('Givre persistant'));
   });
 
@@ -364,7 +366,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then("les deux s'affichent à 48 dp, à ×3 et à ×2", async () => {
-    await render(<BoonChoicePanel offer={OFFER} onChoose={jest.fn()} />);
+    await render(<BoonChoicePanel offer={OFFER} onChoose={jest.fn()} heroHp={40} heroMaxHp={80} />);
     const [echo, frost] = [wellOf(card('Écho parfait')), wellOf(card('Givre persistant'))];
     expect([echo.scale, echo.width, frost.scale, frost.width]).toEqual([3, 48, 2, 48]);
   });
@@ -431,7 +433,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   given("une carte de bienfait ou une pastille d'équipement", async () => {
-    await render(<BoonChoicePanel offer={OFFER} onChoose={jest.fn()} />);
+    await render(<BoonChoicePanel offer={OFFER} onChoose={jest.fn()} heroHp={40} heroMaxHp={80} />);
   });
 
   then("l'icône est cachée au lecteur d'écran", async () => {
@@ -453,7 +455,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       await act(async () => {
         screen.unmount();
       });
-      await render(<BoonChoicePanel offer={OFFER} onChoose={jest.fn()} />);
+      await render(
+        <BoonChoicePanel offer={OFFER} onChoose={jest.fn()} heroHp={40} heroMaxHp={80} />,
+      );
       expect(card('Givre persistant')).toHaveAccessibleName(
         'Givre persistant, Givre, Rare. Un ennemi étourdi se relève avec la moitié de sa garde seulement.',
       );

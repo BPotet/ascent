@@ -606,6 +606,8 @@ export function AscentScreen({
         <BoonChoicePanel
           key={ascent.floor}
           offer={ascent.boonOffer}
+          heroHp={ascent.hero.hp}
+          heroMaxHp={ascent.hero.maxHp}
           onChoose={(index) => session.chooseBoon(index)}
         />
         {loadoutSheet}

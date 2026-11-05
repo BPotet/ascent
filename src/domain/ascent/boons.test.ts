@@ -8,6 +8,8 @@ import {
   BOONS,
   BOON_KINDS,
   EMBER_HEART_CHANCE,
+  SECOND_BREATH,
+  SECOND_BREATH_PERCENT,
   TIER_BOONS,
   boonModifiers,
   boonPool,
@@ -15,6 +17,9 @@ import {
   boonWeights,
   drawBoonOffer,
   offerEmberHeart,
+  secondBreathHeal,
+  secondBreathHp,
+  withSecondBreath,
   type BoonKind,
 } from './boons';
 
@@ -418,5 +423,36 @@ describe('the tier boons are those of the Codex (#212)', () => {
     expect(BOONS[kind].rarity).toBe(sheet.rarity);
     expect(boonTier(kind)).toBe(sheet.tier);
     expect(BOONS[kind].modifiers).toEqual(codexModifiers(sheet.effects));
+  });
+});
+
+describe('the fallback card Second souffle (`SecondBreath`, #212)', () => {
+  it('is a card of the offer, not a boon', () => {
+    expect(SECOND_BREATH).toBe('secondBreath');
+    expect(BOON_KINDS).not.toContain(SECOND_BREATH);
+  });
+
+  it('completes an offer of 2, 1 or 0 boons with one card, and leaves an offer of 3', () => {
+    const three: readonly BoonKind[] = ['perfectEcho', 'hoarfrost', 'emberHeart'];
+    expect(withSecondBreath(three)).toEqual(three);
+    expect(withSecondBreath(['trueHour', 'belfryFrost'])).toEqual([
+      'trueHour',
+      'belfryFrost',
+      'secondBreath',
+    ]);
+    expect(withSecondBreath(['emberHeart'])).toEqual(['emberHeart', 'secondBreath']);
+    expect(withSecondBreath([])).toEqual(['secondBreath']);
+  });
+
+  it('heals 10 % of the max HP, rounded down, at least 1', () => {
+    expect(SECOND_BREATH_PERCENT).toBe(10);
+    expect([88, 80, 89, 9, 5, 10].map(secondBreathHeal)).toEqual([8, 8, 8, 1, 1, 1]);
+  });
+
+  it('never heals beyond the max HP', () => {
+    expect(secondBreathHp(40, 88)).toBe(48);
+    expect(secondBreathHp(3, 9)).toBe(4);
+    expect(secondBreathHp(79, 80)).toBe(80);
+    expect(secondBreathHp(80, 80)).toBe(80);
   });
 });

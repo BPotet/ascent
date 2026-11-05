@@ -10,6 +10,9 @@ import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
 
 const { roles } = artPalette;
 
+/** Le trait d'un écrin : la couleur d'une rareté, ou le vert du soin (Second souffle, #212). */
+export type IconWellTone = Rarity | 'heal';
+
 /** La place d'un écrin : sur une carte, dans une pastille, ou au grand moment. */
 export type IconWellSize = 'card' | 'chip' | 'large';
 
@@ -20,6 +23,7 @@ export const RARITY_COLORS: Readonly<Record<Rarity, string>> = {
   rare: roles.rarityRare,
   epic: roles.rarityEpic,
 };
+const WELL_COLORS: Readonly<Record<IconWellTone, string>> = { ...RARITY_COLORS, heal: roles.done };
 
 /** Le côté de l'écrin, puis celui de son icône, en dp (maquette #153). */
 const SIZES: Readonly<Record<IconWellSize, { readonly well: number; readonly icon: number }>> = {
@@ -31,7 +35,7 @@ const SIZES: Readonly<Record<IconWellSize, { readonly well: number; readonly ico
 
 /**
  * L'écrin (`IconWell`, voir `docs/glossary.md`) : le carré cranté sombre qui porte une icône de
- * bienfait ou de bénédiction, au trait de la couleur de sa rareté. L'icône y est centrée à 48 dp
+ * bienfait ou de bénédiction, au trait de la couleur de sa rareté (vert pour Second souffle). L'icône y est centrée à 48 dp
  * (96 dp au grand moment, dans un écrin doublé d'un trait d'encre), à une échelle entière. Ni arête
  * éclairée ni ombre. Toujours caché au lecteur d'écran : le texte à côté porte le sens.
  */
@@ -42,7 +46,7 @@ export function IconWell({
   under = roles.surface,
 }: {
   readonly icon: GameIcon;
-  readonly rarity: Rarity;
+  readonly rarity: IconWellTone;
   readonly size: IconWellSize;
   /** La couleur sous l'écrin, qui coupe ses coins. */
   readonly under?: string;
@@ -61,7 +65,7 @@ export function IconWell({
           width: well,
           height: well,
           borderWidth: line,
-          borderColor: RARITY_COLORS[rarity],
+          borderColor: WELL_COLORS[rarity],
           backgroundColor: roles.well,
         },
       ]}

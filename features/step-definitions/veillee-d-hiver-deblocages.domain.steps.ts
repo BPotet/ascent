@@ -305,8 +305,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(/^l'offre propose le bienfait de base restant et Cœur de braise$/u, () => {
+    // Puis la carte Second souffle, qui complète l'offre (#212).
     world.after.forEach((ascent) =>
-      expect(ascent.boonOffer).toEqual(['winterVigil', 'emberHeart']),
+      expect(ascent.boonOffer).toEqual(['winterVigil', 'emberHeart', 'secondBreath']),
     );
   });
 

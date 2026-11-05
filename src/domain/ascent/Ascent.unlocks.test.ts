@@ -137,17 +137,21 @@ describe('Cœur de braise after an Elite (#195)', () => {
     expect(ended.lootRandom).toBe(nextRandom(today.lootRandom).state);
   });
 
-  it('adds itself to an offer of fewer than 3 boons', () => {
+  it('adds itself to an offer of fewer than 3 boons, then the fallback card (#212)', () => {
     const owned = BASE_BOON_KINDS.slice(0, 6);
     const elite = at('elite', stateWhere(under, HEART, owned), HEART, owned);
 
-    expect(endFloorBattle(elite, VICTORY).boonOffer).toEqual(['winterVigil', 'emberHeart']);
+    expect(endFloorBattle(elite, VICTORY).boonOffer).toEqual([
+      'winterVigil',
+      'emberHeart',
+      'secondBreath',
+    ]);
   });
 
-  it('turns an empty offer into an offer of Cœur de braise alone', () => {
+  it('turns an empty offer into Cœur de braise and the fallback card (#212)', () => {
     const elite = at('elite', stateWhere(under, HEART, BASE_BOON_KINDS), HEART, BASE_BOON_KINDS);
 
-    expect(endFloorBattle(elite, VICTORY).boonOffer).toEqual(['emberHeart']);
+    expect(endFloorBattle(elite, VICTORY).boonOffer).toEqual(['emberHeart', 'secondBreath']);
   });
 
   it('is drawn once per ascent at most, taken or not', () => {

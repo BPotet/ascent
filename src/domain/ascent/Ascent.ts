@@ -6,7 +6,15 @@
  */
 import { HEROES, type EnemyKind, type HeroKind } from '../battle/combatants';
 import { nextRandom, seedRandom, type BattleSeed, type RandomState } from '../battle/SeededRandom';
-import { drawBoonOffer, offerEmberHeart, type BoonKind } from './boons';
+import {
+  SECOND_BREATH,
+  drawBoonOffer,
+  offerEmberHeart,
+  secondBreathHp,
+  withSecondBreath,
+  type BoonKind,
+  type OfferCard,
+} from './boons';
 import {
   drawBlessingOffer,
   heroMaxHp,
@@ -67,8 +75,11 @@ export interface Ascent {
     readonly maxHp: number;
     readonly boons: readonly BoonKind[];
   };
-  /** L'offre de bienfaits en attente (#92), `null` sans offre. */
-  readonly boonOffer: readonly BoonKind[] | null;
+  /**
+   * L'offre de bienfaits en attente (#92), `null` sans offre ; complétée par la carte Second
+   * souffle (#212).
+   */
+  readonly boonOffer: readonly OfferCard[] | null;
   /** L'Or (`Gold`) gagné pendant l'ascension, perdu à la fin. */
   readonly gold: number;
   /** L'Or du dernier étage franchi (0 après un Feu de camp). */
@@ -349,7 +360,8 @@ export function endFloorBattle(ascent: Ascent, result: FloorBattleResult): Ascen
     {
       ...earned,
       lootRandom: withHeart.random,
-      boonOffer: withHeart.value.offer.length > 0 ? withHeart.value.offer : null,
+      // Puis la carte de repli, sans tirage (#212) : l'offre n'est jamais vide.
+      boonOffer: withSecondBreath(withHeart.value.offer),
       emberHeartOffered: ascent.emberHeartOffered || withHeart.value.offered,
     },
     ascent.floor + 1,
@@ -397,15 +409,22 @@ export function enterNextTier(ascent: Ascent): Ascent {
   };
 }
 
-/** Le joueur prend le bienfait `index` de l'offre (P16) ; il le garde jusqu'à la fin. */
+/**
+ * Le joueur prend la carte `index` de l'offre : un bienfait, qu'il garde jusqu'à la fin (P16), ou
+ * Second souffle, qui soigne sans dépasser le maximum (#212).
+ */
 export function chooseBoon(ascent: Ascent, index: number): Ascent {
-  const boon = ascent.boonOffer?.[index];
-  if (boon === undefined) return ascent;
-  return {
-    ...ascent,
-    hero: { ...ascent.hero, boons: [...ascent.hero.boons, boon] },
-    boonOffer: null,
-  };
+  const card = ascent.boonOffer?.[index];
+  if (card === undefined) return ascent;
+  const { hero } = ascent;
+  if (card === SECOND_BREATH) {
+    return {
+      ...ascent,
+      hero: { ...hero, hp: secondBreathHp(hero.hp, hero.maxHp) },
+      boonOffer: null,
+    };
+  }
+  return { ...ascent, hero: { ...hero, boons: [...hero.boons, card] }, boonOffer: null };
 }
 
 /** L'abandon (`Abandon`) : il a le même effet qu'une chute (P33). */

@@ -15,7 +15,7 @@ import {
   type Ascent,
   type AscentLaunch,
 } from '../../src/domain/ascent/Ascent';
-import { BASE_BOON_KINDS } from '../../src/domain/ascent/boons';
+import { BASE_BOON_KINDS, SECOND_BREATH } from '../../src/domain/ascent/boons';
 import { drawElite } from '../../src/domain/ascent/elites';
 import { drawGroup, drawGroupSize } from '../../src/domain/ascent/enemyGroup';
 import { bossGold, drawBoss, drawCombatGold, eliteGold } from '../../src/domain/ascent/rewards';
@@ -626,12 +626,14 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(/^l'offre propose les (\d+) bienfaits restants$/u, (count: string) => {
-    expect(world.ascent.boonOffer).toHaveLength(Number(count));
-    expect([...world.ascent.boonOffer!].sort()).toEqual([...BASE_BOON_KINDS.slice(5)].sort());
+    // Puis la carte Second souffle, qui complète l'offre (#212).
+    const boons = world.ascent.boonOffer!.filter((card) => card !== SECOND_BREATH);
+    expect(boons).toHaveLength(Number(count));
+    expect([...boons].sort()).toEqual([...BASE_BOON_KINDS.slice(5)].sort());
   });
 
-  then(/^aucun écran de bienfait ne s'affiche et l'ascension continue$/u, () => {
-    expect(world.ascent.boonOffer).toBeNull();
+  then(/^l'offre montre la carte « Second souffle » seule et l'ascension continue$/u, () => {
+    expect(world.ascent.boonOffer).toEqual([SECOND_BREATH]);
     expect(world.ascent.exits.length).toBeGreaterThan(0);
   });
 };
