@@ -56,6 +56,22 @@ describe('the icons', () => {
     expect(ICONS.flame8).toHaveLength(8);
   });
 
+  it('has the glyphs of the gauge, from the mockup 205, on 8 × 8 art pixels (#41)', () => {
+    const glyphs = ['skull', 'bless', 'loot', 'rare', 'fatigue', 'lock', 'clock', 'plus8', 'eq'];
+    expect(iconNames).toEqual(expect.arrayContaining(glyphs));
+    glyphs.forEach((name) => expect(ICONS[name as never]).toHaveLength(8));
+    expect(ICONS['skull' as never]).toEqual([
+      '........',
+      '.XXXXX..',
+      'XXXXXXX.',
+      'X..X..X.',
+      'XXXXXXX.',
+      '.XX.XX..',
+      '.X.X.X..',
+      '........',
+    ]);
+  });
+
   it('mirrors « left » into « right »', () => {
     ICONS.left.forEach((row, index) =>
       expect(ICONS.right[index]).toBe([...row].reverse().join('')),

@@ -258,7 +258,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       const texts = within(frame)
         .getAllByText(/^(Jauge de l'ascension|Équipement · )/u)
         .map((text) => text.props.children as string);
-      expect(texts).toEqual(["Jauge de l'ascension : Neutre", 'Équipement · 3']);
+      // Depuis #41, la jauge de l'ascension est un cadran : son titre, puis l'Équipement dessous.
+      expect(texts).toEqual(["Jauge de l'ascension", 'Équipement · 3']);
       expect(
         within(frame).getByRole('button', { name: "Voir le détail de l'Équipement" }),
       ).toHaveTextContent('Voir le détail');

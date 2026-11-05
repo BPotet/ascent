@@ -1,0 +1,152 @@
+import type { FateGaugeReading } from '../../../application/useCases/fateGauge';
+import {
+  GAUGE_LEVELS,
+  GAUGE_SAFEGUARDS,
+  closingNote,
+  gaugeAnnouncement,
+  gaugeEffects,
+  gaugeReason,
+  gaugeShare,
+  gaugeValue,
+  gaugeWord,
+  levelTag,
+} from './gaugeText';
+
+const reading = (overrides: Partial<FateGaugeReading> = {}): FateGaugeReading => ({
+  gauge: 1,
+  blessings: ['rare', 'rare', 'common'],
+  done: 3,
+  expected: 4,
+  habits: [],
+  sealed: false,
+  unreadable: false,
+  ...overrides,
+});
+
+const texts = (effects: ReturnType<typeof gaugeEffects>) => effects.map(({ text }) => text);
+
+describe('the texts of the gauge (#93, #41)', () => {
+  it('names each level in words, with its value', () => {
+    expect([2, 1, 0, -1, -2].map((gauge) => gaugeWord(gauge as never))).toEqual([
+      'Faveur pleine',
+      'Faveur',
+      'Neutre',
+      'Malédiction',
+      'Malédiction forte',
+    ]);
+    expect([2, 1, 0, -1, -2].map((gauge) => gaugeValue(gauge as never))).toEqual([
+      '+2',
+      '+1',
+      '0',
+      '−1',
+      '−2',
+    ]);
+  });
+
+  it('tells the count of yesterday, without blame, or that there is no count yet', () => {
+    expect(gaugeReason({ done: 3, expected: 4 })).toBe("D'après hier : 3 habitudes sur 4.");
+    expect(gaugeReason({ done: 1, expected: 3 })).toBe("D'après hier : 1 habitude sur 3.");
+    expect(gaugeReason({ done: 0, expected: 3 })).toBe("D'après hier : 0 habitude sur 3.");
+    expect(gaugeReason({ done: 0, expected: 0 })).toBe(
+      "Pas encore de compte : aucune habitude n'était attendue hier.",
+    );
+    expect(gaugeShare({ done: 3, expected: 4 })).toBe('3 sur 4, soit 75 %.');
+    expect(gaugeShare({ done: 2, expected: 3 })).toBe('2 sur 3, soit 67 %.');
+  });
+
+  it('lists the effects of full favor, with their glyphs', () => {
+    expect(gaugeEffects(reading({ gauge: 2 }))).toEqual([
+      { glyph: 'bless', tone: 'gold', text: '3 bénédictions de départ' },
+      { glyph: 'loot', tone: 'favor', text: 'Objets plus fréquents' },
+      { glyph: 'rare', tone: 'favor', text: 'Objets Rares plus fréquents' },
+    ]);
+  });
+
+  it('lists the fatigue and the rarer Rare items of a curse', () => {
+    expect(texts(gaugeEffects(reading({ gauge: -1, blessings: ['rare'] })))).toEqual([
+      '1 bénédiction de départ',
+      'Fatigue : PV max −10 %',
+      'Objets Rares moins fréquents',
+    ]);
+    expect(gaugeEffects(reading({ gauge: -2, blessings: [] }))).toEqual([
+      { glyph: 'fatigue', tone: 'curse', text: 'Fatigue : PV max −20 %' },
+      { glyph: 'rare', tone: 'curse', text: 'Objets Rares moins fréquents' },
+    ]);
+  });
+
+  it('says a Neutral gauge has no other effect, an unreadable one none at all, and the first use nothing', () => {
+    expect(texts(gaugeEffects(reading({ gauge: 0, blessings: ['rare', 'rare'] })))).toEqual([
+      '2 bénédictions de départ',
+      "Aucun autre effet aujourd'hui",
+    ]);
+    expect(gaugeEffects(reading({ gauge: 0, blessings: [], unreadable: true }))).toEqual([
+      { glyph: 'dash8', tone: 'muted', text: "Aucun effet aujourd'hui" },
+    ]);
+    expect(gaugeEffects(reading({ gauge: 0, blessings: [], done: 0, expected: 0 }))).toEqual([]);
+  });
+
+  it('tells the five levels with their thresholds, and marks the level of the day', () => {
+    expect(
+      GAUGE_LEVELS.map(({ gauge, threshold }) => `${gaugeWord(gauge)} · ${threshold}`),
+    ).toEqual([
+      'Faveur pleine · toutes faites',
+      'Faveur · 75 % ou plus',
+      'Neutre · 50 % ou plus, ou aucune attendue',
+      'Malédiction · 25 % ou plus',
+      'Malédiction forte · moins de 25 %',
+    ]);
+    expect(levelTag(reading())).toBe("Aujourd'hui");
+    expect(levelTag(reading({ gauge: 0, done: 0, expected: 0 }))).toBe('Pas encore');
+  });
+
+  it('keeps the same four safeguards', () => {
+    expect(GAUGE_SAFEGUARDS.map(({ text }) => text)).toEqual([
+      "Seul hier compte, tel qu'à la clôture. Corriger un jour plus ancien ne la change pas.",
+      "Elle ne vaut que pour aujourd'hui. Demain, elle repart d'aujourd'hui.",
+      "L'ascension se lance toujours, et reste gagnable.",
+      "Jamais d'effet sur tes Éclats, tes déblocages, leurs prix ni le camp.",
+    ]);
+  });
+
+  it('tells why the gauge differs from the reminder of yesterday', () => {
+    expect(closingNote(['Courir'])).toBe(
+      "Une correction d'un jour plus ancien a changé le Rappel d'hier, pas la jauge : hier est compté tel qu'à la clôture, quand « Courir » était encore attendue.",
+    );
+    expect(closingNote(['Courir', 'Lire'])).toBe(
+      "Une correction d'un jour plus ancien a changé le Rappel d'hier, pas la jauge : hier est compté tel qu'à la clôture, quand « Courir » et « Lire » étaient encore attendues.",
+    );
+  });
+});
+
+describe('the announcement of the gauge, never the color alone (#41)', () => {
+  it('says the word, then the value, then the count of yesterday and the effects', () => {
+    expect(gaugeAnnouncement(reading({ gauge: -2, blessings: [], done: 0, expected: 3 }))).toBe(
+      "Jauge du jour : Malédiction forte, moins 2. D'après hier : 0 habitude sur 3. Effets : fatigue : PV max moins 20 %, objets Rares moins fréquents. D'après hier, seulement aujourd'hui. L'ascension reste gagnable.",
+    );
+    expect(gaugeAnnouncement(reading({ gauge: 2, done: 3, expected: 3 }))).toBe(
+      "Jauge du jour : Faveur pleine, plus 2. D'après hier : 3 habitudes sur 3. Effets : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents.",
+    );
+  });
+
+  it('says there is no count yet at the first use', () => {
+    expect(gaugeAnnouncement(reading({ gauge: 0, blessings: [], done: 0, expected: 0 }))).toBe(
+      "Jauge du jour : Neutre, pas encore de compte. Elle comptera dès demain, d'après tes habitudes d'aujourd'hui.",
+    );
+  });
+
+  it('says an unreadable gauge is Neutral, without effect', () => {
+    expect(
+      gaugeAnnouncement(
+        reading({ gauge: 0, blessings: [], done: 0, expected: 0, unreadable: true }),
+      ),
+    ).toBe(
+      "Jauge du jour : Neutre, 0. Tes habitudes n'ont pas pu être lues. La jauge reste Neutre aujourd'hui, sans effet. L'ascension se lance quand même. Effets : aucun effet aujourd'hui.",
+    );
+  });
+
+  it('says when it was sealed', () => {
+    expect(gaugeAnnouncement(reading({ sealed: true }))).toMatch(
+      / Scellée au lancement de ta première ascension d'aujourd'hui\.$/u,
+    );
+  });
+});

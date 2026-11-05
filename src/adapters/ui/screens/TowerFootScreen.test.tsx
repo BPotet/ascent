@@ -6,6 +6,7 @@ import { GAUGE_SEAL_KEY } from '../../../application/useCases/fateGauge';
 import { startAscent, type Ascent } from '../../../domain/ascent/Ascent';
 import { Day } from '../../../domain/day/Day';
 import { HabitName } from '../../../domain/habit/HabitName';
+import { useTrackingChanges } from '../state/TrackingRevision';
 import { ascentSetUp } from '../testing/ascent';
 import { renderScreen } from '../testing/renderScreen';
 import { TowerFootScreen } from './TowerFootScreen';
@@ -120,9 +121,11 @@ describe('TowerFootScreen with the fate gauge (#93)', () => {
   it('shows the gauge of the day from yesterday, and launches the ascent with it', async () => {
     const { session, keyValueStore } = await showWithHabits(3, 4);
 
-    expect(await screen.findByText('Jauge du jour : Faveur')).toBeOnTheScreen();
-    expect(screen.getByText("D'après hier : 3 habitudes sur 4.")).toBeOnTheScreen();
-    expect(screen.getByText('3 bénédictions de départ')).toBeOnTheScreen();
+    const card = await screen.findByRole('button', { name: /^Jauge du jour : Faveur, plus 1\./u });
+    expect(within(card).getByText('Faveur')).toBeOnTheScreen();
+    expect(within(card).getByText("D'après hier : 3 habitudes sur 4.")).toBeOnTheScreen();
+    expect(within(card).getByText('3 bénédictions de départ')).toBeOnTheScreen();
+    expect(within(card).getByText('Objets Rares plus fréquents')).toBeOnTheScreen();
     expect(screen.queryByTestId('loadout-section')).toBeNull();
 
     await act(async () => {
@@ -139,11 +142,28 @@ describe('TowerFootScreen with the fate gauge (#93)', () => {
     expect(keyValueStore.values.get(GAUGE_SEAL_KEY)).toContain('"gauge":1');
   });
 
-  it('tells the fatigue of a curse, and keeps the gauge of the ascent in progress', async () => {
+  it('shows full favor on the dial, with its effects', async () => {
+    await showWithHabits(3, 3);
+
+    const card = await screen.findByRole('button', {
+      name: "Jauge du jour : Faveur pleine, plus 2. D'après hier : 3 habitudes sur 3. Effets : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents. Ouvrir le détail de la jauge.",
+    });
+    expect(within(card).getByText('+2')).toBeOnTheScreen();
+    expect(within(card).getByText('Objets plus fréquents')).toBeOnTheScreen();
+  });
+
+  it('tells the fatigue of a curse, reassures, and keeps the gauge of the ascent in progress', async () => {
     const { session } = await showWithHabits(1, 3);
 
-    expect(await screen.findByText('Jauge du jour : Malédiction')).toBeOnTheScreen();
-    expect(screen.getByText('Fatigue : PV max −10 %')).toBeOnTheScreen();
+    const card = await screen.findByRole('button', {
+      name: /^Jauge du jour : Malédiction, moins 1\./u,
+    });
+    expect(within(card).getByText('Fatigue : PV max −10 %')).toBeOnTheScreen();
+    expect(within(card).getByText('Objets Rares moins fréquents')).toBeOnTheScreen();
+    expect(
+      within(card).getByText("D'après hier, seulement aujourd'hui. L'ascension reste gagnable."),
+    ).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: "Commencer l'ascension" })).toBeEnabled();
 
     await act(async () => {
       fireEvent.press(screen.getByRole('button', { name: "Commencer l'ascension" }));
@@ -155,7 +175,216 @@ describe('TowerFootScreen with the fate gauge (#93)', () => {
       session.pause();
     });
 
-    expect(screen.getByText("Jauge de l'ascension : Malédiction")).toBeOnTheScreen();
+    expect(
+      screen.getByRole('button', { name: /^Jauge de l'ascension : Malédiction, moins 1\./u }),
+    ).toBeOnTheScreen();
+  });
+
+  it('reads a strong curse aloud: its word, its value and the count of yesterday', async () => {
+    await showWithHabits(0, 3);
+
+    expect(
+      await screen.findByRole('button', {
+        name: /^Jauge du jour : Malédiction forte, moins 2\. D'après hier : 0 habitude sur 3\./u,
+      }),
+    ).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: "Commencer l'ascension" })).toBeEnabled();
+  });
+
+  it('says there is no count yet at the first use', async () => {
+    await showWithHabits(0, 0);
+
+    const card = await screen.findByRole('button', {
+      name: "Jauge du jour : Neutre, pas encore de compte. Elle comptera dès demain, d'après tes habitudes d'aujourd'hui. Ouvrir le détail de la jauge.",
+    });
+    expect(within(card).getByText('Pas encore')).toBeOnTheScreen();
+    expect(
+      within(card).getByText("Elle comptera dès demain, d'après tes habitudes d'aujourd'hui."),
+    ).toBeOnTheScreen();
+  });
+
+  it('is Neutral without effect when the habits cannot be read, and the ascent starts', async () => {
+    const setUp = ascentSetUp({ seed: 42 });
+    (setUp.dependencies.unitOfWork as InMemoryUnitOfWork).failReads();
+    await renderScreen(
+      <TowerFootScreen
+        session={setUp.session}
+        camp={setUp.camp}
+        onEnter={jest.fn()}
+        onCamp={jest.fn()}
+      />,
+      setUp.dependencies,
+    );
+
+    const card = await screen.findByRole('button', { name: /^Jauge du jour : Neutre, 0\./u });
+    expect(
+      within(card).getByText(
+        "Tes habitudes n'ont pas pu être lues. La jauge reste Neutre aujourd'hui, sans effet. L'ascension se lance quand même.",
+      ),
+    ).toBeOnTheScreen();
+    expect(within(card).getByText("Aucun effet aujourd'hui")).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: "Commencer l'ascension" })).toBeEnabled();
+  });
+
+  it('waits for the gauge, then gives up after a second and lets the ascent start', async () => {
+    const setUp = ascentSetUp({ seed: 42 });
+    jest.spyOn(setUp.dependencies.unitOfWork, 'run').mockReturnValue(new Promise(() => undefined));
+    await renderScreen(
+      <TowerFootScreen
+        session={setUp.session}
+        camp={setUp.camp}
+        onEnter={jest.fn()}
+        onCamp={jest.fn()}
+      />,
+      setUp.dependencies,
+    );
+
+    expect(await screen.findByText('Lecture de la jauge')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: "Commencer l'ascension" })).toBeDisabled();
+
+    expect(
+      await screen.findByRole(
+        'button',
+        { name: /^Jauge du jour : Neutre, 0\./u },
+        { timeout: 2000 },
+      ),
+    ).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: "Commencer l'ascension" })).toBeEnabled();
+  });
+
+  it('opens the detail of the gauge with the names of yesterday, and gives the focus back to the gauge', async () => {
+    await showWithHabits(3, 4);
+    const card = await screen.findByTestId('gauge-card');
+
+    await fireEvent.press(card);
+
+    expect(screen.getByRole('header', { name: 'Jauge du jour' })).toBeOnTheScreen();
+    expect(screen.getAllByTestId('gauge-habit').map((row) => row.props.accessibilityLabel)).toEqual(
+      ['Habitude 0, faite', 'Habitude 1, faite', 'Habitude 2, faite', 'Habitude 3, manquée'],
+    );
+    const focus = jest.mocked(AccessibilityInfo.sendAccessibilityEvent);
+    focus.mockClear();
+
+    await fireEvent.press(
+      screen.getAllByRole('button', { name: 'Fermer le détail de la jauge' })[1]!,
+    );
+
+    expect(screen.queryByRole('header', { name: 'Jauge du jour' })).toBeNull();
+    expect(focus).toHaveBeenCalledTimes(1);
+    expect(focus.mock.calls[0]?.[0]).toMatchObject({ props: { testID: 'gauge-card' } });
+  });
+
+  it('seals the gauge of the day at the launch, and says so once the ascent is over', async () => {
+    const { session } = await showWithHabits(1, 3);
+
+    await act(async () => {
+      fireEvent.press(await screen.findByRole('button', { name: "Commencer l'ascension" }));
+    });
+    await act(async () => {
+      fireEvent.press(screen.getByRole('button', { name: 'Continuer avec la Sentinelle' }));
+    });
+    await act(async () => {
+      session.abandon();
+    });
+
+    const card = await screen.findByRole('button', {
+      name: /^Jauge du jour : Malédiction, moins 1\./u,
+    });
+    expect(within(card).getByText('Scellée')).toBeOnTheScreen();
+    expect(
+      within(card).getByText("Scellée au lancement de ta première ascension d'aujourd'hui."),
+    ).toBeOnTheScreen();
+    await fireEvent.press(card);
+    expect(screen.getByTestId('gauge-sealed')).toBeOnTheScreen();
+  });
+
+  it('shows the gauge of the ascent in progress, and the gauge of the day waiting for the next one', async () => {
+    const setUp = ascentSetUp({ saved: { ...startAscent(3), gauge: 2 } });
+    const unitOfWork = setUp.dependencies.unitOfWork as InMemoryUnitOfWork;
+    for (const name of ['Courir', 'Lire', 'Cuisiner']) {
+      await unitOfWork.run(async ({ habits, settingsChanges }) => {
+        const habit = await habits.add(HabitName.parse(name), Day.of(2026, 10, 1));
+        await settingsChanges.add(habit.id, Day.of(2026, 10, 1), {
+          difficulty: 'medium',
+          weeklyTarget: 7,
+        });
+      });
+    }
+    await renderScreen(
+      <TowerFootScreen
+        session={setUp.session}
+        camp={setUp.camp}
+        onEnter={jest.fn()}
+        onCamp={jest.fn()}
+      />,
+      setUp.dependencies,
+    );
+
+    const card = await screen.findByRole('button', {
+      name: /^Jauge de l'ascension : Faveur pleine, plus 2\./u,
+    });
+    expect(
+      within(card).getByText("Lancée avec cette jauge : l'ascension la garde jusqu'à sa fin."),
+    ).toBeOnTheScreen();
+    expect(
+      await screen.findByText(
+        'Jauge du jour : Malédiction forte. Elle comptera pour ta prochaine ascension.',
+      ),
+    ).toBeOnTheScreen();
+    expect(screen.getByText('Palier 1 · Étage 1 sur 6 · 80/80 PV · 0 Or')).toBeOnTheScreen();
+
+    await fireEvent.press(card);
+    expect(screen.getByRole('header', { name: "Jauge de l'ascension" })).toBeOnTheScreen();
+    expect(screen.queryByTestId('gauge-habit')).toBeNull();
+  });
+
+  it('tells the gauge changed after a correction of yesterday', async () => {
+    const setUp = ascentSetUp({ seed: 42 });
+    const unitOfWork = setUp.dependencies.unitOfWork as InMemoryUnitOfWork;
+    const ids: number[] = [];
+    for (const name of ['Courir', 'Lire', 'Cuisiner']) {
+      await unitOfWork.run(async ({ habits, settingsChanges }) => {
+        const habit = await habits.add(HabitName.parse(name), Day.of(2026, 10, 1));
+        await settingsChanges.add(habit.id, Day.of(2026, 10, 1), {
+          difficulty: 'medium',
+          weeklyTarget: 7,
+        });
+        ids.push(habit.id);
+      });
+    }
+    await unitOfWork.run(({ checkIns }) =>
+      checkIns.save({ habitId: ids[0]!, day: yesterday, done: true, corrected: false }),
+    );
+    let changed: () => unknown = () => undefined;
+    function Correction() {
+      changed = useTrackingChanges(() => undefined);
+      return null;
+    }
+    await renderScreen(
+      <>
+        <TowerFootScreen
+          session={setUp.session}
+          camp={setUp.camp}
+          onEnter={jest.fn()}
+          onCamp={jest.fn()}
+        />
+        <Correction />
+      </>,
+      setUp.dependencies,
+    );
+    await screen.findByRole('button', { name: /^Jauge du jour : Malédiction, moins 1\./u });
+
+    await unitOfWork.run(({ checkIns }) =>
+      checkIns.save({ habitId: ids[1]!, day: yesterday, done: true, corrected: true }),
+    );
+    await act(async () => {
+      changed();
+    });
+
+    expect(
+      await screen.findByText("Jauge mise à jour d'après ta correction d'hier : Neutre."),
+    ).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: /^Jauge du jour : Neutre, 0\./u })).toBeOnTheScreen();
   });
 });
 
@@ -190,7 +419,9 @@ describe('TowerFootScreen with the loadout (#159)', () => {
       screen.getByLabelText('Bienfaits : Écho parfait, Commun ; Givre persistant, Rare'),
     ).toBeOnTheScreen();
     const frame = screen.getByTestId('tower-foot-ascent');
-    expect(within(frame).getByText("Jauge de l'ascension : Neutre")).toBeOnTheScreen();
+    expect(
+      within(frame).getByRole('button', { name: /^Jauge de l'ascension : Neutre, 0\./u }),
+    ).toBeOnTheScreen();
     expect(within(frame).getByTestId('loadout-section')).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: "Reprendre l'ascension" })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: "Abandonner l'ascension" })).toBeOnTheScreen();
