@@ -7,6 +7,7 @@ import {
   type AttackKind,
 } from './attacks';
 import { ENEMIES, type Bleed, type EnemyKind } from './combatants';
+import { cursedValue } from './curse';
 import { nextRandom, type RandomState } from './SeededRandom';
 import { scaleByPercent } from './tierMultiplier';
 import { pickWeighted } from './weighted';
@@ -80,6 +81,8 @@ export interface IntentContext {
   readonly maxGuard?: number;
   /** Le pourcentage des dégâts de ses coups, celui du palier (#38) ; absent, 100. */
   readonly damagePercent?: number;
+  /** Un ennemi maudit (#209) : ses coups gagnent 20 % des dégâts du palier ; absent, non maudit. */
+  readonly cursed?: boolean;
 }
 
 /**
@@ -87,8 +90,8 @@ export interface IntentContext {
  * soit l'intention, étourdi compris : le coup (ou la catégorie), la durée de préparation, puis la
  * position de la fausse amorce. Un soutien relève un allié tombé jamais relevé ; sinon, s'il n'est
  * pas étourdi et que sa garde est entamée, il garde si le premier tirage est sous 1/3, de 30 % de
- * sa garde max du palier. Les dégâts du coup sont ceux du palier (#38), jamais son Saignement ni
- * sa Brûlure.
+ * sa garde max du palier. Les dégâts du coup sont ceux du palier (#38), plus 20 % pour un ennemi
+ * maudit (#209), jamais son Saignement ni sa Brûlure.
  */
 export function drawIntent(
   kind: EnemyKind,
@@ -96,7 +99,7 @@ export function drawIntent(
   context: IntentContext,
 ): { readonly intent: Intent; readonly random: RandomState } {
   const { supports, phase2Moves = [] } = ENEMIES[kind];
-  const { maxGuard = ENEMIES[kind].maxGuard, damagePercent = 100 } = context;
+  const { maxGuard = ENEMIES[kind].maxGuard, damagePercent = 100, cursed = false } = context;
   const moves = context.phase2 ? [...ENEMIES[kind].moves, ...phase2Moves] : ENEMIES[kind].moves;
   const moveDraw = nextRandom(random);
   const windUpDraw = nextRandom(moveDraw.state);
@@ -118,11 +121,12 @@ export function drawIntent(
     moves.map((candidate) => [candidate, candidate.weight ?? 1] as const),
     moveDraw.value,
   );
+  const damage = scaleByPercent(move.damage, damagePercent);
   const factor = WIND_UP_MIN_FACTOR + (WIND_UP_MAX_FACTOR - WIND_UP_MIN_FACTOR) * windUpDraw.value;
   return drawn({
     category: 'attack',
     attack: move.attack,
-    damage: scaleByPercent(move.damage, damagePercent),
+    damage: cursed ? cursedValue(damage) : damage,
     windUpMs: Math.round(ATTACKS[move.attack].windUpMs * factor),
     feintFraction: FEINT_MIN_FRACTION + (FEINT_MAX_FRACTION - FEINT_MIN_FRACTION) * feintDraw.value,
     ...(move.bleed && { bleed: move.bleed }),
