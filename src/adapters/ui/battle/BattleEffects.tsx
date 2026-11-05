@@ -109,6 +109,7 @@ export function DamageFloat({
           float.kind === 'riposte' && styles.floatRiposte,
           float.at === 'hero' && styles.floatHero,
           float.kind === 'burn' && styles.floatBurn,
+          float.kind === 'secondChance' && styles.floatSecondChance,
           float.big && styles.floatBig,
         ]}
       >
@@ -186,6 +187,8 @@ const styles = StyleSheet.create({
   floatGuard: { color: battleColors.guard },
   floatRiposte: { color: artPalette.roles.bulwarkText },
   floatBurn: { color: battleColors.burnNumber },
+  // Les PV du héros relevé par la seconde chance, en or (#206, S3).
+  floatSecondChance: { color: artPalette.roles.gold },
   floatBig: { color: battleColors.light, fontSize: 32 },
 });
 // Stryker restore all

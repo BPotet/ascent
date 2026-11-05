@@ -185,6 +185,15 @@ describe('feedbackFor (sounds and vibrations of a battle)', () => {
     { type: 'momentumChanged', at: 0, momentum: 2 } as BattleEvent,
     { type: 'heroPhaseStarted', at: 0, announced: false } as BattleEvent,
     { type: 'respite', at: 0, gain: 8, heroHp: 58 } as BattleEvent,
+    // La seconde chance n'a pas de son à part (#206) : celui du touché qui fait tomber suffit.
+    {
+      type: 'secondChanceUsed',
+      at: 0,
+      until: 2_000,
+      enemy: 0,
+      hp: 40,
+      cancelled: 1,
+    } as BattleEvent,
   ])('stays silent and still on $type', (event) => {
     expect(feedbackFor(event)).toEqual({ sound: null, haptic: null });
   });

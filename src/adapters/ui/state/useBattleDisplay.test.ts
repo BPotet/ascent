@@ -60,6 +60,7 @@ describe('displayOf (display state of the battle screen)', () => {
       burnFloat: null,
       summonBanner: null,
       summonFx: { calledAt: null, entered: {}, fell: {} },
+      secondChance: null,
     });
   });
 

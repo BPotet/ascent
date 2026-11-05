@@ -118,6 +118,25 @@ describe('battleView', () => {
     expect(view.heroActions).toBe(false);
   });
 
+  it('locks the defense buttons during the rise of the second chance, then frees them (#206)', () => {
+    const rising = (now: number) =>
+      inPhase(
+        {
+          ...attack('basic'),
+          step: { ...attack('basic').step, secondChance: { since: 1_160, until: 3_160 } },
+        },
+        { ...inEnemyPhase, now },
+      );
+
+    expect(battleView(rising(1_160)).pad).toEqual({
+      kind: 'defense',
+      locked: true,
+      lock: { since: 1_160, until: 3_160 },
+      offBalance: false,
+    });
+    expect(battleView(rising(3_160)).pad).toMatchObject({ kind: 'defense', locked: false });
+  });
+
   it('locks the defense buttons under the defense hint, the enemy phase trimmed', () => {
     const view = battleView(inPhase({ kind: 'defenseHint', since: 0 }));
 

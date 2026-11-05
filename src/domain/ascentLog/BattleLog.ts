@@ -51,6 +51,8 @@ export interface HeroAtStart {
   readonly maxHp: number;
   /** L'Élan. */
   readonly momentum: number;
+  /** La seconde chance de la faveur, prête au début du combat (#206) ; absente, aucune. */
+  readonly secondChance?: true;
 }
 
 /** Un ennemi de la première ligne au début du combat, avec son Initiative. */
@@ -146,6 +148,7 @@ const EFFECT_TYPES = [
   'summonCalled',
   'summonEntered',
   'summonedFell',
+  'secondChanceUsed',
 ] as const satisfies readonly BattleEvent['type'][];
 
 type EffectType = (typeof EFFECT_TYPES)[number];
@@ -255,6 +258,7 @@ export function beginBattleLog(place: BattlePlace, battle: Battle, at: number): 
       hp: battle.hero.hp,
       maxHp: battle.hero.maxHp,
       momentum: battle.hero.momentum,
+      ...(battle.hero.secondChance === 'ready' && { secondChance: true as const }),
     },
     enemies: battle.enemies.map((enemy, index) => ({
       place: index,

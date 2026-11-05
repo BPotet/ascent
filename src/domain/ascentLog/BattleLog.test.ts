@@ -372,6 +372,77 @@ describe('BattleLog', () => {
     ]);
   });
 
+  describe('the second chance (#206)', () => {
+    it('notes it in the action of the striking enemy, right after the press judged at 0 HP', () => {
+      const log = logged(
+        [roundStarted(START, 1)],
+        [
+          {
+            type: 'windUpStarted',
+            at: START + 100,
+            enemy: 0,
+            attack: 'double',
+            impacts: [START + 1_000, START + 1_420],
+            feintAt: null,
+          },
+        ],
+        [
+          {
+            type: 'blowResolved',
+            at: START + 1_160,
+            enemy: 0,
+            index: 0,
+            outcome: 'suffered',
+            button: null,
+            delta: null,
+            damage: 6,
+            heroHp: 0,
+          },
+          {
+            type: 'secondChanceUsed',
+            at: START + 1_160,
+            until: START + 3_160,
+            enemy: 0,
+            hp: 40,
+            cancelled: 1,
+          },
+          { type: 'burnCleared', at: START + 1_160 },
+        ],
+        [
+          { type: 'pressIgnored', at: START + 1_300, button: 'parry', reason: 'secondChance' },
+          { type: 'pressIgnored', at: START + 1_500, button: 'parry', reason: 'secondChance' },
+        ],
+      );
+
+      const ghoul = actionOf(log, 0);
+      expect(ghoul.presses).toEqual([expect.objectContaining({ heroHp: 0, t: 1_160 })]);
+      expect(ghoul.effects).toEqual([
+        { type: 'secondChanceUsed', t: 1_160, enemy: 0, hp: 40, cancelled: 1 },
+        { type: 'burnCleared', t: 1_160 },
+      ]);
+      expect(firstRound(log).ignored).toEqual([
+        { button: 'parry', reason: 'secondChance', count: 2 },
+      ]);
+    });
+
+    it('notes the second chance of the hero at the start only when it is ready', () => {
+      const ready = startBattle({
+        seed: 7,
+        defenseHint: false,
+        at: START,
+        enemies: ['ghoul'],
+        secondChance: true,
+      }).battle;
+
+      expect(beginBattleLog(PLACE, ready, START).hero).toMatchObject({ secondChance: true });
+      expect(beginBattleLog(PLACE, started(), START).hero).not.toHaveProperty('secondChance');
+      expect(
+        beginBattleLog(PLACE, { ...ready, hero: { ...ready.hero, secondChance: 'used' } }, START)
+          .hero,
+      ).not.toHaveProperty('secondChance');
+    });
+  });
+
   it('notes the effects in the action where they fall, the round start ones in the round', () => {
     const log = logged(
       [roundStarted(START, 1)],

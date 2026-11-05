@@ -32,9 +32,11 @@ export type GuardBreaker = 'strike' | 'counter' | 'bulwarkCounter';
 
 /**
  * Pourquoi un toucher n'a aucun effet : pendant la transition de phase ou la bulle d'aide, pendant
- * le déséquilibre (qu'il relance), hors de la phase où le bouton sert, ou commencé avant la phase.
+ * le déséquilibre (qu'il relance), hors de la phase où le bouton sert, commencé avant la phase, ou
+ * pendant le relèvement de la seconde chance (#206).
  */
-export type IgnoredReason = 'phaseTransition' | 'offBalance' | 'notAvailable' | 'touchTooEarly';
+export type IgnoredReason =
+  'phaseTransition' | 'offBalance' | 'notAvailable' | 'touchTooEarly' | 'secondChance';
 
 /**
  * Événement de combat (`BattleEvent`) : ce que le moteur annonce, daté de son instant nominal en
@@ -287,4 +289,16 @@ export type BattleEvent =
       readonly kind: EnemyKind;
     }
   /** Un ennemi invoqué encore debout tombe avec le boss qui l'a appelé, sans Or (#172, règle 4). */
-  | { readonly type: 'summonedFell'; readonly at: number; readonly enemy: number };
+  | { readonly type: 'summonedFell'; readonly at: number; readonly enemy: number }
+  | {
+      /**
+       * Le héros tombé à 0 PV sous le coup de `enemy` se relève avec `hp` PV (#206) ; `cancelled`
+       * impacts restants du coup sont annulés. Le combat est en temps mort jusqu'à `until`.
+       */
+      readonly type: 'secondChanceUsed';
+      readonly at: number;
+      readonly until: number;
+      readonly enemy: number;
+      readonly hp: number;
+      readonly cancelled: number;
+    };

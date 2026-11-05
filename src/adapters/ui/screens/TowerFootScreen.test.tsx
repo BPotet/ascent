@@ -146,11 +146,13 @@ describe('TowerFootScreen with the fate gauge (#93)', () => {
     await showWithHabits(3, 3);
 
     const card = await screen.findByRole('button', {
-      name: "Jauge du jour : Faveur pleine, plus 2. D'après hier : 3 habitudes sur 3. Effets : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents, 2 relances. Ouvrir le détail de la jauge.",
+      name: "Jauge du jour : Faveur pleine, plus 2. D'après hier : 3 habitudes sur 3. Effets : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents, 2 relances, 1 seconde chance. Ouvrir le détail de la jauge.",
     });
     expect(within(card).getByText('+2')).toBeOnTheScreen();
     expect(within(card).getByText('Objets plus fréquents')).toBeOnTheScreen();
     expect(within(card).getByText('2 relances')).toBeOnTheScreen();
+    // La seconde chance de la faveur pleine (#206, G1).
+    expect(within(card).getByText('1 seconde chance')).toBeOnTheScreen();
   });
 
   it('counts 1 reroll in the effects of the favor (#42, G2)', async () => {
@@ -338,9 +340,13 @@ describe('TowerFootScreen with the fate gauge (#93)', () => {
     expect(
       within(card).getByText("Lancée avec cette jauge : l'ascension la garde jusqu'à sa fin."),
     ).toBeOnTheScreen();
-    // Les relances qui restent, en une ligne, et dans l'annonce (#42, G9).
+    // Les relances qui restent et la seconde chance, en une ligne chacune, et dans l'annonce (#42,
+    // #206, G9).
     expect(within(card).getByText('1 relance sur 2')).toBeOnTheScreen();
-    expect(card.props.accessibilityLabel).toMatch(/ Il reste 1 relance sur 2\. Ouvrir le détail/u);
+    expect(within(card).getByText('Seconde chance prête')).toBeOnTheScreen();
+    expect(card.props.accessibilityLabel).toMatch(
+      / Il reste 1 relance sur 2 et la seconde chance\. Ouvrir le détail/u,
+    );
     expect(
       await screen.findByText(
         'Jauge du jour : Malédiction forte. Elle comptera pour ta prochaine ascension.',
