@@ -9,6 +9,7 @@
 - **Numéro** : fixé au merge ; 0006 si aucun autre ADR n'est mergé avant.
 - **Avenant** : 25 octobre 2026, durées internes du combat complet (story #32, voir § 7)
 - **Avenant** : 29 octobre 2026, retrait du combat d'essai (story #121, voir « Avenant de #121 »)
+- **Avenant** : 5 novembre 2026, préparation de ×0,9 à ×1,1 (story #211, voir § 7)
 
 ## Contexte
 
@@ -82,7 +83,8 @@ appui pendant l'arrêt est daté de son début. La contre-attaque part à la fin
   (`RandomSeedSource` sur le téléphone, `FixedSeedSource` dans les tests), et d'un générateur pur
   de 32 bits (mulberry32, `SeededRandom`), dont l'état fait partie du combat.
 - Tous les tirages se font au début de la manche, dans un ordre fixe : ennemis debout de gauche à
-  droite, puis pour chacun le coup, la durée de préparation (× 0,8 à × 1,2) et la position de la
+  droite, puis pour chacun le coup, la durée de préparation (× 0,8 à × 1,2 ; × 0,9 à × 1,1 depuis
+  #211, voir l'avenant du 5 novembre 2026 au § 7) et la position de la
   fausse amorce (35 à 60 %). Une même graine et les mêmes actions donnent exactement le même
   combat, quel que soit le moment des appuis.
 - Les propriétés des tirages sont vérifiées par un balayage d'environ 500 graines fixes
@@ -116,6 +118,17 @@ La frappe en rythme (C6) et les intentions Garde et Relever (C2) changent les du
 - **Borne C12** : les 2 000 ms du premier impact d'une phase ennemie se mesurent désormais depuis le
   début de la transition de phase (800 + 400 + 800), et non plus depuis « Attaquer ». Le balayage
   de graines le vérifie dans ce sens.
+
+#### Avenant du 5 novembre 2026 — préparation de ×0,9 à ×1,1 (story #211)
+
+Décision du propriétaire du 4 novembre 2026 (rapport du Game Designer, épique #210) :
+
+- **Variation de la préparation** : ×0,9 à ×1,1 (`WIND_UP_MIN_FACTOR`, `WIND_UP_MAX_FACTOR`), au
+  lieu de ×0,8 à ×1,2. Le tirage et l'ordre des tirages ne changent pas : même graine, même valeur
+  tirée, seule la durée qui en découle change.
+- **Plus courte préparation** : 900 ms (la double frappe, 1 000 ms × 0,9), au lieu de 800 ms.
+- **Borne C12** : le premier impact d'une phase ennemie tombe au plus tôt **2 100 ms** après le
+  début de la transition de phase (800 + 400 + 900), au lieu de 2 000 ms.
 
 ### 8. Rendu et animations
 
