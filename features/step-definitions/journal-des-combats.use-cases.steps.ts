@@ -309,10 +309,11 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   given(
     /^un combat d'étage contre un boss du palier 2, qui change de phase et invoque des ennemis$/u,
     async () => {
+      // 1 200 PV : assez pour venir à bout du Brûleur de ronces à sa garde de 55 (#211).
       await startFight(['mothQueen', 'brambleBurner', 'ashBramble', 'necromancer'], {
         tier: 2,
         kind: 'boss',
-        hp: 900,
+        hp: 1_200,
         battleSeed: 1,
       });
     },

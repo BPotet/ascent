@@ -55,10 +55,10 @@ describe('the ordinary enemies of the tiers two and three (#38)', () => {
 });
 
 describe('the Elites of the tiers two and three (#38)', () => {
-  it('gives the Scarecrow 190 HP, 35 guard, Initiative 5, a third each, and one revival at 40 %', () => {
+  it('gives the Scarecrow 190 HP, 50 guard (#211), Initiative 5, a third each, and one revival at 40 %', () => {
     expect(ENEMIES.scarecrow).toEqual({
       maxHp: 190,
-      maxGuard: 35,
+      maxGuard: 50,
       moves: [
         { attack: 'basic', damage: 11 },
         { attack: 'feint', damage: 11 },
@@ -205,10 +205,10 @@ describe('the carriers of the Burn (#171)', () => {
     expect(ENEMY_INITIATIVE.bellFounder).toBe(4);
   });
 
-  it('gives the Bramble burner, an Elite, 210 HP, 40 guard, Initiative 6, a third each', () => {
+  it('gives the Bramble burner, an Elite, 210 HP, 55 guard (#211), Initiative 6, a third each', () => {
     expect(ENEMIES.brambleBurner).toEqual({
       maxHp: 210,
-      maxGuard: 40,
+      maxGuard: 55,
       moves: [
         { attack: 'basic', damage: 10, burn: 2 },
         { attack: 'double', damage: 6, bleed: { damage: 2, rounds: 3 } },

@@ -350,10 +350,11 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     ],
     supports: false,
   },
-  // `codex/scarecrow` (9815a44f…), Élite : Faucille, Bras ballant, Moisson ; se relève seul 1 fois, à 40 %.
+  // `codex/scarecrow` v3 (0126979e…), Élite : Faucille, Bras ballant, Moisson ; se relève seul 1 fois,
+  // à 40 %. Garde 50 (#211).
   scarecrow: {
     maxHp: 190,
-    maxGuard: 35,
+    maxGuard: 50,
     moves: [
       { attack: 'basic', damage: 11 },
       { attack: 'feint', damage: 11 },
@@ -467,10 +468,11 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     ],
     supports: false,
   },
-  // `codex/brambleBurner` (250002c1…), Élite : Torche, Fagot d'épines, Feu de broussailles.
+  // `codex/brambleBurner` v4 (4ac53d4f…), Élite : Torche, Fagot d'épines, Feu de broussailles.
+  // Garde 55 (#211).
   brambleBurner: {
     maxHp: 210,
-    maxGuard: 40,
+    maxGuard: 55,
     moves: [
       { attack: 'basic', damage: 10, burn: 2 },
       { attack: 'double', damage: 6, bleed: { damage: 2, rounds: 3 } },
