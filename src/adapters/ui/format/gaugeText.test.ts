@@ -2,6 +2,8 @@ import type { FateGaugeReading } from '../../../application/useCases/fateGauge';
 import {
   GAUGE_LEVELS,
   GAUGE_SAFEGUARDS,
+  ascentFavorEffects,
+  ascentGaugeAnnouncement,
   closingNote,
   gaugeAnnouncement,
   gaugeEffects,
@@ -59,6 +61,16 @@ describe('the texts of the gauge (#93, #41)', () => {
       { glyph: 'bless', tone: 'gold', text: '3 bénédictions de départ' },
       { glyph: 'loot', tone: 'favor', text: 'Objets plus fréquents' },
       { glyph: 'rare', tone: 'favor', text: 'Objets Rares plus fréquents' },
+      { glyph: 'reroll', tone: 'favor', text: '2 relances' },
+    ]);
+  });
+
+  it('lists 1 reroll at +1, after the Rare items (#42)', () => {
+    expect(texts(gaugeEffects(reading({ gauge: 1 })))).toEqual([
+      '3 bénédictions de départ',
+      'Objets plus fréquents',
+      'Objets Rares plus fréquents',
+      '1 relance',
     ]);
   });
 
@@ -126,7 +138,7 @@ describe('the announcement of the gauge, never the color alone (#41)', () => {
       "Jauge du jour : Malédiction forte, moins 2. D'après hier : 0 habitude sur 3. Effets : fatigue : PV max moins 20 %, objets Rares moins fréquents, ennemis et Élite maudits. D'après hier, seulement aujourd'hui. L'ascension reste gagnable.",
     );
     expect(gaugeAnnouncement(reading({ gauge: 2, done: 3, expected: 3 }))).toBe(
-      "Jauge du jour : Faveur pleine, plus 2. D'après hier : 3 habitudes sur 3. Effets : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents.",
+      "Jauge du jour : Faveur pleine, plus 2. D'après hier : 3 habitudes sur 3. Effets : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents, 2 relances.",
     );
   });
 
@@ -149,6 +161,35 @@ describe('the announcement of the gauge, never the color alone (#41)', () => {
   it('says when it was sealed', () => {
     expect(gaugeAnnouncement(reading({ sealed: true }))).toMatch(
       / Scellée au lancement de ta première ascension d'aujourd'hui\.$/u,
+    );
+  });
+});
+
+describe('the favor of the ascent in progress (#42, G9)', () => {
+  it('tells the rerolls left on those given at the start', () => {
+    expect(ascentFavorEffects({ gauge: 2, rerolls: 1 })).toEqual([
+      { glyph: 'reroll', tone: 'favor', text: '1 relance sur 2' },
+    ]);
+    expect(ascentFavorEffects({ gauge: 2, rerolls: 2 })).toEqual([
+      { glyph: 'reroll', tone: 'favor', text: '2 relances sur 2' },
+    ]);
+    expect(ascentFavorEffects({ gauge: 1, rerolls: 0 })).toEqual([
+      { glyph: 'reroll', tone: 'muted', text: '0 relance sur 1' },
+    ]);
+  });
+
+  it('tells nothing without favor', () => {
+    for (const gauge of [0, -1, -2] as const) {
+      expect(ascentFavorEffects({ gauge, rerolls: 0 })).toEqual([]);
+    }
+  });
+
+  it('announces the rerolls left after the gauge of the ascent', () => {
+    expect(ascentGaugeAnnouncement(2, 1)).toBe(
+      "Jauge de l'ascension : Faveur pleine, plus 2. Lancée avec cette jauge : l'ascension la garde jusqu'à sa fin. Il reste 1 relance sur 2.",
+    );
+    expect(ascentGaugeAnnouncement(-1, 0)).toBe(
+      "Jauge de l'ascension : Malédiction, moins 1. Lancée avec cette jauge : l'ascension la garde jusqu'à sa fin.",
     );
   });
 });

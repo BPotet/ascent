@@ -1,5 +1,5 @@
 import type { StartingBlessing } from '../../../domain/ascent/blessings';
-import { loadoutSize, type Loadout } from '../../../domain/ascent/loadout';
+import { loadoutSize, type Loadout, type LoadoutFavor } from '../../../domain/ascent/loadout';
 import { rarityMarks, rarityName } from './rarityText';
 
 /** Les textes de l'Équipement (`Loadout`, #159), tirés de la maquette #153. */
@@ -43,4 +43,25 @@ export function loadoutTitle(count: number): string {
 /** La ligne de rareté d'une bénédiction dans la feuille : « ◆◆ Bénédiction · Rare ». */
 export function blessingTag({ rarity }: StartingBlessing): string {
   return `${rarityMarks(rarity)} Bénédiction · ${rarityName(rarity, 'feminine')}`;
+}
+
+/** La section de la faveur de l'ascension (#42, E1), en tête de la feuille. */
+export const FAVOR_TITLE = "Faveur de l'ascension";
+
+/** L'en-tête lu de la section : « Faveur de l'ascension, plus 2 ». */
+export function favorHeadingLabel({ gauge }: LoadoutFavor): string {
+  return `${FAVOR_TITLE}, plus ${gauge}`;
+}
+
+/** La ligne des relances : ce qu'elles font, et ce qui en reste (« 1 sur 2 »). */
+export function rerollsRow({ rerollsLeft, rerollsGranted }: LoadoutFavor): {
+  readonly name: string;
+  readonly effect: string;
+  readonly state: string;
+  readonly label: string;
+} {
+  const name = 'Relances';
+  const effect = "Redonnent l'offre de bienfaits.";
+  const state = `${rerollsLeft} sur ${rerollsGranted}`;
+  return { name, effect, state, label: `${name}, ${state}. ${effect}` };
 }

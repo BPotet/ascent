@@ -15,7 +15,7 @@ Fonctionnalité: Lire sa jauge au pied de la tour
     Quand le joueur ouvre le pied de la tour
     Alors la jauge montre son curseur sur +2 et le mot « Faveur pleine »
     Et elle dit « D'après hier : 3 habitudes sur 3. »
-    Et elle liste ses effets du jour : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents
+    Et elle liste ses effets du jour : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents, 2 relances
 
   @ui
   Scénario: La jauge en malédiction ne bloque jamais

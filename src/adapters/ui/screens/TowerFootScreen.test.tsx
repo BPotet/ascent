@@ -146,10 +146,21 @@ describe('TowerFootScreen with the fate gauge (#93)', () => {
     await showWithHabits(3, 3);
 
     const card = await screen.findByRole('button', {
-      name: "Jauge du jour : Faveur pleine, plus 2. D'après hier : 3 habitudes sur 3. Effets : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents. Ouvrir le détail de la jauge.",
+      name: "Jauge du jour : Faveur pleine, plus 2. D'après hier : 3 habitudes sur 3. Effets : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents, 2 relances. Ouvrir le détail de la jauge.",
     });
     expect(within(card).getByText('+2')).toBeOnTheScreen();
     expect(within(card).getByText('Objets plus fréquents')).toBeOnTheScreen();
+    expect(within(card).getByText('2 relances')).toBeOnTheScreen();
+  });
+
+  it('counts 1 reroll in the effects of the favor (#42, G2)', async () => {
+    await showWithHabits(3, 4);
+
+    const card = await screen.findByRole('button', { name: /^Jauge du jour : Faveur, plus 1\./u });
+    expect(within(card).getByText('1 relance')).toBeOnTheScreen();
+    expect(
+      within(card).getByTestId('gauge-glyph-reroll', { includeHiddenElements: true }),
+    ).toBeOnTheScreen();
   });
 
   it('tells the fatigue of a curse, reassures, and keeps the gauge of the ascent in progress', async () => {
@@ -300,7 +311,7 @@ describe('TowerFootScreen with the fate gauge (#93)', () => {
   });
 
   it('shows the gauge of the ascent in progress, and the gauge of the day waiting for the next one', async () => {
-    const setUp = ascentSetUp({ saved: { ...startAscent(3), gauge: 2 } });
+    const setUp = ascentSetUp({ saved: { ...startAscent(3, { gauge: 2 }), rerolls: 1 } });
     const unitOfWork = setUp.dependencies.unitOfWork as InMemoryUnitOfWork;
     for (const name of ['Courir', 'Lire', 'Cuisiner']) {
       await unitOfWork.run(async ({ habits, settingsChanges }) => {
@@ -327,6 +338,9 @@ describe('TowerFootScreen with the fate gauge (#93)', () => {
     expect(
       within(card).getByText("Lancée avec cette jauge : l'ascension la garde jusqu'à sa fin."),
     ).toBeOnTheScreen();
+    // Les relances qui restent, en une ligne, et dans l'annonce (#42, G9).
+    expect(within(card).getByText('1 relance sur 2')).toBeOnTheScreen();
+    expect(card.props.accessibilityLabel).toMatch(/ Il reste 1 relance sur 2\. Ouvrir le détail/u);
     expect(
       await screen.findByText(
         'Jauge du jour : Malédiction forte. Elle comptera pour ta prochaine ascension.',

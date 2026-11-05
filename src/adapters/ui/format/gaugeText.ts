@@ -1,6 +1,6 @@
 import type { FateGaugeReading } from '../../../application/useCases/fateGauge';
 import { cursedElite } from '../../../domain/ascent/cursedEnemy';
-import { fatiguePercent, type FateGauge } from '../../../domain/ascent/fateGauge';
+import { fatiguePercent, favorRerolls, type FateGauge } from '../../../domain/ascent/fateGauge';
 import type { IconName } from '../pixelArt/sprites/icons';
 
 // Les textes de la jauge (#93, #41), d'après la maquette `docs/mockups/205-jauge-faveur/` : le
@@ -107,6 +107,37 @@ export interface GaugeEffect {
   readonly text: string;
 }
 
+/** « 1 relance », « 2 relances » (#42). */
+function rerollsText(count: number): string {
+  return `${count} relance${count > 1 ? 's' : ''}`;
+}
+
+/** Les relances qui restent sur celles données : « 1 relance sur 2 » (#42). */
+function rerollsLeftText(gauge: FateGauge, rerolls: number): string {
+  return `${rerollsText(rerolls)} sur ${favorRerolls(gauge)}`;
+}
+
+/**
+ * Ce qui reste de la faveur de l'ascension en cours (#42, G9) : ses relances, grises quand elles ont
+ * toutes servi. Rien sans faveur. #206 y ajoutera la seconde chance.
+ */
+export function ascentFavorEffects({
+  gauge,
+  rerolls,
+}: {
+  readonly gauge: FateGauge;
+  readonly rerolls: number;
+}): GaugeEffect[] {
+  if (gauge <= 0) return [];
+  return [
+    {
+      glyph: 'reroll',
+      tone: rerolls > 0 ? 'favor' : 'muted',
+      text: rerollsLeftText(gauge, rerolls),
+    },
+  ];
+}
+
 /**
  * Les effets de la jauge : les bénédictions de départ, puis ceux du niveau (objets plus fréquents,
  * Rares plus ou moins fréquents, fatigue, ennemis maudits). Rien à la première utilisation ; « Aucun effet
@@ -138,6 +169,8 @@ export function gaugeEffects({
     effects.push(
       { glyph: 'loot', tone: 'favor', text: 'Objets plus fréquents' },
       { glyph: 'rare', tone: 'favor', text: 'Objets Rares plus fréquents' },
+      // Les relances (#42), données au lancement.
+      { glyph: 'reroll', tone: 'favor', text: rerollsText(favorRerolls(gauge)) },
     );
   } else if (gauge < 0) {
     effects.push(
@@ -265,7 +298,13 @@ export function gaugeAnnouncement(reading: FateGaugeReading): string {
   ].join(' ');
 }
 
-/** L'annonce de la jauge de l'ascension en cours : son mot, sa valeur, et qu'elle la garde. */
-export function ascentGaugeAnnouncement(gauge: FateGauge): string {
-  return `${ASCENT_GAUGE_TITLE} : ${gaugeWord(gauge)}, ${SPOKEN_VALUES[gauge]}. ${ASCENT_KEEPS_GAUGE}`;
+/**
+ * L'annonce de la jauge de l'ascension en cours : son mot, sa valeur, qu'elle la garde, et les
+ * relances qui restent en faveur (#42).
+ */
+export function ascentGaugeAnnouncement(gauge: FateGauge, rerolls: number): string {
+  return [
+    `${ASCENT_GAUGE_TITLE} : ${gaugeWord(gauge)}, ${SPOKEN_VALUES[gauge]}. ${ASCENT_KEEPS_GAUGE}`,
+    ...(gauge > 0 ? [`Il reste ${rerollsLeftText(gauge, rerolls)}.`] : []),
+  ].join(' ');
 }

@@ -508,6 +508,17 @@ const DRAWN = {
     '........',
     '........',
   ],
+  // La relance (#42), `PAT.reroll` de la même maquette : 7 × 8, centrée sur 8 × 8.
+  reroll: [
+    '.XXXX...',
+    'X....X..',
+    'X...XXX.',
+    'X.......',
+    '......X.',
+    'XXX...X.',
+    '.X....X.',
+    '..XXXX..',
+  ],
 } as const;
 // Stryker restore all
 

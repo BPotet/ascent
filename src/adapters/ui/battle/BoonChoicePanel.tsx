@@ -1,14 +1,20 @@
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { SECOND_BREATH, type BoonKind, type OfferCard } from '../../../domain/ascent/boons';
 import { useSteps } from '../components/CampFeedback';
 import { IconWell, RARITY_COLORS } from '../components/IconWell';
 import {
+  NO_REROLL_LEFT,
+  REROLL_LABEL,
   boonCard,
   boonObtainedLabel,
   offerBoonCard,
   offerHeading,
+  rerollButtonLabel,
+  rerolledAnnouncement,
+  rerolledLine,
+  rerollsKept,
   secondBreathCard,
   secondBreathObtained,
 } from '../format/boonText';
@@ -297,6 +303,102 @@ function SecondBreathObtained({
   );
 }
 
+/** Une carte relancée se retourne (#42, maquette 205 R2) : 4 pas en 360 ms, 120 ms d'écart. */
+const FLIP_FRAMES = 4;
+const FLIP_FRAME_MS = 90;
+const FLIP_STAGGER_MS = 120;
+/** La largeur d'une carte au début de son retournement. */
+const FLIP_FROM = 0.1;
+
+/**
+ * Une carte de la nouvelle offre, qui se retourne à son heure ; en mouvement réduit, elle apparaît en
+ * fondu. Décoratif : l'annonce de la nouvelle offre porte le sens.
+ */
+function FlipIn({
+  delay,
+  reducedMotion,
+  children,
+}: {
+  readonly delay: number;
+  readonly reducedMotion: boolean;
+  readonly children: ReactNode;
+}) {
+  const [started, setStarted] = useState(delay === 0);
+  useEffect(() => {
+    if (started) return;
+    const timer = setTimeout(() => setStarted(true), delay);
+    return () => clearTimeout(timer);
+  }, [started, delay]);
+  const t = useSteps(started ? FLIP_FRAMES : 0, FLIP_FRAME_MS) / FLIP_FRAMES;
+  return (
+    <View
+      testID="boon-flip"
+      style={
+        reducedMotion
+          ? { opacity: t }
+          : { transform: [{ scaleX: FLIP_FROM + (1 - FLIP_FROM) * t }] }
+      }
+    >
+      {children}
+    </View>
+  );
+}
+
+/** Les relances de l'ascension (#42) : celles qui restent, celles données, et si relancer est possible. */
+export interface RerollState {
+  readonly left: number;
+  readonly granted: number;
+  readonly available: boolean;
+}
+
+/**
+ * « Relancer » (#42, maquette 205 R1) : un bouton secondaire, le glyphe de la relance, et les
+ * relances qui restent dans une pastille verte.
+ */
+function RerollButton({
+  left,
+  disabled,
+  onPress,
+}: {
+  readonly left: number;
+  readonly disabled: boolean;
+  readonly onPress: () => void;
+}) {
+  return (
+    <PixelButton
+      label={rerollButtonLabel(left)}
+      variant="secondary"
+      icon="reroll"
+      disabled={disabled}
+      onPress={onPress}
+    >
+      <Text style={[pixelTypography.button, { color: disabled ? roles.muted : roles.light }]}>
+        {REROLL_LABEL}
+      </Text>
+      <View testID="reroll-count" style={styles.count}>
+        <Text style={styles.countText}>{left}</Text>
+      </View>
+    </PixelButton>
+  );
+}
+
+/** La ligne sous l'offre (#42) : la nouvelle offre en vert (R2), ou pourquoi il n'y a pas de bouton. */
+function rerollLine(
+  offer: readonly OfferCard[],
+  reroll: RerollState,
+  rerolled: boolean,
+): { readonly text: string; readonly done: boolean } | null {
+  if (rerolled) return { text: rerolledLine(reroll.left), done: true };
+  if (reroll.granted > 0 && reroll.left === 0) return { text: NO_REROLL_LEFT, done: false };
+  const boons = offer.some((card) => card !== SECOND_BREATH);
+  if (reroll.left > 0 && !reroll.available && boons) {
+    return { text: rerollsKept(reroll.left), done: false };
+  }
+  return null;
+}
+
+const NO_REROLL: RerollState = { left: 0, granted: 0, available: false };
+
 /**
  * Le choix d'un bienfait (prototype #92, maquette B1 à B3) : 3 cartes, toucher une carte puis
  * « Prendre » ; puis le bienfait obtenu, et « Continuer » le garde pour l'ascension. Chaque carte
@@ -308,17 +410,40 @@ export function BoonChoicePanel({
   offer,
   heroHp,
   heroMaxHp,
+  reroll = NO_REROLL,
+  onReroll,
   onChoose,
 }: {
   readonly offer: readonly OfferCard[];
   /** Les PV du héros, et ses PV max, pour ce que rend Second souffle (#212). */
   readonly heroHp: number;
   readonly heroMaxHp: number;
+  /** Les relances de l'ascension (#42) ; absentes, aucune relance n'a été donnée (R4). */
+  readonly reroll?: RerollState;
+  readonly onReroll?: () => void;
   readonly onChoose: (index: number) => void;
 }) {
   const alone = offer.length === 1 && offer[0] === SECOND_BREATH;
   const [selected, setSelected] = useState<number | null>(alone ? 0 : null);
   const [taken, setTaken] = useState(false);
+  const reducedMotion = useReducedMotion();
+  // Une relance demandée : le bouton reste inactif jusqu'à la nouvelle offre (un double appui = une
+  // relance). Puis les cartes qui étaient des bienfaits se retournent ; Cœur de braise, gardé à sa
+  // place, ne bouge pas.
+  const [pending, setPending] = useState(false);
+  const [shown, setShown] = useState(offer);
+  const [flipped, setFlipped] = useState<{ readonly count: number; readonly at: number[] } | null>(
+    null,
+  );
+  if (offer.join() !== shown.join()) {
+    setShown(offer);
+    setSelected(null);
+    setPending(false);
+    setFlipped({
+      count: (flipped?.count ?? 0) + 1,
+      at: shown.flatMap((card, index) => (card === 'emberHeart' ? [] : [index])),
+    });
+  }
   const heading = offerHeading(offer);
 
   if (taken && selected !== null) {
@@ -353,6 +478,7 @@ export function BoonChoicePanel({
     );
   }
 
+  const line = rerollLine(offer, reroll, flipped !== null);
   return (
     <View style={styles.body} testID="boon-choice">
       <ScrollView contentContainerStyle={styles.list}>
@@ -361,27 +487,62 @@ export function BoonChoicePanel({
         </Text>
         <Text style={styles.sub}>{heading.sub}</Text>
         <View accessibilityRole="radiogroup" accessibilityLabel="Offre" style={styles.list}>
-          {offer.map((card, index) =>
-            card === SECOND_BREATH ? (
-              <SecondBreathOption
-                key={card}
-                hp={heroHp}
-                maxHp={heroMaxHp}
-                checked={selected === index}
-                onPress={() => setSelected(index)}
-              />
+          {offer.map((card, index) => {
+            const option =
+              card === SECOND_BREATH ? (
+                <SecondBreathOption
+                  key={card}
+                  hp={heroHp}
+                  maxHp={heroMaxHp}
+                  checked={selected === index}
+                  onPress={() => setSelected(index)}
+                />
+              ) : (
+                <BoonOption
+                  key={card}
+                  kind={card}
+                  checked={selected === index}
+                  onPress={() => setSelected(index)}
+                />
+              );
+            return flipped?.at.includes(index) ? (
+              <FlipIn
+                key={`${flipped.count}-${card}`}
+                delay={flipped.at.indexOf(index) * FLIP_STAGGER_MS}
+                reducedMotion={reducedMotion}
+              >
+                {option}
+              </FlipIn>
             ) : (
-              <BoonOption
-                key={card}
-                kind={card}
-                checked={selected === index}
-                onPress={() => setSelected(index)}
-              />
-            ),
-          )}
+              option
+            );
+          })}
         </View>
       </ScrollView>
-      <PixelButton label="Prendre" disabled={selected === null} onPress={() => setTaken(true)} />
+      <View style={styles.actions}>
+        {line !== null && (
+          <Text
+            {...(line.done && {
+              accessibilityLiveRegion: 'polite' as const,
+              accessibilityLabel: rerolledAnnouncement(offer, reroll.left),
+            })}
+            style={[styles.rerollLine, line.done && styles.rerollDone]}
+          >
+            {line.text}
+          </Text>
+        )}
+        {reroll.left > 0 && reroll.available && (
+          <RerollButton
+            left={reroll.left}
+            disabled={pending}
+            onPress={() => {
+              setPending(true);
+              onReroll?.();
+            }}
+          />
+        )}
+        <PixelButton label="Prendre" disabled={selected === null} onPress={() => setTaken(true)} />
+      </View>
     </View>
   );
 }
@@ -443,6 +604,24 @@ const styles = StyleSheet.create({
   bigGain: { fontFamily: pixelFont, fontSize: 34, lineHeight: 38, color: roles.done },
   bigGainZero: { fontSize: 24, lineHeight: 28, color: roles.muted },
   obtainedZero: { color: roles.parchment },
+  actions: { gap: 10 },
+  rerollLine: {
+    fontFamily: textFont.medium,
+    fontSize: 13,
+    lineHeight: 18,
+    color: roles.muted,
+    textAlign: 'center',
+  },
+  rerollDone: { fontFamily: textFont.semiBold, color: roles.done },
+  count: {
+    minWidth: 26,
+    height: 24,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: roles.done,
+  },
+  countText: { fontFamily: pixelFont, fontSize: 15, lineHeight: 18, color: roles.ink },
   tick: {
     position: 'absolute',
     top: 10,
