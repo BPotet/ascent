@@ -10,6 +10,7 @@ import {
   offerHeading,
   ownedBoonsLabel,
   rerollButtonLabel,
+  rerollCount,
   rerolledAnnouncement,
   rerolledLine,
   rerollsKept,
@@ -199,6 +200,10 @@ describe('boonText', () => {
 });
 
 describe('the texts of the rerolls (#42, R1 to R5)', () => {
+  it('counts the rerolls: « 1 relance », « 2 relances »', () => {
+    expect([0, 1, 2].map(rerollCount)).toEqual(['0 relance', '1 relance', '2 relances']);
+  });
+
   it('names the button, and reads it with the rerolls left', () => {
     expect(REROLL_LABEL).toBe('Relancer');
     expect(rerollButtonLabel(2)).toBe("Relancer l'offre, 2 relances");

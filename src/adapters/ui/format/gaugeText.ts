@@ -2,6 +2,7 @@ import type { FateGaugeReading } from '../../../application/useCases/fateGauge';
 import { cursedElite } from '../../../domain/ascent/cursedEnemy';
 import { fatiguePercent, favorRerolls, type FateGauge } from '../../../domain/ascent/fateGauge';
 import type { IconName } from '../pixelArt/sprites/icons';
+import { rerollCount } from './boonText';
 
 // Les textes de la jauge (#93, #41), d'après la maquette `docs/mockups/205-jauge-faveur/` : le
 // cadran au pied de la tour et son détail. Ton sans reproche : la jauge vient toujours d'hier et ne
@@ -107,14 +108,9 @@ export interface GaugeEffect {
   readonly text: string;
 }
 
-/** « 1 relance », « 2 relances » (#42). */
-function rerollsText(count: number): string {
-  return `${count} relance${count > 1 ? 's' : ''}`;
-}
-
 /** Les relances qui restent sur celles données : « 1 relance sur 2 » (#42). */
 function rerollsLeftText(gauge: FateGauge, rerolls: number): string {
-  return `${rerollsText(rerolls)} sur ${favorRerolls(gauge)}`;
+  return `${rerollCount(rerolls)} sur ${favorRerolls(gauge)}`;
 }
 
 /**
@@ -170,7 +166,7 @@ export function gaugeEffects({
       { glyph: 'loot', tone: 'favor', text: 'Objets plus fréquents' },
       { glyph: 'rare', tone: 'favor', text: 'Objets Rares plus fréquents' },
       // Les relances (#42), données au lancement.
-      { glyph: 'reroll', tone: 'favor', text: rerollsText(favorRerolls(gauge)) },
+      { glyph: 'reroll', tone: 'favor', text: rerollCount(favorRerolls(gauge)) },
     );
   } else if (gauge < 0) {
     effects.push(
