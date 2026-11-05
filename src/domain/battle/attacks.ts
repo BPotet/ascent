@@ -5,7 +5,7 @@
 export type AttackKind = 'basic' | 'double' | 'delayed' | 'feint' | 'perilous' | 'delayedPerilous';
 
 export interface AttackProfile {
-  /** La préparation (`WindUp`) de base, avant la variation de ×0,8 à ×1,2. */
+  /** La préparation (`WindUp`) de base, avant la variation de ×0,9 à ×1,1 (#211). */
   readonly windUpMs: number;
   /** Les impacts, après la fin de la préparation : deux pour la double frappe, 420 ms d'écart. */
   readonly hitOffsetsMs: readonly number[];
@@ -18,7 +18,7 @@ export interface AttackProfile {
 export const ATTACKS: Readonly<Record<AttackKind, AttackProfile>> = {
   basic: { windUpMs: 1_100, hitOffsetsMs: [0], feint: false, perilous: false },
   // La préparation la plus courte : le premier impact d'une phase ennemie tombe au plus tôt
-  // 800 + 400 + 800 ms après l'action du héros (C12).
+  // 800 + 400 + 900 ms après l'action du héros (C12).
   double: { windUpMs: 1_000, hitOffsetsMs: [0, 420], feint: false, perilous: false },
   delayed: { windUpMs: 1_700, hitOffsetsMs: [0], feint: false, perilous: false },
   feint: { windUpMs: 1_600, hitOffsetsMs: [0], feint: true, perilous: false },
@@ -27,14 +27,14 @@ export const ATTACKS: Readonly<Record<AttackKind, AttackProfile>> = {
   delayedPerilous: { windUpMs: 1_700, hitOffsetsMs: [0], feint: false, perilous: true },
 };
 
-/** La variation de la préparation, tirée au début de la manche (C10). */
-export const WIND_UP_MIN_FACTOR = 0.8;
-export const WIND_UP_MAX_FACTOR = 1.2;
+/** La variation de la préparation, tirée au début de la manche (C10), de ×0,9 à ×1,1 (#211). */
+export const WIND_UP_MIN_FACTOR = 0.9;
+export const WIND_UP_MAX_FACTOR = 1.1;
 /** La position de la fausse amorce dans la préparation (C10). */
 export const FEINT_MIN_FRACTION = 0.35;
 export const FEINT_MAX_FRACTION = 0.6;
 
-/** La plus courte préparation possible, tous coups confondus (800 ms, la double frappe). */
+/** La plus courte préparation possible, tous coups confondus (900 ms, la double frappe). */
 export function shortestWindUpMs(): number {
   return Math.min(...Object.values(ATTACKS).map(({ windUpMs }) => windUpMs * WIND_UP_MIN_FACTOR));
 }

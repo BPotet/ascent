@@ -16,7 +16,7 @@ export interface AttackIntent {
   readonly category: 'attack';
   readonly attack: AttackKind;
   readonly damage: number;
-  /** La préparation tirée : la base du coup × 0,8 à × 1,2, arrondie à la ms. */
+  /** La préparation tirée : la base du coup × 0,9 à × 1,1 (#211), arrondie à la ms. */
   readonly windUpMs: number;
   /** La position de la fausse amorce dans la préparation, de 35 % à 60 % (tirée pour tout coup). */
   readonly feintFraction: number;
