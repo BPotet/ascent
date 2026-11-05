@@ -405,18 +405,10 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(
-    /^chaque ennemi est une Goule, un Villageois fou, un Pèlerin enronce, une Ronce de cendre, une Glaneuse de cendre, un Embrasé \(#171\) ou une Phalénide \(#172\)$/u,
+    /^chaque ennemi est un Pèlerin enronce, une Ronce de cendre, une Glaneuse de cendre, un Embrasé \(#171\) ou une Phalénide \(#172\), ni Goule ni Villageois fou \(#213\)$/u,
     () => {
       expect(new Set(groups(2).flat())).toEqual(
-        new Set([
-          'ghoul',
-          'madVillager',
-          'thornPilgrim',
-          'ashBramble',
-          'ashGleaner',
-          'burningHusk',
-          'mothkin',
-        ]),
+        new Set(['thornPilgrim', 'ashBramble', 'ashGleaner', 'burningHusk', 'mothkin']),
       );
     },
   );

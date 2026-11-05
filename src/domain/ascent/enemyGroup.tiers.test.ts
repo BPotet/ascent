@@ -38,15 +38,22 @@ describe('the enemies drawn at tiers 2 and 3 (#38)', () => {
     const drawn = new Set(groups(2, 4).flat());
 
     expect(drawn).toEqual(
-      new Set([
-        'ghoul',
-        'madVillager',
-        'thornPilgrim',
-        'ashBramble',
-        'ashGleaner',
-        'burningHusk',
-        'mothkin',
-      ]),
+      new Set(['thornPilgrim', 'ashBramble', 'ashGleaner', 'burningHusk', 'mothkin']),
+    );
+  });
+
+  it('never draws a Ghoul nor a Mad villager at tier 2, for 200 seeds (#213)', () => {
+    const drawn = SEEDS.slice(0, 200).flatMap((seed) =>
+      [1, 2, 3, 4, 5].flatMap((floor) => {
+        const size = drawGroupSize(floor, seedRandom(seed), false, 2);
+        return drawGroup(size.value, size.random, 2).value;
+      }),
+    );
+
+    expect(drawn).not.toContain('ghoul');
+    expect(drawn).not.toContain('madVillager');
+    expect(new Set(drawn)).toEqual(
+      new Set(['thornPilgrim', 'ashBramble', 'ashGleaner', 'burningHusk', 'mothkin']),
     );
   });
 
