@@ -92,7 +92,7 @@ Fonctionnalité: Prototype jouable du combat
   Scénario: La préparation varie légèrement, de façon reproductible (C10)
     Étant donné un tirage fixé pour les tests
     Quand la Goule lance plusieurs coups simples
-    Alors chaque préparation dure entre 880 ms et 1 320 ms (1 100 ms × 0,8 à 1,2)
+    Alors chaque préparation dure entre 990 ms et 1 210 ms (1 100 ms × 0,9 à 1,1)
     Et le même tirage donne les mêmes durées
 
   Scénario: Le coup trompeur feinte avant de frapper (C10)
@@ -136,7 +136,7 @@ Fonctionnalité: Prototype jouable du combat
     Quand elle se termine
     Alors le premier ennemi debout s'avance pendant 400 ms
     Et sa préparation (C10) commence seulement ensuite
-    Et son premier impact tombe au plus tôt 2 000 ms après la fin de l'attaque de la Sentinelle (800 + 400 + 800)
+    Et son premier impact tombe au plus tôt 2 100 ms après la fin de l'attaque de la Sentinelle (800 + 400 + 900)
 
   Scénario: Un appui pendant l'avancée est dans le vide (C9, C12)
     Étant donné une transition de phase vers la phase ennemie a commencé

@@ -92,7 +92,7 @@ Fonctionnalité: Trois paliers jusqu'au sommet, et les premiers Éclats
   @session
   Scénario: Les Élites et les boss ne sont pas multipliés
     Étant donné l'Épouvantail au palier 2
-    Alors il a 190 PV et 35 de garde, et sa Moisson fait 16
+    Alors il a 190 PV et 50 de garde, et sa Moisson fait 16
 
   @domain
   Scénario: Limite — le palier 1 ne change pas

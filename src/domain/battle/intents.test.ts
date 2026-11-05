@@ -43,7 +43,7 @@ describe('drawIntent (C2.1, C10)', () => {
       category: 'attack',
       attack: move.attack,
       damage: move.damage,
-      windUpMs: Math.round(ATTACKS[move.attack].windUpMs * (0.8 + 0.4 * second.value)),
+      windUpMs: Math.round(ATTACKS[move.attack].windUpMs * (0.9 + 0.2 * second.value)),
       feintFraction: expect.closeTo(0.35 + 0.25 * third.value, 12),
     });
     expect(after).toBe(third.state);
@@ -163,11 +163,11 @@ describe('drawIntent (C2.1, C10)', () => {
       }
     });
 
-    it('keeps each wind-up between 0.8 and 1.2 times its base', () => {
+    it('keeps each wind-up between 0.9 and 1.1 times its base', () => {
       for (const intent of intentsOf()) {
         const base = ATTACKS[intent.attack].windUpMs;
-        expect(intent.windUpMs).toBeGreaterThanOrEqual(base * 0.8);
-        expect(intent.windUpMs).toBeLessThanOrEqual(base * 1.2);
+        expect(intent.windUpMs).toBeGreaterThanOrEqual(base * 0.9);
+        expect(intent.windUpMs).toBeLessThanOrEqual(base * 1.1);
         expect(Number.isInteger(intent.windUpMs)).toBe(true);
       }
     });
@@ -180,16 +180,38 @@ describe('drawIntent (C2.1, C10)', () => {
     });
   });
 
-  it('keeps every basic attack of the Ghoul between 880 ms and 1,320 ms', () => {
+  it('keeps every basic attack of the Ghoul between 990 ms and 1,210 ms', () => {
     const windUps = SEEDS.map((seed) => attackOf('ghoul', seed))
       .filter((intent) => intent.attack === 'basic')
       .map((intent) => intent.windUpMs);
 
     expect(windUps.length).toBeGreaterThan(100);
-    expect(Math.min(...windUps)).toBeGreaterThanOrEqual(880);
-    expect(Math.max(...windUps)).toBeLessThanOrEqual(1_320);
+    expect(Math.min(...windUps)).toBeGreaterThanOrEqual(990);
+    expect(Math.max(...windUps)).toBeLessThanOrEqual(1_210);
     // Le tirage couvre bien la plage, pas une seule valeur.
-    expect(Math.max(...windUps) - Math.min(...windUps)).toBeGreaterThan(400);
+    expect(Math.max(...windUps) - Math.min(...windUps)).toBeGreaterThan(200);
+  });
+
+  it('keeps a wind-up of 1,000 ms between 900 ms and 1,100 ms (#211)', () => {
+    const windUps = SEEDS.map((seed) => attackOf('ghoul', seed))
+      .filter((intent) => intent.attack === 'double')
+      .map((intent) => intent.windUpMs);
+
+    expect(ATTACKS.double.windUpMs).toBe(1_000);
+    expect(windUps.length).toBeGreaterThan(100);
+    expect(Math.min(...windUps)).toBeGreaterThanOrEqual(900);
+    expect(Math.max(...windUps)).toBeLessThanOrEqual(1_100);
+    expect(Math.max(...windUps) - Math.min(...windUps)).toBeGreaterThan(180);
+  });
+
+  it('draws the same value as before: only the wind-up that follows from it changes (#211)', () => {
+    const { value } = nextRandom(nextRandom(seedRandom(12_345)).state);
+
+    const intent = attackOf('ghoul', 12_345);
+
+    const base = ATTACKS[intent.attack].windUpMs;
+    expect(intent.windUpMs).toBe(Math.round(base * (0.9 + 0.2 * value)));
+    expect(intent.windUpMs).not.toBe(Math.round(base * (0.8 + 0.4 * value)));
   });
 });
 

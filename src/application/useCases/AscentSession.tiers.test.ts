@@ -488,7 +488,7 @@ describe('the Tier transition in the session (#38)', () => {
     await battleSession.start();
 
     expect(battleSession.current()!.battle.tierMultiplier).toBeUndefined();
-    expect(battleSession.current()!.battle.enemies[0]).toMatchObject({ maxHp: 190, maxGuard: 35 });
+    expect(battleSession.current()!.battle.enemies[0]).toMatchObject({ maxHp: 190, maxGuard: 50 });
   });
 
   it('plays the Common Momentum blessing at floor 1 of tier 1 only, not at floor 1 of tier 2', async () => {

@@ -75,6 +75,7 @@ import {
   STRIKE_WIND_UP_MS,
   bulwarkCounterBlow,
   counterBlow,
+  judgeStrike,
   strikeBlow,
   strikeMultiplier,
   type EnemyBlow,
@@ -1556,7 +1557,7 @@ export function pressStrike(battle: Battle, { at }: { readonly at: number }): Ba
   const delta = pressDelta(pressedAt, advanced.battle.inputOffset, phase.impactAt);
   const pressed = {
     ...advanced.battle,
-    phase: { ...phase, press: { at: pressedAt, delta, judgement: judgePress(delta) } },
+    phase: { ...phase, press: { at: pressedAt, delta, judgement: judgeStrike(delta) } },
   };
   const events = [...advanced.events];
   if (pressedAt < phase.impactAt) return { battle: pressed, events };

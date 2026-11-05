@@ -1,4 +1,11 @@
-import { ATTACKS, FEINT_MAX_FRACTION, FEINT_MIN_FRACTION, shortestWindUpMs } from './attacks';
+import {
+  ATTACKS,
+  FEINT_MAX_FRACTION,
+  FEINT_MIN_FRACTION,
+  WIND_UP_MAX_FACTOR,
+  WIND_UP_MIN_FACTOR,
+  shortestWindUpMs,
+} from './attacks';
 import { ENEMIES, MAX_DAMAGE_REDUCTION_PERCENT, SENTINEL } from './combatants';
 import { TEST_BATTLE_ENEMIES } from './testing/testBattle';
 
@@ -14,8 +21,12 @@ describe('attacks (C10)', () => {
     });
   });
 
-  it('never prepares an attack in less than 800 ms (the double attack, 1,000 ms × 0.8)', () => {
-    expect(shortestWindUpMs()).toBe(800);
+  it('varies the wind-up from ×0.9 to ×1.1 (#211)', () => {
+    expect([WIND_UP_MIN_FACTOR, WIND_UP_MAX_FACTOR]).toEqual([0.9, 1.1]);
+  });
+
+  it('never prepares an attack in less than 900 ms (the double attack, 1,000 ms × 0.9)', () => {
+    expect(shortestWindUpMs()).toBe(900);
   });
 
   it('places the feint between 35 % and 60 % of the wind-up', () => {

@@ -563,6 +563,31 @@ describe('judging a defense press (C7, C8)', () => {
     ]);
   });
 
+  it.each([-60, 60])(
+    'a parry %i ms from the impact stays perfect: the defenses keep their 60 ms window (#211)',
+    (delta) => {
+      const play = toGhoulWindUp('basic')
+        .press('parry', GHOUL_IMPACT + delta)
+        .advance(20_000);
+
+      expect(play.all('blowResolved')[0]).toMatchObject({
+        outcome: 'perfectParry',
+        delta,
+        damage: 0,
+      });
+      expect(play.all('hitStopStarted')).toHaveLength(1);
+      expect(play.all('counterAttacked')).toHaveLength(1);
+    },
+  );
+
+  it.each([-60, 60])('a dodge %i ms from the impact stays a dodge (#211)', (delta) => {
+    const play = toGhoulWindUp('basic')
+      .press('dodge', GHOUL_IMPACT + delta)
+      .advance(20_000);
+
+    expect(play.all('blowResolved')[0]).toMatchObject({ outcome: 'dodge', delta, damage: 0 });
+  });
+
   it('good parry: 1 damage instead of 5, no counter', () => {
     const play = toGhoulWindUp('basic')
       .press('parry', GHOUL_IMPACT + 120)
