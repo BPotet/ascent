@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, within } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
+import { AccessibilityInfo, StyleSheet } from 'react-native';
 
 import { artPalette } from '../pixelArt/artPalette';
 import { pixelFont } from '../pixelArt/pixelTypography';
@@ -365,6 +365,108 @@ describe('BoonChoicePanel', () => {
       expect(screen.getByText('◆◆◆ Braise · Épique')).toBeTruthy();
       expect(screen.queryByText(/Palier/)).toBeNull();
       expect(wellOf(screen.getByTestId('boon-obtained')).sprite).toBe('boon-icon:ashenBlade');
+    });
+    describe('with the feedback of the heal (#212, maquette 210 S1)', () => {
+      const take = async (hp = 40, maxHp = 88) => {
+        await render(
+          <BoonChoicePanel
+            offer={['secondBreath']}
+            onChoose={jest.fn()}
+            heroHp={hp}
+            heroMaxHp={maxHp}
+          />,
+        );
+        await fireEvent.press(screen.getByRole('button', { name: 'Prendre' }));
+      };
+      const advance = async (ms: number) => {
+        for (let elapsed = 0; elapsed < ms; elapsed += 10) {
+          await act(async () => {
+            jest.advanceTimersByTime(10);
+          });
+        }
+      };
+      const styleOf = (testID: string) =>
+        StyleSheet.flatten(screen.getByTestId(testID, hidden).props.style);
+      const gainWidth = () => parseFloat(styleOf('second-breath-bar-gain').width as string);
+      const puffs = () => screen.queryAllByTestId('second-breath-puff', hidden);
+
+      beforeEach(() => jest.useFakeTimers());
+      afterEach(() => {
+        jest.useRealTimers();
+        jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockResolvedValue(false);
+      });
+
+      it('lets 4 light puffs rise from the well for 900 ms, then nothing', async () => {
+        await take();
+
+        const well = screen.getByTestId('second-breath-well', hidden);
+        expect(within(well).getAllByTestId('second-breath-puff', hidden)).toHaveLength(4);
+        expect(styleOf('second-breath-puffs')).toMatchObject({ position: 'absolute' });
+        await advance(450);
+        const risen = puffs().map((puff) => StyleSheet.flatten(puff.props.style));
+        expect(risen).toHaveLength(4);
+        for (const style of risen) {
+          expect(style).toMatchObject({ backgroundColor: roles.light });
+          expect(style.opacity).toBeGreaterThan(0);
+          expect(style.transform[0].translateY).toBeLessThan(0);
+        }
+        await advance(500);
+        expect(puffs().length).toBeLessThan(4);
+        await advance(150);
+        expect(puffs()).toHaveLength(0);
+      });
+
+      it('makes « +8 PV » appear in 320 ms', async () => {
+        await take();
+
+        expect(styleOf('second-breath-gain')).toMatchObject({ opacity: 0 });
+        await advance(330);
+        expect(styleOf('second-breath-gain')).toMatchObject({
+          opacity: 1,
+          transform: [{ scale: 1 }],
+        });
+      });
+
+      it('fills the bar in green from 40 to 48 in 7 steps of 100 ms, after 300 ms', async () => {
+        await take();
+
+        expect(gainWidth()).toBeCloseTo((40 / 88) * 100);
+        await advance(300);
+        expect(gainWidth()).toBeCloseTo((40 / 88) * 100);
+        await advance(100);
+        expect(gainWidth()).toBeCloseTo(((40 + 8 / 7) / 88) * 100);
+        await advance(300);
+        expect(gainWidth()).toBeCloseTo(((40 + 32 / 7) / 88) * 100);
+        await advance(300);
+        expect(gainWidth()).toBeCloseTo((48 / 88) * 100);
+        expect(styleOf('second-breath-bar-gain')).toMatchObject({
+          backgroundColor: roles.done,
+          opacity: 1,
+        });
+      });
+
+      it('in reduced motion, only fades the green of the bar in, without puffs', async () => {
+        jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockResolvedValue(true);
+        await take();
+
+        expect(puffs()).toHaveLength(0);
+        expect(styleOf('second-breath-gain')).toMatchObject({ opacity: 1 });
+        expect(styleOf('second-breath-gain').transform).toBeUndefined();
+        expect(gainWidth()).toBeCloseTo((48 / 88) * 100);
+        expect(styleOf('second-breath-bar-gain')).toMatchObject({ opacity: 0 });
+        await advance(700);
+        expect(styleOf('second-breath-bar-gain').opacity).toBeCloseTo(4 / 7);
+        await advance(300);
+        expect(styleOf('second-breath-bar-gain')).toMatchObject({ opacity: 1 });
+        expect(puffs()).toHaveLength(0);
+      });
+
+      it('lets no puff rise when the HP were already full', async () => {
+        await take(80, 80);
+
+        expect(puffs()).toHaveLength(0);
+        expect(screen.getByText('+0 PV')).toBeOnTheScreen();
+      });
     });
   });
 });

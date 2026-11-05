@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { SECOND_BREATH, type BoonKind, type OfferCard } from '../../../domain/ascent/boons';
+import { useSteps } from '../components/CampFeedback';
 import { IconWell, RARITY_COLORS } from '../components/IconWell';
 import {
   boonCard,
@@ -17,6 +18,7 @@ import { PixelFrame } from '../pixelArt/PixelFrame';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypography';
 import { boonIcon, secondBreathIcon } from '../pixelArt/sprites/gameIcons';
+import { useReducedMotion } from '../state/useReducedMotion';
 import { battleColors } from '../theme/battleColors';
 
 const { roles } = artPalette;
@@ -84,11 +86,14 @@ function HealBar({
   hp,
   healed,
   maxHp,
+  gainOpacity = 1,
   style,
 }: {
   readonly hp: number;
   readonly healed: number;
   readonly maxHp: number;
+  /** L'opacité du vert : il apparaît en fondu en mouvement réduit. */
+  readonly gainOpacity?: number;
   readonly style: object;
 }) {
   return (
@@ -102,7 +107,11 @@ function HealBar({
         testID="second-breath-bar-gain"
         style={[
           styles.barFill,
-          { width: `${(healed / maxHp) * 100}%`, backgroundColor: roles.done },
+          {
+            width: `${(healed / maxHp) * 100}%`,
+            backgroundColor: roles.done,
+            opacity: gainOpacity,
+          },
         ]}
       />
       <View
@@ -172,6 +181,50 @@ function SecondBreathOption({
   );
 }
 
+/** Les volutes du soin (maquette 210, S1) : 6 images de 150 ms, chacune partie à son heure. */
+const PUFF_FRAMES = 6;
+const PUFF_FRAME_MS = 150;
+const PUFFS = [
+  { left: 14, delay: 0 },
+  { left: 30, delay: 120 },
+  { left: 50, delay: 60 },
+  { left: 66, delay: 180 },
+] as const;
+const PUFF_RISE = 22;
+
+/** « +8 PV » : 3 images en 320 ms, de 70 % à sa taille. */
+const WORD_FRAMES = 3;
+const WORD_FRAME_MS = 107;
+const WORD_FROM = 0.7;
+
+/** La barre : 300 ms d'attente, puis 7 pas de 100 ms jusqu'aux PV rendus. */
+const BAR_WAIT = 3;
+const BAR_FRAMES = 7;
+const BAR_FRAME_MS = 100;
+
+/**
+ * Une volute claire qui monte de l'écrin et s'efface (maquette 210, S1) : elle s'allume jusqu'au
+ * tiers de sa montée, puis s'éteint. Décorative.
+ */
+function Puff({ left, delay }: { readonly left: number; readonly delay: number }) {
+  const [started, setStarted] = useState(delay === 0);
+  useEffect(() => {
+    if (started) return;
+    const timer = setTimeout(() => setStarted(true), delay);
+    return () => clearTimeout(timer);
+  }, [started, delay]);
+  const frame = useSteps(started ? PUFF_FRAMES : 0, PUFF_FRAME_MS);
+  if (started && frame >= PUFF_FRAMES) return null;
+  const t = started ? (frame + 1) / PUFF_FRAMES : 0;
+  const opacity = t < 0.3 ? (0.9 * t) / 0.3 : (0.9 * (1 - t)) / 0.7;
+  return (
+    <View
+      testID="second-breath-puff"
+      style={[styles.puff, { left, opacity, transform: [{ translateY: -PUFF_RISE * t }] }]}
+    />
+  );
+}
+
 /** L'écran après le choix de Second souffle (#212) : les PV rendus, au lieu de « Bienfait obtenu. ». */
 function SecondBreathObtained({
   hp,
@@ -182,8 +235,12 @@ function SecondBreathObtained({
   readonly maxHp: number;
   readonly onContinue: () => void;
 }) {
+  const reducedMotion = useReducedMotion();
   const obtained = secondBreathObtained(hp, maxHp);
   const zero = obtained.healed === hp;
+  const wordFrame = useSteps(WORD_FRAMES, WORD_FRAME_MS);
+  const word = reducedMotion ? 1 : wordFrame / WORD_FRAMES;
+  const bar = Math.max(0, useSteps(BAR_WAIT + BAR_FRAMES, BAR_FRAME_MS) - BAR_WAIT) / BAR_FRAMES;
   return (
     <View style={styles.body} testID="second-breath-obtained">
       <View
@@ -192,12 +249,43 @@ function SecondBreathObtained({
         accessibilityLiveRegion="polite"
         style={[styles.center, styles.centerItems]}
       >
-        <IconWell icon={secondBreathIcon()} rarity="heal" size="large" under={roles.night} />
+        <View testID="second-breath-well">
+          <IconWell icon={secondBreathIcon()} rarity="heal" size="large" under={roles.night} />
+          {!zero && !reducedMotion && (
+            <View
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              pointerEvents="none"
+              testID="second-breath-puffs"
+              style={styles.puffs}
+            >
+              {PUFFS.map((puff) => (
+                <Puff key={puff.left} {...puff} />
+              ))}
+            </View>
+          )}
+        </View>
         <Text style={[styles.tag, styles.centered, { color: roles.done }]}>Soin</Text>
         <Text style={[styles.title, styles.bigTitle]}>Second souffle</Text>
-        <Text style={[styles.bigGain, zero && styles.bigGainZero]}>{obtained.gain}</Text>
+        <Text
+          testID="second-breath-gain"
+          style={[
+            styles.bigGain,
+            zero && styles.bigGainZero,
+            { opacity: word },
+            !reducedMotion && { transform: [{ scale: WORD_FROM + (1 - WORD_FROM) * word }] },
+          ]}
+        >
+          {obtained.gain}
+        </Text>
         <View style={styles.bigBar}>
-          <HealBar hp={hp} healed={obtained.healed} maxHp={maxHp} style={styles.largeBar} />
+          <HealBar
+            hp={hp}
+            healed={reducedMotion ? obtained.healed : hp + (obtained.healed - hp) * bar}
+            gainOpacity={reducedMotion ? bar : 1}
+            maxHp={maxHp}
+            style={styles.largeBar}
+          />
           <Text style={[styles.hpText, styles.centered]}>{obtained.hpLine}</Text>
         </View>
         <Text style={[styles.sub, styles.obtained, zero && styles.obtainedZero]}>
@@ -350,6 +438,8 @@ const styles = StyleSheet.create({
   largeBar: { height: 20 },
   bigBar: { width: '100%', maxWidth: 260, gap: 6 },
   centerItems: { alignItems: 'center' },
+  puffs: { position: 'absolute', left: '50%', top: -8, width: 88, height: 24, marginLeft: -44 },
+  puff: { position: 'absolute', bottom: 0, width: 6, height: 6, backgroundColor: roles.light },
   bigGain: { fontFamily: pixelFont, fontSize: 34, lineHeight: 38, color: roles.done },
   bigGainZero: { fontSize: 24, lineHeight: 28, color: roles.muted },
   obtainedZero: { color: roles.parchment },
