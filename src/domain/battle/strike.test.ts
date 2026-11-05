@@ -2,11 +2,13 @@
 import {
   GOOD_STRIKE_PERCENT,
   PERFECT_STRIKE_BASE_PERCENT,
+  PERFECT_STRIKE_WINDOW_MS,
   PLAIN_STRIKE_PERCENT,
   STRIKE_RECOVERY_MS,
   STRIKE_WIND_UP_MS,
   bulwarkCounterBlow,
   counterBlow,
+  judgeStrike,
   strikeBlow,
   strikeMultiplier,
 } from './strike';
@@ -17,6 +19,28 @@ describe('timed strike (C6)', () => {
   it('prepares the strike for 700 ms, then recovers for 320 ms after its window', () => {
     expect(STRIKE_WIND_UP_MS).toBe(700);
     expect(STRIKE_RECOVERY_MS).toBe(320);
+  });
+
+  describe('judgeStrike (#211): the perfect strike window is 40 ms', () => {
+    it('keeps the perfect strike window at 40 ms, narrower than the 60 ms of the defenses', () => {
+      expect(PERFECT_STRIKE_WINDOW_MS).toBe(40);
+    });
+
+    it.each([
+      [0, 'perfect'],
+      [40, 'perfect'],
+      [-40, 'perfect'],
+      [41, 'good'],
+      [-41, 'good'],
+      [60, 'good'],
+      [-60, 'good'],
+      [160, 'good'],
+      [-160, 'good'],
+      [161, 'miss'],
+      [-161, 'miss'],
+    ] as const)('judges a strike %i ms from the impact as %s', (delta, judgement) => {
+      expect(judgeStrike(delta)).toBe(judgement);
+    });
   });
 
   describe('strikeMultiplier (C6.2, C6.4)', () => {

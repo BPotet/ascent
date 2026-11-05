@@ -343,6 +343,41 @@ describe('timed strike (C6)', () => {
     });
   });
 
+  it.each([41, -41, 60, -60])(
+    'a strike %i ms from the impact is only good (×1.2): no hit-stop (#211)',
+    (delta) => {
+      const play = BattlePlay.start()
+        .with(sturdy)
+        .attack(ATTACK_AT)
+        .strike(STRIKE_IMPACT + delta)
+        .advance(STRIKE_IMPACT + Math.max(delta, 0));
+
+      expect(play.lastOf('strikeResolved')).toMatchObject({
+        judgement: 'good',
+        delta,
+        damage: 12,
+        guardDamage: 14,
+      });
+      expect(play.all('hitStopStarted')).toEqual([]);
+      expect(play.battle.hitStop).toBeNull();
+    },
+  );
+
+  it('a strike 40 ms before the impact is still perfect (#211)', () => {
+    const play = BattlePlay.start()
+      .with(sturdy)
+      .attack(ATTACK_AT)
+      .strike(STRIKE_IMPACT - 40)
+      .advance(STRIKE_IMPACT);
+
+    expect(play.lastOf('strikeResolved')).toMatchObject({
+      judgement: 'perfect',
+      delta: -40,
+      damage: 15,
+    });
+    expect(play.all('hitStopStarted')).toHaveLength(1);
+  });
+
   it('judges a press made exactly at the end of the window', () => {
     const play = BattlePlay.start().attack(ATTACK_AT).strike(STRIKE_WINDOW_END);
 

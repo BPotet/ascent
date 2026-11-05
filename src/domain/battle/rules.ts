@@ -4,7 +4,10 @@
  * propriétaire : elles ne se changent pas sans lui.
  */
 
-/** Fenêtre parfaite (`PerfectWindow`) : |écart| ≤ 60 ms (C7). */
+/**
+ * Fenêtre parfaite (`PerfectWindow`) des défenses seulement (parade, esquive) : |écart| ≤ 60 ms
+ * (C7). La frappe en rythme a la sienne, de 40 ms (`PERFECT_STRIKE_WINDOW_MS`, #211).
+ */
 export const PERFECT_WINDOW_MS = 60;
 /** Fenêtre de parade (`ParryWindow`) : |écart| ≤ 160 ms (C7). */
 export const PARRY_WINDOW_MS = 160;

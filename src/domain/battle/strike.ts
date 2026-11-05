@@ -1,10 +1,25 @@
 /**
  * Frappe en rythme (`TimedStrike`, #32, règles C6) : après « Attaquer », la préparation de la
- * frappe dure 700 ms et le joueur touche « Frapper » à l'impact. Le jugement reprend les fenêtres
- * de la parade (`judgePress`) ; aucun hasard : la frappe parfaite est le seul « critique ».
+ * frappe dure 700 ms et le joueur touche « Frapper » à l'impact. Le jugement (`judgeStrike`) a sa
+ * propre fenêtre parfaite, de 40 ms (#211), et reprend la fenêtre de parade de 160 ms pour la bonne
+ * frappe ; aucun hasard : la frappe parfaite est le seul « critique ».
  */
-import { scaleDamage, type PressJudgement } from './rules';
+import { PARRY_WINDOW_MS, scaleDamage, type PressJudgement } from './rules';
 import { STUNNED_DAMAGE_PERCENT } from './guard';
+
+/**
+ * La fenêtre de frappe parfaite (`PerfectStrikeWindow`, #211) : |écart| ≤ 40 ms, pour la frappe en
+ * rythme seulement ; les défenses gardent la fenêtre parfaite de 60 ms (`PERFECT_WINDOW_MS`).
+ */
+export const PERFECT_STRIKE_WINDOW_MS = 40;
+
+/** Le jugement d'un appui sur « Frapper » : parfait à ±40 ms, bon à ±160 ms, raté au-delà. */
+export function judgeStrike(delta: number): PressJudgement {
+  const distance = Math.abs(delta);
+  if (distance <= PERFECT_STRIKE_WINDOW_MS) return 'perfect';
+  if (distance <= PARRY_WINDOW_MS) return 'good';
+  return 'miss';
+}
 
 /** La préparation de la frappe (C6.1). */
 export const STRIKE_WIND_UP_MS = 700;
