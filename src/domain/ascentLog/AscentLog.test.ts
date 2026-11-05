@@ -12,6 +12,7 @@ import {
   type Ascent,
 } from '../ascent/Ascent';
 import { blessingRarities } from '../ascent/blessings';
+import { BASE_BOON_KINDS } from '../ascent/boons';
 import type { FateGauge } from '../ascent/fateGauge';
 import { Day } from '../day/Day';
 import {
@@ -189,6 +190,34 @@ describe('recordAscentStep', () => {
       walk.boon(0);
       expect(walk.log.floors[0]!.boonChosen).toBe(offer[0]);
     }
+  });
+
+  it('records Second souffle chosen beside a boon, not the boon owned before (#212)', () => {
+    const ascent = startAscent(3);
+    const owned = BASE_BOON_KINDS.slice(0, 6);
+    const walk = new Walk({ ...ascent, hero: { ...ascent.hero, boons: owned } });
+    walk.battle();
+    expect(walk.log.floors[0]!.boonsOffered).toEqual(['winterVigil', 'secondBreath']);
+
+    walk.boon(1);
+
+    expect(walk.ascent.hero.boons).toEqual(owned);
+    expect(walk.log.floors[0]!.boonChosen).toBe('secondBreath');
+  });
+
+  it('records Second souffle chosen at full HP, alone in the offer (#212)', () => {
+    const ascent = startAscent(3);
+    const walk = new Walk({ ...ascent, hero: { ...ascent.hero, boons: BASE_BOON_KINDS } });
+    walk.battle('victory', ascent.hero.maxHp);
+    expect(walk.ascent.hero.hp).toBe(walk.ascent.hero.maxHp);
+
+    walk.boon(0);
+
+    expect(walk.ascent.boonOffer).toBeNull();
+    expect(walk.log.floors[0]).toMatchObject({
+      boonsOffered: ['secondBreath'],
+      boonChosen: 'secondBreath',
+    });
   });
 
   it('records the exits offered, the exit taken with its group size, and the next floor entry', () => {
