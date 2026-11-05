@@ -53,6 +53,10 @@ export const ENEMY_NAMES: Readonly<Record<EnemyKind, string>> = {
   // L'Invocation (#172) : la Reine des phalènes avec son article, comme dans la maquette.
   mothQueen: 'La Reine des phalènes',
   mothkin: 'Phalénide',
+  // Le Beffroi (#214) : les noms du Codex, sans article.
+  bellNovice: 'Novice des cloches',
+  matinsRinger: 'Sonneuse de matines',
+  clockJack: 'Jaquemart',
 };
 
 /** Le genre du nom de l'ennemi, pour « étourdie », « tombée »… */
@@ -82,6 +86,9 @@ const FEMININE: Readonly<Record<EnemyKind, boolean>> = {
   brambleBurner: false,
   mothQueen: true,
   mothkin: true,
+  bellNovice: false,
+  matinsRinger: true,
+  clockJack: false,
 };
 
 export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {

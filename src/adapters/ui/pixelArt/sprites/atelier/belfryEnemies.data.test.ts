@@ -5,12 +5,16 @@
 // l'Atelier à la revue. La cohérence structurelle attrape les fautes de forme.
 import { createHash } from 'node:crypto';
 
+import { ENEMIES, ENEMY_INITIATIVE, type EnemyKind } from '../../../../../domain/battle/combatants';
+import { GUARD_INTENT_CHANCE } from '../../../../../domain/battle/intents';
+import { ENEMY_NAMES } from '../../../format/battleText';
 import { artPalette } from '../../artPalette';
-import { ENEMY_FRAMES } from '../battle/battleCharacters';
+import { ENEMY_FRAMES, playsRed } from '../battle/battleCharacters';
 import { BELL_NOVICE_ANIMATION } from './data/bellNovice';
 import { CLOCK_JACK_ANIMATION } from './data/clockJack';
 import { MATINS_RINGER_ANIMATION } from './data/matinsRinger';
 import { MOTHKIN_ANIMATION } from './data/mothkin';
+import { PORTRAITS } from './data/portraits';
 import { animationSprite, battleCell, type FullAnimation } from './fullAnimation';
 
 /** Le JSON canonique : clés triées à tous les niveaux, sans espaces, caractères non ASCII tels quels. */
@@ -156,3 +160,172 @@ describe.each(ENTRIES)(
     });
   },
 );
+
+interface CodexMove {
+  readonly attack: string;
+  readonly damage: number;
+  readonly description: string;
+  readonly name: string;
+  readonly weight: number;
+}
+
+interface CodexEntry {
+  readonly name: string;
+  readonly stats: {
+    readonly drawWeight: number;
+    readonly groupCap: number;
+    readonly guardIntentChancePercent: number;
+    readonly initiative: number;
+    readonly maxGuard: number;
+    readonly maxHp: number;
+    readonly moves: readonly CodexMove[];
+    readonly role: string | null;
+    readonly roleDescription?: string;
+  };
+  /** La sha256 de `data.stats`, calculée à la recopie. */
+  readonly fingerprint: string;
+}
+
+/** `data.name` et `data.stats` des fiches `codex/<id>` (version 2), recopiés par la conversation. */
+const CODEX: Readonly<Record<'bellNovice' | 'matinsRinger' | 'clockJack', CodexEntry>> = {
+  bellNovice: {
+    name: 'Novice des cloches',
+    stats: {
+      drawWeight: 3,
+      groupCap: 2,
+      guardIntentChancePercent: 0,
+      initiative: 6,
+      maxGuard: 8,
+      maxHp: 26,
+      moves: [
+        {
+          attack: 'basic',
+          damage: 4,
+          description:
+            "Il fait tourner un bout de corde effilochée au-dessus de sa tête, puis le lance d'un coup sec. Un reflet blanc, un seul impact.",
+          name: 'Bout de corde',
+          weight: 2,
+        },
+        {
+          attack: 'delayed',
+          damage: 6,
+          description:
+            "Il tire de tout son poids sur une corde invisible et reste suspendu, les pieds dans le vide, comme une cloche qui ne veut pas partir. Laissez passer l'hésitation : il retombe sur le héros quand on ne l'attend plus.",
+          name: 'Volée manquée',
+          weight: 1,
+        },
+      ],
+      role: null,
+    },
+    fingerprint: '07262ab8cfdc723b5a5d19b1ef32fe546d050e035d573932fe473efbf89f5be4',
+  },
+  matinsRinger: {
+    name: 'Sonneuse de matines',
+    stats: {
+      drawWeight: 1,
+      groupCap: 1,
+      guardIntentChancePercent: 33,
+      initiative: 3,
+      maxGuard: 16,
+      maxHp: 42,
+      moves: [
+        {
+          attack: 'delayed',
+          damage: 4,
+          description:
+            "Elle lève sa clochette et la tient immobile, sans un son, le temps d'une prière. Laissez passer l'hésitation : le coup tombe au premier tintement.",
+          name: 'Angélus',
+          weight: 1,
+        },
+      ],
+      role: 'support',
+      roleDescription:
+        "Quand un allié tombe, elle agite sa clochette au-dessus de lui et il se relève, une seule fois, à la moitié de ses forces : une flèche vers le haut l'annonce. Quand sa garde est entamée, elle serre sa clochette contre elle et la referme. Tant qu'elle sonne matines, rien de ce qui tombe ne reste tombé.",
+    },
+    fingerprint: '2393727bab257ccf63cd22336cfe771ed2bbf04dcf4698369da91f42c7ca946e',
+  },
+  clockJack: {
+    name: 'Jaquemart',
+    stats: {
+      drawWeight: 2,
+      groupCap: 1,
+      guardIntentChancePercent: 0,
+      initiative: 1,
+      maxGuard: 20,
+      maxHp: 48,
+      moves: [
+        {
+          attack: 'double',
+          damage: 3,
+          description:
+            "Il pivote sur son axe en grinçant et frappe deux fois, ding, dong, au même rythme que l'horloge. Le reflet se dédouble : deux impacts, deux parades.",
+          name: 'Demi-heure',
+          weight: 2,
+        },
+        {
+          attack: 'perilous',
+          damage: 9,
+          description:
+            "Son mécanisme se remonte d'un cran, son marteau monte jusqu'au bout de sa course, sa peinture rougit et le sceau pulse au-dessus de lui. L'heure ne se pare pas : esquivez quand le marteau tombe.",
+          name: 'Heure pleine',
+          weight: 1,
+        },
+      ],
+      role: null,
+    },
+    fingerprint: '8ad571c95e136463673a413c745e62ef8af2a6162868f448be8b90d17109085f',
+  },
+};
+
+/** Les empreintes des portraits recopiés : `{ w, h, palette, rows }` de `icon.proposals[chosen]`. */
+const PORTRAIT_FINGERPRINTS = {
+  bellNovice: '33cf8382dc2eefe2dd84b6dc948f0a5c84f4237916d9ddee2bc921b07071d4d1',
+  matinsRinger: '5e826c5b4cceaa7f3c0c1dbc5c92745ac206b36b22c346eb3375affda4640f8f',
+  clockJack: 'df1c28d399a99b6606d33c1d82c249c7ac7675ef7f4da1a2d9fabc5ed63f3264',
+} as const;
+
+const BELFRY_KINDS = Object.keys(CODEX) as (keyof typeof CODEX)[];
+
+describe.each(BELFRY_KINDS)('the Codex entry of %s, copied in the game (#214)', (kind) => {
+  const { name, stats, fingerprint } = CODEX[kind];
+
+  it('is the copy of the Atelier: the sha256 of data.stats', () => {
+    expect(sha256(stats)).toBe(fingerprint);
+  });
+
+  it('gives the enemy its HP, its guard, its moves and its role', () => {
+    expect(ENEMIES[kind as EnemyKind]).toEqual({
+      maxHp: stats.maxHp,
+      maxGuard: stats.maxGuard,
+      moves: stats.moves.map(({ attack, damage, weight }) => ({
+        attack,
+        damage,
+        ...(weight !== 1 && { weight }),
+      })),
+      supports: stats.role === 'support',
+    });
+    expect(stats.guardIntentChancePercent).toBe(
+      stats.role === 'support' ? Math.round(GUARD_INTENT_CHANCE * 100) : 0,
+    );
+  });
+
+  it('gives the enemy its Initiative and its name', () => {
+    expect(ENEMY_INITIATIVE[kind]).toBe(stats.initiative);
+    expect(ENEMY_NAMES[kind]).toBe(name);
+  });
+
+  it('plays the red palette only with a perilous move', () => {
+    expect(playsRed(kind)).toBe(stats.moves.some(({ attack }) => attack === 'perilous'));
+  });
+
+  it('has its portrait, the copy of the chosen icon: its sha256', () => {
+    const portrait = PORTRAITS[kind];
+    expect(portrait).not.toBeNull();
+    const { w, h, palette, rows } = portrait!;
+    expect(sha256({ w, h, palette, rows })).toBe(PORTRAIT_FINGERPRINTS[kind]);
+  });
+});
+
+it('plays the red palette for the Clock jack only, of the three enemies of the Belfry (#214)', () => {
+  expect(BELFRY_KINDS.filter(playsRed)).toEqual(['clockJack']);
+});

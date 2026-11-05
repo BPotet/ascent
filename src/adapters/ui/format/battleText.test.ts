@@ -476,3 +476,24 @@ describe('actionTrackLabel (#175)', () => {
     );
   });
 });
+
+describe('the names of the enemies of the Belfry (#214)', () => {
+  const fallen = (kind: 'bellNovice' | 'matinsRinger' | 'clockJack') =>
+    enemyLabel({ kind, hp: 0, maxHp: 45, guard: 0, maxGuard: 12, stun: null }, null, false);
+
+  it('names them as the Codex does, without article', () => {
+    expect([ENEMY_NAMES.bellNovice, ENEMY_NAMES.matinsRinger, ENEMY_NAMES.clockJack]).toEqual([
+      'Novice des cloches',
+      'Sonneuse de matines',
+      'Jaquemart',
+    ]);
+  });
+
+  it('agrees with the Matins ringer, a feminine name, and with the two others', () => {
+    expect(fallen('matinsRinger')).toBe('Sonneuse de matines, tombée');
+    expect(fallen('clockJack')).toBe('Jaquemart, tombé');
+    expect(fallen('bellNovice')).toBe('Novice des cloches, tombé');
+    expect(stunnedLabel('matinsRinger')).toBe('Étourdie ×1,5');
+    expect(stunnedLabel('clockJack')).toBe('Étourdi ×1,5');
+  });
+});

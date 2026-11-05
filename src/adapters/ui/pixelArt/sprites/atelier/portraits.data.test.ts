@@ -24,6 +24,16 @@ const ATELIER_IDS: Partial<Record<HeroKind | EnemyKind, string>> = {
   mothkin: 'ashMoth',
 };
 
+/**
+ * Les combattants que la maquette 174 ne connaît pas : leur portrait, recopié par la conversation,
+ * se vérifie par son empreinte (`belfryEnemies.data.test.ts`, ADR 0010, avenant #214).
+ */
+const WITHOUT_MOCKUP: readonly (HeroKind | EnemyKind)[] = [
+  'bellNovice',
+  'matinsRinger',
+  'clockJack',
+];
+
 interface MockupImage {
   readonly w: number;
   readonly h: number;
@@ -85,12 +95,17 @@ describe('PORTRAITS', () => {
     (kind) => expectWellFormed(portraitOf(kind)),
   );
 
-  it.each([...HEROES, ...ENEMY_KINDS])(
+  it.each([...HEROES, ...ENEMY_KINDS].filter((kind) => !WITHOUT_MOCKUP.includes(kind)))(
     'copies the portrait of %s pixel for pixel from the validated mockup',
     (kind) => {
       expectSamePixels(portraitOf(kind), mockupArt()[`ic_${ATELIER_IDS[kind] ?? kind}`]);
     },
   );
+
+  it('compares every portrait to the mockup 174 but the three enemies of the Belfry (#214)', () => {
+    expect(WITHOUT_MOCKUP.filter((kind) => mockupArt()[`ic_${kind}`] !== undefined)).toEqual([]);
+    expect(WITHOUT_MOCKUP.every((kind) => PORTRAITS[kind] !== null)).toBe(true);
+  });
 });
 
 describe('PHASE_2_PORTRAITS', () => {

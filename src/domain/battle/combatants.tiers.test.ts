@@ -257,3 +257,43 @@ describe('the Moth queen and the Mothkin (#172)', () => {
     expect(summoners.map(([kind]) => kind)).toEqual(['mothQueen']);
   });
 });
+
+// Le Beffroi (#214) : les valeurs du Codex de l'Atelier (version 2, 04/11/2026), à l'échelle du
+// palier 1. Poids 1 : la clé `weight` est absente.
+describe('the enemies of the Belfry (#214)', () => {
+  it('gives the Bell novice 26 HP, 8 guard, Initiative 6, its Rope end twice as often', () => {
+    expect(ENEMIES.bellNovice).toEqual({
+      maxHp: 26,
+      maxGuard: 8,
+      moves: [
+        { attack: 'basic', damage: 4, weight: 2 },
+        { attack: 'delayed', damage: 6 },
+      ],
+      supports: false,
+    });
+    expect(ENEMY_INITIATIVE.bellNovice).toBe(6);
+  });
+
+  it('gives the Matins ringer 42 HP, 16 guard, Initiative 3, her Angelus and the support role', () => {
+    expect(ENEMIES.matinsRinger).toEqual({
+      maxHp: 42,
+      maxGuard: 16,
+      moves: [{ attack: 'delayed', damage: 4 }],
+      supports: true,
+    });
+    expect(ENEMY_INITIATIVE.matinsRinger).toBe(3);
+  });
+
+  it('gives the Clock jack 48 HP, 20 guard, Initiative 1, its Half hour twice as often', () => {
+    expect(ENEMIES.clockJack).toEqual({
+      maxHp: 48,
+      maxGuard: 20,
+      moves: [
+        { attack: 'double', damage: 3, weight: 2 },
+        { attack: 'perilous', damage: 9 },
+      ],
+      supports: false,
+    });
+    expect(ENEMY_INITIATIVE.clockJack).toBe(1);
+  });
+});
