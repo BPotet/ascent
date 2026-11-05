@@ -102,15 +102,16 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
       4: [0, 0, 6, 7, 0],
       5: [0, 0, 5, 8, 0],
     },
-    // Dans l'ordre des stories : la Gargouille et le Fondeur de cloches (#171), puis la Phalénide (#172).
+    // Ses propres ennemis seulement (`tierExclusive`, #214) : le Veilleur d'airain, la Gargouille et
+    // le Fondeur de cloches (#171), puis les trois du Beffroi dans l'ordre du Codex. Ni Squelette, ni
+    // Spectre, ni Nécromancien, restés au palier 1, ni Phalénide, restée au palier 2.
     enemies: [
-      { kind: 'skeleton', weight: 3, cap: 1 },
       { kind: 'bronzeWarden', weight: 2, cap: 1 },
-      { kind: 'specter', weight: 2, cap: 1 },
-      { kind: 'necromancer', weight: 1, cap: 1, neverAlone: true },
       { kind: 'gargoyle', weight: 2, cap: 1 },
       { kind: 'bellFounder', weight: 2, cap: 1 },
-      { kind: 'mothkin', weight: 3, cap: 2 },
+      { kind: 'bellNovice', weight: 3, cap: 2 },
+      { kind: 'matinsRinger', weight: 1, cap: 1, neverAlone: true },
+      { kind: 'clockJack', weight: 2, cap: 1 },
     ],
     elites: ['firstPilgrim', 'stoneSaint'],
     bosses: ['hourRinger', 'wishGranter'],

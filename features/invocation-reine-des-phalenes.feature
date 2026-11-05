@@ -2,7 +2,7 @@
 Fonctionnalité: L'Invocation de la Reine des phalènes
   Story #172 (chemin B, Atelier du 03/11/2026, mécanique nouvelle) : la Reine des phalènes, boss du
   palier 2, appelle ses Phalénides à son changement de phase ; les Phalénides rejoignent les tirages
-  des paliers 2 et 3.
+  du palier 2 (le Beffroi n'en tire plus depuis #214).
 
   # Les scénarios `@domain` éprouvent les règles du domaine : l'annonce, la poussière et l'aperçu de
   # la Frise d'action y sont l'Invocation annoncée (`summonCalled`, `pendingSummon`) et l'ordre de la
@@ -109,10 +109,10 @@ Fonctionnalité: L'Invocation de la Reine des phalènes
     Et les Phalénides entrent au début de la manche suivante
 
   @domain
-  Scénario: La Phalénide rejoint les tirages des paliers 2 et 3
-    Étant donné un groupe tiré au palier 2 ou au palier 3
+  Scénario: La Phalénide rejoint les tirages du palier 2
+    Étant donné un groupe tiré au palier 2
     Alors il peut compter jusqu'à 2 Phalénides (poids 3)
-    Et au palier 3, une Phalénide a 43 PV et 9 de garde, son Vol brisé fait 7 et ses Mandibules 5 + 5
+    Et le palier 3 n'en tire plus (#214)
 
   @ui
   Scénario: Limite — lecteur d'écran

@@ -421,52 +421,57 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(
-    /^chaque ennemi est un Squelette, un Spectre, un Nécromancien, un Veilleur d'airain, une Gargouille, un Fondeur de cloches \(#171\) ou une Phalénide \(#172\)$/u,
+    /^chaque ennemi est un Veilleur d'airain, une Gargouille, un Fondeur de cloches \(#171\), un Novice des cloches, une Sonneuse de matines ou un Jaquemart \(#214\), ni Squelette, ni Spectre, ni Nécromancien \(#214\)$/u,
     () => {
-      expect(new Set(groups(3).flat())).toEqual(
+      const drawn = groups(3).flat();
+      expect(new Set(drawn)).toEqual(
         new Set([
-          'skeleton',
-          'specter',
-          'necromancer',
           'bronzeWarden',
           'gargoyle',
           'bellFounder',
-          'mothkin',
+          'bellNovice',
+          'matinsRinger',
+          'clockJack',
         ]),
       );
+      for (const kind of ['skeleton', 'specter', 'necromancer'] as const) {
+        expect(drawn).not.toContain(kind);
+      }
     },
   );
 
-  and(/^jamais une Goule, un Villageois fou ni un ennemi des Jardins de cendre$/u, () => {
-    const drawn = groups(3).flat();
-    for (const kind of [
-      'ghoul',
-      'madVillager',
-      'thornPilgrim',
-      'ashBramble',
-      'ashGleaner',
-      'burningHusk',
-    ] as const) {
-      expect(drawn).not.toContain(kind);
-    }
-  });
+  and(
+    /^jamais une Goule, un Villageois fou ni un ennemi des Jardins de cendre, Phalénide comprise \(#214\)$/u,
+    () => {
+      const drawn = groups(3).flat();
+      for (const kind of [
+        'ghoul',
+        'madVillager',
+        'thornPilgrim',
+        'ashBramble',
+        'ashGleaner',
+        'burningHusk',
+        'mothkin',
+      ] as const) {
+        expect(drawn).not.toContain(kind);
+      }
+    },
+  );
 
   given(/^un groupe tiré au palier 2 ou 3$/u, () => {
     world.tier = 2;
   });
 
   then(
-    /^il compte au plus 1 Pèlerin enronce, 1 Ronce, 1 Glaneuse, 1 Villageois fou, 1 Squelette, 1 Spectre, 1 Nécromancien et 1 Veilleur d'airain$/u,
+    /^il compte au plus 1 Pèlerin enronce, 1 Ronce, 1 Glaneuse, 1 Veilleur d'airain, 1 Sonneuse de matines et 1 Jaquemart \(#214\)$/u,
     () => {
       const capped: readonly EnemyKind[] = [
         'thornPilgrim',
         'ashBramble',
         'ashGleaner',
-        'madVillager',
-        'skeleton',
-        'specter',
-        'necromancer',
         'bronzeWarden',
+        'matinsRinger',
+        'clockJack',
       ];
       for (const group of [...groups(2), ...groups(3)]) {
         for (const kind of capped)
@@ -475,9 +480,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     },
   );
 
-  and(/^une Glaneuse ou un Nécromancien est toujours accompagné$/u, () => {
+  and(/^une Glaneuse ou une Sonneuse de matines \(#214\) est toujours accompagnée$/u, () => {
     for (const group of [...groups(2), ...groups(3)]) {
-      if (group.includes('ashGleaner') || group.includes('necromancer')) {
+      if (group.includes('ashGleaner') || group.includes('matinsRinger')) {
         expect(group.length).toBeGreaterThan(1);
       }
     }

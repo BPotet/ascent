@@ -5,6 +5,7 @@
 // l'Atelier à la revue. La cohérence structurelle attrape les fautes de forme.
 import { createHash } from 'node:crypto';
 
+import { TIERS } from '../../../../../domain/ascent/tiers';
 import { ENEMIES, ENEMY_INITIATIVE, type EnemyKind } from '../../../../../domain/battle/combatants';
 import { GUARD_INTENT_CHANCE } from '../../../../../domain/battle/intents';
 import { ENEMY_NAMES } from '../../../format/battleText';
@@ -312,6 +313,15 @@ describe.each(BELFRY_KINDS)('the Codex entry of %s, copied in the game (#214)', 
   it('gives the enemy its Initiative and its name', () => {
     expect(ENEMY_INITIATIVE[kind]).toBe(stats.initiative);
     expect(ENEMY_NAMES[kind]).toBe(name);
+  });
+
+  it('gives the enemy its draw weight and its cap at tier 3, never alone as a support', () => {
+    expect(TIERS[3].enemies.find((draw) => draw.kind === kind)).toEqual({
+      kind,
+      weight: stats.drawWeight,
+      cap: stats.groupCap,
+      ...(stats.role === 'support' && { neverAlone: true }),
+    });
   });
 
   it('plays the red palette only with a perilous move', () => {
