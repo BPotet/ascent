@@ -196,3 +196,39 @@ export function secondBreathObtained(
         label: `Second souffle : PV déjà pleins, ${maxHp} sur ${maxHp}.`,
       };
 }
+
+/** Les textes des relances (#42), d'après la maquette 205 (R1 à R5). */
+export const REROLL_LABEL = 'Relancer';
+export const NO_REROLL_LEFT = 'Plus de relance pour cette ascension.';
+
+/** « 1 relance », « 2 relances » : le compte des relances, partout où il s'écrit. */
+export function rerollCount(count: number): string {
+  return `${count} relance${count > 1 ? 's' : ''}`;
+}
+
+/** Ce qui reste après une relance : « Il te reste 1 relance. », ou plus aucune. */
+function rerollsLeft(count: number): string {
+  return count > 0 ? `Il te reste ${rerollCount(count)}.` : NO_REROLL_LEFT;
+}
+
+/** Le nom lu du bouton : « Relancer l'offre, 2 relances ». */
+export function rerollButtonLabel(count: number): string {
+  return `Relancer l'offre, ${rerollCount(count)}`;
+}
+
+/** La ligne verte de la nouvelle offre : « Nouvelle offre. Il te reste 1 relance. » */
+export function rerolledLine(count: number): string {
+  return `Nouvelle offre. ${rerollsLeft(count)}`;
+}
+
+/** L'annonce polie de la nouvelle offre, ses bienfaits nommés dans l'ordre. */
+export function rerolledAnnouncement(offer: readonly OfferCard[], count: number): string {
+  const names = offer.filter((card): card is BoonKind => card !== SECOND_BREATH);
+  return `Nouvelle offre : ${names.map((kind) => BOON_NAMES[kind]).join(', ')}. ${rerollsLeft(count)}`;
+}
+
+/** Pourquoi « Relancer » n'est pas proposé alors qu'il reste des relances (R5). */
+export function rerollsKept(count: number): string {
+  const kept = count > 1 ? `tes ${count} relances sont gardées` : 'ta relance est gardée';
+  return `Ce sont les derniers bienfaits : ${kept}.`;
+}

@@ -4,6 +4,7 @@ import { AccessibilityInfo, StyleSheet } from 'react-native';
 import { artPalette } from '../pixelArt/artPalette';
 import { pixelFont } from '../pixelArt/pixelTypography';
 
+import type { OfferCard } from '../../../domain/ascent/boons';
 import { BoonChoicePanel } from './BoonChoicePanel';
 import { wellOf } from '../testing/iconWell';
 
@@ -468,5 +469,230 @@ describe('BoonChoicePanel', () => {
         expect(screen.getByText('+0 PV')).toBeOnTheScreen();
       });
     });
+  });
+});
+
+describe('BoonChoicePanel with the rerolls (#42, maquette 205 R1 to R5)', () => {
+  const { roles } = artPalette;
+  const hidden = { includeHiddenElements: true } as const;
+  const FIRST = ['perfectEcho', 'frostSkin', 'trueEdge'] as const;
+  const SECOND = ['shatteringEmber', 'lingeringFrost', 'winterVigil'] as const;
+  const REROLL = { left: 2, granted: 2, available: true } as const;
+  const rerollButton = () => screen.queryByRole('button', { name: /^Relancer l'offre/ });
+  const styleOf = (element: ReturnType<typeof screen.getByTestId>) =>
+    StyleSheet.flatten(element.props.style) as Record<string, unknown>;
+  const advance = async (ms: number) => {
+    for (let elapsed = 0; elapsed < ms; elapsed += 10) {
+      await act(async () => {
+        jest.advanceTimersByTime(10);
+      });
+    }
+  };
+
+  it('R1: shows « Relancer » above « Prendre », with the rerolls left in a green pill', async () => {
+    await render(
+      <BoonChoicePanel
+        offer={FIRST}
+        reroll={REROLL}
+        onReroll={jest.fn()}
+        onChoose={jest.fn()}
+        {...HP}
+      />,
+    );
+
+    const button = screen.getByRole('button', { name: "Relancer l'offre, 2 relances" });
+    expect(button).toBeEnabled();
+    expect(within(button).getByText('Relancer', hidden)).toBeOnTheScreen();
+    const pill = within(button).getByText('2', hidden);
+    expect(pill).toHaveStyle({ color: roles.ink });
+    expect(within(button).getByTestId('pixel-button-icon', hidden)).toBeOnTheScreen();
+    expect(screen.getByTestId('reroll-count', hidden)).toHaveStyle({ backgroundColor: roles.done });
+    const buttons = screen.getAllByRole('button').map((each) => each.props.accessibilityLabel);
+    expect(buttons).toEqual(["Relancer l'offre, 2 relances", 'Prendre']);
+  });
+
+  it('R1: rerolls without a chosen card, and calls `onReroll` once on a double press', async () => {
+    const onReroll = jest.fn();
+    await render(
+      <BoonChoicePanel
+        offer={FIRST}
+        reroll={REROLL}
+        onReroll={onReroll}
+        onChoose={jest.fn()}
+        {...HP}
+      />,
+    );
+
+    await fireEvent.press(rerollButton()!);
+    await fireEvent.press(rerollButton()!);
+
+    expect(onReroll).toHaveBeenCalledTimes(1);
+    expect(rerollButton()).toBeDisabled();
+  });
+
+  describe('R2: the new offer', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => {
+      jest.useRealTimers();
+      jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockResolvedValue(false);
+    });
+
+    /** Le panneau, une carte cochée, puis la relance qui donne `next`. */
+    const rerolled = async (first: readonly OfferCard[], next: readonly OfferCard[]) => {
+      const props = { onReroll: jest.fn(), onChoose: jest.fn(), ...HP };
+      await render(<BoonChoicePanel offer={first} reroll={REROLL} {...props} />);
+      await fireEvent.press(screen.getAllByRole('radio')[0]!);
+      await fireEvent.press(rerollButton()!);
+      await screen.rerender(
+        <BoonChoicePanel offer={next} reroll={{ ...REROLL, left: 1 }} {...props} />,
+      );
+    };
+    const flips = () => screen.queryAllByTestId('boon-flip', hidden);
+
+    it('clears the choice, confirms in green, announces the new offer politely, and enables the button', async () => {
+      await rerolled(FIRST, SECOND);
+
+      expect(
+        screen.getAllByRole('radio').map((radio) => radio.props.accessibilityState.checked),
+      ).toEqual([false, false, false]);
+      expect(screen.getByRole('button', { name: 'Prendre' })).toBeDisabled();
+      const line = screen.getByText('Nouvelle offre. Il te reste 1 relance.');
+      expect(line).toHaveStyle({ color: roles.done });
+      expect(line.props.accessibilityLiveRegion).toBe('polite');
+      expect(line.props.accessibilityLabel).toBe(
+        "Nouvelle offre : Braise brisante, Givre persistant, Veillée d'hiver. Il te reste 1 relance.",
+      );
+      expect(screen.getByRole('button', { name: "Relancer l'offre, 1 relance" })).toBeEnabled();
+    });
+
+    it('turns the three cards over one after the other: 360 ms each, 120 ms apart, 4 steps', async () => {
+      await rerolled(FIRST, SECOND);
+
+      const scales = () => flips().map((flip) => (styleOf(flip).transform as never)[0]['scaleX']);
+      expect(flips()).toHaveLength(3);
+      expect(scales()).toEqual([0.1, 0.1, 0.1]);
+      await advance(90);
+      expect(scales()[0]).toBeCloseTo(0.325);
+      expect(scales()[1]).toBeCloseTo(0.1);
+      await advance(600);
+      expect(scales()).toEqual([1, 1, 1]);
+    });
+
+    it('fades the cards in, without turning them, in reduced motion', async () => {
+      jest.mocked(AccessibilityInfo.isReduceMotionEnabled).mockResolvedValue(true);
+      await rerolled(FIRST, SECOND);
+
+      expect(styleOf(flips()[0]!).transform).toBeUndefined();
+      await advance(700);
+      expect(flips().map((flip) => styleOf(flip).opacity)).toEqual([1, 1, 1]);
+      expect(flips().every((flip) => styleOf(flip).transform === undefined)).toBe(true);
+    });
+
+    it('never turns Cœur de braise over, kept at its place: only the 2 other cards', async () => {
+      await rerolled(
+        ['perfectEcho', 'frostSkin', 'emberHeart'],
+        ['shatteringEmber', 'perfectEcho', 'emberHeart'],
+      );
+
+      expect(flips()).toHaveLength(2);
+      const heart = screen.getByRole('radio', { name: /^Cœur de braise/ });
+      expect(flips().some((flip) => within(flip).queryByRole('radio') === heart)).toBe(false);
+    });
+
+    it('says there is no reroll left after the last one', async () => {
+      const props = { onReroll: jest.fn(), onChoose: jest.fn(), ...HP };
+      await render(<BoonChoicePanel offer={FIRST} reroll={{ ...REROLL, left: 1 }} {...props} />);
+      await fireEvent.press(rerollButton()!);
+      await screen.rerender(
+        <BoonChoicePanel offer={SECOND} reroll={{ ...REROLL, left: 0 }} {...props} />,
+      );
+
+      expect(rerollButton()).toBeNull();
+      expect(
+        screen.getByText('Nouvelle offre. Plus de relance pour cette ascension.'),
+      ).toBeOnTheScreen();
+    });
+  });
+
+  it('R3: hides the button and says why in grey when no reroll is left', async () => {
+    await render(
+      <BoonChoicePanel
+        offer={FIRST}
+        reroll={{ left: 0, granted: 2, available: false }}
+        onReroll={jest.fn()}
+        onChoose={jest.fn()}
+        {...HP}
+      />,
+    );
+
+    expect(rerollButton()).toBeNull();
+    expect(screen.getByText('Plus de relance pour cette ascension.')).toHaveStyle({
+      color: roles.muted,
+    });
+  });
+
+  it('R4: shows neither button nor line without favor', async () => {
+    await render(
+      <BoonChoicePanel
+        offer={FIRST}
+        reroll={{ left: 0, granted: 0, available: false }}
+        onChoose={jest.fn()}
+        {...HP}
+      />,
+    );
+    expect(rerollButton()).toBeNull();
+    expect(screen.queryByText(/relance/)).toBeNull();
+
+    await screen.rerender(<BoonChoicePanel offer={FIRST} onChoose={jest.fn()} {...HP} />);
+    expect(rerollButton()).toBeNull();
+    expect(screen.queryByText(/relance/)).toBeNull();
+  });
+
+  it('R5: hides the button and keeps the rerolls when the offer shows the last boons', async () => {
+    await render(
+      <BoonChoicePanel
+        offer={FIRST}
+        reroll={{ left: 2, granted: 2, available: false }}
+        onReroll={jest.fn()}
+        onChoose={jest.fn()}
+        {...HP}
+      />,
+    );
+
+    expect(rerollButton()).toBeNull();
+    expect(
+      screen.getByText('Ce sont les derniers bienfaits : tes 2 relances sont gardées.'),
+    ).toHaveStyle({ color: roles.muted });
+  });
+
+  it('R5: shows neither button nor line on Second souffle alone', async () => {
+    await render(
+      <BoonChoicePanel
+        offer={['secondBreath']}
+        reroll={{ left: 2, granted: 2, available: false }}
+        onReroll={jest.fn()}
+        onChoose={jest.fn()}
+        {...HP}
+      />,
+    );
+
+    expect(rerollButton()).toBeNull();
+    expect(screen.queryByText(/relance/)).toBeNull();
+  });
+
+  it('hides the button after « Prendre »', async () => {
+    await render(
+      <BoonChoicePanel
+        offer={FIRST}
+        reroll={REROLL}
+        onReroll={jest.fn()}
+        onChoose={jest.fn()}
+        {...HP}
+      />,
+    );
+    await fireEvent.press(screen.getAllByRole('radio')[0]!);
+    await fireEvent.press(screen.getByRole('button', { name: 'Prendre' }));
+
+    expect(rerollButton()).toBeNull();
   });
 });

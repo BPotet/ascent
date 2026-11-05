@@ -198,6 +198,24 @@ describe('AscentScreen', () => {
     expect(await screen.findByLabelText('Bienfaits : Peau de givre, Commun')).toBeOnTheScreen();
   });
 
+  it('rerolls the offer with a reroll of the favor, and shows the new offer (#42)', async () => {
+    const ascent = startAscent(42, { gauge: 2 });
+    const { session } = await show({
+      ...between(ascent, [{ kind: 'campfire', groupSize: null }], 8),
+      boonOffer: ['perfectEcho', 'frostSkin', 'trueEdge'],
+    });
+
+    await act(async () => {
+      fireEvent.press(await screen.findByRole('button', { name: "Relancer l'offre, 2 relances" }));
+    });
+
+    const rerolled = session.current()!;
+    expect(rerolled.rerolls).toBe(1);
+    expect(rerolled.boonOffer).not.toContain('perfectEcho');
+    expect(screen.getByRole('button', { name: "Relancer l'offre, 1 relance" })).toBeEnabled();
+    expect(screen.getByText('Nouvelle offre. Il te reste 1 relance.')).toBeOnTheScreen();
+  });
+
   it('offers Second souffle alone with the HP of the hero, then heals him (#212)', async () => {
     const ascent = startAscent(42);
     const { session } = await show({

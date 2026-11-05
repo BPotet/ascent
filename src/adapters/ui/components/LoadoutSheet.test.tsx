@@ -149,6 +149,51 @@ describe('LoadoutSheet (#159)', () => {
     expect(screen.queryByTestId('loadout-sheet-more', hidden)).toBeNull();
   });
 
+  describe('the favor of the ascent (#42, E1)', () => {
+    const FAVOR: Loadout = {
+      ...THREE,
+      favor: { gauge: 2, rerollsLeft: 1, rerollsGranted: 2 },
+    };
+
+    it('heads the sheet with the favor and its rerolls left, before the starting blessings', async () => {
+      await open(FAVOR);
+
+      const heading = screen.getByLabelText("Faveur de l'ascension, plus 2");
+      expect(within(heading).getByText("Faveur de l'ascension", hidden)).toBeOnTheScreen();
+      expect(within(heading).getByText('+2', hidden)).toBeOnTheScreen();
+      const row = screen.getByTestId('favor-row');
+      expect(row).toHaveAccessibleName("Relances, 1 sur 2. Redonnent l'offre de bienfaits.");
+      expect(within(row).getByText('Relances')).toBeOnTheScreen();
+      expect(within(row).getByText("Redonnent l'offre de bienfaits.")).toBeOnTheScreen();
+      expect(within(row).getByText('1 sur 2')).toHaveStyle({ color: roles.done });
+      expect(within(row).getByTestId('favor-glyph', hidden)).toBeOnTheScreen();
+      const order = screen
+        .getAllByText(/^(Faveur de l'ascension|Relances|Bénédictions de départ)$/, hidden)
+        .map((text) => text.props.children);
+      expect(order).toEqual(["Faveur de l'ascension", 'Relances', 'Bénédictions de départ']);
+    });
+
+    it('writes « 0 sur 1 » in grey when every reroll was used', async () => {
+      await open({ ...THREE, favor: { gauge: 1, rerollsLeft: 0, rerollsGranted: 1 } });
+
+      expect(screen.getByLabelText("Faveur de l'ascension, plus 1")).toBeOnTheScreen();
+      expect(screen.getByText('0 sur 1')).toHaveStyle({ color: roles.muted });
+    });
+
+    it('has no favor section without favor', async () => {
+      await open(THREE);
+
+      expect(screen.queryByText("Faveur de l'ascension", hidden)).toBeNull();
+      expect(screen.queryByTestId('favor-row')).toBeNull();
+    });
+
+    it('counts the favor row in the scroll hint', async () => {
+      await open(FAVOR);
+
+      expect(screen.getByTestId('loadout-sheet-more', hidden)).toBeOnTheScreen();
+    });
+  });
+
   it.each([
     ['« Fermer »', () => fireEvent.press(screen.getByRole('button', { name: 'Fermer' }))],
     ['the back gesture', () => fireEvent(screen.getByTestId('loadout-sheet'), 'requestClose')],

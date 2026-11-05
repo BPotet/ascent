@@ -1,7 +1,7 @@
-import { startAscent } from '../ascent/Ascent';
+import { endFloorBattle, rerollBoonOffer, startAscent } from '../ascent/Ascent';
 import { startBattle } from '../battle/Battle';
 import { Day } from '../day/Day';
-import { beginAscentLog, type AscentLog, type AscentLogV1 } from './AscentLog';
+import { beginAscentLog, recordAscentStep, type AscentLog, type AscentLogV1 } from './AscentLog';
 import {
   ASCENT_LOG_KEPT,
   buildAscentLogExport,
@@ -179,6 +179,36 @@ describe('buildAscentLogExport', () => {
       OPTIONS,
     );
     expect(JSON.stringify(built)).not.toMatch(/habit|checkIn|experience|"xp"/iu);
+  });
+});
+
+describe('the rerolled offers in the export (#42)', () => {
+  const offered = endFloorBattle(startAscent(7, { gauge: 2 }), { outcome: 'victory', heroHp: 60 });
+  const begun: AscentLog = { ...beginAscentLog(offered, DAY), id: 1 };
+
+  it('exports the replaced offer of a reroll, in format version 2', () => {
+    const rerolled = rerollBoonOffer(offered);
+    const log = recordAscentStep(begun, {
+      kind: 'boonOfferRerolled',
+      before: offered,
+      after: rerolled,
+    });
+
+    const json = JSON.stringify(buildAscentLogExport([stored(log)], OPTIONS));
+
+    const exported = JSON.parse(json) as { formatVersion: number; ascents: AscentLog[] };
+    expect(exported.formatVersion).toBe(2);
+    expect(exported.ascents[0]!.floors[0]).toMatchObject({
+      rerolledOffers: [offered.boonOffer],
+      boonsOffered: rerolled.boonOffer,
+    });
+  });
+
+  it('exports a log without reroll byte for byte, without the key', () => {
+    const json = JSON.stringify(buildAscentLogExport([stored(begun)], OPTIONS));
+
+    expect(json).not.toContain('rerolledOffers');
+    expect(json).toContain(JSON.stringify(begun));
   });
 });
 

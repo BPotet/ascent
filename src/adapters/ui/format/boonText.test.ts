@@ -1,12 +1,19 @@
 import { BOON_KINDS } from '../../../domain/ascent/boons';
 import {
   BOON_NAMES,
+  NO_REROLL_LEFT,
+  REROLL_LABEL,
   boonCard,
   boonChip,
   boonObtainedLabel,
   offerBoonCard,
   offerHeading,
   ownedBoonsLabel,
+  rerollButtonLabel,
+  rerollCount,
+  rerolledAnnouncement,
+  rerolledLine,
+  rerollsKept,
   secondBreathCard,
   secondBreathObtained,
 } from './boonText';
@@ -189,5 +196,32 @@ describe('boonText', () => {
         label: 'Second souffle : PV déjà pleins, 80 sur 80.',
       });
     });
+  });
+});
+
+describe('the texts of the rerolls (#42, R1 to R5)', () => {
+  it('counts the rerolls: « 1 relance », « 2 relances »', () => {
+    expect([0, 1, 2].map(rerollCount)).toEqual(['0 relance', '1 relance', '2 relances']);
+  });
+
+  it('names the button, and reads it with the rerolls left', () => {
+    expect(REROLL_LABEL).toBe('Relancer');
+    expect(rerollButtonLabel(2)).toBe("Relancer l'offre, 2 relances");
+    expect(rerollButtonLabel(1)).toBe("Relancer l'offre, 1 relance");
+  });
+
+  it('confirms the new offer, and announces its boons', () => {
+    expect(rerolledLine(1)).toBe('Nouvelle offre. Il te reste 1 relance.');
+    expect(rerolledLine(2)).toBe('Nouvelle offre. Il te reste 2 relances.');
+    expect(rerolledLine(0)).toBe('Nouvelle offre. Plus de relance pour cette ascension.');
+    expect(rerolledAnnouncement(['shatteringEmber', 'lingeringFrost', 'winterVigil'], 1)).toBe(
+      "Nouvelle offre : Braise brisante, Givre persistant, Veillée d'hiver. Il te reste 1 relance.",
+    );
+  });
+
+  it('says why the button is gone', () => {
+    expect(NO_REROLL_LEFT).toBe('Plus de relance pour cette ascension.');
+    expect(rerollsKept(2)).toBe('Ce sont les derniers bienfaits : tes 2 relances sont gardées.');
+    expect(rerollsKept(1)).toBe('Ce sont les derniers bienfaits : ta relance est gardée.');
   });
 });

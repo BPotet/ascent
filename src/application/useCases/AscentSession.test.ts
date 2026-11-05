@@ -1,4 +1,4 @@
-import { startAscent, type Ascent } from '../../domain/ascent/Ascent';
+import { endFloorBattle, rerollStream, startAscent, type Ascent } from '../../domain/ascent/Ascent';
 import { TIERS } from '../../domain/ascent/tiers';
 import { ATTACKS } from '../../domain/battle/attacks';
 import { startBattle, type Battle } from '../../domain/battle/Battle';
@@ -635,6 +635,68 @@ describe('AscentSession with the gauge, the blessings and the items (#93)', () =
     session.equipItem();
     session.leaveItem();
     expect(session.current()).toBeNull();
+  });
+});
+
+describe('AscentSession: the rerolls of the favor (#42)', () => {
+  const offered = (gauge: 1 | 2 = 2) =>
+    endFloorBattle(startAscent(42, { gauge }), { outcome: 'victory', heroHp: 50 });
+
+  it('rerolls the offer and saves it: a reload gives the same offer and rerolls', async () => {
+    const { session, store } = setUp();
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: offered(), battle: null }));
+    await session.load();
+
+    session.reroll();
+    await flush();
+
+    const rerolled = session.current()!;
+    expect(rerolled.rerolls).toBe(1);
+    expect(rerolled.boonOffer).not.toEqual(offered().boonOffer);
+    expect(saved(store)?.ascent).toEqual(rerolled);
+    const reopened = setUp();
+    reopened.store.values.set(ASCENT_KEY, store.values.get(ASCENT_KEY)!);
+    expect(await reopened.session.load()).toEqual(rerolled);
+  });
+
+  it('keeps the rerolls left on a resume, whatever the gauge of the day', async () => {
+    const { session, store } = setUp();
+    const yesterday = { ...offered(), rerolls: 1 };
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: yesterday, battle: null }));
+
+    const resumed = await session.load();
+
+    expect(resumed).toMatchObject({ gauge: 2, rerolls: 1 });
+  });
+
+  it.each([
+    [2, 2],
+    [1, 1],
+    [0, 0],
+  ] as const)(
+    'resumes an ascent saved before the rerolls at a gauge of %p with %p rerolls',
+    async (gauge, rerolls) => {
+      const { session, store } = setUp();
+      const { rerolls: _rerolls, rerollRandom: _random, ...older } = startAscent(5, { gauge });
+      store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: older, battle: null }));
+
+      expect(await session.load()).toMatchObject({ rerolls, rerollRandom: rerollStream(5) });
+    },
+  );
+
+  it('ignores a reroll without an ascent, or without a reroll possible', async () => {
+    const { session, store } = setUp();
+    session.reroll();
+    expect(session.current()).toBeNull();
+
+    const ascent = offered();
+    store.values.set(
+      ASCENT_KEY,
+      JSON.stringify({ version: 1, ascent: { ...ascent, rerolls: 0 }, battle: null }),
+    );
+    await session.load();
+    session.reroll();
+    expect(session.current()).toMatchObject({ boonOffer: ascent.boonOffer, rerolls: 0 });
   });
 });
 

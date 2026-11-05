@@ -10,6 +10,7 @@ import {
   fateGauge,
   fateGaugeCount,
   favorDropBonus,
+  favorRerolls,
   rarityShift,
   type FateGaugeCount,
 } from './fateGauge';
@@ -197,5 +198,11 @@ describe('the count of yesterday, as at the closing (#41)', () => {
 
   it('counts nothing without any habit', () => {
     expect(fateGaugeCount(november(5), [], [], [])).toEqual({ done: 0, expected: 0, habits: [] });
+  });
+});
+
+describe('the rerolls of the favor (#42)', () => {
+  it('gives 2 rerolls at +2, 1 at +1, none at 0, -1 or -2', () => {
+    expect([2, 1, 0, -1, -2].map((gauge) => favorRerolls(gauge as never))).toEqual([2, 1, 0, 0, 0]);
   });
 });

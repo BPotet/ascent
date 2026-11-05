@@ -12,14 +12,24 @@ import {
 
 import type { StartingBlessing } from '../../../domain/ascent/blessings';
 import type { BoonKind } from '../../../domain/ascent/boons';
-import { loadoutSize, type Loadout } from '../../../domain/ascent/loadout';
+import { loadoutSize, type Loadout, type LoadoutFavor } from '../../../domain/ascent/loadout';
 import type { Rarity } from '../../../domain/ascent/rarity';
 import { blessingCard } from '../format/ascentText';
 import { boonCard } from '../format/boonText';
-import { LOADOUT_SUBTITLE, NO_BLESSING_YET, NO_BOON_YET, blessingTag } from '../format/loadoutText';
+import { gaugeValue } from '../format/gaugeText';
+import {
+  FAVOR_TITLE,
+  LOADOUT_SUBTITLE,
+  NO_BLESSING_YET,
+  NO_BOON_YET,
+  blessingTag,
+  favorHeadingLabel,
+  rerollsRow,
+} from '../format/loadoutText';
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize, notchedCorners } from '../pixelArt/artPixel';
 import { PixelButton } from '../pixelArt/PixelButton';
+import { PixelIcon } from '../pixelArt/PixelIcon';
 import { PixelSheet } from '../pixelArt/PixelSheet';
 import { pixelFont, textFont } from '../pixelArt/pixelTypography';
 import { blessingIcon, boonIcon, type GameIcon } from '../pixelArt/sprites/gameIcons';
@@ -94,6 +104,50 @@ function BoonRow({ kind }: { readonly kind: BoonKind }) {
   );
 }
 
+/**
+ * La faveur de l'ascension (#42, maquette 205 E1) : un en-tête « Faveur de l'ascension · +2 », puis
+ * la ligne des relances, son glyphe dans un écrin vert sans rareté, et ce qui en reste (« 1 sur 2 »,
+ * en gris à 0). #206 y ajoutera la seconde chance.
+ */
+function FavorPart({ favor }: { readonly favor: LoadoutFavor }) {
+  const row = rerollsRow(favor);
+  const used = favor.rerollsLeft === 0;
+  return (
+    <View style={styles.part}>
+      <LoadoutHeading
+        title={FAVOR_TITLE}
+        count={gaugeValue(favor.gauge)}
+        label={favorHeadingLabel(favor)}
+      />
+      <View
+        accessible
+        accessibilityLabel={row.label}
+        testID="favor-row"
+        style={[styles.row, styles.favorRow, { borderTopWidth: artPixelSize(2) }]}
+      >
+        <View
+          style={[
+            styles.favorWell,
+            { borderWidth: artPixelSize(2), borderColor: used ? roles.line : roles.doneLine },
+          ]}
+        >
+          <PixelIcon
+            name="reroll"
+            color={roles.done}
+            testID="favor-glyph"
+            style={used && styles.usedGlyph}
+          />
+        </View>
+        <View style={styles.rowText}>
+          <Text style={styles.name}>{row.name}</Text>
+          <Text style={styles.effect}>{row.effect}</Text>
+        </View>
+        <Text style={[styles.favorState, used && styles.favorUsed]}>{row.state}</Text>
+      </View>
+    </View>
+  );
+}
+
 /** Une partie de la feuille : son en-tête et son compte, puis ses lignes ou son message vide. */
 function Part({
   title,
@@ -135,7 +189,8 @@ export function LoadoutSheet({
   const { height } = useWindowDimensions();
   const title = useRef<Text>(null);
   const line = artPixelSize(2);
-  const many = loadoutSize(loadout) > SCROLL_HINT_BEYOND;
+  // La ligne des relances compte comme une entrée (#42).
+  const many = loadoutSize(loadout) + (loadout.favor === undefined ? 0 : 1) > SCROLL_HINT_BEYOND;
 
   useEffect(() => {
     if (visible && title.current !== null) {
@@ -177,6 +232,7 @@ export function LoadoutSheet({
               contentContainerStyle={[styles.listContent, many && styles.listMore]}
               bounces={false}
             >
+              {loadout.favor !== undefined && <FavorPart favor={loadout.favor} />}
               <Part
                 title="Bénédictions de départ"
                 count={loadout.blessings.length}
@@ -242,5 +298,16 @@ const styles = StyleSheet.create({
   name: { fontFamily: pixelFont, fontSize: 18, lineHeight: 22, color: roles.light },
   tag: { fontFamily: textFont.bold, fontSize: 12, lineHeight: 16 },
   effect: { fontFamily: textFont.medium, fontSize: 13, lineHeight: 18, color: roles.parchment },
+  favorRow: { alignItems: 'center' },
+  favorWell: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: roles.well,
+  },
+  usedGlyph: { opacity: 0.5 },
+  favorState: { fontFamily: textFont.bold, fontSize: 12, lineHeight: 16, color: roles.done },
+  favorUsed: { color: roles.muted },
 });
 // Stryker restore all
