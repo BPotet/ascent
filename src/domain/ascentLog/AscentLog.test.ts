@@ -54,9 +54,17 @@ class Walk {
   blessing(index = 0) {
     return this.apply('blessingChosen', chooseBlessing(this.ascent, index));
   }
-  battle(outcome: 'victory' | 'defeat' = 'victory', heroHp = this.ascent.hero.hp - 5) {
+  battle(
+    outcome: 'victory' | 'defeat' = 'victory',
+    heroHp = this.ascent.hero.hp - 5,
+    secondChanceUsed?: boolean,
+  ) {
     this.apply('battleStarted', this.ascent, vitals(this.ascent, 2));
-    const after = endFloorBattle(this.ascent, { outcome, heroHp });
+    const after = endFloorBattle(this.ascent, {
+      outcome,
+      heroHp,
+      ...(secondChanceUsed !== undefined && { secondChanceUsed }),
+    });
     return this.apply('battleEnded', after, {
       hp: heroHp,
       maxHp: this.ascent.hero.maxHp,
@@ -433,6 +441,33 @@ describe('the rerolled offers (#42)', () => {
     walk.reroll();
 
     expect(walk.log).toBe(log);
+  });
+});
+
+describe('the second chance (#206)', () => {
+  it('notes the floor where it was used, in a won battle', () => {
+    const walk = new Walk(seeded(7, 2)).battle('victory', 40, true);
+
+    expect(walk.log.floors[0]).toMatchObject({ secondChanceUsed: true });
+  });
+
+  it('notes the floor of the fall after the rise', () => {
+    const walk = new Walk(seeded(7, 2)).battle('defeat', 0, true);
+
+    expect(walk.log.floors[0]).toMatchObject({ secondChanceUsed: true });
+    expect(walk.log.end).toMatchObject({ kind: 'fall' });
+  });
+
+  it('writes no key on the floors where it was not used: the same JSON as before', () => {
+    const walk = new Walk(seeded(7, 2)).clear().exit(0).battle('victory', 40, false);
+
+    for (const floor of walk.log.floors) expect(floor).not.toHaveProperty('secondChanceUsed');
+  });
+
+  it('notes it once, on its floor only', () => {
+    const walk = new Walk(seeded(7, 2)).battle('victory', 40, true).boon().exit(0).battle();
+
+    expect(walk.log.floors.map((floor) => floor.secondChanceUsed)).toEqual([true, undefined]);
   });
 });
 

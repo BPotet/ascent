@@ -75,6 +75,8 @@ export interface FloorRecord {
   readonly boonsOffered: readonly OfferCard[];
   /** Les offres remplacées par une relance, dans l'ordre (#42) ; absent sans relance. */
   readonly rerolledOffers?: readonly (readonly OfferCard[])[];
+  /** La seconde chance a servi dans le combat de cet étage (#206) ; absent, non. */
+  readonly secondChanceUsed?: true;
   readonly boonChosen: OfferCard | null;
   readonly itemFound: ItemKind | null;
   readonly itemOutcome: 'equipped' | 'left' | null;
@@ -273,6 +275,7 @@ function battleEnded<Log extends AnyAscentLog>(
     boonsOffered: after.boonOffer ?? [],
     itemFound: after.foundItem,
     shards: shardSum(after.shardAwards) - shardSum(before.shardAwards),
+    ...(before.secondChance && !after.secondChance && { secondChanceUsed: true as const }),
   }));
   const place = { tier: before.tier, floor: before.floor };
   if (after.outcome === 'victory') return ended(fought, { kind: 'summit', ...place });

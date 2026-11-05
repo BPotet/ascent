@@ -26,7 +26,7 @@ import {
 } from './blessings';
 import { cursedElite, cursedOrdinary, drawCursedEnemy } from './cursedEnemy';
 import type { Drawn } from './draw';
-import { fatiguePercent, favorRerolls, type FateGauge } from './fateGauge';
+import { fatiguePercent, favorRerolls, favorSecondChance, type FateGauge } from './fateGauge';
 import { STARTING_EQUIPMENT, drawLoot, equip, type Equipment, type ItemKind } from './items';
 import type { Rarity } from './rarity';
 import { drawElite } from './elites';
@@ -125,6 +125,8 @@ export interface Ascent {
   readonly rerolls: number;
   /** Le flux de hasard des relances, dérivé de la graine : seule une relance l'avance (#42). */
   readonly rerollRandom: RandomState;
+  /** La seconde chance encore là (#206), donnée au lancement selon la jauge. */
+  readonly secondChance: boolean;
 }
 
 /**
@@ -153,6 +155,8 @@ export function rerollStream(seed: AscentSeed): RandomState {
 export interface FloorBattleResult {
   readonly outcome: 'victory' | 'defeat';
   readonly heroHp: number;
+  /** La seconde chance a servi pendant le combat (#206) ; absent, non. */
+  readonly secondChanceUsed?: boolean;
 }
 
 function drawBattleSeed(random: RandomState): Drawn<BattleSeed> {
@@ -221,6 +225,7 @@ export function startAscent(seed: AscentSeed, launch: AscentLaunch = {}): Ascent
     emberHeartOffered: false,
     rerolls: favorRerolls(gauge),
     rerollRandom: rerollStream(seed),
+    secondChance: favorSecondChance(gauge),
   };
 }
 
@@ -338,8 +343,10 @@ export function endFloorBattle(ascent: Ascent, result: FloorBattleResult): Ascen
   const { encounter: current, tier } = ascent;
   if (current === null || ascent.outcome !== null) return ascent;
   const hero = { ...ascent.hero, hp: result.heroHp };
+  // Une seconde chance utilisée le reste, même dans une chute (#206).
+  const secondChance = ascent.secondChance && result.secondChanceUsed !== true;
   if (result.outcome === 'defeat') {
-    return { ...ascent, hero, encounter: null, outcome: 'fall' };
+    return { ...ascent, hero, encounter: null, outcome: 'fall', secondChance };
   }
   let random = ascent.random;
   let gold = current.kind === 'elite' ? eliteGold(tier) : bossGold(tier);
@@ -358,6 +365,7 @@ export function endFloorBattle(ascent: Ascent, result: FloorBattleResult): Ascen
   const earned = {
     ...ascent,
     hero,
+    secondChance,
     random,
     gold: ascent.gold + gold,
     lastGold: gold,

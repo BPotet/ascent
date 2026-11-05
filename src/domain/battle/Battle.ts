@@ -70,6 +70,7 @@ import {
   type PressJudgement,
 } from './rules';
 import { seedRandom, type BattleSeed, type RandomState } from './SeededRandom';
+import { SECOND_CHANCE_MS, secondChanceHp } from './secondChance';
 import { selfRevive } from './selfRevive';
 import {
   STRIKE_RECOVERY_MS,
@@ -99,6 +100,8 @@ export interface HeroState {
   readonly bleed?: Bleed;
   /** Les charges de Brûlure (#171), de 1 à 5 ; absent, le héros ne brûle pas (jamais 0). */
   readonly burn?: number;
+  /** La seconde chance de la faveur (#206), prête ou utilisée ; absente, le héros n'en a pas. */
+  readonly secondChance?: 'ready' | 'used';
 }
 
 export interface EnemyState {
@@ -178,6 +181,8 @@ export interface AttackStep {
   readonly bleed?: Bleed;
   /** Les charges de Brûlure du coup (#171). */
   readonly burn?: number;
+  /** Le relèvement de la seconde chance (#206) sur ce coup : un temps mort jusqu'à `until`. */
+  readonly secondChance?: { readonly since: number; readonly until: number };
 }
 
 /** L'effet d'une intention Garde ou Relever, après l'avancée. */
@@ -358,6 +363,8 @@ export interface BattleOptions extends BattleStartOptions {
    * réserve ne maudit personne : un renfort ou un invoqué n'est jamais maudit.
    */
   readonly cursed?: number;
+  /** Le héros a la seconde chance de la faveur (#206) ; par défaut, non. */
+  readonly secondChance?: boolean;
 }
 
 /** Au plus 3 ennemis se battent en même temps (P3b). */
@@ -408,6 +415,7 @@ export function startBattle({
   tierMultiplier,
   summonMultiplier,
   cursed,
+  secondChance,
 }: BattleOptions): BattleUpdate {
   const maxHp = heroMaxHp ?? HEROES[hero].maxHp;
   const momentum = Math.min(MOMENTUM_MAX, MOMENTUM_START + (modifiers?.startingMomentum ?? 0));
@@ -426,7 +434,13 @@ export function startBattle({
       ...(modifiers && { modifiers }),
       ...(tierMultiplier && { tierMultiplier }),
       ...(summonMultiplier && { summonMultiplier }),
-      hero: { hp: heroHp ?? maxHp, maxHp, momentum, bulwark: false },
+      hero: {
+        hp: heroHp ?? maxHp,
+        maxHp,
+        momentum,
+        bulwark: false,
+        ...(secondChance && { secondChance: 'ready' as const }),
+      },
       enemies,
       reserve: group.slice(FRONT_LINE_SIZE),
       target: 0,
@@ -1036,7 +1050,36 @@ function resolveBlow(
       ...(worn && heroProfile(battle).bulwarkCounter && { counter: bulwarkCounter(step) }),
     },
   );
-  return heroHp === 0 ? finish(resolved, events, 'defeat', blow.at) : resolved;
+  if (heroHp > 0) return resolved;
+  return battle.hero.secondChance === 'ready'
+    ? rise(resolved, events, blow.index, blow.at)
+    : finish(resolved, events, 'defeat', blow.at);
+}
+
+/**
+ * Le héros se relève grâce à sa seconde chance (#206) : 50 % de ses PV max, sans Brûlure ni
+ * Saignement, l'Élan et le pouvoir actif gardés. Les impacts restants du coup sont annulés, puis le
+ * combat reste en temps mort jusqu'à `until` ; la riposte du Rempart part ensuite.
+ */
+function rise(battle: Battle, events: Events, index: number, at: number): Battle {
+  const step = currentAttack(battle);
+  const until = at + SECOND_CHANCE_MS;
+  const { bleed: _, burn, ...hero } = battle.hero;
+  const hp = secondChanceHp(hero.maxHp);
+  const cancelled = step.impacts.length - index - 1;
+  events.push({ type: 'secondChanceUsed', at, until, enemy: step.enemy, hp, cancelled });
+  if (burn !== undefined) events.push({ type: 'burnCleared', at });
+  const { counter } = step;
+  return withStep(
+    { ...battle, hero: { ...hero, hp, secondChance: 'used' } },
+    {
+      ...step,
+      impacts: step.impacts.slice(0, index + 1),
+      resolvedAt: until,
+      secondChance: { since: at, until },
+      counter: counter === null ? null : { ...counter, at: until, until: until + COUNTER_MS },
+    },
+  );
 }
 
 /** La Riposte du Rempart (#128, R1) : à la fin du coup, quand aurait lieu une contre-attaque. */
@@ -1445,15 +1488,21 @@ function datePress(battle: Battle, at: number): number {
   return Math.max(at, battle.now);
 }
 
-/** Pendant une transition de phase ou la bulle d'aide, un toucher est ignoré sans effet (C12). */
-function isDeadTime(battle: Battle): boolean {
-  return battle.phase.kind === 'transition' || battle.phase.kind === 'defenseHint';
+/**
+ * Le temps mort à l'instant `at`, où un toucher est ignoré sans effet : la transition de phase ou
+ * la bulle d'aide (C12), ou le relèvement de la seconde chance (#206) ; `null` hors temps mort.
+ */
+function deadTime(battle: Battle, at: number): 'phaseTransition' | 'secondChance' | null {
+  const { phase } = battle;
+  if (phase.kind === 'transition' || phase.kind === 'defenseHint') return 'phaseTransition';
+  const rising = phase.kind === 'enemy' && phase.step.kind === 'attack' && phase.step.secondChance;
+  return rising && at < rising.until ? 'secondChance' : null;
 }
 
 /**
  * Un appui sur « Parade » ou « Esquive », daté à l'instant du toucher (C7, C9, C12). Il est
- * ignoré pendant une transition de phase, sans déséquilibre ni mémoire, et relance le déséquilibre
- * en cours. Hors d'une fenêtre de parade, c'est un appui raté ; dans la tolérance « trop tard »
+ * ignoré pendant une transition de phase ou le relèvement de la seconde chance (#206), sans
+ * déséquilibre ni mémoire, et relance le déséquilibre en cours. Hors d'une fenêtre de parade, c'est un appui raté ; dans la tolérance « trop tard »
  * d'un impact subi, il est trop tard, même pendant l'avancée suivante ou la transition (#207).
  */
 export function pressDefense(
@@ -1462,11 +1511,12 @@ export function pressDefense(
 ): BattleUpdate {
   const pressedAt = datePress(battle, at);
   const advanced = advance(battle, pressedAt);
-  // La tolérance « trop tard » prime sur le temps mort de la transition de phase (#207).
+  // Le relèvement de la seconde chance prime sur tout (#206) ; la tolérance « trop tard » prime
+  // sur le temps mort de la transition de phase (#207).
+  const dead = deadTime(advanced.battle, pressedAt);
+  if (dead === 'secondChance') return ignored(advanced, pressedAt, button, dead);
   const late = lateDelta(advanced.battle, pressedAt) !== null;
-  if (!late && isDeadTime(advanced.battle)) {
-    return ignored(advanced, pressedAt, button, 'phaseTransition');
-  }
+  if (!late && dead !== null) return ignored(advanced, pressedAt, button, dead);
   if (!late && advanced.battle.phase.kind !== 'enemy') {
     return ignored(advanced, pressedAt, button, 'notAvailable');
   }
@@ -1566,9 +1616,8 @@ export function pressStrike(battle: Battle, { at }: { readonly at: number }): Ba
   const pressedAt = datePress(battle, at);
   const advanced = advance(battle, pressedAt);
   const { phase } = advanced.battle;
-  if (isDeadTime(advanced.battle)) {
-    return ignored(advanced, pressedAt, 'strike', 'phaseTransition');
-  }
+  const dead = deadTime(advanced.battle, pressedAt);
+  if (dead !== null) return ignored(advanced, pressedAt, 'strike', dead);
   if (phase.kind !== 'heroStrike' || phase.resolved || phase.press !== null) {
     return ignored(advanced, pressedAt, 'strike', 'notAvailable');
   }
@@ -1636,7 +1685,8 @@ export function heroAction(
   const at = Math.max(releasedAt, battle.now);
   const advanced = advance(battle, at);
   const { phase } = advanced.battle;
-  if (isDeadTime(advanced.battle)) return ignored(advanced, at, action.kind, 'phaseTransition');
+  const dead = deadTime(advanced.battle, at);
+  if (dead !== null) return ignored(advanced, at, action.kind, dead);
   if (phase.kind !== 'hero') return ignored(advanced, at, action.kind, 'notAvailable');
   if (touchStartedAt < phase.since) return ignored(advanced, at, action.kind, 'touchTooEarly');
 
@@ -1705,6 +1755,12 @@ function shiftStep(step: EnemyStep, delta: number): EnemyStep {
       step.counter === null
         ? null
         : { ...step.counter, at: step.counter.at + delta, until: step.counter.until + delta },
+    ...(step.secondChance && {
+      secondChance: {
+        since: step.secondChance.since + delta,
+        until: step.secondChance.until + delta,
+      },
+    }),
   };
 }
 
