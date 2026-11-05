@@ -620,6 +620,7 @@ export function AscentScreen({
         key={ascent.floor}
         boons={ascent.hero.boons}
         exits={ascent.exits}
+        gauge={ascent.gauge}
         banner={gained}
         onChoose={(index) => session.chooseExit(index)}
       />

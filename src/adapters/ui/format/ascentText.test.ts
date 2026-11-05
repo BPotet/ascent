@@ -39,6 +39,21 @@ describe('ascent texts', () => {
     expect(exitLabel({ kind: 'boss', groupSize: null })).toBe('Affronter le boss');
   });
 
+  it('announces the cursed enemy under the curse, by number only (#209)', () => {
+    const combat = { kind: 'combat', groupSize: 3 } as const;
+    const elite = { kind: 'elite', groupSize: null } as const;
+
+    expect(exitLabel(combat, -1)).toBe('Combat · 3 ennemis · dont 1 maudit');
+    expect(exitLabel(combat, -2)).toBe('Combat · 3 ennemis · dont 1 maudit');
+    expect(exitLabel(elite, -1)).toBe('Élite · objet Rare garanti');
+    expect(exitLabel(elite, -2)).toBe('Élite maudite · objet Rare garanti');
+    for (const gauge of [0, 1, 2] as const) {
+      expect(exitLabel(combat, gauge)).toBe('Combat · 3 ennemis');
+      expect(exitLabel(elite, gauge)).toBe('Élite · objet Rare garanti');
+    }
+    expect(exitLabel({ kind: 'boss', groupSize: null }, -2)).toBe('Affronter le boss');
+  });
+
   it('announces the Rare item the Elite door guarantees, not the Elite drawn behind it (#120)', () => {
     const label = exitLabel({ kind: 'elite', groupSize: null });
 

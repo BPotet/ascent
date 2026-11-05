@@ -5,7 +5,9 @@ import {
   type BlessingFamily,
   type StartingBlessing,
 } from '../../../domain/ascent/blessings';
+import { cursedElite, cursedOrdinary } from '../../../domain/ascent/cursedEnemy';
 import type { Exit } from '../../../domain/ascent/exits';
+import type { FateGauge } from '../../../domain/ascent/fateGauge';
 import { ITEMS, type Equipment, type ItemKind, type ItemSlot } from '../../../domain/ascent/items';
 import type { Rarity } from '../../../domain/ascent/rarity';
 import { loadoutChipText, rarityLine, rarityName, type LoadoutChipText } from './rarityText';
@@ -70,16 +72,27 @@ export function enemiesText(count: number): string {
   return count === 1 ? '1 ennemi' : `${count} ennemis`;
 }
 
+/** La porte mène à un ennemi maudit (#209) : la porte Combat sous la malédiction, l'Élite à −2. */
+export function exitCursed(exit: Exit, gauge: FateGauge): boolean {
+  if (exit.kind === 'combat') return cursedOrdinary(gauge);
+  return exit.kind === 'elite' && cursedElite(gauge);
+}
+
 /**
  * Le libellé d'une porte : la porte Combat annonce la taille du groupe, pas sa composition ; la
- * porte Élite, son objet Rare garanti, pas l'Élite, tirée à l'entrée de l'étage (#120).
+ * porte Élite, son objet Rare garanti, pas l'Élite, tirée à l'entrée de l'étage (#120). Sous la
+ * malédiction de l'ascension (`gauge`), la porte Combat dit « dont 1 maudit », jamais lequel, et la
+ * porte Élite devient « Élite maudite » sous la malédiction forte (#209).
  */
-export function exitLabel(exit: Exit): string {
+export function exitLabel(exit: Exit, gauge: FateGauge = 0): string {
+  const cursed = exitCursed(exit, gauge);
   switch (exit.kind) {
-    case 'combat':
-      return `Combat · ${enemiesText(exit.groupSize ?? 0)}`;
+    case 'combat': {
+      const size = `Combat · ${enemiesText(exit.groupSize ?? 0)}`;
+      return cursed ? `${size} · dont 1 maudit` : size;
+    }
     case 'elite':
-      return 'Élite · objet Rare garanti';
+      return `${cursed ? 'Élite maudite' : 'Élite'} · objet Rare garanti`;
     case 'campfire':
       return 'Feu de camp · soin de 40 % des PV';
     case 'boss':

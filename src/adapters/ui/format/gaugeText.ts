@@ -1,4 +1,5 @@
 import type { FateGaugeReading } from '../../../application/useCases/fateGauge';
+import { cursedElite } from '../../../domain/ascent/cursedEnemy';
 import { fatiguePercent, type FateGauge } from '../../../domain/ascent/fateGauge';
 import type { IconName } from '../pixelArt/sprites/icons';
 
@@ -108,7 +109,7 @@ export interface GaugeEffect {
 
 /**
  * Les effets de la jauge : les bénédictions de départ, puis ceux du niveau (objets plus fréquents,
- * Rares plus ou moins fréquents, fatigue). Rien à la première utilisation ; « Aucun effet
+ * Rares plus ou moins fréquents, fatigue, ennemis maudits). Rien à la première utilisation ; « Aucun effet
  * aujourd'hui » en lecture en échec. Jamais de coffre (épique #208). Sans `expected`, c'est la jauge
  * d'une ascension en cours, toujours comptée.
  */
@@ -142,6 +143,12 @@ export function gaugeEffects({
     effects.push(
       { glyph: 'fatigue', tone: 'curse', text: `Fatigue : PV max −${fatiguePercent(gauge)} %` },
       { glyph: 'rare', tone: 'curse', text: 'Objets Rares moins fréquents' },
+      // Les ennemis maudits (#209) : l'Élite aussi sous la malédiction forte.
+      {
+        glyph: 'skull',
+        tone: 'curse',
+        text: cursedElite(gauge) ? 'Ennemis et Élite maudits' : '1 ennemi maudit par combat',
+      },
     );
   } else {
     effects.push({

@@ -258,6 +258,38 @@ describe('EnemyColumn', () => {
     expect(screen.getByText('Relevée')).toBeOnTheScreen();
   });
 
+  it('shows a cursed enemy by its « Maudite » tag with a skull, its pink frame and glow (#209)', async () => {
+    await renderColumn({ view: { ...ghoul, curse: 'Maudite' } });
+
+    const tag = screen.getByTestId('enemy-ghoul-curse');
+    expect(tag).toHaveTextContent('Maudite');
+    expect(within(tag).getByTestId('enemy-ghoul-curse-skull', hiddenToo)).toBeTruthy();
+    expect(
+      StyleSheet.flatten(screen.getByTestId('enemy-ghoul-plate').props.style).borderColor,
+    ).toBe(artPalette.roles.curse);
+    expect(screen.getByTestId('enemy-ghoul-curse-glow', hiddenToo)).toBeTruthy();
+  });
+
+  it('shows both « Maudit » and « Relevé » under a cursed Skeleton that revived (#209)', async () => {
+    await renderColumn({
+      view: { ...ghoul, kind: 'skeleton', name: 'Squelette', curse: 'Maudit', tag: 'Relevé' },
+    });
+
+    expect(screen.getByText('Maudit')).toBeOnTheScreen();
+    expect(screen.getByText('Relevé')).toBeOnTheScreen();
+  });
+
+  it('keeps the gold frame of a cursed target, and no curse mark on an uncursed enemy', async () => {
+    await renderColumn({ view: { ...ghoul, target: true, curse: 'Maudite' } });
+    expect(
+      StyleSheet.flatten(screen.getByTestId('enemy-ghoul-plate').props.style).borderColor,
+    ).toBe(artPalette.roles.gold);
+
+    await renderColumn();
+    expect(screen.queryByTestId('enemy-ghoul-curse')).toBeNull();
+    expect(screen.queryByTestId('enemy-ghoul-curse-glow', hiddenToo)).toBeNull();
+  });
+
   it('shows the shield and its gain for a Guard intent', async () => {
     await renderColumn({ view: { ...ghoul, intent: { category: 'guard', gain: 3 } } });
 

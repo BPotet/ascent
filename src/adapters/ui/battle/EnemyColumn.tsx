@@ -40,7 +40,9 @@ const INTENT_ICONS: Readonly<Record<IntentCategory, IconName>> = {
  * annoncé en entier au lecteur d'écran. Sa plaque est en cadre cranté ; la cible a un double cadre
  * d'or, une flèche au-dessus de son intention et son nom en gras, jamais la couleur seule (#120).
  * Son sprite, ses étoiles et son ombre au sol sont dessinés par la scène, derrière, à la place que
- * donne `sceneGeometry`.
+ * donne `sceneGeometry`. Un ennemi maudit (#209, maquette M2) porte l'étiquette « Maudit » au crâne
+ * sous son nom, sur sa propre ligne, un cadre rose (d'or s'il est la cible) et une lueur rose fixe
+ * sous ses pieds : jamais la couleur seule.
  */
 export function EnemyColumn({
   view,
@@ -120,11 +122,18 @@ export function EnemyColumn({
           )}
         </View>
         <View style={styles.figure}>
+          {view.curse === undefined ? null : (
+            <View
+              pointerEvents="none"
+              testID={`enemy-${kind}-curse-glow`}
+              style={styles.curseGlow}
+            />
+          )}
           {sealed ? <PerilSeal reducedMotion={reducedMotion} /> : null}
           {float === null ? null : <DamageFloat key={float.key} float={float.float} />}
         </View>
         <PixelFrame
-          tone={view.target ? 'gold' : 'default'}
+          tone={view.target ? 'gold' : view.curse === undefined ? 'default' : 'error'}
           under={battleColors.background}
           testID={`enemy-${kind}-plate`}
           style={[styles.plate, view.active && styles.activePlate]}
@@ -142,6 +151,16 @@ export function EnemyColumn({
             </View>
             {view.name === null ? null : (
               <Text style={[styles.name, view.target && styles.targetName]}>{view.name}</Text>
+            )}
+            {view.curse === undefined ? null : (
+              <View testID={`enemy-${kind}-curse`} style={styles.curseTag}>
+                <PixelIcon
+                  name="skull"
+                  color={artPalette.roles.pink}
+                  testID={`enemy-${kind}-curse-skull`}
+                />
+                <Text style={styles.curseText}>{view.curse}</Text>
+              </View>
             )}
             {view.tag === null ? null : (
               <Text style={[styles.tag, view.summoned === true && styles.summonedTag]}>
@@ -236,6 +255,37 @@ const styles = StyleSheet.create({
   name: { color: battleColors.text, fontFamily: textFont.semiBold, fontSize: 12, lineHeight: 15 },
   targetName: { color: battleColors.light, fontFamily: textFont.bold },
   tag: { color: battleColors.light, fontSize: 11, fontWeight: '700' },
+  // L'étiquette « Maudite » (#209, maquette `.ptag.curse`) : rose clair sur le fond d'erreur (11,5:1),
+  // cernée du trait de malédiction, en capitales, avec le crâne.
+  curseTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 3,
+    paddingLeft: 3,
+    paddingRight: 4,
+    backgroundColor: artPalette.roles.errorBg,
+    borderWidth: 1,
+    borderColor: artPalette.roles.curse,
+  },
+  curseText: {
+    color: artPalette.roles.pink,
+    fontFamily: textFont.bold,
+    fontSize: 10,
+    lineHeight: 14,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  // La lueur rose sous ses pieds (maquette `.pfoe.cursed .pfig::after`), fixe : rien à réduire.
+  curseGlow: {
+    position: 'absolute',
+    bottom: -6,
+    width: 84,
+    height: 24,
+    borderRadius: 42,
+    backgroundColor: artPalette.roles.curse,
+    opacity: 0.25,
+  },
   // L'étiquette « Invoquée » (#172, maquette `.ptag.summ`) : fumée sur fond sombre, cernée de gris.
   summonedTag: {
     color: battleColors.summonTag,

@@ -14,7 +14,9 @@ import { shownIntent, type ShownIntent } from '../../../domain/battle/shownInten
 import {
   ENEMY_NAMES,
   enemyHpText,
+  cursedTag,
   enemyLabel,
+  enemyName,
   enemyTag,
   guardText,
   stunnedLabel,
@@ -49,6 +51,8 @@ export interface TrackEntry {
   readonly phase2: boolean;
   /** Un ennemi invoqué annoncé, pas encore entré (#172) : sa case est en pointillé. */
   readonly pending?: true;
+  /** Un ennemi maudit (#209) : sa case est rose, avec un crâne en coin. */
+  readonly cursed?: true;
 }
 
 /**
@@ -131,6 +135,11 @@ export interface EnemyView {
   readonly tag: string | null;
   /** Un ennemi invoqué (#172) : son étiquette a l'allure de la poussière ; absent, non. */
   readonly summoned?: boolean;
+  /**
+   * L'étiquette d'un ennemi maudit (#209), « Maudit » ou « Maudite », sur sa propre ligne en plus de
+   * `tag` ; absente, il n'est pas maudit.
+   */
+  readonly curse?: string;
   readonly label: string;
 }
 
@@ -192,7 +201,12 @@ function powerSlot(battle: Battle): PowerSlot {
 export function trackEntry(battle: Battle, actor: Actor): TrackEntry {
   if (actor === 'hero') return { actor, fighter: battle.heroKind, phase2: false };
   const enemy = battle.enemies[actor]!;
-  return { actor, fighter: enemy.kind, phase2: enemy.phase2 === true };
+  return {
+    actor,
+    fighter: enemy.kind,
+    phase2: enemy.phase2 === true,
+    ...(enemy.cursed === true && { cursed: true as const }),
+  };
 }
 
 /**
@@ -224,7 +238,7 @@ function targetLine(battle: Battle): ZoneLine | null {
   if (target === undefined) return null;
   return {
     before: 'Cible : ',
-    strong: ENEMY_NAMES[target.kind],
+    strong: enemyName(target),
     after: target.stun === null ? '' : ' · ×1,5',
   };
 }
@@ -277,6 +291,7 @@ function enemyView(
     dimmed: active !== null && active !== index,
     tag: enemyTag(enemy),
     ...(enemy.summoned === true && { summoned: true }),
+    ...(enemy.cursed === true && { curse: cursedTag(enemy)! }),
     label: enemyLabel(enemy, intent, target),
   };
 }

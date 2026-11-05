@@ -3,7 +3,8 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { BoonKind } from '../../../domain/ascent/boons';
 import type { Exit } from '../../../domain/ascent/exits';
-import { exitLabel } from '../format/ascentText';
+import type { FateGauge } from '../../../domain/ascent/fateGauge';
+import { exitCursed, exitLabel } from '../format/ascentText';
 import { boonChip, ownedBoonsLabel } from '../format/boonText';
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize, notchedCorners } from '../pixelArt/artPixel';
@@ -44,16 +45,20 @@ function OwnedBoons({ boons }: { readonly boons: readonly BoonKind[] }) {
 
 /**
  * Le choix des sorties : `banner` (l'Or de l'étage), les bienfaits possédés, puis les portes, ou la
- * porte du boss sur « Dernière porte ».
+ * porte du boss sur « Dernière porte ». Sous la malédiction de l'ascension (`gauge`), une porte qui
+ * annonce un ennemi maudit porte un crâne, jamais la couleur seule (#209).
  */
 export function ExitChoice({
   boons,
   exits,
+  gauge = 0,
   banner = null,
   onChoose,
 }: {
   readonly boons: readonly BoonKind[];
   readonly exits: readonly Exit[];
+  /** La jauge de l'ascension ; Neutre par défaut. */
+  readonly gauge?: FateGauge;
   readonly banner?: ReactNode;
   readonly onChoose: (index: number) => void;
 }) {
@@ -68,8 +73,9 @@ export function ExitChoice({
       {exits.map((exit, index) => (
         <PixelButton
           key={`${exit.kind}-${index}`}
-          label={exitLabel(exit)}
+          label={exitLabel(exit, gauge)}
           variant={exit.kind === 'campfire' ? 'secondary' : 'primary'}
+          {...(exitCursed(exit, gauge) && { icon: 'skull' as const })}
           testID={`ascent-exit-${index}`}
           onPress={() => onChoose(index)}
         />
