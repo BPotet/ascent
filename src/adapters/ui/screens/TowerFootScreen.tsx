@@ -17,14 +17,12 @@ import {
   TIER_LINE,
   TOWER_TITLE,
   floorLine,
-  gaugeEffects,
-  gaugeReason,
-  gaugeWord,
   goldText,
   shardText,
   tierLine,
 } from '../format/ascentText';
 import { HERO_NAMES } from '../format/battleText';
+import { gaugeEffects, gaugeReason, gaugeWord } from '../format/gaugeText';
 import { artPalette } from '../pixelArt/artPalette';
 import { PixelButton } from '../pixelArt/PixelButton';
 import { PixelFrame } from '../pixelArt/PixelFrame';
