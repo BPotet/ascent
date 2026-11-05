@@ -339,29 +339,25 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     expect(ENEMIES.mothkin.supports).toBe(false);
   });
 
-  given(/^un groupe tiré au palier 2 ou au palier 3$/u, () => {
+  given(/^un groupe tiré au palier 2$/u, () => {
     world = { ...world, events: [] };
   });
 
   then(/^il peut compter jusqu'à 2 Phalénides \(poids 3\)$/u, () => {
-    for (const tier of [2, 3] as const) {
-      expect(TIERS[tier].enemies).toContainEqual({ kind: 'mothkin', weight: 3, cap: 2 });
-      const counts = SEEDS.map(
-        (seed) =>
-          drawGroup(4, seedRandom(seed), tier).value.filter((kind) => kind === 'mothkin').length,
-      );
-      expect(Math.max(...counts)).toBe(2);
-    }
+    expect(TIERS[2].enemies).toContainEqual({ kind: 'mothkin', weight: 3, cap: 2 });
+    const counts = SEEDS.map(
+      (seed) => drawGroup(4, seedRandom(seed), 2).value.filter((kind) => kind === 'mothkin').length,
+    );
+    expect(Math.max(...counts)).toBe(2);
   });
 
-  and(
-    /^au palier 3, une Phalénide a 43 PV et 9 de garde, son Vol brisé fait 7 et ses Mandibules 5 \+ 5$/u,
-    () => {
-      const { entered } = playToEntry(queenAt(summonBattle(['mothQueen'], 3), 205));
-      expect(entered.battle.enemies[1]).toMatchObject({ maxHp: 43, maxGuard: 9 });
-      expect(mothkinDamages(3)).toEqual([5, 7]);
-    },
-  );
+  and(/^le palier 3 n'en tire plus \(#214\)$/u, () => {
+    expect(TIERS[3].enemies.map(({ kind }) => kind)).not.toContain('mothkin');
+    for (const size of [3, 4]) {
+      for (const seed of SEEDS)
+        expect(drawGroup(size, seedRandom(seed), 3).value).not.toContain('mothkin');
+    }
+  });
 };
 
 const feature = loadFeature('features/invocation-reine-des-phalenes.feature');

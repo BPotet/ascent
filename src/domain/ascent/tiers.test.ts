@@ -65,23 +65,29 @@ describe('the tiers (#38)', () => {
     ]);
   });
 
-  it('draws the enemies of tier 3 in the order of the stories, the Necromancer never alone', () => {
+  it('draws only its own enemies at tier 3, the three that stay then the three of the Belfry (#214)', () => {
     expect(TIERS[3].enemies).toEqual([
-      { kind: 'skeleton', weight: 3, cap: 1 },
       { kind: 'bronzeWarden', weight: 2, cap: 1 },
-      { kind: 'specter', weight: 2, cap: 1 },
-      { kind: 'necromancer', weight: 1, cap: 1, neverAlone: true },
       { kind: 'gargoyle', weight: 2, cap: 1 },
       { kind: 'bellFounder', weight: 2, cap: 1 },
-      { kind: 'mothkin', weight: 3, cap: 2 },
+      { kind: 'bellNovice', weight: 3, cap: 2 },
+      { kind: 'matinsRinger', weight: 1, cap: 1, neverAlone: true },
+      { kind: 'clockJack', weight: 2, cap: 1 },
     ]);
   });
 
-  it('shares no enemy between the groups of tiers 1 and 2 (tierExclusive, #213)', () => {
-    const tierOne = new Set(TIERS[1].enemies.map(({ kind }) => kind));
+  it.each([
+    [1, 2],
+    [1, 3],
+    [2, 3],
+  ] as const)(
+    'shares no enemy between the groups of tiers %d and %d (tierExclusive, #213, #214)',
+    (one, other) => {
+      const first = new Set(TIERS[one].enemies.map(({ kind }) => kind));
 
-    expect(TIERS[2].enemies.filter(({ kind }) => tierOne.has(kind))).toEqual([]);
-  });
+      expect(TIERS[other].enemies.filter(({ kind }) => first.has(kind))).toEqual([]);
+    },
+  );
 
   it('has its Elites and its bosses', () => {
     expect([TIERS[1].elites, TIERS[2].elites, TIERS[3].elites]).toEqual([

@@ -42,6 +42,11 @@ describe('drawCursedEnemy (#209)', () => {
     expect(ghouls).toBeLessThan(SEEDS.length * 0.6);
   });
 
+  it('never curses the Matins ringer, a support, but the Bell novice or the Clock jack (#214)', () => {
+    const indexes = drawnIndexes(['bellNovice', 'matinsRinger', 'clockJack']);
+    expect(new Set(indexes)).toEqual(new Set([0, 2]));
+  });
+
   it('never curses an enemy of the reserve', () => {
     const indexes = drawnIndexes(['necromancer', 'ghoul', 'specter', 'ghoul', 'skeleton']);
     expect(new Set(indexes)).toEqual(new Set([1, 2]));

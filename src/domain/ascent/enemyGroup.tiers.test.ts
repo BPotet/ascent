@@ -5,6 +5,15 @@ import { drawGroup, drawGroupSize, sizeWeights } from './enemyGroup';
 import { TIERS, type Tier } from './tiers';
 
 const SEEDS = Array.from({ length: 600 }, (_, index) => index * 2_654_435_761);
+/** Les ennemis du palier 3 (#214) : les trois qui restent, puis les trois du Beffroi. */
+const BELFRY = new Set([
+  'bronzeWarden',
+  'gargoyle',
+  'bellFounder',
+  'bellNovice',
+  'matinsRinger',
+  'clockJack',
+]);
 
 const sizes = (tier: Tier, floor: number) =>
   new Set(SEEDS.map((seed) => drawGroupSize(floor, seedRandom(seed), false, tier).value));
@@ -57,23 +66,27 @@ describe('the enemies drawn at tiers 2 and 3 (#38)', () => {
     );
   });
 
-  it('draws only the enemies of tier 3, every one of them, never a Ghoul nor one of tier 2', () => {
-    const drawn = new Set(groups(3, 3).flat());
+  it('draws exactly the six enemies of tier 3, none of tiers 1 and 2 (#214)', () => {
+    const drawn = new Set([...groups(3, 3), ...groups(3, 4)].flat());
 
-    expect(drawn).toEqual(
-      new Set([
-        'skeleton',
-        'specter',
-        'necromancer',
-        'bronzeWarden',
-        'gargoyle',
-        'bellFounder',
-        'mothkin',
-      ]),
-    );
+    expect(drawn).toEqual(BELFRY);
   });
 
-  it('keeps each cap: at most 1 of each enemy, the Ghoul excepted (5 at most)', () => {
+  it('never draws a Skeleton, a Specter, a Necromancer nor a Mothkin at tier 3, for 200 seeds (#214)', () => {
+    const drawn = SEEDS.slice(0, 200).flatMap((seed) =>
+      [1, 2, 3, 4, 5].flatMap((floor) => {
+        const size = drawGroupSize(floor, seedRandom(seed), false, 3);
+        return drawGroup(size.value, size.random, 3).value;
+      }),
+    );
+
+    for (const kind of ['skeleton', 'specter', 'necromancer', 'mothkin']) {
+      expect(drawn).not.toContain(kind);
+    }
+    expect(new Set(drawn)).toEqual(BELFRY);
+  });
+
+  it('keeps each cap: at most 1 of each enemy, 2 Mothkin at tier 2, 2 Bell novices at tier 3', () => {
     for (const tier of [2, 3] as const) {
       for (const size of [2, 3, 4]) {
         for (const group of groups(tier, size)) {
@@ -86,16 +99,32 @@ describe('the enemies drawn at tiers 2 and 3 (#38)', () => {
     }
   });
 
-  it('never draws a support alone: an Ash gleaner or a Necromancer is always accompanied', () => {
+  it('never draws a support alone: an Ash gleaner or a Matins ringer is always accompanied', () => {
     expect(groups(2, 1).flat()).not.toContain('ashGleaner');
-    expect(groups(3, 1).flat()).not.toContain('necromancer');
+    expect(groups(3, 1).flat()).not.toContain('matinsRinger');
     for (const group of [...groups(2, 2), ...groups(3, 3)]) expect(group.length).toBeGreaterThan(1);
   });
 
-  it('draws up to 2 Mothkin in a group of tiers 2 and 3, never more (#172)', () => {
-    for (const tier of [2, 3] as const) {
-      const counts = groups(tier, 4).map(
-        (group) => group.filter((kind) => kind === 'mothkin').length,
+  it('draws the Matins ringer with at least one other enemy, in groups of 3 and of 4 (#214)', () => {
+    const withRinger = [...groups(3, 3), ...groups(3, 4)].filter((group) =>
+      group.includes('matinsRinger'),
+    );
+
+    expect(withRinger.length).toBeGreaterThan(0);
+    for (const group of withRinger) {
+      expect(group.filter((kind) => kind !== 'matinsRinger').length).toBeGreaterThan(0);
+    }
+  });
+
+  it('draws up to 2 Mothkin in a group of tier 2, never more (#172)', () => {
+    const counts = groups(2, 4).map((group) => group.filter((kind) => kind === 'mothkin').length);
+    expect(new Set(counts)).toEqual(new Set([0, 1, 2]));
+  });
+
+  it('draws up to 2 Bell novices in a group of tier 3, never 3 (#214)', () => {
+    for (const size of [3, 4]) {
+      const counts = groups(3, size).map(
+        (group) => group.filter((kind) => kind === 'bellNovice').length,
       );
       expect(new Set(counts)).toEqual(new Set([0, 1, 2]));
     }

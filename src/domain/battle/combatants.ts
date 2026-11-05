@@ -155,7 +155,11 @@ export type EnemyKind =
   | 'brambleBurner'
   // L'Invocation (#172) : la Reine des phalènes, boss du palier 2, et ses Phalénides.
   | 'mothQueen'
-  | 'mothkin';
+  | 'mothkin'
+  // Le Beffroi (#214) : le Novice des cloches, la Sonneuse de matines et le Jaquemart.
+  | 'bellNovice'
+  | 'matinsRinger'
+  | 'clockJack';
 
 /** Le Saignement (`Bleed`, prototype #107) : `damage` PV perdus au début de `rounds` manches. */
 export interface Bleed {
@@ -508,6 +512,36 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     ],
     supports: false,
   },
+  // Le Beffroi (#214) : valeurs du Codex de l'Atelier (version 2, 04/11/2026), recopiées le
+  // 05/11/2026, à l'échelle du palier 1. La Sonneuse de matines a le rôle soutien (`role:
+  // "support"`) : Relever et Garde.
+  // `codex/bellNovice` (0a96b76b…): Bout de corde (poids 2), puis Volée manquée.
+  bellNovice: {
+    maxHp: 26,
+    maxGuard: 8,
+    moves: [
+      { attack: 'basic', damage: 4, weight: 2 },
+      { attack: 'delayed', damage: 6 },
+    ],
+    supports: false,
+  },
+  // `codex/matinsRinger` (27cccb02…): Angélus ; soutien : Relever et Garde.
+  matinsRinger: {
+    maxHp: 42,
+    maxGuard: 16,
+    moves: [{ attack: 'delayed', damage: 4 }],
+    supports: true,
+  },
+  // `codex/clockJack` (77c063ab…): Demi-heure (poids 2), puis Heure pleine.
+  clockJack: {
+    maxHp: 48,
+    maxGuard: 20,
+    moves: [
+      { attack: 'double', damage: 3, weight: 2 },
+      { attack: 'perilous', damage: 9 },
+    ],
+    supports: false,
+  },
 };
 
 /**
@@ -543,4 +577,8 @@ export const ENEMY_INITIATIVE: Readonly<Record<EnemyKind, number>> = {
   // L'Invocation (#172), celles du Codex ; 11 pour la Reine en phase 2.
   mothQueen: 8,
   mothkin: 10,
+  // Le Beffroi (#214), celles du Codex.
+  bellNovice: 6,
+  matinsRinger: 3,
+  clockJack: 1,
 };

@@ -393,3 +393,73 @@ describe('the phase shift at 50 % of the HP of a boss (#38)', () => {
     for (const count of drawn.values()) expect(count).toBeGreaterThan(70);
   });
 });
+
+// Le Beffroi (#214) : ses trois ennemis au palier 3 (PV ×1,75, garde ×1,5, dégâts ×1,75, entier
+// inférieur).
+describe('the enemies of the Belfry at tier 3 (#214)', () => {
+  const tierThree: IntentContext = { ...NO_CONTEXT, damagePercent: TIER_3.hpPercent };
+  /** Les coups tirés par `kind` au palier 3, sur 60 graines : « type dégâts ». */
+  const attacks = (kind: EnemyKind) =>
+    new Set(
+      Array.from({ length: 60 }, (_, seed) => {
+        const { intent } = drawIntent(kind, seedRandom(seed), tierThree);
+        return intent.category === 'attack' ? `${intent.attack} ${intent.damage}` : null;
+      }),
+    );
+
+  it('gives the Bell novice 45 HP and 12 guard, its Rope end 7 and its Missed peal 10', () => {
+    const battle = start(['bellNovice'], TIER_3);
+
+    expect(battle.enemies.map(({ maxHp, maxGuard }) => [maxHp, maxGuard])).toEqual([[45, 12]]);
+    expect(attacks('bellNovice')).toEqual(new Set(['basic 7', 'delayed 10']));
+  });
+
+  it('gives the Matins ringer 73 HP and 24 guard, her Angelus 7, her Guard +7', () => {
+    const battle = start(['matinsRinger', 'bellNovice'], TIER_3);
+    const { intent } = firstIntent(
+      'matinsRinger',
+      { ...tierThree, guardDamaged: true, maxGuard: 24 },
+      (drawn) => drawn.category === 'guard',
+    );
+
+    expect(battle.enemies[0]).toMatchObject({ maxHp: 73, maxGuard: 24 });
+    expect(attacks('matinsRinger')).toEqual(new Set(['delayed 7']));
+    expect(intent).toEqual({ category: 'guard', gain: 7 });
+  });
+
+  it('gives the Clock jack 84 HP and 30 guard, its Half hour 5 + 5, its Full hour 15, perilous', () => {
+    const battle = start(['clockJack'], TIER_3);
+
+    expect(battle.enemies.map(({ maxHp, maxGuard }) => [maxHp, maxGuard])).toEqual([[84, 30]]);
+    expect(attacks('clockJack')).toEqual(new Set(['double 5', 'perilous 15']));
+  });
+
+  it('raises a fallen Bell novice once, with 22 of its 45 HP', () => {
+    const battle = withEnemy({ ...start(['bellNovice', 'matinsRinger'], TIER_3), target: 1 }, 0, {
+      hp: 0,
+    });
+
+    const { battle: raised } = playUntil(battle, (_, events) =>
+      events.some((event) => event.type === 'allyRaised'),
+    );
+    expect(raised.enemies[0]).toMatchObject({ hp: 22, maxHp: 45, raised: true });
+
+    const { battle: next, events } = playUntil(withEnemy(raised, 0, { hp: 0 }), roundStarted(6));
+    expect(next.enemies[0]!.hp).toBe(0);
+    expect(events.map((event) => event.type)).not.toContain('allyRaised');
+  });
+
+  it('guards, her guard damaged, on the same draws as the Necromancer', () => {
+    const guards = (kind: EnemyKind) =>
+      Array.from(
+        { length: 100 },
+        (_, seed) =>
+          drawIntent(kind, seedRandom(seed), { ...NO_CONTEXT, guardDamaged: true }).intent
+            .category === 'guard',
+      );
+
+    expect(guards('matinsRinger')).toEqual(guards('necromancer'));
+    expect(guards('matinsRinger')).toContain(true);
+    expect(guards('matinsRinger')).toContain(false);
+  });
+});

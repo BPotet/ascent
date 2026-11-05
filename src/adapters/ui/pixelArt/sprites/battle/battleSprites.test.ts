@@ -27,6 +27,9 @@ import { GARGOYLE_ANIMATION } from '../atelier/data/gargoyle';
 import { MOTH_QUEEN_ANIMATION } from '../atelier/data/mothQueen';
 import { MOTH_QUEEN_PHASE2 } from '../atelier/data/mothQueenPhase2';
 import { MOTHKIN_ANIMATION } from '../atelier/data/mothkin';
+import { BELL_NOVICE_ANIMATION } from '../atelier/data/bellNovice';
+import { CLOCK_JACK_ANIMATION } from '../atelier/data/clockJack';
+import { MATINS_RINGER_ANIMATION } from '../atelier/data/matinsRinger';
 import { FACELESS_PRIOR_ANIMATION } from '../atelier/data/facelessPrior';
 import { FALLEN_KNIGHT_ANIMATION } from '../atelier/data/fallenKnight';
 import { GHOUL_ANIMATION } from '../atelier/data/ghoul';
@@ -162,6 +165,10 @@ describe('the full animations of the Atelier in battle (#119, #137, #138, #139)'
     // L'Invocation (#172).
     mothQueen: { ...MOTH_QUEEN_ANIMATION, phase2: MOTH_QUEEN_PHASE2 },
     mothkin: MOTHKIN_ANIMATION,
+    // Le Beffroi (#214).
+    bellNovice: BELL_NOVICE_ANIMATION,
+    matinsRinger: MATINS_RINGER_ANIMATION,
+    clockJack: CLOCK_JACK_ANIMATION,
   };
   /** Les ennemis animés, tirés du registre : chacun avec son animation recopiée. */
   const ANIMATED = ANIMATED_ENEMIES.map((kind) => [kind, COPIED[kind]] as const);

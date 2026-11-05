@@ -88,6 +88,7 @@ describe('IconBoardScreen (#157)', () => {
       'Frise · boss en phase 2',
       'Voile · coup imparable · palier 1',
       'Voile · coup imparable · palier 3',
+      'Beffroi · Novice, Sonneuse, Jaquemart',
       "Choix d'un bienfait · Veillée d'hiver",
       'Objet trouvé · Flamberge',
       'Fermer',
@@ -490,6 +491,8 @@ describe('IconBoardScreen with the veil of the enemy phase (#188)', () => {
   it.each([
     ['Voile · coup imparable · palier 1', 1, 'specter', 'perilous'],
     ['Voile · coup imparable · palier 3', 3, 'bronzeWarden', 'delayedPerilous'],
+    // Les trois ennemis du Beffroi (#214), le Jaquemart préparant Heure pleine.
+    ['Beffroi · Novice, Sonneuse, Jaquemart', 3, 'clockJack', 'perilous'],
   ] as const)(
     '« %s » resumes the wind-up of a perilous attack, under the veil (C1, C3)',
     async (entry, tier, kind, attack) => {

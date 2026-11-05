@@ -117,14 +117,14 @@ Fonctionnalité: Trois paliers jusqu'au sommet, et les premiers Éclats
   @domain
   Scénario: Les ennemis tirés au palier 3
     Étant donné un groupe tiré au palier 3
-    Alors chaque ennemi est un Squelette, un Spectre, un Nécromancien, un Veilleur d'airain, une Gargouille, un Fondeur de cloches (#171) ou une Phalénide (#172)
-    Et jamais une Goule, un Villageois fou ni un ennemi des Jardins de cendre
+    Alors chaque ennemi est un Veilleur d'airain, une Gargouille, un Fondeur de cloches (#171), un Novice des cloches, une Sonneuse de matines ou un Jaquemart (#214), ni Squelette, ni Spectre, ni Nécromancien (#214)
+    Et jamais une Goule, un Villageois fou ni un ennemi des Jardins de cendre, Phalénide comprise (#214)
 
   @domain
   Scénario: Limite — un soutien n'est jamais seul et chaque plafond est respecté
     Étant donné un groupe tiré au palier 2 ou 3
-    Alors il compte au plus 1 Pèlerin enronce, 1 Ronce, 1 Glaneuse, 1 Villageois fou, 1 Squelette, 1 Spectre, 1 Nécromancien et 1 Veilleur d'airain
-    Et une Glaneuse ou un Nécromancien est toujours accompagné
+    Alors il compte au plus 1 Pèlerin enronce, 1 Ronce, 1 Glaneuse, 1 Veilleur d'airain, 1 Sonneuse de matines et 1 Jaquemart (#214)
+    Et une Glaneuse ou une Sonneuse de matines (#214) est toujours accompagnée
 
   @domain
   Scénario: Les Élites du palier 3

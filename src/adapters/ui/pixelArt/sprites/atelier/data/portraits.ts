@@ -60,7 +60,15 @@
  *   fiche `codex/mothQueen`, sha256 af0af679a67454465b00669e5404ea8a1c5afaf1e2f95373f1846b5ab6adc1ae ; `icon` « buste » ; `iconPhase2` « buste, phase 2 ».
  * - `assets/ashMoth` (nom de code `mothkin`) version 18, sha256 54c6d1b5fd6c5726d3233f68ecb14813c2df16e39feb10dc521a45f015365140 ;
  *   fiche `codex/ashMoth`, sha256 593d7c38ba137d5c63c09999f035554b3149a7d9fdcf1c45e4e58fb51cc797a8 ; `icon` « buste ».
- * Identique, pixel pour pixel, à `ART.ic_<id>` et `ART.ic_<id>2` de la maquette validée
+ * Le Beffroi (#214), recopié par la conversation le 05/11/2026 (ADR 0010, avenant #214 ; portraits
+ * validés le 05/11/2026), l'id de l'Atelier est le nom de code :
+ * - `assets/bellNovice` version 2, sha256 4164e9e7613f3f146633fd972a24de992bfac05054beccfb158bd675c994ae75 ;
+ *   fiche `codex/bellNovice`, sha256 0a96b76b5c4c45182cd37162f18abc78a2c907f53fe960af0dece4e8a1e71b82 ; `icon` « buste » (sha256 de la copie 33cf8382dc2eefe2dd84b6dc948f0a5c84f4237916d9ddee2bc921b07071d4d1).
+ * - `assets/matinsRinger` version 2, sha256 625f86fae715e404d1fc964e2067ed7e0a45a49f114a619ebd907206afcf4d70 ;
+ *   fiche `codex/matinsRinger`, sha256 27cccb0219af09179ae977dbbf695e91400aa315955e99cac2ffdfd287a6e6b8 ; `icon` « buste » (sha256 de la copie 5e826c5b4cceaa7f3c0c1dbc5c92745ac206b36b22c346eb3375affda4640f8f).
+ * - `assets/clockJack` version 2, sha256 b6c660e15db9f51de772ee78768a3edf01edd42984a3a70ef4320279c0277ac3 ;
+ *   fiche `codex/clockJack`, sha256 77c063abc9064a372862181e14cc11bdba4594ced2e7790e321aa6d453b381b6 ; `icon` « buste » (sha256 de la copie df1c28d399a99b6606d33c1d82c249c7ac7675ef7f4da1a2d9fabc5ed63f3264).
+ * Hors Beffroi (#214), identique, pixel pour pixel, à `ART.ic_<id>` et `ART.ic_<id>2` de la maquette validée
  * `docs/mockups/174-tier-identity/index.html` (la maquette encode parfois la même image avec sa
  * palette dans un autre ordre : les données suivent l'Atelier).
  * Ne pas retoucher à la main : toute retouche passe par l'Atelier.
@@ -1200,9 +1208,145 @@ export const PORTRAITS: Readonly<Record<HeroKind | EnemyKind, AssetImage | null>
       '........00.0234030344440',
     ],
   },
+  // Le Beffroi (#214).
+  bellNovice: {
+    w: 24,
+    h: 24,
+    palette: [
+      '#06070c',
+      '#c9c2b0',
+      '#958f8a',
+      '#68646a',
+      '#b4bccf',
+      '#8995be',
+      '#d0a066',
+      '#9a6a3a',
+      '#10131f',
+      '#47454d',
+    ],
+    rows: [
+      '........................',
+      '..........000000........',
+      '.........01111330.......',
+      '........0112222330......',
+      '.......019992223330.....',
+      '.......014452223330.....',
+      '.......0444552223330....',
+      '.......04845522233330...',
+      '.......044455222233330..',
+      '.......01445222233330...',
+      '........051122233300....',
+      '.........011223300......',
+      '..........00000000......',
+      '.........0011111330.....',
+      '.........0100222330.....',
+      '........001130223330....',
+      '........012230223330....',
+      '........012302223330....',
+      '.......0002302223330....',
+      '.......0440022223330....',
+      '.......04400222233330...',
+      '.......00002222233330...',
+      '.......06012222233330...',
+      '......060112222233330...',
+    ],
+  },
+  matinsRinger: {
+    w: 24,
+    h: 24,
+    palette: [
+      '#06070c',
+      '#3b5089',
+      '#2c3d6b',
+      '#222c52',
+      '#6b4a2a',
+      '#3b2a1c',
+      '#c9c2b0',
+      '#8e8574',
+      '#f2d49b',
+      '#d0a066',
+      '#9a6a3a',
+      '#10131f',
+      '#fff3d6',
+      '#241b19',
+    ],
+    rows: [
+      '........................',
+      '............00000.......',
+      '..........00111330......',
+      '..00.....0112222330.....',
+      '.0550...011122223330....',
+      '.05500..0111222223330...',
+      '.00000.01667222233330...',
+      '.0888a016677722233330...',
+      '0889aa00b667722233330...',
+      '08899aa00667722233330...',
+      '08899aa00667722233330...',
+      '088999aa0067722233330...',
+      '08890a00dd07222233330...',
+      '8000a0455d022222233330..',
+      '0...0.0455d02222233330..',
+      '.......045d02222233330..',
+      '.......050012222233330..',
+      '.......001112222233330..',
+      '.......0111122222233330.',
+      '.......0111122222233330.',
+      '.......0111122222233330.',
+      '........000001112223330.',
+      '........0444500000012230',
+      '........044455555dd00020',
+    ],
+  },
+  clockJack: {
+    w: 24,
+    h: 24,
+    palette: [
+      '#06070c',
+      '#c9c2b0',
+      '#8e8574',
+      '#5b4e4a',
+      '#6e4a44',
+      '#6a2e22',
+      '#3a2a27',
+      '#8995be',
+      '#56618a',
+      '#47527a',
+      '#9a6a3a',
+      '#6b4a2a',
+      '#3b2a1c',
+      '#958f8a',
+      '#47454d',
+      '#23232b',
+    ],
+    rows: [
+      '.0......................',
+      '0d0.....................',
+      'def0....000000000.......',
+      'eeff0..07777779990......',
+      'eeff0.0777888889990.....',
+      'ff00.07778888899990.....',
+      'f0....000000a00000......',
+      '0b0...011122223330......',
+      'bbb0.01112222233330.....',
+      '0bbb0011f2222233330.....',
+      '.0bb000112222233330.....',
+      '..0bb0011222223a330.....',
+      '..0b02014422223330......',
+      '..0020601126223330......',
+      '...005560a6222330.......',
+      '....045560122300........',
+      '....045560000000000.....',
+      '.....045560000000660...0',
+      '......04560550446060..0d',
+      '......05005550456060..0d',
+      '......004d5550456060000d',
+      '......04445550456060dff0',
+      '......04445550456060eff0',
+      '......044d55504560600000',
+    ],
+  },
 };
 
-/** Les portraits de phase 2 (`iconPhase2`) des boss à aspect de phase 2. */
 export const PHASE_2_PORTRAITS: Readonly<Partial<Record<EnemyKind, AssetImage>>> = {
   ashGardener: {
     w: 24,

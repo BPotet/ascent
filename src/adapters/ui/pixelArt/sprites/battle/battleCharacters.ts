@@ -29,6 +29,9 @@ import { GARGOYLE_ANIMATION } from '../atelier/data/gargoyle';
 import { MOTH_QUEEN_ANIMATION } from '../atelier/data/mothQueen';
 import { MOTH_QUEEN_PHASE2 } from '../atelier/data/mothQueenPhase2';
 import { MOTHKIN_ANIMATION } from '../atelier/data/mothkin';
+import { BELL_NOVICE_ANIMATION } from '../atelier/data/bellNovice';
+import { CLOCK_JACK_ANIMATION } from '../atelier/data/clockJack';
+import { MATINS_RINGER_ANIMATION } from '../atelier/data/matinsRinger';
 import { animationSprite, type ExtraFrame, type FullAnimation } from '../atelier/fullAnimation';
 import { HERO_ANIMATIONS, HERO_CELL, isHero } from './heroAnimations';
 
@@ -215,6 +218,10 @@ const FULL_ANIMATIONS = {
   // L'Invocation (#172) : la Reine, son aspect de phase 2 joint, et la Phalénide.
   mothQueen: { ...MOTH_QUEEN_ANIMATION, phase2: MOTH_QUEEN_PHASE2 },
   mothkin: MOTHKIN_ANIMATION,
+  // Le Beffroi (#214).
+  bellNovice: BELL_NOVICE_ANIMATION,
+  matinsRinger: MATINS_RINGER_ANIMATION,
+  clockJack: CLOCK_JACK_ANIMATION,
 } satisfies Record<EnemyKind, FullAnimation<EnemyFrame>>;
 
 /** Les ennemis animés (`ANIMATED_ENEMIES`) : les clés du registre des animations complètes. */
