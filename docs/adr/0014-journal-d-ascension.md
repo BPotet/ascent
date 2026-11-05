@@ -1,7 +1,8 @@
 # ADR 0014 — Le Journal d'ascension et son export
 
 - **Statut** : accepté, amendé par l'[ADR 0016](0016-journal-des-combats.md) (#197)
-- **Avenant** : 5 novembre 2026, les relances de l'offre de bienfaits (#42, voir en fin de document)
+- **Avenants** : 5 novembre 2026, les relances de l'offre de bienfaits (#42) et la seconde chance
+  (#206), voir en fin de document
 - **Date** : 4 novembre 2026
 - **Décideur** : Architect (notes techniques de #196), écrit par le dev
 - **Contexte produit** : épique #193, story socle #196 « Exporter le journal du parcours de mes
@@ -109,3 +110,15 @@ session (état avant et après, aucun tirage).
   nombre d'offres remplacées.
 - **`formatVersion` reste 2** (§ 4) : c'est un champ ajouté, pas un sens changé. Un journal d'avant
   se relit tel quel.
+
+## Avenant du 5 novembre 2026 — la seconde chance (#206)
+
+La **Seconde chance** (`SecondChance`) relève une fois le héros qu'un coup fait tomber à 0 PV. Le
+journal note l'étage où elle a servi, sans nouvelle cause : la transition `battleEnded` le voit sur
+l'ascension (`before.secondChance && !after.secondChance`).
+
+- L'étage reçoit un champ **facultatif** `secondChanceUsed: true`, posé que le combat soit gagné ou
+  perdu. Il est absent ailleurs ; un journal sans seconde chance utilisée est identique, octet pour
+  octet, à celui d'avant.
+- Aucune donnée des habitudes : la jauge est déjà notée (`gauge: 'fullFavor'`).
+- **`formatVersion` reste 2** (§ 4) : c'est un champ ajouté. Un journal d'avant se relit tel quel.
