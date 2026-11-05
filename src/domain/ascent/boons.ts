@@ -170,8 +170,8 @@ export function boonWeights(owned: readonly BoonKind[], tier: Tier): Weighted<Bo
 const OFFER_SIZE = 3;
 
 /**
- * L'offre de bienfaits (P17) au palier `tier` (#212) : 3 tirages pondérés sans remise, sans
- * relance ; s'il en reste moins de 3 (#38), ceux qui restent, et aucun s'il n'en reste pas.
+ * L'offre de bienfaits (P17) au palier `tier` (#212) : 3 tirages pondérés sans remise ; une
+ * relance la remplace (#42) ; s'il en reste moins de 3 (#38), ceux qui restent, et aucun s'il n'en reste pas.
  */
 export function drawBoonOffer(
   owned: readonly BoonKind[],
@@ -187,6 +187,55 @@ export function drawBoonOffer(
     state = drawn.random;
   }
   return { value: offer, random: state };
+}
+
+/** `count` bienfaits tirés parmi `kinds`, pondérés par rareté, sans remise. */
+function drawAmong(
+  kinds: readonly BoonKind[],
+  count: number,
+  random: RandomState,
+): Drawn<readonly BoonKind[]> {
+  const drawn: BoonKind[] = [];
+  let state = random;
+  for (let index = 0; index < count; index += 1) {
+    const next = drawWeighted(
+      kinds
+        .filter((kind) => !drawn.includes(kind))
+        .map((kind): [BoonKind, number] => [kind, RARITY_WEIGHTS[BOONS[kind].rarity]]),
+      state,
+    );
+    drawn.push(next.value);
+    state = next.random;
+  }
+  return { value: drawn, random: state };
+}
+
+/**
+ * La nouvelle offre d'une relance (`Reroll`, #42), qui remplace l'offre `replaced` : ses bienfaits
+ * sont tirés à nouveau, sur autant de places, parmi ceux de la réserve du palier ni possédés ni
+ * relancés ; s'il en reste moins que de places, tous ceux-là, puis un complément tiré parmi les
+ * bienfaits relancés. Cœur de braise garde sa place, sans tirage. Jamais de Second souffle :
+ * l'offre relancée a toujours au moins 2 bienfaits de la réserve.
+ */
+export function drawRerolledOffer(
+  owned: readonly BoonKind[],
+  replaced: readonly OfferCard[],
+  random: RandomState,
+  tier: Tier,
+): Drawn<readonly BoonKind[]> {
+  const pool = boonPool(tier);
+  const rerolled = replaced.filter((card): card is BoonKind => pool.includes(card as BoonKind));
+  const others = pool.filter((kind) => !owned.includes(kind) && !rerolled.includes(kind));
+  const enough = others.length >= rerolled.length;
+  const drawn = enough
+    ? drawAmong(others, rerolled.length, random)
+    : drawAmong(rerolled, rerolled.length - others.length, random);
+  const boons = enough ? drawn.value : [...others, ...drawn.value];
+  let next = 0;
+  return {
+    value: replaced.map((card) => (card === 'emberHeart' ? card : boons[next++]!)),
+    random: drawn.random,
+  };
 }
 
 /** La chance, en %, que Cœur de braise entre dans l'offre d'une Élite (#195). */

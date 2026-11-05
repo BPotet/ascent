@@ -38,6 +38,11 @@ export function favorDropBonus(gauge: FateGauge): number {
   return Math.max(0, gauge) * 15;
 }
 
+/** Les relances de la faveur (`Reroll`, #42), données au lancement : 1 à +1, 2 à +2. */
+export function favorRerolls(gauge: FateGauge): number {
+  return Math.max(0, gauge);
+}
+
 /** Le décalage de rareté (`RarityShift`) de la chance de Rare, en points : 5 par cran. */
 export function rarityShift(gauge: FateGauge): number {
   return gauge * 5;
