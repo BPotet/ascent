@@ -1,5 +1,6 @@
 # Parcours de démarrage : l'app s'ouvre hors ligne, crée sa base locale et affiche l'accueil,
 # la Vue Journée (vide sur une installation neuve).
+# #166 : il prouve aussi que l'écran de démarrage natif se cache et que l'app ne plante pas.
 appId: com.bpotet.ascent
 name: Lancement de l'application
 tags:
@@ -7,7 +8,6 @@ tags:
 ---
 - runFlow: ../subflows/launch-fresh.yaml
 - assertVisible: 'Ajouter une habitude'
-- takeScreenshot: launch-day-view-empty
 # Relance à froid : la base locale déjà migrée est rouverte.
 - stopApp
 - launchApp

@@ -1,4 +1,12 @@
-/** Les sons du combat : un par résultat, un pour le sceau, un par sens de l'annonce de phase. */
+/**
+ * Les sons du combat : un par résultat, un pour le sceau, un par sens de l'annonce de phase, ceux
+ * du combat complet (#32) : frappe, frappe parfaite, cassure de garde, action perdue, retour en
+ * garde, garde levée, allié relevé et Rempart, un par type de reflet (#81, C2.10), le cliquetis
+ * d'os de l'ennemi qui se relève seul (#106), la goutte du Saignement (prototype #107), le choc
+ * de bouclier de la Riposte du Rempart (#128), les trois sons de la Brûlure (#171) : le souffle
+ * de flamme, le crépitement et l'extinction d'une flamme, et les deux bruissements d'ailes de
+ * l'Invocation (#172) : à l'annonce, puis, plus fort, à l'entrée des invoqués.
+ */
 export type BattleSoundCue =
   | 'perfectParry'
   | 'parry'
@@ -9,7 +17,27 @@ export type BattleSoundCue =
   | 'enemyPhase'
   | 'heroPhase'
   | 'victory'
-  | 'defeat';
+  | 'defeat'
+  | 'strike'
+  | 'perfectStrike'
+  | 'guardBreak'
+  | 'lostAction'
+  | 'guardRestore'
+  | 'guardUp'
+  | 'raise'
+  | 'bulwark'
+  | 'glint'
+  | 'glintDouble'
+  | 'glintPerilous'
+  | 'glintDull'
+  | 'boneRattle'
+  | 'bleed'
+  | 'shieldClash'
+  | 'flameBreath'
+  | 'burnCrackle'
+  | 'burnOut'
+  | 'wingRustle'
+  | 'wingRustleLoud';
 
 export const BATTLE_SOUND_CUES: readonly BattleSoundCue[] = [
   'perfectParry',
@@ -22,7 +50,33 @@ export const BATTLE_SOUND_CUES: readonly BattleSoundCue[] = [
   'heroPhase',
   'victory',
   'defeat',
+  'strike',
+  'perfectStrike',
+  'guardBreak',
+  'lostAction',
+  'guardRestore',
+  'guardUp',
+  'raise',
+  'bulwark',
+  'glint',
+  'glintDouble',
+  'glintPerilous',
+  'glintDull',
+  'boneRattle',
+  'bleed',
+  'shieldClash',
+  'flameBreath',
+  'burnCrackle',
+  'burnOut',
+  'wingRustle',
+  'wingRustleLoud',
 ];
+
+/**
+ * La latence attendue par défaut, en ms, tant que le téléphone n'en a pas mesuré assez : la
+ * médiane de l'essai 2 de l'ADR 0006. Partagée avec les doublures de test.
+ */
+export const DEFAULT_SOUND_LATENCY_MS = 67.5;
 
 /**
  * Son de combat (`BattleSound`) — port qui joue les sons du combat, préchargés. Ne lève jamais
@@ -30,4 +84,9 @@ export const BATTLE_SOUND_CUES: readonly BattleSoundCue[] = [
  */
 export interface BattleSound {
   play(cue: BattleSoundCue): void;
+  /**
+   * La latence attendue (`expectedLatency`), en ms : le temps prévu entre la demande d'un son et
+   * le début de sa lecture. Un son calé sur un instant (le reflet) est demandé d'autant plus tôt.
+   */
+  expectedLatency(): number;
 }

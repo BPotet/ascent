@@ -47,4 +47,8 @@ describe('toastDurationOf', () => {
     expect(toastDurationOf(false, 'goal')).toBe(TARGET_TOAST_DURATION_MS);
     expect(toastDurationOf(true, 'goal')).toBe(TOAST_WITH_ACTION_DURATION_MS);
   });
+
+  it('shows the message of an unlock at the camp 4 s (#40)', () => {
+    expect(toastDurationOf(false, 'done')).toBe(TARGET_TOAST_DURATION_MS);
+  });
 });

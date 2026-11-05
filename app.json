@@ -3,7 +3,7 @@
     "name": "Ascent",
     "slug": "ascent",
     "scheme": "ascent",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -40,6 +40,15 @@
           "recordAudioAndroid": false,
           "enableBackgroundPlayback": false,
           "enableBackgroundRecording": false
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 216,
+          "backgroundColor": "#0F1420",
+          "resizeMode": "contain"
         }
       ]
     ],

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -8,67 +8,113 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import type { FeedbackText } from '../format/battleText';
+import type { DamageFloat as Float, FeedbackText } from '../format/battleText';
+import { artPalette } from '../pixelArt/artPalette';
 import { battleColors } from '../theme/battleColors';
+import { BulwarkShieldGlyph } from './BattleGlyphs';
+import { BurnFlame } from './BurnChip';
 
 /** Le texte d'effet reste lisible un instant, puis s'efface (maquette : 0,7 s en tout). */
 const FEEDBACK_HOLD_MS = 450;
 const FEEDBACK_FADE_MS = 250;
+/** Le mot de Pas de l'ombre reste moins longtemps : 600 ms en tout (#173). */
+const SHADOW_STEP_HOLD_MS = 350;
 
 /**
- * Le texte d'effet d'un résultat (« Parade parfaite », « Touché −4 PV »…), au centre de la scène.
- * Il s'efface de lui-même ; un nouveau résultat le remplace (l'écran le remonte).
+ * Le mot d'un résultat (« Parfait », « Cassure », « Frappe parfaite »), au centre de la scène. Il
+ * s'efface de lui-même ; un nouveau résultat le remplace (l'écran le remonte). « Pas de l'ombre »
+ * (#173) s'écrit près de l'Errante, 600 ms.
  */
-export function FeedbackLabel({ feedback }: { readonly feedback: FeedbackText }) {
+export function FeedbackLabel({ texts }: { readonly texts: readonly FeedbackText[] }) {
   const opacity = useSharedValue(1);
+  const shadowStep = texts.some((text) => text.tone === 'shadowStep');
+  const hold = shadowStep ? SHADOW_STEP_HOLD_MS : FEEDBACK_HOLD_MS;
   useEffect(() => {
     opacity.set(
       withSequence(
         withTiming(1, { duration: 0 }),
-        withDelay(FEEDBACK_HOLD_MS, withTiming(0, { duration: FEEDBACK_FADE_MS })),
+        withDelay(hold, withTiming(0, { duration: FEEDBACK_FADE_MS })),
       ),
     );
-  }, [opacity]);
+  }, [opacity, hold]);
   // Dépendances explicites : le code instrumenté par Stryker n'est plus reconnu comme worklet.
   const fade = useAnimatedStyle(() => {
     'worklet';
     return { opacity: opacity.get() };
   }, [opacity]);
   return (
-    <Animated.View pointerEvents="none" testID="battle-feedback" style={[styles.feedback, fade]}>
-      <Text style={[styles.title, styles[feedback.tone]]}>{feedback.title}</Text>
-      {feedback.detail === null ? null : <Text style={styles.detail}>{feedback.detail}</Text>}
+    <Animated.View
+      pointerEvents="none"
+      testID="battle-feedback"
+      style={[styles.feedback, shadowStep && styles.nearHero, fade]}
+    >
+      {texts.map((text) =>
+        text.tone === 'riposte' ? (
+          // « Riposte », précédé de l'écu (#128) : jamais l'argent seul.
+          <View key={text.title} style={styles.withShield}>
+            <BulwarkShieldGlyph scale={2} />
+            <Text style={[styles.title, styles.riposte]}>{text.title}</Text>
+          </View>
+        ) : (
+          <Text key={text.title} style={[styles.title, styles[text.tone]]}>
+            {text.title}
+          </Text>
+        ),
+      )}
     </Animated.View>
   );
 }
 
+/** Le temps d'envol d'un chiffre (« −4 », « +3 »). */
+const FLOAT_MS = 700;
+
 /**
- * L'éclat plein écran : lumière pour une parade parfaite, vignette rouge pour un coup reçu. Jamais
- * avec « réduire les animations » (l'écran ne le monte pas).
+ * Un chiffre qui s'envole au-dessus du héros ou d'un ennemi (« −4 », « +3 ») : les dégâts se
+ * lisent après coup, jamais avant (C2.5). Agrandi pour une frappe parfaite (C6.7).
  */
-export function Flash({
-  kind,
-  flashKey,
+export function DamageFloat({
+  float,
+  delayMs = 0,
+  reducedMotion = false,
 }: {
-  readonly kind: 'light' | 'red';
-  readonly flashKey: number;
+  readonly float: Float;
+  /** Le chiffre attend avant de monter (la Brûlure après le Saignement, #171). */
+  readonly delayMs?: number;
+  /** En mouvement réduit, le chiffre de la Brûlure monte au quart (#171). */
+  readonly reducedMotion?: boolean;
 }) {
-  const opacity = useSharedValue(1);
+  const rise = useSharedValue(0);
+  const shown = useSharedValue(delayMs > 0 ? 0 : 1);
+  const height = reducedMotion ? 6 : 24;
   useEffect(() => {
-    opacity.set(1);
-    opacity.set(withTiming(0, { duration: 450 }));
-  }, [flashKey, opacity]);
+    rise.set(withDelay(delayMs, withTiming(1, { duration: FLOAT_MS })));
+    shown.set(withDelay(delayMs, withTiming(1, { duration: 0 })));
+  }, [rise, shown, delayMs]);
   // Dépendances explicites : le code instrumenté par Stryker n'est plus reconnu comme worklet.
   const style = useAnimatedStyle(() => {
     'worklet';
-    return { opacity: opacity.get() };
-  }, [opacity]);
+    return {
+      opacity: shown.get() * (1 - rise.get() * rise.get()),
+      transform: [{ translateY: -height * rise.get() }],
+    };
+  }, [rise, shown, height]);
   return (
-    <Animated.View
-      pointerEvents="none"
-      testID={`battle-flash-${kind}`}
-      style={[styles.flash, kind === 'light' ? styles.light : styles.red, style]}
-    />
+    <Animated.View pointerEvents="none" style={[styles.float, styles.withShield, style]}>
+      {float.kind === 'riposte' ? <BulwarkShieldGlyph scale={1} /> : null}
+      {float.kind === 'burn' ? <BurnFlame /> : null}
+      <Text
+        style={[
+          styles.floatText,
+          float.kind === 'guard' && styles.floatGuard,
+          float.kind === 'riposte' && styles.floatRiposte,
+          float.at === 'hero' && styles.floatHero,
+          float.kind === 'burn' && styles.floatBurn,
+          float.big && styles.floatBig,
+        ]}
+      >
+        {float.text}
+      </Text>
+    </Animated.View>
   );
 }
 
@@ -95,6 +141,16 @@ export function useShake(shakeKey: number) {
 }
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
+/**
+ * Le contour d'encre des chiffres et mots de scène (maquette #174) : opaque, sans décalage, pour
+ * rester lisible sur tout fond de palier (#176).
+ */
+const INK_OUTLINE = {
+  textShadowColor: artPalette.roles.ink,
+  textShadowRadius: 2,
+  textShadowOffset: { width: 0, height: 0 },
+} as const;
+
 const styles = StyleSheet.create({
   feedback: {
     position: 'absolute',
@@ -104,20 +160,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 7,
   },
+  // Le mot de Pas de l'ombre, près de l'Errante (maquette E2, `.fword.shade`).
+  nearHero: { top: 'auto', bottom: 122, left: 96 },
   title: {
     fontSize: 22,
     lineHeight: 26,
     fontWeight: '700',
-    textShadowColor: 'rgba(0,0,0,0.8)',
-    textShadowRadius: 14,
+    ...INK_OUTLINE,
   },
   perfect: { color: battleColors.light, fontSize: 32, lineHeight: 36 },
-  good: { color: battleColors.guard },
-  miss: { color: battleColors.miss },
-  neutral: { color: battleColors.text },
-  detail: { color: battleColors.text, fontSize: 13, fontWeight: '600', marginTop: 4 },
-  flash: { ...StyleSheet.absoluteFill, zIndex: 6 },
-  light: { backgroundColor: battleColors.flash },
-  red: { backgroundColor: battleColors.flashRed },
+  break: { color: battleColors.light, fontSize: 34, lineHeight: 38, letterSpacing: 1 },
+  rise: { color: battleColors.light, fontSize: 30, lineHeight: 34, letterSpacing: 1 },
+  riposte: { color: artPalette.roles.bulwarkText, fontSize: 30, lineHeight: 34, letterSpacing: 1 },
+  shadowStep: { color: battleColors.onShadowStep, fontSize: 24, lineHeight: 28 },
+  withShield: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  float: { position: 'absolute', top: 6, alignSelf: 'center', zIndex: 8 },
+  floatText: {
+    color: battleColors.text,
+    fontSize: 20,
+    fontWeight: '800',
+    ...INK_OUTLINE,
+    fontVariant: ['tabular-nums'],
+  },
+  floatHero: { color: battleColors.miss },
+  floatGuard: { color: battleColors.guard },
+  floatRiposte: { color: artPalette.roles.bulwarkText },
+  floatBurn: { color: battleColors.burnNumber },
+  floatBig: { color: battleColors.light, fontSize: 32 },
 });
 // Stryker restore all

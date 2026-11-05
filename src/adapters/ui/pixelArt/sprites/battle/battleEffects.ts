@@ -1,0 +1,357 @@
+import { bay, grid, px, rect, toRgba, type PixelImage, type Sprite } from '../Sprite';
+import { BULWARK_SHIELD } from '../atelier/data/bulwarkShield';
+import { BURN_EFFECT } from '../atelier/data/burn';
+import { MOTH_QUEEN_ANIMATION } from '../atelier/data/mothQueen';
+import { MOTH_QUEEN_PHASE2 } from '../atelier/data/mothQueenPhase2';
+import { assetSprite } from '../atelier/fullAnimation';
+import type { AtlasRect } from './battleAtlas';
+
+/**
+ * Les effets du combat et leur nombre d'images : l'éclair d'impact (3 paliers), les étincelles de
+ * parade dorée à rayons et bleu acier (5 images), les reflets blanc, rouge et terne (3 images de
+ * 30 ms ; le reflet double est le blanc, aux deux griffes), les étoiles (4 positions), l'écu du
+ * Rempart (entier, fendu), l'éclat d'argent (#128), et l'effet de la Brûlure recopié de l'Atelier
+ * (#171) : la flamme d'une charge (3 images), l'éclat de braise (2) et la fumée (3) ; l'effet
+ * d'Invocation de la Reine des phalènes (#172, 4 images).
+ */
+export const EFFECT_KINDS = {
+  flash: 3,
+  gold: 5,
+  steel: 5,
+  glintWhite: 3,
+  glintRed: 3,
+  glintDull: 3,
+  stars: 4,
+  shield: 2,
+  silverShard: 1,
+  burn: 3,
+  burnHit: 2,
+  burnOut: 3,
+  summon: 4,
+} as const;
+
+export type EffectKind = keyof typeof EFFECT_KINDS;
+
+/**
+ * La place de chaque effet dans l'atlas, lisible sur le fil UI : `[x, y, côté]` de sa première
+ * image ; les suivantes sont à droite. Un effet se dessine centré sur son point.
+ */
+export type EffectTable = Readonly<Record<EffectKind, readonly [number, number, number]>>;
+
+export interface EffectsAtlas extends PixelImage {
+  readonly table: EffectTable;
+}
+
+// Stryker disable all: effets de la scène, ceux de la maquette (`paintFX`, ADR 0006 § 9).
+/** Le côté de la case de chaque effet, en pixels d'art. */
+const SIDES: Readonly<Record<EffectKind, number>> = {
+  flash: 49,
+  gold: 55,
+  steel: 19,
+  glintWhite: 9,
+  glintRed: 9,
+  glintDull: 9,
+  stars: 21,
+  shield: 15,
+  silverShard: 5,
+  burn: 11,
+  burnHit: 16,
+  burnOut: 11,
+  // La case d'un ennemi : 44 × 52, dans un carré de 52.
+  summon: 52,
+};
+
+/** Un pixel `code` en `(x, y)` relatif au centre de la case. */
+function centered(sprite: Sprite) {
+  const center = sprite.width >> 1;
+  return (x: number, y: number, code: number) => px(sprite, center + x, center + y, code);
+}
+
+function flash(level: number): Sprite {
+  const sprite = grid(SIDES.flash, SIDES.flash);
+  const put = centered(sprite);
+  const strength = 1 - level / 3;
+  const radius = 24;
+  for (let dy = -radius; dy <= radius; dy += 1) {
+    for (let dx = -radius; dx <= radius; dx += 1) {
+      const distance = Math.hypot(dx, dy);
+      if (distance > radius) continue;
+      const value = strength * (1 - distance / radius) * 1.25;
+      if (value > bay(dx + radius, dy + radius)) put(dx, dy, value > 0.8 ? 9 : value > 0.5 ? 8 : 7);
+    }
+  }
+  return sprite;
+}
+
+const RAYS = [
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+  [1, 1],
+  [1, -1],
+  [-1, 1],
+  [-1, -1],
+] as const;
+
+function goldSpark(k: number): Sprite {
+  const sprite = grid(SIDES.gold, SIDES.gold);
+  const put = centered(sprite);
+  const core = [1, 2, 3, 3, 2][k] ?? 1;
+  const coreCode = [9, 9, 8, 8, 7][k] ?? 9;
+  for (let dy = -core; dy <= core; dy += 1) {
+    for (let dx = -core; dx <= core; dx += 1) {
+      if (Math.abs(dx) + Math.abs(dy) <= core) put(dx, dy, coreCode);
+    }
+  }
+  const start = [2, 4, 7, 10, 13][k] ?? 2;
+  const length = [3, 6, 9, 12, 14][k] ?? 3;
+  const rayCode = [9, 8, 8, 7, 6][k] ?? 9;
+  for (const [ux, uy] of RAYS) {
+    const diagonal = ux !== 0 && uy !== 0;
+    const from = diagonal ? Math.round(start * 0.7) : start;
+    const span = diagonal ? Math.round(length * 0.7) : length;
+    for (let i = from; i < from + span; i += 1) {
+      if (k >= 3 && i % 2 === 1) continue;
+      put(ux * i, uy * i, rayCode);
+    }
+  }
+  return sprite;
+}
+
+function steelSpark(k: number): Sprite {
+  const sprite = grid(SIDES.steel, SIDES.steel);
+  const put = centered(sprite);
+  const radius = [2, 4, 6, 8, 9][k] ?? 2;
+  const code = [9, 11, 17, 16, 15][k] ?? 9;
+  for (let dy = -radius; dy <= radius; dy += 1) {
+    for (let dx = -radius; dx <= radius; dx += 1) {
+      const manhattan = Math.abs(dx) + Math.abs(dy);
+      if (manhattan <= radius && manhattan >= radius - 1) put(dx, dy, code);
+    }
+  }
+  if (k < 2) put(0, 0, 9);
+  return sprite;
+}
+
+/** Un reflet : un pixel, puis une croix de 3 puis 5 pixels, sur fond d'encre. */
+function glint(type: 'white' | 'red' | 'dull', k: number): Sprite {
+  const sprite = grid(SIDES.glintWhite, SIDES.glintWhite);
+  const put = centered(sprite);
+  const codes = type === 'red' ? [30, 22, 22] : type === 'dull' ? [10, 6, 6] : [9, 9, 8];
+  const radius = (type === 'dull' ? [0, 1, 1] : type === 'red' ? [1, 2, 3] : [1, 2, 2])[k] ?? 1;
+  for (let i = -radius - 1; i <= radius + 1; i += 1) {
+    put(i, 0, 1);
+    put(0, i, 1);
+    if (Math.abs(i) <= radius) {
+      put(i, -1, 1);
+      put(i, 1, 1);
+      put(-1, i, 1);
+      put(1, i, 1);
+    }
+  }
+  put(0, 0, codes[0]!);
+  for (let i = 1; i <= radius; i += 1) {
+    const code = i === radius && radius > 1 ? codes[2]! : codes[1]!;
+    put(i, 0, code);
+    put(-i, 0, code);
+    put(0, i, code);
+    put(0, -i, code);
+  }
+  if (k === 2 && type !== 'dull') {
+    for (const [u, v] of [
+      [1, 1],
+      [-1, -1],
+      [1, -1],
+      [-1, 1],
+    ] as const) {
+      put(u, v, codes[1]!);
+    }
+  }
+  return sprite;
+}
+
+/** Les étoiles d'un ennemi étourdi : trois étoiles claires, à la position `turn` (0 à 3). */
+function stars(turn: number): Sprite {
+  const sprite = grid(SIDES.stars, SIDES.stars);
+  const put = centered(sprite);
+  for (let j = 0; j < 3; j += 1) {
+    const angle = (turn / 4 + j / 3) * Math.PI * 2;
+    const x = Math.round(Math.cos(angle) * 8);
+    const y = Math.round(Math.sin(angle) * 3);
+    for (const [u, v] of [
+      [-2, 0],
+      [2, 0],
+      [0, -2],
+      [0, 2],
+      [-1, -1],
+      [1, -1],
+      [-1, 1],
+      [1, 1],
+    ] as const) {
+      put(x + u, y + v, 1);
+    }
+    put(x - 1, y, 8);
+    put(x + 1, y, 8);
+    put(x, y - 1, 8);
+    put(x, y + 1, 8);
+    put(x, y, 9);
+  }
+  return sprite;
+}
+
+/**
+ * L'écu du Rempart (#128), recopié de l'Atelier (#155) : l'image entière (0) ou fendue (1), de
+ * 12 × 15, posée telle quelle dans sa case de 15 × 15, à une colonne du bord gauche.
+ */
+function shield(frame: number): Sprite {
+  const sprite = grid(SIDES.shield, SIDES.shield);
+  const image = assetSprite(frame === 0 ? BULWARK_SHIELD.whole : BULWARK_SHIELD.cracked);
+  for (let y = 0; y < image.height; y += 1) {
+    for (let x = 0; x < image.width; x += 1) {
+      px(sprite, 1 + x, y, image.pixels[y * image.width + x]!);
+    }
+  }
+  return sprite;
+}
+
+/** Un éclat d'argent, cerné d'encre (#128). */
+function silverShard(): Sprite {
+  const sprite = grid(SIDES.silverShard, SIDES.silverShard);
+  rect(sprite, 0, 0, SIDES.silverShard, SIDES.silverShard, 1);
+  rect(sprite, 1, 1, SIDES.silverShard - 2, SIDES.silverShard - 2, 11);
+  return sprite;
+}
+
+/**
+ * Une image de l'effet de la Brûlure (#171), recopiée de l'Atelier, posée telle quelle dans sa case
+ * carrée, centrée en largeur (une colonne à gauche pour les images de 8 × 11).
+ */
+function burnEffect(kind: 'burn' | 'burnHit' | 'burnOut', frame: number): Sprite {
+  const { w, h, frames } = BURN_EFFECT.effects[kind];
+  const side = SIDES[kind];
+  const sprite = grid(side, side);
+  const image = assetSprite({ w, h, palette: BURN_EFFECT.pal, rows: frames[frame]! });
+  const left = (side - w) >> 1;
+  for (let y = 0; y < h; y += 1) {
+    for (let x = 0; x < w; x += 1) px(sprite, left + x, y, image.pixels[y * w + x]!);
+  }
+  return sprite;
+}
+
+/**
+ * Une image de l'effet d'Invocation (#172), recopiée de l'aspect de phase 2 de la Reine des
+ * phalènes, peinte dans sa palette : calée en bas et centrée en largeur dans son carré de 52, comme
+ * la case de 44 × 52 de l'ennemi appelé dans sa place.
+ */
+function summonEffect(frame: number): Sprite {
+  const { w, h, frames } = MOTH_QUEEN_PHASE2.effects.summon;
+  const side = SIDES.summon;
+  const sprite = grid(side, side);
+  const image = assetSprite({ w, h, palette: MOTH_QUEEN_ANIMATION.pal, rows: frames[frame]! });
+  const left = (side - w) >> 1;
+  const top = side - h;
+  for (let y = 0; y < h; y += 1) {
+    for (let x = 0; x < w; x += 1) px(sprite, left + x, top + y, image.pixels[y * w + x]!);
+  }
+  return sprite;
+}
+
+const PAINTERS: Readonly<Record<EffectKind, (frame: number) => Sprite>> = {
+  flash,
+  gold: goldSpark,
+  steel: steelSpark,
+  glintWhite: (k) => glint('white', k),
+  glintRed: (k) => glint('red', k),
+  glintDull: (k) => glint('dull', k),
+  stars,
+  shield,
+  silverShard,
+  burn: (k) => burnEffect('burn', k),
+  burnHit: (k) => burnEffect('burnHit', k),
+  burnOut: (k) => burnEffect('burnOut', k),
+  summon: summonEffect,
+};
+
+let effects: EffectsAtlas | null = null;
+
+/**
+ * L'atlas des effets (`effectsAtlas`) : chaque image de chaque effet, précalculée une fois par
+ * lancement, une ligne par effet. Rien n'est peint pixel par pixel pendant le combat.
+ */
+export function effectsAtlas(): EffectsAtlas {
+  if (effects !== null) return effects;
+  const kinds = Object.keys(EFFECT_KINDS) as EffectKind[];
+  const width = Math.max(...kinds.map((kind) => EFFECT_KINDS[kind] * SIDES[kind]));
+  const height = kinds.reduce((total, kind) => total + SIDES[kind], 0);
+  const rgba = new Uint8Array(width * height * 4);
+  const table: Partial<Record<EffectKind, readonly [number, number, number]>> = {};
+  let y = 0;
+  for (const kind of kinds) {
+    const side = SIDES[kind];
+    table[kind] = [0, y, side];
+    for (let frame = 0; frame < EFFECT_KINDS[kind]; frame += 1) {
+      const pixels = toRgba(PAINTERS[kind](frame));
+      for (let row = 0; row < side; row += 1) {
+        rgba.set(
+          pixels.subarray(row * side * 4, (row + 1) * side * 4),
+          ((y + row) * width + frame * side) * 4,
+        );
+      }
+    }
+    y += side;
+  }
+  effects = { width, height, rgba, table: table as EffectTable };
+  return effects;
+}
+
+/** La vignette rouge d'un coup reçu, au palier `level` (0 le plus fort, 4 le plus faible). */
+export function vignetteImage(width: number, height: number, level: number): PixelImage {
+  const sprite = grid(width, height);
+  const strength = 1 - level * 0.2;
+  const band = 22;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const edge = Math.min(x, width - 1 - x, y, height - 1 - y);
+      if (edge >= band) continue;
+      const value = strength * (1 - edge / band) * 1.15;
+      if (value > bay(x, y)) sprite.pixels[y * width + x] = value > 0.7 ? 24 : 23;
+    }
+  }
+  return { width, height, rgba: toRgba(sprite) };
+}
+
+/**
+ * Le sceau rouge du coup imparable (`sealGrid` de la maquette) : un losange rouge cerné de rose et
+ * d'encre, avec un point d'exclamation. Rayon 5 (petit), 8 et 10 (le grand sceau qui pulse).
+ */
+export function sealSprite(radius: 5 | 8 | 10): Sprite {
+  const side = 2 * radius + 3;
+  const center = radius + 1;
+  const stroke = radius === 5 ? 1 : 2;
+  const sprite = grid(side, side);
+  for (let y = 0; y < side; y += 1) {
+    for (let x = 0; x < side; x += 1) {
+      const distance = Math.abs(x - center) + Math.abs(y - center);
+      if (distance <= radius - 1) px(sprite, x, y, 22);
+      else if (distance === radius) px(sprite, x, y, 25);
+      else if (distance === radius + 1) px(sprite, x, y, 1);
+    }
+  }
+  rect(sprite, center - (stroke >> 1), center - radius + 3, stroke, radius - 2, 1);
+  rect(sprite, center - (stroke >> 1), center + 1 + stroke, stroke, stroke, 1);
+  return sprite;
+}
+// Stryker restore all
+
+/** Le rectangle de l'image `frame` d'un effet dans l'atlas des effets. Lisible sur le fil UI. */
+export function effectTableRect(table: EffectTable, kind: EffectKind, frame: number): AtlasRect {
+  'worklet';
+  const [x, y, side] = table[kind];
+  return { x: x + frame * side, y, width: side, height: side };
+}
+
+/** Le rectangle de l'image `frame` d'un effet. */
+export function effectRect(kind: EffectKind, frame: number): AtlasRect {
+  return effectTableRect(effectsAtlas().table, kind, frame);
+}

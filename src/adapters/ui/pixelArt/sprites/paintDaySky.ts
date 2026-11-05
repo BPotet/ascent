@@ -1,4 +1,4 @@
-import { bay, type PixelImage, rgbOf } from './Sprite';
+import { bay, dithered, type PixelImage, rgbOf } from './Sprite';
 
 /** Où et comment peindre la tour et le sol du ciel. */
 export interface SkyOptions {
@@ -101,17 +101,11 @@ function paintSky(
   const sunX = Math.round(width * options.sunX);
   const sunY = horizon - 2 - Math.round(height * 0.22 * Math.max(0, l - 0.5));
   const sunRadius = Math.max(5, Math.round(height * 0.12));
-  const lastSky = SKY.length - 1;
 
   for (let y = 0; y < horizon; y += 1) {
     const value = (y / Math.max(1, horizon - 1)) * reach;
-    const index = Math.floor(value);
-    const fraction = value - index;
     for (let x = 0; x < width; x += 1) {
-      let color =
-        fraction > bay(x, y)
-          ? (SKY[Math.min(lastSky, index + 1)] ?? GLOW)
-          : (SKY[Math.min(lastSky, index)] ?? GLOW);
+      let color = dithered(SKY, value, x, y);
       if (l > 0.35) {
         const distance = Math.hypot(x - sunX, (y - sunY) * 1.3);
         const glowRadius = sunRadius * (1.5 + 2.6 * l);
@@ -213,13 +207,8 @@ function paintSky(
   const lastFloor = FLOOR.length - 1;
   for (let y = horizon; y < height; y += 1) {
     const value = ((y - horizon) / Math.max(1, ground)) * lastFloor;
-    const index = Math.floor(value);
-    const fraction = value - index;
     for (let x = 0; x < width; x += 1) {
-      let color =
-        fraction > bay(x, y)
-          ? (FLOOR[Math.min(lastFloor, index + 1)] ?? JOINT)
-          : (FLOOR[index] ?? JOINT);
+      let color = dithered(FLOOR, value, x, y);
       if (y === horizon) {
         color = highlight;
       } else if ((x + (y - horizon) * 3) % 11 === 0) {

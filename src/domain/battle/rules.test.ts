@@ -1,6 +1,7 @@
 import {
   COUNTER_MS,
   HERO_ACTION_MS,
+  SUPPORT_ACTION_MS,
   HIT_STOP_MS,
   OFF_BALANCE_MS,
   PARRY_WINDOW_MS,
@@ -16,7 +17,7 @@ describe('battle rules', () => {
     expect([PERFECT_WINDOW_MS, PARRY_WINDOW_MS, OFF_BALANCE_MS, HIT_STOP_MS]).toEqual([
       60, 160, 450, 90,
     ]);
-    expect([HERO_ACTION_MS, COUNTER_MS]).toEqual([500, 400]);
+    expect([HERO_ACTION_MS, COUNTER_MS, SUPPORT_ACTION_MS]).toEqual([500, 400, 400]);
   });
 
   describe('judgePress (C7)', () => {

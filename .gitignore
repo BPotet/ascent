@@ -43,4 +43,3 @@ yarn-error.*
 # Rapports des barrières de qualité
 coverage/
 reports/
-.stryker-tmp/

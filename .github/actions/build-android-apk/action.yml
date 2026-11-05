@@ -37,8 +37,12 @@ runs:
         distribution: temurin
         java-version: '17'
     - uses: gradle/actions/setup-gradle@v4
+    # Sans sharp : son noyau Lanczos lisserait l'icône de l'application et l'écran de démarrage
+    # (pixel art agrandi au plus proche voisin, #166, ADR 0011). Jimp les garde nets.
     - name: Generate the native Android project
       shell: bash
+      env:
+        EXPO_IMAGE_UTILS_NO_SHARP: '1'
       run: npx expo prebuild --platform android --no-install
     - name: Assemble the release APK
       shell: bash

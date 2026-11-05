@@ -19,12 +19,112 @@ describe('artPalette', () => {
   const { roles, tints } = artPalette;
 
   it('keeps the tints of the tower prototype, 0 being transparent', () => {
-    expect(tints).toHaveLength(31);
+    expect(tints).toHaveLength(71);
     expect(tints[0]).toBeNull();
     expect(tints[1]).toBe('#06070C');
     expect(tints[8]).toBe('#F2D49B');
     expect(tints[30]).toBe('#FF8E8E');
+    // La palette rouge du Chevalier déchu et du Prieur sans visage (#138), ajoutée en fin.
+    expect(tints[31]).toBe('#5A1420');
     tints.slice(1).forEach((tint) => expect(tint).toMatch(/^#[0-9A-F]{6}$/));
+  });
+
+  it('adds the 3 tints of the tiers two and three at codes 42 to 44 (#38)', () => {
+    expect(tints.slice(42, 45)).toEqual(['#D9733A', '#5E8F82', '#3D5E57']);
+  });
+
+  it('adds the 26 tints of the tier backdrops at the end, without moving the other codes (#176)', () => {
+    const backdrops = [
+      // Les Catacombes.
+      '#0E1120',
+      '#161A2C',
+      '#1A1522',
+      '#3A2C3A',
+      '#6E4A44',
+      '#5B4E4A',
+      '#8E8574',
+      // Les Jardins de cendre.
+      '#0F1118',
+      '#191920',
+      '#23232B',
+      '#323139',
+      '#47454D',
+      '#68646A',
+      '#958F8A',
+      '#221B1C',
+      '#3A2A27',
+      '#6A2E22',
+      '#B0482A',
+      // Le Beffroi.
+      '#56618A',
+      '#B4BCCF',
+      '#241B19',
+      '#3B2A1C',
+      '#6B4A2A',
+      '#9A6A3A',
+      '#D0A066',
+      '#4F7A6E',
+    ];
+    expect(tints.slice(-26)).toEqual(backdrops);
+    expect(new Set(tints).size).toBe(tints.length);
+  });
+
+  it('gives the readability veil of the tier backdrops: the night of the mockup at 90 % (#176)', () => {
+    expect(roles.backdropVeil).toBe('rgba(14,17,32,0.9)');
+  });
+
+  it('gives the veil of the enemy phase: the ink #06070C at 38 % (#188)', () => {
+    expect(roles.enemyPhaseVeil).toBe('rgba(6,7,12,0.38)');
+  });
+
+  it('keeps the code of every tint, the tints of the Sentinel 2.5D (#140) added at the end', () => {
+    expect(tints.slice(1, 32)).toEqual([
+      '#06070C',
+      '#10131F',
+      '#1C2133',
+      '#2A3150',
+      '#3E4870',
+      '#6B5A7A',
+      '#B98E5A',
+      '#F2D49B',
+      '#FFF3D6',
+      '#8C93A8',
+      '#D9DCE6',
+      '#3E4639',
+      '#646D58',
+      '#949B7E',
+      '#252B48',
+      '#47527A',
+      '#8995BE',
+      '#2A1F36',
+      '#4A3660',
+      '#BFE6DA',
+      '#5B4636',
+      '#FF3B3B',
+      '#8A1E2A',
+      '#E0607A',
+      '#FFD0D8',
+      '#2C3D6B',
+      '#4B63A0',
+      '#C9C2B0',
+      '#B32E3C',
+      '#FF8E8E',
+      '#5A1420',
+    ]);
+    expect(tints.slice(32, 38)).toEqual([
+      '#8A6A42',
+      '#B4B9C8',
+      '#646B80',
+      '#222C52',
+      '#3B5089',
+      '#323A62',
+    ]);
+  });
+
+  it('adds the 4 tints of the 16 × 16 icons at codes 38 to 41, without moving the other codes (#157)', () => {
+    const icons = ['#DEE0E7', '#C3C7D3', '#EEA8B6', '#F8E7C8'];
+    expect(tints.slice(38, 42)).toEqual(icons);
+    expect(tints.slice(0, 38)).not.toEqual(expect.arrayContaining(icons));
   });
 
   it('gives the interface roles of the mockup', () => {
@@ -44,7 +144,45 @@ describe('artPalette', () => {
     });
   });
 
+  it('gives the silver of the Bulwark, never without its shield (#128)', () => {
+    expect([roles.bulwark, roles.bulwarkText]).toEqual(['#D9DCE6', '#E6EAF2']);
+  });
+
+  it('gives the rarities and the icon well of the mockup #153 (#157)', () => {
+    expect([roles.rarityCommon, roles.rarityRare, roles.rarityEpic, roles.well]).toEqual([
+      '#C3C7D3',
+      '#7C9CFF',
+      '#C49BFF',
+      '#0B0D18',
+    ]);
+  });
+
+  it('gives the darker background of a chip in a frame, from the mockup #153 (#159)', () => {
+    expect(roles.sunken).toBe('#141829');
+    // La braise de « Le camp » (#40) : une teinte déjà connue, aucune couleur nouvelle.
+    expect(roles.ember).toBe('#D9733A');
+    expect(tints).toContain(roles.ember);
+  });
+
   it.each([
+    ['common', roles.rarityCommon],
+    ['rare', roles.rarityRare],
+    ['epic', roles.rarityEpic],
+  ])('gives the %s rarity a contrast of at least 6.1:1 on the surface (#157)', (_, rarity) => {
+    expect(contrast(rarity, roles.surface)).toBeGreaterThanOrEqual(6.1);
+  });
+
+  it.each([
+    ['common', roles.rarityCommon],
+    ['rare', roles.rarityRare],
+    ['epic', roles.rarityEpic],
+    ['main text', roles.light],
+  ])('gives the %s a contrast of at least 4.5:1 on a chip in a frame (#159)', (_, text) => {
+    expect(contrast(text, roles.sunken)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each([
+    ['the Bulwark chip', roles.bulwarkText, roles.raised, 10.5],
     ['main text', roles.light, roles.surface, 14.5],
     ['secondary text', roles.parchment, roles.surface, 9.0],
     ['discreet text on the surface', roles.muted, roles.surface, 5.2],

@@ -11,7 +11,6 @@ module.exports = defineConfig([
       'node_modules/*',
       'coverage/*',
       'reports/*',
-      '.stryker-tmp/*',
       '.expo/*',
       'dist/*',
       'android/*',

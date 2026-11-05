@@ -45,6 +45,15 @@ Les écrans ne connaissent que des noms (`characterSprite`, icône `check12`…)
   pixels de même couleur. Une Vue Journée a trois ou quatre icônes par ligne : en Skia, ce serait une
   quarantaine de canevas.
 
+#### Avenant du 30 octobre 2026 (#155) : une image de l'Atelier en `View`
+
+- **`AssetRows`** (des `View`) rend une image recopiée de l'Atelier (`AssetImage`, ADR 0010 § 1)
+  dans l'interface, avec le même découpage que `PixelIcon` (une `View` par suite horizontale de
+  pixels de même indice, `.` transparent). Chaque couleur est la teinte de `artPalette` de l'indice
+  (`tintCode`, ADR 0010 § 3), sans teinte libre : l'image n'est ni redessinée ni recolorée. Elle est
+  décorative. Premier usage : l'écu du Rempart (`BulwarkShieldGlyph`), trois fois au plus à l'écran,
+  dans des vues animées et brèves, où trois canevas Skia seraient trop lourds.
+
 ### 3. Le pixel d'art arrondi au pixel physique
 
 Le **pixel d'art** vaut 2 dp (`ART_PIXEL`), 3 dp pour les grands moments (`ArtScale` = 2 ou 3).
@@ -52,6 +61,26 @@ Le **pixel d'art** vaut 2 dp (`ART_PIXEL`), 3 dp pour les grands moments (`ArtSc
 (`PixelRatio.roundToNearestPixel`) : sur une densité fractionnaire (2,625 sur beaucoup d'Android),
 un sprite reste net. Aucun sprite n'est mis à l'échelle de façon fractionnaire, ni agrandi par une
 animation : un rebond est une image dessinée un pixel d'art plus haut.
+
+#### Avenant du 30 octobre 2026 (#155) : l'échelle ×1
+
+`ArtScale` vaut 1, 2 ou 3. **×1 est réservé à une image recopiée de l'Atelier placée dans une ligne
+de texte plus basse que son ×2** : l'écu du Rempart (12 × 15 pixels d'art) devant le chiffre de la
+riposte et dans l'étiquette du Rempart, soit 12 × 15 dp, au lieu de 24 × 30 dp qui doubleraient la
+hauteur de la ligne. `artPixelSize(1)` arrondit 1 dp au pixel physique comme les autres échelles :
+3 pixels physiques à 2,625, l'image reste nette. Partout ailleurs, l'interface reste à ×2.
+
+#### Avenant du 30 octobre 2026 : les icônes de bienfait et de bénédiction (#157)
+
+`ArtScale` vaut 1, 2, 3, 4 ou 6 (×1 : avenant #155 ci-dessus). Une icône de bienfait ou de bénédiction a une **taille commune de
+48 dp** : une icône de 24 × 24 est dessinée à ×2, une de 16 × 16 à ×3 ; au grand moment (« Bienfait
+obtenu »), 96 dp, à ×4 ou ×6. Une seule fonction calcule l'échelle d'une icône
+(`iconScale(image, dp)` = `dp / image.w`) : elle refuse une icône qui n'est pas carrée et toute
+échelle autre que 2, 3, 4 ou 6, fractionnaire ou non. Sur une densité fractionnaire, le pixel d'art
+entier prime sur les 48 dp exacts (environ 46 à 49 dp à 2,625) ; l'**écrin** (`IconWell`) garde sa
+taille fixe et centre l'icône. Ces icônes passent par `SpriteCanvas` (§ 2), pas par des `View` :
+`PixelIcon` et les petites images dans une ligne de texte (`AssetRows`, #155) gardent les `View`, l'écrin les icônes de
+48 dp et plus (au plus 5 canevas sur « Dernière porte »).
 
 ### 4. Deux polices
 
@@ -68,7 +97,7 @@ maquette) ; la pastille « +10 XP » est en 18 (16 dans la maquette).
 
 Toutes les animations pixel passent par `useArtFrames` : une image toutes les 83 ms, sans
 interpolation ni mise à l'échelle animée. En mouvement réduit, il passe directement à la dernière
-image. Les vibrations et les annonces au lecteur d'écran ne dépendent pas du rendu.
+image. Exception : le combat, qui ne passe pas par `useArtFrames` (ADR 0008). Les vibrations et les annonces au lecteur d'écran ne dépendent pas du rendu.
 
 ### 6. Le ciel du jour est une règle de jeu
 
@@ -98,12 +127,13 @@ Décidé par l'Architect (notes techniques de #73), colonnes confirmées par le 
 - **Une nouvelle règle protège les écrans d'habitudes** : `habit-screens-in-pixel-art` interdit à
   `pixelArt/`, `components/`, `screens/`, `format/` et `state/` d'importer l'ancien thème
   (`theme/colors`, `theme/metrics`, `theme/typography`), sauf au combat et à la sonde de toucher
-  (`Button`, `Screen`, `TrialBattleEntry`, `TouchProbeScreen`, `TrialBattleScreen`).
+  (`Button`, `Screen`, `TrialBattleEntry`, `TouchProbeScreen`, `TrialBattleScreen`). Avenant de
+  #121 : l'entrée du combat d'essai est retirée, et l'écran de combat sort de l'exception ; restent
+  `Button`, `Screen` et `TouchProbeScreen`.
 - **Le rebond par mise à l'échelle de la Vue Semaine est retiré** (§3) : une case qui passe à
   « fait » joue l'étincelle (`Burst`) et relève sa coche d'un pixel d'art pendant 2 images, comme
   dans la Vue Journée.
-- **`theme/` et Sora restent**, pour le combat, la sonde de toucher et l'entrée du combat d'essai
-  seulement. Leur retrait viendra avec l'épique #30.
+- **`theme/` et Sora restent**, pour le combat et la sonde de toucher seulement. Leur retrait viendra avec l'épique #30.
 - **Les colonnes de la Vue Semaine et de la Vue Mois font au plus 48 dp** :
   `weekColumnWidth(largeur) = min(48, largeur / 7)`. La cible d'une case de la Semaine fait 48 dp
   de haut au moins, celle d'un jour du Mois 58 dp (`minHeight`) ; la case dessinée garde 40 × 40 dp.

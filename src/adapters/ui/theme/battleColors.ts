@@ -28,10 +28,6 @@ export const battleColors = {
   heroHpLow: '#FF9DB0',
   foeHp: '#C46A6A',
   hpTrack: '#2A2F40',
-  silhouette: '#06070C',
-  specter: '#0A0D1A',
-  blade: '#D9DCE6',
-  hilt: '#6E5E44',
   secondaryButton: '#232A40',
   secondaryLine: '#46506C',
   pill: 'rgba(14,17,32,0.85)',
@@ -42,10 +38,41 @@ export const battleColors = {
   coach: '#EEEAE0',
   onCoach: '#141826',
   hatch: 'rgba(255,157,176,0.22)',
-  flash: 'rgba(255,244,214,0.55)',
-  flashRed: 'rgba(224,96,122,0.3)',
-  skyTop: '#1B2040',
-  skyMiddle: '#151933',
-  skyBottom: '#0B0D18',
+  /** Rouge sang du Saignement (prototype #107), jamais le rouge du sceau. */
+  blood: '#B32E3C',
+  bloodDark: '#8A1E2A',
+  bloodSoft: 'rgba(179,46,60,0.3)',
+  onBlood: '#FFC2C9',
+  /** L'ombre violette de Pas de l'ombre (#173) : trait de l'étiquette, ombre de l'Errante. */
+  shadowStep: '#6B5A7A',
+  /** Fond de l'étiquette « Pas de l'ombre ». */
+  shadowStepBg: '#2A2236',
+  /** Texte de Pas de l'ombre : l'étiquette et la mention « Instantané », jamais sans le croissant. */
+  onShadowStep: '#DCCFEA',
+  /** Trait de l'étiquette juste après le lancer. */
+  shadowStepNew: '#B9A6CF',
+  /**
+   * L'orange braise de la Brûlure (#171, maquette 170) : jamais le rouge du sceau, ni le rouge sang
+   * du Saignement, ni l'or des Étincelles. Trait et fond de l'étiquette, son texte (10,1:1).
+   */
+  burn: '#D9733A',
+  burnBg: '#3A2014',
+  onBurn: '#FFC9A3',
+  /** Le trait de l'étiquette cerclée à une prise, puis à une extinction (fumée grise). */
+  burnRing: '#FF9F5A',
+  burnSmoke: '#C3C7D3',
+  /** Le chiffre « −N » de la Brûlure (7,0:1 sur la scène). */
+  burnNumber: '#FF9F5A',
+  /**
+   * L'Invocation (#172, maquette 170) : la bande sombre de l'annonce (à 94 %, effacée sur les
+   * bords) et son texte (15,4:1), aux bords de poussière en pointillé ; l'étiquette « Invoquée » (8,5:1), cernée de fumée.
+   */
+  summonBand: '#100E14F0',
+  summonText: '#ECE6D6',
+  /** Le sous-titre de l'annonce (`--parch`). */
+  summonLine: '#C9C2B0',
+  summonDust: '#8C93A8',
+  summonTag: '#C3C7D3',
+  summonTagBackground: '#262A36',
 } as const;
 // Stryker restore all

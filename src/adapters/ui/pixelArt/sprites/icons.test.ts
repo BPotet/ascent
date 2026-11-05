@@ -40,6 +40,38 @@ describe('the icons', () => {
     expect(iconNames).not.toContain('tTower');
   });
 
+  it('has the intent icons of the battle: blade, shield, heart, arrow and barred circle (#32)', () => {
+    expect(iconNames).toEqual(
+      expect.arrayContaining(['iAttack', 'iGuard', 'iHeal', 'iRaise', 'iSkip']),
+    );
+  });
+
+  it('has the Shard glyph, small and large, and the Gold coin of the tiers (#38)', () => {
+    expect(iconNames).toEqual(expect.arrayContaining(['shard8', 'shard12', 'coin8']));
+    expect(ICONS.shard12).toHaveLength(12);
+  });
+
+  it('has the small flame of « Le camp » (#40)', () => {
+    expect(iconNames).toContain('flame8');
+    expect(ICONS.flame8).toHaveLength(8);
+  });
+
+  it('has the glyphs of the gauge, from the mockup 205, on 8 × 8 art pixels (#41)', () => {
+    const glyphs = ['skull', 'bless', 'loot', 'rare', 'fatigue', 'lock', 'clock', 'plus8', 'eq'];
+    expect(iconNames).toEqual(expect.arrayContaining(glyphs));
+    glyphs.forEach((name) => expect(ICONS[name as never]).toHaveLength(8));
+    expect(ICONS['skull' as never]).toEqual([
+      '........',
+      '.XXXXX..',
+      'XXXXXXX.',
+      'X..X..X.',
+      'XXXXXXX.',
+      '.XX.XX..',
+      '.X.X.X..',
+      '........',
+    ]);
+  });
+
   it('mirrors « left » into « right »', () => {
     ICONS.left.forEach((row, index) =>
       expect(ICONS.right[index]).toBe([...row].reverse().join('')),

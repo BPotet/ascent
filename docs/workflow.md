@@ -4,11 +4,13 @@ Inspiré de la [BMad Method](https://github.com/bmad-code-org/BMAD-METHOD). GitH
 
 ## Principes
 
-1. **Le propriétaire ne touche jamais au code.** Il définit les features et valide les stories. Tout le reste est automatique, jusqu'au merge dans `develop` puis à la release sur `main`.
-2. **Une seule validation humaine** : les stories d'une épique, avant le développement.
-3. **Les barrières de qualité remplacent la relecture humaine.** Une PR n'est mergée que si toutes sont au vert.
-4. **Le glossaire est la source de vérité** du vocabulaire. Les docs, le code et les tests l'utilisent tel quel.
-5. **Une story = une branche = une PR.**
+1. **Le propriétaire ne touche jamais au code.** Il décrit ses idées, valide les stories et, dans l'Atelier de l'ascension, le contenu du jeu. Tout le reste est automatique, jusqu'au merge dans `develop` puis à la release sur `main`.
+2. **Deux chemins pour une idée** (décision du propriétaire du 28/10/2026). Une **fonctionnalité** (une partie de l'app, sans contenu de jeu) suit le **chemin A** : épique, maquette, stories. Le **game design** (contenu et gameplay : créature, arme, bienfait, mécanique, valeurs) suit le **chemin B** : tout passe par l'Atelier de l'ascension. Les deux chemins se rejoignent à l'étape 3 (Ready).
+3. **Rien ne part en développement sans validation du propriétaire** : les stories et la maquette d'une épique sur le chemin A ; la fiche, l'image et l'animation dans l'Atelier sur le chemin B.
+4. **Les barrières de qualité remplacent la relecture humaine.** Une PR n'est mergée que si toutes sont au vert.
+5. **Le glossaire est la source de vérité** du vocabulaire. Les docs, le code et les tests l'utilisent tel quel.
+6. **Une story = une branche = une PR.**
+7. **L'Atelier de l'ascension est la source de vérité du game design** : c'est la partie « métier », où le propriétaire, le Game Designer et l'UX travaillent ensemble (voir « Atelier de l'ascension » ci-dessous).
 
 ## Schéma du flow
 
@@ -17,23 +19,39 @@ flowchart TD
     OWNER([👤 Propriétaire])
     ORCH{{🎯 Orchestrateur}}
 
-    OWNER -- décrit la feature --> ORCH
-    ORCH -- crée l'issue Epic --> S1
+    OWNER -- décrit une idée --> ORCH
+    ORCH -- fonctionnalité --> S1
+    ORCH -- game design --> B1
 
-    subgraph SPEC [" Spécification "]
-        S1[1. Define<br/>status:idea]
+    subgraph PATHA [" Chemin A — Fonctionnalité "]
+        S1[1. Define<br/>issue Epic<br/>status:idea]
         S2[2. Specify<br/>status:specifying]
         PM[🧭 PM<br/>découpe en stories]
-        GD[🎲 Game Designer<br/>règles de jeu]
         UX[📱 UX<br/>parcours et maquettes]
         S1 --> S2
-        S2 --- PM & GD & UX
+        S2 --- PM & UX
     end
 
     S2 --> GATE1{✋ Validation<br/>propriétaire}
     OWNER -. valide .-> GATE1
     GATE1 -- refusé --> S2
     GATE1 -- validé --> S3
+
+    subgraph PATHB [" Chemin B — Game design, dans l'Atelier de l'ascension "]
+        B1[Fiche créée ou image demandée<br/>Brouillon · demandé]
+        B2[🎲 Game Designer : règles et valeurs<br/>📱 UX : image puis animation complète]
+        GATE2{✋ Validation<br/>propriétaire}
+        B4[🧭 PM<br/>story du contenu validé]
+        B1 --> B2
+        B2 --> GATE2
+        GATE2 -- à refaire, avec une note --> B2
+        GATE2 -- Actif · validé --> B4
+    end
+
+    OWNER -. crée, demande .-> B1
+    OWNER -. valide .-> GATE2
+    B4 -- contenu seul --> S3
+    B4 -- mécanique nouvelle<br/>maquette 📱 UX --> GATE1
 
     subgraph AUTO [" Automatique — aucune intervention humaine "]
         S3[3. Ready<br/>🏛️ Architect<br/>notes techniques]
@@ -62,14 +80,29 @@ flowchart TD
 
     S8 -- ferme l'issue --> DONE([✅ Done])
     DONE -- épique terminée --> REL[🚀 Release<br/>release/x.y.z → main<br/>tag vX.Y.Z]
+    DONE -. APK de preview .-> PLAY[🎮 Le propriétaire joue]
+    PLAY -- jeu --> B1
+    PLAY -- app --> S1
+    PLAY -- panne --> BUG[🐞 Bug<br/>/fix-bug]
 ```
 
 ## Vue d'ensemble
 
 ```
- 1. DEFINE      Propriétaire → Orchestrateur          → issue Epic
- 2. SPECIFY     PM + Game Designer + UX               → stories + critères Gherkin + maquettes
+    IDÉE        Propriétaire → Orchestrateur, qui oriente l'idée
+                ├─ une fonctionnalité de l'app      → chemin A
+                └─ du contenu ou du gameplay       → chemin B
+ ─────────────── chemin A : fonctionnalité ───────────────
+ 1. DEFINE      Orchestrateur                         → issue Epic
+ 2. SPECIFY     PM + UX                               → stories + critères Gherkin + maquettes
                 ✋ VALIDATION DU PROPRIÉTAIRE
+ ─────────────── chemin B : game design (Atelier) ───────────────
+    ATELIER     Propriétaire                          → fiche en Brouillon ou image demandée
+                Game Designer + UX                    → règles et valeurs, image puis animation complète
+                ✋ LE PROPRIÉTAIRE VALIDE, ou renvoie « à refaire » avec une note (en boucle)
+                PM                                    → story du contenu validé
+                (mécanique nouvelle : maquette UX et ✋ validation de la story)
+ ─────────────── les deux chemins se rejoignent ───────────────
  3. READY       Architect                             → notes techniques
  ──────────────────────── automatique ────────────────────────
  4. IMPACT      Impact Analyst (GitNexus)
@@ -79,6 +112,7 @@ flowchart TD
  6. TEST     ┐  QA        (en parallèle, lecture seule) → toutes les barrières
  7. REVIEW   ┘  Reviewer  (en parallèle, lecture seule) → les deux verts → 8, sinon → 5
  8. MERGE       Auto-merge dans develop               → issue fermée
+    RETOURS     Le propriétaire joue : jeu → Atelier ; app → nouvelle épique ; panne → /fix-bug
     RELEASE     Épique terminée → release/x.y.z → main (tag vx.y.z)
 ```
 
@@ -178,26 +212,37 @@ Le scope est facultatif quand un commit touche plusieurs zones.
 | Label | Étape | Qui fait avancer |
 |---|---|---|
 | `status:idea` | 1. Define | Orchestrateur |
-| `status:specifying` | 2. Specify | PM, Game Designer, UX |
-| `status:awaiting-approval` | ✋ Validation | **Propriétaire** |
-| `status:ready` | 3. Ready | Architect |
+| `status:specifying` | 2. Specify (chemin A) | PM, UX (Game Designer pour une règle de jeu hors du Codex) |
+| `status:awaiting-approval` | ✋ Validation des stories (chemin A, ou mécanique nouvelle du chemin B) | **Propriétaire** |
+| `status:ready` | 3. Ready, où les deux chemins se rejoignent | Architect |
 | `status:impact-analysis` | 4. Impact | Impact Analyst |
 | `status:in-progress` | 5. Implement, et chaque correction demandée par le QA ou le Reviewer | Dev (ou Fixer pour un bug) |
 | `status:review` | 6–7. Test et Review, en parallèle | QA et Reviewer |
 | `status:blocked` | Escalade | **Propriétaire** |
 | *(issue fermée)* | 8. Merge | Auto |
 
+Le travail dans l'Atelier (fiches, images, animations) ne porte pas de label : il vit dans l'Atelier, jusqu'à la story.
+
 Labels de type : `type:epic`, `type:story`, `type:bug`, `type:chore`.
 
 ## Les étapes en détail
 
-### 1. Define — `/define-feature`
-Le propriétaire décrit la feature dans le chat. L'orchestrateur crée une issue `type:epic` à partir du template [epic](../.github/ISSUE_TEMPLATE/epic.md) : objectif, valeur pour le joueur, périmètre, hors périmètre. Tout nouveau terme est ajouté au glossaire.
+### Orienter une idée
 
-### 2. Specify — `/split-stories`
+Le propriétaire décrit son idée dans le chat. L'orchestrateur l'oriente selon ce qu'elle touche :
+
+- une **fonctionnalité** (une partie de l'app sans contenu de jeu : un écran, des boutons, le suivi des habitudes…) → **chemin A**, étapes 1 et 2 ;
+- du **game design** (contenu et gameplay : une créature, une arme, un bienfait, une mécanique de combat, des valeurs) → **chemin B**, dans l'**Atelier de l'ascension** (voir ci-dessous). Il ne passe ni par `/define-feature` ni par `/split-stories`.
+
+En cas de doute, l'orchestrateur pose la question au propriétaire. Une idée qui touche les deux se sépare : le contenu va dans l'Atelier, la partie de l'app devient une épique.
+
+### 1. Define — `/define-feature` (chemin A)
+L'orchestrateur crée une issue `type:epic` à partir du template [epic](../.github/ISSUE_TEMPLATE/epic.md) : objectif, valeur pour le joueur, périmètre, hors périmètre. Tout nouveau terme est ajouté au glossaire.
+
+### 2. Specify — `/split-stories` (chemin A)
 - **PM** : découpe l'épique en stories (sous-issues), selon les règles de « Découpage en stories » ci-dessous.
-- **Game Designer** : règles de jeu, barèmes, équilibrage.
 - **UX** : parcours et **maquettes** des écrans (voir « Maquettes » ci-dessous).
+- **Game Designer** : seulement si l'épique touche une règle de jeu hors du Codex (expérience, progression du personnage) ; jamais sur une fonctionnalité pure. Le contenu du Codex passe par le chemin B.
 - Les critères d'acceptation sont écrits en **Gherkin** et deviendront des tests exécutables.
 - Le statut passe à `status:awaiting-approval`. L'orchestrateur résume les stories au propriétaire et lui donne le lien vers les maquettes.
 
@@ -205,28 +250,50 @@ Le propriétaire décrit la feature dans le chat. L'orchestrateur crée une issu
 
 #### Découpage en stories
 
-Chaque story repasse par toutes les étapes et toutes les barrières de qualité. Des stories qui s'attendent les unes les autres font donc attendre l'épique entière. Le découpage suit quatre règles :
+Chaque story repasse par toutes les étapes et toutes les barrières de qualité. Des stories qui s'attendent les unes les autres font donc attendre l'épique entière. Le découpage suit cinq règles :
 
-1. **Une story est visible et autonome.** Elle livre quelque chose de visible pour le joueur, et elle ne dépend du code d'aucune autre story pas encore mergée.
-2. **Pas de chaîne entre stories.** Si une story B a besoin du code d'une story A, A et B ne forment qu'une seule story.
-3. **Seules les stories indépendantes se préparent à l'avance.** Les notes techniques (Ready) et l'analyse d'impact (Impact) ne sont préparées à l'avance que pour des stories indépendantes entre elles.
-4. **Une épique compte en général 2 à 3 stories.** Au-delà, elle est probablement trop grosse : elle se coupe en deux épiques.
+1. **Une story est visible et autonome.** Elle livre quelque chose de visible pour le joueur, et elle ne dépend du code d'aucune autre story pas encore mergée, sauf de la story socle de son épique (règle 3).
+2. **Pas de chaîne entre stories.** Si une story B a besoin du code d'une story A, A et B ne forment qu'une seule story. La seule exception est la story socle.
+3. **Une story socle au plus par épique.** Quand plusieurs stories ont besoin du même code et que les fondre en une seule donnerait une story trop grosse, ce code devient une **story socle**, développée en premier. Les autres stories de l'épique ne dépendent que du socle, jamais entre elles : elles démarrent une fois le socle mergé et se développent en parallèle. Le socle livre lui aussi quelque chose de visible pour le joueur. Une épique n'est pas coupée en deux pour éviter un socle.
+4. **Seules les stories indépendantes se préparent à l'avance.** Les notes techniques (Ready) et l'analyse d'impact (Impact) ne sont préparées à l'avance que pour des stories indépendantes entre elles. Les stories qui dépendent du socle se préparent une fois le socle mergé.
+5. **Une épique compte en général 2 à 3 stories, 4 avec une story socle.** Au-delà, elle est probablement trop grosse : elle se coupe en deux épiques.
 
 Exemple : l'épique #22 a été découpée en 5 stories chaînées (#23 seule ; #24 avant #25 et #26 ; #26 avant #27). Avec ces règles, elle en aurait compté 3 : la **difficulté** (#23) ; l'**objectif hebdomadaire** et l'habitude dont l'**objectif de la semaine** est atteint qui ne compte plus comme manquée (#24 + #25) ; la prime d'expérience de l'**objectif atteint** et son affichage dans la **Vue Mois** (#26 + #27). Ces règles valent pour les épiques découpées à partir de maintenant : les stories déjà validées de #22 restent telles quelles.
 
 #### Maquettes
 
-Toute épique avec une partie visible par le joueur a des maquettes, validées par le propriétaire **en même temps** que les stories.
+Toute épique du chemin A avec une partie visible par le joueur a des maquettes, validées par le propriétaire **en même temps** que les stories. Sur le chemin B, une maquette n'est faite que pour une mécanique nouvelle ; l'image et l'animation du contenu sont validées dans l'Atelier.
 
 - **Format** : une page HTML statique par épique, `docs/mockups/<n°-épique>-<slug>/index.html`, autonome (sans dépendance externe), qui montre chaque écran dans un cadre de téléphone.
 - **Contenu** : chaque écran de chaque story, avec **tous ses états** (vide, chargement, erreur, succès, première utilisation) et le **feedback de jeu** (gain d'expérience, montée de niveau, déblocage). Les vrais libellés, tirés du glossaire, pas de faux texte. Chaque écran est annoté avec le numéro de la story qu'il illustre.
 - **Consultation** : l'orchestrateur publie la page en lien privé, consultable sur téléphone, et met ce lien dans l'issue épique et dans le résumé de validation.
 - **Itérations** : les retours du propriétaire produisent une nouvelle version de la maquette, jusqu'à validation.
-- **Après validation** : la maquette est committée sur une branche `docs/<n°-épique>-mockups`, mergée dans `develop`. Elle **fait foi** pour l'interface : le dev la reproduit, et le Reviewer compare les captures d'écran de la PR avec elle.
+- **Après validation** : la maquette est committée sur une branche `docs/<n°-épique>-mockups`, mergée dans `develop`. Elle **fait foi** pour l'interface : le dev la reproduit, et le propriétaire juge l'écran livré sur l'APK de preview. Des captures jointes à la PR sont facultatives.
 - Une maquette ne fixe pas de choix technique. Les premières maquettes posent l'identité visuelle (couleurs, typographie, composants) que les suivantes réutilisent.
 
+### Atelier de l'ascension (chemin B)
+
+Décisions du propriétaire du 28/10/2026. L'**Atelier de l'ascension** (page publiée, source `docs/game-design/88-ascension-prototype.html`) est l'espace de travail commun du propriétaire, du Game Designer et de l'UX pour le contenu du jeu. Son **Codex** fait foi pour les ennemis, Élites, boss, héros, objets, bienfaits et bénédictions : stats, coups, effets, descriptions et assets. L'onglet **Équilibrage** rejoue la tour des centaines de fois avec les entrées Actives pour en vérifier les chiffres.
+
+**La boucle de validation**
+
+1. **Le propriétaire crée ou demande** : une nouvelle fiche (entrée en **Brouillon**), une image demandée avec une note (asset `demandé`), une valeur à changer.
+2. **L'équipe propose.** Le **Game Designer** propose les règles, coups, valeurs et mécaniques, en Brouillon. L'**UX** propose l'image (asset `proposé`), puis, pour un ennemi, une Élite ou un boss, son **animation complète**.
+3. **Le propriétaire valide**, ou renvoie « à refaire » avec une note : retour à l'étape 2, autant de fois que nécessaire. Il juge sur la fiche, l'image, l'animation et l'Équilibrage.
+4. **Seul ce qu'il a validé devient une story** : une entrée **Active**, son image validée et, pour un ennemi, une Élite ou un boss, son animation complète validée. Le **PM** écrit la story à partir de l'Atelier. Si le contenu demande une **mécanique nouvelle** (un champ du Codex que le jeu ne sait pas encore jouer, comme Se relève seul ou le Saignement), l'UX fait une maquette et la story passe en `status:awaiting-approval` : le propriétaire la valide, comme une story du chemin A. Sinon, la validation dans l'Atelier suffit : la story part en `status:ready`.
+
+**Règles**
+
+- **Animation complète obligatoire.** Un ennemi, une Élite ou un boss n'entre en jeu qu'avec son **animation complète** validée dans l'Atelier, jamais avec une image fixe : les 17 poses du combat, les poses rouges s'il a un coup imparable, et les ancrages (voir « Animation complète » dans le glossaire). Un objet garde une image fixe.
+- **Le Codex ne se branche pas au jeu.** Le jeu n'en lit aucun export : chaque contenu validé y entre par une story, codée par le dev à partir des valeurs du Codex.
+- **Statuts** : seule une entrée **Active** est attendue dans le jeu. Un **Brouillon** est une idée en cours ; une entrée **Retirée** sort du jeu.
+- **Du Codex à une story.** Quand le propriétaire valide un contenu (entrée passée en Active, entrée Active changée, image ou animation validée), l'orchestrateur relit la base de l'Atelier et compare le Codex au jeu. Chaque écart devient une story, rattachée à une épique de contenu en cours, ou à une nouvelle, créée par l'orchestrateur sans maquette ni `/split-stories`. La story cite le **nom de code** de chaque entrée et ses valeurs du Codex, recopiées au moment de la validation : ce sont elles que le dev code et que les tests vérifient.
+- **Tests** : les règles d'une story du chemin B se vérifient en tests unitaires du domaine, et l'Équilibrage de l'Atelier sert de contrôle (voir « Barrières de qualité »).
+- **Le Game Designer** part du Codex. L'orchestrateur lui donne un instantané JSON de la base de l'Atelier. Il ne change jamais une entrée du propriétaire sans son accord : il propose ses changements en Brouillon, ou en commentaire sur l'épique.
+- **L'orchestrateur** est le seul à écrire dans la base de l'Atelier, et seulement à la demande du propriétaire ou pour une proposition en Brouillon (règles du Game Designer, image ou animation de l'UX). Il ne modifie jamais une entrée Active sans son accord.
+
 ### 3. Ready
-L'**Architect** ajoute les notes techniques à chaque story : couches hexagonales touchées, ports et adaptateurs, données, risques.
+Les deux chemins se rejoignent ici. L'**Architect** ajoute les notes techniques à chaque story : couches hexagonales touchées, ports et adaptateurs, données, plan de test, risques. Le plan de test ne prévoit pas d'end-to-end propre à la story : le test de fumée de la CI suffit (voir la barrière 8).
 
 ### 4. Impact — analyse GitNexus
 Avant toute ligne de code, l'**Impact Analyst** indexe le dépôt avec GitNexus et mesure ce que la story va toucher.
@@ -243,16 +310,16 @@ Si l'impact est fort, la story revient au **PM** et à l'**Architect**, qui la r
 ### 5. Implement — `/dev-story`
 Un seul agent, le **Dev** (full stack), implémente toute la story sur la branche `feature/<n°>-<slug>` et une PR vers `develop`. Il travaille en TDD et respecte l'architecture hexagonale.
 
-Il possède toutes les couches : `domain`, `application`, `adapters/persistence` (règles de jeu, cas d'usage, ports, base locale, migrations ; plus tard API et serveur), `adapters/ui` (composants, design system, écrans, états, feedback de jeu, accessibilité), `adapters/device` (biométrie, stockage sécurisé, notifications…), `app` (navigation, assemblage), configuration, builds et tests end-to-end.
+Il possède toutes les couches : `domain`, `application`, `adapters/persistence` (règles de jeu, cas d'usage, ports, base locale, migrations ; plus tard API et serveur), `adapters/ui` (composants, design system, écrans, états, feedback de jeu, accessibilité), `adapters/device` (biométrie, stockage sécurisé, notifications…), `app` (navigation, assemblage), configuration, builds et test de fumée end-to-end.
 
 - **Consigne ciblée** : l'orchestrateur lui donne les écrans de la maquette annotés pour la story (et non toute la maquette), les décisions utiles et les fichiers concernés. Le dev lit ce qui est indiqué, et ne lit le reste que si c'est nécessaire.
-- Il avance de l'intérieur vers l'extérieur, **couche par couche** : domaine, cas d'usage et ports, persistance, interface, puis assemblage et end-to-end.
+- Il avance de l'intérieur vers l'extérieur, **couche par couche** : domaine, cas d'usage et ports, persistance, interface, puis assemblage.
 - Il ouvre la PR en **brouillon** après son premier commit. Quand les barrières sont vertes en local et le code poussé, il la sort du brouillon et rend son rapport **sans attendre la CI GitHub**. L'orchestrateur surveille la CI et lui renvoie la PR en cas d'échec. Si la CI échoue alors que le QA et le Reviewer tournent déjà, il attend leurs verdicts et renvoie tous les retours ensemble : ce renvoi compte comme un tour.
 - Un besoin hors du périmètre de la story se signale à l'orchestrateur.
 
 #### TDD par couche
 
-Le dev ne fait pas de micro-cycles test par test. Pour chaque couche, dans l'ordre domaine → cas d'usage et ports → persistance → interface → assemblage et end-to-end :
+Le dev ne fait pas de micro-cycles test par test. Pour chaque couche, dans l'ordre domaine → cas d'usage et ports → persistance → interface → assemblage :
 
 1. il écrit d'abord **tous** les tests de la couche ;
 2. il les lance une fois et vérifie qu'ils échouent (**rouge**) ;
@@ -262,15 +329,15 @@ Le dev ne fait pas de micro-cycles test par test. Pour chaque couche, dans l'ord
 
 Le test reste écrit avant le code. Si beaucoup de tests échouent sans qu'on comprenne pourquoi, il redescend à un cycle plus fin pour cette partie. On vise environ **4 à 6 commits par story**.
 
-Le hook pre-commit (dont le typecheck) tourne à chaque commit, les barrières et leurs seuils sont inchangés.
+Le hook pre-commit (dont le typecheck) tourne à chaque commit.
 
 ### 6 et 7. Test et Review, en parallèle
 Quand le dev sort la PR du brouillon (barrières vertes en local), l'orchestrateur passe la story en `status:review` et lance **en même temps** le **QA** (étape 6) et le **Reviewer** (étape 7, `/review-story`). Aucun des deux n'attend l'autre.
 
 Tous deux sont en **lecture seule** : ils ne modifient ni le code, ni les tests, ni la doc, et ne poussent aucun commit. Chacun publie son verdict en commentaire (ou en review) sur la PR, avec le commit relu (SHA de la tête de la PR).
 
-- **QA** : fait tourner toutes les barrières de qualité ci-dessous, en local puis en CI, lit les rapports de couverture et de mutation, et liste les tests manquants (mutants survivants, cas limites). Verdict : **vert** ou **changements demandés**.
-- **Reviewer** : vérifie la PR par rapport aux critères d'acceptation, à l'architecture, au glossaire, aux maquettes et aux rapports de la CI (coverage, mutation, Sonar). Verdict : **approuvé** ou **changements demandés**, avec des commentaires précis.
+- **QA** : fait tourner toutes les barrières de qualité ci-dessous, en local puis en CI, lit le rapport de couverture, et liste les tests manquants (règles non couvertes, cas limites). Verdict : **vert** ou **changements demandés**.
+- **Reviewer** : vérifie la PR par rapport aux critères d'acceptation, à l'architecture, au glossaire, aux maquettes et aux rapports de la CI (coverage, Sonar). Verdict : **approuvé** ou **changements demandés**, avec des commentaires précis.
 
 #### Corrections
 
@@ -299,9 +366,19 @@ La PR n'est mergée que si, **sur la tête courante** de la PR :
 
 L'orchestrateur active alors l'auto-merge dans `develop` (squash) ; si un commit est poussé ensuite, il le désactive jusqu'aux nouveaux verdicts. La PR porte `Closes #<story>`. L'épique est fermée quand toutes ses stories le sont, ce qui déclenche une release (voir « CI/CD et Git Flow »).
 
+#### Retours du propriétaire
+
+La CI fabrique l'APK de preview de `develop` et l'orchestrateur en envoie le lien au propriétaire. Après avoir joué, chaque retour est orienté par l'orchestrateur :
+
+- **le jeu** (trop dur, pas lisible, une image ou une animation à revoir) → l'**Atelier de l'ascension** (chemin B) ;
+- **l'app** (un écran ou un parcours à changer) → une **nouvelle épique** (chemin A, `/define-feature`) ;
+- **une panne** (quelque chose ne marche pas comme validé) → un **bug** (`/fix-bug`).
+
 ## Barrières de qualité
 
-Toutes sont **bloquantes**. Les outils sont confirmés par l'Architect dans l'[ADR 0001](adr/0001-socle-technique.md), qui liste aussi les écarts temporaires. En local, `npm run verify` exécute toutes les barrières sauf la mutation et l'end-to-end ; `npm run verify:full` y ajoute la mutation, sans les écrans (voir la barrière 9).
+Toutes sont **bloquantes**. Les outils sont confirmés par l'Architect dans l'[ADR 0001](adr/0001-socle-technique.md), qui liste aussi les écarts temporaires. En local, `npm run verify` exécute toutes les barrières sauf le test de fumée end-to-end.
+
+Décision du propriétaire du 3 novembre 2026 (avenants aux [ADR 0001](adr/0001-socle-technique.md) et [ADR 0004](adr/0004-mutation-en-ci.md)) : plus de tests de mutation, plus de mode prototype, et l'end-to-end se réduit à un test de fumée. Tout ce qui est mergé compte comme définitif.
 
 | # | Barrière | Ce qu'elle garantit | Outil | Quand |
 |---|---|---|---|---|
@@ -313,10 +390,10 @@ Toutes sont **bloquantes**. Les outils sont confirmés par l'Architect dans l'[A
 | 5 | **Tests unitaires** | Domaine et cas d'usage | Jest | CI |
 | 6 | **Tests d'intégration** | Adaptateurs + base locale + écrans | Jest + React Native Testing Library | CI |
 | 7 | **Tests BDD** | Les critères d'acceptation Gherkin passent | Cucumber (`jest-cucumber`) | CI |
-| 8 | **Tests end-to-end** | Parcours réels sur l'app | Maestro (mobile) ; Playwright si une version web apparaît | CI |
-| 9 | **Tests de mutation** | Les tests détectent vraiment les bugs. Les **écrans** (`src/adapters/ui/`, `src/app/`) ne sont mutés qu'à la demande du propriétaire (voir « Mutation des écrans à la demande ») | StrykerJS | CI |
+| 8 | **Test de fumée end-to-end** | L'APK s'installe et l'app démarre (Vue Journée affichée, relance à froid). Aucune story n'a de parcours ni de captures end-to-end propres : ses règles se vérifient en tests unitaires, d'intégration et BDD (barrières 5 à 7) et, sur le chemin B, l'Équilibrage de l'Atelier sert de contrôle | Maestro (`e2e/flows/launch.yaml`) | CI |
+| 9 | ~~Tests de mutation~~ | Retirée le 3 novembre 2026, sur décision du propriétaire ([ADR 0004](adr/0004-mutation-en-ci.md)) | — | — |
 | 10 | **Coverage et qualité** | Seuils de couverture, code smells, duplication, sécurité | SonarQube Cloud | CI |
-| 10 bis | **Conformité aux maquettes** | Les écrans livrés correspondent aux maquettes validées (captures d'écran des tests end-to-end jointes à la PR) | Revue (Reviewer) | Review |
+| 10 bis | **Conformité aux maquettes** | Chemin A : les écrans livrés correspondent aux maquettes validées ; le propriétaire juge sur l'APK de preview, des captures jointes à la PR sont facultatives. Chemin B : le contenu livré est fidèle à l'Atelier (valeurs du Codex recopiées dans la story, image et animation complète validées) | Revue (Reviewer) ; le propriétaire sur l'APK | Review |
 | 11 | **Glossaire** | Les termes nouveaux ou modifiés figurent dans `docs/glossary.md` | Revue (Reviewer) | Review |
 
 ### Seuils (ajustables)
@@ -325,32 +402,16 @@ Toutes sont **bloquantes**. Les outils sont confirmés par l'Architect dans l'[A
 |---|---|
 | Coverage du code nouveau | ≥ 80 % |
 | Coverage du domaine | ≥ 95 % |
-| Score de mutation du code nouveau | ≥ 70 % |
-| Score de mutation du domaine | ≥ 85 % |
 | Quality gate SonarQube Cloud | Passed |
 | Duplication du code nouveau | ≤ 3 % |
 
-> Le score du code nouveau est calculé sur l'ensemble des mutants des lignes ajoutées ou modifiées hors domaine, tous jobs confondus. Le score du domaine porte sur les fichiers du domaine modifiés (PR) ou sur tout le domaine (release). Voir l'[ADR 0004](adr/0004-mutation-en-ci.md).
->
-> Par défaut, la mutation porte sur `src/domain/`, `src/application/`, `src/adapters/persistence/` et `src/adapters/device/`. Les écrans n'entrent dans le score du code nouveau que lorsque leur mutation est demandée ; les seuils sont alors les mêmes.
+> Les données recopiées de l'Atelier (`src/adapters/ui/pixelArt/sprites/atelier/data/`) sont exclues de la détection de duplication : ce sont des données, recopiées telles quelles (ADR 0010).
 
-### Mutation des écrans à la demande
+### Plus de mode prototype
 
-Décision du propriétaire du 22 octobre 2026 (issue #54, avenant à l'[ADR 0004](adr/0004-mutation-en-ci.md)) : la mutation des **écrans** (`src/adapters/ui/` et `src/app/`) est trop longue pour chaque story. Elle ne tourne que dans trois cas :
+Décision du propriétaire du 3 novembre 2026 : on ne fait plus la différence entre prototype et version définitive. Tout ce qui est mergé dans `develop` compte comme **définitif** et passe par les mêmes barrières. Le label `prototype` et la règle qui bloquait les releases disparaissent : les prototypes déjà dans `develop` ne bloquent plus les releases et n'ont plus à être repris par une « version définitive ».
 
-| Cas | Comment | Ce qui est muté |
-|---|---|---|
-| **PR** | L'orchestrateur pose le label `mutation:ui` sur la PR, quand le propriétaire le demande. | À la pose du label, les lignes nouvelles des écrans (workflow `Screen mutation`) ; pour une PR vers `develop`, à chaque push suivant, le code nouveau écrans compris (CI). |
-| **Lancement manuel de la CI** | `workflow_dispatch` du workflow `CI` avec l'entrée `ui-mutation` cochée. | Tout le code, écrans compris. |
-| **En local** | `npm run mutation:ui` (lignes nouvelles depuis `origin/develop`) ; `npm run mutation:ui -- --full` pour tous les écrans. | Les écrans seuls. |
-
-Quand elle tourne, les seuils actuels s'appliquent (code nouveau : 70 %). Sinon, le résumé de la CI l'indique : « Screen mutation (…) not requested ». Ni les agents ni la review n'exigent la mutation des écrans quand elle n'a pas été demandée.
-
-Règles pour l'orchestrateur :
-
-- Il ne pose `mutation:ui` que si le propriétaire le demande, jamais de sa propre initiative.
-- Le check `Screen mutation tests (StrykerJS)` n'existe que sur le commit où le label a été posé : il ne peut pas être exigé par la protection de branche, et l'auto-merge ne l'attend pas. Quand `mutation:ui` est posé, l'orchestrateur attend donc que ce check soit **vert** avant d'activer l'auto-merge ; si l'auto-merge était déjà actif, il le désactive jusque-là. Un check rouge renvoie au dev, comme une barrière rouge, puis QA et Reviewer sont relancés selon la règle des corrections. Pour une PR vers `develop` seulement, aux pushs suivants, la mutation des écrans est comptée dans le check habituel `Mutation tests (StrykerJS)`, déjà exigé. Pour une PR de release ou de hotfix vers `main` (branche `release/*` ou `hotfix/*`), la CI ne mute pas le code de la PR (la branche est mutée à son push, sans les écrans) : les écrans n'y sont mutés que sur le commit où le label est posé.
-- Cas limite accepté : une PR **créée** avec le label déjà posé mute ses écrans deux fois (par la CI et par le workflow `Screen mutation`, que GitHub déclenche aussi à la création). Les deux résultats doivent être verts.
+**Combat** : décision du propriétaire du 25 octobre 2026. Le gameplay du combat se teste à la main, sur l'APK ; ses règles sont couvertes par les tests unitaires, d'intégration et BDD.
 
 ## Architecture hexagonale
 
@@ -363,7 +424,7 @@ src/
     ui/                   composants, écrans, état d'affichage
     device/               biométrie, stockage sécurisé, notifications…
   app/                    routes et assemblage
-e2e/                      tests end-to-end
+e2e/                      test de fumée end-to-end
 ```
 
 Règles vérifiées par les tests d'architecture :
@@ -373,9 +434,9 @@ Règles vérifiées par les tests d'architecture :
 - Seuls `adapters` et `app` connaissent le framework et les bibliothèques natives.
 - `domain` et `application` n'utilisent ni minuteur, ni horloge directe, ni hasard (`setTimeout`, `setInterval`, `requestAnimationFrame`, `performance`, `Math.random`) : le temps et le hasard passent par des ports. Vérifié par ESLint (barrière Style).
 - Dans `src/adapters/ui/`, seuls `pixelArt/SpriteCanvas.tsx` (et son test de fumée) et le combat (`battle/`) importent Skia (`pixel-art-skia-in-one-place`, [ADR 0007](adr/0007-identite-pixel-art.md)).
-- Dans `src/adapters/ui/`, `pixelArt/`, `components/`, `screens/`, `format/` et `state/` n'importent pas l'ancien thème (`theme/colors`, `theme/metrics`, `theme/typography`), sauf le combat d'essai et la sonde de toucher (`Button`, `Screen`, `TrialBattleEntry`, `TouchProbeScreen`, `TrialBattleScreen`), jusqu'à l'épique #30 (`habit-screens-in-pixel-art`, [ADR 0007](adr/0007-identite-pixel-art.md)).
+- Dans `src/adapters/ui/`, `pixelArt/`, `components/`, `screens/`, `format/` et `state/` n'importent pas l'ancien thème (`theme/colors`, `theme/metrics`, `theme/typography`), sauf `Button`, `Screen` et la sonde de toucher (`TouchProbeScreen`), jusqu'à l'épique #30 (`habit-screens-in-pixel-art`, [ADR 0007](adr/0007-identite-pixel-art.md)).
 
-Conséquence pour les tests : le domaine et les cas d'usage se testent en unitaire, sans framework. Les adaptateurs se testent en intégration. Les parcours complets se testent en BDD et en end-to-end.
+Conséquence pour les tests : le domaine et les cas d'usage se testent en unitaire, sans framework. Les adaptateurs se testent en intégration. Les parcours complets se testent en BDD ; l'end-to-end se limite au test de fumée.
 
 ## CI/CD et Git Flow
 
@@ -408,18 +469,18 @@ gitGraph
 
 | Déclencheur | Ce qui tourne | Résultat |
 |---|---|---|
-| **PR vers `develop`** (`feature/`, `bugfix/`, `chore/`, `docs/`) | Toutes les barrières de qualité : commits, secrets, style, types, architecture, unitaires, intégration, BDD, mutation sur le code nouveau hors écrans (lignes ajoutées ou modifiées ; fichiers du domaine modifiés en entier), en jobs parallèles (le code hors domaine et hors écrans en 3 parts, 6 en release : voir l'[ADR 0004](adr/0004-mutation-en-ci.md)), écrans compris seulement avec le label `mutation:ui`, SonarQube Cloud. End-to-end sur une plateforme. | Auto-merge (squash) si tout est vert et les verdicts du QA et du Reviewer verts sur la tête de la PR |
-| **Push sur `develop`** | Les mêmes barrières sur le résultat du merge, sauf la mutation (déjà faite par la PR), puis un **build de preview** installable sur le téléphone du propriétaire | Le propriétaire peut essayer la prochaine version |
-| **Branche `release/x.y.z`** | Suite complète : end-to-end **iOS et Android**, mutation sur tout le code hors écrans, SonarQube Cloud. Génération du changelog. Build de production. | Merge dans `main` si tout est vert |
+| **PR vers `develop`** (`feature/`, `bugfix/`, `chore/`, `docs/`) | Toutes les barrières de qualité : commits, secrets, style, types, architecture, unitaires, intégration, BDD avec les seuils de couverture, SonarQube Cloud. APK et test de fumée end-to-end sur Android. | Auto-merge (squash) si tout est vert et les verdicts du QA et du Reviewer verts sur la tête de la PR |
+| **Push sur `develop`** | Les mêmes barrières sur le résultat du merge, puis un **build de preview** installable sur le téléphone du propriétaire | Le propriétaire peut essayer la prochaine version |
+| **Branche `release/x.y.z`** | Les mêmes barrières, test de fumée compris, et SonarQube Cloud. Génération du changelog. Build de production. | Merge dans `main` si tout est vert |
 | **Merge sur `main`** | Tag `vX.Y.Z`, GitHub Release avec le changelog, build de production distribué | Nouvelle version publiée |
-| **Branche `hotfix/x.y.z-…`** | Suite complète, comme une release (mutation hors écrans) | Merge dans `main` (tag) puis dans `develop` |
-| **Lancement manuel** (`workflow_dispatch`) | La CI complète ; mutation sur tout le code, écrans compris si l'entrée `ui-mutation` est cochée | À la demande du propriétaire |
+| **Branche `hotfix/x.y.z-…`** | Les mêmes barrières, comme une release | Merge dans `main` (tag) puis dans `develop` |
+| **Lancement manuel** (`workflow_dispatch`) | La CI complète | À la demande du propriétaire |
 
-Changement sans code : quand un changement ne touche que de la documentation ou la configuration des agents (fichiers `.md`, `docs/`, `.claude/`, `LICENSE`), le job `Code changes` (`scripts/ci/code-changes.mjs`) saute les barrières lourdes : style, types, architecture, tests, mutation, SonarQube Cloud, APK et end-to-end. Seules les barrières commits et secrets tournent. Un check sauté compte comme réussi pour la protection de branche. Sur une PR, c'est tout le diff de la PR qui compte : un seul fichier de code relance toutes les barrières. L'APK et l'end-to-end sont aussi sautés sur une PR en brouillon (ils tournent à sa sortie de brouillon) et quand le changement ne touche pas l'app (sortie `app` du même job : seuls des tests hors `src/app/`, des scénarios, `test/`, `scripts/`, la configuration des outils de qualité, `.husky/`, les modèles d'issue et de PR, ou des workflows autres que `ci.yml` changent ; tout autre fichier, même inconnu, compte comme l'app).
+Changement sans code : quand un changement ne touche que de la documentation ou la configuration des agents (fichiers `.md`, `docs/`, `.claude/`, `LICENSE`), le job `Code changes` (`scripts/ci/code-changes.mjs`) saute les barrières lourdes : style, types, architecture, tests, SonarQube Cloud, APK et test de fumée. Seules les barrières commits et secrets tournent. Un check sauté compte comme réussi pour la protection de branche. Sur une PR, c'est tout le diff de la PR qui compte : un seul fichier de code relance toutes les barrières. L'APK et le test de fumée sont aussi sautés sur une PR en brouillon (ils tournent à sa sortie de brouillon) et quand le changement ne touche pas l'app (sortie `app` du même job : seuls des tests hors `src/app/`, des scénarios, `test/`, `scripts/`, la configuration des outils de qualité, `.husky/`, les modèles d'issue et de PR, ou des workflows autres que `ci.yml` changent ; tout autre fichier, même inconnu, compte comme l'app).
 
 Outils : GitHub Actions pour les pipelines **et** les builds. Chaque push qui touche l'app produit un APK Android en artefact (le build de preview sur `develop`) ; sinon, le dernier APK de `develop` reste celui de preview ; chaque tag `vX.Y.Z` attache l'APK à la GitHub Release. EAS Build et EAS Update ne sont pas retenus pour l'instant (voir l'[ADR 0001](adr/0001-socle-technique.md)).
 
-Conservation des artefacts (stockage GitHub Actions limité) : l'APK est gardé **1 jour** sur une PR, **7 jours** sur `develop` et **30 jours** sur `main`, `release/*` et `hotfix/*` ; les rapports de couverture, de mutation et d'end-to-end **7 jours**. Le job `Clean up old artifacts` (`scripts/ci/cleanup-artifacts.mjs`), sur chaque PR du dépôt et chaque push sur `develop`, supprime les APK devenus inutiles : il garde le plus récent de `develop`, de `main`, de chaque `release/*` et `hotfix/*` et de chaque branche qui a une PR ouverte, jamais celui d'une PR venant d'un fork. Il ne fait jamais échouer la CI. Le job `e2e-android` met aussi en cache l'image système de l'émulateur (clé `android-system-image-<API>-<cible>-<architecture>-v<N>`, environ **1,5 Go** par portée de cache, sur un quota de **10 Go** par dépôt) ; elle n'est retéléchargée, avec trois tentatives, que si le cache manque.
+Conservation des artefacts (stockage GitHub Actions limité) : l'APK est gardé **1 jour** sur une PR, **7 jours** sur `develop` et **30 jours** sur `main`, `release/*` et `hotfix/*` ; les rapports de couverture et du test de fumée **7 jours**. Le job `Clean up old artifacts` (`scripts/ci/cleanup-artifacts.mjs`), sur chaque PR du dépôt et chaque push sur `develop`, supprime les APK devenus inutiles : il garde le plus récent de `develop`, de `main`, de chaque `release/*` et `hotfix/*` et de chaque branche qui a une PR ouverte, jamais celui d'une PR venant d'un fork. Il ne fait jamais échouer la CI. Le job `e2e-android` met aussi en cache l'image système de l'émulateur (clé `android-system-image-<API>-<cible>-<architecture>-v<N>`, environ **1,5 Go** par portée de cache, sur un quota de **10 Go** par dépôt) ; elle n'est retéléchargée, avec trois tentatives, que si le cache manque.
 
 ### Releases
 
@@ -457,9 +518,9 @@ Un bug n'est pas une story : il ne crée pas de comportement nouveau, il rétabl
 | Agent | Fichier | Étapes |
 |---|---|---|
 | Orchestrateur | `CLAUDE.md` (session principale) | Toutes |
-| PM | `.claude/agents/pm.md` | 2, escalade d'impact |
-| Game Designer | `.claude/agents/game-designer.md` | 2 |
-| UX | `.claude/agents/ux.md` | 2 |
+| PM | `.claude/agents/pm.md` | 2 ; story du contenu validé dans l'Atelier (chemin B) ; escalade d'impact |
+| Game Designer | `.claude/agents/game-designer.md` | Atelier (chemin B) ; 2 seulement pour une règle de jeu hors du Codex |
+| UX | `.claude/agents/ux.md` | 2 (maquettes) ; Atelier (image, animation complète ; maquette d'une mécanique nouvelle) |
 | Architect | `.claude/agents/architect.md` | 3, escalade d'impact |
 | Impact Analyst | `.claude/agents/impact-analyst.md` | 4 |
 | Dev | `.claude/agents/dev.md` | 5 |
@@ -470,9 +531,9 @@ Un bug n'est pas une story : il ne crée pas de comportement nouveau, il rétabl
 | Skill | Rôle |
 |---|---|
 | `/backlog` | Récupère les issues ouvertes et propose la suite |
-| `/define-feature` | Étape 1 |
-| `/split-stories` | Étape 2 |
-| `/dev-story` | Étapes 3 à 8 pour une story `status:ready` |
+| `/define-feature` | Étape 1, chemin A (fonctionnalité) |
+| `/split-stories` | Étape 2, chemin A (fonctionnalité) |
+| `/dev-story` | Étapes 3 à 8 pour une story `status:ready`, des deux chemins |
 | `/fix-bug` | Correction d'un bug (`bugfix/` ou `hotfix/`) |
 | `/review-story` | Étape 7 sur une PR |
 | `/release` | Release ou hotfix selon Git Flow |
@@ -481,4 +542,4 @@ Un bug n'est pas une story : il ne crée pas de comportement nouveau, il rétabl
 
 [Ponytail](https://github.com/DietrichGebert/ponytail) est activé pour le projet dans `.claude/settings.json`, épinglé sur une version (`ref`). Il pousse chaque agent vers le changement le plus petit qui résout la story : réutiliser l'existant, pas d'abstraction ni de dépendance non demandée. Commandes utiles : `/ponytail-review` sur une PR, `/ponytail-audit` sur le dépôt, `/ponytail-debt` pour relever les commentaires `shortcut:`.
 
-Ponytail ne remplace aucune règle de ce document : TDD, barrières de qualité, seuils de coverage et de mutation, architecture hexagonale et glossaire priment sur sa règle « un petit test suffit ». Pour monter de version, changer le `ref` dans `.claude/settings.json`.
+Ponytail ne remplace aucune règle de ce document : TDD, barrières de qualité, seuils de coverage, architecture hexagonale et glossaire priment sur sa règle « un petit test suffit ». Pour monter de version, changer le `ref` dans `.claude/settings.json`.

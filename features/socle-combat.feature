@@ -5,8 +5,8 @@ Fonctionnalité: Socle technique du combat 2D
   de datation des appuis du combat.
 
   # Scénarios de #46 exécutés ici, à travers les vraies routes de l'app. Les autres sont vérifiés
-  # par leurs tests et jobs dédiés (tableau de traçabilité de la PR #47) : non-régression (parcours
-  # e2e et test/app/* inchangés), build natif (job android-apk), setups Jest
+  # par leurs tests et jobs dédiés (tableau de traçabilité de la PR #47) : non-régression
+  # (test/app/* inchangés), build natif (job android-apk), setups Jest
   # (test/setup/*.smoke.test.tsx, TouchProbeScreen.test.tsx), pureté (test/lint/purity.test.mjs),
   # canal fixé par la CI (scripts/ci/build-channel.test.mjs).
 
@@ -23,7 +23,7 @@ Fonctionnalité: Socle technique du combat 2D
       | « staging »         |
 
   # La dernière ligne du scénario de #46, « le parcours e2e preview-touch-probe passe sur
-  # l'émulateur », est le parcours Maestro e2e/flows/preview-touch-probe.yaml.
+  # l'émulateur », était un parcours Maestro, retiré le 3/11/2026 : la sonde se juge sur l'APK.
   Scénario: La sonde de toucher mesure la datation sur le build de preview
     Étant donné le build de preview
     Quand on ouvre le lien ascent://preview/touch-probe et qu'on touche 20 fois la zone d'essai

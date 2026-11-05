@@ -1,0 +1,166 @@
+/**
+ * Frappe en rythme (`TimedStrike`, #32, règles C6) : après « Attaquer », la préparation de la
+ * frappe dure 700 ms et le joueur touche « Frapper » à l'impact. Le jugement (`judgeStrike`) a sa
+ * propre fenêtre parfaite, de 40 ms (#211), et reprend la fenêtre de parade de 160 ms pour la bonne
+ * frappe ; aucun hasard : la frappe parfaite est le seul « critique ».
+ */
+import { PARRY_WINDOW_MS, scaleDamage, type PressJudgement } from './rules';
+import { STUNNED_DAMAGE_PERCENT } from './guard';
+
+/**
+ * La fenêtre de frappe parfaite (`PerfectStrikeWindow`, #211) : |écart| ≤ 40 ms, pour la frappe en
+ * rythme seulement ; les défenses gardent la fenêtre parfaite de 60 ms (`PERFECT_WINDOW_MS`).
+ */
+export const PERFECT_STRIKE_WINDOW_MS = 40;
+
+/** Le jugement d'un appui sur « Frapper » : parfait à ±40 ms, bon à ±160 ms, raté au-delà. */
+export function judgeStrike(delta: number): PressJudgement {
+  const distance = Math.abs(delta);
+  if (distance <= PERFECT_STRIKE_WINDOW_MS) return 'perfect';
+  if (distance <= PARRY_WINDOW_MS) return 'good';
+  return 'miss';
+}
+
+/** La préparation de la frappe (C6.1). */
+export const STRIKE_WIND_UP_MS = 700;
+/** La récupération après la fin de la fenêtre de l'impact (animation, durée interne). */
+export const STRIKE_RECOVERY_MS = 320;
+
+/** Le multiplicateur de frappe parfaite de base (`PerfectStrikeMultiplier`), en % (C6.4). */
+export const PERFECT_STRIKE_BASE_PERCENT = 150;
+/** Le multiplicateur d'une bonne frappe : aucun bonus ne s'y applique. */
+export const GOOD_STRIKE_PERCENT = 120;
+/** Sans appui, ou hors de la fenêtre : ni bonus ni pénalité. */
+export const PLAIN_STRIKE_PERCENT = 100;
+
+/**
+ * Le multiplicateur de frappe (`StrikeMultiplier`), en % : 150 % plus les bonus de frappe parfaite
+ * pour une frappe parfaite, 120 % pour une bonne frappe, 100 % sinon ou sans appui (`null`).
+ */
+export function strikeMultiplier(
+  judgement: PressJudgement | null,
+  perfectBonusPercents: readonly number[] = [],
+): number {
+  if (judgement === 'perfect') {
+    return perfectBonusPercents.reduce((sum, bonus) => sum + bonus, PERFECT_STRIKE_BASE_PERCENT);
+  }
+  return judgement === 'good' ? GOOD_STRIKE_PERCENT : PLAIN_STRIKE_PERCENT;
+}
+
+/** Le multiplicateur d'étourdi d'un coup, en % : 150 (plus Braise ardente, #92) sur un étourdi. */
+function stunnedPercent(stunned: boolean, stunnedBonusPercent: number): number {
+  return stunned ? STUNNED_DAMAGE_PERCENT + stunnedBonusPercent : 100;
+}
+
+/** Les PV et les points de garde qu'un coup retire à un ennemi. */
+export interface EnemyBlow {
+  readonly hp: number;
+  readonly guard: number;
+}
+
+/**
+ * Un impact de frappe (C6.5), un seul arrondi à la fin : PV = Attaque × multiplicateur de frappe ×
+ * multiplicateur d'étourdi ; garde = Brise-garde × multiplicateur de frappe, 0 sur un étourdi.
+ */
+export function strikeBlow({
+  attackPower,
+  guardDamage,
+  multiplier,
+  stunned,
+  attackPercents = [],
+  guardPercents = [],
+  stunnedBonusPercent = 0,
+}: {
+  readonly attackPower: number;
+  readonly guardDamage: number;
+  readonly multiplier: number;
+  readonly stunned: boolean;
+  /** Les pourcentages des objets (#93) et des bienfaits (#92), dans le même calcul. */
+  readonly attackPercents?: readonly number[];
+  readonly guardPercents?: readonly number[];
+  readonly stunnedBonusPercent?: number;
+}): EnemyBlow {
+  return {
+    hp: scaleDamage(
+      attackPower,
+      multiplier,
+      ...attackPercents,
+      stunnedPercent(stunned, stunnedBonusPercent),
+    ),
+    guard: stunned ? 0 : scaleDamage(guardDamage, multiplier, ...guardPercents),
+  };
+}
+
+/** La part de l'Attaque que vaut une contre-attaque, avant le trait (C8). */
+export const COUNTER_BASE_PERCENT = 50;
+/** La part du Brise-garde que retire une contre-attaque (C8). */
+export const COUNTER_GUARD_PERCENT = 100;
+
+/**
+ * La contre-attaque (C8) : 50 % de l'Attaque × le trait × le multiplicateur d'étourdi, et 100 % du
+ * Brise-garde (0 sur un étourdi). Le multiplicateur de frappe ne s'y applique pas (C6.6). Les parts
+ * `hpPercent` et `guardPercent` règlent les PV et la garde d'un coup qui en dérive.
+ */
+export function counterBlow({
+  attackPower,
+  guardDamage,
+  counterPercent,
+  stunned,
+  attackPercents = [],
+  guardPercents = [],
+  counterPercents = [],
+  stunnedBonusPercent = 0,
+  hpPercent = 100,
+  guardPercent = COUNTER_GUARD_PERCENT,
+}: {
+  readonly attackPower: number;
+  readonly guardDamage: number;
+  readonly counterPercent: number;
+  readonly stunned: boolean;
+  /** Les pourcentages des objets (#93) et des bienfaits (#92), dans le même calcul. */
+  readonly attackPercents?: readonly number[];
+  readonly guardPercents?: readonly number[];
+  readonly counterPercents?: readonly number[];
+  readonly stunnedBonusPercent?: number;
+  /** La part des PV, après les 50 % de base et le trait : 100 % pour la contre-attaque. */
+  readonly hpPercent?: number;
+  /** La part du Brise-garde : 100 % pour la contre-attaque. */
+  readonly guardPercent?: number;
+}): EnemyBlow {
+  return {
+    hp: scaleDamage(
+      attackPower,
+      COUNTER_BASE_PERCENT,
+      counterPercent,
+      hpPercent,
+      ...attackPercents,
+      ...counterPercents,
+      stunnedPercent(stunned, stunnedBonusPercent),
+    ),
+    guard: stunned ? 0 : scaleDamage(guardDamage, guardPercent, ...guardPercents),
+  };
+}
+
+/** Les parts de la Riposte du Rempart (#128), recopiées du Codex. */
+export interface BulwarkCounterShares {
+  /** La part des PV de la contre-attaque que vaut la riposte, en %. */
+  readonly bulwarkCounterPercent: number;
+  /** La part du Brise-garde que retire la riposte, en %. */
+  readonly bulwarkCounterGuardPercent: number;
+}
+
+/**
+ * La Riposte du Rempart (#128, R4) : le calcul de la contre-attaque, PV × `bulwarkCounterPercent`
+ * et Brise-garde × `bulwarkCounterGuardPercent` (0 sur un étourdi), un seul arrondi, minimum 1.
+ */
+export function bulwarkCounterBlow({
+  bulwarkCounterPercent,
+  bulwarkCounterGuardPercent,
+  ...counter
+}: Parameters<typeof counterBlow>[0] & BulwarkCounterShares): EnemyBlow {
+  return counterBlow({
+    ...counter,
+    hpPercent: bulwarkCounterPercent,
+    guardPercent: bulwarkCounterGuardPercent,
+  });
+}

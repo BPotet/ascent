@@ -5,15 +5,15 @@ import { artPixelSize } from './artPixel';
 import { type IconName, type IconRows, ICONS } from './sprites/icons';
 
 /** Une suite horizontale de pixels de même couleur. */
-interface Run {
+export interface Run {
   readonly x: number;
   readonly y: number;
   readonly length: number;
   readonly code: string;
 }
 
-/** Les suites de pixels de même code de `rows`, ligne par ligne. */
-function runsOf(rows: IconRows): Run[] {
+/** Les suites de pixels de même code de `rows`, ligne par ligne ; `.` est transparent. */
+export function runsOf(rows: IconRows): Run[] {
   const runs: Run[] = [];
   rows.forEach((row, y) => {
     let x = 0;

@@ -1,7 +1,7 @@
 // Stryker disable all: valeurs purement visuelles, vérifiées par la conformité aux maquettes (barrière 10 bis).
 /**
  * La palette d'art (`artPalette`, voir `docs/glossary.md`, #72) : les teintes du prototype de la
- * tour (31 codes, transparent compris), qui servent aux sprites et au décor, et les rôles d'interface qui en sont tirés (maquette
+ * tour (31 codes, transparent compris, puis celles du contenu de l'Atelier et des fonds de palier, ajoutées à la fin), qui servent aux sprites et au décor, et les rôles d'interface qui en sont tirés (maquette
  * `docs/mockups/71-pixel-art/`, « Palette et rôles »). Les contrastes documentés sont vérifiés par
  * `artPalette.test.ts`.
  */
@@ -42,6 +42,53 @@ export const artPalette = {
     '#C9C2B0',
     '#B32E3C',
     '#FF8E8E',
+    // La palette rouge du Chevalier déchu et du Prieur sans visage (#138, ADR 0010 § 4).
+    '#5A1420',
+    // La Sentinelle 2.5D (#140), à la suite : les codes existants ne bougent pas.
+    '#8A6A42',
+    '#B4B9C8',
+    '#646B80',
+    '#222C52',
+    '#3B5089',
+    '#323A62',
+    // Les icônes de 16 × 16 (#157) : Écho parfait, puis Vigueur et Élan, à la suite.
+    '#DEE0E7',
+    '#C3C7D3',
+    '#EEA8B6',
+    '#F8E7C8',
+    // Les paliers 2 et 3 (#38) : la braise (Ronce, Épouvantail, Jardinière, Sonneur), puis le
+    // vert-de-gris du bronze (Veilleur, Sonneur), à la suite.
+    '#D9733A',
+    '#5E8F82',
+    '#3D5E57',
+    // Les fonds de palier (#176) : les Catacombes, les Jardins de cendre, puis le Beffroi, à la
+    // suite. Une teinte déjà connue d'un palier précédent n'est pas reprise.
+    '#0E1120',
+    '#161A2C',
+    '#1A1522',
+    '#3A2C3A',
+    '#6E4A44',
+    '#5B4E4A',
+    '#8E8574',
+    '#0F1118',
+    '#191920',
+    '#23232B',
+    '#323139',
+    '#47454D',
+    '#68646A',
+    '#958F8A',
+    '#221B1C',
+    '#3A2A27',
+    '#6A2E22',
+    '#B0482A',
+    '#56618A',
+    '#B4BCCF',
+    '#241B19',
+    '#3B2A1C',
+    '#6B4A2A',
+    '#9A6A3A',
+    '#D0A066',
+    '#4F7A6E',
   ],
   /** Les rôles d'interface. */
   roles: {
@@ -105,6 +152,33 @@ export const artPalette = {
     shard: '#FF9F5A',
     /** Coup imparable dans la tour, rien d'autre. */
     seal: '#FF3B3B',
+    /** L'argent du Rempart (#128) : l'écu et la riposte, jamais sans la forme de l'écu. */
+    bulwark: '#D9DCE6',
+    /** Texte du Rempart : l'étiquette, « Riposte » et son chiffre (#128). */
+    bulwarkText: '#E6EAF2',
+    /** Rareté Commun : trait de l'écrin et libellé, jamais sans le mot et les losanges (#157). */
+    rarityCommon: '#C3C7D3',
+    /** Rareté Rare : trait de l'écrin et libellé, jamais sans le mot et les losanges (#157). */
+    rarityRare: '#7C9CFF',
+    /** Rareté Épique : trait de l'écrin et libellé, jamais sans le mot et les losanges (#157). */
+    rarityEpic: '#C49BFF',
+    /** Fond de l'écrin d'une icône (#157). */
+    well: '#0B0D18',
+    /** La braise du camp (#40) : la flamme de « Le camp » et « Aller au camp », une teinte de la palette. */
+    ember: '#D9733A',
+    /** Fond d'une pastille d'équipement posée dans un cadre (Équipement du pied de la tour, #159). */
+    sunken: '#141829',
+    /**
+     * Le voile de lisibilité (`backdropVeil`, #176) : la nuit de la maquette à 90 %, sous l'en-tête
+     * et la zone du pouce de l'écran de combat, posé sur le fond de palier.
+     */
+    backdropVeil: 'rgba(14,17,32,0.9)',
+    /**
+     * Le voile de phase ennemie (`enemyPhaseVeil`, #188) : l'encre `#06070C` à 38 % sur tout le cadre
+     * de la scène pendant la phase ennemie, au-dessus du fond de palier, sous les combattants
+     * (maquettes 170 `.pst .veil` et 174 v2, C1 et C3). À ne pas confondre avec `backdropVeil`.
+     */
+    enemyPhaseVeil: 'rgba(6,7,12,0.38)',
   },
 } as const;
 // Stryker restore all

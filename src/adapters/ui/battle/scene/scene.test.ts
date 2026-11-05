@@ -1,0 +1,841 @@
+// La scène du combat en pixel art 2.5D (#81) : des fonctions pures, évaluées à chaque image sur le
+// fil UI, vérifiées ici aux instants des écrans de la maquette v4.1.
+import type { AttackKind } from '../../../../domain/battle/attacks';
+import { glintsOf } from '../../../../domain/battle/glints';
+import {
+  attackMotion,
+  type AttackMotions,
+  type EnemyFrame,
+} from '../../pixelArt/sprites/battle/battleCharacters';
+import type { SceneTimeline } from '../sceneTypes';
+import { FRAME_MS, enemyPose, restPose } from './enemyPose';
+import { BASH_ADVANCE_DP, heroFrame } from './heroFrame';
+import {
+  bulwarkShards,
+  bulwarkShield,
+  glintSprites,
+  hurtLevel,
+  impactFlash,
+  riposteBurst,
+  riposteWave,
+  sparkFrame,
+} from './sceneEffects';
+import { PLATE_HEIGHT, sceneGeometry, spriteOrigin } from './sceneGeometry';
+
+const STEP_IN_AT = 1_000;
+const WIND_UP_AT = 1_400;
+
+/** L'attaque d'un ennemi, préparée à 1 400 ms, avec ses reflets calculés par le domaine. */
+function attack(
+  kind: AttackKind,
+  impacts: readonly number[],
+  { feintAt = null, enemy = 0 }: { feintAt?: number | null; enemy?: number } = {},
+): SceneTimeline {
+  return {
+    enemy,
+    kind: 'attack',
+    attack: kind,
+    stepInAt: WIND_UP_AT,
+    windUpAt: WIND_UP_AT,
+    windUpMs: impacts[0]! - WIND_UP_AT,
+    until: impacts.at(-1)! + 160,
+    impacts,
+    feintAt,
+    glints: glintsOf({
+      kind: 'attack',
+      enemy,
+      attack: kind,
+      damage: 5,
+      startedAt: WIND_UP_AT,
+      feintAt,
+      feintShown: false,
+      impacts: impacts.map((at) => ({ at, landed: false, lost: false, outcome: null })),
+      resolvedAt: impacts.at(-1)! + 160,
+      counter: null,
+    }),
+    hitStopAt: 0,
+    hitStopUntil: 0,
+  };
+}
+
+const STEP_IN: SceneTimeline = {
+  enemy: 1,
+  kind: 'stepIn',
+  attack: null,
+  stepInAt: STEP_IN_AT,
+  windUpAt: WIND_UP_AT,
+  windUpMs: 1_300,
+  until: WIND_UP_AT,
+  impacts: [],
+  feintAt: null,
+  glints: [],
+  hitStopAt: 0,
+  hitStopUntil: 0,
+};
+
+const BASIC = attack('basic', [2_500]);
+const PERILOUS = attack('perilous', [2_700], { enemy: 1 });
+
+describe('enemyPose (pxAct, actPose)', () => {
+  it('P0b: steps in on the step frames at 12 per second, never red, even before a perilous attack (C2.8)', () => {
+    const frames = [0, 90, 180, 270].map((elapsed) =>
+      enemyPose(STEP_IN, STEP_IN_AT + elapsed, false),
+    );
+    expect(frames.map((pose) => pose.frame)).toEqual(['step0', 'step1', 'step2', 'step1']);
+    expect(frames.every((pose) => !pose.red && pose.tier === 1)).toBe(true);
+    expect(enemyPose(STEP_IN, STEP_IN_AT + 200, false).reach).toBeCloseTo(0.3 * 0.75);
+  });
+
+  it('counts the frames from the nominal start of their segment (83 ms each)', () => {
+    expect(FRAME_MS).toBeCloseTo(1_000 / 12);
+    expect(enemyPose(BASIC, WIND_UP_AT + 83, false).frame).toBe('ant0');
+    expect(enemyPose(BASIC, WIND_UP_AT + 300, false)).toMatchObject({ frame: 'ant1', tier: 1 });
+  });
+
+  it('P1: a basic attack winds up regularly, then rushes once', () => {
+    const frames = [0, 300, 700, 1_000].map((elapsed) =>
+      enemyPose(BASIC, WIND_UP_AT + elapsed, false),
+    );
+    expect(frames.map(({ frame, tier }) => [frame, tier])).toEqual([
+      ['ant0', 0],
+      ['ant1', 1],
+      ['ant2', 2],
+      ['ant2', 2],
+    ]);
+  });
+
+  it('P10 and P2b: holds the full wind-up at tier 2, still, from 150 ms before the impact', () => {
+    expect(enemyPose(BASIC, 2_350, false)).toMatchObject({ frame: 'ant2', tier: 2, jitter: 0 });
+    expect(enemyPose(PERILOUS, 2_550, false)).toMatchObject({
+      frame: 'ant2',
+      tier: 2,
+      red: true,
+      jitter: 0,
+    });
+  });
+
+  it('rushes on a single stretched frame over [impact − 80, impact[, then strikes at the impact', () => {
+    expect(enemyPose(BASIC, 2_419, false).frame).not.toBe('lunge');
+    expect(enemyPose(BASIC, 2_420, false)).toMatchObject({ frame: 'lunge', tier: 2 });
+    expect(enemyPose(BASIC, 2_499, false).frame).toBe('lunge');
+    expect(enemyPose(BASIC, 2_500, false)).toMatchObject({ frame: 'impact', tier: 2 });
+  });
+
+  it('P3 and P4: reaches 85 % of the way at the impact, never the hero, then recovers in 170 ms and comes back in 250 ms', () => {
+    expect(enemyPose(BASIC, 2_500, false).reach).toBeCloseTo(0.85);
+    expect(enemyPose(BASIC, 2_669, false).frame).toBe('impact');
+    expect(enemyPose(BASIC, 2_670, false).frame).toBe('rec0');
+    expect(enemyPose(BASIC, 2_760, false).frame).toBe('rec1');
+    expect(enemyPose(BASIC, 2_670 + 250, false)).toMatchObject({ frame: 'idle0', reach: 0 });
+    for (let now = WIND_UP_AT; now < 3_000; now += 5) {
+      expect(enemyPose(BASIC, now, false).reach).toBeLessThanOrEqual(0.85 + 1e-9);
+    }
+  });
+
+  it('a double attack rushes twice, 420 ms apart, without coming back between them', () => {
+    const double = attack('double', [2_400, 2_820]);
+    expect(enemyPose(double, 2_399, false).frame).toBe('lunge');
+    expect(enemyPose(double, 2_400, false).frame).toBe('impact');
+    expect(enemyPose(double, 2_570, false)).toMatchObject({ frame: 'rec0', tier: 1 });
+    expect(enemyPose(double, 2_660, false)).toMatchObject({ frame: 'ant2', tier: 1 });
+    // Le second reflet double, 150 ms avant le second impact : la pose pleine, au palier 2.
+    expect(enemyPose(double, 2_680, false)).toMatchObject({ frame: 'ant2', tier: 2 });
+    expect(enemyPose(double, 2_740, false).frame).toBe('lunge');
+    expect(enemyPose(double, 2_820, false).frame).toBe('impact');
+    expect(enemyPose(double, 2_600, false).reach).toBeGreaterThan(0.3 - 0.14);
+  });
+
+  it('P12: a delayed attack winds up fast, then hesitates, trembling, before the rush', () => {
+    const delayed = attack('delayed', [3_100], { enemy: 1 });
+    expect(enemyPose(delayed, WIND_UP_AT + 500, false).frame).toBe('ant2');
+    const hesitation = [9, 10, 11, 12].map(
+      (frame) => enemyPose(delayed, WIND_UP_AT + frame * FRAME_MS + 1, false).frame,
+    );
+    expect(hesitation).toEqual(['hes', 'ant2', 'hes', 'ant2']);
+  });
+
+  it('D1, D2: a delayed perilous attack hesitates like a delayed attack, red all along', () => {
+    const shockwave = attack('delayedPerilous', [3_100], { enemy: 1 });
+    const hesitation = [9, 10, 11, 12].map((frame) =>
+      enemyPose(shockwave, WIND_UP_AT + frame * FRAME_MS + 1, false),
+    );
+    expect(hesitation.map((pose) => pose.frame)).toEqual(['hes', 'ant2', 'hes', 'ant2']);
+    expect(hesitation.every((pose) => pose.red)).toBe(true);
+    expect(enemyPose(shockwave, WIND_UP_AT, false).red).toBe(true);
+  });
+
+  it('P13: a feint rushes short, to 74 % at the summit of its false start, without an impact frame', () => {
+    const feint = attack('feint', [3_000], { feintAt: 2_200, enemy: 1 });
+    expect(enemyPose(feint, 2_150, false)).toMatchObject({ frame: 'feint0', tier: 2 });
+    expect(enemyPose(feint, 2_200, false).reach).toBeCloseTo(0.74);
+    for (let now = 2_100; now < 2_400; now += 5) {
+      expect(enemyPose(feint, now, false).frame).not.toBe('impact');
+      expect(enemyPose(feint, now, false).reach).toBeLessThanOrEqual(0.74 + 1e-9);
+    }
+    expect(enemyPose(feint, 2_050 + 30, false)).toMatchObject({ frame: 'ant2', tier: 1 });
+  });
+
+  it('P2: a perilous attack turns red from the start of its wind-up only, bigger and trembling', () => {
+    expect(enemyPose(PERILOUS, WIND_UP_AT, false).red).toBe(true);
+    expect(enemyPose(PERILOUS, WIND_UP_AT + 300, false)).toMatchObject({
+      frame: 'ant1',
+      red: true,
+    });
+    expect(enemyPose(PERILOUS, WIND_UP_AT + 1, false).tier).toBeGreaterThanOrEqual(1);
+    const late = [600, 700, 800].map((elapsed) => enemyPose(PERILOUS, WIND_UP_AT + elapsed, false));
+    expect(late.some((pose) => pose.jitter !== 0)).toBe(true);
+    expect(enemyPose(BASIC, WIND_UP_AT + 700, false).jitter).toBe(0);
+  });
+
+  it('freezes during a hit stop, at the pose of the moved timeline', () => {
+    const stopped: SceneTimeline = {
+      ...attack('double', [2_490, 2_910]),
+      hitStopAt: 2_400,
+      hitStopUntil: 2_490,
+    };
+    expect(enemyPose(stopped, 2_420, false)).toEqual(enemyPose(stopped, 2_490, false));
+    expect(enemyPose(stopped, 2_489, false)).toEqual(enemyPose(stopped, 2_400, false));
+  });
+
+  it('moves a quarter as much with reduced motion', () => {
+    expect(enemyPose(BASIC, 2_500, true).reach).toBeCloseTo(0.85 * 0.25);
+  });
+
+  it('leans in briefly for a Guard or a Raise, with no rush', () => {
+    const support: SceneTimeline = {
+      ...STEP_IN,
+      kind: 'support',
+      stepInAt: WIND_UP_AT,
+      until: WIND_UP_AT + 400,
+    };
+    expect(enemyPose(support, WIND_UP_AT + 200, false)).toMatchObject({ frame: 'ant1', tier: 1 });
+    expect(enemyPose(support, WIND_UP_AT + 20, false).frame).toBe('ant0');
+    expect(enemyPose(support, WIND_UP_AT + 200, false).reach).toBeCloseTo(0.12);
+  });
+});
+
+describe('enemyPose with attack poses (#139)', () => {
+  // Lues avant les tests, jamais à la collecte : un mutant qui fait échouer `attackMotion` fait
+  // échouer les tests (il est tué), au lieu d'une erreur d'exécution hors du score (#149).
+  let TWINS: AttackMotions;
+  let WARDEN: AttackMotions;
+  beforeAll(() => {
+    TWINS = attackMotion('twins');
+    WARDEN = attackMotion('ossuaryWarden');
+  });
+  const BOLT = attack('basic', [2_500]);
+  const SHOCKWAVE = attack('delayedPerilous', [3_100]);
+  const SHINBONES = attack('double', [2_400, 2_820]);
+  const BURIAL = attack('perilous', [2_700]);
+  const END = 3_600;
+
+  /** Chaque instant de `from` à `to`, de 5 en 5 ms. */
+  const instants = (from: number, to: number) =>
+    Array.from({ length: Math.ceil((to - from) / 5) }, (_, index) => from + index * 5);
+
+  it('never takes an attack pose while stepping in, leaning in or before the wind-up (C2.8)', () => {
+    const support: SceneTimeline = { ...STEP_IN, kind: 'support', until: WIND_UP_AT + 400 };
+    for (const motion of [TWINS, WARDEN]) {
+      for (const now of instants(STEP_IN_AT, WIND_UP_AT + 400)) {
+        for (const timeline of [STEP_IN, support, { ...BOLT, windUpAt: WIND_UP_AT + 400 }]) {
+          expect(enemyPose(timeline, now, false, motion)).toMatchObject({ poses: null, lift: 0 });
+        }
+      }
+    }
+  });
+
+  it('takes the attack poses for an attack only, even if a step-in or a lean-in carried an attack kind', () => {
+    const support: SceneTimeline = { ...STEP_IN, kind: 'support', until: WIND_UP_AT + 400 };
+    for (const now of instants(STEP_IN_AT, WIND_UP_AT + 400)) {
+      for (const timeline of [
+        { ...STEP_IN, attack: 'basic' as const },
+        { ...support, attack: 'basic' as const },
+      ]) {
+        expect([now, enemyPose(timeline, now, false, TWINS)]).toMatchObject([
+          now,
+          { poses: null, lift: 0 },
+        ]);
+      }
+    }
+    expect(enemyPose({ ...support, attack: 'basic' }, WIND_UP_AT, false, TWINS).frame).toBe('ant1');
+  });
+
+  it('shows the same frames at the same instants as without attack poses: the durations do not change', () => {
+    for (const [timeline, motion] of [
+      [BOLT, TWINS],
+      [SHOCKWAVE, TWINS],
+      [SHINBONES, WARDEN],
+      [BURIAL, WARDEN],
+    ] as const) {
+      for (const now of instants(WIND_UP_AT, END)) {
+        const { frame, tier, red, jitter } = enemyPose(timeline, now, false);
+        expect([now, enemyPose(timeline, now, false, motion)]).toMatchObject([
+          now,
+          { frame, tier, red, jitter },
+        ]);
+      }
+    }
+  });
+
+  it.each([
+    ['basic', ['ant0', 'ant1', 'ant2', 'lunge', 'impact', 'rec0']],
+    ['delayedPerilous', ['ant0', 'ant1', 'ant2', 'hes', 'lunge', 'impact']],
+  ] as const)('takes the %s poses of the Twins for its own frames only', (kind, own) => {
+    const timeline = kind === 'basic' ? BOLT : SHOCKWAVE;
+    const seen = new Set<string>();
+    for (const now of instants(WIND_UP_AT, END)) {
+      const pose = enemyPose(timeline, now, false, TWINS);
+      seen.add(`${pose.frame}:${pose.poses}`);
+      expect([now, pose.frame, pose.poses]).toEqual([
+        now,
+        pose.frame,
+        (own as readonly EnemyFrame[]).includes(pose.frame) ? kind : null,
+      ]);
+    }
+    for (const frame of own) expect(seen).toContain(`${frame}:${kind}`);
+    // Les images absentes du coup viennent de l'animation complète.
+    expect(seen).toContain('idle0:null');
+    expect(seen).toContain(kind === 'basic' ? 'rec1:null' : 'rec0:null');
+  });
+
+  it('multiplies the way of the crossbow bolt by its reach of 0.5, from the recoil to the return', () => {
+    // Le recul de l'anticipation part de l'avancée (0,3), sans saut, jusqu'à (0,3 − 0,14) × 0,5.
+    expect(enemyPose(BOLT, WIND_UP_AT, false, TWINS).reach).toBeCloseTo(0.3);
+    expect(enemyPose(BOLT, 2_419, false, TWINS).reach).toBeCloseTo(0.08, 2);
+    for (const now of instants(WIND_UP_AT, 2_420)) {
+      const plain = enemyPose(BOLT, now, false).reach;
+      expect([now, enemyPose(BOLT, now, false, TWINS).reach]).toEqual([
+        now,
+        expect.closeTo(0.3 - ((0.3 - plain) * (0.3 - 0.08)) / 0.14, 6),
+      ]);
+    }
+    // Puis la ruée, l'impact, la récupération et le retour : la moitié de ceux d'aujourd'hui.
+    for (const now of instants(2_420, END)) {
+      expect([now, enemyPose(BOLT, now, false, TWINS).reach]).toEqual([
+        now,
+        expect.closeTo(enemyPose(BOLT, now, false).reach * 0.5, 6),
+      ]);
+    }
+    expect(enemyPose(BOLT, 2_420, false, TWINS).reach).toBeCloseTo(0.08);
+    expect(enemyPose(BOLT, 2_500, false, TWINS).reach).toBeCloseTo(0.425);
+    expect(enemyPose(BOLT, 2_585, false, TWINS).reach).toBeCloseTo((0.85 - 0.55 * 0.75) * 0.5);
+    expect(enemyPose(BOLT, 2_670, false, TWINS).reach).toBeCloseTo(0.15);
+    for (const now of instants(WIND_UP_AT, END)) {
+      expect(enemyPose(BOLT, now, false, TWINS).reach).toBeLessThanOrEqual(0.425 + 1e-9);
+    }
+    // Le coup sans portée de l'Atelier garde le chemin d'aujourd'hui.
+    for (const now of instants(WIND_UP_AT, END)) {
+      expect([now, enemyPose(SHOCKWAVE, now, false, TWINS).reach]).toEqual([
+        now,
+        enemyPose(SHOCKWAVE, now, false).reach,
+      ]);
+    }
+  });
+
+  it('multiplies the recoil of a delayed attack by the reach, hesitation included', () => {
+    const delayed = attack('delayed', [3_100]);
+    const halved: AttackMotions = {
+      delayed: { reach: 0.5, lift: {} },
+      delayedPerilous: { reach: 0.5, lift: {} },
+    };
+    // Le recul dure 45 % de l'anticipation (1 620 ms), puis l'hésitation tient jusqu'à la ruée.
+    const recoilEnd = WIND_UP_AT + 0.45 * 1_620;
+    expect(enemyPose(delayed, WIND_UP_AT, false, halved).reach).toBeCloseTo(0.3);
+    let last = 0.3;
+    for (const now of instants(WIND_UP_AT + 5, recoilEnd)) {
+      const { reach } = enemyPose(delayed, now, false, halved);
+      expect([now, reach < last, reach > 0.08 - 1e-9]).toEqual([now, true, true]);
+      last = reach;
+    }
+    for (const now of instants(Math.ceil(recoilEnd), 3_020)) {
+      expect([now, enemyPose(delayed, now, false, halved).reach]).toEqual([
+        now,
+        expect.closeTo(0.08, 6),
+      ]);
+    }
+    expect(enemyPose(delayed, 3_100, false, halved).reach).toBeCloseTo(0.425);
+    // Sans table : de 0,3 à 0,16, comme aujourd'hui.
+    expect(enemyPose(delayed, WIND_UP_AT, false).reach).toBeCloseTo(0.3);
+    expect(enemyPose(delayed, Math.ceil(recoilEnd), false).reach).toBeCloseTo(0.16);
+    expect(enemyPose(delayed, 3_000, false).reach).toBeCloseTo(0.16);
+    expect(enemyPose(delayed, WIND_UP_AT + 300, false).reach).toBeLessThan(0.3);
+    expect(enemyPose(delayed, WIND_UP_AT + 300, false).reach).toBeGreaterThan(0.16);
+  });
+
+  it('multiplies the second segment of a double attack and the false rush by the reach too', () => {
+    const scaled: AttackMotions = {
+      double: { reach: 0.5, lift: {} },
+      feint: { reach: 0.5, lift: {} },
+    };
+    const feint = attack('feint', [3_000], { feintAt: 2_200 });
+    // Après la fausse ruée, l'anticipation reprend : elle seule part de l'avancée.
+    for (const [timeline, from, to] of [
+      [SHINBONES, 2_320, END],
+      [feint, 2_120, 2_390],
+      [feint, 2_920, END],
+    ] as const) {
+      for (const now of instants(from, to)) {
+        expect([now, enemyPose(timeline, now, false, scaled).reach]).toEqual([
+          now,
+          expect.closeTo(enemyPose(timeline, now, false).reach * 0.5, 6),
+        ]);
+      }
+    }
+  });
+
+  it('covers the exact way of the rush, of the return and of the second segment, times the reach', () => {
+    // La ruée du carreau (impact à 2 500 ms) : de 0,16 à 0,85 en carré du temps, ici à mi-chemin.
+    expect(enemyPose(BOLT, 2_460, false).reach).toBeCloseTo(0.16 + 0.69 * 0.25, 9);
+    expect(enemyPose(BOLT, 2_460, false, TWINS).reach).toBeCloseTo((0.16 + 0.69 * 0.25) * 0.5, 9);
+    // Le retour, après la récupération (2 670 ms) : de 0,3 à 0 en 250 ms, linéaire.
+    expect(enemyPose(BOLT, 2_795, false).reach).toBeCloseTo(0.15, 9);
+    expect(enemyPose(BOLT, 2_795, false, TWINS).reach).toBeCloseTo(0.075, 9);
+    expect(enemyPose(BOLT, 2_920, false, TWINS).reach).toBe(0);
+    // Le second coup des deux tibias (2 820 ms) : de l'avancée (0,3) à 0,16, de 2 570 à 2 740 ms.
+    const halved: AttackMotions = { double: { reach: 0.5, lift: {} } };
+    expect(enemyPose(SHINBONES, 2_570, false, halved).reach).toBeCloseTo(0.15, 9);
+    expect(enemyPose(SHINBONES, 2_655, false).reach).toBeCloseTo(0.3 - 0.14 * 0.75, 9);
+    expect(enemyPose(SHINBONES, 2_655, false, halved).reach).toBeCloseTo(
+      (0.3 - 0.14 * 0.75) * 0.5,
+      9,
+    );
+  });
+
+  it('reads no attack poses without an attack kind, not even an entry named null', () => {
+    // `null` n'est pas un type de coup : il n'est jamais lu comme la clé « null » de la table.
+    const loose = { basic: { reach: 0.5, lift: {} }, null: { reach: 2, lift: { ant0: 7 } } };
+    const unknown: SceneTimeline = { ...BOLT, attack: null };
+    for (const now of instants(WIND_UP_AT, END)) {
+      expect([now, enemyPose(unknown, now, false, loose)]).toEqual([
+        now,
+        enemyPose(unknown, now, false),
+      ]);
+    }
+    expect(enemyPose(unknown, WIND_UP_AT, false, loose)).toMatchObject({
+      frame: 'ant0',
+      poses: null,
+      lift: 0,
+    });
+  });
+
+  it('lifts each pose of the shockwave by its lift, in whole art pixels', () => {
+    const lifts: Partial<Record<EnemyFrame, number[]>> = {};
+    for (const now of instants(WIND_UP_AT, END)) {
+      const { frame, lift, poses } = enemyPose(SHOCKWAVE, now, false, TWINS);
+      if (poses !== null) lifts[frame] = [...new Set([...(lifts[frame] ?? []), lift])];
+      else expect([now, lift]).toEqual([now, 0]);
+    }
+    expect(lifts).toEqual({ ant0: [0], ant1: [6], ant2: [14], hes: [15], lunge: [5], impact: [0] });
+    expect(enemyPose(BOLT, 2_400, false, TWINS).lift).toBe(0);
+  });
+
+  it('with reduced motion, covers a quarter of the reach and lifts by a quarter, rounded to the art pixel', () => {
+    expect(enemyPose(BOLT, 2_500, true, TWINS).reach).toBeCloseTo(0.425 * 0.25);
+    const lifts: Partial<Record<EnemyFrame, number>> = {};
+    for (const now of instants(WIND_UP_AT, END)) {
+      const full = enemyPose(SHOCKWAVE, now, false, TWINS);
+      const reduced = enemyPose(SHOCKWAVE, now, true, TWINS);
+      expect([now, reduced.frame, reduced.poses, reduced.red]).toEqual([
+        now,
+        full.frame,
+        full.poses,
+        full.red,
+      ]);
+      if (reduced.poses !== null) lifts[reduced.frame] = reduced.lift;
+    }
+    expect(lifts).toEqual({ ant0: 0, ant1: 2, ant2: 4, hes: 4, lunge: 1, impact: 0 });
+  });
+
+  it('keeps the attack poses for the second segment of the two shinbones and for the held glint', () => {
+    expect(enemyPose(SHINBONES, 2_570, false, WARDEN)).toMatchObject({
+      frame: 'rec0',
+      poses: 'double',
+    });
+    expect(enemyPose(SHINBONES, 2_660, false, WARDEN)).toMatchObject({
+      frame: 'ant2',
+      poses: 'double',
+    });
+    // Le reflet double, tenu 70 ms sur la pose pleine.
+    const glint = SHINBONES.glints[1]!.at;
+    expect(enemyPose(SHINBONES, glint + 10, false, WARDEN)).toMatchObject({
+      frame: 'ant2',
+      poses: 'double',
+    });
+  });
+
+  it('plays the attack poses of the Ossuary warden for its phase 2 moves only, the ossuary burial in red', () => {
+    for (const now of instants(WIND_UP_AT, END)) {
+      const burial = enemyPose(BURIAL, now, false, WARDEN);
+      if (burial.poses !== null)
+        expect([now, burial.poses, burial.red]).toEqual([now, 'perilous', true]);
+      for (const timeline of [BASIC, attack('delayed', [3_100])]) {
+        expect([now, enemyPose(timeline, now, false, WARDEN).poses]).toEqual([now, null]);
+      }
+    }
+    expect(enemyPose(BURIAL, 2_700, false, WARDEN).poses).toBe('perilous');
+    expect(enemyPose(SHINBONES, 2_400, false, WARDEN).poses).toBe('double');
+  });
+
+  it('never takes an attack pose for the frames of a feint', () => {
+    const feint = attack('feint', [3_000], { feintAt: 2_200 });
+    const motion: AttackMotions = { feint: { reach: null, lift: { ant1: 3, ant2: 3 } } };
+    expect(enemyPose(feint, 2_150, false, motion)).toMatchObject({ frame: 'feint0', poses: null });
+    expect(enemyPose(feint, 2_210, false, motion)).toMatchObject({ frame: 'feint1', poses: null });
+    expect(enemyPose(feint, 2_300, false, motion)).toMatchObject({
+      frame: 'ant2',
+      poses: 'feint',
+      lift: 3,
+    });
+  });
+
+  it('takes no attack pose without the table of the active enemy', () => {
+    for (const now of instants(WIND_UP_AT, END)) {
+      expect(enemyPose(SHOCKWAVE, now, false)).toMatchObject({ poses: null, lift: 0 });
+      expect(enemyPose(SHOCKWAVE, now, false, {})).toMatchObject({ poses: null, lift: 0 });
+    }
+  });
+});
+
+describe('restPose', () => {
+  const standing = {
+    standing: true,
+    down: false,
+    losingAction: false,
+    rising: null,
+    downSince: null,
+  };
+
+  it('breathes between idle0 and idle1 every 250 ms, each enemy at its own beat', () => {
+    expect(restPose(standing, 0, 0).frame).toBe('idle0');
+    expect(restPose(standing, 0, 250).frame).toBe('idle1');
+    expect(restPose(standing, 1, 120).frame).toBe('idle1');
+    expect(restPose(standing, 0, 0)).toMatchObject({ stars: null, hop: false });
+  });
+
+  it('F5: falls down, hurt for 200 ms, with stars turning every 125 ms', () => {
+    const down = { ...standing, down: true, downSince: 1_000 };
+    expect(restPose(down, 0, 1_100).frame).toBe('hurt');
+    expect(restPose(down, 0, 1_200).frame).toBe('down');
+    expect([1_000, 1_125, 1_250, 1_375, 1_500].map((now) => restPose(down, 0, now).stars)).toEqual([
+      0, 1, 2, 3, 0,
+    ]);
+  });
+
+  it('F5c: stays down without a known fall, and hops its stars while it loses its action', () => {
+    expect(restPose({ ...standing, down: true }, 0, 5).frame).toBe('down');
+    expect(restPose({ ...standing, down: true, losingAction: true }, 0, 5).hop).toBe(true);
+  });
+
+  it('rises: down, then kneeling, then standing', () => {
+    const rising = { ...standing, rising: { since: 2_000, until: 2_400 } };
+    expect([2_050, 2_200, 2_300].map((now) => restPose(rising, 0, now).frame)).toEqual([
+      'down',
+      'hurt',
+      'idle0',
+    ]);
+  });
+
+  it('lies hurt once fallen for good', () => {
+    expect(restPose({ ...standing, standing: false }, 0, 0).frame).toBe('hurt');
+  });
+});
+
+describe('heroFrame (pxHeroFrame)', () => {
+  it('breathes at rest, and lies on its last hit frame once fallen', () => {
+    expect([0, 250, 500].map((now) => heroFrame('idle', 0, now, null).frame)).toEqual([
+      'idle0',
+      'idle1',
+      'idle0',
+    ]);
+    expect(heroFrame('fallen', 0, 10_000, null).frame).toBe('hit1');
+  });
+
+  it('parries in two frames for 250 ms, then rests', () => {
+    expect(heroFrame('parry', 1_000, 1_050, null).frame).toBe('parry0');
+    expect(heroFrame('counter', 1_000, 1_100, null).frame).toBe('parry1');
+    expect(heroFrame('parry', 1_000, 1_250, null).frame).toMatch(/^idle/u);
+  });
+
+  it('is hit for 300 ms, staggers while off-balance', () => {
+    expect(heroFrame('hit', 0, 50, null).frame).toBe('hit0');
+    expect(heroFrame('hit', 0, 200, null).frame).toBe('hit1');
+    expect(heroFrame('hit', 0, 300, null).frame).toMatch(/^idle/u);
+    expect([10, 100, 180].map((now) => heroFrame('off', 0, now, null).frame)).toEqual([
+      'off0',
+      'off1',
+      'off0',
+    ]);
+  });
+
+  it('steps aside to dodge, out and back in 300 ms', () => {
+    const steps = [10, 100, 200, 260].map((now) => heroFrame('dodge', 0, now, null));
+    expect(steps.map((pose) => pose.frame)).toEqual(['dodge0', 'dodge1', 'dodge1', 'dodge0']);
+    expect(steps[0]!.dodge).toBeLessThan(steps[1]!.dodge);
+    expect(heroFrame('dodge', 0, 150, null).dodge).toBeCloseTo(1);
+    expect(heroFrame('dodge', 0, 300, null)).toMatchObject({ dodge: 0 });
+  });
+
+  it('raises its blade for the timed strike, gleaming within 160 ms of the impact', () => {
+    expect(heroFrame('raise', 0, 100, 700)).toMatchObject({ frame: 'raise', tier: 0 });
+    expect(heroFrame('raise', 0, 600, 700)).toMatchObject({ frame: 'raiseG', tier: 1 });
+    expect(heroFrame('raise', 0, 860, 700)).toMatchObject({ frame: 'raiseG', tier: 1 });
+  });
+
+  it('strikes toward the target for 320 ms', () => {
+    expect(heroFrame('strike', 0, 40, null)).toMatchObject({ frame: 'atk0' });
+    expect(heroFrame('strike', 0, 160, null)).toMatchObject({ frame: 'atk1' });
+    expect(heroFrame('strike', 0, 160, null).lunge).toBeCloseTo(1);
+    expect(heroFrame('strike', 0, 320, null)).toMatchObject({ lunge: 0 });
+  });
+
+  it('bashes with its shield in place for 400 ms: the validated bash pose, 4 dp forward and back (#128, #155)', () => {
+    expect(BASH_ADVANCE_DP).toBe(4);
+    expect(heroFrame('bash', 0, 10, null)).toMatchObject({ frame: 'bash', lunge: 0, dodge: 0 });
+    expect(heroFrame('bash', 0, 200, null).frame).toBe('bash');
+    expect(heroFrame('bash', 0, 399, null).frame).toBe('bash');
+    expect(heroFrame('bash', 0, 200, null).push).toBeCloseTo(1);
+    expect(heroFrame('bash', 0, 100, null).push).toBeCloseTo(Math.SQRT1_2);
+    expect(heroFrame('bash', 0, 400, null)).toMatchObject({ push: 0 });
+    expect(heroFrame('bash', 0, 400, null).frame).toMatch(/^idle/u);
+    expect(heroFrame('strike', 0, 160, null).push).toBe(0);
+  });
+});
+
+describe('scene effects', () => {
+  it('flashes on the hero for 160 ms at each impact, in 3 steps, never at the false start', () => {
+    const feint = attack('feint', [3_000], { feintAt: 2_200 });
+    expect(impactFlash(BASIC, 2_499)).toBeNull();
+    expect([2_500, 2_560, 2_620].map((now) => impactFlash(BASIC, now))).toEqual([0, 1, 2]);
+    expect(impactFlash(BASIC, 2_660)).toBeNull();
+    expect(impactFlash(feint, 2_250)).toBeNull();
+    expect(impactFlash(null, 2_500)).toBeNull();
+  });
+
+  it('shows each glint 90 ms, in 3 frames of 30 ms, at the eye (at the claw tips for a double one)', () => {
+    const anchors = { eye: [10, 12] as const, tips: [[3, 9] as const, [37, 9] as const] };
+    expect(glintSprites(BASIC.glints, 2_349, anchors)).toEqual([]);
+    expect(glintSprites(BASIC.glints, 2_350, anchors)).toEqual([
+      { effect: 'glintWhite', frame: 0, x: 10, y: 12 },
+    ]);
+    expect(glintSprites(BASIC.glints, 2_410, anchors)[0]?.frame).toBe(2);
+    expect(glintSprites(BASIC.glints, 2_440, anchors)).toEqual([]);
+    expect(glintSprites(PERILOUS.glints, 2_550, anchors)[0]?.effect).toBe('glintRed');
+    const double = attack('double', [2_400, 2_820]);
+    expect(glintSprites(double.glints, 2_250, anchors)).toEqual([
+      { effect: 'glintWhite', frame: 0, x: 3, y: 9 },
+      { effect: 'glintWhite', frame: 0, x: 37, y: 9 },
+    ]);
+    const feint = attack('feint', [3_000], { feintAt: 2_200 });
+    expect(glintSprites(feint.glints, 2_050, anchors)[0]?.effect).toBe('glintDull');
+  });
+
+  it('plays a parry spark in 5 frames of 83 ms', () => {
+    expect(sparkFrame({ kind: 'gold', at: 1_000 }, 999)).toBeNull();
+    expect(sparkFrame({ kind: 'gold', at: 1_000 }, 1_000)).toBe(0);
+    expect(sparkFrame({ kind: 'steel', at: 1_000 }, 1_390)).toBe(4);
+    expect(sparkFrame({ kind: 'steel', at: 1_000 }, 1_400)).toBeNull();
+    expect(sparkFrame(null, 1_000)).toBeNull();
+  });
+
+  it('fades the red vignette of a blow in 5 steps over 450 ms', () => {
+    expect(hurtLevel(1_000, 999)).toBeNull();
+    expect([1_000, 1_100, 1_449].map((now) => hurtLevel(1_000, now))).toEqual([0, 1, 4]);
+    expect(hurtLevel(1_000, 1_450)).toBeNull();
+    expect(hurtLevel(null, 1_000)).toBeNull();
+  });
+});
+
+describe('sceneGeometry', () => {
+  it('fits three enemies on a 390 pt screen, in a diagonal, sprites of 88 × 104 at 2 dp', () => {
+    const geometry = sceneGeometry(390, 440, 3);
+    expect(geometry.enemies).toHaveLength(3);
+    const [first, second, third] = geometry.enemies;
+    expect(first!.column.x).toBeGreaterThanOrEqual(0);
+    expect(third!.column.x + third!.column.width).toBeLessThanOrEqual(390);
+    expect([first!.column.y, second!.column.y, third!.column.y]).toEqual([36, 18, 2]);
+    for (const enemy of geometry.enemies) {
+      expect([enemy.sprite.width, enemy.sprite.height]).toEqual([88, 104]);
+      expect(enemy.sprite.x % 2).toBe(0);
+      expect(enemy.sprite.x).toBeGreaterThanOrEqual(enemy.column.x - 1);
+    }
+  });
+
+  it('gives the bottom of the plates, so the end screen never cuts them', () => {
+    const geometry = sceneGeometry(390, 440, 3);
+    expect(PLATE_HEIGHT).toBe(56);
+    expect(geometry.platesBottom).toBe(36 + 2 + 40 + 2 + 104 + 2 + PLATE_HEIGHT);
+    expect(geometry.platesBottom).toBe(sceneGeometry(390, 260, 3).platesBottom);
+  });
+
+  it('puts a single enemy further right', () => {
+    const [single] = sceneGeometry(390, 440, 1).enemies;
+    expect(single!.column.x).toBe(Math.round(390 * 0.44));
+    expect(single!.column.y).toBe(2);
+  });
+
+  it('sets the ground shadow of each enemy under its feet, the same for 1, 2 or 3 enemies (#184)', () => {
+    for (const count of [1, 2, 3]) {
+      for (const { sprite, groundShadowAt } of sceneGeometry(390, 440, count).enemies) {
+        // Centrée sous la place, son bas 3 dp sous le bas du sprite (maquette, `.sock`), calés sur
+        // 2 dp : 4 dp.
+        expect(groundShadowAt.x).toBe(sprite.x + sprite.width / 2);
+        expect(groundShadowAt.y).toBe(sprite.y + sprite.height + 4);
+        expect([groundShadowAt.x % 2, groundShadowAt.y % 2]).toEqual([0, 0]);
+      }
+    }
+  });
+
+  it('sets the ground shadow of the hero under its feet, centred, at 3 dp and at 2 dp (#184)', () => {
+    for (const width of [412, 360, 320]) {
+      const { hero, heroGroundShadowAt } = sceneGeometry(width, 440, 3);
+      expect(heroGroundShadowAt).toEqual({ x: hero.x + hero.width / 2, y: hero.y + hero.height });
+    }
+    expect(sceneGeometry(412, 440, 3).heroGroundShadowAt).toEqual({ x: 4 + 54, y: 440 - 12 + 4 });
+    expect(sceneGeometry(320, 440, 3).heroGroundShadowAt).toEqual({ x: 4 + 36, y: 440 - 12 + 4 });
+  });
+
+  it('places the hero from behind at the bottom left, at 3 dp, its chest at 42 % of its height', () => {
+    const geometry = sceneGeometry(390, 440, 3);
+    expect(geometry.hero).toMatchObject({ x: 4, width: 108, height: 132, scale: 3 });
+    expect(geometry.hero.y + 132).toBe(440 - 12 + 4);
+    expect(geometry.chest).toEqual({ x: 4 + 54, y: 440 - 144 + Math.round(132 * 0.42) });
+    expect(sceneGeometry(320, 440, 3).hero).toMatchObject({ width: 72, height: 88, scale: 2 });
+  });
+
+  it('keeps the place of today for a cell of 44 × 52 art pixels', () => {
+    for (const count of [1, 2, 3]) {
+      for (const { sprite } of sceneGeometry(390, 440, count).enemies) {
+        expect(spriteOrigin(sprite, 44, 52)).toEqual({ x: sprite.x, y: sprite.y });
+      }
+    }
+  });
+
+  it('centres a larger cell in width and sets it on the bottom of the place, at 2 dp (#138)', () => {
+    const { sprite } = sceneGeometry(390, 440, 1).enemies[0]!;
+    // Le Prieur sans visage (52 × 62) : 8 dp à gauche, 20 dp plus haut.
+    const prior = spriteOrigin(sprite, 52, 62);
+    expect(prior).toEqual({ x: sprite.x - 8, y: sprite.y - 20 });
+    // Les Jumeaux (54 × 54) : 10 dp à gauche, 4 dp plus haut ; la Gardienne (52 × 62), comme le
+    // Prieur (#139).
+    expect(spriteOrigin(sprite, 54, 54)).toEqual({ x: sprite.x - 10, y: sprite.y - 4 });
+    // Le Chevalier déchu (44 × 54) : 4 dp plus haut.
+    expect(spriteOrigin(sprite, 44, 54)).toEqual({ x: sprite.x, y: sprite.y - 4 });
+    // Une largeur impaire en pixels d'art reste sur la grille de 2 dp.
+    expect(spriteOrigin(sprite, 47, 52)).toEqual({ x: sprite.x - 2, y: sprite.y });
+    for (const [width, height] of [
+      [52, 62],
+      [44, 54],
+      [54, 54],
+    ] as const) {
+      const origin = spriteOrigin(sprite, width, height);
+      expect([origin.x % 2, origin.y % 2]).toEqual([0, 0]);
+      // Les pieds sur leur ombre au sol : le bas de la case tombe sur le bas de la place.
+      expect(origin.y + height * 2).toBe(sprite.y + sprite.height);
+    }
+  });
+
+  it('aims each enemy at the hero: the reach vector goes from its body to the chest of the hero', () => {
+    const geometry = sceneGeometry(390, 440, 3);
+    const [first] = geometry.enemies;
+    expect(first!.reach.x).toBe(geometry.chest.x - (first!.sprite.x + 44));
+    expect(first!.reach.y).toBeGreaterThan(0);
+  });
+});
+
+describe('sceneGeometry: the layout of a boss that summons (#172, maquette « boss3 »)', () => {
+  it.each([360, 412])(
+    'gives the Queen a column of 1.25 and each Mothkin at least 104 dp at %i dp',
+    (width) => {
+      const { enemies } = sceneGeometry(width, 440, 3, { summoner: true });
+      const [queen, first, second] = enemies.map((slot) => slot.column.width);
+
+      expect(first).toBeGreaterThanOrEqual(104);
+      expect(second).toBe(first);
+      expect(queen).toBe(Math.floor(first! * 1.25));
+      expect(enemies[2]!.column.x + second!).toBeLessThanOrEqual(width);
+    },
+  );
+
+  it('puts the Queen highest and the Mothkin lower, from left to right', () => {
+    const { enemies } = sceneGeometry(412, 440, 3, { summoner: true });
+
+    expect(enemies.map((slot) => slot.column.y - enemies[0]!.column.y)).toEqual([0, 22, 40]);
+    expect(enemies[0]!.column.x).toBe(Math.round(412 * 0.04));
+  });
+
+  it('keeps the layout of an ordinary battle of three', () => {
+    expect(sceneGeometry(412, 440, 3, { summoner: false })).toEqual(sceneGeometry(412, 440, 3));
+    expect(sceneGeometry(412, 440, 1, { summoner: true })).toEqual(sceneGeometry(412, 440, 1));
+  });
+});
+
+describe('the Bulwark in the scene (#128, provisional until the Workshop)', () => {
+  it('holds the shield, still, while the Bulwark is up; cracks it for one frame (83 ms) when it wears; then nothing', () => {
+    expect([0, 250, 10_000].map((now) => bulwarkShield(true, null, now))).toEqual([0, 0, 0]);
+    expect(bulwarkShield(false, null, 1_000)).toBeNull();
+    expect(bulwarkShield(false, 1_000, 999)).toBe(0);
+    expect(bulwarkShield(false, 1_000, 1_000)).toBe(1);
+    expect(bulwarkShield(false, 1_000, 1_083)).toBe(1);
+    expect(bulwarkShield(false, 1_000, 1_084)).toBeNull();
+  });
+
+  it('shatters the shield in 4 silver shards that spread for 500 ms, in 5 steps', () => {
+    expect(bulwarkShards(null, 1_000, false)).toEqual([]);
+    expect(bulwarkShards(1_000, 1_083, false)).toEqual([]);
+    expect(bulwarkShards(1_000, 1_084, false)).toEqual([
+      [-14, -14],
+      [18, -17],
+      [-9, 23],
+      [19, 19],
+    ]);
+    expect(bulwarkShards(1_000, 1_583, false)).toEqual([
+      [-25, -28],
+      [31, -28],
+      [-17, 36],
+      [33, 30],
+    ]);
+    expect(bulwarkShards(1_000, 1_584, false)).toEqual([]);
+  });
+
+  it('barely spreads the shards with reduced motion, for the same time', () => {
+    expect(bulwarkShards(1_000, 1_583, true)).toEqual([
+      [-14, -14],
+      [19, -17],
+      [-9, 24],
+      [20, 20],
+    ]);
+    expect(bulwarkShards(1_000, 1_584, true)).toEqual([]);
+  });
+
+  it('sends the silver wave to the enemy in 6 steps of 50 ms, and keeps it until the end of the riposte', () => {
+    const riposte = { at: 2_000 };
+    expect(riposteWave(null, 2_000, false)).toBeNull();
+    expect(riposteWave(riposte, 1_999, false)).toBeNull();
+    expect(riposteWave(riposte, 2_000, false)).toBeCloseTo(1 / 6);
+    expect(riposteWave(riposte, 2_100, false)).toBeCloseTo(3 / 6);
+    expect(riposteWave(riposte, 2_399, false)).toBe(1);
+    expect(riposteWave(riposte, 2_400, false)).toBeNull();
+    // Mouvement réduit : l'onde part déjà presque à l'ennemi.
+    expect(riposteWave(riposte, 2_000, true)).toBeCloseTo(0.75 + 0.25 / 6);
+  });
+
+  it('bursts 4 silver shards on the enemy in 3 steps of 100 ms', () => {
+    const riposte = { at: 2_000 };
+    expect(riposteBurst(null, 2_000, false)).toEqual([]);
+    expect(riposteBurst(riposte, 1_999, false)).toEqual([]);
+    expect(riposteBurst(riposte, 2_000, false)).toEqual([
+      [0, -12],
+      [12, 0],
+      [0, 12],
+      [-12, 0],
+    ]);
+    expect(riposteBurst(riposte, 2_399, false)).toEqual([
+      [0, -20],
+      [20, 0],
+      [0, 20],
+      [-20, 0],
+    ]);
+    expect(riposteBurst(riposte, 2_400, false)).toEqual([]);
+    expect(riposteBurst(riposte, 2_000, true)[1]).toEqual([18, 0]);
+  });
+});

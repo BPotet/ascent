@@ -2,10 +2,19 @@ import { useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 
-import type { EnemyState } from '../../../domain/battle/Battle';
-import { ENEMY_NAMES, enemyLabel, intentBadge } from '../format/battleText';
+import type { IntentCategory } from '../../../domain/battle/shownIntent';
+import { intentNumber } from '../format/battleText';
+import { artPalette } from '../pixelArt/artPalette';
+import { PixelFrame } from '../pixelArt/PixelFrame';
+import { PixelIcon } from '../pixelArt/PixelIcon';
+import { textFont } from '../pixelArt/pixelTypography';
+import type { IconName } from '../pixelArt/sprites/icons';
+import type { EnemyView } from '../state/battleView';
 import { battleColors } from '../theme/battleColors';
+import { DamageFloat } from './BattleEffects';
 import { PerilSeal } from './PerilSeal';
+import type { EnemySlot } from './scene/sceneGeometry';
+import type { BattleDisplay } from '../state/useBattleDisplay';
 import { useReleaseGesture } from './touchGestures';
 
 /** L'identifiant du geste de la colonne d'un ennemi, pour `getByGestureTestId` dans les tests. */
@@ -13,27 +22,47 @@ export function enemyGestureTestId(index: number): string {
   return `battle-enemy-${index}`;
 }
 
+/** L'icône de chaque catégorie d'intention (C2.2). */
+const INTENT_ICONS: Readonly<Record<IntentCategory, IconName>> = {
+  attack: 'iAttack',
+  guard: 'iGuard',
+  heal: 'iHeal',
+  raise: 'iRaise',
+  skip: 'iSkip',
+};
+
 /**
- * La colonne d'un ennemi : toute la colonne est touchable pour le viser (au relâcher). Elle montre
- * son intention, son nom (en lumière s'il est la cible), ses PV, et le sceau rouge d'un coup
- * imparable. L'ennemi est annoncé en entier au lecteur d'écran (nom, cible, PV, intention). La
- * silhouette est dessinée par la scène, derrière.
+ * La colonne d'un ennemi (maquette F1, F5, F7, P0b à P13) : toute la colonne est touchable pour le
+ * viser (au relâcher). Elle montre son intention en icône (avec « +N » pour Garde et Soin), sa barre
+ * de PV, son nom, sa garde (ou « Étourdie ×1,5 ») et le sceau rouge d'un coup imparable. En phase
+ * ennemie épurée, le nom et les chiffres sont masqués. L'ennemi actif a son intention cernée de
+ * lumière (de rouge sous le sceau) et sa plaque à 45 % ; les autres s'estompent. L'ennemi est
+ * annoncé en entier au lecteur d'écran. Sa plaque est en cadre cranté ; la cible a un double cadre
+ * d'or, une flèche au-dessus de son intention et son nom en gras, jamais la couleur seule (#120).
+ * Son sprite, ses étoiles et son ombre au sol sont dessinés par la scène, derrière, à la place que
+ * donne `sceneGeometry`. Un ennemi maudit (#209, maquette M2) porte l'étiquette « Maudit » au crâne
+ * sous son nom, sur sa propre ligne, un cadre rose (d'or s'il est la cible) et une lueur rose fixe
+ * sous ses pieds : jamais la couleur seule.
  */
 export function EnemyColumn({
-  enemy,
+  view,
   index,
-  target,
-  dimmed,
+  slot,
   sealed,
+  reducedMotion = false,
+  float,
   uiNow,
   now,
   onTarget,
 }: {
-  readonly enemy: EnemyState;
+  readonly view: EnemyView;
   readonly index: number;
-  readonly target: boolean;
-  readonly dimmed: boolean;
+  /** Sa place dans la scène. */
+  readonly slot: EnemySlot;
   readonly sealed: boolean;
+  readonly reducedMotion?: boolean;
+  /** Le chiffre qui s'envole au-dessus de lui, s'il est pour lui. */
+  readonly float: BattleDisplay['float'];
   readonly uiNow: () => number;
   readonly now: () => number;
   readonly onTarget: (enemy: number, touchStartedAt: number, releasedAt: number) => void;
@@ -44,33 +73,113 @@ export function EnemyColumn({
     [onTarget, index],
   );
   const gesture = useReleaseGesture(enemyGestureTestId(index), uiNow, onRelease);
-  const standing = enemy.hp > 0;
+  const { kind, intent } = view;
+  const number = intent === null ? null : intentNumber(intent);
   return (
     <GestureDetector gesture={gesture}>
       <View
         accessible
         accessibilityRole="button"
-        accessibilityLabel={enemyLabel(enemy, target)}
-        accessibilityState={{ selected: target, disabled: !standing }}
+        accessibilityLabel={view.label}
+        accessibilityState={{ selected: view.target, disabled: !view.standing }}
         accessibilityActions={[{ name: 'activate' }]}
         onAccessibilityAction={() => onTarget(index, now(), now())}
-        testID={`enemy-${enemy.kind}`}
-        style={[styles.column, dimmed && styles.dimmed, !standing && styles.down]}
+        testID={`enemy-${kind}`}
+        style={[
+          styles.column,
+          { left: slot.column.x, top: slot.column.y, width: slot.column.width },
+          view.dimmed && styles.dimmed,
+          !view.standing && styles.down,
+        ]}
       >
-        <View style={styles.intent}>
-          <Text style={styles.intentText}>{intentBadge(enemy.intent)}</Text>
-        </View>
-        <View style={styles.figure}>{sealed ? <PerilSeal /> : null}</View>
-        <Text style={[styles.name, target && styles.targetName]}>{ENEMY_NAMES[enemy.kind]}</Text>
-        <View style={styles.hpTrack}>
+        {view.target ? (
           <View
-            testID={`enemy-${enemy.kind}-hp`}
-            style={[styles.hp, { width: `${(100 * enemy.hp) / enemy.maxHp}%` }]}
-          />
+            pointerEvents="none"
+            testID={`enemy-${kind}-target-arrow`}
+            style={styles.targetArrow}
+          >
+            <PixelIcon name="right" color={artPalette.roles.gold} style={styles.pointDown} />
+          </View>
+        ) : null}
+        <View
+          {...(intent === null ? {} : { testID: `enemy-${kind}-intent` })}
+          style={[
+            styles.intent,
+            intent === null && styles.noIntent,
+            view.active && (sealed ? styles.sealedIntent : styles.activeIntent),
+          ]}
+        >
+          {intent === null ? null : (
+            <>
+              <PixelIcon
+                name={INTENT_ICONS[intent.category]}
+                color={battleColors.text}
+                secondColor={battleColors.light}
+                testID={`enemy-${kind}-intent-${intent.category}`}
+              />
+              {number === null ? null : <Text style={styles.intentText}>{number}</Text>}
+            </>
+          )}
         </View>
-        <Text style={styles.hpText}>
-          {enemy.hp}/{enemy.maxHp}
-        </Text>
+        <View style={styles.figure}>
+          {view.curse === undefined ? null : (
+            <View
+              pointerEvents="none"
+              testID={`enemy-${kind}-curse-glow`}
+              style={styles.curseGlow}
+            />
+          )}
+          {sealed ? <PerilSeal reducedMotion={reducedMotion} /> : null}
+          {float === null ? null : <DamageFloat key={float.key} float={float.float} />}
+        </View>
+        <PixelFrame
+          tone={view.target ? 'gold' : view.curse === undefined ? 'default' : 'error'}
+          under={battleColors.background}
+          testID={`enemy-${kind}-plate`}
+          style={[styles.plate, view.active && styles.activePlate]}
+        >
+          <View
+            testID={`enemy-${kind}-ring`}
+            style={[styles.ring, view.target && styles.targetRing]}
+          >
+            <View style={styles.track}>
+              <View
+                testID={`enemy-${kind}-hp`}
+                style={[styles.hp, { width: `${Math.round(100 * view.hpRatio)}%` }]}
+              />
+              {view.hpText === null ? null : <Text style={styles.barText}>{view.hpText}</Text>}
+            </View>
+            {view.name === null ? null : (
+              <Text style={[styles.name, view.target && styles.targetName]}>{view.name}</Text>
+            )}
+            {view.curse === undefined ? null : (
+              <View testID={`enemy-${kind}-curse`} style={styles.curseTag}>
+                <PixelIcon
+                  name="skull"
+                  color={artPalette.roles.pink}
+                  testID={`enemy-${kind}-curse-skull`}
+                />
+                <Text style={styles.curseText}>{view.curse}</Text>
+              </View>
+            )}
+            {view.tag === null ? null : (
+              <Text style={[styles.tag, view.summoned === true && styles.summonedTag]}>
+                {view.tag}
+              </Text>
+            )}
+            <View style={[styles.track, view.stunned && styles.stunnedTrack]}>
+              <View
+                testID={`enemy-${kind}-guard`}
+                style={[styles.guard, { width: `${Math.round(100 * view.guardRatio)}%` }]}
+              />
+              {view.guardText === null ? null : (
+                <Text style={[styles.barText, view.stunned && styles.stunnedText]}>
+                  {view.guardText}
+                </Text>
+              )}
+            </View>
+          </View>
+        </PixelFrame>
       </View>
     </GestureDetector>
   );
@@ -79,46 +188,112 @@ export function EnemyColumn({
 // Stryker disable all: dessin de la scène, vérifié par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
   column: {
-    width: 160,
+    position: 'absolute',
     alignItems: 'center',
-    gap: 3,
-    paddingTop: 4,
-    paddingBottom: 8,
-    borderRadius: 18,
+    gap: 2,
+    paddingTop: 2,
+    paddingBottom: 4,
   },
-  dimmed: { opacity: 0.45 },
+  // Maquette `.pfoe.dim` : 25 % ; la scène désature son sprite.
+  dimmed: { opacity: 0.25 },
   down: { opacity: 0 },
   intent: {
-    height: 28,
-    paddingHorizontal: 9,
-    borderRadius: 999,
+    height: 40,
+    minWidth: 44,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
     backgroundColor: battleColors.badge,
     borderWidth: 1,
     borderColor: battleColors.curseLine,
-    justifyContent: 'center',
   },
+  noIntent: { opacity: 0 },
+  activeIntent: { borderWidth: 2, borderColor: battleColors.light },
+  sealedIntent: { borderWidth: 2, borderColor: battleColors.seal },
   intentText: {
     color: battleColors.text,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },
-  figure: { width: 104, height: 130 },
-  name: { color: battleColors.text, fontSize: 13, fontWeight: '600' },
-  targetName: { color: battleColors.light },
-  hpTrack: {
-    width: 86,
-    height: 6,
+  figure: { width: 88, height: 104, alignItems: 'center' },
+  plate: { width: '100%', minHeight: 56 },
+  // Le second trait, d'or pour la cible : le double cadre d'or (C2).
+  ring: {
+    flexGrow: 1,
+    gap: 2,
+    paddingHorizontal: 3,
+    paddingVertical: 2,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  targetRing: { borderColor: artPalette.roles.gold },
+  activePlate: { opacity: 0.45 },
+  targetArrow: { position: 'absolute', top: -16, alignSelf: 'center', zIndex: 4 },
+  pointDown: { transform: [{ rotate: '90deg' }] },
+  track: {
+    height: 14,
     borderRadius: 3,
     backgroundColor: battleColors.hpTrack,
     overflow: 'hidden',
+    justifyContent: 'center',
   },
-  hp: { height: '100%', borderRadius: 3, backgroundColor: battleColors.foeHp },
-  hpText: {
-    color: battleColors.muted,
-    fontSize: 11,
-    fontWeight: '500',
+  stunnedTrack: { backgroundColor: battleColors.light },
+  hp: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: battleColors.foeHp },
+  guard: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: battleColors.guard },
+  barText: {
+    color: battleColors.text,
+    fontSize: 10,
+    fontWeight: '700',
+    textAlign: 'center',
     fontVariant: ['tabular-nums'],
+  },
+  stunnedText: { color: battleColors.onLight },
+  name: { color: battleColors.text, fontFamily: textFont.semiBold, fontSize: 12, lineHeight: 15 },
+  targetName: { color: battleColors.light, fontFamily: textFont.bold },
+  tag: { color: battleColors.light, fontSize: 11, fontWeight: '700' },
+  // L'étiquette « Maudite » (#209, maquette `.ptag.curse`) : rose clair sur le fond d'erreur (11,5:1),
+  // cernée du trait de malédiction, en capitales, avec le crâne.
+  curseTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    gap: 3,
+    paddingLeft: 3,
+    paddingRight: 4,
+    backgroundColor: artPalette.roles.errorBg,
+    borderWidth: 1,
+    borderColor: artPalette.roles.curse,
+  },
+  curseText: {
+    color: artPalette.roles.pink,
+    fontFamily: textFont.bold,
+    fontSize: 10,
+    lineHeight: 14,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  // La lueur rose sous ses pieds (maquette `.pfoe.cursed .pfig::after`), fixe : rien à réduire.
+  curseGlow: {
+    position: 'absolute',
+    bottom: -6,
+    width: 84,
+    height: 24,
+    borderRadius: 42,
+    backgroundColor: artPalette.roles.curse,
+    opacity: 0.25,
+  },
+  // L'étiquette « Invoquée » (#172, maquette `.ptag.summ`) : fumée sur fond sombre, cernée de gris.
+  summonedTag: {
+    color: battleColors.summonTag,
+    backgroundColor: battleColors.summonTagBackground,
+    borderWidth: 1,
+    borderColor: battleColors.summonDust,
+    paddingHorizontal: 4,
+    alignSelf: 'center',
   },
 });
 // Stryker restore all

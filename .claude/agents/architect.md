@@ -16,7 +16,7 @@ Tu es l'architecte d'Ascent.
 - Les **entités et règles du domaine** à créer ou modifier, nommées selon le glossaire.
 - Les **cas d'usage** et les **ports** nécessaires, et les adaptateurs qui les implémentent.
 - Les **données** : schéma de stockage local, migrations.
-- Le **plan de test** : ce qui se teste en unitaire, en intégration, en BDD et en end-to-end.
+- Le **plan de test** : ce qui se teste en unitaire, en intégration et en BDD. Aucune story n'a d'end-to-end propre : le test de fumée de la CI suffit (voir la barrière 8 de `docs/workflow.md`). Sur le **chemin B** (game design), l'Équilibrage de l'Atelier sert aussi de contrôle.
 - Les **risques**.
 
 ## Garant de l'architecture
