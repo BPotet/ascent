@@ -2,6 +2,31 @@
 
 Toutes les évolutions notables d'Ascent. Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/). Les versions sont calculées à partir des [Conventional Commits](https://www.conventionalcommits.org/fr/v1.0.0/).
 
+## [0.4.0] - 2026-11-05
+
+Les épiques #89 « Prototype d'une ascension complète, build et jauge », #102 « Le contenu de l'Atelier de l'ascension dans la tour », #136 « Les ennemis, les boss et les héroïnes animés », #153 « Les icônes des bienfaits et des bénédictions », #160 « Icône de l'application », #170 « Les paliers 2 et 3, jusqu'au sommet », #174 « Reconnaître chaque palier et chaque combattant d'un coup d'œil », #193 « Exporter le journal de mes ascensions », #194 « Le camp » et #210 « Paliers distincts », avec les premières stories des épiques #30, #88, #118 et #205.
+
+### Nouveautés pour le joueur
+
+- **L'icône d'Ascent** : la tour sous la nuit sur l'écran d'accueil, en icône à thème, à l'écran de démarrage et en favicon (#166, #167).
+- **La Tour** (build de preview seulement) : un onglet Tour ouvre le Pied de la tour pour commencer, reprendre ou abandonner une ascension, étage par étage, avec ses combats, ses portes, ses Élites, le Feu de camp et un boss à deux phases. Quitter l'écran met en pause et sauvegarde ; la reprise repart de l'action en cours après un compte à rebours. Le combat d'essai disparaît : tous les combats passent par l'ascension (#91, #95, #121, #126).
+- **Le combat en rythme, en pixel art 2.5D** : frapper à l'impact, briser la garde pour étourdir, dépenser son Élan, lire les intentions des ennemis en icônes. Chaque coup ennemi se lit à son geste, à son reflet et à son son ; un coup imparable porte le sceau et la palette rouges. L'anneau de timing est retiré (#32, #81, #82, #84, #101, #103).
+- **Deux héroïnes** : la Sentinelle ou l'Errante, choisie au pied de la tour, et une Frise d'action qui montre qui agit selon l'Initiative. Le Rempart de la Sentinelle riposte au premier impact ; l'Errante lance Pas de l'ombre sans perdre son tour (#90, #96, #92, #100, #128, #154, #173, #179).
+- **Les habitudes nourrissent l'ascension** : la Jauge du jour, de Faveur pleine à Malédiction forte, d'après les habitudes d'hier, devient un cadran à cinq crans avec son détail ; des bénédictions de départ par habitude faite hier ; un bienfait parmi trois après chaque combat gagné ; l'Équipement consultable au pied de la tour et pendant l'ascension. Sous la malédiction, un ennemi de chaque combat est maudit (+20 % de PV, de garde et de dégâts), et l'Élite aussi en malédiction forte (#93, #99, #92, #100, #159, #169, #41, #220, #209, #222).
+- **Le contenu de l'Atelier de l'ascension** : la Hache rouillée, l'Arbalète, le Marteau devenu Rare, l'Armure de chevalier déchu (Attaque +5 %) et la bénédiction Protection ; le Villageois fou dont la Fourche fait saigner, le Squelette qui se relève une fois et l'Élite Les Jumeaux avec son Onde de choc à esquiver (#105, #113, #129, #130, #152, #162, #107, #112, #106, #114, #108, #115).
+- **Les paliers 2 et 3, jusqu'au Sommet** : après les Catacombes, les Jardins de cendre puis le Beffroi, avec des ennemis plus forts, de nouvelles Élites et de nouveaux boss, et des Éclats gardés même après une chute. Des ennemis brûlent le héros, la Reine des phalènes appelle les Phalénides, et chaque palier ne tire plus que ses propres ennemis : le Beffroi accueille le Novice des cloches, la Sonneuse de matines et le Jaquemart (#38, #180, #171, #182, #172, #189, #213, #217, #214, #223).
+- **Bienfaits de palier et Second souffle** : six bienfaits de palier entrent dans l'offre aux paliers 2 et 3 ; quand l'offre a moins de 3 bienfaits, la carte Second souffle rend 10 % des PV (#212, #221).
+- **Le Camp** : les Éclats s'y dépensent chez le Gardien de la flamme pour débloquer pour de bon l'Épieu de chasse, la Clochette du guet, Cœur de braise et la Flamberge ; Veillée d'hiver remplace Cœur de braise dans les bienfaits de base (#195, #203, #40, #204).
+- **Chaque combattant et chaque palier se reconnaissent d'un coup d'œil** : ennemis, boss et héroïnes avec leur animation complète validée dans l'Atelier, images des objets, boutons de la Tour en pixel art, icônes des bienfaits et des bénédictions, un fond de combat par palier, une ombre au sol à la place des socles, le portrait de chaque combattant dans la Frise d'action et la scène assombrie pendant la phase ennemie (#119, #120, #125, #127, #137, #138, #139, #140, #141, #142, #143, #144, #155, #164, #157, #158, #163, #168, #175, #176, #183, #184, #186, #187, #188, #190).
+- **Réglages du combat** : des préparations ennemies plus régulières, une frappe parfaite à 40 ms au plus, des gardes plus solides pour les Élites du palier 2, et un appui jusqu'à 150 ms après un impact déjà subi jugé « trop tard » (#211, #218, #207, #215).
+- **Journal d'ascension** (build de preview) : « Exporter le journal » partage le récit des 20 dernières ascensions, combat par combat et appui par appui, pour rééquilibrer la tour (#196, #200, #197, #202).
+
+### Technique
+
+- Maquettes validées des épiques de la tour (#70, #94, #111, #124, #151, #156, #165, #178, #181, #185, #198, #199, #216, #219).
+- CI : mode prototype (#85), découpage puis retrait des tests de mutation au profit d'un test de fumée end-to-end, et fin du mode prototype (#133, #135, #146, #148, #150, #192) ; parcours end-to-end des habitudes stabilisés (#86, #98).
+- Workflow : story socle, Atelier de l'ascension comme source du game design et deux chemins, fonctionnalité et game design (#97, #110, #122).
+
 ## [0.3.0] - 2026-10-25
 
 L'épique #71 « Ascent en pixel art ».
@@ -55,6 +80,7 @@ Première version jouable : l'épique #2 « Gérer ses habitudes et les suivre j
 - Socle Expo (Android et iOS), base locale SQLite avec migrations, architecture hexagonale vérifiée, barrières de qualité (lint, types, tests unitaires, d'intégration, BDD, mutation, end-to-end Maestro, secrets) et construction de l'APK en CI (#12).
 - Maquettes validées de l'épique #2 (#11) et workflow de développement (#1).
 
+[0.4.0]: https://github.com/BPotet/ascent/releases/tag/v0.4.0
 [0.3.0]: https://github.com/BPotet/ascent/releases/tag/v0.3.0
 [0.2.0]: https://github.com/BPotet/ascent/releases/tag/v0.2.0
 [0.1.0]: https://github.com/BPotet/ascent/releases/tag/v0.1.0
