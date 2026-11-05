@@ -1502,8 +1502,9 @@ function deadTime(battle: Battle, at: number): 'phaseTransition' | 'secondChance
 /**
  * Un appui sur « Parade » ou « Esquive », daté à l'instant du toucher (C7, C9, C12). Il est
  * ignoré pendant une transition de phase ou le relèvement de la seconde chance (#206), sans
- * déséquilibre ni mémoire, et relance le déséquilibre en cours. Hors d'une fenêtre de parade, c'est un appui raté ; dans la tolérance « trop tard »
- * d'un impact subi, il est trop tard, même pendant l'avancée suivante ou la transition (#207).
+ * déséquilibre ni mémoire, et relance le déséquilibre en cours. Hors d'une fenêtre de parade,
+ * c'est un appui raté ; dans la tolérance « trop tard » d'un impact subi, il est trop tard, même
+ * pendant l'avancée suivante ou la transition (#207).
  */
 export function pressDefense(
   battle: Battle,

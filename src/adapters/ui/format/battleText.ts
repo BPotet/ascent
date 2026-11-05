@@ -572,8 +572,9 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
         ? `${endTitle(event.outcome)}. ${SECOND_CHANCE_SPENT}`
         : `${endTitle(event.outcome)}.`;
     case 'secondChanceUsed': {
-      const [first, ...rest] = secondChanceBannerText(event, battle).lines.join(' ');
-      return `Seconde chance : ${first!.toLowerCase()}${rest.join('')}`;
+      // « La Sentinelle » devient « la Sentinelle » après « Seconde chance : ».
+      const text = secondChanceBannerText(event, battle).lines.join(' ');
+      return `Seconde chance : ${text.charAt(0).toLowerCase()}${text.slice(1)}`;
     }
     // Le changement de phase d'un boss (#172 : seul, quand il n'invoque rien).
     case 'bossPhaseShifted':
