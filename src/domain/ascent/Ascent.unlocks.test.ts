@@ -41,14 +41,14 @@ function at(
 /** Le tirage de Cœur de braise, × 100, après le butin et l'offre d'aujourd'hui. */
 function emberHeartPercent(ascent: Ascent): number {
   const loot = drawLoot(ascent.encounter!, ascent.gauge, ascent.equipment, ascent.lootRandom);
-  const offer = drawBoonOffer(ascent.hero.boons, loot.random);
+  const offer = drawBoonOffer(ascent.hero.boons, loot.random, ascent.tier);
   return nextRandom(offer.random).value * 100;
 }
 
 /** Le flux d'aujourd'hui après le butin et l'offre, sans Déblocage. */
 function todayStream(ascent: Ascent): RandomState {
   const loot = drawLoot(ascent.encounter!, ascent.gauge, ascent.equipment, ascent.lootRandom);
-  return drawBoonOffer(ascent.hero.boons, loot.random).random;
+  return drawBoonOffer(ascent.hero.boons, loot.random, ascent.tier).random;
 }
 
 /** Le premier état du flux du butin pour lequel `test` est vrai à l'Élite. */
@@ -137,17 +137,21 @@ describe('Cœur de braise after an Elite (#195)', () => {
     expect(ended.lootRandom).toBe(nextRandom(today.lootRandom).state);
   });
 
-  it('adds itself to an offer of fewer than 3 boons', () => {
+  it('adds itself to an offer of fewer than 3 boons, then the fallback card (#212)', () => {
     const owned = BASE_BOON_KINDS.slice(0, 6);
     const elite = at('elite', stateWhere(under, HEART, owned), HEART, owned);
 
-    expect(endFloorBattle(elite, VICTORY).boonOffer).toEqual(['winterVigil', 'emberHeart']);
+    expect(endFloorBattle(elite, VICTORY).boonOffer).toEqual([
+      'winterVigil',
+      'emberHeart',
+      'secondBreath',
+    ]);
   });
 
-  it('turns an empty offer into an offer of Cœur de braise alone', () => {
+  it('turns an empty offer into Cœur de braise and the fallback card (#212)', () => {
     const elite = at('elite', stateWhere(under, HEART, BASE_BOON_KINDS), HEART, BASE_BOON_KINDS);
 
-    expect(endFloorBattle(elite, VICTORY).boonOffer).toEqual(['emberHeart']);
+    expect(endFloorBattle(elite, VICTORY).boonOffer).toEqual(['emberHeart', 'secondBreath']);
   });
 
   it('is drawn once per ascent at most, taken or not', () => {

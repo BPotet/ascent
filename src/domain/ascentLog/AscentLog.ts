@@ -9,7 +9,7 @@
  */
 import type { Ascent, AscentSeed, Encounter } from '../ascent/Ascent';
 import type { BlessingFamily } from '../ascent/blessings';
-import type { BoonKind } from '../ascent/boons';
+import { SECOND_BREATH, type OfferCard } from '../ascent/boons';
 import type { Exit, ExitKind } from '../ascent/exits';
 import type { FateGauge } from '../ascent/fateGauge';
 import type { Equipment, ItemKind } from '../ascent/items';
@@ -71,8 +71,9 @@ export interface FloorRecord {
   readonly exit: HeroVitals | null;
   /** L'Or de l'étage. */
   readonly gold: number;
-  readonly boonsOffered: readonly BoonKind[];
-  readonly boonChosen: BoonKind | null;
+  /** Les cartes de l'offre, carte Second souffle comprise (#212). */
+  readonly boonsOffered: readonly OfferCard[];
+  readonly boonChosen: OfferCard | null;
   readonly itemFound: ItemKind | null;
   readonly itemOutcome: 'equipped' | 'left' | null;
   /** Les Éclats de l'étage. */
@@ -279,6 +280,16 @@ function battleEnded<Log extends AnyAscentLog>(
   return fought;
 }
 
+/**
+ * La carte choisie dans l'offre : le bienfait ajouté au héros ; si ses bienfaits n'ont pas grandi,
+ * Second souffle (#212), car un bienfait offert n'est jamais déjà possédé.
+ */
+function chosenCard({ before, after }: AscentStep): OfferCard {
+  return after.hero.boons.length > before.hero.boons.length
+    ? after.hero.boons.at(-1)!
+    : SECOND_BREATH;
+}
+
 /** Le journal après la transition `step` ; rien ne change si elle ne change rien. */
 export function recordAscentStep<Log extends AnyAscentLog>(log: Log, step: AscentStep): Log {
   const { before, after } = step;
@@ -301,10 +312,7 @@ export function recordAscentStep<Log extends AnyAscentLog>(log: Log, step: Ascen
     case 'itemLeft':
       return updateFloor(log, before, (record) => ({ ...record, itemOutcome: 'left' }));
     case 'boonChosen':
-      return updateFloor(log, before, (record) => ({
-        ...record,
-        boonChosen: after.hero.boons.at(-1)!,
-      }));
+      return updateFloor(log, before, (record) => ({ ...record, boonChosen: chosenCard(step) }));
     case 'exitChosen':
       return exitChosen(log, before, after);
     case 'abandoned':

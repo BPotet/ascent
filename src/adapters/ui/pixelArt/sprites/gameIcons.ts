@@ -2,7 +2,7 @@ import type { BlessingFamily } from '../../../../domain/ascent/blessings';
 import type { BoonKind } from '../../../../domain/ascent/boons';
 import type { ArtScale } from '../artPixel';
 import { BLESSING_ICONS } from './atelier/data/blessingIcons';
-import { BOON_ICONS } from './atelier/data/boonIcons';
+import { BOON_ICONS, SECOND_BREATH_ICON } from './atelier/data/boonIcons';
 import type { AssetImage } from './atelier/fullAnimation';
 
 /**
@@ -17,6 +17,11 @@ export interface GameIcon {
 /** L'icône du bienfait `kind`. */
 export function boonIcon(kind: BoonKind): GameIcon {
   return { sprite: `boon-icon:${kind}`, image: BOON_ICONS[kind] };
+}
+
+/** L'icône de la carte Second souffle (#212), qui n'est pas un bienfait. */
+export function secondBreathIcon(): GameIcon {
+  return { sprite: 'second-breath-icon', image: SECOND_BREATH_ICON };
 }
 
 /** L'icône de la famille de bénédiction `family`, la même pour ses trois raretés. */

@@ -20,7 +20,7 @@ import {
 } from '../../../domain/battle/Battle';
 import type { EnemyKind } from '../../../domain/battle/combatants';
 import type { BlessingFamily, StartingBlessing } from '../../../domain/ascent/blessings';
-import type { BoonKind } from '../../../domain/ascent/boons';
+import type { BoonKind, OfferCard } from '../../../domain/ascent/boons';
 import type { Exit } from '../../../domain/ascent/exits';
 import type { Rarity } from '../../../domain/ascent/rarity';
 import type { ShardAward } from '../../../domain/ascent/shards';
@@ -38,7 +38,17 @@ import { TowerFootScreen } from './TowerFootScreen';
 const { roles } = artPalette;
 
 /** Une planche : un écran de la maquette #153, rendu avec les vrais composants et des données fixes. */
-type Board = 'boons' | 'noBoon' | 'twoBoons' | 'lastDoor' | 'blessings' | 'oneBlessing';
+type Board =
+  | 'boons'
+  | 'noBoon'
+  | 'twoBoons'
+  | 'lastDoor'
+  | 'blessings'
+  | 'oneBlessing'
+  // Les bienfaits de palier et la carte Second souffle (#212) : O1, O2 et O4 de la maquette 210.
+  | 'tierTwoOffer'
+  | 'secondBreath'
+  | 'secondBreathAlone';
 
 const ENTRIES: readonly (readonly [Board, string])[] = [
   ['boons', "Choix d'un bienfait"],
@@ -47,6 +57,9 @@ const ENTRIES: readonly (readonly [Board, string])[] = [
   ['lastDoor', 'Dernière porte · 5 bienfaits'],
   ['blessings', 'Bénédictions · 3 sur 3'],
   ['oneBlessing', 'Bénédiction · 1 sur 1'],
+  ['tierTwoOffer', 'Offre · palier 2'],
+  ['secondBreath', 'Offre · Second souffle'],
+  ['secondBreathAlone', 'Offre · Second souffle seule'],
 ];
 
 /**
@@ -100,6 +113,17 @@ const LOADOUT_ENTRIES: readonly (readonly [LoadoutBoard, string])[] = [
 
 // Stryker disable all: données fixes d'un outil du build de preview.
 const OFFER: readonly BoonKind[] = ['perfectEcho', 'lingeringFrost', 'emberHeart'];
+
+/** Les offres de la maquette 210 (#212), la Sentinelle à 40 PV sur 88. */
+const OFFERS: Readonly<
+  Record<'boons' | 'tierTwoOffer' | 'secondBreath' | 'secondBreathAlone', readonly OfferCard[]>
+> = {
+  boons: OFFER,
+  tierTwoOffer: ['perfectEcho', 'hoarfrost', 'lingeringFrost'],
+  secondBreath: ['trueHour', 'belfryFrost', 'secondBreath'],
+  secondBreathAlone: ['secondBreath'],
+};
+const isOffer = (board: Board): board is keyof typeof OFFERS => board in OFFERS;
 const DOORS: readonly Exit[] = [
   { kind: 'combat', groupSize: 2 },
   { kind: 'elite', groupSize: 1 },
@@ -107,7 +131,7 @@ const DOORS: readonly Exit[] = [
 ];
 const EXITS: Readonly<
   Record<
-    Exclude<Board, 'boons' | 'blessings' | 'oneBlessing'>,
+    Exclude<Board, keyof typeof OFFERS | 'blessings' | 'oneBlessing'>,
     { boons: readonly BoonKind[]; exits: readonly Exit[] }
   >
 > = {
@@ -430,10 +454,10 @@ export function IconBoardScreen({
         <Text style={styles.status}>Planche des icônes</Text>
         <PixelButton label="Retour" variant="secondary" onPress={back} style={styles.back} />
       </View>
-      {board === 'boons' ? (
+      {isOffer(board) ? (
         <>
           {gained}
-          <BoonChoicePanel offer={OFFER} onChoose={back} />
+          <BoonChoicePanel offer={OFFERS[board]} heroHp={40} heroMaxHp={88} onChoose={back} />
         </>
       ) : board === 'blessings' ? (
         <BlessingChoice

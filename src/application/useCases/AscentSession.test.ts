@@ -727,6 +727,28 @@ describe('AscentSession: hero and boons (prototype #92)', () => {
     });
   });
 
+  it('resumes a save with Second souffle in the offer and a tier boon, then heals (#212)', async () => {
+    const { session, store } = setUp();
+    const start = startAscent(5);
+    const ascent = {
+      ...start,
+      tier: 2,
+      encounter: null,
+      hero: { ...start.hero, hp: 40, boons: ['ashenBlade'] },
+      boonOffer: ['hoarfrost', 'secondBreath'],
+    };
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent, battle: null }));
+
+    expect((await session.load())?.boonOffer).toEqual(['hoarfrost', 'secondBreath']);
+    session.chooseBoon(1);
+    await flush();
+
+    expect(saved(store)?.ascent).toMatchObject({
+      hero: { hp: 48, boons: ['ashenBlade'] },
+      boonOffer: null,
+    });
+  });
+
   it('resumes a save of #91 with the Sentinel, without boon nor offer', async () => {
     const { session, store } = setUp();
     const { hero, boonOffer, ...ascent } = startAscent(5);
