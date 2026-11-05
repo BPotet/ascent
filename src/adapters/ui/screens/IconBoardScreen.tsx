@@ -86,6 +86,8 @@ type LoadoutBoard =
   // Le voile de phase ennemie (#188) : C1 et C3 de la maquette v2 de #174, un coup imparable.
   | 'veilTierOne'
   | 'veilTierThree'
+  // Les trois ennemis du Beffroi (#214), le Jaquemart préparant Heure pleine.
+  | 'belfryEnemies'
   // Veillée d'hiver et la Flamberge (#195).
   | 'vigilBoons'
   | 'flamberge';
@@ -107,6 +109,7 @@ const LOADOUT_ENTRIES: readonly (readonly [LoadoutBoard, string])[] = [
   ['trackPhaseTwo', 'Frise · boss en phase 2'],
   ['veilTierOne', 'Voile · coup imparable · palier 1'],
   ['veilTierThree', 'Voile · coup imparable · palier 3'],
+  ['belfryEnemies', 'Beffroi · Novice, Sonneuse, Jaquemart'],
   ['vigilBoons', "Choix d'un bienfait · Veillée d'hiver"],
   ['flamberge', 'Objet trouvé · Flamberge'],
 ];
@@ -269,6 +272,7 @@ const LOADOUT_ASCENTS: Readonly<Record<LoadoutBoard, Ascent | null>> = {
   trackPhaseTwo: fight({}, 2, 'boss', ['ashGardener']),
   veilTierOne: fight({}, 1, 'combat', ['specter', 'ghoul', 'ghoul']),
   veilTierThree: fight({}, 3, 'combat', ['gargoyle', 'bellFounder', 'bronzeWarden']),
+  belfryEnemies: fight({}, 3, 'combat', ['bellNovice', 'clockJack', 'matinsRinger']),
   vigilBoons: {
     ...between(startAscent(42), DOORS),
     boonOffer: ['perfectEcho', 'lingeringFrost', 'winterVigil'],
@@ -342,6 +346,7 @@ const BOARD_BATTLES: Partial<Readonly<Record<LoadoutBoard, Battle>>> = {
   })(),
   veilTierOne: windingUp(['specter', 'ghoul', 'ghoul'], 0, 'perilous'),
   veilTierThree: windingUp(['gargoyle', 'bellFounder', 'bronzeWarden'], 2, 'delayedPerilous'),
+  belfryEnemies: windingUp(['bellNovice', 'clockJack', 'matinsRinger'], 1, 'perilous'),
 };
 // Stryker restore all
 
