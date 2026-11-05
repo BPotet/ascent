@@ -115,8 +115,19 @@ describe('HeroBar with the second chance (#206)', () => {
 describe('SecondChanceBanner (#206, S3)', () => {
   const lines = ['La Sentinelle se relève avec 40 PV.', 'Le second coup de la Goule est annulé.'];
 
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  /** Le bandeau monté, puis le gel passé. */
+  async function shown(reducedMotion = false) {
+    await render(
+      <SecondChanceBanner title="Seconde chance" lines={lines} reducedMotion={reducedMotion} />,
+    );
+    await act(async () => jest.advanceTimersByTime(SECOND_CHANCE_FREEZE_MS));
+  }
+
   it('shows « Seconde chance » in gold over its lines, on a dark band edged with gold', async () => {
-    await render(<SecondChanceBanner title="Seconde chance" lines={lines} reducedMotion={false} />);
+    await shown();
 
     expect(screen.getByTestId('second-chance-banner', hiddenToo)).toBeOnTheScreen();
     const title = screen.getByText('Seconde chance', hiddenToo);
@@ -126,7 +137,7 @@ describe('SecondChanceBanner (#206, S3)', () => {
   });
 
   it('never blocks a touch and is hidden from the screen reader: the screen says it', async () => {
-    await render(<SecondChanceBanner title="Seconde chance" lines={lines} reducedMotion={false} />);
+    await shown();
 
     expect(screen.getByTestId('second-chance-banner-place', hiddenToo).props.pointerEvents).toBe(
       'none',
@@ -134,8 +145,16 @@ describe('SecondChanceBanner (#206, S3)', () => {
     expect(screen.queryByText('Seconde chance')).toBeNull();
   });
 
+  it('mounts its band, and so starts its zoom, only at the end of the 400 ms freeze', async () => {
+    await render(<SecondChanceBanner title="Seconde chance" lines={lines} reducedMotion={false} />);
+
+    await act(async () => jest.advanceTimersByTime(SECOND_CHANCE_FREEZE_MS - 1));
+    expect(screen.queryByTestId('second-chance-banner', hiddenToo)).toBeNull();
+    await act(async () => jest.advanceTimersByTime(1));
+    expect(screen.getByTestId('second-chance-banner', hiddenToo)).toBeOnTheScreen();
+  });
+
   it('appears after the 400 ms freeze, for 1 600 ms', async () => {
-    jest.useFakeTimers();
     await render(<SecondChanceBanner title="Seconde chance" lines={lines} reducedMotion={false} />);
     const place = screen.getByTestId('second-chance-banner-place', hiddenToo);
 
@@ -144,11 +163,10 @@ describe('SecondChanceBanner (#206, S3)', () => {
     expect(getAnimatedStyle(place).opacity).toBe(1);
     await act(async () => jest.advanceTimersByTime(SECOND_CHANCE_BANNER_MS));
     expect(getAnimatedStyle(place).opacity).toBe(0);
-    jest.useRealTimers();
   });
 
   it('fades in without zoom with reduced motion', async () => {
-    await render(<SecondChanceBanner title="Seconde chance" lines={lines} reducedMotion />);
+    await shown(true);
 
     expect(screen.getByTestId('second-chance-banner-still', hiddenToo)).toBeOnTheScreen();
     expect(screen.queryByTestId('second-chance-banner', hiddenToo)).toBeNull();

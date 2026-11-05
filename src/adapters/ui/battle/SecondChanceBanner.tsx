@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   ZoomIn,
@@ -27,7 +27,8 @@ const FADE_MS = 200;
  * Le bandeau de la seconde chance (#206, maquette 205, S3) : une bande sombre au liseré d'or, le
  * glyphe et « Seconde chance » en or, puis « La Sentinelle se relève avec 40 PV. » et, si un impact
  * est annulé, « Le second coup de la Goule est annulé. ». Il paraît après les 400 ms du gel, reste
- * 1 600 ms, et ne bloque aucune touche. L'annonce au lecteur d'écran est faite par l'écran.
+ * 1 600 ms, et ne bloque aucune touche. La bande n'est montée qu'à la fin du gel : son zoom
+ * d'entrée (ou son fondu seul, en mouvement réduit) se voit. L'annonce au lecteur d'écran est faite par l'écran.
  */
 export function SecondChanceBanner({
   title,
@@ -39,6 +40,11 @@ export function SecondChanceBanner({
   readonly reducedMotion: boolean;
 }) {
   const opacity = useSharedValue(0);
+  const [frozen, setFrozen] = useState(true);
+  useEffect(() => {
+    const thaw = setTimeout(() => setFrozen(false), SECOND_CHANCE_FREEZE_MS);
+    return () => clearTimeout(thaw);
+  }, []);
   useEffect(() => {
     opacity.set(
       withSequence(
@@ -63,21 +69,23 @@ export function SecondChanceBanner({
       importantForAccessibility="no-hide-descendants"
       style={[styles.place, shown]}
     >
-      <Animated.View
-        {...(reducedMotion ? {} : { entering: ZOOM_IN })}
-        testID={reducedMotion ? 'second-chance-banner-still' : 'second-chance-banner'}
-        style={styles.band}
-      >
-        <View style={styles.head}>
-          <PixelIcon name="secondChance" color={roles.gold} style={styles.glyph} />
-          <Text style={styles.title}>{title}</Text>
-        </View>
-        {lines.map((line, index) => (
-          <Text key={line} style={index === 0 ? styles.line : styles.second}>
-            {line}
-          </Text>
-        ))}
-      </Animated.View>
+      {frozen ? null : (
+        <Animated.View
+          {...(reducedMotion ? {} : { entering: ZOOM_IN })}
+          testID={reducedMotion ? 'second-chance-banner-still' : 'second-chance-banner'}
+          style={styles.band}
+        >
+          <View style={styles.head}>
+            <PixelIcon name="secondChance" color={roles.gold} style={styles.glyph} />
+            <Text style={styles.title}>{title}</Text>
+          </View>
+          {lines.map((line, index) => (
+            <Text key={line} style={index === 0 ? styles.line : styles.second}>
+              {line}
+            </Text>
+          ))}
+        </Animated.View>
+      )}
     </Animated.View>
   );
 }

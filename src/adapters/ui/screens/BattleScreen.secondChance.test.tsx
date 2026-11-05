@@ -71,7 +71,8 @@ describe('BattleScreen: the second chance (#206)', () => {
       .flatMap((snapshot) => snapshot.events)
       .find((event) => event.type === 'secondChanceUsed')!;
     expect(sceneRise()).toEqual({ at: rise.at, until: rise.at + 2_000 });
-    expect(screen.getByTestId('second-chance-banner', hiddenToo)).toBeOnTheScreen();
+    // Le bandeau monte après les 400 ms du gel.
+    expect(await screen.findByTestId('second-chance-banner', hiddenToo)).toBeOnTheScreen();
     expect(screen.getByText('La Sentinelle se relève avec 40 PV.', hiddenToo)).toBeOnTheScreen();
     expect(screen.getByTestId('battle-rise-float', hiddenToo)).toHaveTextContent('+40');
     expect(screen.getByTestId('battle-hero-rise', hiddenToo)).toBeOnTheScreen();
