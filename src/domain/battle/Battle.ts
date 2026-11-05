@@ -75,8 +75,8 @@ import {
   STRIKE_WIND_UP_MS,
   bulwarkCounterBlow,
   counterBlow,
-  strikeBlow,
   judgeStrike,
+  strikeBlow,
   strikeMultiplier,
   type EnemyBlow,
 } from './strike';
