@@ -528,3 +528,40 @@ describe('the Tier transition in the session (#38)', () => {
     expect(session.current()).toBeNull();
   });
 });
+
+describe('the enemies of tier 2 in a resumed ascent (#213)', () => {
+  it('keeps the Ghoul of a floor battle already drawn, and draws none in the next battle', async () => {
+    const store = mapStore();
+    const { session, clock } = await loaded(
+      store,
+      ascentAt(2, 'combat', ['ghoul', 'thornPilgrim']),
+    );
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    expect(session.current()!.encounter!.enemies).toEqual(['ghoul', 'thornPilgrim']);
+    expect(battleSession.current()!.battle.enemies.map(({ kind }) => kind)).toEqual(['ghoul']);
+
+    await playToTheEnd(battleSession, clock);
+    await flush();
+    for (let guard = 0; guard < 20 && session.current()!.encounter === null; guard += 1) {
+      const ascent = session.current()!;
+      if (ascent.blessingOffer !== null) session.chooseBlessing(0);
+      else if (ascent.boonOffer !== null) session.chooseBoon(0);
+      else if (ascent.foundItem !== null) session.leaveItem();
+      else
+        session.chooseExit(
+          Math.max(
+            0,
+            ascent.exits.findIndex(({ kind }) => kind === 'combat'),
+          ),
+        );
+      await flush();
+    }
+    const next = session.current()!.encounter!;
+
+    expect(next.kind).toBe('combat');
+    expect(next.enemies).not.toContain('ghoul');
+    expect(next.enemies).not.toContain('madVillager');
+  });
+});
