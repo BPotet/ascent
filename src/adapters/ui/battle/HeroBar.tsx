@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Easing,
@@ -90,6 +90,10 @@ function RiseFill({
   readonly ratio: number;
   readonly reducedMotion: boolean;
 }) {
+  // Les PV et le mouvement du relèvement, figés au montage : une perte de PV ou un Répit plus tard
+  // dans le combat ne rejoue jamais la barre d'or (une nouvelle clé la remonte).
+  const [target] = useState(ratio);
+  const [still] = useState(reducedMotion);
   const cover = useSharedValue(1);
   const fill = useSharedValue(0);
   useEffect(() => {
@@ -99,13 +103,13 @@ function RiseFill({
     fill.set(
       withDelay(
         SECOND_CHANCE_FREEZE_MS,
-        withTiming(ratio, {
-          duration: reducedMotion ? 0 : RISE_FILL_MS,
+        withTiming(target, {
+          duration: still ? 0 : RISE_FILL_MS,
           easing: Easing.steps(RISE_FILL_STEPS),
         }),
       ),
     );
-  }, [cover, fill, ratio, reducedMotion]);
+  }, [cover, fill, target, still]);
   // Dépendances explicites : le code instrumenté par Stryker n'est plus reconnu comme worklet.
   const covering = useAnimatedStyle(() => {
     'worklet';

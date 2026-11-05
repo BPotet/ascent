@@ -11,6 +11,7 @@ import {
   SECOND_CHANCE_MS,
 } from '../../../domain/battle/secondChance';
 import { artPalette } from '../pixelArt/artPalette';
+import { battleColors } from '../theme/battleColors';
 import { HeroBar } from './HeroBar';
 import { SecondChanceBanner } from './SecondChanceBanner';
 import { SecondChanceChip } from './SecondChanceChip';
@@ -92,6 +93,21 @@ describe('HeroBar with the second chance (#206)', () => {
     expect(getAnimatedStyle(cover).opacity).toBe(1);
     await act(async () => jest.advanceTimersByTime(SECOND_CHANCE_MS));
     expect(getAnimatedStyle(cover).opacity).toBe(0);
+    jest.useRealTimers();
+  });
+  it('plays the golden bar once: a later HP change of the same rise does not replay it', async () => {
+    jest.useFakeTimers();
+    const hero: HeroState = { ...sentinel, hp: 40, secondChance: 'used' };
+    const view = await render(<HeroBar hero={hero} rise={{ key: 1 }} />);
+    await act(async () => jest.advanceTimersByTime(SECOND_CHANCE_MS + 100));
+    expect(getAnimatedStyle(screen.getByTestId('battle-hero-rise', hiddenToo)).opacity).toBe(0);
+
+    await view.rerender(<HeroBar hero={{ ...hero, hp: 20 }} rise={{ key: 1 }} />);
+    await act(async () => jest.advanceTimersByTime(100));
+
+    const cover = screen.queryByTestId('battle-hero-rise', hiddenToo);
+    if (cover !== null) expect(getAnimatedStyle(cover).opacity).toBe(0);
+    expect(style('battle-hero-hp')).toMatchObject({ backgroundColor: battleColors.heroHpLow });
     jest.useRealTimers();
   });
 });
