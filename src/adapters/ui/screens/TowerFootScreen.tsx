@@ -1,13 +1,16 @@
-import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
+import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
 import type { CampSession } from '../../../application/useCases/CampSession';
 import type { LogExport } from '../../../application/useCases/exportAscentLog';
 import type { FateGaugeReading } from '../../../application/useCases/fateGauge';
 import type { Ascent } from '../../../domain/ascent/Ascent';
+import type { FateGauge } from '../../../domain/ascent/fateGauge';
 import { loadoutOf, loadoutSize } from '../../../domain/ascent/loadout';
 import type { HeroKind } from '../../../domain/battle/combatants';
+import { GaugeDetailSheet } from '../components/GaugeDetailSheet';
+import { GaugeDial, GaugeEffectList } from '../components/GaugeDial';
 import { LoadoutSection } from '../components/LoadoutSection';
 import { LogExportButton } from '../components/LogExportButton';
 import { LoadoutSheet } from '../components/LoadoutSheet';
@@ -22,11 +25,31 @@ import {
   tierLine,
 } from '../format/ascentText';
 import { HERO_NAMES } from '../format/battleText';
-import { gaugeEffects, gaugeReason, gaugeWord } from '../format/gaugeText';
+import {
+  ASCENT_GAUGE_TITLE,
+  ASCENT_KEEPS_GAUGE,
+  DAY_GAUGE_TITLE,
+  DETAIL_LINK,
+  GAUGE_LOADING,
+  GAUGE_REASSURANCE,
+  NOT_YET_LINE,
+  OPEN_DETAIL,
+  SEALED_LINE,
+  UNREADABLE_TEXT,
+  ascentGaugeAnnouncement,
+  gaugeAnnouncement,
+  gaugeChangedText,
+  gaugeEffects,
+  gaugeReason,
+  isFirstUse,
+  nextAscentLine,
+} from '../format/gaugeText';
 import { artPalette } from '../pixelArt/artPalette';
 import { PixelButton } from '../pixelArt/PixelButton';
 import { PixelFrame } from '../pixelArt/PixelFrame';
+import { artPixelSize } from '../pixelArt/artPixel';
 import { PixelIcon } from '../pixelArt/PixelIcon';
+import { PixelSkeleton } from '../pixelArt/PixelSkeleton';
 import { pixelTypography, textFont } from '../pixelArt/pixelTypography';
 import { CAMP_TITLE } from '../format/campText';
 import { useAscent } from '../state/useAscent';
@@ -73,6 +96,132 @@ function CampButton({ onCamp }: { readonly onCamp: () => void }) {
   );
 }
 
+/** L'en-tête d'un cadre de jauge : son titre et « Détail ›». */
+function GaugeHead({ title }: { readonly title: string }) {
+  return (
+    <View style={styles.gaugeHead}>
+      <Text style={styles.gaugeTitle}>{title}</Text>
+      <Text style={styles.gaugeMore}>{`${DETAIL_LINK} ›`}</Text>
+    </View>
+  );
+}
+
+/**
+ * La jauge du jour au pied de la tour (#41, maquette 205, G1 à G8) : tout le cadre est un bouton qui
+ * ouvre son détail. Le cadran, le compte d'hier (ou « pas encore », ou la lecture en échec), ses
+ * effets, la phrase rassurante d'une malédiction et le scellement. Le lecteur d'écran lit le mot,
+ * la valeur, puis le compte d'hier.
+ */
+function GaugeCard({
+  reading,
+  onOpen,
+  ref,
+}: {
+  readonly reading: FateGaugeReading;
+  readonly onOpen: () => void;
+  readonly ref: Ref<View>;
+}) {
+  const firstUse = isFirstUse(reading);
+  const effects = gaugeEffects(reading);
+  const line = artPixelSize(2);
+  return (
+    <Pressable
+      ref={ref}
+      accessibilityRole="button"
+      accessibilityLabel={`${gaugeAnnouncement(reading)} ${OPEN_DETAIL}`}
+      onPress={onOpen}
+      testID="gauge-card"
+    >
+      <PixelFrame style={styles.gaugeCard}>
+        <GaugeHead title={DAY_GAUGE_TITLE} />
+        <GaugeDial gauge={reading.gauge} notYet={firstUse} sealed={reading.sealed} />
+        {!reading.unreadable && <Text style={styles.gaugeLine}>{gaugeReason(reading)}</Text>}
+        {firstUse && <Text style={styles.gaugeSoft}>{NOT_YET_LINE}</Text>}
+        {reading.unreadable && (
+          <View style={[styles.infoBand, { borderWidth: line }]}>
+            <View style={styles.infoDot} />
+            <Text style={styles.infoText}>{UNREADABLE_TEXT}</Text>
+          </View>
+        )}
+        {effects.length > 0 && <GaugeEffectList effects={effects} />}
+        {reading.gauge < 0 && (
+          <Text style={[styles.reassurance, { borderWidth: line }]}>{GAUGE_REASSURANCE}</Text>
+        )}
+        {reading.sealed && <Text style={styles.gaugeSoft}>{SEALED_LINE}</Text>}
+      </PixelFrame>
+    </Pressable>
+  );
+}
+
+/** La jauge de l'ascension en cours (G9) : gardée jusqu'à la fin de l'ascension. */
+function AscentGaugeCard({
+  gauge,
+  onOpen,
+  ref,
+}: {
+  readonly gauge: FateGauge;
+  readonly onOpen: () => void;
+  readonly ref: Ref<View>;
+}) {
+  return (
+    <Pressable
+      ref={ref}
+      accessibilityRole="button"
+      accessibilityLabel={`${ascentGaugeAnnouncement(gauge)} ${OPEN_DETAIL}`}
+      onPress={onOpen}
+      testID="ascent-gauge-card"
+      style={styles.ascentGauge}
+    >
+      <GaugeHead title={ASCENT_GAUGE_TITLE} />
+      <GaugeDial gauge={gauge} small />
+      <Text style={styles.gaugeSoft}>{ASCENT_KEEPS_GAUGE}</Text>
+    </Pressable>
+  );
+}
+
+/**
+ * Le bandeau d'une correction d'hier qui change la jauge avant le lancement (G11) : vert quand elle
+ * monte, sans rouge quand elle baisse. Annoncé poliment.
+ */
+function GaugeChangedBand({ gauge, rose }: { readonly gauge: FateGauge; readonly rose: boolean }) {
+  return (
+    <View
+      accessibilityLiveRegion="polite"
+      role="status"
+      style={[
+        styles.changedBand,
+        { borderWidth: artPixelSize(2) },
+        rose && { backgroundColor: roles.doneBg, borderColor: roles.doneLine },
+      ]}
+    >
+      {rose && <PixelIcon name="check8" color={roles.done} />}
+      <Text style={styles.infoText}>{gaugeChangedText(gauge, rose)}</Text>
+    </View>
+  );
+}
+
+/** Le changement de la jauge du jour entre deux lectures, hors scellement et lecture en échec. */
+function useGaugeChange(reading: FateGaugeReading | null) {
+  const previous = useRef(reading);
+  const [change, setChange] = useState<{ gauge: FateGauge; rose: boolean } | null>(null);
+  useEffect(() => {
+    const before = previous.current;
+    previous.current = reading;
+    if (
+      before === null ||
+      reading === null ||
+      reading.sealed ||
+      before.unreadable ||
+      reading.unreadable ||
+      before.gauge === reading.gauge
+    ) {
+      return;
+    }
+    setChange({ gauge: reading.gauge, rose: reading.gauge > before.gauge });
+  }, [reading]);
+  return change;
+}
+
 /** Au-delà de ce nombre d'entrées, le cadre de l'ascension annonce qu'il défile (maquette #153). */
 const SCROLL_HINT_BEYOND = 5;
 
@@ -88,6 +237,7 @@ function AscentInProgress({
   onCamp,
   onAbandon,
   foot,
+  today,
 }: {
   readonly ascent: Ascent;
   readonly shards: number;
@@ -95,14 +245,24 @@ function AscentInProgress({
   readonly onCamp: () => void;
   readonly onAbandon: () => void;
   readonly foot: ReactNode;
+  /** La jauge du jour, qui attend la prochaine ascension. */
+  readonly today: FateGaugeReading | null;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [detail, setDetail] = useState(false);
+  const [gaugeDetail, setGaugeDetail] = useState(false);
   const link = useRef<View>(null);
+  const gaugeCard = useRef<View>(null);
   const loadout = loadoutOf(ascent);
   const closeDetail = () => {
     setDetail(false);
     if (link.current !== null) AccessibilityInfo.sendAccessibilityEvent(link.current, 'focus');
+  };
+  const closeGaugeDetail = () => {
+    setGaugeDetail(false);
+    if (gaugeCard.current !== null) {
+      AccessibilityInfo.sendAccessibilityEvent(gaugeCard.current, 'focus');
+    }
   };
   return (
     <>
@@ -119,10 +279,17 @@ function AscentInProgress({
               <Text style={styles.status}>
                 {`${floorLine(ascent.floor, ascent.tier)} · ${ascent.hero.hp}/${ascent.hero.maxHp} PV · ${goldText(ascent.gold)}`}
               </Text>
-              <Text style={styles.line}>{`Jauge de l'ascension : ${gaugeWord(ascent.gauge)}`}</Text>
             </View>
+            <AscentGaugeCard
+              ref={gaugeCard}
+              gauge={ascent.gauge}
+              onOpen={() => setGaugeDetail(true)}
+            />
             <LoadoutSection ref={link} loadout={loadout} onDetail={() => setDetail(true)} />
           </PixelFrame>
+          {today !== null && !today.sealed && (
+            <Text style={styles.discreet}>{nextAscentLine(today.gauge)}</Text>
+          )}
         </ScrollView>
         {loadoutSize(loadout) > SCROLL_HINT_BEYOND && (
           <ScrollHint under={roles.night} testID="tower-foot-more" />
@@ -156,6 +323,13 @@ function AscentInProgress({
       )}
       {foot}
       <LoadoutSheet loadout={loadout} combat={false} visible={detail} onClose={closeDetail} />
+      <GaugeDetailSheet
+        visible={gaugeDetail}
+        gauge={ascent.gauge}
+        reading={null}
+        blessings={ascent.blessings.length}
+        onClose={closeGaugeDetail}
+      />
     </>
   );
 }
@@ -194,6 +368,15 @@ export function TowerFootScreen({
   const loaded = sessionLoaded && campView.status === 'ready';
   const { reading, seal } = useFateGauge();
   const [choosing, setChoosing] = useState<FateGaugeReading | null>(null);
+  const [gaugeDetail, setGaugeDetail] = useState(false);
+  const gaugeCard = useRef<View>(null);
+  const gaugeChange = useGaugeChange(reading);
+  const closeGaugeDetail = () => {
+    setGaugeDetail(false);
+    if (gaugeCard.current !== null) {
+      AccessibilityInfo.sendAccessibilityEvent(gaugeCard.current, 'focus');
+    }
+  };
 
   useEffect(() => {
     if (sessionLoaded) return;
@@ -242,6 +425,7 @@ export function TowerFootScreen({
           onCamp={onCamp}
           onAbandon={() => session.abandon()}
           foot={foot}
+          today={reading}
         />
       </Screen>
     );
@@ -262,23 +446,39 @@ export function TowerFootScreen({
                 {`Ascension terminée : ${goldText(ascent.gold)}, perdus à la fin.`}
               </Text>
             )}
-            {reading === null ? null : (
-              <>
-                <Text style={styles.status}>{`Jauge du jour : ${gaugeWord(reading.gauge)}`}</Text>
-                <Text style={styles.line}>{gaugeReason(reading)}</Text>
-                {gaugeEffects(reading).map((effect) => (
-                  <Text key={effect} style={styles.line}>
-                    {effect}
-                  </Text>
-                ))}
-                <PixelButton label="Commencer l'ascension" onPress={() => setChoosing(reading)} />
-              </>
+            {gaugeChange !== null && reading !== null && !reading.sealed && (
+              <GaugeChangedBand gauge={gaugeChange.gauge} rose={gaugeChange.rose} />
             )}
+            {reading === null ? (
+              <>
+                <PixelSkeleton width="100%" height={196} testID="gauge-loading" />
+                <Text accessibilityLiveRegion="polite" role="status" style={styles.srOnly}>
+                  {GAUGE_LOADING}
+                </Text>
+              </>
+            ) : (
+              <GaugeCard ref={gaugeCard} reading={reading} onOpen={() => setGaugeDetail(true)} />
+            )}
+            <PixelButton
+              label="Commencer l'ascension"
+              disabled={reading === null}
+              onPress={() => {
+                if (reading !== null) setChoosing(reading);
+              }}
+            />
             <CampButton onCamp={onCamp} />
           </View>
         )}
       </View>
       {foot}
+      {reading !== null && (
+        <GaugeDetailSheet
+          visible={gaugeDetail}
+          gauge={reading.gauge}
+          reading={reading}
+          onClose={closeGaugeDetail}
+        />
+      )}
     </Screen>
   );
 }
@@ -328,4 +528,73 @@ const styles = StyleSheet.create({
   shardText: { fontFamily: textFont.semiBold, fontSize: 13, lineHeight: 18, color: roles.shard },
   camp: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   campText: { fontFamily: textFont.bold, fontSize: 15, lineHeight: 19, color: roles.light },
+  gaugeCard: { gap: 7, paddingTop: 10, paddingBottom: 12, paddingHorizontal: 12 },
+  ascentGauge: { gap: 6, paddingHorizontal: 14, paddingVertical: 8 },
+  gaugeHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  gaugeTitle: {
+    fontFamily: textFont.bold,
+    fontSize: 11.5,
+    lineHeight: 15,
+    letterSpacing: 0.9,
+    textTransform: 'uppercase',
+    color: roles.muted,
+  },
+  gaugeMore: { fontFamily: textFont.semiBold, fontSize: 13, lineHeight: 17, color: roles.gold },
+  gaugeLine: { fontFamily: textFont.medium, fontSize: 13.5, lineHeight: 19, color: roles.light },
+  gaugeSoft: {
+    fontFamily: textFont.medium,
+    fontSize: 13,
+    lineHeight: 18,
+    color: roles.parchment,
+  },
+  reassurance: {
+    paddingVertical: 7,
+    paddingHorizontal: 9,
+    fontFamily: textFont.medium,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: roles.parchment,
+    backgroundColor: roles.sunken,
+    borderColor: roles.line,
+  },
+  infoBand: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: roles.raised,
+    borderColor: roles.blue,
+  },
+  infoDot: {
+    width: 10,
+    height: 10,
+    marginTop: 4,
+    backgroundColor: roles.blue,
+    transform: [{ rotate: '45deg' }],
+  },
+  infoText: {
+    flex: 1,
+    fontFamily: textFont.medium,
+    fontSize: 13,
+    lineHeight: 18,
+    color: roles.light,
+  },
+  changedBand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: roles.raised,
+    borderColor: roles.line,
+  },
+  discreet: {
+    fontFamily: textFont.medium,
+    fontSize: 12.5,
+    lineHeight: 17,
+    color: roles.muted,
+    textAlign: 'center',
+  },
+  srOnly: { position: 'absolute', width: 1, height: 1, overflow: 'hidden' },
 });

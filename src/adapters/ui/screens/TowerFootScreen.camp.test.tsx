@@ -76,7 +76,12 @@ describe('TowerFootScreen and the camp (#40)', () => {
     const { onCamp } = await show({ shards: 82, saved: startAscent(3) });
 
     await screen.findByRole('button', { name: "Reprendre l'ascension" });
-    expect(buttonLabels()).toEqual(["Reprendre l'ascension", 'Le camp', "Abandonner l'ascension"]);
+    // Le cadre de la jauge de l'ascension (#41) est un bouton, au-dessus des actions.
+    expect(buttonLabels().filter((label) => !label.startsWith('Jauge'))).toEqual([
+      "Reprendre l'ascension",
+      'Le camp',
+      "Abandonner l'ascension",
+    ]);
     await fireEvent.press(screen.getByRole('button', { name: 'Le camp' }));
     expect(onCamp).toHaveBeenCalledTimes(1);
   });
