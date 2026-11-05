@@ -44,6 +44,7 @@ function engineBefore(): Engine {
       walk: jest.requireActual<WalkModule>('../../src/domain/ascent/testing/tierOneWalk'),
     };
   });
+  jest.dontMock('../../src/domain/battle/attacks');
   return engine!;
 }
 

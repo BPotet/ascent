@@ -388,12 +388,12 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     world.reference = 0;
   });
 
-  then(/^chaque préparation dure entre 880 ms et 1 320 ms \(.+\)$/u, async () => {
+  then(/^chaque préparation dure entre 990 ms et 1 210 ms \(.+\)$/u, async () => {
     const windUps = await basicWindUps();
     expect(windUps.length).toBeGreaterThanOrEqual(10);
     for (const windUp of windUps) {
-      expect(windUp).toBeGreaterThanOrEqual(880);
-      expect(windUp).toBeLessThanOrEqual(1_320);
+      expect(windUp).toBeGreaterThanOrEqual(990);
+      expect(windUp).toBeLessThanOrEqual(1_210);
     }
     expect(new Set(windUps).size).toBeGreaterThan(1);
   });
@@ -629,16 +629,16 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and(
-    /^son premier impact tombe au plus tôt 2 000 ms après la fin de l'attaque de la Sentinelle \(800 \+ 400 \+ 800\)$/u,
+    /^son premier impact tombe au plus tôt 2 100 ms après la fin de l'attaque de la Sentinelle \(800 \+ 400 \+ 900\)$/u,
     async () => {
-      expect(attackStep()!.impacts[0]!.at - world.reference).toBeGreaterThanOrEqual(2_000);
+      expect(attackStep()!.impacts[0]!.at - world.reference).toBeGreaterThanOrEqual(2_100);
       // Sur d'autres graines aussi, quel que soit le coup tiré.
       for (const seed of [2, 3, 5, 8, 13, 21, 34, 55, 89, 144]) {
         await startBattle({ seed });
         attack();
         const resolvedAt = world.clock.now() + HERO_STRIKE_MS;
         runUntil(() => attackStep() !== null);
-        expect(attackStep()!.impacts[0]!.at - resolvedAt).toBeGreaterThanOrEqual(2_000);
+        expect(attackStep()!.impacts[0]!.at - resolvedAt).toBeGreaterThanOrEqual(2_100);
       }
     },
   );
