@@ -498,6 +498,11 @@ describe('the names of the enemies of the Belfry (#214)', () => {
     expect(stunnedLabel('matinsRinger')).toBe('Étourdie ×1,5');
     expect(stunnedLabel('clockJack')).toBe('Étourdi ×1,5');
   });
+
+  it('agrees the curse with the Bell novice and the Clock jack (#209)', () => {
+    expect(enemyName({ kind: 'bellNovice', cursed: true })).toBe('Novice des cloches maudit');
+    expect(enemyName({ kind: 'clockJack', cursed: true })).toBe('Jaquemart maudit');
+  });
 });
 
 describe('the cursed enemy (#209)', () => {
