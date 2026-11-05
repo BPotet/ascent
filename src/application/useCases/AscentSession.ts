@@ -17,7 +17,7 @@ import {
 } from '../../domain/ascent/Ascent';
 import { boonModifiers } from '../../domain/ascent/boons';
 import { blessingModifiers, type BlessingFamily } from '../../domain/ascent/blessings';
-import { favorRerolls } from '../../domain/ascent/fateGauge';
+import { favorRerolls, favorSecondChance } from '../../domain/ascent/fateGauge';
 import { STARTING_EQUIPMENT, itemModifiers } from '../../domain/ascent/items';
 import {
   EMPTY_SHARD_TOTAL,
@@ -77,6 +77,8 @@ const SAVED_ON: ReadonlySet<BattleEvent['type']> = new Set([
   'enemySelfRevived',
   // L'entrée des invoqués (#172) ; leur annonce est sauvée avec le coup qui l'a lancée.
   'summonEntered',
+  // Le relèvement (#206) : une fermeture pendant le bandeau ne rend jamais la seconde chance.
+  'secondChanceUsed',
 ]);
 
 type Listener = (ascent: Ascent | null) => void;
@@ -111,7 +113,8 @@ function parse(raw: string | null): SavedAscent | null {
     // avant #92 : la Sentinelle, sans bienfait ni offre ; avant #105 : Égide au lieu de Protection ;
     // avant #38 : au palier 1, sans Éclat ni Passage de palier ; avant #195 : sans Déblocage, et
     // Cœur de braise pas encore proposé ; avant #42 : les relances de sa jauge, comme si elles
-    // avaient été données au lancement (calculées après la fusion, sur la jauge sauvegardée).
+    // avaient été données au lancement (calculées après la fusion, sur la jauge sauvegardée) ;
+    // avant #206 : la seconde chance de sa jauge, de la même façon.
     const stored: Partial<Ascent> = saved.ascent;
     const storedHero: Partial<Ascent['hero']> = saved.ascent.hero;
     const ascent = {
@@ -133,9 +136,11 @@ function parse(raw: string | null): SavedAscent | null {
       hero: { kind: 'sentinel', boons: [], ...storedHero },
     } as Ascent;
     const rerolls = stored.rerolls ?? favorRerolls(ascent.gauge);
+    const secondChance = stored.secondChance ?? favorSecondChance(ascent.gauge);
     const renamed: Ascent = {
       ...ascent,
       rerolls,
+      secondChance,
       blessings: ascent.blessings.map((blessing) => ({
         ...blessing,
         family: protection(blessing.family),
@@ -340,6 +345,8 @@ export class AscentSession {
           enemies: encounter.enemies,
           // L'ennemi maudit tiré pour l'étage (#209) ; absent, aucun.
           ...(encounter.cursed !== undefined && { cursed: encounter.cursed }),
+          // La seconde chance encore là (#206) ; absente, le combat est celui d'avant.
+          ...(ascent.secondChance && { secondChance: true }),
           // Le multiplicateur de palier : les combats ordinaires seulement, jamais l'Élite ni le boss.
           ...(encounter.kind === 'combat' && { tierMultiplier: TIERS[ascent.tier].multiplier }),
           // Les ennemis invoqués ont les valeurs du palier, dans tout combat d'étage (#172).
@@ -377,7 +384,12 @@ export class AscentSession {
     if (fell !== undefined) this.summonFellAt = fell.at;
     const ended = battle.phase.kind === 'over' ? battle.phase.outcome : null;
     if (ended !== null) {
-      const next = endFloorBattle(this.ascent, { outcome: ended, heroHp: battle.hero.hp });
+      const next = endFloorBattle(this.ascent, {
+        outcome: ended,
+        heroHp: battle.hero.hp,
+        // « Utilisée », et non « encore prête » : un combat sauvé avant #206 ne la retire pas.
+        secondChanceUsed: battle.hero.secondChance === 'used',
+      });
       const cause: Cause = { kind: 'battleEnded', hero: vitalsOf(battle) };
       const credited = creditShards(this.shards, next.seed, next.shardAwards);
       const waits: Promise<void>[] = [];

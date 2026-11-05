@@ -112,6 +112,7 @@ export function feedbackFor(event: BattleEvent): BattleFeedback {
       return { sound: 'wingRustle', haptic: null };
     case 'summonEntered':
       return { sound: 'wingRustleLoud', haptic: null };
+    // La seconde chance n'a pas de son propre (#206) : celui du touché qui fait tomber suffit.
     default:
       return NONE;
   }
