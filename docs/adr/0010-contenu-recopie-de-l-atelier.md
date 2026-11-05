@@ -389,3 +389,50 @@ clé `proposals[chosen]`, clés `w`, `h`, `palette` et `rows` seulement, comme a
    sauvegarde (avenant #152) : ils ne changent plus.
 5. **Teintes.** Toutes les teintes des sept icônes sont déjà dans `artPalette` : aucune n'est
    ajoutée.
+
+## Avenant du 5 novembre 2026 (#214) : une animation complète recopiée par la conversation
+
+Les trois ennemis du Beffroi, le Novice des cloches (`bellNovice`), la Sonneuse de matines
+(`matinsRinger`) et le Jaquemart (`clockJack`) (Atelier, lus le 05/11/2026, version 2, image,
+animation complète et icône validées, proposition 1), sont recopiés comme les autres ennemis :
+la clé `animation` de `assets/<id>`, toutes ses clés et rien d'autre, dans
+`sprites/atelier/data/<id>.ts` ; `icon.proposals[chosen]`, clés `w`, `h`, `palette` et `rows`,
+dans `portraits.ts` (§ 9, avenant #175) ; `data.stats` et `data.name` de `codex/<id>` dans le
+domaine et les libellés. L'image fixe n'est pas recopiée (avenant #38) : elle est identique à la
+pose `idle0`, ce que l'en-tête de chaque fichier note.
+
+1. **Recopie par la conversation.** Comme pour #212, l'outil de lecture de l'Atelier refuse
+   d'écrire ces documents en fichiers : les 6 documents sont lus un à un par `ArtifactData get`, en
+   lecture seule, et recopiés par la conversation. Une version autre que celle de la story arrête la
+   recopie. La sha256 de chaque document (`json.dumps(data, sort_keys=True, separators=(',', ':'),
+   ensure_ascii=False)`, en UTF-8) est écrite, avec le document et sa version, dans l'en-tête des
+   fichiers et dans la story.
+2. **Contrôle de fidélité sans maquette.** Ces ennemis n'ont pas de maquette à laquelle comparer la
+   copie (pas de mécanique nouvelle) : le contrôle de #212 (« pixel pour pixel à la maquette ») ne
+   s'applique pas. Il est remplacé par deux contrôles indépendants :
+   - **les empreintes de la copie** : la sha256, avec la même règle, de chaque partie recopiée
+     (`data.animation`, `{ w, h, palette, rows }` de l'icône choisie, `data.stats` de la fiche),
+     écrite dans l'en-tête et dans `belfryEnemies.data.test.ts`, qui la recalcule à partir des
+     exports du code, avec un JSON canonique (clés triées à tous les niveaux, sans espaces,
+     caractères non ASCII tels quels). Avant de figer les empreintes, ce JSON a été vérifié octet
+     pour octet contre `json.dumps` sur deux animations déjà recopiées (la Phalénide, et le Brûleur
+     de ronces pour un nom de coup non ASCII avec apostrophe) ; le test garde l'empreinte de la
+     Phalénide calculée par Python. Les données ne portent que des entiers et des chaînes (aucun
+     décimal, que les deux JSON écriraient autrement) ;
+   - **une seconde lecture**, à la revue : le Reviewer relit lui-même les 6 documents, recalcule
+     les empreintes des documents et de la copie, et les compare à celles du dev. Un écart arrête la
+     story ; une empreinte de document différente veut dire que l'Atelier a changé depuis la recopie
+     (même règle qu'au point 1).
+   Le même test vérifie la forme de la copie : taille et case du combat, les 17 poses du combat et
+   les poses en plus (`guard`, `raiseAlly` de la Sonneuse), `h` lignes de `w` caractères, chaque code
+   dans la palette, une ancre par pose, la palette rouge pour le seul ennemi qui a un coup imparable,
+   les poses d'un coup et leur nom de coup, toutes les teintes dans `artPalette`, ni `icon` ni
+   `proposals` recopiés. Il compare enfin la fiche recopiée à `ENEMIES`, `ENEMY_INITIATIVE`,
+   `TIERS[3]` (poids, plafond, `neverAlone` du soutien) et `ENEMY_NAMES`.
+3. **Portraits hors de la maquette 174.** `portraits.data.test.ts` compare chaque portrait à la
+   maquette 174, qui ne connaît pas ces trois ennemis : il les exclut par une liste nommée
+   (`WITHOUT_MOCKUP`) ; leur fidélité est celle du point 2.
+4. **Noms de code.** L'id de l'Atelier est le nom de code. `bellNovice`, `matinsRinger` et
+   `clockJack` deviennent des identifiants de sauvegarde (avenant #152) : ils ne changent plus.
+5. **Teintes.** Toutes les teintes des trois animations, de la palette rouge du Jaquemart et des
+   trois icônes sont déjà dans `artPalette` : aucune n'est ajoutée.
