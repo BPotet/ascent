@@ -38,6 +38,30 @@ async function wait(ms: number) {
   await act(async () => jest.advanceTimersByTime(ms));
 }
 
+describe('ActionTrack: the cursed enemy (#209)', () => {
+  it('marks the portrait of the cursed enemy with a skull, on a pink case, never the colour alone', async () => {
+    const cursed: TrackEntry = { ...ghoul(0), cursed: true };
+    await render(
+      <ActionTrack track={{ round: 1, current: [cursed, hero], next: [hero, cursed] }} />,
+    );
+
+    expect(screen.getAllByTestId('track-cursed-skull', hiddenToo)).toHaveLength(2);
+    const [first] = entries();
+    expect(StyleSheet.flatten(first!.props.style)).toMatchObject({
+      backgroundColor: artPalette.roles.errorBg,
+      borderColor: artPalette.roles.curse,
+    });
+    expect(screen.getByTestId('battle-action-track').props.accessibilityLabel).toBe(
+      "Ordre d'action. Manche 1 : Goule maudite, toi. Manche suivante : toi, Goule maudite.",
+    );
+  });
+
+  it('puts no skull on an uncursed enemy', async () => {
+    await render(<ActionTrack track={F2} />);
+    expect(screen.queryByTestId('track-cursed-skull', hiddenToo)).toBeNull();
+  });
+});
+
 describe('ActionTrack', () => {
   it.each([
     [375, 4, 6],

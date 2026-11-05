@@ -26,6 +26,32 @@ function names() {
     .map((chip) => within(chip).getAllByText(/./, hidden)[0]!.props.children as string);
 }
 
+describe('ExitChoice: the cursed enemy at the doors (#209)', () => {
+  const CURSED_DOORS: readonly Exit[] = [
+    { kind: 'combat', groupSize: 3 },
+    { kind: 'elite', groupSize: null },
+  ];
+
+  it('says « dont 1 maudit » on the Combat door and « Élite maudite » under the strong curse', async () => {
+    await render(<ExitChoice boons={[]} exits={CURSED_DOORS} gauge={-2} onChoose={jest.fn()} />);
+
+    expect(
+      screen.getByRole('button', { name: 'Combat · 3 ennemis · dont 1 maudit' }),
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByRole('button', { name: 'Élite maudite · objet Rare garanti' }),
+    ).toBeOnTheScreen();
+  });
+
+  it('keeps the Elite door as today under the curse, and every door without it', async () => {
+    await render(<ExitChoice boons={[]} exits={CURSED_DOORS} gauge={-1} onChoose={jest.fn()} />);
+    expect(screen.getByRole('button', { name: 'Élite · objet Rare garanti' })).toBeOnTheScreen();
+
+    await render(<ExitChoice boons={[]} exits={CURSED_DOORS} onChoose={jest.fn()} />);
+    expect(screen.getByRole('button', { name: 'Combat · 3 ennemis' })).toBeOnTheScreen();
+  });
+});
+
 describe('ExitChoice (#157)', () => {
   it('shows the « Bienfaits » section in chips, in the order won, then the doors', async () => {
     const onChoose = jest.fn();

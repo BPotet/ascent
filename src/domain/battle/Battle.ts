@@ -44,6 +44,7 @@ import {
 } from './guard';
 import { NO_MODIFIERS, combineModifiers, heroAttack, type HeroModifiers } from './heroModifiers';
 import { heroInitiative } from './initiative';
+import { cursedValue } from './curse';
 import { drawIntent, raisedHp, type GuardIntent, type Intent, type RaiseIntent } from './intents';
 import {
   BULWARK_DAMAGE_PERCENT,
@@ -130,6 +131,8 @@ export interface EnemyState {
   readonly selfRevives?: number;
   /** Un ennemi invoqué (`Invoqué`, #172) : entré par une Invocation, il tombe avec le boss. */
   readonly summoned?: true;
+  /** Un ennemi maudit (`CursedEnemy`, #209) : il le reste jusqu'à la fin du combat, relevé compris. */
+  readonly cursed?: true;
 }
 
 export interface ImpactState {
@@ -350,18 +353,28 @@ export interface BattleOptions extends BattleStartOptions {
    * compris (le boss, lui, n'est jamais multiplié) ; par défaut, × 1.
    */
   readonly summonMultiplier?: TierMultiplier;
+  /**
+   * L'indice de l'ennemi maudit (#209) dans la première ligne ; absent, aucun. Un indice de la
+   * réserve ne maudit personne : un renfort ou un invoqué n'est jamais maudit.
+   */
+  readonly cursed?: number;
 }
 
 /** Au plus 3 ennemis se battent en même temps (P3b). */
 export const FRONT_LINE_SIZE = 3;
 
-/** Un ennemi qui entre, à PV et garde max, multipliés par le palier d'un combat ordinaire (#38). */
+/**
+ * Un ennemi qui entre, à PV et garde max, multipliés par le palier d'un combat ordinaire (#38),
+ * puis maudits (#209) s'il l'est.
+ */
 function freshEnemy(
   kind: EnemyKind,
   { hpPercent, guardPercent }: TierMultiplier = NO_TIER_MULTIPLIER,
+  cursed = false,
 ): EnemyState {
-  const maxHp = scaleByPercent(ENEMIES[kind].maxHp, hpPercent);
-  const maxGuard = scaleByPercent(ENEMIES[kind].maxGuard, guardPercent);
+  const curse = cursed ? cursedValue : (value: number) => value;
+  const maxHp = curse(scaleByPercent(ENEMIES[kind].maxHp, hpPercent));
+  const maxGuard = curse(scaleByPercent(ENEMIES[kind].maxGuard, guardPercent));
   return {
     kind,
     hp: maxHp,
@@ -373,6 +386,7 @@ function freshEnemy(
     raised: false,
     raisedRound: null,
     guardRestore: null,
+    ...(cursed && { cursed: true as const }),
   };
 }
 
@@ -393,11 +407,14 @@ export function startBattle({
   enemies: group,
   tierMultiplier,
   summonMultiplier,
+  cursed,
 }: BattleOptions): BattleUpdate {
   const maxHp = heroMaxHp ?? HEROES[hero].maxHp;
   const momentum = Math.min(MOMENTUM_MAX, MOMENTUM_START + (modifiers?.startingMomentum ?? 0));
   const events: Events = [];
-  const enemies = group.slice(0, FRONT_LINE_SIZE).map((kind) => freshEnemy(kind, tierMultiplier));
+  const enemies = group
+    .slice(0, FRONT_LINE_SIZE)
+    .map((kind, index) => freshEnemy(kind, tierMultiplier, index === cursed));
   const battle = startRound(
     {
       now: at,
@@ -661,6 +678,7 @@ function startRound(previous: Battle, events: Events, at: number): Battle {
       maxGuard: enemy.maxGuard,
       damagePercent:
         (enemy.summoned ? battle.summonMultiplier : battle.tierMultiplier)?.hpPercent ?? 100,
+      cursed: enemy.cursed === true,
     });
     random = drawn.random;
     return { ...enemy, intent: drawn.intent };

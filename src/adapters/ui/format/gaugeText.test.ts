@@ -62,15 +62,17 @@ describe('the texts of the gauge (#93, #41)', () => {
     ]);
   });
 
-  it('lists the fatigue and the rarer Rare items of a curse', () => {
+  it('lists the fatigue, the rarer Rare items and the cursed enemies of a curse (#209)', () => {
     expect(texts(gaugeEffects(reading({ gauge: -1, blessings: ['rare'] })))).toEqual([
       '1 bénédiction de départ',
       'Fatigue : PV max −10 %',
       'Objets Rares moins fréquents',
+      '1 ennemi maudit par combat',
     ]);
     expect(gaugeEffects(reading({ gauge: -2, blessings: [] }))).toEqual([
       { glyph: 'fatigue', tone: 'curse', text: 'Fatigue : PV max −20 %' },
       { glyph: 'rare', tone: 'curse', text: 'Objets Rares moins fréquents' },
+      { glyph: 'skull', tone: 'curse', text: 'Ennemis et Élite maudits' },
     ]);
   });
 
@@ -121,7 +123,7 @@ describe('the texts of the gauge (#93, #41)', () => {
 describe('the announcement of the gauge, never the color alone (#41)', () => {
   it('says the word, then the value, then the count of yesterday and the effects', () => {
     expect(gaugeAnnouncement(reading({ gauge: -2, blessings: [], done: 0, expected: 3 }))).toBe(
-      "Jauge du jour : Malédiction forte, moins 2. D'après hier : 0 habitude sur 3. Effets : fatigue : PV max moins 20 %, objets Rares moins fréquents. D'après hier, seulement aujourd'hui. L'ascension reste gagnable.",
+      "Jauge du jour : Malédiction forte, moins 2. D'après hier : 0 habitude sur 3. Effets : fatigue : PV max moins 20 %, objets Rares moins fréquents, ennemis et Élite maudits. D'après hier, seulement aujourd'hui. L'ascension reste gagnable.",
     );
     expect(gaugeAnnouncement(reading({ gauge: 2, done: 3, expected: 3 }))).toBe(
       "Jauge du jour : Faveur pleine, plus 2. D'après hier : 3 habitudes sur 3. Effets : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents.",

@@ -20,7 +20,7 @@ import { sceneTimeline } from '../battle/scene/sceneTimeline';
 import { SummonBanner } from '../battle/SummonBanner';
 import type { SceneEnemy } from '../battle/sceneTypes';
 import { Screen } from '../components/Screen';
-import { ENEMY_NAMES } from '../format/battleText';
+import { enemyName } from '../format/battleText';
 import { artPalette } from '../pixelArt/artPalette';
 import { toBattleInstant } from '../state/battleTouch';
 import { actionTrackView, battleView, type BattleView } from '../state/battleView';
@@ -180,7 +180,7 @@ export function BattleScreen({
   });
   const strikeImpactAt = battle.phase.kind === 'heroStrike' ? battle.phase.impactAt : null;
   const { heroFloat, burnFloat } = display;
-  const targetName = ENEMY_NAMES[battle.enemies[battle.target]!.kind];
+  const targetName = enemyName(battle.enemies[battle.target]!);
   const onSceneLayout = (event: LayoutChangeEvent) => {
     setSceneHeight(event.nativeEvent.layout.height);
     sceneFrame.current?.measureInWindow((_x, y, _width, height) => onSceneArea?.(y, y + height));
