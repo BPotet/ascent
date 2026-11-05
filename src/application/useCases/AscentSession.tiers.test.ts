@@ -565,3 +565,43 @@ describe('the enemies of tier 2 in a resumed ascent (#213)', () => {
     expect(next.enemies).not.toContain('madVillager');
   });
 });
+
+describe('the enemies of tier 3 in a resumed ascent (#214)', () => {
+  it('keeps the Skeleton of a floor battle already drawn, and draws none in the next battle', async () => {
+    const store = mapStore();
+    const ascent = ascentAt(3, 'combat', ['skeleton', 'bronzeWarden']);
+    // Le combat sauvegardé de son seul Squelette, à 1 PV, sa relève déjà faite : il tombe pour de bon.
+    const { battle } = startBattle({ seed: 3, defenseHint: false, at: 0, enemies: ['skeleton'] });
+    const skeleton = { ...battle.enemies[0]!, hp: 1, selfRevives: 1, raised: true };
+    const { session, clock } = await loaded(store, ascent, { ...battle, enemies: [skeleton] });
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    expect(session.current()!.encounter!.enemies).toEqual(['skeleton', 'bronzeWarden']);
+    expect(battleSession.current()!.battle.enemies.map(({ kind }) => kind)).toEqual(['skeleton']);
+
+    await playToTheEnd(battleSession, clock);
+    await flush();
+    for (let guard = 0; guard < 20 && session.current()!.encounter === null; guard += 1) {
+      const ascent = session.current()!;
+      if (ascent.blessingOffer !== null) session.chooseBlessing(0);
+      else if (ascent.boonOffer !== null) session.chooseBoon(0);
+      else if (ascent.foundItem !== null) session.leaveItem();
+      else
+        session.chooseExit(
+          Math.max(
+            0,
+            ascent.exits.findIndex(({ kind }) => kind === 'combat'),
+          ),
+        );
+      await flush();
+    }
+    const next = session.current()!;
+
+    expect(next).toMatchObject({ tier: 3, floor: 4 });
+    expect(next.encounter!.kind).toBe('combat');
+    for (const kind of ['skeleton', 'specter', 'necromancer', 'mothkin']) {
+      expect(next.encounter!.enemies).not.toContain(kind);
+    }
+  });
+});
