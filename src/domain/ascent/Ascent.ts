@@ -22,6 +22,7 @@ import {
   type BlessingFamily,
   type StartingBlessing,
 } from './blessings';
+import { cursedElite, cursedOrdinary, drawCursedEnemy } from './cursedEnemy';
 import type { Drawn } from './draw';
 import { fatiguePercent, type FateGauge } from './fateGauge';
 import { STARTING_EQUIPMENT, drawLoot, equip, type Equipment, type ItemKind } from './items';
@@ -47,6 +48,8 @@ export interface Encounter {
   readonly kind: 'combat' | 'elite' | 'boss';
   readonly enemies: readonly EnemyKind[];
   readonly battleSeed: BattleSeed;
+  /** L'indice de l'ennemi maudit (#209), dans la première ligne ; absent, aucun. */
+  readonly cursed?: number;
 }
 
 /**
@@ -150,14 +153,24 @@ function encounter(
   kind: Encounter['kind'],
   enemies: readonly EnemyKind[],
   random: RandomState,
+  cursed?: number,
 ): Drawn<Encounter> {
   const seed = drawBattleSeed(random);
-  return { value: { kind, enemies, battleSeed: seed.value }, random: seed.random };
+  return {
+    value: { kind, enemies, battleSeed: seed.value, ...(cursed !== undefined && { cursed }) },
+    random: seed.random,
+  };
 }
 
-function combat(size: number, random: RandomState, tier: Tier): Drawn<Encounter> {
+/**
+ * Un combat ordinaire : le groupe, puis l'ennemi maudit sous la malédiction (#209), puis la graine
+ * du combat. Sans malédiction, aucun tirage de plus.
+ */
+function combat(size: number, random: RandomState, tier: Tier, gauge: FateGauge): Drawn<Encounter> {
   const group = drawGroup(size, random, tier);
-  return encounter('combat', group.value, group.random);
+  if (!cursedOrdinary(gauge)) return encounter('combat', group.value, group.random);
+  const cursed = drawCursedEnemy(group.value, group.random);
+  return encounter('combat', group.value, cursed.random, cursed.value);
 }
 
 /**
@@ -167,7 +180,7 @@ function combat(size: number, random: RandomState, tier: Tier): Drawn<Encounter>
 export function startAscent(seed: AscentSeed, launch: AscentLaunch = {}): Ascent {
   const { hero: heroKind = 'sentinel', gauge = 0, blessings = [], unlocks = [] } = launch;
   const size = drawGroupSize(1, seedRandom(seed), false);
-  const first = combat(size.value, size.random, 1);
+  const first = combat(size.value, size.random, 1, gauge);
   const maxHp = heroMaxHp(HEROES[heroKind].maxHp, 0, fatiguePercent(gauge));
   const offer = blessings.length > 0 ? drawBlessingOffer([], lootStream(seed)) : null;
   return {
@@ -280,7 +293,7 @@ export function chooseExit(ascent: Ascent, index: number): Ascent {
       );
     case 'combat': {
       const size = exit.groupSize!;
-      const drawn = combat(size, ascent.random, tier);
+      const drawn = combat(size, ascent.random, tier, ascent.gauge);
       return {
         ...entered,
         random: drawn.random,
@@ -290,7 +303,9 @@ export function chooseExit(ascent: Ascent, index: number): Ascent {
     }
     case 'elite': {
       const elite = drawElite(TIERS[tier].elites, ascent.random);
-      const drawn = encounter('elite', [elite.value], elite.random);
+      // L'Élite maudite sous la malédiction forte (#209), sans tirage : elle est seule.
+      const cursed = cursedElite(ascent.gauge) ? 0 : undefined;
+      const drawn = encounter('elite', [elite.value], elite.random, cursed);
       return { ...entered, random: drawn.random, encounter: drawn.value };
     }
     case 'boss': {
@@ -396,7 +411,7 @@ export function enterNextTier(ascent: Ascent): Ascent {
   if (ascent.passage?.step !== 'announce') return ascent;
   const tier = ascent.passage.to;
   const size = drawGroupSize(1, ascent.random, ascent.fiveFaced, tier);
-  const first = combat(size.value, size.random, tier);
+  const first = combat(size.value, size.random, tier, ascent.gauge);
   return {
     ...ascent,
     tier,

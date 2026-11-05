@@ -163,10 +163,11 @@ export function heroCard(kind: HeroKind): HeroCard {
   };
 }
 
-/** Ce que la phrase de la frise lit d'une case (`TrackEntry`) : qui agit, et son nom de code. */
+/** Ce que la phrase de la frise lit d'une case (`TrackEntry`) : qui agit, son nom de code, sa malédiction. */
 interface TrackName {
   readonly actor: Actor;
   readonly fighter: HeroKind | EnemyKind;
+  readonly cursed?: true;
 }
 
 /**
@@ -178,8 +179,8 @@ export function actionTrackLabel(
   current: readonly TrackName[],
   next: readonly TrackName[],
 ): string {
-  const name = ({ actor, fighter }: TrackName) =>
-    actor === 'hero' ? 'toi' : ENEMY_NAMES[fighter as EnemyKind];
+  const name = ({ actor, fighter, cursed }: TrackName) =>
+    actor === 'hero' ? 'toi' : enemyName({ kind: fighter as EnemyKind, ...(cursed && { cursed }) });
   return `Ordre d'action. Manche ${round} : ${current.map(name).join(', ')}. Manche suivante : ${next.map(name).join(', ')}.`;
 }
 
@@ -188,6 +189,23 @@ export const SEAL_LABEL = 'Sceau rouge : coup imparable';
 /** « étourdie » pour la Goule, « étourdi » pour les autres. */
 function agreed(kind: EnemyKind, word: string): string {
   return FEMININE[kind] ? `${word}e` : word;
+}
+
+/**
+ * Le nom d'un ennemi, partout où il est nommé au lecteur d'écran : « Goule maudite » pour un ennemi
+ * maudit (#209), accordé à son nom ; sinon son nom seul.
+ */
+export function enemyName(enemy: { readonly kind: EnemyKind; readonly cursed?: true }): string {
+  const name = ENEMY_NAMES[enemy.kind];
+  return enemy.cursed === true ? `${name} ${agreed(enemy.kind, 'maudit')}` : name;
+}
+
+/** L'étiquette d'un ennemi maudit (#209) : « Maudite » pour la Goule, « Maudit » sinon ; ou `null`. */
+export function cursedTag(enemy: {
+  readonly kind: EnemyKind;
+  readonly cursed?: true;
+}): string | null {
+  return enemy.cursed === true ? agreed(enemy.kind, 'Maudit') : null;
 }
 
 function damages(count: number): string {
@@ -290,12 +308,13 @@ export function enemyLabel(
     readonly stun: Stunned | null;
     readonly selfRevives?: number;
     readonly summoned?: true;
+    readonly cursed?: true;
   },
   intent: ShownIntent | null,
   isTarget: boolean,
 ): string {
   const tag = enemyTag(enemy);
-  const name = `${ENEMY_NAMES[enemy.kind]}${tag === null ? '' : `, ${tag.toLowerCase()}`}`;
+  const name = `${enemyName(enemy)}${tag === null ? '' : `, ${tag.toLowerCase()}`}`;
   if (enemy.hp <= 0) return `${name}, ${agreed(enemy.kind, 'tombé')}`;
   const guard =
     enemy.stun === null
@@ -469,7 +488,7 @@ function strikeAnnouncement(
  * type de coup au début de la préparation (jamais avant, C2.4), les résultats, la garde.
  */
 export function announcement(event: BattleEvent, battle: Battle): string | null {
-  const name = (enemy: number) => ENEMY_NAMES[battle.enemies[enemy]!.kind];
+  const name = (enemy: number) => enemyName(battle.enemies[enemy]!);
   const kind = (enemy: number) => battle.enemies[enemy]!.kind;
   switch (event.type) {
     case 'phaseTransitionStarted':

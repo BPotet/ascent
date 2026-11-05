@@ -160,6 +160,7 @@ describe('TowerFootScreen with the fate gauge (#93)', () => {
     });
     expect(within(card).getByText('Fatigue : PV max −10 %')).toBeOnTheScreen();
     expect(within(card).getByText('Objets Rares moins fréquents')).toBeOnTheScreen();
+    expect(within(card).getByText('1 ennemi maudit par combat')).toBeOnTheScreen();
     expect(
       within(card).getByText("D'après hier, seulement aujourd'hui. L'ascension reste gagnable."),
     ).toBeOnTheScreen();

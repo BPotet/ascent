@@ -12,6 +12,7 @@ import Animated, {
 import type { EnemyKind } from '../../../domain/battle/combatants';
 import { ENEMY_NAMES, actionTrackLabel } from '../format/battleText';
 import { artPalette } from '../pixelArt/artPalette';
+import { PixelIcon } from '../pixelArt/PixelIcon';
 import { battleColors } from '../theme/battleColors';
 import { textFont } from '../pixelArt/pixelTypography';
 import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
@@ -160,6 +161,7 @@ function TrackCase({
         current && styles.current,
         ghost && styles.ghost,
         pending && styles.pending,
+        entry.cursed === true && styles.cursed,
         motion,
       ]}
     >
@@ -178,6 +180,11 @@ function TrackCase({
       />
       {pending ? (
         <View pointerEvents="none" testID="track-pending-ring" style={styles.pendingRing} />
+      ) : null}
+      {entry.cursed === true ? (
+        <View pointerEvents="none" testID="track-cursed-skull" style={styles.cursedSkull}>
+          <PixelIcon name="skull" color={roles.pink} />
+        </View>
       ) : null}
       {shade.veil > 0 ? (
         <View
@@ -364,6 +371,22 @@ const styles = StyleSheet.create({
     borderColor: roles.gold,
   },
   ghost: { overflow: 'hidden' },
+  // L'ennemi maudit (#209, maquette `.fp.cursed`) : fond d'erreur et trait de malédiction, sous le
+  // double cadre d'or quand il agit ; le crâne en coin (`.skb`) le dit sans la couleur.
+  cursed: { backgroundColor: roles.errorBg, borderColor: roles.curse },
+  cursedSkull: {
+    position: 'absolute',
+    right: -6,
+    top: -6,
+    width: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: roles.errorBg,
+    borderWidth: 1,
+    borderColor: roles.curse,
+    zIndex: 2,
+  },
   // Un invoqué annoncé, pas encore entré (#172, maquette `.fp.summ`) : cerclé de pointillé gris.
   pending: { borderStyle: 'dashed', borderColor: battleColors.summonDust },
   // Son anneau intérieur de 2 dp, de fumée claire (`.fp.summ`, `inset 0 0 0 2px --smoke-l`).

@@ -265,6 +265,16 @@ describe('battleView', () => {
       expect(battleView(revived).enemies[0]!.label).toMatch(/^Goule, relevée, /);
     });
 
+    it('tags a cursed enemy « Maudite » apart from « Relevé », and names it « Goule maudite » (#209)', () => {
+      const cursed = withEnemy(inPhase(hero), 0, { cursed: true, selfRevives: 1 });
+      const [ghoul] = battleView(cursed).enemies;
+
+      expect(ghoul).toMatchObject({ name: 'Goule', curse: 'Maudite', tag: 'Relevée' });
+      expect(ghoul!.label).toMatch(/^Goule maudite, relevée, cible, /);
+      expect(battleView(cursed).line).toMatchObject({ strong: 'Goule maudite' });
+      expect(battleView(inPhase(hero)).enemies[0]).not.toHaveProperty('curse');
+    });
+
     it('hides the names and the HP figures in the enemy phase, but not the screen reader label', () => {
       const [ghoul] = battleView(inPhase(attack('basic'), inEnemyPhase)).enemies;
 
@@ -369,6 +379,27 @@ describe('battleView', () => {
       pad: { kind: 'none' },
       line: null,
     });
+  });
+});
+
+describe('actionTrackView: the cursed enemy (#209)', () => {
+  it('marks the entries of the cursed enemy, and only them', () => {
+    const battle = startBattle({
+      seed: 1,
+      defenseHint: false,
+      at: 0,
+      initiative: true,
+      enemies: ['ghoul', 'specter'],
+      cursed: 1,
+    }).battle;
+    const track = actionTrackView({ ...battle, turn: { order: [1, 'hero', 0], position: 0 } });
+
+    expect(track.current).toEqual([
+      { actor: 1, fighter: 'specter', phase2: false, cursed: true },
+      { actor: 'hero', fighter: 'sentinel', phase2: false },
+      { actor: 0, fighter: 'ghoul', phase2: false },
+    ]);
+    expect(track.next.filter((entry) => entry.cursed === true)).toHaveLength(1);
   });
 });
 

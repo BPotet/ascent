@@ -14,6 +14,7 @@ import {
 } from './AscentSession';
 import { BATTLE_HINT_SEEN_KEYS } from './battleHints';
 import type { BattleSession } from './BattleSession';
+import { UNREADABLE_GAUGE } from './fateGauge';
 
 function mapStore() {
   const values = new Map<string, string>([
@@ -634,6 +635,50 @@ describe('AscentSession with the gauge, the blessings and the items (#93)', () =
     session.equipItem();
     session.leaveItem();
     expect(session.current()).toBeNull();
+  });
+});
+
+describe('AscentSession: cursed enemies (#209)', () => {
+  it('fights the cursed enemy drawn for the floor under the curse', async () => {
+    const { session } = setUp(42);
+    const ascent = session.begin({ gauge: -1 });
+    const index = ascent.encounter!.cursed!;
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    const { enemies } = battleSession.current()!.battle;
+    expect(enemies[index]).toMatchObject({ cursed: true });
+    expect(enemies.filter((enemy) => enemy.cursed)).toHaveLength(1);
+  });
+
+  it('fights no cursed enemy when the habits cannot be read, the gauge Neutral', async () => {
+    const { session } = setUp(42);
+    const ascent = session.begin({ gauge: UNREADABLE_GAUGE.gauge });
+    expect(ascent.encounter!.cursed).toBeUndefined();
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    expect(battleSession.current()!.battle.enemies.some((enemy) => enemy.cursed)).toBe(false);
+  });
+
+  it('resumes a saved battle with its cursed enemy', async () => {
+    const { session, store } = setUp(42);
+    const ascent = startAscent(42, { gauge: -2 });
+    const { battle } = startBattle({
+      seed: 3,
+      defenseHint: false,
+      at: 0,
+      enemies: ascent.encounter!.enemies,
+      cursed: ascent.encounter!.cursed!,
+    });
+    store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent, battle }));
+    await session.load();
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    const curses = (enemies: Battle['enemies']) => enemies.map((enemy) => enemy.cursed === true);
+    expect(curses(battle.enemies)).toContain(true);
+    expect(curses(battleSession.current()!.battle.enemies)).toEqual(curses(battle.enemies));
   });
 });
 

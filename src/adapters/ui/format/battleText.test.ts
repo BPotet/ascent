@@ -8,10 +8,12 @@ import {
   attackButtonLabel,
   bleedChipText,
   bulwarkChipText,
+  cursedTag,
   damageFloat,
   endTitle,
   enemyHpText,
   enemyLabel,
+  enemyName,
   feedbackText,
   guardText,
   heroCard,
@@ -473,6 +475,77 @@ describe('actionTrackLabel (#175)', () => {
     const gardener = { actor: 0, fighter: 'ashGardener', phase2: true } as const;
     expect(actionTrackLabel(2, [gardener], [gardener, hero])).toBe(
       "Ordre d'action. Manche 2 : Jardinière des cendres. Manche suivante : Jardinière des cendres, toi.",
+    );
+  });
+});
+
+describe('the cursed enemy (#209)', () => {
+  const cursedBattle = startBattle({
+    seed: 1,
+    defenseHint: false,
+    at: 0,
+    enemies: ['ghoul', 'specter', 'necromancer'],
+    cursed: 0,
+  }).battle;
+
+  it('names it with the curse agreed to its name, everywhere', () => {
+    expect(enemyName({ kind: 'ghoul', cursed: true })).toBe('Goule maudite');
+    expect(enemyName({ kind: 'fallenKnight', cursed: true })).toBe('Chevalier déchu maudit');
+    expect(enemyName({ kind: 'ghoul' })).toBe('Goule');
+  });
+
+  it('tags it « Maudite » or « Maudit », and an uncursed enemy not at all', () => {
+    expect(cursedTag({ kind: 'ghoul', cursed: true })).toBe('Maudite');
+    expect(cursedTag({ kind: 'specter', cursed: true })).toBe('Maudit');
+    expect(cursedTag({ kind: 'ghoul' })).toBeNull();
+  });
+
+  it('says « Goule maudite » before its HP', () => {
+    expect(
+      enemyLabel(
+        { ...ghoul, hp: 60, maxHp: 60, guard: 18, maxGuard: 18, cursed: true },
+        { category: 'attack' },
+        true,
+      ),
+    ).toBe('Goule maudite, cible, 60 PV sur 60, garde 18 sur 18, intention : attaque');
+  });
+
+  it('says both « maudit » and « relevé » of a cursed Skeleton that revived by itself', () => {
+    expect(
+      enemyLabel(
+        {
+          kind: 'skeleton',
+          hp: 21,
+          maxHp: 42,
+          guard: 12,
+          maxGuard: 12,
+          stun: null,
+          selfRevives: 1,
+          cursed: true,
+        },
+        null,
+        false,
+      ),
+    ).toBe('Squelette maudit, relevé, 21 PV sur 42, garde 12 sur 12');
+  });
+
+  it('names it in the announcements of the battle', () => {
+    expect(
+      announcement(
+        { type: 'windUpStarted', at: 0, enemy: 0, attack: 'basic', impacts: [900], feintAt: null },
+        cursedBattle,
+      ),
+    ).toBe('Goule maudite, coup simple');
+    expect(
+      announcement({ type: 'allyRaised', at: 0, enemy: 2, ally: 0, hp: 30 }, cursedBattle),
+    ).toBe('Nécromancien relève Goule maudite, 30 PV');
+  });
+
+  it('names it in the action track', () => {
+    const cursed = { actor: 0, fighter: 'ghoul', phase2: false, cursed: true } as const;
+    const hero = { actor: 'hero', fighter: 'sentinel', phase2: false } as const;
+    expect(actionTrackLabel(1, [cursed, hero], [hero, cursed])).toBe(
+      "Ordre d'action. Manche 1 : Goule maudite, toi. Manche suivante : toi, Goule maudite.",
     );
   });
 });

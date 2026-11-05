@@ -325,6 +325,8 @@ export class AscentSession {
             boonModifiers(ascent.hero.boons),
           ),
           enemies: encounter.enemies,
+          // L'ennemi maudit tiré pour l'étage (#209) ; absent, aucun.
+          ...(encounter.cursed !== undefined && { cursed: encounter.cursed }),
           // Le multiplicateur de palier : les combats ordinaires seulement, jamais l'Élite ni le boss.
           ...(encounter.kind === 'combat' && { tierMultiplier: TIERS[ascent.tier].multiplier }),
           // Les ennemis invoqués ont les valeurs du palier, dans tout combat d'étage (#172).
