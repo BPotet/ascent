@@ -1,5 +1,6 @@
 import type { StartingBlessing } from '../../../domain/ascent/blessings';
 import { loadoutSize, type Loadout, type LoadoutFavor } from '../../../domain/ascent/loadout';
+import type { IconName } from '../pixelArt/sprites/icons';
 import { rarityMarks, rarityName } from './rarityText';
 
 /** Les textes de l'Équipement (`Loadout`, #159), tirés de la maquette #153. */
@@ -53,15 +54,51 @@ export function favorHeadingLabel({ gauge }: LoadoutFavor): string {
   return `${FAVOR_TITLE}, plus ${gauge}`;
 }
 
-/** La ligne des relances : ce qu'elles font, et ce qui en reste (« 1 sur 2 »). */
-export function rerollsRow({ rerollsLeft, rerollsGranted }: LoadoutFavor): {
+/** Une ligne de la faveur : son glyphe, ce qu'elle fait, son état, grise quand elle a servi. */
+export interface FavorRowText {
+  readonly key: 'rerolls' | 'secondChance';
+  readonly glyph: IconName;
   readonly name: string;
   readonly effect: string;
   readonly state: string;
+  readonly used: boolean;
   readonly label: string;
-} {
-  const name = 'Relances';
-  const effect = "Redonnent l'offre de bienfaits.";
-  const state = `${rerollsLeft} sur ${rerollsGranted}`;
-  return { name, effect, state, label: `${name}, ${state}. ${effect}` };
+}
+
+function favorRow(row: Omit<FavorRowText, 'label'>): FavorRowText {
+  return { ...row, label: `${row.name}, ${row.state}. ${row.effect}` };
+}
+
+/**
+ * Les lignes de la faveur (E1) : les relances et ce qui en reste (« 1 sur 2 », #42), puis, à +2, la
+ * seconde chance, « Prête » ou « Utilisée » (#206).
+ */
+export function favorRows({
+  rerollsLeft,
+  rerollsGranted,
+  secondChance,
+}: LoadoutFavor): FavorRowText[] {
+  const rows = [
+    favorRow({
+      key: 'rerolls',
+      glyph: 'reroll',
+      name: 'Relances',
+      effect: "Redonnent l'offre de bienfaits.",
+      state: `${rerollsLeft} sur ${rerollsGranted}`,
+      used: rerollsLeft === 0,
+    }),
+  ];
+  if (secondChance !== undefined) {
+    rows.push(
+      favorRow({
+        key: 'secondChance',
+        glyph: 'secondChance',
+        name: 'Seconde chance',
+        effect: 'À 0 PV, relève une fois avec 50 % des PV max.',
+        state: secondChance === 'ready' ? 'Prête' : 'Utilisée',
+        used: secondChance === 'used',
+      }),
+    );
+  }
+  return rows;
 }

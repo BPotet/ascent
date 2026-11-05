@@ -76,7 +76,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   then(/^la section « Faveur de l'ascension » dit qu'il reste 1 relance sur 2$/u, () => {
     expect(screen.getByLabelText("Faveur de l'ascension, plus 2")).toBeOnTheScreen();
-    expect(screen.getByTestId('favor-row')).toHaveAccessibleName(
+    expect(screen.getByTestId('favor-row-rerolls')).toHaveAccessibleName(
       "Relances, 1 sur 2. Redonnent l'offre de bienfaits.",
     );
   });

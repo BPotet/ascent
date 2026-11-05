@@ -11,15 +11,19 @@
 import {
   Atlas,
   Canvas,
+  Circle,
   ColorMatrix,
   DashPathEffect,
   FilterMode,
   Image,
   MipmapMode,
   Path,
+  RadialGradient,
+  Rect,
   Skia,
   useRSXformBuffer,
   useRectBuffer,
+  vec,
   type SkImage,
 } from '@shopify/react-native-skia';
 import { useEffect, useMemo } from 'react';
@@ -76,6 +80,7 @@ import {
 } from './scene/sceneEffects';
 import { burnFlames, burnHitFrame } from './scene/burnFlames';
 import { summonDustFrame, summonedOpacity, type SceneSummon } from './scene/summonDust';
+import { risenPose, secondChanceLook, type SceneSecondChance } from './scene/secondChanceRise';
 import type { HeroPose, SceneBurn, SceneEnemy, SceneSpark, SceneTimeline } from './sceneTypes';
 
 export interface BattleSceneProps {
@@ -111,6 +116,11 @@ export interface BattleSceneProps {
    * avec le boss. Par défaut, aucune.
    */
   readonly summon?: SceneSummon | null;
+  /**
+   * Le relèvement de la seconde chance (#206, S2, S3) : le héros gris pendant le gel, puis le voile,
+   * le halo d'or et la pose « raise ». Par défaut, aucun.
+   */
+  readonly secondChance?: SceneSecondChance | null;
   readonly reducedMotion: boolean;
   /** L'horloge du fil UI : un worklet, sur la base de l'horloge de combat (méthode a). */
   readonly uiNow: () => number;
@@ -228,6 +238,10 @@ const NO_ENEMY: SceneEnemy = {
   downSince: null,
 };
 const NO_SUMMON: SceneSummon = { pending: [], calledAt: null, entered: {}, fell: {} };
+
+/** Le halo d'or de la seconde chance (#206, S3), autour du torse du héros, à sa pleine taille. */
+const HALO_RADIUS_DP = 72;
+const HALO_COLORS = [`${artPalette.roles.gold}8C`, `${artPalette.roles.gold}00`];
 const NO_SLOT: EnemySlot = {
   column: { x: 0, y: 0, width: 0 },
   sprite: { x: 0, y: 0, width: 0, height: 0 },
@@ -501,6 +515,7 @@ export function BattleScene({
   shadowStep = null,
   burn = null,
   summon = null,
+  secondChance = null,
   reducedMotion,
   uiNow,
 }: BattleSceneProps) {
@@ -515,6 +530,8 @@ export function BattleScene({
   useEffect(() => sharedShadowStep.set(shadowStep), [sharedShadowStep, shadowStep]);
   const sharedBurn = useSharedValue(burn);
   useEffect(() => sharedBurn.set(burn), [sharedBurn, burn]);
+  const sharedRise = useSharedValue(secondChance);
+  useEffect(() => sharedRise.set(secondChance), [sharedRise, secondChance]);
   const sharedSummon = useSharedValue(summon ?? NO_SUMMON);
   useEffect(() => sharedSummon.set(summon ?? NO_SUMMON), [sharedSummon, summon]);
 
@@ -651,20 +668,33 @@ export function BattleScene({
   const heroLook = useDerivedValue<SpriteLook>(() => {
     'worklet';
     const { pose, since, strikeImpactAt: impactAt } = sharedHero.get();
-    const current = heroFrame(pose, since, clock.get(), impactAt);
+    const now = clock.get();
+    const current = heroFrame(pose, since, now, impactAt);
+    // Le héros relevé par la seconde chance, après le gel (#206, S3).
+    const frame = risenPose(sharedRise.get(), pose, since, now) ? 'raise' : current.frame;
     const dodge = reducedMotion ? current.dodge * 0.3 : current.dodge;
     const toward = reducedMotion ? current.lunge * 0.2 : current.lunge;
     // Le coup de bouclier, sur place : 4 dp en avant et retour, au quart en mouvement réduit.
     const push = BASH_ADVANCE_DP * current.push * (reducedMotion ? 0.25 : 1);
     return {
-      frame: current.frame,
+      frame,
       tier: current.tier,
       red: false,
       poses: null,
       x: hero.x + Math.round((-22 * dodge + lunge.x * toward + push) / 2) * 2,
       y: hero.y + Math.round((10 * dodge + lunge.y * toward) / 2) * 2,
     };
-  }, [sharedHero, clock, hero, lunge, reducedMotion]);
+  }, [sharedHero, sharedRise, clock, hero, lunge, reducedMotion]);
+  // La seconde chance (#206) : le héros gris, le voile et le halo d'or, sur l'horloge de la scène.
+  const rising = useDerivedValue(
+    () => secondChanceLook(sharedRise.get(), clock.get(), reducedMotion),
+    [sharedRise, clock, reducedMotion],
+  );
+  const heroShown = useDerivedValue(() => 1 - rising.get().grey, [rising]);
+  const heroGrey = useDerivedValue(() => rising.get().grey, [rising]);
+  const riseVeil = useDerivedValue(() => rising.get().veil, [rising]);
+  const haloOpacity = useDerivedValue(() => rising.get().halo, [rising]);
+  const haloRadius = useDerivedValue(() => HALO_RADIUS_DP * rising.get().haloScale, [rising]);
   // L'ombre de Pas de l'ombre (#173) : l'image de l'Errante, glissée derrière elle.
   const ghost = useDerivedValue(
     () => shadowStepGhost(sharedShadowStep.get(), clock.get(), reducedMotion),
@@ -896,7 +926,34 @@ export function BattleScene({
           shade={ghostOpacity}
         />
       )}
-      <AtlasSprite atlas={scene.heroes[heroKind]} look={heroLook} scale={hero.scale} />
+      {secondChance === null ? null : (
+        <>
+          <Rect
+            x={0}
+            y={0}
+            width={width}
+            height={height}
+            color={artPalette.roles.ink}
+            opacity={riseVeil}
+          />
+          <Circle cx={chest.x} cy={chest.y} r={haloRadius} opacity={haloOpacity}>
+            <RadialGradient c={vec(chest.x, chest.y)} r={haloRadius} colors={HALO_COLORS} />
+          </Circle>
+          <AtlasSprite
+            atlas={scene.heroes[heroKind]}
+            look={heroLook}
+            scale={hero.scale}
+            faded
+            opacity={heroGrey}
+          />
+        </>
+      )}
+      <AtlasSprite
+        atlas={scene.heroes[heroKind]}
+        look={heroLook}
+        scale={hero.scale}
+        {...(secondChance !== null && { opacity: heroShown })}
+      />
       <Path
         path={wavePath}
         style="stroke"

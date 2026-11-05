@@ -62,6 +62,7 @@ describe('the texts of the gauge (#93, #41)', () => {
       { glyph: 'loot', tone: 'favor', text: 'Objets plus fréquents' },
       { glyph: 'rare', tone: 'favor', text: 'Objets Rares plus fréquents' },
       { glyph: 'reroll', tone: 'favor', text: '2 relances' },
+      { glyph: 'secondChance', tone: 'favor', text: '1 seconde chance' },
     ]);
   });
 
@@ -138,7 +139,7 @@ describe('the announcement of the gauge, never the color alone (#41)', () => {
       "Jauge du jour : Malédiction forte, moins 2. D'après hier : 0 habitude sur 3. Effets : fatigue : PV max moins 20 %, objets Rares moins fréquents, ennemis et Élite maudits. D'après hier, seulement aujourd'hui. L'ascension reste gagnable.",
     );
     expect(gaugeAnnouncement(reading({ gauge: 2, done: 3, expected: 3 }))).toBe(
-      "Jauge du jour : Faveur pleine, plus 2. D'après hier : 3 habitudes sur 3. Effets : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents, 2 relances.",
+      "Jauge du jour : Faveur pleine, plus 2. D'après hier : 3 habitudes sur 3. Effets : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents, 2 relances, 1 seconde chance.",
     );
   });
 
@@ -167,28 +168,36 @@ describe('the announcement of the gauge, never the color alone (#41)', () => {
 
 describe('the favor of the ascent in progress (#42, G9)', () => {
   it('tells the rerolls left on those given at the start', () => {
-    expect(ascentFavorEffects({ gauge: 2, rerolls: 1 })).toEqual([
+    expect(ascentFavorEffects({ gauge: 2, rerolls: 1, secondChance: true })).toEqual([
       { glyph: 'reroll', tone: 'favor', text: '1 relance sur 2' },
+      { glyph: 'secondChance', tone: 'favor', text: 'Seconde chance prête' },
     ]);
-    expect(ascentFavorEffects({ gauge: 2, rerolls: 2 })).toEqual([
+    expect(ascentFavorEffects({ gauge: 2, rerolls: 2, secondChance: false })).toEqual([
       { glyph: 'reroll', tone: 'favor', text: '2 relances sur 2' },
+      { glyph: 'secondChance', tone: 'muted', text: 'Seconde chance utilisée' },
     ]);
-    expect(ascentFavorEffects({ gauge: 1, rerolls: 0 })).toEqual([
+    expect(ascentFavorEffects({ gauge: 1, rerolls: 0, secondChance: false })).toEqual([
       { glyph: 'reroll', tone: 'muted', text: '0 relance sur 1' },
     ]);
   });
 
   it('tells nothing without favor', () => {
     for (const gauge of [0, -1, -2] as const) {
-      expect(ascentFavorEffects({ gauge, rerolls: 0 })).toEqual([]);
+      expect(ascentFavorEffects({ gauge, rerolls: 0, secondChance: false })).toEqual([]);
     }
   });
 
-  it('announces the rerolls left after the gauge of the ascent', () => {
-    expect(ascentGaugeAnnouncement(2, 1)).toBe(
-      "Jauge de l'ascension : Faveur pleine, plus 2. Lancée avec cette jauge : l'ascension la garde jusqu'à sa fin. Il reste 1 relance sur 2.",
+  it('announces the rerolls left and the second chance after the gauge of the ascent (#206)', () => {
+    expect(ascentGaugeAnnouncement(2, 1, true)).toBe(
+      "Jauge de l'ascension : Faveur pleine, plus 2. Lancée avec cette jauge : l'ascension la garde jusqu'à sa fin. Il reste 1 relance sur 2 et la seconde chance.",
     );
-    expect(ascentGaugeAnnouncement(-1, 0)).toBe(
+    expect(ascentGaugeAnnouncement(2, 1, false)).toBe(
+      "Jauge de l'ascension : Faveur pleine, plus 2. Lancée avec cette jauge : l'ascension la garde jusqu'à sa fin. Il reste 1 relance sur 2. La seconde chance a servi.",
+    );
+    expect(ascentGaugeAnnouncement(1, 1, false)).toBe(
+      "Jauge de l'ascension : Faveur, plus 1. Lancée avec cette jauge : l'ascension la garde jusqu'à sa fin. Il reste 1 relance sur 1.",
+    );
+    expect(ascentGaugeAnnouncement(-1, 0, false)).toBe(
       "Jauge de l'ascension : Malédiction, moins 1. Lancée avec cette jauge : l'ascension la garde jusqu'à sa fin.",
     );
   });

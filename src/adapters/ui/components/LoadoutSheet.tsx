@@ -24,7 +24,8 @@ import {
   NO_BOON_YET,
   blessingTag,
   favorHeadingLabel,
-  rerollsRow,
+  favorRows,
+  type FavorRowText,
 } from '../format/loadoutText';
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize, notchedCorners } from '../pixelArt/artPixel';
@@ -105,13 +106,44 @@ function BoonRow({ kind }: { readonly kind: BoonKind }) {
 }
 
 /**
+ * Une ligne de la faveur : son glyphe dans un écrin vert sans rareté, ce qu'elle fait, et son état,
+ * en gris quand elle a servi.
+ */
+function FavorRow({ row }: { readonly row: FavorRowText }) {
+  return (
+    <View
+      accessible
+      accessibilityLabel={row.label}
+      testID={`favor-row-${row.key}`}
+      style={[styles.row, styles.favorRow, { borderTopWidth: artPixelSize(2) }]}
+    >
+      <View
+        style={[
+          styles.favorWell,
+          { borderWidth: artPixelSize(2), borderColor: row.used ? roles.line : roles.doneLine },
+        ]}
+      >
+        <PixelIcon
+          name={row.glyph}
+          color={roles.done}
+          testID="favor-glyph"
+          style={row.used && styles.usedGlyph}
+        />
+      </View>
+      <View style={styles.rowText}>
+        <Text style={styles.name}>{row.name}</Text>
+        <Text style={styles.effect}>{row.effect}</Text>
+      </View>
+      <Text style={[styles.favorState, row.used && styles.favorUsed]}>{row.state}</Text>
+    </View>
+  );
+}
+
+/**
  * La faveur de l'ascension (#42, maquette 205 E1) : un en-tête « Faveur de l'ascension · +2 », puis
- * la ligne des relances, son glyphe dans un écrin vert sans rareté, et ce qui en reste (« 1 sur 2 »,
- * en gris à 0). #206 y ajoutera la seconde chance.
+ * ses lignes : les relances, et la seconde chance à +2 (#206).
  */
 function FavorPart({ favor }: { readonly favor: LoadoutFavor }) {
-  const row = rerollsRow(favor);
-  const used = favor.rerollsLeft === 0;
   return (
     <View style={styles.part}>
       <LoadoutHeading
@@ -119,31 +151,9 @@ function FavorPart({ favor }: { readonly favor: LoadoutFavor }) {
         count={gaugeValue(favor.gauge)}
         label={favorHeadingLabel(favor)}
       />
-      <View
-        accessible
-        accessibilityLabel={row.label}
-        testID="favor-row"
-        style={[styles.row, styles.favorRow, { borderTopWidth: artPixelSize(2) }]}
-      >
-        <View
-          style={[
-            styles.favorWell,
-            { borderWidth: artPixelSize(2), borderColor: used ? roles.line : roles.doneLine },
-          ]}
-        >
-          <PixelIcon
-            name="reroll"
-            color={roles.done}
-            testID="favor-glyph"
-            style={used && styles.usedGlyph}
-          />
-        </View>
-        <View style={styles.rowText}>
-          <Text style={styles.name}>{row.name}</Text>
-          <Text style={styles.effect}>{row.effect}</Text>
-        </View>
-        <Text style={[styles.favorState, used && styles.favorUsed]}>{row.state}</Text>
-      </View>
+      {favorRows(favor).map((row) => (
+        <FavorRow key={row.key} row={row} />
+      ))}
     </View>
   );
 }
@@ -190,7 +200,8 @@ export function LoadoutSheet({
   const title = useRef<Text>(null);
   const line = artPixelSize(2);
   // La ligne des relances compte comme une entrée (#42).
-  const many = loadoutSize(loadout) + (loadout.favor === undefined ? 0 : 1) > SCROLL_HINT_BEYOND;
+  const favorCount = loadout.favor === undefined ? 0 : favorRows(loadout.favor).length;
+  const many = loadoutSize(loadout) + favorCount > SCROLL_HINT_BEYOND;
 
   useEffect(() => {
     if (visible && title.current !== null) {

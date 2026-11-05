@@ -519,6 +519,18 @@ const DRAWN = {
     '.X....X.',
     '..XXXX..',
   ],
+  // La seconde chance (#206), `PAT.second` de la même maquette : 7 × 8, centrée sur 8 × 8. Son nom
+  // la distingue de Second souffle (#212).
+  secondChance: [
+    '.XX.XX..',
+    'XXXXXXX.',
+    'XXX.XXX.',
+    'X.....X.',
+    'XXX.XXX.',
+    '.XX.XX..',
+    '..XXX...',
+    '...X....',
+  ],
 } as const;
 // Stryker restore all
 

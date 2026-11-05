@@ -26,6 +26,8 @@ import {
   powerButtonLabel,
   powerCostText,
   stunnedLabel,
+  SECOND_CHANCE_SPENT,
+  secondChanceBannerText,
 } from './battleText';
 
 const battle: Battle = startTestBattle({
@@ -573,5 +575,61 @@ describe('the cursed enemy (#209)', () => {
     expect(actionTrackLabel(1, [cursed, hero], [hero, cursed])).toBe(
       "Ordre d'action. Manche 1 : Goule maudite, toi. Manche suivante : toi, Goule maudite.",
     );
+  });
+});
+
+describe('the second chance (#206)', () => {
+  const rise = (
+    cancelled: number,
+    enemy = 0,
+  ): Extract<BattleEvent, { type: 'secondChanceUsed' }> => ({
+    type: 'secondChanceUsed',
+    at: 0,
+    until: 2_000,
+    enemy,
+    hp: 40,
+    cancelled,
+  });
+
+  it('writes the banner: the hero rises, then the second blow of the enemy is cancelled', () => {
+    expect(secondChanceBannerText(rise(1), battle)).toEqual({
+      title: 'Seconde chance',
+      lines: ['La Sentinelle se relève avec 40 PV.', 'Le second coup de la Goule est annulé.'],
+    });
+  });
+
+  it('writes no second line when no impact was cancelled', () => {
+    expect(secondChanceBannerText(rise(0, 1), battle)).toEqual({
+      title: 'Seconde chance',
+      lines: ['La Sentinelle se relève avec 40 PV.'],
+    });
+  });
+
+  it('announces the rise in one sentence, from the text of the mockup', () => {
+    expect(announcement(rise(1), battle)).toBe(
+      'Seconde chance : la Sentinelle se relève avec 40 PV. Le second coup de la Goule est annulé.',
+    );
+    expect(announcement(rise(0), { ...battle, heroKind: 'wanderer' })).toBe(
+      "Seconde chance : l'Errante se relève avec 40 PV.",
+    );
+  });
+
+  it('flies « +40 » in gold over the hero', () => {
+    expect(damageFloat(rise(1))).toEqual({
+      at: 'hero',
+      text: '+40',
+      big: false,
+      kind: 'secondChance',
+    });
+  });
+
+  it('says the second chance has already served at the defeat after it was used', () => {
+    const ended: BattleEvent = { type: 'battleEnded', at: 0, outcome: 'defeat' };
+    const used = { ...battle, hero: { ...battle.hero, secondChance: 'used' as const } };
+
+    expect(announcement(ended, used)).toBe(`Combat perdu. ${SECOND_CHANCE_SPENT}`);
+    expect(SECOND_CHANCE_SPENT).toBe('Ta seconde chance a déjà servi.');
+    expect(announcement(ended, battle)).toBe('Combat perdu.');
+    expect(announcement({ ...ended, outcome: 'victory' }, used)).toBe('Combat gagné.');
   });
 });
