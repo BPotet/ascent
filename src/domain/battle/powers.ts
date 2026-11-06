@@ -117,6 +117,14 @@ export function basePower(hero: HeroKind): PowerKind {
   return BASE_POWERS[hero];
 }
 
+/**
+ * `powers` n'est pas le pouvoir de base de `hero` seul : les journaux ne notent les pouvoirs
+ * équipés que dans ce cas (#235, avenants des ADR 0014 et 0016).
+ */
+export function beyondBasePower(hero: HeroKind, powers: readonly PowerKind[]): boolean {
+  return powers.length !== 1 || powers[0] !== basePower(hero);
+}
+
 /** Les pouvoirs de `hero` parmi `powers`, sans doublon, dans l'ordre de l'arbre. */
 export function powerOrder(hero: HeroKind, powers: readonly PowerKind[]): PowerKind[] {
   return [...new Set(powers)]

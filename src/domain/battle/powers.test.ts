@@ -1,5 +1,5 @@
 // #235 : le registre des pouvoirs, recopié des fiches `codex/<code>` de l'Atelier.
-import { BULWARK_DAMAGE_PERCENT, POWERS, basePower, powerOrder } from './powers';
+import { BULWARK_DAMAGE_PERCENT, POWERS, basePower, beyondBasePower, powerOrder } from './powers';
 
 describe('the power registry (#235)', () => {
   it('keeps the Bulwark of the Sentinel: an action at 1 momentum, a charge that halves the next blow', () => {
@@ -55,5 +55,18 @@ describe('the order of the powers (#235)', () => {
 
   it('gives no power from none', () => {
     expect(powerOrder('wanderer', [])).toEqual([]);
+  });
+});
+
+describe('the powers beyond the base power alone (#235, logs)', () => {
+  it('is false for the base power alone', () => {
+    expect(beyondBasePower('sentinel', ['bulwark'])).toBe(false);
+    expect(beyondBasePower('wanderer', ['shadowStep'])).toBe(false);
+  });
+
+  it('is true with more powers, another power, or none', () => {
+    expect(beyondBasePower('sentinel', ['bulwark', 'retaliation'])).toBe(true);
+    expect(beyondBasePower('wanderer', ['bulwark'])).toBe(true);
+    expect(beyondBasePower('sentinel', [])).toBe(true);
   });
 });

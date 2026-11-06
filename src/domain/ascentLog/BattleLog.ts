@@ -23,7 +23,7 @@ import type {
 import type { Bleed, EnemyKind, HeroKind } from '../battle/combatants';
 import type { GuardIntent, Intent, RaiseIntent } from '../battle/intents';
 import type { PressJudgement } from '../battle/rules';
-import { basePower, type PowerKind } from '../battle/powers';
+import { beyondBasePower, type PowerKind } from '../battle/powers';
 import type { TierMultiplier } from '../battle/tierMultiplier';
 
 /** La version du format où les combats sont apparus dans le Journal d'ascension. */
@@ -252,12 +252,6 @@ export interface BattleLog {
 }
 
 /** Le journal d'un combat qui commence à l'instant `at`. */
-/** Le héros a d'autres pouvoirs équipés que son pouvoir de base seul (#235). */
-function beyondBasePower(battle: Battle): boolean {
-  const powers = equippedOf(battle);
-  return powers.length !== 1 || powers[0] !== basePower(battle.heroKind);
-}
-
 export function beginBattleLog(place: BattlePlace, battle: Battle, at: number): BattleLog {
   return {
     formatVersion: BATTLE_LOG_FORMAT_VERSION,
@@ -271,7 +265,9 @@ export function beginBattleLog(place: BattlePlace, battle: Battle, at: number): 
       maxHp: battle.hero.maxHp,
       momentum: battle.hero.momentum,
       ...(battle.hero.secondChance === 'ready' && { secondChance: true as const }),
-      ...(beyondBasePower(battle) && { powers: equippedOf(battle) }),
+      ...(beyondBasePower(battle.heroKind, equippedOf(battle)) && {
+        powers: equippedOf(battle),
+      }),
     },
     enemies: battle.enemies.map((enemy, index) => ({
       place: index,
