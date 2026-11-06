@@ -22,15 +22,19 @@ import type { EnemyKind } from '../../../domain/battle/combatants';
 import type { BlessingFamily, StartingBlessing } from '../../../domain/ascent/blessings';
 import type { BoonKind, OfferCard } from '../../../domain/ascent/boons';
 import type { Exit } from '../../../domain/ascent/exits';
+import { STARTING_EQUIPMENT } from '../../../domain/ascent/items';
 import type { Rarity } from '../../../domain/ascent/rarity';
 import type { ShardAward } from '../../../domain/ascent/shards';
 import { BoonChoicePanel } from '../battle/BoonChoicePanel';
 import { BlessingChoice } from '../components/BlessingChoice';
+import { ChestStage } from '../components/ChestStage';
 import { ExitChoice } from '../components/ExitChoice';
+import { FoundItemPanel } from '../components/FoundItemPanel';
 import { Screen } from '../components/Screen';
 import { artPalette } from '../pixelArt/artPalette';
 import { PixelButton } from '../pixelArt/PixelButton';
 import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypography';
+import { CHEST_IMAGE, CHEST_OPEN_IMAGE } from '../pixelArt/sprites/atelier/data/chest';
 import { AscentScreen, type AscentVisibility } from './AscentScreen';
 import { CampScreen } from './CampScreen';
 import { TowerFootScreen } from './TowerFootScreen';
@@ -48,7 +52,9 @@ type Board =
   // Les bienfaits de palier et la carte Second souffle (#212) : O1, O2 et O4 de la maquette 210.
   | 'tierTwoOffer'
   | 'secondBreath'
-  | 'secondBreathAlone';
+  | 'secondBreathAlone'
+  // Le Coffre (#227) : fermé et ouvert, puis l'objet qui en sort (B1 à B3 de la maquette 208).
+  | 'chest';
 
 const ENTRIES: readonly (readonly [Board, string])[] = [
   ['boons', "Choix d'un bienfait"],
@@ -60,6 +66,7 @@ const ENTRIES: readonly (readonly [Board, string])[] = [
   ['tierTwoOffer', 'Offre · palier 2'],
   ['secondBreath', 'Offre · Second souffle'],
   ['secondBreathAlone', 'Offre · Second souffle seule'],
+  ['chest', 'Coffre · fermé et ouvert'],
 ];
 
 /**
@@ -134,7 +141,7 @@ const DOORS: readonly Exit[] = [
 ];
 const EXITS: Readonly<
   Record<
-    Exclude<Board, keyof typeof OFFERS | 'blessings' | 'oneBlessing'>,
+    Exclude<Board, keyof typeof OFFERS | 'blessings' | 'oneBlessing' | 'chest'>,
     { boons: readonly BoonKind[]; exits: readonly Exit[] }
   >
 > = {
@@ -472,6 +479,41 @@ export function IconBoardScreen({
         />
       ) : board === 'oneBlessing' ? (
         <BlessingChoice {...ONE_BLESSING} onChoose={back} />
+      ) : board === 'chest' ? (
+        <>
+          {gained}
+          <View style={styles.chests}>
+            {[false, true].map((opened) => (
+              <View key={String(opened)} testID="chest-board-still">
+                <ChestStage
+                  name="chest"
+                  closed={CHEST_IMAGE}
+                  open={CHEST_OPEN_IMAGE}
+                  scale={2}
+                  opened={opened}
+                  shake={0}
+                  glow={opened ? 1 : 0}
+                />
+              </View>
+            ))}
+          </View>
+          <View testID="chest-board-opening" style={styles.opening}>
+            <FoundItemPanel
+              key={step}
+              item="axe"
+              equipment={STARTING_EQUIPMENT}
+              animate
+              onLeave={back}
+              onEquip={back}
+            />
+          </View>
+          <PixelButton
+            label="Rejouer l'ouverture"
+            variant="secondary"
+            onPress={() => setStep(step + 1)}
+            style={styles.replay}
+          />
+        </>
       ) : (
         <ExitChoice {...EXITS[board]} banner={gained} onChoose={back} />
       )}
@@ -505,6 +547,9 @@ const styles = StyleSheet.create({
     color: roles.parchment,
   },
   back: { minWidth: 84, paddingHorizontal: 14 },
+  chests: { flexDirection: 'row', justifyContent: 'center', gap: 24, paddingTop: 16 },
+  opening: { flex: 1 },
+  replay: { margin: 16 },
   gold: {
     fontFamily: pixelFont,
     fontSize: 18,

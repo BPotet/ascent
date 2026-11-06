@@ -276,3 +276,28 @@ export function wornText(equipment: Equipment, slot: ItemSlot): string {
   const item = equipment[slot];
   return item === null ? BASE_KIT[slot] : itemText(item);
 }
+
+/**
+ * Un objet lu par le lecteur d'écran (#227) : nom, rareté, effet et Initiative, sans
+ * l'emplacement : « Hache rouillée, Commun, Brise-garde ×1,1, Initiative −1 ».
+ */
+export function itemAnnouncement(item: ItemKind): string {
+  const { rarity, initiative } = ITEMS[item];
+  const effect = ITEM_EFFECTS[item];
+  return [
+    ITEM_NAMES[item],
+    rarityName(rarity),
+    ...(effect === null ? [] : [effect]),
+    `Initiative ${signed(initiative)}`,
+  ].join(', ');
+}
+
+/** L'annonce du Coffre ouvert (#227), puis de l'objet qui en sort. */
+export function chestAnnouncement(item: ItemKind): string {
+  return `Coffre ouvert. ${itemAnnouncement(item)}.`;
+}
+
+/** Le libellé du toucher qui passe l'ouverture d'un coffre (#227). */
+export const SKIP_CHEST_LABEL = "Passer l'ouverture du coffre";
+/** L'invite sous le coffre qui s'ouvre (#227). */
+export const TAP_TO_SKIP = 'Touche pour passer';
