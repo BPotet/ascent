@@ -72,6 +72,7 @@ describe('IconBoardScreen (#157)', () => {
       'Offre · palier 2',
       'Offre · Second souffle',
       'Offre · Second souffle seule',
+      'Coffre · fermé et ouvert',
       'Équipement · 1 · pied de la tour',
       'Équipement · 3 · pied de la tour',
       'Équipement · 8 · pied de la tour',
@@ -154,6 +155,37 @@ describe('IconBoardScreen (#157)', () => {
 
     expect(screen.getByRole('header', { name: 'Reprends ton souffle' })).toBeOnTheScreen();
     expect(screen.getByRole('radio', { name: /^Second souffle/ })).toBeChecked();
+  });
+
+  it('shows the Chest closed and open, then the found item opening from it, replayed on demand (#227)', async () => {
+    jest.useFakeTimers();
+    try {
+      await open('Coffre · fermé et ouvert');
+
+      const stills = screen.getAllByTestId('chest-board-still', hidden);
+      expect(
+        stills.map(
+          (still) => within(still).getByTestId(/^chest-(closed|open)$/, hidden).props.sprite,
+        ),
+      ).toEqual(['chest-closed', 'chest-open']);
+      const opening = () => screen.getByTestId('chest-board-opening', hidden);
+      expect(within(opening()).getByTestId('chest-stage', hidden)).toBeTruthy();
+      for (let step = 0; step < 7; step += 1) {
+        await act(async () => {
+          jest.advanceTimersByTime(100);
+        });
+      }
+      expect(within(opening()).queryByTestId('chest-stage', hidden)).toBeNull();
+      expect(screen.getByRole('button', { name: 'Équiper' })).toBeOnTheScreen();
+
+      await fireEvent.press(screen.getByRole('button', { name: "Rejouer l'ouverture" }));
+      expect(within(opening()).getByTestId('chest-stage', hidden)).toBeTruthy();
+      await fireEvent.press(screen.getByRole('button', { name: "Passer l'ouverture du coffre" }));
+      await fireEvent.press(screen.getByRole('button', { name: 'Équiper' }));
+      expect(screen.getByRole('header', { name: 'Planche des icônes' })).toBeOnTheScreen();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('shows the exits without any boon', async () => {

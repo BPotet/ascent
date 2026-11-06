@@ -8,7 +8,9 @@ import { MIN_TARGET_SIZE } from '../pixelArt/PixelButton';
 import { ITEM_IMAGES } from '../pixelArt/sprites/atelier/data/itemImages';
 import type { AssetImage } from '../pixelArt/sprites/atelier/fullAnimation';
 import { ascentSetUp } from '../testing/ascent';
+import { lootState } from '../testing/lootState';
 import { renderScreen } from '../testing/renderScreen';
+import { spyBattles, winShownBattle } from '../testing/winShownBattle';
 import { AscentScreen, RESUME_COUNTDOWN_S } from './AscentScreen';
 
 jest.mock('../battle/BattleCanvas', () => jest.requireActual('../battle/testing/fakeBattleCanvas'));
@@ -759,5 +761,126 @@ describe('AscentScreen header on a narrow phone (#159)', () => {
     expect(screen.queryByTestId('ascent-header-buttons')).toBeNull();
     expect(screen.getByTestId('ascent-header')).toHaveStyle({ flexDirection: 'row' });
     expect(screen.getByTestId('ascent-status')).toHaveStyle({ flex: 1 });
+  });
+});
+
+describe('AscentScreen with the Chest of the found item (#227)', () => {
+  const hidden = { includeHiddenElements: true } as const;
+  const chest = () => screen.queryByTestId('chest-stage', hidden);
+  const equip = () => screen.queryByRole('button', { name: 'Équiper' });
+
+  /** Le combat `kind` de l'étage 3 du palier 1, le flux du butin donnant un objet ou rien. */
+  function before(kind: 'combat' | 'elite', found: boolean): Ascent {
+    const ascent: Ascent = {
+      ...startAscent(42),
+      floor: 3,
+      encounter: { kind, enemies: ['ghoul'], battleSeed: 3 },
+    };
+    return { ...ascent, lootRandom: lootState(ascent, found) };
+  }
+
+  /** L'écran sur le combat de `saved`, mené jusqu'à la victoire. */
+  async function win(saved: Ascent) {
+    let battles: ReturnType<typeof spyBattles> | null = null;
+    const shown = await show(saved, async (session) => {
+      battles = spyBattles(session);
+    });
+    await screen.findByTestId('battle-screen');
+    await winShownBattle(battles!, shown.clock);
+    return shown;
+  }
+
+  async function advance(ms: number): Promise<void> {
+    for (let elapsed = 0; elapsed < ms; elapsed += 100) {
+      await act(async () => {
+        jest.advanceTimersByTime(100);
+      });
+    }
+  }
+
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it('opens the Chest after an ordinary battle won with an item, then offers « Équiper »', async () => {
+    const { session } = await win(before('combat', true));
+    const found = session.current()!.foundItem!;
+
+    expect(screen.getByTestId('ascent-item')).toBeOnTheScreen();
+    expect(screen.getByText(/^Étage franchi · \+\d+ Or$/)).toBeOnTheScreen();
+    expect(chest()).toBeOnTheScreen();
+    expect(screen.getByTestId('chest-closed', hidden)).toBeTruthy();
+    expect(equip()).toBeNull();
+    // L'en-tête reste actif pendant l'ouverture.
+    expect(screen.getByTestId('ascent-pause')).toBeEnabled();
+    expect(screen.getByTestId('ascent-loadout')).toBeEnabled();
+
+    await advance(700);
+
+    expect(chest()).toBeNull();
+    expect(screen.getByTestId('item-image', hidden)).toHaveProp('sprite', `item-${found}`);
+    await fireEvent.press(equip()!);
+    expect(session.current()!.foundItem).toBeNull();
+    expect(Object.values(session.current()!.equipment)).toContain(found);
+  });
+
+  it('shows the guaranteed item of an Elite in the Chest too', async () => {
+    const { session } = await win(before('elite', true));
+
+    expect(session.current()!.foundItem).not.toBeNull();
+    expect(chest()).toBeOnTheScreen();
+    expect(equip()).toBeNull();
+    await advance(700);
+    expect(equip()).toBeOnTheScreen();
+  });
+
+  it('shows no Chest after a battle won without an item: the offer of boons, as before', async () => {
+    const { session } = await win(before('combat', false));
+
+    expect(session.current()!.foundItem).toBeNull();
+    expect(screen.getByTestId('ascent-boons')).toBeOnTheScreen();
+    expect(chest()).toBeNull();
+  });
+
+  it('shows no Chest after the boss', async () => {
+    await show({
+      ...startAscent(42),
+      floor: 6,
+      encounter: null,
+      lastGold: 30,
+      passage: { to: 2, step: 'bossDefeated' },
+    });
+
+    expect(screen.getByTestId('ascent-boss-defeated')).toBeOnTheScreen();
+    expect(chest()).toBeNull();
+  });
+
+  it('shows a pending item at once, without the Chest opening again, on a resume', async () => {
+    await show({
+      ...between(startAscent(42), [{ kind: 'combat', groupSize: 2 }]),
+      foundItem: 'axe',
+    });
+
+    expect(chest()).toBeNull();
+    expect(screen.getByTestId('item-image', hidden)).toHaveProp('sprite', 'item-axe');
+    expect(equip()).toBeOnTheScreen();
+    expect(AccessibilityInfo.announceForAccessibility).toHaveBeenCalledWith(
+      'Coffre ouvert. Hache rouillée, Commun, Brise-garde ×1,1, Initiative −1.',
+    );
+  });
+
+  it('shows the item at once when coming back after a Pause during the opening', async () => {
+    const { session, dependencies, onLeave } = await win(before('combat', true));
+    expect(chest()).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByTestId('ascent-pause'));
+    expect(onLeave).toHaveBeenCalled();
+    screen.unmount();
+    await renderScreen(
+      <AscentScreen session={session} visibility={visibility()} onLeave={jest.fn()} />,
+      dependencies,
+    );
+
+    expect(chest()).toBeNull();
+    expect(equip()).toBeOnTheScreen();
   });
 });
