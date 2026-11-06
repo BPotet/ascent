@@ -109,6 +109,7 @@ const FAMILY_NAMES: Readonly<Record<BlessingFamily, string>> = {
   edge: 'Tranchant',
   protection: 'Protection',
   haste: 'Hâte',
+  fortune: 'Fortune',
 };
 
 function blessingEffect({ family, rarity }: StartingBlessing): string {
@@ -126,6 +127,9 @@ function blessingEffect({ family, rarity }: StartingBlessing): string {
       return `Réduction des dégâts +${value} points`;
     case 'haste':
       return `Initiative +${value} dans chaque combat`;
+    case 'fortune':
+      // Les clés de Fortune (#226) : « +1 clé », « +3 clés ».
+      return `+${value} clé${value > 1 ? 's' : ''}`;
   }
 }
 

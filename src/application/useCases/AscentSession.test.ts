@@ -1398,6 +1398,19 @@ describe('AscentSession: the keys and the sealed chest (#226)', () => {
       expect(session.keysEntry()).toEqual({ favor: 1, fortune: 0 });
     });
 
+    it('are told with the keys of Fortune, apart from those of the favor', () => {
+      const seed = Array.from({ length: 100 }, (_, each) => each).find((each) =>
+        startAscent(each, { blessings: ['rare'] }).blessingOffer!.includes('fortune'),
+      )!;
+      const { session } = setUp(seed);
+      session.begin({ gauge: 2, blessings: ['rare'] });
+
+      session.chooseBlessing(session.current()!.blessingOffer!.indexOf('fortune'));
+
+      expect(session.current()!.keys).toBe(3);
+      expect(session.keysEntry()).toEqual({ favor: 1, fortune: 2 });
+    });
+
     it('are never told without key, after the battle starts, nor after a reload', async () => {
       const without = setUp();
       without.session.begin({ gauge: 0 });

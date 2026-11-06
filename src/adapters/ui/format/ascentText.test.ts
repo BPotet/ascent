@@ -67,6 +67,17 @@ describe('ascent texts', () => {
 });
 
 describe('blessing and item texts (#93)', () => {
+  it('names Fortune with its keys (#226)', () => {
+    expect(blessingText({ family: 'fortune', rarity: 'common' })).toBe(
+      'Fortune · Commune · +1 clé',
+    );
+    expect(blessingText({ family: 'fortune', rarity: 'rare' })).toBe('Fortune · Rare · +2 clés');
+    expect(blessingCard({ family: 'fortune', rarity: 'epic' })).toMatchObject({
+      name: 'Fortune',
+      effect: '+3 clés',
+    });
+  });
+
   it('names the blessings with their effect', () => {
     expect(blessingText({ family: 'haste', rarity: 'rare' })).toBe(
       'Hâte · Rare · Initiative +2 dans chaque combat',

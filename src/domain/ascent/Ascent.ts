@@ -18,6 +18,7 @@ import {
   type OfferCard,
 } from './boons';
 import {
+  blessingKeys,
   drawBlessingOffer,
   heroMaxHp,
   vigorPercent,
@@ -266,14 +267,15 @@ export function startAscent(seed: AscentSeed, launch: AscentLaunch = {}): Ascent
 
 /**
  * Le joueur prend la bénédiction `index` de l'offre, avec la rareté de son habitude ; l'offre
- * suivante est tirée parmi les familles non prises. Les PV max sont recalculés (Vigueur), et le
- * héros part à PV max (P26).
+ * suivante est tirée parmi les familles non prises. Les PV max sont recalculés (Vigueur), le héros
+ * part à PV max (P26), et Fortune ajoute ses clés (#226).
  */
 export function chooseBlessing(ascent: Ascent, index: number): Ascent {
   const family = ascent.blessingOffer?.[index];
   const [rarity, ...rest] = ascent.blessingRarities;
   if (family === undefined || rarity === undefined) return ascent;
-  const blessings = [...ascent.blessings, { family, rarity }];
+  const blessing = { family, rarity };
+  const blessings = [...ascent.blessings, blessing];
   const maxHp = heroMaxHp(
     HEROES[ascent.hero.kind].maxHp,
     vigorPercent(blessings),
@@ -293,6 +295,8 @@ export function chooseBlessing(ascent: Ascent, index: number): Ascent {
     blessingOffer: offer?.value ?? null,
     lootRandom: offer?.random ?? ascent.lootRandom,
     hero: { ...ascent.hero, hp: maxHp, maxHp },
+    // Les clés de Fortune, au choix de la bénédiction (#226, F2).
+    keys: ascent.keys + blessingKeys(blessing),
   };
 }
 

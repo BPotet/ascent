@@ -4,6 +4,7 @@
 import {
   abandonAscent,
   canOpenSealedChest,
+  chooseBlessing,
   chooseBoon,
   chooseExit,
   endFloorBattle,
@@ -76,6 +77,34 @@ describe('the keys given at the start of the ascent (#226, K1)', () => {
     expect(abandonAscent(passing).keys).toBe(3);
     expect(startAscent(6, { gauge: -2 }).keys).toBe(0);
     expect(startAscent(6, { gauge: 2 }).keys).toBe(1);
+  });
+});
+
+describe('the keys of Fortune (#226, K2, F2, F3, F4)', () => {
+  /** L'ascension lancée à la jauge `gauge`, une bénédiction `rarity` à choisir parmi Fortune. */
+  const offering = (gauge: 0 | 2, rarity: 'common' | 'rare' | 'epic'): Ascent => ({
+    ...startAscent(5, { gauge, blessings: [rarity] }),
+    blessingOffer: ['fortune', 'vigor', 'edge'],
+  });
+
+  it.each([
+    [2, 'epic', 4],
+    [2, 'rare', 3],
+    [2, 'common', 2],
+    [0, 'rare', 2],
+    [0, 'common', 1],
+  ] as const)('at a gauge of %p, a %p Fortune leaves %p keys', (gauge, rarity, keys) => {
+    expect(chooseBlessing(offering(gauge, rarity), 0).keys).toBe(keys);
+  });
+
+  it('changes nothing else: the maximum HP, the streams and the item chance stay', () => {
+    const ascent = offering(0, 'rare');
+    const chosen = chooseBlessing(ascent, 0);
+
+    expect(chosen.hero.maxHp).toBe(ascent.hero.maxHp);
+    expect(chosen.sealedChestRandom).toBe(ascent.sealedChestRandom);
+    expect(chosen.rerolls).toBe(ascent.rerolls);
+    expect(chooseBlessing(ascent, 1).keys).toBe(0);
   });
 });
 

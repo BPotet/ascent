@@ -1,13 +1,18 @@
 import { Day } from '../day/Day';
-import { seedRandom } from '../battle/SeededRandom';
+import { nextRandom, seedRandom, type RandomState } from '../battle/SeededRandom';
 import {
+  BLESSING_EFFECTS,
   BLESSING_FAMILIES,
+  blessingKeys,
   blessingModifiers,
   blessingRarities,
   drawBlessingOffer,
   heroMaxHp,
   vigorPercent,
 } from './blessings';
+
+/** L'offre de la graine 1 sans Vigueur ni Hâte, à 6 familles (#226). */
+const OFFER_AFTER_VIGOR_AND_HASTE = ['momentum', 'protection', 'fortune'];
 
 const habit = (
   name: string,
@@ -61,9 +66,9 @@ describe('starting blessings (P25)', () => {
       expect(offer).not.toContain('vigor');
     }
     expect(new Set(drawBlessingOffer(['vigor', 'haste'], seedRandom(1)).value)).toEqual(
-      new Set(['momentum', 'edge', 'protection']),
+      new Set(OFFER_AFTER_VIGOR_AND_HASTE),
     );
-    expect(BLESSING_FAMILIES).toHaveLength(5);
+    expect(BLESSING_FAMILIES).toHaveLength(6);
   });
 
   it('gives the Edge as an Attack bonus in %, added to the items before rounding (#152)', () => {
@@ -74,6 +79,64 @@ describe('starting blessings (P25)', () => {
             .attackBonusPercent,
       ),
     ).toEqual([10, 20, 30]);
+  });
+});
+
+describe('the Fortune family (#226)', () => {
+  /** L'état du flux après `count` tirages. */
+  const after = (random: RandomState, count: number): RandomState =>
+    count === 0 ? random : after(nextRandom(random).state, count - 1);
+
+  it('is the sixth family, the last one, and Purse is never one', () => {
+    expect(BLESSING_FAMILIES).toEqual([
+      'vigor',
+      'momentum',
+      'edge',
+      'protection',
+      'haste',
+      'fortune',
+    ]);
+    expect(BLESSING_FAMILIES as readonly string[]).not.toContain('purse');
+  });
+
+  it('can be offered, never twice, never once taken', () => {
+    const offers = Array.from({ length: 60 }, (_, seed) => drawBlessingOffer([], seedRandom(seed)));
+    expect(offers.some(({ value }) => value.includes('fortune'))).toBe(true);
+    for (let seed = 0; seed < 60; seed += 1) {
+      expect(drawBlessingOffer(['fortune'], seedRandom(seed)).value).not.toContain('fortune');
+    }
+  });
+
+  it('gives 1, 2 and 3 keys, as in the Codex of the Workshop, and none for the other families', () => {
+    expect(BLESSING_EFFECTS.fortune).toEqual({ common: 1, rare: 2, epic: 3 });
+    expect(
+      (['common', 'rare', 'epic'] as const).map((rarity) =>
+        blessingKeys({ family: 'fortune', rarity }),
+      ),
+    ).toEqual([1, 2, 3]);
+    for (const family of BLESSING_FAMILIES.filter((each) => each !== 'fortune')) {
+      expect(blessingKeys({ family, rarity: 'epic' })).toBe(0);
+    }
+  });
+
+  it('changes nothing in battle nor in the maximum HP (F4)', () => {
+    const fortune = [{ family: 'fortune', rarity: 'epic' }] as const;
+    expect(blessingModifiers(fortune, { firstBattle: true })).toEqual(
+      blessingModifiers([], { firstBattle: true }),
+    );
+    expect(vigorPercent(fortune)).toBe(0);
+  });
+
+  it('keeps 3 draws per offer: the stream is where it was with 5 families', () => {
+    for (let seed = 0; seed < 40; seed += 1) {
+      const random = seedRandom(seed);
+      const first = drawBlessingOffer([], random);
+      expect(first.random).toBe(after(random, 3));
+      const second = drawBlessingOffer([first.value[0]!], first.random);
+      expect(second.random).toBe(after(random, 6));
+      const third = drawBlessingOffer([first.value[0]!, second.value[0]!], second.random);
+      expect(third.random).toBe(after(random, 9));
+    }
   });
 });
 

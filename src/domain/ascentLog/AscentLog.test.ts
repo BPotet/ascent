@@ -498,27 +498,21 @@ describe('the keys and the sealed chests (#226)', () => {
     for (const gauge of [0, -1, -2] as const) {
       expect(beginAscentLog(startAscent(7, { gauge }), DAY)).not.toHaveProperty('keys');
     }
-    const walk = new Walk(seeded(7, 0)).blessing().blessing();
+    const walk = new Walk(seeded(7, 0));
+    while (walk.ascent.blessingOffer !== null) {
+      walk.blessing(walk.ascent.blessingOffer.findIndex((family) => family !== 'fortune'));
+    }
+    expect(walk.log.blessings).toHaveLength(2);
     expect(walk.log).not.toHaveProperty('keys');
   });
 
-  it('adds the keys given at the choice of a blessing', () => {
-    const walk = new Walk(seeded(7, 2));
-    const before = walk.ascent;
-    const after = { ...chooseBlessing(before, 0), keys: before.keys + 3 };
+  it('adds the keys of Fortune at the choice of the blessing', () => {
+    /** L'ascension à la jauge `gauge`, une bénédiction Rare puis Commune, Fortune offerte. */
+    const fortune = (gauge: FateGauge) =>
+      new Walk({ ...seeded(7, gauge), blessingOffer: ['fortune', 'vigor', 'edge'] }).blessing(0);
 
-    const log = recordAscentStep(walk.log, { kind: 'blessingChosen', before, after });
-
-    expect(log.keys).toEqual({ favor: 1, fortune: 3 });
-    const noFavor = new Walk(seeded(7, 0));
-    const gained = { ...chooseBlessing(noFavor.ascent, 0), keys: 2 };
-    expect(
-      recordAscentStep(noFavor.log, {
-        kind: 'blessingChosen',
-        before: noFavor.ascent,
-        after: gained,
-      }).keys,
-    ).toEqual({ favor: 0, fortune: 2 });
+    expect(fortune(2).log.keys).toEqual({ favor: 1, fortune: 2 });
+    expect(fortune(0).log.keys).toEqual({ favor: 0, fortune: 2 });
   });
 
   it('notes a sealed chest opened with its item, apart from the guaranteed item', () => {
