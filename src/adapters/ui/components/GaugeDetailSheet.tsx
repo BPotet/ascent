@@ -19,6 +19,7 @@ import {
   CLOSE_DETAIL,
   DAY_GAUGE_TITLE,
   DETAIL_HEADINGS,
+  KEY_DETAIL_LINE,
   FIRST_USE_DETAIL,
   FIRST_USE_EFFECTS,
   GAUGE_LEVELS,
@@ -234,6 +235,13 @@ export function GaugeDetailSheet({
             ) : (
               <GaugeEffectList effects={effects} />
             )}
+            {!firstUse && gauge > 0 && (
+              // À quoi sert la clé de la faveur (#226, J3, J4).
+              <View style={styles.keyLine}>
+                <PixelIcon name="key8" color={roles.parchment} />
+                <Text style={[styles.soft, styles.keyText]}>{KEY_DETAIL_LINE}</Text>
+              </View>
+            )}
             <Heading>{DETAIL_HEADINGS.never}</Heading>
             <View style={styles.safeguards}>
               {GAUGE_SAFEGUARDS.map(({ glyph, text }) => (
@@ -317,6 +325,8 @@ const styles = StyleSheet.create({
     color: roles.light,
   },
   soft: { fontFamily: textFont.medium, fontSize: 13.5, lineHeight: 19, color: roles.parchment },
+  keyLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  keyText: { flexShrink: 1, fontSize: 12.5 },
   levels: { gap: 3 },
   level: {
     flexDirection: 'row',

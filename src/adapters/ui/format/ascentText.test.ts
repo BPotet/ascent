@@ -49,11 +49,11 @@ describe('ascent texts', () => {
 
     expect(exitLabel(combat, -1)).toBe('Combat · 3 ennemis · dont 1 maudit');
     expect(exitLabel(combat, -2)).toBe('Combat · 3 ennemis · dont 1 maudit');
-    expect(exitLabel(elite, -1)).toBe('Élite · objet Rare garanti');
-    expect(exitLabel(elite, -2)).toBe('Élite maudite · objet Rare garanti');
+    expect(exitLabel(elite, -1)).toBe('Élite · objet Rare garanti · coffre scellé');
+    expect(exitLabel(elite, -2)).toBe('Élite maudite · objet Rare garanti · coffre scellé');
     for (const gauge of [0, 1, 2] as const) {
       expect(exitLabel(combat, gauge)).toBe('Combat · 3 ennemis');
-      expect(exitLabel(elite, gauge)).toBe('Élite · objet Rare garanti');
+      expect(exitLabel(elite, gauge)).toBe('Élite · objet Rare garanti · coffre scellé');
     }
     expect(exitLabel({ kind: 'boss', groupSize: null }, -2)).toBe('Affronter le boss');
   });
@@ -61,12 +61,23 @@ describe('ascent texts', () => {
   it('announces the Rare item the Elite door guarantees, not the Elite drawn behind it (#120)', () => {
     const label = exitLabel({ kind: 'elite', groupSize: null });
 
-    expect(label).toBe('Élite · objet Rare garanti');
+    expect(label).toBe('Élite · objet Rare garanti · coffre scellé');
     expect(label).not.toMatch(/Chevalier déchu|Jumeaux/u);
   });
 });
 
 describe('blessing and item texts (#93)', () => {
+  it('names Fortune with its keys (#226)', () => {
+    expect(blessingText({ family: 'fortune', rarity: 'common' })).toBe(
+      'Fortune · Commune · +1 clé',
+    );
+    expect(blessingText({ family: 'fortune', rarity: 'rare' })).toBe('Fortune · Rare · +2 clés');
+    expect(blessingCard({ family: 'fortune', rarity: 'epic' })).toMatchObject({
+      name: 'Fortune',
+      effect: '+3 clés',
+    });
+  });
+
   it('names the blessings with their effect', () => {
     expect(blessingText({ family: 'haste', rarity: 'rare' })).toBe(
       'Hâte · Rare · Initiative +2 dans chaque combat',

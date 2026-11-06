@@ -25,6 +25,7 @@ import {
   tierLine,
 } from '../format/ascentText';
 import { HERO_NAMES } from '../format/battleText';
+import { keysText } from '../format/sealedChestText';
 import {
   ASCENT_GAUGE_TITLE,
   ASCENT_KEEPS_GAUGE,
@@ -288,6 +289,13 @@ function AscentInProgress({
               <Text style={styles.status}>
                 {`${floorLine(ascent.floor, ascent.tier)} · ${ascent.hero.hp}/${ascent.hero.maxHp} PV · ${goldText(ascent.gold)}`}
               </Text>
+              {ascent.keys > 0 && (
+                // Les clés sous l'Or, sur leur propre ligne, à partir d'une clé (#226, T1).
+                <View style={styles.keys} testID="tower-foot-keys">
+                  <PixelIcon name="key8" color={roles.gold} />
+                  <Text style={styles.status}>{keysText(ascent.keys)}</Text>
+                </View>
+              )}
             </View>
             <AscentGaugeCard
               ref={gaugeCard}
@@ -499,6 +507,7 @@ const styles = StyleSheet.create({
   content: { flex: 1, justifyContent: 'center', padding: 24, gap: 12 },
   title: { ...pixelTypography.screenTitle, color: roles.light, textAlign: 'center' },
   line: { ...pixelTypography.body, color: roles.parchment, textAlign: 'center' },
+  keys: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
   status: {
     fontFamily: textFont.semiBold,
     fontSize: 16,

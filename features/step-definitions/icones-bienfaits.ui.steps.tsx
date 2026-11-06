@@ -57,8 +57,11 @@ const DOORS: readonly Exit[] = [
 ];
 const MOCKUP = path.join(__dirname, '../../docs/mockups/153-boon-blessing-icons/index.html');
 const CAMP_MOCKUP = path.join(__dirname, '../../docs/mockups/40-camp/index.html');
-/** L'entrée de l'Atelier (et de la maquette) de chaque famille de bénédiction. */
-const ATELIER_BLESSINGS: Readonly<Record<BlessingFamily, string>> = {
+/**
+ * L'entrée de l'Atelier (et de la maquette 153) de chaque famille de bénédiction d'avant Fortune :
+ * Fortune (#226) est comparée à la maquette 208 (`sealedChest.data.test.ts`).
+ */
+const ATELIER_BLESSINGS: Readonly<Record<Exclude<BlessingFamily, 'fortune'>, string>> = {
   vigor: 'vigor',
   momentum: 'momentum',
   edge: 'edge',
@@ -416,8 +419,11 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
         (kind) => expect(BOON_ICONS[kind]).toEqual(validated[kind]),
       );
       expect(BOON_ICONS.winterVigil).toEqual(campWinterVigilIcon());
-      BLESSING_FAMILIES.forEach((family) =>
+      (Object.keys(ATELIER_BLESSINGS) as (keyof typeof ATELIER_BLESSINGS)[]).forEach((family) =>
         expect(BLESSING_ICONS[family]).toEqual(validated[ATELIER_BLESSINGS[family]]),
+      );
+      expect(Object.keys(ATELIER_BLESSINGS)).toEqual(
+        BLESSING_FAMILIES.filter((family) => family !== 'fortune'),
       );
     },
   );

@@ -10,6 +10,7 @@ import {
   fateGauge,
   fateGaugeCount,
   favorDropBonus,
+  favorKeys,
   favorRerolls,
   favorSecondChance,
   rarityShift,
@@ -217,5 +218,11 @@ describe('the second chance of the favor (#206)', () => {
       false,
       false,
     ]);
+  });
+});
+
+describe('the keys of the favor (#226, K1)', () => {
+  it('gives 1 key at +1 and at +2, none at 0, −1 or −2', () => {
+    expect([2, 1, 0, -1, -2].map((gauge) => favorKeys(gauge as never))).toEqual([1, 1, 0, 0, 0]);
   });
 });

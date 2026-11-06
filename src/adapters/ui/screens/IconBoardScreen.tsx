@@ -30,11 +30,22 @@ import { BlessingChoice } from '../components/BlessingChoice';
 import { ChestStage } from '../components/ChestStage';
 import { ExitChoice } from '../components/ExitChoice';
 import { FoundItemPanel } from '../components/FoundItemPanel';
+import { IconWell } from '../components/IconWell';
+import { SealedChestPanel } from '../components/SealedChestPanel';
 import { Screen } from '../components/Screen';
 import { artPalette } from '../pixelArt/artPalette';
 import { PixelButton } from '../pixelArt/PixelButton';
 import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypography';
 import { CHEST_IMAGE, CHEST_OPEN_IMAGE } from '../pixelArt/sprites/atelier/data/chest';
+import { KEY_IMAGE } from '../pixelArt/sprites/atelier/data/key';
+import {
+  SEALED_CHEST_IMAGE,
+  SEALED_CHEST_OPEN_IMAGE,
+} from '../pixelArt/sprites/atelier/data/sealedChest';
+import { assetSprite } from '../pixelArt/sprites/atelier/fullAnimation';
+import { blessingIcon } from '../pixelArt/sprites/gameIcons';
+import { toPixelImage } from '../pixelArt/sprites/Sprite';
+import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
 import { AscentScreen, type AscentVisibility } from './AscentScreen';
 import { CampScreen } from './CampScreen';
 import { TowerFootScreen } from './TowerFootScreen';
@@ -54,7 +65,9 @@ type Board =
   | 'secondBreath'
   | 'secondBreathAlone'
   // Le Coffre (#227) : fermé et ouvert, puis l'objet qui en sort (B1 à B3 de la maquette 208).
-  | 'chest';
+  | 'chest'
+  // Le coffre scellé, la clé et l'icône Fortune (#226, S2, S3 de la maquette 208).
+  | 'sealedChest';
 
 const ENTRIES: readonly (readonly [Board, string])[] = [
   ['boons', "Choix d'un bienfait"],
@@ -67,6 +80,7 @@ const ENTRIES: readonly (readonly [Board, string])[] = [
   ['secondBreath', 'Offre · Second souffle'],
   ['secondBreathAlone', 'Offre · Second souffle seule'],
   ['chest', 'Coffre · fermé et ouvert'],
+  ['sealedChest', 'Coffre scellé · clé et Fortune'],
 ];
 
 /**
@@ -141,7 +155,7 @@ const DOORS: readonly Exit[] = [
 ];
 const EXITS: Readonly<
   Record<
-    Exclude<Board, keyof typeof OFFERS | 'blessings' | 'oneBlessing' | 'chest'>,
+    Exclude<Board, keyof typeof OFFERS | 'blessings' | 'oneBlessing' | 'chest' | 'sealedChest'>,
     { boons: readonly BoonKind[]; exits: readonly Exit[] }
   >
 > = {
@@ -395,6 +409,7 @@ export function IconBoardScreen({
 }) {
   const [board, setBoard] = useState<Board | null>(null);
   const [step, setStep] = useState(0);
+  const [sealedOpening, setSealedOpening] = useState(false);
   const [ascent, setAscent] = useState<OpenAscent | null>(null);
   const back = () => setBoard(null);
   const open = (entry: Board) => {
@@ -513,6 +528,42 @@ export function IconBoardScreen({
             onPress={() => setStep(step + 1)}
             style={styles.replay}
           />
+        </>
+      ) : board === 'sealedChest' ? (
+        <>
+          <View style={styles.chests}>
+            {[false, true].map((opened) => (
+              <View key={String(opened)} testID="sealed-chest-board-still">
+                <ChestStage
+                  name="sealed-chest"
+                  closed={SEALED_CHEST_IMAGE}
+                  open={SEALED_CHEST_OPEN_IMAGE}
+                  scale={2}
+                  opened={opened}
+                  shake={0}
+                  glow={opened ? 1 : 0}
+                />
+              </View>
+            ))}
+            <SpriteCanvas
+              sprite="key"
+              draw={() => toPixelImage(assetSprite(KEY_IMAGE))}
+              scale={2}
+              testID="sealed-chest-board-key"
+            />
+            <View testID="sealed-chest-board-fortune">
+              <IconWell icon={blessingIcon('fortune')} rarity="rare" size="card" />
+            </View>
+          </View>
+          <View style={styles.opening}>
+            <SealedChestPanel
+              keys={2}
+              opening={sealedOpening}
+              onOpen={() => setSealedOpening(true)}
+              onLeave={back}
+              onOpened={() => setSealedOpening(false)}
+            />
+          </View>
         </>
       ) : (
         <ExitChoice {...EXITS[board]} banner={gained} onChoose={back} />

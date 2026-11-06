@@ -39,13 +39,15 @@ describe('ExitChoice: the cursed enemy at the doors (#209)', () => {
       screen.getByRole('button', { name: 'Combat · 3 ennemis · dont 1 maudit' }),
     ).toBeOnTheScreen();
     expect(
-      screen.getByRole('button', { name: 'Élite maudite · objet Rare garanti' }),
+      screen.getByRole('button', { name: 'Élite maudite · objet Rare garanti · coffre scellé' }),
     ).toBeOnTheScreen();
   });
 
   it('keeps the Elite door as today under the curse, and every door without it', async () => {
     await render(<ExitChoice boons={[]} exits={CURSED_DOORS} gauge={-1} onChoose={jest.fn()} />);
-    expect(screen.getByRole('button', { name: 'Élite · objet Rare garanti' })).toBeOnTheScreen();
+    expect(
+      screen.getByRole('button', { name: 'Élite · objet Rare garanti · coffre scellé' }),
+    ).toBeOnTheScreen();
 
     await render(<ExitChoice boons={[]} exits={CURSED_DOORS} onChoose={jest.fn()} />);
     expect(screen.getByRole('button', { name: 'Combat · 3 ennemis' })).toBeOnTheScreen();

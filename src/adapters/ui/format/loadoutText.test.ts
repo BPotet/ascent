@@ -7,8 +7,11 @@ import {
   NO_BLESSING_YET,
   NO_BOON,
   NO_BOON_YET,
+  RESERVES_TITLE,
   blessingTag,
   favorRows,
+  reserveRows,
+  reservesHeadingLabel,
   loadoutButtonLabel,
   loadoutTitle,
 } from './loadoutText';
@@ -109,6 +112,7 @@ describe('the rows of the favor of the ascent (#42, #206, E1)', () => {
         effect: "Redonnent l'offre de bienfaits.",
         state: '1 sur 2',
         used: false,
+        tone: 'favor',
         label: "Relances, 1 sur 2. Redonnent l'offre de bienfaits.",
       },
       {
@@ -118,6 +122,7 @@ describe('the rows of the favor of the ascent (#42, #206, E1)', () => {
         effect: 'À 0 PV, relève une fois avec 50 % des PV max.',
         state: 'Prête',
         used: false,
+        tone: 'favor',
         label: 'Seconde chance, Prête. À 0 PV, relève une fois avec 50 % des PV max.',
       },
     ]);
@@ -136,5 +141,46 @@ describe('the rows of the favor of the ascent (#42, #206, E1)', () => {
     expect(
       favorRows({ gauge: 1, rerollsLeft: 1, rerollsGranted: 1 }).map(({ key }) => key),
     ).toEqual(['rerolls']);
+  });
+});
+
+describe('the reserves of the ascent (#226, E1, E3)', () => {
+  it('lists the Gold, then the keys left', () => {
+    expect(RESERVES_TITLE).toBe('Réserves');
+    expect(reserveRows({ gold: 35, keys: 2 })).toEqual([
+      {
+        key: 'gold',
+        glyph: 'coin8',
+        name: 'Or',
+        effect: 'Gagné à chaque étage franchi.',
+        state: '35',
+        used: false,
+        tone: 'gold',
+        label: 'Or, 35',
+      },
+      {
+        key: 'keys',
+        glyph: 'key8',
+        name: 'Clés',
+        effect: "Ouvrent le coffre scellé d'une Élite. Perdues à la fin de l'ascension.",
+        state: '2',
+        used: false,
+        tone: 'gold',
+        label: "Clés, 2 : ouvrent le coffre scellé d'une Élite",
+      },
+    ]);
+  });
+
+  it('greys the keys without key, and says where they come from (E3)', () => {
+    expect(reserveRows({ gold: 0, keys: 0 })[1]).toMatchObject({
+      effect: 'Aucune clé. La faveur et Fortune en donnent.',
+      state: '0',
+      used: true,
+      label: 'Clés, 0 : aucune clé. La faveur et Fortune en donnent',
+    });
+  });
+
+  it('reads the heading of the section', () => {
+    expect(reservesHeadingLabel()).toBe('Réserves');
   });
 });

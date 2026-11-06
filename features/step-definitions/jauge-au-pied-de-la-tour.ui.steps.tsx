@@ -124,7 +124,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and(
-    /^elle liste ses effets du jour : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents, 2 relances, 1 seconde chance$/u,
+    /^elle liste ses effets du jour : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents, 2 relances, 1 clé, 1 seconde chance$/u,
     async () => {
       const effects = within(await dayCard()).getByTestId('gauge-effects');
       expect(
@@ -137,6 +137,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
         'Objets Rares plus fréquents',
         // Les relances de la faveur (#42), validées avec la maquette 205 (G1).
         '2 relances',
+        // La clé de la faveur (#226), validée avec la maquette 208 (J2).
+        '1 clé',
         // La seconde chance de la faveur pleine (#206), validée avec la maquette 205 (G1).
         '1 seconde chance',
       ]);

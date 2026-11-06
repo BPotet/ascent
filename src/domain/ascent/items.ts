@@ -120,9 +120,10 @@ export const EPIC_ITEM_CHANCE = 20;
 
 /**
  * Un objet tiré : la rareté, puis un objet à égalité parmi ceux de cette rareté que le héros ne
- * porte pas, objets débloqués (`unlocked`, #195) compris. Après une Élite : Épique si le tirage de
- * rareté est sous 20 % et qu'un Épique débloqué n'est pas porté, sinon Rare ; s'il porte tous les
- * Rares, un Commun. Le tirage de rareté sert aussi à l'Épique : aucun tirage de plus.
+ * porte pas, objets débloqués (`unlocked`, #195) compris, hors objets exclus (`excluded`, #226).
+ * Après une Élite : Épique si le tirage de rareté est sous 20 % et qu'un Épique débloqué est libre,
+ * sinon Rare ; si plus aucun Rare n'est libre, un Commun. Le tirage de rareté sert aussi à
+ * l'Épique : aucun tirage de plus.
  */
 export function drawItem(
   gauge: FateGauge,
@@ -130,9 +131,10 @@ export function drawItem(
   equipment: Equipment,
   random: RandomState,
   unlocked: readonly ItemKind[] = [],
+  excluded: readonly ItemKind[] = [],
 ): Drawn<ItemKind> {
   const roll = nextRandom(random);
-  const worn = Object.values(equipment);
+  const worn: readonly (ItemKind | null)[] = [...Object.values(equipment), ...excluded];
   const free = (rarity: Rarity) =>
     (Object.keys(ITEMS) as ItemKind[]).filter(
       (item) =>
@@ -166,4 +168,17 @@ export function drawLoot(
     return { value: null, random: roll.state };
   }
   return drawItem(gauge, false, equipment, roll.state, unlocked);
+}
+
+/**
+ * Le contenu du coffre scellé (#226, CH6, CH7) : la règle de l'Élite, sans la jauge, jamais un objet
+ * porté ni l'objet garanti de cette Élite (`eliteItem`).
+ */
+export function drawSealedChestItem(
+  equipment: Equipment,
+  eliteItem: ItemKind | null,
+  random: RandomState,
+  unlocked: readonly ItemKind[],
+): Drawn<ItemKind> {
+  return drawItem(0, true, equipment, random, unlocked, eliteItem === null ? [] : [eliteItem]);
 }

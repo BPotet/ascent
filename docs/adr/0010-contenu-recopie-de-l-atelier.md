@@ -459,3 +459,31 @@ habillage.
    `sprites/atelier/testing/mockup208.ts` en tient compte, et le coffre scellé (#226) le réutilise.
 3. **Teintes.** Toutes les teintes des deux images sont déjà dans `artPalette` : aucune n'est
    ajoutée.
+
+## Avenant du 6 novembre 2026 (#226) : le coffre scellé, la clé et Fortune
+
+Le coffre scellé fermé et ouvert (`assets/sealedChest`, `assets/sealedChestOpen`, « Coffre de
+bronze », `chosen: 0`), la clé (`assets/key`, « Clé d'or », `chosen: 0`) et l'icône de la
+bénédiction Fortune (`assets/fortune`, « Trèfle », `chosen: 1`), lus le 06/11/2026, version 1,
+statut `validé`, sont recopiés dans `sprites/atelier/data/sealedChest.ts`
+(`SEALED_CHEST_IMAGE`, `SEALED_CHEST_OPEN_IMAGE`, 32 × 24), `sprites/atelier/data/key.ts`
+(`KEY_IMAGE`, 16 × 16) et `sprites/atelier/data/blessingIcons.ts` (`fortune`, 16 × 16), clé
+`proposals[chosen]`, clés `w`, `h`, `palette` et `rows` seulement. La fiche `codex/fortune`
+(version 1, effet `keys` 1 / 2 / 3) donne `BLESSING_EFFECTS.fortune`.
+
+1. **Recopie par script**, comme à l'avenant #227 : documents lus par `ArtifactData get` en
+   fichiers, en lecture seule, version vérifiée, sha256 du JSON compact de `data`, clés triées,
+   écrite dans l'en-tête de chaque fichier et dans « Données de l'Atelier » de la story.
+2. **Contrôle de fidélité.** `sealedChest.data.test.ts` compare les quatre images, pixel pour
+   pixel, à `ART.sealedChest.A`, `ART.sealedChestOpen.A`, `ART.key.A` et `ART.fortune.B` de la
+   maquette versionnée `docs/mockups/208-coffres-cles/index.html`, avec le lecteur `mockup208.ts`
+   de #227, vérifie leurs teintes (toutes dans `artPalette`) et l'absence du rouge du **Sceau**, et
+   compare `BLESSING_EFFECTS.fortune` à la fiche (1, 2, 3). La comparaison des icônes de bénédiction
+   à la maquette 153 se limite aux cinq familles d'avant Fortune.
+3. **Le glyphe `key8`**, « Clé couchée », n'est pas dans l'Atelier : il est recopié de
+   `ART.key8.A` de la maquette versionnée, déjà au format des glyphes d'`icons.ts` (8 × 8, `X`), et
+   `icons.test.ts` le compare à la maquette. Le glyphe `chest8` n'est pas recopié : le journal
+   d'ascension n'a aucun écran (décision de l'orchestrateur du 06/11/2026).
+4. **Échelle ×5.** Le coffre scellé est dessiné à ×5 (maquette 208, S2) : `ArtScale` gagne la
+   valeur 5, pour lui seul.
+5. **Teintes.** Toutes les teintes sont déjà dans `artPalette` : aucune n'est ajoutée.
