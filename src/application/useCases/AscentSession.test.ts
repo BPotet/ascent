@@ -1,4 +1,11 @@
-import { endFloorBattle, rerollStream, startAscent, type Ascent } from '../../domain/ascent/Ascent';
+import {
+  endFloorBattle,
+  leaveItem,
+  rerollStream,
+  sealedChestStream,
+  startAscent,
+  type Ascent,
+} from '../../domain/ascent/Ascent';
 import { TIERS } from '../../domain/ascent/tiers';
 import { ATTACKS } from '../../domain/battle/attacks';
 import { startBattle, type Battle } from '../../domain/battle/Battle';
@@ -1279,5 +1286,130 @@ describe('AscentSession: the Summon of the Moth queen (#172)', () => {
     clock.advanceTo(fellAt + SUMMON_FALL_HOLD_MS);
     await flush();
     expect(published).toHaveLength(1);
+  });
+});
+
+describe('AscentSession: the keys and the sealed chest (#226)', () => {
+  /** L'Élite gagnée à l'étage 3, son objet garanti laissé : le coffre scellé attend. */
+  const waiting = (keys = 2): Ascent => {
+    const ascent: Ascent = {
+      ...startAscent(42, { gauge: 1 }),
+      floor: 3,
+      keys,
+      encounter: { kind: 'elite', enemies: ['twins'], battleSeed: 1 },
+    };
+    return leaveItem(endFloorBattle(ascent, { outcome: 'victory', heroHp: 50 }));
+  };
+
+  async function resumed(ascent: Ascent) {
+    const story = setUp();
+    story.store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent, battle: null }));
+    await story.session.load();
+    return story;
+  }
+
+  it('opens the chest and saves it: a reload gives the same item and keys (CH10)', async () => {
+    const { session, store } = await resumed(waiting());
+
+    session.openSealedChest();
+    await flush();
+
+    const opened = session.current()!;
+    expect(opened).toMatchObject({ keys: 1, sealedChest: { opened: true } });
+    expect(opened.foundItem).not.toBeNull();
+    expect(saved(store)?.ascent).toEqual(opened);
+    const reopened = setUp();
+    reopened.store.values.set(ASCENT_KEY, store.values.get(ASCENT_KEY)!);
+    expect(await reopened.session.load()).toEqual(opened);
+  });
+
+  it('keeps a closed chest waiting after a reload', async () => {
+    const { session } = await resumed(waiting());
+
+    expect(session.current()).toMatchObject({ keys: 2, sealedChest: { opened: false } });
+  });
+
+  it('leaves the chest closed and saves it, keys kept', async () => {
+    const { session, store } = await resumed(waiting());
+
+    session.leaveSealedChest();
+    await flush();
+
+    expect(session.current()).toMatchObject({ keys: 2, sealedChest: null });
+    expect(saved(store)?.ascent).toEqual(session.current());
+  });
+
+  it('ignores an opening or a leaving without an ascent', () => {
+    const { session } = setUp();
+
+    session.openSealedChest();
+    session.leaveSealedChest();
+
+    expect(session.current()).toBeNull();
+  });
+
+  it('keeps the keys left on a resume, whatever the gauge of the day (K4)', async () => {
+    const { session } = await resumed({ ...startAscent(5, { gauge: 1 }), keys: 1 });
+
+    expect(session.current()).toMatchObject({ gauge: 1, keys: 1 });
+  });
+
+  it.each([
+    [2, 1],
+    [1, 1],
+    [0, 0],
+    [-2, 0],
+  ] as const)(
+    'resumes an ascent saved before the keys at a gauge of %p with %p key, without chest',
+    async (gauge, keys) => {
+      const {
+        keys: _keys,
+        sealedChest: _chest,
+        sealedChestRandom: _random,
+        ...older
+      } = startAscent(5, { gauge });
+      const { session } = await resumed(older as Ascent);
+
+      expect(session.current()).toMatchObject({
+        keys,
+        sealedChest: null,
+        sealedChestRandom: sealedChestStream(5),
+      });
+    },
+  );
+
+  describe('the keys at the entry into the tower (F4)', () => {
+    it('are told after the start with a key, until acknowledged', () => {
+      const { session } = setUp();
+
+      session.begin({ gauge: 2 });
+
+      expect(session.keysEntry()).toEqual({ favor: 1, fortune: 0 });
+      session.acknowledgeKeysEntry();
+      expect(session.keysEntry()).toBeNull();
+    });
+
+    it('are told once the blessings are chosen', () => {
+      const { session } = setUp();
+      session.begin({ gauge: 1, blessings: ['rare'] });
+
+      expect(session.keysEntry()).toBeNull();
+      session.chooseBlessing(0);
+      expect(session.keysEntry()).toEqual({ favor: 1, fortune: 0 });
+    });
+
+    it('are never told without key, after the battle starts, nor after a reload', async () => {
+      const without = setUp();
+      without.session.begin({ gauge: 0 });
+      expect(without.session.keysEntry()).toBeNull();
+
+      const started = setUp();
+      started.session.begin({ gauge: 1 });
+      started.session.battleSession();
+      expect(started.session.keysEntry()).toBeNull();
+
+      const { session } = await resumed(startAscent(5, { gauge: 1 }));
+      expect(session.keysEntry()).toBeNull();
+    });
   });
 });
