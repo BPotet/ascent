@@ -20,18 +20,22 @@ describe('battle hints (bulles d’aide du combat)', () => {
     expect(BATTLE_HINT_SEEN_KEYS).toEqual({
       hero: 'battle.hint.hero.seen',
       defense: 'battle.hint.defense.seen',
+      powers: 'battle.hint.powers.seen',
     });
   });
 
-  it.each(['hero', 'defense'] as const)('shows the %s hint until it is seen', async (kind) => {
-    const keyValueStore = mapStore();
-    await expect(getBattleHint({ keyValueStore }, kind)).resolves.toBe(true);
+  it.each(['hero', 'defense', 'powers'] as const)(
+    'shows the %s hint until it is seen',
+    async (kind) => {
+      const keyValueStore = mapStore();
+      await expect(getBattleHint({ keyValueStore }, kind)).resolves.toBe(true);
 
-    await dismissBattleHint({ keyValueStore }, kind);
+      await dismissBattleHint({ keyValueStore }, kind);
 
-    await expect(getBattleHint({ keyValueStore }, kind)).resolves.toBe(false);
-    expect(keyValueStore.values.get(BATTLE_HINT_SEEN_KEYS[kind])).toBe('1');
-  });
+      await expect(getBattleHint({ keyValueStore }, kind)).resolves.toBe(false);
+      expect(keyValueStore.values.get(BATTLE_HINT_SEEN_KEYS[kind])).toBe('1');
+    },
+  );
 
   it('keeps the two hints apart', async () => {
     const keyValueStore = mapStore();

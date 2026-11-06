@@ -1,6 +1,6 @@
-import type { AttackStep } from '../../domain/battle/Battle';
+import { startBattle, type AttackStep } from '../../domain/battle/Battle';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
-import { startTestBattle } from '../../domain/battle/testing/testBattle';
+import { TEST_BATTLE_ENEMIES, startTestBattle } from '../../domain/battle/testing/testBattle';
 import type { KeyValueStore } from '../ports/KeyValueStore';
 import { FixedSeedSource } from '../testing/FixedSeedSource';
 import { ManualBattleClock } from '../testing/ManualBattleClock';
@@ -41,6 +41,7 @@ function mapStore(): KeyValueStore & { values: Map<string, string>; fail: boolea
 function seenHints(store: ReturnType<typeof mapStore>): void {
   store.values.set(BATTLE_HINT_SEEN_KEYS.hero, '1');
   store.values.set(BATTLE_HINT_SEEN_KEYS.defense, '1');
+  store.values.set(BATTLE_HINT_SEEN_KEYS.powers, '1');
 }
 
 /** La Goule n'est jamais brisée : ses parades et contre-attaques restent celles de #31. */
@@ -460,6 +461,64 @@ describe('BattleSession', () => {
 
     expect(session.current()!.battle.now).toBe(3_500);
     expect(session.current()!.battle.phase).toMatchObject({ kind: 'transition' });
+  });
+
+  describe('the hint of the powers (#235, K11)', () => {
+    const withPowers: BattleFactory = (options) =>
+      startBattle({ ...options, enemies: TEST_BATTLE_ENEMIES, powers: ['bulwark', 'retaliation'] });
+
+    function context(): ReturnType<typeof setUp> {
+      const set = setUp({ createBattle: withPowers });
+      set.keyValueStore.values.delete(BATTLE_HINT_SEEN_KEYS.powers);
+      return set;
+    }
+
+    it('shows once, in the first battle with 2 powers or more, until the first gesture', async () => {
+      const set = context();
+      expect((await set.session.start()).powersHint).toBe(true);
+
+      set.session.heroAction({ kind: 'attack' }, 1_100, 1_200);
+
+      expect(set.session.current()!.powersHint).toBe(false);
+      await Promise.resolve();
+      expect(set.keyValueStore.values.get(BATTLE_HINT_SEEN_KEYS.powers)).toBe('1');
+      expect((await set.session.start()).powersHint).toBe(false);
+    });
+
+    it('closes when touched', async () => {
+      const set = context();
+      await set.session.start();
+
+      set.session.dismissHint('powers');
+
+      expect(set.session.current()!.powersHint).toBe(false);
+      await Promise.resolve();
+      expect(set.keyValueStore.values.get(BATTLE_HINT_SEEN_KEYS.powers)).toBe('1');
+    });
+
+    it('waits for a battle with 2 powers or more', async () => {
+      const set = setUp();
+      set.keyValueStore.values.delete(BATTLE_HINT_SEEN_KEYS.powers);
+
+      expect((await set.session.start()).powersHint).toBe(false);
+    });
+
+    it('waits for the hero hint of the first ascent to be closed', async () => {
+      const set = setUp({ hints: true, createBattle: withPowers });
+
+      const first = await set.session.start();
+
+      expect([first.heroHint, first.powersHint]).toEqual([true, false]);
+    });
+
+    it('vibrates very shortly when the effect of a power opens', async () => {
+      const set = setUp();
+      await set.session.start();
+
+      set.session.feelPowerTip();
+
+      expect(set.haptics.played).toEqual(['powerTip']);
+    });
   });
 
   describe('hints (bulles d’aide du combat)', () => {
