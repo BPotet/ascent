@@ -443,6 +443,90 @@ describe('BattleLog', () => {
     });
   });
 
+  describe('the equipped powers (#235)', () => {
+    const withPowers = (powers?: Battle['powers']) =>
+      startBattle({
+        seed: 7,
+        defenseHint: false,
+        at: START,
+        enemies: ['ghoul'],
+        ...(powers && { powers }),
+      }).battle;
+
+    it('notes the equipped powers at the start only when they differ from the base power', () => {
+      expect(
+        beginBattleLog(PLACE, withPowers(['bulwark', 'retaliation']), START).hero,
+      ).toMatchObject({
+        powers: ['bulwark', 'retaliation'],
+      });
+      expect(beginBattleLog(PLACE, withPowers(['bulwark']), START).hero).not.toHaveProperty(
+        'powers',
+      );
+      expect(beginBattleLog(PLACE, withPowers(), START).hero).not.toHaveProperty('powers');
+    });
+
+    it('notes Hold Fast, Mist and Retaliation as effects of the action', () => {
+      const log = logged(
+        [roundStarted(START, 1)],
+        [
+          { type: 'powerUsed', at: START + 50, power: 'holdFast', until: START + 550 },
+          { type: 'heroHealed', at: START + 50, power: 'holdFast', heal: 12, heroHp: 52 },
+          { type: 'bleedStopped', at: START + 50 },
+        ],
+        [
+          {
+            type: 'windUpStarted',
+            at: START + 600,
+            enemy: 0,
+            attack: 'basic',
+            impacts: [START + 1_500],
+            feintAt: null,
+          },
+        ],
+        [
+          {
+            type: 'blowResolved',
+            at: START + 1_660,
+            enemy: 0,
+            index: 0,
+            outcome: 'suffered',
+            button: null,
+            delta: null,
+            damage: 3,
+            heroHp: 49,
+          },
+          { type: 'mistWorn', at: START + 1_660, enemy: 0 },
+          {
+            type: 'counterAttacked',
+            at: START + 1_800,
+            enemy: 0,
+            damage: 13,
+            guardDamage: 24,
+            until: START + 2_000,
+            retaliation: true,
+          },
+        ],
+      );
+
+      expect(actionOf(log, 'hero').effects).toEqual([
+        { type: 'powerUsed', t: 50, power: 'holdFast' },
+        { type: 'heroHealed', t: 50, power: 'holdFast', heal: 12, heroHp: 52 },
+        { type: 'bleedStopped', t: 50 },
+      ]);
+      expect(actionOf(log, 0).effects).toEqual([
+        { type: 'mistWorn', t: 1_660, enemy: 0 },
+        {
+          type: 'counterAttacked',
+          t: 1_800,
+          enemy: 0,
+          damage: 13,
+          guardDamage: 24,
+          retaliation: true,
+        },
+      ]);
+    });
+  });
+
   it('notes the effects in the action where they fall, the round start ones in the round', () => {
     const log = logged(
       [roundStarted(START, 1)],
