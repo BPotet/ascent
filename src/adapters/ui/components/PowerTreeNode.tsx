@@ -7,6 +7,8 @@ import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize, notchedCorners } from '../pixelArt/artPixel';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { pixelFont, textFont } from '../pixelArt/pixelTypography';
+import { useReducedMotion } from '../state/useReducedMotion';
+import { useSteps } from './CampFeedback';
 import { PowerIcon } from './PowerIcon';
 
 const { roles } = artPalette;
@@ -34,10 +36,73 @@ const LOOKS: Readonly<
 };
 // Stryker restore all
 
+// Stryker disable all: durées et amplitudes de la maquette (D1, `.node.fresh`), mutées seulement avec `mutation:ui`.
+/** Le nœud s'allume en 3 pas sur 600 ms (`light`), l'anneau s'ouvre en 6 pas sur 900 ms (`ring`). */
+const LIGHT_STEPS = 3;
+const LIGHT_STEP_MS = 200;
+const RING_STEPS = 6;
+const RING_STEP_MS = 150;
+/** L'anneau culmine à 40 % de son animation, puis reste à 35 % ; il part de 40 % de sa taille. */
+const RING_PEAK = 0.4;
+const RING_REST = 0.35;
+const RING_FROM = 0.4;
+// Stryker restore all
+
+/** L'éclat de l'icône d'un nœud tout juste débloqué, de 0 (ombre) à 1 ; d'un coup en mouvement réduit. */
+export function unlockLight(frame: number, reducedMotion: boolean): number {
+  return reducedMotion ? 1 : Math.min(frame, LIGHT_STEPS) / LIGHT_STEPS;
+}
+
+/**
+ * L'anneau d'or derrière un nœud tout juste débloqué, à l'image `frame` (0 à 6) : il grandit et
+ * s'éclaire jusqu'à 40 %, puis pâlit à 35 %. En mouvement réduit, il apparaît en fondu, sans grandir.
+ */
+export function unlockRing(
+  frame: number,
+  reducedMotion: boolean,
+): { readonly opacity: number; readonly scale: number } {
+  const progress = Math.min(frame, RING_STEPS) / RING_STEPS;
+  if (reducedMotion) return { opacity: progress, scale: 1 };
+  const opacity =
+    progress <= RING_PEAK
+      ? progress / RING_PEAK
+      : 1 - ((1 - RING_REST) * (progress - RING_PEAK)) / (1 - RING_PEAK);
+  return { opacity, scale: 1 - (1 - RING_FROM) * (1 - progress) };
+}
+
+/** L'anneau d'or d'un nœud tout juste débloqué (D1). Décoratif. */
+function UnlockRing({ code }: { readonly code: PowerTreeCode }) {
+  const reduced = useReducedMotion();
+  const { opacity, scale } = unlockRing(useSteps(RING_STEPS, RING_STEP_MS), reduced);
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      pointerEvents="none"
+      testID={`power-node-ring-${code}`}
+      style={[styles.ring, { opacity, transform: [{ scale }] }]}
+    />
+  );
+}
+
+/** L'icône d'un nœud tout juste débloqué, qui passe de l'ombre à la couleur (D1). */
+function LightingIcon({ code }: { readonly code: PowerTreeCode }) {
+  const reduced = useReducedMotion();
+  const light = unlockLight(useSteps(LIGHT_STEPS, LIGHT_STEP_MS), reduced);
+  return (
+    <View style={{ opacity: SHADOW_OPACITY + (1 - SHADOW_OPACITY) * light }}>
+      <PowerIcon power={code} scale={3} saturation={light} />
+    </View>
+  );
+}
+
+/** L'ombre d'où part l'icône qui s'allume (maquette : `brightness(.55)`). */
+const SHADOW_OPACITY = 0.55;
+
 /**
  * Un nœud de l'arbre de pouvoirs (#235, maquette 232) : l'icône à ×3, le nom, le coût et le type,
- * puis l'état en mot. Toucher un nœud ouvre sa fiche, quel que soit son état. Son trait d'or
- * s'éclaire juste après un déblocage (`fresh`, D1).
+ * puis l'état en mot. Toucher un nœud ouvre sa fiche, quel que soit son état. Juste après un
+ * déblocage (`fresh`, D1), son trait d'or s'éclaire, son icône s'allume et un anneau d'or s'ouvre.
  */
 export function PowerTreeNode({
   code,
@@ -68,14 +133,19 @@ export function PowerTreeNode({
         fresh && styles.fresh,
       ]}
     >
+      {fresh ? <UnlockRing code={code} /> : null}
       {owned ? (
         <View testID={`power-node-tick-${code}`} style={styles.tick}>
           <PixelIcon name="check8" color={roles.ink} />
         </View>
       ) : null}
-      <View style={off && styles.off}>
-        <PowerIcon power={code} scale={3} off={off} />
-      </View>
+      {fresh ? (
+        <LightingIcon code={code} />
+      ) : (
+        <View style={off && styles.off}>
+          <PowerIcon power={code} scale={3} off={off} />
+        </View>
+      )}
       <Text numberOfLines={2} style={styles.name}>
         {TREE_POWER_NAMES[code]}
       </Text>
@@ -104,6 +174,15 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   fresh: { borderColor: roles.gold, backgroundColor: roles.goldBg },
+  ring: {
+    position: 'absolute',
+    top: 12,
+    alignSelf: 'center',
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: roles.gold,
+  },
   off: { opacity: 0.55 },
   tick: {
     position: 'absolute',

@@ -13,11 +13,14 @@ export function PowerIcon({
   power,
   scale,
   off = false,
+  saturation,
   testID,
 }: {
   readonly power: PowerTreeCode;
   readonly scale: 1 | 2 | 3 | 4;
   readonly off?: boolean;
+  /** La saturation (0 : gris, 1 : intacte), pour une icône qui s'allume ; sinon selon `off`. */
+  readonly saturation?: number;
   readonly testID?: string;
 }) {
   return (
@@ -25,7 +28,7 @@ export function PowerIcon({
       sprite={`power-icon:${power}`}
       draw={() => toPixelImage(assetSprite(POWER_ICONS[power]))}
       scale={scale}
-      saturation={off ? 0 : 1}
+      saturation={saturation ?? (off ? 0 : 1)}
       testID={testID ?? `power-icon-${power}`}
     />
   );

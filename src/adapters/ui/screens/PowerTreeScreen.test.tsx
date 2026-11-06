@@ -102,6 +102,12 @@ describe('PowerTreeScreen (#235)', () => {
     expect(
       screen.getByTestId('power-tree-minus', { includeHiddenElements: true }),
     ).toHaveTextContent('−30');
+    expect(
+      screen.getByTestId('power-node-ring-retaliation', { includeHiddenElements: true }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByTestId('power-node-ring-holdFast', { includeHiddenElements: true }),
+    ).toBeNull();
   });
 
   it('pays exactly the price', async () => {
