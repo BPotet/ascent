@@ -503,8 +503,9 @@ pouvoirs (`assets/power<Code>`, 16 × 16, statut `validé`), lues le 06/11/2026,
    (décision de l'orchestrateur du 06/11/2026). Clé `proposals[chosen]` (`chosen: 0`, Rafale
    `chosen: 1`), clés `w`, `h`, `palette` et `rows` seulement, dans
    `sprites/atelier/data/powerIcons.ts` (`POWER_ICONS`). Version 1, sauf **`powerCrushingBlow` en
-   version 2** : son champ `animation` (poses de Fracas, pour #236) n'est pas recopié, et sa sha256
-   est calculée sur la `data` de la version 2. Sha256 dans l'en-tête de `powerIcons.ts`.
+   version 3** : ses champs `animation`, `animStatus`, `animChosen` et `animNote` (poses de Fracas,
+   pour #236) ne sont pas recopiés, son icône est celle de la version 2, et sa sha256 est calculée
+   sur la `data` de la version 3. Sha256 dans l'en-tête de `powerIcons.ts`.
 3. **Recopie par script**, comme aux avenants #227 et #226 : documents lus par `ArtifactData get`,
    en lecture seule, version vérifiée, sha256 du JSON compact de `data`, clés triées, écrite dans
    l'en-tête des fichiers et dans « Données de l'Atelier » de la story.
