@@ -106,8 +106,10 @@ describe('AscentScreen', () => {
     expect(screen.getByTestId('ascent-exits')).toHaveStyle({
       backgroundColor: artPalette.roles.night,
     });
-    const elite = screen.getByRole('button', { name: 'Élite · objet Rare garanti' });
-    expect(elite).toHaveTextContent('Élite · objet Rare garanti', { exact: true });
+    const elite = screen.getByRole('button', {
+      name: 'Élite · objet Rare garanti · coffre scellé',
+    });
+    expect(elite).toHaveTextContent('Élite · objet Rare garanti · coffre scellé', { exact: true });
     expect(screen.queryByText(/Chevalier déchu|Jumeaux/u)).toBeNull();
     fireEvent.press(elite);
 

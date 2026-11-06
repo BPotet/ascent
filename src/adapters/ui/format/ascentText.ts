@@ -92,7 +92,8 @@ export function exitLabel(exit: Exit, gauge: FateGauge = 0): string {
       return cursed ? `${size} · dont 1 maudit` : size;
     }
     case 'elite':
-      return `${cursed ? 'Élite maudite' : 'Élite'} · objet Rare garanti`;
+      // Le coffre scellé qui suit l'Élite gagnée, maudite comprise (#226, CH3).
+      return `${cursed ? 'Élite maudite' : 'Élite'} · objet Rare garanti · coffre scellé`;
     case 'campfire':
       return 'Feu de camp · soin de 40 % des PV';
     case 'boss':

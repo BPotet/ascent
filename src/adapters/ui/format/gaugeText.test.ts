@@ -1,5 +1,6 @@
 import type { FateGaugeReading } from '../../../application/useCases/fateGauge';
 import {
+  KEY_DETAIL_LINE,
   GAUGE_LEVELS,
   GAUGE_SAFEGUARDS,
   ascentFavorEffects,
@@ -62,17 +63,29 @@ describe('the texts of the gauge (#93, #41)', () => {
       { glyph: 'loot', tone: 'favor', text: 'Objets plus fréquents' },
       { glyph: 'rare', tone: 'favor', text: 'Objets Rares plus fréquents' },
       { glyph: 'reroll', tone: 'favor', text: '2 relances' },
+      { glyph: 'key8', tone: 'favor', text: '1 clé' },
       { glyph: 'secondChance', tone: 'favor', text: '1 seconde chance' },
     ]);
   });
 
-  it('lists 1 reroll at +1, after the Rare items (#42)', () => {
+  it('lists 1 reroll at +1, after the Rare items (#42), then 1 key (#226)', () => {
     expect(texts(gaugeEffects(reading({ gauge: 1 })))).toEqual([
       '3 bénédictions de départ',
       'Objets plus fréquents',
       'Objets Rares plus fréquents',
       '1 relance',
+      '1 clé',
     ]);
+  });
+
+  it.each([0, -1, -2] as const)('lists no key at a gauge of %p (#226)', (gauge) => {
+    expect(texts(gaugeEffects(reading({ gauge })))).not.toContain('1 clé');
+  });
+
+  it('tells what a key opens, at +1 and +2 only (#226, J3)', () => {
+    expect(KEY_DETAIL_LINE).toBe(
+      "La clé ouvre le coffre scellé d'une Élite. Elle vaut toute l'ascension.",
+    );
   });
 
   it('lists the fatigue, the rarer Rare items and the cursed enemies of a curse (#209)', () => {
@@ -139,7 +152,7 @@ describe('the announcement of the gauge, never the color alone (#41)', () => {
       "Jauge du jour : Malédiction forte, moins 2. D'après hier : 0 habitude sur 3. Effets : fatigue : PV max moins 20 %, objets Rares moins fréquents, ennemis et Élite maudits. D'après hier, seulement aujourd'hui. L'ascension reste gagnable.",
     );
     expect(gaugeAnnouncement(reading({ gauge: 2, done: 3, expected: 3 }))).toBe(
-      "Jauge du jour : Faveur pleine, plus 2. D'après hier : 3 habitudes sur 3. Effets : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents, 2 relances, 1 seconde chance.",
+      "Jauge du jour : Faveur pleine, plus 2. D'après hier : 3 habitudes sur 3. Effets : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents, 2 relances, 1 clé, 1 seconde chance.",
     );
   });
 
