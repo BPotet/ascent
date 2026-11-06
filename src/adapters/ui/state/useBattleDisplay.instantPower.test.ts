@@ -8,7 +8,7 @@ import { INITIAL_DISPLAY, displayOf } from './useBattleDisplay';
 const battle = startTestBattle({ seed: 1, defenseHint: false, at: 0, hero: 'wanderer' }).battle;
 
 function snapshot(events: readonly BattleEvent[]): BattleSnapshot {
-  return { battle, events, heroHint: false };
+  return { battle, events, heroHint: false, powersHint: false };
 }
 
 const shadowStep: BattleEvent = {

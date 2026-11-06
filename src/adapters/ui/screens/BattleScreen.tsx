@@ -6,8 +6,9 @@ import type { BattleSession } from '../../../application/useCases/BattleSession'
 import type { Battle } from '../../../domain/battle/Battle';
 import type { DefenseButton } from '../../../domain/battle/BattleEvent';
 import { ENEMIES, type EnemyKind } from '../../../domain/battle/combatants';
-import { basePower } from '../../../domain/battle/powers';
+import type { PowerKind } from '../../../domain/battle/powers';
 import { ActionPad } from '../battle/ActionPad';
+import type { ScenePowers } from '../battle/scene/powerScene';
 import { ActionTrack } from '../battle/ActionTrack';
 import { BattleScene, prepareBattleScene } from '../battle/BattleCanvas';
 import { DamageFloat, FeedbackLabel, useShake } from '../battle/BattleEffects';
@@ -108,14 +109,15 @@ export function BattleScreen({
     [session],
   );
   const onPower = useCallback(
-    (touchStartedAt: number, releasedAt: number) =>
+    (power: PowerKind, touchStartedAt: number, releasedAt: number) =>
       session.heroAction(
-        { kind: 'power', power: basePower(heroKind) },
+        { kind: 'power', power },
         toBattleInstant(touchStartedAt),
         toBattleInstant(releasedAt),
       ),
-    [session, heroKind],
+    [session],
   );
+  const onPowerTip = useCallback(() => session.feelPowerTip(), [session]);
   const onAttack = useCallback(
     (touchStartedAt: number, releasedAt: number) =>
       session.heroAction(
@@ -155,6 +157,19 @@ export function BattleScreen({
   const sceneRise = useMemo(
     () => (rise === null ? null : { at: rise.at, until: rise.until }),
     [rise],
+  );
+  // Les pouvoirs de #235 sur la scène : le halo de Tenir bon, le voile de Brume, la marque
+  // d'Entaille sur la cible de la frappe qui la consomme, l'éclat d'or de Représailles.
+  const mist = battle?.hero.mist === true;
+  const rendTarget =
+    battle !== null &&
+    (battle.hero.rend === true ||
+      (battle.phase.kind === 'heroStrike' && battle.phase.rend === true))
+      ? battle.target
+      : null;
+  const scenePowers = useMemo<ScenePowers>(
+    () => ({ healedAt: display.healedAt, mist, rendTarget, retaliation: display.retaliation }),
+    [display.healedAt, mist, rendTarget, display.retaliation],
   );
   const timeline = useMemo(() => (battle === null ? null : sceneTimeline(battle)), [battle]);
   // La frise ne change qu'avec le combat : elle garde ainsi sa frise précédente d'un instantané à
@@ -245,6 +260,7 @@ export function BattleScreen({
             burn={burn}
             summon={summon}
             secondChance={sceneRise}
+            powers={scenePowers}
             reducedMotion={reducedMotion}
             uiNow={uiNow}
           />
@@ -334,6 +350,9 @@ export function BattleScreen({
           {display.snapshot?.heroHint && view.heroActions ? (
             <BattleHintBubble kind="hero" onClose={() => session.dismissHint('hero')} />
           ) : null}
+          {display.snapshot?.powersHint && view.heroActions ? (
+            <BattleHintBubble kind="powers" onClose={() => session.dismissHint('powers')} />
+          ) : null}
           {view.defenseHint ? (
             <BattleHintBubble kind="defense" onClose={() => session.dismissHint('defense')} />
           ) : null}
@@ -345,9 +364,10 @@ export function BattleScreen({
             hero={battle.hero}
             kind={heroKind}
             bulwarkWorn={display.bulwarkWornAt !== null}
-            shadowStepNew={view.pad.kind === 'hero' && view.pad.power.instantCast === true}
+            shadowStepNew={view.pad.kind === 'hero' && view.pad.instantCast === true}
             burnRing={display.burnRing}
             rise={rise === null ? null : { key: rise.key }}
+            healing={battle.phase.kind === 'heroPower' && battle.phase.power === 'holdFast'}
             reducedMotion={reducedMotion}
           />
           <View style={styles.zone}>
@@ -372,6 +392,7 @@ export function BattleScreen({
               onAttack={onAttack}
               onPower={onPower}
               onStrike={onStrike}
+              onPowerTip={onPowerTip}
             />
           </View>
         </>

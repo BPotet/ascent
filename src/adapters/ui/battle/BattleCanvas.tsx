@@ -81,6 +81,13 @@ import {
 import { burnFlames, burnHitFrame } from './scene/burnFlames';
 import { summonDustFrame, summonedOpacity, type SceneSummon } from './scene/summonDust';
 import { risenPose, secondChanceLook, type SceneSecondChance } from './scene/secondChanceRise';
+import {
+  NO_SCENE_POWERS,
+  holdFastHalo,
+  mistVeilOpacity,
+  retaliationBurst,
+  type ScenePowers,
+} from './scene/powerScene';
 import type { HeroPose, SceneBurn, SceneEnemy, SceneSpark, SceneTimeline } from './sceneTypes';
 
 export interface BattleSceneProps {
@@ -121,6 +128,11 @@ export interface BattleSceneProps {
    * le halo d'or et la pose « raise ». Par défaut, aucun.
    */
   readonly secondChance?: SceneSecondChance | null;
+  /**
+   * Les pouvoirs de #235, dessinés en code : le halo de Tenir bon, le voile de Brume, la marque
+   * d'Entaille et l'éclat d'or de Représailles. Par défaut, aucun.
+   */
+  readonly powers?: ScenePowers;
   readonly reducedMotion: boolean;
   /** L'horloge du fil UI : un worklet, sur la base de l'horloge de combat (méthode a). */
   readonly uiNow: () => number;
@@ -242,6 +254,10 @@ const NO_SUMMON: SceneSummon = { pending: [], calledAt: null, entered: {}, fell:
 /** Le halo d'or de la seconde chance (#206, S3), autour du torse du héros, à sa pleine taille. */
 const HALO_RADIUS_DP = 72;
 const HALO_COLORS = [`${artPalette.roles.gold}8C`, `${artPalette.roles.gold}00`];
+/** Le voile de Brume (#235), autour du torse de l'Errante. */
+const MIST_RADIUS_DP = 44;
+/** La marque d'Entaille (#235) : une entaille de braise en travers de la cible, en dp. */
+const REND_MARK = { dx: 12, dy: 10, width: 4 } as const;
 const NO_SLOT: EnemySlot = {
   column: { x: 0, y: 0, width: 0 },
   sprite: { x: 0, y: 0, width: 0, height: 0 },
@@ -516,6 +532,7 @@ export function BattleScene({
   burn = null,
   summon = null,
   secondChance = null,
+  powers = NO_SCENE_POWERS,
   reducedMotion,
   uiNow,
 }: BattleSceneProps) {
@@ -532,6 +549,8 @@ export function BattleScene({
   useEffect(() => sharedBurn.set(burn), [sharedBurn, burn]);
   const sharedRise = useSharedValue(secondChance);
   useEffect(() => sharedRise.set(secondChance), [sharedRise, secondChance]);
+  const sharedPowers = useSharedValue(powers);
+  useEffect(() => sharedPowers.set(powers), [sharedPowers, powers]);
   const sharedSummon = useSharedValue(summon ?? NO_SUMMON);
   useEffect(() => sharedSummon.set(summon ?? NO_SUMMON), [sharedSummon, summon]);
 
@@ -695,6 +714,16 @@ export function BattleScene({
   const riseVeil = useDerivedValue(() => rising.get().veil, [rising]);
   const haloOpacity = useDerivedValue(() => rising.get().halo, [rising]);
   const haloRadius = useDerivedValue(() => HALO_RADIUS_DP * rising.get().haloScale, [rising]);
+  // Le halo d'or de Tenir bon (#235, K12), comme celui de la seconde chance.
+  const holdFast = useDerivedValue(
+    () => holdFastHalo(sharedPowers.get().healedAt, clock.get(), reducedMotion),
+    [sharedPowers, clock, reducedMotion],
+  );
+  const holdFastOpacity = useDerivedValue(() => holdFast.get().halo, [holdFast]);
+  const holdFastRadius = useDerivedValue(
+    () => HALO_RADIUS_DP * holdFast.get().haloScale,
+    [holdFast],
+  );
   // L'ombre de Pas de l'ombre (#173) : l'image de l'Errante, glissée derrière elle.
   const ghost = useDerivedValue(
     () => shadowStepGhost(sharedShadowStep.get(), clock.get(), reducedMotion),
@@ -743,6 +772,14 @@ export function BattleScene({
     if (struck !== undefined) {
       for (const [dx, dy] of riposteBurst(lastRiposte, now, reducedMotion)) {
         place('silverShard', 0, struck.x + dx, struck.y + dy);
+      }
+    }
+    // L'éclat d'or de Représailles (#235) sur l'ennemi de la contre-attaque renforcée.
+    const { retaliation } = sharedPowers.get();
+    const countered = retaliation === null ? undefined : enemyCenters[retaliation.enemy];
+    if (countered !== undefined) {
+      for (const [dx, dy] of retaliationBurst(retaliation, now, reducedMotion)) {
+        place('gold', 0, countered.x + dx, countered.y + dy);
       }
     }
     // La Brûlure (#171) : les flammes suivent le héros, à son échelle ; l'éclat de braise, au torse.
@@ -808,6 +845,7 @@ export function BattleScene({
     sharedTimeline,
     sharedSpark,
     sharedBulwark,
+    sharedPowers,
     sharedBurn,
     sharedSummon,
     summonCenters,
@@ -861,6 +899,17 @@ export function BattleScene({
     path.lineTo(toX, toY);
     return path;
   }, [hero, toX, toY]);
+  // La marque d'Entaille (#235) : une entaille de braise en travers de la cible de la frappe.
+  const marked = powers.rendTarget === null ? undefined : enemyCenters[powers.rendTarget];
+  const markX = marked?.x ?? null;
+  const markY = marked?.y ?? null;
+  const rendPath = useMemo(() => {
+    const path = Skia.Path.Make();
+    if (markX === null || markY === null) return path;
+    path.moveTo(markX - REND_MARK.dx, markY - REND_MARK.dy);
+    path.lineTo(markX + REND_MARK.dx, markY + REND_MARK.dy);
+    return path;
+  }, [markX, markY]);
   const waveEnd = useDerivedValue(
     () => riposteWave(sharedBulwark.get().riposte, clock.get(), reducedMotion) ?? 0,
     [sharedBulwark, clock, reducedMotion],
@@ -918,6 +967,19 @@ export function BattleScene({
           />
         );
       })}
+      {marked === undefined ? null : (
+        <Path
+          path={rendPath}
+          style="stroke"
+          strokeWidth={REND_MARK.width}
+          color={artPalette.roles.ember}
+        />
+      )}
+      {powers.healedAt === null ? null : (
+        <Circle cx={chest.x} cy={chest.y} r={holdFastRadius} opacity={holdFastOpacity}>
+          <RadialGradient c={vec(chest.x, chest.y)} r={holdFastRadius} colors={HALO_COLORS} />
+        </Circle>
+      )}
       {shadowStep === null ? null : (
         <AtlasSprite
           atlas={scene.heroes[heroKind]}
@@ -954,6 +1016,15 @@ export function BattleScene({
         scale={hero.scale}
         {...(secondChance !== null && { opacity: heroShown })}
       />
+      {powers.mist ? (
+        <Circle
+          cx={chest.x}
+          cy={chest.y}
+          r={MIST_RADIUS_DP}
+          color={artPalette.roles.blue}
+          opacity={mistVeilOpacity(powers.mist)}
+        />
+      ) : null}
       <Path
         path={wavePath}
         style="stroke"

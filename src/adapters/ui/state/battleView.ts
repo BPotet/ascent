@@ -11,8 +11,8 @@ import {
 } from '../../../domain/battle/Battle';
 import type { PhaseDirection } from '../../../domain/battle/BattleEvent';
 import { ENEMIES, type EnemyKind, type HeroKind } from '../../../domain/battle/combatants';
-import { missingMomentum } from '../../../domain/battle/momentum';
 import { POWERS, type PowerKind } from '../../../domain/battle/powers';
+import type { PowerKeyAvailability } from '../format/powerText';
 import { shownIntent, type ShownIntent } from '../../../domain/battle/shownIntent';
 import {
   ENEMY_NAMES,
@@ -31,17 +31,17 @@ export interface LockSpan {
   readonly until: number;
 }
 
-/** Le pouvoir de la case de gauche : son coût, et l'Élan qui manque (0 s'il est disponible). */
+/**
+ * Une touche de pouvoir (#235) : le pouvoir équipé, son coût (`powerCost`), sa disponibilité
+ * (`powerAvailability`, la seule règle) et l'Élan qui manque (0 s'il suffit).
+ */
 export interface PowerSlot {
   readonly power: PowerKind;
   readonly cost: number;
+  readonly availability: PowerKeyAvailability;
   readonly missing: number;
-  /** Le pouvoir est actif : indisponible jusqu'à son emploi (prototype #90, PW3 de #235). */
-  readonly active?: true;
   /** Un pouvoir instantané (#173) : il ne prend pas l'action du héros. */
   readonly instant?: true;
-  /** Le pouvoir instantané vient d'être lancé dans cette phase du héros (#173). */
-  readonly instantCast?: true;
 }
 
 /**
@@ -79,7 +79,10 @@ export type ActionPad =
       readonly kind: 'hero';
       readonly locked: boolean;
       readonly lock: LockSpan | null;
-      readonly power: PowerSlot;
+      /** Les 1 à 3 pouvoirs équipés, dans l'ordre de l'arbre (#235). */
+      readonly powers: readonly PowerSlot[];
+      /** Un pouvoir instantané vient d'être lancé dans cette phase du héros (#173). */
+      readonly instantCast?: true;
     }
   | {
       readonly kind: 'strike';
@@ -188,16 +191,16 @@ function instantCast(battle: Battle): boolean {
   return battle.phase.kind === 'hero' && battle.phase.instantPowerUsed === true;
 }
 
-function powerSlot(battle: Battle): PowerSlot {
-  const power = equippedOf(battle)[0]!;
+function powerSlot(battle: Battle, power: PowerKind): PowerSlot {
   const cost = powerCost(battle, power);
+  const availability = powerAvailability(battle, power);
   return {
     power,
     cost,
-    missing: missingMomentum(battle.hero.momentum, cost),
-    ...(powerAvailability(battle, power).kind === 'active' && { active: true as const }),
+    // Un pouvoir équipé n'est jamais `notEquipped` ici : `equippedOf` le liste.
+    availability: availability.kind as PowerKeyAvailability,
+    missing: availability.kind === 'missing' ? availability.missing : 0,
     ...(POWERS[power].instant && { instant: true as const }),
-    ...(instantCast(battle) && { instantCast: true as const }),
   };
 }
 
@@ -332,7 +335,8 @@ export function battleView(battle: Battle): BattleView {
     kind: 'hero',
     locked,
     lock,
-    power: powerSlot(battle),
+    powers: equippedOf(battle).map((power) => powerSlot(battle, power)),
+    ...(instantCast(battle) && { instantCast: true as const }),
   });
   switch (phase.kind) {
     case 'hero':

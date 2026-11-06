@@ -28,6 +28,7 @@ import { BleedChip } from './BleedChip';
 import { BulwarkChip } from './BulwarkChip';
 import { BurnChip, type BurnRing } from './BurnChip';
 import { SecondChanceChip } from './SecondChanceChip';
+import { PowerChip } from './PowerChip';
 import { ShadowStepChip } from './ShadowStepChip';
 
 /** La part des PV sous laquelle la barre passe en alerte (maquette : 30 %). */
@@ -152,6 +153,9 @@ function MomentumDiamonds({
  * chaque prise ou extinction (`burnRing`, #171). La pastille de la seconde chance (#206) est prête
  * ou barrée ; pendant son relèvement (`rise`), la barre se vide puis se remplit d'or.
  */
+/** Les charges de #235, une étiquette chacune sous les PV, dans l'ordre de l'arbre. */
+const CHARGES = ['retaliation', 'rend', 'mist'] as const;
+
 export function HeroBar({
   hero,
   kind = 'sentinel',
@@ -159,6 +163,7 @@ export function HeroBar({
   shadowStepNew = false,
   burnRing = null,
   rise = null,
+  healing = false,
   reducedMotion = false,
 }: {
   readonly hero: HeroState;
@@ -168,6 +173,8 @@ export function HeroBar({
   readonly burnRing?: BurnRing | null;
   /** Le relèvement de la seconde chance en cours (#206) ; une nouvelle clé le rejoue. */
   readonly rise?: { readonly key: number } | null;
+  /** Le soin de Tenir bon (#235, K12) : la barre de PV en or, le temps de l'action. */
+  readonly healing?: boolean;
   readonly reducedMotion?: boolean;
 }) {
   const ratio = hero.hp / hero.maxHp;
@@ -177,6 +184,9 @@ export function HeroBar({
     ...(hero.bleed ? [bleedChipText(hero.bleed.rounds)] : []),
     ...(hero.burn === undefined ? [] : [burnLabel(hero.burn)]),
     ...(hero.shadowStep === true ? [POWER_NAMES.shadowStep] : []),
+    ...CHARGES.filter((power) => hero[power] === true).map(
+      (power) => `${POWER_NAMES[power]} actif`,
+    ),
     ...(hero.secondChance === undefined ? [] : [secondChanceLabel(hero.secondChance)]),
   ];
   const label = `${name}, PV ${hero.hp} sur ${hero.maxHp}, ${momentumLabel(hero.momentum)}${active.map((power) => `, ${power}`).join('')}`;
@@ -187,7 +197,12 @@ export function HeroBar({
         <View style={styles.track}>
           <View
             testID="battle-hero-hp"
-            style={[styles.hp, ratio < LOW_HP_RATIO && styles.low, { width: `${100 * ratio}%` }]}
+            style={[
+              styles.hp,
+              ratio < LOW_HP_RATIO && styles.low,
+              healing && styles.healing,
+              { width: `${100 * ratio}%` },
+            ]}
           />
           {rise === null ? null : (
             <RiseFill key={rise.key} ratio={ratio} reducedMotion={reducedMotion} />
@@ -203,6 +218,13 @@ export function HeroBar({
         </View>
       ) : null}
       {hero.shadowStep === true ? <ShadowStepChip fresh={shadowStepNew} /> : null}
+      {CHARGES.some((power) => hero[power] === true) ? (
+        <View testID="battle-hero-charges" style={styles.ailments}>
+          {CHARGES.filter((power) => hero[power] === true).map((power) => (
+            <PowerChip key={power} power={power} />
+          ))}
+        </View>
+      ) : null}
       {hero.secondChance === undefined ? null : (
         <SecondChanceChip used={hero.secondChance === 'used'} />
       )}
@@ -232,6 +254,7 @@ const styles = StyleSheet.create({
   },
   hp: { height: '100%', borderRadius: 4, backgroundColor: battleColors.heroHp },
   low: { backgroundColor: battleColors.heroHpLow },
+  healing: { backgroundColor: artPalette.roles.gold },
   hpText: {
     color: battleColors.text,
     fontSize: 13,

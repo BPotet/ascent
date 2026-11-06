@@ -13,7 +13,7 @@ const withBurn = (burn?: number): Battle => ({
 });
 
 function snapshot(events: readonly BattleEvent[], battle: Battle = started): BattleSnapshot {
-  return { battle, events, heroHint: false };
+  return { battle, events, heroHint: false, powersHint: false };
 }
 
 const display = (events: readonly BattleEvent[], battle?: Battle) =>
