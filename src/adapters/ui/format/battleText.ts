@@ -103,7 +103,11 @@ export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {
 
 export const POWER_NAMES: Readonly<Record<PowerKind, string>> = {
   bulwark: 'Rempart',
+  retaliation: 'Représailles',
+  holdFast: 'Tenir bon',
   shadowStep: "Pas de l'ombre",
+  rend: 'Entaille',
+  mist: 'Brume',
 };
 
 /** Les héros, leur équipement de base, leur pouvoir et leur trait (prototype #90, maquette H1, H2). */
@@ -139,6 +143,13 @@ const POWER_EFFECTS: Readonly<Record<PowerKind, string>> = {
   // La `powerDescription` du Codex (`wanderer` v3), recopiée mot pour mot le 01/11/2026 (#173).
   shadowStep:
     "Elle se fond dans sa propre ombre sans s'arrêter, et frappe dans le même élan. Sa prochaine esquive complète déclenche une contre-attaque, comme si le coup l'avait traversée sans la trouver.",
+  // La `description` des fiches `codex/<code>` version 1 (#235).
+  retaliation:
+    'Elle a compté chaque coup reçu sur le rempart. Le prochain, elle le rendra deux fois.',
+  holdFast:
+    "Une sentinelle ne tombe pas tant que la nuit n'est pas finie. Elle serre les dents, et la nuit continue.",
+  rend: "Une seule ligne, fine comme un fil, à l'endroit exact où l'armure cédera.",
+  mist: "Le froid du matin monte du sol avec elle. Ce qui la frappe frappe d'abord le brouillard.",
 };
 
 /** La fiche d'un héros sur l'écran du choix du héros. */

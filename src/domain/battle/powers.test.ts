@@ -36,7 +36,16 @@ describe('the power registry (#235)', () => {
 
 describe('the order of the powers (#235)', () => {
   it('sorts the powers of a hero in the order of the tree', () => {
-    expect(powerOrder('sentinel', ['bulwark'])).toEqual(['bulwark']);
+    expect(powerOrder('sentinel', ['holdFast', 'bulwark', 'retaliation'])).toEqual([
+      'bulwark',
+      'retaliation',
+      'holdFast',
+    ]);
+    expect(powerOrder('wanderer', ['mist', 'rend', 'shadowStep'])).toEqual([
+      'shadowStep',
+      'rend',
+      'mist',
+    ]);
   });
 
   it('drops a duplicate and a power of another hero', () => {

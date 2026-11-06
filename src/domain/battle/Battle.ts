@@ -95,6 +95,14 @@ export interface HeroState {
   readonly burn?: number;
   /** La seconde chance de la faveur (#206), prête ou utilisée ; absente, le héros n'en a pas. */
   readonly secondChance?: 'ready' | 'used';
+  /** Représailles est actif (#235) : la prochaine contre-attaque à 200 % ; absent, non. */
+  readonly retaliation?: true;
+  /** Brume est active (#235) : le prochain impact à dégâts à 50 % ; absente, non. */
+  readonly mist?: true;
+  /** Entaille attend la prochaine frappe en rythme (#235) ; absente, non. */
+  readonly rend?: true;
+  /** Les pouvoirs « une fois par combat » déjà lancés (#235) ; absent, aucun. */
+  readonly spent?: readonly PowerKind[];
 }
 
 export interface EnemyState {
@@ -228,6 +236,8 @@ export type BattlePhase =
       readonly until: number;
       /** Le rang du coup, pour un héros qui frappe plusieurs fois (prototype #90). */
       readonly hit?: number;
+      /** Entaille (#235) : chaque coup de cette frappe retire 150 % de son Brise-garde. */
+      readonly rend?: true;
     }
   | {
       readonly kind: 'heroPower';
@@ -491,6 +501,7 @@ export function powerCost(_battle: Battle, power: PowerKind): number {
 export type PowerAvailability =
   | { readonly kind: 'available' }
   | { readonly kind: 'notEquipped' }
+  | { readonly kind: 'usedThisBattle' }
   | { readonly kind: 'active' }
   | { readonly kind: 'instantUsed' }
   | { readonly kind: 'missing'; readonly missing: number };
@@ -502,11 +513,16 @@ function isActive(hero: HeroState, power: PowerKind): boolean {
       return hero.bulwark;
     case 'shadowStep':
       return hero.shadowStep === true;
+    case 'holdFast':
+      return false;
+    default:
+      return hero[power] === true;
   }
 }
 
 export function powerAvailability(battle: Battle, power: PowerKind): PowerAvailability {
   if (!equippedOf(battle).includes(power)) return { kind: 'notEquipped' };
+  if (battle.hero.spent?.includes(power)) return { kind: 'usedThisBattle' };
   if (isActive(battle.hero, power)) return { kind: 'active' };
   const { phase } = battle;
   if (POWERS[power].instant && phase.kind === 'hero' && phase.instantPowerUsed) {
@@ -1087,7 +1103,15 @@ function resolveBlow(
   // Le Rempart s'use au premier impact qui fait des dégâts, et la riposte part à la fin du coup.
   const worn = battle.hero.bulwark && blow.damage > 0;
   if (worn) events.push({ type: 'bulwarkWorn', at: blow.at, enemy: step.enemy });
-  const hero = { ...battle.hero, hp: heroHp, bulwark: battle.hero.bulwark && !worn };
+  // Brume s'use comme le Rempart, sans riposte (#235).
+  const { mist, ...rest } = battle.hero;
+  const misted = mist === true && blow.damage > 0;
+  if (misted) events.push({ type: 'mistWorn', at: blow.at, enemy: step.enemy });
+  const hero = {
+    ...(misted ? rest : battle.hero),
+    hp: heroHp,
+    bulwark: battle.hero.bulwark && !worn,
+  };
   const resolved = withStep(
     {
       ...battle,
@@ -1166,8 +1190,8 @@ function burnOn(
 }
 
 /**
- * Les dégâts subis par le héros : réduction des dégâts (plafonnée à 40 %), puis le Rempart s'il
- * est actif ; un seul arrondi.
+ * Les dégâts subis par le héros : réduction des dégâts (plafonnée à 40 %), puis le Rempart et Brume
+ * (#235) s'ils sont actifs ; un seul arrondi.
  */
 function heroDamage(battle: Battle, damage: number, ...percents: readonly number[]): number {
   const reduction =
@@ -1177,7 +1201,8 @@ function heroDamage(battle: Battle, damage: number, ...percents: readonly number
       MAX_DAMAGE_REDUCTION_PERCENT,
     );
   const bulwark = battle.hero.bulwark ? [BULWARK_DAMAGE_PERCENT] : [];
-  return scaleDamage(damage, ...percents, reduction, ...bulwark);
+  const mist = battle.hero.mist ? [POWERS.mist.damageTakenPercent!] : [];
+  return scaleDamage(damage, ...percents, reduction, ...bulwark, ...mist);
 }
 
 function sufferImpact(battle: Battle, events: Events, index: number): Battle {
@@ -1314,9 +1339,18 @@ function counterAttack(battle: Battle, events: Events): Battle {
     stunnedBonusPercent: modifiers.stunnedBonusPercent,
   };
   const riposte = counter.by === 'bulwark';
+  // Représailles renforce une contre-attaque ordinaire seulement, jamais la riposte (#235).
+  const { retaliation, ...rest } = battle.hero;
+  const retaliated = !riposte && retaliation === true;
   const blow = riposte
     ? bulwarkCounterBlow({ ...input, ...hero.bulwarkCounter! })
-    : counterBlow(input);
+    : counterBlow({
+        ...input,
+        ...(retaliated && {
+          hpPercent: POWERS.retaliation.counterHpPercent!,
+          guardPercent: POWERS.retaliation.counterGuardPercent!,
+        }),
+      });
   events.push({
     type: riposte ? 'bulwarkCountered' : 'counterAttacked',
     at: counter.at,
@@ -1324,8 +1358,12 @@ function counterAttack(battle: Battle, events: Events): Battle {
     damage: blow.hp,
     guardDamage: blow.guard,
     until: counter.until,
+    ...(retaliated && { retaliation: true as const }),
   });
-  const countered = withStep(battle, { ...step, counter: { ...counter, done: true } });
+  const countered = withStep(retaliated ? { ...battle, hero: rest } : battle, {
+    ...step,
+    counter: { ...counter, done: true },
+  });
   const by = riposte ? 'bulwarkCounter' : 'counter';
   const hit = hitEnemy(countered, events, step.enemy, blow, { at: counter.at, by });
   return hit.broken ? startHitStop(hit.battle, events, counter.at) : hit.battle;
@@ -1588,13 +1626,17 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
   const hit = phase.hit ?? 1;
   const judgement = phase.press?.judgement ?? null;
   const modifiers = heroModifiers(battle);
+  const rend = phase.rend === true;
   const blow = strikeBlow({
     attackPower: heroAttack(hero.attackPower, modifiers),
     guardDamage: hero.guardDamage,
     multiplier: strikeMultiplier(judgement, modifiers.perfectStrikeBonusPercents),
     stunned: battle.enemies[phase.enemy]!.stun !== null,
     attackPercents: modifiers.attackPercents,
-    guardPercents: modifiers.guardDamagePercents,
+    guardPercents: [
+      ...modifiers.guardDamagePercents,
+      ...(rend ? [POWERS.rend.guardPercentNextStrike!] : []),
+    ],
     stunnedBonusPercent: modifiers.stunnedBonusPercent,
   });
   events.push({
@@ -1606,6 +1648,7 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
     damage: blow.hp,
     guardDamage: blow.guard,
     ...(hero.hits > 1 && { hit }),
+    ...(rend && { rend }),
   });
   const struck = hitEnemy(
     { ...battle, phase: { ...phase, resolved: true } },
@@ -1619,7 +1662,7 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
   if (hit >= hero.hits || !isStanding(resolved.enemies[phase.enemy]!)) return resolved;
   // Le coup suivant (les Dagues jumelles), décalé par l'arrêt sur image ; perdu si la cible tombe.
   const impactAt = phase.impactAt + hero.hitIntervalMs + (stopped ? HIT_STOP_MS : 0);
-  return startStrike(resolved, events, { enemy: phase.enemy, at, impactAt, hit: hit + 1 });
+  return startStrike(resolved, events, { enemy: phase.enemy, at, impactAt, hit: hit + 1, rend });
 }
 
 /** Un coup de la frappe en rythme commence : son impact, et sa récupération après la fenêtre. */
@@ -1631,11 +1674,13 @@ function startStrike(
     at,
     impactAt,
     hit,
+    rend,
   }: {
     readonly enemy: number;
     readonly at: number;
     readonly impactAt: number;
     readonly hit: number;
+    readonly rend: boolean;
   },
 ): Battle {
   const until = missDeadline(impactAt, battle.inputOffset) + STRIKE_RECOVERY_MS;
@@ -1652,6 +1697,7 @@ function startStrike(
       resolved: false,
       until,
       ...(multiple && { hit }),
+      ...(rend && { rend: true as const }),
     },
   };
 }
@@ -1687,19 +1733,56 @@ function startHeroAction(battle: Battle, phase: BattlePhase): Battle {
 
 /**
  * La frappe en rythme (`TimedStrike`) commence sur `enemy` : son premier coup, après la
- * préparation. Toute frappe en rythme du héros part d'ici (#235).
+ * préparation. Toute frappe en rythme du héros part d'ici (#235) : Entaille, en attente, passe du
+ * héros à la frappe, qui la consomme.
  */
 function startTimedStrike(
   battle: Battle,
   events: Events,
   { enemy, at }: { readonly enemy: number; readonly at: number },
 ): Battle {
-  return startStrike(battle, events, { enemy, at, impactAt: at + STRIKE_WIND_UP_MS, hit: 1 });
+  const { rend, ...hero } = battle.hero;
+  return startStrike(rend ? { ...battle, hero } : battle, events, {
+    enemy,
+    at,
+    impactAt: at + STRIKE_WIND_UP_MS,
+    hit: 1,
+    rend: rend === true,
+  });
 }
 
 function attack(battle: Battle, events: Events, at: number): Battle {
   const struck = startTimedStrike(battle, events, { enemy: battle.target, at });
   return gainMomentumAt(startHeroAction(struck, struck.phase), events, at);
+}
+
+/**
+ * Tenir bon (#235) : 20 % des PV max rendus (entier inférieur, au moins 1, sans dépasser le
+ * maximum ; 0 à PV max), la Brûlure éteinte, le Saignement arrêté ; une fois par combat.
+ */
+function holdFast(hero: HeroState, events: Events, at: number): HeroState {
+  const { healMaxHpPercent, healMin } = POWERS.holdFast;
+  const heal = Math.min(
+    hero.maxHp - hero.hp,
+    Math.max(healMin!, Math.floor((hero.maxHp * healMaxHpPercent!) / 100)),
+  );
+  const { burn, bleed, ...rest } = hero;
+  events.push({ type: 'heroHealed', at, power: 'holdFast', heal, heroHp: hero.hp + heal });
+  if (burn !== undefined) events.push({ type: 'burnCleared', at });
+  if (bleed !== undefined) events.push({ type: 'bleedStopped', at });
+  return { ...rest, hp: hero.hp + heal, spent: [...(hero.spent ?? []), 'holdFast'] };
+}
+
+/** L'effet d'un pouvoir lancé sur le héros : sa charge posée, ou le soin de Tenir bon (#235). */
+function powerEffect(hero: HeroState, power: PowerKind, events: Events, at: number): HeroState {
+  switch (power) {
+    case 'bulwark':
+      return { ...hero, bulwark: true };
+    case 'holdFast':
+      return holdFast(hero, events, at);
+    default:
+      return { ...hero, [power]: true };
+  }
 }
 
 /**
@@ -1717,10 +1800,7 @@ function activatePower(
   const momentum = battle.hero.momentum - powerCost(battle, power);
   events.push({ type: 'powerUsed', at, power, until, ...(instant && { instant }) });
   events.push({ type: 'momentumChanged', at, momentum });
-  const hero =
-    power === 'shadowStep'
-      ? { ...battle.hero, momentum, shadowStep: true }
-      : { ...battle.hero, momentum, bulwark: true };
+  const hero = powerEffect({ ...battle.hero, momentum }, power, events, at);
   if (instant) return { ...battle, hero, phase: { ...phase, instantPowerUsed: true } };
   return startHeroAction({ ...battle, hero }, { kind: 'heroPower', power, since: at, until });
 }
