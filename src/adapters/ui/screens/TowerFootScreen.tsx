@@ -430,6 +430,7 @@ export function TowerFootScreen({
         confirmLabel={(hero) => `Continuer avec ${heroInSentence(hero)}`}
         onStart={(hero) => start(choosing, hero)}
         onClose={() => setChoosing(null)}
+        equipped={campView.equipped}
       />
     );
   }
