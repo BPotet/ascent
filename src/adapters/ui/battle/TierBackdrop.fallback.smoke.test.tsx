@@ -9,7 +9,7 @@ import '@shopify/react-native-skia/jestSetup';
 import { render, screen } from '@testing-library/react-native';
 
 import * as spriteCanvas from '../pixelArt/SpriteCanvas';
-import { TierBackdrop, tierBackdropImage } from './TierBackdrop';
+import { TierBackdrop, TowerFootBackdrop, tierBackdropImage } from './TierBackdrop';
 
 type Node = NonNullable<ReturnType<typeof screen.toJSON>>;
 
@@ -35,4 +35,17 @@ it('draws nothing but the veil when the image of the backdrop cannot be made', a
   expect(drawnTypes()).not.toContain('skImage');
   expect(drawnTypes()).toContain('skRect');
   expect(screen.getByTestId('tier-backdrop', { includeHiddenElements: true })).toBeTruthy();
+});
+
+it('draws nothing but the veil at the tower foot too, with the same cache (#233)', async () => {
+  const toSkImage = jest.spyOn(spriteCanvas, 'toSkImage').mockReturnValue(null);
+  toSkImage.mockClear();
+
+  await render(<TowerFootBackdrop tier={2} headerBottom={156} />);
+
+  expect(toSkImage).toHaveBeenCalledTimes(1);
+  expect(tierBackdropImage(2)).toBeNull();
+  expect(drawnTypes()).not.toContain('skImage');
+  expect(drawnTypes()).toContain('skRect');
+  expect(screen.getByTestId('tower-foot-backdrop', { includeHiddenElements: true })).toBeTruthy();
 });
