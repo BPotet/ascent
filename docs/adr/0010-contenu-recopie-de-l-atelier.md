@@ -436,3 +436,26 @@ pose `idle0`, ce que l'en-tête de chaque fichier note.
    `clockJack` deviennent des identifiants de sauvegarde (avenant #152) : ils ne changent plus.
 5. **Teintes.** Toutes les teintes des trois animations, de la palette rouge du Jaquemart et des
    trois icônes sont déjà dans `artPalette` : aucune n'est ajoutée.
+
+## Avenant du 6 novembre 2026 (#227) : les images du Coffre
+
+Le Coffre fermé et ouvert (Atelier, `assets/chest` et `assets/chestOpen`, lus le 06/11/2026,
+version 1, proposition « Coffre de chêne », `chosen: 0`, statut `validé`) sont recopiés dans
+`sprites/atelier/data/chest.ts` (`CHEST_IMAGE`, `CHEST_OPEN_IMAGE`), clé `proposals[chosen]`, clés
+`w`, `h`, `palette` et `rows` seulement, 32 × 24. Aucune fiche Codex : le Coffre n'est qu'un
+habillage.
+
+1. **Recopie par script.** Cette fois, l'outil de lecture de l'Atelier écrit les deux documents en
+   fichiers (`out_dir`) : ils sont lus par `ArtifactData get`, en lecture seule, puis recopiés par
+   un script qui vérifie la version, le statut et la proposition, et calcule la sha256 du JSON
+   compact de `data`, clés triées (règle de l'avenant #212). Les sha256 sont écrites dans l'en-tête
+   du fichier et dans « Données de l'Atelier » de la story. Une version autre que 1 arrête la
+   recopie.
+2. **Contrôle de fidélité.** `chest.data.test.ts` compare les deux images, pixel pour pixel, à
+   `ART.chest.A` et `ART.chestOpen.A` de la maquette validée versionnée
+   `docs/mockups/208-coffres-cles/index.html`, et vérifie leurs dimensions, leurs teintes (toutes
+   dans `artPalette`) et l'absence du rouge du **Sceau**. Dans cette maquette, `ART` est rangé par
+   image puis par proposition (`A`, `B`), et la palette s'appelle `palette` : le lecteur
+   `sprites/atelier/testing/mockup208.ts` en tient compte, et le coffre scellé (#226) le réutilise.
+3. **Teintes.** Toutes les teintes des deux images sont déjà dans `artPalette` : aucune n'est
+   ajoutée.

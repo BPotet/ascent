@@ -5,7 +5,6 @@ import type { AscentSession } from '../../../application/useCases/AscentSession'
 import type { LogExport } from '../../../application/useCases/exportAscentLog';
 import { canReroll, type Ascent, type TierPassage } from '../../../domain/ascent/Ascent';
 import { favorRerolls } from '../../../domain/ascent/fateGauge';
-import { ITEMS } from '../../../domain/ascent/items';
 import { loadoutOf } from '../../../domain/ascent/loadout';
 import { SUMMIT_SHARDS, shardSum } from '../../../domain/ascent/shards';
 import { BoonChoicePanel } from '../battle/BoonChoicePanel';
@@ -13,6 +12,7 @@ import type { SceneArea } from '../battle/scene/backdropVeil';
 import { TierBackdrop } from '../battle/TierBackdrop';
 import { BlessingChoice } from '../components/BlessingChoice';
 import { ExitChoice } from '../components/ExitChoice';
+import { FoundItemPanel } from '../components/FoundItemPanel';
 import { LoadoutButton } from '../components/LoadoutButton';
 import { LogExportButton } from '../components/LogExportButton';
 import { LoadoutSheet } from '../components/LoadoutSheet';
@@ -22,25 +22,16 @@ import {
   bossDefeatedAnnouncement,
   floorLine,
   goldText,
-  itemDescription,
-  itemText,
   shardText,
   shardsWonText,
   summitAnnouncement,
   tierAnnouncement,
-  wornText,
 } from '../format/ascentText';
 import { HERO_NAMES } from '../format/battleText';
-import { rarityLine } from '../format/rarityText';
 import { artPalette } from '../pixelArt/artPalette';
 import { PixelButton } from '../pixelArt/PixelButton';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypography';
-import { ITEM_IMAGES } from '../pixelArt/sprites/atelier/data/itemImages';
-import { assetSprite } from '../pixelArt/sprites/atelier/fullAnimation';
-import { itemSilhouette } from '../pixelArt/sprites/itemSilhouettes';
-import { toPixelImage } from '../pixelArt/sprites/Sprite';
-import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
 import { useAscent } from '../state/useAscent';
 import { useLargeText } from '../state/useLargeText';
 import { useShardTotal } from '../state/useShardTotal';
@@ -194,6 +185,11 @@ function Countdown({ onDone }: { readonly onDone: () => void }) {
       <Text style={styles.big}>{left}</Text>
     </View>
   );
+}
+
+/** La clé de l'objet trouvé en attente (#227) : son palier, son étage et l'objet ; `null` sans objet. */
+function foundItemKey(ascent: Ascent): string | null {
+  return ascent.foundItem === null ? null : `${ascent.tier}-${ascent.floor}-${ascent.foundItem}`;
 }
 
 /** Annonce `message` au lecteur d'écran, une fois, à l'affichage de l'écran. */
@@ -357,6 +353,9 @@ export function AscentScreen({
 }: AscentScreenProps) {
   const ascent = useAscent(session);
   const shardTotal = useShardTotal(session);
+  // L'objet déjà en attente à l'ouverture de l'écran (#227) : la reprise le montre hors du coffre,
+  // sans rejouer l'ouverture ; un objet trouvé pendant que l'écran est ouvert sort du coffre.
+  const [pendingAtMount] = useState(() => (ascent === null ? null : foundItemKey(ascent)));
   const [counting, setCounting] = useState(() => session.resuming());
   const [paused, setPaused] = useState(false);
   const [mount, setMount] = useState(0);
@@ -549,51 +548,19 @@ export function AscentScreen({
     ) : null;
 
   if (ascent.foundItem !== null) {
-    const { slot, rarity } = ITEMS[ascent.foundItem];
-    const description = itemDescription(ascent.foundItem);
-    const image = ITEM_IMAGES[ascent.foundItem];
+    const revealKey = foundItemKey(ascent);
     return (
       <Screen layout="top" background={roles.night} testID="ascent-item">
         <Header ascent={ascent} onPause={leave} onLoadout={openLoadout} loadoutRef={opener} />
         {gained}
-        <View style={styles.center}>
-          <Text accessibilityRole="header" style={styles.title}>
-            Objet trouvé
-          </Text>
-          {image === undefined ? (
-            <SpriteCanvas
-              sprite={`item-silhouette-${slot}`}
-              draw={() => toPixelImage(itemSilhouette(slot))}
-              scale={3}
-              testID="item-silhouette"
-            />
-          ) : (
-            // L'image validée dans l'Atelier (#119), à la place de la silhouette provisoire.
-            <SpriteCanvas
-              sprite={`item-${ascent.foundItem}`}
-              draw={() => toPixelImage(assetSprite(image))}
-              scale={3}
-              testID="item-image"
-            />
-          )}
-          {rarity === 'epic' && (
-            // Un objet Épique (#195) : sa rareté en losanges et en mot, à la couleur Épique.
-            <Text style={styles.epic}>{rarityLine(rarity)}</Text>
-          )}
-          <Text style={styles.gold}>{itemText(ascent.foundItem)}</Text>
-          {description !== null && <Text style={styles.line}>{description}</Text>}
-          <Text style={styles.line}>{`Tu portes : ${wornText(ascent.equipment, slot)}`}</Text>
-          <Text style={styles.line}>Un objet laissé ne revient pas.</Text>
-          <View style={styles.row}>
-            <PixelButton
-              label="Laisser"
-              variant="secondary"
-              onPress={() => session.leaveItem()}
-              style={styles.half}
-            />
-            <PixelButton label="Équiper" onPress={() => session.equipItem()} style={styles.half} />
-          </View>
-        </View>
+        <FoundItemPanel
+          key={revealKey}
+          item={ascent.foundItem}
+          equipment={ascent.equipment}
+          animate={revealKey !== pendingAtMount}
+          onLeave={() => session.leaveItem()}
+          onEquip={() => session.equipItem()}
+        />
         {loadoutSheet}
       </Screen>
     );
@@ -662,13 +629,6 @@ const styles = StyleSheet.create({
   headerButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
   pause: { minWidth: 84, paddingHorizontal: 14 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'stretch', padding: 24, gap: 12 },
-  title: {
-    fontFamily: pixelFont,
-    fontSize: 22,
-    lineHeight: 26,
-    color: roles.light,
-    textAlign: 'center',
-  },
   big: {
     fontFamily: pixelFont,
     fontSize: 40,
@@ -690,7 +650,6 @@ const styles = StyleSheet.create({
   kept: { color: roles.done, flexShrink: 1 },
   lost: { color: roles.error, flexShrink: 1 },
   line: { ...pixelTypography.body, color: roles.parchment, textAlign: 'center' },
-  epic: { fontFamily: textFont.bold, fontSize: 12, lineHeight: 16, color: roles.rarityEpic },
   gold: {
     fontFamily: pixelFont,
     fontSize: 18,
@@ -698,7 +657,5 @@ const styles = StyleSheet.create({
     color: roles.gold,
     textAlign: 'center',
   },
-  row: { flexDirection: 'row', justifyContent: 'center', gap: 12 },
-  half: { flex: 1 },
   battle: { flex: 1, backgroundColor: roles.night },
 });
