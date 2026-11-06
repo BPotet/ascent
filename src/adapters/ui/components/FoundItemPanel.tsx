@@ -6,6 +6,7 @@ import {
   SKIP_CHEST_LABEL,
   TAP_TO_SKIP,
   chestAnnouncement,
+  itemAnnouncement,
   itemDescription,
   itemText,
   wornText,
@@ -14,6 +15,7 @@ import { rarityLine } from '../format/rarityText';
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize } from '../pixelArt/artPixel';
 import { PixelButton } from '../pixelArt/PixelButton';
+import { PixelIcon } from '../pixelArt/PixelIcon';
 import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypography';
 import { CHEST_IMAGE, CHEST_OPEN_IMAGE } from '../pixelArt/sprites/atelier/data/chest';
 import { ITEM_IMAGES } from '../pixelArt/sprites/atelier/data/itemImages';
@@ -47,6 +49,8 @@ export interface FoundItemPanelProps {
   readonly animate: boolean;
   /** L'objet sort d'un Coffre ; faux, il est montré sans coffre (le coffre scellé, #226). */
   readonly chest?: boolean;
+  /** D'où vient l'objet, au-dessus du titre : « Du coffre scellé » (#226) ; absent, rien. */
+  readonly source?: string;
   readonly onLeave: () => void;
   readonly onEquip: () => void;
 }
@@ -63,6 +67,7 @@ export function FoundItemPanel({
   equipment,
   animate,
   chest = true,
+  source,
   onLeave,
   onEquip,
 }: FoundItemPanelProps) {
@@ -75,10 +80,16 @@ export function FoundItemPanel({
 
   const announced = useRef(false);
   useEffect(() => {
-    if (!revealed || !chest || announced.current) return;
-    announced.current = true;
-    AccessibilityInfo.announceForAccessibility(chestAnnouncement(item));
-  }, [revealed, chest, item]);
+    if (!revealed || announced.current) return;
+    // Sorti d'un Coffre (#227), ou révélé par le coffre scellé (#226) : l'objet est annoncé.
+    if (chest) {
+      announced.current = true;
+      AccessibilityInfo.announceForAccessibility(chestAnnouncement(item));
+    } else if (source !== undefined) {
+      announced.current = true;
+      AccessibilityInfo.announceForAccessibility(`${itemAnnouncement(item)}.`);
+    }
+  }, [revealed, chest, source, item]);
 
   const { slot, rarity } = ITEMS[item];
   const description = itemDescription(item);
@@ -109,6 +120,12 @@ export function FoundItemPanel({
 
   return (
     <View style={styles.center}>
+      {source !== undefined && (
+        <View style={styles.source}>
+          <PixelIcon name="lock" color={roles.muted} />
+          <Text style={styles.sourceText}>{source}</Text>
+        </View>
+      )}
       <Text accessibilityRole="header" style={styles.title}>
         Objet trouvé
       </Text>
@@ -166,6 +183,8 @@ export function FoundItemPanel({
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'stretch', padding: 24, gap: 12 },
+  source: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6 },
+  sourceText: { ...pixelTypography.body, color: roles.muted },
   title: {
     fontFamily: pixelFont,
     fontSize: 22,

@@ -1,7 +1,13 @@
 import { act, fireEvent, screen, within } from '@testing-library/react-native';
 import { AccessibilityInfo, Dimensions } from 'react-native';
 
-import { startAscent, type Ascent } from '../../../domain/ascent/Ascent';
+import {
+  endFloorBattle,
+  leaveItem,
+  openSealedChest,
+  startAscent,
+  type Ascent,
+} from '../../../domain/ascent/Ascent';
 import type { ItemKind } from '../../../domain/ascent/items';
 import { artPalette } from '../pixelArt/artPalette';
 import { MIN_TARGET_SIZE } from '../pixelArt/PixelButton';
@@ -763,6 +769,161 @@ describe('AscentScreen header on a narrow phone (#159)', () => {
     expect(screen.queryByTestId('ascent-header-buttons')).toBeNull();
     expect(screen.getByTestId('ascent-header')).toHaveStyle({ flexDirection: 'row' });
     expect(screen.getByTestId('ascent-status')).toHaveStyle({ flex: 1 });
+  });
+});
+
+describe('AscentScreen with the sealed chest of the Elite (#226)', () => {
+  const hidden = { includeHiddenElements: true } as const;
+  const announce = jest.mocked(AccessibilityInfo.announceForAccessibility);
+
+  /** L'Élite de l'étage 3 gagnée, avec `keys` clés : son objet garanti en attente. */
+  function afterElite(keys: number): Ascent {
+    const ascent: Ascent = {
+      ...startAscent(42, { gauge: 1 }),
+      floor: 3,
+      keys,
+      encounter: { kind: 'elite', enemies: ['twins'], battleSeed: 3 },
+    };
+    return endFloorBattle(ascent, { outcome: 'victory', heroHp: 50 });
+  }
+
+  async function advance(ms: number): Promise<void> {
+    for (let elapsed = 0; elapsed < ms; elapsed += 100) {
+      await act(async () => {
+        jest.advanceTimersByTime(100);
+      });
+    }
+  }
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    announce.mockClear();
+  });
+  afterEach(() => jest.useRealTimers());
+
+  it('shows the guaranteed item, then the sealed chest, then the offer of boons (CH2)', async () => {
+    const { session } = await show(afterElite(1));
+
+    expect(screen.getByRole('header', { name: 'Objet trouvé' })).toBeOnTheScreen();
+    expect(screen.queryByText('Du coffre scellé')).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Laisser' }));
+
+    expect(screen.getByTestId('ascent-sealed-chest')).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Coffre scellé' })).toBeOnTheScreen();
+    expect(screen.queryByTestId('ascent-boons')).toBeNull();
+    expect(session.current()!.boonOffer).not.toBeNull();
+  });
+
+  it('opens the chest with a key, plays the opening, then shows its item « Du coffre scellé » (CH4, CH8)', async () => {
+    const { session } = await show(leaveItem(afterElite(2)));
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: "Ouvrir avec une clé, il t'en reste 2" }),
+    );
+
+    const opened = session.current()!;
+    expect(opened.keys).toBe(1);
+    expect(opened.sealedChest).toMatchObject({ opened: true });
+    expect(screen.getByText("Le coffre s'ouvre…")).toBeOnTheScreen();
+    expect(screen.getByTestId('ascent-keys-float', hidden)).toHaveTextContent('−1 clé');
+    expect(announce).toHaveBeenCalledWith('Coffre scellé ouvert. Il te reste 1 clé.');
+    await advance(800);
+
+    expect(screen.getByText('Du coffre scellé')).toBeOnTheScreen();
+    expect(screen.getByRole('header', { name: 'Objet trouvé' })).toBeOnTheScreen();
+    expect(screen.getByTestId('item-image', hidden)).toHaveProp(
+      'sprite',
+      `item-${opened.foundItem}`,
+    );
+    expect(screen.queryByTestId('ascent-keys-float', hidden)).toBeNull();
+    await fireEvent.press(screen.getByRole('button', { name: 'Équiper' }));
+    expect(Object.values(session.current()!.equipment)).toContain(opened.foundItem);
+    expect(screen.getByTestId('ascent-boons')).toBeOnTheScreen();
+  });
+
+  it('skips the opening on a tap', async () => {
+    await show(leaveItem(afterElite(1)));
+
+    await fireEvent.press(
+      screen.getByRole('button', { name: "Ouvrir avec une clé, il t'en reste 1" }),
+    );
+    await fireEvent.press(screen.getByRole('button', { name: "Passer l'ouverture du coffre" }));
+
+    expect(screen.getByText('Du coffre scellé')).toBeOnTheScreen();
+  });
+
+  it('leaves the chest without confirmation, then tells the keys kept above the offer (S8)', async () => {
+    const { session } = await show(leaveItem(afterElite(2)));
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Laisser' }));
+
+    expect(session.current()).toMatchObject({ keys: 2, sealedChest: null });
+    expect(screen.getByTestId('ascent-boons')).toBeOnTheScreen();
+    expect(screen.getByTestId('sealed-left-band')).toHaveTextContent(
+      'Coffre scellé laissé fermé. Tu gardes tes 2 clés.',
+    );
+    expect(announce).toHaveBeenCalledWith('Coffre scellé laissé. Tu gardes 2 clés.');
+  });
+
+  it('goes on without key, without band, nothing lost (CH5)', async () => {
+    const before = leaveItem(afterElite(0));
+    const { session } = await show(before);
+
+    expect(
+      screen.getByRole('button', { name: 'Aucune clé : il faut une clé pour ouvrir ce coffre' }),
+    ).toBeDisabled();
+    await fireEvent.press(screen.getByRole('button', { name: 'Continuer' }));
+
+    expect(session.current()).toEqual({ ...before, sealedChest: null });
+    expect(screen.getByTestId('ascent-boons')).toBeOnTheScreen();
+    expect(screen.queryByTestId('sealed-left-band')).toBeNull();
+  });
+
+  it('goes straight to the item of an opened chest on a resume, without the opening (CH10)', async () => {
+    const opened = openSealedChest(leaveItem(afterElite(1)));
+    await show(opened);
+
+    expect(screen.queryByText("Le coffre s'ouvre…")).toBeNull();
+    expect(screen.getByText('Du coffre scellé')).toBeOnTheScreen();
+    expect(screen.getByTestId('item-image', hidden)).toHaveProp(
+      'sprite',
+      `item-${opened.foundItem}`,
+    );
+  });
+
+  it('shows a closed chest still waiting on a resume', async () => {
+    await show(leaveItem(afterElite(1)));
+
+    expect(screen.getByRole('header', { name: 'Coffre scellé' })).toBeOnTheScreen();
+  });
+
+  it('tells the keys after the Gold in the header, never 0 (H1, H2)', async () => {
+    await show({ ...startAscent(42), keys: 2 });
+    expect(screen.getByTestId('ascent-status')).toHaveTextContent(
+      'Palier 1 · Étage 1 sur 6 · 80/80 PV · 0 Or · 2 clés',
+    );
+    expect(screen.getByTestId('ascent-status-key', hidden)).toBeOnTheScreen();
+    screen.unmount();
+
+    await show(startAscent(42));
+    expect(screen.getByTestId('ascent-status')).toHaveTextContent(
+      'Palier 1 · Étage 1 sur 6 · 80/80 PV · 0 Or',
+    );
+    expect(screen.queryByTestId('ascent-status-key', hidden)).toBeNull();
+  });
+
+  it('tells the keys at the entry into the tower, before the first battle (F4)', async () => {
+    const { session } = await show(startAscent(42), async (ready) => {
+      ready.begin({ gauge: 2 });
+    });
+
+    expect(screen.getByTestId('ascent-keys-entry')).toBeOnTheScreen();
+    expect(screen.getByText('+1 clé')).toBeOnTheScreen();
+    expect(screen.queryByTestId('battle-screen')).toBeNull();
+    await advance(1_200);
+
+    expect(session.keysEntry()).toBeNull();
+    expect(await screen.findByTestId('battle-screen')).toBeOnTheScreen();
   });
 });
 

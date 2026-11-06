@@ -18,7 +18,8 @@ async function show({
   item = 'axe',
   animate = true,
   chest,
-}: { item?: ItemKind; animate?: boolean; chest?: boolean } = {}) {
+  source,
+}: { item?: ItemKind; animate?: boolean; chest?: boolean; source?: string } = {}) {
   const onLeave = jest.fn();
   const onEquip = jest.fn();
   await render(
@@ -27,6 +28,7 @@ async function show({
       equipment={STARTING_EQUIPMENT}
       animate={animate}
       {...(chest !== undefined && { chest })}
+      {...(source !== undefined && { source })}
       onLeave={onLeave}
       onEquip={onEquip}
     />,
@@ -220,6 +222,33 @@ describe('FoundItemPanel (#227)', () => {
     expect(itemImage()).toBeOnTheScreen();
     expect(buttons()).toHaveLength(2);
     expect(announce).not.toHaveBeenCalledWith(AXE_ANNOUNCEMENT);
+  });
+});
+
+describe('FoundItemPanel from the sealed chest (#226, S4, S5)', () => {
+  beforeEach(() => {
+    announce.mockClear();
+    reduceMotion.mockResolvedValue(false);
+  });
+
+  it('writes « Du coffre scellé » above the title, and announces the item revealed', async () => {
+    await show({ item: 'watchmanShield', chest: false, source: 'Du coffre scellé' });
+
+    const source = screen.getByText('Du coffre scellé');
+    const title = screen.getByRole('header', { name: 'Objet trouvé' });
+    const texts = screen.getAllByText(/^(Du coffre scellé|Objet trouvé)$/u);
+    expect(texts).toEqual([source, title]);
+    expect(stage()).toBeNull();
+    expect(buttons()).toHaveLength(2);
+    expect(announce).toHaveBeenCalledWith(
+      'Bouclier du veilleur, Rare, Chaque parade parfaite rend 3 PV, Initiative −1.',
+    );
+  });
+
+  it('writes no source for the guaranteed item', async () => {
+    await show({ animate: false });
+
+    expect(screen.queryByText('Du coffre scellé')).toBeNull();
   });
 });
 
