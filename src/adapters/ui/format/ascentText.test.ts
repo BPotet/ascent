@@ -1,5 +1,8 @@
 import {
+  SKIP_CHEST_LABEL,
+  TAP_TO_SKIP,
   blessingCard,
+  chestAnnouncement,
   blessingChip,
   blessingText,
   enemiesText,
@@ -14,6 +17,7 @@ import {
   tierLine,
   goldText,
   itemDescription,
+  itemAnnouncement,
   itemEffectLine,
   itemName,
   itemText,
@@ -230,5 +234,27 @@ describe('tier and Shard texts (#38)', () => {
     expect(tierAnnouncement(2)).toBe('Palier 2, les Jardins de cendre');
     expect(tierAnnouncement(3)).toBe('Palier 3, le Beffroi');
     expect(summitAnnouncement(28)).toBe('28 Éclats gagnés, Sommet atteint');
+  });
+});
+
+describe('Chest texts (#227)', () => {
+  it('announces an item by its name, rarity, effect and Initiative, without its slot', () => {
+    expect(itemAnnouncement('axe')).toBe('Hache rouillée, Commun, Brise-garde ×1,1, Initiative −1');
+    expect(itemAnnouncement('hammer')).toBe('Marteau, Rare, Brise-garde ×1,6, Initiative −1');
+    expect(itemAnnouncement('crossbow')).toBe('Arbalète, Rare, Initiative +1');
+    expect(itemAnnouncement('flamberge')).toBe(
+      'Flamberge, Épique, Attaque +10 %, Frappe parfaite +0,3, Initiative 0',
+    );
+  });
+
+  it('announces the opened Chest, then the item', () => {
+    expect(chestAnnouncement('axe')).toBe(
+      'Coffre ouvert. Hache rouillée, Commun, Brise-garde ×1,1, Initiative −1.',
+    );
+  });
+
+  it('names the tap that skips the opening of the Chest', () => {
+    expect(SKIP_CHEST_LABEL).toBe("Passer l'ouverture du coffre");
+    expect(TAP_TO_SKIP).toBe('Touche pour passer');
   });
 });
