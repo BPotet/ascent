@@ -19,6 +19,7 @@ import {
   type LoadoutReserves,
 } from '../../../domain/ascent/loadout';
 import type { Rarity } from '../../../domain/ascent/rarity';
+import type { PowerKind } from '../../../domain/battle/powers';
 import { blessingCard } from '../format/ascentText';
 import { boonCard } from '../format/boonText';
 import { gaugeValue } from '../format/gaugeText';
@@ -34,6 +35,8 @@ import {
   reserveRows,
   reservesHeadingLabel,
   type StateRowText,
+  POWERS_TITLE,
+  powerRows,
 } from '../format/loadoutText';
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize, notchedCorners } from '../pixelArt/artPixel';
@@ -49,6 +52,7 @@ import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
 import { useReducedMotion } from '../state/useReducedMotion';
 import { IconWell, RARITY_COLORS } from './IconWell';
 import { LoadoutHeading, LoadoutNone } from './LoadoutChip';
+import { PowerIcon } from './PowerIcon';
 import { SCROLL_HINT_HEIGHT, ScrollHint } from './ScrollHint';
 
 const { roles } = artPalette;
@@ -188,6 +192,41 @@ function ReservesPart({ reserves }: { readonly reserves: LoadoutReserves }) {
 }
 
 /**
+ * Les pouvoirs équipés de l'ascension (#235, maquette 232 E1) : un en-tête « Pouvoirs · 3 », puis
+ * une ligne par pouvoir, dans l'ordre des touches, avec son icône, son coût, son type et son effet.
+ */
+function PowersPart({ powers }: { readonly powers: readonly PowerKind[] }) {
+  const line = artPixelSize(2);
+  return (
+    <View style={styles.part} testID="loadout-powers">
+      <LoadoutHeading
+        title={POWERS_TITLE}
+        count={String(powers.length)}
+        label={`${POWERS_TITLE}, ${powers.length}`}
+      />
+      {powerRows(powers).map((row) => (
+        <View
+          key={row.power}
+          accessible
+          accessibilityLabel={row.label}
+          testID={`loadout-power-${row.power}`}
+          style={[styles.row, { borderTopWidth: line }]}
+        >
+          <View style={[styles.powerWell, { borderWidth: line }]}>
+            <PowerIcon power={row.power} scale={2} />
+          </View>
+          <View style={styles.rowText}>
+            <Text style={styles.name}>{row.name}</Text>
+            <Text style={[styles.tag, { color: roles.gold }]}>{row.line}</Text>
+            <Text style={styles.effect}>{row.effect}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/**
  * La faveur de l'ascension (#42, maquette 205 E1) : un en-tête « Faveur de l'ascension · +2 », puis
  * ses lignes : les relances, et la seconde chance à +2 (#206).
  */
@@ -293,6 +332,7 @@ export function LoadoutSheet({
               bounces={false}
             >
               {loadout.reserves !== undefined && <ReservesPart reserves={loadout.reserves} />}
+              {loadout.powers !== undefined && <PowersPart powers={loadout.powers} />}
               {loadout.favor !== undefined && <FavorPart favor={loadout.favor} />}
               <Part
                 title="Bénédictions de départ"
@@ -356,6 +396,14 @@ const styles = StyleSheet.create({
     borderTopColor: roles.raised,
   },
   rowText: { flex: 1, gap: 1 },
+  powerWell: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderColor: roles.line,
+    backgroundColor: roles.well,
+  },
   name: { fontFamily: pixelFont, fontSize: 18, lineHeight: 22, color: roles.light },
   tag: { fontFamily: textFont.bold, fontSize: 12, lineHeight: 16 },
   effect: { fontFamily: textFont.medium, fontSize: 13, lineHeight: 18, color: roles.parchment },

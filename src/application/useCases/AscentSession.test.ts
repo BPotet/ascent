@@ -1426,3 +1426,50 @@ describe('AscentSession: the keys and the sealed chest (#226)', () => {
     });
   });
 });
+
+describe('AscentSession: the equipped powers (#235)', () => {
+  async function reloaded(ascent: unknown, battle: Battle | null = null) {
+    const set = setUp();
+    set.store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent, battle }));
+    await set.session.load();
+    return set;
+  }
+
+  it('saves the equipped powers with the ascent, and reads them back unchanged', async () => {
+    const { session, store } = setUp();
+    session.begin({ hero: 'sentinel', powers: ['bulwark', 'retaliation'] });
+    await flush();
+
+    expect(saved(store)?.ascent.powers).toEqual(['bulwark', 'retaliation']);
+    const again = await reloaded(saved(store)!.ascent);
+    expect(again.session.current()?.powers).toEqual(['bulwark', 'retaliation']);
+  });
+
+  it('gives an ascent saved before the update its base power alone', async () => {
+    const { powers: _, ...before } = startAscent(42, { hero: 'wanderer' });
+
+    const { session } = await reloaded(before);
+
+    expect(session.current()?.powers).toEqual(['shadowStep']);
+  });
+
+  it('fights its battles with its equipped powers', async () => {
+    const { session } = setUp();
+    session.begin({ hero: 'wanderer', powers: ['shadowStep', 'rend', 'mist'] });
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    expect(battleSession.current()!.battle.powers).toEqual(['shadowStep', 'rend', 'mist']);
+  });
+
+  it('resumes a battle saved before the update with its base power alone', async () => {
+    const ascent = startAscent(42, { powers: ['bulwark', 'retaliation'] });
+    const { battle } = startBattle({ seed: 3, defenseHint: false, at: 0, enemies: ['ghoul'] });
+
+    const { session } = await reloaded(ascent, battle);
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    expect(battleSession.current()!.battle).not.toHaveProperty('powers');
+  });
+});

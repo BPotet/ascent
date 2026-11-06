@@ -3,7 +3,7 @@
 import { abandonAscent, startAscent } from '../../domain/ascent/Ascent';
 import { campStore, campSetUp, settle, storeShardTotal } from '../testing/campSetUp';
 import { ASCENT_KEY, SHARD_TOTAL_KEY } from './AscentSession';
-import { CAMP_KEY, UNREADABLE_CAMP_KEY } from './CampSession';
+import { CAMP_KEY, POWER_TREES_SEEN_KEY, UNREADABLE_CAMP_KEY } from './CampSession';
 
 /** Un camp chargé, avec le Total d'Éclats `total` et les Déblocages `stored` déjà achetés. */
 async function loaded(total: number, stored?: string) {
@@ -74,6 +74,7 @@ describe('CampSession (#40)', () => {
     expect(JSON.parse(store.values.get(CAMP_KEY)!)).toEqual({
       version: 1,
       unlocks: [{ unlock: 'watchBell', price: 40 }],
+      powers: [],
     });
     expect(camp.view().availableShards).toBe(10);
     expect(seen).toEqual([10]);
@@ -267,5 +268,149 @@ describe('CampSession (#40)', () => {
     ascentSession.begin({});
     expect(await camp.unlock('huntingSpear')).toBe('unlocked');
     expect(seen).toEqual([]);
+  });
+});
+
+describe('CampSession: the power trees (#235)', () => {
+  const nodeStates = (view: ReturnType<Awaited<ReturnType<typeof loaded>>['camp']['view']>) =>
+    Object.fromEntries(
+      view.trees.sentinel.nodes.map(({ code, state }) => [code, state.kind] as const),
+    );
+
+  it('shows both trees, their nodes and states, and the equipped powers', async () => {
+    const { camp } = await loaded(50);
+
+    const view = camp.view();
+    expect(nodeStates(view)).toEqual({
+      bulwark: 'base',
+      shieldBash: 'soon',
+      crushingBlow: 'soon',
+      retaliation: 'affordable',
+      holdFast: 'locked',
+    });
+    expect(view.trees.wanderer.nodes.map(({ code }) => code)).toEqual([
+      'shadowStep',
+      'rend',
+      'flurry',
+      'mist',
+      'ambush',
+    ]);
+    expect(view.trees.sentinel.unlocked).toBe(1);
+    expect(view.equipped).toEqual({ sentinel: ['bulwark'], wanderer: ['shadowStep'] });
+  });
+
+  it('writes an unlock in the same key as the Unlocks, then publishes, with a sound and a vibration', async () => {
+    const { camp, store, sound, haptics } = await loaded(50, STORED_SPEAR);
+    store.hold(CAMP_KEY);
+
+    const buying = camp.unlockPower('retaliation');
+    await settle();
+    expect(camp.view().availableShards).toBe(30);
+
+    store.release(CAMP_KEY);
+    expect(await buying).toBe('unlocked');
+    expect(JSON.parse(store.values.get(CAMP_KEY)!)).toEqual({
+      version: 1,
+      unlocks: [{ unlock: 'huntingSpear', price: 20 }],
+      powers: [{ power: 'retaliation', price: 30 }],
+    });
+    expect(camp.view().availableShards).toBe(0);
+    expect(camp.view().equipped.sentinel).toEqual(['bulwark', 'retaliation']);
+    expect(camp.view().trees.sentinel.unlocked).toBe(2);
+    expect(sound.played).toEqual(['burnCrackle']);
+    expect(haptics.successes()).toBe(1);
+  });
+
+  it('spends nothing when the write fails, and a new try succeeds', async () => {
+    const { camp, store } = await loaded(50);
+    store.failing.add(CAMP_KEY);
+
+    expect(await camp.unlockPower('mist')).toBe('failed');
+    expect(camp.view().availableShards).toBe(50);
+    expect(camp.view().equipped.wanderer).toEqual(['shadowStep']);
+
+    store.failing.delete(CAMP_KEY);
+    expect(await camp.unlockPower('mist')).toBe('unlocked');
+    expect(camp.view().availableShards).toBe(20);
+  });
+
+  it('refuses a locked power, a power strike, a base power, and without enough Shards', async () => {
+    const { camp, store } = await loaded(200);
+
+    expect(await camp.unlockPower('holdFast')).toBe('refused');
+    expect(await camp.unlockPower('shieldBash')).toBe('refused');
+    expect(await camp.unlockPower('bulwark')).toBe('refused');
+    expect(store.writes(CAMP_KEY)).toBe(0);
+    const poor = await loaded(20);
+    expect(await poor.camp.unlockPower('rend')).toBe('refused');
+  });
+
+  it('buys one power at a time', async () => {
+    const { camp, store } = await loaded(100);
+    store.hold(CAMP_KEY);
+
+    const first = camp.unlockPower('rend');
+    expect(await camp.unlockPower('mist')).toBe('refused');
+    store.release(CAMP_KEY);
+
+    expect(await first).toBe('unlocked');
+    expect(store.writes(CAMP_KEY)).toBe(1);
+  });
+
+  it('buys nothing while read-only', async () => {
+    const store = campStore();
+    storeShardTotal(store, 80);
+    store.values.set(CAMP_KEY, '{oops');
+    store.failing.add(UNREADABLE_CAMP_KEY);
+    const { camp, ascentSession } = campSetUp(store);
+    await ascentSession.load();
+    await camp.load();
+
+    expect(await camp.unlockPower('rend')).toBe('failed');
+    expect(store.writes(CAMP_KEY)).toBe(0);
+  });
+
+  it('begins an ascent with the equipped powers of the hero', async () => {
+    const { camp } = await loaded(100);
+    await camp.unlockPower('retaliation');
+    await camp.unlockPower('mist');
+
+    expect(camp.beginAscent({ hero: 'sentinel' })?.powers).toEqual(['bulwark', 'retaliation']);
+  });
+
+  it('keeps a power unlocked during an ascent for the next one', async () => {
+    const { camp, ascentSession } = await loaded(100);
+    camp.beginAscent({ hero: 'sentinel' });
+
+    expect(await camp.unlockPower('retaliation')).toBe('unlocked');
+    expect(ascentSession.current()?.powers).toEqual(['bulwark']);
+    expect(nodeStates(camp.view()).retaliation).toBe('nextAscent');
+
+    ascentSession.abandon();
+    ascentSession.leave();
+    expect(camp.beginAscent({ hero: 'sentinel' })?.powers).toEqual(['bulwark', 'retaliation']);
+  });
+
+  it('keeps the « new » tag of the trees until a tree is opened once', async () => {
+    const { camp, store } = await loaded(50);
+    expect(camp.view().powerTreesSeen).toBe(false);
+
+    await camp.markPowerTreesSeen();
+
+    expect(camp.view().powerTreesSeen).toBe(true);
+    expect(store.values.get(POWER_TREES_SEEN_KEY)).toBe('1');
+    const again = campSetUp(store);
+    await again.ascentSession.load();
+    await again.camp.load();
+    expect(again.camp.view().powerTreesSeen).toBe(true);
+  });
+
+  it('keeps the « new » tag for this visit when it cannot be saved', async () => {
+    const { camp, store } = await loaded(50);
+    store.failing.add(POWER_TREES_SEEN_KEY);
+
+    await camp.markPowerTreesSeen();
+
+    expect(camp.view().powerTreesSeen).toBe(true);
   });
 });

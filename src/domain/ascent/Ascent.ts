@@ -5,6 +5,7 @@
  * viennent de la graine de l'ascension (P9), et un tirage révélé est gardé.
  */
 import { HEROES, type EnemyKind, type HeroKind } from '../battle/combatants';
+import { basePower, powerOrder, type PowerKind } from '../battle/powers';
 import { nextRandom, seedRandom, type BattleSeed, type RandomState } from '../battle/SeededRandom';
 import {
   SECOND_BREATH,
@@ -141,6 +142,11 @@ export interface Ascent {
   readonly passage: TierPassage | null;
   /** Les Déblocages de l'ascension (#195), reçus à son début et gardés jusqu'à sa fin. */
   readonly unlocks: readonly Unlock[];
+  /**
+   * Les pouvoirs équipés (`EquippedPower`, #235), fixés au départ de l'ascension, dans l'ordre de
+   * l'arbre, jusqu'à sa fin ; le pouvoir de base seul par défaut.
+   */
+  readonly powers: readonly PowerKind[];
   /** Cœur de braise a déjà été proposé dans l'ascension, pris ou non (#195). */
   readonly emberHeartOffered: boolean;
   /** Les relances qui restent (#42), données au lancement selon la jauge. */
@@ -167,6 +173,8 @@ export interface AscentLaunch {
   readonly gauge?: FateGauge;
   readonly blessings?: readonly Rarity[];
   readonly unlocks?: readonly Unlock[];
+  /** Les pouvoirs équipés (#235) ; par défaut, le pouvoir de base du héros. */
+  readonly powers?: readonly PowerKind[];
 }
 
 /** Le flux de hasard des bénédictions et du butin : séparé, il ne déplace pas les autres tirages. */
@@ -227,6 +235,7 @@ function combat(size: number, random: RandomState, tier: Tier, gauge: FateGauge)
  */
 export function startAscent(seed: AscentSeed, launch: AscentLaunch = {}): Ascent {
   const { hero: heroKind = 'sentinel', gauge = 0, blessings = [], unlocks = [] } = launch;
+  const powers = powerOrder(heroKind, launch.powers ?? [basePower(heroKind)]);
   const size = drawGroupSize(1, seedRandom(seed), false);
   const first = combat(size.value, size.random, 1, gauge);
   const maxHp = heroMaxHp(HEROES[heroKind].maxHp, 0, fatiguePercent(gauge));
@@ -255,6 +264,7 @@ export function startAscent(seed: AscentSeed, launch: AscentLaunch = {}): Ascent
     shardAwards: [],
     passage: null,
     unlocks: [...new Set(unlocks)],
+    powers,
     emberHeartOffered: false,
     rerolls: favorRerolls(gauge),
     rerollRandom: rerollStream(seed),

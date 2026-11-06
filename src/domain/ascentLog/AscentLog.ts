@@ -17,6 +17,7 @@ import type { Rarity } from '../ascent/rarity';
 import { shardSum } from '../ascent/shards';
 import type { Tier } from '../ascent/tiers';
 import type { HeroKind } from '../battle/combatants';
+import { beyondBasePower, type PowerKind } from '../battle/powers';
 import type { Day } from '../day/Day';
 import { BATTLE_LOG_FORMAT_VERSION, type FloorPlace } from './BattleLog';
 
@@ -130,6 +131,8 @@ interface AscentLogBody {
   readonly blessings: readonly BlessingRecord[];
   /** Les clés reçues (#226) ; absent sans clé. */
   readonly keys?: KeysRecord;
+  /** Les pouvoirs équipés (#235), seulement s'ils diffèrent du pouvoir de base seul. */
+  readonly powers?: readonly PowerKind[];
   readonly floors: readonly FloorRecord[];
   readonly tierPassages: readonly TierPassageRecord[];
   readonly status: 'inProgress' | 'ended';
@@ -218,6 +221,7 @@ export function beginAscentLog(ascent: Ascent, day: Day): AscentLog {
     startingEquipment: ascent.equipment,
     blessings: [],
     ...(favor > 0 && { keys: { favor, fortune: 0 } }),
+    ...(beyondBasePower(ascent.hero.kind, ascent.powers) && { powers: ascent.powers }),
     floors: [floorRecord(ascent)],
     tierPassages: [],
     status: 'inProgress',

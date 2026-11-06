@@ -1,0 +1,272 @@
+/**
+ * Les libellés des pouvoirs (#235) : noms (fiches `codex/<code>` de l'Atelier, version 1), noms de
+ * touche, types, effets, voies, états des nœuds de l'arbre et raisons d'indisponibilité en combat,
+ * tirés du glossaire et de la maquette validée 232 (sections 1, 3 et 7).
+ */
+import type { HeroKind } from '../../../domain/battle/combatants';
+import type { PowerAvailability } from '../../../domain/battle/Battle';
+import { POWERS, type PowerKind } from '../../../domain/battle/powers';
+import {
+  powerPath,
+  powerPrice,
+  powerRank,
+  type PowerNodeState,
+  type PowerPath,
+  type PowerTreeCode,
+} from '../../../domain/ascent/powerTree';
+
+/** Les noms complets des 10 nœuds des arbres, « Coup de bouclier » compris. */
+export const TREE_POWER_NAMES: Readonly<Record<PowerTreeCode, string>> = {
+  bulwark: 'Rempart',
+  shieldBash: 'Coup de bouclier',
+  crushingBlow: 'Fracas',
+  retaliation: 'Représailles',
+  holdFast: 'Tenir bon',
+  shadowStep: "Pas de l'ombre",
+  rend: 'Entaille',
+  flurry: 'Rafale',
+  mist: 'Brume',
+  ambush: 'Frappe furtive',
+};
+
+/** Le nom sur la touche de combat (`buttonName` du Codex), 14 caractères au plus. */
+export const POWER_BUTTON_NAMES: Readonly<Record<PowerKind, string>> = {
+  bulwark: 'Rempart',
+  retaliation: 'Représailles',
+  holdFast: 'Tenir bon',
+  shadowStep: "Pas de l'ombre",
+  rend: 'Entaille',
+  mist: 'Brume',
+};
+
+/** L'effet court du toucher maintenu (`effectText` du Codex, recopié mot pour mot). */
+export const POWER_TIPS: Readonly<Record<PowerKind, string>> = {
+  bulwark:
+    "Pouvoir de base, action, 1 Élan, à charge. Le prochain impact qui lui fait des dégâts, après sa réduction, ne lui en fait que 50 %, et elle riposte aussitôt : 50 % des PV et 25 % de la garde d'une contre-attaque ordinaire (aucune garde sur un étourdi). Esquives et parades parfaites ne l'usent pas.",
+  retaliation:
+    "Pouvoir instantané, 2 Élan, à charge. Sa prochaine contre-attaque retire 200 % des PV et 200 % de la garde d'une contre-attaque ordinaire. La Riposte du Rempart et une double frappe parée à moitié ne la consomment pas.",
+  holdFast:
+    "Action, 3 Élan, une fois par combat. Elle regagne 20 % de ses PV max (arrondi à l'entier inférieur, au moins 1, sans dépasser le maximum), éteint sa Brûlure et arrête son Saignement. Lançable même à PV max.",
+  shadowStep:
+    "Pouvoir de base, instantané, 3 Élan, à charge. Sa prochaine esquive complète (tous les impacts d'un coup esquivés) déclenche une contre-attaque ordinaire, comme si le coup l'avait traversée sans la trouver.",
+  rend: 'Pouvoir instantané, 1 Élan. Chaque coup de sa prochaine frappe en rythme du combat (attaque ou frappe de pouvoir) retire 150 % de son Brise-garde ; consommée par cette frappe, jamais par une contre-attaque.',
+  mist: "Pouvoir instantané, 2 Élan, à charge. Le prochain impact qui lui fait des dégâts, après réduction, ne lui en fait que 50 %, sans riposte. Esquives et parades parfaites ne l'usent pas ; Brûlure et Saignement ne sont pas réduits.",
+};
+
+/** L'effet en une phrase, puis son complément (maquette 232 : nœud, fiche, Équipement). */
+export const POWER_EFFECTS: Readonly<
+  Record<PowerTreeCode, { readonly effect: string; readonly more: string }>
+> = {
+  bulwark: {
+    effect: 'Le prochain coup subi fait 50 % de dégâts en moins, et elle riposte.',
+    more: "Actif jusqu'au premier impact qui lui fait des dégâts, ou la fin du combat.",
+  },
+  shieldBash: {
+    effect: 'Une frappe : 50 % des PV, 200 % du Brise-garde.',
+    more: "Une frappe en rythme, à la place d'« Attaquer ».",
+  },
+  crushingBlow: {
+    effect: 'Une frappe : 200 % des PV.',
+    more: "Une frappe en rythme, à la place d'« Attaquer ».",
+  },
+  retaliation: {
+    effect: 'Ta prochaine contre-attaque fait 200 % de ses dégâts et de son Brise-garde.',
+    more: "Actif jusqu'à cette contre-attaque ou la fin du combat. La Riposte du Rempart ne l'use pas.",
+  },
+  holdFast: {
+    effect: 'Rend 20 % des PV max, éteint la Brûlure et arrête le Saignement.',
+    more: 'Une fois par combat.',
+  },
+  shadowStep: {
+    effect: 'Ta prochaine esquive complète déclenche une contre-attaque.',
+    more: "Actif jusqu'à cette esquive ou la fin du combat.",
+  },
+  rend: {
+    effect: 'Ta prochaine frappe retire 150 % de son Brise-garde.',
+    more: 'Seulement la frappe en rythme, pas les contre-attaques.',
+  },
+  flurry: {
+    effect: 'Une frappe en 4 coups.',
+    more: "Une frappe en rythme, à la place d'« Attaquer ».",
+  },
+  mist: {
+    effect: 'Le prochain impact qui te fait des dégâts est réduit de 50 %.',
+    more: "Actif jusqu'à cet impact ou la fin du combat. Ni la Brûlure ni le Saignement.",
+  },
+  ambush: {
+    effect: "Une frappe en 2 coups ; 250 % si la cible n'a pas encore agi dans la manche.",
+    more: "Une frappe en rythme, à la place d'« Attaquer ».",
+  },
+};
+
+/** Le coût des frappes de pouvoir « Bientôt », montré dans l'arbre (fiches du Codex). */
+const SOON_COSTS: Readonly<Record<Exclude<PowerTreeCode, PowerKind>, number>> = {
+  shieldBash: 2,
+  crushingBlow: 3,
+  flurry: 2,
+  ambush: 3,
+};
+
+export const PATH_NAMES: Readonly<Record<PowerPath, string>> = {
+  shield: 'Bouclier',
+  watch: 'Veille',
+  blades: 'Lames',
+  shadow: 'Ombre',
+};
+
+const HERO_OF: Readonly<Record<HeroKind, { readonly name: string; readonly of: string }>> = {
+  sentinel: { name: 'La Sentinelle', of: 'de la Sentinelle' },
+  wanderer: { name: "L'Errante", of: "de l'Errante" },
+};
+
+function isPower(code: PowerTreeCode): code is PowerKind {
+  return Object.hasOwn(POWERS, code);
+}
+
+/** Le coût en Élan d'un nœud. */
+export function powerCost(code: PowerTreeCode): number {
+  return isPower(code) ? POWERS[code].cost : SOON_COSTS[code];
+}
+
+/** Le type d'un pouvoir : « Action », « Instantané » ou « Frappe » (frappe de pouvoir). */
+export function powerType(code: PowerTreeCode): 'Action' | 'Instantané' | 'Frappe' {
+  if (!isPower(code)) return 'Frappe';
+  return POWERS[code].instant ? 'Instantané' : 'Action';
+}
+
+/** Un pouvoir à charge reste actif jusqu'à son emploi (« Reste actif »). */
+export function staysActive(code: PowerTreeCode): boolean {
+  return isPower(code) && POWERS[code].charge;
+}
+
+/** « 2 Élan · Instantané » : le coût et le type d'un nœud. */
+export function powerTypeLine(code: PowerTreeCode): string {
+  return `${powerCost(code)} Élan · ${powerType(code)}`;
+}
+
+function heroOf(code: PowerTreeCode): HeroKind {
+  return isPower(code)
+    ? POWERS[code].hero
+    : code === 'shieldBash' || code === 'crushingBlow'
+      ? 'sentinel'
+      : 'wanderer';
+}
+
+/** « La Sentinelle · Voie Veille · Rang 2 », ou « … · Pouvoir de base ». */
+export function powerPlace(code: PowerTreeCode): string {
+  const hero = HERO_OF[heroOf(code)].name;
+  const path = powerPath(code);
+  if (path === null) return `${hero} · Pouvoir de base`;
+  return `${hero} · Voie ${PATH_NAMES[path]} · Rang ${powerRank(code)}`;
+}
+
+/** La fiche d'un pouvoir de base (PW6) : « Pouvoir de base de la Sentinelle : toujours à toi. Équipé. » */
+export function basePowerBand(code: PowerTreeCode): string {
+  return `Pouvoir de base ${HERO_OF[heroOf(code)].of} : toujours à toi. Équipé.`;
+}
+
+export function shardsText(shards: number): string {
+  return `${shards} ${shards > 1 ? 'Éclats' : 'Éclat'}`;
+}
+
+/** L'état d'un nœud, en mot (jamais par la seule couleur). */
+export function nodeStateText(state: PowerNodeState, code: PowerTreeCode, equipped = true): string {
+  switch (state.kind) {
+    case 'base':
+      return 'Pouvoir de base';
+    case 'soon':
+      return 'Bientôt';
+    case 'unlocked':
+      return equipped ? 'Équipé' : 'Débloqué';
+    case 'nextAscent':
+      return 'Dès ta prochaine ascension';
+    case 'locked':
+      return `Après ${TREE_POWER_NAMES[state.after]}`;
+    case 'affordable':
+      return `${powerPrice(code)} Éclats`;
+    case 'missing':
+      return `Il manque ${shardsText(state.missing)}`;
+  }
+}
+
+/** Le libellé lu d'un nœud (section 7) ; les traits de l'arbre ne sont pas lus. */
+export function nodeLabel(code: PowerTreeCode, state: PowerNodeState, equipped = true): string {
+  const head = `${TREE_POWER_NAMES[code]}, ${powerCost(code)} Élan, ${powerType(code)}`;
+  switch (state.kind) {
+    case 'base':
+      return `${head}, pouvoir de base, ${equipped ? 'équipé' : 'pas équipé'}`;
+    case 'soon':
+      return `${head}, pas encore disponible`;
+    case 'unlocked':
+      return `${head}, débloqué, ${equipped ? 'équipé' : 'pas équipé'}`;
+    case 'nextAscent':
+      return `${head}, débloqué, équipé dès ta prochaine ascension`;
+    case 'locked':
+      return `${head}, verrouillé : débloque d'abord ${TREE_POWER_NAMES[state.after]}`;
+    case 'affordable':
+      return `${head}, à débloquer pour ${powerPrice(code)} Éclats`;
+    case 'missing':
+      return `${head}, ${powerPrice(code)} Éclats, il manque ${shardsText(state.missing)}`;
+  }
+}
+
+/** L'annonce polie d'un déblocage (D1). */
+export function unlockAnnouncement(power: PowerKind, available: number): string {
+  return `${TREE_POWER_NAMES[power]} débloqué. Équipé dès ta prochaine ascension. ${shardsText(available)} ${available > 1 ? 'disponibles' : 'disponible'}.`;
+}
+
+/** Le libellé lu d'une carte d'arbre au Camp (C1). */
+export function powerTreeCardLabel(hero: HeroKind, unlocked: number): string {
+  const plural = unlocked > 1;
+  return `Arbre de pouvoirs ${HERO_OF[hero].of}, ${unlocked} ${plural ? 'pouvoirs' : 'pouvoir'} sur 5 ${plural ? 'débloqués' : 'débloqué'}`;
+}
+
+/** La disponibilité d'une touche de pouvoir, telle que l'interface la montre. */
+export type PowerKeyAvailability = Exclude<PowerAvailability['kind'], 'notEquipped'>;
+
+export interface PowerKeyText {
+  readonly power: PowerKind;
+  readonly cost: number;
+  readonly availability: PowerKeyAvailability;
+  readonly missing: number;
+  readonly instant?: true;
+}
+
+/** La raison d'une touche indisponible, sur une ou deux lignes ; rien pour une touche disponible. */
+export function powerKeyReason({
+  availability,
+  missing,
+}: Pick<PowerKeyText, 'availability' | 'missing'>): readonly string[] {
+  switch (availability) {
+    case 'missing':
+      return ['Il manque', `${missing} Élan`];
+    case 'active':
+      return ['Actif'];
+    case 'instantUsed':
+      return ['Instantané', 'déjà lancé'];
+    case 'usedThisBattle':
+      return ['Utilisé', 'ce combat'];
+    case 'available':
+      return [];
+  }
+}
+
+const UNAVAILABLE_READ: Readonly<Record<PowerKeyAvailability, (missing: number) => string>> = {
+  available: () => '',
+  active: () => ', actif',
+  missing: (missing) => `, indisponible : il manque ${missing} Élan`,
+  instantUsed: () => ', indisponible : un pouvoir instantané a déjà été lancé dans cette phase',
+  usedThisBattle: () => ', indisponible : déjà utilisé dans ce combat',
+};
+
+/** Le libellé lu d'une touche de pouvoir (section 7) ; l'effet est dans l'indice. */
+export function powerKeyLabel({
+  power,
+  cost,
+  availability,
+  missing,
+  instant,
+}: PowerKeyText): string {
+  const head = `Pouvoir : ${TREE_POWER_NAMES[power]}, ${cost} Élan${instant ? ', instantané' : ''}`;
+  return head + UNAVAILABLE_READ[availability](missing);
+}

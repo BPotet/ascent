@@ -561,7 +561,7 @@ describe('ActionPad', () => {
           kind: 'hero',
           locked: true,
           lock: null,
-          power: { power: 'bulwark', cost: 1, missing: 0 },
+          powers: [{ power: 'bulwark', cost: 1, availability: 'available', missing: 0 }],
         }}
         {...padProps()}
       />,
@@ -570,7 +570,7 @@ describe('ActionPad', () => {
     expect(screen.getByTestId('battle-lock-tag')).toHaveTextContent('Attends');
   });
 
-  it('shows Pouvoir on the left with the Bulwark and its cost, Attaquer on the right', async () => {
+  it('shows the Bulwark key on the left with its cost, Attaquer on the right', async () => {
     const props = padProps();
     await render(
       <ActionPad
@@ -578,21 +578,21 @@ describe('ActionPad', () => {
           kind: 'hero',
           locked: false,
           lock: null,
-          power: { power: 'bulwark', cost: 1, missing: 0 },
+          powers: [{ power: 'bulwark', cost: 1, availability: 'available', missing: 0 }],
         }}
         {...props}
       />,
     );
 
-    expect(screen.getByTestId('battle-power-button')).toHaveTextContent('PouvoirRempart · 1 Élan');
+    expect(screen.getByTestId('battle-power-button-bulwark')).toHaveTextContent('Rempart1 Élan');
     expect(screen.getByLabelText('Pouvoir : Rempart, 1 Élan')).toBeOnTheScreen();
-    await fireEvent(screen.getByTestId('battle-power-button'), 'accessibilityAction', {
+    await fireEvent(screen.getByTestId('battle-power-button-bulwark'), 'accessibilityAction', {
       nativeEvent: { actionName: 'activate' },
     });
-    expect(props.onPower).toHaveBeenCalledWith(4_321, 4_321);
+    expect(props.onPower).toHaveBeenCalledWith('bulwark', 4_321, 4_321);
   });
 
-  it('keeps Pouvoir visible but unavailable, telling the momentum it misses (C3)', async () => {
+  it('keeps the power key visible but unavailable, telling the momentum it misses (C3)', async () => {
     const props = padProps();
     await render(
       <ActionPad
@@ -600,17 +600,19 @@ describe('ActionPad', () => {
           kind: 'hero',
           locked: false,
           lock: null,
-          power: { power: 'bulwark', cost: 1, missing: 1 },
+          powers: [{ power: 'bulwark', cost: 1, availability: 'missing', missing: 1 }],
         }}
         {...props}
       />,
     );
 
-    expect(screen.getByTestId('battle-power-button')).toHaveTextContent('PouvoirIl manque 1 Élan');
-    expect(screen.getByTestId('battle-power-button').props.accessibilityState).toEqual({
+    expect(screen.getByTestId('battle-power-button-bulwark')).toHaveTextContent(
+      'RempartIl manque\n1 Élan',
+    );
+    expect(screen.getByTestId('battle-power-button-bulwark').props.accessibilityState).toEqual({
       disabled: true,
     });
-    await fireEvent(screen.getByTestId('battle-power-button'), 'accessibilityAction', {
+    await fireEvent(screen.getByTestId('battle-power-button-bulwark'), 'accessibilityAction', {
       nativeEvent: { actionName: 'activate' },
     });
     expect(props.onPower).not.toHaveBeenCalled();
@@ -664,21 +666,23 @@ describe('ActionPad', () => {
           kind: 'hero',
           locked: false,
           lock: null,
-          power: { power: 'shadowStep', cost: 2, missing: 0, active: true },
+          powers: [{ power: 'shadowStep', cost: 2, availability: 'active', missing: 0 }],
         }}
         {...padProps()}
       />,
     );
 
-    const power = screen.getByTestId('battle-power-button');
+    const power = screen.getByTestId('battle-power-button-shadowStep');
     expect(
-      within(power).getByTestId('battle-power-active-check', { includeHiddenElements: true }),
+      within(power).getByTestId('battle-power-active-check-shadowStep', {
+        includeHiddenElements: true,
+      }),
     ).toBeTruthy();
-    expect(power).toHaveTextContent('PouvoirActif');
+    expect(power).toHaveTextContent("Pas de l'ombreActif");
     expect(power.props.accessibilityState).toEqual({ disabled: true });
-    expect(style('battle-power-button').borderColor).toBe(artPalette.roles.gold);
+    expect(style('battle-power-button-shadowStep').borderColor).toBe(artPalette.roles.gold);
     expect(
-      screen.queryByTestId('battle-power-hatching', { includeHiddenElements: true }),
+      screen.queryByTestId('battle-power-hatching-shadowStep', { includeHiddenElements: true }),
     ).toBeNull();
 
     // Une image du fil UI : Reanimated branche le style animé (`setTimeout` de 0 ms), puis le
@@ -686,7 +690,7 @@ describe('ActionPad', () => {
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
-    const { handlerTag } = getByGestureTestId('battle-power-look');
+    const { handlerTag } = getByGestureTestId('battle-power-shadowStep-look');
     await act(async () => {
       DeviceEventEmitter.emit('onGestureHandlerStateChange', {
         handlerTag,
@@ -696,7 +700,9 @@ describe('ActionPad', () => {
     });
     expect(getAnimatedStyle(power)).toMatchObject({ transform: [{ translateY: 0 }] });
     expect(
-      getAnimatedStyle(screen.getByTestId('battle-power-edge', { includeHiddenElements: true })),
+      getAnimatedStyle(
+        screen.getByTestId('battle-power-shadowStep-edge', { includeHiddenElements: true }),
+      ),
     ).toMatchObject({ backgroundColor: artPalette.roles.raised });
   });
 });

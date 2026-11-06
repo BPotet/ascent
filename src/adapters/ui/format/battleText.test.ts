@@ -17,6 +17,7 @@ import {
   feedbackText,
   guardText,
   heroCard,
+  powerDescription,
   heroHpText,
   intentNumber,
   intentSpeech,
@@ -362,8 +363,8 @@ describe('battle texts', () => {
   });
 
   it('describes the Bulwark of the Sentinel by the text of the Codex (#128)', () => {
-    expect(heroCard('sentinel').power).toBe(
-      "Rempart (1 Élan) : Elle plante son bouclier devant elle et y met tout son poids. Le prochain coup qu'elle subit ne lui fait que la moitié de ses dégâts, après sa réduction, et elle riposte aussitôt, moins fort qu'une contre-attaque.",
+    expect(powerDescription('bulwark')).toBe(
+      "Elle plante son bouclier devant elle et y met tout son poids. Le prochain coup qu'elle subit ne lui fait que la moitié de ses dégâts, après sa réduction, et elle riposte aussitôt, moins fort qu'une contre-attaque.",
     );
   });
 
@@ -400,10 +401,14 @@ describe('battle texts', () => {
 
     it('describes the Wanderer with 55 HP and the Shadow Step by the text of the Codex', () => {
       expect(heroCard('wanderer').stats).toBe('55 PV · Attaque 6 × 2 · Initiative 7');
-      expect(heroCard('wanderer').power).toBe(
-        "Pas de l'ombre (3 Élan) : Elle se fond dans sa propre ombre sans s'arrêter, et frappe dans le même élan. Sa prochaine esquive complète déclenche une contre-attaque, comme si le coup l'avait traversée sans la trouver.",
+      expect(powerDescription('shadowStep')).toBe(
+        "Elle se fond dans sa propre ombre sans s'arrêter, et frappe dans le même élan. Sa prochaine esquive complète déclenche une contre-attaque, comme si le coup l'avait traversée sans la trouver.",
       );
       expect(heroCard('wanderer').label).toContain('55 PV');
+      expect(heroCard('wanderer').label).toContain("Pouvoirs équipés : Pas de l'ombre, 3 Élan.");
+      expect(heroCard('wanderer', ['shadowStep', 'rend', 'mist']).label).toContain(
+        "Pouvoirs équipés : Pas de l'ombre, 3 Élan ; Entaille, 1 Élan ; Brume, 2 Élan.",
+      );
     });
   });
 
@@ -631,5 +636,66 @@ describe('the second chance (#206)', () => {
     expect(SECOND_CHANCE_SPENT).toBe('Ta seconde chance a déjà servi.');
     expect(announcement(ended, battle)).toBe('Combat perdu.');
     expect(announcement({ ...ended, outcome: 'victory' }, used)).toBe('Combat gagné.');
+  });
+});
+
+describe('the texts of the powers of #235', () => {
+  const battle = startTestBattle({ seed: 7, defenseHint: false, at: 0 }).battle;
+  const casting: Battle = {
+    ...battle,
+    phase: { kind: 'heroPower', power: 'holdFast', since: 0, until: 500 },
+  };
+
+  it('writes a scene word for each power but the Bulwark, in shade for the Wanderer', () => {
+    expect(
+      feedbackText({ type: 'powerUsed', at: 0, power: 'rend', until: 0, instant: true }),
+    ).toEqual({ tone: 'shadowStep', title: 'Entaille' });
+    expect(feedbackText({ type: 'powerUsed', at: 0, power: 'holdFast', until: 500 })).toEqual({
+      tone: 'perfect',
+      title: 'Tenir bon',
+    });
+    expect(feedbackText({ type: 'powerUsed', at: 0, power: 'bulwark', until: 500 })).toBeNull();
+  });
+
+  it('announces an instant power, agreed in gender, then « Toujours à toi »', () => {
+    expect(
+      announcement({ type: 'powerUsed', at: 0, power: 'rend', until: 0, instant: true }, battle),
+    ).toBe('Entaille active. Toujours à toi : vise et attaque.');
+    expect(
+      announcement(
+        { type: 'powerUsed', at: 0, power: 'retaliation', until: 0, instant: true },
+        battle,
+      ),
+    ).toBe('Représailles actif. Toujours à toi : vise et attaque.');
+  });
+
+  it('announces and floats the heal of Hold Fast in gold, nothing at max HP (K12)', () => {
+    const healed = { type: 'heroHealed', at: 0, power: 'holdFast', heal: 16, heroHp: 46 } as const;
+
+    expect(announcement(healed, casting)).toBe('Plus 16 PV');
+    expect(damageFloat(healed)).toEqual({ at: 'hero', text: '+16', big: false, kind: 'heal' });
+    expect(damageFloat({ ...healed, heal: 0 })).toBeNull();
+    expect(announcement({ ...healed, heal: 0 }, casting)).toBeNull();
+    expect(announcement({ type: 'burnCleared', at: 0 }, casting)).toBe('Brûlure éteinte.');
+    expect(announcement({ type: 'burnCleared', at: 0 }, battle)).toBeNull();
+    expect(announcement({ type: 'bleedStopped', at: 0 }, casting)).toBe('Saignement arrêté.');
+  });
+
+  it('announces the wear of the Mist and the counter of Retaliation', () => {
+    expect(announcement({ type: 'mistWorn', at: 0, enemy: 0 }, battle)).toBe('Brume usée.');
+    expect(
+      announcement(
+        {
+          type: 'counterAttacked',
+          at: 0,
+          enemy: 0,
+          damage: 13,
+          guardDamage: 24,
+          until: 200,
+          retaliation: true,
+        },
+        battle,
+      ),
+    ).toBe('Représailles, contre-attaque, 13 dégâts');
   });
 });

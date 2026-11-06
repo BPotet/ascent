@@ -26,6 +26,7 @@ describe('loadout (#159)', () => {
       ],
       boons: ['perfectEcho', 'lingeringFrost', 'shatteringEmber'],
       reserves: { gold: 0, keys: 0 },
+      powers: ['bulwark'],
     });
     expect(loadout.blessings).toBe(ascent.blessings);
     expect(loadout.boons).toBe(ascent.hero.boons);
@@ -49,7 +50,12 @@ describe('loadout (#159)', () => {
   it('is empty at the start of an ascent without blessing (Neutral gauge)', () => {
     const loadout = loadoutOf(startAscent(42));
 
-    expect(loadout).toEqual({ blessings: [], boons: [], reserves: { gold: 0, keys: 0 } });
+    expect(loadout).toEqual({
+      blessings: [],
+      boons: [],
+      reserves: { gold: 0, keys: 0 },
+      powers: ['bulwark'],
+    });
     expect(loadoutSize(loadout)).toBe(0);
   });
 
@@ -60,6 +66,7 @@ describe('loadout (#159)', () => {
       blessings: [],
       boons: ['frostSkin', 'trueEdge'],
       reserves: { gold: 0, keys: 0 },
+      powers: ['bulwark'],
     });
     expect(loadoutSize(loadout)).toBe(2);
   });

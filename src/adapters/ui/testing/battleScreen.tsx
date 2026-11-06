@@ -22,15 +22,16 @@ import {
   type BattleFactory,
   type BattleSnapshot,
 } from '../../../application/useCases/BattleSession';
-import type { AttackStep } from '../../../domain/battle/Battle';
+import { equippedOf, type AttackStep } from '../../../domain/battle/Battle';
+import type { PowerKind } from '../../../domain/battle/powers';
 import type { DefenseButton } from '../../../domain/battle/BattleEvent';
 import { startTestBattle } from '../../../domain/battle/testing/testBattle';
 import { Day } from '../../../domain/day/Day';
 import {
   ATTACK_GESTURE_TEST_ID,
   DEFENSE_GESTURE_TEST_IDS,
-  POWER_GESTURE_TEST_ID,
   STRIKE_GESTURE_TEST_ID,
+  powerGestureTestId,
 } from '../battle/ActionPad';
 import { enemyGestureTestId } from '../battle/EnemyColumn';
 import { BattleScreen } from '../screens/BattleScreen';
@@ -190,9 +191,13 @@ export async function renderBattle({
     await release(ATTACK_GESTURE_TEST_ID, startedAt, releasedAt);
   }
 
-  /** « Pouvoir » (le Rempart), posé à `startedAt` et relâché 80 ms après. */
-  async function power(startedAt = clock.now()): Promise<void> {
-    await release(POWER_GESTURE_TEST_ID, startedAt, startedAt + 80);
+  /**
+   * La touche du pouvoir `code` (par défaut le premier pouvoir équipé, le pouvoir de base), posée à
+   * `startedAt` et relâchée 80 ms après.
+   */
+  async function power(startedAt = clock.now(), code?: PowerKind): Promise<void> {
+    const battle = session.current()!.battle;
+    await release(powerGestureTestId(code ?? equippedOf(battle)[0]!), startedAt, startedAt + 80);
   }
 
   async function touchEnemy(enemy: number, startedAt = clock.now()): Promise<void> {

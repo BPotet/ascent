@@ -74,6 +74,7 @@ describe('IconBoardScreen (#157)', () => {
       'Offre · Second souffle seule',
       'Coffre · fermé et ouvert',
       'Coffre scellé · clé et Fortune',
+      'Pouvoirs · 10 icônes',
       'Équipement · 1 · pied de la tour',
       'Équipement · 3 · pied de la tour',
       'Équipement · 8 · pied de la tour',
@@ -220,6 +221,29 @@ describe('IconBoardScreen (#157)', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  it('shows the 10 power icons at ×1 and ×2, in the order of the trees (#235)', async () => {
+    await open('Pouvoirs · 10 icônes');
+
+    const icons = screen.getAllByTestId(/^power-board-/u, hidden);
+    expect(icons.map((icon) => icon.props.testID)).toEqual(
+      [
+        'bulwark',
+        'shieldBash',
+        'crushingBlow',
+        'retaliation',
+        'holdFast',
+        'shadowStep',
+        'rend',
+        'flurry',
+        'mist',
+        'ambush',
+      ].flatMap((code) => [`power-board-${code}-1`, `power-board-${code}-2`]),
+    );
+    expect(icons[1]).toHaveProp('sprite', 'power-icon:bulwark');
+    await fireEvent.press(screen.getByRole('button', { name: 'Retour' }));
+    expect(screen.getByRole('header', { name: 'Planche des icônes' })).toBeOnTheScreen();
   });
 
   it('shows the exits without any boon', async () => {

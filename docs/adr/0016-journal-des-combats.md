@@ -138,3 +138,13 @@ rangement :
   combat ; il est absent sinon.
 - **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7) : ce sont des champs et des valeurs ajoutés. Un
   combat d'avant se relit tel quel.
+
+## Avenant du 6 novembre 2026 — les pouvoirs équipés et leurs effets (#235)
+
+- `HeroAtStart` reçoit un champ **facultatif** `powers`, posé seulement s'il diffère du pouvoir de
+  base seul ; il est absent sinon.
+- Trois événements entrent dans les effets (`EFFECT_TYPES`) : `mistWorn` (Brume usée),
+  `heroHealed` (le soin de Tenir bon) et `bleedStopped` (le Saignement arrêté par Tenir bon).
+- `counterAttacked.retaliation` et `strikeResolved.rend` passent tels quels. `powerUsed` reste une
+  action `power` ; un pouvoir instantané n'a pas de durée.
+- **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7) : ce sont des champs et des valeurs ajoutés.

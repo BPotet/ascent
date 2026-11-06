@@ -1,4 +1,4 @@
-import { type ReactNode, type Ref, useCallback, useEffect, useMemo, useRef } from 'react';
+import { type ReactNode, type Ref, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   type StyleProp,
@@ -8,7 +8,12 @@ import {
   type ViewProps,
   type ViewStyle,
 } from 'react-native';
-import { Gesture, GestureDetector, type GestureType } from 'react-native-gesture-handler';
+import {
+  type ComposedGesture,
+  Gesture,
+  GestureDetector,
+  type GestureType,
+} from 'react-native-gesture-handler';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -17,14 +22,10 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import type { DefenseButton } from '../../../domain/battle/BattleEvent';
-import {
-  INSTANT_WORD,
-  POWER_NAMES,
-  attackButtonLabel,
-  missingMomentumText,
-  powerButtonLabel,
-  powerCostText,
-} from '../format/battleText';
+import type { PowerKind } from '../../../domain/battle/powers';
+import { PowerIcon } from '../components/PowerIcon';
+import { INSTANT_WORD, attackButtonLabel } from '../format/battleText';
+import { POWER_BUTTON_NAMES, POWER_TIPS, powerKeyLabel, powerKeyReason } from '../format/powerText';
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize, notchedCorners } from '../pixelArt/artPixel';
 import { PixelFrame } from '../pixelArt/PixelFrame';
@@ -34,10 +35,16 @@ import type { ActionPad as Pad, LockSpan, PowerSlot } from '../state/battleView'
 import { battleColors } from '../theme/battleColors';
 import { LockGlyph } from './BattleGlyphs';
 import { CrescentGlyph } from './ShadowStepChip';
+import { PowerTip } from './PowerTip';
 import { useDefenseGesture, useReleaseGesture } from './touchGestures';
 
 export const ATTACK_GESTURE_TEST_ID = 'battle-attack';
-export const POWER_GESTURE_TEST_ID = 'battle-power';
+/** Le geste de la touche du pouvoir `power` (#235) ; maintenu : `…-hold`. */
+export function powerGestureTestId(power: PowerKind): string {
+  return `battle-power-${power}`;
+}
+/** Le toucher maintenu qui ouvre l'effet d'un pouvoir, en ms (#235, K10). */
+export const POWER_HOLD_MS = 400;
 export const STRIKE_GESTURE_TEST_ID = 'battle-strike';
 /** La place du trait sur la barre de « Frapper » : la barre l'atteint à l'impact (maquette F3). */
 const STRIKE_MARK = 0.8;
@@ -146,7 +153,7 @@ function PixelKey({
   readonly look: KeyLook;
   /** Faux pour une touche inactive : elle ne s'enfonce pas. */
   readonly pressable: boolean;
-  readonly gesture: GestureType;
+  readonly gesture: GestureType | ComposedGesture;
   readonly style: StyleProp<ViewStyle>;
   readonly children: ReactNode;
 }) {
@@ -297,6 +304,7 @@ function DefenseKey({
 function AttackKey({
   ref,
   targetName,
+  flex,
   disabled,
   uiNow,
   onRelease,
@@ -304,6 +312,8 @@ function AttackKey({
 }: {
   readonly ref: Ref<View>;
   readonly targetName: string;
+  /** La part de la rangée : « Attaquer » reste la plus large, à droite (#235). */
+  readonly flex: number;
   readonly disabled: boolean;
   readonly uiNow: () => number;
   readonly onRelease: (touchStartedAt: number, releasedAt: number) => void;
@@ -324,7 +334,7 @@ function AttackKey({
       accessibilityActions={[{ name: 'activate' }]}
       onAccessibilityAction={onAccessibilityPress}
       testID="battle-attack-button"
-      style={[styles.primary, disabled && styles.locked]}
+      style={[styles.primary, { flex }, disabled && styles.locked]}
     >
       <Text style={[styles.keyText, { color: KEY_LOOKS.gold.text }]}>Attaquer</Text>
     </PixelKey>
@@ -332,8 +342,10 @@ function AttackKey({
 }
 
 /**
- * « Pouvoir » (C3) : le pouvoir de base et son coût. Sans assez d'Élan, il reste visible mais
- * indisponible, hachuré, et dit l'Élan qui manque ; pendant le temps mort, il est seulement estompé.
+ * Une touche de pouvoir (#235, maquette K1 à K12) : l'icône du pouvoir, son nom, puis son coût et
+ * « Instantané », ou la raison qui le rend indisponible (hachurée), ou « Actif » (trait d'or).
+ * Pendant le temps mort, elle est seulement estompée. Maintenue, elle montre son effet sans rien
+ * lancer.
  */
 function PowerKey({
   slot,
@@ -341,76 +353,88 @@ function PowerKey({
   uiNow,
   now,
   onPower,
+  onTip,
 }: {
   readonly slot: PowerSlot;
   readonly locked: boolean;
   readonly uiNow: () => number;
   readonly now: () => number;
-  readonly onPower: (touchStartedAt: number, releasedAt: number) => void;
+  readonly onPower: (power: PowerKind, touchStartedAt: number, releasedAt: number) => void;
+  readonly onTip: (power: PowerKind | null) => void;
 }) {
-  const active = slot.active === true;
-  const instant = slot.instant === true;
-  const disabled = locked || slot.missing > 0 || active;
-  const gesture = useReleaseGesture(POWER_GESTURE_TEST_ID, uiNow, onPower);
-  const hatched = !locked && slot.missing > 0;
+  const { power, availability, instant = false } = slot;
+  const available = availability === 'available';
+  const active = availability === 'active';
+  const disabled = locked || !available;
+  const onRelease = useCallback(
+    (touchStartedAt: number, releasedAt: number) => onPower(power, touchStartedAt, releasedAt),
+    [onPower, power],
+  );
+  const hold = useMemo(
+    () => ({ ms: POWER_HOLD_MS, onHold: () => onTip(power), onHoldEnd: () => onTip(null) }),
+    [onTip, power],
+  );
+  const gesture = useReleaseGesture(powerGestureTestId(power), uiNow, onRelease, hold);
+  const hatched = !locked && !available && !active;
   const look = hatched ? KEY_LOOKS.unavailable : active ? KEY_LOOKS.active : KEY_LOOKS.surface;
+  const reason = powerKeyReason(slot);
   return (
     <PixelKey
-      name="power"
+      name={`power-${power}`}
       look={look}
       pressable={!disabled}
       gesture={gesture}
       accessible
       accessibilityRole="button"
-      accessibilityLabel={powerButtonLabel(slot.power, slot.missing, active, instant)}
+      accessibilityLabel={powerKeyLabel(slot)}
+      accessibilityHint={POWER_TIPS[power]}
       accessibilityState={{ disabled }}
-      accessibilityActions={[{ name: 'activate' }]}
-      onAccessibilityAction={() => {
-        if (!disabled) onPower(now(), now());
+      accessibilityActions={[{ name: 'activate' }, { name: 'longpress', label: "Voir l'effet" }]}
+      onAccessibilityAction={({ nativeEvent }) => {
+        if (nativeEvent.actionName === 'longpress') onTip(power);
+        else if (!disabled) onPower(power, now(), now());
       }}
-      testID="battle-power-button"
+      testID={`battle-power-button-${power}`}
       style={[styles.secondary, locked && styles.locked]}
     >
-      {hatched ? <Hatching testID="battle-power-hatching" color={UNAVAILABLE_HATCH} /> : null}
-      <Text style={[styles.keyText, { color: look.text }]}>Pouvoir</Text>
-      {instant && !active && slot.missing === 0 ? (
-        <InstantNote slot={slot} look={look} />
+      {hatched ? (
+        <Hatching testID={`battle-power-hatching-${power}`} color={UNAVAILABLE_HATCH} />
+      ) : null}
+      <PowerIcon power={power} scale={2} testID={`battle-power-icon-${power}`} />
+      <Text numberOfLines={2} style={[styles.powerName, { color: look.text }]}>
+        {POWER_BUTTON_NAMES[power]}
+      </Text>
+      {available ? (
+        <>
+          <Text style={[styles.keyNote, { color: look.note }]}>{`${slot.cost} Élan`}</Text>
+          {instant ? (
+            <View testID={`battle-power-instant-${power}`} style={styles.instantRow}>
+              <CrescentGlyph
+                background={look.background}
+                testID={`battle-power-crescent-${power}`}
+              />
+              <Text style={[styles.keyNote, styles.instant]}>{INSTANT_WORD}</Text>
+            </View>
+          ) : null}
+        </>
       ) : (
         <View style={styles.noteRow}>
           {active ? (
-            <PixelIcon name="check8" color={look.note} testID="battle-power-active-check" />
+            <PixelIcon
+              name="check8"
+              color={look.note}
+              testID={`battle-power-active-check-${power}`}
+            />
           ) : null}
-          <Text style={[styles.keyNote, { color: look.note }]}>
-            {active
-              ? 'Actif'
-              : slot.missing > 0
-                ? missingMomentumText(slot.missing)
-                : powerCostText(slot.power)}
-          </Text>
+          <Text style={[styles.keyNote, { color: look.note }]}>{reason.join('\n')}</Text>
         </View>
       )}
     </PixelKey>
   );
 }
 
-/**
- * Le pouvoir instantané disponible (#173, maquette E1) : son nom, puis « 3 Élan · ☾Instantané »
- * sur une ligne, en violet clair, le croissant juste avant le mot.
- */
-function InstantNote({ slot, look }: { readonly slot: PowerSlot; readonly look: KeyLook }) {
-  return (
-    <>
-      <Text style={[styles.keyNote, { color: look.note }]}>{POWER_NAMES[slot.power]}</Text>
-      <View testID="battle-power-instant-row" style={styles.instantRow}>
-        <Text style={[styles.keyNote, styles.instant]}>{`${slot.cost} Élan · `}</Text>
-        <CrescentGlyph background={look.background} testID="battle-power-crescent" />
-        <Text testID="battle-power-instant" style={[styles.keyNote, styles.instant]}>
-          {INSTANT_WORD}
-        </Text>
-      </View>
-    </>
-  );
-}
+/** La part de la rangée que prend « Attaquer », selon le nombre de pouvoirs (maquette, section 3). */
+const ATTACK_FLEX: Readonly<Record<number, number>> = { 1: 1.45, 2: 1.25, 3: 1.15 };
 
 /**
  * « Frapper », sur toute la largeur, pendant la frappe en rythme (C6, maquette F3) : la barre se
@@ -480,6 +504,7 @@ export function ActionPad({
   onAttack,
   onPower,
   onStrike,
+  onPowerTip,
 }: {
   readonly pad: Pad;
   readonly targetName: string;
@@ -487,12 +512,44 @@ export function ActionPad({
   readonly now: () => number;
   readonly onDefense: (button: DefenseButton, touchedAt: number) => void;
   readonly onAttack: (touchStartedAt: number, releasedAt: number) => void;
-  readonly onPower: (touchStartedAt: number, releasedAt: number) => void;
+  readonly onPower: (power: PowerKind, touchStartedAt: number, releasedAt: number) => void;
   readonly onStrike: (touchedAt: number) => void;
+  /** Le toucher maintenu ouvre l'effet d'un pouvoir (une vibration très courte, #235). */
+  readonly onPowerTip?: (power: PowerKind) => void;
 }) {
   // Juste après un pouvoir instantané, le lecteur d'écran passe à « Attaquer » (#173, E2).
   const attackRef = useRef<View>(null);
-  const instantCast = pad.kind === 'hero' && pad.power.instantCast === true;
+  const instantCast = pad.kind === 'hero' && pad.instantCast === true;
+  const [tip, setTip] = useState<PowerKind | null>(null);
+  const onTip = useCallback(
+    (power: PowerKind | null) => {
+      setTip(power);
+      if (power !== null) onPowerTip?.(power);
+    },
+    [onPowerTip],
+  );
+  // La bulle se ferme à toute action et à tout changement de phase : elle ne revient jamais seule.
+  // (état ajusté au rendu, sans effet : https://react.dev/learn/you-might-not-need-an-effect).
+  const heroPhase = pad.kind === 'hero' && !pad.locked;
+  const [tipPhase, setTipPhase] = useState(heroPhase);
+  if (tipPhase !== heroPhase) {
+    setTipPhase(heroPhase);
+    if (!heroPhase) setTip(null);
+  }
+  const castPower = useCallback(
+    (power: PowerKind, touchStartedAt: number, releasedAt: number) => {
+      setTip(null);
+      onPower(power, touchStartedAt, releasedAt);
+    },
+    [onPower],
+  );
+  const attack = useCallback(
+    (touchStartedAt: number, releasedAt: number) => {
+      setTip(null);
+      onAttack(touchStartedAt, releasedAt);
+    },
+    [onAttack],
+  );
   useEffect(() => {
     const attackKey = attackRef.current;
     if (instantCast && attackKey !== null) {
@@ -508,8 +565,16 @@ export function ActionPad({
     );
   }
   const offBalance = pad.kind === 'defense' && pad.offBalance;
+  const powers = pad.kind === 'hero' ? pad.powers : [];
+  // La bulle ne vit que dans la phase du héros, hors du temps mort.
+  const tipSlot =
+    pad.kind === 'hero' && !pad.locked ? powers.find(({ power }) => power === tip) : undefined;
   return (
-    <View testID="battle-pad" style={[styles.pad, offBalance && styles.offBalance]}>
+    <View
+      testID="battle-pad"
+      style={[styles.pad, powers.length > 2 && styles.tightPad, offBalance && styles.offBalance]}
+    >
+      {tipSlot === undefined ? null : <PowerTip power={tipSlot.power} cost={tipSlot.cost} />}
       {pad.locked ? <LockTag lock={pad.lock} now={now} /> : null}
       {offBalance ? (
         <PixelFrame
@@ -526,20 +591,25 @@ export function ActionPad({
       ) : null}
       {pad.kind === 'hero' ? (
         <>
-          <PowerKey
-            slot={pad.power}
-            locked={pad.locked}
-            uiNow={uiNow}
-            now={now}
-            onPower={onPower}
-          />
+          {pad.powers.map((slot) => (
+            <PowerKey
+              key={slot.power}
+              slot={slot}
+              locked={pad.locked}
+              uiNow={uiNow}
+              now={now}
+              onPower={castPower}
+              onTip={onTip}
+            />
+          ))}
           <AttackKey
             ref={attackRef}
             targetName={targetName}
+            flex={ATTACK_FLEX[pad.powers.length] ?? 1.15}
             disabled={pad.locked}
             uiNow={uiNow}
-            onRelease={onAttack}
-            onAccessibilityPress={() => onAttack(now(), now())}
+            onRelease={attack}
+            onAccessibilityPress={() => attack(now(), now())}
           />
         </>
       ) : (
@@ -577,6 +647,8 @@ const UNAVAILABLE_HATCH = 'rgba(62,72,112,0.35)';
 
 const styles = StyleSheet.create({
   pad: { flexDirection: 'row', gap: 12 },
+  // Trois pouvoirs à 360 dp : la plus étroite fait 72 dp (#235, K3).
+  tightPad: { gap: 8 },
   offBalance: { opacity: 0.7 },
   key: {
     minHeight: 112,
@@ -593,6 +665,7 @@ const styles = StyleSheet.create({
   secondary: { flex: 1 },
   locked: { opacity: 0.4 },
   keyText: { fontFamily: pixelFont, fontSize: 24, lineHeight: 28, textAlign: 'center' },
+  powerName: { fontFamily: textFont.bold, fontSize: 11.5, lineHeight: 14, textAlign: 'center' },
   noteRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   instantRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   keyNote: { fontFamily: textFont.semiBold, fontSize: 12, lineHeight: 15, textAlign: 'center' },

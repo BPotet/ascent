@@ -1,11 +1,15 @@
 import type { PreferenceDependencies } from './checkInHint';
 
-/** Les bulles d'aide du combat (`BattleHint`) : en phase du héros, et avant la phase ennemie. */
-export type BattleHintKind = 'hero' | 'defense';
+/**
+ * Les bulles d'aide du combat (`BattleHint`) : en phase du héros, avant la phase ennemie, et au
+ * premier combat avec 2 pouvoirs ou plus (#235, K11).
+ */
+export type BattleHintKind = 'hero' | 'defense' | 'powers';
 
 export const BATTLE_HINT_SEEN_KEYS: Readonly<Record<BattleHintKind, string>> = {
   hero: 'battle.hint.hero.seen',
   defense: 'battle.hint.defense.seen',
+  powers: 'battle.hint.powers.seen',
 };
 
 /** Cas d'usage : faut-il montrer cette bulle d'aide ? Oui tant qu'elle n'a pas été vue. */

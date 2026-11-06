@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { HeroKind } from '../../../domain/battle/combatants';
+import { basePower, type PowerKind } from '../../../domain/battle/powers';
+import { EquippedPowersRow } from '../components/EquippedPowersRow';
 import { Screen } from '../components/Screen';
 import { heroCard } from '../format/battleText';
 import { artPalette } from '../pixelArt/artPalette';
@@ -16,14 +18,16 @@ const HERO_KINDS: readonly HeroKind[] = ['sentinel', 'wanderer'];
 
 function HeroOption({
   kind,
+  powers,
   checked,
   onPress,
 }: {
   readonly kind: HeroKind;
+  readonly powers: readonly PowerKind[];
   readonly checked: boolean;
   readonly onPress: () => void;
 }) {
-  const card = heroCard(kind);
+  const card = heroCard(kind, powers);
   return (
     <Pressable
       accessibilityRole="radio"
@@ -40,9 +44,9 @@ function HeroOption({
         <Text style={[styles.name, checked && styles.checkedName]}>{card.name}</Text>
         <Text style={styles.style}>{card.style}</Text>
         <Text style={styles.stats}>{card.stats}</Text>
-        <Text style={styles.line}>{card.kit}</Text>
-        <Text style={styles.line}>{card.power}</Text>
-        <Text style={styles.small}>{card.trait}</Text>
+        {checked ? <Text style={styles.line}>{card.kit}</Text> : null}
+        <EquippedPowersRow powers={powers} short={!checked} />
+        {checked ? <Text style={styles.small}>{card.trait}</Text> : null}
         {checked ? (
           <View pointerEvents="none" style={styles.tick}>
             <PixelIcon name="check8" color={roles.gold} />
@@ -55,8 +59,9 @@ function HeroOption({
 
 /**
  * Le choix du héros (`HeroChoice`) au pied de la tour (prototype #92, maquette H3, avec son titre,
- * sa note et son bouton) : la Sentinelle ou l'Errante, avec son équipement de base, son pouvoir et
- * son trait. Rien n'est lancé avant le bouton.
+ * sa note et son bouton) : la Sentinelle ou l'Errante, avec son équipement de base, ses pouvoirs
+ * équipés (#235, H1, H2 : le pouvoir de base seul par défaut) et son trait. Rien n'est lancé avant
+ * le bouton.
  */
 export function HeroChoiceScreen({
   onStart,
@@ -64,12 +69,15 @@ export function HeroChoiceScreen({
   title,
   note,
   confirmLabel,
+  equipped,
 }: {
   readonly onStart: (hero: HeroKind) => void;
   readonly onClose: () => void;
   readonly title: string;
   readonly note: string;
   readonly confirmLabel: (hero: HeroKind) => string;
+  /** Les pouvoirs équipés d'office de chaque héros (#235), lus dans la vue du Camp. */
+  readonly equipped?: Readonly<Record<HeroKind, readonly PowerKind[]>>;
 }) {
   const [hero, setHero] = useState<HeroKind>('sentinel');
   return (
@@ -93,6 +101,7 @@ export function HeroChoiceScreen({
             <HeroOption
               key={kind}
               kind={kind}
+              powers={equipped?.[kind] ?? [basePower(kind)]}
               checked={kind === hero}
               onPress={() => setHero(kind)}
             />

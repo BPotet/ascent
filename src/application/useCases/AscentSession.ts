@@ -33,6 +33,7 @@ import { TIERS } from '../../domain/ascent/tiers';
 import { resumeBattle, startBattle, type Battle } from '../../domain/battle/Battle';
 import { combineModifiers } from '../../domain/battle/heroModifiers';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
+import { basePower } from '../../domain/battle/powers';
 import type { AscentStep, HeroVitals } from '../../domain/ascentLog/AscentLog';
 import type { AscentLogRecorder } from './AscentLogRecorder';
 import { BattleSession, type BattleSessionDependencies } from './BattleSession';
@@ -144,11 +145,14 @@ function parse(raw: string | null): SavedAscent | null {
     const rerolls = stored.rerolls ?? favorRerolls(ascent.gauge);
     const secondChance = stored.secondChance ?? favorSecondChance(ascent.gauge);
     const keys = stored.keys ?? favorKeys(ascent.gauge);
+    // Une ascension d'avant #235 : son pouvoir de base seul, jusqu'à sa fin.
+    const powers = stored.powers ?? [basePower(ascent.hero.kind)];
     const renamed: Ascent = {
       ...ascent,
       rerolls,
       secondChance,
       keys,
+      powers,
       blessings: ascent.blessings.map((blessing) => ({
         ...blessing,
         family: protection(blessing.family),
@@ -388,6 +392,8 @@ export class AscentSession {
             boonModifiers(ascent.hero.boons),
           ),
           enemies: encounter.enemies,
+          // Les pouvoirs équipés de l'ascension (#235).
+          powers: ascent.powers,
           // L'ennemi maudit tiré pour l'étage (#209) ; absent, aucun.
           ...(encounter.cursed !== undefined && { cursed: encounter.cursed }),
           // La seconde chance encore là (#206) ; absente, le combat est celui d'avant.

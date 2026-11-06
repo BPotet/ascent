@@ -11,7 +11,7 @@ import type { Encounter } from '../ascent/Ascent';
 import type { Tier } from '../ascent/tiers';
 import type { Actor } from '../battle/actionOrder';
 import type { AttackKind } from '../battle/attacks';
-import { enemyInitiative, type Battle } from '../battle/Battle';
+import { enemyInitiative, equippedOf, type Battle } from '../battle/Battle';
 import type {
   BattleEvent,
   BlowOutcome,
@@ -23,6 +23,7 @@ import type {
 import type { Bleed, EnemyKind, HeroKind } from '../battle/combatants';
 import type { GuardIntent, Intent, RaiseIntent } from '../battle/intents';
 import type { PressJudgement } from '../battle/rules';
+import { beyondBasePower, type PowerKind } from '../battle/powers';
 import type { TierMultiplier } from '../battle/tierMultiplier';
 
 /** La version du format où les combats sont apparus dans le Journal d'ascension. */
@@ -53,6 +54,8 @@ export interface HeroAtStart {
   readonly momentum: number;
   /** La seconde chance de la faveur, prête au début du combat (#206) ; absente, aucune. */
   readonly secondChance?: true;
+  /** Les pouvoirs équipés (#235), seulement s'ils diffèrent du pouvoir de base seul. */
+  readonly powers?: readonly PowerKind[];
 }
 
 /** Un ennemi de la première ligne au début du combat, avec son Initiative. */
@@ -149,6 +152,9 @@ const EFFECT_TYPES = [
   'summonEntered',
   'summonedFell',
   'secondChanceUsed',
+  'mistWorn',
+  'heroHealed',
+  'bleedStopped',
 ] as const satisfies readonly BattleEvent['type'][];
 
 type EffectType = (typeof EFFECT_TYPES)[number];
@@ -259,6 +265,9 @@ export function beginBattleLog(place: BattlePlace, battle: Battle, at: number): 
       maxHp: battle.hero.maxHp,
       momentum: battle.hero.momentum,
       ...(battle.hero.secondChance === 'ready' && { secondChance: true as const }),
+      ...(beyondBasePower(battle.heroKind, equippedOf(battle)) && {
+        powers: equippedOf(battle),
+      }),
     },
     enemies: battle.enemies.map((enemy, index) => ({
       place: index,

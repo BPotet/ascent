@@ -18,7 +18,10 @@ import { UNLOCKS, type Unlock } from './unlocks';
 
 /** Le Camp après les achats `unlocks`, chacun à son Prix de déblocage. */
 function campWith(...unlocks: Unlock[]): Camp {
-  return { unlocks: unlocks.map((unlock) => ({ unlock, price: unlockPrice(unlock) })) };
+  return {
+    unlocks: unlocks.map((unlock) => ({ unlock, price: unlockPrice(unlock) })),
+    powers: [],
+  };
 }
 
 describe('the Unlock price (#40, C1 and C2)', () => {
@@ -60,7 +63,9 @@ describe('the Available shards (#40, C3)', () => {
   });
 
   it('use the price paid, not the price of today', () => {
-    expect(availableShards(82, { unlocks: [{ unlock: 'watchBell', price: 30 }] })).toBe(52);
+    expect(availableShards(82, { unlocks: [{ unlock: 'watchBell', price: 30 }], powers: [] })).toBe(
+      52,
+    );
   });
 
   it('are never below 0', () => {
@@ -178,6 +183,7 @@ describe('the Camp as stored (#40)', () => {
     expect(JSON.parse(serializeCamp(camp))).toEqual({
       version: 1,
       unlocks: [{ unlock: 'watchBell', price: 40 }],
+      powers: [],
     });
     expect(parseCamp(serializeCamp(camp))).toEqual({ camp, unreadable: false });
   });
@@ -200,7 +206,52 @@ describe('the Camp as stored (#40)', () => {
     ['a price of 0', '{"version":1,"unlocks":[{"unlock":"watchBell","price":0}]}'],
     ['a decimal price', '{"version":1,"unlocks":[{"unlock":"watchBell","price":4.5}]}'],
     ['a price as text', '{"version":1,"unlocks":[{"unlock":"watchBell","price":"40"}]}'],
+    ['powers that are not a list', '{"version":1,"unlocks":[],"powers":{}}'],
+    ['an unknown power', '{"version":1,"unlocks":[],"powers":[{"power":"axe","price":30}]}'],
+    ['a base power', '{"version":1,"unlocks":[],"powers":[{"power":"bulwark","price":30}]}'],
+    ['a power strike', '{"version":1,"unlocks":[],"powers":[{"power":"shieldBash","price":30}]}'],
+    ['a power without a price', '{"version":1,"unlocks":[],"powers":[{"power":"mist"}]}'],
+    ['a power price of 0', '{"version":1,"unlocks":[],"powers":[{"power":"mist","price":0}]}'],
+    ['a power that is not an object', '{"version":1,"unlocks":[],"powers":["mist"]}'],
+    [
+      'a duplicate power',
+      '{"version":1,"unlocks":[],"powers":[{"power":"mist","price":30},{"power":"mist","price":30}]}',
+    ],
   ])('is unreadable with %s, and starts again empty', (_, raw) => {
     expect(parseCamp(raw)).toEqual({ camp: EMPTY_CAMP, unreadable: true });
+  });
+});
+
+describe('the powers kept by the Camp (#235, ADR 0017)', () => {
+  const camp: Camp = {
+    unlocks: [{ unlock: 'huntingSpear', price: 20 }],
+    powers: [{ power: 'retaliation', price: 30 }],
+  };
+
+  it('subtracts the prices of the powers and of the Unlocks from the same Shards', () => {
+    expect(availableShards(50, camp)).toBe(0);
+    expect(availableShards(80, camp)).toBe(30);
+  });
+
+  it('is stored in the same key, with its powers, and read back', () => {
+    expect(JSON.parse(serializeCamp(camp))).toEqual({
+      version: 1,
+      unlocks: [{ unlock: 'huntingSpear', price: 20 }],
+      powers: [{ power: 'retaliation', price: 30 }],
+    });
+    expect(parseCamp(serializeCamp(camp))).toEqual({ camp, unreadable: false });
+  });
+
+  it('reads a Camp stored before the powers without any power', () => {
+    expect(parseCamp('{"version":1,"unlocks":[{"unlock":"huntingSpear","price":20}]}')).toEqual({
+      camp: { unlocks: [{ unlock: 'huntingSpear', price: 20 }], powers: [] },
+      unreadable: false,
+    });
+  });
+
+  it('keeps the powers when an Unlock is bought', () => {
+    const bought = unlockAtCamp(camp, 100, 'watchBell');
+
+    expect(bought.kind === 'unlocked' && bought.camp.powers).toEqual(camp.powers);
   });
 });

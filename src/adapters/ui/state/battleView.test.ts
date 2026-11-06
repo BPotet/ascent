@@ -29,7 +29,7 @@ function withEnemy(battle: Battle, enemy: number, change: Partial<EnemyState>): 
 }
 
 const hero = { kind: 'hero', since: 0, announced: false } as const;
-const bulwark = { power: 'bulwark', cost: 1, missing: 0 } as const;
+const bulwark = { power: 'bulwark', cost: 1, missing: 0, availability: 'available' } as const;
 
 const attack = (attackKind: 'basic' | 'perilous' | 'delayedPerilous') =>
   ({
@@ -56,7 +56,7 @@ describe('battleView', () => {
     expect(battleView(inPhase(hero))).toMatchObject({
       phase: 'hero',
       banner: null,
-      pad: { kind: 'hero', locked: false, lock: null, power: bulwark },
+      pad: { kind: 'hero', locked: false, lock: null, powers: [bulwark] },
       line: { before: 'Cible : ', strong: 'Goule', after: '' },
       sealed: null,
       defenseHint: false,
@@ -68,7 +68,9 @@ describe('battleView', () => {
   it('tells the momentum the power misses', () => {
     const view = battleView(inPhase(hero, { hero: { ...started.hero, momentum: 0 } }));
 
-    expect(view.pad).toMatchObject({ power: { power: 'bulwark', cost: 1, missing: 1 } });
+    expect(view.pad).toMatchObject({
+      powers: [{ power: 'bulwark', cost: 1, missing: 1, availability: 'missing' }],
+    });
   });
 
   it('marks a stunned target ×1.5 on the line', () => {
@@ -113,7 +115,7 @@ describe('battleView', () => {
       inPhase({ kind: 'heroPower', power: 'bulwark', since: 0, until: 500 }, { target: 1 }),
     );
 
-    expect(view.pad).toEqual({ kind: 'hero', locked: true, lock: null, power: bulwark });
+    expect(view.pad).toEqual({ kind: 'hero', locked: true, lock: null, powers: [bulwark] });
     expect(view.line).toEqual({ before: 'Cible : ', strong: 'Spectre', after: '' });
     expect(view.heroActions).toBe(false);
   });
@@ -157,7 +159,7 @@ describe('battleView', () => {
     ],
     [
       'hero',
-      { kind: 'hero', locked: true, lock: { since: 500, until: 1_300 }, power: bulwark },
+      { kind: 'hero', locked: true, lock: { since: 500, until: 1_300 }, powers: [bulwark] },
       false,
     ],
   ] as const)(
@@ -227,7 +229,7 @@ describe('battleView', () => {
 
     expect(view).toMatchObject({
       phase: null,
-      pad: { kind: 'hero', locked: true, lock: null, power: bulwark },
+      pad: { kind: 'hero', locked: true, lock: null, powers: [bulwark] },
       line: null,
       trimmed: false,
     });
@@ -355,13 +357,13 @@ describe('battleView', () => {
     it('marks the power slot instant, never the Bulwark', () => {
       expect(battleView(wanderer(hero, { momentum: 3 })).pad).toMatchObject({
         kind: 'hero',
-        power: { power: 'shadowStep', cost: 3, missing: 0, instant: true },
+        powers: [{ power: 'shadowStep', cost: 3, missing: 0, instant: true }],
       });
       expect(battleView(wanderer(hero, { momentum: 2 })).pad).toMatchObject({
-        power: { missing: 1, instant: true },
+        powers: [{ missing: 1, instant: true }],
       });
       const sentinel = battleView(inPhase(hero)).pad;
-      expect(sentinel.kind === 'hero' && sentinel.power.instant).toBeFalsy();
+      expect(sentinel.kind === 'hero' && sentinel.powers[0]!.instant).toBeFalsy();
     });
 
     it('keeps the hero phase after the cast: active, unlocked, and « Toujours à toi : attaque. »', () => {
@@ -376,7 +378,8 @@ describe('battleView', () => {
           kind: 'hero',
           locked: false,
           lock: null,
-          power: { active: true, instant: true, instantCast: true },
+          instantCast: true,
+          powers: [{ availability: 'active', instant: true }],
         },
         line: { before: '', strong: 'Toujours à toi', after: ' : attaque.' },
         heroActions: true,
@@ -386,9 +389,54 @@ describe('battleView', () => {
     it('keeps the target line when the Shadow Step was cast in an earlier phase', () => {
       const view = battleView(wanderer(hero, { momentum: 3, shadowStep: true }));
 
-      expect(view.pad).toMatchObject({ power: { active: true } });
-      expect(view.pad.kind === 'hero' && view.pad.power.instantCast).toBeFalsy();
+      expect(view.pad).toMatchObject({ powers: [{ availability: 'active' }] });
+      expect(view.pad).not.toHaveProperty('instantCast');
       expect(view.line).toEqual({ before: 'Cible : ', strong: 'Goule', after: '' });
+    });
+  });
+
+  describe('the equipped powers (#235)', () => {
+    it('gives one key per equipped power, in the order of the battle, with its availability', () => {
+      const battle = inPhase(
+        { ...hero, instantPowerUsed: true },
+        {
+          heroKind: 'wanderer',
+          powers: ['shadowStep', 'rend', 'mist'],
+          hero: { ...started.hero, momentum: 1, rend: true },
+        },
+      );
+
+      expect(battleView(battle).pad).toMatchObject({
+        kind: 'hero',
+        instantCast: true,
+        powers: [
+          { power: 'shadowStep', cost: 3, availability: 'instantUsed', instant: true },
+          { power: 'rend', cost: 1, availability: 'active', instant: true },
+          { power: 'mist', cost: 2, availability: 'instantUsed', instant: true },
+        ],
+      });
+    });
+
+    it('says a power used this battle and the momentum it misses', () => {
+      const battle = inPhase(hero, {
+        powers: ['bulwark', 'retaliation', 'holdFast'],
+        hero: { ...started.hero, momentum: 2, spent: ['holdFast'], bulwark: true },
+      });
+
+      expect(battleView(battle).pad).toMatchObject({
+        powers: [
+          { power: 'bulwark', availability: 'active' },
+          { power: 'retaliation', availability: 'available', missing: 0 },
+          { power: 'holdFast', availability: 'usedThisBattle' },
+        ],
+      });
+      const poor = inPhase(hero, {
+        powers: ['bulwark', 'holdFast'],
+        hero: { ...started.hero, momentum: 2 },
+      });
+      expect(battleView(poor).pad).toMatchObject({
+        powers: [{}, { power: 'holdFast', availability: 'missing', missing: 1 }],
+      });
     });
   });
 

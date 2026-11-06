@@ -18,7 +18,8 @@ import {
   type Weapon,
 } from '../../../domain/battle/combatants';
 import type { Stunned } from '../../../domain/battle/guard';
-import { MOMENTUM_MAX, POWERS, type PowerKind } from '../../../domain/battle/momentum';
+import { MOMENTUM_MAX } from '../../../domain/battle/momentum';
+import { POWERS, basePower, type PowerKind } from '../../../domain/battle/powers';
 import type { ShownIntent } from '../../../domain/battle/shownIntent';
 
 /** Les libellés du combat, tirés du glossaire et de la maquette de l'épique #30. */
@@ -102,7 +103,11 @@ export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {
 
 export const POWER_NAMES: Readonly<Record<PowerKind, string>> = {
   bulwark: 'Rempart',
+  retaliation: 'Représailles',
+  holdFast: 'Tenir bon',
   shadowStep: "Pas de l'ombre",
+  rend: 'Entaille',
+  mist: 'Brume',
 };
 
 /** Les héros, leur équipement de base, leur pouvoir et leur trait (prototype #90, maquette H1, H2). */
@@ -138,6 +143,13 @@ const POWER_EFFECTS: Readonly<Record<PowerKind, string>> = {
   // La `powerDescription` du Codex (`wanderer` v3), recopiée mot pour mot le 01/11/2026 (#173).
   shadowStep:
     "Elle se fond dans sa propre ombre sans s'arrêter, et frappe dans le même élan. Sa prochaine esquive complète déclenche une contre-attaque, comme si le coup l'avait traversée sans la trouver.",
+  // La `description` des fiches `codex/<code>` version 1 (#235).
+  retaliation:
+    'Elle a compté chaque coup reçu sur le rempart. Le prochain, elle le rendra deux fois.',
+  holdFast:
+    "Une sentinelle ne tombe pas tant que la nuit n'est pas finie. Elle serre les dents, et la nuit continue.",
+  rend: "Une seule ligne, fine comme un fil, à l'endroit exact où l'armure cédera.",
+  mist: "Le froid du matin monte du sol avec elle. Ce qui la frappe frappe d'abord le brouillard.",
 };
 
 /** La fiche d'un héros sur l'écran du choix du héros. */
@@ -146,27 +158,38 @@ export interface HeroCard {
   readonly style: string;
   readonly stats: string;
   readonly kit: string;
-  readonly power: string;
   readonly trait: string;
   readonly label: string;
 }
 
-export function heroCard(kind: HeroKind): HeroCard {
+/** La description d'un pouvoir, le texte du Codex lu sur le Choix du héros. */
+export function powerDescription(power: PowerKind): string {
+  return POWER_EFFECTS[power];
+}
+
+/**
+ * La fiche d'un héros sur le Choix du héros, avec ses pouvoirs équipés (#235), le pouvoir de base
+ * seul par défaut.
+ */
+export function heroCard(
+  kind: HeroKind,
+  equipped: readonly PowerKind[] = [basePower(kind)],
+): HeroCard {
   const hero = HEROES[kind];
   const attack = hero.hits > 1 ? `${hero.attackPower} × ${hero.hits}` : `${hero.attackPower}`;
   const weapon = WEAPON_NAMES[hero.startingKit.weapon];
   const armor = ARMOR_NAMES[hero.startingKit.armor];
-  const power = POWER_NAMES[hero.power];
-  const cost = POWERS[hero.power].cost;
+  const powers = equipped
+    .map((power) => `${POWER_NAMES[power]}, ${POWERS[power].cost} Élan`)
+    .join(' ; ');
   const initiative = startingInitiative(kind);
   return {
     name: HERO_NAMES[kind],
     style: HERO_STYLES[kind],
     stats: `${hero.maxHp} PV · Attaque ${attack} · Initiative ${initiative}`,
     kit: `${weapon} · ${armor}`,
-    power: `${power} (${cost} Élan) : ${POWER_EFFECTS[hero.power]}`,
     trait: HERO_TRAITS[kind],
-    label: `${HERO_NAMES[kind]}, ${HERO_STYLES[kind]}. ${hero.maxHp} PV, Attaque ${attack}, Initiative ${initiative}. Arme ${weapon}, armure ${armor}, pouvoir ${power}. ${HERO_TRAITS[kind]}`,
+    label: `${HERO_NAMES[kind]}, ${HERO_STYLES[kind]}. ${hero.maxHp} PV, Attaque ${attack}, Initiative ${initiative}. Arme ${weapon}, armure ${armor}. Pouvoirs équipés : ${powers}. ${HERO_TRAITS[kind]}`,
   };
 }
 
@@ -389,6 +412,14 @@ export interface FeedbackText {
   readonly title: string;
 }
 
+/** Les pouvoirs au féminin, pour l'accord de « actif » (#235) : Entaille, Brume. */
+const FEMININE_POWERS: ReadonlySet<PowerKind> = new Set(['rend', 'mist']);
+
+/** « Représailles actif », « Brume active » : un pouvoir actif, accordé à son nom (#235). */
+export function activePowerText(power: PowerKind): string {
+  return `${POWER_NAMES[power]} ${FEMININE_POWERS.has(power) ? 'active' : 'actif'}`;
+}
+
 /** Le mot d'un événement sur la scène, ou `null` s'il n'en a pas. */
 export function feedbackText(event: BattleEvent): FeedbackText | null {
   switch (event.type) {
@@ -398,11 +429,14 @@ export function feedbackText(event: BattleEvent): FeedbackText | null {
       return { tone: 'perfect', title: 'Parfait · contre-attaque' };
     case 'bulwarkCountered':
       return { tone: 'riposte', title: 'Riposte' };
-    // Le mot de scène d'un pouvoir instantané (#173), sans bande ni bannière.
+    // Le mot de scène d'un pouvoir (#173, #235), sans bande ni bannière : en ombre pour ceux de
+    // l'Errante, en or pour ceux de la Sentinelle ; le Rempart n'en a pas.
     case 'powerUsed':
-      return event.instant === true
-        ? { tone: 'shadowStep', title: POWER_NAMES[event.power] }
-        : null;
+      if (event.power === 'bulwark') return null;
+      return {
+        tone: POWERS[event.power].hero === 'wanderer' ? 'shadowStep' : 'perfect',
+        title: POWER_NAMES[event.power],
+      };
     case 'guardBroken':
       return { tone: 'break', title: 'Cassure' };
     case 'enemySelfRevived':
@@ -425,7 +459,7 @@ export interface DamageFloat {
    * Des dégâts, de la garde, les dégâts de la Riposte du Rempart, précédés de l'écu (#128), ou la
    * perte de la Brûlure, précédée d'une flamme (#171).
    */
-  readonly kind: 'damage' | 'guard' | 'riposte' | 'burn' | 'secondChance';
+  readonly kind: 'damage' | 'guard' | 'riposte' | 'burn' | 'secondChance' | 'heal';
 }
 
 export function damageFloat(event: BattleEvent): DamageFloat | null {
@@ -458,6 +492,11 @@ export function damageFloat(event: BattleEvent): DamageFloat | null {
     // Les PV du héros relevé, en or (#206).
     case 'secondChanceUsed':
       return { at: 'hero', text: `+${event.hp}`, big: false, kind: 'secondChance' };
+    // Le soin de Tenir bon, en or (#235, K12) ; rien à PV max.
+    case 'heroHealed':
+      return event.heal > 0
+        ? { at: 'hero', text: `+${event.heal}`, big: false, kind: 'heal' }
+        : null;
     default:
       return null;
   }
@@ -537,7 +576,7 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
     case 'blowResolved':
       return blowAnnouncement(event.outcome, event.damage);
     case 'counterAttacked':
-      return `Contre-attaque, ${damages(event.damage)}`;
+      return `${event.retaliation ? 'Représailles, contre-attaque' : 'Contre-attaque'}, ${damages(event.damage)}`;
     // Le nom de l'ennemi est dit : la riposte ne vise pas forcément la cible choisie (#128).
     case 'bulwarkWorn':
       return 'Rempart usé.';
@@ -563,8 +602,18 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
       return `${name(event.enemy)} se relève, ${event.hp} PV sur ${battle.enemies[event.enemy]!.maxHp}`;
     case 'powerUsed':
       return event.instant === true
-        ? `${POWER_NAMES[event.power]} actif. Toujours à toi : vise et attaque.`
+        ? `${activePowerText(event.power)}. Toujours à toi : vise et attaque.`
         : POWER_NAMES[event.power];
+    // Tenir bon (#235, K12) : le soin, puis la Brûlure éteinte ou le Saignement arrêté.
+    case 'heroHealed':
+      return event.heal > 0 ? `Plus ${event.heal} PV` : null;
+    case 'bleedStopped':
+      return 'Saignement arrêté.';
+    // La Brûlure éteinte par Tenir bon (#235) ; rien à la fin du combat.
+    case 'burnCleared':
+      return battle.phase.kind === 'heroPower' ? 'Brûlure éteinte.' : null;
+    case 'mistWorn':
+      return 'Brume usée.';
     case 'respite':
       return event.gain > 0 ? `Répit, plus ${event.gain} PV` : null;
     case 'battleEnded':

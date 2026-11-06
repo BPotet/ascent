@@ -18,6 +18,7 @@ export function campStore() {
   const values = new Map<string, string>([
     [BATTLE_HINT_SEEN_KEYS.hero, '1'],
     [BATTLE_HINT_SEEN_KEYS.defense, '1'],
+    [BATTLE_HINT_SEEN_KEYS.powers, '1'],
   ]);
   const failing = new Set<string>();
   const failingReads = new Set<string>();

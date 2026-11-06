@@ -96,4 +96,15 @@ describe('TowerFootScreen and the camp (#40)', () => {
     expect(session.current()).toEqual(startAscent(42, { unlocks: ['flamberge', 'emberHeart'] }));
     expect(onEnter).toHaveBeenCalledTimes(1);
   });
+
+  it('shows the equipped powers on the hero choice and begins the ascent with them (#235, H2)', async () => {
+    const { session } = await show({ seed: 42, shards: 90, powers: ['retaliation', 'holdFast'] });
+
+    await fireEvent.press(await screen.findByRole('button', { name: "Commencer l'ascension" }));
+
+    expect(screen.getByText('Pouvoirs équipés · 3 sur 3')).toBeOnTheScreen();
+    expect(screen.queryByText('Place libre')).not.toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Continuer avec la Sentinelle' }));
+    expect(session.current()?.powers).toEqual(['bulwark', 'retaliation', 'holdFast']);
+  });
 });

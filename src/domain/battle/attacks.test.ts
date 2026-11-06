@@ -7,6 +7,7 @@ import {
   shortestWindUpMs,
 } from './attacks';
 import { ENEMIES, MAX_DAMAGE_REDUCTION_PERCENT, SENTINEL } from './combatants';
+import { basePower } from './powers';
 import { TEST_BATTLE_ENEMIES } from './testing/testBattle';
 
 describe('attacks (C10)', () => {
@@ -42,11 +43,11 @@ describe('combatants of the test battle', () => {
       guardDamage: 12,
       damageReductionPercent: 10,
       counterPercent: 130,
-      power: 'bulwark',
       // Les valeurs du Codex (`sentinel`), recopiées le 29/10/2026 (#128).
       bulwarkCounter: { bulwarkCounterPercent: 50, bulwarkCounterGuardPercent: 25 },
     });
     expect(MAX_DAMAGE_REDUCTION_PERCENT).toBe(40);
+    expect(basePower('sentinel')).toBe('bulwark');
   });
 
   it('opposes a Ghoul, a Specter and a Necromancer, from left to right', () => {

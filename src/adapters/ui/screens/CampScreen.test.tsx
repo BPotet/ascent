@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, within } from '@testing-library/react-native';
 import { AccessibilityInfo, StyleSheet } from 'react-native';
 
-import { CAMP_KEY } from '../../../application/useCases/CampSession';
+import { CAMP_KEY, POWER_TREES_SEEN_KEY } from '../../../application/useCases/CampSession';
 import { startAscent } from '../../../domain/ascent/Ascent';
 import type { Unlock } from '../../../domain/ascent/unlocks';
 import { ascentSetUp } from '../testing/ascent';
@@ -19,9 +19,13 @@ async function show(options: Parameters<typeof ascentSetUp>[0] = {}) {
   const setUp = ascentSetUp(options);
   await setUp.session.load();
   const onLeave = jest.fn();
-  await renderScreen(<CampScreen camp={setUp.camp} onLeave={onLeave} />, setUp.dependencies);
+  const onOpenTree = jest.fn();
+  await renderScreen(
+    <CampScreen camp={setUp.camp} onLeave={onLeave} onOpenTree={onOpenTree} />,
+    setUp.dependencies,
+  );
   await screen.findByTestId('camp-purse');
-  return { ...setUp, onLeave };
+  return { ...setUp, onLeave, onOpenTree };
 }
 
 const card = (unlock: Unlock) => within(screen.getByTestId(`camp-card-${unlock}`));
@@ -320,5 +324,50 @@ describe('CampScreen (#40)', () => {
     expect(style.minHeight).toBeGreaterThanOrEqual(48);
     await fireEvent.press(back);
     expect(onLeave).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('CampScreen: the power trees (#235, C1)', () => {
+  it('shows a card per hero between the Available shards and the Unlocks, with a « new » tag', async () => {
+    await show({ shards: 50, powers: ['retaliation'] });
+
+    expect(screen.getByText('Arbres de pouvoirs')).toBeOnTheScreen();
+    expect(screen.getByText('nouveau')).toBeOnTheScreen();
+    const sentinel = screen.getByRole('button', {
+      name: 'Arbre de pouvoirs de la Sentinelle, 2 pouvoirs sur 5 débloqués',
+    });
+    expect(within(sentinel).getByText(/sur 5 débloqués/)).toBeOnTheScreen();
+    expect(
+      screen.getByRole('button', {
+        name: "Arbre de pouvoirs de l'Errante, 1 pouvoir sur 5 débloqué",
+      }),
+    ).toBeOnTheScreen();
+  });
+
+  it('opens the tree of a hero', async () => {
+    const { onOpenTree } = await show({ shards: 50 });
+
+    await fireEvent.press(screen.getByRole('button', { name: /Arbre de pouvoirs de l'Errante/ }));
+
+    expect(onOpenTree).toHaveBeenCalledWith('wanderer');
+  });
+
+  it('drops the « new » tag once a tree was opened', async () => {
+    const setUp = ascentSetUp({ shards: 50 });
+    setUp.keyValueStore.values.set(POWER_TREES_SEEN_KEY, '1');
+    await setUp.session.load();
+    await renderScreen(
+      <CampScreen camp={setUp.camp} onLeave={jest.fn()} onOpenTree={jest.fn()} />,
+      setUp.dependencies,
+    );
+    await screen.findByTestId('camp-purse');
+
+    expect(screen.queryByText('nouveau')).not.toBeOnTheScreen();
+  });
+
+  it('shares the Shards of the powers and of the Flame Keeper', async () => {
+    await show({ shards: 50, powers: ['retaliation'], unlocks: ['huntingSpear'] });
+
+    expect(screen.getByLabelText('0 Éclat disponible')).toBeOnTheScreen();
   });
 });

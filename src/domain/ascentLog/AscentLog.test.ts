@@ -623,3 +623,14 @@ describe('the format version 2', () => {
     expect(resumeAscentLog(old, ascent)).toBe(old);
   });
 });
+
+describe('the equipped powers in the ascent log (#235)', () => {
+  it('notes the equipped powers only when they differ from the base power alone', () => {
+    const day = Day.of(2026, 11, 6);
+
+    expect(beginAscentLog(startAscent(3), day)).not.toHaveProperty('powers');
+    expect(
+      beginAscentLog(startAscent(3, { powers: ['bulwark', 'retaliation'] }), day).powers,
+    ).toEqual(['bulwark', 'retaliation']);
+  });
+});
