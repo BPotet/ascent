@@ -1,7 +1,7 @@
 import type { AttackKind } from './attacks';
 import type { EnemyKind } from './combatants';
 import type { Intent } from './intents';
-import type { PowerKind } from './momentum';
+import type { PowerKind } from './powers';
 import type { PressJudgement } from './rules';
 
 /** Les deux boutons de défense de la phase ennemie. */

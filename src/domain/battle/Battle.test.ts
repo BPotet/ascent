@@ -1605,6 +1605,21 @@ describe('over about 500 seeds', () => {
     }
   });
 
+  it('never casts the Bulwark again while it is active (#235, PW3)', () => {
+    let refused = 0;
+    for (const play of allPlays()) {
+      let active = false;
+      for (const event of play.events) {
+        if (event.type === 'bulwarkWorn') active = false;
+        if (event.type === 'pressIgnored' && event.button === 'power') refused += 1;
+        if (event.type !== 'powerUsed') continue;
+        expect(active).toBe(false);
+        active = true;
+      }
+    }
+    expect(refused).toBeGreaterThan(0);
+  });
+
   it('gives exactly the same battle for the same seed and the same presses', () => {
     for (const seed of seeds.slice(0, 50)) {
       expect(playSeed(seed).events).toEqual(allPlays()[seeds.indexOf(seed)]!.events);

@@ -18,7 +18,8 @@ import {
   type Weapon,
 } from '../../../domain/battle/combatants';
 import type { Stunned } from '../../../domain/battle/guard';
-import { MOMENTUM_MAX, POWERS, type PowerKind } from '../../../domain/battle/momentum';
+import { MOMENTUM_MAX } from '../../../domain/battle/momentum';
+import { POWERS, basePower, type PowerKind } from '../../../domain/battle/powers';
 import type { ShownIntent } from '../../../domain/battle/shownIntent';
 
 /** Les libellés du combat, tirés du glossaire et de la maquette de l'épique #30. */
@@ -156,15 +157,16 @@ export function heroCard(kind: HeroKind): HeroCard {
   const attack = hero.hits > 1 ? `${hero.attackPower} × ${hero.hits}` : `${hero.attackPower}`;
   const weapon = WEAPON_NAMES[hero.startingKit.weapon];
   const armor = ARMOR_NAMES[hero.startingKit.armor];
-  const power = POWER_NAMES[hero.power];
-  const cost = POWERS[hero.power].cost;
+  const base = basePower(kind);
+  const power = POWER_NAMES[base];
+  const cost = POWERS[base].cost;
   const initiative = startingInitiative(kind);
   return {
     name: HERO_NAMES[kind],
     style: HERO_STYLES[kind],
     stats: `${hero.maxHp} PV · Attaque ${attack} · Initiative ${initiative}`,
     kit: `${weapon} · ${armor}`,
-    power: `${power} (${cost} Élan) : ${POWER_EFFECTS[hero.power]}`,
+    power: `${power} (${cost} Élan) : ${POWER_EFFECTS[base]}`,
     trait: HERO_TRAITS[kind],
     label: `${HERO_NAMES[kind]}, ${HERO_STYLES[kind]}. ${hero.maxHp} PV, Attaque ${attack}, Initiative ${initiative}. Arme ${weapon}, armure ${armor}, pouvoir ${power}. ${HERO_TRAITS[kind]}`,
   };

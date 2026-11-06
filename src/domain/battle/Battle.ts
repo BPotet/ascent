@@ -46,15 +46,8 @@ import { NO_MODIFIERS, combineModifiers, heroAttack, type HeroModifiers } from '
 import { heroInitiative } from './initiative';
 import { cursedValue } from './curse';
 import { drawIntent, raisedHp, type GuardIntent, type Intent, type RaiseIntent } from './intents';
-import {
-  BULWARK_DAMAGE_PERCENT,
-  MOMENTUM_MAX,
-  MOMENTUM_START,
-  POWERS,
-  gainMomentum,
-  missingMomentum,
-  type PowerKind,
-} from './momentum';
+import { MOMENTUM_MAX, MOMENTUM_START, gainMomentum, missingMomentum } from './momentum';
+import { BULWARK_DAMAGE_PERCENT, POWERS, basePower, type PowerKind } from './powers';
 import {
   COUNTER_MS,
   HERO_ACTION_MS,
@@ -217,7 +210,10 @@ export type BattlePhase =
       readonly since: number;
       /** Elle commence sans transition de phase, par l'annonce « À toi ». */
       readonly announced: boolean;
-      /** Un pouvoir instantané vient d'être lancé (#173) : le héros choisit encore son action. */
+      /**
+       * Un pouvoir instantané vient d'être lancé (#173) : le héros choisit encore son action, et
+       * aucun autre pouvoir instantané ne se lance dans cette phase (PW2, #235).
+       */
       readonly instantPowerUsed?: true;
     }
   | {
@@ -259,6 +255,11 @@ export interface Battle {
   readonly round: number;
   /** Le héros joué (prototype #90). */
   readonly heroKind: HeroKind;
+  /**
+   * Les pouvoirs équipés (#235), dans l'ordre de l'arbre ; absents, le pouvoir de base seul (un
+   * combat sauvé avant #235, le combat d'essai) : voir `equippedOf`.
+   */
+  readonly powers?: readonly PowerKind[];
   /** L'ordre d'action par Initiative (prototype #90), sinon le héros d'abord. */
   readonly initiative: boolean;
   /** Les modificateurs du héros (prototype #93) ; absents, aucun. */
@@ -365,6 +366,8 @@ export interface BattleOptions extends BattleStartOptions {
   readonly cursed?: number;
   /** Le héros a la seconde chance de la faveur (#206) ; par défaut, non. */
   readonly secondChance?: boolean;
+  /** Les pouvoirs équipés (#235), 1 à 3 ; par défaut, le pouvoir de base du héros. */
+  readonly powers?: readonly PowerKind[];
 }
 
 /** Au plus 3 ennemis se battent en même temps (P3b). */
@@ -416,6 +419,7 @@ export function startBattle({
   summonMultiplier,
   cursed,
   secondChance,
+  powers,
 }: BattleOptions): BattleUpdate {
   const maxHp = heroMaxHp ?? HEROES[hero].maxHp;
   const momentum = Math.min(MOMENTUM_MAX, MOMENTUM_START + (modifiers?.startingMomentum ?? 0));
@@ -430,6 +434,7 @@ export function startBattle({
       inputOffset,
       round: 0,
       heroKind: hero,
+      ...(powers && { powers }),
       initiative,
       ...(modifiers && { modifiers }),
       ...(tierMultiplier && { tierMultiplier }),
@@ -466,6 +471,49 @@ export function startBattle({
 /** Le profil du héros joué. */
 export function heroProfile(battle: Battle): HeroProfile {
   return HEROES[battle.heroKind];
+}
+
+/** Les pouvoirs équipés du combat (#235) : absents, le pouvoir de base seul. */
+export function equippedOf(battle: Battle): readonly PowerKind[] {
+  return battle.powers ?? [basePower(battle.heroKind)];
+}
+
+/** Le coût en Élan d'un pouvoir dans ce combat (#235) : tout coût passe par ici. */
+export function powerCost(_battle: Battle, power: PowerKind): number {
+  return POWERS[power].cost;
+}
+
+/**
+ * La disponibilité d'un pouvoir (#235), seule règle, lue par `heroAction` et par l'interface, dans
+ * cet ordre : non équipé, charge active (PW3), un instantané déjà lancé dans la phase (PW2), l'Élan
+ * qui manque, puis disponible.
+ */
+export type PowerAvailability =
+  | { readonly kind: 'available' }
+  | { readonly kind: 'notEquipped' }
+  | { readonly kind: 'active' }
+  | { readonly kind: 'instantUsed' }
+  | { readonly kind: 'missing'; readonly missing: number };
+
+/** La charge du pouvoir `power` est active : il attend son emploi (PW3). */
+function isActive(hero: HeroState, power: PowerKind): boolean {
+  switch (power) {
+    case 'bulwark':
+      return hero.bulwark;
+    case 'shadowStep':
+      return hero.shadowStep === true;
+  }
+}
+
+export function powerAvailability(battle: Battle, power: PowerKind): PowerAvailability {
+  if (!equippedOf(battle).includes(power)) return { kind: 'notEquipped' };
+  if (isActive(battle.hero, power)) return { kind: 'active' };
+  const { phase } = battle;
+  if (POWERS[power].instant && phase.kind === 'hero' && phase.instantPowerUsed) {
+    return { kind: 'instantUsed' };
+  }
+  const missing = missingMomentum(battle.hero.momentum, powerCost(battle, power));
+  return missing > 0 ? { kind: 'missing', missing } : { kind: 'available' };
 }
 
 /** Les modificateurs du héros dans ce combat (prototype #93). */
@@ -1637,13 +1685,20 @@ function startHeroAction(battle: Battle, phase: BattlePhase): Battle {
   return { ...battle, phase, heroActions: battle.heroActions + 1, lastPlayed: 'hero' };
 }
 
+/**
+ * La frappe en rythme (`TimedStrike`) commence sur `enemy` : son premier coup, après la
+ * préparation. Toute frappe en rythme du héros part d'ici (#235).
+ */
+function startTimedStrike(
+  battle: Battle,
+  events: Events,
+  { enemy, at }: { readonly enemy: number; readonly at: number },
+): Battle {
+  return startStrike(battle, events, { enemy, at, impactAt: at + STRIKE_WIND_UP_MS, hit: 1 });
+}
+
 function attack(battle: Battle, events: Events, at: number): Battle {
-  const struck = startStrike(battle, events, {
-    enemy: battle.target,
-    at,
-    impactAt: at + STRIKE_WIND_UP_MS,
-    hit: 1,
-  });
+  const struck = startTimedStrike(battle, events, { enemy: battle.target, at });
   return gainMomentumAt(startHeroAction(struck, struck.phase), events, at);
 }
 
@@ -1657,9 +1712,9 @@ function activatePower(
   { power, phase }: { readonly power: PowerKind; readonly phase: HeroPhase },
   at: number,
 ): Battle {
-  const instant = heroProfile(battle).powerInstant;
+  const { instant } = POWERS[power];
   const until = instant ? at : at + HERO_ACTION_MS;
-  const momentum = battle.hero.momentum - POWERS[power].cost;
+  const momentum = battle.hero.momentum - powerCost(battle, power);
   events.push({ type: 'powerUsed', at, power, until, ...(instant && { instant }) });
   events.push({ type: 'momentumChanged', at, momentum });
   const hero =
@@ -1705,12 +1760,8 @@ export function heroAction(
       return { battle: { ...current, target: action.enemy }, events };
     }
     case 'power':
-      // Seul le pouvoir du héros, avec assez d'Élan ; Pas de l'ombre est indisponible s'il est actif.
-      if (
-        action.power !== heroProfile(current).power ||
-        missingMomentum(current.hero.momentum, action.power) > 0 ||
-        (action.power === 'shadowStep' && current.hero.shadowStep === true)
-      ) {
+      // Un pouvoir équipé et disponible (#235) : assez d'Élan, pas actif, un instantané par phase.
+      if (powerAvailability(current, action.power).kind !== 'available') {
         return ignored(advanced, at, 'power', 'notAvailable');
       }
       return {

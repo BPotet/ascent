@@ -1,15 +1,18 @@
 import type { Actor } from '../../../domain/battle/actionOrder';
 import { ATTACKS } from '../../../domain/battle/attacks';
 import {
-  heroProfile,
+  equippedOf,
   nextRoundOrder,
+  powerAvailability,
+  powerCost,
   pendingSummon,
   type Battle,
   type EnemyState,
 } from '../../../domain/battle/Battle';
 import type { PhaseDirection } from '../../../domain/battle/BattleEvent';
 import { ENEMIES, type EnemyKind, type HeroKind } from '../../../domain/battle/combatants';
-import { POWERS, missingMomentum, type PowerKind } from '../../../domain/battle/momentum';
+import { missingMomentum } from '../../../domain/battle/momentum';
+import { POWERS, type PowerKind } from '../../../domain/battle/powers';
 import { shownIntent, type ShownIntent } from '../../../domain/battle/shownIntent';
 import {
   ENEMY_NAMES,
@@ -33,7 +36,7 @@ export interface PowerSlot {
   readonly power: PowerKind;
   readonly cost: number;
   readonly missing: number;
-  /** Pas de l'ombre est actif : indisponible jusqu'à son emploi (prototype #90). */
+  /** Le pouvoir est actif : indisponible jusqu'à son emploi (prototype #90, PW3 de #235). */
   readonly active?: true;
   /** Un pouvoir instantané (#173) : il ne prend pas l'action du héros. */
   readonly instant?: true;
@@ -186,13 +189,14 @@ function instantCast(battle: Battle): boolean {
 }
 
 function powerSlot(battle: Battle): PowerSlot {
-  const { power, powerInstant } = heroProfile(battle);
+  const power = equippedOf(battle)[0]!;
+  const cost = powerCost(battle, power);
   return {
     power,
-    cost: POWERS[power].cost,
-    missing: missingMomentum(battle.hero.momentum, power),
-    ...(power === 'shadowStep' && battle.hero.shadowStep === true && { active: true as const }),
-    ...(powerInstant && { instant: true as const }),
+    cost,
+    missing: missingMomentum(battle.hero.momentum, cost),
+    ...(powerAvailability(battle, power).kind === 'active' && { active: true as const }),
+    ...(POWERS[power].instant && { instant: true as const }),
     ...(instantCast(battle) && { instantCast: true as const }),
   };
 }

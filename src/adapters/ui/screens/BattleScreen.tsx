@@ -5,7 +5,8 @@ import Animated from 'react-native-reanimated';
 import type { BattleSession } from '../../../application/useCases/BattleSession';
 import type { Battle } from '../../../domain/battle/Battle';
 import type { DefenseButton } from '../../../domain/battle/BattleEvent';
-import { ENEMIES, HEROES, type EnemyKind } from '../../../domain/battle/combatants';
+import { ENEMIES, type EnemyKind } from '../../../domain/battle/combatants';
+import { basePower } from '../../../domain/battle/powers';
 import { ActionPad } from '../battle/ActionPad';
 import { ActionTrack } from '../battle/ActionTrack';
 import { BattleScene, prepareBattleScene } from '../battle/BattleCanvas';
@@ -109,7 +110,7 @@ export function BattleScreen({
   const onPower = useCallback(
     (touchStartedAt: number, releasedAt: number) =>
       session.heroAction(
-        { kind: 'power', power: HEROES[heroKind].power },
+        { kind: 'power', power: basePower(heroKind) },
         toBattleInstant(touchStartedAt),
         toBattleInstant(releasedAt),
       ),

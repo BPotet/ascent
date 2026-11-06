@@ -15,7 +15,7 @@ import type {
   PressRecord,
   RoundRecord,
 } from '../../src/domain/ascentLog/BattleLog';
-import { POWERS } from '../../src/domain/battle/momentum';
+import { POWERS } from '../../src/domain/battle/powers';
 import type { Battle, HeroAction } from '../../src/domain/battle/Battle';
 import type { BattleEvent, DefenseButton } from '../../src/domain/battle/BattleEvent';
 import type { EnemyKind } from '../../src/domain/battle/combatants';
