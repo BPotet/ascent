@@ -16,7 +16,13 @@ function leave(): void {
 
 function Camp() {
   const { keyValueStore, clock } = useDependencies();
-  return <CampScreen camp={sharedCampSession(keyValueStore, clock)} onLeave={leave} />;
+  return (
+    <CampScreen
+      camp={sharedCampSession(keyValueStore, clock)}
+      onLeave={leave}
+      onOpenTree={(hero) => router.push({ pathname: '/power-tree', params: { hero } })}
+    />
+  );
 }
 
 /** Le camp (#40), dans le build de preview seulement, comme toute la tour. */
