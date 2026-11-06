@@ -10,8 +10,9 @@
  *   « Écu du Rempart » (`chosen: 0`).
  * - `shieldBash` : `assets/powerShieldBash` version 1, sha256 f4f294dd2498db922e7d5f3b47a1a7b336e5a7aad4a64612b18be9eecf38f88d ;
  *   « Écu lancé » (`chosen: 0`).
- * - `crushingBlow` : `assets/powerCrushingBlow` version 2, sha256 2258cb35a1ac5cfa6ac44a1b0201e5a1daf86b9834d6191a20160fc077a90f75 ;
- *   « Garde brisée » (`chosen: 0`) ; champ `animation` (poses de Fracas, #236) non recopié.
+ * - `crushingBlow` : `assets/powerCrushingBlow` version 3, sha256 f0090acf0a93892c84640c79a6d86ad65b8b48e4c6648d9e1fcc0b35d1caec7c ;
+ *   « Garde brisée » (`chosen: 0`) ; champs `animation`, `animStatus`, `animChosen` et `animNote`
+ *   (poses de Fracas, #236) non recopiés, icône identique à celle de la version 2.
  * - `retaliation` : `assets/powerRetaliation` version 1, sha256 404c621c8567c37eaf4dad1f995ff640975735064d1f8a414da16111f405f227 ;
  *   « Lame en retour » (`chosen: 0`).
  * - `holdFast` : `assets/powerHoldFast` version 1, sha256 7eff68a79d535f7d99294ef300fb5ee6d3cfc32599dd79ba7a3d9a2d58d53d98 ;
