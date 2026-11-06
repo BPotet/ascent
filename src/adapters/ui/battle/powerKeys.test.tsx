@@ -227,7 +227,7 @@ describe('the charges under the HP (#235, K5, K6)', () => {
     expect(screen.getByTestId('battle-power-chip-mist', hiddenToo)).toBeTruthy();
     expect(screen.getByTestId('battle-power-chip-rend', hiddenToo)).toBeTruthy();
     expect(screen.getByTestId('battle-hero-bar').props.accessibilityLabel).toBe(
-      "L'Errante, PV 41 sur 55, Élan 2 sur 5, Pas de l'ombre, Entaille actif, Brume actif",
+      "L'Errante, PV 41 sur 55, Élan 2 sur 5, Pas de l'ombre, Entaille active, Brume active",
     );
   });
 

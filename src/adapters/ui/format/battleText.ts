@@ -415,6 +415,11 @@ export interface FeedbackText {
 /** Les pouvoirs au féminin, pour l'accord de « actif » (#235) : Entaille, Brume. */
 const FEMININE_POWERS: ReadonlySet<PowerKind> = new Set(['rend', 'mist']);
 
+/** « Représailles actif », « Brume active » : un pouvoir actif, accordé à son nom (#235). */
+export function activePowerText(power: PowerKind): string {
+  return `${POWER_NAMES[power]} ${FEMININE_POWERS.has(power) ? 'active' : 'actif'}`;
+}
+
 /** Le mot d'un événement sur la scène, ou `null` s'il n'en a pas. */
 export function feedbackText(event: BattleEvent): FeedbackText | null {
   switch (event.type) {
@@ -597,7 +602,7 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
       return `${name(event.enemy)} se relève, ${event.hp} PV sur ${battle.enemies[event.enemy]!.maxHp}`;
     case 'powerUsed':
       return event.instant === true
-        ? `${POWER_NAMES[event.power]} ${FEMININE_POWERS.has(event.power) ? 'active' : 'actif'}. Toujours à toi : vise et attaque.`
+        ? `${activePowerText(event.power)}. Toujours à toi : vise et attaque.`
         : POWER_NAMES[event.power];
     // Tenir bon (#235, K12) : le soin, puis la Brûlure éteinte ou le Saignement arrêté.
     case 'heroHealed':

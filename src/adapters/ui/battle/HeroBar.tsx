@@ -15,6 +15,7 @@ import { MOMENTUM_MAX } from '../../../domain/battle/momentum';
 import { SECOND_CHANCE_FREEZE_MS, SECOND_CHANCE_MS } from '../../../domain/battle/secondChance';
 import {
   HERO_NAMES,
+  activePowerText,
   POWER_NAMES,
   bleedChipText,
   burnLabel,
@@ -184,9 +185,7 @@ export function HeroBar({
     ...(hero.bleed ? [bleedChipText(hero.bleed.rounds)] : []),
     ...(hero.burn === undefined ? [] : [burnLabel(hero.burn)]),
     ...(hero.shadowStep === true ? [POWER_NAMES.shadowStep] : []),
-    ...CHARGES.filter((power) => hero[power] === true).map(
-      (power) => `${POWER_NAMES[power]} actif`,
-    ),
+    ...CHARGES.filter((power) => hero[power] === true).map(activePowerText),
     ...(hero.secondChance === undefined ? [] : [secondChanceLabel(hero.secondChance)]),
   ];
   const label = `${name}, PV ${hero.hp} sur ${hero.maxHp}, ${momentumLabel(hero.momentum)}${active.map((power) => `, ${power}`).join('')}`;
