@@ -528,6 +528,28 @@ export function ActionPad({
     },
     [onPowerTip],
   );
+  // La bulle se ferme à toute action et à tout changement de phase : elle ne revient jamais seule.
+  // (état ajusté au rendu, sans effet : https://react.dev/learn/you-might-not-need-an-effect).
+  const heroPhase = pad.kind === 'hero' && !pad.locked;
+  const [tipPhase, setTipPhase] = useState(heroPhase);
+  if (tipPhase !== heroPhase) {
+    setTipPhase(heroPhase);
+    if (!heroPhase) setTip(null);
+  }
+  const castPower = useCallback(
+    (power: PowerKind, touchStartedAt: number, releasedAt: number) => {
+      setTip(null);
+      onPower(power, touchStartedAt, releasedAt);
+    },
+    [onPower],
+  );
+  const attack = useCallback(
+    (touchStartedAt: number, releasedAt: number) => {
+      setTip(null);
+      onAttack(touchStartedAt, releasedAt);
+    },
+    [onAttack],
+  );
   useEffect(() => {
     const attackKey = attackRef.current;
     if (instantCast && attackKey !== null) {
@@ -576,7 +598,7 @@ export function ActionPad({
               locked={pad.locked}
               uiNow={uiNow}
               now={now}
-              onPower={onPower}
+              onPower={castPower}
               onTip={onTip}
             />
           ))}
@@ -586,8 +608,8 @@ export function ActionPad({
             flex={ATTACK_FLEX[pad.powers.length] ?? 1.15}
             disabled={pad.locked}
             uiNow={uiNow}
-            onRelease={onAttack}
-            onAccessibilityPress={() => onAttack(now(), now())}
+            onRelease={attack}
+            onAccessibilityPress={() => attack(now(), now())}
           />
         </>
       ) : (

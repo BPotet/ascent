@@ -83,9 +83,10 @@ export function useReleaseGesture(
         held.set(true);
         scheduleOnRN(onHold);
       })
-      .onFinalize((_event, success) => {
+      .onFinalize(() => {
         'worklet';
-        if (success) scheduleOnRN(onHoldEnd);
+        // Le doigt levé ou le maintien annulé : la bulle se ferme toujours.
+        scheduleOnRN(onHoldEnd);
       });
     return Gesture.Simultaneous(tap, press);
   }, [testId, uiNow, onRelease, startedAt, held, holdMs, onHold, onHoldEnd]);

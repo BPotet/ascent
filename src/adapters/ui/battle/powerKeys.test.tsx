@@ -202,6 +202,78 @@ describe('the power keys (#235)', () => {
     expect(handlers.onPower).toHaveBeenCalledWith('rend', 4_321, 4_321);
   });
 
+  describe('closes the bubble of the effect (K10)', () => {
+    async function seeEffect(power: PowerKind) {
+      await act(async () => {
+        key(power).props.onAccessibilityAction({ nativeEvent: { actionName: 'longpress' } });
+      });
+      expect(screen.getByTestId('battle-power-tip')).toBeOnTheScreen();
+    }
+
+    it('when a power is cast', async () => {
+      const handlers = props();
+      await render(<ActionPad pad={heroPad(slot('rend'), slot('mist'))} {...handlers} />);
+      await seeEffect('rend');
+
+      await act(async () => {
+        key('mist').props.onAccessibilityAction({ nativeEvent: { actionName: 'activate' } });
+      });
+
+      expect(handlers.onPower).toHaveBeenCalledWith('mist', 4_321, 4_321);
+      expect(screen.queryByTestId('battle-power-tip')).not.toBeOnTheScreen();
+    });
+
+    it('when the hero attacks', async () => {
+      const handlers = props();
+      await render(<ActionPad pad={heroPad(slot('rend'))} {...handlers} />);
+      await seeEffect('rend');
+
+      await act(async () => {
+        screen
+          .getByTestId('battle-attack-button')
+          .props.onAccessibilityAction({ nativeEvent: { actionName: 'activate' } });
+      });
+
+      expect(handlers.onAttack).toHaveBeenCalled();
+      expect(screen.queryByTestId('battle-power-tip')).not.toBeOnTheScreen();
+    });
+
+    it('when the phase changes, and never opens again by itself', async () => {
+      const hero = heroPad(slot('rend'));
+      await render(<ActionPad pad={hero} {...props()} />);
+      await seeEffect('rend');
+
+      await screen.rerender(
+        <ActionPad
+          pad={{ kind: 'defense', locked: false, lock: null, offBalance: false }}
+          {...props()}
+        />,
+      );
+      await screen.rerender(<ActionPad pad={hero} {...props()} />);
+
+      expect(screen.queryByTestId('battle-power-tip')).not.toBeOnTheScreen();
+    });
+
+    it('when the long press is cancelled', async () => {
+      await render(<ActionPad pad={heroPad(slot('mist'))} {...props()} />);
+      const hold = getByGestureTestId(`${powerGestureTestId('mist')}-hold`) as unknown as {
+        readonly handlers: Record<string, ((...args: unknown[]) => void) | undefined>;
+      };
+      await act(async () => {
+        hold.handlers.onStart?.({});
+        await Promise.resolve();
+      });
+      expect(screen.getByTestId('battle-power-tip')).toBeOnTheScreen();
+
+      await act(async () => {
+        hold.handlers.onFinalize?.({}, false);
+        await Promise.resolve();
+      });
+
+      expect(screen.queryByTestId('battle-power-tip')).not.toBeOnTheScreen();
+    });
+  });
+
   it('keeps the enemy phase as it is: Esquive and Parade, no power key (K9)', async () => {
     await render(
       <ActionPad
