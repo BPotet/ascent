@@ -48,6 +48,11 @@ export function favorSecondChance(gauge: FateGauge): boolean {
   return gauge === 2;
 }
 
+/** Les clés de la faveur (`Key`, #226), données au lancement : 1 à +1 et à +2. */
+export function favorKeys(gauge: FateGauge): number {
+  return gauge > 0 ? 1 : 0;
+}
+
 /** Le décalage de rareté (`RarityShift`) de la chance de Rare, en points : 5 par cran. */
 export function rarityShift(gauge: FateGauge): number {
   return gauge * 5;

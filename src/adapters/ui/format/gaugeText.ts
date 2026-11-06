@@ -88,6 +88,9 @@ export const UNREADABLE_TEXT =
 export const GAUGE_REASSURANCE = "D'après hier, seulement aujourd'hui. L'ascension reste gagnable.";
 
 export const SEALED_PILL = 'Scellée';
+/** Sous les effets du détail de la jauge, à +1 et +2 : à quoi sert la clé (#226, J3). */
+export const KEY_DETAIL_LINE =
+  "La clé ouvre le coffre scellé d'une Élite. Elle vaut toute l'ascension.";
 export const SEALED_LINE = "Scellée au lancement de ta première ascension d'aujourd'hui.";
 export const SEALED_TITLE = "Scellée pour aujourd'hui.";
 export const SEALED_TEXT =
@@ -152,7 +155,7 @@ export function ascentFavorEffects({
 /**
  * Les effets de la jauge : les bénédictions de départ, puis ceux du niveau (objets plus fréquents,
  * Rares plus ou moins fréquents, fatigue, ennemis maudits). Rien à la première utilisation ; « Aucun effet
- * aujourd'hui » en lecture en échec. Jamais de coffre (épique #208). Sans `expected`, c'est la jauge
+ * aujourd'hui » en lecture en échec. 1 clé à +1 et +2 (#226). Sans `expected`, c'est la jauge
  * d'une ascension en cours, toujours comptée.
  */
 export function gaugeEffects({
@@ -182,6 +185,8 @@ export function gaugeEffects({
       { glyph: 'rare', tone: 'favor', text: 'Objets Rares plus fréquents' },
       // Les relances (#42), données au lancement.
       { glyph: 'reroll', tone: 'favor', text: rerollCount(favorRerolls(gauge)) },
+      // La clé (#226), donnée au lancement à +1 et +2.
+      { glyph: 'key8', tone: 'favor', text: '1 clé' },
     );
     // La seconde chance (#206), à +2 seulement.
     if (favorSecondChance(gauge)) {

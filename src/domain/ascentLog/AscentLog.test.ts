@@ -8,6 +8,8 @@ import {
   enterNextTier,
   equipItem,
   leaveItem,
+  leaveSealedChest,
+  openSealedChest,
   rerollBoonOffer,
   startAscent,
   type Ascent,
@@ -93,6 +95,12 @@ class Walk {
   }
   abandon() {
     return this.apply('abandoned', abandonAscent(this.ascent));
+  }
+  openChest() {
+    return this.apply('sealedChestOpened', openSealedChest(this.ascent));
+  }
+  leaveChest() {
+    return this.apply('sealedChestLeft', leaveSealedChest(this.ascent));
   }
   acknowledge() {
     return this.apply('bossAcknowledged', acknowledgeBossVictory(this.ascent));
@@ -468,6 +476,93 @@ describe('the second chance (#206)', () => {
     const walk = new Walk(seeded(7, 2)).battle('victory', 40, true).boon().exit(0).battle();
 
     expect(walk.log.floors.map((floor) => floor.secondChanceUsed)).toEqual([true, undefined]);
+  });
+});
+
+describe('the keys and the sealed chests (#226)', () => {
+  /** L'ascension devant une Élite à l'étage 1, avec `keys` clés et la jauge `gauge`. */
+  const atElite = (keys: number, gauge: FateGauge = 1): Ascent => ({
+    ...startAscent(7, { gauge }),
+    encounter: { kind: 'elite', enemies: ['twins'], battleSeed: 1 },
+    keys,
+  });
+
+  it.each([
+    [2, 1],
+    [1, 1],
+  ] as const)('notes the key of the favor at the start, at a gauge of %p', (gauge, favor) => {
+    expect(beginAscentLog(startAscent(7, { gauge }), DAY).keys).toEqual({ favor, fortune: 0 });
+  });
+
+  it('writes no keys without key: the same JSON as before', () => {
+    for (const gauge of [0, -1, -2] as const) {
+      expect(beginAscentLog(startAscent(7, { gauge }), DAY)).not.toHaveProperty('keys');
+    }
+    const walk = new Walk(seeded(7, 0));
+    while (walk.ascent.blessingOffer !== null) {
+      walk.blessing(walk.ascent.blessingOffer.findIndex((family) => family !== 'fortune'));
+    }
+    expect(walk.log.blessings).toHaveLength(2);
+    expect(walk.log).not.toHaveProperty('keys');
+  });
+
+  it('adds the keys of Fortune at the choice of the blessing', () => {
+    /** L'ascension à la jauge `gauge`, une bénédiction Rare puis Commune, Fortune offerte. */
+    const fortune = (gauge: FateGauge) =>
+      new Walk({ ...seeded(7, gauge), blessingOffer: ['fortune', 'vigor', 'edge'] }).blessing(0);
+
+    expect(fortune(2).log.keys).toEqual({ favor: 1, fortune: 2 });
+    expect(fortune(0).log.keys).toEqual({ favor: 0, fortune: 2 });
+  });
+
+  it('notes a sealed chest opened with its item, apart from the guaranteed item', () => {
+    const walk = new Walk(atElite(1)).battle().equip().openChest();
+    const revealed = walk.ascent.foundItem;
+    walk.leave();
+
+    expect(walk.log.floors[0]).toMatchObject({
+      itemOutcome: 'equipped',
+      sealedChest: { outcome: 'opened', item: revealed, itemOutcome: 'left' },
+    });
+    const equipped = new Walk(atElite(1)).battle().leave().openChest().equip();
+    expect(equipped.log.floors[0]).toMatchObject({
+      itemOutcome: 'left',
+      sealedChest: { outcome: 'opened', itemOutcome: 'equipped' },
+    });
+  });
+
+  it('notes the item of an opened chest left behind a door, not the guaranteed item', () => {
+    const walk = new Walk(atElite(1)).battle().equip().openChest().boon().exit(0);
+
+    expect(walk.log.floors[0]).toMatchObject({
+      itemOutcome: 'equipped',
+      sealedChest: { outcome: 'opened', itemOutcome: 'left' },
+    });
+  });
+
+  it('notes a sealed chest left with a key, or closed for want of a key', () => {
+    const left = new Walk(atElite(2)).battle().leave().leaveChest();
+    const noKey = new Walk(atElite(0, 0)).battle().leave().leaveChest();
+
+    expect(left.log.floors[0]!.sealedChest).toEqual({ outcome: 'left' });
+    expect(noKey.log.floors[0]!.sealedChest).toEqual({ outcome: 'noKey' });
+    expect(left.log.floors[0]!.itemOutcome).toBe('left');
+  });
+
+  it('writes nothing for an opening or a leaving that changes nothing', () => {
+    const walk = new Walk(atElite(0)).battle();
+    const { log } = walk;
+
+    walk.openChest().leaveChest();
+
+    expect(walk.log).toBe(log);
+  });
+
+  it('contains no habit data', () => {
+    const walk = new Walk(atElite(1)).battle().leave().openChest().equip();
+    const json = JSON.stringify(walk.log);
+
+    for (const word of ['habit', 'checkIn', 'xp', 'name']) expect(json).not.toContain(word);
   });
 });
 

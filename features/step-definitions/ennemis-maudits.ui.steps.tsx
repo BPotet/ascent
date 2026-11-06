@@ -82,7 +82,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and(/^la porte Élite dit « Élite maudite »$/u, () => {
-    expect(door('Élite maudite · objet Rare garanti')).toBeOnTheScreen();
+    expect(door('Élite maudite · objet Rare garanti · coffre scellé')).toBeOnTheScreen();
   });
 
   and(
@@ -90,7 +90,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     async () => {
       await showDoors(-1);
       expect(door('Combat · 3 ennemis · dont 1 maudit')).toBeOnTheScreen();
-      expect(door('Élite · objet Rare garanti')).toBeOnTheScreen();
+      expect(door('Élite · objet Rare garanti · coffre scellé')).toBeOnTheScreen();
     },
   );
 

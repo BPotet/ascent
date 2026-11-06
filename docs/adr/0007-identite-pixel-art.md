@@ -116,6 +116,13 @@ Tout ce qui n'est pas visuel (libellés, annonces, durées, `targetToastOf`) est
 pixel art et aux écrans réécrits d'importer `legacy/`. #73 rebranche ses écrans sur les versions
 pixel, puis supprime `legacy/` et cette règle.
 
+#### Avenant du 6 novembre 2026 : le coffre scellé à ×5 (#226)
+
+`ArtScale` vaut désormais 1, 2, 3, 4, 5 ou 6. Le ×5 sert seulement au **coffre scellé**
+(`SealedChestPanel`, 32 × 24 pixels d'art, soit 160 × 120 dp), comme sur l'écran S2 de la maquette
+`208-coffres-cles`. C'est une échelle entière : `artPixelSize(5)` arrondit au pixel physique comme
+les autres échelles. `iconScale` ne change pas : une icône reste à ×2, ×3, ×4 ou ×6.
+
 #### Avenant du 25 octobre 2026 : fin de la coexistence (#73)
 
 Décidé par l'Architect (notes techniques de #73), colonnes confirmées par le PM le 25 octobre.

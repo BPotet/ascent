@@ -13,10 +13,12 @@ import { TierBackdrop } from '../battle/TierBackdrop';
 import { BlessingChoice } from '../components/BlessingChoice';
 import { ExitChoice } from '../components/ExitChoice';
 import { FoundItemPanel } from '../components/FoundItemPanel';
+import { KeysEntry } from '../components/KeysEntry';
 import { LoadoutButton } from '../components/LoadoutButton';
 import { LogExportButton } from '../components/LogExportButton';
 import { LoadoutSheet } from '../components/LoadoutSheet';
 import { Screen } from '../components/Screen';
+import { SealedChestPanel } from '../components/SealedChestPanel';
 import {
   TIER_NAMES,
   bossDefeatedAnnouncement,
@@ -28,6 +30,12 @@ import {
   tierAnnouncement,
 } from '../format/ascentText';
 import { HERO_NAMES } from '../format/battleText';
+import {
+  FROM_SEALED_CHEST,
+  keysText,
+  sealedLeftAnnouncement,
+  sealedLeftBand,
+} from '../format/sealedChestText';
 import { artPalette } from '../pixelArt/artPalette';
 import { PixelButton } from '../pixelArt/PixelButton';
 import { PixelIcon } from '../pixelArt/PixelIcon';
@@ -73,9 +81,12 @@ function Header({
   onLoadout,
   combat = false,
   loadoutRef,
+  keySpent = false,
 }: {
   readonly ascent: Ascent;
   readonly extra?: string | null;
+  /** Une clé vient d'être dépensée (#226, S3) : « −1 clé » monte de l'en-tête. */
+  readonly keySpent?: boolean;
   readonly onPause?: () => void;
   /** Le bouton « Équipement » (#159) : ce qu'il ouvre, s'il met le combat en pause, et son focus. */
   readonly onLoadout?: () => void;
@@ -86,7 +97,6 @@ function Header({
     floorLine(ascent.floor, ascent.tier),
     `${ascent.hero.hp}/${ascent.hero.maxHp} PV`,
     goldText(ascent.gold),
-    ...(extra ? [extra] : []),
   ];
   const buttons = (
     <>
@@ -116,7 +126,32 @@ function Header({
     <View testID="ascent-header" style={[styles.header, stacked && styles.headerStacked]}>
       <Text testID="ascent-status" style={[styles.status, stacked && styles.statusStacked]}>
         {parts.join(' · ')}
+        {ascent.keys > 0 && (
+          // Les clés après l'Or (#226, H1, H2), à partir d'une clé ; le glyphe est caché au lecteur.
+          <>
+            {' · '}
+            <View
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              testID="ascent-status-key"
+            >
+              <PixelIcon name="key8" color={roles.gold} />
+            </View>
+            {keysText(ascent.keys)}
+          </>
+        )}
+        {extra ? ` · ${extra}` : null}
       </Text>
+      {keySpent && (
+        <Text
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          testID="ascent-keys-float"
+          style={styles.keysFloat}
+        >
+          −1 clé
+        </Text>
+      )}
       {stacked ? (
         <View testID="ascent-header-buttons" style={styles.headerButtons}>
           {buttons}
@@ -356,6 +391,11 @@ export function AscentScreen({
   // L'objet déjà en attente à l'ouverture de l'écran (#227) : la reprise le montre hors du coffre,
   // sans rejouer l'ouverture ; un objet trouvé pendant que l'écran est ouvert sort du coffre.
   const [pendingAtMount] = useState(() => (ascent === null ? null : foundItemKey(ascent)));
+  // L'ouverture du coffre scellé qui se joue (#226, S3), et les clés gardées après « Laisser »
+  // (S8) : des états de l'écran seulement, jamais rejoués à la reprise.
+  const [sealedOpening, setSealedOpening] = useState(false);
+  const [leftBand, setLeftBand] = useState<number | null>(null);
+  const [, setEntered] = useState(0);
   const [counting, setCounting] = useState(() => session.resuming());
   const [paused, setPaused] = useState(false);
   const [mount, setMount] = useState(0);
@@ -503,6 +543,26 @@ export function AscentScreen({
     );
   }
 
+  // L'entrée dans la tour avec des clés (#226, F4), avant le premier combat.
+  const entry = ascent.encounter === null ? null : session.keysEntry();
+  if (entry !== null) {
+    const fortune = ascent.blessings.find(({ family }) => family === 'fortune');
+    return (
+      <Screen layout="top" background={roles.night} testID="ascent-keys-entry">
+        <Header ascent={ascent} onPause={leave} onLoadout={openLoadout} loadoutRef={opener} />
+        <KeysEntry
+          sources={entry}
+          fortuneRarity={fortune?.rarity ?? null}
+          onDone={() => {
+            session.acknowledgeKeysEntry();
+            setEntered((count) => count + 1);
+          }}
+        />
+        {loadoutSheet}
+      </Screen>
+    );
+  }
+
   if (ascent.encounter !== null) {
     // Le combat n'est rendu que s'il n'est ni en pause, ni retenu par la feuille, ni en reprise.
     const fighting = !paused && !loadoutOpen && !counting;
@@ -547,19 +607,72 @@ export function AscentScreen({
       <Text style={styles.gold}>{`Étage franchi · +${goldText(ascent.lastGold)}`}</Text>
     ) : null;
 
+  // L'objet du coffre scellé ouvert (#226) : l'ouverture se joue d'abord, puis l'objet, sans Coffre.
+  const fromSealedChest = ascent.sealedChest?.opened === true;
+  if (ascent.foundItem !== null && fromSealedChest && sealedOpening) {
+    return (
+      <Screen layout="top" background={roles.night} testID="ascent-sealed-chest">
+        <Header
+          ascent={ascent}
+          onPause={leave}
+          onLoadout={openLoadout}
+          loadoutRef={opener}
+          keySpent
+        />
+        <SealedChestPanel
+          keys={ascent.keys}
+          opening
+          onOpen={() => undefined}
+          onLeave={() => undefined}
+          onOpened={() => setSealedOpening(false)}
+        />
+        {loadoutSheet}
+      </Screen>
+    );
+  }
+
   if (ascent.foundItem !== null) {
     const revealKey = foundItemKey(ascent);
     return (
       <Screen layout="top" background={roles.night} testID="ascent-item">
         <Header ascent={ascent} onPause={leave} onLoadout={openLoadout} loadoutRef={opener} />
-        {gained}
+        {fromSealedChest ? null : gained}
         <FoundItemPanel
           key={revealKey}
           item={ascent.foundItem}
           equipment={ascent.equipment}
           animate={revealKey !== pendingAtMount}
+          {...(fromSealedChest && { chest: false, source: FROM_SEALED_CHEST })}
           onLeave={() => session.leaveItem()}
           onEquip={() => session.equipItem()}
+        />
+        {loadoutSheet}
+      </Screen>
+    );
+  }
+
+  // Le coffre scellé de l'Élite (#226, CH2), après l'objet garanti et avant l'offre de bienfaits.
+  if (ascent.sealedChest !== null) {
+    const { keys } = ascent;
+    return (
+      <Screen layout="top" background={roles.night} testID="ascent-sealed-chest">
+        <Header ascent={ascent} onPause={leave} onLoadout={openLoadout} loadoutRef={opener} />
+        <SealedChestPanel
+          keys={keys}
+          opening={false}
+          onOpen={() => {
+            setSealedOpening(true);
+            session.openSealedChest();
+          }}
+          onLeave={() => {
+            // « Laisser », sans confirmation (décision du 06/11/2026) ; « Continuer » sans clé.
+            if (keys > 0) {
+              setLeftBand(keys);
+              AccessibilityInfo.announceForAccessibility(sealedLeftAnnouncement(keys));
+            }
+            session.leaveSealedChest();
+          }}
+          onOpened={() => undefined}
         />
         {loadoutSheet}
       </Screen>
@@ -571,12 +684,21 @@ export function AscentScreen({
       <Screen layout="top" background={roles.night} testID="ascent-boons">
         <Header ascent={ascent} onPause={leave} onLoadout={openLoadout} loadoutRef={opener} />
         {gained}
+        {leftBand !== null && (
+          <View accessible role="status" testID="sealed-left-band" style={styles.band}>
+            <PixelIcon name="lock" color={roles.parchment} />
+            <Text style={styles.bandText}>{sealedLeftBand(leftBand)}</Text>
+          </View>
+        )}
         <BoonChoicePanel
           key={ascent.floor}
           offer={ascent.boonOffer}
           heroHp={ascent.hero.hp}
           heroMaxHp={ascent.hero.maxHp}
-          onChoose={(index) => session.chooseBoon(index)}
+          onChoose={(index) => {
+            setLeftBand(null);
+            session.chooseBoon(index);
+          }}
           reroll={{
             left: ascent.rerolls,
             granted: favorRerolls(ascent.gauge),
@@ -626,6 +748,31 @@ const styles = StyleSheet.create({
   },
   headerStacked: { flexDirection: 'column', alignItems: 'stretch', paddingVertical: 4, gap: 4 },
   statusStacked: { flex: 0 },
+  keysFloat: {
+    position: 'absolute',
+    left: 16,
+    bottom: -14,
+    fontFamily: textFont.bold,
+    fontSize: 12,
+    lineHeight: 16,
+    color: roles.gold,
+  },
+  band: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: roles.raised,
+  },
+  bandText: {
+    flex: 1,
+    fontFamily: textFont.medium,
+    fontSize: 13,
+    lineHeight: 18,
+    color: roles.parchment,
+  },
   headerButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
   pause: { minWidth: 84, paddingHorizontal: 14 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'stretch', padding: 24, gap: 12 },

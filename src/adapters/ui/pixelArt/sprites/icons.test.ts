@@ -1,3 +1,4 @@
+import { mockup208Art } from './atelier/testing/mockup208';
 import { ICONS, iconNames } from './icons';
 
 describe('the icons', () => {
@@ -102,6 +103,12 @@ describe('the icons', () => {
     expect(ICONS['secondChance' as never]).toEqual(
       pattern.map((row) => `${row.replaceAll('1', 'X')}.`),
     );
+  });
+
+  it('has the key glyph, copied from `ART.key8.A` of the mockup 208 (#226)', () => {
+    const key8 = mockup208Art().key8?.A as unknown as { name: string; rows: string[] };
+    expect(key8.name).toBe('Clé couchée');
+    expect(ICONS['key8' as never]).toEqual(key8.rows);
   });
 
   it('mirrors « left » into « right »', () => {

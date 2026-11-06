@@ -9,6 +9,15 @@
  * - `haste`
  * clé `proposals[chosen]`. Identique, pixel pour pixel, à la constante `ICONS` de la maquette
  * validée `docs/mockups/153-boon-blessing-icons/index.html`.
+ *
+ * Ajout #226 (ADR 0010, avenant #226), recopié de l'Atelier par script le 06/11/2026, en lecture
+ * seule, données validées par le propriétaire le 06/11/2026, sha256 du JSON compact de `data`,
+ * clés triées :
+ * - `fortune` : `assets/fortune` version 1, sha256 4a38e9c141cecde62d3726d73aef57128018510daa0dc5f9d64310c3fd8974be,
+ *   « Trèfle » (`chosen: 1`, statut `validé`), clés `w`, `h`, `palette` et `rows` seulement ;
+ *   fiche `codex/fortune` version 1, sha256 459a52f336643b10e98b257ab8f475f68be3e77218e743569984cae1698bd67d.
+ *   Comparée pixel pour pixel à `ART.fortune.B` de la maquette validée
+ *   `docs/mockups/208-coffres-cles/index.html` (`sealedChest.data.test.ts`).
  * Ne pas retoucher à la main : toute retouche passe par l'Atelier.
  */
 import type { BlessingFamily } from '../../../../../../domain/ascent/blessings';
@@ -176,6 +185,29 @@ export const BLESSING_ICONS: Readonly<Record<BlessingFamily, AssetImage>> = {
       '...000000000000000000...',
       '........................',
       '........................',
+    ],
+  },
+  fortune: {
+    w: 16,
+    h: 16,
+    palette: ['#06070c', '#bfe6da', '#5e8f82', '#3d5e57'],
+    rows: [
+      '..0000....0000..',
+      '.011220..011220.',
+      '.022220..022220.',
+      '0222222002222220',
+      '.022220..022220.',
+      '.02222300322220.',
+      '..000003300000..',
+      '..000003300000..',
+      '.01122300311220.',
+      '.02222003022220.',
+      '0222222032222220',
+      '.02222003022220.',
+      '.022220.0322220.',
+      '..0000..030000..',
+      '........030.....',
+      '.........0......',
     ],
   },
 };

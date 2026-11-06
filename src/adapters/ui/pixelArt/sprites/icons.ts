@@ -531,6 +531,17 @@ const DRAWN = {
     '..XXX...',
     '...X....',
   ],
+  // La clé (#226), « Clé couchée » : `ART.key8.A` de la maquette 208, absente de l'Atelier.
+  key8: [
+    '........',
+    '.XXX....',
+    'X...X...',
+    'X...XXXX',
+    'X...X.XX',
+    '.XXX..X.',
+    '........',
+    '........',
+  ],
 } as const;
 // Stryker restore all
 

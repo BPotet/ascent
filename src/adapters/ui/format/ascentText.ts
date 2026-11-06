@@ -92,7 +92,8 @@ export function exitLabel(exit: Exit, gauge: FateGauge = 0): string {
       return cursed ? `${size} · dont 1 maudit` : size;
     }
     case 'elite':
-      return `${cursed ? 'Élite maudite' : 'Élite'} · objet Rare garanti`;
+      // Le coffre scellé qui suit l'Élite gagnée, maudite comprise (#226, CH3).
+      return `${cursed ? 'Élite maudite' : 'Élite'} · objet Rare garanti · coffre scellé`;
     case 'campfire':
       return 'Feu de camp · soin de 40 % des PV';
     case 'boss':
@@ -109,6 +110,7 @@ const FAMILY_NAMES: Readonly<Record<BlessingFamily, string>> = {
   edge: 'Tranchant',
   protection: 'Protection',
   haste: 'Hâte',
+  fortune: 'Fortune',
 };
 
 function blessingEffect({ family, rarity }: StartingBlessing): string {
@@ -126,6 +128,9 @@ function blessingEffect({ family, rarity }: StartingBlessing): string {
       return `Réduction des dégâts +${value} points`;
     case 'haste':
       return `Initiative +${value} dans chaque combat`;
+    case 'fortune':
+      // Les clés de Fortune (#226) : « +1 clé », « +3 clés ».
+      return `+${value} clé${value > 1 ? 's' : ''}`;
   }
 }
 

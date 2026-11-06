@@ -1,5 +1,10 @@
 import type { StartingBlessing } from '../../../domain/ascent/blessings';
-import { loadoutSize, type Loadout, type LoadoutFavor } from '../../../domain/ascent/loadout';
+import {
+  loadoutSize,
+  type Loadout,
+  type LoadoutFavor,
+  type LoadoutReserves,
+} from '../../../domain/ascent/loadout';
 import type { IconName } from '../pixelArt/sprites/icons';
 import { rarityMarks, rarityName } from './rarityText';
 
@@ -54,19 +59,68 @@ export function favorHeadingLabel({ gauge }: LoadoutFavor): string {
   return `${FAVOR_TITLE}, plus ${gauge}`;
 }
 
-/** Une ligne de la faveur : son glyphe, ce qu'elle fait, son état, grise quand elle a servi. */
-export interface FavorRowText {
-  readonly key: 'rerolls' | 'secondChance';
+/**
+ * Une ligne d'état de la feuille, des Réserves (#226) ou de la faveur (#42) : son glyphe, ce
+ * qu'elle fait, son état, grise quand elle a servi (ou qu'il n'en reste pas), et sa teinte.
+ */
+export interface StateRowText {
+  readonly key: 'gold' | 'keys' | 'rerolls' | 'secondChance';
   readonly glyph: IconName;
   readonly name: string;
   readonly effect: string;
   readonly state: string;
   readonly used: boolean;
+  readonly tone: 'favor' | 'gold';
   readonly label: string;
 }
 
-function favorRow(row: Omit<FavorRowText, 'label'>): FavorRowText {
-  return { ...row, label: `${row.name}, ${row.state}. ${row.effect}` };
+function favorRow(row: Omit<StateRowText, 'label' | 'tone'>): StateRowText {
+  return { ...row, tone: 'favor', label: `${row.name}, ${row.state}. ${row.effect}` };
+}
+
+/** La section des Réserves (#226, E1), en tête de la feuille : l'Or et les clés. */
+export const RESERVES_TITLE = 'Réserves';
+
+/** L'en-tête lu de la section : « Réserves ». */
+export function reservesHeadingLabel(): string {
+  return RESERVES_TITLE;
+}
+
+/**
+ * Les lignes des Réserves (E1, E3) : l'Or, puis les clés qui restent, grises sans clé, avec ce
+ * qui en donne.
+ */
+export function reserveRows({ gold, keys }: LoadoutReserves): StateRowText[] {
+  const keysEffect =
+    keys > 0
+      ? "Ouvrent le coffre scellé d'une Élite. Perdues à la fin de l'ascension."
+      : 'Aucune clé. La faveur et Fortune en donnent.';
+  return [
+    {
+      key: 'gold',
+      glyph: 'coin8',
+      name: 'Or',
+      effect: 'Gagné à chaque étage franchi.',
+      state: String(gold),
+      used: false,
+      tone: 'gold',
+      label: `Or, ${gold}`,
+    },
+    {
+      key: 'keys',
+      glyph: 'key8',
+      name: 'Clés',
+      effect: keysEffect,
+      state: String(keys),
+      used: keys === 0,
+      tone: 'gold',
+      label: `Clés, ${keys} : ${
+        keys > 0
+          ? "ouvrent le coffre scellé d'une Élite"
+          : 'aucune clé. La faveur et Fortune en donnent'
+      }`,
+    },
+  ];
 }
 
 /**
@@ -77,7 +131,7 @@ export function favorRows({
   rerollsLeft,
   rerollsGranted,
   secondChance,
-}: LoadoutFavor): FavorRowText[] {
+}: LoadoutFavor): StateRowText[] {
   const rows = [
     favorRow({
       key: 'rerolls',

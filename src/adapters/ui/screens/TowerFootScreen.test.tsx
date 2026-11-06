@@ -57,6 +57,23 @@ describe('TowerFootScreen', () => {
     expect(screen.queryByRole('radio')).not.toBeOnTheScreen();
   });
 
+  it('shows the keys under the Gold of the ascent in progress, from 1 key (#226, T1)', async () => {
+    await show({ saved: { ...startAscent(3, { gauge: 1 }), keys: 2 } });
+
+    const keys = await screen.findByTestId('tower-foot-keys');
+    expect(keys).toHaveTextContent('2 clés');
+    expect(within(screen.getByTestId('tower-foot-ascent')).getByTestId('tower-foot-keys')).toBe(
+      keys,
+    );
+  });
+
+  it('writes no key line without key (#226, T1)', async () => {
+    await show({ saved: startAscent(3) });
+
+    expect(await screen.findByText('Palier 1 · Étage 1 sur 6 · 80/80 PV · 0 Or')).toBeOnTheScreen();
+    expect(screen.queryByTestId('tower-foot-keys')).toBeNull();
+  });
+
   it('only offers to resume or abandon while an ascent is in progress', async () => {
     const { onEnter } = await show({ saved: startAscent(3) });
 
@@ -146,7 +163,7 @@ describe('TowerFootScreen with the fate gauge (#93)', () => {
     await showWithHabits(3, 3);
 
     const card = await screen.findByRole('button', {
-      name: "Jauge du jour : Faveur pleine, plus 2. D'après hier : 3 habitudes sur 3. Effets : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents, 2 relances, 1 seconde chance. Ouvrir le détail de la jauge.",
+      name: "Jauge du jour : Faveur pleine, plus 2. D'après hier : 3 habitudes sur 3. Effets : 3 bénédictions de départ, objets plus fréquents, objets Rares plus fréquents, 2 relances, 1 clé, 1 seconde chance. Ouvrir le détail de la jauge.",
     });
     expect(within(card).getByText('+2')).toBeOnTheScreen();
     expect(within(card).getByText('Objets plus fréquents')).toBeOnTheScreen();

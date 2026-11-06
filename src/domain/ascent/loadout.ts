@@ -9,6 +9,12 @@ import type { StartingBlessing } from './blessings';
 import type { BoonKind } from './boons';
 import { favorRerolls, favorSecondChance } from './fateGauge';
 
+/** Les Réserves de l'ascension (#226) : l'Or et les clés qui restent. */
+export interface LoadoutReserves {
+  readonly gold: number;
+  readonly keys: number;
+}
+
 /**
  * La faveur de l'ascension (#42) : sa jauge, ses relances qui restent sur celles données, et sa
  * seconde chance à +2 (#206).
@@ -26,6 +32,8 @@ export interface Loadout {
   readonly boons: readonly BoonKind[];
   /** Seulement pour une ascension lancée en faveur (#42). */
   readonly favor?: LoadoutFavor;
+  /** Les Réserves (#226), toujours remplies par `loadoutOf`. */
+  readonly reserves?: LoadoutReserves;
 }
 
 /** L'Équipement de l'ascension, sans copie ni tri. */
@@ -44,6 +52,7 @@ export function loadoutOf(ascent: Ascent): Loadout {
         }),
       },
     }),
+    reserves: { gold: ascent.gold, keys: ascent.keys },
   };
 }
 
