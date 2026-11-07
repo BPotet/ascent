@@ -12,10 +12,21 @@ const { roles } = artPalette;
 
 /**
  * La bulle du toucher maintenu (#235, maquette K10) : au-dessus de la rangée des touches, le nom,
- * le coût, le type et l'effet court du pouvoir. Relâcher la ferme sans rien lancer.
+ * le coût (« Attisé · 1 Élan » pour un pouvoir attisé, #237), le type et l'effet court du pouvoir.
+ * Relâcher la ferme sans rien lancer.
  */
-export function PowerTip({ power, cost }: { readonly power: PowerKind; readonly cost: number }) {
-  const type = `${cost} Élan · ${powerType(power)}${staysActive(power) ? ' · reste actif' : ''}`;
+export function PowerTip({
+  power,
+  cost,
+  kindled = false,
+}: {
+  readonly power: PowerKind;
+  readonly cost: number;
+  /** Un pouvoir attisé (#237) : « Attisé · 1 Élan ». */
+  readonly kindled?: boolean;
+}) {
+  const price = `${kindled ? 'Attisé · ' : ''}${cost} Élan`;
+  const type = `${price} · ${powerType(power)}${staysActive(power) ? ' · reste actif' : ''}`;
   return (
     <PixelFrame
       variant="raised"

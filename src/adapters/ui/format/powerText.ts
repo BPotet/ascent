@@ -230,6 +230,9 @@ export interface PowerKeyText {
   readonly availability: PowerKeyAvailability;
   readonly missing: number;
   readonly instant?: true;
+  /** Un pouvoir attisé (#237), à `cost` au lieu de `baseCost`. */
+  readonly kindled?: true;
+  readonly baseCost?: number;
 }
 
 /** La raison d'une touche indisponible, sur une ou deux lignes ; rien pour une touche disponible. */
@@ -266,7 +269,10 @@ export function powerKeyLabel({
   availability,
   missing,
   instant,
+  kindled,
+  baseCost,
 }: PowerKeyText): string {
-  const head = `Pouvoir : ${TREE_POWER_NAMES[power]}, ${cost} Élan${instant ? ', instantané' : ''}`;
+  const price = kindled ? `attisé, ${cost} Élan au lieu de ${baseCost}` : `${cost} Élan`;
+  const head = `Pouvoir : ${TREE_POWER_NAMES[power]}, ${price}${instant ? ', instantané' : ''}`;
   return head + UNAVAILABLE_READ[availability](missing);
 }

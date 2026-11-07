@@ -64,3 +64,26 @@ describe('the powers in the display state (#235)', () => {
     });
   });
 });
+
+describe('the scene word of a kindled power (#237, S12)', () => {
+  it('writes « Attisé · 1 Élan » under « Représailles »', () => {
+    const kindled = {
+      ...battle,
+      powers: ['bulwark', 'retaliation'] as const,
+      kindled: ['retaliation'] as const,
+    };
+    const used: readonly BattleEvent[] = [
+      { type: 'powerUsed', at: 1_000, power: 'retaliation', until: 1_500, instant: true },
+    ];
+
+    const shown = displayOf(
+      INITIAL_DISPLAY,
+      { battle: kindled, events: used, heroHint: false, powersHint: false },
+      false,
+    );
+
+    expect(shown.feedback?.texts).toEqual([
+      { tone: 'perfect', title: 'Représailles', sub: 'Attisé · 1 Élan' },
+    ]);
+  });
+});

@@ -2,13 +2,14 @@ import { type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
-import type { CampSession } from '../../../application/useCases/CampSession';
+import type { CampSession, CampView } from '../../../application/useCases/CampSession';
 import type { LogExport } from '../../../application/useCases/exportAscentLog';
 import type { FateGaugeReading } from '../../../application/useCases/fateGauge';
 import type { Ascent } from '../../../domain/ascent/Ascent';
 import type { FateGauge } from '../../../domain/ascent/fateGauge';
 import { loadoutOf, loadoutSize } from '../../../domain/ascent/loadout';
 import type { HeroKind } from '../../../domain/battle/combatants';
+import type { PowerKind } from '../../../domain/battle/powers';
 import { GaugeDetailSheet } from '../components/GaugeDetailSheet';
 import { GaugeDial, GaugeEffectList } from '../components/GaugeDial';
 import { LoadoutSection } from '../components/LoadoutSection';
@@ -25,6 +26,7 @@ import {
   tierLine,
 } from '../format/ascentText';
 import { HERO_NAMES } from '../format/battleText';
+import { heroOathLine, type HeroOathLine } from '../format/oathText';
 import { keysText } from '../format/sealedChestText';
 import {
   ASCENT_GAUGE_TITLE,
@@ -57,6 +59,7 @@ import { CAMP_TITLE } from '../format/campText';
 import { useAscent } from '../state/useAscent';
 import { useCamp } from '../state/useCamp';
 import { useFateGauge } from '../state/useFateGauge';
+import { useHabitNames } from '../state/useHabitNames';
 import { HeroChoiceScreen } from './HeroChoiceScreen';
 
 const { roles } = artPalette;
@@ -264,6 +267,7 @@ function AscentInProgress({
   const link = useRef<View>(null);
   const gaugeCard = useRef<View>(null);
   const loadout = loadoutOf(ascent);
+  const habitNames = useHabitNames();
   const closeDetail = () => {
     setDetail(false);
     if (link.current !== null) AccessibilityInfo.sendAccessibilityEvent(link.current, 'focus');
@@ -341,7 +345,13 @@ function AscentInProgress({
         </View>
       )}
       {foot}
-      <LoadoutSheet loadout={loadout} combat={false} visible={detail} onClose={closeDetail} />
+      <LoadoutSheet
+        loadout={loadout}
+        combat={false}
+        visible={detail}
+        habitNames={habitNames}
+        onClose={closeDetail}
+      />
       <GaugeDetailSheet
         visible={gaugeDetail}
         gauge={ascent.gauge}
@@ -351,6 +361,44 @@ function AscentInProgress({
       />
     </>
   );
+}
+
+/**
+ * Ce que le Choix du héros montre des Serments (#237, S8, S9) : les pouvoirs qu'un lancement
+ * attiserait, selon la jauge lue, et une ligne par pouvoir équipé sous Serment non rompu. Hier
+ * illisible : rien.
+ */
+function heroOaths(
+  camp: CampSession,
+  view: CampView,
+  reading: FateGaugeReading,
+): {
+  readonly kindled: Record<HeroKind, readonly PowerKind[]>;
+  readonly oathLines: Record<HeroKind, readonly HeroOathLine[]>;
+} {
+  const doneYesterday = reading.unreadable ? null : reading.doneYesterday;
+  const preview = camp.kindledPreview(doneYesterday);
+  const standings = camp.oathStandings(doneYesterday);
+  const lines = (hero: HeroKind) =>
+    view.equipped[hero].flatMap((power) => {
+      const oath = view.oaths[power];
+      const standing = standings[power];
+      if (
+        oath === undefined ||
+        oath.name === null ||
+        standing === undefined ||
+        standing === 'broken'
+      )
+        return [];
+      return heroOathLine(power, oath.name, standing) ?? [];
+    });
+  return {
+    kindled: {
+      sentinel: preview.sentinel.map(({ power }) => power),
+      wanderer: preview.wanderer.map(({ power }) => power),
+    },
+    oathLines: { sentinel: lines('sentinel'), wanderer: lines('wanderer') },
+  };
 }
 
 /**
@@ -415,14 +463,20 @@ export function TowerFootScreen({
     );
   const start = (reading: FateGaugeReading, hero: HeroKind) => {
     setChoosing(null);
-    if (camp.beginAscent({ hero, gauge: reading.gauge, blessings: reading.blessings }) === null) {
-      return;
-    }
+    const launch = {
+      hero,
+      gauge: reading.gauge,
+      blessings: reading.blessings,
+      // Les habitudes faites hier, scellées avec la jauge : elles attisent les Serments (#237).
+      doneYesterday: reading.doneYesterday,
+    };
+    if (camp.beginAscent(launch) === null) return;
     seal(reading);
     onEnter();
   };
 
   if (choosing !== null && !inProgress) {
+    const { kindled, oathLines } = heroOaths(camp, campView, choosing);
     return (
       <HeroChoiceScreen
         title="Choisir un héros"
@@ -431,6 +485,8 @@ export function TowerFootScreen({
         onStart={(hero) => start(choosing, hero)}
         onClose={() => setChoosing(null)}
         equipped={campView.equipped}
+        kindled={kindled}
+        oathLines={oathLines}
       />
     );
   }

@@ -43,6 +43,7 @@ import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypograph
 import { useAscent } from '../state/useAscent';
 import { useLargeText } from '../state/useLargeText';
 import { useShardTotal } from '../state/useShardTotal';
+import { useHabitNames } from '../state/useHabitNames';
 import { BattleScreen } from './BattleScreen';
 
 const { roles } = artPalette;
@@ -388,6 +389,7 @@ export function AscentScreen({
 }: AscentScreenProps) {
   const ascent = useAscent(session);
   const shardTotal = useShardTotal(session);
+  const habitNames = useHabitNames();
   // L'objet déjà en attente à l'ouverture de l'écran (#227) : la reprise le montre hors du coffre,
   // sans rejouer l'ouverture ; un objet trouvé pendant que l'écran est ouvert sort du coffre.
   const [pendingAtMount] = useState(() => (ascent === null ? null : foundItemKey(ascent)));
@@ -523,6 +525,7 @@ export function AscentScreen({
       loadout={loadoutOf(ascent)}
       combat={sheet === 'battle'}
       visible={loadoutOpen}
+      habitNames={habitNames}
       onClose={closeLoadout}
     />
   );

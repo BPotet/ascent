@@ -10,6 +10,7 @@ import Animated, {
 
 import type { DamageFloat as Float, FeedbackText } from '../format/battleText';
 import { artPalette } from '../pixelArt/artPalette';
+import { textFont } from '../pixelArt/pixelTypography';
 import { battleColors } from '../theme/battleColors';
 import { BulwarkShieldGlyph } from './BattleGlyphs';
 import { BurnFlame } from './BurnChip';
@@ -55,10 +56,16 @@ export function FeedbackLabel({ texts }: { readonly texts: readonly FeedbackText
             <BulwarkShieldGlyph scale={2} />
             <Text style={[styles.title, styles.riposte]}>{text.title}</Text>
           </View>
-        ) : (
+        ) : text.sub === undefined ? (
           <Text key={text.title} style={[styles.title, styles[text.tone]]}>
             {text.title}
           </Text>
+        ) : (
+          // Le mot d'un pouvoir attisé (#237, S12), et « Attisé · 1 Élan » dessous.
+          <View key={text.title} style={styles.withSub}>
+            <Text style={[styles.title, styles[text.tone]]}>{text.title}</Text>
+            <Text style={styles.sub}>{text.sub}</Text>
+          </View>
         ),
       )}
     </Animated.View>
@@ -175,6 +182,14 @@ const styles = StyleSheet.create({
   riposte: { color: artPalette.roles.bulwarkText, fontSize: 30, lineHeight: 34, letterSpacing: 1 },
   shadowStep: { color: battleColors.onShadowStep, fontSize: 24, lineHeight: 28 },
   withShield: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  withSub: { alignItems: 'center' },
+  sub: {
+    color: battleColors.light,
+    fontFamily: textFont.semiBold,
+    fontSize: 14,
+    lineHeight: 19,
+    ...INK_OUTLINE,
+  },
   float: { position: 'absolute', top: 6, alignSelf: 'center', zIndex: 8 },
   floatText: {
     color: battleColors.text,

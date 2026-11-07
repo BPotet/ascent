@@ -3,6 +3,7 @@ import {
   boundElsewhere,
   deleteOathLine,
   habitOathBadge,
+  heroOathLine,
   kindledCostText,
   kindledLabel,
   oathBrokenText,
@@ -76,5 +77,23 @@ describe('the texts of a habit that holds an Oath (#237, S13)', () => {
     expect(deleteOathLine('retaliation')).toBe(
       'Elle tient le Serment de Représailles : il sera rompu, et Représailles coûtera 2 Élan.',
     );
+  });
+});
+
+describe('the lines of the Oaths on the hero choice (#237, S8, S9)', () => {
+  it('says why a power is kindled, or what to do for tomorrow', () => {
+    expect(heroOathLine('retaliation', 'Courir 20 minutes', 'kept')).toEqual({
+      tone: 'kindled',
+      text: "Attisé : « Courir 20 minutes » faite hier. 1 Élan pour toute l'ascension.",
+    });
+    expect(heroOathLine('retaliation', 'Courir 20 minutes', 'missed')).toEqual({
+      tone: 'muted',
+      text: "Serment de Représailles : « Courir 20 minutes » pas faite hier. Fais-la aujourd'hui, il sera attisé demain.",
+    });
+    expect(heroOathLine('mist', 'Lire', 'fresh')).toEqual({
+      tone: 'muted',
+      text: "Serment de Brume : il compte dès demain. Fais « Lire » aujourd'hui, il sera attisé demain.",
+    });
+    expect(heroOathLine('mist', 'Lire', null)).toBeNull();
   });
 });

@@ -164,12 +164,12 @@ describe('battle texts', () => {
   });
 
   it('writes the Bulwark with its cost, or the momentum it misses (C3)', () => {
-    expect(powerCostText('bulwark')).toBe('Rempart · 1 Élan');
-    expect(powerButtonLabel('bulwark', 0)).toBe('Pouvoir : Rempart, 1 Élan');
-    expect(powerButtonLabel('bulwark', 1)).toBe(
+    expect(powerCostText('bulwark', 1)).toBe('Rempart · 1 Élan');
+    expect(powerButtonLabel('bulwark', 1, 0)).toBe('Pouvoir : Rempart, 1 Élan');
+    expect(powerButtonLabel('bulwark', 1, 1)).toBe(
       'Pouvoir : Rempart, 1 Élan, indisponible : il manque 1 Élan',
     );
-    expect(powerButtonLabel('bulwark', 2)).toBe(
+    expect(powerButtonLabel('bulwark', 1, 2)).toBe(
       'Pouvoir : Rempart, 1 Élan, indisponible : il manque 2 Élan',
     );
   });
@@ -370,21 +370,22 @@ describe('battle texts', () => {
 
   describe('the instant Shadow Step of the Wanderer (#173)', () => {
     it('writes « 3 Élan · Instantané » under its name, the Bulwark unchanged', () => {
-      expect(powerCostText('shadowStep', true)).toBe('3 Élan · Instantané');
-      expect(powerCostText('bulwark')).toBe('Rempart · 1 Élan');
+      expect(powerCostText('shadowStep', 3, true)).toBe('3 Élan · Instantané');
+      expect(powerCostText('shadowStep', 2, true)).toBe('2 Élan · Instantané');
+      expect(powerCostText('bulwark', 1)).toBe('Rempart · 1 Élan');
     });
 
     it('reads the key as instant, then active or missing momentum', () => {
-      expect(powerButtonLabel('shadowStep', 0, false, true)).toBe(
+      expect(powerButtonLabel('shadowStep', 3, 0, false, true)).toBe(
         "Pouvoir : Pas de l'ombre, 3 Élan, instantané",
       );
-      expect(powerButtonLabel('shadowStep', 0, true, true)).toBe(
+      expect(powerButtonLabel('shadowStep', 3, 0, true, true)).toBe(
         "Pouvoir : Pas de l'ombre, 3 Élan, instantané, actif",
       );
-      expect(powerButtonLabel('shadowStep', 1, false, true)).toBe(
+      expect(powerButtonLabel('shadowStep', 3, 1, false, true)).toBe(
         "Pouvoir : Pas de l'ombre, 3 Élan, instantané, indisponible : il manque 1 Élan",
       );
-      expect(powerButtonLabel('bulwark', 0)).toBe('Pouvoir : Rempart, 1 Élan');
+      expect(powerButtonLabel('bulwark', 1, 0)).toBe('Pouvoir : Rempart, 1 Élan');
     });
 
     it('announces that the hero phase goes on, the Bulwark unchanged', () => {
@@ -697,5 +698,47 @@ describe('the texts of the powers of #235', () => {
         battle,
       ),
     ).toBe('Représailles, contre-attaque, 13 dégâts');
+  });
+});
+
+describe('the texts of a kindled power in battle (#237)', () => {
+  const kindledBattle = startBattle({
+    seed: 1,
+    defenseHint: false,
+    at: 0,
+    enemies: ['ghoul'],
+    powers: ['bulwark', 'retaliation'],
+    kindled: ['retaliation'],
+  }).battle;
+  const used = {
+    type: 'powerUsed',
+    at: 10,
+    power: 'retaliation',
+    until: 510,
+    instant: true,
+  } as const;
+
+  it('reads the kindled power on the card of the hero', () => {
+    expect(heroCard('sentinel', ['bulwark', 'retaliation'], ['retaliation']).label).toContain(
+      'Pouvoirs équipés : Rempart, 1 Élan ; Représailles, attisé, 1 Élan.',
+    );
+  });
+
+  it('writes « Attisé · 1 Élan » under the scene word, and says it', () => {
+    expect(feedbackText(used, kindledBattle)).toEqual({
+      tone: 'perfect',
+      title: 'Représailles',
+      sub: 'Attisé · 1 Élan',
+    });
+    expect(announcement(used, kindledBattle)).toBe(
+      'Représailles actif, attisé, 1 Élan. Toujours à toi : vise et attaque.',
+    );
+  });
+
+  it('writes the scene word alone for a power that is not kindled', () => {
+    const plain = { ...kindledBattle, kindled: [] };
+
+    expect(feedbackText(used, plain)).toEqual({ tone: 'perfect', title: 'Représailles' });
+    expect(announcement(used, plain)).toBe('Représailles actif. Toujours à toi : vise et attaque.');
   });
 });

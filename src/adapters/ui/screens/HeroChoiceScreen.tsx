@@ -4,8 +4,10 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { HeroKind } from '../../../domain/battle/combatants';
 import { basePower, type PowerKind } from '../../../domain/battle/powers';
 import { EquippedPowersRow } from '../components/EquippedPowersRow';
+import { KindledFlame } from '../components/KindledFlame';
 import { Screen } from '../components/Screen';
 import { heroCard } from '../format/battleText';
+import type { HeroOathLine } from '../format/oathText';
 import { artPalette } from '../pixelArt/artPalette';
 import { MIN_TARGET_SIZE, PixelButton } from '../pixelArt/PixelButton';
 import { PixelFrame } from '../pixelArt/PixelFrame';
@@ -16,18 +18,24 @@ const { roles } = artPalette;
 
 const HERO_KINDS: readonly HeroKind[] = ['sentinel', 'wanderer'];
 
+export type { HeroOathLine };
+
 function HeroOption({
   kind,
   powers,
+  kindled,
+  oathLines,
   checked,
   onPress,
 }: {
   readonly kind: HeroKind;
   readonly powers: readonly PowerKind[];
+  readonly kindled: readonly PowerKind[];
+  readonly oathLines: readonly HeroOathLine[];
   readonly checked: boolean;
   readonly onPress: () => void;
 }) {
-  const card = heroCard(kind, powers);
+  const card = heroCard(kind, powers, kindled);
   return (
     <Pressable
       accessibilityRole="radio"
@@ -45,7 +53,21 @@ function HeroOption({
         <Text style={styles.style}>{card.style}</Text>
         <Text style={styles.stats}>{card.stats}</Text>
         {checked ? <Text style={styles.line}>{card.kit}</Text> : null}
-        <EquippedPowersRow powers={powers} short={!checked} />
+        <EquippedPowersRow powers={powers} kindled={kindled} short={!checked} />
+        {checked
+          ? oathLines.map((line) => (
+              <View key={line.text} style={styles.oathLine}>
+                {line.tone === 'kindled' ? (
+                  <KindledFlame />
+                ) : (
+                  <PixelIcon name="oath8" color={roles.parchment} />
+                )}
+                <Text style={[styles.oathText, line.tone === 'muted' && styles.oathMuted]}>
+                  {line.text}
+                </Text>
+              </View>
+            ))
+          : null}
         {checked ? <Text style={styles.small}>{card.trait}</Text> : null}
         {checked ? (
           <View pointerEvents="none" style={styles.tick}>
@@ -70,6 +92,8 @@ export function HeroChoiceScreen({
   note,
   confirmLabel,
   equipped,
+  kindled,
+  oathLines,
 }: {
   readonly onStart: (hero: HeroKind) => void;
   readonly onClose: () => void;
@@ -78,6 +102,10 @@ export function HeroChoiceScreen({
   readonly confirmLabel: (hero: HeroKind) => string;
   /** Les pouvoirs équipés d'office de chaque héros (#235), lus dans la vue du Camp. */
   readonly equipped?: Readonly<Record<HeroKind, readonly PowerKind[]>>;
+  /** Les pouvoirs que leurs Serments attiseraient au lancement, par héros (#237, S8). */
+  readonly kindled?: Readonly<Record<HeroKind, readonly PowerKind[]>>;
+  /** Les lignes des Serments des pouvoirs équipés, par héros (#237, S8, S9). */
+  readonly oathLines?: Readonly<Record<HeroKind, readonly HeroOathLine[]>>;
 }) {
   const [hero, setHero] = useState<HeroKind>('sentinel');
   return (
@@ -102,6 +130,8 @@ export function HeroChoiceScreen({
               key={kind}
               kind={kind}
               powers={equipped?.[kind] ?? [basePower(kind)]}
+              kindled={kindled?.[kind] ?? []}
+              oathLines={oathLines?.[kind] ?? []}
               checked={kind === hero}
               onPress={() => setHero(kind)}
             />
@@ -138,6 +168,15 @@ const styles = StyleSheet.create({
   style: { color: roles.parchment, fontFamily: textFont.semiBold, fontSize: 13 },
   stats: { color: roles.light, fontFamily: textFont.semiBold, fontSize: 13 },
   line: { color: roles.parchment, fontFamily: textFont.medium, fontSize: 13, lineHeight: 18 },
+  oathLine: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 2 },
+  oathText: {
+    flex: 1,
+    color: roles.light,
+    fontFamily: textFont.medium,
+    fontSize: 12.5,
+    lineHeight: 17,
+  },
+  oathMuted: { color: roles.parchment },
   small: { color: roles.muted, fontFamily: textFont.regular, fontSize: 12, lineHeight: 16 },
   tick: { position: 'absolute', right: 8, top: 8 },
   note: {

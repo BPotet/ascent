@@ -111,3 +111,37 @@ export function deleteOathLine(power: PowerKind): string {
   const name = nameOf(power);
   return `Elle tient le Serment de ${name} : il sera rompu, et ${name} coûtera ${cost(power)} Élan.`;
 }
+
+/** Une ligne du Choix du héros sur un Serment (#237) : en braise s'il attise, sinon éteinte. */
+export interface HeroOathLine {
+  readonly tone: 'kindled' | 'muted';
+  readonly text: string;
+}
+
+/** La ligne d'un pouvoir équipé sous Serment, au Choix du héros (S8, S9) ; rien sans état connu. */
+export function heroOathLine(
+  power: PowerKind,
+  habit: string,
+  standing: Exclude<OathStanding, 'broken'> | null,
+): HeroOathLine | null {
+  const name = nameOf(power);
+  switch (standing) {
+    case 'kept':
+      return {
+        tone: 'kindled',
+        text: `Attisé : « ${habit} » faite hier. ${kindledCost(power)} Élan pour toute l'ascension.`,
+      };
+    case 'missed':
+      return {
+        tone: 'muted',
+        text: `Serment de ${name} : « ${habit} » pas faite hier. Fais-la aujourd'hui, il sera attisé demain.`,
+      };
+    case 'fresh':
+      return {
+        tone: 'muted',
+        text: `Serment de ${name} : il compte dès demain. Fais « ${habit} » aujourd'hui, il sera attisé demain.`,
+      };
+    case null:
+      return null;
+  }
+}

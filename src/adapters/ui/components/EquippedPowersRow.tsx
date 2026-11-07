@@ -4,10 +4,12 @@ import type { PowerKind } from '../../../domain/battle/powers';
 import { POWERS } from '../../../domain/battle/powers';
 import { EQUIPPED_POWER_SLOTS } from '../../../domain/ascent/powerTree';
 import { powerDescription } from '../format/battleText';
+import { kindledCostText, kindledLabel } from '../format/oathText';
 import { TREE_POWER_NAMES } from '../format/powerText';
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize } from '../pixelArt/artPixel';
 import { textFont } from '../pixelArt/pixelTypography';
+import { KindledFlame } from './KindledFlame';
 import { PowerIcon } from './PowerIcon';
 
 const { roles } = artPalette;
@@ -21,9 +23,12 @@ const LINE = artPixelSize(2);
  */
 export function EquippedPowersRow({
   powers,
+  kindled = [],
   short = false,
 }: {
   readonly powers: readonly PowerKind[];
+  /** Les pouvoirs attisés (#237, S8) : bordés de braise, la flamme et « 2 → 1 Élan ». */
+  readonly kindled?: readonly PowerKind[];
   readonly short?: boolean;
 }) {
   const free = EQUIPPED_POWER_SLOTS - powers.length;
@@ -33,26 +38,46 @@ export function EquippedPowersRow({
         {`${short ? 'Pouvoirs' : 'Pouvoirs équipés'} · ${powers.length} sur ${EQUIPPED_POWER_SLOTS}`}
       </Text>
       <View style={styles.row}>
-        {powers.map((power) => (
-          <View
-            key={power}
-            accessible
-            accessibilityLabel={`${TREE_POWER_NAMES[power]}, ${POWERS[power].cost} Élan : ${powerDescription(power)}`}
-            testID={`equipped-power-${power}`}
-            style={[styles.cell, { borderWidth: LINE }, short && styles.shortCell]}
-          >
-            <PowerIcon power={power} scale={2} />
-            {short ? null : (
-              <>
-                <Text numberOfLines={2} style={styles.name}>
-                  {TREE_POWER_NAMES[power]}
-                </Text>
-                <Text style={styles.cost}>{`${POWERS[power].cost} Élan`}</Text>
-                {POWERS[power].instant ? <Text style={styles.instant}>Instantané</Text> : null}
-              </>
-            )}
-          </View>
-        ))}
+        {powers.map((power) => {
+          const lit = kindled.includes(power);
+          const price = lit
+            ? kindledLabel(power)
+            : `${TREE_POWER_NAMES[power]}, ${POWERS[power].cost} Élan`;
+          return (
+            <View
+              key={power}
+              accessible
+              accessibilityLabel={`${price} : ${powerDescription(power)}`}
+              testID={`equipped-power-${power}`}
+              style={[
+                styles.cell,
+                { borderWidth: LINE },
+                lit && styles.kindled,
+                short && styles.shortCell,
+              ]}
+            >
+              <PowerIcon power={power} scale={2} />
+              {short ? null : (
+                <>
+                  <Text numberOfLines={2} style={styles.name}>
+                    {TREE_POWER_NAMES[power]}
+                  </Text>
+                  {lit ? (
+                    <View style={styles.kindledCost}>
+                      <KindledFlame testID={`equipped-power-kindled-${power}`} />
+                      <Text style={[styles.cost, styles.kindledText]}>
+                        {kindledCostText(power)}
+                      </Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.cost}>{`${POWERS[power].cost} Élan`}</Text>
+                  )}
+                  {POWERS[power].instant ? <Text style={styles.instant}>Instantané</Text> : null}
+                </>
+              )}
+            </View>
+          );
+        })}
         {short
           ? null
           : Array.from({ length: free }, (_, index) => (
@@ -92,6 +117,9 @@ const styles = StyleSheet.create({
     backgroundColor: roles.surface,
   },
   shortCell: { flex: 0, minHeight: 40, width: 40 },
+  kindled: { borderColor: roles.ember },
+  kindledCost: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  kindledText: { color: roles.light },
   name: {
     fontFamily: textFont.bold,
     fontSize: 11.5,
