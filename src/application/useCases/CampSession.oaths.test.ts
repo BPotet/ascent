@@ -6,7 +6,7 @@ import { HabitName } from '../../domain/habit/HabitName';
 import type { InMemoryUnitOfWork } from '../testing/InMemoryUnitOfWork';
 import { campSetUp, campStore, settle, storeShardTotal } from '../testing/campSetUp';
 import { CAMP_KEY } from './CampSession';
-import { OATHS_KEY, UNREADABLE_OATHS_KEY, getHabitOaths } from './oaths';
+import { OATHS_KEY, UNREADABLE_OATHS_KEY, getHabitNames, getHabitOaths } from './oaths';
 
 const STORED_POWERS = JSON.stringify({
   version: 1,
@@ -376,5 +376,17 @@ describe('CampSession: beginning an ascent with the Oaths (#237)', () => {
     await camp.load();
 
     expect(camp.beginAscent({ hero: 'sentinel', doneYesterday: [1] })?.kindled).toEqual([]);
+  });
+});
+
+describe('the names of the habits, for the kindled powers of the Loadout (#237)', () => {
+  it('give the name of each existing habit, none when they cannot be read', async () => {
+    const { unitOfWork } = campSetUp();
+    await addHabit(unitOfWork, 'Courir');
+    await addHabit(unitOfWork, 'Lire');
+
+    await expect(getHabitNames({ unitOfWork })).resolves.toEqual({ 1: 'Courir', 2: 'Lire' });
+    unitOfWork.failReads();
+    await expect(getHabitNames({ unitOfWork })).resolves.toEqual({});
   });
 });

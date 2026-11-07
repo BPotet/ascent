@@ -4,6 +4,7 @@ import type { PowerKind } from '../../domain/battle/powers';
 import type { HabitId } from '../../domain/habit/Habit';
 import type { KeyValueStore } from '../ports/KeyValueStore';
 import { CAMP_KEY } from './campKeys';
+import type { UseCaseDependencies } from './UseCaseDependencies';
 
 /**
  * La clé des Serments (`Oath`, #237, ADR 0021), à côté du Camp : un achat et un Serment n'écrivent
@@ -42,6 +43,22 @@ export async function getHabitOaths({
     const { camp } = parseCamp(await keyValueStore.get(CAMP_KEY));
     const { oaths } = await readOaths(keyValueStore, camp);
     return Object.fromEntries(oaths.map(({ habit, power }) => [habit, power]));
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Cas d'usage : le nom de chaque habitude qui existe, pour nommer le Serment tenu d'un pouvoir
+ * attisé dans l'Équipement (#237), même après un changement de Serment. Lecture seule ; une panne
+ * n'en nomme aucune. Les noms restent sur l'appareil.
+ */
+export async function getHabitNames({
+  unitOfWork,
+}: Pick<UseCaseDependencies, 'unitOfWork'>): Promise<Readonly<Record<HabitId, string>>> {
+  try {
+    const habits = await unitOfWork.run(({ habits: repository }) => repository.listAll());
+    return Object.fromEntries(habits.map(({ id, name }) => [id, name.value]));
   } catch {
     return {};
   }
