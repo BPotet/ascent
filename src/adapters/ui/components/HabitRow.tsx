@@ -1,11 +1,13 @@
 import { type LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { HabitDay } from '../../../domain/checkIn/HabitDay';
+import type { PowerKind } from '../../../domain/battle/powers';
 import type { Difficulty } from '../../../domain/habit/Difficulty';
 import { checkInStatusLabels, CORRECTED } from '../format/checkInStatus';
 import { capitalize } from '../format/formatDay';
 import { type WeeklyProgressShown, weeklyProgressText } from '../format/formatWeeklyTarget';
 import { editHabitLabel, habitDayAccessibilityLabel } from '../format/habitDayLabel';
+import { habitOathBadge } from '../format/oathText';
 import { artPalette } from '../pixelArt/artPalette';
 import { HabitDayBox } from '../pixelArt/HabitDayBox';
 import { MIN_TARGET_SIZE } from '../pixelArt/PixelButton';
@@ -60,6 +62,11 @@ function toneOf(highlighted: boolean, done: boolean, reached: boolean): FrameTon
   return reached ? 'goldDark' : 'default';
 }
 
+/** L'annonce de la ligne, avec le Serment de l'habitude s'il y en a un (#237). */
+function withOath(label: string, oath: PowerKind | undefined): string {
+  return oath === undefined ? label : `${label}, ${habitOathBadge(oath)}`;
+}
+
 /**
  * Ligne d'une habitude dans la Vue Journée, dans l'identité pixel art (E1, #72) : la case dessinée
  * (`HabitDayBox`), le nom en police de texte, l'état écrit en toutes lettres, la difficulté de la
@@ -94,6 +101,7 @@ export function HabitRow({
   onToggle,
   onEdit,
   onLayout,
+  oath,
 }: {
   readonly habitDay: HabitDay;
   /** La difficulté de la semaine du jour affiché ; sans elle, la ligne n'en montre pas. */
@@ -110,6 +118,8 @@ export function HabitRow({
   readonly onEdit?: (habitDay: HabitDay) => void;
   /** La place de la ligne dans la liste, quand elle change (la Vue Journée révèle une habitude créée). */
   readonly onLayout?: (event: LayoutChangeEvent) => void;
+  /** Le pouvoir dont l'habitude tient le Serment (#237, S13), dans la Vue Journée seulement. */
+  readonly oath?: PowerKind | undefined;
 }) {
   const { habit, status, editable, corrected } = habitDay;
   const done = status === 'done';
@@ -129,12 +139,10 @@ export function HabitRow({
     >
       <Pressable
         accessibilityRole="switch"
-        accessibilityLabel={habitDayAccessibilityLabel({
-          habitDay,
-          difficulty,
-          weeklyProgress,
-          weekLabel,
-        })}
+        accessibilityLabel={withOath(
+          habitDayAccessibilityLabel({ habitDay, difficulty, weeklyProgress, weekLabel }),
+          oath,
+        )}
         accessibilityState={{ checked: done, disabled: !editable }}
         disabled={!editable}
         onPress={() => {
@@ -157,6 +165,12 @@ export function HabitRow({
         </View>
         <View style={styles.texts}>
           <Text style={[pixelTypography.habitName, styles.name]}>{habit.name.value}</Text>
+          {oath === undefined ? null : (
+            <View testID={`habit-oath-${habit.id}`} style={styles.oath}>
+              <PixelIcon name="oath8" color={roles.blue} />
+              <Text style={styles.oathText}>{habitOathBadge(oath)}</Text>
+            </View>
+          )}
           <View style={styles.subLine}>
             {difficulty && (
               <DifficultyLabel difficulty={difficulty} testID={`habit-difficulty-${habit.id}`} />
@@ -219,6 +233,8 @@ const styles = StyleSheet.create({
   texts: { flex: 1, minWidth: 0, gap: 4 },
   name: { color: roles.light },
   subLine: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6 },
+  oath: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  oathText: { fontFamily: textFont.medium, fontSize: 12.5, lineHeight: 16, color: roles.blue },
   sub: { color: roles.parchment, flexShrink: 1 },
   corrected: {
     fontFamily: textFont.semiBold,

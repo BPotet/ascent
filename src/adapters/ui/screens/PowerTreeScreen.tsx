@@ -2,14 +2,23 @@ import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { CampSession, CampView } from '../../../application/useCases/CampSession';
-import { POWER_TREES, powerPrice, type PowerTreeCode } from '../../../domain/ascent/powerTree';
+import type { OathStanding } from '../../../domain/ascent/oaths';
+import {
+  POWER_TREES,
+  powerPrice,
+  type PowerNodeState,
+  type PowerTreeCode,
+} from '../../../domain/ascent/powerTree';
 import type { HeroKind } from '../../../domain/battle/combatants';
 import type { PowerKind } from '../../../domain/battle/powers';
+import type { HabitId } from '../../../domain/habit/Habit';
 import { MinusFloat } from '../components/CampFeedback';
-import { PowerSheet } from '../components/PowerSheet';
+import { OathPicker } from '../components/OathPicker';
+import { PowerSheet, type SheetOath } from '../components/PowerSheet';
 import { PowerTreeNode } from '../components/PowerTreeNode';
 import { Screen } from '../components/Screen';
 import { availableShardsText, runBand } from '../format/campText';
+import { swornAnnouncement } from '../format/oathText';
 import { PATH_NAMES, unlockAnnouncement } from '../format/powerText';
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize } from '../pixelArt/artPixel';
@@ -20,6 +29,7 @@ import { PixelSkeleton } from '../pixelArt/PixelSkeleton';
 import { pixelFont, textFont } from '../pixelArt/pixelTypography';
 import { PORTRAITS } from '../pixelArt/sprites/atelier/data/portraits';
 import { useCamp } from '../state/useCamp';
+import { useFateGauge } from '../state/useFateGauge';
 
 const { roles } = artPalette;
 const LINE = artPixelSize(2);
@@ -35,6 +45,35 @@ interface Fresh {
   readonly id: number;
   readonly code: PowerKind;
   readonly price: number;
+}
+
+/** Le pouvoir est à soi : de base, débloqué, ou débloqué pour la prochaine ascension. */
+function isOwned(state: PowerNodeState): boolean {
+  return state.kind === 'base' || state.kind === 'unlocked' || state.kind === 'nextAscent';
+}
+
+/** L'habitude d'un Serment non rompu (#237), pour le chaînon du nœud. */
+function swornHabit(view: CampView, code: PowerTreeCode): string | undefined {
+  return view.oaths[code as PowerKind]?.name ?? undefined;
+}
+
+/** Le Serment de la fiche d'un pouvoir à soi (#237) ; aucun cadre pour un autre. */
+function sheetOath(
+  view: CampView,
+  code: PowerTreeCode,
+  state: PowerNodeState,
+  standings: Partial<Record<PowerKind, OathStanding | null>>,
+): SheetOath | undefined {
+  if (!isOwned(state)) return undefined;
+  const power = code as PowerKind;
+  if (!view.oathBearers.includes(power)) return { kind: 'lowCost' };
+  const oath = view.oaths[power];
+  if (oath === undefined) return { kind: 'none' };
+  const standing = standings[power] ?? null;
+  if (standing === 'broken' || (oath.name === null && view.habits !== null)) {
+    return { kind: 'broken' };
+  }
+  return { kind: 'sworn', habit: oath.name ?? '', standing };
 }
 
 /** Le trait de l'arbre entre deux rangs, ou vers la racine : d'or quand la voie est à soi. */
@@ -67,10 +106,7 @@ function Tree({
   const { base, paths } = POWER_TREES[hero];
   const state = (code: PowerTreeCode) =>
     view.trees[hero].nodes.find((node) => node.code === code)!.state;
-  const owned = (code: PowerTreeCode) => {
-    const kind = state(code).kind;
-    return kind === 'base' || kind === 'unlocked' || kind === 'nextAscent';
-  };
+  const owned = (code: PowerTreeCode) => isOwned(state(code));
   const nodeOf = (code: PowerTreeCode) => (
     <PowerTreeNode
       key={code}
@@ -78,6 +114,7 @@ function Tree({
       code={code}
       state={state(code)}
       fresh={fresh === code}
+      sworn={swornHabit(view, code)}
       onPress={() => onOpen(code)}
     />
   );
@@ -139,12 +176,19 @@ export function PowerTreeScreen({
   camp,
   hero: initialHero,
   onLeave,
+  onGoToDay,
 }: {
   readonly camp: CampSession;
   readonly hero: HeroKind;
   readonly onLeave: () => void;
+  /** Va à la Vue Journée, pour créer une habitude à lier par un Serment (#237, S3). */
+  readonly onGoToDay?: () => void;
 }) {
   const view = useCamp(camp);
+  const { reading } = useFateGauge();
+  const doneYesterday = reading === null || reading.unreadable ? null : reading.doneYesterday;
+  const [picking, setPicking] = useState(false);
+  const [oathError, setOathError] = useState(false);
   const [hero, setHero] = useState(initialHero);
   const [sheet, setSheet] = useState<PowerTreeCode | null>(null);
   const [error, setError] = useState(false);
@@ -169,7 +213,23 @@ export function PowerTreeScreen({
     const code = sheet;
     setSheet(null);
     setError(false);
+    setPicking(false);
     if (code !== null) focus(code);
+  };
+  const swear = async (habit: HabitId) => {
+    if (sheet === null) return;
+    const power = sheet as PowerKind;
+    const result = await camp.swearOath(power, habit);
+    if (result === 'failed') {
+      setOathError(true);
+      return;
+    }
+    setPicking(false);
+    setOathError(false);
+    const name = camp.view().habits?.find(({ id }) => id === habit)?.name;
+    if (result === 'sworn' && name !== undefined) {
+      AccessibilityInfo.announceForAccessibility(swornAnnouncement(power, name));
+    }
   };
   const unlock = async () => {
     if (sheet === null) return;
@@ -260,7 +320,21 @@ export function PowerTreeScreen({
           />
         )}
       </ScrollView>
-      {state === null || state === undefined ? null : (
+      {state === null || state === undefined ? null : picking ? (
+        <OathPicker
+          power={state.code as PowerKind}
+          habits={view.habits}
+          oaths={view.oaths}
+          error={oathError}
+          onSwear={(habit) => void swear(habit)}
+          onRetryHabits={() => void camp.refreshHabits()}
+          {...(onGoToDay !== undefined && { onGoToDay })}
+          onClose={() => {
+            setPicking(false);
+            setOathError(false);
+          }}
+        />
+      ) : (
         <PowerSheet
           code={state.code}
           state={state.state}
@@ -268,6 +342,8 @@ export function PowerTreeScreen({
           ascentInProgress={view.ascentInProgress}
           readOnly={view.readOnly}
           error={error}
+          oath={sheetOath(view, state.code, state.state, camp.oathStandings(doneYesterday))}
+          onSwear={() => setPicking(true)}
           onUnlock={() => void unlock()}
           onSee={open}
           onClose={close}

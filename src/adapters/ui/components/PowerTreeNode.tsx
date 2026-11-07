@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { PowerNodeState, PowerTreeCode } from '../../../domain/ascent/powerTree';
 import { TREE_POWER_NAMES, nodeLabel, nodeStateText, powerTypeLine } from '../format/powerText';
+import { oathLabel } from '../format/oathText';
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize, notchedCorners } from '../pixelArt/artPixel';
 import { PixelIcon } from '../pixelArt/PixelIcon';
@@ -108,12 +109,15 @@ export function PowerTreeNode({
   code,
   state,
   fresh = false,
+  sworn,
   onPress,
   ref,
 }: {
   readonly code: PowerTreeCode;
   readonly state: PowerNodeState;
   readonly fresh?: boolean;
+  /** L'habitude du Serment du pouvoir, non rompu (#237, S7) : le chaînon bleu, en haut à gauche. */
+  readonly sworn?: string | undefined;
   readonly onPress: () => void;
   readonly ref?: Ref<View>;
 }) {
@@ -124,7 +128,11 @@ export function PowerTreeNode({
     <Pressable
       ref={ref}
       accessibilityRole="button"
-      accessibilityLabel={nodeLabel(code, state)}
+      accessibilityLabel={
+        sworn === undefined
+          ? nodeLabel(code, state)
+          : `${nodeLabel(code, state)}, ${oathLabel(sworn)}`
+      }
       onPress={onPress}
       testID={`power-node-${code}`}
       style={[
@@ -139,6 +147,11 @@ export function PowerTreeNode({
           <PixelIcon name="check8" color={roles.ink} />
         </View>
       ) : null}
+      {sworn === undefined ? null : (
+        <View testID={`power-node-oath-${code}`} style={[styles.oath, { borderWidth: 1 }]}>
+          <PixelIcon name="oath8" color={roles.blue} />
+        </View>
+      )}
       {fresh ? (
         <LightingIcon code={code} />
       ) : (
@@ -184,6 +197,14 @@ const styles = StyleSheet.create({
     backgroundColor: roles.gold,
   },
   off: { opacity: 0.55 },
+  oath: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    padding: 2,
+    borderColor: roles.blue,
+    backgroundColor: roles.sunken,
+  },
   tick: {
     position: 'absolute',
     top: 4,
