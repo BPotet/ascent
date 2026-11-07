@@ -142,14 +142,18 @@ const gaugeDependencies = () => ({
   keyValueStore: world.store,
 });
 
-/** Le lancement du pied de la tour : la jauge lue, l'ascension commencée, puis la jauge scellée. */
-async function launch(hero: HeroKind = 'sentinel'): Promise<Ascent> {
+/**
+ * Le lancement du pied de la tour : la jauge lue, l'ascension commencée avec les pouvoirs choisis
+ * (#236, la présélection par défaut), puis la jauge scellée.
+ */
+async function launch(hero: HeroKind = 'sentinel', powers?: readonly PowerKind[]): Promise<Ascent> {
   const reading = await getFateGauge(gaugeDependencies());
   const ascent = world.camp.beginAscent({
     hero,
     gauge: reading.gauge,
     blessings: reading.blessings,
     doneYesterday: reading.doneYesterday,
+    ...(powers !== undefined && { powers }),
   });
   await sealFateGauge(gaugeDependencies(), reading);
   world.ascent = ascent;
@@ -443,20 +447,20 @@ const steps: StepDefinitions = ({ given, when, then, and, but }) => {
     },
   );
 
-  // Coup de bouclier n'est un pouvoir lançable qu'avec #236 : Brume, Serment tenu hier mais d'un
-  // autre héros, n'est pas équipée pour une ascension de la Sentinelle et en tient lieu.
+  // La Sentinelle a 4 pouvoirs débloqués (#236) et laisse Coup de bouclier de côté au lancement.
   given(
     /^Coup de bouclier porte un Serment tenu hier mais n'est pas équipé pour l'ascension$/u,
     async () => {
-      await open();
-      await storedOath('mist', 'Lire', BEFORE_YESTERDAY);
+      await open(['retaliation', 'holdFast', 'shieldBash', 'crushingBlow']);
+      await storedOath('shieldBash', 'Lire', BEFORE_YESTERDAY);
       await doneYesterday('Lire');
-      expect(world.camp.oathStandings([habit('Lire')])).toEqual({ mist: 'kept' });
+      expect(world.camp.oathStandings([habit('Lire')])).toEqual({ shieldBash: 'kept' });
     },
   );
 
   then(/^rien ne change en combat$/u, async () => {
-    await launch('sentinel');
+    const ascent = await launch('sentinel', ['bulwark', 'retaliation', 'holdFast']);
+    expect(ascent.powers).not.toContain('shieldBash');
     expect(kindledPowers()).toEqual([]);
     expect(await firstBattle()).not.toHaveProperty('kindled');
   });

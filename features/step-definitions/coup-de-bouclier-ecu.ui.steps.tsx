@@ -413,14 +413,16 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   );
 
   and('la Sentinelle a 15 poses dans la case 36 × 44, avec la même palette de 19 teintes', () => {
-    expect(heroFrames('sentinel')).toHaveLength(15);
-    expect(Object.keys(SENTINEL_ANIMATION.frames).sort()).toEqual(
-      [...heroFrames('sentinel')].sort(),
+    // `assets/sentinel` garde ses 15 poses ; celles de Fracas (#236) viennent d'un autre document.
+    const copied = heroFrames('sentinel').filter(
+      (frame) => frame !== 'crush0' && frame !== 'crush1',
     );
+    expect(copied).toHaveLength(15);
+    expect(Object.keys(SENTINEL_ANIMATION.frames).sort()).toEqual([...copied].sort());
     expect([SENTINEL_ANIMATION.w, SENTINEL_ANIMATION.h]).toEqual([36, 44]);
     expect(SENTINEL_ANIMATION.pal).toHaveLength(19);
     expect(sha256(SENTINEL_ANIMATION.pal.join(','))).toBe(EXPORTS.sentinelPalette);
-    for (const frame of heroFrames('sentinel')) {
+    for (const frame of copied) {
       const { sprite } = battleSprite('sentinel', frame);
       expect([frame, sprite.width, sprite.height]).toEqual([frame, 36, 44]);
     }

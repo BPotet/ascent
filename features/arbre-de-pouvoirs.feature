@@ -17,15 +17,15 @@ Fonctionnalité: L'arbre de pouvoirs au Camp et les pouvoirs équipés en combat
     Alors il voit « 50 Éclats disponibles »
     Et la racine de l'arbre est le Rempart, marqué « Pouvoir de base », sans prix
     Et la voie Veille montre Représailles (rang 1, 30 Éclats) puis Tenir bon (rang 2, 60 Éclats, verrouillé)
-    Et la voie Bouclier montre Coup de bouclier et Fracas, marqués « Bientôt », sans prix ni bouton de déblocage
+    Et la voie Bouclier montre Coup de bouclier (rang 1, 30 Éclats) puis Fracas (rang 2, 60 Éclats, verrouillé)
 
   @ui
   Scénario: Première ouverture de l'arbre de l'Errante
     Étant donné le joueur n'a débloqué aucun pouvoir
     Quand il ouvre l'arbre de pouvoirs de l'Errante au camp
     Alors la racine de l'arbre est Pas de l'ombre, marqué « Pouvoir de base », sans prix
-    Et la voie Lames montre Entaille (rang 1, 30 Éclats) puis Rafale, marquée « Bientôt », sans prix ni bouton de déblocage
-    Et la voie Ombre montre Brume (rang 1, 30 Éclats) puis Frappe furtive, marquée « Bientôt », sans prix ni bouton de déblocage
+    Et la voie Lames montre Entaille (rang 1, 30 Éclats) puis Rafale (rang 2, 60 Éclats, verrouillée)
+    Et la voie Ombre montre Brume (rang 1, 30 Éclats) puis Frappe furtive (rang 2, 60 Éclats, verrouillée)
 
   @ui
   Scénario: Débloquer un pouvoir de rang 1
@@ -66,11 +66,11 @@ Fonctionnalité: L'arbre de pouvoirs au Camp et les pouvoirs équipés en combat
     Alors Représailles est toujours débloqué, sans pouvoir être racheté, et les Éclats disponibles sont inchangés
 
   @ui
-  Scénario: Une frappe de pouvoir « Bientôt »
+  Scénario: La fiche d'une frappe de pouvoir
     Étant donné le joueur a 200 Éclats disponibles
     Quand il touche Coup de bouclier dans l'arbre de la Sentinelle
-    Alors sa fiche s'ouvre, avec son nom complet « Coup de bouclier », et dit qu'il n'est pas encore disponible
-    Et elle ne propose pas de le débloquer
+    Alors sa fiche s'ouvre, avec son nom complet « Coup de bouclier », 2 Élan et le type « Frappe »
+    Et elle propose de le débloquer pour 30 Éclats
 
   @domain
   Scénario: Le pouvoir de base ne s'achète pas
