@@ -19,7 +19,9 @@ import {
   type LoadoutReserves,
 } from '../../../domain/ascent/loadout';
 import type { Rarity } from '../../../domain/ascent/rarity';
+import type { KindledPower } from '../../../domain/ascent/kindled';
 import type { PowerKind } from '../../../domain/battle/powers';
+import type { HabitId } from '../../../domain/habit/Habit';
 import { blessingCard } from '../format/ascentText';
 import { boonCard } from '../format/boonText';
 import { gaugeValue } from '../format/gaugeText';
@@ -52,6 +54,7 @@ import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
 import { useReducedMotion } from '../state/useReducedMotion';
 import { IconWell, RARITY_COLORS } from './IconWell';
 import { LoadoutHeading, LoadoutNone } from './LoadoutChip';
+import { KindledFlame } from './KindledFlame';
 import { PowerIcon } from './PowerIcon';
 import { SCROLL_HINT_HEIGHT, ScrollHint } from './ScrollHint';
 
@@ -195,7 +198,15 @@ function ReservesPart({ reserves }: { readonly reserves: LoadoutReserves }) {
  * Les pouvoirs équipés de l'ascension (#235, maquette 232 E1) : un en-tête « Pouvoirs · 3 », puis
  * une ligne par pouvoir, dans l'ordre des touches, avec son icône, son coût, son type et son effet.
  */
-function PowersPart({ powers }: { readonly powers: readonly PowerKind[] }) {
+function PowersPart({
+  powers,
+  kindled,
+  habitNames,
+}: {
+  readonly powers: readonly PowerKind[];
+  readonly kindled: readonly KindledPower[];
+  readonly habitNames: Readonly<Record<HabitId, string>>;
+}) {
   const line = artPixelSize(2);
   return (
     <View style={styles.part} testID="loadout-powers">
@@ -204,7 +215,7 @@ function PowersPart({ powers }: { readonly powers: readonly PowerKind[] }) {
         count={String(powers.length)}
         label={`${POWERS_TITLE}, ${powers.length}`}
       />
-      {powerRows(powers).map((row) => (
+      {powerRows(powers, kindled, habitNames).map((row) => (
         <View
           key={row.power}
           accessible
@@ -212,13 +223,33 @@ function PowersPart({ powers }: { readonly powers: readonly PowerKind[] }) {
           testID={`loadout-power-${row.power}`}
           style={[styles.row, { borderTopWidth: line }]}
         >
-          <View style={[styles.powerWell, { borderWidth: line }]}>
+          <View
+            style={[
+              styles.powerWell,
+              { borderWidth: line },
+              row.kindled !== undefined && { borderColor: roles.ember },
+            ]}
+          >
             <PowerIcon power={row.power} scale={2} />
           </View>
           <View style={styles.rowText}>
             <Text style={styles.name}>{row.name}</Text>
-            <Text style={[styles.tag, { color: roles.gold }]}>{row.line}</Text>
+            {row.kindled === undefined ? (
+              <Text style={[styles.tag, { color: roles.gold }]}>{row.line}</Text>
+            ) : (
+              <View style={styles.kindledLine}>
+                <KindledFlame />
+                <Text style={[styles.tag, { color: roles.light }]}>
+                  {'Attisé · '}
+                  <Text style={styles.struck}>{String(row.kindled.baseCost)}</Text>
+                  {` ${row.kindled.line}`}
+                </Text>
+              </View>
+            )}
             <Text style={styles.effect}>{row.effect}</Text>
+            {row.kindled === undefined ? null : (
+              <Text style={[styles.effect, { color: roles.light }]}>{row.kindled.oath}</Text>
+            )}
           </View>
         </View>
       ))}
@@ -275,11 +306,14 @@ export function LoadoutSheet({
   loadout,
   combat,
   visible,
+  habitNames = {},
   onClose,
 }: {
   readonly loadout: Loadout;
   readonly combat: boolean;
   readonly visible: boolean;
+  /** Les noms des habitudes, pour le Serment tenu d'un pouvoir attisé (#237) ; absents, aucun. */
+  readonly habitNames?: Readonly<Record<HabitId, string>>;
   readonly onClose: () => void;
 }) {
   const reducedMotion = useReducedMotion();
@@ -332,7 +366,13 @@ export function LoadoutSheet({
               bounces={false}
             >
               {loadout.reserves !== undefined && <ReservesPart reserves={loadout.reserves} />}
-              {loadout.powers !== undefined && <PowersPart powers={loadout.powers} />}
+              {loadout.powers !== undefined && (
+                <PowersPart
+                  powers={loadout.powers}
+                  kindled={loadout.kindled ?? []}
+                  habitNames={habitNames}
+                />
+              )}
               {loadout.favor !== undefined && <FavorPart favor={loadout.favor} />}
               <Part
                 title="Bénédictions de départ"
@@ -406,6 +446,8 @@ const styles = StyleSheet.create({
   },
   name: { fontFamily: pixelFont, fontSize: 18, lineHeight: 22, color: roles.light },
   tag: { fontFamily: textFont.bold, fontSize: 12, lineHeight: 16 },
+  kindledLine: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  struck: { color: roles.muted, textDecorationLine: 'line-through' },
   effect: { fontFamily: textFont.medium, fontSize: 13, lineHeight: 18, color: roles.parchment },
   stateRow: { alignItems: 'center' },
   stateWell: {

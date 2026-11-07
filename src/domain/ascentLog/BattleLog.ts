@@ -56,6 +56,8 @@ export interface HeroAtStart {
   readonly secondChance?: true;
   /** Les pouvoirs équipés (#235), seulement s'ils diffèrent du pouvoir de base seul. */
   readonly powers?: readonly PowerKind[];
+  /** Les pouvoirs attisés du combat (#237), leurs codes seuls ; absent sans attisé. */
+  readonly kindled?: readonly PowerKind[];
 }
 
 /** Un ennemi de la première ligne au début du combat, avec son Initiative. */
@@ -268,6 +270,7 @@ export function beginBattleLog(place: BattlePlace, battle: Battle, at: number): 
       ...(beyondBasePower(battle.heroKind, equippedOf(battle)) && {
         powers: equippedOf(battle),
       }),
+      ...(battle.kindled !== undefined && { kindled: battle.kindled }),
     },
     enemies: battle.enemies.map((enemy, index) => ({
       place: index,

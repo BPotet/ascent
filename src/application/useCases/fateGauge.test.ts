@@ -77,6 +77,7 @@ describe('the fate gauge of the day', () => {
         { name: 'Cuisiner', done: true, atClosingOnly: false },
         { name: 'Ranger', done: false, atClosingOnly: false },
       ],
+      doneYesterday: [1, 2, 3],
       sealed: false,
       unreadable: false,
     });
@@ -124,6 +125,7 @@ describe('the fate gauge of the day', () => {
       done: 0,
       expected: 0,
       habits: [],
+      doneYesterday: [],
       sealed: false,
       unreadable: true,
     });
@@ -179,6 +181,7 @@ describe('the fate gauge of the day', () => {
       done: 3,
       expected: 4,
       habits: [],
+      doneYesterday: [],
       sealed: true,
       unreadable: false,
     });
@@ -191,6 +194,39 @@ describe('the fate gauge of the day', () => {
     await checkIn('Courir', tuesday);
 
     await expect(getFateGauge(deps())).resolves.toEqual({ ...UNREADABLE_GAUGE, sealed: true });
+  });
+
+  it('keeps the habits done yesterday in the seal: an identifier, never a name (#237)', async () => {
+    await checkIn('Lire', tuesday);
+    await sealFateGauge(deps(), await getFateGauge(deps()));
+
+    const seal = JSON.parse(keyValueStore.values.get(GAUGE_SEAL_KEY)!) as Record<string, unknown>;
+    expect(seal).toMatchObject({ doneYesterday: [2] });
+    await expect(getFateGauge(deps())).resolves.toMatchObject({ doneYesterday: [2] });
+  });
+
+  it('does not kindle a habit checked « done » for yesterday after the seal (#237)', async () => {
+    await sealFateGauge(deps(), await getFateGauge(deps()));
+    await checkIn('Courir', tuesday);
+
+    await expect(getFateGauge(deps())).resolves.toMatchObject({ doneYesterday: [], sealed: true });
+  });
+
+  it('reads a seal from before #237 without the habits done yesterday', async () => {
+    keyValueStore.values.set(
+      GAUGE_SEAL_KEY,
+      JSON.stringify({
+        day: wednesday.toIsoString(),
+        gauge: 2,
+        blessings: [],
+        done: 4,
+        expected: 4,
+        habits: [],
+        unreadable: false,
+      }),
+    );
+
+    await expect(getFateGauge(deps())).resolves.toMatchObject({ gauge: 2, doneYesterday: [] });
   });
 
   it('ignores an unreadable seal', async () => {

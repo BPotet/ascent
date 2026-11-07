@@ -94,3 +94,29 @@ describe('PowerTreeNode just unlocked (D1)', () => {
     expect(saturation()).toBe(1);
   });
 });
+
+describe('PowerTreeNode under an Oath (#237, S7)', () => {
+  it('carries the blue link of the Oath in its top left corner, and reads its habit', async () => {
+    await render(
+      <PowerTreeNode
+        code="retaliation"
+        state={{ kind: 'unlocked' }}
+        sworn="Courir 20 minutes"
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('power-node-oath-retaliation', hiddenToo)).toBeOnTheScreen();
+    expect(screen.getByTestId('power-node-retaliation').props.accessibilityLabel).toMatch(
+      /, Serment : Courir 20 minutes$/u,
+    );
+  });
+
+  it('has no link without an Oath', async () => {
+    await render(
+      <PowerTreeNode code="retaliation" state={{ kind: 'unlocked' }} onPress={jest.fn()} />,
+    );
+
+    expect(screen.queryByTestId('power-node-oath-retaliation', hiddenToo)).not.toBeOnTheScreen();
+  });
+});

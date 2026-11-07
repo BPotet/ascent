@@ -1,6 +1,7 @@
 import { blessingRarities } from '../../domain/ascent/blessings';
 import { fateGauge, fateGaugeCount, type FateGauge } from '../../domain/ascent/fateGauge';
 import type { Rarity } from '../../domain/ascent/rarity';
+import type { HabitId } from '../../domain/habit/Habit';
 import { Week } from '../../domain/week/Week';
 import type { PreferenceDependencies } from './checkInHint';
 import type { UseCaseDependencies } from './UseCaseDependencies';
@@ -30,6 +31,11 @@ export interface FateGaugeReading {
   readonly expected: number;
   /** Les habitudes attendues hier, dans l'ordre de création, faites ou non (#41). */
   readonly habits: readonly FateGaugeHabitLine[];
+  /**
+   * Les habitudes cochées « fait » hier, attendues ou non : celles qui tiennent leur Serment (#237).
+   * Des identifiants, jamais des noms ; figées avec le reste au Scellement de la jauge.
+   */
+  readonly doneYesterday: readonly HabitId[];
   /** Figée au lancement de la 1re ascension du jour. */
   readonly sealed: boolean;
   /** Les habitudes n'ont pas pu être lues : la jauge est Neutre, sans effet (P28). */
@@ -43,18 +49,20 @@ export const UNREADABLE_GAUGE: FateGaugeReading = {
   done: 0,
   expected: 0,
   habits: [],
+  doneYesterday: [],
   sealed: false,
   unreadable: true,
 };
 
 /**
  * Le scellement : la lecture, sans `sealed`. `habits` et `unreadable` sont facultatifs : un
- * scellement d'avant #41 se relit sans noms, comme une lecture réussie.
+ * scellement d'avant #41 se relit sans noms, comme une lecture réussie ; `doneYesterday` aussi : un
+ * scellement d'avant #237 n'attise rien.
  */
 interface Seal
   extends
-    Omit<FateGaugeReading, 'sealed' | 'habits' | 'unreadable'>,
-    Partial<Pick<FateGaugeReading, 'habits' | 'unreadable'>> {
+    Omit<FateGaugeReading, 'sealed' | 'habits' | 'unreadable' | 'doneYesterday'>,
+    Partial<Pick<FateGaugeReading, 'habits' | 'unreadable' | 'doneYesterday'>> {
   readonly day: string;
 }
 
@@ -78,8 +86,8 @@ export async function getFateGauge(dependencies: FateGaugeDependencies): Promise
   const today = clock.today();
   const seal = await readSeal(dependencies);
   if (seal?.day === today.toIsoString()) {
-    const { day: _day, habits = [], unreadable = false, ...reading } = seal;
-    return { ...reading, habits, unreadable, sealed: true };
+    const { day: _day, habits = [], unreadable = false, doneYesterday = [], ...reading } = seal;
+    return { ...reading, habits, doneYesterday, unreadable, sealed: true };
   }
   try {
     return await unitOfWork.run(async ({ habits, checkIns, settingsChanges }) => {
@@ -107,6 +115,7 @@ export async function getFateGauge(dependencies: FateGaugeDependencies): Promise
           done: isDone,
           atClosingOnly,
         })),
+        doneYesterday: count.doneYesterday,
         sealed: false,
         unreadable: false,
       };

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import type { PowerKind } from '../../../domain/battle/powers';
 import type { Day } from '../../../domain/day/Day';
 import type { Habit } from '../../../domain/habit/Habit';
 import { formatXpChange } from '../format/formatXp';
@@ -8,6 +9,7 @@ import {
   type EditableSettings,
   useEditHabit,
 } from '../state/useEditHabit';
+import { useHabitOaths } from '../state/useHabitOaths';
 import { DELETE_FAILED, DeleteHabitDialog } from './DeleteHabitDialog';
 import { EditHabitSheet, type UpdatedHabit } from './EditHabitSheet';
 
@@ -53,6 +55,8 @@ type Step =
   | {
       readonly kind: 'confirm';
       readonly name: string;
+      /** Le pouvoir dont l'habitude tient le Serment (#237). */
+      readonly oath: PowerKind | undefined;
       readonly xpRemoved: number;
       readonly targetBonusRemoved: number;
     };
@@ -93,6 +97,7 @@ export function HabitEditing({
   readonly onClose: () => void;
 }) {
   const { update, currentSettings, previewDeletion, remove } = useEditHabit();
+  const oaths = useHabitOaths();
   const [step, setStep] = useState<Step>(() =>
     settings === undefined ? { kind: 'reading' } : { kind: 'sheet', settings, alert: null },
   );
@@ -137,6 +142,7 @@ export function HabitEditing({
         setStep({
           kind: 'confirm',
           name: preview.name,
+          oath: oaths[habit.id],
           xpRemoved: preview.xpRemoved,
           targetBonusRemoved: preview.targetBonusRemoved,
         });
@@ -158,6 +164,7 @@ export function HabitEditing({
         name={step.name}
         xpRemoved={step.xpRemoved}
         targetBonusRemoved={step.targetBonusRemoved}
+        oath={step.oath}
         onConfirm={() => remove(habit.id)}
         onDeleted={onDeleted}
         onGone={onGone}

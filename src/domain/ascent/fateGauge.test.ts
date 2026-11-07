@@ -199,7 +199,51 @@ describe('the count of yesterday, as at the closing (#41)', () => {
   });
 
   it('counts nothing without any habit', () => {
-    expect(fateGaugeCount(november(5), [], [], [])).toEqual({ done: 0, expected: 0, habits: [] });
+    expect(fateGaugeCount(november(5), [], [], [])).toEqual({
+      done: 0,
+      expected: 0,
+      habits: [],
+      doneYesterday: [],
+    });
+  });
+
+  describe('the habits done yesterday, for the Oaths (#237)', () => {
+    it('are the existing habits checked « done » yesterday, in the order given', () => {
+      const count = fateGaugeCount(
+        november(5),
+        habits,
+        [checkIn(cooking, november(5)), checkIn(running, november(5))],
+        created,
+      );
+
+      expect(count.doneYesterday).toEqual([running.id, cooking.id]);
+    });
+
+    it('take a habit done yesterday beyond its weekly target, expected or not', () => {
+      const changes = [change(running, running.createdOn, 'medium', 1)];
+      const week = [checkIn(running, november(2)), checkIn(running, november(5))];
+
+      const count = fateGaugeCount(november(5), [running], week, changes);
+
+      expect(count.doneYesterday).toEqual([running.id]);
+    });
+
+    it('read a correction of yesterday, in both directions', () => {
+      const corrected = [
+        checkIn(running, november(5), true, true),
+        checkIn(reading, november(5), false, true),
+      ];
+
+      expect(fateGaugeCount(november(5), habits, corrected, created).doneYesterday).toEqual([
+        running.id,
+      ]);
+    });
+
+    it('leave out the day before yesterday and a deleted habit', () => {
+      const week = [checkIn(running, november(4)), checkIn(reading, november(5))];
+
+      expect(fateGaugeCount(november(5), [running], week, created).doneYesterday).toEqual([]);
+    });
   });
 });
 

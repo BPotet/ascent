@@ -52,6 +52,10 @@ describe('the icons', () => {
     expect(ICONS.shard12).toHaveLength(12);
   });
 
+  it('has the link of the Oath and the flame of a kindled power (#237)', () => {
+    expect(iconNames).toEqual(expect.arrayContaining(['oath8', 'kindled8']));
+  });
+
   it('has the small flame of « Le camp » (#40)', () => {
     expect(iconNames).toContain('flame8');
     expect(ICONS.flame8).toHaveLength(8);

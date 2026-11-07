@@ -9,6 +9,7 @@ import {
   summonEntryDelay,
 } from '../../../application/useCases/battleFeedback';
 import type { BattleSession, BattleSnapshot } from '../../../application/useCases/BattleSession';
+import type { Battle } from '../../../domain/battle/Battle';
 import type { BattleEvent, BlowOutcome } from '../../../domain/battle/BattleEvent';
 import type { BurnRing } from '../battle/BurnChip';
 import type { HeroPose, SceneBurn, SceneSpark } from '../battle/sceneTypes';
@@ -185,8 +186,8 @@ function hurts(event: BattleEvent): boolean {
  * Les mots d'une mise à jour : « Frappe parfaite » puis « Cassure » quand la frappe brise la garde
  * (F4, F5) ; « Cassure » seul quand c'est la contre-attaque (P3b) ou la riposte (#128).
  */
-function wordsOf(events: readonly BattleEvent[]): FeedbackText[] {
-  const texts = events.flatMap((event) => feedbackText(event) ?? []);
+function wordsOf(events: readonly BattleEvent[], battle: Battle): FeedbackText[] {
+  const texts = events.flatMap((event) => feedbackText(event, battle) ?? []);
   const broken = texts.some((text) => text.tone === 'break');
   return broken
     ? texts.filter((text) => text.title !== 'Parfait · contre-attaque' && text.tone !== 'riposte')
@@ -314,7 +315,7 @@ export function displayOf(
   const burnBefore = previous.snapshot?.battle.hero.burn ?? 0;
   const afterBleed = bledIn(snapshot.events) ? BURN_AFTER_BLEED_MS : 0;
   const afterRound = summonEntryDelay(snapshot.events);
-  const texts = wordsOf(snapshot.events);
+  const texts = wordsOf(snapshot.events, snapshot.battle);
   if (texts.length > 0) {
     display = { ...display, feedback: { texts, key: (display.feedback?.key ?? 0) + 1 } };
   }

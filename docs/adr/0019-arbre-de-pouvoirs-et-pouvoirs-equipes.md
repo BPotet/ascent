@@ -63,3 +63,13 @@ relire les sauvegardes d'avant sans migration.
   une clé à part (`camp.oaths`). La mémoire des pouvoirs équipés de #236 aura sa propre clé
   (`camp.equippedPowers`), pour qu'un achat et un lancement n'écrivent jamais la même clé.
 - Rien ne quitte le téléphone.
+
+## Avenant du 7 novembre 2026 — le pouvoir attisé (#237, ADR 0021)
+
+- `powerCost(battle, power)` vaut `kindledCost(power)` (1 Élan de moins, au moins 1) quand
+  `battle.kindled` contient le pouvoir, sinon `POWERS[power].cost`. C'est le seul changement de la
+  règle du coût : `powerAvailability` (« Il manque n Élan ») et `activatePower` la lisent déjà.
+- `BattleOptions.kindled?` et `Battle.kindled?` (des codes de pouvoir), posés seulement s'ils ne
+  sont pas vides ; `battleSession` passe `kindledOf(ascent)`.
+- Les textes de l'interface ne lisent plus `POWERS[power].cost` pour un coût en combat : ils
+  reçoivent le coût du `PowerSlot` (`cost`, et `baseCost` pour un attisé).

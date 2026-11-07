@@ -148,3 +148,9 @@ rangement :
 - `counterAttacked.retaliation` et `strikeResolved.rend` passent tels quels. `powerUsed` reste une
   action `power` ; un pouvoir instantané n'a pas de durée.
 - **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7) : ce sont des champs et des valeurs ajoutés.
+
+## Avenant du 7 novembre 2026 — les pouvoirs attisés (#237, ADR 0021)
+
+- `HeroAtStart` reçoit un champ **facultatif** `kindled` : les codes des pouvoirs attisés du
+  combat, absent sans attisé. Aucune donnée d'habitude n'y entre.
+- **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7).

@@ -1473,3 +1473,68 @@ describe('AscentSession: the equipped powers (#235)', () => {
     expect(battleSession.current()!.battle).not.toHaveProperty('powers');
   });
 });
+
+describe('AscentSession: the kindled powers (#237)', () => {
+  async function reloaded(ascent: unknown, battle: Battle | null = null) {
+    const set = setUp();
+    set.store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent, battle }));
+    await set.session.load();
+    return set;
+  }
+
+  const kindled = [{ power: 'retaliation' as const, habit: 4 }];
+
+  it('saves the kindled powers with the ascent, and reads them back unchanged', async () => {
+    const { session, store } = setUp();
+    session.begin({ hero: 'sentinel', powers: ['bulwark', 'retaliation'], kindled });
+    await flush();
+
+    expect(saved(store)?.ascent.kindled).toEqual(kindled);
+    const again = await reloaded(saved(store)!.ascent);
+    expect(again.session.current()?.kindled).toEqual(kindled);
+  });
+
+  it('kindles nothing in an ascent saved before the update', async () => {
+    const { kindled: _, ...before } = startAscent(42, { powers: ['bulwark', 'retaliation'] });
+
+    const { session } = await reloaded(before);
+
+    expect(session.current()?.kindled).toEqual([]);
+  });
+
+  it('fights its battles with its kindled powers, at their kindled cost', async () => {
+    const { session } = setUp();
+    session.begin({ hero: 'sentinel', powers: ['bulwark', 'retaliation'], kindled });
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    expect(battleSession.current()!.battle.kindled).toEqual(['retaliation']);
+  });
+
+  it('fights without any kindled power when there is none, as before', async () => {
+    const { session } = setUp();
+    session.begin({ hero: 'sentinel', powers: ['bulwark', 'retaliation'] });
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    expect(battleSession.current()!.battle).not.toHaveProperty('kindled');
+  });
+
+  it('resumes a battle saved without kindled powers at the normal price', async () => {
+    const ascent = startAscent(42, { powers: ['bulwark', 'retaliation'], kindled });
+    const { battle } = startBattle({
+      seed: 3,
+      defenseHint: false,
+      at: 0,
+      enemies: ['ghoul'],
+      powers: ['bulwark', 'retaliation'],
+    });
+
+    const { session } = await reloaded(ascent, battle);
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    expect(battleSession.current()!.battle).not.toHaveProperty('kindled');
+    expect(session.current()?.kindled).toEqual(kindled);
+  });
+});

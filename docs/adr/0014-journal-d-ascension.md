@@ -153,3 +153,10 @@ journal note les clés reçues et l'issue de chaque coffre scellé, sans aucune 
   pouvoir débloqué est identique, octet pour octet, à celui d'avant.
 - Les pouvoirs débloqués au Camp n'y entrent pas : seul ce qui est figé dans l'ascension compte.
 - **`formatVersion` reste 2** (§ 4).
+
+## Avenant du 7 novembre 2026 — les pouvoirs attisés (#237, ADR 0021)
+
+- Le journal reçoit un champ **facultatif** `kindled` : les codes des pouvoirs attisés, posé par
+  `beginAscentLog` seulement s'il y en a. Ni le nom ni l'identifiant de l'habitude du Serment n'y
+  entre ; `exportAscentLog` ne change pas.
+- **`formatVersion` reste 2** (§ 4).

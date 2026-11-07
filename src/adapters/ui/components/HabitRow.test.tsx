@@ -245,3 +245,22 @@ describe('HabitRow (pixel art)', () => {
     expect(screen.queryByText('corrigé')).toBeNull();
   });
 });
+
+describe('HabitRow of a habit that holds an Oath (#237, S13)', () => {
+  it('shows « Serment · Représailles » under the name, and reads it', async () => {
+    await render(
+      <HabitRow habitDay={habitDay('pending')} oath="retaliation" weeklyProgress={progress(2)} />,
+    );
+
+    expect(screen.getByTestId('habit-oath-7')).toHaveTextContent('Serment · Représailles');
+    expect(screen.getByTestId('habit-row-7').props.accessibilityLabel).toMatch(
+      /, Serment · Représailles$/u,
+    );
+  });
+
+  it('shows nothing without an Oath', async () => {
+    await render(<HabitRow habitDay={habitDay('pending')} />);
+
+    expect(screen.queryByTestId('habit-oath-7')).not.toBeOnTheScreen();
+  });
+});
