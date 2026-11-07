@@ -45,7 +45,7 @@ import {
 } from './items';
 import { OATH_MIN_COST, type KindledPower } from './kindled';
 import type { Rarity } from './rarity';
-import { drawElite } from './elites';
+import { drawElite, eliteCandidates } from './elites';
 import { drawGroup, drawGroupSize } from './enemyGroup';
 import { drawExitKinds, type Exit } from './exits';
 import { bossGold, campfireHeal, drawBoss, drawCombatGold, eliteGold } from './rewards';
@@ -450,9 +450,8 @@ export function chooseExit(ascent: Ascent, index: number): Ascent {
       };
     }
     case 'elite': {
-      // L'Élite non répétée (#244, R5) : jamais la dernière affrontée au palier ; seule, sans tirage.
-      const candidates = TIERS[tier].elites.filter((elite) => elite !== ascent.lastElite);
-      const elite = drawElite(candidates, ascent.random);
+      // L'Élite non répétée (#244, R5) : jamais la dernière affrontée au palier.
+      const elite = drawElite(eliteCandidates(TIERS[tier].elites, ascent.lastElite), ascent.random);
       // L'Élite maudite sous la malédiction forte (#209), sans tirage : elle est seule.
       const cursed = cursedElite(ascent.gauge) ? 0 : undefined;
       const drawn = encounter('elite', [elite.value], elite.random, cursed);
