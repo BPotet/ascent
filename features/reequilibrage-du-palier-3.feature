@@ -145,3 +145,16 @@ Fonctionnalité: Rééquilibrage du palier 3
     Étant donné le Sonneur des heures au palier 3 avec une garde max de 130
     Quand son changement de phase a lieu
     Alors sa garde revient à 130
+
+  # R5 — Élite non répétée
+  @domain
+  Scénario: Avec 2 Élites au palier, elles alternent
+    Étant donné une ascension au palier 3 où le héros a affronté le Saint de pierre
+    Quand il franchit la porte Élite suivante du palier 3
+    Alors il affronte le Premier Pèlerin
+
+  @domain
+  Scénario: La première Élite d'un palier est tirée comme aujourd'hui
+    Étant donné une ascension qui arrive au palier 2 sans Élite affrontée à ce palier
+    Quand le héros franchit sa première porte Élite du palier 2
+    Alors l'Élite est tirée à égalité parmi les Élites du palier avec la graine de l'ascension

@@ -24,6 +24,13 @@ import {
 } from '../../src/domain/battle/combatants';
 import { NO_MODIFIERS, type HeroModifiers } from '../../src/domain/battle/heroModifiers';
 import { bulwarkCounterBlow, counterBlow, strikeBlow } from '../../src/domain/battle/strike';
+import {
+  chooseExit,
+  enterNextTier,
+  startAscent,
+  type Ascent,
+} from '../../src/domain/ascent/Ascent';
+import { drawElite } from '../../src/domain/ascent/elites';
 import { drawnAttacks, strikesText } from '../../src/domain/ascent/testing/eliteBossStrikes';
 import { TIER_ONE_WALKS } from '../../src/domain/ascent/testing/tierOneDraws';
 import { WALKED_SEEDS, walkTierOne } from '../../src/domain/ascent/testing/tierOneWalk';
@@ -76,6 +83,8 @@ interface World {
   resolved: Resolved[];
   shieldBashGuard: number;
   raised?: Extract<BattleEvent, { type: 'guardRaised' }>;
+  ascent?: Ascent;
+  entered?: Ascent;
 }
 
 let world: World;
@@ -177,6 +186,14 @@ function ordinary(tier: Tier, enemies: readonly EnemyKind[], seed = 7): Battle {
 const wounded = (battle: Battle, change: Partial<Battle['enemies'][number]>): Battle => ({
   ...battle,
   enemies: battle.enemies.map((enemy, index) => (index === 0 ? { ...enemy, ...change } : enemy)),
+});
+
+/** L'ascension entre deux étages, la seule porte Élite proposée. */
+const atEliteDoor = (ascent: Ascent): Ascent => ({
+  ...ascent,
+  encounter: null,
+  boonOffer: null,
+  exits: [{ kind: 'elite', groupSize: null }],
 });
 
 const steps: StepDefinitions = ({ given, when, then, and }) => {
@@ -501,6 +518,48 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   then(/^sa garde revient à 130$/u, () => {
     expect(world.battle.enemies[0]!.guard).toBe(130);
   });
+
+  // --- R5 : Élite non répétée ---
+
+  given(/^une ascension au palier 3 où le héros a affronté le Saint de pierre$/u, () => {
+    world = fresh(encounter(1, 'ghoul'));
+    world.ascent = atEliteDoor({ ...startAscent(5), tier: 3, lastElite: 'stoneSaint' });
+  });
+
+  when(/^il franchit la porte Élite suivante du palier 3$/u, () => {
+    world.entered = chooseExit(world.ascent!, 0);
+  });
+
+  then(/^il affronte le Premier Pèlerin$/u, () => {
+    expect(world.entered!.encounter).toMatchObject({ kind: 'elite', enemies: ['firstPilgrim'] });
+    expect(world.entered!.lastElite).toBe('firstPilgrim');
+  });
+
+  given(/^une ascension qui arrive au palier 2 sans Élite affrontée à ce palier$/u, () => {
+    world = fresh(encounter(1, 'ghoul'));
+    // Le palier 1 a eu son Élite ; le Passage de palier l'oublie.
+    const tierTwo = enterNextTier({
+      ...startAscent(9),
+      lastElite: 'twins',
+      passage: { to: 2, step: 'announce' },
+    });
+    expect(tierTwo.tier).toBe(2);
+    expect(tierTwo).not.toHaveProperty('lastElite');
+    world.ascent = atEliteDoor(tierTwo);
+  });
+
+  when(/^le héros franchit sa première porte Élite du palier 2$/u, () => {
+    world.entered = chooseExit(world.ascent!, 0);
+  });
+
+  then(
+    /^l'Élite est tirée à égalité parmi les Élites du palier avec la graine de l'ascension$/u,
+    () => {
+      const drawn = drawElite(TIERS[2].elites, world.ascent!.random);
+      expect(world.entered!.encounter).toMatchObject({ kind: 'elite', enemies: [drawn.value] });
+      expect(TIERS[2].elites).toContain(drawn.value);
+    },
+  );
 };
 
 // Les règles du domaine seules : `@session` passe par la session.
