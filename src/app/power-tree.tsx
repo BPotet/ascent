@@ -15,6 +15,11 @@ function leave(): void {
   }
 }
 
+/** Aller à la Vue Journée, pour créer une habitude à lier par un Serment (#237, S3). */
+function goToDay(): void {
+  router.replace('/');
+}
+
 function PowerTree() {
   const { keyValueStore, clock, unitOfWork } = useDependencies();
   const { hero } = useLocalSearchParams<{ hero?: string }>();
@@ -24,6 +29,7 @@ function PowerTree() {
       camp={sharedCampSession(keyValueStore, clock, unitOfWork)}
       hero={kind}
       onLeave={leave}
+      onGoToDay={goToDay}
     />
   );
 }
