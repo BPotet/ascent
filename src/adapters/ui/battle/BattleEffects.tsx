@@ -109,7 +109,7 @@ export function DamageFloat({
           float.kind === 'riposte' && styles.floatRiposte,
           float.at === 'hero' && styles.floatHero,
           float.kind === 'burn' && styles.floatBurn,
-          float.kind === 'secondChance' && styles.floatSecondChance,
+          (float.kind === 'secondChance' || float.kind === 'heal') && styles.floatSecondChance,
           float.big && styles.floatBig,
         ]}
       >

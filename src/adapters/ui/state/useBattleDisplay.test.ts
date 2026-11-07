@@ -11,7 +11,7 @@ const started = startTestBattle({
 }).battle;
 
 function snapshot(events: readonly BattleEvent[], battle: Battle = started): BattleSnapshot {
-  return { battle, events, heroHint: false };
+  return { battle, events, heroHint: false, powersHint: false };
 }
 
 function blow(outcome: BlowOutcome, damage = 0, at = 1_000): BattleEvent {
@@ -55,6 +55,8 @@ describe('displayOf (display state of the battle screen)', () => {
       riposte: null,
       heroFloat: null,
       shadowStepAt: null,
+      healedAt: null,
+      retaliation: null,
       burnFx: { lit: null, ticked: null, out: null },
       burnRing: null,
       burnFloat: null,

@@ -487,3 +487,30 @@ statut `validé`, sont recopiés dans `sprites/atelier/data/sealedChest.ts`
 4. **Échelle ×5.** Le coffre scellé est dessiné à ×5 (maquette 208, S2) : `ArtScale` gagne la
    valeur 5, pour lui seul.
 5. **Teintes.** Toutes les teintes sont déjà dans `artPalette` : aucune n'est ajoutée.
+
+## Avenant du 6 novembre 2026 (#235) : les fiches et les icônes des pouvoirs
+
+Les 6 fiches du Codex des pouvoirs lançables (`codex/bulwark`, `retaliation`, `holdFast`,
+`shadowStep`, `rend`, `mist`, catégorie `power`, actives, version 1) et les **10** icônes des
+pouvoirs (`assets/power<Code>`, 16 × 16, statut `validé`), lues le 06/11/2026, sont recopiées :
+
+1. **Fiches.** Les valeurs de `stats` (héros, `order`, `momentumCost`, `instant`, `charge`,
+   `oncePerBattle` et les paramètres d'effet) dans `POWERS` (`src/domain/battle/powers.ts`) ;
+   `name`, `buttonName` et `effectText` dans `format/powerText.ts`. Sha256 dans l'en-tête de
+   `powers.ts`.
+2. **Icônes.** Les 6 pouvoirs lançables et, dès #235, les 4 frappes de pouvoir (`powerShieldBash`,
+   `powerCrushingBlow`, `powerFlurry`, `powerAmbush`), montrées éteintes « Bientôt » dans l'arbre
+   (décision de l'orchestrateur du 06/11/2026). Clé `proposals[chosen]` (`chosen: 0`, Rafale
+   `chosen: 1`), clés `w`, `h`, `palette` et `rows` seulement, dans
+   `sprites/atelier/data/powerIcons.ts` (`POWER_ICONS`). Version 1, sauf **`powerCrushingBlow` en
+   version 3** : ses champs `animation`, `animStatus`, `animChosen` et `animNote` (poses de Fracas,
+   pour #236) ne sont pas recopiés, son icône est celle de la version 2, et sa sha256 est calculée
+   sur la `data` de la version 3. Sha256 dans l'en-tête de `powerIcons.ts`.
+3. **Recopie par script**, comme aux avenants #227 et #226 : documents lus par `ArtifactData get`,
+   en lecture seule, version vérifiée, sha256 du JSON compact de `data`, clés triées, écrite dans
+   l'en-tête des fichiers et dans « Données de l'Atelier » de la story.
+4. **Contrôle de fidélité.** `powers.data.test.ts` compare chaque icône, pixel pour pixel, à
+   `ART.<code>.A` de la maquette versionnée `docs/mockups/232-arbre-de-pouvoirs/index.html`
+   (`ART.flurry.B` pour Rafale), avec le lecteur de la maquette 208 généralisé (`mockupArt`), et
+   vérifie que toutes leurs teintes sont dans `artPalette`.
+5. **Teintes.** Toutes les teintes sont déjà dans `artPalette` : aucune n'est ajoutée.

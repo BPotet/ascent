@@ -315,3 +315,40 @@ describe('LoadoutSheet (#159)', () => {
     });
   });
 });
+
+describe('the equipped powers in the Loadout (#235, E1)', () => {
+  const loadout: Loadout = {
+    blessings: [],
+    boons: [],
+    reserves: { gold: 35, keys: 0 },
+    powers: ['shadowStep', 'rend', 'mist'],
+  };
+
+  it('lists the 3 equipped powers after the Reserves, with their cost, type and effect', async () => {
+    await open(loadout);
+
+    const section = within(screen.getByTestId('loadout-powers'));
+    expect(section.getByLabelText('Pouvoirs, 3')).toBeOnTheScreen();
+    expect(section.getAllByTestId(/^loadout-power-/u).map(({ props }) => props.testID)).toEqual([
+      'loadout-power-shadowStep',
+      'loadout-power-rend',
+      'loadout-power-mist',
+    ]);
+    expect(section.getByText('2 Élan · Instantané')).toBeOnTheScreen();
+    expect(screen.getByTestId('loadout-power-mist').props.accessibilityLabel).toBe(
+      'Brume, 2 Élan, Instantané. Le prochain impact qui te fait des dégâts est réduit de 50 %.',
+    );
+    const parts = screen
+      .getAllByText(/^(Réserves|Pouvoirs|Bénédictions de départ)$/u, {
+        includeHiddenElements: true,
+      })
+      .map(({ props }) => props.children);
+    expect(parts).toEqual(['Réserves', 'Pouvoirs', 'Bénédictions de départ']);
+  });
+
+  it('has no section of powers without powers', async () => {
+    await open({ blessings: [], boons: [] });
+
+    expect(screen.queryByTestId('loadout-powers')).not.toBeOnTheScreen();
+  });
+});

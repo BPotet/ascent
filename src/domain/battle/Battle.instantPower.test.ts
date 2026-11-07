@@ -1,4 +1,4 @@
-// #173 : le pouvoir instantané (`powerInstant`). Pas de l'ombre, à 3 Élan, se lance pendant la
+// #173 : le pouvoir instantané (`instant`, propriété du pouvoir depuis #235). Pas de l'ombre, à 3 Élan, se lance pendant la
 // phase du héros, avant son action, sans être une action : ni durée d'action, ni transition de
 // phase. L'Errante attaque ensuite dans la même phase.
 import {
@@ -12,7 +12,7 @@ import {
 } from './Battle';
 import type { BattleEvent } from './BattleEvent';
 import { HEROES } from './combatants';
-import { POWERS } from './momentum';
+import { POWERS, basePower } from './powers';
 import { startTestBattle } from './testing/testBattle';
 
 type EventOf<Type extends BattleEvent['type']> = Extract<BattleEvent, { type: Type }>;
@@ -59,13 +59,14 @@ function underAttack(battle: Battle, impacts: readonly number[]): Battle {
 
 describe('the values of the Wanderer (Codex wanderer v3)', () => {
   it('gives her 55 HP and an instant Shadow Step at 3 momentum', () => {
-    expect(HEROES.wanderer).toMatchObject({ maxHp: 55, power: 'shadowStep', powerInstant: true });
-    expect(POWERS.shadowStep.cost).toBe(3);
+    expect(HEROES.wanderer).toMatchObject({ maxHp: 55 });
+    expect(basePower('wanderer')).toBe('shadowStep');
+    expect(POWERS.shadowStep).toMatchObject({ cost: 3, instant: true });
     expect(start().hero).toMatchObject({ hp: 55, maxHp: 55 });
   });
 
   it('keeps the Bulwark of the Sentinel an action', () => {
-    expect(HEROES.sentinel.powerInstant).toBe(false);
+    expect(POWERS.bulwark.instant).toBe(false);
   });
 });
 

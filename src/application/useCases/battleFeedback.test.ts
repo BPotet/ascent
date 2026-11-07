@@ -381,3 +381,20 @@ describe('the sounds of the Summon (#172)', () => {
     expect(summonEntryDelay([bleeding, ticked])).toBe(1_700);
   });
 });
+
+describe('the powers of #235', () => {
+  it('gives the wear of the Mist no sound of its own, like the Bulwark: the hit is heard', () => {
+    expect(feedbackFor({ type: 'mistWorn', at: 0, enemy: 0 })).toEqual(
+      feedbackFor({ type: 'bulwarkWorn', at: 0, enemy: 0 }),
+    );
+  });
+
+  it('plays the sound of the Bulwark for every power, and nothing new for Hold Fast', () => {
+    expect(
+      feedbackFor({ type: 'powerUsed', at: 0, power: 'mist', until: 0, instant: true }),
+    ).toEqual({ sound: 'bulwark', haptic: null });
+    expect(
+      feedbackFor({ type: 'heroHealed', at: 0, power: 'holdFast', heal: 16, heroHp: 46 }),
+    ).toEqual(feedbackFor({ type: 'bleedStopped', at: 0 }));
+  });
+});

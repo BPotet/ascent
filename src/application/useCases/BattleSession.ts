@@ -1,6 +1,7 @@
 import {
   advance,
   dismissDefenseHint,
+  equippedOf,
   heroAction,
   nextDeadline,
   pressDefense,
@@ -42,6 +43,8 @@ export interface BattleSnapshot {
   readonly events: readonly BattleEvent[];
   /** La bulle d'aide de la phase du héros (première utilisation) est affichée. */
   readonly heroHint: boolean;
+  /** La bulle d'aide des pouvoirs (#235, K11) est affichée : premier combat à 2 pouvoirs ou plus. */
+  readonly powersHint: boolean;
 }
 
 type Listener = (snapshot: BattleSnapshot) => void;
@@ -78,6 +81,7 @@ export class BattleSession {
   /** Les reflets déjà joués ou passés, par attaque (`startedAt:index`). */
   private readonly doneGlints = new Set<string>();
   private heroHintPending = false;
+  private powersHintPending = false;
   private disposed = false;
   private readonly reorderGuardMs: number;
   private readonly createBattle: BattleFactory;
@@ -94,11 +98,13 @@ export class BattleSession {
   async start(): Promise<BattleSnapshot> {
     // Un écran remonté (l'ascension reprise après une pause) reprend une session arrêtée.
     this.disposed = false;
-    const [heroHint, defenseHint] = await Promise.all([
+    const [heroHint, defenseHint, powersHint] = await Promise.all([
       this.read((dependencies) => getBattleHint(dependencies, 'hero'), true),
       this.read((dependencies) => getBattleHint(dependencies, 'defense'), true),
+      this.read((dependencies) => getBattleHint(dependencies, 'powers'), true),
     ]);
     this.heroHintPending = heroHint;
+    this.powersHintPending = powersHint;
     this.doneGlints.clear();
     const update = this.createBattle({
       seed: this.dependencies.seeds.next(),
@@ -145,7 +151,8 @@ export class BattleSession {
       (event) => event.type === 'strikeStarted' || event.type === 'powerUsed',
     );
     if (acted) {
-      // La bulle de la phase du héros a servi : elle n'apparaît plus.
+      // La bulle de la phase du héros a servi : elle n'apparaît plus, celle des pouvoirs non plus.
+      this.dismissPowersHintIfShown(battle);
       this.dismissHeroHintIfShown();
     }
     this.apply(update);
@@ -160,9 +167,19 @@ export class BattleSession {
       this.apply({ battle, events: [] });
       return;
     }
+    if (kind === 'powers') {
+      this.dismissPowersHintIfShown(battle);
+      this.apply({ battle, events: [] });
+      return;
+    }
     if (battle.phase.kind !== 'defenseHint') return;
     this.save('defense');
     this.apply(dismissDefenseHint(battle, this.dependencies.clock.now()));
+  }
+
+  /** L'effet d'un pouvoir s'ouvre au toucher maintenu (#235, K10) : une vibration très courte. */
+  feelPowerTip(): void {
+    this.dependencies.haptics.play('powerTip');
   }
 
   /** Arrête le combat : plus aucune échéance, plus aucun abonné. */
@@ -181,6 +198,12 @@ export class BattleSession {
     if (!this.heroHintPending) return;
     this.heroHintPending = false;
     this.save('hero');
+  }
+
+  private dismissPowersHintIfShown(battle: Battle): void {
+    if (!this.powersHintShown(battle)) return;
+    this.powersHintPending = false;
+    this.save('powers');
   }
 
   private save(kind: BattleHintKind): void {
@@ -203,6 +226,16 @@ export class BattleSession {
     return this.heroHintPending && battle.phase.kind === 'hero' && battle.round === 1;
   }
 
+  /** La bulle des pouvoirs, une seule fois, après celle de la première ascension (#235, K11). */
+  private powersHintShown(battle: Battle): boolean {
+    return (
+      this.powersHintPending &&
+      !this.heroHintShown(battle) &&
+      battle.phase.kind === 'hero' &&
+      equippedOf(battle).length >= 2
+    );
+  }
+
   /** Un son différé (#171) : joué `delayMs` ms plus tard par l'horloge de combat. */
   private playLater(sound: BattleSoundCue, delayMs: number): void {
     const { clock } = this.dependencies;
@@ -221,7 +254,12 @@ export class BattleSession {
       else if (sound !== null) this.dependencies.sound.play(sound);
       if (haptic !== null) this.dependencies.haptics.play(haptic);
     }
-    this.snapshot = { battle, events, heroHint: this.heroHintShown(battle) };
+    this.snapshot = {
+      battle,
+      events,
+      heroHint: this.heroHintShown(battle),
+      powersHint: this.powersHintShown(battle),
+    };
     this.schedule(battle);
     this.scheduleGlint(battle);
     for (const listener of [...this.listeners]) listener(this.snapshot);

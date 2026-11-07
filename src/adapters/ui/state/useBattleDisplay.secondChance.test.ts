@@ -35,7 +35,7 @@ const risen: BattleEvent = {
 };
 
 function snapshot(events: readonly BattleEvent[]): BattleSnapshot {
-  return { battle, events, heroHint: false };
+  return { battle, events, heroHint: false, powersHint: false };
 }
 
 describe('the second chance in the display state (#206)', () => {

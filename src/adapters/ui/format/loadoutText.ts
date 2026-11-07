@@ -5,7 +5,9 @@ import {
   type LoadoutFavor,
   type LoadoutReserves,
 } from '../../../domain/ascent/loadout';
+import type { PowerKind } from '../../../domain/battle/powers';
 import type { IconName } from '../pixelArt/sprites/icons';
+import { POWER_EFFECTS, TREE_POWER_NAMES, powerTypeLine } from './powerText';
 import { rarityMarks, rarityName } from './rarityText';
 
 /** Les textes de l'Équipement (`Loadout`, #159), tirés de la maquette #153. */
@@ -76,6 +78,28 @@ export interface StateRowText {
 
 function favorRow(row: Omit<StateRowText, 'label' | 'tone'>): StateRowText {
   return { ...row, tone: 'favor', label: `${row.name}, ${row.state}. ${row.effect}` };
+}
+
+/** La section des pouvoirs équipés (#235, E1), après les Réserves. */
+export const POWERS_TITLE = 'Pouvoirs';
+
+/** Une ligne d'un pouvoir équipé : son nom, son coût et son type, son effet, et ce qui est lu. */
+export interface PowerRowText {
+  readonly power: PowerKind;
+  readonly name: string;
+  readonly line: string;
+  readonly effect: string;
+  readonly label: string;
+}
+
+/** Les lignes des pouvoirs équipés, dans l'ordre des touches (E1). */
+export function powerRows(powers: readonly PowerKind[]): PowerRowText[] {
+  return powers.map((power) => {
+    const name = TREE_POWER_NAMES[power];
+    const line = powerTypeLine(power);
+    const { effect } = POWER_EFFECTS[power];
+    return { power, name, line, effect, label: `${name}, ${line.replace(' · ', ', ')}. ${effect}` };
+  });
 }
 
 /** La section des Réserves (#226, E1), en tête de la feuille : l'Or et les clés. */

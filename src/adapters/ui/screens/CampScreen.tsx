@@ -12,10 +12,13 @@ import {
 
 import type { CampSession, CampView } from '../../../application/useCases/CampSession';
 import type { CampOfferEntry } from '../../../domain/ascent/camp';
+import { POWER_TREES, type PowerTreeCode } from '../../../domain/ascent/powerTree';
 import type { Unlock } from '../../../domain/ascent/unlocks';
+import type { HeroKind } from '../../../domain/battle/combatants';
 import { MinusFloat, Spark } from '../components/CampFeedback';
 import { Screen } from '../components/Screen';
 import { IconWell, RARITY_COLORS } from '../components/IconWell';
+import { PowerIcon } from '../components/PowerIcon';
 import { Toast } from '../components/Toast';
 import {
   ALL_UNLOCKED_BAND,
@@ -44,6 +47,8 @@ import {
   unlockedToast,
 } from '../format/campText';
 import { shardText } from '../format/ascentText';
+import { HERO_NAMES } from '../format/battleText';
+import { powerTreeCardLabel } from '../format/powerText';
 import { AssetRows } from '../pixelArt/AssetRows';
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize } from '../pixelArt/artPixel';
@@ -56,6 +61,7 @@ import { pixelFont, textFont } from '../pixelArt/pixelTypography';
 import { CAMP_FIRE_IMAGE } from '../pixelArt/sprites/atelier/data/campFire';
 import { FLAME_KEEPER_IMAGE } from '../pixelArt/sprites/atelier/data/flameKeeper';
 import { ITEM_IMAGES } from '../pixelArt/sprites/atelier/data/itemImages';
+import { PORTRAITS } from '../pixelArt/sprites/atelier/data/portraits';
 import { boonIcon, type GameIcon } from '../pixelArt/sprites/gameIcons';
 import { useCamp } from '../state/useCamp';
 import { useReducedMotion } from '../state/useReducedMotion';
@@ -212,6 +218,53 @@ function UnlockCardView({
 }
 
 /**
+ * La carte de l'arbre de pouvoirs d'un héros (#235, C1) : son portrait, ses 5 pouvoirs en
+ * miniature (à lui en couleur, les autres éteints) et le compte des débloqués.
+ */
+function PowerTreeCard({
+  hero,
+  view,
+  onOpen,
+}: {
+  readonly hero: HeroKind;
+  readonly view: CampView;
+  readonly onOpen: () => void;
+}) {
+  const { base, paths } = POWER_TREES[hero];
+  const codes: readonly PowerTreeCode[] = [base, ...paths.flatMap(({ ranks }) => ranks)];
+  const tree = view.trees[hero];
+  const owned = (code: PowerTreeCode) => {
+    const kind = tree.nodes.find((node) => node.code === code)?.state.kind;
+    return kind === 'base' || kind === 'unlocked' || kind === 'nextAscent';
+  };
+  const portrait = PORTRAITS[hero];
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={powerTreeCardLabel(hero, tree.unlocked)}
+      onPress={onOpen}
+      testID={`camp-tree-${hero}`}
+    >
+      <PixelFrame style={styles.treeCard}>
+        {portrait === null ? null : <AssetRows image={portrait} scale={2} />}
+        <View style={styles.cardText}>
+          <Text style={styles.cardName}>{HERO_NAMES[hero]}</Text>
+          <View style={styles.minis}>
+            {codes.map((code) => (
+              <PowerIcon key={code} power={code} scale={1} off={!owned(code)} />
+            ))}
+          </View>
+          <Text style={styles.treeCount}>
+            <Text style={styles.calcNumber}>{tree.unlocked}</Text> sur 5 débloqués
+          </Text>
+        </View>
+        <Text style={styles.chevron}>›</Text>
+      </PixelFrame>
+    </Pressable>
+  );
+}
+
+/**
  * La feuille de confirmation (C5, C8) : l'objet en grand, son prix, ce qu'il restera, et quand il
  * entre dans la tour. Le titre reçoit le focus à l'ouverture. En cas d'échec, elle reste ouverte et
  * propose « Réessayer ».
@@ -291,9 +344,12 @@ function ConfirmSheet({
 export function CampScreen({
   camp,
   onLeave,
+  onOpenTree = () => undefined,
 }: {
   readonly camp: CampSession;
   readonly onLeave: () => void;
+  /** Ouvre l'arbre de pouvoirs d'un héros (#235). */
+  readonly onOpenTree?: (hero: HeroKind) => void;
 }) {
   const view = useCamp(camp);
   const [sheet, setSheet] = useState<Unlock | null>(null);
@@ -437,6 +493,17 @@ export function CampScreen({
             </View>
           </PixelFrame>
         )}
+        {!loading && (
+          <>
+            <View style={styles.heading}>
+              <Text style={styles.headingText}>Arbres de pouvoirs</Text>
+              {!view.powerTreesSeen && <Text style={styles.newTag}>nouveau</Text>}
+            </View>
+            {(['sentinel', 'wanderer'] as const).map((hero) => (
+              <PowerTreeCard key={hero} hero={hero} view={view} onOpen={() => onOpenTree(hero)} />
+            ))}
+          </>
+        )}
         {!loading && allUnlocked && <Band tone="done" text={ALL_UNLOCKED_BAND} />}
         <View style={styles.heading}>
           <Text style={styles.headingText}>{UNLOCKS_HEADING}</Text>
@@ -569,6 +636,18 @@ const styles = StyleSheet.create({
   },
   headingCount: { fontFamily: textFont.semiBold, fontSize: 12, lineHeight: 16, color: roles.muted },
   card: { gap: 10, padding: 12 },
+  treeCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, minHeight: 72 },
+  minis: { flexDirection: 'row', gap: 4 },
+  treeCount: { fontFamily: textFont.medium, fontSize: 13, lineHeight: 18, color: roles.parchment },
+  chevron: { fontFamily: pixelFont, fontSize: 26, lineHeight: 30, color: roles.muted },
+  newTag: {
+    fontFamily: textFont.bold,
+    fontSize: 11,
+    lineHeight: 16,
+    color: roles.ink,
+    backgroundColor: roles.gold,
+    paddingHorizontal: 6,
+  },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   dim: { opacity: 0.55 },
   freshRing: {

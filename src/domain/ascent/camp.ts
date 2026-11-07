@@ -1,9 +1,11 @@
 /**
  * Le Camp (`Camp`, #40, ADR 0017) : le refuge entre les ascensions, où le Gardien de la flamme
  * (`FlameKeeper`) vend les Déblocages, chacun une fois, à son Prix de déblocage (`UnlockPrice`).
- * Le Camp garde chaque Déblocage avec le prix payé ; les Éclats disponibles (`AvailableShards`)
- * sont calculés, jamais stockés : le Total d'Éclats n'est jamais débité.
+ * Le Camp garde chaque Déblocage avec le prix payé, et les pouvoirs débloqués dans l'arbre de
+ * pouvoirs (#235) ; les Éclats disponibles (`AvailableShards`) sont calculés, jamais stockés : le
+ * Total d'Éclats n'est jamais débité.
  */
+import { POWERS, basePower, type PowerKind } from '../battle/powers';
 import type { Ascent } from './Ascent';
 import { BOONS } from './boons';
 import { ITEMS } from './items';
@@ -34,29 +36,50 @@ export interface PaidUnlock {
   readonly price: number;
 }
 
-/** Le Camp (`Camp`) : les Déblocages achetés, dans l'ordre des achats. */
-export interface Camp {
-  readonly unlocks: readonly PaidUnlock[];
+/** Un pouvoir débloqué dans l'arbre de pouvoirs (#235), avec le prix payé. */
+export interface PaidPower {
+  readonly power: PowerKind;
+  readonly price: number;
 }
 
-export const EMPTY_CAMP: Camp = { unlocks: [] };
+/** Le Camp (`Camp`) : les Déblocages et les pouvoirs débloqués, chacun dans l'ordre des achats. */
+export interface Camp {
+  readonly unlocks: readonly PaidUnlock[];
+  readonly powers: readonly PaidPower[];
+}
+
+export const EMPTY_CAMP: Camp = { unlocks: [], powers: [] };
+
+/** Les pouvoirs débloqués du Camp (#235), jamais perdus. */
+export function campPowers(camp: Camp): readonly PowerKind[] {
+  return camp.powers.map(({ power }) => power);
+}
 
 /** Les Déblocages du Camp, que reçoit chaque nouvelle ascension. */
 export function campUnlocks(camp: Camp): readonly Unlock[] {
   return camp.unlocks.map(({ unlock }) => unlock);
 }
 
-/** Les Éclats disponibles : le Total d'Éclats moins les prix payés, jamais sous 0 (C3). */
+/**
+ * Les Éclats disponibles : le Total d'Éclats moins les prix payés, Déblocages et pouvoirs
+ * (#235), jamais sous 0 (C3).
+ */
 export function availableShards(shardTotal: number, camp: Camp): number {
-  const spent = camp.unlocks.reduce((sum, { price }) => sum + price, 0);
+  const spent = [...camp.unlocks, ...camp.powers].reduce((sum, { price }) => sum + price, 0);
   return Math.max(0, shardTotal - spent);
 }
 
-/** La réponse d'un achat au Camp : tout ou rien, jamais de dette ni de doublon. */
+/**
+ * La réponse d'un achat au Camp : tout ou rien, jamais de dette ni de doublon. Un pouvoir de rang 2
+ * est verrouillé tant que le rang 1 de sa voie ne l'est pas ; le pouvoir de base et une frappe
+ * « Bientôt » ne se vendent pas (#235).
+ */
 export type CampPurchase =
   | { readonly kind: 'unlocked'; readonly camp: Camp }
   | { readonly kind: 'alreadyUnlocked' }
-  | { readonly kind: 'notEnoughShards'; readonly missing: number };
+  | { readonly kind: 'notEnoughShards'; readonly missing: number }
+  | { readonly kind: 'locked'; readonly after: PowerKind }
+  | { readonly kind: 'notForSale' };
 
 /** Achète `unlock` au Camp, au prix d'aujourd'hui, figé avec le Déblocage (C3, C9). */
 export function unlockAtCamp(camp: Camp, shardTotal: number, unlock: Unlock): CampPurchase {
@@ -64,7 +87,7 @@ export function unlockAtCamp(camp: Camp, shardTotal: number, unlock: Unlock): Ca
   const price = unlockPrice(unlock);
   const available = availableShards(shardTotal, camp);
   if (available < price) return { kind: 'notEnoughShards', missing: price - available };
-  return { kind: 'unlocked', camp: { unlocks: [...camp.unlocks, { unlock, price }] } };
+  return { kind: 'unlocked', camp: { ...camp, unlocks: [...camp.unlocks, { unlock, price }] } };
 }
 
 /**
@@ -107,9 +130,9 @@ export function campOffer(
 
 const CAMP_VERSION = 1;
 
-/** Le Camp tel qu'il est stocké, en JSON. */
+/** Le Camp tel qu'il est stocké, en JSON, pouvoirs compris (#235) : une seule clé, une écriture. */
 export function serializeCamp(camp: Camp): string {
-  return JSON.stringify({ version: CAMP_VERSION, unlocks: camp.unlocks });
+  return JSON.stringify({ version: CAMP_VERSION, unlocks: camp.unlocks, powers: camp.powers });
 }
 
 const isPrice = (value: unknown): value is number =>
@@ -121,9 +144,33 @@ function isPaidUnlock(value: unknown): value is PaidUnlock {
   return (UNLOCKS as readonly unknown[]).includes(unlock) && isPrice(price);
 }
 
+/** Un pouvoir achetable : un pouvoir lançable qui n'est pas un pouvoir de base (#235). */
+function isPurchasablePower(value: unknown): value is PowerKind {
+  return (
+    typeof value === 'string' &&
+    Object.hasOwn(POWERS, value) &&
+    basePower(POWERS[value as PowerKind].hero) !== value
+  );
+}
+
+function isPaidPower(value: unknown): value is PaidPower {
+  if (typeof value !== 'object' || value === null) return false;
+  const { power, price } = value as Partial<Record<keyof PaidPower, unknown>>;
+  return isPurchasablePower(power) && isPrice(price);
+}
+
+/** Les pouvoirs stockés : absents (un Camp d'avant #235), aucun ; `null` s'ils sont illisibles. */
+function storedPowers(powers: unknown): readonly PaidPower[] | null {
+  if (powers === undefined) return [];
+  if (!Array.isArray(powers) || !powers.every(isPaidPower)) return null;
+  if (new Set(powers.map(({ power }) => power)).size !== powers.length) return null;
+  return powers.map(({ power, price }) => ({ power, price }));
+}
+
 /**
  * Le Camp stocké : rien de stocké donne un Camp vide ; une valeur illisible (version, nom de code
- * inconnu, doublon, prix qui n'est pas un entier > 0) le dit, et le Camp repart vide.
+ * inconnu ou non achetable, doublon, prix qui n'est pas un entier > 0) le dit, et le Camp repart
+ * vide. Des pouvoirs absents (un Camp d'avant #235) se lisent : aucun.
  */
 export function parseCamp(raw: string | null): {
   readonly camp: Camp;
@@ -131,16 +178,22 @@ export function parseCamp(raw: string | null): {
 } {
   if (raw === null) return { camp: EMPTY_CAMP, unreadable: false };
   try {
-    const stored = JSON.parse(raw) as { version?: unknown; unlocks?: unknown } | null;
+    const stored = JSON.parse(raw) as {
+      version?: unknown;
+      unlocks?: unknown;
+      powers?: unknown;
+    } | null;
     const unlocks = stored?.unlocks;
+    const powers = storedPowers(stored?.powers);
     if (
       stored?.version === CAMP_VERSION &&
       Array.isArray(unlocks) &&
       unlocks.every(isPaidUnlock) &&
-      new Set(unlocks.map(({ unlock }) => unlock)).size === unlocks.length
+      new Set(unlocks.map(({ unlock }) => unlock)).size === unlocks.length &&
+      powers !== null
     ) {
       return {
-        camp: { unlocks: unlocks.map(({ unlock, price }) => ({ unlock, price })) },
+        camp: { unlocks: unlocks.map(({ unlock, price }) => ({ unlock, price })), powers },
         unreadable: false,
       };
     }

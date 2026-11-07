@@ -145,3 +145,11 @@ journal note les clés reçues et l'issue de chaque coffre scellé, sans aucune 
   son journal, commencé avant, n'a pas de `keys`.
 - **`formatVersion` reste 2** (§ 4) : ce sont des champs ajoutés. Un journal d'avant se relit tel
   quel.
+
+## Avenant du 6 novembre 2026 — les pouvoirs équipés (#235)
+
+- Le journal reçoit un champ **facultatif** `powers` : les pouvoirs équipés de l'ascension, posés
+  par `beginAscentLog` **seulement s'ils diffèrent du pouvoir de base seul**. Un journal sans
+  pouvoir débloqué est identique, octet pour octet, à celui d'avant.
+- Les pouvoirs débloqués au Camp n'y entrent pas : seul ce qui est figé dans l'ascension compte.
+- **`formatVersion` reste 2** (§ 4).

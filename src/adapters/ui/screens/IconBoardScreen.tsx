@@ -10,6 +10,7 @@ import {
   type Encounter,
 } from '../../../domain/ascent/Ascent';
 import type { Tier } from '../../../domain/ascent/tiers';
+import { POWER_TREES, type PowerTreeCode } from '../../../domain/ascent/powerTree';
 import type { AttackKind } from '../../../domain/battle/attacks';
 import {
   advance,
@@ -31,6 +32,7 @@ import { ChestStage } from '../components/ChestStage';
 import { ExitChoice } from '../components/ExitChoice';
 import { FoundItemPanel } from '../components/FoundItemPanel';
 import { IconWell } from '../components/IconWell';
+import { PowerIcon } from '../components/PowerIcon';
 import { SealedChestPanel } from '../components/SealedChestPanel';
 import { Screen } from '../components/Screen';
 import { artPalette } from '../pixelArt/artPalette';
@@ -67,7 +69,9 @@ type Board =
   // Le Coffre (#227) : fermé et ouvert, puis l'objet qui en sort (B1 à B3 de la maquette 208).
   | 'chest'
   // Le coffre scellé, la clé et l'icône Fortune (#226, S2, S3 de la maquette 208).
-  | 'sealedChest';
+  | 'sealedChest'
+  // Les 10 icônes des pouvoirs (#235, maquette 232), à ×1 et ×2, dans l'ordre des arbres.
+  | 'powers';
 
 const ENTRIES: readonly (readonly [Board, string])[] = [
   ['boons', "Choix d'un bienfait"],
@@ -81,7 +85,14 @@ const ENTRIES: readonly (readonly [Board, string])[] = [
   ['secondBreathAlone', 'Offre · Second souffle seule'],
   ['chest', 'Coffre · fermé et ouvert'],
   ['sealedChest', 'Coffre scellé · clé et Fortune'],
+  ['powers', 'Pouvoirs · 10 icônes'],
 ];
+
+/** Les codes des arbres de pouvoirs, racine puis voies, Sentinelle puis Errante (#235). */
+const TREE_CODES: readonly PowerTreeCode[] = (['sentinel', 'wanderer'] as const).flatMap((hero) => {
+  const { base, paths } = POWER_TREES[hero];
+  return [base, ...paths.flatMap((path) => path.ranks)];
+});
 
 /**
  * Une entrée de l'Équipement (#159) : le vrai pied de la tour ou le vrai écran de l'ascension, sur
@@ -155,7 +166,10 @@ const DOORS: readonly Exit[] = [
 ];
 const EXITS: Readonly<
   Record<
-    Exclude<Board, keyof typeof OFFERS | 'blessings' | 'oneBlessing' | 'chest' | 'sealedChest'>,
+    Exclude<
+      Board,
+      keyof typeof OFFERS | 'blessings' | 'oneBlessing' | 'chest' | 'sealedChest' | 'powers'
+    >,
     { boons: readonly BoonKind[]; exits: readonly Exit[] }
   >
 > = {
@@ -565,6 +579,19 @@ export function IconBoardScreen({
             />
           </View>
         </>
+      ) : board === 'powers' ? (
+        <View style={styles.chests}>
+          {TREE_CODES.flatMap((code) =>
+            ([1, 2] as const).map((scale) => (
+              <PowerIcon
+                key={`${code}-${scale}`}
+                power={code}
+                scale={scale}
+                testID={`power-board-${code}-${scale}`}
+              />
+            )),
+          )}
+        </View>
       ) : (
         <ExitChoice {...EXITS[board]} banner={gained} onChoose={back} />
       )}

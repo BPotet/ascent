@@ -1,6 +1,5 @@
 import type { AttackKind } from './attacks';
 import { heroInitiative } from './initiative';
-import type { PowerKind } from './momentum';
 import type { BulwarkCounterShares } from './strike';
 
 /** Les héros jouables : la Sentinelle (`Sentinel`) et, en prototype (#90), l'Errante (`Wanderer`). */
@@ -41,12 +40,6 @@ export interface HeroProfile {
   readonly damageReductionPercent: number;
   /** La contre-attaque vaut 50 % de l'Attaque, × ce pourcentage. */
   readonly counterPercent: number;
-  readonly power: PowerKind;
-  /**
-   * Le pouvoir instantané (`powerInstant`, #173) : il se lance pendant la phase du héros, avant
-   * son action, sans être une action (ni durée d'action, ni transition de phase).
-   */
-  readonly powerInstant: boolean;
   /** La Riposte du Rempart (#128) ; absente, le Rempart ne riposte pas. */
   readonly bulwarkCounter?: BulwarkCounterShares;
   /** Le trait de l'Errante : chaque impact esquivé dans la fenêtre de parade donne +1 Élan. */
@@ -65,7 +58,6 @@ export const SENTINEL: {
   readonly guardDamage: number;
   readonly damageReductionPercent: number;
   readonly counterPercent: number;
-  readonly power: PowerKind;
   readonly bulwarkCounter: BulwarkCounterShares;
 } = {
   maxHp: 80,
@@ -75,7 +67,6 @@ export const SENTINEL: {
   damageReductionPercent: 10,
   /** Le trait : la contre-attaque vaut 50 % de l'Attaque, × 1,3. */
   counterPercent: 130,
-  power: 'bulwark',
   /** Les valeurs du Codex (`sentinel`), recopiées le 29/10/2026 (#128). */
   bulwarkCounter: { bulwarkCounterPercent: 50, bulwarkCounterGuardPercent: 25 },
 };
@@ -92,7 +83,6 @@ export const HEROES: Readonly<Record<HeroKind, HeroProfile>> = {
     initiative: 5,
     hits: 1,
     hitIntervalMs: 0,
-    powerInstant: false,
     dodgeMomentum: false,
     startingKit: { weapon: 'shortSword', armor: 'dentedCuirass' },
   },
@@ -105,8 +95,6 @@ export const HEROES: Readonly<Record<HeroKind, HeroProfile>> = {
     guardDamage: 5,
     damageReductionPercent: 0,
     counterPercent: 200,
-    power: 'shadowStep',
-    powerInstant: true,
     dodgeMomentum: true,
     startingKit: { weapon: 'twinDaggers', armor: 'wornCloak' },
   },

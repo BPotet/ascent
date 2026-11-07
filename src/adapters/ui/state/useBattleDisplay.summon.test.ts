@@ -13,7 +13,7 @@ import {
 const queen = startBattle({ seed: 1, defenseHint: false, at: 0, enemies: ['mothQueen'] }).battle;
 
 function snapshot(events: readonly BattleEvent[], battle: Battle = queen): BattleSnapshot {
-  return { battle, events, heroHint: false };
+  return { battle, events, heroHint: false, powersHint: false };
 }
 
 const show = (events: readonly BattleEvent[], from: BattleDisplay = INITIAL_DISPLAY) =>

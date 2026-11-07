@@ -14,6 +14,7 @@ import {
 import { startTestBattle } from './testing/testBattle';
 import type { BattleEvent } from './BattleEvent';
 import { HEROES } from './combatants';
+import { basePower } from './powers';
 
 type EventOf<Type extends BattleEvent['type']> = Extract<BattleEvent, { type: Type }>;
 
@@ -117,9 +118,9 @@ describe('the Wanderer (section 2)', () => {
       hits: 2,
       guardDamage: 5,
       damageReductionPercent: 0,
-      power: 'shadowStep',
       startingKit: { weapon: 'twinDaggers', armor: 'wornCloak' },
     });
+    expect(basePower('wanderer')).toBe('shadowStep');
   });
 
   it('acts after the Specter (8) and before the Ghoul (4), with Initiative 7', () => {

@@ -27,11 +27,25 @@ function padProps() {
   } as const;
 }
 
-const ready: PowerSlot = { power: 'shadowStep', cost: 3, missing: 0, instant: true };
+const ready: PowerSlot = {
+  power: 'shadowStep',
+  cost: 3,
+  availability: 'available',
+  missing: 0,
+  instant: true,
+};
 
-function heroPad(power: PowerSlot): Pad {
-  return { kind: 'hero', locked: false, lock: null, power };
+function heroPad(power: PowerSlot, instantCast = false): Pad {
+  return {
+    kind: 'hero',
+    locked: false,
+    lock: null,
+    powers: [power],
+    ...(instantCast && { instantCast: true as const }),
+  };
 }
+
+const KEY = 'battle-power-button-shadowStep';
 
 /** La luminance relative d'une couleur `#RRGGBB` (WCAG 2.1). */
 function luminance(hex: string): number {
@@ -48,28 +62,29 @@ function contrast(foreground: string, background: string): number {
 }
 
 describe('the Power key of an instant power (E1, E5, E6)', () => {
-  it("says « Pas de l'ombre » and, under it, « 3 Élan · Instantané » with its crescent (E1)", async () => {
+  it("says « Pas de l'ombre », « 3 Élan » and « Instantané » with its crescent (E1, #235)", async () => {
     await render(<ActionPad pad={heroPad(ready)} {...padProps()} />);
 
-    const power = screen.getByTestId('battle-power-button');
-    expect(power).toHaveTextContent("PouvoirPas de l'ombre3 Élan · Instantané");
+    const power = screen.getByTestId(KEY);
+    expect(power).toHaveTextContent("Pas de l'ombre3 ÉlanInstantané");
     expect(power.props.accessibilityLabel).toBe("Pouvoir : Pas de l'ombre, 3 Élan, instantané");
     expect(power.props.accessibilityState).toEqual({ disabled: false });
-    expect(within(power).getByTestId('battle-power-crescent', hiddenToo)).toBeTruthy();
-    expect(style('battle-power-instant')).toMatchObject({ color: battleColors.onShadowStep });
+    expect(within(power).getByTestId('battle-power-crescent-shadowStep', hiddenToo)).toBeTruthy();
   });
 
-  it('puts the crescent right before « Instantané », after « 3 Élan · », on one line (E1)', async () => {
+  it('puts the crescent right before « Instantané », on one line, in light violet (E1)', async () => {
     await render(<ActionPad pad={heroPad(ready)} {...padProps()} />);
 
-    const row = screen.getByTestId('battle-power-instant-row', hiddenToo);
-    expect(row).toHaveTextContent('3 Élan · Instantané');
+    const row = screen.getByTestId('battle-power-instant-shadowStep', hiddenToo);
+    expect(row).toHaveTextContent('Instantané');
     expect(StyleSheet.flatten(row.props.style)).toMatchObject({ flexDirection: 'row' });
-    const parts = row.children.map((part) =>
-      typeof part === 'string' ? part : (part.props.testID ?? part.props.children),
-    );
-    expect(parts).toEqual(['3 Élan · ', 'battle-power-crescent', 'battle-power-instant']);
-    expect(screen.getByTestId('battle-power-instant', hiddenToo)).toHaveTextContent('Instantané');
+    const [crescent, word] = row.children as unknown as {
+      props: { testID?: string; style: unknown };
+    }[];
+    expect(crescent!.props.testID).toBe('battle-power-crescent-shadowStep');
+    expect(StyleSheet.flatten(word!.props.style)).toMatchObject({
+      color: battleColors.onShadowStep,
+    });
   });
 
   it('writes « Instantané » readable on the key: #DCCFEA on #1C2133, 10.8:1', () => {
@@ -78,35 +93,45 @@ describe('the Power key of an instant power (E1, E5, E6)', () => {
   });
 
   it('is hatched and tells the momentum it misses (E5)', async () => {
-    await render(<ActionPad pad={heroPad({ ...ready, missing: 1 })} {...padProps()} />);
+    await render(
+      <ActionPad
+        pad={heroPad({ ...ready, availability: 'missing', missing: 1 })}
+        {...padProps()}
+      />,
+    );
 
-    const power = screen.getByTestId('battle-power-button');
-    expect(power).toHaveTextContent('PouvoirIl manque 1 Élan');
+    const power = screen.getByTestId(KEY);
+    expect(power).toHaveTextContent("Pas de l'ombreIl manque\n1 Élan");
     expect(power.props.accessibilityLabel).toBe(
       "Pouvoir : Pas de l'ombre, 3 Élan, instantané, indisponible : il manque 1 Élan",
     );
     expect(power.props.accessibilityState).toEqual({ disabled: true });
-    expect(screen.getByTestId('battle-power-hatching', hiddenToo)).toBeTruthy();
+    expect(screen.getByTestId('battle-power-hatching-shadowStep', hiddenToo)).toBeTruthy();
   });
 
   it('says « ✓ Actif » and is unavailable while it is active (E6)', async () => {
-    await render(<ActionPad pad={heroPad({ ...ready, active: true })} {...padProps()} />);
+    await render(<ActionPad pad={heroPad({ ...ready, availability: 'active' })} {...padProps()} />);
 
-    const power = screen.getByTestId('battle-power-button');
-    expect(power).toHaveTextContent('PouvoirActif');
+    const power = screen.getByTestId(KEY);
+    expect(power).toHaveTextContent("Pas de l'ombreActif");
     expect(power.props.accessibilityLabel).toBe(
       "Pouvoir : Pas de l'ombre, 3 Élan, instantané, actif",
     );
     expect(power.props.accessibilityState).toEqual({ disabled: true });
-    expect(within(power).getByTestId('battle-power-active-check', hiddenToo)).toBeTruthy();
+    expect(
+      within(power).getByTestId('battle-power-active-check-shadowStep', hiddenToo),
+    ).toBeTruthy();
   });
 
   it('never says « Instantané » on the Bulwark', async () => {
     await render(
-      <ActionPad pad={heroPad({ power: 'bulwark', cost: 1, missing: 0 })} {...padProps()} />,
+      <ActionPad
+        pad={heroPad({ power: 'bulwark', cost: 1, availability: 'available', missing: 0 })}
+        {...padProps()}
+      />,
     );
 
-    expect(screen.getByTestId('battle-power-button')).toHaveTextContent('PouvoirRempart · 1 Élan');
+    expect(screen.getByTestId('battle-power-button-bulwark')).toHaveTextContent('Rempart1 Élan');
     expect(screen.queryByText(/Instantané/, hiddenToo)).toBeNull();
   });
 });
@@ -124,7 +149,7 @@ describe('the focus after the instant power (E2)', () => {
 
     await act(async () => {
       screen.rerender(
-        <ActionPad pad={heroPad({ ...ready, active: true, instantCast: true })} {...props} />,
+        <ActionPad pad={heroPad({ ...ready, availability: 'active' }, true)} {...props} />,
       );
     });
 
@@ -137,7 +162,7 @@ describe('the focus after the instant power (E2)', () => {
 
   it('stays put when the Shadow Step was already active at the start of the phase', async () => {
     const focus = jest.spyOn(AccessibilityInfo, 'sendAccessibilityEvent').mockReturnValue();
-    await render(<ActionPad pad={heroPad({ ...ready, active: true })} {...padProps()} />);
+    await render(<ActionPad pad={heroPad({ ...ready, availability: 'active' })} {...padProps()} />);
 
     expect(focus).not.toHaveBeenCalled();
   });

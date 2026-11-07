@@ -52,7 +52,7 @@ import type { BattleFactory } from '../../src/application/useCases/BattleSession
 import { actionOrder } from '../../src/domain/battle/actionOrder';
 import { startBattle } from '../../src/domain/battle/Battle';
 import type { BattleEvent } from '../../src/domain/battle/BattleEvent';
-import { HEROES } from '../../src/domain/battle/combatants';
+import { basePower } from '../../src/domain/battle/powers';
 
 jest.mock('../../src/adapters/ui/battle/BattleCanvas', () =>
   jest.requireActual('../../src/adapters/ui/battle/testing/fakeBattleCanvas'),
@@ -446,7 +446,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   given("l'ascension se joue avec l'Errante", () => {
     // Seule la Sentinelle a le Rempart : l'Errante ne riposte jamais d'un coup de bouclier.
-    expect(HEROES.wanderer.power).toBe('shadowStep');
+    expect(basePower('wanderer')).toBe('shadowStep');
   });
 
   then('ses 14 poses et son combat sont inchangés', () => {
