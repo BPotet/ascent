@@ -20,19 +20,31 @@ import {
   type PowerNodeState,
   type PowerTreeCode,
 } from '../../domain/ascent/powerTree';
+import {
+  canBearOath,
+  kindledPowers,
+  oathStanding,
+  serializeOaths,
+  swearOath,
+  type KindledPower,
+  type Oath,
+  type OathStanding,
+} from '../../domain/ascent/oaths';
 import type { HeroKind } from '../../domain/battle/combatants';
-import { basePower, type PowerKind } from '../../domain/battle/powers';
+import { POWERS, basePower, type PowerKind } from '../../domain/battle/powers';
+import type { HabitId } from '../../domain/habit/Habit';
 import type { Tier } from '../../domain/ascent/tiers';
 import type { Unlock } from '../../domain/ascent/unlocks';
 import type { BattleSound } from '../ports/BattleSound';
+import type { Clock } from '../ports/Clock';
 import type { Haptics } from '../ports/Haptics';
 import type { KeyValueStore } from '../ports/KeyValueStore';
+import type { UnitOfWork } from '../ports/UnitOfWork';
 import type { AscentSession } from './AscentSession';
+import { CAMP_KEY, UNREADABLE_CAMP_KEY } from './campKeys';
+import { OATHS_KEY, UNREADABLE_OATHS_KEY, readOaths } from './oaths';
 
-/** La clé du Camp (ADR 0017) : chaque Déblocage et le prix payé. Jamais effacée par l'app. */
-export const CAMP_KEY = 'camp.unlocks';
-/** La copie d'une valeur illisible du Camp, gardée avant que le Camp reparte vide. */
-export const UNREADABLE_CAMP_KEY = 'camp.unlocks.unreadable';
+export { CAMP_KEY, UNREADABLE_CAMP_KEY };
 /** Les arbres de pouvoirs ont été ouverts une fois (#235) : le badge « nouveau » s'éteint. */
 export const POWER_TREES_SEEN_KEY = 'camp.powerTrees.seen';
 
@@ -54,7 +66,27 @@ export interface CampSessionDependencies {
   readonly ascentSession: AscentSession;
   readonly sound: BattleSound;
   readonly haptics: Haptics;
+  /** Aujourd'hui : un Serment compte à partir du lendemain du jour où il est prêté (#237). */
+  readonly clock: Clock;
+  /** Les habitudes, que lient les Serments (#237). */
+  readonly unitOfWork: UnitOfWork;
 }
+
+/** Une habitude, pour le choix du Serment (#237) : son nom reste sur l'appareil. */
+export interface CampHabit {
+  readonly id: HabitId;
+  readonly name: string;
+}
+
+/** Le Serment d'un pouvoir (#237) : son habitude, son nom (`null` s'il est rompu) et son jour. */
+export interface CampOath {
+  readonly habit: HabitId;
+  readonly name: string | null;
+  readonly since: string;
+}
+
+/** Un Serment prêté : enregistré, en échec (rien n'a changé, on peut réessayer), ou refusé. */
+export type SwearResult = 'sworn' | 'failed' | 'refused';
 
 /** Ce que montre le camp : le Total d'Éclats, les Éclats disponibles et les cartes du catalogue. */
 export interface CampView {
@@ -73,6 +105,12 @@ export interface CampView {
   readonly equipped: Readonly<Record<HeroKind, readonly PowerKind[]>>;
   /** Un arbre a déjà été ouvert : plus de badge « nouveau » (#235). */
   readonly powerTreesSeen: boolean;
+  /** Les habitudes, dans l'ordre de création ; `null` si elles n'ont pas pu être lues (#237). */
+  readonly habits: readonly CampHabit[] | null;
+  /** Les Serments, par pouvoir (#237). */
+  readonly oaths: Partial<Readonly<Record<PowerKind, CampOath>>>;
+  /** Les pouvoirs qui peuvent porter un Serment : débloqués, ou de base, à 2 Élan ou plus (#237). */
+  readonly oathBearers: readonly PowerKind[];
 }
 
 /** Un achat : enregistré, en échec (rien n'a changé, on peut réessayer), ou refusé. */
@@ -95,6 +133,10 @@ export class CampSession {
   private readOnly = false;
   private buying = false;
   private powerTreesSeen = false;
+  private habits: readonly CampHabit[] | null = null;
+  private oaths: readonly Oath[] = [];
+  private oathsReadOnly = false;
+  private swearing = false;
   private readonly listeners = new Set<Listener>();
 
   constructor(private readonly dependencies: CampSessionDependencies) {}
@@ -124,7 +166,108 @@ export class CampSession {
         wanderer: equippedPowers(this.camp, 'wanderer'),
       },
       powerTreesSeen: this.powerTreesSeen,
+      habits: this.habits,
+      oaths: Object.fromEntries(
+        this.oaths.map(({ power, habit, since }) => [
+          power,
+          { habit, name: this.habits?.find(({ id }) => id === habit)?.name ?? null, since },
+        ]),
+      ),
+      oathBearers: (Object.keys(POWERS) as PowerKind[]).filter((power) =>
+        canBearOath(this.camp, power),
+      ),
     };
+  }
+
+  private habitIds(): readonly HabitId[] {
+    return (this.habits ?? []).map(({ id }) => id);
+  }
+
+  /**
+   * L'état de chaque Serment aujourd'hui (#237), selon les habitudes faites hier ; `null` pour un
+   * état encore inconnu : hier en cours de lecture (`doneYesterday` à `null`) ou habitudes illisibles.
+   * Rompu et prêté aujourd'hui se tranchent sans hier.
+   */
+  oathStandings(
+    doneYesterday: readonly HabitId[] | null,
+  ): Partial<Record<PowerKind, OathStanding | null>> {
+    const today = this.dependencies.clock.today();
+    return Object.fromEntries(
+      this.oaths.map((oath) => {
+        if (this.habits === null) return [oath.power, null];
+        const standing = oathStanding(oath, this.habitIds(), doneYesterday ?? [], today);
+        const known = doneYesterday !== null || standing === 'broken' || standing === 'fresh';
+        return [oath.power, known ? standing : null];
+      }),
+    );
+  }
+
+  /**
+   * Les pouvoirs attisés que donnerait un lancement maintenant, par héros (#237), sur ses pouvoirs
+   * équipés d'office : aucun tant qu'hier ou les habitudes ne sont pas lus.
+   */
+  kindledPreview(
+    doneYesterday: readonly HabitId[] | null,
+  ): Readonly<Record<HeroKind, readonly KindledPower[]>> {
+    const kindled = (hero: HeroKind) =>
+      this.kindled(equippedPowers(this.camp, hero), doneYesterday);
+    return { sentinel: kindled('sentinel'), wanderer: kindled('wanderer') };
+  }
+
+  private kindled(
+    powers: readonly PowerKind[],
+    doneYesterday: readonly HabitId[] | null,
+  ): KindledPower[] {
+    if (this.habits === null || doneYesterday === null) return [];
+    const today = this.dependencies.clock.today();
+    return kindledPowers(powers, this.oaths, this.habitIds(), doneYesterday, today);
+  }
+
+  /** Relit les habitudes (#237) : après une création, un renommage ou une suppression. */
+  async refreshHabits(): Promise<void> {
+    this.habits = await this.readHabits();
+    this.publish();
+  }
+
+  private async readHabits(): Promise<readonly CampHabit[] | null> {
+    try {
+      const habits = await this.dependencies.unitOfWork.run(({ habits }) => habits.listAll());
+      return habits.map(({ id, name }) => ({ id, name: name.value }));
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Prête le Serment de `power` sur `habit` (#237) : l'écriture de `camp.oaths` est attendue, puis
+   * seulement la mémoire change, le camp est publié, le sceau sonne et le téléphone vibre. Un seul
+   * Serment à la fois ; habitudes illisibles ou Serments en lecture seule : un échec.
+   */
+  async swearOath(power: PowerKind, habit: HabitId): Promise<SwearResult> {
+    if (!this.loaded || this.swearing) return 'refused';
+    if (this.habits === null || this.oathsReadOnly) return 'failed';
+    const result = swearOath(this.oaths, {
+      camp: this.camp,
+      habits: this.habitIds(),
+      power,
+      habit,
+      today: this.dependencies.clock.today(),
+    });
+    if (result.kind !== 'sworn') return 'refused';
+    const { keyValueStore, sound, haptics } = this.dependencies;
+    this.swearing = true;
+    try {
+      await keyValueStore.set(OATHS_KEY, serializeOaths(result.oaths));
+    } catch {
+      return 'failed';
+    } finally {
+      this.swearing = false;
+    }
+    this.oaths = result.oaths;
+    this.publish();
+    sound.play('seal');
+    haptics.success();
+    return 'sworn';
   }
 
   private trees(shardTotal: number, ascent: Ascent | null): Record<HeroKind, PowerTreeView> {
@@ -245,8 +388,28 @@ export class CampSession {
         () => true,
       );
     }
+    await this.readOaths();
+    this.habits = await this.readHabits();
     this.loaded = true;
     this.publish();
+  }
+
+  /** Lit les Serments (#237), comme le Camp : une valeur illisible est gardée à part d'abord. */
+  private async readOaths(): Promise<void> {
+    const { keyValueStore } = this.dependencies;
+    try {
+      const { oaths, unreadable, raw } = await readOaths(keyValueStore, this.camp);
+      this.oaths = oaths;
+      if (unreadable && raw !== null) {
+        this.oathsReadOnly = await keyValueStore.set(UNREADABLE_OATHS_KEY, raw).then(
+          () => false,
+          () => true,
+        );
+      }
+    } catch {
+      // Illisibles pour cette session : aucun Serment ne se prête, la valeur n'est jamais écrasée.
+      this.oathsReadOnly = true;
+    }
   }
 
   private publish(): void {

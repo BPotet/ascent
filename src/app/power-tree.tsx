@@ -16,11 +16,15 @@ function leave(): void {
 }
 
 function PowerTree() {
-  const { keyValueStore, clock } = useDependencies();
+  const { keyValueStore, clock, unitOfWork } = useDependencies();
   const { hero } = useLocalSearchParams<{ hero?: string }>();
   const kind: HeroKind = hero === 'wanderer' ? 'wanderer' : 'sentinel';
   return (
-    <PowerTreeScreen camp={sharedCampSession(keyValueStore, clock)} hero={kind} onLeave={leave} />
+    <PowerTreeScreen
+      camp={sharedCampSession(keyValueStore, clock, unitOfWork)}
+      hero={kind}
+      onLeave={leave}
+    />
   );
 }
 
