@@ -105,7 +105,7 @@ export interface CampView {
   readonly equipped: Readonly<Record<HeroKind, readonly PowerKind[]>>;
   /** Un arbre a déjà été ouvert : plus de badge « nouveau » (#235). */
   readonly powerTreesSeen: boolean;
-  /** Les habitudes, dans l'ordre de création ; `null` si elles n'ont pas pu être lues (#237). */
+  /** Les habitudes, dans l'ordre de création ; `null` tant qu'elles ne sont pas lues (#237). */
   readonly habits: readonly CampHabit[] | null;
   /** Les Serments, par pouvoir (#237). */
   readonly oaths: Partial<Readonly<Record<PowerKind, CampOath>>>;
@@ -141,9 +141,13 @@ export class CampSession {
 
   constructor(private readonly dependencies: CampSessionDependencies) {}
 
-  /** Lit le Camp, une seule fois pour la session. */
+  /**
+   * Lit le Camp, une seule fois pour la session, et les habitudes (#237) à côté : le camp est prêt
+   * dès qu'il est lu, sans attendre les habitudes, qui manquent jusque-là (aucun Serment, aucun
+   * attisé).
+   */
   load(): Promise<void> {
-    this.loading ??= this.read();
+    this.loading ??= Promise.all([this.read(), this.refreshHabits()]).then(() => undefined);
     return this.loading;
   }
 
@@ -389,7 +393,6 @@ export class CampSession {
       );
     }
     await this.readOaths();
-    this.habits = await this.readHabits();
     this.loaded = true;
     this.publish();
   }
