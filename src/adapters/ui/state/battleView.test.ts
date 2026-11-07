@@ -266,7 +266,7 @@ describe('battleView', () => {
         hpRatio: 1,
         hpText: '50/50 PV',
         guardRatio: 1,
-        guardText: 'Garde 15/15',
+        guardText: 'Garde 30/30',
         stunned: false,
         losingAction: false,
         rising: null,
@@ -275,7 +275,7 @@ describe('battleView', () => {
         active: false,
         dimmed: false,
         tag: null,
-        label: expect.stringMatching(/^Goule, cible, 50 PV sur 50, garde 15 sur 15/),
+        label: expect.stringMatching(/^Goule, cible, 50 PV sur 50, garde 30 sur 30/),
       });
     });
 

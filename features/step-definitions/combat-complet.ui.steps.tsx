@@ -134,7 +134,7 @@ async function parryGhoulPerfectly(): Promise<void> {
 
 const steps: StepDefinitions = ({ given, when, then, and }) => {
   given(
-    /^un combat de la Sentinelle \(Attaque 10, Brise-garde 12\) contre un groupe de la Goule \(50 PV, garde 15\), du Spectre \(35 PV, garde 10\) et du Nécromancien \(45 PV, garde 12\)$/u,
+    /^un combat de la Sentinelle \(Attaque 10, Brise-garde 12\) contre un groupe de la Goule \(50 PV, garde 30\), du Spectre \(35 PV, garde 20\) et du Nécromancien \(45 PV, garde 24\)$/u,
     () => {
       // L'écran s'ouvre à la première étape qui en a besoin, avec les états du scénario.
     },
@@ -297,7 +297,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and(
-    "à la fin de l'action de la Sentinelle, la Goule se relève en 400 ms et sa garde revient à 15",
+    "à la fin de l'action de la Sentinelle, la Goule se relève en 400 ms et sa garde revient à 30",
     async () => {
       const end = (test().battle().phase as { readonly until: number }).until;
       expect(all('guardRestored')).toEqual([]);
@@ -305,7 +305,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       expect(all('guardRestored')).toEqual([
         { type: 'guardRestored', at: end, enemy: GHOUL, until: end + 400, inPlaceOfAction: false },
       ]);
-      expect(test().battle().enemies[GHOUL]).toMatchObject({ guard: 15, stun: null });
+      expect(test().battle().enemies[GHOUL]).toMatchObject({ guard: 30, stun: null });
       expect(sceneEnemies()[GHOUL]).toMatchObject({ down: false });
     },
   );
@@ -385,13 +385,13 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     expect(all('powerUsed')).toHaveLength(1);
   });
 
-  then('la Goule se relève en 400 ms, sans avancée ni attaque, et sa garde revient à 15', () => {
+  then('la Goule se relève en 400 ms, sans avancée ni attaque, et sa garde revient à 30', () => {
     const { phase } = test().battle();
     expect(phase).toMatchObject({ kind: 'enemy', step: { kind: 'guardRestore', enemy: GHOUL } });
     const { since, until } = (phase as { step: { since: number; until: number } }).step;
     expect(until - since).toBe(400);
     expect(all('guardRestored').at(-1)).toMatchObject({ enemy: GHOUL, inPlaceOfAction: true });
-    expect(test().battle().enemies[GHOUL]).toMatchObject({ guard: 15, stun: null });
+    expect(test().battle().enemies[GHOUL]).toMatchObject({ guard: 30, stun: null });
     expect(
       all('stepInStarted').filter((event) => event.enemy === GHOUL && event.at > world.brokenAt),
     ).toEqual([]);
@@ -463,11 +463,11 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   // --- Intentions (C2) ----------------------------------------------------------------------
 
-  and('son intention est Garde, affichée par un bouclier et « +3 », sans mot', async () => {
-    world.changes.push(enemyWith(NECROMANCER, { intent: { category: 'guard', gain: 3 } }));
+  and('son intention est Garde, affichée par un bouclier et « +7 », sans mot', async () => {
+    world.changes.push(enemyWith(NECROMANCER, { intent: { category: 'guard', gain: 7 } }));
     await open();
     expect(intentIcon(NECROMANCER, 'guard')).toBeOnTheScreen();
-    expect(intentChip(NECROMANCER)).toHaveTextContent('+3', { exact: true });
+    expect(intentChip(NECROMANCER)).toHaveTextContent('+7', { exact: true });
   });
 
   when("il exécute l'intention Garde", async () => {
@@ -478,14 +478,14 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     });
   });
 
-  then(/^sa garde remonte de 3 points \(30 % de 12\)$/u, () => {
+  then(/^sa garde remonte de 7 points \(30 % de 24\)$/u, () => {
     expect(all('guardRaised')).toEqual([
-      expect.objectContaining({ enemy: NECROMANCER, gain: 3, guard: 7 }),
+      expect.objectContaining({ enemy: NECROMANCER, gain: 7, guard: 11 }),
     ]);
-    expect(test().battle().enemies[NECROMANCER]!.guard).toBe(7);
-    // Le gain s'envole au-dessus de sa garde, à côté du « +3 » de l'intention.
-    expect(within(column(NECROMANCER)).getAllByText('+3')).toHaveLength(2);
-    expect(announce).toHaveBeenCalledWith('Nécromancien relève sa garde, plus 3');
+    expect(test().battle().enemies[NECROMANCER]!.guard).toBe(11);
+    // Le gain s'envole au-dessus de sa garde, à côté du « +7 » de l'intention.
+    expect(within(column(NECROMANCER)).getAllByText('+7')).toHaveLength(2);
+    expect(announce).toHaveBeenCalledWith('Nécromancien relève sa garde, plus 7');
   });
 
   and("sans cette intention, sa garde ne remonte jamais d'elle-même", () => {
@@ -511,22 +511,22 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     expect(events).toContainEqual(
       expect.objectContaining({ type: 'guardRestored', enemy: NECROMANCER }),
     );
-    expect(after.enemies[NECROMANCER]).toMatchObject({ guard: 12, stun: null });
+    expect(after.enemies[NECROMANCER]).toMatchObject({ guard: 24, stun: null });
   });
 
-  given(/^le Nécromancien \(garde max 12\) a tiré l'intention Garde$/u, async () => {
+  given(/^le Nécromancien \(garde max 24\) a tiré l'intention Garde$/u, async () => {
     world.changes.push(
-      enemyWith(NECROMANCER, { guard: 8, intent: { category: 'guard', gain: 3 } }),
+      enemyWith(NECROMANCER, { guard: 8, intent: { category: 'guard', gain: 7 } }),
     );
     await open();
-    expect(test().battle().enemies[NECROMANCER]).toMatchObject({ maxGuard: 12 });
+    expect(test().battle().enemies[NECROMANCER]).toMatchObject({ maxGuard: 24 });
   });
 
   then(
-    /^son intention affiche un bouclier et « \+3 » \(30 % de 12, entier inférieur\), sans mot$/u,
+    /^son intention affiche un bouclier et « \+7 » \(30 % de 24, entier inférieur\), sans mot$/u,
     () => {
       expect(intentIcon(NECROMANCER, 'guard')).toBeOnTheScreen();
-      expect(intentChip(NECROMANCER)).toHaveTextContent('+3', { exact: true });
+      expect(intentChip(NECROMANCER)).toHaveTextContent('+7', { exact: true });
     },
   );
 
@@ -624,9 +624,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(/^la Goule revient avec 25 PV \(50 %\), garde pleine, non étourdie$/u, () => {
-    expect(test().battle().enemies[GHOUL]).toMatchObject({ hp: 25, guard: 15, stun: null });
+    expect(test().battle().enemies[GHOUL]).toMatchObject({ hp: 25, guard: 30, stun: null });
     expect(
-      screen.getByRole('button', { name: /^Goule, 25 PV sur 50, garde 15 sur 15/u }),
+      screen.getByRole('button', { name: /^Goule, 25 PV sur 50, garde 30 sur 30/u }),
     ).toBeOnTheScreen();
   });
 

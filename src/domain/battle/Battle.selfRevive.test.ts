@@ -65,7 +65,7 @@ describe('the Skeleton revives the first time it falls (S1, S6)', () => {
 
     expect(struck.enemies[0]).toMatchObject({
       hp: 17,
-      guard: 10,
+      guard: 20,
       stun: null,
       raised: true,
       selfRevives: 1,

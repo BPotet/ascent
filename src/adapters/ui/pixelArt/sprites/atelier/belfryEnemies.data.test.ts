@@ -187,7 +187,10 @@ interface CodexEntry {
   readonly fingerprint: string;
 }
 
-/** `data.name` et `data.stats` des fiches `codex/<id>` (version 2), recopiés par la conversation. */
+/**
+ * `data.name` et `data.stats` des fiches `codex/<id>` (version 3, garde doublée par #244), recopiés
+ * par la conversation.
+ */
 const CODEX: Readonly<Record<'bellNovice' | 'matinsRinger' | 'clockJack', CodexEntry>> = {
   bellNovice: {
     name: 'Novice des cloches',
@@ -196,7 +199,7 @@ const CODEX: Readonly<Record<'bellNovice' | 'matinsRinger' | 'clockJack', CodexE
       groupCap: 2,
       guardIntentChancePercent: 0,
       initiative: 6,
-      maxGuard: 8,
+      maxGuard: 16,
       maxHp: 26,
       moves: [
         {
@@ -218,7 +221,7 @@ const CODEX: Readonly<Record<'bellNovice' | 'matinsRinger' | 'clockJack', CodexE
       ],
       role: null,
     },
-    fingerprint: '07262ab8cfdc723b5a5d19b1ef32fe546d050e035d573932fe473efbf89f5be4',
+    fingerprint: '120ff96ecaa5c1b6f5d1e662beefbf2541eb5da3148f6cb824e41319e0c91040',
   },
   matinsRinger: {
     name: 'Sonneuse de matines',
@@ -227,7 +230,7 @@ const CODEX: Readonly<Record<'bellNovice' | 'matinsRinger' | 'clockJack', CodexE
       groupCap: 1,
       guardIntentChancePercent: 33,
       initiative: 3,
-      maxGuard: 16,
+      maxGuard: 32,
       maxHp: 42,
       moves: [
         {
@@ -243,7 +246,7 @@ const CODEX: Readonly<Record<'bellNovice' | 'matinsRinger' | 'clockJack', CodexE
       roleDescription:
         "Quand un allié tombe, elle agite sa clochette au-dessus de lui et il se relève, une seule fois, à la moitié de ses forces : une flèche vers le haut l'annonce. Quand sa garde est entamée, elle serre sa clochette contre elle et la referme. Tant qu'elle sonne matines, rien de ce qui tombe ne reste tombé.",
     },
-    fingerprint: '2393727bab257ccf63cd22336cfe771ed2bbf04dcf4698369da91f42c7ca946e',
+    fingerprint: 'b6701cef7b2855d56242583bbe73a000b267fe148f708eaeca1c69c4435812ff',
   },
   clockJack: {
     name: 'Jaquemart',
@@ -252,7 +255,7 @@ const CODEX: Readonly<Record<'bellNovice' | 'matinsRinger' | 'clockJack', CodexE
       groupCap: 1,
       guardIntentChancePercent: 0,
       initiative: 1,
-      maxGuard: 20,
+      maxGuard: 40,
       maxHp: 48,
       moves: [
         {
@@ -274,7 +277,7 @@ const CODEX: Readonly<Record<'bellNovice' | 'matinsRinger' | 'clockJack', CodexE
       ],
       role: null,
     },
-    fingerprint: '8ad571c95e136463673a413c745e62ef8af2a6162868f448be8b90d17109085f',
+    fingerprint: 'd73dde035e12ae5e50b33744b95d560132738d1e2ed1ec51b0c4dc990062d592',
   },
 };
 

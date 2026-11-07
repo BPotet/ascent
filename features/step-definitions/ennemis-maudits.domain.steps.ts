@@ -155,9 +155,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   // --- Ce que gagne un ennemi maudit ---
 
   when(
-    /^la Goule \(50 PV, garde 15, coup simple de 5, double frappe de 3 \+ 3, Initiative 4\) est maudite$/u,
+    /^la Goule \(50 PV, garde 30, coup simple de 5, double frappe de 3 \+ 3, Initiative 4\) est maudite$/u,
     () => {
-      expect(ENEMIES.ghoul).toMatchObject({ maxHp: 50, maxGuard: 15 });
+      expect(ENEMIES.ghoul).toMatchObject({ maxHp: 50, maxGuard: 30 });
       expect(strikes('ghoul', false)).toEqual({ basic: 5, double: 3 });
       expect(ENEMY_INITIATIVE.ghoul).toBe(4);
       world.battle = startBattle({
@@ -173,9 +173,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   );
 
   then(
-    /^elle a 60 PV max, une garde max de 18, un coup simple de 6 et une double frappe de 4 \+ 4$/u,
+    /^elle a 60 PV max, une garde max de 36, un coup simple de 6 et une double frappe de 4 \+ 4$/u,
     () => {
-      expect(world.battle.enemies[0]).toMatchObject({ maxHp: 60, maxGuard: 18, cursed: true });
+      expect(world.battle.enemies[0]).toMatchObject({ maxHp: 60, maxGuard: 36, cursed: true });
       expect(strikes('ghoul', true)).toEqual({ basic: 6, double: 4 });
     },
   );

@@ -101,3 +101,47 @@ Fonctionnalité: Rééquilibrage du palier 3
     Étant donné une ascension en malédiction −2 au palier 3
     Quand la porte Élite mène au Premier Pèlerin, Élite maudite
     Alors il a 436 PV max et une garde max de 98
+
+  # Option A, retenue par l'orchestrateur le 07/11/2026 : une seule fiche par ennemi ; la garde de
+  # la Phalénide est doublée comme celle des autres ennemis ordinaires (G2).
+  @domain
+  Scénario: Les Phalénides invoquées gardent leur multiplicateur actuel
+    Étant donné la Reine des phalènes qui invoque des Phalénides
+    Quand une Phalénide entre en combat
+    Alors ses PV et ses dégâts sont ceux d'avant le rééquilibrage, et sa garde est de 15
+
+  # G2 — Gardes doublées et colonne garde
+  @domain
+  Plan du scénario: La garde des ennemis ordinaires est doublée, puis multipliée par le palier
+    Étant donné une ascension au palier <palier>
+    Quand le héros affronte <ennemi> dans un combat ordinaire
+    Alors sa garde max vaut <garde>
+
+    Exemples:
+      | palier | ennemi            | garde |
+      | 1      | Goule             | 30    |
+      | 1      | Squelette         | 20    |
+      | 2      | Pèlerin enronce   | 50    |
+      | 2      | Ronce de cendre   | 25    |
+      | 2      | Phalénide         | 15    |
+      | 3      | Veilleur d'airain | 72    |
+      | 3      | Gargouille        | 66    |
+      | 3      | Novice            | 24    |
+
+  @domain
+  Scénario: L'intention Garde d'un soutien suit la nouvelle garde max
+    Étant donné un ennemi de soutien dont l'intention est Garde
+    Quand il exécute son intention
+    Alors l'allié gagne 30 % de sa nouvelle garde max
+
+  @domain
+  Scénario: Un ennemi qui se relève seul retrouve sa nouvelle garde entière
+    Étant donné l'Épouvantail au palier 2 avec une garde max de 70
+    Quand il tombe et se relève seul
+    Alors il a 70 de garde
+
+  @domain
+  Scénario: Le changement de phase rend la nouvelle garde max
+    Étant donné le Sonneur des heures au palier 3 avec une garde max de 130
+    Quand son changement de phase a lieu
+    Alors sa garde revient à 130

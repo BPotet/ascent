@@ -83,20 +83,20 @@ describe('BattleScreen', () => {
       expect(screen.getByTestId('battle-phase')).toHaveTextContent('Phase du héros');
       expect(
         screen.getByRole('button', {
-          name: 'Goule, cible, 50 PV sur 50, garde 15 sur 15, intention : attaque',
+          name: 'Goule, cible, 50 PV sur 50, garde 30 sur 30, intention : attaque',
         }),
       ).toBeOnTheScreen();
       expect(
         screen.getByRole('button', {
-          name: 'Spectre, 35 PV sur 35, garde 10 sur 10, intention : attaque',
+          name: 'Spectre, 35 PV sur 35, garde 20 sur 20, intention : attaque',
         }),
       ).toBeOnTheScreen();
       expect(
-        screen.getByRole('button', { name: /^Nécromancien, 45 PV sur 45, garde 12 sur 12/u }),
+        screen.getByRole('button', { name: /^Nécromancien, 45 PV sur 45, garde 24 sur 24/u }),
       ).toBeOnTheScreen();
       // Jamais le type de coup, jamais les dégâts d'une attaque (C2.3).
       expect(screen.queryByText(/coup simple|coup retardé|dégâts/u)).toBeNull();
-      expect(screen.getByText('Garde 15/15')).toBeOnTheScreen();
+      expect(screen.getByText('Garde 30/30')).toBeOnTheScreen();
       expect(screen.getByText('50/50 PV')).toBeOnTheScreen();
       expect(screen.getByLabelText('La Sentinelle, PV 80 sur 80, Élan 1 sur 5')).toBeOnTheScreen();
       expect(screen.getByTestId('battle-zone-line')).toHaveTextContent('Cible : Goule');
@@ -108,16 +108,16 @@ describe('BattleScreen', () => {
       await renderBattle({
         seed: 1,
         createBattle: battleWith(
-          enemyWith(NECROMANCER, { guard: 8, intent: { category: 'guard', gain: 3 } }),
+          enemyWith(NECROMANCER, { guard: 8, intent: { category: 'guard', gain: 7 } }),
         ),
       });
 
       expect(
         screen.getByRole('button', {
-          name: 'Nécromancien, 45 PV sur 45, garde 8 sur 12, intention : garde, plus 3',
+          name: 'Nécromancien, 45 PV sur 45, garde 8 sur 24, intention : garde, plus 7',
         }),
       ).toBeOnTheScreen();
-      expect(within(screen.getByTestId('enemy-necromancer')).getByText('+3')).toBeOnTheScreen();
+      expect(within(screen.getByTestId('enemy-necromancer')).getByText('+7')).toBeOnTheScreen();
     });
 
     it('starts the timed strike on release: « Frapper » replaces the buttons', async () => {
@@ -137,7 +137,7 @@ describe('BattleScreen', () => {
 
       // Sans appui, la frappe part sans bonus ni pénalité (C6.1).
       await test.advanceTo(10_400 + 700 + 160 + 32);
-      expect(test.battle().enemies[GHOUL]).toMatchObject({ hp: 40, guard: 3 });
+      expect(test.battle().enemies[GHOUL]).toMatchObject({ hp: 40, guard: 18 });
       expect(screen.getByText('−10')).toBeOnTheScreen();
     });
 
@@ -234,7 +234,8 @@ describe('BattleScreen', () => {
     it('stuns the Specter: « Cassure », « Étourdi ×1,5 » and the barred circle', async () => {
       const test = await renderBattle({
         seed: 1,
-        createBattle: battleWith(targetOn(SPECTER)),
+        // Le Spectre à 10 de garde (20 depuis #244) : la frappe sans appui la casse.
+        createBattle: battleWith(targetOn(SPECTER), enemyWith(SPECTER, { guard: 10 })),
       });
 
       await test.attack();

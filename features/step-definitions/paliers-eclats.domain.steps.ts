@@ -293,13 +293,13 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   given(
-    /^une Ronce de cendre au palier 2 \(40 PV\), une Glaneuse de cendre \(garde 17\) et une Goule \(67 PV\)$/u,
+    /^une Ronce de cendre au palier 2 \(40 PV\), une Glaneuse de cendre \(garde 35\) et une Goule \(67 PV\)$/u,
     () => {
       world.battle = { ...start(['ashBramble', 'ashGleaner', 'ghoul'], 2), target: 0 };
       expect(world.battle.enemies.map((enemy) => [enemy.maxHp, enemy.maxGuard])).toEqual([
-        [40, 12],
-        [54, 17],
-        [67, 18],
+        [40, 25],
+        [54, 35],
+        [67, 37],
       ]);
     },
   );

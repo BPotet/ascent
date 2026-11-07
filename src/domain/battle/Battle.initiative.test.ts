@@ -148,7 +148,7 @@ describe('the Wanderer (section 2)', () => {
     expect(eventsOf(first.events, 'strikeStarted')).toEqual([
       expect.objectContaining({ impactAt: 2_090, hit: 2 }),
     ]);
-    expect(done.battle.enemies[0]).toMatchObject({ hp: 35, guard: 3 });
+    expect(done.battle.enemies[0]).toMatchObject({ hp: 35, guard: 18 });
     // +1 Élan une seule fois par « Attaquer ».
     expect(done.battle.hero.momentum).toBe(2);
   });

@@ -75,6 +75,7 @@ interface World {
   battle: Battle;
   resolved: Resolved[];
   shieldBashGuard: number;
+  raised?: Extract<BattleEvent, { type: 'guardRaised' }>;
 }
 
 let world: World;
@@ -123,21 +124,60 @@ const UNCHANGED: readonly (readonly [Tier, EnemyKind])[] = [
   ...TIERS[2].bosses.map((kind) => [2, kind] as const),
 ];
 
-/** Rejoue le combat, sans défense ni appui, jusqu'à la première frappe jugée du héros. */
-function afterStrike(initial: Battle, limit: number): Battle {
+/** Rejoue le combat, sans défense ni appui, le héros attaque à son tour, jusqu'à `done`. */
+function playUntil(
+  initial: Battle,
+  done: (battle: Battle, events: readonly BattleEvent[]) => boolean,
+): { readonly battle: Battle; readonly events: readonly BattleEvent[] } {
   let battle = initial;
-  for (let step = 0; step < limit; step += 1) {
-    let update: BattleUpdate;
-    if (battle.phase.kind === 'hero') {
-      update = act(battle, { kind: 'attack' }, battle.now + 100);
-    } else {
-      update = advance(battle, nextDeadline(battle)!.at + 40);
-    }
+  const events: BattleEvent[] = [];
+  for (let step = 0; step < 600; step += 1) {
+    if (done(battle, events)) return { battle, events };
+    const update =
+      battle.phase.kind === 'hero'
+        ? act(battle, { kind: 'attack' }, battle.now + 100)
+        : advance(battle, nextDeadline(battle)!.at + 40);
     battle = update.battle;
-    if (update.events.some((event) => event.type === 'strikeResolved')) return battle;
+    events.push(...update.events);
   }
-  throw new Error('The hero never struck');
+  throw new Error('The battle never reached the expected state');
 }
+
+const has =
+  (type: BattleEvent['type']) =>
+  (_: Battle, events: readonly BattleEvent[]): boolean =>
+    events.some((event) => event.type === type);
+
+/** La première frappe jugée du héros, jouée sur `battle`. */
+const afterStrike = (battle: Battle) => playUntil(battle, has('strikeResolved')).battle;
+
+/** Les ennemis ordinaires, par leur nom dans la story. */
+const ORDINARY: Readonly<Record<string, EnemyKind>> = {
+  Goule: 'ghoul',
+  Squelette: 'skeleton',
+  'Pèlerin enronce': 'thornPilgrim',
+  'Ronce de cendre': 'ashBramble',
+  Phalénide: 'mothkin',
+  "Veilleur d'airain": 'bronzeWarden',
+  Gargouille: 'gargoyle',
+  Novice: 'bellNovice',
+};
+
+/** Un combat ordinaire au palier `tier`, `kind` d'abord. */
+function ordinary(tier: Tier, enemies: readonly EnemyKind[], seed = 7): Battle {
+  return startBattle({
+    seed,
+    defenseHint: false,
+    at: 0,
+    enemies,
+    tierMultiplier: TIERS[tier].multiplier,
+  }).battle;
+}
+
+const wounded = (battle: Battle, change: Partial<Battle['enemies'][number]>): Battle => ({
+  ...battle,
+  enemies: battle.enemies.map((enemy, index) => (index === 0 ? { ...enemy, ...change } : enemy)),
+});
 
 const steps: StepDefinitions = ({ given, when, then, and }) => {
   // --- G1 : Brise-garde d'une frappe ---
@@ -265,7 +305,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     world = { ...fresh(encounter(1, 'ghoul')), tier: Number(tier) as Tier };
   });
 
-  when(/^le héros affronte (?!une Élite)(.+)$/u, (name: string) => {
+  when(/^le héros affronte (?!une Élite)(?!.* dans un combat ordinaire$)(.+)$/u, (name: string) => {
     world.kind = BY_NAME[name]!;
     world.battle = encounter(world.tier, world.kind);
   });
@@ -309,14 +349,15 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   when(/^ses PV passent à 325 ou moins$/u, () => {
     // Une frappe sans appui de la Sentinelle : 10 PV, de 335 à 325.
-    const wounded: Battle = {
-      ...world.battle,
-      enemies: world.battle.enemies.map((enemy) => ({ ...enemy, hp: 335, guard: 40 })),
-    };
-    world.battle = afterStrike(wounded, 200);
+    world.battle = afterStrike(wounded(world.battle, { hp: 335, guard: 40 }));
   });
 
+  // Le même texte dans deux scénarios : « Alors » après la frappe (R1), « Quand » avant (G2).
   then(/^son changement de phase a lieu$/u, () => {
+    if (world.battle.enemies[0]!.phase2 !== true) {
+      // Une frappe sans appui de la Sentinelle : 10 PV, de 335 à 325.
+      world.battle = afterStrike(wounded(world.battle, { hp: 335, guard: 40 }));
+    }
     expect(world.battle.enemies[0]).toMatchObject({ hp: 325, phase2: true });
   });
 
@@ -377,6 +418,88 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   then(/^il a 436 PV max et une garde max de 98$/u, () => {
     expect(world.battle.enemies[0]).toMatchObject({ maxHp: 436, maxGuard: 98, cursed: true });
+  });
+
+  // --- Les Phalénides invoquées (option A) ---
+
+  given(/^la Reine des phalènes qui invoque des Phalénides$/u, () => {
+    world = { ...fresh(wounded(encounter(2, 'mothQueen'), { hp: 205, guard: 60 })), tier: 2 };
+  });
+
+  when(/^une Phalénide entre en combat$/u, () => {
+    const called = playUntil(world.battle, has('summonCalled')).battle;
+    world.battle = playUntil(called, has('summonEntered')).battle;
+  });
+
+  then(/^ses PV et ses dégâts sont ceux d'avant le rééquilibrage, et sa garde est de 15$/u, () => {
+    const mothkin = world.battle.enemies.find((enemy) => enemy.kind === 'mothkin')!;
+    // Le multiplicateur de palier, comme avant #244 : 25 PV × 135 %, garde 12 × 125 %.
+    expect(world.battle.summonMultiplier).toEqual(TIERS[2].multiplier);
+    expect(mothkin).toMatchObject({ maxHp: 33, maxGuard: 15, summoned: true });
+    expect(strikesText('mothkin', world.battle.summonMultiplier!.hpPercent)).toBe(
+      strikesText('mothkin', 135),
+    );
+  });
+
+  // --- G2 : gardes doublées ---
+
+  when(/^le héros affronte (.+) dans un combat ordinaire$/u, (name: string) => {
+    world.kind = ORDINARY[name]!;
+    world.battle = ordinary(world.tier, [world.kind]);
+  });
+
+  then(/^sa garde max vaut (\d+)$/u, (guard: string) => {
+    expect(world.battle.enemies[0]).toMatchObject({
+      kind: world.kind,
+      maxGuard: Number(guard),
+      guard: Number(guard),
+    });
+  });
+
+  given(/^un ennemi de soutien dont l'intention est Garde$/u, () => {
+    // La Glaneuse de cendre au palier 2 : garde 28 × 125 % = 35.
+    world = { ...fresh(ordinary(2, ['ashGleaner', 'thornPilgrim'])), tier: 2, kind: 'ashGleaner' };
+    world.battle = playUntil(
+      wounded(world.battle, { guard: 0 }),
+      (battle) => battle.enemies[0]!.intent?.category === 'guard',
+    ).battle;
+  });
+
+  when(/^il exécute son intention$/u, () => {
+    const played = playUntil(world.battle, has('guardRaised'));
+    world.battle = played.battle;
+    world.raised = played.events.find(
+      (event): event is Extract<BattleEvent, { type: 'guardRaised' }> =>
+        event.type === 'guardRaised',
+    )!;
+  });
+
+  then(/^l'allié gagne 30 % de sa nouvelle garde max$/u, () => {
+    // 30 % de 35, entier inférieur (5 avant #244 : 30 % de 17).
+    expect(world.battle.enemies[0]!.maxGuard).toBe(35);
+    expect(world.raised).toMatchObject({ enemy: 0, gain: 10 });
+  });
+
+  given(/^l'Épouvantail au palier 2 avec une garde max de 70$/u, () => {
+    world = { ...fresh(encounter(2, 'scarecrow')), tier: 2, kind: 'scarecrow' };
+    expect(world.battle.enemies[0]!.maxGuard).toBe(70);
+  });
+
+  when(/^il tombe et se relève seul$/u, () => {
+    world.battle = playUntil(wounded(world.battle, { hp: 1 }), has('enemySelfRevived')).battle;
+  });
+
+  then(/^il a 70 de garde$/u, () => {
+    expect(world.battle.enemies[0]).toMatchObject({ guard: 70, selfRevives: 1 });
+  });
+
+  given(/^le Sonneur des heures au palier 3 avec une garde max de 130$/u, () => {
+    world = { ...fresh(encounter(3, 'hourRinger')), tier: 3, kind: 'hourRinger' };
+    expect(world.battle.enemies[0]!.maxGuard).toBe(130);
+  });
+
+  then(/^sa garde revient à 130$/u, () => {
+    expect(world.battle.enemies[0]!.guard).toBe(130);
   });
 };
 

@@ -413,11 +413,11 @@ describe('AscentSession', () => {
     // La reprise repart du début de la préparation : la riposte part 1 260 ms plus tard.
     clock.advanceTo(startedAt + 1_259);
     await flush();
-    expect(saved(store)?.battle?.enemies[0]).toMatchObject({ hp: 50, guard: 15 });
+    expect(saved(store)?.battle?.enemies[0]).toMatchObject({ hp: 50, guard: 30 });
 
     clock.advanceTo(startedAt + 1_260);
     await flush();
-    expect(saved(store)?.battle?.enemies[0]).toMatchObject({ hp: 47, guard: 12 });
+    expect(saved(store)?.battle?.enemies[0]).toMatchObject({ hp: 47, guard: 27 });
   });
 
   it('earns the Gold and offers the exits when the floor battle is won', async () => {

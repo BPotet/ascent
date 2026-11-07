@@ -19,8 +19,8 @@ Fonctionnalité: Ennemis maudits
   @domain
   Scénario: Ce que gagne un ennemi maudit
     Étant donné une ascension au palier 1 lancée avec une jauge de −1
-    Quand la Goule (50 PV, garde 15, coup simple de 5, double frappe de 3 + 3, Initiative 4) est maudite
-    Alors elle a 60 PV max, une garde max de 18, un coup simple de 6 et une double frappe de 4 + 4
+    Quand la Goule (50 PV, garde 30, coup simple de 5, double frappe de 3 + 3, Initiative 4) est maudite
+    Alors elle a 60 PV max, une garde max de 36, un coup simple de 6 et une double frappe de 4 + 4
     Et son Initiative reste 4
 
   @domain

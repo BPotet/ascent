@@ -46,7 +46,7 @@ Fonctionnalité: L'Invocation de la Reine des phalènes
   @domain
   Scénario: Les Phalénides invoquées ont les valeurs du palier
     Étant donné deux Phalénides invoquées au palier 2
-    Alors chacune a 33 PV et 7 de garde
+    Alors chacune a 33 PV et 15 de garde
     Et son Vol brisé fait 5, ses Mandibules 4 + 4
 
   @session
@@ -119,5 +119,5 @@ Fonctionnalité: L'Invocation de la Reine des phalènes
     Étant donné que le lecteur d'écran est actif
     Quand la Reine invoque
     Alors il entend « La Reine des phalènes change de phase. Elle appelle les Phalénides : deux Phalénides entrent à la prochaine manche. »
-    Et chaque Phalénide entrée se lit comme un ennemi : « Phalénide, invoquée, 33 PV sur 33, garde 7 sur 7, intention : attaque »
+    Et chaque Phalénide entrée se lit comme un ennemi : « Phalénide, invoquée, 33 PV sur 33, garde 15 sur 15, intention : attaque »
     Et à la victoire, il entend « La Reine des phalènes tombe. Les Phalénides tombent avec elle. »

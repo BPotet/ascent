@@ -440,8 +440,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   and(/^(?:que )?la manche finit 4 s plus tard$/u, async () => {
     const resumedAt = story.battleClock.now();
-    // Le héros joue 2,5 s après la reprise ; l'ennemi, ensuite, ferme la manche.
-    story.battleClock.advanceBy(2_500);
+    // Le héros joue 0,5 s après la reprise ; le Nécromancien, dont la garde (24 depuis #244) tient
+    // à la frappe, attaque ensuite et ferme la manche.
+    story.battleClock.advanceBy(500);
     await fight(story, battleSession, { hero: attackOnly, until: happened('roundStarted', 2) });
     after =
       events.find((event) => event.type === 'roundStarted' && event.round === 2)!.at - resumedAt;

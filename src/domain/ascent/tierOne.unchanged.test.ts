@@ -3,7 +3,7 @@
 // compris), les PV et la garde des ennemis, et le changement de phase à 150 PV des boss du
 // palier 1 sont ceux de `develop` à `582cc236`, figés avant les paliers 2 et 3. Changements
 // voulus depuis, régénérés seuls : les durées de préparation ×0,9 à ×1,1 (#211) ; #244 : les gardes
-// des Élites et des boss (colonne garde du multiplicateur d'Élite et de boss).
+// (G2, colonne garde du multiplicateur d'Élite et de boss).
 import { TIER_ONE_PHASE_SHIFTS, TIER_ONE_WALKS } from './testing/tierOneDraws';
 import { WALKED_SEEDS, phaseShiftText, walkTierOne } from './testing/tierOneWalk';
 

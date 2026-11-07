@@ -62,11 +62,11 @@ Fonctionnalité: Trois paliers jusqu'au sommet, et les premiers Éclats
 
     Exemples:
       | palier | ennemi            | pv  | garde | coup                 | dégâts |
-      | 2      | Goule             | 67  | 18    | Griffes de fossoyeur | 6      |
-      | 2      | Goule             | 67  | 18    | Pelletées            | 4 + 4  |
-      | 2      | Pèlerin enronce   | 81  | 25    | Prière d'épines      | 9      |
-      | 3      | Spectre           | 61  | 15    | Étreinte glacée      | 15     |
-      | 3      | Veilleur d'airain | 113 | 36    | Glas                 | 15     |
+      | 2      | Goule             | 67  | 37    | Griffes de fossoyeur | 6      |
+      | 2      | Goule             | 67  | 37    | Pelletées            | 4 + 4  |
+      | 2      | Pèlerin enronce   | 81  | 50    | Prière d'épines      | 9      |
+      | 3      | Spectre           | 61  | 30    | Étreinte glacée      | 15     |
+      | 3      | Veilleur d'airain | 113 | 72    | Glas                 | 15     |
 
   @domain
   Scénario: Le Saignement n'est pas multiplié
@@ -77,10 +77,10 @@ Fonctionnalité: Trois paliers jusqu'au sommet, et les premiers Éclats
 
   @domain
   Scénario: Ce qui découle des PV et de la garde suit les valeurs du palier
-    Étant donné une Ronce de cendre au palier 2 (40 PV), une Glaneuse de cendre (garde 17) et une Goule (67 PV)
+    Étant donné une Ronce de cendre au palier 2 (40 PV), une Glaneuse de cendre (garde 35) et une Goule (67 PV)
     Quand la Ronce tombe pour la première fois
     Alors elle se relève seule avec 12 PV, et peut se relever une seconde fois
-    Et quand la Glaneuse garde, son intention montre « +5 »
+    Et quand la Glaneuse garde, son intention montre « +10 »
     Et quand la Glaneuse relève la Goule tombée, la Goule revient avec 33 PV
 
   @domain

@@ -57,6 +57,12 @@ function playUntil(
   throw new Error('The battle never reached the expected state');
 }
 
+/** La Goule à `guard` de garde (15, sa garde d'avant #244) : une frappe peut la casser. */
+const atGuard = (battle: Battle, guard: number): Battle => ({
+  ...battle,
+  enemies: battle.enemies.map((enemy) => ({ ...enemy, guard })),
+});
+
 const has = (type: BattleEvent['type']) => (events: readonly BattleEvent[]) =>
   events.some((event) => event.type === type);
 
@@ -69,8 +75,11 @@ function firstOf<Type extends BattleEvent['type']>(
 
 describe('Battle with the hero modifiers (P18)', () => {
   it('Braise brisante: the Sentinel breaks the guard of a Ghoul (15) with her first strike', () => {
-    const without = playUntil(start(), has('strikeResolved'));
-    const ember = playUntil(start({ guardDamagePercents: [130] }), has('strikeResolved'));
+    const without = playUntil(atGuard(start(), 15), has('strikeResolved'));
+    const ember = playUntil(
+      atGuard(start({ guardDamagePercents: [130] }), 15),
+      has('strikeResolved'),
+    );
 
     expect(firstOf(without.events, 'strikeResolved').guardDamage).toBe(12);
     expect(has('guardBroken')(without.events)).toBe(false);
@@ -80,16 +89,19 @@ describe('Battle with the hero modifiers (P18)', () => {
 
   it('Cœur de braise: each broken guard gives +1 Momentum and heals 5 HP, within the maximum', () => {
     const breaker = { guardDamagePercents: [130] };
-    const without = playUntil(start(breaker), has('strikeResolved'));
+    const without = playUntil(atGuard(start(breaker), 15), has('strikeResolved'));
     const heart = playUntil(
-      start({ ...breaker, onGuardBreak: { momentum: 1, heal: 5 } }),
+      atGuard(start({ ...breaker, onGuardBreak: { momentum: 1, heal: 5 } }), 15),
       has('strikeResolved'),
     );
 
     expect(heart.battle.hero.momentum).toBe(without.battle.hero.momentum + 1);
     expect(heart.battle.hero.hp).toBe(without.battle.hero.hp + 5);
     const full = playUntil(
-      { ...start({ ...breaker, onGuardBreak: { momentum: 1, heal: 5 } }), hero: fullHero() },
+      {
+        ...atGuard(start({ ...breaker, onGuardBreak: { momentum: 1, heal: 5 } }), 15),
+        hero: fullHero(),
+      },
       has('strikeResolved'),
     );
     expect(full.battle.hero.hp).toBe(80);
@@ -161,7 +173,8 @@ describe('Battle with the hero modifiers (P18)', () => {
       has('guardRestored'),
     );
 
-    expect(battle.enemies[0]!.guard).toBe(7);
+    // La moitié de la garde max de la Goule, 30 (#244).
+    expect(battle.enemies[0]!.guard).toBe(15);
   });
 
   it('resumes a battle saved by #93 alone, without the boon fields, up to a broken guard', () => {
@@ -178,7 +191,7 @@ describe('Battle with the hero modifiers (P18)', () => {
 
     expect(has('guardBroken')(events)).toBe(true);
     expect(battle.hero.momentum).toBeGreaterThan(0);
-    expect(battle.enemies[0]!.guard).toBe(15);
+    expect(battle.enemies[0]!.guard).toBe(30);
   });
 
   it('keeps the modifiers in the battle, to resume it as it was', () => {
