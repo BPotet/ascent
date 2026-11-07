@@ -201,20 +201,25 @@ export interface EnemyProfile {
 /** Le changement de phase d'un boss : à 50 % de ses PV max ou moins (P6, #38). */
 const BOSS_PHASE_SHIFT_PERCENT = 50;
 
-/** Le premier jeu d'ennemis du palier 1, PV ×2,5 (décision du propriétaire du 23/10/2026). */
+/**
+ * Le premier jeu d'ennemis du palier 1, PV ×2,5 (décision du propriétaire du 23/10/2026). La garde
+ * des 16 ennemis ordinaires est doublée dans le Codex (#244, G2), recopiée telle quelle.
+ */
 export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
+  // `codex/ghoul` v3 (31a68786…).
   ghoul: {
     maxHp: 50,
-    maxGuard: 15,
+    maxGuard: 30,
     moves: [
       { attack: 'basic', damage: 5 },
       { attack: 'double', damage: 3 },
     ],
     supports: false,
   },
+  // `codex/specter` v3 (76f98cad…).
   specter: {
     maxHp: 35,
-    maxGuard: 10,
+    maxGuard: 20,
     moves: [
       { attack: 'delayed', damage: 6 },
       { attack: 'feint', damage: 6 },
@@ -223,9 +228,10 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     ],
     supports: false,
   },
+  // `codex/necromancer` v5 (967b8d4c…).
   necromancer: {
     maxHp: 45,
-    maxGuard: 12,
+    maxGuard: 24,
     moves: [{ attack: 'basic', damage: 4 }],
     supports: true,
   },
@@ -283,18 +289,20 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     supports: false,
   },
   // Le Squelette (#106) : valeurs du Codex (`nouvelEnnemi`, Actif) recopiées le 28/10/2026.
+  // `codex/nouvelEnnemi` v29 (6870e5af…).
   skeleton: {
     maxHp: 35,
-    maxGuard: 10,
+    maxGuard: 20,
     // Tir à l'arc.
     moves: [{ attack: 'basic', damage: 5 }],
     supports: false,
     selfRevive: { times: 1, hpPercent: 50 },
   },
   // Le Villageois fou, valeurs du Codex (prototype #107) : la Fourche, puis le Coup de manche.
+  // `codex/nouvelEnnemi2` v34 (dec1e963…).
   madVillager: {
     maxHp: 35,
-    maxGuard: 12,
+    maxGuard: 24,
     moves: [
       { attack: 'basic', damage: 5, bleed: { damage: 2, rounds: 3 } },
       { attack: 'basic', damage: 5 },
@@ -303,21 +311,23 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
   },
   // Les paliers 2 et 3 (#38) : valeurs du Codex de l'Atelier recopiées le 01/11/2026, à l'échelle
   // du palier 1 pour les ennemis ordinaires (le palier les multiplie), telles quelles pour les
-  // Élites et les boss. Le Codex dit la sha256 de chaque fiche.
-  // `codex/thornPilgrim` (214fc3fb…): Prière d'épines, puis Bourdon.
+  // Élites et les boss (multipliées au combat par le multiplicateur d'Élite et de boss, #244). Le
+  // Codex dit la sha256 de chaque fiche (JSON compact, clés triées), relevée avec sa version le
+  // 07/11/2026 (#244).
+  // `codex/thornPilgrim` v3 (6540aa3a…): Prière d'épines, puis Bourdon.
   thornPilgrim: {
     maxHp: 60,
-    maxGuard: 20,
+    maxGuard: 40,
     moves: [
       { attack: 'delayed', damage: 7, bleed: { damage: 2, rounds: 3 } },
       { attack: 'basic', damage: 6 },
     ],
     supports: false,
   },
-  // `codex/ashBramble` (ed09a2e1…): Fouet de ronce, puis Épine ; se relève seul 2 fois, à 30 %.
+  // `codex/ashBramble` v3 (d820769f…): Fouet de ronce, puis Épine ; se relève seul 2 fois, à 30 %.
   ashBramble: {
     maxHp: 30,
-    maxGuard: 10,
+    maxGuard: 20,
     moves: [
       { attack: 'double', damage: 3 },
       { attack: 'basic', damage: 4 },
@@ -325,17 +335,17 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     supports: false,
     selfRevive: { times: 2, hpPercent: 30 },
   },
-  // `codex/ashGleaner` (d37ed0c5…): Râteau ; soutien, Garde 33 % des fois, comme le Nécromancien.
+  // `codex/ashGleaner` v3 (9636b78c…): Râteau ; soutien, Garde 33 % des fois, comme le Nécromancien.
   ashGleaner: {
     maxHp: 40,
-    maxGuard: 14,
+    maxGuard: 28,
     moves: [{ attack: 'basic', damage: 4 }],
     supports: true,
   },
-  // `codex/bronzeWarden` (60712ff9…): Poing d'airain (poids 2), puis Glas.
+  // `codex/bronzeWarden` v3 (21998f92…): Poing d'airain (poids 2), puis Glas.
   bronzeWarden: {
     maxHp: 65,
-    maxGuard: 24,
+    maxGuard: 48,
     moves: [
       { attack: 'basic', damage: 6, weight: 2 },
       { attack: 'delayedPerilous', damage: 9 },
@@ -355,7 +365,7 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     supports: false,
     selfRevive: { times: 1, hpPercent: 40 },
   },
-  // `codex/firstPilgrim` (d3c0c868…), Élite : Pas des Jumeaux, Visage du Prieur, Garde du Chevalier, Dernier pas.
+  // `codex/firstPilgrim` v2 (88c3709b…), Élite : Pas des Jumeaux, Visage du Prieur, Garde du Chevalier, Dernier pas.
   firstPilgrim: {
     maxHp: 270,
     maxGuard: 55,
@@ -367,7 +377,7 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     ],
     supports: false,
   },
-  // `codex/stoneSaint` (d1a53b44…), Élite : Bénédiction de pierre, Pénitence, Chute du clocher.
+  // `codex/stoneSaint` v2 (10dc891d…), Élite : Bénédiction de pierre, Pénitence, Chute du clocher.
   stoneSaint: {
     maxHp: 250,
     maxGuard: 80,
@@ -378,7 +388,7 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     ],
     supports: false,
   },
-  // `codex/ashGardener` (0fc5cb06…), boss : Sécateur, Taille ; en phase 2, + Ronces, Mise en terre.
+  // `codex/ashGardener` v2 (e1bc051e…), boss : Sécateur, Taille ; en phase 2, + Ronces, Mise en terre.
   ashGardener: {
     maxHp: 420,
     maxGuard: 78,
@@ -394,7 +404,7 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     phase2Initiative: 7,
     supports: false,
   },
-  // `codex/hourRinger` (3d263a47…), boss : Carillon, Heure suspendue ; + Fausse heure, Glas de minuit.
+  // `codex/hourRinger` v2 (652b2395…), boss : Carillon, Heure suspendue ; + Fausse heure, Glas de minuit.
   hourRinger: {
     maxHp: 500,
     maxGuard: 90,
@@ -410,7 +420,7 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     phase2Initiative: 8,
     supports: false,
   },
-  // `codex/wishGranter` (d0b4851f…), boss : Main tendue, Promesse ; + Deux vœux, Vœu exaucé.
+  // `codex/wishGranter` v2 (b814cf17…), boss : Main tendue, Promesse ; + Deux vœux, Vœu exaucé.
   wishGranter: {
     maxHp: 500,
     maxGuard: 84,
@@ -430,30 +440,30 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
   // palier 1 pour les ennemis ordinaires, telles quelles pour l'Élite. « Une chance sur deux » et
   // « un tiers chacun » : des coups à poids égaux. Le nom de code de `codex/smolderingBrand` est
   // `burningHusk`.
-  // `codex/smolderingBrand` (2256be2b…): Main de braise (poids 2), puis Embrasement.
+  // `codex/smolderingBrand` v4 (555047c9…): Main de braise (poids 2), puis Embrasement.
   burningHusk: {
     maxHp: 20,
-    maxGuard: 8,
+    maxGuard: 16,
     moves: [
       { attack: 'basic', damage: 4, weight: 2, burn: 1 },
       { attack: 'perilous', damage: 8 },
     ],
     supports: false,
   },
-  // `codex/gargoyle` (65e5fd1d…): Piqué de pierre, puis Gueule de feu.
+  // `codex/gargoyle` v4 (6f6d8cbb…): Piqué de pierre, puis Gueule de feu.
   gargoyle: {
     maxHp: 30,
-    maxGuard: 22,
+    maxGuard: 44,
     moves: [
       { attack: 'feint', damage: 5 },
       { attack: 'delayed', damage: 3, burn: 1 },
     ],
     supports: false,
   },
-  // `codex/bellFounder` (3b84a4e7…): Marteau de fonte, puis Coulée.
+  // `codex/bellFounder` v4 (0dd26622…): Marteau de fonte, puis Coulée.
   bellFounder: {
     maxHp: 42,
-    maxGuard: 14,
+    maxGuard: 28,
     moves: [
       { attack: 'double', damage: 3 },
       { attack: 'delayed', damage: 4, burn: 1 },
@@ -475,7 +485,7 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
   // L'Invocation (#172) : valeurs du Codex de l'Atelier recopiées le 03/11/2026, à l'échelle du
   // palier 1 pour la Phalénide (le palier multiplie aussi les Phalénides invoquées), telles quelles
   // pour la Reine. « Un tiers chacun », « une chance sur deux » : des coups à poids égaux.
-  // `codex/mothQueen` (af0af679…), boss : Voile de poussière, Ailes de cendre ; en phase 2, +
+  // `codex/mothQueen` v3 (a7095d17…), boss : Voile de poussière, Ailes de cendre ; en phase 2, +
   // Flamme de la lampe et l'Invocation de deux Phalénides.
   mothQueen: {
     maxHp: 400,
@@ -490,10 +500,10 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     phase2Summon: { enemy: 'mothkin', count: 2 },
     supports: false,
   },
-  // `codex/ashMoth` (593d7c38…), nom de code `mothkin` : Vol brisé, puis Mandibules.
+  // `codex/ashMoth` v4 (8ce25db7…), nom de code `mothkin` : Vol brisé, puis Mandibules.
   mothkin: {
     maxHp: 25,
-    maxGuard: 6,
+    maxGuard: 12,
     moves: [
       { attack: 'feint', damage: 4 },
       { attack: 'double', damage: 3 },
@@ -503,27 +513,27 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
   // Le Beffroi (#214) : valeurs du Codex de l'Atelier (version 2, 04/11/2026), recopiées le
   // 05/11/2026, à l'échelle du palier 1. La Sonneuse de matines a le rôle soutien (`role:
   // "support"`) : Relever et Garde.
-  // `codex/bellNovice` (0a96b76b…): Bout de corde (poids 2), puis Volée manquée.
+  // `codex/bellNovice` v3 (93b9be88…): Bout de corde (poids 2), puis Volée manquée.
   bellNovice: {
     maxHp: 26,
-    maxGuard: 8,
+    maxGuard: 16,
     moves: [
       { attack: 'basic', damage: 4, weight: 2 },
       { attack: 'delayed', damage: 6 },
     ],
     supports: false,
   },
-  // `codex/matinsRinger` (27cccb02…): Angélus ; soutien : Relever et Garde.
+  // `codex/matinsRinger` v3 (2db12352…): Angélus ; soutien : Relever et Garde.
   matinsRinger: {
     maxHp: 42,
-    maxGuard: 16,
+    maxGuard: 32,
     moves: [{ attack: 'delayed', damage: 4 }],
     supports: true,
   },
-  // `codex/clockJack` (77c063ab…): Demi-heure (poids 2), puis Heure pleine.
+  // `codex/clockJack` v3 (0304b3c6…): Demi-heure (poids 2), puis Heure pleine.
   clockJack: {
     maxHp: 48,
-    maxGuard: 20,
+    maxGuard: 40,
     moves: [
       { attack: 'double', damage: 3, weight: 2 },
       { attack: 'perilous', damage: 9 },

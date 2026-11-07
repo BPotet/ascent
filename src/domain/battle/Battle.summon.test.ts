@@ -198,7 +198,7 @@ describe('the Moth queen calls two Mothkin at her phase shift (#172)', () => {
     expect(battle.enemies[2]!.intent).not.toBeNull();
   });
 
-  it('marks them summoned, with the values of tier 2: 33 HP and 7 guard', () => {
+  it('marks them summoned, with the values of tier 2: 33 HP and 15 guard', () => {
     const { battle } = entered();
 
     for (const mothkin of battle.enemies.slice(1)) {
@@ -207,13 +207,13 @@ describe('the Moth queen calls two Mothkin at her phase shift (#172)', () => {
         summoned: true,
         hp: 33,
         maxHp: 33,
-        guard: 7,
-        maxGuard: 7,
+        guard: 15,
+        maxGuard: 15,
       });
     }
   });
 
-  it('keeps the Moth queen at 400 HP and 70 guard, never multiplied', () => {
+  it('keeps the Moth queen at 400 HP and 70 guard without a multiplier of the battle', () => {
     const battle = start(['mothQueen']);
 
     expect(battle.enemies[0]).toMatchObject({ hp: 400, maxHp: 400, guard: 70, maxGuard: 70 });
@@ -233,12 +233,12 @@ describe('the Moth queen calls two Mothkin at her phase shift (#172)', () => {
     expect([...damages].sort()).toEqual([4, 5]);
   });
 
-  it('gives them 43 HP, 9 guard, a Broken flight of 7 and Mandibles of 5 + 5 at tier 3', () => {
+  it('gives them 43 HP, 18 guard, a Broken flight of 7 and Mandibles of 5 + 5 at tier 3', () => {
     const damages = new Set<number>();
     for (let seed = 1; seed <= 12; seed += 1) {
       const battle = start(['mothQueen'], { seed, summonMultiplier: TIER_3 });
       const { battle: after } = entered(queenAt(205, battle));
-      expect(after.enemies[1]).toMatchObject({ hp: 43, maxHp: 43, guard: 9, maxGuard: 9 });
+      expect(after.enemies[1]).toMatchObject({ hp: 43, maxHp: 43, guard: 18, maxGuard: 18 });
       for (const { intent } of after.enemies.slice(1)) {
         if (intent?.category === 'attack') damages.add(intent.damage);
       }
@@ -250,7 +250,7 @@ describe('the Moth queen calls two Mothkin at her phase shift (#172)', () => {
   it('brings them in at the values of the Codex without a summon multiplier', () => {
     const { battle } = entered(queenAt(205, start(['mothQueen'], { summonMultiplier: null })));
 
-    expect(battle.enemies[1]).toMatchObject({ hp: 25, guard: 6 });
+    expect(battle.enemies[1]).toMatchObject({ hp: 25, guard: 12 });
     expect(battle.summonMultiplier).toBeUndefined();
   });
 });

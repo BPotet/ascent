@@ -1,5 +1,5 @@
 import { nextRandom, seedRandom } from '../battle/SeededRandom';
-import { ELITES, drawElite } from './elites';
+import { ELITES, drawElite, eliteCandidates } from './elites';
 
 const SEEDS = Array.from({ length: 400 }, (_, index) => index * 7_919 + 1);
 
@@ -27,5 +27,22 @@ describe('drawElite (K8)', () => {
     const twins = SEEDS.filter((seed) => drawn(seed).value === 'twins').length;
     expect(twins).toBeGreaterThan(160);
     expect(twins).toBeLessThan(240);
+  });
+});
+
+describe('eliteCandidates (#244, R5)', () => {
+  it('leaves out the last Elite met at the tier', () => {
+    expect(eliteCandidates(['firstPilgrim', 'stoneSaint'], 'stoneSaint')).toEqual(['firstPilgrim']);
+  });
+
+  it('keeps every Elite before the first one of the tier', () => {
+    expect(eliteCandidates(['fallenKnight', 'twins'], undefined)).toEqual([
+      'fallenKnight',
+      'twins',
+    ]);
+  });
+
+  it('falls back on the whole list when the last Elite is the only one', () => {
+    expect(eliteCandidates(['twins'], 'twins')).toEqual(['twins']);
   });
 });

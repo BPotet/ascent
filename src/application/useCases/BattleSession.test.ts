@@ -155,7 +155,17 @@ describe('BattleSession', () => {
     }
 
     it('dates the press at the touch, and plays the perfect strike', async () => {
-      const context = setUp({ createBattle: startTestBattle });
+      // La Goule à 15 de garde (sa garde d'avant #244, 30 depuis) : une frappe parfaite la casse.
+      const context = setUp({
+        createBattle: (options) => {
+          const started = startTestBattle(options);
+          const [ghoul, ...others] = started.battle.enemies;
+          return {
+            ...started,
+            battle: { ...started.battle, enemies: [{ ...ghoul!, guard: 15 }, ...others] },
+          };
+        },
+      });
       const impact = await striking(context);
 
       context.clock.advanceTo(impact + 30);

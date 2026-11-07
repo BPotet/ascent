@@ -183,9 +183,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     world = { ...world, entered: playToEntry(queenAt(summonBattle(), 205)).entered };
   });
 
-  then(/^chacune a 33 PV et 7 de garde$/u, () => {
+  then(/^chacune a 33 PV et 15 de garde$/u, () => {
     for (const mothkin of world.entered.battle.enemies.slice(1)) {
-      expect(mothkin).toMatchObject({ kind: 'mothkin', summoned: true, maxHp: 33, maxGuard: 7 });
+      expect(mothkin).toMatchObject({ kind: 'mothkin', summoned: true, maxHp: 33, maxGuard: 15 });
     }
   });
 

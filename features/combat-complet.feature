@@ -2,7 +2,7 @@
 Fonctionnalité: Combat complet
   Story #32, partie A (règles et interface) : la Sentinelle choisit sa cible, brise la garde des
   ennemis pour les étourdir, frappe en rythme, dépense son Élan dans le Rempart, et lit les
-  intentions des ennemis par leur catégorie.
+  intentions des ennemis par leur catégorie. Gardes doublées depuis #244 (G2).
 
   # Les scénarios sans tag passent par la session de combat (cas d'usage), avec l'horloge de
   # combat manuelle et une graine du combat fixée : leurs instants sont exacts à la milliseconde.
@@ -11,7 +11,7 @@ Fonctionnalité: Combat complet
   # l'écran lui passe.
 
   Contexte:
-    Étant donné un combat de la Sentinelle (Attaque 10, Brise-garde 12) contre un groupe de la Goule (50 PV, garde 15), du Spectre (35 PV, garde 10) et du Nécromancien (45 PV, garde 12)
+    Étant donné un combat de la Sentinelle (Attaque 10, Brise-garde 12) contre un groupe de la Goule (50 PV, garde 30), du Spectre (35 PV, garde 20) et du Nécromancien (45 PV, garde 24)
     Et l'ordre d'action du #31 : la Sentinelle, puis les ennemis debout de gauche à droite
 
   # Frappe en rythme et frappe parfaite (C6)
@@ -74,7 +74,7 @@ Fonctionnalité: Combat complet
     Alors la Goule n'affiche aucune intention
     Quand la Sentinelle frappe la Goule sans appui
     Alors la Goule perd 15 PV (10 × 1,5) et aucun point de garde
-    Et à la fin de l'action de la Sentinelle, la Goule se relève en 400 ms et sa garde revient à 15
+    Et à la fin de l'action de la Sentinelle, la Goule se relève en 400 ms et sa garde revient à 30
     Et son intention de la manche 4 s'affiche
     Et elle agit normalement dans la phase ennemie de la manche 4
 
@@ -95,7 +95,7 @@ Fonctionnalité: Combat complet
     Alors l'intention de la Goule est un cercle barré
     Quand la Sentinelle utilise Rempart
     Et vient l'action de la Goule dans la phase ennemie de la manche 4
-    Alors la Goule se relève en 400 ms, sans avancée ni attaque, et sa garde revient à 15
+    Alors la Goule se relève en 400 ms, sans avancée ni attaque, et sa garde revient à 30
     Et sa garde n'est jamais restaurée avant ce moment
     Et à la manche 5, la Goule agit normalement
 
@@ -130,9 +130,9 @@ Fonctionnalité: Combat complet
   @ui
   Scénario: La garde remonte par l'intention Garde ou au retour en garde (C2, C5)
     Étant donné la garde du Nécromancien est à 4
-    Et son intention est Garde, affichée par un bouclier et « +3 », sans mot
+    Et son intention est Garde, affichée par un bouclier et « +7 », sans mot
     Quand il exécute l'intention Garde
-    Alors sa garde remonte de 3 points (30 % de 12)
+    Alors sa garde remonte de 7 points (30 % de 24)
     Et sans cette intention, sa garde ne remonte jamais d'elle-même
     Et sa garde remonte aussi à son maximum à son retour en garde, après un étourdissement
 
@@ -140,9 +140,9 @@ Fonctionnalité: Combat complet
 
   @ui
   Scénario: L'intention Garde affiche son gain (C2.2)
-    Étant donné le Nécromancien (garde max 12) a tiré l'intention Garde
-    Alors son intention affiche un bouclier et « +3 » (30 % de 12, entier inférieur), sans mot
-    Et le lecteur d'écran lit « Nécromancien, intention : garde, plus 3 »
+    Étant donné le Nécromancien (garde max 24) a tiré l'intention Garde
+    Alors son intention affiche un bouclier et « +7 » (30 % de 24, entier inférieur), sans mot
+    Et le lecteur d'écran lit « Nécromancien, intention : garde, plus 7 »
 
   @ui
   Scénario: Une intention d'attaque n'affiche jamais de nombre (C2.2, C2.3)

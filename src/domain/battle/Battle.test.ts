@@ -217,9 +217,9 @@ describe('startTestBattle', () => {
         stun,
       })),
     ).toEqual([
-      { kind: 'ghoul', hp: 50, maxHp: 50, guard: 15, maxGuard: 15, stun: null },
-      { kind: 'specter', hp: 35, maxHp: 35, guard: 10, maxGuard: 10, stun: null },
-      { kind: 'necromancer', hp: 45, maxHp: 45, guard: 12, maxGuard: 12, stun: null },
+      { kind: 'ghoul', hp: 50, maxHp: 50, guard: 30, maxGuard: 30, stun: null },
+      { kind: 'specter', hp: 35, maxHp: 35, guard: 20, maxGuard: 20, stun: null },
+      { kind: 'necromancer', hp: 45, maxHp: 45, guard: 24, maxGuard: 24, stun: null },
     ]);
     expect(play.battle.round).toBe(1);
     expect(play.battle.phase).toEqual({ kind: 'hero', since: 250, announced: false });

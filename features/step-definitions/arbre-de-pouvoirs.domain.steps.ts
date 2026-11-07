@@ -275,7 +275,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       const once = strikeBlow({
         attackPower: 6,
         guardDamage: 5,
-        multiplier: 100,
+        judgement: null,
         stunned: false,
         guardPercents: [150],
       });

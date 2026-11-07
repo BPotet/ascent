@@ -214,7 +214,9 @@ describe('timed strike (C6)', () => {
   });
 
   it('a perfect strike that breaks the guard stops the time only once', () => {
+    // La Goule à 15 de garde : la frappe parfaite en retire 18 (#244).
     const play = BattlePlay.start()
+      .with(changeEnemy(GHOUL, { guard: 15 }))
       .attack(ATTACK_AT)
       .strike(STRIKE_IMPACT + 40);
 
@@ -234,6 +236,7 @@ describe('timed strike (C6)', () => {
 
   it('good strike 120 ms before the impact: 12 HP and 14 guard points, judged at the impact', () => {
     const play = BattlePlay.start()
+      .with(changeEnemy(GHOUL, { guard: 15 }))
       .attack(ATTACK_AT)
       .strike(STRIKE_IMPACT - 120);
 
@@ -574,7 +577,7 @@ describe('guard break and stun (C5)', () => {
     expect(play.lastOf('strikeResolved')).toMatchObject({ damage: 15, guardDamage: 0 });
     expect(play.battle.enemies[GHOUL]!.guard).toBe(0);
 
-    // À la fin de cette action, la Goule se relève en 400 ms, garde 15, intention affichée.
+    // À la fin de cette action, la Goule se relève en 400 ms, garde 30, intention affichée.
     play.advance(at + 1_180);
     expect(play.lastOf('guardRestored')).toEqual({
       type: 'guardRestored',
@@ -584,7 +587,7 @@ describe('guard break and stun (C5)', () => {
       inPlaceOfAction: false,
     });
     expect(play.battle.enemies[GHOUL]).toMatchObject({
-      guard: 15,
+      guard: 30,
       stun: null,
       guardRestore: { since: at + 1_180, until: at + 1_580 },
     });
@@ -634,7 +637,7 @@ describe('guard break and stun (C5)', () => {
       kind: 'enemy',
       step: { kind: 'guardRestore', enemy: GHOUL, since: at + 500, until: at + 900 },
     });
-    expect(play.battle.enemies[GHOUL]).toMatchObject({ guard: 15, stun: null, intent: null });
+    expect(play.battle.enemies[GHOUL]).toMatchObject({ guard: 30, stun: null, intent: null });
     expect(play.battle.enemies[GHOUL]!.guardRestore).toEqual({ since: at + 500, until: at + 900 });
     expect(shownIntent(play.battle, GHOUL)).toBeNull();
     play.advance(at + 900);
@@ -778,14 +781,14 @@ describe('the Guard and Raise intents (C2)', () => {
   it('never raises the guard above its maximum', () => {
     const play = BattlePlay.start()
       .with(
-        changeEnemy(NECROMANCER, { guard: 11, intent: { category: 'guard', gain: 3 } }),
+        changeEnemy(NECROMANCER, { guard: 22, intent: { category: 'guard', gain: 7 } }),
         changeEnemy(GHOUL, { guard: 99 }),
       )
       .attack(ATTACK_AT);
     play.until(({ phase }) => phase.kind === 'enemy' && phase.step.kind === 'support');
 
-    expect(play.lastOf('guardRaised')).toMatchObject({ gain: 3, guard: 12 });
-    expect(play.battle.enemies[NECROMANCER]).toMatchObject({ guard: 12 });
+    expect(play.lastOf('guardRaised')).toMatchObject({ gain: 7, guard: 24 });
+    expect(play.battle.enemies[NECROMANCER]).toMatchObject({ guard: 24 });
   });
 
   it('raises a fallen ally at 50 % of its HP, full guard, acting from the next round', () => {
@@ -802,7 +805,7 @@ describe('the Guard and Raise intents (C2)', () => {
     expect(play.lastOf('allyRaised')).toMatchObject({ enemy: NECROMANCER, ally: GHOUL, hp: 25 });
     expect(play.battle.enemies[GHOUL]).toMatchObject({
       hp: 25,
-      guard: 15,
+      guard: 30,
       stun: null,
       intent: null,
       raised: true,

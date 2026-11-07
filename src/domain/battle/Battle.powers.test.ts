@@ -7,6 +7,7 @@ import {
   powerAvailability,
   powerCost,
   pressDefense,
+  pressStrike,
   resumeBattle,
   startBattle,
   type AttackStep,
@@ -16,6 +17,7 @@ import {
 } from './Battle';
 import type { BattleEvent } from './BattleEvent';
 import type { AttackKind } from './attacks';
+import { NO_MODIFIERS } from './heroModifiers';
 import { scaleDamage } from './rules';
 import { POWERS, type PowerKind } from './powers';
 import { counterBlow, strikeBlow } from './strike';
@@ -165,6 +167,9 @@ function eventsOf<Type extends BattleEvent['type']>(
 ): EventOf<Type>[] {
   return events.filter((event): event is EventOf<Type> => event.type === type);
 }
+
+/** L'instant de l'impact de la frappe en rythme en cours. */
+const impactOf = (battle: Battle) => (battle.phase as { readonly impactAt: number }).impactAt;
 
 const SENTINEL_POWERS: readonly PowerKind[] = ['bulwark', 'retaliation', 'holdFast'];
 const WANDERER_POWERS: readonly PowerKind[] = ['shadowStep', 'rend', 'mist'];
@@ -425,7 +430,7 @@ describe('Rend (#235)', () => {
     const expected = strikeBlow({
       attackPower: 6,
       guardDamage: 5,
-      multiplier: 100,
+      judgement: null,
       stunned: false,
       guardPercents: [150],
     });
@@ -436,6 +441,30 @@ describe('Rend (#235)', () => {
     expect(resolved[0]).toMatchObject({ guardDamage: expected.guard, rend: true, hit: 1 });
     expect(expected.guard).toBe(7);
     expect(resolved[1]).toMatchObject({ rend: true, hit: 2 });
+  });
+
+  it('takes 12 + 12 HP and 11 + 11 guard on perfect strikes with Lame juste (#244, G1)', () => {
+    const cast = act(
+      withHero(
+        start({
+          hero: 'wanderer',
+          powers: WANDERER_POWERS,
+          modifiers: { ...NO_MODIFIERS, perfectStrikeBonusPercents: [50] },
+        }),
+        { momentum: 1 },
+      ),
+      power('rend'),
+      1_000,
+    ).battle;
+    const first = act(cast, { kind: 'attack' }, 1_100).battle;
+    const firstHit = pressStrike(first, { at: impactOf(first) });
+    const secondHit = pressStrike(firstHit.battle, { at: impactOf(firstHit.battle) });
+    const resolved = eventsOf([...firstHit.events, ...secondHit.events], 'strikeResolved');
+
+    expect(resolved).toEqual([
+      expect.objectContaining({ judgement: 'perfect', damage: 12, guardDamage: 11, hit: 1 }),
+      expect.objectContaining({ judgement: 'perfect', damage: 12, guardDamage: 11, hit: 2 }),
+    ]);
   });
 
   it('is spent by that strike: the next one is plain', () => {

@@ -13,7 +13,7 @@ import {
 } from '../../src/application/useCases/AscentSession';
 import { startAscent } from '../../src/domain/ascent/Ascent';
 import { TIERS } from '../../src/domain/ascent/tiers';
-import { ENEMIES } from '../../src/domain/battle/combatants';
+import { drawnAttacks } from '../../src/domain/ascent/testing/eliteBossStrikes';
 import {
   ascentBefore,
   playToTheEnd,
@@ -87,12 +87,12 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       const battleSession = world.session.battleSession();
       await battleSession.start();
       const { battle } = battleSession.current()!;
-      expect(battle.tierMultiplier).toBeUndefined();
+      // Le multiplicateur d'Élite et de boss du palier (#244, R1).
+      expect(battle.tierMultiplier).toEqual(TIERS[2].eliteMultiplier);
       expect(battle.enemies[0]).toMatchObject({ maxHp: Number(hp), maxGuard: Number(guard) });
-      expect(ENEMIES.scarecrow.moves).toContainEqual({
-        attack: 'perilous',
-        damage: Number(damage),
-      });
+      expect(
+        drawnAttacks('scarecrow', battle.tierMultiplier!.hpPercent).get('perilous'),
+      ).toMatchObject({ damage: Number(damage) });
     },
   );
 

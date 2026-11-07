@@ -72,12 +72,12 @@ import {
   counterBlow,
   judgeStrike,
   strikeBlow,
-  strikeMultiplier,
   type EnemyBlow,
 } from './strike';
 import { bleedsOn, mergeBleed, tickBleed } from './bleed';
 import { burnAtRoundStart, burnOnBlow } from './burn';
 import { freeSlots, type PendingSummon } from './summon';
+import { cappedParryHeal } from './parryHeal';
 import { NO_TIER_MULTIPLIER, scaleByPercent, type TierMultiplier } from './tierMultiplier';
 
 export interface HeroState {
@@ -103,6 +103,11 @@ export interface HeroState {
   readonly rend?: true;
   /** Les pouvoirs « une fois par combat » déjà lancés (#235) ; absent, aucun. */
   readonly spent?: readonly PowerKind[];
+  /**
+   * Les PV rendus par parade parfaite dans ce combat (#244, R4), sous le plafond de soin de
+   * parade ; absent, 0 (aucun, ou un combat sauvegardé avant #244).
+   */
+  readonly parryHealed?: number;
 }
 
 export interface EnemyState {
@@ -279,12 +284,17 @@ export interface Battle {
   readonly initiative: boolean;
   /** Les modificateurs du héros (prototype #93) ; absents, aucun. */
   readonly modifiers?: HeroModifiers;
-  /** Le multiplicateur de palier d'un combat ordinaire (#38) ; absent, × 1 (palier 1). */
+  /**
+   * Le multiplicateur des ennemis du combat : de palier pour un combat ordinaire (#38), d'Élite et
+   * de boss sinon (#244) ; absent, × 1 (palier 1, ou une Élite ou un boss sauvés avant #244).
+   */
   readonly tierMultiplier?: TierMultiplier;
   /** Le multiplicateur du palier des ennemis invoqués (#172) ; absent, × 1. */
   readonly summonMultiplier?: TierMultiplier;
   /** L'Invocation annoncée, pas encore entrée (#172) ; absente, aucune. */
   readonly summon?: PendingSummon;
+  /** Le répit du palier, en % (#244, R3) ; absent, `RESPITE_PERCENT` (un combat d'avant #244). */
+  readonly respitePercent?: number;
   readonly hero: HeroState;
   /** La première ligne (`FrontLine`) : au plus 3 ennemis qui se battent en même temps (P3b). */
   readonly enemies: readonly EnemyState[];
@@ -367,11 +377,14 @@ export interface BattleOptions extends BattleStartOptions {
   readonly modifiers?: HeroModifiers;
   /** Le groupe d'ennemis, de gauche à droite, dans l'ordre du tirage. */
   readonly enemies: readonly EnemyKind[];
-  /** Le multiplicateur de palier d'un combat ordinaire (#38) ; par défaut, × 1. */
+  /**
+   * Le multiplicateur des ennemis du combat : de palier pour un combat ordinaire (#38), d'Élite et
+   * de boss sinon (#244) ; par défaut, × 1.
+   */
   readonly tierMultiplier?: TierMultiplier;
   /**
    * Le multiplicateur du palier des ennemis invoqués (#172), pour tout combat d'étage, boss
-   * compris (le boss, lui, n'est jamais multiplié) ; par défaut, × 1.
+   * compris (le boss, lui, a le multiplicateur d'Élite et de boss) ; par défaut, × 1.
    */
   readonly summonMultiplier?: TierMultiplier;
   /**
@@ -383,6 +396,8 @@ export interface BattleOptions extends BattleStartOptions {
   readonly secondChance?: boolean;
   /** Les pouvoirs équipés (#235), 1 à 3 ; par défaut, le pouvoir de base du héros. */
   readonly powers?: readonly PowerKind[];
+  /** Le répit du palier, en % (#244, R3) ; par défaut, `RESPITE_PERCENT`. */
+  readonly respitePercent?: number;
   /** Les pouvoirs attisés de l'ascension (#237) ; par défaut, aucun. */
   readonly kindled?: readonly PowerKind[];
 }
@@ -391,8 +406,8 @@ export interface BattleOptions extends BattleStartOptions {
 export const FRONT_LINE_SIZE = 3;
 
 /**
- * Un ennemi qui entre, à PV et garde max, multipliés par le palier d'un combat ordinaire (#38),
- * puis maudits (#209) s'il l'est.
+ * Un ennemi qui entre, à PV et garde max, multipliés par le multiplicateur du combat (de palier,
+ * #38, ou d'Élite et de boss, #244), puis maudits (#209) s'il l'est.
  */
 function freshEnemy(
   kind: EnemyKind,
@@ -437,6 +452,7 @@ export function startBattle({
   cursed,
   secondChance,
   powers,
+  respitePercent,
   kindled,
 }: BattleOptions): BattleUpdate {
   const maxHp = heroMaxHp ?? HEROES[hero].maxHp;
@@ -458,6 +474,7 @@ export function startBattle({
       ...(modifiers && { modifiers }),
       ...(tierMultiplier && { tierMultiplier }),
       ...(summonMultiplier && { summonMultiplier }),
+      ...(respitePercent !== undefined && { respitePercent }),
       hero: {
         hp: heroHp ?? maxHp,
         maxHp,
@@ -903,7 +920,10 @@ function isWon(battle: Battle): boolean {
   return standingEnemies(battle).length === 0 && battle.reserve.length === 0;
 }
 
-/** Le répit (C11) : +10 % des PV max à la victoire, sans dépasser le maximum. */
+/**
+ * Le répit (C11) : +10 % des PV max à la victoire, sans dépasser le maximum ; depuis #244, le
+ * pourcentage du palier (`Battle.respitePercent`), celui-ci restant celui d'un combat d'avant.
+ */
 export const RESPITE_PERCENT = 10;
 
 function finish(battle: Battle, events: Events, outcome: BattleOutcome, at: number): Battle {
@@ -913,7 +933,8 @@ function finish(battle: Battle, events: Events, outcome: BattleOutcome, at: numb
   let settled = clearOffBalance({ ...battle, hero }, events, at);
   if (outcome === 'victory') {
     const { hero } = settled;
-    const heroHp = Math.min(hero.maxHp, hero.hp + Math.floor((hero.maxHp * RESPITE_PERCENT) / 100));
+    const percent = settled.respitePercent ?? RESPITE_PERCENT;
+    const heroHp = Math.min(hero.maxHp, hero.hp + Math.floor((hero.maxHp * percent) / 100));
     events.push({ type: 'respite', at, gain: heroHp - hero.hp, heroHp });
     settled = { ...settled, hero: { ...hero, hp: heroHp } };
   }
@@ -1556,11 +1577,22 @@ function judgeDefense(battle: Battle, events: Events, button: DefenseButton, at:
   });
 }
 
-/** Le Bouclier du veilleur (prototype #93) : des PV rendus, sans dépasser les PV max. */
+/**
+ * Le soin de parade parfaite (Bouclier du veilleur, prototype #93 ; Gelée blanche, Givre du
+ * clocher) : des PV rendus, sans dépasser les PV max ni le plafond de soin de parade (#244, R4).
+ * Seul le gain réel compte dans le plafond.
+ */
 function healOnPerfectParry(battle: Battle): Battle {
   const { hero } = battle;
-  const hp = Math.min(hero.maxHp, hero.hp + heroModifiers(battle).healOnPerfectParry);
-  return hp === hero.hp ? battle : { ...battle, hero: { ...hero, hp } };
+  const healed = hero.parryHealed ?? 0;
+  const gain = cappedParryHeal({
+    hp: hero.hp,
+    maxHp: hero.maxHp,
+    heal: heroModifiers(battle).healOnPerfectParry,
+    healed,
+  });
+  if (gain === 0) return battle;
+  return { ...battle, hero: { ...hero, hp: hero.hp + gain, parryHealed: healed + gain } };
 }
 
 /**
@@ -1642,7 +1674,8 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
   const blow = strikeBlow({
     attackPower: heroAttack(hero.attackPower, modifiers),
     guardDamage: hero.guardDamage,
-    multiplier: strikeMultiplier(judgement, modifiers.perfectStrikeBonusPercents),
+    judgement,
+    perfectBonusPercents: modifiers.perfectStrikeBonusPercents,
     stunned: battle.enemies[phase.enemy]!.stun !== null,
     attackPercents: modifiers.attackPercents,
     guardPercents: [

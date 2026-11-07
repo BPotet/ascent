@@ -16,12 +16,15 @@ import { seedRandom } from '../../src/domain/battle/SeededRandom';
 
 const SEEDS = Array.from({ length: 200 }, (_, index) => index * 2_654_435_761);
 
-/** Les fiches validées du Codex (version 2, 04/11/2026), à l'échelle du palier 1, et leur rôle. */
+/**
+ * Les fiches validées du Codex (version 3, garde doublée par #244), à l'échelle du palier 1, et leur
+ * rôle.
+ */
 const BELFRY = {
   bellNovice: {
     role: 'filler',
     maxHp: 26,
-    maxGuard: 8,
+    maxGuard: 16,
     moves: [
       { attack: 'basic', damage: 4, weight: 2 },
       { attack: 'delayed', damage: 6, weight: 1 },
@@ -30,13 +33,13 @@ const BELFRY = {
   matinsRinger: {
     role: 'support',
     maxHp: 42,
-    maxGuard: 16,
+    maxGuard: 32,
     moves: [{ attack: 'delayed', damage: 4, weight: 1 }],
   },
   clockJack: {
     role: 'threat',
     maxHp: 48,
-    maxGuard: 20,
+    maxGuard: 40,
     moves: [
       { attack: 'double', damage: 3, weight: 2 },
       { attack: 'perilous', damage: 9, weight: 1 },

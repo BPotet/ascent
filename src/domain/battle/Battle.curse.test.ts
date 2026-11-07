@@ -71,31 +71,31 @@ const has =
     events.some((event) => event.type === type);
 
 describe('a cursed enemy at the start of the battle (#209)', () => {
-  it('curses only the enemy at the given index: the Ghoul at 60 HP and 18 guard', () => {
+  it('curses only the enemy at the given index: the Ghoul at 60 HP and 36 guard', () => {
     const battle = start(['ghoul', 'specter', 'necromancer'], { cursed: 0 });
 
     expect(battle.enemies[0]).toMatchObject({
       kind: 'ghoul',
       hp: 60,
       maxHp: 60,
-      guard: 18,
-      maxGuard: 18,
+      guard: 36,
+      maxGuard: 36,
       cursed: true,
     });
-    expect(battle.enemies[1]).toMatchObject({ hp: 35, maxGuard: 10 });
+    expect(battle.enemies[1]).toMatchObject({ hp: 35, maxGuard: 20 });
     expect(battle.enemies.slice(1).every((enemy) => enemy.cursed === undefined)).toBe(true);
   });
 
   it('curses no enemy without the option', () => {
     const battle = start(['ghoul', 'specter']);
     expect(battle.enemies.some((enemy) => enemy.cursed !== undefined)).toBe(false);
-    expect(battle.enemies[0]).toMatchObject({ maxHp: 50, maxGuard: 15 });
+    expect(battle.enemies[0]).toMatchObject({ maxHp: 50, maxGuard: 30 });
   });
 
   it('applies the 20 % to the tier value, after the tier multiplier', () => {
     const battle = start(['ghoul', 'specter'], { cursed: 0, tierMultiplier: TIER_3 });
-    expect(battle.enemies[0]).toMatchObject({ maxHp: 104, maxGuard: 26 });
-    expect(battle.enemies[1]).toMatchObject({ maxHp: 61, maxGuard: 15 });
+    expect(battle.enemies[0]).toMatchObject({ maxHp: 104, maxGuard: 54 });
+    expect(battle.enemies[1]).toMatchObject({ maxHp: 61, maxGuard: 30 });
   });
 
   it('gives the Fallen Knight, never multiplied, 240 HP and 54 guard', () => {
@@ -164,7 +164,7 @@ describe('a cursed enemy that falls and comes back (#209)', () => {
 
   it('stays cursed when the Skeleton revives itself, from its cursed max HP', () => {
     const initial = start(['skeleton', 'ghoul'], { cursed: 0 });
-    expect(initial.enemies[0]).toMatchObject({ maxHp: 42, maxGuard: 12 });
+    expect(initial.enemies[0]).toMatchObject({ maxHp: 42, maxGuard: 24 });
     const battle = withEnemy(initial, 0, { hp: 1, guard: 1 });
 
     const attacked = heroAction(battle, {
@@ -174,7 +174,7 @@ describe('a cursed enemy that falls and comes back (#209)', () => {
     });
     const struck = pressStrike(attacked.battle, { at: 1_700 }).battle;
 
-    expect(struck.enemies[0]).toMatchObject({ hp: 21, guard: 12, cursed: true, selfRevives: 1 });
+    expect(struck.enemies[0]).toMatchObject({ hp: 21, guard: 24, cursed: true, selfRevives: 1 });
   });
 });
 
@@ -185,7 +185,7 @@ describe('enemies that enter during the battle are never cursed (#209)', () => {
 
     const { battle } = playUntil(twoDown, has('reinforcementEntered'));
 
-    expect(battle.enemies[0]).toMatchObject({ kind: 'ghoul', maxHp: 50, maxGuard: 15 });
+    expect(battle.enemies[0]).toMatchObject({ kind: 'ghoul', maxHp: 50, maxGuard: 30 });
     expect(battle.enemies.some((enemy) => enemy.cursed !== undefined)).toBe(false);
   });
 

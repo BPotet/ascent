@@ -1,8 +1,9 @@
 // Le palier 1 ne change pas (#38, risque 1 des notes de l'Architect) : pour 200 graines, les
 // groupes, leurs tailles, les Élites, les boss, l'Or, le butin, les intentions tirées (dégâts
 // compris), les PV et la garde des ennemis, et le changement de phase à 150 PV des boss du
-// palier 1 sont ceux de `develop` à `582cc236`, figés avant les paliers 2 et 3. Seul second
-// changement voulu : les durées de préparation ×0,9 à ×1,1 (#211), régénérées seules.
+// palier 1 sont ceux de `develop` à `582cc236`, figés avant les paliers 2 et 3. Changements
+// voulus depuis, régénérés seuls : les durées de préparation ×0,9 à ×1,1 (#211) ; #244 : les gardes
+// (G2, colonne garde du multiplicateur d'Élite et de boss) et l'Élite non répétée (R5).
 import { TIER_ONE_PHASE_SHIFTS, TIER_ONE_WALKS } from './testing/tierOneDraws';
 import { WALKED_SEEDS, phaseShiftText, walkTierOne } from './testing/tierOneWalk';
 

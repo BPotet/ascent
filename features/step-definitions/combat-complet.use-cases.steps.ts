@@ -160,15 +160,15 @@ function toHeroActionEnd(): number {
 
 const steps: StepDefinitions = ({ given, when, then, and }) => {
   given(
-    /^un combat de la Sentinelle \(Attaque 10, Brise-garde 12\) contre un groupe de la Goule \(50 PV, garde 15\), du Spectre \(35 PV, garde 10\) et du Nécromancien \(45 PV, garde 12\)$/u,
+    /^un combat de la Sentinelle \(Attaque 10, Brise-garde 12\) contre un groupe de la Goule \(50 PV, garde 30\), du Spectre \(35 PV, garde 20\) et du Nécromancien \(45 PV, garde 24\)$/u,
     async () => {
       world = { started: false, damages: [], seeds: [] } as unknown as World;
       await startBattle();
       expect(SENTINEL).toMatchObject({ attackPower: 10, guardDamage: 12 });
       expect(battle().enemies.map(({ kind, hp, guard }) => ({ kind, hp, guard }))).toEqual([
-        { kind: 'ghoul', hp: 50, guard: 15 },
-        { kind: 'specter', hp: 35, guard: 10 },
-        { kind: 'necromancer', hp: 45, guard: 12 },
+        { kind: 'ghoul', hp: 50, guard: 30 },
+        { kind: 'specter', hp: 35, guard: 20 },
+        { kind: 'necromancer', hp: 45, guard: 24 },
       ]);
     },
   );
@@ -301,7 +301,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     expect(all('guardRestored')).toEqual([
       { type: 'guardRestored', at: end, enemy: GHOUL, until: end + 400, inPlaceOfAction: false },
     ]);
-    expect(battle().enemies[GHOUL]).toMatchObject({ guard: 15, stun: null });
+    expect(battle().enemies[GHOUL]).toMatchObject({ guard: 30, stun: null });
   });
 
   given(/^la Goule est étourdie( et a 10 PV)?$/u, async (lowHp) => {

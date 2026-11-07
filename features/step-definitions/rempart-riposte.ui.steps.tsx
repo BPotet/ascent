@@ -243,8 +243,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   // --- États posés ------------------------------------------------------------------------
 
-  given('la Sentinelle a 51 PV et la garde de la Goule est à 15', () => {
-    world.changes.push(heroWith({ hp: 51 }), enemyWith(ATTACKER, { guard: 15 }));
+  given('la Sentinelle a 51 PV et la garde de la Goule est à 30', () => {
+    world.changes.push(heroWith({ hp: 51 }), enemyWith(ATTACKER, { guard: 30 }));
   });
 
   given(/^la cible choisie par le joueur est (le Villageois fou)$/u, (name: string) => {

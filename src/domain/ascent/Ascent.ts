@@ -45,7 +45,7 @@ import {
 } from './items';
 import { OATH_MIN_COST, type KindledPower } from './kindled';
 import type { Rarity } from './rarity';
-import { drawElite } from './elites';
+import { drawElite, eliteCandidates } from './elites';
 import { drawGroup, drawGroupSize } from './enemyGroup';
 import { drawExitKinds, type Exit } from './exits';
 import { bossGold, campfireHeal, drawBoss, drawCombatGold, eliteGold } from './rewards';
@@ -167,6 +167,11 @@ export interface Ascent {
   readonly sealedChest: SealedChest | null;
   /** Le flux de hasard du coffre scellé, dérivé de la graine : seule une ouverture l'avance. */
   readonly sealedChestRandom: RandomState;
+  /**
+   * La dernière Élite affrontée au palier (#244, R5), jamais tirée à la porte Élite suivante ;
+   * absente avant la première Élite du palier, et dans une ascension sauvegardée avant #244.
+   */
+  readonly lastElite?: EnemyKind;
 }
 
 /**
@@ -445,11 +450,12 @@ export function chooseExit(ascent: Ascent, index: number): Ascent {
       };
     }
     case 'elite': {
-      const elite = drawElite(TIERS[tier].elites, ascent.random);
+      // L'Élite non répétée (#244, R5) : jamais la dernière affrontée au palier.
+      const elite = drawElite(eliteCandidates(TIERS[tier].elites, ascent.lastElite), ascent.random);
       // L'Élite maudite sous la malédiction forte (#209), sans tirage : elle est seule.
       const cursed = cursedElite(ascent.gauge) ? 0 : undefined;
       const drawn = encounter('elite', [elite.value], elite.random, cursed);
-      return { ...entered, random: drawn.random, encounter: drawn.value };
+      return { ...entered, random: drawn.random, encounter: drawn.value, lastElite: elite.value };
     }
     case 'boss': {
       const boss = drawBoss(ascent.random, TIERS[tier].bosses);
@@ -562,8 +568,10 @@ export function enterNextTier(ascent: Ascent): Ascent {
   const tier = ascent.passage.to;
   const size = drawGroupSize(1, ascent.random, ascent.fiveFaced, tier);
   const first = combat(size.value, size.random, tier, ascent.gauge);
+  // Le nouveau palier n'a pas encore d'Élite affrontée (#244, R5).
+  const { lastElite: _, ...rest } = ascent;
   return {
-    ...ascent,
+    ...rest,
     tier,
     floor: 1,
     random: first.random,

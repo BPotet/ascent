@@ -187,7 +187,7 @@ describe('Bulwark riposte (#128)', () => {
         },
       ]);
       expect(test.battle.hero).toMatchObject({ hp: 49, bulwark: false, momentum: 0 });
-      expect(test.battle.enemies[GHOUL]).toMatchObject({ hp: 47, guard: 12, stun: null });
+      expect(test.battle.enemies[GHOUL]).toMatchObject({ hp: 47, guard: 27, stun: null });
       expect(test.step.counter).toEqual({
         at: resolvedAt,
         until: resolvedAt + COUNTER_MS,
@@ -257,7 +257,7 @@ describe('Bulwark riposte (#128)', () => {
         expect(test.all('bulwarkCountered')).toEqual([
           expect.objectContaining({ enemy: 0, damage: 3, guardDamage: 3 }),
         ]);
-        expect(test.battle.enemies[0]).toMatchObject({ hp: 32, guard: 7 });
+        expect(test.battle.enemies[0]).toMatchObject({ hp: 32, guard: 17 });
         expect(test.battle.hero.momentum).toBe(0);
       },
     );
