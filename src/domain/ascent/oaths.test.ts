@@ -204,7 +204,7 @@ describe('the stored Oaths (#237)', () => {
     ['not JSON', '{'],
     ['another version', stored([], 2)],
     ['no list', JSON.stringify({ version: 1 })],
-    ['an unknown power', stored([{ power: 'shieldBash', habit: 1, since: '2026-11-06' }])],
+    ['an unknown power', stored([{ power: 'fireball', habit: 1, since: '2026-11-06' }])],
     ['a power of 1 Momentum', stored([{ power: 'rend', habit: 1, since: '2026-11-06' }])],
     [
       'a habit that is not an integer',
