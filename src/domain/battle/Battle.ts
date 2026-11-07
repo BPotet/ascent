@@ -282,6 +282,8 @@ export interface Battle {
   readonly summonMultiplier?: TierMultiplier;
   /** L'Invocation annoncée, pas encore entrée (#172) ; absente, aucune. */
   readonly summon?: PendingSummon;
+  /** Le répit du palier, en % (#244, R3) ; absent, `RESPITE_PERCENT` (un combat d'avant #244). */
+  readonly respitePercent?: number;
   readonly hero: HeroState;
   /** La première ligne (`FrontLine`) : au plus 3 ennemis qui se battent en même temps (P3b). */
   readonly enemies: readonly EnemyState[];
@@ -383,6 +385,8 @@ export interface BattleOptions extends BattleStartOptions {
   readonly secondChance?: boolean;
   /** Les pouvoirs équipés (#235), 1 à 3 ; par défaut, le pouvoir de base du héros. */
   readonly powers?: readonly PowerKind[];
+  /** Le répit du palier, en % (#244, R3) ; par défaut, `RESPITE_PERCENT`. */
+  readonly respitePercent?: number;
 }
 
 /** Au plus 3 ennemis se battent en même temps (P3b). */
@@ -435,6 +439,7 @@ export function startBattle({
   cursed,
   secondChance,
   powers,
+  respitePercent,
 }: BattleOptions): BattleUpdate {
   const maxHp = heroMaxHp ?? HEROES[hero].maxHp;
   const momentum = Math.min(MOMENTUM_MAX, MOMENTUM_START + (modifiers?.startingMomentum ?? 0));
@@ -454,6 +459,7 @@ export function startBattle({
       ...(modifiers && { modifiers }),
       ...(tierMultiplier && { tierMultiplier }),
       ...(summonMultiplier && { summonMultiplier }),
+      ...(respitePercent !== undefined && { respitePercent }),
       hero: {
         hp: heroHp ?? maxHp,
         maxHp,
@@ -896,7 +902,10 @@ function isWon(battle: Battle): boolean {
   return standingEnemies(battle).length === 0 && battle.reserve.length === 0;
 }
 
-/** Le répit (C11) : +10 % des PV max à la victoire, sans dépasser le maximum. */
+/**
+ * Le répit (C11) : +10 % des PV max à la victoire, sans dépasser le maximum ; depuis #244, le
+ * pourcentage du palier (`Battle.respitePercent`), celui-ci restant celui d'un combat d'avant.
+ */
 export const RESPITE_PERCENT = 10;
 
 function finish(battle: Battle, events: Events, outcome: BattleOutcome, at: number): Battle {
@@ -906,7 +915,8 @@ function finish(battle: Battle, events: Events, outcome: BattleOutcome, at: numb
   let settled = clearOffBalance({ ...battle, hero }, events, at);
   if (outcome === 'victory') {
     const { hero } = settled;
-    const heroHp = Math.min(hero.maxHp, hero.hp + Math.floor((hero.maxHp * RESPITE_PERCENT) / 100));
+    const percent = settled.respitePercent ?? RESPITE_PERCENT;
+    const heroHp = Math.min(hero.maxHp, hero.hp + Math.floor((hero.maxHp * percent) / 100));
     events.push({ type: 'respite', at, gain: heroHp - hero.hp, heroHp });
     settled = { ...settled, hero: { ...hero, hp: heroHp } };
   }

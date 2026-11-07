@@ -46,6 +46,12 @@ describe('the tiers (#38)', () => {
     },
   );
 
+  it('gives back 10 % of the max HP as the respite at tier 1, 5 % at tiers 2 and 3 (#244, R3)', () => {
+    expect([TIERS[1].respitePercent, TIERS[2].respitePercent, TIERS[3].respitePercent]).toEqual([
+      10, 5, 5,
+    ]);
+  });
+
   it('keeps the group sizes of tier 1', () => {
     expect(TIERS[1].groupSizeWeights).toEqual(GROUP_SIZE_WEIGHTS);
   });

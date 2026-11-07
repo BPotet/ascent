@@ -158,3 +158,24 @@ Fonctionnalité: Rééquilibrage du palier 3
     Étant donné une ascension qui arrive au palier 2 sans Élite affrontée à ce palier
     Quand le héros franchit sa première porte Élite du palier 2
     Alors l'Élite est tirée à égalité parmi les Élites du palier avec la graine de l'ascension
+
+  # R3 — Répit par palier
+  @domain
+  Plan du scénario: Le répit dépend du palier
+    Étant donné un héros à <max> PV max et à 50 PV
+    Quand il gagne un combat au palier <palier>
+    Alors il regagne <répit> PV
+
+    Exemples:
+      | max | palier | répit |
+      | 80  | 1      | 8     |
+      | 80  | 2      | 4     |
+      | 80  | 3      | 4     |
+      | 92  | 1      | 9     |
+      | 92  | 3      | 4     |
+
+  @domain
+  Scénario: Le répit ne dépasse pas le maximum
+    Étant donné un héros à 78 PV sur 80 au palier 2
+    Quand il gagne un combat
+    Alors il est à 80 PV

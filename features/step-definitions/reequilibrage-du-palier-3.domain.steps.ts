@@ -85,6 +85,8 @@ interface World {
   raised?: Extract<BattleEvent, { type: 'guardRaised' }>;
   ascent?: Ascent;
   entered?: Ascent;
+  hero?: { readonly hp: number; readonly maxHp: number };
+  respite?: Extract<BattleEvent, { type: 'respite' }>;
 }
 
 let world: World;
@@ -195,6 +197,27 @@ const atEliteDoor = (ascent: Ascent): Ascent => ({
   boonOffer: null,
   exits: [{ kind: 'elite', groupSize: null }],
 });
+
+/** Le répit d'un combat ordinaire gagné au palier `tier`, d'une frappe sur un ennemi à 1 PV. */
+function respiteAt(
+  tier: Tier,
+  hero: { readonly hp: number; readonly maxHp: number },
+): Extract<BattleEvent, { type: 'respite' }> {
+  const { battle } = startBattle({
+    seed: 7,
+    defenseHint: false,
+    at: 0,
+    heroHp: hero.hp,
+    heroMaxHp: hero.maxHp,
+    enemies: ['ghoul'],
+    tierMultiplier: TIERS[tier].multiplier,
+    respitePercent: TIERS[tier].respitePercent,
+  });
+  const { events } = playUntil(wounded(battle, { hp: 1 }), has('battleEnded'));
+  return events.find(
+    (event): event is Extract<BattleEvent, { type: 'respite' }> => event.type === 'respite',
+  )!;
+}
 
 const steps: StepDefinitions = ({ given, when, then, and }) => {
   // --- G1 : Brise-garde d'une frappe ---
@@ -560,6 +583,39 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       expect(TIERS[2].elites).toContain(drawn.value);
     },
   );
+
+  // --- R3 : répit par palier ---
+
+  given(/^un héros à (\d+) PV max et à (\d+) PV$/u, (maxHp: string, hp: string) => {
+    world = { ...fresh(encounter(1, 'ghoul')), hero: { hp: Number(hp), maxHp: Number(maxHp) } };
+  });
+
+  given(
+    /^un héros à (\d+) PV sur (\d+) au palier (\d)$/u,
+    (hp: string, maxHp: string, tier: string) => {
+      world = {
+        ...fresh(encounter(1, 'ghoul')),
+        tier: Number(tier) as Tier,
+        hero: { hp: Number(hp), maxHp: Number(maxHp) },
+      };
+    },
+  );
+
+  when(/^il gagne un combat(?: au palier (\d))?$/u, (tier?: string) => {
+    if (tier !== undefined) world.tier = Number(tier) as Tier;
+    world.respite = respiteAt(world.tier, world.hero!);
+  });
+
+  then(/^il regagne (\d+) PV$/u, (gain: string) => {
+    expect(world.respite).toMatchObject({
+      gain: Number(gain),
+      heroHp: world.hero!.hp + Number(gain),
+    });
+  });
+
+  then(/^il est à (\d+) PV$/u, (hp: string) => {
+    expect(world.respite).toMatchObject({ heroHp: Number(hp) });
+  });
 };
 
 // Les règles du domaine seules : `@session` passe par la session.

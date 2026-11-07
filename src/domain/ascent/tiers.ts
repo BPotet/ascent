@@ -32,6 +32,8 @@ export interface TierRule {
   readonly eliteMultiplier: EliteBossMultiplier;
   /** Le multiplicateur de ses boss (#244, R1). */
   readonly bossMultiplier: EliteBossMultiplier;
+  /** Le répit, en % des PV max regagnés à la victoire : 10, 5 ou 5 (#244, R3). */
+  readonly respitePercent: number;
   /** Le pourcentage de l'Or gagné : 100, 125 ou 150. */
   readonly goldPercent: number;
   /** Les poids de la taille du groupe (1 à 5 ennemis), par étage, de 1 à 5. */
@@ -52,6 +54,7 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
     multiplier: { hpPercent: 100, guardPercent: 100 },
     eliteMultiplier: { hpPercent: 100, guardPercent: 125 },
     bossMultiplier: { hpPercent: 100, guardPercent: 125 },
+    respitePercent: 10,
     goldPercent: 100,
     groupSizeWeights: {
       1: [4, 10, 6, 0, 0],
@@ -77,6 +80,7 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
     multiplier: { hpPercent: 135, guardPercent: 125 },
     eliteMultiplier: { hpPercent: 120, guardPercent: 140 },
     bossMultiplier: { hpPercent: 100, guardPercent: 125 },
+    respitePercent: 5,
     goldPercent: 125,
     groupSizeWeights: {
       1: [0, 6, 8, 2, 0],
@@ -104,6 +108,7 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
     multiplier: { hpPercent: 175, guardPercent: 150 },
     eliteMultiplier: { hpPercent: 135, guardPercent: 150 },
     bossMultiplier: { hpPercent: 130, guardPercent: 145 },
+    respitePercent: 5,
     goldPercent: 150,
     groupSizeWeights: {
       1: [0, 0, 9, 4, 0],
