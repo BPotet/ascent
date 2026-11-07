@@ -358,15 +358,24 @@ export class CampSession {
   }
 
   /**
-   * Commence une ascension avec les Déblocages du Camp et les pouvoirs équipés du héros (#235),
-   * fixés jusqu'à sa fin ; rien tant que le Camp n'est pas lu.
+   * Commence une ascension avec les Déblocages du Camp, les pouvoirs équipés du héros (#235) et
+   * ceux que ses Serments attisent (#237), selon les habitudes faites hier de la jauge scellée
+   * (`doneYesterday`, aucune par défaut) : tout est fixé jusqu'à sa fin. Rien tant que le Camp n'est
+   * pas lu.
    */
-  beginAscent(launch: Omit<AscentLaunch, 'unlocks' | 'powers'>): Ascent | null {
+  beginAscent({
+    doneYesterday = [],
+    ...launch
+  }: Omit<AscentLaunch, 'unlocks' | 'powers' | 'kindled'> & {
+    readonly doneYesterday?: readonly HabitId[];
+  }): Ascent | null {
     if (!this.loaded) return null;
+    const powers = equippedPowers(this.camp, launch.hero ?? 'sentinel');
     return this.dependencies.ascentSession.begin({
       ...launch,
       unlocks: campUnlocks(this.camp),
-      powers: equippedPowers(this.camp, launch.hero ?? 'sentinel'),
+      powers,
+      kindled: this.kindled(powers, doneYesterday),
     });
   }
 

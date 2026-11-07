@@ -303,3 +303,78 @@ describe('the Oaths of the habits, for the Day View and the deletion (#237)', ()
     await expect(getHabitOaths({ keyValueStore: store })).resolves.toEqual({});
   });
 });
+
+describe('CampSession: beginning an ascent with the Oaths (#237)', () => {
+  const oath = (since: string) => stored([{ power: 'retaliation', habit: 1, since }]);
+
+  it('kindles Retaliation for the whole ascent when « Courir » was done yesterday', async () => {
+    const { camp, running } = await loaded(oath('2026-11-05'));
+
+    const ascent = camp.beginAscent({ hero: 'sentinel', doneYesterday: [running] });
+
+    expect(ascent?.powers).toEqual(['bulwark', 'retaliation']);
+    expect(ascent?.kindled).toEqual([{ power: 'retaliation', habit: running }]);
+  });
+
+  it('kindles nothing the day the Oath is sworn, even if the habit was done yesterday', async () => {
+    const { camp, running } = await loaded();
+    await camp.swearOath('retaliation', running);
+
+    expect(camp.beginAscent({ hero: 'sentinel', doneYesterday: [running] })?.kindled).toEqual([]);
+  });
+
+  it('kindles the day after the Oath, the habit done before or after it', async () => {
+    const { camp, clock, running } = await loaded();
+    await camp.swearOath('retaliation', running);
+    clock.setToday(Day.of(2026, 11, 8));
+
+    expect(camp.beginAscent({ hero: 'sentinel', doneYesterday: [running] })?.kindled).toEqual([
+      { power: 'retaliation', habit: running },
+    ]);
+  });
+
+  it('kindles nothing when the habit of the Oath is changed today', async () => {
+    const { camp, running, reading } = await loaded(oath('2026-11-05'));
+    await camp.swearOath('retaliation', reading);
+
+    const ascent = camp.beginAscent({ hero: 'sentinel', doneYesterday: [running, reading] });
+
+    expect(ascent?.kindled).toEqual([]);
+  });
+
+  it('kindles nothing when the habit was missed yesterday', async () => {
+    const { camp, reading } = await loaded(oath('2026-11-05'));
+
+    expect(camp.beginAscent({ hero: 'sentinel', doneYesterday: [reading] })?.kindled).toEqual([]);
+    expect(camp.beginAscent({ hero: 'sentinel' })?.kindled).toEqual([]);
+  });
+
+  it('kindles nothing once the habit is deleted, and keeps the ascent already begun', async () => {
+    const { camp, ascentSession, unitOfWork, running } = await loaded(oath('2026-11-05'));
+    camp.beginAscent({ hero: 'sentinel', doneYesterday: [running] });
+    await unitOfWork.run(({ habits }) => habits.remove(running));
+    await camp.refreshHabits();
+
+    expect(ascentSession.current()?.kindled).toEqual([{ power: 'retaliation', habit: running }]);
+    ascentSession.abandon();
+    expect(camp.beginAscent({ hero: 'sentinel', doneYesterday: [running] })?.kindled).toEqual([]);
+  });
+
+  it('kindles nothing for a power that is not equipped', async () => {
+    const { camp, running } = await loaded(oath('2026-11-05'));
+
+    expect(camp.beginAscent({ hero: 'wanderer', doneYesterday: [running] })?.kindled).toEqual([]);
+  });
+
+  it('kindles nothing while the habits cannot be read', async () => {
+    const store = campStore();
+    store.values.set(CAMP_KEY, STORED_POWERS);
+    store.values.set(OATHS_KEY, oath('2026-11-05'));
+    const { camp, unitOfWork } = campSetUp(store);
+    await addHabit(unitOfWork, 'Courir');
+    unitOfWork.failReads();
+    await camp.load();
+
+    expect(camp.beginAscent({ hero: 'sentinel', doneYesterday: [1] })?.kindled).toEqual([]);
+  });
+});
