@@ -232,6 +232,13 @@ function parryBattle(heal: number, hp: number, extra: Partial<HeroModifiers> = {
 
 /** Une parade parfaite d'un coup simple de la Goule, préparé à l'instant du combat. */
 function parried(battle: Battle): Battle {
+  const attacked = underBlow(battle);
+  const impact = (attacked.phase as { readonly step: AttackStep }).step.impacts[0]!.at;
+  return pressDefense(attacked, { button: 'parry', at: impact }).battle;
+}
+
+/** Un coup simple de la Goule, préparé à l'instant du combat, juste avant son impact. */
+function underBlow(battle: Battle): Battle {
   const startedAt = battle.now + 100;
   const step: AttackStep = {
     kind: 'attack',
@@ -245,13 +252,7 @@ function parried(battle: Battle): Battle {
     resolvedAt: startedAt + 1_160,
     counter: null,
   };
-  const attacked: Battle = {
-    ...battle,
-    now: startedAt + 900,
-    lastPlayed: 'enemy',
-    phase: { kind: 'enemy', step },
-  };
-  return pressDefense(attacked, { button: 'parry', at: startedAt + 1_000 }).battle;
+  return { ...battle, now: startedAt + 900, lastPlayed: 'enemy', phase: { kind: 'enemy', step } };
 }
 
 /** Les PV regagnés à chaque parade parfaite, l'une après l'autre. */
@@ -340,7 +341,12 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   when(
     /^elle contre-attaque après une parade parfaite, ou que sa Riposte du Rempart frappe$/u,
     () => {
-      // Ni la contre-attaque ni la Riposte ne prennent le multiplicateur de frappe (C6.6).
+      // La contre-attaque d'une parade parfaite, puis la Riposte d'un coup subi sous le Rempart,
+      // Lame juste montée dans les deux combats.
+      const countered = playUntil(parried(world.battle), has('counterAttacked'));
+      const shielded = { ...world.battle, hero: { ...world.battle.hero, bulwark: true } };
+      const riposted = playUntil(underBlow(shielded), has('bulwarkCountered'));
+      world.events = [...countered.events, ...riposted.events];
     },
   );
 
@@ -380,10 +386,17 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(/^la garde retirée est la même qu'avant le rééquilibrage$/u, () => {
+    expect(world.battle.modifiers?.perfectStrikeBonusPercents).toEqual([TRUE_EDGE]);
     const counter = { ...SENTINEL, stunned: false };
-    // Avant #244 : 12 (100 % du Brise-garde) et 3 (25 %).
+    // Avant #244 : 12 (100 % du Brise-garde) et 3 (25 %), Lame juste ou non.
     expect(counterBlow(counter).guard).toBe(12);
     expect(bulwarkCounterBlow({ ...counter, ...SENTINEL.bulwarkCounter }).guard).toBe(3);
+    expect(world.events!.filter((event) => event.type === 'counterAttacked')).toEqual([
+      expect.objectContaining({ guardDamage: 12 }),
+    ]);
+    expect(world.events!.filter((event) => event.type === 'bulwarkCountered')).toEqual([
+      expect.objectContaining({ guardDamage: 3 }),
+    ]);
   });
 
   // --- R1 : multiplicateur d'Élite et de boss ---
