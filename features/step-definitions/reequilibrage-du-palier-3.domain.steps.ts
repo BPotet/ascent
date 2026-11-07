@@ -6,16 +6,28 @@
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
 
 import {
+  advance,
   heroAction,
+  nextDeadline,
   pressStrike,
   startBattle,
   type Battle,
   type BattleUpdate,
 } from '../../src/domain/battle/Battle';
 import type { BattleEvent } from '../../src/domain/battle/BattleEvent';
-import { SENTINEL, type HeroKind } from '../../src/domain/battle/combatants';
+import {
+  ENEMIES,
+  ENEMY_INITIATIVE,
+  SENTINEL,
+  type EnemyKind,
+  type HeroKind,
+} from '../../src/domain/battle/combatants';
 import { NO_MODIFIERS, type HeroModifiers } from '../../src/domain/battle/heroModifiers';
 import { bulwarkCounterBlow, counterBlow, strikeBlow } from '../../src/domain/battle/strike';
+import { drawnAttacks, strikesText } from '../../src/domain/ascent/testing/eliteBossStrikes';
+import { TIER_ONE_WALKS } from '../../src/domain/ascent/testing/tierOneDraws';
+import { WALKED_SEEDS, walkTierOne } from '../../src/domain/ascent/testing/tierOneWalk';
+import { TIERS, encounterMultiplier, type Tier } from '../../src/domain/ascent/tiers';
 
 /** Lame juste (`trueEdge`) et Heure juste : des bonus de frappe parfaite, en %. */
 const TRUE_EDGE = 50;
@@ -25,7 +37,41 @@ const SHATTERING_EMBER = 130;
 
 type Resolved = Extract<BattleEvent, { type: 'strikeResolved' }>;
 
+/** Les Élites et les boss, par leur nom dans la story. */
+const BY_NAME: Readonly<Record<string, EnemyKind>> = {
+  'Les Jumeaux': 'twins',
+  'Le Chevalier déchu': 'fallenKnight',
+  'La Gardienne des ossuaires': 'ossuaryWarden',
+  'Le Prieur sans visage': 'facelessPrior',
+  "L'Épouvantail": 'scarecrow',
+  'Le Brûleur de ronces': 'brambleBurner',
+  'le Brûleur de ronces': 'brambleBurner',
+  'La Jardinière des cendres': 'ashGardener',
+  'Le Premier Pèlerin': 'firstPilgrim',
+  'Le Saint de pierre': 'stoneSaint',
+  'Le Sonneur des heures': 'hourRinger',
+  'Celle qui exauce': 'wishGranter',
+};
+
+const roleOf = (tier: Tier, kind: EnemyKind) =>
+  TIERS[tier].elites.includes(kind) ? 'elite' : 'boss';
+
+/** Un combat contre `kind` seul, commencé comme la session le commence (#244). */
+function encounter(tier: Tier, kind: EnemyKind, cursed?: number): Battle {
+  return startBattle({
+    seed: 7,
+    defenseHint: false,
+    at: 0,
+    enemies: [kind],
+    tierMultiplier: encounterMultiplier(tier, roleOf(tier, kind)),
+    summonMultiplier: TIERS[tier].multiplier,
+    ...(cursed !== undefined && { cursed }),
+  }).battle;
+}
+
 interface World {
+  tier: Tier;
+  kind: EnemyKind;
   battle: Battle;
   resolved: Resolved[];
   shieldBashGuard: number;
@@ -33,7 +79,13 @@ interface World {
 
 let world: World;
 
-const fresh = (battle: Battle): World => ({ battle, resolved: [], shieldBashGuard: 0 });
+const fresh = (battle: Battle): World => ({
+  tier: 1,
+  kind: 'ghoul',
+  battle,
+  resolved: [],
+  shieldBashGuard: 0,
+});
 
 function start(hero: HeroKind, modifiers: Partial<HeroModifiers>, powers?: Battle['powers']) {
   return startBattle({
@@ -65,7 +117,29 @@ function strikeAll(battle: Battle, offset: number): Resolved[] {
   return resolved;
 }
 
-const steps: StepDefinitions = ({ given, when, then }) => {
+/** Les Élites et les boss dont les PV et les coups ne changent pas : palier 1, boss du palier 2. */
+const UNCHANGED: readonly (readonly [Tier, EnemyKind])[] = [
+  ...[...TIERS[1].elites, ...TIERS[1].bosses].map((kind) => [1, kind] as const),
+  ...TIERS[2].bosses.map((kind) => [2, kind] as const),
+];
+
+/** Rejoue le combat, sans défense ni appui, jusqu'à la première frappe jugée du héros. */
+function afterStrike(initial: Battle, limit: number): Battle {
+  let battle = initial;
+  for (let step = 0; step < limit; step += 1) {
+    let update: BattleUpdate;
+    if (battle.phase.kind === 'hero') {
+      update = act(battle, { kind: 'attack' }, battle.now + 100);
+    } else {
+      update = advance(battle, nextDeadline(battle)!.at + 40);
+    }
+    battle = update.battle;
+    if (update.events.some((event) => event.type === 'strikeResolved')) return battle;
+  }
+  throw new Error('The hero never struck');
+}
+
+const steps: StepDefinitions = ({ given, when, then, and }) => {
   // --- G1 : Brise-garde d'une frappe ---
 
   given(/^la Sentinelle avec Lame juste et Heure juste$/u, () => {
@@ -183,6 +257,126 @@ const steps: StepDefinitions = ({ given, when, then }) => {
     // Avant #244 : 12 (100 % du Brise-garde) et 3 (25 %).
     expect(counterBlow(counter).guard).toBe(12);
     expect(bulwarkCounterBlow({ ...counter, ...SENTINEL.bulwarkCounter }).guard).toBe(3);
+  });
+
+  // --- R1 : multiplicateur d'Élite et de boss ---
+
+  given(/^une ascension au palier (\d)$/u, (tier: string) => {
+    world = { ...fresh(encounter(1, 'ghoul')), tier: Number(tier) as Tier };
+  });
+
+  when(/^le héros affronte (?!une Élite)(.+)$/u, (name: string) => {
+    world.kind = BY_NAME[name]!;
+    world.battle = encounter(world.tier, world.kind);
+  });
+
+  then(
+    /^(?!il )(.+) a (\d+) PV max et une garde max de (\d+)$/u,
+    (name: string, maxHp: string, maxGuard: string) => {
+      expect(BY_NAME[name]).toBe(world.kind);
+      expect(world.battle.enemies[0]).toMatchObject({
+        maxHp: Number(maxHp),
+        hp: Number(maxHp),
+        maxGuard: Number(maxGuard),
+        guard: Number(maxGuard),
+      });
+    },
+  );
+
+  and(/^les dégâts de ses coups valent (.+)$/u, (strikes: string) => {
+    const { hpPercent } = world.battle.tierMultiplier!;
+    expect(strikesText(world.kind, hpPercent)).toBe(strikes.trim());
+  });
+
+  then(/^la Torche allume 2 charges de Brûlure$/u, () => {
+    const drawn = drawnAttacks(world.kind, world.battle.tierMultiplier!.hpPercent);
+    expect(drawn.get('basic')).toMatchObject({ damage: 12, burn: 2 });
+  });
+
+  and(/^le Fagot d'épines fait saigner 2 PV pendant 3 manches$/u, () => {
+    const drawn = drawnAttacks(world.kind, world.battle.tierMultiplier!.hpPercent);
+    expect(drawn.get('double')).toMatchObject({ damage: 7, bleed: { damage: 2, rounds: 3 } });
+  });
+
+  and(/^son Initiative vaut 6$/u, () => {
+    expect(ENEMY_INITIATIVE[world.kind]).toBe(6);
+  });
+
+  given(/^le Sonneur des heures au palier 3 à 650 PV max$/u, () => {
+    world = { ...fresh(encounter(3, 'hourRinger')), tier: 3, kind: 'hourRinger' };
+    expect(world.battle.enemies[0]!.maxHp).toBe(650);
+  });
+
+  when(/^ses PV passent à 325 ou moins$/u, () => {
+    // Une frappe sans appui de la Sentinelle : 10 PV, de 335 à 325.
+    const wounded: Battle = {
+      ...world.battle,
+      enemies: world.battle.enemies.map((enemy) => ({ ...enemy, hp: 335, guard: 40 })),
+    };
+    world.battle = afterStrike(wounded, 200);
+  });
+
+  then(/^son changement de phase a lieu$/u, () => {
+    expect(world.battle.enemies[0]).toMatchObject({ hp: 325, phase2: true });
+  });
+
+  given(
+    /^une ascension au palier 1, ou au palier 2 contre la Reine des phalènes ou la Jardinière des cendres$/u,
+    () => {
+      world = fresh(encounter(1, 'ghoul'));
+    },
+  );
+
+  when(/^le héros affronte une Élite ou un boss$/u, () => {
+    // Chaque Élite et chaque boss du palier 1, et les boss du palier 2.
+  });
+
+  then(/^ses PV et les dégâts de ses coups sont ceux d'avant le rééquilibrage$/u, () => {
+    for (const [tier, kind] of UNCHANGED) {
+      expect(encounter(tier, kind).enemies[0]!.maxHp).toBe(ENEMIES[kind].maxHp);
+      expect(strikesText(kind, encounterMultiplier(tier, roleOf(tier, kind)).hpPercent)).toBe(
+        strikesText(kind, 100),
+      );
+    }
+  });
+
+  and(
+    /^sa garde max suit la colonne garde du multiplicateur d'Élite et de boss \(Reine des phalènes 87, Jardinière des cendres 97\)$/u,
+    () => {
+      for (const [tier, kind] of UNCHANGED) {
+        const { guardPercent } = encounterMultiplier(tier, roleOf(tier, kind));
+        expect(guardPercent).toBe(125);
+        expect(encounter(tier, kind).enemies[0]!.maxGuard).toBe(
+          Math.floor((ENEMIES[kind].maxGuard * guardPercent) / 100),
+        );
+      }
+      expect(encounter(2, 'mothQueen').enemies[0]!.maxGuard).toBe(87);
+      expect(encounter(2, 'ashGardener').enemies[0]!.maxGuard).toBe(97);
+    },
+  );
+
+  and(
+    /^les 200 ascensions rejouées du palier 1 changent : leurs tests figés sont mis à jour, jamais la graine$/u,
+    () => {
+      expect(WALKED_SEEDS).toBe(200);
+      expect(TIER_ONE_WALKS).toHaveLength(WALKED_SEEDS);
+      TIER_ONE_WALKS.forEach((walk, index) => {
+        expect(walkTierOne(index + 1)).toBe(walk);
+      });
+    },
+  );
+
+  given(/^une ascension en malédiction −2 au palier 3$/u, () => {
+    world = { ...fresh(encounter(1, 'ghoul')), tier: 3 };
+  });
+
+  when(/^la porte Élite mène au Premier Pèlerin, Élite maudite$/u, () => {
+    world.kind = 'firstPilgrim';
+    world.battle = encounter(3, 'firstPilgrim', 0);
+  });
+
+  then(/^il a 436 PV max et une garde max de 98$/u, () => {
+    expect(world.battle.enemies[0]).toMatchObject({ maxHp: 436, maxGuard: 98, cursed: true });
   });
 };
 

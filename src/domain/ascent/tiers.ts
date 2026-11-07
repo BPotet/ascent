@@ -1,11 +1,11 @@
 /**
  * Les paliers (`Tier`, #38, § 3 de la note du Game Designer) : les Catacombes (`Catacombs`), les
  * Jardins de cendre (`AshGardens`) et le Beffroi (`Belfry`), 6 étages chacun. La table `TIERS` est
- * la règle du palier (ADR 0012) : son multiplicateur, son Or, la taille de ses groupes, les
+ * la règle du palier (ADR 0012) : ses multiplicateurs (ennemis ordinaires, Élites, boss), son Or, la taille de ses groupes, les
  * ennemis qu'il tire, ses Élites, ses boss et les Éclats de son boss.
  */
 import type { EnemyKind } from '../battle/combatants';
-import type { TierMultiplier } from '../battle/tierMultiplier';
+import type { EliteBossMultiplier, TierMultiplier } from '../battle/tierMultiplier';
 
 export type Tier = 1 | 2 | 3;
 
@@ -26,8 +26,12 @@ export interface EnemyDraw {
 
 export interface TierRule {
   readonly name: TierName;
-  /** Le multiplicateur des ennemis de ses combats ordinaires. */
+  /** Le multiplicateur des ennemis de ses combats ordinaires, et de ses invoqués. */
   readonly multiplier: TierMultiplier;
+  /** Le multiplicateur de ses Élites (#244, R1). */
+  readonly eliteMultiplier: EliteBossMultiplier;
+  /** Le multiplicateur de ses boss (#244, R1). */
+  readonly bossMultiplier: EliteBossMultiplier;
   /** Le pourcentage de l'Or gagné : 100, 125 ou 150. */
   readonly goldPercent: number;
   /** Les poids de la taille du groupe (1 à 5 ennemis), par étage, de 1 à 5. */
@@ -46,6 +50,8 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
   1: {
     name: 'catacombs',
     multiplier: { hpPercent: 100, guardPercent: 100 },
+    eliteMultiplier: { hpPercent: 100, guardPercent: 125 },
+    bossMultiplier: { hpPercent: 100, guardPercent: 125 },
     goldPercent: 100,
     groupSizeWeights: {
       1: [4, 10, 6, 0, 0],
@@ -69,6 +75,8 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
   2: {
     name: 'ashGardens',
     multiplier: { hpPercent: 135, guardPercent: 125 },
+    eliteMultiplier: { hpPercent: 120, guardPercent: 140 },
+    bossMultiplier: { hpPercent: 100, guardPercent: 125 },
     goldPercent: 125,
     groupSizeWeights: {
       1: [0, 6, 8, 2, 0],
@@ -94,6 +102,8 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
   3: {
     name: 'belfry',
     multiplier: { hpPercent: 175, guardPercent: 150 },
+    eliteMultiplier: { hpPercent: 135, guardPercent: 150 },
+    bossMultiplier: { hpPercent: 130, guardPercent: 145 },
     goldPercent: 150,
     groupSizeWeights: {
       1: [0, 0, 9, 4, 0],
@@ -118,3 +128,13 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
     bossShards: 18,
   },
 };
+
+/**
+ * Le multiplicateur des ennemis d'une rencontre du palier (#244) : celui du palier pour un combat
+ * ordinaire, celui d'Élite et de boss pour une Élite ou un boss. La seule lecture de la table.
+ */
+export function encounterMultiplier(tier: Tier, kind: 'combat' | 'elite' | 'boss'): TierMultiplier {
+  const rule = TIERS[tier];
+  if (kind === 'elite') return rule.eliteMultiplier;
+  return kind === 'boss' ? rule.bossMultiplier : rule.multiplier;
+}

@@ -273,7 +273,10 @@ export interface Battle {
   readonly initiative: boolean;
   /** Les modificateurs du héros (prototype #93) ; absents, aucun. */
   readonly modifiers?: HeroModifiers;
-  /** Le multiplicateur de palier d'un combat ordinaire (#38) ; absent, × 1 (palier 1). */
+  /**
+   * Le multiplicateur des ennemis du combat : de palier pour un combat ordinaire (#38), d'Élite et
+   * de boss sinon (#244) ; absent, × 1 (palier 1, ou une Élite ou un boss sauvés avant #244).
+   */
   readonly tierMultiplier?: TierMultiplier;
   /** Le multiplicateur du palier des ennemis invoqués (#172) ; absent, × 1. */
   readonly summonMultiplier?: TierMultiplier;
@@ -361,11 +364,14 @@ export interface BattleOptions extends BattleStartOptions {
   readonly modifiers?: HeroModifiers;
   /** Le groupe d'ennemis, de gauche à droite, dans l'ordre du tirage. */
   readonly enemies: readonly EnemyKind[];
-  /** Le multiplicateur de palier d'un combat ordinaire (#38) ; par défaut, × 1. */
+  /**
+   * Le multiplicateur des ennemis du combat : de palier pour un combat ordinaire (#38), d'Élite et
+   * de boss sinon (#244) ; par défaut, × 1.
+   */
   readonly tierMultiplier?: TierMultiplier;
   /**
    * Le multiplicateur du palier des ennemis invoqués (#172), pour tout combat d'étage, boss
-   * compris (le boss, lui, n'est jamais multiplié) ; par défaut, × 1.
+   * compris (le boss, lui, a le multiplicateur d'Élite et de boss) ; par défaut, × 1.
    */
   readonly summonMultiplier?: TierMultiplier;
   /**
@@ -383,8 +389,8 @@ export interface BattleOptions extends BattleStartOptions {
 export const FRONT_LINE_SIZE = 3;
 
 /**
- * Un ennemi qui entre, à PV et garde max, multipliés par le palier d'un combat ordinaire (#38),
- * puis maudits (#209) s'il l'est.
+ * Un ennemi qui entre, à PV et garde max, multipliés par le multiplicateur du combat (de palier,
+ * #38, ou d'Élite et de boss, #244), puis maudits (#209) s'il l'est.
  */
 function freshEnemy(
   kind: EnemyKind,
