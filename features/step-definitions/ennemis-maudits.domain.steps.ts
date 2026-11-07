@@ -15,7 +15,7 @@ import {
 } from '../../src/domain/ascent/Ascent';
 import type { Exit } from '../../src/domain/ascent/exits';
 import type { FateGauge } from '../../src/domain/ascent/fateGauge';
-import { TIERS } from '../../src/domain/ascent/tiers';
+import { TIERS, encounterMultiplier } from '../../src/domain/ascent/tiers';
 import { TIER_ONE_WALKS } from '../../src/domain/ascent/testing/tierOneDraws';
 import { walkTierOne } from '../../src/domain/ascent/testing/tierOneWalk';
 import {
@@ -54,7 +54,8 @@ function battleOf(ascent: Ascent): Battle {
     at: 0,
     initiative: true,
     enemies: encounter.enemies,
-    ...(encounter.kind === 'combat' && { tierMultiplier: TIERS[ascent.tier].multiplier }),
+    // Le multiplicateur du combat, de palier ou d'Élite et de boss (#244).
+    tierMultiplier: encounterMultiplier(ascent.tier, encounter.kind),
     ...(encounter.cursed !== undefined && { cursed: encounter.cursed }),
   }).battle;
 }
@@ -270,9 +271,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and(
-    /^il a 240 PV max, une garde max de 54, des coups de 9, 9 et 14, et son Initiative reste 6$/u,
+    /^il a 240 PV max, une garde max de 67, des coups de 9, 9 et 14, et son Initiative reste 6$/u,
     () => {
-      expect(world.battle.enemies[0]).toMatchObject({ maxHp: 240, maxGuard: 54 });
+      expect(world.battle.enemies[0]).toMatchObject({ maxHp: 240, maxGuard: 67 });
       expect(ENEMIES.fallenKnight.moves.map(({ damage }) => cursedValue(damage))).toEqual([
         9, 9, 14,
       ]);

@@ -1193,7 +1193,7 @@ describe('AscentSession: the Summon of the Moth queen (#172)', () => {
     expect(saved(store)?.battle?.summon).toEqual({ summoner: 0, kind: 'mothkin', slots: [1, 2] });
   });
 
-  it('gives every floor battle the multiplier of the tier for its summoned enemies, never to the boss', async () => {
+  it('gives every floor battle the multiplier of the tier for its summoned enemies, and the boss its own (#244)', async () => {
     const { session, store } = setUp();
     store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: bossOfTier2, battle: null }));
     await session.load();
@@ -1203,8 +1203,8 @@ describe('AscentSession: the Summon of the Moth queen (#172)', () => {
 
     const { battle } = battleSession.current()!;
     expect(battle.summonMultiplier).toEqual(TIERS[2].multiplier);
-    expect(battle.tierMultiplier).toBeUndefined();
-    expect(battle.enemies[0]).toMatchObject({ kind: 'mothQueen', maxHp: 400 });
+    expect(battle.tierMultiplier).toEqual(TIERS[2].bossMultiplier);
+    expect(battle.enemies[0]).toMatchObject({ kind: 'mothQueen', maxHp: 400, maxGuard: 87 });
   });
 
   it('resumes an announced summon, and saves the battle when the Mothkin enter', async () => {

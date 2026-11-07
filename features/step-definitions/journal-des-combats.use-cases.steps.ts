@@ -323,9 +323,10 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     await fight(story, battleSession, {
       strike: () => 0,
       // Les parades parfaites contre-attaquent ; les coups laissés passer usent le Rempart, font
-      // saigner et brûler.
+      // saigner et brûler. Un coup sur 7 laissé passer (1 sur 4 avant #244) : avec les gardes de
+      // #244, le combat montre encore une action perdue.
       defend: ({ battle, count }) =>
-        battle.hero.bulwark || count % 4 === 3 ? [] : [['parry', -40]],
+        battle.hero.bulwark || count % 7 === 6 ? [] : [['parry', -40]],
     });
     expect(battleSession.current()!.battle.phase).toMatchObject({
       kind: 'over',
@@ -343,8 +344,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
         floor: 6,
         encounterKind: 'boss',
         status: 'won',
-        // Le boss n'est jamais multiplié ; ses invoqués ont les valeurs du palier.
-        tierMultiplier: null,
+        // Le boss a le multiplicateur d'Élite et de boss (#244) ; ses invoqués, celui du palier.
+        tierMultiplier: TIERS[2].bossMultiplier,
         summonMultiplier: TIERS[2].multiplier,
         reserve: ['necromancer'],
       });

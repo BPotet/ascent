@@ -49,6 +49,7 @@ import type { EnemyView } from '../../src/adapters/ui/state/battleView';
 import { ascentSetUp } from '../../src/adapters/ui/testing/ascent';
 import { renderScreen } from '../../src/adapters/ui/testing/renderScreen';
 import { startAscent } from '../../src/domain/ascent/Ascent';
+import { encounterMultiplier } from '../../src/domain/ascent/tiers';
 import { ATTACKS, type AttackKind } from '../../src/domain/battle/attacks';
 import {
   advance,
@@ -58,6 +59,7 @@ import {
   type Battle,
 } from '../../src/domain/battle/Battle';
 import { ENEMIES, type EnemyKind, type Move } from '../../src/domain/battle/combatants';
+import { scaleByPercent } from '../../src/domain/battle/tierMultiplier';
 import {
   IMPACT,
   STEP_IN,
@@ -901,7 +903,12 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     "le lecteur d'écran lit toujours le nom, les PV, la garde et l'intention, et annonce le type de coup au début de la préparation comme aujourd'hui",
     () => {
       STORY.forEach((kind, index) => {
-        const { maxHp, maxGuard } = ENEMIES[kind];
+        const { maxHp } = ENEMIES[kind];
+        // La garde du palier 1 : la colonne garde du multiplicateur d'Élite et de boss (#244).
+        const maxGuard = scaleByPercent(
+          ENEMIES[kind].maxGuard,
+          encounterMultiplier(1, kind === 'twins' ? 'elite' : 'boss').guardPercent,
+        );
         expect(world.read.labels[index]).toContain(ENEMY_NAMES[kind]);
         expect(world.read.labels[index]).toContain(`${maxHp} PV sur ${maxHp}`);
         expect(world.read.labels[index]).toContain(`garde ${maxGuard} sur ${maxGuard}`);

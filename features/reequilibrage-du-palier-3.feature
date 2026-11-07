@@ -206,3 +206,22 @@ Fonctionnalité: Rééquilibrage du palier 3
     Et qui possède Cœur de braise
     Quand il casse une garde puis gagne le combat
     Alors il regagne 5 PV de Cœur de braise et son répit en entier
+
+  # Sauvegarde
+  @session
+  Scénario: Une ascension sauvegardée au milieu d'un combat d'Élite garde ses valeurs
+    Étant donné une ascension sauvegardée avant le rééquilibrage, au milieu d'un combat d'Élite du palier 3
+    Quand le joueur la reprend après la mise à jour
+    Alors l'Élite garde ses PV, sa garde et ses coups d'avant
+
+  @session
+  Scénario: Un combat sauvegardé avant la mise à jour garde ses gardes enregistrées
+    Étant donné une ascension sauvegardée avant le rééquilibrage, au milieu d'un combat ordinaire
+    Quand le joueur la reprend après la mise à jour
+    Alors chaque ennemi garde sa garde et sa garde max enregistrées
+
+  @session
+  Scénario: Le plafond de soin est sauvegardé
+    Étant donné un combat où 7 PV de parade parfaite ont été rendus
+    Quand l'application est fermée puis rouverte
+    Alors il ne reste que 3 PV de soin de parade parfaite dans ce combat

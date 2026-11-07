@@ -90,9 +90,9 @@ Fonctionnalité: Trois paliers jusqu'au sommet, et les premiers Éclats
     Alors elle ne relève pas la Ronce
 
   @session
-  Scénario: Les Élites et les boss ne sont pas multipliés
+  Scénario: Les Élites et les boss ont leur propre multiplicateur (#244)
     Étant donné l'Épouvantail au palier 2
-    Alors il a 190 PV et 50 de garde, et sa Moisson fait 16
+    Alors il a 228 PV et 70 de garde, et sa Moisson fait 19
 
   @domain
   Scénario: Limite — le palier 1 ne change pas

@@ -42,7 +42,7 @@ Fonctionnalité: Ennemis maudits
     Alors exactement un ennemi du groupe est maudit, avec le même bonus qu'à −1
     Quand il passe ensuite la porte Élite
     Alors le Chevalier déchu est maudit
-    Et il a 240 PV max, une garde max de 54, des coups de 9, 9 et 14, et son Initiative reste 6
+    Et il a 240 PV max, une garde max de 67, des coups de 9, 9 et 14, et son Initiative reste 6
 
   @domain
   Scénario: Le boss et ses invocations ne sont jamais maudits
