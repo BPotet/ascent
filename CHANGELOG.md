@@ -2,6 +2,16 @@
 
 Toutes les évolutions notables d'Ascent. Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/). Les versions sont calculées à partir des [Conventional Commits](https://www.conventionalcommits.org/fr/v1.0.0/).
 
+## [0.7.0] - 2026-11-07
+
+L'épique #232 « L'arbre de pouvoirs du héros », terminée : après le socle arrivé en 0.6.0 (#235, #242), les frappes de pouvoir, le choix des pouvoirs équipés et le Serment qui lie une habitude à un pouvoir. Et l'épique #243 « Rééquilibrage, un palier 3 qui résiste » : les gardes, les Élites, les boss et les soins sont revus pour que le Sommet redevienne un vrai défi.
+
+### Nouveautés pour le joueur
+
+- **Le Serment** (build de preview) : au Camp, dans la fiche d'un pouvoir débloqué qui coûte 2 Élan ou plus, le joueur lie une de ses habitudes à ce pouvoir. Dès le lendemain, si l'habitude a été faite la veille, le pouvoir est attisé pour toute l'ascension : il coûte 1 Élan de moins, ce que montrent le choix du héros, l'Équipement et sa touche de combat, avec une petite flamme. Les Éclats et les prix de l'arbre ne changent pas (#237, #251).
+- **Les frappes de pouvoir et le choix des pouvoirs équipés** (build de preview) : les quatre frappes annoncées « Bientôt » se débloquent dans l'arbre et se lancent en combat comme une frappe en rythme. Pour la Sentinelle, **Coup de bouclier** (2 Élan, un coup qui brise fort la garde) et **Fracas** (3 Élan, un coup lourd) ; pour l'Errante, **Rafale** (2 Élan, 4 coups) et **Frappe furtive** (3 Élan, 2 coups, bien plus forts sur un ennemi qui n'a pas encore joué). Avec 4 pouvoirs ou plus, « Changer les pouvoirs » au choix du héros permet d'emporter les 3 de son choix, pouvoir de base compris ; le choix est retenu pour chaque héros (#236, #254).
+- **Un palier 3 qui résiste** (build de preview) : les gardes des ennemis ordinaires sont deux fois plus solides, et les bonus de frappe parfaite ne s'ajoutent plus qu'aux dégâts sur les PV, pas à la garde ; les Élites et les boss des paliers 2 et 3 sont plus forts ; le répit entre les combats passe à 5 % aux paliers 2 et 3 ; les soins d'une parade parfaite sont plafonnés à 10 PV par combat ; une porte Élite ne ramène plus la dernière Élite affrontée dans le palier (#244, #253).
+
 ## [0.6.0] - 2026-11-07
 
 L'épique #208 « Coffres, clés et bénédictions de fortune », terminée, et le socle de l'épique #232 « L'arbre de pouvoirs du héros » : les pouvoirs se débloquent au Camp et le héros en emporte jusqu'à trois au combat.
