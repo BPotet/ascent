@@ -7,6 +7,7 @@ import {
   endFloorBattle,
   enterNextTier,
   equipItem,
+  kindledOf,
   leaveItem,
   leaveSealedChest,
   lootStream,
@@ -29,7 +30,7 @@ import {
   serializeShardTotal,
   type ShardTotal,
 } from '../../domain/ascent/shards';
-import { TIERS } from '../../domain/ascent/tiers';
+import { TIERS, encounterMultiplier } from '../../domain/ascent/tiers';
 import { resumeBattle, startBattle, type Battle } from '../../domain/battle/Battle';
 import { combineModifiers } from '../../domain/battle/heroModifiers';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
@@ -147,12 +148,15 @@ function parse(raw: string | null): SavedAscent | null {
     const keys = stored.keys ?? favorKeys(ascent.gauge);
     // Une ascension d'avant #235 : son pouvoir de base seul, jusqu'à sa fin.
     const powers = stored.powers ?? [basePower(ascent.hero.kind)];
+    // Une ascension d'avant #237 : aucun pouvoir attisé, jusqu'à sa fin.
+    const kindled = stored.kindled ?? [];
     const renamed: Ascent = {
       ...ascent,
       rerolls,
       secondChance,
       keys,
       powers,
+      kindled,
       blessings: ascent.blessings.map((blessing) => ({
         ...blessing,
         family: protection(blessing.family),
@@ -392,14 +396,17 @@ export class AscentSession {
             boonModifiers(ascent.hero.boons),
           ),
           enemies: encounter.enemies,
-          // Les pouvoirs équipés de l'ascension (#235).
+          // Les pouvoirs équipés de l'ascension (#235), et ceux qu'elle a attisés (#237).
           powers: ascent.powers,
+          kindled: kindledOf(ascent),
           // L'ennemi maudit tiré pour l'étage (#209) ; absent, aucun.
           ...(encounter.cursed !== undefined && { cursed: encounter.cursed }),
           // La seconde chance encore là (#206) ; absente, le combat est celui d'avant.
           ...(ascent.secondChance && { secondChance: true }),
-          // Le multiplicateur de palier : les combats ordinaires seulement, jamais l'Élite ni le boss.
-          ...(encounter.kind === 'combat' && { tierMultiplier: TIERS[ascent.tier].multiplier }),
+          // Le multiplicateur de palier d'un combat ordinaire, celui d'Élite et de boss sinon (#244).
+          tierMultiplier: encounterMultiplier(ascent.tier, encounter.kind),
+          // Le répit du palier (#244, R3).
+          respitePercent: TIERS[ascent.tier].respitePercent,
           // Les ennemis invoqués ont les valeurs du palier, dans tout combat d'étage (#172).
           summonMultiplier: TIERS[ascent.tier].multiplier,
           // L'ordre d'action par Initiative (P13, P14), ajouté par #90.

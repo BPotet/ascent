@@ -3,6 +3,7 @@
 import { artPalette } from '../../artPalette';
 import type { Sprite } from '../Sprite';
 import { ENEMY_FRAMES, HERO_FRAMES, heroFrames, type HeroFrame } from '../battle/battleCharacters';
+import { HERO_ANIMATIONS } from '../battle/heroAnimations';
 import { FACELESS_PRIOR_ANIMATION } from './data/facelessPrior';
 import { FALLEN_KNIGHT_ANIMATION } from './data/fallenKnight';
 import { GHOUL_ANIMATION } from './data/ghoul';
@@ -610,15 +611,15 @@ describe('the validated images of the items', () => {
 });
 
 // L'animation complète des héroïnes (#140) : le format du héros, 36 × 44, les 14 poses du héros
-// (plus `bash` pour la Sentinelle, #155), sans rouge.
+// (plus `bash` pour la Sentinelle, #155, et les deux poses de Fracas, #236), sans rouge.
 describe.each([
   ['Wanderer', WANDERER_ANIMATION, 12, 2, HERO_FRAMES],
-  ['Sentinel', SENTINEL_ANIMATION, 19, 1, heroFrames('sentinel')],
+  ['Sentinel', HERO_ANIMATIONS.sentinel, 19, 1, heroFrames('sentinel')],
 ] as const)('the full animation of the heroine %s (#140)', (_, animation, tints, tips, poses) => {
   const full: FullAnimation = animation;
   const HERO_CELL = [36, 44] as const;
 
-  it('has exactly the poses of the heroine: the 14 of the hero, plus bash for the Sentinel, each of 44 lines of 36 characters', () => {
+  it('has exactly the poses of the heroine: the 14 of the hero, plus bash and crush0, crush1 for the Sentinel, each of 44 lines of 36 characters', () => {
     expect([full.w, full.h, full.pal.length]).toEqual([36, 44, tints]);
     expect(Object.keys(full.frames).sort()).toEqual([...poses].sort());
     expect(Object.keys(full.anchors).sort()).toEqual([...poses].sort());
@@ -691,7 +692,7 @@ describe.each([
 
 // La pose `bash` de la Sentinelle (#155) : recopiée de `assets/sentinel` version 26 de l'Atelier.
 describe('the bash pose of the Sentinel (#155)', () => {
-  const full: FullAnimation<HeroFrame> = SENTINEL_ANIMATION;
+  const full: FullAnimation<Exclude<HeroFrame, 'crush0' | 'crush1'>> = SENTINEL_ANIMATION;
 
   it('is the shield bash of the Atelier, with its anchors', () => {
     expect(full.anchors.bash).toEqual({ head: [21, 4], eye: [25, 11], tips: [[23, 42]] });

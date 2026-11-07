@@ -70,3 +70,14 @@ codé : aucune donnée stockée n'en dépend.
   un achat à la fois, son et vibration du camp) et le § 7 (« Dès ta prochaine ascension » dérivé).
 - Les **pouvoirs équipés** entrent dans une ascension par le § 6 : `CampSession.beginAscent` passe
   `powers: equippedPowers(camp, hero)` à `AscentSession.begin`.
+
+## Avenant du 7 novembre 2026 — le Serment (#237, ADR 0021)
+
+- Les Serments vivent dans une clé voisine, `camp.oaths`, jamais écrite par un achat ; un Serment
+  n'écrit jamais `camp.unlocks`. Les Éclats disponibles, les Déblocages et leurs prix ne bougent
+  pas.
+- `CampSession` reçoit l'horloge et l'unité de travail pour lire les habitudes ; un Serment suit le
+  § 4 (une écriture attendue, tout ou rien, un à la fois, sur son propre drapeau), avec le son du
+  sceau et la vibration de réussite.
+- `beginAscent` reçoit en plus `doneYesterday` (facultatif, aucune par défaut) et passe les pouvoirs
+  attisés à l'ascension.

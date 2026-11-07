@@ -15,7 +15,7 @@ import {
 import { CAMP_KEY, type CampSession } from '../../src/application/useCases/CampSession';
 import type { Ascent } from '../../src/domain/ascent/Ascent';
 import { campPowers, parseCamp } from '../../src/domain/ascent/camp';
-import type { PowerTreeCode } from '../../src/domain/ascent/powerTree';
+import type { PowerKind } from '../../src/domain/battle/powers';
 import { equippedOf } from '../../src/domain/battle/Battle';
 import {
   ascentBefore,
@@ -51,11 +51,11 @@ async function withShards(total: number): Promise<void> {
   await open(store);
 }
 
-async function unlockPower(power: PowerTreeCode): Promise<void> {
+async function unlockPower(power: PowerKind): Promise<void> {
   expect(await world.camp.unlockPower(power)).toBe('unlocked');
 }
 
-const stateOf = (code: PowerTreeCode) =>
+const stateOf = (code: PowerKind) =>
   [...world.camp.view().trees.sentinel.nodes, ...world.camp.view().trees.wanderer.nodes].find(
     (node) => node.code === code,
   )?.state;

@@ -8,7 +8,7 @@ import { sceneGeometry } from '../../src/adapters/ui/battle/scene/sceneGeometry'
 import type { HeroPose } from '../../src/adapters/ui/battle/sceneTypes';
 import { artPalette } from '../../src/adapters/ui/pixelArt/artPalette';
 import type { Sprite } from '../../src/adapters/ui/pixelArt/sprites/Sprite';
-import { SENTINEL_ANIMATION } from '../../src/adapters/ui/pixelArt/sprites/atelier/data/sentinel';
+import { HERO_ANIMATIONS } from '../../src/adapters/ui/pixelArt/sprites/battle/heroAnimations';
 import { WANDERER_ANIMATION } from '../../src/adapters/ui/pixelArt/sprites/atelier/data/wanderer';
 import { atlasRect, battleAtlas } from '../../src/adapters/ui/pixelArt/sprites/battle/battleAtlas';
 import type { HeroFrame } from '../../src/adapters/ui/pixelArt/sprites/battle/battleCharacters';
@@ -16,7 +16,8 @@ import type { HeroKind } from '../../src/domain/battle/combatants';
 
 /** Les héroïnes et leur animation complète, telles que recopiées de l'Atelier. */
 export const HEROINES: readonly HeroKind[] = ['wanderer', 'sentinel'];
-export const ANIMATION_OF = { wanderer: WANDERER_ANIMATION, sentinel: SENTINEL_ANIMATION };
+// La Sentinelle du combat : son animation complète, avec les poses de Fracas (#236).
+export const ANIMATION_OF = { wanderer: WANDERER_ANIMATION, sentinel: HERO_ANIMATIONS.sentinel };
 export const HEROINE_OF_NAME: Readonly<Record<string, HeroKind>> = {
   "l'Errante": 'wanderer',
   'la Sentinelle': 'sentinel',

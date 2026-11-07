@@ -23,9 +23,17 @@ import Animated, {
 
 import type { DefenseButton } from '../../../domain/battle/BattleEvent';
 import type { PowerKind } from '../../../domain/battle/powers';
+import { KindledFlame } from '../components/KindledFlame';
 import { PowerIcon } from '../components/PowerIcon';
 import { INSTANT_WORD, attackButtonLabel } from '../format/battleText';
-import { POWER_BUTTON_NAMES, POWER_TIPS, powerKeyLabel, powerKeyReason } from '../format/powerText';
+import {
+  POWER_BUTTON_NAMES,
+  POWER_TIPS,
+  powerKeyLabel,
+  powerKeyReason,
+  strikeKeyLabel,
+  strikePowerLine,
+} from '../format/powerText';
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize, notchedCorners } from '../pixelArt/artPixel';
 import { PixelFrame } from '../pixelArt/PixelFrame';
@@ -96,6 +104,14 @@ const KEY_LOOKS = {
     shade: roles.surface,
     text: roles.muted,
     note: roles.muted,
+  },
+  kindled: {
+    background: roles.surface,
+    line: roles.ember,
+    light: roles.raised,
+    shade: roles.ink,
+    text: battleColors.text,
+    note: roles.light,
   },
   active: {
     background: roles.surface,
@@ -362,7 +378,7 @@ function PowerKey({
   readonly onPower: (power: PowerKind, touchStartedAt: number, releasedAt: number) => void;
   readonly onTip: (power: PowerKind | null) => void;
 }) {
-  const { power, availability, instant = false } = slot;
+  const { power, availability, instant = false, kindled = false } = slot;
   const available = availability === 'available';
   const active = availability === 'active';
   const disabled = locked || !available;
@@ -376,7 +392,13 @@ function PowerKey({
   );
   const gesture = useReleaseGesture(powerGestureTestId(power), uiNow, onRelease, hold);
   const hatched = !locked && !available && !active;
-  const look = hatched ? KEY_LOOKS.unavailable : active ? KEY_LOOKS.active : KEY_LOOKS.surface;
+  const look = hatched
+    ? KEY_LOOKS.unavailable
+    : active
+      ? KEY_LOOKS.active
+      : kindled
+        ? KEY_LOOKS.kindled
+        : KEY_LOOKS.surface;
   const reason = powerKeyReason(slot);
   return (
     <PixelKey
@@ -406,7 +428,16 @@ function PowerKey({
       </Text>
       {available ? (
         <>
-          <Text style={[styles.keyNote, { color: look.note }]}>{`${slot.cost} Élan`}</Text>
+          {kindled ? (
+            <View style={styles.instantRow}>
+              <KindledFlame testID={`battle-power-kindled-${power}`} />
+              <Text
+                style={[styles.keyNote, { color: look.note }]}
+              >{`${slot.baseCost} → ${slot.cost} Élan`}</Text>
+            </View>
+          ) : (
+            <Text style={[styles.keyNote, { color: look.note }]}>{`${slot.cost} Élan`}</Text>
+          )}
           {instant ? (
             <View testID={`battle-power-instant-${power}`} style={styles.instantRow}>
               <CrescentGlyph
@@ -466,6 +497,7 @@ function StrikeKey({
     'worklet';
     return { transform: [{ scaleX: fill.get() }] };
   }, [fill]);
+  const { power, hits = 1, hit = 1 } = pad;
   return (
     <PixelKey
       name="strike"
@@ -474,7 +506,7 @@ function StrikeKey({
       gesture={gesture}
       accessible
       accessibilityRole="button"
-      accessibilityLabel="Frapper"
+      accessibilityLabel={strikeKeyLabel(power, hits, hit)}
       accessibilityState={{ disabled: pad.resolved }}
       accessibilityActions={[{ name: 'activate' }]}
       onAccessibilityAction={() => onStrike(now())}
@@ -484,6 +516,24 @@ function StrikeKey({
       <Animated.View pointerEvents="none" style={[styles.strikeFill, bar]} />
       <View pointerEvents="none" testID="battle-strike-mark" style={styles.strikeMark} />
       <Text style={[styles.keyText, { color: KEY_LOOKS.strike.text }]}>Frapper</Text>
+      {power === undefined ? null : (
+        <>
+          <Text style={[styles.strikePower, { color: KEY_LOOKS.strike.text }]}>
+            {strikePowerLine(power, hits)}
+          </Text>
+          {hits > 1 ? (
+            <View pointerEvents="none" style={styles.strikeHits}>
+              {Array.from({ length: hits }, (_, index) => (
+                <View
+                  key={index}
+                  testID={`battle-strike-hit-${index + 1}`}
+                  style={[styles.strikeHit, index < hit && styles.strikeHitDone]}
+                />
+              ))}
+            </View>
+          ) : null}
+        </>
+      )}
     </PixelKey>
   );
 }
@@ -574,7 +624,9 @@ export function ActionPad({
       testID="battle-pad"
       style={[styles.pad, powers.length > 2 && styles.tightPad, offBalance && styles.offBalance]}
     >
-      {tipSlot === undefined ? null : <PowerTip power={tipSlot.power} cost={tipSlot.cost} />}
+      {tipSlot === undefined ? null : (
+        <PowerTip power={tipSlot.power} cost={tipSlot.cost} kindled={tipSlot.kindled === true} />
+      )}
       {pad.locked ? <LockTag lock={pad.lock} now={now} /> : null}
       {offBalance ? (
         <PixelFrame
@@ -676,6 +728,10 @@ const styles = StyleSheet.create({
     backgroundColor: battleColors.lightGlow,
     transformOrigin: 'left',
   },
+  strikePower: { fontFamily: textFont.bold, fontSize: 12, lineHeight: 15, textAlign: 'center' },
+  strikeHits: { flexDirection: 'row', gap: 6, marginTop: 4 },
+  strikeHit: { width: 8, height: 8, borderWidth: 2, borderColor: roles.gold },
+  strikeHitDone: { backgroundColor: roles.gold },
   strikeMark: {
     position: 'absolute',
     top: 0,

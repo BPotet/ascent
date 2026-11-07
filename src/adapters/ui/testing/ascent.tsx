@@ -80,17 +80,20 @@ export function ascentSetUp({
   });
   const campSound = silentBattleSound();
   const campHaptics = silentHaptics();
-  const camp = new CampSession({
-    keyValueStore,
-    ascentSession: session,
-    sound: campSound,
-    haptics: campHaptics,
-  });
+  // Le camp lit les habitudes et le jour de l'app : ceux des écrans (#237).
   const dependencies: Dependencies = {
     clock: settableClock(Day.of(2026, 10, 27)),
     unitOfWork: new InMemoryUnitOfWork(),
     keyValueStore,
     haptics: silentHaptics(),
   };
+  const camp = new CampSession({
+    keyValueStore,
+    ascentSession: session,
+    sound: campSound,
+    haptics: campHaptics,
+    clock: dependencies.clock,
+    unitOfWork: dependencies.unitOfWork,
+  });
   return { keyValueStore, clock, session, camp, campSound, campHaptics, dependencies };
 }

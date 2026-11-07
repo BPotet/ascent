@@ -5,9 +5,12 @@ import {
   type LoadoutFavor,
   type LoadoutReserves,
 } from '../../../domain/ascent/loadout';
-import type { PowerKind } from '../../../domain/battle/powers';
+import type { KindledPower } from '../../../domain/ascent/kindled';
+import { POWERS, kindledCost, type PowerKind } from '../../../domain/battle/powers';
+import type { HabitId } from '../../../domain/habit/Habit';
 import type { IconName } from '../pixelArt/sprites/icons';
-import { POWER_EFFECTS, TREE_POWER_NAMES, powerTypeLine } from './powerText';
+import { kindledLabel } from './oathText';
+import { POWER_EFFECTS, TREE_POWER_NAMES, powerType, powerTypeLine } from './powerText';
 import { rarityMarks, rarityName } from './rarityText';
 
 /** Les textes de l'Équipement (`Loadout`, #159), tirés de la maquette #153. */
@@ -83,6 +86,15 @@ function favorRow(row: Omit<StateRowText, 'label' | 'tone'>): StateRowText {
 /** La section des pouvoirs équipés (#235, E1), après les Réserves. */
 export const POWERS_TITLE = 'Pouvoirs';
 
+/** Un pouvoir attisé dans l'Équipement (#237, S10) : son prix normal, barré, et son Serment tenu. */
+export interface KindledRowText {
+  readonly baseCost: number;
+  /** « 1 Élan · Instantané ». */
+  readonly line: string;
+  /** « Serment : « Courir », faite hier. », ou sans nom si l'habitude n'existe plus. */
+  readonly oath: string;
+}
+
 /** Une ligne d'un pouvoir équipé : son nom, son coût et son type, son effet, et ce qui est lu. */
 export interface PowerRowText {
   readonly power: PowerKind;
@@ -90,15 +102,43 @@ export interface PowerRowText {
   readonly line: string;
   readonly effect: string;
   readonly label: string;
+  readonly kindled?: KindledRowText;
 }
 
-/** Les lignes des pouvoirs équipés, dans l'ordre des touches (E1). */
-export function powerRows(powers: readonly PowerKind[]): PowerRowText[] {
+/**
+ * Les lignes des pouvoirs équipés, dans l'ordre des touches (E1) ; un pouvoir attisé (#237) dit son
+ * coût réduit et le Serment tenu, nommé par son habitude (`habitNames`) si elle existe encore.
+ */
+export function powerRows(
+  powers: readonly PowerKind[],
+  kindled: readonly KindledPower[] = [],
+  habitNames: Readonly<Record<HabitId, string>> = {},
+): PowerRowText[] {
   return powers.map((power) => {
     const name = TREE_POWER_NAMES[power];
     const line = powerTypeLine(power);
     const { effect } = POWER_EFFECTS[power];
-    return { power, name, line, effect, label: `${name}, ${line.replace(' · ', ', ')}. ${effect}` };
+    const kept = kindled.find((each) => each.power === power);
+    if (kept === undefined) {
+      return {
+        power,
+        name,
+        line,
+        effect,
+        label: `${name}, ${line.replace(' · ', ', ')}. ${effect}`,
+      };
+    }
+    const habit = habitNames[kept.habit];
+    const oath = habit === undefined ? 'Serment tenu hier.' : `Serment : « ${habit} », faite hier.`;
+    const type = powerType(power);
+    return {
+      power,
+      name,
+      line,
+      effect,
+      kindled: { baseCost: POWERS[power].cost, line: `${kindledCost(power)} Élan · ${type}`, oath },
+      label: `${kindledLabel(power)}, ${type}. ${effect} ${oath}`,
+    };
   });
 }
 

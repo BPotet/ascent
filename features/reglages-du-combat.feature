@@ -50,5 +50,5 @@ Fonctionnalité: Réglages du combat
   Scénario: La garde des Élites du palier 2
     Étant donné une porte Élite du palier 2
     Quand le combat commence contre l'Épouvantail
-    Alors il a 190 PV et une garde de 50
-    Et contre le Brûleur de ronces, 210 PV et une garde de 55
+    Alors il a 228 PV et une garde de 70
+    Et contre le Brûleur de ronces, 252 PV et une garde de 77

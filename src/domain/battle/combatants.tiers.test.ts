@@ -1,12 +1,13 @@
 // Les 10 entrées des paliers 2 et 3 (#38), recopiées du Codex de l'Atelier du 01/11/2026 : leurs
-// valeurs de combat, à l'échelle du palier 1 pour les ennemis ordinaires (le palier multiplie).
+// valeurs de combat, à l'échelle du palier 1 pour les ennemis ordinaires (le palier multiplie). La
+// garde des 16 ennemis ordinaires est doublée dans le Codex (#244, G2).
 import { ENEMIES, ENEMY_INITIATIVE } from './combatants';
 
 describe('the ordinary enemies of the tiers two and three (#38)', () => {
-  it('gives the Thorn pilgrim 60 HP, 20 guard, Initiative 2, its bleeding prayer and its staff', () => {
+  it('gives the Thorn pilgrim 60 HP, 40 guard, Initiative 2, its bleeding prayer and its staff', () => {
     expect(ENEMIES.thornPilgrim).toEqual({
       maxHp: 60,
-      maxGuard: 20,
+      maxGuard: 40,
       moves: [
         { attack: 'delayed', damage: 7, bleed: { damage: 2, rounds: 3 } },
         { attack: 'basic', damage: 6 },
@@ -16,10 +17,10 @@ describe('the ordinary enemies of the tiers two and three (#38)', () => {
     expect(ENEMY_INITIATIVE.thornPilgrim).toBe(2);
   });
 
-  it('gives the Ash bramble 30 HP, 10 guard, Initiative 5, and revives twice at 30 %', () => {
+  it('gives the Ash bramble 30 HP, 20 guard, Initiative 5, and revives twice at 30 %', () => {
     expect(ENEMIES.ashBramble).toEqual({
       maxHp: 30,
-      maxGuard: 10,
+      maxGuard: 20,
       moves: [
         { attack: 'double', damage: 3 },
         { attack: 'basic', damage: 4 },
@@ -30,20 +31,20 @@ describe('the ordinary enemies of the tiers two and three (#38)', () => {
     expect(ENEMY_INITIATIVE.ashBramble).toBe(5);
   });
 
-  it('gives the Ash gleaner 40 HP, 14 guard, Initiative 3, its rake, and makes it a support', () => {
+  it('gives the Ash gleaner 40 HP, 28 guard, Initiative 3, its rake, and makes it a support', () => {
     expect(ENEMIES.ashGleaner).toEqual({
       maxHp: 40,
-      maxGuard: 14,
+      maxGuard: 28,
       moves: [{ attack: 'basic', damage: 4 }],
       supports: true,
     });
     expect(ENEMY_INITIATIVE.ashGleaner).toBe(3);
   });
 
-  it('gives the Bronze warden 65 HP, 24 guard, Initiative 2, its fist twice as often as its knell', () => {
+  it('gives the Bronze warden 65 HP, 48 guard, Initiative 2, its fist twice as often as its knell', () => {
     expect(ENEMIES.bronzeWarden).toEqual({
       maxHp: 65,
-      maxGuard: 24,
+      maxGuard: 48,
       moves: [
         { attack: 'basic', damage: 6, weight: 2 },
         { attack: 'delayedPerilous', damage: 9 },
@@ -166,10 +167,10 @@ describe('the bosses of the tiers two and three (#38)', () => {
 
 // La Brûlure (#171) : les valeurs du Codex de l'Atelier du 01/11/2026, à l'échelle du palier 1.
 describe('the carriers of the Burn (#171)', () => {
-  it('gives the burningHusk (Embrasé) 20 HP, 8 guard, Initiative 7, its burning hand twice as often', () => {
+  it('gives the burningHusk (Embrasé) 20 HP, 16 guard, Initiative 7, its burning hand twice as often', () => {
     expect(ENEMIES.burningHusk).toEqual({
       maxHp: 20,
-      maxGuard: 8,
+      maxGuard: 16,
       moves: [
         { attack: 'basic', damage: 4, weight: 2, burn: 1 },
         { attack: 'perilous', damage: 8 },
@@ -179,10 +180,10 @@ describe('the carriers of the Burn (#171)', () => {
     expect(ENEMY_INITIATIVE.burningHusk).toBe(7);
   });
 
-  it('gives the Gargoyle 30 HP, 22 guard, Initiative 7, its dive and its burning maw', () => {
+  it('gives the Gargoyle 30 HP, 44 guard, Initiative 7, its dive and its burning maw', () => {
     expect(ENEMIES.gargoyle).toEqual({
       maxHp: 30,
-      maxGuard: 22,
+      maxGuard: 44,
       moves: [
         { attack: 'feint', damage: 5 },
         { attack: 'delayed', damage: 3, burn: 1 },
@@ -192,10 +193,10 @@ describe('the carriers of the Burn (#171)', () => {
     expect(ENEMY_INITIATIVE.gargoyle).toBe(7);
   });
 
-  it('gives the Bell founder 42 HP, 14 guard, Initiative 4, its hammer and its burning pour', () => {
+  it('gives the Bell founder 42 HP, 28 guard, Initiative 4, its hammer and its burning pour', () => {
     expect(ENEMIES.bellFounder).toEqual({
       maxHp: 42,
-      maxGuard: 14,
+      maxGuard: 28,
       moves: [
         { attack: 'double', damage: 3 },
         { attack: 'delayed', damage: 4, burn: 1 },
@@ -238,10 +239,10 @@ describe('the Moth queen and the Mothkin (#172)', () => {
     expect(ENEMY_INITIATIVE.mothQueen).toBe(8);
   });
 
-  it('gives the Mothkin 25 HP, 6 guard, Initiative 10, its Broken flight and its Mandibles', () => {
+  it('gives the Mothkin 25 HP, 12 guard, Initiative 10, its Broken flight and its Mandibles', () => {
     expect(ENEMIES.mothkin).toEqual({
       maxHp: 25,
-      maxGuard: 6,
+      maxGuard: 12,
       moves: [
         { attack: 'feint', damage: 4 },
         { attack: 'double', damage: 3 },
@@ -261,10 +262,10 @@ describe('the Moth queen and the Mothkin (#172)', () => {
 // Le Beffroi (#214) : les valeurs du Codex de l'Atelier (version 2, 04/11/2026), à l'échelle du
 // palier 1. Poids 1 : la clé `weight` est absente.
 describe('the enemies of the Belfry (#214)', () => {
-  it('gives the Bell novice 26 HP, 8 guard, Initiative 6, its Rope end twice as often', () => {
+  it('gives the Bell novice 26 HP, 16 guard, Initiative 6, its Rope end twice as often', () => {
     expect(ENEMIES.bellNovice).toEqual({
       maxHp: 26,
-      maxGuard: 8,
+      maxGuard: 16,
       moves: [
         { attack: 'basic', damage: 4, weight: 2 },
         { attack: 'delayed', damage: 6 },
@@ -274,20 +275,20 @@ describe('the enemies of the Belfry (#214)', () => {
     expect(ENEMY_INITIATIVE.bellNovice).toBe(6);
   });
 
-  it('gives the Matins ringer 42 HP, 16 guard, Initiative 3, her Angelus and the support role', () => {
+  it('gives the Matins ringer 42 HP, 32 guard, Initiative 3, her Angelus and the support role', () => {
     expect(ENEMIES.matinsRinger).toEqual({
       maxHp: 42,
-      maxGuard: 16,
+      maxGuard: 32,
       moves: [{ attack: 'delayed', damage: 4 }],
       supports: true,
     });
     expect(ENEMY_INITIATIVE.matinsRinger).toBe(3);
   });
 
-  it('gives the Clock jack 48 HP, 20 guard, Initiative 1, its Half hour twice as often', () => {
+  it('gives the Clock jack 48 HP, 40 guard, Initiative 1, its Half hour twice as often', () => {
     expect(ENEMIES.clockJack).toEqual({
       maxHp: 48,
-      maxGuard: 20,
+      maxGuard: 40,
       moves: [
         { attack: 'double', damage: 3, weight: 2 },
         { attack: 'perilous', damage: 9 },
@@ -295,5 +296,66 @@ describe('the enemies of the Belfry (#214)', () => {
       supports: false,
     });
     expect(ENEMY_INITIATIVE.clockJack).toBe(1);
+  });
+});
+
+describe('the guards of the ordinary enemies, doubled in the Codex (#244, G2)', () => {
+  it('gives the 16 ordinary enemies their new guard', () => {
+    expect({
+      ghoul: ENEMIES.ghoul.maxGuard,
+      specter: ENEMIES.specter.maxGuard,
+      necromancer: ENEMIES.necromancer.maxGuard,
+      skeleton: ENEMIES.skeleton.maxGuard,
+      madVillager: ENEMIES.madVillager.maxGuard,
+      thornPilgrim: ENEMIES.thornPilgrim.maxGuard,
+      ashBramble: ENEMIES.ashBramble.maxGuard,
+      ashGleaner: ENEMIES.ashGleaner.maxGuard,
+      burningHusk: ENEMIES.burningHusk.maxGuard,
+      mothkin: ENEMIES.mothkin.maxGuard,
+      bronzeWarden: ENEMIES.bronzeWarden.maxGuard,
+      gargoyle: ENEMIES.gargoyle.maxGuard,
+      bellFounder: ENEMIES.bellFounder.maxGuard,
+      bellNovice: ENEMIES.bellNovice.maxGuard,
+      matinsRinger: ENEMIES.matinsRinger.maxGuard,
+      clockJack: ENEMIES.clockJack.maxGuard,
+    }).toEqual({
+      ghoul: 30,
+      specter: 20,
+      necromancer: 24,
+      skeleton: 20,
+      madVillager: 24,
+      thornPilgrim: 40,
+      ashBramble: 20,
+      ashGleaner: 28,
+      burningHusk: 16,
+      mothkin: 12,
+      bronzeWarden: 48,
+      gargoyle: 44,
+      bellFounder: 28,
+      bellNovice: 16,
+      matinsRinger: 32,
+      clockJack: 40,
+    });
+  });
+
+  it('keeps the guard of the Elites and the bosses in the Codex', () => {
+    expect(
+      (
+        [
+          'twins',
+          'fallenKnight',
+          'ossuaryWarden',
+          'facelessPrior',
+          'scarecrow',
+          'brambleBurner',
+          'ashGardener',
+          'mothQueen',
+          'firstPilgrim',
+          'stoneSaint',
+          'hourRinger',
+          'wishGranter',
+        ] as const
+      ).map((kind) => ENEMIES[kind].maxGuard),
+    ).toEqual([30, 45, 60, 60, 50, 55, 78, 70, 55, 80, 90, 84]);
   });
 });

@@ -19,8 +19,8 @@ Fonctionnalité: Ennemis maudits
   @domain
   Scénario: Ce que gagne un ennemi maudit
     Étant donné une ascension au palier 1 lancée avec une jauge de −1
-    Quand la Goule (50 PV, garde 15, coup simple de 5, double frappe de 3 + 3, Initiative 4) est maudite
-    Alors elle a 60 PV max, une garde max de 18, un coup simple de 6 et une double frappe de 4 + 4
+    Quand la Goule (50 PV, garde 30, coup simple de 5, double frappe de 3 + 3, Initiative 4) est maudite
+    Alors elle a 60 PV max, une garde max de 36, un coup simple de 6 et une double frappe de 4 + 4
     Et son Initiative reste 4
 
   @domain
@@ -42,7 +42,7 @@ Fonctionnalité: Ennemis maudits
     Alors exactement un ennemi du groupe est maudit, avec le même bonus qu'à −1
     Quand il passe ensuite la porte Élite
     Alors le Chevalier déchu est maudit
-    Et il a 240 PV max, une garde max de 54, des coups de 9, 9 et 14, et son Initiative reste 6
+    Et il a 240 PV max, une garde max de 67, des coups de 9, 9 et 14, et son Initiative reste 6
 
   @domain
   Scénario: Le boss et ses invocations ne sont jamais maudits

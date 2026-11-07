@@ -109,15 +109,15 @@ Fonctionnalité: La Brûlure
   @domain
   Scénario: Les porteurs de la Brûlure au palier 2
     Étant donné un Embrasé au palier 2
-    Alors il a 27 PV et 10 de garde
+    Alors il a 27 PV et 20 de garde
     Et sa Main de braise fait 5 et donne 1 charge
     Et son Embrasement, coup imparable, fait 10
 
   @domain
   Scénario: Les porteurs de la Brûlure au palier 3
     Étant donné une Gargouille et un Fondeur de cloches au palier 3
-    Alors la Gargouille a 52 PV et 33 de garde, et sa Gueule de feu fait 5 et donne 1 charge
-    Et le Fondeur a 73 PV et 21 de garde, et sa Coulée fait 7 et donne 1 charge
+    Alors la Gargouille a 52 PV et 66 de garde, et sa Gueule de feu fait 5 et donne 1 charge
+    Et le Fondeur a 73 PV et 42 de garde, et sa Coulée fait 7 et donne 1 charge
     Et le multiplicateur de palier ne change jamais le nombre de charges
 
   @domain

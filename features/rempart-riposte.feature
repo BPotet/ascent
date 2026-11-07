@@ -22,7 +22,7 @@ Fonctionnalité: Riposte du Rempart
 
   @ui
   Scénario: Un coup reçu use le Rempart et déclenche la riposte
-    Étant donné la Sentinelle a 51 PV et la garde de la Goule est à 15
+    Étant donné la Sentinelle a 51 PV et la garde de la Goule est à 30
     Quand un coup simple de la Goule touche la Sentinelle
     Alors le chiffre « −2 » apparaît sur la Sentinelle
     Et l'écu se fend puis éclate

@@ -98,7 +98,7 @@ describe('startBattle (P3b, P8)', () => {
     expect(FRONT_LINE_SIZE).toBe(3);
     expect(battle.enemies.map((enemy) => enemy.kind)).toEqual(['ghoul', 'specter', 'ghoul']);
     expect(battle.reserve).toEqual(['ghoul', 'necromancer']);
-    expect(battle.enemies[0]).toMatchObject({ hp: 50, maxHp: 50, guard: 15, maxGuard: 15 });
+    expect(battle.enemies[0]).toMatchObject({ hp: 50, maxHp: 50, guard: 30, maxGuard: 30 });
   });
 
   it('fights a group of 1 to 3 enemies without a reserve', () => {

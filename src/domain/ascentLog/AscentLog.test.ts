@@ -634,3 +634,23 @@ describe('the equipped powers in the ascent log (#235)', () => {
     ).toEqual(['bulwark', 'retaliation']);
   });
 });
+
+describe('the kindled powers in the ascent log (#237)', () => {
+  const day = Day.of(2026, 11, 7);
+
+  it('notes the codes of the kindled powers, never their habit', () => {
+    const ascent = startAscent(3, {
+      powers: ['bulwark', 'retaliation'],
+      kindled: [{ power: 'retaliation', habit: 12 }],
+    });
+
+    const log = beginAscentLog(ascent, day);
+
+    expect(log.kindled).toEqual(['retaliation']);
+    expect(JSON.stringify(log)).not.toMatch(/habit|Courir/u);
+  });
+
+  it('notes nothing without a kindled power: the same log as before', () => {
+    expect(beginAscentLog(startAscent(3), day)).not.toHaveProperty('kindled');
+  });
+});

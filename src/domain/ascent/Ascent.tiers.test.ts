@@ -13,6 +13,7 @@ import {
   type AscentLaunch,
 } from './Ascent';
 import { BASE_BOON_KINDS, type BoonKind } from './boons';
+import { drawElite } from './elites';
 import { TIERS, type Tier } from './tiers';
 
 const SEEDS = Array.from({ length: 120 }, (_, index) => index * 2_654_435_761 + 11);
@@ -282,5 +283,68 @@ describe('exhausted boons (#38)', () => {
 
     expect(offered.boonOffer).toEqual(['secondBreath']);
     expect(offered.exits.length).toBeGreaterThan(0);
+  });
+});
+
+describe('the non-repeated Elite (#244, R5)', () => {
+  /** L'ascension entre deux étages, la seule porte Élite proposée. */
+  const atEliteDoor = (ascent: Ascent): Ascent => ({
+    ...ascent,
+    encounter: null,
+    boonOffer: null,
+    exits: [{ kind: 'elite', groupSize: null }],
+  });
+
+  it('draws the first Elite of a tier as before, and remembers it', () => {
+    for (const seed of SEEDS.slice(0, 20)) {
+      const tierThree = atEliteDoor(atTier(3, seed));
+      const entered = chooseExit(tierThree, 0);
+      const elite = entered.encounter!.enemies[0]!;
+
+      expect(drawElite(TIERS[3].elites, tierThree.random).value).toBe(elite);
+      expect(entered.lastElite).toBe(elite);
+    }
+  });
+
+  it('meets the other Elite at the next Elite door of the tier, without a draw', () => {
+    const tierThree = { ...atEliteDoor(atTier(3)), lastElite: 'stoneSaint' as const };
+    const entered = chooseExit(tierThree, 0);
+    const plain = chooseExit({ ...tierThree, lastElite: 'firstPilgrim' as const }, 0);
+
+    expect(entered.encounter!.enemies).toEqual(['firstPilgrim']);
+    expect(entered.lastElite).toBe('firstPilgrim');
+    expect(plain.encounter!.enemies).toEqual(['stoneSaint']);
+    // Un seul candidat : aucun tirage, le générateur part du même état pour la graine du combat.
+    expect(entered.encounter!.battleSeed).toBe(plain.encounter!.battleSeed);
+  });
+
+  it('alternates the two Elites of a tier, door after door', () => {
+    let current = atEliteDoor(atTier(2, 7));
+    const met: string[] = [];
+    for (let door = 0; door < 4; door += 1) {
+      current = chooseExit(current, 0);
+      met.push(current.encounter!.enemies[0]!);
+      current = atEliteDoor({ ...won(current), floor: 1 });
+    }
+
+    expect(new Set(met).size).toBe(2);
+    met.slice(1).forEach((elite, index) => expect(elite).not.toBe(met[index]));
+  });
+
+  it('forgets the last Elite at the Tier transition', () => {
+    const boss = { ...toBoss(atTier(1)), lastElite: 'twins' as const };
+    const next = enterNextTier(acknowledgeBossVictory(won(boss)));
+
+    expect(next.tier).toBe(2);
+    expect(next).not.toHaveProperty('lastElite');
+  });
+
+  it('draws the next Elite door as before for an ascent saved before #244, without lastElite', () => {
+    const saved = atEliteDoor(atTier(1));
+
+    expect(saved).not.toHaveProperty('lastElite');
+    expect(chooseExit(saved, 0).encounter!.enemies[0]).toBe(
+      drawElite(TIERS[1].elites, saved.random).value,
+    );
   });
 });

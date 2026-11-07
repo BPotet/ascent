@@ -54,10 +54,10 @@ describe('combatants of the test battle', () => {
     expect(TEST_BATTLE_ENEMIES).toEqual(['ghoul', 'specter', 'necromancer']);
   });
 
-  it('gives the Ghoul 50 HP, guard 15, a basic attack of 5 and a double attack of 3 + 3', () => {
+  it('gives the Ghoul 50 HP, guard 30, a basic attack of 5 and a double attack of 3 + 3', () => {
     expect(ENEMIES.ghoul).toEqual({
       maxHp: 50,
-      maxGuard: 15,
+      maxGuard: 30,
       moves: [
         { attack: 'basic', damage: 5 },
         { attack: 'double', damage: 3 },
@@ -66,10 +66,10 @@ describe('combatants of the test battle', () => {
     });
   });
 
-  it('gives the Specter 35 HP, guard 10, a delayed and a feint attack of 6 and a perilous attack of 9', () => {
+  it('gives the Specter 35 HP, guard 20, a delayed and a feint attack of 6 and a perilous attack of 9', () => {
     expect(ENEMIES.specter).toEqual({
       maxHp: 35,
-      maxGuard: 10,
+      maxGuard: 20,
       moves: [
         { attack: 'delayed', damage: 6 },
         { attack: 'feint', damage: 6 },
@@ -79,10 +79,10 @@ describe('combatants of the test battle', () => {
     });
   });
 
-  it('gives the Necromancer 45 HP, guard 12, a basic attack of 4, and the Guard and Raise intents', () => {
+  it('gives the Necromancer 45 HP, guard 24, a basic attack of 4, and the Guard and Raise intents', () => {
     expect(ENEMIES.necromancer).toEqual({
       maxHp: 45,
-      maxGuard: 12,
+      maxGuard: 24,
       moves: [{ attack: 'basic', damage: 4 }],
       supports: true,
     });

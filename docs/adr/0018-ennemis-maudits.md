@@ -1,6 +1,7 @@
 # ADR 0018 — Ennemis maudits
 
 - **Statut** : accepté
+- **Avenant** : 7 novembre 2026, l'Élite maudite (#244), voir en fin de document
 - **Date** : 5 novembre 2026
 - **Décideur** : Architect (notes techniques de #209), écrit par le dev
 - **Contexte produit** : épique #205, story #209 « La malédiction rend des ennemis maudits »
@@ -48,3 +49,9 @@ tirages d'une ascension sans malédiction.
 - L'interface nomme l'ennemi maudit par une seule fonction (`enemyName`, « Goule maudite »), et son
   étiquette « Maudit » s'ajoute à « Relevé » ou « Invoqué » sans la remplacer.
 - Rien ne quitte le téléphone ; aucune donnée d'habitude n'entre dans l'ascension.
+
+## Avenant du 7 novembre 2026 — l'Élite maudite (#244)
+
+L'Élite maudite part de la valeur multipliée par le multiplicateur d'Élite et de boss de son palier
+(ADR 0020), comme un ennemi ordinaire part de la valeur du palier : Premier Pèlerin maudit 364 →
+436 PV, garde 82 → 98.

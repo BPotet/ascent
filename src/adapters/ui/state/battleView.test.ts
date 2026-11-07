@@ -266,7 +266,7 @@ describe('battleView', () => {
         hpRatio: 1,
         hpText: '50/50 PV',
         guardRatio: 1,
-        guardText: 'Garde 15/15',
+        guardText: 'Garde 30/30',
         stunned: false,
         losingAction: false,
         rising: null,
@@ -275,7 +275,7 @@ describe('battleView', () => {
         active: false,
         dimmed: false,
         tag: null,
-        label: expect.stringMatching(/^Goule, cible, 50 PV sur 50, garde 15 sur 15/),
+        label: expect.stringMatching(/^Goule, cible, 50 PV sur 50, garde 30 sur 30/),
       });
     });
 
@@ -520,5 +520,83 @@ describe('actionTrackView (#175)', () => {
   it('is empty at the end of the battle', () => {
     const battle = { ...battleOf('sentinel', ['ghoul']), phase: { kind: 'over' } } as Battle;
     expect(actionTrackView(battle)).toEqual({ round: battle.round, current: [], next: [] });
+  });
+});
+
+describe('the key of a kindled power (#237)', () => {
+  it('gives the kindled cost and the normal one, only for a kindled power', () => {
+    const battle = startBattle({
+      seed: 1,
+      defenseHint: false,
+      at: 0,
+      enemies: ['ghoul'],
+      powers: ['bulwark', 'retaliation', 'holdFast'],
+      kindled: ['retaliation'],
+    }).battle;
+
+    const view = battleView(battle);
+
+    expect(view.pad.kind === 'hero' && view.pad.powers).toEqual([
+      expect.not.objectContaining({ kindled: true }),
+      expect.objectContaining({ power: 'retaliation', cost: 1, baseCost: 2, kindled: true }),
+      expect.not.objectContaining({ baseCost: expect.anything() }),
+    ]);
+  });
+});
+
+describe('the power strikes on the pad (#236)', () => {
+  const strike = (change: Partial<Extract<BattlePhase, { kind: 'heroStrike' }>> = {}) =>
+    battleView(
+      inPhase(
+        {
+          kind: 'heroStrike',
+          enemy: 0,
+          since: 1_000,
+          impactAt: 1_700,
+          press: null,
+          resolved: false,
+          until: 2_180,
+          ...change,
+        },
+        { heroKind: 'wanderer', powers: ['rend', 'flurry', 'ambush'] },
+      ),
+    ).pad;
+
+  it('keys the power strikes on the row of « Attaquer », in the order of the tree', () => {
+    const battle = startBattle({
+      seed: 1,
+      defenseHint: false,
+      at: 0,
+      hero: 'wanderer',
+      enemies: ['ghoul'],
+      powers: ['ambush', 'rend', 'shadowStep'],
+    }).battle;
+    const pad = battleView({ ...battle, powers: ['shadowStep', 'rend', 'ambush'] }).pad;
+
+    expect(pad.kind === 'hero' && pad.powers.map(({ power }) => power)).toEqual([
+      'shadowStep',
+      'rend',
+      'ambush',
+    ]);
+    expect(pad.kind === 'hero' && pad.powers[2]).toEqual({
+      power: 'ambush',
+      cost: 3,
+      availability: 'missing',
+      missing: 2,
+    });
+  });
+
+  it('counts the hits of a power strike from the phase, not from the hero', () => {
+    expect(strike({ power: 'flurry', hit: 2 })).toMatchObject({ power: 'flurry', hits: 4, hit: 2 });
+    expect(strike({ power: 'ambush', ambush: true })).toMatchObject({ hits: 2, hit: 1 });
+  });
+
+  it('keeps « Frapper » of « Attaquer » as it was', () => {
+    expect(strike({ hit: 1 })).toEqual({
+      kind: 'strike',
+      since: 1_000,
+      impactAt: 1_700,
+      resolved: false,
+    });
   });
 });

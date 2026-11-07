@@ -1,11 +1,17 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { HeroKind } from '../../../domain/battle/combatants';
+import { EQUIPPED_POWER_SLOTS } from '../../../domain/ascent/powerTree';
 import { basePower, type PowerKind } from '../../../domain/battle/powers';
+import { EquippedPowersPanel } from '../components/EquippedPowersPanel';
 import { EquippedPowersRow } from '../components/EquippedPowersRow';
+import { KindledFlame } from '../components/KindledFlame';
 import { Screen } from '../components/Screen';
 import { heroCard } from '../format/battleText';
+import type { HeroOathLine } from '../format/oathText';
+import { LAUNCH_ERROR, changePowersLabel, equippedAnnouncement } from '../format/powerText';
+import { artPixelSize } from '../pixelArt/artPixel';
 import { artPalette } from '../pixelArt/artPalette';
 import { MIN_TARGET_SIZE, PixelButton } from '../pixelArt/PixelButton';
 import { PixelFrame } from '../pixelArt/PixelFrame';
@@ -15,19 +21,26 @@ import { pixelFont, textFont } from '../pixelArt/pixelTypography';
 const { roles } = artPalette;
 
 const HERO_KINDS: readonly HeroKind[] = ['sentinel', 'wanderer'];
+const LINE = artPixelSize(2);
+
+export type { HeroOathLine };
 
 function HeroOption({
   kind,
   powers,
+  kindled,
+  oathLines,
   checked,
   onPress,
 }: {
   readonly kind: HeroKind;
   readonly powers: readonly PowerKind[];
+  readonly kindled: readonly PowerKind[];
+  readonly oathLines: readonly HeroOathLine[];
   readonly checked: boolean;
   readonly onPress: () => void;
 }) {
-  const card = heroCard(kind, powers);
+  const card = heroCard(kind, powers, kindled);
   return (
     <Pressable
       accessibilityRole="radio"
@@ -45,7 +58,21 @@ function HeroOption({
         <Text style={styles.style}>{card.style}</Text>
         <Text style={styles.stats}>{card.stats}</Text>
         {checked ? <Text style={styles.line}>{card.kit}</Text> : null}
-        <EquippedPowersRow powers={powers} short={!checked} />
+        <EquippedPowersRow powers={powers} kindled={kindled} short={!checked} />
+        {checked
+          ? oathLines.map((line) => (
+              <View key={line.text} style={styles.oathLine}>
+                {line.tone === 'kindled' ? (
+                  <KindledFlame />
+                ) : (
+                  <PixelIcon name="oath8" color={roles.parchment} />
+                )}
+                <Text style={[styles.oathText, line.tone === 'muted' && styles.oathMuted]}>
+                  {line.text}
+                </Text>
+              </View>
+            ))
+          : null}
         {checked ? <Text style={styles.small}>{card.trait}</Text> : null}
         {checked ? (
           <View pointerEvents="none" style={styles.tick}>
@@ -61,7 +88,9 @@ function HeroOption({
  * Le choix du héros (`HeroChoice`) au pied de la tour (prototype #92, maquette H3, avec son titre,
  * sa note et son bouton) : la Sentinelle ou l'Errante, avec son équipement de base, ses pouvoirs
  * équipés (#235, H1, H2 : le pouvoir de base seul par défaut) et son trait. Rien n'est lancé avant
- * le bouton.
+ * le bouton. À partir de 4 pouvoirs possédés, « Changer les pouvoirs » ouvre le panneau des
+ * pouvoirs équipés (#236, H3 à H8). Pendant l'enregistrement du choix, « Continuer » attend ; s'il
+ * échoue, un message le dit et « Réessayer » relance, la sélection gardée.
  */
 export function HeroChoiceScreen({
   onStart,
@@ -70,6 +99,12 @@ export function HeroChoiceScreen({
   note,
   confirmLabel,
   equipped,
+  kindled,
+  oathLines,
+  owned,
+  onChangePowers,
+  starting = false,
+  failed = false,
 }: {
   readonly onStart: (hero: HeroKind) => void;
   readonly onClose: () => void;
@@ -78,8 +113,29 @@ export function HeroChoiceScreen({
   readonly confirmLabel: (hero: HeroKind) => string;
   /** Les pouvoirs équipés d'office de chaque héros (#235), lus dans la vue du Camp. */
   readonly equipped?: Readonly<Record<HeroKind, readonly PowerKind[]>>;
+  /** Les pouvoirs que leurs Serments attiseraient au lancement, par héros (#237, S8). */
+  readonly kindled?: Readonly<Record<HeroKind, readonly PowerKind[]>>;
+  /** Les lignes des Serments des pouvoirs équipés, par héros (#237, S8, S9). */
+  readonly oathLines?: Readonly<Record<HeroKind, readonly HeroOathLine[]>>;
+  /** Les pouvoirs possédés de chaque héros (#236) : le panneau, et son bouton à partir de 4. */
+  readonly owned?: Readonly<Record<HeroKind, readonly PowerKind[]>>;
+  /** Le nouveau choix d'un héros, après « Valider » (#236, H7). */
+  readonly onChangePowers?: (hero: HeroKind, powers: readonly PowerKind[]) => void;
+  /** Le choix s'enregistre : « Continuer » attend (#236). */
+  readonly starting?: boolean;
+  /** L'enregistrement du choix a échoué : le message, et « Réessayer » (#236). */
+  readonly failed?: boolean;
 }) {
   const [hero, setHero] = useState<HeroKind>('sentinel');
+  const [changing, setChanging] = useState(false);
+  const powersOf = (kind: HeroKind) => equipped?.[kind] ?? [basePower(kind)];
+  const ownedNow = owned?.[hero] ?? [];
+  const canChange = onChangePowers !== undefined && ownedNow.length > EQUIPPED_POWER_SLOTS;
+  const validate = (powers: readonly PowerKind[]) => {
+    setChanging(false);
+    onChangePowers?.(hero, powers);
+    AccessibilityInfo.announceForAccessibility(equippedAnnouncement(powers));
+  };
   return (
     <Screen layout="top" background={roles.night} testID="hero-choice">
       <View style={styles.header}>
@@ -101,21 +157,47 @@ export function HeroChoiceScreen({
             <HeroOption
               key={kind}
               kind={kind}
-              powers={equipped?.[kind] ?? [basePower(kind)]}
+              powers={powersOf(kind)}
+              kindled={kindled?.[kind] ?? []}
+              oathLines={oathLines?.[kind] ?? []}
               checked={kind === hero}
               onPress={() => setHero(kind)}
             />
           ))}
         </View>
+        {canChange ? (
+          <PixelButton
+            label={changePowersLabel(ownedNow.length)}
+            text={`Changer les pouvoirs · ${ownedNow.length}`}
+            variant="secondary"
+            onPress={() => setChanging(true)}
+            testID="hero-choice-change-powers"
+          />
+        ) : null}
         <Text style={styles.note}>{note}</Text>
+        {failed ? (
+          <View accessible role="alert" style={[styles.error, { borderWidth: LINE }]}>
+            <Text style={styles.errorText}>{LAUNCH_ERROR}</Text>
+          </View>
+        ) : null}
       </ScrollView>
       <View style={styles.footer}>
         <PixelButton
-          label={confirmLabel(hero)}
+          label={failed ? 'Réessayer' : confirmLabel(hero)}
           onPress={() => onStart(hero)}
+          disabled={starting}
           testID="hero-choice-start"
         />
       </View>
+      {changing ? (
+        <EquippedPowersPanel
+          hero={hero}
+          owned={ownedNow}
+          selected={powersOf(hero)}
+          onValidate={validate}
+          onClose={() => setChanging(false)}
+        />
+      ) : null}
     </Screen>
   );
 }
@@ -138,6 +220,15 @@ const styles = StyleSheet.create({
   style: { color: roles.parchment, fontFamily: textFont.semiBold, fontSize: 13 },
   stats: { color: roles.light, fontFamily: textFont.semiBold, fontSize: 13 },
   line: { color: roles.parchment, fontFamily: textFont.medium, fontSize: 13, lineHeight: 18 },
+  oathLine: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 2 },
+  oathText: {
+    flex: 1,
+    color: roles.light,
+    fontFamily: textFont.medium,
+    fontSize: 12.5,
+    lineHeight: 17,
+  },
+  oathMuted: { color: roles.parchment },
   small: { color: roles.muted, fontFamily: textFont.regular, fontSize: 12, lineHeight: 16 },
   tick: { position: 'absolute', right: 8, top: 8 },
   note: {
@@ -147,5 +238,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   footer: { paddingHorizontal: 16, paddingBottom: 34, paddingTop: 8 },
+  error: { padding: 10, borderColor: roles.curse, backgroundColor: roles.errorBg },
+  errorText: { fontFamily: textFont.medium, fontSize: 13, lineHeight: 18, color: roles.pink },
 });
 // Stryker restore all

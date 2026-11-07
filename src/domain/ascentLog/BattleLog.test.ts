@@ -13,6 +13,7 @@ import {
 } from '../battle/Battle';
 import type { BattleEvent } from '../battle/BattleEvent';
 import type { Intent } from '../battle/intents';
+import type { PowerKind } from '../battle/powers';
 import type { TierMultiplier } from '../battle/tierMultiplier';
 import {
   BATTLE_LOG_MAX_ENTRIES,
@@ -443,6 +444,25 @@ describe('BattleLog', () => {
     });
   });
 
+  describe('the kindled powers (#237)', () => {
+    it('notes the codes of the kindled powers at the start, only when there are some', () => {
+      const battle = (kindled: readonly PowerKind[]) =>
+        startBattle({
+          seed: 7,
+          defenseHint: false,
+          at: START,
+          enemies: ['ghoul'],
+          powers: ['bulwark', 'retaliation'],
+          kindled,
+        }).battle;
+
+      expect(beginBattleLog(PLACE, battle(['retaliation']), START).hero).toMatchObject({
+        kindled: ['retaliation'],
+      });
+      expect(beginBattleLog(PLACE, battle([]), START).hero).not.toHaveProperty('kindled');
+    });
+  });
+
   describe('the equipped powers (#235)', () => {
     const withPowers = (powers?: Battle['powers']) =>
       startBattle({
@@ -699,6 +719,56 @@ describe('BattleLog', () => {
     );
 
     expect(actionOf(log, 'hero')).toMatchObject({ kind: 'power', t: 50 });
+  });
+
+  it('notes a power strike as one power action of the hero, with its presses (#236)', () => {
+    const log = logged(
+      [roundStarted(START, 1)],
+      [
+        { type: 'powerUsed', at: START + 50, power: 'flurry', until: START + 1_070 },
+        { type: 'momentumChanged', at: START + 50, momentum: 0 },
+        {
+          type: 'strikeStarted',
+          at: START + 50,
+          enemy: 0,
+          impactAt: START + 750,
+          until: START + 1_230,
+          hit: 1,
+          power: 'flurry',
+        },
+      ],
+      [
+        {
+          type: 'strikeResolved',
+          at: START + 750,
+          enemy: 0,
+          judgement: 'perfect',
+          delta: 0,
+          damage: 9,
+          guardDamage: 7,
+          hit: 1,
+          power: 'flurry',
+        },
+        {
+          type: 'strikeStarted',
+          at: START + 750,
+          enemy: 0,
+          impactAt: START + 1_140,
+          until: START + 1_620,
+          hit: 2,
+          power: 'flurry',
+        },
+      ],
+    );
+
+    expect(firstRound(log).actions).toHaveLength(1);
+    expect(actionOf(log, 'hero')).toMatchObject({
+      kind: 'power',
+      t: 50,
+      presses: [
+        expect.objectContaining({ kind: 'strike', hit: 1, judgement: 'perfect', damage: 9 }),
+      ],
+    });
   });
 
   it('replaces only the replayed impact, keeping the other impacts of the action in their order', () => {

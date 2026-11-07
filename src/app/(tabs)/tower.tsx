@@ -6,12 +6,12 @@ import { useDependencies } from '../../adapters/ui/state/Dependencies';
 import { ascentLogFeature, sharedAscentSession, sharedCampSession } from '../ascent';
 
 function TowerFoot() {
-  const { keyValueStore, clock } = useDependencies();
+  const { keyValueStore, clock, unitOfWork } = useDependencies();
   const focused = useIsFocused();
   return (
     <TowerFootScreen
       session={sharedAscentSession(keyValueStore, clock)}
-      camp={sharedCampSession(keyValueStore, clock)}
+      camp={sharedCampSession(keyValueStore, clock, unitOfWork)}
       onEnter={() => router.push('/ascent')}
       onCamp={() => router.push('/camp')}
       logExport={ascentLogFeature(keyValueStore, clock)?.logExport}

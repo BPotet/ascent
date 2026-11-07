@@ -71,8 +71,8 @@ export function availableShards(shardTotal: number, camp: Camp): number {
 
 /**
  * La réponse d'un achat au Camp : tout ou rien, jamais de dette ni de doublon. Un pouvoir de rang 2
- * est verrouillé tant que le rang 1 de sa voie ne l'est pas ; le pouvoir de base et une frappe
- * « Bientôt » ne se vendent pas (#235).
+ * est verrouillé tant que le rang 1 de sa voie ne l'est pas ; le pouvoir de base ne se vend pas
+ * (#235).
  */
 export type CampPurchase =
   | { readonly kind: 'unlocked'; readonly camp: Camp }

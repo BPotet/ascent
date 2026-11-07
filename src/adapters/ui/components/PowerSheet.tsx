@@ -9,7 +9,8 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import type { PowerNodeState, PowerTreeCode } from '../../../domain/ascent/powerTree';
+import type { PowerNodeState } from '../../../domain/ascent/powerTree';
+import type { PowerKind } from '../../../domain/battle/powers';
 import { powerPath, powerPrice } from '../../../domain/ascent/powerTree';
 import { RETRY, SHEET_ERROR } from '../format/campText';
 import {
@@ -22,13 +23,31 @@ import {
   powerType,
   shardsText,
   staysActive,
+  unlockedBand,
 } from '../format/powerText';
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize } from '../pixelArt/artPixel';
 import { PixelButton } from '../pixelArt/PixelButton';
 import { PixelSheet } from '../pixelArt/PixelSheet';
 import { pixelFont, textFont } from '../pixelArt/pixelTypography';
+import {
+  CHANGE_HABIT,
+  KINDLED,
+  OATH_BROKEN,
+  OATH_HEADING,
+  OATH_LOW_COST,
+  SWEAR_OATH,
+  kindledCostText,
+  kindledLabel,
+  oathBrokenText,
+  oathInvite,
+  oathLabel,
+  oathStandingText,
+  swearLabel,
+} from '../format/oathText';
+import { PixelIcon } from '../pixelArt/PixelIcon';
 import { useReducedMotion } from '../state/useReducedMotion';
+import { KindledFlame } from './KindledFlame';
 import { PowerIcon } from './PowerIcon';
 
 const { roles } = artPalette;
@@ -57,11 +76,126 @@ function SheetBand({
 }
 
 /**
+ * Le Serment d'un pouvoir à soi, dans sa fiche (#237) : à 1 Élan, pas de Serment ; sinon aucun, un
+ * Serment et son état aujourd'hui (`null` tant qu'hier n'est pas lu), ou un Serment rompu.
+ */
+export type SheetOath =
+  | { readonly kind: 'lowCost' }
+  | { readonly kind: 'none' }
+  | {
+      readonly kind: 'sworn';
+      readonly habit: string;
+      readonly standing: 'fresh' | 'kept' | 'missed' | null;
+    }
+  | { readonly kind: 'broken' };
+
+/** Le cadre « Serment » de la fiche (S1, S4, S5, S6, S14). */
+function OathBlock({
+  power,
+  oath,
+  onSwear,
+}: {
+  readonly power: PowerKind;
+  readonly oath: SheetOath;
+  readonly onSwear: () => void;
+}) {
+  const heading = <Text style={styles.sectionHeading}>{OATH_HEADING}</Text>;
+  const swear = (
+    <PixelButton
+      label={swearLabel(power)}
+      text={SWEAR_OATH}
+      icon="oath8"
+      variant="secondary"
+      onPress={onSwear}
+    />
+  );
+  switch (oath.kind) {
+    case 'lowCost':
+      return (
+        <>
+          {heading}
+          <View style={styles.oathLine}>
+            <PixelIcon name="oath8" color={roles.muted} />
+            <Text style={styles.oathText}>{OATH_LOW_COST}</Text>
+          </View>
+        </>
+      );
+    case 'none':
+      return (
+        <>
+          {heading}
+          <Text style={styles.oathText}>{oathInvite(power)}</Text>
+          {swear}
+        </>
+      );
+    case 'broken':
+      return (
+        <>
+          {heading}
+          <View
+            accessible
+            accessibilityLabel={`${OATH_BROKEN}. ${oathBrokenText(power)}`}
+            testID="oath-frame"
+            style={[
+              styles.oathFrame,
+              { borderWidth: LINE, borderColor: roles.line, backgroundColor: roles.sunken },
+            ]}
+          >
+            <View style={styles.oathRow}>
+              <PixelIcon name="oath8" color={roles.muted} />
+              <Text style={[styles.oathName, { color: roles.parchment }]}>{OATH_BROKEN}</Text>
+            </View>
+            <Text style={styles.oathText}>{oathBrokenText(power)}</Text>
+          </View>
+          {swear}
+        </>
+      );
+    case 'sworn': {
+      const kept = oath.standing === 'kept';
+      const status = oathStandingText(power, oath.habit, oath.standing);
+      return (
+        <>
+          {heading}
+          <View
+            accessible
+            accessibilityLabel={
+              status === null ? oathLabel(oath.habit) : `${oathLabel(oath.habit)}. ${status}`
+            }
+            testID="oath-frame"
+            style={[
+              styles.oathFrame,
+              {
+                borderWidth: LINE,
+                borderColor: kept ? roles.ember : roles.blue,
+                backgroundColor: roles.surface,
+              },
+            ]}
+          >
+            <View style={styles.oathRow}>
+              <PixelIcon name="oath8" color={roles.blue} />
+              <Text style={styles.oathName}>{`« ${oath.habit} »`}</Text>
+              {kept ? (
+                <View style={[styles.kindledTag, { borderWidth: LINE }]}>
+                  <KindledFlame />
+                  <Text style={styles.kindledWord}>{KINDLED}</Text>
+                </View>
+              ) : null}
+            </View>
+            {status === null ? null : <Text style={styles.oathText}>{status}</Text>}
+          </View>
+          <PixelButton label={CHANGE_HABIT} variant="secondary" onPress={onSwear} />
+        </>
+      );
+    }
+  }
+}
+
+/**
  * La fiche d'un pouvoir (#235, maquette F1 à F5), en feuille, quel que soit l'état du nœud : son
  * icône à ×4, sa place dans l'arbre, son coût, son type et son effet ; puis le prix, « Il te
- * restera » et « Débloquer pour 30 Éclats », ou ce qui manque, le verrou (« Voir … »), « Bientôt »
- * ou « Débloqué ». En cas d'échec, elle reste ouverte et propose « Réessayer ». Aucun bouton de
- * vente : un déblocage est pour toujours.
+ * restera » et « Débloquer pour 30 Éclats », ou ce qui manque, le verrou (« Voir … »), ou
+ * « Débloqué », équipé ou à choisir au Choix du héros (#236, F5). En cas d'échec, elle reste
+ * ouverte et propose « Réessayer ». Aucun bouton de vente : un déblocage est pour toujours.
  */
 export function PowerSheet({
   code,
@@ -70,18 +204,27 @@ export function PowerSheet({
   ascentInProgress,
   readOnly,
   error,
+  equipped = true,
+  oath,
+  onSwear = () => undefined,
   onUnlock,
   onSee,
   onClose,
 }: {
-  readonly code: PowerTreeCode;
+  readonly code: PowerKind;
   readonly state: PowerNodeState;
   readonly availableShards: number;
   readonly ascentInProgress: boolean;
   readonly readOnly: boolean;
   readonly error: boolean;
+  /** Le pouvoir est dans la présélection du Choix du héros (#236) ; vrai par défaut. */
+  readonly equipped?: boolean;
+  /** Le Serment d'un pouvoir à soi (#237) ; absent, pas de cadre « Serment ». */
+  readonly oath?: SheetOath | undefined;
+  /** Ouvre le choix de l'habitude du Serment (#237). */
+  readonly onSwear?: () => void;
   readonly onUnlock: () => void;
-  readonly onSee: (code: PowerTreeCode) => void;
+  readonly onSee: (code: PowerKind) => void;
   readonly onClose: () => void;
 }) {
   const reducedMotion = useReducedMotion();
@@ -165,22 +308,20 @@ export function PowerSheet({
           </>
         );
       }
-      case 'soon':
-        return (
-          <SheetBand tone="info">
-            Pas encore dans la tour : il arrive avec une prochaine version.
-          </SheetBand>
-        );
       case 'base':
-        return <SheetBand tone="done">{basePowerBand(code)}</SheetBand>;
+        return (
+          <SheetBand tone={equipped ? 'done' : 'plain'}>{basePowerBand(code, equipped)}</SheetBand>
+        );
       case 'nextAscent':
         return <SheetBand tone="info">Débloqué. Équipé dès ta prochaine ascension.</SheetBand>;
       case 'unlocked':
-        return <SheetBand tone="done">Débloqué. Équipé à ta prochaine ascension.</SheetBand>;
+        return <SheetBand tone={equipped ? 'done' : 'plain'}>{unlockedBand(equipped)}</SheetBand>;
     }
   };
+  const kindled = oath?.kind === 'sworn' && oath.standing === 'kept';
+  const power = code;
 
-  const off = state.kind === 'locked' || state.kind === 'soon';
+  const off = state.kind === 'locked';
   return (
     <Modal
       transparent
@@ -215,7 +356,18 @@ export function PowerSheet({
             <View style={styles.topText}>
               <Text style={styles.place}>{powerPlace(code)}</Text>
               <View style={styles.tags}>
-                <Text style={[styles.tag, styles.cost]}>{`${powerCost(code)} Élan`}</Text>
+                {kindled ? (
+                  <View
+                    accessible
+                    accessibilityLabel={kindledLabel(power)}
+                    style={[styles.kindledTag, { borderWidth: LINE }]}
+                  >
+                    <KindledFlame />
+                    <Text style={styles.kindledWord}>{kindledCostText(power)}</Text>
+                  </View>
+                ) : (
+                  <Text style={[styles.tag, styles.cost]}>{`${powerCost(code)} Élan`}</Text>
+                )}
                 <Text style={styles.tag}>{powerType(code)}</Text>
                 {staysActive(code) ? <Text style={styles.tag}>Reste actif</Text> : null}
               </View>
@@ -224,6 +376,9 @@ export function PowerSheet({
           <Text style={styles.effect}>{effect}</Text>
           <Text style={styles.more}>{more}</Text>
           {block()}
+          {oath === undefined || error ? null : (
+            <OathBlock power={power} oath={oath} onSwear={onSwear} />
+          )}
         </PixelSheet>
       </View>
     </Modal>
@@ -263,6 +418,35 @@ const styles = StyleSheet.create({
   effect: { fontFamily: textFont.medium, fontSize: 15, lineHeight: 21, color: roles.light },
   more: { fontFamily: textFont.medium, fontSize: 13, lineHeight: 18, color: roles.parchment },
   band: { padding: 10 },
+  sectionHeading: {
+    fontFamily: textFont.bold,
+    fontSize: 12,
+    lineHeight: 16,
+    color: roles.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  oathLine: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+  oathText: {
+    flexShrink: 1,
+    fontFamily: textFont.medium,
+    fontSize: 13,
+    lineHeight: 18,
+    color: roles.parchment,
+  },
+  oathFrame: { gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
+  oathRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  oathName: { flex: 1, fontFamily: pixelFont, fontSize: 15, lineHeight: 19, color: roles.light },
+  kindledTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderColor: roles.ember,
+    backgroundColor: roles.raised,
+  },
+  kindledWord: { fontFamily: textFont.bold, fontSize: 12, lineHeight: 16, color: roles.light },
   bandText: { fontFamily: textFont.medium, fontSize: 13, lineHeight: 18 },
   line: {
     fontFamily: textFont.medium,

@@ -2,7 +2,7 @@ import { doneAtClosing, type CheckIn } from '../checkIn/CheckIn';
 import type { Day } from '../day/Day';
 import type { Difficulty } from '../habit/Difficulty';
 import { expectedHabitsOn } from '../habit/ExpectedHabit';
-import type { Habit } from '../habit/Habit';
+import type { Habit, HabitId } from '../habit/Habit';
 import type { SettingsChange } from '../habit/SettingsChange';
 import { weekSettingsOf } from '../habit/WeekSettings';
 import { Week } from '../week/Week';
@@ -77,6 +77,11 @@ export interface FateGaugeCount {
   readonly done: number;
   readonly expected: number;
   readonly habits: readonly FateGaugeHabit[];
+  /**
+   * Les habitudes existantes cochées « fait » hier, attendues ou non, dans l'ordre donné : elles
+   * tiennent leur Serment (`Oath`, #237). Une correction d'hier compte, comme pour la jauge.
+   */
+  readonly doneYesterday: readonly HabitId[];
 }
 
 /**
@@ -106,6 +111,10 @@ export function fateGaugeCount(
       ? { ...checkIn, done: doneAtClosing(checkIn), corrected: false }
       : checkIn,
   );
+  const isDoneYesterday = (habit: Habit) =>
+    weekCheckIns.some(
+      (checkIn) => checkIn.done && checkIn.habitId === habit.id && checkIn.day.equals(yesterday),
+    );
   const closingChanges = changes.filter(({ changedOn }) => !changedOn.isAfter(yesterday));
   const active = habits.filter((habit) => habit.isActiveOn(yesterday));
   const reminded = expectedHabitsOn(yesterday, active, weekCheckIns, changes);
@@ -113,9 +122,7 @@ export function fateGaugeCount(
   const counted = expectedHabitsOn(yesterday, active, closingCheckIns, closingChanges).map(
     (habit) => ({
       habit,
-      done: weekCheckIns.some(
-        (checkIn) => checkIn.done && checkIn.habitId === habit.id && checkIn.day.equals(yesterday),
-      ),
+      done: isDoneYesterday(habit),
       atClosingOnly: !reminded.includes(habit),
       difficulty: weekSettingsOf(
         closingChanges.filter(({ habitId }) => habitId === habit.id),
@@ -128,5 +135,6 @@ export function fateGaugeCount(
     done: counted.filter(({ done }) => done).length,
     expected: counted.length,
     habits: counted,
+    doneYesterday: habits.filter(isDoneYesterday).map(({ id }) => id),
   };
 }

@@ -105,22 +105,22 @@ describe('the enemies of an ordinary battle, multiplied by the tier (#38)', () =
     expect(
       battle.enemies.map(({ hp, maxHp, guard, maxGuard }) => [hp, maxHp, guard, maxGuard]),
     ).toEqual([
-      [67, 67, 18, 18],
-      [81, 81, 25, 25],
-      [54, 54, 17, 17],
+      [67, 67, 37, 37],
+      [81, 81, 50, 50],
+      [54, 54, 35, 35],
     ]);
   });
 
-  it('gives the Specter 61 HP and 15 guard and the Bronze warden 113 HP and 36 guard at tier 3', () => {
+  it('gives the Specter 61 HP and 30 guard and the Bronze warden 113 HP and 72 guard at tier 3', () => {
     const battle = start(['specter', 'bronzeWarden'], TIER_3);
 
     expect(battle.enemies.map(({ maxHp, maxGuard }) => [maxHp, maxGuard])).toEqual([
-      [61, 15],
-      [113, 36],
+      [61, 30],
+      [113, 72],
     ]);
   });
 
-  it('gives the burningHusk (Embrasé) 27 HP and 10 guard at tier 2, its hand 5 and its blaze 10 (#171)', () => {
+  it('gives the burningHusk (Embrasé) 27 HP and 20 guard at tier 2, its hand 5 and its blaze 10 (#171)', () => {
     const battle = start(['burningHusk'], TIER_2);
     const damages = (seed: number) => {
       const { intent } = drawIntent('burningHusk', seedRandom(seed), {
@@ -132,13 +132,13 @@ describe('the enemies of an ordinary battle, multiplied by the tier (#38)', () =
       return intent.category === 'attack' ? `${intent.attack} ${intent.damage} ${intent.burn}` : '';
     };
 
-    expect(battle.enemies.map(({ maxHp, maxGuard }) => [maxHp, maxGuard])).toEqual([[27, 10]]);
+    expect(battle.enemies.map(({ maxHp, maxGuard }) => [maxHp, maxGuard])).toEqual([[27, 20]]);
     expect(new Set(Array.from({ length: 60 }, (_, seed) => damages(seed)))).toEqual(
       new Set(['basic 5 1', 'perilous 10 undefined']),
     );
   });
 
-  it('gives the Gargoyle 52 HP and 33 guard, the Bell founder 73 HP and 21 guard at tier 3 (#171)', () => {
+  it('gives the Gargoyle 52 HP and 66 guard, the Bell founder 73 HP and 42 guard at tier 3 (#171)', () => {
     const battle = start(['gargoyle', 'bellFounder'], TIER_3);
     const burning = (kind: EnemyKind) =>
       new Set(
@@ -156,8 +156,8 @@ describe('the enemies of an ordinary battle, multiplied by the tier (#38)', () =
       );
 
     expect(battle.enemies.map(({ maxHp, maxGuard }) => [maxHp, maxGuard])).toEqual([
-      [52, 33],
-      [73, 21],
+      [52, 66],
+      [73, 42],
     ]);
     expect(burning('gargoyle')).toEqual(new Set(['5 1']));
     expect(burning('bellFounder')).toEqual(new Set(['7 1']));
@@ -167,8 +167,8 @@ describe('the enemies of an ordinary battle, multiplied by the tier (#38)', () =
     const battle = start(['ghoul', 'thornPilgrim']);
 
     expect(battle.enemies.map(({ maxHp, maxGuard }) => [maxHp, maxGuard])).toEqual([
-      [50, 15],
-      [60, 20],
+      [50, 30],
+      [60, 40],
     ]);
     expect(battle.tierMultiplier).toBeUndefined();
   });
@@ -188,8 +188,8 @@ describe('the enemies of an ordinary battle, multiplied by the tier (#38)', () =
     expect(battle.enemies.find((enemy) => enemy.kind === 'specter')).toMatchObject({
       hp: 61,
       maxHp: 61,
-      guard: 15,
-      maxGuard: 15,
+      guard: 30,
+      maxGuard: 30,
     });
   });
 
@@ -257,15 +257,15 @@ describe('the damage of the intents, multiplied by the tier (#38)', () => {
 });
 
 describe('what follows from the HP and the guard of the tier (#38)', () => {
-  it('shows +5 for the Guard intent of the Ash gleaner at tier 2 (30 % of 17)', () => {
+  it('shows +10 for the Guard intent of the Ash gleaner at tier 2 (30 % of 35)', () => {
     const guarding = (intent: Intent) => intent.category === 'guard';
     const context = { ...NO_CONTEXT, guardDamaged: true };
-    const { seed, intent } = firstIntent('ashGleaner', { ...context, maxGuard: 17 }, guarding);
+    const { seed, intent } = firstIntent('ashGleaner', { ...context, maxGuard: 35 }, guarding);
 
-    expect(intent).toEqual({ category: 'guard', gain: 5 });
+    expect(intent).toEqual({ category: 'guard', gain: 10 });
     expect(drawIntent('ashGleaner', seedRandom(seed), context).intent).toEqual({
       category: 'guard',
-      gain: 4,
+      gain: 8,
     });
   });
 
@@ -280,7 +280,7 @@ describe('what follows from the HP and the guard of the tier (#38)', () => {
       }
     }
 
-    expect([...gains]).toEqual([5]);
+    expect([...gains]).toEqual([10]);
   });
 
   it('revives the Ash bramble alone with 12 of its 40 HP, twice, then lets it fall', () => {
@@ -407,30 +407,30 @@ describe('the enemies of the Belfry at tier 3 (#214)', () => {
       }),
     );
 
-  it('gives the Bell novice 45 HP and 12 guard, its Rope end 7 and its Missed peal 10', () => {
+  it('gives the Bell novice 45 HP and 24 guard, its Rope end 7 and its Missed peal 10', () => {
     const battle = start(['bellNovice'], TIER_3);
 
-    expect(battle.enemies.map(({ maxHp, maxGuard }) => [maxHp, maxGuard])).toEqual([[45, 12]]);
+    expect(battle.enemies.map(({ maxHp, maxGuard }) => [maxHp, maxGuard])).toEqual([[45, 24]]);
     expect(attacks('bellNovice')).toEqual(new Set(['basic 7', 'delayed 10']));
   });
 
-  it('gives the Matins ringer 73 HP and 24 guard, her Angelus 7, her Guard +7', () => {
+  it('gives the Matins ringer 73 HP and 48 guard, her Angelus 7, her Guard +14', () => {
     const battle = start(['matinsRinger', 'bellNovice'], TIER_3);
     const { intent } = firstIntent(
       'matinsRinger',
-      { ...tierThree, guardDamaged: true, maxGuard: 24 },
+      { ...tierThree, guardDamaged: true, maxGuard: 48 },
       (drawn) => drawn.category === 'guard',
     );
 
-    expect(battle.enemies[0]).toMatchObject({ maxHp: 73, maxGuard: 24 });
+    expect(battle.enemies[0]).toMatchObject({ maxHp: 73, maxGuard: 48 });
     expect(attacks('matinsRinger')).toEqual(new Set(['delayed 7']));
-    expect(intent).toEqual({ category: 'guard', gain: 7 });
+    expect(intent).toEqual({ category: 'guard', gain: 14 });
   });
 
-  it('gives the Clock jack 84 HP and 30 guard, its Half hour 5 + 5, its Full hour 15, perilous', () => {
+  it('gives the Clock jack 84 HP and 60 guard, its Half hour 5 + 5, its Full hour 15, perilous', () => {
     const battle = start(['clockJack'], TIER_3);
 
-    expect(battle.enemies.map(({ maxHp, maxGuard }) => [maxHp, maxGuard])).toEqual([[84, 30]]);
+    expect(battle.enemies.map(({ maxHp, maxGuard }) => [maxHp, maxGuard])).toEqual([[84, 60]]);
     expect(attacks('clockJack')).toEqual(new Set(['double 5', 'perilous 15']));
   });
 

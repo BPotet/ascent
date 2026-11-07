@@ -10,12 +10,14 @@ import { appStateVisibility } from '../../adapters/device/lifecycle/appStateVisi
 import { ExpoAudioBattleSound } from '../../adapters/device/sound/ExpoAudioBattleSound';
 import { InMemoryKeyValueStore } from '../../adapters/persistence/memory/InMemoryKeyValueStore';
 import { IconBoardScreen, type BoardAscent } from '../../adapters/ui/screens/IconBoardScreen';
+import { useDependencies } from '../../adapters/ui/state/Dependencies';
 import {
   ASCENT_KEY,
   AscentSession,
   SHARD_TOTAL_KEY,
 } from '../../application/useCases/AscentSession';
 import { CampSession } from '../../application/useCases/CampSession';
+import type { UseCaseDependencies } from '../../application/useCases/UseCaseDependencies';
 import type { Ascent } from '../../domain/ascent/Ascent';
 import type { Battle } from '../../domain/battle/Battle';
 
@@ -36,6 +38,7 @@ function close(): void {
  * l'ascension met en pause et sauvegarde.
  */
 export async function openBoardAscent(
+  { clock, unitOfWork }: Pick<UseCaseDependencies, 'clock' | 'unitOfWork'>,
   saved: Ascent | null,
   shards?: number,
   battle?: Battle,
@@ -65,14 +68,26 @@ export async function openBoardAscent(
     ascentSession: session,
     sound: new ExpoAudioBattleSound(),
     haptics: new ExpoHaptics(),
+    // Les habitudes du joueur, en lecture seule : la planche ne prête aucun Serment (#237).
+    clock,
+    unitOfWork,
   });
   await Promise.all([session.load(), camp.load()]);
   return { session, camp };
 }
 
 function IconBoard() {
+  const { clock, unitOfWork } = useDependencies();
   const [visibility] = useState(() => appStateVisibility());
-  return <IconBoardScreen onClose={close} openAscent={openBoardAscent} visibility={visibility} />;
+  return (
+    <IconBoardScreen
+      onClose={close}
+      openAscent={(saved, shards, battle) =>
+        openBoardAscent({ clock, unitOfWork }, saved, shards, battle)
+      }
+      visibility={visibility}
+    />
+  );
 }
 
 /**

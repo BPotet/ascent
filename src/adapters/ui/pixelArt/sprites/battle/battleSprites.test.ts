@@ -115,9 +115,9 @@ describe('the battle characters (pxlib)', () => {
     ]);
   });
 
-  it('gives the Sentinel her own bash pose after the 14 of the hero, and the Wanderer none (#155)', () => {
+  it('gives the Sentinel her own bash and Crushing Blow poses after the 14 of the hero, and the Wanderer none (#155, #236)', () => {
     expect(HERO_FRAMES).toHaveLength(14);
-    expect(heroFrames('sentinel')).toEqual([...HERO_FRAMES, 'bash']);
+    expect(heroFrames('sentinel')).toEqual([...HERO_FRAMES, 'bash', 'crush0', 'crush1']);
     expect(heroFrames('wanderer')).toEqual(HERO_FRAMES);
   });
 
@@ -755,7 +755,7 @@ describe('the battle effects (precomputed, never painted per frame)', () => {
 
 describe('the heroines with their full animation in battle (#140)', () => {
   const HEROINES = [
-    ['sentinel', SENTINEL_ANIMATION],
+    ['sentinel', HERO_ANIMATIONS.sentinel],
     ['wanderer', WANDERER_ANIMATION],
   ] as const;
 

@@ -24,7 +24,7 @@ describe('selfRevive (S1, S6, S10)', () => {
   it('gives the Skeleton its Codex values: revives once at 50 %', () => {
     expect(ENEMIES.skeleton).toEqual({
       maxHp: 35,
-      maxGuard: 10,
+      maxGuard: 20,
       moves: [{ attack: 'basic', damage: 5 }],
       supports: false,
       selfRevive: { times: 1, hpPercent: 50 },

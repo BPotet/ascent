@@ -413,11 +413,11 @@ describe('AscentSession', () => {
     // La reprise repart du début de la préparation : la riposte part 1 260 ms plus tard.
     clock.advanceTo(startedAt + 1_259);
     await flush();
-    expect(saved(store)?.battle?.enemies[0]).toMatchObject({ hp: 50, guard: 15 });
+    expect(saved(store)?.battle?.enemies[0]).toMatchObject({ hp: 50, guard: 30 });
 
     clock.advanceTo(startedAt + 1_260);
     await flush();
-    expect(saved(store)?.battle?.enemies[0]).toMatchObject({ hp: 47, guard: 12 });
+    expect(saved(store)?.battle?.enemies[0]).toMatchObject({ hp: 47, guard: 27 });
   });
 
   it('earns the Gold and offers the exits when the floor battle is won', async () => {
@@ -1193,7 +1193,7 @@ describe('AscentSession: the Summon of the Moth queen (#172)', () => {
     expect(saved(store)?.battle?.summon).toEqual({ summoner: 0, kind: 'mothkin', slots: [1, 2] });
   });
 
-  it('gives every floor battle the multiplier of the tier for its summoned enemies, never to the boss', async () => {
+  it('gives every floor battle the multiplier of the tier for its summoned enemies, and the boss its own (#244)', async () => {
     const { session, store } = setUp();
     store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent: bossOfTier2, battle: null }));
     await session.load();
@@ -1203,8 +1203,8 @@ describe('AscentSession: the Summon of the Moth queen (#172)', () => {
 
     const { battle } = battleSession.current()!;
     expect(battle.summonMultiplier).toEqual(TIERS[2].multiplier);
-    expect(battle.tierMultiplier).toBeUndefined();
-    expect(battle.enemies[0]).toMatchObject({ kind: 'mothQueen', maxHp: 400 });
+    expect(battle.tierMultiplier).toEqual(TIERS[2].bossMultiplier);
+    expect(battle.enemies[0]).toMatchObject({ kind: 'mothQueen', maxHp: 400, maxGuard: 87 });
   });
 
   it('resumes an announced summon, and saves the battle when the Mothkin enter', async () => {
@@ -1471,5 +1471,70 @@ describe('AscentSession: the equipped powers (#235)', () => {
     await battleSession.start();
 
     expect(battleSession.current()!.battle).not.toHaveProperty('powers');
+  });
+});
+
+describe('AscentSession: the kindled powers (#237)', () => {
+  async function reloaded(ascent: unknown, battle: Battle | null = null) {
+    const set = setUp();
+    set.store.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent, battle }));
+    await set.session.load();
+    return set;
+  }
+
+  const kindled = [{ power: 'retaliation' as const, habit: 4 }];
+
+  it('saves the kindled powers with the ascent, and reads them back unchanged', async () => {
+    const { session, store } = setUp();
+    session.begin({ hero: 'sentinel', powers: ['bulwark', 'retaliation'], kindled });
+    await flush();
+
+    expect(saved(store)?.ascent.kindled).toEqual(kindled);
+    const again = await reloaded(saved(store)!.ascent);
+    expect(again.session.current()?.kindled).toEqual(kindled);
+  });
+
+  it('kindles nothing in an ascent saved before the update', async () => {
+    const { kindled: _, ...before } = startAscent(42, { powers: ['bulwark', 'retaliation'] });
+
+    const { session } = await reloaded(before);
+
+    expect(session.current()?.kindled).toEqual([]);
+  });
+
+  it('fights its battles with its kindled powers, at their kindled cost', async () => {
+    const { session } = setUp();
+    session.begin({ hero: 'sentinel', powers: ['bulwark', 'retaliation'], kindled });
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    expect(battleSession.current()!.battle.kindled).toEqual(['retaliation']);
+  });
+
+  it('fights without any kindled power when there is none, as before', async () => {
+    const { session } = setUp();
+    session.begin({ hero: 'sentinel', powers: ['bulwark', 'retaliation'] });
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    expect(battleSession.current()!.battle).not.toHaveProperty('kindled');
+  });
+
+  it('resumes a battle saved without kindled powers at the normal price', async () => {
+    const ascent = startAscent(42, { powers: ['bulwark', 'retaliation'], kindled });
+    const { battle } = startBattle({
+      seed: 3,
+      defenseHint: false,
+      at: 0,
+      enemies: ['ghoul'],
+      powers: ['bulwark', 'retaliation'],
+    });
+
+    const { session } = await reloaded(ascent, battle);
+    const battleSession = session.battleSession();
+    await battleSession.start();
+
+    expect(battleSession.current()!.battle).not.toHaveProperty('kindled');
+    expect(session.current()?.kindled).toEqual(kindled);
   });
 });

@@ -1,8 +1,10 @@
 import type { Ref } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import type { PowerNodeState, PowerTreeCode } from '../../../domain/ascent/powerTree';
+import type { PowerNodeState } from '../../../domain/ascent/powerTree';
+import type { PowerKind } from '../../../domain/battle/powers';
 import { TREE_POWER_NAMES, nodeLabel, nodeStateText, powerTypeLine } from '../format/powerText';
+import { oathLabel } from '../format/oathText';
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize, notchedCorners } from '../pixelArt/artPixel';
 import { PixelIcon } from '../pixelArt/PixelIcon';
@@ -17,8 +19,8 @@ const LINE = artPixelSize(2);
 // Stryker disable all: valeurs purement visuelles, vérifiées par la conformité aux maquettes (barrière 10 bis).
 /**
  * La bordure et le mot de chaque état (maquette 232, section 1) : or pour ce qui est équipé, or
- * foncé pour ce qui se débloque, trait sombre pour ce qui manque, hachures pour un verrou ou
- * « Bientôt ». Jamais la couleur seule : l'état est toujours écrit.
+ * foncé pour ce qui se débloque, trait sombre pour ce qui manque, hachures pour un verrou. Jamais
+ * la couleur seule : l'état est toujours écrit.
  */
 const LOOKS: Readonly<
   Record<
@@ -32,8 +34,10 @@ const LOOKS: Readonly<
   affordable: { line: roles.goldDark, word: roles.shard, bg: roles.surface },
   missing: { line: roles.line, word: roles.parchment, bg: roles.surface },
   locked: { line: roles.line, word: roles.parchment, bg: roles.sunken },
-  soon: { line: roles.line, word: roles.parchment, bg: roles.sunken },
 };
+
+/** Un pouvoir à soi mais pas équipé (#236, A3) : coche verte, trait sombre, « Débloqué ». */
+const LEFT_OUT = { line: roles.line, word: roles.light, bg: roles.surface } as const;
 // Stryker restore all
 
 // Stryker disable all: durées et amplitudes de la maquette (D1, `.node.fresh`), mutées seulement avec `mutation:ui`.
@@ -71,7 +75,7 @@ export function unlockRing(
 }
 
 /** L'anneau d'or d'un nœud tout juste débloqué (D1). Décoratif. */
-function UnlockRing({ code }: { readonly code: PowerTreeCode }) {
+function UnlockRing({ code }: { readonly code: PowerKind }) {
   const reduced = useReducedMotion();
   const { opacity, scale } = unlockRing(useSteps(RING_STEPS, RING_STEP_MS), reduced);
   return (
@@ -86,7 +90,7 @@ function UnlockRing({ code }: { readonly code: PowerTreeCode }) {
 }
 
 /** L'icône d'un nœud tout juste débloqué, qui passe de l'ombre à la couleur (D1). */
-function LightingIcon({ code }: { readonly code: PowerTreeCode }) {
+function LightingIcon({ code }: { readonly code: PowerKind }) {
   const reduced = useReducedMotion();
   const light = unlockLight(useSteps(LIGHT_STEPS, LIGHT_STEP_MS), reduced);
   return (
@@ -103,28 +107,40 @@ const SHADOW_OPACITY = 0.55;
  * Un nœud de l'arbre de pouvoirs (#235, maquette 232) : l'icône à ×3, le nom, le coût et le type,
  * puis l'état en mot. Toucher un nœud ouvre sa fiche, quel que soit son état. Juste après un
  * déblocage (`fresh`, D1), son trait d'or s'éclaire, son icône s'allume et un anneau d'or s'ouvre.
+ * Un pouvoir à soi laissé hors des 3 pouvoirs équipés (`equipped` faux, #236, A3) prend la coche
+ * verte et « Débloqué ».
  */
 export function PowerTreeNode({
   code,
   state,
   fresh = false,
+  equipped = true,
+  sworn,
   onPress,
   ref,
 }: {
-  readonly code: PowerTreeCode;
+  readonly code: PowerKind;
   readonly state: PowerNodeState;
   readonly fresh?: boolean;
+  /** Le pouvoir est dans la présélection du Choix du héros (#236) ; vrai par défaut. */
+  readonly equipped?: boolean;
+  /** L'habitude du Serment du pouvoir, non rompu (#237, S7) : le chaînon bleu, en haut à gauche. */
+  readonly sworn?: string | undefined;
   readonly onPress: () => void;
   readonly ref?: Ref<View>;
 }) {
-  const look = LOOKS[state.kind];
-  const off = state.kind === 'locked' || state.kind === 'soon';
   const owned = state.kind === 'base' || state.kind === 'unlocked';
+  const look = owned && !equipped ? LEFT_OUT : LOOKS[state.kind];
+  const off = state.kind === 'locked';
   return (
     <Pressable
       ref={ref}
       accessibilityRole="button"
-      accessibilityLabel={nodeLabel(code, state)}
+      accessibilityLabel={
+        sworn === undefined
+          ? nodeLabel(code, state, equipped)
+          : `${nodeLabel(code, state, equipped)}, ${oathLabel(sworn)}`
+      }
       onPress={onPress}
       testID={`power-node-${code}`}
       style={[
@@ -135,10 +151,18 @@ export function PowerTreeNode({
     >
       {fresh ? <UnlockRing code={code} /> : null}
       {owned ? (
-        <View testID={`power-node-tick-${code}`} style={styles.tick}>
+        <View
+          testID={`power-node-tick-${code}`}
+          style={[styles.tick, !equipped && styles.leftOutTick]}
+        >
           <PixelIcon name="check8" color={roles.ink} />
         </View>
       ) : null}
+      {sworn === undefined ? null : (
+        <View testID={`power-node-oath-${code}`} style={[styles.oath, { borderWidth: 1 }]}>
+          <PixelIcon name="oath8" color={roles.blue} />
+        </View>
+      )}
       {fresh ? (
         <LightingIcon code={code} />
       ) : (
@@ -153,7 +177,9 @@ export function PowerTreeNode({
       <View style={styles.stateRow}>
         {state.kind === 'locked' ? <PixelIcon name="lock" color={roles.parchment} /> : null}
         {state.kind === 'affordable' ? <PixelIcon name="shard8" color={roles.shard} /> : null}
-        <Text style={[styles.state, { color: look.word }]}>{nodeStateText(state, code)}</Text>
+        <Text style={[styles.state, { color: look.word }]}>
+          {nodeStateText(state, code, equipped)}
+        </Text>
       </View>
       {notchedCorners(LINE).map((corner, index) => (
         <View key={index} pointerEvents="none" style={[styles.corner, corner]} />
@@ -184,6 +210,14 @@ const styles = StyleSheet.create({
     backgroundColor: roles.gold,
   },
   off: { opacity: 0.55 },
+  oath: {
+    position: 'absolute',
+    top: 4,
+    left: 4,
+    padding: 2,
+    borderColor: roles.blue,
+    backgroundColor: roles.sunken,
+  },
   tick: {
     position: 'absolute',
     top: 4,
@@ -194,6 +228,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: roles.gold,
   },
+  leftOutTick: { backgroundColor: roles.done },
   name: {
     fontFamily: pixelFont,
     fontSize: 16,

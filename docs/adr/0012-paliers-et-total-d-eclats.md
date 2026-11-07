@@ -1,6 +1,7 @@
 # ADR 0012 — Les paliers et le Total d'Éclats
 
 - **Statut** : accepté
+- **Avenant** : 7 novembre 2026, le multiplicateur d'Élite et de boss et le répit (#244), voir en fin de document
 - **Date** : 1er novembre 2026
 - **Décideur** : Architect (notes techniques de #38), écrit par le dev
 - **Contexte produit** : épique #170, story socle #38 « Trois paliers jusqu'au sommet, et les
@@ -97,3 +98,9 @@ négatif. Les deux écritures (crédit et débit) passent par la même file d'é
   Garantie du Feu de camp vaut pour chaque palier.
 - Un risque accepté : la perte du total sur une valeur illisible (recopiée à part).
 - Rien ne quitte le téléphone.
+
+## Avenant du 7 novembre 2026 — Élites, boss et répit (#244)
+
+La règle du palier (`TIERS`) porte aussi le multiplicateur de ses Élites et de ses boss
+(`eliteMultiplier`, `bossMultiplier`) et son répit (`respitePercent`, 10 / 5 / 5) : voir l'[ADR
+0020](0020-multiplicateur-d-elite-et-de-boss.md).

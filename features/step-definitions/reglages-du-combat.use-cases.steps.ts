@@ -1,7 +1,8 @@
 /**
  * « Réglages du combat » (#211) à travers la session d'ascension, sur un Stockage clé-valeur en
  * mémoire : la porte Élite du palier 2, l'Épouvantail et le Brûleur de ronces à leur garde du Codex
- * (`codex/scarecrow` v3, `codex/brambleBurner` v4), jamais multipliée par le palier.
+ * (`codex/scarecrow` v3, `codex/brambleBurner` v4), multipliée par le multiplicateur d'Élite et de
+ * boss (#244).
  */
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
 
@@ -18,8 +19,8 @@ async function eliteFight(elite: EnemyKind) {
   const battleSession = session.battleSession();
   await battleSession.start();
   const { battle } = battleSession.current()!;
-  // Une Élite n'est jamais multipliée par le palier.
-  expect(battle.tierMultiplier).toBeUndefined();
+  // Une Élite a le multiplicateur d'Élite et de boss de son palier (#244).
+  expect(battle.tierMultiplier).toEqual(TIERS[2].eliteMultiplier);
   return battle.enemies[0]!;
 }
 

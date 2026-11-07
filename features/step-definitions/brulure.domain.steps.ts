@@ -325,8 +325,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     expect(TIERS[2].enemies.map(({ kind }) => kind)).toContain('burningHusk');
   });
 
-  then('il a 27 PV et 10 de garde', () => {
-    expect(enemyAtTier('burningHusk', 2)).toMatchObject({ maxHp: 27, hp: 27, maxGuard: 10 });
+  then('il a 27 PV et 20 de garde', () => {
+    expect(enemyAtTier('burningHusk', 2)).toMatchObject({ maxHp: 27, hp: 27, maxGuard: 20 });
   });
 
   and('sa Main de braise fait 5 et donne 1 charge', () => {
@@ -346,13 +346,13 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     );
   });
 
-  then('la Gargouille a 52 PV et 33 de garde, et sa Gueule de feu fait 5 et donne 1 charge', () => {
-    expect(enemyAtTier('gargoyle', 3)).toMatchObject({ maxHp: 52, maxGuard: 33 });
+  then('la Gargouille a 52 PV et 66 de garde, et sa Gueule de feu fait 5 et donne 1 charge', () => {
+    expect(enemyAtTier('gargoyle', 3)).toMatchObject({ maxHp: 52, maxGuard: 66 });
     expect(burning('gargoyle', 3)).toEqual(new Set(['5 1']));
   });
 
-  and('le Fondeur a 73 PV et 21 de garde, et sa Coulée fait 7 et donne 1 charge', () => {
-    expect(enemyAtTier('bellFounder', 3)).toMatchObject({ maxHp: 73, maxGuard: 21 });
+  and('le Fondeur a 73 PV et 42 de garde, et sa Coulée fait 7 et donne 1 charge', () => {
+    expect(enemyAtTier('bellFounder', 3)).toMatchObject({ maxHp: 73, maxGuard: 42 });
     expect(burning('bellFounder', 3)).toEqual(new Set(['7 1']));
   });
 

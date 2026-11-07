@@ -136,8 +136,11 @@ export function BattleScreen({
       ),
     [session],
   );
-  // L'ombre de Pas de l'ombre (#173), tant qu'il est actif : elle glisse depuis le dernier lancer.
-  const shadowStepActive = battle?.hero.shadowStep === true;
+  // L'ombre de Pas de l'ombre (#173), tant qu'il est actif : elle glisse depuis le dernier lancer ;
+  // aussi pendant Frappe furtive (#236), depuis son lancer.
+  const shadowStepActive =
+    battle?.hero.shadowStep === true ||
+    (battle?.phase.kind === 'heroStrike' && battle.phase.power === 'ambush');
   const shadowStep = useMemo(
     () => (shadowStepActive ? { castAt: display.shadowStepAt } : null),
     [shadowStepActive, display.shadowStepAt],

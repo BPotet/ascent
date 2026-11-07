@@ -15,6 +15,7 @@ import { AscentScreen } from '../adapters/ui/screens/AscentScreen';
 import { useDependencies } from '../adapters/ui/state/Dependencies';
 import type { Clock } from '../application/ports/Clock';
 import type { KeyValueStore } from '../application/ports/KeyValueStore';
+import type { UnitOfWork } from '../application/ports/UnitOfWork';
 import { AscentLogRecorder } from '../application/useCases/AscentLogRecorder';
 import { AscentSession } from '../application/useCases/AscentSession';
 import { CampSession } from '../application/useCases/CampSession';
@@ -84,14 +85,21 @@ export function sharedAscentSession(keyValueStore: KeyValueStore, clock: Clock):
 
 /**
  * La session du camp de l'app (#40), partagée par le pied de la tour, le bilan et le camp : la même
- * session d'ascension, le son de flamme de l'ascension, la vibration de réussite du téléphone.
+ * session d'ascension, les sons de l'ascension, la vibration de réussite du téléphone, et l'horloge
+ * et les habitudes de l'app pour les Serments (#237).
  */
-export function sharedCampSession(keyValueStore: KeyValueStore, clock: Clock): CampSession {
+export function sharedCampSession(
+  keyValueStore: KeyValueStore,
+  clock: Clock,
+  unitOfWork: UnitOfWork,
+): CampSession {
   sharedCamp ??= new CampSession({
     keyValueStore,
     ascentSession: sharedAscentSession(keyValueStore, clock),
     sound: sharedSound(),
     haptics: new ExpoHaptics(),
+    clock,
+    unitOfWork,
   });
   return sharedCamp;
 }

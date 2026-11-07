@@ -60,7 +60,8 @@ export type EnemyFrame =
 
 /**
  * Les images d'une héroïne : repos, garde levée, frappe, parade, esquive, touchée, déséquilibrée,
- * et le coup de bouclier (`bash`), propre à la Sentinelle (#155).
+ * et le coup de bouclier (`bash`) et Fracas (`crush0`, `crush1`, #236), propres à la Sentinelle
+ * (#155).
  */
 export type HeroFrame =
   | 'idle0'
@@ -77,7 +78,9 @@ export type HeroFrame =
   | 'hit1'
   | 'off0'
   | 'off1'
-  | 'bash';
+  | 'bash'
+  | 'crush0'
+  | 'crush1';
 
 /** Une image d'un ennemi dans la scène : ses 17 images, ou une de ses poses en plus (#38). */
 export type SceneFrame = EnemyFrame | ExtraFrame;
@@ -126,10 +129,10 @@ export const HERO_FRAMES: readonly HeroFrame[] = [
 
 /**
  * Les poses propres à une héroïne, en plus des 14 poses du héros : le coup de bouclier de la
- * Sentinelle (#155). Une héroïne future doit y figurer, même sans pose propre.
+ * Sentinelle (#155) et les deux poses de Fracas (#236). Une héroïne future doit y figurer, même sans pose propre.
  */
 const OWN_HERO_FRAMES = {
-  sentinel: ['bash'],
+  sentinel: ['bash', 'crush0', 'crush1'],
   wanderer: [],
 } satisfies Record<HeroKind, readonly HeroFrame[]>;
 

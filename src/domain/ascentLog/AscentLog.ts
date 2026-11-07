@@ -7,7 +7,7 @@
  * Il ne contient aucune donnée des habitudes : les bénédictions de départ n'y figurent que par leur
  * famille et leur rareté.
  */
-import type { Ascent, AscentSeed, Encounter } from '../ascent/Ascent';
+import { kindledOf, type Ascent, type AscentSeed, type Encounter } from '../ascent/Ascent';
 import type { BlessingFamily } from '../ascent/blessings';
 import { SECOND_BREATH, type OfferCard } from '../ascent/boons';
 import type { Exit, ExitKind } from '../ascent/exits';
@@ -133,6 +133,8 @@ interface AscentLogBody {
   readonly keys?: KeysRecord;
   /** Les pouvoirs équipés (#235), seulement s'ils diffèrent du pouvoir de base seul. */
   readonly powers?: readonly PowerKind[];
+  /** Les pouvoirs attisés (#237), leurs codes seuls, jamais leur habitude ; absent sans attisé. */
+  readonly kindled?: readonly PowerKind[];
   readonly floors: readonly FloorRecord[];
   readonly tierPassages: readonly TierPassageRecord[];
   readonly status: 'inProgress' | 'ended';
@@ -222,6 +224,7 @@ export function beginAscentLog(ascent: Ascent, day: Day): AscentLog {
     blessings: [],
     ...(favor > 0 && { keys: { favor, fortune: 0 } }),
     ...(beyondBasePower(ascent.hero.kind, ascent.powers) && { powers: ascent.powers }),
+    ...(ascent.kindled.length > 0 && { kindled: kindledOf(ascent) }),
     floors: [floorRecord(ascent)],
     tierPassages: [],
     status: 'inProgress',

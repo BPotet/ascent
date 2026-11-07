@@ -1,12 +1,14 @@
 // La session d'ascension sur trois paliers (#38, ADR 0012) : le Total d'Éclats crédité et sauvegardé
 // avant l'écran qui suit la victoire, jamais deux fois, gardé après une chute ou un abandon ; le
-// Passage de palier sauvegardé et repris ; le multiplicateur de palier des seuls combats ordinaires.
+// Passage de palier sauvegardé et repris ; le multiplicateur de palier des combats ordinaires et celui
+// d'Élite et de boss (#244).
 import {
   startAscent,
   type Ascent,
   type Encounter,
   type TierPassage,
 } from '../../domain/ascent/Ascent';
+import { TIERS } from '../../domain/ascent/tiers';
 import { startBattle, type Battle } from '../../domain/battle/Battle';
 import type { EnemyKind } from '../../domain/battle/combatants';
 import { FixedSeedSource } from '../testing/FixedSeedSource';
@@ -480,15 +482,93 @@ describe('the Tier transition in the session (#38)', () => {
     expect(battle.tierMultiplier).toEqual({ hpPercent: 135, guardPercent: 125 });
   });
 
-  it('never multiplies an Elite nor a boss', async () => {
+  it('multiplies an Elite by the Elite and boss multiplier of its tier (#244)', async () => {
     const store = mapStore();
     const { session } = await loaded(store, ascentAt(2, 'elite', ['scarecrow']), null);
     const battleSession = session.battleSession();
 
     await battleSession.start();
 
-    expect(battleSession.current()!.battle.tierMultiplier).toBeUndefined();
-    expect(battleSession.current()!.battle.enemies[0]).toMatchObject({ maxHp: 190, maxGuard: 50 });
+    const { battle } = battleSession.current()!;
+    expect(battle.tierMultiplier).toEqual(TIERS[2].eliteMultiplier);
+    expect(battle.summonMultiplier).toEqual(TIERS[2].multiplier);
+    expect(battle.enemies[0]).toMatchObject({ maxHp: 228, maxGuard: 70 });
+  });
+
+  it('multiplies a boss by the Elite and boss multiplier of its tier (#244)', async () => {
+    const store = mapStore();
+    const { session } = await loaded(store, ascentAt(3, 'boss', ['hourRinger']), null);
+    const battleSession = session.battleSession();
+
+    await battleSession.start();
+
+    const { battle } = battleSession.current()!;
+    expect(battle.tierMultiplier).toEqual(TIERS[3].bossMultiplier);
+    expect(battle.enemies[0]).toMatchObject({ maxHp: 650, maxGuard: 130 });
+  });
+
+  it.each([
+    [1, 10],
+    [2, 5],
+    [3, 5],
+  ] as const)('gives a battle of tier %i its respite of %i % (#244)', async (tier, percent) => {
+    const { session } = await loaded(mapStore(), ascentAt(tier, 'combat', ['ghoul']), null);
+    const battleSession = session.battleSession();
+
+    await battleSession.start();
+
+    expect(battleSession.current()!.battle.respitePercent).toBe(percent);
+  });
+
+  it('resumes an Elite battle of tier 3 saved before #244 with its values of before', async () => {
+    // Écrit avant #244 : ni multiplicateur, ni répit, ni plafond, ni dernière Élite.
+    const ascent = ascentAt(3, 'elite', ['firstPilgrim']);
+    const before = battleOf(ascent, 200);
+    expect(before).not.toHaveProperty('tierMultiplier');
+    expect(before).not.toHaveProperty('respitePercent');
+    const { session } = await loaded(mapStore(), ascent, before);
+    const battleSession = session.battleSession();
+
+    await battleSession.start();
+    const { battle } = battleSession.current()!;
+    expect(battle.enemies[0]).toMatchObject({ hp: 200, maxHp: 270, guard: 55, maxGuard: 55 });
+    // Sans multiplicateur, les dégâts de ses coups restent ceux d'avant (100 %).
+    expect(battle).not.toHaveProperty('tierMultiplier');
+    expect(battle).not.toHaveProperty('respitePercent');
+  });
+
+  it('keeps the recorded guards of an ordinary battle saved before #244', async () => {
+    const ascent = ascentAt(1, 'combat', ['ghoul', 'specter']);
+    const started = battleOf(ascent, 30);
+    const before: Battle = {
+      ...started,
+      enemies: [{ ...started.enemies[0]!, guard: 9, maxGuard: 15 }],
+    };
+    const { session } = await loaded(mapStore(), ascent, before);
+    const battleSession = session.battleSession();
+
+    await battleSession.start();
+
+    expect(battleSession.current()!.battle.enemies[0]).toMatchObject({ guard: 9, maxGuard: 15 });
+  });
+
+  it('saves the perfect parry heals of the battle, and reads them back (#244, R4)', async () => {
+    const store = mapStore();
+    const ascent = ascentAt(2, 'combat', ['thornPilgrim']);
+    const started = battleOf(ascent, 30);
+    const healed: Battle = { ...started, hero: { ...started.hero, parryHealed: 7 } };
+    const { session } = await loaded(store, ascent, healed);
+    const battleSession = session.battleSession();
+    await battleSession.start();
+    session.pause();
+    await flush();
+
+    const again = setUp(store).session;
+    await again.load();
+    const resumed = again.battleSession();
+    await resumed.start();
+
+    expect(resumed.current()!.battle.hero.parryHealed).toBe(7);
   });
 
   it('plays the Common Momentum blessing at floor 1 of tier 1 only, not at floor 1 of tier 2', async () => {

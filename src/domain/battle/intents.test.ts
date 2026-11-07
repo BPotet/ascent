@@ -127,7 +127,7 @@ describe('drawIntent (C2.1, C10)', () => {
     });
 
     it('guards one time in three, when it is not stunned and its guard is damaged', () => {
-      expect(draw(low, { guardDamaged: true })).toEqual({ category: 'guard', gain: 3 });
+      expect(draw(low, { guardDamaged: true })).toEqual({ category: 'guard', gain: 7 });
       expect(draw(high, { guardDamaged: true })).toMatchObject({ category: 'attack' });
       expect(draw(low, { guardDamaged: false })).toMatchObject({ category: 'attack' });
       expect(draw(low, { guardDamaged: true, stunned: true })).toMatchObject({
@@ -237,8 +237,8 @@ describe('gains of the intents (C2)', () => {
 });
 
 describe('the Mad villager (prototype #107, Codex values)', () => {
-  it('has 35 HP, a guard of 12 and an Initiative of 5', () => {
-    expect(ENEMIES.madVillager).toMatchObject({ maxHp: 35, maxGuard: 12, supports: false });
+  it('has 35 HP, a guard of 24 and an Initiative of 5', () => {
+    expect(ENEMIES.madVillager).toMatchObject({ maxHp: 35, maxGuard: 24, supports: false });
     expect(ENEMY_INITIATIVE.madVillager).toBe(5);
   });
 

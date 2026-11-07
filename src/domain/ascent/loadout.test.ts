@@ -27,6 +27,7 @@ describe('loadout (#159)', () => {
       boons: ['perfectEcho', 'lingeringFrost', 'shatteringEmber'],
       reserves: { gold: 0, keys: 0 },
       powers: ['bulwark'],
+      kindled: [],
     });
     expect(loadout.blessings).toBe(ascent.blessings);
     expect(loadout.boons).toBe(ascent.hero.boons);
@@ -55,6 +56,7 @@ describe('loadout (#159)', () => {
       boons: [],
       reserves: { gold: 0, keys: 0 },
       powers: ['bulwark'],
+      kindled: [],
     });
     expect(loadoutSize(loadout)).toBe(0);
   });
@@ -67,6 +69,7 @@ describe('loadout (#159)', () => {
       boons: ['frostSkin', 'trueEdge'],
       reserves: { gold: 0, keys: 0 },
       powers: ['bulwark'],
+      kindled: [],
     });
     expect(loadoutSize(loadout)).toBe(2);
   });

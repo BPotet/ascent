@@ -5,7 +5,7 @@
  * viennent de la graine de l'ascension (P9), et un tirage révélé est gardé.
  */
 import { HEROES, type EnemyKind, type HeroKind } from '../battle/combatants';
-import { basePower, powerOrder, type PowerKind } from '../battle/powers';
+import { POWERS, basePower, powerOrder, type PowerKind } from '../battle/powers';
 import { nextRandom, seedRandom, type BattleSeed, type RandomState } from '../battle/SeededRandom';
 import {
   SECOND_BREATH,
@@ -43,8 +43,9 @@ import {
   type Equipment,
   type ItemKind,
 } from './items';
+import { OATH_MIN_COST, type KindledPower } from './kindled';
 import type { Rarity } from './rarity';
-import { drawElite } from './elites';
+import { drawElite, eliteCandidates } from './elites';
 import { drawGroup, drawGroupSize } from './enemyGroup';
 import { drawExitKinds, type Exit } from './exits';
 import { bossGold, campfireHeal, drawBoss, drawCombatGold, eliteGold } from './rewards';
@@ -147,6 +148,11 @@ export interface Ascent {
    * l'arbre, jusqu'à sa fin ; le pouvoir de base seul par défaut.
    */
   readonly powers: readonly PowerKind[];
+  /**
+   * Les pouvoirs attisés (`KindledPower`, #237), figés au départ de l'ascension jusqu'à sa fin,
+   * chacun avec l'identifiant de l'habitude de son Serment tenu (jamais son nom).
+   */
+  readonly kindled: readonly KindledPower[];
   /** Cœur de braise a déjà été proposé dans l'ascension, pris ou non (#195). */
   readonly emberHeartOffered: boolean;
   /** Les relances qui restent (#42), données au lancement selon la jauge. */
@@ -161,6 +167,11 @@ export interface Ascent {
   readonly sealedChest: SealedChest | null;
   /** Le flux de hasard du coffre scellé, dérivé de la graine : seule une ouverture l'avance. */
   readonly sealedChestRandom: RandomState;
+  /**
+   * La dernière Élite affrontée au palier (#244, R5), jamais tirée à la porte Élite suivante ;
+   * absente avant la première Élite du palier, et dans une ascension sauvegardée avant #244.
+   */
+  readonly lastElite?: EnemyKind;
 }
 
 /**
@@ -175,6 +186,8 @@ export interface AscentLaunch {
   readonly unlocks?: readonly Unlock[];
   /** Les pouvoirs équipés (#235) ; par défaut, le pouvoir de base du héros. */
   readonly powers?: readonly PowerKind[];
+  /** Les pouvoirs attisés (#237), parmi les pouvoirs équipés ; par défaut, aucun. */
+  readonly kindled?: readonly KindledPower[];
 }
 
 /** Le flux de hasard des bénédictions et du butin : séparé, il ne déplace pas les autres tirages. */
@@ -236,6 +249,12 @@ function combat(size: number, random: RandomState, tier: Tier, gauge: FateGauge)
 export function startAscent(seed: AscentSeed, launch: AscentLaunch = {}): Ascent {
   const { hero: heroKind = 'sentinel', gauge = 0, blessings = [], unlocks = [] } = launch;
   const powers = powerOrder(heroKind, launch.powers ?? [basePower(heroKind)]);
+  const kindled = (launch.kindled ?? []).filter(
+    ({ power }, index, all) =>
+      powers.includes(power) &&
+      POWERS[power].cost >= OATH_MIN_COST &&
+      all.findIndex((other) => other.power === power) === index,
+  );
   const size = drawGroupSize(1, seedRandom(seed), false);
   const first = combat(size.value, size.random, 1, gauge);
   const maxHp = heroMaxHp(HEROES[heroKind].maxHp, 0, fatiguePercent(gauge));
@@ -265,6 +284,7 @@ export function startAscent(seed: AscentSeed, launch: AscentLaunch = {}): Ascent
     passage: null,
     unlocks: [...new Set(unlocks)],
     powers,
+    kindled,
     emberHeartOffered: false,
     rerolls: favorRerolls(gauge),
     rerollRandom: rerollStream(seed),
@@ -273,6 +293,11 @@ export function startAscent(seed: AscentSeed, launch: AscentLaunch = {}): Ascent
     sealedChest: null,
     sealedChestRandom: sealedChestStream(seed),
   };
+}
+
+/** Les codes des pouvoirs attisés de l'ascension (#237), pour ses combats et son journal. */
+export function kindledOf(ascent: Ascent): PowerKind[] {
+  return ascent.kindled.map(({ power }) => power);
 }
 
 /**
@@ -425,11 +450,12 @@ export function chooseExit(ascent: Ascent, index: number): Ascent {
       };
     }
     case 'elite': {
-      const elite = drawElite(TIERS[tier].elites, ascent.random);
+      // L'Élite non répétée (#244, R5) : jamais la dernière affrontée au palier.
+      const elite = drawElite(eliteCandidates(TIERS[tier].elites, ascent.lastElite), ascent.random);
       // L'Élite maudite sous la malédiction forte (#209), sans tirage : elle est seule.
       const cursed = cursedElite(ascent.gauge) ? 0 : undefined;
       const drawn = encounter('elite', [elite.value], elite.random, cursed);
-      return { ...entered, random: drawn.random, encounter: drawn.value };
+      return { ...entered, random: drawn.random, encounter: drawn.value, lastElite: elite.value };
     }
     case 'boss': {
       const boss = drawBoss(ascent.random, TIERS[tier].bosses);
@@ -542,8 +568,10 @@ export function enterNextTier(ascent: Ascent): Ascent {
   const tier = ascent.passage.to;
   const size = drawGroupSize(1, ascent.random, ascent.fiveFaced, tier);
   const first = combat(size.value, size.random, tier, ascent.gauge);
+  // Le nouveau palier n'a pas encore d'Élite affrontée (#244, R5).
+  const { lastElite: _, ...rest } = ascent;
   return {
-    ...ascent,
+    ...rest,
     tier,
     floor: 1,
     random: first.random,

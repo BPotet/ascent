@@ -156,7 +156,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   );
 
   and(
-    /^chaque Phalénide entrée se lit comme un ennemi : « Phalénide, invoquée, 33 PV sur 33, garde 7 sur 7, intention : attaque »$/u,
+    /^chaque Phalénide entrée se lit comme un ennemi : « Phalénide, invoquée, 33 PV sur 33, garde 15 sur 15, intention : attaque »$/u,
     async () => {
       await toEntry();
       const labels = screen
@@ -164,10 +164,10 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
         .map((column) => column.props.accessibilityLabel as string);
       expect(labels).toHaveLength(2);
       for (const label of labels) {
-        expect(label).toMatch(/^Phalénide, invoquée, 33 PV sur 33, garde 7 sur 7, intention : /u);
+        expect(label).toMatch(/^Phalénide, invoquée, 33 PV sur 33, garde 15 sur 15, intention : /u);
       }
       expect(labels).toContain(
-        'Phalénide, invoquée, 33 PV sur 33, garde 7 sur 7, intention : attaque',
+        'Phalénide, invoquée, 33 PV sur 33, garde 15 sur 15, intention : attaque',
       );
     },
   );

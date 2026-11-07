@@ -1,14 +1,22 @@
 // Réservé aux tests : une session du camp sur une vraie session d'ascension, un Stockage clé-valeur
 // en mémoire qui peut faire échouer ou retenir l'écriture d'une clé, un son et une vibration muets
 // qui notent ce qu'on leur demande.
+import { Day } from '../../domain/day/Day';
+import type { Clock } from '../ports/Clock';
 import type { Haptics } from '../ports/Haptics';
+import type { UnitOfWork } from '../ports/UnitOfWork';
 import type { KeyValueStore } from '../ports/KeyValueStore';
 import { AscentSession, SHARD_TOTAL_KEY } from '../useCases/AscentSession';
 import { BATTLE_HINT_SEEN_KEYS } from '../useCases/battleHints';
 import { CampSession } from '../useCases/CampSession';
 import { FixedSeedSource } from './FixedSeedSource';
+import { InMemoryUnitOfWork } from './InMemoryUnitOfWork';
 import { ManualBattleClock } from './ManualBattleClock';
 import { silentBattleHaptics, silentBattleSound } from './recordingBattleFeedback';
+import { settableClock } from './settableClock';
+
+/** Le jour des tests du camp : le samedi 7 novembre 2026. */
+export const CAMP_TODAY = Day.of(2026, 11, 7);
 
 /**
  * Un stockage en mémoire : `failing` fait échouer l'écriture d'une clé, `hold` la retient jusqu'à
@@ -69,16 +77,22 @@ export function countingHaptics(): Haptics & { readonly successes: () => number 
   };
 }
 
-/** Une session du camp muette sur `ascentSession` et `keyValueStore`. */
+/**
+ * Une session du camp muette sur `ascentSession` et `keyValueStore` ; sans habitude, au jour des
+ * tests du camp, sauf horloge ou unité de travail données.
+ */
 export function campSessionOf(
   ascentSession: AscentSession,
   keyValueStore: KeyValueStore,
+  { clock, unitOfWork }: { readonly clock?: Clock; readonly unitOfWork?: UnitOfWork } = {},
 ): CampSession {
   return new CampSession({
     keyValueStore,
     ascentSession,
     sound: silentBattleSound(),
     haptics: countingHaptics(),
+    clock: clock ?? settableClock(CAMP_TODAY),
+    unitOfWork: unitOfWork ?? new InMemoryUnitOfWork(),
   });
 }
 
@@ -93,8 +107,17 @@ export function campSetUp(store: CampStore = campStore(), seed = 3) {
     haptics: silentBattleHaptics(),
     keyValueStore: store,
   });
-  const camp = new CampSession({ keyValueStore: store, ascentSession, sound, haptics });
-  return { store, ascentSession, camp, sound, haptics };
+  const clock = settableClock(CAMP_TODAY);
+  const unitOfWork = new InMemoryUnitOfWork();
+  const camp = new CampSession({
+    keyValueStore: store,
+    ascentSession,
+    sound,
+    haptics,
+    clock,
+    unitOfWork,
+  });
+  return { store, ascentSession, camp, sound, haptics, clock, unitOfWork };
 }
 
 /** Laisse passer les écritures en attente. */

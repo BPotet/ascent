@@ -41,8 +41,9 @@ function look(frame: HeroFrame, tier: 0 | 1 = 0, dodge = 0, lunge = 0, push = 0)
  * `since` : parade en deux images (250 ms), touché (300 ms), déséquilibre qui vacille, esquive
  * (300 ms, aller et retour), arme levée pour la frappe en rythme (la lame brille près de l'impact),
  * frappe vers la cible (320 ms), coup de bouclier sur place (400 ms, pose `bash` tenue, #155), lancer
- * d'un pouvoir instantané (500 ms, lames levées qui brillent, #173). Tombé, il
- * garde `hit1` (pose de défaite, à confirmer par l'UX).
+ * d'un pouvoir instantané (500 ms, lames levées qui brillent, #173). Fracas (#236) : `crush0` pendant
+ * toute la préparation, puis `crush1` vers la cible (320 ms) ; Frappe furtive : l'esquive, puis
+ * l'arme levée. Tombé, il garde `hit1` (pose de défaite, à confirmer par l'UX).
  */
 export function heroFrame(
   pose: HeroPose,
@@ -62,7 +63,17 @@ export function heroFrame(
     const out = elapsed < FRAME_MS || elapsed > 3 * FRAME_MS;
     return look(out ? 'dodge0' : 'dodge1', 0, Math.sin((Math.PI * elapsed) / DODGE_MS));
   }
-  if (pose === 'raise') {
+  // Fracas (#236) : la lame brille déjà pendant toute la préparation, à la place de `raise`.
+  if (pose === 'crushRaise') return look('crush0');
+  if (pose === 'crush' && elapsed < STRIKE_MS) {
+    return look('crush1', 0, 0, Math.sin((Math.PI * elapsed) / STRIKE_MS));
+  }
+  // Frappe furtive (#236) : l'esquive d'abord, puis l'arme levée jusqu'à l'impact.
+  if (pose === 'ambushRaise' && elapsed < DODGE_MS) {
+    const out = elapsed < FRAME_MS || elapsed > 3 * FRAME_MS;
+    return look(out ? 'dodge0' : 'dodge1', 0, Math.sin((Math.PI * elapsed) / DODGE_MS));
+  }
+  if (pose === 'raise' || pose === 'ambushRaise') {
     const gleam = strikeImpactAt !== null && Math.abs(now - strikeImpactAt) <= GLEAM_MS;
     return gleam ? look('raiseG', 1) : look('raise');
   }

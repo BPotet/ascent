@@ -64,3 +64,75 @@ describe('the powers in the display state (#235)', () => {
     });
   });
 });
+
+describe('the scene word of a kindled power (#237, S12)', () => {
+  it('writes « Attisé · 1 Élan » under « Représailles »', () => {
+    const kindled = {
+      ...battle,
+      powers: ['bulwark', 'retaliation'] as const,
+      kindled: ['retaliation'] as const,
+    };
+    const used: readonly BattleEvent[] = [
+      { type: 'powerUsed', at: 1_000, power: 'retaliation', until: 1_500, instant: true },
+    ];
+
+    const shown = displayOf(
+      INITIAL_DISPLAY,
+      { battle: kindled, events: used, heroHint: false, powersHint: false },
+      false,
+    );
+
+    expect(shown.feedback?.texts).toEqual([
+      { tone: 'perfect', title: 'Représailles', sub: 'Attisé · 1 Élan' },
+    ]);
+  });
+});
+
+describe('the power strikes in the display state (#236)', () => {
+  const started = (power: 'shieldBash' | 'crushingBlow' | 'flurry' | 'ambush', hit?: number) =>
+    ({
+      type: 'strikeStarted',
+      at: 3_000,
+      enemy: 0,
+      impactAt: 3_700,
+      until: 4_180,
+      power,
+      ...(hit !== undefined && { hit }),
+    }) satisfies BattleEvent;
+  const resolved = (power: 'shieldBash' | 'crushingBlow' | 'flurry' | 'ambush') =>
+    ({
+      type: 'strikeResolved',
+      at: 3_700,
+      enemy: 0,
+      judgement: null,
+      delta: null,
+      damage: 5,
+      guardDamage: 24,
+      power,
+    }) satisfies BattleEvent;
+  const pose = (event: BattleEvent) =>
+    displayOf(INITIAL_DISPLAY, snapshot([event]), false).heroPose;
+
+  it('holds the charged blade during the wind-up of Crushing Blow, then brings it down', () => {
+    expect(pose(started('crushingBlow'))).toBe('crushRaise');
+    expect(pose(resolved('crushingBlow'))).toBe('crush');
+  });
+
+  it('raises the shield, then bashes, for Shield Bash', () => {
+    expect(pose(started('shieldBash'))).toBe('raise');
+    expect(pose(resolved('shieldBash'))).toBe('bash');
+  });
+
+  it('strikes with the blades of the Wanderer at each hit of Flurry', () => {
+    expect(pose(started('flurry', 2))).toBe('raise');
+    expect(pose(resolved('flurry'))).toBe('strike');
+  });
+
+  it('dodges into the shadow before the first hit of Ambush, then strikes', () => {
+    const shown = displayOf(INITIAL_DISPLAY, snapshot([started('ambush', 1)]), false);
+
+    expect(shown).toMatchObject({ heroPose: 'ambushRaise', shadowStepAt: 3_000 });
+    expect(pose(started('ambush', 2))).toBe('raise');
+    expect(pose(resolved('ambush'))).toBe('strike');
+  });
+});

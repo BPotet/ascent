@@ -1,7 +1,7 @@
 // La règle du palier (`TIERS`, #38, § 3 de la note du Game Designer) : son nom, son multiplicateur,
 // son Or, la taille de ses groupes, ses ennemis, ses Élites, ses boss et leurs Éclats.
 import { GROUP_SIZE_WEIGHTS } from './enemyGroup';
-import { TIERS, TOP_TIER } from './tiers';
+import { TIERS, TOP_TIER, encounterMultiplier } from './tiers';
 
 describe('the tiers (#38)', () => {
   it('climbs three tiers: the Catacombs, the Ash gardens and the Belfry', () => {
@@ -21,6 +21,34 @@ describe('the tiers (#38)', () => {
     ]);
     expect([TIERS[1].goldPercent, TIERS[2].goldPercent, TIERS[3].goldPercent]).toEqual([
       100, 125, 150,
+    ]);
+  });
+
+  it('multiplies its Elites and its bosses by the Elite and boss multiplier (#244, R1)', () => {
+    expect([1, 2, 3].map((tier) => TIERS[tier as 1].eliteMultiplier)).toEqual([
+      { hpPercent: 100, guardPercent: 125 },
+      { hpPercent: 120, guardPercent: 140 },
+      { hpPercent: 135, guardPercent: 150 },
+    ]);
+    expect([1, 2, 3].map((tier) => TIERS[tier as 1].bossMultiplier)).toEqual([
+      { hpPercent: 100, guardPercent: 125 },
+      { hpPercent: 100, guardPercent: 125 },
+      { hpPercent: 130, guardPercent: 145 },
+    ]);
+  });
+
+  it.each([1, 2, 3] as const)(
+    'gives each encounter of tier %i the multiplier of its kind (#244)',
+    (tier) => {
+      expect(encounterMultiplier(tier, 'combat')).toBe(TIERS[tier].multiplier);
+      expect(encounterMultiplier(tier, 'elite')).toBe(TIERS[tier].eliteMultiplier);
+      expect(encounterMultiplier(tier, 'boss')).toBe(TIERS[tier].bossMultiplier);
+    },
+  );
+
+  it('gives back 10 % of the max HP as the respite at tier 1, 5 % at tiers 2 and 3 (#244, R3)', () => {
+    expect([TIERS[1].respitePercent, TIERS[2].respitePercent, TIERS[3].respitePercent]).toEqual([
+      10, 5, 5,
     ]);
   });
 
