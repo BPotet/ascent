@@ -42,6 +42,9 @@ export interface PowerSlot {
   readonly missing: number;
   /** Un pouvoir instantané (#173) : il ne prend pas l'action du héros. */
   readonly instant?: true;
+  /** Un pouvoir attisé (#237) : `cost` est réduit, `baseCost` est son prix normal. */
+  readonly kindled?: true;
+  readonly baseCost?: number;
 }
 
 /**
@@ -201,6 +204,7 @@ function powerSlot(battle: Battle, power: PowerKind): PowerSlot {
     availability: availability.kind as PowerKeyAvailability,
     missing: availability.kind === 'missing' ? availability.missing : 0,
     ...(POWERS[power].instant && { instant: true as const }),
+    ...(cost !== POWERS[power].cost && { kindled: true as const, baseCost: POWERS[power].cost }),
   };
 }
 

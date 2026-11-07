@@ -2,6 +2,21 @@
 
 Toutes les évolutions notables d'Ascent. Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/). Les versions sont calculées à partir des [Conventional Commits](https://www.conventionalcommits.org/fr/v1.0.0/).
 
+## [0.6.0] - 2026-11-07
+
+L'épique #208 « Coffres, clés et bénédictions de fortune », terminée, et le socle de l'épique #232 « L'arbre de pouvoirs du héros » : les pouvoirs se débloquent au Camp et le héros en emporte jusqu'à trois au combat.
+
+### Nouveautés pour le joueur
+
+- **Le coffre du butin** : l'objet trouvé après un combat, ou l'objet garanti d'une Élite, sort d'un coffre de chêne qui tremble, s'ouvre dans une lueur d'or et laisse place à l'objet ; un toucher passe l'ouverture, et le coffre reste immobile, déjà ouvert, quand les animations sont réduites ou à la reprise (#227, #239).
+- **Le coffre scellé, les clés et la bénédiction Fortune** : après chaque Élite gagnée, maudite comprise, un coffre scellé attend. « Ouvrir · 1 clé » révèle un objet de plus, jamais déjà porté ; « Laisser » le perd sans coûter de clé, et sans clé il reste fermé. Les clés viennent de la Faveur (1 clé dès la Faveur) et de la nouvelle bénédiction Fortune (+1, +2 ou +3 clés) ; elles traversent les paliers, s'affichent dans l'en-tête de l'ascension, au pied de la tour et dans les Réserves de l'Équipement, et l'entrée dans la tour annonce les clés reçues. La porte Élite annonce son coffre scellé (#226, #241).
+- **Le décor du palier derrière le pied de la tour** (build de preview) : le pied de la tour s'ouvre sur le fond du palier 1, ou du palier de l'ascension en cours, sous un voile de nuit qui garde chaque texte lisible (#233, #249).
+- **L'arbre de pouvoirs** (build de preview) : au Camp, chaque héroïne a son arbre, avec son pouvoir de base et deux voies de deux rangs ; un pouvoir s'y débloque pour 30 ou 60 Éclats et s'allume d'un anneau doré. Le héros emporte jusqu'à 3 pouvoirs équipés, fixés au départ de l'ascension et montrés au choix du héros et dans l'Équipement ; chacun a sa touche à côté d'« Attaquer », et un appui long montre son effet. Quatre nouveaux pouvoirs : pour la Sentinelle, **Représailles** (la prochaine contre-attaque frappe deux fois plus fort) et **Tenir bon** (rend 20 % des PV et éteint la Brûlure et le Saignement, une fois par combat) ; pour l'Errante, **Entaille** (la prochaine frappe retire 150 % de garde) et **Brume** (le prochain coup subi est réduit de moitié) ; les frappes de pouvoir sont annoncées « Bientôt » (#235, #242).
+
+### Technique
+
+- Maquettes validées des épiques #208 et #232 (#238, #240).
+
 ## [0.5.0] - 2026-11-05
 
 L'épique #205 « Les habitudes dans la tour, jauge et faveur », terminée : après le cadran de la jauge et les ennemis maudits arrivés en 0.4.0 (#41, #209), la Faveur donne maintenant des relances et une seconde chance.

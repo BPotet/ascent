@@ -334,6 +334,28 @@ const DRAWN = {
     '..XXXX..',
     '........',
   ],
+  // Le chaînon du Serment (#237) : `oath` de la maquette 232, posé sur 8 × 8.
+  oath8: [
+    '.XX.....',
+    'X..X....',
+    'X..XXX..',
+    '.XX..X..',
+    '.X..XX..',
+    '..X..X..',
+    '...XX...',
+    '........',
+  ],
+  // La flamme d'un pouvoir attisé (#237) : `flame` de la maquette 232, posée sur 8 × 8.
+  kindled8: [
+    '...X....',
+    '..XX....',
+    '..XXX...',
+    '.XXXXX..',
+    '.XX.XX..',
+    'XXXXXXX.',
+    '.XXXXX..',
+    '........',
+  ],
   // L'Or (#38) : une pièce, son reflet en `Y` (maquette 30, icône `coin`).
   coin8: [
     '..XXXX..',

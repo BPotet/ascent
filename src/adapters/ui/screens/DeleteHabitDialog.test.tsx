@@ -240,3 +240,39 @@ describe('DeleteHabitDialog in pixel art (E3, #73)', () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 });
+
+describe('DeleteHabitDialog of a habit that holds an Oath (#237, S13)', () => {
+  it('adds that the Oath will be broken, without blocking the deletion', async () => {
+    const onConfirm = jest.fn(async () => ({
+      ok: true as const,
+      xpRemoved: 0,
+      targetBonusRemoved: 0,
+      xp: 30,
+    }));
+    await render(
+      <DeleteHabitDialog
+        name="Courir"
+        xpRemoved={0}
+        oath="retaliation"
+        onConfirm={onConfirm}
+        onDeleted={jest.fn()}
+        onGone={jest.fn()}
+        onCancel={jest.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        'Elle tient le Serment de Représailles : il sera rompu, et Représailles coûtera 2 Élan.',
+      ),
+    ).toBeOnTheScreen();
+    await fireEvent.press(deleteButton());
+    expect(onConfirm).toHaveBeenCalled();
+  });
+
+  it('says nothing of an Oath otherwise', async () => {
+    await open();
+
+    expect(screen.queryByText(/Serment/u)).not.toBeOnTheScreen();
+  });
+});

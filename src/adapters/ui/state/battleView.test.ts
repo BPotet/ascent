@@ -522,3 +522,24 @@ describe('actionTrackView (#175)', () => {
     expect(actionTrackView(battle)).toEqual({ round: battle.round, current: [], next: [] });
   });
 });
+
+describe('the key of a kindled power (#237)', () => {
+  it('gives the kindled cost and the normal one, only for a kindled power', () => {
+    const battle = startBattle({
+      seed: 1,
+      defenseHint: false,
+      at: 0,
+      enemies: ['ghoul'],
+      powers: ['bulwark', 'retaliation', 'holdFast'],
+      kindled: ['retaliation'],
+    }).battle;
+
+    const view = battleView(battle);
+
+    expect(view.pad.kind === 'hero' && view.pad.powers).toEqual([
+      expect.not.objectContaining({ kindled: true }),
+      expect.objectContaining({ power: 'retaliation', cost: 1, baseCost: 2, kindled: true }),
+      expect.not.objectContaining({ baseCost: expect.anything() }),
+    ]);
+  });
+});

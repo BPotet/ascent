@@ -47,7 +47,7 @@ import { heroInitiative } from './initiative';
 import { cursedValue } from './curse';
 import { drawIntent, raisedHp, type GuardIntent, type Intent, type RaiseIntent } from './intents';
 import { MOMENTUM_MAX, MOMENTUM_START, gainMomentum, missingMomentum } from './momentum';
-import { BULWARK_DAMAGE_PERCENT, POWERS, basePower, type PowerKind } from './powers';
+import { BULWARK_DAMAGE_PERCENT, POWERS, basePower, kindledCost, type PowerKind } from './powers';
 import {
   COUNTER_MS,
   HERO_ACTION_MS,
@@ -275,6 +275,11 @@ export interface Battle {
    * combat sauvé avant #235, le combat d'essai) : voir `equippedOf`.
    */
   readonly powers?: readonly PowerKind[];
+  /**
+   * Les pouvoirs attisés du combat (#237), 1 Élan de moins (`powerCost`) ; absents, aucun : un
+   * combat sans attisé garde son JSON.
+   */
+  readonly kindled?: readonly PowerKind[];
   /** L'ordre d'action par Initiative (prototype #90), sinon le héros d'abord. */
   readonly initiative: boolean;
   /** Les modificateurs du héros (prototype #93) ; absents, aucun. */
@@ -393,6 +398,8 @@ export interface BattleOptions extends BattleStartOptions {
   readonly powers?: readonly PowerKind[];
   /** Le répit du palier, en % (#244, R3) ; par défaut, `RESPITE_PERCENT`. */
   readonly respitePercent?: number;
+  /** Les pouvoirs attisés de l'ascension (#237) ; par défaut, aucun. */
+  readonly kindled?: readonly PowerKind[];
 }
 
 /** Au plus 3 ennemis se battent en même temps (P3b). */
@@ -446,6 +453,7 @@ export function startBattle({
   secondChance,
   powers,
   respitePercent,
+  kindled,
 }: BattleOptions): BattleUpdate {
   const maxHp = heroMaxHp ?? HEROES[hero].maxHp;
   const momentum = Math.min(MOMENTUM_MAX, MOMENTUM_START + (modifiers?.startingMomentum ?? 0));
@@ -461,6 +469,7 @@ export function startBattle({
       round: 0,
       heroKind: hero,
       ...(powers && { powers }),
+      ...(kindled !== undefined && kindled.length > 0 && { kindled }),
       initiative,
       ...(modifiers && { modifiers }),
       ...(tierMultiplier && { tierMultiplier }),
@@ -505,9 +514,12 @@ export function equippedOf(battle: Battle): readonly PowerKind[] {
   return battle.powers ?? [basePower(battle.heroKind)];
 }
 
-/** Le coût en Élan d'un pouvoir dans ce combat (#235) : tout coût passe par ici. */
-export function powerCost(_battle: Battle, power: PowerKind): number {
-  return POWERS[power].cost;
+/**
+ * Le coût en Élan d'un pouvoir dans ce combat (#235) : tout coût passe par ici. Attisé (#237), il
+ * coûte 1 Élan de moins, au moins 1.
+ */
+export function powerCost(battle: Battle, power: PowerKind): number {
+  return battle.kindled?.includes(power) === true ? kindledCost(power) : POWERS[power].cost;
 }
 
 /**

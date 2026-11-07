@@ -15,10 +15,10 @@ function leave(): void {
 }
 
 function Camp() {
-  const { keyValueStore, clock } = useDependencies();
+  const { keyValueStore, clock, unitOfWork } = useDependencies();
   return (
     <CampScreen
-      camp={sharedCampSession(keyValueStore, clock)}
+      camp={sharedCampSession(keyValueStore, clock, unitOfWork)}
       onLeave={leave}
       onOpenTree={(hero) => router.push({ pathname: '/power-tree', params: { hero } })}
     />

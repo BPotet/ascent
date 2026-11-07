@@ -7,6 +7,7 @@ import {
   endFloorBattle,
   enterNextTier,
   equipItem,
+  kindledOf,
   leaveItem,
   leaveSealedChest,
   lootStream,
@@ -147,12 +148,15 @@ function parse(raw: string | null): SavedAscent | null {
     const keys = stored.keys ?? favorKeys(ascent.gauge);
     // Une ascension d'avant #235 : son pouvoir de base seul, jusqu'à sa fin.
     const powers = stored.powers ?? [basePower(ascent.hero.kind)];
+    // Une ascension d'avant #237 : aucun pouvoir attisé, jusqu'à sa fin.
+    const kindled = stored.kindled ?? [];
     const renamed: Ascent = {
       ...ascent,
       rerolls,
       secondChance,
       keys,
       powers,
+      kindled,
       blessings: ascent.blessings.map((blessing) => ({
         ...blessing,
         family: protection(blessing.family),
@@ -392,8 +396,9 @@ export class AscentSession {
             boonModifiers(ascent.hero.boons),
           ),
           enemies: encounter.enemies,
-          // Les pouvoirs équipés de l'ascension (#235).
+          // Les pouvoirs équipés de l'ascension (#235), et ceux qu'elle a attisés (#237).
           powers: ascent.powers,
+          kindled: kindledOf(ascent),
           // L'ennemi maudit tiré pour l'étage (#209) ; absent, aucun.
           ...(encounter.cursed !== undefined && { cursed: encounter.cursed }),
           // La seconde chance encore là (#206) ; absente, le combat est celui d'avant.

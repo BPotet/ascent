@@ -1,5 +1,5 @@
 import { ATTACKS, type AttackKind } from '../../../domain/battle/attacks';
-import type { Battle } from '../../../domain/battle/Battle';
+import { powerCost, type Battle } from '../../../domain/battle/Battle';
 import type {
   BattleEvent,
   BattleOutcome,
@@ -19,7 +19,7 @@ import {
 } from '../../../domain/battle/combatants';
 import type { Stunned } from '../../../domain/battle/guard';
 import { MOMENTUM_MAX } from '../../../domain/battle/momentum';
-import { POWERS, basePower, type PowerKind } from '../../../domain/battle/powers';
+import { POWERS, basePower, kindledCost, type PowerKind } from '../../../domain/battle/powers';
 import type { ShownIntent } from '../../../domain/battle/shownIntent';
 
 /** Les libellés du combat, tirés du glossaire et de la maquette de l'épique #30. */
@@ -174,13 +174,18 @@ export function powerDescription(power: PowerKind): string {
 export function heroCard(
   kind: HeroKind,
   equipped: readonly PowerKind[] = [basePower(kind)],
+  kindled: readonly PowerKind[] = [],
 ): HeroCard {
   const hero = HEROES[kind];
   const attack = hero.hits > 1 ? `${hero.attackPower} × ${hero.hits}` : `${hero.attackPower}`;
   const weapon = WEAPON_NAMES[hero.startingKit.weapon];
   const armor = ARMOR_NAMES[hero.startingKit.armor];
   const powers = equipped
-    .map((power) => `${POWER_NAMES[power]}, ${POWERS[power].cost} Élan`)
+    .map((power) =>
+      kindled.includes(power)
+        ? `${POWER_NAMES[power]}, attisé, ${kindledCost(power)} Élan`
+        : `${POWER_NAMES[power]}, ${POWERS[power].cost} Élan`,
+    )
     .join(' ; ');
   const initiative = startingInitiative(kind);
   return {
@@ -362,9 +367,9 @@ export function attackButtonLabel(targetName: string): string {
  * Le pouvoir et son coût, sous « Pouvoir » : « Rempart · 1 Élan ». Un pouvoir instantané (#173)
  * a son nom sur sa propre ligne, et son coût dit « 3 Élan · Instantané ».
  */
-export function powerCostText(power: PowerKind, instant = false): string {
-  const cost = `${POWERS[power].cost} Élan`;
-  return instant ? `${cost} · ${INSTANT_WORD}` : `${POWER_NAMES[power]} · ${cost}`;
+export function powerCostText(power: PowerKind, cost: number, instant = false): string {
+  const price = `${cost} Élan`;
+  return instant ? `${price} · ${INSTANT_WORD}` : `${POWER_NAMES[power]} · ${price}`;
 }
 
 /** La mention d'un pouvoir instantané sur la touche Pouvoir (#173), toujours avec le croissant. */
@@ -377,11 +382,12 @@ export function missingMomentumText(missing: number): string {
 
 export function powerButtonLabel(
   power: PowerKind,
+  cost: number,
   missing: number,
   active = false,
   instant = false,
 ): string {
-  const label = `Pouvoir : ${POWER_NAMES[power]}, ${POWERS[power].cost} Élan${instant ? ', instantané' : ''}`;
+  const label = `Pouvoir : ${POWER_NAMES[power]}, ${cost} Élan${instant ? ', instantané' : ''}`;
   if (active) return `${label}, actif`;
   return missing > 0 ? `${label}, indisponible : il manque ${missing} Élan` : label;
 }
@@ -410,6 +416,15 @@ export function phaseAnnouncement(to: PhaseDirection): string {
 export interface FeedbackText {
   readonly tone: 'perfect' | 'break' | 'rise' | 'riposte' | 'shadowStep';
   readonly title: string;
+  /** La ligne sous le mot : « Attisé · 1 Élan » pour un pouvoir attisé (#237). */
+  readonly sub?: string;
+}
+
+/** « Attisé · 1 Élan » : le pouvoir est attisé dans ce combat (#237), à son coût réduit. */
+function kindledWord(battle: Battle | undefined, power: PowerKind): string | null {
+  return battle?.kindled?.includes(power) === true
+    ? `Attisé · ${powerCost(battle, power)} Élan`
+    : null;
 }
 
 /** Les pouvoirs au féminin, pour l'accord de « actif » (#235) : Entaille, Brume. */
@@ -420,8 +435,11 @@ export function activePowerText(power: PowerKind): string {
   return `${POWER_NAMES[power]} ${FEMININE_POWERS.has(power) ? 'active' : 'actif'}`;
 }
 
-/** Le mot d'un événement sur la scène, ou `null` s'il n'en a pas. */
-export function feedbackText(event: BattleEvent): FeedbackText | null {
+/**
+ * Le mot d'un événement sur la scène, ou `null` s'il n'en a pas ; `battle`, le combat après
+ * l'événement, dit si un pouvoir lancé est attisé (#237).
+ */
+export function feedbackText(event: BattleEvent, battle?: Battle): FeedbackText | null {
   switch (event.type) {
     case 'blowResolved':
       return event.outcome === 'perfectParry' ? { tone: 'perfect', title: 'Parfait' } : null;
@@ -431,12 +449,15 @@ export function feedbackText(event: BattleEvent): FeedbackText | null {
       return { tone: 'riposte', title: 'Riposte' };
     // Le mot de scène d'un pouvoir (#173, #235), sans bande ni bannière : en ombre pour ceux de
     // l'Errante, en or pour ceux de la Sentinelle ; le Rempart n'en a pas.
-    case 'powerUsed':
+    case 'powerUsed': {
       if (event.power === 'bulwark') return null;
+      const sub = kindledWord(battle, event.power);
       return {
         tone: POWERS[event.power].hero === 'wanderer' ? 'shadowStep' : 'perfect',
         title: POWER_NAMES[event.power],
+        ...(sub !== null && { sub }),
       };
+    }
     case 'guardBroken':
       return { tone: 'break', title: 'Cassure' };
     case 'enemySelfRevived':
@@ -600,10 +621,15 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
       return `${name(event.enemy)} relève ${name(event.ally)}, ${event.hp} PV`;
     case 'enemySelfRevived':
       return `${name(event.enemy)} se relève, ${event.hp} PV sur ${battle.enemies[event.enemy]!.maxHp}`;
-    case 'powerUsed':
-      return event.instant === true
-        ? `${activePowerText(event.power)}. Toujours à toi : vise et attaque.`
-        : POWER_NAMES[event.power];
+    case 'powerUsed': {
+      const kindled = battle.kindled?.includes(event.power) === true;
+      const name = kindled
+        ? `${event.instant === true ? activePowerText(event.power) : POWER_NAMES[event.power]}, attisé, ${powerCost(battle, event.power)} Élan`
+        : event.instant === true
+          ? activePowerText(event.power)
+          : POWER_NAMES[event.power];
+      return event.instant === true ? `${name}. Toujours à toi : vise et attaque.` : name;
+    }
     // Tenir bon (#235, K12) : le soin, puis la Brûlure éteinte ou le Saignement arrêté.
     case 'heroHealed':
       return event.heal > 0 ? `Plus ${event.heal} PV` : null;

@@ -94,4 +94,15 @@ describe('the power tree in the app (#235)', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Retour au camp' }));
     expect(await screen.findByRole('header', { name: 'Le camp' })).toBeOnTheScreen();
   });
+
+  it('goes to the day view to create a habit for an Oath, without any habit (#237, S3)', async () => {
+    process.env.EXPO_PUBLIC_ASCENT_CHANNEL = 'preview';
+    await renderRouter(appDirectory, { initialUrl: '/power-tree?hero=wanderer' });
+
+    await fireEvent.press(await screen.findByTestId('power-node-shadowStep'));
+    await fireEvent.press(await screen.findByRole('button', { name: /^Prêter serment/u }));
+    await fireEvent.press(await screen.findByRole('button', { name: 'Aller à la Journée' }));
+
+    expect(await screen.findByTestId('day-view-empty')).toBeOnTheScreen();
+  });
 });

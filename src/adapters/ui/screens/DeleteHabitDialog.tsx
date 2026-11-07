@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import type { PowerKind } from '../../../domain/battle/powers';
 import { formatXpChange } from '../format/formatXp';
+import { deleteOathLine } from '../format/oathText';
 import { artPalette } from '../pixelArt/artPalette';
 import { PixelButton } from '../pixelArt/PixelButton';
 import { PixelFrame } from '../pixelArt/PixelFrame';
@@ -57,6 +59,7 @@ export function DeleteHabitDialog({
   name,
   xpRemoved,
   targetBonusRemoved = 0,
+  oath,
   onConfirm,
   onDeleted,
   onGone,
@@ -66,6 +69,8 @@ export function DeleteHabitDialog({
   readonly xpRemoved: number;
   /** La part de `xpRemoved` qui vient de la prime d'objectif qui tombe (#26). */
   readonly targetBonusRemoved?: number;
+  /** Le pouvoir dont l'habitude tient le Serment (#237, S13) : la fenêtre dit qu'il sera rompu. */
+  readonly oath?: PowerKind | undefined;
   readonly onConfirm: () => Promise<DeleteHabitOutcome>;
   readonly onDeleted: (deleted: Extract<DeleteHabitOutcome, { ok: true }>) => void;
   readonly onGone: () => void;
@@ -127,6 +132,18 @@ export function DeleteHabitDialog({
           <Text style={[pixelTypography.body, styles.body]}>
             {deleteHabitBody(xpRemoved, targetBonusRemoved)}
           </Text>
+          {oath === undefined ? null : (
+            <PixelFrame
+              accessible
+              background={roles.raised}
+              under={roles.raised}
+              testID="delete-habit-oath"
+              style={[styles.alert, { borderColor: roles.blue }]}
+            >
+              <PixelIcon name="oath8" color={roles.blue} />
+              <Text style={styles.oathText}>{deleteOathLine(oath)}</Text>
+            </PixelFrame>
+          )}
           {failed && (
             <PixelFrame
               accessible
@@ -173,6 +190,13 @@ const styles = StyleSheet.create({
   dialog: { paddingTop: 18, paddingHorizontal: 16, paddingBottom: 16, gap: 12 },
   title: { fontFamily: pixelFont, fontSize: 21, lineHeight: 26, color: roles.light },
   body: { color: roles.parchment },
+  oathText: {
+    flex: 1,
+    fontFamily: textFont.medium,
+    fontSize: 13,
+    lineHeight: 18,
+    color: roles.light,
+  },
   alert: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10 },
   alertText: {
     flex: 1,

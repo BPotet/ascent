@@ -1,5 +1,13 @@
 // #235 : le registre des pouvoirs, recopié des fiches `codex/<code>` de l'Atelier.
-import { BULWARK_DAMAGE_PERCENT, POWERS, basePower, beyondBasePower, powerOrder } from './powers';
+import {
+  BULWARK_DAMAGE_PERCENT,
+  KINDLED_DISCOUNT,
+  POWERS,
+  basePower,
+  beyondBasePower,
+  kindledCost,
+  powerOrder,
+} from './powers';
 
 describe('the power registry (#235)', () => {
   it('keeps the Bulwark of the Sentinel: an action at 1 momentum, a charge that halves the next blow', () => {
@@ -68,5 +76,15 @@ describe('the powers beyond the base power alone (#235, logs)', () => {
     expect(beyondBasePower('sentinel', ['bulwark', 'retaliation'])).toBe(true);
     expect(beyondBasePower('wanderer', ['bulwark'])).toBe(true);
     expect(beyondBasePower('sentinel', [])).toBe(true);
+  });
+});
+
+describe('the cost of a kindled power (#237)', () => {
+  it('is 1 Momentum less, never under 1', () => {
+    expect(KINDLED_DISCOUNT).toBe(1);
+    expect(kindledCost('retaliation')).toBe(1);
+    expect(kindledCost('shadowStep')).toBe(2);
+    expect(kindledCost('holdFast')).toBe(2);
+    expect(kindledCost('bulwark')).toBe(1);
   });
 });

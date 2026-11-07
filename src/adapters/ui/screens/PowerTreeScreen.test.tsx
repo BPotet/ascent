@@ -21,7 +21,7 @@ async function show(
   await setUp.session.load();
   const onLeave = jest.fn();
   await renderScreen(
-    <PowerTreeScreen camp={setUp.camp} hero={hero} onLeave={onLeave} />,
+    <PowerTreeScreen camp={setUp.camp} hero={hero} onLeave={onLeave} onGoToDay={jest.fn()} />,
     setUp.dependencies,
   );
   await screen.findByTestId('power-tree');

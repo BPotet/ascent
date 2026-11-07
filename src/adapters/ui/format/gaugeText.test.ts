@@ -16,6 +16,7 @@ import {
 } from './gaugeText';
 
 const reading = (overrides: Partial<FateGaugeReading> = {}): FateGaugeReading => ({
+  doneYesterday: [],
   gauge: 1,
   blessings: ['rare', 'rare', 'common'],
   done: 3,

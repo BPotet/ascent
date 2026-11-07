@@ -32,6 +32,7 @@ import {
 import { useCheckInHint } from '../state/useCheckInHint';
 import { useCreateHabit } from '../state/useCreateHabit';
 import { useDayView } from '../state/useDayView';
+import { useHabitOaths } from '../state/useHabitOaths';
 import { type XpChange, useExperience, xpChangeOn } from '../state/Experience';
 import {
   type TargetFlash,
@@ -210,6 +211,7 @@ function HabitList({
   readonly onToggle: (habitDay: HabitDay) => void;
   readonly onEdit: (row: DayViewHabit) => void;
 }) {
+  const habitOaths = useHabitOaths();
   const scroll = useRef<ScrollView>(null);
   /** La place de chaque ligne dans la liste, et la partie de la liste à l'écran. */
   const rows = useRef(new Map<HabitId, RowPlace>());
@@ -336,6 +338,7 @@ function HabitList({
             highlighted={habitDay.habit.id === highlighted?.id}
             xpChange={xpChangeOn(xpChange, habitDay)}
             targetFlash={targetFlashOn(targetFlash, habitDay)}
+            oath={habitOaths[habitDay.habit.id]}
             onToggle={onToggle}
             onEdit={() => onEdit(habitDay)}
             onLayout={({ nativeEvent: { layout } }) => {

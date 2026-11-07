@@ -9,6 +9,7 @@ import type { Ascent } from './Ascent';
 import type { StartingBlessing } from './blessings';
 import type { BoonKind } from './boons';
 import { favorRerolls, favorSecondChance } from './fateGauge';
+import type { KindledPower } from './kindled';
 
 /** Les Réserves de l'ascension (#226) : l'Or et les clés qui restent. */
 export interface LoadoutReserves {
@@ -37,6 +38,8 @@ export interface Loadout {
   readonly reserves?: LoadoutReserves;
   /** Les pouvoirs équipés (#235), dans l'ordre des touches, toujours remplis par `loadoutOf`. */
   readonly powers?: readonly PowerKind[];
+  /** Les pouvoirs attisés (#237), avec l'habitude de leur Serment, toujours remplis par `loadoutOf`. */
+  readonly kindled?: readonly KindledPower[];
 }
 
 /** L'Équipement de l'ascension, sans copie ni tri. */
@@ -57,6 +60,7 @@ export function loadoutOf(ascent: Ascent): Loadout {
     }),
     reserves: { gold: ascent.gold, keys: ascent.keys },
     powers: ascent.powers,
+    kindled: ascent.kindled,
   };
 }
 

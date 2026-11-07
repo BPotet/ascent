@@ -1,7 +1,7 @@
 # ADR 0016 — Le journal des combats
 
 - **Statut** : accepté
-- **Avenant** : 5 novembre 2026, la seconde chance (#206), voir en fin de document ; 7 novembre 2026, le multiplicateur d'Élite et de boss (#244)
+- **Avenant** : 5 novembre 2026, la seconde chance (#206), voir en fin de document ; 7 novembre 2026, le multiplicateur d'Élite et de boss (#244) et les pouvoirs attisés (#237)
 - **Date** : 4 novembre 2026
 - **Décideur** : Architect (notes techniques de #197), écrit par le dev
 - **Contexte produit** : épique #193, story #197 « Le journal raconte mes combats, appui par appui »
@@ -156,3 +156,9 @@ rangement :
 - Les PV et gardes de départ, la garde retirée de chaque frappe (`guardDamage`, G1) et le gain du
   répit (R3) suffisent à mesurer le rééquilibrage : aucun champ ajouté.
 - **`BATTLE_LOG_FORMAT_VERSION` reste 2.**
+
+## Avenant du 7 novembre 2026 — les pouvoirs attisés (#237, ADR 0021)
+
+- `HeroAtStart` reçoit un champ **facultatif** `kindled` : les codes des pouvoirs attisés du
+  combat, absent sans attisé. Aucune donnée d'habitude n'y entre.
+- **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7).
