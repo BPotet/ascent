@@ -179,3 +179,30 @@ Fonctionnalité: Rééquilibrage du palier 3
     Étant donné un héros à 78 PV sur 80 au palier 2
     Quand il gagne un combat
     Alors il est à 80 PV
+
+  # R4 — Plafond de soin de parade
+  @domain
+  Scénario: Les soins de parade parfaite sont plafonnés à 10 PV par combat
+    Étant donné un héros dont chaque parade parfaite rend 7 PV, loin de ses PV max
+    Quand il fait 3 parades parfaites dans le même combat
+    Alors il regagne 7, puis 3, puis 0 PV
+
+  @domain
+  Scénario: Le plafond est remis à zéro au combat suivant
+    Étant donné un héros qui a regagné 10 PV de parade parfaite dans un combat
+    Quand il entre dans le combat suivant et fait une parade parfaite
+    Alors il regagne de nouveau ses PV de parade parfaite
+
+  @domain
+  Scénario: Un soin à PV pleins ne compte pas dans le plafond
+    Étant donné un héros à PV max
+    Quand il fait une parade parfaite qui devrait le soigner
+    Alors il ne regagne rien
+    Et le reste du plafond du combat est toujours de 10 PV
+
+  @domain
+  Scénario: Répit et Cœur de braise sont hors plafond
+    Étant donné un héros qui a déjà regagné 10 PV de parade parfaite dans le combat
+    Et qui possède Cœur de braise
+    Quand il casse une garde puis gagne le combat
+    Alors il regagne 5 PV de Cœur de braise et son répit en entier

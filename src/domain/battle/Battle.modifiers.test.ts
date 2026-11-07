@@ -127,6 +127,71 @@ describe('the hero modifiers in battle (P15, P18, P21, P25, P26)', () => {
     expect(hurt(79)).toBe(80);
   });
 
+  describe('the perfect parry heal cap (#244, R4)', () => {
+    /** Une parade parfaite de plus, sur l'état du combat `battle`, le héros à `hp` PV s'il est donné. */
+    const parry = (battle: Battle, hp?: number) => {
+      const attacked = underAttack(battle);
+      return pressDefense(
+        { ...attacked, hero: { ...attacked.hero, ...(hp !== undefined && { hp }) } },
+        { button: 'parry', at: 2_000 },
+      ).battle;
+    };
+
+    it('gives back 7, then 3, then 0 HP in the same battle, every source under one cap', () => {
+      // Le Bouclier du veilleur (3), la Gelée blanche (2) et le Givre du clocher (2).
+      const sources = start(undefined, {
+        modifiers: combineModifiers(
+          { healOnPerfectParry: 3 },
+          { healOnPerfectParry: 2 },
+          { healOnPerfectParry: 2 },
+        ),
+      }).battle;
+      const first = parry(sources, 40);
+      const second = parry(first);
+      const third = parry(second);
+
+      expect([first, second, third].map((battle) => battle.hero.hp)).toEqual([47, 50, 50]);
+      expect(third.hero.parryHealed).toBe(10);
+    });
+
+    it('never counts a heal at full HP', () => {
+      const full = parry(start({ healOnPerfectParry: 7 }).battle, 80);
+      const hurt = parry(full, 50);
+
+      expect(full.hero).toMatchObject({ hp: 80 });
+      expect(full.hero).not.toHaveProperty('parryHealed');
+      expect(hurt.hero).toMatchObject({ hp: 57, parryHealed: 7 });
+    });
+
+    it('starts again at 0 in the next battle', () => {
+      const capped = parry(parry(start({ healOnPerfectParry: 7 }).battle, 40));
+      expect(capped.hero.parryHealed).toBe(10);
+
+      const next = start({ healOnPerfectParry: 7 }, { heroHp: capped.hero.hp }).battle;
+      expect(next.hero).not.toHaveProperty('parryHealed');
+      expect(parry(next).hero.hp).toBe(capped.hero.hp + 7);
+    });
+
+    it('leaves Coeur de braise out of the cap', () => {
+      const battle = start({ onGuardBreak: { momentum: 1, heal: 5 } }).battle;
+      const capped: Battle = {
+        ...battle,
+        hero: { ...battle.hero, hp: 50, parryHealed: 10 },
+        enemies: battle.enemies.map((enemy, index) =>
+          index === 0 ? { ...enemy, guard: 5 } : enemy,
+        ),
+      };
+      const attacked = heroAction(capped, {
+        action: { kind: 'attack' },
+        touchStartedAt: 950,
+        releasedAt: 1_000,
+      });
+      const struck = advance(attacked.battle, 3_000).battle;
+
+      expect(struck.hero).toMatchObject({ hp: 55, parryHealed: 10 });
+    });
+  });
+
   it('applies the attack modifiers to the counter-attack', () => {
     const battle = underAttack(start({ attackPercents: [80], guardDamagePercents: [160] }).battle);
     const parried = pressDefense(battle, { button: 'parry', at: 2_000 });

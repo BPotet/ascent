@@ -9,8 +9,10 @@ import {
   advance,
   heroAction,
   nextDeadline,
+  pressDefense,
   pressStrike,
   startBattle,
+  type AttackStep,
   type Battle,
   type BattleUpdate,
 } from '../../src/domain/battle/Battle';
@@ -23,6 +25,7 @@ import {
   type HeroKind,
 } from '../../src/domain/battle/combatants';
 import { NO_MODIFIERS, type HeroModifiers } from '../../src/domain/battle/heroModifiers';
+import { PERFECT_PARRY_HEAL_CAP } from '../../src/domain/battle/parryHeal';
 import { bulwarkCounterBlow, counterBlow, strikeBlow } from '../../src/domain/battle/strike';
 import {
   chooseExit,
@@ -87,6 +90,8 @@ interface World {
   entered?: Ascent;
   hero?: { readonly hp: number; readonly maxHp: number };
   respite?: Extract<BattleEvent, { type: 'respite' }>;
+  gains?: number[];
+  events?: readonly BattleEvent[];
 }
 
 let world: World;
@@ -217,6 +222,48 @@ function respiteAt(
   return events.find(
     (event): event is Extract<BattleEvent, { type: 'respite' }> => event.type === 'respite',
   )!;
+}
+
+/** Un combat où chaque parade parfaite rend `heal` PV, le héros à `hp` PV. */
+function parryBattle(heal: number, hp: number, extra: Partial<HeroModifiers> = {}): Battle {
+  const battle = start('sentinel', { healOnPerfectParry: heal, ...extra });
+  return { ...battle, hero: { ...battle.hero, hp } };
+}
+
+/** Une parade parfaite d'un coup simple de la Goule, préparé à l'instant du combat. */
+function parried(battle: Battle): Battle {
+  const startedAt = battle.now + 100;
+  const step: AttackStep = {
+    kind: 'attack',
+    enemy: 0,
+    attack: 'basic',
+    damage: 5,
+    startedAt,
+    feintAt: null,
+    feintShown: false,
+    impacts: [{ at: startedAt + 1_000, landed: false, lost: false, outcome: null }],
+    resolvedAt: startedAt + 1_160,
+    counter: null,
+  };
+  const attacked: Battle = {
+    ...battle,
+    now: startedAt + 900,
+    lastPlayed: 'enemy',
+    phase: { kind: 'enemy', step },
+  };
+  return pressDefense(attacked, { button: 'parry', at: startedAt + 1_000 }).battle;
+}
+
+/** Les PV regagnés à chaque parade parfaite, l'une après l'autre. */
+function parryGains(battle: Battle, count: number): { gains: number[]; battle: Battle } {
+  const gains: number[] = [];
+  let current = battle;
+  for (let parry = 0; parry < count; parry += 1) {
+    const next = parried(current);
+    gains.push(next.hero.hp - current.hero.hp);
+    current = next;
+  }
+  return { gains, battle: current };
 }
 
 const steps: StepDefinitions = ({ given, when, then, and }) => {
@@ -615,6 +662,89 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   then(/^il est à (\d+) PV$/u, (hp: string) => {
     expect(world.respite).toMatchObject({ heroHp: Number(hp) });
+  });
+
+  // --- R4 : plafond de soin de parade ---
+
+  given(/^un héros dont chaque parade parfaite rend 7 PV, loin de ses PV max$/u, () => {
+    world = fresh(parryBattle(7, 40));
+  });
+
+  when(/^il fait 3 parades parfaites dans le même combat$/u, () => {
+    const played = parryGains(world.battle, 3);
+    world.gains = played.gains;
+    world.battle = played.battle;
+  });
+
+  then(/^il regagne 7, puis 3, puis 0 PV$/u, () => {
+    expect(world.gains).toEqual([7, 3, 0]);
+    expect(world.battle.hero.parryHealed).toBe(PERFECT_PARRY_HEAL_CAP);
+  });
+
+  given(/^un héros qui a regagné 10 PV de parade parfaite dans un combat$/u, () => {
+    world = fresh(parryGains(parryBattle(7, 40), 2).battle);
+    expect(world.battle.hero.parryHealed).toBe(10);
+  });
+
+  when(/^il entre dans le combat suivant et fait une parade parfaite$/u, () => {
+    const next = startBattle({
+      seed: 8,
+      defenseHint: false,
+      at: 0,
+      heroHp: world.battle.hero.hp,
+      enemies: ['ghoul'],
+      modifiers: { ...NO_MODIFIERS, healOnPerfectParry: 7 },
+    }).battle;
+    expect(next.hero).not.toHaveProperty('parryHealed');
+    world.gains = parryGains(next, 1).gains;
+  });
+
+  then(/^il regagne de nouveau ses PV de parade parfaite$/u, () => {
+    expect(world.gains).toEqual([7]);
+  });
+
+  given(/^un héros à PV max$/u, () => {
+    world = fresh(parryBattle(7, SENTINEL.maxHp));
+  });
+
+  when(/^il fait une parade parfaite qui devrait le soigner$/u, () => {
+    const played = parryGains(world.battle, 1);
+    world.gains = played.gains;
+    world.battle = played.battle;
+  });
+
+  then(/^il ne regagne rien$/u, () => {
+    expect(world.gains).toEqual([0]);
+  });
+
+  and(/^le reste du plafond du combat est toujours de 10 PV$/u, () => {
+    expect(world.battle.hero.parryHealed ?? 0).toBe(0);
+    const hurt = { ...world.battle, hero: { ...world.battle.hero, hp: 40 } };
+    expect(parryGains(hurt, 2).gains).toEqual([7, 3]);
+  });
+
+  given(/^un héros qui a déjà regagné 10 PV de parade parfaite dans le combat$/u, () => {
+    world = fresh(parryBattle(7, 40));
+  });
+
+  and(/^qui possède Cœur de braise$/u, () => {
+    const battle = parryBattle(7, 40, { onGuardBreak: { momentum: 1, heal: 5 } });
+    world.battle = { ...battle, hero: { ...battle.hero, parryHealed: 10 } };
+  });
+
+  when(/^il casse une garde puis gagne le combat$/u, () => {
+    // La Goule à 5 de garde et 1 PV : la frappe casse sa garde, puis la suivante la fait tomber.
+    world.battle = wounded(world.battle, { guard: 5 });
+    const broken = playUntil(world.battle, has('guardBroken'));
+    const won = playUntil(wounded(broken.battle, { hp: 1 }), has('battleEnded'));
+    world.events = [...broken.events, ...won.events];
+  });
+
+  then(/^il regagne 5 PV de Cœur de braise et son répit en entier$/u, () => {
+    const hp = (type: BattleEvent['type']) => world.events!.filter((event) => event.type === type);
+    expect(hp('respite')).toEqual([expect.objectContaining({ gain: 8 })]);
+    // Cœur de braise : 40 + 5, puis le répit de 10 % de 80.
+    expect(hp('respite')).toEqual([expect.objectContaining({ heroHp: 53 })]);
   });
 };
 

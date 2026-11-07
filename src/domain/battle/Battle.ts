@@ -77,6 +77,7 @@ import {
 import { bleedsOn, mergeBleed, tickBleed } from './bleed';
 import { burnAtRoundStart, burnOnBlow } from './burn';
 import { freeSlots, type PendingSummon } from './summon';
+import { cappedParryHeal } from './parryHeal';
 import { NO_TIER_MULTIPLIER, scaleByPercent, type TierMultiplier } from './tierMultiplier';
 
 export interface HeroState {
@@ -102,6 +103,11 @@ export interface HeroState {
   readonly rend?: true;
   /** Les pouvoirs « une fois par combat » déjà lancés (#235) ; absent, aucun. */
   readonly spent?: readonly PowerKind[];
+  /**
+   * Les PV rendus par parade parfaite dans ce combat (#244, R4), sous le plafond de soin de
+   * parade ; absent, 0 (aucun, ou un combat sauvegardé avant #244).
+   */
+  readonly parryHealed?: number;
 }
 
 export interface EnemyState {
@@ -1559,11 +1565,22 @@ function judgeDefense(battle: Battle, events: Events, button: DefenseButton, at:
   });
 }
 
-/** Le Bouclier du veilleur (prototype #93) : des PV rendus, sans dépasser les PV max. */
+/**
+ * Le soin de parade parfaite (Bouclier du veilleur, prototype #93 ; Gelée blanche, Givre du
+ * clocher) : des PV rendus, sans dépasser les PV max ni le plafond de soin de parade (#244, R4).
+ * Seul le gain réel compte dans le plafond.
+ */
 function healOnPerfectParry(battle: Battle): Battle {
   const { hero } = battle;
-  const hp = Math.min(hero.maxHp, hero.hp + heroModifiers(battle).healOnPerfectParry);
-  return hp === hero.hp ? battle : { ...battle, hero: { ...hero, hp } };
+  const healed = hero.parryHealed ?? 0;
+  const gain = cappedParryHeal({
+    hp: hero.hp,
+    maxHp: hero.maxHp,
+    heal: heroModifiers(battle).healOnPerfectParry,
+    healed,
+  });
+  if (gain === 0) return battle;
+  return { ...battle, hero: { ...hero, hp: hero.hp + gain, parryHealed: healed + gain } };
 }
 
 /**
