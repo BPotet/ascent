@@ -104,6 +104,14 @@ export const POWERS: Readonly<Record<PowerKind, PowerProfile>> = {
   },
 };
 
+/** La baisse du coût d'un pouvoir attisé (`KindledPower`, #237), en Élan. */
+export const KINDLED_DISCOUNT = 1;
+
+/** Le coût d'un pouvoir attisé (#237) : 1 Élan de moins, au moins 1. */
+export function kindledCost(power: PowerKind): number {
+  return Math.max(1, POWERS[power].cost - KINDLED_DISCOUNT);
+}
+
 /** Le Rempart : le prochain coup subi fait 50 % de ses dégâts. */
 export const BULWARK_DAMAGE_PERCENT = POWERS.bulwark.damageTakenPercent!;
 
