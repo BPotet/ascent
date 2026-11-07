@@ -24,6 +24,7 @@ describe('ExpoBattleHaptics', () => {
       guardBreak: ImpactFeedbackStyle.Heavy,
       perfectStrike: ImpactFeedbackStyle.Rigid,
       bulwarkCounter: ImpactFeedbackStyle.Rigid,
+      powerTip: ImpactFeedbackStyle.Light,
     });
   });
 

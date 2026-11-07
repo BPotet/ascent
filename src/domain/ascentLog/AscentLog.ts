@@ -11,12 +11,13 @@ import type { Ascent, AscentSeed, Encounter } from '../ascent/Ascent';
 import type { BlessingFamily } from '../ascent/blessings';
 import { SECOND_BREATH, type OfferCard } from '../ascent/boons';
 import type { Exit, ExitKind } from '../ascent/exits';
-import type { FateGauge } from '../ascent/fateGauge';
+import { favorKeys, type FateGauge } from '../ascent/fateGauge';
 import type { Equipment, ItemKind } from '../ascent/items';
 import type { Rarity } from '../ascent/rarity';
 import { shardSum } from '../ascent/shards';
 import type { Tier } from '../ascent/tiers';
 import type { HeroKind } from '../battle/combatants';
+import { beyondBasePower, type PowerKind } from '../battle/powers';
 import type { Day } from '../day/Day';
 import { BATTLE_LOG_FORMAT_VERSION, type FloorPlace } from './BattleLog';
 
@@ -56,6 +57,22 @@ export interface EncounterRecord {
   readonly enemies: Encounter['enemies'];
 }
 
+/**
+ * Le coffre scellé d'une Élite (#226) : ouvert avec son objet et l'issue de cet objet, laissé avec
+ * une clé en poche, ou fermé faute de clé.
+ */
+export interface SealedChestRecord {
+  readonly outcome: 'opened' | 'left' | 'noKey';
+  readonly item?: ItemKind;
+  readonly itemOutcome?: 'equipped' | 'left';
+}
+
+/** Les clés reçues pendant l'ascension (#226) : de la faveur au lancement, de Fortune au choix. */
+export interface KeysRecord {
+  readonly favor: number;
+  readonly fortune: number;
+}
+
 /** Un étage, identifié par son palier et son numéro. */
 export interface FloorRecord {
   readonly tier: Tier;
@@ -80,6 +97,8 @@ export interface FloorRecord {
   readonly boonChosen: OfferCard | null;
   readonly itemFound: ItemKind | null;
   readonly itemOutcome: 'equipped' | 'left' | null;
+  /** Le coffre scellé de l'Élite de cet étage (#226) ; absent sans coffre ou avant son issue. */
+  readonly sealedChest?: SealedChestRecord;
   /** Les Éclats de l'étage. */
   readonly shards: number;
 }
@@ -110,6 +129,10 @@ interface AscentLogBody {
   readonly gauge: GaugeState;
   readonly startingEquipment: Equipment;
   readonly blessings: readonly BlessingRecord[];
+  /** Les clés reçues (#226) ; absent sans clé. */
+  readonly keys?: KeysRecord;
+  /** Les pouvoirs équipés (#235), seulement s'ils diffèrent du pouvoir de base seul. */
+  readonly powers?: readonly PowerKind[];
   readonly floors: readonly FloorRecord[];
   readonly tierPassages: readonly TierPassageRecord[];
   readonly status: 'inProgress' | 'ended';
@@ -146,6 +169,8 @@ export type AscentStep =
         | 'boonOfferRerolled'
         | 'exitChosen'
         | 'abandoned'
+        | 'sealedChestOpened'
+        | 'sealedChestLeft'
         | 'bossAcknowledged'
         | 'tierEntered';
     })
@@ -185,6 +210,7 @@ function floorRecord(
 
 /** Le journal d'une ascension qui commence, le jour `day`. */
 export function beginAscentLog(ascent: Ascent, day: Day): AscentLog {
+  const favor = favorKeys(ascent.gauge);
   return {
     formatVersion: ASCENT_LOG_FORMAT_VERSION,
     id: null,
@@ -194,6 +220,8 @@ export function beginAscentLog(ascent: Ascent, day: Day): AscentLog {
     gauge: GAUGE_STATES[ascent.gauge],
     startingEquipment: ascent.equipment,
     blessings: [],
+    ...(favor > 0 && { keys: { favor, fortune: 0 } }),
+    ...(beyondBasePower(ascent.hero.kind, ascent.powers) && { powers: ascent.powers }),
     floors: [floorRecord(ascent)],
     tierPassages: [],
     status: 'inProgress',
@@ -246,12 +274,41 @@ function exitTaken(before: Ascent, after: Ascent): NonNullable<FloorRecord['exit
   return { kind, groupSize: before.exits.find((each) => each.kind === kind)!.groupSize };
 }
 
+/**
+ * L'issue de l'objet trouvé sur l'étage de `before` : celle de l'objet du coffre scellé quand il
+ * vient d'un coffre ouvert (#226), sinon celle de l'objet de l'étage.
+ */
+function itemOutcome<Log extends AnyAscentLog>(
+  log: Log,
+  before: Ascent,
+  outcome: 'equipped' | 'left',
+): Log {
+  return updateFloor(log, before, (record) =>
+    before.sealedChest?.opened === true
+      ? { ...record, sealedChest: { ...record.sealedChest!, itemOutcome: outcome } }
+      : { ...record, itemOutcome: outcome },
+  );
+}
+
+/** Le coffre scellé de l'étage de `before` (#226) : son issue, et son objet s'il est ouvert. */
+function sealedChest<Log extends AnyAscentLog>(log: Log, before: Ascent, after: Ascent): Log {
+  const chest: SealedChestRecord = after.sealedChest?.opened
+    ? { outcome: 'opened', item: after.foundItem! }
+    : { outcome: before.keys === 0 ? 'noKey' : 'left' };
+  return updateFloor(log, before, (record) => ({ ...record, sealedChest: chest }));
+}
+
+/** Les clés reçues au choix d'une bénédiction (Fortune, #226) ; rien sans clé reçue. */
+function blessingKeys<Log extends AnyAscentLog>(log: Log, before: Ascent, after: Ascent): Log {
+  const gained = after.keys - before.keys;
+  if (gained <= 0) return log;
+  const keys = log.keys ?? { favor: 0, fortune: 0 };
+  return { ...log, keys: { ...keys, fortune: keys.fortune + gained } };
+}
+
 function exitChosen<Log extends AnyAscentLog>(log: Log, before: Ascent, after: Ascent): Log {
   // Une porte franchie laisse l'objet trouvé, s'il en reste un.
-  const left =
-    before.foundItem === null
-      ? log
-      : updateFloor(log, before, (record) => ({ ...record, itemOutcome: 'left' }));
+  const left = before.foundItem === null ? log : itemOutcome(log, before, 'left');
   const taken = exitTaken(before, after);
   if (taken.kind !== 'campfire') return upsertFloor(left, floorRecord(after, before.exits, taken));
   // Le Feu de camp : un étage sans combat, soigné entre l'entrée et la sortie.
@@ -305,18 +362,25 @@ export function recordAscentStep<Log extends AnyAscentLog>(log: Log, step: Ascen
     case 'blessingChosen': {
       // Une bénédiction prise : l'offre existait, et la dernière bénédiction est la nouvelle.
       const { family, rarity } = after.blessings.at(-1)!;
-      return {
-        ...log,
-        blessings: [
-          ...log.blessings,
-          { offered: before.blessingOffer!, chosen: { family, rarity } },
-        ],
-      };
+      return blessingKeys(
+        {
+          ...log,
+          blessings: [
+            ...log.blessings,
+            { offered: before.blessingOffer!, chosen: { family, rarity } },
+          ],
+        },
+        before,
+        after,
+      );
     }
     case 'itemEquipped':
-      return updateFloor(log, before, (record) => ({ ...record, itemOutcome: 'equipped' }));
+      return itemOutcome(log, before, 'equipped');
     case 'itemLeft':
-      return updateFloor(log, before, (record) => ({ ...record, itemOutcome: 'left' }));
+      return itemOutcome(log, before, 'left');
+    case 'sealedChestOpened':
+    case 'sealedChestLeft':
+      return sealedChest(log, before, after);
     case 'boonChosen':
       return updateFloor(log, before, (record) => ({ ...record, boonChosen: chosenCard(step) }));
     case 'boonOfferRerolled':

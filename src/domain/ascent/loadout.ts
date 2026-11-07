@@ -4,10 +4,17 @@
  * puis ses bienfaits dans l'ordre où ils ont été gagnés. C'est le seul endroit qui dit ce qu'il
  * contient ; les objets équipés y entreront plus tard.
  */
+import type { PowerKind } from '../battle/powers';
 import type { Ascent } from './Ascent';
 import type { StartingBlessing } from './blessings';
 import type { BoonKind } from './boons';
 import { favorRerolls, favorSecondChance } from './fateGauge';
+
+/** Les Réserves de l'ascension (#226) : l'Or et les clés qui restent. */
+export interface LoadoutReserves {
+  readonly gold: number;
+  readonly keys: number;
+}
 
 /**
  * La faveur de l'ascension (#42) : sa jauge, ses relances qui restent sur celles données, et sa
@@ -26,6 +33,10 @@ export interface Loadout {
   readonly boons: readonly BoonKind[];
   /** Seulement pour une ascension lancée en faveur (#42). */
   readonly favor?: LoadoutFavor;
+  /** Les Réserves (#226), toujours remplies par `loadoutOf`. */
+  readonly reserves?: LoadoutReserves;
+  /** Les pouvoirs équipés (#235), dans l'ordre des touches, toujours remplis par `loadoutOf`. */
+  readonly powers?: readonly PowerKind[];
 }
 
 /** L'Équipement de l'ascension, sans copie ni tri. */
@@ -44,6 +55,8 @@ export function loadoutOf(ascent: Ascent): Loadout {
         }),
       },
     }),
+    reserves: { gold: ascent.gold, keys: ascent.keys },
+    powers: ascent.powers,
   };
 }
 

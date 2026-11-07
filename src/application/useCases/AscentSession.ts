@@ -8,16 +8,19 @@ import {
   enterNextTier,
   equipItem,
   leaveItem,
+  leaveSealedChest,
   lootStream,
+  openSealedChest,
   rerollBoonOffer,
   rerollStream,
+  sealedChestStream,
   startAscent,
   type Ascent,
   type AscentLaunch,
 } from '../../domain/ascent/Ascent';
 import { boonModifiers } from '../../domain/ascent/boons';
 import { blessingModifiers, type BlessingFamily } from '../../domain/ascent/blessings';
-import { favorRerolls, favorSecondChance } from '../../domain/ascent/fateGauge';
+import { favorKeys, favorRerolls, favorSecondChance } from '../../domain/ascent/fateGauge';
 import { STARTING_EQUIPMENT, itemModifiers } from '../../domain/ascent/items';
 import {
   EMPTY_SHARD_TOTAL,
@@ -30,6 +33,7 @@ import { TIERS } from '../../domain/ascent/tiers';
 import { resumeBattle, startBattle, type Battle } from '../../domain/battle/Battle';
 import { combineModifiers } from '../../domain/battle/heroModifiers';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
+import { basePower } from '../../domain/battle/powers';
 import type { AscentStep, HeroVitals } from '../../domain/ascentLog/AscentLog';
 import type { AscentLogRecorder } from './AscentLogRecorder';
 import { BattleSession, type BattleSessionDependencies } from './BattleSession';
@@ -114,7 +118,8 @@ function parse(raw: string | null): SavedAscent | null {
     // avant #38 : au palier 1, sans Éclat ni Passage de palier ; avant #195 : sans Déblocage, et
     // Cœur de braise pas encore proposé ; avant #42 : les relances de sa jauge, comme si elles
     // avaient été données au lancement (calculées après la fusion, sur la jauge sauvegardée) ;
-    // avant #206 : la seconde chance de sa jauge, de la même façon.
+    // avant #206 : la seconde chance de sa jauge, de la même façon ; avant #226 : la clé de sa
+    // jauge, de la même façon, sans coffre scellé.
     const stored: Partial<Ascent> = saved.ascent;
     const storedHero: Partial<Ascent['hero']> = saved.ascent.hero;
     const ascent = {
@@ -132,15 +137,22 @@ function parse(raw: string | null): SavedAscent | null {
       unlocks: [],
       emberHeartOffered: false,
       rerollRandom: rerollStream(saved.ascent.seed),
+      sealedChest: null,
+      sealedChestRandom: sealedChestStream(saved.ascent.seed),
       ...stored,
       hero: { kind: 'sentinel', boons: [], ...storedHero },
     } as Ascent;
     const rerolls = stored.rerolls ?? favorRerolls(ascent.gauge);
     const secondChance = stored.secondChance ?? favorSecondChance(ascent.gauge);
+    const keys = stored.keys ?? favorKeys(ascent.gauge);
+    // Une ascension d'avant #235 : son pouvoir de base seul, jusqu'à sa fin.
+    const powers = stored.powers ?? [basePower(ascent.hero.kind)];
     const renamed: Ascent = {
       ...ascent,
       rerolls,
       secondChance,
+      keys,
+      powers,
       blessings: ascent.blessings.map((blessing) => ({
         ...blessing,
         family: protection(blessing.family),
@@ -183,6 +195,11 @@ export class AscentSession {
    * le chargement suivant réessaie.
    */
   private shardsWritable = true;
+  /**
+   * L'entrée dans la tour (#226, F4) : posée au lancement, jusqu'au premier combat. En mémoire
+   * seulement : jamais rejouée après une fermeture.
+   */
+  private entering = false;
 
   constructor(private readonly dependencies: AscentSessionDependencies) {}
 
@@ -240,7 +257,26 @@ export class AscentSession {
   begin(launch: AscentLaunch = {}): Ascent {
     const ascent = startAscent(this.dependencies.seeds.next(), launch);
     this.dependencies.ascentLog?.begin(ascent);
+    this.entering = true;
     return this.update(ascent, null);
+  }
+
+  /**
+   * Les clés annoncées à l'entrée dans la tour (#226, F4), par source : après le lancement et les
+   * bénédictions, avant le premier combat, avec au moins une clé ; `null` sinon.
+   */
+  keysEntry(): { readonly favor: number; readonly fortune: number } | null {
+    const { ascent } = this;
+    if (!this.entering || ascent === null || ascent.blessingOffer !== null || ascent.keys < 1) {
+      return null;
+    }
+    const favor = favorKeys(ascent.gauge);
+    return { favor, fortune: ascent.keys - favor };
+  }
+
+  /** L'entrée dans la tour est passée (#226, F4). */
+  acknowledgeKeysEntry(): void {
+    this.entering = false;
   }
 
   chooseBlessing(index: number): void {
@@ -256,6 +292,18 @@ export class AscentSession {
   leaveItem(): void {
     if (this.ascent === null) return;
     this.update(leaveItem(this.ascent), this.battle, { kind: 'itemLeft' });
+  }
+
+  /** Ouvre le coffre scellé (#226) ; la sauvegarde suit : un coffre ouvert garde son objet. */
+  openSealedChest(): void {
+    if (this.ascent === null) return;
+    this.update(openSealedChest(this.ascent), this.battle, { kind: 'sealedChestOpened' });
+  }
+
+  /** Laisse le coffre scellé fermé (#226), avec ou sans clé. */
+  leaveSealedChest(): void {
+    if (this.ascent === null) return;
+    this.update(leaveSealedChest(this.ascent), this.battle, { kind: 'sealedChestLeft' });
   }
 
   chooseBoon(index: number): void {
@@ -319,6 +367,7 @@ export class AscentSession {
    */
   battleSession(): BattleSession {
     this.summonFellAt = null;
+    this.entering = false;
     const session = new BattleSession(this.dependencies, {
       createBattle: (options) => {
         if (this.battle !== null) {
@@ -343,6 +392,8 @@ export class AscentSession {
             boonModifiers(ascent.hero.boons),
           ),
           enemies: encounter.enemies,
+          // Les pouvoirs équipés de l'ascension (#235).
+          powers: ascent.powers,
           // L'ennemi maudit tiré pour l'étage (#209) ; absent, aucun.
           ...(encounter.cursed !== undefined && { cursed: encounter.cursed }),
           // La seconde chance encore là (#206) ; absente, le combat est celui d'avant.

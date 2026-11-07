@@ -122,3 +122,34 @@ l'ascension (`before.secondChance && !after.secondChance`).
   octet, à celui d'avant.
 - Aucune donnée des habitudes : la jauge est déjà notée (`gauge: 'fullFavor'`).
 - **`formatVersion` reste 2** (§ 4) : c'est un champ ajouté. Un journal d'avant se relit tel quel.
+
+## Avenant du 6 novembre 2026 — les clés et le coffre scellé (#226)
+
+Les **Clés** (`Key`) ouvrent le **Coffre scellé** (`SealedChest`) qui suit chaque Élite gagnée. Le
+journal note les clés reçues et l'issue de chaque coffre scellé, sans aucune donnée des habitudes.
+
+- Le journal reçoit un champ **facultatif** `keys: { favor, fortune }` : les clés de la faveur,
+  posées au début (`beginAscentLog`, 1 à +1 et à +2), et celles de Fortune, ajoutées par la
+  transition `blessingChosen` (`after.keys - before.keys`). Il est absent sans clé reçue : un
+  journal à jauge 0 sans Fortune est identique, octet pour octet, à celui d'avant.
+- L'étage de l'Élite reçoit un champ **facultatif** `sealedChest: { outcome, item?, itemOutcome? }`,
+  avec `outcome` à `opened`, `left` (laissé avec une clé en poche) ou `noKey` (fermé faute de clé).
+- Deux nouvelles causes : `sealedChestOpened` (le coffre et son objet) et `sealedChestLeft`
+  (`noKey` si le héros n'avait aucune clé, sinon `left`). « Laisser » et « Continuer » sont la même
+  transition ; seul le nombre de clés les distingue.
+- **L'issue de l'objet révélé est écrite à part** : `itemEquipped`, `itemLeft` et `exitChosen`
+  (une porte franchie laisse l'objet trouvé) écrivent `sealedChest.itemOutcome` quand l'objet vient
+  d'un coffre ouvert, et `itemOutcome` sinon. L'issue de l'objet garanti de l'Élite n'est donc
+  jamais écrasée.
+- Une ascension en cours lors de la mise à jour reçoit la clé de sa jauge (comme les relances), mais
+  son journal, commencé avant, n'a pas de `keys`.
+- **`formatVersion` reste 2** (§ 4) : ce sont des champs ajoutés. Un journal d'avant se relit tel
+  quel.
+
+## Avenant du 6 novembre 2026 — les pouvoirs équipés (#235)
+
+- Le journal reçoit un champ **facultatif** `powers` : les pouvoirs équipés de l'ascension, posés
+  par `beginAscentLog` **seulement s'ils diffèrent du pouvoir de base seul**. Un journal sans
+  pouvoir débloqué est identique, octet pour octet, à celui d'avant.
+- Les pouvoirs débloqués au Camp n'y entrent pas : seul ce qui est figé dans l'ascension compte.
+- **`formatVersion` reste 2** (§ 4).

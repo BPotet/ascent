@@ -608,7 +608,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   then("son pouvoir Rempart est décrit par la description validée dans l'Atelier", () => {
     const card = screen.getByTestId('hero-choice-sentinel');
-    expect(within(card).getByText(`Rempart (1 Élan) : ${CODEX_BULWARK}`)).toBeTruthy();
+    expect(within(card).getByLabelText(`Rempart, 1 Élan : ${CODEX_BULWARK}`)).toBeTruthy();
   });
 };
 

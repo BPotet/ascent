@@ -12,8 +12,14 @@ import {
 
 import type { StartingBlessing } from '../../../domain/ascent/blessings';
 import type { BoonKind } from '../../../domain/ascent/boons';
-import { loadoutSize, type Loadout, type LoadoutFavor } from '../../../domain/ascent/loadout';
+import {
+  loadoutSize,
+  type Loadout,
+  type LoadoutFavor,
+  type LoadoutReserves,
+} from '../../../domain/ascent/loadout';
 import type { Rarity } from '../../../domain/ascent/rarity';
+import type { PowerKind } from '../../../domain/battle/powers';
 import { blessingCard } from '../format/ascentText';
 import { boonCard } from '../format/boonText';
 import { gaugeValue } from '../format/gaugeText';
@@ -22,10 +28,15 @@ import {
   LOADOUT_SUBTITLE,
   NO_BLESSING_YET,
   NO_BOON_YET,
+  RESERVES_TITLE,
   blessingTag,
   favorHeadingLabel,
   favorRows,
-  type FavorRowText,
+  reserveRows,
+  reservesHeadingLabel,
+  type StateRowText,
+  POWERS_TITLE,
+  powerRows,
 } from '../format/loadoutText';
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize, notchedCorners } from '../pixelArt/artPixel';
@@ -33,10 +44,15 @@ import { PixelButton } from '../pixelArt/PixelButton';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { PixelSheet } from '../pixelArt/PixelSheet';
 import { pixelFont, textFont } from '../pixelArt/pixelTypography';
+import { KEY_IMAGE } from '../pixelArt/sprites/atelier/data/key';
+import { assetSprite } from '../pixelArt/sprites/atelier/fullAnimation';
 import { blessingIcon, boonIcon, type GameIcon } from '../pixelArt/sprites/gameIcons';
+import { toPixelImage } from '../pixelArt/sprites/Sprite';
+import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
 import { useReducedMotion } from '../state/useReducedMotion';
 import { IconWell, RARITY_COLORS } from './IconWell';
 import { LoadoutHeading, LoadoutNone } from './LoadoutChip';
+import { PowerIcon } from './PowerIcon';
 import { SCROLL_HINT_HEIGHT, ScrollHint } from './ScrollHint';
 
 const { roles } = artPalette;
@@ -105,36 +121,107 @@ function BoonRow({ kind }: { readonly kind: BoonKind }) {
   );
 }
 
+/** Les teintes d'une ligne d'état : l'écrin, le glyphe et l'état (#42, #226). */
+const STATE_TONES = {
+  favor: { well: roles.doneLine, glyph: roles.done },
+  gold: { well: roles.goldDark, glyph: roles.gold },
+} as const;
+
 /**
- * Une ligne de la faveur : son glyphe dans un écrin vert sans rareté, ce qu'elle fait, et son état,
- * en gris quand elle a servi.
+ * Une ligne d'état : son glyphe (ou l'image de la clé, #226) dans un écrin sans rareté, vert pour
+ * la faveur, à liseré d'or pour les Réserves, ce qu'elle fait, et son état, en gris quand elle a
+ * servi ou qu'il n'en reste pas.
  */
-function FavorRow({ row }: { readonly row: FavorRowText }) {
+function StateRow({ row, testID }: { readonly row: StateRowText; readonly testID: string }) {
+  const tone = STATE_TONES[row.tone];
   return (
     <View
       accessible
       accessibilityLabel={row.label}
-      testID={`favor-row-${row.key}`}
-      style={[styles.row, styles.favorRow, { borderTopWidth: artPixelSize(2) }]}
+      testID={testID}
+      style={[styles.row, styles.stateRow, { borderTopWidth: artPixelSize(2) }]}
     >
       <View
         style={[
-          styles.favorWell,
-          { borderWidth: artPixelSize(2), borderColor: row.used ? roles.line : roles.doneLine },
+          styles.stateWell,
+          { borderWidth: artPixelSize(2), borderColor: row.used ? roles.line : tone.well },
         ]}
       >
-        <PixelIcon
-          name={row.glyph}
-          color={roles.done}
-          testID="favor-glyph"
-          style={row.used && styles.usedGlyph}
-        />
+        {row.key === 'keys' ? (
+          // La clé de l'Atelier, 16 × 16 (#226), atténuée sans clé (E3).
+          <SpriteCanvas
+            sprite="key"
+            draw={() => toPixelImage(assetSprite(KEY_IMAGE))}
+            scale={2}
+            testID="reserve-key-image"
+            style={row.used && styles.usedGlyph}
+          />
+        ) : (
+          <PixelIcon
+            name={row.glyph}
+            color={tone.glyph}
+            testID={row.tone === 'favor' ? 'favor-glyph' : 'reserve-glyph'}
+            style={row.used && styles.usedGlyph}
+          />
+        )}
       </View>
       <View style={styles.rowText}>
         <Text style={styles.name}>{row.name}</Text>
         <Text style={styles.effect}>{row.effect}</Text>
       </View>
-      <Text style={[styles.favorState, row.used && styles.favorUsed]}>{row.state}</Text>
+      <Text style={[styles.state, { color: tone.glyph }, row.used && styles.stateUsed]}>
+        {row.state}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * Les Réserves de l'ascension (#226, maquette 208 E1, E3) : un en-tête « Réserves », puis l'Or et
+ * les clés, en tête de la feuille, avec ou sans faveur.
+ */
+function ReservesPart({ reserves }: { readonly reserves: LoadoutReserves }) {
+  return (
+    <View style={styles.part}>
+      <LoadoutHeading title={RESERVES_TITLE} count="" label={reservesHeadingLabel()} />
+      {reserveRows(reserves).map((row) => (
+        <StateRow key={row.key} row={row} testID={`reserve-row-${row.key}`} />
+      ))}
+    </View>
+  );
+}
+
+/**
+ * Les pouvoirs équipés de l'ascension (#235, maquette 232 E1) : un en-tête « Pouvoirs · 3 », puis
+ * une ligne par pouvoir, dans l'ordre des touches, avec son icône, son coût, son type et son effet.
+ */
+function PowersPart({ powers }: { readonly powers: readonly PowerKind[] }) {
+  const line = artPixelSize(2);
+  return (
+    <View style={styles.part} testID="loadout-powers">
+      <LoadoutHeading
+        title={POWERS_TITLE}
+        count={String(powers.length)}
+        label={`${POWERS_TITLE}, ${powers.length}`}
+      />
+      {powerRows(powers).map((row) => (
+        <View
+          key={row.power}
+          accessible
+          accessibilityLabel={row.label}
+          testID={`loadout-power-${row.power}`}
+          style={[styles.row, { borderTopWidth: line }]}
+        >
+          <View style={[styles.powerWell, { borderWidth: line }]}>
+            <PowerIcon power={row.power} scale={2} />
+          </View>
+          <View style={styles.rowText}>
+            <Text style={styles.name}>{row.name}</Text>
+            <Text style={[styles.tag, { color: roles.gold }]}>{row.line}</Text>
+            <Text style={styles.effect}>{row.effect}</Text>
+          </View>
+        </View>
+      ))}
     </View>
   );
 }
@@ -152,7 +239,7 @@ function FavorPart({ favor }: { readonly favor: LoadoutFavor }) {
         label={favorHeadingLabel(favor)}
       />
       {favorRows(favor).map((row) => (
-        <FavorRow key={row.key} row={row} />
+        <StateRow key={row.key} row={row} testID={`favor-row-${row.key}`} />
       ))}
     </View>
   );
@@ -199,9 +286,10 @@ export function LoadoutSheet({
   const { height } = useWindowDimensions();
   const title = useRef<Text>(null);
   const line = artPixelSize(2);
-  // La ligne des relances compte comme une entrée (#42).
+  // La ligne des relances compte comme une entrée (#42), les lignes des Réserves aussi (#226).
   const favorCount = loadout.favor === undefined ? 0 : favorRows(loadout.favor).length;
-  const many = loadoutSize(loadout) + favorCount > SCROLL_HINT_BEYOND;
+  const reserveCount = loadout.reserves === undefined ? 0 : reserveRows(loadout.reserves).length;
+  const many = loadoutSize(loadout) + favorCount + reserveCount > SCROLL_HINT_BEYOND;
 
   useEffect(() => {
     if (visible && title.current !== null) {
@@ -243,6 +331,8 @@ export function LoadoutSheet({
               contentContainerStyle={[styles.listContent, many && styles.listMore]}
               bounces={false}
             >
+              {loadout.reserves !== undefined && <ReservesPart reserves={loadout.reserves} />}
+              {loadout.powers !== undefined && <PowersPart powers={loadout.powers} />}
               {loadout.favor !== undefined && <FavorPart favor={loadout.favor} />}
               <Part
                 title="Bénédictions de départ"
@@ -306,11 +396,19 @@ const styles = StyleSheet.create({
     borderTopColor: roles.raised,
   },
   rowText: { flex: 1, gap: 1 },
+  powerWell: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderColor: roles.line,
+    backgroundColor: roles.well,
+  },
   name: { fontFamily: pixelFont, fontSize: 18, lineHeight: 22, color: roles.light },
   tag: { fontFamily: textFont.bold, fontSize: 12, lineHeight: 16 },
   effect: { fontFamily: textFont.medium, fontSize: 13, lineHeight: 18, color: roles.parchment },
-  favorRow: { alignItems: 'center' },
-  favorWell: {
+  stateRow: { alignItems: 'center' },
+  stateWell: {
     width: 40,
     height: 40,
     alignItems: 'center',
@@ -318,7 +416,7 @@ const styles = StyleSheet.create({
     backgroundColor: roles.well,
   },
   usedGlyph: { opacity: 0.5 },
-  favorState: { fontFamily: textFont.bold, fontSize: 12, lineHeight: 16, color: roles.done },
-  favorUsed: { color: roles.muted },
+  state: { fontFamily: textFont.bold, fontSize: 12, lineHeight: 16 },
+  stateUsed: { color: roles.muted },
 });
 // Stryker restore all

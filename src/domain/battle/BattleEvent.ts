@@ -1,7 +1,7 @@
 import type { AttackKind } from './attacks';
 import type { EnemyKind } from './combatants';
 import type { Intent } from './intents';
-import type { PowerKind } from './momentum';
+import type { PowerKind } from './powers';
 import type { PressJudgement } from './rules';
 
 /** Les deux boutons de défense de la phase ennemie. */
@@ -65,6 +65,8 @@ export type BattleEvent =
       readonly until: number;
       /** Le rang du coup (1, 2), pour un héros qui frappe plusieurs fois (prototype #90). */
       readonly hit?: number;
+      /** Entaille (#235) : le coup retire 150 % de son Brise-garde. */
+      readonly rend?: true;
     }
   | {
       readonly type: 'strikeResolved';
@@ -196,7 +198,21 @@ export type BattleEvent =
       readonly damage: number;
       readonly guardDamage: number;
       readonly until: number;
+      /** Représailles (#235) : la contre-attaque à 200 % des PV et de la garde. */
+      readonly retaliation?: true;
     }
+  /** Brume s'use (#235), au même instant que le `blowResolved` de l'impact qui l'use. */
+  | { readonly type: 'mistWorn'; readonly at: number; readonly enemy: number }
+  /** Le soin d'un pouvoir (Tenir bon, #235) : `heal` PV rendus (0 à PV max), `heroHp` après. */
+  | {
+      readonly type: 'heroHealed';
+      readonly at: number;
+      readonly power: PowerKind;
+      readonly heal: number;
+      readonly heroHp: number;
+    }
+  /** Le Saignement du héros arrêté par un pouvoir (Tenir bon, #235). */
+  | { readonly type: 'bleedStopped'; readonly at: number }
   /** Le Rempart s'use (#128, R1), au même instant que le `blowResolved` de l'impact qui l'use. */
   | { readonly type: 'bulwarkWorn'; readonly at: number; readonly enemy: number }
   /** La Riposte du Rempart (#128) sur l'ennemi `enemy`, qui a porté le coup. */

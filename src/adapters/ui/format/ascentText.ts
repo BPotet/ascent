@@ -92,7 +92,8 @@ export function exitLabel(exit: Exit, gauge: FateGauge = 0): string {
       return cursed ? `${size} · dont 1 maudit` : size;
     }
     case 'elite':
-      return `${cursed ? 'Élite maudite' : 'Élite'} · objet Rare garanti`;
+      // Le coffre scellé qui suit l'Élite gagnée, maudite comprise (#226, CH3).
+      return `${cursed ? 'Élite maudite' : 'Élite'} · objet Rare garanti · coffre scellé`;
     case 'campfire':
       return 'Feu de camp · soin de 40 % des PV';
     case 'boss':
@@ -109,6 +110,7 @@ const FAMILY_NAMES: Readonly<Record<BlessingFamily, string>> = {
   edge: 'Tranchant',
   protection: 'Protection',
   haste: 'Hâte',
+  fortune: 'Fortune',
 };
 
 function blessingEffect({ family, rarity }: StartingBlessing): string {
@@ -126,6 +128,9 @@ function blessingEffect({ family, rarity }: StartingBlessing): string {
       return `Réduction des dégâts +${value} points`;
     case 'haste':
       return `Initiative +${value} dans chaque combat`;
+    case 'fortune':
+      // Les clés de Fortune (#226) : « +1 clé », « +3 clés ».
+      return `+${value} clé${value > 1 ? 's' : ''}`;
   }
 }
 
@@ -276,3 +281,28 @@ export function wornText(equipment: Equipment, slot: ItemSlot): string {
   const item = equipment[slot];
   return item === null ? BASE_KIT[slot] : itemText(item);
 }
+
+/**
+ * Un objet lu par le lecteur d'écran (#227) : nom, rareté, effet et Initiative, sans
+ * l'emplacement : « Hache rouillée, Commun, Brise-garde ×1,1, Initiative −1 ».
+ */
+export function itemAnnouncement(item: ItemKind): string {
+  const { rarity, initiative } = ITEMS[item];
+  const effect = ITEM_EFFECTS[item];
+  return [
+    ITEM_NAMES[item],
+    rarityName(rarity),
+    ...(effect === null ? [] : [effect]),
+    `Initiative ${signed(initiative)}`,
+  ].join(', ');
+}
+
+/** L'annonce du Coffre ouvert (#227), puis de l'objet qui en sort. */
+export function chestAnnouncement(item: ItemKind): string {
+  return `Coffre ouvert. ${itemAnnouncement(item)}.`;
+}
+
+/** Le libellé du toucher qui passe l'ouverture d'un coffre (#227). */
+export const SKIP_CHEST_LABEL = "Passer l'ouverture du coffre";
+/** L'invite sous le coffre qui s'ouvre (#227). */
+export const TAP_TO_SKIP = 'Touche pour passer';

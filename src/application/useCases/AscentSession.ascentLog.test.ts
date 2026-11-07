@@ -1,7 +1,7 @@
 // La session d'ascension avec le Journal d'ascension (#196, ADR 0014) : le journal observe chaque
 // transition, s'écrit par sa propre file juste après la sauvegarde de l'ascension, reprend après une
 // fermeture sans doublon d'étage, et ne bloque jamais ni la sauvegarde ni le Total d'Éclats.
-import { endFloorBattle, startAscent, type Ascent } from '../../domain/ascent/Ascent';
+import { endFloorBattle, leaveItem, startAscent, type Ascent } from '../../domain/ascent/Ascent';
 import { beginAscentLog, type AscentLog } from '../../domain/ascentLog/AscentLog';
 import { startBattle } from '../../domain/battle/Battle';
 import { Day } from '../../domain/day/Day';
@@ -185,6 +185,27 @@ describe('AscentSession with the ascent log', () => {
       await ascentLog.settled();
       expect(lastLog(logs).floors[0]!.itemOutcome).toBe(outcome);
     });
+
+    it.each([
+      ['opened', (session: AscentSession) => session.openSealedChest()],
+      ['left', (session: AscentSession) => session.leaveSealedChest()],
+    ] as const)(
+      'records a sealed chest %s, with the keys, in format 2 (#226)',
+      async (outcome, act) => {
+        const ascent = leaveItem(
+          won({
+            ...startAscent(7, { gauge: 1 }),
+            encounter: { kind: 'elite', enemies: ['twins'], battleSeed: 1 },
+          }),
+        );
+        const { session, logs, ascentLog } = await resumed(ascent);
+        act(session);
+        await ascentLog.settled();
+        const log = lastLog(logs);
+        expect(log).toMatchObject({ formatVersion: 2, keys: { favor: 1, fortune: 0 } });
+        expect(log.floors[0]!.sealedChest).toMatchObject({ outcome });
+      },
+    );
 
     it('records the boon chosen', async () => {
       const { session, logs, ascentLog } = await resumed({

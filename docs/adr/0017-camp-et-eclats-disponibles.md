@@ -56,3 +56,17 @@ codé : aucune donnée stockée n'en dépend.
   `shards.total` illisible (repart de 0) met les Éclats disponibles à 0 par le plancher, et les
   Déblocages restent.
 - Rien ne quitte le téléphone.
+
+## Avenant du 6 novembre 2026 — les pouvoirs de l'arbre (#235, ADR 0019)
+
+- La clé `camp.unlocks` garde aussi les **pouvoirs débloqués** de l'arbre de pouvoirs, dans l'ordre
+  des achats, avec leur prix payé : `{ "version": 1, "unlocks": […], "powers": [{ "power":
+  "retaliation", "price": 30 }] }`. `serializeCamp` écrit toujours `powers` ; `powers` absent se lit
+  `[]` : **`CAMP_VERSION` reste 1**.
+- `parseCamp` rend illisible (§ 5) un code inconnu ou non achetable (pouvoir de base, frappe
+  « Bientôt »), un prix qui n'est pas un entier positif, ou un doublon.
+- Les **Éclats disponibles** soustraient les prix des Déblocages et des pouvoirs (§ 3) : les deux
+  partagent les mêmes Éclats. Un achat de pouvoir suit le § 4 (une écriture attendue, tout ou rien,
+  un achat à la fois, son et vibration du camp) et le § 7 (« Dès ta prochaine ascension » dérivé).
+- Les **pouvoirs équipés** entrent dans une ascension par le § 6 : `CampSession.beginAscent` passe
+  `powers: equippedPowers(camp, hero)` à `AscentSession.begin`.

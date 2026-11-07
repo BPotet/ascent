@@ -52,6 +52,10 @@ export interface BattleDisplay {
   readonly heroFloat: { readonly float: DamageFloat; readonly key: number } | null;
   /** L'instant du dernier lancer instantané de Pas de l'ombre (#173) : son ombre glisse. */
   readonly shadowStepAt: number | null;
+  /** L'instant du dernier soin de Tenir bon (#235, K12) : le halo d'or ; `null` sinon. */
+  readonly healedAt: number | null;
+  /** La dernière contre-attaque renforcée par Représailles (#235) : l'éclat d'or sur l'ennemi. */
+  readonly retaliation: { readonly at: number; readonly enemy: number } | null;
   /** La dernière prise et la dernière extinction de la Brûlure, pour la scène (#171). */
   readonly burnFx: Pick<SceneBurn, 'lit' | 'ticked' | 'out'>;
   /** Le dernier cercle de l'étiquette de la Brûlure (#171). */
@@ -107,6 +111,8 @@ export const INITIAL_DISPLAY: BattleDisplay = {
   riposte: null,
   heroFloat: null,
   shadowStepAt: null,
+  healedAt: null,
+  retaliation: null,
   burnFx: { lit: null, ticked: null, out: null },
   burnRing: null,
   burnFloat: null,
@@ -136,9 +142,10 @@ function poseAfter(event: BattleEvent, pose: HeroPose): HeroPose | null {
     // Le coup de bouclier, sur place (#128).
     case 'bulwarkCountered':
       return 'bash';
-    // Le lancer d'un pouvoir instantané : les lames levées (#173).
+    // Le lancer d'un pouvoir instantané : les lames levées (#173) ; Tenir bon aussi, l'arme levée
+    // qui brille (#235, K12). Le Rempart garde sa pose.
     case 'powerUsed':
-      return event.instant === true ? 'cast' : null;
+      return event.instant === true || event.power === 'holdFast' ? 'cast' : null;
     case 'strikeStarted':
       return 'raise';
     // Un coup reçu reste visible pendant l'avancée suivante ou la transition vers le héros.
@@ -343,6 +350,10 @@ export function displayOf(
     display = { ...display, bulwarkWornAt: bulwarkWornAfter(event, display.bulwarkWornAt) };
     if (event.type === 'powerUsed' && event.instant === true) {
       display = { ...display, shadowStepAt: event.at };
+    }
+    if (event.type === 'heroHealed') display = { ...display, healedAt: event.at };
+    if (event.type === 'counterAttacked' && event.retaliation === true) {
+      display = { ...display, retaliation: { at: event.at, enemy: event.enemy } };
     }
     if (event.type === 'bulwarkCountered') {
       display = { ...display, riposte: { at: event.at, enemy: event.enemy } };

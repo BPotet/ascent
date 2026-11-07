@@ -6,14 +6,18 @@ import type { RandomState } from '../battle/SeededRandom';
 import { drawInt, type Drawn } from './draw';
 import type { Rarity } from './rarity';
 
-/** Les familles de bénédiction (`BlessingFamily`) : Vigueur, Élan, Tranchant, Protection, Hâte. */
-export type BlessingFamily = 'vigor' | 'momentum' | 'edge' | 'protection' | 'haste';
+/**
+ * Les familles de bénédiction (`BlessingFamily`) : Vigueur, Élan, Tranchant, Protection, Hâte et
+ * Fortune (#226). Fortune vient en dernier : l'offre garde le même nombre de tirages.
+ */
+export type BlessingFamily = 'vigor' | 'momentum' | 'edge' | 'protection' | 'haste' | 'fortune';
 export const BLESSING_FAMILIES: readonly BlessingFamily[] = [
   'vigor',
   'momentum',
   'edge',
   'protection',
   'haste',
+  'fortune',
 ];
 
 export interface StartingBlessing {
@@ -24,7 +28,7 @@ export interface StartingBlessing {
 /**
  * L'effet de chaque famille, selon la rareté : Vigueur (PV max, %), Élan (Élan de départ ; la
  * Commune au 1er combat seulement), Tranchant (Attaque, %), Protection (points de réduction), Hâte
- * (Initiative).
+ * (Initiative) et Fortune (clés, #226, fiche `codex/fortune` de l'Atelier).
  */
 export const BLESSING_EFFECTS: Readonly<Record<BlessingFamily, Readonly<Record<Rarity, number>>>> =
   {
@@ -33,7 +37,13 @@ export const BLESSING_EFFECTS: Readonly<Record<BlessingFamily, Readonly<Record<R
     edge: { common: 10, rare: 20, epic: 30 },
     protection: { common: 5, rare: 10, epic: 15 },
     haste: { common: 1, rare: 2, epic: 3 },
+    fortune: { common: 1, rare: 2, epic: 3 },
   };
+
+/** Les clés que donne une bénédiction au moment où elle est choisie : Fortune seulement (#226). */
+export function blessingKeys({ family, rarity }: StartingBlessing): number {
+  return family === 'fortune' ? BLESSING_EFFECTS.fortune[rarity] : 0;
+}
 
 /** Une habitude faite hier : son nom, sa difficulté d'hier et son jour de création. */
 export interface DoneHabit {

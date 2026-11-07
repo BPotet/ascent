@@ -17,7 +17,9 @@ import { BATTLE_HINT_SEEN_KEYS } from '../../../application/useCases/battleHints
 import { CAMP_KEY, CampSession } from '../../../application/useCases/CampSession';
 import type { Ascent } from '../../../domain/ascent/Ascent';
 import { serializeCamp, unlockPrice } from '../../../domain/ascent/camp';
+import { powerPrice } from '../../../domain/ascent/powerTree';
 import type { Unlock } from '../../../domain/ascent/unlocks';
+import type { PowerKind } from '../../../domain/battle/powers';
 import type { Battle } from '../../../domain/battle/Battle';
 import { Day } from '../../../domain/day/Day';
 import type { Dependencies } from '../state/Dependencies';
@@ -30,6 +32,7 @@ export function ascentSetUp({
   shards,
   battle,
   unlocks,
+  powers,
 }: {
   seed?: number;
   saved?: Ascent;
@@ -39,6 +42,8 @@ export function ascentSetUp({
   shards?: number;
   /** Les Déblocages déjà achetés au camp (#40), à leur Prix de déblocage ; absent, aucun. */
   unlocks?: readonly Unlock[];
+  /** Les pouvoirs déjà débloqués au camp (#235), à leur prix ; absent, aucun. */
+  powers?: readonly PowerKind[];
 } = {}) {
   const keyValueStore = memoryKeyValueStore();
   if (shards !== undefined) {
@@ -49,16 +54,20 @@ export function ascentSetUp({
   }
   keyValueStore.values.set(BATTLE_HINT_SEEN_KEYS.hero, '1');
   keyValueStore.values.set(BATTLE_HINT_SEEN_KEYS.defense, '1');
+  keyValueStore.values.set(BATTLE_HINT_SEEN_KEYS.powers, '1');
   if (saved !== undefined) {
     keyValueStore.values.set(
       ASCENT_KEY,
       JSON.stringify({ version: 1, ascent: saved, battle: battle ?? null }),
     );
   }
-  if (unlocks !== undefined) {
+  if (unlocks !== undefined || powers !== undefined) {
     keyValueStore.values.set(
       CAMP_KEY,
-      serializeCamp({ unlocks: unlocks.map((unlock) => ({ unlock, price: unlockPrice(unlock) })) }),
+      serializeCamp({
+        unlocks: (unlocks ?? []).map((unlock) => ({ unlock, price: unlockPrice(unlock) })),
+        powers: (powers ?? []).map((power) => ({ power, price: powerPrice(power) })),
+      }),
     );
   }
   const clock = new ManualBattleClock(10_000);

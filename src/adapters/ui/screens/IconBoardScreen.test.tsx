@@ -72,6 +72,9 @@ describe('IconBoardScreen (#157)', () => {
       'Offre · palier 2',
       'Offre · Second souffle',
       'Offre · Second souffle seule',
+      'Coffre · fermé et ouvert',
+      'Coffre scellé · clé et Fortune',
+      'Pouvoirs · 10 icônes',
       'Équipement · 1 · pied de la tour',
       'Équipement · 3 · pied de la tour',
       'Équipement · 8 · pied de la tour',
@@ -154,6 +157,93 @@ describe('IconBoardScreen (#157)', () => {
 
     expect(screen.getByRole('header', { name: 'Reprends ton souffle' })).toBeOnTheScreen();
     expect(screen.getByRole('radio', { name: /^Second souffle/ })).toBeChecked();
+  });
+
+  it('shows the Chest closed and open, then the found item opening from it, replayed on demand (#227)', async () => {
+    jest.useFakeTimers();
+    try {
+      await open('Coffre · fermé et ouvert');
+
+      const stills = screen.getAllByTestId('chest-board-still', hidden);
+      expect(
+        stills.map(
+          (still) => within(still).getByTestId(/^chest-(closed|open)$/, hidden).props.sprite,
+        ),
+      ).toEqual(['chest-closed', 'chest-open']);
+      const opening = () => screen.getByTestId('chest-board-opening', hidden);
+      expect(within(opening()).getByTestId('chest-stage', hidden)).toBeTruthy();
+      for (let step = 0; step < 7; step += 1) {
+        await act(async () => {
+          jest.advanceTimersByTime(100);
+        });
+      }
+      expect(within(opening()).queryByTestId('chest-stage', hidden)).toBeNull();
+      expect(screen.getByRole('button', { name: 'Équiper' })).toBeOnTheScreen();
+
+      await fireEvent.press(screen.getByRole('button', { name: "Rejouer l'ouverture" }));
+      expect(within(opening()).getByTestId('chest-stage', hidden)).toBeTruthy();
+      await fireEvent.press(screen.getByRole('button', { name: "Passer l'ouverture du coffre" }));
+      await fireEvent.press(screen.getByRole('button', { name: 'Équiper' }));
+      expect(screen.getByRole('header', { name: 'Planche des icônes' })).toBeOnTheScreen();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('shows the sealed chest closed and open, the key, Fortune, and the sealed chest panel (#226)', async () => {
+    jest.useFakeTimers();
+    try {
+      await open('Coffre scellé · clé et Fortune');
+
+      const stills = screen.getAllByTestId('sealed-chest-board-still', hidden);
+      expect(
+        stills.map(
+          (still) => within(still).getByTestId(/^chest-(closed|open)$/, hidden).props.sprite,
+        ),
+      ).toEqual(['sealed-chest-closed', 'sealed-chest-open']);
+      expect(screen.getByTestId('sealed-chest-board-key', hidden)).toHaveProp('sprite', 'key');
+      expect(
+        within(screen.getByTestId('sealed-chest-board-fortune', hidden)).getByTestId(
+          'icon-well',
+          hidden,
+        ),
+      ).toBeTruthy();
+      await fireEvent.press(
+        screen.getByRole('button', { name: "Ouvrir avec une clé, il t'en reste 2" }),
+      );
+      expect(screen.getByText("Le coffre s'ouvre…")).toBeOnTheScreen();
+      await fireEvent.press(screen.getByRole('button', { name: "Passer l'ouverture du coffre" }));
+      expect(
+        screen.getByRole('button', { name: "Ouvrir avec une clé, il t'en reste 2" }),
+      ).toBeOnTheScreen();
+      await fireEvent.press(screen.getByRole('button', { name: 'Laisser' }));
+      expect(screen.getByRole('header', { name: 'Planche des icônes' })).toBeOnTheScreen();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('shows the 10 power icons at ×1 and ×2, in the order of the trees (#235)', async () => {
+    await open('Pouvoirs · 10 icônes');
+
+    const icons = screen.getAllByTestId(/^power-board-/u, hidden);
+    expect(icons.map((icon) => icon.props.testID)).toEqual(
+      [
+        'bulwark',
+        'shieldBash',
+        'crushingBlow',
+        'retaliation',
+        'holdFast',
+        'shadowStep',
+        'rend',
+        'flurry',
+        'mist',
+        'ambush',
+      ].flatMap((code) => [`power-board-${code}-1`, `power-board-${code}-2`]),
+    );
+    expect(icons[1]).toHaveProp('sprite', 'power-icon:bulwark');
+    await fireEvent.press(screen.getByRole('button', { name: 'Retour' }));
+    expect(screen.getByRole('header', { name: 'Planche des icônes' })).toBeOnTheScreen();
   });
 
   it('shows the exits without any boon', async () => {

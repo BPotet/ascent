@@ -6,6 +6,7 @@ import {
   STARTING_EQUIPMENT,
   drawItem,
   drawLoot,
+  drawSealedChestItem,
   dropChance,
   equip,
   itemModifiers,
@@ -13,6 +14,17 @@ import {
 } from './items';
 
 const SEEDS = Array.from({ length: 400 }, (_, index) => index * 2_654_435_761);
+
+/** Un état du flux dont le prochain tirage, × 100, est dans [`from`, `to`). */
+const stateWith = (from: number, to: number, skip = 0): RandomState => {
+  let found = 0;
+  for (let state = 0; ; state += 1) {
+    const percent = nextRandom(state).value * 100;
+    if (percent >= from && percent < to && (found += 1) > skip) return state;
+  }
+};
+const states = (from: number, to: number) =>
+  Array.from({ length: 200 }, (_, index) => stateWith(from, to, index));
 
 describe('item chance (P19, P27)', () => {
   it('is 40 % for 3 enemies, 10 points more or less per enemy', () => {
@@ -177,16 +189,6 @@ describe('equipment (P21)', () => {
 });
 
 describe('the unlockable items (#195)', () => {
-  /** Un état du flux dont le prochain tirage, × 100, est dans [`from`, `to`). */
-  const stateWith = (from: number, to: number, skip = 0): RandomState => {
-    let found = 0;
-    for (let state = 0; ; state += 1) {
-      const percent = nextRandom(state).value * 100;
-      if (percent >= from && percent < to && (found += 1) > skip) return state;
-    }
-  };
-  const states = (from: number, to: number) =>
-    Array.from({ length: 200 }, (_, index) => stateWith(from, to, index));
   const draws = (
     gauge: -2 | 0 | 2,
     elite: boolean,
@@ -315,5 +317,86 @@ describe('the unlockable items (#195)', () => {
         ).value,
     );
     expect(found).toContain('huntingSpear');
+  });
+});
+
+describe('the items left out of a draw (#226, CH7)', () => {
+  it('draws the same items as before without a list of items left out', () => {
+    for (const elite of [true, false]) {
+      SEEDS.forEach((seed) => {
+        expect(drawItem(0, elite, STARTING_EQUIPMENT, seedRandom(seed), [], [])).toEqual(
+          drawItem(0, elite, STARTING_EQUIPMENT, seedRandom(seed)),
+        );
+      });
+    }
+  });
+
+  it('never draws an item left out, as if it were worn', () => {
+    const items = SEEDS.map(
+      (seed) => drawItem(0, true, STARTING_EQUIPMENT, seedRandom(seed), [], ['hammer']).value,
+    );
+    expect(items).not.toContain('hammer');
+    expect(new Set(items.map((item) => ITEMS[item].rarity))).toEqual(new Set(['rare']));
+  });
+});
+
+describe('the content of the sealed chest (#226, CH6, CH7)', () => {
+  const RARES = (Object.keys(ITEMS) as ItemKind[]).filter((item) => ITEMS[item].rarity === 'rare');
+
+  it('gives an Epic unlocked and free when the rarity draw is under 20 %', () => {
+    const items = states(0, EPIC_ITEM_CHANCE).map(
+      (random) => drawSealedChestItem(STARTING_EQUIPMENT, 'hammer', random, ['flamberge']).value,
+    );
+    expect(new Set(items)).toEqual(new Set(['flamberge']));
+  });
+
+  it('gives a Rare otherwise, never the item of the Elite nor an item worn', () => {
+    const worn = { ...STARTING_EQUIPMENT, armor: 'watchmanShield' } as const;
+    const items = states(EPIC_ITEM_CHANCE, 100).map(
+      (random) => drawSealedChestItem(worn, 'hammer', random, ['flamberge']).value,
+    );
+    expect(new Set(items.map((item) => ITEMS[item].rarity))).toEqual(new Set(['rare']));
+    expect(items).not.toContain('hammer');
+    expect(items).not.toContain('watchmanShield');
+    expect(new Set(items).size).toBeGreaterThan(1);
+  });
+
+  it('gives a Rare under 20 % when no Epic is unlocked and free', () => {
+    const worn = { ...STARTING_EQUIPMENT, weapon: 'flamberge' } as const;
+    for (const [equipment, unlocked] of [
+      [STARTING_EQUIPMENT, []],
+      [worn, ['flamberge']],
+    ] as const) {
+      const items = states(0, EPIC_ITEM_CHANCE).map(
+        (random) => drawSealedChestItem(equipment, null, random, unlocked).value,
+      );
+      expect(new Set(items.map((item) => ITEMS[item].rarity))).toEqual(new Set(['rare']));
+    }
+  });
+
+  it('gives a Common when no Rare is free any more (decision of the orchestrator)', () => {
+    const sealed = SEEDS.map(
+      (seed) => drawItem(0, true, STARTING_EQUIPMENT, seedRandom(seed), ['watchBell'], RARES).value,
+    );
+    expect(new Set(sealed.map((item) => ITEMS[item].rarity))).toEqual(new Set(['common']));
+  });
+
+  it('is the draw of the Elite, with the item of the Elite left out', () => {
+    SEEDS.forEach((seed) => {
+      expect(drawSealedChestItem(STARTING_EQUIPMENT, 'hammer', seedRandom(seed), [])).toEqual(
+        drawItem(0, true, STARTING_EQUIPMENT, seedRandom(seed), [], ['hammer']),
+      );
+      expect(drawSealedChestItem(STARTING_EQUIPMENT, null, seedRandom(seed), [])).toEqual(
+        drawItem(0, true, STARTING_EQUIPMENT, seedRandom(seed), []),
+      );
+    });
+  });
+
+  it('never moves with the gauge: +2 and −2 give the same content', () => {
+    SEEDS.forEach((seed) => {
+      expect(drawItem(2, true, STARTING_EQUIPMENT, seedRandom(seed), [], ['hammer'])).toEqual(
+        drawItem(-2, true, STARTING_EQUIPMENT, seedRandom(seed), [], ['hammer']),
+      );
+    });
   });
 });

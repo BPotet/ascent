@@ -5,6 +5,7 @@
  * viennent de la graine de l'ascension (P9), et un tirage révélé est gardé.
  */
 import { HEROES, type EnemyKind, type HeroKind } from '../battle/combatants';
+import { basePower, powerOrder, type PowerKind } from '../battle/powers';
 import { nextRandom, seedRandom, type BattleSeed, type RandomState } from '../battle/SeededRandom';
 import {
   SECOND_BREATH,
@@ -18,6 +19,7 @@ import {
   type OfferCard,
 } from './boons';
 import {
+  blessingKeys,
   drawBlessingOffer,
   heroMaxHp,
   vigorPercent,
@@ -26,8 +28,21 @@ import {
 } from './blessings';
 import { cursedElite, cursedOrdinary, drawCursedEnemy } from './cursedEnemy';
 import type { Drawn } from './draw';
-import { fatiguePercent, favorRerolls, favorSecondChance, type FateGauge } from './fateGauge';
-import { STARTING_EQUIPMENT, drawLoot, equip, type Equipment, type ItemKind } from './items';
+import {
+  fatiguePercent,
+  favorKeys,
+  favorRerolls,
+  favorSecondChance,
+  type FateGauge,
+} from './fateGauge';
+import {
+  STARTING_EQUIPMENT,
+  drawLoot,
+  drawSealedChestItem,
+  equip,
+  type Equipment,
+  type ItemKind,
+} from './items';
 import type { Rarity } from './rarity';
 import { drawElite } from './elites';
 import { drawGroup, drawGroupSize } from './enemyGroup';
@@ -61,6 +76,14 @@ export interface Encounter {
 export interface TierPassage {
   readonly to: 2 | 3;
   readonly step: 'bossDefeated' | 'announce';
+}
+
+/** Le coffre scellé (#226) : après une Élite gagnée, jusqu'à « Ouvrir » ou « Laisser ». */
+export interface SealedChest {
+  /** L'objet garanti de cette Élite : jamais dans le coffre (CH7). */
+  readonly eliteItem: ItemKind | null;
+  /** Ouvert : son objet est l'objet trouvé (`foundItem`) en attente. */
+  readonly opened: boolean;
 }
 
 /** Le soin du Passage de palier, en % des PV max (#38). */
@@ -119,6 +142,11 @@ export interface Ascent {
   readonly passage: TierPassage | null;
   /** Les Déblocages de l'ascension (#195), reçus à son début et gardés jusqu'à sa fin. */
   readonly unlocks: readonly Unlock[];
+  /**
+   * Les pouvoirs équipés (`EquippedPower`, #235), fixés au départ de l'ascension, dans l'ordre de
+   * l'arbre, jusqu'à sa fin ; le pouvoir de base seul par défaut.
+   */
+  readonly powers: readonly PowerKind[];
   /** Cœur de braise a déjà été proposé dans l'ascension, pris ou non (#195). */
   readonly emberHeartOffered: boolean;
   /** Les relances qui restent (#42), données au lancement selon la jauge. */
@@ -127,6 +155,12 @@ export interface Ascent {
   readonly rerollRandom: RandomState;
   /** La seconde chance encore là (#206), donnée au lancement selon la jauge. */
   readonly secondChance: boolean;
+  /** Les clés qui restent (#226), données au lancement par la faveur et au choix de Fortune. */
+  readonly keys: number;
+  /** Le coffre scellé en attente après une Élite (#226), `null` sans coffre. */
+  readonly sealedChest: SealedChest | null;
+  /** Le flux de hasard du coffre scellé, dérivé de la graine : seule une ouverture l'avance. */
+  readonly sealedChestRandom: RandomState;
 }
 
 /**
@@ -139,6 +173,8 @@ export interface AscentLaunch {
   readonly gauge?: FateGauge;
   readonly blessings?: readonly Rarity[];
   readonly unlocks?: readonly Unlock[];
+  /** Les pouvoirs équipés (#235) ; par défaut, le pouvoir de base du héros. */
+  readonly powers?: readonly PowerKind[];
 }
 
 /** Le flux de hasard des bénédictions et du butin : séparé, il ne déplace pas les autres tirages. */
@@ -149,6 +185,11 @@ export function lootStream(seed: AscentSeed): RandomState {
 /** Le flux de hasard des relances (#42) : séparé, il ne déplace aucun autre tirage. */
 export function rerollStream(seed: AscentSeed): RandomState {
   return seedRandom((seed ^ 0x2545f491) >>> 0);
+}
+
+/** Le flux de hasard du coffre scellé (#226) : séparé, il ne déplace aucun autre tirage. */
+export function sealedChestStream(seed: AscentSeed): RandomState {
+  return seedRandom((seed ^ 0x85ebca6b) >>> 0);
 }
 
 /** L'issue d'un combat d'étage. */
@@ -194,6 +235,7 @@ function combat(size: number, random: RandomState, tier: Tier, gauge: FateGauge)
  */
 export function startAscent(seed: AscentSeed, launch: AscentLaunch = {}): Ascent {
   const { hero: heroKind = 'sentinel', gauge = 0, blessings = [], unlocks = [] } = launch;
+  const powers = powerOrder(heroKind, launch.powers ?? [basePower(heroKind)]);
   const size = drawGroupSize(1, seedRandom(seed), false);
   const first = combat(size.value, size.random, 1, gauge);
   const maxHp = heroMaxHp(HEROES[heroKind].maxHp, 0, fatiguePercent(gauge));
@@ -222,23 +264,28 @@ export function startAscent(seed: AscentSeed, launch: AscentLaunch = {}): Ascent
     shardAwards: [],
     passage: null,
     unlocks: [...new Set(unlocks)],
+    powers,
     emberHeartOffered: false,
     rerolls: favorRerolls(gauge),
     rerollRandom: rerollStream(seed),
     secondChance: favorSecondChance(gauge),
+    keys: favorKeys(gauge),
+    sealedChest: null,
+    sealedChestRandom: sealedChestStream(seed),
   };
 }
 
 /**
  * Le joueur prend la bénédiction `index` de l'offre, avec la rareté de son habitude ; l'offre
- * suivante est tirée parmi les familles non prises. Les PV max sont recalculés (Vigueur), et le
- * héros part à PV max (P26).
+ * suivante est tirée parmi les familles non prises. Les PV max sont recalculés (Vigueur), le héros
+ * part à PV max (P26), et Fortune ajoute ses clés (#226).
  */
 export function chooseBlessing(ascent: Ascent, index: number): Ascent {
   const family = ascent.blessingOffer?.[index];
   const [rarity, ...rest] = ascent.blessingRarities;
   if (family === undefined || rarity === undefined) return ascent;
-  const blessings = [...ascent.blessings, { family, rarity }];
+  const blessing = { family, rarity };
+  const blessings = [...ascent.blessings, blessing];
   const maxHp = heroMaxHp(
     HEROES[ascent.hero.kind].maxHp,
     vigorPercent(blessings),
@@ -258,18 +305,76 @@ export function chooseBlessing(ascent: Ascent, index: number): Ascent {
     blessingOffer: offer?.value ?? null,
     lootRandom: offer?.random ?? ascent.lootRandom,
     hero: { ...ascent.hero, hp: maxHp, maxHp },
+    // Les clés de Fortune, au choix de la bénédiction (#226, F2).
+    keys: ascent.keys + blessingKeys(blessing),
   };
+}
+
+/** Le coffre scellé, refermé (`null`) une fois son objet équipé ou laissé (#226). */
+function afterItem(ascent: Ascent): SealedChest | null {
+  return ascent.sealedChest?.opened === true ? null : ascent.sealedChest;
 }
 
 /** Le héros porte l'objet trouvé ; celui qu'il remplace est perdu. */
 export function equipItem(ascent: Ascent): Ascent {
   if (ascent.foundItem === null) return ascent;
-  return { ...ascent, equipment: equip(ascent.equipment, ascent.foundItem), foundItem: null };
+  return {
+    ...ascent,
+    equipment: equip(ascent.equipment, ascent.foundItem),
+    foundItem: null,
+    sealedChest: afterItem(ascent),
+  };
 }
 
 /** L'objet trouvé est laissé : il est perdu. */
 export function leaveItem(ascent: Ascent): Ascent {
-  return { ...ascent, foundItem: null };
+  return { ...ascent, foundItem: null, sealedChest: afterItem(ascent) };
+}
+
+/**
+ * Le coffre scellé peut être ouvert (#226, CH2, CH4) : il est fermé, l'objet garanti a été équipé
+ * ou laissé, et il reste au moins une clé.
+ */
+export function canOpenSealedChest(ascent: Ascent): boolean {
+  return (
+    ascent.sealedChest !== null &&
+    !ascent.sealedChest.opened &&
+    ascent.foundItem === null &&
+    ascent.keys > 0
+  );
+}
+
+/**
+ * Le joueur ouvre le coffre scellé (#226, CH4, CH6) : une clé de moins, et son objet, tiré sur le
+ * flux du coffre, devient l'objet trouvé. Sans ouverture possible, rien ne change.
+ */
+export function openSealedChest(ascent: Ascent): Ascent {
+  const chest = ascent.sealedChest;
+  if (chest === null || !canOpenSealedChest(ascent)) return ascent;
+  const drawn = drawSealedChestItem(
+    ascent.equipment,
+    chest.eliteItem,
+    ascent.sealedChestRandom,
+    unlockedItems(ascent.unlocks),
+  );
+  return {
+    ...ascent,
+    keys: ascent.keys - 1,
+    foundItem: drawn.value,
+    sealedChest: { ...chest, opened: true },
+    sealedChestRandom: drawn.random,
+  };
+}
+
+/**
+ * Le coffre scellé est laissé fermé (#226, CH4, CH5), avec ou sans clé : il est perdu, les clés ne
+ * changent pas et rien n'est tiré.
+ */
+export function leaveSealedChest(ascent: Ascent): Ascent {
+  if (ascent.sealedChest === null || ascent.sealedChest.opened || ascent.foundItem !== null) {
+    return ascent;
+  }
+  return { ...ascent, sealedChest: null };
 }
 
 /** Les sorties vers l'étage `floor` ; la taille du groupe est tirée avec la porte Combat. */
@@ -301,8 +406,8 @@ export function chooseExit(ascent: Ascent, index: number): Ascent {
   if (exit === undefined || ascent.outcome !== null || ascent.boonOffer !== null) return ascent;
   const { tier } = ascent;
   const floor = ascent.floor + 1;
-  // Une porte franchie laisse l'objet trouvé, s'il en reste un.
-  const entered = { ...ascent, floor, exits: [], foundItem: null };
+  // Une porte franchie laisse l'objet trouvé, s'il en reste un, et le coffre scellé (#226).
+  const entered = { ...ascent, floor, exits: [], foundItem: null, sealedChest: null };
   switch (exit.kind) {
     case 'campfire':
       return withExits(
@@ -371,6 +476,10 @@ export function endFloorBattle(ascent: Ascent, result: FloorBattleResult): Ascen
     lastGold: gold,
     foundItem: loot.value,
     lootRandom: loot.random,
+    // Le coffre scellé, après une Élite seulement (#226, CH2) : il ne tire rien.
+    ...(current.kind === 'elite' && {
+      sealedChest: { eliteItem: loot.value, opened: false },
+    }),
     shardAwards: [
       ...ascent.shardAwards,
       ...shardAwards(ascent.seed, tier, ascent.floor, current.kind),

@@ -17,10 +17,10 @@ describe('the game icons (#157)', () => {
     ['Second souffle', SECOND_BREATH_ICON] as const,
   ];
 
-  it('has an icon for each of the 14 boons, the 5 blessing families and Second souffle (#212)', () => {
+  it('has an icon for each of the 14 boons, the 6 blessing families (Fortune, #226) and Second souffle (#212)', () => {
     expect(Object.keys(BOON_ICONS).sort()).toEqual([...BOON_KINDS].sort());
     expect(Object.keys(BLESSING_ICONS).sort()).toEqual([...BLESSING_FAMILIES].sort());
-    expect(icons).toHaveLength(20);
+    expect(icons).toHaveLength(21);
   });
 
   it.each(icons)('draws the %s icon square, on 16 or 24 art pixels', (_, image) => {
@@ -44,6 +44,10 @@ describe('the game icons (#157)', () => {
     expect(secondBreathIcon()).toEqual({
       sprite: 'second-breath-icon',
       image: SECOND_BREATH_ICON,
+    });
+    expect(blessingIcon('fortune')).toEqual({
+      sprite: 'blessing-icon:fortune',
+      image: BLESSING_ICONS.fortune,
     });
     expect(blessingIcon('protection')).toEqual({
       sprite: 'blessing-icon:protection',

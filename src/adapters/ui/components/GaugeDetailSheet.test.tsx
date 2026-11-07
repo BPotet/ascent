@@ -76,6 +76,27 @@ describe('GaugeDetailSheet (#41)', () => {
     expect(screen.getByText("L'ascension se lance toujours, et reste gagnable.")).toBeOnTheScreen();
   });
 
+  it.each([1, 2] as const)(
+    'lists 1 key and tells what it opens at %p (#226, J3, J4)',
+    async (gauge) => {
+      await open({ gauge, reading: reading({ gauge }) });
+
+      expect(within(screen.getByTestId('gauge-effects')).getByText('1 clé')).toBeOnTheScreen();
+      expect(
+        screen.getByText("La clé ouvre le coffre scellé d'une Élite. Elle vaut toute l'ascension."),
+      ).toBeOnTheScreen();
+    },
+  );
+
+  it.each([0, -1, -2] as const)('tells nothing of the keys at %p (#226)', async (gauge) => {
+    await open({ gauge, reading: reading({ gauge }) });
+
+    expect(screen.queryByText('1 clé')).toBeNull();
+    expect(
+      screen.queryByText("La clé ouvre le coffre scellé d'une Élite. Elle vaut toute l'ascension."),
+    ).toBeNull();
+  });
+
   it('closes from the top, from the bottom, and with the back gesture', async () => {
     const { onClose } = await open();
 

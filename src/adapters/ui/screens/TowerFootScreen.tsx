@@ -8,7 +8,10 @@ import type { FateGaugeReading } from '../../../application/useCases/fateGauge';
 import type { Ascent } from '../../../domain/ascent/Ascent';
 import type { FateGauge } from '../../../domain/ascent/fateGauge';
 import { loadoutOf, loadoutSize } from '../../../domain/ascent/loadout';
+import type { Tier } from '../../../domain/ascent/tiers';
 import type { HeroKind } from '../../../domain/battle/combatants';
+import { TowerFootBackdrop } from '../battle/TierBackdrop';
+import { towerFootTier } from '../battle/scene/towerFootTier';
 import { GaugeDetailSheet } from '../components/GaugeDetailSheet';
 import { GaugeDial, GaugeEffectList } from '../components/GaugeDial';
 import { LoadoutSection } from '../components/LoadoutSection';
@@ -25,6 +28,7 @@ import {
   tierLine,
 } from '../format/ascentText';
 import { HERO_NAMES } from '../format/battleText';
+import { keysText } from '../format/sealedChestText';
 import {
   ASCENT_GAUGE_TITLE,
   ASCENT_KEEPS_GAUGE,
@@ -81,6 +85,56 @@ function ShardChip({ total }: { readonly total: number }) {
     >
       <PixelIcon name="shard8" color={roles.shard} secondColor={roles.light} />
       <Text style={styles.shardText}>{shardText(total)}</Text>
+    </View>
+  );
+}
+
+/**
+ * L'en-tête du pied de la tour (titre « La tour », Éclats, ligne du palier), mesuré dans la fenêtre
+ * à chaque mise en page (#233) : le voile fort du décor s'arrête à son bas. Le contenu centré bouge
+ * quand la jauge ou la bande « jauge changée » apparaît : il est remesuré à chaque fois.
+ */
+function TowerFootHeader({
+  children,
+  onBottom,
+}: {
+  readonly children: ReactNode;
+  readonly onBottom: (bottom: number) => void;
+}) {
+  const view = useRef<View>(null);
+  return (
+    <View
+      ref={view}
+      testID="tower-foot-header"
+      style={styles.header}
+      onLayout={() =>
+        view.current?.measureInWindow((_x, y, _width, height) => onBottom(y + height))
+      }
+    >
+      {children}
+    </View>
+  );
+}
+
+/**
+ * Le pied de la tour sur son décor (#233) : le fond du palier `tier` sous un voile de la nuit, puis
+ * l'écran, transparent, par-dessus ; comme l'écran de combat, le décor passe sous la barre d'état.
+ */
+function OnBackdrop({
+  tier,
+  headerBottom,
+  children,
+}: {
+  readonly tier: Tier;
+  readonly headerBottom: number | null;
+  readonly children: ReactNode;
+}) {
+  return (
+    <View style={styles.backdrop}>
+      <TowerFootBackdrop tier={tier} headerBottom={headerBottom} />
+      <Screen layout="top" background="transparent" testID="tower-foot">
+        {children}
+      </Screen>
     </View>
   );
 }
@@ -247,6 +301,7 @@ function AscentInProgress({
   onAbandon,
   foot,
   today,
+  onHeaderBottom,
 }: {
   readonly ascent: Ascent;
   readonly shards: number;
@@ -256,6 +311,8 @@ function AscentInProgress({
   readonly foot: ReactNode;
   /** La jauge du jour, qui attend la prochaine ascension. */
   readonly today: FateGaugeReading | null;
+  /** Le bas de l'en-tête, mesuré dans la fenêtre (#233). */
+  readonly onHeaderBottom: (bottom: number) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [detail, setDetail] = useState(false);
@@ -277,17 +334,26 @@ function AscentInProgress({
     <>
       <View style={styles.scrollArea}>
         <ScrollView testID="tower-foot-scroll" contentContainerStyle={styles.scroll}>
-          <Text accessibilityRole="header" style={styles.title}>
-            {TOWER_TITLE}
-          </Text>
-          <ShardChip total={shards} />
-          <Text style={styles.line}>{tierLine(ascent.tier)}</Text>
+          <TowerFootHeader onBottom={onHeaderBottom}>
+            <Text accessibilityRole="header" style={styles.title}>
+              {TOWER_TITLE}
+            </Text>
+            <ShardChip total={shards} />
+            <Text style={styles.line}>{tierLine(ascent.tier)}</Text>
+          </TowerFootHeader>
           <PixelFrame testID="tower-foot-ascent" style={styles.frame}>
             <View style={styles.hero}>
               <Text style={styles.status}>{HERO_NAMES[ascent.hero.kind]}</Text>
               <Text style={styles.status}>
                 {`${floorLine(ascent.floor, ascent.tier)} · ${ascent.hero.hp}/${ascent.hero.maxHp} PV · ${goldText(ascent.gold)}`}
               </Text>
+              {ascent.keys > 0 && (
+                // Les clés sous l'Or, sur leur propre ligne, à partir d'une clé (#226, T1).
+                <View style={styles.keys} testID="tower-foot-keys">
+                  <PixelIcon name="key8" color={roles.gold} />
+                  <Text style={styles.status}>{keysText(ascent.keys)}</Text>
+                </View>
+              )}
             </View>
             <AscentGaugeCard
               ref={gaugeCard}
@@ -299,7 +365,7 @@ function AscentInProgress({
             <LoadoutSection ref={link} loadout={loadout} onDetail={() => setDetail(true)} />
           </PixelFrame>
           {today !== null && !today.sealed && (
-            <Text style={styles.discreet}>{nextAscentLine(today.gauge)}</Text>
+            <Text style={[styles.discreet, styles.plate]}>{nextAscentLine(today.gauge)}</Text>
           )}
         </ScrollView>
         {loadoutSize(loadout) > SCROLL_HINT_BEYOND && (
@@ -308,7 +374,7 @@ function AscentInProgress({
       </View>
       {confirming ? (
         <View style={styles.bottom}>
-          <Text style={styles.line}>
+          <Text style={[styles.line, styles.plate]}>
             Abandonner ? L&apos;ascension se termine comme une chute : l&apos;Or est perdu.
           </Text>
           <PixelButton label="Annuler" variant="secondary" onPress={() => setConfirming(false)} />
@@ -382,6 +448,7 @@ export function TowerFootScreen({
   const [gaugeDetail, setGaugeDetail] = useState(false);
   const gaugeCard = useRef<View>(null);
   const gaugeChange = useGaugeChange(reading);
+  const [headerBottom, setHeaderBottom] = useState<number | null>(null);
   const closeGaugeDetail = () => {
     setGaugeDetail(false);
     if (gaugeCard.current !== null) {
@@ -401,7 +468,7 @@ export function TowerFootScreen({
   // « Exporter le journal », en bas, sous les actions, séparé par un filet (maquette 193, P1 à P4).
   const foot =
     !loaded || logExport === undefined ? null : (
-      <View style={styles.foot}>
+      <View testID="tower-foot-log-export" style={[styles.foot, styles.plate]}>
         <LogExportButton logExport={logExport} revision={ascent} showCount active={focused} />
       </View>
     );
@@ -422,13 +489,14 @@ export function TowerFootScreen({
         confirmLabel={(hero) => `Continuer avec ${heroInSentence(hero)}`}
         onStart={(hero) => start(choosing, hero)}
         onClose={() => setChoosing(null)}
+        equipped={campView.equipped}
       />
     );
   }
 
   if (loaded && inProgress) {
     return (
-      <Screen layout="top" background={roles.night} testID="tower-foot">
+      <OnBackdrop tier={towerFootTier(ascent)} headerBottom={headerBottom}>
         <AscentInProgress
           ascent={ascent}
           shards={shards}
@@ -437,23 +505,26 @@ export function TowerFootScreen({
           onAbandon={() => session.abandon()}
           foot={foot}
           today={reading}
+          onHeaderBottom={setHeaderBottom}
         />
-      </Screen>
+      </OnBackdrop>
     );
   }
 
   return (
-    <Screen layout="top" background={roles.night} testID="tower-foot">
+    <OnBackdrop tier={towerFootTier(ascent)} headerBottom={headerBottom}>
       <View style={styles.content}>
-        <Text accessibilityRole="header" style={styles.title}>
-          {TOWER_TITLE}
-        </Text>
-        {!loaded ? null : <ShardChip total={shards} />}
-        <Text style={styles.line}>{TIER_LINE}</Text>
+        <TowerFootHeader onBottom={setHeaderBottom}>
+          <Text accessibilityRole="header" style={styles.title}>
+            {TOWER_TITLE}
+          </Text>
+          {!loaded ? null : <ShardChip total={shards} />}
+          <Text style={styles.line}>{TIER_LINE}</Text>
+        </TowerFootHeader>
         {!loaded ? null : (
           <View style={styles.actions}>
             {ascent === null ? null : (
-              <Text style={styles.status}>
+              <Text style={[styles.status, styles.plate]}>
                 {`Ascension terminée : ${goldText(ascent.gold)}, perdus à la fin.`}
               </Text>
             )}
@@ -490,15 +561,20 @@ export function TowerFootScreen({
           onClose={closeGaugeDetail}
         />
       )}
-    </Screen>
+    </OnBackdrop>
   );
 }
 
 // Stryker disable all: styles d'un écran de prototype.
 const styles = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: roles.night },
+  header: { gap: 12 },
+  /** La plaque du Voile de lisibilité sous un texte posé sur le décor hors de l'en-tête (#233). */
+  plate: { backgroundColor: roles.backdropVeil },
   content: { flex: 1, justifyContent: 'center', padding: 24, gap: 12 },
   title: { ...pixelTypography.screenTitle, color: roles.light, textAlign: 'center' },
   line: { ...pixelTypography.body, color: roles.parchment, textAlign: 'center' },
+  keys: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
   status: {
     fontFamily: textFont.semiBold,
     fontSize: 16,

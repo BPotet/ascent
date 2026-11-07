@@ -10,6 +10,7 @@ import {
   type Encounter,
 } from '../../../domain/ascent/Ascent';
 import type { Tier } from '../../../domain/ascent/tiers';
+import { POWER_TREES, type PowerTreeCode } from '../../../domain/ascent/powerTree';
 import type { AttackKind } from '../../../domain/battle/attacks';
 import {
   advance,
@@ -22,15 +23,31 @@ import type { EnemyKind } from '../../../domain/battle/combatants';
 import type { BlessingFamily, StartingBlessing } from '../../../domain/ascent/blessings';
 import type { BoonKind, OfferCard } from '../../../domain/ascent/boons';
 import type { Exit } from '../../../domain/ascent/exits';
+import { STARTING_EQUIPMENT } from '../../../domain/ascent/items';
 import type { Rarity } from '../../../domain/ascent/rarity';
 import type { ShardAward } from '../../../domain/ascent/shards';
 import { BoonChoicePanel } from '../battle/BoonChoicePanel';
 import { BlessingChoice } from '../components/BlessingChoice';
+import { ChestStage } from '../components/ChestStage';
 import { ExitChoice } from '../components/ExitChoice';
+import { FoundItemPanel } from '../components/FoundItemPanel';
+import { IconWell } from '../components/IconWell';
+import { PowerIcon } from '../components/PowerIcon';
+import { SealedChestPanel } from '../components/SealedChestPanel';
 import { Screen } from '../components/Screen';
 import { artPalette } from '../pixelArt/artPalette';
 import { PixelButton } from '../pixelArt/PixelButton';
 import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypography';
+import { CHEST_IMAGE, CHEST_OPEN_IMAGE } from '../pixelArt/sprites/atelier/data/chest';
+import { KEY_IMAGE } from '../pixelArt/sprites/atelier/data/key';
+import {
+  SEALED_CHEST_IMAGE,
+  SEALED_CHEST_OPEN_IMAGE,
+} from '../pixelArt/sprites/atelier/data/sealedChest';
+import { assetSprite } from '../pixelArt/sprites/atelier/fullAnimation';
+import { blessingIcon } from '../pixelArt/sprites/gameIcons';
+import { toPixelImage } from '../pixelArt/sprites/Sprite';
+import { SpriteCanvas } from '../pixelArt/SpriteCanvas';
 import { AscentScreen, type AscentVisibility } from './AscentScreen';
 import { CampScreen } from './CampScreen';
 import { TowerFootScreen } from './TowerFootScreen';
@@ -48,7 +65,13 @@ type Board =
   // Les bienfaits de palier et la carte Second souffle (#212) : O1, O2 et O4 de la maquette 210.
   | 'tierTwoOffer'
   | 'secondBreath'
-  | 'secondBreathAlone';
+  | 'secondBreathAlone'
+  // Le Coffre (#227) : fermé et ouvert, puis l'objet qui en sort (B1 à B3 de la maquette 208).
+  | 'chest'
+  // Le coffre scellé, la clé et l'icône Fortune (#226, S2, S3 de la maquette 208).
+  | 'sealedChest'
+  // Les 10 icônes des pouvoirs (#235, maquette 232), à ×1 et ×2, dans l'ordre des arbres.
+  | 'powers';
 
 const ENTRIES: readonly (readonly [Board, string])[] = [
   ['boons', "Choix d'un bienfait"],
@@ -60,7 +83,16 @@ const ENTRIES: readonly (readonly [Board, string])[] = [
   ['tierTwoOffer', 'Offre · palier 2'],
   ['secondBreath', 'Offre · Second souffle'],
   ['secondBreathAlone', 'Offre · Second souffle seule'],
+  ['chest', 'Coffre · fermé et ouvert'],
+  ['sealedChest', 'Coffre scellé · clé et Fortune'],
+  ['powers', 'Pouvoirs · 10 icônes'],
 ];
+
+/** Les codes des arbres de pouvoirs, racine puis voies, Sentinelle puis Errante (#235). */
+const TREE_CODES: readonly PowerTreeCode[] = (['sentinel', 'wanderer'] as const).flatMap((hero) => {
+  const { base, paths } = POWER_TREES[hero];
+  return [base, ...paths.flatMap((path) => path.ranks)];
+});
 
 /**
  * Une entrée de l'Équipement (#159) : le vrai pied de la tour ou le vrai écran de l'ascension, sur
@@ -134,7 +166,10 @@ const DOORS: readonly Exit[] = [
 ];
 const EXITS: Readonly<
   Record<
-    Exclude<Board, keyof typeof OFFERS | 'blessings' | 'oneBlessing'>,
+    Exclude<
+      Board,
+      keyof typeof OFFERS | 'blessings' | 'oneBlessing' | 'chest' | 'sealedChest' | 'powers'
+    >,
     { boons: readonly BoonKind[]; exits: readonly Exit[] }
   >
 > = {
@@ -388,6 +423,7 @@ export function IconBoardScreen({
 }) {
   const [board, setBoard] = useState<Board | null>(null);
   const [step, setStep] = useState(0);
+  const [sealedOpening, setSealedOpening] = useState(false);
   const [ascent, setAscent] = useState<OpenAscent | null>(null);
   const back = () => setBoard(null);
   const open = (entry: Board) => {
@@ -472,6 +508,90 @@ export function IconBoardScreen({
         />
       ) : board === 'oneBlessing' ? (
         <BlessingChoice {...ONE_BLESSING} onChoose={back} />
+      ) : board === 'chest' ? (
+        <>
+          {gained}
+          <View style={styles.chests}>
+            {[false, true].map((opened) => (
+              <View key={String(opened)} testID="chest-board-still">
+                <ChestStage
+                  name="chest"
+                  closed={CHEST_IMAGE}
+                  open={CHEST_OPEN_IMAGE}
+                  scale={2}
+                  opened={opened}
+                  shake={0}
+                  glow={opened ? 1 : 0}
+                />
+              </View>
+            ))}
+          </View>
+          <View testID="chest-board-opening" style={styles.opening}>
+            <FoundItemPanel
+              key={step}
+              item="axe"
+              equipment={STARTING_EQUIPMENT}
+              animate
+              onLeave={back}
+              onEquip={back}
+            />
+          </View>
+          <PixelButton
+            label="Rejouer l'ouverture"
+            variant="secondary"
+            onPress={() => setStep(step + 1)}
+            style={styles.replay}
+          />
+        </>
+      ) : board === 'sealedChest' ? (
+        <>
+          <View style={styles.chests}>
+            {[false, true].map((opened) => (
+              <View key={String(opened)} testID="sealed-chest-board-still">
+                <ChestStage
+                  name="sealed-chest"
+                  closed={SEALED_CHEST_IMAGE}
+                  open={SEALED_CHEST_OPEN_IMAGE}
+                  scale={2}
+                  opened={opened}
+                  shake={0}
+                  glow={opened ? 1 : 0}
+                />
+              </View>
+            ))}
+            <SpriteCanvas
+              sprite="key"
+              draw={() => toPixelImage(assetSprite(KEY_IMAGE))}
+              scale={2}
+              testID="sealed-chest-board-key"
+            />
+            <View testID="sealed-chest-board-fortune">
+              <IconWell icon={blessingIcon('fortune')} rarity="rare" size="card" />
+            </View>
+          </View>
+          <View style={styles.opening}>
+            <SealedChestPanel
+              keys={2}
+              opening={sealedOpening}
+              onOpen={() => setSealedOpening(true)}
+              onLeave={back}
+              onOpened={() => setSealedOpening(false)}
+            />
+          </View>
+        </>
+      ) : board === 'powers' ? (
+        <View style={styles.chests}>
+          {TREE_CODES.flatMap((code) =>
+            ([1, 2] as const).map((scale) => (
+              <PowerIcon
+                key={`${code}-${scale}`}
+                power={code}
+                scale={scale}
+                testID={`power-board-${code}-${scale}`}
+              />
+            )),
+          )}
+        </View>
       ) : (
         <ExitChoice {...EXITS[board]} banner={gained} onChoose={back} />
       )}
@@ -505,6 +625,9 @@ const styles = StyleSheet.create({
     color: roles.parchment,
   },
   back: { minWidth: 84, paddingHorizontal: 14 },
+  chests: { flexDirection: 'row', justifyContent: 'center', gap: 24, paddingTop: 16 },
+  opening: { flex: 1 },
+  replay: { margin: 16 },
   gold: {
     fontFamily: pixelFont,
     fontSize: 18,

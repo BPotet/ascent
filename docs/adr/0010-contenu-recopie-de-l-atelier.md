@@ -436,3 +436,81 @@ pose `idle0`, ce que l'en-tête de chaque fichier note.
    `clockJack` deviennent des identifiants de sauvegarde (avenant #152) : ils ne changent plus.
 5. **Teintes.** Toutes les teintes des trois animations, de la palette rouge du Jaquemart et des
    trois icônes sont déjà dans `artPalette` : aucune n'est ajoutée.
+
+## Avenant du 6 novembre 2026 (#227) : les images du Coffre
+
+Le Coffre fermé et ouvert (Atelier, `assets/chest` et `assets/chestOpen`, lus le 06/11/2026,
+version 1, proposition « Coffre de chêne », `chosen: 0`, statut `validé`) sont recopiés dans
+`sprites/atelier/data/chest.ts` (`CHEST_IMAGE`, `CHEST_OPEN_IMAGE`), clé `proposals[chosen]`, clés
+`w`, `h`, `palette` et `rows` seulement, 32 × 24. Aucune fiche Codex : le Coffre n'est qu'un
+habillage.
+
+1. **Recopie par script.** Cette fois, l'outil de lecture de l'Atelier écrit les deux documents en
+   fichiers (`out_dir`) : ils sont lus par `ArtifactData get`, en lecture seule, puis recopiés par
+   un script qui vérifie la version, le statut et la proposition, et calcule la sha256 du JSON
+   compact de `data`, clés triées (règle de l'avenant #212). Les sha256 sont écrites dans l'en-tête
+   du fichier et dans « Données de l'Atelier » de la story. Une version autre que 1 arrête la
+   recopie.
+2. **Contrôle de fidélité.** `chest.data.test.ts` compare les deux images, pixel pour pixel, à
+   `ART.chest.A` et `ART.chestOpen.A` de la maquette validée versionnée
+   `docs/mockups/208-coffres-cles/index.html`, et vérifie leurs dimensions, leurs teintes (toutes
+   dans `artPalette`) et l'absence du rouge du **Sceau**. Dans cette maquette, `ART` est rangé par
+   image puis par proposition (`A`, `B`), et la palette s'appelle `palette` : le lecteur
+   `sprites/atelier/testing/mockup208.ts` en tient compte, et le coffre scellé (#226) le réutilise.
+3. **Teintes.** Toutes les teintes des deux images sont déjà dans `artPalette` : aucune n'est
+   ajoutée.
+
+## Avenant du 6 novembre 2026 (#226) : le coffre scellé, la clé et Fortune
+
+Le coffre scellé fermé et ouvert (`assets/sealedChest`, `assets/sealedChestOpen`, « Coffre de
+bronze », `chosen: 0`), la clé (`assets/key`, « Clé d'or », `chosen: 0`) et l'icône de la
+bénédiction Fortune (`assets/fortune`, « Trèfle », `chosen: 1`), lus le 06/11/2026, version 1,
+statut `validé`, sont recopiés dans `sprites/atelier/data/sealedChest.ts`
+(`SEALED_CHEST_IMAGE`, `SEALED_CHEST_OPEN_IMAGE`, 32 × 24), `sprites/atelier/data/key.ts`
+(`KEY_IMAGE`, 16 × 16) et `sprites/atelier/data/blessingIcons.ts` (`fortune`, 16 × 16), clé
+`proposals[chosen]`, clés `w`, `h`, `palette` et `rows` seulement. La fiche `codex/fortune`
+(version 1, effet `keys` 1 / 2 / 3) donne `BLESSING_EFFECTS.fortune`.
+
+1. **Recopie par script**, comme à l'avenant #227 : documents lus par `ArtifactData get` en
+   fichiers, en lecture seule, version vérifiée, sha256 du JSON compact de `data`, clés triées,
+   écrite dans l'en-tête de chaque fichier et dans « Données de l'Atelier » de la story.
+2. **Contrôle de fidélité.** `sealedChest.data.test.ts` compare les quatre images, pixel pour
+   pixel, à `ART.sealedChest.A`, `ART.sealedChestOpen.A`, `ART.key.A` et `ART.fortune.B` de la
+   maquette versionnée `docs/mockups/208-coffres-cles/index.html`, avec le lecteur `mockup208.ts`
+   de #227, vérifie leurs teintes (toutes dans `artPalette`) et l'absence du rouge du **Sceau**, et
+   compare `BLESSING_EFFECTS.fortune` à la fiche (1, 2, 3). La comparaison des icônes de bénédiction
+   à la maquette 153 se limite aux cinq familles d'avant Fortune.
+3. **Le glyphe `key8`**, « Clé couchée », n'est pas dans l'Atelier : il est recopié de
+   `ART.key8.A` de la maquette versionnée, déjà au format des glyphes d'`icons.ts` (8 × 8, `X`), et
+   `icons.test.ts` le compare à la maquette. Le glyphe `chest8` n'est pas recopié : le journal
+   d'ascension n'a aucun écran (décision de l'orchestrateur du 06/11/2026).
+4. **Échelle ×5.** Le coffre scellé est dessiné à ×5 (maquette 208, S2) : `ArtScale` gagne la
+   valeur 5, pour lui seul.
+5. **Teintes.** Toutes les teintes sont déjà dans `artPalette` : aucune n'est ajoutée.
+
+## Avenant du 6 novembre 2026 (#235) : les fiches et les icônes des pouvoirs
+
+Les 6 fiches du Codex des pouvoirs lançables (`codex/bulwark`, `retaliation`, `holdFast`,
+`shadowStep`, `rend`, `mist`, catégorie `power`, actives, version 1) et les **10** icônes des
+pouvoirs (`assets/power<Code>`, 16 × 16, statut `validé`), lues le 06/11/2026, sont recopiées :
+
+1. **Fiches.** Les valeurs de `stats` (héros, `order`, `momentumCost`, `instant`, `charge`,
+   `oncePerBattle` et les paramètres d'effet) dans `POWERS` (`src/domain/battle/powers.ts`) ;
+   `name`, `buttonName` et `effectText` dans `format/powerText.ts`. Sha256 dans l'en-tête de
+   `powers.ts`.
+2. **Icônes.** Les 6 pouvoirs lançables et, dès #235, les 4 frappes de pouvoir (`powerShieldBash`,
+   `powerCrushingBlow`, `powerFlurry`, `powerAmbush`), montrées éteintes « Bientôt » dans l'arbre
+   (décision de l'orchestrateur du 06/11/2026). Clé `proposals[chosen]` (`chosen: 0`, Rafale
+   `chosen: 1`), clés `w`, `h`, `palette` et `rows` seulement, dans
+   `sprites/atelier/data/powerIcons.ts` (`POWER_ICONS`). Version 1, sauf **`powerCrushingBlow` en
+   version 3** : ses champs `animation`, `animStatus`, `animChosen` et `animNote` (poses de Fracas,
+   pour #236) ne sont pas recopiés, son icône est celle de la version 2, et sa sha256 est calculée
+   sur la `data` de la version 3. Sha256 dans l'en-tête de `powerIcons.ts`.
+3. **Recopie par script**, comme aux avenants #227 et #226 : documents lus par `ArtifactData get`,
+   en lecture seule, version vérifiée, sha256 du JSON compact de `data`, clés triées, écrite dans
+   l'en-tête des fichiers et dans « Données de l'Atelier » de la story.
+4. **Contrôle de fidélité.** `powers.data.test.ts` compare chaque icône, pixel pour pixel, à
+   `ART.<code>.A` de la maquette versionnée `docs/mockups/232-arbre-de-pouvoirs/index.html`
+   (`ART.flurry.B` pour Rafale), avec le lecteur de la maquette 208 généralisé (`mockupArt`), et
+   vérifie que toutes leurs teintes sont dans `artPalette`.
+5. **Teintes.** Toutes les teintes sont déjà dans `artPalette` : aucune n'est ajoutée.

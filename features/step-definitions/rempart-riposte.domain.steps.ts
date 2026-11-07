@@ -5,7 +5,8 @@
  */
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
 
-import { HEROES, SENTINEL } from '../../src/domain/battle/combatants';
+import { SENTINEL } from '../../src/domain/battle/combatants';
+import { basePower } from '../../src/domain/battle/powers';
 import { bulwarkCounterBlow, type EnemyBlow } from '../../src/domain/battle/strike';
 
 interface World {
@@ -22,7 +23,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and('son Rempart est actif', () => {
-    expect(HEROES.sentinel.power).toBe('bulwark');
+    expect(basePower('sentinel')).toBe('bulwark');
   });
 
   given("l'ennemi qui porte le coup est étourdi", () => {

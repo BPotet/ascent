@@ -256,11 +256,99 @@ describe('LoadoutSheet (#159)', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  describe('the reserves of the ascent (#226, E1, E3)', () => {
+    const WITH_RESERVES: Loadout = { ...THREE, reserves: { gold: 35, keys: 2 } };
+
+    it('heads the sheet with the Gold and the keys, before the favor', async () => {
+      await open({ ...WITH_RESERVES, favor: { gauge: 2, rerollsLeft: 1, rerollsGranted: 2 } });
+
+      const heading = screen.getByLabelText('Réserves');
+      expect(within(heading).getByText('Réserves', hidden)).toBeOnTheScreen();
+      const gold = screen.getByTestId('reserve-row-gold');
+      expect(gold).toHaveAccessibleName('Or, 35');
+      expect(within(gold).getByText('Gagné à chaque étage franchi.')).toBeOnTheScreen();
+      expect(within(gold).getByText('35')).toHaveStyle({ color: roles.gold });
+      const keys = screen.getByTestId('reserve-row-keys');
+      expect(keys).toHaveAccessibleName("Clés, 2 : ouvrent le coffre scellé d'une Élite");
+      expect(within(keys).getByText('2')).toHaveStyle({ color: roles.gold });
+      expect(within(keys).getByTestId('reserve-key-image', hidden)).toBeOnTheScreen();
+      const order = screen
+        .getAllByText(/^(Réserves|Or|Clés|Faveur de l'ascension|Relances)$/, hidden)
+        .map((text) => text.props.children);
+      expect(order).toEqual(['Réserves', 'Or', 'Clés', "Faveur de l'ascension", 'Relances']);
+    });
+
+    it('greys the keys without key, without favor section (E3)', async () => {
+      await open({ ...THREE, reserves: { gold: 35, keys: 0 } });
+
+      const keys = screen.getByTestId('reserve-row-keys');
+      expect(
+        within(keys).getByText('Aucune clé. La faveur et Fortune en donnent.'),
+      ).toBeOnTheScreen();
+      expect(within(keys).getByText('0')).toHaveStyle({ color: roles.muted });
+      expect(screen.queryByText("Faveur de l'ascension", hidden)).toBeNull();
+    });
+
+    it('never counts the reserves as loadout rows, but in the scroll hint', async () => {
+      await open({
+        blessings: [],
+        boons: ['perfectEcho', 'lingeringFrost'],
+        reserves: { gold: 0, keys: 0 },
+      });
+
+      expect(rows()).toHaveLength(2);
+      expect(screen.getByTestId('loadout-sheet-more', hidden)).toBeOnTheScreen();
+    });
+
+    it('has no reserves section without reserves', async () => {
+      await open(THREE);
+
+      expect(screen.queryByText('Réserves', hidden)).toBeNull();
+    });
+  });
+
   it('closes with a « Fermer » of 48 dp at least', async () => {
     await open(THREE);
 
     expect(screen.getByRole('button', { name: 'Fermer' })).toHaveStyle({
       minHeight: MIN_TARGET_SIZE,
     });
+  });
+});
+
+describe('the equipped powers in the Loadout (#235, E1)', () => {
+  const loadout: Loadout = {
+    blessings: [],
+    boons: [],
+    reserves: { gold: 35, keys: 0 },
+    powers: ['shadowStep', 'rend', 'mist'],
+  };
+
+  it('lists the 3 equipped powers after the Reserves, with their cost, type and effect', async () => {
+    await open(loadout);
+
+    const section = within(screen.getByTestId('loadout-powers'));
+    expect(section.getByLabelText('Pouvoirs, 3')).toBeOnTheScreen();
+    expect(section.getAllByTestId(/^loadout-power-/u).map(({ props }) => props.testID)).toEqual([
+      'loadout-power-shadowStep',
+      'loadout-power-rend',
+      'loadout-power-mist',
+    ]);
+    expect(section.getByText('2 Élan · Instantané')).toBeOnTheScreen();
+    expect(screen.getByTestId('loadout-power-mist').props.accessibilityLabel).toBe(
+      'Brume, 2 Élan, Instantané. Le prochain impact qui te fait des dégâts est réduit de 50 %.',
+    );
+    const parts = screen
+      .getAllByText(/^(Réserves|Pouvoirs|Bénédictions de départ)$/u, {
+        includeHiddenElements: true,
+      })
+      .map(({ props }) => props.children);
+    expect(parts).toEqual(['Réserves', 'Pouvoirs', 'Bénédictions de départ']);
+  });
+
+  it('has no section of powers without powers', async () => {
+    await open({ blessings: [], boons: [] });
+
+    expect(screen.queryByTestId('loadout-powers')).not.toBeOnTheScreen();
   });
 });

@@ -57,7 +57,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   then(/^les effets de la jauge comptent « 1 relance »$/u, async () => {
     const card = await screen.findByRole('button', { name: /^Jauge du jour : Faveur, plus 1\./u });
     expect(within(card).getByText('1 relance')).toBeOnTheScreen();
-    expect(card.props.accessibilityLabel).toMatch(/, 1 relance\. /u);
+    expect(card.props.accessibilityLabel).toMatch(/, 1 relance, 1 clé\. /u);
   });
 
   given(/^une ascension lancée avec une jauge de \+2, où il reste 1 relance sur 2$/u, () => {

@@ -1,5 +1,8 @@
 import {
+  SKIP_CHEST_LABEL,
+  TAP_TO_SKIP,
   blessingCard,
+  chestAnnouncement,
   blessingChip,
   blessingText,
   enemiesText,
@@ -14,6 +17,7 @@ import {
   tierLine,
   goldText,
   itemDescription,
+  itemAnnouncement,
   itemEffectLine,
   itemName,
   itemText,
@@ -45,11 +49,11 @@ describe('ascent texts', () => {
 
     expect(exitLabel(combat, -1)).toBe('Combat · 3 ennemis · dont 1 maudit');
     expect(exitLabel(combat, -2)).toBe('Combat · 3 ennemis · dont 1 maudit');
-    expect(exitLabel(elite, -1)).toBe('Élite · objet Rare garanti');
-    expect(exitLabel(elite, -2)).toBe('Élite maudite · objet Rare garanti');
+    expect(exitLabel(elite, -1)).toBe('Élite · objet Rare garanti · coffre scellé');
+    expect(exitLabel(elite, -2)).toBe('Élite maudite · objet Rare garanti · coffre scellé');
     for (const gauge of [0, 1, 2] as const) {
       expect(exitLabel(combat, gauge)).toBe('Combat · 3 ennemis');
-      expect(exitLabel(elite, gauge)).toBe('Élite · objet Rare garanti');
+      expect(exitLabel(elite, gauge)).toBe('Élite · objet Rare garanti · coffre scellé');
     }
     expect(exitLabel({ kind: 'boss', groupSize: null }, -2)).toBe('Affronter le boss');
   });
@@ -57,12 +61,23 @@ describe('ascent texts', () => {
   it('announces the Rare item the Elite door guarantees, not the Elite drawn behind it (#120)', () => {
     const label = exitLabel({ kind: 'elite', groupSize: null });
 
-    expect(label).toBe('Élite · objet Rare garanti');
+    expect(label).toBe('Élite · objet Rare garanti · coffre scellé');
     expect(label).not.toMatch(/Chevalier déchu|Jumeaux/u);
   });
 });
 
 describe('blessing and item texts (#93)', () => {
+  it('names Fortune with its keys (#226)', () => {
+    expect(blessingText({ family: 'fortune', rarity: 'common' })).toBe(
+      'Fortune · Commune · +1 clé',
+    );
+    expect(blessingText({ family: 'fortune', rarity: 'rare' })).toBe('Fortune · Rare · +2 clés');
+    expect(blessingCard({ family: 'fortune', rarity: 'epic' })).toMatchObject({
+      name: 'Fortune',
+      effect: '+3 clés',
+    });
+  });
+
   it('names the blessings with their effect', () => {
     expect(blessingText({ family: 'haste', rarity: 'rare' })).toBe(
       'Hâte · Rare · Initiative +2 dans chaque combat',
@@ -230,5 +245,27 @@ describe('tier and Shard texts (#38)', () => {
     expect(tierAnnouncement(2)).toBe('Palier 2, les Jardins de cendre');
     expect(tierAnnouncement(3)).toBe('Palier 3, le Beffroi');
     expect(summitAnnouncement(28)).toBe('28 Éclats gagnés, Sommet atteint');
+  });
+});
+
+describe('Chest texts (#227)', () => {
+  it('announces an item by its name, rarity, effect and Initiative, without its slot', () => {
+    expect(itemAnnouncement('axe')).toBe('Hache rouillée, Commun, Brise-garde ×1,1, Initiative −1');
+    expect(itemAnnouncement('hammer')).toBe('Marteau, Rare, Brise-garde ×1,6, Initiative −1');
+    expect(itemAnnouncement('crossbow')).toBe('Arbalète, Rare, Initiative +1');
+    expect(itemAnnouncement('flamberge')).toBe(
+      'Flamberge, Épique, Attaque +10 %, Frappe parfaite +0,3, Initiative 0',
+    );
+  });
+
+  it('announces the opened Chest, then the item', () => {
+    expect(chestAnnouncement('axe')).toBe(
+      'Coffre ouvert. Hache rouillée, Commun, Brise-garde ×1,1, Initiative −1.',
+    );
+  });
+
+  it('names the tap that skips the opening of the Chest', () => {
+    expect(SKIP_CHEST_LABEL).toBe("Passer l'ouverture du coffre");
+    expect(TAP_TO_SKIP).toBe('Touche pour passer');
   });
 });
