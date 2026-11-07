@@ -140,6 +140,21 @@ describe('Battle with the hero modifiers (P18)', () => {
     expect(perfect({ perfectStrikeBonusPercents: [50] })).toBe(20);
   });
 
+  it('Lame juste: the perfect strike bonus does not enter the guard, 18 with or without (#244)', () => {
+    const perfectGuard = (modifiers: Partial<HeroModifiers>) => {
+      const attacked = heroAction(start(modifiers), {
+        action: { kind: 'attack' },
+        touchStartedAt: 50,
+        releasedAt: 100,
+      }).battle;
+      const { impactAt } = attacked.phase as { readonly impactAt: number };
+      return firstOf(pressStrike(attacked, { at: impactAt }).events, 'strikeResolved').guardDamage;
+    };
+
+    expect(perfectGuard({})).toBe(18);
+    expect(perfectGuard({ perfectStrikeBonusPercents: [50, 30] })).toBe(18);
+  });
+
   it('Givre persistant: a stunned enemy gets back half of its guard, rounded down', () => {
     const { battle } = playUntil(
       start({ guardDamagePercents: [130], guardRestorePercent: 50 }),

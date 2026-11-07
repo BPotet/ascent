@@ -72,7 +72,6 @@ import {
   counterBlow,
   judgeStrike,
   strikeBlow,
-  strikeMultiplier,
   type EnemyBlow,
 } from './strike';
 import { bleedsOn, mergeBleed, tickBleed } from './bleed';
@@ -1630,7 +1629,8 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
   const blow = strikeBlow({
     attackPower: heroAttack(hero.attackPower, modifiers),
     guardDamage: hero.guardDamage,
-    multiplier: strikeMultiplier(judgement, modifiers.perfectStrikeBonusPercents),
+    judgement,
+    perfectBonusPercents: modifiers.perfectStrikeBonusPercents,
     stunned: battle.enemies[phase.enemy]!.stun !== null,
     attackPercents: modifiers.attackPercents,
     guardPercents: [

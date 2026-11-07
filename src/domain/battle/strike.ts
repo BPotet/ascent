@@ -59,13 +59,15 @@ export interface EnemyBlow {
 }
 
 /**
- * Un impact de frappe (C6.5), un seul arrondi à la fin : PV = Attaque × multiplicateur de frappe ×
- * multiplicateur d'étourdi ; garde = Brise-garde × multiplicateur de frappe, 0 sur un étourdi.
+ * Un impact de frappe (C6.5), un seul arrondi chacun : PV = Attaque × multiplicateur de frappe (bonus
+ * de frappe parfaite compris) × multiplicateur d'étourdi ; garde = Brise-garde × multiplicateur de
+ * frappe sans les bonus (1,5, 1,2 ou 1,0, #244, G1) × pourcentages de Brise-garde, 0 sur un étourdi.
  */
 export function strikeBlow({
   attackPower,
   guardDamage,
-  multiplier,
+  judgement,
+  perfectBonusPercents = [],
   stunned,
   attackPercents = [],
   guardPercents = [],
@@ -73,21 +75,25 @@ export function strikeBlow({
 }: {
   readonly attackPower: number;
   readonly guardDamage: number;
-  readonly multiplier: number;
+  /** Le jugement de l'appui sur « Frapper », `null` sans appui. */
+  readonly judgement: PressJudgement | null;
+  /** Les bonus de frappe parfaite (Cuir, Lame juste, Heure juste, Flamberge) : PV seulement. */
+  readonly perfectBonusPercents?: readonly number[];
   readonly stunned: boolean;
   /** Les pourcentages des objets (#93) et des bienfaits (#92), dans le même calcul. */
   readonly attackPercents?: readonly number[];
+  /** Les pourcentages de Brise-garde (Hache, Marteau, Braise brisante, Entaille…). */
   readonly guardPercents?: readonly number[];
   readonly stunnedBonusPercent?: number;
 }): EnemyBlow {
   return {
     hp: scaleDamage(
       attackPower,
-      multiplier,
+      strikeMultiplier(judgement, perfectBonusPercents),
       ...attackPercents,
       stunnedPercent(stunned, stunnedBonusPercent),
     ),
-    guard: stunned ? 0 : scaleDamage(guardDamage, multiplier, ...guardPercents),
+    guard: stunned ? 0 : scaleDamage(guardDamage, strikeMultiplier(judgement), ...guardPercents),
   };
 }
 

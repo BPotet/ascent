@@ -63,17 +63,18 @@ describe('timed strike (C6)', () => {
 
   describe('strikeBlow (C6.5): one rounding, at the end', () => {
     it.each([
-      [100, 10, 12, 15],
-      [120, 12, 14, 18],
-      [150, 15, 18, 22],
-    ])(
-      'multiplier %i: %i HP and %i guard on a standing enemy, %i HP on a stunned one',
-      (multiplier, hp, guard, stunnedHp) => {
-        expect(strikeBlow({ ...SENTINEL_STRIKE, multiplier, stunned: false })).toEqual({
+      [null, 10, 12, 15],
+      ['miss', 10, 12, 15],
+      ['good', 12, 14, 18],
+      ['perfect', 15, 18, 22],
+    ] as const)(
+      'judgement %s: %i HP and %i guard on a standing enemy, %i HP on a stunned one',
+      (judgement, hp, guard, stunnedHp) => {
+        expect(strikeBlow({ ...SENTINEL_STRIKE, judgement, stunned: false })).toEqual({
           hp,
           guard,
         });
-        expect(strikeBlow({ ...SENTINEL_STRIKE, multiplier, stunned: true })).toEqual({
+        expect(strikeBlow({ ...SENTINEL_STRIKE, judgement, stunned: true })).toEqual({
           hp: stunnedHp,
           guard: 0,
         });
@@ -82,8 +83,89 @@ describe('timed strike (C6)', () => {
 
     it('removes at least 1 HP and 1 guard point', () => {
       expect(
-        strikeBlow({ attackPower: 0.5, guardDamage: 0.5, multiplier: 100, stunned: false }),
+        strikeBlow({ attackPower: 0.5, guardDamage: 0.5, judgement: null, stunned: false }),
       ).toEqual({ hp: 1, guard: 1 });
+    });
+  });
+
+  describe('strikeBlow, the guard break of a strike (#244, G1)', () => {
+    // Lame juste (+50) et Heure juste (+30) : des bonus de frappe parfaite.
+    const BONUSES = [50, 30];
+
+    it('puts the perfect strike bonuses into the HP only: 23 HP and 18 guard', () => {
+      // PV : 10 × 230 % = 23 ; garde : 12 × 150 % = 18 (27 avant #244).
+      expect(
+        strikeBlow({
+          ...SENTINEL_STRIKE,
+          judgement: 'perfect',
+          perfectBonusPercents: BONUSES,
+          stunned: false,
+        }),
+      ).toEqual({ hp: 23, guard: 18 });
+    });
+
+    it('applies the guard break percents to the guard, in one rounding: 23 guard', () => {
+      // Braise brisante : 12 × 150 % × 130 % = 23,4.
+      expect(
+        strikeBlow({
+          ...SENTINEL_STRIKE,
+          judgement: 'perfect',
+          perfectBonusPercents: BONUSES,
+          stunned: false,
+          guardPercents: [130],
+        }),
+      ).toEqual({ hp: 23, guard: 23 });
+    });
+
+    it('takes 36 guard with a perfect power strike of 200 % guard and Lame juste', () => {
+      // Le Coup de bouclier (#236) : 12 × 150 % × 200 %.
+      expect(
+        strikeBlow({
+          ...SENTINEL_STRIKE,
+          judgement: 'perfect',
+          perfectBonusPercents: [50],
+          stunned: false,
+          guardPercents: [200],
+        }).guard,
+      ).toBe(36);
+    });
+
+    it('computes each hit of the Wanderer alone: 12 HP and 11 guard with Lame juste and Rend', () => {
+      // PV : 6 × 200 % = 12 ; garde : 5 × 150 % × 150 % = 11,25.
+      expect(
+        strikeBlow({
+          attackPower: 6,
+          guardDamage: 5,
+          judgement: 'perfect',
+          perfectBonusPercents: [50],
+          stunned: false,
+          guardPercents: [150],
+        }),
+      ).toEqual({ hp: 12, guard: 11 });
+    });
+
+    it('keeps a good strike as it was: 14 guard, no bonus', () => {
+      expect(
+        strikeBlow({
+          ...SENTINEL_STRIKE,
+          judgement: 'good',
+          perfectBonusPercents: [50],
+          stunned: false,
+        }),
+      ).toEqual({ hp: 12, guard: 14 });
+    });
+
+    it('takes no guard from a stunned enemy, the bonuses still in the HP', () => {
+      // PV : 10 × 200 % × 150 % = 30.
+      expect(
+        strikeBlow({
+          ...SENTINEL_STRIKE,
+          judgement: 'perfect',
+          perfectBonusPercents: [50],
+          stunned: true,
+          guardPercents: [130],
+        }),
+      ).toEqual({ hp: 30, guard: 0 });
     });
   });
 
