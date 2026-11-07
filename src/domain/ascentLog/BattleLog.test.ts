@@ -13,6 +13,7 @@ import {
 } from '../battle/Battle';
 import type { BattleEvent } from '../battle/BattleEvent';
 import type { Intent } from '../battle/intents';
+import type { PowerKind } from '../battle/powers';
 import type { TierMultiplier } from '../battle/tierMultiplier';
 import {
   BATTLE_LOG_MAX_ENTRIES,
@@ -440,6 +441,25 @@ describe('BattleLog', () => {
         beginBattleLog(PLACE, { ...ready, hero: { ...ready.hero, secondChance: 'used' } }, START)
           .hero,
       ).not.toHaveProperty('secondChance');
+    });
+  });
+
+  describe('the kindled powers (#237)', () => {
+    it('notes the codes of the kindled powers at the start, only when there are some', () => {
+      const battle = (kindled: readonly PowerKind[]) =>
+        startBattle({
+          seed: 7,
+          defenseHint: false,
+          at: START,
+          enemies: ['ghoul'],
+          powers: ['bulwark', 'retaliation'],
+          kindled,
+        }).battle;
+
+      expect(beginBattleLog(PLACE, battle(['retaliation']), START).hero).toMatchObject({
+        kindled: ['retaliation'],
+      });
+      expect(beginBattleLog(PLACE, battle([]), START).hero).not.toHaveProperty('kindled');
     });
   });
 

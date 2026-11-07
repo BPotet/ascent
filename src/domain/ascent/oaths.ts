@@ -12,21 +12,15 @@ import { POWERS, basePower, type PowerKind } from '../battle/powers';
 import { Day } from '../day/Day';
 import type { HabitId } from '../habit/Habit';
 import { campPowers, type Camp } from './camp';
+import { OATH_MIN_COST, type KindledPower } from './kindled';
 
-/** Le coût en Élan à partir duquel un pouvoir porte un Serment. */
-export const OATH_MIN_COST = 2;
+export { OATH_MIN_COST, type KindledPower };
 
 /** Un Serment : l'habitude liée au pouvoir, et le jour (`AAAA-MM-JJ`) où il est prêté ou changé. */
 export interface Oath {
   readonly power: PowerKind;
   readonly habit: HabitId;
   readonly since: string;
-}
-
-/** Un pouvoir attisé (`KindledPower`) : le pouvoir et l'habitude de son Serment tenu hier. */
-export interface KindledPower {
-  readonly power: PowerKind;
-  readonly habit: HabitId;
 }
 
 const costsEnough = (power: PowerKind) => POWERS[power].cost >= OATH_MIN_COST;
