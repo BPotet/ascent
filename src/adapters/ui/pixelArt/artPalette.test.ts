@@ -73,6 +73,11 @@ describe('artPalette', () => {
     expect(roles.backdropVeil).toBe('rgba(14,17,32,0.9)');
   });
 
+  it('gives the tower foot veil: the night at 75 % under the header, then 12 % (#233)', () => {
+    expect(roles.towerFootVeil).toBe('rgba(14,17,32,0.75)');
+    expect(roles.towerFootVeilLight).toBe('rgba(14,17,32,0.12)');
+  });
+
   it('gives the veil of the enemy phase: the ink #06070C at 38 % (#188)', () => {
     expect(roles.enemyPhaseVeil).toBe('rgba(6,7,12,0.38)');
   });
