@@ -5,7 +5,6 @@ import { EMPTY_CAMP, availableShards, unlockAtCamp, type Camp } from './camp';
 import {
   POWER_PRICES,
   POWER_TREES,
-  SOON_POWERS,
   equippedPowers,
   powerNodeState,
   powerPath,
@@ -42,10 +41,6 @@ describe('the power trees (#235)', () => {
     });
   });
 
-  it('shows the 4 power strikes as « Soon »', () => {
-    expect(SOON_POWERS).toEqual(['shieldBash', 'crushingBlow', 'flurry', 'ambush']);
-  });
-
   it('gives each node its path and rank', () => {
     expect([powerPath('bulwark'), powerRank('bulwark')]).toEqual([null, 0]);
     expect([powerPath('holdFast'), powerRank('holdFast')]).toEqual(['watch', 2]);
@@ -73,10 +68,15 @@ describe('the state of a node (#235)', () => {
     expect(state(EMPTY_CAMP, 500, 'shadowStep')).toEqual({ kind: 'base' });
   });
 
-  it('says « Soon » for a power strike, before the lock', () => {
-    expect(state(EMPTY_CAMP, 200, 'shieldBash')).toEqual({ kind: 'soon' });
-    expect(state(EMPTY_CAMP, 200, 'crushingBlow')).toEqual({ kind: 'soon' });
-    expect(state(EMPTY_CAMP, 200, 'ambush')).toEqual({ kind: 'soon' });
+  it('says no power strike « Soon » any more (#236): they follow the states of the others', () => {
+    expect(state(EMPTY_CAMP, 90, 'shieldBash')).toEqual({ kind: 'affordable' });
+    expect(state(EMPTY_CAMP, 90, 'crushingBlow')).toEqual({ kind: 'locked', after: 'shieldBash' });
+    expect(state(campWith('mist'), 90, 'ambush')).toEqual({ kind: 'affordable' });
+    expect(state(campWith('mist'), 60, 'flurry')).toEqual({ kind: 'locked', after: 'rend' });
+    expect(state(campWith('shieldBash'), 80, 'crushingBlow')).toEqual({
+      kind: 'missing',
+      missing: 10,
+    });
   });
 
   it('locks a rank 2 until its rank 1 is unlocked, even with enough Shards', () => {
@@ -144,9 +144,17 @@ describe('an unlock of a power at the Camp (#235)', () => {
     expect(bought.kind === 'unlocked' && availableShards(90, bought.camp)).toBe(0);
   });
 
-  it('never sells the base power nor a power strike « Soon »', () => {
+  it('never sells the base power', () => {
     expect(unlockPowerAtCamp(EMPTY_CAMP, 500, 'bulwark')).toEqual({ kind: 'notForSale' });
-    expect(unlockPowerAtCamp(EMPTY_CAMP, 500, 'shieldBash')).toEqual({ kind: 'notForSale' });
+  });
+
+  it('sells Shield Bash then Crushing Blow for 90 Shards, down to 0 (#236)', () => {
+    const bash = unlockPowerAtCamp(EMPTY_CAMP, 90, 'shieldBash');
+    const camp = bash.kind === 'unlocked' ? bash.camp : EMPTY_CAMP;
+    const crush = unlockPowerAtCamp(camp, 90, 'crushingBlow');
+
+    expect(crush).toEqual({ kind: 'unlocked', camp: campWith('shieldBash', 'crushingBlow') });
+    expect(crush.kind === 'unlocked' && availableShards(90, crush.camp)).toBe(0);
   });
 
   it('refuses to unlock twice', () => {
@@ -164,5 +172,11 @@ describe('the equipped powers (#235)', () => {
 
     expect(equippedPowers(camp, 'sentinel')).toEqual(['bulwark', 'retaliation', 'holdFast']);
     expect(equippedPowers(camp, 'wanderer')).toEqual(['shadowStep', 'rend', 'mist']);
+  });
+
+  it('equip the base power then the order of the tree with 4 powers or more (#236)', () => {
+    const camp = campWith('retaliation', 'holdFast', 'shieldBash', 'crushingBlow');
+
+    expect(equippedPowers(camp, 'sentinel')).toEqual(['bulwark', 'shieldBash', 'crushingBlow']);
   });
 });

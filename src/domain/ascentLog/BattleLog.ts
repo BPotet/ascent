@@ -458,11 +458,12 @@ class Writer {
         const category = draft.round.intents[event.enemy]?.category ?? 'attack';
         this.act(draft, event.enemy, KIND_OF_INTENT[category], t, false);
         return;
+      // Une frappe de pouvoir (#236) reste l'action `power` de son lancer.
       case 'strikeStarted':
-        this.act(draft, 'hero', 'strike', t);
+        this.act(draft, 'hero', 'strike', t, event.power === undefined);
         return;
       case 'strikeResolved':
-        this.press(draft, this.act(draft, 'hero', 'strike', t), {
+        this.press(draft, this.act(draft, 'hero', 'strike', t, event.power === undefined), {
           kind: 'strike',
           t,
           button: 'strike',

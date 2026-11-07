@@ -47,7 +47,16 @@ import { heroInitiative } from './initiative';
 import { cursedValue } from './curse';
 import { drawIntent, raisedHp, type GuardIntent, type Intent, type RaiseIntent } from './intents';
 import { MOMENTUM_MAX, MOMENTUM_START, gainMomentum, missingMomentum } from './momentum';
-import { BULWARK_DAMAGE_PERCENT, POWERS, basePower, kindledCost, type PowerKind } from './powers';
+import {
+  BULWARK_DAMAGE_PERCENT,
+  POWERS,
+  POWER_STRIKE_INTERVAL_MS,
+  basePower,
+  isPowerStrike,
+  kindledCost,
+  type PowerKind,
+  type PowerStrikeKind,
+} from './powers';
 import {
   COUNTER_MS,
   HERO_ACTION_MS,
@@ -243,6 +252,10 @@ export type BattlePhase =
       readonly hit?: number;
       /** Entaille (#235) : chaque coup de cette frappe retire 150 % de son Brise-garde. */
       readonly rend?: true;
+      /** La frappe de pouvoir lancée (#236) ; absente pour « Attaquer ». */
+      readonly power?: PowerStrikeKind;
+      /** Frappe furtive (#236) : la cible avait encore sa case après l'Errante, jugé au lancer. */
+      readonly ambush?: true;
     }
   | {
       readonly kind: 'heroPower';
@@ -535,17 +548,29 @@ export type PowerAvailability =
   | { readonly kind: 'instantUsed' }
   | { readonly kind: 'missing'; readonly missing: number };
 
-/** La charge du pouvoir `power` est active : il attend son emploi (PW3). */
+/**
+ * La charge du pouvoir `power` est active : il attend son emploi (PW3). Tenir bon et les frappes de
+ * pouvoir (#236) n'ont pas de charge : jamais actifs. Le `switch` est exhaustif, sans `default` : un
+ * pouvoir oublié ne compile pas, et aucun ne lit `hero[power]`.
+ */
 function isActive(hero: HeroState, power: PowerKind): boolean {
   switch (power) {
     case 'bulwark':
       return hero.bulwark;
     case 'shadowStep':
       return hero.shadowStep === true;
+    case 'retaliation':
+      return hero.retaliation === true;
+    case 'mist':
+      return hero.mist === true;
+    case 'rend':
+      return hero.rend === true;
     case 'holdFast':
+    case 'shieldBash':
+    case 'crushingBlow':
+    case 'flurry':
+    case 'ambush':
       return false;
-    default:
-      return hero[power] === true;
   }
 }
 
@@ -1667,6 +1692,7 @@ export function pressDefense(
 function resolveStrike(battle: Battle, events: Events, at: number): Battle {
   const phase = battle.phase as StrikePhase;
   const hero = heroProfile(battle);
+  const profile = strikeProfile(battle, phase);
   const hit = phase.hit ?? 1;
   const judgement = phase.press?.judgement ?? null;
   const modifiers = heroModifiers(battle);
@@ -1677,10 +1703,11 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
     judgement,
     perfectBonusPercents: modifiers.perfectStrikeBonusPercents,
     stunned: battle.enemies[phase.enemy]!.stun !== null,
-    attackPercents: modifiers.attackPercents,
+    attackPercents: [...modifiers.attackPercents, profile.hpPercent],
     guardPercents: [
       ...modifiers.guardDamagePercents,
       ...(rend ? [POWERS.rend.guardPercentNextStrike!] : []),
+      profile.guardPercent,
     ],
     stunnedBonusPercent: modifiers.stunnedBonusPercent,
   });
@@ -1692,8 +1719,9 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
     delta: phase.press?.delta ?? null,
     damage: blow.hp,
     guardDamage: blow.guard,
-    ...(hero.hits > 1 && { hit }),
+    ...(profile.hits > 1 && { hit }),
     ...(rend && { rend }),
+    ...(phase.power !== undefined && { power: phase.power }),
   });
   const struck = hitEnemy(
     { ...battle, phase: { ...phase, resolved: true } },
@@ -1704,10 +1732,56 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
   );
   const stopped = judgement === 'perfect' || struck.broken;
   const resolved = stopped ? startHitStop(struck.battle, events, at) : struck.battle;
-  if (hit >= hero.hits || !isStanding(resolved.enemies[phase.enemy]!)) return resolved;
-  // Le coup suivant (les Dagues jumelles), décalé par l'arrêt sur image ; perdu si la cible tombe.
-  const impactAt = phase.impactAt + hero.hitIntervalMs + (stopped ? HIT_STOP_MS : 0);
-  return startStrike(resolved, events, { enemy: phase.enemy, at, impactAt, hit: hit + 1, rend });
+  if (hit >= profile.hits || !isStanding(resolved.enemies[phase.enemy]!)) return resolved;
+  // Le coup suivant (les Dagues jumelles, une frappe de pouvoir), décalé par l'arrêt sur image ;
+  // perdu si la cible tombe.
+  const impactAt = phase.impactAt + profile.intervalMs + (stopped ? HIT_STOP_MS : 0);
+  return startStrike(resolved, events, {
+    enemy: phase.enemy,
+    at,
+    impactAt,
+    hit: hit + 1,
+    rend,
+    ...strikeOf(phase),
+  });
+}
+
+/** La frappe de pouvoir d'une frappe en rythme (#236) : son pouvoir et Frappe furtive. */
+interface PowerStrikeSpec {
+  readonly power?: PowerStrikeKind;
+  readonly ambush?: true;
+}
+
+function strikeOf({ power, ambush }: PowerStrikeSpec): PowerStrikeSpec {
+  return { ...(power !== undefined && { power }), ...(ambush && { ambush }) };
+}
+
+/** Le profil d'une frappe en rythme : ses coups, leur écart et ses parts de PV et de Brise-garde. */
+export interface StrikeProfile {
+  readonly hits: number;
+  readonly intervalMs: number;
+  readonly hpPercent: number;
+  readonly guardPercent: number;
+}
+
+/**
+ * Le profil de la frappe en rythme `phase` (#236), seule lecture : sans pouvoir, celui
+ * d'« Attaquer » (les coups du héros, 100 % et 100 %) ; une frappe de pouvoir prend ses coups (à la
+ * place des Dagues jumelles), à 300 ms d'écart, et ses parts ; Frappe furtive jugée au lancer, ses
+ * 250 % à la place de ses 100 %.
+ */
+export function strikeProfile(battle: Battle, { power, ambush }: PowerStrikeSpec): StrikeProfile {
+  if (power === undefined) {
+    const { hits, hitIntervalMs } = heroProfile(battle);
+    return { hits, intervalMs: hitIntervalMs, hpPercent: 100, guardPercent: 100 };
+  }
+  const profile = POWERS[power];
+  return {
+    hits: profile.strikeHits!,
+    intervalMs: POWER_STRIKE_INTERVAL_MS,
+    hpPercent: ambush === true ? profile.ambushHpPercent! : profile.strikeHpPercent!,
+    guardPercent: profile.strikeGuardPercent!,
+  };
 }
 
 /** Un coup de la frappe en rythme commence : son impact, et sa récupération après la fenêtre. */
@@ -1720,17 +1794,27 @@ function startStrike(
     impactAt,
     hit,
     rend,
+    ...spec
   }: {
     readonly enemy: number;
     readonly at: number;
     readonly impactAt: number;
     readonly hit: number;
     readonly rend: boolean;
-  },
+  } & PowerStrikeSpec,
 ): Battle {
   const until = missDeadline(impactAt, battle.inputOffset) + STRIKE_RECOVERY_MS;
-  const multiple = heroProfile(battle).hits > 1;
-  events.push({ type: 'strikeStarted', at, enemy, impactAt, until, ...(multiple && { hit }) });
+  const multiple = strikeProfile(battle, spec).hits > 1;
+  const power = strikeOf(spec);
+  events.push({
+    type: 'strikeStarted',
+    at,
+    enemy,
+    impactAt,
+    until,
+    ...(multiple && { hit }),
+    ...(power.power !== undefined && { power: power.power }),
+  });
   return {
     ...battle,
     phase: {
@@ -1743,6 +1827,7 @@ function startStrike(
       until,
       ...(multiple && { hit }),
       ...(rend && { rend: true as const }),
+      ...power,
     },
   };
 }
@@ -1784,7 +1869,7 @@ function startHeroAction(battle: Battle, phase: BattlePhase): Battle {
 function startTimedStrike(
   battle: Battle,
   events: Events,
-  { enemy, at }: { readonly enemy: number; readonly at: number },
+  { enemy, at, ...spec }: { readonly enemy: number; readonly at: number } & PowerStrikeSpec,
 ): Battle {
   const { rend, ...hero } = battle.hero;
   return startStrike(rend ? { ...battle, hero } : battle, events, {
@@ -1793,6 +1878,7 @@ function startTimedStrike(
     impactAt: at + STRIKE_WIND_UP_MS,
     hit: 1,
     rend: rend === true,
+    ...strikeOf(spec),
   });
 }
 
@@ -1818,16 +1904,58 @@ function holdFast(hero: HeroState, events: Events, at: number): HeroState {
   return { ...rest, hp: hero.hp + heal, spent: [...(hero.spent ?? []), 'holdFast'] };
 }
 
-/** L'effet d'un pouvoir lancé sur le héros : sa charge posée, ou le soin de Tenir bon (#235). */
-function powerEffect(hero: HeroState, power: PowerKind, events: Events, at: number): HeroState {
+/**
+ * L'effet d'un pouvoir lancé sur le héros : sa charge posée, ou le soin de Tenir bon (#235). Une
+ * frappe de pouvoir (#236) n'arrive jamais ici : elle n'a pas de charge.
+ */
+function powerEffect(
+  hero: HeroState,
+  power: Exclude<PowerKind, PowerStrikeKind>,
+  events: Events,
+  at: number,
+): HeroState {
   switch (power) {
     case 'bulwark':
       return { ...hero, bulwark: true };
+    case 'shadowStep':
+      return { ...hero, shadowStep: true };
+    case 'retaliation':
+      return { ...hero, retaliation: true };
+    case 'mist':
+      return { ...hero, mist: true };
+    case 'rend':
+      return { ...hero, rend: true };
     case 'holdFast':
       return holdFast(hero, events, at);
-    default:
-      return { ...hero, [power]: true };
   }
+}
+
+/**
+ * Une frappe de pouvoir (#236, PW5) : son Élan (attisé compris), puis la frappe en rythme sur la
+ * cible, qui consomme Entaille, et l'action du héros (C5.3) ; sans le +1 Élan d'une attaque.
+ * Frappe furtive est jugée ici, une fois : la cible a encore sa case dans l'ordre après le héros.
+ */
+function launchPowerStrike(
+  battle: Battle,
+  events: Events,
+  power: PowerStrikeKind,
+  at: number,
+): Battle {
+  const momentum = battle.hero.momentum - powerCost(battle, power);
+  const { target, turn } = battle;
+  const ambush = power === 'ambush' && turn.order.indexOf(target, turn.position + 1) >= 0;
+  const strikeEvents: Events = [];
+  const struck = startTimedStrike({ ...battle, hero: { ...battle.hero, momentum } }, strikeEvents, {
+    enemy: target,
+    at,
+    power,
+    ...(ambush && { ambush }),
+  });
+  const { until } = struck.phase as StrikePhase;
+  events.push({ type: 'powerUsed', at, power, until });
+  events.push({ type: 'momentumChanged', at, momentum });
+  events.push(...strikeEvents);
+  return startHeroAction(struck, struck.phase);
 }
 
 /**
@@ -1840,6 +1968,7 @@ function activatePower(
   { power, phase }: { readonly power: PowerKind; readonly phase: HeroPhase },
   at: number,
 ): Battle {
+  if (isPowerStrike(power)) return launchPowerStrike(battle, events, power, at);
   const { instant } = POWERS[power];
   const until = instant ? at : at + HERO_ACTION_MS;
   const momentum = battle.hero.momentum - powerCost(battle, power);
