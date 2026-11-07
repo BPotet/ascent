@@ -20,6 +20,7 @@ export const NO_HABIT =
 export const GO_TO_DAY = 'Aller à la Journée';
 export const HABITS_UNREADABLE = "Tes habitudes n'ont pas pu être lues.";
 export const SWEAR_OFF_LABEL = 'Prêter serment, indisponible : choisis une habitude';
+export const SWEAR_BUSY_LABEL = 'Prêter serment, en cours';
 
 const nameOf = (power: PowerKind) => TREE_POWER_NAMES[power];
 const cost = (power: PowerKind) => POWERS[power].cost;

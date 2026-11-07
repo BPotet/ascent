@@ -139,3 +139,27 @@ describe('OathPicker (#237)', () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
+
+describe('OathPicker while an Oath is being saved (#237)', () => {
+  it('keeps « Prêter serment » off and says it is in progress', async () => {
+    const onSwear = jest.fn();
+    await render(
+      <OathPicker
+        power="retaliation"
+        habits={HABITS}
+        oaths={{}}
+        error={false}
+        busy
+        onSwear={onSwear}
+        onRetryHabits={jest.fn()}
+        onClose={jest.fn()}
+      />,
+    );
+
+    await fireEvent.press(row(1));
+    expect(swear()).toBeDisabled();
+    expect(swear()).toHaveProp('accessibilityLabel', 'Prêter serment, en cours');
+    await fireEvent.press(swear());
+    expect(onSwear).not.toHaveBeenCalled();
+  });
+});

@@ -10,9 +10,11 @@ import { createHabit } from '../../../application/useCases/createHabit';
 import { OATHS_KEY } from '../../../application/useCases/oaths';
 import { Day } from '../../../domain/day/Day';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
+import { ascentSetUp } from '../testing/ascent';
 import { reduceMotionInEachTest } from '../testing/motion';
 import { renderScreen } from '../testing/renderScreen';
 import { DayViewScreen } from './DayViewScreen';
+import { PowerTreeScreen } from './PowerTreeScreen';
 import { WeekViewScreen } from './WeekViewScreen';
 
 reduceMotionInEachTest();
@@ -102,5 +104,55 @@ describe('the Week View and a habit that holds an Oath (#237)', () => {
 
     await askDeletion('Courir');
     expect(await screen.findByText(DELETE_LINE)).toBeOnTheScreen();
+  });
+});
+
+describe('the Day View already shown, and an Oath sworn at the camp (#237, S13)', () => {
+  /** La Vue Journée et l'arbre de pouvoirs montés ensemble, comme l'onglet resté monté sous l'arbre. */
+  async function showBoth(oaths?: unknown) {
+    const setUp = ascentSetUp({ powers: ['retaliation'] });
+    await createHabit(setUp.dependencies, 'Courir');
+    await createHabit(setUp.dependencies, 'Lire');
+    if (oaths !== undefined) {
+      setUp.keyValueStore.values.set(OATHS_KEY, JSON.stringify({ version: 1, oaths }));
+    }
+    await setUp.session.load();
+    await renderScreen(
+      <>
+        <DayViewScreen />
+        <PowerTreeScreen camp={setUp.camp} hero="sentinel" onLeave={jest.fn()} />
+      </>,
+      setUp.dependencies,
+    );
+    await screen.findByText('Courir');
+    await screen.findByTestId('power-tree');
+    await act(async () => undefined);
+  }
+
+  async function swearOn(name: string) {
+    await fireEvent.press(screen.getByTestId('power-node-retaliation'));
+    await fireEvent.press(await screen.findByRole('button', { name: /Prêter serment|Changer/u }));
+    await fireEvent.press(await screen.findByRole('radio', { name }));
+    await fireEvent.press(screen.getByTestId('oath-swear'));
+    await screen.findByTestId('oath-frame');
+  }
+
+  it('shows « Serment · Représailles » on the line once the Oath is sworn', async () => {
+    await showBoth();
+    expect(screen.queryByTestId('habit-oath-1')).not.toBeOnTheScreen();
+
+    await swearOn('Courir');
+
+    expect(await screen.findByTestId('habit-oath-1')).toHaveTextContent('Serment · Représailles');
+  });
+
+  it('moves the line to the new habit when the Oath is changed', async () => {
+    await showBoth([{ power: 'retaliation', habit: 1, since: '2026-10-01' }]);
+    expect(await screen.findByTestId('habit-oath-1')).toBeOnTheScreen();
+
+    await swearOn('Lire');
+
+    expect(await screen.findByTestId('habit-oath-2')).toHaveTextContent('Serment · Représailles');
+    expect(screen.queryByTestId('habit-oath-1')).not.toBeOnTheScreen();
   });
 });

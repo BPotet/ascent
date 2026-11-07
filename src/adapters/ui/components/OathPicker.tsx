@@ -20,6 +20,7 @@ import {
   OATH_FAILED,
   OATH_FROM_TOMORROW,
   SWEAR_OATH,
+  SWEAR_BUSY_LABEL,
   SWEAR_OFF_LABEL,
   boundElsewhere,
   pickerEmptyIntro,
@@ -71,6 +72,7 @@ export function OathPicker({
   habits,
   oaths,
   error,
+  busy = false,
   onSwear,
   onRetryHabits,
   onGoToDay,
@@ -81,6 +83,8 @@ export function OathPicker({
   readonly oaths: CampView['oaths'];
   /** Le dernier Serment n'a pas pu être enregistré. */
   readonly error: boolean;
+  /** Le Serment choisi est en cours d'enregistrement : « Prêter serment » reste éteint. */
+  readonly busy?: boolean;
   readonly onSwear: (habit: HabitId) => void;
   readonly onRetryHabits: () => void;
   /** Va à la Vue Journée ; absent, la feuille ne propose pas d'y aller. */
@@ -123,7 +127,7 @@ export function OathPicker({
       );
     }
     const choice = habits.find(({ id }) => id === chosen);
-    const ready = choice !== undefined && chosen !== current;
+    const ready = choice !== undefined && chosen !== current && !busy;
     return (
       <>
         <Text style={styles.line}>{pickerIntro(power)}</Text>
@@ -176,7 +180,7 @@ export function OathPicker({
           <Text style={styles.noteText}>{OATH_FROM_TOMORROW}</Text>
         </View>
         <PixelButton
-          label={ready ? swearOnLabel(choice.name) : SWEAR_OFF_LABEL}
+          label={busy ? SWEAR_BUSY_LABEL : ready ? swearOnLabel(choice.name) : SWEAR_OFF_LABEL}
           text={SWEAR_OATH}
           icon="oath8"
           disabled={!ready}

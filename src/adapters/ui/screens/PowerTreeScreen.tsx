@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { CampSession, CampView } from '../../../application/useCases/CampSession';
@@ -30,6 +30,7 @@ import { pixelFont, textFont } from '../pixelArt/pixelTypography';
 import { PORTRAITS } from '../pixelArt/sprites/atelier/data/portraits';
 import { useCamp } from '../state/useCamp';
 import { useFateGauge } from '../state/useFateGauge';
+import { useTrackingChanges } from '../state/TrackingRevision';
 
 const { roles } = artPalette;
 const LINE = artPixelSize(2);
@@ -69,11 +70,11 @@ function sheetOath(
   if (!view.oathBearers.includes(power)) return { kind: 'lowCost' };
   const oath = view.oaths[power];
   if (oath === undefined) return { kind: 'none' };
+  // Habitudes pas encore lues, ou illisibles : rien plutôt qu'un nom vide.
+  if (view.habits === null) return undefined;
   const standing = standings[power] ?? null;
-  if (standing === 'broken' || (oath.name === null && view.habits !== null)) {
-    return { kind: 'broken' };
-  }
-  return { kind: 'sworn', habit: oath.name ?? '', standing };
+  if (standing === 'broken' || oath.name === null) return { kind: 'broken' };
+  return { kind: 'sworn', habit: oath.name, standing };
 }
 
 /** Le trait de l'arbre entre deux rangs, ou vers la racine : d'or quand la voie est à soi. */
@@ -189,6 +190,10 @@ export function PowerTreeScreen({
   const doneYesterday = reading === null || reading.unreadable ? null : reading.doneYesterday;
   const [picking, setPicking] = useState(false);
   const [oathError, setOathError] = useState(false);
+  const [swearing, setSwearing] = useState(false);
+  // Un Serment enregistré prévient les vues restées montées (la Vue Journée et sa ligne
+  // « Serment · … »), comme un changement d'habitude (#237, S13).
+  const notifyViews = useTrackingChanges(useCallback(() => undefined, []));
   const [hero, setHero] = useState(initialHero);
   const [sheet, setSheet] = useState<PowerTreeCode | null>(null);
   const [error, setError] = useState(false);
@@ -217,9 +222,12 @@ export function PowerTreeScreen({
     if (code !== null) focus(code);
   };
   const swear = async (habit: HabitId) => {
-    if (sheet === null) return;
+    if (sheet === null || swearing) return;
     const power = sheet as PowerKind;
+    setSwearing(true);
     const result = await camp.swearOath(power, habit);
+    setSwearing(false);
+    if (result === 'sworn') notifyViews();
     if (result === 'failed') {
       setOathError(true);
       return;
@@ -326,6 +334,7 @@ export function PowerTreeScreen({
           habits={view.habits}
           oaths={view.oaths}
           error={oathError}
+          busy={swearing}
           onSwear={(habit) => void swear(habit)}
           onRetryHabits={() => void camp.refreshHabits()}
           {...(onGoToDay !== undefined && { onGoToDay })}

@@ -3,6 +3,7 @@
 import { act, fireEvent, screen, within } from '@testing-library/react-native';
 import { AccessibilityInfo } from 'react-native';
 
+import type { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { OATHS_KEY } from '../../../application/useCases/oaths';
 import type { PowerTreeCode } from '../../../domain/ascent/powerTree';
 import { Day } from '../../../domain/day/Day';
@@ -165,5 +166,57 @@ describe('PowerTreeScreen: the Oath (#237)', () => {
     expect(screen.queryByTestId('power-node-oath-retaliation', hiddenToo)).not.toBeOnTheScreen();
     const sheet = await openSheet('retaliation');
     expect(sheet.getByText('Serment rompu')).toBeOnTheScreen();
+  });
+});
+
+describe('PowerTreeScreen: an Oath being saved, or habits not read (#237)', () => {
+  it('keeps the choice open, the button busy, on a double tap while the Oath is saved', async () => {
+    const { keyValueStore } = await show();
+    const set = keyValueStore.set;
+    let release: () => void = () => undefined;
+    let writes = 0;
+    keyValueStore.set = async (key, value) => {
+      if (key === OATHS_KEY) {
+        writes += 1;
+        await new Promise<void>((resolve) => (release = resolve));
+      }
+      return set(key, value);
+    };
+
+    await swearOn('Courir 20 minutes');
+    await fireEvent.press(screen.getByTestId('oath-swear'));
+
+    expect(screen.getByTestId('oath-picker')).toBeOnTheScreen();
+    expect(screen.getByTestId('oath-swear')).toBeDisabled();
+    expect(screen.getByTestId('oath-swear')).toHaveProp(
+      'accessibilityLabel',
+      'Prêter serment, en cours',
+    );
+    await act(async () => release());
+    expect(await screen.findByTestId('oath-frame')).toBeOnTheScreen();
+    expect(writes).toBe(1);
+  });
+
+  it('shows no empty habit name while the habits cannot be read', async () => {
+    const setUp = ascentSetUp({ shards: 20, powers: ['retaliation'] });
+    setUp.keyValueStore.values.set(
+      OATHS_KEY,
+      JSON.stringify({
+        version: 1,
+        oaths: [{ power: 'retaliation', habit: 1, since: '2026-10-01' }],
+      }),
+    );
+    (setUp.dependencies.unitOfWork as InMemoryUnitOfWork).failReads();
+    await setUp.session.load();
+    await renderScreen(
+      <PowerTreeScreen camp={setUp.camp} hero="sentinel" onLeave={jest.fn()} />,
+      setUp.dependencies,
+    );
+    await screen.findByTestId('power-tree');
+    await act(async () => undefined);
+
+    const sheet = await openSheet('retaliation');
+    expect(sheet.queryByText(/« »|«  »/u)).not.toBeOnTheScreen();
+    expect(sheet.queryByTestId('oath-frame')).not.toBeOnTheScreen();
   });
 });
