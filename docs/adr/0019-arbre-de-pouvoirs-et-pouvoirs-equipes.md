@@ -73,3 +73,12 @@ relire les sauvegardes d'avant sans migration.
   sont pas vides ; `battleSession` passe `kindledOf(ascent)`.
 - Les textes de l'interface ne lisent plus `POWERS[power].cost` pour un coût en combat : ils
   reçoivent le coût du `PowerSlot` (`cost`, et `baseCost` pour un attisé).
+
+## Avenant du 7 novembre 2026 — les frappes de pouvoir et le choix (#236, ADR 0022)
+
+- Le registre reçoit les 4 frappes de pouvoir (`shieldBash`, `crushingBlow`, `flurry`, `ambush`) ;
+  `SOON_POWERS`, `SoonPower`, l'état `soon` et `PowerTreeCode` disparaissent : un nœud de l'arbre
+  est un `PowerKind`.
+- `equippedPowers(camp, hero)` reste la règle d'office, sans changement ; elle ne sert plus que de
+  présélection sans mémoire valide. Le choix parmi 4 pouvoirs ou plus, sa mémoire
+  (`camp.equippedPowers`) et le lancement sont décrits dans l'[ADR 0022](0022-choix-des-pouvoirs-equipes-et-frappes-de-pouvoir.md).
