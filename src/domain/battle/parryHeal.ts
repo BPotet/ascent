@@ -1,7 +1,7 @@
 /**
- * Le plafond de soin de parade (`PerfectParryHealCap`, #244, R4) : dans un combat, les PV rendus par
- * parade parfaite, toutes sources, ne dépassent pas 10 au total. Le répit, Cœur de braise et Tenir
- * bon n'y entrent pas.
+ * Le plafond de soin de parade (`PerfectParryHealCap`, #244, R4) : dans un combat, les PV rendus
+ * par parade parfaite, toutes sources, ne dépassent pas 10 au total. Le répit, Cœur de braise et
+ * Tenir bon n'y entrent pas.
  */
 
 /** Les PV qu'un combat rend au plus par parade parfaite. */

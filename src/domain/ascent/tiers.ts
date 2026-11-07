@@ -1,8 +1,9 @@
 /**
  * Les paliers (`Tier`, #38, § 3 de la note du Game Designer) : les Catacombes (`Catacombs`), les
  * Jardins de cendre (`AshGardens`) et le Beffroi (`Belfry`), 6 étages chacun. La table `TIERS` est
- * la règle du palier (ADR 0012) : ses multiplicateurs (ennemis ordinaires, Élites, boss), son Or, la taille de ses groupes, les
- * ennemis qu'il tire, ses Élites, ses boss et les Éclats de son boss.
+ * la règle du palier (ADR 0012) : ses multiplicateurs (ennemis ordinaires, Élites, boss), son
+ * répit, son Or, la taille de ses groupes, les ennemis qu'il tire, ses Élites, ses boss et les
+ * Éclats de son boss.
  */
 import type { EnemyKind } from '../battle/combatants';
 import type { EliteBossMultiplier, TierMultiplier } from '../battle/tierMultiplier';

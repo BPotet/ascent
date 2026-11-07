@@ -59,9 +59,10 @@ export interface EnemyBlow {
 }
 
 /**
- * Un impact de frappe (C6.5), un seul arrondi chacun : PV = Attaque × multiplicateur de frappe (bonus
- * de frappe parfaite compris) × multiplicateur d'étourdi ; garde = Brise-garde × multiplicateur de
- * frappe sans les bonus (1,5, 1,2 ou 1,0, #244, G1) × pourcentages de Brise-garde, 0 sur un étourdi.
+ * Un impact de frappe (C6.5), un seul arrondi chacun : PV = Attaque × multiplicateur de frappe
+ * (bonus de frappe parfaite compris) × multiplicateur d'étourdi ; garde = Brise-garde ×
+ * multiplicateur de frappe sans les bonus (1,5, 1,2 ou 1,0, #244, G1) × pourcentages de
+ * Brise-garde, 0 sur un étourdi.
  */
 export function strikeBlow({
   attackPower,
