@@ -29,14 +29,14 @@
  *   « Dague d'ombre » (`chosen: 0`).
  * Ne pas retoucher à la main : toute retouche passe par l'Atelier.
  */
-import type { PowerTreeCode } from '../../../../../../domain/ascent/powerTree';
+import type { PowerKind } from '../../../../../../domain/battle/powers';
 import type { AssetImage } from '../fullAnimation';
 
 /**
- * Les icônes des pouvoirs (#235), 16 × 16 : les 6 pouvoirs lançables et les 4 frappes de pouvoir,
- * montrées éteintes « Bientôt » dans l'arbre jusqu'à #236.
+ * Les icônes des pouvoirs (#235), 16 × 16 : les 10 pouvoirs des arbres, frappes de pouvoir
+ * comprises (#236).
  */
-export const POWER_ICONS: Readonly<Record<PowerTreeCode, AssetImage>> = {
+export const POWER_ICONS: Readonly<Record<PowerKind, AssetImage>> = {
   bulwark: {
     w: 16,
     h: 16,

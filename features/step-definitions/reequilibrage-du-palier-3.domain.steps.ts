@@ -1,7 +1,6 @@
 /**
  * Les règles du domaine de « Rééquilibrage du palier 3 » (#244), sans écran : le Brise-garde d'une
- * frappe (G1), joué dans le moteur du combat ; le Coup de bouclier (#236), pas encore en jeu, est
- * vérifié sur le calcul de la garde retirée (`strikeBlow`).
+ * frappe (G1), joué dans le moteur du combat, Coup de bouclier (#236) compris.
  */
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
 
@@ -26,7 +25,7 @@ import {
 } from '../../src/domain/battle/combatants';
 import { NO_MODIFIERS, type HeroModifiers } from '../../src/domain/battle/heroModifiers';
 import { PERFECT_PARRY_HEAL_CAP } from '../../src/domain/battle/parryHeal';
-import { bulwarkCounterBlow, counterBlow, strikeBlow } from '../../src/domain/battle/strike';
+import { bulwarkCounterBlow, counterBlow } from '../../src/domain/battle/strike';
 import {
   chooseExit,
   enterNextTier,
@@ -284,7 +283,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   given(/^la Sentinelle avec Lame juste$/u, () => {
-    world = fresh(start('sentinel', { perfectStrikeBonusPercents: [TRUE_EDGE] }));
+    world = fresh(
+      start('sentinel', { perfectStrikeBonusPercents: [TRUE_EDGE] }, ['bulwark', 'shieldBash']),
+    );
   });
 
   given(/^l'Errante avec Lame juste et Entaille$/u, () => {
@@ -327,15 +328,15 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   when(/^elle fait un Coup de bouclier parfait sur un ennemi non étourdi$/u, () => {
-    // Le Coup de bouclier (#236) : une frappe de pouvoir à 200 % de Brise-garde.
-    world.shieldBashGuard = strikeBlow({
-      attackPower: SENTINEL.attackPower,
-      guardDamage: SENTINEL.guardDamage,
-      judgement: 'perfect',
-      perfectBonusPercents: [TRUE_EDGE],
-      stunned: false,
-      guardPercents: [200],
-    }).guard;
+    // Le Coup de bouclier (#236) : une vraie frappe de pouvoir, à 200 % de Brise-garde.
+    const battle = { ...world.battle, hero: { ...world.battle.hero, momentum: 2 } };
+    const cast = act(battle, { kind: 'power', power: 'shieldBash' }, battle.now + 100);
+    const pressed = pressStrike(cast.battle, { at: impactOf(cast.battle) });
+    const [resolved] = pressed.events.filter(
+      (event): event is Resolved => event.type === 'strikeResolved',
+    );
+    expect(resolved).toMatchObject({ judgement: 'perfect', power: 'shieldBash' });
+    world.shieldBashGuard = resolved!.guardDamage;
   });
 
   when(

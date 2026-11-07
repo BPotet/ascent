@@ -21,7 +21,7 @@ import { battleWith, heroWith } from '../../src/application/testing/battleBuilde
 import { CAMP_KEY } from '../../src/application/useCases/CampSession';
 import { startAscent } from '../../src/domain/ascent/Ascent';
 import { loadoutOf } from '../../src/domain/ascent/loadout';
-import { powerPrice, type PowerTreeCode } from '../../src/domain/ascent/powerTree';
+import { powerPrice } from '../../src/domain/ascent/powerTree';
 import type { Battle } from '../../src/domain/battle/Battle';
 import type { HeroKind } from '../../src/domain/battle/combatants';
 import type { PowerKind } from '../../src/domain/battle/powers';
@@ -48,9 +48,9 @@ async function showTree(hero: HeroKind = 'sentinel') {
   if (hero === 'wanderer') await fireEvent.press(screen.getByRole('tab', { name: /Errante/u }));
 }
 
-const node = (code: PowerTreeCode) => within(screen.getByTestId(`power-node-${code}`));
+const node = (code: PowerKind) => within(screen.getByTestId(`power-node-${code}`));
 
-async function openSheet(code: PowerTreeCode) {
+async function openSheet(code: PowerKind) {
   await fireEvent.press(screen.getByTestId(`power-node-${code}`));
   return within(await screen.findByTestId('power-sheet'));
 }
@@ -115,15 +115,13 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   );
 
   and(
-    /^la voie Bouclier montre Coup de bouclier et Fracas, marqués « Bientôt », sans prix ni bouton de déblocage$/u,
-    async () => {
+    /^la voie Bouclier montre Coup de bouclier \(rang 1, 30 Éclats\) puis Fracas \(rang 2, 60 Éclats, verrouillé\)$/u,
+    () => {
       expect(screen.getByText('Voie Bouclier')).toBeOnTheScreen();
-      for (const soon of ['shieldBash', 'crushingBlow'] as const) {
-        expect(node(soon).getByText('Bientôt')).toBeOnTheScreen();
-        expect(node(soon).queryByText(/Éclats/u)).not.toBeOnTheScreen();
-        const sheet = await openSheet(soon);
-        expect(sheet.queryByRole('button', { name: /^Débloquer/u })).not.toBeOnTheScreen();
-      }
+      expect(node('shieldBash').getByText('30 Éclats')).toBeOnTheScreen();
+      expect(node('crushingBlow').getByText('Après Coup de bouclier')).toBeOnTheScreen();
+      expect(powerPrice('crushingBlow')).toBe(60);
+      expect(screen.queryByText('Bientôt')).not.toBeOnTheScreen();
     },
   );
 
@@ -133,26 +131,22 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and(
-    /^la voie Lames montre Entaille \(rang 1, 30 Éclats\) puis Rafale, marquée « Bientôt », sans prix ni bouton de déblocage$/u,
-    async () => {
+    /^la voie Lames montre Entaille \(rang 1, 30 Éclats\) puis Rafale \(rang 2, 60 Éclats, verrouillée\)$/u,
+    () => {
       expect(screen.getByText('Voie Lames')).toBeOnTheScreen();
       expect(node('rend').getByText('30 Éclats')).toBeOnTheScreen();
-      expect(node('flurry').getByText('Bientôt')).toBeOnTheScreen();
-      expect(node('flurry').queryByText(/Éclats/u)).not.toBeOnTheScreen();
-      const sheet = await openSheet('flurry');
-      expect(sheet.queryByRole('button', { name: /^Débloquer/u })).not.toBeOnTheScreen();
+      expect(node('flurry').getByText('Après Entaille')).toBeOnTheScreen();
+      expect(powerPrice('flurry')).toBe(60);
     },
   );
 
   and(
-    /^la voie Ombre montre Brume \(rang 1, 30 Éclats\) puis Frappe furtive, marquée « Bientôt », sans prix ni bouton de déblocage$/u,
-    async () => {
+    /^la voie Ombre montre Brume \(rang 1, 30 Éclats\) puis Frappe furtive \(rang 2, 60 Éclats, verrouillée\)$/u,
+    () => {
       expect(screen.getByText('Voie Ombre')).toBeOnTheScreen();
       expect(node('mist').getByText('30 Éclats')).toBeOnTheScreen();
-      expect(node('ambush').getByText('Bientôt')).toBeOnTheScreen();
-      expect(node('ambush').queryByText(/Éclats/u)).not.toBeOnTheScreen();
-      const sheet = await openSheet('ambush');
-      expect(sheet.queryByRole('button', { name: /^Débloquer/u })).not.toBeOnTheScreen();
+      expect(node('ambush').getByText('Après Brume')).toBeOnTheScreen();
+      expect(powerPrice('ambush')).toBe(60);
     },
   );
 
@@ -215,20 +209,19 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(
-    /^sa fiche s'ouvre, avec son nom complet « Coup de bouclier », et dit qu'il n'est pas encore disponible$/u,
+    /^sa fiche s'ouvre, avec son nom complet « Coup de bouclier », 2 Élan et le type « Frappe »$/u,
     () => {
       const sheet = within(screen.getByTestId('power-sheet'));
       expect(sheet.getByText('Coup de bouclier')).toBeOnTheScreen();
       expect(sheet.queryByText("Coup d'écu")).not.toBeOnTheScreen();
-      expect(
-        sheet.getByText('Pas encore dans la tour : il arrive avec une prochaine version.'),
-      ).toBeOnTheScreen();
+      expect(sheet.getByText('2 Élan')).toBeOnTheScreen();
+      expect(sheet.getByText('Frappe')).toBeOnTheScreen();
     },
   );
 
-  and(/^elle ne propose pas de le débloquer$/u, () => {
+  and(/^elle propose de le débloquer pour 30 Éclats$/u, () => {
     const sheet = within(screen.getByTestId('power-sheet'));
-    expect(sheet.queryByRole('button', { name: /^Débloquer/u })).not.toBeOnTheScreen();
+    expect(sheet.getByRole('button', { name: 'Débloquer pour 30 Éclats' })).toBeOnTheScreen();
   });
 
   given(/^l'enregistrement de l'achat échoue$/u, () => {

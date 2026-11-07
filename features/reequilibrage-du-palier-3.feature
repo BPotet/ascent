@@ -6,8 +6,7 @@ Fonctionnalité: Rééquilibrage du palier 3
 
   # Les scénarios `@domain` éprouvent les règles du domaine (moteur du combat, règle du palier,
   # ascension). Les scénarios `@session` passent par une vraie session d'ascension sur un Stockage
-  # clé-valeur en mémoire. Le Coup de bouclier (#236) n'existe pas encore : son scénario est vérifié
-  # sur le calcul de la garde retirée (`strikeBlow`).
+  # clé-valeur en mémoire.
 
   # G1 — Brise-garde d'une frappe
   @domain

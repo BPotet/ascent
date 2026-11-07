@@ -430,15 +430,16 @@ function heroOaths(
   camp: CampSession,
   view: CampView,
   reading: FateGaugeReading,
+  selection: Readonly<Record<HeroKind, readonly PowerKind[]>>,
 ): {
   readonly kindled: Record<HeroKind, readonly PowerKind[]>;
   readonly oathLines: Record<HeroKind, readonly HeroOathLine[]>;
 } {
   const doneYesterday = reading.unreadable ? null : reading.doneYesterday;
-  const preview = camp.kindledPreview(doneYesterday);
+  const preview = camp.kindledPreview(doneYesterday, selection);
   const standings = camp.oathStandings(doneYesterday);
   const lines = (hero: HeroKind) =>
-    view.equipped[hero].flatMap((power) => {
+    selection[hero].flatMap((power) => {
       const oath = view.oaths[power];
       const standing = standings[power];
       if (
@@ -493,6 +494,19 @@ export function TowerFootScreen({
   const loaded = sessionLoaded && campView.status === 'ready';
   const { reading, seal } = useFateGauge();
   const [choosing, setChoosing] = useState<FateGaugeReading | null>(null);
+  // La sélection en cours au Choix du héros (#236), la présélection du Camp tant qu'elle n'a pas
+  // changé ; l'état de l'enregistrement du choix au lancement.
+  const [chosen, setChosen] = useState<Partial<Record<HeroKind, readonly PowerKind[]>>>({});
+  const [launching, setLaunching] = useState<'idle' | 'starting' | 'failed'>('idle');
+  const selection: Record<HeroKind, readonly PowerKind[]> = {
+    sentinel: chosen.sentinel ?? campView.equipped.sentinel,
+    wanderer: chosen.wanderer ?? campView.equipped.wanderer,
+  };
+  const closeChoice = () => {
+    setChoosing(null);
+    setChosen({});
+    setLaunching('idle');
+  };
   const [gaugeDetail, setGaugeDetail] = useState(false);
   const gaugeCard = useRef<View>(null);
   const gaugeChange = useGaugeChange(reading);
@@ -520,32 +534,47 @@ export function TowerFootScreen({
         <LogExportButton logExport={logExport} revision={ascent} showCount active={focused} />
       </View>
     );
-  const start = (reading: FateGaugeReading, hero: HeroKind) => {
-    setChoosing(null);
-    const launch = {
+  const start = async (reading: FateGaugeReading, hero: HeroKind) => {
+    setLaunching('starting');
+    const result = await camp.launchAscent({
       hero,
       gauge: reading.gauge,
       blessings: reading.blessings,
       // Les habitudes faites hier, scellées avec la jauge : elles attisent les Serments (#237).
       doneYesterday: reading.doneYesterday,
-    };
-    if (camp.beginAscent(launch) === null) return;
+      // Les pouvoirs choisis, figés jusqu'à la fin de l'ascension (#236).
+      powers: selection[hero],
+    });
+    // Un échec d'enregistrement garde l'écran et la sélection : « Réessayer » relance.
+    if (result.kind === 'failed') {
+      setLaunching('failed');
+      return;
+    }
+    closeChoice();
+    if (result.kind === 'refused') return;
     seal(reading);
     onEnter();
   };
 
   if (choosing !== null && !inProgress) {
-    const { kindled, oathLines } = heroOaths(camp, campView, choosing);
+    const { kindled, oathLines } = heroOaths(camp, campView, choosing, selection);
     return (
       <HeroChoiceScreen
         title="Choisir un héros"
         note="Il ne change plus jusqu'à la fin de l'ascension."
         confirmLabel={(hero) => `Continuer avec ${heroInSentence(hero)}`}
-        onStart={(hero) => start(choosing, hero)}
-        onClose={() => setChoosing(null)}
-        equipped={campView.equipped}
+        onStart={(hero) => void start(choosing, hero)}
+        onClose={closeChoice}
+        equipped={selection}
         kindled={kindled}
         oathLines={oathLines}
+        owned={campView.owned}
+        onChangePowers={(hero, powers) => {
+          setChosen((current) => ({ ...current, [hero]: powers }));
+          setLaunching('idle');
+        }}
+        starting={launching === 'starting'}
+        failed={launching === 'failed'}
       />
     );
   }

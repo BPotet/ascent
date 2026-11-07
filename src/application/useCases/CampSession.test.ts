@@ -283,8 +283,8 @@ describe('CampSession: the power trees (#235)', () => {
     const view = camp.view();
     expect(nodeStates(view)).toEqual({
       bulwark: 'base',
-      shieldBash: 'soon',
-      crushingBlow: 'soon',
+      shieldBash: 'affordable',
+      crushingBlow: 'locked',
       retaliation: 'affordable',
       holdFast: 'locked',
     });
@@ -334,15 +334,24 @@ describe('CampSession: the power trees (#235)', () => {
     expect(camp.view().availableShards).toBe(20);
   });
 
-  it('refuses a locked power, a power strike, a base power, and without enough Shards', async () => {
+  it('refuses a locked power, a base power, and without enough Shards', async () => {
     const { camp, store } = await loaded(200);
 
     expect(await camp.unlockPower('holdFast')).toBe('refused');
-    expect(await camp.unlockPower('shieldBash')).toBe('refused');
+    expect(await camp.unlockPower('crushingBlow')).toBe('refused');
     expect(await camp.unlockPower('bulwark')).toBe('refused');
     expect(store.writes(CAMP_KEY)).toBe(0);
     const poor = await loaded(20);
     expect(await poor.camp.unlockPower('rend')).toBe('refused');
+  });
+
+  it('unlocks Shield Bash then Crushing Blow for 90 Shards (#236)', async () => {
+    const { camp } = await loaded(90);
+
+    expect(await camp.unlockPower('shieldBash')).toBe('unlocked');
+    expect(await camp.unlockPower('crushingBlow')).toBe('unlocked');
+    expect(camp.view().availableShards).toBe(0);
+    expect(camp.view().equipped.sentinel).toEqual(['bulwark', 'shieldBash', 'crushingBlow']);
   });
 
   it('buys one power at a time', async () => {

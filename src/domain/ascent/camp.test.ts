@@ -209,7 +209,10 @@ describe('the Camp as stored (#40)', () => {
     ['powers that are not a list', '{"version":1,"unlocks":[],"powers":{}}'],
     ['an unknown power', '{"version":1,"unlocks":[],"powers":[{"power":"axe","price":30}]}'],
     ['a base power', '{"version":1,"unlocks":[],"powers":[{"power":"bulwark","price":30}]}'],
-    ['a power strike', '{"version":1,"unlocks":[],"powers":[{"power":"shieldBash","price":30}]}'],
+    [
+      'another unknown power',
+      '{"version":1,"unlocks":[],"powers":[{"power":"fireball","price":30}]}',
+    ],
     ['a power without a price', '{"version":1,"unlocks":[],"powers":[{"power":"mist"}]}'],
     ['a power price of 0', '{"version":1,"unlocks":[],"powers":[{"power":"mist","price":0}]}'],
     ['a power that is not an object', '{"version":1,"unlocks":[],"powers":["mist"]}'],
@@ -240,6 +243,15 @@ describe('the powers kept by the Camp (#235, ADR 0017)', () => {
       powers: [{ power: 'retaliation', price: 30 }],
     });
     expect(parseCamp(serializeCamp(camp))).toEqual({ camp, unreadable: false });
+  });
+
+  it('reads a Camp with a power strike (#236)', () => {
+    expect(
+      parseCamp('{"version":1,"unlocks":[],"powers":[{"power":"shieldBash","price":30}]}'),
+    ).toEqual({
+      camp: { unlocks: [], powers: [{ power: 'shieldBash', price: 30 }] },
+      unreadable: false,
+    });
   });
 
   it('reads a Camp stored before the powers without any power', () => {

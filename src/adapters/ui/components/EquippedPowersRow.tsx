@@ -17,7 +17,7 @@ const LINE = artPixelSize(2);
 
 /**
  * La rangée des pouvoirs équipés (#235, maquette H1, H2) : « Pouvoirs équipés · n sur 3 », puis une
- * case par pouvoir (icône, nom, coût, « Instantané ») dans l'ordre de l'arbre, et une « Place
+ * case par pouvoir (icône, nom en entier, coût, « Instantané ») dans l'ordre de l'arbre, et une « Place
  * libre » hachurée pour chaque place qui reste. Courte (`short`) : les icônes seules, sur la carte
  * d'un héros qui n'est pas choisi.
  */
@@ -32,13 +32,15 @@ export function EquippedPowersRow({
   readonly short?: boolean;
 }) {
   const free = EQUIPPED_POWER_SLOTS - powers.length;
+  // L'ordre de l'arbre, quel que soit l'ordre du choix (#236).
+  const sorted = [...powers].sort((left, right) => POWERS[left].order - POWERS[right].order);
   return (
     <View style={styles.block}>
       <Text style={styles.heading}>
         {`${short ? 'Pouvoirs' : 'Pouvoirs équipés'} · ${powers.length} sur ${EQUIPPED_POWER_SLOTS}`}
       </Text>
       <View style={styles.row}>
-        {powers.map((power) => {
+        {sorted.map((power) => {
           const lit = kindled.includes(power);
           const price = lit
             ? kindledLabel(power)

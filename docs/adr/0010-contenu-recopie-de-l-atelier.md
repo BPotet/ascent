@@ -514,3 +514,21 @@ pouvoirs (`assets/power<Code>`, 16 × 16, statut `validé`), lues le 06/11/2026,
    (`ART.flurry.B` pour Rafale), avec le lecteur de la maquette 208 généralisé (`mockupArt`), et
    vérifie que toutes leurs teintes sont dans `artPalette`.
 5. **Teintes.** Toutes les teintes sont déjà dans `artPalette` : aucune n'est ajoutée.
+
+## Avenant du 7 novembre 2026 (#236) : les fiches des frappes de pouvoir et les poses de Fracas
+
+1. **Fiches.** Les 4 fiches du Codex des frappes de pouvoir (`codex/shieldBash`, `crushingBlow`,
+   `flurry`, `ambush`, catégorie `power`, actives, version 1), lues le 07/11/2026 : les valeurs de
+   `stats` (dont `strike`, `strikeHits`, `strikeHpPercent`, `strikeGuardPercent` et, pour Frappe
+   furtive, `ambushHpPercent`) dans `POWERS` ; `name`, `buttonName` (« Coup d'écu » pour Coup de
+   bouclier) et `effectText` dans `format/powerText.ts`, `description` dans `format/battleText.ts`.
+   Sha256 dans l'en-tête de `powers.ts`.
+2. **Poses de Fracas.** Les poses `crush0` (préparation) et `crush1` (impact) de la Sentinelle sont
+   recopiées depuis **`assets/powerCrushingBlow` version 3** (champ `animation.proposals[1]`,
+   `animChosen: 1`, « Lame chargée », validée par le propriétaire le 07/11/2026), et non depuis
+   `assets/sentinel` : clés `w`, `h`, `pal`, `frames` et `anchors`, dans un fichier à part,
+   `sprites/atelier/data/crushingBlow.ts` (`CRUSHING_BLOW_POSES`). Sa sha256 est celle du même
+   document, déjà citée dans `powerIcons.ts`. `sentinel.ts` ne change pas : `heroAnimations.ts`
+   ajoute ces 2 poses à celles de la Sentinelle, et `battleCharacters.ts` à ses poses propres.
+3. **Contrôle.** `powers.data.test.ts` vérifie l'en-tête, les dimensions (36 × 44) et que la
+   palette est **égale** à celle de la Sentinelle (19 teintes).

@@ -12,15 +12,28 @@
  * - `codex/shadowStep` version 1, sha256 2ba2651624cdd93a98e22d16b22bd5fe303469a56f58a488e71caf3a7a3f669c ;
  * - `codex/rend` version 1, sha256 e64fc6380f63cc0c6664e3959ed52f11afd1bcdee9ccff0200c34ee01aa99ac5 ;
  * - `codex/mist` version 1, sha256 4a492919f9abb70ca6b04556a88eed6dc2347960209f40134e069af48d5f6e98.
+ *
+ * Les frappes de pouvoir (#236), fiches actives relues le 07/11/2026, de la même façon :
+ * - `codex/shieldBash` version 1, sha256 44f48a8116be89d4644423ec2dca58c5cf5b053306da45812b90569c9f3aaf69 ;
+ * - `codex/crushingBlow` version 1, sha256 fd86c1a8909cd7f79c75042da58c783b48c9b6c1a4e25ef0ba2488a7391d68b7 ;
+ * - `codex/flurry` version 1, sha256 95b313ff5e3ad9d056872b7588a0fd307edd000b8318acca4ba3735ef97cd6fd ;
+ * - `codex/ambush` version 1, sha256 c1e22a918d72ee1029b7bcf91a89060ead62342c51231d75c842afd5b2819678.
  * Ne pas retoucher à la main : toute retouche passe par l'Atelier.
  */
 import type { HeroKind } from './combatants';
 
 /**
- * Les pouvoirs lançables : le pouvoir de base de chaque héros, puis les pouvoirs de son arbre sans
- * frappe de pouvoir (#235) : Représailles, Tenir bon, Entaille et Brume.
+ * Les frappes de pouvoir (`PowerStrike`, #236, PW5) : Coup de bouclier, Fracas, Rafale et Frappe
+ * furtive. Elles n'ont aucune charge, donc aucun champ dans l'état du héros.
  */
-export type PowerKind = 'bulwark' | 'retaliation' | 'holdFast' | 'shadowStep' | 'rend' | 'mist';
+export type PowerStrikeKind = 'shieldBash' | 'crushingBlow' | 'flurry' | 'ambush';
+
+/**
+ * Les pouvoirs lançables : le pouvoir de base de chaque héros, puis les pouvoirs de son arbre (#235),
+ * frappes de pouvoir comprises (#236).
+ */
+export type PowerKind =
+  'bulwark' | 'retaliation' | 'holdFast' | 'shadowStep' | 'rend' | 'mist' | PowerStrikeKind;
 
 export interface PowerProfile {
   readonly hero: HeroKind;
@@ -45,6 +58,16 @@ export interface PowerProfile {
   readonly healMin?: number;
   /** La part du Brise-garde de chaque coup de la prochaine frappe en rythme. */
   readonly guardPercentNextStrike?: number;
+  /** Une frappe de pouvoir (#236, PW5) : elle lance une frappe en rythme, sans +1 Élan. */
+  readonly strike?: true;
+  /** Le nombre de coups de la frappe de pouvoir, à `POWER_STRIKE_INTERVAL_MS` d'écart. */
+  readonly strikeHits?: number;
+  /** La part de l'Attaque de chaque coup, en PV. */
+  readonly strikeHpPercent?: number;
+  /** La part du Brise-garde de chaque coup. */
+  readonly strikeGuardPercent?: number;
+  /** Frappe furtive : la part de l'Attaque, à la place de `strikeHpPercent`, sur une cible qui n'a pas agi. */
+  readonly ambushHpPercent?: number;
 }
 
 export const POWERS: Readonly<Record<PowerKind, PowerProfile>> = {
@@ -57,6 +80,28 @@ export const POWERS: Readonly<Record<PowerKind, PowerProfile>> = {
     counterHpPercent: 50,
     counterGuardPercent: 25,
     damageTakenPercent: 50,
+  },
+  shieldBash: {
+    hero: 'sentinel',
+    order: 62,
+    cost: 2,
+    instant: false,
+    charge: false,
+    strike: true,
+    strikeHits: 1,
+    strikeHpPercent: 50,
+    strikeGuardPercent: 200,
+  },
+  crushingBlow: {
+    hero: 'sentinel',
+    order: 63,
+    cost: 3,
+    instant: false,
+    charge: false,
+    strike: true,
+    strikeHits: 1,
+    strikeHpPercent: 200,
+    strikeGuardPercent: 100,
   },
   retaliation: {
     hero: 'sentinel',
@@ -94,6 +139,17 @@ export const POWERS: Readonly<Record<PowerKind, PowerProfile>> = {
     charge: false,
     guardPercentNextStrike: 150,
   },
+  flurry: {
+    hero: 'wanderer',
+    order: 68,
+    cost: 2,
+    instant: false,
+    charge: false,
+    strike: true,
+    strikeHits: 4,
+    strikeHpPercent: 100,
+    strikeGuardPercent: 100,
+  },
   mist: {
     hero: 'wanderer',
     order: 69,
@@ -102,7 +158,27 @@ export const POWERS: Readonly<Record<PowerKind, PowerProfile>> = {
     charge: true,
     damageTakenPercent: 50,
   },
+  ambush: {
+    hero: 'wanderer',
+    order: 70,
+    cost: 3,
+    instant: false,
+    charge: false,
+    strike: true,
+    strikeHits: 2,
+    strikeHpPercent: 100,
+    strikeGuardPercent: 100,
+    ambushHpPercent: 250,
+  },
 };
+
+/** L'écart entre deux coups d'une frappe de pouvoir (#236, PW5) ; le Codex n'en a pas de champ. */
+export const POWER_STRIKE_INTERVAL_MS = 300;
+
+/** `power` est une frappe de pouvoir (#236) : elle n'a jamais de charge. */
+export function isPowerStrike(power: PowerKind): power is PowerStrikeKind {
+  return POWERS[power].strike === true;
+}
 
 /** La baisse du coût d'un pouvoir attisé (`KindledPower`, #237), en Élan. */
 export const KINDLED_DISCOUNT = 1;

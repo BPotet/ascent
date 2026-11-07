@@ -599,6 +599,26 @@ describe('heroFrame (pxHeroFrame)', () => {
     expect(heroFrame('bash', 0, 400, null).frame).toMatch(/^idle/u);
     expect(heroFrame('strike', 0, 160, null).push).toBe(0);
   });
+
+  it('holds the charged blade of Crushing Blow for the whole wind-up, in place of raise and raiseG (#236)', () => {
+    for (const now of [10, 300, 600, 700, 860]) {
+      expect(heroFrame('crushRaise', 0, now, 700)).toMatchObject({ frame: 'crush0', tier: 0 });
+    }
+  });
+
+  it('brings the blade of Crushing Blow down toward the target for 320 ms (#236)', () => {
+    expect(heroFrame('crush', 0, 40, null)).toMatchObject({ frame: 'crush1' });
+    expect(heroFrame('crush', 0, 160, null).lunge).toBeCloseTo(1);
+    expect(heroFrame('crush', 0, 320, null).frame).toMatch(/^idle/u);
+  });
+
+  it('dodges, then raises its blades, while Ambush winds up (#236)', () => {
+    expect(heroFrame('ambushRaise', 0, 10, 700)).toMatchObject({ frame: 'dodge0' });
+    expect(heroFrame('ambushRaise', 0, 150, 700).frame).toBe('dodge1');
+    expect(heroFrame('ambushRaise', 0, 150, 700).dodge).toBeCloseTo(1);
+    expect(heroFrame('ambushRaise', 0, 400, 700)).toMatchObject({ frame: 'raise', dodge: 0 });
+    expect(heroFrame('ambushRaise', 0, 650, 700)).toMatchObject({ frame: 'raiseG', tier: 1 });
+  });
 });
 
 describe('scene effects', () => {

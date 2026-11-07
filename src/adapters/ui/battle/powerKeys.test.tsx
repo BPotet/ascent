@@ -7,7 +7,7 @@ import { State } from 'react-native-gesture-handler';
 import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 
 import type { HeroState } from '../../../domain/battle/Battle';
-import type { PowerKind } from '../../../domain/battle/powers';
+import { POWERS, type PowerKind } from '../../../domain/battle/powers';
 import type { ActionPad as Pad, PowerSlot } from '../state/battleView';
 import { ActionPad, powerGestureTestId } from './ActionPad';
 import { HeroBar } from './HeroBar';
@@ -16,7 +16,7 @@ const hiddenToo = { includeHiddenElements: true } as const;
 
 const slot = (power: PowerKind, change: Partial<PowerSlot> = {}): PowerSlot => ({
   power,
-  cost: { bulwark: 1, retaliation: 2, holdFast: 3, shadowStep: 3, rend: 1, mist: 2 }[power],
+  cost: POWERS[power].cost,
   availability: 'available',
   missing: 0,
   ...(['retaliation', 'shadowStep', 'rend', 'mist'].includes(power) && { instant: true as const }),
@@ -284,6 +284,95 @@ describe('the power keys (#235)', () => {
 
     expect(screen.queryAllByTestId(/^battle-power-button-/u)).toHaveLength(0);
     expect(screen.getByTestId('battle-parry-button')).toBeOnTheScreen();
+  });
+});
+
+describe('the keys of the power strikes (#236)', () => {
+  it("writes « Coup d'écu » on the key, and « Coup de bouclier » for the screen reader (K14)", async () => {
+    await render(
+      <ActionPad
+        pad={heroPad(slot('shieldBash'), slot('crushingBlow'), slot('retaliation'))}
+        {...props()}
+      />,
+    );
+
+    expect(within(key('shieldBash')).getByText("Coup d'écu")).toBeOnTheScreen();
+    expect(within(key('shieldBash')).queryByText('Coup de bouclier')).not.toBeOnTheScreen();
+    expect(within(key('shieldBash')).queryByText('Instantané')).not.toBeOnTheScreen();
+    expect(key('shieldBash').props.accessibilityLabel).toBe('Pouvoir : Coup de bouclier, 2 Élan');
+    expect(within(key('crushingBlow')).getByText('Fracas')).toBeOnTheScreen();
+    expect(screen.getByTestId('battle-attack-button')).toBeOnTheScreen();
+  });
+
+  it('shows Ambush visible but unavailable, missing 1 momentum', async () => {
+    await render(
+      <ActionPad
+        pad={heroPad(
+          slot('rend'),
+          slot('flurry'),
+          slot('ambush', { availability: 'missing', missing: 1 }),
+        )}
+        {...props()}
+      />,
+    );
+
+    expect(within(key('ambush')).getByText('Frappe furtive')).toBeOnTheScreen();
+    expect(within(key('ambush')).getByText('Il manque\n1 Élan')).toBeOnTheScreen();
+    expect(key('ambush').props.accessibilityState).toEqual({ disabled: true });
+  });
+
+  it('writes the name and the hits of a power strike under « Frapper » (K13)', async () => {
+    await render(
+      <ActionPad
+        pad={{
+          kind: 'strike',
+          since: 1_000,
+          impactAt: 1_700,
+          resolved: false,
+          power: 'flurry',
+          hits: 4,
+          hit: 2,
+        }}
+        {...props()}
+      />,
+    );
+
+    const strike = within(screen.getByTestId('battle-strike-button'));
+    expect(strike.getByText('Frapper')).toBeOnTheScreen();
+    expect(strike.getByText('Rafale · 4 coups')).toBeOnTheScreen();
+    expect(screen.getAllByTestId(/^battle-strike-hit-/u, hiddenToo)).toHaveLength(4);
+    expect(screen.getByTestId('battle-strike-button').props.accessibilityLabel).toBe(
+      'Frapper, Rafale, coup 2 sur 4',
+    );
+  });
+
+  it('writes the name alone for a power strike of one hit, and nothing for « Attaquer »', async () => {
+    const { rerender } = await render(
+      <ActionPad
+        pad={{
+          kind: 'strike',
+          since: 1_000,
+          impactAt: 1_700,
+          resolved: false,
+          power: 'shieldBash',
+          hits: 1,
+          hit: 1,
+        }}
+        {...props()}
+      />,
+    );
+
+    expect(screen.getByText('Coup de bouclier')).toBeOnTheScreen();
+    expect(screen.queryAllByTestId(/^battle-strike-hit-/u, hiddenToo)).toHaveLength(0);
+
+    await rerender(
+      <ActionPad
+        pad={{ kind: 'strike', since: 1_000, impactAt: 1_700, resolved: false }}
+        {...props()}
+      />,
+    );
+    expect(screen.getByTestId('battle-strike-button').props.accessibilityLabel).toBe('Frapper');
+    expect(screen.queryByText('Coup de bouclier')).not.toBeOnTheScreen();
   });
 });
 

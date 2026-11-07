@@ -721,6 +721,56 @@ describe('BattleLog', () => {
     expect(actionOf(log, 'hero')).toMatchObject({ kind: 'power', t: 50 });
   });
 
+  it('notes a power strike as one power action of the hero, with its presses (#236)', () => {
+    const log = logged(
+      [roundStarted(START, 1)],
+      [
+        { type: 'powerUsed', at: START + 50, power: 'flurry', until: START + 1_070 },
+        { type: 'momentumChanged', at: START + 50, momentum: 0 },
+        {
+          type: 'strikeStarted',
+          at: START + 50,
+          enemy: 0,
+          impactAt: START + 750,
+          until: START + 1_230,
+          hit: 1,
+          power: 'flurry',
+        },
+      ],
+      [
+        {
+          type: 'strikeResolved',
+          at: START + 750,
+          enemy: 0,
+          judgement: 'perfect',
+          delta: 0,
+          damage: 9,
+          guardDamage: 7,
+          hit: 1,
+          power: 'flurry',
+        },
+        {
+          type: 'strikeStarted',
+          at: START + 750,
+          enemy: 0,
+          impactAt: START + 1_140,
+          until: START + 1_620,
+          hit: 2,
+          power: 'flurry',
+        },
+      ],
+    );
+
+    expect(firstRound(log).actions).toHaveLength(1);
+    expect(actionOf(log, 'hero')).toMatchObject({
+      kind: 'power',
+      t: 50,
+      presses: [
+        expect.objectContaining({ kind: 'strike', hit: 1, judgement: 'perfect', damage: 9 }),
+      ],
+    });
+  });
+
   it('replaces only the replayed impact, keeping the other impacts of the action in their order', () => {
     const blow = (
       index: number,

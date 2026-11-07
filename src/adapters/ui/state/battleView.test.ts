@@ -543,3 +543,60 @@ describe('the key of a kindled power (#237)', () => {
     ]);
   });
 });
+
+describe('the power strikes on the pad (#236)', () => {
+  const strike = (change: Partial<Extract<BattlePhase, { kind: 'heroStrike' }>> = {}) =>
+    battleView(
+      inPhase(
+        {
+          kind: 'heroStrike',
+          enemy: 0,
+          since: 1_000,
+          impactAt: 1_700,
+          press: null,
+          resolved: false,
+          until: 2_180,
+          ...change,
+        },
+        { heroKind: 'wanderer', powers: ['rend', 'flurry', 'ambush'] },
+      ),
+    ).pad;
+
+  it('keys the power strikes on the row of « Attaquer », in the order of the tree', () => {
+    const battle = startBattle({
+      seed: 1,
+      defenseHint: false,
+      at: 0,
+      hero: 'wanderer',
+      enemies: ['ghoul'],
+      powers: ['ambush', 'rend', 'shadowStep'],
+    }).battle;
+    const pad = battleView({ ...battle, powers: ['shadowStep', 'rend', 'ambush'] }).pad;
+
+    expect(pad.kind === 'hero' && pad.powers.map(({ power }) => power)).toEqual([
+      'shadowStep',
+      'rend',
+      'ambush',
+    ]);
+    expect(pad.kind === 'hero' && pad.powers[2]).toEqual({
+      power: 'ambush',
+      cost: 3,
+      availability: 'missing',
+      missing: 2,
+    });
+  });
+
+  it('counts the hits of a power strike from the phase, not from the hero', () => {
+    expect(strike({ power: 'flurry', hit: 2 })).toMatchObject({ power: 'flurry', hits: 4, hit: 2 });
+    expect(strike({ power: 'ambush', ambush: true })).toMatchObject({ hits: 2, hit: 1 });
+  });
+
+  it('keeps « Frapper » of « Attaquer » as it was', () => {
+    expect(strike({ hit: 1 })).toEqual({
+      kind: 'strike',
+      since: 1_000,
+      impactAt: 1_700,
+      resolved: false,
+    });
+  });
+});

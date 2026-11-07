@@ -67,6 +67,8 @@ export type BattleEvent =
       readonly hit?: number;
       /** Entaille (#235) : le coup retire 150 % de son Brise-garde. */
       readonly rend?: true;
+      /** La frappe de pouvoir (#236) ; absente pour « Attaquer ». */
+      readonly power?: PowerKind;
     }
   | {
       readonly type: 'strikeResolved';
@@ -79,6 +81,10 @@ export type BattleEvent =
       readonly guardDamage: number;
       /** Le rang du coup (1, 2), pour un héros qui frappe plusieurs fois (prototype #90). */
       readonly hit?: number;
+      /** Entaille (#235) : le coup retire 150 % de son Brise-garde. */
+      readonly rend?: true;
+      /** La frappe de pouvoir (#236) ; absente pour « Attaquer ». */
+      readonly power?: PowerKind;
     }
   | {
       readonly type: 'powerUsed';

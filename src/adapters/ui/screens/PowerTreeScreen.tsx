@@ -3,14 +3,9 @@ import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from
 
 import type { CampSession, CampView } from '../../../application/useCases/CampSession';
 import type { OathStanding } from '../../../domain/ascent/oaths';
-import {
-  POWER_TREES,
-  powerPrice,
-  type PowerNodeState,
-  type PowerTreeCode,
-} from '../../../domain/ascent/powerTree';
+import { POWER_TREES, powerPrice, type PowerNodeState } from '../../../domain/ascent/powerTree';
 import type { HeroKind } from '../../../domain/battle/combatants';
-import type { PowerKind } from '../../../domain/battle/powers';
+import { POWERS, type PowerKind } from '../../../domain/battle/powers';
 import type { HabitId } from '../../../domain/habit/Habit';
 import { MinusFloat } from '../components/CampFeedback';
 import { OathPicker } from '../components/OathPicker';
@@ -19,7 +14,7 @@ import { PowerTreeNode } from '../components/PowerTreeNode';
 import { Screen } from '../components/Screen';
 import { availableShardsText, runBand } from '../format/campText';
 import { swornAnnouncement } from '../format/oathText';
-import { PATH_NAMES, unlockAnnouncement } from '../format/powerText';
+import { PATH_NAMES, noFreeSlotBand, unlockAnnouncement } from '../format/powerText';
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize } from '../pixelArt/artPixel';
 import { AssetRows } from '../pixelArt/AssetRows';
@@ -54,25 +49,24 @@ function isOwned(state: PowerNodeState): boolean {
 }
 
 /** L'habitude d'un Serment non rompu (#237), pour le chaînon du nœud. */
-function swornHabit(view: CampView, code: PowerTreeCode): string | undefined {
-  return view.oaths[code as PowerKind]?.name ?? undefined;
+function swornHabit(view: CampView, code: PowerKind): string | undefined {
+  return view.oaths[code]?.name ?? undefined;
 }
 
 /** Le Serment de la fiche d'un pouvoir à soi (#237) ; aucun cadre pour un autre. */
 function sheetOath(
   view: CampView,
-  code: PowerTreeCode,
+  code: PowerKind,
   state: PowerNodeState,
   standings: Partial<Record<PowerKind, OathStanding | null>>,
 ): SheetOath | undefined {
   if (!isOwned(state)) return undefined;
-  const power = code as PowerKind;
-  if (!view.oathBearers.includes(power)) return { kind: 'lowCost' };
-  const oath = view.oaths[power];
+  if (!view.oathBearers.includes(code)) return { kind: 'lowCost' };
+  const oath = view.oaths[code];
   if (oath === undefined) return { kind: 'none' };
   // Habitudes pas encore lues, ou illisibles : rien plutôt qu'un nom vide.
   if (view.habits === null) return undefined;
-  const standing = standings[power] ?? null;
+  const standing = standings[code] ?? null;
   if (standing === 'broken' || oath.name === null) return { kind: 'broken' };
   return { kind: 'sworn', habit: oath.name, standing };
 }
@@ -101,20 +95,21 @@ function Tree({
   readonly hero: HeroKind;
   readonly view: CampView;
   readonly fresh: PowerKind | null;
-  readonly onOpen: (code: PowerTreeCode) => void;
-  readonly nodeRef: (code: PowerTreeCode, node: View | null) => void;
+  readonly onOpen: (code: PowerKind) => void;
+  readonly nodeRef: (code: PowerKind, node: View | null) => void;
 }) {
   const { base, paths } = POWER_TREES[hero];
-  const state = (code: PowerTreeCode) =>
+  const state = (code: PowerKind) =>
     view.trees[hero].nodes.find((node) => node.code === code)!.state;
-  const owned = (code: PowerTreeCode) => isOwned(state(code));
-  const nodeOf = (code: PowerTreeCode) => (
+  const owned = (code: PowerKind) => isOwned(state(code));
+  const nodeOf = (code: PowerKind) => (
     <PowerTreeNode
       key={code}
       ref={(element) => nodeRef(code, element)}
       code={code}
       state={state(code)}
       fresh={fresh === code}
+      equipped={view.equipped[hero].includes(code)}
       sworn={swornHabit(view, code)}
       onPress={() => onOpen(code)}
     />
@@ -195,22 +190,24 @@ export function PowerTreeScreen({
   // « Serment · … »), comme un changement d'habitude (#237, S13).
   const notifyViews = useTrackingChanges(useCallback(() => undefined, []));
   const [hero, setHero] = useState(initialHero);
-  const [sheet, setSheet] = useState<PowerTreeCode | null>(null);
+  const [sheet, setSheet] = useState<PowerKind | null>(null);
   const [error, setError] = useState(false);
   const [fresh, setFresh] = useState<Fresh | null>(null);
-  const nodes = useRef(new Map<PowerTreeCode, View | null>());
+  // Le dernier pouvoir débloqué sans place libre (#236, D2) : le bandeau le dit.
+  const [noSlot, setNoSlot] = useState<PowerKind | null>(null);
+  const nodes = useRef(new Map<PowerKind, View | null>());
   const loading = view.status === 'loading';
 
   useEffect(() => {
     void camp.markPowerTreesSeen();
   }, [camp]);
 
-  const focus = (code: PowerTreeCode) => {
+  const focus = (code: PowerKind) => {
     const node = nodes.current.get(code);
     if (node !== null && node !== undefined)
       AccessibilityInfo.sendAccessibilityEvent(node, 'focus');
   };
-  const open = (code: PowerTreeCode) => {
+  const open = (code: PowerKind) => {
     setError(false);
     setSheet(code);
   };
@@ -223,7 +220,7 @@ export function PowerTreeScreen({
   };
   const swear = async (habit: HabitId) => {
     if (sheet === null || swearing) return;
-    const power = sheet as PowerKind;
+    const power = sheet;
     setSwearing(true);
     const result = await camp.swearOath(power, habit);
     setSwearing(false);
@@ -241,7 +238,7 @@ export function PowerTreeScreen({
   };
   const unlock = async () => {
     if (sheet === null) return;
-    const code = sheet as PowerKind;
+    const code = sheet;
     const result = await camp.unlockPower(code);
     if (result === 'failed') {
       setError(true);
@@ -251,8 +248,11 @@ export function PowerTreeScreen({
     setSheet(null);
     setError(false);
     setFresh({ id: (fresh?.id ?? 0) + 1, code, price: powerPrice(code) });
+    const after = camp.view();
+    const equipped = after.equipped[POWERS[code].hero].includes(code);
+    setNoSlot(equipped ? null : code);
     AccessibilityInfo.announceForAccessibility(
-      unlockAnnouncement(code, camp.view().availableShards),
+      unlockAnnouncement(code, after.availableShards, equipped),
     );
     focus(code);
   };
@@ -311,6 +311,16 @@ export function PowerTreeScreen({
         })}
       </View>
       <ScrollView contentContainerStyle={styles.scroll}>
+        {noSlot === null ? null : (
+          <View
+            accessible
+            testID="power-tree-no-slot"
+            style={[styles.band, styles.doneBand, { borderWidth: LINE }]}
+          >
+            <PixelIcon name="check8" color={roles.done} />
+            <Text style={styles.bandText}>{noFreeSlotBand(noSlot)}</Text>
+          </View>
+        )}
         {view.place === null ? null : (
           <View accessible style={[styles.band, { borderWidth: LINE }]}>
             <Text style={styles.bandText}>{runBand(view.place)}</Text>
@@ -330,7 +340,7 @@ export function PowerTreeScreen({
       </ScrollView>
       {state === null || state === undefined ? null : picking ? (
         <OathPicker
-          power={state.code as PowerKind}
+          power={state.code}
           habits={view.habits}
           oaths={view.oaths}
           error={oathError}
@@ -351,6 +361,7 @@ export function PowerTreeScreen({
           ascentInProgress={view.ascentInProgress}
           readOnly={view.readOnly}
           error={error}
+          equipped={view.equipped[hero].includes(state.code)}
           oath={sheetOath(view, state.code, state.state, camp.oathStandings(doneYesterday))}
           onSwear={() => setPicking(true)}
           onUnlock={() => void unlock()}
@@ -407,7 +418,20 @@ const styles = StyleSheet.create({
   tabTextOn: { color: roles.gold },
   scroll: { paddingHorizontal: 16, paddingBottom: 24, gap: 8 },
   band: { padding: 10, borderColor: roles.blue, backgroundColor: roles.raised },
-  bandText: { fontFamily: textFont.medium, fontSize: 13, lineHeight: 18, color: roles.light },
+  doneBand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderColor: roles.doneLine,
+    backgroundColor: roles.doneBg,
+  },
+  bandText: {
+    flexShrink: 1,
+    fontFamily: textFont.medium,
+    fontSize: 13,
+    lineHeight: 18,
+    color: roles.light,
+  },
   tree: { gap: 0 },
   columns: { flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
   pathLabel: {

@@ -3,9 +3,13 @@
 import { act, fireEvent, screen, within } from '@testing-library/react-native';
 import { AccessibilityInfo } from 'react-native';
 
-import { CAMP_KEY, POWER_TREES_SEEN_KEY } from '../../../application/useCases/CampSession';
+import {
+  CAMP_KEY,
+  EQUIPPED_POWERS_KEY,
+  POWER_TREES_SEEN_KEY,
+} from '../../../application/useCases/CampSession';
 import { startAscent } from '../../../domain/ascent/Ascent';
-import type { PowerTreeCode } from '../../../domain/ascent/powerTree';
+import type { PowerKind } from '../../../domain/battle/powers';
 import { ascentSetUp } from '../testing/ascent';
 import { reduceMotionInEachTest } from '../testing/motion';
 import { renderScreen } from '../testing/renderScreen';
@@ -16,8 +20,15 @@ reduceMotionInEachTest();
 async function show(
   options: Parameters<typeof ascentSetUp>[0] = {},
   hero: 'sentinel' | 'wanderer' = 'sentinel',
+  remembered?: Readonly<Record<string, readonly PowerKind[]>>,
 ) {
   const setUp = ascentSetUp(options);
+  if (remembered !== undefined) {
+    setUp.keyValueStore.values.set(
+      EQUIPPED_POWERS_KEY,
+      JSON.stringify({ version: 1, heroes: remembered }),
+    );
+  }
   await setUp.session.load();
   const onLeave = jest.fn();
   await renderScreen(
@@ -28,10 +39,10 @@ async function show(
   return { ...setUp, onLeave };
 }
 
-const node = (code: PowerTreeCode) => screen.getByTestId(`power-node-${code}`);
-const inNode = (code: PowerTreeCode) => within(node(code));
+const node = (code: PowerKind) => screen.getByTestId(`power-node-${code}`);
+const inNode = (code: PowerKind) => within(node(code));
 
-async function open(code: PowerTreeCode) {
+async function open(code: PowerKind) {
   await fireEvent.press(node(code));
   return within(await screen.findByTestId('power-sheet'));
 }
@@ -48,10 +59,9 @@ describe('PowerTreeScreen (#235)', () => {
     expect(node('holdFast').props.accessibilityLabel).toBe(
       "Tenir bon, 3 Élan, Action, verrouillé : débloque d'abord Représailles",
     );
-    for (const soon of ['shieldBash', 'crushingBlow'] as const) {
-      expect(inNode(soon).getByText('Bientôt')).toBeOnTheScreen();
-      expect(inNode(soon).queryByText(/Éclats/)).not.toBeOnTheScreen();
-    }
+    expect(inNode('shieldBash').getByText('30 Éclats')).toBeOnTheScreen();
+    expect(inNode('crushingBlow').getByText('Après Coup de bouclier')).toBeOnTheScreen();
+    expect(screen.queryByText('Bientôt')).not.toBeOnTheScreen();
     expect(screen.getByText('Voie Veille')).toBeOnTheScreen();
     expect(screen.getByText('Voie Bouclier')).toBeOnTheScreen();
   });
@@ -64,8 +74,8 @@ describe('PowerTreeScreen (#235)', () => {
     expect(inNode('shadowStep').getByText('Pouvoir de base')).toBeOnTheScreen();
     expect(inNode('rend').getByText('30 Éclats')).toBeOnTheScreen();
     expect(inNode('mist').getByText('30 Éclats')).toBeOnTheScreen();
-    expect(inNode('flurry').getByText('Bientôt')).toBeOnTheScreen();
-    expect(inNode('ambush').getByText('Bientôt')).toBeOnTheScreen();
+    expect(inNode('flurry').getByText('Après Entaille')).toBeOnTheScreen();
+    expect(inNode('ambush').getByText('Après Brume')).toBeOnTheScreen();
     expect(screen.getByRole('tab', { name: /Errante/ })).toHaveProp('accessibilityState', {
       selected: true,
     });
@@ -160,16 +170,56 @@ describe('PowerTreeScreen (#235)', () => {
     expect(await screen.findByLabelText('20 Éclats disponibles')).toBeOnTheScreen();
   });
 
-  it('says a power strike is not available yet, with no way to unlock (F, A6)', async () => {
-    await show({ shards: 200 });
+  it('unlocks Shield Bash then Crushing Blow, down to 0 Shard (#236)', async () => {
+    await show({ shards: 90 });
 
-    const sheet = await open('shieldBash');
+    const bash = await open('shieldBash');
+    expect(bash.getByText('Coup de bouclier')).toBeOnTheScreen();
+    expect(bash.getByText('Frappe')).toBeOnTheScreen();
+    await fireEvent.press(bash.getByRole('button', { name: 'Débloquer pour 30 Éclats' }));
+    expect(await screen.findByLabelText('60 Éclats disponibles')).toBeOnTheScreen();
+    const crush = await open('crushingBlow');
+    await fireEvent.press(crush.getByRole('button', { name: 'Débloquer pour 60 Éclats' }));
 
-    expect(sheet.getByText('Coup de bouclier')).toBeOnTheScreen();
+    expect(await screen.findByLabelText('0 Éclat disponible')).toBeOnTheScreen();
+    expect(inNode('shieldBash').getByText('Équipé')).toBeOnTheScreen();
+    expect(inNode('crushingBlow').getByText('Équipé')).toBeOnTheScreen();
+  });
+
+  it('says « Débloqué » for a power left out of the 3 equipped (#236, A3, F5)', async () => {
+    await show({ shards: 200, powers: ['rend', 'mist', 'flurry'] }, 'wanderer', {
+      wanderer: ['shadowStep', 'rend', 'mist'],
+    });
+
+    expect(inNode('flurry').getByText('Débloqué')).toBeOnTheScreen();
+    expect(node('flurry').props.accessibilityLabel).toBe(
+      'Rafale, 2 Élan, Frappe, débloqué, pas équipé',
+    );
+    expect(inNode('mist').getByText('Équipé')).toBeOnTheScreen();
+    const sheet = await open('flurry');
     expect(
-      sheet.getByText('Pas encore dans la tour : il arrive avec une prochaine version.'),
+      sheet.getByText('Débloqué. Pas équipé : choisis-le au Choix du héros.'),
     ).toBeOnTheScreen();
-    expect(sheet.queryByRole('button', { name: /^Débloquer/ })).not.toBeOnTheScreen();
+  });
+
+  it('says that the 3 slots are taken after a 4th unlocked power (#236, D2)', async () => {
+    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    await show({ shards: 150, powers: ['rend', 'mist'] }, 'wanderer', {
+      wanderer: ['shadowStep', 'rend', 'mist'],
+    });
+
+    const sheet = await open('flurry');
+    await fireEvent.press(sheet.getByRole('button', { name: 'Débloquer pour 60 Éclats' }));
+
+    expect(
+      await screen.findByText(
+        'Rafale débloqué. Tes 3 places sont prises : choisis tes pouvoirs au Choix du héros.',
+      ),
+    ).toBeOnTheScreen();
+    expect(inNode('flurry').getByText('Débloqué')).toBeOnTheScreen();
+    expect(announce).toHaveBeenCalledWith(
+      'Rafale débloqué. Tes 3 places sont prises : choisis tes pouvoirs au Choix du héros. 30 Éclats disponibles.',
+    );
   });
 
   it('explains a lock and opens the sheet of the rank 1 (F4)', async () => {

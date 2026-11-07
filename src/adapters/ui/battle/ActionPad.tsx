@@ -26,7 +26,14 @@ import type { PowerKind } from '../../../domain/battle/powers';
 import { KindledFlame } from '../components/KindledFlame';
 import { PowerIcon } from '../components/PowerIcon';
 import { INSTANT_WORD, attackButtonLabel } from '../format/battleText';
-import { POWER_BUTTON_NAMES, POWER_TIPS, powerKeyLabel, powerKeyReason } from '../format/powerText';
+import {
+  POWER_BUTTON_NAMES,
+  POWER_TIPS,
+  powerKeyLabel,
+  powerKeyReason,
+  strikeKeyLabel,
+  strikePowerLine,
+} from '../format/powerText';
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize, notchedCorners } from '../pixelArt/artPixel';
 import { PixelFrame } from '../pixelArt/PixelFrame';
@@ -490,6 +497,7 @@ function StrikeKey({
     'worklet';
     return { transform: [{ scaleX: fill.get() }] };
   }, [fill]);
+  const { power, hits = 1, hit = 1 } = pad;
   return (
     <PixelKey
       name="strike"
@@ -498,7 +506,7 @@ function StrikeKey({
       gesture={gesture}
       accessible
       accessibilityRole="button"
-      accessibilityLabel="Frapper"
+      accessibilityLabel={strikeKeyLabel(power, hits, hit)}
       accessibilityState={{ disabled: pad.resolved }}
       accessibilityActions={[{ name: 'activate' }]}
       onAccessibilityAction={() => onStrike(now())}
@@ -508,6 +516,24 @@ function StrikeKey({
       <Animated.View pointerEvents="none" style={[styles.strikeFill, bar]} />
       <View pointerEvents="none" testID="battle-strike-mark" style={styles.strikeMark} />
       <Text style={[styles.keyText, { color: KEY_LOOKS.strike.text }]}>Frapper</Text>
+      {power === undefined ? null : (
+        <>
+          <Text style={[styles.strikePower, { color: KEY_LOOKS.strike.text }]}>
+            {strikePowerLine(power, hits)}
+          </Text>
+          {hits > 1 ? (
+            <View pointerEvents="none" style={styles.strikeHits}>
+              {Array.from({ length: hits }, (_, index) => (
+                <View
+                  key={index}
+                  testID={`battle-strike-hit-${index + 1}`}
+                  style={[styles.strikeHit, index < hit && styles.strikeHitDone]}
+                />
+              ))}
+            </View>
+          ) : null}
+        </>
+      )}
     </PixelKey>
   );
 }
@@ -702,6 +728,10 @@ const styles = StyleSheet.create({
     backgroundColor: battleColors.lightGlow,
     transformOrigin: 'left',
   },
+  strikePower: { fontFamily: textFont.bold, fontSize: 12, lineHeight: 15, textAlign: 'center' },
+  strikeHits: { flexDirection: 'row', gap: 6, marginTop: 4 },
+  strikeHit: { width: 8, height: 8, borderWidth: 2, borderColor: roles.gold },
+  strikeHitDone: { backgroundColor: roles.gold },
   strikeMark: {
     position: 'absolute',
     top: 0,
