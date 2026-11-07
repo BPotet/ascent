@@ -130,6 +130,11 @@ const POSE_OF_OUTCOME: Readonly<Record<BlowOutcome, HeroPose>> = {
   suffered: 'hit',
 };
 
+/** Le premier coup de Frappe furtive commence (#236) : l'esquive et l'ombre de Pas de l'ombre. */
+function ambushOpens(event: BattleEvent): boolean {
+  return event.type === 'strikeStarted' && event.power === 'ambush' && (event.hit ?? 1) === 1;
+}
+
 /** La pose du héros après un événement, ou `null` s'il ne la change pas. */
 function poseAfter(event: BattleEvent, pose: HeroPose): HeroPose | null {
   switch (event.type) {
@@ -137,7 +142,13 @@ function poseAfter(event: BattleEvent, pose: HeroPose): HeroPose | null {
       return POSE_OF_OUTCOME[event.outcome];
     case 'whiffed':
       return 'off';
+    // Une frappe de pouvoir (#236) : Fracas abat sa lame chargée, Coup de bouclier frappe de l'écu.
     case 'strikeResolved':
+      return event.power === 'crushingBlow'
+        ? 'crush'
+        : event.power === 'shieldBash'
+          ? 'bash'
+          : 'strike';
     case 'counterAttacked':
       return 'strike';
     // Le coup de bouclier, sur place (#128).
@@ -147,8 +158,13 @@ function poseAfter(event: BattleEvent, pose: HeroPose): HeroPose | null {
     // qui brille (#235, K12). Le Rempart garde sa pose.
     case 'powerUsed':
       return event.instant === true || event.power === 'holdFast' ? 'cast' : null;
+    // La préparation : la lame chargée de Fracas, l'esquive dans l'ombre de Frappe furtive (#236).
     case 'strikeStarted':
-      return 'raise';
+      return event.power === 'crushingBlow'
+        ? 'crushRaise'
+        : ambushOpens(event)
+          ? 'ambushRaise'
+          : 'raise';
     // Un coup reçu reste visible pendant l'avancée suivante ou la transition vers le héros.
     case 'windUpStarted':
     case 'heroPhaseStarted':
@@ -349,7 +365,7 @@ export function displayOf(
     const spark = sparkOf(event);
     if (spark !== null) display = { ...display, spark };
     display = { ...display, bulwarkWornAt: bulwarkWornAfter(event, display.bulwarkWornAt) };
-    if (event.type === 'powerUsed' && event.instant === true) {
+    if ((event.type === 'powerUsed' && event.instant === true) || ambushOpens(event)) {
       display = { ...display, shadowStepAt: event.at };
     }
     if (event.type === 'heroHealed') display = { ...display, healedAt: event.at };

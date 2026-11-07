@@ -6,6 +6,7 @@ import {
   powerAvailability,
   powerCost,
   pendingSummon,
+  strikeProfile,
   type Battle,
   type EnemyState,
 } from '../../../domain/battle/Battle';
@@ -92,6 +93,10 @@ export type ActionPad =
       readonly since: number;
       readonly impactAt: number;
       readonly resolved: boolean;
+      /** La frappe de pouvoir (#236, K13), son nombre de coups et le coup en cours ; absents pour « Attaquer ». */
+      readonly power?: PowerKind;
+      readonly hits?: number;
+      readonly hit?: number;
     }
   | {
       readonly kind: 'defense';
@@ -363,6 +368,12 @@ export function battleView(battle: Battle): BattleView {
           since: phase.since,
           impactAt: phase.impactAt,
           resolved: phase.resolved,
+          // Le compteur de coups d'une frappe de pouvoir vient de la phase (#236).
+          ...(phase.power !== undefined && {
+            power: phase.power,
+            hits: strikeProfile(battle, phase).hits,
+            hit: phase.hit ?? 1,
+          }),
         },
         line: STRIKE_LINE,
       };

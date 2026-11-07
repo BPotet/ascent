@@ -18,7 +18,12 @@ export type HeroPose =
   | 'dodge'
   | 'fallen'
   | 'bash'
-  | 'cast';
+  | 'cast'
+  /** Fracas (#236) : la lame chargée pendant la préparation (`crush0`), puis abattue (`crush1`). */
+  | 'crushRaise'
+  | 'crush'
+  /** Frappe furtive (#236) : l'esquive, puis l'arme levée, pendant la préparation. */
+  | 'ambushRaise';
 
 /** Un ennemi tel que la scène le dessine. */
 export interface SceneEnemy {

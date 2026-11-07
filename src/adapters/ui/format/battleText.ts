@@ -108,6 +108,10 @@ export const POWER_NAMES: Readonly<Record<PowerKind, string>> = {
   shadowStep: "Pas de l'ombre",
   rend: 'Entaille',
   mist: 'Brume',
+  shieldBash: 'Coup de bouclier',
+  crushingBlow: 'Fracas',
+  flurry: 'Rafale',
+  ambush: 'Frappe furtive',
 };
 
 /** Les héros, leur équipement de base, leur pouvoir et leur trait (prototype #90, maquette H1, H2). */
@@ -150,6 +154,13 @@ const POWER_EFFECTS: Readonly<Record<PowerKind, string>> = {
     "Une sentinelle ne tombe pas tant que la nuit n'est pas finie. Elle serre les dents, et la nuit continue.",
   rend: "Une seule ligne, fine comme un fil, à l'endroit exact où l'armure cédera.",
   mist: "Le froid du matin monte du sol avec elle. Ce qui la frappe frappe d'abord le brouillard.",
+  // La `description` des fiches `codex/<code>` version 1 (#236).
+  shieldBash:
+    "Le bord du bouclier n'a pas besoin d'être tranchant : il suffit qu'il arrive le premier.",
+  crushingBlow: "Toute la muraille qu'elle a portée, elle la laisse retomber d'un seul coup.",
+  flurry: "Quatre lames, ou une seule si vite qu'on en compte quatre. Personne n'a jamais su.",
+  ambush:
+    "Elle frappe avant que l'ennemi ait compris qu'elle était là. Après, c'est un combat comme un autre.",
 };
 
 /** La fiche d'un héros sur l'écran du choix du héros. */

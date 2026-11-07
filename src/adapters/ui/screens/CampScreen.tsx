@@ -12,7 +12,8 @@ import {
 
 import type { CampSession, CampView } from '../../../application/useCases/CampSession';
 import type { CampOfferEntry } from '../../../domain/ascent/camp';
-import { POWER_TREES, type PowerTreeCode } from '../../../domain/ascent/powerTree';
+import { POWER_TREES } from '../../../domain/ascent/powerTree';
+import type { PowerKind } from '../../../domain/battle/powers';
 import type { Unlock } from '../../../domain/ascent/unlocks';
 import type { HeroKind } from '../../../domain/battle/combatants';
 import { MinusFloat, Spark } from '../components/CampFeedback';
@@ -231,9 +232,9 @@ function PowerTreeCard({
   readonly onOpen: () => void;
 }) {
   const { base, paths } = POWER_TREES[hero];
-  const codes: readonly PowerTreeCode[] = [base, ...paths.flatMap(({ ranks }) => ranks)];
+  const codes: readonly PowerKind[] = [base, ...paths.flatMap(({ ranks }) => ranks)];
   const tree = view.trees[hero];
-  const owned = (code: PowerTreeCode) => {
+  const owned = (code: PowerKind) => {
     const kind = tree.nodes.find((node) => node.code === code)?.state.kind;
     return kind === 'base' || kind === 'unlocked' || kind === 'nextAscent';
   };

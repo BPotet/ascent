@@ -10,7 +10,8 @@ import {
   type Encounter,
 } from '../../../domain/ascent/Ascent';
 import type { Tier } from '../../../domain/ascent/tiers';
-import { POWER_TREES, type PowerTreeCode } from '../../../domain/ascent/powerTree';
+import { POWER_TREES } from '../../../domain/ascent/powerTree';
+import type { PowerKind } from '../../../domain/battle/powers';
 import type { AttackKind } from '../../../domain/battle/attacks';
 import {
   advance,
@@ -89,7 +90,7 @@ const ENTRIES: readonly (readonly [Board, string])[] = [
 ];
 
 /** Les codes des arbres de pouvoirs, racine puis voies, Sentinelle puis Errante (#235). */
-const TREE_CODES: readonly PowerTreeCode[] = (['sentinel', 'wanderer'] as const).flatMap((hero) => {
+const TREE_CODES: readonly PowerKind[] = (['sentinel', 'wanderer'] as const).flatMap((hero) => {
   const { base, paths } = POWER_TREES[hero];
   return [base, ...paths.flatMap((path) => path.ranks)];
 });

@@ -5,7 +5,7 @@ import { AccessibilityInfo } from 'react-native';
 
 import type { InMemoryUnitOfWork } from '../../../application/testing/InMemoryUnitOfWork';
 import { OATHS_KEY } from '../../../application/useCases/oaths';
-import type { PowerTreeCode } from '../../../domain/ascent/powerTree';
+import type { PowerKind } from '../../../domain/battle/powers';
 import { Day } from '../../../domain/day/Day';
 import { HabitName } from '../../../domain/habit/HabitName';
 import { ascentSetUp } from '../testing/ascent';
@@ -54,10 +54,10 @@ async function show({
   return { ...setUp, onGoToDay };
 }
 
-const node = (code: PowerTreeCode) => screen.getByTestId(`power-node-${code}`);
+const node = (code: PowerKind) => screen.getByTestId(`power-node-${code}`);
 const hiddenToo = { includeHiddenElements: true } as const;
 
-async function openSheet(code: PowerTreeCode) {
+async function openSheet(code: PowerKind) {
   await fireEvent.press(node(code));
   return within(await screen.findByTestId('power-sheet'));
 }
