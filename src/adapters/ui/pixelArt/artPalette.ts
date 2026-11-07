@@ -174,6 +174,13 @@ export const artPalette = {
      */
     backdropVeil: 'rgba(14,17,32,0.9)',
     /**
+     * Le voile du pied de la tour (`towerFootVeil`, #233) : la nuit du Voile de lisibilité à 75 %,
+     * sous la barre d'état et l'en-tête du pied de la tour, posé sur le fond de palier.
+     */
+    towerFootVeil: 'rgba(14,17,32,0.75)',
+    /** Le voile du pied de la tour, léger (#233) : la même nuit à 12 %, sous l'en-tête jusqu'en bas. */
+    towerFootVeilLight: 'rgba(14,17,32,0.12)',
+    /**
      * Le voile de phase ennemie (`enemyPhaseVeil`, #188) : l'encre `#06070C` à 38 % sur tout le cadre
      * de la scène pendant la phase ennemie, au-dessus du fond de palier, sous les combattants
      * (maquettes 170 `.pst .veil` et 174 v2, C1 et C3). À ne pas confondre avec `backdropVeil`.
