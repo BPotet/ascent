@@ -1,7 +1,7 @@
 # ADR 0016 — Le journal des combats
 
 - **Statut** : accepté
-- **Avenant** : 5 novembre 2026, la seconde chance (#206), voir en fin de document
+- **Avenant** : 5 novembre 2026, la seconde chance (#206), voir en fin de document ; 7 novembre 2026, le multiplicateur d'Élite et de boss (#244)
 - **Date** : 4 novembre 2026
 - **Décideur** : Architect (notes techniques de #197), écrit par le dev
 - **Contexte produit** : épique #193, story #197 « Le journal raconte mes combats, appui par appui »
@@ -148,3 +148,11 @@ rangement :
 - `counterAttacked.retaliation` et `strikeResolved.rend` passent tels quels. `powerUsed` reste une
   action `power` ; un pouvoir instantané n'a pas de durée.
 - **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7) : ce sont des champs et des valeurs ajoutés.
+
+## Avenant du 7 novembre 2026 — le multiplicateur d'Élite et de boss (#244)
+
+- `tierMultiplier` est désormais noté pour un combat d'Élite ou de boss : c'est le multiplicateur
+  d'Élite et de boss de son palier (ADR 0020) ; il reste absent pour un combat sauvegardé avant.
+- Les PV et gardes de départ, la garde retirée de chaque frappe (`guardDamage`, G1) et le gain du
+  répit (R3) suffisent à mesurer le rééquilibrage : aucun champ ajouté.
+- **`BATTLE_LOG_FORMAT_VERSION` reste 2.**
