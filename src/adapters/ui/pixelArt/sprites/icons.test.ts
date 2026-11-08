@@ -56,6 +56,10 @@ describe('the icons', () => {
     expect(iconNames).toEqual(expect.arrayContaining(['oath8', 'kindled8']));
   });
 
+  it('has the crown of the Elite and the crossed swords of its escort (#257)', () => {
+    expect(iconNames).toEqual(expect.arrayContaining(['crown8', 'swords8']));
+  });
+
   it('has the small flame of « Le camp » (#40)', () => {
     expect(iconNames).toContain('flame8');
     expect(ICONS.flame8).toHaveLength(8);

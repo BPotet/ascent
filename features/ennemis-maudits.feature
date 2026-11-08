@@ -93,7 +93,9 @@ Fonctionnalité: Ennemis maudits
     Quand l'écran « Choisis ta sortie » propose une porte Combat de 3 ennemis et une porte Élite
     Alors la porte Combat dit « 3 ennemis » et « dont 1 maudit », sans dire lequel
     Et la porte Élite dit « Élite maudite »
-    Et avec une jauge de −1, la porte Combat dit « dont 1 maudit » et la porte Élite dit « Élite », comme aujourd'hui
+    # #257 : aux paliers 2 et 3, la porte Élite annonce aussi son escorte, « dont 1 maudit » à −1
+    # (voir `elite-escortee.feature`) ; ce scénario reste celui du palier 1.
+    Et avec une jauge de −1, la porte Combat dit « dont 1 maudit » et la porte Élite dit « Élite » au palier 1, comme aujourd'hui
 
   @session
   Scénario: Lecture impossible des habitudes

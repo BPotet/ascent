@@ -36,7 +36,8 @@ let card: ReturnType<typeof screen.getByTestId>;
 const door = (name: string) => screen.getByRole('button', { name });
 
 async function showDoors(at: FateGauge) {
-  await render(<ExitChoice boons={[]} exits={DOORS} gauge={at} onChoose={jest.fn()} />);
+  // Le palier 1 : l'Élite y vient seule, sans annonce d'escorte (#257).
+  await render(<ExitChoice boons={[]} exits={DOORS} gauge={at} tier={1} onChoose={jest.fn()} />);
 }
 
 /** Le pied de la tour, hier `done` habitudes « fait » sur 3. */
@@ -86,7 +87,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and(
-    /^avec une jauge de −1, la porte Combat dit « dont 1 maudit » et la porte Élite dit « Élite », comme aujourd'hui$/u,
+    /^avec une jauge de −1, la porte Combat dit « dont 1 maudit » et la porte Élite dit « Élite » au palier 1, comme aujourd'hui$/u,
     async () => {
       await showDoors(-1);
       expect(door('Combat · 3 ennemis · dont 1 maudit')).toBeOnTheScreen();

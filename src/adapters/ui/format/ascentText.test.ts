@@ -6,6 +6,8 @@ import {
   blessingChip,
   blessingText,
   enemiesText,
+  exitCursed,
+  exitEscort,
   exitLabel,
   TIER_LINE,
   TIER_NAMES,
@@ -63,6 +65,52 @@ describe('ascent texts', () => {
 
     expect(label).toBe('Élite · objet Rare garanti · coffre scellé');
     expect(label).not.toMatch(/Chevalier déchu|Jumeaux/u);
+  });
+});
+
+describe('the Elite door of an escorted Elite (#257)', () => {
+  const elite = { kind: 'elite', groupSize: null } as const;
+  const combat = { kind: 'combat', groupSize: 3 } as const;
+
+  it('keeps every door of tier 1 as before, at every gauge', () => {
+    for (const gauge of [-2, -1, 0, 1, 2] as const) {
+      expect(exitLabel(elite, gauge, 1)).toBe(exitLabel(elite, gauge));
+      expect(exitCursed(elite, gauge, 1)).toBe(gauge === -2);
+      expect(exitEscort(elite, gauge, 1)).toBeNull();
+    }
+  });
+
+  it('announces the escort by its size at tiers 2 and 3, never which enemy (E1)', () => {
+    expect(exitEscort(elite, 0, 2)).toEqual({ text: 'Escortée · 1 ennemi', cursed: false });
+    expect(exitEscort(elite, 0, 3)).toEqual({ text: 'Escortée · 2 ennemis', cursed: false });
+    expect(exitLabel(elite, 0, 2)).toBe(
+      'Élite. Escortée de 1 ennemi. Objet Rare garanti. Coffre scellé',
+    );
+    expect(exitCursed(elite, 0, 3)).toBe(false);
+  });
+
+  it('says « dont 1 maudit » under the curse, the Elite not cursed (E1b)', () => {
+    expect(exitEscort(elite, -1, 3)).toEqual({ text: 'Escortée · 2 ennemis', cursed: true });
+    expect(exitLabel(elite, -1, 3)).toBe(
+      'Élite. Escortée de 2 ennemis, dont 1 maudit. Objet Rare garanti. Coffre scellé',
+    );
+    expect(exitCursed(elite, -1, 2)).toBe(true);
+  });
+
+  it('says « Élite maudite » under the strong curse, the escort not cursed (E1c)', () => {
+    expect(exitEscort(elite, -2, 3)).toEqual({ text: 'Escortée · 2 ennemis', cursed: false });
+    expect(exitLabel(elite, -2, 3)).toBe(
+      'Élite maudite. Escortée de 2 ennemis. Objet Rare garanti. Coffre scellé',
+    );
+    expect(exitCursed(elite, -2, 3)).toBe(true);
+  });
+
+  it('changes no other door with the tier', () => {
+    for (const tier of [2, 3] as const) {
+      expect(exitLabel(combat, -1, tier)).toBe('Combat · 3 ennemis · dont 1 maudit');
+      expect(exitEscort(combat, -1, tier)).toBeNull();
+      expect(exitCursed({ kind: 'boss', groupSize: null }, -2, tier)).toBe(false);
+    }
   });
 });
 

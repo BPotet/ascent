@@ -103,3 +103,62 @@ describe('ExitChoice (#157)', () => {
     expect(screen.getByRole('button', { name: 'Affronter le boss' })).toBeOnTheScreen();
   });
 });
+
+describe('ExitChoice: the escorted Elite door (#257)', () => {
+  const ELITE: readonly Exit[] = [
+    { kind: 'combat', groupSize: 3 },
+    { kind: 'elite', groupSize: null },
+  ];
+
+  it('adds the escort line with crossed swords at tier 2, read by the screen reader (E1)', async () => {
+    await render(<ExitChoice boons={[]} exits={ELITE} tier={2} onChoose={jest.fn()} />);
+
+    const door = screen.getByRole('button', {
+      name: 'Élite. Escortée de 1 ennemi. Objet Rare garanti. Coffre scellé',
+    });
+    expect(within(door).getByText('Escortée · 1 ennemi', hidden)).toBeOnTheScreen();
+    expect(within(door).getByTestId('ascent-exit-1-escort-swords', hidden)).toBeOnTheScreen();
+    expect(within(door).queryByText('dont 1 maudit', hidden)).toBeNull();
+  });
+
+  it('adds « dont 1 maudit » with the skull under the curse at tier 3 (E1b)', async () => {
+    await render(<ExitChoice boons={[]} exits={ELITE} tier={3} gauge={-1} onChoose={jest.fn()} />);
+
+    const door = screen.getByRole('button', {
+      name: 'Élite. Escortée de 2 ennemis, dont 1 maudit. Objet Rare garanti. Coffre scellé',
+    });
+    expect(within(door).getByText('Escortée · 2 ennemis', hidden)).toBeOnTheScreen();
+    expect(within(door).getByText('dont 1 maudit', hidden)).toBeOnTheScreen();
+    expect(within(door).getAllByTestId('pixel-button-icon', hidden)).toHaveLength(1);
+  });
+
+  it('names the door « Élite maudite » under the strong curse (E1c)', async () => {
+    await render(<ExitChoice boons={[]} exits={ELITE} tier={3} gauge={-2} onChoose={jest.fn()} />);
+
+    const door = screen.getByRole('button', {
+      name: 'Élite maudite. Escortée de 2 ennemis. Objet Rare garanti. Coffre scellé',
+    });
+    expect(
+      within(door).getByText('Élite maudite · objet Rare garanti · coffre scellé', hidden),
+    ).toBeOnTheScreen();
+    expect(within(door).queryByText('dont 1 maudit', hidden)).toBeNull();
+  });
+
+  it('shows no escort line at tier 1', async () => {
+    await render(<ExitChoice boons={[]} exits={ELITE} tier={1} onChoose={jest.fn()} />);
+
+    expect(
+      screen.getByRole('button', { name: 'Élite · objet Rare garanti · coffre scellé' }),
+    ).toBeOnTheScreen();
+    expect(screen.queryByText(/Escortée/u, hidden)).toBeNull();
+  });
+
+  it('chooses the escorted Elite door', async () => {
+    const onChoose = jest.fn();
+    await render(<ExitChoice boons={[]} exits={ELITE} tier={2} onChoose={onChoose} />);
+
+    fireEvent.press(screen.getByTestId('ascent-exit-1'));
+
+    expect(onChoose).toHaveBeenCalledWith(1);
+  });
+});

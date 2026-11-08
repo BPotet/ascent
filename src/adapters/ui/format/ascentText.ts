@@ -1,11 +1,11 @@
 import { TOP_FLOOR } from '../../../domain/ascent/Ascent';
-import type { Tier } from '../../../domain/ascent/tiers';
+import { TIERS, type Tier } from '../../../domain/ascent/tiers';
 import {
   BLESSING_EFFECTS,
   type BlessingFamily,
   type StartingBlessing,
 } from '../../../domain/ascent/blessings';
-import { cursedElite, cursedOrdinary } from '../../../domain/ascent/cursedEnemy';
+import { cursedOrdinary, eliteCurse } from '../../../domain/ascent/cursedEnemy';
 import type { Exit } from '../../../domain/ascent/exits';
 import type { FateGauge } from '../../../domain/ascent/fateGauge';
 import { ITEMS, type Equipment, type ItemKind, type ItemSlot } from '../../../domain/ascent/items';
@@ -72,19 +72,53 @@ export function enemiesText(count: number): string {
   return count === 1 ? '1 ennemi' : `${count} ennemis`;
 }
 
-/** La porte mène à un ennemi maudit (#209) : la porte Combat sous la malédiction, l'Élite à −2. */
-export function exitCursed(exit: Exit, gauge: FateGauge): boolean {
+/**
+ * La porte mène à un ennemi maudit (#209) : la porte Combat sous la malédiction ; la porte Élite à
+ * −2, et à −1 quand l'Élite du palier `tier` est escortée (#257, un ennemi d'escorte maudit).
+ */
+export function exitCursed(exit: Exit, gauge: FateGauge, tier: Tier = 1): boolean {
   if (exit.kind === 'combat') return cursedOrdinary(gauge);
-  return exit.kind === 'elite' && cursedElite(gauge);
+  return exit.kind === 'elite' && eliteCurse(tier, gauge) !== null;
+}
+
+/** La ligne d'escorte d'une porte Élite (#257, E1) et si elle dit « dont 1 maudit » (E1b). */
+export interface ExitEscort {
+  readonly text: string;
+  readonly cursed: boolean;
+}
+
+/**
+ * L'escorte annoncée par la porte Élite des paliers 2 et 3 (#257, E1) : « Escortée · 2 ennemis »,
+ * la taille seulement, jamais qui ; « dont 1 maudit » quand un ennemi d'escorte l'est (−1). `null`
+ * pour une autre porte, ou au palier 1 où l'Élite vient seule.
+ */
+export function exitEscort(exit: Exit, gauge: FateGauge, tier: Tier): ExitEscort | null {
+  const size = TIERS[tier].escortSize;
+  if (exit.kind !== 'elite' || size === 0) return null;
+  return { text: `Escortée · ${enemiesText(size)}`, cursed: eliteCurse(tier, gauge) === 'escort' };
 }
 
 /**
  * Le libellé d'une porte : la porte Combat annonce la taille du groupe, pas sa composition ; la
  * porte Élite, son objet Rare garanti, pas l'Élite, tirée à l'entrée de l'étage (#120). Sous la
  * malédiction de l'ascension (`gauge`), la porte Combat dit « dont 1 maudit », jamais lequel, et la
- * porte Élite devient « Élite maudite » sous la malédiction forte (#209).
+ * porte Élite devient « Élite maudite » sous la malédiction forte (#209). Aux paliers 2 et 3, la
+ * porte Élite annonce aussi son escorte (#257, `exitEscort`).
  */
-export function exitLabel(exit: Exit, gauge: FateGauge = 0): string {
+export function exitLabel(exit: Exit, gauge: FateGauge = 0, tier: Tier = 1): string {
+  const escort = exitEscort(exit, gauge, tier);
+  if (escort === null) return doorText(exit, gauge);
+  // L'Élite escortée (#257, E1, E1b, E1c), lue au lecteur d'écran phrase par phrase.
+  const name = eliteCurse(tier, gauge) === 'elite' ? 'Élite maudite' : 'Élite';
+  const size = enemiesText(TIERS[tier].escortSize);
+  return `${name}. Escortée de ${size}${escort.cursed ? ', dont 1 maudit' : ''}. Objet Rare garanti. Coffre scellé`;
+}
+
+/**
+ * Le texte écrit sur une porte, ligne d'escorte à part (#257) : celui du palier 1, où l'Élite vient
+ * seule.
+ */
+export function doorText(exit: Exit, gauge: FateGauge = 0): string {
   const cursed = exitCursed(exit, gauge);
   switch (exit.kind) {
     case 'combat': {
