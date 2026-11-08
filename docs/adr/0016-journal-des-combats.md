@@ -1,7 +1,7 @@
 # ADR 0016 — Le journal des combats
 
 - **Statut** : accepté
-- **Avenant** : 5 novembre 2026, la seconde chance (#206), voir en fin de document ; 7 novembre 2026, le multiplicateur d'Élite et de boss (#244) et les pouvoirs attisés (#237)
+- **Avenant** : 5 novembre 2026, la seconde chance (#206), voir en fin de document ; 7 novembre 2026, le multiplicateur d'Élite et de boss (#244) et les pouvoirs attisés (#237) ; 8 novembre 2026, l'Élite escortée (#257)
 - **Date** : 4 novembre 2026
 - **Décideur** : Architect (notes techniques de #197), écrit par le dev
 - **Contexte produit** : épique #193, story #197 « Le journal raconte mes combats, appui par appui »
@@ -161,4 +161,11 @@ rangement :
 
 - `HeroAtStart` reçoit un champ **facultatif** `kindled` : les codes des pouvoirs attisés du
   combat, absent sans attisé. Aucune donnée d'habitude n'y entre.
+- **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7).
+
+## Avenant du 8 novembre 2026 — l'Élite escortée (#257, ADR 0023)
+
+- `BattleLog` reçoit un champ **facultatif** `escortMultiplier` : le multiplicateur de l'escorte
+  d'une Élite escortée, absent sans escorte. `tierMultiplier` décrit alors l'Élite seule.
+- Les ennemis d'escorte sont déjà notés dans `enemies`, avec leurs PV max et leur garde max.
 - **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7).
