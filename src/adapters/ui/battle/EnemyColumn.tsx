@@ -42,7 +42,9 @@ const INTENT_ICONS: Readonly<Record<IntentCategory, IconName>> = {
  * Son sprite, ses étoiles et son ombre au sol sont dessinés par la scène, derrière, à la place que
  * donne `sceneGeometry`. Un ennemi maudit (#209, maquette M2) porte l'étiquette « Maudit » au crâne
  * sous son nom, sur sa propre ligne, un cadre rose (d'or s'il est la cible) et une lueur rose fixe
- * sous ses pieds : jamais la couleur seule.
+ * sous ses pieds : jamais la couleur seule. L'Élite escortée (#257) porte la couronne d'Élite
+ * violette avant son nom, que les étiquettes complètent sans la remplacer ; sa plaque fait 128 dp au
+ * plus, celle d'une escorte 100 dp. Une place vide (un ennemi tombé) ne se touche plus.
  */
 export function EnemyColumn({
   view,
@@ -68,9 +70,13 @@ export function EnemyColumn({
   readonly onTarget: (enemy: number, touchStartedAt: number, releasedAt: number) => void;
 }) {
   // Un rappel stable : le geste n'est pas recréé à chaque instantané du combat.
+  // Une place vide (un ennemi tombé) ne se touche plus (#257, E9).
+  const { standing } = view;
   const onRelease = useCallback(
-    (touchStartedAt: number, releasedAt: number) => onTarget(index, touchStartedAt, releasedAt),
-    [onTarget, index],
+    (touchStartedAt: number, releasedAt: number) => {
+      if (standing) onTarget(index, touchStartedAt, releasedAt);
+    },
+    [onTarget, index, standing],
   );
   const gesture = useReleaseGesture(enemyGestureTestId(index), uiNow, onRelease);
   const { kind, intent } = view;
@@ -82,8 +88,10 @@ export function EnemyColumn({
         accessibilityRole="button"
         accessibilityLabel={view.label}
         accessibilityState={{ selected: view.target, disabled: !view.standing }}
-        accessibilityActions={[{ name: 'activate' }]}
-        onAccessibilityAction={() => onTarget(index, now(), now())}
+        accessibilityActions={standing ? [{ name: 'activate' }] : []}
+        onAccessibilityAction={() => {
+          if (standing) onTarget(index, now(), now());
+        }}
         testID={`enemy-${kind}`}
         style={[
           styles.column,
@@ -136,7 +144,12 @@ export function EnemyColumn({
           tone={view.target ? 'gold' : view.curse === undefined ? 'default' : 'error'}
           under={battleColors.background}
           testID={`enemy-${kind}-plate`}
-          style={[styles.plate, view.active && styles.activePlate]}
+          style={[
+            styles.plate,
+            view.elite === true && styles.elitePlate,
+            view.escort === true && styles.escortPlate,
+            view.active && styles.activePlate,
+          ]}
         >
           <View
             testID={`enemy-${kind}-ring`}
@@ -150,7 +163,16 @@ export function EnemyColumn({
               {view.hpText === null ? null : <Text style={styles.barText}>{view.hpText}</Text>}
             </View>
             {view.name === null ? null : (
-              <Text style={[styles.name, view.target && styles.targetName]}>{view.name}</Text>
+              <View style={styles.nameLine}>
+                {view.elite === true ? (
+                  <PixelIcon
+                    name="crown8"
+                    color={artPalette.roles.rarityEpic}
+                    testID={`enemy-${kind}-crown`}
+                  />
+                ) : null}
+                <Text style={[styles.name, view.target && styles.targetName]}>{view.name}</Text>
+              </View>
             )}
             {view.curse === undefined ? null : (
               <View testID={`enemy-${kind}-curse`} style={styles.curseTag}>
@@ -221,6 +243,11 @@ const styles = StyleSheet.create({
   },
   figure: { width: 88, height: 104, alignItems: 'center' },
   plate: { width: '100%', minHeight: 56 },
+  // Les plaques de l'Élite escortée (#257, maquette `.pfoe.elite .pbox`, `.pbox`) : 128 et 100 dp.
+  elitePlate: { maxWidth: 128 },
+  escortPlate: { maxWidth: 100 },
+  // La couronne d'Élite violette avant le nom (#257), qui passe à la ligne avec lui.
+  nameLine: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 3 },
   // Le second trait, d'or pour la cible : le double cadre d'or (C2).
   ring: {
     flexGrow: 1,
