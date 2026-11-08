@@ -241,6 +241,11 @@ export interface BattleLog {
   readonly reserve: readonly EnemyKind[];
   readonly tierMultiplier: TierMultiplier | null;
   readonly summonMultiplier: TierMultiplier | null;
+  /**
+   * Le multiplicateur de l'escorte d'une Élite escortée (#257) ; absent, aucune escorte. Le
+   * `tierMultiplier` est alors celui de l'Élite seule.
+   */
+  readonly escortMultiplier?: TierMultiplier;
   /** La durée du combat hors pause, jusqu'au dernier instant noté. */
   readonly elapsedMs: number;
   readonly resumes: readonly { readonly t: number; readonly cause: ResumeCause }[];
@@ -285,6 +290,7 @@ export function beginBattleLog(place: BattlePlace, battle: Battle, at: number): 
     reserve: battle.reserve,
     tierMultiplier: battle.tierMultiplier ?? null,
     summonMultiplier: battle.summonMultiplier ?? null,
+    ...(battle.escortMultiplier && { escortMultiplier: battle.escortMultiplier }),
     elapsedMs: 0,
     resumes: [],
     truncated: false,

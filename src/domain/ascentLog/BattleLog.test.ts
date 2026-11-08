@@ -117,6 +117,29 @@ describe('BattleLog', () => {
     expect(log).toMatchObject({ tierMultiplier: null, summonMultiplier: null });
   });
 
+  it('notes the escort multiplier of an escorted Elite, its escort among the enemies (#257)', () => {
+    const elite: TierMultiplier = { hpPercent: 80, guardPercent: 140 };
+    const battle = startBattle({
+      seed: 7,
+      defenseHint: false,
+      at: START,
+      enemies: ['scarecrow', 'mothkin'],
+      tierMultiplier: elite,
+      escortMultiplier: TIER_2,
+    }).battle;
+    const log = beginBattleLog({ ...PLACE, encounterKind: 'elite' }, battle, START);
+
+    expect(log).toMatchObject({ tierMultiplier: elite, escortMultiplier: TIER_2 });
+    expect(log.enemies.map(({ kind, maxHp, maxGuard }) => ({ kind, maxHp, maxGuard }))).toEqual([
+      { kind: 'scarecrow', maxHp: 152, maxGuard: 70 },
+      { kind: 'mothkin', maxHp: 33, maxGuard: 15 },
+    ]);
+  });
+
+  it('notes no escort multiplier without an escort, keeping the log of today (#257)', () => {
+    expect(beginBattleLog(PLACE, started(), START)).not.toHaveProperty('escortMultiplier');
+  });
+
   it('notes each round with its drawn intents and its action order, as published', () => {
     const guard: Intent = { category: 'guard', gain: 4 };
     const log = recordBattleEvents(
