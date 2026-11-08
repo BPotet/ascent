@@ -134,8 +134,9 @@ function strikeAll(battle: Battle, offset: number): Resolved[] {
 }
 
 /** Les Élites et les boss dont les PV et les coups ne changent pas : palier 1, boss du palier 2. */
+// #257 : les Élites du palier 1 prennent 80 % ; seuls les boss des paliers 1 et 2 restent inchangés.
 const UNCHANGED: readonly (readonly [Tier, EnemyKind])[] = [
-  ...[...TIERS[1].elites, ...TIERS[1].bosses].map((kind) => [1, kind] as const),
+  ...TIERS[1].bosses.map((kind) => [1, kind] as const),
   ...TIERS[2].bosses.map((kind) => [2, kind] as const),
 ];
 
@@ -406,7 +407,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     world = { ...fresh(encounter(1, 'ghoul')), tier: Number(tier) as Tier };
   });
 
-  when(/^le héros affronte (?!une Élite)(?!.* dans un combat ordinaire$)(.+)$/u, (name: string) => {
+  when(/^le héros affronte (?!un boss$)(?!.* dans un combat ordinaire$)(.+)$/u, (name: string) => {
     world.kind = BY_NAME[name]!;
     world.battle = encounter(world.tier, world.kind);
   });
@@ -431,12 +432,14 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   then(/^la Torche allume 2 charges de Brûlure$/u, () => {
     const drawn = drawnAttacks(world.kind, world.battle.tierMultiplier!.hpPercent);
-    expect(drawn.get('basic')).toMatchObject({ damage: 12, burn: 2 });
+    // #257 : la Torche à 80 % (10 → 8), sa Brûlure inchangée.
+    expect(drawn.get('basic')).toMatchObject({ damage: 8, burn: 2 });
   });
 
   and(/^le Fagot d'épines fait saigner 2 PV pendant 3 manches$/u, () => {
     const drawn = drawnAttacks(world.kind, world.battle.tierMultiplier!.hpPercent);
-    expect(drawn.get('double')).toMatchObject({ damage: 7, bleed: { damage: 2, rounds: 3 } });
+    // #257 : le Fagot d'épines à 80 % (6 → 4), son Saignement inchangé.
+    expect(drawn.get('double')).toMatchObject({ damage: 4, bleed: { damage: 2, rounds: 3 } });
   });
 
   and(/^son Initiative vaut 6$/u, () => {
@@ -469,8 +472,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     },
   );
 
-  when(/^le héros affronte une Élite ou un boss$/u, () => {
-    // Chaque Élite et chaque boss du palier 1, et les boss du palier 2.
+  when(/^le héros affronte un boss$/u, () => {
+    // Chaque boss des paliers 1 et 2 (#257 : plus les Élites du palier 1).
   });
 
   then(/^ses PV et les dégâts de ses coups sont ceux d'avant le rééquilibrage$/u, () => {
@@ -517,8 +520,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     world.battle = encounter(3, 'firstPilgrim', 0);
   });
 
-  then(/^il a 436 PV max et une garde max de 98$/u, () => {
-    expect(world.battle.enemies[0]).toMatchObject({ maxHp: 436, maxGuard: 98, cursed: true });
+  then(/^il a 284 PV max et une garde max de 98$/u, () => {
+    expect(world.battle.enemies[0]).toMatchObject({ maxHp: 284, maxGuard: 98, cursed: true });
   });
 
   // --- Les Phalénides invoquées (option A) ---

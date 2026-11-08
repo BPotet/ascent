@@ -25,10 +25,11 @@ describe('the tiers (#38)', () => {
   });
 
   it('multiplies its Elites and its bosses by the Elite and boss multiplier (#244, R1)', () => {
+    // #257, décision du 08/11/2026 : la colonne PV et dégâts des Élites à 80 / 80 / 88 %.
     expect([1, 2, 3].map((tier) => TIERS[tier as 1].eliteMultiplier)).toEqual([
-      { hpPercent: 100, guardPercent: 125 },
-      { hpPercent: 120, guardPercent: 140 },
-      { hpPercent: 135, guardPercent: 150 },
+      { hpPercent: 80, guardPercent: 125 },
+      { hpPercent: 80, guardPercent: 140 },
+      { hpPercent: 88, guardPercent: 150 },
     ]);
     expect([1, 2, 3].map((tier) => TIERS[tier as 1].bossMultiplier)).toEqual([
       { hpPercent: 100, guardPercent: 125 },

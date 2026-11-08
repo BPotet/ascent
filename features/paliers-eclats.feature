@@ -89,10 +89,11 @@ Fonctionnalité: Trois paliers jusqu'au sommet, et les premiers Éclats
     Quand la Glaneuse de cendre choisit son intention
     Alors elle ne relève pas la Ronce
 
+  # #257 (décision du 08/11/2026) : la colonne PV et dégâts des Élites du palier 2 à 80 %.
   @session
   Scénario: Les Élites et les boss ont leur propre multiplicateur (#244)
     Étant donné l'Épouvantail au palier 2
-    Alors il a 228 PV et 70 de garde, et sa Moisson fait 19
+    Alors il a 152 PV et 70 de garde, et sa Moisson fait 12
 
   @domain
   Scénario: Limite — le palier 1 ne change pas

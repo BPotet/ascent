@@ -53,7 +53,7 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
   1: {
     name: 'catacombs',
     multiplier: { hpPercent: 100, guardPercent: 100 },
-    eliteMultiplier: { hpPercent: 100, guardPercent: 125 },
+    eliteMultiplier: { hpPercent: 80, guardPercent: 125 },
     bossMultiplier: { hpPercent: 100, guardPercent: 125 },
     respitePercent: 10,
     goldPercent: 100,
@@ -79,7 +79,7 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
   2: {
     name: 'ashGardens',
     multiplier: { hpPercent: 135, guardPercent: 125 },
-    eliteMultiplier: { hpPercent: 120, guardPercent: 140 },
+    eliteMultiplier: { hpPercent: 80, guardPercent: 140 },
     bossMultiplier: { hpPercent: 100, guardPercent: 125 },
     respitePercent: 5,
     goldPercent: 125,
@@ -107,7 +107,7 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
   3: {
     name: 'belfry',
     multiplier: { hpPercent: 175, guardPercent: 150 },
-    eliteMultiplier: { hpPercent: 135, guardPercent: 150 },
+    eliteMultiplier: { hpPercent: 88, guardPercent: 150 },
     bossMultiplier: { hpPercent: 130, guardPercent: 145 },
     respitePercent: 5,
     goldPercent: 150,

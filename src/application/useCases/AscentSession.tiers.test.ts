@@ -492,7 +492,8 @@ describe('the Tier transition in the session (#38)', () => {
     const { battle } = battleSession.current()!;
     expect(battle.tierMultiplier).toEqual(TIERS[2].eliteMultiplier);
     expect(battle.summonMultiplier).toEqual(TIERS[2].multiplier);
-    expect(battle.enemies[0]).toMatchObject({ maxHp: 228, maxGuard: 70 });
+    // #257 : la colonne PV et dégâts des Élites à 80 % au palier 2 (190 → 152).
+    expect(battle.enemies[0]).toMatchObject({ maxHp: 152, maxGuard: 70 });
   });
 
   it('multiplies a boss by the Elite and boss multiplier of its tier (#244)', async () => {

@@ -903,12 +903,13 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     "le lecteur d'écran lit toujours le nom, les PV, la garde et l'intention, et annonce le type de coup au début de la préparation comme aujourd'hui",
     () => {
       STORY.forEach((kind, index) => {
-        const { maxHp } = ENEMIES[kind];
-        // La garde du palier 1 : la colonne garde du multiplicateur d'Élite et de boss (#244).
-        const maxGuard = scaleByPercent(
-          ENEMIES[kind].maxGuard,
-          encounterMultiplier(1, kind === 'twins' ? 'elite' : 'boss').guardPercent,
+        // Le multiplicateur d'Élite et de boss du palier 1 (#244) ; #257 : 80 % des PV des Élites.
+        const { hpPercent, guardPercent } = encounterMultiplier(
+          1,
+          kind === 'twins' ? 'elite' : 'boss',
         );
+        const maxHp = scaleByPercent(ENEMIES[kind].maxHp, hpPercent);
+        const maxGuard = scaleByPercent(ENEMIES[kind].maxGuard, guardPercent);
         expect(world.read.labels[index]).toContain(ENEMY_NAMES[kind]);
         expect(world.read.labels[index]).toContain(`${maxHp} PV sur ${maxHp}`);
         expect(world.read.labels[index]).toContain(`garde ${maxGuard} sur ${maxGuard}`);

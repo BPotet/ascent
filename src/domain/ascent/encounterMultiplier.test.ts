@@ -1,6 +1,7 @@
 // Le multiplicateur d'Élite et de boss (`EliteBossMultiplier`, #244, R1) : les Élites et les boss
 // commencent leur combat avec les PV max, la garde max et les dégâts de leur palier, jamais le
-// Saignement, la Brûlure ni l'Initiative ; l'Élite maudite part de la valeur du palier.
+// Saignement, la Brûlure ni l'Initiative ; l'Élite maudite part de la valeur du palier. #257 : la
+// colonne PV et dégâts des Élites à 80 / 80 / 88 % (décision du 08/11/2026).
 import {
   advance,
   heroAction,
@@ -35,16 +36,16 @@ const strikesAt = (tier: Tier, kind: EnemyKind) =>
 
 describe('the Elite and boss multiplier (#244, R1)', () => {
   it.each([
-    [1, 'twins', 200, 37, '6 + 6, 10, 5'],
-    [1, 'fallenKnight', 200, 56, '8, 8, 12'],
+    [1, 'twins', 160, 37, '4 + 4, 8, 4'],
+    [1, 'fallenKnight', 160, 56, '6, 6, 9'],
     [1, 'ossuaryWarden', 300, 75, '9, 10 ; phase 2 : 6 + 6, 15'],
     [1, 'facelessPrior', 300, 75, '8, 5 + 5 ; phase 2 : 10, 14'],
-    [2, 'scarecrow', 228, 70, '13, 13, 19'],
-    [2, 'brambleBurner', 252, 77, '12, 7 + 7, 18'],
+    [2, 'scarecrow', 152, 70, '8, 8, 12'],
+    [2, 'brambleBurner', 168, 77, '8, 4 + 4, 12'],
     [2, 'ashGardener', 420, 97, '12, 13 ; phase 2 : 7 + 7, 18'],
     [2, 'mothQueen', 400, 87, null],
-    [3, 'firstPilgrim', 364, 82, '10 + 10, 18, 18, 28'],
-    [3, 'stoneSaint', 337, 120, '17, 21, 29'],
+    [3, 'firstPilgrim', 237, 82, '7 + 7, 12, 12, 18'],
+    [3, 'stoneSaint', 220, 120, '11, 14, 19'],
     [3, 'hourRinger', 650, 130, '9 + 9, 18 ; phase 2 : 16, 27'],
     [3, 'wishGranter', 650, 121, '16, 16 ; phase 2 : 10 + 10, 28'],
   ] as const)(
@@ -57,9 +58,9 @@ describe('the Elite and boss multiplier (#244, R1)', () => {
     },
   );
 
-  it('keeps the HP and the strikes of tier 1 and of the bosses of tier 2', () => {
-    for (const kind of [...TIERS[1].elites, ...TIERS[1].bosses, ...TIERS[2].bosses]) {
-      const tier = TIERS[1].elites.includes(kind) || TIERS[1].bosses.includes(kind) ? 1 : 2;
+  it('keeps the HP and the strikes of the bosses of tiers 1 and 2 (#257: not the Elites)', () => {
+    for (const kind of [...TIERS[1].bosses, ...TIERS[2].bosses]) {
+      const tier = TIERS[1].bosses.includes(kind) ? 1 : 2;
       expect(start(kind, encounterMultiplier(tier, roleOf(tier, kind))).enemies[0]!.maxHp).toBe(
         ENEMIES[kind].maxHp,
       );
@@ -71,15 +72,15 @@ describe('the Elite and boss multiplier (#244, R1)', () => {
     const { hpPercent } = encounterMultiplier(2, 'elite');
     const drawn = drawnAttacks('brambleBurner', hpPercent);
 
-    expect(drawn.get('basic')).toMatchObject({ damage: 12, burn: 2 });
-    expect(drawn.get('double')).toMatchObject({ damage: 7, bleed: { damage: 2, rounds: 3 } });
+    expect(drawn.get('basic')).toMatchObject({ damage: 8, burn: 2 });
+    expect(drawn.get('double')).toMatchObject({ damage: 4, bleed: { damage: 2, rounds: 3 } });
     expect(ENEMY_INITIATIVE.brambleBurner).toBe(6);
   });
 
-  it('starts a cursed First pilgrim at tier 3 from the value of the tier: 436 HP, 98 guard', () => {
+  it('starts a cursed First pilgrim at tier 3 from the value of the tier: 284 HP, 98 guard', () => {
     const battle = start('firstPilgrim', encounterMultiplier(3, 'elite'), 0);
 
-    expect(battle.enemies[0]).toMatchObject({ maxHp: 436, maxGuard: 98, cursed: true });
+    expect(battle.enemies[0]).toMatchObject({ maxHp: 284, maxGuard: 98, cursed: true });
   });
 });
 

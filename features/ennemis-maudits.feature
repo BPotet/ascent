@@ -35,6 +35,8 @@ Fonctionnalité: Ennemis maudits
     Quand le héros passe la porte Élite
     Alors le Chevalier déchu n'est pas maudit
 
+  # #257 (décision du 08/11/2026) : le Chevalier déchu du palier 1 part de 80 % (160 PV, coups 6,
+  # 6 et 9), puis gagne 20 %.
   @domain
   Scénario: Malédiction forte, l'Élite aussi
     Étant donné une ascension lancée avec une jauge de −2
@@ -42,7 +44,7 @@ Fonctionnalité: Ennemis maudits
     Alors exactement un ennemi du groupe est maudit, avec le même bonus qu'à −1
     Quand il passe ensuite la porte Élite
     Alors le Chevalier déchu est maudit
-    Et il a 240 PV max, une garde max de 67, des coups de 9, 9 et 14, et son Initiative reste 6
+    Et il a 192 PV max, une garde max de 67, des coups de 7, 7 et 10, et son Initiative reste 6
 
   @domain
   Scénario: Le boss et ses invocations ne sont jamais maudits
