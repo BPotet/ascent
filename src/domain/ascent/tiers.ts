@@ -2,8 +2,8 @@
  * Les paliers (`Tier`, #38, § 3 de la note du Game Designer) : les Catacombes (`Catacombs`), les
  * Jardins de cendre (`AshGardens`) et le Beffroi (`Belfry`), 6 étages chacun. La table `TIERS` est
  * la règle du palier (ADR 0012) : ses multiplicateurs (ennemis ordinaires, Élites, boss), son
- * répit, son Or, la taille de ses groupes, les ennemis qu'il tire, ses Élites, ses boss et les
- * Éclats de son boss.
+ * répit, son Or, la taille de ses groupes, les ennemis qu'il tire, ses Élites et la taille de leur
+ * escorte, ses boss et les Éclats de son boss.
  */
 import type { EnemyKind } from '../battle/combatants';
 import type { EliteBossMultiplier, TierMultiplier } from '../battle/tierMultiplier';
@@ -29,7 +29,10 @@ export interface TierRule {
   readonly name: TierName;
   /** Le multiplicateur des ennemis de ses combats ordinaires, et de ses invoqués. */
   readonly multiplier: TierMultiplier;
-  /** Le multiplicateur de ses Élites (#244, R1). */
+  /**
+   * Le multiplicateur de ses Élites (#244, R1) ; sa colonne PV et dégâts à 80 / 80 / 88 % (#257,
+   * décision du 08/11/2026).
+   */
   readonly eliteMultiplier: EliteBossMultiplier;
   /** Le multiplicateur de ses boss (#244, R1). */
   readonly bossMultiplier: EliteBossMultiplier;
@@ -43,6 +46,8 @@ export interface TierRule {
   readonly enemies: readonly EnemyDraw[];
   /** Ses Élites, tirées à égalité (une seule n'est pas tirée). */
   readonly elites: readonly EnemyKind[];
+  /** Le nombre d'ennemis de l'escorte de ses Élites (#257, EE1) : 0, 1 ou 2. */
+  readonly escortSize: 0 | 1 | 2;
   /** Ses boss, tirés à égalité. */
   readonly bosses: readonly EnemyKind[];
   /** Les Éclats de son boss. */
@@ -73,6 +78,7 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
       { kind: 'madVillager', weight: 2, cap: 1 },
     ],
     elites: ['fallenKnight', 'twins'],
+    escortSize: 0,
     bosses: ['ossuaryWarden', 'facelessPrior'],
     bossShards: 8,
   },
@@ -100,6 +106,7 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
       { kind: 'mothkin', weight: 3, cap: 2 },
     ],
     elites: ['scarecrow', 'brambleBurner'],
+    escortSize: 1,
     // La Reine des phalènes (#172), tirée à égalité avec la Jardinière.
     bosses: ['ashGardener', 'mothQueen'],
     bossShards: 12,
@@ -130,6 +137,7 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
       { kind: 'clockJack', weight: 2, cap: 1 },
     ],
     elites: ['firstPilgrim', 'stoneSaint'],
+    escortSize: 2,
     bosses: ['hourRinger', 'wishGranter'],
     bossShards: 18,
   },
@@ -143,4 +151,33 @@ export function encounterMultiplier(tier: Tier, kind: 'combat' | 'elite' | 'boss
   const rule = TIERS[tier];
   if (kind === 'elite') return rule.eliteMultiplier;
   return kind === 'boss' ? rule.bossMultiplier : rule.multiplier;
+}
+
+/** Les multiplicateurs d'un combat d'étage : celui du combat, des invoqués et de l'escorte. */
+export interface EncounterMultipliers {
+  readonly tierMultiplier: TierMultiplier;
+  readonly summonMultiplier: TierMultiplier;
+  /** Celui de l'escorte d'une Élite escortée (#257) ; absent, aucune escorte. */
+  readonly escortMultiplier?: TierMultiplier;
+}
+
+/**
+ * Les multiplicateurs d'une rencontre du palier (#257, D2), la seule règle qui les choisit : celui
+ * de la rencontre (`encounterMultiplier`), celui du palier pour les invoqués (#172), et celui du
+ * palier pour l'escorte d'une Élite qui n'est pas seule. Une Élite tirée seule, au palier 1 ou avant
+ * #257, n'a pas d'escorte.
+ */
+export function encounterMultipliers(
+  tier: Tier,
+  encounter: { readonly kind: 'combat' | 'elite' | 'boss'; readonly enemies: readonly unknown[] },
+): EncounterMultipliers {
+  const { multiplier } = TIERS[tier];
+  return {
+    tierMultiplier: encounterMultiplier(tier, encounter.kind),
+    summonMultiplier: multiplier,
+    ...(encounter.kind === 'elite' &&
+      encounter.enemies.length > 1 && {
+        escortMultiplier: multiplier,
+      }),
+  };
 }

@@ -12,8 +12,12 @@ import {
   type Ascent,
   type AscentLaunch,
 } from './Ascent';
+import { nextRandom, type RandomState } from '../battle/SeededRandom';
 import { BASE_BOON_KINDS, type BoonKind } from './boons';
-import { drawElite } from './elites';
+import { drawCursedEscort, eliteCurse } from './cursedEnemy';
+import { ESCORT_POOLS, drawEliteEscort } from './eliteEscort';
+import { drawElite, eliteCandidates } from './elites';
+import type { FateGauge } from './fateGauge';
 import { TIERS, type Tier } from './tiers';
 
 const SEEDS = Array.from({ length: 120 }, (_, index) => index * 2_654_435_761 + 11);
@@ -311,9 +315,10 @@ describe('the non-repeated Elite (#244, R5)', () => {
     const entered = chooseExit(tierThree, 0);
     const plain = chooseExit({ ...tierThree, lastElite: 'firstPilgrim' as const }, 0);
 
-    expect(entered.encounter!.enemies).toEqual(['firstPilgrim']);
+    // L'Élite à l'indice 0, son escorte après elle (#257).
+    expect(entered.encounter!.enemies[0]).toBe('firstPilgrim');
     expect(entered.lastElite).toBe('firstPilgrim');
-    expect(plain.encounter!.enemies).toEqual(['stoneSaint']);
+    expect(plain.encounter!.enemies[0]).toBe('stoneSaint');
     // Un seul candidat : aucun tirage, le générateur part du même état pour la graine du combat.
     expect(entered.encounter!.battleSeed).toBe(plain.encounter!.battleSeed);
   });
@@ -346,5 +351,112 @@ describe('the non-repeated Elite (#244, R5)', () => {
     expect(chooseExit(saved, 0).encounter!.enemies[0]).toBe(
       drawElite(TIERS[1].elites, saved.random).value,
     );
+  });
+});
+
+describe('the escorted Elite at an Elite door (#257)', () => {
+  const atEliteDoor = (ascent: Ascent): Ascent => ({
+    ...ascent,
+    encounter: null,
+    boonOffer: null,
+    exits: [{ kind: 'elite', groupSize: null }],
+  });
+  const doorAt = (tier: Tier, seed: number, gauge: FateGauge = 0) =>
+    atEliteDoor(atTier(tier, seed, { gauge }));
+  const battleSeed = (random: RandomState) => Math.floor(nextRandom(random).value * 4_294_967_296);
+
+  /** Les tirages rejoués pas à pas (EE7) : Élite, escorte, ennemi maudit, graine du combat. */
+  function replayed(door: Ascent) {
+    const elite = drawElite(eliteCandidates(TIERS[door.tier].elites, door.lastElite), door.random);
+    const escort = drawEliteEscort(TIERS[door.tier].escortSize, elite.random, door.tier);
+    const curse = eliteCurse(door.tier, door.gauge);
+    const cursed =
+      curse === 'escort'
+        ? drawCursedEscort(escort.value.length, escort.random)
+        : { value: curse === 'elite' ? 0 : undefined, random: escort.random };
+    return {
+      kind: 'elite',
+      enemies: [elite.value, ...escort.value],
+      battleSeed: battleSeed(cursed.random),
+      ...(cursed.value !== undefined && { cursed: cursed.value }),
+    };
+  }
+
+  it.each([1, 2, 3] as const)(
+    'draws the Elite, its escort, the cursed enemy, then the battle seed, at tier %i',
+    (tier) => {
+      for (const seed of SEEDS.slice(0, 15)) {
+        for (const gauge of [-2, -1, 0, 2] as const) {
+          const door = doorAt(tier, seed, gauge);
+          const entered = chooseExit(door, 0);
+
+          expect(entered.encounter).toEqual(replayed(door));
+          expect(entered.lastElite).toBe(entered.encounter!.enemies[0]);
+        }
+      }
+    },
+  );
+
+  it('places the Elite at 0 and an escort of 1 at tier 2, of 2 at tier 3, drawn from the tier', () => {
+    for (const seed of SEEDS.slice(0, 30)) {
+      for (const tier of [2, 3] as const) {
+        const [elite, ...escort] = chooseExit(doorAt(tier, seed), 0).encounter!.enemies;
+        const pool = ESCORT_POOLS[tier].map(({ kind }) => kind);
+
+        expect(TIERS[tier].elites).toContain(elite);
+        expect(escort).toHaveLength(tier - 1);
+        for (const kind of escort) expect(pool).toContain(kind);
+      }
+    }
+  });
+
+  it.each([-2, -1, 0] as const)(
+    'draws the tier 1 Elite door at %i exactly as before #257',
+    (gauge) => {
+      for (const seed of SEEDS.slice(0, 30)) {
+        const door = doorAt(1, seed, gauge);
+        const entered = chooseExit(door, 0);
+        // L'algorithme d'avant : l'Élite, puis la graine ; maudite à −2 seulement, sans tirage.
+        const elite = drawElite(eliteCandidates(TIERS[1].elites, door.lastElite), door.random);
+        const seedDraw = nextRandom(elite.random);
+
+        expect(entered.encounter).toEqual({
+          kind: 'elite',
+          enemies: [elite.value],
+          battleSeed: Math.floor(seedDraw.value * 4_294_967_296),
+          ...(gauge === -2 && { cursed: 0 }),
+        });
+        expect(entered.random).toEqual(seedDraw.state);
+      }
+    },
+  );
+
+  it('curses one escort enemy at -1 at tiers 2 and 3, never the Elite', () => {
+    const cursed = new Set<number>();
+    for (const seed of SEEDS.slice(0, 40)) {
+      for (const tier of [2, 3] as const) {
+        const encounter = chooseExit(doorAt(tier, seed, -1), 0).encounter!;
+        expect(encounter.cursed).toBeGreaterThanOrEqual(1);
+        expect(encounter.cursed).toBeLessThanOrEqual(tier - 1);
+        cursed.add(encounter.cursed!);
+      }
+    }
+    expect(cursed).toEqual(new Set([1, 2]));
+  });
+
+  it('curses the Elite alone at -2, with no more draw than without the curse', () => {
+    for (const seed of SEEDS.slice(0, 20)) {
+      const strong = chooseExit(doorAt(3, seed, -2), 0);
+      const plain = chooseExit({ ...doorAt(3, seed, -2), gauge: 0 }, 0);
+
+      expect(strong.encounter).toEqual({ ...plain.encounter, cursed: 0 });
+      expect(strong.random).toEqual(plain.random);
+    }
+  });
+
+  it('draws the same Elite, escort and cursed enemy for the same seed', () => {
+    for (const seed of SEEDS.slice(0, 20)) {
+      expect(chooseExit(doorAt(3, seed, -1), 0)).toEqual(chooseExit(doorAt(3, seed, -1), 0));
+    }
   });
 });

@@ -618,7 +618,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(/^il affronte le Premier Pèlerin$/u, () => {
-    expect(world.entered!.encounter).toMatchObject({ kind: 'elite', enemies: ['firstPilgrim'] });
+    // L'Élite à l'indice 0, son escorte après elle (#257).
+    expect(world.entered!.encounter).toMatchObject({ kind: 'elite' });
+    expect(world.entered!.encounter!.enemies[0]).toBe('firstPilgrim');
     expect(world.entered!.lastElite).toBe('firstPilgrim');
   });
 
@@ -643,7 +645,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     /^l'Élite est tirée à égalité parmi les Élites du palier avec la graine de l'ascension$/u,
     () => {
       const drawn = drawElite(TIERS[2].elites, world.ascent!.random);
-      expect(world.entered!.encounter).toMatchObject({ kind: 'elite', enemies: [drawn.value] });
+      // L'Élite à l'indice 0, son escorte après elle (#257).
+      expect(world.entered!.encounter).toMatchObject({ kind: 'elite' });
+      expect(world.entered!.encounter!.enemies[0]).toBe(drawn.value);
       expect(TIERS[2].elites).toContain(drawn.value);
     },
   );

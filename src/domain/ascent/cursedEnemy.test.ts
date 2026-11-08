@@ -1,7 +1,13 @@
 // L'ennemi maudit (#209) : quand la malédiction en tire un, et lequel.
 import { ENEMIES, type EnemyKind } from '../battle/combatants';
 import { nextRandom, seedRandom } from '../battle/SeededRandom';
-import { cursedElite, cursedOrdinary, drawCursedEnemy } from './cursedEnemy';
+import {
+  cursedElite,
+  cursedOrdinary,
+  drawCursedEnemy,
+  drawCursedEscort,
+  eliteCurse,
+} from './cursedEnemy';
 import { drawGroup } from './enemyGroup';
 import { TIERS, type Tier } from './tiers';
 
@@ -78,5 +84,31 @@ describe('drawCursedEnemy (#209)', () => {
       expect(supports.every(({ cap, neverAlone }) => cap === 1 && neverAlone)).toBe(true);
       expect(supports.length).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+describe('eliteCurse (#257, EE8)', () => {
+  it.each([
+    [1, [null, null, null, null, 'elite']],
+    [2, [null, null, null, 'escort', 'elite']],
+    [3, [null, null, null, 'escort', 'elite']],
+  ] as const)('curses at tier %i, from +2 down to -2: %j', (tier, expected) => {
+    expect([2, 1, 0, -1, -2].map((gauge) => eliteCurse(tier, gauge as -2))).toEqual(expected);
+  });
+});
+
+describe('drawCursedEscort (#257, EE8)', () => {
+  it('draws 1 or 2 evenly among an escort of 2, never the Elite at 0', () => {
+    const indexes = SEEDS.map((seed) => drawCursedEscort(2, seedRandom(seed)).value);
+    const firsts = indexes.filter((index) => index === 1).length;
+
+    expect(new Set(indexes)).toEqual(new Set([1, 2]));
+    expect(firsts).toBeGreaterThan(SEEDS.length * 0.4);
+    expect(firsts).toBeLessThan(SEEDS.length * 0.6);
+  });
+
+  it('curses the lone escort enemy, and still makes one draw of the generator', () => {
+    const random = seedRandom(9);
+    expect(drawCursedEscort(1, random)).toEqual({ value: 1, random: nextRandom(random).state });
   });
 });
