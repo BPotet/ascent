@@ -35,7 +35,7 @@ describe('the dust of an announced summon in the view (#172)', () => {
 
     expect(view.dust).toEqual([]);
     expect(view.columns).toBe(1);
-    expect(view.summonerLayout).toBe(false);
+    expect(view.leadLayout).toBe(false);
   });
 
   it('lays a column of dust on each empty slot right of the Queen, in the boss layout', () => {
@@ -44,7 +44,7 @@ describe('the dust of an announced summon in the view (#172)', () => {
     expect(view.dust).toEqual([1, 2]);
     expect(view.columns).toBe(3);
     expect(view.enemies).toHaveLength(1);
-    expect(view.summonerLayout).toBe(true);
+    expect(view.leadLayout).toBe(true);
   });
 
   it('lays the dust on the slot of a fallen enemy, which keeps its column (I6)', () => {
@@ -58,8 +58,8 @@ describe('the dust of an announced summon in the view (#172)', () => {
   it('keeps the boss layout once the Mothkin are in, for the whole battle', () => {
     const battle = battleOf(['mothQueen', 'mothkin', 'mothkin']);
 
-    expect(battleView(battle).summonerLayout).toBe(true);
-    expect(battleView(battleOf(['ghoul', 'ghoul', 'ghoul'])).summonerLayout).toBe(false);
+    expect(battleView(battle).leadLayout).toBe(true);
+    expect(battleView(battleOf(['ghoul', 'ghoul', 'ghoul'])).leadLayout).toBe(false);
   });
 });
 

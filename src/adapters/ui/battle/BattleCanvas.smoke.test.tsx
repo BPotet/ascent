@@ -154,6 +154,27 @@ describe('BattleScene with Skia, its enemies prepared on demand (#38)', () => {
   });
 });
 
+describe('BattleScene with Skia: an escorted Elite (#257)', () => {
+  it.each([
+    [3, ['firstPilgrim', 'bronzeWarden', 'bellNovice']],
+    [2, ['scarecrow', 'mothkin']],
+  ] as const)('mounts an Elite escorted in the lead layout of %i columns', async (count, kinds) => {
+    prepareBattleScene(kinds);
+    await render(
+      <BattleScene
+        {...props({
+          width: 360,
+          geometry: sceneGeometry(360, 440, count, { lead: true }),
+          enemies: kinds.map((kind, index) => ({ ...ENEMIES[0]!, kind, target: index === 0 })),
+          timeline: { ...props().timeline!, enemy: 1 },
+        })}
+      />,
+    );
+
+    expect(drawnTypes()).toContain('skAtlas');
+  });
+});
+
 describe('BattleScene with Skia', () => {
   it('prepares the atlases of the scene once, as Skia images', () => {
     const prepared = prepareBattleScene(PLAYED);
@@ -742,7 +763,7 @@ describe('BattleScene: the glint and the stars follow the displayed pose', () =>
 
   it('lays the dust of the Summon on the two empty slots right of the Moth queen (#172)', async () => {
     prepareBattleScene(['mothQueen']);
-    const boss = sceneGeometry(412, 440, 3, { summoner: true });
+    const boss = sceneGeometry(412, 440, 3, { lead: true });
     const queen: SceneEnemy = { ...ENEMIES[0]!, kind: 'mothQueen', dimmed: false, down: false };
     await render(
       <BattleScene

@@ -437,6 +437,28 @@ const DRAWN = {
     '..XXXXXXXX..',
     '....XXXX....',
   ],
+  // La couronne d'Élite et les épées croisées de son escorte (#257), table `PAT` de la maquette
+  // `docs/mockups/245-elites-escortees/`, centrées sur 8 × 8 pixels d'art.
+  crown8: [
+    '........',
+    'X..X..X.',
+    'XX.X.XX.',
+    'XXXXXXX.',
+    'XXXXXXX.',
+    '........',
+    'XXXXXXX.',
+    '........',
+  ],
+  swords8: [
+    'X.....X.',
+    '.X...X..',
+    '..X.X...',
+    '...X....',
+    '..X.X...',
+    'XX...XX.',
+    'X.....X.',
+    '........',
+  ],
   // Les glyphes de la jauge (#41), table `PAT` de la maquette `docs/mockups/205-jauge-faveur/`,
   // centrés sur 8 × 8 pixels d'art : crâne, bénédiction, objet, Rare, fatigue, cadenas, horloge, « + »
   // et « = » des crans du cadran.

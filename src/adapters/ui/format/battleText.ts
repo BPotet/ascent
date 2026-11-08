@@ -1,5 +1,5 @@
 import { ATTACKS, type AttackKind } from '../../../domain/battle/attacks';
-import { powerCost, type Battle } from '../../../domain/battle/Battle';
+import { escortedElite, powerCost, type Battle } from '../../../domain/battle/Battle';
 import type {
   BattleEvent,
   BattleOutcome,
@@ -343,7 +343,11 @@ export function intentSpeech(kind: EnemyKind, intent: ShownIntent): string {
   }
 }
 
-/** Un ennemi annoncé en entier : nom, cible, PV, garde (ou étourdi) et intention montrée. */
+/**
+ * Un ennemi annoncé en entier : nom, cible, PV, garde (ou étourdi) et intention montrée. Dans un
+ * combat d'Élite escortée (#257, `role`), l'Élite est dite « Élite » ; un ennemi d'escorte debout
+ * qui n'est pas la cible finit par « Touche pour viser ».
+ */
 export function enemyLabel(
   enemy: {
     readonly kind: EnemyKind;
@@ -358,16 +362,19 @@ export function enemyLabel(
   },
   intent: ShownIntent | null,
   isTarget: boolean,
+  role?: 'elite' | 'escort',
 ): string {
   const tag = enemyTag(enemy);
-  const name = `${enemyName(enemy)}${tag === null ? '' : `, ${tag.toLowerCase()}`}`;
+  const elite = role === 'elite' ? ', Élite' : '';
+  const name = `${enemyName(enemy)}${elite}${tag === null ? '' : `, ${tag.toLowerCase()}`}`;
   if (enemy.hp <= 0) return `${name}, ${agreed(enemy.kind, 'tombé')}`;
   const guard =
     enemy.stun === null
       ? `garde ${enemy.guard} sur ${enemy.maxGuard}`
       : `${agreed(enemy.kind, 'étourdi')}, dégâts ×1,5`;
   const intentPart = intent === null ? '' : `, ${intentSpeech(enemy.kind, intent)}`;
-  return `${name}${isTarget ? ', cible' : ''}, ${enemy.hp} PV sur ${enemy.maxHp}, ${guard}${intentPart}`;
+  const aim = role === 'escort' && !isTarget ? '. Touche pour viser' : '';
+  return `${name}${isTarget ? ', cible' : ''}, ${enemy.hp} PV sur ${enemy.maxHp}, ${guard}${intentPart}${aim}`;
 }
 
 export function attackButtonLabel(targetName: string): string {
@@ -425,7 +432,7 @@ export function phaseAnnouncement(to: PhaseDirection): string {
  * s'y écrivent ; « Frappe parfaite » en phase du héros. Jamais « Critique ».
  */
 export interface FeedbackText {
-  readonly tone: 'perfect' | 'break' | 'rise' | 'riposte' | 'shadowStep';
+  readonly tone: 'perfect' | 'break' | 'rise' | 'riposte' | 'shadowStep' | 'escort';
   readonly title: string;
   /** La ligne sous le mot : « Attisé · 1 Élan » pour un pouvoir attisé (#237). */
   readonly sub?: string;
@@ -475,9 +482,29 @@ export function feedbackText(event: BattleEvent, battle?: Battle): FeedbackText 
       return { tone: 'rise', title: 'Il se relève' };
     case 'strikeResolved':
       return event.judgement === 'perfect' ? { tone: 'perfect', title: 'Frappe parfaite' } : null;
+    case 'enemyDefeated':
+      return battle !== undefined && escortStays(battle, event.enemy) ? ESCORT_STAYS : null;
     default:
       return null;
   }
+}
+
+/** Le mot de l'Élite tombée devant son escorte debout (#257, E9). */
+const ESCORT_STAYS: FeedbackText = {
+  tone: 'escort',
+  title: "L'escorte reste",
+  sub: "Le combat continue jusqu'à la chute de tous",
+};
+
+/**
+ * L'Élite escortée tombe pour de bon alors qu'un ennemi d'escorte est encore debout (#257, Q3) :
+ * le combat continue. `battle` est le combat après sa chute.
+ */
+function escortStays(battle: Battle, enemy: number): boolean {
+  return (
+    escortedElite(battle) === enemy &&
+    battle.enemies.some((other) => other.escort === true && other.hp > 0)
+  );
 }
 
 /** Un chiffre qui s'envole : les dégâts (« −4 ») au-dessus du héros ou d'un ennemi, ou la garde. */
@@ -632,6 +659,11 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
       return `${name(event.enemy)} relève ${name(event.ally)}, ${event.hp} PV`;
     case 'enemySelfRevived':
       return `${name(event.enemy)} se relève, ${event.hp} PV sur ${battle.enemies[event.enemy]!.maxHp}`;
+    // L'Élite tombe devant son escorte (#257, E9) ; une autre chute n'est pas dite.
+    case 'enemyDefeated':
+      return escortStays(battle, event.enemy)
+        ? `${name(event.enemy)} tombe. L'escorte reste. Cible : ${name(battle.target)}`
+        : null;
     case 'powerUsed': {
       const kindled = battle.kindled?.includes(event.power) === true;
       const name = kindled

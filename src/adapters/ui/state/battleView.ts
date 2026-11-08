@@ -2,6 +2,7 @@ import type { Actor } from '../../../domain/battle/actionOrder';
 import { ATTACKS } from '../../../domain/battle/attacks';
 import {
   equippedOf,
+  escortedElite,
   nextRoundOrder,
   powerAvailability,
   powerCost,
@@ -60,6 +61,11 @@ export interface TrackEntry {
   readonly pending?: true;
   /** Un ennemi maudit (#209) : sa case est rose, avec un crâne en coin. */
   readonly cursed?: true;
+  /**
+   * L'Élite escortée tant qu'un ennemi d'escorte est debout (#257, E2) : sa case porte la couronne
+   * d'Élite ; seule, elle la perd (E8).
+   */
+  readonly crowned?: true;
 }
 
 /**
@@ -154,6 +160,13 @@ export interface EnemyView {
    * `tag` ; absente, il n'est pas maudit.
    */
   readonly curse?: string;
+  /**
+   * L'Élite d'une Élite escortée (#257, E2) : la couronne d'Élite avant son nom, gardée quand son
+   * escorte est tombée (E8) ; absent, non.
+   */
+  readonly elite?: true;
+  /** Un ennemi d'escorte (#257) : sa plaque fait 100 dp au plus ; absent, non. */
+  readonly escort?: true;
   readonly label: string;
 }
 
@@ -179,8 +192,11 @@ export interface BattleView {
   readonly dust: readonly number[];
   /** Les colonnes de la scène : les ennemis de la première ligne et les places de poussière. */
   readonly columns: number;
-  /** La disposition du boss qui invoque, à trois colonnes (#172, maquette « boss3 »). */
-  readonly summonerLayout: boolean;
+  /**
+   * La disposition d'un ennemi qui mène, sur 1,25 colonne, plus haut : le boss qui invoque, à trois
+   * colonnes (#172, maquette « boss3 »), ou l'Élite escortée, à deux ou trois (#257, « el2 », « el3 »).
+   */
+  readonly leadLayout: boolean;
 }
 
 /** La durée de l'annonce « À toi » quand la phase du héros commence sans transition. */
@@ -213,6 +229,11 @@ function powerSlot(battle: Battle, power: PowerKind): PowerSlot {
   };
 }
 
+/** L'Élite escortée a encore un ennemi d'escorte debout (#257) : elle n'est pas seule. */
+function escortStanding(battle: Battle): boolean {
+  return battle.enemies.some((enemy) => enemy.escort === true && enemy.hp > 0);
+}
+
 /** La case de `actor` dans la frise d'action : le héros, ou l'ennemi à cet indice. */
 export function trackEntry(battle: Battle, actor: Actor): TrackEntry {
   if (actor === 'hero') return { actor, fighter: battle.heroKind, phase2: false };
@@ -222,6 +243,7 @@ export function trackEntry(battle: Battle, actor: Actor): TrackEntry {
     fighter: enemy.kind,
     phase2: enemy.phase2 === true,
     ...(enemy.cursed === true && { cursed: true as const }),
+    ...(escortedElite(battle) === actor && escortStanding(battle) && { crowned: true as const }),
   };
 }
 
@@ -277,6 +299,8 @@ function enemyView(
   const target = !trimmed && index === battle.target;
   const intent = shownIntent(battle, index);
   const stunned = enemy.stun !== null;
+  const elite = escortedElite(battle) === index;
+  const escort = enemy.escort === true;
   return {
     kind: enemy.kind,
     name: trimmed ? null : ENEMY_NAMES[enemy.kind],
@@ -308,7 +332,14 @@ function enemyView(
     tag: enemyTag(enemy),
     ...(enemy.summoned === true && { summoned: true }),
     ...(enemy.cursed === true && { curse: cursedTag(enemy)! }),
-    label: enemyLabel(enemy, intent, target),
+    ...(elite && { elite: true as const }),
+    ...(escort && { escort: true as const }),
+    label: enemyLabel(
+      enemy,
+      intent,
+      target,
+      elite ? 'elite' : escort && enemy.hp > 0 ? 'escort' : undefined,
+    ),
   };
 }
 
@@ -337,8 +368,9 @@ export function battleView(battle: Battle): BattleView {
     trimmed,
     dust,
     columns,
-    summonerLayout:
-      columns === 3 && first !== undefined && ENEMIES[first.kind].phase2Summon !== undefined,
+    leadLayout:
+      escortedElite(battle) !== null ||
+      (columns === 3 && first !== undefined && ENEMIES[first.kind].phase2Summon !== undefined),
   };
   const heroPad = (locked: boolean, lock: LockSpan | null): ActionPad => ({
     kind: 'hero',

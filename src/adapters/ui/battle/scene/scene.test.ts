@@ -766,7 +766,7 @@ describe('sceneGeometry: the layout of a boss that summons (#172, maquette « bo
   it.each([360, 412])(
     'gives the Queen a column of 1.25 and each Mothkin at least 104 dp at %i dp',
     (width) => {
-      const { enemies } = sceneGeometry(width, 440, 3, { summoner: true });
+      const { enemies } = sceneGeometry(width, 440, 3, { lead: true });
       const [queen, first, second] = enemies.map((slot) => slot.column.width);
 
       expect(first).toBeGreaterThanOrEqual(104);
@@ -777,15 +777,57 @@ describe('sceneGeometry: the layout of a boss that summons (#172, maquette « bo
   );
 
   it('puts the Queen highest and the Mothkin lower, from left to right', () => {
-    const { enemies } = sceneGeometry(412, 440, 3, { summoner: true });
+    const { enemies } = sceneGeometry(412, 440, 3, { lead: true });
 
     expect(enemies.map((slot) => slot.column.y - enemies[0]!.column.y)).toEqual([0, 22, 40]);
     expect(enemies[0]!.column.x).toBe(Math.round(412 * 0.04));
   });
 
   it('keeps the layout of an ordinary battle of three', () => {
-    expect(sceneGeometry(412, 440, 3, { summoner: false })).toEqual(sceneGeometry(412, 440, 3));
-    expect(sceneGeometry(412, 440, 1, { summoner: true })).toEqual(sceneGeometry(412, 440, 1));
+    expect(sceneGeometry(412, 440, 3, { lead: false })).toEqual(sceneGeometry(412, 440, 3));
+    expect(sceneGeometry(412, 440, 1, { lead: true })).toEqual(sceneGeometry(412, 440, 1));
+  });
+});
+
+describe('sceneGeometry: the layout of an escorted Elite (#257, maquette « el3 », « el2 »)', () => {
+  const noOverlap = (width: number, count: number) => {
+    const { enemies } = sceneGeometry(width, 440, count, { lead: true });
+    enemies.slice(1).forEach((slot, index) => {
+      const before = enemies[index]!.column;
+      expect(before.x + before.width + 2).toBeLessThanOrEqual(slot.column.x);
+    });
+    const last = enemies[count - 1]!.column;
+    expect(enemies[0]!.column.x).toBeGreaterThanOrEqual(0);
+    expect(last.x + last.width).toBeLessThanOrEqual(width);
+  };
+
+  it('gives the Elite a column of 130 dp and each escort enemy 104 dp at 360 dp, 3 columns (E2)', () => {
+    const { enemies } = sceneGeometry(360, 440, 3, { lead: true });
+
+    expect(enemies.map((slot) => slot.column.width)).toEqual([130, 104, 104]);
+    expect(enemies.map((slot) => slot.column.y - enemies[0]!.column.y)).toEqual([0, 22, 40]);
+    noOverlap(360, 3);
+  });
+
+  it('keeps 3 columns apart and in the screen at 320 dp, narrower than 104 dp', () => {
+    // 104 × 3,25 + 2 × 2 + 4 = 346 dp > 320 : la maquette ne garantit 104 dp qu'à 360 dp.
+    noOverlap(320, 3);
+  });
+
+  it('gives the Elite 1.25 column and its escort 1 from 19 % of the width, 2 columns (E7)', () => {
+    const { enemies } = sceneGeometry(360, 440, 2, { lead: true });
+
+    // Les colonnes de la maquette `.pfoes.el2` : 158 et 127 dp ; les plaques y font 128 et 100 dp
+    // (`EnemyColumn`).
+    expect(enemies.map((slot) => slot.column.width)).toEqual([158, 127]);
+    expect(enemies[0]!.column.x).toBe(Math.round(360 * 0.19));
+    expect(enemies.map((slot) => slot.column.y - enemies[0]!.column.y)).toEqual([0, 22]);
+    noOverlap(360, 2);
+    noOverlap(320, 2);
+  });
+
+  it('keeps the layout of an ordinary battle of two', () => {
+    expect(sceneGeometry(360, 440, 2, { lead: false })).toEqual(sceneGeometry(360, 440, 2));
   });
 });
 

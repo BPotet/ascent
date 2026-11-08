@@ -2,7 +2,7 @@
 import type { EnemyKind } from '../battle/combatants';
 import type { RandomState } from '../battle/SeededRandom';
 import { drawWeighted, type Drawn } from './draw';
-import { TIERS, type Tier } from './tiers';
+import { TIERS, type EnemyDraw, type Tier } from './tiers';
 
 /** Les poids de la taille du groupe (1 à 5 ennemis), par étage, au palier 1. */
 export const GROUP_SIZE_WEIGHTS = TIERS[1].groupSizeWeights;
@@ -42,12 +42,24 @@ export const KIND_WEIGHTS: Readonly<Partial<Record<EnemyKind, number>>> = Object
  * un ennemi seul.
  */
 export function drawGroup(size: number, random: RandomState, tier: Tier = 1): Drawn<EnemyKind[]> {
+  const draws = TIERS[tier].enemies.filter(({ neverAlone }) => !(neverAlone && size === 1));
+  return drawFromPool(draws, size, random);
+}
+
+/**
+ * `size` ennemis tirés de gauche à droite parmi `draws`, dans leur ordre et selon leurs poids : un
+ * ennemi à son plafond, compté dans les ennemis déjà tirés, n'est plus tiré. Un tirage par ennemi.
+ */
+export function drawFromPool(
+  draws: readonly EnemyDraw[],
+  size: number,
+  random: RandomState,
+): Drawn<EnemyKind[]> {
   const enemies: EnemyKind[] = [];
   let state = random;
   for (let index = 0; index < size; index += 1) {
-    const allowed = TIERS[tier].enemies.filter(
-      ({ kind, cap, neverAlone }) =>
-        enemies.filter((enemy) => enemy === kind).length < cap && !(neverAlone && size === 1),
+    const allowed = draws.filter(
+      ({ kind, cap }) => enemies.filter((enemy) => enemy === kind).length < cap,
     );
     const drawn = drawWeighted(
       allowed.map(({ kind, weight }) => [kind, weight] as const),

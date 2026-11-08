@@ -52,6 +52,8 @@ Fonctionnalité: Rééquilibrage du palier 3
     Alors la garde retirée est la même qu'avant le rééquilibrage
 
   # R1 — Multiplicateur d'Élite et de boss
+  # #257 (décision du 08/11/2026) : la colonne PV et dégâts des Élites passe à 80 / 80 / 88 % ; les
+  # lignes des Élites suivent, celles des boss ne changent pas.
   @domain
   Plan du scénario: Une Élite ou un boss reçoit le multiplicateur de son palier
     Étant donné une ascension au palier <palier>
@@ -61,15 +63,15 @@ Fonctionnalité: Rééquilibrage du palier 3
 
     Exemples:
       | palier | ennemi                     | pv  | garde | coups                          |
-      | 1      | Les Jumeaux                | 200 | 37    | 6 + 6, 10, 5                   |
-      | 1      | Le Chevalier déchu         | 200 | 56    | 8, 8, 12                       |
+      | 1      | Les Jumeaux                | 160 | 37    | 4 + 4, 8, 4                    |
+      | 1      | Le Chevalier déchu         | 160 | 56    | 6, 6, 9                        |
       | 1      | La Gardienne des ossuaires | 300 | 75    | 9, 10 ; phase 2 : 6 + 6, 15    |
       | 1      | Le Prieur sans visage      | 300 | 75    | 8, 5 + 5 ; phase 2 : 10, 14    |
-      | 2      | L'Épouvantail              | 228 | 70    | 13, 13, 19                     |
-      | 2      | Le Brûleur de ronces       | 252 | 77    | 12, 7 + 7, 18                  |
+      | 2      | L'Épouvantail              | 152 | 70    | 8, 8, 12                       |
+      | 2      | Le Brûleur de ronces       | 168 | 77    | 8, 4 + 4, 12                   |
       | 2      | La Jardinière des cendres  | 420 | 97    | 12, 13 ; phase 2 : 7 + 7, 18   |
-      | 3      | Le Premier Pèlerin         | 364 | 82    | 10 + 10, 18, 18, 28            |
-      | 3      | Le Saint de pierre         | 337 | 120   | 17, 21, 29                     |
+      | 3      | Le Premier Pèlerin         | 237 | 82    | 7 + 7, 12, 12, 18              |
+      | 3      | Le Saint de pierre         | 220 | 120   | 11, 14, 19                     |
       | 3      | Le Sonneur des heures      | 650 | 130   | 9 + 9, 18 ; phase 2 : 16, 27   |
       | 3      | Celle qui exauce           | 650 | 121   | 16, 16 ; phase 2 : 10 + 10, 28 |
 
@@ -87,19 +89,22 @@ Fonctionnalité: Rééquilibrage du palier 3
     Quand ses PV passent à 325 ou moins
     Alors son changement de phase a lieu
 
+  # #257 (décision du 08/11/2026) : les Élites du palier 1 passent à 80 % ; le scénario ne vaut plus
+  # que pour les boss.
   @domain
-  Scénario: PV et dégâts inchangés au palier 1 et chez les boss du palier 2, gardes changées
+  Scénario: PV et dégâts inchangés chez les boss des paliers 1 et 2, gardes changées
     Étant donné une ascension au palier 1, ou au palier 2 contre la Reine des phalènes ou la Jardinière des cendres
-    Quand le héros affronte une Élite ou un boss
+    Quand le héros affronte un boss
     Alors ses PV et les dégâts de ses coups sont ceux d'avant le rééquilibrage
     Et sa garde max suit la colonne garde du multiplicateur d'Élite et de boss (Reine des phalènes 87, Jardinière des cendres 97)
     Et les 200 ascensions rejouées du palier 1 changent : leurs tests figés sont mis à jour, jamais la graine
 
+  # #257 (décision du 08/11/2026) : 237 PV au palier 3, 284 maudit (237 + 47).
   @domain
   Scénario: Une Élite maudite part de la valeur du palier
     Étant donné une ascension en malédiction −2 au palier 3
     Quand la porte Élite mène au Premier Pèlerin, Élite maudite
-    Alors il a 436 PV max et une garde max de 98
+    Alors il a 284 PV max et une garde max de 98
 
   # Option A, retenue par l'orchestrateur le 07/11/2026 : une seule fiche par ennemi ; la garde de
   # la Phalénide est doublée comme celle des autres ennemis ordinaires (G2).

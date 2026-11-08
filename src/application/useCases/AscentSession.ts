@@ -30,7 +30,7 @@ import {
   serializeShardTotal,
   type ShardTotal,
 } from '../../domain/ascent/shards';
-import { TIERS, encounterMultiplier } from '../../domain/ascent/tiers';
+import { TIERS, encounterMultipliers } from '../../domain/ascent/tiers';
 import { resumeBattle, startBattle, type Battle } from '../../domain/battle/Battle';
 import { combineModifiers } from '../../domain/battle/heroModifiers';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
@@ -403,12 +403,12 @@ export class AscentSession {
           ...(encounter.cursed !== undefined && { cursed: encounter.cursed }),
           // La seconde chance encore là (#206) ; absente, le combat est celui d'avant.
           ...(ascent.secondChance && { secondChance: true }),
-          // Le multiplicateur de palier d'un combat ordinaire, celui d'Élite et de boss sinon (#244).
-          tierMultiplier: encounterMultiplier(ascent.tier, encounter.kind),
+          // Les multiplicateurs du combat (#257, D2) : de palier pour un combat ordinaire, d'Élite
+          // et de boss sinon (#244) ; celui du palier pour les invoqués (#172) et pour l'escorte
+          // d'une Élite escortée (#257).
+          ...encounterMultipliers(ascent.tier, encounter),
           // Le répit du palier (#244, R3).
           respitePercent: TIERS[ascent.tier].respitePercent,
-          // Les ennemis invoqués ont les valeurs du palier, dans tout combat d'étage (#172).
-          summonMultiplier: TIERS[ascent.tier].multiplier,
           // L'ordre d'action par Initiative (P13, P14), ajouté par #90.
           initiative: true,
         });

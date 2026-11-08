@@ -46,9 +46,10 @@ Fonctionnalité: Réglages du combat
     Quand le joueur pare avec un écart de 60 ms
     Alors c'est une parade parfaite, comme avant
 
+  # #257 (décision du 08/11/2026) : les PV des Élites du palier 2 à 80 % ; les gardes ne changent pas.
   @session
   Scénario: La garde des Élites du palier 2
     Étant donné une porte Élite du palier 2
     Quand le combat commence contre l'Épouvantail
-    Alors il a 228 PV et une garde de 70
-    Et contre le Brûleur de ronces, 252 PV et une garde de 77
+    Alors il a 152 PV et une garde de 70
+    Et contre le Brûleur de ronces, 168 PV et une garde de 77

@@ -118,7 +118,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   then(/^le Chevalier déchu est maudit$/u, () => {
     expect(session.current()!.gauge).toBe(-2);
-    expect(battle.enemies[0]).toMatchObject({ kind: 'fallenKnight', maxHp: 240, cursed: true });
+    // #257 : 160 PV au palier 1 (80 %), puis +20 % maudit.
+    expect(battle.enemies[0]).toMatchObject({ kind: 'fallenKnight', maxHp: 192, cursed: true });
   });
 };
 

@@ -203,7 +203,7 @@ export function BattleScreen({
     downSince: display.downSince[index] ?? null,
   }));
   const geometry = sceneGeometry(screenWidth, sceneHeight, view.columns, {
-    summoner: view.summonerLayout,
+    lead: view.leadLayout,
   });
   const strikeImpactAt = battle.phase.kind === 'heroStrike' ? battle.phase.impactAt : null;
   const { heroFloat, burnFloat } = display;

@@ -15,12 +15,13 @@ describe('cursedValue (#209)', () => {
     expect(moves.map((move) => cursedValue(move.damage))).toEqual([6, 4]);
   });
 
-  it('turns the Fallen Knight into 240 HP, 67 guard and strikes of 9, 9 and 14 at tier 1 (#244)', () => {
+  it('turns the Fallen Knight into 192 HP, 67 guard and strikes of 7, 7 and 10 at tier 1 (#257)', () => {
     const { maxHp, maxGuard, moves } = ENEMIES.fallenKnight;
-    expect(cursedValue(maxHp)).toBe(240);
+    // Les PV et les dégâts du palier 1 : 80 % (colonne PV et dégâts des Élites, #257).
+    expect(cursedValue(scaleByPercent(maxHp, 80))).toBe(192);
     // La garde du palier 1 : 45 × 125 % (colonne garde du multiplicateur d'Élite et de boss).
     expect(cursedValue(scaleByPercent(maxGuard, 125))).toBe(67);
-    expect(moves.map((move) => cursedValue(move.damage))).toEqual([9, 9, 14]);
+    expect(moves.map((move) => cursedValue(scaleByPercent(move.damage, 80)))).toEqual([7, 7, 10]);
   });
 
   it('adds at least 1, rounding the bonus down', () => {

@@ -2,6 +2,7 @@
 
 - **Statut** : accepté
 - **Date** : 7 novembre 2026
+- **Avenant** : 8 novembre 2026, la colonne PV et dégâts des Élites (#257), voir en fin de document
 - **Décideur** : Architect (notes techniques de #244), écrit par le dev
 - **Contexte produit** : épique #243, story #244 « Gardes plus solides, Élites et boss plus forts,
   soins resserrés et Élites variées » (lot 1 du rééquilibrage du palier 3)
@@ -53,3 +54,19 @@ sauvegardes d'avant, sans migration.
   l'ascension change pour ces ascensions-là. C'est voulu.
 - L'onglet Équilibrage de l'Atelier ne mesure pas ces règles (hors périmètre).
 - Rien ne quitte le téléphone.
+
+## Avenant du 8 novembre 2026 — la colonne PV et dégâts des Élites (#257, ADR 0023)
+
+- Décision du propriétaire du 08/11/2026 : avec l'**Élite escortée** (ADR 0023), la colonne PV et
+  dégâts de `eliteMultiplier` passe à **80 / 80 / 88 %** aux paliers 1, 2 et 3 (100 / 120 / 135 %
+  avant). La colonne garde (125 / 140 / 150 %) et `bossMultiplier` ne changent pas. Le palier 1
+  est touché : Chevalier déchu et Jumeaux à 160 PV.
+- `encounterMultiplier` garde sa signature. Une nouvelle lecture, `encounterMultipliers(tier,
+  encounter)`, rend les multiplicateurs d'un combat d'étage (`tierMultiplier`, `summonMultiplier`
+  et, pour une Élite escortée, `escortMultiplier`) ; la session et l'aide des marches figées du
+  palier 1 l'appellent toutes les deux.
+- Un combat d'Élite sauvegardé avant #257 garde son `tierMultiplier` enregistré (100 / 120 / 135 %) :
+  la reprise ne relit jamais `TIERS`. Une rencontre d'Élite tirée avant #257 mais pas encore
+  commencée prend les nouvelles valeurs.
+- Les 200 ascensions rejouées du palier 1 changent par les PV et les dégâts de leurs Élites
+  (228 segments `elite[...]` sur 140 marches), jamais par leurs tirages ni leurs graines.

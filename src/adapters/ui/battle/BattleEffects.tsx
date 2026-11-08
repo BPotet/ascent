@@ -20,6 +20,8 @@ const FEEDBACK_HOLD_MS = 450;
 const FEEDBACK_FADE_MS = 250;
 /** Le mot de Pas de l'ombre reste moins longtemps : 600 ms en tout (#173). */
 const SHADOW_STEP_HOLD_MS = 350;
+/** « L'escorte reste » (#257, E9) : montré 1 200 ms en tout, fondu compris ; il ne bloque rien. */
+export const ESCORT_STAYS_MS = 1_200;
 
 /**
  * Le mot d'un résultat (« Parfait », « Cassure », « Frappe parfaite »), au centre de la scène. Il
@@ -29,7 +31,12 @@ const SHADOW_STEP_HOLD_MS = 350;
 export function FeedbackLabel({ texts }: { readonly texts: readonly FeedbackText[] }) {
   const opacity = useSharedValue(1);
   const shadowStep = texts.some((text) => text.tone === 'shadowStep');
-  const hold = shadowStep ? SHADOW_STEP_HOLD_MS : FEEDBACK_HOLD_MS;
+  const escort = texts.some((text) => text.tone === 'escort');
+  const hold = escort
+    ? ESCORT_STAYS_MS - FEEDBACK_FADE_MS
+    : shadowStep
+      ? SHADOW_STEP_HOLD_MS
+      : FEEDBACK_HOLD_MS;
   useEffect(() => {
     opacity.set(
       withSequence(
@@ -181,6 +188,8 @@ const styles = StyleSheet.create({
   rise: { color: battleColors.light, fontSize: 30, lineHeight: 34, letterSpacing: 1 },
   riposte: { color: artPalette.roles.bulwarkText, fontSize: 30, lineHeight: 34, letterSpacing: 1 },
   shadowStep: { color: battleColors.onShadowStep, fontSize: 24, lineHeight: 28 },
+  // « L'escorte reste » (#257, maquette `.announce.gold`) : en or, plus petit qu'un mot de coup.
+  escort: { color: artPalette.roles.gold, fontSize: 26, lineHeight: 30 },
   withShield: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   withSub: { alignItems: 'center' },
   sub: {

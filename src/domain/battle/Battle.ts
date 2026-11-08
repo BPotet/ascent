@@ -151,6 +151,11 @@ export interface EnemyState {
   readonly summoned?: true;
   /** Un ennemi maudit (`CursedEnemy`, #209) : il le reste jusqu'à la fin du combat, relevé compris. */
   readonly cursed?: true;
+  /**
+   * Un ennemi d'escorte (`Escorte`, #257) : il accompagne l'Élite, au multiplicateur de l'escorte
+   * (`Battle.escortMultiplier`) ; absent, non.
+   */
+  readonly escort?: true;
 }
 
 export interface ImpactState {
@@ -304,6 +309,11 @@ export interface Battle {
   readonly tierMultiplier?: TierMultiplier;
   /** Le multiplicateur du palier des ennemis invoqués (#172) ; absent, × 1. */
   readonly summonMultiplier?: TierMultiplier;
+  /**
+   * Le multiplicateur des ennemis d'escorte d'une Élite escortée (#257) ; absent, aucune escorte
+   * (un combat sans escorte, ou un combat d'Élite sauvé avant #257).
+   */
+  readonly escortMultiplier?: TierMultiplier;
   /** L'Invocation annoncée, pas encore entrée (#172) ; absente, aucune. */
   readonly summon?: PendingSummon;
   /** Le répit du palier, en % (#244, R3) ; absent, `RESPITE_PERCENT` (un combat d'avant #244). */
@@ -401,6 +411,11 @@ export interface BattleOptions extends BattleStartOptions {
    */
   readonly summonMultiplier?: TierMultiplier;
   /**
+   * Le multiplicateur de l'escorte d'une Élite escortée (#257) : présent, chaque ennemi de départ
+   * sauf le premier (l'Élite, à l'indice 0) est un ennemi d'escorte ; absent, aucune escorte.
+   */
+  readonly escortMultiplier?: TierMultiplier;
+  /**
    * L'indice de l'ennemi maudit (#209) dans la première ligne ; absent, aucun. Un indice de la
    * réserve ne maudit personne : un renfort ou un invoqué n'est jamais maudit.
    */
@@ -462,6 +477,7 @@ export function startBattle({
   enemies: group,
   tierMultiplier,
   summonMultiplier,
+  escortMultiplier,
   cursed,
   secondChance,
   powers,
@@ -473,7 +489,11 @@ export function startBattle({
   const events: Events = [];
   const enemies = group
     .slice(0, FRONT_LINE_SIZE)
-    .map((kind, index) => freshEnemy(kind, tierMultiplier, index === cursed));
+    .map((kind, index) =>
+      escortMultiplier && index > 0
+        ? { ...freshEnemy(kind, escortMultiplier, index === cursed), escort: true as const }
+        : freshEnemy(kind, tierMultiplier, index === cursed),
+    );
   const battle = startRound(
     {
       now: at,
@@ -487,6 +507,7 @@ export function startBattle({
       ...(modifiers && { modifiers }),
       ...(tierMultiplier && { tierMultiplier }),
       ...(summonMultiplier && { summonMultiplier }),
+      ...(escortMultiplier && { escortMultiplier }),
       ...(respitePercent !== undefined && { respitePercent }),
       hero: {
         hp: heroHp ?? maxHp,
@@ -599,6 +620,14 @@ export function pendingSummon(battle: Battle): PendingSummon | null {
 
 export function isStanding(enemy: EnemyState): boolean {
   return enemy.hp > 0;
+}
+
+/**
+ * L'Élite escortée (#257) : l'indice de l'Élite (0) quand un ennemi du combat est d'escorte ;
+ * `null` dans un combat sans escorte.
+ */
+export function escortedElite(battle: Battle): number | null {
+  return battle.enemies.some((enemy) => enemy.escort === true) ? 0 : null;
 }
 
 /** Les indices des ennemis debout, de gauche à droite. */
@@ -792,6 +821,16 @@ function summonEnter(battle: Battle, events: Events, at: number): Battle {
   return { ...rest, enemies };
 }
 
+/**
+ * Le multiplicateur d'un ennemi (#257, D1) : celui des invoqués pour un invoqué, celui de
+ * l'escorte pour un ennemi d'escorte, sinon celui du combat ; absent, × 1.
+ */
+function enemyMultiplier(battle: Battle, enemy: EnemyState): TierMultiplier | undefined {
+  if (enemy.summoned) return battle.summonMultiplier;
+  if (enemy.escort) return battle.escortMultiplier;
+  return battle.tierMultiplier;
+}
+
 function startRound(previous: Battle, events: Events, at: number): Battle {
   // Saignement, Brûlure, entrée des invoqués, puis le renfort, avant les tirages : l'ordre de la
   // manche est calculé après (P3b, #171, #172). Les invoqués entrent avant le renfort : celui-ci
@@ -808,8 +847,7 @@ function startRound(previous: Battle, events: Events, at: number): Battle {
       guardDamaged: enemy.guard < enemy.maxGuard,
       phase2: enemy.phase2 === true,
       maxGuard: enemy.maxGuard,
-      damagePercent:
-        (enemy.summoned ? battle.summonMultiplier : battle.tierMultiplier)?.hpPercent ?? 100,
+      damagePercent: enemyMultiplier(battle, enemy)?.hpPercent ?? 100,
       cursed: enemy.cursed === true,
     });
     random = drawn.random;
