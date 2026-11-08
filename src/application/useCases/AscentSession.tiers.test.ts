@@ -10,7 +10,9 @@ import {
 } from '../../domain/ascent/Ascent';
 import { TIERS } from '../../domain/ascent/tiers';
 import { startBattle, type Battle } from '../../domain/battle/Battle';
-import type { EnemyKind } from '../../domain/battle/combatants';
+import { ENEMIES, type EnemyKind } from '../../domain/battle/combatants';
+import { scaleByPercent } from '../../domain/battle/tierMultiplier';
+import { ELITE_BATTLE_BEFORE_257 } from '../testing/eliteBattleBefore257';
 import { FixedSeedSource } from '../testing/FixedSeedSource';
 import { ManualBattleClock } from '../testing/ManualBattleClock';
 import { silentBattleHaptics, silentBattleSound } from '../testing/recordingBattleFeedback';
@@ -684,5 +686,114 @@ describe('the enemies of tier 3 in a resumed ascent (#214)', () => {
     for (const kind of ['skeleton', 'specter', 'necromancer', 'mothkin']) {
       expect(next.encounter!.enemies).not.toContain(kind);
     }
+  });
+});
+
+describe('the escorted Elite in the session (#257)', () => {
+  it('starts an Elite of tier 2 at 80 / 140 %, its escort at the multiplier of the tier', async () => {
+    const ascent = ascentAt(2, 'elite', ['scarecrow', 'mothkin']);
+    const { session } = await loaded(mapStore(), ascent, null);
+    const battleSession = session.battleSession();
+
+    await battleSession.start();
+
+    const { battle } = battleSession.current()!;
+    expect(battle.tierMultiplier).toEqual({ hpPercent: 80, guardPercent: 140 });
+    expect(battle.escortMultiplier).toEqual({ hpPercent: 135, guardPercent: 125 });
+    expect(battle.summonMultiplier).toEqual(TIERS[2].multiplier);
+    expect(battle.enemies.map(({ kind, maxHp, escort }) => ({ kind, maxHp, escort }))).toEqual([
+      { kind: 'scarecrow', maxHp: 152, escort: undefined },
+      { kind: 'mothkin', maxHp: 33, escort: true },
+    ]);
+  });
+
+  it('starts an Elite of tier 1 alone, without escort multiplier', async () => {
+    const { session } = await loaded(mapStore(), ascentAt(1, 'elite', ['twins']), null);
+    const battleSession = session.battleSession();
+
+    await battleSession.start();
+
+    const { battle } = battleSession.current()!;
+    expect(battle).not.toHaveProperty('escortMultiplier');
+    expect(battle.enemies[0]).toMatchObject({ kind: 'twins', maxHp: 160 });
+  });
+
+  it('starts an Elite drawn before #257 alone, at the values of today: 237 HP at tier 3', async () => {
+    // La rencontre tirée avant la mise à jour, le combat pas encore commencé (décision 3).
+    const { session } = await loaded(mapStore(), ascentAt(3, 'elite', ['firstPilgrim']), null);
+    const battleSession = session.battleSession();
+
+    await battleSession.start();
+
+    const { battle } = battleSession.current()!;
+    expect(battle).not.toHaveProperty('escortMultiplier');
+    expect(battle.enemies).toHaveLength(1);
+    expect(battle.enemies[0]).toMatchObject({ kind: 'firstPilgrim', maxHp: 237, maxGuard: 82 });
+  });
+
+  it('resumes an Elite battle of tier 3 saved before #257 without escort, its strikes at 135 %', async () => {
+    const saved = JSON.parse(ELITE_BATTLE_BEFORE_257) as Battle;
+    const set = await loaded(mapStore(), ascentAt(3, 'elite', ['firstPilgrim']), saved);
+    const battleSession = set.session.battleSession();
+
+    await battleSession.start();
+    const resumed = battleSession.current()!.battle;
+    expect(resumed.enemies).toEqual(saved.enemies);
+    expect(resumed.tierMultiplier).toEqual({ hpPercent: 135, guardPercent: 150 });
+    expect(resumed).not.toHaveProperty('escortMultiplier');
+
+    // La manche suivante tire ses coups à 135 %, jamais à 88 %.
+    const damages = new Set<number>();
+    for (let guard = 0; guard < 200 && damages.size === 0; guard += 1) {
+      const battle = battleSession.current()!.battle;
+      if (battle.round > 2) {
+        const intent = battle.enemies[0]!.intent;
+        if (intent?.category === 'attack') damages.add(intent.damage);
+      }
+      if (battle.phase.kind === 'hero') {
+        const at = set.clock.now() + 50;
+        set.clock.advanceTo(at);
+        battleSession.heroAction({ kind: 'attack' }, at - 20, at);
+      } else {
+        set.clock.advanceTo(set.clock.pending()[0]!);
+      }
+      await flush();
+    }
+    const at135 = ENEMIES.firstPilgrim.moves.map(({ damage }) => scaleByPercent(damage, 135));
+    expect(damages.size).toBe(1);
+    expect(at135).toContain([...damages][0]);
+  });
+
+  it('gives an escorted Elite won at tier 3 the rewards of a lone Elite, the escort no Gold', async () => {
+    const afterVictory = async (enemies: readonly EnemyKind[]) => {
+      const ascent = ascentAt(3, 'elite', enemies);
+      const { battle } = startBattle({
+        seed: 3,
+        defenseHint: false,
+        at: 0,
+        heroHp: 70,
+        enemies,
+        tierMultiplier: TIERS[3].eliteMultiplier,
+        ...(enemies.length > 1 && { escortMultiplier: TIERS[3].multiplier }),
+      });
+      // L'escorte déjà tombée, l'Élite à 1 PV : le même combat que l'Élite seule.
+      const ending = {
+        ...battle,
+        enemies: battle.enemies.map((enemy, index) => ({ ...enemy, hp: index === 0 ? 1 : 0 })),
+      };
+      const store = mapStore();
+      const set = await loaded(store, ascent, ending);
+      await playToTheEnd(set.session.battleSession(), set.clock);
+      await flush();
+      return set.session.current()!;
+    };
+
+    const escorted = await afterVictory(['firstPilgrim', 'bellNovice', 'clockJack']);
+    const alone = await afterVictory(['firstPilgrim']);
+
+    expect(escorted.lastGold).toBe(37);
+    expect(escorted.sealedChest).not.toBeNull();
+    expect(escorted.shardAwards).toContainEqual({ id: '3:3:3:elite', amount: 2 });
+    expect(escorted).toEqual(alone);
   });
 });
