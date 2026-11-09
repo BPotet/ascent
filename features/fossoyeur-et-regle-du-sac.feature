@@ -114,3 +114,9 @@ Fonctionnalité: Le Fossoyeur et l'Élite non répétée étendue
   Scénario: Avec 2 Élites, la règle ne change pas
     Étant donné un palier à 2 Élites
     Alors les Élites alternent, comme avec l'Élite non répétée d'avant
+
+  @session
+  Scénario: Ascension sauvegardée avant la mise à jour
+    Étant donné une ascension sauvegardée qui ne connaît que la dernière Élite affrontée, B
+    Quand le joueur la reprend et passe une porte Élite du même palier
+    Alors l'Élite est tirée comme si les Élites affrontées étaient : B
