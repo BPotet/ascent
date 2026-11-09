@@ -507,6 +507,29 @@ const DRAWN = {
     'XX...XX.',
     '........',
   ],
+  // Les glyphes des marques de signature Épines et Sanctuaire (#259), table `PAT` de la maquette
+  // `docs/mockups/245-elites-escortees/`, sur 8 × 8 pixels d'art : l'épine et l'écu d'acier (la
+  // pelle fendue, `crack8`, dit le Sanctuaire rompu).
+  thorn8: [
+    '...X....',
+    '..XXX...',
+    'X.XXX.X.',
+    '.XXXXX..',
+    '..XXX...',
+    '.X.X.X..',
+    'X..X..X.',
+    '........',
+  ],
+  ward8: [
+    'XXXXXXX.',
+    'X.....X.',
+    'X.XXX.X.',
+    'X.XXX.X.',
+    '.X.X.X..',
+    '..X.X...',
+    '...X....',
+    '........',
+  ],
   // Les glyphes de la jauge (#41), table `PAT` de la maquette `docs/mockups/205-jauge-faveur/`,
   // centrés sur 8 × 8 pixels d'art : crâne, bénédiction, objet, Rare, fatigue, cadenas, horloge, « + »
   // et « = » des crans du cadran.

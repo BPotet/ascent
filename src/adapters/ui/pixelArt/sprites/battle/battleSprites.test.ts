@@ -689,6 +689,8 @@ describe('the battle effects (precomputed, never painted per frame)', () => {
       stars: 4,
       shield: 2,
       silverShard: 1,
+      thornSpike: 1,
+      wardShard: 1,
       burn: 3,
       burnHit: 2,
       burnOut: 3,

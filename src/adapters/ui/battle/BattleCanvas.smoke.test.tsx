@@ -833,3 +833,31 @@ describe('BattleScene with Skia: the Gravedigger and his exhumed Skeleton (#258)
     },
   );
 });
+
+describe('BattleScene with Skia: the Bramble mother and the Beadle (#259)', () => {
+  it.each([false, true])(
+    'mounts them with the spikes of the Thorns, the steel spark and the shards (reduced motion: %s)',
+    async (reducedMotion) => {
+      prepareBattleScene(['brambleMother', 'beadle']);
+      await render(
+        <BattleScene
+          {...props({
+            geometry: sceneGeometry(390, 440, 3, { lead: true }),
+            enemies: [
+              { ...ENEMIES[0]!, kind: 'brambleMother', down: false, dimmed: false },
+              { ...ENEMIES[0]!, kind: 'beadle', target: false, down: true, dimmed: false },
+            ],
+            signatures: {
+              prick: { from: 0 },
+              wardSpark: { at: 0, enemy: 1 },
+              wardBroken: { at: 0, enemy: 1 },
+            },
+            reducedMotion,
+          })}
+        />,
+      );
+
+      expect(drawnTypes()).toContain('skAtlas');
+    },
+  );
+});

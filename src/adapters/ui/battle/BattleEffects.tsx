@@ -123,12 +123,54 @@ export function DamageFloat({
           float.kind === 'riposte' && styles.floatRiposte,
           float.at === 'hero' && styles.floatHero,
           float.kind === 'burn' && styles.floatBurn,
+          float.kind === 'thorns' && styles.floatThorns,
           (float.kind === 'secondChance' || float.kind === 'heal') && styles.floatSecondChance,
           float.big && styles.floatBig,
         ]}
       >
         {float.text}
       </Text>
+      {float.half === true ? (
+        // Le « ½ » du Sanctuaire (#259, B2, B3), sur l'acier : jamais la couleur seule.
+        <View testID="damage-half" style={styles.half}>
+          <Text style={styles.halfText}>½</Text>
+        </View>
+      ) : null}
+    </Animated.View>
+  );
+}
+
+/**
+ * Le mot « Épines » près du héros (#259, M2, maquette `.fword.thorn`), en vert ronce : il paraît avec
+ * le « −2 », `delayMs` ms après la fin de la frappe, puis s'efface. Décoratif : le lecteur d'écran
+ * dit la piqûre.
+ */
+export function ThornsWord({ delayMs }: { readonly delayMs: number }) {
+  const opacity = useSharedValue(0);
+  useEffect(() => {
+    opacity.set(
+      withDelay(
+        delayMs,
+        withSequence(
+          withTiming(1, { duration: 0 }),
+          withDelay(FEEDBACK_HOLD_MS, withTiming(0, { duration: FEEDBACK_FADE_MS })),
+        ),
+      ),
+    );
+  }, [opacity, delayMs]);
+  // Dépendances explicites : le code instrumenté par Stryker n'est plus reconnu comme worklet.
+  const fade = useAnimatedStyle(() => {
+    'worklet';
+    return { opacity: opacity.get() };
+  }, [opacity]);
+  return (
+    <Animated.View
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={fade}
+    >
+      <Text style={[styles.title, styles.thorns]}>Épines</Text>
     </Animated.View>
   );
 }
@@ -192,6 +234,10 @@ const styles = StyleSheet.create({
   escort: { color: artPalette.roles.gold, fontSize: 26, lineHeight: 30 },
   // « Victoire » à la chute du Fossoyeur et de son Squelette (#258, F6).
   victory: { color: battleColors.light, fontSize: 32, lineHeight: 36 },
+  // La rupture et le retour du Sanctuaire (#259, B3, B5, `.fword.ward`), en acier clair.
+  ward: { color: battleColors.onWard, fontSize: 30, lineHeight: 34, letterSpacing: 1 },
+  // Le mot « Épines » (#259, M2, `.fword.thorn`), en vert ronce.
+  thorns: { color: battleColors.thornLight, fontSize: 20, lineHeight: 24 },
   withShield: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   withSub: { alignItems: 'center' },
   sub: {
@@ -213,6 +259,22 @@ const styles = StyleSheet.create({
   floatGuard: { color: battleColors.guard },
   floatRiposte: { color: artPalette.roles.bulwarkText },
   floatBurn: { color: battleColors.burnNumber },
+  // Le « −2 » des Épines (#259, `.dmg.thorn`), en vert ronce.
+  floatThorns: { color: battleColors.thornLight },
+  // Le « ½ » du Sanctuaire (#259, `.dmg .hb`) : l'encre sur l'acier.
+  half: {
+    marginLeft: 3,
+    paddingHorizontal: 4,
+    height: 18,
+    justifyContent: 'center',
+    backgroundColor: battleColors.ward,
+  },
+  halfText: {
+    color: artPalette.roles.ink,
+    fontFamily: textFont.bold,
+    fontSize: 12,
+    lineHeight: 14,
+  },
   // Les PV du héros relevé par la seconde chance, en or (#206, S3).
   floatSecondChance: { color: artPalette.roles.gold },
   floatBig: { color: battleColors.light, fontSize: 32 },

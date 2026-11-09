@@ -89,6 +89,13 @@ import {
   retaliationBurst,
   type ScenePowers,
 } from './scene/powerScene';
+import {
+  NO_SCENE_SIGNATURES,
+  thornSpikes,
+  wardShards,
+  wardSparkFrame,
+  type SceneSignatures,
+} from './scene/signatureScene';
 import type { HeroPose, SceneBurn, SceneEnemy, SceneSpark, SceneTimeline } from './sceneTypes';
 
 export interface BattleSceneProps {
@@ -134,6 +141,11 @@ export interface BattleSceneProps {
    * d'Entaille et l'éclat d'or de Représailles. Par défaut, aucun.
    */
   readonly powers?: ScenePowers;
+  /**
+   * Les signatures de #259, dessinées en code : les pointes de la piqûre des Épines, l'étincelle
+   * d'acier d'un coup amorti et les éclats du Sanctuaire rompu. Par défaut, aucune.
+   */
+  readonly signatures?: SceneSignatures;
   readonly reducedMotion: boolean;
   /** L'horloge du fil UI : un worklet, sur la base de l'horloge de combat (méthode a). */
   readonly uiNow: () => number;
@@ -210,10 +222,11 @@ const FADED = [
 /**
  * Les places de l'atlas des effets : éclair, étincelle, deux reflets, trois étoiles, l'écu du
  * Rempart, ses 4 éclats, les 4 éclats de la riposte sur l'ennemi (#128), la Brûlure (#171) : 5
- * flammes ou fumées et l'éclat de braise, et la poussière de l'Invocation sur 3 places (#172), d'os
- * pour l'Exhumation (#258).
+ * flammes ou fumées et l'éclat de braise, la poussière de l'Invocation sur 3 places (#172), d'os
+ * pour l'Exhumation (#258), et les signatures de #259 : 6 pointes des Épines, l'étincelle d'acier et
+ * 5 éclats du Sanctuaire rompu.
  */
-const EFFECT_SLOTS = 25;
+const EFFECT_SLOTS = 37;
 /** Les nombres d'une place : effet, image, x, y, échelle. */
 const EFFECT_FIELDS = 5;
 const EFFECT_ORDER: readonly EffectKind[] = [
@@ -226,6 +239,8 @@ const EFFECT_ORDER: readonly EffectKind[] = [
   'stars',
   'shield',
   'silverShard',
+  'thornSpike',
+  'wardShard',
   'burn',
   'burnHit',
   'burnOut',
@@ -542,6 +557,7 @@ export function BattleScene({
   summon = null,
   secondChance = null,
   powers = NO_SCENE_POWERS,
+  signatures = NO_SCENE_SIGNATURES,
   reducedMotion,
   uiNow,
 }: BattleSceneProps) {
@@ -560,6 +576,8 @@ export function BattleScene({
   useEffect(() => sharedRise.set(secondChance), [sharedRise, secondChance]);
   const sharedPowers = useSharedValue(powers);
   useEffect(() => sharedPowers.set(powers), [sharedPowers, powers]);
+  const sharedSignatures = useSharedValue(signatures);
+  useEffect(() => sharedSignatures.set(signatures), [sharedSignatures, signatures]);
   const sharedSummon = useSharedValue(summon ?? NO_SUMMON);
   useEffect(() => sharedSummon.set(summon ?? NO_SUMMON), [sharedSummon, summon]);
 
@@ -841,6 +859,21 @@ export function BattleScene({
     if (sparkNow !== null && sparkStep !== null) {
       place(sparkNow.kind === 'gold' ? 'gold' : 'steel', sparkStep, chest.x, chest.y - 8);
     }
+    // Les signatures de #259 : les pointes vert ronce jaillissent du héros piqué ; l'étincelle
+    // d'acier sur le Bedeau à chaque coup amorti, et ses éclats d'acier à la rupture.
+    const { prick, wardSpark, wardBroken } = sharedSignatures.get();
+    for (const [dx, dy] of thornSpikes(prick, now, reducedMotion)) {
+      place('thornSpike', 0, chest.x + dx, chest.y + dy);
+    }
+    const warded = wardSpark === null ? undefined : enemyCenters[wardSpark.enemy];
+    const wardStep = wardSparkFrame(wardSpark, now, reducedMotion);
+    if (warded !== undefined && wardStep !== null) place('steel', wardStep, warded.x, warded.y);
+    const ruptured = wardBroken === null ? undefined : enemyCenters[wardBroken.enemy];
+    if (ruptured !== undefined) {
+      for (const [dx, dy] of wardShards(wardBroken, now, reducedMotion)) {
+        place('wardShard', 0, ruptured.x + dx, ruptured.y + dy);
+      }
+    }
     if (current !== null && current.kind === 'attack') {
       const kind = kinds[current.enemy];
       const look = looks[current.enemy]?.get();
@@ -876,6 +909,7 @@ export function BattleScene({
     sharedSpark,
     sharedBulwark,
     sharedPowers,
+    sharedSignatures,
     sharedBurn,
     sharedSummon,
     summonCenters,

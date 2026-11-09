@@ -1,17 +1,46 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import type { EliteSignature } from '../../../domain/battle/combatants';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { textFont } from '../pixelArt/pixelTypography';
 import type { SignatureView } from '../state/battleView';
 import { battleColors } from '../theme/battleColors';
 
+/** Les teintes de chaque mécanique (maquette 245) : l'os, la ronce, l'acier. */
+const TINTS: Readonly<
+  Record<EliteSignature, { readonly line: string; readonly fill: string; readonly ink: string }>
+> = {
+  exhume: {
+    line: battleColors.grave,
+    fill: battleColors.graveBackground,
+    ink: battleColors.onGrave,
+  },
+  thorns: {
+    line: battleColors.thorn,
+    fill: battleColors.thornBackground,
+    ink: battleColors.onThorn,
+  },
+  sanctuary: {
+    line: battleColors.ward,
+    fill: battleColors.wardBackground,
+    ink: battleColors.onWard,
+  },
+};
+
+/** Le glyphe d'une marque allumée : l'os clair, le vert ronce, l'acier (maquette 245, `sigTag`). */
+const GLYPH_TINTS: Readonly<Record<EliteSignature, string>> = {
+  exhume: battleColors.onGrave,
+  thorns: battleColors.thornLight,
+  sanctuary: battleColors.ward,
+};
+
 /**
  * La marque de signature d'une Élite (`SignatureMark`, #258, maquette 245, `.ptag.sig`) : son
  * glyphe et son mot sous le nom, jamais la couleur seule. Elle ne lit que la vue générique de
- * l'ennemi (`EnemyView.signature`) ; #259 y ajoute les Épines et le Sanctuaire. Exhumer : en os, au
- * cadre doublé quand l'Exhumation est pour maintenant, grisée quand elle n'aura pas lieu. Elle tient
- * sur une ligne à 128 dp et passe à la ligne en texte agrandi. Le lecteur d'écran la lit avec la
- * plaque.
+ * l'ennemi (`EnemyView.signature`), et prend les teintes de sa mécanique : Exhumer en os, au cadre
+ * doublé quand l'Exhumation est pour maintenant ; les Épines en ronce, barrées quand la Mère-ronce
+ * est étourdie ; le Sanctuaire en acier (#259). Éteinte, elle est grisée. Elle tient sur une ligne
+ * à 128 dp et passe à la ligne en texte agrandi. Le lecteur d'écran la lit avec la plaque.
  */
 export function SignatureMark({
   signature,
@@ -20,27 +49,42 @@ export function SignatureMark({
   readonly signature: SignatureView;
   readonly testID?: string;
 }) {
-  const { glyph, text, off, now } = signature;
+  const { variant, glyph, text, off, now } = signature;
+  const tint = TINTS[variant];
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       {...(testID === undefined ? {} : { testID })}
-      style={[styles.mark, now && styles.now, off && styles.off]}
+      style={[
+        styles.mark,
+        { backgroundColor: tint.fill, borderColor: tint.line },
+        now && [styles.now, { borderColor: tint.ink }],
+        off && styles.off,
+      ]}
     >
       <PixelIcon
         name={glyph}
-        color={off ? battleColors.graveOff : battleColors.onGrave}
+        color={off ? battleColors.signatureOff : GLYPH_TINTS[variant]}
         testID={`signature-glyph-${glyph}`}
       />
-      <Text style={[styles.text, off && styles.offText]}>{text}</Text>
+      <Text
+        style={[
+          styles.text,
+          { color: tint.ink },
+          off && styles.offText,
+          off && variant === 'thorns' && styles.struck,
+        ]}
+      >
+        {text}
+      </Text>
     </View>
   );
 }
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  // `.ptag.sig.grave` : os sur fond de terre, cerné d'os.
+  // `.ptag.sig` : la teinte de la mécanique sur son fond, cernée de sa ligne.
   mark: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -50,14 +94,14 @@ const styles = StyleSheet.create({
     paddingLeft: 3,
     paddingRight: 5,
     paddingVertical: 1,
-    backgroundColor: battleColors.graveBackground,
     borderWidth: 1,
-    borderColor: battleColors.grave,
   },
-  // `.ptag.grave.now` : le cadre doublé, d'os clair.
-  now: { borderWidth: 2, borderColor: battleColors.onGrave, paddingRight: 2, gap: 2 },
-  // `.ptag.grave.full` : grisée, sans fond.
-  off: { backgroundColor: 'transparent', borderColor: battleColors.graveOffLine },
-  text: { color: battleColors.onGrave, fontFamily: textFont.bold, fontSize: 10.5, lineHeight: 14 },
-  offText: { color: battleColors.graveOff },
+  // `.ptag.grave.now` : le cadre doublé, de la teinte claire.
+  now: { borderWidth: 2, paddingRight: 2, gap: 2 },
+  // `.ptag.grave.full`, `.ptag.thorn.off`, `.ptag.ward.broken` : grisée, sans fond.
+  off: { backgroundColor: 'transparent', borderColor: battleColors.signatureOffLine },
+  text: { fontFamily: textFont.bold, fontSize: 10.5, lineHeight: 14 },
+  offText: { color: battleColors.signatureOff },
+  // `.ptag.thorn.off s` : « Épines 2 » barré tant qu'elle est étourdie.
+  struck: { textDecorationLine: 'line-through' },
 });

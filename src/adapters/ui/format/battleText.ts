@@ -11,6 +11,7 @@ import type { Actor } from '../../../domain/battle/actionOrder';
 import {
   ENEMIES,
   HEROES,
+  eliteSignature,
   startingInitiative,
   type Armor,
   type EnemyKind,
@@ -450,7 +451,16 @@ export function phaseAnnouncement(to: PhaseDirection): string {
  * s'y écrivent ; « Frappe parfaite » en phase du héros. Jamais « Critique ».
  */
 export interface FeedbackText {
-  readonly tone: 'perfect' | 'break' | 'rise' | 'riposte' | 'shadowStep' | 'escort' | 'victory';
+  readonly tone:
+    | 'perfect'
+    | 'break'
+    | 'rise'
+    | 'riposte'
+    | 'shadowStep'
+    | 'escort'
+    | 'victory'
+    // L'acier du Sanctuaire (#259) : sa rupture et son retour.
+    | 'ward';
   readonly title: string;
   /** La ligne sous le mot : « Attisé · 1 Élan » pour un pouvoir attisé (#237). */
   readonly sub?: string;
@@ -494,11 +504,15 @@ export function feedbackText(event: BattleEvent, battle?: Battle): FeedbackText 
         ...(sub !== null && { sub }),
       };
     }
-    // La garde brisée avant l'Exhumation (#258, F4) : « Action perdue · pas d’exhumation ».
     case 'guardBroken':
-      return battle?.enemies[event.enemy]?.intent?.category === 'exhume'
-        ? { tone: 'break', title: 'Cassure', sub: 'Action perdue · pas d’exhumation' }
-        : { tone: 'break', title: 'Cassure' };
+      return battle === undefined ? BREAK : brokenText(battle, event.enemy);
+    // Le Sanctuaire revient avec la garde du Bedeau (#259, B5).
+    case 'guardRestored': {
+      const kind = battle?.enemies[event.enemy]?.kind;
+      return kind !== undefined && eliteSignature(kind) === 'sanctuary'
+        ? { tone: 'ward', title: 'Sanctuaire', sub: 'Sa garde est revenue' }
+        : null;
+    }
     // Le Squelette exhumé tombe avec le Fossoyeur, et c'est la victoire (#258, F6).
     case 'summonedFell':
       return battle !== undefined ? fellWithExhumer(battle, event.enemy) : null;
@@ -510,6 +524,32 @@ export function feedbackText(event: BattleEvent, battle?: Battle): FeedbackText 
       return battle !== undefined && escortStays(battle, event.enemy) ? ESCORT_STAYS : null;
     default:
       return null;
+  }
+}
+
+const BREAK: FeedbackText = { tone: 'break', title: 'Cassure' };
+
+/**
+ * « Cassure » et pourquoi elle compte : la garde brisée avant l'Exhumation (#258, F4) ; la Mère-ronce
+ * qui pique une dernière fois, puis plus tant qu'elle est étourdie (#259, M4) ; le Sanctuaire du
+ * Bedeau rompu (#259, B3), en acier.
+ */
+function brokenText(battle: Battle, enemy: number): FeedbackText {
+  const broken = battle.enemies[enemy];
+  if (broken === undefined) return BREAK;
+  if (broken.intent?.category === 'exhume') {
+    return { ...BREAK, sub: 'Action perdue · pas d’exhumation' };
+  }
+  switch (eliteSignature(broken.kind)) {
+    case 'thorns':
+      return {
+        ...BREAK,
+        sub: `${pronoun(broken.kind)} pique une dernière fois, puis plus tant qu’${FEMININE[broken.kind] ? 'elle est étourdie' : 'il est étourdi'}`,
+      };
+    case 'sanctuary':
+      return { tone: 'ward', title: 'Cassure', sub: 'Sanctuaire rompu · dégâts entiers' };
+    default:
+      return BREAK;
   }
 }
 
@@ -566,8 +606,14 @@ export interface DamageFloat {
    * Des dégâts, de la garde, les dégâts de la Riposte du Rempart, précédés de l'écu (#128), ou la
    * perte de la Brûlure, précédée d'une flamme (#171).
    */
-  readonly kind: 'damage' | 'guard' | 'riposte' | 'burn' | 'secondChance' | 'heal';
+  readonly kind: 'damage' | 'guard' | 'riposte' | 'burn' | 'secondChance' | 'heal' | 'thorns';
+  /** Le Sanctuaire (#259) a réduit le coup : le chiffre porte « ½ ». Absent, non. */
+  readonly half?: true;
 }
+
+/** Le « ½ » d'un coup que le Sanctuaire a réduit (#259, B2, B3). */
+const halved = (event: { readonly sanctuary?: true }) =>
+  event.sanctuary === true && { half: true as const };
 
 export function damageFloat(event: BattleEvent): DamageFloat | null {
   switch (event.type) {
@@ -581,11 +627,29 @@ export function damageFloat(event: BattleEvent): DamageFloat | null {
         text: `−${event.damage}`,
         big: event.judgement === 'perfect',
         kind: 'damage',
+        ...halved(event),
       };
     case 'counterAttacked':
-      return { at: event.enemy, text: `−${event.damage}`, big: false, kind: 'damage' };
+      return {
+        at: event.enemy,
+        text: `−${event.damage}`,
+        big: false,
+        kind: 'damage',
+        ...halved(event),
+      };
     case 'bulwarkCountered':
-      return { at: event.enemy, text: `−${event.damage}`, big: false, kind: 'riposte' };
+      return {
+        at: event.enemy,
+        text: `−${event.damage}`,
+        big: false,
+        kind: 'riposte',
+        ...halved(event),
+      };
+    // Le prix des Épines, vert ronce, sur le héros (#259, M2, M7) ; rien à 1 PV.
+    case 'thornsPricked':
+      return event.loss > 0
+        ? { at: 'hero', text: `−${event.loss}`, big: false, kind: 'thorns' }
+        : null;
     case 'guardRaised':
       return { at: event.enemy, text: `+${event.gain}`, big: false, kind: 'guard' };
     case 'bleedTicked':
@@ -657,6 +721,28 @@ function blowAnnouncement(outcome: BlowOutcome, damage: number): string {
   }
 }
 
+/** « , moitié des dégâts » : un coup que le Sanctuaire a réduit (#259, § 6). */
+function halfSpeech(event: { readonly sanctuary?: true }): string {
+  return event.sanctuary === true ? ', moitié des dégâts' : '';
+}
+
+/**
+ * Ce que la cassure change, dit après « Cassure, … étourdi » : l'Exhumation perdue (#258, F4), les
+ * Épines sans effet ou le Sanctuaire rompu (#259, § 6).
+ */
+function brokenSpeech(battle: Battle, enemy: number): string {
+  const broken = battle.enemies[enemy]!;
+  if (broken.intent?.category === 'exhume') return ' : pas d’exhumation cette manche';
+  switch (eliteSignature(broken.kind)) {
+    case 'thorns':
+      return ` : ses épines sont sans effet`;
+    case 'sanctuary':
+      return `. Sanctuaire ${ofName(broken.kind)} rompu : dégâts entiers`;
+    default:
+      return '';
+  }
+}
+
 function strikeAnnouncement(
   judgement: Extract<BattleEvent, { type: 'strikeResolved' }>['judgement'],
   damage: number,
@@ -683,31 +769,38 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
     case 'blowResolved':
       return blowAnnouncement(event.outcome, event.damage);
     case 'counterAttacked':
-      return `${event.retaliation ? 'Représailles, contre-attaque' : 'Contre-attaque'}, ${damages(event.damage)}`;
+      return `${event.retaliation ? 'Représailles, contre-attaque' : 'Contre-attaque'}, ${damages(event.damage)}${halfSpeech(event)}`;
     // Le nom de l'ennemi est dit : la riposte ne vise pas forcément la cible choisie (#128).
     case 'bulwarkWorn':
       return 'Rempart usé.';
     case 'bulwarkCountered':
-      return `Riposte du Rempart, ${name(event.enemy)}, ${damages(event.damage)}`;
+      return `Riposte du Rempart, ${name(event.enemy)}, ${damages(event.damage)}${halfSpeech(event)}`;
     case 'whiffed':
       return `${WHIFF_TITLES[event.reason]}, déséquilibré`;
     case 'pressIgnored':
       return event.reason === 'offBalance' ? 'Déséquilibré' : null;
     case 'strikeResolved':
-      return strikeAnnouncement(event.judgement, event.damage);
-    case 'guardBroken': {
-      // La garde brisée avant l'Exhumation (#258, F4) : elle n'aura pas lieu.
-      const exhuming = battle.enemies[event.enemy]!.intent?.category === 'exhume';
-      const lost = exhuming ? ' : pas d’exhumation cette manche' : '';
-      return `Cassure, ${name(event.enemy)} ${agreed(kind(event.enemy), 'étourdi')}${lost}`;
-    }
+      return `${strikeAnnouncement(event.judgement, event.damage)}${halfSpeech(event)}`;
+    case 'guardBroken':
+      return `Cassure, ${name(event.enemy)} ${agreed(kind(event.enemy), 'étourdi')}${brokenSpeech(battle, event.enemy)}`;
+    // Le prix des Épines (#259, § 6), même sans perte, à 1 PV (M7).
+    case 'thornsPricked':
+      return event.loss > 0
+        ? `Épines : tu perds ${event.loss} PV, ${event.heroHp} sur ${battle.hero.maxHp}`
+        : `Épines : tu restes à ${event.heroHp} PV`;
     // L'Exhumation (#258, F3) : qui exhume, et l'invoqué qui n'agit pas dans la manche.
     case 'enemyExhumed':
       return `${theName(kind(event.enemy))} exhume ${oneOf(event.kind)}. ${ENEMY_NAMES[event.kind]}, ${agreed(event.kind, 'invoqué')}, n’agit pas cette manche`;
     case 'actionLost':
       return `${name(event.enemy)}, ${agreed(kind(event.enemy), 'étourdi')}, n'agit pas`;
-    case 'guardRestored':
-      return `${name(event.enemy)}, retour en garde`;
+    case 'guardRestored': {
+      // Le Sanctuaire revient avec la garde (#259, B5).
+      const back =
+        eliteSignature(kind(event.enemy)) === 'sanctuary'
+          ? `. ${theName(kind(event.enemy))} est de nouveau sous Sanctuaire`
+          : '';
+      return `${name(event.enemy)}, retour en garde${back}`;
+    }
     case 'guardRaised':
       return `${name(event.enemy)} relève sa garde, plus ${event.gain}`;
     case 'allyRaised':
@@ -891,16 +984,40 @@ export function heroHpText(hp: number, maxHp: number): string {
 }
 
 /**
- * Ce que dit la marque de signature Exhumer (#258, maquette 245, F1 à F5) : son mot, sous le nom,
- * et sa phrase au lecteur d'écran, lue avec la plaque. « exhume », jamais « relève ».
+ * L'état d'une marque de signature, selon sa mécanique : celui d'Exhumer (#258), ou les Épines et le
+ * Sanctuaire, éteints quand la Mère-ronce est étourdie ou que la garde du Bedeau est tombée (#259).
+ */
+export type SignatureMarkState =
+  | ExhumeMark
+  | { readonly state: 'thorns'; readonly off: boolean }
+  | { readonly state: 'sanctuary'; readonly off: boolean };
+
+/**
+ * Ce que dit une marque de signature (maquette 245) : son mot, sous le nom, et sa phrase au lecteur
+ * d'écran, lue avec la plaque. Exhumer (#258, F1 à F5) : « exhume », jamais « relève ». Les Épines
+ * (#259, M1, M4) : leur prix, « par frappe ». Le Sanctuaire (#259, B1, B3) : jamais « Protégé ».
  */
 export function signatureText(
   kind: EnemyKind,
-  mark: ExhumeMark,
+  mark: SignatureMarkState,
 ): { readonly text: string; readonly speech: string } {
+  const subject = FEMININE[kind] ? 'elle' : 'il';
+  if (mark.state === 'thorns') {
+    const { damage } = ENEMIES[kind].thorns ?? { damage: 0 };
+    return {
+      text: `Épines ${damage}`,
+      speech: mark.off
+        ? `épines sans effet tant qu’${subject} est ${agreed(kind, 'étourdi')}`
+        : `épines : chaque frappe sur ${subject} te coûte ${damage} PV`,
+    };
+  }
+  if (mark.state === 'sanctuary') {
+    return mark.off
+      ? { text: 'Sanctuaire rompu', speech: 'sanctuaire rompu : dégâts entiers' }
+      : { text: 'Sanctuaire ½', speech: 'sanctuaire : moitié des dégâts tant que sa garde tient' };
+  }
   const exhumed = ENEMIES[kind].exhume?.enemy ?? 'skeleton';
   const one = oneOf(exhumed);
-  const subject = FEMININE[kind] ? 'elle' : 'il';
   switch (mark.state) {
     case 'next':
       return {
@@ -922,9 +1039,12 @@ export function signatureText(
   }
 }
 
+/** Comment fermer la bulle de première rencontre (#258). */
+const ENCOUNTER_CLOSE = "Touche n'importe où pour fermer. Elle ne reviendra pas.";
+
 /**
- * La bulle de première rencontre d'une Élite à signature (#258, F1) : son nom, sa règle, comment la
- * fermer, et sa phrase au lecteur d'écran.
+ * La bulle de première rencontre d'une Élite à signature (#258, F1 ; #259, M1, B1) : son nom, sa
+ * règle, comment la fermer, et sa phrase au lecteur d'écran.
  */
 export function encounterHintText(kind: EnemyKind): {
   readonly title: string;
@@ -932,6 +1052,27 @@ export function encounterHintText(kind: EnemyKind): {
   readonly close: string;
   readonly speech: string;
 } {
+  const { thorns, sanctuary } = ENEMIES[kind];
+  const subject = FEMININE[kind] ? 'elle' : 'il';
+  const rule =
+    thorns !== undefined
+      ? `Chaque frappe sur ${subject} te coûte ${thorns.damage} PV, une fois par frappe, sauf quand ${subject} est ${agreed(kind, 'étourdi')}.`
+      : sanctuary !== undefined
+        ? `Sanctuaire : tant que sa garde tient, ${subject} ne subit que la moitié des dégâts. Brise-la.`
+        : null;
+  if (rule !== null) {
+    return {
+      title: ENEMY_NAMES[kind],
+      text: rule,
+      close: ENCOUNTER_CLOSE,
+      speech: `${ENEMY_NAMES[kind]}. ${rule}`,
+    };
+  }
+  return exhumeHintText(kind);
+}
+
+/** La bulle du Fossoyeur (#258, F1). */
+function exhumeHintText(kind: EnemyKind): ReturnType<typeof encounterHintText> {
   const exhumed = ENEMIES[kind].exhume?.enemy ?? 'skeleton';
   const subject = FEMININE[kind] ? 'elle' : 'il';
   const rule = `Aux manches paires, ${subject} exhume ${oneOf(exhumed)}, ${FEMININE[exhumed] ? 'une seule' : 'un seul'} à la fois.`;
@@ -939,7 +1080,7 @@ export function encounterHintText(kind: EnemyKind): {
   return {
     title: ENEMY_NAMES[kind],
     text: `${rule} Sa pelle s’affiche d’avance : ${prevent}.`,
-    close: "Touche n'importe où pour fermer. Elle ne reviendra pas.",
+    close: ENCOUNTER_CLOSE,
     speech: `${ENEMY_NAMES[kind]}. ${rule} B${prevent.slice(1)}`,
   };
 }

@@ -12,6 +12,7 @@ import Animated, {
 import type { HeroState } from '../../../domain/battle/Battle';
 import type { HeroKind } from '../../../domain/battle/combatants';
 import { MOMENTUM_MAX } from '../../../domain/battle/momentum';
+import { thornShake } from './scene/signatureScene';
 import { SECOND_CHANCE_FREEZE_MS, SECOND_CHANCE_MS } from '../../../domain/battle/secondChance';
 import {
   HERO_NAMES,
@@ -154,6 +155,43 @@ function MomentumDiamonds({
  * chaque prise ou extinction (`burnRing`, #171). La pastille de la seconde chance (#206) est prête
  * ou barrée ; pendant son relèvement (`rise`), la barre se vide puis se remplit d'or.
  */
+/** La plaque du héros piqué reste cernée de ronce 600 ms (#259, M2). */
+const THORNS_FRAME_MS = 600;
+/** Chaque pas de la secousse de la plaque piquée (3 pas en 300 ms). */
+const THORNS_SHAKE_STEP_MS = 100;
+
+/**
+ * Le cadre de ronce de la plaque du héros piqué par les Épines (#259, M2, `.pinfo.hurt`), secoué de
+ * 3 dp puis effacé ; sans secousse en mouvement réduit. Il est monté quand le « −2 » paraît.
+ */
+function ThornsFrame({ reducedMotion }: { readonly reducedMotion: boolean }) {
+  const offset = useSharedValue(0);
+  const opacity = useSharedValue(1);
+  useEffect(() => {
+    const [right, left, rest] = thornShake(reducedMotion);
+    offset.set(
+      withSequence(
+        withTiming(right!, { duration: THORNS_SHAKE_STEP_MS }),
+        withTiming(left!, { duration: THORNS_SHAKE_STEP_MS }),
+        withTiming(rest!, { duration: THORNS_SHAKE_STEP_MS }),
+      ),
+    );
+    opacity.set(withDelay(THORNS_FRAME_MS, withTiming(0, { duration: 0 })));
+  }, [offset, opacity, reducedMotion]);
+  // Dépendances explicites : le code instrumenté par Stryker n'est plus reconnu comme worklet.
+  const shaken = useAnimatedStyle(() => {
+    'worklet';
+    return { opacity: opacity.get(), transform: [{ translateX: offset.get() }] };
+  }, [offset, opacity]);
+  return (
+    <Animated.View
+      pointerEvents="none"
+      testID="battle-hero-thorns"
+      style={[styles.thorns, shaken]}
+    />
+  );
+}
+
 /** Les charges de #235, une étiquette chacune sous les PV, dans l'ordre de l'arbre. */
 const CHARGES = ['retaliation', 'rend', 'mist'] as const;
 
@@ -165,6 +203,8 @@ export function HeroBar({
   burnRing = null,
   rise = null,
   healing = false,
+  shownHp = hero.hp,
+  pricked = null,
   reducedMotion = false,
 }: {
   readonly hero: HeroState;
@@ -176,9 +216,16 @@ export function HeroBar({
   readonly rise?: { readonly key: number } | null;
   /** Le soin de Tenir bon (#235, K12) : la barre de PV en or, le temps de l'action. */
   readonly healing?: boolean;
+  /**
+   * Les PV montrés (#259) : ceux d'avant la piqûre des Épines tant que son « −2 » n'est pas montré ;
+   * par défaut, ceux du héros.
+   */
+  readonly shownHp?: number;
+  /** La dernière piqûre montrée (#259, M2) : la plaque cernée de ronce et secouée ; une clé la rejoue. */
+  readonly pricked?: { readonly key: number } | null;
   readonly reducedMotion?: boolean;
 }) {
-  const ratio = hero.hp / hero.maxHp;
+  const ratio = shownHp / hero.maxHp;
   const name = HERO_NAMES[kind];
   const active = [
     ...(hero.bulwark ? [POWER_NAMES.bulwark] : []),
@@ -188,9 +235,10 @@ export function HeroBar({
     ...CHARGES.filter((power) => hero[power] === true).map(activePowerText),
     ...(hero.secondChance === undefined ? [] : [secondChanceLabel(hero.secondChance)]),
   ];
-  const label = `${name}, PV ${hero.hp} sur ${hero.maxHp}, ${momentumLabel(hero.momentum)}${active.map((power) => `, ${power}`).join('')}`;
+  const label = `${name}, PV ${shownHp} sur ${hero.maxHp}, ${momentumLabel(hero.momentum)}${active.map((power) => `, ${power}`).join('')}`;
   return (
     <View accessible accessibilityLabel={label} testID="battle-hero-bar" style={styles.bar}>
+      {pricked === null ? null : <ThornsFrame key={pricked.key} reducedMotion={reducedMotion} />}
       <Text style={styles.name}>{name}</Text>
       <View style={styles.row}>
         <View style={styles.track}>
@@ -207,7 +255,7 @@ export function HeroBar({
             <RiseFill key={rise.key} ratio={ratio} reducedMotion={reducedMotion} />
           )}
         </View>
-        <Text style={styles.hpText}>{heroHpText(hero.hp, hero.maxHp)}</Text>
+        <Text style={styles.hpText}>{heroHpText(shownHp, hero.maxHp)}</Text>
       </View>
       {hero.bulwark || bulwarkWorn ? <BulwarkChip worn={!hero.bulwark} /> : null}
       {hero.bleed || hero.burn !== undefined ? (
@@ -254,6 +302,16 @@ const styles = StyleSheet.create({
   hp: { height: '100%', borderRadius: 4, backgroundColor: battleColors.heroHp },
   low: { backgroundColor: battleColors.heroHpLow },
   healing: { backgroundColor: artPalette.roles.gold },
+  // `.pinfo.hurt` : la plaque cernée d'encre puis de ronce (#259).
+  thorns: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    borderWidth: 2,
+    borderColor: battleColors.thorn,
+  },
   hpText: {
     color: battleColors.text,
     fontSize: 13,
