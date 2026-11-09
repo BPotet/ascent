@@ -942,6 +942,88 @@ describe('BattleLog', () => {
     expect(actionOf(log, 0).kind).toBe('attack');
   });
 
+  it('notes the Thorns as an effect of the strike, the HP lost summed on their loss (#259)', () => {
+    const log = logged(
+      [roundStarted(START, 1)],
+      [{ type: 'strikeStarted', at: START + 100, enemy: 0, impactAt: START + 600, until: 0 }],
+      [
+        {
+          type: 'strikeResolved',
+          at: START + 600,
+          enemy: 0,
+          judgement: 'perfect',
+          delta: 0,
+          damage: 15,
+          guardDamage: 18,
+        },
+        { type: 'thornsPricked', at: START + 600, enemy: 0, loss: 2, heroHp: 28 },
+      ],
+    );
+    const effects = actionOf(log, 'hero').effects;
+
+    expect(effects).toEqual([{ type: 'thornsPricked', t: 600, enemy: 0, loss: 2, heroHp: 28 }]);
+    expect(
+      effects.reduce((sum, effect) => sum + (effect.type === 'thornsPricked' ? effect.loss : 0), 0),
+    ).toBe(2);
+  });
+
+  it('copies the flag of the Sanctuary on a strike press and on a counter-attack (#259)', () => {
+    const log = logged(
+      [roundStarted(START, 1)],
+      [{ type: 'strikeStarted', at: START + 100, enemy: 0, impactAt: START + 600, until: 0 }],
+      [
+        {
+          type: 'strikeResolved',
+          at: START + 600,
+          enemy: 0,
+          judgement: 'perfect',
+          delta: 0,
+          damage: 7,
+          guardDamage: 18,
+          sanctuary: true,
+        },
+      ],
+      [{ type: 'stepInStarted', at: START + 900, enemy: 0, until: START + 1_300 }],
+      [
+        {
+          type: 'counterAttacked',
+          at: START + 2_000,
+          enemy: 0,
+          damage: 3,
+          guardDamage: 12,
+          until: START + 2_200,
+          sanctuary: true,
+        },
+      ],
+    );
+
+    expect(actionOf(log, 'hero').presses).toEqual([
+      expect.objectContaining({ kind: 'strike', damage: 7, sanctuary: true }),
+    ]);
+    expect(actionOf(log, 0).effects).toEqual([
+      { type: 'counterAttacked', t: 2_000, enemy: 0, damage: 3, guardDamage: 12, sanctuary: true },
+    ]);
+  });
+
+  it('notes no flag of the Sanctuary on a strike it did not reduce (#259)', () => {
+    const log = logged(
+      [roundStarted(START, 1)],
+      [
+        {
+          type: 'strikeResolved',
+          at: START + 600,
+          enemy: 0,
+          judgement: null,
+          delta: null,
+          damage: 10,
+          guardDamage: 12,
+        },
+      ],
+    );
+
+    expect(actionOf(log, 'hero').presses[0]).not.toHaveProperty('sanctuary');
+  });
+
   it('notes the exhumation as the action exhume of the Gravedigger, with its effect (#258)', () => {
     const exhume: Intent = { category: 'exhume', slot: 1 };
     const log = logged(

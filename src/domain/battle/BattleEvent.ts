@@ -85,6 +85,8 @@ export type BattleEvent =
       readonly rend?: true;
       /** La frappe de pouvoir (#236) ; absente pour « Attaquer ». */
       readonly power?: PowerKind;
+      /** Le Sanctuaire (#259) a réduit les PV du coup ; absent, non. */
+      readonly sanctuary?: true;
     }
   | {
       readonly type: 'powerUsed';
@@ -206,6 +208,8 @@ export type BattleEvent =
       readonly until: number;
       /** Représailles (#235) : la contre-attaque à 200 % des PV et de la garde. */
       readonly retaliation?: true;
+      /** Le Sanctuaire (#259) a réduit les PV du coup ; absent, non. */
+      readonly sanctuary?: true;
     }
   /** Brume s'use (#235), au même instant que le `blowResolved` de l'impact qui l'use. */
   | { readonly type: 'mistWorn'; readonly at: number; readonly enemy: number }
@@ -229,6 +233,19 @@ export type BattleEvent =
       readonly damage: number;
       readonly guardDamage: number;
       readonly until: number;
+      /** Le Sanctuaire (#259) a réduit les PV du coup ; absent, non. */
+      readonly sanctuary?: true;
+    }
+  /**
+   * Les Épines de `enemy` (#259) : la frappe qui l'a touché, à l'instant de son 1er coup, coûte
+   * `loss` PV au héros (0 à 1 PV près), qui en a `heroHp` après.
+   */
+  | {
+      readonly type: 'thornsPricked';
+      readonly at: number;
+      readonly enemy: number;
+      readonly loss: number;
+      readonly heroHp: number;
     }
   | { readonly type: 'battleEnded'; readonly at: number; readonly outcome: BattleOutcome }
   /** Le renfort (`Reinforcement`) : l'ennemi `kind` de la réserve prend la place `enemy` (P3b). */

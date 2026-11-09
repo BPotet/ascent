@@ -81,6 +81,7 @@ import {
 } from './rules';
 import { seedRandom, type BattleSeed, type RandomState } from './SeededRandom';
 import { SECOND_CHANCE_MS, secondChanceHp } from './secondChance';
+import { sanctuaryPercents } from './sanctuary';
 import { selfRevive } from './selfRevive';
 import {
   STRIKE_RECOVERY_MS,
@@ -95,6 +96,7 @@ import { bleedsOn, mergeBleed, tickBleed } from './bleed';
 import { burnAtRoundStart, burnOnBlow } from './burn';
 import { freeSlots, summonedKind, type PendingSummon } from './summon';
 import { cappedParryHeal } from './parryHeal';
+import { thornsActive, thornsLoss } from './thorns';
 import { NO_TIER_MULTIPLIER, scaleByPercent, type TierMultiplier } from './tierMultiplier';
 
 export interface HeroState {
@@ -1464,12 +1466,14 @@ function counterAttack(battle: Battle, events: Events): Battle {
   const counter = step.counter!;
   const hero = heroProfile(battle);
   const modifiers = heroModifiers(battle);
+  // Le Sanctuaire (#259, S1), lu avant le coup : la contre-attaque et la Riposte aussi.
+  const warded = sanctuaryPercents(battle.enemies[step.enemy]!);
   const input = {
     attackPower: heroAttack(hero.attackPower, modifiers),
     guardDamage: hero.guardDamage,
     counterPercent: hero.counterPercent,
     stunned: battle.enemies[step.enemy]!.stun !== null,
-    attackPercents: modifiers.attackPercents,
+    attackPercents: [...modifiers.attackPercents, ...warded],
     guardPercents: modifiers.guardDamagePercents,
     counterPercents: modifiers.counterPercents,
     stunnedBonusPercent: modifiers.stunnedBonusPercent,
@@ -1495,6 +1499,7 @@ function counterAttack(battle: Battle, events: Events): Battle {
     guardDamage: blow.guard,
     until: counter.until,
     ...(retaliated && { retaliation: true as const }),
+    ...(warded.length > 0 && { sanctuary: true as const }),
   });
   const countered = withStep(retaliated ? { ...battle, hero: rest } : battle, {
     ...step,
@@ -1775,13 +1780,16 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
   const judgement = phase.press?.judgement ?? null;
   const modifiers = heroModifiers(battle);
   const rend = phase.rend === true;
+  // L'ennemi lu avant le coup (#259, T2, S3) : le Sanctuaire et les Épines.
+  const target = battle.enemies[phase.enemy]!;
+  const warded = sanctuaryPercents(target);
   const blow = strikeBlow({
     attackPower: heroAttack(hero.attackPower, modifiers),
     guardDamage: hero.guardDamage,
     judgement,
     perfectBonusPercents: modifiers.perfectStrikeBonusPercents,
-    stunned: battle.enemies[phase.enemy]!.stun !== null,
-    attackPercents: [...modifiers.attackPercents, profile.hpPercent],
+    stunned: target.stun !== null,
+    attackPercents: [...modifiers.attackPercents, profile.hpPercent, ...warded],
     guardPercents: [
       ...modifiers.guardDamagePercents,
       ...(rend ? [POWERS.rend.guardPercentNextStrike!] : []),
@@ -1800,6 +1808,7 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
     ...(profile.hits > 1 && { hit }),
     ...(rend && { rend }),
     ...(phase.power !== undefined && { power: phase.power }),
+    ...(warded.length > 0 && { sanctuary: true as const }),
   });
   const struck = hitEnemy(
     { ...battle, phase: { ...phase, resolved: true } },
@@ -1808,8 +1817,13 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
     blow,
     { at, by: 'strike' },
   );
+  // Une fois par frappe, au 1er coup (T1) : la cible ne change pas pendant une frappe.
+  const pricked =
+    hit === 1 && thornsActive(target)
+      ? prick(struck.battle, events, phase.enemy, at)
+      : struck.battle;
   const stopped = judgement === 'perfect' || struck.broken;
-  const resolved = stopped ? startHitStop(struck.battle, events, at) : struck.battle;
+  const resolved = stopped ? startHitStop(pricked, events, at) : pricked;
   if (hit >= profile.hits || !isStanding(resolved.enemies[phase.enemy]!)) return resolved;
   // Le coup suivant (les Dagues jumelles, une frappe de pouvoir), décalé par l'arrêt sur image ;
   // perdu si la cible tombe.
@@ -1822,6 +1836,18 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
     rend,
     ...strikeOf(phase),
   });
+}
+
+/**
+ * Les Épines de l'ennemi `enemy` (#259, T4) : le héros paie après le coup, jamais sous 1 PV, à côté
+ * de la réduction des dégâts, du Rempart et de Brume, qu'elles n'usent pas. Dites même sans perte.
+ */
+function prick(battle: Battle, events: Events, enemy: number, at: number): Battle {
+  const { hero } = battle;
+  const loss = thornsLoss(hero.hp, ENEMIES[battle.enemies[enemy]!.kind].thorns!);
+  const heroHp = hero.hp - loss;
+  events.push({ type: 'thornsPricked', at, enemy, loss, heroHp });
+  return { ...battle, hero: { ...hero, hp: heroHp } };
 }
 
 /** La frappe de pouvoir d'une frappe en rythme (#236) : son pouvoir et Frappe furtive. */

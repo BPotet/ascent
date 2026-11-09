@@ -32,6 +32,8 @@ import { MOTHKIN_ANIMATION } from '../atelier/data/mothkin';
 import { BELL_NOVICE_ANIMATION } from '../atelier/data/bellNovice';
 import { CLOCK_JACK_ANIMATION } from '../atelier/data/clockJack';
 import { GRAVEDIGGER_ANIMATION } from '../atelier/data/gravedigger';
+import { BEADLE_ANIMATION } from '../atelier/data/beadle';
+import { BRAMBLE_MOTHER_ANIMATION } from '../atelier/data/brambleMother';
 import { MATINS_RINGER_ANIMATION } from '../atelier/data/matinsRinger';
 import { animationSprite, type ExtraFrame, type FullAnimation } from '../atelier/fullAnimation';
 import { HERO_ANIMATIONS, HERO_CELL, isHero } from './heroAnimations';
@@ -234,6 +236,9 @@ const FULL_ANIMATIONS = {
   clockJack: CLOCK_JACK_ANIMATION,
   // Le Fossoyeur (#258).
   gravedigger: GRAVEDIGGER_ANIMATION,
+  // La Mère-ronce et le Bedeau (#259).
+  brambleMother: BRAMBLE_MOTHER_ANIMATION,
+  beadle: BEADLE_ANIMATION,
 } satisfies Record<EnemyKind, FullAnimation<EnemyFrame>>;
 
 /** Les ennemis animés (`ANIMATED_ENEMIES`) : les clés du registre des animations complètes. */

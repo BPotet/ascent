@@ -62,6 +62,9 @@ export const ENEMY_NAMES: Readonly<Record<EnemyKind, string>> = {
   clockJack: 'Jaquemart',
   // Le Fossoyeur (#258), sans article.
   gravedigger: 'Fossoyeur',
+  // La Mère-ronce et le Bedeau (#259), sans article comme les autres ennemis du palier.
+  brambleMother: 'Mère-ronce',
+  beadle: 'Bedeau',
 };
 
 /** Le genre du nom de l'ennemi, pour « étourdie », « tombée »… */
@@ -95,6 +98,8 @@ const FEMININE: Readonly<Record<EnemyKind, boolean>> = {
   matinsRinger: true,
   clockJack: false,
   gravedigger: false,
+  brambleMother: true,
+  beadle: false,
 };
 
 export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {

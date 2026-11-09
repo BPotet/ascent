@@ -125,7 +125,7 @@ describe('the Gravedigger, an Elite of tier 1 (#258)', () => {
     expect(ENEMY_INITIATIVE.gravedigger).toBe(4);
   });
 
-  it('has the Exhume signature, the only Elite with one', () => {
+  it('has the Exhume signature, which no other Elite of tier 1 has', () => {
     expect(eliteSignature('gravedigger')).toBe('exhume');
     expect(eliteSignature('fallenKnight')).toBeNull();
     expect(eliteSignature('skeleton')).toBeNull();

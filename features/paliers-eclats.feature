@@ -130,7 +130,7 @@ Fonctionnalité: Trois paliers jusqu'au sommet, et les premiers Éclats
   @domain
   Scénario: Les Élites du palier 3
     Étant donné une porte Élite franchie au palier 3
-    Alors l'Élite est le Premier Pèlerin ou le Saint de pierre, tirés à égalité avec la graine de l'ascension
+    Alors l'Élite est le Premier Pèlerin, le Saint de pierre ou le Bedeau (#259), tirés à un tiers chacun avec la graine de l'ascension
 
   @domain
   Scénario: Les boss du palier 3

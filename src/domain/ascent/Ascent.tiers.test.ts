@@ -181,7 +181,7 @@ describe('the battles of tiers 2 and 3 (#38)', () => {
       }
     }
 
-    expect(elites).toEqual(new Set(['firstPilgrim', 'stoneSaint']));
+    expect(elites).toEqual(new Set(['firstPilgrim', 'stoneSaint', 'beadle']));
     expect(bosses).toEqual(new Set(['hourRinger', 'wishGranter']));
     expect(['ashGardener', 'mothQueen']).toContain(toBoss(atTier(2)).encounter!.enemies[0]);
     expect(toBoss(atTier(2)).encounter!.enemies).toHaveLength(1);

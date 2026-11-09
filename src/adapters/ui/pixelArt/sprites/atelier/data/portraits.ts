@@ -1498,6 +1498,9 @@ export const PORTRAITS: Readonly<Record<HeroKind | EnemyKind, AssetImage | null>
   },
   // Le Fossoyeur (#258).
   gravedigger: GRAVEDIGGER_PORTRAIT,
+  // La Mère-ronce et le Bedeau (#259).
+  brambleMother: BRAMBLE_MOTHER_PORTRAIT,
+  beadle: BEADLE_PORTRAIT,
 };
 
 export const PHASE_2_PORTRAITS: Readonly<Partial<Record<EnemyKind, AssetImage>>> = {

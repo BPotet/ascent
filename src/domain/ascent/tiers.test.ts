@@ -125,8 +125,8 @@ describe('the tiers (#38)', () => {
   it('has its Elites and its bosses', () => {
     expect([TIERS[1].elites, TIERS[2].elites, TIERS[3].elites]).toEqual([
       ['fallenKnight', 'twins', 'gravedigger'],
-      ['scarecrow', 'brambleBurner'],
-      ['firstPilgrim', 'stoneSaint'],
+      ['scarecrow', 'brambleBurner', 'brambleMother'],
+      ['firstPilgrim', 'stoneSaint', 'beadle'],
     ]);
     expect([TIERS[1].bosses, TIERS[2].bosses, TIERS[3].bosses]).toEqual([
       ['ossuaryWarden', 'facelessPrior'],
