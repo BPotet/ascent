@@ -4,14 +4,23 @@
  * de la première ligne est libre (règle 6 de l'Invocation). La place est fixée au tirage. Pur et
  * sans hasard : l'Exhumation ne tire rien.
  */
-import type { Battle, EnemyState } from './Battle';
-import { ENEMIES } from './combatants';
+import { ENEMIES, type EnemyKind } from './combatants';
+import type { Intent } from './intents';
 import { freeSlots } from './summon';
+
+/** Ce que l'Exhumation lit d'un ennemi de la première ligne (sans dépendre du combat). */
+interface Occupant {
+  readonly kind: EnemyKind;
+  readonly hp: number;
+  readonly stun: object | null;
+  readonly intent: Intent | null;
+  readonly exhumed?: true;
+}
 
 const isEven = (round: number) => round % 2 === 0;
 
 /** Le nombre d'ennemis exhumés debout, Se relève seul compris. */
-const exhumedStanding = (enemies: readonly EnemyState[]) =>
+const exhumedStanding = (enemies: readonly Occupant[]) =>
   enemies.filter((enemy) => enemy.exhumed === true && enemy.hp > 0).length;
 
 /**
@@ -20,7 +29,7 @@ const exhumedStanding = (enemies: readonly EnemyState[]) =>
  * place libre.
  */
 export function exhumeSlot(
-  enemies: readonly EnemyState[],
+  enemies: readonly Occupant[],
   index: number,
   round: number,
 ): number | null {
@@ -44,7 +53,10 @@ export type ExhumeMark =
   | { readonly state: 'standing' };
 
 /** La marque de l'ennemi `index`, `null` s'il n'exhume pas ou qu'il est tombé. */
-export function exhumeMark(battle: Battle, index: number): ExhumeMark | null {
+export function exhumeMark(
+  battle: { readonly round: number; readonly enemies: readonly Occupant[] },
+  index: number,
+): ExhumeMark | null {
   const enemy = battle.enemies[index]!;
   if (ENEMIES[enemy.kind].exhume === undefined || enemy.hp <= 0) return null;
   const exhuming = enemy.intent?.category === 'exhume';
