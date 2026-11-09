@@ -5,7 +5,8 @@ import type { BattleHapticCue, BattleHaptics } from '../../../application/ports/
 /**
  * La force de chaque vibration du combat : forte pour la parade parfaite et la cassure de garde,
  * courte et sèche pour la frappe parfaite et la Riposte du Rempart (#128), légère pour la phase
- * ennemie et l'effet d'un pouvoir au toucher maintenu (#235).
+ * ennemie, l'effet d'un pouvoir au toucher maintenu (#235) et les Épines, plus faibles qu'un coup
+ * reçu (#259).
  */
 export const BATTLE_HAPTIC_STYLES: Readonly<Record<BattleHapticCue, ImpactFeedbackStyle>> = {
   perfectParry: ImpactFeedbackStyle.Heavy,
@@ -16,6 +17,7 @@ export const BATTLE_HAPTIC_STYLES: Readonly<Record<BattleHapticCue, ImpactFeedba
   perfectStrike: ImpactFeedbackStyle.Rigid,
   bulwarkCounter: ImpactFeedbackStyle.Rigid,
   powerTip: ImpactFeedbackStyle.Light,
+  thorns: ImpactFeedbackStyle.Light,
 };
 
 /**

@@ -20,6 +20,8 @@ import {
   type HeroKind,
 } from '../../../domain/battle/combatants';
 import { exhumeMark, type ExhumeMark } from '../../../domain/battle/exhume';
+import { sanctuaryUp } from '../../../domain/battle/sanctuary';
+import { thornsActive } from '../../../domain/battle/thorns';
 import { summonedKind } from '../../../domain/battle/summon';
 import { POWERS, type PowerKind } from '../../../domain/battle/powers';
 import type { PowerKeyAvailability } from '../format/powerText';
@@ -35,6 +37,7 @@ import {
   exhumeLineText,
   signatureText,
   stunnedLabel,
+  type SignatureMarkState,
 } from '../format/battleText';
 import type { IconName } from '../pixelArt/sprites/icons';
 
@@ -199,6 +202,11 @@ export interface EnemyView {
   readonly escort?: true;
   /** La marque de signature d'une Élite (#258) ; absente sans signature, ou tombée. */
   readonly signature?: SignatureView;
+  /**
+   * Le liseré d'acier de la barre de garde (#259, B1) : le Sanctuaire du Bedeau le protège ; absent,
+   * non (garde à 0, étourdi, ou sans Sanctuaire).
+   */
+  readonly guardWard?: true;
   readonly label: string;
 }
 
@@ -305,6 +313,23 @@ export function actionTrackView(battle: Battle): ActionTrackView {
   };
 }
 
+/**
+ * Le prix de la cible à signature, sur la ligne du pouce (#259, M1, B1) : les Épines de la
+ * Mère-ronce non étourdie, le Sanctuaire du Bedeau tant que sa garde tient.
+ */
+function signatureLine(target: EnemyState): string {
+  switch (eliteSignature(target.kind)) {
+    case 'thorns':
+      return thornsActive(target)
+        ? ` · Épines : −${ENEMIES[target.kind].thorns!.damage} PV par frappe`
+        : '';
+    case 'sanctuary':
+      return sanctuaryUp(target) ? ' · Sanctuaire, ½ des dégâts' : '';
+    default:
+      return '';
+  }
+}
+
 function targetLine(battle: Battle): ZoneLine | null {
   const target = battle.enemies[battle.target];
   if (target === undefined) return null;
@@ -319,7 +344,7 @@ function targetLine(battle: Battle): ZoneLine | null {
   return {
     before: 'Cible : ',
     strong: enemyName(target),
-    after: `${exhume}${target.stun === null ? '' : ' · ×1,5'}`,
+    after: `${exhume}${signatureLine(target)}${target.stun === null ? '' : ' · ×1,5'}`,
   };
 }
 
@@ -339,16 +364,47 @@ const EXHUME_GLYPHS: Readonly<Record<ExhumeMark['state'], IconName>> = {
   standing: 'bone8',
 };
 
+/**
+ * L'état de la marque de l'ennemi `index`, lu dans le domaine, selon sa mécanique (#258, #259) ;
+ * `null` sans signature, ou tombé.
+ */
+function signatureMark(
+  battle: Battle,
+  index: number,
+  variant: EliteSignature,
+): SignatureMarkState | null {
+  const enemy = battle.enemies[index]!;
+  if (variant === 'exhume') return exhumeMark(battle, index);
+  if (enemy.hp <= 0) return null;
+  return variant === 'thorns'
+    ? { state: 'thorns', off: !thornsActive(enemy) }
+    : { state: 'sanctuary', off: !sanctuaryUp(enemy) };
+}
+
+/** Le glyphe d'une marque : celui de l'état d'Exhumer, l'épine, l'écu d'acier ou sa fêlure. */
+function signatureGlyph(mark: SignatureMarkState): IconName {
+  switch (mark.state) {
+    case 'thorns':
+      return 'thorn8';
+    case 'sanctuary':
+      return mark.off ? 'crack8' : 'ward8';
+    default:
+      return EXHUME_GLYPHS[mark.state];
+  }
+}
+
 /** La marque de signature de l'ennemi `index`, lue dans le domaine ; `null` sans signature. */
 function signatureView(battle: Battle, index: number): SignatureView | null {
   const { kind } = battle.enemies[index]!;
-  const mark = eliteSignature(kind) === 'exhume' ? exhumeMark(battle, index) : null;
-  if (mark === null) return null;
+  const variant = eliteSignature(kind);
+  const mark = variant === null ? null : signatureMark(battle, index, variant);
+  if (variant === null || mark === null) return null;
+  const off = 'off' in mark ? mark.off : mark.state === 'lost' || mark.state === 'standing';
   return {
-    variant: 'exhume',
-    glyph: EXHUME_GLYPHS[mark.state],
+    variant,
+    glyph: signatureGlyph(mark),
     ...signatureText(kind, mark),
-    off: mark.state === 'lost' || mark.state === 'standing',
+    off,
     now: mark.state === 'now',
   };
 }
@@ -400,6 +456,7 @@ function enemyView(
     ...(elite && { elite: true as const }),
     ...(escort && { escort: true as const }),
     ...(signature !== null && { signature }),
+    ...(enemy.hp > 0 && sanctuaryUp(enemy) && { guardWard: true as const }),
     label: enemyLabel(
       enemy,
       intent,

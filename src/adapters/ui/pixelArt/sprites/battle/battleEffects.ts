@@ -10,7 +10,8 @@ import type { AtlasRect } from './battleAtlas';
  * Les effets du combat et leur nombre d'images : l'éclair d'impact (3 paliers), les étincelles de
  * parade dorée à rayons et bleu acier (5 images), les reflets blanc, rouge et terne (3 images de
  * 30 ms ; le reflet double est le blanc, aux deux griffes), les étoiles (4 positions), l'écu du
- * Rempart (entier, fendu), l'éclat d'argent (#128), et l'effet de la Brûlure recopié de l'Atelier
+ * Rempart (entier, fendu), l'éclat d'argent (#128), la pointe vert ronce des Épines et l'éclat
+ * d'acier du Sanctuaire rompu (#259, faits en code), et l'effet de la Brûlure recopié de l'Atelier
  * (#171) : la flamme d'une charge (3 images), l'éclat de braise (2) et la fumée (3) ; l'effet
  * d'Invocation de la Reine des phalènes (#172, 4 images) et sa poussière d'os, celle de l'Exhumation
  * du Fossoyeur (#258, 4 images).
@@ -25,6 +26,8 @@ export const EFFECT_KINDS = {
   stars: 4,
   shield: 2,
   silverShard: 1,
+  thornSpike: 1,
+  wardShard: 1,
   burn: 3,
   burnHit: 2,
   burnOut: 3,
@@ -56,6 +59,8 @@ const SIDES: Readonly<Record<EffectKind, number>> = {
   stars: 21,
   shield: 15,
   silverShard: 5,
+  thornSpike: 5,
+  wardShard: 5,
   burn: 11,
   burnHit: 16,
   burnOut: 11,
@@ -218,6 +223,18 @@ function shield(frame: number): Sprite {
   return sprite;
 }
 
+/** Les teintes des signatures de #259 dans la palette d'art : le vert ronce et l'acier. */
+const THORN_GREEN = 71;
+const WARD_STEEL = 72;
+
+/** Un éclat carré de la teinte `code`, cerné d'encre (#128, #259). */
+function pip(side: number, code: number): Sprite {
+  const sprite = grid(side, side);
+  rect(sprite, 0, 0, side, side, 1);
+  rect(sprite, 1, 1, side - 2, side - 2, code);
+  return sprite;
+}
+
 /** Un éclat d'argent, cerné d'encre (#128). */
 function silverShard(): Sprite {
   const sprite = grid(SIDES.silverShard, SIDES.silverShard);
@@ -290,6 +307,8 @@ const PAINTERS: Readonly<Record<EffectKind, (frame: number) => Sprite>> = {
   stars,
   shield,
   silverShard,
+  thornSpike: () => pip(SIDES.thornSpike, THORN_GREEN),
+  wardShard: () => pip(SIDES.wardShard, WARD_STEEL),
   burn: (k) => burnEffect('burn', k),
   burnHit: (k) => burnEffect('burnHit', k),
   burnOut: (k) => burnEffect('burnOut', k),

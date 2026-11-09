@@ -149,7 +149,10 @@ export type EnemyKind =
   | 'matinsRinger'
   | 'clockJack'
   // Le Fossoyeur (#258), 3e Élite des Catacombes.
-  | 'gravedigger';
+  | 'gravedigger'
+  // La Mère-ronce et le Bedeau (#259), 3es Élites des Jardins de cendre et du Beffroi.
+  | 'brambleMother'
+  | 'beadle';
 
 /** Le Saignement (`Bleed`, prototype #107) : `damage` PV perdus au début de `rounds` manches. */
 export interface Bleed {
@@ -176,6 +179,24 @@ export interface Exhume {
   readonly enemy: EnemyKind;
   readonly rounds: 'even';
   readonly maxStanding: 1;
+}
+
+/**
+ * Les Épines (`Thorns`, #259, champ `thorns` du Codex) : chaque frappe du héros qui touche l'ennemi
+ * non étourdi coûte `damage` PV au héros, une fois par frappe, jamais sous 1 PV. La règle est dans
+ * `thorns.ts`.
+ */
+export interface Thorns {
+  readonly damage: number;
+}
+
+/**
+ * Le Sanctuaire (`Sanctuary`, #259, champ `sanctuary` du Codex) : tant que sa garde est au-dessus de
+ * 0 et qu'il n'est pas étourdi, chaque coup du héros ne lui retire que `damagePercent` % des PV. La
+ * règle est dans `sanctuary.ts`.
+ */
+export interface Sanctuary {
+  readonly damagePercent: number;
 }
 
 /** Un coup qu'un ennemi peut porter, avec ses dégâts. */
@@ -211,6 +232,10 @@ export interface EnemyProfile {
   readonly selfRevive?: { readonly times: number; readonly hpPercent: number };
   /** Exhumer (#258) ; absent, il n'exhume personne. */
   readonly exhume?: Exhume;
+  /** Les Épines (#259) ; absentes, une frappe ne coûte rien au héros. */
+  readonly thorns?: Thorns;
+  /** Le Sanctuaire (#259) ; absent, les coups du héros ne sont pas réduits. */
+  readonly sanctuary?: Sanctuary;
 }
 
 /** Le changement de phase d'un boss : à 50 % de ses PV max ou moins (P6, #38). */
@@ -570,6 +595,36 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     supports: false,
     exhume: { enemy: 'skeleton', rounds: 'even', maxStanding: 1 },
   },
+  // La Mère-ronce (#259), Élite du palier 2 : valeurs du Codex recopiées le 09/11/2026, telles
+  // quelles (multipliées au combat par le multiplicateur d'Élite et de boss, jamais ses Épines).
+  // Lianes, Étreinte d'épines, Floraison noire, un tiers chacun.
+  // `codex/brambleMother` v1 (9e849bd533032c6c6f7258a6068190a8b50ac4dca73d9e26e5431dbb95ea9d66).
+  brambleMother: {
+    maxHp: 170,
+    maxGuard: 45,
+    moves: [
+      { attack: 'double', damage: 4 },
+      { attack: 'delayed', damage: 9, bleed: { damage: 2, rounds: 3 } },
+      { attack: 'delayedPerilous', damage: 13 },
+    ],
+    supports: false,
+    thorns: { damage: 2 },
+  },
+  // Le Bedeau (#259), Élite du palier 3 : valeurs du Codex recopiées le 09/11/2026, telles quelles.
+  // Bâton de procession, « Silence ! », Volée du beffroi, un tiers chacun ; son Sanctuaire le
+  // protège lui-même.
+  // `codex/beadle` v1 (6c32e3889b60570e19cd365af03b7f42c48b6a3998b721834640ec77f6c21c4b).
+  beadle: {
+    maxHp: 190,
+    maxGuard: 64,
+    moves: [
+      { attack: 'basic', damage: 11 },
+      { attack: 'feint', damage: 11 },
+      { attack: 'delayedPerilous', damage: 19 },
+    ],
+    supports: false,
+    sanctuary: { damagePercent: 50 },
+  },
 };
 
 /**
@@ -611,14 +666,21 @@ export const ENEMY_INITIATIVE: Readonly<Record<EnemyKind, number>> = {
   clockJack: 1,
   // Le Fossoyeur (#258), celle du Codex : sous celle du héros, qui peut briser sa garde avant son action.
   gravedigger: 4,
+  // La Mère-ronce et le Bedeau (#259), celles du Codex.
+  brambleMother: 4,
+  beadle: 5,
 };
 
 /**
  * La mécanique signature d'une Élite (#258, D8) : celle que montrent sa marque de signature et sa
- * bulle de première rencontre ; `null` pour un ennemi qui n'en a pas. Exhumer pour le Fossoyeur.
+ * bulle de première rencontre ; `null` pour un ennemi qui n'en a pas. Exhumer pour le Fossoyeur,
+ * les Épines pour la Mère-ronce, le Sanctuaire pour le Bedeau (#259).
  */
-export type EliteSignature = 'exhume';
+export type EliteSignature = 'exhume' | 'thorns' | 'sanctuary';
 
 export function eliteSignature(kind: EnemyKind): EliteSignature | null {
-  return ENEMIES[kind].exhume === undefined ? null : 'exhume';
+  const { exhume, thorns, sanctuary } = ENEMIES[kind];
+  if (exhume !== undefined) return 'exhume';
+  if (thorns !== undefined) return 'thorns';
+  return sanctuary === undefined ? null : 'sanctuary';
 }

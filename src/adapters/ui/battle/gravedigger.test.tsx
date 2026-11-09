@@ -118,7 +118,7 @@ describe('the signature mark (#258, F1 to F5)', () => {
 
     expect(style('mark')).toMatchObject({ backgroundColor: 'transparent' });
     expect(StyleSheet.flatten(screen.getByText(text, hiddenToo).props.style)).toMatchObject({
-      color: battleColors.graveOff,
+      color: battleColors.signatureOff,
     });
     expect(screen.getByTestId(`signature-glyph-${glyph}`, hiddenToo)).toBeOnTheScreen();
   });

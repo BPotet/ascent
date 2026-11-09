@@ -73,6 +73,15 @@ describe('the icons', () => {
     expect(ICONS.shovel8[0]).toBe('.......X');
   });
 
+  it('has the thorn and the ward of the signature marks, on 8 × 8 (#259)', () => {
+    for (const glyph of ['thorn8', 'ward8'] as const) {
+      expect(ICONS[glyph]).toHaveLength(8);
+      for (const row of ICONS[glyph]) expect(row).toHaveLength(8);
+    }
+    expect(ICONS.thorn8[0]).toBe('...X....');
+    expect(ICONS.ward8[0]).toBe('XXXXXXX.');
+  });
+
   it('has the small flame of « Le camp » (#40)', () => {
     expect(iconNames).toContain('flame8');
     expect(ICONS.flame8).toHaveLength(8);

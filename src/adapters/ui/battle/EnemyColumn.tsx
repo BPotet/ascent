@@ -201,6 +201,13 @@ export function EnemyColumn({
                 testID={`enemy-${kind}-guard`}
                 style={[styles.guard, { width: `${Math.round(100 * view.guardRatio)}%` }]}
               />
+              {view.guardWard === true ? (
+                // Le liseré d'acier du Sanctuaire (#259, B1, `.pbar.gd.ward`) : c'est la garde qui
+                // le protège. Il disparaît à la cassure et revient avec la garde.
+                <View testID={`enemy-${kind}-guard-ward`} style={styles.guardWard}>
+                  <View style={styles.guardWardEdge} />
+                </View>
+              ) : null}
               {view.guardText === null ? null : (
                 <Text style={[styles.barText, view.stunned && styles.stunnedText]}>
                   {view.guardText}
@@ -281,6 +288,24 @@ const styles = StyleSheet.create({
   stunnedTrack: { backgroundColor: battleColors.light },
   hp: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: battleColors.foeHp },
   guard: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: battleColors.guard },
+  guardWard: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: battleColors.ward,
+  },
+  guardWardEdge: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    backgroundColor: battleColors.ward,
+  },
   barText: {
     color: battleColors.text,
     fontSize: 10,

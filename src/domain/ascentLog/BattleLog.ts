@@ -100,6 +100,8 @@ export interface StrikePressRecord {
   readonly judgement: PressJudgement | null;
   readonly damage: number;
   readonly guardDamage: number;
+  /** Le Sanctuaire (#259) a réduit les PV du coup ; absent, non. */
+  readonly sanctuary?: true;
 }
 
 /** Un impact jugé, identifié par la manche, l'ennemi et l'index de l'impact. */
@@ -155,6 +157,8 @@ const EFFECT_TYPES = [
   'summonEntered',
   'summonedFell',
   'enemyExhumed',
+  // Les Épines (#259) : les PV perdus aux Épines sont la somme de leurs `loss`.
+  'thornsPricked',
   'secondChanceUsed',
   'mistWorn',
   'heroHealed',
@@ -483,6 +487,7 @@ class Writer {
           judgement: event.judgement,
           damage: event.damage,
           guardDamage: event.guardDamage,
+          ...(event.sanctuary && { sanctuary: true }),
         });
         return;
       case 'windUpStarted': {

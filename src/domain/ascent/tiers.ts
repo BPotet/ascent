@@ -106,7 +106,8 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
       { kind: 'burningHusk', weight: 2, cap: 1 },
       { kind: 'mothkin', weight: 3, cap: 2 },
     ],
-    elites: ['scarecrow', 'brambleBurner'],
+    // La Mère-ronce (#259) en 3e position.
+    elites: ['scarecrow', 'brambleBurner', 'brambleMother'],
     escortSize: 1,
     // La Reine des phalènes (#172), tirée à égalité avec la Jardinière.
     bosses: ['ashGardener', 'mothQueen'],
@@ -137,7 +138,8 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
       { kind: 'matinsRinger', weight: 1, cap: 1, neverAlone: true },
       { kind: 'clockJack', weight: 2, cap: 1 },
     ],
-    elites: ['firstPilgrim', 'stoneSaint'],
+    // Le Bedeau (#259) en 3e position.
+    elites: ['firstPilgrim', 'stoneSaint', 'beadle'],
     escortSize: 2,
     bosses: ['hourRinger', 'wishGranter'],
     bossShards: 18,

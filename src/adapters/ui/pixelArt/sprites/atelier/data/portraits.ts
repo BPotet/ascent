@@ -72,6 +72,12 @@
  * l'id de l'Atelier est le nom de code :
  * - `assets/gravedigger` version 1, sha256 de5878584730673efd4e41260dfde3d2c6810108d629d2c9b1baa920c6a1d567 ;
  *   fiche `codex/gravedigger`, sha256 dea86734e85556d73cac94c882f926c68dbf0fd3a7f25d5297cac6b6f7b24de6 ; `icon` « buste » (sha256 de la copie b241d2b55dc4c45f1148b7ea0f6d4850bdac15fd6fc9035f013f08c30ea4425f).
+ * La Mère-ronce et le Bedeau (#259), recopiés par la conversation le 09/11/2026 (portraits validés le
+ * 09/11/2026), l'id de l'Atelier est le nom de code :
+ * - `assets/brambleMother` version 1, sha256 ccb1c96313be609161a7141325002bb55d87bda8ce20ed2afbdb8d5767b40a41 ;
+ *   fiche `codex/brambleMother`, sha256 9e849bd533032c6c6f7258a6068190a8b50ac4dca73d9e26e5431dbb95ea9d66 ; `icon` « buste » (sha256 de la copie ed8997c309b99e299cef882020c9c0357d5c55dd13fa53c459c187e2bdc21c09).
+ * - `assets/beadle` version 1, sha256 ed78140de9f259ae5a70c67ca98c3297d9791abd1689003d1a91747b030d9a22 ;
+ *   fiche `codex/beadle`, sha256 6c32e3889b60570e19cd365af03b7f42c48b6a3998b721834640ec77f6c21c4b ; `icon` « buste » (sha256 de la copie b51867b7b37c7b3da586b0f4c5bc7745c323179ebe9a6e90da9c5b5a8df7ce24).
  * Hors Beffroi (#214), identique, pixel pour pixel, à `ART.ic_<id>` et `ART.ic_<id>2` de la maquette validée
  * `docs/mockups/174-tier-identity/index.html` (la maquette encode parfois la même image avec sa
  * palette dans un autre ordre : les données suivent l'Atelier).
@@ -79,6 +85,101 @@
  */
 import type { EnemyKind, HeroKind } from '../../../../../../domain/battle/combatants';
 import type { AssetImage } from '../fullAnimation';
+
+/** Le portrait de la Mère-ronce (#259). */
+export const BRAMBLE_MOTHER_PORTRAIT: AssetImage = {
+  w: 24,
+  h: 24,
+  palette: [
+    '#06070c',
+    '#3e4639',
+    '#646d58',
+    '#949b7e',
+    '#5b4636',
+    '#8a6a42',
+    '#b98e5a',
+    '#646b80',
+    '#8c93a8',
+    '#c9c2b0',
+    '#f8e7c8',
+    '#d9733a',
+    '#2a1f36',
+    '#4a3660',
+    '#6b5a7a',
+    '#f2d49b',
+  ],
+  rows: [
+    '..........050..0........',
+    '.......0..050.050.......',
+    '......050.050050........',
+    '.......050050050........',
+    '.......05505550c0.......',
+    '........055000ede0......',
+    '......0005090edbde0.....',
+    '.....055509880ecc0......',
+    '......0009aa8700050.....',
+    '......030977877000......',
+    '.....03209fb8fb0130.....',
+    '.....03209887770110.....',
+    '....0322098887701130....',
+    '....0322098877703110....',
+    '....03210098870031130...',
+    '....03210009700.03110...',
+    '...0322106077000031130..',
+    '...0320000600406603110..',
+    '...0003330655404460110..',
+    '...03322130440444401130.',
+    '..0322211050054144031100',
+    '.03221100555555144601103',
+    '032210065155551444401102',
+    '322102065511551444403102',
+  ],
+};
+
+/** Le portrait du Bedeau (#259). */
+export const BEADLE_PORTRAIT: AssetImage = {
+  w: 24,
+  h: 24,
+  palette: [
+    '#06070c',
+    '#23232b',
+    '#323139',
+    '#47454d',
+    '#3a2a27',
+    '#6a2e22',
+    '#b0482a',
+    '#9a6a3a',
+    '#68646a',
+    '#958f8a',
+    '#c9c2b0',
+  ],
+  rows: [
+    '......................00',
+    '......................07',
+    '..........0000........00',
+    '.........0aaaa0.......07',
+    '........0a9998a0......07',
+    '.......00a9898800.....07',
+    '.......0a88998880.....07',
+    '.......0a90898080.....07',
+    '.......00a9988800.....07',
+    '.......00a9988800.....07',
+    '........00a99800......07',
+    '.......000a888000.....07',
+    '....0003000000003000..07',
+    '...03100660aaa0600310.07',
+    '..032230650a9a0403223007',
+    '..0322106540004403221007',
+    '.03222106540064403222307',
+    '.03221006540064400322230',
+    '032221006540064400322210',
+    '322210206540064401032223',
+    '322210206540064401032221',
+    '322102206540064401103221',
+    '300000206540064401103000',
+    '033330206540064401110333',
+  ],
+};
 
 /** Le portrait du Fossoyeur (#258). */
 export const GRAVEDIGGER_PORTRAIT: AssetImage = {
@@ -1397,6 +1498,9 @@ export const PORTRAITS: Readonly<Record<HeroKind | EnemyKind, AssetImage | null>
   },
   // Le Fossoyeur (#258).
   gravedigger: GRAVEDIGGER_PORTRAIT,
+  // La Mère-ronce et le Bedeau (#259).
+  brambleMother: BRAMBLE_MOTHER_PORTRAIT,
+  beadle: BEADLE_PORTRAIT,
 };
 
 export const PHASE_2_PORTRAITS: Readonly<Partial<Record<EnemyKind, AssetImage>>> = {

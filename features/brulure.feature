@@ -125,7 +125,7 @@ Fonctionnalité: La Brûlure
     Étant donné un groupe tiré au palier 2
     Alors il peut compter un Embrasé (poids 2, 1 au plus)
     Et au palier 3, une Gargouille ou un Fondeur de cloches (poids 2, 1 au plus chacun)
-    Et une porte Élite du palier 2 mène à l'Épouvantail ou au Brûleur de ronces, tirés à égalité
+    Et une porte Élite du palier 2 mène à l'Épouvantail, au Brûleur de ronces ou à la Mère-ronce (#259), tirés à un tiers chacun
 
   @ui
   Scénario: Ce que voit le joueur

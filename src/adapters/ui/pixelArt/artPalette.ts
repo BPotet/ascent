@@ -89,6 +89,10 @@ export const artPalette = {
     '#9A6A3A',
     '#D0A066',
     '#4F7A6E',
+    // Les signatures de #259, dessinées en code : le vert ronce de la piqûre des Épines et l'acier
+    // des éclats de la rupture du Sanctuaire (maquette 245).
+    '#B8E07A',
+    '#8FB8C9',
   ],
   /** Les rôles d'interface. */
   roles: {

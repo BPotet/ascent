@@ -27,19 +27,24 @@ describe('the Gold of each tier (#38)', () => {
 });
 
 describe('the Elites and the bosses of each tier (#38)', () => {
-  it('draws the First pilgrim or the Stone saint at tier 3, evenly', () => {
+  it('draws the First pilgrim, the Stone saint or the Beadle at tier 3, a third each (#259)', () => {
     const drawn = SEEDS.map((seed) => drawElite(TIERS[3].elites, seedRandom(seed)).value);
 
-    expect(new Set(drawn)).toEqual(new Set(['firstPilgrim', 'stoneSaint']));
-    expect(drawn.filter((elite) => elite === 'firstPilgrim').length).toBeGreaterThan(120);
+    expect(new Set(drawn)).toEqual(new Set(['firstPilgrim', 'stoneSaint', 'beadle']));
+    for (const elite of TIERS[3].elites) {
+      expect(drawn.filter((each) => each === elite).length).toBeGreaterThan(70);
+      expect(drawn.filter((each) => each === elite).length).toBeLessThan(130);
+    }
   });
 
-  it('draws the Scarecrow or the Bramble burner at tier 2, evenly (#171)', () => {
+  it('draws the Scarecrow, the Bramble burner or the Bramble mother at tier 2, a third each (#171, #259)', () => {
     const drawn = SEEDS.map((seed) => drawElite(TIERS[2].elites, seedRandom(seed)).value);
 
-    expect(new Set(drawn)).toEqual(new Set(['scarecrow', 'brambleBurner']));
-    expect(drawn.filter((elite) => elite === 'brambleBurner').length).toBeGreaterThan(120);
-    expect(drawn.filter((elite) => elite === 'brambleBurner').length).toBeLessThan(180);
+    expect(new Set(drawn)).toEqual(new Set(['scarecrow', 'brambleBurner', 'brambleMother']));
+    for (const elite of TIERS[2].elites) {
+      expect(drawn.filter((each) => each === elite).length).toBeGreaterThan(70);
+      expect(drawn.filter((each) => each === elite).length).toBeLessThan(130);
+    }
   });
 
   it('draws the Hour ringer or the Wish granter at tier 3, evenly', () => {

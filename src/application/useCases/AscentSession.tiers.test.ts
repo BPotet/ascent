@@ -708,6 +708,45 @@ describe('the escorted Elite in the session (#257)', () => {
     ]);
   });
 
+  it('starts the Bramble mother of tier 2 escorted, at 80 / 140 %: 136 HP, guard 63 (#259)', async () => {
+    const ascent = ascentAt(2, 'elite', ['brambleMother', 'ashBramble']);
+    const { session } = await loaded(mapStore(), ascent, null);
+    const battleSession = session.battleSession();
+
+    await battleSession.start();
+
+    const { battle } = battleSession.current()!;
+    expect(battle.tierMultiplier).toEqual(TIERS[2].eliteMultiplier);
+    expect(battle.escortMultiplier).toEqual(TIERS[2].multiplier);
+    expect(
+      battle.enemies.map(({ kind, maxHp, maxGuard, escort }) => ({
+        kind,
+        maxHp,
+        maxGuard,
+        escort,
+      })),
+    ).toEqual([
+      { kind: 'brambleMother', maxHp: 136, maxGuard: 63, escort: undefined },
+      { kind: 'ashBramble', maxHp: 40, maxGuard: 25, escort: true },
+    ]);
+  });
+
+  it('starts the Beadle of tier 3 escorted, at 88 / 150 %: 167 HP, guard 96 (#259)', async () => {
+    const ascent = ascentAt(3, 'elite', ['beadle', 'bellNovice', 'clockJack']);
+    const { session } = await loaded(mapStore(), ascent, null);
+    const battleSession = session.battleSession();
+
+    await battleSession.start();
+
+    const { battle } = battleSession.current()!;
+    expect(battle.enemies.map(({ kind, maxHp, maxGuard }) => [kind, maxHp, maxGuard])[0]).toEqual([
+      'beadle',
+      167,
+      96,
+    ]);
+    expect(battle.enemies.slice(1).every((enemy) => enemy.escort === true)).toBe(true);
+  });
+
   it('starts an Elite of tier 1 alone, without escort multiplier', async () => {
     const { session } = await loaded(mapStore(), ascentAt(1, 'elite', ['twins']), null);
     const battleSession = session.battleSession();

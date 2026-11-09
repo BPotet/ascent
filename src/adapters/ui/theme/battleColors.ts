@@ -76,15 +76,32 @@ export const battleColors = {
   summonTagBackground: '#262A36',
   /**
    * Le Fossoyeur (#258, maquette 245) : l'os de l'intention Exhumer, de sa marque de signature et de
-   * l'annonce de l'Exhumation (`--grave`, `--grave-bg`, `--on-grave`, 12,9:1) ; la marque grisée
+   * l'annonce de l'Exhumation (`--grave`, `--grave-bg`, `--on-grave`, 12,9:1) ; l'état éteint de
+   * toute marque de signature (#259 : « Épines 2 » barré, « Sanctuaire rompu »)
    * (`--muted` sur `--line2`), et le violet d'Élite de la bulle de première rencontre (`--elite`).
    */
   grave: '#A8916A',
   graveBackground: '#2A2219',
   onGrave: '#EADFC6',
-  graveOff: '#8C93A8',
-  graveOffLine: '#46506C',
+  signatureOff: '#8C93A8',
+  signatureOffLine: '#46506C',
   elite: '#C49BFF',
+  /**
+   * La Mère-ronce (#259, maquette 245) : la ronce de ses Épines (`--thorn`, `--thorn-l`,
+   * `--thorn-bg`, `--on-thorn`, 12,1:1), sur sa marque, le « −2 », le mot « Épines », les pointes et
+   * le cadre de la plaque du héros. Jamais le rouge du Saignement ni la braise.
+   */
+  thorn: '#8FBF5A',
+  thornLight: '#B8E07A',
+  thornBackground: '#1F2A16',
+  onThorn: '#D6F0B4',
+  /**
+   * Le Bedeau (#259) : l'acier de son Sanctuaire (`--ward`, `--ward-bg`, `--on-ward`, 12,4:1), sur
+   * sa marque, le liseré de sa barre de garde, le « ½ » et les mots de la rupture.
+   */
+  ward: '#8FB8C9',
+  wardBackground: '#18262E',
+  onWard: '#D4EAF2',
   /** La surface relevée de la bulle de première rencontre (`--raised`) et son texte (`--light`). */
   raised: '#2A3150',
   onRaised: '#FFF3D6',

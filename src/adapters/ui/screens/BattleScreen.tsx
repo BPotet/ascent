@@ -10,9 +10,10 @@ import { summonedKind } from '../../../domain/battle/summon';
 import type { PowerKind } from '../../../domain/battle/powers';
 import { ActionPad } from '../battle/ActionPad';
 import type { ScenePowers } from '../battle/scene/powerScene';
+import type { SceneSignatures } from '../battle/scene/signatureScene';
 import { ActionTrack } from '../battle/ActionTrack';
 import { BattleScene, prepareBattleScene } from '../battle/BattleCanvas';
-import { DamageFloat, FeedbackLabel, useShake } from '../battle/BattleEffects';
+import { DamageFloat, FeedbackLabel, ThornsWord, useShake } from '../battle/BattleEffects';
 import { BleedDrops } from '../battle/BleedChip';
 import { BattleHintBubble } from '../battle/BattleHintBubble';
 import { EncounterHintBubble } from '../battle/EncounterHintBubble';
@@ -32,7 +33,7 @@ import { toBattleInstant } from '../state/battleTouch';
 import { actionTrackView, battleView, type BattleView } from '../state/battleView';
 import { useReducedMotion } from '../state/useReducedMotion';
 import { jsThreadNow, uiThreadNow } from '../state/useTouchProbe';
-import { useBattleDisplay } from '../state/useBattleDisplay';
+import { heroHpShown, useBattleDisplay, useThornsRevealed } from '../state/useBattleDisplay';
 import { battleColors } from '../theme/battleColors';
 
 export interface BattleScreenProps {
@@ -86,6 +87,7 @@ export function BattleScreen({
   const reducedMotion = useReducedMotion();
   const display = useBattleDisplay(session, reducedMotion);
   const shake = useShake(display.shakeKey);
+  const thornsShown = useThornsRevealed(display.thorns);
   const { width: screenWidth } = useWindowDimensions();
   const [sceneHeight, setSceneHeight] = useState(SCENE_HEIGHT);
   const sceneFrame = useRef<View>(null);
@@ -212,7 +214,14 @@ export function BattleScreen({
     lead: view.leadLayout,
   });
   const strikeImpactAt = battle.phase.kind === 'heroStrike' ? battle.phase.impactAt : null;
-  const { heroFloat, burnFloat } = display;
+  const { heroFloat, burnFloat, thorns } = display;
+  // La piqûre des Épines (#259, M2) : la barre de PV du héros baisse avec le « −2 », 300 ms après la
+  // fin de la frappe ; les pointes jaillissent alors du héros.
+  const signatures: SceneSignatures = {
+    prick: thorns === null ? null : { from: thorns.from },
+    wardSpark: display.sanctuary.spark,
+    wardBroken: display.sanctuary.broken,
+  };
   const targetName = enemyName(battle.enemies[battle.target]!);
   const onSceneLayout = (event: LayoutChangeEvent) => {
     setSceneHeight(event.nativeEvent.layout.height);
@@ -271,6 +280,7 @@ export function BattleScreen({
             summon={summon}
             secondChance={sceneRise}
             powers={scenePowers}
+            signatures={signatures}
             reducedMotion={reducedMotion}
             uiNow={uiNow}
           />
@@ -310,6 +320,17 @@ export function BattleScreen({
           {heroFloat === null ? null : (
             <View pointerEvents="none" testID="battle-hero-float" style={styles.heroFloat}>
               <DamageFloat key={heroFloat.key} float={heroFloat.float} />
+            </View>
+          )}
+          {thorns === null ? null : (
+            <View pointerEvents="none" testID="battle-thorns-float" style={styles.thornsFloat}>
+              <DamageFloat
+                key={thorns.key}
+                float={{ at: 'hero', text: `−${thorns.loss}`, big: false, kind: 'thorns' }}
+                delayMs={thorns.delayMs}
+                reducedMotion={reducedMotion}
+              />
+              <ThornsWord key={`word-${thorns.key}`} delayMs={thorns.delayMs} />
             </View>
           )}
           {burnFloat === null ? null : (
@@ -385,6 +406,8 @@ export function BattleScreen({
             burnRing={display.burnRing}
             rise={rise === null ? null : { key: rise.key }}
             healing={battle.phase.kind === 'heroPower' && battle.phase.power === 'holdFast'}
+            shownHp={heroHpShown(battle.hero.hp, display, thornsShown)}
+            pricked={thorns !== null && thornsShown ? { key: thorns.key } : null}
             reducedMotion={reducedMotion}
           />
           <View style={styles.zone}>
@@ -476,6 +499,8 @@ const styles = StyleSheet.create({
   heroFloat: { position: 'absolute', left: 40, bottom: 150, width: 80, zIndex: 8 },
   // Le chiffre de la Brûlure, à droite de celui du Saignement (maquette 170, B5).
   burnFloat: { position: 'absolute', left: 86, bottom: 128, width: 80, zIndex: 8 },
+  // Le « −2 » et le mot « Épines » près du héros (#259, M2, `.fword.thorn`).
+  thornsFloat: { position: 'absolute', left: 8, bottom: 150, width: 120, zIndex: 8 },
   strong: { color: battleColors.text, fontWeight: '600' },
   spent: {
     color: artPalette.roles.parchment,

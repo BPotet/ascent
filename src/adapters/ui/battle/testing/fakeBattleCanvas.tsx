@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import type { EnemyKind } from '../../../../domain/battle/combatants';
 import type { BattleSceneProps } from '../BattleCanvas';
 import { NO_SCENE_POWERS } from '../scene/powerScene';
+import { NO_SCENE_SIGNATURES } from '../scene/signatureScene';
 
 /** Les types d'ennemis demandés à la préparation de la scène (#38), lus par les tests d'écran. */
 export const preparedKinds: EnemyKind[][] = [];
@@ -32,6 +33,7 @@ export function BattleScene(props: BattleSceneProps) {
     summon,
     secondChance = null,
     powers = NO_SCENE_POWERS,
+    signatures = NO_SCENE_SIGNATURES,
   } = props;
   return (
     <View
@@ -40,6 +42,7 @@ export function BattleScene(props: BattleSceneProps) {
       testID="battle-scene"
       {...{ heroKind, heroPose, heroPoseSince, timeline, reducedMotion, enemies, spark, hurtAt }}
       {...{ bulwark, bulwarkWornAt, riposte, shadowStep, burn, summon, secondChance, powers }}
+      {...{ signatures }}
     />
   );
 }

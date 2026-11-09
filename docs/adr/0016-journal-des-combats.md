@@ -177,3 +177,12 @@ rangement :
   notée telle quelle, avec sa place.
 - La mesure du Game Designer, le nombre d'exhumations par combat, se compte sur ces effets.
 - **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7).
+
+## Avenant du 9 novembre 2026 — les Épines et le Sanctuaire (#259, ADR 0025)
+
+- L'effet `thornsPricked` rejoint `EFFECT_TYPES`, recopié tel quel sans `at` : la mesure « PV
+  perdus aux Épines » est la somme de ses `loss`.
+- Le drapeau facultatif `sanctuary: true` est recopié à la main dans `StrikePressRecord` (qui
+  recopie `strikeResolved` champ par champ) ; `counterAttacked` et `bulwarkCountered` sont des
+  effets, recopiés tels quels avec lui. La mesure « coups réduits par le Sanctuaire » se lit là.
+- **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7).

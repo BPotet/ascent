@@ -152,7 +152,7 @@ Fonctionnalité: Rééquilibrage du palier 3
 
   # R5 — Élite non répétée
   @domain
-  Scénario: Avec 2 Élites au palier, elles alternent
+  Scénario: Une Élite déjà affrontée au palier ne revient pas avant les autres (#258, #259)
     Étant donné une ascension au palier 3 où le héros a affronté le Saint de pierre
     Quand il franchit la porte Élite suivante du palier 3
     Alors il affronte le Premier Pèlerin

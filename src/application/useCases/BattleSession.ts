@@ -17,10 +17,10 @@ import { eliteSignature, type EnemyKind } from '../../domain/battle/combatants';
 import { glintsOf } from '../../domain/battle/glints';
 import type { BattleClock } from '../ports/BattleClock';
 import type { BattleHaptics } from '../ports/BattleHaptics';
-import type { BattleSound, BattleSoundCue } from '../ports/BattleSound';
+import type { BattleSound } from '../ports/BattleSound';
 import type { KeyValueStore } from '../ports/KeyValueStore';
 import type { SeedSource } from '../ports/SeedSource';
-import { GLINT_CUES, feedbacksFor } from './battleFeedback';
+import { GLINT_CUES, feedbacksFor, strikeUnderway, type BattleFeedback } from './battleFeedback';
 import {
   dismissBattleHint,
   dismissEncounterHint,
@@ -90,6 +90,8 @@ export class BattleSession {
   private cancelGlintTimer: (() => void) | null = null;
   /** Les sons différés en attente (#171), annulés à `dispose`. */
   private readonly delayedSounds = new Set<() => void>();
+  /** Les retours différés d'une frappe en cours, qui attendent sa fin (#259). */
+  private heldFeedbacks: BattleFeedback[] = [];
   /** Les reflets déjà joués ou passés, par attaque (`startedAt:index`). */
   private readonly doneGlints = new Set<string>();
   private heroHintPending = false;
@@ -215,6 +217,7 @@ export class BattleSession {
     this.cancelGlintTimer = null;
     for (const cancel of this.delayedSounds) cancel();
     this.delayedSounds.clear();
+    this.heldFeedbacks = [];
     this.listeners.clear();
   }
 
@@ -287,24 +290,42 @@ export class BattleSession {
     );
   }
 
-  /** Un son différé (#171) : joué `delayMs` ms plus tard par l'horloge de combat. */
-  private playLater(sound: BattleSoundCue, delayMs: number): void {
+  /**
+   * Un son ou une vibration différés (#171, #259) : joués `delayMs` ms plus tard par l'horloge de
+   * combat, annulés à la fin du combat.
+   */
+  private playLater({ sound, haptic }: BattleFeedback, delayMs: number): void {
     const { clock } = this.dependencies;
     const cancel = clock.setTimer(clock.now() + delayMs, () => {
       this.delayedSounds.delete(cancel);
-      this.dependencies.sound.play(sound);
+      if (sound !== null) this.dependencies.sound.play(sound);
+      if (haptic !== null) this.dependencies.haptics.play(haptic);
     });
     this.delayedSounds.add(cancel);
+  }
+
+  /**
+   * Les retours d'une mise à jour : aussitôt, ou différés. Un retour différé né pendant une frappe
+   * du héros attend sa fin (la piqûre d'une Rafale après son dernier coup, #259).
+   */
+  private feedback(battle: Battle, events: readonly BattleEvent[]): void {
+    for (const feedback of feedbacksFor(events)) {
+      if (feedback.delayMs !== undefined) {
+        this.heldFeedbacks.push(feedback);
+        continue;
+      }
+      if (feedback.sound !== null) this.dependencies.sound.play(feedback.sound);
+      if (feedback.haptic !== null) this.dependencies.haptics.play(feedback.haptic);
+    }
+    if (strikeUnderway(battle)) return;
+    for (const held of this.heldFeedbacks) this.playLater(held, held.delayMs!);
+    this.heldFeedbacks = [];
   }
 
   private apply(update: BattleUpdate): void {
     if (this.disposed) return;
     const { battle, events } = update;
-    for (const { sound, haptic, delayMs } of feedbacksFor(events)) {
-      if (sound !== null && delayMs !== undefined) this.playLater(sound, delayMs);
-      else if (sound !== null) this.dependencies.sound.play(sound);
-      if (haptic !== null) this.dependencies.haptics.play(haptic);
-    }
+    this.feedback(battle, events);
     this.snapshot = {
       battle,
       events,
