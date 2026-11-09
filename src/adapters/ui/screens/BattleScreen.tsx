@@ -5,7 +5,8 @@ import Animated from 'react-native-reanimated';
 import type { BattleSession } from '../../../application/useCases/BattleSession';
 import type { Battle } from '../../../domain/battle/Battle';
 import type { DefenseButton } from '../../../domain/battle/BattleEvent';
-import { ENEMIES, type EnemyKind } from '../../../domain/battle/combatants';
+import type { EnemyKind } from '../../../domain/battle/combatants';
+import { summonedKind } from '../../../domain/battle/summon';
 import type { PowerKind } from '../../../domain/battle/powers';
 import { ActionPad } from '../battle/ActionPad';
 import type { ScenePowers } from '../battle/scene/powerScene';
@@ -14,6 +15,7 @@ import { BattleScene, prepareBattleScene } from '../battle/BattleCanvas';
 import { DamageFloat, FeedbackLabel, useShake } from '../battle/BattleEffects';
 import { BleedDrops } from '../battle/BleedChip';
 import { BattleHintBubble } from '../battle/BattleHintBubble';
+import { EncounterHintBubble } from '../battle/EncounterHintBubble';
 import { EnemyColumn } from '../battle/EnemyColumn';
 import { HeroBar } from '../battle/HeroBar';
 import { PhaseBanner } from '../battle/PhaseBanner';
@@ -56,11 +58,11 @@ function lineHidden(pad: BattleView['pad']): boolean {
 
 /**
  * Les ennemis dont l'écran prépare les atlas : la première ligne et la réserve (#38), puis ceux
- * qu'ils peuvent invoquer (#172), chacun une fois, dans cet ordre.
+ * qu'ils peuvent invoquer (#172) ou exhumer (#258), chacun une fois, dans cet ordre.
  */
 function preparedKinds(battle: Battle): string {
   const kinds = [...battle.enemies.map((enemy) => enemy.kind), ...battle.reserve];
-  const summoned = kinds.flatMap((kind) => ENEMIES[kind].phase2Summon?.enemy ?? []);
+  const summoned = kinds.flatMap((kind) => summonedKind(kind) ?? []);
   return [...new Set([...kinds, ...summoned])].join();
 }
 
@@ -201,7 +203,11 @@ export function BattleScreen({
     rising: enemy.rising,
     phase2: enemy.phase2 === true,
     downSince: display.downSince[index] ?? null,
+    ...(display.exhumeFx[index] !== undefined && { exhumedAt: display.exhumeFx[index] }),
   }));
+  // La bulle de première rencontre (#258, F1) : le premier toucher, où qu'il soit, la ferme.
+  const encounterHint = display.snapshot?.encounterHint;
+  const closeEncounterHint = () => session.dismissEncounterHint();
   const geometry = sceneGeometry(screenWidth, sceneHeight, view.columns, {
     lead: view.leadLayout,
   });
@@ -227,6 +233,7 @@ export function BattleScreen({
       <View
         ref={sceneFrame}
         onLayout={onSceneLayout}
+        {...(encounterHint !== undefined && { onTouchStart: closeEncounterHint })}
         testID="battle-scene-frame"
         style={styles.scene}
       >
@@ -328,6 +335,7 @@ export function BattleScreen({
               key={display.summonBanner.key}
               title={display.summonBanner.title}
               line={display.summonBanner.line}
+              {...(display.summonBanner.tone !== undefined && { tone: display.summonBanner.tone })}
               reducedMotion={reducedMotion}
             />
           )}
@@ -355,6 +363,9 @@ export function BattleScreen({
           ) : null}
           {display.snapshot?.powersHint && view.heroActions ? (
             <BattleHintBubble kind="powers" onClose={() => session.dismissHint('powers')} />
+          ) : null}
+          {encounterHint !== undefined && over === null ? (
+            <EncounterHintBubble enemy={encounterHint} onClose={closeEncounterHint} />
           ) : null}
           {view.defenseHint ? (
             <BattleHintBubble kind="defense" onClose={() => session.dismissHint('defense')} />

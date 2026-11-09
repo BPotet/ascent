@@ -688,6 +688,7 @@ describe('the battle effects (precomputed, never painted per frame)', () => {
       burnHit: 2,
       burnOut: 3,
       summon: 4,
+      boneDust: 4,
     });
   });
 

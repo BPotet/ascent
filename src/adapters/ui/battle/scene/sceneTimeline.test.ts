@@ -101,6 +101,18 @@ describe('sceneTimeline', () => {
         }),
       )?.support,
     ).toBe('raise');
+    // L'Exhumation du Fossoyeur (#258) : sa pose `exhume`, jamais celle du Relever.
+    expect(
+      sceneTimeline(
+        inStep({
+          kind: 'support',
+          enemy: 0,
+          intent: { category: 'exhume', slot: 1 },
+          since: 2_000,
+          until: 2_400,
+        }),
+      )?.support,
+    ).toBe('exhume');
     expect(
       sceneTimeline(inStep({ kind: 'lostAction', enemy: 0, since: 0, until: 250 })),
     ).toBeNull();

@@ -12,7 +12,15 @@ import {
   type EnemyState,
 } from '../../../domain/battle/Battle';
 import type { PhaseDirection } from '../../../domain/battle/BattleEvent';
-import { ENEMIES, type EnemyKind, type HeroKind } from '../../../domain/battle/combatants';
+import {
+  ENEMIES,
+  eliteSignature,
+  type EliteSignature,
+  type EnemyKind,
+  type HeroKind,
+} from '../../../domain/battle/combatants';
+import { exhumeMark, type ExhumeMark } from '../../../domain/battle/exhume';
+import { summonedKind } from '../../../domain/battle/summon';
 import { POWERS, type PowerKind } from '../../../domain/battle/powers';
 import type { PowerKeyAvailability } from '../format/powerText';
 import { shownIntent, type ShownIntent } from '../../../domain/battle/shownIntent';
@@ -24,8 +32,10 @@ import {
   enemyName,
   enemyTag,
   guardText,
+  signatureText,
   stunnedLabel,
 } from '../format/battleText';
+import type { IconName } from '../pixelArt/sprites/icons';
 
 /** Le temps mort affiché par l'étiquette « Attends » : de son début à sa fin, en ms. */
 export interface LockSpan {
@@ -66,6 +76,25 @@ export interface TrackEntry {
    * d'Élite ; seule, elle la perd (E8).
    */
   readonly crowned?: true;
+  /**
+   * Un ennemi entré par une Exhumation (#258, F3, F5) : sa case est en pointillé dans l'aperçu de la
+   * manche suivante. Un invoqué de #172 ne l'a pas (décision de l'orchestrateur).
+   */
+  readonly exhumed?: true;
+}
+
+/**
+ * La marque de signature d'une Élite (`SignatureMark`, #258, D8), une seule lecture par ennemi :
+ * sa mécanique, son glyphe, son mot sous le nom, sa phrase au lecteur d'écran, grisée (`off`) ou
+ * soulignée (`now`). #259 y ajoute les Épines et le Sanctuaire.
+ */
+export interface SignatureView {
+  readonly variant: EliteSignature;
+  readonly glyph: IconName;
+  readonly text: string;
+  readonly speech: string;
+  readonly off: boolean;
+  readonly now: boolean;
 }
 
 /**
@@ -167,6 +196,8 @@ export interface EnemyView {
   readonly elite?: true;
   /** Un ennemi d'escorte (#257) : sa plaque fait 100 dp au plus ; absent, non. */
   readonly escort?: true;
+  /** La marque de signature d'une Élite (#258) ; absente sans signature, ou tombée. */
+  readonly signature?: SignatureView;
   readonly label: string;
 }
 
@@ -249,12 +280,14 @@ export function trackEntry(battle: Battle, actor: Actor): TrackEntry {
 
 /**
  * Une case de l'aperçu de la manche suivante : un ennemi invoqué annoncé y est déjà, à sa place, en
- * pointillé (#172).
+ * pointillé (#172), comme un ennemi exhumé (#258).
  */
 function nextEntry(battle: Battle, actor: Actor): TrackEntry {
   const summon = pendingSummon(battle);
   if (actor === 'hero' || summon === null || !summon.slots.includes(actor)) {
-    return trackEntry(battle, actor);
+    const entry = trackEntry(battle, actor);
+    const exhumed = actor !== 'hero' && battle.enemies[actor]?.exhumed === true;
+    return exhumed ? { ...entry, exhumed: true } : entry;
   }
   return { actor, fighter: summon.kind, phase2: false, pending: true };
 }
@@ -289,6 +322,28 @@ function activeEnemy(battle: Battle): number | null {
   return step.kind === 'lostAction' || step.kind === 'guardRestore' ? null : step.enemy;
 }
 
+/** Le glyphe de chaque état de la marque Exhumer (maquette 245) : la pelle, fendue, l'os. */
+const EXHUME_GLYPHS: Readonly<Record<ExhumeMark['state'], IconName>> = {
+  next: 'shovel8',
+  now: 'shovel8',
+  lost: 'crack8',
+  standing: 'bone8',
+};
+
+/** La marque de signature de l'ennemi `index`, lue dans le domaine ; `null` sans signature. */
+function signatureView(battle: Battle, index: number): SignatureView | null {
+  const { kind } = battle.enemies[index]!;
+  const mark = eliteSignature(kind) === 'exhume' ? exhumeMark(battle, index) : null;
+  if (mark === null) return null;
+  return {
+    variant: 'exhume',
+    glyph: EXHUME_GLYPHS[mark.state],
+    ...signatureText(kind, mark),
+    off: mark.state === 'lost' || mark.state === 'standing',
+    now: mark.state === 'now',
+  };
+}
+
 function enemyView(
   battle: Battle,
   enemy: EnemyState,
@@ -301,6 +356,7 @@ function enemyView(
   const stunned = enemy.stun !== null;
   const elite = escortedElite(battle) === index;
   const escort = enemy.escort === true;
+  const signature = signatureView(battle, index);
   return {
     kind: enemy.kind,
     name: trimmed ? null : ENEMY_NAMES[enemy.kind],
@@ -334,11 +390,13 @@ function enemyView(
     ...(enemy.cursed === true && { curse: cursedTag(enemy)! }),
     ...(elite && { elite: true as const }),
     ...(escort && { escort: true as const }),
+    ...(signature !== null && { signature }),
     label: enemyLabel(
       enemy,
       intent,
       target,
-      elite ? 'elite' : escort && enemy.hp > 0 ? 'escort' : undefined,
+      elite || signature !== null ? 'elite' : escort && enemy.hp > 0 ? 'escort' : undefined,
+      signature?.speech,
     ),
   };
 }
@@ -356,8 +414,12 @@ export function battleView(battle: Battle): BattleView {
     enemyView(battle, enemy, index, { trimmed, active }),
   );
   const dust = [...(pendingSummon(battle)?.slots ?? [])].sort((left, right) => left - right);
-  const columns = Math.max(enemies.length, ...dust.map((slot) => slot + 1));
   const [first] = battle.enemies;
+  // Le Fossoyeur et son Squelette exhumé (#258, D7) : trois colonnes dès la 1re entrée, la 3e vide
+  // jusqu'à une 2e Exhumation ; la scène ne se redispose qu'une fois.
+  const exhuming = first !== undefined && ENEMIES[first.kind].exhume !== undefined;
+  const columns =
+    exhuming && enemies.length >= 2 ? 3 : Math.max(enemies.length, ...dust.map((slot) => slot + 1));
   const base = {
     banner: null,
     line: null,
@@ -370,7 +432,7 @@ export function battleView(battle: Battle): BattleView {
     columns,
     leadLayout:
       escortedElite(battle) !== null ||
-      (columns === 3 && first !== undefined && ENEMIES[first.kind].phase2Summon !== undefined),
+      (columns === 3 && first !== undefined && summonedKind(first.kind) !== null),
   };
   const heroPad = (locked: boolean, lock: LockSpan | null): ActionPad => ({
     kind: 'hero',

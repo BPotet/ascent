@@ -13,6 +13,7 @@ import type { EnemyView } from '../state/battleView';
 import { battleColors } from '../theme/battleColors';
 import { DamageFloat } from './BattleEffects';
 import { PerilSeal } from './PerilSeal';
+import { SignatureMark } from './SignatureMark';
 import type { EnemySlot } from './scene/sceneGeometry';
 import type { BattleDisplay } from '../state/useBattleDisplay';
 import { useReleaseGesture } from './touchGestures';
@@ -115,14 +116,16 @@ export function EnemyColumn({
           style={[
             styles.intent,
             intent === null && styles.noIntent,
+            intent?.category === 'exhume' && styles.exhumeIntent,
             view.active && (sealed ? styles.sealedIntent : styles.activeIntent),
+            view.active && intent?.category === 'exhume' && styles.activeExhumeIntent,
           ]}
         >
           {intent === null ? null : (
             <>
               <PixelIcon
                 name={INTENT_ICONS[intent.category]}
-                color={battleColors.text}
+                color={intent.category === 'exhume' ? battleColors.onGrave : battleColors.text}
                 secondColor={battleColors.light}
                 testID={`enemy-${kind}-intent-${intent.category}`}
               />
@@ -185,6 +188,9 @@ export function EnemyColumn({
                 <Text style={styles.curseText}>{view.curse}</Text>
               </View>
             )}
+            {view.signature === undefined ? null : (
+              <SignatureMark signature={view.signature} testID={`enemy-${kind}-signature`} />
+            )}
             {view.tag === null ? null : (
               <Text style={[styles.tag, view.summoned === true && styles.summonedTag]}>
                 {view.tag}
@@ -235,6 +241,9 @@ const styles = StyleSheet.create({
   },
   noIntent: { opacity: 0 },
   activeIntent: { borderWidth: 2, borderColor: battleColors.light },
+  // L'intention Exhumer (#258, `.pint.exhume`) : la pelle couleur os, cadre os ; actif, os clair.
+  exhumeIntent: { borderWidth: 2, borderColor: battleColors.grave },
+  activeExhumeIntent: { borderColor: battleColors.onGrave },
   sealedIntent: { borderWidth: 2, borderColor: battleColors.seal },
   intentText: {
     color: battleColors.text,

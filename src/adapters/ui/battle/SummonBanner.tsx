@@ -26,12 +26,16 @@ const ZOOM_IN = ZoomIn.duration(320);
 export function SummonBanner({
   title,
   line,
+  tone = 'summon',
   reducedMotion,
 }: {
   readonly title: string;
   readonly line: string;
+  /** L'annonce de l'Exhumation du Fossoyeur (#258, F3) est en os : `grave`. */
+  readonly tone?: 'summon' | 'grave';
   readonly reducedMotion: boolean;
 }) {
+  const grave = tone === 'grave';
   const opacity = useSharedValue(1);
   useEffect(() => {
     opacity.set(withDelay(SUMMON_BANNER_MS, withTiming(0, { duration: 200 })));
@@ -52,10 +56,10 @@ export function SummonBanner({
       <Animated.View
         {...(reducedMotion ? {} : { entering: ZOOM_IN })}
         testID={reducedMotion ? 'summon-banner-still' : 'summon-banner'}
-        style={styles.band}
+        style={[styles.band, grave && styles.graveBand]}
       >
         <SummonBandFade color={battleColors.summonBand} />
-        <Text style={styles.title}>{title}</Text>
+        <Text style={[styles.title, grave && styles.graveTitle]}>{title}</Text>
         <Text style={styles.line}>{line}</Text>
       </Animated.View>
     </Animated.View>
@@ -84,5 +88,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   line: { color: battleColors.summonLine, fontSize: 13, fontWeight: '500' },
+  // L'annonce de l'Exhumation (#258, `.announce`) : bords pointillés d'os, titre d'os clair.
+  graveBand: { borderColor: battleColors.grave },
+  graveTitle: { color: battleColors.onGrave },
 });
 // Stryker restore all

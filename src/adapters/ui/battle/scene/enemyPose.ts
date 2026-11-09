@@ -92,11 +92,15 @@ function pose(
  * `(ADVANCE − BACK) × scale` ; la ruée, l'impact, la récupération, la fausse ruée et le retour sont
  * multipliés.
  */
-/** La pose du milieu d'une Garde ou d'un Relever : `guard`, `raiseAlly` si l'entité l'a (#38). */
+/**
+ * La pose du milieu d'une Garde, d'un Relever ou d'une Exhumation : `guard`, `raiseAlly` (#38) ou
+ * `exhume` (#258) si l'entité l'a ; `ant1` sinon.
+ */
 function supportFrame(timeline: SceneTimeline, extras: readonly ExtraFrame[]): SceneFrame {
   'worklet';
   if (timeline.support === 'guard' && extras.includes('guard')) return 'guard';
   if (timeline.support === 'raise' && extras.includes('raiseAlly')) return 'raiseAlly';
+  if (timeline.support === 'exhume' && extras.includes('exhume')) return 'exhume';
   return 'ant1';
 }
 

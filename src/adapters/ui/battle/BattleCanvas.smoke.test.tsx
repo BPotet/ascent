@@ -792,3 +792,44 @@ describe('BattleScene: the glint and the stars follow the displayed pose', () =>
     );
   });
 });
+
+describe('BattleScene with Skia: the Gravedigger and his exhumed Skeleton (#258)', () => {
+  const EXHUMING: SceneTimeline = {
+    enemy: 0,
+    kind: 'support',
+    attack: null,
+    support: 'exhume',
+    stepInAt: 2_000,
+    windUpAt: 2_000,
+    windUpMs: 0,
+    until: 2_400,
+    impacts: [],
+    feintAt: null,
+    glints: [],
+    hitStopAt: 0,
+    hitStopUntil: 0,
+  };
+
+  it.each([false, true])(
+    'mounts him in his exhume pose, his Skeleton rising from its bone pile (reduced motion: %s)',
+    async (reducedMotion) => {
+      prepareBattleScene(['gravedigger', 'skeleton']);
+      await render(
+        <BattleScene
+          {...props({
+            geometry: sceneGeometry(390, 440, 3, { lead: true }),
+            enemies: [
+              { ...ENEMIES[0]!, kind: 'gravedigger', down: false, dimmed: false },
+              { ...ENEMIES[0]!, kind: 'skeleton', target: false, down: false, exhumedAt: 2_000 },
+            ],
+            timeline: EXHUMING,
+            spark: null,
+            reducedMotion,
+          })}
+        />,
+      );
+
+      expect(drawnTypes()).toContain('skAtlas');
+    },
+  );
+});
