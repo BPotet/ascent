@@ -88,3 +88,14 @@ places). `pendingSummon(battle)` la lit pour l'interface : la poussière et les 
 - Les règles valent pour tout boss qui invoque ; seule la Reine invoque aujourd'hui. Les phrases du
   lecteur d'écran que la maquette ne fixe pas (une place vide sans tombé, deux tombés) sont dérivées
   de la maquette.
+
+## Avenant du 9 novembre 2026 — l'Exhumation (#258, ADR 0024)
+
+- Le Fossoyeur appelle aussi des ennemis, par l'**Exhumation** : à son action, aux manches paires,
+  un Squelette entre à la première place libre (règle 6, `freeSlots`, réutilisée telle quelle),
+  fixée quand son intention est tirée. Il n'agit pas dans la manche où il entre.
+- L'Exhumé est un **Invoqué** (`summoned`) : il prend `summonMultiplier`, tombe avec le Fossoyeur
+  sans Or (`fallWithSummoner`, généralisé par `summonedKind`) et n'est jamais maudit. Il porte en
+  plus `exhumed`.
+- `summonEnter`, `PendingSummon` et `nextRoundOrder` ne changent pas : le Squelette entre par
+  l'action de soutien, pas par une Invocation en attente.
