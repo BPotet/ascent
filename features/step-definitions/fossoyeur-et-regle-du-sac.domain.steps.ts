@@ -9,6 +9,7 @@ import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber'
 import { enemyTag } from '../../src/adapters/ui/format/battleText';
 import {
   acknowledgeBossVictory,
+  chooseExit,
   endFloorBattle,
   enterNextTier,
   startAscent,
@@ -173,8 +174,32 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   );
 
   and(/^il vient seul$/u, () => {
-    expect(world.battle.enemies).toHaveLength(1);
-    expect(world.battle.reserve).toEqual([]);
+    // La porte Élite du palier 1, les deux autres Élites déjà affrontées : la rencontre tirée par
+    // l'ascension est le Fossoyeur seul, sans escorte, à toutes les jauges.
+    for (const seed of [1, 2, 3, 5, 8, 13, 21]) {
+      for (const gauge of [-2, -1, 0, 2] as const) {
+        const door: Ascent = {
+          ...startAscent(seed, { gauge }),
+          floor: 3,
+          encounter: null,
+          boonOffer: null,
+          exits: [{ kind: 'elite', groupSize: null }],
+          facedElites: TIERS[1].elites.filter((elite) => elite !== 'gravedigger'),
+        };
+        const { encounter } = chooseExit(door, 0);
+        expect(encounter).toMatchObject({ kind: 'elite', enemies: ['gravedigger'] });
+        const { battle } = startBattle({
+          seed: encounter!.battleSeed,
+          defenseHint: false,
+          at: 0,
+          enemies: encounter!.enemies,
+          ...encounterMultipliers(1, encounter!),
+        });
+        expect(battle.enemies).toHaveLength(1);
+        expect(battle.reserve).toEqual([]);
+        expect(battle).not.toHaveProperty('escortMultiplier');
+      }
+    }
   });
 
   and(
