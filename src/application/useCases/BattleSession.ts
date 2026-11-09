@@ -13,6 +13,7 @@ import {
   type HeroAction,
 } from '../../domain/battle/Battle';
 import type { BattleEvent, DefenseButton } from '../../domain/battle/BattleEvent';
+import { eliteSignature, type EnemyKind } from '../../domain/battle/combatants';
 import { glintsOf } from '../../domain/battle/glints';
 import type { BattleClock } from '../ports/BattleClock';
 import type { BattleHaptics } from '../ports/BattleHaptics';
@@ -20,7 +21,13 @@ import type { BattleSound, BattleSoundCue } from '../ports/BattleSound';
 import type { KeyValueStore } from '../ports/KeyValueStore';
 import type { SeedSource } from '../ports/SeedSource';
 import { GLINT_CUES, feedbacksFor } from './battleFeedback';
-import { dismissBattleHint, getBattleHint, type BattleHintKind } from './battleHints';
+import {
+  dismissBattleHint,
+  dismissEncounterHint,
+  getBattleHint,
+  getEncounterHint,
+  type BattleHintKind,
+} from './battleHints';
 
 /** La garde de réordonnancement (`ReorderGuard`) par défaut, en ms. */
 export const REORDER_GUARD_MS = 32;
@@ -45,6 +52,11 @@ export interface BattleSnapshot {
   readonly heroHint: boolean;
   /** La bulle d'aide des pouvoirs (#235, K11) est affichée : premier combat à 2 pouvoirs ou plus. */
   readonly powersHint: boolean;
+  /**
+   * La bulle de première rencontre (#258, D8) : l'Élite à signature qu'elle présente, une fois par
+   * Élite ; absente, aucune bulle. Elle ne bloque rien ; le premier toucher la ferme.
+   */
+  readonly encounterHint?: EnemyKind;
 }
 
 type Listener = (snapshot: BattleSnapshot) => void;
@@ -82,6 +94,7 @@ export class BattleSession {
   private readonly doneGlints = new Set<string>();
   private heroHintPending = false;
   private powersHintPending = false;
+  private encounterHintPending: EnemyKind | null = null;
   private disposed = false;
   private readonly reorderGuardMs: number;
   private readonly createBattle: BattleFactory;
@@ -111,6 +124,7 @@ export class BattleSession {
       defenseHint,
       at: this.dependencies.clock.now(),
     });
+    this.encounterHintPending = await this.encounterOf(update.battle);
     this.apply(update);
     return this.snapshot!;
   }
@@ -151,8 +165,10 @@ export class BattleSession {
       (event) => event.type === 'strikeStarted' || event.type === 'powerUsed',
     );
     if (acted) {
-      // La bulle de la phase du héros a servi : elle n'apparaît plus, celle des pouvoirs non plus.
+      // La bulle de la phase du héros a servi : elle n'apparaît plus, celle des pouvoirs non plus,
+      // ni celle de la première rencontre (#258).
       this.dismissPowersHintIfShown(battle);
+      this.dismissEncounterHintIfShown(battle);
       this.dismissHeroHintIfShown();
     }
     this.apply(update);
@@ -175,6 +191,14 @@ export class BattleSession {
     if (battle.phase.kind !== 'defenseHint') return;
     this.save('defense');
     this.apply(dismissDefenseHint(battle, this.dependencies.clock.now()));
+  }
+
+  /** Ferme la bulle de première rencontre (#258) au premier toucher : elle ne revient pas. */
+  dismissEncounterHint(): void {
+    const battle = this.snapshot?.battle;
+    if (battle === undefined || !this.encounterHintShown(battle)) return;
+    this.dismissEncounterHintIfShown(battle);
+    this.apply({ battle, events: [] });
   }
 
   /** L'effet d'un pouvoir s'ouvre au toucher maintenu (#235, K10) : une vibration très courte. */
@@ -204,6 +228,33 @@ export class BattleSession {
     if (!this.powersHintShown(battle)) return;
     this.powersHintPending = false;
     this.save('powers');
+  }
+
+  private dismissEncounterHintIfShown(battle: Battle): void {
+    const enemy = this.encounterHintPending;
+    if (enemy === null || !this.encounterHintShown(battle)) return;
+    this.encounterHintPending = null;
+    dismissEncounterHint(this.dependencies, enemy).catch(() => undefined);
+  }
+
+  /** L'Élite à signature du combat dont la bulle n'a pas encore été vue ; illisible, aucune. */
+  private async encounterOf(battle: Battle): Promise<EnemyKind | null> {
+    const elite = battle.enemies.find((enemy) => eliteSignature(enemy.kind) !== null);
+    if (elite === undefined) return null;
+    const unseen = await this.read(
+      (dependencies) => getEncounterHint(dependencies, elite.kind),
+      false,
+    );
+    return unseen ? elite.kind : null;
+  }
+
+  /** La bulle de première rencontre, après celle de la première ascension et celle des pouvoirs. */
+  private encounterHintShown(battle: Battle): boolean {
+    return (
+      this.encounterHintPending !== null &&
+      !this.heroHintShown(battle) &&
+      !this.powersHintShown(battle)
+    );
   }
 
   private save(kind: BattleHintKind): void {
@@ -259,6 +310,7 @@ export class BattleSession {
       events,
       heroHint: this.heroHintShown(battle),
       powersHint: this.powersHintShown(battle),
+      ...(this.encounterHintShown(battle) && { encounterHint: this.encounterHintPending! }),
     };
     this.schedule(battle);
     this.scheduleGlint(battle);

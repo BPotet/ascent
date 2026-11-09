@@ -382,6 +382,10 @@ describe('a pose in the 44 × 52 cell of the battle', () => {
   it('refuses a pose the animation does not have', () => {
     expect(() => animationSprite(GHOUL_ANIMATION as FullAnimation, 'raise')).toThrow('raise');
   });
+
+  it('refuses the extra pose exhume, by its name, to an entity that does not have it (#258)', () => {
+    expect(() => animationSprite(GHOUL_ANIMATION as FullAnimation, 'exhume')).toThrow('exhume');
+  });
 });
 
 /** Une animation de `w` × `h` dont toutes les poses sont pleines de la teinte 0. */

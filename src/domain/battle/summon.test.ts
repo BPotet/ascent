@@ -2,7 +2,7 @@
 // chaque fois de gauche à droite, au plus `count` ; un tombé que vise une intention Relever d'un
 // allié debout n'est pas libre.
 import type { Intent } from './intents';
-import { freeSlots } from './summon';
+import { freeSlots, summonedKind } from './summon';
 
 const standing = { hp: 10, intent: null };
 const fallen = { hp: 0, intent: null };
@@ -49,5 +49,17 @@ describe('the free slots of the front line for a summon (#172, rule 6)', () => {
 
   it('never counts a slot beyond the front line of three', () => {
     expect(freeSlots([standing, standing, standing, fallen], 2)).toEqual([]);
+  });
+});
+
+describe('the enemy that a summoner calls (#258, D4)', () => {
+  it('is the Mothkin for the Moth queen, the Skeleton for the Gravedigger', () => {
+    expect(summonedKind('mothQueen')).toBe('mothkin');
+    expect(summonedKind('gravedigger')).toBe('skeleton');
+  });
+
+  it('is nothing for an enemy that calls nobody', () => {
+    expect(summonedKind('fallenKnight')).toBeNull();
+    expect(summonedKind('skeleton')).toBeNull();
   });
 });

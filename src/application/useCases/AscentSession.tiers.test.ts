@@ -8,7 +8,8 @@ import {
   type Encounter,
   type TierPassage,
 } from '../../domain/ascent/Ascent';
-import { TIERS } from '../../domain/ascent/tiers';
+import { drawElite, eliteCandidates } from '../../domain/ascent/elites';
+import { TIERS, encounterMultipliers } from '../../domain/ascent/tiers';
 import { startBattle, type Battle } from '../../domain/battle/Battle';
 import { ENEMIES, type EnemyKind } from '../../domain/battle/combatants';
 import { scaleByPercent } from '../../domain/battle/tierMultiplier';
@@ -795,5 +796,100 @@ describe('the escorted Elite in the session (#257)', () => {
     expect(escorted.sealedChest).not.toBeNull();
     expect(escorted.shardAwards).toContainEqual({ id: '3:3:3:elite', amount: 2 });
     expect(escorted).toEqual(alone);
+  });
+});
+
+describe('the bag of Elites and the Gravedigger in the session (#258)', () => {
+  /** Une ascension entre deux étages du palier 1, la porte Élite seule proposée. */
+  const atEliteDoor = (ascent: Ascent): Ascent => ({
+    ...ascent,
+    encounter: null,
+    boonOffer: null,
+    exits: [{ kind: 'elite', groupSize: null }],
+  });
+
+  /** La sauvegarde écrite à la main, comme avant #258 : `lastElite`, sans `facedElites`. */
+  function savedBefore258(lastElite: EnemyKind, faced?: readonly EnemyKind[]): string {
+    const { facedElites: _, ...ascent } = atEliteDoor({ ...startAscent(3), floor: 3 });
+    return JSON.stringify({
+      version: 1,
+      ascent: { ...ascent, lastElite, ...(faced && { facedElites: faced }) },
+      battle: null,
+    });
+  }
+
+  it('reads the last Elite of a save before #258 as the faced Elites: the door draws among the others', async () => {
+    const store = mapStore();
+    store.values.set(ASCENT_KEY, savedBefore258('twins'));
+    const { session } = setUp(store);
+    const loadedAscent = (await session.load())!;
+
+    expect(loadedAscent.facedElites).toEqual(['twins']);
+    expect(loadedAscent).not.toHaveProperty('lastElite');
+
+    session.chooseExit(0);
+    const entered = session.current()!;
+    const expected = drawElite(eliteCandidates(TIERS[1].elites, ['twins']), loadedAscent.random);
+    expect(entered.encounter!.enemies[0]).toBe(expected.value);
+    expect(['fallenKnight', 'gravedigger']).toContain(entered.encounter!.enemies[0]);
+    expect(entered.facedElites).toEqual(['twins', expected.value]);
+    await flush();
+    expect(savedAscent(store)).not.toHaveProperty('lastElite');
+    expect(savedAscent(store).facedElites).toEqual(['twins', expected.value]);
+  });
+
+  it('keeps the faced Elites when a save has both keys', async () => {
+    const store = mapStore();
+    store.values.set(ASCENT_KEY, savedBefore258('twins', ['gravedigger', 'fallenKnight']));
+    const { session } = setUp(store);
+    const loadedAscent = (await session.load())!;
+
+    expect(loadedAscent.facedElites).toEqual(['gravedigger', 'fallenKnight']);
+    expect(loadedAscent).not.toHaveProperty('lastElite');
+  });
+
+  it('reads a save without any Elite faced as before', async () => {
+    const store = mapStore();
+    store.values.set(
+      ASCENT_KEY,
+      JSON.stringify({ version: 1, ascent: atEliteDoor(startAscent(3)), battle: null }),
+    );
+    const { session } = setUp(store);
+
+    expect(await session.load()).not.toHaveProperty('facedElites');
+  });
+
+  it('saves the battle as soon as the Gravedigger exhumes a Skeleton', async () => {
+    const ascent = ascentAt(1, 'elite', ['gravedigger']);
+    const { battle } = startBattle({
+      seed: 3,
+      defenseHint: false,
+      at: 0,
+      initiative: true,
+      enemies: ['gravedigger'],
+      ...encounterMultipliers(1, { kind: 'elite', enemies: ['gravedigger'] }),
+    });
+    // La manche 2 commence : il montre Exhumer, le héros (Initiative 5) a déjà agi.
+    const exhuming: Battle = {
+      ...battle,
+      round: 2,
+      enemies: [{ ...battle.enemies[0]!, intent: { category: 'exhume', slot: 1 } }],
+      turn: { order: ['hero', 0], position: 1 },
+      lastPlayed: 'hero',
+      phase: { kind: 'transition', since: 0, until: 800, to: 'enemy' },
+    };
+    const store = mapStore();
+    const { session, clock } = await loaded(store, ascent, exhuming);
+    const battleSession = session.battleSession();
+    await battleSession.start();
+    for (let guard = 0; guard < 20; guard += 1) {
+      if (battleSession.current()!.battle.enemies.length > 1) break;
+      clock.advanceTo(clock.pending()[0]!);
+      await flush();
+    }
+    await flush();
+
+    const saved = JSON.parse(store.values.get(ASCENT_KEY)!) as { battle: Battle };
+    expect(saved.battle.enemies[1]).toMatchObject({ kind: 'skeleton', exhumed: true });
   });
 });

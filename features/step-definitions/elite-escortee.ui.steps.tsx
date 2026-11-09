@@ -124,7 +124,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   and(/^les tirages de l'ascension sont les mêmes qu'avant cette story$/u, () => {
     // L'algorithme d'avant : l'Élite, puis la graine du combat.
     const elite = drawElite(
-      eliteCandidates(TIERS[1].elites, world.door.lastElite),
+      eliteCandidates(TIERS[1].elites, world.door.facedElites ?? []),
       world.door.random,
     );
     const seed = nextRandom(elite.random);

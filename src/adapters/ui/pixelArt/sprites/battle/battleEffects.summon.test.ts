@@ -40,7 +40,7 @@ function placed(frame: number): number[][] {
 describe('the summon effect in the atlas (#172)', () => {
   it('has 4 images, after the effects of the Burn', () => {
     expect(EFFECT_KINDS.summon).toBe(4);
-    expect(Object.keys(EFFECT_KINDS).slice(-2)).toEqual(['burnOut', 'summon']);
+    expect(Object.keys(EFFECT_KINDS).slice(-3)).toEqual(['burnOut', 'summon', 'boneDust']);
   });
 
   it.each([0, 1, 2, 3])(

@@ -20,7 +20,9 @@ import {
 import type { Stunned } from '../../../domain/battle/guard';
 import { MOMENTUM_MAX } from '../../../domain/battle/momentum';
 import { POWERS, basePower, kindledCost, type PowerKind } from '../../../domain/battle/powers';
+import type { ExhumeMark } from '../../../domain/battle/exhume';
 import type { ShownIntent } from '../../../domain/battle/shownIntent';
+import { summonedKind } from '../../../domain/battle/summon';
 
 /** Les libellés du combat, tirés du glossaire et de la maquette de l'épique #30. */
 export const HERO_NAME = 'La Sentinelle';
@@ -58,6 +60,8 @@ export const ENEMY_NAMES: Readonly<Record<EnemyKind, string>> = {
   bellNovice: 'Novice des cloches',
   matinsRinger: 'Sonneuse de matines',
   clockJack: 'Jaquemart',
+  // Le Fossoyeur (#258), sans article.
+  gravedigger: 'Fossoyeur',
 };
 
 /** Le genre du nom de l'ennemi, pour « étourdie », « tombée »… */
@@ -90,6 +94,7 @@ const FEMININE: Readonly<Record<EnemyKind, boolean>> = {
   bellNovice: false,
   matinsRinger: true,
   clockJack: false,
+  gravedigger: false,
 };
 
 export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {
@@ -327,6 +332,9 @@ export function intentNumber(intent: ShownIntent): string | null {
   return intent.category === 'guard' || intent.category === 'heal' ? `+${intent.gain}` : null;
 }
 
+/** Pourquoi un ennemi n'agit pas : étourdi, relevé, ou invoqué par une Exhumation (#258). */
+const SKIP_REASONS = { stunned: 'étourdi', raised: 'relevé', exhumed: 'invoqué' } as const;
+
 /** L'intention lue par le lecteur d'écran : sa catégorie, et son nombre pour Garde et Soin. */
 export function intentSpeech(kind: EnemyKind, intent: ShownIntent): string {
   switch (intent.category) {
@@ -338,8 +346,10 @@ export function intentSpeech(kind: EnemyKind, intent: ShownIntent): string {
       return `intention : soin, plus ${intent.gain}`;
     case 'raise':
       return 'intention : relever un allié';
+    case 'exhume':
+      return 'intention : exhumer';
     case 'skip':
-      return `${agreed(kind, intent.reason === 'stunned' ? 'étourdi' : 'relevé')}, n'agit pas`;
+      return `${agreed(kind, SKIP_REASONS[intent.reason])}, n'agit pas`;
   }
 }
 
@@ -363,6 +373,8 @@ export function enemyLabel(
   intent: ShownIntent | null,
   isTarget: boolean,
   role?: 'elite' | 'escort',
+  /** Ce que dit la marque de signature d'une Élite (#258), lue avant l'intention. */
+  signature?: string,
 ): string {
   const tag = enemyTag(enemy);
   const elite = role === 'elite' ? ', Élite' : '';
@@ -372,9 +384,10 @@ export function enemyLabel(
     enemy.stun === null
       ? `garde ${enemy.guard} sur ${enemy.maxGuard}`
       : `${agreed(enemy.kind, 'étourdi')}, dégâts ×1,5`;
+  const mark = signature === undefined ? '' : `, ${signature}`;
   const intentPart = intent === null ? '' : `, ${intentSpeech(enemy.kind, intent)}`;
   const aim = role === 'escort' && !isTarget ? '. Touche pour viser' : '';
-  return `${name}${isTarget ? ', cible' : ''}, ${enemy.hp} PV sur ${enemy.maxHp}, ${guard}${intentPart}${aim}`;
+  return `${name}${isTarget ? ', cible' : ''}, ${enemy.hp} PV sur ${enemy.maxHp}, ${guard}${mark}${intentPart}${aim}`;
 }
 
 export function attackButtonLabel(targetName: string): string {
@@ -432,7 +445,7 @@ export function phaseAnnouncement(to: PhaseDirection): string {
  * s'y écrivent ; « Frappe parfaite » en phase du héros. Jamais « Critique ».
  */
 export interface FeedbackText {
-  readonly tone: 'perfect' | 'break' | 'rise' | 'riposte' | 'shadowStep' | 'escort';
+  readonly tone: 'perfect' | 'break' | 'rise' | 'riposte' | 'shadowStep' | 'escort' | 'victory';
   readonly title: string;
   /** La ligne sous le mot : « Attisé · 1 Élan » pour un pouvoir attisé (#237). */
   readonly sub?: string;
@@ -476,8 +489,14 @@ export function feedbackText(event: BattleEvent, battle?: Battle): FeedbackText 
         ...(sub !== null && { sub }),
       };
     }
+    // La garde brisée avant l'Exhumation (#258, F4) : « Action perdue · pas d’exhumation ».
     case 'guardBroken':
-      return { tone: 'break', title: 'Cassure' };
+      return battle?.enemies[event.enemy]?.intent?.category === 'exhume'
+        ? { tone: 'break', title: 'Cassure', sub: 'Action perdue · pas d’exhumation' }
+        : { tone: 'break', title: 'Cassure' };
+    // Le Squelette exhumé tombe avec le Fossoyeur, et c'est la victoire (#258, F6).
+    case 'summonedFell':
+      return battle !== undefined ? fellWithExhumer(battle, event.enemy) : null;
     case 'enemySelfRevived':
       return { tone: 'rise', title: 'Il se relève' };
     case 'strikeResolved':
@@ -487,6 +506,30 @@ export function feedbackText(event: BattleEvent, battle?: Battle): FeedbackText 
     default:
       return null;
   }
+}
+
+/** « Victoire », sous-titre « Le Squelette tombe avec lui » : un exhumé tombé avec le Fossoyeur. */
+function fellWithExhumer(battle: Battle, enemy: number): FeedbackText | null {
+  const fallen = battle.enemies[enemy];
+  const won = battle.phase.kind === 'over' && battle.phase.outcome === 'victory';
+  if (fallen?.exhumed !== true || !won) return null;
+  const exhumer = battle.enemies.find(({ kind }) => ENEMIES[kind].exhume !== undefined);
+  const with_ = exhumer !== undefined && FEMININE[exhumer.kind] ? 'elle' : 'lui';
+  return { tone: 'victory', title: 'Victoire', sub: `${theName(fallen.kind)} tombe avec ${with_}` };
+}
+
+/**
+ * La ligne du pouce avec une Élite qui exhume (#258, F2, F5) : comment l'en empêcher quand elle
+ * exhume maintenant et qu'elle est la cible, ou qu'elle n'exhume pas tant que son Squelette tient.
+ */
+export function exhumeLineText(
+  kind: EnemyKind,
+  state: ExhumeMark['state'],
+  isTarget: boolean,
+): string {
+  if (state === 'now' && isTarget) return ' · brise sa garde pour empêcher l’exhumation';
+  if (state === 'standing') return ` · ${theName(kind).replace(/^L/u, 'l')} n’exhume pas`;
+  return '';
 }
 
 /** Le mot de l'Élite tombée devant son escorte debout (#257, E9). */
@@ -647,8 +690,15 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
       return event.reason === 'offBalance' ? 'Déséquilibré' : null;
     case 'strikeResolved':
       return strikeAnnouncement(event.judgement, event.damage);
-    case 'guardBroken':
-      return `Cassure, ${name(event.enemy)} ${agreed(kind(event.enemy), 'étourdi')}`;
+    case 'guardBroken': {
+      // La garde brisée avant l'Exhumation (#258, F4) : elle n'aura pas lieu.
+      const exhuming = battle.enemies[event.enemy]!.intent?.category === 'exhume';
+      const lost = exhuming ? ' : pas d’exhumation cette manche' : '';
+      return `Cassure, ${name(event.enemy)} ${agreed(kind(event.enemy), 'étourdi')}${lost}`;
+    }
+    // L'Exhumation (#258, F3) : qui exhume, et l'invoqué qui n'agit pas dans la manche.
+    case 'enemyExhumed':
+      return `${theName(kind(event.enemy))} exhume ${oneOf(event.kind)}. ${ENEMY_NAMES[event.kind]}, ${agreed(event.kind, 'invoqué')}, n’agit pas cette manche`;
     case 'actionLost':
       return `${name(event.enemy)}, ${agreed(kind(event.enemy), 'étourdi')}, n'agit pas`;
     case 'guardRestored':
@@ -722,6 +772,14 @@ function plural(kind: EnemyKind): string {
   return `${ENEMY_NAMES[kind]}s`;
 }
 
+/** Le nom avec son article : « La Reine des phalènes », « Le Fossoyeur », « L'Épouvantail ». */
+function theName(kind: EnemyKind): string {
+  const name = ENEMY_NAMES[kind];
+  if (/^(La|Le|Les) /u.test(name)) return name;
+  if (/^[AEIOUÉÈ]/u.test(name)) return `L'${name}`;
+  return `${FEMININE[kind] ? 'La' : 'Le'} ${name}`;
+}
+
 /** « Elle » pour un boss au nom féminin, « Il » sinon. */
 function pronoun(kind: EnemyKind): string {
   return FEMININE[kind] ? 'Elle' : 'Il';
@@ -790,15 +848,15 @@ function summonAnnouncement(
  * tombent avec elle. », dite une fois pour tous les invoqués qui tombent ensemble.
  */
 function summonFallAnnouncement(battle: Battle, count: number, enemy: number): string {
-  const summoner = battle.enemies.find(({ kind }) => ENEMIES[kind].phase2Summon !== undefined);
+  const summoner = battle.enemies.find(({ kind }) => summonedKind(kind) !== null);
   const boss = summoner?.kind ?? battle.enemies[enemy]!.kind;
   const kind = battle.enemies[enemy]!.kind;
-  const with_ = `avec ${pronoun(boss).toLowerCase()}`;
+  const with_ = `avec ${FEMININE[boss] ? 'elle' : 'lui'}`;
   const fall =
     count > 1
       ? `Les ${plural(kind)} tombent ${with_}.`
       : `${FEMININE[kind] ? 'La' : 'Le'} ${ENEMY_NAMES[kind]} tombe ${with_}.`;
-  return `${ENEMY_NAMES[boss]} tombe. ${fall}`;
+  return `${theName(boss)} tombe. ${fall}`;
 }
 
 /**
@@ -825,4 +883,72 @@ export function endTitle(outcome: BattleOutcome): string {
 
 export function heroHpText(hp: number, maxHp: number): string {
   return `PV ${hp}/${maxHp}`;
+}
+
+/**
+ * Ce que dit la marque de signature Exhumer (#258, maquette 245, F1 à F5) : son mot, sous le nom,
+ * et sa phrase au lecteur d'écran, lue avec la plaque. « exhume », jamais « relève ».
+ */
+export function signatureText(
+  kind: EnemyKind,
+  mark: ExhumeMark,
+): { readonly text: string; readonly speech: string } {
+  const exhumed = ENEMIES[kind].exhume?.enemy ?? 'skeleton';
+  const one = oneOf(exhumed);
+  const subject = FEMININE[kind] ? 'elle' : 'il';
+  switch (mark.state) {
+    case 'next':
+      return {
+        text: `Exhume · manche ${mark.round}`,
+        speech: `exhume ${one} à la manche ${mark.round}`,
+      };
+    case 'now':
+      return {
+        text: 'Exhume maintenant',
+        speech: `exhume ${one} cette manche ; brise sa garde avant son tour pour l’en empêcher`,
+      };
+    case 'lost':
+      return { text: 'Pas d’exhumation', speech: 'garde brisée : pas d’exhumation cette manche' };
+    case 'standing':
+      return {
+        text: `${ENEMY_NAMES[exhumed]} debout`,
+        speech: `${one} debout : ${subject} n’exhume pas`,
+      };
+  }
+}
+
+/**
+ * La bulle de première rencontre d'une Élite à signature (#258, F1) : son nom, sa règle, comment la
+ * fermer, et sa phrase au lecteur d'écran.
+ */
+export function encounterHintText(kind: EnemyKind): {
+  readonly title: string;
+  readonly text: string;
+  readonly close: string;
+  readonly speech: string;
+} {
+  const exhumed = ENEMIES[kind].exhume?.enemy ?? 'skeleton';
+  const subject = FEMININE[kind] ? 'elle' : 'il';
+  const rule = `Aux manches paires, ${subject} exhume ${oneOf(exhumed)}, ${FEMININE[exhumed] ? 'une seule' : 'un seul'} à la fois.`;
+  const prevent = 'brise sa garde avant son tour pour l’en empêcher';
+  return {
+    title: ENEMY_NAMES[kind],
+    text: `${rule} Sa pelle s’affiche d’avance : ${prevent}.`,
+    close: "Touche n'importe où pour fermer. Elle ne reviendra pas.",
+    speech: `${ENEMY_NAMES[kind]}. ${rule} B${prevent.slice(1)}`,
+  };
+}
+
+/**
+ * L'annonce de l'Exhumation (#258, F3) : « Il exhume un Squelette », sous « Première place libre · il
+ * n’agit pas cette manche ».
+ */
+export function exhumeBannerText(
+  summoner: EnemyKind,
+  kind: EnemyKind,
+): { readonly title: string; readonly line: string } {
+  return {
+    title: `${pronoun(summoner)} exhume ${oneOf(kind)}`,
+    line: `Première place libre · ${FEMININE[kind] ? 'elle' : 'il'} n’agit pas cette manche`,
+  };
 }

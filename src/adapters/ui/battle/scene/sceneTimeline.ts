@@ -5,7 +5,8 @@ import type { SceneTimeline } from '../sceneTypes';
 /**
  * L'action de l'ennemi actif pour la scène (`sceneTimeline`), recalculée à chaque instantané : après
  * un arrêt sur image, les impacts arrivent déjà décalés par le domaine. Pendant l'avancée, le type
- * de coup reste caché (C2.8). `null` hors d'une avancée, d'une attaque, d'une Garde ou d'un Relever.
+ * de coup reste caché (C2.8). `null` hors d'une avancée, d'une attaque, d'une Garde, d'un Relever
+ * ou d'une Exhumation (#258).
  */
 export function sceneTimeline(battle: Battle): SceneTimeline | null {
   const { phase } = battle;
@@ -36,7 +37,7 @@ export function sceneTimeline(battle: Battle): SceneTimeline | null {
         ...quiet,
         enemy: step.enemy,
         kind: 'support',
-        support: step.intent.category === 'guard' ? 'guard' : 'raise',
+        support: step.intent.category,
         stepInAt: step.since,
         windUpAt: step.since,
         until: step.until,

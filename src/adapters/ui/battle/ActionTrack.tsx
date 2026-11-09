@@ -151,10 +151,19 @@ function TrackCase({
     'worklet';
     return { opacity: step.get() > 0 ? 0.4 : 0 };
   }, [step]);
-  const pending = entry.pending === true;
+  // Un invoqué annoncé (#172) ou un ennemi exhumé (#258) : sa case est en pointillé.
+  const exhumed = entry.exhumed === true;
+  const pending = entry.pending === true || exhumed;
+  const testID = ghost
+    ? 'track-ghost'
+    : exhumed
+      ? 'track-entry-exhumed'
+      : entry.pending === true
+        ? 'track-entry-pending'
+        : 'track-entry';
   return (
     <Animated.View
-      testID={ghost ? 'track-ghost' : pending ? 'track-entry-pending' : 'track-entry'}
+      testID={testID}
       style={[
         styles.entry,
         entry.actor === 'hero' && styles.hero,

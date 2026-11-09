@@ -37,7 +37,7 @@ describe('the rising poses of Self revive (#38)', () => {
 });
 
 describe('the poses of the Guard and the Raise (#38)', () => {
-  const support = (kind: 'guard' | 'raise' | null): SceneTimeline => ({
+  const support = (kind: 'guard' | 'raise' | 'exhume' | null): SceneTimeline => ({
     enemy: 0,
     kind: 'support',
     attack: null,
@@ -67,6 +67,15 @@ describe('the poses of the Guard and the Raise (#38)', () => {
       tier: 1,
       red: false,
     });
+  });
+
+  it('shows the exhume pose in the middle of the exhumation of the Gravedigger (#258)', () => {
+    expect(
+      [1_050, 1_200, 1_350].map(
+        (now) => enemyPose(support('exhume'), now, false, {}, ['exhume']).frame,
+      ),
+    ).toEqual(['ant0', 'exhume', 'ant0']);
+    expect(enemyPose(support('exhume'), 1_200, false, {}, SUPPORT).frame).toBe('ant1');
   });
 
   it('keeps ant1 for an entity without these poses, like the Necromancer', () => {

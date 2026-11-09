@@ -47,9 +47,10 @@ export interface AttackPoses<Frame extends string = string> {
 /**
  * Les poses en plus (`ExtraFrame`, #38) : celles que certaines entités ont en plus des 17 poses du
  * combat. `rise0` et `rise1` pendant Se relève seul, `guard` et `raiseAlly` pendant les intentions
- * Garde et Relever. Facultatives dans `frames` et `anchors`.
+ * Garde et Relever, `exhume` pendant l'Exhumation du Fossoyeur (#258). Facultatives dans `frames`
+ * et `anchors`.
  */
-export type ExtraFrame = 'rise0' | 'rise1' | 'guard' | 'raiseAlly';
+export type ExtraFrame = 'rise0' | 'rise1' | 'guard' | 'raiseAlly' | 'exhume';
 
 /** Des poses, puis leurs ancrages, une entrée par pose, poses en plus facultatives. */
 type Poses<Frame extends string, Value> = Readonly<Record<Frame, Value>> &

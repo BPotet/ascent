@@ -169,3 +169,11 @@ rangement :
   d'une Élite escortée, absent sans escorte. `tierMultiplier` décrit alors l'Élite seule.
 - Les ennemis d'escorte sont déjà notés dans `enemies`, avec leurs PV max et leur garde max.
 - **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7).
+
+## Avenant du 9 novembre 2026 — l'Exhumation (#258, ADR 0024)
+
+- L'action du Fossoyeur est notée `exhume` (`ActionKind`, `KIND_OF_INTENT`), comme celle de
+  `allyRaised`, avec son effet `enemyExhumed` (`EFFECT_TYPES`). L'intention tirée `exhume` est
+  notée telle quelle, avec sa place.
+- La mesure du Game Designer, le nombre d'exhumations par combat, se compte sur ces effets.
+- **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7).

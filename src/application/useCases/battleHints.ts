@@ -1,3 +1,4 @@
+import type { EnemyKind } from '../../domain/battle/combatants';
 import type { PreferenceDependencies } from './checkInHint';
 
 /**
@@ -26,4 +27,28 @@ export async function dismissBattleHint(
   kind: BattleHintKind,
 ): Promise<void> {
   await keyValueStore.set(BATTLE_HINT_SEEN_KEYS[kind], '1');
+}
+
+/**
+ * La clé de la bulle de première rencontre d'une Élite à signature (#258, D8) : une par Élite, par
+ * son nom de code.
+ */
+export function encounterHintKey(enemy: EnemyKind): string {
+  return `battle.hint.encounter.${enemy}.seen`;
+}
+
+/** Cas d'usage : faut-il montrer la bulle de première rencontre de `enemy` ? Oui tant qu'elle n'a pas été vue. */
+export async function getEncounterHint(
+  { keyValueStore }: PreferenceDependencies,
+  enemy: EnemyKind,
+): Promise<boolean> {
+  return (await keyValueStore.get(encounterHintKey(enemy))) === null;
+}
+
+/** Cas d'usage : la bulle de première rencontre de `enemy` a été vue ; elle ne revient pas. */
+export async function dismissEncounterHint(
+  { keyValueStore }: PreferenceDependencies,
+  enemy: EnemyKind,
+): Promise<void> {
+  await keyValueStore.set(encounterHintKey(enemy), '1');
 }

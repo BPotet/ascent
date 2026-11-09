@@ -18,6 +18,7 @@ import {
   damageFloat,
   feedbackText,
   secondChanceBannerText,
+  exhumeBannerText,
   summonBannerText,
   type DamageFloat,
   type FeedbackText,
@@ -67,13 +68,19 @@ export interface BattleDisplay {
     readonly key: number;
     readonly delayMs: number;
   } | null;
-  /** La dernière annonce de l'Invocation (#172) : « Elle appelle les Phalénides ». */
+  /**
+   * La dernière annonce de l'Invocation (#172) : « Elle appelle les Phalénides » ; ou de l'Exhumation
+   * (#258), en os : « Il exhume un Squelette ».
+   */
   readonly summonBanner: {
     readonly key: number;
     readonly at: number;
     readonly title: string;
     readonly line: string;
+    readonly tone?: 'grave';
   } | null;
+  /** L'instant de chaque Exhumation (#258), par place : le Squelette y sort de terre. */
+  readonly exhumeFx: Readonly<Record<number, number>>;
   /**
    * L'Invocation sur la scène (#172) : l'instant de l'annonce (la poussière se lève), puis, par
    * place, l'instant où l'invoqué sort de la poussière et celui où il y retombe avec son boss.
@@ -119,6 +126,7 @@ export const INITIAL_DISPLAY: BattleDisplay = {
   burnFloat: null,
   summonBanner: null,
   summonFx: { calledAt: null, entered: {}, fell: {} },
+  exhumeFx: {},
   secondChance: null,
 };
 
@@ -310,6 +318,22 @@ function summonAfter(
           ...summonFx,
           entered: { ...summonFx.entered, [event.enemy]: event.at + afterRound },
         },
+      };
+    }
+    case 'enemyExhumed': {
+      // Le Squelette entre debout à sa place, sans l'animation de chute du tombé qu'il remplace.
+      const { [event.slot]: _fallen, ...downSince } = display.downSince;
+      return {
+        ...display,
+        downSince,
+        arrivals: { ...display.arrivals, [event.slot]: (display.arrivals[event.slot] ?? 0) + 1 },
+        summonBanner: {
+          key: (display.summonBanner?.key ?? 0) + 1,
+          at: event.at,
+          ...exhumeBannerText(battle.enemies[event.enemy]!.kind, event.kind),
+          tone: 'grave',
+        },
+        exhumeFx: { ...display.exhumeFx, [event.slot]: event.at },
       };
     }
     case 'summonedFell':

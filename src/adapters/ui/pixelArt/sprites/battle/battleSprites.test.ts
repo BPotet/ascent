@@ -29,6 +29,7 @@ import { MOTH_QUEEN_PHASE2 } from '../atelier/data/mothQueenPhase2';
 import { MOTHKIN_ANIMATION } from '../atelier/data/mothkin';
 import { BELL_NOVICE_ANIMATION } from '../atelier/data/bellNovice';
 import { CLOCK_JACK_ANIMATION } from '../atelier/data/clockJack';
+import { GRAVEDIGGER_ANIMATION } from '../atelier/data/gravedigger';
 import { MATINS_RINGER_ANIMATION } from '../atelier/data/matinsRinger';
 import { FACELESS_PRIOR_ANIMATION } from '../atelier/data/facelessPrior';
 import { FALLEN_KNIGHT_ANIMATION } from '../atelier/data/fallenKnight';
@@ -169,6 +170,7 @@ describe('the full animations of the Atelier in battle (#119, #137, #138, #139)'
     bellNovice: BELL_NOVICE_ANIMATION,
     matinsRinger: MATINS_RINGER_ANIMATION,
     clockJack: CLOCK_JACK_ANIMATION,
+    gravedigger: GRAVEDIGGER_ANIMATION,
   };
   /** Les ennemis animés, tirés du registre : chacun avec son animation recopiée. */
   const ANIMATED = ANIMATED_ENEMIES.map((kind) => [kind, COPIED[kind]] as const);
@@ -686,6 +688,7 @@ describe('the battle effects (precomputed, never painted per frame)', () => {
       burnHit: 2,
       burnOut: 3,
       summon: 4,
+      boneDust: 4,
     });
   });
 

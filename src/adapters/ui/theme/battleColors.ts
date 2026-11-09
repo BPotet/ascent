@@ -74,5 +74,19 @@ export const battleColors = {
   summonDust: '#8C93A8',
   summonTag: '#C3C7D3',
   summonTagBackground: '#262A36',
+  /**
+   * Le Fossoyeur (#258, maquette 245) : l'os de l'intention Exhumer, de sa marque de signature et de
+   * l'annonce de l'Exhumation (`--grave`, `--grave-bg`, `--on-grave`, 12,9:1) ; la marque grisée
+   * (`--muted` sur `--line2`), et le violet d'Élite de la bulle de première rencontre (`--elite`).
+   */
+  grave: '#A8916A',
+  graveBackground: '#2A2219',
+  onGrave: '#EADFC6',
+  graveOff: '#8C93A8',
+  graveOffLine: '#46506C',
+  elite: '#C49BFF',
+  /** La surface relevée de la bulle de première rencontre (`--raised`) et son texte (`--light`). */
+  raised: '#2A3150',
+  onRaised: '#FFF3D6',
 } as const;
 // Stryker restore all

@@ -473,6 +473,63 @@ describe('BattleSession', () => {
     expect(session.current()!.battle.phase).toMatchObject({ kind: 'transition' });
   });
 
+  describe('the first encounter bubble of an Elite with a signature (#258, D8)', () => {
+    const gravedigger: BattleFactory = (options) =>
+      startBattle({ ...options, enemies: ['gravedigger'] });
+    const KEY = 'battle.hint.encounter.gravedigger.seen';
+
+    it('shows once per Elite, without blocking, and closes at the first touch', async () => {
+      const set = setUp({ createBattle: gravedigger });
+
+      const first = await set.session.start();
+      expect(first.encounterHint).toBe('gravedigger');
+      expect(first.battle.phase.kind).toBe('hero');
+
+      set.session.dismissEncounterHint();
+
+      expect(set.session.current()!.encounterHint).toBeUndefined();
+      await Promise.resolve();
+      expect(set.keyValueStore.values.get(KEY)).toBe('1');
+      expect((await set.session.start()).encounterHint).toBeUndefined();
+    });
+
+    it('closes when the hero acts', async () => {
+      const set = setUp({ createBattle: gravedigger });
+      await set.session.start();
+
+      set.session.heroAction({ kind: 'attack' }, 1_100, 1_200);
+
+      expect(set.session.current()!.encounterHint).toBeUndefined();
+      await Promise.resolve();
+      expect(set.keyValueStore.values.get(KEY)).toBe('1');
+    });
+
+    it('waits for the hero hint of the first ascent to be closed', async () => {
+      const set = setUp({ hints: true, createBattle: gravedigger });
+
+      const first = await set.session.start();
+      expect([first.heroHint, first.encounterHint]).toEqual([true, undefined]);
+
+      set.session.dismissHint('hero');
+      expect(set.session.current()!.encounterHint).toBe('gravedigger');
+    });
+
+    it('never shows for a battle without an Elite with a signature', async () => {
+      const set = setUp();
+
+      expect((await set.session.start()).encounterHint).toBeUndefined();
+      set.session.dismissEncounterHint();
+      expect(set.session.current()!.encounterHint).toBeUndefined();
+    });
+
+    it('does not show when the storage cannot be read', async () => {
+      const set = setUp({ createBattle: gravedigger });
+      set.keyValueStore.fail = true;
+
+      expect((await set.session.start()).encounterHint).toBeUndefined();
+    });
+  });
+
   describe('the hint of the powers (#235, K11)', () => {
     const withPowers: BattleFactory = (options) =>
       startBattle({ ...options, enemies: TEST_BATTLE_ENEMIES, powers: ['bulwark', 'retaliation'] });

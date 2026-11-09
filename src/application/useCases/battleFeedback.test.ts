@@ -338,6 +338,12 @@ describe('the sounds of the Summon (#172)', () => {
     });
   });
 
+  it('plays nothing at the exhumation of the Gravedigger: the sounds come later (#258)', () => {
+    expect(
+      feedbackFor({ type: 'enemyExhumed', at: 0, enemy: 0, slot: 1, kind: 'skeleton' }),
+    ).toEqual({ sound: null, haptic: null });
+  });
+
   it('rustles once for the entry of the whole summon', () => {
     expect(feedbacksFor([entered(1), entered(2)]).map(({ sound }) => sound)).toEqual([
       'wingRustleLoud',

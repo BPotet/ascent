@@ -34,6 +34,7 @@ import { TIERS, encounterMultipliers } from '../../domain/ascent/tiers';
 import { resumeBattle, startBattle, type Battle } from '../../domain/battle/Battle';
 import { combineModifiers } from '../../domain/battle/heroModifiers';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
+import type { EnemyKind } from '../../domain/battle/combatants';
 import { basePower } from '../../domain/battle/powers';
 import type { AscentStep, HeroVitals } from '../../domain/ascentLog/AscentLog';
 import type { AscentLogRecorder } from './AscentLogRecorder';
@@ -82,6 +83,8 @@ const SAVED_ON: ReadonlySet<BattleEvent['type']> = new Set([
   'enemySelfRevived',
   // L'entrée des invoqués (#172) ; leur annonce est sauvée avec le coup qui l'a lancée.
   'summonEntered',
+  // L'Exhumation du Fossoyeur (#258) : le Squelette entre à son action.
+  'enemyExhumed',
   // Le relèvement (#206) : une fermeture pendant le bandeau ne rend jamais la seconde chance.
   'secondChanceUsed',
 ]);
@@ -120,8 +123,12 @@ function parse(raw: string | null): SavedAscent | null {
     // Cœur de braise pas encore proposé ; avant #42 : les relances de sa jauge, comme si elles
     // avaient été données au lancement (calculées après la fusion, sur la jauge sauvegardée) ;
     // avant #206 : la seconde chance de sa jauge, de la même façon ; avant #226 : la clé de sa
-    // jauge, de la même façon, sans coffre scellé.
-    const stored: Partial<Ascent> = saved.ascent;
+    // jauge, de la même façon, sans coffre scellé ; avant #258 : la dernière Élite affrontée
+    // (`lastElite`) devient la liste des Élites affrontées (`facedElites`), qui l'emporte si les deux
+    // sont là.
+    const { lastElite, ...stored }: Partial<Ascent> & { readonly lastElite?: EnemyKind } =
+      saved.ascent;
+    const facedElites = stored.facedElites ?? (lastElite === undefined ? undefined : [lastElite]);
     const storedHero: Partial<Ascent['hero']> = saved.ascent.hero;
     const ascent = {
       boonOffer: null,
@@ -141,6 +148,7 @@ function parse(raw: string | null): SavedAscent | null {
       sealedChest: null,
       sealedChestRandom: sealedChestStream(saved.ascent.seed),
       ...stored,
+      ...(facedElites && { facedElites }),
       hero: { kind: 'sentinel', boons: [], ...storedHero },
     } as Ascent;
     const rerolls = stored.rerolls ?? favorRerolls(ascent.gauge);
