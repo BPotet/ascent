@@ -88,7 +88,13 @@ export type SceneFrame = EnemyFrame | ExtraFrame;
 export type BattleFrame = EnemyFrame | HeroFrame | ExtraFrame;
 
 /** Les poses en plus (#38), dans l'ordre de l'atlas. */
-export const EXTRA_FRAMES: readonly ExtraFrame[] = ['rise0', 'rise1', 'guard', 'raiseAlly'];
+export const EXTRA_FRAMES: readonly ExtraFrame[] = [
+  'rise0',
+  'rise1',
+  'guard',
+  'raiseAlly',
+  'exhume',
+];
 
 export const ENEMY_FRAMES: readonly EnemyFrame[] = [
   'idle0',

@@ -60,6 +60,19 @@ describe('the icons', () => {
     expect(iconNames).toEqual(expect.arrayContaining(['crown8', 'swords8']));
   });
 
+  it('has the shovel of the intent Exhume, 12 × 12 like the other intents (#258)', () => {
+    expect(ICONS.iExhume).toHaveLength(12);
+    for (const row of ICONS.iExhume) expect(row).toHaveLength(12);
+  });
+
+  it('has the shovel, the cracked shovel and the bone of the signature mark, on 8 × 8 (#258)', () => {
+    for (const glyph of ['shovel8', 'crack8', 'bone8'] as const) {
+      expect(ICONS[glyph]).toHaveLength(8);
+      for (const row of ICONS[glyph]) expect(row).toHaveLength(8);
+    }
+    expect(ICONS.shovel8[0]).toBe('.......X');
+  });
+
   it('has the small flame of « Le camp » (#40)', () => {
     expect(iconNames).toContain('flame8');
     expect(ICONS.flame8).toHaveLength(8);

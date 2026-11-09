@@ -68,6 +68,10 @@
  *   fiche `codex/matinsRinger`, sha256 27cccb0219af09179ae977dbbf695e91400aa315955e99cac2ffdfd287a6e6b8 ; `icon` « buste » (sha256 de la copie 5e826c5b4cceaa7f3c0c1dbc5c92745ac206b36b22c346eb3375affda4640f8f).
  * - `assets/clockJack` version 2, sha256 b6c660e15db9f51de772ee78768a3edf01edd42984a3a70ef4320279c0277ac3 ;
  *   fiche `codex/clockJack`, sha256 77c063abc9064a372862181e14cc11bdba4594ced2e7790e321aa6d453b381b6 ; `icon` « buste » (sha256 de la copie df1c28d399a99b6606d33c1d82c249c7ac7675ef7f4da1a2d9fabc5ed63f3264).
+ * Le Fossoyeur (#258), recopié par la conversation le 09/11/2026 (portrait validé le 09/11/2026),
+ * l'id de l'Atelier est le nom de code :
+ * - `assets/gravedigger` version 1, sha256 de5878584730673efd4e41260dfde3d2c6810108d629d2c9b1baa920c6a1d567 ;
+ *   fiche `codex/gravedigger`, sha256 dea86734e85556d73cac94c882f926c68dbf0fd3a7f25d5297cac6b6f7b24de6 ; `icon` « buste » (sha256 de la copie b241d2b55dc4c45f1148b7ea0f6d4850bdac15fd6fc9035f013f08c30ea4425f).
  * Hors Beffroi (#214), identique, pixel pour pixel, à `ART.ic_<id>` et `ART.ic_<id>2` de la maquette validée
  * `docs/mockups/174-tier-identity/index.html` (la maquette encode parfois la même image avec sa
  * palette dans un autre ordre : les données suivent l'Atelier).
@@ -1516,4 +1520,50 @@ export const PHASE_2_PORTRAITS: Readonly<Partial<Record<EnemyKind, AssetImage>>>
       '888803200222222444004408',
     ],
   },
+};
+
+/** Le portrait du Fossoyeur (#258). */
+export const GRAVEDIGGER_PORTRAIT: AssetImage = {
+  w: 24,
+  h: 24,
+  palette: [
+    '#06070c',
+    '#1c2133',
+    '#2a3150',
+    '#3e4870',
+    '#2a1f36',
+    '#4a3660',
+    '#6b5a7a',
+    '#646d58',
+    '#949b7e',
+    '#c9c2b0',
+    '#b98e5a',
+    '#bfe6da',
+  ],
+  rows: [
+    '........................',
+    '.........0000000........',
+    '........066666660.......',
+    '........065555440.......',
+    '.......0655554440.......',
+    '.......0000000000.......',
+    '....0006666666666000....',
+    '...066655555554446660...',
+    '...064555555554444440000',
+    '....00644444444444000a0a',
+    '......000000000000..0a0a',
+    '......0909b887b070...00a',
+    '......090988777070....0a',
+    '......000988777000....0a',
+    '.....06600988700660...0a',
+    '.....06560978706440...0a',
+    '...000055607706440000000',
+    '..0333305560064403333333',
+    '..0322105555554403222222',
+    '..0322106445544003111222',
+    '.03221020004400110000312',
+    '.03221022290021111110003',
+    '.03221022221221111113000',
+    '032210222221221111111009',
+  ],
 };

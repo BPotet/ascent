@@ -459,6 +459,54 @@ const DRAWN = {
     'X.....X.',
     '........',
   ],
+  // L'intention Exhumer du Fossoyeur (#258) : la pelle, en 12 × 12 comme les autres intentions.
+  iExhume: [
+    '..........XX',
+    '.........XXX',
+    '........XXX.',
+    '.......XXX..',
+    '......XXX...',
+    '.X...XXX....',
+    'XXX.XXX.....',
+    'XXXXXX......',
+    'XXXXX.......',
+    'XXXXXX......',
+    '.XXXX.......',
+    '..XX........',
+  ],
+  // Les glyphes de la marque de signature Exhumer (#258), table `PAT` de la maquette
+  // `docs/mockups/245-elites-escortees/`, centrés sur 8 × 8 pixels d'art : la pelle, la pelle fendue
+  // (pas d'exhumation) et l'os (un Squelette debout).
+  shovel8: [
+    '.......X',
+    '......XX',
+    '.....XX.',
+    '....XX..',
+    '.X.XX...',
+    'XXX.....',
+    'XXXX....',
+    '.XX.....',
+  ],
+  crack8: [
+    'XXXX.XX.',
+    'X...X.X.',
+    'X.XX..X.',
+    'X.X.X.X.',
+    '.X..XX..',
+    '..XX....',
+    '...X....',
+    '........',
+  ],
+  bone8: [
+    '........',
+    'XX...XX.',
+    '.XXXXX..',
+    '..XXX...',
+    '..XXX...',
+    '.XXXXX..',
+    'XX...XX.',
+    '........',
+  ],
   // Les glyphes de la jauge (#41), table `PAT` de la maquette `docs/mockups/205-jauge-faveur/`,
   // centrés sur 8 × 8 pixels d'art : crâne, bénédiction, objet, Rare, fatigue, cadenas, horloge, « + »
   // et « = » des crans du cadran.
