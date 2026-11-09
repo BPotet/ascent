@@ -11,7 +11,8 @@ export type ShownIntent =
   | { readonly category: 'guard'; readonly gain: number }
   | { readonly category: 'heal'; readonly gain: number }
   | { readonly category: 'raise' }
-  | { readonly category: 'skip'; readonly reason: 'stunned' | 'raised' };
+  | { readonly category: 'exhume' }
+  | { readonly category: 'skip'; readonly reason: 'stunned' | 'raised' | 'exhumed' };
 
 export type IntentCategory = ShownIntent['category'];
 
@@ -22,7 +23,11 @@ export type IntentCategory = ShownIntent['category'];
 export function shownIntent(battle: Battle, enemy: number): ShownIntent | null {
   const state = battle.enemies[enemy]!;
   if (state.hp <= 0) return null;
-  if (state.raisedRound === battle.round) return { category: 'skip', reason: 'raised' };
+  if (state.raisedRound === battle.round) {
+    // Un Squelette exhumé n'agit pas dans la manche où il entre (#258) ; relevé ensuite, il est relevé.
+    const exhumed = state.exhumed === true && state.selfRevives === undefined;
+    return { category: 'skip', reason: exhumed ? 'exhumed' : 'raised' };
+  }
   if (state.stun !== null) {
     return state.stun.actionLost ? null : { category: 'skip', reason: 'stunned' };
   }
@@ -35,5 +40,7 @@ export function shownIntent(battle: Battle, enemy: number): ShownIntent | null {
       return { category: 'guard', gain: intent.gain };
     case 'raise':
       return { category: 'raise' };
+    case 'exhume':
+      return { category: 'exhume' };
   }
 }

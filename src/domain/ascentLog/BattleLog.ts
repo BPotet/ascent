@@ -21,7 +21,7 @@ import type {
   WhiffReason,
 } from '../battle/BattleEvent';
 import type { Bleed, EnemyKind, HeroKind } from '../battle/combatants';
-import type { GuardIntent, Intent, RaiseIntent } from '../battle/intents';
+import type { ExhumeIntent, GuardIntent, Intent, RaiseIntent } from '../battle/intents';
 import type { PressJudgement } from '../battle/rules';
 import { beyondBasePower, type PowerKind } from '../battle/powers';
 import type { TierMultiplier } from '../battle/tierMultiplier';
@@ -83,7 +83,8 @@ export type IntentRecord =
       readonly burn?: number;
     }
   | GuardIntent
-  | RaiseIntent;
+  | RaiseIntent
+  | ExhumeIntent;
 
 /** Une frappe en rythme, identifiée par la manche, le rang de l'action du héros et le coup. */
 export interface StrikePressRecord {
@@ -99,6 +100,8 @@ export interface StrikePressRecord {
   readonly judgement: PressJudgement | null;
   readonly damage: number;
   readonly guardDamage: number;
+  /** Le Sanctuaire (#259) a réduit les PV du coup ; absent, non. */
+  readonly sanctuary?: true;
 }
 
 /** Un impact jugé, identifié par la manche, l'ennemi et l'index de l'impact. */
@@ -153,6 +156,9 @@ const EFFECT_TYPES = [
   'summonCalled',
   'summonEntered',
   'summonedFell',
+  'enemyExhumed',
+  // Les Épines (#259) : les PV perdus aux Épines sont la somme de leurs `loss`.
+  'thornsPricked',
   'secondChanceUsed',
   'mistWorn',
   'heroHealed',
@@ -179,12 +185,13 @@ const ROUND_OPENING: ReadonlySet<BattleEvent['type']> = new Set([
 ]);
 
 export type ActionKind =
-  'strike' | 'power' | 'attack' | 'guard' | 'raise' | 'lostAction' | 'guardRestored';
+  'strike' | 'power' | 'attack' | 'guard' | 'raise' | 'exhume' | 'lostAction' | 'guardRestored';
 
 const KIND_OF_INTENT: Readonly<Record<IntentRecord['category'], ActionKind>> = {
   attack: 'attack',
   guard: 'guard',
   raise: 'raise',
+  exhume: 'exhume',
 };
 
 /** Les effets du début d'une manche, Brûlure éteinte au début de la manche comprise. */
@@ -241,6 +248,11 @@ export interface BattleLog {
   readonly reserve: readonly EnemyKind[];
   readonly tierMultiplier: TierMultiplier | null;
   readonly summonMultiplier: TierMultiplier | null;
+  /**
+   * Le multiplicateur de l'escorte d'une Élite escortée (#257) ; absent, aucune escorte. Le
+   * `tierMultiplier` est alors celui de l'Élite seule.
+   */
+  readonly escortMultiplier?: TierMultiplier;
   /** La durée du combat hors pause, jusqu'au dernier instant noté. */
   readonly elapsedMs: number;
   readonly resumes: readonly { readonly t: number; readonly cause: ResumeCause }[];
@@ -285,6 +297,7 @@ export function beginBattleLog(place: BattlePlace, battle: Battle, at: number): 
     reserve: battle.reserve,
     tierMultiplier: battle.tierMultiplier ?? null,
     summonMultiplier: battle.summonMultiplier ?? null,
+    ...(battle.escortMultiplier && { escortMultiplier: battle.escortMultiplier }),
     elapsedMs: 0,
     resumes: [],
     truncated: false,
@@ -474,6 +487,7 @@ class Writer {
           judgement: event.judgement,
           damage: event.damage,
           guardDamage: event.guardDamage,
+          ...(event.sanctuary && { sanctuary: true }),
         });
         return;
       case 'windUpStarted': {
@@ -525,6 +539,9 @@ class Writer {
         return;
       case 'allyRaised':
         this.effect(draft, event, t, this.act(draft, event.enemy, 'raise', t));
+        return;
+      case 'enemyExhumed':
+        this.effect(draft, event, t, this.act(draft, event.enemy, 'exhume', t));
         return;
       case 'actionLost':
         this.effect(draft, event, t, this.act(draft, event.enemy, 'lostAction', t));

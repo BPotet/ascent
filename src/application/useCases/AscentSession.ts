@@ -30,10 +30,11 @@ import {
   serializeShardTotal,
   type ShardTotal,
 } from '../../domain/ascent/shards';
-import { TIERS, encounterMultiplier } from '../../domain/ascent/tiers';
+import { TIERS, encounterMultipliers } from '../../domain/ascent/tiers';
 import { resumeBattle, startBattle, type Battle } from '../../domain/battle/Battle';
 import { combineModifiers } from '../../domain/battle/heroModifiers';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
+import type { EnemyKind } from '../../domain/battle/combatants';
 import { basePower } from '../../domain/battle/powers';
 import type { AscentStep, HeroVitals } from '../../domain/ascentLog/AscentLog';
 import type { AscentLogRecorder } from './AscentLogRecorder';
@@ -82,6 +83,8 @@ const SAVED_ON: ReadonlySet<BattleEvent['type']> = new Set([
   'enemySelfRevived',
   // L'entrée des invoqués (#172) ; leur annonce est sauvée avec le coup qui l'a lancée.
   'summonEntered',
+  // L'Exhumation du Fossoyeur (#258) : le Squelette entre à son action.
+  'enemyExhumed',
   // Le relèvement (#206) : une fermeture pendant le bandeau ne rend jamais la seconde chance.
   'secondChanceUsed',
 ]);
@@ -120,8 +123,12 @@ function parse(raw: string | null): SavedAscent | null {
     // Cœur de braise pas encore proposé ; avant #42 : les relances de sa jauge, comme si elles
     // avaient été données au lancement (calculées après la fusion, sur la jauge sauvegardée) ;
     // avant #206 : la seconde chance de sa jauge, de la même façon ; avant #226 : la clé de sa
-    // jauge, de la même façon, sans coffre scellé.
-    const stored: Partial<Ascent> = saved.ascent;
+    // jauge, de la même façon, sans coffre scellé ; avant #258 : la dernière Élite affrontée
+    // (`lastElite`) devient la liste des Élites affrontées (`facedElites`), qui l'emporte si les deux
+    // sont là.
+    const { lastElite, ...stored }: Partial<Ascent> & { readonly lastElite?: EnemyKind } =
+      saved.ascent;
+    const facedElites = stored.facedElites ?? (lastElite === undefined ? undefined : [lastElite]);
     const storedHero: Partial<Ascent['hero']> = saved.ascent.hero;
     const ascent = {
       boonOffer: null,
@@ -141,6 +148,7 @@ function parse(raw: string | null): SavedAscent | null {
       sealedChest: null,
       sealedChestRandom: sealedChestStream(saved.ascent.seed),
       ...stored,
+      ...(facedElites && { facedElites }),
       hero: { kind: 'sentinel', boons: [], ...storedHero },
     } as Ascent;
     const rerolls = stored.rerolls ?? favorRerolls(ascent.gauge);
@@ -403,12 +411,12 @@ export class AscentSession {
           ...(encounter.cursed !== undefined && { cursed: encounter.cursed }),
           // La seconde chance encore là (#206) ; absente, le combat est celui d'avant.
           ...(ascent.secondChance && { secondChance: true }),
-          // Le multiplicateur de palier d'un combat ordinaire, celui d'Élite et de boss sinon (#244).
-          tierMultiplier: encounterMultiplier(ascent.tier, encounter.kind),
+          // Les multiplicateurs du combat (#257, D2) : de palier pour un combat ordinaire, d'Élite
+          // et de boss sinon (#244) ; celui du palier pour les invoqués (#172) et pour l'escorte
+          // d'une Élite escortée (#257).
+          ...encounterMultipliers(ascent.tier, encounter),
           // Le répit du palier (#244, R3).
           respitePercent: TIERS[ascent.tier].respitePercent,
-          // Les ennemis invoqués ont les valeurs du palier, dans tout combat d'étage (#172).
-          summonMultiplier: TIERS[ascent.tier].multiplier,
           // L'ordre d'action par Initiative (P13, P14), ajouté par #90.
           initiative: true,
         });

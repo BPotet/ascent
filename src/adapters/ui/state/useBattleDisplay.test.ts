@@ -62,6 +62,10 @@ describe('displayOf (display state of the battle screen)', () => {
       burnFloat: null,
       summonBanner: null,
       summonFx: { calledAt: null, entered: {}, fell: {} },
+      exhumeFx: {},
+      thorns: null,
+      heldThorns: null,
+      sanctuary: { spark: null, broken: null },
       secondChance: null,
     });
   });

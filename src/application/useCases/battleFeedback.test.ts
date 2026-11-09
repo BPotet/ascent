@@ -1,3 +1,4 @@
+import type { Battle } from '../../domain/battle/Battle';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
 import {
   BURN_AFTER_BLEED_MS,
@@ -7,6 +8,8 @@ import {
   feedbackFor,
   feedbacksFor,
   SUMMON_AFTER_BURN_MS,
+  THORNS_AFTER_STRIKE_MS,
+  strikeUnderway,
   summonEntryDelay,
 } from './battleFeedback';
 
@@ -338,6 +341,12 @@ describe('the sounds of the Summon (#172)', () => {
     });
   });
 
+  it('plays nothing at the exhumation of the Gravedigger: the sounds come later (#258)', () => {
+    expect(
+      feedbackFor({ type: 'enemyExhumed', at: 0, enemy: 0, slot: 1, kind: 'skeleton' }),
+    ).toEqual({ sound: null, haptic: null });
+  });
+
   it('rustles once for the entry of the whole summon', () => {
     expect(feedbacksFor([entered(1), entered(2)]).map(({ sound }) => sound)).toEqual([
       'wingRustleLoud',
@@ -396,5 +405,55 @@ describe('the powers of #235', () => {
     expect(
       feedbackFor({ type: 'heroHealed', at: 0, power: 'holdFast', heal: 16, heroHp: 46 }),
     ).toEqual(feedbackFor({ type: 'bleedStopped', at: 0 }));
+  });
+});
+
+describe('the Thorns (#259)', () => {
+  const pricked = (loss: number): BattleEvent => ({
+    type: 'thornsPricked',
+    at: 1_000,
+    enemy: 0,
+    loss,
+    heroHp: 28,
+  });
+
+  it('vibrate shortly, without a sound, 300 ms after the strike', () => {
+    expect(THORNS_AFTER_STRIKE_MS).toBe(300);
+    expect(feedbackFor(pricked(2))).toEqual({
+      sound: null,
+      haptic: 'thorns',
+      delayMs: THORNS_AFTER_STRIKE_MS,
+    });
+  });
+
+  it('give nothing at 1 HP, without a loss', () => {
+    expect(feedbackFor(pricked(0))).toEqual({ sound: null, haptic: null });
+  });
+
+  it('keep their delay in an update', () => {
+    expect(feedbacksFor([pricked(2)])).toEqual([
+      { sound: null, haptic: 'thorns', delayMs: THORNS_AFTER_STRIKE_MS },
+    ]);
+  });
+});
+
+describe('the strike underway (#259)', () => {
+  const battle = (phase: Battle['phase']) => ({ phase }) as Battle;
+  const strike = {
+    kind: 'heroStrike',
+    enemy: 0,
+    since: 0,
+    impactAt: 700,
+    press: null,
+    until: 1_200,
+  };
+
+  it('is underway while a hit of the hero is still to resolve', () => {
+    expect(strikeUnderway(battle({ ...strike, resolved: false } as Battle['phase']))).toBe(true);
+  });
+
+  it('is over once its last hit is resolved, or out of the strike', () => {
+    expect(strikeUnderway(battle({ ...strike, resolved: true } as Battle['phase']))).toBe(false);
+    expect(strikeUnderway(battle({ kind: 'hero', since: 0, announced: false }))).toBe(false);
   });
 });

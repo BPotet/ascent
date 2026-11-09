@@ -61,13 +61,14 @@ function battleOf(ascent: Ascent): Battle {
 }
 
 /** Les dégâts de chaque coup de `kind` tirés par l'intention, maudit ou non. */
-function strikes(kind: EnemyKind, cursed: boolean): Record<string, number> {
+function strikes(kind: EnemyKind, cursed: boolean, damagePercent = 100): Record<string, number> {
   const damages: Record<string, number> = {};
   for (let seed = 1; seed < 60; seed += 1) {
     const { intent } = drawIntent(kind, seedRandom(seed), {
       fallenAlly: null,
       stunned: false,
       guardDamaged: false,
+      damagePercent,
       cursed,
     });
     if (intent.category === 'attack') damages[intent.attack] = intent.damage;
@@ -244,7 +245,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(/^le Chevalier déchu n'est pas maudit$/u, () => {
-    expect(world.battle.enemies[0]).toMatchObject({ kind: 'fallenKnight', maxHp: 200 });
+    // #257 : le Chevalier déchu du palier 1 à 80 % (200 → 160).
+    expect(world.battle.enemies[0]).toMatchObject({ kind: 'fallenKnight', maxHp: 160 });
     expect(world.ascent.encounter!.cursed).toBeUndefined();
     expect(cursedCount(world.battle)).toBe(0);
   });
@@ -271,13 +273,21 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and(
-    /^il a 240 PV max, une garde max de 67, des coups de 9, 9 et 14, et son Initiative reste 6$/u,
+    /^il a 192 PV max, une garde max de 67, des coups de 7, 7 et 10, et son Initiative reste 6$/u,
     () => {
-      expect(world.battle.enemies[0]).toMatchObject({ maxHp: 240, maxGuard: 67 });
-      expect(ENEMIES.fallenKnight.moves.map(({ damage }) => cursedValue(damage))).toEqual([
-        9, 9, 14,
-      ]);
-      expect(strikes('fallenKnight', true)).toEqual({ basic: 9, delayed: 9, perilous: 14 });
+      // #257 : 80 % au palier 1 (160 PV ; coups 6, 6 et 9), puis +20 % maudit.
+      expect(world.battle.enemies[0]).toMatchObject({ maxHp: 192, maxGuard: 67 });
+      const { hpPercent } = encounterMultiplier(1, 'elite');
+      expect(
+        ENEMIES.fallenKnight.moves.map(({ damage }) =>
+          cursedValue(scaleByPercent(damage, hpPercent)),
+        ),
+      ).toEqual([7, 7, 10]);
+      expect(strikes('fallenKnight', true, hpPercent)).toEqual({
+        basic: 7,
+        delayed: 7,
+        perilous: 10,
+      });
       expect(enemyInitiative(world.battle.enemies[0]!)).toBe(6);
     },
   );

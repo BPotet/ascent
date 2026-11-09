@@ -1,5 +1,12 @@
 import type { KeyValueStore } from '../ports/KeyValueStore';
-import { BATTLE_HINT_SEEN_KEYS, dismissBattleHint, getBattleHint } from './battleHints';
+import {
+  BATTLE_HINT_SEEN_KEYS,
+  dismissBattleHint,
+  dismissEncounterHint,
+  encounterHintKey,
+  getBattleHint,
+  getEncounterHint,
+} from './battleHints';
 
 function mapStore(): KeyValueStore & { values: Map<string, string> } {
   const values = new Map<string, string>();
@@ -42,5 +49,22 @@ describe('battle hints (bulles d’aide du combat)', () => {
     await dismissBattleHint({ keyValueStore }, 'hero');
 
     await expect(getBattleHint({ keyValueStore }, 'defense')).resolves.toBe(true);
+  });
+});
+
+describe('the first encounter bubble of an Elite (#258, D8)', () => {
+  it('is stored under a key of its own, per Elite', () => {
+    expect(encounterHintKey('gravedigger')).toBe('battle.hint.encounter.gravedigger.seen');
+  });
+
+  it('shows until it is seen, once per Elite', async () => {
+    const keyValueStore = mapStore();
+    await expect(getEncounterHint({ keyValueStore }, 'gravedigger')).resolves.toBe(true);
+
+    await dismissEncounterHint({ keyValueStore }, 'gravedigger');
+
+    await expect(getEncounterHint({ keyValueStore }, 'gravedigger')).resolves.toBe(false);
+    expect(keyValueStore.values.get('battle.hint.encounter.gravedigger.seen')).toBe('1');
+    await expect(getEncounterHint({ keyValueStore }, 'twins')).resolves.toBe(true);
   });
 });

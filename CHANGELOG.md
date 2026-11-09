@@ -2,6 +2,20 @@
 
 Toutes les évolutions notables d'Ascent. Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/). Les versions sont calculées à partir des [Conventional Commits](https://www.conventionalcommits.org/fr/v1.0.0/).
 
+## [0.8.0] - 2026-11-09
+
+L'épique #245 « Élites escortées et nouvelles Élites », terminée : aux paliers 2 et 3, l'Élite arrive escortée, et chaque palier gagne une 3ᵉ Élite avec sa mécanique signature.
+
+### Nouveautés pour le joueur
+
+- **L'Élite escortée** (build de preview) : aux paliers 2 et 3, la porte Élite annonce une Élite escortée, de 1 ennemi au palier 2 et de 2 au palier 3, sans dire lesquels. Au combat, l'Élite couronnée mène à gauche, son escorte d'ennemis ordinaires du palier à sa droite ; il faut tous les battre, et « L'escorte reste » quand l'Élite tombe la première. En contrepartie, les PV et les dégâts des Élites passent à 80 / 80 / 88 % aux paliers 1, 2 et 3 ; les gardes et les boss ne changent pas (#257, #261).
+- **Le Fossoyeur et la règle du sac** (build de preview) : aux Catacombes, une 3ᵉ Élite, le Fossoyeur, exhume un Squelette aux manches paires. Sa pelle l'annonce d'avance, une garde brisée avant son tour l'en empêche, et un seul Squelette exhumé tient debout à la fois ; une bulle le présente à la première rencontre. Une porte Élite mène d'abord aux Élites pas encore affrontées dans le palier (#258, #262).
+- **La Mère-ronce et ses Épines, le Bedeau et son Sanctuaire** (build de preview) : aux Jardins de cendre, la Mère-ronce pique le héros de 2 PV à chaque frappe tant qu'elle n'est pas étourdie ; au Beffroi, le Sanctuaire du Bedeau divise par deux les dégâts qu'il subit tant que sa garde tient. Briser la garde devient l'objectif de ces deux combats (#259, #263).
+
+### Technique
+
+- Maquettes validées de l'épique #245 (#260).
+
 ## [0.7.0] - 2026-11-07
 
 L'épique #232 « L'arbre de pouvoirs du héros », terminée : après le socle arrivé en 0.6.0 (#235, #242), les frappes de pouvoir, le choix des pouvoirs équipés et le Serment qui lie une habitude à un pouvoir. Et l'épique #243 « Rééquilibrage, un palier 3 qui résiste » : les gardes, les Élites, les boss et les soins sont revus pour que le Sommet redevienne un vrai défi.

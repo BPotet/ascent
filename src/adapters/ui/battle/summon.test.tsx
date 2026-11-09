@@ -103,7 +103,7 @@ describe('the tag « Invoquée » on the frame (#172, I3)', () => {
       <EnemyColumn
         view={mothkin}
         index={1}
-        slot={sceneGeometry(412, 440, 3, { summoner: true }).enemies[1]!}
+        slot={sceneGeometry(412, 440, 3, { lead: true }).enemies[1]!}
         sealed={false}
         float={null}
         uiNow={() => 0}

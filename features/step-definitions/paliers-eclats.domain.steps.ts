@@ -496,14 +496,13 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(
-    /^l'Élite est le Premier Pèlerin ou le Saint de pierre, tirés à égalité avec la graine de l'ascension$/u,
+    /^l'Élite est le Premier Pèlerin, le Saint de pierre ou le Bedeau \(#259\), tirés à un tiers chacun avec la graine de l'ascension$/u,
     () => {
       const drawn = SEEDS.map((seed) => drawElite(TIERS[3].elites, seedRandom(seed)).value);
-      expect(new Set(drawn)).toEqual(new Set(['firstPilgrim', 'stoneSaint']));
-      expect(drawn.filter((elite) => elite === 'firstPilgrim').length / drawn.length).toBeCloseTo(
-        0.5,
-        1,
-      );
+      expect(new Set(drawn)).toEqual(new Set(['firstPilgrim', 'stoneSaint', 'beadle']));
+      for (const elite of TIERS[3].elites) {
+        expect(drawn.filter((each) => each === elite).length / drawn.length).toBeCloseTo(1 / 3, 1);
+      }
     },
   );
 

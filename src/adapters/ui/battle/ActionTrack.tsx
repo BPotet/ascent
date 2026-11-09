@@ -151,10 +151,19 @@ function TrackCase({
     'worklet';
     return { opacity: step.get() > 0 ? 0.4 : 0 };
   }, [step]);
-  const pending = entry.pending === true;
+  // Un invoqué annoncé (#172) ou un ennemi exhumé (#258) : sa case est en pointillé.
+  const exhumed = entry.exhumed === true;
+  const pending = entry.pending === true || exhumed;
+  const testID = ghost
+    ? 'track-ghost'
+    : exhumed
+      ? 'track-entry-exhumed'
+      : entry.pending === true
+        ? 'track-entry-pending'
+        : 'track-entry';
   return (
     <Animated.View
-      testID={ghost ? 'track-ghost' : pending ? 'track-entry-pending' : 'track-entry'}
+      testID={testID}
       style={[
         styles.entry,
         entry.actor === 'hero' && styles.hero,
@@ -184,6 +193,12 @@ function TrackCase({
       {entry.cursed === true ? (
         <View pointerEvents="none" testID="track-cursed-skull" style={styles.cursedSkull}>
           <PixelIcon name="skull" color={roles.pink} />
+        </View>
+      ) : null}
+      {entry.crowned === true ? (
+        // La couronne d'Élite (#257, maquette `.fp .bdg`) : en coin opposé au crâne du maudit (E6).
+        <View pointerEvents="none" testID="track-crown" style={styles.crown}>
+          <PixelIcon name="crown8" color={roles.rarityEpic} />
         </View>
       ) : null}
       {shade.veil > 0 ? (
@@ -374,6 +389,18 @@ const styles = StyleSheet.create({
   // L'ennemi maudit (#209, maquette `.fp.cursed`) : fond d'erreur et trait de malédiction, sous le
   // double cadre d'or quand il agit ; le crâne en coin (`.skb`) le dit sans la couleur.
   cursed: { backgroundColor: roles.errorBg, borderColor: roles.curse },
+  crown: {
+    position: 'absolute',
+    left: -6,
+    top: -6,
+    width: 18,
+    height: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: roles.night,
+    borderWidth: 1,
+    borderColor: roles.rarityEpic,
+  },
   cursedSkull: {
     position: 'absolute',
     right: -6,

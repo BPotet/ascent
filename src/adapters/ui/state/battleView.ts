@@ -2,6 +2,7 @@ import type { Actor } from '../../../domain/battle/actionOrder';
 import { ATTACKS } from '../../../domain/battle/attacks';
 import {
   equippedOf,
+  escortedElite,
   nextRoundOrder,
   powerAvailability,
   powerCost,
@@ -11,7 +12,17 @@ import {
   type EnemyState,
 } from '../../../domain/battle/Battle';
 import type { PhaseDirection } from '../../../domain/battle/BattleEvent';
-import { ENEMIES, type EnemyKind, type HeroKind } from '../../../domain/battle/combatants';
+import {
+  ENEMIES,
+  eliteSignature,
+  type EliteSignature,
+  type EnemyKind,
+  type HeroKind,
+} from '../../../domain/battle/combatants';
+import { exhumeMark, type ExhumeMark } from '../../../domain/battle/exhume';
+import { sanctuaryUp } from '../../../domain/battle/sanctuary';
+import { thornsActive } from '../../../domain/battle/thorns';
+import { summonedKind } from '../../../domain/battle/summon';
 import { POWERS, type PowerKind } from '../../../domain/battle/powers';
 import type { PowerKeyAvailability } from '../format/powerText';
 import { shownIntent, type ShownIntent } from '../../../domain/battle/shownIntent';
@@ -23,8 +34,12 @@ import {
   enemyName,
   enemyTag,
   guardText,
+  exhumeLineText,
+  signatureText,
   stunnedLabel,
+  type SignatureMarkState,
 } from '../format/battleText';
+import type { IconName } from '../pixelArt/sprites/icons';
 
 /** Le temps mort affiché par l'étiquette « Attends » : de son début à sa fin, en ms. */
 export interface LockSpan {
@@ -60,6 +75,30 @@ export interface TrackEntry {
   readonly pending?: true;
   /** Un ennemi maudit (#209) : sa case est rose, avec un crâne en coin. */
   readonly cursed?: true;
+  /**
+   * L'Élite escortée tant qu'un ennemi d'escorte est debout (#257, E2) : sa case porte la couronne
+   * d'Élite ; seule, elle la perd (E8).
+   */
+  readonly crowned?: true;
+  /**
+   * Un ennemi entré par une Exhumation (#258, F3, F5) : sa case est en pointillé dans l'aperçu de la
+   * manche suivante. Un invoqué de #172 ne l'a pas (décision de l'orchestrateur).
+   */
+  readonly exhumed?: true;
+}
+
+/**
+ * La marque de signature d'une Élite (`SignatureMark`, #258, D8), une seule lecture par ennemi :
+ * sa mécanique, son glyphe, son mot sous le nom, sa phrase au lecteur d'écran, grisée (`off`) ou
+ * soulignée (`now`). #259 y ajoute les Épines et le Sanctuaire.
+ */
+export interface SignatureView {
+  readonly variant: EliteSignature;
+  readonly glyph: IconName;
+  readonly text: string;
+  readonly speech: string;
+  readonly off: boolean;
+  readonly now: boolean;
 }
 
 /**
@@ -154,6 +193,20 @@ export interface EnemyView {
    * `tag` ; absente, il n'est pas maudit.
    */
   readonly curse?: string;
+  /**
+   * L'Élite d'une Élite escortée (#257, E2) : la couronne d'Élite avant son nom, gardée quand son
+   * escorte est tombée (E8) ; absent, non.
+   */
+  readonly elite?: true;
+  /** Un ennemi d'escorte (#257) : sa plaque fait 100 dp au plus ; absent, non. */
+  readonly escort?: true;
+  /** La marque de signature d'une Élite (#258) ; absente sans signature, ou tombée. */
+  readonly signature?: SignatureView;
+  /**
+   * Le liseré d'acier de la barre de garde (#259, B1) : le Sanctuaire du Bedeau le protège ; absent,
+   * non (garde à 0, étourdi, ou sans Sanctuaire).
+   */
+  readonly guardWard?: true;
   readonly label: string;
 }
 
@@ -179,8 +232,11 @@ export interface BattleView {
   readonly dust: readonly number[];
   /** Les colonnes de la scène : les ennemis de la première ligne et les places de poussière. */
   readonly columns: number;
-  /** La disposition du boss qui invoque, à trois colonnes (#172, maquette « boss3 »). */
-  readonly summonerLayout: boolean;
+  /**
+   * La disposition d'un ennemi qui mène, sur 1,25 colonne, plus haut : le boss qui invoque, à trois
+   * colonnes (#172, maquette « boss3 »), ou l'Élite escortée, à deux ou trois (#257, « el2 », « el3 »).
+   */
+  readonly leadLayout: boolean;
 }
 
 /** La durée de l'annonce « À toi » quand la phase du héros commence sans transition. */
@@ -213,6 +269,11 @@ function powerSlot(battle: Battle, power: PowerKind): PowerSlot {
   };
 }
 
+/** L'Élite escortée a encore un ennemi d'escorte debout (#257) : elle n'est pas seule. */
+function escortStanding(battle: Battle): boolean {
+  return battle.enemies.some((enemy) => enemy.escort === true && enemy.hp > 0);
+}
+
 /** La case de `actor` dans la frise d'action : le héros, ou l'ennemi à cet indice. */
 export function trackEntry(battle: Battle, actor: Actor): TrackEntry {
   if (actor === 'hero') return { actor, fighter: battle.heroKind, phase2: false };
@@ -222,17 +283,20 @@ export function trackEntry(battle: Battle, actor: Actor): TrackEntry {
     fighter: enemy.kind,
     phase2: enemy.phase2 === true,
     ...(enemy.cursed === true && { cursed: true as const }),
+    ...(escortedElite(battle) === actor && escortStanding(battle) && { crowned: true as const }),
   };
 }
 
 /**
  * Une case de l'aperçu de la manche suivante : un ennemi invoqué annoncé y est déjà, à sa place, en
- * pointillé (#172).
+ * pointillé (#172), comme un ennemi exhumé (#258).
  */
 function nextEntry(battle: Battle, actor: Actor): TrackEntry {
   const summon = pendingSummon(battle);
   if (actor === 'hero' || summon === null || !summon.slots.includes(actor)) {
-    return trackEntry(battle, actor);
+    const entry = trackEntry(battle, actor);
+    const exhumed = actor !== 'hero' && battle.enemies[actor]?.exhumed === true;
+    return exhumed ? { ...entry, exhumed: true } : entry;
   }
   return { actor, fighter: summon.kind, phase2: false, pending: true };
 }
@@ -249,13 +313,38 @@ export function actionTrackView(battle: Battle): ActionTrackView {
   };
 }
 
+/**
+ * Le prix de la cible à signature, sur la ligne du pouce (#259, M1, B1) : les Épines de la
+ * Mère-ronce non étourdie, le Sanctuaire du Bedeau tant que sa garde tient.
+ */
+function signatureLine(target: EnemyState): string {
+  switch (eliteSignature(target.kind)) {
+    case 'thorns':
+      return thornsActive(target)
+        ? ` · Épines : −${ENEMIES[target.kind].thorns!.damage} PV par frappe`
+        : '';
+    case 'sanctuary':
+      return sanctuaryUp(target) ? ' · Sanctuaire, ½ des dégâts' : '';
+    default:
+      return '';
+  }
+}
+
 function targetLine(battle: Battle): ZoneLine | null {
   const target = battle.enemies[battle.target];
   if (target === undefined) return null;
+  // Une Élite qui exhume (#258, F2, F5) : la ligne dit comment l'en empêcher, ou pourquoi elle
+  // n'exhume pas, lu dans `exhumeMark`.
+  const exhumer = battle.enemies.findIndex((enemy) => eliteSignature(enemy.kind) === 'exhume');
+  const mark = exhumer < 0 ? null : exhumeMark(battle, exhumer);
+  const exhume =
+    mark === null
+      ? ''
+      : exhumeLineText(battle.enemies[exhumer]!.kind, mark.state, exhumer === battle.target);
   return {
     before: 'Cible : ',
     strong: enemyName(target),
-    after: target.stun === null ? '' : ' · ×1,5',
+    after: `${exhume}${signatureLine(target)}${target.stun === null ? '' : ' · ×1,5'}`,
   };
 }
 
@@ -265,6 +354,59 @@ function activeEnemy(battle: Battle): number | null {
   if (phase.kind !== 'enemy') return null;
   const { step } = phase;
   return step.kind === 'lostAction' || step.kind === 'guardRestore' ? null : step.enemy;
+}
+
+/** Le glyphe de chaque état de la marque Exhumer (maquette 245) : la pelle, fendue, l'os. */
+const EXHUME_GLYPHS: Readonly<Record<ExhumeMark['state'], IconName>> = {
+  next: 'shovel8',
+  now: 'shovel8',
+  lost: 'crack8',
+  standing: 'bone8',
+};
+
+/**
+ * L'état de la marque de l'ennemi `index`, lu dans le domaine, selon sa mécanique (#258, #259) ;
+ * `null` sans signature, ou tombé.
+ */
+function signatureMark(
+  battle: Battle,
+  index: number,
+  variant: EliteSignature,
+): SignatureMarkState | null {
+  const enemy = battle.enemies[index]!;
+  if (variant === 'exhume') return exhumeMark(battle, index);
+  if (enemy.hp <= 0) return null;
+  return variant === 'thorns'
+    ? { state: 'thorns', off: !thornsActive(enemy) }
+    : { state: 'sanctuary', off: !sanctuaryUp(enemy) };
+}
+
+/** Le glyphe d'une marque : celui de l'état d'Exhumer, l'épine, l'écu d'acier ou sa fêlure. */
+function signatureGlyph(mark: SignatureMarkState): IconName {
+  switch (mark.state) {
+    case 'thorns':
+      return 'thorn8';
+    case 'sanctuary':
+      return mark.off ? 'crack8' : 'ward8';
+    default:
+      return EXHUME_GLYPHS[mark.state];
+  }
+}
+
+/** La marque de signature de l'ennemi `index`, lue dans le domaine ; `null` sans signature. */
+function signatureView(battle: Battle, index: number): SignatureView | null {
+  const { kind } = battle.enemies[index]!;
+  const variant = eliteSignature(kind);
+  const mark = variant === null ? null : signatureMark(battle, index, variant);
+  if (variant === null || mark === null) return null;
+  const off = 'off' in mark ? mark.off : mark.state === 'lost' || mark.state === 'standing';
+  return {
+    variant,
+    glyph: signatureGlyph(mark),
+    ...signatureText(kind, mark),
+    off,
+    now: mark.state === 'now',
+  };
 }
 
 function enemyView(
@@ -277,6 +419,9 @@ function enemyView(
   const target = !trimmed && index === battle.target;
   const intent = shownIntent(battle, index);
   const stunned = enemy.stun !== null;
+  const elite = escortedElite(battle) === index;
+  const escort = enemy.escort === true;
+  const signature = signatureView(battle, index);
   return {
     kind: enemy.kind,
     name: trimmed ? null : ENEMY_NAMES[enemy.kind],
@@ -308,7 +453,17 @@ function enemyView(
     tag: enemyTag(enemy),
     ...(enemy.summoned === true && { summoned: true }),
     ...(enemy.cursed === true && { curse: cursedTag(enemy)! }),
-    label: enemyLabel(enemy, intent, target),
+    ...(elite && { elite: true as const }),
+    ...(escort && { escort: true as const }),
+    ...(signature !== null && { signature }),
+    ...(enemy.hp > 0 && sanctuaryUp(enemy) && { guardWard: true as const }),
+    label: enemyLabel(
+      enemy,
+      intent,
+      target,
+      elite || signature !== null ? 'elite' : escort && enemy.hp > 0 ? 'escort' : undefined,
+      signature?.speech,
+    ),
   };
 }
 
@@ -325,8 +480,12 @@ export function battleView(battle: Battle): BattleView {
     enemyView(battle, enemy, index, { trimmed, active }),
   );
   const dust = [...(pendingSummon(battle)?.slots ?? [])].sort((left, right) => left - right);
-  const columns = Math.max(enemies.length, ...dust.map((slot) => slot + 1));
   const [first] = battle.enemies;
+  // Le Fossoyeur et son Squelette exhumé (#258, D7) : trois colonnes dès la 1re entrée, la 3e vide
+  // jusqu'à une 2e Exhumation ; la scène ne se redispose qu'une fois.
+  const exhuming = first !== undefined && ENEMIES[first.kind].exhume !== undefined;
+  const columns =
+    exhuming && enemies.length >= 2 ? 3 : Math.max(enemies.length, ...dust.map((slot) => slot + 1));
   const base = {
     banner: null,
     line: null,
@@ -337,8 +496,9 @@ export function battleView(battle: Battle): BattleView {
     trimmed,
     dust,
     columns,
-    summonerLayout:
-      columns === 3 && first !== undefined && ENEMIES[first.kind].phase2Summon !== undefined,
+    leadLayout:
+      escortedElite(battle) !== null ||
+      (columns === 3 && first !== undefined && summonedKind(first.kind) !== null),
   };
   const heroPad = (locked: boolean, lock: LockSpan | null): ActionPad => ({
     kind: 'hero',

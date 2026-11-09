@@ -79,6 +79,7 @@ import {
   sparkFrame,
 } from './scene/sceneEffects';
 import { burnFlames, burnHitFrame } from './scene/burnFlames';
+import { exhumeDustFrame, exhumeLook } from './scene/exhumeRise';
 import { summonDustFrame, summonedOpacity, type SceneSummon } from './scene/summonDust';
 import { risenPose, secondChanceLook, type SceneSecondChance } from './scene/secondChanceRise';
 import {
@@ -88,6 +89,13 @@ import {
   retaliationBurst,
   type ScenePowers,
 } from './scene/powerScene';
+import {
+  NO_SCENE_SIGNATURES,
+  thornSpikes,
+  wardShards,
+  wardSparkFrame,
+  type SceneSignatures,
+} from './scene/signatureScene';
 import type { HeroPose, SceneBurn, SceneEnemy, SceneSpark, SceneTimeline } from './sceneTypes';
 
 export interface BattleSceneProps {
@@ -133,6 +141,11 @@ export interface BattleSceneProps {
    * d'Entaille et l'éclat d'or de Représailles. Par défaut, aucun.
    */
   readonly powers?: ScenePowers;
+  /**
+   * Les signatures de #259, dessinées en code : les pointes de la piqûre des Épines, l'étincelle
+   * d'acier d'un coup amorti et les éclats du Sanctuaire rompu. Par défaut, aucune.
+   */
+  readonly signatures?: SceneSignatures;
   readonly reducedMotion: boolean;
   /** L'horloge du fil UI : un worklet, sur la base de l'horloge de combat (méthode a). */
   readonly uiNow: () => number;
@@ -209,9 +222,11 @@ const FADED = [
 /**
  * Les places de l'atlas des effets : éclair, étincelle, deux reflets, trois étoiles, l'écu du
  * Rempart, ses 4 éclats, les 4 éclats de la riposte sur l'ennemi (#128), la Brûlure (#171) : 5
- * flammes ou fumées et l'éclat de braise, et la poussière de l'Invocation sur 3 places (#172).
+ * flammes ou fumées et l'éclat de braise, la poussière de l'Invocation sur 3 places (#172), d'os
+ * pour l'Exhumation (#258), et les signatures de #259 : 6 pointes des Épines, l'étincelle d'acier et
+ * 5 éclats du Sanctuaire rompu.
  */
-const EFFECT_SLOTS = 25;
+const EFFECT_SLOTS = 37;
 /** Les nombres d'une place : effet, image, x, y, échelle. */
 const EFFECT_FIELDS = 5;
 const EFFECT_ORDER: readonly EffectKind[] = [
@@ -224,10 +239,13 @@ const EFFECT_ORDER: readonly EffectKind[] = [
   'stars',
   'shield',
   'silverShard',
+  'thornSpike',
+  'wardShard',
   'burn',
   'burnHit',
   'burnOut',
   'summon',
+  'boneDust',
 ];
 /**
  * L'écu du Rempart, en pixels d'art du héros (maquette, `.aura`) : le centre de sa case de 15, calé
@@ -457,7 +475,7 @@ function useEnemyLook(
   timeline: SharedValue<SceneTimeline | null>,
   reducedMotion: boolean,
 ): DerivedValue<SpriteLook<SceneFrame>> {
-  const { standing, down, losingAction, rising, downSince } = enemy;
+  const { standing, down, losingAction, rising, downSince, exhumedAt } = enemy;
   const { reach } = slot;
   const { x, y } = origin;
   return useDerivedValue<SpriteLook<SceneFrame>>(() => {
@@ -475,9 +493,15 @@ function useEnemyLook(
         y: y + Math.round((reach.y * pose.reach) / 2) * 2 - pose.lift * 2,
       };
     }
+    // Le Squelette exhumé sort de terre (#258) : le tas d'os, puis il monte, sous le sol d'abord.
+    const exhuming = standing ? exhumeLook(exhumedAt, now, reducedMotion) : null;
+    if (exhuming !== null) {
+      return { frame: exhuming.frame, tier: 0, red: false, poses: null, x, y: y + exhuming.sink };
+    }
     const rest = restPose({ standing, down, losingAction, rising, downSince }, index, now, extras);
     return { frame: rest.frame, tier: 0, red: false, poses: null, x, y };
   }, [
+    exhumedAt,
     clock,
     timeline,
     index,
@@ -533,6 +557,7 @@ export function BattleScene({
   summon = null,
   secondChance = null,
   powers = NO_SCENE_POWERS,
+  signatures = NO_SCENE_SIGNATURES,
   reducedMotion,
   uiNow,
 }: BattleSceneProps) {
@@ -551,6 +576,8 @@ export function BattleScene({
   useEffect(() => sharedRise.set(secondChance), [sharedRise, secondChance]);
   const sharedPowers = useSharedValue(powers);
   useEffect(() => sharedPowers.set(powers), [sharedPowers, powers]);
+  const sharedSignatures = useSharedValue(signatures);
+  useEffect(() => sharedSignatures.set(signatures), [sharedSignatures, signatures]);
   const sharedSummon = useSharedValue(summon ?? NO_SUMMON);
   useEffect(() => sharedSummon.set(summon ?? NO_SUMMON), [sharedSummon, summon]);
 
@@ -634,6 +661,9 @@ export function BattleScene({
   // L'Invocation (#172) : un invoqué paraît une fois la poussière levée, s'efface à sa chute ;
   // l'ombre au sol d'un invoqué retombé en poussière s'efface avec lui.
   const faded = enemies.map((enemy) => enemy.dimmed || !enemy.standing);
+  // Le tas d'os à 70 %, puis la montée en fondu en mouvement réduit (#258).
+  const exhumedAt = [0, 1, 2].map((index) => enemies[index]?.exhumedAt);
+  const exhumed = enemies.map((enemy) => enemy.exhumedAt !== undefined);
   const shown0 = useDerivedValue(
     () => summonedOpacity(sharedSummon.get(), 0, clock.get(), reducedMotion),
     [sharedSummon, clock, reducedMotion],
@@ -647,20 +677,33 @@ export function BattleScene({
     [sharedSummon, clock, reducedMotion],
   );
   const spriteOpacity0 = useDerivedValue(
-    () => shown0.get() * (faded[0] === true ? DIMMED_OPACITY : 1),
-    [shown0, faded],
+    () =>
+      shown0.get() *
+      (faded[0] === true ? DIMMED_OPACITY : 1) *
+      (exhumeLook(exhumedAt[0], clock.get(), reducedMotion)?.opacity ?? 1),
+    [shown0, faded, exhumedAt, clock, reducedMotion],
   );
   const spriteOpacity1 = useDerivedValue(
-    () => shown1.get() * (faded[1] === true ? DIMMED_OPACITY : 1),
-    [shown1, faded],
+    () =>
+      shown1.get() *
+      (faded[1] === true ? DIMMED_OPACITY : 1) *
+      (exhumeLook(exhumedAt[1], clock.get(), reducedMotion)?.opacity ?? 1),
+    [shown1, faded, exhumedAt, clock, reducedMotion],
   );
   const spriteOpacity2 = useDerivedValue(
-    () => shown2.get() * (faded[2] === true ? DIMMED_OPACITY : 1),
-    [shown2, faded],
+    () =>
+      shown2.get() *
+      (faded[2] === true ? DIMMED_OPACITY : 1) *
+      (exhumeLook(exhumedAt[2], clock.get(), reducedMotion)?.opacity ?? 1),
+    [shown2, faded, exhumedAt, clock, reducedMotion],
   );
   const spriteOpacities = [spriteOpacity0, spriteOpacity1, spriteOpacity2];
   const fellSlots = Object.keys(summon?.fell ?? {}).map(Number);
-  const summonedSlots = [...Object.keys(summon?.entered ?? {}).map(Number), ...fellSlots];
+  const summonedSlots = [
+    ...Object.keys(summon?.entered ?? {}).map(Number),
+    ...fellSlots,
+    ...exhumed.flatMap((yes, index) => (yes ? [index] : [])),
+  ];
   const shadow0 = useDerivedValue(
     () => GROUND_SHADOW_OPACITY * (fellSlots.includes(0) ? shown0.get() : 1),
     [shown0, fellSlots],
@@ -794,12 +837,17 @@ export function BattleScene({
         hero.scale,
       );
     }
-    // La poussière de l'Invocation (#172), sur la case de chaque place, sous l'éclair.
+    // La poussière de l'Invocation (#172), sur la case de chaque place, sous l'éclair ; en os pour
+    // un Squelette exhumé, à sa sortie de terre et à sa chute avec le Fossoyeur (#258).
     const summoning = sharedSummon.get();
     for (let slot = 0; slot < summonCenters.length; slot += 1) {
-      const frame = summonDustFrame(summoning, slot, now, reducedMotion);
       const center = summonCenters[slot];
-      if (frame !== null && center !== undefined) place('summon', frame, center.x, center.y);
+      if (center === undefined) continue;
+      const bone = exhumed[slot] === true;
+      const frame =
+        summonDustFrame(summoning, slot, now, reducedMotion) ??
+        (bone ? exhumeDustFrame(exhumedAt[slot], now, reducedMotion) : null);
+      if (frame !== null) place(bone ? 'boneDust' : 'summon', frame, center.x, center.y);
     }
     const flash = impactFlash(current, now);
     if (flash !== null) place('flash', flash, chest.x, chest.y);
@@ -810,6 +858,21 @@ export function BattleScene({
     const sparkStep = sparkFrame(sparkNow, now);
     if (sparkNow !== null && sparkStep !== null) {
       place(sparkNow.kind === 'gold' ? 'gold' : 'steel', sparkStep, chest.x, chest.y - 8);
+    }
+    // Les signatures de #259 : les pointes vert ronce jaillissent du héros piqué ; l'étincelle
+    // d'acier sur le Bedeau à chaque coup amorti, et ses éclats d'acier à la rupture.
+    const { prick, wardSpark, wardBroken } = sharedSignatures.get();
+    for (const [dx, dy] of thornSpikes(prick, now, reducedMotion)) {
+      place('thornSpike', 0, chest.x + dx, chest.y + dy);
+    }
+    const warded = wardSpark === null ? undefined : enemyCenters[wardSpark.enemy];
+    const wardStep = wardSparkFrame(wardSpark, now, reducedMotion);
+    if (warded !== undefined && wardStep !== null) place('steel', wardStep, warded.x, warded.y);
+    const ruptured = wardBroken === null ? undefined : enemyCenters[wardBroken.enemy];
+    if (ruptured !== undefined) {
+      for (const [dx, dy] of wardShards(wardBroken, now, reducedMotion)) {
+        place('wardShard', 0, ruptured.x + dx, ruptured.y + dy);
+      }
     }
     if (current !== null && current.kind === 'attack') {
       const kind = kinds[current.enemy];
@@ -846,9 +909,12 @@ export function BattleScene({
     sharedSpark,
     sharedBulwark,
     sharedPowers,
+    sharedSignatures,
     sharedBurn,
     sharedSummon,
     summonCenters,
+    exhumed,
+    exhumedAt,
     heroLook,
     shieldAt,
     enemyCenters,

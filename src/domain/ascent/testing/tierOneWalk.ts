@@ -26,7 +26,7 @@ import {
   type Ascent,
   type Encounter,
 } from '../Ascent';
-import { encounterMultiplier } from '../tiers';
+import { encounterMultiplier, encounterMultipliers } from '../tiers';
 
 /** Le nombre de graines rejouées. */
 export const WALKED_SEEDS = 200;
@@ -41,6 +41,9 @@ function intentText(intent: Intent): string {
       return `guard+${intent.gain}`;
     case 'raise':
       return `raise${intent.ally}`;
+    // Tirées sans manche, les intentions de la marche n'exhument jamais (#258, D6).
+    case 'exhume':
+      return `exhume${intent.slot}`;
   }
 }
 
@@ -67,20 +70,20 @@ function intentsText(enemies: readonly EnemyKind[], seed: number, damagePercent:
 }
 
 function encounterText(encounter: Encounter): string {
-  // Le multiplicateur du combat, comme la session le donne (#244) : de palier ou d'Élite et de boss.
-  const tierMultiplier = encounterMultiplier(1, encounter.kind);
+  // Les multiplicateurs du combat, comme la session les donne (#244, #257).
+  const multipliers = encounterMultipliers(1, encounter);
   const { battle } = startBattle({
     seed: encounter.battleSeed,
     defenseHint: false,
     at: 0,
     enemies: encounter.enemies,
-    tierMultiplier,
+    ...multipliers,
   });
   const fresh = battle.enemies.map((enemy) => `${enemy.maxHp}/${enemy.maxGuard}`).join(',');
   return `${encounter.kind}[${encounter.enemies.join(',')}]#${encounter.battleSeed}{${fresh}}<${intentsText(
     encounter.enemies,
     encounter.battleSeed,
-    tierMultiplier.hpPercent,
+    multipliers.tierMultiplier.hpPercent,
   )}>`;
 }
 

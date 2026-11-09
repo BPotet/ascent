@@ -1,7 +1,7 @@
 // La règle du palier (`TIERS`, #38, § 3 de la note du Game Designer) : son nom, son multiplicateur,
 // son Or, la taille de ses groupes, ses ennemis, ses Élites, ses boss et leurs Éclats.
 import { GROUP_SIZE_WEIGHTS } from './enemyGroup';
-import { TIERS, TOP_TIER, encounterMultiplier } from './tiers';
+import { TIERS, TOP_TIER, encounterMultiplier, encounterMultipliers } from './tiers';
 
 describe('the tiers (#38)', () => {
   it('climbs three tiers: the Catacombs, the Ash gardens and the Belfry', () => {
@@ -25,10 +25,11 @@ describe('the tiers (#38)', () => {
   });
 
   it('multiplies its Elites and its bosses by the Elite and boss multiplier (#244, R1)', () => {
+    // #257, décision du 08/11/2026 : la colonne PV et dégâts des Élites à 80 / 80 / 88 %.
     expect([1, 2, 3].map((tier) => TIERS[tier as 1].eliteMultiplier)).toEqual([
-      { hpPercent: 100, guardPercent: 125 },
-      { hpPercent: 120, guardPercent: 140 },
-      { hpPercent: 135, guardPercent: 150 },
+      { hpPercent: 80, guardPercent: 125 },
+      { hpPercent: 80, guardPercent: 140 },
+      { hpPercent: 88, guardPercent: 150 },
     ]);
     expect([1, 2, 3].map((tier) => TIERS[tier as 1].bossMultiplier)).toEqual([
       { hpPercent: 100, guardPercent: 125 },
@@ -45,6 +46,10 @@ describe('the tiers (#38)', () => {
       expect(encounterMultiplier(tier, 'boss')).toBe(TIERS[tier].bossMultiplier);
     },
   );
+
+  it('escorts the Elite with no enemy at tier 1, 1 at tier 2 and 2 at tier 3 (#257, EE1)', () => {
+    expect([TIERS[1].escortSize, TIERS[2].escortSize, TIERS[3].escortSize]).toEqual([0, 1, 2]);
+  });
 
   it('gives back 10 % of the max HP as the respite at tier 1, 5 % at tiers 2 and 3 (#244, R3)', () => {
     expect([TIERS[1].respitePercent, TIERS[2].respitePercent, TIERS[3].respitePercent]).toEqual([
@@ -119,9 +124,9 @@ describe('the tiers (#38)', () => {
 
   it('has its Elites and its bosses', () => {
     expect([TIERS[1].elites, TIERS[2].elites, TIERS[3].elites]).toEqual([
-      ['fallenKnight', 'twins'],
-      ['scarecrow', 'brambleBurner'],
-      ['firstPilgrim', 'stoneSaint'],
+      ['fallenKnight', 'twins', 'gravedigger'],
+      ['scarecrow', 'brambleBurner', 'brambleMother'],
+      ['firstPilgrim', 'stoneSaint', 'beadle'],
     ]);
     expect([TIERS[1].bosses, TIERS[2].bosses, TIERS[3].bosses]).toEqual([
       ['ossuaryWarden', 'facelessPrior'],
@@ -132,5 +137,45 @@ describe('the tiers (#38)', () => {
 
   it('gives 8, 12 and 18 Shards for its boss', () => {
     expect([TIERS[1].bossShards, TIERS[2].bossShards, TIERS[3].bossShards]).toEqual([8, 12, 18]);
+  });
+});
+
+describe('encounterMultipliers (#257, D2)', () => {
+  it.each([1, 2, 3] as const)(
+    'gives a battle or a boss of tier %i no escort multiplier',
+    (tier) => {
+      expect(encounterMultipliers(tier, { kind: 'combat', enemies: ['ghoul', 'ghoul'] })).toEqual({
+        tierMultiplier: TIERS[tier].multiplier,
+        summonMultiplier: TIERS[tier].multiplier,
+      });
+      expect(encounterMultipliers(tier, { kind: 'boss', enemies: ['mothQueen'] })).toEqual({
+        tierMultiplier: TIERS[tier].bossMultiplier,
+        summonMultiplier: TIERS[tier].multiplier,
+      });
+    },
+  );
+
+  it('gives a lone Elite no escort multiplier: at tier 1, or drawn at tier 3 before #257', () => {
+    expect(encounterMultipliers(1, { kind: 'elite', enemies: ['twins'] })).toEqual({
+      tierMultiplier: TIERS[1].eliteMultiplier,
+      summonMultiplier: TIERS[1].multiplier,
+    });
+    expect(encounterMultipliers(3, { kind: 'elite', enemies: ['firstPilgrim'] })).toEqual({
+      tierMultiplier: TIERS[3].eliteMultiplier,
+      summonMultiplier: TIERS[3].multiplier,
+    });
+  });
+
+  it('gives an escorted Elite the Elite multiplier, its escort the multiplier of the tier', () => {
+    expect(encounterMultipliers(2, { kind: 'elite', enemies: ['scarecrow', 'mothkin'] })).toEqual({
+      tierMultiplier: { hpPercent: 80, guardPercent: 140 },
+      summonMultiplier: TIERS[2].multiplier,
+      escortMultiplier: { hpPercent: 135, guardPercent: 125 },
+    });
+    const escorted = encounterMultipliers(3, {
+      kind: 'elite',
+      enemies: ['stoneSaint', 'gargoyle', 'clockJack'],
+    });
+    expect(escorted.escortMultiplier).toBe(TIERS[3].multiplier);
   });
 });

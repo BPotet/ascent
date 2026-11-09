@@ -1,7 +1,8 @@
 # ADR 0018 — Ennemis maudits
 
 - **Statut** : accepté
-- **Avenant** : 7 novembre 2026, l'Élite maudite (#244), voir en fin de document
+- **Avenant** : 7 novembre 2026, l'Élite maudite (#244) ; 8 novembre 2026, l'ennemi maudit de
+  l'Élite escortée (#257), voir en fin de document
 - **Date** : 5 novembre 2026
 - **Décideur** : Architect (notes techniques de #209), écrit par le dev
 - **Contexte produit** : épique #205, story #209 « La malédiction rend des ennemis maudits »
@@ -55,3 +56,18 @@ tirages d'une ascension sans malédiction.
 L'Élite maudite part de la valeur multipliée par le multiplicateur d'Élite et de boss de son palier
 (ADR 0020), comme un ennemi ordinaire part de la valeur du palier : Premier Pèlerin maudit 364 →
 436 PV, garde 82 → 98.
+
+## Avenant du 8 novembre 2026 — l'ennemi maudit de l'Élite escortée (#257, ADR 0023)
+
+- Au plus un ennemi maudit par groupe, toujours. Une seule règle, `eliteCurse(tier, gauge)`, dit
+  qui est maudit dans un combat d'Élite, lue aussi par la porte Élite :
+  - à −2, l'Élite (indice 0, sans tirage), jamais l'escorte ;
+  - à −1 aux paliers 2 et 3, un ennemi d'escorte, tiré à égalité parmi l'escorte
+    (`drawCursedEscort`, indice 1 à la taille de l'escorte), le tirage fait même avec un seul
+    candidat ; l'Élite n'est pas maudite ;
+  - au palier 1 à −1, personne, comme avant.
+- Le tirage de l'ennemi maudit vient après celui de l'escorte et avant la graine du combat.
+- La malédiction s'applique après le multiplicateur de l'ennemi (ADR 0023) : Phalénide d'escorte
+  maudite du palier 2, 25 → 33 → 39 PV, garde 12 → 15 → 18.
+- Avec la colonne des Élites à 88 % au palier 3 (ADR 0020, avenant du 8 novembre 2026), le Premier
+  Pèlerin maudit passe de 436 à **284 PV** (237 + 47), garde 98.

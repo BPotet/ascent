@@ -154,6 +154,27 @@ describe('BattleScene with Skia, its enemies prepared on demand (#38)', () => {
   });
 });
 
+describe('BattleScene with Skia: an escorted Elite (#257)', () => {
+  it.each([
+    [3, ['firstPilgrim', 'bronzeWarden', 'bellNovice']],
+    [2, ['scarecrow', 'mothkin']],
+  ] as const)('mounts an Elite escorted in the lead layout of %i columns', async (count, kinds) => {
+    prepareBattleScene(kinds);
+    await render(
+      <BattleScene
+        {...props({
+          width: 360,
+          geometry: sceneGeometry(360, 440, count, { lead: true }),
+          enemies: kinds.map((kind, index) => ({ ...ENEMIES[0]!, kind, target: index === 0 })),
+          timeline: { ...props().timeline!, enemy: 1 },
+        })}
+      />,
+    );
+
+    expect(drawnTypes()).toContain('skAtlas');
+  });
+});
+
 describe('BattleScene with Skia', () => {
   it('prepares the atlases of the scene once, as Skia images', () => {
     const prepared = prepareBattleScene(PLAYED);
@@ -742,7 +763,7 @@ describe('BattleScene: the glint and the stars follow the displayed pose', () =>
 
   it('lays the dust of the Summon on the two empty slots right of the Moth queen (#172)', async () => {
     prepareBattleScene(['mothQueen']);
-    const boss = sceneGeometry(412, 440, 3, { summoner: true });
+    const boss = sceneGeometry(412, 440, 3, { lead: true });
     const queen: SceneEnemy = { ...ENEMIES[0]!, kind: 'mothQueen', dimmed: false, down: false };
     await render(
       <BattleScene
@@ -770,4 +791,73 @@ describe('BattleScene: the glint and the stars follow the displayed pose', () =>
       }),
     );
   });
+});
+
+describe('BattleScene with Skia: the Gravedigger and his exhumed Skeleton (#258)', () => {
+  const EXHUMING: SceneTimeline = {
+    enemy: 0,
+    kind: 'support',
+    attack: null,
+    support: 'exhume',
+    stepInAt: 2_000,
+    windUpAt: 2_000,
+    windUpMs: 0,
+    until: 2_400,
+    impacts: [],
+    feintAt: null,
+    glints: [],
+    hitStopAt: 0,
+    hitStopUntil: 0,
+  };
+
+  it.each([false, true])(
+    'mounts him in his exhume pose, his Skeleton rising from its bone pile (reduced motion: %s)',
+    async (reducedMotion) => {
+      prepareBattleScene(['gravedigger', 'skeleton']);
+      await render(
+        <BattleScene
+          {...props({
+            geometry: sceneGeometry(390, 440, 3, { lead: true }),
+            enemies: [
+              { ...ENEMIES[0]!, kind: 'gravedigger', down: false, dimmed: false },
+              { ...ENEMIES[0]!, kind: 'skeleton', target: false, down: false, exhumedAt: 2_000 },
+            ],
+            timeline: EXHUMING,
+            spark: null,
+            reducedMotion,
+          })}
+        />,
+      );
+
+      expect(drawnTypes()).toContain('skAtlas');
+    },
+  );
+});
+
+describe('BattleScene with Skia: the Bramble mother and the Beadle (#259)', () => {
+  it.each([false, true])(
+    'mounts them with the spikes of the Thorns, the steel spark and the shards (reduced motion: %s)',
+    async (reducedMotion) => {
+      prepareBattleScene(['brambleMother', 'beadle']);
+      await render(
+        <BattleScene
+          {...props({
+            geometry: sceneGeometry(390, 440, 3, { lead: true }),
+            enemies: [
+              { ...ENEMIES[0]!, kind: 'brambleMother', down: false, dimmed: false },
+              { ...ENEMIES[0]!, kind: 'beadle', target: false, down: true, dimmed: false },
+            ],
+            signatures: {
+              prick: { from: 0 },
+              wardSpark: { at: 0, enemy: 1 },
+              wardBroken: { at: 0, enemy: 1 },
+            },
+            reducedMotion,
+          })}
+        />,
+      );
+
+      expect(drawnTypes()).toContain('skAtlas');
+    },
+  );
 });

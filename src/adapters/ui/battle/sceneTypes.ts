@@ -51,6 +51,11 @@ export interface SceneEnemy {
   readonly phase2?: boolean;
   /** L'instant de sa chute (cassure de garde), `null` s'il est inconnu. */
   readonly downSince: number | null;
+  /**
+   * Un ennemi exhumé (#258) : l'instant où il est sorti de terre à sa place (le tas d'os, puis la
+   * montée), et sa poussière d'os s'il retombe avec le Fossoyeur ; absent, non.
+   */
+  readonly exhumedAt?: number;
 }
 
 /**
@@ -62,8 +67,11 @@ export interface SceneTimeline {
   readonly enemy: number;
   readonly kind: 'stepIn' | 'attack' | 'support';
   readonly attack: AttackKind | null;
-  /** L'intention d'une action de soutien (#38) : sa pose `guard` ou `raiseAlly`. */
-  readonly support?: 'guard' | 'raise' | null;
+  /**
+   * L'intention d'une action de soutien (#38) : sa pose `guard` ou `raiseAlly` ; l'Exhumation du
+   * Fossoyeur (#258), sa pose `exhume`.
+   */
+  readonly support?: 'guard' | 'raise' | 'exhume' | null;
   readonly stepInAt: number;
   readonly windUpAt: number;
   readonly windUpMs: number;

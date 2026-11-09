@@ -45,7 +45,15 @@ import {
 import { NO_MODIFIERS, combineModifiers, heroAttack, type HeroModifiers } from './heroModifiers';
 import { heroInitiative } from './initiative';
 import { cursedValue } from './curse';
-import { drawIntent, raisedHp, type GuardIntent, type Intent, type RaiseIntent } from './intents';
+import { exhumeSlot } from './exhume';
+import {
+  drawIntent,
+  raisedHp,
+  type ExhumeIntent,
+  type GuardIntent,
+  type Intent,
+  type RaiseIntent,
+} from './intents';
 import { MOMENTUM_MAX, MOMENTUM_START, gainMomentum, missingMomentum } from './momentum';
 import {
   BULWARK_DAMAGE_PERCENT,
@@ -73,6 +81,7 @@ import {
 } from './rules';
 import { seedRandom, type BattleSeed, type RandomState } from './SeededRandom';
 import { SECOND_CHANCE_MS, secondChanceHp } from './secondChance';
+import { sanctuaryPercents } from './sanctuary';
 import { selfRevive } from './selfRevive';
 import {
   STRIKE_RECOVERY_MS,
@@ -85,8 +94,9 @@ import {
 } from './strike';
 import { bleedsOn, mergeBleed, tickBleed } from './bleed';
 import { burnAtRoundStart, burnOnBlow } from './burn';
-import { freeSlots, type PendingSummon } from './summon';
+import { freeSlots, summonedKind, type PendingSummon } from './summon';
 import { cappedParryHeal } from './parryHeal';
+import { thornsActive, thornsLoss } from './thorns';
 import { NO_TIER_MULTIPLIER, scaleByPercent, type TierMultiplier } from './tierMultiplier';
 
 export interface HeroState {
@@ -151,6 +161,16 @@ export interface EnemyState {
   readonly summoned?: true;
   /** Un ennemi maudit (`CursedEnemy`, #209) : il le reste jusqu'à la fin du combat, relevé compris. */
   readonly cursed?: true;
+  /**
+   * Un ennemi d'escorte (`Escorte`, #257) : il accompagne l'Élite, au multiplicateur de l'escorte
+   * (`Battle.escortMultiplier`) ; absent, non.
+   */
+  readonly escort?: true;
+  /**
+   * Un ennemi exhumé (`Exhumation`, #258) : entré par l'Exhumation du Fossoyeur, en plus de
+   * `summoned` ; il compte pour le plafond d'Exhumer. Absent, non.
+   */
+  readonly exhumed?: true;
 }
 
 export interface ImpactState {
@@ -204,7 +224,7 @@ export interface AttackStep {
 export interface SupportStep {
   readonly kind: 'support';
   readonly enemy: number;
-  readonly intent: GuardIntent | RaiseIntent;
+  readonly intent: GuardIntent | RaiseIntent | ExhumeIntent;
   readonly since: number;
   readonly until: number;
 }
@@ -304,6 +324,11 @@ export interface Battle {
   readonly tierMultiplier?: TierMultiplier;
   /** Le multiplicateur du palier des ennemis invoqués (#172) ; absent, × 1. */
   readonly summonMultiplier?: TierMultiplier;
+  /**
+   * Le multiplicateur des ennemis d'escorte d'une Élite escortée (#257) ; absent, aucune escorte
+   * (un combat sans escorte, ou un combat d'Élite sauvé avant #257).
+   */
+  readonly escortMultiplier?: TierMultiplier;
   /** L'Invocation annoncée, pas encore entrée (#172) ; absente, aucune. */
   readonly summon?: PendingSummon;
   /** Le répit du palier, en % (#244, R3) ; absent, `RESPITE_PERCENT` (un combat d'avant #244). */
@@ -401,6 +426,11 @@ export interface BattleOptions extends BattleStartOptions {
    */
   readonly summonMultiplier?: TierMultiplier;
   /**
+   * Le multiplicateur de l'escorte d'une Élite escortée (#257) : présent, chaque ennemi de départ
+   * sauf le premier (l'Élite, à l'indice 0) est un ennemi d'escorte ; absent, aucune escorte.
+   */
+  readonly escortMultiplier?: TierMultiplier;
+  /**
    * L'indice de l'ennemi maudit (#209) dans la première ligne ; absent, aucun. Un indice de la
    * réserve ne maudit personne : un renfort ou un invoqué n'est jamais maudit.
    */
@@ -462,6 +492,7 @@ export function startBattle({
   enemies: group,
   tierMultiplier,
   summonMultiplier,
+  escortMultiplier,
   cursed,
   secondChance,
   powers,
@@ -473,7 +504,11 @@ export function startBattle({
   const events: Events = [];
   const enemies = group
     .slice(0, FRONT_LINE_SIZE)
-    .map((kind, index) => freshEnemy(kind, tierMultiplier, index === cursed));
+    .map((kind, index) =>
+      escortMultiplier && index > 0
+        ? { ...freshEnemy(kind, escortMultiplier, index === cursed), escort: true as const }
+        : freshEnemy(kind, tierMultiplier, index === cursed),
+    );
   const battle = startRound(
     {
       now: at,
@@ -487,6 +522,7 @@ export function startBattle({
       ...(modifiers && { modifiers }),
       ...(tierMultiplier && { tierMultiplier }),
       ...(summonMultiplier && { summonMultiplier }),
+      ...(escortMultiplier && { escortMultiplier }),
       ...(respitePercent !== undefined && { respitePercent }),
       hero: {
         hp: heroHp ?? maxHp,
@@ -599,6 +635,14 @@ export function pendingSummon(battle: Battle): PendingSummon | null {
 
 export function isStanding(enemy: EnemyState): boolean {
   return enemy.hp > 0;
+}
+
+/**
+ * L'Élite escortée (#257) : l'indice de l'Élite (0) quand un ennemi du combat est d'escorte ;
+ * `null` dans un combat sans escorte.
+ */
+export function escortedElite(battle: Battle): number | null {
+  return battle.enemies.some((enemy) => enemy.escort === true) ? 0 : null;
 }
 
 /** Les indices des ennemis debout, de gauche à droite. */
@@ -792,6 +836,16 @@ function summonEnter(battle: Battle, events: Events, at: number): Battle {
   return { ...rest, enemies };
 }
 
+/**
+ * Le multiplicateur d'un ennemi (#257, D1) : celui des invoqués pour un invoqué, celui de
+ * l'escorte pour un ennemi d'escorte, sinon celui du combat ; absent, × 1.
+ */
+function enemyMultiplier(battle: Battle, enemy: EnemyState): TierMultiplier | undefined {
+  if (enemy.summoned) return battle.summonMultiplier;
+  if (enemy.escort) return battle.escortMultiplier;
+  return battle.tierMultiplier;
+}
+
 function startRound(previous: Battle, events: Events, at: number): Battle {
   // Saignement, Brûlure, entrée des invoqués, puis le renfort, avant les tirages : l'ordre de la
   // manche est calculé après (P3b, #171, #172). Les invoqués entrent avant le renfort : celui-ci
@@ -799,23 +853,24 @@ function startRound(previous: Battle, events: Events, at: number): Battle {
   const burnt = burnHero(bleedHero(previous, events, at), events, at);
   const battle = reinforce(summonEnter(burnt, events, at), events, at);
   let random = battle.random;
-  // Tous les tirages au début de la manche, ennemis debout de gauche à droite (C2.1).
+  const round = battle.round + 1;
+  // Tous les tirages au début de la manche, ennemis debout de gauche à droite (C2.1). La place
+  // d'une Exhumation est fixée ici (#258, D1) : aucune ne peut être reprise avant son action.
   const enemies = battle.enemies.map((enemy, index) => {
     if (!isStanding(enemy)) return enemy;
     const drawn = drawIntent(enemy.kind, random, {
+      exhumeSlot: exhumeSlot(battle.enemies, index, round),
       fallenAlly: fallenAlly(battle, index),
       stunned: enemy.stun !== null,
       guardDamaged: enemy.guard < enemy.maxGuard,
       phase2: enemy.phase2 === true,
       maxGuard: enemy.maxGuard,
-      damagePercent:
-        (enemy.summoned ? battle.summonMultiplier : battle.tierMultiplier)?.hpPercent ?? 100,
+      damagePercent: enemyMultiplier(battle, enemy)?.hpPercent ?? 100,
       cursed: enemy.cursed === true,
     });
     random = drawn.random;
     return { ...enemy, intent: drawn.intent };
   });
-  const round = battle.round + 1;
   // Les intentions tirées, annoncées avec la manche : une avance peut déjà consommer la première.
   const intents = enemies.map((enemy) => (isStanding(enemy) ? enemy.intent : null));
   events.push({ type: 'roundStarted', at, round, intents });
@@ -1073,16 +1128,40 @@ function startAttack(
   });
 }
 
-/** L'intention Garde (la garde remonte, sans dépasser son maximum) ou Relever (C2, C5.9). */
+/**
+ * L'Exhumation (#258, X2) : un ennemi exhumé entre à la place fixée au tirage, aux valeurs du palier
+ * des invoqués, jamais maudit ni d'escorte ; une place vide allonge la ligne, celle d'un tombé est
+ * reprise. Il n'est pas dans l'ordre de la manche : il n'y agit pas.
+ */
+function exhume(battle: Battle, events: Events, enemy: number, slot: number, at: number): Battle {
+  const kind = ENEMIES[battle.enemies[enemy]!.kind].exhume!.enemy;
+  events.push({ type: 'enemyExhumed', at, enemy, slot, kind });
+  const entering: EnemyState = {
+    ...freshEnemy(kind, battle.summonMultiplier),
+    summoned: true,
+    exhumed: true,
+    raisedRound: battle.round,
+  };
+  const enemies = [...battle.enemies];
+  enemies[slot] = entering;
+  return { ...battle, enemies };
+}
+
+/**
+ * L'intention Garde (la garde remonte, sans dépasser son maximum), Relever (C2, C5.9) ou Exhumer
+ * (#258).
+ */
 function startSupport(
   battle: Battle,
   events: Events,
   enemy: number,
-  intent: GuardIntent | RaiseIntent,
+  intent: GuardIntent | RaiseIntent | ExhumeIntent,
   at: number,
 ): Battle {
   let supported: Battle;
-  if (intent.category === 'guard') {
+  if (intent.category === 'exhume') {
+    supported = exhume(battle, events, enemy, intent.slot, at);
+  } else if (intent.category === 'guard') {
     const state = battle.enemies[enemy]!;
     const guard = Math.min(state.maxGuard, state.guard + intent.gain);
     events.push({ type: 'guardRaised', at, enemy, gain: intent.gain, guard });
@@ -1310,11 +1389,12 @@ function hitEnemy(
 }
 
 /**
- * La chute avec le boss (#172, règle 4) : quand tombe un boss qui invoque, chaque ennemi invoqué
- * encore debout tombe avec lui, sans Or, et une Invocation encore annoncée n'entre jamais.
+ * La chute avec celui qui appelle (#172, règle 4 ; #258, X4) : quand tombe un boss qui invoque ou
+ * le Fossoyeur, chaque ennemi invoqué encore debout tombe avec lui, sans Or, et une Invocation
+ * encore annoncée n'entre jamais. Un seul ennemi appelle par combat.
  */
 function fallWithSummoner(battle: Battle, events: Events, index: number, at: number): Battle {
-  if (ENEMIES[battle.enemies[index]!.kind].phase2Summon === undefined) return battle;
+  if (summonedKind(battle.enemies[index]!.kind) === null) return battle;
   const { summon: _, ...rest } = battle;
   const enemies = battle.enemies.map((enemy, place) => {
     if (enemy.summoned !== true || !isStanding(enemy)) return enemy;
@@ -1386,12 +1466,14 @@ function counterAttack(battle: Battle, events: Events): Battle {
   const counter = step.counter!;
   const hero = heroProfile(battle);
   const modifiers = heroModifiers(battle);
+  // Le Sanctuaire (#259, S1), lu avant le coup : la contre-attaque et la Riposte aussi.
+  const warded = sanctuaryPercents(battle.enemies[step.enemy]!);
   const input = {
     attackPower: heroAttack(hero.attackPower, modifiers),
     guardDamage: hero.guardDamage,
     counterPercent: hero.counterPercent,
     stunned: battle.enemies[step.enemy]!.stun !== null,
-    attackPercents: modifiers.attackPercents,
+    attackPercents: [...modifiers.attackPercents, ...warded],
     guardPercents: modifiers.guardDamagePercents,
     counterPercents: modifiers.counterPercents,
     stunnedBonusPercent: modifiers.stunnedBonusPercent,
@@ -1417,6 +1499,7 @@ function counterAttack(battle: Battle, events: Events): Battle {
     guardDamage: blow.guard,
     until: counter.until,
     ...(retaliated && { retaliation: true as const }),
+    ...(warded.length > 0 && { sanctuary: true as const }),
   });
   const countered = withStep(retaliated ? { ...battle, hero: rest } : battle, {
     ...step,
@@ -1697,13 +1780,16 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
   const judgement = phase.press?.judgement ?? null;
   const modifiers = heroModifiers(battle);
   const rend = phase.rend === true;
+  // L'ennemi lu avant le coup (#259, T2, S3) : le Sanctuaire et les Épines.
+  const target = battle.enemies[phase.enemy]!;
+  const warded = sanctuaryPercents(target);
   const blow = strikeBlow({
     attackPower: heroAttack(hero.attackPower, modifiers),
     guardDamage: hero.guardDamage,
     judgement,
     perfectBonusPercents: modifiers.perfectStrikeBonusPercents,
-    stunned: battle.enemies[phase.enemy]!.stun !== null,
-    attackPercents: [...modifiers.attackPercents, profile.hpPercent],
+    stunned: target.stun !== null,
+    attackPercents: [...modifiers.attackPercents, profile.hpPercent, ...warded],
     guardPercents: [
       ...modifiers.guardDamagePercents,
       ...(rend ? [POWERS.rend.guardPercentNextStrike!] : []),
@@ -1722,6 +1808,7 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
     ...(profile.hits > 1 && { hit }),
     ...(rend && { rend }),
     ...(phase.power !== undefined && { power: phase.power }),
+    ...(warded.length > 0 && { sanctuary: true as const }),
   });
   const struck = hitEnemy(
     { ...battle, phase: { ...phase, resolved: true } },
@@ -1730,8 +1817,13 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
     blow,
     { at, by: 'strike' },
   );
+  // Une fois par frappe, au 1er coup (T1) : la cible ne change pas pendant une frappe.
+  const pricked =
+    hit === 1 && thornsActive(target)
+      ? prick(struck.battle, events, phase.enemy, at)
+      : struck.battle;
   const stopped = judgement === 'perfect' || struck.broken;
-  const resolved = stopped ? startHitStop(struck.battle, events, at) : struck.battle;
+  const resolved = stopped ? startHitStop(pricked, events, at) : pricked;
   if (hit >= profile.hits || !isStanding(resolved.enemies[phase.enemy]!)) return resolved;
   // Le coup suivant (les Dagues jumelles, une frappe de pouvoir), décalé par l'arrêt sur image ;
   // perdu si la cible tombe.
@@ -1744,6 +1836,18 @@ function resolveStrike(battle: Battle, events: Events, at: number): Battle {
     rend,
     ...strikeOf(phase),
   });
+}
+
+/**
+ * Les Épines de l'ennemi `enemy` (#259, T4) : le héros paie après le coup, jamais sous 1 PV, à côté
+ * de la réduction des dégâts, du Rempart et de Brume, qu'elles n'usent pas. Dites même sans perte.
+ */
+function prick(battle: Battle, events: Events, enemy: number, at: number): Battle {
+  const { hero } = battle;
+  const loss = thornsLoss(hero.hp, ENEMIES[battle.enemies[enemy]!.kind].thorns!);
+  const heroHp = hero.hp - loss;
+  events.push({ type: 'thornsPricked', at, enemy, loss, heroHp });
+  return { ...battle, hero: { ...hero, hp: heroHp } };
 }
 
 /** La frappe de pouvoir d'une frappe en rythme (#236) : son pouvoir et Frappe furtive. */

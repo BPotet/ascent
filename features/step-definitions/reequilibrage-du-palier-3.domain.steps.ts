@@ -134,8 +134,9 @@ function strikeAll(battle: Battle, offset: number): Resolved[] {
 }
 
 /** Les Élites et les boss dont les PV et les coups ne changent pas : palier 1, boss du palier 2. */
+// #257 : les Élites du palier 1 prennent 80 % ; seuls les boss des paliers 1 et 2 restent inchangés.
 const UNCHANGED: readonly (readonly [Tier, EnemyKind])[] = [
-  ...[...TIERS[1].elites, ...TIERS[1].bosses].map((kind) => [1, kind] as const),
+  ...TIERS[1].bosses.map((kind) => [1, kind] as const),
   ...TIERS[2].bosses.map((kind) => [2, kind] as const),
 ];
 
@@ -406,7 +407,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     world = { ...fresh(encounter(1, 'ghoul')), tier: Number(tier) as Tier };
   });
 
-  when(/^le héros affronte (?!une Élite)(?!.* dans un combat ordinaire$)(.+)$/u, (name: string) => {
+  when(/^le héros affronte (?!un boss$)(?!.* dans un combat ordinaire$)(.+)$/u, (name: string) => {
     world.kind = BY_NAME[name]!;
     world.battle = encounter(world.tier, world.kind);
   });
@@ -431,12 +432,14 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   then(/^la Torche allume 2 charges de Brûlure$/u, () => {
     const drawn = drawnAttacks(world.kind, world.battle.tierMultiplier!.hpPercent);
-    expect(drawn.get('basic')).toMatchObject({ damage: 12, burn: 2 });
+    // #257 : la Torche à 80 % (10 → 8), sa Brûlure inchangée.
+    expect(drawn.get('basic')).toMatchObject({ damage: 8, burn: 2 });
   });
 
   and(/^le Fagot d'épines fait saigner 2 PV pendant 3 manches$/u, () => {
     const drawn = drawnAttacks(world.kind, world.battle.tierMultiplier!.hpPercent);
-    expect(drawn.get('double')).toMatchObject({ damage: 7, bleed: { damage: 2, rounds: 3 } });
+    // #257 : le Fagot d'épines à 80 % (6 → 4), son Saignement inchangé.
+    expect(drawn.get('double')).toMatchObject({ damage: 4, bleed: { damage: 2, rounds: 3 } });
   });
 
   and(/^son Initiative vaut 6$/u, () => {
@@ -469,8 +472,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     },
   );
 
-  when(/^le héros affronte une Élite ou un boss$/u, () => {
-    // Chaque Élite et chaque boss du palier 1, et les boss du palier 2.
+  when(/^le héros affronte un boss$/u, () => {
+    // Chaque boss des paliers 1 et 2 (#257 : plus les Élites du palier 1).
   });
 
   then(/^ses PV et les dégâts de ses coups sont ceux d'avant le rééquilibrage$/u, () => {
@@ -517,8 +520,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     world.battle = encounter(3, 'firstPilgrim', 0);
   });
 
-  then(/^il a 436 PV max et une garde max de 98$/u, () => {
-    expect(world.battle.enemies[0]).toMatchObject({ maxHp: 436, maxGuard: 98, cursed: true });
+  then(/^il a 284 PV max et une garde max de 98$/u, () => {
+    expect(world.battle.enemies[0]).toMatchObject({ maxHp: 284, maxGuard: 98, cursed: true });
   });
 
   // --- Les Phalénides invoquées (option A) ---
@@ -607,7 +610,13 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   given(/^une ascension au palier 3 où le héros a affronté le Saint de pierre$/u, () => {
     world = fresh(encounter(1, 'ghoul'));
-    world.ascent = atEliteDoor({ ...startAscent(5), tier: 3, lastElite: 'stoneSaint' });
+    // La règle du sac (#258) : le Saint de pierre affronté, les autres Élites du palier aussi sauf
+    // la première, le Premier Pèlerin, seul candidat avec 2 comme avec 3 Élites.
+    const faced = [
+      ...TIERS[3].elites.slice(1).filter((elite) => elite !== 'stoneSaint'),
+      'stoneSaint',
+    ] as const;
+    world.ascent = atEliteDoor({ ...startAscent(5), tier: 3, facedElites: faced });
   });
 
   when(/^il franchit la porte Élite suivante du palier 3$/u, () => {
@@ -615,8 +624,10 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(/^il affronte le Premier Pèlerin$/u, () => {
-    expect(world.entered!.encounter).toMatchObject({ kind: 'elite', enemies: ['firstPilgrim'] });
-    expect(world.entered!.lastElite).toBe('firstPilgrim');
+    // L'Élite à l'indice 0, son escorte après elle (#257).
+    expect(world.entered!.encounter).toMatchObject({ kind: 'elite' });
+    expect(world.entered!.encounter!.enemies[0]).toBe('firstPilgrim');
+    expect(world.entered!.facedElites?.at(-1)).toBe('firstPilgrim');
   });
 
   given(/^une ascension qui arrive au palier 2 sans Élite affrontée à ce palier$/u, () => {
@@ -624,11 +635,11 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     // Le palier 1 a eu son Élite ; le Passage de palier l'oublie.
     const tierTwo = enterNextTier({
       ...startAscent(9),
-      lastElite: 'twins',
+      facedElites: ['twins'],
       passage: { to: 2, step: 'announce' },
     });
     expect(tierTwo.tier).toBe(2);
-    expect(tierTwo).not.toHaveProperty('lastElite');
+    expect(tierTwo).not.toHaveProperty('facedElites');
     world.ascent = atEliteDoor(tierTwo);
   });
 
@@ -640,7 +651,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     /^l'Élite est tirée à égalité parmi les Élites du palier avec la graine de l'ascension$/u,
     () => {
       const drawn = drawElite(TIERS[2].elites, world.ascent!.random);
-      expect(world.entered!.encounter).toMatchObject({ kind: 'elite', enemies: [drawn.value] });
+      // L'Élite à l'indice 0, son escorte après elle (#257).
+      expect(world.entered!.encounter).toMatchObject({ kind: 'elite' });
+      expect(world.entered!.encounter!.enemies[0]).toBe(drawn.value);
       expect(TIERS[2].elites).toContain(drawn.value);
     },
   );

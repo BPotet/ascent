@@ -13,14 +13,21 @@ import {
   type HeroAction,
 } from '../../domain/battle/Battle';
 import type { BattleEvent, DefenseButton } from '../../domain/battle/BattleEvent';
+import { eliteSignature, type EnemyKind } from '../../domain/battle/combatants';
 import { glintsOf } from '../../domain/battle/glints';
 import type { BattleClock } from '../ports/BattleClock';
 import type { BattleHaptics } from '../ports/BattleHaptics';
-import type { BattleSound, BattleSoundCue } from '../ports/BattleSound';
+import type { BattleSound } from '../ports/BattleSound';
 import type { KeyValueStore } from '../ports/KeyValueStore';
 import type { SeedSource } from '../ports/SeedSource';
-import { GLINT_CUES, feedbacksFor } from './battleFeedback';
-import { dismissBattleHint, getBattleHint, type BattleHintKind } from './battleHints';
+import { GLINT_CUES, feedbacksFor, strikeUnderway, type BattleFeedback } from './battleFeedback';
+import {
+  dismissBattleHint,
+  dismissEncounterHint,
+  getBattleHint,
+  getEncounterHint,
+  type BattleHintKind,
+} from './battleHints';
 
 /** La garde de réordonnancement (`ReorderGuard`) par défaut, en ms. */
 export const REORDER_GUARD_MS = 32;
@@ -45,6 +52,11 @@ export interface BattleSnapshot {
   readonly heroHint: boolean;
   /** La bulle d'aide des pouvoirs (#235, K11) est affichée : premier combat à 2 pouvoirs ou plus. */
   readonly powersHint: boolean;
+  /**
+   * La bulle de première rencontre (#258, D8) : l'Élite à signature qu'elle présente, une fois par
+   * Élite ; absente, aucune bulle. Elle ne bloque rien ; le premier toucher la ferme.
+   */
+  readonly encounterHint?: EnemyKind;
 }
 
 type Listener = (snapshot: BattleSnapshot) => void;
@@ -78,10 +90,13 @@ export class BattleSession {
   private cancelGlintTimer: (() => void) | null = null;
   /** Les sons différés en attente (#171), annulés à `dispose`. */
   private readonly delayedSounds = new Set<() => void>();
+  /** Les retours différés d'une frappe en cours, qui attendent sa fin (#259). */
+  private heldFeedbacks: BattleFeedback[] = [];
   /** Les reflets déjà joués ou passés, par attaque (`startedAt:index`). */
   private readonly doneGlints = new Set<string>();
   private heroHintPending = false;
   private powersHintPending = false;
+  private encounterHintPending: EnemyKind | null = null;
   private disposed = false;
   private readonly reorderGuardMs: number;
   private readonly createBattle: BattleFactory;
@@ -111,6 +126,7 @@ export class BattleSession {
       defenseHint,
       at: this.dependencies.clock.now(),
     });
+    this.encounterHintPending = await this.encounterOf(update.battle);
     this.apply(update);
     return this.snapshot!;
   }
@@ -151,8 +167,10 @@ export class BattleSession {
       (event) => event.type === 'strikeStarted' || event.type === 'powerUsed',
     );
     if (acted) {
-      // La bulle de la phase du héros a servi : elle n'apparaît plus, celle des pouvoirs non plus.
+      // La bulle de la phase du héros a servi : elle n'apparaît plus, celle des pouvoirs non plus,
+      // ni celle de la première rencontre (#258).
       this.dismissPowersHintIfShown(battle);
+      this.dismissEncounterHintIfShown(battle);
       this.dismissHeroHintIfShown();
     }
     this.apply(update);
@@ -177,6 +195,14 @@ export class BattleSession {
     this.apply(dismissDefenseHint(battle, this.dependencies.clock.now()));
   }
 
+  /** Ferme la bulle de première rencontre (#258) au premier toucher : elle ne revient pas. */
+  dismissEncounterHint(): void {
+    const battle = this.snapshot?.battle;
+    if (battle === undefined || !this.encounterHintShown(battle)) return;
+    this.dismissEncounterHintIfShown(battle);
+    this.apply({ battle, events: [] });
+  }
+
   /** L'effet d'un pouvoir s'ouvre au toucher maintenu (#235, K10) : une vibration très courte. */
   feelPowerTip(): void {
     this.dependencies.haptics.play('powerTip');
@@ -191,6 +217,7 @@ export class BattleSession {
     this.cancelGlintTimer = null;
     for (const cancel of this.delayedSounds) cancel();
     this.delayedSounds.clear();
+    this.heldFeedbacks = [];
     this.listeners.clear();
   }
 
@@ -204,6 +231,33 @@ export class BattleSession {
     if (!this.powersHintShown(battle)) return;
     this.powersHintPending = false;
     this.save('powers');
+  }
+
+  private dismissEncounterHintIfShown(battle: Battle): void {
+    const enemy = this.encounterHintPending;
+    if (enemy === null || !this.encounterHintShown(battle)) return;
+    this.encounterHintPending = null;
+    dismissEncounterHint(this.dependencies, enemy).catch(() => undefined);
+  }
+
+  /** L'Élite à signature du combat dont la bulle n'a pas encore été vue ; illisible, aucune. */
+  private async encounterOf(battle: Battle): Promise<EnemyKind | null> {
+    const elite = battle.enemies.find((enemy) => eliteSignature(enemy.kind) !== null);
+    if (elite === undefined) return null;
+    const unseen = await this.read(
+      (dependencies) => getEncounterHint(dependencies, elite.kind),
+      false,
+    );
+    return unseen ? elite.kind : null;
+  }
+
+  /** La bulle de première rencontre, après celle de la première ascension et celle des pouvoirs. */
+  private encounterHintShown(battle: Battle): boolean {
+    return (
+      this.encounterHintPending !== null &&
+      !this.heroHintShown(battle) &&
+      !this.powersHintShown(battle)
+    );
   }
 
   private save(kind: BattleHintKind): void {
@@ -236,29 +290,48 @@ export class BattleSession {
     );
   }
 
-  /** Un son différé (#171) : joué `delayMs` ms plus tard par l'horloge de combat. */
-  private playLater(sound: BattleSoundCue, delayMs: number): void {
+  /**
+   * Un son ou une vibration différés (#171, #259) : joués `delayMs` ms plus tard par l'horloge de
+   * combat, annulés à la fin du combat.
+   */
+  private playLater({ sound, haptic }: BattleFeedback, delayMs: number): void {
     const { clock } = this.dependencies;
     const cancel = clock.setTimer(clock.now() + delayMs, () => {
       this.delayedSounds.delete(cancel);
-      this.dependencies.sound.play(sound);
+      if (sound !== null) this.dependencies.sound.play(sound);
+      if (haptic !== null) this.dependencies.haptics.play(haptic);
     });
     this.delayedSounds.add(cancel);
+  }
+
+  /**
+   * Les retours d'une mise à jour : aussitôt, ou différés. Un retour différé né pendant une frappe
+   * du héros attend sa fin (la piqûre d'une Rafale après son dernier coup, #259).
+   */
+  private feedback(battle: Battle, events: readonly BattleEvent[]): void {
+    for (const feedback of feedbacksFor(events)) {
+      if (feedback.delayMs !== undefined) {
+        this.heldFeedbacks.push(feedback);
+        continue;
+      }
+      if (feedback.sound !== null) this.dependencies.sound.play(feedback.sound);
+      if (feedback.haptic !== null) this.dependencies.haptics.play(feedback.haptic);
+    }
+    if (strikeUnderway(battle)) return;
+    for (const held of this.heldFeedbacks) this.playLater(held, held.delayMs!);
+    this.heldFeedbacks = [];
   }
 
   private apply(update: BattleUpdate): void {
     if (this.disposed) return;
     const { battle, events } = update;
-    for (const { sound, haptic, delayMs } of feedbacksFor(events)) {
-      if (sound !== null && delayMs !== undefined) this.playLater(sound, delayMs);
-      else if (sound !== null) this.dependencies.sound.play(sound);
-      if (haptic !== null) this.dependencies.haptics.play(haptic);
-    }
+    this.feedback(battle, events);
     this.snapshot = {
       battle,
       events,
       heroHint: this.heroHintShown(battle),
       powersHint: this.powersHintShown(battle),
+      ...(this.encounterHintShown(battle) && { encounterHint: this.encounterHintPending! }),
     };
     this.schedule(battle);
     this.scheduleGlint(battle);

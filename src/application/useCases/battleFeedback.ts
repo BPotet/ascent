@@ -1,4 +1,5 @@
 import { ATTACKS } from '../../domain/battle/attacks';
+import type { Battle } from '../../domain/battle/Battle';
 import type { BattleEvent, BlowOutcome } from '../../domain/battle/BattleEvent';
 import type { GlintKind } from '../../domain/battle/glints';
 import type { BattleHapticCue } from '../ports/BattleHaptics';
@@ -8,7 +9,10 @@ import type { BattleSoundCue } from '../ports/BattleSound';
 export interface BattleFeedback {
   readonly sound: BattleSoundCue | null;
   readonly haptic: BattleHapticCue | null;
-  /** Le son part `delayMs` ms après l'événement (#171) ; absent, aussitôt. */
+  /**
+   * Le son et la vibration partent `delayMs` ms après l'événement (#171) ; absent, aussitôt. Pendant
+   * une frappe du héros, le délai court à partir de sa fin (#259).
+   */
   readonly delayMs?: number;
 }
 
@@ -23,6 +27,20 @@ export const BURN_AFTER_BLEED_MS = 700;
  * le crépitement et l'extinction d'une flamme (800 ms plus tard).
  */
 export const SUMMON_AFTER_BURN_MS = 1_000;
+/**
+ * Le prix des Épines se paie 300 ms après la fin de la frappe qui pique (#259, maquette M2, M3) : le
+ * chiffre, le mot, les pointes et la vibration. Après le dernier coup d'une Rafale. L'écran et la
+ * session le partagent.
+ */
+export const THORNS_AFTER_STRIKE_MS = 300;
+
+/**
+ * Une frappe du héros est en cours : un de ses coups reste à résoudre (#259). Elle finit à la
+ * résolution de son dernier coup, ou plus tôt si sa cible tombe.
+ */
+export function strikeUnderway({ phase }: Battle): boolean {
+  return phase.kind === 'heroStrike' && !phase.resolved;
+}
 
 /** Le son de chaque reflet (C2.10), joué par la session de combat en avance de sa latence. */
 export const GLINT_CUES: Readonly<Record<GlintKind, BattleSoundCue>> = {
@@ -112,6 +130,11 @@ export function feedbackFor(event: BattleEvent): BattleFeedback {
       return { sound: 'wingRustle', haptic: null };
     case 'summonEntered':
       return { sound: 'wingRustleLoud', haptic: null };
+    // Les Épines (#259) : une vibration courte, sans son, après la frappe ; rien sans perte.
+    case 'thornsPricked':
+      return event.loss > 0
+        ? { sound: null, haptic: 'thorns', delayMs: THORNS_AFTER_STRIKE_MS }
+        : NONE;
     // La seconde chance n'a pas de son propre (#206) : celui du touché qui fait tomber suffit.
     default:
       return NONE;

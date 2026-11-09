@@ -437,6 +437,99 @@ const DRAWN = {
     '..XXXXXXXX..',
     '....XXXX....',
   ],
+  // La couronne d'Élite et les épées croisées de son escorte (#257), table `PAT` de la maquette
+  // `docs/mockups/245-elites-escortees/`, centrées sur 8 × 8 pixels d'art.
+  crown8: [
+    '........',
+    'X..X..X.',
+    'XX.X.XX.',
+    'XXXXXXX.',
+    'XXXXXXX.',
+    '........',
+    'XXXXXXX.',
+    '........',
+  ],
+  swords8: [
+    'X.....X.',
+    '.X...X..',
+    '..X.X...',
+    '...X....',
+    '..X.X...',
+    'XX...XX.',
+    'X.....X.',
+    '........',
+  ],
+  // L'intention Exhumer du Fossoyeur (#258) : la pelle, en 12 × 12 comme les autres intentions.
+  iExhume: [
+    '..........XX',
+    '.........XXX',
+    '........XXX.',
+    '.......XXX..',
+    '......XXX...',
+    '.X...XXX....',
+    'XXX.XXX.....',
+    'XXXXXX......',
+    'XXXXX.......',
+    'XXXXXX......',
+    '.XXXX.......',
+    '..XX........',
+  ],
+  // Les glyphes de la marque de signature Exhumer (#258), table `PAT` de la maquette
+  // `docs/mockups/245-elites-escortees/`, centrés sur 8 × 8 pixels d'art : la pelle, la pelle fendue
+  // (pas d'exhumation) et l'os (un Squelette debout).
+  shovel8: [
+    '.......X',
+    '......XX',
+    '.....XX.',
+    '....XX..',
+    '.X.XX...',
+    'XXX.....',
+    'XXXX....',
+    '.XX.....',
+  ],
+  crack8: [
+    'XXXX.XX.',
+    'X...X.X.',
+    'X.XX..X.',
+    'X.X.X.X.',
+    '.X..XX..',
+    '..XX....',
+    '...X....',
+    '........',
+  ],
+  bone8: [
+    '........',
+    'XX...XX.',
+    '.XXXXX..',
+    '..XXX...',
+    '..XXX...',
+    '.XXXXX..',
+    'XX...XX.',
+    '........',
+  ],
+  // Les glyphes des marques de signature Épines et Sanctuaire (#259), table `PAT` de la maquette
+  // `docs/mockups/245-elites-escortees/`, sur 8 × 8 pixels d'art : l'épine et l'écu d'acier (la
+  // pelle fendue, `crack8`, dit le Sanctuaire rompu).
+  thorn8: [
+    '...X....',
+    '..XXX...',
+    'X.XXX.X.',
+    '.XXXXX..',
+    '..XXX...',
+    '.X.X.X..',
+    'X..X..X.',
+    '........',
+  ],
+  ward8: [
+    'XXXXXXX.',
+    'X.....X.',
+    'X.XXX.X.',
+    'X.XXX.X.',
+    '.X.X.X..',
+    '..X.X...',
+    '...X....',
+    '........',
+  ],
   // Les glyphes de la jauge (#41), table `PAT` de la maquette `docs/mockups/205-jauge-faveur/`,
   // centrés sur 8 × 8 pixels d'art : crâne, bénédiction, objet, Rare, fatigue, cadenas, horloge, « + »
   // et « = » des crans du cadran.

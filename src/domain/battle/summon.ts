@@ -3,7 +3,7 @@
  * ses ennemis appelés entrent au début de la manche suivante aux places libres de la première
  * ligne. Pur et sans hasard : l'Invocation ne tire rien.
  */
-import type { EnemyKind } from './combatants';
+import { ENEMIES, type EnemyKind } from './combatants';
 import type { Intent } from './intents';
 
 /** La taille de la première ligne (`FrontLine`, P3b) : 3 places. */
@@ -37,4 +37,13 @@ export function freeSlots(enemies: readonly Occupant[], count: number): number[]
   const empty = Array.from({ length: FRONT_LINE_SIZE - line.length }, (_, k) => line.length + k);
   const fallen = line.flatMap(({ hp }, index) => (hp > 0 || raised.has(index) ? [] : [index]));
   return [...empty, ...fallen].slice(0, count);
+}
+
+/**
+ * L'ennemi qu'appelle `kind` (#258, D4) : celui de son Invocation de phase 2 ou de son Exhumation ;
+ * `null` s'il n'appelle personne. Ses invoqués tombent avec lui.
+ */
+export function summonedKind(kind: EnemyKind): EnemyKind | null {
+  const { phase2Summon, exhume } = ENEMIES[kind];
+  return phase2Summon?.enemy ?? exhume?.enemy ?? null;
 }

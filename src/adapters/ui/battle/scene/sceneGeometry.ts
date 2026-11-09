@@ -49,12 +49,20 @@ const GROUND_SHADOW_DROP = 4;
 /** Le décalage des colonnes : en diagonale, la plus à gauche la plus près du héros. */
 const OFFSETS: Readonly<Record<number, readonly number[]>> = { 3: [34, 16, 0], 2: [16, 0] };
 /**
- * Le boss qui invoque, à trois colonnes (#172, maquette `.pfoes.boss3`) : depuis 4 % de la largeur,
- * le boss sur 1,25 colonne, plus haut, ses invoqués plus bas, chacun au moins 104 dp à 360 dp.
+ * L'ennemi qui mène, à trois colonnes : le boss qui invoque (#172, maquette `.pfoes.boss3`) ou
+ * l'Élite escortée de 2 (#257, `.pfoes.el3`). Depuis 4 % de la largeur, il prend 1,25 colonne,
+ * plus haut, les autres plus bas, chacun au moins 104 dp à 360 dp (130 / 104 / 104).
  */
-const SUMMONER_LEFT = 0.04;
-const SUMMONER_SHARES = [1.25, 1, 1] as const;
-const SUMMONER_OFFSETS = [0, 22, 40] as const;
+const LEAD_LEFT = 0.04;
+const LEAD_SHARES = [1.25, 1, 1] as const;
+const LEAD_OFFSETS = [0, 22, 40] as const;
+/**
+ * L'Élite escortée de 1, à deux colonnes (#257, `.pfoes.el2`) : depuis 19 % de la largeur, l'Élite
+ * sur 1,25 colonne, plus haut, son escorte plus bas (158 / 127 dp à 360 dp ; les plaques, 128 et
+ * 100 dp, sont bornées par `EnemyColumn`).
+ */
+const LEAD_TWO_SHARES = [1.25, 1] as const;
+const LEAD_TWO_OFFSETS = [0, 22] as const;
 // Stryker restore all
 
 const snap = (value: number) => Math.round(value / 2) * 2;
@@ -62,21 +70,27 @@ const snap = (value: number) => Math.round(value / 2) * 2;
 /**
  * La géométrie de la scène (`sceneGeometry`), commune au canevas et aux colonnes des ennemis, d'après
  * la maquette : les ennemis de trois quarts face en haut à droite, en diagonale ; le héros de dos en
- * bas à gauche ; son buste à 42 % de sa hauteur. Les sprites sont calés sur 2 dp.
+ * bas à gauche ; son buste à 42 % de sa hauteur. Les sprites sont calés sur 2 dp. `lead` : la
+ * disposition de l'ennemi qui mène (boss qui invoque, Élite escortée).
  */
 export function sceneGeometry(
   width: number,
   height: number,
   count: number,
-  { summoner = false }: { readonly summoner?: boolean } = {},
+  { lead = false }: { readonly lead?: boolean } = {},
 ): SceneGeometry {
   const narrow = width < 360;
-  const boss = summoner && count === 3;
+  const leadThree = lead && count === 3;
+  const leadTwo = lead && count === 2;
   const left = Math.round(
-    width * (boss ? SUMMONER_LEFT : count === 1 ? 0.44 : narrow ? 0.14 : 0.19),
+    width * (leadThree ? LEAD_LEFT : count === 1 ? 0.44 : narrow ? 0.14 : 0.19),
   );
   const columns = Math.max(1, count);
-  const shares: readonly number[] = boss ? SUMMONER_SHARES : Array<number>(columns).fill(1);
+  const shares: readonly number[] = leadThree
+    ? LEAD_SHARES
+    : leadTwo
+      ? LEAD_TWO_SHARES
+      : Array<number>(columns).fill(1);
   const total = shares.reduce((sum, share) => sum + share, 0);
   const unit = (width - RIGHT - left - GAP * (columns - 1)) / total;
   const widths = shares.map((share) => Math.floor(Math.floor(unit) * share));
@@ -91,7 +105,11 @@ export function sceneGeometry(
     x: HERO_LEFT + heroWidth / 2,
     y: heroTop + Math.round(heroHeight * 0.42),
   };
-  const offsets: readonly number[] = boss ? SUMMONER_OFFSETS : (OFFSETS[count] ?? [0]);
+  const offsets: readonly number[] = leadThree
+    ? LEAD_OFFSETS
+    : leadTwo
+      ? LEAD_TWO_OFFSETS
+      : (OFFSETS[count] ?? [0]);
   const enemies = Array.from({ length: count }, (_, index): EnemySlot => {
     const columnWidth = widths[index]!;
     const x = starts[index]!;

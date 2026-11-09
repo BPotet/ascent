@@ -117,6 +117,29 @@ describe('BattleLog', () => {
     expect(log).toMatchObject({ tierMultiplier: null, summonMultiplier: null });
   });
 
+  it('notes the escort multiplier of an escorted Elite, its escort among the enemies (#257)', () => {
+    const elite: TierMultiplier = { hpPercent: 80, guardPercent: 140 };
+    const battle = startBattle({
+      seed: 7,
+      defenseHint: false,
+      at: START,
+      enemies: ['scarecrow', 'mothkin'],
+      tierMultiplier: elite,
+      escortMultiplier: TIER_2,
+    }).battle;
+    const log = beginBattleLog({ ...PLACE, encounterKind: 'elite' }, battle, START);
+
+    expect(log).toMatchObject({ tierMultiplier: elite, escortMultiplier: TIER_2 });
+    expect(log.enemies.map(({ kind, maxHp, maxGuard }) => ({ kind, maxHp, maxGuard }))).toEqual([
+      { kind: 'scarecrow', maxHp: 152, maxGuard: 70 },
+      { kind: 'mothkin', maxHp: 33, maxGuard: 15 },
+    ]);
+  });
+
+  it('notes no escort multiplier without an escort, keeping the log of today (#257)', () => {
+    expect(beginBattleLog(PLACE, started(), START)).not.toHaveProperty('escortMultiplier');
+  });
+
   it('notes each round with its drawn intents and its action order, as published', () => {
     const guard: Intent = { category: 'guard', gain: 4 };
     const log = recordBattleEvents(
@@ -917,6 +940,121 @@ describe('BattleLog', () => {
       presses: [{ kind: 'whiff', judgement: 'empty' }],
     });
     expect(actionOf(log, 0).kind).toBe('attack');
+  });
+
+  it('notes the Thorns as an effect of the strike, the HP lost summed on their loss (#259)', () => {
+    const log = logged(
+      [roundStarted(START, 1)],
+      [{ type: 'strikeStarted', at: START + 100, enemy: 0, impactAt: START + 600, until: 0 }],
+      [
+        {
+          type: 'strikeResolved',
+          at: START + 600,
+          enemy: 0,
+          judgement: 'perfect',
+          delta: 0,
+          damage: 15,
+          guardDamage: 18,
+        },
+        { type: 'thornsPricked', at: START + 600, enemy: 0, loss: 2, heroHp: 28 },
+      ],
+    );
+    const effects = actionOf(log, 'hero').effects;
+
+    expect(effects).toEqual([{ type: 'thornsPricked', t: 600, enemy: 0, loss: 2, heroHp: 28 }]);
+    expect(
+      effects.reduce((sum, effect) => sum + (effect.type === 'thornsPricked' ? effect.loss : 0), 0),
+    ).toBe(2);
+  });
+
+  it('copies the flag of the Sanctuary on a strike press and on a counter-attack (#259)', () => {
+    const log = logged(
+      [roundStarted(START, 1)],
+      [{ type: 'strikeStarted', at: START + 100, enemy: 0, impactAt: START + 600, until: 0 }],
+      [
+        {
+          type: 'strikeResolved',
+          at: START + 600,
+          enemy: 0,
+          judgement: 'perfect',
+          delta: 0,
+          damage: 7,
+          guardDamage: 18,
+          sanctuary: true,
+        },
+      ],
+      [{ type: 'stepInStarted', at: START + 900, enemy: 0, until: START + 1_300 }],
+      [
+        {
+          type: 'counterAttacked',
+          at: START + 2_000,
+          enemy: 0,
+          damage: 3,
+          guardDamage: 12,
+          until: START + 2_200,
+          sanctuary: true,
+        },
+      ],
+    );
+
+    expect(actionOf(log, 'hero').presses).toEqual([
+      expect.objectContaining({ kind: 'strike', damage: 7, sanctuary: true }),
+    ]);
+    expect(actionOf(log, 0).effects).toEqual([
+      { type: 'counterAttacked', t: 2_000, enemy: 0, damage: 3, guardDamage: 12, sanctuary: true },
+    ]);
+  });
+
+  it('notes no flag of the Sanctuary on a strike it did not reduce (#259)', () => {
+    const log = logged(
+      [roundStarted(START, 1)],
+      [
+        {
+          type: 'strikeResolved',
+          at: START + 600,
+          enemy: 0,
+          judgement: null,
+          delta: null,
+          damage: 10,
+          guardDamage: 12,
+        },
+      ],
+    );
+
+    expect(actionOf(log, 'hero').presses[0]).not.toHaveProperty('sanctuary');
+  });
+
+  it('notes the exhumation as the action exhume of the Gravedigger, with its effect (#258)', () => {
+    const exhume: Intent = { category: 'exhume', slot: 1 };
+    const log = logged(
+      [roundStarted(START, 2, [exhume])],
+      [
+        { type: 'stepInStarted', at: START + 100, enemy: 0, until: START + 500 },
+        { type: 'enemyExhumed', at: START + 500, enemy: 0, slot: 1, kind: 'skeleton' },
+      ],
+    );
+
+    expect(firstRound(log).intents[0]).toEqual(exhume);
+    expect(actionOf(log, 0)).toMatchObject({
+      kind: 'exhume',
+      t: 100,
+      effects: [{ type: 'enemyExhumed', t: 500, enemy: 0, slot: 1, kind: 'skeleton' }],
+    });
+  });
+
+  it('counts the exhumations of a battle on its effects enemyExhumed (#258)', () => {
+    const exhume: Intent = { category: 'exhume', slot: 1 };
+    const log = logged(
+      [roundStarted(START, 2, [exhume])],
+      [{ type: 'enemyExhumed', at: START + 500, enemy: 0, slot: 1, kind: 'skeleton' }],
+      [roundStarted(START + 2_000, 4, [exhume])],
+      [{ type: 'enemyExhumed', at: START + 2_500, enemy: 0, slot: 2, kind: 'skeleton' }],
+    );
+    const exhumations = log.rounds.flatMap((round) =>
+      round.actions.flatMap((action) => action.effects),
+    );
+
+    expect(exhumations.filter((effect) => effect.type === 'enemyExhumed')).toHaveLength(2);
   });
 
   it('changes nothing without an event, and never changes the log it is given', () => {

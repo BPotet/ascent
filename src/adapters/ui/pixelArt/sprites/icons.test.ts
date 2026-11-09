@@ -56,6 +56,32 @@ describe('the icons', () => {
     expect(iconNames).toEqual(expect.arrayContaining(['oath8', 'kindled8']));
   });
 
+  it('has the crown of the Elite and the crossed swords of its escort (#257)', () => {
+    expect(iconNames).toEqual(expect.arrayContaining(['crown8', 'swords8']));
+  });
+
+  it('has the shovel of the intent Exhume, 12 × 12 like the other intents (#258)', () => {
+    expect(ICONS.iExhume).toHaveLength(12);
+    for (const row of ICONS.iExhume) expect(row).toHaveLength(12);
+  });
+
+  it('has the shovel, the cracked shovel and the bone of the signature mark, on 8 × 8 (#258)', () => {
+    for (const glyph of ['shovel8', 'crack8', 'bone8'] as const) {
+      expect(ICONS[glyph]).toHaveLength(8);
+      for (const row of ICONS[glyph]) expect(row).toHaveLength(8);
+    }
+    expect(ICONS.shovel8[0]).toBe('.......X');
+  });
+
+  it('has the thorn and the ward of the signature marks, on 8 × 8 (#259)', () => {
+    for (const glyph of ['thorn8', 'ward8'] as const) {
+      expect(ICONS[glyph]).toHaveLength(8);
+      for (const row of ICONS[glyph]) expect(row).toHaveLength(8);
+    }
+    expect(ICONS.thorn8[0]).toBe('...X....');
+    expect(ICONS.ward8[0]).toBe('XXXXXXX.');
+  });
+
   it('has the small flame of « Le camp » (#40)', () => {
     expect(iconNames).toContain('flame8');
     expect(ICONS.flame8).toHaveLength(8);

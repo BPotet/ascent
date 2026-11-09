@@ -5,15 +5,18 @@ import Animated from 'react-native-reanimated';
 import type { BattleSession } from '../../../application/useCases/BattleSession';
 import type { Battle } from '../../../domain/battle/Battle';
 import type { DefenseButton } from '../../../domain/battle/BattleEvent';
-import { ENEMIES, type EnemyKind } from '../../../domain/battle/combatants';
+import type { EnemyKind } from '../../../domain/battle/combatants';
+import { summonedKind } from '../../../domain/battle/summon';
 import type { PowerKind } from '../../../domain/battle/powers';
 import { ActionPad } from '../battle/ActionPad';
 import type { ScenePowers } from '../battle/scene/powerScene';
+import type { SceneSignatures } from '../battle/scene/signatureScene';
 import { ActionTrack } from '../battle/ActionTrack';
 import { BattleScene, prepareBattleScene } from '../battle/BattleCanvas';
-import { DamageFloat, FeedbackLabel, useShake } from '../battle/BattleEffects';
+import { DamageFloat, FeedbackLabel, ThornsWord, useShake } from '../battle/BattleEffects';
 import { BleedDrops } from '../battle/BleedChip';
 import { BattleHintBubble } from '../battle/BattleHintBubble';
+import { EncounterHintBubble } from '../battle/EncounterHintBubble';
 import { EnemyColumn } from '../battle/EnemyColumn';
 import { HeroBar } from '../battle/HeroBar';
 import { PhaseBanner } from '../battle/PhaseBanner';
@@ -30,7 +33,7 @@ import { toBattleInstant } from '../state/battleTouch';
 import { actionTrackView, battleView, type BattleView } from '../state/battleView';
 import { useReducedMotion } from '../state/useReducedMotion';
 import { jsThreadNow, uiThreadNow } from '../state/useTouchProbe';
-import { useBattleDisplay } from '../state/useBattleDisplay';
+import { heroHpShown, useBattleDisplay, useThornsRevealed } from '../state/useBattleDisplay';
 import { battleColors } from '../theme/battleColors';
 
 export interface BattleScreenProps {
@@ -56,11 +59,11 @@ function lineHidden(pad: BattleView['pad']): boolean {
 
 /**
  * Les ennemis dont l'écran prépare les atlas : la première ligne et la réserve (#38), puis ceux
- * qu'ils peuvent invoquer (#172), chacun une fois, dans cet ordre.
+ * qu'ils peuvent invoquer (#172) ou exhumer (#258), chacun une fois, dans cet ordre.
  */
 function preparedKinds(battle: Battle): string {
   const kinds = [...battle.enemies.map((enemy) => enemy.kind), ...battle.reserve];
-  const summoned = kinds.flatMap((kind) => ENEMIES[kind].phase2Summon?.enemy ?? []);
+  const summoned = kinds.flatMap((kind) => summonedKind(kind) ?? []);
   return [...new Set([...kinds, ...summoned])].join();
 }
 
@@ -84,6 +87,7 @@ export function BattleScreen({
   const reducedMotion = useReducedMotion();
   const display = useBattleDisplay(session, reducedMotion);
   const shake = useShake(display.shakeKey);
+  const thornsShown = useThornsRevealed(display.thorns);
   const { width: screenWidth } = useWindowDimensions();
   const [sceneHeight, setSceneHeight] = useState(SCENE_HEIGHT);
   const sceneFrame = useRef<View>(null);
@@ -201,12 +205,23 @@ export function BattleScreen({
     rising: enemy.rising,
     phase2: enemy.phase2 === true,
     downSince: display.downSince[index] ?? null,
+    ...(display.exhumeFx[index] !== undefined && { exhumedAt: display.exhumeFx[index] }),
   }));
+  // La bulle de première rencontre (#258, F1) : le premier toucher, où qu'il soit, la ferme.
+  const encounterHint = display.snapshot?.encounterHint;
+  const closeEncounterHint = () => session.dismissEncounterHint();
   const geometry = sceneGeometry(screenWidth, sceneHeight, view.columns, {
-    summoner: view.summonerLayout,
+    lead: view.leadLayout,
   });
   const strikeImpactAt = battle.phase.kind === 'heroStrike' ? battle.phase.impactAt : null;
-  const { heroFloat, burnFloat } = display;
+  const { heroFloat, burnFloat, thorns } = display;
+  // La piqûre des Épines (#259, M2) : la barre de PV du héros baisse avec le « −2 », 300 ms après la
+  // fin de la frappe ; les pointes jaillissent alors du héros.
+  const signatures: SceneSignatures = {
+    prick: thorns === null ? null : { from: thorns.from },
+    wardSpark: display.sanctuary.spark,
+    wardBroken: display.sanctuary.broken,
+  };
   const targetName = enemyName(battle.enemies[battle.target]!);
   const onSceneLayout = (event: LayoutChangeEvent) => {
     setSceneHeight(event.nativeEvent.layout.height);
@@ -227,6 +242,7 @@ export function BattleScreen({
       <View
         ref={sceneFrame}
         onLayout={onSceneLayout}
+        {...(encounterHint !== undefined && { onTouchStart: closeEncounterHint })}
         testID="battle-scene-frame"
         style={styles.scene}
       >
@@ -264,6 +280,7 @@ export function BattleScreen({
             summon={summon}
             secondChance={sceneRise}
             powers={scenePowers}
+            signatures={signatures}
             reducedMotion={reducedMotion}
             uiNow={uiNow}
           />
@@ -293,13 +310,27 @@ export function BattleScreen({
               />
             ))}
           </View>
-          {display.feedback === null || over !== null ? null : (
+          {/* « Victoire » (#258, F6) reste écrit pendant la chute du Squelette avec le Fossoyeur. */}
+          {display.feedback === null ||
+          (over !== null &&
+            !display.feedback.texts.some((text) => text.tone === 'victory')) ? null : (
             <FeedbackLabel key={display.feedback.key} texts={display.feedback.texts} />
           )}
           {battle.hero.bleed ? <BleedDrops /> : null}
           {heroFloat === null ? null : (
             <View pointerEvents="none" testID="battle-hero-float" style={styles.heroFloat}>
               <DamageFloat key={heroFloat.key} float={heroFloat.float} />
+            </View>
+          )}
+          {thorns === null ? null : (
+            <View pointerEvents="none" testID="battle-thorns-float" style={styles.thornsFloat}>
+              <DamageFloat
+                key={thorns.key}
+                float={{ at: 'hero', text: `−${thorns.loss}`, big: false, kind: 'thorns' }}
+                delayMs={thorns.delayMs}
+                reducedMotion={reducedMotion}
+              />
+              <ThornsWord key={`word-${thorns.key}`} delayMs={thorns.delayMs} />
             </View>
           )}
           {burnFloat === null ? null : (
@@ -328,6 +359,7 @@ export function BattleScreen({
               key={display.summonBanner.key}
               title={display.summonBanner.title}
               line={display.summonBanner.line}
+              {...(display.summonBanner.tone !== undefined && { tone: display.summonBanner.tone })}
               reducedMotion={reducedMotion}
             />
           )}
@@ -356,6 +388,9 @@ export function BattleScreen({
           {display.snapshot?.powersHint && view.heroActions ? (
             <BattleHintBubble kind="powers" onClose={() => session.dismissHint('powers')} />
           ) : null}
+          {encounterHint !== undefined && over === null ? (
+            <EncounterHintBubble enemy={encounterHint} onClose={closeEncounterHint} />
+          ) : null}
           {view.defenseHint ? (
             <BattleHintBubble kind="defense" onClose={() => session.dismissHint('defense')} />
           ) : null}
@@ -371,6 +406,8 @@ export function BattleScreen({
             burnRing={display.burnRing}
             rise={rise === null ? null : { key: rise.key }}
             healing={battle.phase.kind === 'heroPower' && battle.phase.power === 'holdFast'}
+            shownHp={heroHpShown(battle.hero.hp, display, thornsShown)}
+            pricked={thorns !== null && thornsShown ? { key: thorns.key } : null}
             reducedMotion={reducedMotion}
           />
           <View style={styles.zone}>
@@ -462,6 +499,8 @@ const styles = StyleSheet.create({
   heroFloat: { position: 'absolute', left: 40, bottom: 150, width: 80, zIndex: 8 },
   // Le chiffre de la Brûlure, à droite de celui du Saignement (maquette 170, B5).
   burnFloat: { position: 'absolute', left: 86, bottom: 128, width: 80, zIndex: 8 },
+  // Le « −2 » et le mot « Épines » près du héros (#259, M2, `.fword.thorn`).
+  thornsFloat: { position: 'absolute', left: 8, bottom: 150, width: 120, zIndex: 8 },
   strong: { color: battleColors.text, fontWeight: '600' },
   spent: {
     color: artPalette.roles.parchment,

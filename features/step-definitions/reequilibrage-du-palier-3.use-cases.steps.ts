@@ -3,7 +3,7 @@
  * en mémoire : les sauvegardes d'avant la mise à jour, reprises avec leurs valeurs, et le plafond de
  * soin de parade sauvegardé avec le combat. Les sauvegardes d'avant sont écrites en JSON à la main,
  * sans les champs de #244 (`tierMultiplier` d'une Élite, `respitePercent`, `parryHealed`,
- * `lastElite`).
+ * `lastElite` devenu `facedElites` avec #258).
  */
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
 

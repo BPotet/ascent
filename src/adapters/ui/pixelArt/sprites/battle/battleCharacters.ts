@@ -31,6 +31,9 @@ import { MOTH_QUEEN_PHASE2 } from '../atelier/data/mothQueenPhase2';
 import { MOTHKIN_ANIMATION } from '../atelier/data/mothkin';
 import { BELL_NOVICE_ANIMATION } from '../atelier/data/bellNovice';
 import { CLOCK_JACK_ANIMATION } from '../atelier/data/clockJack';
+import { GRAVEDIGGER_ANIMATION } from '../atelier/data/gravedigger';
+import { BEADLE_ANIMATION } from '../atelier/data/beadle';
+import { BRAMBLE_MOTHER_ANIMATION } from '../atelier/data/brambleMother';
 import { MATINS_RINGER_ANIMATION } from '../atelier/data/matinsRinger';
 import { animationSprite, type ExtraFrame, type FullAnimation } from '../atelier/fullAnimation';
 import { HERO_ANIMATIONS, HERO_CELL, isHero } from './heroAnimations';
@@ -88,7 +91,13 @@ export type SceneFrame = EnemyFrame | ExtraFrame;
 export type BattleFrame = EnemyFrame | HeroFrame | ExtraFrame;
 
 /** Les poses en plus (#38), dans l'ordre de l'atlas. */
-export const EXTRA_FRAMES: readonly ExtraFrame[] = ['rise0', 'rise1', 'guard', 'raiseAlly'];
+export const EXTRA_FRAMES: readonly ExtraFrame[] = [
+  'rise0',
+  'rise1',
+  'guard',
+  'raiseAlly',
+  'exhume',
+];
 
 export const ENEMY_FRAMES: readonly EnemyFrame[] = [
   'idle0',
@@ -225,6 +234,11 @@ const FULL_ANIMATIONS = {
   bellNovice: BELL_NOVICE_ANIMATION,
   matinsRinger: MATINS_RINGER_ANIMATION,
   clockJack: CLOCK_JACK_ANIMATION,
+  // Le Fossoyeur (#258).
+  gravedigger: GRAVEDIGGER_ANIMATION,
+  // La Mère-ronce et le Bedeau (#259).
+  brambleMother: BRAMBLE_MOTHER_ANIMATION,
+  beadle: BEADLE_ANIMATION,
 } satisfies Record<EnemyKind, FullAnimation<EnemyFrame>>;
 
 /** Les ennemis animés (`ANIMATED_ENEMIES`) : les clés du registre des animations complètes. */

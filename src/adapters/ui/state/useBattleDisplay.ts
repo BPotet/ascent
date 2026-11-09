@@ -1,16 +1,19 @@
-import { useEffect, useReducer } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import { AccessibilityInfo } from 'react-native';
 
 import {
   BURN_AFTER_BLEED_MS,
   BURN_OUT_AFTER_BLOW_MS,
   BURN_OUT_AFTER_CRACKLE_MS,
+  THORNS_AFTER_STRIKE_MS,
   bledIn,
+  strikeUnderway,
   summonEntryDelay,
 } from '../../../application/useCases/battleFeedback';
 import type { BattleSession, BattleSnapshot } from '../../../application/useCases/BattleSession';
 import type { Battle } from '../../../domain/battle/Battle';
 import type { BattleEvent, BlowOutcome } from '../../../domain/battle/BattleEvent';
+import { eliteSignature } from '../../../domain/battle/combatants';
 import type { BurnRing } from '../battle/BurnChip';
 import type { HeroPose, SceneBurn, SceneSpark } from '../battle/sceneTypes';
 import {
@@ -18,6 +21,7 @@ import {
   damageFloat,
   feedbackText,
   secondChanceBannerText,
+  exhumeBannerText,
   summonBannerText,
   type DamageFloat,
   type FeedbackText,
@@ -67,13 +71,46 @@ export interface BattleDisplay {
     readonly key: number;
     readonly delayMs: number;
   } | null;
-  /** La dernière annonce de l'Invocation (#172) : « Elle appelle les Phalénides ». */
+  /**
+   * La dernière annonce de l'Invocation (#172) : « Elle appelle les Phalénides » ; ou de l'Exhumation
+   * (#258), en os : « Il exhume un Squelette ».
+   */
   readonly summonBanner: {
     readonly key: number;
     readonly at: number;
     readonly title: string;
     readonly line: string;
+    readonly tone?: 'grave';
   } | null;
+  /** L'instant de chaque Exhumation (#258), par place : le Squelette y sort de terre. */
+  readonly exhumeFx: Readonly<Record<number, number>>;
+  /**
+   * La dernière piqûre des Épines montrée (#259, M2, M7) : le « −2 », le mot, les pointes, le cadre
+   * de la plaque du héros, `delayMs` ms après la fin de la frappe (`from` sur l'horloge de la
+   * scène) ; à part des autres chiffres. Rien quand elles ne prennent rien.
+   */
+  readonly thorns: {
+    readonly key: number;
+    readonly at: number;
+    readonly loss: number;
+    readonly heroHp: number;
+    readonly delayMs: number;
+    readonly from: number;
+  } | null;
+  /** La piqûre d'une frappe encore en cours, qui attend son dernier coup (une Rafale, M3). */
+  readonly heldThorns: {
+    readonly at: number;
+    readonly loss: number;
+    readonly heroHp: number;
+  } | null;
+  /**
+   * Le Sanctuaire sur la scène (#259) : l'étincelle d'acier du dernier coup amorti (B2), les éclats
+   * de la dernière rupture (B3).
+   */
+  readonly sanctuary: {
+    readonly spark: { readonly at: number; readonly enemy: number } | null;
+    readonly broken: { readonly at: number; readonly enemy: number } | null;
+  };
   /**
    * L'Invocation sur la scène (#172) : l'instant de l'annonce (la poussière se lève), puis, par
    * place, l'instant où l'invoqué sort de la poussière et celui où il y retombe avec son boss.
@@ -119,8 +156,71 @@ export const INITIAL_DISPLAY: BattleDisplay = {
   burnFloat: null,
   summonBanner: null,
   summonFx: { calledAt: null, entered: {}, fell: {} },
+  exhumeFx: {},
+  thorns: null,
+  heldThorns: null,
+  sanctuary: { spark: null, broken: null },
   secondChance: null,
 };
+
+/**
+ * Les PV du héros à montrer dans sa barre (#259) : ceux d'avant la piqûre des Épines, tant que son
+ * « −2 » n'est pas montré (`revealed`, après son délai) ; la barre baisse avec lui.
+ */
+export function heroHpShown(hp: number, display: BattleDisplay, revealed: boolean): number {
+  const held = display.heldThorns?.loss ?? 0;
+  const waiting = display.thorns !== null && !revealed ? display.thorns.loss : 0;
+  return hp + held + waiting;
+}
+
+/**
+ * Les Épines et le Sanctuaire d'une mise à jour (#259). La piqûre attend la fin de la frappe (le
+ * dernier coup d'une Rafale, ou la cible tombée), puis 300 ms : la règle reste au 1er coup, dans le
+ * domaine. Le coup amorti fait son étincelle d'acier ; la cassure du Bedeau, ses éclats.
+ */
+function signaturesAfter(display: BattleDisplay, snapshot: BattleSnapshot): BattleDisplay {
+  let shown = display;
+  for (const event of snapshot.events) {
+    if (event.type === 'thornsPricked' && event.loss > 0) {
+      shown = { ...shown, heldThorns: { at: event.at, loss: event.loss, heroHp: event.heroHp } };
+    }
+    const reduced =
+      (event.type === 'strikeResolved' ||
+        event.type === 'counterAttacked' ||
+        event.type === 'bulwarkCountered') &&
+      event.sanctuary === true;
+    if (reduced) {
+      shown = {
+        ...shown,
+        sanctuary: { ...shown.sanctuary, spark: { at: event.at, enemy: event.enemy } },
+      };
+    }
+    const kind =
+      event.type === 'guardBroken' ? snapshot.battle.enemies[event.enemy]?.kind : undefined;
+    if (
+      event.type === 'guardBroken' &&
+      kind !== undefined &&
+      eliteSignature(kind) === 'sanctuary'
+    ) {
+      shown = {
+        ...shown,
+        sanctuary: { ...shown.sanctuary, broken: { at: event.at, enemy: event.enemy } },
+      };
+    }
+  }
+  const held = shown.heldThorns;
+  if (held === null || strikeUnderway(snapshot.battle)) return shown;
+  return {
+    ...shown,
+    heldThorns: null,
+    thorns: {
+      key: (shown.thorns?.key ?? 0) + 1,
+      ...held,
+      delayMs: THORNS_AFTER_STRIKE_MS,
+      from: snapshot.battle.now + THORNS_AFTER_STRIKE_MS,
+    },
+  };
+}
 
 const POSE_OF_OUTCOME: Readonly<Record<BlowOutcome, HeroPose>> = {
   perfectParry: 'counter',
@@ -312,6 +412,22 @@ function summonAfter(
         },
       };
     }
+    case 'enemyExhumed': {
+      // Le Squelette entre debout à sa place, sans l'animation de chute du tombé qu'il remplace.
+      const { [event.slot]: _fallen, ...downSince } = display.downSince;
+      return {
+        ...display,
+        downSince,
+        arrivals: { ...display.arrivals, [event.slot]: (display.arrivals[event.slot] ?? 0) + 1 },
+        summonBanner: {
+          key: (display.summonBanner?.key ?? 0) + 1,
+          at: event.at,
+          ...exhumeBannerText(battle.enemies[event.enemy]!.kind, event.kind),
+          tone: 'grave',
+        },
+        exhumeFx: { ...display.exhumeFx, [event.slot]: event.at },
+      };
+    }
     case 'summonedFell':
       return {
         ...display,
@@ -335,6 +451,7 @@ export function displayOf(
   if (texts.length > 0) {
     display = { ...display, feedback: { texts, key: (display.feedback?.key ?? 0) + 1 } };
   }
+  display = signaturesAfter(display, snapshot);
   for (const event of snapshot.events) {
     display = burnAfter(display, event, burnBefore, afterBleed);
     display = summonAfter(display, event, snapshot.battle, afterRound);
@@ -356,7 +473,8 @@ export function displayOf(
         ...display,
         burnFloat: { float, key, delayMs: afterBleed },
       };
-    } else if (float !== null) {
+    } else if (float !== null && float.kind !== 'thorns') {
+      // La piqûre des Épines est à part (`thorns`), après la frappe (#259).
       const flying = { float, key: (display.float?.key ?? 0) + 1 };
       display = { ...display, float: flying, ...(float.at === 'hero' && { heroFloat: flying }) };
     }
@@ -397,6 +515,22 @@ export function displayOf(
     }
   }
   return display;
+}
+
+/**
+ * La piqûre des Épines est-elle montrée (#259) ? Faux pendant son délai (`delayMs`, après la fin de
+ * la frappe), vrai ensuite et sans piqûre : la barre de PV du héros baisse avec le « −2 ».
+ */
+export function useThornsRevealed(thorns: BattleDisplay['thorns']): boolean {
+  const [revealed, setRevealed] = useState<number | null>(null);
+  const key = thorns?.key ?? null;
+  const delayMs = thorns?.delayMs ?? 0;
+  useEffect(() => {
+    if (key === null) return undefined;
+    const timer = setTimeout(() => setRevealed(key), delayMs);
+    return () => clearTimeout(timer);
+  }, [key, delayMs]);
+  return key === null || revealed === key;
 }
 
 /** Ce que le lecteur d'écran annonce d'une mise à jour, dans l'ordre des événements. */

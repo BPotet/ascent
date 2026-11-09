@@ -392,13 +392,15 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and(
-    "une porte Élite du palier 2 mène à l'Épouvantail ou au Brûleur de ronces, tirés à égalité",
+    "une porte Élite du palier 2 mène à l'Épouvantail, au Brûleur de ronces ou à la Mère-ronce (#259), tirés à un tiers chacun",
     () => {
       const elites = SEEDS.map((seed) => drawElite(TIERS[2].elites, seedRandom(seed)).value);
-      const burners = elites.filter((elite) => elite === 'brambleBurner').length;
-      expect(new Set(elites)).toEqual(new Set(['scarecrow', 'brambleBurner']));
-      expect(burners).toBeGreaterThan(160);
-      expect(burners).toBeLessThan(240);
+      expect(new Set(elites)).toEqual(new Set(['scarecrow', 'brambleBurner', 'brambleMother']));
+      for (const elite of TIERS[2].elites) {
+        const drawn = elites.filter((each) => each === elite).length;
+        expect(drawn).toBeGreaterThan(100);
+        expect(drawn).toBeLessThan(167);
+      }
     },
   );
 };

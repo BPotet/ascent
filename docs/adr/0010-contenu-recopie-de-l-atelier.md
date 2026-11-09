@@ -532,3 +532,15 @@ pouvoirs (`assets/power<Code>`, 16 × 16, statut `validé`), lues le 06/11/2026,
    ajoute ces 2 poses à celles de la Sentinelle, et `battleCharacters.ts` à ses poses propres.
 3. **Contrôle.** `powers.data.test.ts` vérifie l'en-tête, les dimensions (36 × 44) et que la
    palette est **égale** à celle de la Sentinelle (19 teintes).
+
+## Avenant du 9 novembre 2026 (#258) : le Fossoyeur et sa pose `exhume`
+
+- `assets/gravedigger` version 1 est recopié par la conversation (avenant #214), clé `animation`
+  (44 × 54, 17 teintes, 17 poses, poses rouges, `attackPoses.double` de Terre jetée), avec la
+  sha256 du document et celle de la copie, recalculée par `gravedigger.data.test.ts` ; son portrait
+  24 × 24 (`icon.proposals[chosen]`) dans `portraits.ts`, avec la sienne.
+- `ExtraFrame` gagne **`exhume`**, la pose du Fossoyeur pendant son Exhumation : une pose en plus,
+  facultative, refusée par son nom à une entité qui ne l'a pas. La scène la montre au milieu de
+  l'action, comme `raiseAlly` pendant un Relever.
+- Aucun nouvel asset de Squelette : il sort de terre avec ses poses `down` puis `idle0`. La
+  poussière d'os est l'effet d'Invocation de la Reine (#172), repeint en couleur d'os.
