@@ -445,7 +445,7 @@ export function phaseAnnouncement(to: PhaseDirection): string {
  * s'y écrivent ; « Frappe parfaite » en phase du héros. Jamais « Critique ».
  */
 export interface FeedbackText {
-  readonly tone: 'perfect' | 'break' | 'rise' | 'riposte' | 'shadowStep' | 'escort';
+  readonly tone: 'perfect' | 'break' | 'rise' | 'riposte' | 'shadowStep' | 'escort' | 'victory';
   readonly title: string;
   /** La ligne sous le mot : « Attisé · 1 Élan » pour un pouvoir attisé (#237). */
   readonly sub?: string;
@@ -489,8 +489,14 @@ export function feedbackText(event: BattleEvent, battle?: Battle): FeedbackText 
         ...(sub !== null && { sub }),
       };
     }
+    // La garde brisée avant l'Exhumation (#258, F4) : « Action perdue · pas d’exhumation ».
     case 'guardBroken':
-      return { tone: 'break', title: 'Cassure' };
+      return battle?.enemies[event.enemy]?.intent?.category === 'exhume'
+        ? { tone: 'break', title: 'Cassure', sub: 'Action perdue · pas d’exhumation' }
+        : { tone: 'break', title: 'Cassure' };
+    // Le Squelette exhumé tombe avec le Fossoyeur, et c'est la victoire (#258, F6).
+    case 'summonedFell':
+      return battle !== undefined ? fellWithExhumer(battle, event.enemy) : null;
     case 'enemySelfRevived':
       return { tone: 'rise', title: 'Il se relève' };
     case 'strikeResolved':
@@ -500,6 +506,30 @@ export function feedbackText(event: BattleEvent, battle?: Battle): FeedbackText 
     default:
       return null;
   }
+}
+
+/** « Victoire », sous-titre « Le Squelette tombe avec lui » : un exhumé tombé avec le Fossoyeur. */
+function fellWithExhumer(battle: Battle, enemy: number): FeedbackText | null {
+  const fallen = battle.enemies[enemy];
+  const won = battle.phase.kind === 'over' && battle.phase.outcome === 'victory';
+  if (fallen?.exhumed !== true || !won) return null;
+  const exhumer = battle.enemies.find(({ kind }) => ENEMIES[kind].exhume !== undefined);
+  const with_ = exhumer !== undefined && FEMININE[exhumer.kind] ? 'elle' : 'lui';
+  return { tone: 'victory', title: 'Victoire', sub: `${theName(fallen.kind)} tombe avec ${with_}` };
+}
+
+/**
+ * La ligne du pouce avec une Élite qui exhume (#258, F2, F5) : comment l'en empêcher quand elle
+ * exhume maintenant et qu'elle est la cible, ou qu'elle n'exhume pas tant que son Squelette tient.
+ */
+export function exhumeLineText(
+  kind: EnemyKind,
+  state: ExhumeMark['state'],
+  isTarget: boolean,
+): string {
+  if (state === 'now' && isTarget) return ' · brise sa garde pour empêcher l’exhumation';
+  if (state === 'standing') return ` · ${theName(kind).replace(/^L/u, 'l')} n’exhume pas`;
+  return '';
 }
 
 /** Le mot de l'Élite tombée devant son escorte debout (#257, E9). */

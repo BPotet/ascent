@@ -156,3 +156,33 @@ describe('the dotted entry of the exhumed Skeleton in the action track (#258, F3
     expect(next.find((entry) => entry.actor === 1)).not.toHaveProperty('exhumed');
   });
 });
+
+describe('the line above the buttons with the Gravedigger (#258, F2, F5)', () => {
+  it('says how to prevent the exhumation while the Gravedigger is the target (F2)', () => {
+    const now = withDigger(gravedigger(2), { intent: { category: 'exhume', slot: 1 } });
+
+    expect(battleView(now).line).toEqual({
+      before: 'Cible : ',
+      strong: 'Fossoyeur',
+      after: ' · brise sa garde pour empêcher l’exhumation',
+    });
+  });
+
+  it('says that the Gravedigger does not exhume while his Skeleton stands (F5)', () => {
+    const standing = { ...withSkeleton(gravedigger(4)), target: 1 };
+
+    expect(battleView(standing).line).toEqual({
+      before: 'Cible : ',
+      strong: 'Squelette',
+      after: ' · le Fossoyeur n’exhume pas',
+    });
+  });
+
+  it('says nothing more before an even round', () => {
+    expect(battleView(gravedigger(1)).line).toEqual({
+      before: 'Cible : ',
+      strong: 'Fossoyeur',
+      after: '',
+    });
+  });
+});

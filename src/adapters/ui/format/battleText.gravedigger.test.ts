@@ -11,6 +11,7 @@ import {
   encounterHintText,
   enemyLabel,
   exhumeBannerText,
+  feedbackText,
   intentSpeech,
   signatureText,
 } from './battleText';
@@ -142,5 +143,47 @@ describe('the exhumation on the screen and to the screen reader (#258, F3, F4, F
     expect(intentSpeech('skeleton', { category: 'skip', reason: 'exhumed' })).toBe(
       "invoqué, n'agit pas",
     );
+  });
+});
+
+describe('the words of the exhumation on the scene (#258, F4, F6)', () => {
+  const broken: BattleEvent = { type: 'guardBroken', at: 0, enemy: 0, by: 'strike' };
+
+  it('writes « Action perdue · pas d’exhumation » under « Cassure » when the exhumation is lost (F4)', () => {
+    const battle = battleOf(['gravedigger']);
+    const exhuming: Battle = {
+      ...battle,
+      enemies: [{ ...battle.enemies[0]!, intent: { category: 'exhume', slot: 1 } }],
+    };
+
+    expect(feedbackText(broken, exhuming)).toEqual({
+      tone: 'break',
+      title: 'Cassure',
+      sub: 'Action perdue · pas d’exhumation',
+    });
+    expect(feedbackText(broken, battle)).toEqual({ tone: 'break', title: 'Cassure' });
+  });
+
+  it('writes « Victoire » over « Le Squelette tombe avec lui » when the Gravedigger falls (F6)', () => {
+    const battle = battleOf(['gravedigger', 'skeleton']);
+    const won: Battle = {
+      ...battle,
+      enemies: battle.enemies.map((enemy, index) => ({
+        ...enemy,
+        hp: 0,
+        ...(index === 1 && { summoned: true as const, exhumed: true as const }),
+      })),
+      phase: { kind: 'over', outcome: 'victory', at: 0 },
+    };
+    const fell: BattleEvent = { type: 'summonedFell', at: 0, enemy: 1 };
+
+    expect(feedbackText(fell, won)).toEqual({
+      tone: 'victory',
+      title: 'Victoire',
+      sub: 'Le Squelette tombe avec lui',
+    });
+    // Une Phalénide tombée avec la Reine ne l'écrit pas : seul le Squelette exhumé.
+    const { exhumed: _, ...summoned } = won.enemies[1]!;
+    expect(feedbackText(fell, { ...won, enemies: [won.enemies[0]!, summoned] })).toBeNull();
   });
 });

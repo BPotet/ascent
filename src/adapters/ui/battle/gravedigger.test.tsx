@@ -7,6 +7,7 @@ import { StyleSheet } from 'react-native';
 import type { ActionTrackView, EnemyView, SignatureView } from '../state/battleView';
 import { battleColors } from '../theme/battleColors';
 import { ActionTrack } from './ActionTrack';
+import { FeedbackLabel } from './BattleEffects';
 import { EncounterHintBubble } from './EncounterHintBubble';
 import { EnemyColumn } from './EnemyColumn';
 import { sceneGeometry } from './scene/sceneGeometry';
@@ -221,5 +222,20 @@ describe('the exhumed Skeleton in the preview of the action track (#258, F3)', (
     });
     expect(within(dotted!).getByTestId('track-pending-ring', hiddenToo)).toBeOnTheScreen();
     expect(screen.queryAllByTestId('track-entry-pending', hiddenToo)).toEqual([]);
+  });
+});
+
+describe('the word « Victoire » of the fall of the Gravedigger (#258, F6)', () => {
+  it('writes « Victoire » in gold, over « Le Squelette tombe avec lui »', async () => {
+    await render(
+      <FeedbackLabel
+        texts={[{ tone: 'victory', title: 'Victoire', sub: 'Le Squelette tombe avec lui' }]}
+      />,
+    );
+
+    expect(StyleSheet.flatten(screen.getByText('Victoire', hiddenToo).props.style)).toMatchObject({
+      color: battleColors.light,
+    });
+    expect(screen.getByText('Le Squelette tombe avec lui', hiddenToo)).toBeOnTheScreen();
   });
 });

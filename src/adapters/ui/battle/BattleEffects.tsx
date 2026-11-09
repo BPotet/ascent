@@ -190,6 +190,8 @@ const styles = StyleSheet.create({
   shadowStep: { color: battleColors.onShadowStep, fontSize: 24, lineHeight: 28 },
   // « L'escorte reste » (#257, maquette `.announce.gold`) : en or, plus petit qu'un mot de coup.
   escort: { color: artPalette.roles.gold, fontSize: 26, lineHeight: 30 },
+  // « Victoire » à la chute du Fossoyeur et de son Squelette (#258, F6).
+  victory: { color: battleColors.light, fontSize: 32, lineHeight: 36 },
   withShield: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   withSub: { alignItems: 'center' },
   sub: {

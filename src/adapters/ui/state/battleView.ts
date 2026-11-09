@@ -32,6 +32,7 @@ import {
   enemyName,
   enemyTag,
   guardText,
+  exhumeLineText,
   signatureText,
   stunnedLabel,
 } from '../format/battleText';
@@ -307,10 +308,18 @@ export function actionTrackView(battle: Battle): ActionTrackView {
 function targetLine(battle: Battle): ZoneLine | null {
   const target = battle.enemies[battle.target];
   if (target === undefined) return null;
+  // Une Élite qui exhume (#258, F2, F5) : la ligne dit comment l'en empêcher, ou pourquoi elle
+  // n'exhume pas, lu dans `exhumeMark`.
+  const exhumer = battle.enemies.findIndex((enemy) => eliteSignature(enemy.kind) === 'exhume');
+  const mark = exhumer < 0 ? null : exhumeMark(battle, exhumer);
+  const exhume =
+    mark === null
+      ? ''
+      : exhumeLineText(battle.enemies[exhumer]!.kind, mark.state, exhumer === battle.target);
   return {
     before: 'Cible : ',
     strong: enemyName(target),
-    after: target.stun === null ? '' : ' · ×1,5',
+    after: `${exhume}${target.stun === null ? '' : ' · ×1,5'}`,
   };
 }
 

@@ -300,7 +300,10 @@ export function BattleScreen({
               />
             ))}
           </View>
-          {display.feedback === null || over !== null ? null : (
+          {/* « Victoire » (#258, F6) reste écrit pendant la chute du Squelette avec le Fossoyeur. */}
+          {display.feedback === null ||
+          (over !== null &&
+            !display.feedback.texts.some((text) => text.tone === 'victory')) ? null : (
             <FeedbackLabel key={display.feedback.key} texts={display.feedback.texts} />
           )}
           {battle.hero.bleed ? <BleedDrops /> : null}
