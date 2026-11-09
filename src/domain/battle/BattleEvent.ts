@@ -310,6 +310,17 @@ export type BattleEvent =
       readonly enemy: number;
       readonly kind: EnemyKind;
     }
+  /**
+   * Le Fossoyeur `enemy` exhume un ennemi `kind` à la place `slot`, à son action (#258, X2) : il
+   * entre invoqué et n'agit pas dans la manche.
+   */
+  | {
+      readonly type: 'enemyExhumed';
+      readonly at: number;
+      readonly enemy: number;
+      readonly slot: number;
+      readonly kind: EnemyKind;
+    }
   /** Un ennemi invoqué encore debout tombe avec le boss qui l'a appelé, sans Or (#172, règle 4). */
   | { readonly type: 'summonedFell'; readonly at: number; readonly enemy: number }
   | {

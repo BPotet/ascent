@@ -147,7 +147,9 @@ export type EnemyKind =
   // Le Beffroi (#214) : le Novice des cloches, la Sonneuse de matines et le Jaquemart.
   | 'bellNovice'
   | 'matinsRinger'
-  | 'clockJack';
+  | 'clockJack'
+  // Le Fossoyeur (#258), 3e Élite des Catacombes.
+  | 'gravedigger';
 
 /** Le Saignement (`Bleed`, prototype #107) : `damage` PV perdus au début de `rounds` manches. */
 export interface Bleed {
@@ -163,6 +165,17 @@ export interface Bleed {
 export interface Summon {
   readonly enemy: EnemyKind;
   readonly count: 1 | 2;
+}
+
+/**
+ * Exhumer (`Exhume`, #258, champ `exhume` du Codex) : au début de chaque manche paire, il exhume un
+ * ennemi `enemy` (nom de code) à la première place libre de la première ligne, tant qu'aucun des
+ * ennemis qu'il a exhumés n'est debout (`maxStanding`). La règle est dans `exhume.ts`.
+ */
+export interface Exhume {
+  readonly enemy: EnemyKind;
+  readonly rounds: 'even';
+  readonly maxStanding: 1;
 }
 
 /** Un coup qu'un ennemi peut porter, avec ses dégâts. */
@@ -196,6 +209,8 @@ export interface EnemyProfile {
   readonly phase2Summon?: Summon;
   /** Se relève seul (`SelfRevive`, #106) : `times` fois par combat, à `hpPercent` % de ses PV max. */
   readonly selfRevive?: { readonly times: number; readonly hpPercent: number };
+  /** Exhumer (#258) ; absent, il n'exhume personne. */
+  readonly exhume?: Exhume;
 }
 
 /** Le changement de phase d'un boss : à 50 % de ses PV max ou moins (P6, #38). */
@@ -540,6 +555,21 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     ],
     supports: false,
   },
+  // Le Fossoyeur (#258), Élite du palier 1 : valeurs du Codex recopiées le 09/11/2026, telles
+  // quelles (multipliées au combat par le multiplicateur d'Élite et de boss). Coup de pelle, Terre
+  // jetée, Fosse ouverte, un tiers chacun ; il exhume un Squelette aux manches paires.
+  // `codex/gravedigger` v1 (dea86734e85556d73cac94c882f926c68dbf0fd3a7f25d5297cac6b6f7b24de6).
+  gravedigger: {
+    maxHp: 150,
+    maxGuard: 40,
+    moves: [
+      { attack: 'basic', damage: 8 },
+      { attack: 'double', damage: 4 },
+      { attack: 'perilous', damage: 12 },
+    ],
+    supports: false,
+    exhume: { enemy: 'skeleton', rounds: 'even', maxStanding: 1 },
+  },
 };
 
 /**
@@ -579,4 +609,16 @@ export const ENEMY_INITIATIVE: Readonly<Record<EnemyKind, number>> = {
   bellNovice: 6,
   matinsRinger: 3,
   clockJack: 1,
+  // Le Fossoyeur (#258), celle du Codex : sous celle du héros, qui peut briser sa garde avant son action.
+  gravedigger: 4,
 };
+
+/**
+ * La mécanique signature d'une Élite (#258, D8) : celle que montrent sa marque de signature et sa
+ * bulle de première rencontre ; `null` pour un ennemi qui n'en a pas. Exhumer pour le Fossoyeur.
+ */
+export type EliteSignature = 'exhume';
+
+export function eliteSignature(kind: EnemyKind): EliteSignature | null {
+  return ENEMIES[kind].exhume === undefined ? null : 'exhume';
+}

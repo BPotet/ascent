@@ -28,6 +28,7 @@ const INTENT_ICONS: Readonly<Record<IntentCategory, IconName>> = {
   guard: 'iGuard',
   heal: 'iHeal',
   raise: 'iRaise',
+  exhume: 'iExhume',
   skip: 'iSkip',
 };
 

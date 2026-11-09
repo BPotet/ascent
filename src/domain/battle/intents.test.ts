@@ -297,3 +297,25 @@ describe('the Burn of a move (#171)', () => {
     expect(attackOf('ghoul', 1)).not.toHaveProperty('burn');
   });
 });
+
+describe('drawIntent with the place of an exhumation (#258, D1)', () => {
+  it('shows Exhume at the given place, its three draws consumed as for a move', () => {
+    for (const seed of SEEDS.slice(0, 50)) {
+      const random = seedRandom(seed);
+      const struck = drawIntent('gravedigger', random, CALM);
+      const exhumed = drawIntent('gravedigger', random, { ...CALM, exhumeSlot: 1 });
+
+      expect(exhumed.intent).toEqual({ category: 'exhume', slot: 1 });
+      expect(exhumed.random).toEqual(struck.random);
+    }
+  });
+
+  it('draws a move without a place', () => {
+    const random = seedRandom(9);
+
+    expect(drawIntent('gravedigger', random, { ...CALM, exhumeSlot: null }).intent.category).toBe(
+      'attack',
+    );
+    expect(drawIntent('gravedigger', random, CALM).intent.category).toBe('attack');
+  });
+});

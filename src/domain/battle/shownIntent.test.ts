@@ -76,3 +76,26 @@ describe('shownIntent (C2.2, C5.7)', () => {
     expect(shownIntent(withGhoul({ hp: 0, intent: ATTACK }), 0)).toBeNull();
   });
 });
+
+describe('shownIntent of the Gravedigger and his Skeleton (#258)', () => {
+  it('shows the intent Exhume, without its place', () => {
+    expect(shownIntent(withGhoul({ intent: { category: 'exhume', slot: 1 } }), 0)).toEqual({
+      category: 'exhume',
+    });
+  });
+
+  it('says that an exhumed Skeleton does not act in the round it entered', () => {
+    const entered = withGhoul({ raisedRound: 3, summoned: true, exhumed: true }, { round: 3 });
+
+    expect(shownIntent(entered, 0)).toEqual({ category: 'skip', reason: 'exhumed' });
+  });
+
+  it('says raised for an exhumed Skeleton that revived by itself later', () => {
+    const revived = withGhoul(
+      { raisedRound: 5, summoned: true, exhumed: true, selfRevives: 1 },
+      { round: 5 },
+    );
+
+    expect(shownIntent(revived, 0)).toEqual({ category: 'skip', reason: 'raised' });
+  });
+});

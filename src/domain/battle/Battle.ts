@@ -45,7 +45,15 @@ import {
 import { NO_MODIFIERS, combineModifiers, heroAttack, type HeroModifiers } from './heroModifiers';
 import { heroInitiative } from './initiative';
 import { cursedValue } from './curse';
-import { drawIntent, raisedHp, type GuardIntent, type Intent, type RaiseIntent } from './intents';
+import { exhumeSlot } from './exhume';
+import {
+  drawIntent,
+  raisedHp,
+  type ExhumeIntent,
+  type GuardIntent,
+  type Intent,
+  type RaiseIntent,
+} from './intents';
 import { MOMENTUM_MAX, MOMENTUM_START, gainMomentum, missingMomentum } from './momentum';
 import {
   BULWARK_DAMAGE_PERCENT,
@@ -85,7 +93,7 @@ import {
 } from './strike';
 import { bleedsOn, mergeBleed, tickBleed } from './bleed';
 import { burnAtRoundStart, burnOnBlow } from './burn';
-import { freeSlots, type PendingSummon } from './summon';
+import { freeSlots, summonedKind, type PendingSummon } from './summon';
 import { cappedParryHeal } from './parryHeal';
 import { NO_TIER_MULTIPLIER, scaleByPercent, type TierMultiplier } from './tierMultiplier';
 
@@ -156,6 +164,11 @@ export interface EnemyState {
    * (`Battle.escortMultiplier`) ; absent, non.
    */
   readonly escort?: true;
+  /**
+   * Un ennemi exhumé (`Exhumation`, #258) : entré par l'Exhumation du Fossoyeur, en plus de
+   * `summoned` ; il compte pour le plafond d'Exhumer. Absent, non.
+   */
+  readonly exhumed?: true;
 }
 
 export interface ImpactState {
@@ -209,7 +222,7 @@ export interface AttackStep {
 export interface SupportStep {
   readonly kind: 'support';
   readonly enemy: number;
-  readonly intent: GuardIntent | RaiseIntent;
+  readonly intent: GuardIntent | RaiseIntent | ExhumeIntent;
   readonly since: number;
   readonly until: number;
 }
@@ -838,10 +851,13 @@ function startRound(previous: Battle, events: Events, at: number): Battle {
   const burnt = burnHero(bleedHero(previous, events, at), events, at);
   const battle = reinforce(summonEnter(burnt, events, at), events, at);
   let random = battle.random;
-  // Tous les tirages au début de la manche, ennemis debout de gauche à droite (C2.1).
+  const round = battle.round + 1;
+  // Tous les tirages au début de la manche, ennemis debout de gauche à droite (C2.1). La place
+  // d'une Exhumation est fixée ici (#258, D1) : aucune ne peut être reprise avant son action.
   const enemies = battle.enemies.map((enemy, index) => {
     if (!isStanding(enemy)) return enemy;
     const drawn = drawIntent(enemy.kind, random, {
+      exhumeSlot: exhumeSlot(battle.enemies, index, round),
       fallenAlly: fallenAlly(battle, index),
       stunned: enemy.stun !== null,
       guardDamaged: enemy.guard < enemy.maxGuard,
@@ -853,7 +869,6 @@ function startRound(previous: Battle, events: Events, at: number): Battle {
     random = drawn.random;
     return { ...enemy, intent: drawn.intent };
   });
-  const round = battle.round + 1;
   // Les intentions tirées, annoncées avec la manche : une avance peut déjà consommer la première.
   const intents = enemies.map((enemy) => (isStanding(enemy) ? enemy.intent : null));
   events.push({ type: 'roundStarted', at, round, intents });
@@ -1111,16 +1126,40 @@ function startAttack(
   });
 }
 
-/** L'intention Garde (la garde remonte, sans dépasser son maximum) ou Relever (C2, C5.9). */
+/**
+ * L'Exhumation (#258, X2) : un ennemi exhumé entre à la place fixée au tirage, aux valeurs du palier
+ * des invoqués, jamais maudit ni d'escorte ; une place vide allonge la ligne, celle d'un tombé est
+ * reprise. Il n'est pas dans l'ordre de la manche : il n'y agit pas.
+ */
+function exhume(battle: Battle, events: Events, enemy: number, slot: number, at: number): Battle {
+  const kind = ENEMIES[battle.enemies[enemy]!.kind].exhume!.enemy;
+  events.push({ type: 'enemyExhumed', at, enemy, slot, kind });
+  const entering: EnemyState = {
+    ...freshEnemy(kind, battle.summonMultiplier),
+    summoned: true,
+    exhumed: true,
+    raisedRound: battle.round,
+  };
+  const enemies = [...battle.enemies];
+  enemies[slot] = entering;
+  return { ...battle, enemies };
+}
+
+/**
+ * L'intention Garde (la garde remonte, sans dépasser son maximum), Relever (C2, C5.9) ou Exhumer
+ * (#258).
+ */
 function startSupport(
   battle: Battle,
   events: Events,
   enemy: number,
-  intent: GuardIntent | RaiseIntent,
+  intent: GuardIntent | RaiseIntent | ExhumeIntent,
   at: number,
 ): Battle {
   let supported: Battle;
-  if (intent.category === 'guard') {
+  if (intent.category === 'exhume') {
+    supported = exhume(battle, events, enemy, intent.slot, at);
+  } else if (intent.category === 'guard') {
     const state = battle.enemies[enemy]!;
     const guard = Math.min(state.maxGuard, state.guard + intent.gain);
     events.push({ type: 'guardRaised', at, enemy, gain: intent.gain, guard });
@@ -1348,11 +1387,12 @@ function hitEnemy(
 }
 
 /**
- * La chute avec le boss (#172, règle 4) : quand tombe un boss qui invoque, chaque ennemi invoqué
- * encore debout tombe avec lui, sans Or, et une Invocation encore annoncée n'entre jamais.
+ * La chute avec celui qui appelle (#172, règle 4 ; #258, X4) : quand tombe un boss qui invoque ou
+ * le Fossoyeur, chaque ennemi invoqué encore debout tombe avec lui, sans Or, et une Invocation
+ * encore annoncée n'entre jamais. Un seul ennemi appelle par combat.
  */
 function fallWithSummoner(battle: Battle, events: Events, index: number, at: number): Battle {
-  if (ENEMIES[battle.enemies[index]!.kind].phase2Summon === undefined) return battle;
+  if (summonedKind(battle.enemies[index]!.kind) === null) return battle;
   const { summon: _, ...rest } = battle;
   const enemies = battle.enemies.map((enemy, place) => {
     if (enemy.summoned !== true || !isStanding(enemy)) return enemy;

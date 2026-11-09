@@ -942,6 +942,39 @@ describe('BattleLog', () => {
     expect(actionOf(log, 0).kind).toBe('attack');
   });
 
+  it('notes the exhumation as the action exhume of the Gravedigger, with its effect (#258)', () => {
+    const exhume: Intent = { category: 'exhume', slot: 1 };
+    const log = logged(
+      [roundStarted(START, 2, [exhume])],
+      [
+        { type: 'stepInStarted', at: START + 100, enemy: 0, until: START + 500 },
+        { type: 'enemyExhumed', at: START + 500, enemy: 0, slot: 1, kind: 'skeleton' },
+      ],
+    );
+
+    expect(firstRound(log).intents[0]).toEqual(exhume);
+    expect(actionOf(log, 0)).toMatchObject({
+      kind: 'exhume',
+      t: 100,
+      effects: [{ type: 'enemyExhumed', t: 500, enemy: 0, slot: 1, kind: 'skeleton' }],
+    });
+  });
+
+  it('counts the exhumations of a battle on its effects enemyExhumed (#258)', () => {
+    const exhume: Intent = { category: 'exhume', slot: 1 };
+    const log = logged(
+      [roundStarted(START, 2, [exhume])],
+      [{ type: 'enemyExhumed', at: START + 500, enemy: 0, slot: 1, kind: 'skeleton' }],
+      [roundStarted(START + 2_000, 4, [exhume])],
+      [{ type: 'enemyExhumed', at: START + 2_500, enemy: 0, slot: 2, kind: 'skeleton' }],
+    );
+    const exhumations = log.rounds.flatMap((round) =>
+      round.actions.flatMap((action) => action.effects),
+    );
+
+    expect(exhumations.filter((effect) => effect.type === 'enemyExhumed')).toHaveLength(2);
+  });
+
   it('changes nothing without an event, and never changes the log it is given', () => {
     const log = logged([roundStarted(START, 1)]);
     const copy = JSON.parse(JSON.stringify(log)) as BattleLog;

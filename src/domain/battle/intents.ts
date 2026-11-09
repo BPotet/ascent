@@ -39,8 +39,17 @@ export interface RaiseIntent {
   readonly ally: number;
 }
 
+/**
+ * L'intention Exhumer (`ExhumeIntent`, #258) : un Squelette entrera à la place `slot`, fixée quand
+ * l'intention est tirée, à l'action du Fossoyeur.
+ */
+export interface ExhumeIntent {
+  readonly category: 'exhume';
+  readonly slot: number;
+}
+
 /** L'intention (`Intent`) qu'un ennemi tire pour la manche (C2). */
-export type Intent = AttackIntent | GuardIntent | RaiseIntent;
+export type Intent = AttackIntent | GuardIntent | RaiseIntent | ExhumeIntent;
 
 /** L'intention Garde rend 30 % de la garde max (C2). */
 export const GUARD_INTENT_PERCENT = 30;
@@ -83,6 +92,8 @@ export interface IntentContext {
   readonly damagePercent?: number;
   /** Un ennemi maudit (#209) : ses coups gagnent 20 % des dégâts du palier ; absent, non maudit. */
   readonly cursed?: boolean;
+  /** La place de son Exhumation dans la manche (#258, X1) ; absente ou `null`, il n'exhume pas. */
+  readonly exhumeSlot?: number | null;
 }
 
 /**
@@ -91,7 +102,8 @@ export interface IntentContext {
  * position de la fausse amorce. Un soutien relève un allié tombé jamais relevé ; sinon, s'il n'est
  * pas étourdi et que sa garde est entamée, il garde si le premier tirage est sous 1/3, de 30 % de
  * sa garde max du palier. Les dégâts du coup sont ceux du palier (#38), plus 20 % pour un ennemi
- * maudit (#209), jamais son Saignement ni sa Brûlure.
+ * maudit (#209), jamais son Saignement ni sa Brûlure. Avec une place d'Exhumation (#258), il
+ * exhume, ses trois tirages consommés comme pour un coup : l'intention ne change jamais les tirages.
  */
 export function drawIntent(
   kind: EnemyKind,
@@ -105,6 +117,9 @@ export function drawIntent(
   const windUpDraw = nextRandom(moveDraw.state);
   const feintDraw = nextRandom(windUpDraw.state);
   const drawn = (intent: Intent) => ({ intent, random: feintDraw.state });
+  if (context.exhumeSlot !== undefined && context.exhumeSlot !== null) {
+    return drawn({ category: 'exhume', slot: context.exhumeSlot });
+  }
   if (supports && context.fallenAlly !== null) {
     return drawn({ category: 'raise', ally: context.fallenAlly });
   }

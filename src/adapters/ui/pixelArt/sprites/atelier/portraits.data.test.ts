@@ -32,6 +32,8 @@ const WITHOUT_MOCKUP: readonly (HeroKind | EnemyKind)[] = [
   'bellNovice',
   'matinsRinger',
   'clockJack',
+  // Le Fossoyeur (#258) : `gravedigger.data.test.ts`.
+  'gravedigger',
 ];
 
 interface MockupImage {

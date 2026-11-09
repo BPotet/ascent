@@ -58,6 +58,8 @@ export const ENEMY_NAMES: Readonly<Record<EnemyKind, string>> = {
   bellNovice: 'Novice des cloches',
   matinsRinger: 'Sonneuse de matines',
   clockJack: 'Jaquemart',
+  // Le Fossoyeur (#258), sans article.
+  gravedigger: 'Fossoyeur',
 };
 
 /** Le genre du nom de l'ennemi, pour « étourdie », « tombée »… */
@@ -90,6 +92,7 @@ const FEMININE: Readonly<Record<EnemyKind, boolean>> = {
   bellNovice: false,
   matinsRinger: true,
   clockJack: false,
+  gravedigger: false,
 };
 
 export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {
@@ -327,6 +330,9 @@ export function intentNumber(intent: ShownIntent): string | null {
   return intent.category === 'guard' || intent.category === 'heal' ? `+${intent.gain}` : null;
 }
 
+/** Pourquoi un ennemi n'agit pas : étourdi, relevé, ou invoqué par une Exhumation (#258). */
+const SKIP_REASONS = { stunned: 'étourdi', raised: 'relevé', exhumed: 'invoqué' } as const;
+
 /** L'intention lue par le lecteur d'écran : sa catégorie, et son nombre pour Garde et Soin. */
 export function intentSpeech(kind: EnemyKind, intent: ShownIntent): string {
   switch (intent.category) {
@@ -338,8 +344,10 @@ export function intentSpeech(kind: EnemyKind, intent: ShownIntent): string {
       return `intention : soin, plus ${intent.gain}`;
     case 'raise':
       return 'intention : relever un allié';
+    case 'exhume':
+      return 'intention : exhumer';
     case 'skip':
-      return `${agreed(kind, intent.reason === 'stunned' ? 'étourdi' : 'relevé')}, n'agit pas`;
+      return `${agreed(kind, SKIP_REASONS[intent.reason])}, n'agit pas`;
   }
 }
 

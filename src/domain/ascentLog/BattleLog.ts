@@ -21,7 +21,7 @@ import type {
   WhiffReason,
 } from '../battle/BattleEvent';
 import type { Bleed, EnemyKind, HeroKind } from '../battle/combatants';
-import type { GuardIntent, Intent, RaiseIntent } from '../battle/intents';
+import type { ExhumeIntent, GuardIntent, Intent, RaiseIntent } from '../battle/intents';
 import type { PressJudgement } from '../battle/rules';
 import { beyondBasePower, type PowerKind } from '../battle/powers';
 import type { TierMultiplier } from '../battle/tierMultiplier';
@@ -83,7 +83,8 @@ export type IntentRecord =
       readonly burn?: number;
     }
   | GuardIntent
-  | RaiseIntent;
+  | RaiseIntent
+  | ExhumeIntent;
 
 /** Une frappe en rythme, identifiée par la manche, le rang de l'action du héros et le coup. */
 export interface StrikePressRecord {
@@ -153,6 +154,7 @@ const EFFECT_TYPES = [
   'summonCalled',
   'summonEntered',
   'summonedFell',
+  'enemyExhumed',
   'secondChanceUsed',
   'mistWorn',
   'heroHealed',
@@ -179,12 +181,13 @@ const ROUND_OPENING: ReadonlySet<BattleEvent['type']> = new Set([
 ]);
 
 export type ActionKind =
-  'strike' | 'power' | 'attack' | 'guard' | 'raise' | 'lostAction' | 'guardRestored';
+  'strike' | 'power' | 'attack' | 'guard' | 'raise' | 'exhume' | 'lostAction' | 'guardRestored';
 
 const KIND_OF_INTENT: Readonly<Record<IntentRecord['category'], ActionKind>> = {
   attack: 'attack',
   guard: 'guard',
   raise: 'raise',
+  exhume: 'exhume',
 };
 
 /** Les effets du début d'une manche, Brûlure éteinte au début de la manche comprise. */
@@ -531,6 +534,9 @@ class Writer {
         return;
       case 'allyRaised':
         this.effect(draft, event, t, this.act(draft, event.enemy, 'raise', t));
+        return;
+      case 'enemyExhumed':
+        this.effect(draft, event, t, this.act(draft, event.enemy, 'exhume', t));
         return;
       case 'actionLost':
         this.effect(draft, event, t, this.act(draft, event.enemy, 'lostAction', t));

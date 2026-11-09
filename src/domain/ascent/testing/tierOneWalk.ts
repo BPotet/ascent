@@ -41,6 +41,9 @@ function intentText(intent: Intent): string {
       return `guard+${intent.gain}`;
     case 'raise':
       return `raise${intent.ally}`;
+    // Tirées sans manche, les intentions de la marche n'exhument jamais (#258, D6).
+    case 'exhume':
+      return `exhume${intent.slot}`;
   }
 }
 
