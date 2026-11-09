@@ -299,55 +299,60 @@ describe('the non-repeated Elite (#244, R5)', () => {
     exits: [{ kind: 'elite', groupSize: null }],
   });
 
-  it('draws the first Elite of a tier as before, and remembers it', () => {
+  it('draws the first Elite of a tier among all, and remembers it in the faced Elites', () => {
     for (const seed of SEEDS.slice(0, 20)) {
       const tierThree = atEliteDoor(atTier(3, seed));
       const entered = chooseExit(tierThree, 0);
       const elite = entered.encounter!.enemies[0]!;
 
       expect(drawElite(TIERS[3].elites, tierThree.random).value).toBe(elite);
-      expect(entered.lastElite).toBe(elite);
+      expect(entered.facedElites).toEqual([elite]);
     }
   });
 
-  it('meets the other Elite at the next Elite door of the tier, without a draw', () => {
-    const tierThree = { ...atEliteDoor(atTier(3)), lastElite: 'stoneSaint' as const };
+  it('meets the only Elite not yet faced at the tier, without a draw (#258)', () => {
+    const { elites } = TIERS[3];
+    const tierThree = { ...atEliteDoor(atTier(3)), facedElites: elites.slice(0, -1) };
     const entered = chooseExit(tierThree, 0);
-    const plain = chooseExit({ ...tierThree, lastElite: 'firstPilgrim' as const }, 0);
+    const plain = chooseExit({ ...tierThree, facedElites: elites.slice(1) }, 0);
 
     // L'Élite à l'indice 0, son escorte après elle (#257).
-    expect(entered.encounter!.enemies[0]).toBe('firstPilgrim');
-    expect(entered.lastElite).toBe('firstPilgrim');
-    expect(plain.encounter!.enemies[0]).toBe('stoneSaint');
+    expect(entered.encounter!.enemies[0]).toBe(elites.at(-1));
+    expect(entered.facedElites).toEqual(elites);
+    expect(plain.encounter!.enemies[0]).toBe(elites[0]);
     // Un seul candidat : aucun tirage, le générateur part du même état pour la graine du combat.
     expect(entered.encounter!.battleSeed).toBe(plain.encounter!.battleSeed);
   });
 
-  it('alternates the two Elites of a tier, door after door', () => {
-    let current = atEliteDoor(atTier(2, 7));
-    const met: string[] = [];
-    for (let door = 0; door < 4; door += 1) {
-      current = chooseExit(current, 0);
-      met.push(current.encounter!.enemies[0]!);
-      current = atEliteDoor({ ...won(current), floor: 1 });
-    }
+  it('meets every Elite of the tier before one comes back, never twice in a row (#258)', () => {
+    for (const seed of SEEDS.slice(0, 10)) {
+      let current = atEliteDoor(atTier(1, seed));
+      const met: string[] = [];
+      for (let door = 0; door < 6; door += 1) {
+        current = chooseExit(current, 0);
+        met.push(current.encounter!.enemies[0]!);
+        current = atEliteDoor({ ...won(current), floor: 1 });
+      }
+      const count = TIERS[1].elites.length;
 
-    expect(new Set(met).size).toBe(2);
-    met.slice(1).forEach((elite, index) => expect(elite).not.toBe(met[index]));
+      expect(new Set(met.slice(0, count)).size).toBe(count);
+      met.slice(1).forEach((elite, index) => expect(elite).not.toBe(met[index]));
+      expect(current.facedElites).toEqual(met);
+    }
   });
 
-  it('forgets the last Elite at the Tier transition', () => {
-    const boss = { ...toBoss(atTier(1)), lastElite: 'twins' as const };
+  it('empties the faced Elites at the Tier transition', () => {
+    const boss = { ...toBoss(atTier(1)), facedElites: ['twins', 'fallenKnight'] as const };
     const next = enterNextTier(acknowledgeBossVictory(won(boss)));
 
     expect(next.tier).toBe(2);
-    expect(next).not.toHaveProperty('lastElite');
+    expect(next).not.toHaveProperty('facedElites');
   });
 
-  it('draws the next Elite door as before for an ascent saved before #244, without lastElite', () => {
+  it('draws among every Elite of the tier for an ascent without faced Elites', () => {
     const saved = atEliteDoor(atTier(1));
 
-    expect(saved).not.toHaveProperty('lastElite');
+    expect(saved).not.toHaveProperty('facedElites');
     expect(chooseExit(saved, 0).encounter!.enemies[0]).toBe(
       drawElite(TIERS[1].elites, saved.random).value,
     );
@@ -367,7 +372,10 @@ describe('the escorted Elite at an Elite door (#257)', () => {
 
   /** Les tirages rejoués pas à pas (EE7) : Élite, escorte, ennemi maudit, graine du combat. */
   function replayed(door: Ascent) {
-    const elite = drawElite(eliteCandidates(TIERS[door.tier].elites, door.lastElite), door.random);
+    const elite = drawElite(
+      eliteCandidates(TIERS[door.tier].elites, door.facedElites ?? []),
+      door.random,
+    );
     const escort = drawEliteEscort(TIERS[door.tier].escortSize, elite.random, door.tier);
     const curse = eliteCurse(door.tier, door.gauge);
     const cursed =
@@ -391,7 +399,7 @@ describe('the escorted Elite at an Elite door (#257)', () => {
           const entered = chooseExit(door, 0);
 
           expect(entered.encounter).toEqual(replayed(door));
-          expect(entered.lastElite).toBe(entered.encounter!.enemies[0]);
+          expect(entered.facedElites).toEqual([entered.encounter!.enemies[0]]);
         }
       }
     },
@@ -417,7 +425,10 @@ describe('the escorted Elite at an Elite door (#257)', () => {
         const door = doorAt(1, seed, gauge);
         const entered = chooseExit(door, 0);
         // L'algorithme d'avant : l'Élite, puis la graine ; maudite à −2 seulement, sans tirage.
-        const elite = drawElite(eliteCandidates(TIERS[1].elites, door.lastElite), door.random);
+        const elite = drawElite(
+          eliteCandidates(TIERS[1].elites, door.facedElites ?? []),
+          door.random,
+        );
         const seedDraw = nextRandom(elite.random);
 
         expect(entered.encounter).toEqual({

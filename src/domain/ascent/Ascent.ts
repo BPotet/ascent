@@ -169,10 +169,11 @@ export interface Ascent {
   /** Le flux de hasard du coffre scellé, dérivé de la graine : seule une ouverture l'avance. */
   readonly sealedChestRandom: RandomState;
   /**
-   * La dernière Élite affrontée au palier (#244, R5), jamais tirée à la porte Élite suivante ;
-   * absente avant la première Élite du palier, et dans une ascension sauvegardée avant #244.
+   * Les Élites affrontées au palier, dans l'ordre (#258, la règle du sac) : la porte Élite tire
+   * d'abord parmi celles qui n'y sont pas. Absente, la liste est vide : avant la première Élite du
+   * palier, et dans une ascension sauvegardée avant #244.
    */
-  readonly lastElite?: EnemyKind;
+  readonly facedElites?: readonly EnemyKind[];
 }
 
 /**
@@ -476,10 +477,16 @@ export function chooseExit(ascent: Ascent, index: number): Ascent {
       };
     }
     case 'elite': {
-      // L'Élite non répétée (#244, R5) : jamais la dernière affrontée au palier.
-      const elite = drawElite(eliteCandidates(TIERS[tier].elites, ascent.lastElite), ascent.random);
+      // L'Élite non répétée, la règle du sac (#258) : les Élites pas encore affrontées au palier.
+      const faced = ascent.facedElites ?? [];
+      const elite = drawElite(eliteCandidates(TIERS[tier].elites, faced), ascent.random);
       const drawn = escortedElite(elite.value, elite.random, tier, ascent.gauge);
-      return { ...entered, random: drawn.random, encounter: drawn.value, lastElite: elite.value };
+      return {
+        ...entered,
+        random: drawn.random,
+        encounter: drawn.value,
+        facedElites: [...faced, elite.value],
+      };
     }
     case 'boss': {
       const boss = drawBoss(ascent.random, TIERS[tier].bosses);
@@ -592,8 +599,8 @@ export function enterNextTier(ascent: Ascent): Ascent {
   const tier = ascent.passage.to;
   const size = drawGroupSize(1, ascent.random, ascent.fiveFaced, tier);
   const first = combat(size.value, size.random, tier, ascent.gauge);
-  // Le nouveau palier n'a pas encore d'Élite affrontée (#244, R5).
-  const { lastElite: _, ...rest } = ascent;
+  // Le Passage de palier vide le sac (#258) : le nouveau palier n'a pas encore d'Élite affrontée.
+  const { facedElites: _, ...rest } = ascent;
   return {
     ...rest,
     tier,

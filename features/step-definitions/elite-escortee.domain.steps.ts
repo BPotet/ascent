@@ -148,7 +148,10 @@ const strikesWritten = (strikes: string) => strikes.replace(/ et /gu, ', ');
 
 /** Les tirages rejoués pas à pas (EE7) : Élite, escorte, ennemi maudit, graine du combat. */
 function replayed(door: Ascent) {
-  const elite = drawElite(eliteCandidates(TIERS[door.tier].elites, door.lastElite), door.random);
+  const elite = drawElite(
+    eliteCandidates(TIERS[door.tier].elites, door.facedElites ?? []),
+    door.random,
+  );
   const escort = drawEliteEscort(TIERS[door.tier].escortSize, elite.random, door.tier);
   const curse = eliteCurse(door.tier, door.gauge);
   const cursed =
@@ -483,7 +486,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
         for (const tier of [2, 3] as const) {
           for (const gauge of [-2, -1, 0] as const) {
             const door = eliteDoor(tier, seed, gauge);
-            const alone = { ...door, lastElite: TIERS[tier].elites[0]! };
+            // Un seul candidat (#258) : toutes les Élites du palier affrontées sauf la dernière.
+            const alone = { ...door, facedElites: TIERS[tier].elites.slice(0, -1) };
             expect(chooseExit(door, 0).encounter).toEqual(replayed(door));
             expect(chooseExit(alone, 0).encounter).toEqual(replayed(alone));
           }

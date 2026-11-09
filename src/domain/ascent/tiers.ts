@@ -77,7 +77,8 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
       { kind: 'skeleton', weight: 3, cap: 1 },
       { kind: 'madVillager', weight: 2, cap: 1 },
     ],
-    elites: ['fallenKnight', 'twins'],
+    // Le Fossoyeur (#258) en 3e position : les nouvelles Élites viennent après.
+    elites: ['fallenKnight', 'twins', 'gravedigger'],
     escortSize: 0,
     bosses: ['ossuaryWarden', 'facelessPrior'],
     bossShards: 8,

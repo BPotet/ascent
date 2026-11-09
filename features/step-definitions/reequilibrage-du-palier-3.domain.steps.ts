@@ -610,7 +610,13 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   given(/^une ascension au palier 3 où le héros a affronté le Saint de pierre$/u, () => {
     world = fresh(encounter(1, 'ghoul'));
-    world.ascent = atEliteDoor({ ...startAscent(5), tier: 3, lastElite: 'stoneSaint' });
+    // La règle du sac (#258) : le Saint de pierre affronté, les autres Élites du palier aussi sauf
+    // la première, le Premier Pèlerin, seul candidat avec 2 comme avec 3 Élites.
+    const faced = [
+      ...TIERS[3].elites.slice(1).filter((elite) => elite !== 'stoneSaint'),
+      'stoneSaint',
+    ] as const;
+    world.ascent = atEliteDoor({ ...startAscent(5), tier: 3, facedElites: faced });
   });
 
   when(/^il franchit la porte Élite suivante du palier 3$/u, () => {
@@ -621,7 +627,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     // L'Élite à l'indice 0, son escorte après elle (#257).
     expect(world.entered!.encounter).toMatchObject({ kind: 'elite' });
     expect(world.entered!.encounter!.enemies[0]).toBe('firstPilgrim');
-    expect(world.entered!.lastElite).toBe('firstPilgrim');
+    expect(world.entered!.facedElites?.at(-1)).toBe('firstPilgrim');
   });
 
   given(/^une ascension qui arrive au palier 2 sans Élite affrontée à ce palier$/u, () => {
@@ -629,11 +635,11 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     // Le palier 1 a eu son Élite ; le Passage de palier l'oublie.
     const tierTwo = enterNextTier({
       ...startAscent(9),
-      lastElite: 'twins',
+      facedElites: ['twins'],
       passage: { to: 2, step: 'announce' },
     });
     expect(tierTwo.tier).toBe(2);
-    expect(tierTwo).not.toHaveProperty('lastElite');
+    expect(tierTwo).not.toHaveProperty('facedElites');
     world.ascent = atEliteDoor(tierTwo);
   });
 

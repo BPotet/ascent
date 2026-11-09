@@ -84,3 +84,33 @@ Fonctionnalité: Le Fossoyeur et l'Élite non répétée étendue
     Étant donné une graine de l'ascension fixée
     Quand le Fossoyeur montre Exhumer
     Alors ses tirages de la manche sont consommés comme pour un coup
+
+  @domain
+  Scénario: Règle du sac, première porte Élite du palier
+    Étant donné un palier à 3 Élites, A, B et C, dans cet ordre
+    Et aucune Élite encore affrontée au palier
+    Quand le héros passe une porte Élite
+    Alors l'Élite est tirée à égalité parmi A, B et C
+
+  @domain
+  Scénario: Règle du sac, les Élites pas encore affrontées d'abord
+    Étant donné les Élites affrontées au palier : B, puis A
+    Quand le héros passe une porte Élite
+    Alors l'Élite est C, sans tirage
+
+  @domain
+  Scénario: Règle du sac, toutes affrontées
+    Étant donné les Élites affrontées au palier : B, A, puis C
+    Quand le héros passe une porte Élite
+    Alors l'Élite est tirée à égalité entre A et B, jamais C
+
+  @domain
+  Scénario: Le Passage de palier vide le sac
+    Étant donné des Élites affrontées au palier 1
+    Quand le héros passe au palier 2
+    Alors aucune Élite du palier 2 n'est comptée comme affrontée
+
+  @domain
+  Scénario: Avec 2 Élites, la règle ne change pas
+    Étant donné un palier à 2 Élites
+    Alors les Élites alternent, comme avec l'Élite non répétée d'avant

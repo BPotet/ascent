@@ -3,19 +3,22 @@ import type { RandomState } from '../battle/SeededRandom';
 import { drawWeighted, type Drawn } from './draw';
 import { TIERS } from './tiers';
 
-/** Les Élites du palier 1 : le Chevalier déchu et Les Jumeaux (#108). */
+/** Les Élites du palier 1 : le Chevalier déchu, Les Jumeaux (#108) et le Fossoyeur (#258). */
 export const ELITES: readonly EnemyKind[] = TIERS[1].elites;
 
 /**
- * Les Élites que peut tirer une porte Élite (#244, R5) : celles du palier, sauf la dernière
- * affrontée au palier (`lastElite`). Si cela n'en laisse aucune (un palier à une seule Élite), la
- * liste entière.
+ * Les Élites que peut tirer une porte Élite, la règle du sac (#258, D5), dans l'ordre du palier :
+ * celles qui ne sont pas encore dans `faced` (les Élites affrontées au palier) ; quand toutes l'ont
+ * été, toutes sauf la dernière affrontée ; si cela n'en laisse aucune (un palier à une seule Élite),
+ * la liste entière. Avec 2 Élites, c'est la règle R5 de #244 : elles alternent.
  */
 export function eliteCandidates(
   elites: readonly EnemyKind[],
-  lastElite: EnemyKind | undefined,
+  faced: readonly EnemyKind[],
 ): readonly EnemyKind[] {
-  const others = elites.filter((elite) => elite !== lastElite);
+  const fresh = elites.filter((elite) => !faced.includes(elite));
+  if (fresh.length > 0) return fresh;
+  const others = elites.filter((elite) => elite !== faced.at(-1));
   return others.length > 0 ? others : elites;
 }
 

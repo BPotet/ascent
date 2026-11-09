@@ -7,7 +7,15 @@
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
 
 import { enemyTag } from '../../src/adapters/ui/format/battleText';
+import {
+  acknowledgeBossVictory,
+  endFloorBattle,
+  enterNextTier,
+  startAscent,
+  type Ascent,
+} from '../../src/domain/ascent/Ascent';
 import { eliteCurse } from '../../src/domain/ascent/cursedEnemy';
+import { drawElite, eliteCandidates } from '../../src/domain/ascent/elites';
 import { TIERS, encounterMultipliers } from '../../src/domain/ascent/tiers';
 import {
   advance,
@@ -22,13 +30,45 @@ import {
 import type { BattleEvent } from '../../src/domain/battle/BattleEvent';
 import { ENEMIES, ENEMY_INITIATIVE } from '../../src/domain/battle/combatants';
 import { drawIntent } from '../../src/domain/battle/intents';
-import { seedRandom } from '../../src/domain/battle/SeededRandom';
+import { nextRandom, seedRandom, type RandomState } from '../../src/domain/battle/SeededRandom';
+import type { EnemyKind } from '../../src/domain/battle/combatants';
 import { shownIntent } from '../../src/domain/battle/shownIntent';
 import { scaleByPercent } from '../../src/domain/battle/tierMultiplier';
 
 interface World {
   battle: Battle;
   events: BattleEvent[];
+  /** La règle du sac : les Élites du palier et celles affrontées, A, B, C par leur lettre. */
+  elites: readonly EnemyKind[];
+  faced: readonly EnemyKind[];
+  ascent: Ascent;
+}
+
+/** A, B et C : trois Élites passées à la règle du sac, jamais lues dans `TIERS` (#258, D5). */
+const LETTERS: Readonly<Record<string, EnemyKind>> = {
+  A: 'fallenKnight',
+  B: 'twins',
+  C: 'gravedigger',
+};
+const lettersOf = (list: string) => list.split(/, puis |, | et | entre /u).map((l) => LETTERS[l]!);
+
+/** L'Élite tirée à la porte pour chaque graine, avec l'état du générateur qui en sort. */
+function drawnAtDoor(seeds = 600): { readonly value: EnemyKind; readonly random: RandomState }[] {
+  return Array.from({ length: seeds }, (_, seed) =>
+    drawElite(eliteCandidates(world.elites, world.faced), seedRandom(seed * 7_919 + 1)),
+  );
+}
+
+/** Chaque Élite de `expected` tirée à peu près à égalité, aucune autre. */
+function expectEvenDraw(expected: readonly EnemyKind[]): void {
+  const drawn = drawnAtDoor().map(({ value }) => value);
+  expect([...new Set(drawn)].sort()).toEqual([...expected].sort());
+  const share = drawn.length / expected.length;
+  for (const elite of expected) {
+    const count = drawn.filter((value) => value === elite).length;
+    expect(count).toBeGreaterThan(share * 0.8);
+    expect(count).toBeLessThan(share * 1.2);
+  }
 }
 
 let world: World;
@@ -95,7 +135,7 @@ const roundStarts = (round: number) => (events: readonly BattleEvent[]) =>
 const digger = () => world.battle.enemies[0]!;
 
 function begin(battle = gravedigger()): void {
-  world = { battle, events: [] };
+  world = { battle, events: [], elites: [], faced: [] } as unknown as World;
 }
 
 /** L'Exhumation de la manche 2 faite. */
@@ -353,6 +393,88 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       const exhumed = drawIntent('gravedigger', seedRandom(seed), { ...context, exhumeSlot: 1 });
       expect(exhumed.intent.category).toBe('exhume');
       expect(exhumed.random).toEqual(struck.random);
+    }
+  });
+
+  // --- La règle du sac ---
+
+  given(/^un palier à 3 Élites, A, B et C, dans cet ordre$/u, () => {
+    begin();
+    world.elites = [LETTERS.A!, LETTERS.B!, LETTERS.C!];
+  });
+
+  and(/^aucune Élite encore affrontée au palier$/u, () => {
+    world.faced = [];
+  });
+
+  given(/^les Élites affrontées au palier : (.+)$/u, (list: string) => {
+    begin();
+    world.elites = [LETTERS.A!, LETTERS.B!, LETTERS.C!];
+    world.faced = lettersOf(list);
+  });
+
+  when(/^le héros passe une porte Élite$/u, () => {
+    expect(eliteCandidates(world.elites, world.faced).length).toBeGreaterThan(0);
+  });
+
+  then(/^l'Élite est tirée à égalité parmi A, B et C$/u, () => {
+    expectEvenDraw(lettersOf('A, B et C'));
+  });
+
+  then(/^l'Élite est C, sans tirage$/u, () => {
+    for (const { value } of drawnAtDoor(20)) expect(value).toBe(LETTERS.C);
+    const random = seedRandom(3);
+    expect(drawElite(eliteCandidates(world.elites, world.faced), random).random).toBe(random);
+  });
+
+  then(/^l'Élite est tirée à égalité entre A et B, jamais C$/u, () => {
+    expectEvenDraw(lettersOf('A et B'));
+    const random = seedRandom(3);
+    expect(drawElite(eliteCandidates(world.elites, world.faced), random).random).toEqual(
+      nextRandom(random).state,
+    );
+  });
+
+  given(/^des Élites affrontées au palier 1$/u, () => {
+    begin();
+    world.ascent = { ...startAscent(9), facedElites: ['twins', 'gravedigger'] };
+  });
+
+  when(/^le héros passe au palier 2$/u, () => {
+    const atBoss: Ascent = {
+      ...world.ascent,
+      floor: 6,
+      encounter: { kind: 'boss', enemies: ['ossuaryWarden'], battleSeed: 1 },
+    };
+    const won = endFloorBattle(atBoss, { outcome: 'victory', heroHp: atBoss.hero.hp });
+    world.ascent = enterNextTier(acknowledgeBossVictory(won));
+  });
+
+  then(/^aucune Élite du palier 2 n'est comptée comme affrontée$/u, () => {
+    expect(world.ascent.tier).toBe(2);
+    expect(world.ascent).not.toHaveProperty('facedElites');
+    expect(eliteCandidates(TIERS[2].elites, world.ascent.facedElites ?? [])).toEqual(
+      TIERS[2].elites,
+    );
+  });
+
+  given(/^un palier à 2 Élites$/u, () => {
+    begin();
+    world.elites = [LETTERS.A!, LETTERS.B!];
+  });
+
+  then(/^les Élites alternent, comme avec l'Élite non répétée d'avant$/u, () => {
+    for (const seed of [1, 2, 3, 5, 8, 13]) {
+      let faced: EnemyKind[] = [];
+      let random = seedRandom(seed);
+      for (let door = 0; door < 6; door += 1) {
+        const elite = drawElite(eliteCandidates(world.elites, faced), random);
+        // R5 de #244 : jamais la dernière affrontée ; un tirage à la 1re porte, aucun ensuite.
+        expect(elite.value).not.toBe(faced.at(-1));
+        expect(elite.random === random).toBe(door > 0);
+        faced = [...faced, elite.value];
+        random = elite.random;
+      }
     }
   });
 };
