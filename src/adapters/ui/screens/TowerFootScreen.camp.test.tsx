@@ -36,7 +36,7 @@ describe('TowerFootScreen and the camp (#40)', () => {
     expect(await screen.findByLabelText('22 Éclats')).toBeOnTheScreen();
   });
 
-  it('shows no number until the camp is read', async () => {
+  it('shows no number, and waits to start, until the camp is read (#270, T7)', async () => {
     const setUp = ascentSetUp({ shards: 82, unlocks: ['huntingSpear'] });
     let read: (value: string | null) => void = () => undefined;
     const get = setUp.keyValueStore.get;
@@ -56,7 +56,10 @@ describe('TowerFootScreen and the camp (#40)', () => {
     });
 
     expect(screen.queryByTestId('tower-foot-shards')).not.toBeOnTheScreen();
-    expect(screen.queryByRole('button', { name: "Commencer l'ascension" })).not.toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: "Commencer l'ascension" })).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ disabled: true }),
+    );
 
     read(JSON.stringify({ version: 1, unlocks: [{ unlock: 'huntingSpear', price: 20 }] }));
     expect(await screen.findByLabelText('62 Éclats')).toBeOnTheScreen();
@@ -76,12 +79,13 @@ describe('TowerFootScreen and the camp (#40)', () => {
     const { onCamp } = await show({ shards: 82, saved: startAscent(3) });
 
     await screen.findByRole('button', { name: "Reprendre l'ascension" });
-    // Le cadre de la jauge de l'ascension (#41) est un bouton, au-dessus des actions.
-    expect(buttonLabels().filter((label) => !label.startsWith('Jauge'))).toEqual([
-      "Reprendre l'ascension",
-      'Le camp',
-      "Abandonner l'ascension",
-    ]);
+    // Le cadre de la jauge de l'ascension (#41) et la carte des pouvoirs (#270, T6) sont des
+    // boutons, au-dessus des actions.
+    expect(
+      buttonLabels().filter(
+        (label) => !label.startsWith('Jauge') && !label.startsWith('Pouvoirs équipés'),
+      ),
+    ).toEqual(["Reprendre l'ascension", 'Le camp', "Abandonner l'ascension"]);
     await fireEvent.press(screen.getByRole('button', { name: 'Le camp' }));
     expect(onCamp).toHaveBeenCalledTimes(1);
   });

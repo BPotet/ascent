@@ -10,11 +10,12 @@ import type { FateGauge } from '../../../domain/ascent/fateGauge';
 import { loadoutOf, loadoutSize } from '../../../domain/ascent/loadout';
 import type { Tier } from '../../../domain/ascent/tiers';
 import type { HeroKind } from '../../../domain/battle/combatants';
-import type { PowerKind } from '../../../domain/battle/powers';
+import { POWERS, type PowerKind } from '../../../domain/battle/powers';
 import { TowerFootBackdrop } from '../battle/TierBackdrop';
 import { towerFootTier } from '../battle/scene/towerFootTier';
 import { GaugeDetailSheet } from '../components/GaugeDetailSheet';
 import { GaugeDial, GaugeEffectList } from '../components/GaugeDial';
+import { EquippedPowersCard, type FreshCells } from '../components/EquippedPowersCard';
 import { LoadoutSection } from '../components/LoadoutSection';
 import { LogExportButton } from '../components/LogExportButton';
 import { LoadoutSheet } from '../components/LoadoutSheet';
@@ -66,6 +67,13 @@ import { useHabitNames } from '../state/useHabitNames';
 import { HeroChoiceScreen } from './HeroChoiceScreen';
 
 const { roles } = artPalette;
+const HEROES: readonly HeroKind[] = ['sentinel', 'wanderer'];
+
+/** Où le menu des pouvoirs s'ouvre (#270) : sur l'onglet de `hero`, depuis la carte ou le Choix du héros. */
+export interface OpenPowers {
+  readonly hero: HeroKind;
+  readonly from: 'tower' | 'choice';
+}
 
 /** « la Sentinelle », « l'Errante » : le héros dans une phrase. */
 function heroInSentence(hero: HeroKind): string {
@@ -305,6 +313,7 @@ function AscentInProgress({
   foot,
   today,
   onHeaderBottom,
+  powersCard,
 }: {
   readonly ascent: Ascent;
   readonly shards: number;
@@ -316,6 +325,8 @@ function AscentInProgress({
   readonly today: FateGaugeReading | null;
   /** Le bas de l'en-tête, mesuré dans la fenêtre (#233). */
   readonly onHeaderBottom: (bottom: number) => void;
+  /** La carte « Pouvoirs équipés » du héros parti, verrouillée (#270, T6). */
+  readonly powersCard: ReactNode;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [detail, setDetail] = useState(false);
@@ -368,6 +379,7 @@ function AscentInProgress({
             />
             <LoadoutSection ref={link} loadout={loadout} onDetail={() => setDetail(true)} />
           </PixelFrame>
+          {powersCard}
           {today !== null && !today.sealed && (
             <Text style={[styles.discreet, styles.plate]}>{nextAscentLine(today.gauge)}</Text>
           )}
@@ -460,6 +472,25 @@ function heroOaths(
   };
 }
 
+/** Ce que la carte « Pouvoirs équipés » fige à chaque affichage du pied de la tour (#270, T4, T8). */
+interface CardGlance {
+  readonly waiting: readonly PowerKind[];
+  readonly isNew: boolean;
+}
+
+/** Les pouvoirs équipés vus sur la carte, et le nombre de « Valider » d'alors (#270, T5). */
+interface SeenEquipped {
+  readonly revision: number;
+  readonly equipped: Readonly<Record<HeroKind, readonly PowerKind[]>>;
+}
+
+const sameEquipped = (left: SeenEquipped['equipped'], right: SeenEquipped['equipped']) =>
+  HEROES.every(
+    (hero) =>
+      left[hero].length === right[hero].length &&
+      left[hero].every((power) => right[hero].includes(power)),
+  );
+
 /**
  * Le pied de la tour (`TowerFoot`, prototypes #91 à #93) : la jauge du jour, d'après hier, et
  * « Commencer l'ascension », puis le choix du héros, qui scelle la jauge ; ou, quand une ascension
@@ -467,8 +498,15 @@ function heroOaths(
  * « Abandonner l'ascension », avec confirmation. `onEnter` ouvre l'ascension.
  *
  * « Le camp » (#40) ouvre le camp (`onCamp`), ascension en cours ou non. Les Éclats montrés sont les
- * Éclats disponibles, et une ascension commence par le camp, avec ses Déblocages (ADR 0017) : rien
- * ne s'affiche avant la lecture du camp.
+ * Éclats disponibles, et une ascension commence par le camp, avec ses Déblocages (ADR 0017) : les
+ * Éclats et la carte des pouvoirs attendent la lecture du camp, « Commencer l'ascension » aussi
+ * (#270, T7).
+ *
+ * Sous la jauge, la carte « Pouvoirs équipés » (#270) ouvre le menu des pouvoirs (`onOpenPowers`) :
+ * sur l'onglet du premier héros qui a un pouvoir en attente, sinon de la Sentinelle ; pendant une
+ * ascension, sur celui du héros parti. Elle fige à chaque affichage les pouvoirs en attente et la
+ * première visite (T4, T8). De retour après un « Valider », ses cases changées se retournent et elle
+ * reprend le focus (T5).
  */
 export function TowerFootScreen({
   session,
@@ -477,11 +515,14 @@ export function TowerFootScreen({
   onCamp,
   logExport,
   focused = true,
+  onOpenPowers,
 }: {
   readonly session: AscentSession;
   readonly camp: CampSession;
   readonly onEnter: () => void;
   readonly onCamp: () => void;
+  /** Ouvre le menu des pouvoirs (#270) ; absent, la carte ne mène nulle part. */
+  readonly onOpenPowers?: (target: OpenPowers) => void;
   /** L'onglet Tour est affiché ; il reste monté quand on le quitte. */
   readonly focused?: boolean;
   /** L'Export du journal (#196), build de preview seulement ; absent, aucun bouton. */
@@ -491,7 +532,8 @@ export function TowerFootScreen({
   const campView = useCamp(camp);
   const shards = campView.availableShards;
   const [sessionLoaded, setLoaded] = useState(ascent !== null);
-  const loaded = sessionLoaded && campView.status === 'ready';
+  const campReady = campView.status === 'ready';
+  const loaded = sessionLoaded && campReady;
   const { reading, seal } = useFateGauge();
   const [choosing, setChoosing] = useState<FateGaugeReading | null>(null);
   // La sélection en cours au Choix du héros (#236), la présélection du Camp tant qu'elle n'a pas
@@ -517,6 +559,51 @@ export function TowerFootScreen({
       AccessibilityInfo.sendAccessibilityEvent(gaugeCard.current, 'focus');
     }
   };
+
+  // La carte fige à chaque affichage les pouvoirs en attente et la première visite (T4, T8).
+  const [glance, setGlance] = useState<CardGlance | null>(null);
+  if (!focused && glance !== null) setGlance(null);
+  if (focused && campReady && glance === null) {
+    setGlance({
+      waiting: HEROES.flatMap((hero) => campView.newPowers[hero].waiting),
+      isNew: !campView.powersCardSeen,
+    });
+  }
+  const glanced = glance !== null;
+  useEffect(() => {
+    if (glanced) void camp.markPowersCardSeen();
+  }, [glanced, camp]);
+
+  // T5 : de retour après un « Valider », les cases changées se retournent, gardent leur cadre d'or
+  // jusqu'au prochain écran, et la carte reprend le focus. Au Choix du héros, rien ne se retourne.
+  const powersCard = useRef<View>(null);
+  const [seen, setSeen] = useState<SeenEquipped>({
+    revision: campView.equippedRevision,
+    equipped: campView.equipped,
+  });
+  const [fresh, setFresh] = useState<FreshCells | undefined>(undefined);
+  if (!focused && fresh !== undefined) setFresh(undefined);
+  const now: SeenEquipped = { revision: campView.equippedRevision, equipped: campView.equipped };
+  if (focused && choosing === null && campReady && now.revision !== seen.revision) {
+    setSeen(now);
+    setFresh({
+      id: now.revision,
+      powers: HEROES.flatMap((hero) =>
+        now.equipped[hero].filter((power) => !seen.equipped[hero].includes(power)),
+      ),
+    });
+  } else if (
+    (focused || choosing !== null) &&
+    (now.revision !== seen.revision || !sameEquipped(now.equipped, seen.equipped))
+  ) {
+    setSeen(now);
+  }
+  const freshId = fresh?.id;
+  useEffect(() => {
+    if (freshId !== undefined && powersCard.current !== null) {
+      AccessibilityInfo.sendAccessibilityEvent(powersCard.current, 'focus');
+    }
+  }, [freshId]);
 
   useEffect(() => {
     if (sessionLoaded) return;
@@ -591,14 +678,38 @@ export function TowerFootScreen({
           foot={foot}
           today={reading}
           onHeaderBottom={setHeaderBottom}
+          powersCard={
+            <EquippedPowersCard
+              rows={[
+                {
+                  hero: ascent.hero.kind,
+                  powers: ascent.powers,
+                  kindled: ascent.kindled.map(({ power }) => power),
+                },
+              ]}
+              waiting={[]}
+              locked
+              onPress={() => onOpenPowers?.({ hero: ascent.hero.kind, from: 'tower' })}
+            />
+          }
         />
       </OnBackdrop>
     );
   }
 
+  const before = sessionLoaded && !inProgress;
+  const doneYesterday = reading === null || reading.unreadable ? null : reading.doneYesterday;
+  const preview = camp.kindledPreview(doneYesterday, campView.equipped);
+  const waiting = glance?.waiting ?? [];
+  // L'onglet du premier héros qui a un pouvoir en attente, sinon la Sentinelle.
+  const openFromCard = () =>
+    onOpenPowers?.({
+      hero: waiting[0] === undefined ? 'sentinel' : POWERS[waiting[0]].hero,
+      from: 'tower',
+    });
   return (
     <OnBackdrop tier={towerFootTier(ascent)} headerBottom={headerBottom}>
-      <View style={styles.content}>
+      <ScrollView testID="tower-foot-before" contentContainerStyle={styles.content}>
         <TowerFootHeader onBottom={setHeaderBottom}>
           <Text accessibilityRole="header" style={styles.title}>
             {TOWER_TITLE}
@@ -606,7 +717,7 @@ export function TowerFootScreen({
           {!loaded ? null : <ShardChip total={shards} />}
           <Text style={styles.line}>{TIER_LINE}</Text>
         </TowerFootHeader>
-        {!loaded ? null : (
+        {!before ? null : (
           <View style={styles.actions}>
             {ascent === null ? null : (
               <Text style={[styles.status, styles.plate]}>
@@ -626,17 +737,37 @@ export function TowerFootScreen({
             ) : (
               <GaugeCard ref={gaugeCard} reading={reading} onOpen={() => setGaugeDetail(true)} />
             )}
-            <PixelButton
-              label="Commencer l'ascension"
-              disabled={reading === null}
-              onPress={() => {
-                if (reading !== null) setChoosing(reading);
-              }}
-            />
-            <CampButton onCamp={onCamp} />
+            {campReady ? (
+              <EquippedPowersCard
+                ref={powersCard}
+                rows={HEROES.map((hero) => ({
+                  hero,
+                  powers: campView.equipped[hero],
+                  kindled: preview[hero].map(({ power }) => power),
+                }))}
+                waiting={waiting}
+                isNew={glance?.isNew ?? false}
+                fresh={fresh}
+                onPress={openFromCard}
+              />
+            ) : (
+              <PixelSkeleton width="100%" height={104} testID="powers-card-loading" />
+            )}
           </View>
         )}
-      </View>
+      </ScrollView>
+      {!before ? null : (
+        <View style={styles.bottom}>
+          <PixelButton
+            label="Commencer l'ascension"
+            disabled={reading === null || !campReady}
+            onPress={() => {
+              if (reading !== null) setChoosing(reading);
+            }}
+          />
+          <CampButton onCamp={onCamp} />
+        </View>
+      )}
       {foot}
       {reading !== null && (
         <GaugeDetailSheet
@@ -656,7 +787,7 @@ const styles = StyleSheet.create({
   header: { gap: 12 },
   /** La plaque du Voile de lisibilité sous un texte posé sur le décor hors de l'en-tête (#233). */
   plate: { backgroundColor: roles.backdropVeil },
-  content: { flex: 1, justifyContent: 'center', padding: 24, gap: 12 },
+  content: { flexGrow: 1, justifyContent: 'center', padding: 24, gap: 12 },
   title: { ...pixelTypography.screenTitle, color: roles.light, textAlign: 'center' },
   line: { ...pixelTypography.body, color: roles.parchment, textAlign: 'center' },
   keys: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5 },
