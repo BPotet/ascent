@@ -1,6 +1,6 @@
 /**
- * Les libellés des pouvoirs (#235) : noms (fiches `codex/<code>` de l'Atelier, version 1), noms de
- * touche, types, effets, voies, états des nœuds de l'arbre et raisons d'indisponibilité en combat,
+ * Les libellés des pouvoirs (#235) : noms (fiches `codex/<code>` de l'Atelier, version 1), types,
+ * effets, voies, états des nœuds de l'arbre et états de la liste des pouvoirs en combat (#271),
  * tirés du glossaire et de la maquette validée 232 (sections 1, 3 et 7).
  */
 import type { HeroKind } from '../../../domain/battle/combatants';
@@ -18,23 +18,6 @@ import {
 export const TREE_POWER_NAMES: Readonly<Record<PowerKind, string>> = {
   bulwark: 'Rempart',
   shieldBash: 'Coup de bouclier',
-  crushingBlow: 'Fracas',
-  retaliation: 'Représailles',
-  holdFast: 'Tenir bon',
-  shadowStep: "Pas de l'ombre",
-  rend: 'Entaille',
-  flurry: 'Rafale',
-  mist: 'Brume',
-  ambush: 'Frappe furtive',
-};
-
-/**
- * Le nom sur la touche de combat (`buttonName` du Codex), 14 caractères au plus : « Coup d'écu »
- * pour Coup de bouclier, sur la touche seulement (#236) ; partout ailleurs, `TREE_POWER_NAMES`.
- */
-export const POWER_BUTTON_NAMES: Readonly<Record<PowerKind, string>> = {
-  bulwark: 'Rempart',
-  shieldBash: "Coup d'écu",
   crushingBlow: 'Fracas',
   retaliation: 'Représailles',
   holdFast: 'Tenir bon',
@@ -247,23 +230,39 @@ export interface PowerKeyText {
   readonly baseCost?: number;
 }
 
-/** La raison d'une touche indisponible, sur une ou deux lignes ; rien pour une touche disponible. */
-export function powerKeyReason({
+/**
+ * L'état d'une ligne de la liste des pouvoirs, en mot, sur une ligne (#271) : « Prêt », « Il manque
+ * 1 Élan », « Actif », « Instantané déjà lancé » ou « Utilisé ce combat ».
+ */
+export function powerStateText({
   availability,
   missing,
-}: Pick<PowerKeyText, 'availability' | 'missing'>): readonly string[] {
+}: Pick<PowerKeyText, 'availability' | 'missing'>): string {
   switch (availability) {
-    case 'missing':
-      return ['Il manque', `${missing} Élan`];
-    case 'active':
-      return ['Actif'];
-    case 'instantUsed':
-      return ['Instantané', 'déjà lancé'];
-    case 'usedThisBattle':
-      return ['Utilisé', 'ce combat'];
     case 'available':
-      return [];
+      return 'Prêt';
+    case 'missing':
+      return `Il manque ${missing} Élan`;
+    case 'active':
+      return 'Actif';
+    case 'instantUsed':
+      return 'Instantané déjà lancé';
+    case 'usedThisBattle':
+      return 'Utilisé ce combat';
   }
+}
+
+/** Le compte de la touche « Pouvoirs » (#271) : « 3 prêts sur 3 », « 1 prêt sur 3 ». */
+export function readyCountText(ready: number, total: number): string {
+  return `${ready} ${ready > 1 ? 'prêts' : 'prêt'} sur ${total}`;
+}
+
+/**
+ * Le libellé lu de la touche « Pouvoirs » (#271, KB1) : « Pouvoirs, 3 prêts sur 3, menu ». « replié »
+ * et « bouton » viennent de son état (`expanded`) et de son rôle.
+ */
+export function powersKeyLabel(ready: number, total: number): string {
+  return `Pouvoirs, ${readyCountText(ready, total)}, menu`;
 }
 
 const UNAVAILABLE_READ: Readonly<Record<PowerKeyAvailability, (missing: number) => string>> = {

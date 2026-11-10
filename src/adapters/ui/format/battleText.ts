@@ -400,34 +400,8 @@ export function attackButtonLabel(targetName: string): string {
   return `Attaquer, cible : ${targetName}`;
 }
 
-/**
- * Le pouvoir et son coût, sous « Pouvoir » : « Rempart · 1 Élan ». Un pouvoir instantané (#173)
- * a son nom sur sa propre ligne, et son coût dit « 3 Élan · Instantané ».
- */
-export function powerCostText(power: PowerKind, cost: number, instant = false): string {
-  const price = `${cost} Élan`;
-  return instant ? `${price} · ${INSTANT_WORD}` : `${POWER_NAMES[power]} · ${price}`;
-}
-
-/** La mention d'un pouvoir instantané sur la touche Pouvoir (#173), toujours avec le croissant. */
+/** La mention d'un pouvoir instantané sur sa ligne de la liste des pouvoirs (#173, #271). */
 export const INSTANT_WORD = 'Instantané';
-
-/** L'Élan qui manque à un pouvoir : « Il manque 1 Élan ». */
-export function missingMomentumText(missing: number): string {
-  return `Il manque ${missing} Élan`;
-}
-
-export function powerButtonLabel(
-  power: PowerKind,
-  cost: number,
-  missing: number,
-  active = false,
-  instant = false,
-): string {
-  const label = `Pouvoir : ${POWER_NAMES[power]}, ${cost} Élan${instant ? ', instantané' : ''}`;
-  if (active) return `${label}, actif`;
-  return missing > 0 ? `${label}, indisponible : il manque ${missing} Élan` : label;
-}
 
 export function momentumLabel(momentum: number): string {
   return `Élan ${momentum} sur ${MOMENTUM_MAX}`;

@@ -296,34 +296,36 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     options = { shards: 0, powers: ['retaliation', 'holdFast', 'shieldBash', 'crushingBlow'] };
   });
 
-  when(/^c'est la phase du héros$/u, async () => {
-    await renderBattle({
+  when(/^le joueur ouvre la liste des pouvoirs en phase du héros$/u, async () => {
+    const fight = await renderBattle({
       seed: 1,
       createBattle: battleWith(
         equipped('sentinel', 'shieldBash', 'crushingBlow', 'retaliation'),
         heroWith({ momentum: 3 }),
       ),
     });
+    await fight.openPowers();
   });
 
-  then(/^sa touche de combat s'appelle « Coup d'écu »$/u, () => {
-    expect(within(key('shieldBash')).getByText("Coup d'écu")).toBeOnTheScreen();
-    expect(screen.queryByText('Coup de bouclier')).not.toBeOnTheScreen();
+  then(/^sa ligne de la liste des pouvoirs s'appelle « Coup de bouclier »$/u, () => {
+    expect(within(key('shieldBash')).getByText('Coup de bouclier')).toBeOnTheScreen();
+    expect(screen.queryByText("Coup d'écu")).not.toBeOnTheScreen();
   });
 
   and(
     /^l'arbre, la fiche du pouvoir, la carte du Choix du héros, le panneau des pouvoirs équipés, la feuille de l'Équipement et le lecteur d'écran disent « Coup de bouclier »$/u,
     async () => {
-      // Le lecteur d'écran, sur la touche de combat.
+      // Le lecteur d'écran, sur la ligne de la liste des pouvoirs.
       expect(key('shieldBash').props.accessibilityLabel).toBe('Pouvoir : Coup de bouclier, 2 Élan');
-      screen.unmount();
+      // Le combat démonté avant l'écran suivant : ses gestes ne restent pas inscrits.
+      await screen.unmount();
       // L'arbre et la fiche du pouvoir.
       setUp = ascentSetUp(options);
       await showTree('sentinel');
       expect(node('shieldBash').getByText('Coup de bouclier')).toBeOnTheScreen();
       const sheet = await openSheet('shieldBash');
       expect(sheet.getByText('Coup de bouclier')).toBeOnTheScreen();
-      screen.unmount();
+      await screen.unmount();
       // La carte du Choix du héros et le panneau des pouvoirs équipés.
       setUp = ascentSetUp(options);
       await showHeroChoice('sentinel');
@@ -332,7 +334,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       ).toBeOnTheScreen();
       await fireEvent.press(changeButton()!);
       expect(within(row('shieldBash')).getByText('Coup de bouclier')).toBeOnTheScreen();
-      screen.unmount();
+      await screen.unmount();
       // La feuille de l'Équipement.
       const ascent = startAscent(5, { powers: ['shieldBash', 'crushingBlow', 'retaliation'] });
       await render(
@@ -342,24 +344,26 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
         within(screen.getByTestId('loadout-powers')).getByText('Coup de bouclier'),
       ).toBeOnTheScreen();
       expect(screen.queryByText("Coup d'écu")).not.toBeOnTheScreen();
-      screen.unmount();
+      await screen.unmount();
     },
   );
 
   given(/^l'Errante a 2 Élan et Frappe furtive équipée$/u, async () => {
-    await renderBattle({
+    const fight = await renderBattle({
       seed: 1,
       createBattle: battleWith(
         equipped('wanderer', 'shadowStep', 'rend', 'ambush'),
         heroWith({ momentum: 2 }),
       ),
     });
+    await fight.openPowers();
   });
 
   then(
-    /^la touche de Frappe furtive est visible mais indisponible et dit qu'il manque 1 Élan$/u,
+    /^la ligne de Frappe furtive est visible mais indisponible et dit qu'il manque 1 Élan$/u,
     () => {
-      expect(key('ambush')).toHaveTextContent('Frappe furtiveIl manque\n1 Élan');
+      expect(within(key('ambush')).getByText('Frappe furtive')).toBeOnTheScreen();
+      expect(within(key('ambush')).getByText('Il manque 1 Élan')).toBeOnTheScreen();
       expect(key('ambush').props.accessibilityState).toEqual({ disabled: true });
       expect(key('ambush').props.accessibilityLabel).toBe(
         'Pouvoir : Frappe furtive, 3 Élan, indisponible : il manque 1 Élan',

@@ -55,10 +55,10 @@ Fonctionnalité: Les frappes de pouvoir et le choix des pouvoirs équipés
     Et il ne peut pas valider avec moins de 3 pouvoirs
 
   @session
-  Scénario: Les touches suivent l'ordre de l'arbre
+  Scénario: Les lignes de la liste des pouvoirs suivent l'ordre de l'arbre
     Étant donné le joueur a choisi, dans cet ordre, Frappe furtive, Entaille et Pas de l'ombre
     Quand c'est la phase du héros
-    Alors les touches sont, de gauche à droite : Pas de l'ombre, Entaille, Frappe furtive, puis « Attaquer »
+    Alors les lignes de la liste des pouvoirs sont, de haut en bas : Pas de l'ombre, Entaille, Frappe furtive
 
   @session
   Scénario: Le choix est mémorisé par héros
@@ -151,13 +151,13 @@ Fonctionnalité: Les frappes de pouvoir et le choix des pouvoirs équipés
     Et Entaille est consommée par cette frappe
 
   @ui
-  Scénario: « Coup d'écu » sur la touche de combat seulement
+  Scénario: Coup de bouclier s'écrit en entier sur sa ligne
     Étant donné la Sentinelle a Coup de bouclier équipé
-    Quand c'est la phase du héros
-    Alors sa touche de combat s'appelle « Coup d'écu »
+    Quand le joueur ouvre la liste des pouvoirs en phase du héros
+    Alors sa ligne de la liste des pouvoirs s'appelle « Coup de bouclier »
     Et l'arbre, la fiche du pouvoir, la carte du Choix du héros, le panneau des pouvoirs équipés, la feuille de l'Équipement et le lecteur d'écran disent « Coup de bouclier »
 
   @ui
   Scénario: Une frappe de pouvoir trop chère
     Étant donné l'Errante a 2 Élan et Frappe furtive équipée
-    Alors la touche de Frappe furtive est visible mais indisponible et dit qu'il manque 1 Élan
+    Alors la ligne de Frappe furtive est visible mais indisponible et dit qu'il manque 1 Élan

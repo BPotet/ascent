@@ -2,7 +2,7 @@
 Fonctionnalité: L'arbre de pouvoirs au Camp et les pouvoirs équipés en combat
   Story #235 (épique #232) : l'arbre de pouvoirs (`PowerTree`) de chaque héros au Camp, ses pouvoirs
   débloqués avec les Éclats, les pouvoirs équipés (`EquippedPower`) figés au départ de l'ascension,
-  et le combat à 1 à 3 touches de pouvoir, avec Représailles, Tenir bon, Entaille et Brume.
+  et le combat à 1 à 3 pouvoirs équipés, dans la liste des pouvoirs (#271), avec Représailles, Tenir bon, Entaille et Brume.
 
   # Les scénarios `@domain` éprouvent les règles du domaine (arbre, prix, combat). Les scénarios
   # `@session` passent par une vraie session du camp et d'ascension sur un stockage en mémoire. Les
@@ -111,7 +111,7 @@ Fonctionnalité: L'arbre de pouvoirs au Camp et les pouvoirs équipés en combat
     Étant donné le joueur n'a débloqué aucun pouvoir pour l'Errante
     Quand il commence une ascension avec l'Errante
     Alors son seul pouvoir équipé est Pas de l'ombre
-    Et en combat, il a une seule touche de pouvoir à côté d'« Attaquer », comme aujourd'hui
+    Et en combat, sa liste des pouvoirs n'a qu'une ligne, ouverte par « Pouvoirs » à côté d'« Attaquer »
 
   @session
   Scénario: Un déblocage pendant une ascension compte dès la suivante
@@ -139,27 +139,27 @@ Fonctionnalité: L'arbre de pouvoirs au Camp et les pouvoirs équipés en combat
     Quand le joueur ouvre la feuille de l'Équipement
     Alors il y voit ses 3 pouvoirs équipés, avec leur icône, leur coût en Élan et leur effet
 
-  # --- Le combat à 1 à 3 touches de pouvoir ---
+  # --- Le combat à 1 à 3 pouvoirs équipés, dans la liste des pouvoirs (#271) ---
 
   @ui
-  Scénario: Trois touches de pouvoir sur la rangée d'« Attaquer »
+  Scénario: Trois lignes dans la liste des pouvoirs
     Étant donné l'Errante équipée de Pas de l'ombre, Entaille et Brume, sur un écran de 360 dp de large
-    Quand c'est la phase du héros
-    Alors une seule rangée montre, dans l'ordre de l'arbre : Pas de l'ombre, Entaille, Brume, puis « Attaquer »
-    Et la zone des touches garde sa hauteur de 112 dp
-    Et chaque touche de pouvoir dit son coût en Élan, et « Instantané » pour un pouvoir instantané
+    Quand le joueur ouvre la liste des pouvoirs en phase du héros
+    Alors la liste montre, dans l'ordre de l'arbre : Pas de l'ombre, Entaille, Brume
+    Et la zone des touches garde sa hauteur de 112 dp, avec « Pouvoirs » et « Attaquer »
+    Et chaque ligne dit son coût en Élan, et « Instantané » pour un pouvoir instantané
 
   @ui
   Scénario: L'effet d'un pouvoir au toucher maintenu
     Étant donné la phase du héros
-    Quand le joueur maintient le doigt sur la touche de Représailles
+    Quand le joueur maintient le doigt sur la ligne de Représailles
     Alors son effet court s'affiche
-    Et Représailles n'est pas lancé, même si le doigt est relâché sur la touche
+    Et Représailles n'est pas lancé, même si le doigt est relâché sur la ligne
 
   @ui
   Scénario: Un pouvoir trop cher
     Étant donné la Sentinelle a 2 Élan et Tenir bon équipé
-    Alors la touche de Tenir bon est visible mais indisponible et dit qu'il manque 1 Élan
+    Alors la ligne de Tenir bon est visible mais indisponible et dit qu'il manque 1 Élan
 
   @domain
   Scénario: Un seul pouvoir instantané par phase du héros
@@ -181,7 +181,7 @@ Fonctionnalité: L'arbre de pouvoirs au Camp et les pouvoirs équipés en combat
     Étant donné Représailles est actif
     Quand le Rempart s'use et déclenche la Riposte du Rempart, ou qu'une double frappe n'est parée parfaitement qu'à moitié
     Alors Représailles reste actif
-    Et sa touche reste indisponible tant qu'il est actif
+    Et sa ligne reste indisponible tant qu'il est actif
 
   @ui
   Scénario: Le Rempart et Représailles en même temps
@@ -212,7 +212,7 @@ Fonctionnalité: L'arbre de pouvoirs au Camp et les pouvoirs équipés en combat
   @domain
   Scénario: Tenir bon une fois par combat
     Étant donné la Sentinelle a déjà lancé Tenir bon dans ce combat, même à PV max
-    Alors la touche de Tenir bon reste indisponible jusqu'à la fin du combat, quel que soit son Élan
+    Alors la ligne de Tenir bon reste indisponible jusqu'à la fin du combat, quel que soit son Élan
     Et au combat suivant, elle peut de nouveau le lancer
 
   # Entaille
