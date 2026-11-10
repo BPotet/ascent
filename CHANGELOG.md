@@ -2,6 +2,19 @@
 
 Toutes les évolutions notables d'Ascent. Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/). Les versions sont calculées à partir des [Conventional Commits](https://www.conventionalcommits.org/fr/v1.0.0/).
 
+## [0.9.0] - 2026-11-10
+
+L'épique #269 « Un menu des pouvoirs au Pied de la tour », terminée : les pouvoirs équipés se préparent dans un menu à part avant l'ascension, et se choisissent en combat dans une liste lisible.
+
+### Nouveautés pour le joueur
+
+- **Le menu des pouvoirs** (build de preview) : au pied de la tour, sous la jauge, la carte « Pouvoirs équipés » montre ce que chaque héros emporte ; la toucher ouvre le menu des pouvoirs, un onglet par héros, où chaque pouvoir possédé montre son icône, son nom, son coût et son type. Le choix est enregistré dès « Valider », et les règles ne changent pas : 3 pouvoirs au plus, choix retenu pour chaque héros, pouvoirs fixés pour toute l'ascension. Un pouvoir tout juste débloqué au Camp attend sa place avec « nouveau ». Le Choix du héros ne fait plus que résumer les pouvoirs équipés, avec un lien discret « Changer les pouvoirs », et le bandeau de l'arbre envoie au menu avec « Choisir mes pouvoirs » (#270, #275).
+- **La liste des pouvoirs en combat** (build de preview) : en phase du héros, deux touches seulement, « Pouvoirs », qui dit combien sont prêts, et « Attaquer », la plus large. « Pouvoirs » ouvre au-dessus du pouce une liste avec une grande ligne par pouvoir équipé : le nom en entier, le coût, le type, les losanges d'Élan et l'état en mot (« Prêt », « Il manque 2 Élan », « Actif », « Utilisé ce combat »), avec la braise d'un pouvoir attisé. On lance un pouvoir en touchant sa ligne, on lit son effet en la maintenant (#271, #274).
+
+### Technique
+
+- Maquettes validées de l'épique #269 (#273) et de l'épique #246, le Bestiaire des paliers (#272).
+
 ## [0.8.0] - 2026-11-09
 
 L'épique #245 « Élites escortées et nouvelles Élites », terminée : aux paliers 2 et 3, l'Élite arrive escortée, et chaque palier gagne une 3ᵉ Élite avec sa mécanique signature.
