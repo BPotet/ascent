@@ -1,15 +1,11 @@
 // Les composants de l'écran de combat, rendus seuls (la scène Skia n'en fait pas partie).
-import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
-import { DeviceEventEmitter, PixelRatio, StyleSheet, type ViewStyle } from 'react-native';
-import { State } from 'react-native-gesture-handler';
-import { getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
-import { getAnimatedStyle } from 'react-native-reanimated';
+import { fireEvent, render, screen, within } from '@testing-library/react-native';
+import { PixelRatio, StyleSheet, type ViewStyle } from 'react-native';
 
 import { artPalette } from '../pixelArt/artPalette';
 import { BULWARK_SHIELD } from '../pixelArt/sprites/atelier/data/bulwarkShield';
 import type { EnemyView } from '../state/battleView';
 import { battleColors } from '../theme/battleColors';
-import { ActionPad } from './ActionPad';
 import { DamageFloat, FeedbackLabel } from './BattleEffects';
 import { BATTLE_HINTS, BattleHintBubble } from './BattleHintBubble';
 import { EnemyColumn } from './EnemyColumn';
@@ -83,18 +79,6 @@ function style(testID: string) {
   return StyleSheet.flatten(
     screen.getByTestId(testID, { includeHiddenElements: true }).props.style,
   );
-}
-
-function padProps() {
-  return {
-    targetName: 'Goule',
-    uiNow: () => 0,
-    now: () => 4_321,
-    onDefense: jest.fn(),
-    onAttack: jest.fn(),
-    onPower: jest.fn(),
-    onStrike: jest.fn(),
-  } as const;
 }
 
 describe('HeroBar', () => {
@@ -436,6 +420,14 @@ describe('BattleHintBubble', () => {
     );
     expect(BATTLE_HINTS.defense.text).not.toMatch(/anneau/iu);
   });
+
+  it('speaks of the « Pouvoirs » key and of the rows of the list, its arrow under it (#271)', () => {
+    expect(BATTLE_HINTS.powers.text).toBe(
+      'Touche Pouvoirs pour voir tes pouvoirs. Maintiens-en un pour lire son effet, touche-le pour le lancer.',
+    );
+    expect(BATTLE_HINTS.powers.text).not.toMatch(/touche de pouvoir/iu);
+    expect(BATTLE_HINTS.powers.arrow).toBe('25%');
+  });
 });
 
 describe('PhaseBanner', () => {
@@ -451,6 +443,17 @@ describe('PhaseBanner', () => {
 });
 
 describe('FeedbackLabel and DamageFloat', () => {
+  it('writes « Attisé · 1 Élan » under the name of a kindled power (#237, S12)', async () => {
+    await render(
+      <FeedbackLabel
+        texts={[{ tone: 'perfect', title: 'Représailles', sub: 'Attisé · 1 Élan' }]}
+      />,
+    );
+
+    expect(screen.getByText('Représailles')).toBeOnTheScreen();
+    expect(screen.getByText('Attisé · 1 Élan')).toBeOnTheScreen();
+  });
+
   it('shows « Cassure » in its own tone, under « Frappe parfaite »', async () => {
     await render(
       <FeedbackLabel
@@ -544,165 +547,5 @@ describe('FeedbackLabel and DamageFloat', () => {
     const plain = StyleSheet.flatten(screen.getByText('−10').props.style).fontSize;
 
     expect(big).toBeGreaterThan(plain);
-  });
-});
-
-describe('ActionPad', () => {
-  it('shows nothing at the end of the battle', async () => {
-    await render(<ActionPad pad={{ kind: 'none' }} {...padProps()} />);
-
-    expect(screen.queryByTestId('battle-pad')).toBeNull();
-  });
-
-  it('shows « Attends » without its bar while a hero action is resolved', async () => {
-    await render(
-      <ActionPad
-        pad={{
-          kind: 'hero',
-          locked: true,
-          lock: null,
-          powers: [{ power: 'bulwark', cost: 1, availability: 'available', missing: 0 }],
-        }}
-        {...padProps()}
-      />,
-    );
-
-    expect(screen.getByTestId('battle-lock-tag')).toHaveTextContent('Attends');
-  });
-
-  it('shows the Bulwark key on the left with its cost, Attaquer on the right', async () => {
-    const props = padProps();
-    await render(
-      <ActionPad
-        pad={{
-          kind: 'hero',
-          locked: false,
-          lock: null,
-          powers: [{ power: 'bulwark', cost: 1, availability: 'available', missing: 0 }],
-        }}
-        {...props}
-      />,
-    );
-
-    expect(screen.getByTestId('battle-power-button-bulwark')).toHaveTextContent('Rempart1 Élan');
-    expect(screen.getByLabelText('Pouvoir : Rempart, 1 Élan')).toBeOnTheScreen();
-    await fireEvent(screen.getByTestId('battle-power-button-bulwark'), 'accessibilityAction', {
-      nativeEvent: { actionName: 'activate' },
-    });
-    expect(props.onPower).toHaveBeenCalledWith('bulwark', 4_321, 4_321);
-  });
-
-  it('keeps the power key visible but unavailable, telling the momentum it misses (C3)', async () => {
-    const props = padProps();
-    await render(
-      <ActionPad
-        pad={{
-          kind: 'hero',
-          locked: false,
-          lock: null,
-          powers: [{ power: 'bulwark', cost: 1, availability: 'missing', missing: 1 }],
-        }}
-        {...props}
-      />,
-    );
-
-    expect(screen.getByTestId('battle-power-button-bulwark')).toHaveTextContent(
-      'RempartIl manque\n1 Élan',
-    );
-    expect(screen.getByTestId('battle-power-button-bulwark').props.accessibilityState).toEqual({
-      disabled: true,
-    });
-    await fireEvent(screen.getByTestId('battle-power-button-bulwark'), 'accessibilityAction', {
-      nativeEvent: { actionName: 'activate' },
-    });
-    expect(props.onPower).not.toHaveBeenCalled();
-  });
-
-  it('turns into a single « Frapper », with its bar and its mark, during the strike', async () => {
-    const props = padProps();
-    await render(
-      <ActionPad
-        pad={{ kind: 'strike', since: 1_000, impactAt: 1_700, resolved: false }}
-        {...props}
-      />,
-    );
-
-    expect(screen.getByTestId('battle-strike-button')).toHaveTextContent('Frapper');
-    expect(screen.queryByTestId('battle-attack-button')).toBeNull();
-    expect(
-      screen.getByTestId('battle-strike-mark', { includeHiddenElements: true }),
-    ).toBeOnTheScreen();
-    await fireEvent(screen.getByTestId('battle-strike-button'), 'accessibilityAction', {
-      nativeEvent: { actionName: 'activate' },
-    });
-    expect(props.onStrike).toHaveBeenCalledWith(4_321);
-  });
-
-  it('presses Parade and Esquive with the screen reader, at the JS instant', async () => {
-    const props = padProps();
-    await render(
-      <ActionPad
-        pad={{ kind: 'defense', locked: false, lock: null, offBalance: false }}
-        {...props}
-      />,
-    );
-
-    for (const id of ['battle-parry-button', 'battle-dodge-button']) {
-      await fireEvent(screen.getByTestId(id), 'accessibilityAction', {
-        nativeEvent: { actionName: 'activate' },
-      });
-    }
-
-    expect(props.onDefense.mock.calls).toEqual([
-      ['parry', 4_321],
-      ['dodge', 4_321],
-    ]);
-  });
-
-  it('ticks the active power, written « Actif », in a gold frame, unhatched and not pressed down (C7b, #120)', async () => {
-    await render(
-      <ActionPad
-        pad={{
-          kind: 'hero',
-          locked: false,
-          lock: null,
-          powers: [{ power: 'shadowStep', cost: 2, availability: 'active', missing: 0 }],
-        }}
-        {...padProps()}
-      />,
-    );
-
-    const power = screen.getByTestId('battle-power-button-shadowStep');
-    expect(
-      within(power).getByTestId('battle-power-active-check-shadowStep', {
-        includeHiddenElements: true,
-      }),
-    ).toBeTruthy();
-    expect(power).toHaveTextContent("Pas de l'ombreActif");
-    expect(power.props.accessibilityState).toEqual({ disabled: true });
-    expect(style('battle-power-button-shadowStep').borderColor).toBe(artPalette.roles.gold);
-    expect(
-      screen.queryByTestId('battle-power-hatching-shadowStep', { includeHiddenElements: true }),
-    ).toBeNull();
-
-    // Une image du fil UI : Reanimated branche le style animé (`setTimeout` de 0 ms), puis le
-    // doigt se pose sur la touche désactivée, sans se lever.
-    await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
-    const { handlerTag } = getByGestureTestId('battle-power-shadowStep-look');
-    await act(async () => {
-      DeviceEventEmitter.emit('onGestureHandlerStateChange', {
-        handlerTag,
-        state: State.BEGAN,
-        oldState: State.UNDETERMINED,
-      });
-    });
-    expect(getAnimatedStyle(power)).toMatchObject({ transform: [{ translateY: 0 }] });
-    expect(
-      getAnimatedStyle(
-        screen.getByTestId('battle-power-shadowStep-edge', { includeHiddenElements: true }),
-      ),
-    ).toMatchObject({ backgroundColor: artPalette.roles.raised });
   });
 });

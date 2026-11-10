@@ -65,7 +65,7 @@ const asHero =
 
 const key = (power: PowerKind) => screen.getByTestId(`battle-power-button-${power}`);
 
-/** Le maintien sur la touche de Représailles, avec ses fonctions de geste. */
+/** Le maintien sur la ligne de Représailles, avec ses fonctions de geste. */
 const holdGesture = () =>
   getByGestureTestId(`${powerGestureTestId('retaliation')}-hold`) as unknown as {
     readonly handlers: Record<string, ((...args: unknown[]) => void) | undefined>;
@@ -308,17 +308,21 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and(
-    /^en combat, il a une seule touche de pouvoir à côté d'« Attaquer », comme aujourd'hui$/u,
+    /^en combat, sa liste des pouvoirs n'a qu'une ligne, ouverte par « Pouvoirs » à côté d'« Attaquer »$/u,
     async () => {
       const powers = [...setUp.session.current()!.powers];
       fight = await renderBattle({
         seed: 1,
         createBattle: battleWith(asHero('wanderer'), equipped(...powers)),
       });
+      expect(screen.queryByTestId('battle-hint-powers')).toBeNull();
+      expect(screen.getByTestId('battle-powers-button')).toHaveTextContent(
+        /^Pouvoirs. prêt sur 1$/u,
+      );
+      await fight.openPowers();
       expect(screen.getAllByTestId(/^battle-power-button-/u)).toHaveLength(1);
       expect(key('shadowStep')).toHaveTextContent(/^Pas de l'ombre/u);
-      expect(screen.getByTestId('battle-attack-button')).toBeOnTheScreen();
-      expect(screen.queryByTestId('battle-hint-powers')).toBeNull();
+      expect(screen.getByTestId('battle-attack-button', hiddenToo)).toBeTruthy();
     },
   );
 
@@ -360,7 +364,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     },
   );
 
-  // --- Le combat à 1 à 3 touches de pouvoir ---
+  // --- Le combat à 1 à 3 pouvoirs équipés, dans la liste des pouvoirs (#271) ---
 
   given(
     /^l'Errante équipée de Pas de l'ombre, Entaille et Brume, sur un écran de 360 dp de large$/u,
@@ -376,48 +380,47 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     },
   );
 
-  when(/^c'est la phase du héros$/u, () => {
+  when(/^le joueur ouvre la liste des pouvoirs en phase du héros$/u, async () => {
     expect(fight.battle().phase.kind).toBe('hero');
+    await fight.openPowers();
   });
 
-  then(
-    /^une seule rangée montre, dans l'ordre de l'arbre : Pas de l'ombre, Entaille, Brume, puis « Attaquer »$/u,
-    () => {
-      const pad = screen.getByTestId('battle-pad');
-      expect(StyleSheet.flatten(pad.props.style).flexDirection).toBe('row');
-      const keys = within(pad)
-        .getAllByTestId(/^battle-(power|attack)-button/u)
-        .map(({ props }) => props.testID);
-      expect(keys).toEqual([
-        'battle-power-button-shadowStep',
-        'battle-power-button-rend',
-        'battle-power-button-mist',
-        'battle-attack-button',
-      ]);
-      // À 360 dp, 328 dp utiles : la plus étroite fait au moins 72 dp, « Attaquer » la plus large.
-      const gap = StyleSheet.flatten(pad.props.style).gap as number;
-      const flexes = keys.map((id) => StyleSheet.flatten(screen.getByTestId(id).props.style).flex);
-      const total = flexes.reduce((sum, flex) => sum + flex, 0);
-      const widths = flexes.map((flex) => ((328 - gap * 3) * flex) / total);
-      expect(Math.min(...widths)).toBeGreaterThanOrEqual(72);
-      expect(Math.max(...widths)).toBe(widths[3]);
-    },
-  );
-
-  and(/^la zone des touches garde sa hauteur de 112 dp$/u, () => {
-    for (const power of ['shadowStep', 'rend', 'mist'] as const) {
-      expect(StyleSheet.flatten(key(power).props.style).minHeight).toBe(112);
-    }
+  then(/^la liste montre, dans l'ordre de l'arbre : Pas de l'ombre, Entaille, Brume$/u, () => {
+    const rows = within(screen.getByTestId('battle-power-list'))
+      .getAllByTestId(/^battle-power-button-/u)
+      .map(({ props }) => props.testID);
+    expect(rows).toEqual([
+      'battle-power-button-shadowStep',
+      'battle-power-button-rend',
+      'battle-power-button-mist',
+    ]);
+    // À 360 dp, la liste prend la largeur de la zone d'action : 328 dp.
+    expect(
+      StyleSheet.flatten(screen.getByTestId('battle-power-list-column').props.style),
+    ).toMatchObject({ left: 16, right: 16 });
   });
 
   and(
-    /^chaque touche de pouvoir dit son coût en Élan, et « Instantané » pour un pouvoir instantané$/u,
+    /^la zone des touches garde sa hauteur de 112 dp, avec « Pouvoirs » et « Attaquer »$/u,
     () => {
-      expect(key('shadowStep')).toHaveTextContent("Pas de l'ombre3 ÉlanInstantané");
-      expect(key('rend')).toHaveTextContent('Entaille1 ÉlanInstantané');
-      expect(key('mist')).toHaveTextContent('Brume2 ÉlanInstantané');
+      const pad = screen.getByTestId('battle-pad', hiddenToo);
+      const keys = within(pad)
+        .getAllByTestId(/^battle-(powers|attack)-button$/u, hiddenToo)
+        .map(({ props }) => props.testID);
+      expect(keys).toEqual(['battle-powers-button', 'battle-attack-button']);
+      for (const id of keys) {
+        expect(StyleSheet.flatten(screen.getByTestId(id, hiddenToo).props.style).minHeight).toBe(
+          112,
+        );
+      }
     },
   );
+
+  and(/^chaque ligne dit son coût en Élan, et « Instantané » pour un pouvoir instantané$/u, () => {
+    expect(key('shadowStep')).toHaveTextContent("Pas de l'ombre3 Élan ·InstantanéPrêt");
+    expect(key('rend')).toHaveTextContent('Entaille1 Élan ·InstantanéPrêt');
+    expect(key('mist')).toHaveTextContent('Brume2 Élan ·InstantanéPrêt');
+  });
 
   given(/^la phase du héros$/u, async () => {
     fight = await renderBattle({
@@ -430,7 +433,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     expect(fight.battle().phase.kind).toBe('hero');
   });
 
-  when(/^le joueur maintient le doigt sur la touche de Représailles$/u, async () => {
+  when(/^le joueur maintient le doigt sur la ligne de Représailles$/u, async () => {
+    await fight.openPowers();
     // Le doigt reste posé 400 ms : le maintien commence, le doigt n'est pas encore levé.
     await act(async () => {
       holdGesture().handlers.onStart?.({});
@@ -444,7 +448,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     expect(tip.getByText(/contre-attaque/u)).toBeOnTheScreen();
   });
 
-  and(/^Représailles n'est pas lancé, même si le doigt est relâché sur la touche$/u, async () => {
+  and(/^Représailles n'est pas lancé, même si le doigt est relâché sur la ligne$/u, async () => {
     await act(async () => {
       holdGesture().handlers.onFinalize?.({}, true);
       fireGestureHandler(getByGestureTestId(powerGestureTestId('retaliation')) as never, [
@@ -457,6 +461,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     expect(fight.battle().hero).toMatchObject({ momentum: 5 });
     expect(fight.battle().hero).not.toHaveProperty('retaliation');
     expect(screen.queryByTestId('battle-power-tip')).not.toBeOnTheScreen();
+    expect(screen.getByTestId('battle-power-list')).toBeOnTheScreen();
   });
 
   given(/^la Sentinelle a 2 Élan et Tenir bon équipé$/u, async () => {
@@ -470,9 +475,10 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(
-    /^la touche de Tenir bon est visible mais indisponible et dit qu'il manque 1 Élan$/u,
+    /^la ligne de Tenir bon est visible mais indisponible et dit qu'il manque 1 Élan$/u,
     async () => {
-      expect(key('holdFast')).toHaveTextContent('Tenir bonIl manque\n1 Élan');
+      await fight.openPowers();
+      expect(within(key('holdFast')).getByText('Il manque 1 Élan')).toBeOnTheScreen();
       expect(key('holdFast').props.accessibilityState).toEqual({ disabled: true });
       expect(key('holdFast').props.accessibilityLabel).toBe(
         'Pouvoir : Tenir bon, 3 Élan, indisponible : il manque 1 Élan',

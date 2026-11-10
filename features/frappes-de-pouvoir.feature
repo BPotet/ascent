@@ -1,12 +1,12 @@
 # language: fr
 Fonctionnalité: Les frappes de pouvoir et le choix des pouvoirs équipés
   Story #236 (épique #232) : les frappes de pouvoir (`PowerStrike`) de l'arbre de pouvoirs (Coup de
-  bouclier, Fracas, Rafale, Frappe furtive), et le choix, au Choix du héros, des 3 pouvoirs équipés
-  parmi tous ceux qu'on possède, mémorisé par héros.
+  bouclier, Fracas, Rafale, Frappe furtive), et le choix, au menu des pouvoirs (#270), des 3 pouvoirs
+  équipés parmi tous ceux qu'on possède, mémorisé par héros.
 
   # Les scénarios `@domain` éprouvent les règles du domaine (arbre, combat). Les scénarios `@session`
   # passent par une vraie session du camp et d'ascension sur un stockage en mémoire. Les scénarios
-  # `@ui` passent en plus par les écrans (arbre, Choix du héros, combat).
+  # `@ui` passent en plus par les écrans (arbre, menu des pouvoirs, Choix du héros, combat).
 
   # --- L'arbre ---
 
@@ -26,39 +26,39 @@ Fonctionnalité: Les frappes de pouvoir et le choix des pouvoirs équipés
     Alors Frappe furtive peut être débloquée (60 Éclats)
     Et Rafale reste verrouillée et indique qu'il faut d'abord débloquer Entaille
 
-  # --- Le choix des pouvoirs équipés au Choix du héros ---
+  # --- Le choix des pouvoirs équipés, au menu des pouvoirs depuis #270 ---
 
   @ui
   Scénario: Un 4e pouvoir débloqué ne s'équipe pas tout seul
     Étant donné la Sentinelle a pour pouvoirs équipés Rempart, Représailles et Tenir bon
     Quand le joueur débloque Coup de bouclier
     Alors ses pouvoirs équipés restent Rempart, Représailles et Tenir bon
-    Et la carte de la Sentinelle du Choix du héros montre le bouton « Changer les pouvoirs »
+    Et le menu des pouvoirs propose Coup de bouclier à la Sentinelle, sans le cocher
 
   @ui
   Scénario: Pas de choix avec 3 pouvoirs débloqués ou moins
     Étant donné l'Errante n'a que Pas de l'ombre, Entaille et Brume de débloqués
-    Alors sa carte du Choix du héros ne montre pas « Changer les pouvoirs »
+    Alors l'onglet de l'Errante du menu des pouvoirs n'a rien à cocher, et son Choix du héros pas de « Changer les pouvoirs »
 
   @ui
   Scénario: Laisser le pouvoir de base de côté
     Étant donné la Sentinelle a débloqué Représailles, Tenir bon, Coup de bouclier et Fracas
-    Quand le joueur touche « Changer les pouvoirs » et choisit Coup de bouclier, Fracas et Représailles
+    Quand le joueur choisit Coup de bouclier, Fracas et Représailles au menu des pouvoirs et touche « Valider »
     Et continue avec la Sentinelle
     Alors ses pouvoirs équipés pour l'ascension sont Coup de bouclier, Fracas et Représailles, sans le Rempart
 
   @ui
   Scénario: Exactement 3 pouvoirs équipés
     Étant donné l'Errante a 5 pouvoirs débloqués
-    Quand le joueur change ses pouvoirs
+    Quand le joueur ouvre ses pouvoirs au menu des pouvoirs
     Alors il ne peut pas en choisir un 4e
     Et il ne peut pas valider avec moins de 3 pouvoirs
 
   @session
-  Scénario: Les touches suivent l'ordre de l'arbre
+  Scénario: Les lignes de la liste des pouvoirs suivent l'ordre de l'arbre
     Étant donné le joueur a choisi, dans cet ordre, Frappe furtive, Entaille et Pas de l'ombre
     Quand c'est la phase du héros
-    Alors les touches sont, de gauche à droite : Pas de l'ombre, Entaille, Frappe furtive, puis « Attaquer »
+    Alors les lignes de la liste des pouvoirs sont, de haut en bas : Pas de l'ombre, Entaille, Frappe furtive
 
   @session
   Scénario: Le choix est mémorisé par héros
@@ -80,7 +80,8 @@ Fonctionnalité: Les frappes de pouvoir et le choix des pouvoirs équipés
     Alors ses pouvoirs équipés sont toujours Entaille, Rafale et Frappe furtive
     Et l'ascension ne propose aucun moyen de les changer
 
-  # L'enregistrement qui échoue est celui du choix des pouvoirs, écrit au lancement (#236, D3).
+  # L'enregistrement qui échoue est celui du choix des pouvoirs, écrit au lancement quand il
+  # diffère de la mémoire (#236, D3) : ici, une présélection jamais validée.
   @ui
   Scénario: L'enregistrement du choix échoue
     Étant donné l'enregistrement de l'ascension échoue au lancement
@@ -151,13 +152,13 @@ Fonctionnalité: Les frappes de pouvoir et le choix des pouvoirs équipés
     Et Entaille est consommée par cette frappe
 
   @ui
-  Scénario: « Coup d'écu » sur la touche de combat seulement
+  Scénario: Coup de bouclier s'écrit en entier sur sa ligne
     Étant donné la Sentinelle a Coup de bouclier équipé
-    Quand c'est la phase du héros
-    Alors sa touche de combat s'appelle « Coup d'écu »
-    Et l'arbre, la fiche du pouvoir, la carte du Choix du héros, le panneau des pouvoirs équipés, la feuille de l'Équipement et le lecteur d'écran disent « Coup de bouclier »
+    Quand le joueur ouvre la liste des pouvoirs en phase du héros
+    Alors sa ligne de la liste des pouvoirs s'appelle « Coup de bouclier »
+    Et l'arbre, la fiche du pouvoir, la carte du Choix du héros, le menu des pouvoirs, la feuille de l'Équipement et le lecteur d'écran disent « Coup de bouclier »
 
   @ui
   Scénario: Une frappe de pouvoir trop chère
     Étant donné l'Errante a 2 Élan et Frappe furtive équipée
-    Alors la touche de Frappe furtive est visible mais indisponible et dit qu'il manque 1 Élan
+    Alors la ligne de Frappe furtive est visible mais indisponible et dit qu'il manque 1 Élan

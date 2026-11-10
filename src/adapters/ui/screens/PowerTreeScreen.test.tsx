@@ -31,12 +31,19 @@ async function show(
   }
   await setUp.session.load();
   const onLeave = jest.fn();
+  const onChoosePowers = jest.fn();
   await renderScreen(
-    <PowerTreeScreen camp={setUp.camp} hero={hero} onLeave={onLeave} onGoToDay={jest.fn()} />,
+    <PowerTreeScreen
+      camp={setUp.camp}
+      hero={hero}
+      onLeave={onLeave}
+      onGoToDay={jest.fn()}
+      onChoosePowers={onChoosePowers}
+    />,
     setUp.dependencies,
   );
   await screen.findByTestId('power-tree');
-  return { ...setUp, onLeave };
+  return { ...setUp, onLeave, onChoosePowers };
 }
 
 const node = (code: PowerKind) => screen.getByTestId(`power-node-${code}`);
@@ -198,7 +205,9 @@ describe('PowerTreeScreen (#235)', () => {
     expect(inNode('mist').getByText('Équipé')).toBeOnTheScreen();
     const sheet = await open('flurry');
     expect(
-      sheet.getByText('Débloqué. Pas équipé : choisis-le au Choix du héros.'),
+      sheet.getByText(
+        'Débloqué. Pas équipé : choisis-le au pied de la tour, dans « Pouvoirs équipés ».',
+      ),
     ).toBeOnTheScreen();
   });
 
@@ -213,13 +222,29 @@ describe('PowerTreeScreen (#235)', () => {
 
     expect(
       await screen.findByText(
-        'Rafale débloqué. Tes 3 places sont prises : choisis tes pouvoirs au Choix du héros.',
+        'Rafale débloqué. Tes 3 places sont prises : choisis tes pouvoirs au pied de la tour.',
       ),
     ).toBeOnTheScreen();
     expect(inNode('flurry').getByText('Débloqué')).toBeOnTheScreen();
     expect(announce).toHaveBeenCalledWith(
-      'Rafale débloqué. Tes 3 places sont prises : choisis tes pouvoirs au Choix du héros. 30 Éclats disponibles.',
+      'Rafale débloqué. Tes 3 places sont prises : choisis tes pouvoirs au pied de la tour. 30 Éclats disponibles.',
     );
+  });
+
+  it('sends to the powers menu of the hero from the band without a free slot (#270, D1)', async () => {
+    const { onChoosePowers } = await show({ shards: 150, powers: ['rend', 'mist'] }, 'wanderer', {
+      wanderer: ['shadowStep', 'rend', 'mist'],
+    });
+
+    const sheet = await open('flurry');
+    await fireEvent.press(sheet.getByRole('button', { name: 'Débloquer pour 60 Éclats' }));
+
+    const choose = await screen.findByRole('button', {
+      name: "Choisir mes pouvoirs : ouvre le menu des pouvoirs de l'Errante",
+    });
+    expect(choose).toHaveTextContent('Choisir mes pouvoirs');
+    await fireEvent.press(choose);
+    expect(onChoosePowers).toHaveBeenCalledWith('wanderer');
   });
 
   it('explains a lock and opens the sheet of the rank 1 (F4)', async () => {

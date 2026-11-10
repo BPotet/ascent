@@ -194,8 +194,9 @@ function OathBlock({
  * La fiche d'un pouvoir (#235, maquette F1 à F5), en feuille, quel que soit l'état du nœud : son
  * icône à ×4, sa place dans l'arbre, son coût, son type et son effet ; puis le prix, « Il te
  * restera » et « Débloquer pour 30 Éclats », ou ce qui manque, le verrou (« Voir … »), ou
- * « Débloqué », équipé ou à choisir au Choix du héros (#236, F5). En cas d'échec, elle reste
- * ouverte et propose « Réessayer ». Aucun bouton de vente : un déblocage est pour toujours.
+ * « Débloqué », équipé ou à choisir au menu des pouvoirs (#236, F5 ; #270, D2). En cas d'échec,
+ * elle reste ouverte et propose « Réessayer ». Aucun bouton de vente : un déblocage est pour
+ * toujours.
  */
 export function PowerSheet({
   code,
@@ -217,7 +218,7 @@ export function PowerSheet({
   readonly ascentInProgress: boolean;
   readonly readOnly: boolean;
   readonly error: boolean;
-  /** Le pouvoir est dans la présélection du Choix du héros (#236) ; vrai par défaut. */
+  /** Le pouvoir est dans la présélection des pouvoirs équipés (#236, #270) ; vrai par défaut. */
   readonly equipped?: boolean;
   /** Le Serment d'un pouvoir à soi (#237) ; absent, pas de cadre « Serment ». */
   readonly oath?: SheetOath | undefined;

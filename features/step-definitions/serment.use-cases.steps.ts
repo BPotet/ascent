@@ -247,7 +247,7 @@ const steps: StepDefinitions = ({ given, when, then, and, but }) => {
   });
 
   and(
-    /^sa touche en combat dit « 1 Élan · Instantané », avec la marque du pouvoir attisé$/u,
+    /^sa ligne dans la liste des pouvoirs dit « 1 Élan · Instantané », avec la marque du pouvoir attisé$/u,
     () => {
       const { pad } = battleView(world.battle!);
       const key =

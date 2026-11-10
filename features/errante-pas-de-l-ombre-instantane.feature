@@ -2,7 +2,8 @@
 # Story #173 (épique #170), chemin B : les scénarios de la story, tels quels. Ils passent par
 # l'écran de combat (`BattleScreen`), sur une vraie session de combat, l'horloge de combat manuelle
 # et des coups fixés, et par le Choix du héros pour les valeurs de l'Errante. Skia est simulé sous
-# Jest : l'ombre et la pose se vérifient sur ce que l'écran passe à la scène.
+# Jest : l'ombre et la pose se vérifient sur ce que l'écran passe à la scène. Depuis #271, le pouvoir
+# se lance par sa ligne dans la liste des pouvoirs, qu'ouvre la touche « Pouvoirs ».
 
 Fonctionnalité: Le pouvoir instantané de l'Errante
 
@@ -12,9 +13,9 @@ Fonctionnalité: Le pouvoir instantané de l'Errante
     Et Pas de l'ombre coûte 3 Élan
     Et le texte du pouvoir est celui du Codex
 
-  Scénario: La touche Pouvoir dit que le pouvoir est instantané
+  Scénario: La ligne de Pas de l'ombre dit que le pouvoir est instantané
     Étant donné l'Errante en phase du héros avec 3 Élan
-    Alors la touche Pouvoir dit « Pas de l'ombre » et, en dessous, « 3 Élan · Instantané »
+    Alors la ligne de Pas de l'ombre dit « Pas de l'ombre » et, en dessous, « 3 Élan · Instantané »
     Et la mention « Instantané » est toujours là, à chaque combat
     Et le Rempart de la Sentinelle n'a jamais cette mention
 
@@ -22,7 +23,7 @@ Fonctionnalité: Le pouvoir instantané de l'Errante
     Étant donné l'Errante en phase du héros avec 3 Élan
     Quand le joueur lance Pas de l'ombre
     Alors Pas de l'ombre est actif et l'Errante a 0 Élan
-    Et la touche Pouvoir passe à « ✓ Actif »
+    Et la ligne de Pas de l'ombre passe à « ✓ Actif »
     Et la phase du héros continue : ni transition de phase, ni annonce de phase
     Et le joueur peut viser un ennemi et attaquer
     Et l'attaque rapporte son +1 Élan, comme d'habitude
@@ -50,7 +51,7 @@ Fonctionnalité: Le pouvoir instantané de l'Errante
 
   Scénario: Limite — une seule fois tant qu'il est actif
     Étant donné Pas de l'ombre déjà actif et l'Errante avec 3 Élan
-    Alors la touche Pouvoir dit « ✓ Actif » et Pas de l'ombre est indisponible jusqu'à son emploi ou la fin du combat
+    Alors la ligne de Pas de l'ombre dit « ✓ Actif » et Pas de l'ombre est indisponible jusqu'à son emploi ou la fin du combat
 
   Scénario: Limite — jamais en phase ennemie
     Étant donné une phase ennemie
@@ -66,4 +67,4 @@ Fonctionnalité: Le pouvoir instantané de l'Errante
     Quand le joueur lance Pas de l'ombre
     Alors il entend « Pas de l'ombre actif. Toujours à toi : vise et attaque. »
     Et le focus passe à Attaquer
-    Et la touche Pouvoir se lit « Pouvoir : Pas de l'ombre, 3 Élan, instantané » (« …, actif » une fois lancé ; « …, indisponible : il manque 1 Élan »)
+    Et la ligne de Pas de l'ombre se lit « Pouvoir : Pas de l'ombre, 3 Élan, instantané » (« …, actif » une fois lancé ; « …, indisponible : il manque 1 Élan »)

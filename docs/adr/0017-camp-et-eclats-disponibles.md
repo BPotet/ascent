@@ -81,3 +81,12 @@ codé : aucune donnée stockée n'en dépend.
   sceau et la vibration de réussite.
 - `beginAscent` reçoit en plus `doneYesterday` (facultatif, aucune par défaut) et passe les pouvoirs
   attisés à l'ascension.
+
+## Avenant du 10 novembre 2026 — le menu des pouvoirs (#270, ADR 0026)
+
+- Trois clés voisines et facultatives : `camp.newPowers` (les pouvoirs nouveaux, débloqués et pas
+  encore vus dans le menu des pouvoirs), `camp.powersMenu.seen` et `camp.powersCard.seen`. Absentes
+  ou illisibles, elles valent « aucun », « jamais ouvert » et « jamais vue », sans copie à part.
+- Un achat de pouvoir écrit `camp.newPowers` **après** l'écriture attendue de `camp.unlocks`, sans
+  l'attendre, et ignore son échec : l'achat reste fait. La règle du § 4 ne change pas, et un achat
+  n'écrit jamais la même clé qu'un lancement ou un « Valider ».

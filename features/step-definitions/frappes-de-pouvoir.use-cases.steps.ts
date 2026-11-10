@@ -98,7 +98,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(
-    /^les touches sont, de gauche à droite : Pas de l'ombre, Entaille, Frappe furtive, puis « Attaquer »$/u,
+    /^les lignes de la liste des pouvoirs sont, de haut en bas : Pas de l'ombre, Entaille, Frappe furtive$/u,
     () => {
       const pad = battleView(battle).pad;
       expect(pad.kind).toBe('hero');

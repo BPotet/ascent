@@ -13,13 +13,20 @@ import {
   type CampPurchase,
 } from '../../domain/ascent/camp';
 import {
+  equippedSlots,
   isEquippedChoice,
+  newPowerStanding,
   ownedPowers,
   parseEquippedPowersMemory,
+  parseNewPowers,
   preselectedPowers,
   rememberEquippedPowers,
   serializeEquippedPowersMemory,
+  serializeNewPowers,
+  toggleEquippedPower,
+  type EquippedPowerToggle,
   type EquippedPowersMemory,
+  type NewPowerStanding,
 } from '../../domain/ascent/equippedPowers';
 import {
   EQUIPPED_POWER_SLOTS,
@@ -49,10 +56,24 @@ import type { Haptics } from '../ports/Haptics';
 import type { KeyValueStore } from '../ports/KeyValueStore';
 import type { UnitOfWork } from '../ports/UnitOfWork';
 import type { AscentSession } from './AscentSession';
-import { CAMP_KEY, EQUIPPED_POWERS_KEY, UNREADABLE_CAMP_KEY } from './campKeys';
+import {
+  CAMP_KEY,
+  EQUIPPED_POWERS_KEY,
+  NEW_POWERS_KEY,
+  POWERS_CARD_SEEN_KEY,
+  POWERS_MENU_SEEN_KEY,
+  UNREADABLE_CAMP_KEY,
+} from './campKeys';
 import { OATHS_KEY, UNREADABLE_OATHS_KEY, readOaths } from './oaths';
 
-export { CAMP_KEY, EQUIPPED_POWERS_KEY, UNREADABLE_CAMP_KEY };
+export {
+  CAMP_KEY,
+  EQUIPPED_POWERS_KEY,
+  NEW_POWERS_KEY,
+  POWERS_CARD_SEEN_KEY,
+  POWERS_MENU_SEEN_KEY,
+  UNREADABLE_CAMP_KEY,
+};
 /** Les arbres de pouvoirs ont été ouverts une fois (#235) : le badge « nouveau » s'éteint. */
 export const POWER_TREES_SEEN_KEY = 'camp.powerTrees.seen';
 
@@ -111,11 +132,25 @@ export interface CampView {
   readonly trees: Readonly<Record<HeroKind, PowerTreeView>>;
   /**
    * La présélection des pouvoirs équipés de la prochaine ascension, par héros (#236) : le dernier
-   * choix lancé s'il est valide, sinon les pouvoirs équipés d'office (#235) ; dans l'ordre de l'arbre.
+   * choix validé au menu des pouvoirs (#270) ou lancé, s'il est valide, sinon les pouvoirs équipés
+   * d'office (#235) ; dans l'ordre de l'arbre.
    */
   readonly equipped: Readonly<Record<HeroKind, readonly PowerKind[]>>;
+  /** Le nombre de « Valider » qui ont écrit la mémoire, dans cette session (#270, T5). */
+  readonly equippedRevision: number;
+  /**
+   * Les pouvoirs nouveaux de chaque héros (#270), débloqués et pas encore vus dans le menu des
+   * pouvoirs : équipés tout seuls (M8), ou en attente d'une place (T4, M9).
+   */
+  readonly newPowers: Readonly<Record<HeroKind, NewPowerStanding>>;
+  /** Le menu des pouvoirs a déjà été ouvert hors ascension : plus de bandeau de première ouverture (#270, M12). */
+  readonly powersMenuSeen: boolean;
+  /** La carte « Pouvoirs équipés » a déjà été vue : plus de « nouveau » (#270, T8). */
+  readonly powersCardSeen: boolean;
   /** Les pouvoirs possédés, par héros (#236) : son pouvoir de base et ses débloqués, dans l'ordre de l'arbre. */
   readonly owned: Readonly<Record<HeroKind, readonly PowerKind[]>>;
+  /** Le nombre de pouvoirs équipés de chaque héros : min(3, possédés) (#270, `equippedSlots`). */
+  readonly slots: Readonly<Record<HeroKind, number>>;
   /** Un arbre a déjà été ouvert : plus de badge « nouveau » (#235). */
   readonly powerTreesSeen: boolean;
   /** Les habitudes, dans l'ordre de création ; `null` tant qu'elles ne sont pas lues (#237). */
@@ -128,6 +163,13 @@ export interface CampView {
 
 /** Un achat : enregistré, en échec (rien n'a changé, on peut réessayer), ou refusé. */
 export type UnlockResult = 'unlocked' | 'failed' | 'refused';
+
+/**
+ * Un « Valider » du menu des pouvoirs (#270, D2) : enregistré ; en échec (la mémoire n'a pas changé,
+ * on peut réessayer) ; ou refusé (Camp pas lu, ascension en cours, choix non valide, la mémoire déjà
+ * en cours d'écriture).
+ */
+export type EquipResult = 'equipped' | 'failed' | 'refused';
 
 /**
  * Un lancement (#236, D3) : l'ascension commencée ; un échec de l'écriture du choix (rien n'a
@@ -170,7 +212,15 @@ export class CampSession {
   private oathsReadOnly = false;
   private swearing = false;
   private memory: EquippedPowersMemory = {};
-  private launching = false;
+  /**
+   * Une écriture attendue de la mémoire des pouvoirs équipés est en cours : un « Valider » (#270) ou un
+   * lancement. Le verrou commun de `camp.equippedPowers` : ils n'écrivent jamais en même temps.
+   */
+  private writingMemory = false;
+  private equippedRevision = 0;
+  private newPowers: readonly PowerKind[] = [];
+  private powersMenuSeen = false;
+  private powersCardSeen = false;
   private readonly listeners = new Set<Listener>();
 
   constructor(private readonly dependencies: CampSessionDependencies) {}
@@ -200,9 +250,20 @@ export class CampSession {
       readOnly: this.readOnly,
       trees: this.trees(shardTotal, ascent),
       equipped: { sentinel: this.preselected('sentinel'), wanderer: this.preselected('wanderer') },
+      equippedRevision: this.equippedRevision,
+      newPowers: {
+        sentinel: newPowerStanding(this.preselected('sentinel'), this.newPowers, 'sentinel'),
+        wanderer: newPowerStanding(this.preselected('wanderer'), this.newPowers, 'wanderer'),
+      },
+      powersMenuSeen: this.powersMenuSeen,
+      powersCardSeen: this.powersCardSeen,
       owned: {
         sentinel: ownedPowers(this.camp, 'sentinel'),
         wanderer: ownedPowers(this.camp, 'wanderer'),
+      },
+      slots: {
+        sentinel: equippedSlots(this.camp, 'sentinel'),
+        wanderer: equippedSlots(this.camp, 'wanderer'),
       },
       powerTreesSeen: this.powerTreesSeen,
       habits: this.habits,
@@ -358,10 +419,109 @@ export class CampSession {
 
   /**
    * Débloque `power` dans l'arbre de pouvoirs (#235) : la même écriture attendue de `camp.unlocks`,
-   * tout ou rien, le même son et la même vibration. Un achat à la fois.
+   * tout ou rien, le même son et la même vibration. Un achat à la fois. Débloqué, il devient un
+   * pouvoir nouveau (#270, D3) : `camp.newPowers` s'écrit ensuite, sans être attendu, et son échec
+   * est ignoré.
    */
-  unlockPower(power: PowerKind): Promise<UnlockResult> {
-    return this.buy((camp, shardTotal) => unlockPowerAtCamp(camp, shardTotal, power));
+  async unlockPower(power: PowerKind): Promise<UnlockResult> {
+    const result = await this.buy((camp, shardTotal) => unlockPowerAtCamp(camp, shardTotal, power));
+    if (result === 'unlocked') {
+      this.newPowers = [...this.newPowers, power];
+      this.publish();
+      this.writeNewPowers();
+    }
+    return result;
+  }
+
+  private writeNewPowers(): void {
+    // Une commodité : sans elle, le pouvoir ne se dit pas « nouveau », c'est tout.
+    this.dependencies.keyValueStore
+      .set(NEW_POWERS_KEY, serializeNewPowers(this.newPowers))
+      .catch(() => undefined);
+  }
+
+  /**
+   * Le menu des pouvoirs est ouvert (#270, D3) : les pouvoirs nouveaux sont vus, et le bandeau de la
+   * première ouverture s'éteint. Rien pendant une ascension : le menu y est en lecture seule, et un
+   * pouvoir débloqué en cours d'ascension reste nouveau pour la suivante. Les écritures ne sont pas
+   * attendues ; un échec les fera revenir à la prochaine ouverture.
+   */
+  async markPowersMenuSeen(): Promise<void> {
+    if (this.inProgress() || (this.powersMenuSeen && this.newPowers.length === 0)) return;
+    const { keyValueStore } = this.dependencies;
+    const writes: Promise<void>[] = [];
+    if (this.newPowers.length > 0) {
+      this.newPowers = [];
+      writes.push(keyValueStore.set(NEW_POWERS_KEY, serializeNewPowers([])));
+    }
+    if (!this.powersMenuSeen) {
+      this.powersMenuSeen = true;
+      writes.push(keyValueStore.set(POWERS_MENU_SEEN_KEY, '1'));
+    }
+    this.publish();
+    await Promise.all(writes.map((write) => write.catch(() => undefined)));
+  }
+
+  /** La carte « Pouvoirs équipés » est vue (#270, T8) : son « nouveau » s'éteint. */
+  async markPowersCardSeen(): Promise<void> {
+    if (this.powersCardSeen) return;
+    this.powersCardSeen = true;
+    this.publish();
+    await this.dependencies.keyValueStore.set(POWERS_CARD_SEEN_KEY, '1').catch(() => undefined);
+  }
+
+  /**
+   * Un toucher sur la ligne de `power` dans le brouillon `draft` du menu des pouvoirs (#270, D4) :
+   * la règle de la case (`toggleEquippedPower`) sur les pouvoirs possédés du Camp.
+   */
+  toggleEquippedPower(
+    hero: HeroKind,
+    draft: readonly PowerKind[],
+    power: PowerKind,
+  ): EquippedPowerToggle {
+    return toggleEquippedPower(this.camp, hero, draft, power);
+  }
+
+  /**
+   * « Valider » au menu des pouvoirs (#270, D2, ADR 0026) : le choix des deux héros devient la
+   * mémoire des pouvoirs équipés, en une seule écriture attendue de `camp.equippedPowers`, dans
+   * l'ordre de l'arbre. Un héros à 3 pouvoirs ou moins est mémorisé lui aussi. Un choix égal à la
+   * mémoire n'écrit rien. Un échec ne change ni la mémoire ni la vue. Jamais pendant une ascension,
+   * ni pendant une autre écriture de la mémoire (un lancement compris).
+   */
+  async equipPowers(
+    choice: Readonly<Record<HeroKind, readonly PowerKind[]>>,
+  ): Promise<EquipResult> {
+    if (!this.loaded || this.writingMemory || this.inProgress()) return 'refused';
+    const heroes: readonly HeroKind[] = ['sentinel', 'wanderer'];
+    if (!heroes.every((hero) => isEquippedChoice(this.camp, hero, choice[hero]))) return 'refused';
+    if (heroes.every((hero) => sameChoice(this.memory[hero] ?? [], choice[hero]))) {
+      return 'equipped';
+    }
+    const memory = heroes.reduce(
+      (remembered, hero) => rememberEquippedPowers(remembered, hero, choice[hero]),
+      this.memory,
+    );
+    this.writingMemory = true;
+    try {
+      await this.dependencies.keyValueStore.set(
+        EQUIPPED_POWERS_KEY,
+        serializeEquippedPowersMemory(memory),
+      );
+    } catch {
+      return 'failed';
+    } finally {
+      this.writingMemory = false;
+    }
+    this.memory = memory;
+    this.equippedRevision += 1;
+    this.publish();
+    return 'equipped';
+  }
+
+  private inProgress(): boolean {
+    const current = this.dependencies.ascentSession.current();
+    return current !== null && current.outcome === null;
   }
 
   /** Un arbre de pouvoirs est ouvert : le badge « nouveau » s'éteint, pour de bon s'il s'écrit. */
@@ -401,10 +561,12 @@ export class CampSession {
    * Pour un vrai choix (4 pouvoirs possédés ou plus) qui change la mémoire, l'écriture de
    * `camp.equippedPowers` est attendue : un échec ne commence rien et ne change pas la mémoire. Avec
    * 3 pouvoirs possédés ou moins, elle part sans être attendue, et son échec est ignoré. Un lancement
-   * à la fois.
+   * à la fois, jamais pendant l'écriture d'un « Valider » (#270, le verrou commun de la mémoire).
+   * L'écriture non attendue ne pose pas ce verrou : l'ascension commence aussitôt, et un « Valider »
+   * est alors refusé (ascension en cours).
    */
   async launchAscent({ powers, ...launch }: CampLaunch): Promise<LaunchResult> {
-    if (!this.loaded || this.launching) return { kind: 'refused' };
+    if (!this.loaded || this.writingMemory) return { kind: 'refused' };
     const hero = launch.hero ?? 'sentinel';
     const chosen = powers ?? this.preselected(hero);
     if (!isEquippedChoice(this.camp, hero, chosen)) return { kind: 'refused' };
@@ -415,13 +577,13 @@ export class CampSession {
         serializeEquippedPowersMemory(memory),
       );
       if (ownedPowers(this.camp, hero).length > EQUIPPED_POWER_SLOTS) {
-        this.launching = true;
+        this.writingMemory = true;
         try {
           await write;
         } catch {
           return { kind: 'failed' };
         } finally {
-          this.launching = false;
+          this.writingMemory = false;
         }
       } else {
         // Une commodité de présélection : la suivante réessaiera.
@@ -463,10 +625,7 @@ export class CampSession {
     }
     const { camp, unreadable } = parseCamp(raw);
     this.camp = camp;
-    this.powerTreesSeen = await keyValueStore.get(POWER_TREES_SEEN_KEY).then(
-      (seen) => seen !== null,
-      () => false,
-    );
+    this.powerTreesSeen = await this.flag(POWER_TREES_SEEN_KEY);
     if (unreadable && raw !== null) {
       // La valeur illisible est d'abord gardée à part ; sinon, le camp reste en lecture seule.
       this.readOnly = await keyValueStore.set(UNREADABLE_CAMP_KEY, raw).then(
@@ -479,8 +638,25 @@ export class CampSession {
     this.memory = await keyValueStore
       .get(EQUIPPED_POWERS_KEY)
       .then(parseEquippedPowersMemory, () => ({}));
+    // Les marques « nouveau » du menu des pouvoirs (#270, D3) : illisibles ou en panne, leur valeur
+    // par défaut, sans copie à part. Un pouvoir nouveau que le Camp n'a pas est ignoré.
+    const owned = campPowers(this.camp);
+    this.newPowers = await keyValueStore.get(NEW_POWERS_KEY).then(
+      (raw) => parseNewPowers(raw).filter((power) => owned.includes(power)),
+      () => [],
+    );
+    this.powersMenuSeen = await this.flag(POWERS_MENU_SEEN_KEY);
+    this.powersCardSeen = await this.flag(POWERS_CARD_SEEN_KEY);
     this.loaded = true;
     this.publish();
+  }
+
+  /** Un drapeau « déjà vu » : posé s'il est stocké ; absent ou illisible, pas encore vu. */
+  private flag(key: string): Promise<boolean> {
+    return this.dependencies.keyValueStore.get(key).then(
+      (seen) => seen !== null,
+      () => false,
+    );
   }
 
   /** Lit les Serments (#237), comme le Camp : une valeur illisible est gardée à part d'abord. */

@@ -1,6 +1,6 @@
 /**
- * Les libellés des pouvoirs (#235) : noms (fiches `codex/<code>` de l'Atelier, version 1), noms de
- * touche, types, effets, voies, états des nœuds de l'arbre et raisons d'indisponibilité en combat,
+ * Les libellés des pouvoirs (#235) : noms (fiches `codex/<code>` de l'Atelier, version 1), types,
+ * effets, voies, états des nœuds de l'arbre et états de la liste des pouvoirs en combat (#271),
  * tirés du glossaire et de la maquette validée 232 (sections 1, 3 et 7).
  */
 import type { HeroKind } from '../../../domain/battle/combatants';
@@ -18,23 +18,6 @@ import {
 export const TREE_POWER_NAMES: Readonly<Record<PowerKind, string>> = {
   bulwark: 'Rempart',
   shieldBash: 'Coup de bouclier',
-  crushingBlow: 'Fracas',
-  retaliation: 'Représailles',
-  holdFast: 'Tenir bon',
-  shadowStep: "Pas de l'ombre",
-  rend: 'Entaille',
-  flurry: 'Rafale',
-  mist: 'Brume',
-  ambush: 'Frappe furtive',
-};
-
-/**
- * Le nom sur la touche de combat (`buttonName` du Codex), 14 caractères au plus : « Coup d'écu »
- * pour Coup de bouclier, sur la touche seulement (#236) ; partout ailleurs, `TREE_POWER_NAMES`.
- */
-export const POWER_BUTTON_NAMES: Readonly<Record<PowerKind, string>> = {
-  bulwark: 'Rempart',
-  shieldBash: "Coup d'écu",
   crushingBlow: 'Fracas',
   retaliation: 'Représailles',
   holdFast: 'Tenir bon',
@@ -168,7 +151,7 @@ export function basePowerBand(code: PowerKind, equipped = true): string {
 export function unlockedBand(equipped: boolean): string {
   return equipped
     ? 'Débloqué. Équipé à ta prochaine ascension.'
-    : 'Débloqué. Pas équipé : choisis-le au Choix du héros.';
+    : 'Débloqué. Pas équipé : choisis-le au pied de la tour, dans « Pouvoirs équipés ».';
 }
 
 export function shardsText(shards: number): string {
@@ -212,9 +195,9 @@ export function nodeLabel(code: PowerKind, state: PowerNodeState, equipped = tru
   }
 }
 
-/** Le bandeau d'un pouvoir débloqué sans place libre (#236, D2). */
+/** Le bandeau d'un pouvoir débloqué sans place libre (#236, D2 ; #270, D1). */
 export function noFreeSlotBand(power: PowerKind): string {
-  return `${TREE_POWER_NAMES[power]} débloqué. Tes 3 places sont prises : choisis tes pouvoirs au Choix du héros.`;
+  return `${TREE_POWER_NAMES[power]} débloqué. Tes 3 places sont prises : choisis tes pouvoirs au pied de la tour.`;
 }
 
 /**
@@ -247,23 +230,39 @@ export interface PowerKeyText {
   readonly baseCost?: number;
 }
 
-/** La raison d'une touche indisponible, sur une ou deux lignes ; rien pour une touche disponible. */
-export function powerKeyReason({
+/**
+ * L'état d'une ligne de la liste des pouvoirs, en mot, sur une ligne (#271) : « Prêt », « Il manque
+ * 1 Élan », « Actif », « Instantané déjà lancé » ou « Utilisé ce combat ».
+ */
+export function powerStateText({
   availability,
   missing,
-}: Pick<PowerKeyText, 'availability' | 'missing'>): readonly string[] {
+}: Pick<PowerKeyText, 'availability' | 'missing'>): string {
   switch (availability) {
-    case 'missing':
-      return ['Il manque', `${missing} Élan`];
-    case 'active':
-      return ['Actif'];
-    case 'instantUsed':
-      return ['Instantané', 'déjà lancé'];
-    case 'usedThisBattle':
-      return ['Utilisé', 'ce combat'];
     case 'available':
-      return [];
+      return 'Prêt';
+    case 'missing':
+      return `Il manque ${missing} Élan`;
+    case 'active':
+      return 'Actif';
+    case 'instantUsed':
+      return 'Instantané déjà lancé';
+    case 'usedThisBattle':
+      return 'Utilisé ce combat';
   }
+}
+
+/** Le compte de la touche « Pouvoirs » (#271) : « 3 prêts sur 3 », « 1 prêt sur 3 ». */
+export function readyCountText(ready: number, total: number): string {
+  return `${ready} ${ready > 1 ? 'prêts' : 'prêt'} sur ${total}`;
+}
+
+/**
+ * Le libellé lu de la touche « Pouvoirs » (#271, KB1) : « Pouvoirs, 3 prêts sur 3, menu ». « replié »
+ * et « bouton » viennent de son état (`expanded`) et de son rôle.
+ */
+export function powersKeyLabel(ready: number, total: number): string {
+  return `Pouvoirs, ${readyCountText(ready, total)}, menu`;
 }
 
 const UNAVAILABLE_READ: Readonly<Record<PowerKeyAvailability, (missing: number) => string>> = {
@@ -301,30 +300,14 @@ export function strikeKeyLabel(power: PowerKind | undefined, hits: number, hit: 
   return hits > 1 ? `Frapper, ${name}, coup ${hit} sur ${hits}` : `Frapper, ${name}`;
 }
 
-/** Le panneau des pouvoirs équipés (#236, H4) : « L'Errante · dans l'ordre de l'arbre ». */
-export function panelHeading(hero: HeroKind): string {
-  return `${HERO_OF[hero].name} · dans l'ordre de l'arbre`;
-}
-
-/** Plein, un 4e pouvoir est refusé (#236, H5). */
+/** Plein, un 4e pouvoir est refusé (#236, H5 ; au menu des pouvoirs, #270, M2). */
 export function fullSlotsBand(power: PowerKind): string {
   return `3 sur 3 : retire d'abord un pouvoir pour équiper ${TREE_POWER_NAMES[power]}.`;
 }
 
-/** « Valider » attend les places qui restent (#236, H6). */
+/** « Valider » attend les places qui restent (#236, H6 ; au menu des pouvoirs, #270, M3). */
 export function missingChoiceText(missing: number): string {
   return `Choisis encore ${missing} pouvoir${missing > 1 ? 's' : ''}`;
-}
-
-/** « Changer les pouvoirs » et le nombre de pouvoirs à soi (#236, H3). */
-export function changePowersLabel(owned: number): string {
-  return `Changer les pouvoirs, ${owned} débloqués`;
-}
-
-/** L'annonce du nouveau choix (#236, H7) : « 3 pouvoirs équipés : Entaille, Rafale, Brume. » */
-export function equippedAnnouncement(powers: readonly PowerKind[]): string {
-  const count = `${powers.length} ${powers.length > 1 ? 'pouvoirs équipés' : 'pouvoir équipé'}`;
-  return `${count} : ${powers.map((power) => TREE_POWER_NAMES[power]).join(', ')}.`;
 }
 
 /** L'échec de l'enregistrement du choix au lancement (#236) : rien n'est perdu. */

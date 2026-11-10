@@ -119,7 +119,10 @@ export interface HeroOathLine {
   readonly text: string;
 }
 
-/** La ligne d'un pouvoir équipé sous Serment, au Choix du héros (S8, S9) ; rien sans état connu. */
+/**
+ * La ligne d'un pouvoir équipé sous Serment, au Choix du héros (S8, S9) et, attisé, au menu des
+ * pouvoirs (#270, M5) ; rien sans état connu.
+ */
 export function heroOathLine(
   power: PowerKind,
   habit: string,

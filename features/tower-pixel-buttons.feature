@@ -14,7 +14,7 @@ Fonctionnalité: Les boutons de l'onglet Tour en pixel art
   Scénario: Les touches de combat (C1, C3, C4)
     Étant donné un combat de la tour
     Quand c'est la phase du héros
-    Alors « Pouvoir » et « Attaquer » ont l'habillage du bouton pixel, 112 dp de haut
+    Alors « Pouvoirs » et « Attaquer » ont l'habillage du bouton pixel, 112 dp de haut
     Quand c'est la frappe en rythme
     Alors « Frapper » a l'habillage du bouton pixel, sur toute la largeur, avec la même barre et le même trait
     Quand c'est la phase ennemie
@@ -57,12 +57,12 @@ Fonctionnalité: Les boutons de l'onglet Tour en pixel art
 
   Scénario: Limite — pouvoir indisponible (C7)
     Étant donné un pouvoir qui coûte plus d'Élan que le héros n'en a
-    Quand la phase du héros s'affiche
-    Alors « Pouvoir » est hachuré, écrit l'Élan qui manque (« Il manque 1 Élan ») et est annoncé indisponible
+    Quand le joueur ouvre la liste des pouvoirs en phase du héros
+    Alors la ligne du pouvoir est hachurée, écrit l'Élan qui manque (« Il manque 1 Élan ») et est annoncée indisponible
 
   # La partie combat de « Limite — accessibilité inchangée ».
   Scénario: Limite — accessibilité inchangée au combat
     Étant donné que le lecteur d'écran est actif
     Quand le joueur parcourt le combat de la tour
-    Alors les rôles et les libellés lus sont ceux d'aujourd'hui (« Attaquer, cible : Villageois fou », « Pouvoir : Rempart, 1 Élan, indisponible : il manque 1 Élan »)
+    Alors les rôles et les libellés lus sont ceux d'aujourd'hui (« Attaquer, cible : Villageois fou », et sur la ligne du pouvoir « Pouvoir : Rempart, 1 Élan, indisponible : il manque 1 Élan »)
     Et aucun état n'est signalé par la couleur seule

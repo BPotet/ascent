@@ -101,7 +101,7 @@ describe('BattleScreen', () => {
       expect(screen.getByLabelText('La Sentinelle, PV 80 sur 80, Élan 1 sur 5')).toBeOnTheScreen();
       expect(screen.getByTestId('battle-zone-line')).toHaveTextContent('Cible : Goule');
       expect(screen.getByRole('button', { name: 'Attaquer, cible : Goule' })).toBeOnTheScreen();
-      expect(screen.getByRole('button', { name: 'Pouvoir : Rempart, 1 Élan' })).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Pouvoirs, 1 prêt sur 1, menu' })).toBeEnabled();
     });
 
     it('shows the shield and the gain of the Guard intent of the Necromancer (C2.2)', async () => {
@@ -218,11 +218,17 @@ describe('BattleScreen', () => {
       await test.runUntil(() => test.battle().phase.kind === 'transition');
     });
 
-    it('keeps Pouvoir visible but unavailable without momentum, telling what it misses', async () => {
-      await renderBattle({ seed: 1, createBattle: battleWith(heroWith({ momentum: 0 })) });
+    it('keeps the Bulwark visible but unavailable without momentum, telling what it misses', async () => {
+      const test = await renderBattle({
+        seed: 1,
+        createBattle: battleWith(heroWith({ momentum: 0 })),
+      });
+      expect(screen.getByRole('button', { name: 'Pouvoirs, 0 prêt sur 1, menu' })).toBeEnabled();
+
+      await test.openPowers();
 
       expect(
-        screen.getByRole('button', {
+        screen.getByRole('menuitem', {
           name: 'Pouvoir : Rempart, 1 Élan, indisponible : il manque 1 Élan',
         }),
       ).toBeDisabled();
@@ -361,7 +367,7 @@ describe('BattleScreen', () => {
       expect(test.haptics.played).toEqual(['enemyPhase']);
     });
 
-    it('announces the hero phase and shows « Attaquer » and « Pouvoir » inactive, at their place', async () => {
+    it('announces the hero phase and shows « Attaquer » and « Pouvoirs » inactive, at their place', async () => {
       const test = await renderBattle({ seed: 1, createBattle: onlyGhoul });
       await test.toWindUpOf(GHOUL);
 
@@ -370,7 +376,7 @@ describe('BattleScreen', () => {
       expect(screen.getByTestId('phase-banner')).toHaveTextContent('À toiVise et attaque');
       expect(screen.getByTestId('battle-lock-tag')).toHaveTextContent('Attends');
       expect(screen.getByRole('button', { name: 'Attaquer, cible : Goule' })).toBeDisabled();
-      expect(screen.getByRole('button', { name: 'Pouvoir : Rempart, 1 Élan' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Pouvoirs, 1 prêt sur 1, menu' })).toBeDisabled();
       expect(announce).toHaveBeenCalledWith('À toi. Vise et attaque.');
       expect(test.sound.played.at(-1)).toBe('heroPhase');
       expect(test.haptics.played).not.toContain('heroPhase');
