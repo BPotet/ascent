@@ -7,6 +7,7 @@
   pouvoirs équipés »
 - **Complète** : [ADR 0019](0019-arbre-de-pouvoirs-et-pouvoirs-equipes.md) et
   [ADR 0021](0021-serment-et-pouvoir-attise.md)
+- **Amendé par** : [ADR 0026](0026-menu-des-pouvoirs-et-memoire-ecrite-a-valider.md)
 
 ## Contexte
 
@@ -70,3 +71,14 @@ lancement, sans migration et sans changer la règle des autres écritures de l'a
   règle d'office s'applique, et un de ses pouvoirs peut sortir de la présélection. Il le voit sur la
   carte et peut le changer.
 - Rien ne quitte le téléphone.
+
+## Avenant du 10 novembre 2026 — le menu des pouvoirs (#270, ADR 0026)
+
+- **D1** : la mémoire est écrite **à « Valider »** dans le menu des pouvoirs, pour les deux héros
+  (ADR 0026 D2), **et au lancement**, avec le choix lancé. Elle n'est plus « écrite au lancement
+  seulement ». « Valider » et le lancement partagent un seul verrou de la mémoire.
+- Le choix se fait au menu des pouvoirs, plus au Choix du héros, qui ne fait que le résumer
+  (ADR 0026 D6). `kindledPreview` suit le brouillon du menu.
+- La conséquence « 3 pouvoirs puis un achat sans mémoire » s'atténue dès qu'un « Valider » a eu
+  lieu : un héros à 3 pouvoirs ou moins est mémorisé lui aussi, et son prochain déblocage remplit la
+  place libre ou attend une place, sans sortir un pouvoir de la présélection.
