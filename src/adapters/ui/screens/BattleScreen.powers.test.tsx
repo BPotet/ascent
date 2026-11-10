@@ -3,7 +3,8 @@
 // « +16 » en or et la barre de PV en or ; la scène reçoit le voile de Brume et la marque d'Entaille.
 // La liste des pouvoirs (#271, maquette 269 : KB2 à KB10) : ouverte par « Pouvoirs », fermée par un
 // lancer, par la transition de phase ou sans rien lancer.
-import { fireEvent, screen, within } from '@testing-library/react-native';
+import { act, fireEvent, screen, within } from '@testing-library/react-native';
+import { getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 import { StyleSheet } from 'react-native';
 
 import { battleWith, heroWith, targetOn } from '../../../application/testing/battleBuilder';
@@ -141,6 +142,30 @@ describe('BattleScreen and the power list (#271)', () => {
     // Pour TalkBack, le reste de l'écran est caché tant que la liste est ouverte.
     expect(screen.queryByTestId('battle-hero-bar')).toBeNull();
     expect(screen.getByTestId('battle-hero-bar', hiddenToo)).toBeTruthy();
+  });
+
+  it('closes a bubble left open when the phase changes: the list opened again shows none', async () => {
+    const test = await renderBattle({ seed: 1, createBattle: wanderer(5) });
+    await test.openPowers();
+    // Le doigt reste posé 400 ms sur Entaille : la bulle s'ouvre, et le doigt ne se lève pas.
+    const hold = getByGestureTestId(`${powerGestureTestId('rend')}-hold`) as unknown as {
+      readonly handlers: Record<string, ((...args: unknown[]) => void) | undefined>;
+    };
+    await act(async () => {
+      hold.handlers.onStart?.({});
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId('battle-power-tip')).toBeOnTheScreen();
+
+    // La phase change (l'attaque arrive par la session), puis revient au héros.
+    await test.attack();
+    await test.runUntil(() => test.battle().phase.kind !== 'hero');
+    expect(screen.queryByTestId('battle-power-tip', hiddenToo)).toBeNull();
+    await test.runUntil(() => test.battle().phase.kind === 'hero');
+    await test.openPowers();
+
+    expect(screen.getByTestId('battle-power-list')).toBeOnTheScreen();
+    expect(screen.queryByTestId('battle-power-tip', hiddenToo)).toBeNull();
   });
 
   it('casts an instant power, closes the list and lets the hero attack (KB5, KB6)', async () => {

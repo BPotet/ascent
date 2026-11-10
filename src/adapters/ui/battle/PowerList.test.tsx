@@ -333,6 +333,36 @@ describe('the power list (#271)', () => {
     expect(handlers.onDismiss).not.toHaveBeenCalled();
   });
 
+  it('closes the bubble of the effect when a power is cast (K10)', async () => {
+    const handlers = props();
+    await render(<PowerList slots={[slot('rend'), slot('mist')]} {...handlers} />);
+    await fireEvent(row('rend'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'longpress' },
+    });
+    expect(screen.getByTestId('battle-power-tip')).toBeOnTheScreen();
+
+    await fireEvent(row('mist'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'activate' },
+    });
+
+    expect(handlers.onCast).toHaveBeenCalledWith('mist', 4_321, 4_321);
+    expect(screen.queryByTestId('battle-power-tip')).toBeNull();
+  });
+
+  it('opens again without the bubble left open when it was closed (K10)', async () => {
+    const { unmount } = await render(<PowerList slots={WANDERER} {...props()} />);
+    await fireEvent(row('rend'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'longpress' },
+    });
+    expect(screen.getByTestId('battle-power-tip')).toBeOnTheScreen();
+
+    // La liste se ferme (changement de phase), puis s'ouvre de nouveau.
+    await unmount();
+    await render(<PowerList slots={WANDERER} {...props()} />);
+
+    expect(screen.queryByTestId('battle-power-tip')).toBeNull();
+  });
+
   it("shows the effect to the screen reader by « Voir l'effet », kindled at its cost", async () => {
     const handlers = props();
     await render(
