@@ -544,3 +544,12 @@ pouvoirs (`assets/power<Code>`, 16 × 16, statut `validé`), lues le 06/11/2026,
   l'action, comme `raiseAlly` pendant un Relever.
 - Aucun nouvel asset de Squelette : il sort de terre avec ses poses `down` puis `idle0`. La
   poussière d'os est l'effet d'Invocation de la Reine (#172), repeint en couleur d'os.
+
+## Avenant du 10 novembre 2026 (#271) : `buttonName` n'est plus recopié
+
+- La liste des pouvoirs en combat (#271) écrit le nom entier de chaque pouvoir sur sa ligne de
+  64 dp. Le nom court de la touche de combat (`buttonName`, « Coup d'écu » pour Coup de bouclier,
+  avenants #235 et #236) n'a plus d'usage : `POWER_BUTTON_NAMES` est retiré de
+  `format/powerText.ts`, et l'application ne recopie plus que `name` et `effectText`.
+- Les fiches du Codex gardent leur `buttonName` : rien n'est relu ni recopié de nouveau, les
+  sha256 de l'en-tête de `powers.ts` ne changent pas ; seul son commentaire suit.
