@@ -11,7 +11,7 @@ import { battleColors } from '../theme/battleColors';
 const { roles } = artPalette;
 
 /**
- * La bulle du toucher maintenu (#235, maquette K10) : au-dessus de la rangée des touches, le nom,
+ * La bulle du toucher maintenu (#235, maquette K10) : au-dessus de la liste des pouvoirs (#271), le nom,
  * le coût (« Attisé · 1 Élan » pour un pouvoir attisé, #237), le type et l'effet court du pouvoir.
  * Relâcher la ferme sans rien lancer.
  */
@@ -49,16 +49,7 @@ export function PowerTip({
 
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
-  tip: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 120,
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    zIndex: 3,
-  },
+  tip: { gap: 4, paddingHorizontal: 12, paddingVertical: 10 },
   head: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   name: { color: roles.light, fontFamily: pixelFont, fontSize: 17, lineHeight: 20 },
   type: { color: roles.gold, fontFamily: textFont.bold, fontSize: 12, lineHeight: 15 },

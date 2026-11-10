@@ -3,9 +3,10 @@
 // son état en mot ; lancer au relâcher, l'effet au toucher maintenu, et les trois fermetures sans
 // lancer. Les tests des touches de pouvoir de #235, #173 et #237 y sont repris pour les lignes.
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
-import { AccessibilityInfo, BackHandler, StyleSheet } from 'react-native';
+import { AccessibilityInfo, BackHandler, DeviceEventEmitter, StyleSheet } from 'react-native';
 import { State } from 'react-native-gesture-handler';
 import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
+import { getAnimatedStyle } from 'react-native-reanimated';
 
 import { POWERS, type PowerKind } from '../../../domain/battle/powers';
 import { artPalette } from '../pixelArt/artPalette';
@@ -417,5 +418,29 @@ describe('the power list (#271)', () => {
   it('writes « Instantané » readable on a row: #DCCFEA on #1C2133, 10.8:1', () => {
     expect(battleColors.onShadowStep).toBe('#DCCFEA');
     expect(contrast(battleColors.onShadowStep, roles.surface)).toBeGreaterThan(10.7);
+  });
+
+  it('does not press an active row down when the finger rests on it (C7b, #120)', async () => {
+    await render(
+      <PowerList slots={[slot('shadowStep', { availability: 'active' })]} {...props()} />,
+    );
+    // Une image du fil UI : Reanimated branche le style animé (`setTimeout` de 0 ms), puis le
+    // doigt se pose sur la ligne désactivée, sans se lever.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    const { handlerTag } = getByGestureTestId('battle-power-shadowStep-look');
+    await act(async () => {
+      DeviceEventEmitter.emit('onGestureHandlerStateChange', {
+        handlerTag,
+        state: State.BEGAN,
+        oldState: State.UNDETERMINED,
+      });
+    });
+
+    expect(getAnimatedStyle(row('shadowStep'))).toMatchObject({ transform: [{ translateY: 0 }] });
+    expect(
+      getAnimatedStyle(screen.getByTestId('battle-power-shadowStep-edge', hiddenToo)),
+    ).toMatchObject({ backgroundColor: roles.raised });
   });
 });

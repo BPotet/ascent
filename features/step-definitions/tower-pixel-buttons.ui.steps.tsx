@@ -9,7 +9,8 @@
  * - « l'habillage du bouton pixel » : cadre cranté (trait d'un pixel d'art, 4 coins coupés de la
  *   couleur du fond du pavé), fond or ou surface, libellé en police pixel 24 ;
  * - « appuyé » : 2 dp plus bas, arête haute assombrie, écrits par le geste de look sur le fil UI ;
- * - « hachuré » : `battle-pad-hatching` (déséquilibre) ou `battle-power-hatching` (pouvoir) ;
+ * - « hachuré » : `battle-pad-hatching` (déséquilibre) ou `battle-power-hatching` (ligne d'un
+ *   pouvoir dans la liste des pouvoirs, #271) ;
  * - « en cadre cranté » : un `PixelFrame`, reconnu à ses 4 coins (`pixel-frame-corner`).
  */
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
@@ -22,9 +23,10 @@ import { getAnimatedStyle } from 'react-native-reanimated';
 
 import type { DefenseButton } from '../../src/domain/battle/BattleEvent';
 import type { PowerKind } from '../../src/domain/battle/powers';
-import { ActionPad } from '../../src/adapters/ui/battle/ActionPad';
+import { ActionPad, POWERS_GESTURE_TEST_ID } from '../../src/adapters/ui/battle/ActionPad';
 import { BattleHintBubble } from '../../src/adapters/ui/battle/BattleHintBubble';
 import { EnemyColumn, enemyGestureTestId } from '../../src/adapters/ui/battle/EnemyColumn';
+import { PowerList } from '../../src/adapters/ui/battle/PowerList';
 import { sceneGeometry } from '../../src/adapters/ui/battle/scene/sceneGeometry';
 import { artPalette } from '../../src/adapters/ui/pixelArt/artPalette';
 import { artPixelSize } from '../../src/adapters/ui/pixelArt/artPixel';
@@ -68,10 +70,10 @@ const VILLAGER: EnemyView = {
   label: 'Villageois fou, 30 PV sur 30, garde 5 sur 5, intention : attaque',
 };
 
-// La touche « Pouvoir » est celle du pouvoir de base, le Rempart (#235 : une touche par pouvoir).
+// Le pouvoir de base, le Rempart, seul dans la liste des pouvoirs qu'ouvre « Pouvoirs » (#271).
 const BULWARK = { power: 'bulwark', cost: 1, availability: 'available', missing: 0 } as const;
 const HERO_PAD: Pad = { kind: 'hero', locked: false, lock: null, powers: [BULWARK] };
-const POWER_KEY = 'battle-power-button-bulwark';
+const POWERS_KEY = 'battle-powers-button';
 const POOR_PAD: Pad = {
   ...HERO_PAD,
   powers: [{ ...BULWARK, availability: 'missing', missing: 1 }],
@@ -87,9 +89,13 @@ const calls = {
   onStrike: jest.fn<void, [number]>(),
 };
 
-/** Le combat de la tour, réduit à ce que la story habille : les colonnes et le pavé. */
+/**
+ * Le combat de la tour, réduit à ce que la story habille : les colonnes et le pavé, et la liste des
+ * pouvoirs que « Pouvoirs » ouvre (#271).
+ */
 function TowerCombat({ pad, enemies }: { readonly pad: Pad; readonly enemies: EnemyView[] }) {
   const [target, setTarget] = useState(0);
+  const [open, setOpen] = useState(false);
   return (
     <View>
       {enemies.map((view, index) => (
@@ -111,7 +117,20 @@ function TowerCombat({ pad, enemies }: { readonly pad: Pad; readonly enemies: En
         uiNow={() => UI_NOW}
         now={() => JS_NOW}
         {...calls}
+        powersOpen={open}
+        onTogglePowers={() => setOpen(!open)}
+        focusPowers={false}
       />
+      {open && pad.kind === 'hero' ? (
+        <PowerList
+          slots={pad.powers}
+          uiNow={() => UI_NOW}
+          now={() => JS_NOW}
+          reducedMotion={false}
+          onCast={calls.onPower}
+          onDismiss={() => setOpen(false)}
+        />
+      ) : null}
     </View>
   );
 }
@@ -221,10 +240,13 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   when("c'est la phase du héros", () => showPad(HERO_PAD));
 
-  then("« Pouvoir » et « Attaquer » ont l'habillage du bouton pixel, 112 dp de haut", () => {
-    expectPixelKey(POWER_KEY, 'surface', 'Rempart', false);
+  then("« Pouvoirs » et « Attaquer » ont l'habillage du bouton pixel, 112 dp de haut", () => {
+    expectPixelKey(POWERS_KEY, 'surface', 'Pouvoirs', false);
+    expect(within(screen.getByTestId(POWERS_KEY)).getByText('Pouvoirs')).toHaveStyle({
+      fontFamily: pixelFont,
+    });
     expectPixelKey('battle-attack-button', 'gold', 'Attaquer');
-    expect(style(POWER_KEY).minHeight).toBe(112);
+    expect(style(POWERS_KEY).minHeight).toBe(112);
     expect(style('battle-attack-button').minHeight).toBe(112);
   });
 
@@ -451,18 +473,23 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     enemies = [GHOUL, VILLAGER];
   });
 
-  when("la phase du héros s'affiche", () => showPad(POOR_PAD));
+  when('le joueur ouvre la liste des pouvoirs en phase du héros', async () => {
+    await showPad(POOR_PAD);
+    await tap(POWERS_GESTURE_TEST_ID);
+  });
 
   then(
-    "« Pouvoir » est hachuré, écrit l'Élan qui manque (« Il manque 1 Élan ») et est annoncé indisponible",
+    "la ligne du pouvoir est hachurée, écrit l'Élan qui manque (« Il manque 1 Élan ») et est annoncée indisponible",
     () => {
-      const power = screen.getByRole('button', {
+      const power = screen.getByRole('menuitem', {
         name: 'Pouvoir : Rempart, 1 Élan, indisponible : il manque 1 Élan',
       });
       expect(power).toBeDisabled();
       expect(within(power).getByTestId('battle-power-hatching-bulwark', hidden)).toBeTruthy();
-      expect(within(power).getByText(/^Il manque\s1 Élan$/u)).toBeOnTheScreen();
-      expect(style(POWER_KEY).opacity).toBeUndefined();
+      expect(within(power).getByText('Il manque 1 Élan')).toBeOnTheScreen();
+      // « Pouvoirs » reste touchable : ni estompée, ni hachurée.
+      expect(style(POWERS_KEY).opacity).toBeUndefined();
+      expect(screen.getByTestId(POWERS_KEY)).toBeEnabled();
       expect(screen.queryByTestId('battle-pad-hatching', hidden)).toBeNull();
     },
   );
@@ -476,19 +503,23 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   when('le joueur parcourt le combat de la tour', async () => {
     await showPad(POOR_PAD);
     await tap(enemyGestureTestId(1));
+    await tap(POWERS_GESTURE_TEST_ID);
   });
 
   then(
-    "les rôles et les libellés lus sont ceux d'aujourd'hui (« Attaquer, cible : Villageois fou », « Pouvoir : Rempart, 1 Élan, indisponible : il manque 1 Élan »)",
+    "les rôles et les libellés lus sont ceux d'aujourd'hui (« Attaquer, cible : Villageois fou », et sur la ligne du pouvoir « Pouvoir : Rempart, 1 Élan, indisponible : il manque 1 Élan »)",
     () => {
       expect(
         screen.getAllByRole('button').map((button) => button.props.accessibilityLabel),
       ).toEqual([
         GHOUL.label,
         VILLAGER.label,
-        'Pouvoir : Rempart, 1 Élan, indisponible : il manque 1 Élan',
+        'Pouvoirs, 0 prêt sur 1, menu',
         'Attaquer, cible : Villageois fou',
       ]);
+      expect(screen.getByRole('menuitem').props.accessibilityLabel).toBe(
+        'Pouvoir : Rempart, 1 Élan, indisponible : il manque 1 Élan',
+      );
       expect(screen.getByTestId('battle-attack-button').props.accessibilityState).toEqual({
         disabled: false,
       });
@@ -500,7 +531,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     expect(screen.getByTestId('enemy-madVillager-target-arrow', hidden)).toBeOnTheScreen();
     expect(screen.getByText('Villageois fou')).toHaveStyle({ fontFamily: textFont.bold });
     expect(screen.getByTestId('battle-power-hatching-bulwark', hidden)).toBeOnTheScreen();
-    expect(screen.getByText(/^Il manque\s1 Élan$/u)).toBeOnTheScreen();
+    expect(screen.getByText('Il manque 1 Élan')).toBeOnTheScreen();
   });
 };
 

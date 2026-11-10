@@ -1,6 +1,6 @@
 /**
- * Les libellés des pouvoirs (#235) : noms (fiches `codex/<code>` de l'Atelier, version 1), noms de
- * touche, types, effets, voies, états des nœuds de l'arbre et raisons d'indisponibilité en combat,
+ * Les libellés des pouvoirs (#235) : noms (fiches `codex/<code>` de l'Atelier, version 1), types,
+ * effets, voies, états des nœuds de l'arbre et états de la liste des pouvoirs en combat (#271),
  * tirés du glossaire et de la maquette validée 232 (sections 1, 3 et 7).
  */
 import type { HeroKind } from '../../../domain/battle/combatants';
@@ -18,23 +18,6 @@ import {
 export const TREE_POWER_NAMES: Readonly<Record<PowerKind, string>> = {
   bulwark: 'Rempart',
   shieldBash: 'Coup de bouclier',
-  crushingBlow: 'Fracas',
-  retaliation: 'Représailles',
-  holdFast: 'Tenir bon',
-  shadowStep: "Pas de l'ombre",
-  rend: 'Entaille',
-  flurry: 'Rafale',
-  mist: 'Brume',
-  ambush: 'Frappe furtive',
-};
-
-/**
- * Le nom sur la touche de combat (`buttonName` du Codex), 14 caractères au plus : « Coup d'écu »
- * pour Coup de bouclier, sur la touche seulement (#236) ; partout ailleurs, `TREE_POWER_NAMES`.
- */
-export const POWER_BUTTON_NAMES: Readonly<Record<PowerKind, string>> = {
-  bulwark: 'Rempart',
-  shieldBash: "Coup d'écu",
   crushingBlow: 'Fracas',
   retaliation: 'Représailles',
   holdFast: 'Tenir bon',
@@ -280,25 +263,6 @@ export function readyCountText(ready: number, total: number): string {
  */
 export function powersKeyLabel(ready: number, total: number): string {
   return `Pouvoirs, ${readyCountText(ready, total)}, menu`;
-}
-
-/** La raison d'une touche indisponible, sur une ou deux lignes ; rien pour une touche disponible. */
-export function powerKeyReason({
-  availability,
-  missing,
-}: Pick<PowerKeyText, 'availability' | 'missing'>): readonly string[] {
-  switch (availability) {
-    case 'missing':
-      return ['Il manque', `${missing} Élan`];
-    case 'active':
-      return ['Actif'];
-    case 'instantUsed':
-      return ['Instantané', 'déjà lancé'];
-    case 'usedThisBattle':
-      return ['Utilisé', 'ce combat'];
-    case 'available':
-      return [];
-  }
 }
 
 const UNAVAILABLE_READ: Readonly<Record<PowerKeyAvailability, (missing: number) => string>> = {

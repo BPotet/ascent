@@ -23,24 +23,30 @@ export interface PowerListState {
 export function usePowerList(pad: ActionPad): PowerListState {
   const shown = pad.kind === 'hero' && !pad.locked;
   const instantCast = pad.kind === 'hero' && pad.instantCast === true;
-  const [open, setOpen] = useState(false);
-  const [focusPowers, setFocusPowers] = useState(false);
-  // État ajusté au rendu, sans effet : https://react.dev/learn/you-might-not-need-an-effect.
+  const [state, setState] = useState<ListState>(CLOSED);
+  // État ajusté au rendu, sans effet : https://react.dev/learn/you-might-not-need-an-effect. Tout
+  // changement de `shown` ferme la liste : elle ne s'ouvre jamais d'elle-même.
   const [seen, setSeen] = useState({ shown, instantCast });
   if (seen.shown !== shown || seen.instantCast !== instantCast) {
     setSeen({ shown, instantCast });
-    if (!shown || (instantCast && !seen.instantCast)) setOpen(false);
+    if (seen.shown !== shown || instantCast) setState(closedQuietly);
   }
-  const dismiss = useCallback(() => {
-    setOpen(false);
-    setFocusPowers(true);
-  }, []);
-  const toggle = useCallback(() => {
-    if (open) dismiss();
-    else if (shown) {
-      setOpen(true);
-      setFocusPowers(false);
-    }
-  }, [open, shown, dismiss]);
-  return { open: open && shown, toggle, dismiss, focusPowers };
+  // Des rappels stables : les gestes qui les appellent ne sont pas recréés.
+  const dismiss = useCallback(() => setState(DISMISSED), []);
+  const toggle = useCallback(() => setState(({ open }) => (open ? DISMISSED : OPEN)), []);
+  return { open: state.open && shown, toggle, dismiss, focusPowers: state.focusPowers };
+}
+
+interface ListState {
+  readonly open: boolean;
+  readonly focusPowers: boolean;
+}
+
+const CLOSED: ListState = { open: false, focusPowers: false };
+const OPEN: ListState = { open: true, focusPowers: false };
+const DISMISSED: ListState = { open: false, focusPowers: true };
+
+/** Une fermeture d'elle-même : le focus ne bouge pas. */
+function closedQuietly(state: ListState): ListState {
+  return state.open ? CLOSED : state;
 }
