@@ -15,6 +15,8 @@ import { battleColors } from '../theme/battleColors';
 const { roles } = artPalette;
 /** Le trait des touches : un pixel d'art. */
 const LINE = artPixelSize(2);
+/** La hauteur d'une touche de combat : celle du bouton pixel (#120). */
+export const KEY_HEIGHT = 112;
 /** Un doigt maintenu reste appuyé (même durée que le geste de datation, `touchGestures`). */
 const LOOK_MAX_MS = 60_000;
 
@@ -198,7 +200,7 @@ export function PixelKey({
 // Stryker disable all: styles purement visuels, vérifiés par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
   key: {
-    minHeight: 112,
+    minHeight: KEY_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
