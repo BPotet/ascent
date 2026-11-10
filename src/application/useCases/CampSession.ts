@@ -13,6 +13,7 @@ import {
   type CampPurchase,
 } from '../../domain/ascent/camp';
 import {
+  equippedSlots,
   isEquippedChoice,
   newPowerStanding,
   ownedPowers,
@@ -148,6 +149,8 @@ export interface CampView {
   readonly powersCardSeen: boolean;
   /** Les pouvoirs possédés, par héros (#236) : son pouvoir de base et ses débloqués, dans l'ordre de l'arbre. */
   readonly owned: Readonly<Record<HeroKind, readonly PowerKind[]>>;
+  /** Le nombre de pouvoirs équipés de chaque héros : min(3, possédés) (#270, `equippedSlots`). */
+  readonly slots: Readonly<Record<HeroKind, number>>;
   /** Un arbre a déjà été ouvert : plus de badge « nouveau » (#235). */
   readonly powerTreesSeen: boolean;
   /** Les habitudes, dans l'ordre de création ; `null` tant qu'elles ne sont pas lues (#237). */
@@ -257,6 +260,10 @@ export class CampSession {
       owned: {
         sentinel: ownedPowers(this.camp, 'sentinel'),
         wanderer: ownedPowers(this.camp, 'wanderer'),
+      },
+      slots: {
+        sentinel: equippedSlots(this.camp, 'sentinel'),
+        wanderer: equippedSlots(this.camp, 'wanderer'),
       },
       powerTreesSeen: this.powerTreesSeen,
       habits: this.habits,

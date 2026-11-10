@@ -433,3 +433,13 @@ describe('CampSession: a toggle of the powers menu (#270, D4)', () => {
     });
   });
 });
+
+describe('CampSession: the slots of the equipped powers (#270)', () => {
+  it('are min(3, owned) for each hero, from the rule of the domain', async () => {
+    const { camp: session } = await loaded({
+      stored: camp('retaliation', 'rend', 'mist', 'flurry'),
+    });
+
+    expect(session.view().slots).toEqual({ sentinel: 2, wanderer: 3 });
+  });
+});
