@@ -68,10 +68,6 @@ interface Band {
 const sameChoice = (left: readonly PowerKind[], right: readonly PowerKind[]) =>
   left.length === right.length && left.every((power) => right.includes(power));
 
-/** Le nombre de places d'un héros : min(3, possédés). */
-const slotsOf = (view: CampView, hero: HeroKind) =>
-  Math.min(EQUIPPED_POWER_SLOTS, view.owned[hero].length);
-
 /**
  * Le bandeau, dans l'ordre de priorité de la maquette : l'échec (M7), un pouvoir nouveau sans place
  * (M9), un pouvoir équipé tout seul (M8), le refus d'un 4e (M2), puis l'ascension en cours (M10), la
@@ -207,7 +203,7 @@ export function PowersMenuScreen({
   const locked = departed?.hero.kind ?? null;
   const shown = (kind: HeroKind): readonly PowerKind[] =>
     kind === locked ? departed!.powers : (draft?.[kind] ?? view.equipped[kind]);
-  const missing = (kind: HeroKind) => slotsOf(view, kind) - shown(kind).length;
+  const missing = (kind: HeroKind) => view.slots[kind] - shown(kind).length;
 
   const toggle = (power: PowerKind) => {
     if (draft === null || status === 'saving') return;
