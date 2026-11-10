@@ -46,9 +46,10 @@ export function isEquippedChoice(
 }
 
 /**
- * La présélection du menu des pouvoirs et du Choix du héros : la mémoire de `hero` si elle est valide (1 à 3 pouvoirs
- * distincts, tous de lui et possédés), ses places libres remplies par ses autres pouvoirs possédés
- * dans l'ordre où il les a eus ; sinon la règle d'office (`equippedPowers`). Dans l'ordre de l'arbre.
+ * La présélection du menu des pouvoirs et du Choix du héros : la mémoire de `hero` si elle est
+ * valide (1 à 3 pouvoirs distincts, tous de lui et possédés), ses places libres remplies par ses
+ * autres pouvoirs possédés dans l'ordre où il les a eus ; sinon la règle d'office
+ * (`equippedPowers`). Dans l'ordre de l'arbre.
  */
 export function preselectedPowers(
   camp: Camp,
