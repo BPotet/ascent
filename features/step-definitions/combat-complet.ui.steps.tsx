@@ -657,13 +657,15 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   then(
     /^le pouvoir Rempart \(1 Élan\) est visible mais indisponible, et dit qu'il manque 1 Élan$/u,
-    () => {
-      const power = screen.getByRole('button', {
+    async () => {
+      expect(screen.getByLabelText(/Élan 0 sur 5/u)).toBeOnTheScreen();
+      // Sa ligne, dans la liste des pouvoirs qu'ouvre « Pouvoirs » (#271).
+      await test().openPowers();
+      const power = screen.getByRole('menuitem', {
         name: 'Pouvoir : Rempart, 1 Élan, indisponible : il manque 1 Élan',
       });
       expect(power).toBeDisabled();
       expect(within(power).getByText('Il manque 1 Élan')).toBeOnTheScreen();
-      expect(screen.getByLabelText(/Élan 0 sur 5/u)).toBeOnTheScreen();
     },
   );
 };

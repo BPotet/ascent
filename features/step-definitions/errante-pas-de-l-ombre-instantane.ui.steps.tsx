@@ -5,8 +5,8 @@
  * étapes « Étant donné », puis ouvert à la première étape qui le regarde. Skia est simulé sous
  * Jest : l'ombre et la pose se vérifient sur ce que l'écran passe à la scène.
  *
- * Correspondance métier : « le joueur lance Pas de l'ombre » = un toucher sur « Pouvoir », validé
- * au relâcher ; « l'annonce de phase » = la transition de phase et sa bannière ; « un coup » = la
+ * Correspondance métier : « le joueur lance Pas de l'ombre » = un toucher sur « Pouvoirs », puis sur
+ * la ligne de Pas de l'ombre dans la liste des pouvoirs (#271), validé au relâcher ; « l'annonce de phase » = la transition de phase et sa bannière ; « un coup » = la
  * double frappe de la Goule, à la 1re place ; « un ennemi étourdi » = la règle de la contre-attaque
  * (`counterBlow`), ×1,5, vérifiée sur le domaine.
  */
@@ -104,11 +104,14 @@ function since<Type extends BattleEvent['type']>(from: number, type: Type): Even
     .filter((event): event is EventOf<Type> => event.type === type);
 }
 
-/** La touche du pouvoir de base du héros joué (#235 : une touche par pouvoir). */
-function powerKey() {
-  return screen.getByTestId(
-    `battle-power-button-${world.hero === 'sentinel' ? 'bulwark' : 'shadowStep'}`,
-  );
+/**
+ * La ligne du pouvoir de base du héros joué, dans la liste des pouvoirs (#271) : la liste est
+ * d'abord ouverte si elle est fermée.
+ */
+async function powerKey() {
+  const testId = `battle-power-button-${world.hero === 'sentinel' ? 'bulwark' : 'shadowStep'}`;
+  if (screen.queryByTestId('battle-power-list') === null) await test().openPowers();
+  return screen.getByTestId(testId);
 }
 
 function shadowStepChip() {
@@ -212,18 +215,21 @@ const steps: StepDefinitions = ({ given, when, then }) => {
     await test().power();
   });
 
-  // --- La touche Pouvoir --------------------------------------------------------------------
+  // --- La ligne de Pas de l'ombre -----------------------------------------------------------
 
-  then("la touche Pouvoir dit « Pas de l'ombre » et, en dessous, « 3 Élan · Instantané »", () => {
-    expect(powerKey()).toHaveTextContent("Pas de l'ombre3 ÉlanInstantané");
-  });
+  then(
+    "la ligne de Pas de l'ombre dit « Pas de l'ombre » et, en dessous, « 3 Élan · Instantané »",
+    async () => {
+      expect(await powerKey()).toHaveTextContent("Pas de l'ombre3 Élan ·InstantanéPrêt");
+    },
+  );
 
   then('la mention « Instantané » est toujours là, à chaque combat', async () => {
     // Le combat suivant : un nouveau combat de l'Errante, à 3 Élan.
     await cleanup();
     world.test = null;
     await open();
-    expect(powerKey()).toHaveTextContent(/3 ÉlanInstantané$/u);
+    expect(await powerKey()).toHaveTextContent(/3 Élan ·InstantanéPrêt$/u);
   });
 
   then("le Rempart de la Sentinelle n'a jamais cette mention", async () => {
@@ -232,9 +238,10 @@ const steps: StepDefinitions = ({ given, when, then }) => {
     world.hero = 'sentinel';
     world.changes = [heroWith({ momentum: 1 })];
     await open();
-    expect(powerKey()).toHaveTextContent('Rempart1 Élan');
+    const bulwark = await powerKey();
+    expect(bulwark).toHaveTextContent('Rempart1 Élan · ActionPrêt');
     expect(screen.queryByText(/Instantané/u, hiddenToo)).toBeNull();
-    expect(powerKey().props.accessibilityLabel).toBe('Pouvoir : Rempart, 1 Élan');
+    expect(bulwark.props.accessibilityLabel).toBe('Pouvoir : Rempart, 1 Élan');
   });
 
   // --- Le lancer, puis l'attaque ------------------------------------------------------------
@@ -244,11 +251,12 @@ const steps: StepDefinitions = ({ given, when, then }) => {
     expect(screen.queryAllByTestId('battle-momentum-full', hiddenToo)).toHaveLength(0);
   });
 
-  then('la touche Pouvoir passe à « ✓ Actif »', () => {
-    expect(powerKey()).toHaveTextContent("Pas de l'ombreActif");
-    expect(
-      within(powerKey()).getByTestId('battle-power-active-check-shadowStep', hiddenToo),
-    ).toBeTruthy();
+  then("la ligne de Pas de l'ombre passe à « ✓ Actif »", async () => {
+    const row = await powerKey();
+    expect(within(row).getByText('Actif')).toBeOnTheScreen();
+    expect(within(row).getByTestId('battle-power-active-check-shadowStep', hiddenToo)).toBeTruthy();
+    // Fermée sans lancer, la liste rend la main au combat.
+    await fireEvent.press(screen.getByTestId('battle-power-list-veil', hiddenToo));
   });
 
   then('la phase du héros continue : ni transition de phase, ni annonce de phase', () => {
@@ -320,7 +328,8 @@ const steps: StepDefinitions = ({ given, when, then }) => {
   });
 
   then("ni le son ni la vibration de l'annonce de phase", () => {
-    expect(test().haptics.played).toEqual([]);
+    // Seule la vibration très courte de l'ouverture de la liste des pouvoirs (#271).
+    expect(test().haptics.played).toEqual(['powerTip']);
     expect(since(world.castFrom, 'phaseTransitionStarted')).toEqual([]);
   });
 
@@ -358,8 +367,9 @@ const steps: StepDefinitions = ({ given, when, then }) => {
   // --- Les limites ----------------------------------------------------------------------------
 
   then("Pas de l'ombre est visible mais indisponible, et dit « Il manque 1 Élan »", async () => {
-    expect(powerKey()).toHaveTextContent("Pas de l'ombreIl manque\n1 Élan");
-    expect(powerKey().props.accessibilityState).toEqual({ disabled: true });
+    const row = await powerKey();
+    expect(within(row).getByText('Il manque 1 Élan')).toBeOnTheScreen();
+    expect(row.props.accessibilityState).toEqual({ disabled: true });
     expect(screen.getByTestId('battle-power-hatching-shadowStep', hiddenToo)).toBeTruthy();
     await test().power();
     expect(battle().hero).toMatchObject({ momentum: 2 });
@@ -367,10 +377,11 @@ const steps: StepDefinitions = ({ given, when, then }) => {
   });
 
   then(
-    "la touche Pouvoir dit « ✓ Actif » et Pas de l'ombre est indisponible jusqu'à son emploi ou la fin du combat",
+    "la ligne de Pas de l'ombre dit « ✓ Actif » et Pas de l'ombre est indisponible jusqu'à son emploi ou la fin du combat",
     async () => {
-      expect(powerKey()).toHaveTextContent("Pas de l'ombreActif");
-      expect(powerKey().props.accessibilityState).toEqual({ disabled: true });
+      const row = await powerKey();
+      expect(within(row).getByText('Actif')).toBeOnTheScreen();
+      expect(row.props.accessibilityState).toEqual({ disabled: true });
       await test().power();
       expect(battle().hero.momentum).toBe(3);
       expect(battle().phase).toEqual(expect.not.objectContaining({ instantPowerUsed: true }));
@@ -379,6 +390,7 @@ const steps: StepDefinitions = ({ given, when, then }) => {
 
   then("Pas de l'ombre ne peut pas être lancé", () => {
     expect(screen.queryAllByTestId(/^battle-power-button-/u)).toHaveLength(0);
+    expect(screen.queryByTestId('battle-powers-button')).toBeNull();
     const before = battle();
     const at = before.now + 10;
     const tried = heroAction(before, {
@@ -398,7 +410,11 @@ const steps: StepDefinitions = ({ given, when, then }) => {
     expect(since(world.castFrom, 'powerUsed')).toEqual([
       expect.not.objectContaining({ instant: true }),
     ]);
-    expect(powerKey().props.accessibilityState).toEqual({ disabled: true });
+    // Le Rempart prend l'action : la liste s'est fermée, « Pouvoirs » attend.
+    expect(screen.queryByTestId('battle-power-list')).toBeNull();
+    expect(screen.getByTestId('battle-powers-button').props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
   });
 
   // --- Le lecteur d'écran -----------------------------------------------------------------------
@@ -411,14 +427,18 @@ const steps: StepDefinitions = ({ given, when, then }) => {
 
   then('le focus passe à Attaquer', () => {
     expect(focus).toHaveBeenCalledWith(expect.anything(), 'focus');
-    const [[target]] = focus.mock.calls as unknown as [[{ props: { testID: string } }]];
-    expect(target.props.testID).toBe('battle-attack-button');
+    // À l'ouverture, la liste des pouvoirs a pris le focus sur sa première ligne (#271).
+    const calls = focus.mock.calls as unknown as [{ props: { testID: string } }][];
+    expect(calls.map(([target]) => target.props.testID)).toEqual([
+      'battle-power-button-shadowStep',
+      'battle-attack-button',
+    ]);
   });
 
   then(
-    "la touche Pouvoir se lit « Pouvoir : Pas de l'ombre, 3 Élan, instantané » (« …, actif » une fois lancé ; « …, indisponible : il manque 1 Élan »)",
+    "la ligne de Pas de l'ombre se lit « Pouvoir : Pas de l'ombre, 3 Élan, instantané » (« …, actif » une fois lancé ; « …, indisponible : il manque 1 Élan »)",
     async () => {
-      expect(powerKey().props.accessibilityLabel).toBe(
+      expect((await powerKey()).props.accessibilityLabel).toBe(
         "Pouvoir : Pas de l'ombre, 3 Élan, instantané, actif",
       );
       await cleanup();
@@ -429,7 +449,7 @@ const steps: StepDefinitions = ({ given, when, then }) => {
         world.test = null;
         world.changes = [heroWith({ momentum })];
         await open();
-        expect(powerKey().props.accessibilityLabel).toBe(label);
+        expect((await powerKey()).props.accessibilityLabel).toBe(label);
         await cleanup();
       }
     },
