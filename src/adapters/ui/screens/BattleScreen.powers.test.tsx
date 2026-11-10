@@ -123,12 +123,42 @@ const wanderer = (momentum: number) =>
     (battle): Battle => ({ ...battle, heroKind: 'wanderer' }),
   );
 
+type Host = ReturnType<typeof screen.getByTestId>;
+
+/** Les blocs de l'écran à cacher à TalkBack : en-tête, frise, scène, barre du héros, zone d'action. */
+function talkBackBlocks(): Host[] {
+  return [
+    screen.getByRole('header', hiddenToo),
+    screen.getAllByTestId('track-portrait', hiddenToo)[0]!,
+    screen.getByTestId('battle-scene-frame', hiddenToo),
+    screen.getByTestId('battle-hero-bar', hiddenToo),
+    screen.getByTestId('battle-pad', hiddenToo),
+  ];
+}
+
+/** Le nombre de vues, le bloc compris, qui le cachent à TalkBack (la frise l'est déjà en partie). */
+function talkBackHiders(block: Host): number {
+  let hiders = 0;
+  for (let node: Host | null = block; node !== null; node = node.parent) {
+    if (node.props.importantForAccessibility === 'no-hide-descendants') hiders += 1;
+  }
+  return hiders;
+}
+
 const zoneLine = () => screen.getByTestId('battle-zone-line');
 const powersKey = () => screen.getByTestId('battle-powers-button');
 
 describe('BattleScreen and the power list (#271)', () => {
   it('opens the list above « Pouvoirs » with a very short vibration, the fight veiled (KB2)', async () => {
-    const test = await renderBattle({ seed: 1, createBattle: wanderer(5) });
+    // Avec la frise d'action (#175), pour la cacher elle aussi à TalkBack.
+    const test = await renderBattle({
+      seed: 1,
+      createBattle: battleWith(
+        equipped('shadowStep', 'rend', 'flurry'),
+        heroWith({ momentum: 5 }),
+        (battle): Battle => ({ ...battle, heroKind: 'wanderer', initiative: true }),
+      ),
+    });
     expect(powersKey()).toHaveTextContent('Pouvoirs3 prêts sur 3');
 
     await test.openPowers();
@@ -139,9 +169,21 @@ describe('BattleScreen and the power list (#271)', () => {
     expect(
       screen.getByTestId('battle-powers-button', hiddenToo).props.accessibilityState,
     ).toMatchObject({ expanded: true });
-    // Pour TalkBack, le reste de l'écran est caché tant que la liste est ouverte.
+    // Pour TalkBack, le reste de l'écran est caché tant que la liste est ouverte : l'en-tête, la
+    // frise, la scène, la barre du héros et la zone d'action.
+    const opened = talkBackBlocks().map(talkBackHiders);
+    expect(screen.queryByRole('header')).toBeNull();
     expect(screen.queryByTestId('battle-hero-bar')).toBeNull();
-    expect(screen.getByTestId('battle-hero-bar', hiddenToo)).toBeTruthy();
+    expect(screen.queryByTestId('battle-zone-line')).toBeNull();
+    expect(screen.queryByTestId('battle-attack-button')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('battle-power-list-veil', hiddenToo));
+    const closed = talkBackBlocks().map(talkBackHiders);
+    // Chaque bloc gagne une vue qui le cache tant que la liste est ouverte, et la perd ensuite.
+    expect(opened).toEqual(closed.map((hiders) => hiders + 1));
+    expect([closed[0], ...closed.slice(2)]).toEqual([0, 0, 0, 0]);
+    expect(screen.getByRole('header')).toBeOnTheScreen();
+    expect(screen.getByTestId('battle-attack-button')).toBeOnTheScreen();
   });
 
   it('closes a bubble left open when the phase changes: the list opened again shows none', async () => {
