@@ -442,7 +442,7 @@ function heroOaths(
   camp: CampSession,
   view: CampView,
   reading: FateGaugeReading,
-  selection: Readonly<Record<HeroKind, readonly PowerKind[]>>,
+  selection: CampView['equipped'],
 ): {
   readonly kindled: Record<HeroKind, readonly PowerKind[]>;
   readonly oathLines: Record<HeroKind, readonly HeroOathLine[]>;
@@ -536,17 +536,18 @@ export function TowerFootScreen({
   const loaded = sessionLoaded && campReady;
   const { reading, seal } = useFateGauge();
   const [choosing, setChoosing] = useState<FateGaugeReading | null>(null);
-  // La sélection en cours au Choix du héros (#236), la présélection du Camp tant qu'elle n'a pas
-  // changé ; l'état de l'enregistrement du choix au lancement.
-  const [chosen, setChosen] = useState<Partial<Record<HeroKind, readonly PowerKind[]>>>({});
+  // La sélection lancée est la présélection du camp, qui contient le choix validé au menu des
+  // pouvoirs (#270, D6) ; l'état de l'enregistrement du choix au lancement (#236).
+  const selection = campView.equipped;
   const [launching, setLaunching] = useState<'idle' | 'starting' | 'failed'>('idle');
-  const selection: Record<HeroKind, readonly PowerKind[]> = {
-    sentinel: chosen.sentinel ?? campView.equipped.sentinel,
-    wanderer: chosen.wanderer ?? campView.equipped.wanderer,
-  };
+  // Un nouveau « Valider » remet le lancement à zéro : « Continuer » au lieu de « Réessayer ».
+  const [launchRevision, setLaunchRevision] = useState(campView.equippedRevision);
+  if (launchRevision !== campView.equippedRevision) {
+    setLaunchRevision(campView.equippedRevision);
+    if (launching === 'failed') setLaunching('idle');
+  }
   const closeChoice = () => {
     setChoosing(null);
-    setChosen({});
     setLaunching('idle');
   };
   const [gaugeDetail, setGaugeDetail] = useState(false);
@@ -656,10 +657,7 @@ export function TowerFootScreen({
         kindled={kindled}
         oathLines={oathLines}
         owned={campView.owned}
-        onChangePowers={(hero, powers) => {
-          setChosen((current) => ({ ...current, [hero]: powers }));
-          setLaunching('idle');
-        }}
+        onChangePowers={(hero) => onOpenPowers?.({ hero, from: 'choice' })}
         starting={launching === 'starting'}
         failed={launching === 'failed'}
       />

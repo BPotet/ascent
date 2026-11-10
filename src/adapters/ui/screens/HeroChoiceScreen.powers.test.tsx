@@ -1,8 +1,9 @@
-// Le choix des pouvoirs équipés au Choix du héros (#236, maquette 232 : H3 à H8) : « Changer les
-// pouvoirs » à partir de 4 pouvoirs possédés, le panneau « Pouvoirs équipés · n sur 3 », la
-// nouvelle rangée dans l'ordre de l'arbre, et l'échec d'enregistrement au lancement.
+// Les pouvoirs équipés au Choix du héros (#236, #270, maquette 269 : H1 à H4) : un résumé en lecture
+// seule, la rangée « Pouvoirs équipés · n sur 3 » dans l'ordre de l'arbre, le lien discret
+// « Changer les pouvoirs » vers le menu des pouvoirs à partir de 4 pouvoirs possédés, et l'échec
+// d'enregistrement au lancement.
 import { fireEvent, screen, within } from '@testing-library/react-native';
-import { AccessibilityInfo } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import type { HeroKind } from '../../../domain/battle/combatants';
 import type { PowerKind } from '../../../domain/battle/powers';
@@ -55,106 +56,40 @@ async function show({
 }
 
 const card = (hero: HeroKind) => within(screen.getByTestId(`hero-choice-${hero}`));
-const panel = () => within(screen.getByTestId('equipped-powers-panel'));
-const row = (power: PowerKind) => screen.getByTestId(`equipped-powers-row-${power}`);
+const link = () => screen.queryByTestId('hero-choice-change-powers');
 
-async function openPanel(hero: HeroKind = 'wanderer') {
-  await fireEvent.press(screen.getByTestId(`hero-choice-${hero}`));
-  await fireEvent.press(screen.getByRole('button', { name: /^Changer les pouvoirs/u }));
-  return panel();
-}
-
-describe('HeroChoiceScreen: changing the equipped powers (#236)', () => {
-  it('shows « Changer les pouvoirs » from 4 owned powers only, with their number (H3)', async () => {
+describe('HeroChoiceScreen: the summary of the equipped powers (#236, #270)', () => {
+  it('shows the row « Pouvoirs équipés · 3 sur 3 », without button nor panel (H1)', async () => {
     await show();
 
-    expect(screen.queryByRole('button', { name: /^Changer les pouvoirs/u })).not.toBeOnTheScreen();
+    expect(card('sentinel').getByText('Pouvoirs équipés · 3 sur 3')).toBeOnTheScreen();
+    expect(link()).not.toBeOnTheScreen();
+    expect(screen.queryByText(/débloqués/u)).not.toBeOnTheScreen();
+    expect(screen.queryByTestId('equipped-powers-panel')).not.toBeOnTheScreen();
+    expect(screen.queryAllByRole('checkbox')).toEqual([]);
+  });
+
+  it('offers the discreet link to the menu for the chosen hero with 4 powers or more (H2)', async () => {
+    const { onChangePowers } = await show();
+
     await fireEvent.press(screen.getByTestId('hero-choice-wanderer'));
 
-    expect(
-      screen.getByRole('button', { name: 'Changer les pouvoirs, 5 débloqués' }),
-    ).toBeOnTheScreen();
-  });
-
-  it('lists every owned power in the order of the tree, ticked or not (H4)', async () => {
-    await show();
-    const sheet = await openPanel();
-
-    const rows = screen.getAllByTestId(/^equipped-powers-row-/u).map((cell) => cell.props.testID);
-    expect(rows).toEqual([
-      'equipped-powers-row-shadowStep',
-      'equipped-powers-row-rend',
-      'equipped-powers-row-flurry',
-      'equipped-powers-row-mist',
-      'equipped-powers-row-ambush',
-    ]);
-    expect(sheet.getByText('3 sur 3')).toBeOnTheScreen();
-    expect(row('rend').props.accessibilityState).toMatchObject({ checked: true });
-    expect(row('flurry').props.accessibilityState).toMatchObject({ checked: false });
-    expect(row('flurry').props.accessibilityLabel).toBe(
-      'Rafale, 2 Élan, Frappe. Une frappe en 4 coups.',
+    expect(link()).toHaveTextContent('Changer les pouvoirs');
+    expect(link()!.props.accessibilityLabel).toBe(
+      "Changer les pouvoirs de l'Errante : ouvre le menu des pouvoirs",
     );
-    expect(within(row('shadowStep')).getByText('base')).toBeOnTheScreen();
-    expect(sheet.getByRole('button', { name: 'Valider' })).toBeOnTheScreen();
+    expect(StyleSheet.flatten(link()!.props.style).minHeight).toBe(48);
+    await fireEvent.press(link()!);
+    expect(onChangePowers).toHaveBeenCalledWith('wanderer');
   });
 
-  it('refuses a 4th power and says what to do, nothing unticked by itself (H5)', async () => {
-    await show();
-    await openPanel();
+  it('offers no link with 3 powers or fewer', async () => {
+    await show({ owned: { sentinel: ['bulwark', 'retaliation'], wanderer: FIVE.wanderer } });
 
-    await fireEvent.press(row('flurry'));
-
-    expect(row('flurry').props.accessibilityState).toMatchObject({ checked: false });
-    expect(
-      panel().getByText("3 sur 3 : retire d'abord un pouvoir pour équiper Rafale."),
-    ).toBeOnTheScreen();
-    expect(row('shadowStep').props.accessibilityState).toMatchObject({ checked: true });
+    expect(link()).not.toBeOnTheScreen();
   });
 
-  it('cannot validate with fewer than 3 powers, the base power left aside (H6)', async () => {
-    const { onChangePowers } = await show();
-    await openPanel();
-
-    await fireEvent.press(row('shadowStep'));
-
-    expect(panel().getByText('2 sur 3')).toBeOnTheScreen();
-    const button = panel().getByRole('button', {
-      name: 'Valider, indisponible : choisis encore 1 pouvoir',
-    });
-    expect(button).toHaveProp('accessibilityState', expect.objectContaining({ disabled: true }));
-    expect(panel().getByText('Choisis encore 1 pouvoir')).toBeOnTheScreen();
-    await fireEvent.press(button);
-    expect(onChangePowers).not.toHaveBeenCalled();
-    await fireEvent.press(row('mist'));
-    expect(panel().getByText('Choisis encore 2 pouvoirs')).toBeOnTheScreen();
-  });
-
-  it('validates a new choice, in the order of the tree, and announces it (H7)', async () => {
-    const announce = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
-    const { onChangePowers } = await show();
-    await openPanel();
-
-    await fireEvent.press(row('shadowStep'));
-    await fireEvent.press(row('flurry'));
-    await fireEvent.press(panel().getByRole('button', { name: 'Valider' }));
-
-    expect(onChangePowers).toHaveBeenCalledWith('wanderer', ['rend', 'flurry', 'mist']);
-    expect(screen.queryByTestId('equipped-powers-panel')).not.toBeOnTheScreen();
-    expect(announce).toHaveBeenCalledWith('3 pouvoirs équipés : Entaille, Rafale, Brume.');
-  });
-
-  it('closes the panel without changing anything', async () => {
-    const { onChangePowers } = await show();
-    await openPanel();
-    await fireEvent.press(row('shadowStep'));
-
-    await fireEvent.press(panel().getByRole('button', { name: 'Fermer' }));
-
-    expect(onChangePowers).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('equipped-powers-panel')).not.toBeOnTheScreen();
-  });
-
-  it('shows the chosen row in the order of the tree, « Coup de bouclier » in full (H8)', async () => {
+  it('shows the chosen row in the order of the tree, « Coup de bouclier » in full', async () => {
     await show({
       equipped: {
         sentinel: ['retaliation', 'crushingBlow', 'shieldBash'],
@@ -176,9 +111,7 @@ describe('HeroChoiceScreen: changing the equipped powers (#236)', () => {
     ]);
     expect(card('sentinel').getByText('Coup de bouclier')).toBeOnTheScreen();
     expect(screen.queryByText("Coup d'écu")).not.toBeOnTheScreen();
-    expect(
-      screen.getByRole('button', { name: 'Changer les pouvoirs, 5 débloqués' }),
-    ).toBeOnTheScreen();
+    expect(link()).toBeOnTheScreen();
   });
 
   it('waits while the choice is saved, with « Continuer » disabled', async () => {
@@ -190,7 +123,7 @@ describe('HeroChoiceScreen: changing the equipped powers (#236)', () => {
     expect(onStart).not.toHaveBeenCalled();
   });
 
-  it('says when the choice cannot be saved, and lets the player try again', async () => {
+  it('says when the choice cannot be saved, and lets the player try again (H4)', async () => {
     const { onStart } = await show({ failed: true });
 
     expect(
