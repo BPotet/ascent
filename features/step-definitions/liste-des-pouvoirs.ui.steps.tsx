@@ -18,7 +18,7 @@ import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber'
 import { AccessibilityInfo, BackHandler, DeviceEventEmitter, StyleSheet } from 'react-native';
 import { State } from 'react-native-gesture-handler';
 import { getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
-import { getAnimatedStyle } from 'react-native-reanimated';
+import { ReduceMotion, getAnimatedStyle } from 'react-native-reanimated';
 
 import { powerGestureTestId } from '../../src/adapters/ui/battle/ActionPad';
 import { BATTLE_HINTS } from '../../src/adapters/ui/battle/BattleHintBubble';
@@ -683,9 +683,13 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   then(/^la liste apparaît en fondu au lieu de monter$/u, () => {
     // L'entrée de la liste : un fondu, sans décalage de départ.
-    const { definitions } = screen.getByTestId('battle-power-list-column').props.entering as {
+    const { definitions, reduceMotionV } = screen.getByTestId('battle-power-list-column').props
+      .entering as {
       readonly definitions: Record<string, { opacity: number; transform: unknown }>;
+      readonly reduceMotionV: ReduceMotion;
     };
+    // Le fondu se joue malgré le réglage du téléphone : Reanimated ne le saute pas.
+    expect(reduceMotionV).toBe(ReduceMotion.Never);
     expect(definitions['0']).toEqual({ opacity: 0, transform: [{ translateY: 0 }] });
     expect(definitions['100']).toEqual({ opacity: 1, transform: [{ translateY: 0 }] });
     expect(powerListRise(true)).toBe(0);

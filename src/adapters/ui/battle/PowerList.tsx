@@ -1,6 +1,6 @@
 import { type Ref, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { Keyframe } from 'react-native-reanimated';
+import Animated, { Keyframe, ReduceMotion } from 'react-native-reanimated';
 
 import type { PowerKind } from '../../../domain/battle/powers';
 import { KindledFlame } from '../components/KindledFlame';
@@ -45,7 +45,11 @@ export function powerListRise(reducedMotion: boolean): number {
   return reducedMotion ? 0 : RISE;
 }
 
-/** L'entrée de la liste : en deux pas, comme la maquette (`steps(2)`), le fondu avec la montée. */
+/**
+ * L'entrée de la liste : en deux pas, comme la maquette (`steps(2)`), le fondu avec la montée. Elle
+ * se joue toujours (`ReduceMotion.Never`) : avec le mouvement réduit, elle n'a plus de montée et
+ * garde son fondu, à la même durée ; sans ce réglage, Reanimated la sauterait.
+ */
 function powerListEntering(reducedMotion: boolean) {
   const rise = powerListRise(reducedMotion);
   const at = (opacity: number) => ({ opacity, transform: [{ translateY: (1 - opacity) * rise }] });
@@ -55,7 +59,9 @@ function powerListEntering(reducedMotion: boolean) {
     50: at(0.5),
     99: at(0.5),
     100: at(1),
-  }).duration(POWER_LIST_MS);
+  })
+    .duration(POWER_LIST_MS)
+    .reduceMotion(ReduceMotion.Never);
 }
 
 /** Les losanges d'Élan d'une ligne : `cost` losanges, les pleins d'abord, couleur braise si attisé. */

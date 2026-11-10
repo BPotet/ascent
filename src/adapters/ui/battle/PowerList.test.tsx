@@ -6,7 +6,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react-n
 import { AccessibilityInfo, BackHandler, DeviceEventEmitter, StyleSheet } from 'react-native';
 import { State } from 'react-native-gesture-handler';
 import { fireGestureHandler, getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
-import { getAnimatedStyle } from 'react-native-reanimated';
+import { ReduceMotion, getAnimatedStyle } from 'react-native-reanimated';
 
 import { POWERS, type PowerKind } from '../../../domain/battle/powers';
 import { artPalette } from '../pixelArt/artPalette';
@@ -414,6 +414,25 @@ describe('the power list (#271)', () => {
     expect(powerListRise(false)).toBeGreaterThan(0);
     expect(powerListRise(true)).toBe(0);
   });
+
+  it.each([false, true])(
+    'plays its entrance even with the reduced motion of the phone (reduced motion: %s)',
+    async (reducedMotion) => {
+      await render(<PowerList slots={WANDERER} {...props()} reducedMotion={reducedMotion} />);
+
+      const entering = screen.getByTestId('battle-power-list-column').props.entering as {
+        readonly reduceMotionV: ReduceMotion;
+        readonly durationV: number;
+        readonly definitions: Record<string, { readonly transform: unknown }>;
+      };
+      // Reanimated sauterait le fondu avec le réglage par défaut (`ReduceMotion.System`).
+      expect(entering.reduceMotionV).toBe(ReduceMotion.Never);
+      expect(entering.durationV).toBe(POWER_LIST_MS);
+      expect(entering.definitions['0']!.transform).toEqual([
+        { translateY: powerListRise(reducedMotion) },
+      ]);
+    },
+  );
 
   it('writes « Instantané » readable on a row: #DCCFEA on #1C2133, 10.8:1', () => {
     expect(battleColors.onShadowStep).toBe('#DCCFEA');
