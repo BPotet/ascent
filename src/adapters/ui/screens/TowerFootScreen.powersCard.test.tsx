@@ -136,7 +136,9 @@ describe('TowerFootScreen: the card of the equipped powers (#270)', () => {
     expect(onOpenPowers).toHaveBeenCalledWith({ hero: 'wanderer', from: 'tower' });
 
     await leave();
-    await camp.markPowersMenuSeen();
+    await act(async () => {
+      await camp.markPowersMenuSeen();
+    });
     await back();
     expect(screen.queryByTestId('powers-card-waiting-flurry')).not.toBeOnTheScreen();
   });
@@ -159,12 +161,14 @@ describe('TowerFootScreen: the card of the equipped powers (#270)', () => {
       const { camp, leave, back } = await show();
 
       await leave();
-      expect(
-        await camp.equipPowers({
-          sentinel: ['bulwark', 'retaliation', 'holdFast'],
-          wanderer: ['rend', 'flurry', 'mist'],
-        }),
-      ).toBe('equipped');
+      await act(async () => {
+        expect(
+          await camp.equipPowers({
+            sentinel: ['bulwark', 'retaliation', 'holdFast'],
+            wanderer: ['rend', 'flurry', 'mist'],
+          }),
+        ).toBe('equipped');
+      });
       await back();
 
       expect(cells('wanderer')).toEqual([
