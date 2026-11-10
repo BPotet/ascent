@@ -156,7 +156,7 @@ Fonctionnalité: Les frappes de pouvoir et le choix des pouvoirs équipés
     Étant donné la Sentinelle a Coup de bouclier équipé
     Quand c'est la phase du héros
     Alors sa touche de combat s'appelle « Coup d'écu »
-    Et l'arbre, la fiche du pouvoir, la carte du Choix du héros, le panneau des pouvoirs équipés, la feuille de l'Équipement et le lecteur d'écran disent « Coup de bouclier »
+    Et l'arbre, la fiche du pouvoir, la carte du Choix du héros, le menu des pouvoirs, la feuille de l'Équipement et le lecteur d'écran disent « Coup de bouclier »
 
   @ui
   Scénario: Une frappe de pouvoir trop chère

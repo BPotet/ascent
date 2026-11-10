@@ -88,7 +88,6 @@ async function showMenu(hero: HeroKind) {
 }
 
 const changeButton = () => screen.queryByRole('button', { name: /^Changer les pouvoirs/u });
-const row = (power: PowerKind) => screen.getByTestId(`equipped-powers-row-${power}`);
 const menuRow = (power: PowerKind) => screen.getByTestId(`powers-menu-row-${power}`);
 const key = (power: PowerKind) => screen.getByTestId(`battle-power-button-${power}`);
 
@@ -332,7 +331,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and(
-    /^l'arbre, la fiche du pouvoir, la carte du Choix du héros, le panneau des pouvoirs équipés, la feuille de l'Équipement et le lecteur d'écran disent « Coup de bouclier »$/u,
+    /^l'arbre, la fiche du pouvoir, la carte du Choix du héros, le menu des pouvoirs, la feuille de l'Équipement et le lecteur d'écran disent « Coup de bouclier »$/u,
     async () => {
       // Le lecteur d'écran, sur la touche de combat.
       expect(key('shieldBash').props.accessibilityLabel).toBe('Pouvoir : Coup de bouclier, 2 Élan');
@@ -344,14 +343,15 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       const sheet = await openSheet('shieldBash');
       expect(sheet.getByText('Coup de bouclier')).toBeOnTheScreen();
       screen.unmount();
-      // La carte du Choix du héros et le panneau des pouvoirs équipés.
+      // La carte du Choix du héros et le menu des pouvoirs.
       setUp = ascentSetUp(options);
       await showHeroChoice('sentinel');
       expect(
         within(screen.getByTestId('equipped-power-shieldBash')).getByText('Coup de bouclier'),
       ).toBeOnTheScreen();
-      await fireEvent.press(changeButton()!);
-      expect(within(row('shieldBash')).getByText('Coup de bouclier')).toBeOnTheScreen();
+      screen.unmount();
+      await showMenu('sentinel');
+      expect(within(menuRow('shieldBash')).getByText('Coup de bouclier')).toBeOnTheScreen();
       screen.unmount();
       // La feuille de l'Équipement.
       const ascent = startAscent(5, { powers: ['shieldBash', 'crushingBlow', 'retaliation'] });
