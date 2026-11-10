@@ -247,6 +247,41 @@ export interface PowerKeyText {
   readonly baseCost?: number;
 }
 
+/**
+ * L'état d'une ligne de la liste des pouvoirs, en mot, sur une ligne (#271) : « Prêt », « Il manque
+ * 1 Élan », « Actif », « Instantané déjà lancé » ou « Utilisé ce combat ».
+ */
+export function powerStateText({
+  availability,
+  missing,
+}: Pick<PowerKeyText, 'availability' | 'missing'>): string {
+  switch (availability) {
+    case 'available':
+      return 'Prêt';
+    case 'missing':
+      return `Il manque ${missing} Élan`;
+    case 'active':
+      return 'Actif';
+    case 'instantUsed':
+      return 'Instantané déjà lancé';
+    case 'usedThisBattle':
+      return 'Utilisé ce combat';
+  }
+}
+
+/** Le compte de la touche « Pouvoirs » (#271) : « 3 prêts sur 3 », « 1 prêt sur 3 ». */
+export function readyCountText(ready: number, total: number): string {
+  return `${ready} ${ready > 1 ? 'prêts' : 'prêt'} sur ${total}`;
+}
+
+/**
+ * Le libellé lu de la touche « Pouvoirs » (#271, KB1) : « Pouvoirs, 3 prêts sur 3, menu ». « replié »
+ * et « bouton » viennent de son état (`expanded`) et de son rôle.
+ */
+export function powersKeyLabel(ready: number, total: number): string {
+  return `Pouvoirs, ${readyCountText(ready, total)}, menu`;
+}
+
 /** La raison d'une touche indisponible, sur une ou deux lignes ; rien pour une touche disponible. */
 export function powerKeyReason({
   availability,

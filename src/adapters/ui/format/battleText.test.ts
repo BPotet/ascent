@@ -24,8 +24,6 @@ import {
   momentumLabel,
   phaseAnnouncement,
   phaseBanner,
-  powerButtonLabel,
-  powerCostText,
   stunnedLabel,
   SECOND_CHANCE_SPENT,
   secondChanceBannerText,
@@ -161,17 +159,6 @@ describe('battle texts', () => {
 
   it('names the target in the label of « Attaquer »', () => {
     expect(attackButtonLabel('Spectre')).toBe('Attaquer, cible : Spectre');
-  });
-
-  it('writes the Bulwark with its cost, or the momentum it misses (C3)', () => {
-    expect(powerCostText('bulwark', 1)).toBe('Rempart · 1 Élan');
-    expect(powerButtonLabel('bulwark', 1, 0)).toBe('Pouvoir : Rempart, 1 Élan');
-    expect(powerButtonLabel('bulwark', 1, 1)).toBe(
-      'Pouvoir : Rempart, 1 Élan, indisponible : il manque 1 Élan',
-    );
-    expect(powerButtonLabel('bulwark', 1, 2)).toBe(
-      'Pouvoir : Rempart, 1 Élan, indisponible : il manque 2 Élan',
-    );
   });
 
   it('reads the momentum out of 5', () => {
@@ -369,25 +356,6 @@ describe('battle texts', () => {
   });
 
   describe('the instant Shadow Step of the Wanderer (#173)', () => {
-    it('writes « 3 Élan · Instantané » under its name, the Bulwark unchanged', () => {
-      expect(powerCostText('shadowStep', 3, true)).toBe('3 Élan · Instantané');
-      expect(powerCostText('shadowStep', 2, true)).toBe('2 Élan · Instantané');
-      expect(powerCostText('bulwark', 1)).toBe('Rempart · 1 Élan');
-    });
-
-    it('reads the key as instant, then active or missing momentum', () => {
-      expect(powerButtonLabel('shadowStep', 3, 0, false, true)).toBe(
-        "Pouvoir : Pas de l'ombre, 3 Élan, instantané",
-      );
-      expect(powerButtonLabel('shadowStep', 3, 0, true, true)).toBe(
-        "Pouvoir : Pas de l'ombre, 3 Élan, instantané, actif",
-      );
-      expect(powerButtonLabel('shadowStep', 3, 1, false, true)).toBe(
-        "Pouvoir : Pas de l'ombre, 3 Élan, instantané, indisponible : il manque 1 Élan",
-      );
-      expect(powerButtonLabel('bulwark', 1, 0)).toBe('Pouvoir : Rempart, 1 Élan');
-    });
-
     it('announces that the hero phase goes on, the Bulwark unchanged', () => {
       expect(
         announcement(

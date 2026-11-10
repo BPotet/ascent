@@ -436,6 +436,14 @@ describe('BattleHintBubble', () => {
     );
     expect(BATTLE_HINTS.defense.text).not.toMatch(/anneau/iu);
   });
+
+  it('speaks of the « Pouvoirs » key and of the rows of the list, its arrow under it (#271)', () => {
+    expect(BATTLE_HINTS.powers.text).toBe(
+      'Touche Pouvoirs pour voir tes pouvoirs. Maintiens-en un pour lire son effet, touche-le pour le lancer.',
+    );
+    expect(BATTLE_HINTS.powers.text).not.toMatch(/touche de pouvoir/iu);
+    expect(BATTLE_HINTS.powers.arrow).toBe('25%');
+  });
 });
 
 describe('PhaseBanner', () => {
