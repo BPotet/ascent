@@ -237,6 +237,24 @@ describe('PowersMenuScreen (#270)', () => {
     expect(keyValueStore.values.get(EQUIPPED_POWERS_KEY)).toBe(before);
   });
 
+  it('leaves only once on the back while « Valider » is saved', async () => {
+    const { keyValueStore, onLeave } = await show();
+    const set = keyValueStore.set;
+    let release: () => void = () => undefined;
+    keyValueStore.set = (key, value) =>
+      key === EQUIPPED_POWERS_KEY
+        ? new Promise((resolve) => (release = () => void set(key, value).then(resolve)))
+        : set(key, value);
+
+    await toggle('shadowStep', 'flurry');
+    await fireEvent.press(valider());
+    await fireEvent.press(screen.getByRole('button', { name: 'Retour au pied de la tour' }));
+    expect(onLeave).toHaveBeenCalledTimes(1);
+
+    await act(async () => release());
+    expect(onLeave).toHaveBeenCalledTimes(1);
+  });
+
   it('names its back after the Hero choice when opened from it (M13)', async () => {
     await show({ from: 'choice' });
 

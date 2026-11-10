@@ -178,6 +178,13 @@ export function PowersMenuScreen({
   const [refused, setRefused] = useState<{ power: PowerKind; count: number } | null>(null);
   const [status, setStatus] = useState<'idle' | 'saving' | 'failed'>('idle');
   const band = useRef<View>(null);
+  // Le menu est quitté une seule fois : un retour pendant un « Valider » en cours l'emporte.
+  const left = useRef(false);
+  const leave = () => {
+    if (left.current) return;
+    left.current = true;
+    onLeave();
+  };
   const ready = view.status === 'ready';
 
   // Le camp lu, l'écran fige ce qu'il montre à son ouverture, puis le marque vu.
@@ -230,7 +237,7 @@ export function PowersMenuScreen({
         AccessibilityInfo.announceForAccessibility(equippedAnnouncement(kind, draft[kind]));
       }
     }
-    onLeave();
+    leave();
   };
 
   const kindledOf = (kind: HeroKind): readonly PowerKind[] =>
@@ -286,7 +293,7 @@ export function PowersMenuScreen({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={backLabel(from)}
-          onPress={onLeave}
+          onPress={leave}
           style={styles.back}
         >
           <Text style={styles.backText}>‹</Text>
