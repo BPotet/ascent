@@ -1,6 +1,7 @@
-// Le lancement avec les pouvoirs choisis au pied de la tour (#236) : le choix passe au lancement,
-// il est mémorisé sous `camp.equippedPowers`, un échec d'enregistrement garde l'écran et la
-// sélection, et les lignes « Attisé » suivent la sélection.
+// Le lancement avec les pouvoirs équipés au pied de la tour (#236, #270) : la présélection du camp,
+// qui contient le choix validé au menu des pouvoirs, passe au lancement ; elle est mémorisée sous
+// `camp.equippedPowers` ; un échec d'enregistrement garde l'écran et la sélection ; les lignes
+// « Attisé » suivent la sélection ; le lien « Changer les pouvoirs » ouvre le menu (H2, M13).
 import { act, fireEvent, screen, within } from '@testing-library/react-native';
 
 import { EQUIPPED_POWERS_KEY } from '../../../application/useCases/CampSession';
@@ -39,39 +40,41 @@ async function show() {
     }),
   );
   const onEnter = jest.fn();
+  const onOpenPowers = jest.fn();
   await renderScreen(
     <TowerFootScreen
       session={setUp.session}
       camp={setUp.camp}
       onEnter={onEnter}
       onCamp={jest.fn()}
+      onOpenPowers={onOpenPowers}
     />,
     setUp.dependencies,
   );
+  await screen.findByTestId('equipped-powers-card');
   await fireEvent.press(await screen.findByRole('button', { name: "Commencer l'ascension" }));
   await act(async () => undefined);
-  return { ...setUp, onEnter };
+  /** Le choix validé au menu des pouvoirs, ouvert depuis le Choix du héros (M13). */
+  const validate = async (sentinel: readonly PowerKind[]) => {
+    await act(async () => {
+      expect(
+        await setUp.camp.equipPowers({ sentinel, wanderer: setUp.camp.view().equipped.wanderer }),
+      ).toBe('equipped');
+    });
+  };
+  return { ...setUp, onEnter, onOpenPowers, validate };
 }
 
-const row = (power: PowerKind) => screen.getByTestId(`equipped-powers-row-${power}`);
+const sentinelCells = () =>
+  within(screen.getByTestId('hero-choice-sentinel'))
+    .getAllByTestId(/^equipped-power-(?!kindled|free)/u)
+    .map((cell) => cell.props.testID);
 
-/** Ouvre le panneau, coche ou décoche chaque pouvoir de `toggles`, puis « Valider ». */
-async function choose(...toggles: PowerKind[]) {
-  await fireEvent.press(screen.getByRole('button', { name: /^Changer les pouvoirs/u }));
-  for (const power of toggles) await fireEvent.press(row(power));
-  await fireEvent.press(
-    within(screen.getByTestId('equipped-powers-panel')).getByRole('button', { name: 'Valider' }),
-  );
-}
-
-describe('TowerFootScreen: launching with the chosen powers (#236)', () => {
+describe('TowerFootScreen: launching with the equipped powers (#236, #270)', () => {
   it('preselects the base power then the order of the tree, and launches with it', async () => {
     const { session, onEnter, keyValueStore } = await show();
 
-    const cells = within(screen.getByTestId('hero-choice-sentinel'))
-      .getAllByTestId(/^equipped-power-(?!kindled|free)/u)
-      .map((cell) => cell.props.testID);
-    expect(cells).toEqual([
+    expect(sentinelCells()).toEqual([
       'equipped-power-bulwark',
       'equipped-power-shieldBash',
       'equipped-power-retaliation',
@@ -86,10 +89,29 @@ describe('TowerFootScreen: launching with the chosen powers (#236)', () => {
     });
   });
 
-  it('launches with the chosen powers, the base power left aside, and remembers them', async () => {
-    const { session, keyValueStore } = await show();
+  it('opens the powers menu on the chosen hero from the discreet link (H2, M13)', async () => {
+    const { onOpenPowers, validate } = await show();
 
-    await choose('bulwark', 'holdFast');
+    await fireEvent.press(
+      screen.getByRole('button', {
+        name: 'Changer les pouvoirs de la Sentinelle : ouvre le menu des pouvoirs',
+      }),
+    );
+    expect(onOpenPowers).toHaveBeenCalledWith({ hero: 'sentinel', from: 'choice' });
+
+    await validate(['shieldBash', 'retaliation', 'holdFast']);
+    expect(screen.getByTestId('hero-choice')).toBeOnTheScreen();
+    expect(sentinelCells()).toEqual([
+      'equipped-power-shieldBash',
+      'equipped-power-retaliation',
+      'equipped-power-holdFast',
+    ]);
+  });
+
+  it('launches with the powers validated in the menu, the base power left aside', async () => {
+    const { session, keyValueStore, validate } = await show();
+
+    await validate(['shieldBash', 'retaliation', 'holdFast']);
     await fireEvent.press(screen.getByRole('button', { name: 'Continuer avec la Sentinelle' }));
     await act(async () => undefined);
 
@@ -101,13 +123,12 @@ describe('TowerFootScreen: launching with the chosen powers (#236)', () => {
     ]);
   });
 
-  it('keeps the screen and the choice when the choice cannot be saved, and a retry launches', async () => {
+  it('keeps the screen and the choice when the choice cannot be saved, and a retry launches (H4)', async () => {
     const { session, onEnter, keyValueStore } = await show();
     const set = keyValueStore.set;
     keyValueStore.set = (key, value) =>
       key === EQUIPPED_POWERS_KEY ? Promise.reject(new Error('disk full')) : set(key, value);
 
-    await choose('bulwark', 'holdFast');
     await fireEvent.press(screen.getByRole('button', { name: 'Continuer avec la Sentinelle' }));
     await act(async () => undefined);
 
@@ -118,21 +139,36 @@ describe('TowerFootScreen: launching with the chosen powers (#236)', () => {
     ).toBeOnTheScreen();
     expect(session.current()).toBeNull();
     expect(onEnter).not.toHaveBeenCalled();
-    expect(screen.getByTestId('equipped-power-holdFast')).toBeOnTheScreen();
+    expect(screen.getByTestId('equipped-power-shieldBash')).toBeOnTheScreen();
 
     keyValueStore.set = set;
     await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
     await act(async () => undefined);
-    expect(session.current()?.powers).toEqual(['shieldBash', 'retaliation', 'holdFast']);
+    expect(session.current()?.powers).toEqual(['bulwark', 'shieldBash', 'retaliation']);
     expect(onEnter).toHaveBeenCalled();
   });
 
+  it('offers « Continuer » again after a new choice validated in the menu', async () => {
+    const { keyValueStore, validate } = await show();
+    const set = keyValueStore.set;
+    keyValueStore.set = (key, value) =>
+      key === EQUIPPED_POWERS_KEY ? Promise.reject(new Error('disk full')) : set(key, value);
+    await fireEvent.press(screen.getByRole('button', { name: 'Continuer avec la Sentinelle' }));
+    await act(async () => undefined);
+    expect(screen.getByRole('button', { name: 'Réessayer' })).toBeOnTheScreen();
+
+    keyValueStore.set = set;
+    await validate(['shieldBash', 'retaliation', 'holdFast']);
+
+    expect(screen.getByRole('button', { name: 'Continuer avec la Sentinelle' })).toBeOnTheScreen();
+  });
+
   it('shows the kindled line of the selection only', async () => {
-    const { session } = await show();
+    const { session, validate } = await show();
     const line = "Attisé : « Courir » faite hier. 1 Élan pour toute l'ascension.";
     expect(screen.getByText(line)).toBeOnTheScreen();
 
-    await choose('retaliation', 'holdFast');
+    await validate(['bulwark', 'shieldBash', 'holdFast']);
 
     expect(screen.queryByText(line)).not.toBeOnTheScreen();
     await fireEvent.press(screen.getByRole('button', { name: 'Continuer avec la Sentinelle' }));

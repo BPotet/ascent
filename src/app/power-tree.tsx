@@ -15,6 +15,15 @@ function leave(): void {
   }
 }
 
+/**
+ * Choisir ses pouvoirs depuis le bandeau de l'arbre (#270, D1) : le menu des pouvoirs, posé sur le
+ * pied de la tour, où son retour ramène.
+ */
+function choosePowers(hero: HeroKind): void {
+  router.dismissTo('/tower');
+  router.push({ pathname: '/powers-menu', params: { hero } });
+}
+
 /** Aller à la Vue Journée, pour créer une habitude à lier par un Serment (#237, S3). */
 function goToDay(): void {
   router.replace('/');
@@ -30,6 +39,7 @@ function PowerTree() {
       hero={kind}
       onLeave={leave}
       onGoToDay={goToDay}
+      onChoosePowers={choosePowers}
     />
   );
 }

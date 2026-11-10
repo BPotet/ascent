@@ -47,4 +47,30 @@ describe('ExpoHaptics', () => {
 
     expect(() => new ExpoHaptics().success()).not.toThrow();
   });
+
+  it('asks the phone for one short rigid vibration on a refusal, distinct from a success (#270)', async () => {
+    new ExpoHaptics().refusal();
+    await flush();
+
+    expect(impact).toHaveBeenCalledTimes(1);
+    expect(impact).toHaveBeenCalledWith(ImpactFeedbackStyle.Rigid);
+  });
+
+  it('stays silent on a refusal, without error, without vibrator or native module (#270)', async () => {
+    const unhandled = jest.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+      impact.mockRejectedValueOnce(new Error('Vibrator unavailable'));
+      expect(() => new ExpoHaptics().refusal()).not.toThrow();
+      await flush();
+      impact.mockImplementationOnce(() => {
+        throw new Error('ExpoHaptics native module is not available');
+      });
+      expect(() => new ExpoHaptics().refusal()).not.toThrow();
+
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
+  });
 });

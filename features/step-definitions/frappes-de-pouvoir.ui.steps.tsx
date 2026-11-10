@@ -1,13 +1,14 @@
 /**
- * Scénarios `@ui` des « Frappes de pouvoir » (#236) : l'arbre et la fiche au camp, le Choix du
- * héros et son panneau des pouvoirs équipés au pied de la tour, la feuille de l'Équipement et
- * l'écran de combat, avec les vrais cas d'usage sur un stockage en mémoire.
+ * Scénarios `@ui` des « Frappes de pouvoir » (#236) : l'arbre et la fiche au camp, le menu des
+ * pouvoirs (#270) et le Choix du héros au pied de la tour, la feuille de l'Équipement et l'écran de
+ * combat, avec les vrais cas d'usage sur un stockage en mémoire.
  */
 import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { autoBindSteps, loadFeature, type StepDefinitions } from 'jest-cucumber';
 
 import { LoadoutSheet } from '../../src/adapters/ui/components/LoadoutSheet';
 import { PowerTreeScreen } from '../../src/adapters/ui/screens/PowerTreeScreen';
+import { PowersMenuScreen } from '../../src/adapters/ui/screens/PowersMenuScreen';
 import { TowerFootScreen } from '../../src/adapters/ui/screens/TowerFootScreen';
 import { ascentSetUp } from '../../src/adapters/ui/testing/ascent';
 import { renderBattle } from '../../src/adapters/ui/testing/battleScreen';
@@ -68,18 +69,36 @@ async function openSheet(code: PowerKind) {
   return within(await screen.findByTestId('power-sheet'));
 }
 
+/** Le menu des pouvoirs (#270), ouvert sur l'onglet de `hero`. */
+async function showMenu(hero: HeroKind) {
+  await setUp.session.load();
+  await renderScreen(
+    <PowersMenuScreen
+      camp={setUp.camp}
+      session={setUp.session}
+      hero={hero}
+      from="tower"
+      refusal={{ refusal: jest.fn() }}
+      onLeave={jest.fn()}
+      onCamp={jest.fn()}
+    />,
+    setUp.dependencies,
+  );
+  await screen.findByTestId(`powers-menu-row-${hero === 'sentinel' ? 'bulwark' : 'shadowStep'}`);
+}
+
 const changeButton = () => screen.queryByRole('button', { name: /^Changer les pouvoirs/u });
-const panel = () => within(screen.getByTestId('equipped-powers-panel'));
-const row = (power: PowerKind) => screen.getByTestId(`equipped-powers-row-${power}`);
+const menuRow = (power: PowerKind) => screen.getByTestId(`powers-menu-row-${power}`);
 const key = (power: PowerKind) => screen.getByTestId(`battle-power-button-${power}`);
 
-/** Coche ou décoche chaque pouvoir de `toggles` dans le panneau ouvert. */
+/** Coche ou décoche chaque pouvoir de `toggles` au menu des pouvoirs. */
 async function toggle(...toggles: PowerKind[]) {
-  for (const power of toggles) await fireEvent.press(row(power));
+  for (const power of toggles) await fireEvent.press(menuRow(power));
 }
 
 async function validate() {
-  await fireEvent.press(panel().getByRole('button', { name: 'Valider' }));
+  await fireEvent.press(screen.getByTestId('powers-menu-validate'));
+  await act(async () => undefined);
 }
 
 async function continueWithSentinel() {
@@ -151,7 +170,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     await fireEvent.press(sheet.getByRole('button', { name: 'Débloquer pour 30 Éclats' }));
     expect(
       await screen.findByText(
-        'Coup de bouclier débloqué. Tes 3 places sont prises : choisis tes pouvoirs au Choix du héros.',
+        'Coup de bouclier débloqué. Tes 3 places sont prises : choisis tes pouvoirs au pied de la tour.',
       ),
     ).toBeOnTheScreen();
   });
@@ -162,21 +181,14 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and(
-    /^la carte de la Sentinelle du Choix du héros montre le bouton « Changer les pouvoirs »$/u,
+    /^le menu des pouvoirs propose Coup de bouclier à la Sentinelle, sans le cocher$/u,
     async () => {
       screen.unmount();
-      await showHeroChoice('sentinel');
-      expect(
-        screen.getByRole('button', { name: 'Changer les pouvoirs, 4 débloqués' }),
-      ).toBeOnTheScreen();
-      const cells = within(screen.getByTestId('hero-choice-sentinel'))
-        .getAllByTestId(/^equipped-power-/u)
-        .map((cell) => cell.props.testID);
-      expect(cells).toEqual([
-        'equipped-power-bulwark',
-        'equipped-power-retaliation',
-        'equipped-power-holdFast',
-      ]);
+      await showMenu('sentinel');
+      expect(menuRow('shieldBash').props.accessibilityState).toMatchObject({ checked: false });
+      for (const power of ['bulwark', 'retaliation', 'holdFast'] as const) {
+        expect(menuRow(power).props.accessibilityState).toMatchObject({ checked: true });
+      }
     },
   );
 
@@ -184,13 +196,20 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     setUp = ascentSetUp({ shards: 0, powers: ['rend', 'mist'] });
   });
 
-  then(/^sa carte du Choix du héros ne montre pas « Changer les pouvoirs »$/u, async () => {
-    await showHeroChoice('wanderer');
-    expect(changeButton()).not.toBeOnTheScreen();
-    expect(
-      within(screen.getByTestId('hero-choice-wanderer')).getByText('Pouvoirs équipés · 3 sur 3'),
-    ).toBeOnTheScreen();
-  });
+  then(
+    /^l'onglet de l'Errante du menu des pouvoirs n'a rien à cocher, et son Choix du héros pas de « Changer les pouvoirs »$/u,
+    async () => {
+      await showMenu('wanderer');
+      expect(screen.queryAllByRole('checkbox')).toEqual([]);
+      expect(within(menuRow('mist')).getByText('Équipé')).toBeOnTheScreen();
+      screen.unmount();
+      await showHeroChoice('wanderer');
+      expect(changeButton()).not.toBeOnTheScreen();
+      expect(
+        within(screen.getByTestId('hero-choice-wanderer')).getByText('Pouvoirs équipés · 3 sur 3'),
+      ).toBeOnTheScreen();
+    },
+  );
 
   given(/^la Sentinelle a débloqué Représailles, Tenir bon, Coup de bouclier et Fracas$/u, () => {
     setUp = ascentSetUp({
@@ -200,13 +219,14 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   when(
-    /^le joueur touche « Changer les pouvoirs » et choisit Coup de bouclier, Fracas et Représailles$/u,
+    /^le joueur choisit Coup de bouclier, Fracas et Représailles au menu des pouvoirs et touche « Valider »$/u,
     async () => {
-      await showHeroChoice('sentinel');
-      await fireEvent.press(changeButton()!);
+      await showMenu('sentinel');
       // La présélection : le Rempart, Coup de bouclier et Fracas.
       await toggle('bulwark', 'retaliation');
       await validate();
+      screen.unmount();
+      await showHeroChoice('sentinel');
     },
   );
 
@@ -230,24 +250,25 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     setUp = ascentSetUp({ shards: 0, powers: ['rend', 'mist', 'flurry', 'ambush'] });
   });
 
-  when(/^le joueur change ses pouvoirs$/u, async () => {
-    await showHeroChoice('wanderer');
-    await fireEvent.press(changeButton()!);
+  when(/^le joueur ouvre ses pouvoirs au menu des pouvoirs$/u, async () => {
+    await showMenu('wanderer');
   });
 
   then(/^il ne peut pas en choisir un 4e$/u, async () => {
-    expect(panel().getByText('3 sur 3')).toBeOnTheScreen();
+    expect(screen.getByText('3 sur 3')).toBeOnTheScreen();
     await toggle('ambush');
-    expect(row('ambush').props.accessibilityState).toMatchObject({ checked: false });
+    expect(menuRow('ambush').props.accessibilityState).toMatchObject({ checked: false });
     expect(
-      panel().getByText("3 sur 3 : retire d'abord un pouvoir pour équiper Frappe furtive."),
+      screen.getByText("3 sur 3 : retire d'abord un pouvoir pour équiper Frappe furtive."),
     ).toBeOnTheScreen();
   });
 
   and(/^il ne peut pas valider avec moins de 3 pouvoirs$/u, async () => {
     await toggle('rend');
     expect(
-      panel().getByRole('button', { name: 'Valider, indisponible : choisis encore 1 pouvoir' }),
+      screen.getByRole('button', {
+        name: "Valider, indisponible : choisis encore 1 pouvoir pour l'Errante",
+      }),
     ).toHaveProp('accessibilityState', expect.objectContaining({ disabled: true }));
   });
 
@@ -259,10 +280,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     const set = setUp.keyValueStore.set;
     setUp.keyValueStore.set = (key, value) =>
       key === EQUIPPED_POWERS_KEY ? Promise.reject(new Error('disk full')) : set(key, value);
+    // Une présélection jamais validée au menu : le lancement l'écrit (#270, H4).
     await showHeroChoice('sentinel');
-    await fireEvent.press(changeButton()!);
-    await toggle('bulwark', 'retaliation');
-    await validate();
   });
 
   when(/^le joueur continue avec ses pouvoirs choisis$/u, async () => {
@@ -277,8 +296,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     ).toBeOnTheScreen();
     expect(setUp.session.current()).toBeNull();
     expect(onEnter).not.toHaveBeenCalled();
-    expect(screen.getByTestId('equipped-power-retaliation')).toBeOnTheScreen();
-    expect(screen.queryByTestId('equipped-power-bulwark')).not.toBeOnTheScreen();
+    expect(screen.getByTestId('equipped-power-crushingBlow')).toBeOnTheScreen();
+    expect(screen.getByTestId('equipped-power-bulwark')).toBeOnTheScreen();
 
     setUp.keyValueStore.set = (key, value) => {
       setUp.keyValueStore.values.set(key, value);
@@ -286,7 +305,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     };
     await fireEvent.press(screen.getByRole('button', { name: 'Réessayer' }));
     await act(async () => undefined);
-    expect(setUp.session.current()?.powers).toEqual(['shieldBash', 'crushingBlow', 'retaliation']);
+    expect(setUp.session.current()?.powers).toEqual(['bulwark', 'shieldBash', 'crushingBlow']);
     expect(onEnter).toHaveBeenCalled();
   });
 
@@ -313,7 +332,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and(
-    /^l'arbre, la fiche du pouvoir, la carte du Choix du héros, le panneau des pouvoirs équipés, la feuille de l'Équipement et le lecteur d'écran disent « Coup de bouclier »$/u,
+    /^l'arbre, la fiche du pouvoir, la carte du Choix du héros, le menu des pouvoirs, la feuille de l'Équipement et le lecteur d'écran disent « Coup de bouclier »$/u,
     async () => {
       // Le lecteur d'écran, sur la ligne de la liste des pouvoirs.
       expect(key('shieldBash').props.accessibilityLabel).toBe('Pouvoir : Coup de bouclier, 2 Élan');
@@ -326,14 +345,15 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       const sheet = await openSheet('shieldBash');
       expect(sheet.getByText('Coup de bouclier')).toBeOnTheScreen();
       await screen.unmount();
-      // La carte du Choix du héros et le panneau des pouvoirs équipés.
+      // La carte du Choix du héros et le menu des pouvoirs.
       setUp = ascentSetUp(options);
       await showHeroChoice('sentinel');
       expect(
         within(screen.getByTestId('equipped-power-shieldBash')).getByText('Coup de bouclier'),
       ).toBeOnTheScreen();
-      await fireEvent.press(changeButton()!);
-      expect(within(row('shieldBash')).getByText('Coup de bouclier')).toBeOnTheScreen();
+      await screen.unmount();
+      await showMenu('sentinel');
+      expect(within(menuRow('shieldBash')).getByText('Coup de bouclier')).toBeOnTheScreen();
       await screen.unmount();
       // La feuille de l'Équipement.
       const ascent = startAscent(5, { powers: ['shieldBash', 'crushingBlow', 'retaliation'] });

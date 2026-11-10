@@ -8,6 +8,7 @@ import type { HeroKind } from '../../../domain/battle/combatants';
 import { POWERS, type PowerKind } from '../../../domain/battle/powers';
 import type { HabitId } from '../../../domain/habit/Habit';
 import { MinusFloat } from '../components/CampFeedback';
+import { HeroTabs } from '../components/HeroTabs';
 import { OathPicker } from '../components/OathPicker';
 import { PowerSheet, type SheetOath } from '../components/PowerSheet';
 import { PowerTreeNode } from '../components/PowerTreeNode';
@@ -15,26 +16,19 @@ import { Screen } from '../components/Screen';
 import { availableShardsText, runBand } from '../format/campText';
 import { swornAnnouncement } from '../format/oathText';
 import { PATH_NAMES, noFreeSlotBand, unlockAnnouncement } from '../format/powerText';
+import { CHOOSE_MY_POWERS, choosePowersLabel } from '../format/powersMenuText';
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize } from '../pixelArt/artPixel';
-import { AssetRows } from '../pixelArt/AssetRows';
-import { MIN_TARGET_SIZE } from '../pixelArt/PixelButton';
+import { MIN_TARGET_SIZE, PixelButton } from '../pixelArt/PixelButton';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { PixelSkeleton } from '../pixelArt/PixelSkeleton';
 import { pixelFont, textFont } from '../pixelArt/pixelTypography';
-import { PORTRAITS } from '../pixelArt/sprites/atelier/data/portraits';
 import { useCamp } from '../state/useCamp';
 import { useFateGauge } from '../state/useFateGauge';
 import { useTrackingChanges } from '../state/TrackingRevision';
 
 const { roles } = artPalette;
 const LINE = artPixelSize(2);
-
-const TAB_NAMES: Readonly<Record<HeroKind, string>> = {
-  sentinel: 'Sentinelle',
-  wanderer: 'Errante',
-};
-const HEROES_IN_TABS: readonly HeroKind[] = ['sentinel', 'wanderer'];
 
 /** Le dernier déblocage : son nœud s'allume, « −30 » monte des Éclats (D1). */
 interface Fresh {
@@ -166,19 +160,24 @@ function Skeleton() {
  * l'arbre en Y sans défilement à 360 × 780 dp, les Éclats disponibles en haut. Toucher un nœud
  * ouvre sa fiche ; « Débloquer pour 30 Éclats » enregistre le déblocage (une seule écriture
  * attendue), puis le nœud s'allume, « −30 » monte, une annonce polie le dit et le focus revient sur
- * le nœud. Pendant une ascension, un bandeau rappelle qu'elle ne change pas.
+ * le nœud. Pendant une ascension, un bandeau rappelle qu'elle ne change pas. Un pouvoir débloqué
+ * sans place libre le dit dans un bandeau, dont « Choisir mes pouvoirs » ouvre le menu des pouvoirs
+ * sur l'onglet de son héros (#270, D1).
  */
 export function PowerTreeScreen({
   camp,
   hero: initialHero,
   onLeave,
   onGoToDay,
+  onChoosePowers,
 }: {
   readonly camp: CampSession;
   readonly hero: HeroKind;
   readonly onLeave: () => void;
   /** Va à la Vue Journée, pour créer une habitude à lier par un Serment (#237, S3). */
   readonly onGoToDay?: () => void;
+  /** Ouvre le menu des pouvoirs sur l'onglet de `hero` (#270, D1). */
+  readonly onChoosePowers?: (hero: HeroKind) => void;
 }) {
   const view = useCamp(camp);
   const { reading } = useFateGauge();
@@ -290,35 +289,25 @@ export function PowerTreeScreen({
           </View>
         )}
       </View>
-      <View role="tablist" accessibilityLabel="Héros" style={styles.tabs}>
-        {HEROES_IN_TABS.map((kind) => {
-          const portrait = PORTRAITS[kind];
-          return (
-            <Pressable
-              key={kind}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: kind === hero }}
-              onPress={() => setHero(kind)}
-              testID={`power-tree-tab-${kind}`}
-              style={[styles.tab, { borderWidth: LINE }, kind === hero && styles.tabOn]}
-            >
-              {portrait === null ? null : <AssetRows image={portrait} scale={1} />}
-              <Text style={[styles.tabText, kind === hero && styles.tabTextOn]}>
-                {TAB_NAMES[kind]}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      <HeroTabs hero={hero} onSelect={setHero} testIDPrefix="power-tree-tab" />
       <ScrollView contentContainerStyle={styles.scroll}>
         {noSlot === null ? null : (
           <View
-            accessible
             testID="power-tree-no-slot"
             style={[styles.band, styles.doneBand, { borderWidth: LINE }]}
           >
             <PixelIcon name="check8" color={roles.done} />
-            <Text style={styles.bandText}>{noFreeSlotBand(noSlot)}</Text>
+            <View style={styles.bandColumn}>
+              <Text style={styles.bandText}>{noFreeSlotBand(noSlot)}</Text>
+              {onChoosePowers === undefined ? null : (
+                <PixelButton
+                  label={choosePowersLabel(POWERS[noSlot].hero)}
+                  text={CHOOSE_MY_POWERS}
+                  variant="secondary"
+                  onPress={() => onChoosePowers(POWERS[noSlot].hero)}
+                />
+              )}
+            </View>
           </View>
         )}
         {view.place === null ? null : (
@@ -402,20 +391,6 @@ const styles = StyleSheet.create({
   },
   balanceText: { fontFamily: pixelFont, fontSize: 22, lineHeight: 26, color: roles.shard },
   minus: { position: 'absolute', left: 0, right: 0, bottom: -18, alignItems: 'center' },
-  tabs: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 8 },
-  tab: {
-    flex: 1,
-    minHeight: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    borderColor: roles.line,
-    backgroundColor: roles.surface,
-  },
-  tabOn: { borderColor: roles.gold, backgroundColor: roles.goldBg },
-  tabText: { fontFamily: textFont.bold, fontSize: 14, lineHeight: 18, color: roles.parchment },
-  tabTextOn: { color: roles.gold },
   scroll: { paddingHorizontal: 16, paddingBottom: 24, gap: 8 },
   band: { padding: 10, borderColor: roles.blue, backgroundColor: roles.raised },
   doneBand: {
@@ -425,6 +400,7 @@ const styles = StyleSheet.create({
     borderColor: roles.doneLine,
     backgroundColor: roles.doneBg,
   },
+  bandColumn: { flexShrink: 1, gap: 8 },
   bandText: {
     flexShrink: 1,
     fontFamily: textFont.medium,

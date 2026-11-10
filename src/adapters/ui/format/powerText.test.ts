@@ -122,16 +122,18 @@ describe('the nodes of the tree (#235)', () => {
 
   it('says when an unlocked power finds no free slot (#236, D2)', () => {
     expect(noFreeSlotBand('flurry')).toBe(
-      'Rafale débloqué. Tes 3 places sont prises : choisis tes pouvoirs au Choix du héros.',
+      'Rafale débloqué. Tes 3 places sont prises : choisis tes pouvoirs au pied de la tour.',
     );
     expect(unlockAnnouncement('flurry', 15, false)).toBe(
-      'Rafale débloqué. Tes 3 places sont prises : choisis tes pouvoirs au Choix du héros. 15 Éclats disponibles.',
+      'Rafale débloqué. Tes 3 places sont prises : choisis tes pouvoirs au pied de la tour. 15 Éclats disponibles.',
     );
   });
 
   it('says in the sheet whether an owned power is equipped (#236, F5)', () => {
     expect(unlockedBand(true)).toBe('Débloqué. Équipé à ta prochaine ascension.');
-    expect(unlockedBand(false)).toBe('Débloqué. Pas équipé : choisis-le au Choix du héros.');
+    expect(unlockedBand(false)).toBe(
+      'Débloqué. Pas équipé : choisis-le au pied de la tour, dans « Pouvoirs équipés ».',
+    );
     expect(basePowerBand('bulwark')).toBe(
       'Pouvoir de base de la Sentinelle : toujours à toi. Équipé.',
     );

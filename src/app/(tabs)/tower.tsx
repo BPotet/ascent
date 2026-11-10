@@ -14,6 +14,9 @@ function TowerFoot() {
       camp={sharedCampSession(keyValueStore, clock, unitOfWork)}
       onEnter={() => router.push('/ascent')}
       onCamp={() => router.push('/camp')}
+      onOpenPowers={({ hero, from }) =>
+        router.push({ pathname: '/powers-menu', params: { hero, from } })
+      }
       logExport={ascentLogFeature(keyValueStore, clock)?.logExport}
       focused={focused}
     />

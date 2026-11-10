@@ -151,7 +151,7 @@ export function basePowerBand(code: PowerKind, equipped = true): string {
 export function unlockedBand(equipped: boolean): string {
   return equipped
     ? 'Débloqué. Équipé à ta prochaine ascension.'
-    : 'Débloqué. Pas équipé : choisis-le au Choix du héros.';
+    : 'Débloqué. Pas équipé : choisis-le au pied de la tour, dans « Pouvoirs équipés ».';
 }
 
 export function shardsText(shards: number): string {
@@ -195,9 +195,9 @@ export function nodeLabel(code: PowerKind, state: PowerNodeState, equipped = tru
   }
 }
 
-/** Le bandeau d'un pouvoir débloqué sans place libre (#236, D2). */
+/** Le bandeau d'un pouvoir débloqué sans place libre (#236, D2 ; #270, D1). */
 export function noFreeSlotBand(power: PowerKind): string {
-  return `${TREE_POWER_NAMES[power]} débloqué. Tes 3 places sont prises : choisis tes pouvoirs au Choix du héros.`;
+  return `${TREE_POWER_NAMES[power]} débloqué. Tes 3 places sont prises : choisis tes pouvoirs au pied de la tour.`;
 }
 
 /**
@@ -300,30 +300,14 @@ export function strikeKeyLabel(power: PowerKind | undefined, hits: number, hit: 
   return hits > 1 ? `Frapper, ${name}, coup ${hit} sur ${hits}` : `Frapper, ${name}`;
 }
 
-/** Le panneau des pouvoirs équipés (#236, H4) : « L'Errante · dans l'ordre de l'arbre ». */
-export function panelHeading(hero: HeroKind): string {
-  return `${HERO_OF[hero].name} · dans l'ordre de l'arbre`;
-}
-
-/** Plein, un 4e pouvoir est refusé (#236, H5). */
+/** Plein, un 4e pouvoir est refusé (#236, H5 ; au menu des pouvoirs, #270, M2). */
 export function fullSlotsBand(power: PowerKind): string {
   return `3 sur 3 : retire d'abord un pouvoir pour équiper ${TREE_POWER_NAMES[power]}.`;
 }
 
-/** « Valider » attend les places qui restent (#236, H6). */
+/** « Valider » attend les places qui restent (#236, H6 ; au menu des pouvoirs, #270, M3). */
 export function missingChoiceText(missing: number): string {
   return `Choisis encore ${missing} pouvoir${missing > 1 ? 's' : ''}`;
-}
-
-/** « Changer les pouvoirs » et le nombre de pouvoirs à soi (#236, H3). */
-export function changePowersLabel(owned: number): string {
-  return `Changer les pouvoirs, ${owned} débloqués`;
-}
-
-/** L'annonce du nouveau choix (#236, H7) : « 3 pouvoirs équipés : Entaille, Rafale, Brume. » */
-export function equippedAnnouncement(powers: readonly PowerKind[]): string {
-  const count = `${powers.length} ${powers.length > 1 ? 'pouvoirs équipés' : 'pouvoir équipé'}`;
-  return `${count} : ${powers.map((power) => TREE_POWER_NAMES[power]).join(', ')}.`;
 }
 
 /** L'échec de l'enregistrement du choix au lancement (#236) : rien n'est perdu. */
