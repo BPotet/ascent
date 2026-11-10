@@ -69,6 +69,11 @@ describe('EquippedPowersCard (#270)', () => {
       'powers-card-free-2',
     ]);
     expect(screen.getByText('2 sur 3')).toBeOnTheScreen();
+    const free = screen.getByTestId('powers-card-free-2');
+    expect(StyleSheet.flatten(free.props.style).borderStyle).not.toBe('dashed');
+    expect(
+      within(free).getByTestId('powers-card-free-2-hatching', { includeHiddenElements: true }),
+    ).toBeOnTheScreen();
   });
 
   it('says in gold that a power waits for a slot, with « nouveau » (T4)', async () => {

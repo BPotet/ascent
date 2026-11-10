@@ -108,7 +108,20 @@ function HeroRow({
             key={`free-${index}`}
             testID={`powers-card-free-${sorted.length + index}`}
             style={[styles.cell, styles.free, { borderWidth: LINE }]}
-          />
+          >
+            {/* Les hachures de la place libre (maquette : 2 dp toutes les 6 dp, à 135°). */}
+            <View
+              pointerEvents="none"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              testID={`powers-card-free-${sorted.length + index}-hatching`}
+              style={styles.hatching}
+            >
+              {Array.from({ length: 12 }, (_, stripe) => (
+                <View key={stripe} style={styles.hatch} />
+              ))}
+            </View>
+          </View>
         ))}
       </View>
       <Text style={styles.count}>{slotsText(powers.length)}</Text>
@@ -223,7 +236,17 @@ const styles = StyleSheet.create({
   },
   kindled: { borderColor: roles.ember },
   fresh: { borderColor: roles.gold, backgroundColor: roles.goldBg },
-  free: { borderStyle: 'dashed', backgroundColor: 'transparent' },
+  free: { backgroundColor: 'transparent', overflow: 'hidden' },
+  hatching: {
+    position: 'absolute',
+    top: -12,
+    bottom: -12,
+    left: -12,
+    flexDirection: 'row',
+    gap: 4,
+    transform: [{ skewX: '-45deg' }],
+  },
+  hatch: { width: 2, height: '100%', backgroundColor: 'rgba(62,72,112,0.35)' },
   count: {
     marginLeft: 'auto',
     fontFamily: textFont.bold,
