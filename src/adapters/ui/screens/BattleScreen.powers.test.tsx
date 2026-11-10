@@ -1,7 +1,10 @@
 // L'écran de combat avec plusieurs pouvoirs (#235, maquette 232) : la bulle d'aide des pouvoirs
 // (K11), une seule fois ; le feedback de Tenir bon (K12) : l'arme levée qui brille, le halo,
 // « +16 » en or et la barre de PV en or ; la scène reçoit le voile de Brume et la marque d'Entaille.
-import { screen } from '@testing-library/react-native';
+// La liste des pouvoirs (#271, maquette 269 : KB2 à KB10) : ouverte par « Pouvoirs », fermée par un
+// lancer, par la transition de phase ou sans rien lancer.
+import { act, fireEvent, screen, within } from '@testing-library/react-native';
+import { getByGestureTestId } from 'react-native-gesture-handler/jest-utils';
 import { StyleSheet } from 'react-native';
 
 import { battleWith, heroWith, targetOn } from '../../../application/testing/battleBuilder';
@@ -9,6 +12,7 @@ import { BATTLE_HINT_SEEN_KEYS } from '../../../application/useCases/battleHints
 import type { Battle } from '../../../domain/battle/Battle';
 import type { PowerKind } from '../../../domain/battle/powers';
 import type { ScenePowers } from '../battle/scene/powerScene';
+import { powerGestureTestId } from '../battle/ActionPad';
 import { artPalette } from '../pixelArt/artPalette';
 import { memoryKeyValueStore } from '../testing/memoryKeyValueStore';
 import { renderBattle } from '../testing/battleScreen';
@@ -34,7 +38,9 @@ describe('BattleScreen with several powers (#235)', () => {
       createBattle: battleWith(equipped('bulwark', 'retaliation')),
     });
 
-    expect(screen.getByTestId('battle-hint-powers')).toHaveTextContent(/Tes pouvoirs/u);
+    expect(screen.getByTestId('battle-hint-powers')).toHaveTextContent(
+      'Tes pouvoirsTouche Pouvoirs pour voir tes pouvoirs. Maintiens-en un pour lire son effet, touche-le pour le lancer.',
+    );
     expect(keyValueStore.values.get(BATTLE_HINT_SEEN_KEYS.powers)).toBeUndefined();
 
     await test.attack();
@@ -69,7 +75,9 @@ describe('BattleScreen with several powers (#235)', () => {
       StyleSheet.flatten(screen.getByTestId('battle-hero-hp', hiddenToo).props.style)
         .backgroundColor,
     ).toBe(artPalette.roles.gold);
-    expect(screen.getByTestId('battle-power-button-holdFast').props.accessibilityState).toEqual({
+    // Tenir bon prend l'action : la liste s'est fermée, « Pouvoirs » attend.
+    expect(screen.queryByTestId('battle-power-list')).toBeNull();
+    expect(screen.getByTestId('battle-powers-button').props.accessibilityState).toMatchObject({
       disabled: true,
     });
   });
@@ -105,5 +113,171 @@ describe('BattleScreen with several powers (#235)', () => {
     await test.power(undefined, 'rend');
 
     expect(scene().powers.rendTarget).toBe(1);
+  });
+});
+
+const wanderer = (momentum: number) =>
+  battleWith(
+    equipped('shadowStep', 'rend', 'flurry'),
+    heroWith({ momentum }),
+    (battle): Battle => ({ ...battle, heroKind: 'wanderer' }),
+  );
+
+type Host = ReturnType<typeof screen.getByTestId>;
+
+/** Les blocs de l'écran à cacher à TalkBack : en-tête, frise, scène, barre du héros, zone d'action. */
+function talkBackBlocks(): Host[] {
+  return [
+    screen.getByRole('header', hiddenToo),
+    screen.getAllByTestId('track-portrait', hiddenToo)[0]!,
+    screen.getByTestId('battle-scene-frame', hiddenToo),
+    screen.getByTestId('battle-hero-bar', hiddenToo),
+    screen.getByTestId('battle-pad', hiddenToo),
+  ];
+}
+
+/** Le nombre de vues, le bloc compris, qui le cachent à TalkBack (la frise l'est déjà en partie). */
+function talkBackHiders(block: Host): number {
+  let hiders = 0;
+  for (let node: Host | null = block; node !== null; node = node.parent) {
+    if (node.props.importantForAccessibility === 'no-hide-descendants') hiders += 1;
+  }
+  return hiders;
+}
+
+const zoneLine = () => screen.getByTestId('battle-zone-line');
+const powersKey = () => screen.getByTestId('battle-powers-button');
+
+describe('BattleScreen and the power list (#271)', () => {
+  it('opens the list above « Pouvoirs » with a very short vibration, the fight veiled (KB2)', async () => {
+    // Avec la frise d'action (#175), pour la cacher elle aussi à TalkBack.
+    const test = await renderBattle({
+      seed: 1,
+      createBattle: battleWith(
+        equipped('shadowStep', 'rend', 'flurry'),
+        heroWith({ momentum: 5 }),
+        (battle): Battle => ({ ...battle, heroKind: 'wanderer', initiative: true }),
+      ),
+    });
+    expect(powersKey()).toHaveTextContent('Pouvoirs3 prêts sur 3');
+
+    await test.openPowers();
+
+    expect(test.haptics.played).toEqual(['powerTip']);
+    expect(screen.getByTestId('battle-power-list')).toBeOnTheScreen();
+    expect(screen.getByTestId('battle-power-scene-veil', hiddenToo)).toBeTruthy();
+    expect(
+      screen.getByTestId('battle-powers-button', hiddenToo).props.accessibilityState,
+    ).toMatchObject({ expanded: true });
+    // Pour TalkBack, le reste de l'écran est caché tant que la liste est ouverte : l'en-tête, la
+    // frise, la scène, la barre du héros et la zone d'action.
+    const opened = talkBackBlocks().map(talkBackHiders);
+    expect(screen.queryByRole('header')).toBeNull();
+    expect(screen.queryByTestId('battle-hero-bar')).toBeNull();
+    expect(screen.queryByTestId('battle-zone-line')).toBeNull();
+    expect(screen.queryByTestId('battle-attack-button')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('battle-power-list-veil', hiddenToo));
+    const closed = talkBackBlocks().map(talkBackHiders);
+    // Chaque bloc gagne une vue qui le cache tant que la liste est ouverte, et la perd ensuite.
+    expect(opened).toEqual(closed.map((hiders) => hiders + 1));
+    expect([closed[0], ...closed.slice(2)]).toEqual([0, 0, 0, 0]);
+    expect(screen.getByRole('header')).toBeOnTheScreen();
+    expect(screen.getByTestId('battle-attack-button')).toBeOnTheScreen();
+  });
+
+  it('closes a bubble left open when the phase changes: the list opened again shows none', async () => {
+    const test = await renderBattle({ seed: 1, createBattle: wanderer(5) });
+    await test.openPowers();
+    // Le doigt reste posé 400 ms sur Entaille : la bulle s'ouvre, et le doigt ne se lève pas.
+    const hold = getByGestureTestId(`${powerGestureTestId('rend')}-hold`) as unknown as {
+      readonly handlers: Record<string, ((...args: unknown[]) => void) | undefined>;
+    };
+    await act(async () => {
+      hold.handlers.onStart?.({});
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId('battle-power-tip')).toBeOnTheScreen();
+
+    // La phase change (l'attaque arrive par la session), puis revient au héros.
+    await test.attack();
+    await test.runUntil(() => test.battle().phase.kind !== 'hero');
+    expect(screen.queryByTestId('battle-power-tip', hiddenToo)).toBeNull();
+    await test.runUntil(() => test.battle().phase.kind === 'hero');
+    await test.openPowers();
+
+    expect(screen.getByTestId('battle-power-list')).toBeOnTheScreen();
+    expect(screen.queryByTestId('battle-power-tip', hiddenToo)).toBeNull();
+  });
+
+  it('casts an instant power, closes the list and lets the hero attack (KB5, KB6)', async () => {
+    const test = await renderBattle({ seed: 1, createBattle: wanderer(5) });
+
+    await test.power(undefined, 'rend');
+
+    expect(test.battle().hero).toMatchObject({ momentum: 4, rend: true });
+    expect(screen.queryByTestId('battle-power-list')).toBeNull();
+    expect(zoneLine()).toHaveTextContent('Toujours à toi : attaque.');
+    expect(powersKey()).toHaveTextContent('Pouvoirs1 prêt sur 3');
+    expect(powersKey().props.accessibilityState).toMatchObject({ expanded: false });
+  });
+
+  it('says « Actif » and « Instantané déjà lancé » when it opens again (KB7)', async () => {
+    const test = await renderBattle({ seed: 1, createBattle: wanderer(5) });
+    await test.power(undefined, 'rend');
+
+    await test.openPowers();
+
+    const row = (power: string) => within(screen.getByTestId(`battle-power-button-${power}`));
+    expect(row('rend').getByText('Actif')).toBeOnTheScreen();
+    expect(row('shadowStep').getByText('Instantané déjà lancé')).toBeOnTheScreen();
+    expect(row('flurry').getByText('Prêt')).toBeOnTheScreen();
+  });
+
+  it('keeps the list open on a row too dear, the momentum unchanged (KB3)', async () => {
+    const test = await renderBattle({ seed: 1, createBattle: wanderer(1) });
+    await test.openPowers();
+
+    await test.release(powerGestureTestId('flurry'), test.clock.now(), test.clock.now() + 80);
+
+    expect(screen.getByTestId('battle-power-list')).toBeOnTheScreen();
+    expect(test.battle().hero.momentum).toBe(1);
+  });
+
+  it('closes without casting by a touch outside the list, the momentum unchanged', async () => {
+    const test = await renderBattle({ seed: 1, createBattle: wanderer(5) });
+    await test.openPowers();
+
+    await fireEvent.press(screen.getByTestId('battle-power-list-veil', hiddenToo));
+
+    expect(screen.queryByTestId('battle-power-list')).toBeNull();
+    expect(test.battle().hero.momentum).toBe(5);
+    expect(test.battle().phase.kind).toBe('hero');
+    expect(screen.queryByTestId('battle-power-scene-veil', hiddenToo)).toBeNull();
+  });
+
+  it('closes by itself, casting nothing, when the phase transition begins', async () => {
+    const test = await renderBattle({ seed: 1, createBattle: wanderer(5) });
+    await test.openPowers();
+
+    // L'attaque arrive par la session, la liste encore ouverte.
+    await test.attack();
+
+    expect(screen.queryByTestId('battle-power-list')).toBeNull();
+    expect(test.battle().hero.rend).not.toBe(true);
+    expect(test.battle().hero.shadowStep).not.toBe(true);
+    expect(test.battle().phase.kind).not.toBe('hero');
+  });
+
+  it('closes on a power strike, « Frapper » taking the whole row (KB8, KB9)', async () => {
+    const test = await renderBattle({ seed: 1, createBattle: wanderer(3) });
+
+    await test.power(undefined, 'flurry');
+
+    expect(screen.queryByTestId('battle-power-list')).toBeNull();
+    expect(screen.queryByTestId('battle-powers-button')).toBeNull();
+    expect(
+      within(screen.getByTestId('battle-strike-button')).getByText('Rafale · 4 coups'),
+    ).toBeOnTheScreen();
   });
 });

@@ -1,11 +1,12 @@
 /**
  * Le registre des pouvoirs (`Power`, #235) : un profil par code, recopié des fiches du Codex de
- * l'Atelier (catégorie `power`). Le héros, l'ordre de l'arbre (et des touches), le coût en Élan,
- * le type (instantané, à charge) et les paramètres d'effet.
+ * l'Atelier (catégorie `power`). Le héros, l'ordre de l'arbre (et des lignes de la liste des
+ * pouvoirs, #271), le coût en Élan, le type (instantané, à charge) et les paramètres d'effet.
  *
  * Recopié de l'Atelier de l'ascension (ADR 0019), fiches actives relues le 06/11/2026 en lecture
  * seule, sha256 du JSON compact de `data`, clés triées, vérifiée avant recopie ; valeurs de `stats`
- * seulement (`name`, `buttonName` et `effectText` sont dans `powerText.ts`) :
+ * seulement (`name` et `effectText` sont dans `powerText.ts` ; `buttonName` n'est plus recopié,
+ * avenant #271 à l'ADR 0010) :
  * - `codex/bulwark` version 1, sha256 a3e954b9164ee3097c5fbe37ab7c3392113b5caed041424a7e6e976cd1c50f35 ;
  * - `codex/retaliation` version 1, sha256 e19b49116cf17ae46a733c755327906acf9e07459b06bcc6ab10e0afba384237 ;
  * - `codex/holdFast` version 1, sha256 c56753e2c88cf52d02f46d87459fa2ff02540bf0fd2866b329240e98460add69 ;

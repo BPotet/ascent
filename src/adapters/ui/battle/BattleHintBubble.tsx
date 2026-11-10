@@ -19,10 +19,11 @@ export const BATTLE_HINTS = {
     text: "Touche Parade au moment de l'impact. Sceau rouge : Esquive.",
     arrow: '50%',
   },
-  // La bulle des pouvoirs (#235, K11) : au premier combat avec 2 pouvoirs ou plus.
+  // La bulle des pouvoirs (#235, K11) : au premier combat avec 2 pouvoirs ou plus ; elle parle de
+  // la touche « Pouvoirs » et des lignes de la liste des pouvoirs (#271).
   powers: {
     title: 'Tes pouvoirs',
-    text: 'Maintiens une touche de pouvoir pour lire son effet. Touche-la pour le lancer.',
+    text: 'Touche Pouvoirs pour voir tes pouvoirs. Maintiens-en un pour lire son effet, touche-le pour le lancer.',
     arrow: '25%',
   },
 } as const;

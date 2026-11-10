@@ -59,7 +59,7 @@ Fonctionnalité: Le Serment et le pouvoir attisé
     Étant donné Représailles porte le Serment « Courir » depuis avant-hier et « Courir » a été faite hier
     Quand le joueur commence une ascension avec la Sentinelle équipée de Représailles
     Alors Représailles est attisé pour toute l'ascension
-    Et sa touche en combat dit « 1 Élan · Instantané », avec la marque du pouvoir attisé
+    Et sa ligne dans la liste des pouvoirs dit « 1 Élan · Instantané », avec la marque du pouvoir attisé
     Et la carte de la Sentinelle du Choix du héros et la feuille de l'Équipement le montrent attisé
 
   @session

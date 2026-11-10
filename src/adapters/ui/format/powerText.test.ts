@@ -1,8 +1,7 @@
-// Les libellés des pouvoirs (#235) : noms, touches, types, effets, voies, états des nœuds de
-// l'arbre, fiche et raisons d'indisponibilité en combat (maquette 232, sections 1, 3 et 7).
+// Les libellés des pouvoirs (#235) : noms, types, effets, voies, états des nœuds de l'arbre, fiche
+// et états de la liste des pouvoirs en combat (maquette 232, sections 1, 3 et 7 ; #271).
 import {
   PATH_NAMES,
-  POWER_BUTTON_NAMES,
   POWER_TIPS,
   TREE_POWER_NAMES,
   basePowerBand,
@@ -10,7 +9,9 @@ import {
   nodeLabel,
   nodeStateText,
   powerKeyLabel,
-  powerKeyReason,
+  powerStateText,
+  powersKeyLabel,
+  readyCountText,
   powerPlace,
   powerType,
   powerTreeCardLabel,
@@ -33,23 +34,6 @@ describe('the names of the powers (#235)', () => {
       mist: 'Brume',
       ambush: 'Frappe furtive',
     });
-  });
-
-  it('writes the button names in 14 characters at most', () => {
-    for (const name of Object.values(POWER_BUTTON_NAMES)) {
-      expect(name.length).toBeLessThanOrEqual(14);
-    }
-    expect(POWER_BUTTON_NAMES.retaliation).toBe('Représailles');
-  });
-
-  it("writes « Coup d'écu » on the combat key of Shield Bash only (#236)", () => {
-    expect(POWER_BUTTON_NAMES).toMatchObject({
-      shieldBash: "Coup d'écu",
-      crushingBlow: 'Fracas',
-      flurry: 'Rafale',
-      ambush: 'Frappe furtive',
-    });
-    expect(Object.values(TREE_POWER_NAMES)).not.toContain("Coup d'écu");
   });
 
   it('names the paths', () => {
@@ -168,22 +152,32 @@ describe('the nodes of the tree (#235)', () => {
   });
 });
 
-describe('the power keys of the battle (#235)', () => {
-  it('writes the reason of an unavailable key', () => {
-    expect(powerKeyReason({ availability: 'missing', missing: 1 })).toEqual([
-      'Il manque',
-      '1 Élan',
-    ]);
-    expect(powerKeyReason({ availability: 'active', missing: 0 })).toEqual(['Actif']);
-    expect(powerKeyReason({ availability: 'instantUsed', missing: 0 })).toEqual([
-      'Instantané',
-      'déjà lancé',
-    ]);
-    expect(powerKeyReason({ availability: 'usedThisBattle', missing: 0 })).toEqual([
-      'Utilisé',
-      'ce combat',
-    ]);
-    expect(powerKeyReason({ availability: 'available', missing: 0 })).toEqual([]);
+describe('the power list of the battle (#235, #271)', () => {
+  it('words the state of each row on one line (KB2, KB3, KB7, KB10)', () => {
+    expect(powerStateText({ availability: 'available', missing: 0 })).toBe('Prêt');
+    expect(powerStateText({ availability: 'missing', missing: 1 })).toBe('Il manque 1 Élan');
+    expect(powerStateText({ availability: 'missing', missing: 2 })).toBe('Il manque 2 Élan');
+    expect(powerStateText({ availability: 'active', missing: 0 })).toBe('Actif');
+    expect(powerStateText({ availability: 'instantUsed', missing: 0 })).toBe(
+      'Instantané déjà lancé',
+    );
+    expect(powerStateText({ availability: 'usedThisBattle', missing: 0 })).toBe(
+      'Utilisé ce combat',
+    );
+  });
+
+  it('counts the ready powers on « Pouvoirs », plural above 1 (KB1, KB6)', () => {
+    expect(readyCountText(3, 3)).toBe('3 prêts sur 3');
+    expect(readyCountText(2, 3)).toBe('2 prêts sur 3');
+    expect(readyCountText(1, 3)).toBe('1 prêt sur 3');
+    expect(readyCountText(0, 3)).toBe('0 prêt sur 3');
+    expect(readyCountText(1, 1)).toBe('1 prêt sur 1');
+    expect(readyCountText(0, 1)).toBe('0 prêt sur 1');
+  });
+
+  it('reads « Pouvoirs » as a menu, its state given by the platform (KB1)', () => {
+    expect(powersKeyLabel(3, 3)).toBe('Pouvoirs, 3 prêts sur 3, menu');
+    expect(powersKeyLabel(1, 3)).toBe('Pouvoirs, 1 prêt sur 3, menu');
   });
 
   it('reads each key to the screen reader (section 7)', () => {
@@ -205,7 +199,21 @@ describe('the power keys of the battle (#235)', () => {
     ).toBe('Pouvoir : Tenir bon, 3 Élan, indisponible : déjà utilisé dans ce combat');
   });
 
-  it("reads « Coup de bouclier » in full on the key of « Coup d'écu » (#236, K14)", () => {
+  it('reads a kindled instant power at its kindled cost (KB4)', () => {
+    expect(
+      powerKeyLabel({
+        power: 'retaliation',
+        cost: 1,
+        baseCost: 2,
+        kindled: true,
+        instant: true,
+        availability: 'available',
+        missing: 0,
+      }),
+    ).toBe('Pouvoir : Représailles, attisé, 1 Élan au lieu de 2, instantané');
+  });
+
+  it('reads « Coup de bouclier » in full (#236, K14)', () => {
     expect(
       powerKeyLabel({ power: 'shieldBash', cost: 2, availability: 'available', missing: 0 }),
     ).toBe('Pouvoir : Coup de bouclier, 2 Élan');

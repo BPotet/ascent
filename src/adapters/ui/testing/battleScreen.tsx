@@ -30,6 +30,7 @@ import { Day } from '../../../domain/day/Day';
 import {
   ATTACK_GESTURE_TEST_ID,
   DEFENSE_GESTURE_TEST_IDS,
+  POWERS_GESTURE_TEST_ID,
   STRIKE_GESTURE_TEST_ID,
   powerGestureTestId,
 } from '../battle/ActionPad';
@@ -192,12 +193,30 @@ export async function renderBattle({
   }
 
   /**
-   * La touche du pouvoir `code` (par défaut le premier pouvoir équipé, le pouvoir de base), posée à
-   * `startedAt` et relâchée 80 ms après.
+   * « Pouvoirs », touchée et relâchée à l'instant présent (#271) : la liste des pouvoirs s'ouvre (ou
+   * se ferme). Un toucher de durée nulle n'avance pas l'horloge du combat.
+   */
+  async function openPowers(): Promise<void> {
+    await release(POWERS_GESTURE_TEST_ID, clock.now(), clock.now());
+  }
+
+  /**
+   * La ligne du pouvoir `code` (par défaut le premier pouvoir équipé, le pouvoir de base), posée à
+   * `startedAt` et relâchée 80 ms après ; la liste des pouvoirs est d'abord ouverte si elle est
+   * fermée (#271).
    */
   async function power(startedAt = clock.now(), code?: PowerKind): Promise<void> {
     const battle = session.current()!.battle;
-    await release(powerGestureTestId(code ?? equippedOf(battle)[0]!), startedAt, startedAt + 80);
+    const testId = powerGestureTestId(code ?? equippedOf(battle)[0]!);
+    if (screen.queryByTestId('battle-power-list') === null) {
+      if (
+        screen.queryByTestId('battle-powers-button')?.props.accessibilityState?.disabled !== false
+      ) {
+        throw new Error(`« Pouvoirs » cannot be touched in phase ${battle.phase.kind}`);
+      }
+      await openPowers();
+    }
+    await release(testId, startedAt, startedAt + 80);
   }
 
   async function touchEnemy(enemy: number, startedAt = clock.now()): Promise<void> {
@@ -224,6 +243,7 @@ export async function renderBattle({
     runUntil,
     touchDefense,
     strike,
+    openPowers,
     power,
     release,
     attack,

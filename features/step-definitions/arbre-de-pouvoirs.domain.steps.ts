@@ -157,7 +157,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     }
   });
 
-  and(/^sa touche reste indisponible tant qu'il est actif$/u, () => {
+  and(/^sa ligne reste indisponible tant qu'il est actif$/u, () => {
     for (const after of updates) {
       const heroPhase: Battle = {
         ...after.battle,
@@ -237,7 +237,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(
-    /^la touche de Tenir bon reste indisponible jusqu'à la fin du combat, quel que soit son Élan$/u,
+    /^la ligne de Tenir bon reste indisponible jusqu'à la fin du combat, quel que soit son Élan$/u,
     () => {
       for (const momentum of [0, 3, 5]) {
         const later: Battle = {

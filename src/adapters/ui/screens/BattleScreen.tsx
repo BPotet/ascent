@@ -16,6 +16,7 @@ import { BattleScene, prepareBattleScene } from '../battle/BattleCanvas';
 import { DamageFloat, FeedbackLabel, ThornsWord, useShake } from '../battle/BattleEffects';
 import { BleedDrops } from '../battle/BleedChip';
 import { BattleHintBubble } from '../battle/BattleHintBubble';
+import { ACTION_ZONE_BOTTOM, ACTION_ZONE_SIDE, PowerList } from '../battle/PowerList';
 import { EncounterHintBubble } from '../battle/EncounterHintBubble';
 import { EnemyColumn } from '../battle/EnemyColumn';
 import { HeroBar } from '../battle/HeroBar';
@@ -34,6 +35,7 @@ import { actionTrackView, battleView, type BattleView } from '../state/battleVie
 import { useReducedMotion } from '../state/useReducedMotion';
 import { jsThreadNow, uiThreadNow } from '../state/useTouchProbe';
 import { heroHpShown, useBattleDisplay, useThornsRevealed } from '../state/useBattleDisplay';
+import { usePowerList } from '../state/usePowerList';
 import { battleColors } from '../theme/battleColors';
 
 export interface BattleScreenProps {
@@ -66,6 +68,15 @@ function preparedKinds(battle: Battle): string {
   const summoned = kinds.flatMap((kind) => summonedKind(kind) ?? []);
   return [...new Set([...kinds, ...summoned])].join();
 }
+
+/** Avant le combat, aucune touche. */
+const NO_PAD: BattleView['pad'] = { kind: 'none' };
+
+/**
+ * Tant que la liste des pouvoirs est ouverte (#271), le reste de l'écran est caché à TalkBack
+ * (`accessibilityViewIsModal` n'agit que sur iOS).
+ */
+const HIDDEN_FROM_TALKBACK = { importantForAccessibility: 'no-hide-descendants' } as const;
 
 /** La hauteur de la scène de la maquette (cadre de 390 × 844 pt). */
 const SCENE_HEIGHT = 440;
@@ -154,6 +165,12 @@ export function BattleScreen({
   const { burnFx } = display;
   const burn = useMemo(() => ({ stacks: burnStacks, ...burnFx }), [burnStacks, burnFx]);
   const view = useMemo(() => (battle === null ? null : battleView(battle)), [battle]);
+  const powerList = usePowerList(view?.pad ?? NO_PAD);
+  const powersOpen = powerList.open;
+  // L'ouverture de la liste des pouvoirs : la vibration très courte du toucher maintenu (#271).
+  useEffect(() => {
+    if (powersOpen) session.feelPowerTip();
+  }, [powersOpen, session]);
   // L'Invocation sur la scène (#172) : la poussière vient de l'état, l'annonce et la sortie des
   // événements ; un combat repris n'a pas d'annonce.
   const dust = view?.dust;
@@ -230,19 +247,22 @@ export function BattleScreen({
 
   return (
     <Screen layout="top" background="transparent" testID="battle-screen">
-      <View style={styles.header}>
+      <View {...(powersOpen && HIDDEN_FROM_TALKBACK)} style={styles.header}>
         <Text accessibilityRole="header" style={styles.title}>
           {title}
         </Text>
       </View>
       {battle.initiative && over === null ? (
-        <ActionTrack track={track!} reducedMotion={reducedMotion} enemyPhase={enemyPhase} />
+        <View {...(powersOpen && HIDDEN_FROM_TALKBACK)}>
+          <ActionTrack track={track!} reducedMotion={reducedMotion} enemyPhase={enemyPhase} />
+        </View>
       ) : null}
       {/* Le cadre fixe de la scène, mesuré, porte le voile ; la scène tremble au-dessus (ADR 0008, avenant #188). */}
       <View
         ref={sceneFrame}
         onLayout={onSceneLayout}
         {...(encounterHint !== undefined && { onTouchStart: closeEncounterHint })}
+        {...(powersOpen && HIDDEN_FROM_TALKBACK)}
         testID="battle-scene-frame"
         style={styles.scene}
       >
@@ -395,22 +415,34 @@ export function BattleScreen({
             <BattleHintBubble kind="defense" onClose={() => session.dismissHint('defense')} />
           ) : null}
         </Animated.View>
+        {/* Le combat se voile sous la liste des pouvoirs (#271, `.veil.deep`), la barre du héros au-dessus. */}
+        {powersOpen ? (
+          <View
+            pointerEvents="none"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            testID="battle-power-scene-veil"
+            style={styles.powersVeil}
+          />
+        ) : null}
       </View>
       {over === null ? (
         <>
-          <HeroBar
-            hero={battle.hero}
-            kind={heroKind}
-            bulwarkWorn={display.bulwarkWornAt !== null}
-            shadowStepNew={view.pad.kind === 'hero' && view.pad.instantCast === true}
-            burnRing={display.burnRing}
-            rise={rise === null ? null : { key: rise.key }}
-            healing={battle.phase.kind === 'heroPower' && battle.phase.power === 'holdFast'}
-            shownHp={heroHpShown(battle.hero.hp, display, thornsShown)}
-            pricked={thorns !== null && thornsShown ? { key: thorns.key } : null}
-            reducedMotion={reducedMotion}
-          />
-          <View style={styles.zone}>
+          <View {...(powersOpen && HIDDEN_FROM_TALKBACK)}>
+            <HeroBar
+              hero={battle.hero}
+              kind={heroKind}
+              bulwarkWorn={display.bulwarkWornAt !== null}
+              shadowStepNew={view.pad.kind === 'hero' && view.pad.instantCast === true}
+              burnRing={display.burnRing}
+              rise={rise === null ? null : { key: rise.key }}
+              healing={battle.phase.kind === 'heroPower' && battle.phase.power === 'holdFast'}
+              shownHp={heroHpShown(battle.hero.hp, display, thornsShown)}
+              pricked={thorns !== null && thornsShown ? { key: thorns.key } : null}
+              reducedMotion={reducedMotion}
+            />
+          </View>
+          <View {...(powersOpen && HIDDEN_FROM_TALKBACK)} style={styles.zone}>
             <Text
               testID="battle-zone-line"
               style={[styles.line, lineHidden(view.pad) && styles.hidden]}
@@ -430,9 +462,10 @@ export function BattleScreen({
               now={now}
               onDefense={onDefense}
               onAttack={onAttack}
-              onPower={onPower}
               onStrike={onStrike}
-              onPowerTip={onPowerTip}
+              powersOpen={powersOpen}
+              onTogglePowers={powerList.toggle}
+              focusPowers={powerList.focusPowers}
             />
           </View>
         </>
@@ -440,6 +473,18 @@ export function BattleScreen({
       {/* La chute quand la seconde chance a déjà servi (#206, S4), sous la défaite. */}
       {over === 'defeat' && battle.hero.secondChance === 'used' ? (
         <Text style={styles.spent}>{SECOND_CHANCE_SPENT}</Text>
+      ) : null}
+      {/* La liste des pouvoirs (#271), sur tout l'écran : son voile reçoit aussi les touchers. */}
+      {powersOpen && view.pad.kind === 'hero' ? (
+        <PowerList
+          slots={view.pad.powers}
+          uiNow={uiNow}
+          now={now}
+          reducedMotion={reducedMotion}
+          onCast={onPower}
+          onDismiss={powerList.dismiss}
+          onTip={onPowerTip}
+        />
       ) : null}
     </Screen>
   );
@@ -461,6 +506,7 @@ const styles = StyleSheet.create({
   // La scène qui tremble, rognée à son cadre ; sans débord du voile, posé sous elle sur le cadre fixe.
   shake: { ...StyleSheet.absoluteFill, overflow: 'hidden' },
   enemyPhaseVeil: { ...StyleSheet.absoluteFill, backgroundColor: artPalette.roles.enemyPhaseVeil },
+  powersVeil: { ...StyleSheet.absoluteFill, zIndex: 9, backgroundColor: artPalette.roles.scrim },
   phase: {
     position: 'absolute',
     top: 8,
@@ -484,8 +530,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexShrink: 0,
     justifyContent: 'flex-end',
-    paddingHorizontal: 16,
-    paddingBottom: 34,
+    paddingHorizontal: ACTION_ZONE_SIDE,
+    paddingBottom: ACTION_ZONE_BOTTOM,
     gap: 10,
   },
   line: {
