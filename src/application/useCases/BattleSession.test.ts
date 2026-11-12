@@ -825,17 +825,36 @@ describe('BattleSession', () => {
       expect(glintSounds(context)).toEqual(['glintDull', 'glint']);
     });
 
-    it('plays the Sweep glint of a Sweep, with its long low vibration at the same instant (#266)', async () => {
+    it('plays the Sweep glint of a Sweep, ahead of the latency, without a vibration (#266)', async () => {
       const context = setUp({ createBattle: ghoulAttacking('sweep') });
       await context.session.start();
       const impact = toGhoulWindUp(context);
 
       context.clock.advanceTo(impact - 218.5);
       expect(glintSounds(context)).toEqual([]);
-      expect(context.haptics.played).not.toContain('sweep');
       context.clock.advanceTo(impact - 217.5);
       expect(glintSounds(context)).toEqual(['glintSweep']);
-      expect(context.haptics.played).toContain('sweep');
+      expect(context.haptics.played).not.toContain('sweep');
+    });
+
+    it('vibrates long and low at the rush of a Sweep, 80 ms before its impact (#266, A3)', async () => {
+      const context = setUp({ createBattle: ghoulAttacking('sweep') });
+      await context.session.start();
+      const impact = toGhoulWindUp(context);
+
+      context.clock.advanceTo(impact - 81);
+      expect(context.haptics.played).not.toContain('sweep');
+      context.clock.advanceTo(impact - 80);
+      expect(context.haptics.played.filter((cue) => cue === 'sweep')).toEqual(['sweep']);
+    });
+
+    it('still vibrates once at the rush when its timer fires late', async () => {
+      const context = setUp({ createBattle: ghoulAttacking('sweep') });
+      await context.session.start();
+      const impact = toGhoulWindUp(context);
+
+      context.clock.advanceTo(impact + 40);
+      expect(context.haptics.played.filter((cue) => cue === 'sweep')).toEqual(['sweep']);
     });
 
     it('never vibrates for another glint', async () => {
