@@ -38,6 +38,7 @@ import { useReducedMotion } from '../state/useReducedMotion';
 import { jsThreadNow, uiThreadNow } from '../state/useTouchProbe';
 import {
   heroHpShown,
+  auraStruckAt,
   momentumShown,
   useBattleDisplay,
   useTheftRevealed,
@@ -341,7 +342,7 @@ export function BattleScreen({
                 sealed={view.sealed === index}
                 swept={view.swept === index}
                 // Les « +20 % » barrés à la chute du Porte-cierge (#268, C4), par chute.
-                auraOut={display.auraOut?.enemies.includes(index) === true}
+                auraOut={auraStruckAt(display, index)}
                 reducedMotion={reducedMotion}
                 float={display.float?.float.at === index ? display.float : null}
                 uiNow={uiNow}

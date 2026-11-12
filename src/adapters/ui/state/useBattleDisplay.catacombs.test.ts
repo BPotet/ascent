@@ -81,6 +81,34 @@ describe('the fall of the Candle bearer (#268, C4)', () => {
     expect(display.auraOut).toBeNull();
   });
 
+  it('forgets the struck « +20 % » when another enemy takes the place of an ally', () => {
+    const blown = displayOf(INITIAL_DISPLAY, snapshot([fell], fallen(catacombs, 1)), false);
+    const arrivals: BattleEvent[] = [
+      { type: 'reinforcementEntered', at: 900, enemy: 0, kind: 'ghoul' },
+      { type: 'summonEntered', at: 900, enemy: 2, kind: 'mothkin' },
+    ];
+
+    expect(blown.auraOut?.enemies).toEqual([0, 2]);
+    expect(displayOf(blown, snapshot(arrivals), false).auraOut).toMatchObject({ enemies: [] });
+    const exhumed: BattleEvent = {
+      type: 'enemyExhumed',
+      at: 900,
+      enemy: 1,
+      slot: 2,
+      kind: 'skeleton',
+    };
+    expect(displayOf(blown, snapshot([exhumed]), false).auraOut?.enemies).toEqual([0]);
+  });
+
+  it('forgets the struck « +20 % » of an ally raised again', () => {
+    const blown = displayOf(INITIAL_DISPLAY, snapshot([fell], fallen(catacombs, 1)), false);
+    const raised: BattleEvent = { type: 'allyRaised', at: 900, enemy: 0, ally: 2, hp: 6 };
+    const revived: BattleEvent = { type: 'enemySelfRevived', at: 900, enemy: 0, hp: 25 };
+
+    expect(displayOf(blown, snapshot([raised]), false).auraOut?.enemies).toEqual([0]);
+    expect(displayOf(blown, snapshot([revived]), false).auraOut?.enemies).toEqual([2]);
+  });
+
   it('forgets the fall when another enemy takes his place', () => {
     const blown = displayOf(INITIAL_DISPLAY, snapshot([fell], fallen(catacombs, 1)), false);
     const entered: BattleEvent = { type: 'reinforcementEntered', at: 900, enemy: 1, kind: 'ghoul' };

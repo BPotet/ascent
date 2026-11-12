@@ -4,7 +4,10 @@
 import { act, render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
+import { startBattle } from '../../../domain/battle/Battle';
+import type { BattleEvent } from '../../../domain/battle/BattleEvent';
 import type { EnemyView, SignatureView } from '../state/battleView';
+import { INITIAL_DISPLAY, auraStruckAt, displayOf } from '../state/useBattleDisplay';
 import { battleColors } from '../theme/battleColors';
 import { AuraBoostChip, AuraGlow } from './CatacombsEffects';
 import { DamageFloat, FeedbackLabel } from './BattleEffects';
@@ -186,5 +189,42 @@ describe('the column of an enemy of the Catacombs (#268, C1, C4, C5)', () => {
     await renderColumn(ghoul({ kind: 'candleBearer', name: 'Porte-cierge', auraGlow: 'out' }));
 
     expect(style('aura-glow')).toMatchObject({ backgroundColor: battleColors.signatureOff });
+  });
+});
+
+describe('the column of an enemy entering after the fall of the Candle bearer (#268, C4)', () => {
+  it('shows no struck « +20 % » on a reinforcement in the place of a fallen ally', async () => {
+    const { battle } = startBattle({
+      seed: 1,
+      defenseHint: false,
+      at: 0,
+      enemies: ['candleBearer', 'ghoul', 'ghoul', 'ghoul', 'ghoul'],
+    });
+    const fallen = {
+      ...battle,
+      enemies: battle.enemies.map((enemy, index) => (index === 0 ? { ...enemy, hp: 0 } : enemy)),
+    };
+    const snapshot = (events: readonly BattleEvent[]) => ({
+      battle: fallen,
+      events,
+      heroHint: false,
+      powersHint: false,
+    });
+    const blown = displayOf(
+      INITIAL_DISPLAY,
+      snapshot([{ type: 'enemyDefeated', at: 600, enemy: 0 }]),
+      false,
+    );
+    expect(auraStruckAt(blown, 1)).toBe(true);
+    const entered = displayOf(
+      blown,
+      snapshot([{ type: 'reinforcementEntered', at: 900, enemy: 1, kind: 'ghoul' }]),
+      false,
+    );
+
+    await renderColumn(ghoul(), auraStruckAt(entered, 1));
+
+    expect(screen.queryByTestId('enemy-ghoul-aura', hiddenToo)).toBeNull();
+    expect(auraStruckAt(entered, 2)).toBe(true);
   });
 });

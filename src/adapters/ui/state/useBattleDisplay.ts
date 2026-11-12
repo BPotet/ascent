@@ -222,12 +222,10 @@ export function momentumShown(momentum: number, display: BattleDisplay, revealed
 }
 
 /**
- * Les Jardins de cendre d'un événement (#267) : la chute de la Cosse, éclatée (et ses 2 flammes
- * vers le héros, après le chiffre de dégâts) ou étouffée ; le losange de l'Élan volé.
- */
-/**
  * Les Catacombes d'un événement (#268, C4) : la chute du Porte-cierge (son cierge soufflé) et, s'il
- * avait un allié debout, les « +20 % » barrés. Un ennemi qui prend sa place fait oublier sa chute.
+ * avait un allié debout, les « +20 % » barrés. Un ennemi qui prend une place fait oublier ce qui y
+ * était montré : la chute du Porte-cierge, ou le « +20 % » barré d'un allié ; un ennemi relevé
+ * aussi.
  */
 function catacombsAfter(display: BattleDisplay, event: BattleEvent, battle: Battle): BattleDisplay {
   switch (event.type) {
@@ -244,22 +242,41 @@ function catacombsAfter(display: BattleDisplay, event: BattleEvent, battle: Batt
     }
     case 'reinforcementEntered':
     case 'summonEntered':
-      return withoutCandleFall(display, event.enemy);
+      return withoutAuraFx(display, event.enemy);
     case 'enemyExhumed':
-      return withoutCandleFall(display, event.slot);
+      return withoutAuraFx(display, event.slot);
     case 'allyRaised':
-      return withoutCandleFall(display, event.ally);
+      return withoutAuraFx(display, event.ally);
+    case 'enemySelfRevived':
+      return withoutAuraFx(display, event.enemy);
     default:
       return display;
   }
 }
 
-function withoutCandleFall(display: BattleDisplay, enemy: number): BattleDisplay {
-  if (display.candleFalls[enemy] === undefined) return display;
+/** La place `enemy` oublie la chute d'un Porte-cierge et le « +20 % » barré d'un allié (#268). */
+function withoutAuraFx(display: BattleDisplay, enemy: number): BattleDisplay {
   const { [enemy]: _, ...candleFalls } = display.candleFalls;
-  return { ...display, candleFalls };
+  const { auraOut } = display;
+  return {
+    ...display,
+    candleFalls,
+    auraOut:
+      auraOut === null
+        ? null
+        : { ...auraOut, enemies: auraOut.enemies.filter((index) => index !== enemy) },
+  };
 }
 
+/** Le « +20 % » de la place `index` se barre : son allié vient de perdre l'Aura (#268, C4). */
+export function auraStruckAt(display: BattleDisplay, index: number): boolean {
+  return display.auraOut?.enemies.includes(index) === true;
+}
+
+/**
+ * Les Jardins de cendre d'un événement (#267) : la chute de la Cosse, éclatée (et ses 2 flammes
+ * vers le héros, après le chiffre de dégâts) ou étouffée ; le losange de l'Élan volé.
+ */
 function gardensAfter(display: BattleDisplay, event: BattleEvent): BattleDisplay {
   switch (event.type) {
     case 'heroBurning': {
