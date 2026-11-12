@@ -49,6 +49,7 @@ import { exhumeSlot } from './exhume';
 import {
   drawIntent,
   raisedHp,
+  type ChargeIntent,
   type ExhumeIntent,
   type GuardIntent,
   type Intent,
@@ -98,6 +99,9 @@ import { freeSlots, summonedKind, type PendingSummon } from './summon';
 import { cappedParryHeal } from './parryHeal';
 import { thornsActive, thornsLoss } from './thorns';
 import { NO_TIER_MULTIPLIER, scaleByPercent, type TierMultiplier } from './tierMultiplier';
+
+/** Les intentions jouées sans coup, par `startSupport` : Garde, Relever, Exhumer et Charge (#266). */
+type SupportIntent = GuardIntent | RaiseIntent | ExhumeIntent | ChargeIntent;
 
 export interface HeroState {
   readonly hp: number;
@@ -171,6 +175,12 @@ export interface EnemyState {
    * `summoned` ; il compte pour le plafond d'Exhumer. Absent, non.
    */
   readonly exhumed?: true;
+  /**
+   * La Charge du Bélier de bronze (#266, D4) : il charge depuis son action (`charging`) jusqu'au
+   * début de la préparation de son Coup de bélier, ou elle a été brisée (`broken`) jusqu'au retour
+   * en garde. Absente, aucune ; effacée à la chute.
+   */
+  readonly charge?: 'charging' | 'broken';
 }
 
 export interface ImpactState {
@@ -218,13 +228,15 @@ export interface AttackStep {
   readonly burn?: number;
   /** Le relèvement de la seconde chance (#206) sur ce coup : un temps mort jusqu'à `until`. */
   readonly secondChance?: { readonly since: number; readonly until: number };
+  /** Le Coup de bélier d'une Charge (#266, CH3) ; absent, un coup ordinaire. */
+  readonly charged?: true;
 }
 
-/** L'effet d'une intention Garde ou Relever, après l'avancée. */
+/** L'effet d'une intention Garde, Relever, Exhumer ou Charge, après l'avancée. */
 export interface SupportStep {
   readonly kind: 'support';
   readonly enemy: number;
-  readonly intent: GuardIntent | RaiseIntent | ExhumeIntent;
+  readonly intent: SupportIntent;
   readonly since: number;
   readonly until: number;
 }
@@ -867,6 +879,7 @@ function startRound(previous: Battle, events: Events, at: number): Battle {
       maxGuard: enemy.maxGuard,
       damagePercent: enemyMultiplier(battle, enemy)?.hpPercent ?? 100,
       cursed: enemy.cursed === true,
+      charging: enemy.charge === 'charging',
     });
     random = drawn.random;
     return { ...enemy, intent: drawn.intent };
@@ -946,6 +959,17 @@ function withEnemy(battle: Battle, index: number, enemy: EnemyState): Battle {
   };
 }
 
+/** Sans la Charge (#266) : un ennemi relevé ou tombé repart de zéro. */
+function withoutCharge(enemy: EnemyState): EnemyState {
+  const { charge: _, ...rest } = enemy;
+  return rest;
+}
+
+/** Le retour en garde (C5.5) : une Charge brisée (#266) est perdue et repart de zéro. */
+function restoredEnemy(enemy: EnemyState, percent: number): EnemyState {
+  return withoutCharge(restoreGuard(enemy, percent));
+}
+
 /**
  * Le tour d'un ennemi étourdi (C5.4, C5.5) : son action perdue (250 ms), ou, si l'action du héros
  * qui suit la cassure est déjà passée, son retour en garde à sa place (400 ms). Ni l'un ni l'autre
@@ -963,7 +987,7 @@ function stunTurn(
     const until = at + GUARD_RESTORE_MS;
     events.push({ type: 'guardRestored', at, enemy, until, inPlaceOfAction: true });
     const restored = {
-      ...restoreGuard(state, heroModifiers(battle).guardRestorePercent ?? 100),
+      ...restoredEnemy(state, heroModifiers(battle).guardRestorePercent ?? 100),
       intent: null,
       guardRestore: { since: at, until },
     };
@@ -1041,7 +1065,7 @@ function endHeroAction(battle: Battle, events: Events): Battle {
     const until = at + GUARD_RESTORE_MS;
     events.push({ type: 'guardRestored', at, enemy: index, until, inPlaceOfAction: false });
     return {
-      ...restoreGuard(enemy, heroModifiers(battle).guardRestorePercent ?? 100),
+      ...restoredEnemy(enemy, heroModifiers(battle).guardRestorePercent ?? 100),
       guardRestore: { since: at, until },
     };
   });
@@ -1087,7 +1111,7 @@ function currentAttack(battle: Battle): AttackStep {
   return enemyStep(battle) as AttackStep;
 }
 
-/** Après l'avancée : l'attaque, ou l'effet de l'intention Garde ou Relever. */
+/** Après l'avancée : l'attaque, ou l'effet de l'intention Garde, Relever, Exhumer ou Charge. */
 function startEnemyAction(battle: Battle, events: Events): Battle {
   const { enemy, until: at } = enemyStep(battle) as StepInStep;
   const intent = battle.enemies[enemy]!.intent!;
@@ -1106,8 +1130,20 @@ function startAttack(
   const profile = ATTACKS[intent.attack];
   const impacts = profile.hitOffsetsMs.map((offset) => at + intent.windUpMs + offset);
   const feintAt = profile.feint ? at + Math.round(intent.windUpMs * intent.feintFraction) : null;
-  events.push({ type: 'windUpStarted', at, enemy, attack: intent.attack, impacts, feintAt });
-  return withStep(battle, {
+  // Le Coup de bélier d'une Charge (#266, CH3) : la Charge s'efface ici, plus rien ne l'annule.
+  const state = battle.enemies[enemy]!;
+  const charged = state.charge === 'charging';
+  events.push({
+    type: 'windUpStarted',
+    at,
+    enemy,
+    attack: intent.attack,
+    impacts,
+    feintAt,
+    ...(charged && { charged: true as const }),
+  });
+  const started = charged ? withEnemy(battle, enemy, withoutCharge(state)) : battle;
+  return withStep(started, {
     kind: 'attack',
     enemy,
     attack: intent.attack,
@@ -1125,6 +1161,7 @@ function startAttack(
     counter: null,
     ...(intent.bleed && { bleed: intent.bleed }),
     ...(intent.burn !== undefined && { burn: intent.burn }),
+    ...(charged && { charged: true as const }),
   });
 }
 
@@ -1148,18 +1185,21 @@ function exhume(battle: Battle, events: Events, enemy: number, slot: number, at:
 }
 
 /**
- * L'intention Garde (la garde remonte, sans dépasser son maximum), Relever (C2, C5.9) ou Exhumer
- * (#258).
+ * L'intention Garde (la garde remonte, sans dépasser son maximum), Relever (C2, C5.9), Exhumer
+ * (#258) ou Charge (#266, CH2 : il charge, sans impact ni défense possible).
  */
 function startSupport(
   battle: Battle,
   events: Events,
   enemy: number,
-  intent: GuardIntent | RaiseIntent | ExhumeIntent,
+  intent: SupportIntent,
   at: number,
 ): Battle {
   let supported: Battle;
-  if (intent.category === 'exhume') {
+  if (intent.category === 'charge') {
+    events.push({ type: 'chargeStarted', at, enemy });
+    supported = withEnemy(battle, enemy, { ...battle.enemies[enemy]!, charge: 'charging' });
+  } else if (intent.category === 'exhume') {
     supported = exhume(battle, events, enemy, intent.slot, at);
   } else if (intent.category === 'guard') {
     const state = battle.enemies[enemy]!;
@@ -1369,14 +1409,25 @@ function hitEnemy(
   blow: EnemyBlow,
   context: { readonly at: number; readonly by: GuardBreaker },
 ): { readonly battle: Battle; readonly broken: boolean } {
-  const hit = blowOnEnemy(battle.enemies[index]!, blow, battle.heroActions);
+  const before = battle.enemies[index]!;
+  const hit = blowOnEnemy(before, blow, battle.heroActions);
   const revived = hit.fallen ? selfRevive(hit.enemy, ENEMIES[hit.enemy.kind]) : null;
   if (revived !== null) {
     return { battle: reviveSelf(battle, events, index, revived, context.at), broken: false };
   }
-  const damaged = shiftPhase(withEnemy(battle, index, hit.enemy), events, index, context.at);
+  // Une Charge brisée (#266, CH4), quel qu'en soit l'auteur : l'ennemi lu avant le coup charge, ou
+  // a l'intention Charge sans avoir encore agi. Tombé, il n'en garde aucune (CH6).
+  const breaksCharge =
+    hit.broken && (before.charge === 'charging' || before.intent?.category === 'charge');
+  const struck: EnemyState = hit.fallen
+    ? withoutCharge(hit.enemy)
+    : breaksCharge
+      ? { ...hit.enemy, charge: 'broken' }
+      : hit.enemy;
+  const damaged = shiftPhase(withEnemy(battle, index, struck), events, index, context.at);
   if (hit.broken) {
     events.push({ type: 'guardBroken', at: context.at, enemy: index, by: context.by });
+    if (breaksCharge) events.push({ type: 'chargeBroken', at: context.at, enemy: index });
     return { battle: onGuardBreak(damaged, events, context.at), broken: true };
   }
   if (!hit.fallen) return { battle: damaged, broken: false };

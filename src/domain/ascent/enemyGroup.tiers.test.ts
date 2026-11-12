@@ -5,7 +5,10 @@ import { drawGroup, drawGroupSize, sizeWeights } from './enemyGroup';
 import { TIERS, type Tier } from './tiers';
 
 const SEEDS = Array.from({ length: 600 }, (_, index) => index * 2_654_435_761);
-/** Les ennemis du palier 3 (#214) : les trois qui restent, puis les trois du Beffroi. */
+/**
+ * Les ennemis du palier 3 (#214) : les trois qui restent, les trois du Beffroi, puis le Bélier de
+ * bronze et le Battant de cloche (#266).
+ */
 const BELFRY = new Set([
   'bronzeWarden',
   'gargoyle',
@@ -13,6 +16,8 @@ const BELFRY = new Set([
   'bellNovice',
   'matinsRinger',
   'clockJack',
+  'bronzeRam',
+  'bellClapper',
 ]);
 
 const sizes = (tier: Tier, floor: number) =>
@@ -66,7 +71,7 @@ describe('the enemies drawn at tiers 2 and 3 (#38)', () => {
     );
   });
 
-  it('draws exactly the six enemies of tier 3, none of tiers 1 and 2 (#214)', () => {
+  it('draws exactly the eight enemies of tier 3, none of tiers 1 and 2 (#214, #266)', () => {
     const drawn = new Set([...groups(3, 3), ...groups(3, 4)].flat());
 
     expect(drawn).toEqual(BELFRY);

@@ -34,6 +34,8 @@ describe('drawEliteEscort (#257)', () => {
       ['bellFounder', 2, 1],
       ['bellNovice', 3, 2],
       ['clockJack', 2, 1],
+      ['bronzeRam', 2, 1],
+      ['bellClapper', 2, 1],
     ]);
     expect(ESCORT_POOLS[1].some(({ kind }) => ENEMIES[kind].supports)).toBe(false);
   });

@@ -137,6 +137,9 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
       { kind: 'bellNovice', weight: 3, cap: 2 },
       { kind: 'matinsRinger', weight: 1, cap: 1, neverAlone: true },
       { kind: 'clockJack', weight: 2, cap: 1 },
+      // Le Bélier de bronze et le Battant de cloche (#266), à la fin de la liste.
+      { kind: 'bronzeRam', weight: 2, cap: 1 },
+      { kind: 'bellClapper', weight: 2, cap: 1 },
     ],
     // Le Bedeau (#259) en 3e position.
     elites: ['firstPilgrim', 'stoneSaint', 'beadle'],

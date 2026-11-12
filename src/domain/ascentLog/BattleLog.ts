@@ -21,7 +21,13 @@ import type {
   WhiffReason,
 } from '../battle/BattleEvent';
 import type { Bleed, EnemyKind, HeroKind } from '../battle/combatants';
-import type { ExhumeIntent, GuardIntent, Intent, RaiseIntent } from '../battle/intents';
+import type {
+  ChargeIntent,
+  ExhumeIntent,
+  GuardIntent,
+  Intent,
+  RaiseIntent,
+} from '../battle/intents';
 import type { PressJudgement } from '../battle/rules';
 import { beyondBasePower, type PowerKind } from '../battle/powers';
 import type { TierMultiplier } from '../battle/tierMultiplier';
@@ -84,7 +90,8 @@ export type IntentRecord =
     }
   | GuardIntent
   | RaiseIntent
-  | ExhumeIntent;
+  | ExhumeIntent
+  | ChargeIntent;
 
 /** Une frappe en rythme, identifiée par la manche, le rang de l'action du héros et le coup. */
 export interface StrikePressRecord {
@@ -163,6 +170,9 @@ const EFFECT_TYPES = [
   'mistWorn',
   'heroHealed',
   'bleedStopped',
+  // La Charge du Bélier de bronze (#266) : commencée, puis brisée ; portée, c'est `attack.charged`.
+  'chargeStarted',
+  'chargeBroken',
 ] as const satisfies readonly BattleEvent['type'][];
 
 type EffectType = (typeof EFFECT_TYPES)[number];
@@ -185,13 +195,22 @@ const ROUND_OPENING: ReadonlySet<BattleEvent['type']> = new Set([
 ]);
 
 export type ActionKind =
-  'strike' | 'power' | 'attack' | 'guard' | 'raise' | 'exhume' | 'lostAction' | 'guardRestored';
+  | 'strike'
+  | 'power'
+  | 'attack'
+  | 'guard'
+  | 'raise'
+  | 'exhume'
+  | 'charge'
+  | 'lostAction'
+  | 'guardRestored';
 
 const KIND_OF_INTENT: Readonly<Record<IntentRecord['category'], ActionKind>> = {
   attack: 'attack',
   guard: 'guard',
   raise: 'raise',
   exhume: 'exhume',
+  charge: 'charge',
 };
 
 /** Les effets du début d'une manche, Brûlure éteinte au début de la manche comprise. */
@@ -208,6 +227,8 @@ export interface ActionRecord {
     readonly attack: AttackKind;
     readonly impactOffsets: readonly number[];
     readonly feintOffset: number | null;
+    /** Le Coup de bélier d'une Charge (#266) ; absent, un coup ordinaire. */
+    readonly charged?: true;
   };
   readonly presses: readonly PressRecord[];
   readonly effects: readonly EffectRecord[];
@@ -499,6 +520,7 @@ class Writer {
             attack: event.attack,
             impactOffsets: event.impacts.map((impact) => impact - event.at),
             feintOffset: event.feintAt === null ? null : event.feintAt - event.at,
+            ...(event.charged && { charged: true as const }),
           },
         };
         return;

@@ -98,7 +98,7 @@ describe('the tiers (#38)', () => {
     ]);
   });
 
-  it('draws only its own enemies at tier 3, the three that stay then the three of the Belfry (#214)', () => {
+  it('draws only its own enemies at tier 3: the three that stay, the three of the Belfry (#214), then the Bronze ram and the Bell clapper (#266)', () => {
     expect(TIERS[3].enemies).toEqual([
       { kind: 'bronzeWarden', weight: 2, cap: 1 },
       { kind: 'gargoyle', weight: 2, cap: 1 },
@@ -106,6 +106,8 @@ describe('the tiers (#38)', () => {
       { kind: 'bellNovice', weight: 3, cap: 2 },
       { kind: 'matinsRinger', weight: 1, cap: 1, neverAlone: true },
       { kind: 'clockJack', weight: 2, cap: 1 },
+      { kind: 'bronzeRam', weight: 2, cap: 1 },
+      { kind: 'bellClapper', weight: 2, cap: 1 },
     ]);
   });
 

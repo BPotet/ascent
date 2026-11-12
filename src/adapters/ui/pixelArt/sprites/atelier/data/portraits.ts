@@ -1595,6 +1595,8 @@ export const PORTRAITS: Readonly<Record<HeroKind | EnemyKind, AssetImage | null>
   // La Mère-ronce et le Bedeau (#259).
   brambleMother: BRAMBLE_MOTHER_PORTRAIT,
   beadle: BEADLE_PORTRAIT,
+  bronzeRam: BRONZE_RAM_PORTRAIT,
+  bellClapper: BELL_CLAPPER_PORTRAIT,
 };
 
 export const PHASE_2_PORTRAITS: Readonly<Partial<Record<EnemyKind, AssetImage>>> = {

@@ -1057,6 +1057,79 @@ describe('BattleLog', () => {
     expect(exhumations.filter((effect) => effect.type === 'enemyExhumed')).toHaveLength(2);
   });
 
+  it('notes the Charge as the action charge of the Bronze ram, with its effect (#266)', () => {
+    const charge: Intent = { category: 'charge' };
+    const log = logged(
+      [roundStarted(START, 2, [charge])],
+      [
+        { type: 'stepInStarted', at: START + 100, enemy: 0, until: START + 500 },
+        { type: 'chargeStarted', at: START + 500, enemy: 0 },
+      ],
+    );
+
+    expect(firstRound(log).intents[0]).toEqual(charge);
+    expect(actionOf(log, 0)).toMatchObject({
+      kind: 'charge',
+      t: 100,
+      effects: [{ type: 'chargeStarted', t: 500, enemy: 0 }],
+    });
+  });
+
+  it('notes a broken Charge as an effect, and the charged Ram blow on its attack (#266)', () => {
+    const log = logged(
+      [roundStarted(START, 2)],
+      [
+        { type: 'guardBroken', at: START + 100, enemy: 0, by: 'strike' },
+        { type: 'chargeBroken', at: START + 100, enemy: 0 },
+      ],
+      [
+        { type: 'stepInStarted', at: START + 1_000, enemy: 1, until: START + 1_400 },
+        {
+          type: 'windUpStarted',
+          at: START + 1_400,
+          enemy: 1,
+          attack: 'delayed',
+          impacts: [START + 3_100],
+          feintAt: null,
+          charged: true,
+        },
+      ],
+    );
+
+    expect(firstRound(log).effects).toEqual([
+      { type: 'guardBroken', t: 100, enemy: 0, by: 'strike' },
+      { type: 'chargeBroken', t: 100, enemy: 0 },
+    ]);
+    expect(actionOf(log, 1).attack).toEqual({
+      attack: 'delayed',
+      impactOffsets: [1_700],
+      feintOffset: null,
+      charged: true,
+    });
+  });
+
+  it('notes no charged flag on an ordinary attack, keeping the log of today (#266)', () => {
+    const log = logged(
+      [roundStarted(START, 2)],
+      [
+        {
+          type: 'windUpStarted',
+          at: START + 400,
+          enemy: 0,
+          attack: 'sweep',
+          impacts: [START + 1_700],
+          feintAt: null,
+        },
+      ],
+    );
+
+    expect(actionOf(log, 0).attack).toEqual({
+      attack: 'sweep',
+      impactOffsets: [1_300],
+      feintOffset: null,
+    });
+  });
+
   it('changes nothing without an event, and never changes the log it is given', () => {
     const log = logged([roundStarted(START, 1)]);
     const copy = JSON.parse(JSON.stringify(log)) as BattleLog;

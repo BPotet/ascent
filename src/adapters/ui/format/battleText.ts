@@ -66,6 +66,8 @@ export const ENEMY_NAMES: Readonly<Record<EnemyKind, string>> = {
   // La Mère-ronce et le Bedeau (#259), sans article comme les autres ennemis du palier.
   brambleMother: 'Mère-ronce',
   beadle: 'Bedeau',
+  bronzeRam: 'Bélier de bronze',
+  bellClapper: 'Battant de cloche',
 };
 
 /** Le genre du nom de l'ennemi, pour « étourdie », « tombée »… */
@@ -101,6 +103,8 @@ const FEMININE: Readonly<Record<EnemyKind, boolean>> = {
   gravedigger: false,
   brambleMother: true,
   beadle: false,
+  bronzeRam: false,
+  bellClapper: false,
 };
 
 export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {
@@ -355,6 +359,9 @@ export function intentSpeech(kind: EnemyKind, intent: ShownIntent): string {
       return 'intention : relever un allié';
     case 'exhume':
       return 'intention : exhumer';
+    // La Charge (#266, maquette § 5) : « intention Charge », puis « Attaque » au Coup de bélier.
+    case 'charge':
+      return intent.notches === 1 ? 'intention : charge' : 'intention : attaque';
     case 'skip':
       return `${agreed(kind, SKIP_REASONS[intent.reason])}, n'agit pas`;
   }

@@ -32,7 +32,7 @@ Fonctionnalité: Élite escortée
   @domain
   Scénario: Au palier 3, une escorte de 2 ennemis, jamais un soutien
     Étant donné le héros au palier 3 dans un combat d'Élite
-    Alors 2 ennemis d'escorte sont tirés de gauche à droite parmi le Veilleur d'airain, la Gargouille, le Fondeur de cloches, le Novice des cloches et le Jaquemart
+    Alors 2 ennemis d'escorte sont tirés de gauche à droite parmi le Veilleur d'airain, la Gargouille, le Fondeur de cloches, le Novice des cloches, le Jaquemart, le Bélier de bronze et le Battant de cloche
     Et l'escorte ne contient jamais la Sonneuse de matines, la Glaneuse de cendre ni le Nécromancien
     Et l'escorte ne contient jamais plus de 2 Phalénides ni plus de 2 Novices des cloches
     Et le combat n'a ni réserve ni renfort
