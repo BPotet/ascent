@@ -43,6 +43,8 @@ export const BATTLE_SOUND_FILES: Readonly<Record<BattleSoundCue, number>> = {
   sweepDrone: require('./assets/sweep-drone.wav'),
   chargeScrape: require('./assets/charge-scrape.wav'),
   chargeBroken: require('./assets/charge-broken.wav'),
+  candleSnuff: require('./assets/candle-snuff.wav'),
+  ratSqueak: require('./assets/rat-squeak.wav'),
 };
 
 /** La latence attendue est la médiane des 20 dernières mesures, dès qu'il y en a 5. */
