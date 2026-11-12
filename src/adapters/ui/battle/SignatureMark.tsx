@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import type { EliteSignature } from '../../../domain/battle/combatants';
+import type { EnemySignature } from '../../../domain/battle/combatants';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { textFont } from '../pixelArt/pixelTypography';
 import type { SignatureView } from '../state/battleView';
@@ -8,7 +8,7 @@ import { battleColors } from '../theme/battleColors';
 
 /** Les teintes de chaque mécanique (maquette 245) : l'os, la ronce, l'acier. */
 const TINTS: Readonly<
-  Record<EliteSignature, { readonly line: string; readonly fill: string; readonly ink: string }>
+  Record<EnemySignature, { readonly line: string; readonly fill: string; readonly ink: string }>
 > = {
   exhume: {
     line: battleColors.grave,
@@ -28,7 +28,7 @@ const TINTS: Readonly<
 };
 
 /** Le glyphe d'une marque allumée : l'os clair, le vert ronce, l'acier (maquette 245, `sigTag`). */
-const GLYPH_TINTS: Readonly<Record<EliteSignature, string>> = {
+const GLYPH_TINTS: Readonly<Record<EnemySignature, string>> = {
   exhume: battleColors.onGrave,
   thorns: battleColors.thornLight,
   sanctuary: battleColors.ward,

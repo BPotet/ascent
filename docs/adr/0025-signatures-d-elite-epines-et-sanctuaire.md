@@ -23,7 +23,7 @@ la garde devient l'objectif de ces combats.
    Thorns` (`{ damage: 2 }`) et `EnemyProfile.sanctuary?: Sanctuary` (`{ damagePercent: 50 }`),
    recopiés de la fiche comme `selfRevive` ou `exhume`. Ils ne sont jamais multipliés (ni palier, ni
    Élite, ni malédiction). Les ennemis d'escorte sont d'autres types : ils n'ont pas de signature,
-   sans aucun code d'escorte. `eliteSignature` rend `'thorns'` ou `'sanctuary'`.
+   sans aucun code d'escorte. `enemySignature` rend `'thorns'` ou `'sanctuary'`.
 2. **Aucun état nouveau, aucune migration.** Épines et Sanctuaire se déduisent de l'état de
    l'ennemi **lu avant le coup** (`stun`, `guard`) : aucun champ dans `EnemyState`, `Battle` ou la
    phase de frappe ; `SAVE_VERSION` reste 1.

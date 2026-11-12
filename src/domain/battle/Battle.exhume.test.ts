@@ -14,7 +14,7 @@ import {
   type EnemyState,
 } from './Battle';
 import type { BattleEvent } from './BattleEvent';
-import { ENEMIES, ENEMY_INITIATIVE, eliteSignature } from './combatants';
+import { ENEMIES, ENEMY_INITIATIVE, enemySignature } from './combatants';
 import { exhumeMark } from './exhume';
 import type { HeroModifiers } from './heroModifiers';
 import { NO_MODIFIERS } from './heroModifiers';
@@ -126,9 +126,9 @@ describe('the Gravedigger, an Elite of tier 1 (#258)', () => {
   });
 
   it('has the Exhume signature, which no other Elite of tier 1 has', () => {
-    expect(eliteSignature('gravedigger')).toBe('exhume');
-    expect(eliteSignature('fallenKnight')).toBeNull();
-    expect(eliteSignature('skeleton')).toBeNull();
+    expect(enemySignature('gravedigger')).toBe('exhume');
+    expect(enemySignature('fallenKnight')).toBeNull();
+    expect(enemySignature('skeleton')).toBeNull();
   });
 
   it('fights alone at the Elite multiplier of tier 1: 120 HP and guard 50', () => {

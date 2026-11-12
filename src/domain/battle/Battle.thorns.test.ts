@@ -18,7 +18,7 @@ import {
   type HeroAction,
 } from './Battle';
 import type { BattleEvent } from './BattleEvent';
-import { ENEMIES, ENEMY_INITIATIVE, eliteSignature, type EnemyKind } from './combatants';
+import { ENEMIES, ENEMY_INITIATIVE, enemySignature, type EnemyKind } from './combatants';
 import { NO_MODIFIERS } from './heroModifiers';
 import { scaleByPercent } from './tierMultiplier';
 
@@ -110,8 +110,8 @@ describe('the Bramble mother, an Elite of tier 2 (#259)', () => {
   });
 
   it('has the Thorns signature', () => {
-    expect(eliteSignature('brambleMother')).toBe('thorns');
-    expect(eliteSignature('ashBramble')).toBeNull();
+    expect(enemySignature('brambleMother')).toBe('thorns');
+    expect(enemySignature('ashBramble')).toBeNull();
   });
 
   it('fights at the Elite multiplier of tier 2: 136 HP and guard 63', () => {

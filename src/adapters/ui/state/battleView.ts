@@ -14,8 +14,8 @@ import {
 import type { PhaseDirection } from '../../../domain/battle/BattleEvent';
 import {
   ENEMIES,
-  eliteSignature,
-  type EliteSignature,
+  enemySignature,
+  type EnemySignature,
   type EnemyKind,
   type HeroKind,
 } from '../../../domain/battle/combatants';
@@ -93,7 +93,7 @@ export interface TrackEntry {
  * soulignée (`now`). #259 y ajoute les Épines et le Sanctuaire.
  */
 export interface SignatureView {
-  readonly variant: EliteSignature;
+  readonly variant: EnemySignature;
   readonly glyph: IconName;
   readonly text: string;
   readonly speech: string;
@@ -318,7 +318,7 @@ export function actionTrackView(battle: Battle): ActionTrackView {
  * Mère-ronce non étourdie, le Sanctuaire du Bedeau tant que sa garde tient.
  */
 function signatureLine(target: EnemyState): string {
-  switch (eliteSignature(target.kind)) {
+  switch (enemySignature(target.kind)) {
     case 'thorns':
       return thornsActive(target)
         ? ` · Épines : −${ENEMIES[target.kind].thorns!.damage} PV par frappe`
@@ -335,7 +335,7 @@ function targetLine(battle: Battle): ZoneLine | null {
   if (target === undefined) return null;
   // Une Élite qui exhume (#258, F2, F5) : la ligne dit comment l'en empêcher, ou pourquoi elle
   // n'exhume pas, lu dans `exhumeMark`.
-  const exhumer = battle.enemies.findIndex((enemy) => eliteSignature(enemy.kind) === 'exhume');
+  const exhumer = battle.enemies.findIndex((enemy) => enemySignature(enemy.kind) === 'exhume');
   const mark = exhumer < 0 ? null : exhumeMark(battle, exhumer);
   const exhume =
     mark === null
@@ -371,7 +371,7 @@ const EXHUME_GLYPHS: Readonly<Record<ExhumeMark['state'], IconName>> = {
 function signatureMark(
   battle: Battle,
   index: number,
-  variant: EliteSignature,
+  variant: EnemySignature,
 ): SignatureMarkState | null {
   const enemy = battle.enemies[index]!;
   if (variant === 'exhume') return exhumeMark(battle, index);
@@ -396,7 +396,7 @@ function signatureGlyph(mark: SignatureMarkState): IconName {
 /** La marque de signature de l'ennemi `index`, lue dans le domaine ; `null` sans signature. */
 function signatureView(battle: Battle, index: number): SignatureView | null {
   const { kind } = battle.enemies[index]!;
-  const variant = eliteSignature(kind);
+  const variant = enemySignature(kind);
   const mark = variant === null ? null : signatureMark(battle, index, variant);
   if (variant === null || mark === null) return null;
   const off = 'off' in mark ? mark.off : mark.state === 'lost' || mark.state === 'standing';

@@ -11,7 +11,7 @@ import type { Actor } from '../../../domain/battle/actionOrder';
 import {
   ENEMIES,
   HEROES,
-  eliteSignature,
+  enemySignature,
   startingInitiative,
   type Armor,
   type EnemyKind,
@@ -483,7 +483,7 @@ export function feedbackText(event: BattleEvent, battle?: Battle): FeedbackText 
     // Le Sanctuaire revient avec la garde du Bedeau (#259, B5).
     case 'guardRestored': {
       const kind = battle?.enemies[event.enemy]?.kind;
-      return kind !== undefined && eliteSignature(kind) === 'sanctuary'
+      return kind !== undefined && enemySignature(kind) === 'sanctuary'
         ? { tone: 'ward', title: 'Sanctuaire', sub: 'Sa garde est revenue' }
         : null;
     }
@@ -514,7 +514,7 @@ function brokenText(battle: Battle, enemy: number): FeedbackText {
   if (broken.intent?.category === 'exhume') {
     return { ...BREAK, sub: 'Action perdue · pas d’exhumation' };
   }
-  switch (eliteSignature(broken.kind)) {
+  switch (enemySignature(broken.kind)) {
     case 'thorns':
       return {
         ...BREAK,
@@ -707,7 +707,7 @@ function halfSpeech(event: { readonly sanctuary?: true }): string {
 function brokenSpeech(battle: Battle, enemy: number): string {
   const broken = battle.enemies[enemy]!;
   if (broken.intent?.category === 'exhume') return ' : pas d’exhumation cette manche';
-  switch (eliteSignature(broken.kind)) {
+  switch (enemySignature(broken.kind)) {
     case 'thorns':
       return ` : ses épines sont sans effet`;
     case 'sanctuary':
@@ -770,7 +770,7 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
     case 'guardRestored': {
       // Le Sanctuaire revient avec la garde (#259, B5).
       const back =
-        eliteSignature(kind(event.enemy)) === 'sanctuary'
+        enemySignature(kind(event.enemy)) === 'sanctuary'
           ? `. ${theName(kind(event.enemy))} est de nouveau sous Sanctuaire`
           : '';
       return `${name(event.enemy)}, retour en garde${back}`;

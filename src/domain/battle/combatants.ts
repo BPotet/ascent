@@ -676,9 +676,9 @@ export const ENEMY_INITIATIVE: Readonly<Record<EnemyKind, number>> = {
  * bulle de première rencontre ; `null` pour un ennemi qui n'en a pas. Exhumer pour le Fossoyeur,
  * les Épines pour la Mère-ronce, le Sanctuaire pour le Bedeau (#259).
  */
-export type EliteSignature = 'exhume' | 'thorns' | 'sanctuary';
+export type EnemySignature = 'exhume' | 'thorns' | 'sanctuary';
 
-export function eliteSignature(kind: EnemyKind): EliteSignature | null {
+export function enemySignature(kind: EnemyKind): EnemySignature | null {
   const { exhume, thorns, sanctuary } = ENEMIES[kind];
   if (exhume !== undefined) return 'exhume';
   if (thorns !== undefined) return 'thorns';

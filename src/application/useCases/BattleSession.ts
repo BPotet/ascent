@@ -13,7 +13,7 @@ import {
   type HeroAction,
 } from '../../domain/battle/Battle';
 import type { BattleEvent, DefenseButton } from '../../domain/battle/BattleEvent';
-import { eliteSignature, type EnemyKind } from '../../domain/battle/combatants';
+import { enemySignature, type EnemyKind } from '../../domain/battle/combatants';
 import { glintsOf } from '../../domain/battle/glints';
 import type { BattleClock } from '../ports/BattleClock';
 import type { BattleHaptics } from '../ports/BattleHaptics';
@@ -242,7 +242,7 @@ export class BattleSession {
 
   /** L'Élite à signature du combat dont la bulle n'a pas encore été vue ; illisible, aucune. */
   private async encounterOf(battle: Battle): Promise<EnemyKind | null> {
-    const elite = battle.enemies.find((enemy) => eliteSignature(enemy.kind) !== null);
+    const elite = battle.enemies.find((enemy) => enemySignature(enemy.kind) !== null);
     if (elite === undefined) return null;
     const unseen = await this.read(
       (dependencies) => getEncounterHint(dependencies, elite.kind),

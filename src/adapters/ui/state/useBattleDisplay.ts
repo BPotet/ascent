@@ -13,7 +13,7 @@ import {
 import type { BattleSession, BattleSnapshot } from '../../../application/useCases/BattleSession';
 import type { Battle } from '../../../domain/battle/Battle';
 import type { BattleEvent, BlowOutcome } from '../../../domain/battle/BattleEvent';
-import { eliteSignature } from '../../../domain/battle/combatants';
+import { enemySignature } from '../../../domain/battle/combatants';
 import type { BurnRing } from '../battle/BurnChip';
 import type { HeroPose, SceneBurn, SceneSpark } from '../battle/sceneTypes';
 import {
@@ -200,7 +200,7 @@ function signaturesAfter(display: BattleDisplay, snapshot: BattleSnapshot): Batt
     if (
       event.type === 'guardBroken' &&
       kind !== undefined &&
-      eliteSignature(kind) === 'sanctuary'
+      enemySignature(kind) === 'sanctuary'
     ) {
       shown = {
         ...shown,
