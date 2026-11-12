@@ -37,7 +37,10 @@ annule avant la préparation de son Coup de bélier (CH1 à CH6, décisions du p
    - `ChargeIntent { category: 'charge' }` rejoint `Intent`. `drawIntent` reçoit
      `IntentContext.charging` ; les 3 tirages sont toujours consommés, dans le même ordre. Sans
      `charging`, un coup tiré avec `charge` par un ennemi non étourdi donne la Charge (CH1) ; un
-     ennemi étourdi garde l'intention d'attaque, qu'il perdra. Avec `charging`, le tirage du coup
+     ennemi étourdi garde l'intention d'attaque, mais il n'agit pas de la manche : relevé par
+     `endHeroAction` avant son tour, un ennemi à Charge perd son intention (`intent: null`), et
+     `enemyTurn` passe un ennemi sans intention. Son Coup de bélier ne part jamais sans Charge ; les
+     autres ennemis étourdis ne changent pas. Avec `charging`, le tirage du coup
      est ignoré : le coup est celui qui a `charge`, préparation et dégâts calculés comme d'habitude
      (CH3).
    - L'action (CH2) passe par `startSupport`, comme l'Exhumation : un `SupportStep` de 400 ms,

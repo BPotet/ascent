@@ -942,8 +942,10 @@ function heroTurn(battle: Battle, events: Events, at: number): Battle {
 }
 
 function enemyTurn(battle: Battle, events: Events, enemy: number, at: number): Battle {
-  const { stun } = battle.enemies[enemy]!;
+  const { stun, intent } = battle.enemies[enemy]!;
   if (stun !== null) return stunTurn(battle, events, enemy, stun, at);
+  // Un ennemi à Charge relevé dans une manche commencée étourdi n'y agit pas (#266, CH1).
+  if (intent === null) return nextTurn(battle, events, at);
   if (battle.lastPlayed === 'enemy') return startStepIn(battle, events, enemy, at);
   if (battle.defenseHintPending) {
     events.push({ type: 'defenseHintShown', at });
@@ -963,6 +965,11 @@ function withEnemy(battle: Battle, index: number, enemy: EnemyState): Battle {
 function withoutCharge(enemy: EnemyState): EnemyState {
   const { charge: _, ...rest } = enemy;
   return rest;
+}
+
+/** Un ennemi qui a un coup à Charge (#266) : le Bélier de bronze. */
+function chargesOf(kind: EnemyKind): boolean {
+  return ENEMIES[kind].moves.some(({ charge }) => charge === true);
 }
 
 /** Le retour en garde (C5.5) : une Charge brisée (#266) est perdue et repart de zéro. */
@@ -1067,6 +1074,9 @@ function endHeroAction(battle: Battle, events: Events): Battle {
     return {
       ...restoredEnemy(enemy, heroModifiers(battle).guardRestorePercent ?? 100),
       guardRestore: { since: at, until },
+      // Un ennemi à Charge étourdi au début de la manche n'en agit pas, même sa garde revenue :
+      // son Coup de bélier ne part jamais sans Charge (#266, CH1).
+      ...(chargesOf(enemy.kind) && { intent: null }),
     };
   });
   const restored = { ...battle, enemies };

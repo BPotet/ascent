@@ -325,6 +325,31 @@ describe('a Bronze ram stunned at the start of the round (CH1)', () => {
     expect(round2.some((intent) => intent.category === 'charge')).toBe(false);
     expect(round2).toContainEqual(expect.objectContaining({ attack: 'delayed' }));
   });
+
+  it('never lands a Ram blow without a Charge in that round, even once its guard is back (seed 1)', () => {
+    const { events } = runUntil(ramBattle({ guard: 1 }, { seed: 1 }), roundStarted(3));
+    const from = events.findIndex((event) => event.type === 'roundStarted' && event.round === 2);
+    const to = events.findIndex((event) => event.type === 'roundStarted' && event.round === 3);
+    const round2 = events.slice(from, to);
+
+    expect((events[from] as Event<'roundStarted'>).intents[0]).toMatchObject({ attack: 'delayed' });
+    expect(round2).toContainEqual(expect.objectContaining({ type: 'guardRestored', enemy: 0 }));
+    expect(windUpsOf(round2)).toEqual([]);
+  });
+
+  it('never acts in that round, whatever its draw, on 60 seeds', () => {
+    for (let seed = 0; seed < 60; seed += 1) {
+      const { events } = runUntil(ramBattle({ guard: 1 }, { seed }), roundStarted(3));
+      const from = events.findIndex((event) => event.type === 'roundStarted' && event.round === 2);
+      const to = events.findIndex((event) => event.type === 'roundStarted' && event.round === 3);
+      const round2 = events.slice(from, to);
+      expect([seed, windUpsOf(round2)]).toEqual([seed, []]);
+      expect([seed, typesOf(round2)]).not.toContainEqual([
+        seed,
+        expect.arrayContaining(['chargeStarted']),
+      ]);
+    }
+  });
 });
 
 describe('the Charge is saved with the battle', () => {

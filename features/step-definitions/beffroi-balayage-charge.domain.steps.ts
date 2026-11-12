@@ -398,15 +398,24 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(/^il n'agit pas de la manche et ne commence aucune Charge$/u, () => {
+    let ramBlows = 0;
     for (let seed = 0; seed < 40; seed += 1) {
-      const { battle, events } = playUntil(ramBattle({ guard: 1 }, { seed }), roundStarted(2));
-      const round = events.find(
-        (event): event is Extract<BattleEvent, { type: 'roundStarted' }> =>
-          event.type === 'roundStarted' && event.round === 2,
-      )!;
-      expect(battle.enemies[0]!.stun).not.toBeNull();
+      const { events } = playUntil(ramBattle({ guard: 1 }, { seed }), roundStarted(3));
+      const from = events.findIndex((event) => event.type === 'roundStarted' && event.round === 2);
+      const to = events.findIndex((event) => event.type === 'roundStarted' && event.round === 3);
+      const round = events[from] as Extract<BattleEvent, { type: 'roundStarted' }>;
+      const inRound = events.slice(from, to);
+      // Étourdi au début de la manche 2 : sa garde revient pendant la manche, il n'agit pas.
+      expect(inRound).toContainEqual(expect.objectContaining({ type: 'guardRestored', enemy: 0 }));
       expect(round.intents[0]!.category).not.toBe('charge');
+      expect([seed, windUpsOf(inRound)]).toEqual([seed, []]);
+      expect(typesOf(inRound)).not.toContain('chargeStarted');
+      if (round.intents[0]!.category === 'attack' && round.intents[0]!.attack === 'delayed') {
+        ramBlows += 1;
+      }
     }
+    // Au moins une graine tire le Coup de bélier, étourdi.
+    expect(ramBlows).toBeGreaterThan(0);
   });
 
   and(/^ses 3 tirages sont quand même consommés$/u, () => {
