@@ -35,6 +35,8 @@ import { GRAVEDIGGER_ANIMATION } from '../atelier/data/gravedigger';
 import { BEADLE_ANIMATION } from '../atelier/data/beadle';
 import { BELL_CLAPPER_ANIMATION } from '../atelier/data/bellClapper';
 import { BRONZE_RAM_ANIMATION } from '../atelier/data/bronzeRam';
+import { EMBER_POD_ANIMATION } from '../atelier/data/emberPod';
+import { THIEVING_MOTH_ANIMATION } from '../atelier/data/thievingMoth';
 import { BRAMBLE_MOTHER_ANIMATION } from '../atelier/data/brambleMother';
 import { MATINS_RINGER_ANIMATION } from '../atelier/data/matinsRinger';
 import { animationSprite, type ExtraFrame, type FullAnimation } from '../atelier/fullAnimation';
@@ -102,6 +104,9 @@ export const EXTRA_FRAMES: readonly ExtraFrame[] = [
   'charge0',
   'charge1',
   'chargeBroken',
+  'burst',
+  'smothered',
+  'steal',
 ];
 
 export const ENEMY_FRAMES: readonly EnemyFrame[] = [
@@ -247,6 +252,9 @@ const FULL_ANIMATIONS = {
   // Le Bélier de bronze et le Battant de cloche (#266).
   bronzeRam: BRONZE_RAM_ANIMATION,
   bellClapper: BELL_CLAPPER_ANIMATION,
+  // La Cosse de braise et la Phalène voleuse (#267).
+  emberPod: EMBER_POD_ANIMATION,
+  thievingMoth: THIEVING_MOTH_ANIMATION,
 } satisfies Record<EnemyKind, FullAnimation<EnemyFrame>>;
 
 /** Les ennemis animés (`ANIMATED_ENEMIES`) : les clés du registre des animations complètes. */

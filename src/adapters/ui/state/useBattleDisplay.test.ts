@@ -67,6 +67,9 @@ describe('displayOf (display state of the battle screen)', () => {
       heldThorns: null,
       sanctuary: { spark: null, broken: null },
       secondChance: null,
+      podFalls: {},
+      emberFlames: null,
+      theft: null,
     });
   });
 

@@ -60,6 +60,18 @@ const NONE: BattleFeedback = { sound: null, haptic: null };
  */
 export const CHARGE_BROKEN_AFTER_BREAK_MS = 100;
 
+/**
+ * L'Éclatement (ou la fumée) de la Cosse de braise, 200 ms après sa chute (#267, maquette J7) : le
+ * chiffre de dégâts d'abord, puis l'éclat, le mot de scène et les flammes.
+ */
+export const EMBER_BURST_AFTER_FALL_MS = 200;
+
+/**
+ * Le Vol d'Élan se montre 300 ms après l'impact (#267, maquette J2) : le losange quitte la barre
+ * d'Élan et file en arc vers la Phalène voleuse, avec son son.
+ */
+export const MOMENTUM_STEAL_AFTER_IMPACT_MS = 300;
+
 const BLOW_FEEDBACK: Readonly<Record<BlowOutcome, BattleFeedback>> = {
   perfectParry: { sound: 'perfectParry', haptic: 'perfectParry' },
   parry: { sound: 'parry', haptic: null },
@@ -126,8 +138,17 @@ export function feedbackFor(event: BattleEvent): BattleFeedback {
     // La Brûlure (#171), sans vibration : le souffle de flamme par-dessus le touché ou la parade,
     // même à 5 charges ; le crépitement à chaque début de manche, plancher de 1 PV compris (B7) ;
     // l'extinction, différée. Rien quand les flammes s'éteignent ensemble à la fin du combat.
+    // L'Éclatement de la Cosse de braise (#267) : un claquement sec après sa chute, au lieu du
+    // souffle de flamme d'un impact, même à 5 charges ; étouffée, un souffle qui s'éteint.
     case 'heroBurning':
-      return { sound: 'flameBreath', haptic: null };
+      return event.cause === 'emberBurst'
+        ? { sound: 'emberBurst', haptic: null, delayMs: EMBER_BURST_AFTER_FALL_MS }
+        : { sound: 'flameBreath', haptic: null };
+    case 'emberBurstSmothered':
+      return { sound: 'emberSmother', haptic: null, delayMs: EMBER_BURST_AFTER_FALL_MS };
+    // Le Vol d'Élan (#267) : battement d'ailes et tintement, quand le losange quitte la barre.
+    case 'momentumStolen':
+      return { sound: 'momentumSteal', haptic: null, delayMs: MOMENTUM_STEAL_AFTER_IMPACT_MS };
     case 'burnTicked':
       return { sound: 'burnCrackle', haptic: null };
     case 'burnExtinguished':

@@ -1278,4 +1278,90 @@ describe('BattleLog', () => {
         : 'lost',
     );
   });
+
+  it('notes the Burst of a pod felled by a strike as an effect of the hero action (#267)', () => {
+    const log = logged(
+      [roundStarted(START, 1)],
+      [{ type: 'strikeStarted', at: START + 100, enemy: 0, impactAt: START + 600, until: 0 }],
+      [
+        { type: 'enemyDefeated', at: START + 600, enemy: 0 },
+        {
+          type: 'heroBurning',
+          at: START + 600,
+          added: 2,
+          stacks: 3,
+          cause: 'emberBurst',
+          enemy: 0,
+        },
+        { type: 'enemyDefeated', at: START + 600, enemy: 1 },
+        { type: 'emberBurstSmothered', at: START + 600, enemy: 1 },
+      ],
+    );
+
+    expect(actionOf(log, 'hero').effects).toEqual([
+      { type: 'enemyDefeated', t: 600, enemy: 0 },
+      { type: 'heroBurning', t: 600, added: 2, stacks: 3, cause: 'emberBurst', enemy: 0 },
+      { type: 'enemyDefeated', t: 600, enemy: 1 },
+      { type: 'emberBurstSmothered', t: 600, enemy: 1 },
+    ]);
+  });
+
+  it('notes the Burst of a pod felled by a counter-attack in the action of the pod (#267)', () => {
+    const log = logged(
+      [roundStarted(START, 1)],
+      [{ type: 'stepInStarted', at: START + 100, enemy: 0, until: START + 500 }],
+      [
+        {
+          type: 'counterAttacked',
+          at: START + 1_100,
+          enemy: 0,
+          damage: 5,
+          guardDamage: 3,
+          until: START + 1_500,
+        },
+        { type: 'enemyDefeated', at: START + 1_100, enemy: 0 },
+        {
+          type: 'heroBurning',
+          at: START + 1_100,
+          added: 2,
+          stacks: 2,
+          cause: 'emberBurst',
+          enemy: 0,
+        },
+      ],
+    );
+
+    expect(actionOf(log, 0).effects).toEqual([
+      { type: 'counterAttacked', t: 1_100, enemy: 0, damage: 5, guardDamage: 3 },
+      { type: 'enemyDefeated', t: 1_100, enemy: 0 },
+      { type: 'heroBurning', t: 1_100, added: 2, stacks: 2, cause: 'emberBurst', enemy: 0 },
+    ]);
+  });
+
+  it('notes the momentum stolen by the Thieving moth, summed on its stolen (#267)', () => {
+    const log = logged(
+      [roundStarted(START, 1)],
+      [{ type: 'stepInStarted', at: START + 100, enemy: 0, until: START + 500 }],
+      [
+        { type: 'momentumStolen', at: START + 1_400, enemy: 0, stolen: 1, momentum: 2 },
+        { type: 'momentumChanged', at: START + 1_400, momentum: 2 },
+        { type: 'momentumStolen', at: START + 1_820, enemy: 0, stolen: 1, momentum: 1 },
+        { type: 'momentumChanged', at: START + 1_820, momentum: 1 },
+      ],
+    );
+    const { effects } = actionOf(log, 0);
+
+    expect(effects).toEqual([
+      { type: 'momentumStolen', t: 1_400, enemy: 0, stolen: 1, momentum: 2 },
+      { type: 'momentumChanged', t: 1_400, momentum: 2 },
+      { type: 'momentumStolen', t: 1_820, enemy: 0, stolen: 1, momentum: 1 },
+      { type: 'momentumChanged', t: 1_820, momentum: 1 },
+    ]);
+    expect(
+      effects.reduce(
+        (sum, effect) => sum + (effect.type === 'momentumStolen' ? effect.stolen : 0),
+        0,
+      ),
+    ).toBe(2);
+  });
 });

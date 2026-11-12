@@ -27,6 +27,8 @@ describe('provisional battle sounds', () => {
       'charge-scrape.wav',
       'defeat.wav',
       'dodge.wav',
+      'ember-burst.wav',
+      'ember-smother.wav',
       'enemy-phase.wav',
       'flame-breath.wav',
       'glint-double.wav',
@@ -40,6 +42,7 @@ describe('provisional battle sounds', () => {
       'hero-phase.wav',
       'hit.wav',
       'lost-action.wav',
+      'momentum-steal.wav',
       'parry.wav',
       'perfect-parry.wav',
       'perfect-strike.wav',
@@ -169,6 +172,46 @@ describe('provisional battle sounds', () => {
       gong.some(([frequency]) => frequency < 200),
       'a low gong',
     );
+  });
+
+  it('makes the Burst of the Ember pod a dry crack, short, louder than the flame breath (#267)', () => {
+    const notes = CUES['ember-burst'];
+    const loudest = (cue) => Math.max(...cue.map(([, , , volume]) => volume));
+    assert.ok(lasts(notes) <= 0.3);
+    assert.ok(notes[0][1] <= 0.06, 'a dry attack');
+    assert.ok(loudest(notes) > loudest(CUES['flame-breath']));
+  });
+
+  it('makes a smothered pod a breath that goes out: soft, sliding down, without a crack (#267)', () => {
+    const notes = CUES['ember-smother'];
+    assert.ok(lasts(notes) <= 0.6);
+    assert.ok(
+      notes.every(([, , wave]) => wave !== 'square'),
+      'no crack',
+    );
+    assert.ok(
+      notes.every(([, , , volume]) => volume <= 0.06),
+      'soft',
+    );
+    assert.ok(
+      notes.every(([from, , , , , to]) => to !== undefined && to < from),
+      'it goes out',
+    );
+  });
+
+  it('makes the theft a beat of wings, then a chime that moves away (#267)', () => {
+    const notes = CUES['momentum-steal'];
+    const wings = notes.filter(([frequency]) => frequency < 1_000);
+    const chime = notes.filter(([frequency]) => frequency >= 1_000);
+    assert.ok(wings.length >= 2, 'a beat of wings');
+    assert.ok(chime.length >= 1, 'a chime');
+    const [first] = chime;
+    assert.ok(first[4] > Math.min(...wings.map(([, , , , at]) => at)), 'after the wings');
+    assert.ok(
+      chime.every(([, , , volume]) => volume <= chime[0][3]),
+      'it moves away',
+    );
+    assert.ok(lasts(notes) <= 0.6);
   });
 
   it('slides a note to its last frequency (exponential ramp)', () => {

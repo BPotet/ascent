@@ -98,6 +98,8 @@ import { burnAtRoundStart, burnOnBlow } from './burn';
 import { freeSlots, summonedKind, type PendingSummon } from './summon';
 import { cappedParryHeal } from './parryHeal';
 import { thornsActive, thornsLoss } from './thorns';
+import { emberBurstOnFall } from './emberBurst';
+import { stolenMomentum } from './momentumTheft';
 import { NO_TIER_MULTIPLIER, scaleByPercent, type TierMultiplier } from './tierMultiplier';
 
 /** Les intentions jouées sans coup, par `startSupport` : Garde, Relever, Exhumer et Charge (#266). */
@@ -1299,10 +1301,11 @@ function resolveBlow(
     hp: heroHp,
     bulwark: battle.hero.bulwark && !worn,
   };
+  const touched = burnOn(bleedOn(hero, step, blow.outcome, events, blow.at), step, blow, events);
   const resolved = withStep(
     {
       ...battle,
-      hero: burnOn(bleedOn(hero, step, blow.outcome, events, blow.at), step, blow, events),
+      hero: momentumStolenFrom(touched, battle.enemies[step.enemy]!, step.enemy, blow, events),
     },
     {
       ...withImpact(step, blow.index, { outcome: blow.outcome }),
@@ -1377,6 +1380,26 @@ function burnOn(
 }
 
 /**
+ * Le Vol d'Élan d'un impact sur le héros encore debout (#267, D4) : après ses dégâts, le Rempart, la
+ * Brume, le Saignement et la Brûlure ; un impact qui le met à 0 PV ne vole rien.
+ */
+function momentumStolenFrom(
+  hero: HeroState,
+  thief: EnemyState,
+  enemy: number,
+  blow: { readonly outcome: BlowOutcome; readonly at: number },
+  events: Events,
+): HeroState {
+  if (hero.hp === 0) return hero;
+  const stolen = stolenMomentum(hero.momentum, blow.outcome, ENEMIES[thief.kind].momentumTheft);
+  if (stolen === 0) return hero;
+  const momentum = hero.momentum - stolen;
+  events.push({ type: 'momentumStolen', at: blow.at, enemy, stolen, momentum });
+  events.push({ type: 'momentumChanged', at: blow.at, momentum });
+  return { ...hero, momentum };
+}
+
+/**
  * Les dégâts subis par le héros : réduction des dégâts (plafonnée à 40 %), puis le Rempart et Brume
  * (#235) s'ils sont actifs ; un seul arrondi.
  */
@@ -1442,11 +1465,36 @@ function hitEnemy(
   }
   if (!hit.fallen) return { battle: damaged, broken: false };
   events.push({ type: 'enemyDefeated', at: context.at, enemy: index });
-  const settled = fallWithSummoner(damaged, events, index, context.at);
+  const settled = burstOnFall(
+    fallWithSummoner(damaged, events, index, context.at),
+    events,
+    before,
+    { at: context.at, enemy: index },
+  );
   const [next] = standingEnemies(settled);
   if (battle.target !== index || next === undefined) return { battle: settled, broken: false };
   events.push({ type: 'targetChanged', at: context.at, enemy: next });
   return { battle: { ...settled, target: next }, broken: false };
+}
+
+/**
+ * L'Éclatement de la Cosse de braise (#267, D2) : après sa chute, avant le changement de cible, lu
+ * sur l'ennemi d'avant le coup ; rien si sa chute gagne le combat.
+ */
+function burstOnFall(
+  battle: Battle,
+  events: Events,
+  before: EnemyState,
+  fall: { readonly at: number; readonly enemy: number },
+): Battle {
+  const burst = emberBurstOnFall(before, {
+    ...fall,
+    heroBurn: battle.hero.burn,
+    won: isWon(battle),
+  });
+  if (burst.events.length === 0) return battle;
+  events.push(...burst.events);
+  return { ...battle, hero: withBurn(battle.hero, burst.burn) };
 }
 
 /**

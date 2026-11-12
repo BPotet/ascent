@@ -199,3 +199,16 @@ rangement :
   `defense` d'une action dont `attack.attack` vaut `sweep`, par leur `judgement`, dont
   `sweepDodge`).
 - **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7).
+
+## Avenant du 12 novembre 2026 — l'Éclatement et le Vol d'Élan (#267, ADR 0028)
+
+- Les effets `emberBurstSmothered` et `momentumStolen` rejoignent `EFFECT_TYPES`. `heroBurning` y
+  est déjà ; il porte désormais, pour un Éclatement, `cause: 'emberBurst'` et `enemy`, recopiés tels
+  quels. Il peut tomber pendant l'action du héros : il est rangé dans l'action en cours (celle du
+  héros pour une frappe, celle de l'ennemi qui portait le coup pour une contre-attaque ou une
+  Riposte).
+- Les mesures du Game Designer se lisent là : Éclatements pris (`heroBurning` de cause
+  `emberBurst`), étouffés (`emberBurstSmothered`), en fin de combat (une Cosse dont l'`enemyDefeated`
+  est suivi de `battleEnded` sans `heroBurning` de cause `emberBurst`) ; Élan volé (la somme des
+  `stolen` de `momentumStolen`).
+- **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7).
