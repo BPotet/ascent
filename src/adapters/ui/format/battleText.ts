@@ -724,7 +724,7 @@ const WHIFF_TITLES: Readonly<Record<WhiffReason, string>> = {
   empty: 'Dans le vide',
 };
 
-function blowAnnouncement(outcome: BlowOutcome, damage: number): string {
+function blowAnnouncement(outcome: BlowOutcome, damage: number, over: boolean): string {
   switch (outcome) {
     case 'perfectParry':
       return 'Parade parfaite';
@@ -737,7 +737,8 @@ function blowAnnouncement(outcome: BlowOutcome, damage: number): string {
     case 'suffered':
       return `Touché, ${damages(damage)}`;
     case 'sweepDodge':
-      return `Balayage : l’esquive échoue, ${damages(damage)}. Déséquilibré`;
+      // Pas de déséquilibre quand le coup finit le combat (#266, SW3).
+      return `Balayage : l’esquive échoue, ${damages(damage)}${over ? '' : '. Déséquilibré'}`;
   }
 }
 
@@ -791,7 +792,7 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
     case 'chargeStarted':
       return `${theName(kind(event.enemy))} charge. Gros coup à la manche suivante`;
     case 'blowResolved':
-      return blowAnnouncement(event.outcome, event.damage);
+      return blowAnnouncement(event.outcome, event.damage, battle.phase.kind === 'over');
     case 'counterAttacked':
       return `${event.retaliation ? 'Représailles, contre-attaque' : 'Contre-attaque'}, ${damages(event.damage)}${halfSpeech(event)}`;
     // Le nom de l'ennemi est dit : la riposte ne vise pas forcément la cible choisie (#128).

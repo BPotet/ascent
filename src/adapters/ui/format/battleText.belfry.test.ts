@@ -91,6 +91,14 @@ describe('the Sweep (#266, A1 to A5)', () => {
     );
   });
 
+  it('says no off-balance when the dodge on a Sweep ends the battle', () => {
+    const over: Battle = { ...belfry(), phase: { kind: 'over', outcome: 'defeat', at: 0 } };
+
+    expect(announcement({ ...sweepDodge, heroHp: 0 } as BattleEvent, over)).toBe(
+      'Balayage : l’esquive échoue, 10 dégâts',
+    );
+  });
+
   it('reads its column with its mark, as an ordinary enemy, never an Elite', () => {
     const clapper = belfry().enemies[0]!;
 
