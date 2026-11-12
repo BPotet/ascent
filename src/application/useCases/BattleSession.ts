@@ -240,15 +240,22 @@ export class BattleSession {
     dismissEncounterHint(this.dependencies, enemy).catch(() => undefined);
   }
 
-  /** L'Élite à signature du combat dont la bulle n'a pas encore été vue ; illisible, aucune. */
+  /**
+   * Le premier ennemi à signature de la première ligne, de gauche à droite, dont la bulle n'a pas
+   * encore été vue (#266, D6) : une seule bulle par combat ; une préférence illisible, aucune. Un
+   * ennemi de la réserve n'est pas présenté dans ce combat.
+   */
   private async encounterOf(battle: Battle): Promise<EnemyKind | null> {
-    const elite = battle.enemies.find((enemy) => enemySignature(enemy.kind) !== null);
-    if (elite === undefined) return null;
-    const unseen = await this.read(
-      (dependencies) => getEncounterHint(dependencies, elite.kind),
-      false,
-    );
-    return unseen ? elite.kind : null;
+    const candidates = battle.enemies
+      .map(({ kind }) => kind)
+      .filter(
+        (kind, index, kinds) => enemySignature(kind) !== null && kinds.indexOf(kind) === index,
+      );
+    for (const kind of candidates) {
+      const unseen = await this.read((dependencies) => getEncounterHint(dependencies, kind), false);
+      if (unseen) return kind;
+    }
+    return null;
   }
 
   /** La bulle de première rencontre, après celle de la première ascension et celle des pouvoirs. */
@@ -368,7 +375,11 @@ export class BattleSession {
     this.cancelGlintTimer = clock.setTimer(at, () => {
       this.cancelGlintTimer = null;
       this.doneGlints.add(glintKey(step, index));
-      if (clock.now() - at <= GLINT_SOUND_LATE_MS) sound.play(GLINT_CUES[glint.kind]);
+      if (clock.now() - at <= GLINT_SOUND_LATE_MS) {
+        sound.play(GLINT_CUES[glint.kind]);
+        // La vibration longue et basse du Balayage, avec son reflet, même son coupé (#266).
+        if (glint.kind === 'sweep') this.dependencies.haptics.play('sweep');
+      }
       const current = this.snapshot?.battle;
       if (current !== undefined) this.scheduleGlint(current);
     });
