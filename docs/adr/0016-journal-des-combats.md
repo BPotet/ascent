@@ -186,3 +186,16 @@ rangement :
   recopie `strikeResolved` champ par champ) ; `counterAttacked` et `bulwarkCountered` sont des
   effets, recopiés tels quels avec lui. La mesure « coups réduits par le Sanctuaire » se lit là.
 - **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7).
+
+## Avenant du 12 novembre 2026 — le Balayage et la Charge (#266, ADR 0027)
+
+- `IntentRecord` accepte `ChargeIntent` ; `ActionKind` et `KIND_OF_INTENT` reçoivent `charge`
+  (l'action de Charge du Bélier de bronze).
+- Les effets `chargeStarted` et `chargeBroken` rejoignent `EFFECT_TYPES`. Le drapeau facultatif
+  `charged: true` est recopié de `windUpStarted` dans `ActionRecord.attack` ; absent, un coup
+  ordinaire.
+- Les mesures du Game Designer se lisent là : Charges commencées (`chargeStarted`), brisées
+  (`chargeBroken`), portées (`attack.charged`) ; Balayages parés, esquivés ou reçus (appuis
+  `defense` d'une action dont `attack.attack` vaut `sweep`, par leur `judgement`, dont
+  `sweepDodge`).
+- **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7).
