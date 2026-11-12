@@ -680,7 +680,7 @@ figcaption{margin-bottom:12px}
 <h2 class="pg" id="q">8 · Décisions (v2)</h2>
 <ol class="qs">
   <li><b>Bélier : la charge commence quand l'intention s'affiche.</b> Manche N, intention Charge ; le joueur a 2 phases du héros pour briser sa garde (A6, A8) ; le Coup de bélier est un coup retardé normal, parable et esquivable (A10, A11) ; une charge brisée est perdue, sans report (A9, A12).</li>
-  <li><b>Phalène : tout impact qui touche vole 1 Élan</b>, bonne parade comprise (J2b) ; seules la parade parfaite et l'esquive protègent (J3).</li>
+  <li><b>Phalène : tout impact qui touche vole 1 Élan</b>, bonne parade comprise (J2b) ; un impact qui met le héros à 0 PV ne vole rien ; seules la parade parfaite et l'esquive protègent (J3).</li>
   <li><b>Marque de signature et bulle de première rencontre</b> pour les 5 ennemis ordinaires à mécanique, pas pour le Rat de crypte.</li>
   <li><b>Aura : seule la chute du Porte-cierge l'éteint</b> ; étourdi, il brûle encore (C3, C4).</li>
   <li><b>Nuée : +2 dégâts par autre Rat de crypte</b> debout, non étourdi, en première ligne ; marque « Meute +N » et chiffre renforcé (C7 à C10).</li>
@@ -884,7 +884,7 @@ function sigTag(s){
     charge1:['charge now','ram',C.charge,'Charge 1/2',"charge, manche 1 sur 2 : brise sa garde pour l'annuler"],
     charge2:['charge now','ram',C.charge,'Charge 2/2',"charge, manche 2 sur 2 : gros coup à son tour, brise sa garde pour l'annuler"],
     chargeOff:['off','crack',C.muted,'Charge brisée','charge brisée : pas de gros coup'],
-    steal:['steal','diamond',C.gold,"Vole l'Élan","chaque impact qui te touche, même paré, te vole 1 Élan"],
+    steal:['steal','diamond',C.gold,"Vole l'Élan","vole 1 Élan à chaque impact qui te touche, bonne parade comprise ; parade parfaite ou esquive : rien n’est volé"],
     ember:['ember','flame',C.ember,'Braises 2',"à sa mort, 2 charges de Brûlure, sauf si elle est étourdie"],
     emberOff:['off','flame',C.muted,'<s>Braises 2</s>',"étourdie : pas de Brûlure à sa mort"],
     aura:['aura','candle',C.aura,'Aura +20 %',"aura : ses alliés font 20 % de dégâts en plus tant qu'il vit"],
@@ -1034,17 +1034,17 @@ const DIAM=G('diamond',C.gold,2.4);
 const STEAL1={x:118,y:118,fx:-70,fy:150,path:'path',len:110,ang:-52,c:C.gold,html:DIAM};
 S.J1=()=>battle({tier:2,round:1,floor:2,frise:FB,foes:[PH({sel:true,intent:'atk'}),RB({intent:'atk'}),CO({intent:'atk'})],
   hero:{hp:60,elan:3},zl:'Cible : <b>Phalène voleuse</b> · touche un ennemi pour changer',target:'Phalène voleuse',
-  hint:{t:'Phalène voleuse',g:'diamond',c:C.gold,p:'Chaque coup qui te touche te vole 1 Élan, même paré. Seules la parade parfaite et l’esquive le gardent.'}});
+  hint:{t:'Phalène voleuse',g:'diamond',c:C.gold,p:'Chaque impact qui te touche te vole 1 Élan, même une bonne parade. Seules la parade parfaite et l’esquive le protègent.'}});
 S.J2=()=>battle({tier:2,round:1,floor:2,phase:'enemy',frise:FBe,foes:[PH({intent:'atk',active:true,sel:true}),RB({intent:'atk',dim:true}),CO({intent:'atk',dim:true})],
   fly:[STEAL1,{x:132,y:96,fx:-80,fy:170,html:DIAM}],
   hero:{hp:52,prev:60,elan:1,lost:2,pose:'hit0',floats:[{t:'−4 −4',x:40},{t:'−2 Élan',c:'elan late',g:'diamond',x:96,y:-34}]},zl:'',
   sr:'Touché, 4 dégâts. La Phalène voleuse te vole 1 Élan, 2 sur 5. Touché, 4 dégâts. La Phalène voleuse te vole 1 Élan, 1 sur 5'});
 S.J2b=()=>battle({tier:2,round:2,floor:2,phase:'enemy',press:'parry',frise:FBe,foes:[PH({intent:'atk',active:true,sel:true}),RB({intent:'atk',dim:true}),CO({intent:'atk',dim:true})],
   fly:[STEAL1],
-  hero:{hp:58,prev:60,elan:2,lost:1,pose:'parry1',spark:'steel',floats:[{t:'−2',x:40},{t:'−1 Élan',c:'elan late',g:'diamond',x:96,y:-34}]},word:{t:'Parade',c:'small',sub:'Elle te touche : 1 Élan volé'},zl:'',
+  hero:{hp:58,prev:60,elan:2,lost:1,pose:'parry1',spark:'steel',floats:[{t:'−2',x:40},{t:'−1 Élan',c:'elan late',g:'diamond',x:96,y:-34}]},word:{t:'Parade',c:'small',sub:'Bonne parade : 1 Élan volé'},zl:'',
   sr:'Parade, 2 dégâts. La Phalène voleuse te vole 1 Élan, 2 sur 5'});
 S.J3=()=>battle({tier:2,round:1,floor:2,phase:'enemy',press:'parry',frise:FBe,foes:[PH({hp:[29,35],gd:[0,15],intent:'atk',active:true,sel:true,floats:[{t:'−6'}]}),RB({intent:'atk',dim:true}),CO({intent:'atk',dim:true})],
-  hero:{hp:60,elan:4,pose:'parry1',spark:'gold'},word:{t:'Parfait',sub:'Rien n’est volé · +1 Élan'},sr:'Parade parfaite. Contre-attaque, 6 dégâts'});
+  hero:{hp:60,elan:4,pose:'parry1',spark:'gold'},word:{t:'Parfait',sub:'Parade parfaite : rien n’est volé · +1 Élan'},sr:'Parade parfaite, rien n’est volé. Contre-attaque, 6 dégâts'});
 S.J4=()=>battle({tier:2,round:3,floor:2,phase:'enemy',frise:FBe,foes:[PH({hp:[29,35],gd:[15,15],intent:'atk',active:true,sel:true}),RB({intent:'atk',dim:true}),CO({intent:'atk',dim:true})],
   hero:{hp:40,prev:48,elan:0,pose:'hit0',floats:[{t:'−8'}]},zl:'',sr:'Touché, 8 dégâts'});
 S.J5=()=>battle({tier:2,round:4,floor:2,frise:FBh,foes:[PH({hp:[29,35],gd:[15,15],sel:true,intent:'atk'}),RB({intent:'atk'}),CO({intent:'atk'})],
@@ -1133,11 +1133,11 @@ function render(){
     frame('A12 · Après le retour en garde','Story #266 · Beffroi','La charge est perdue','Une charge brisée ne reprend pas : au retour en garde, il tire de nouveau son coup librement. Ici un Coup de front (intention Attaque, marque « Charge » au repos). Une nouvelle charge repartira de 0 si le tirage la donne.',S.A12())
   ].join('');
   $('g-b').innerHTML=[
-    frame('J1 · Combat, première rencontre','Story #267 · Jardins de cendre','Bulle « Phalène voleuse »','Initiative 9 : la Phalène ouvre la manche. Sa marque « Vole l’Élan » porte le losange de l’Élan ; la Cosse porte « Braises 2 ». Phalène 35 PV, garde 15 ; Cosse 45 PV, garde 22.',S.J1(),[['Lecteur','« Phalène voleuse. Chaque coup qui te touche te vole 1 Élan, même paré. Seules la parade parfaite et l’esquive le gardent »']]),
-    frame('J2 · Frôlement reçu : 2 Élan volés','Story #267 · Jardins de cendre','« −2 Élan »','Chaque impact qui touche vole 1 Élan, après ses dégâts. Le Frôlement (4 + 4) reçu en entier en vole 2 : à chaque impact, un losange de la barre du héros se vide et un losange d’or file en arc vers la Phalène.',S.J2(),[['0 ms','« −4 », un losange se vide et file'],['420 ms','« −4 », le second'],['Lecteur','« Touché, 4 dégâts. La Phalène voleuse te vole 1 Élan, 2 sur 5 » (deux fois)']]),
-    frame('J2b · Bonne parade : 1 Élan volé','Story #267 · Jardins de cendre','Paré, mais touché','Une bonne parade laisse passer 25 % des dégâts : elle touche, donc elle vole aussi. Étincelle bleu acier de la bonne parade, « −2 », puis « −1 Élan » ; le sous-titre de la parade le dit, pour qu’elle ne passe pas pour un bug.',S.J2b(),[['Lecteur','« Parade, 2 dégâts. La Phalène voleuse te vole 1 Élan, 2 sur 5 »']]),
-    frame('J3 · Parade parfaite','Story #267 · Jardins de cendre','Rien n’est volé','Seules la parade parfaite et l’esquive dans la fenêtre protègent l’Élan. La parade parfaite donne même son +1 Élan habituel.',S.J3()),
-    frame('J4 · Élan à 0','Story #267 · Jardins de cendre','Rien à voler','À 0 Élan, l’impact fait ses dégâts et rien d’autre : pas de losange, pas de mot, rien de plus au lecteur.',S.J4()),
+    frame('J1 · Combat, première rencontre','Story #267 · Jardins de cendre','Bulle « Phalène voleuse »','Initiative 9 : la Phalène ouvre la manche. Sa marque « Vole l’Élan » porte le losange de l’Élan ; la Cosse porte « Braises 2 ». Phalène 35 PV, garde 15 ; Cosse 45 PV, garde 22.',S.J1(),[['Lecteur','« Phalène voleuse. Chaque impact qui te touche te vole 1 Élan, même une bonne parade. Seules la parade parfaite et l’esquive le protègent »']]),
+    frame('J2 · Frôlement reçu : 2 Élan volés','Story #267 · Jardins de cendre','« −2 Élan »','Chaque impact qui touche (coup reçu ou bonne parade) vole 1 Élan, après ses dégâts ; un impact qui met le héros à 0 PV ne vole rien. Le Frôlement (4 + 4) reçu en entier en vole 2 : à chaque impact, un losange de la barre du héros se vide et un losange d’or file en arc vers la Phalène.',S.J2(),[['0 ms','« −4 », un losange se vide et file'],['420 ms','« −4 », le second'],['Lecteur','« Touché, 4 dégâts. La Phalène voleuse te vole 1 Élan, 2 sur 5 » (deux fois)']]),
+    frame('J2b · Bonne parade : 1 Élan volé','Story #267 · Jardins de cendre','Paré, mais touché','Une bonne parade laisse passer 25 % des dégâts : elle touche, donc elle vole aussi. Étincelle bleu acier de la bonne parade, « −2 », puis « −1 Élan » ; le sous-titre « Bonne parade : 1 Élan volé » le dit, pour qu’elle ne passe pas pour un bug.',S.J2b(),[['Lecteur','« Parade, 2 dégâts. La Phalène voleuse te vole 1 Élan, 2 sur 5 »']]),
+    frame('J3 · Parade parfaite','Story #267 · Jardins de cendre','Rien n’est volé','Seules la parade parfaite et l’esquive dans la fenêtre protègent l’Élan. La parade parfaite donne même son +1 Élan habituel.',S.J3(),[['Lecteur','« Parade parfaite, rien n’est volé. Contre-attaque, 6 dégâts »']]),
+    frame('J4 · Élan à 0','Story #267 · Jardins de cendre','Rien à voler','À 0 Élan, l’impact fait ses dégâts et rien d’autre : pas de losange, pas de mot, rien de plus au lecteur. De même, un impact qui met le héros à 0 PV ne vole rien.',S.J4()),
     frame('J5 · La conséquence, en phase du héros','Story #267 · Jardins de cendre','« Il manque 1 Élan »','Le vol se ressent ici : la touche du pouvoir est grisée et dit pourquoi, comme aujourd’hui.',S.J5(),[['Lecteur','« Rempart, 1 Élan. Il manque 1 Élan »']]),
     frame('J6 · La Cosse, première rencontre','Story #267 · Jardins de cendre','« Braises 2 »','Le prix se lit avant de frapper : sur sa plaque, et sur la ligne du pouce quand elle est la cible. Ses braises luisent dans sa fente.',S.J6(),[['Lecteur','« Cosse de braise, cible, 45 sur 45 PV, à sa mort, 2 charges de Brûlure, sauf si elle est étourdie »']]),
     frame('J7 · Elle tombe : Brûlure ×2','Story #267 · Jardins de cendre','« Elle éclate »','Éclatement : elle crève en braises, 2 flammes volent vers le héros et s’y posent, l’étiquette « Brûlure ×2 » est cerclée. Le coup qui brise sa garde et la fait tomber l’éclate aussi (l’état est lu avant le coup). Relevée par la Glaneuse, elle éclate de nouveau. Si sa chute gagne le combat, rien ne s’allume.',S.J7(),[['0 ms','« −12 », elle tombe'],['200 ms','éclatement sec, « Elle éclate »'],['200 à 700 ms','2 flammes volent et se posent, crépitement'],['Lecteur','« Cosse de braise tombe. Elle éclate : Brûlure, 2 charges, 2 sur 5 »']]),
