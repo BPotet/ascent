@@ -1,6 +1,7 @@
 import type { Actor } from '../../../domain/battle/actionOrder';
 import { ATTACKS } from '../../../domain/battle/attacks';
-import { auraAlone } from '../../../domain/battle/aura';
+import { auraAlone, auraBearer } from '../../../domain/battle/aura';
+import { swarmBonus } from '../../../domain/battle/swarm';
 import {
   equippedOf,
   escortedElite,
@@ -43,6 +44,7 @@ import {
   signatureText,
   isOrdinarySignature,
   stunnedLabel,
+  agreed,
   type SignatureMarkState,
 } from '../format/battleText';
 import type { IconName } from '../pixelArt/sprites/icons';
@@ -217,6 +219,15 @@ export interface EnemyView {
   readonly charging?: true;
   /** Sa Charge est brisée (#266, A9) : la scène montre la Charge brisée à sa chute ; absent, non. */
   readonly chargeBroken?: true;
+  /**
+   * La lueur du Porte-cierge (#268, C1, C4, C5) : allumée tant que son Aura sert, pâle quand il est
+   * seul ou tombé ; absente pour un ennemi sans Aura.
+   */
+  readonly auraGlow?: 'lit' | 'out';
+  /** Il reçoit l'Aura d'un Porte-cierge (#268, AU1) : « +20 % » sur sa plaque ; absent, non. */
+  readonly auraBoost?: true;
+  /** Un Rat de crypte que la Nuée renforce (#268, C7) : il grouille ; absent, non. */
+  readonly swarming?: true;
   readonly label: string;
 }
 
@@ -327,10 +338,19 @@ export function actionTrackView(battle: Battle): ActionTrackView {
 
 /**
  * Le prix de la cible à signature, sur la ligne du pouce (#259, M1, B1) : les Épines de la
- * Mère-ronce non étourdie, le Sanctuaire du Bedeau tant que sa garde tient.
+ * Mère-ronce non étourdie, le Sanctuaire du Bedeau tant que sa garde tient ; l'Aura du Porte-cierge
+ * (#268, C1, C3, C5), qui brûle encore quand il est étourdi.
  */
-function signatureLine(target: EnemyState): string {
+function signatureLine(battle: Battle, index: number): string {
+  const target = battle.enemies[index]!;
   switch (enemySignature(target.kind)) {
+    case 'aura':
+      if (auraAlone(battle.enemies, battle.reserve.length, index)) {
+        return ' · son aura ne sert à personne';
+      }
+      return target.stun === null
+        ? ' · ses alliés font +20 % de dégâts'
+        : ` · ${agreed(target.kind, 'étourdi')}, son aura brûle encore`;
     case 'thorns':
       return thornsActive(target)
         ? ` · Épines : −${ENEMIES[target.kind].thorns!.damage} PV par frappe`
@@ -366,7 +386,7 @@ function targetLine(battle: Battle): ZoneLine | null {
   return {
     before: 'Cible : ',
     strong: enemyName(target),
-    after: `${exhume}${signatureLine(target)}${chargeLine(battle)}${target.stun === null ? '' : ' · ×1,5'}`,
+    after: `${exhume}${signatureLine(battle, battle.target)}${chargeLine(battle)}${target.stun === null ? '' : ' · ×1,5'}`,
   };
 }
 
@@ -526,6 +546,8 @@ function enemyView(
     ...(enemy.hp > 0 && sanctuaryUp(enemy) && { guardWard: true as const }),
     ...(enemy.charge === 'charging' && { charging: true as const }),
     ...(enemy.charge === 'broken' && { chargeBroken: true as const }),
+    ...auraOf(battle, index),
+    ...(enemy.hp > 0 && swarmBonus(battle.enemies, index) > 0 && { swarming: true as const }),
     label: enemyLabel(
       enemy,
       intent,
@@ -536,8 +558,47 @@ function enemyView(
           ? 'escort'
           : undefined,
       signature?.speech,
+      {
+        ...placeOf(battle, index),
+        aura: enemy.hp > 0 && auraBearer(battle.enemies, index) !== null,
+      },
     ),
   };
+}
+
+/**
+ * L'Aura sur la plaque d'un ennemi (#268) : la lueur du Porte-cierge, allumée tant qu'il a un allié
+ * debout ou un renfort à venir ; le « +20 % » d'un allié debout qui la reçoit.
+ */
+function auraOf(
+  battle: Battle,
+  index: number,
+): { readonly auraGlow?: 'lit' | 'out'; readonly auraBoost?: true } {
+  const enemy = battle.enemies[index]!;
+  if (ENEMIES[enemy.kind].aura !== undefined) {
+    const lit = enemy.hp > 0 && !auraAlone(battle.enemies, battle.reserve.length, index);
+    return { auraGlow: lit ? 'lit' : 'out' };
+  }
+  return enemy.hp > 0 && auraBearer(battle.enemies, index) !== null ? { auraBoost: true } : {};
+}
+
+/** Les places dites au lecteur d'écran, de gauche à droite, selon le nombre de colonnes (#268, C7). */
+const PLACES: Readonly<Record<number, readonly string[]>> = {
+  2: ['à gauche', 'à droite'],
+  3: ['à gauche', 'au centre', 'à droite'],
+};
+
+/**
+ * La place d'un Rat de crypte quand au moins deux sont debout en première ligne (#268, C7) : la
+ * seule chose qui les distingue au lecteur d'écran. Pour les Rats seulement (décision de
+ * l'orchestrateur du 12/11/2026).
+ */
+function placeOf(battle: Battle, index: number): { readonly place?: string } {
+  const { kind } = battle.enemies[index]!;
+  if (ENEMIES[kind].swarm === undefined) return {};
+  const pack = battle.enemies.filter((other) => other.kind === kind && other.hp > 0).length;
+  const place = PLACES[battle.enemies.length]?.[index];
+  return pack >= 2 && place !== undefined ? { place } : {};
 }
 
 /** Ce que l'écran montre d'un état du combat. */

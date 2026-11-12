@@ -15,7 +15,7 @@ import {
 import type { BattleSession, BattleSnapshot } from '../../../application/useCases/BattleSession';
 import type { Battle } from '../../../domain/battle/Battle';
 import type { BattleEvent, BlowOutcome } from '../../../domain/battle/BattleEvent';
-import { enemySignature } from '../../../domain/battle/combatants';
+import { ENEMIES, enemySignature } from '../../../domain/battle/combatants';
 import type { BurnRing } from '../battle/BurnChip';
 import type { HeroPose, SceneBurn, SceneSpark } from '../battle/sceneTypes';
 import {
@@ -27,6 +27,8 @@ import {
   summonBannerText,
   type DamageFloat,
   type FeedbackText,
+  auraGoesOut,
+  auraStrikes,
 } from '../format/battleText';
 
 /** L'état d'affichage de l'écran de combat, tiré des événements de combat. */
@@ -157,6 +159,19 @@ export interface BattleDisplay {
     readonly at: number;
     readonly delayMs: number;
   } | null;
+  /**
+   * La chute de chaque Porte-cierge (#268, C4), par place : son cierge est soufflé 200 ms après.
+   */
+  readonly candleFalls: Readonly<Record<number, number>>;
+  /**
+   * La dernière Aura éteinte (#268, C4) : les « +20 % » des alliés `enemies` se barrent, puis
+   * disparaissent ; `null` sinon.
+   */
+  readonly auraOut: {
+    readonly key: number;
+    readonly at: number;
+    readonly enemies: readonly number[];
+  } | null;
 }
 
 /** La chute d'une Cosse de braise (#267) : éclatée, ou étouffée. */
@@ -195,6 +210,8 @@ export const INITIAL_DISPLAY: BattleDisplay = {
   podFalls: {},
   emberFlames: null,
   theft: null,
+  candleFalls: {},
+  auraOut: null,
 };
 
 /**
@@ -209,6 +226,51 @@ export function momentumShown(momentum: number, display: BattleDisplay, revealed
  * Les Jardins de cendre d'un événement (#267) : la chute de la Cosse, éclatée (et ses 2 flammes
  * vers le héros, après le chiffre de dégâts) ou étouffée ; le losange de l'Élan volé.
  */
+/**
+ * Les Catacombes d'un événement (#268, C4) : la chute du Porte-cierge (son cierge soufflé) et, s'il
+ * avait un allié debout, les « +20 % » barrés. Un ennemi qui prend sa place fait oublier sa chute.
+ */
+function catacombsAfter(display: BattleDisplay, event: BattleEvent, battle: Battle): BattleDisplay {
+  switch (event.type) {
+    case 'enemyDefeated': {
+      const fallen = battle.enemies[event.enemy];
+      if (fallen === undefined || ENEMIES[fallen.kind].aura === undefined) return display;
+      const candleFalls = { ...display.candleFalls, [event.enemy]: event.at };
+      if (!auraGoesOut(battle, event.enemy)) return { ...display, candleFalls };
+      const enemies = battle.enemies.flatMap((other, index) =>
+        index !== event.enemy && other.hp > 0 ? [index] : [],
+      );
+      const key = (display.auraOut?.key ?? 0) + 1;
+      return { ...display, candleFalls, auraOut: { key, at: event.at, enemies } };
+    }
+    case 'reinforcementEntered':
+    case 'summonEntered':
+      return withoutCandleFall(display, event.enemy);
+    case 'enemyExhumed':
+      return withoutCandleFall(display, event.slot);
+    case 'allyRaised':
+      return withoutCandleFall(display, event.ally);
+    default:
+      return display;
+  }
+}
+
+function withoutCandleFall(display: BattleDisplay, enemy: number): BattleDisplay {
+  if (display.candleFalls[enemy] === undefined) return display;
+  const { [enemy]: _, ...candleFalls } = display.candleFalls;
+  return { ...display, candleFalls };
+}
+
+/** Le chiffre d'un coup renforcé par l'Aura porte sa flamme (#268, C2). */
+export function auraBlowFloat(
+  float: DamageFloat | null,
+  event: BattleEvent,
+  battle: Battle,
+): DamageFloat | null {
+  if (float === null || event.type !== 'blowResolved') return float;
+  return auraStrikes(battle, event.enemy) ? { ...float, aura: true } : float;
+}
+
 function gardensAfter(display: BattleDisplay, event: BattleEvent): BattleDisplay {
   switch (event.type) {
     case 'heroBurning': {
@@ -574,7 +636,12 @@ export function displayOf(
     display = burnAfter(display, event, burnBefore, afterBleed);
     display = summonAfter(display, event, snapshot.battle, afterRound);
     display = gardensAfter(display, event);
-    const float = ramBlowFloat(damageFloat(event), event, snapshot.battle);
+    display = catacombsAfter(display, event, snapshot.battle);
+    const float = auraBlowFloat(
+      ramBlowFloat(damageFloat(event), event, snapshot.battle),
+      event,
+      snapshot.battle,
+    );
     if (event.type === 'secondChanceUsed' && float !== null) {
       display = {
         ...display,

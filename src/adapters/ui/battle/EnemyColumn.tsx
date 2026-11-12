@@ -14,6 +14,7 @@ import { battleColors } from '../theme/battleColors';
 import { DamageFloat } from './BattleEffects';
 import { PerilSeal } from './PerilSeal';
 import { SweepStroke } from './SweepStroke';
+import { AuraBoostChip, AuraGlow } from './CatacombsEffects';
 import { SignatureMark } from './SignatureMark';
 import type { EnemySlot } from './scene/sceneGeometry';
 import type { BattleDisplay } from '../state/useBattleDisplay';
@@ -56,6 +57,7 @@ export function EnemyColumn({
   slot,
   sealed,
   swept = false,
+  auraOut = false,
   reducedMotion = false,
   float,
   uiNow,
@@ -69,6 +71,8 @@ export function EnemyColumn({
   readonly sealed: boolean;
   /** Il porte le trait de balayage, pendant son Balayage (#266, A2) ; par défaut, non. */
   readonly swept?: boolean;
+  /** L'Aura qu'il recevait vient de s'éteindre (#268, C4) : son « +20 % » se barre ; par défaut, non. */
+  readonly auraOut?: boolean;
   readonly reducedMotion?: boolean;
   /** Le chiffre qui s'envole au-dessus de lui, s'il est pour lui. */
   readonly float: BattleDisplay['float'];
@@ -144,6 +148,9 @@ export function EnemyColumn({
           )}
         </View>
         <View style={styles.figure}>
+          {view.auraGlow === undefined ? null : (
+            <AuraGlow state={view.auraGlow} reducedMotion={reducedMotion} />
+          )}
           {view.curse === undefined ? null : (
             <View
               pointerEvents="none"
@@ -202,6 +209,13 @@ export function EnemyColumn({
             {view.signature === undefined ? null : (
               <SignatureMark signature={view.signature} testID={`enemy-${kind}-signature`} />
             )}
+            {view.auraBoost === true || auraOut ? (
+              <AuraBoostChip
+                kind={kind}
+                out={view.auraBoost !== true}
+                reducedMotion={reducedMotion}
+              />
+            ) : null}
             {view.tag === null ? null : (
               <Text style={[styles.tag, view.summoned === true && styles.summonedTag]}>
                 {view.tag}

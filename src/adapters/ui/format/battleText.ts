@@ -19,6 +19,7 @@ import {
   type HeroKind,
   type Weapon,
 } from '../../../domain/battle/combatants';
+import { auraBearer } from '../../../domain/battle/aura';
 import { MAX_BURN_STACKS } from '../../../domain/battle/burn';
 import type { Stunned } from '../../../domain/battle/guard';
 import { MOMENTUM_MAX } from '../../../domain/battle/momentum';
@@ -264,7 +265,7 @@ export const SEAL_LABEL = 'Sceau rouge : coup imparable';
 export const SWEEP_LABEL = 'Trait de balayage : parade';
 
 /** « étourdie » pour la Goule, « étourdi » pour les autres. */
-function agreed(kind: EnemyKind, word: string): string {
+export function agreed(kind: EnemyKind, word: string): string {
   return FEMININE[kind] ? `${word}e` : word;
 }
 
@@ -404,10 +405,15 @@ export function enemyLabel(
   role?: 'elite' | 'escort',
   /** Ce que dit la marque de signature d'une Élite (#258), lue avant l'intention. */
   signature?: string,
+  /**
+   * Sa place dans la ligne, dite pour distinguer les Rats de crypte (#268, C7), et l'Aura qu'il
+   * reçoit du Porte-cierge (#268, C1) ; absentes, rien.
+   */
+  { place, aura = false }: { readonly place?: string; readonly aura?: boolean } = {},
 ): string {
   const tag = enemyTag(enemy);
   const elite = role === 'elite' ? ', Élite' : '';
-  const name = `${enemyName(enemy)}${elite}${tag === null ? '' : `, ${tag.toLowerCase()}`}`;
+  const name = `${enemyName(enemy)}${place === undefined ? '' : `, ${place}`}${elite}${tag === null ? '' : `, ${tag.toLowerCase()}`}`;
   if (enemy.hp <= 0) return `${name}, ${agreed(enemy.kind, 'tombé')}`;
   const guard =
     enemy.stun === null
@@ -416,7 +422,8 @@ export function enemyLabel(
   const mark = signature === undefined ? '' : `, ${signature}`;
   const intentPart = intent === null ? '' : `, ${intentSpeech(enemy.kind, intent)}`;
   const aim = role === 'escort' && !isTarget ? '. Touche pour viser' : '';
-  return `${name}${isTarget ? ', cible' : ''}, ${enemy.hp} PV sur ${enemy.maxHp}, ${guard}${mark}${intentPart}${aim}`;
+  const boosted = aura ? `, ${AURA_BOOST_SPEECH}` : '';
+  return `${name}${isTarget ? ', cible' : ''}${boosted}, ${enemy.hp} PV sur ${enemy.maxHp}, ${guard}${mark}${intentPart}${aim}`;
 }
 
 export function attackButtonLabel(targetName: string): string {
@@ -465,7 +472,9 @@ export interface FeedbackText {
     // l'or de l'Élan volé sur une bonne parade.
     | 'ember'
     | 'smoke'
-    | 'steal';
+    | 'steal'
+    // La lueur citron de l'Aura (#268) : « L'aura s'éteint ».
+    | 'aura';
   readonly title: string;
   /** La ligne sous le mot : « Attisé · 1 Élan » pour un pouvoir attisé (#237). */
   readonly sub?: string;
@@ -550,11 +559,47 @@ export function feedbackText(event: BattleEvent, battle?: Battle): FeedbackText 
     case 'strikeResolved':
       return event.judgement === 'perfect' ? { tone: 'perfect', title: 'Frappe parfaite' } : null;
     case 'enemyDefeated':
-      return battle !== undefined && escortStays(battle, event.enemy) ? ESCORT_STAYS : null;
+      if (battle === undefined) return null;
+      if (auraGoesOut(battle, event.enemy)) return AURA_OUT;
+      return escortStays(battle, event.enemy) ? ESCORT_STAYS : null;
     default:
       return null;
   }
 }
+
+/** Le mot de la chute du Porte-cierge devant un allié debout (#268, C4). */
+const AURA_OUT: FeedbackText = {
+  tone: 'aura',
+  title: 'L’aura s’éteint',
+  sub: 'Ses alliés reviennent à leurs dégâts',
+};
+
+/**
+ * Le Porte-cierge `enemy` tombe alors qu'un autre ennemi est debout (#268, C4) : son Aura s'éteint.
+ * `battle` est le combat après sa chute.
+ */
+export function auraGoesOut(battle: Battle, enemy: number): boolean {
+  const fallen = battle.enemies[enemy];
+  return (
+    fallen !== undefined &&
+    ENEMIES[fallen.kind].aura !== undefined &&
+    battle.enemies.some((other, index) => index !== enemy && other.hp > 0)
+  );
+}
+
+/** Le coup en cours de l'ennemi `enemy` est renforcé par l'Aura (#268, C2). */
+export function auraStrikes(battle: Battle, enemy: number): boolean {
+  const { phase } = battle;
+  return (
+    phase.kind === 'enemy' &&
+    phase.step.kind === 'attack' &&
+    phase.step.enemy === enemy &&
+    (phase.step.aura ?? 0) > 0
+  );
+}
+
+/** Ce que dit l'Aura sur un ennemi qui la reçoit (#268, C1, C6). */
+export const AURA_BOOST_SPEECH = 'aura du Porte-cierge, +20 % de dégâts';
 
 const BREAK: FeedbackText = { tone: 'break', title: 'Cassure' };
 
@@ -676,6 +721,8 @@ export interface DamageFloat {
   readonly kind: 'damage' | 'guard' | 'riposte' | 'burn' | 'secondChance' | 'heal' | 'thorns';
   /** Le Sanctuaire (#259) a réduit le coup : le chiffre porte « ½ ». Absent, non. */
   readonly half?: true;
+  /** L'Aura du Porte-cierge (#268, C2) a renforcé le coup : le chiffre porte sa flamme. */
+  readonly aura?: true;
 }
 
 /** Le « ½ » d'un coup que le Sanctuaire a réduit (#259, B2, B3). */
@@ -843,12 +890,22 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
     case 'chargeStarted':
       return `${theName(kind(event.enemy))} charge. Gros coup à la manche suivante`;
     case 'blowResolved': {
-      const said = blowAnnouncement(event.outcome, event.damage, battle.phase.kind === 'over');
+      const blow = blowAnnouncement(event.outcome, event.damage, battle.phase.kind === 'over');
+      // Un coup renforcé par l'Aura qui fait des dégâts (#268, C2).
+      const said =
+        event.damage > 0 && auraStrikes(battle, event.enemy)
+          ? `${blow}, aura du Porte-cierge`
+          : blow;
       // Rien n'est volé sur une parade parfaite (#267, J3).
       return event.outcome === 'perfectParry' && thiefAt(battle, event.enemy)
         ? `${said}, rien n’est volé`
         : said;
     }
+    // Un renfort qui entre sous l'Aura du Porte-cierge (#268, C6) ; un autre n'est pas dit.
+    case 'reinforcementEntered':
+      return auraBearer(battle.enemies, event.enemy) === null
+        ? null
+        : `Renfort : ${ENEMY_NAMES[event.kind]}. Aura du Porte-cierge, +20 % de dégâts`;
     // Le Vol d'Élan (#267, J2), dit après les dégâts ; rien à 0 Élan, où rien n'est volé (J4).
     case 'momentumStolen':
       return `${theName(kind(event.enemy))} te vole ${event.stolen} Élan, ${event.momentum} sur ${MOMENTUM_MAX}`;
@@ -896,6 +953,7 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
       return `${name(event.enemy)} se relève, ${event.hp} PV sur ${battle.enemies[event.enemy]!.maxHp}`;
     // L'Élite tombe devant son escorte (#257, E9) ; une autre chute n'est pas dite.
     case 'enemyDefeated':
+      if (auraGoesOut(battle, event.enemy)) return `${name(event.enemy)} tombe. L’aura s’éteint`;
       return escortStays(battle, event.enemy)
         ? `${name(event.enemy)} tombe. L'escorte reste. Cible : ${name(battle.target)}`
         : null;

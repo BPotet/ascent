@@ -10,6 +10,7 @@ import Animated, {
 
 import type { DamageFloat as Float, FeedbackText } from '../format/battleText';
 import { artPalette } from '../pixelArt/artPalette';
+import { PixelIcon } from '../pixelArt/PixelIcon';
 import { textFont } from '../pixelArt/pixelTypography';
 import { battleColors } from '../theme/battleColors';
 import { BulwarkShieldGlyph } from './BattleGlyphs';
@@ -130,6 +131,13 @@ export function DamageFloat({
       >
         {float.text}
       </Text>
+      {float.aura === true ? (
+        // La petite flamme de l'Aura (#268, C2, `.dmg .cb`), l'encre sur la lueur citron : jamais la
+        // couleur seule, comme le « ½ » du Sanctuaire.
+        <View testID="damage-aura" style={styles.auraFlame}>
+          <PixelIcon name="flame8" color={artPalette.roles.ink} />
+        </View>
+      ) : null}
       {float.half === true ? (
         // Le « ½ » du Sanctuaire (#259, B2, B3), sur l'acier : jamais la couleur seule.
         <View testID="damage-half" style={styles.half}>
@@ -244,6 +252,8 @@ const styles = StyleSheet.create({
   ember: { color: battleColors.burnRing, fontSize: 28, lineHeight: 32, letterSpacing: 1 },
   smoke: { color: battleColors.burnSmoke, fontSize: 26, lineHeight: 30, letterSpacing: 1 },
   steal: { color: artPalette.roles.gold, fontSize: 20, lineHeight: 24 },
+  // « L'aura s'éteint » en lueur citron (#268, maquette 246, C4, `.fword.aura`).
+  aura: { color: battleColors.aura, fontSize: 22, lineHeight: 26, letterSpacing: 1 },
   // Le mot « Épines » (#259, M2, `.fword.thorn`), en vert ronce.
   thorns: { color: battleColors.thornLight, fontSize: 20, lineHeight: 24 },
   withShield: { flexDirection: 'row', alignItems: 'center', gap: 6 },
@@ -282,6 +292,14 @@ const styles = StyleSheet.create({
     fontFamily: textFont.bold,
     fontSize: 12,
     lineHeight: 14,
+  },
+  // La flamme de l'Aura sur le chiffre (#268, `.dmg .cb`) : l'encre sur la lueur citron.
+  auraFlame: {
+    marginLeft: 3,
+    paddingHorizontal: 3,
+    height: 18,
+    justifyContent: 'center',
+    backgroundColor: battleColors.aura,
   },
   // Les PV du héros relevé par la seconde chance, en or (#206, S3).
   floatSecondChance: { color: artPalette.roles.gold },
