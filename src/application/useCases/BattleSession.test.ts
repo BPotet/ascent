@@ -562,6 +562,24 @@ describe('BattleSession', () => {
       expect((await set.session.start()).encounterHint).toBeUndefined();
     });
 
+    it('presents the Thieving moth, then the Ember pod in the next battle, then neither (#267)', async () => {
+      const set = setUp({
+        createBattle: (options) =>
+          startBattle({ ...options, enemies: ['thievingMoth', 'mothkin', 'emberPod'] }),
+      });
+
+      expect((await set.session.start()).encounterHint).toBe('thievingMoth');
+      set.session.dismissEncounterHint();
+      await Promise.resolve();
+      expect(set.keyValueStore.values.get('battle.hint.encounter.thievingMoth.seen')).toBe('1');
+      expect(set.session.current()!.encounterHint).toBeUndefined();
+      expect((await set.session.start()).encounterHint).toBe('emberPod');
+      set.session.dismissEncounterHint();
+      await Promise.resolve();
+      expect(set.keyValueStore.values.get('battle.hint.encounter.emberPod.seen')).toBe('1');
+      expect((await set.session.start()).encounterHint).toBeUndefined();
+    });
+
     it('never shows for a battle without an Elite with a signature', async () => {
       const set = setUp();
 
