@@ -48,6 +48,8 @@ export const GLINT_CUES: Readonly<Record<GlintKind, BattleSoundCue>> = {
   double: 'glintDouble',
   red: 'glintPerilous',
   dull: 'glintDull',
+  // Le reflet de balayage (#266) : en attendant son son propre, celui du reflet blanc.
+  sweep: 'glint',
 };
 
 const NONE: BattleFeedback = { sound: null, haptic: null };
@@ -59,6 +61,8 @@ const BLOW_FEEDBACK: Readonly<Record<BlowOutcome, BattleFeedback>> = {
   // La parade sur un coup imparable échoue : c'est un coup reçu.
   perilousParry: { sound: 'hit', haptic: 'hit' },
   suffered: { sound: 'hit', haptic: 'hit' },
+  // L'esquive sur un Balayage échoue : c'est un coup reçu (#266).
+  sweepDodge: { sound: 'hit', haptic: 'hit' },
 };
 
 /**

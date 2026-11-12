@@ -228,6 +228,7 @@ const POSE_OF_OUTCOME: Readonly<Record<BlowOutcome, HeroPose>> = {
   dodge: 'dodge',
   perilousParry: 'hit',
   suffered: 'hit',
+  sweepDodge: 'hit',
 };
 
 /** Le premier coup de Frappe furtive commence (#236) : l'esquive et l'ombre de Pas de l'ombre. */

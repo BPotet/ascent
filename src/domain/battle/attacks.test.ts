@@ -13,13 +13,32 @@ import { TEST_BATTLE_ENEMIES } from './testing/testBattle';
 describe('attacks (C10)', () => {
   it('gives each attack its base wind-up and impacts', () => {
     expect(ATTACKS).toEqual({
-      basic: { windUpMs: 1_100, hitOffsetsMs: [0], feint: false, perilous: false },
-      double: { windUpMs: 1_000, hitOffsetsMs: [0, 420], feint: false, perilous: false },
-      delayed: { windUpMs: 1_700, hitOffsetsMs: [0], feint: false, perilous: false },
-      feint: { windUpMs: 1_600, hitOffsetsMs: [0], feint: true, perilous: false },
-      perilous: { windUpMs: 1_300, hitOffsetsMs: [0], feint: false, perilous: true },
-      delayedPerilous: { windUpMs: 1_700, hitOffsetsMs: [0], feint: false, perilous: true },
+      basic: { windUpMs: 1_100, hitOffsetsMs: [0], feint: false, perilous: false, sweep: false },
+      double: {
+        windUpMs: 1_000,
+        hitOffsetsMs: [0, 420],
+        feint: false,
+        perilous: false,
+        sweep: false,
+      },
+      delayed: { windUpMs: 1_700, hitOffsetsMs: [0], feint: false, perilous: false, sweep: false },
+      feint: { windUpMs: 1_600, hitOffsetsMs: [0], feint: true, perilous: false, sweep: false },
+      perilous: { windUpMs: 1_300, hitOffsetsMs: [0], feint: false, perilous: true, sweep: false },
+      delayedPerilous: {
+        windUpMs: 1_700,
+        hitOffsetsMs: [0],
+        feint: false,
+        perilous: true,
+        sweep: false,
+      },
+      sweep: { windUpMs: 1_300, hitOffsetsMs: [0], feint: false, perilous: false, sweep: true },
     });
+  });
+
+  it('never makes an attack both perilous and a Sweep (#266, D1)', () => {
+    for (const profile of Object.values(ATTACKS)) {
+      expect(profile.perilous && profile.sweep).toBe(false);
+    }
   });
 
   it('varies the wind-up from ×0.9 to ×1.1 (#211)', () => {

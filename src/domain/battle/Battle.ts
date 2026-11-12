@@ -1641,6 +1641,11 @@ function judgeDefense(battle: Battle, events: Events, button: DefenseButton, at:
   }
 
   const blow = { index, button, delta, at };
+  if (button === 'dodge' && ATTACKS[step.attack].sweep) {
+    // Une esquive sur un Balayage échoue : dégâts entiers et déséquilibre (#266, SW3), sans les
+    // suites d'une esquive (SW5).
+    return failDefense(battle, events, { ...blow, outcome: 'sweepDodge' });
+  }
   if (button === 'dodge') {
     return afterDodge(
       resolveBlow(battle, events, { ...blow, outcome: 'dodge', damage: 0 }),
@@ -1650,12 +1655,7 @@ function judgeDefense(battle: Battle, events: Events, button: DefenseButton, at:
   }
   if (ATTACKS[step.attack].perilous) {
     // Une parade sur un coup imparable échoue : dégâts entiers et déséquilibre (C8).
-    const hurt = resolveBlow(battle, events, {
-      ...blow,
-      outcome: 'perilousParry',
-      damage: heroDamage(battle, step.damage),
-    });
-    return hurt.phase.kind === 'over' ? hurt : startOffBalance(hurt, events, at);
+    return failDefense(battle, events, { ...blow, outcome: 'perilousParry' });
   }
   if (judgement === 'good') {
     return resolveBlow(battle, events, {
@@ -1683,6 +1683,26 @@ function judgeDefense(battle: Battle, events: Events, button: DefenseButton, at:
     ...attack,
     counter: { at: counterAt, until: counterAt + COUNTER_MS, done: false },
   });
+}
+
+/**
+ * Une défense qui échoue (C8 ; #266, SW3) : la parade sur un coup imparable ou l'esquive sur un
+ * Balayage, dégâts entiers puis déséquilibre ; pas de déséquilibre si le combat est fini.
+ */
+function failDefense(
+  battle: Battle,
+  events: Events,
+  blow: {
+    readonly index: number;
+    readonly outcome: 'perilousParry' | 'sweepDodge';
+    readonly button: DefenseButton;
+    readonly delta: number;
+    readonly at: number;
+  },
+): Battle {
+  const { damage } = currentAttack(battle);
+  const hurt = resolveBlow(battle, events, { ...blow, damage: heroDamage(battle, damage) });
+  return hurt.phase.kind === 'over' ? hurt : startOffBalance(hurt, events, blow.at);
 }
 
 /**

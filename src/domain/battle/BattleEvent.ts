@@ -14,9 +14,11 @@ export type BattleOutcome = 'victory' | 'defeat';
 
 /**
  * Le résultat d'un impact (C8) : parade parfaite, bonne parade, esquive, parade sur un coup
- * imparable (échec), ou coup subi (aucun appui valide, ou impact tombé pendant le déséquilibre).
+ * imparable (échec), coup subi (aucun appui valide, ou impact tombé pendant le déséquilibre), ou
+ * esquive dans la fenêtre sur un Balayage (échec, #266).
  */
-export type BlowOutcome = 'perfectParry' | 'parry' | 'dodge' | 'perilousParry' | 'suffered';
+export type BlowOutcome =
+  'perfectParry' | 'parry' | 'dodge' | 'perilousParry' | 'suffered' | 'sweepDodge';
 
 /** Pourquoi un appui est raté : trop tôt, trop tard, ou dans le vide (aucun impact à juger). */
 export type WhiffReason = 'early' | 'late' | 'empty';

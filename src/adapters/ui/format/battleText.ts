@@ -110,6 +110,7 @@ export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {
   feint: 'coup trompeur',
   perilous: 'coup imparable',
   delayedPerilous: 'coup retardé imparable',
+  sweep: 'balayage',
 };
 
 export const POWER_NAMES: Readonly<Record<PowerKind, string>> = {
@@ -692,6 +693,8 @@ function blowAnnouncement(outcome: BlowOutcome, damage: number): string {
       return `Coup imparable : la parade échoue, ${damages(damage)}`;
     case 'suffered':
       return `Touché, ${damages(damage)}`;
+    case 'sweepDodge':
+      return `Balayage : l'esquive échoue, ${damages(damage)}`;
   }
 }
 
