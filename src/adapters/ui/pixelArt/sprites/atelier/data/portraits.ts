@@ -84,6 +84,12 @@
  *   fiche `codex/bronzeRam`, sha256 b523363f844f4d98fa77aeebea89182a2a1114d6943998815868680b34f10b96 ; `icon` « buste » (sha256 de la copie c4b7f490d0fb3615e6ae8ef3e70984960de26b7ad440424bc90c6956abad2935).
  * - `assets/bellClapper` version 1, sha256 1637065dfb892eeca5b934ba8d31e63f8195e10a28c3664f906aa246fa851919 ;
  *   fiche `codex/bellClapper`, sha256 baa551e284691ee32362b90d7d77ff11efcac1686c12d0e06abe50582247fe47 ; `icon` « buste » (sha256 de la copie 9b18802393d5e7dde999b49edc2e93bb0607f1021873cf402f9114ec30ec9bfd).
+ * Le Porte-cierge et le Rat de crypte (#268), recopiés par la conversation le 12/11/2026 de la clé
+ * `icon.proposals[chosen]` (`chosen` = 0), statut `validé` :
+ * - `assets/candleBearer` version 1, sha256 baf893f8bdfb8afd203b330be11f371cfc5f4d34a82b90a594895d90d3a13cfd ;
+ *   fiche `codex/candleBearer`, sha256 67eac4569760a0f24eaeb22ac3b24ed777e5d32d39a5a9fe6dd1bb734aee0e2a ; `icon` « buste » (sha256 de la copie 5e083d24ffee992a07de19625cb60ad9b22d7ba7265184a30187f4a576e31310).
+ * - `assets/cryptRat` version 1, sha256 842e277c8e097d05a5e439abe2887a256aaf19005db8b0201626e8650b8fc81b ;
+ *   fiche `codex/cryptRat`, sha256 5bf7bf53b31354d8795f65e0cb782d19ad4e7811306b05f4fb57009be18f3cf0 ; `icon` « buste » (sha256 de la copie a35fe3a664b26946d936dad6746ae183aa03380323cc1d54b6add9b68c136691).
  * Hors Beffroi (#214), identique, pixel pour pixel, à `ART.ic_<id>` et `ART.ic_<id>2` de la maquette validée
  * `docs/mockups/174-tier-identity/index.html` (la maquette encode parfois la même image avec sa
  * palette dans un autre ordre : les données suivent l'Atelier).
@@ -272,6 +278,96 @@ export const BELL_CLAPPER_PORTRAIT: AssetImage = {
     '029980999999899888888800',
     '029980999999899888888807',
     '029980999999899888888805',
+  ],
+};
+
+/** Le portrait du Porte-cierge (#268). */
+export const CANDLE_BEARER_PORTRAIT: AssetImage = {
+  w: 24,
+  h: 24,
+  palette: [
+    '#06070c',
+    '#1a1522',
+    '#3a2c3a',
+    '#5b4e4a',
+    '#8e8574',
+    '#c9c2b0',
+    '#f8e7c8',
+    '#fff3d6',
+    '#f2d49b',
+    '#d9733a',
+    '#3b2a1c',
+    '#68646a',
+    '#958f8a',
+  ],
+  rows: [
+    '.9999...................',
+    '.9889...................',
+    '.9889........0..........',
+    '998899.....0020.........',
+    '997799....044340........',
+    '099090...0433320........',
+    '079950..04335520........',
+    '077650.0433352240.......',
+    '07650.04333332220.......',
+    '07650043111332220.......',
+    '07650045511132220.......',
+    '07650c05111132220.......',
+    'b0550b158181122240......',
+    '000000422111322220......',
+    '.0a0.0422111322220......',
+    '.0a0.0422112222220......',
+    '.0a0.00000000005540.....',
+    '.0a0.003333333252240....',
+    '.0000420333333252220....',
+    '004443240333332522240...',
+    '443332550333332222255...',
+    '3333225033333322222540..',
+    '33222053333333322222240.',
+    '3200042333333332222200..',
+  ],
+};
+
+/** Le portrait du Rat de crypte (#268). */
+export const CRYPT_RAT_PORTRAIT: AssetImage = {
+  w: 24,
+  h: 24,
+  palette: [
+    '#06070c',
+    '#23232b',
+    '#47454d',
+    '#68646a',
+    '#958f8a',
+    '#c9c2b0',
+    '#eea8b6',
+    '#f2d49b',
+    '#fff3d6',
+  ],
+  rows: [
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '........................',
+    '.........00.............',
+    '........0420.000........',
+    '.......04334044400000000',
+    '.......04662000044444444',
+    '.......04362004433333331',
+    '.......00220240333313332',
+    '.....0020003224033333332',
+    '....04420333322403333133',
+    '..0043327333722200333333',
+    '.00433324033222055033333',
+    '..6422222033220544503333',
+    '...008000422205544403333',
+    '...4.....000044444033322',
+    '.........043000000222200',
+    '.........000200000000004',
+    '........066606660......0',
+    '.........06000600.......',
+    '..........00..00........',
   ],
 };
 
