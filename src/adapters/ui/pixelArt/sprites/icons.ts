@@ -553,6 +553,18 @@ const DRAWN = {
     '...XX...',
     '........',
   ],
+  // Le cierge de l'Aura du Porte-cierge (#268), `candle` de la table `PAT` de la maquette 246,
+  // sur 8 × 8 pixels d'art.
+  candle8: [
+    '...X....',
+    '..XXX...',
+    '...X....',
+    '..XXX...',
+    '..XXX...',
+    '..XXX...',
+    '..XXX...',
+    '.XXXXX..',
+  ],
   // L'intention Charge du Bélier de bronze (#266) : ses cornes, en 12 × 12 comme les autres
   // intentions (`ram` de la maquette 246, agrandi).
   iCharge: [

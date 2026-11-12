@@ -8,7 +8,7 @@ import { battleColors } from '../theme/battleColors';
 
 /**
  * Les teintes de chaque mécanique (maquette 245) : l'os, la ronce, l'acier ; le cyan du Balayage et
- * le bronze chauffé de la Charge (maquette 246, #266).
+ * le bronze chauffé de la Charge (maquette 246, #266), la lueur citron de l'Aura (#268).
  */
 const TINTS: Readonly<
   Record<EnemySignature, { readonly line: string; readonly fill: string; readonly ink: string }>
@@ -38,6 +38,11 @@ const TINTS: Readonly<
     fill: battleColors.chargeBackground,
     ink: battleColors.onCharge,
   },
+  aura: {
+    line: battleColors.aura,
+    fill: battleColors.auraBackground,
+    ink: battleColors.onAura,
+  },
 };
 
 /** Le glyphe d'une marque allumée : l'os clair, le vert ronce, l'acier (maquette 245, `sigTag`). */
@@ -47,6 +52,7 @@ const GLYPH_TINTS: Readonly<Record<EnemySignature, string>> = {
   sanctuary: battleColors.ward,
   sweep: battleColors.sweep,
   charge: battleColors.charge,
+  aura: battleColors.aura,
 };
 
 /**

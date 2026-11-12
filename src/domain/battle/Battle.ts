@@ -83,6 +83,7 @@ import {
 import { seedRandom, type BattleSeed, type RandomState } from './SeededRandom';
 import { SECOND_CHANCE_MS, secondChanceHp } from './secondChance';
 import { sanctuaryPercents } from './sanctuary';
+import { boostedDamage } from './aura';
 import { selfRevive } from './selfRevive';
 import {
   STRIKE_RECOVERY_MS,
@@ -230,6 +231,12 @@ export interface AttackStep {
   readonly secondChance?: { readonly since: number; readonly until: number };
   /** Le Coup de bélier d'une Charge (#266, CH3) ; absent, un coup ordinaire. */
   readonly charged?: true;
+  /**
+   * Les dégâts ajoutés par impact par la Nuée, puis par l'Aura (#268, D5), déjà dans `damage` ;
+   * absents, 0.
+   */
+  readonly swarm?: number;
+  readonly aura?: number;
 }
 
 /** L'effet d'une intention Garde, Relever, Exhumer ou Charge, après l'avancée. */
@@ -1143,6 +1150,8 @@ function startAttack(
   // Le Coup de bélier d'une Charge (#266, CH3) : la Charge s'efface ici, plus rien ne l'annule.
   const state = battle.enemies[enemy]!;
   const charged = state.charge === 'charging';
+  // La Nuée puis l'Aura (#268, D1 à D3) : lues ici, sur la ligne, pour tous les impacts du coup.
+  const { damage, ...boosts } = boostedDamage(battle.enemies, enemy, intent.damage);
   events.push({
     type: 'windUpStarted',
     at,
@@ -1151,13 +1160,14 @@ function startAttack(
     impacts,
     feintAt,
     ...(charged && { charged: true as const }),
+    ...boosts,
   });
   const started = charged ? withEnemy(battle, enemy, withoutCharge(state)) : battle;
   return withStep(started, {
     kind: 'attack',
     enemy,
     attack: intent.attack,
-    damage: intent.damage,
+    damage,
     startedAt: at,
     feintAt,
     feintShown: false,
@@ -1172,6 +1182,7 @@ function startAttack(
     ...(intent.bleed && { bleed: intent.bleed }),
     ...(intent.burn !== undefined && { burn: intent.burn }),
     ...(charged && { charged: true as const }),
+    ...boosts,
   });
 }
 

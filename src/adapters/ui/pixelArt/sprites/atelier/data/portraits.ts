@@ -1693,6 +1693,9 @@ export const PORTRAITS: Readonly<Record<HeroKind | EnemyKind, AssetImage | null>
   beadle: BEADLE_PORTRAIT,
   bronzeRam: BRONZE_RAM_PORTRAIT,
   bellClapper: BELL_CLAPPER_PORTRAIT,
+  // Le Porte-cierge et le Rat de crypte (#268).
+  candleBearer: CANDLE_BEARER_PORTRAIT,
+  cryptRat: CRYPT_RAT_PORTRAIT,
 };
 
 export const PHASE_2_PORTRAITS: Readonly<Partial<Record<EnemyKind, AssetImage>>> = {

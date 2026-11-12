@@ -69,6 +69,8 @@ export const ENEMY_NAMES: Readonly<Record<EnemyKind, string>> = {
   beadle: 'Bedeau',
   bronzeRam: 'Bélier de bronze',
   bellClapper: 'Battant de cloche',
+  candleBearer: 'Porte-cierge',
+  cryptRat: 'Rat de crypte',
 };
 
 /** Le genre du nom de l'ennemi, pour « étourdie », « tombée »… */
@@ -106,6 +108,8 @@ const FEMININE: Readonly<Record<EnemyKind, boolean>> = {
   beadle: false,
   bronzeRam: false,
   bellClapper: false,
+  candleBearer: false,
+  cryptRat: false,
 };
 
 export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {
@@ -1017,7 +1021,8 @@ export type SignatureMarkState =
   | { readonly state: 'thorns'; readonly off: boolean }
   | { readonly state: 'sanctuary'; readonly off: boolean }
   | { readonly state: 'sweep' }
-  | { readonly state: 'charge'; readonly mark: ChargeMark };
+  | { readonly state: 'charge'; readonly mark: ChargeMark }
+  | { readonly state: 'aura'; readonly off: boolean };
 
 /** Les mots de la marque de la Charge (#266, maquette 246, `sigTag`), par état. */
 const CHARGE_TEXTS: Readonly<
@@ -1050,6 +1055,16 @@ export function signatureText(
     return { text: 'Balayage', speech: 'balayage : l’esquive échoue, pare' };
   }
   if (mark.state === 'charge') return CHARGE_TEXTS[mark.mark];
+  // L'Aura du Porte-cierge (#268, maquette 246, C1, C5) : grisée quand il est seul debout.
+  if (mark.state === 'aura') {
+    const percent = ENEMIES[kind].aura?.damagePercent ?? 0;
+    return mark.off
+      ? { text: 'Aura · seul', speech: 'aura : aucun allié debout' }
+      : {
+          text: `Aura +${percent} %`,
+          speech: `aura : ses alliés font ${percent} % de dégâts en plus tant qu’${subject} vit`,
+        };
+  }
   if (mark.state === 'thorns') {
     const { damage } = ENEMIES[kind].thorns ?? { damage: 0 };
     return {

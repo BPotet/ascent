@@ -333,6 +333,38 @@ describe('the Bronze ram and the Bell clapper of the Belfry (#266)', () => {
   });
 });
 
+describe('the Candle bearer and the Crypt rat of the Catacombs (#268)', () => {
+  it('gives the Candle bearer 36 HP, 24 guard, Initiative 2, its Candle blow and its Aura of 20 %', () => {
+    expect(ENEMIES.candleBearer).toEqual({
+      maxHp: 36,
+      maxGuard: 24,
+      moves: [{ attack: 'basic', damage: 5 }],
+      supports: false,
+      aura: { damagePercent: 20 },
+    });
+    expect(ENEMY_INITIATIVE.candleBearer).toBe(2);
+  });
+
+  it('gives the Crypt rat 12 HP, 14 guard, Initiative 7, its Bite twice as often as its Swarming, and its Swarm of +2', () => {
+    expect(ENEMIES.cryptRat).toEqual({
+      maxHp: 12,
+      maxGuard: 14,
+      moves: [
+        { attack: 'basic', damage: 4, weight: 2 },
+        { attack: 'double', damage: 3 },
+      ],
+      supports: false,
+      swarm: { damagePerAlly: 2 },
+    });
+    expect(ENEMY_INITIATIVE.cryptRat).toBe(7);
+  });
+
+  it('gives the Candle bearer the signature of its Aura, and none to the Crypt rat (D7)', () => {
+    expect(enemySignature('candleBearer')).toBe('aura');
+    expect(enemySignature('cryptRat')).toBeNull();
+  });
+});
+
 describe('the guards of the ordinary enemies, doubled in the Codex (#244, G2)', () => {
   it('gives the 16 ordinary enemies their new guard', () => {
     expect({

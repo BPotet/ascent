@@ -155,7 +155,10 @@ export type EnemyKind =
   | 'beadle'
   // Le Bélier de bronze et le Battant de cloche (#266), ennemis ordinaires du Beffroi.
   | 'bronzeRam'
-  | 'bellClapper';
+  | 'bellClapper'
+  // Le Porte-cierge et le Rat de crypte (#268), ennemis ordinaires des Catacombes.
+  | 'candleBearer'
+  | 'cryptRat';
 
 /** Le Saignement (`Bleed`, prototype #107) : `damage` PV perdus au début de `rounds` manches. */
 export interface Bleed {
@@ -202,6 +205,24 @@ export interface Sanctuary {
   readonly damagePercent: number;
 }
 
+/**
+ * L'Aura (`Aura`, #268, champ `aura` du Codex) : tant que le Porte-cierge est debout en première
+ * ligne, étourdi ou non, chaque coup des autres ennemis fait `damagePercent` % de dégâts en plus, au
+ * moins +1, par impact. La règle est dans `aura.ts`.
+ */
+export interface Aura {
+  readonly damagePercent: number;
+}
+
+/**
+ * La Nuée (`Swarm`, #268, champ `swarm` du Codex) : chaque impact d'un Rat de crypte fait
+ * `damagePerAlly` dégâts en plus par autre Rat de crypte debout, non étourdi, en première ligne. La
+ * règle est dans `swarm.ts`.
+ */
+export interface Swarm {
+  readonly damagePerAlly: number;
+}
+
 /** Un coup qu'un ennemi peut porter, avec ses dégâts. */
 export interface Move {
   readonly attack: AttackKind;
@@ -244,6 +265,10 @@ export interface EnemyProfile {
   readonly thorns?: Thorns;
   /** Le Sanctuaire (#259) ; absent, les coups du héros ne sont pas réduits. */
   readonly sanctuary?: Sanctuary;
+  /** L'Aura (#268) ; absente, il ne renforce pas les coups de ses alliés. */
+  readonly aura?: Aura;
+  /** La Nuée (#268) ; absente, ses coups ne gagnent rien des siens. */
+  readonly swarm?: Swarm;
 }
 
 /** Le changement de phase d'un boss : à 50 % de ses PV max ou moins (P6, #38). */
@@ -656,6 +681,27 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     ],
     supports: false,
   },
+  // Coup de cierge ; jamais seul (`TIERS[1]`), sans être un soutien : il peut être maudit (D6).
+  // `codex/candleBearer` v1 (67eac4569760a0f24eaeb22ac3b24ed777e5d32d39a5a9fe6dd1bb734aee0e2a).
+  candleBearer: {
+    maxHp: 36,
+    maxGuard: 24,
+    moves: [{ attack: 'basic', damage: 5 }],
+    supports: false,
+    aura: { damagePercent: 20 },
+  },
+  // Morsure (poids 2), puis Grouillement.
+  // `codex/cryptRat` v1 (5bf7bf53b31354d8795f65e0cb782d19ad4e7811306b05f4fb57009be18f3cf0).
+  cryptRat: {
+    maxHp: 12,
+    maxGuard: 14,
+    moves: [
+      { attack: 'basic', damage: 4, weight: 2 },
+      { attack: 'double', damage: 3 },
+    ],
+    supports: false,
+    swarm: { damagePerAlly: 2 },
+  },
 };
 
 /**
@@ -703,21 +749,26 @@ export const ENEMY_INITIATIVE: Readonly<Record<EnemyKind, number>> = {
   // Le Bélier de bronze et le Battant de cloche (#266), celles du Codex.
   bronzeRam: 3,
   bellClapper: 4,
+  // Le Porte-cierge et le Rat de crypte (#268), celles du Codex : les Rats agissent avant le héros.
+  candleBearer: 2,
+  cryptRat: 7,
 };
 
 /**
  * La mécanique signature d'un ennemi (#258, D8 ; #266, D5) : celle que montrent sa marque de
  * signature et sa bulle de première rencontre ; `null` pour un ennemi qui n'en a pas. Exhumer pour
  * le Fossoyeur, les Épines pour la Mère-ronce, le Sanctuaire pour le Bedeau (#259) ; pour un ennemi
- * ordinaire, le Balayage (un coup `sweep`) ou la Charge (un coup avec `charge`) (#266).
+ * ordinaire, le Balayage (un coup `sweep`) ou la Charge (un coup avec `charge`) (#266), l'Aura
+ * (#268). La Nuée n'en donne pas (#268, D7) : la mécanique du Rat de crypte, c'est le nombre.
  */
-export type EnemySignature = 'exhume' | 'thorns' | 'sanctuary' | 'sweep' | 'charge';
+export type EnemySignature = 'exhume' | 'thorns' | 'sanctuary' | 'sweep' | 'charge' | 'aura';
 
 export function enemySignature(kind: EnemyKind): EnemySignature | null {
-  const { exhume, thorns, sanctuary, moves } = ENEMIES[kind];
+  const { exhume, thorns, sanctuary, aura, moves } = ENEMIES[kind];
   if (exhume !== undefined) return 'exhume';
   if (thorns !== undefined) return 'thorns';
   if (sanctuary !== undefined) return 'sanctuary';
+  if (aura !== undefined) return 'aura';
   if (moves.some(({ attack }) => attack === 'sweep')) return 'sweep';
   return moves.some(({ charge }) => charge === true) ? 'charge' : null;
 }

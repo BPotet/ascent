@@ -1,5 +1,6 @@
 import type { Actor } from '../../../domain/battle/actionOrder';
 import { ATTACKS } from '../../../domain/battle/attacks';
+import { auraAlone } from '../../../domain/battle/aura';
 import {
   equippedOf,
   escortedElite,
@@ -399,6 +400,8 @@ function signatureMark(
       return { state: 'sweep' };
     case 'charge':
       return { state: 'charge', mark: chargeMark(battle, index) ?? 'idle' };
+    case 'aura':
+      return { state: 'aura', off: auraAlone(battle.enemies, battle.reserve.length, index) };
   }
 }
 
@@ -413,6 +416,8 @@ function signatureGlyph(mark: SignatureMarkState): IconName {
       return 'sweep8';
     case 'charge':
       return mark.mark === 'broken' ? 'crack8' : 'ram8';
+    case 'aura':
+      return 'candle8';
     default:
       return EXHUME_GLYPHS[mark.state];
   }
@@ -447,10 +452,16 @@ function signatureView(battle: Battle, index: number): SignatureView | null {
   };
 }
 
-/** Une signature d'Élite (#258, #259) ; celles du Beffroi (#266) sont d'ennemis ordinaires. */
+/**
+ * Une signature d'Élite (#258, #259) ; celles du Beffroi (#266) et l'Aura (#268) sont d'ennemis
+ * ordinaires.
+ */
 function isEliteSignature(signature: SignatureView | null): boolean {
-  return signature !== null && signature.variant !== 'sweep' && signature.variant !== 'charge';
+  return signature !== null && !ORDINARY_SIGNATURES.includes(signature.variant);
 }
+
+/** Les signatures d'ennemis ordinaires : le Balayage, la Charge (#266), l'Aura (#268). */
+const ORDINARY_SIGNATURES: readonly EnemySignature[] = ['sweep', 'charge', 'aura'];
 
 function enemyView(
   battle: Battle,

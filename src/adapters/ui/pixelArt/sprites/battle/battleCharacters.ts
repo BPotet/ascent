@@ -35,6 +35,8 @@ import { GRAVEDIGGER_ANIMATION } from '../atelier/data/gravedigger';
 import { BEADLE_ANIMATION } from '../atelier/data/beadle';
 import { BELL_CLAPPER_ANIMATION } from '../atelier/data/bellClapper';
 import { BRONZE_RAM_ANIMATION } from '../atelier/data/bronzeRam';
+import { CANDLE_BEARER_ANIMATION } from '../atelier/data/candleBearer';
+import { CRYPT_RAT_ANIMATION } from '../atelier/data/cryptRat';
 import { BRAMBLE_MOTHER_ANIMATION } from '../atelier/data/brambleMother';
 import { MATINS_RINGER_ANIMATION } from '../atelier/data/matinsRinger';
 import { animationSprite, type ExtraFrame, type FullAnimation } from '../atelier/fullAnimation';
@@ -250,6 +252,9 @@ const FULL_ANIMATIONS = {
   // Le Bélier de bronze et le Battant de cloche (#266).
   bronzeRam: BRONZE_RAM_ANIMATION,
   bellClapper: BELL_CLAPPER_ANIMATION,
+  // Le Porte-cierge et le Rat de crypte (#268).
+  candleBearer: CANDLE_BEARER_ANIMATION,
+  cryptRat: CRYPT_RAT_ANIMATION,
 } satisfies Record<EnemyKind, FullAnimation<EnemyFrame>>;
 
 /** Les ennemis animés (`ANIMATED_ENEMIES`) : les clés du registre des animations complètes. */

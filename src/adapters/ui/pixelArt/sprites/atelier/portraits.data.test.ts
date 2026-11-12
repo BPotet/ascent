@@ -40,6 +40,9 @@ const WITHOUT_MOCKUP: readonly (HeroKind | EnemyKind)[] = [
   // Le Bélier de bronze et le Battant de cloche (#266) : `belfryBestiary.data.test.ts`.
   'bronzeRam',
   'bellClapper',
+  // Le Porte-cierge et le Rat de crypte (#268) : `catacombsBestiary.data.test.ts`.
+  'candleBearer',
+  'cryptRat',
 ];
 
 interface MockupImage {
