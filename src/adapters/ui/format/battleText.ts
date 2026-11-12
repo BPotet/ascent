@@ -587,17 +587,6 @@ export function auraGoesOut(battle: Battle, enemy: number): boolean {
   );
 }
 
-/** Le coup en cours de l'ennemi `enemy` est renforcé par l'Aura (#268, C2). */
-export function auraStrikes(battle: Battle, enemy: number): boolean {
-  const { phase } = battle;
-  return (
-    phase.kind === 'enemy' &&
-    phase.step.kind === 'attack' &&
-    phase.step.enemy === enemy &&
-    (phase.step.aura ?? 0) > 0
-  );
-}
-
 /** Ce que dit l'Aura sur un ennemi qui la reçoit (#268, C1, C6). */
 export const AURA_BOOST_SPEECH = 'aura du Porte-cierge, +20 % de dégâts';
 
@@ -731,9 +720,16 @@ const halved = (event: { readonly sanctuary?: true }) =>
 
 export function damageFloat(event: BattleEvent): DamageFloat | null {
   switch (event.type) {
+    // La flamme de l'Aura sur le chiffre d'un coup qu'elle a renforcé (#268, C2).
     case 'blowResolved':
       return event.damage > 0
-        ? { at: 'hero', text: `−${event.damage}`, big: false, kind: 'damage' }
+        ? {
+            at: 'hero',
+            text: `−${event.damage}`,
+            big: false,
+            kind: 'damage',
+            ...(event.aura !== undefined && { aura: true as const }),
+          }
         : null;
     case 'strikeResolved':
       return {
@@ -893,9 +889,7 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
       const blow = blowAnnouncement(event.outcome, event.damage, battle.phase.kind === 'over');
       // Un coup renforcé par l'Aura qui fait des dégâts (#268, C2).
       const said =
-        event.damage > 0 && auraStrikes(battle, event.enemy)
-          ? `${blow}, aura du Porte-cierge`
-          : blow;
+        event.damage > 0 && event.aura !== undefined ? `${blow}, aura du Porte-cierge` : blow;
       // Rien n'est volé sur une parade parfaite (#267, J3).
       return event.outcome === 'perfectParry' && thiefAt(battle, event.enemy)
         ? `${said}, rien n’est volé`

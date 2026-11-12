@@ -28,7 +28,6 @@ import {
   type DamageFloat,
   type FeedbackText,
   auraGoesOut,
-  auraStrikes,
 } from '../format/battleText';
 
 /** L'état d'affichage de l'écran de combat, tiré des événements de combat. */
@@ -259,16 +258,6 @@ function withoutCandleFall(display: BattleDisplay, enemy: number): BattleDisplay
   if (display.candleFalls[enemy] === undefined) return display;
   const { [enemy]: _, ...candleFalls } = display.candleFalls;
   return { ...display, candleFalls };
-}
-
-/** Le chiffre d'un coup renforcé par l'Aura porte sa flamme (#268, C2). */
-export function auraBlowFloat(
-  float: DamageFloat | null,
-  event: BattleEvent,
-  battle: Battle,
-): DamageFloat | null {
-  if (float === null || event.type !== 'blowResolved') return float;
-  return auraStrikes(battle, event.enemy) ? { ...float, aura: true } : float;
 }
 
 function gardensAfter(display: BattleDisplay, event: BattleEvent): BattleDisplay {
@@ -637,11 +626,7 @@ export function displayOf(
     display = summonAfter(display, event, snapshot.battle, afterRound);
     display = gardensAfter(display, event);
     display = catacombsAfter(display, event, snapshot.battle);
-    const float = auraBlowFloat(
-      ramBlowFloat(damageFloat(event), event, snapshot.battle),
-      event,
-      snapshot.battle,
-    );
+    const float = ramBlowFloat(damageFloat(event), event, snapshot.battle);
     if (event.type === 'secondChanceUsed' && float !== null) {
       display = {
         ...display,

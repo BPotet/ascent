@@ -1,7 +1,7 @@
 // Les textes des Catacombes (#268, maquette 246, C1, C2, C4, C6) : la bulle du Porte-cierge, le mot
 // de scène de sa chute, et ce que le lecteur d'écran annonce : sa chute, un coup renforcé par son
 // Aura, un renfort qui la reçoit.
-import { startBattle, type AttackStep, type Battle } from '../../../domain/battle/Battle';
+import { startBattle, type Battle } from '../../../domain/battle/Battle';
 import type { BattleEvent } from '../../../domain/battle/BattleEvent';
 import type { EnemyKind } from '../../../domain/battle/combatants';
 import { announcement, encounterHintText, feedbackText, isOrdinarySignature } from './battleText';
@@ -14,24 +14,6 @@ function line(enemies: readonly EnemyKind[], fallen: readonly number[] = []): Ba
       fallen.includes(index) ? { ...enemy, hp: 0 } : enemy,
     ),
   };
-}
-
-/** Le combat pendant le coup de l'ennemi `enemy`, renforcé de `aura` par l'Aura. */
-function striking(battle: Battle, enemy: number, aura?: number): Battle {
-  const step = {
-    kind: 'attack',
-    enemy,
-    attack: 'basic',
-    damage: 6,
-    startedAt: 0,
-    feintAt: null,
-    feintShown: false,
-    impacts: [{ at: 1_100, landed: true, lost: false, outcome: 'suffered' }],
-    resolvedAt: 1_260,
-    counter: null,
-    ...(aura !== undefined && { aura }),
-  } as AttackStep;
-  return { ...battle, phase: { kind: 'enemy', step } };
 }
 
 const defeated = (enemy: number): BattleEvent => ({ type: 'enemyDefeated', at: 0, enemy });
@@ -86,15 +68,19 @@ describe('a blow under the Aura (#268, C2)', () => {
   };
 
   it('says the Aura of the Candle bearer after the damage', () => {
-    const battle = striking(line(['ghoul', 'candleBearer']), 0, 1);
+    const battle = line(['ghoul', 'candleBearer']);
 
-    expect(announcement(blow, battle)).toBe('Touché, 6 dégâts, aura du Porte-cierge');
+    expect(announcement({ ...blow, aura: 1 } as BattleEvent, battle)).toBe(
+      'Touché, 6 dégâts, aura du Porte-cierge',
+    );
   });
 
-  it('says nothing more on a blow without the Aura', () => {
-    expect(announcement(blow, striking(line(['ghoul', 'candleBearer']), 0))).toBe(
-      'Touché, 6 dégâts',
-    );
+  it('says nothing more on a blow without the Aura, nor on a blow without damage', () => {
+    const battle = line(['ghoul', 'candleBearer']);
+    const parried = { ...blow, outcome: 'perfectParry', damage: 0, aura: 1 } as BattleEvent;
+
+    expect(announcement(blow, battle)).toBe('Touché, 6 dégâts');
+    expect(announcement(parried, battle)).toBe('Parade parfaite');
   });
 });
 

@@ -2,9 +2,9 @@
 // d'un coup renforcé par l'Aura, et la chute du Porte-cierge : son cierge soufflé, le mot de scène,
 // et les « +20 % » de ses alliés qui se barrent.
 import type { BattleSnapshot } from '../../../application/useCases/BattleSession';
-import { startBattle, type AttackStep, type Battle } from '../../../domain/battle/Battle';
+import { startBattle, type Battle } from '../../../domain/battle/Battle';
 import type { BattleEvent } from '../../../domain/battle/BattleEvent';
-import { INITIAL_DISPLAY, auraBlowFloat, displayOf } from './useBattleDisplay';
+import { INITIAL_DISPLAY, displayOf } from './useBattleDisplay';
 
 const catacombs: Battle = startBattle({
   seed: 1,
@@ -24,23 +24,6 @@ function snapshot(events: readonly BattleEvent[], battle: Battle = catacombs): B
   return { battle, events, heroHint: false, powersHint: false };
 }
 
-function striking(aura?: number): Battle {
-  const step = {
-    kind: 'attack',
-    enemy: 0,
-    attack: 'basic',
-    damage: 6,
-    startedAt: 0,
-    feintAt: null,
-    feintShown: false,
-    impacts: [{ at: 1_100, landed: true, lost: false, outcome: 'suffered' }],
-    resolvedAt: 1_260,
-    counter: null,
-    ...(aura !== undefined && { aura }),
-  } as AttackStep;
-  return { ...catacombs, phase: { kind: 'enemy', step } };
-}
-
 const blow: BattleEvent = {
   type: 'blowResolved',
   at: 1_100,
@@ -55,7 +38,11 @@ const blow: BattleEvent = {
 
 describe('the damage of a blow under the Aura (#268, C2)', () => {
   it('carries the small flame of the Aura', () => {
-    const display = displayOf(INITIAL_DISPLAY, snapshot([blow], striking(1)), false);
+    const display = displayOf(
+      INITIAL_DISPLAY,
+      snapshot([{ ...blow, aura: 1 } as BattleEvent]),
+      false,
+    );
 
     expect(display.heroFloat?.float).toEqual({
       at: 'hero',
@@ -66,11 +53,10 @@ describe('the damage of a blow under the Aura (#268, C2)', () => {
     });
   });
 
-  it('carries no flame without the Aura, nor on another number', () => {
-    expect(
-      auraBlowFloat({ at: 'hero', text: '−5', big: false, kind: 'damage' }, blow, striking()),
-    ).not.toHaveProperty('aura');
-    expect(auraBlowFloat(null, blow, striking(1))).toBeNull();
+  it('carries no flame without the Aura', () => {
+    const display = displayOf(INITIAL_DISPLAY, snapshot([blow]), false);
+
+    expect(display.heroFloat?.float).not.toHaveProperty('aura');
   });
 });
 
