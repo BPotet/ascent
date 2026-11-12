@@ -63,6 +63,44 @@ describe('the fall of the Ember pod (#267)', () => {
     ]);
   });
 
+  it.each([
+    ['bursts', burst],
+    ['is smothered', { type: 'emberBurstSmothered', at: 600, enemy: 2 } as BattleEvent],
+  ])(
+    'forgets the old fall of a pod that %s, then is raised by the Ash gleaner and falls last',
+    (_, first) => {
+      const fallen = displayOf(INITIAL_DISPLAY, snapshot([fell, first]), false);
+      const raised = displayOf(
+        fallen,
+        snapshot([{ type: 'allyRaised', at: 1_500, enemy: 1, ally: 2, hp: 17 }]),
+        false,
+      );
+      expect(raised.podFalls).toEqual({});
+
+      // Sa chute qui gagne le combat : ni Éclatement ni fumée, la pose d'une chute ordinaire.
+      const won = displayOf(
+        raised,
+        snapshot([
+          { type: 'enemyDefeated', at: 3_000, enemy: 2 },
+          { type: 'battleEnded', at: 3_000, outcome: 'victory' } as BattleEvent,
+        ]),
+        false,
+      );
+      expect(won.podFalls).toEqual({});
+    },
+  );
+
+  it('forgets the fall of an enemy that rises by itself', () => {
+    const fallen = displayOf(INITIAL_DISPLAY, snapshot([fell, burst]), false);
+    const risen = displayOf(
+      fallen,
+      snapshot([{ type: 'enemySelfRevived', at: 1_500, enemy: 2, hp: 13 }]),
+      false,
+    );
+
+    expect(risen.podFalls).toEqual({});
+  });
+
   it('forgets the fall when a reinforcement takes its place', () => {
     const fallen = displayOf(INITIAL_DISPLAY, snapshot([fell, burst]), false);
     const entered = displayOf(

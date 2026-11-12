@@ -241,6 +241,12 @@ function gardensAfter(display: BattleDisplay, event: BattleEvent): BattleDisplay
           delayMs: MOMENTUM_STEAL_AFTER_IMPACT_MS,
         },
       };
+    // Une Cosse relevée (par la Glaneuse de cendre, ou seule) est debout : sa chute d'avant est
+    // oubliée, la suivante dira la sienne.
+    case 'allyRaised':
+      return withoutPodFall(display, event.ally);
+    case 'enemySelfRevived':
+      return withoutPodFall(display, event.enemy);
     // Un renfort, un invoqué ou un exhumé prend la place : il entre debout.
     case 'reinforcementEntered':
     case 'summonEntered':
