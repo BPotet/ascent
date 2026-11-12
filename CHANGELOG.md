@@ -2,6 +2,23 @@
 
 Toutes les évolutions notables d'Ascent. Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/). Les versions sont calculées à partir des [Conventional Commits](https://www.conventionalcommits.org/fr/v1.0.0/).
 
+## [0.10.0] - 2026-11-12
+
+L'épique #246 « Bestiaire, de nouveaux ennemis à chaque palier », terminée : chaque palier gagne deux ennemis ordinaires, chacun avec une mécanique qui change la façon de mener le combat.
+
+### Nouveautés pour le joueur
+
+- **Les Catacombes (palier 1)** : le **Porte-cierge** répand une **Aura** qui renforce de 20 % les coups des autres ennemis de la ligne, même quand il est étourdi, jusqu'à sa chute (« L'aura s'éteint »). Les **Rats des cryptes** forment une **Nuée** : chaque autre Rat debout ajoute 2 dégâts à leurs morsures (#268, #287).
+- **Les Jardins de cendre (palier 2)** : la **Cosse de braise** **éclate** à sa mort et inflige 2 charges de Brûlure, sauf si on l'achève étourdie (« Éteinte »). La **Phalène voleuse** vole 1 Élan à chaque impact qui touche le héros ; seules la parade parfaite et l'esquive le protègent (#267, #286).
+- **Le Beffroi (palier 3)** : le **Battant de cloche** porte des **Balayages**, qu'on pare mais qu'on n'esquive pas. Le **Bélier de bronze** annonce une **Charge** sur deux manches avant son gros Coup de bélier ; briser sa garde à temps la brise (#266, #285).
+- Chaque nouvel ennemi à mécanique a sa marque de signature sous son nom, sa bulle de première rencontre (une seule par combat), ses mots de scène, ses sons et ses annonces au lecteur d'écran.
+
+### Technique
+
+- ADR 0027 « Balayage et Charge », 0028 « Éclatement et Vol d'Élan », 0029 « Aura et Nuée » ; avenants à l'ADR 0016 (journal des combats).
+- Marches figées du palier 1 régénérées : les compositions des combats ordinaires incluent le Porte-cierge et les Rats ; Élites et boss inchangés (#287).
+- Les textes de la Phalène voleuse dans la maquette du Bestiaire : la bonne parade laisse voler l'Élan (#281).
+
 ## [0.9.0] - 2026-11-10
 
 L'épique #269 « Un menu des pouvoirs au Pied de la tour », terminée : les pouvoirs équipés se préparent dans un menu à part avant l'ascension, et se choisissent en combat dans une liste lisible.
