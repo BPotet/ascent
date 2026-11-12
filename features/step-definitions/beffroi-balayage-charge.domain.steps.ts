@@ -509,12 +509,17 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
         'ashGleaner',
         'burningHusk',
         'mothkin',
+        // La Cosse de braise et la Phalène voleuse (#267), ajoutées après cette story.
+        'emberPod',
+        'thievingMoth',
       ]);
       expect(ESCORT_POOLS[2].map(({ kind }) => kind)).toEqual([
         'thornPilgrim',
         'ashBramble',
         'burningHusk',
         'mothkin',
+        'emberPod',
+        'thievingMoth',
       ]);
       expect(Array.from({ length: WALKED_SEEDS }, (_, index) => walkTierOne(index + 1))).toEqual(
         TIER_ONE_WALKS,

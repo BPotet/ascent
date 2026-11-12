@@ -553,6 +553,29 @@ const DRAWN = {
     '...XX...',
     '........',
   ],
+  // Les glyphes des marques de signature des Jardins de cendre (#267), table `PAT` de la maquette
+  // `docs/mockups/246-bestiaire/`, sur 8 × 8 pixels d'art : la braise de la Cosse de braise et le
+  // losange d'or de l'Élan, que vole la Phalène voleuse.
+  ember8: [
+    '...X....',
+    '..XX....',
+    '..XXX...',
+    '.XXXXX..',
+    '.XX.XX..',
+    'XXXXXXX.',
+    '.XXXXX..',
+    '........',
+  ],
+  diamond8: [
+    '...X....',
+    '..XXX...',
+    '.XXXXX..',
+    'XXXXXXX.',
+    '.XXXXX..',
+    '..XXX...',
+    '...X....',
+    '........',
+  ],
   // Le cierge de l'Aura du Porte-cierge (#268), `candle` de la table `PAT` de la maquette 246,
   // sur 8 × 8 pixels d'art.
   candle8: [

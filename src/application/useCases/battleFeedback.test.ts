@@ -2,6 +2,8 @@ import type { Battle } from '../../domain/battle/Battle';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
 import type { EnemyKind } from '../../domain/battle/combatants';
 import {
+  EMBER_BURST_AFTER_FALL_MS,
+  MOMENTUM_STEAL_AFTER_IMPACT_MS,
   BURN_AFTER_BLEED_MS,
   CANDLE_SNUFF_AFTER_FALL_MS,
   BURN_OUT_AFTER_BLOW_MS,
@@ -504,6 +506,42 @@ describe('the strike underway (#259)', () => {
   it('is over once its last hit is resolved, or out of the strike', () => {
     expect(strikeUnderway(battle({ ...strike, resolved: true } as Battle['phase']))).toBe(false);
     expect(strikeUnderway(battle({ kind: 'hero', since: 0, announced: false }))).toBe(false);
+  });
+});
+
+describe('the sounds of the Ash gardens (#267)', () => {
+  it('cracks the Burst of an Ember pod 200 ms after its fall, without a vibration, even at 5 stacks', () => {
+    expect(EMBER_BURST_AFTER_FALL_MS).toBe(200);
+    for (const [added, stacks] of [
+      [2, 3],
+      [0, 5],
+    ] as const) {
+      expect(
+        feedbackFor({ type: 'heroBurning', at: 0, added, stacks, cause: 'emberBurst', enemy: 1 }),
+      ).toEqual({ sound: 'emberBurst', haptic: null, delayMs: EMBER_BURST_AFTER_FALL_MS });
+    }
+  });
+
+  it('keeps the flame breath for the Burn of an impact', () => {
+    expect(feedbackFor({ type: 'heroBurning', at: 0, added: 1, stacks: 1 })).toEqual({
+      sound: 'flameBreath',
+      haptic: null,
+    });
+  });
+
+  it('breathes out a smothered pod, without a vibration', () => {
+    expect(feedbackFor({ type: 'emberBurstSmothered', at: 0, enemy: 1 })).toEqual({
+      sound: 'emberSmother',
+      haptic: null,
+      delayMs: EMBER_BURST_AFTER_FALL_MS,
+    });
+  });
+
+  it('beats the wings of the theft 300 ms after the impact, when the diamond leaves, without a vibration', () => {
+    expect(MOMENTUM_STEAL_AFTER_IMPACT_MS).toBe(300);
+    expect(
+      feedbackFor({ type: 'momentumStolen', at: 0, enemy: 0, stolen: 1, momentum: 2 }),
+    ).toEqual({ sound: 'momentumSteal', haptic: null, delayMs: MOMENTUM_STEAL_AFTER_IMPACT_MS });
   });
 });
 

@@ -120,6 +120,15 @@ export const battleColors = {
   chargeBackground: '#2E2114',
   onCharge: '#FFE2C4',
   /**
+   * La Phalène voleuse (#267, maquette 246, `.ptag.steal`) : l'or de l'Élan (`--gold`, `--gold-d`)
+   * sur l'ardoise de sa marque, et le losange qui file. La Cosse de braise prend la braise de la
+   * Brûlure (`burn`, `burnBg`, `onBurn`, `burnRing`).
+   */
+  steal: '#F2D49B',
+  stealLine: '#B98E5A',
+  stealBackground: '#262A36',
+  onSteal: '#EEEAE0',
+  /**
    * Le Porte-cierge (#268, maquette 246) : la lueur citron de l'Aura (`--aura`, `--aura-bg`,
    * `--on-aura`), sur sa marque, les « +20 % » de ses alliés, la flamme du chiffre de dégâts et
    * « L'aura s'éteint ».

@@ -171,6 +171,26 @@ export const CUES = {
     [174, 0.55, 'triangle', 0.1, 0.01],
     [523, 0.25, 'square', 0.03, 0],
   ],
+  // #267 : les Jardins de cendre. L'Éclatement de la Cosse de braise : un claquement sec, puis la
+  // coque qui crève dans un souffle de braises ; le crépitement de la Brûlure suit, comme toujours.
+  'ember-burst': [
+    [180, 0.05, 'square', 0.12, 0, 90],
+    [1_400, 0.04, 'square', 0.05, 0.01],
+    [320, 0.2, 'sawtooth', 0.06, 0.03, 140],
+  ],
+  // La Cosse étouffée : un souffle doux qui s'éteint, sans claquement.
+  'ember-smother': [
+    [600, 0.4, 'sine', 0.04, 0, 180],
+    [300, 0.35, 'triangle', 0.03, 0.08, 120],
+  ],
+  // Le Vol d'Élan : un battement d'ailes, puis un tintement d'or qui s'éloigne.
+  'momentum-steal': [
+    [640, 0.05, 'triangle', 0.03, 0, 420],
+    [760, 0.05, 'triangle', 0.03, 0.06, 480],
+    [1_760, 0.12, 'sine', 0.06, 0.12],
+    [2_090, 0.14, 'sine', 0.035, 0.24],
+    [2_640, 0.16, 'sine', 0.02, 0.36],
+  ],
   // #268 : les Catacombes. La bougie soufflée à la chute du Porte-cierge : un souffle doux et aigu
   // qui retombe, puis la flamme qui meurt dans le grave.
   'candle-snuff': [

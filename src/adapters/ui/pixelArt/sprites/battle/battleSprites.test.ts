@@ -33,6 +33,8 @@ import { GRAVEDIGGER_ANIMATION } from '../atelier/data/gravedigger';
 import { BEADLE_ANIMATION } from '../atelier/data/beadle';
 import { BELL_CLAPPER_ANIMATION } from '../atelier/data/bellClapper';
 import { BRONZE_RAM_ANIMATION } from '../atelier/data/bronzeRam';
+import { EMBER_POD_ANIMATION } from '../atelier/data/emberPod';
+import { THIEVING_MOTH_ANIMATION } from '../atelier/data/thievingMoth';
 import { CANDLE_BEARER_ANIMATION } from '../atelier/data/candleBearer';
 import { CRYPT_RAT_ANIMATION } from '../atelier/data/cryptRat';
 import { BRAMBLE_MOTHER_ANIMATION } from '../atelier/data/brambleMother';
@@ -182,6 +184,8 @@ describe('the full animations of the Atelier in battle (#119, #137, #138, #139)'
     beadle: BEADLE_ANIMATION,
     bronzeRam: BRONZE_RAM_ANIMATION,
     bellClapper: BELL_CLAPPER_ANIMATION,
+    emberPod: EMBER_POD_ANIMATION,
+    thievingMoth: THIEVING_MOTH_ANIMATION,
     candleBearer: CANDLE_BEARER_ANIMATION,
     cryptRat: CRYPT_RAT_ANIMATION,
   };

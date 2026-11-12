@@ -111,6 +111,9 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
       { kind: 'ashGleaner', weight: 1, cap: 1, neverAlone: true },
       { kind: 'burningHusk', weight: 2, cap: 1 },
       { kind: 'mothkin', weight: 3, cap: 2 },
+      // La Cosse de braise et la Phalène voleuse (#267), à la fin de la liste.
+      { kind: 'emberPod', weight: 2, cap: 1 },
+      { kind: 'thievingMoth', weight: 2, cap: 1 },
     ],
     // La Mère-ronce (#259) en 3e position.
     elites: ['scarecrow', 'brambleBurner', 'brambleMother'],

@@ -43,6 +43,9 @@ export const BATTLE_SOUND_FILES: Readonly<Record<BattleSoundCue, number>> = {
   sweepDrone: require('./assets/sweep-drone.wav'),
   chargeScrape: require('./assets/charge-scrape.wav'),
   chargeBroken: require('./assets/charge-broken.wav'),
+  emberBurst: require('./assets/ember-burst.wav'),
+  emberSmother: require('./assets/ember-smother.wav'),
+  momentumSteal: require('./assets/momentum-steal.wav'),
   candleSnuff: require('./assets/candle-snuff.wav'),
   ratSqueak: require('./assets/rat-squeak.wav'),
 };

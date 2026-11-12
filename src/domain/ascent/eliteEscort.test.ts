@@ -27,6 +27,8 @@ describe('drawEliteEscort (#257)', () => {
       ['ashBramble', 2, 1],
       ['burningHusk', 2, 1],
       ['mothkin', 3, 2],
+      ['emberPod', 2, 1],
+      ['thievingMoth', 2, 1],
     ]);
     expect(ESCORT_POOLS[3].map(({ kind, weight, cap }) => [kind, weight, cap])).toEqual([
       ['bronzeWarden', 2, 1],

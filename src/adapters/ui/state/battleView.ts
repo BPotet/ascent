@@ -21,6 +21,7 @@ import {
   type HeroKind,
 } from '../../../domain/battle/combatants';
 import { chargeMark } from '../../../domain/battle/charge';
+import { emberBurstPrimed } from '../../../domain/battle/emberBurst';
 import { exhumeMark, type ExhumeMark } from '../../../domain/battle/exhume';
 import { sanctuaryUp } from '../../../domain/battle/sanctuary';
 import { thornsActive } from '../../../domain/battle/thorns';
@@ -40,6 +41,7 @@ import {
   chargeLineText,
   CHARGE_ACTION_LINE,
   signatureText,
+  isOrdinarySignature,
   stunnedLabel,
   type SignatureMarkState,
 } from '../format/battleText';
@@ -335,6 +337,11 @@ function signatureLine(target: EnemyState): string {
         : '';
     case 'sanctuary':
       return sanctuaryUp(target) ? ' · Sanctuaire, ½ des dégâts' : '';
+    // Le prix de la Cosse de braise debout (#267, J6) ; étourdie, rien.
+    case 'emberBurst':
+      return emberBurstPrimed(target)
+        ? ` · Braises : Brûlure ×${ENEMIES[target.kind].emberBurst!.stacks} à sa mort`
+        : '';
     default:
       return '';
   }
@@ -400,6 +407,10 @@ function signatureMark(
       return { state: 'sweep' };
     case 'charge':
       return { state: 'charge', mark: chargeMark(battle, index) ?? 'idle' };
+    case 'emberBurst':
+      return { state: 'emberBurst', off: !emberBurstPrimed(enemy) };
+    case 'momentumTheft':
+      return { state: 'momentumTheft' };
     case 'aura':
       return { state: 'aura', off: auraAlone(battle.enemies, battle.reserve.length, index) };
   }
@@ -416,6 +427,11 @@ function signatureGlyph(mark: SignatureMarkState): IconName {
       return 'sweep8';
     case 'charge':
       return mark.mark === 'broken' ? 'crack8' : 'ram8';
+    // La braise de la Cosse et le losange d'or de l'Élan (#267, maquette 246, `PAT`).
+    case 'emberBurst':
+      return 'ember8';
+    case 'momentumTheft':
+      return 'diamond8';
     case 'aura':
       return 'candle8';
     default:
@@ -426,7 +442,7 @@ function signatureGlyph(mark: SignatureMarkState): IconName {
 /** Une marque éteinte : grisée (#258, #259 ; la Charge brisée, #266). */
 function markOff(mark: SignatureMarkState): boolean {
   if ('off' in mark) return mark.off;
-  if (mark.state === 'sweep') return false;
+  if (mark.state === 'sweep' || mark.state === 'momentumTheft') return false;
   if (mark.state === 'charge') return mark.mark === 'broken';
   return mark.state === 'lost' || mark.state === 'standing';
 }
@@ -453,15 +469,12 @@ function signatureView(battle: Battle, index: number): SignatureView | null {
 }
 
 /**
- * Une signature d'Élite (#258, #259) ; celles du Beffroi (#266) et l'Aura (#268) sont d'ennemis
- * ordinaires.
+ * Une signature d'Élite (#258, #259) ; celles du Beffroi (#266), des Jardins de cendre (#267) et
+ * l'Aura (#268) sont d'ennemis ordinaires.
  */
 function isEliteSignature(signature: SignatureView | null): boolean {
-  return signature !== null && !ORDINARY_SIGNATURES.includes(signature.variant);
+  return signature !== null && !isOrdinarySignature(signature.variant);
 }
-
-/** Les signatures d'ennemis ordinaires : le Balayage, la Charge (#266), l'Aura (#268). */
-const ORDINARY_SIGNATURES: readonly EnemySignature[] = ['sweep', 'charge', 'aura'];
 
 function enemyView(
   battle: Battle,

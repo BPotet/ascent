@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { enemySignature, type EnemyKind } from '../../../domain/battle/combatants';
-import { encounterHintText } from '../format/battleText';
+import { encounterHintText, isOrdinarySignature } from '../format/battleText';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { pixelFont, textFont } from '../pixelArt/pixelTypography';
 import { battleColors } from '../theme/battleColors';
@@ -13,6 +13,11 @@ import { battleColors } from '../theme/battleColors';
 const ORDINARY = {
   sweep: { glyph: 'sweep8', color: battleColors.sweep },
   charge: { glyph: 'ram8', color: battleColors.charge },
+  // Les Jardins de cendre (#267, J1, J6) : la braise de la Cosse, le losange d'or de la Phalène.
+  emberBurst: { glyph: 'ember8', color: battleColors.burnRing },
+  momentumTheft: { glyph: 'diamond8', color: battleColors.steal },
+  // Les Catacombes (#268, C1) : le cierge de l'Aura, dans sa lueur citron.
+  aura: { glyph: 'candle8', color: battleColors.aura },
 } as const;
 
 /**
@@ -31,7 +36,7 @@ export function EncounterHintBubble({
 }) {
   const { title, text, close, speech } = encounterHintText(enemy);
   const signature = enemySignature(enemy);
-  const ordinary = signature === 'sweep' || signature === 'charge' ? ORDINARY[signature] : null;
+  const ordinary = isOrdinarySignature(signature) ? ORDINARY[signature] : null;
   return (
     <Pressable
       accessibilityRole="button"

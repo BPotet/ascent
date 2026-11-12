@@ -98,13 +98,15 @@ describe('the tiers (#38)', () => {
     }
   });
 
-  it('draws only its own enemies at tier 2, in the order of the stories, the Ash gleaner never alone (#213)', () => {
+  it('draws only its own enemies at tier 2, in the order of the stories, the Ash gleaner never alone (#213), then the Ember pod and the Thieving moth (#267)', () => {
     expect(TIERS[2].enemies).toEqual([
       { kind: 'thornPilgrim', weight: 2, cap: 1 },
       { kind: 'ashBramble', weight: 2, cap: 1 },
       { kind: 'ashGleaner', weight: 1, cap: 1, neverAlone: true },
       { kind: 'burningHusk', weight: 2, cap: 1 },
       { kind: 'mothkin', weight: 3, cap: 2 },
+      { kind: 'emberPod', weight: 2, cap: 1 },
+      { kind: 'thievingMoth', weight: 2, cap: 1 },
     ]);
   });
 

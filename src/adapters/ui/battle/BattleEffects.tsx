@@ -239,6 +239,11 @@ const styles = StyleSheet.create({
   // « Balayé » et « Il charge » (#266, maquette 246, `.fword.sweep`, `.fword.charge`).
   sweep: { color: battleColors.sweep, fontSize: 26, lineHeight: 30, letterSpacing: 1 },
   charge: { color: battleColors.charge, fontSize: 24, lineHeight: 28, letterSpacing: 1 },
+  // « Elle éclate » en orange braise, « Éteinte » en fumée grise, « Parade » d'une bonne parade sur
+  // la Phalène voleuse en or, plus petit (#267, maquette 246, `.fword.ember`, `.fword.smoke`).
+  ember: { color: battleColors.burnRing, fontSize: 28, lineHeight: 32, letterSpacing: 1 },
+  smoke: { color: battleColors.burnSmoke, fontSize: 26, lineHeight: 30, letterSpacing: 1 },
+  steal: { color: artPalette.roles.gold, fontSize: 20, lineHeight: 24 },
   // Le mot « Épines » (#259, M2, `.fword.thorn`), en vert ronce.
   thorns: { color: battleColors.thornLight, fontSize: 20, lineHeight: 24 },
   withShield: { flexDirection: 'row', alignItems: 'center', gap: 6 },

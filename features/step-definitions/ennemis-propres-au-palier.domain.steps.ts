@@ -51,10 +51,18 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   and(
-    /^chaque ennemi tiré est un Pèlerin enronce, une Ronce de cendre, une Glaneuse de cendre, un Embrasé ou une Phalénide$/u,
+    /^chaque ennemi tiré est un Pèlerin enronce, une Ronce de cendre, une Glaneuse de cendre, un Embrasé, une Phalénide, une Cosse de braise ou une Phalène voleuse \(#267\)$/u,
     () => {
       expect(new Set(world.groups.flat())).toEqual(
-        new Set(['thornPilgrim', 'ashBramble', 'ashGleaner', 'burningHusk', 'mothkin']),
+        new Set([
+          'thornPilgrim',
+          'ashBramble',
+          'ashGleaner',
+          'burningHusk',
+          'mothkin',
+          'emberPod',
+          'thievingMoth',
+        ]),
       );
     },
   );
@@ -64,7 +72,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(
-    /^le Pèlerin enronce garde le poids 2 et le plafond 1, la Ronce de cendre 2 et 1, la Glaneuse de cendre 1 et 1 \(jamais seule\), l'Embrasé 2 et 1, la Phalénide 3 et 2$/u,
+    /^le Pèlerin enronce garde le poids 2 et le plafond 1, la Ronce de cendre 2 et 1, la Glaneuse de cendre 1 et 1 \(jamais seule\), l'Embrasé 2 et 1, la Phalénide 3 et 2, puis la Cosse de braise 2 et 1 et la Phalène voleuse 2 et 1 \(#267\)$/u,
     () => {
       expect(TIERS[2].enemies).toEqual([
         { kind: 'thornPilgrim', weight: 2, cap: 1 },
@@ -72,6 +80,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
         { kind: 'ashGleaner', weight: 1, cap: 1, neverAlone: true },
         { kind: 'burningHusk', weight: 2, cap: 1 },
         { kind: 'mothkin', weight: 3, cap: 2 },
+        { kind: 'emberPod', weight: 2, cap: 1 },
+        { kind: 'thievingMoth', weight: 2, cap: 1 },
       ]);
     },
   );

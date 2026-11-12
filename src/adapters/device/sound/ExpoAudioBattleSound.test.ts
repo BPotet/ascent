@@ -132,6 +132,16 @@ describe('ExpoAudioBattleSound', () => {
     },
   );
 
+  it.each(['emberBurst', 'emberSmother', 'momentumSteal'] as const)(
+    'preloads and plays the sound %s of the Ash gardens (#267)',
+    (cue) => {
+      new ExpoAudioBattleSound().play(cue);
+
+      expect(playerOf(cue).calls).toEqual(['seekTo', 'play']);
+      expect(playerOf('glint').calls).toEqual([]);
+    },
+  );
+
   it.each(['candleSnuff', 'ratSqueak'] as const)(
     'preloads and plays the sound %s of the Catacombs (#268)',
     (cue) => {

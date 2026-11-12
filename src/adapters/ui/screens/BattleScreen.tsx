@@ -19,6 +19,7 @@ import { BattleHintBubble } from '../battle/BattleHintBubble';
 import { ACTION_ZONE_BOTTOM, ACTION_ZONE_SIDE, PowerList } from '../battle/PowerList';
 import { EncounterHintBubble } from '../battle/EncounterHintBubble';
 import { EnemyColumn } from '../battle/EnemyColumn';
+import { EmberFlames, StolenMomentum } from '../battle/AshGardensEffects';
 import { SweepTrail } from '../battle/SweepStroke';
 import { HeroBar } from '../battle/HeroBar';
 import { PhaseBanner } from '../battle/PhaseBanner';
@@ -35,7 +36,13 @@ import { toBattleInstant } from '../state/battleTouch';
 import { actionTrackView, battleView, type BattleView } from '../state/battleView';
 import { useReducedMotion } from '../state/useReducedMotion';
 import { jsThreadNow, uiThreadNow } from '../state/useTouchProbe';
-import { heroHpShown, useBattleDisplay, useThornsRevealed } from '../state/useBattleDisplay';
+import {
+  heroHpShown,
+  momentumShown,
+  useBattleDisplay,
+  useTheftRevealed,
+  useThornsRevealed,
+} from '../state/useBattleDisplay';
 import { usePowerList } from '../state/usePowerList';
 import { battleColors } from '../theme/battleColors';
 
@@ -100,6 +107,7 @@ export function BattleScreen({
   const display = useBattleDisplay(session, reducedMotion);
   const shake = useShake(display.shakeKey);
   const thornsShown = useThornsRevealed(display.thorns);
+  const theftShown = useTheftRevealed(display.theft);
   const { width: screenWidth } = useWindowDimensions();
   const [sceneHeight, setSceneHeight] = useState(SCENE_HEIGHT);
   const sceneFrame = useRef<View>(null);
@@ -226,6 +234,9 @@ export function BattleScreen({
     ...(display.exhumeFx[index] !== undefined && { exhumedAt: display.exhumeFx[index] }),
     ...(enemy.charging === true && { charging: true }),
     ...(enemy.chargeBroken === true && { chargeBroken: true }),
+    // La Cosse de braise éclatée ou étouffée, la Phalène voleuse qui saisit l'Élan (#267).
+    ...(display.podFalls[index] !== undefined && { podFall: display.podFalls[index] }),
+    ...(display.theft?.enemy === index && { stealAt: display.theft.at }),
   }));
   // La bulle de première rencontre (#258, F1) : le premier toucher, où qu'il soit, la ferme.
   const encounterHint = display.snapshot?.encounterHint;
@@ -343,6 +354,34 @@ export function BattleScreen({
               reducedMotion={reducedMotion}
             />
           )}
+          {/* Les 2 flammes de l'Éclatement, de la Cosse au héros (#267, J7). */}
+          {display.emberFlames === null ||
+          geometry.enemies[display.emberFlames.enemy] === undefined ? null : (
+            <EmberFlames
+              key={display.emberFlames.key}
+              from={{
+                x: geometry.enemies[display.emberFlames.enemy]!.groundShadowAt.x - 8,
+                y: geometry.enemies[display.emberFlames.enemy]!.groundShadowAt.y - 60,
+              }}
+              to={{ x: geometry.chest.x - 8, y: geometry.chest.y - 8 }}
+              delayMs={display.emberFlames.delayMs}
+              reducedMotion={reducedMotion}
+            />
+          )}
+          {/* Le losange d'Élan volé, du héros vers la Phalène voleuse, et « −1 Élan » (#267, J2). */}
+          {display.theft === null || geometry.enemies[display.theft.enemy] === undefined ? null : (
+            <StolenMomentum
+              key={display.theft.key}
+              from={{ x: geometry.chest.x + 24, y: geometry.chest.y - 24 }}
+              to={{
+                x: geometry.enemies[display.theft.enemy]!.groundShadowAt.x - 8,
+                y: geometry.enemies[display.theft.enemy]!.groundShadowAt.y - 80,
+              }}
+              stolen={display.theft.stolen}
+              delayMs={display.theft.delayMs}
+              reducedMotion={reducedMotion}
+            />
+          )}
           {/* « Victoire » (#258, F6) reste écrit pendant la chute du Squelette avec le Fossoyeur. */}
           {display.feedback === null ||
           (over !== null &&
@@ -443,7 +482,11 @@ export function BattleScreen({
         <>
           <View {...(powersOpen && HIDDEN_FROM_TALKBACK)}>
             <HeroBar
-              hero={battle.hero}
+              hero={{
+                ...battle.hero,
+                // La barre d'Élan baisse avec le losange volé, pas avant (#267, J2).
+                momentum: momentumShown(battle.hero.momentum, display, theftShown),
+              }}
               kind={heroKind}
               bulwarkWorn={display.bulwarkWornAt !== null}
               shadowStepNew={view.pad.kind === 'hero' && view.pad.instantCast === true}

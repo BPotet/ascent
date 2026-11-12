@@ -60,6 +60,13 @@ export interface SceneEnemy {
   readonly charging?: boolean;
   /** Sa Charge vient d'être brisée (#266, A9) : la pose `chargeBroken` à sa chute ; absent, non. */
   readonly chargeBroken?: boolean;
+  /**
+   * La chute d'une Cosse de braise (#267, J7, J9) : éclatée (`burst`) ou étouffée (`smothered`),
+   * à l'instant `at` ; absente, une chute ordinaire.
+   */
+  readonly podFall?: { readonly at: number; readonly kind: 'burst' | 'smothered' };
+  /** L'instant du dernier impact où la Phalène voleuse a volé l'Élan (#267, J2) ; absent, aucun. */
+  readonly stealAt?: number;
 }
 
 /**
