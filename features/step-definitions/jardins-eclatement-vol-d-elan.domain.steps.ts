@@ -489,11 +489,15 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
         'bronzeRam',
         'bellClapper',
       ]);
+      // Le Porte-cierge, qui n'est pas un soutien, et le Rat de crypte (#268, D6) : sans effet, le
+      // palier 1 n'a pas d'escorte.
       expect(ESCORT_POOLS[1].map(({ kind }) => kind)).toEqual([
         'ghoul',
         'specter',
         'skeleton',
         'madVillager',
+        'candleBearer',
+        'cryptRat',
       ]);
       expect(ESCORT_POOLS[3].map(({ kind }) => kind)).toEqual([
         'bronzeWarden',
