@@ -52,6 +52,8 @@ const POD_FALL_MS = 200;
 const THEFT_FROM_MS = 300;
 const THEFT_MS = 500;
 
+// Stryker restore all
+
 /**
  * La pose de la Phalène voleuse qui saisit le losange volé (`steal`, #267, J2), de 300 à 800 ms après
  * l'impact où elle a volé, si elle a cette pose ; `null` sinon.
@@ -66,7 +68,6 @@ export function theftFrame(
   const since = now - stealAt;
   return since >= THEFT_FROM_MS && since < THEFT_FROM_MS + THEFT_MS ? 'steal' : null;
 }
-// Stryker restore all
 
 function clamp01(value: number): number {
   'worklet';
