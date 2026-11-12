@@ -23,6 +23,7 @@ describe('provisional battle sounds', () => {
       'bulwark.wav',
       'burn-crackle.wav',
       'burn-out.wav',
+      'candle-snuff.wav',
       'charge-broken.wav',
       'charge-scrape.wav',
       'defeat.wav',
@@ -44,6 +45,7 @@ describe('provisional battle sounds', () => {
       'perfect-parry.wav',
       'perfect-strike.wav',
       'raise.wav',
+      'rat-squeak.wav',
       'seal.wav',
       'shield-clash.wav',
       'strike.wav',
@@ -169,6 +171,23 @@ describe('provisional battle sounds', () => {
       gong.some(([frequency]) => frequency < 200),
       'a low gong',
     );
+  });
+
+  it('blows the candle out softly, a falling breath, under half a second (#268)', () => {
+    const notes = CUES['candle-snuff'];
+    assert.ok(lasts(notes) <= 0.35);
+    assert.ok(
+      notes.some(([from, , , , , to]) => to !== undefined && to < from),
+      'a falling breath',
+    );
+    assert.ok(Math.max(...notes.map(([, , , volume]) => volume)) <= 0.06, 'soft');
+  });
+
+  it('makes the squeak of a Crypt rat short and high, rising (#268)', () => {
+    const notes = CUES['rat-squeak'];
+    assert.ok(lasts(notes) <= 0.15);
+    assert.ok(notes.every(([frequency]) => frequency >= 2_000));
+    assert.ok(notes.every(([from, , , , , to]) => to !== undefined && to > from));
   });
 
   it('slides a note to its last frequency (exponential ramp)', () => {

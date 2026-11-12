@@ -171,6 +171,18 @@ export const CUES = {
     [174, 0.55, 'triangle', 0.1, 0.01],
     [523, 0.25, 'square', 0.03, 0],
   ],
+  // #268 : les Catacombes. La bougie soufflée à la chute du Porte-cierge : un souffle doux et aigu
+  // qui retombe, puis la flamme qui meurt dans le grave.
+  'candle-snuff': [
+    [1_800, 0.22, 'sine', 0.05, 0, 700],
+    [2_600, 0.1, 'triangle', 0.02, 0.02, 1_600],
+    [240, 0.18, 'sine', 0.04, 0.12, 160],
+  ],
+  // Le couinement court de l'avancée d'un Rat de crypte : deux notes aiguës et brèves qui montent.
+  'rat-squeak': [
+    [2_400, 0.05, 'square', 0.03, 0, 3_200],
+    [2_900, 0.06, 'triangle', 0.04, 0.05, 3_600],
+  ],
 };
 
 const WAVES = {
