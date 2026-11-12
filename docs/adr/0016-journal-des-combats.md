@@ -212,3 +212,13 @@ rangement :
   est suivi de `battleEnded` sans `heroBurning` de cause `emberBurst`) ; Élan volé (la somme des
   `stolen` de `momentumStolen`).
 - **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7).
+
+## Avenant du 12 novembre 2026 — l'Aura et la Nuée (#268, ADR 0029)
+
+- `ActionRecord.attack` recopie de `windUpStarted` les champs facultatifs `swarm` et `aura`, les
+  dégâts ajoutés par impact par la Nuée et par l'Aura ; absents, 0 (le journal des autres combats
+  ne change pas).
+- Les mesures du Game Designer se lisent là : coups portés sous Aura (les attaques dont
+  `attack.aura` est présent) et dégâts ajoutés (la somme des `aura` par impact) ; Nuée moyenne par
+  Morsure (le `swarm` des attaques `basic` d'un Rat de crypte, 0 quand il est absent).
+- **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7).
