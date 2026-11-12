@@ -84,6 +84,12 @@
  *   fiche `codex/bronzeRam`, sha256 b523363f844f4d98fa77aeebea89182a2a1114d6943998815868680b34f10b96 ; `icon` « buste » (sha256 de la copie c4b7f490d0fb3615e6ae8ef3e70984960de26b7ad440424bc90c6956abad2935).
  * - `assets/bellClapper` version 1, sha256 1637065dfb892eeca5b934ba8d31e63f8195e10a28c3664f906aa246fa851919 ;
  *   fiche `codex/bellClapper`, sha256 baa551e284691ee32362b90d7d77ff11efcac1686c12d0e06abe50582247fe47 ; `icon` « buste » (sha256 de la copie 9b18802393d5e7dde999b49edc2e93bb0607f1021873cf402f9114ec30ec9bfd).
+ * La Cosse de braise et la Phalène voleuse (#267), recopiées par la conversation le 12/11/2026
+ * (portraits validés le 12/11/2026), l'id de l'Atelier est le nom de code :
+ * - `assets/emberPod` version 1, sha256 1a3f6e442cc9e007c4afca8bbce46c8b1c23f3b89c7d8eb06bedbd702921dcc9 ;
+ *   fiche `codex/emberPod`, sha256 6825e825274b932c9e4c726b60a74aee44cfcb3fc4b4c77be5936f2e2cb16464 ; `icon` « buste » (sha256 de la copie e4659a302224fb24afc1f9bc5e49ccbab414361bd5b44b5e07c7eba3b78ddc6a).
+ * - `assets/thievingMoth` version 1, sha256 da3ed9700003484d3562d541e0b355fc39d7fb96aa97ad2df78e99580ef589a2 ;
+ *   fiche `codex/thievingMoth`, sha256 c486543b4f7dd50e2c84c8661484e4b4f95bcea6ecee763cc83bc5762fd0bfdd ; `icon` « buste » (sha256 de la copie 99e0623cd2c253822386b63e1e48584e9088f4584f83733d1189b3691eb6ef61).
  * Hors Beffroi (#214), identique, pixel pour pixel, à `ART.ic_<id>` et `ART.ic_<id>2` de la maquette validée
  * `docs/mockups/174-tier-identity/index.html` (la maquette encode parfois la même image avec sa
  * palette dans un autre ordre : les données suivent l'Atelier).
@@ -318,6 +324,97 @@ export const GRAVEDIGGER_PORTRAIT: AssetImage = {
     '.03221022290021111110003',
     '.03221022221221111113000',
     '032210222221221111111009',
+  ],
+};
+
+/** Le portrait de la Cosse de braise (#267). */
+export const EMBER_POD_PORTRAIT: AssetImage = {
+  w: 24,
+  h: 24,
+  palette: [
+    '#06070c',
+    '#241b19',
+    '#3a2a27',
+    '#6e4a44',
+    '#8e8574',
+    '#b0482a',
+    '#d9733a',
+    '#3b2a1c',
+    '#6b4a2a',
+    '#9a6a3a',
+  ],
+  rows: [
+    '........000000..........',
+    '.......04204440.........',
+    '......0432033444........',
+    '.....043325433240.......',
+    '.....04432533322401.....',
+    '.....04332533322241.....',
+    '....044332533322221.....',
+    '....0433325333232210....',
+    '....0433305033232210....',
+    '....04333060332332140...',
+    '....04333060332332120...',
+    '...000332060332352120...',
+    '...097032060332332120...',
+    '..09870320603323321200..',
+    '..09870320603323321200..',
+    '.0987033206033233221090.',
+    '.0987033206033233221070.',
+    '098703332060332332210890',
+    '098703332060332332510870',
+    '097004333060332332210770',
+    '970.04333060332332210097',
+    '970.0433306033532221.077',
+    '70..0433305033232221..09',
+    '70..0433305033222201..09',
+  ],
+};
+
+/** Le portrait de la Phalène voleuse (#267). */
+export const THIEVING_MOTH_PORTRAIT: AssetImage = {
+  w: 24,
+  h: 24,
+  palette: [
+    '#06070c',
+    '#2a1f36',
+    '#4a3660',
+    '#6b5a7a',
+    '#c9c2b0',
+    '#8e8574',
+    '#f8e7c8',
+    '#b98e5a',
+    '#f2d49b',
+    '#fff3d6',
+    '#10131f',
+    '#3e4870',
+    '#8995be',
+  ],
+  rows: [
+    '....0770.0....07700.....',
+    '....0777070..0770.....00',
+    '...07007770..070...00044',
+    '....0..007700070..044422',
+    '........00070700.0422222',
+    '.......06a4040a600422228',
+    '.......0bab44bab60222287',
+    '00000..09aa44b9a50222277',
+    '44444000baa44baa50222228',
+    '222224406444455502222222',
+    '222221110655555002222222',
+    '288821106000000660222222',
+    '888921064444445556022221',
+    '289820644444445555602221',
+    '222222064444445555022221',
+    '422222200044445550222444',
+    '422222003205555000000210',
+    '044000332200000220333003',
+    '.00333220003332220322330',
+    '..033200110c222002000320',
+    '..00320211000002c0220201',
+    '..00220110c333322c003201',
+    '...0032000c3333222003201',
+    '....0320.0c3333222002000',
   ],
 };
 
