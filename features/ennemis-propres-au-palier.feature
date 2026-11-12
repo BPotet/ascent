@@ -12,12 +12,12 @@ Fonctionnalité: Ennemis propres au palier 2
     Étant donné une ascension au palier 2
     Quand les groupes d'ennemis de ses combats ordinaires sont tirés, pour 200 graines
     Alors aucun groupe ne contient de Goule ni de Villageois fou
-    Et chaque ennemi tiré est un Pèlerin enronce, une Ronce de cendre, une Glaneuse de cendre, un Embrasé ou une Phalénide
+    Et chaque ennemi tiré est un Pèlerin enronce, une Ronce de cendre, une Glaneuse de cendre, un Embrasé, une Phalénide, une Cosse de braise ou une Phalène voleuse (#267)
 
   @domain
   Scénario: Les poids et plafonds des autres ennemis ne changent pas
     Étant donné la liste des ennemis du palier 2
-    Alors le Pèlerin enronce garde le poids 2 et le plafond 1, la Ronce de cendre 2 et 1, la Glaneuse de cendre 1 et 1 (jamais seule), l'Embrasé 2 et 1, la Phalénide 3 et 2
+    Alors le Pèlerin enronce garde le poids 2 et le plafond 1, la Ronce de cendre 2 et 1, la Glaneuse de cendre 1 et 1 (jamais seule), l'Embrasé 2 et 1, la Phalénide 3 et 2, puis la Cosse de braise 2 et 1 et la Phalène voleuse 2 et 1 (#267)
     Et la taille des groupes du palier 2 reste de 2 à 4 ennemis
 
   @domain

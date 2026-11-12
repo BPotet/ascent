@@ -99,6 +99,7 @@ import { freeSlots, summonedKind, type PendingSummon } from './summon';
 import { cappedParryHeal } from './parryHeal';
 import { thornsActive, thornsLoss } from './thorns';
 import { emberBurstOnFall } from './emberBurst';
+import { stolenMomentum } from './momentumTheft';
 import { NO_TIER_MULTIPLIER, scaleByPercent, type TierMultiplier } from './tierMultiplier';
 
 /** Les intentions jouées sans coup, par `startSupport` : Garde, Relever, Exhumer et Charge (#266). */
@@ -1300,10 +1301,11 @@ function resolveBlow(
     hp: heroHp,
     bulwark: battle.hero.bulwark && !worn,
   };
+  const touched = burnOn(bleedOn(hero, step, blow.outcome, events, blow.at), step, blow, events);
   const resolved = withStep(
     {
       ...battle,
-      hero: burnOn(bleedOn(hero, step, blow.outcome, events, blow.at), step, blow, events),
+      hero: momentumStolenFrom(touched, battle.enemies[step.enemy]!, step.enemy, blow, events),
     },
     {
       ...withImpact(step, blow.index, { outcome: blow.outcome }),
@@ -1375,6 +1377,26 @@ function burnOn(
   });
   events.push(...burnt.events);
   return withBurn(hero, burnt.stacks);
+}
+
+/**
+ * Le Vol d'Élan d'un impact sur le héros encore debout (#267, D4) : après ses dégâts, le Rempart, la
+ * Brume, le Saignement et la Brûlure ; un impact qui le met à 0 PV ne vole rien.
+ */
+function momentumStolenFrom(
+  hero: HeroState,
+  thief: EnemyState,
+  enemy: number,
+  blow: { readonly outcome: BlowOutcome; readonly at: number },
+  events: Events,
+): HeroState {
+  if (hero.hp === 0) return hero;
+  const stolen = stolenMomentum(hero.momentum, blow.outcome, ENEMIES[thief.kind].momentumTheft);
+  if (stolen === 0) return hero;
+  const momentum = hero.momentum - stolen;
+  events.push({ type: 'momentumStolen', at: blow.at, enemy, stolen, momentum });
+  events.push({ type: 'momentumChanged', at: blow.at, momentum });
+  return { ...hero, momentum };
 }
 
 /**

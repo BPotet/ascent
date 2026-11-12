@@ -173,6 +173,11 @@ const EFFECT_TYPES = [
   // La Charge du Bélier de bronze (#266) : commencée, puis brisée ; portée, c'est `attack.charged`.
   'chargeStarted',
   'chargeBroken',
+  // La Cosse de braise (#267) : un Éclatement pris est un `heroBurning` de cause `emberBurst`, une
+  // Cosse étouffée un `emberBurstSmothered`. La Phalène voleuse : l'Élan volé est la somme des
+  // `stolen`.
+  'emberBurstSmothered',
+  'momentumStolen',
 ] as const satisfies readonly BattleEvent['type'][];
 
 type EffectType = (typeof EFFECT_TYPES)[number];

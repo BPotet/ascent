@@ -100,6 +100,17 @@ export type BattleEvent =
       readonly instant?: true;
     }
   | { readonly type: 'momentumChanged'; readonly at: number; readonly momentum: number }
+  /**
+   * La Phalène voleuse `enemy` vole `stolen` Élan au héros, à la résolution de l'impact, après ses
+   * dégâts (#267, VE3) ; `momentum`, l'Élan qui lui reste. Suivi de `momentumChanged`.
+   */
+  | {
+      readonly type: 'momentumStolen';
+      readonly at: number;
+      readonly enemy: number;
+      readonly stolen: number;
+      readonly momentum: number;
+    }
   | {
       readonly type: 'guardBroken';
       readonly at: number;
