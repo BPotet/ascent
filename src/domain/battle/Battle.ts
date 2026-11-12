@@ -1299,6 +1299,8 @@ function resolveBlow(
     delta: blow.delta,
     damage: blow.damage,
     heroHp,
+    // L'Aura qui a renforcé le coup (#268, D5) : la flamme de son chiffre, son annonce.
+    ...(step.aura !== undefined && { aura: step.aura }),
   });
   // Le Rempart s'use au premier impact qui fait des dégâts, et la riposte part à la fin du coup.
   const worn = battle.hero.bulwark && blow.damage > 0;

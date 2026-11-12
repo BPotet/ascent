@@ -200,6 +200,8 @@ export type BattleEvent =
       readonly delta: number | null;
       readonly damage: number;
       readonly heroHp: number;
+      /** Les dégâts ajoutés par l'Aura au coup (#268, D5), même absorbés ; absents, aucun. */
+      readonly aura?: number;
     }
   | {
       readonly type: 'whiffed';

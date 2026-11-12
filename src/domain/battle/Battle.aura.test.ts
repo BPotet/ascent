@@ -25,6 +25,8 @@ describe('the Aura of a standing Candle bearer (#268, AU1)', () => {
 
     expect(step.damage).toBe(4);
     expect(resolved).toHaveLength(2);
+    // Chaque impact dit l'Aura qui l'a renforcé (#268, D5) : la flamme du chiffre, l'annonce.
+    expect(resolved.map((blow) => blow.aura)).toEqual([1, 1]);
     expect(resolved[0]!.damage).toBe(resolved[1]!.damage);
     expect(resolved[0]!.damage).toBeGreaterThan(0);
   });
@@ -40,11 +42,12 @@ describe('the Aura of a standing Candle bearer (#268, AU1)', () => {
   });
 
   it('never strengthens the Candle bearer himself: his Candle blow does 5', () => {
-    const { step, windUp } = untilBlow(
+    const { battle, step, windUp } = untilBlow(
       withAttack(lineBattle(['candleBearer', 'ghoul']), 0, 'basic', 5),
       0,
     );
 
+    expect(untilResolved(battle)[0]).not.toHaveProperty('aura');
     expect(step.damage).toBe(5);
     expect(step.aura).toBeUndefined();
     expect(windUp.aura).toBeUndefined();
