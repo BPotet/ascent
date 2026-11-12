@@ -31,6 +31,8 @@ import { BELL_NOVICE_ANIMATION } from '../atelier/data/bellNovice';
 import { CLOCK_JACK_ANIMATION } from '../atelier/data/clockJack';
 import { GRAVEDIGGER_ANIMATION } from '../atelier/data/gravedigger';
 import { BEADLE_ANIMATION } from '../atelier/data/beadle';
+import { BELL_CLAPPER_ANIMATION } from '../atelier/data/bellClapper';
+import { BRONZE_RAM_ANIMATION } from '../atelier/data/bronzeRam';
 import { BRAMBLE_MOTHER_ANIMATION } from '../atelier/data/brambleMother';
 import { MATINS_RINGER_ANIMATION } from '../atelier/data/matinsRinger';
 import { FACELESS_PRIOR_ANIMATION } from '../atelier/data/facelessPrior';
@@ -176,6 +178,8 @@ describe('the full animations of the Atelier in battle (#119, #137, #138, #139)'
     // La Mère-ronce et le Bedeau (#259).
     brambleMother: BRAMBLE_MOTHER_ANIMATION,
     beadle: BEADLE_ANIMATION,
+    bronzeRam: BRONZE_RAM_ANIMATION,
+    bellClapper: BELL_CLAPPER_ANIMATION,
   };
   /** Les ennemis animés, tirés du registre : chacun avec son animation recopiée. */
   const ANIMATED = ANIMATED_ENEMIES.map((kind) => [kind, COPIED[kind]] as const);
@@ -680,6 +684,7 @@ describe('the battle effects (precomputed, never painted per frame)', () => {
       }
     }
     expect(EFFECT_KINDS).toEqual({
+      glintSweep: 3,
       flash: 3,
       gold: 5,
       steel: 5,

@@ -13,7 +13,7 @@ import {
 import type { BattleSession, BattleSnapshot } from '../../../application/useCases/BattleSession';
 import type { Battle } from '../../../domain/battle/Battle';
 import type { BattleEvent, BlowOutcome } from '../../../domain/battle/BattleEvent';
-import { eliteSignature } from '../../../domain/battle/combatants';
+import { enemySignature } from '../../../domain/battle/combatants';
 import type { BurnRing } from '../battle/BurnChip';
 import type { HeroPose, SceneBurn, SceneSpark } from '../battle/sceneTypes';
 import {
@@ -200,7 +200,7 @@ function signaturesAfter(display: BattleDisplay, snapshot: BattleSnapshot): Batt
     if (
       event.type === 'guardBroken' &&
       kind !== undefined &&
-      eliteSignature(kind) === 'sanctuary'
+      enemySignature(kind) === 'sanctuary'
     ) {
       shown = {
         ...shown,
@@ -228,6 +228,7 @@ const POSE_OF_OUTCOME: Readonly<Record<BlowOutcome, HeroPose>> = {
   dodge: 'dodge',
   perilousParry: 'hit',
   suffered: 'hit',
+  sweepDodge: 'hit',
 };
 
 /** Le premier coup de Frappe furtive commence (#236) : l'esquive et l'ombre de Pas de l'ombre. */
@@ -290,12 +291,28 @@ function sparkOf(event: BattleEvent): SceneSpark | null {
   return event.outcome === 'parry' ? { kind: 'steel', at: event.at } : null;
 }
 
+/** Les issues d'un coup reçu : subi, parade sur un coup imparable, esquive sur un Balayage (#266). */
+const HURTING: ReadonlySet<BlowOutcome> = new Set(['suffered', 'perilousParry', 'sweepDodge']);
+
 /** Un coup reçu : la vignette rouge et la secousse. */
 function hurts(event: BattleEvent): boolean {
-  return (
-    event.type === 'blowResolved' &&
-    (event.outcome === 'suffered' || event.outcome === 'perilousParry')
-  );
+  return event.type === 'blowResolved' && HURTING.has(event.outcome);
+}
+
+/** Le Coup de bélier d'une Charge qui touche (#266, A11) : son chiffre agrandi. */
+export function ramBlowFloat(
+  float: DamageFloat | null,
+  event: BattleEvent,
+  battle: Battle,
+): DamageFloat | null {
+  if (float === null || event.type !== 'blowResolved') return float;
+  const { phase } = battle;
+  const charged =
+    phase.kind === 'enemy' &&
+    phase.step.kind === 'attack' &&
+    phase.step.enemy === event.enemy &&
+    phase.step.charged === true;
+  return charged ? { ...float, big: true } : float;
 }
 
 /**
@@ -455,7 +472,7 @@ export function displayOf(
   for (const event of snapshot.events) {
     display = burnAfter(display, event, burnBefore, afterBleed);
     display = summonAfter(display, event, snapshot.battle, afterRound);
-    const float = damageFloat(event);
+    const float = ramBlowFloat(damageFloat(event), event, snapshot.battle);
     if (event.type === 'secondChanceUsed' && float !== null) {
       display = {
         ...display,

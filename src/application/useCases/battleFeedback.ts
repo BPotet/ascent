@@ -48,9 +48,17 @@ export const GLINT_CUES: Readonly<Record<GlintKind, BattleSoundCue>> = {
   double: 'glintDouble',
   red: 'glintPerilous',
   dull: 'glintDull',
+  // Le reflet de balayage (#266), le 5e son du reflet.
+  sweep: 'glintSweep',
 };
 
 const NONE: BattleFeedback = { sound: null, haptic: null };
+
+/**
+ * Le gong fêlé de la Charge brisée suit le son de la cassure de 100 ms (#266, maquette A9), avec
+ * les éclats de bronze.
+ */
+export const CHARGE_BROKEN_AFTER_BREAK_MS = 100;
 
 const BLOW_FEEDBACK: Readonly<Record<BlowOutcome, BattleFeedback>> = {
   perfectParry: { sound: 'perfectParry', haptic: 'perfectParry' },
@@ -59,6 +67,8 @@ const BLOW_FEEDBACK: Readonly<Record<BlowOutcome, BattleFeedback>> = {
   // La parade sur un coup imparable échoue : c'est un coup reçu.
   perilousParry: { sound: 'hit', haptic: 'hit' },
   suffered: { sound: 'hit', haptic: 'hit' },
+  // L'esquive sur un Balayage échoue : c'est un coup reçu (#266).
+  sweepDodge: { sound: 'hit', haptic: 'hit' },
 };
 
 /**
@@ -74,8 +84,10 @@ export function feedbackFor(event: BattleEvent): BattleFeedback {
       return BLOW_FEEDBACK[event.outcome];
     case 'whiffed':
       return { sound: 'whiff', haptic: null };
+    // Le sceau d'un coup imparable ; le bourdon grave d'un Balayage, son miroir (#266).
     case 'windUpStarted':
-      return ATTACKS[event.attack].perilous ? { sound: 'seal', haptic: null } : NONE;
+      if (ATTACKS[event.attack].perilous) return { sound: 'seal', haptic: null };
+      return ATTACKS[event.attack].sweep ? { sound: 'sweepDrone', haptic: null } : NONE;
     case 'phaseTransitionStarted':
       return event.to === 'enemy'
         ? { sound: 'enemyPhase', haptic: 'enemyPhase' }
@@ -135,6 +147,12 @@ export function feedbackFor(event: BattleEvent): BattleFeedback {
       return event.loss > 0
         ? { sound: null, haptic: 'thorns', delayMs: THORNS_AFTER_STRIKE_MS }
         : NONE;
+    // La Charge du Bélier de bronze (#266), sans vibration : le raclement de sabot à son action,
+    // le gong fêlé après le son de la cassure qui la brise.
+    case 'chargeStarted':
+      return { sound: 'chargeScrape', haptic: null };
+    case 'chargeBroken':
+      return { sound: 'chargeBroken', haptic: null, delayMs: CHARGE_BROKEN_AFTER_BREAK_MS };
     // La seconde chance n'a pas de son propre (#206) : celui du touché qui fait tomber suffit.
     default:
       return NONE;

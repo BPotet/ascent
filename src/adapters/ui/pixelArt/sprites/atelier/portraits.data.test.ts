@@ -37,6 +37,9 @@ const WITHOUT_MOCKUP: readonly (HeroKind | EnemyKind)[] = [
   // La Mère-ronce et le Bedeau (#259) : `brambleMotherBeadle.data.test.ts`.
   'brambleMother',
   'beadle',
+  // Le Bélier de bronze et le Battant de cloche (#266) : `belfryBestiary.data.test.ts`.
+  'bronzeRam',
+  'bellClapper',
 ];
 
 interface MockupImage {

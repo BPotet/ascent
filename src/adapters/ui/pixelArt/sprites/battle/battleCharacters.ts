@@ -33,6 +33,8 @@ import { BELL_NOVICE_ANIMATION } from '../atelier/data/bellNovice';
 import { CLOCK_JACK_ANIMATION } from '../atelier/data/clockJack';
 import { GRAVEDIGGER_ANIMATION } from '../atelier/data/gravedigger';
 import { BEADLE_ANIMATION } from '../atelier/data/beadle';
+import { BELL_CLAPPER_ANIMATION } from '../atelier/data/bellClapper';
+import { BRONZE_RAM_ANIMATION } from '../atelier/data/bronzeRam';
 import { BRAMBLE_MOTHER_ANIMATION } from '../atelier/data/brambleMother';
 import { MATINS_RINGER_ANIMATION } from '../atelier/data/matinsRinger';
 import { animationSprite, type ExtraFrame, type FullAnimation } from '../atelier/fullAnimation';
@@ -97,6 +99,9 @@ export const EXTRA_FRAMES: readonly ExtraFrame[] = [
   'guard',
   'raiseAlly',
   'exhume',
+  'charge0',
+  'charge1',
+  'chargeBroken',
 ];
 
 export const ENEMY_FRAMES: readonly EnemyFrame[] = [
@@ -239,6 +244,9 @@ const FULL_ANIMATIONS = {
   // La Mère-ronce et le Bedeau (#259).
   brambleMother: BRAMBLE_MOTHER_ANIMATION,
   beadle: BEADLE_ANIMATION,
+  // Le Bélier de bronze et le Battant de cloche (#266).
+  bronzeRam: BRONZE_RAM_ANIMATION,
+  bellClapper: BELL_CLAPPER_ANIMATION,
 } satisfies Record<EnemyKind, FullAnimation<EnemyFrame>>;
 
 /** Les ennemis animés (`ANIMATED_ENEMIES`) : les clés du registre des animations complètes. */

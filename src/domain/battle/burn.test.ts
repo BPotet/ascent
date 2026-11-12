@@ -8,11 +8,12 @@ const OUTCOMES: readonly BlowOutcome[] = [
   'dodge',
   'perilousParry',
   'suffered',
+  'sweepDodge',
 ];
 
 describe('burnsOn (1)', () => {
-  it('burns on a suffered blow, a good parry and a parry on a perilous blow, like the Bleed', () => {
-    expect(OUTCOMES.filter(burnsOn)).toEqual(['parry', 'perilousParry', 'suffered']);
+  it('burns on a suffered blow, a good parry, a parry on a perilous blow and a dodge on a Sweep, like the Bleed', () => {
+    expect(OUTCOMES.filter(burnsOn)).toEqual(['parry', 'perilousParry', 'suffered', 'sweepDodge']);
   });
 });
 

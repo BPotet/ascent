@@ -102,6 +102,23 @@ export const battleColors = {
   ward: '#8FB8C9',
   wardBackground: '#18262E',
   onWard: '#D4EAF2',
+  /**
+   * Le Battant de cloche (#266, maquette 246) : le cyan du Balayage (`--sweep`, `--sweep-d`,
+   * `--sweep-bg`, `--on-sweep`), sur sa marque, le trait de balayage, ses chevrons et « Balayé ».
+   * Jamais le rouge du sceau.
+   */
+  sweep: '#5EE6D0',
+  sweepDark: '#2E9E90',
+  sweepBackground: '#0F2B2C',
+  onSweep: '#C8FFF6',
+  /**
+   * Le Bélier de bronze (#266) : le bronze chauffé de la Charge (`--charge`, `--charge-d`,
+   * `--charge-bg`, `--on-charge`), sur sa marque, ses cornes, ses crans et « Il charge ».
+   */
+  charge: '#E8B98A',
+  chargeDark: '#A0703F',
+  chargeBackground: '#2E2114',
+  onCharge: '#FFE2C4',
   /** La surface relevée de la bulle de première rencontre (`--raised`) et son texte (`--light`). */
   raised: '#2A3150',
   onRaised: '#FFF3D6',

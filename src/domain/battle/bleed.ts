@@ -2,10 +2,15 @@ import type { BlowOutcome } from './BattleEvent';
 import type { Bleed } from './combatants';
 
 /**
- * Les issues d'un impact qui touchent le héros : ni la parade parfaite ni l'esquive. Elles font
- * saigner (B1) et brûler (#171).
+ * Les issues d'un impact qui touchent le héros : ni la parade parfaite ni l'esquive ; l'esquive sur
+ * un Balayage, elle, touche (#266, SW4). Elles font saigner (B1) et brûler (#171).
  */
-export const HERO_TOUCHED_OUTCOMES: readonly BlowOutcome[] = ['parry', 'suffered', 'perilousParry'];
+export const HERO_TOUCHED_OUTCOMES: readonly BlowOutcome[] = [
+  'parry',
+  'suffered',
+  'perilousParry',
+  'sweepDodge',
+];
 
 export function bleedsOn(outcome: BlowOutcome): boolean {
   return HERO_TOUCHED_OUTCOMES.includes(outcome);

@@ -152,7 +152,10 @@ export type EnemyKind =
   | 'gravedigger'
   // La Mère-ronce et le Bedeau (#259), 3es Élites des Jardins de cendre et du Beffroi.
   | 'brambleMother'
-  | 'beadle';
+  | 'beadle'
+  // Le Bélier de bronze et le Battant de cloche (#266), ennemis ordinaires du Beffroi.
+  | 'bronzeRam'
+  | 'bellClapper';
 
 /** Le Saignement (`Bleed`, prototype #107) : `damage` PV perdus au début de `rounds` manches. */
 export interface Bleed {
@@ -209,6 +212,11 @@ export interface Move {
   readonly bleed?: Bleed;
   /** Les charges de Brûlure qu'il allume (`stacks` du modificateur `burn` du Codex, #171), 1 à 3. */
   readonly burn?: number;
+  /**
+   * La Charge (#266, modificateur `charge` du Codex) : tiré, ce coup s'annonce par l'intention
+   * Charge et part à la manche suivante. La règle est dans `intents.ts` et `Battle.ts`.
+   */
+  readonly charge?: true;
 }
 
 export interface EnemyProfile {
@@ -625,6 +633,29 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     supports: false,
     sanctuary: { damagePercent: 50 },
   },
+  // Le Beffroi (#266) : valeurs du Codex de l'Atelier recopiées le 12/11/2026, à l'échelle du
+  // palier 1 (le palier multiplie). Coup de front (poids 2), puis Coup de bélier, avec la Charge.
+  // `codex/bronzeRam` v1 (b523363f844f4d98fa77aeebea89182a2a1114d6943998815868680b34f10b96).
+  bronzeRam: {
+    maxHp: 48,
+    maxGuard: 26,
+    moves: [
+      { attack: 'basic', damage: 6, weight: 2 },
+      { attack: 'delayed', damage: 12, charge: true },
+    ],
+    supports: false,
+  },
+  // Grand balayage, un Balayage (poids 2), puis Coup de battant.
+  // `codex/bellClapper` v1 (baa551e284691ee32362b90d7d77ff11efcac1686c12d0e06abe50582247fe47).
+  bellClapper: {
+    maxHp: 46,
+    maxGuard: 30,
+    moves: [
+      { attack: 'sweep', damage: 6, weight: 2 },
+      { attack: 'basic', damage: 5 },
+    ],
+    supports: false,
+  },
 };
 
 /**
@@ -669,18 +700,24 @@ export const ENEMY_INITIATIVE: Readonly<Record<EnemyKind, number>> = {
   // La Mère-ronce et le Bedeau (#259), celles du Codex.
   brambleMother: 4,
   beadle: 5,
+  // Le Bélier de bronze et le Battant de cloche (#266), celles du Codex.
+  bronzeRam: 3,
+  bellClapper: 4,
 };
 
 /**
- * La mécanique signature d'une Élite (#258, D8) : celle que montrent sa marque de signature et sa
- * bulle de première rencontre ; `null` pour un ennemi qui n'en a pas. Exhumer pour le Fossoyeur,
- * les Épines pour la Mère-ronce, le Sanctuaire pour le Bedeau (#259).
+ * La mécanique signature d'un ennemi (#258, D8 ; #266, D5) : celle que montrent sa marque de
+ * signature et sa bulle de première rencontre ; `null` pour un ennemi qui n'en a pas. Exhumer pour
+ * le Fossoyeur, les Épines pour la Mère-ronce, le Sanctuaire pour le Bedeau (#259) ; pour un ennemi
+ * ordinaire, le Balayage (un coup `sweep`) ou la Charge (un coup avec `charge`) (#266).
  */
-export type EliteSignature = 'exhume' | 'thorns' | 'sanctuary';
+export type EnemySignature = 'exhume' | 'thorns' | 'sanctuary' | 'sweep' | 'charge';
 
-export function eliteSignature(kind: EnemyKind): EliteSignature | null {
-  const { exhume, thorns, sanctuary } = ENEMIES[kind];
+export function enemySignature(kind: EnemyKind): EnemySignature | null {
+  const { exhume, thorns, sanctuary, moves } = ENEMIES[kind];
   if (exhume !== undefined) return 'exhume';
   if (thorns !== undefined) return 'thorns';
-  return sanctuary === undefined ? null : 'sanctuary';
+  if (sanctuary !== undefined) return 'sanctuary';
+  if (moves.some(({ attack }) => attack === 'sweep')) return 'sweep';
+  return moves.some(({ charge }) => charge === true) ? 'charge' : null;
 }

@@ -30,7 +30,7 @@ export async function dismissBattleHint(
 }
 
 /**
- * La clé de la bulle de première rencontre d'une Élite à signature (#258, D8) : une par Élite, par
+ * La clé de la bulle de première rencontre d’un ennemi à signature (#258, D8 ; #266) : une par ennemi, par
  * son nom de code.
  */
 export function encounterHintKey(enemy: EnemyKind): string {

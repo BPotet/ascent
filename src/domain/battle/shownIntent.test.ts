@@ -77,6 +77,29 @@ describe('shownIntent (C2.2, C5.7)', () => {
   });
 });
 
+describe('shownIntent of the Bronze ram (#266)', () => {
+  it('shows the Charge with its first notch lit in the round it starts', () => {
+    expect(
+      shownIntent(withGhoul({ kind: 'bronzeRam', intent: { category: 'charge' } }), 0),
+    ).toEqual({ category: 'charge', notches: 1 });
+  });
+
+  it('keeps showing the Charge, both notches lit, in the round of its Ram blow', () => {
+    const charging = withGhoul({ kind: 'bronzeRam', intent: ATTACK, charge: 'charging' });
+    expect(shownIntent(charging, 0)).toEqual({ category: 'charge', notches: 2 });
+  });
+
+  it('shows the barred circle for a Bronze ram whose Charge is broken', () => {
+    const broken = withGhoul({
+      kind: 'bronzeRam',
+      intent: { category: 'charge' },
+      charge: 'broken',
+      stun: { actionLost: false, heroAction: 1 },
+    });
+    expect(shownIntent(broken, 0)).toEqual({ category: 'skip', reason: 'stunned' });
+  });
+});
+
 describe('shownIntent of the Gravedigger and his Skeleton (#258)', () => {
   it('shows the intent Exhume, without its place', () => {
     expect(shownIntent(withGhoul({ intent: { category: 'exhume', slot: 1 } }), 0)).toEqual({

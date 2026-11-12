@@ -319,3 +319,89 @@ describe('drawIntent with the place of an exhumation (#258, D1)', () => {
     expect(drawIntent('gravedigger', random, CALM).intent.category).toBe('attack');
   });
 });
+
+describe('drawIntent of the Bronze ram and its Charge (#266, D4)', () => {
+  const RAM_BLOW = seedWithFirstDraw((value) => value >= 2 / 3);
+  const FRONT_BLOW = seedWithFirstDraw((value) => value < 2 / 3);
+  const three = (seed: number) =>
+    nextRandom(nextRandom(nextRandom(seedRandom(seed)).state).state).state;
+
+  it('announces the Charge when it draws the Ram blow, its three draws consumed (CH1)', () => {
+    const { intent, random } = drawIntent('bronzeRam', seedRandom(RAM_BLOW), CALM);
+
+    expect(intent).toEqual({ category: 'charge' });
+    expect(random).toBe(three(RAM_BLOW));
+  });
+
+  it('draws its Front blow as an ordinary attack', () => {
+    expect(attackOf('bronzeRam', FRONT_BLOW)).toMatchObject({ attack: 'basic', damage: 6 });
+  });
+
+  it('never starts a Charge while stunned: the Ram blow stays an attack it will lose', () => {
+    const { intent, random } = drawIntent('bronzeRam', seedRandom(RAM_BLOW), {
+      ...CALM,
+      stunned: true,
+    });
+
+    expect(intent).toMatchObject({ category: 'attack', attack: 'delayed', damage: 12 });
+    expect(random).toBe(three(RAM_BLOW));
+  });
+
+  it('forces the Ram blow while charging, whatever the draw, the wind-up of this draw (CH3)', () => {
+    for (const seed of [RAM_BLOW, FRONT_BLOW]) {
+      const random = seedRandom(seed);
+      const windUp = nextRandom(nextRandom(random).state).value;
+      const { intent, random: after } = drawIntent('bronzeRam', random, {
+        ...CALM,
+        charging: true,
+      });
+
+      expect(intent).toEqual({
+        category: 'attack',
+        attack: 'delayed',
+        damage: 12,
+        windUpMs: Math.round(1_700 * (0.9 + 0.2 * windUp)),
+        feintFraction: expect.any(Number),
+      });
+      expect(after).toBe(three(seed));
+    }
+  });
+
+  it('scales the forced Ram blow by the tier, then the curse: 21 at tier 3, 25 cursed', () => {
+    const tier3 = { ...CALM, charging: true, damagePercent: 175 };
+    const draw = (cursed: boolean) =>
+      drawIntent('bronzeRam', seedRandom(FRONT_BLOW), { ...tier3, cursed }).intent;
+
+    expect(draw(false)).toMatchObject({ attack: 'delayed', damage: 21 });
+    expect(draw(true)).toMatchObject({ attack: 'delayed', damage: 25 });
+  });
+
+  it('ignores charging for an enemy without a Charge', () => {
+    expect(drawIntent('ghoul', seedRandom(3), { ...CALM, charging: true })).toEqual(
+      drawIntent('ghoul', seedRandom(3), CALM),
+    );
+  });
+});
+
+describe('drawIntent of the Bell clapper (#266)', () => {
+  it('draws its Great sweep twice as often as its Clapper blow', () => {
+    const drawn = SEEDS.map((seed) => attackOf('bellClapper', seed));
+    const sweeps = drawn.filter(({ attack }) => attack === 'sweep');
+
+    expect(new Set(drawn.map(({ attack }) => attack))).toEqual(new Set(['sweep', 'basic']));
+    expect(sweeps.length / drawn.length).toBeGreaterThan(0.6);
+    expect(sweeps.length / drawn.length).toBeLessThan(0.73);
+  });
+
+  it('scales its moves by the tier and the curse: 10 and 8 at tier 3, 12 and 9 cursed', () => {
+    const sweep = seedWithFirstDraw((value) => value < 2 / 3);
+    const blow = seedWithFirstDraw((value) => value >= 2 / 3);
+    const damage = (seed: number, cursed: boolean) =>
+      drawIntent('bellClapper', seedRandom(seed), { ...CALM, damagePercent: 175, cursed });
+
+    expect(damage(sweep, false).intent).toMatchObject({ attack: 'sweep', damage: 10 });
+    expect(damage(sweep, true).intent).toMatchObject({ attack: 'sweep', damage: 12 });
+    expect(damage(blow, false).intent).toMatchObject({ attack: 'basic', damage: 8 });
+    expect(damage(blow, true).intent).toMatchObject({ attack: 'basic', damage: 9 });
+  });
+});

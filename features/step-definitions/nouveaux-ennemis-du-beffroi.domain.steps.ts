@@ -91,7 +91,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   );
 
   and(
-    /^chaque ennemi tiré est un Veilleur d'airain, une Gargouille, un Fondeur de cloches, un Novice des cloches, une Sonneuse de matines ou un Jaquemart$/u,
+    /^chaque ennemi tiré est un Veilleur d'airain, une Gargouille, un Fondeur de cloches, un Novice des cloches, une Sonneuse de matines, un Jaquemart, un Bélier de bronze ou un Battant de cloche$/u,
     () => {
       expect(new Set(world.groups.flat())).toEqual(
         new Set([
@@ -101,6 +101,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
           'bellNovice',
           'matinsRinger',
           'clockJack',
+          'bronzeRam',
+          'bellClapper',
         ]),
       );
     },

@@ -92,6 +92,7 @@ describe('IconBoardScreen (#157)', () => {
       'Voile · coup imparable · palier 1',
       'Voile · coup imparable · palier 3',
       'Beffroi · Novice, Sonneuse, Jaquemart',
+      'Beffroi · Battant, Bélier · Balayage',
       "Choix d'un bienfait · Veillée d'hiver",
       'Objet trouvé · Flamberge',
       'Fermer',
@@ -630,4 +631,30 @@ describe('IconBoardScreen with the veil of the enemy phase (#188)', () => {
       }
     },
   );
+});
+
+describe('IconBoardScreen with the Bell clapper and the Bronze ram (#266)', () => {
+  it('resumes the wind-up of a Sweep: the stroke over the Bell clapper, never the seal (A2)', async () => {
+    jest.useFakeTimers();
+    try {
+      await open('Beffroi · Battant, Bélier · Balayage');
+      const { battle, saved } = opened[0]!;
+      expect(saved).toMatchObject({ tier: 3 });
+      expect(battle?.phase).toMatchObject({
+        kind: 'enemy',
+        step: { kind: 'attack', attack: 'sweep', enemy: 1 },
+      });
+      for (let second = 0; second < RESUME_COUNTDOWN_S; second += 1) {
+        await act(async () => {
+          jest.advanceTimersByTime(1_000);
+        });
+      }
+
+      expect(screen.getByLabelText('Trait de balayage : parade')).toBeOnTheScreen();
+      expect(screen.getByTestId('sweep-trail', hidden)).toBeTruthy();
+      expect(screen.queryByLabelText('Sceau rouge : coup imparable')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });

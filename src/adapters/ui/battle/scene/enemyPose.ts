@@ -96,8 +96,17 @@ function pose(
  * La pose du milieu d'une Garde, d'un Relever ou d'une Exhumation : `guard`, `raiseAlly` (#38) ou
  * `exhume` (#258) si l'entité l'a ; `ant1` sinon.
  */
-function supportFrame(timeline: SceneTimeline, extras: readonly ExtraFrame[]): SceneFrame {
+function supportFrame(
+  timeline: SceneTimeline,
+  extras: readonly ExtraFrame[],
+  step: number,
+  reduced: boolean,
+): SceneFrame {
   'worklet';
+  // La Charge (#266, A7) : tête baissée, il gratte le sol ; tenue sans secousse en mouvement réduit.
+  if (timeline.support === 'charge' && extras.includes('charge0')) {
+    return !reduced && step % 2 === 1 && extras.includes('charge1') ? 'charge1' : 'charge0';
+  }
   if (timeline.support === 'guard' && extras.includes('guard')) return 'guard';
   if (timeline.support === 'raise' && extras.includes('raiseAlly')) return 'raiseAlly';
   if (timeline.support === 'exhume' && extras.includes('exhume')) return 'exhume';
@@ -117,8 +126,9 @@ function framePose(
   if (timeline.kind === 'support') {
     const q = clamp01((t - timeline.stepInAt) / Math.max(1, timeline.until - timeline.stepInAt));
     const middle = q > 0.25 && q < 0.75;
+    const step = Math.floor(Math.max(0, t - timeline.stepInAt) / FRAME_MS);
     return pose(
-      middle ? supportFrame(timeline, extras) : 'ant0',
+      middle ? supportFrame(timeline, extras, step, reduced) : 'ant0',
       1,
       false,
       SUPPORT_REACH * Math.sin(Math.PI * q),
@@ -293,18 +303,27 @@ export interface RestPose<Frame extends SceneFrame = EnemyFrame> {
  * `rise1`, 133 ms chacune, puis `idle0`.
  */
 export function restPose(
-  enemy: Pick<SceneEnemy, 'standing' | 'down' | 'losingAction' | 'rising' | 'downSince'>,
+  enemy: Pick<
+    SceneEnemy,
+    'standing' | 'down' | 'losingAction' | 'rising' | 'downSince' | 'charging' | 'chargeBroken'
+  >,
   index: number,
   now: number,
 ): RestPose;
 export function restPose(
-  enemy: Pick<SceneEnemy, 'standing' | 'down' | 'losingAction' | 'rising' | 'downSince'>,
+  enemy: Pick<
+    SceneEnemy,
+    'standing' | 'down' | 'losingAction' | 'rising' | 'downSince' | 'charging' | 'chargeBroken'
+  >,
   index: number,
   now: number,
   extras: readonly ExtraFrame[] | undefined,
 ): RestPose<SceneFrame>;
 export function restPose(
-  enemy: Pick<SceneEnemy, 'standing' | 'down' | 'losingAction' | 'rising' | 'downSince'>,
+  enemy: Pick<
+    SceneEnemy,
+    'standing' | 'down' | 'losingAction' | 'rising' | 'downSince' | 'charging' | 'chargeBroken'
+  >,
   index: number,
   now: number,
   extras: readonly ExtraFrame[] = NO_EXTRAS,
@@ -320,11 +339,18 @@ export function restPose(
   }
   if (enemy.down) {
     const since = enemy.downSince === null ? Infinity : now - enemy.downSince;
+    // La Charge brisée (#266, A9) : les cornes qui tintent, à la place de `hurt`.
+    const hurt: SceneFrame =
+      enemy.chargeBroken === true && extras.includes('chargeBroken') ? 'chargeBroken' : 'hurt';
     return {
-      frame: since >= 0 && since < 200 ? 'hurt' : 'down',
+      frame: since >= 0 && since < 200 ? hurt : 'down',
       stars: Math.floor(now / 125) % 4,
       hop: enemy.losingAction,
     };
+  }
+  // La pose de la Charge tenue d'une manche à l'autre (#266, A8), sans secousse.
+  if (enemy.charging === true && extras.includes('charge0')) {
+    return { frame: 'charge0', stars: null, hop: false };
   }
   const breath = Math.floor((now + index * 130) / 250) % 2;
   return { frame: breath === 1 ? 'idle1' : 'idle0', stars: null, hop: false };

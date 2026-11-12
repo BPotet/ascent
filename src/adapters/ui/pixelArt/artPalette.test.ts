@@ -19,7 +19,7 @@ describe('artPalette', () => {
   const { roles, tints } = artPalette;
 
   it('keeps the tints of the tower prototype, 0 being transparent', () => {
-    expect(tints).toHaveLength(73);
+    expect(tints).toHaveLength(75);
     expect(tints[0]).toBeNull();
     expect(tints[1]).toBe('#06070C');
     expect(tints[8]).toBe('#F2D49B');
@@ -70,7 +70,11 @@ describe('artPalette', () => {
   });
 
   it('adds the bramble green of the Thorns and the steel of the Sanctuary at codes 71 and 72 (#259)', () => {
-    expect(tints.slice(71)).toEqual(['#B8E07A', '#8FB8C9']);
+    expect(tints.slice(71, 73)).toEqual(['#B8E07A', '#8FB8C9']);
+  });
+
+  it('adds the cyan of the Sweep and its light core at codes 73 and 74 (#266)', () => {
+    expect(tints.slice(73)).toEqual(['#5EE6D0', '#C8FFF6']);
   });
 
   it('gives the readability veil of the tier backdrops: the night of the mockup at 90 % (#176)', () => {

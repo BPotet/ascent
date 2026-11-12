@@ -4,6 +4,7 @@ import {
   BURN_AFTER_BLEED_MS,
   BURN_OUT_AFTER_BLOW_MS,
   BURN_OUT_AFTER_CRACKLE_MS,
+  CHARGE_BROKEN_AFTER_BREAK_MS,
   GLINT_CUES,
   feedbackFor,
   feedbacksFor,
@@ -231,6 +232,52 @@ describe('GLINT_CUES (the sound of each glint, C2.10)', () => {
       double: 'glintDouble',
       red: 'glintPerilous',
       dull: 'glintDull',
+      sweep: 'glintSweep',
+    });
+  });
+});
+
+describe('the sounds of the Sweep and of the Charge (#266)', () => {
+  it('plays the low bell drone at the wind-up of a Sweep, without a vibration', () => {
+    expect(feedbackFor(windUp('sweep'))).toEqual({ sound: 'sweepDrone', haptic: null });
+  });
+
+  it('plays the hit on a dodge on a Sweep, and vibrates like a hit', () => {
+    expect(
+      feedbackFor({
+        type: 'blowResolved',
+        at: 0,
+        enemy: 0,
+        index: 0,
+        outcome: 'sweepDodge',
+        button: 'dodge',
+        delta: 0,
+        damage: 9,
+        heroHp: 71,
+      }),
+    ).toEqual({ sound: 'hit', haptic: 'hit' });
+  });
+
+  it('scrapes the hoof when the Bronze ram charges, without a vibration', () => {
+    expect(feedbackFor({ type: 'chargeStarted', at: 0, enemy: 0 })).toEqual({
+      sound: 'chargeScrape',
+      haptic: null,
+    });
+  });
+
+  it('rings the cracked gong of a broken Charge after the sound of the guard break', () => {
+    expect(feedbackFor({ type: 'chargeBroken', at: 0, enemy: 0 })).toEqual({
+      sound: 'chargeBroken',
+      haptic: null,
+      delayMs: CHARGE_BROKEN_AFTER_BREAK_MS,
+    });
+    expect(CHARGE_BROKEN_AFTER_BREAK_MS).toBe(100);
+  });
+
+  it('plays nothing more at the wind-up of a charged Ram blow, an ordinary delayed blow', () => {
+    expect(feedbackFor({ ...windUp('delayed'), charged: true } as BattleEvent)).toEqual({
+      sound: null,
+      haptic: null,
     });
   });
 });

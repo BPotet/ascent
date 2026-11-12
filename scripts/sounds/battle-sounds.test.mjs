@@ -23,6 +23,8 @@ describe('provisional battle sounds', () => {
       'bulwark.wav',
       'burn-crackle.wav',
       'burn-out.wav',
+      'charge-broken.wav',
+      'charge-scrape.wav',
       'defeat.wav',
       'dodge.wav',
       'enemy-phase.wav',
@@ -30,6 +32,7 @@ describe('provisional battle sounds', () => {
       'glint-double.wav',
       'glint-dull.wav',
       'glint-perilous.wav',
+      'glint-sweep.wav',
       'glint.wav',
       'guard-break.wav',
       'guard-restore.wav',
@@ -44,6 +47,7 @@ describe('provisional battle sounds', () => {
       'seal.wav',
       'shield-clash.wav',
       'strike.wav',
+      'sweep-drone.wav',
       'victory.wav',
       'whiff.wav',
       'wing-rustle-loud.wav',
@@ -125,6 +129,46 @@ describe('provisional battle sounds', () => {
     assert.ok(soft.length > 3 && loud.length > 3, 'several flutters of wings');
     assert.ok(peak(loud) > peak(soft));
     assert.ok(lasts(soft) <= 0.5 && lasts(loud) <= 0.6);
+  });
+
+  it('makes the drone of the Sweep a low bell that swells, the opposite of the seal (#266)', () => {
+    const notes = CUES['sweep-drone'];
+    const volumes = notes.map(([, , , volume]) => volume);
+    assert.ok(
+      notes.every(([frequency]) => frequency < 200),
+      'low',
+    );
+    assert.ok(
+      notes.every(([, , wave]) => wave !== 'sawtooth'),
+      'not the saw of the seal',
+    );
+    assert.deepEqual(
+      [...volumes].sort((a, b) => a - b),
+      volumes,
+      'it swells',
+    );
+    assert.ok(lasts(notes) >= 0.5 && lasts(notes) <= 0.65);
+  });
+
+  it('makes the Sweep glint a grazing whistle, its own fifth glint sound (#266)', () => {
+    const notes = CUES['glint-sweep'];
+    assert.ok(lasts(notes) <= 0.15);
+    assert.notDeepEqual(notes, CUES.glint);
+    assert.ok(
+      notes.some(([from, , , , , to]) => to !== undefined && to < from),
+      'it grazes down',
+    );
+  });
+
+  it('makes the Charge scrape a hoof and a puff of steam, then the broken Charge a cracked gong (#266)', () => {
+    const scrape = CUES['charge-scrape'];
+    const gong = CUES['charge-broken'];
+    assert.ok(scrape.length >= 3 && lasts(scrape) <= 0.5);
+    assert.ok(gong.length >= 2 && lasts(gong) <= 0.65);
+    assert.ok(
+      gong.some(([frequency]) => frequency < 200),
+      'a low gong',
+    );
   });
 
   it('slides a note to its last frequency (exponential ramp)', () => {

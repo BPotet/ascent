@@ -18,7 +18,7 @@ import {
   type HeroAction,
 } from './Battle';
 import type { BattleEvent } from './BattleEvent';
-import { ENEMIES, ENEMY_INITIATIVE, eliteSignature, type EnemyKind } from './combatants';
+import { ENEMIES, ENEMY_INITIATIVE, enemySignature, type EnemyKind } from './combatants';
 import { sanctuaryUp } from './sanctuary';
 import { scaleByPercent } from './tierMultiplier';
 
@@ -125,8 +125,8 @@ describe('the Beadle, an Elite of tier 3 (#259)', () => {
   });
 
   it('has the Sanctuary signature', () => {
-    expect(eliteSignature('beadle')).toBe('sanctuary');
-    expect(eliteSignature('bellNovice')).toBeNull();
+    expect(enemySignature('beadle')).toBe('sanctuary');
+    expect(enemySignature('bellNovice')).toBeNull();
   });
 
   it('fights at the Elite multiplier of tier 3: 167 HP and guard 96', () => {

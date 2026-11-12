@@ -145,6 +145,32 @@ export const CUES = {
     [560, 0.08, 'sawtooth', 0.045, 0.24, 330],
     [680, 0.1, 'triangle', 0.05, 0.31, 360],
   ],
+  // #266 : le Beffroi. Le bourdon de la préparation d'un Balayage : une cloche grave qui enfle, des
+  // coups de plus en plus forts, à l'opposé de la scie aiguë du sceau.
+  'sweep-drone': [
+    [98, 0.6, 'sine', 0.05, 0],
+    [147, 0.45, 'triangle', 0.07, 0.12],
+    [98, 0.4, 'sine', 0.1, 0.2],
+    [110, 0.3, 'triangle', 0.13, 0.32],
+  ],
+  // Le reflet de balayage, le 5e son du reflet : un sifflement rasant qui retombe.
+  'glint-sweep': [
+    [3_200, 0.12, 'triangle', 0.14, 0, 1_800],
+    [4_400, 0.06, 'sine', 0.05, 0],
+  ],
+  // La Charge : un raclement de sabot, puis un souffle de vapeur doux et aigu.
+  'charge-scrape': [
+    [160, 0.05, 'square', 0.05, 0, 120],
+    [150, 0.05, 'square', 0.05, 0.08, 110],
+    [170, 0.05, 'square', 0.05, 0.16, 120],
+    [2_200, 0.2, 'sine', 0.03, 0.22, 1_500],
+  ],
+  // La Charge brisée, après le son de la cassure : un gong grave et fêlé, deux notes qui frottent.
+  'charge-broken': [
+    [165, 0.6, 'triangle', 0.14, 0],
+    [174, 0.55, 'triangle', 0.1, 0.01],
+    [523, 0.25, 'square', 0.03, 0],
+  ],
 };
 
 const WAVES = {

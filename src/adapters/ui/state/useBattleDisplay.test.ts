@@ -81,6 +81,7 @@ describe('displayOf (display state of the battle screen)', () => {
     ['dodge', 'dodge'],
     ['perilousParry', 'hit'],
     ['suffered', 'hit'],
+    ['sweepDodge', 'hit'],
   ] as const)('poses the hero after a %s, from the instant of the blow', (outcome, pose) => {
     const display = displayOf(INITIAL_DISPLAY, snapshot([blow(outcome, 1, 1_300)]), false);
     expect([display.heroPose, display.heroPoseSince]).toEqual([pose, 1_300]);
@@ -119,6 +120,16 @@ describe('displayOf (display state of the battle screen)', () => {
       expect(display.feedback).toBeNull();
     },
   );
+
+  it('shows the red vignette and shakes on a dodge on a Sweep, and writes « Balayé » (#266, A5)', () => {
+    const display = displayOf(INITIAL_DISPLAY, snapshot([blow('sweepDodge', 9, 900)]), false);
+
+    expect([display.hurtAt, display.shakeKey]).toEqual([900, 1]);
+    expect(display.float?.float).toEqual({ at: 'hero', text: '−9', big: false, kind: 'damage' });
+    expect(display.feedback?.texts).toEqual([
+      { tone: 'sweep', title: 'Balayé', sub: 'L’esquive échoue · pare le Balayage' },
+    ]);
+  });
 
   it('neither shakes nor shows the vignette on a dodge', () => {
     const display = displayOf(INITIAL_DISPLAY, snapshot([blow('dodge', 0)]), false);
@@ -390,5 +401,47 @@ describe('announcementsOf: the Bulwark riposte (#128)', () => {
       'Riposte du Rempart, Goule, 3 dégâts',
       'Cassure, Goule étourdie',
     ]);
+  });
+});
+
+describe('the Ram blow that lands (#266, A11)', () => {
+  const charged = (charged: boolean): Battle => ({
+    ...started,
+    phase: {
+      kind: 'enemy',
+      step: {
+        kind: 'attack',
+        enemy: 1,
+        attack: 'delayed',
+        damage: 21,
+        startedAt: 0,
+        feintAt: null,
+        feintShown: false,
+        impacts: [{ at: 1_700, landed: true, lost: false, outcome: 'suffered' }],
+        resolvedAt: 1_860,
+        counter: null,
+        ...(charged && { charged: true as const }),
+      },
+    },
+  });
+
+  it('flies its damage big above the hero', () => {
+    const display = displayOf(
+      INITIAL_DISPLAY,
+      snapshot([blow('suffered', 19)], charged(true)),
+      false,
+    );
+
+    expect(display.float?.float).toEqual({ at: 'hero', text: '−19', big: true, kind: 'damage' });
+  });
+
+  it('keeps an ordinary delayed blow small', () => {
+    const display = displayOf(
+      INITIAL_DISPLAY,
+      snapshot([blow('suffered', 19)], charged(false)),
+      false,
+    );
+
+    expect(display.float?.float.big).toBe(false);
   });
 });

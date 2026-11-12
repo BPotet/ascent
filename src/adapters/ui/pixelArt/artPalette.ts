@@ -93,6 +93,10 @@ export const artPalette = {
     // des éclats de la rupture du Sanctuaire (maquette 245).
     '#B8E07A',
     '#8FB8C9',
+    // Le Balayage de #266, dessiné en code : le cyan du reflet de balayage et son cœur clair
+    // (maquette 246).
+    '#5EE6D0',
+    '#C8FFF6',
   ],
   /** Les rôles d'interface. */
   roles: {

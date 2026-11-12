@@ -1,14 +1,24 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import type { EnemyKind } from '../../../domain/battle/combatants';
+import { enemySignature, type EnemyKind } from '../../../domain/battle/combatants';
 import { encounterHintText } from '../format/battleText';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { pixelFont, textFont } from '../pixelArt/pixelTypography';
 import { battleColors } from '../theme/battleColors';
 
 /**
- * La bulle de première rencontre d'une Élite à signature (#258, maquette 245, F1, `.hintb`) : la
- * couronne d'Élite et son nom, sa règle, et comment la fermer. Elle ne bloque rien : le premier
+ * Le glyphe et la teinte de la bulle d'un ennemi ordinaire à mécanique (#266, maquette 246,
+ * `.hintb.ord`) : le glyphe de sa marque, sans couronne d'Élite.
+ */
+const ORDINARY = {
+  sweep: { glyph: 'sweep8', color: battleColors.sweep },
+  charge: { glyph: 'ram8', color: battleColors.charge },
+} as const;
+
+/**
+ * La bulle de première rencontre d'un ennemi à signature (#258, maquette 245, F1, `.hintb`) : la
+ * couronne d'Élite et son nom (pour un ennemi ordinaire, #266, le glyphe de sa marque, dans sa
+ * teinte), sa règle, et comment la fermer. Elle ne bloque rien : le premier
  * toucher, où qu'il soit, la ferme (l'écran s'en charge), et elle ne revient pas. Elle est annoncée
  * au lecteur d'écran, qui peut aussi la fermer.
  */
@@ -20,6 +30,8 @@ export function EncounterHintBubble({
   readonly onClose: () => void;
 }) {
   const { title, text, close, speech } = encounterHintText(enemy);
+  const signature = enemySignature(enemy);
+  const ordinary = signature === 'sweep' || signature === 'charge' ? ORDINARY[signature] : null;
   return (
     <Pressable
       accessibilityRole="button"
@@ -30,9 +42,20 @@ export function EncounterHintBubble({
       testID={`encounter-hint-${enemy}`}
       style={styles.place}
     >
-      <View testID="encounter-hint-frame" style={styles.frame}>
+      <View
+        testID="encounter-hint-frame"
+        style={[styles.frame, ordinary !== null && { borderColor: ordinary.color }]}
+      >
         <View style={styles.titleLine}>
-          <PixelIcon name="crown8" color={battleColors.elite} testID="encounter-hint-crown" />
+          {ordinary === null ? (
+            <PixelIcon name="crown8" color={battleColors.elite} testID="encounter-hint-crown" />
+          ) : (
+            <PixelIcon
+              name={ordinary.glyph}
+              color={ordinary.color}
+              testID={`encounter-hint-glyph-${ordinary.glyph}`}
+            />
+          )}
           <Text style={styles.title}>{title}</Text>
         </View>
         <Text style={styles.text}>{text}</Text>

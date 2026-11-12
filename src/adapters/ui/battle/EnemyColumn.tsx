@@ -13,6 +13,7 @@ import type { EnemyView } from '../state/battleView';
 import { battleColors } from '../theme/battleColors';
 import { DamageFloat } from './BattleEffects';
 import { PerilSeal } from './PerilSeal';
+import { SweepStroke } from './SweepStroke';
 import { SignatureMark } from './SignatureMark';
 import type { EnemySlot } from './scene/sceneGeometry';
 import type { BattleDisplay } from '../state/useBattleDisplay';
@@ -30,6 +31,7 @@ const INTENT_ICONS: Readonly<Record<IntentCategory, IconName>> = {
   heal: 'iHeal',
   raise: 'iRaise',
   exhume: 'iExhume',
+  charge: 'iCharge',
   skip: 'iSkip',
 };
 
@@ -53,6 +55,7 @@ export function EnemyColumn({
   index,
   slot,
   sealed,
+  swept = false,
   reducedMotion = false,
   float,
   uiNow,
@@ -64,6 +67,8 @@ export function EnemyColumn({
   /** Sa place dans la scène. */
   readonly slot: EnemySlot;
   readonly sealed: boolean;
+  /** Il porte le trait de balayage, pendant son Balayage (#266, A2) ; par défaut, non. */
+  readonly swept?: boolean;
   readonly reducedMotion?: boolean;
   /** Le chiffre qui s'envole au-dessus de lui, s'il est pour lui. */
   readonly float: BattleDisplay['float'];
@@ -117,11 +122,16 @@ export function EnemyColumn({
             styles.intent,
             intent === null && styles.noIntent,
             intent?.category === 'exhume' && styles.exhumeIntent,
+            intent?.category === 'charge' && styles.chargeIntent,
             view.active && (sealed ? styles.sealedIntent : styles.activeIntent),
             view.active && intent?.category === 'exhume' && styles.activeExhumeIntent,
+            view.active && intent?.category === 'charge' && styles.activeChargeIntent,
+            view.active && swept && styles.sweptIntent,
           ]}
         >
-          {intent === null ? null : (
+          {intent === null ? null : intent.category === 'charge' ? (
+            <ChargeIntent kind={kind} notches={intent.notches} />
+          ) : (
             <>
               <PixelIcon
                 name={INTENT_ICONS[intent.category]}
@@ -142,6 +152,7 @@ export function EnemyColumn({
             />
           )}
           {sealed ? <PerilSeal reducedMotion={reducedMotion} /> : null}
+          {swept ? <SweepStroke reducedMotion={reducedMotion} /> : null}
           {float === null ? null : <DamageFloat key={float.key} float={float.float} />}
         </View>
         <PixelFrame
@@ -221,6 +232,42 @@ export function EnemyColumn({
   );
 }
 
+/**
+ * L'intention Charge du Bélier de bronze (#266, maquette 246, A6, A8, `.pint.charge`) : ses cornes
+ * la manche où elle commence, la lame du Coup de bélier à la suivante, toujours en bronze, et ses
+ * 2 crans, allumés selon la manche. Jamais la couleur seule : les crans se comptent.
+ */
+function ChargeIntent({ kind, notches }: { readonly kind: string; readonly notches: 1 | 2 }) {
+  return (
+    <View testID={`enemy-${kind}-intent-charge`} style={styles.charge}>
+      {notches === 1 ? (
+        <PixelIcon
+          name="iCharge"
+          color={battleColors.charge}
+          secondColor={battleColors.onCharge}
+          testID={`enemy-${kind}-intent-horns`}
+        />
+      ) : (
+        <PixelIcon
+          name="iAttack"
+          color={battleColors.onCharge}
+          secondColor={battleColors.charge}
+          testID={`enemy-${kind}-intent-blade`}
+        />
+      )}
+      <View style={styles.notches}>
+        {[0, 1].map((notch) => (
+          <View
+            key={notch}
+            testID={`enemy-${kind}-notch-${notch}`}
+            style={[styles.notch, notch < notches && styles.litNotch]}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 // Stryker disable all: dessin de la scène, vérifié par la conformité aux maquettes (barrière 10 bis).
 const styles = StyleSheet.create({
   column: {
@@ -252,6 +299,21 @@ const styles = StyleSheet.create({
   exhumeIntent: { borderWidth: 2, borderColor: battleColors.grave },
   activeExhumeIntent: { borderColor: battleColors.onGrave },
   sealedIntent: { borderWidth: 2, borderColor: battleColors.seal },
+  // L'intention Charge (#266, `.pint.charge`) : cadre bronze sombre ; actif, bronze.
+  chargeIntent: { borderWidth: 2, borderColor: battleColors.chargeDark },
+  activeChargeIntent: { borderColor: battleColors.charge },
+  // L'ennemi qui balaie (#266, `.pfoe.active.swp .pint`) : son intention cernée de cyan.
+  sweptIntent: { borderWidth: 2, borderColor: battleColors.sweep },
+  charge: { alignItems: 'center', gap: 2 },
+  notches: { flexDirection: 'row', gap: 3 },
+  notch: {
+    width: 6,
+    height: 4,
+    borderWidth: 1,
+    borderColor: battleColors.charge,
+    backgroundColor: 'transparent',
+  },
+  litNotch: { backgroundColor: battleColors.charge },
   intentText: {
     color: battleColors.text,
     fontSize: 14,

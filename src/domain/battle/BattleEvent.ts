@@ -14,9 +14,11 @@ export type BattleOutcome = 'victory' | 'defeat';
 
 /**
  * Le résultat d'un impact (C8) : parade parfaite, bonne parade, esquive, parade sur un coup
- * imparable (échec), ou coup subi (aucun appui valide, ou impact tombé pendant le déséquilibre).
+ * imparable (échec), coup subi (aucun appui valide, ou impact tombé pendant le déséquilibre), ou
+ * esquive dans la fenêtre sur un Balayage (échec, #266).
  */
-export type BlowOutcome = 'perfectParry' | 'parry' | 'dodge' | 'perilousParry' | 'suffered';
+export type BlowOutcome =
+  'perfectParry' | 'parry' | 'dodge' | 'perilousParry' | 'suffered' | 'sweepDodge';
 
 /** Pourquoi un appui est raté : trop tôt, trop tard, ou dans le vide (aucun impact à juger). */
 export type WhiffReason = 'early' | 'late' | 'empty';
@@ -160,6 +162,8 @@ export type BattleEvent =
       readonly attack: AttackKind;
       readonly impacts: readonly number[];
       readonly feintAt: number | null;
+      /** Le Coup de bélier d'une Charge (#266) : plus rien ne l'annule ; absent, un coup ordinaire. */
+      readonly charged?: true;
     }
   | { readonly type: 'feintStarted'; readonly at: number; readonly enemy: number }
   | {
@@ -338,6 +342,13 @@ export type BattleEvent =
       readonly slot: number;
       readonly kind: EnemyKind;
     }
+  /** Le Bélier de bronze `enemy` charge (#266, CH2) : pas de coup cette manche, gros coup à la suivante. */
+  | { readonly type: 'chargeStarted'; readonly at: number; readonly enemy: number }
+  /**
+   * La Charge de `enemy` est brisée (#266, CH4), au même instant que la cassure de garde qui la
+   * brise, juste après elle : le Coup de bélier n'a pas lieu.
+   */
+  | { readonly type: 'chargeBroken'; readonly at: number; readonly enemy: number }
   /** Un ennemi invoqué encore debout tombe avec le boss qui l'a appelé, sans Or (#172, règle 4). */
   | { readonly type: 'summonedFell'; readonly at: number; readonly enemy: number }
   | {

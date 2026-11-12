@@ -1,7 +1,7 @@
 // Les 10 entrées des paliers 2 et 3 (#38), recopiées du Codex de l'Atelier du 01/11/2026 : leurs
 // valeurs de combat, à l'échelle du palier 1 pour les ennemis ordinaires (le palier multiplie). La
 // garde des 16 ennemis ordinaires est doublée dans le Codex (#244, G2).
-import { ENEMIES, ENEMY_INITIATIVE } from './combatants';
+import { ENEMIES, ENEMY_INITIATIVE, enemySignature } from './combatants';
 
 describe('the ordinary enemies of the tiers two and three (#38)', () => {
   it('gives the Thorn pilgrim 60 HP, 40 guard, Initiative 2, its bleeding prayer and its staff', () => {
@@ -296,6 +296,40 @@ describe('the enemies of the Belfry (#214)', () => {
       supports: false,
     });
     expect(ENEMY_INITIATIVE.clockJack).toBe(1);
+  });
+});
+
+describe('the Bronze ram and the Bell clapper of the Belfry (#266)', () => {
+  it('gives the Bronze ram 48 HP, 26 guard, Initiative 3, its Front blow twice as often as its charged Ram blow', () => {
+    expect(ENEMIES.bronzeRam).toEqual({
+      maxHp: 48,
+      maxGuard: 26,
+      moves: [
+        { attack: 'basic', damage: 6, weight: 2 },
+        { attack: 'delayed', damage: 12, charge: true },
+      ],
+      supports: false,
+    });
+    expect(ENEMY_INITIATIVE.bronzeRam).toBe(3);
+  });
+
+  it('gives the Bell clapper 46 HP, 30 guard, Initiative 4, its Great sweep twice as often as its Clapper blow', () => {
+    expect(ENEMIES.bellClapper).toEqual({
+      maxHp: 46,
+      maxGuard: 30,
+      moves: [
+        { attack: 'sweep', damage: 6, weight: 2 },
+        { attack: 'basic', damage: 5 },
+      ],
+      supports: false,
+    });
+    expect(ENEMY_INITIATIVE.bellClapper).toBe(4);
+  });
+
+  it('gives them the signature of their mechanic: the Charge and the Sweep', () => {
+    expect(enemySignature('bronzeRam')).toBe('charge');
+    expect(enemySignature('bellClapper')).toBe('sweep');
+    expect(enemySignature('clockJack')).toBeNull();
   });
 });
 

@@ -9,7 +9,8 @@ import type { AtlasRect } from './battleAtlas';
 /**
  * Les effets du combat et leur nombre d'images : l'éclair d'impact (3 paliers), les étincelles de
  * parade dorée à rayons et bleu acier (5 images), les reflets blanc, rouge et terne (3 images de
- * 30 ms ; le reflet double est le blanc, aux deux griffes), les étoiles (4 positions), l'écu du
+ * 30 ms ; le reflet double est le blanc, aux deux griffes ; le reflet de balayage, un trait
+ * horizontal cyan, #266), les étoiles (4 positions), l'écu du
  * Rempart (entier, fendu), l'éclat d'argent (#128), la pointe vert ronce des Épines et l'éclat
  * d'acier du Sanctuaire rompu (#259, faits en code), et l'effet de la Brûlure recopié de l'Atelier
  * (#171) : la flamme d'une charge (3 images), l'éclat de braise (2) et la fumée (3) ; l'effet
@@ -23,6 +24,7 @@ export const EFFECT_KINDS = {
   glintWhite: 3,
   glintRed: 3,
   glintDull: 3,
+  glintSweep: 3,
   stars: 4,
   shield: 2,
   silverShard: 1,
@@ -56,6 +58,7 @@ const SIDES: Readonly<Record<EffectKind, number>> = {
   glintWhite: 9,
   glintRed: 9,
   glintDull: 9,
+  glintSweep: 17,
   stars: 21,
   shield: 15,
   silverShard: 5,
@@ -225,6 +228,28 @@ function shield(frame: number): Sprite {
 
 /** Les teintes des signatures de #259 dans la palette d'art : le vert ronce et l'acier. */
 const THORN_GREEN = 71;
+/** Le cyan du Balayage et son cœur clair (#266), dans la palette d'art. */
+const SWEEP_CYAN = 73;
+const SWEEP_LIGHT = 74;
+
+/**
+ * Le reflet de balayage (#266, maquette 246, A3) : un trait horizontal qui s'allonge, cœur clair
+ * cerné de cyan et d'encre, jamais un point.
+ */
+function sweepGlint(k: number): Sprite {
+  const sprite = grid(SIDES.glintSweep, SIDES.glintSweep);
+  const put = centered(sprite);
+  const half = [3, 5, 7][k] ?? 3;
+  for (let x = -half - 1; x <= half + 1; x += 1) {
+    for (let y = -2; y <= 2; y += 1) put(x, y, 1);
+  }
+  for (let x = -half; x <= half; x += 1) {
+    put(x, -1, SWEEP_CYAN);
+    put(x, 0, SWEEP_LIGHT);
+    put(x, 1, SWEEP_CYAN);
+  }
+  return sprite;
+}
 const WARD_STEEL = 72;
 
 /** Un éclat carré de la teinte `code`, cerné d'encre (#128, #259). */
@@ -304,6 +329,7 @@ const PAINTERS: Readonly<Record<EffectKind, (frame: number) => Sprite>> = {
   glintWhite: (k) => glint('white', k),
   glintRed: (k) => glint('red', k),
   glintDull: (k) => glint('dull', k),
+  glintSweep: (k) => sweepGlint(k),
   stars,
   shield,
   silverShard,

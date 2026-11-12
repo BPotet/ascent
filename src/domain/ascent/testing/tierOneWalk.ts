@@ -44,6 +44,9 @@ function intentText(intent: Intent): string {
     // Tirées sans manche, les intentions de la marche n'exhument jamais (#258, D6).
     case 'exhume':
       return `exhume${intent.slot}`;
+    // Le palier 1 n'a pas de Bélier de bronze (#266) : la marche ne charge jamais.
+    case 'charge':
+      return 'charge';
   }
 }
 
