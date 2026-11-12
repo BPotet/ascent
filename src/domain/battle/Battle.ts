@@ -98,6 +98,7 @@ import { burnAtRoundStart, burnOnBlow } from './burn';
 import { freeSlots, summonedKind, type PendingSummon } from './summon';
 import { cappedParryHeal } from './parryHeal';
 import { thornsActive, thornsLoss } from './thorns';
+import { emberBurstOnFall } from './emberBurst';
 import { NO_TIER_MULTIPLIER, scaleByPercent, type TierMultiplier } from './tierMultiplier';
 
 /** Les intentions jouées sans coup, par `startSupport` : Garde, Relever, Exhumer et Charge (#266). */
@@ -1442,11 +1443,36 @@ function hitEnemy(
   }
   if (!hit.fallen) return { battle: damaged, broken: false };
   events.push({ type: 'enemyDefeated', at: context.at, enemy: index });
-  const settled = fallWithSummoner(damaged, events, index, context.at);
+  const settled = burstOnFall(
+    fallWithSummoner(damaged, events, index, context.at),
+    events,
+    before,
+    { at: context.at, enemy: index },
+  );
   const [next] = standingEnemies(settled);
   if (battle.target !== index || next === undefined) return { battle: settled, broken: false };
   events.push({ type: 'targetChanged', at: context.at, enemy: next });
   return { battle: { ...settled, target: next }, broken: false };
+}
+
+/**
+ * L'Éclatement de la Cosse de braise (#267, D2) : après sa chute, avant le changement de cible, lu
+ * sur l'ennemi d'avant le coup ; rien si sa chute gagne le combat.
+ */
+function burstOnFall(
+  battle: Battle,
+  events: Events,
+  before: EnemyState,
+  fall: { readonly at: number; readonly enemy: number },
+): Battle {
+  const burst = emberBurstOnFall(before, {
+    ...fall,
+    heroBurn: battle.hero.burn,
+    won: isWon(battle),
+  });
+  if (burst.events.length === 0) return battle;
+  events.push(...burst.events);
+  return { ...battle, hero: withBurn(battle.hero, burst.burn) };
 }
 
 /**

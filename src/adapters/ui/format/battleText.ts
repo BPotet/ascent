@@ -69,6 +69,9 @@ export const ENEMY_NAMES: Readonly<Record<EnemyKind, string>> = {
   beadle: 'Bedeau',
   bronzeRam: 'Bélier de bronze',
   bellClapper: 'Battant de cloche',
+  // La Cosse de braise et la Phalène voleuse (#267), à ne pas confondre avec la Phalénide.
+  emberPod: 'Cosse de braise',
+  thievingMoth: 'Phalène voleuse',
 };
 
 /** Le genre du nom de l'ennemi, pour « étourdie », « tombée »… */
@@ -106,6 +109,8 @@ const FEMININE: Readonly<Record<EnemyKind, boolean>> = {
   beadle: false,
   bronzeRam: false,
   bellClapper: false,
+  emberPod: true,
+  thievingMoth: true,
 };
 
 export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {

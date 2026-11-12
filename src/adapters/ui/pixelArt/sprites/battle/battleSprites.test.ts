@@ -33,6 +33,8 @@ import { GRAVEDIGGER_ANIMATION } from '../atelier/data/gravedigger';
 import { BEADLE_ANIMATION } from '../atelier/data/beadle';
 import { BELL_CLAPPER_ANIMATION } from '../atelier/data/bellClapper';
 import { BRONZE_RAM_ANIMATION } from '../atelier/data/bronzeRam';
+import { EMBER_POD_ANIMATION } from '../atelier/data/emberPod';
+import { THIEVING_MOTH_ANIMATION } from '../atelier/data/thievingMoth';
 import { BRAMBLE_MOTHER_ANIMATION } from '../atelier/data/brambleMother';
 import { MATINS_RINGER_ANIMATION } from '../atelier/data/matinsRinger';
 import { FACELESS_PRIOR_ANIMATION } from '../atelier/data/facelessPrior';
@@ -180,6 +182,8 @@ describe('the full animations of the Atelier in battle (#119, #137, #138, #139)'
     beadle: BEADLE_ANIMATION,
     bronzeRam: BRONZE_RAM_ANIMATION,
     bellClapper: BELL_CLAPPER_ANIMATION,
+    emberPod: EMBER_POD_ANIMATION,
+    thievingMoth: THIEVING_MOTH_ANIMATION,
   };
   /** Les ennemis animés, tirés du registre : chacun avec son animation recopiée. */
   const ANIMATED = ANIMATED_ENEMIES.map((kind) => [kind, COPIED[kind]] as const);

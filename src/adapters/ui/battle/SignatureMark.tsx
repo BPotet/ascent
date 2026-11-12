@@ -38,6 +38,16 @@ const TINTS: Readonly<
     fill: battleColors.chargeBackground,
     ink: battleColors.onCharge,
   },
+  emberBurst: {
+    line: battleColors.charge,
+    fill: battleColors.chargeBackground,
+    ink: battleColors.onCharge,
+  },
+  momentumTheft: {
+    line: battleColors.charge,
+    fill: battleColors.chargeBackground,
+    ink: battleColors.onCharge,
+  },
 };
 
 /** Le glyphe d'une marque allumée : l'os clair, le vert ronce, l'acier (maquette 245, `sigTag`). */
@@ -47,6 +57,8 @@ const GLYPH_TINTS: Readonly<Record<EnemySignature, string>> = {
   sanctuary: battleColors.ward,
   sweep: battleColors.sweep,
   charge: battleColors.charge,
+  emberBurst: battleColors.charge,
+  momentumTheft: battleColors.charge,
 };
 
 /**

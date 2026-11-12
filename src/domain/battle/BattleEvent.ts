@@ -285,13 +285,16 @@ export type BattleEvent =
     }
   /**
    * Le héros brûle (#171) : `added` charges allumées par un impact, 0 à 5 charges (le coup se voit
-   * quand même) ; `stacks`, le total après la prise.
+   * quand même) ; `stacks`, le total après la prise. L'Éclatement de la Cosse de braise `enemy`, à
+   * sa chute (#267, D3), porte la cause `emberBurst` ; la Brûlure d'un impact n'a ni cause ni ennemi.
    */
   | {
       readonly type: 'heroBurning';
       readonly at: number;
       readonly added: number;
       readonly stacks: number;
+      readonly cause?: 'emberBurst';
+      readonly enemy?: number;
     }
   /** La perte de la Brûlure au début d'une manche ; `stacks`, les charges avant l'extinction. */
   | {
@@ -349,6 +352,11 @@ export type BattleEvent =
    * brise, juste après elle : le Coup de bélier n'a pas lieu.
    */
   | { readonly type: 'chargeBroken'; readonly at: number; readonly enemy: number }
+  /**
+   * La Cosse de braise `enemy`, étourdie avant le coup qui la fait tomber, est étouffée (#267, EC2) :
+   * rien ne s'allume.
+   */
+  | { readonly type: 'emberBurstSmothered'; readonly at: number; readonly enemy: number }
   /** Un ennemi invoqué encore debout tombe avec le boss qui l'a appelé, sans Or (#172, règle 4). */
   | { readonly type: 'summonedFell'; readonly at: number; readonly enemy: number }
   | {

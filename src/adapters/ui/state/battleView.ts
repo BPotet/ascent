@@ -399,6 +399,8 @@ function signatureMark(
       return { state: 'sweep' };
     case 'charge':
       return { state: 'charge', mark: chargeMark(battle, index) ?? 'idle' };
+    default:
+      return null;
   }
 }
 

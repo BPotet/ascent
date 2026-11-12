@@ -155,7 +155,10 @@ export type EnemyKind =
   | 'beadle'
   // Le Bélier de bronze et le Battant de cloche (#266), ennemis ordinaires du Beffroi.
   | 'bronzeRam'
-  | 'bellClapper';
+  | 'bellClapper'
+  // La Cosse de braise et la Phalène voleuse (#267), ennemis ordinaires des Jardins de cendre.
+  | 'emberPod'
+  | 'thievingMoth';
 
 /** Le Saignement (`Bleed`, prototype #107) : `damage` PV perdus au début de `rounds` manches. */
 export interface Bleed {
@@ -202,6 +205,24 @@ export interface Sanctuary {
   readonly damagePercent: number;
 }
 
+/**
+ * L'Éclatement (`EmberBurst`, #267, champ `burst` du Codex) : quand l'ennemi tombe sous un coup du
+ * héros sans être étourdi avant ce coup, le héros prend `stacks` charges de Brûlure. Ni le palier ni
+ * la malédiction ne les changent. La règle est dans `emberBurst.ts`.
+ */
+export interface EmberBurst {
+  readonly stacks: number;
+}
+
+/**
+ * Le Vol d'Élan (`MomentumTheft`, #267, champ `momentumTheft` du Codex) : chaque impact de ses coups
+ * qui touche le héros lui retire `amount` Élan, au plancher de 0. Ni le palier ni la malédiction ne
+ * le changent. La règle est dans `momentumTheft.ts`.
+ */
+export interface MomentumTheft {
+  readonly amount: number;
+}
+
 /** Un coup qu'un ennemi peut porter, avec ses dégâts. */
 export interface Move {
   readonly attack: AttackKind;
@@ -244,6 +265,10 @@ export interface EnemyProfile {
   readonly thorns?: Thorns;
   /** Le Sanctuaire (#259) ; absent, les coups du héros ne sont pas réduits. */
   readonly sanctuary?: Sanctuary;
+  /** L'Éclatement (#267) ; absent, sa chute ne brûle pas le héros. */
+  readonly emberBurst?: EmberBurst;
+  /** Le Vol d'Élan (#267) ; absent, ses impacts ne volent pas d'Élan. */
+  readonly momentumTheft?: MomentumTheft;
 }
 
 /** Le changement de phase d'un boss : à 50 % de ses PV max ou moins (P6, #38). */
@@ -656,6 +681,33 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     ],
     supports: false,
   },
+  // Les Jardins de cendre (#267) : valeurs du Codex de l'Atelier recopiées le 12/11/2026, à
+  // l'échelle du palier 1 (le palier multiplie, jamais l'Éclatement ni le Vol d'Élan). Éclat de
+  // coque, puis Crachin de cendre, une chance sur deux. L'Éclatement s'appelle `burst` dans le
+  // Codex : son nom de code est `emberBurst` (`Burst` est l'Étincelle de l'interface).
+  // `codex/emberPod` v1 (6825e825274b932c9e4c726b60a74aee44cfcb3fc4b4c77be5936f2e2cb16464).
+  emberPod: {
+    maxHp: 34,
+    maxGuard: 18,
+    moves: [
+      { attack: 'basic', damage: 6 },
+      { attack: 'double', damage: 3 },
+    ],
+    supports: false,
+    emberBurst: { stacks: 2 },
+  },
+  // Frôlement (poids 2), puis Poudre d'ailes, avec le Vol d'Élan.
+  // `codex/thievingMoth` v1 (c486543b4f7dd50e2c84c8661484e4b4f95bcea6ecee763cc83bc5762fd0bfdd).
+  thievingMoth: {
+    maxHp: 26,
+    maxGuard: 12,
+    moves: [
+      { attack: 'double', damage: 3, weight: 2 },
+      { attack: 'feint', damage: 6 },
+    ],
+    supports: false,
+    momentumTheft: { amount: 1 },
+  },
 };
 
 /**
@@ -703,21 +755,28 @@ export const ENEMY_INITIATIVE: Readonly<Record<EnemyKind, number>> = {
   // Le Bélier de bronze et le Battant de cloche (#266), celles du Codex.
   bronzeRam: 3,
   bellClapper: 4,
+  // La Cosse de braise et la Phalène voleuse (#267), celles du Codex.
+  emberPod: 3,
+  thievingMoth: 9,
 };
 
 /**
  * La mécanique signature d'un ennemi (#258, D8 ; #266, D5) : celle que montrent sa marque de
  * signature et sa bulle de première rencontre ; `null` pour un ennemi qui n'en a pas. Exhumer pour
  * le Fossoyeur, les Épines pour la Mère-ronce, le Sanctuaire pour le Bedeau (#259) ; pour un ennemi
- * ordinaire, le Balayage (un coup `sweep`) ou la Charge (un coup avec `charge`) (#266).
+ * ordinaire, le Balayage (un coup `sweep`) ou la Charge (un coup avec `charge`) (#266),
+ * l'Éclatement ou le Vol d'Élan (#267).
  */
-export type EnemySignature = 'exhume' | 'thorns' | 'sanctuary' | 'sweep' | 'charge';
+export type EnemySignature =
+  'exhume' | 'thorns' | 'sanctuary' | 'sweep' | 'charge' | 'emberBurst' | 'momentumTheft';
 
 export function enemySignature(kind: EnemyKind): EnemySignature | null {
-  const { exhume, thorns, sanctuary, moves } = ENEMIES[kind];
+  const { exhume, thorns, sanctuary, emberBurst, momentumTheft, moves } = ENEMIES[kind];
   if (exhume !== undefined) return 'exhume';
   if (thorns !== undefined) return 'thorns';
   if (sanctuary !== undefined) return 'sanctuary';
+  if (emberBurst !== undefined) return 'emberBurst';
+  if (momentumTheft !== undefined) return 'momentumTheft';
   if (moves.some(({ attack }) => attack === 'sweep')) return 'sweep';
   return moves.some(({ charge }) => charge === true) ? 'charge' : null;
 }

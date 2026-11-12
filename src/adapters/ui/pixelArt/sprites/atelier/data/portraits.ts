@@ -1694,6 +1694,8 @@ export const PORTRAITS: Readonly<Record<HeroKind | EnemyKind, AssetImage | null>
   beadle: BEADLE_PORTRAIT,
   bronzeRam: BRONZE_RAM_PORTRAIT,
   bellClapper: BELL_CLAPPER_PORTRAIT,
+  emberPod: EMBER_POD_PORTRAIT,
+  thievingMoth: THIEVING_MOTH_PORTRAIT,
 };
 
 export const PHASE_2_PORTRAITS: Readonly<Partial<Record<EnemyKind, AssetImage>>> = {
