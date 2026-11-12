@@ -70,6 +70,8 @@ describe('displayOf (display state of the battle screen)', () => {
       podFalls: {},
       emberFlames: null,
       theft: null,
+      candleFalls: {},
+      auraOut: null,
     });
   });
 

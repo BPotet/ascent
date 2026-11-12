@@ -493,12 +493,15 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   then(
     /^ses groupes d'ennemis, ses escortes et ses marches figées du palier 1 sont identiques à ceux d'avant cette story$/u,
     () => {
+      // Le Porte-cierge et le Rat de crypte (#268) s'y ajoutent à la fin, sans rien du Beffroi.
       expect(TIERS[1].enemies.map(({ kind }) => kind)).toEqual([
         'ghoul',
         'specter',
         'necromancer',
         'skeleton',
         'madVillager',
+        'candleBearer',
+        'cryptRat',
       ]);
       expect(TIERS[2].enemies.map(({ kind }) => kind)).toEqual([
         'thornPilgrim',

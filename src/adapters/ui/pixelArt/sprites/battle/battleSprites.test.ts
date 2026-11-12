@@ -35,6 +35,8 @@ import { BELL_CLAPPER_ANIMATION } from '../atelier/data/bellClapper';
 import { BRONZE_RAM_ANIMATION } from '../atelier/data/bronzeRam';
 import { EMBER_POD_ANIMATION } from '../atelier/data/emberPod';
 import { THIEVING_MOTH_ANIMATION } from '../atelier/data/thievingMoth';
+import { CANDLE_BEARER_ANIMATION } from '../atelier/data/candleBearer';
+import { CRYPT_RAT_ANIMATION } from '../atelier/data/cryptRat';
 import { BRAMBLE_MOTHER_ANIMATION } from '../atelier/data/brambleMother';
 import { MATINS_RINGER_ANIMATION } from '../atelier/data/matinsRinger';
 import { FACELESS_PRIOR_ANIMATION } from '../atelier/data/facelessPrior';
@@ -184,6 +186,8 @@ describe('the full animations of the Atelier in battle (#119, #137, #138, #139)'
     bellClapper: BELL_CLAPPER_ANIMATION,
     emberPod: EMBER_POD_ANIMATION,
     thievingMoth: THIEVING_MOTH_ANIMATION,
+    candleBearer: CANDLE_BEARER_ANIMATION,
+    cryptRat: CRYPT_RAT_ANIMATION,
   };
   /** Les ennemis animés, tirés du registre : chacun avec son animation recopiée. */
   const ANIMATED = ANIMATED_ENEMIES.map((kind) => [kind, COPIED[kind]] as const);

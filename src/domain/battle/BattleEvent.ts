@@ -175,6 +175,10 @@ export type BattleEvent =
       readonly feintAt: number | null;
       /** Le Coup de bélier d'une Charge (#266) : plus rien ne l'annule ; absent, un coup ordinaire. */
       readonly charged?: true;
+      /** Les dégâts ajoutés par impact par la Nuée (#268, D5) ; absents, 0. */
+      readonly swarm?: number;
+      /** Les dégâts ajoutés par impact par l'Aura (#268, D5) ; absents, 0. */
+      readonly aura?: number;
     }
   | { readonly type: 'feintStarted'; readonly at: number; readonly enemy: number }
   | {
@@ -196,6 +200,8 @@ export type BattleEvent =
       readonly delta: number | null;
       readonly damage: number;
       readonly heroHp: number;
+      /** Les dégâts ajoutés par l'Aura au coup (#268, D5), même absorbés ; absents, aucun. */
+      readonly aura?: number;
     }
   | {
       readonly type: 'whiffed';

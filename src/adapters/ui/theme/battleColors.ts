@@ -128,6 +128,14 @@ export const battleColors = {
   stealLine: '#B98E5A',
   stealBackground: '#262A36',
   onSteal: '#EEEAE0',
+  /**
+   * Le Porte-cierge (#268, maquette 246) : la lueur citron de l'Aura (`--aura`, `--aura-bg`,
+   * `--on-aura`), sur sa marque, les « +20 % » de ses alliés, la flamme du chiffre de dégâts et
+   * « L'aura s'éteint ».
+   */
+  aura: '#FFE680',
+  auraBackground: '#2A2610',
+  onAura: '#FFF2B8',
   /** La surface relevée de la bulle de première rencontre (`--raised`) et son texte (`--light`). */
   raised: '#2A3150',
   onRaised: '#FFF3D6',

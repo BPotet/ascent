@@ -43,6 +43,9 @@ const WITHOUT_MOCKUP: readonly (HeroKind | EnemyKind)[] = [
   // La Cosse de braise et la Phalène voleuse (#267) : `ashGardensBestiary.data.test.ts`.
   'emberPod',
   'thievingMoth',
+  // Le Porte-cierge et le Rat de crypte (#268) : `catacombsBestiary.data.test.ts`.
+  'candleBearer',
+  'cryptRat',
 ];
 
 interface MockupImage {

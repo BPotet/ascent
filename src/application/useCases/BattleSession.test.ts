@@ -580,6 +580,29 @@ describe('BattleSession', () => {
       expect((await set.session.start()).encounterHint).toBeUndefined();
     });
 
+    it('presents the Candle bearer once, and never a Crypt rat (#268, D7)', async () => {
+      const set = setUp({
+        createBattle: (options) =>
+          startBattle({ ...options, enemies: ['cryptRat', 'candleBearer', 'cryptRat'] }),
+      });
+
+      expect((await set.session.start()).encounterHint).toBe('candleBearer');
+      set.session.dismissEncounterHint();
+      await Promise.resolve();
+      expect(set.keyValueStore.values.get('battle.hint.encounter.candleBearer.seen')).toBe('1');
+      expect((await set.session.start()).encounterHint).toBeUndefined();
+      expect(set.keyValueStore.values.has('battle.hint.encounter.cryptRat.seen')).toBe(false);
+    });
+
+    it('never shows for a battle of Crypt rats only (#268)', async () => {
+      const set = setUp({
+        createBattle: (options) =>
+          startBattle({ ...options, enemies: ['cryptRat', 'cryptRat', 'cryptRat'] }),
+      });
+
+      expect((await set.session.start()).encounterHint).toBeUndefined();
+    });
+
     it('never shows for a battle without an Elite with a signature', async () => {
       const set = setUp();
 
@@ -841,6 +864,39 @@ describe('BattleSession', () => {
       expect(glintSounds(context)).toEqual(['glintDull']);
       context.clock.advanceTo(step.impacts[0]!.at - 217.5);
       expect(glintSounds(context)).toEqual(['glintDull', 'glint']);
+    });
+
+    it('squeaks at the step-in of a Crypt rat, read from the battle (#268)', async () => {
+      const context = setUp({
+        createBattle: (options) => startBattle({ ...options, enemies: ['cryptRat'] }),
+      });
+      await context.session.start();
+      toGhoulWindUp(context);
+
+      expect(context.sound.played.filter((cue) => cue === 'ratSqueak')).toEqual(['ratSqueak']);
+      expect(context.haptics.played).not.toContain('ratSqueak');
+    });
+
+    it('blows the candle out after the fall of a Candle bearer, while the Ghoul stands (#268)', async () => {
+      const context = setUp({
+        createBattle: (options) => {
+          const update = startBattle({ ...options, enemies: ['candleBearer', 'ghoul'] });
+          const enemies = update.battle.enemies.map((enemy, index) =>
+            index === 0 ? { ...enemy, hp: 5 } : enemy,
+          );
+          return { ...update, battle: { ...update.battle, enemies } };
+        },
+      });
+      await context.session.start();
+      context.clock.advanceTo(2_000);
+      context.session.heroAction({ kind: 'attack' }, 1_940, 2_000);
+      // Sans appui, la frappe est jugée à la fin de sa fenêtre (2 860), et finit à 3 180.
+      context.clock.advanceTo(2_900);
+
+      expect(context.events()).toContainEqual(expect.objectContaining({ type: 'enemyDefeated' }));
+      expect(context.sound.played).not.toContain('candleSnuff');
+      context.clock.advanceTo(3_500);
+      expect(context.sound.played.filter((cue) => cue === 'candleSnuff')).toEqual(['candleSnuff']);
     });
 
     it('plays the Sweep glint of a Sweep, ahead of the latency, without a vibration (#266)', async () => {

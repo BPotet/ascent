@@ -50,7 +50,8 @@ export interface AttackPoses<Frame extends string = string> {
  * Garde et Relever, `exhume` pendant l'Exhumation du Fossoyeur (#258), `charge0` et `charge1`
  * pendant la Charge du Bélier de bronze et `chargeBroken` à sa Charge brisée (#266), `burst`
  * (l'Éclatement) et `smothered` (étouffée) à la chute de la Cosse de braise, `steal` au Vol d'Élan
- * de la Phalène voleuse (#267). Facultatives dans `frames` et `anchors`.
+ * de la Phalène voleuse (#267), `snuffed` à la chute du Porte-cierge (son cierge soufflé), `swarm0`
+ * et `swarm1` pendant la Nuée du Rat de crypte (#268). Facultatives dans `frames` et `anchors`.
  */
 export type ExtraFrame =
   | 'rise0'
@@ -63,7 +64,10 @@ export type ExtraFrame =
   | 'chargeBroken'
   | 'burst'
   | 'smothered'
-  | 'steal';
+  | 'steal'
+  | 'snuffed'
+  | 'swarm0'
+  | 'swarm1';
 
 /** Des poses, puis leurs ancrages, une entrée par pose, poses en plus facultatives. */
 type Poses<Frame extends string, Value> = Readonly<Record<Frame, Value>> &

@@ -405,3 +405,28 @@ describe('drawIntent of the Bell clapper (#266)', () => {
     expect(damage(blow, true).intent).toMatchObject({ attack: 'basic', damage: 9 });
   });
 });
+
+describe('drawIntent of the Candle bearer and the Crypt rat (#268, D1)', () => {
+  it('draws the Bite of the rat twice as often as its Swarming', () => {
+    const drawn = SEEDS.map((seed) => attackOf('cryptRat', seed));
+    const bites = drawn.filter(({ attack }) => attack === 'basic');
+
+    expect(new Set(drawn.map(({ attack }) => attack))).toEqual(new Set(['basic', 'double']));
+    expect(bites.length / drawn.length).toBeGreaterThan(0.6);
+    expect(bites.length / drawn.length).toBeLessThan(0.73);
+  });
+
+  it('keeps the damage of the Codex and of the curse in the drawn intent: neither Swarm nor Aura', () => {
+    const bite = seedWithFirstDraw((value) => value < 2 / 3);
+    const swarming = seedWithFirstDraw((value) => value >= 2 / 3);
+    const damage = (kind: EnemyKind, seed: number, cursed: boolean) =>
+      drawIntent(kind, seedRandom(seed), { ...CALM, cursed }).intent;
+
+    expect(damage('cryptRat', bite, false)).toMatchObject({ attack: 'basic', damage: 4 });
+    expect(damage('cryptRat', bite, true)).toMatchObject({ attack: 'basic', damage: 5 });
+    expect(damage('cryptRat', swarming, false)).toMatchObject({ attack: 'double', damage: 3 });
+    expect(damage('cryptRat', swarming, true)).toMatchObject({ attack: 'double', damage: 4 });
+    expect(damage('candleBearer', bite, false)).toMatchObject({ attack: 'basic', damage: 5 });
+    expect(damage('candleBearer', bite, true)).toMatchObject({ attack: 'basic', damage: 6 });
+  });
+});

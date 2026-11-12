@@ -1,6 +1,7 @@
 import { ATTACKS } from '../../domain/battle/attacks';
-import type { Battle } from '../../domain/battle/Battle';
+import { isStanding, type Battle } from '../../domain/battle/Battle';
 import type { BattleEvent, BlowOutcome } from '../../domain/battle/BattleEvent';
+import { ENEMIES, type EnemyKind } from '../../domain/battle/combatants';
 import type { GlintKind } from '../../domain/battle/glints';
 import type { BattleHapticCue } from '../ports/BattleHaptics';
 import type { BattleSoundCue } from '../ports/BattleSound';
@@ -72,6 +73,23 @@ export const EMBER_BURST_AFTER_FALL_MS = 200;
  */
 export const MOMENTUM_STEAL_AFTER_IMPACT_MS = 300;
 
+/**
+ * La bougie soufflée suit la chute du Porte-cierge de 200 ms (#268, maquette C4), avec la fumée et
+ * « L'aura s'éteint ».
+ */
+export const CANDLE_SNUFF_AFTER_FALL_MS = 200;
+
+/**
+ * Ce que le retour d'un événement lit du combat (#268) : le nom de code de l'ennemi de l'événement,
+ * et si un autre ennemi est debout après la mise à jour. Absent, aucun son propre à un ennemi.
+ */
+export interface FeedbackContext {
+  readonly kind: EnemyKind | null;
+  readonly allyStanding: boolean;
+}
+
+const NO_CONTEXT: FeedbackContext = { kind: null, allyStanding: false };
+
 const BLOW_FEEDBACK: Readonly<Record<BlowOutcome, BattleFeedback>> = {
   perfectParry: { sound: 'perfectParry', haptic: 'perfectParry' },
   parry: { sound: 'parry', haptic: null },
@@ -90,8 +108,21 @@ const BLOW_FEEDBACK: Readonly<Record<BlowOutcome, BattleFeedback>> = {
  * son son. La frappe parfaite et la cassure de garde vibrent (C5.1, C6.7). L'éclat, la secousse,
  * la bannière et le lecteur d'écran restent à l'interface.
  */
-export function feedbackFor(event: BattleEvent): BattleFeedback {
+export function feedbackFor(
+  event: BattleEvent,
+  { kind, allyStanding }: FeedbackContext = NO_CONTEXT,
+): BattleFeedback {
   switch (event.type) {
+    // La chute du Porte-cierge (#268) : sa bougie soufflée, quand son Aura avait des alliés.
+    case 'enemyDefeated':
+      return kind !== null && ENEMIES[kind].aura !== undefined && allyStanding
+        ? { sound: 'candleSnuff', haptic: null, delayMs: CANDLE_SNUFF_AFTER_FALL_MS }
+        : NONE;
+    // L'avancée d'un Rat de crypte (#268) : un couinement court, sans vibration.
+    case 'stepInStarted':
+      return kind !== null && ENEMIES[kind].swarm !== undefined
+        ? { sound: 'ratSqueak', haptic: null }
+        : NONE;
     case 'blowResolved':
       return BLOW_FEEDBACK[event.outcome];
     case 'whiffed':
@@ -200,13 +231,20 @@ export function summonEntryDelay(events: readonly BattleEvent[]): number {
  * manche où le héros saigne, la Brûlure attend 700 ms après le Saignement : le crépitement, puis
  * l'extinction 800 ms plus tard (#171, maquette B5). L'entrée des invoqués vient ensuite (#172) :
  * un seul bruissement pour toute l'Invocation, 1 000 ms après la Brûlure de la manche.
+ * Les sons propres à un ennemi (#268) lisent son nom de code dans le combat d'avant la mise à jour
+ * (`before`), suivi au fil des entrées, et les ennemis debout dans celui d'après (`after`).
  */
-export function feedbacksFor(events: readonly BattleEvent[]): BattleFeedback[] {
+export function feedbacksFor(
+  events: readonly BattleEvent[],
+  before: Battle | null = null,
+  after: Battle | null = null,
+): BattleFeedback[] {
   const afterBleed = bledIn(events) ? BURN_AFTER_BLEED_MS : 0;
   const afterBurn = summonEntryDelay(events);
   const firstEntry = events.findIndex((event) => event.type === 'summonEntered');
+  const kinds: (EnemyKind | undefined)[] = before?.enemies.map((enemy) => enemy.kind) ?? [];
   return events.map((event, index) => {
-    const feedback = feedbackFor(event);
+    const feedback = feedbackFor(event, contextOf(event, kinds, after));
     if (event.type === 'summonEntered') {
       if (index !== firstEntry) return NONE;
       return afterBurn === 0 ? feedback : { ...feedback, delayMs: afterBurn };
@@ -218,4 +256,23 @@ export function feedbacksFor(events: readonly BattleEvent[]): BattleFeedback[] {
     }
     return feedback;
   });
+}
+
+/** Le contexte d'un événement : le nom de code de son ennemi, suivi au fil des entrées (#268). */
+function contextOf(
+  event: BattleEvent,
+  kinds: (EnemyKind | undefined)[],
+  after: Battle | null,
+): FeedbackContext {
+  if (event.type === 'reinforcementEntered' || event.type === 'summonEntered') {
+    kinds[event.enemy] = event.kind;
+  }
+  if (event.type === 'enemyExhumed') kinds[event.slot] = event.kind;
+  if (!('enemy' in event) || after === null) return NO_CONTEXT;
+  return {
+    kind: kinds[event.enemy] ?? null,
+    allyStanding: after.enemies.some(
+      (enemy, position) => position !== event.enemy && isStanding(enemy),
+    ),
+  };
 }

@@ -4,12 +4,12 @@
  * du palier (ou du Codex pour une Élite), à l'entier inférieur et au moins +1 ; jamais son
  * Initiative, son Saignement ni sa Brûlure.
  */
-import { scaleByPercent } from './tierMultiplier';
+import { boostByPercent } from './tierMultiplier';
 
 /** Le bonus de l'ennemi maudit, en % : le même à −1 et à −2. */
 export const CURSE_PERCENT = 20;
 
 /** Une valeur de l'ennemi maudit : la valeur plus 20 %, à l'entier inférieur, au moins +1. */
 export function cursedValue(value: number): number {
-  return value + Math.max(1, scaleByPercent(value, CURSE_PERCENT));
+  return boostByPercent(value, CURSE_PERCENT);
 }

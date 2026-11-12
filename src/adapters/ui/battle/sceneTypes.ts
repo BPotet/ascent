@@ -67,6 +67,10 @@ export interface SceneEnemy {
   readonly podFall?: { readonly at: number; readonly kind: 'burst' | 'smothered' };
   /** L'instant du dernier impact où la Phalène voleuse a volé l'Élan (#267, J2) ; absent, aucun. */
   readonly stealAt?: number;
+  /** L'instant de la chute du Porte-cierge (#268, C4) : son cierge soufflé ; absent, aucune. */
+  readonly snuffedAt?: number;
+  /** Un Rat de crypte que la Nuée renforce (#268, C7) : il grouille au repos ; absent, non. */
+  readonly swarming?: boolean;
 }
 
 /**

@@ -135,7 +135,8 @@ export class BattleSession {
       at: this.dependencies.clock.now(),
     });
     this.encounterHintPending = await this.encounterOf(update.battle);
-    this.apply(update);
+    // Les ennemis du nouveau combat, jamais ceux du précédent (#268, sons propres à un ennemi).
+    this.apply(update, update.battle);
     return this.snapshot!;
   }
 
@@ -325,8 +326,8 @@ export class BattleSession {
    * Les retours d'une mise à jour : aussitôt, ou différés. Un retour différé né pendant une frappe
    * du héros attend sa fin (la piqûre d'une Rafale après son dernier coup, #259).
    */
-  private feedback(battle: Battle, events: readonly BattleEvent[]): void {
-    for (const feedback of feedbacksFor(events)) {
+  private feedback(battle: Battle, before: Battle, events: readonly BattleEvent[]): void {
+    for (const feedback of feedbacksFor(events, before, battle)) {
       if (feedback.delayMs !== undefined) {
         this.heldFeedbacks.push(feedback);
         continue;
@@ -339,10 +340,10 @@ export class BattleSession {
     this.heldFeedbacks = [];
   }
 
-  private apply(update: BattleUpdate): void {
+  private apply(update: BattleUpdate, before = this.snapshot?.battle ?? update.battle): void {
     if (this.disposed) return;
     const { battle, events } = update;
-    this.feedback(battle, events);
+    this.feedback(battle, before, events);
     this.snapshot = {
       battle,
       events,

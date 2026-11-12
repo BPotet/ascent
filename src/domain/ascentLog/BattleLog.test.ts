@@ -1130,6 +1130,32 @@ describe('BattleLog', () => {
     });
   });
 
+  it('notes the points of the Swarm and of the Aura on the attack, for the measures of the GD (#268)', () => {
+    const log = logged(
+      [roundStarted(START, 2)],
+      [
+        {
+          type: 'windUpStarted',
+          at: START + 400,
+          enemy: 1,
+          attack: 'basic',
+          impacts: [START + 1_500],
+          feintAt: null,
+          swarm: 2,
+          aura: 1,
+        },
+      ],
+    );
+
+    expect(actionOf(log, 1).attack).toEqual({
+      attack: 'basic',
+      impactOffsets: [1_100],
+      feintOffset: null,
+      swarm: 2,
+      aura: 1,
+    });
+  });
+
   it('changes nothing without an event, and never changes the log it is given', () => {
     const log = logged([roundStarted(START, 1)]);
     const copy = JSON.parse(JSON.stringify(log)) as BattleLog;

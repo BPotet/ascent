@@ -1,9 +1,11 @@
 import type { Battle } from '../../domain/battle/Battle';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
+import type { EnemyKind } from '../../domain/battle/combatants';
 import {
   EMBER_BURST_AFTER_FALL_MS,
   MOMENTUM_STEAL_AFTER_IMPACT_MS,
   BURN_AFTER_BLEED_MS,
+  CANDLE_SNUFF_AFTER_FALL_MS,
   BURN_OUT_AFTER_BLOW_MS,
   BURN_OUT_AFTER_CRACKLE_MS,
   CHARGE_BROKEN_AFTER_BREAK_MS,
@@ -540,5 +542,68 @@ describe('the sounds of the Ash gardens (#267)', () => {
     expect(
       feedbackFor({ type: 'momentumStolen', at: 0, enemy: 0, stolen: 1, momentum: 2 }),
     ).toEqual({ sound: 'momentumSteal', haptic: null, delayMs: MOMENTUM_STEAL_AFTER_IMPACT_MS });
+  });
+});
+
+describe('the sounds of the Catacombs (#268)', () => {
+  const line = (kinds: readonly EnemyKind[], fallen: readonly number[] = []) =>
+    ({
+      enemies: kinds.map((kind, index) => ({ kind, hp: fallen.includes(index) ? 0 : 10 })),
+    }) as unknown as Battle;
+  const defeated = (enemy: number): BattleEvent => ({ type: 'enemyDefeated', at: 0, enemy });
+  const stepIn = (enemy: number): BattleEvent => ({
+    type: 'stepInStarted',
+    at: 0,
+    enemy,
+    until: 400,
+  });
+
+  it('blows the candle out 200 ms after the fall of a Candle bearer, while another enemy stands', () => {
+    expect(CANDLE_SNUFF_AFTER_FALL_MS).toBe(200);
+    const before = line(['ghoul', 'candleBearer']);
+    expect(feedbacksFor([defeated(1)], before, line(['ghoul', 'candleBearer'], [1]))).toEqual([
+      { sound: 'candleSnuff', haptic: null, delayMs: CANDLE_SNUFF_AFTER_FALL_MS },
+    ]);
+  });
+
+  it('blows nothing out when no other enemy stands, nor at the fall of another enemy', () => {
+    const alone = line(['ghoul', 'candleBearer'], [0]);
+    expect(feedbacksFor([defeated(1)], alone, line(['ghoul', 'candleBearer'], [0, 1]))).toEqual([
+      { sound: null, haptic: null },
+    ]);
+    const both = line(['ghoul', 'candleBearer']);
+    expect(feedbacksFor([defeated(0)], both, line(['ghoul', 'candleBearer'], [0]))).toEqual([
+      { sound: null, haptic: null },
+    ]);
+  });
+
+  it('squeaks at the step-in of a Crypt rat, and only of a Crypt rat', () => {
+    const rats = line(['cryptRat', 'ghoul']);
+    expect(feedbacksFor([stepIn(0), stepIn(1)], rats, rats)).toEqual([
+      { sound: 'ratSqueak', haptic: null },
+      { sound: null, haptic: null },
+    ]);
+  });
+
+  it('knows the kind of an enemy entering in the same update', () => {
+    const before = line(['ghoul', 'ghoul'], [1]);
+    const after = line(['ghoul', 'cryptRat']);
+    const entered: BattleEvent = {
+      type: 'reinforcementEntered',
+      at: 0,
+      enemy: 1,
+      kind: 'cryptRat',
+    };
+    expect(feedbacksFor([entered, stepIn(1)], before, after)[1]).toEqual({
+      sound: 'ratSqueak',
+      haptic: null,
+    });
+  });
+
+  it('plays nothing new without the state of the battle', () => {
+    expect(feedbacksFor([stepIn(0), defeated(0)])).toEqual([
+      { sound: null, haptic: null },
+      { sound: null, haptic: null },
+    ]);
   });
 });

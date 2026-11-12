@@ -234,6 +234,12 @@ export interface ActionRecord {
     readonly feintOffset: number | null;
     /** Le Coup de bélier d'une Charge (#266) ; absent, un coup ordinaire. */
     readonly charged?: true;
+    /**
+     * Les dégâts ajoutés par impact par la Nuée et par l'Aura (#268) ; absents, 0. Les mesures du GD
+     * s'en lisent : coups portés sous Aura et dégâts ajoutés, Nuée moyenne par Morsure.
+     */
+    readonly swarm?: number;
+    readonly aura?: number;
   };
   readonly presses: readonly PressRecord[];
   readonly effects: readonly EffectRecord[];
@@ -526,6 +532,8 @@ class Writer {
             impactOffsets: event.impacts.map((impact) => impact - event.at),
             feintOffset: event.feintAt === null ? null : event.feintAt - event.at,
             ...(event.charged && { charged: true as const }),
+            ...(event.swarm !== undefined && { swarm: event.swarm }),
+            ...(event.aura !== undefined && { aura: event.aura }),
           },
         };
         return;

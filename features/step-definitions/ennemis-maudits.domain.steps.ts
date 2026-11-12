@@ -35,7 +35,9 @@ import { drawIntent } from '../../src/domain/battle/intents';
 import { seedRandom } from '../../src/domain/battle/SeededRandom';
 import { scaleByPercent } from '../../src/domain/battle/tierMultiplier';
 
-const SEEDS = Array.from({ length: 20_000 }, (_, index) => index);
+// 50 000 graines : avec le Porte-cierge et le Rat de crypte (#268), le groupe Goule, Spectre et
+// Nécromancien est plus rare au 1er étage ; il en faut 200.
+const SEEDS = Array.from({ length: 50_000 }, (_, index) => index);
 
 const won = (ascent: Ascent) =>
   endFloorBattle(ascent, { outcome: 'victory', heroHp: ascent.hero.hp });

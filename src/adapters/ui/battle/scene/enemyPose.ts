@@ -46,7 +46,7 @@ const NO_MOTIONS: AttackMotions = {};
 const NO_EXTRAS: readonly ExtraFrame[] = [];
 /** Une image du relèvement : 133 ms. */
 const RISE_FRAME_MS = 133;
-/** La Cosse éclate (ou s'éteint) 200 ms après sa chute (#267, maquette J7). */
+/** La Cosse éclate (ou s'éteint) 200 ms après sa chute (#267, J7), le cierge est soufflé de même (#268, C4). */
 const POD_FALL_MS = 200;
 /** La Phalène saisit le losange 300 ms après l'impact, le temps de son arc, 500 ms (#267, J2). */
 const THEFT_FROM_MS = 300;
@@ -334,6 +334,8 @@ export function restPose(
     | 'charging'
     | 'chargeBroken'
     | 'podFall'
+    | 'snuffedAt'
+    | 'swarming'
   >,
   index: number,
   now: number,
@@ -349,6 +351,8 @@ export function restPose(
     | 'charging'
     | 'chargeBroken'
     | 'podFall'
+    | 'snuffedAt'
+    | 'swarming'
   >,
   index: number,
   now: number,
@@ -365,6 +369,8 @@ export function restPose(
     | 'charging'
     | 'chargeBroken'
     | 'podFall'
+    | 'snuffedAt'
+    | 'swarming'
   >,
   index: number,
   now: number,
@@ -375,7 +381,13 @@ export function restPose(
     // La Cosse de braise éclate ou s'éteint en fumée, 200 ms après sa chute (#267, J7, J9).
     const fall = enemy.podFall;
     const burst = fall !== undefined && extras.includes(fall.kind) && now - fall.at >= POD_FALL_MS;
-    return { frame: burst ? fall.kind : 'hurt', stars: null, hop: false };
+    if (burst) return { frame: fall.kind, stars: null, hop: false };
+    // Le cierge du Porte-cierge soufflé, 200 ms après sa chute (#268, C4).
+    const snuffed =
+      enemy.snuffedAt !== undefined &&
+      extras.includes('snuffed') &&
+      now - enemy.snuffedAt >= POD_FALL_MS;
+    return { frame: snuffed ? 'snuffed' : 'hurt', stars: null, hop: false };
   }
   if (enemy.rising !== null) {
     const step = Math.floor((now - enemy.rising.since) / RISE_FRAME_MS);
@@ -400,5 +412,9 @@ export function restPose(
     return { frame: 'charge0', stars: null, hop: false };
   }
   const breath = Math.floor((now + index * 130) / 250) % 2;
+  // Le grouillement d'un Rat de crypte en Nuée (#268, C7), à la place de sa respiration.
+  if (enemy.swarming === true && extras.includes('swarm0') && extras.includes('swarm1')) {
+    return { frame: breath === 1 ? 'swarm1' : 'swarm0', stars: null, hop: false };
+  }
   return { frame: breath === 1 ? 'idle1' : 'idle0', stars: null, hop: false };
 }

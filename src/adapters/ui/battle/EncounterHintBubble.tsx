@@ -16,6 +16,8 @@ const ORDINARY = {
   // Les Jardins de cendre (#267, J1, J6) : la braise de la Cosse, le losange d'or de la Phalène.
   emberBurst: { glyph: 'ember8', color: battleColors.burnRing },
   momentumTheft: { glyph: 'diamond8', color: battleColors.steal },
+  // Les Catacombes (#268, C1) : le cierge de l'Aura, dans sa lueur citron.
+  aura: { glyph: 'candle8', color: battleColors.aura },
 } as const;
 
 /**

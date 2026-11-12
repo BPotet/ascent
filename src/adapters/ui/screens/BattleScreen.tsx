@@ -38,6 +38,7 @@ import { useReducedMotion } from '../state/useReducedMotion';
 import { jsThreadNow, uiThreadNow } from '../state/useTouchProbe';
 import {
   heroHpShown,
+  auraStruckAt,
   momentumShown,
   useBattleDisplay,
   useTheftRevealed,
@@ -237,6 +238,9 @@ export function BattleScreen({
     // La Cosse de braise éclatée ou étouffée, la Phalène voleuse qui saisit l'Élan (#267).
     ...(display.podFalls[index] !== undefined && { podFall: display.podFalls[index] }),
     ...(display.theft?.enemy === index && { stealAt: display.theft.at }),
+    // Le cierge soufflé du Porte-cierge, le grouillement d'un Rat en Nuée (#268).
+    ...(display.candleFalls[index] !== undefined && { snuffedAt: display.candleFalls[index] }),
+    ...(enemy.swarming === true && { swarming: true }),
   }));
   // La bulle de première rencontre (#258, F1) : le premier toucher, où qu'il soit, la ferme.
   const encounterHint = display.snapshot?.encounterHint;
@@ -337,6 +341,8 @@ export function BattleScreen({
                 slot={geometry.enemies[index]!}
                 sealed={view.sealed === index}
                 swept={view.swept === index}
+                // Les « +20 % » barrés à la chute du Porte-cierge (#268, C4), par chute.
+                auraOut={auraStruckAt(display, index)}
                 reducedMotion={reducedMotion}
                 float={display.float?.float.at === index ? display.float : null}
                 uiNow={uiNow}

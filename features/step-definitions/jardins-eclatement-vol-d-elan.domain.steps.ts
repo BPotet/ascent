@@ -469,12 +469,15 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   then(
     /^ses groupes d'ennemis, ses escortes et ses marches figées du palier 1 sont identiques à ceux d'avant cette story$/u,
     () => {
+      // Le Porte-cierge et le Rat de crypte (#268) s'y ajoutent à la fin, sans rien des Jardins.
       expect(TIERS[1].enemies.map(({ kind }) => kind)).toEqual([
         'ghoul',
         'specter',
         'necromancer',
         'skeleton',
         'madVillager',
+        'candleBearer',
+        'cryptRat',
       ]);
       expect(TIERS[3].enemies.map(({ kind }) => kind)).toEqual([
         'bronzeWarden',
@@ -486,11 +489,15 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
         'bronzeRam',
         'bellClapper',
       ]);
+      // Le Porte-cierge, qui n'est pas un soutien, et le Rat de crypte (#268, D6) : sans effet, le
+      // palier 1 n'a pas d'escorte.
       expect(ESCORT_POOLS[1].map(({ kind }) => kind)).toEqual([
         'ghoul',
         'specter',
         'skeleton',
         'madVillager',
+        'candleBearer',
+        'cryptRat',
       ]);
       expect(ESCORT_POOLS[3].map(({ kind }) => kind)).toEqual([
         'bronzeWarden',

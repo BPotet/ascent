@@ -27,3 +27,11 @@ export const NO_TIER_MULTIPLIER: TierMultiplier = { hpPercent: 100, guardPercent
 export function scaleByPercent(value: number, percent: number): number {
   return Math.floor((value * percent) / 100);
 }
+
+/**
+ * Une valeur plus `percent` %, le bonus à l'entier inférieur, au moins +1 (#268, D2) : la formule
+ * commune de la malédiction (`cursedValue`, 20 %) et de l'Aura du Porte-cierge.
+ */
+export function boostByPercent(value: number, percent: number): number {
+  return value + Math.max(1, scaleByPercent(value, percent));
+}

@@ -42,6 +42,13 @@ describe('drawEliteEscort (#257)', () => {
     expect(ESCORT_POOLS[1].some(({ kind }) => ENEMIES[kind].supports)).toBe(false);
   });
 
+  it('keeps the Candle bearer, not a support, and the Crypt rat in the escort pool of tier 1 (#268, D6)', () => {
+    expect(ESCORT_POOLS[1].map(({ kind }) => kind)).toEqual(
+      expect.arrayContaining(['candleBearer', 'cryptRat']),
+    );
+    expect(ESCORT_POOLS[1].map(({ kind }) => kind)).not.toContain('necromancer');
+  });
+
   it('never draws a support nor more Mothkin or Bell novices than their cap, on 2,000 seeds', () => {
     const escorts = SEEDS.flatMap((seed) => [
       drawEliteEscort(1, seedRandom(seed), 2).value,
