@@ -236,6 +236,9 @@ const styles = StyleSheet.create({
   victory: { color: battleColors.light, fontSize: 32, lineHeight: 36 },
   // La rupture et le retour du Sanctuaire (#259, B3, B5, `.fword.ward`), en acier clair.
   ward: { color: battleColors.onWard, fontSize: 30, lineHeight: 34, letterSpacing: 1 },
+  // « Balayé » et « Il charge » (#266, maquette 246, `.fword.sweep`, `.fword.charge`).
+  sweep: { color: battleColors.sweep, fontSize: 26, lineHeight: 30, letterSpacing: 1 },
+  charge: { color: battleColors.charge, fontSize: 24, lineHeight: 28, letterSpacing: 1 },
   // Le mot « Épines » (#259, M2, `.fword.thorn`), en vert ronce.
   thorns: { color: battleColors.thornLight, fontSize: 20, lineHeight: 24 },
   withShield: { flexDirection: 'row', alignItems: 'center', gap: 6 },

@@ -236,6 +236,7 @@ const EFFECT_ORDER: readonly EffectKind[] = [
   'glintWhite',
   'glintRed',
   'glintDull',
+  'glintSweep',
   'stars',
   'shield',
   'silverShard',
@@ -476,6 +477,8 @@ function useEnemyLook(
   reducedMotion: boolean,
 ): DerivedValue<SpriteLook<SceneFrame>> {
   const { standing, down, losingAction, rising, downSince, exhumedAt } = enemy;
+  const charging = enemy.charging === true;
+  const chargeBroken = enemy.chargeBroken === true;
   const { reach } = slot;
   const { x, y } = origin;
   return useDerivedValue<SpriteLook<SceneFrame>>(() => {
@@ -498,7 +501,12 @@ function useEnemyLook(
     if (exhuming !== null) {
       return { frame: exhuming.frame, tier: 0, red: false, poses: null, x, y: y + exhuming.sink };
     }
-    const rest = restPose({ standing, down, losingAction, rising, downSince }, index, now, extras);
+    const rest = restPose(
+      { standing, down, losingAction, rising, downSince, charging, chargeBroken },
+      index,
+      now,
+      extras,
+    );
     return { frame: rest.frame, tier: 0, red: false, poses: null, x, y };
   }, [
     exhumedAt,
@@ -510,6 +518,8 @@ function useEnemyLook(
     losingAction,
     rising,
     downSince,
+    charging,
+    chargeBroken,
     x,
     y,
     reach,

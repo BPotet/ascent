@@ -19,6 +19,7 @@ import {
   type EnemyKind,
   type HeroKind,
 } from '../../../domain/battle/combatants';
+import { chargeMark } from '../../../domain/battle/charge';
 import { exhumeMark, type ExhumeMark } from '../../../domain/battle/exhume';
 import { sanctuaryUp } from '../../../domain/battle/sanctuary';
 import { thornsActive } from '../../../domain/battle/thorns';
@@ -35,6 +36,8 @@ import {
   enemyTag,
   guardText,
   exhumeLineText,
+  chargeLineText,
+  CHARGE_ACTION_LINE,
   signatureText,
   stunnedLabel,
   type SignatureMarkState,
@@ -207,6 +210,10 @@ export interface EnemyView {
    * non (garde à 0, étourdi, ou sans Sanctuaire).
    */
   readonly guardWard?: true;
+  /** Le Bélier de bronze charge (#266) : la scène tient sa pose de charge ; absent, non. */
+  readonly charging?: true;
+  /** Sa Charge est brisée (#266, A9) : la scène montre la Charge brisée à sa chute ; absent, non. */
+  readonly chargeBroken?: true;
   readonly label: string;
 }
 
@@ -223,6 +230,8 @@ export interface BattleView {
   readonly enemies: readonly EnemyView[];
   /** L'ennemi qui porte le sceau rouge. */
   readonly sealed: number | null;
+  /** L'ennemi qui porte le trait de balayage, pendant son Balayage (#266, A2, A3). */
+  readonly swept: number | null;
   readonly defenseHint: boolean;
   /** Les actions de la phase du héros sont possibles (cible, « Attaquer », « Pouvoir »). */
   readonly heroActions: boolean;
@@ -330,6 +339,11 @@ function signatureLine(target: EnemyState): string {
   }
 }
 
+/** La ligne du pouce de la Charge, quand le Bélier de bronze est la cible (#266, A6, A8). */
+function chargeLine(battle: Battle): string {
+  return chargeLineText(chargeMark(battle, battle.target));
+}
+
 function targetLine(battle: Battle): ZoneLine | null {
   const target = battle.enemies[battle.target];
   if (target === undefined) return null;
@@ -344,7 +358,7 @@ function targetLine(battle: Battle): ZoneLine | null {
   return {
     before: 'Cible : ',
     strong: enemyName(target),
-    after: `${exhume}${signatureLine(target)}${target.stun === null ? '' : ' · ×1,5'}`,
+    after: `${exhume}${signatureLine(target)}${chargeLine(battle)}${target.stun === null ? '' : ' · ×1,5'}`,
   };
 }
 
@@ -376,9 +390,16 @@ function signatureMark(
   const enemy = battle.enemies[index]!;
   if (variant === 'exhume') return exhumeMark(battle, index);
   if (enemy.hp <= 0) return null;
-  return variant === 'thorns'
-    ? { state: 'thorns', off: !thornsActive(enemy) }
-    : { state: 'sanctuary', off: !sanctuaryUp(enemy) };
+  switch (variant) {
+    case 'thorns':
+      return { state: 'thorns', off: !thornsActive(enemy) };
+    case 'sanctuary':
+      return { state: 'sanctuary', off: !sanctuaryUp(enemy) };
+    case 'sweep':
+      return { state: 'sweep' };
+    case 'charge':
+      return { state: 'charge', mark: chargeMark(battle, index) ?? 'idle' };
+  }
 }
 
 /** Le glyphe d'une marque : celui de l'état d'Exhumer, l'épine, l'écu d'acier ou sa fêlure. */
@@ -388,9 +409,27 @@ function signatureGlyph(mark: SignatureMarkState): IconName {
       return 'thorn8';
     case 'sanctuary':
       return mark.off ? 'crack8' : 'ward8';
+    case 'sweep':
+      return 'sweep8';
+    case 'charge':
+      return mark.mark === 'broken' ? 'crack8' : 'ram8';
     default:
       return EXHUME_GLYPHS[mark.state];
   }
+}
+
+/** Une marque éteinte : grisée (#258, #259 ; la Charge brisée, #266). */
+function markOff(mark: SignatureMarkState): boolean {
+  if ('off' in mark) return mark.off;
+  if (mark.state === 'sweep') return false;
+  if (mark.state === 'charge') return mark.mark === 'broken';
+  return mark.state === 'lost' || mark.state === 'standing';
+}
+
+/** Une marque soulignée : l'Exhumation pour maintenant (#258), la Charge en cours (#266). */
+function markNow(mark: SignatureMarkState): boolean {
+  if (mark.state === 'charge') return mark.mark === 'first' || mark.mark === 'second';
+  return mark.state === 'now';
 }
 
 /** La marque de signature de l'ennemi `index`, lue dans le domaine ; `null` sans signature. */
@@ -399,14 +438,18 @@ function signatureView(battle: Battle, index: number): SignatureView | null {
   const variant = enemySignature(kind);
   const mark = variant === null ? null : signatureMark(battle, index, variant);
   if (variant === null || mark === null) return null;
-  const off = 'off' in mark ? mark.off : mark.state === 'lost' || mark.state === 'standing';
   return {
     variant,
     glyph: signatureGlyph(mark),
     ...signatureText(kind, mark),
-    off,
-    now: mark.state === 'now',
+    off: markOff(mark),
+    now: markNow(mark),
   };
+}
+
+/** Une signature d'Élite (#258, #259) ; celles du Beffroi (#266) sont d'ennemis ordinaires. */
+function isEliteSignature(signature: SignatureView | null): boolean {
+  return signature !== null && signature.variant !== 'sweep' && signature.variant !== 'charge';
 }
 
 function enemyView(
@@ -457,11 +500,17 @@ function enemyView(
     ...(escort && { escort: true as const }),
     ...(signature !== null && { signature }),
     ...(enemy.hp > 0 && sanctuaryUp(enemy) && { guardWard: true as const }),
+    ...(enemy.charge === 'charging' && { charging: true as const }),
+    ...(enemy.charge === 'broken' && { chargeBroken: true as const }),
     label: enemyLabel(
       enemy,
       intent,
       target,
-      elite || signature !== null ? 'elite' : escort && enemy.hp > 0 ? 'escort' : undefined,
+      elite || isEliteSignature(signature)
+        ? 'elite'
+        : escort && enemy.hp > 0
+          ? 'escort'
+          : undefined,
       signature?.speech,
     ),
   };
@@ -491,6 +540,7 @@ export function battleView(battle: Battle): BattleView {
     line: null,
     enemies,
     sealed: null,
+    swept: null,
     defenseHint: false,
     heroActions: false,
     trimmed,
@@ -576,6 +626,12 @@ export function battleView(battle: Battle): BattleView {
           offBalance: battle.offBalanceUntil !== null,
         },
         sealed: step.kind === 'attack' && ATTACKS[step.attack].perilous ? step.enemy : null,
+        swept: step.kind === 'attack' && ATTACKS[step.attack].sweep ? step.enemy : null,
+        // L'action de la Charge (#266, A7) : rien à parer.
+        ...(step.kind === 'support' &&
+          step.intent.category === 'charge' && {
+            line: { before: CHARGE_ACTION_LINE, strong: '', after: '' },
+          }),
       };
     }
     case 'over':

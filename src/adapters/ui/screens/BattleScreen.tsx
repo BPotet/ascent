@@ -19,6 +19,7 @@ import { BattleHintBubble } from '../battle/BattleHintBubble';
 import { ACTION_ZONE_BOTTOM, ACTION_ZONE_SIDE, PowerList } from '../battle/PowerList';
 import { EncounterHintBubble } from '../battle/EncounterHintBubble';
 import { EnemyColumn } from '../battle/EnemyColumn';
+import { SweepTrail } from '../battle/SweepStroke';
 import { HeroBar } from '../battle/HeroBar';
 import { PhaseBanner } from '../battle/PhaseBanner';
 import { sceneGeometry } from '../battle/scene/sceneGeometry';
@@ -223,6 +224,8 @@ export function BattleScreen({
     phase2: enemy.phase2 === true,
     downSince: display.downSince[index] ?? null,
     ...(display.exhumeFx[index] !== undefined && { exhumedAt: display.exhumeFx[index] }),
+    ...(enemy.charging === true && { charging: true }),
+    ...(enemy.chargeBroken === true && { chargeBroken: true }),
   }));
   // La bulle de première rencontre (#258, F1) : le premier toucher, où qu'il soit, la ferme.
   const encounterHint = display.snapshot?.encounterHint;
@@ -322,6 +325,7 @@ export function BattleScreen({
                 index={index}
                 slot={geometry.enemies[index]!}
                 sealed={view.sealed === index}
+                swept={view.swept === index}
                 reducedMotion={reducedMotion}
                 float={display.float?.float.at === index ? display.float : null}
                 uiNow={uiNow}
@@ -330,6 +334,15 @@ export function BattleScreen({
               />
             ))}
           </View>
+          {/* Les chevrons du trait de balayage, au sol, de l'ennemi vers le héros (#266, A2). */}
+          {view.swept === null || geometry.enemies[view.swept] === undefined ? null : (
+            <SweepTrail
+              from={geometry.hero.x + geometry.hero.width}
+              to={geometry.enemies[view.swept]!.groundShadowAt.x - 24}
+              y={geometry.heroGroundShadowAt.y}
+              reducedMotion={reducedMotion}
+            />
+          )}
           {/* « Victoire » (#258, F6) reste écrit pendant la chute du Squelette avec le Fossoyeur. */}
           {display.feedback === null ||
           (over !== null &&

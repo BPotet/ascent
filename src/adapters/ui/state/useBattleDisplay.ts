@@ -291,12 +291,28 @@ function sparkOf(event: BattleEvent): SceneSpark | null {
   return event.outcome === 'parry' ? { kind: 'steel', at: event.at } : null;
 }
 
+/** Les issues d'un coup reçu : subi, parade sur un coup imparable, esquive sur un Balayage (#266). */
+const HURTING: ReadonlySet<BlowOutcome> = new Set(['suffered', 'perilousParry', 'sweepDodge']);
+
 /** Un coup reçu : la vignette rouge et la secousse. */
 function hurts(event: BattleEvent): boolean {
-  return (
-    event.type === 'blowResolved' &&
-    (event.outcome === 'suffered' || event.outcome === 'perilousParry')
-  );
+  return event.type === 'blowResolved' && HURTING.has(event.outcome);
+}
+
+/** Le Coup de bélier d'une Charge qui touche (#266, A11) : son chiffre agrandi. */
+export function ramBlowFloat(
+  float: DamageFloat | null,
+  event: BattleEvent,
+  battle: Battle,
+): DamageFloat | null {
+  if (float === null || event.type !== 'blowResolved') return float;
+  const { phase } = battle;
+  const charged =
+    phase.kind === 'enemy' &&
+    phase.step.kind === 'attack' &&
+    phase.step.enemy === event.enemy &&
+    phase.step.charged === true;
+  return charged ? { ...float, big: true } : float;
 }
 
 /**
@@ -456,7 +472,7 @@ export function displayOf(
   for (const event of snapshot.events) {
     display = burnAfter(display, event, burnBefore, afterBleed);
     display = summonAfter(display, event, snapshot.battle, afterRound);
-    const float = damageFloat(event);
+    const float = ramBlowFloat(damageFloat(event), event, snapshot.battle);
     if (event.type === 'secondChanceUsed' && float !== null) {
       display = {
         ...display,

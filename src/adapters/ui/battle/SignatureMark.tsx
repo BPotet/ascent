@@ -6,7 +6,10 @@ import { textFont } from '../pixelArt/pixelTypography';
 import type { SignatureView } from '../state/battleView';
 import { battleColors } from '../theme/battleColors';
 
-/** Les teintes de chaque mécanique (maquette 245) : l'os, la ronce, l'acier. */
+/**
+ * Les teintes de chaque mécanique (maquette 245) : l'os, la ronce, l'acier ; le cyan du Balayage et
+ * le bronze chauffé de la Charge (maquette 246, #266).
+ */
 const TINTS: Readonly<
   Record<EnemySignature, { readonly line: string; readonly fill: string; readonly ink: string }>
 > = {
@@ -26,14 +29,14 @@ const TINTS: Readonly<
     ink: battleColors.onWard,
   },
   sweep: {
-    line: battleColors.ward,
-    fill: battleColors.wardBackground,
-    ink: battleColors.onWard,
+    line: battleColors.sweep,
+    fill: battleColors.sweepBackground,
+    ink: battleColors.onSweep,
   },
   charge: {
-    line: battleColors.ward,
-    fill: battleColors.wardBackground,
-    ink: battleColors.onWard,
+    line: battleColors.charge,
+    fill: battleColors.chargeBackground,
+    ink: battleColors.onCharge,
   },
 };
 
@@ -42,8 +45,8 @@ const GLYPH_TINTS: Readonly<Record<EnemySignature, string>> = {
   exhume: battleColors.onGrave,
   thorns: battleColors.thornLight,
   sanctuary: battleColors.ward,
-  sweep: battleColors.ward,
-  charge: battleColors.ward,
+  sweep: battleColors.sweep,
+  charge: battleColors.charge,
 };
 
 /**

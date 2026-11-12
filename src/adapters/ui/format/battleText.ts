@@ -21,6 +21,7 @@ import {
 import type { Stunned } from '../../../domain/battle/guard';
 import { MOMENTUM_MAX } from '../../../domain/battle/momentum';
 import { POWERS, basePower, kindledCost, type PowerKind } from '../../../domain/battle/powers';
+import type { ChargeMark } from '../../../domain/battle/charge';
 import type { ExhumeMark } from '../../../domain/battle/exhume';
 import type { ShownIntent } from '../../../domain/battle/shownIntent';
 import { summonedKind } from '../../../domain/battle/summon';
@@ -248,6 +249,9 @@ export function actionTrackLabel(
 
 export const SEAL_LABEL = 'Sceau rouge : coup imparable';
 
+/** Le libellé du trait de balayage (#266, maquette 246, `.sweepm`) : la bonne défense. */
+export const SWEEP_LABEL = 'Trait de balayage : parade';
+
 /** « étourdie » pour la Goule, « étourdi » pour les autres. */
 function agreed(kind: EnemyKind, word: string): string {
   return FEMININE[kind] ? `${word}e` : word;
@@ -442,7 +446,10 @@ export interface FeedbackText {
     | 'escort'
     | 'victory'
     // L'acier du Sanctuaire (#259) : sa rupture et son retour.
-    | 'ward';
+    | 'ward'
+    // Le cyan du Balayage et le bronze de la Charge (#266) : « Balayé », « Il charge ».
+    | 'sweep'
+    | 'charge';
   readonly title: string;
   /** La ligne sous le mot : « Attisé · 1 Élan » pour un pouvoir attisé (#237). */
   readonly sub?: string;
@@ -470,7 +477,15 @@ export function activePowerText(power: PowerKind): string {
 export function feedbackText(event: BattleEvent, battle?: Battle): FeedbackText | null {
   switch (event.type) {
     case 'blowResolved':
+      if (event.outcome === 'sweepDodge') return SWEPT;
       return event.outcome === 'perfectParry' ? { tone: 'perfect', title: 'Parfait' } : null;
+    // Le Bélier de bronze charge (#266, A7) : pas de coup à parer.
+    case 'chargeStarted':
+      return {
+        tone: 'charge',
+        title: 'Il charge',
+        sub: 'Pas de coup cette manche · gros coup à la suivante',
+      };
     case 'counterAttacked':
       return { tone: 'perfect', title: 'Parfait · contre-attaque' };
     case 'bulwarkCountered':
@@ -511,6 +526,13 @@ export function feedbackText(event: BattleEvent, battle?: Battle): FeedbackText 
 
 const BREAK: FeedbackText = { tone: 'break', title: 'Cassure' };
 
+/** L'esquive échoue sur un Balayage (#266, A5) : à la place de l'échec d'une parade imparable. */
+const SWEPT: FeedbackText = {
+  tone: 'sweep',
+  title: 'Balayé',
+  sub: 'L’esquive échoue · pare le Balayage',
+};
+
 /**
  * « Cassure » et pourquoi elle compte : la garde brisée avant l'Exhumation (#258, F4) ; la Mère-ronce
  * qui pique une dernière fois, puis plus tant qu'elle est étourdie (#259, M4) ; le Sanctuaire du
@@ -522,6 +544,8 @@ function brokenText(battle: Battle, enemy: number): FeedbackText {
   if (broken.intent?.category === 'exhume') {
     return { ...BREAK, sub: 'Action perdue · pas d’exhumation' };
   }
+  // La cassure brise la Charge du Bélier de bronze (#266, A9).
+  if (broken.charge === 'broken') return { ...BREAK, sub: 'Charge brisée · pas de gros coup' };
   switch (enemySignature(broken.kind)) {
     case 'thorns':
       return {
@@ -544,6 +568,18 @@ function fellWithExhumer(battle: Battle, enemy: number): FeedbackText | null {
   const with_ = exhumer !== undefined && FEMININE[exhumer.kind] ? 'elle' : 'lui';
   return { tone: 'victory', title: 'Victoire', sub: `${theName(fallen.kind)} tombe avec ${with_}` };
 }
+
+/**
+ * La ligne du pouce quand la cible est le Bélier de bronze (#266, A6, A8) : comment annuler sa
+ * Charge, tant qu'il charge.
+ */
+export function chargeLineText(mark: ChargeMark | null): string {
+  if (mark === 'first') return ' · brise sa garde pour annuler sa charge';
+  return mark === 'second' ? ' · brise sa garde avant son gros coup' : '';
+}
+
+/** La ligne du pouce pendant l'action de la Charge (#266, A7) : rien à parer. */
+export const CHARGE_ACTION_LINE = 'Aucun coup à parer';
 
 /**
  * La ligne du pouce avec une Élite qui exhume (#258, F2, F5) : comment l'en empêcher quand elle
@@ -701,7 +737,7 @@ function blowAnnouncement(outcome: BlowOutcome, damage: number): string {
     case 'suffered':
       return `Touché, ${damages(damage)}`;
     case 'sweepDodge':
-      return `Balayage : l'esquive échoue, ${damages(damage)}`;
+      return `Balayage : l’esquive échoue, ${damages(damage)}. Déséquilibré`;
   }
 }
 
@@ -717,6 +753,7 @@ function halfSpeech(event: { readonly sanctuary?: true }): string {
 function brokenSpeech(battle: Battle, enemy: number): string {
   const broken = battle.enemies[enemy]!;
   if (broken.intent?.category === 'exhume') return ' : pas d’exhumation cette manche';
+  if (broken.charge === 'broken') return ' : charge brisée, pas de gros coup';
   switch (enemySignature(broken.kind)) {
     case 'thorns':
       return ` : ses épines sont sans effet`;
@@ -748,8 +785,11 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
       return phaseAnnouncement(event.to);
     case 'heroPhaseStarted':
       return event.announced ? phaseAnnouncement('hero') : null;
+    // La bonne défense d'un coup qui en demande une : esquive, ou parade pour un Balayage (#266).
     case 'windUpStarted':
-      return `${name(event.enemy)}, ${ATTACK_NAMES[event.attack]}${ATTACKS[event.attack].perilous ? ', esquive' : ''}`;
+      return `${name(event.enemy)}, ${ATTACK_NAMES[event.attack]}${ATTACKS[event.attack].perilous ? ', esquive' : ATTACKS[event.attack].sweep ? ', parade' : ''}`;
+    case 'chargeStarted':
+      return `${theName(kind(event.enemy))} charge. Gros coup à la manche suivante`;
     case 'blowResolved':
       return blowAnnouncement(event.outcome, event.damage);
     case 'counterAttacked':
@@ -974,7 +1014,25 @@ export function heroHpText(hp: number, maxHp: number): string {
 export type SignatureMarkState =
   | ExhumeMark
   | { readonly state: 'thorns'; readonly off: boolean }
-  | { readonly state: 'sanctuary'; readonly off: boolean };
+  | { readonly state: 'sanctuary'; readonly off: boolean }
+  | { readonly state: 'sweep' }
+  | { readonly state: 'charge'; readonly mark: ChargeMark };
+
+/** Les mots de la marque de la Charge (#266, maquette 246, `sigTag`), par état. */
+const CHARGE_TEXTS: Readonly<
+  Record<ChargeMark, { readonly text: string; readonly speech: string }>
+> = {
+  idle: {
+    text: 'Charge',
+    speech: 'charge sur 2 manches : brise sa garde pendant la charge pour l’annuler',
+  },
+  first: { text: 'Charge 1/2', speech: 'charge, manche 1 sur 2 : brise sa garde pour l’annuler' },
+  second: {
+    text: 'Charge 2/2',
+    speech: 'charge, manche 2 sur 2 : gros coup à son tour, brise sa garde pour l’annuler',
+  },
+  broken: { text: 'Charge brisée', speech: 'charge brisée : pas de gros coup' },
+};
 
 /**
  * Ce que dit une marque de signature (maquette 245) : son mot, sous le nom, et sa phrase au lecteur
@@ -986,6 +1044,11 @@ export function signatureText(
   mark: SignatureMarkState,
 ): { readonly text: string; readonly speech: string } {
   const subject = FEMININE[kind] ? 'elle' : 'il';
+  // Le Balayage et la Charge (#266, maquette 246, A1, A6 à A12).
+  if (mark.state === 'sweep') {
+    return { text: 'Balayage', speech: 'balayage : l’esquive échoue, pare' };
+  }
+  if (mark.state === 'charge') return CHARGE_TEXTS[mark.mark];
   if (mark.state === 'thorns') {
     const { damage } = ENEMIES[kind].thorns ?? { damage: 0 };
     return {
@@ -1023,6 +1086,13 @@ export function signatureText(
   }
 }
 
+/** La règle d'un ennemi ordinaire à mécanique, dans sa bulle (#266, maquette 246, A1, A6). */
+const ORDINARY_RULES = {
+  sweep: 'Son Balayage rase le sol : l’esquive échoue. Quand le trait file au sol vers toi, pare.',
+  charge:
+    'Il charge pendant 2 manches, puis frappe fort. Brise sa garde pendant la charge pour l’annuler.',
+} as const;
+
 /** Comment fermer la bulle de première rencontre (#258). */
 const ENCOUNTER_CLOSE = "Touche n'importe où pour fermer. Elle ne reviendra pas.";
 
@@ -1038,12 +1108,15 @@ export function encounterHintText(kind: EnemyKind): {
 } {
   const { thorns, sanctuary } = ENEMIES[kind];
   const subject = FEMININE[kind] ? 'elle' : 'il';
+  const signature = enemySignature(kind);
   const rule =
-    thorns !== undefined
-      ? `Chaque frappe sur ${subject} te coûte ${thorns.damage} PV, une fois par frappe, sauf quand ${subject} est ${agreed(kind, 'étourdi')}.`
-      : sanctuary !== undefined
-        ? `Sanctuaire : tant que sa garde tient, ${subject} ne subit que la moitié des dégâts. Brise-la.`
-        : null;
+    signature === 'sweep' || signature === 'charge'
+      ? ORDINARY_RULES[signature]
+      : thorns !== undefined
+        ? `Chaque frappe sur ${subject} te coûte ${thorns.damage} PV, une fois par frappe, sauf quand ${subject} est ${agreed(kind, 'étourdi')}.`
+        : sanctuary !== undefined
+          ? `Sanctuaire : tant que sa garde tient, ${subject} ne subit que la moitié des dégâts. Brise-la.`
+          : null;
   if (rule !== null) {
     return {
       title: ENEMY_NAMES[kind],

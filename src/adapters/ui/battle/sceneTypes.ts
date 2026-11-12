@@ -56,6 +56,10 @@ export interface SceneEnemy {
    * montée), et sa poussière d'os s'il retombe avec le Fossoyeur ; absent, non.
    */
   readonly exhumedAt?: number;
+  /** Le Bélier de bronze charge (#266, A7, A8) : sa pose de charge tenue au repos ; absent, non. */
+  readonly charging?: boolean;
+  /** Sa Charge vient d'être brisée (#266, A9) : la pose `chargeBroken` à sa chute ; absent, non. */
+  readonly chargeBroken?: boolean;
 }
 
 /**

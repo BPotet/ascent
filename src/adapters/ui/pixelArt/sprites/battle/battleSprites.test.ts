@@ -684,6 +684,7 @@ describe('the battle effects (precomputed, never painted per frame)', () => {
       }
     }
     expect(EFFECT_KINDS).toEqual({
+      glintSweep: 3,
       flash: 3,
       gold: 5,
       steel: 5,

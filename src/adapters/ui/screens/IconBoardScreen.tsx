@@ -121,6 +121,8 @@ type LoadoutBoard =
   | 'veilTierThree'
   // Les trois ennemis du Beffroi (#214), le Jaquemart préparant Heure pleine.
   | 'belfryEnemies'
+  // Le Battant de cloche et le Bélier de bronze (#266), le Battant préparant un Balayage.
+  | 'belfrySweep'
   // Veillée d'hiver et la Flamberge (#195).
   | 'vigilBoons'
   | 'flamberge';
@@ -143,6 +145,7 @@ const LOADOUT_ENTRIES: readonly (readonly [LoadoutBoard, string])[] = [
   ['veilTierOne', 'Voile · coup imparable · palier 1'],
   ['veilTierThree', 'Voile · coup imparable · palier 3'],
   ['belfryEnemies', 'Beffroi · Novice, Sonneuse, Jaquemart'],
+  ['belfrySweep', 'Beffroi · Battant, Bélier · Balayage'],
   ['vigilBoons', "Choix d'un bienfait · Veillée d'hiver"],
   ['flamberge', 'Objet trouvé · Flamberge'],
 ];
@@ -309,6 +312,7 @@ const LOADOUT_ASCENTS: Readonly<Record<LoadoutBoard, Ascent | null>> = {
   veilTierOne: fight({}, 1, 'combat', ['specter', 'ghoul', 'ghoul']),
   veilTierThree: fight({}, 3, 'combat', ['gargoyle', 'bellFounder', 'bronzeWarden']),
   belfryEnemies: fight({}, 3, 'combat', ['bellNovice', 'clockJack', 'matinsRinger']),
+  belfrySweep: fight({}, 3, 'combat', ['bellNovice', 'bellClapper', 'bronzeRam']),
   vigilBoons: {
     ...between(startAscent(42), DOORS),
     boonOffer: ['perfectEcho', 'lingeringFrost', 'winterVigil'],
@@ -383,6 +387,7 @@ const BOARD_BATTLES: Partial<Readonly<Record<LoadoutBoard, Battle>>> = {
   veilTierOne: windingUp(['specter', 'ghoul', 'ghoul'], 0, 'perilous'),
   veilTierThree: windingUp(['gargoyle', 'bellFounder', 'bronzeWarden'], 2, 'delayedPerilous'),
   belfryEnemies: windingUp(['bellNovice', 'clockJack', 'matinsRinger'], 1, 'perilous'),
+  belfrySweep: windingUp(['bellNovice', 'bellClapper', 'bronzeRam'], 1, 'sweep'),
 };
 // Stryker restore all
 
