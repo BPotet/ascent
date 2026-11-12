@@ -97,6 +97,9 @@ export const EXTRA_FRAMES: readonly ExtraFrame[] = [
   'guard',
   'raiseAlly',
   'exhume',
+  'charge0',
+  'charge1',
+  'chargeBroken',
 ];
 
 export const ENEMY_FRAMES: readonly EnemyFrame[] = [
