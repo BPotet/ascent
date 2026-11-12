@@ -61,6 +61,12 @@ interface World {
 let world: World;
 
 /** Une app neuve, le 7 novembre : Représailles, Tenir bon, Entaille et Brume débloqués par défaut. */
+/**
+ * Une graine où le héros ouvre le 1er combat, la liste des pouvoirs à l'écran (5 depuis le
+ * Porte-cierge et le Rat de crypte, #268 : le 1er groupe de la graine 3 agit avant lui).
+ */
+const SEED = 5;
+
 async function open(
   powers: readonly PowerKind[] = ['retaliation', 'holdFast', 'rend', 'mist'],
 ): Promise<void> {
@@ -76,7 +82,7 @@ async function open(
       powers: powers.map((power) => ({ power, price: powerPrice(power) })),
     }),
   );
-  const { ascentSession: session, camp, clock, unitOfWork } = campSetUp(store);
+  const { ascentSession: session, camp, clock, unitOfWork } = campSetUp(store, SEED);
   world = {
     store,
     session,
@@ -122,7 +128,7 @@ async function storedOath(power: PowerKind, name: string, since: Day): Promise<v
 
 /** Une app relancée sur le même stockage, avec la même horloge et les mêmes habitudes. */
 async function reopen(): Promise<void> {
-  const { ascentSession: session } = campSetUp(world.store);
+  const { ascentSession: session } = campSetUp(world.store, SEED);
   world.session = session;
   world.camp = campSessionOf(session, world.store, {
     clock: world.clock,

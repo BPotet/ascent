@@ -45,33 +45,60 @@ describe('Group composition (P3)', () => {
       ['necromancer', 1],
       ['skeleton', 3],
       ['madVillager', 2],
+      ['candleBearer', 1],
+      ['cryptRat', 2],
     ]);
   });
 
-  it('draws as many enemies as the size, with at most 1 of each type but the Ghoul', () => {
+  it('draws as many enemies as the size, with at most 1 of each type but the Ghoul and the Crypt rat', () => {
     for (const size of [1, 2, 3, 4, 5]) {
       for (const group of groups(size)) {
         expect(group).toHaveLength(size);
-        for (const capped of ['specter', 'necromancer', 'skeleton', 'madVillager']) {
+        for (const capped of [
+          'specter',
+          'necromancer',
+          'skeleton',
+          'madVillager',
+          'candleBearer',
+        ]) {
           expect(group.filter((kind) => kind === capped).length).toBeLessThanOrEqual(1);
         }
+        expect(group.filter((kind) => kind === 'cryptRat').length).toBeLessThanOrEqual(3);
       }
     }
   });
 
+  it('draws up to 3 Crypt rats in a group (#268)', () => {
+    const counts = [3, 4, 5].flatMap((size) =>
+      groups(size).map((group) => group.filter((kind) => kind === 'cryptRat').length),
+    );
+    expect(Math.max(...counts)).toBe(3);
+  });
+
   it('fills the rest with Ghouls, and every type is possible', () => {
-    // 4 types plafonnés à 1 : un groupe de 5 compte toujours au moins 1 Goule.
-    const five = groups(5);
-    expect(five.every((group) => group.filter((kind) => kind === 'ghoul').length >= 1)).toBe(true);
-    expect(five.some((group) => group.filter((kind) => kind === 'ghoul').length === 1)).toBe(true);
     expect(new Set(groups(3).flat())).toEqual(
-      new Set(['ghoul', 'specter', 'necromancer', 'skeleton', 'madVillager']),
+      new Set([
+        'ghoul',
+        'specter',
+        'necromancer',
+        'skeleton',
+        'madVillager',
+        'candleBearer',
+        'cryptRat',
+      ]),
     );
   });
 
-  it('never draws a lone Necromancer, but a lone Skeleton can be', () => {
+  it('never draws a lone Necromancer nor a lone Candle bearer, but a lone Skeleton or Crypt rat can be (#268)', () => {
     expect(new Set(groups(1).flat())).toEqual(
-      new Set(['ghoul', 'specter', 'skeleton', 'madVillager']),
+      new Set(['ghoul', 'specter', 'skeleton', 'madVillager', 'cryptRat']),
     );
+  });
+
+  it('can draw a Necromancer with a Candle bearer, neither alone (#268)', () => {
+    const pairs = groups(2).filter(
+      (group) => group.includes('necromancer') && group.includes('candleBearer'),
+    );
+    expect(pairs.length).toBeGreaterThan(0);
   });
 });

@@ -21,7 +21,10 @@ export interface EnemyDraw {
   readonly kind: EnemyKind;
   readonly weight: number;
   readonly cap: number;
-  /** Un soutien : jamais seul dans un groupe d'un ennemi. */
+  /**
+   * Jamais seul dans un groupe d'un ennemi : un soutien, ou le Porte-cierge (#268, D6), qui n'en est
+   * pas un. Seul `drawGroup` le lit ; la malédiction et l'escorte lisent `supports`.
+   */
   readonly neverAlone?: true;
 }
 
@@ -69,13 +72,16 @@ export const TIERS: Readonly<Record<Tier, TierRule>> = {
       4: [0, 4, 8, 7, 1],
       5: [0, 2, 8, 8, 2],
     },
-    // L'ordre du Codex : Goule 3, Spectre 2, Nécromancien 1, Squelette 3, Villageois fou 2.
+    // L'ordre du Codex : Goule 3, Spectre 2, Nécromancien 1, Squelette 3, Villageois fou 2 ; puis le
+    // Porte-cierge et le Rat de crypte (#268), à la fin de la liste.
     enemies: [
       { kind: 'ghoul', weight: 3, cap: 5 },
       { kind: 'specter', weight: 2, cap: 1 },
       { kind: 'necromancer', weight: 1, cap: 1, neverAlone: true },
       { kind: 'skeleton', weight: 3, cap: 1 },
       { kind: 'madVillager', weight: 2, cap: 1 },
+      { kind: 'candleBearer', weight: 1, cap: 1, neverAlone: true },
+      { kind: 'cryptRat', weight: 2, cap: 3 },
     ],
     // Le Fossoyeur (#258) en 3e position : les nouvelles Élites viennent après.
     elites: ['fallenKnight', 'twins', 'gravedigger'],

@@ -78,14 +78,24 @@ describe('the tiers (#38)', () => {
     });
   });
 
-  it('draws the enemies of tier 1 as before: weights, caps and order of the Codex', () => {
+  it('draws the enemies of tier 1 in the order of the Codex, the Candle bearer and the Crypt rat at the end (#268)', () => {
     expect(TIERS[1].enemies).toEqual([
       { kind: 'ghoul', weight: 3, cap: 5 },
       { kind: 'specter', weight: 2, cap: 1 },
       { kind: 'necromancer', weight: 1, cap: 1, neverAlone: true },
       { kind: 'skeleton', weight: 3, cap: 1 },
       { kind: 'madVillager', weight: 2, cap: 1 },
+      { kind: 'candleBearer', weight: 1, cap: 1, neverAlone: true },
+      { kind: 'cryptRat', weight: 2, cap: 3 },
     ]);
+  });
+
+  it('draws the Candle bearer and the Crypt rat at tier 1 only (#268)', () => {
+    for (const tier of [2, 3] as const) {
+      const kinds = TIERS[tier].enemies.map(({ kind }) => kind);
+      expect(kinds).not.toContain('candleBearer');
+      expect(kinds).not.toContain('cryptRat');
+    }
   });
 
   it('draws only its own enemies at tier 2, in the order of the stories, the Ash gleaner never alone (#213)', () => {
