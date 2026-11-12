@@ -122,6 +122,36 @@ describe('ExpoAudioBattleSound', () => {
     },
   );
 
+  it.each(['glintSweep', 'sweepDrone', 'chargeScrape', 'chargeBroken'] as const)(
+    'preloads and plays the sound %s of the Belfry (#266)',
+    (cue) => {
+      new ExpoAudioBattleSound().play(cue);
+
+      expect(playerOf(cue).calls).toEqual(['seekTo', 'play']);
+      expect(playerOf('glint').calls).toEqual([]);
+    },
+  );
+
+  it.each(['emberBurst', 'emberSmother', 'momentumSteal'] as const)(
+    'preloads and plays the sound %s of the Ash gardens (#267)',
+    (cue) => {
+      new ExpoAudioBattleSound().play(cue);
+
+      expect(playerOf(cue).calls).toEqual(['seekTo', 'play']);
+      expect(playerOf('glint').calls).toEqual([]);
+    },
+  );
+
+  it.each(['candleSnuff', 'ratSqueak'] as const)(
+    'preloads and plays the sound %s of the Catacombs (#268)',
+    (cue) => {
+      new ExpoAudioBattleSound().play(cue);
+
+      expect(playerOf(cue).calls).toEqual(['seekTo', 'play']);
+      expect(playerOf('glint').calls).toEqual([]);
+    },
+  );
+
   it.each(['wingRustle', 'wingRustleLoud'] as const)(
     'preloads and plays the %s of the Summon (#172)',
     (cue) => {

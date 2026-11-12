@@ -53,6 +53,11 @@ describe('drawCursedEnemy (#209)', () => {
     expect(new Set(indexes)).toEqual(new Set([0, 2]));
   });
 
+  it('curses the Candle bearer, never alone but not a support (#268, D6)', () => {
+    const indexes = drawnIndexes(['necromancer', 'candleBearer', 'cryptRat']);
+    expect(new Set(indexes)).toEqual(new Set([1, 2]));
+  });
+
   it('never curses an enemy of the reserve', () => {
     const indexes = drawnIndexes(['necromancer', 'ghoul', 'specter', 'ghoul', 'skeleton']);
     expect(new Set(indexes)).toEqual(new Set([1, 2]));

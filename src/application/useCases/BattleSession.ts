@@ -13,7 +13,8 @@ import {
   type HeroAction,
 } from '../../domain/battle/Battle';
 import type { BattleEvent, DefenseButton } from '../../domain/battle/BattleEvent';
-import { eliteSignature, type EnemyKind } from '../../domain/battle/combatants';
+import { enemySignature, type EnemyKind } from '../../domain/battle/combatants';
+import { ATTACKS } from '../../domain/battle/attacks';
 import { glintsOf } from '../../domain/battle/glints';
 import type { BattleClock } from '../ports/BattleClock';
 import type { BattleHaptics } from '../ports/BattleHaptics';
@@ -34,6 +35,9 @@ export const REORDER_GUARD_MS = 32;
 
 /** Un son de reflet qui partirait plus de 60 ms après son instant prévu n'est pas joué. */
 export const GLINT_SOUND_LATE_MS = 60;
+
+/** La ruée d'un coup part 80 ms avant son impact (maquette, `pxAct`) : la vibration du Balayage. */
+export const SWEEP_RUSH_LEAD_MS = 80;
 
 export interface BattleSessionDependencies {
   readonly clock: BattleClock;
@@ -94,6 +98,9 @@ export class BattleSession {
   private heldFeedbacks: BattleFeedback[] = [];
   /** Les reflets déjà joués ou passés, par attaque (`startedAt:index`). */
   private readonly doneGlints = new Set<string>();
+  /** Les ruées de Balayage déjà vibrées (#266), par la clé de leur impact. */
+  private readonly doneRushes = new Set<string>();
+  private cancelRushTimer: (() => void) | null = null;
   private heroHintPending = false;
   private powersHintPending = false;
   private encounterHintPending: EnemyKind | null = null;
@@ -121,13 +128,15 @@ export class BattleSession {
     this.heroHintPending = heroHint;
     this.powersHintPending = powersHint;
     this.doneGlints.clear();
+    this.doneRushes.clear();
     const update = this.createBattle({
       seed: this.dependencies.seeds.next(),
       defenseHint,
       at: this.dependencies.clock.now(),
     });
     this.encounterHintPending = await this.encounterOf(update.battle);
-    this.apply(update);
+    // Les ennemis du nouveau combat, jamais ceux du précédent (#268, sons propres à un ennemi).
+    this.apply(update, update.battle);
     return this.snapshot!;
   }
 
@@ -215,6 +224,8 @@ export class BattleSession {
     this.cancelTimer = null;
     this.cancelGlintTimer?.();
     this.cancelGlintTimer = null;
+    this.cancelRushTimer?.();
+    this.cancelRushTimer = null;
     for (const cancel of this.delayedSounds) cancel();
     this.delayedSounds.clear();
     this.heldFeedbacks = [];
@@ -240,15 +251,22 @@ export class BattleSession {
     dismissEncounterHint(this.dependencies, enemy).catch(() => undefined);
   }
 
-  /** L'Élite à signature du combat dont la bulle n'a pas encore été vue ; illisible, aucune. */
+  /**
+   * Le premier ennemi à signature de la première ligne, de gauche à droite, dont la bulle n'a pas
+   * encore été vue (#266, D6) : une seule bulle par combat ; une préférence illisible, aucune. Un
+   * ennemi de la réserve n'est pas présenté dans ce combat.
+   */
   private async encounterOf(battle: Battle): Promise<EnemyKind | null> {
-    const elite = battle.enemies.find((enemy) => eliteSignature(enemy.kind) !== null);
-    if (elite === undefined) return null;
-    const unseen = await this.read(
-      (dependencies) => getEncounterHint(dependencies, elite.kind),
-      false,
-    );
-    return unseen ? elite.kind : null;
+    const candidates = battle.enemies
+      .map(({ kind }) => kind)
+      .filter(
+        (kind, index, kinds) => enemySignature(kind) !== null && kinds.indexOf(kind) === index,
+      );
+    for (const kind of candidates) {
+      const unseen = await this.read((dependencies) => getEncounterHint(dependencies, kind), false);
+      if (unseen) return kind;
+    }
+    return null;
   }
 
   /** La bulle de première rencontre, après celle de la première ascension et celle des pouvoirs. */
@@ -308,8 +326,8 @@ export class BattleSession {
    * Les retours d'une mise à jour : aussitôt, ou différés. Un retour différé né pendant une frappe
    * du héros attend sa fin (la piqûre d'une Rafale après son dernier coup, #259).
    */
-  private feedback(battle: Battle, events: readonly BattleEvent[]): void {
-    for (const feedback of feedbacksFor(events)) {
+  private feedback(battle: Battle, before: Battle, events: readonly BattleEvent[]): void {
+    for (const feedback of feedbacksFor(events, before, battle)) {
       if (feedback.delayMs !== undefined) {
         this.heldFeedbacks.push(feedback);
         continue;
@@ -322,10 +340,10 @@ export class BattleSession {
     this.heldFeedbacks = [];
   }
 
-  private apply(update: BattleUpdate): void {
+  private apply(update: BattleUpdate, before = this.snapshot?.battle ?? update.battle): void {
     if (this.disposed) return;
     const { battle, events } = update;
-    this.feedback(battle, events);
+    this.feedback(battle, before, events);
     this.snapshot = {
       battle,
       events,
@@ -335,6 +353,7 @@ export class BattleSession {
     };
     this.schedule(battle);
     this.scheduleGlint(battle);
+    this.scheduleSweepRush(battle);
     for (const listener of [...this.listeners]) listener(this.snapshot);
   }
 
@@ -349,6 +368,33 @@ export class BattleSession {
       const current = this.snapshot?.battle;
       if (current === undefined) return;
       this.apply(advance(current, Math.max(this.dependencies.clock.now(), at)));
+    });
+  }
+
+  /**
+   * Programme la vibration longue et basse de la ruée d'un Balayage (#266, A3), 80 ms avant son
+   * impact, sur l'horloge de combat : jamais avancée de la latence du son, jamais perdue quand le
+   * minuteur est en retard, une fois par impact, même son coupé.
+   */
+  private scheduleSweepRush(battle: Battle): void {
+    this.cancelRushTimer?.();
+    this.cancelRushTimer = null;
+    const { phase } = battle;
+    if (phase.kind !== 'enemy' || phase.step.kind !== 'attack') return;
+    const { step } = phase;
+    if (!ATTACKS[step.attack].sweep) return;
+    const index = step.impacts.findIndex(
+      (_, position) => !this.doneRushes.has(glintKey(step, position)),
+    );
+    const impact = step.impacts[index];
+    if (impact === undefined) return;
+    const { clock, haptics } = this.dependencies;
+    this.cancelRushTimer = clock.setTimer(impact.at - SWEEP_RUSH_LEAD_MS, () => {
+      this.cancelRushTimer = null;
+      this.doneRushes.add(glintKey(step, index));
+      haptics.play('sweep');
+      const current = this.snapshot?.battle;
+      if (current !== undefined) this.scheduleSweepRush(current);
     });
   }
 

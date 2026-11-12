@@ -33,6 +33,7 @@ describe('glints (C2.10)', () => {
     ['delayed', 'white'],
     ['perilous', 'red'],
     ['delayedPerilous', 'red'],
+    ['sweep', 'sweep'],
   ] as const)('gives a %s attack one %s glint, 150 ms before its impact', (attack, kind) => {
     expect(glintsOf(attackStep(attack, [2_100]))).toEqual([{ at: 1_950, kind, impact: 0 }]);
   });

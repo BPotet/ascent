@@ -14,9 +14,11 @@ export type BattleOutcome = 'victory' | 'defeat';
 
 /**
  * Le résultat d'un impact (C8) : parade parfaite, bonne parade, esquive, parade sur un coup
- * imparable (échec), ou coup subi (aucun appui valide, ou impact tombé pendant le déséquilibre).
+ * imparable (échec), coup subi (aucun appui valide, ou impact tombé pendant le déséquilibre), ou
+ * esquive dans la fenêtre sur un Balayage (échec, #266).
  */
-export type BlowOutcome = 'perfectParry' | 'parry' | 'dodge' | 'perilousParry' | 'suffered';
+export type BlowOutcome =
+  'perfectParry' | 'parry' | 'dodge' | 'perilousParry' | 'suffered' | 'sweepDodge';
 
 /** Pourquoi un appui est raté : trop tôt, trop tard, ou dans le vide (aucun impact à juger). */
 export type WhiffReason = 'early' | 'late' | 'empty';
@@ -98,6 +100,17 @@ export type BattleEvent =
       readonly instant?: true;
     }
   | { readonly type: 'momentumChanged'; readonly at: number; readonly momentum: number }
+  /**
+   * La Phalène voleuse `enemy` vole `stolen` Élan au héros, à la résolution de l'impact, après ses
+   * dégâts (#267, VE3) ; `momentum`, l'Élan qui lui reste. Suivi de `momentumChanged`.
+   */
+  | {
+      readonly type: 'momentumStolen';
+      readonly at: number;
+      readonly enemy: number;
+      readonly stolen: number;
+      readonly momentum: number;
+    }
   | {
       readonly type: 'guardBroken';
       readonly at: number;
@@ -160,6 +173,12 @@ export type BattleEvent =
       readonly attack: AttackKind;
       readonly impacts: readonly number[];
       readonly feintAt: number | null;
+      /** Le Coup de bélier d'une Charge (#266) : plus rien ne l'annule ; absent, un coup ordinaire. */
+      readonly charged?: true;
+      /** Les dégâts ajoutés par impact par la Nuée (#268, D5) ; absents, 0. */
+      readonly swarm?: number;
+      /** Les dégâts ajoutés par impact par l'Aura (#268, D5) ; absents, 0. */
+      readonly aura?: number;
     }
   | { readonly type: 'feintStarted'; readonly at: number; readonly enemy: number }
   | {
@@ -181,6 +200,8 @@ export type BattleEvent =
       readonly delta: number | null;
       readonly damage: number;
       readonly heroHp: number;
+      /** Les dégâts ajoutés par l'Aura au coup (#268, D5), même absorbés ; absents, aucun. */
+      readonly aura?: number;
     }
   | {
       readonly type: 'whiffed';
@@ -281,13 +302,16 @@ export type BattleEvent =
     }
   /**
    * Le héros brûle (#171) : `added` charges allumées par un impact, 0 à 5 charges (le coup se voit
-   * quand même) ; `stacks`, le total après la prise.
+   * quand même) ; `stacks`, le total après la prise. L'Éclatement de la Cosse de braise `enemy`, à
+   * sa chute (#267, D3), porte la cause `emberBurst` ; la Brûlure d'un impact n'a ni cause ni ennemi.
    */
   | {
       readonly type: 'heroBurning';
       readonly at: number;
       readonly added: number;
       readonly stacks: number;
+      readonly cause?: 'emberBurst';
+      readonly enemy?: number;
     }
   /** La perte de la Brûlure au début d'une manche ; `stacks`, les charges avant l'extinction. */
   | {
@@ -338,6 +362,18 @@ export type BattleEvent =
       readonly slot: number;
       readonly kind: EnemyKind;
     }
+  /** Le Bélier de bronze `enemy` charge (#266, CH2) : pas de coup cette manche, gros coup à la suivante. */
+  | { readonly type: 'chargeStarted'; readonly at: number; readonly enemy: number }
+  /**
+   * La Charge de `enemy` est brisée (#266, CH4), au même instant que la cassure de garde qui la
+   * brise, juste après elle : le Coup de bélier n'a pas lieu.
+   */
+  | { readonly type: 'chargeBroken'; readonly at: number; readonly enemy: number }
+  /**
+   * La Cosse de braise `enemy`, étourdie avant le coup qui la fait tomber, est étouffée (#267, EC2) :
+   * rien ne s'allume.
+   */
+  | { readonly type: 'emberBurstSmothered'; readonly at: number; readonly enemy: number }
   /** Un ennemi invoqué encore debout tombe avec le boss qui l'a appelé, sans Or (#172, règle 4). */
   | { readonly type: 'summonedFell'; readonly at: number; readonly enemy: number }
   | {

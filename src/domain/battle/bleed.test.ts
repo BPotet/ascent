@@ -2,11 +2,12 @@
 import { HERO_TOUCHED_OUTCOMES, bleedsOn, mergeBleed, tickBleed } from './bleed';
 
 describe('bleedsOn (B1)', () => {
-  it('bleeds on a good parry, a suffered blow and a parry on a perilous blow', () => {
-    expect(HERO_TOUCHED_OUTCOMES).toEqual(['parry', 'suffered', 'perilousParry']);
+  it('bleeds on a good parry, a suffered blow, a parry on a perilous blow and a dodge on a Sweep', () => {
+    expect(HERO_TOUCHED_OUTCOMES).toEqual(['parry', 'suffered', 'perilousParry', 'sweepDodge']);
     expect(bleedsOn('parry')).toBe(true);
     expect(bleedsOn('suffered')).toBe(true);
     expect(bleedsOn('perilousParry')).toBe(true);
+    expect(bleedsOn('sweepDodge')).toBe(true);
   });
 
   it('never bleeds on a perfect parry nor a dodge', () => {

@@ -2,7 +2,8 @@
  * Les vibrations du combat : parade parfaite (forte), esquive, touché, phase ennemie (légère),
  * cassure de garde (forte), frappe parfaite (courte), Riposte du Rempart (courte, #128), l'effet
  * d'un pouvoir ouvert au toucher maintenu (très courte, #235), aussi à l'ouverture de la liste des
- * pouvoirs (#271), et les Épines (courte, plus faible qu'un coup reçu, #259).
+ * pouvoirs (#271), les Épines (courte, plus faible qu'un coup reçu, #259) et la ruée d'un Balayage
+ * (longue et basse, #266).
  */
 export type BattleHapticCue =
   | 'perfectParry'
@@ -13,7 +14,8 @@ export type BattleHapticCue =
   | 'perfectStrike'
   | 'bulwarkCounter'
   | 'powerTip'
-  | 'thorns';
+  | 'thorns'
+  | 'sweep';
 
 /**
  * Vibration de combat (`BattleHaptics`) — port des vibrations du combat. Le Retour haptique

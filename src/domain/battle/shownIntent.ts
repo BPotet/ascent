@@ -4,6 +4,7 @@
  * L'interface ne fait que la dessiner.
  */
 import type { Battle } from './Battle';
+import { chargeMark } from './charge';
 
 /** La catégorie d'intention (`IntentCategory`) montrée, avec son nombre pour Garde et Soin. */
 export type ShownIntent =
@@ -12,6 +13,8 @@ export type ShownIntent =
   | { readonly category: 'heal'; readonly gain: number }
   | { readonly category: 'raise' }
   | { readonly category: 'exhume' }
+  /** La Charge du Bélier de bronze (#266) : ses cornes, 1 cran la manche où elle commence, 2 ensuite. */
+  | { readonly category: 'charge'; readonly notches: 1 | 2 }
   | { readonly category: 'skip'; readonly reason: 'stunned' | 'raised' | 'exhumed' };
 
 export type IntentCategory = ShownIntent['category'];
@@ -35,7 +38,12 @@ export function shownIntent(battle: Battle, enemy: number): ShownIntent | null {
   if (intent === null) return null;
   switch (intent.category) {
     case 'attack':
-      return { category: 'attack' };
+      // Le Coup de bélier montre encore la Charge, ses 2 crans allumés (#266, maquette A8).
+      return chargeMark(battle, enemy) === 'second'
+        ? { category: 'charge', notches: 2 }
+        : { category: 'attack' };
+    case 'charge':
+      return { category: 'charge', notches: 1 };
     case 'guard':
       return { category: 'guard', gain: intent.gain };
     case 'raise':

@@ -56,6 +56,21 @@ export interface SceneEnemy {
    * montée), et sa poussière d'os s'il retombe avec le Fossoyeur ; absent, non.
    */
   readonly exhumedAt?: number;
+  /** Le Bélier de bronze charge (#266, A7, A8) : sa pose de charge tenue au repos ; absent, non. */
+  readonly charging?: boolean;
+  /** Sa Charge vient d'être brisée (#266, A9) : la pose `chargeBroken` à sa chute ; absent, non. */
+  readonly chargeBroken?: boolean;
+  /**
+   * La chute d'une Cosse de braise (#267, J7, J9) : éclatée (`burst`) ou étouffée (`smothered`),
+   * à l'instant `at` ; absente, une chute ordinaire.
+   */
+  readonly podFall?: { readonly at: number; readonly kind: 'burst' | 'smothered' };
+  /** L'instant du dernier impact où la Phalène voleuse a volé l'Élan (#267, J2) ; absent, aucun. */
+  readonly stealAt?: number;
+  /** L'instant de la chute du Porte-cierge (#268, C4) : son cierge soufflé ; absent, aucune. */
+  readonly snuffedAt?: number;
+  /** Un Rat de crypte que la Nuée renforce (#268, C7) : il grouille au repos ; absent, non. */
+  readonly swarming?: boolean;
 }
 
 /**
@@ -71,7 +86,7 @@ export interface SceneTimeline {
    * L'intention d'une action de soutien (#38) : sa pose `guard` ou `raiseAlly` ; l'Exhumation du
    * Fossoyeur (#258), sa pose `exhume`.
    */
-  readonly support?: 'guard' | 'raise' | 'exhume' | null;
+  readonly support?: 'guard' | 'raise' | 'exhume' | 'charge' | null;
   readonly stepInAt: number;
   readonly windUpAt: number;
   readonly windUpMs: number;

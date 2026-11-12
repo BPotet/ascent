@@ -23,13 +23,19 @@ describe('provisional battle sounds', () => {
       'bulwark.wav',
       'burn-crackle.wav',
       'burn-out.wav',
+      'candle-snuff.wav',
+      'charge-broken.wav',
+      'charge-scrape.wav',
       'defeat.wav',
       'dodge.wav',
+      'ember-burst.wav',
+      'ember-smother.wav',
       'enemy-phase.wav',
       'flame-breath.wav',
       'glint-double.wav',
       'glint-dull.wav',
       'glint-perilous.wav',
+      'glint-sweep.wav',
       'glint.wav',
       'guard-break.wav',
       'guard-restore.wav',
@@ -37,13 +43,16 @@ describe('provisional battle sounds', () => {
       'hero-phase.wav',
       'hit.wav',
       'lost-action.wav',
+      'momentum-steal.wav',
       'parry.wav',
       'perfect-parry.wav',
       'perfect-strike.wav',
       'raise.wav',
+      'rat-squeak.wav',
       'seal.wav',
       'shield-clash.wav',
       'strike.wav',
+      'sweep-drone.wav',
       'victory.wav',
       'whiff.wav',
       'wing-rustle-loud.wav',
@@ -125,6 +134,102 @@ describe('provisional battle sounds', () => {
     assert.ok(soft.length > 3 && loud.length > 3, 'several flutters of wings');
     assert.ok(peak(loud) > peak(soft));
     assert.ok(lasts(soft) <= 0.5 && lasts(loud) <= 0.6);
+  });
+
+  it('makes the drone of the Sweep a low bell that swells, the opposite of the seal (#266)', () => {
+    const notes = CUES['sweep-drone'];
+    const volumes = notes.map(([, , , volume]) => volume);
+    assert.ok(
+      notes.every(([frequency]) => frequency < 200),
+      'low',
+    );
+    assert.ok(
+      notes.every(([, , wave]) => wave !== 'sawtooth'),
+      'not the saw of the seal',
+    );
+    assert.deepEqual(
+      [...volumes].sort((a, b) => a - b),
+      volumes,
+      'it swells',
+    );
+    assert.ok(lasts(notes) >= 0.5 && lasts(notes) <= 0.65);
+  });
+
+  it('makes the Sweep glint a grazing whistle, its own fifth glint sound (#266)', () => {
+    const notes = CUES['glint-sweep'];
+    assert.ok(lasts(notes) <= 0.15);
+    assert.notDeepEqual(notes, CUES.glint);
+    assert.ok(
+      notes.some(([from, , , , , to]) => to !== undefined && to < from),
+      'it grazes down',
+    );
+  });
+
+  it('makes the Charge scrape a hoof and a puff of steam, then the broken Charge a cracked gong (#266)', () => {
+    const scrape = CUES['charge-scrape'];
+    const gong = CUES['charge-broken'];
+    assert.ok(scrape.length >= 3 && lasts(scrape) <= 0.5);
+    assert.ok(gong.length >= 2 && lasts(gong) <= 0.65);
+    assert.ok(
+      gong.some(([frequency]) => frequency < 200),
+      'a low gong',
+    );
+  });
+
+  it('makes the Burst of the Ember pod a dry crack, short, louder than the flame breath (#267)', () => {
+    const notes = CUES['ember-burst'];
+    const loudest = (cue) => Math.max(...cue.map(([, , , volume]) => volume));
+    assert.ok(lasts(notes) <= 0.3);
+    assert.ok(notes[0][1] <= 0.06, 'a dry attack');
+    assert.ok(loudest(notes) > loudest(CUES['flame-breath']));
+  });
+
+  it('makes a smothered pod a breath that goes out: soft, sliding down, without a crack (#267)', () => {
+    const notes = CUES['ember-smother'];
+    assert.ok(lasts(notes) <= 0.6);
+    assert.ok(
+      notes.every(([, , wave]) => wave !== 'square'),
+      'no crack',
+    );
+    assert.ok(
+      notes.every(([, , , volume]) => volume <= 0.06),
+      'soft',
+    );
+    assert.ok(
+      notes.every(([from, , , , , to]) => to !== undefined && to < from),
+      'it goes out',
+    );
+  });
+
+  it('makes the theft a beat of wings, then a chime that moves away (#267)', () => {
+    const notes = CUES['momentum-steal'];
+    const wings = notes.filter(([frequency]) => frequency < 1_000);
+    const chime = notes.filter(([frequency]) => frequency >= 1_000);
+    assert.ok(wings.length >= 2, 'a beat of wings');
+    assert.ok(chime.length >= 1, 'a chime');
+    const [first] = chime;
+    assert.ok(first[4] > Math.min(...wings.map(([, , , , at]) => at)), 'after the wings');
+    assert.ok(
+      chime.every(([, , , volume]) => volume <= chime[0][3]),
+      'it moves away',
+    );
+    assert.ok(lasts(notes) <= 0.6);
+  });
+  it('blows the candle out softly, a falling breath, under half a second (#268)', () => {
+    const notes = CUES['candle-snuff'];
+    assert.ok(lasts(notes) <= 0.35);
+    assert.ok(
+      notes.some(([from, , , , , to]) => to !== undefined && to < from),
+      'a falling breath',
+    );
+    assert.ok(Math.max(...notes.map(([, , , volume]) => volume)) <= 0.06, 'soft');
+  });
+
+  it('makes the squeak of a Crypt rat short and high, rising (#268)', () => {
+    const notes = CUES['rat-squeak'];
+    assert.ok(lasts(notes) <= 0.15);
+    assert.ok(notes.every(([frequency]) => frequency >= 2_000));
+    assert.ok(notes.every(([from, , , , , to]) => to !== undefined && to > from));
   });
 
   it('slides a note to its last frequency (exponential ramp)', () => {

@@ -5,6 +5,8 @@ import {
   BURN_AFTER_BLEED_MS,
   BURN_OUT_AFTER_BLOW_MS,
   BURN_OUT_AFTER_CRACKLE_MS,
+  EMBER_BURST_AFTER_FALL_MS,
+  MOMENTUM_STEAL_AFTER_IMPACT_MS,
   THORNS_AFTER_STRIKE_MS,
   bledIn,
   strikeUnderway,
@@ -13,7 +15,7 @@ import {
 import type { BattleSession, BattleSnapshot } from '../../../application/useCases/BattleSession';
 import type { Battle } from '../../../domain/battle/Battle';
 import type { BattleEvent, BlowOutcome } from '../../../domain/battle/BattleEvent';
-import { eliteSignature } from '../../../domain/battle/combatants';
+import { ENEMIES, enemySignature } from '../../../domain/battle/combatants';
 import type { BurnRing } from '../battle/BurnChip';
 import type { HeroPose, SceneBurn, SceneSpark } from '../battle/sceneTypes';
 import {
@@ -25,6 +27,7 @@ import {
   summonBannerText,
   type DamageFloat,
   type FeedbackText,
+  auraGoesOut,
 } from '../format/battleText';
 
 /** L'état d'affichage de l'écran de combat, tiré des événements de combat. */
@@ -132,6 +135,48 @@ export interface BattleDisplay {
     readonly lines: readonly string[];
     readonly float: DamageFloat;
   } | null;
+  /**
+   * La chute de chaque Cosse de braise (#267, J7, J9), par place : éclatée (`burst`) ou étouffée
+   * (`smothered`), pour sa pose à terre.
+   */
+  readonly podFalls: Readonly<Record<number, PodFall>>;
+  /** Le dernier Éclatement (#267, J7) : 2 flammes volent de la Cosse `enemy` vers le héros. */
+  readonly emberFlames: {
+    readonly key: number;
+    readonly enemy: number;
+    readonly at: number;
+    readonly delayMs: number;
+  } | null;
+  /**
+   * Le dernier Vol d'Élan (#267, J2) : `delayMs` après l'impact, le losange quitte la barre et file
+   * vers la Phalène voleuse `enemy`, avec « −1 Élan ». Rien quand rien n'est volé (J4).
+   */
+  readonly theft: {
+    readonly key: number;
+    readonly enemy: number;
+    readonly stolen: number;
+    readonly at: number;
+    readonly delayMs: number;
+  } | null;
+  /**
+   * La chute de chaque Porte-cierge (#268, C4), par place : son cierge est soufflé 200 ms après.
+   */
+  readonly candleFalls: Readonly<Record<number, number>>;
+  /**
+   * La dernière Aura éteinte (#268, C4) : les « +20 % » des alliés `enemies` se barrent, puis
+   * disparaissent ; `null` sinon.
+   */
+  readonly auraOut: {
+    readonly key: number;
+    readonly at: number;
+    readonly enemies: readonly number[];
+  } | null;
+}
+
+/** La chute d'une Cosse de braise (#267) : éclatée, ou étouffée. */
+export interface PodFall {
+  readonly at: number;
+  readonly kind: 'burst' | 'smothered';
 }
 
 export const INITIAL_DISPLAY: BattleDisplay = {
@@ -161,7 +206,131 @@ export const INITIAL_DISPLAY: BattleDisplay = {
   heldThorns: null,
   sanctuary: { spark: null, broken: null },
   secondChance: null,
+  podFalls: {},
+  emberFlames: null,
+  theft: null,
+  candleFalls: {},
+  auraOut: null,
 };
+
+/**
+ * L'Élan à montrer dans la barre du héros (#267, J2) : celui d'avant le vol, tant que le losange n'a
+ * pas quitté la barre (`revealed`, après son délai) ; la barre baisse avec lui, pas avant.
+ */
+export function momentumShown(momentum: number, display: BattleDisplay, revealed: boolean): number {
+  return display.theft === null || revealed ? momentum : momentum + display.theft.stolen;
+}
+
+/**
+ * Les Catacombes d'un événement (#268, C4) : la chute du Porte-cierge (son cierge soufflé) et, s'il
+ * avait un allié debout, les « +20 % » barrés. Un ennemi qui prend une place fait oublier ce qui y
+ * était montré : la chute du Porte-cierge, ou le « +20 % » barré d'un allié ; un ennemi relevé
+ * aussi.
+ */
+function catacombsAfter(display: BattleDisplay, event: BattleEvent, battle: Battle): BattleDisplay {
+  switch (event.type) {
+    case 'enemyDefeated': {
+      const fallen = battle.enemies[event.enemy];
+      if (fallen === undefined || ENEMIES[fallen.kind].aura === undefined) return display;
+      const candleFalls = { ...display.candleFalls, [event.enemy]: event.at };
+      if (!auraGoesOut(battle, event.enemy)) return { ...display, candleFalls };
+      const enemies = battle.enemies.flatMap((other, index) =>
+        index !== event.enemy && other.hp > 0 ? [index] : [],
+      );
+      const key = (display.auraOut?.key ?? 0) + 1;
+      return { ...display, candleFalls, auraOut: { key, at: event.at, enemies } };
+    }
+    case 'reinforcementEntered':
+    case 'summonEntered':
+      return withoutAuraFx(display, event.enemy);
+    case 'enemyExhumed':
+      return withoutAuraFx(display, event.slot);
+    case 'allyRaised':
+      return withoutAuraFx(display, event.ally);
+    case 'enemySelfRevived':
+      return withoutAuraFx(display, event.enemy);
+    default:
+      return display;
+  }
+}
+
+/** La place `enemy` oublie la chute d'un Porte-cierge et le « +20 % » barré d'un allié (#268). */
+function withoutAuraFx(display: BattleDisplay, enemy: number): BattleDisplay {
+  const { [enemy]: _, ...candleFalls } = display.candleFalls;
+  const { auraOut } = display;
+  return {
+    ...display,
+    candleFalls,
+    auraOut:
+      auraOut === null
+        ? null
+        : { ...auraOut, enemies: auraOut.enemies.filter((index) => index !== enemy) },
+  };
+}
+
+/** Le « +20 % » de la place `index` se barre : son allié vient de perdre l'Aura (#268, C4). */
+export function auraStruckAt(display: BattleDisplay, index: number): boolean {
+  return display.auraOut?.enemies.includes(index) === true;
+}
+
+/**
+ * Les Jardins de cendre d'un événement (#267) : la chute de la Cosse, éclatée (et ses 2 flammes
+ * vers le héros, après le chiffre de dégâts) ou étouffée ; le losange de l'Élan volé.
+ */
+function gardensAfter(display: BattleDisplay, event: BattleEvent): BattleDisplay {
+  switch (event.type) {
+    case 'heroBurning': {
+      if (event.cause !== 'emberBurst' || event.enemy === undefined) return display;
+      const { enemy, at } = event;
+      return {
+        ...display,
+        podFalls: { ...display.podFalls, [enemy]: { at, kind: 'burst' } },
+        emberFlames: {
+          key: (display.emberFlames?.key ?? 0) + 1,
+          enemy,
+          at,
+          delayMs: EMBER_BURST_AFTER_FALL_MS,
+        },
+      };
+    }
+    case 'emberBurstSmothered':
+      return {
+        ...display,
+        podFalls: { ...display.podFalls, [event.enemy]: { at: event.at, kind: 'smothered' } },
+      };
+    case 'momentumStolen':
+      return {
+        ...display,
+        theft: {
+          key: (display.theft?.key ?? 0) + 1,
+          enemy: event.enemy,
+          stolen: event.stolen,
+          at: event.at,
+          delayMs: MOMENTUM_STEAL_AFTER_IMPACT_MS,
+        },
+      };
+    // Une Cosse relevée (par la Glaneuse de cendre, ou seule) est debout : sa chute d'avant est
+    // oubliée, la suivante dira la sienne.
+    case 'allyRaised':
+      return withoutPodFall(display, event.ally);
+    case 'enemySelfRevived':
+      return withoutPodFall(display, event.enemy);
+    // Un renfort, un invoqué ou un exhumé prend la place : il entre debout.
+    case 'reinforcementEntered':
+    case 'summonEntered':
+      return withoutPodFall(display, event.enemy);
+    case 'enemyExhumed':
+      return withoutPodFall(display, event.slot);
+    default:
+      return display;
+  }
+}
+
+function withoutPodFall(display: BattleDisplay, place: number): BattleDisplay {
+  if (display.podFalls[place] === undefined) return display;
+  const { [place]: _fallen, ...podFalls } = display.podFalls;
+  return { ...display, podFalls };
+}
 
 /**
  * Les PV du héros à montrer dans sa barre (#259) : ceux d'avant la piqûre des Épines, tant que son
@@ -200,7 +369,7 @@ function signaturesAfter(display: BattleDisplay, snapshot: BattleSnapshot): Batt
     if (
       event.type === 'guardBroken' &&
       kind !== undefined &&
-      eliteSignature(kind) === 'sanctuary'
+      enemySignature(kind) === 'sanctuary'
     ) {
       shown = {
         ...shown,
@@ -228,6 +397,7 @@ const POSE_OF_OUTCOME: Readonly<Record<BlowOutcome, HeroPose>> = {
   dodge: 'dodge',
   perilousParry: 'hit',
   suffered: 'hit',
+  sweepDodge: 'hit',
 };
 
 /** Le premier coup de Frappe furtive commence (#236) : l'esquive et l'ombre de Pas de l'ombre. */
@@ -290,12 +460,28 @@ function sparkOf(event: BattleEvent): SceneSpark | null {
   return event.outcome === 'parry' ? { kind: 'steel', at: event.at } : null;
 }
 
+/** Les issues d'un coup reçu : subi, parade sur un coup imparable, esquive sur un Balayage (#266). */
+const HURTING: ReadonlySet<BlowOutcome> = new Set(['suffered', 'perilousParry', 'sweepDodge']);
+
 /** Un coup reçu : la vignette rouge et la secousse. */
 function hurts(event: BattleEvent): boolean {
-  return (
-    event.type === 'blowResolved' &&
-    (event.outcome === 'suffered' || event.outcome === 'perilousParry')
-  );
+  return event.type === 'blowResolved' && HURTING.has(event.outcome);
+}
+
+/** Le Coup de bélier d'une Charge qui touche (#266, A11) : son chiffre agrandi. */
+export function ramBlowFloat(
+  float: DamageFloat | null,
+  event: BattleEvent,
+  battle: Battle,
+): DamageFloat | null {
+  if (float === null || event.type !== 'blowResolved') return float;
+  const { phase } = battle;
+  const charged =
+    phase.kind === 'enemy' &&
+    phase.step.kind === 'attack' &&
+    phase.step.enemy === event.enemy &&
+    phase.step.charged === true;
+  return charged ? { ...float, big: true } : float;
 }
 
 /**
@@ -455,7 +641,9 @@ export function displayOf(
   for (const event of snapshot.events) {
     display = burnAfter(display, event, burnBefore, afterBleed);
     display = summonAfter(display, event, snapshot.battle, afterRound);
-    const float = damageFloat(event);
+    display = gardensAfter(display, event);
+    display = catacombsAfter(display, event, snapshot.battle);
+    const float = ramBlowFloat(damageFloat(event), event, snapshot.battle);
     if (event.type === 'secondChanceUsed' && float !== null) {
       display = {
         ...display,
@@ -521,7 +709,9 @@ export function displayOf(
  * La piqûre des Épines est-elle montrée (#259) ? Faux pendant son délai (`delayMs`, après la fin de
  * la frappe), vrai ensuite et sans piqûre : la barre de PV du héros baisse avec le « −2 ».
  */
-export function useThornsRevealed(thorns: BattleDisplay['thorns']): boolean {
+export function useThornsRevealed(
+  thorns: { readonly key: number; readonly delayMs: number } | null,
+): boolean {
   const [revealed, setRevealed] = useState<number | null>(null);
   const key = thorns?.key ?? null;
   const delayMs = thorns?.delayMs ?? 0;
@@ -531,6 +721,14 @@ export function useThornsRevealed(thorns: BattleDisplay['thorns']): boolean {
     return () => clearTimeout(timer);
   }, [key, delayMs]);
   return key === null || revealed === key;
+}
+
+/**
+ * Le losange volé a-t-il quitté la barre (#267, J2) ? Faux pendant son délai après l'impact, vrai
+ * ensuite et sans vol : la barre d'Élan baisse avec le losange.
+ */
+export function useTheftRevealed(theft: BattleDisplay['theft']): boolean {
+  return useThornsRevealed(theft);
 }
 
 /** Ce que le lecteur d'écran annonce d'une mise à jour, dans l'ordre des événements. */

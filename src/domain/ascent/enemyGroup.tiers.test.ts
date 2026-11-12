@@ -5,7 +5,20 @@ import { drawGroup, drawGroupSize, sizeWeights } from './enemyGroup';
 import { TIERS, type Tier } from './tiers';
 
 const SEEDS = Array.from({ length: 600 }, (_, index) => index * 2_654_435_761);
-/** Les ennemis du palier 3 (#214) : les trois qui restent, puis les trois du Beffroi. */
+/**
+ * Les ennemis du palier 3 (#214) : les trois qui restent, les trois du Beffroi, puis le Bélier de
+ * bronze et le Battant de cloche (#266).
+ */
+/** Les ennemis du palier 2 (#213), puis la Cosse de braise et la Phalène voleuse (#267). */
+const ASH_GARDENS = [
+  'thornPilgrim',
+  'ashBramble',
+  'ashGleaner',
+  'burningHusk',
+  'mothkin',
+  'emberPod',
+  'thievingMoth',
+];
 const BELFRY = new Set([
   'bronzeWarden',
   'gargoyle',
@@ -13,6 +26,8 @@ const BELFRY = new Set([
   'bellNovice',
   'matinsRinger',
   'clockJack',
+  'bronzeRam',
+  'bellClapper',
 ]);
 
 const sizes = (tier: Tier, floor: number) =>
@@ -43,12 +58,10 @@ describe('the group size at tiers 2 and 3 (#38)', () => {
 });
 
 describe('the enemies drawn at tiers 2 and 3 (#38)', () => {
-  it('draws only the enemies of tier 2, every one of them, never one of tier 3', () => {
+  it('draws only the enemies of tier 2, every one of them, never one of tier 3 (#267)', () => {
     const drawn = new Set(groups(2, 4).flat());
 
-    expect(drawn).toEqual(
-      new Set(['thornPilgrim', 'ashBramble', 'ashGleaner', 'burningHusk', 'mothkin']),
-    );
+    expect(drawn).toEqual(new Set(ASH_GARDENS));
   });
 
   it('never draws a Ghoul nor a Mad villager at tier 2, for 200 seeds (#213)', () => {
@@ -61,12 +74,10 @@ describe('the enemies drawn at tiers 2 and 3 (#38)', () => {
 
     expect(drawn).not.toContain('ghoul');
     expect(drawn).not.toContain('madVillager');
-    expect(new Set(drawn)).toEqual(
-      new Set(['thornPilgrim', 'ashBramble', 'ashGleaner', 'burningHusk', 'mothkin']),
-    );
+    expect(new Set(drawn)).toEqual(new Set(ASH_GARDENS));
   });
 
-  it('draws exactly the six enemies of tier 3, none of tiers 1 and 2 (#214)', () => {
+  it('draws exactly the eight enemies of tier 3, none of tiers 1 and 2 (#214, #266)', () => {
     const drawn = new Set([...groups(3, 3), ...groups(3, 4)].flat());
 
     expect(drawn).toEqual(BELFRY);
@@ -115,6 +126,18 @@ describe('the enemies drawn at tiers 2 and 3 (#38)', () => {
       expect(group.filter((kind) => kind !== 'matinsRinger').length).toBeGreaterThan(0);
     }
   });
+
+  it.each(['emberPod', 'thievingMoth'])(
+    'draws at most 1 %s in a group of tier 2, and none at tiers 1 and 3 (#267)',
+    (kind) => {
+      const count = (group: readonly string[]) => group.filter((each) => each === kind).length;
+
+      expect(new Set(groups(2, 4).map(count))).toEqual(new Set([0, 1]));
+      for (const tier of [1, 3] as const) {
+        expect(groups(tier, 4).flat()).not.toContain(kind);
+      }
+    },
+  );
 
   it('draws up to 2 Mothkin in a group of tier 2, never more (#172)', () => {
     const counts = groups(2, 4).map((group) => group.filter((kind) => kind === 'mothkin').length);

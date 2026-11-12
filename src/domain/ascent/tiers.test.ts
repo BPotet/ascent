@@ -78,27 +78,39 @@ describe('the tiers (#38)', () => {
     });
   });
 
-  it('draws the enemies of tier 1 as before: weights, caps and order of the Codex', () => {
+  it('draws the enemies of tier 1 in the order of the Codex, the Candle bearer and the Crypt rat at the end (#268)', () => {
     expect(TIERS[1].enemies).toEqual([
       { kind: 'ghoul', weight: 3, cap: 5 },
       { kind: 'specter', weight: 2, cap: 1 },
       { kind: 'necromancer', weight: 1, cap: 1, neverAlone: true },
       { kind: 'skeleton', weight: 3, cap: 1 },
       { kind: 'madVillager', weight: 2, cap: 1 },
+      { kind: 'candleBearer', weight: 1, cap: 1, neverAlone: true },
+      { kind: 'cryptRat', weight: 2, cap: 3 },
     ]);
   });
 
-  it('draws only its own enemies at tier 2, in the order of the stories, the Ash gleaner never alone (#213)', () => {
+  it('draws the Candle bearer and the Crypt rat at tier 1 only (#268)', () => {
+    for (const tier of [2, 3] as const) {
+      const kinds = TIERS[tier].enemies.map(({ kind }) => kind);
+      expect(kinds).not.toContain('candleBearer');
+      expect(kinds).not.toContain('cryptRat');
+    }
+  });
+
+  it('draws only its own enemies at tier 2, in the order of the stories, the Ash gleaner never alone (#213), then the Ember pod and the Thieving moth (#267)', () => {
     expect(TIERS[2].enemies).toEqual([
       { kind: 'thornPilgrim', weight: 2, cap: 1 },
       { kind: 'ashBramble', weight: 2, cap: 1 },
       { kind: 'ashGleaner', weight: 1, cap: 1, neverAlone: true },
       { kind: 'burningHusk', weight: 2, cap: 1 },
       { kind: 'mothkin', weight: 3, cap: 2 },
+      { kind: 'emberPod', weight: 2, cap: 1 },
+      { kind: 'thievingMoth', weight: 2, cap: 1 },
     ]);
   });
 
-  it('draws only its own enemies at tier 3, the three that stay then the three of the Belfry (#214)', () => {
+  it('draws only its own enemies at tier 3: the three that stay, the three of the Belfry (#214), then the Bronze ram and the Bell clapper (#266)', () => {
     expect(TIERS[3].enemies).toEqual([
       { kind: 'bronzeWarden', weight: 2, cap: 1 },
       { kind: 'gargoyle', weight: 2, cap: 1 },
@@ -106,6 +118,8 @@ describe('the tiers (#38)', () => {
       { kind: 'bellNovice', weight: 3, cap: 2 },
       { kind: 'matinsRinger', weight: 1, cap: 1, neverAlone: true },
       { kind: 'clockJack', weight: 2, cap: 1 },
+      { kind: 'bronzeRam', weight: 2, cap: 1 },
+      { kind: 'bellClapper', weight: 2, cap: 1 },
     ]);
   });
 

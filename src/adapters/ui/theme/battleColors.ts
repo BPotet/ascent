@@ -102,6 +102,40 @@ export const battleColors = {
   ward: '#8FB8C9',
   wardBackground: '#18262E',
   onWard: '#D4EAF2',
+  /**
+   * Le Battant de cloche (#266, maquette 246) : le cyan du Balayage (`--sweep`, `--sweep-d`,
+   * `--sweep-bg`, `--on-sweep`), sur sa marque, le trait de balayage, ses chevrons et « Balayé ».
+   * Jamais le rouge du sceau.
+   */
+  sweep: '#5EE6D0',
+  sweepDark: '#2E9E90',
+  sweepBackground: '#0F2B2C',
+  onSweep: '#C8FFF6',
+  /**
+   * Le Bélier de bronze (#266) : le bronze chauffé de la Charge (`--charge`, `--charge-d`,
+   * `--charge-bg`, `--on-charge`), sur sa marque, ses cornes, ses crans et « Il charge ».
+   */
+  charge: '#E8B98A',
+  chargeDark: '#A0703F',
+  chargeBackground: '#2E2114',
+  onCharge: '#FFE2C4',
+  /**
+   * La Phalène voleuse (#267, maquette 246, `.ptag.steal`) : l'or de l'Élan (`--gold`, `--gold-d`)
+   * sur l'ardoise de sa marque, et le losange qui file. La Cosse de braise prend la braise de la
+   * Brûlure (`burn`, `burnBg`, `onBurn`, `burnRing`).
+   */
+  steal: '#F2D49B',
+  stealLine: '#B98E5A',
+  stealBackground: '#262A36',
+  onSteal: '#EEEAE0',
+  /**
+   * Le Porte-cierge (#268, maquette 246) : la lueur citron de l'Aura (`--aura`, `--aura-bg`,
+   * `--on-aura`), sur sa marque, les « +20 % » de ses alliés, la flamme du chiffre de dégâts et
+   * « L'aura s'éteint ».
+   */
+  aura: '#FFE680',
+  auraBackground: '#2A2610',
+  onAura: '#FFF2B8',
   /** La surface relevée de la bulle de première rencontre (`--raised`) et son texte (`--light`). */
   raised: '#2A3150',
   onRaised: '#FFF3D6',

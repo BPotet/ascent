@@ -5,7 +5,12 @@
  * d'os de l'ennemi qui se relève seul (#106), la goutte du Saignement (prototype #107), le choc
  * de bouclier de la Riposte du Rempart (#128), les trois sons de la Brûlure (#171) : le souffle
  * de flamme, le crépitement et l'extinction d'une flamme, et les deux bruissements d'ailes de
- * l'Invocation (#172) : à l'annonce, puis, plus fort, à l'entrée des invoqués.
+ * l'Invocation (#172) : à l'annonce, puis, plus fort, à l'entrée des invoqués, et ceux du Beffroi
+ * (#266) : le reflet de balayage, le bourdon grave de la préparation d'un Balayage, le raclement de
+ * sabot de la Charge et le gong fêlé de la Charge brisée, et ceux des Jardins de cendre (#267) :
+ * l'éclatement sec de la Cosse de braise, le souffle d'une Cosse étouffée, le battement d'ailes et
+ * le tintement du Vol d'Élan, et ceux des Catacombes (#268) : la bougie soufflée à la chute du
+ * Porte-cierge et le couinement court de l'avancée d'un Rat de crypte.
  */
 export type BattleSoundCue =
   | 'perfectParry'
@@ -37,7 +42,16 @@ export type BattleSoundCue =
   | 'burnCrackle'
   | 'burnOut'
   | 'wingRustle'
-  | 'wingRustleLoud';
+  | 'wingRustleLoud'
+  | 'glintSweep'
+  | 'sweepDrone'
+  | 'chargeScrape'
+  | 'chargeBroken'
+  | 'emberBurst'
+  | 'emberSmother'
+  | 'momentumSteal'
+  | 'candleSnuff'
+  | 'ratSqueak';
 
 export const BATTLE_SOUND_CUES: readonly BattleSoundCue[] = [
   'perfectParry',
@@ -70,6 +84,15 @@ export const BATTLE_SOUND_CUES: readonly BattleSoundCue[] = [
   'burnOut',
   'wingRustle',
   'wingRustleLoud',
+  'glintSweep',
+  'sweepDrone',
+  'chargeScrape',
+  'chargeBroken',
+  'emberBurst',
+  'emberSmother',
+  'momentumSteal',
+  'candleSnuff',
+  'ratSqueak',
 ];
 
 /**

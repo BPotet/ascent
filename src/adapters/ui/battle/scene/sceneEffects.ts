@@ -63,6 +63,15 @@ export interface EffectSprite {
   readonly y: number;
 }
 
+/** L'effet de chaque reflet ; le reflet double est le blanc, le reflet de balayage un trait (#266). */
+const GLINT_EFFECTS: Readonly<Record<Glint['kind'], EffectKind>> = {
+  white: 'glintWhite',
+  double: 'glintWhite',
+  red: 'glintRed',
+  dull: 'glintDull',
+  sweep: 'glintSweep',
+};
+
 /**
  * Les reflets visibles (`glintSprites`) : chacun 90 ms, en 3 images de 30 ms (seule exception à la
  * cadence de 12 images par seconde, ADR 0008), à l'œil de l'ennemi, ou à ses deux griffes pour
@@ -79,8 +88,7 @@ export function glintSprites(
     const since = now - glint.at;
     if (since < 0 || since >= GLINT_MS) continue;
     const frame = Math.min(2, Math.floor(since / GLINT_FRAME_MS));
-    const effect: EffectKind =
-      glint.kind === 'red' ? 'glintRed' : glint.kind === 'dull' ? 'glintDull' : 'glintWhite';
+    const effect = GLINT_EFFECTS[glint.kind];
     const points =
       glint.kind === 'double' ? anchors.tips : anchors.eye === null ? [] : [anchors.eye];
     for (const [x, y] of points) sprites.push({ effect, frame, x, y });

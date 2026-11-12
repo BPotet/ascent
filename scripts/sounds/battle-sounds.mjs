@@ -145,6 +145,64 @@ export const CUES = {
     [560, 0.08, 'sawtooth', 0.045, 0.24, 330],
     [680, 0.1, 'triangle', 0.05, 0.31, 360],
   ],
+  // #266 : le Beffroi. Le bourdon de la préparation d'un Balayage : une cloche grave qui enfle, des
+  // coups de plus en plus forts, à l'opposé de la scie aiguë du sceau.
+  'sweep-drone': [
+    [98, 0.6, 'sine', 0.05, 0],
+    [147, 0.45, 'triangle', 0.07, 0.12],
+    [98, 0.4, 'sine', 0.1, 0.2],
+    [110, 0.3, 'triangle', 0.13, 0.32],
+  ],
+  // Le reflet de balayage, le 5e son du reflet : un sifflement rasant qui retombe.
+  'glint-sweep': [
+    [3_200, 0.12, 'triangle', 0.14, 0, 1_800],
+    [4_400, 0.06, 'sine', 0.05, 0],
+  ],
+  // La Charge : un raclement de sabot, puis un souffle de vapeur doux et aigu.
+  'charge-scrape': [
+    [160, 0.05, 'square', 0.05, 0, 120],
+    [150, 0.05, 'square', 0.05, 0.08, 110],
+    [170, 0.05, 'square', 0.05, 0.16, 120],
+    [2_200, 0.2, 'sine', 0.03, 0.22, 1_500],
+  ],
+  // La Charge brisée, après le son de la cassure : un gong grave et fêlé, deux notes qui frottent.
+  'charge-broken': [
+    [165, 0.6, 'triangle', 0.14, 0],
+    [174, 0.55, 'triangle', 0.1, 0.01],
+    [523, 0.25, 'square', 0.03, 0],
+  ],
+  // #267 : les Jardins de cendre. L'Éclatement de la Cosse de braise : un claquement sec, puis la
+  // coque qui crève dans un souffle de braises ; le crépitement de la Brûlure suit, comme toujours.
+  'ember-burst': [
+    [180, 0.05, 'square', 0.12, 0, 90],
+    [1_400, 0.04, 'square', 0.05, 0.01],
+    [320, 0.2, 'sawtooth', 0.06, 0.03, 140],
+  ],
+  // La Cosse étouffée : un souffle doux qui s'éteint, sans claquement.
+  'ember-smother': [
+    [600, 0.4, 'sine', 0.04, 0, 180],
+    [300, 0.35, 'triangle', 0.03, 0.08, 120],
+  ],
+  // Le Vol d'Élan : un battement d'ailes, puis un tintement d'or qui s'éloigne.
+  'momentum-steal': [
+    [640, 0.05, 'triangle', 0.03, 0, 420],
+    [760, 0.05, 'triangle', 0.03, 0.06, 480],
+    [1_760, 0.12, 'sine', 0.06, 0.12],
+    [2_090, 0.14, 'sine', 0.035, 0.24],
+    [2_640, 0.16, 'sine', 0.02, 0.36],
+  ],
+  // #268 : les Catacombes. La bougie soufflée à la chute du Porte-cierge : un souffle doux et aigu
+  // qui retombe, puis la flamme qui meurt dans le grave.
+  'candle-snuff': [
+    [1_800, 0.22, 'sine', 0.05, 0, 700],
+    [2_600, 0.1, 'triangle', 0.02, 0.02, 1_600],
+    [240, 0.18, 'sine', 0.04, 0.12, 160],
+  ],
+  // Le couinement court de l'avancée d'un Rat de crypte : deux notes aiguës et brèves qui montent.
+  'rat-squeak': [
+    [2_400, 0.05, 'square', 0.03, 0, 3_200],
+    [2_900, 0.06, 'triangle', 0.04, 0.05, 3_600],
+  ],
 };
 
 const WAVES = {

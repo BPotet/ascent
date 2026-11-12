@@ -514,6 +514,95 @@ describe('BattleSession', () => {
       expect(set.session.current()!.encounterHint).toBe('gravedigger');
     });
 
+    it('presents the first enemy with a signature never seen, from left to right, one per battle (#266, D6)', async () => {
+      const set = setUp({
+        createBattle: (options) =>
+          startBattle({ ...options, enemies: ['ghoul', 'bellClapper', 'bronzeRam'] }),
+      });
+      set.keyValueStore.values.set('battle.hint.encounter.bellClapper.seen', '1');
+
+      expect((await set.session.start()).encounterHint).toBe('bronzeRam');
+      set.session.dismissEncounterHint();
+      await Promise.resolve();
+      expect(set.keyValueStore.values.get('battle.hint.encounter.bronzeRam.seen')).toBe('1');
+    });
+
+    it('presents the Bell clapper before the Bronze ram, and the Bronze ram in the next battle', async () => {
+      const set = setUp({
+        createBattle: (options) =>
+          startBattle({ ...options, enemies: ['bellClapper', 'bronzeRam'] }),
+      });
+
+      expect((await set.session.start()).encounterHint).toBe('bellClapper');
+      set.session.dismissEncounterHint();
+      await Promise.resolve();
+      expect(set.session.current()!.encounterHint).toBeUndefined();
+      expect((await set.session.start()).encounterHint).toBe('bronzeRam');
+    });
+
+    it('presents an escorted Elite before its escort (#266, D6)', async () => {
+      const set = setUp({
+        createBattle: (options) =>
+          startBattle({
+            ...options,
+            enemies: ['gravedigger', 'bronzeRam'],
+            escortMultiplier: { hpPercent: 100, guardPercent: 100 },
+          }),
+      });
+
+      expect((await set.session.start()).encounterHint).toBe('gravedigger');
+    });
+
+    it('presents no enemy of the reserve: a reinforcement has no bubble in this battle', async () => {
+      const set = setUp({
+        createBattle: (options) =>
+          startBattle({ ...options, enemies: ['ghoul', 'ghoul', 'ghoul', 'bronzeRam'] }),
+      });
+
+      expect((await set.session.start()).encounterHint).toBeUndefined();
+    });
+
+    it('presents the Thieving moth, then the Ember pod in the next battle, then neither (#267)', async () => {
+      const set = setUp({
+        createBattle: (options) =>
+          startBattle({ ...options, enemies: ['thievingMoth', 'mothkin', 'emberPod'] }),
+      });
+
+      expect((await set.session.start()).encounterHint).toBe('thievingMoth');
+      set.session.dismissEncounterHint();
+      await Promise.resolve();
+      expect(set.keyValueStore.values.get('battle.hint.encounter.thievingMoth.seen')).toBe('1');
+      expect(set.session.current()!.encounterHint).toBeUndefined();
+      expect((await set.session.start()).encounterHint).toBe('emberPod');
+      set.session.dismissEncounterHint();
+      await Promise.resolve();
+      expect(set.keyValueStore.values.get('battle.hint.encounter.emberPod.seen')).toBe('1');
+      expect((await set.session.start()).encounterHint).toBeUndefined();
+    });
+
+    it('presents the Candle bearer once, and never a Crypt rat (#268, D7)', async () => {
+      const set = setUp({
+        createBattle: (options) =>
+          startBattle({ ...options, enemies: ['cryptRat', 'candleBearer', 'cryptRat'] }),
+      });
+
+      expect((await set.session.start()).encounterHint).toBe('candleBearer');
+      set.session.dismissEncounterHint();
+      await Promise.resolve();
+      expect(set.keyValueStore.values.get('battle.hint.encounter.candleBearer.seen')).toBe('1');
+      expect((await set.session.start()).encounterHint).toBeUndefined();
+      expect(set.keyValueStore.values.has('battle.hint.encounter.cryptRat.seen')).toBe(false);
+    });
+
+    it('never shows for a battle of Crypt rats only (#268)', async () => {
+      const set = setUp({
+        createBattle: (options) =>
+          startBattle({ ...options, enemies: ['cryptRat', 'cryptRat', 'cryptRat'] }),
+      });
+
+      expect((await set.session.start()).encounterHint).toBeUndefined();
+    });
+
     it('never shows for a battle without an Elite with a signature', async () => {
       const set = setUp();
 
@@ -775,6 +864,80 @@ describe('BattleSession', () => {
       expect(glintSounds(context)).toEqual(['glintDull']);
       context.clock.advanceTo(step.impacts[0]!.at - 217.5);
       expect(glintSounds(context)).toEqual(['glintDull', 'glint']);
+    });
+
+    it('squeaks at the step-in of a Crypt rat, read from the battle (#268)', async () => {
+      const context = setUp({
+        createBattle: (options) => startBattle({ ...options, enemies: ['cryptRat'] }),
+      });
+      await context.session.start();
+      toGhoulWindUp(context);
+
+      expect(context.sound.played.filter((cue) => cue === 'ratSqueak')).toEqual(['ratSqueak']);
+      expect(context.haptics.played).not.toContain('ratSqueak');
+    });
+
+    it('blows the candle out after the fall of a Candle bearer, while the Ghoul stands (#268)', async () => {
+      const context = setUp({
+        createBattle: (options) => {
+          const update = startBattle({ ...options, enemies: ['candleBearer', 'ghoul'] });
+          const enemies = update.battle.enemies.map((enemy, index) =>
+            index === 0 ? { ...enemy, hp: 5 } : enemy,
+          );
+          return { ...update, battle: { ...update.battle, enemies } };
+        },
+      });
+      await context.session.start();
+      context.clock.advanceTo(2_000);
+      context.session.heroAction({ kind: 'attack' }, 1_940, 2_000);
+      // Sans appui, la frappe est jugée à la fin de sa fenêtre (2 860), et finit à 3 180.
+      context.clock.advanceTo(2_900);
+
+      expect(context.events()).toContainEqual(expect.objectContaining({ type: 'enemyDefeated' }));
+      expect(context.sound.played).not.toContain('candleSnuff');
+      context.clock.advanceTo(3_500);
+      expect(context.sound.played.filter((cue) => cue === 'candleSnuff')).toEqual(['candleSnuff']);
+    });
+
+    it('plays the Sweep glint of a Sweep, ahead of the latency, without a vibration (#266)', async () => {
+      const context = setUp({ createBattle: ghoulAttacking('sweep') });
+      await context.session.start();
+      const impact = toGhoulWindUp(context);
+
+      context.clock.advanceTo(impact - 218.5);
+      expect(glintSounds(context)).toEqual([]);
+      context.clock.advanceTo(impact - 217.5);
+      expect(glintSounds(context)).toEqual(['glintSweep']);
+      expect(context.haptics.played).not.toContain('sweep');
+    });
+
+    it('vibrates long and low at the rush of a Sweep, 80 ms before its impact (#266, A3)', async () => {
+      const context = setUp({ createBattle: ghoulAttacking('sweep') });
+      await context.session.start();
+      const impact = toGhoulWindUp(context);
+
+      context.clock.advanceTo(impact - 81);
+      expect(context.haptics.played).not.toContain('sweep');
+      context.clock.advanceTo(impact - 80);
+      expect(context.haptics.played.filter((cue) => cue === 'sweep')).toEqual(['sweep']);
+    });
+
+    it('still vibrates once at the rush when its timer fires late', async () => {
+      const context = setUp({ createBattle: ghoulAttacking('sweep') });
+      await context.session.start();
+      const impact = toGhoulWindUp(context);
+
+      context.clock.advanceTo(impact + 40);
+      expect(context.haptics.played.filter((cue) => cue === 'sweep')).toEqual(['sweep']);
+    });
+
+    it('never vibrates for another glint', async () => {
+      const context = setUp({ createBattle: ghoulAttacking('perilous') });
+      await context.session.start();
+      const impact = toGhoulWindUp(context);
+
+      context.clock.advanceTo(impact);
+      expect(context.haptics.played).not.toContain('sweep');
     });
 
     it('plays the red glint of a perilous attack', async () => {

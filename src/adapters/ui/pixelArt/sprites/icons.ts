@@ -530,6 +530,80 @@ const DRAWN = {
     '...X....',
     '........',
   ],
+  // Les glyphes des marques de signature du Beffroi (#266), table `PAT` de la maquette
+  // `docs/mockups/246-bestiaire/`, sur 8 × 8 pixels d'art : les deux flèches rasantes du Balayage
+  // et les cornes du Bélier de bronze (la pelle fendue, `crack8`, dit la Charge brisée).
+  sweep8: [
+    '.X......',
+    'XXXXXXXX',
+    '.X......',
+    '........',
+    '.X......',
+    'XXXXXXXX',
+    '.X......',
+    '........',
+  ],
+  ram8: [
+    'XX....XX',
+    'X.X..X.X',
+    '.XX..XX.',
+    '...XX...',
+    '..XXXX..',
+    '..XXXX..',
+    '...XX...',
+    '........',
+  ],
+  // Les glyphes des marques de signature des Jardins de cendre (#267), table `PAT` de la maquette
+  // `docs/mockups/246-bestiaire/`, sur 8 × 8 pixels d'art : la braise de la Cosse de braise et le
+  // losange d'or de l'Élan, que vole la Phalène voleuse.
+  ember8: [
+    '...X....',
+    '..XX....',
+    '..XXX...',
+    '.XXXXX..',
+    '.XX.XX..',
+    'XXXXXXX.',
+    '.XXXXX..',
+    '........',
+  ],
+  diamond8: [
+    '...X....',
+    '..XXX...',
+    '.XXXXX..',
+    'XXXXXXX.',
+    '.XXXXX..',
+    '..XXX...',
+    '...X....',
+    '........',
+  ],
+  // Le cierge de l'Aura du Porte-cierge (#268), `candle` de la table `PAT` de la maquette 246,
+  // sur 8 × 8 pixels d'art.
+  candle8: [
+    '...X....',
+    '..XXX...',
+    '...X....',
+    '..XXX...',
+    '..XXX...',
+    '..XXX...',
+    '..XXX...',
+    '.XXXXX..',
+  ],
+  // L'intention Charge du Bélier de bronze (#266) : ses cornes, en 12 × 12 comme les autres
+  // intentions (`ram` de la maquette 246, agrandi).
+  iCharge: [
+    '.XXX....XXX.',
+    'X...X..X...X',
+    'X.XX....XX.X',
+    'X.X......X.X',
+    '.XX......XX.',
+    '....XXXX....',
+    '...XXXXXX...',
+    '...XYXXYX...',
+    '...XXXXXX...',
+    '....XXXX....',
+    '....XYYX....',
+    '.....XX.....',
+  ],
   // Les glyphes de la jauge (#41), table `PAT` de la maquette `docs/mockups/205-jauge-faveur/`,
   // centrés sur 8 × 8 pixels d'art : crâne, bénédiction, objet, Rare, fatigue, cadenas, horloge, « + »
   // et « = » des crans du cadran.

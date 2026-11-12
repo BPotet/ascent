@@ -1057,6 +1057,105 @@ describe('BattleLog', () => {
     expect(exhumations.filter((effect) => effect.type === 'enemyExhumed')).toHaveLength(2);
   });
 
+  it('notes the Charge as the action charge of the Bronze ram, with its effect (#266)', () => {
+    const charge: Intent = { category: 'charge' };
+    const log = logged(
+      [roundStarted(START, 2, [charge])],
+      [
+        { type: 'stepInStarted', at: START + 100, enemy: 0, until: START + 500 },
+        { type: 'chargeStarted', at: START + 500, enemy: 0 },
+      ],
+    );
+
+    expect(firstRound(log).intents[0]).toEqual(charge);
+    expect(actionOf(log, 0)).toMatchObject({
+      kind: 'charge',
+      t: 100,
+      effects: [{ type: 'chargeStarted', t: 500, enemy: 0 }],
+    });
+  });
+
+  it('notes a broken Charge as an effect, and the charged Ram blow on its attack (#266)', () => {
+    const log = logged(
+      [roundStarted(START, 2)],
+      [
+        { type: 'guardBroken', at: START + 100, enemy: 0, by: 'strike' },
+        { type: 'chargeBroken', at: START + 100, enemy: 0 },
+      ],
+      [
+        { type: 'stepInStarted', at: START + 1_000, enemy: 1, until: START + 1_400 },
+        {
+          type: 'windUpStarted',
+          at: START + 1_400,
+          enemy: 1,
+          attack: 'delayed',
+          impacts: [START + 3_100],
+          feintAt: null,
+          charged: true,
+        },
+      ],
+    );
+
+    expect(firstRound(log).effects).toEqual([
+      { type: 'guardBroken', t: 100, enemy: 0, by: 'strike' },
+      { type: 'chargeBroken', t: 100, enemy: 0 },
+    ]);
+    expect(actionOf(log, 1).attack).toEqual({
+      attack: 'delayed',
+      impactOffsets: [1_700],
+      feintOffset: null,
+      charged: true,
+    });
+  });
+
+  it('notes no charged flag on an ordinary attack, keeping the log of today (#266)', () => {
+    const log = logged(
+      [roundStarted(START, 2)],
+      [
+        {
+          type: 'windUpStarted',
+          at: START + 400,
+          enemy: 0,
+          attack: 'sweep',
+          impacts: [START + 1_700],
+          feintAt: null,
+        },
+      ],
+    );
+
+    expect(actionOf(log, 0).attack).toEqual({
+      attack: 'sweep',
+      impactOffsets: [1_300],
+      feintOffset: null,
+    });
+  });
+
+  it('notes the points of the Swarm and of the Aura on the attack, for the measures of the GD (#268)', () => {
+    const log = logged(
+      [roundStarted(START, 2)],
+      [
+        {
+          type: 'windUpStarted',
+          at: START + 400,
+          enemy: 1,
+          attack: 'basic',
+          impacts: [START + 1_500],
+          feintAt: null,
+          swarm: 2,
+          aura: 1,
+        },
+      ],
+    );
+
+    expect(actionOf(log, 1).attack).toEqual({
+      attack: 'basic',
+      impactOffsets: [1_100],
+      feintOffset: null,
+      swarm: 2,
+      aura: 1,
+    });
+  });
+
   it('changes nothing without an event, and never changes the log it is given', () => {
     const log = logged([roundStarted(START, 1)]);
     const copy = JSON.parse(JSON.stringify(log)) as BattleLog;
@@ -1204,5 +1303,91 @@ describe('BattleLog', () => {
         ? 'won'
         : 'lost',
     );
+  });
+
+  it('notes the Burst of a pod felled by a strike as an effect of the hero action (#267)', () => {
+    const log = logged(
+      [roundStarted(START, 1)],
+      [{ type: 'strikeStarted', at: START + 100, enemy: 0, impactAt: START + 600, until: 0 }],
+      [
+        { type: 'enemyDefeated', at: START + 600, enemy: 0 },
+        {
+          type: 'heroBurning',
+          at: START + 600,
+          added: 2,
+          stacks: 3,
+          cause: 'emberBurst',
+          enemy: 0,
+        },
+        { type: 'enemyDefeated', at: START + 600, enemy: 1 },
+        { type: 'emberBurstSmothered', at: START + 600, enemy: 1 },
+      ],
+    );
+
+    expect(actionOf(log, 'hero').effects).toEqual([
+      { type: 'enemyDefeated', t: 600, enemy: 0 },
+      { type: 'heroBurning', t: 600, added: 2, stacks: 3, cause: 'emberBurst', enemy: 0 },
+      { type: 'enemyDefeated', t: 600, enemy: 1 },
+      { type: 'emberBurstSmothered', t: 600, enemy: 1 },
+    ]);
+  });
+
+  it('notes the Burst of a pod felled by a counter-attack in the action of the pod (#267)', () => {
+    const log = logged(
+      [roundStarted(START, 1)],
+      [{ type: 'stepInStarted', at: START + 100, enemy: 0, until: START + 500 }],
+      [
+        {
+          type: 'counterAttacked',
+          at: START + 1_100,
+          enemy: 0,
+          damage: 5,
+          guardDamage: 3,
+          until: START + 1_500,
+        },
+        { type: 'enemyDefeated', at: START + 1_100, enemy: 0 },
+        {
+          type: 'heroBurning',
+          at: START + 1_100,
+          added: 2,
+          stacks: 2,
+          cause: 'emberBurst',
+          enemy: 0,
+        },
+      ],
+    );
+
+    expect(actionOf(log, 0).effects).toEqual([
+      { type: 'counterAttacked', t: 1_100, enemy: 0, damage: 5, guardDamage: 3 },
+      { type: 'enemyDefeated', t: 1_100, enemy: 0 },
+      { type: 'heroBurning', t: 1_100, added: 2, stacks: 2, cause: 'emberBurst', enemy: 0 },
+    ]);
+  });
+
+  it('notes the momentum stolen by the Thieving moth, summed on its stolen (#267)', () => {
+    const log = logged(
+      [roundStarted(START, 1)],
+      [{ type: 'stepInStarted', at: START + 100, enemy: 0, until: START + 500 }],
+      [
+        { type: 'momentumStolen', at: START + 1_400, enemy: 0, stolen: 1, momentum: 2 },
+        { type: 'momentumChanged', at: START + 1_400, momentum: 2 },
+        { type: 'momentumStolen', at: START + 1_820, enemy: 0, stolen: 1, momentum: 1 },
+        { type: 'momentumChanged', at: START + 1_820, momentum: 1 },
+      ],
+    );
+    const { effects } = actionOf(log, 0);
+
+    expect(effects).toEqual([
+      { type: 'momentumStolen', t: 1_400, enemy: 0, stolen: 1, momentum: 2 },
+      { type: 'momentumChanged', t: 1_400, momentum: 2 },
+      { type: 'momentumStolen', t: 1_820, enemy: 0, stolen: 1, momentum: 1 },
+      { type: 'momentumChanged', t: 1_820, momentum: 1 },
+    ]);
+    expect(
+      effects.reduce(
+        (sum, effect) => sum + (effect.type === 'momentumStolen' ? effect.stolen : 0),
+        0,
+      ),
+    ).toBe(2);
   });
 });

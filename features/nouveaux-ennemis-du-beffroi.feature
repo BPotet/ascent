@@ -15,7 +15,7 @@ Fonctionnalité: Les nouveaux ennemis du Beffroi
     Étant donné une ascension au palier 3
     Quand les groupes d'ennemis de ses combats ordinaires sont tirés, pour 200 graines
     Alors aucun groupe ne contient de Squelette, de Spectre, de Nécromancien ni de Phalénide
-    Et chaque ennemi tiré est un Veilleur d'airain, une Gargouille, un Fondeur de cloches, un Novice des cloches, une Sonneuse de matines ou un Jaquemart
+    Et chaque ennemi tiré est un Veilleur d'airain, une Gargouille, un Fondeur de cloches, un Novice des cloches, une Sonneuse de matines, un Jaquemart, un Bélier de bronze ou un Battant de cloche
 
   @domain
   Scénario: Le remplissage nombreux

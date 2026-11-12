@@ -1,5 +1,7 @@
 import type { Actor } from '../../../domain/battle/actionOrder';
 import { ATTACKS } from '../../../domain/battle/attacks';
+import { auraAlone, auraBearer } from '../../../domain/battle/aura';
+import { swarmBonus } from '../../../domain/battle/swarm';
 import {
   equippedOf,
   escortedElite,
@@ -14,11 +16,13 @@ import {
 import type { PhaseDirection } from '../../../domain/battle/BattleEvent';
 import {
   ENEMIES,
-  eliteSignature,
-  type EliteSignature,
+  enemySignature,
+  type EnemySignature,
   type EnemyKind,
   type HeroKind,
 } from '../../../domain/battle/combatants';
+import { chargeMark } from '../../../domain/battle/charge';
+import { emberBurstPrimed } from '../../../domain/battle/emberBurst';
 import { exhumeMark, type ExhumeMark } from '../../../domain/battle/exhume';
 import { sanctuaryUp } from '../../../domain/battle/sanctuary';
 import { thornsActive } from '../../../domain/battle/thorns';
@@ -35,8 +39,12 @@ import {
   enemyTag,
   guardText,
   exhumeLineText,
+  chargeLineText,
+  CHARGE_ACTION_LINE,
   signatureText,
+  isOrdinarySignature,
   stunnedLabel,
+  agreed,
   type SignatureMarkState,
 } from '../format/battleText';
 import type { IconName } from '../pixelArt/sprites/icons';
@@ -93,7 +101,7 @@ export interface TrackEntry {
  * soulignée (`now`). #259 y ajoute les Épines et le Sanctuaire.
  */
 export interface SignatureView {
-  readonly variant: EliteSignature;
+  readonly variant: EnemySignature;
   readonly glyph: IconName;
   readonly text: string;
   readonly speech: string;
@@ -207,6 +215,19 @@ export interface EnemyView {
    * non (garde à 0, étourdi, ou sans Sanctuaire).
    */
   readonly guardWard?: true;
+  /** Le Bélier de bronze charge (#266) : la scène tient sa pose de charge ; absent, non. */
+  readonly charging?: true;
+  /** Sa Charge est brisée (#266, A9) : la scène montre la Charge brisée à sa chute ; absent, non. */
+  readonly chargeBroken?: true;
+  /**
+   * La lueur du Porte-cierge (#268, C1, C4, C5) : allumée tant que son Aura sert, pâle quand il est
+   * seul ou tombé ; absente pour un ennemi sans Aura.
+   */
+  readonly auraGlow?: 'lit' | 'out';
+  /** Il reçoit l'Aura d'un Porte-cierge (#268, AU1) : « +20 % » sur sa plaque ; absent, non. */
+  readonly auraBoost?: true;
+  /** Un Rat de crypte que la Nuée renforce (#268, C7) : il grouille ; absent, non. */
+  readonly swarming?: true;
   readonly label: string;
 }
 
@@ -223,6 +244,8 @@ export interface BattleView {
   readonly enemies: readonly EnemyView[];
   /** L'ennemi qui porte le sceau rouge. */
   readonly sealed: number | null;
+  /** L'ennemi qui porte le trait de balayage, pendant son Balayage (#266, A2, A3). */
+  readonly swept: number | null;
   readonly defenseHint: boolean;
   /** Les actions de la phase du héros sont possibles (cible, « Attaquer », « Pouvoir »). */
   readonly heroActions: boolean;
@@ -315,19 +338,38 @@ export function actionTrackView(battle: Battle): ActionTrackView {
 
 /**
  * Le prix de la cible à signature, sur la ligne du pouce (#259, M1, B1) : les Épines de la
- * Mère-ronce non étourdie, le Sanctuaire du Bedeau tant que sa garde tient.
+ * Mère-ronce non étourdie, le Sanctuaire du Bedeau tant que sa garde tient ; l'Aura du Porte-cierge
+ * (#268, C1, C3, C5), qui brûle encore quand il est étourdi.
  */
-function signatureLine(target: EnemyState): string {
-  switch (eliteSignature(target.kind)) {
+function signatureLine(battle: Battle, index: number): string {
+  const target = battle.enemies[index]!;
+  switch (enemySignature(target.kind)) {
+    case 'aura':
+      if (auraAlone(battle.enemies, battle.reserve.length, index)) {
+        return ' · son aura ne sert à personne';
+      }
+      return target.stun === null
+        ? ' · ses alliés font +20 % de dégâts'
+        : ` · ${agreed(target.kind, 'étourdi')}, son aura brûle encore`;
     case 'thorns':
       return thornsActive(target)
         ? ` · Épines : −${ENEMIES[target.kind].thorns!.damage} PV par frappe`
         : '';
     case 'sanctuary':
       return sanctuaryUp(target) ? ' · Sanctuaire, ½ des dégâts' : '';
+    // Le prix de la Cosse de braise debout (#267, J6) ; étourdie, rien.
+    case 'emberBurst':
+      return emberBurstPrimed(target)
+        ? ` · Braises : Brûlure ×${ENEMIES[target.kind].emberBurst!.stacks} à sa mort`
+        : '';
     default:
       return '';
   }
+}
+
+/** La ligne du pouce de la Charge, quand le Bélier de bronze est la cible (#266, A6, A8). */
+function chargeLine(battle: Battle): string {
+  return chargeLineText(chargeMark(battle, battle.target));
 }
 
 function targetLine(battle: Battle): ZoneLine | null {
@@ -335,7 +377,7 @@ function targetLine(battle: Battle): ZoneLine | null {
   if (target === undefined) return null;
   // Une Élite qui exhume (#258, F2, F5) : la ligne dit comment l'en empêcher, ou pourquoi elle
   // n'exhume pas, lu dans `exhumeMark`.
-  const exhumer = battle.enemies.findIndex((enemy) => eliteSignature(enemy.kind) === 'exhume');
+  const exhumer = battle.enemies.findIndex((enemy) => enemySignature(enemy.kind) === 'exhume');
   const mark = exhumer < 0 ? null : exhumeMark(battle, exhumer);
   const exhume =
     mark === null
@@ -344,7 +386,7 @@ function targetLine(battle: Battle): ZoneLine | null {
   return {
     before: 'Cible : ',
     strong: enemyName(target),
-    after: `${exhume}${signatureLine(target)}${target.stun === null ? '' : ' · ×1,5'}`,
+    after: `${exhume}${signatureLine(battle, battle.target)}${chargeLine(battle)}${target.stun === null ? '' : ' · ×1,5'}`,
   };
 }
 
@@ -371,14 +413,27 @@ const EXHUME_GLYPHS: Readonly<Record<ExhumeMark['state'], IconName>> = {
 function signatureMark(
   battle: Battle,
   index: number,
-  variant: EliteSignature,
+  variant: EnemySignature,
 ): SignatureMarkState | null {
   const enemy = battle.enemies[index]!;
   if (variant === 'exhume') return exhumeMark(battle, index);
   if (enemy.hp <= 0) return null;
-  return variant === 'thorns'
-    ? { state: 'thorns', off: !thornsActive(enemy) }
-    : { state: 'sanctuary', off: !sanctuaryUp(enemy) };
+  switch (variant) {
+    case 'thorns':
+      return { state: 'thorns', off: !thornsActive(enemy) };
+    case 'sanctuary':
+      return { state: 'sanctuary', off: !sanctuaryUp(enemy) };
+    case 'sweep':
+      return { state: 'sweep' };
+    case 'charge':
+      return { state: 'charge', mark: chargeMark(battle, index) ?? 'idle' };
+    case 'emberBurst':
+      return { state: 'emberBurst', off: !emberBurstPrimed(enemy) };
+    case 'momentumTheft':
+      return { state: 'momentumTheft' };
+    case 'aura':
+      return { state: 'aura', off: auraAlone(battle.enemies, battle.reserve.length, index) };
+  }
 }
 
 /** Le glyphe d'une marque : celui de l'état d'Exhumer, l'épine, l'écu d'acier ou sa fêlure. */
@@ -388,25 +443,57 @@ function signatureGlyph(mark: SignatureMarkState): IconName {
       return 'thorn8';
     case 'sanctuary':
       return mark.off ? 'crack8' : 'ward8';
+    case 'sweep':
+      return 'sweep8';
+    case 'charge':
+      return mark.mark === 'broken' ? 'crack8' : 'ram8';
+    // La braise de la Cosse et le losange d'or de l'Élan (#267, maquette 246, `PAT`).
+    case 'emberBurst':
+      return 'ember8';
+    case 'momentumTheft':
+      return 'diamond8';
+    case 'aura':
+      return 'candle8';
     default:
       return EXHUME_GLYPHS[mark.state];
   }
 }
 
+/** Une marque éteinte : grisée (#258, #259 ; la Charge brisée, #266). */
+function markOff(mark: SignatureMarkState): boolean {
+  if ('off' in mark) return mark.off;
+  if (mark.state === 'sweep' || mark.state === 'momentumTheft') return false;
+  if (mark.state === 'charge') return mark.mark === 'broken';
+  return mark.state === 'lost' || mark.state === 'standing';
+}
+
+/** Une marque soulignée : l'Exhumation pour maintenant (#258), la Charge en cours (#266). */
+function markNow(mark: SignatureMarkState): boolean {
+  if (mark.state === 'charge') return mark.mark === 'first' || mark.mark === 'second';
+  return mark.state === 'now';
+}
+
 /** La marque de signature de l'ennemi `index`, lue dans le domaine ; `null` sans signature. */
 function signatureView(battle: Battle, index: number): SignatureView | null {
   const { kind } = battle.enemies[index]!;
-  const variant = eliteSignature(kind);
+  const variant = enemySignature(kind);
   const mark = variant === null ? null : signatureMark(battle, index, variant);
   if (variant === null || mark === null) return null;
-  const off = 'off' in mark ? mark.off : mark.state === 'lost' || mark.state === 'standing';
   return {
     variant,
     glyph: signatureGlyph(mark),
     ...signatureText(kind, mark),
-    off,
-    now: mark.state === 'now',
+    off: markOff(mark),
+    now: markNow(mark),
   };
+}
+
+/**
+ * Une signature d'Élite (#258, #259) ; celles du Beffroi (#266), des Jardins de cendre (#267) et
+ * l'Aura (#268) sont d'ennemis ordinaires.
+ */
+function isEliteSignature(signature: SignatureView | null): boolean {
+  return signature !== null && !isOrdinarySignature(signature.variant);
 }
 
 function enemyView(
@@ -457,14 +544,61 @@ function enemyView(
     ...(escort && { escort: true as const }),
     ...(signature !== null && { signature }),
     ...(enemy.hp > 0 && sanctuaryUp(enemy) && { guardWard: true as const }),
+    ...(enemy.charge === 'charging' && { charging: true as const }),
+    ...(enemy.charge === 'broken' && { chargeBroken: true as const }),
+    ...auraOf(battle, index),
+    ...(enemy.hp > 0 && swarmBonus(battle.enemies, index) > 0 && { swarming: true as const }),
     label: enemyLabel(
       enemy,
       intent,
       target,
-      elite || signature !== null ? 'elite' : escort && enemy.hp > 0 ? 'escort' : undefined,
+      elite || isEliteSignature(signature)
+        ? 'elite'
+        : escort && enemy.hp > 0
+          ? 'escort'
+          : undefined,
       signature?.speech,
+      {
+        ...placeOf(battle, index),
+        aura: enemy.hp > 0 && auraBearer(battle.enemies, index) !== null,
+      },
     ),
   };
+}
+
+/**
+ * L'Aura sur la plaque d'un ennemi (#268) : la lueur du Porte-cierge, allumée tant qu'il a un allié
+ * debout ou un renfort à venir ; le « +20 % » d'un allié debout qui la reçoit.
+ */
+function auraOf(
+  battle: Battle,
+  index: number,
+): { readonly auraGlow?: 'lit' | 'out'; readonly auraBoost?: true } {
+  const enemy = battle.enemies[index]!;
+  if (ENEMIES[enemy.kind].aura !== undefined) {
+    const lit = enemy.hp > 0 && !auraAlone(battle.enemies, battle.reserve.length, index);
+    return { auraGlow: lit ? 'lit' : 'out' };
+  }
+  return enemy.hp > 0 && auraBearer(battle.enemies, index) !== null ? { auraBoost: true } : {};
+}
+
+/** Les places dites au lecteur d'écran, de gauche à droite, selon le nombre de colonnes (#268, C7). */
+const PLACES: Readonly<Record<number, readonly string[]>> = {
+  2: ['à gauche', 'à droite'],
+  3: ['à gauche', 'au centre', 'à droite'],
+};
+
+/**
+ * La place d'un Rat de crypte quand au moins deux sont debout en première ligne (#268, C7) : la
+ * seule chose qui les distingue au lecteur d'écran. Pour les Rats seulement (décision de
+ * l'orchestrateur du 12/11/2026).
+ */
+function placeOf(battle: Battle, index: number): { readonly place?: string } {
+  const { kind } = battle.enemies[index]!;
+  if (ENEMIES[kind].swarm === undefined) return {};
+  const pack = battle.enemies.filter((other) => other.kind === kind && other.hp > 0).length;
+  const place = PLACES[battle.enemies.length]?.[index];
+  return pack >= 2 && place !== undefined ? { place } : {};
 }
 
 /** Ce que l'écran montre d'un état du combat. */
@@ -491,6 +625,7 @@ export function battleView(battle: Battle): BattleView {
     line: null,
     enemies,
     sealed: null,
+    swept: null,
     defenseHint: false,
     heroActions: false,
     trimmed,
@@ -576,6 +711,12 @@ export function battleView(battle: Battle): BattleView {
           offBalance: battle.offBalanceUntil !== null,
         },
         sealed: step.kind === 'attack' && ATTACKS[step.attack].perilous ? step.enemy : null,
+        swept: step.kind === 'attack' && ATTACKS[step.attack].sweep ? step.enemy : null,
+        // L'action de la Charge (#266, A7) : rien à parer.
+        ...(step.kind === 'support' &&
+          step.intent.category === 'charge' && {
+            line: { before: CHARGE_ACTION_LINE, strong: '', after: '' },
+          }),
       };
     }
     case 'over':

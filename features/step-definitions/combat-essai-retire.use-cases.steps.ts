@@ -62,8 +62,9 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     const clock = new ManualBattleClock(1_000);
     const session = new AscentSession({
       clock,
-      // Une graine où le héros ouvre le combat du 1er étage.
-      seeds: new FixedSeedSource(1),
+      // Une graine où le héros ouvre le combat du 1er étage (5 depuis le Porte-cierge et le Rat de
+      // crypte, #268 : le 1er groupe de la graine 1 a changé).
+      seeds: new FixedSeedSource(5),
       sound: silentBattleSound(),
       haptics: silentBattleHaptics(),
       keyValueStore: {

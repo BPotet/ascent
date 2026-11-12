@@ -405,10 +405,18 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(
-    /^chaque ennemi est un Pèlerin enronce, une Ronce de cendre, une Glaneuse de cendre, un Embrasé \(#171\) ou une Phalénide \(#172\), ni Goule ni Villageois fou \(#213\)$/u,
+    /^chaque ennemi est un Pèlerin enronce, une Ronce de cendre, une Glaneuse de cendre, un Embrasé \(#171\), une Phalénide \(#172\), une Cosse de braise ou une Phalène voleuse \(#267\), ni Goule ni Villageois fou \(#213\)$/u,
     () => {
       expect(new Set(groups(2).flat())).toEqual(
-        new Set(['thornPilgrim', 'ashBramble', 'ashGleaner', 'burningHusk', 'mothkin']),
+        new Set([
+          'thornPilgrim',
+          'ashBramble',
+          'ashGleaner',
+          'burningHusk',
+          'mothkin',
+          'emberPod',
+          'thievingMoth',
+        ]),
       );
     },
   );
@@ -421,7 +429,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
   });
 
   then(
-    /^chaque ennemi est un Veilleur d'airain, une Gargouille, un Fondeur de cloches \(#171\), un Novice des cloches, une Sonneuse de matines ou un Jaquemart \(#214\), ni Squelette, ni Spectre, ni Nécromancien \(#214\)$/u,
+    /^chaque ennemi est un Veilleur d'airain, une Gargouille, un Fondeur de cloches \(#171\), un Novice des cloches, une Sonneuse de matines, un Jaquemart \(#214\), un Bélier de bronze ou un Battant de cloche \(#266\), ni Squelette, ni Spectre, ni Nécromancien \(#214\)$/u,
     () => {
       const drawn = groups(3).flat();
       expect(new Set(drawn)).toEqual(
@@ -432,6 +440,8 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
           'bellNovice',
           'matinsRinger',
           'clockJack',
+          'bronzeRam',
+          'bellClapper',
         ]),
       );
       for (const kind of ['skeleton', 'specter', 'necromancer'] as const) {

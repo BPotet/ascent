@@ -11,16 +11,20 @@ import type { Actor } from '../../../domain/battle/actionOrder';
 import {
   ENEMIES,
   HEROES,
-  eliteSignature,
+  enemySignature,
   startingInitiative,
   type Armor,
   type EnemyKind,
+  type EnemySignature,
   type HeroKind,
   type Weapon,
 } from '../../../domain/battle/combatants';
+import { auraBearer } from '../../../domain/battle/aura';
+import { MAX_BURN_STACKS } from '../../../domain/battle/burn';
 import type { Stunned } from '../../../domain/battle/guard';
 import { MOMENTUM_MAX } from '../../../domain/battle/momentum';
 import { POWERS, basePower, kindledCost, type PowerKind } from '../../../domain/battle/powers';
+import type { ChargeMark } from '../../../domain/battle/charge';
 import type { ExhumeMark } from '../../../domain/battle/exhume';
 import type { ShownIntent } from '../../../domain/battle/shownIntent';
 import { summonedKind } from '../../../domain/battle/summon';
@@ -66,6 +70,13 @@ export const ENEMY_NAMES: Readonly<Record<EnemyKind, string>> = {
   // La Mère-ronce et le Bedeau (#259), sans article comme les autres ennemis du palier.
   brambleMother: 'Mère-ronce',
   beadle: 'Bedeau',
+  bronzeRam: 'Bélier de bronze',
+  bellClapper: 'Battant de cloche',
+  // La Cosse de braise et la Phalène voleuse (#267), à ne pas confondre avec la Phalénide.
+  emberPod: 'Cosse de braise',
+  thievingMoth: 'Phalène voleuse',
+  candleBearer: 'Porte-cierge',
+  cryptRat: 'Rat de crypte',
 };
 
 /** Le genre du nom de l'ennemi, pour « étourdie », « tombée »… */
@@ -101,6 +112,12 @@ const FEMININE: Readonly<Record<EnemyKind, boolean>> = {
   gravedigger: false,
   brambleMother: true,
   beadle: false,
+  bronzeRam: false,
+  bellClapper: false,
+  emberPod: true,
+  thievingMoth: true,
+  candleBearer: false,
+  cryptRat: false,
 };
 
 export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {
@@ -110,6 +127,7 @@ export const ATTACK_NAMES: Readonly<Record<AttackKind, string>> = {
   feint: 'coup trompeur',
   perilous: 'coup imparable',
   delayedPerilous: 'coup retardé imparable',
+  sweep: 'balayage',
 };
 
 export const POWER_NAMES: Readonly<Record<PowerKind, string>> = {
@@ -243,8 +261,11 @@ export function actionTrackLabel(
 
 export const SEAL_LABEL = 'Sceau rouge : coup imparable';
 
+/** Le libellé du trait de balayage (#266, maquette 246, `.sweepm`) : la bonne défense. */
+export const SWEEP_LABEL = 'Trait de balayage : parade';
+
 /** « étourdie » pour la Goule, « étourdi » pour les autres. */
-function agreed(kind: EnemyKind, word: string): string {
+export function agreed(kind: EnemyKind, word: string): string {
   return FEMININE[kind] ? `${word}e` : word;
 }
 
@@ -354,6 +375,9 @@ export function intentSpeech(kind: EnemyKind, intent: ShownIntent): string {
       return 'intention : relever un allié';
     case 'exhume':
       return 'intention : exhumer';
+    // La Charge (#266, maquette § 5) : « intention Charge », puis « Attaque » au Coup de bélier.
+    case 'charge':
+      return intent.notches === 1 ? 'intention : charge' : 'intention : attaque';
     case 'skip':
       return `${agreed(kind, SKIP_REASONS[intent.reason])}, n'agit pas`;
   }
@@ -381,10 +405,15 @@ export function enemyLabel(
   role?: 'elite' | 'escort',
   /** Ce que dit la marque de signature d'une Élite (#258), lue avant l'intention. */
   signature?: string,
+  /**
+   * Sa place dans la ligne, dite pour distinguer les Rats de crypte (#268, C7), et l'Aura qu'il
+   * reçoit du Porte-cierge (#268, C1) ; absentes, rien.
+   */
+  { place, aura = false }: { readonly place?: string; readonly aura?: boolean } = {},
 ): string {
   const tag = enemyTag(enemy);
   const elite = role === 'elite' ? ', Élite' : '';
-  const name = `${enemyName(enemy)}${elite}${tag === null ? '' : `, ${tag.toLowerCase()}`}`;
+  const name = `${enemyName(enemy)}${place === undefined ? '' : `, ${place}`}${elite}${tag === null ? '' : `, ${tag.toLowerCase()}`}`;
   if (enemy.hp <= 0) return `${name}, ${agreed(enemy.kind, 'tombé')}`;
   const guard =
     enemy.stun === null
@@ -393,7 +422,8 @@ export function enemyLabel(
   const mark = signature === undefined ? '' : `, ${signature}`;
   const intentPart = intent === null ? '' : `, ${intentSpeech(enemy.kind, intent)}`;
   const aim = role === 'escort' && !isTarget ? '. Touche pour viser' : '';
-  return `${name}${isTarget ? ', cible' : ''}, ${enemy.hp} PV sur ${enemy.maxHp}, ${guard}${mark}${intentPart}${aim}`;
+  const boosted = aura ? `, ${AURA_BOOST_SPEECH}` : '';
+  return `${name}${isTarget ? ', cible' : ''}${boosted}, ${enemy.hp} PV sur ${enemy.maxHp}, ${guard}${mark}${intentPart}${aim}`;
 }
 
 export function attackButtonLabel(targetName: string): string {
@@ -434,7 +464,17 @@ export interface FeedbackText {
     | 'escort'
     | 'victory'
     // L'acier du Sanctuaire (#259) : sa rupture et son retour.
-    | 'ward';
+    | 'ward'
+    // Le cyan du Balayage et le bronze de la Charge (#266) : « Balayé », « Il charge ».
+    | 'sweep'
+    | 'charge'
+    // Les Jardins de cendre (#267) : la braise de « Elle éclate », la fumée grise de « Éteinte »,
+    // l'or de l'Élan volé sur une bonne parade.
+    | 'ember'
+    | 'smoke'
+    | 'steal'
+    // La lueur citron de l'Aura (#268) : « L'aura s'éteint ».
+    | 'aura';
   readonly title: string;
   /** La ligne sous le mot : « Attisé · 1 Élan » pour un pouvoir attisé (#237). */
   readonly sub?: string;
@@ -462,7 +502,31 @@ export function activePowerText(power: PowerKind): string {
 export function feedbackText(event: BattleEvent, battle?: Battle): FeedbackText | null {
   switch (event.type) {
     case 'blowResolved':
-      return event.outcome === 'perfectParry' ? { tone: 'perfect', title: 'Parfait' } : null;
+      if (event.outcome === 'sweepDodge') return SWEPT;
+      if (event.outcome !== 'perfectParry') return null;
+      // Rien n'est volé sur une parade parfaite (#267, J3).
+      return thiefAt(battle, event.enemy)
+        ? { tone: 'perfect', title: 'Parfait', sub: 'Parade parfaite : rien n’est volé · +1 Élan' }
+        : { tone: 'perfect', title: 'Parfait' };
+    // L'Éclatement de la Cosse de braise (#267, J7) ; étouffée, elle s'éteint (J9).
+    case 'heroBurning':
+      return event.cause === 'emberBurst'
+        ? { tone: 'ember', title: 'Elle éclate', sub: burnChipText(event.stacks) }
+        : null;
+    case 'emberBurstSmothered':
+      return { tone: 'smoke', title: 'Éteinte', sub: 'Achevée étourdie · pas de Brûlure' };
+    // Une bonne parade laisse voler l'Élan (#267, J2b) : le sous-titre le dit.
+    case 'momentumStolen':
+      return battle !== undefined && lastOutcome(battle) === 'parry'
+        ? { tone: 'steal', title: 'Parade', sub: `Bonne parade : ${event.stolen} Élan volé` }
+        : null;
+    // Le Bélier de bronze charge (#266, A7) : pas de coup à parer.
+    case 'chargeStarted':
+      return {
+        tone: 'charge',
+        title: 'Il charge',
+        sub: 'Pas de coup cette manche · gros coup à la suivante',
+      };
     case 'counterAttacked':
       return { tone: 'perfect', title: 'Parfait · contre-attaque' };
     case 'bulwarkCountered':
@@ -483,7 +547,7 @@ export function feedbackText(event: BattleEvent, battle?: Battle): FeedbackText 
     // Le Sanctuaire revient avec la garde du Bedeau (#259, B5).
     case 'guardRestored': {
       const kind = battle?.enemies[event.enemy]?.kind;
-      return kind !== undefined && eliteSignature(kind) === 'sanctuary'
+      return kind !== undefined && enemySignature(kind) === 'sanctuary'
         ? { tone: 'ward', title: 'Sanctuaire', sub: 'Sa garde est revenue' }
         : null;
     }
@@ -495,13 +559,45 @@ export function feedbackText(event: BattleEvent, battle?: Battle): FeedbackText 
     case 'strikeResolved':
       return event.judgement === 'perfect' ? { tone: 'perfect', title: 'Frappe parfaite' } : null;
     case 'enemyDefeated':
-      return battle !== undefined && escortStays(battle, event.enemy) ? ESCORT_STAYS : null;
+      if (battle === undefined) return null;
+      if (auraGoesOut(battle, event.enemy)) return AURA_OUT;
+      return escortStays(battle, event.enemy) ? ESCORT_STAYS : null;
     default:
       return null;
   }
 }
 
+/** Le mot de la chute du Porte-cierge devant un allié debout (#268, C4). */
+const AURA_OUT: FeedbackText = {
+  tone: 'aura',
+  title: 'L’aura s’éteint',
+  sub: 'Ses alliés reviennent à leurs dégâts',
+};
+
+/**
+ * Le Porte-cierge `enemy` tombe alors qu'un autre ennemi est debout (#268, C4) : son Aura s'éteint.
+ * `battle` est le combat après sa chute.
+ */
+export function auraGoesOut(battle: Battle, enemy: number): boolean {
+  const fallen = battle.enemies[enemy];
+  return (
+    fallen !== undefined &&
+    ENEMIES[fallen.kind].aura !== undefined &&
+    battle.enemies.some((other, index) => index !== enemy && other.hp > 0)
+  );
+}
+
+/** Ce que dit l'Aura sur un ennemi qui la reçoit (#268, C1, C6). */
+export const AURA_BOOST_SPEECH = 'aura du Porte-cierge, +20 % de dégâts';
+
 const BREAK: FeedbackText = { tone: 'break', title: 'Cassure' };
+
+/** L'esquive échoue sur un Balayage (#266, A5) : à la place de l'échec d'une parade imparable. */
+const SWEPT: FeedbackText = {
+  tone: 'sweep',
+  title: 'Balayé',
+  sub: 'L’esquive échoue · pare le Balayage',
+};
 
 /**
  * « Cassure » et pourquoi elle compte : la garde brisée avant l'Exhumation (#258, F4) ; la Mère-ronce
@@ -514,7 +610,9 @@ function brokenText(battle: Battle, enemy: number): FeedbackText {
   if (broken.intent?.category === 'exhume') {
     return { ...BREAK, sub: 'Action perdue · pas d’exhumation' };
   }
-  switch (eliteSignature(broken.kind)) {
+  // La cassure brise la Charge du Bélier de bronze (#266, A9).
+  if (broken.charge === 'broken') return { ...BREAK, sub: 'Charge brisée · pas de gros coup' };
+  switch (enemySignature(broken.kind)) {
     case 'thorns':
       return {
         ...BREAK,
@@ -522,9 +620,26 @@ function brokenText(battle: Battle, enemy: number): FeedbackText {
       };
     case 'sanctuary':
       return { tone: 'ward', title: 'Cassure', sub: 'Sanctuaire rompu · dégâts entiers' };
+    // La Cosse de braise étourdie ne brûlera pas à sa mort (#267, J8).
+    case 'emberBurst':
+      return { ...BREAK, sub: 'Étourdie : plus de Braises à sa mort' };
     default:
       return BREAK;
   }
+}
+
+/** L'ennemi `enemy` vole l'Élan (#267). */
+function thiefAt(battle: Battle | undefined, enemy: number): boolean {
+  const kind = battle?.enemies[enemy]?.kind;
+  return kind !== undefined && ENEMIES[kind].momentumTheft !== undefined;
+}
+
+/** L'issue du dernier impact résolu du coup en cours, `null` hors d'un coup. */
+function lastOutcome(battle: Battle): BlowOutcome | null {
+  const { phase } = battle;
+  if (phase.kind !== 'enemy' || phase.step.kind !== 'attack') return null;
+  const resolved = phase.step.impacts.filter((impact) => impact.outcome !== null);
+  return resolved[resolved.length - 1]?.outcome ?? null;
 }
 
 /** « Victoire », sous-titre « Le Squelette tombe avec lui » : un exhumé tombé avec le Fossoyeur. */
@@ -536,6 +651,18 @@ function fellWithExhumer(battle: Battle, enemy: number): FeedbackText | null {
   const with_ = exhumer !== undefined && FEMININE[exhumer.kind] ? 'elle' : 'lui';
   return { tone: 'victory', title: 'Victoire', sub: `${theName(fallen.kind)} tombe avec ${with_}` };
 }
+
+/**
+ * La ligne du pouce quand la cible est le Bélier de bronze (#266, A6, A8) : comment annuler sa
+ * Charge, tant qu'il charge.
+ */
+export function chargeLineText(mark: ChargeMark | null): string {
+  if (mark === 'first') return ' · brise sa garde pour annuler sa charge';
+  return mark === 'second' ? ' · brise sa garde avant son gros coup' : '';
+}
+
+/** La ligne du pouce pendant l'action de la Charge (#266, A7) : rien à parer. */
+export const CHARGE_ACTION_LINE = 'Aucun coup à parer';
 
 /**
  * La ligne du pouce avec une Élite qui exhume (#258, F2, F5) : comment l'en empêcher quand elle
@@ -583,6 +710,8 @@ export interface DamageFloat {
   readonly kind: 'damage' | 'guard' | 'riposte' | 'burn' | 'secondChance' | 'heal' | 'thorns';
   /** Le Sanctuaire (#259) a réduit le coup : le chiffre porte « ½ ». Absent, non. */
   readonly half?: true;
+  /** L'Aura du Porte-cierge (#268, C2) a renforcé le coup : le chiffre porte sa flamme. */
+  readonly aura?: true;
 }
 
 /** Le « ½ » d'un coup que le Sanctuaire a réduit (#259, B2, B3). */
@@ -591,9 +720,16 @@ const halved = (event: { readonly sanctuary?: true }) =>
 
 export function damageFloat(event: BattleEvent): DamageFloat | null {
   switch (event.type) {
+    // La flamme de l'Aura sur le chiffre d'un coup qu'elle a renforcé (#268, C2).
     case 'blowResolved':
       return event.damage > 0
-        ? { at: 'hero', text: `−${event.damage}`, big: false, kind: 'damage' }
+        ? {
+            at: 'hero',
+            text: `−${event.damage}`,
+            big: false,
+            kind: 'damage',
+            ...(event.aura !== undefined && { aura: true as const }),
+          }
         : null;
     case 'strikeResolved':
       return {
@@ -680,7 +816,7 @@ const WHIFF_TITLES: Readonly<Record<WhiffReason, string>> = {
   empty: 'Dans le vide',
 };
 
-function blowAnnouncement(outcome: BlowOutcome, damage: number): string {
+function blowAnnouncement(outcome: BlowOutcome, damage: number, over: boolean): string {
   switch (outcome) {
     case 'perfectParry':
       return 'Parade parfaite';
@@ -692,6 +828,9 @@ function blowAnnouncement(outcome: BlowOutcome, damage: number): string {
       return `Coup imparable : la parade échoue, ${damages(damage)}`;
     case 'suffered':
       return `Touché, ${damages(damage)}`;
+    case 'sweepDodge':
+      // Pas de déséquilibre quand le coup finit le combat (#266, SW3).
+      return `Balayage : l’esquive échoue, ${damages(damage)}${over ? '' : '. Déséquilibré'}`;
   }
 }
 
@@ -707,11 +846,14 @@ function halfSpeech(event: { readonly sanctuary?: true }): string {
 function brokenSpeech(battle: Battle, enemy: number): string {
   const broken = battle.enemies[enemy]!;
   if (broken.intent?.category === 'exhume') return ' : pas d’exhumation cette manche';
-  switch (eliteSignature(broken.kind)) {
+  if (broken.charge === 'broken') return ' : charge brisée, pas de gros coup';
+  switch (enemySignature(broken.kind)) {
     case 'thorns':
       return ` : ses épines sont sans effet`;
     case 'sanctuary':
       return `. Sanctuaire ${ofName(broken.kind)} rompu : dégâts entiers`;
+    case 'emberBurst':
+      return ' : pas de Brûlure à sa mort';
     default:
       return '';
   }
@@ -738,10 +880,32 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
       return phaseAnnouncement(event.to);
     case 'heroPhaseStarted':
       return event.announced ? phaseAnnouncement('hero') : null;
+    // La bonne défense d'un coup qui en demande une : esquive, ou parade pour un Balayage (#266).
     case 'windUpStarted':
-      return `${name(event.enemy)}, ${ATTACK_NAMES[event.attack]}${ATTACKS[event.attack].perilous ? ', esquive' : ''}`;
-    case 'blowResolved':
-      return blowAnnouncement(event.outcome, event.damage);
+      return `${name(event.enemy)}, ${ATTACK_NAMES[event.attack]}${ATTACKS[event.attack].perilous ? ', esquive' : ATTACKS[event.attack].sweep ? ', parade' : ''}`;
+    case 'chargeStarted':
+      return `${theName(kind(event.enemy))} charge. Gros coup à la manche suivante`;
+    case 'blowResolved': {
+      const blow = blowAnnouncement(event.outcome, event.damage, battle.phase.kind === 'over');
+      // Un coup renforcé par l'Aura qui fait des dégâts (#268, C2).
+      const said =
+        event.damage > 0 && event.aura !== undefined ? `${blow}, aura du Porte-cierge` : blow;
+      // Rien n'est volé sur une parade parfaite (#267, J3).
+      return event.outcome === 'perfectParry' && thiefAt(battle, event.enemy)
+        ? `${said}, rien n’est volé`
+        : said;
+    }
+    // Un renfort qui entre sous l'Aura du Porte-cierge (#268, C6) ; un autre n'est pas dit.
+    case 'reinforcementEntered':
+      return auraBearer(battle.enemies, event.enemy) === null
+        ? null
+        : `Renfort : ${ENEMY_NAMES[event.kind]}. Aura du Porte-cierge, +20 % de dégâts`;
+    // Le Vol d'Élan (#267, J2), dit après les dégâts ; rien à 0 Élan, où rien n'est volé (J4).
+    case 'momentumStolen':
+      return `${theName(kind(event.enemy))} te vole ${event.stolen} Élan, ${event.momentum} sur ${MOMENTUM_MAX}`;
+    // La Cosse de braise tombe : elle éclate (#267, J7), ou s'éteint, étourdie (J9).
+    case 'emberBurstSmothered':
+      return `${name(event.enemy)} tombe, ${agreed(kind(event.enemy), 'étourdi')} : ${FEMININE[kind(event.enemy)] ? 'elle' : 'il'} s’éteint, pas de Brûlure`;
     case 'counterAttacked':
       return `${event.retaliation ? 'Représailles, contre-attaque' : 'Contre-attaque'}, ${damages(event.damage)}${halfSpeech(event)}`;
     // Le nom de l'ennemi est dit : la riposte ne vise pas forcément la cible choisie (#128).
@@ -770,7 +934,7 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
     case 'guardRestored': {
       // Le Sanctuaire revient avec la garde (#259, B5).
       const back =
-        eliteSignature(kind(event.enemy)) === 'sanctuary'
+        enemySignature(kind(event.enemy)) === 'sanctuary'
           ? `. ${theName(kind(event.enemy))} est de nouveau sous Sanctuaire`
           : '';
       return `${name(event.enemy)}, retour en garde${back}`;
@@ -783,6 +947,7 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
       return `${name(event.enemy)} se relève, ${event.hp} PV sur ${battle.enemies[event.enemy]!.maxHp}`;
     // L'Élite tombe devant son escorte (#257, E9) ; une autre chute n'est pas dite.
     case 'enemyDefeated':
+      if (auraGoesOut(battle, event.enemy)) return `${name(event.enemy)} tombe. L’aura s’éteint`;
       return escortStays(battle, event.enemy)
         ? `${name(event.enemy)} tombe. L'escorte reste. Cible : ${name(battle.target)}`
         : null;
@@ -827,7 +992,9 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
         : `Saignement, ${damages(event.loss)}. Saignement terminé`;
     // La Brûlure (#171) ; rien quand les flammes s'éteignent à la fin du combat (`burnCleared`).
     case 'heroBurning':
-      return burnStacksAnnouncement(event.stacks);
+      return event.cause === 'emberBurst' && event.enemy !== undefined
+        ? burstAnnouncement(battle, event.enemy, event.stacks)
+        : burnStacksAnnouncement(event.stacks);
     case 'burnTicked':
       return event.loss > 0 ? `Brûlure, moins ${event.loss} PV` : null;
     case 'burnExtinguished':
@@ -837,6 +1004,13 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
     default:
       return null;
   }
+}
+
+/** « Cosse de braise tombe. Elle éclate : Brûlure, 2 charges, 3 sur 5 » (#267, J7). */
+function burstAnnouncement(battle: Battle, enemy: number, stacks: number): string {
+  const fallen = battle.enemies[enemy]!;
+  const burst = ENEMIES[fallen.kind].emberBurst?.stacks ?? 0;
+  return `${enemyName(fallen)} tombe. ${pronoun(fallen.kind)} éclate : ${burnLabel(burst)}, ${stacks} sur ${MAX_BURN_STACKS}`;
 }
 
 /** Un nom au pluriel : « Phalénides », « Goules ». */
@@ -964,7 +1138,28 @@ export function heroHpText(hp: number, maxHp: number): string {
 export type SignatureMarkState =
   | ExhumeMark
   | { readonly state: 'thorns'; readonly off: boolean }
-  | { readonly state: 'sanctuary'; readonly off: boolean };
+  | { readonly state: 'sanctuary'; readonly off: boolean }
+  | { readonly state: 'sweep' }
+  | { readonly state: 'charge'; readonly mark: ChargeMark }
+  | { readonly state: 'emberBurst'; readonly off: boolean }
+  | { readonly state: 'momentumTheft' }
+  | { readonly state: 'aura'; readonly off: boolean };
+
+/** Les mots de la marque de la Charge (#266, maquette 246, `sigTag`), par état. */
+const CHARGE_TEXTS: Readonly<
+  Record<ChargeMark, { readonly text: string; readonly speech: string }>
+> = {
+  idle: {
+    text: 'Charge',
+    speech: 'charge sur 2 manches : brise sa garde pendant la charge pour l’annuler',
+  },
+  first: { text: 'Charge 1/2', speech: 'charge, manche 1 sur 2 : brise sa garde pour l’annuler' },
+  second: {
+    text: 'Charge 2/2',
+    speech: 'charge, manche 2 sur 2 : gros coup à son tour, brise sa garde pour l’annuler',
+  },
+  broken: { text: 'Charge brisée', speech: 'charge brisée : pas de gros coup' },
+};
 
 /**
  * Ce que dit une marque de signature (maquette 245) : son mot, sous le nom, et sa phrase au lecteur
@@ -976,6 +1171,39 @@ export function signatureText(
   mark: SignatureMarkState,
 ): { readonly text: string; readonly speech: string } {
   const subject = FEMININE[kind] ? 'elle' : 'il';
+  // Le Balayage et la Charge (#266, maquette 246, A1, A6 à A12).
+  if (mark.state === 'sweep') {
+    return { text: 'Balayage', speech: 'balayage : l’esquive échoue, pare' };
+  }
+  if (mark.state === 'charge') return CHARGE_TEXTS[mark.mark];
+  // L'Éclatement et le Vol d'Élan (#267, maquette 246, J1, J6, J8) : « Braises 2 », barré quand
+  // elle est étourdie, et « Vole l'Élan ».
+  if (mark.state === 'emberBurst') {
+    const stacks = ENEMIES[kind].emberBurst?.stacks ?? 0;
+    return {
+      text: `Braises ${stacks}`,
+      speech: mark.off
+        ? `${agreed(kind, 'étourdi')} : pas de Brûlure à sa mort`
+        : `à sa mort, ${stacksText(stacks)} de Brûlure, sauf si ${subject} est ${agreed(kind, 'étourdi')}`,
+    };
+  }
+  if (mark.state === 'momentumTheft') {
+    const amount = ENEMIES[kind].momentumTheft?.amount ?? 0;
+    return {
+      text: "Vole l'Élan",
+      speech: `vole ${amount} Élan à chaque impact qui te touche, bonne parade comprise ; parade parfaite ou esquive : rien n’est volé`,
+    };
+  }
+  // L'Aura du Porte-cierge (#268, maquette 246, C1, C5) : grisée quand il est seul debout.
+  if (mark.state === 'aura') {
+    const percent = ENEMIES[kind].aura?.damagePercent ?? 0;
+    return mark.off
+      ? { text: 'Aura · seul', speech: 'aura : aucun allié debout' }
+      : {
+          text: `Aura +${percent} %`,
+          speech: `aura : ses alliés font ${percent} % de dégâts en plus tant qu’${subject} vit`,
+        };
+  }
   if (mark.state === 'thorns') {
     const { damage } = ENEMIES[kind].thorns ?? { damage: 0 };
     return {
@@ -1013,6 +1241,27 @@ export function signatureText(
   }
 }
 
+/** La règle d'un ennemi ordinaire à mécanique, dans sa bulle (#266, maquette 246, A1, A6). */
+const ORDINARY_RULES = {
+  sweep: 'Son Balayage rase le sol : l’esquive échoue. Quand le trait file au sol vers toi, pare.',
+  charge:
+    'Il charge pendant 2 manches, puis frappe fort. Brise sa garde pendant la charge pour l’annuler.',
+  // Les Jardins de cendre (#267, J1, J6) : les mots de la maquette corrigée pour la Phalène voleuse.
+  emberBurst:
+    'À sa mort, elle t’inflige 2 charges de Brûlure. Brise sa garde avant de l’achever : étourdie, elle s’éteint.',
+  momentumTheft:
+    'Chaque impact qui te touche te vole 1 Élan, même une bonne parade. Seules la parade parfaite et l’esquive le protègent.',
+  // Les Catacombes (#268, C1) : l'Aura dure tant qu'il vit, même étourdi (décision du propriétaire).
+  aura: 'Tant qu’il vit, ses alliés font 20 % de dégâts en plus, même s’il est étourdi. Abats-le d’abord.',
+} as const;
+
+/** Une signature d'ennemi ordinaire à mécanique (#266, #267, #268), avec sa règle dans sa bulle. */
+export function isOrdinarySignature(
+  signature: EnemySignature | null,
+): signature is keyof typeof ORDINARY_RULES {
+  return signature !== null && signature in ORDINARY_RULES;
+}
+
 /** Comment fermer la bulle de première rencontre (#258). */
 const ENCOUNTER_CLOSE = "Touche n'importe où pour fermer. Elle ne reviendra pas.";
 
@@ -1028,8 +1277,10 @@ export function encounterHintText(kind: EnemyKind): {
 } {
   const { thorns, sanctuary } = ENEMIES[kind];
   const subject = FEMININE[kind] ? 'elle' : 'il';
-  const rule =
-    thorns !== undefined
+  const signature = enemySignature(kind);
+  const rule = isOrdinarySignature(signature)
+    ? ORDINARY_RULES[signature]
+    : thorns !== undefined
       ? `Chaque frappe sur ${subject} te coûte ${thorns.damage} PV, une fois par frappe, sauf quand ${subject} est ${agreed(kind, 'étourdi')}.`
       : sanctuary !== undefined
         ? `Sanctuaire : tant que sa garde tient, ${subject} ne subit que la moitié des dégâts. Brise-la.`

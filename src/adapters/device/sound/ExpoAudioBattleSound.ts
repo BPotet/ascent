@@ -39,6 +39,15 @@ export const BATTLE_SOUND_FILES: Readonly<Record<BattleSoundCue, number>> = {
   burnOut: require('./assets/burn-out.wav'),
   wingRustle: require('./assets/wing-rustle.wav'),
   wingRustleLoud: require('./assets/wing-rustle-loud.wav'),
+  glintSweep: require('./assets/glint-sweep.wav'),
+  sweepDrone: require('./assets/sweep-drone.wav'),
+  chargeScrape: require('./assets/charge-scrape.wav'),
+  chargeBroken: require('./assets/charge-broken.wav'),
+  emberBurst: require('./assets/ember-burst.wav'),
+  emberSmother: require('./assets/ember-smother.wav'),
+  momentumSteal: require('./assets/momentum-steal.wav'),
+  candleSnuff: require('./assets/candle-snuff.wav'),
+  ratSqueak: require('./assets/rat-squeak.wav'),
 };
 
 /** La latence attendue est la médiane des 20 dernières mesures, dès qu'il y en a 5. */

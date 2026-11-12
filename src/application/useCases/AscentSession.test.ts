@@ -153,8 +153,9 @@ describe('AscentSession', () => {
   });
 
   it('starts the floor battle with the hero and the enemies of the ascent, and saves it as it goes', async () => {
-    // Une graine où le héros ouvre le combat : la sauvegarde part avec la phase du héros.
-    const { session, store } = setUp(1);
+    // Une graine où le héros ouvre le combat : la sauvegarde part avec la phase du héros (5 depuis
+    // le Porte-cierge et le Rat de crypte, #268 : le 1er groupe de la graine 1 a changé).
+    const { session, store } = setUp(5);
     const ascent = session.begin();
     const battleSession = session.battleSession();
 

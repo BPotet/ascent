@@ -186,3 +186,39 @@ rangement :
   recopie `strikeResolved` champ par champ) ; `counterAttacked` et `bulwarkCountered` sont des
   effets, recopiés tels quels avec lui. La mesure « coups réduits par le Sanctuaire » se lit là.
 - **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7).
+
+## Avenant du 12 novembre 2026 — le Balayage et la Charge (#266, ADR 0027)
+
+- `IntentRecord` accepte `ChargeIntent` ; `ActionKind` et `KIND_OF_INTENT` reçoivent `charge`
+  (l'action de Charge du Bélier de bronze).
+- Les effets `chargeStarted` et `chargeBroken` rejoignent `EFFECT_TYPES`. Le drapeau facultatif
+  `charged: true` est recopié de `windUpStarted` dans `ActionRecord.attack` ; absent, un coup
+  ordinaire.
+- Les mesures du Game Designer se lisent là : Charges commencées (`chargeStarted`), brisées
+  (`chargeBroken`), portées (`attack.charged`) ; Balayages parés, esquivés ou reçus (appuis
+  `defense` d'une action dont `attack.attack` vaut `sweep`, par leur `judgement`, dont
+  `sweepDodge`).
+- **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7).
+
+## Avenant du 12 novembre 2026 — l'Éclatement et le Vol d'Élan (#267, ADR 0028)
+
+- Les effets `emberBurstSmothered` et `momentumStolen` rejoignent `EFFECT_TYPES`. `heroBurning` y
+  est déjà ; il porte désormais, pour un Éclatement, `cause: 'emberBurst'` et `enemy`, recopiés tels
+  quels. Il peut tomber pendant l'action du héros : il est rangé dans l'action en cours (celle du
+  héros pour une frappe, celle de l'ennemi qui portait le coup pour une contre-attaque ou une
+  Riposte).
+- Les mesures du Game Designer se lisent là : Éclatements pris (`heroBurning` de cause
+  `emberBurst`), étouffés (`emberBurstSmothered`), en fin de combat (une Cosse dont l'`enemyDefeated`
+  est suivi de `battleEnded` sans `heroBurning` de cause `emberBurst`) ; Élan volé (la somme des
+  `stolen` de `momentumStolen`).
+- **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7).
+
+## Avenant du 12 novembre 2026 — l'Aura et la Nuée (#268, ADR 0029)
+
+- `ActionRecord.attack` recopie de `windUpStarted` les champs facultatifs `swarm` et `aura`, les
+  dégâts ajoutés par impact par la Nuée et par l'Aura ; absents, 0 (le journal des autres combats
+  ne change pas).
+- Les mesures du Game Designer se lisent là : coups portés sous Aura (les attaques dont
+  `attack.aura` est présent) et dégâts ajoutés (la somme des `aura` par impact) ; Nuée moyenne par
+  Morsure (le `swarm` des attaques `basic` d'un Rat de crypte, 0 quand il est absent).
+- **`BATTLE_LOG_FORMAT_VERSION` reste 2** (§ 7).

@@ -48,8 +48,16 @@ export interface ExhumeIntent {
   readonly slot: number;
 }
 
+/**
+ * L'intention Charge (`ChargeIntent`, #266) : le Bélier de bronze a tiré son Coup de bélier ; il
+ * charge à son action, sans frapper, et le porte à la manche suivante.
+ */
+export interface ChargeIntent {
+  readonly category: 'charge';
+}
+
 /** L'intention (`Intent`) qu'un ennemi tire pour la manche (C2). */
-export type Intent = AttackIntent | GuardIntent | RaiseIntent | ExhumeIntent;
+export type Intent = AttackIntent | GuardIntent | RaiseIntent | ExhumeIntent | ChargeIntent;
 
 /** L'intention Garde rend 30 % de la garde max (C2). */
 export const GUARD_INTENT_PERCENT = 30;
@@ -94,6 +102,8 @@ export interface IntentContext {
   readonly cursed?: boolean;
   /** La place de son Exhumation dans la manche (#258, X1) ; absente ou `null`, il n'exhume pas. */
   readonly exhumeSlot?: number | null;
+  /** Il charge depuis la manche d'avant (#266, CH3) : son coup est celui de la Charge. */
+  readonly charging?: boolean;
 }
 
 /**
@@ -104,6 +114,9 @@ export interface IntentContext {
  * sa garde max du palier. Les dégâts du coup sont ceux du palier (#38), plus 20 % pour un ennemi
  * maudit (#209), jamais son Saignement ni sa Brûlure. Avec une place d'Exhumation (#258), il
  * exhume, ses trois tirages consommés comme pour un coup : l'intention ne change jamais les tirages.
+ * La Charge (#266) : un ennemi non étourdi qui tire un coup avec `charge` annonce la Charge (CH1) ;
+ * à la manche suivante (`charging`), le tirage du coup est ignoré et son coup est celui de la
+ * Charge, préparation et dégâts tirés comme d'habitude (CH3).
  */
 export function drawIntent(
   kind: EnemyKind,
@@ -132,10 +145,15 @@ export function drawIntent(
     return drawn({ category: 'guard', gain: guardGain(maxGuard) });
   }
   // Le coup selon les poids (K6) ; à poids égaux, c'est ⌊tirage × nombre de coups⌋.
-  const move = pickWeighted(
-    moves.map((candidate) => [candidate, candidate.weight ?? 1] as const),
-    moveDraw.value,
-  );
+  const charged = context.charging ? moves.find(({ charge }) => charge) : undefined;
+  const move =
+    charged ??
+    pickWeighted(
+      moves.map((candidate) => [candidate, candidate.weight ?? 1] as const),
+      moveDraw.value,
+    );
+  if (move.charge && charged === undefined && !context.stunned)
+    return drawn({ category: 'charge' });
   const damage = scaleByPercent(move.damage, damagePercent);
   const factor = WIND_UP_MIN_FACTOR + (WIND_UP_MAX_FACTOR - WIND_UP_MIN_FACTOR) * windUpDraw.value;
   return drawn({

@@ -64,7 +64,7 @@ import {
 } from '../pixelArt/sprites/battle/battleEffects';
 import { GROUND_SHADOW_OPACITY, groundShadowImage } from '../pixelArt/sprites/battle/battleStage';
 import { HERO_ANIMATIONS } from '../pixelArt/sprites/battle/heroAnimations';
-import { enemyPose, restPose } from './scene/enemyPose';
+import { enemyPose, restPose, theftFrame } from './scene/enemyPose';
 import { spriteOrigin, type EnemySlot, type SceneGeometry } from './scene/sceneGeometry';
 import { BASH_ADVANCE_DP, heroFrame } from './scene/heroFrame';
 import { SHADOW_STEP_MATRIX, shadowStepGhost, type ShadowStepScene } from './scene/shadowStep';
@@ -236,6 +236,7 @@ const EFFECT_ORDER: readonly EffectKind[] = [
   'glintWhite',
   'glintRed',
   'glintDull',
+  'glintSweep',
   'stars',
   'shield',
   'silverShard',
@@ -476,6 +477,9 @@ function useEnemyLook(
   reducedMotion: boolean,
 ): DerivedValue<SpriteLook<SceneFrame>> {
   const { standing, down, losingAction, rising, downSince, exhumedAt } = enemy;
+  const charging = enemy.charging === true;
+  const chargeBroken = enemy.chargeBroken === true;
+  const { podFall, stealAt } = enemy;
   const { reach } = slot;
   const { x, y } = origin;
   return useDerivedValue<SpriteLook<SceneFrame>>(() => {
@@ -484,8 +488,9 @@ function useEnemyLook(
     const current = timeline.get();
     if (current !== null && current.enemy === index && standing) {
       const pose = enemyPose(current, now, reducedMotion, motions, extras);
+      // La Phalène voleuse saisit le losange volé, à sa place dans son coup (#267, J2).
       return {
-        frame: pose.frame,
+        frame: theftFrame(stealAt, now, extras) ?? pose.frame,
         tier: pose.tier,
         red: pose.red,
         poses: pose.poses,
@@ -498,8 +503,23 @@ function useEnemyLook(
     if (exhuming !== null) {
       return { frame: exhuming.frame, tier: 0, red: false, poses: null, x, y: y + exhuming.sink };
     }
-    const rest = restPose({ standing, down, losingAction, rising, downSince }, index, now, extras);
-    return { frame: rest.frame, tier: 0, red: false, poses: null, x, y };
+    const rest = restPose(
+      {
+        standing,
+        down,
+        losingAction,
+        rising,
+        downSince,
+        charging,
+        chargeBroken,
+        ...(podFall !== undefined && { podFall }),
+      },
+      index,
+      now,
+      extras,
+    );
+    const frame = (standing ? theftFrame(stealAt, now, extras) : null) ?? rest.frame;
+    return { frame, tier: 0, red: false, poses: null, x, y };
   }, [
     exhumedAt,
     clock,
@@ -510,6 +530,10 @@ function useEnemyLook(
     losingAction,
     rising,
     downSince,
+    charging,
+    chargeBroken,
+    podFall,
+    stealAt,
     x,
     y,
     reach,

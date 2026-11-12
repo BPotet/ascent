@@ -24,7 +24,8 @@ export function cursedElite(gauge: FateGauge): boolean {
 /**
  * L'indice de l'ennemi maudit d'un groupe, tiré à égalité parmi sa première ligne, jamais un
  * soutien ni un ennemi de la réserve. Un soutien n'est jamais seul et chaque palier n'en tire qu'un :
- * la première ligne a toujours un candidat.
+ * la première ligne a toujours un candidat. Le Porte-cierge (#268), jamais seul sans être un
+ * soutien, peut être maudit.
  */
 export function drawCursedEnemy(enemies: readonly EnemyKind[], random: RandomState): Drawn<number> {
   const candidates = enemies

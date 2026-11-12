@@ -152,7 +152,16 @@ export type EnemyKind =
   | 'gravedigger'
   // La Mère-ronce et le Bedeau (#259), 3es Élites des Jardins de cendre et du Beffroi.
   | 'brambleMother'
-  | 'beadle';
+  | 'beadle'
+  // Le Bélier de bronze et le Battant de cloche (#266), ennemis ordinaires du Beffroi.
+  | 'bronzeRam'
+  | 'bellClapper'
+  // La Cosse de braise et la Phalène voleuse (#267), ennemis ordinaires des Jardins de cendre.
+  | 'emberPod'
+  | 'thievingMoth'
+  // Le Porte-cierge et le Rat de crypte (#268), ennemis ordinaires des Catacombes.
+  | 'candleBearer'
+  | 'cryptRat';
 
 /** Le Saignement (`Bleed`, prototype #107) : `damage` PV perdus au début de `rounds` manches. */
 export interface Bleed {
@@ -199,6 +208,42 @@ export interface Sanctuary {
   readonly damagePercent: number;
 }
 
+/**
+ * L'Éclatement (`EmberBurst`, #267, champ `burst` du Codex) : quand l'ennemi tombe sous un coup du
+ * héros sans être étourdi avant ce coup, le héros prend `stacks` charges de Brûlure. Ni le palier ni
+ * la malédiction ne les changent. La règle est dans `emberBurst.ts`.
+ */
+export interface EmberBurst {
+  readonly stacks: number;
+}
+
+/**
+ * Le Vol d'Élan (`MomentumTheft`, #267, champ `momentumTheft` du Codex) : chaque impact de ses coups
+ * qui touche le héros lui retire `amount` Élan, au plancher de 0. Ni le palier ni la malédiction ne
+ * le changent. La règle est dans `momentumTheft.ts`.
+ */
+export interface MomentumTheft {
+  readonly amount: number;
+}
+
+/**
+ * L'Aura (`Aura`, #268, champ `aura` du Codex) : tant que le Porte-cierge est debout en première
+ * ligne, étourdi ou non, chaque coup des autres ennemis fait `damagePercent` % de dégâts en plus, au
+ * moins +1, par impact. La règle est dans `aura.ts`.
+ */
+export interface Aura {
+  readonly damagePercent: number;
+}
+
+/**
+ * La Nuée (`Swarm`, #268, champ `swarm` du Codex) : chaque impact d'un Rat de crypte fait
+ * `damagePerAlly` dégâts en plus par autre Rat de crypte debout, non étourdi, en première ligne. La
+ * règle est dans `swarm.ts`.
+ */
+export interface Swarm {
+  readonly damagePerAlly: number;
+}
+
 /** Un coup qu'un ennemi peut porter, avec ses dégâts. */
 export interface Move {
   readonly attack: AttackKind;
@@ -209,6 +254,11 @@ export interface Move {
   readonly bleed?: Bleed;
   /** Les charges de Brûlure qu'il allume (`stacks` du modificateur `burn` du Codex, #171), 1 à 3. */
   readonly burn?: number;
+  /**
+   * La Charge (#266, modificateur `charge` du Codex) : tiré, ce coup s'annonce par l'intention
+   * Charge et part à la manche suivante. La règle est dans `intents.ts` et `Battle.ts`.
+   */
+  readonly charge?: true;
 }
 
 export interface EnemyProfile {
@@ -236,6 +286,14 @@ export interface EnemyProfile {
   readonly thorns?: Thorns;
   /** Le Sanctuaire (#259) ; absent, les coups du héros ne sont pas réduits. */
   readonly sanctuary?: Sanctuary;
+  /** L'Éclatement (#267) ; absent, sa chute ne brûle pas le héros. */
+  readonly emberBurst?: EmberBurst;
+  /** Le Vol d'Élan (#267) ; absent, ses impacts ne volent pas d'Élan. */
+  readonly momentumTheft?: MomentumTheft;
+  /** L'Aura (#268) ; absente, il ne renforce pas les coups de ses alliés. */
+  readonly aura?: Aura;
+  /** La Nuée (#268) ; absente, ses coups ne gagnent rien des siens. */
+  readonly swarm?: Swarm;
 }
 
 /** Le changement de phase d'un boss : à 50 % de ses PV max ou moins (P6, #38). */
@@ -625,6 +683,77 @@ export const ENEMIES: Readonly<Record<EnemyKind, EnemyProfile>> = {
     supports: false,
     sanctuary: { damagePercent: 50 },
   },
+  // Le Beffroi (#266) : valeurs du Codex de l'Atelier recopiées le 12/11/2026, à l'échelle du
+  // palier 1 (le palier multiplie). Coup de front (poids 2), puis Coup de bélier, avec la Charge.
+  // `codex/bronzeRam` v1 (b523363f844f4d98fa77aeebea89182a2a1114d6943998815868680b34f10b96).
+  bronzeRam: {
+    maxHp: 48,
+    maxGuard: 26,
+    moves: [
+      { attack: 'basic', damage: 6, weight: 2 },
+      { attack: 'delayed', damage: 12, charge: true },
+    ],
+    supports: false,
+  },
+  // Grand balayage, un Balayage (poids 2), puis Coup de battant.
+  // `codex/bellClapper` v1 (baa551e284691ee32362b90d7d77ff11efcac1686c12d0e06abe50582247fe47).
+  bellClapper: {
+    maxHp: 46,
+    maxGuard: 30,
+    moves: [
+      { attack: 'sweep', damage: 6, weight: 2 },
+      { attack: 'basic', damage: 5 },
+    ],
+    supports: false,
+  },
+  // Les Jardins de cendre (#267) : valeurs du Codex de l'Atelier recopiées le 12/11/2026, à
+  // l'échelle du palier 1 (le palier multiplie, jamais l'Éclatement ni le Vol d'Élan). Éclat de
+  // coque, puis Crachin de cendre, une chance sur deux. L'Éclatement s'appelle `burst` dans le
+  // Codex : son nom de code est `emberBurst` (`Burst` est l'Étincelle de l'interface).
+  // `codex/emberPod` v1 (6825e825274b932c9e4c726b60a74aee44cfcb3fc4b4c77be5936f2e2cb16464).
+  emberPod: {
+    maxHp: 34,
+    maxGuard: 18,
+    moves: [
+      { attack: 'basic', damage: 6 },
+      { attack: 'double', damage: 3 },
+    ],
+    supports: false,
+    emberBurst: { stacks: 2 },
+  },
+  // Frôlement (poids 2), puis Poudre d'ailes, avec le Vol d'Élan.
+  // `codex/thievingMoth` v1 (c486543b4f7dd50e2c84c8661484e4b4f95bcea6ecee763cc83bc5762fd0bfdd).
+  thievingMoth: {
+    maxHp: 26,
+    maxGuard: 12,
+    moves: [
+      { attack: 'double', damage: 3, weight: 2 },
+      { attack: 'feint', damage: 6 },
+    ],
+    supports: false,
+    momentumTheft: { amount: 1 },
+  },
+  // Coup de cierge ; jamais seul (`TIERS[1]`), sans être un soutien : il peut être maudit (D6).
+  // `codex/candleBearer` v1 (67eac4569760a0f24eaeb22ac3b24ed777e5d32d39a5a9fe6dd1bb734aee0e2a).
+  candleBearer: {
+    maxHp: 36,
+    maxGuard: 24,
+    moves: [{ attack: 'basic', damage: 5 }],
+    supports: false,
+    aura: { damagePercent: 20 },
+  },
+  // Morsure (poids 2), puis Grouillement.
+  // `codex/cryptRat` v1 (5bf7bf53b31354d8795f65e0cb782d19ad4e7811306b05f4fb57009be18f3cf0).
+  cryptRat: {
+    maxHp: 12,
+    maxGuard: 14,
+    moves: [
+      { attack: 'basic', damage: 4, weight: 2 },
+      { attack: 'double', damage: 3 },
+    ],
+    supports: false,
+    swarm: { damagePerAlly: 2 },
+  },
 };
 
 /**
@@ -669,18 +798,36 @@ export const ENEMY_INITIATIVE: Readonly<Record<EnemyKind, number>> = {
   // La Mère-ronce et le Bedeau (#259), celles du Codex.
   brambleMother: 4,
   beadle: 5,
+  // Le Bélier de bronze et le Battant de cloche (#266), celles du Codex.
+  bronzeRam: 3,
+  bellClapper: 4,
+  // La Cosse de braise et la Phalène voleuse (#267), celles du Codex.
+  emberPod: 3,
+  thievingMoth: 9,
+  // Le Porte-cierge et le Rat de crypte (#268), celles du Codex : les Rats agissent avant le héros.
+  candleBearer: 2,
+  cryptRat: 7,
 };
 
 /**
- * La mécanique signature d'une Élite (#258, D8) : celle que montrent sa marque de signature et sa
- * bulle de première rencontre ; `null` pour un ennemi qui n'en a pas. Exhumer pour le Fossoyeur,
- * les Épines pour la Mère-ronce, le Sanctuaire pour le Bedeau (#259).
+ * La mécanique signature d'un ennemi (#258, D8 ; #266, D5) : celle que montrent sa marque de
+ * signature et sa bulle de première rencontre ; `null` pour un ennemi qui n'en a pas. Exhumer pour
+ * le Fossoyeur, les Épines pour la Mère-ronce, le Sanctuaire pour le Bedeau (#259) ; pour un ennemi
+ * ordinaire, le Balayage (un coup `sweep`) ou la Charge (un coup avec `charge`) (#266),
+ * l'Éclatement ou le Vol d'Élan (#267), l'Aura (#268). La Nuée n'en donne pas (#268, D7) : la
+ * mécanique du Rat de crypte, c'est le nombre.
  */
-export type EliteSignature = 'exhume' | 'thorns' | 'sanctuary';
+export type EnemySignature =
+  'exhume' | 'thorns' | 'sanctuary' | 'sweep' | 'charge' | 'emberBurst' | 'momentumTheft' | 'aura';
 
-export function eliteSignature(kind: EnemyKind): EliteSignature | null {
-  const { exhume, thorns, sanctuary } = ENEMIES[kind];
+export function enemySignature(kind: EnemyKind): EnemySignature | null {
+  const { exhume, thorns, sanctuary, emberBurst, momentumTheft, aura, moves } = ENEMIES[kind];
   if (exhume !== undefined) return 'exhume';
   if (thorns !== undefined) return 'thorns';
-  return sanctuary === undefined ? null : 'sanctuary';
+  if (sanctuary !== undefined) return 'sanctuary';
+  if (emberBurst !== undefined) return 'emberBurst';
+  if (momentumTheft !== undefined) return 'momentumTheft';
+  if (aura !== undefined) return 'aura';
+  if (moves.some(({ attack }) => attack === 'sweep')) return 'sweep';
+  return moves.some(({ charge }) => charge === true) ? 'charge' : null;
 }

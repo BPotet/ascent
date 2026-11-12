@@ -46,7 +46,28 @@ const NO_MOTIONS: AttackMotions = {};
 const NO_EXTRAS: readonly ExtraFrame[] = [];
 /** Une image du relèvement : 133 ms. */
 const RISE_FRAME_MS = 133;
+/** La Cosse éclate (ou s'éteint) 200 ms après sa chute (#267, J7), le cierge est soufflé de même (#268, C4). */
+const POD_FALL_MS = 200;
+/** La Phalène saisit le losange 300 ms après l'impact, le temps de son arc, 500 ms (#267, J2). */
+const THEFT_FROM_MS = 300;
+const THEFT_MS = 500;
+
 // Stryker restore all
+
+/**
+ * La pose de la Phalène voleuse qui saisit le losange volé (`steal`, #267, J2), de 300 à 800 ms après
+ * l'impact où elle a volé, si elle a cette pose ; `null` sinon.
+ */
+export function theftFrame(
+  stealAt: number | undefined,
+  now: number,
+  extras: readonly ExtraFrame[],
+): SceneFrame | null {
+  'worklet';
+  if (stealAt === undefined || !extras.includes('steal')) return null;
+  const since = now - stealAt;
+  return since >= THEFT_FROM_MS && since < THEFT_FROM_MS + THEFT_MS ? 'steal' : null;
+}
 
 function clamp01(value: number): number {
   'worklet';
@@ -96,8 +117,17 @@ function pose(
  * La pose du milieu d'une Garde, d'un Relever ou d'une Exhumation : `guard`, `raiseAlly` (#38) ou
  * `exhume` (#258) si l'entité l'a ; `ant1` sinon.
  */
-function supportFrame(timeline: SceneTimeline, extras: readonly ExtraFrame[]): SceneFrame {
+function supportFrame(
+  timeline: SceneTimeline,
+  extras: readonly ExtraFrame[],
+  step: number,
+  reduced: boolean,
+): SceneFrame {
   'worklet';
+  // La Charge (#266, A7) : tête baissée, il gratte le sol ; tenue sans secousse en mouvement réduit.
+  if (timeline.support === 'charge' && extras.includes('charge0')) {
+    return !reduced && step % 2 === 1 && extras.includes('charge1') ? 'charge1' : 'charge0';
+  }
   if (timeline.support === 'guard' && extras.includes('guard')) return 'guard';
   if (timeline.support === 'raise' && extras.includes('raiseAlly')) return 'raiseAlly';
   if (timeline.support === 'exhume' && extras.includes('exhume')) return 'exhume';
@@ -117,8 +147,9 @@ function framePose(
   if (timeline.kind === 'support') {
     const q = clamp01((t - timeline.stepInAt) / Math.max(1, timeline.until - timeline.stepInAt));
     const middle = q > 0.25 && q < 0.75;
+    const step = Math.floor(Math.max(0, t - timeline.stepInAt) / FRAME_MS);
     return pose(
-      middle ? supportFrame(timeline, extras) : 'ant0',
+      middle ? supportFrame(timeline, extras, step, reduced) : 'ant0',
       1,
       false,
       SUPPORT_REACH * Math.sin(Math.PI * q),
@@ -293,24 +324,71 @@ export interface RestPose<Frame extends SceneFrame = EnemyFrame> {
  * `rise1`, 133 ms chacune, puis `idle0`.
  */
 export function restPose(
-  enemy: Pick<SceneEnemy, 'standing' | 'down' | 'losingAction' | 'rising' | 'downSince'>,
+  enemy: Pick<
+    SceneEnemy,
+    | 'standing'
+    | 'down'
+    | 'losingAction'
+    | 'rising'
+    | 'downSince'
+    | 'charging'
+    | 'chargeBroken'
+    | 'podFall'
+    | 'snuffedAt'
+    | 'swarming'
+  >,
   index: number,
   now: number,
 ): RestPose;
 export function restPose(
-  enemy: Pick<SceneEnemy, 'standing' | 'down' | 'losingAction' | 'rising' | 'downSince'>,
+  enemy: Pick<
+    SceneEnemy,
+    | 'standing'
+    | 'down'
+    | 'losingAction'
+    | 'rising'
+    | 'downSince'
+    | 'charging'
+    | 'chargeBroken'
+    | 'podFall'
+    | 'snuffedAt'
+    | 'swarming'
+  >,
   index: number,
   now: number,
   extras: readonly ExtraFrame[] | undefined,
 ): RestPose<SceneFrame>;
 export function restPose(
-  enemy: Pick<SceneEnemy, 'standing' | 'down' | 'losingAction' | 'rising' | 'downSince'>,
+  enemy: Pick<
+    SceneEnemy,
+    | 'standing'
+    | 'down'
+    | 'losingAction'
+    | 'rising'
+    | 'downSince'
+    | 'charging'
+    | 'chargeBroken'
+    | 'podFall'
+    | 'snuffedAt'
+    | 'swarming'
+  >,
   index: number,
   now: number,
   extras: readonly ExtraFrame[] = NO_EXTRAS,
 ): RestPose<SceneFrame> {
   'worklet';
-  if (!enemy.standing) return { frame: 'hurt', stars: null, hop: false };
+  if (!enemy.standing) {
+    // La Cosse de braise éclate ou s'éteint en fumée, 200 ms après sa chute (#267, J7, J9).
+    const fall = enemy.podFall;
+    const burst = fall !== undefined && extras.includes(fall.kind) && now - fall.at >= POD_FALL_MS;
+    if (burst) return { frame: fall.kind, stars: null, hop: false };
+    // Le cierge du Porte-cierge soufflé, 200 ms après sa chute (#268, C4).
+    const snuffed =
+      enemy.snuffedAt !== undefined &&
+      extras.includes('snuffed') &&
+      now - enemy.snuffedAt >= POD_FALL_MS;
+    return { frame: snuffed ? 'snuffed' : 'hurt', stars: null, hop: false };
+  }
   if (enemy.rising !== null) {
     const step = Math.floor((now - enemy.rising.since) / RISE_FRAME_MS);
     const rises =
@@ -320,12 +398,23 @@ export function restPose(
   }
   if (enemy.down) {
     const since = enemy.downSince === null ? Infinity : now - enemy.downSince;
+    // La Charge brisée (#266, A9) : les cornes qui tintent, à la place de `hurt`.
+    const hurt: SceneFrame =
+      enemy.chargeBroken === true && extras.includes('chargeBroken') ? 'chargeBroken' : 'hurt';
     return {
-      frame: since >= 0 && since < 200 ? 'hurt' : 'down',
+      frame: since >= 0 && since < 200 ? hurt : 'down',
       stars: Math.floor(now / 125) % 4,
       hop: enemy.losingAction,
     };
   }
+  // La pose de la Charge tenue d'une manche à l'autre (#266, A8), sans secousse.
+  if (enemy.charging === true && extras.includes('charge0')) {
+    return { frame: 'charge0', stars: null, hop: false };
+  }
   const breath = Math.floor((now + index * 130) / 250) % 2;
+  // Le grouillement d'un Rat de crypte en Nuée (#268, C7), à la place de sa respiration.
+  if (enemy.swarming === true && extras.includes('swarm0') && extras.includes('swarm1')) {
+    return { frame: breath === 1 ? 'swarm1' : 'swarm0', stars: null, hop: false };
+  }
   return { frame: breath === 1 ? 'idle1' : 'idle0', stars: null, hop: false };
 }

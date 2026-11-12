@@ -1,14 +1,19 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import type { EliteSignature } from '../../../domain/battle/combatants';
+import type { EnemySignature } from '../../../domain/battle/combatants';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { textFont } from '../pixelArt/pixelTypography';
 import type { SignatureView } from '../state/battleView';
 import { battleColors } from '../theme/battleColors';
 
-/** Les teintes de chaque mécanique (maquette 245) : l'os, la ronce, l'acier. */
+/**
+ * Les teintes de chaque mécanique (maquette 245) : l'os, la ronce, l'acier ; le cyan du Balayage et
+ * le bronze chauffé de la Charge (maquette 246, #266) ; la braise de la Brûlure pour la Cosse de
+ * braise, l'or de l'Élan pour la Phalène voleuse (#267) : ce sont les ressources du joueur ; la
+ * lueur citron de l'Aura (#268).
+ */
 const TINTS: Readonly<
-  Record<EliteSignature, { readonly line: string; readonly fill: string; readonly ink: string }>
+  Record<EnemySignature, { readonly line: string; readonly fill: string; readonly ink: string }>
 > = {
   exhume: {
     line: battleColors.grave,
@@ -25,13 +30,43 @@ const TINTS: Readonly<
     fill: battleColors.wardBackground,
     ink: battleColors.onWard,
   },
+  sweep: {
+    line: battleColors.sweep,
+    fill: battleColors.sweepBackground,
+    ink: battleColors.onSweep,
+  },
+  charge: {
+    line: battleColors.charge,
+    fill: battleColors.chargeBackground,
+    ink: battleColors.onCharge,
+  },
+  emberBurst: {
+    line: battleColors.burn,
+    fill: battleColors.burnBg,
+    ink: battleColors.onBurn,
+  },
+  momentumTheft: {
+    line: battleColors.stealLine,
+    fill: battleColors.stealBackground,
+    ink: battleColors.onSteal,
+  },
+  aura: {
+    line: battleColors.aura,
+    fill: battleColors.auraBackground,
+    ink: battleColors.onAura,
+  },
 };
 
 /** Le glyphe d'une marque allumée : l'os clair, le vert ronce, l'acier (maquette 245, `sigTag`). */
-const GLYPH_TINTS: Readonly<Record<EliteSignature, string>> = {
+const GLYPH_TINTS: Readonly<Record<EnemySignature, string>> = {
   exhume: battleColors.onGrave,
   thorns: battleColors.thornLight,
   sanctuary: battleColors.ward,
+  sweep: battleColors.sweep,
+  charge: battleColors.charge,
+  emberBurst: battleColors.burnRing,
+  momentumTheft: battleColors.steal,
+  aura: battleColors.aura,
 };
 
 /**
@@ -73,7 +108,7 @@ export function SignatureMark({
           styles.text,
           { color: tint.ink },
           off && styles.offText,
-          off && variant === 'thorns' && styles.struck,
+          off && (variant === 'thorns' || variant === 'emberBurst') && styles.struck,
         ]}
       >
         {text}
@@ -102,6 +137,7 @@ const styles = StyleSheet.create({
   off: { backgroundColor: 'transparent', borderColor: battleColors.signatureOffLine },
   text: { fontFamily: textFont.bold, fontSize: 10.5, lineHeight: 14 },
   offText: { color: battleColors.signatureOff },
-  // `.ptag.thorn.off s` : « Épines 2 » barré tant qu'elle est étourdie.
+  // `.ptag.thorn.off s`, `.ptag.off s` : « Épines 2 » et « Braises 2 » (#267) barrés tant qu'elle
+  // est étourdie.
   struck: { textDecorationLine: 'line-through' },
 });
