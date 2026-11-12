@@ -1,6 +1,6 @@
 // Le multiplicateur de palier (`TierMultiplier`, #38, § 3.1 de la note du Game Designer) : chaque
 // valeur multipliée puis arrondie à l'entier inférieur, séparément, en entiers.
-import { NO_TIER_MULTIPLIER, scaleByPercent } from './tierMultiplier';
+import { NO_TIER_MULTIPLIER, boostByPercent, scaleByPercent } from './tierMultiplier';
 
 describe('scaleByPercent (#38)', () => {
   it.each([
@@ -32,5 +32,25 @@ describe('scaleByPercent (#38)', () => {
 
   it('multiplies nothing without a tier multiplier', () => {
     expect(NO_TIER_MULTIPLIER).toEqual({ hpPercent: 100, guardPercent: 100 });
+  });
+});
+
+// La formule commune de la malédiction et de l'Aura (#268, D2) : la valeur plus N %, au moins +1.
+describe('boostByPercent (#268)', () => {
+  it.each([
+    [5, 20, 6],
+    [6, 20, 7],
+    [3, 20, 4],
+    [10, 20, 12],
+    [50, 20, 60],
+    [9, 20, 10],
+  ])('turns %d plus %d % into %d, the bonus rounded down', (value, percent, boosted) => {
+    expect(boostByPercent(value, percent)).toBe(boosted);
+  });
+
+  it('adds at least 1, even when the percentage rounds down to 0', () => {
+    expect(boostByPercent(1, 20)).toBe(2);
+    expect(boostByPercent(4, 15)).toBe(5);
+    expect(boostByPercent(0, 20)).toBe(1);
   });
 });
