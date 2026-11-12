@@ -75,7 +75,7 @@ describe('Group composition (P3)', () => {
     expect(Math.max(...counts)).toBe(3);
   });
 
-  it('fills the rest with Ghouls, and every type is possible', () => {
+  it('can draw every enemy of tier 1, the Candle bearer and the Crypt rat included (#268)', () => {
     expect(new Set(groups(3).flat())).toEqual(
       new Set([
         'ghoul',
