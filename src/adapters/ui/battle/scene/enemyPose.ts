@@ -46,6 +46,26 @@ const NO_MOTIONS: AttackMotions = {};
 const NO_EXTRAS: readonly ExtraFrame[] = [];
 /** Une image du relèvement : 133 ms. */
 const RISE_FRAME_MS = 133;
+/** La Cosse éclate (ou s'éteint) 200 ms après sa chute (#267, maquette J7). */
+const POD_FALL_MS = 200;
+/** La Phalène saisit le losange 300 ms après l'impact, le temps de son arc, 500 ms (#267, J2). */
+const THEFT_FROM_MS = 300;
+const THEFT_MS = 500;
+
+/**
+ * La pose de la Phalène voleuse qui saisit le losange volé (`steal`, #267, J2), de 300 à 800 ms après
+ * l'impact où elle a volé, si elle a cette pose ; `null` sinon.
+ */
+export function theftFrame(
+  stealAt: number | undefined,
+  now: number,
+  extras: readonly ExtraFrame[],
+): SceneFrame | null {
+  'worklet';
+  if (stealAt === undefined || !extras.includes('steal')) return null;
+  const since = now - stealAt;
+  return since >= THEFT_FROM_MS && since < THEFT_FROM_MS + THEFT_MS ? 'steal' : null;
+}
 // Stryker restore all
 
 function clamp01(value: number): number {
@@ -305,7 +325,14 @@ export interface RestPose<Frame extends SceneFrame = EnemyFrame> {
 export function restPose(
   enemy: Pick<
     SceneEnemy,
-    'standing' | 'down' | 'losingAction' | 'rising' | 'downSince' | 'charging' | 'chargeBroken'
+    | 'standing'
+    | 'down'
+    | 'losingAction'
+    | 'rising'
+    | 'downSince'
+    | 'charging'
+    | 'chargeBroken'
+    | 'podFall'
   >,
   index: number,
   now: number,
@@ -313,7 +340,14 @@ export function restPose(
 export function restPose(
   enemy: Pick<
     SceneEnemy,
-    'standing' | 'down' | 'losingAction' | 'rising' | 'downSince' | 'charging' | 'chargeBroken'
+    | 'standing'
+    | 'down'
+    | 'losingAction'
+    | 'rising'
+    | 'downSince'
+    | 'charging'
+    | 'chargeBroken'
+    | 'podFall'
   >,
   index: number,
   now: number,
@@ -322,14 +356,26 @@ export function restPose(
 export function restPose(
   enemy: Pick<
     SceneEnemy,
-    'standing' | 'down' | 'losingAction' | 'rising' | 'downSince' | 'charging' | 'chargeBroken'
+    | 'standing'
+    | 'down'
+    | 'losingAction'
+    | 'rising'
+    | 'downSince'
+    | 'charging'
+    | 'chargeBroken'
+    | 'podFall'
   >,
   index: number,
   now: number,
   extras: readonly ExtraFrame[] = NO_EXTRAS,
 ): RestPose<SceneFrame> {
   'worklet';
-  if (!enemy.standing) return { frame: 'hurt', stars: null, hop: false };
+  if (!enemy.standing) {
+    // La Cosse de braise éclate ou s'éteint en fumée, 200 ms après sa chute (#267, J7, J9).
+    const fall = enemy.podFall;
+    const burst = fall !== undefined && extras.includes(fall.kind) && now - fall.at >= POD_FALL_MS;
+    return { frame: burst ? fall.kind : 'hurt', stars: null, hop: false };
+  }
   if (enemy.rising !== null) {
     const step = Math.floor((now - enemy.rising.since) / RISE_FRAME_MS);
     const rises =

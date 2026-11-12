@@ -15,9 +15,11 @@ import {
   startingInitiative,
   type Armor,
   type EnemyKind,
+  type EnemySignature,
   type HeroKind,
   type Weapon,
 } from '../../../domain/battle/combatants';
+import { MAX_BURN_STACKS } from '../../../domain/battle/burn';
 import type { Stunned } from '../../../domain/battle/guard';
 import { MOMENTUM_MAX } from '../../../domain/battle/momentum';
 import { POWERS, basePower, kindledCost, type PowerKind } from '../../../domain/battle/powers';
@@ -454,7 +456,12 @@ export interface FeedbackText {
     | 'ward'
     // Le cyan du Balayage et le bronze de la Charge (#266) : « Balayé », « Il charge ».
     | 'sweep'
-    | 'charge';
+    | 'charge'
+    // Les Jardins de cendre (#267) : la braise de « Elle éclate », la fumée grise de « Éteinte »,
+    // l'or de l'Élan volé sur une bonne parade.
+    | 'ember'
+    | 'smoke'
+    | 'steal';
   readonly title: string;
   /** La ligne sous le mot : « Attisé · 1 Élan » pour un pouvoir attisé (#237). */
   readonly sub?: string;
@@ -483,7 +490,23 @@ export function feedbackText(event: BattleEvent, battle?: Battle): FeedbackText 
   switch (event.type) {
     case 'blowResolved':
       if (event.outcome === 'sweepDodge') return SWEPT;
-      return event.outcome === 'perfectParry' ? { tone: 'perfect', title: 'Parfait' } : null;
+      if (event.outcome !== 'perfectParry') return null;
+      // Rien n'est volé sur une parade parfaite (#267, J3).
+      return thiefAt(battle, event.enemy)
+        ? { tone: 'perfect', title: 'Parfait', sub: 'Parade parfaite : rien n’est volé · +1 Élan' }
+        : { tone: 'perfect', title: 'Parfait' };
+    // L'Éclatement de la Cosse de braise (#267, J7) ; étouffée, elle s'éteint (J9).
+    case 'heroBurning':
+      return event.cause === 'emberBurst'
+        ? { tone: 'ember', title: 'Elle éclate', sub: burnChipText(event.stacks) }
+        : null;
+    case 'emberBurstSmothered':
+      return { tone: 'smoke', title: 'Éteinte', sub: 'Achevée étourdie · pas de Brûlure' };
+    // Une bonne parade laisse voler l'Élan (#267, J2b) : le sous-titre le dit.
+    case 'momentumStolen':
+      return battle !== undefined && lastOutcome(battle) === 'parry'
+        ? { tone: 'steal', title: 'Parade', sub: `Bonne parade : ${event.stolen} Élan volé` }
+        : null;
     // Le Bélier de bronze charge (#266, A7) : pas de coup à parer.
     case 'chargeStarted':
       return {
@@ -559,9 +582,26 @@ function brokenText(battle: Battle, enemy: number): FeedbackText {
       };
     case 'sanctuary':
       return { tone: 'ward', title: 'Cassure', sub: 'Sanctuaire rompu · dégâts entiers' };
+    // La Cosse de braise étourdie ne brûlera pas à sa mort (#267, J8).
+    case 'emberBurst':
+      return { ...BREAK, sub: 'Étourdie : plus de Braises à sa mort' };
     default:
       return BREAK;
   }
+}
+
+/** L'ennemi `enemy` vole l'Élan (#267). */
+function thiefAt(battle: Battle | undefined, enemy: number): boolean {
+  const kind = battle?.enemies[enemy]?.kind;
+  return kind !== undefined && ENEMIES[kind].momentumTheft !== undefined;
+}
+
+/** L'issue du dernier impact résolu du coup en cours, `null` hors d'un coup. */
+function lastOutcome(battle: Battle): BlowOutcome | null {
+  const { phase } = battle;
+  if (phase.kind !== 'enemy' || phase.step.kind !== 'attack') return null;
+  const resolved = phase.step.impacts.filter((impact) => impact.outcome !== null);
+  return resolved[resolved.length - 1]?.outcome ?? null;
 }
 
 /** « Victoire », sous-titre « Le Squelette tombe avec lui » : un exhumé tombé avec le Fossoyeur. */
@@ -765,6 +805,8 @@ function brokenSpeech(battle: Battle, enemy: number): string {
       return ` : ses épines sont sans effet`;
     case 'sanctuary':
       return `. Sanctuaire ${ofName(broken.kind)} rompu : dégâts entiers`;
+    case 'emberBurst':
+      return ' : pas de Brûlure à sa mort';
     default:
       return '';
   }
@@ -796,8 +838,19 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
       return `${name(event.enemy)}, ${ATTACK_NAMES[event.attack]}${ATTACKS[event.attack].perilous ? ', esquive' : ATTACKS[event.attack].sweep ? ', parade' : ''}`;
     case 'chargeStarted':
       return `${theName(kind(event.enemy))} charge. Gros coup à la manche suivante`;
-    case 'blowResolved':
-      return blowAnnouncement(event.outcome, event.damage, battle.phase.kind === 'over');
+    case 'blowResolved': {
+      const said = blowAnnouncement(event.outcome, event.damage, battle.phase.kind === 'over');
+      // Rien n'est volé sur une parade parfaite (#267, J3).
+      return event.outcome === 'perfectParry' && thiefAt(battle, event.enemy)
+        ? `${said}, rien n’est volé`
+        : said;
+    }
+    // Le Vol d'Élan (#267, J2), dit après les dégâts ; rien à 0 Élan, où rien n'est volé (J4).
+    case 'momentumStolen':
+      return `${theName(kind(event.enemy))} te vole ${event.stolen} Élan, ${event.momentum} sur ${MOMENTUM_MAX}`;
+    // La Cosse de braise tombe : elle éclate (#267, J7), ou s'éteint, étourdie (J9).
+    case 'emberBurstSmothered':
+      return `${name(event.enemy)} tombe, ${agreed(kind(event.enemy), 'étourdi')} : ${FEMININE[kind(event.enemy)] ? 'elle' : 'il'} s’éteint, pas de Brûlure`;
     case 'counterAttacked':
       return `${event.retaliation ? 'Représailles, contre-attaque' : 'Contre-attaque'}, ${damages(event.damage)}${halfSpeech(event)}`;
     // Le nom de l'ennemi est dit : la riposte ne vise pas forcément la cible choisie (#128).
@@ -883,7 +936,9 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
         : `Saignement, ${damages(event.loss)}. Saignement terminé`;
     // La Brûlure (#171) ; rien quand les flammes s'éteignent à la fin du combat (`burnCleared`).
     case 'heroBurning':
-      return burnStacksAnnouncement(event.stacks);
+      return event.cause === 'emberBurst' && event.enemy !== undefined
+        ? burstAnnouncement(battle, event.enemy, event.stacks)
+        : burnStacksAnnouncement(event.stacks);
     case 'burnTicked':
       return event.loss > 0 ? `Brûlure, moins ${event.loss} PV` : null;
     case 'burnExtinguished':
@@ -893,6 +948,13 @@ export function announcement(event: BattleEvent, battle: Battle): string | null 
     default:
       return null;
   }
+}
+
+/** « Cosse de braise tombe. Elle éclate : Brûlure, 2 charges, 3 sur 5 » (#267, J7). */
+function burstAnnouncement(battle: Battle, enemy: number, stacks: number): string {
+  const fallen = battle.enemies[enemy]!;
+  const burst = ENEMIES[fallen.kind].emberBurst?.stacks ?? 0;
+  return `${enemyName(fallen)} tombe. ${pronoun(fallen.kind)} éclate : ${burnLabel(burst)}, ${stacks} sur ${MAX_BURN_STACKS}`;
 }
 
 /** Un nom au pluriel : « Phalénides », « Goules ». */
@@ -1022,7 +1084,9 @@ export type SignatureMarkState =
   | { readonly state: 'thorns'; readonly off: boolean }
   | { readonly state: 'sanctuary'; readonly off: boolean }
   | { readonly state: 'sweep' }
-  | { readonly state: 'charge'; readonly mark: ChargeMark };
+  | { readonly state: 'charge'; readonly mark: ChargeMark }
+  | { readonly state: 'emberBurst'; readonly off: boolean }
+  | { readonly state: 'momentumTheft' };
 
 /** Les mots de la marque de la Charge (#266, maquette 246, `sigTag`), par état. */
 const CHARGE_TEXTS: Readonly<
@@ -1055,6 +1119,24 @@ export function signatureText(
     return { text: 'Balayage', speech: 'balayage : l’esquive échoue, pare' };
   }
   if (mark.state === 'charge') return CHARGE_TEXTS[mark.mark];
+  // L'Éclatement et le Vol d'Élan (#267, maquette 246, J1, J6, J8) : « Braises 2 », barré quand
+  // elle est étourdie, et « Vole l'Élan ».
+  if (mark.state === 'emberBurst') {
+    const stacks = ENEMIES[kind].emberBurst?.stacks ?? 0;
+    return {
+      text: `Braises ${stacks}`,
+      speech: mark.off
+        ? `${agreed(kind, 'étourdi')} : pas de Brûlure à sa mort`
+        : `à sa mort, ${stacksText(stacks)} de Brûlure, sauf si ${subject} est ${agreed(kind, 'étourdi')}`,
+    };
+  }
+  if (mark.state === 'momentumTheft') {
+    const amount = ENEMIES[kind].momentumTheft?.amount ?? 0;
+    return {
+      text: "Vole l'Élan",
+      speech: `vole ${amount} Élan à chaque impact qui te touche, bonne parade comprise ; parade parfaite ou esquive : rien n’est volé`,
+    };
+  }
   if (mark.state === 'thorns') {
     const { damage } = ENEMIES[kind].thorns ?? { damage: 0 };
     return {
@@ -1097,7 +1179,19 @@ const ORDINARY_RULES = {
   sweep: 'Son Balayage rase le sol : l’esquive échoue. Quand le trait file au sol vers toi, pare.',
   charge:
     'Il charge pendant 2 manches, puis frappe fort. Brise sa garde pendant la charge pour l’annuler.',
+  // Les Jardins de cendre (#267, J1, J6) : les mots de la maquette corrigée pour la Phalène voleuse.
+  emberBurst:
+    'À sa mort, elle t’inflige 2 charges de Brûlure. Brise sa garde avant de l’achever : étourdie, elle s’éteint.',
+  momentumTheft:
+    'Chaque impact qui te touche te vole 1 Élan, même une bonne parade. Seules la parade parfaite et l’esquive le protègent.',
 } as const;
+
+/** Une signature d'ennemi ordinaire à mécanique (#266, #267), avec sa règle dans sa bulle. */
+export function isOrdinarySignature(
+  signature: EnemySignature | null,
+): signature is keyof typeof ORDINARY_RULES {
+  return signature !== null && signature in ORDINARY_RULES;
+}
 
 /** Comment fermer la bulle de première rencontre (#258). */
 const ENCOUNTER_CLOSE = "Touche n'importe où pour fermer. Elle ne reviendra pas.";
@@ -1115,14 +1209,13 @@ export function encounterHintText(kind: EnemyKind): {
   const { thorns, sanctuary } = ENEMIES[kind];
   const subject = FEMININE[kind] ? 'elle' : 'il';
   const signature = enemySignature(kind);
-  const rule =
-    signature === 'sweep' || signature === 'charge'
-      ? ORDINARY_RULES[signature]
-      : thorns !== undefined
-        ? `Chaque frappe sur ${subject} te coûte ${thorns.damage} PV, une fois par frappe, sauf quand ${subject} est ${agreed(kind, 'étourdi')}.`
-        : sanctuary !== undefined
-          ? `Sanctuaire : tant que sa garde tient, ${subject} ne subit que la moitié des dégâts. Brise-la.`
-          : null;
+  const rule = isOrdinarySignature(signature)
+    ? ORDINARY_RULES[signature]
+    : thorns !== undefined
+      ? `Chaque frappe sur ${subject} te coûte ${thorns.damage} PV, une fois par frappe, sauf quand ${subject} est ${agreed(kind, 'étourdi')}.`
+      : sanctuary !== undefined
+        ? `Sanctuaire : tant que sa garde tient, ${subject} ne subit que la moitié des dégâts. Brise-la.`
+        : null;
   if (rule !== null) {
     return {
       title: ENEMY_NAMES[kind],

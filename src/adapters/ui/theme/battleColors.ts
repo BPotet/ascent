@@ -119,6 +119,15 @@ export const battleColors = {
   chargeDark: '#A0703F',
   chargeBackground: '#2E2114',
   onCharge: '#FFE2C4',
+  /**
+   * La Phalène voleuse (#267, maquette 246, `.ptag.steal`) : l'or de l'Élan (`--gold`, `--gold-d`)
+   * sur l'ardoise de sa marque, et le losange qui file. La Cosse de braise prend la braise de la
+   * Brûlure (`burn`, `burnBg`, `onBurn`, `burnRing`).
+   */
+  steal: '#F2D49B',
+  stealLine: '#B98E5A',
+  stealBackground: '#262A36',
+  onSteal: '#EEEAE0',
   /** La surface relevée de la bulle de première rencontre (`--raised`) et son texte (`--light`). */
   raised: '#2A3150',
   onRaised: '#FFF3D6',
