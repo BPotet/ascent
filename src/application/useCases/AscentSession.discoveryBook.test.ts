@@ -277,6 +277,50 @@ describe('AscentSession with the discovery book', () => {
     expect(view.status === 'ready' && view.bestiary.filled).toBe(1);
   });
 
+  describe('a reading of the book that failed at the start (#295, G2)', () => {
+    /** La Goule à 1 PV en première ligne, le Nécromancien en réserve pour la remplacer. */
+    const resumable = (values: Store) => {
+      const { ascent, battle } = savedBattle((started) => withEnemyAt(started, 0, { hp: 1 }));
+      values.values.set(ASCENT_KEY, JSON.stringify({ version: 1, ascent, battle }));
+    };
+    const ghoulReplaced = (battle: Battle) =>
+      battle.enemies.some(({ kind }) => kind === 'necromancer');
+
+    it('retries it by itself, so a ghoul replaced by a reinforcement before the close is kept', async () => {
+      const values = store();
+      resumable(values);
+      let reads = 0;
+      values.failGet = (key) => key === DISCOVERY_BOOK_KEY && (reads += 1) === 1;
+      const { session, clock, book } = setUp(values);
+      await session.load();
+      await flush();
+      expect(book.current()).toEqual({ status: 'failed' });
+      const battleSession = session.battleSession();
+      await battleSession.start();
+      await play(battleSession, clock, ghoulReplaced);
+      // Fermeture : de nouvelles sessions sur le même stockage.
+      const reopened = setUp(values);
+      await reopened.session.load();
+      await reopened.book.load();
+      expect(statesOf(storedBook(values))).toMatchObject({ ghoul: 'defeated' });
+    });
+
+    it('writes nothing while the reading still fails, and saves the ascent', async () => {
+      const values = store();
+      resumable(values);
+      values.failGet = (key) => key === DISCOVERY_BOOK_KEY;
+      const { session, clock, book } = setUp(values);
+      await session.load();
+      const battleSession = session.battleSession();
+      await battleSession.start();
+      await play(battleSession, clock, ghoulReplaced);
+      expect(values.writes.some(([key]) => key === DISCOVERY_BOOK_KEY)).toBe(false);
+      const saved = JSON.parse(values.values.get(ASCENT_KEY)!) as { battle: Battle };
+      expect(saved.battle.enemies.map(({ kind }) => kind)).toContain('necromancer');
+      expect(book.current()).toEqual({ status: 'failed' });
+    });
+  });
+
   it('reads the front line of a battle saved without a book at its resume, from the saved battle (B1 e)', async () => {
     const { ascent, battle } = savedBattle((started) => withEnemyAt(started, 0, { hp: 0 }));
     const values = store({ [ASCENT_KEY]: JSON.stringify({ version: 1, ascent, battle }) });
