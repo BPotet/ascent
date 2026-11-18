@@ -4,6 +4,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import type { GestureResponderEvent, PanResponderGestureState } from 'react-native';
 
+import { swipe } from '../testing/swipe';
 import { ItemSheet, closesOnSwipe, swipeDownToClose } from './ItemSheet';
 
 async function show(item: 'hammer' | 'hasteAmulet' = 'hammer') {
@@ -66,10 +67,15 @@ describe('ItemSheet (#284, O3)', () => {
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
-  it('gives the sheet the handlers of the swipe down', async () => {
-    await show();
+  it('closes on a swipe down far enough, not on a short or upward one', async () => {
+    const { onClose } = await show();
+    const sheet = screen.getByTestId('item-sheet');
 
-    expect(screen.getByTestId('item-sheet').props.onResponderRelease).toEqual(expect.any(Function));
+    await swipe(sheet, 40, 400);
+    await swipe(sheet, -150, 200);
+    expect(onClose).not.toHaveBeenCalled();
+    await swipe(sheet, 120, 400);
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
 
