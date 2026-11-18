@@ -646,7 +646,6 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
     // 2 cases et leur écart tiennent dans la largeur utile (360 dp moins les marges de 16 dp).
     expect(2 * width + 8).toBeLessThanOrEqual(328);
     expect(3 * width + 16).toBeGreaterThan(328);
-    largeText(1);
   });
 };
 

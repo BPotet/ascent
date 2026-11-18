@@ -1,7 +1,7 @@
 // Le pied de la tour et le carnet de découvertes (#282, maquette 278, T1 à T3) : « Le carnet » sur
 // la ligne de « Le camp », sous « Commencer l'ascension » ou « Reprendre l'ascension », avec le
 // compteur d'or des entrées nouvelles ; sans `book` ni `onBook`, rien ne change.
-import { fireEvent, screen, within } from '@testing-library/react-native';
+import { act, fireEvent, screen, within } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import { DISCOVERY_BOOK_KEY } from '../../../application/useCases/DiscoveryBookSession';
@@ -109,7 +109,9 @@ describe('TowerFootScreen and the discovery book (#282)', () => {
     const { discoveryBook } = await show({ stored: MARKED });
 
     await screen.findByRole('button', { name: 'Le carnet, 2 nouvelles pages' });
-    await discoveryBook.leave();
+    await act(async () => {
+      await discoveryBook.leave();
+    });
     expect(await screen.findByRole('button', { name: 'Le carnet' })).toBeOnTheScreen();
     expect(screen.queryByTestId('tower-foot-book-count')).not.toBeOnTheScreen();
   });
