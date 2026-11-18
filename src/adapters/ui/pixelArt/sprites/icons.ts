@@ -607,6 +607,46 @@ const DRAWN = {
   // Les glyphes de la jauge (#41), table `PAT` de la maquette `docs/mockups/205-jauge-faveur/`,
   // centrés sur 8 × 8 pixels d'art : crâne, bénédiction, objet, Rare, fatigue, cadenas, horloge, « + »
   // et « = » des crans du cadran.
+  // Le carnet de découvertes (#282, maquette 278) : le livre de « Le carnet » et de la ligne du
+  // carnet, l'œil d'une entrée rencontrée et le point d'interrogation d'une entrée « ??? ».
+  book12: [
+    '............',
+    '............',
+    '............',
+    'XXXXX.XXXXX.',
+    'X...X.X...X.',
+    'X.X.X.X.X.X.',
+    'X...X.X...X.',
+    'X.X.X.X.X.X.',
+    'X...X.X...X.',
+    'XXXXXXXXXXX.',
+    '............',
+    '............',
+  ],
+  eye8: [
+    '........',
+    '..XXX...',
+    '.X...X..',
+    'X..X..X.',
+    '.X...X..',
+    '..XXX...',
+    '........',
+    '........',
+  ],
+  qm12: [
+    '............',
+    '...XXXXX....',
+    '..XX...XX...',
+    '..XX...XX...',
+    '.......XX...',
+    '......XX....',
+    '.....XX.....',
+    '.....XX.....',
+    '............',
+    '.....XX.....',
+    '.....XX.....',
+    '............',
+  ],
   skull: [
     '........',
     '.XXXXX..',

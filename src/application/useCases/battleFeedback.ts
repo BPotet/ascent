@@ -2,6 +2,7 @@ import { ATTACKS } from '../../domain/battle/attacks';
 import { isStanding, type Battle } from '../../domain/battle/Battle';
 import type { BattleEvent, BlowOutcome } from '../../domain/battle/BattleEvent';
 import { ENEMIES, type EnemyKind } from '../../domain/battle/combatants';
+import { kindsAlong } from '../../domain/battle/enemyKinds';
 import type { GlintKind } from '../../domain/battle/glints';
 import type { BattleHapticCue } from '../ports/BattleHaptics';
 import type { BattleSoundCue } from '../ports/BattleSound';
@@ -242,9 +243,9 @@ export function feedbacksFor(
   const afterBleed = bledIn(events) ? BURN_AFTER_BLEED_MS : 0;
   const afterBurn = summonEntryDelay(events);
   const firstEntry = events.findIndex((event) => event.type === 'summonEntered');
-  const kinds: (EnemyKind | undefined)[] = before?.enemies.map((enemy) => enemy.kind) ?? [];
+  const kinds = kindsAlong(before, events);
   return events.map((event, index) => {
-    const feedback = feedbackFor(event, contextOf(event, kinds, after));
+    const feedback = feedbackFor(event, contextOf(event, kinds[index] ?? null, after));
     if (event.type === 'summonEntered') {
       if (index !== firstEntry) return NONE;
       return afterBurn === 0 ? feedback : { ...feedback, delayMs: afterBurn };
@@ -258,19 +259,18 @@ export function feedbacksFor(
   });
 }
 
-/** Le contexte d'un événement : le nom de code de son ennemi, suivi au fil des entrées (#268). */
+/**
+ * Le contexte d'un événement : le nom de code de son ennemi (`kind`), suivi au fil des entrées par
+ * `kindsAlong` (#268, #282), et si un autre ennemi est debout après la mise à jour.
+ */
 function contextOf(
   event: BattleEvent,
-  kinds: (EnemyKind | undefined)[],
+  kind: EnemyKind | null,
   after: Battle | null,
 ): FeedbackContext {
-  if (event.type === 'reinforcementEntered' || event.type === 'summonEntered') {
-    kinds[event.enemy] = event.kind;
-  }
-  if (event.type === 'enemyExhumed') kinds[event.slot] = event.kind;
   if (!('enemy' in event) || after === null) return NO_CONTEXT;
   return {
-    kind: kinds[event.enemy] ?? null,
+    kind,
     allyStanding: after.enemies.some(
       (enemy, position) => position !== event.enemy && isStanding(enemy),
     ),

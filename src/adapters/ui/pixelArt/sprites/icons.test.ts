@@ -56,6 +56,10 @@ describe('the icons', () => {
     expect(iconNames).toEqual(expect.arrayContaining(['oath8', 'kindled8']));
   });
 
+  it('has the book, the eye of an encountered entry and the question mark of the discovery book (#282)', () => {
+    expect(iconNames).toEqual(expect.arrayContaining(['book12', 'eye8', 'qm12']));
+  });
+
   it('has the crown of the Elite and the crossed swords of its escort (#257)', () => {
     expect(iconNames).toEqual(expect.arrayContaining(['crown8', 'swords8']));
   });

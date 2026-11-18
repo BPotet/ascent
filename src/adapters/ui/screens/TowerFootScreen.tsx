@@ -1,8 +1,18 @@
 import { type ReactNode, type Ref, useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  Pressable,
+  ScrollView,
+  type StyleProp,
+  StyleSheet,
+  Text,
+  View,
+  type ViewStyle,
+} from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
 import type { CampSession, CampView } from '../../../application/useCases/CampSession';
+import type { DiscoveryBookSession } from '../../../application/useCases/DiscoveryBookSession';
 import type { LogExport } from '../../../application/useCases/exportAscentLog';
 import type { FateGaugeReading } from '../../../application/useCases/fateGauge';
 import type { Ascent } from '../../../domain/ascent/Ascent';
@@ -58,10 +68,12 @@ import { PixelFrame } from '../pixelArt/PixelFrame';
 import { artPixelSize } from '../pixelArt/artPixel';
 import { PixelIcon } from '../pixelArt/PixelIcon';
 import { PixelSkeleton } from '../pixelArt/PixelSkeleton';
-import { pixelTypography, textFont } from '../pixelArt/pixelTypography';
+import { pixelFont, pixelTypography, textFont } from '../pixelArt/pixelTypography';
+import { BOOK_TITLE, bookButtonLabel } from '../format/bookText';
 import { CAMP_TITLE } from '../format/campText';
 import { useAscent } from '../state/useAscent';
 import { useCamp } from '../state/useCamp';
+import { useDiscoveryBook } from '../state/useDiscoveryBook';
 import { useFateGauge } from '../state/useFateGauge';
 import { useHabitNames } from '../state/useHabitNames';
 import { HeroChoiceScreen } from './HeroChoiceScreen';
@@ -151,14 +163,82 @@ function OnBackdrop({
 }
 
 /** « Le camp » (#40, C1 et C2) : un bouton secondaire, avec la petite flamme de braise. */
-function CampButton({ onCamp }: { readonly onCamp: () => void }) {
+function CampButton({
+  onCamp,
+  style,
+}: {
+  readonly onCamp: () => void;
+  readonly style?: StyleProp<ViewStyle>;
+}) {
   return (
-    <PixelButton label={CAMP_TITLE} variant="secondary" onPress={onCamp}>
+    <PixelButton
+      label={CAMP_TITLE}
+      variant="secondary"
+      onPress={onCamp}
+      {...(style !== undefined && { style })}
+    >
       <View style={styles.camp}>
         <PixelIcon name="flame8" color={roles.ember} secondColor={roles.gold} />
         <Text style={styles.campText}>{CAMP_TITLE}</Text>
       </View>
     </PixelButton>
+  );
+}
+
+/**
+ * « Le carnet » (#282, T1 à T3) : un bouton secondaire, le livre d'or, et le compteur d'or des
+ * entrées nouvelles ; aucun compteur sans nouveauté.
+ */
+function BookButton({
+  book,
+  onBook,
+}: {
+  readonly book: DiscoveryBookSession;
+  readonly onBook: () => void;
+}) {
+  const view = useDiscoveryBook(book);
+  const count = view.status === 'ready' ? view.newEntries : 0;
+  return (
+    <PixelButton
+      label={bookButtonLabel(count)}
+      variant="secondary"
+      onPress={onBook}
+      style={styles.half}
+      testID="tower-foot-book"
+    >
+      <View style={styles.camp}>
+        <PixelIcon name="book12" color={roles.gold} />
+        <Text style={styles.campText}>{BOOK_TITLE}</Text>
+        {count > 0 && (
+          <Text testID="tower-foot-book-count" style={styles.bookCount}>
+            {count}
+          </Text>
+        )}
+      </View>
+    </PixelButton>
+  );
+}
+
+/** Ce qui ouvre le carnet au pied de la tour (#282) ; absent, « Le camp » reste seul. */
+interface BookAccess {
+  readonly book: DiscoveryBookSession;
+  readonly onBook: () => void;
+}
+
+/** « Le camp », et « Le carnet » sur la même ligne quand le carnet est là (#282, T1 à T3). */
+function CampRow({
+  onCamp,
+  access,
+}: {
+  readonly onCamp: () => void;
+  readonly access: BookAccess | null;
+}) {
+  if (access === null) return <CampButton onCamp={onCamp} />;
+  return (
+    <View testID="tower-foot-camp-book" style={styles.campRow}>
+      <CampButton onCamp={onCamp} style={styles.half} />
+      <BookButton book={access.book} onBook={access.onBook} />
+    </View>
   );
 }
 
@@ -314,6 +394,7 @@ function AscentInProgress({
   today,
   onHeaderBottom,
   powersCard,
+  bookAccess,
 }: {
   readonly ascent: Ascent;
   readonly shards: number;
@@ -327,6 +408,8 @@ function AscentInProgress({
   readonly onHeaderBottom: (bottom: number) => void;
   /** La carte « Pouvoirs équipés » du héros parti, verrouillée (#270, T6). */
   readonly powersCard: ReactNode;
+  /** « Le carnet », à côté de « Le camp » (#282, T2) ; `null`, aucun. */
+  readonly bookAccess: BookAccess | null;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [detail, setDetail] = useState(false);
@@ -406,7 +489,7 @@ function AscentInProgress({
       ) : (
         <View style={styles.bottom}>
           <PixelButton label="Reprendre l'ascension" onPress={onEnter} />
-          <CampButton onCamp={onCamp} />
+          <CampRow onCamp={onCamp} access={bookAccess} />
           <PixelButton
             label="Abandonner l'ascension"
             variant="secondary"
@@ -516,11 +599,16 @@ export function TowerFootScreen({
   logExport,
   focused = true,
   onOpenPowers,
+  book,
+  onBook,
 }: {
   readonly session: AscentSession;
   readonly camp: CampSession;
   readonly onEnter: () => void;
   readonly onCamp: () => void;
+  /** Le carnet de découvertes (#282) et son ouverture ; sans les deux, aucune touche « Le carnet ». */
+  readonly book?: DiscoveryBookSession;
+  readonly onBook?: () => void;
   /** Ouvre le menu des pouvoirs (#270) ; absent, la carte ne mène nulle part. */
   readonly onOpenPowers?: (target: OpenPowers) => void;
   /** L'onglet Tour est affiché ; il reste monté quand on le quitte. */
@@ -530,6 +618,7 @@ export function TowerFootScreen({
 }) {
   const ascent = useAscent(session);
   const campView = useCamp(camp);
+  const bookAccess = book !== undefined && onBook !== undefined ? { book, onBook } : null;
   const shards = campView.availableShards;
   const [sessionLoaded, setLoaded] = useState(ascent !== null);
   const campReady = campView.status === 'ready';
@@ -676,6 +765,7 @@ export function TowerFootScreen({
           foot={foot}
           today={reading}
           onHeaderBottom={setHeaderBottom}
+          bookAccess={bookAccess}
           powersCard={
             <EquippedPowersCard
               rows={[
@@ -763,7 +853,7 @@ export function TowerFootScreen({
               if (reading !== null) setChoosing(reading);
             }}
           />
-          <CampButton onCamp={onCamp} />
+          <CampRow onCamp={onCamp} access={bookAccess} />
         </View>
       )}
       {foot}
@@ -828,6 +918,18 @@ const styles = StyleSheet.create({
   },
   shardText: { fontFamily: textFont.semiBold, fontSize: 13, lineHeight: 18, color: roles.shard },
   camp: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  campRow: { flexDirection: 'row', gap: 10 },
+  half: { flex: 1, paddingHorizontal: 10 },
+  bookCount: {
+    minWidth: 26,
+    paddingHorizontal: 6,
+    textAlign: 'center',
+    fontFamily: pixelFont,
+    fontSize: 15,
+    lineHeight: 24,
+    color: roles.ink,
+    backgroundColor: roles.gold,
+  },
   campText: { fontFamily: textFont.bold, fontSize: 15, lineHeight: 19, color: roles.light },
   gaugeCard: { gap: 7, paddingTop: 10, paddingBottom: 12, paddingHorizontal: 12 },
   ascentGauge: { gap: 6, paddingHorizontal: 14, paddingVertical: 8 },
