@@ -405,7 +405,7 @@ Décision du propriétaire du 3 novembre 2026 (avenants aux [ADR 0001](adr/0001-
 | Quality gate SonarQube Cloud | Passed |
 | Duplication du code nouveau | ≤ 3 % |
 
-> Les données recopiées de l'Atelier (`src/adapters/ui/pixelArt/sprites/atelier/data/`) sont exclues de la détection de duplication : ce sont des données, recopiées telles quelles (ADR 0010).
+> Les données recopiées de l'Atelier (`src/adapters/ui/pixelArt/sprites/atelier/data/`) et les textes recopiés du Codex (`src/adapters/ui/format/codex/`) sont exclus de la détection de duplication : ce sont des données, recopiées telles quelles (ADR 0010, [ADR 0031](adr/0031-objets-du-carnet.md)). Leur couverture reste mesurée.
 
 ### Plus de mode prototype
 
