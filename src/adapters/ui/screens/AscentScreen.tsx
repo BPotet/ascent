@@ -669,6 +669,8 @@ export function AscentScreen({
           equipment={ascent.equipment}
           animate={revealKey !== pendingAtMount}
           {...(fromSealedChest && { chest: false, source: FROM_SEALED_CHEST })}
+          // « Nouveau au carnet » (#284, D5, D12) : l'objet était inconnu du carnet.
+          newToBook={session.foundItemIsNew()}
           onLeave={() => session.leaveItem()}
           onEquip={() => session.equipItem()}
         />

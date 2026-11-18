@@ -11,6 +11,7 @@ import {
   itemText,
   wornText,
 } from '../format/ascentText';
+import { NEW_TO_BOOK, withNewToBook } from '../format/bookItemsText';
 import { rarityLine } from '../format/rarityText';
 import { artPalette } from '../pixelArt/artPalette';
 import { artPixelSize } from '../pixelArt/artPixel';
@@ -51,6 +52,11 @@ export interface FoundItemPanelProps {
   readonly chest?: boolean;
   /** D'où vient l'objet, au-dessus du titre : « Du coffre scellé » (#226) ; absent, rien. */
   readonly source?: string;
+  /**
+   * L'objet était inconnu du carnet (#284, O6) : « Nouveau au carnet » au-dessus de sa ligne, et
+   * dans son annonce, juste avant lui ; absent, rien.
+   */
+  readonly newToBook?: boolean;
   readonly onLeave: () => void;
   readonly onEquip: () => void;
 }
@@ -68,6 +74,7 @@ export function FoundItemPanel({
   animate,
   chest = true,
   source,
+  newToBook = false,
   onLeave,
   onEquip,
 }: FoundItemPanelProps) {
@@ -81,15 +88,17 @@ export function FoundItemPanel({
   const announced = useRef(false);
   useEffect(() => {
     if (!revealed || announced.current) return;
-    // Sorti d'un Coffre (#227), ou révélé par le coffre scellé (#226) : l'objet est annoncé.
-    if (chest) {
+    // Sorti d'un Coffre (#227), ou révélé par le coffre scellé (#226) : l'objet est annoncé, avec
+    // « Nouveau au carnet. » juste avant lui s'il était inconnu du carnet (#284).
+    const told = (announcement: string) => {
       announced.current = true;
-      AccessibilityInfo.announceForAccessibility(chestAnnouncement(item));
-    } else if (source !== undefined) {
-      announced.current = true;
-      AccessibilityInfo.announceForAccessibility(`${itemAnnouncement(item)}.`);
-    }
-  }, [revealed, chest, source, item]);
+      AccessibilityInfo.announceForAccessibility(
+        newToBook ? withNewToBook(announcement, item) : announcement,
+      );
+    };
+    if (chest) told(chestAnnouncement(item));
+    else if (source !== undefined) told(`${itemAnnouncement(item)}.`);
+  }, [revealed, chest, source, item, newToBook]);
 
   const { slot, rarity } = ITEMS[item];
   const description = itemDescription(item);
@@ -145,6 +154,13 @@ export function FoundItemPanel({
         )}
       </View>
       <View testID="found-item-reveal" style={[styles.lines, { opacity }]} {...hiddenUntilRevealed}>
+        {newToBook && (
+          // Un objet inconnu du carnet (#284, maquette D3) : le livre d'or, au-dessus de sa ligne.
+          <View testID="found-item-new-to-book" style={styles.newToBook}>
+            <PixelIcon name="book12" color={roles.gold} />
+            <Text style={styles.newToBookText}>{NEW_TO_BOOK}</Text>
+          </View>
+        )}
         {rarity === 'epic' && (
           // Un objet Épique (#195) : sa rareté en losanges et en mot, à la couleur Épique.
           <Text style={styles.epic}>{rarityLine(rarity)}</Text>
@@ -198,6 +214,20 @@ const styles = StyleSheet.create({
   lines: { gap: 12 },
   line: { ...pixelTypography.body, color: roles.parchment, textAlign: 'center' },
   epic: { fontFamily: textFont.bold, fontSize: 12, lineHeight: 16, color: roles.rarityEpic },
+  newToBook: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  newToBookText: {
+    fontFamily: textFont.bold,
+    fontSize: 11.5,
+    lineHeight: 15,
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+    color: roles.gold,
+  },
   gold: {
     fontFamily: pixelFont,
     fontSize: 18,

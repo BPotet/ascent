@@ -109,13 +109,20 @@ describe('DiscoveryBookScreen', () => {
     await show({ stored: MIDWAY });
 
     expect(await screen.findByRole('header', { name: 'Le carnet' })).toBeOnTheScreen();
-    expect(await screen.findByText('10 découvertes sur 37')).toBeOnTheScreen();
+    expect(await screen.findByText('10 découvertes sur 48')).toBeOnTheScreen();
     expect(chip(1)).toHaveProp('accessibilityState', expect.objectContaining({ selected: true }));
     expect(screen.getByTestId('book-tier-frame')).toHaveProp(
       'accessibilityLabel',
       'Les Catacombes : 9 pages remplies sur 12. 2 rencontrés, pas encore vaincus · 1 jamais vu',
     );
-    expect(screen.queryByText('Objets')).not.toBeOnTheScreen();
+    expect(screen.getByTestId('book-tab-bestiary')).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ selected: true }),
+    );
+    expect(screen.getByTestId('book-tab-items')).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ selected: false }),
+    );
   });
 
   it('gives each tier a chip in a tab list, with its filled pages: « Palier 1 · 9/12 »', async () => {

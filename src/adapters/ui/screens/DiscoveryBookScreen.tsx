@@ -5,6 +5,7 @@ import type {
   DiscoveryBookSession,
   DiscoveryBookView,
 } from '../../../application/useCases/DiscoveryBookSession';
+import type { ItemKind } from '../../../domain/ascent/items';
 import type { Tier } from '../../../domain/ascent/tiers';
 import type { EnemyKind } from '../../../domain/battle/combatants';
 import {
@@ -15,7 +16,9 @@ import {
 } from '../../../domain/discoveryBook/bestiary';
 import { TIER_NAMES } from '../format/ascentText';
 import { ENEMY_NAMES } from '../format/battleText';
+import { BOOK_TABS_LABEL, ITEMS_TITLE, bookTabLabel } from '../format/bookItemsText';
 import {
+  BESTIARY_TITLE,
   BOOK_BACK_LABEL,
   BOOK_ERROR_ALERT,
   BOOK_ERROR_TEXT,
@@ -34,6 +37,9 @@ import {
   tierSummary,
   tierSummaryLabel,
 } from '../format/bookText';
+import { BookItemsTab } from '../components/BookItemsTab';
+import { Hatching } from '../components/Hatching';
+import { ItemSheet } from '../components/ItemSheet';
 import { Screen } from '../components/Screen';
 import { AssetRows } from '../pixelArt/AssetRows';
 import { artPalette } from '../pixelArt/artPalette';
@@ -66,28 +72,6 @@ function useTileWidth(columns: number): number {
   return Math.floor((width - 2 * GUTTER - GAP * (columns - 1)) / columns);
 }
 
-/**
- * Des hachures à 45° (maquette 278, `repeating-linear-gradient(135deg, …)`) : celles d'une case
- * « ??? » et de la part rencontrée de la barre d'un palier. Décoratives.
- */
-function Hatching({
-  color,
-  count,
-  step,
-}: {
-  readonly color: string;
-  readonly count: number;
-  readonly step: number;
-}) {
-  return (
-    <View pointerEvents="none" style={styles.hatching}>
-      {Array.from({ length: count }, (_, index) => (
-        <View key={index} style={[styles.hatch, { left: index * step, backgroundColor: color }]} />
-      ))}
-    </View>
-  );
-}
-
 /** L'en-tête : retour, « Le carnet » et, une fois lu, le total des découvertes. */
 function Header({
   subtitle,
@@ -112,6 +96,89 @@ function Header({
         </Text>
         {subtitle !== null && <Text style={styles.subtitle}>{subtitle}</Text>}
       </View>
+    </View>
+  );
+}
+
+/** Les deux onglets du carnet (#284, D9). */
+type BookTab = 'bestiary' | 'items';
+
+/**
+ * Un onglet du carnet (161 × 48 dp) : son nom, son compteur et le point d'or d'une entrée nouvelle
+ * quand il n'est pas affiché.
+ */
+function BookTabButton({
+  tab,
+  name,
+  count,
+  total,
+  isNew,
+  selected,
+  onPress,
+}: {
+  readonly tab: BookTab;
+  readonly name: string;
+  readonly count: number;
+  readonly total: number;
+  readonly isNew: boolean;
+  readonly selected: boolean;
+  readonly onPress: () => void;
+}) {
+  const dot = isNew && !selected;
+  return (
+    <Pressable
+      accessibilityRole="tab"
+      accessibilityLabel={bookTabLabel(name, count, total, dot)}
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      testID={`book-tab-${tab}`}
+      style={[styles.tab, { borderWidth: LINE }, selected && styles.tabSelected]}
+    >
+      <Text style={[styles.tabName, selected && styles.gold]}>{name}</Text>
+      <Text style={[styles.tabCount, selected && styles.tabCountSelected]}>
+        {`${count}/${total}`}
+      </Text>
+      {dot && <View testID={`book-tab-new-${tab}`} style={styles.tabDot} />}
+    </Pressable>
+  );
+}
+
+/** La barre d'onglets du carnet, « Bestiaire » et « Objets », en liste d'onglets « Le carnet ». */
+function BookTabs({
+  view,
+  tab,
+  onTab,
+}: {
+  readonly view: Extract<DiscoveryBookView, { status: 'ready' }>;
+  readonly tab: BookTab;
+  readonly onTab: (tab: BookTab) => void;
+}) {
+  const { bestiary, items } = view;
+  return (
+    <View
+      accessibilityRole="tablist"
+      accessibilityLabel={BOOK_TABS_LABEL}
+      testID="book-tabs"
+      style={styles.tabs}
+    >
+      <BookTabButton
+        tab="bestiary"
+        name={BESTIARY_TITLE}
+        count={bestiary.filled}
+        total={bestiary.total}
+        isNew={bestiary.tiers.some((tier) => tier.isNew)}
+        selected={tab === 'bestiary'}
+        onPress={() => onTab('bestiary')}
+      />
+      <BookTabButton
+        tab="items"
+        name={ITEMS_TITLE}
+        count={items.discovered}
+        total={items.total}
+        isNew={items.isNew}
+        selected={tab === 'items'}
+        onPress={() => onTab('items')}
+      />
     </View>
   );
 }
@@ -357,6 +424,13 @@ function Section({
 function Loading() {
   return (
     <View style={styles.body}>
+      <View style={styles.loadingTabs}>
+        {(['bestiary', 'items'] as const).map((tab) => (
+          <View key={tab} style={styles.fill}>
+            <PixelSkeleton width="100%" height={48} testID="book-loading" />
+          </View>
+        ))}
+      </View>
       <View style={styles.chips}>
         {TIERS.map((tier) => (
           <View key={tier} style={styles.fill}>
@@ -403,10 +477,12 @@ function Failure({
 
 /**
  * Le carnet de découvertes (`DiscoveryBookScreen`, #282, maquette 278, B1 à B9) : un écran poussé,
- * « Le carnet » et le total des découvertes, puis le Bestiaire, un palier à la fois (celui de
- * l'ascension en cours `currentTier`, sinon du dernier combat, sinon le palier 1) : ses puces en
- * onglets, son cadre, et ses sections Ennemis, Élites et Boss. L'en-tête garde la place des
- * onglets du carnet ; #284 y ajoutera « Objets ».
+ * « Le carnet » et le total des découvertes (Bestiaire et Objets), puis ses deux onglets (#284,
+ * D9) : le Bestiaire à chaque ouverture, un palier à la fois (celui de l'ascension en cours
+ * `currentTier`, sinon du dernier combat, sinon le palier 1) : ses puces en onglets, son cadre, et
+ * ses sections Ennemis, Élites et Boss ; les Objets, par emplacement, et la fiche d'un objet
+ * découvert. Seul l'onglet affiché est monté. `boughtItems` : les objets à débloquer achetés au
+ * Camp, `null` tant qu'il n'est pas lu.
  *
  * La sortie du carnet (retour, geste retour, perte du focus, démontage) efface les marques
  * « nouveau » (B16). `onOpenEntry` (#283) fera d'une case vaincue ou rencontrée un bouton.
@@ -417,6 +493,7 @@ export function DiscoveryBookScreen({
   onLeave,
   focused = true,
   onOpenEntry,
+  boughtItems = null,
 }: {
   readonly book: DiscoveryBookSession;
   readonly currentTier: Tier | null;
@@ -424,10 +501,13 @@ export function DiscoveryBookScreen({
   /** L'écran est affiché ; il reste monté quand on le quitte par un geste ou un onglet. */
   readonly focused?: boolean;
   readonly onOpenEntry?: (kind: EnemyKind) => void;
+  readonly boughtItems?: readonly ItemKind[] | null;
 }) {
   const view = useDiscoveryBook(book);
   const large = useLargeText();
   const [chosen, setChosen] = useState<Tier | null>(null);
+  const [tab, setTab] = useState<BookTab>('bestiary');
+  const [openItem, setOpenItem] = useState<ItemKind | null>(null);
 
   useEffect(() => {
     if (!focused) void book.leave();
@@ -438,13 +518,19 @@ export function DiscoveryBookScreen({
     <Screen layout="top" background={roles.night} testID="discovery-book">
       <Header
         subtitle={
-          view.status === 'ready' ? bookSubtitle(view.bestiary.filled, view.bestiary.total) : null
+          view.status === 'ready'
+            ? bookSubtitle(
+                view.bestiary.filled + view.items.discovered,
+                view.bestiary.total + view.items.total,
+              )
+            : null
         }
         onLeave={onLeave}
       />
       {view.status === 'loading' && <Loading />}
       {view.status === 'failed' && <Failure onRetry={() => void book.load()} onLeave={onLeave} />}
-      {view.status === 'ready' && (
+      {view.status === 'ready' && <BookTabs view={view} tab={tab} onTab={setTab} />}
+      {view.status === 'ready' && tab === 'bestiary' && (
         <Bestiary
           view={view}
           tier={chosen ?? openingTier(currentTier, view.lastTier)}
@@ -452,6 +538,14 @@ export function DiscoveryBookScreen({
           columns={large ? 2 : 3}
           {...(onOpenEntry !== undefined && { onOpen: onOpenEntry })}
         />
+      )}
+      {view.status === 'ready' && tab === 'items' && (
+        <ScrollView testID="book-items" contentContainerStyle={styles.body}>
+          <BookItemsTab items={view.items} bought={boughtItems} onOpen={setOpenItem} />
+        </ScrollView>
+      )}
+      {openItem !== null && tab === 'items' && (
+        <ItemSheet item={openItem} onClose={() => setOpenItem(null)} />
       )}
     </Screen>
   );
@@ -534,6 +628,29 @@ const styles = StyleSheet.create({
   heading: { flex: 1 },
   title: { fontFamily: pixelFont, fontSize: 24, lineHeight: 28, color: roles.light },
   subtitle: { fontFamily: textFont.medium, fontSize: 13, lineHeight: 17, color: roles.parchment },
+  tabs: { flexDirection: 'row', gap: 6, paddingHorizontal: GUTTER, paddingTop: 4 },
+  tab: {
+    flex: 1,
+    minHeight: MIN_TARGET_SIZE,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: roles.surface,
+    borderColor: roles.line,
+  },
+  tabSelected: { backgroundColor: roles.raised, borderColor: roles.gold },
+  tabName: { fontFamily: textFont.bold, fontSize: 15, lineHeight: 19, color: roles.parchment },
+  tabCount: {
+    fontFamily: pixelFont,
+    fontSize: 15,
+    lineHeight: 18,
+    color: roles.muted,
+    fontVariant: ['tabular-nums'],
+  },
+  tabCountSelected: { color: roles.light },
+  tabDot: { width: 8, height: 8, backgroundColor: roles.gold, transform: [{ rotate: '45deg' }] },
+  loadingTabs: { flexDirection: 'row', gap: 6 },
   chips: { flexDirection: 'row', gap: 6, paddingHorizontal: GUTTER, paddingTop: 8 },
   fill: { flex: 1 },
   chip: {
@@ -620,14 +737,6 @@ const styles = StyleSheet.create({
   },
   barFilled: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: roles.gold },
   barMet: { position: 'absolute', top: 0, bottom: 0, overflow: 'hidden' },
-  hatching: { ...StyleSheet.absoluteFill, overflow: 'hidden' },
-  hatch: {
-    position: 'absolute',
-    top: -40,
-    bottom: -40,
-    width: 2,
-    transform: [{ rotate: '45deg' }],
-  },
   summary: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   summaryText: {
     flex: 1,

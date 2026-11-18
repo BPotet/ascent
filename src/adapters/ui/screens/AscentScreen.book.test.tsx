@@ -140,3 +140,39 @@ describe('the line of the book on the screens of the ascent (#282)', () => {
     expect(screen.queryByTestId('book-line')).not.toBeOnTheScreen();
   });
 });
+
+describe('« Nouveau au carnet » on « Objet trouvé » (#284, D12, O6)', () => {
+  const found = (change: Partial<Ascent> = {}) =>
+    between({ exits: [], foundItem: 'hasteAmulet', ...change });
+
+  it('shows it under the line of the book of an enemy defeated in the same battle', async () => {
+    const setUp = ascentSetUp({ saved: found(), book: true });
+    await setUp.session.load();
+    jest.spyOn(setUp.session, 'newPages').mockReturnValue(['ashGleaner']);
+    jest.spyOn(setUp.session, 'foundItemIsNew').mockReturnValue(true);
+    await renderScreen(
+      <AscentScreen
+        session={setUp.session}
+        visibility={{ onChange: () => () => {} }}
+        onLeave={jest.fn()}
+      />,
+      setUp.dependencies,
+    );
+
+    const panel = await screen.findByTestId('ascent-item');
+    expect(within(panel).getByTestId('book-line')).toBeOnTheScreen();
+    expect(within(panel).getByText('Nouveau au carnet')).toBeOnTheScreen();
+    const order = within(panel)
+      .getAllByTestId(/^(book-line|found-item-new-to-book)$/u, { includeHiddenElements: true })
+      .map((node) => node.props.testID as string);
+    expect(order).toEqual(['book-line', 'found-item-new-to-book']);
+  });
+
+  it('does not show it for an item already discovered, waiting at the resume', async () => {
+    const { session } = await show(found());
+
+    expect(await screen.findByTestId('ascent-item')).toBeOnTheScreen();
+    expect(session.foundItemIsNew()).toBe(false);
+    expect(screen.queryByText('Nouveau au carnet', { includeHiddenElements: true })).toBeNull();
+  });
+});

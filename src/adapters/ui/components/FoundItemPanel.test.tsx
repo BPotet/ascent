@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import { AccessibilityInfo, StyleSheet } from 'react-native';
 
 import { STARTING_EQUIPMENT, type ItemKind } from '../../../domain/ascent/items';
@@ -19,7 +19,14 @@ async function show({
   animate = true,
   chest,
   source,
-}: { item?: ItemKind; animate?: boolean; chest?: boolean; source?: string } = {}) {
+  newToBook,
+}: {
+  item?: ItemKind;
+  animate?: boolean;
+  chest?: boolean;
+  source?: string;
+  newToBook?: boolean;
+} = {}) {
   const onLeave = jest.fn();
   const onEquip = jest.fn();
   await render(
@@ -29,6 +36,7 @@ async function show({
       animate={animate}
       {...(chest !== undefined && { chest })}
       {...(source !== undefined && { source })}
+      {...(newToBook !== undefined && { newToBook })}
       onLeave={onLeave}
       onEquip={onEquip}
     />,
@@ -222,6 +230,62 @@ describe('FoundItemPanel (#227)', () => {
     expect(itemImage()).toBeOnTheScreen();
     expect(buttons()).toHaveLength(2);
     expect(announce).not.toHaveBeenCalledWith(AXE_ANNOUNCEMENT);
+  });
+});
+
+describe('FoundItemPanel and « Nouveau au carnet » (#284, D12, O6)', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    announce.mockClear();
+    reduceMotion.mockResolvedValue(false);
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  const tag = () => screen.queryByTestId('found-item-new-to-book', hidden);
+
+  it('writes « Nouveau au carnet » above the item line, once the Chest is open', async () => {
+    await show({ newToBook: true });
+
+    expect(tag()).not.toBeNull();
+    const lines = screen.getByTestId('found-item-reveal', hidden);
+    expect(lines).toHaveProp('accessibilityElementsHidden', true);
+    await advance(CHEST_OPEN_MS + 100);
+
+    expect(within(lines).getByText('Nouveau au carnet')).toBeOnTheScreen();
+    const texts = within(lines)
+      .getAllByText(/./u)
+      .map((text) => text.props.children as unknown);
+    expect(texts.indexOf('Nouveau au carnet')).toBeLessThan(texts.indexOf(AXE_TEXT));
+  });
+
+  it('says « Nouveau au carnet. » before the item, after « Coffre ouvert. »', async () => {
+    await show({ newToBook: true });
+    await advance(CHEST_OPEN_MS + 100);
+
+    expect(announce).toHaveBeenCalledTimes(1);
+    expect(announce).toHaveBeenCalledWith(
+      'Coffre ouvert. Nouveau au carnet. Hache rouillée, Commun, Brise-garde ×1,1, Initiative −1.',
+    );
+  });
+
+  it('says it before the item revealed by the sealed chest, without « Coffre ouvert. »', async () => {
+    await show({ item: 'hammer', chest: false, source: 'Du coffre scellé', newToBook: true });
+
+    expect(screen.getByText('Nouveau au carnet')).toBeOnTheScreen();
+    expect(announce).toHaveBeenCalledWith(
+      'Nouveau au carnet. Marteau, Rare, Brise-garde ×1,6, Initiative −1.',
+    );
+  });
+
+  it('neither writes nor says it for an item already in the book', async () => {
+    await show({ newToBook: false });
+    await advance(CHEST_OPEN_MS + 100);
+
+    expect(tag()).toBeNull();
+    expect(screen.queryByText('Nouveau au carnet', hidden)).toBeNull();
+    expect(announce).toHaveBeenCalledWith(AXE_ANNOUNCEMENT);
   });
 });
 
