@@ -191,6 +191,71 @@ describe('DiscoveryBookSession', () => {
       expect(book.current()).toEqual({ status: 'loading' });
     });
 
+    describe('is retried by itself at each flush (#295)', () => {
+      const settle = async () => {
+        for (let index = 0; index < 10; index += 1) await Promise.resolve();
+      };
+
+      it('merges and writes the waiting discoveries when the retry succeeds', async () => {
+        const values = store({ [DISCOVERY_BOOK_KEY]: DEFEATED_GHOUL });
+        values.failGet = true;
+        const book = new DiscoveryBookSession({ keyValueStore: values });
+        await book.load();
+        book.record(null, battleOf(['specter']), []);
+        values.failGet = false;
+        await expect(book.flush()).resolves.toBeUndefined();
+        await settle();
+        expect(ready(book.current()).bestiary.filled).toBe(1);
+        expect(storedBook(values).enemies).toEqual({
+          ghoul: { state: 'defeated' },
+          specter: { state: 'encountered', isNew: true },
+        });
+      });
+
+      it('writes nothing when the retry fails again, and reads once per flush', async () => {
+        const values = store();
+        values.failGet = true;
+        const get = jest.spyOn(values, 'get');
+        const book = new DiscoveryBookSession({ keyValueStore: values });
+        await book.load();
+        book.record(null, battleOf(['specter']), []);
+        await expect(book.flush()).resolves.toBeUndefined();
+        await settle();
+        await expect(book.flush()).resolves.toBeUndefined();
+        await settle();
+        expect(get).toHaveBeenCalledTimes(3);
+        expect(values.sets).toEqual([]);
+        expect(book.current()).toEqual({ status: 'failed' });
+      });
+
+      it('never starts a second reading while one is waiting', async () => {
+        const values = store();
+        const get = jest.fn(() => new Promise<string | null>(() => undefined));
+        values.get = get;
+        const book = new DiscoveryBookSession({ keyValueStore: values });
+        void book.load();
+        await book.flush();
+        await book.flush();
+        expect(get).toHaveBeenCalledTimes(1);
+      });
+
+      it('never starts a second retry while the first one is waiting', async () => {
+        const values = store();
+        const get = jest
+          .fn<Promise<string | null>, [string]>()
+          .mockRejectedValueOnce(new Error('read failed'))
+          .mockReturnValue(new Promise<string | null>(() => undefined));
+        values.get = get;
+        const book = new DiscoveryBookSession({ keyValueStore: values });
+        await book.load();
+        expect(book.current()).toEqual({ status: 'failed' });
+        await book.flush();
+        await book.flush();
+        expect(get).toHaveBeenCalledTimes(2);
+        expect(book.current()).toEqual({ status: 'loading' });
+      });
+    });
+
     it('starts its reading at the first discovery, when nobody asked for it yet', async () => {
       const values = store({ [DISCOVERY_BOOK_KEY]: DEFEATED_GHOUL });
       const book = new DiscoveryBookSession({ keyValueStore: values });

@@ -196,9 +196,13 @@ export class DiscoveryBookSession {
    * Écrit le carnet s'il a changé depuis sa dernière écriture, après les écritures en attente. Tant
    * que la lecture n'a pas réussi, ou si le carnet ne peut pas être écrit, se résout aussitôt sans
    * rien écrire. Ne rejette jamais : un échec sera réessayé à la suivante.
+   *
+   * Une lecture ratée est relancée ici, sans l'attendre (#295) : à chaque point de sauvegarde, les
+   * découvertes en attente ont une chance d'être lues puis écrites avant de se perdre.
    */
   flush(): Promise<void> {
     const { book } = this;
+    if (book === null && this.failed) void this.load();
     if (book === null || !this.writable || book === this.written) return Promise.resolve();
     this.written = book;
     const { keyValueStore } = this.dependencies;
