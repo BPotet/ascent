@@ -2,6 +2,29 @@
 
 Toutes les évolutions notables d'Ascent. Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le projet suit le [versionnage sémantique](https://semver.org/lang/fr/). Les versions sont calculées à partir des [Conventional Commits](https://www.conventionalcommits.org/fr/v1.0.0/).
 
+## [0.11.0] - 2026-11-18
+
+L'épique #278 « Le carnet de découvertes », terminée : un carnet qui se remplit tout seul pendant les ascensions et donne envie de découvrir chaque ennemi et chaque objet.
+
+### Nouveautés pour le joueur
+
+- **Le carnet de découvertes** (build de preview) : au Pied de la tour, la touche « Le carnet », à côté de « Le camp », avec un compteur d'or des pages nouvelles. Il part vide et ne rapporte rien ; il se remplit tout seul. Après un combat gagné, une ligne d'or annonce les pages remplies (#282, #292).
+- **Le Bestiaire** : les 37 ennemis du jeu, palier par palier (Élites et boss compris), en « ??? », rencontrés (silhouette) ou vaincus (portrait en couleurs), avec la marque « nouveau » et l'or d'un palier complet (#282, #292).
+- **La page d'un ennemi** : touche un ennemi du Bestiaire pour lire son histoire, ses coups et, une fois vaincu, ses mécaniques, sans aucun chiffre (#283, #297).
+- **L'onglet Objets** : les 11 objets du jeu, chacun avec sa description ; un objet montré compte comme découvert, même laissé. « Nouveau au carnet » s'affiche quand on trouve un objet pour la première fois, et « Se débloque au camp » signale ceux à acheter (#284, #298).
+
+### Corrections
+
+- Un ennemi déjà vaincu ne reprend plus la marque « nouveau » (#293, #294).
+- Une lecture ratée du carnet est retentée à chaque sauvegarde, pour ne plus perdre de découverte (#295, #301).
+- Trois textes de pages ennemis corrigés : l'Invocation de la Reine des phalènes, le Frôlement de la Phalène voleuse et le Bâton des veilles du Nécromancien (#299, #300).
+
+### Technique
+
+- ADR 0030 « Carnet de découvertes », 0031 « Les Objets du carnet de découvertes », 0032 « Page d'un ennemi ».
+- Les textes recopiés du Codex (`format/codex/**`) sont exclus de la mesure de duplication, seuil inchangé.
+- Maquettes validées de l'épique #278 (#290).
+
 ## [0.10.0] - 2026-11-12
 
 L'épique #246 « Bestiaire, de nouveaux ennemis à chaque palier », terminée : chaque palier gagne deux ennemis ordinaires, chacun avec une mécanique qui change la façon de mener le combat.
