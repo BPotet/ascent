@@ -3,13 +3,14 @@
 // états de l'écran (première utilisation, palier jamais atteint, complet, chargement, erreur, texte
 // agrandi).
 import { act, fireEvent, screen, within } from '@testing-library/react-native';
-import { Dimensions, StyleSheet } from 'react-native';
+import { AccessibilityInfo, Dimensions, StyleSheet } from 'react-native';
 
 import {
   DISCOVERY_BOOK_KEY,
   DiscoveryBookSession,
 } from '../../../application/useCases/DiscoveryBookSession';
 import type { Tier } from '../../../domain/ascent/tiers';
+import type { EnemyKind } from '../../../domain/battle/combatants';
 import { BESTIARY_CATALOG, catalogKinds } from '../../../domain/discoveryBook/bestiary';
 import {
   EMPTY_DISCOVERY_BOOK,
@@ -53,11 +54,13 @@ async function show({
   currentTier = null,
   failRead = false,
   focused = true,
+  onOpenEntry,
 }: {
   stored?: DiscoveryBook | string;
   currentTier?: Tier | null;
   failRead?: boolean;
   focused?: boolean;
+  onOpenEntry?: (kind: EnemyKind) => void;
 } = {}) {
   const { keyValueStore, dependencies } = ascentSetUp();
   if (stored !== undefined) {
@@ -80,6 +83,7 @@ async function show({
       currentTier={currentTier}
       onLeave={onLeave}
       focused={focused}
+      {...(onOpenEntry !== undefined && { onOpenEntry })}
     />,
     dependencies,
   );
@@ -205,7 +209,7 @@ describe('DiscoveryBookScreen', () => {
     expect(within(prior).getByText('Jamais vu')).toBeOnTheScreen();
   });
 
-  it('never makes an entry a button in this story: touching it opens nothing', async () => {
+  it('makes no entry a button without a way to open its page (#282 alone)', async () => {
     await show({ stored: MIDWAY });
 
     await screen.findByTestId('book-entry-ghoul');
@@ -217,6 +221,102 @@ describe('DiscoveryBookScreen', () => {
     expect(
       screen.queryAllByRole('button').map((button) => button.props.accessibilityLabel),
     ).toEqual(['Retour au pied de la tour']);
+  });
+
+  describe('the page of an enemy (#283)', () => {
+    const opening = async (stored: DiscoveryBook = MIDWAY) => {
+      const onOpenEntry = jest.fn();
+      const setUp = await show({ stored, onOpenEntry });
+      await screen.findByTestId('book-tier-frame');
+      const refocus = async (focused: boolean) => {
+        await act(async () => {
+          await setUp.view.rerender(
+            <DiscoveryBookScreen
+              book={setUp.book}
+              currentTier={null}
+              onLeave={setUp.onLeave}
+              focused={focused}
+              onOpenEntry={onOpenEntry}
+            />,
+          );
+        });
+      };
+      return { ...setUp, onOpenEntry, refocus };
+    };
+
+    it('opens the page of a defeated or encountered entry, never of a « ??? » (B20)', async () => {
+      const { onOpenEntry } = await opening();
+
+      const ghoul = screen.getByRole('button', { name: 'Goule, vaincue. Ouvrir sa page' });
+      await fireEvent.press(ghoul);
+      expect(onOpenEntry).toHaveBeenLastCalledWith('ghoul');
+      await fireEvent.press(
+        screen.getByRole('button', {
+          name: 'Fossoyeur, Élite, rencontré, pas encore vaincu. Ouvrir sa page',
+        }),
+      );
+      expect(onOpenEntry).toHaveBeenLastCalledWith('gravedigger');
+      const prior = screen.getByTestId('book-entry-facelessPrior');
+      expect(prior).toHaveProp('accessibilityRole', 'text');
+      await fireEvent.press(prior);
+      expect(onOpenEntry).toHaveBeenCalledTimes(2);
+      expect(
+        screen.queryAllByRole('button', { name: /^Prieur sans visage|^Boss inconnu/u }),
+      ).toEqual([]);
+    });
+
+    it('keeps the marks « nouveau » while a page is open, and gives the focus back to the entry on the same tier and scroll', async () => {
+      const focus = jest
+        .spyOn(AccessibilityInfo, 'sendAccessibilityEvent')
+        .mockImplementation(() => undefined);
+      focus.mockClear();
+      const { book, refocus, stored } = await opening({ ...MIDWAY, lastTier: 2 });
+      await fireEvent.press(chip(2));
+      const scroll = screen.getByTestId('book-scroll');
+
+      await fireEvent.press(
+        screen.getByRole('button', { name: 'Embrasé, vaincu, nouveau. Ouvrir sa page' }),
+      );
+      await refocus(false);
+      expect(book.newEntryCount()).toBe(2);
+      expect(stored().enemies.burningHusk).toEqual({ state: 'defeated', isNew: true });
+      expect(focus).not.toHaveBeenCalled();
+
+      await refocus(true);
+      expect(focus).toHaveBeenCalledTimes(1);
+      expect(focus.mock.calls[0]![1]).toBe('focus');
+      expect(
+        (focus.mock.calls[0]![0] as unknown as { props: { testID: string } }).props.testID,
+      ).toBe('book-entry-burningHusk');
+      expect(chip(2)).toHaveProp('accessibilityState', expect.objectContaining({ selected: true }));
+      expect(screen.getByTestId('book-scroll')).toBe(scroll);
+      expect(book.newEntryCount()).toBe(2);
+      focus.mockRestore();
+    });
+
+    it('clears the marks when the book loses the focus after a page came back, not before (no stuck page)', async () => {
+      const { book, refocus, stored } = await opening();
+      await fireEvent.press(screen.getByRole('button', { name: 'Goule, vaincue. Ouvrir sa page' }));
+      await refocus(false);
+      expect(book.newEntryCount()).toBe(2);
+
+      await refocus(true);
+      await refocus(false);
+      expect(book.newEntryCount()).toBe(0);
+      expect(stored().enemies.burningHusk).toEqual({ state: 'defeated' });
+    });
+
+    it('clears the marks when the book unmounts, even with a page open', async () => {
+      const { refocus, stored, view } = await opening();
+      await fireEvent.press(screen.getByRole('button', { name: 'Goule, vaincue. Ouvrir sa page' }));
+      await refocus(false);
+
+      await act(async () => {
+        view.unmount();
+      });
+      expect(stored().enemies.burningHusk).toEqual({ state: 'defeated' });
+      expect(stored().enemies.mothkin).toEqual({ state: 'encountered' });
+    });
   });
 
   it('reads an unknown Elite « Élite inconnue, Palier 2 » (B2)', async () => {

@@ -1,8 +1,9 @@
 /**
  * Test d'intégration de l'assemblage du carnet de découvertes (#282) : les vraies routes de
  * `src/app`, une vraie base SQLite (node:sqlite), les vrais adaptateurs du téléphone. Le pied de la
- * tour ouvre le carnet, qui y ramène et efface ses marques « nouveau » ; hors du build de preview,
- * la route ramène à l'accueil (D11). La scène Skia est simulée.
+ * tour ouvre le carnet, qui ouvre la page d'un ennemi (#283) et y revient en gardant ses marques
+ * « nouveau », puis ramène au pied de la tour et les efface ; hors du build de preview, la route
+ * ramène à l'accueil (D11). La scène Skia est simulée.
  */
 import { act, fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
 import path from 'node:path';
@@ -81,28 +82,57 @@ describe('the discovery book in the app (#282)', () => {
     expect(screen.queryByRole('header', { name: 'Le carnet' })).not.toBeOnTheScreen();
   });
 
-  it('opens the book from the tower foot, on the tier of the last ascent, and goes back, its marks cleared', async () => {
+  it('opens the book from the tower foot, then a page and back, and goes back, its marks cleared', async () => {
     process.env.EXPO_PUBLIC_ASCENT_CHANNEL = 'preview';
     await renderRouter(appDirectory, { initialUrl: '/tower' });
+    const stored = async () =>
+      parseDiscoveryBook((await store!.get(DISCOVERY_BOOK_KEY)) ?? null).book.enemies;
+    const settle = async () => {
+      await act(async () => {
+        for (let index = 0; index < 20; index += 1) await Promise.resolve();
+      });
+    };
 
     await fireEvent.press(
       await screen.findByRole('button', { name: 'Le carnet, 1 nouvelle page' }),
     );
     expect(await screen.findByRole('header', { name: 'Le carnet' })).toBeOnTheScreen();
-    expect(await screen.findByLabelText('Embrasé, vaincu, nouveau')).toBeOnTheScreen();
     expect(screen.getByTestId('book-tier-chip-2')).toHaveProp(
       'accessibilityState',
       expect.objectContaining({ selected: true }),
     );
 
+    // La page de l'Embrasé, poussée sur le carnet : ses marques « nouveau » restent.
+    await fireEvent.press(
+      await screen.findByRole('button', { name: 'Embrasé, vaincu, nouveau. Ouvrir sa page' }),
+    );
+    expect(await screen.findByRole('header', { name: 'Embrasé' })).toBeOnTheScreen();
+    expect(screen.getByText('Bestiaire · Palier 2')).toBeOnTheScreen();
+    await settle();
+    expect((await stored()).burningHusk).toEqual({
+      state: 'defeated',
+      isNew: true,
+      pageSeen: true,
+    });
+
+    // Le retour revient au carnet, au même palier, « nouveau » toujours là.
+    await fireEvent.press(screen.getByRole('button', { name: 'Retour au Bestiaire' }));
+    expect(
+      await screen.findByRole('button', { name: 'Embrasé, vaincu, nouveau. Ouvrir sa page' }),
+    ).toBeOnTheScreen();
+    expect(screen.getByTestId('book-tier-chip-2')).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ selected: true }),
+    );
+    await settle();
+    expect((await stored()).burningHusk).toMatchObject({ isNew: true });
+
+    // La sortie du carnet efface les marques et les écrit, la page vue gardée.
     await fireEvent.press(screen.getByRole('button', { name: 'Retour au pied de la tour' }));
     expect(await screen.findByTestId('tower-foot')).toBeOnTheScreen();
     expect(await screen.findByRole('button', { name: 'Le carnet' })).toBeOnTheScreen();
-    await act(async () => {
-      for (let index = 0; index < 20; index += 1) await Promise.resolve();
-    });
-    const stored = parseDiscoveryBook((await store!.get(DISCOVERY_BOOK_KEY)) ?? null).book;
-    expect(stored.enemies.burningHusk).toEqual({ state: 'defeated' });
+    await settle();
+    expect((await stored()).burningHusk).toEqual({ state: 'defeated', pageSeen: true });
   });
 
   it('tells the Items which items to unlock were bought at the camp (#284, D8)', async () => {

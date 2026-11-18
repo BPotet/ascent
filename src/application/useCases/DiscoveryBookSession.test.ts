@@ -292,6 +292,118 @@ describe('DiscoveryBookSession', () => {
     await retried;
     expect(views.map(({ status }) => status)).toEqual(['failed', 'loading', 'ready']);
   });
+
+  describe('the page of an enemy (#283, B18, B20)', () => {
+    const SEEN_GHOUL = serializeDiscoveryBook({
+      ...EMPTY_DISCOVERY_BOOK,
+      enemies: { ghoul: { state: 'defeated', pageSeen: true } },
+    });
+
+    it('has no page before its reading, then the page of a known entry only', async () => {
+      const book = new DiscoveryBookSession({
+        keyValueStore: store({ [DISCOVERY_BOOK_KEY]: DEFEATED_GHOUL }),
+      });
+      expect(book.page('ghoul')).toBeNull();
+      await book.load();
+      expect(book.page('ghoul')).toMatchObject({
+        kind: 'ghoul',
+        state: 'defeated',
+        firstFill: true,
+      });
+      expect(book.page('specter')).toBeNull();
+    });
+
+    it('marks the page seen once, writes it once, and tells its listeners', async () => {
+      const values = store({ [DISCOVERY_BOOK_KEY]: DEFEATED_GHOUL });
+      const book = new DiscoveryBookSession({ keyValueStore: values });
+      await book.load();
+      const listener = jest.fn();
+      book.subscribe(listener);
+      await Promise.all([book.markPageSeen('ghoul'), book.markPageSeen('ghoul')]);
+      await book.markPageSeen('ghoul');
+      expect(values.sets).toEqual([DISCOVERY_BOOK_KEY]);
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(storedBook(values).enemies.ghoul).toEqual({ state: 'defeated', pageSeen: true });
+      expect(book.page('ghoul')).toMatchObject({ firstFill: false });
+    });
+
+    it('marks nothing before its reading, nor an encountered or unknown entry', async () => {
+      const values = store({
+        [DISCOVERY_BOOK_KEY]: serializeDiscoveryBook({
+          ...EMPTY_DISCOVERY_BOOK,
+          enemies: { brambleMother: { state: 'encountered' } },
+        }),
+      });
+      const book = new DiscoveryBookSession({ keyValueStore: values });
+      await expect(book.markPageSeen('brambleMother')).resolves.toBeUndefined();
+      await book.load();
+      await book.markPageSeen('brambleMother');
+      await book.markPageSeen('ghoul');
+      expect(values.sets).toEqual([]);
+      expect(storedBook(values).enemies.brambleMother).toEqual({ state: 'encountered' });
+    });
+
+    it('writes the mark again at the next flush after a failed write, without rejecting', async () => {
+      const values = store({ [DISCOVERY_BOOK_KEY]: DEFEATED_GHOUL });
+      const book = new DiscoveryBookSession({ keyValueStore: values });
+      await book.load();
+      values.failSet = () => true;
+      await expect(book.markPageSeen('ghoul')).resolves.toBeUndefined();
+      expect(book.page('ghoul')).toMatchObject({ firstFill: false });
+      values.failSet = () => false;
+      await book.flush();
+      expect(storedBook(values).enemies.ghoul).toEqual({ state: 'defeated', pageSeen: true });
+    });
+
+    it('keeps the page seen after the app closes: a new session on the same store', async () => {
+      const values = store({ [DISCOVERY_BOOK_KEY]: DEFEATED_GHOUL });
+      const first = new DiscoveryBookSession({ keyValueStore: values });
+      await first.load();
+      await first.markPageSeen('ghoul');
+      const second = new DiscoveryBookSession({ keyValueStore: values });
+      await second.load();
+      expect(second.page('ghoul')).toMatchObject({ firstFill: false });
+    });
+
+    it('keeps the page seen when the enemy is defeated again, even during a slow reading (R2)', async () => {
+      const values = store({ [DISCOVERY_BOOK_KEY]: SEEN_GHOUL });
+      let finishReading: () => void = () => undefined;
+      const get = values.get;
+      values.get = (key) =>
+        new Promise<string | null>((resolve) => {
+          finishReading = () => resolve(get(key));
+        });
+      const book = new DiscoveryBookSession({ keyValueStore: values });
+      const group = battleOf(['ghoul']);
+      void book.load();
+      book.record(group, withEnemyAt(group, 0, { hp: 0 }), [
+        { type: 'enemyDefeated', at: 1, enemy: 0 },
+      ]);
+      finishReading();
+      await book.load();
+      expect(book.page('ghoul')).toMatchObject({ firstFill: false });
+      book.record(group, withEnemyAt(group, 0, { hp: 0 }), [
+        { type: 'enemyDefeated', at: 2, enemy: 0 },
+      ]);
+      await book.flush();
+      expect(book.page('ghoul')).toMatchObject({ firstFill: false });
+      expect(storedBook(values).enemies.ghoul).toMatchObject({ pageSeen: true });
+    });
+
+    it('fills the page of an enemy seen hidden once it is defeated (B18)', async () => {
+      const values = store();
+      const book = new DiscoveryBookSession({ keyValueStore: values });
+      await book.load();
+      book.record(null, battleOf(['ghoul']), []);
+      await book.markPageSeen('ghoul');
+      expect(book.page('ghoul')).toMatchObject({ state: 'encountered' });
+      const group = battleOf(['ghoul']);
+      book.record(group, withEnemyAt(group, 0, { hp: 0 }), [
+        { type: 'enemyDefeated', at: 1, enemy: 0 },
+      ]);
+      expect(book.page('ghoul')).toMatchObject({ state: 'defeated', firstFill: true });
+    });
+  });
 });
 
 describe('DiscoveryBookSession and the Items (#284, D3)', () => {

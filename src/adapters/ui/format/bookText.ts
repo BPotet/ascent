@@ -118,6 +118,11 @@ export function entryLabel(entry: BestiaryEntry): string {
   return words.join(', ');
 }
 
+/** La lecture d'une entrée qui ouvre sa page (#283) : « Embrasé, vaincu, nouveau. Ouvrir sa page ». */
+export function openEntryLabel(entry: BestiaryEntry): string {
+  return `${entryLabel(entry)}. Ouvrir sa page`;
+}
+
 /** Le nom d'un palier dans une phrase : « les Catacombes ». */
 function tierInSentence(tier: BestiaryTier['tier']): string {
   const name = TIER_NAMES[tier];

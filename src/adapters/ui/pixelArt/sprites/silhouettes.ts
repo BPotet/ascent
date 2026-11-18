@@ -1,10 +1,11 @@
 import type { EnemyKind } from '../../../../domain/battle/combatants';
 import { PORTRAITS } from './atelier/data/portraits';
 import type { AssetImage } from './atelier/fullAnimation';
+import { battleImage } from './battle/battleCharacters';
 
 /**
  * La silhouette du carnet (`silhouette-<kind>`, #282, maquette 278 « Rencontré ») : le portrait
- * d'un ennemi rencontré, dont chaque pixel opaque prend l'encre de la maquette, et son bord une
+ * d'un ennemi rencontré dans le Bestiaire, et son image de combat sur sa page cachée (#283), dont chaque pixel opaque prend l'encre de la maquette, et son bord une
  * teinte plus claire, pour que la forme se lise. Deux teintes de la palette d'art, les plus
  * proches de la maquette (`#232945`, `#46527F`). Ne pas confondre avec la Silhouette provisoire.
  */
@@ -43,4 +44,15 @@ export function bestiarySilhouette(kind: EnemyKind): AssetImage | null {
     cache.set(kind, portrait === null ? null : silhouetteOf(portrait));
   }
   return cache.get(kind)!;
+}
+
+const battleCache = new Map<EnemyKind, AssetImage>();
+
+/**
+ * La silhouette du carnet de l'image de combat de `kind` (#283, D8) : celle de la page cachée, de la
+ * pose de phase 1 pour un boss, quelle que soit la phase où il a été vu.
+ */
+export function battleSilhouette(kind: EnemyKind): AssetImage {
+  if (!battleCache.has(kind)) battleCache.set(kind, silhouetteOf(battleImage(kind)));
+  return battleCache.get(kind)!;
 }

@@ -1,5 +1,13 @@
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  AccessibilityInfo,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import type {
   DiscoveryBookSession,
@@ -33,6 +41,7 @@ import {
   bookSubtitle,
   entryLabel,
   entryStatus,
+  openEntryLabel,
   tierChipLabel,
   tierSummary,
   tierSummaryLabel,
@@ -286,17 +295,17 @@ function Picture({ entry }: { readonly entry: BestiaryEntry }) {
 /**
  * Une case du Bestiaire (B1 à B3) : vaincu (portrait en couleurs, « Vaincu », coche), rencontré
  * (silhouette, nom, « Rencontré », œil), inconnu (« ??? », hachures). Couronne d'une Élite, crâne
- * d'un boss, « nouveau » et cadre d'or. Aucun état n'est dit par la couleur seule. Sans `onOpen`
- * (#283 la fournira), la case n'est pas un bouton.
+ * d'un boss, « nouveau » et cadre d'or. Aucun état n'est dit par la couleur seule. Avec `onOpen`
+ * (#283), une case vaincue ou rencontrée est un bouton qui ouvre sa page ; « ??? » ne l'est jamais.
  */
 function Tile({
   entry,
   width,
-  onOpen,
+  opener,
 }: {
   readonly entry: BestiaryEntry;
   readonly width: number;
-  readonly onOpen?: (kind: EnemyKind) => void;
+  readonly opener?: Opener;
 }) {
   const unknown = entry.state === 'unknown';
   const content = (
@@ -349,12 +358,13 @@ function Tile({
     unknown && styles.tileUnknown,
     entry.isNew && { borderColor: roles.gold },
   ];
-  if (onOpen !== undefined && !unknown) {
+  if (opener !== undefined && !unknown) {
     return (
       <Pressable
+        ref={(tile) => opener.register(entry.kind, tile)}
         accessibilityRole="button"
-        accessibilityLabel={entryLabel(entry)}
-        onPress={() => onOpen(entry.kind)}
+        accessibilityLabel={openEntryLabel(entry)}
+        onPress={() => opener.open(entry.kind)}
         testID={`book-entry-${entry.kind}`}
         style={style}
       >
@@ -378,15 +388,21 @@ function Tile({
 
 const SECTION_ICONS = { enemy: 'swords8', elite: 'crown8', boss: 'skull' } as const;
 
+/** L'ouverture de la page d'une case (#283) : ouvrir, et retenir la case pour lui rendre le focus. */
+interface Opener {
+  readonly open: (kind: EnemyKind) => void;
+  readonly register: (kind: EnemyKind, tile: View | null) => void;
+}
+
 /** Une section d'un palier (Ennemis, Élites, Boss) : son titre, son compte, sa grille nommée. */
 function Section({
   section,
   columns,
-  onOpen,
+  opener,
 }: {
   readonly section: BestiarySection;
   readonly columns: number;
-  readonly onOpen?: (kind: EnemyKind) => void;
+  readonly opener?: Opener;
 }) {
   const color =
     section.category === 'elite' ? ELITE : section.category === 'boss' ? BOSS : roles.muted;
@@ -412,7 +428,7 @@ function Section({
             key={entry.kind}
             entry={entry}
             width={width}
-            {...(onOpen !== undefined && { onOpen })}
+            {...(opener !== undefined && { opener })}
           />
         ))}
       </View>
@@ -485,7 +501,12 @@ function Failure({
  * Camp, `null` tant qu'il n'est pas lu.
  *
  * La sortie du carnet (retour, geste retour, perte du focus, démontage) efface les marques
- * « nouveau » (B16). `onOpenEntry` (#283) fera d'une case vaincue ou rencontrée un bouton.
+ * « nouveau » (B16). `onOpenEntry` (#283) fait d'une case vaincue ou rencontrée un bouton qui ouvre
+ * sa page, poussée par-dessus le carnet : ouvrir une page n'est pas sortir du carnet (D9). L'entrée
+ * ouverte est retenue avant la navigation, car la perte du focus peut arriver avant le rendu
+ * suivant ; au retour du focus, le lecteur d'écran revient sur sa case, au même palier et au même
+ * défilement (le carnet reste monté), puis l'entrée est oubliée, pour que la sortie suivante efface
+ * bien les marques (D10). Le démontage les efface toujours.
  */
 export function DiscoveryBookScreen({
   book,
@@ -508,9 +529,32 @@ export function DiscoveryBookScreen({
   const [chosen, setChosen] = useState<Tier | null>(null);
   const [tab, setTab] = useState<BookTab>('bestiary');
   const [openItem, setOpenItem] = useState<ItemKind | null>(null);
+  /** L'entrée dont la page est ouverte : une ref, posée avant la navigation (D9). */
+  const opened = useRef<EnemyKind | null>(null);
+  const tiles = useRef(new Map<EnemyKind, View>());
+
+  const open = useCallback(
+    (kind: EnemyKind) => {
+      opened.current = kind;
+      onOpenEntry?.(kind);
+    },
+    [onOpenEntry],
+  );
+  const register = useCallback((kind: EnemyKind, tile: View | null) => {
+    if (tile === null) tiles.current.delete(kind);
+    else tiles.current.set(kind, tile);
+  }, []);
 
   useEffect(() => {
-    if (!focused) void book.leave();
+    if (!focused) {
+      if (opened.current === null) void book.leave();
+      return;
+    }
+    const kind = opened.current;
+    if (kind === null) return;
+    const tile = tiles.current.get(kind);
+    if (tile !== undefined) AccessibilityInfo.sendAccessibilityEvent(tile, 'focus');
+    opened.current = null;
   }, [focused, book]);
   useEffect(() => () => void book.leave(), [book]);
 
@@ -546,7 +590,7 @@ export function DiscoveryBookScreen({
           tier={chosen ?? openingTier(currentTier, view.lastTier)}
           onTier={setChosen}
           columns={large ? 2 : 3}
-          {...(onOpenEntry !== undefined && { onOpen: onOpenEntry })}
+          {...(onOpenEntry !== undefined && { opener: { open, register } })}
         />
       )}
       {view.status === 'ready' && tab === 'items' && (
@@ -564,13 +608,13 @@ function Bestiary({
   tier,
   onTier,
   columns,
-  onOpen,
+  opener,
 }: {
   readonly view: Extract<DiscoveryBookView, { status: 'ready' }>;
   readonly tier: Tier;
   readonly onTier: (tier: Tier) => void;
   readonly columns: number;
-  readonly onOpen?: (kind: EnemyKind) => void;
+  readonly opener?: Opener;
 }) {
   const shown = view.bestiary.tiers.find((each) => each.tier === tier)!;
   return (
@@ -608,7 +652,7 @@ function Bestiary({
             key={section.category}
             section={section}
             columns={columns}
-            {...(onOpen !== undefined && { onOpen })}
+            {...(opener !== undefined && { opener })}
           />
         ))}
       </ScrollView>

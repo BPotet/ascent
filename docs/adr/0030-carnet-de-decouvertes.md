@@ -78,6 +78,8 @@ au plus tard avec le combat qui l'a produit.
 13. **Points d'extension** (D12) : `BestiaryRecord` acceptera `pageSeen?: true` sans changer de
     version (#283) ; la case reçoit `onOpen?` (absent ici : elle n'est pas un bouton) ; `items` et
     `ItemRecord` existent dès la version 1 ; l'écran garde la place des onglets (#284).
+    La page d'un ennemi (#283) s'y branche : voir l'[ADR 0032](0032-page-d-un-ennemi.md) (la marque
+    `pageSeen`, les cases ouvrables et la sortie du carnet face à une page poussée).
 
 ## Conséquences
 

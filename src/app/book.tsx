@@ -29,13 +29,15 @@ function Book() {
       onLeave={leave}
       focused={focused}
       boughtItems={camp.status === 'ready' ? camp.boughtItems : null}
+      onOpenEntry={(kind) => router.push({ pathname: '/bestiary/[kind]', params: { kind } })}
     />
   );
 }
 
 /**
  * Le carnet de découvertes (#282), ouvert depuis le pied de la tour, dans le build de preview
- * seulement, comme toute la tour (D11).
+ * seulement, comme toute la tour (D11). Une case vaincue ou rencontrée y pousse la page de son
+ * ennemi (#283).
  */
 export default function BookRoute() {
   if (currentBuildChannel() !== 'preview') return <Redirect href="/" />;

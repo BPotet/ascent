@@ -19,10 +19,15 @@ export type BestiaryState = 'encountered' | 'defeated';
 /** L'état d'une entrée du Bestiaire, inconnu compris (B1 à B15). */
 export type EntryState = 'unknown' | BestiaryState;
 
-/** Une entrée du Bestiaire enregistrée ; #283 y ajoutera `pageSeen?: true`, sans changer de version. */
+/**
+ * Une entrée du Bestiaire enregistrée, avec sa marque « nouveau » et, sur une entrée vaincue, la
+ * marque « page vue remplie » (`pageSeen`, #283, B18) : sa page a déjà été ouverte remplie, et
+ * « Page remplie » ne joue plus. Propre au Bestiaire : un objet ne la porte jamais.
+ */
 export interface BestiaryRecord {
   readonly state: BestiaryState;
   readonly isNew?: true;
+  readonly pageSeen?: true;
 }
 
 /** Une entrée des Objets enregistrée (#284) : un objet découvert. */
@@ -81,7 +86,7 @@ export function recordDiscoveries(
   for (const discovery of discoveries) {
     const current = enemies[discovery.kind]?.state ?? 'unknown';
     if (RANK[discovery.state] <= RANK[current]) continue;
-    enemies[discovery.kind] = { state: discovery.state, isNew: true };
+    enemies[discovery.kind] = { ...enemies[discovery.kind], state: discovery.state, isNew: true };
     rises.push(discovery);
   }
   return { book: rises.length === 0 ? book : { ...book, enemies }, rises };
@@ -114,6 +119,23 @@ function mergeRecords<Entry extends BestiaryRecord | ItemRecord>(
 }
 
 /**
+ * La marque « page vue remplie » d'une fusion (#283, R2) : à état égal, `higher` garde un seul des
+ * deux enregistrements ; la marque est celle de l'un ou de l'autre, pour que « Page remplie » ne
+ * rejoue jamais.
+ */
+function mergeEnemies(
+  stored: Readonly<Record<string, BestiaryRecord>>,
+  newer: Readonly<Record<string, BestiaryRecord>>,
+): Record<string, BestiaryRecord> {
+  const merged = mergeRecords(stored, newer);
+  for (const [key, record] of Object.entries(merged)) {
+    const seen = stored[key]?.pageSeen === true || newer[key]?.pageSeen === true;
+    if (seen && record.pageSeen !== true) merged[key] = { ...record, pageSeen: true };
+  }
+  return merged;
+}
+
+/**
  * La fusion d'un carnet stocké et d'un carnet plus récent (D7) : le plus haut état de chaque entrée,
  * avec la marque de l'enregistrement qui le tient ; à état égal, celui du carnet stocké, donc une
  * entrée ne prend « nouveau » que si son état monte (#293). Le dernier palier est celui du plus
@@ -122,7 +144,7 @@ function mergeRecords<Entry extends BestiaryRecord | ItemRecord>(
 export function mergeBooks(stored: DiscoveryBook, newer: DiscoveryBook): DiscoveryBook {
   return {
     lastTier: newer.lastTier ?? stored.lastTier,
-    enemies: mergeRecords(stored.enemies, newer.enemies),
+    enemies: mergeEnemies(stored.enemies, newer.enemies),
     items: mergeRecords(stored.items, newer.items),
   };
 }
@@ -144,6 +166,16 @@ export function clearNewMarks(book: DiscoveryBook): DiscoveryBook {
   const enemies = withoutMarks(book.enemies);
   const items = withoutMarks(book.items);
   return enemies === book.enemies && items === book.items ? book : { ...book, enemies, items };
+}
+
+/**
+ * La première ouverture de la page remplie d'un ennemi (#283, B18) : son entrée vaincue reçoit la
+ * marque « page vue remplie ». Le même carnet pour une entrée qui n'est pas vaincue, ou déjà vue.
+ */
+export function markPageSeen(book: DiscoveryBook, kind: string): DiscoveryBook {
+  const record = book.enemies[kind];
+  if (record?.state !== 'defeated' || record.pageSeen === true) return book;
+  return { ...book, enemies: { ...book.enemies, [kind]: { ...record, pageSeen: true } } };
 }
 
 /**
@@ -188,6 +220,23 @@ function readRecords<Entry extends BestiaryRecord | ItemRecord>(
 }
 
 /**
+ * La marque « page vue remplie » des entrées stockées `value` (#283) : lue sur une entrée vaincue,
+ * ignorée sur une entrée rencontrée ; `null` pour une marque qui n'est pas `true`.
+ */
+function readPageSeen(
+  value: Readonly<Record<string, unknown>>,
+  records: Record<string, BestiaryRecord>,
+): Record<string, BestiaryRecord> | null {
+  for (const [key, record] of Object.entries(value)) {
+    const { pageSeen } = record as Readonly<Record<string, unknown>>;
+    if (pageSeen === undefined) continue;
+    if (pageSeen !== true) return null;
+    if (records[key]!.state === 'defeated') records[key] = { ...records[key]!, pageSeen: true };
+  }
+  return records;
+}
+
+/**
  * Le carnet stocké : rien de stocké est le carnet vide ; une valeur illisible (JSON invalide, version
  * ou palier inconnu, état inconnu) le dit, et le carnet repart vide (D5). Un nom de code inconnu du
  * jeu est gardé (C5) ; un carnet sans Objets se lit sans objet.
@@ -207,7 +256,8 @@ export function parseDiscoveryBook(raw: string | null): {
   if (!isObject(stored) || stored.version !== DISCOVERY_BOOK_VERSION) return unreadable;
   const lastTier = stored.lastTier ?? null;
   if (lastTier !== null && lastTier !== 1 && lastTier !== 2 && lastTier !== 3) return unreadable;
-  const enemies = readRecords<BestiaryRecord>(stored.enemies, ['encountered', 'defeated']);
+  const records = readRecords<BestiaryRecord>(stored.enemies, ['encountered', 'defeated']);
+  const enemies = records && readPageSeen(stored.enemies as Record<string, unknown>, records);
   const items = readRecords<ItemRecord>(stored.items ?? {}, ['discovered']);
   if (enemies === null || items === null) return unreadable;
   return { book: { lastTier, enemies, items }, unreadable: false };
