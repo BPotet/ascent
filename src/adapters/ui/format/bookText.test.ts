@@ -6,6 +6,7 @@ import {
   bookLineAnnouncement,
   bookSubtitle,
   entryLabel,
+  openEntryLabel,
   entryStatus,
   tierChipLabel,
   tierSummary,
@@ -105,6 +106,18 @@ describe('the texts of the discovery book (#282)', () => {
     expect(entryLabel(entry({ tier: 3, category: 'boss', state: 'unknown' }))).toBe(
       'Boss inconnu, Palier 3',
     );
+  });
+
+  it('reads an entry that opens its page « … Ouvrir sa page » (#283, B3)', () => {
+    expect(openEntryLabel(entry({}))).toBe('Goule, vaincue. Ouvrir sa page');
+    expect(openEntryLabel(entry({ kind: 'burningHusk', tier: 2, isNew: true }))).toBe(
+      'Embrasé, vaincu, nouveau. Ouvrir sa page',
+    );
+    expect(
+      openEntryLabel(
+        entry({ kind: 'brambleMother', tier: 2, category: 'elite', state: 'encountered' }),
+      ),
+    ).toBe('Mère-ronce, Élite, rencontrée, pas encore vaincue. Ouvrir sa page');
   });
 
   it('reads a tier chip for the screen reader: its name, its pages, new and complete', () => {
