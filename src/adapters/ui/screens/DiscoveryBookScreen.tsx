@@ -529,7 +529,17 @@ export function DiscoveryBookScreen({
       />
       {view.status === 'loading' && <Loading />}
       {view.status === 'failed' && <Failure onRetry={() => void book.load()} onLeave={onLeave} />}
-      {view.status === 'ready' && <BookTabs view={view} tab={tab} onTab={setTab} />}
+      {view.status === 'ready' && (
+        <BookTabs
+          view={view}
+          tab={tab}
+          onTab={(chosenTab) => {
+            // Changer d'onglet ferme la fiche ouverte : elle ne revient pas d'elle-même.
+            setOpenItem(null);
+            setTab(chosenTab);
+          }}
+        />
+      )}
       {view.status === 'ready' && tab === 'bestiary' && (
         <Bestiary
           view={view}
@@ -544,9 +554,7 @@ export function DiscoveryBookScreen({
           <BookItemsTab items={view.items} bought={boughtItems} onOpen={setOpenItem} />
         </ScrollView>
       )}
-      {openItem !== null && tab === 'items' && (
-        <ItemSheet item={openItem} onClose={() => setOpenItem(null)} />
-      )}
+      {openItem !== null && <ItemSheet item={openItem} onClose={() => setOpenItem(null)} />}
     </Screen>
   );
 }

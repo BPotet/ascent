@@ -135,6 +135,24 @@ describe('DiscoveryBookScreen and its Items (#284)', () => {
     expect(screen.getAllByTestId(/^book-item-[a-zA-Z]+$/u)).toHaveLength(11);
   });
 
+  it('goes back to the Bestiary on « Bestiaire », the Items and their sheet no longer mounted', async () => {
+    await show();
+    await openItems();
+    await fireEvent.press(screen.getByTestId('book-item-hammer'));
+    expect(screen.getByTestId('item-sheet')).toBeOnTheScreen();
+
+    await fireEvent.press(tab('bestiary'));
+
+    expect(selected('bestiary')).toBe(true);
+    expect(screen.getByTestId('book-tier-chips')).toBeOnTheScreen();
+    expect(screen.queryByTestId('book-items', { includeHiddenElements: true })).toBeNull();
+    expect(screen.queryByTestId('item-sheet', { includeHiddenElements: true })).toBeNull();
+    // Revenu aux Objets, la fiche ne se rouvre pas d'elle-même.
+    await openItems();
+    expect(screen.getByTestId('book-items')).toBeOnTheScreen();
+    expect(screen.queryByTestId('item-sheet', { includeHiddenElements: true })).toBeNull();
+  });
+
   it('says « Se débloque au camp » for an item to unlock not bought, « Pas encore trouvé » once bought (O5)', async () => {
     await show({ boughtItems: ['flamberge'] });
     await openItems();
