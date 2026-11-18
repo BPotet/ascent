@@ -22,7 +22,7 @@ import {
 import { boonModifiers } from '../../domain/ascent/boons';
 import { blessingModifiers, type BlessingFamily } from '../../domain/ascent/blessings';
 import { favorKeys, favorRerolls, favorSecondChance } from '../../domain/ascent/fateGauge';
-import { STARTING_EQUIPMENT, itemModifiers } from '../../domain/ascent/items';
+import { STARTING_EQUIPMENT, itemModifiers, type ItemKind } from '../../domain/ascent/items';
 import {
   EMPTY_SHARD_TOTAL,
   creditShards,
@@ -37,8 +37,13 @@ import type { BattleEvent } from '../../domain/battle/BattleEvent';
 import type { EnemyKind } from '../../domain/battle/combatants';
 import { basePower } from '../../domain/battle/powers';
 import type { AscentStep, HeroVitals } from '../../domain/ascentLog/AscentLog';
+import {
+  foundItemDiscovery,
+  resumeItemDiscoveries,
+} from '../../domain/discoveryBook/itemDiscoveries';
 import type { AscentLogRecorder } from './AscentLogRecorder';
 import { BattleSession, type BattleSessionDependencies } from './BattleSession';
+import type { DiscoveryBookSession } from './DiscoveryBookSession';
 
 /** La clé de l'ascension en cours dans le stockage clé-valeur (prototype #91). */
 export const ASCENT_KEY = 'ascent.current';
@@ -92,9 +97,13 @@ const SAVED_ON: ReadonlySet<BattleEvent['type']> = new Set([
 type Listener = (ascent: Ascent | null) => void;
 type ShardListener = (total: number) => void;
 
-/** Les ports de la session d'ascension ; sans `ascentLog`, aucun Journal d'ascension (#196). */
+/**
+ * Les ports de la session d'ascension ; sans `ascentLog`, aucun Journal d'ascension (#196) ; sans
+ * `discoveryBook`, aucun carnet de découvertes (#282), et l'ascension se joue exactement de même.
+ */
 export interface AscentSessionDependencies extends BattleSessionDependencies {
   readonly ascentLog?: AscentLogRecorder;
+  readonly discoveryBook?: DiscoveryBookSession;
 }
 
 /** La cause d'une transition, pour le Journal d'ascension (#196). */
@@ -212,6 +221,20 @@ export class AscentSession {
    * seulement : jamais rejouée après une fermeture.
    */
   private entering = false;
+  /**
+   * Les pages remplies pendant le combat (#282, D9) : les ennemis passés à vaincu, dans l'ordre de
+   * leur chute. Remises à zéro à chaque combat neuf, jamais à une reprise ; vidées à une défaite, au
+   * choix d'une sortie, au Passage de palier, à l'abandon et au retour au pied de la tour. En mémoire
+   * seulement : jamais rejouées après une fermeture.
+   */
+  private pages: readonly EnemyKind[] = [];
+  /**
+   * L'objet trouvé nouveau au carnet (#284, D5) : celui dont l'enregistrement est monté à l'instant
+   * où il est devenu l'objet trouvé (il était inconnu juste avant). Remis à zéro à chaque nouvel
+   * objet trouvé, au lancement et au retour au pied de la tour. En mémoire seulement : jamais rejoué
+   * après une fermeture (O6).
+   */
+  private newFoundItem: ItemKind | null = null;
 
   constructor(private readonly dependencies: AscentSessionDependencies) {}
 
@@ -221,11 +244,19 @@ export class AscentSession {
    */
   async load(): Promise<Ascent | null> {
     const { keyValueStore } = this.dependencies;
+    // Le carnet se lit à côté, sans jamais retenir l'ascension (#282).
+    void this.dependencies.discoveryBook?.load();
     const raw = await keyValueStore.get(ASCENT_KEY).catch(() => null);
     const saved = parse(raw);
     if (saved === null && raw !== null) await keyValueStore.remove(ASCENT_KEY).catch(() => null);
     this.ascent = saved?.ascent ?? null;
     this.battle = saved?.battle ?? null;
+    this.newFoundItem = null;
+    // La reprise d'une ascension en cours : son objet trouvé en attente et ses objets portés entrent
+    // au carnet, sans doublon (#284, O4) ; ils s'écrivent à la sauvegarde suivante.
+    if (this.ascent !== null && this.ascent.outcome === null) {
+      this.dependencies.discoveryBook?.recordItems(resumeItemDiscoveries(this.ascent));
+    }
     // Le journal reprend avec l'ascension (#196) ; une lecture qui échoue ne la bloque jamais.
     if (this.ascent !== null) await this.dependencies.ascentLog?.resume(this.ascent);
     await this.loadShards();
@@ -249,6 +280,23 @@ export class AscentSession {
     };
   }
 
+  /**
+   * La ligne du carnet (#282, B19) : les pages remplies pendant le dernier combat gagné, dans
+   * l'ordre des chutes, jusqu'au choix d'une sortie ; vide sinon.
+   */
+  newPages(): readonly EnemyKind[] {
+    return this.pages;
+  }
+
+  /**
+   * « Nouveau au carnet » (#284, O6, D5) : l'objet trouvé en attente était inconnu du carnet à
+   * l'instant où il a été montré ; faux sinon, et faux sans objet trouvé.
+   */
+  foundItemIsNew(): boolean {
+    const item = this.ascent?.foundItem ?? null;
+    return item !== null && item === this.newFoundItem;
+  }
+
   /** Le Total d'Éclats du joueur (#38), gardé entre les ascensions. */
   shardTotal(): number {
     return this.shards.total;
@@ -270,6 +318,8 @@ export class AscentSession {
     const ascent = startAscent(this.dependencies.seeds.next(), launch);
     this.dependencies.ascentLog?.begin(ascent);
     this.entering = true;
+    this.pages = [];
+    this.newFoundItem = null;
     return this.update(ascent, null);
   }
 
@@ -331,23 +381,27 @@ export class AscentSession {
 
   chooseExit(index: number): void {
     if (this.ascent === null) return;
+    this.pages = [];
     this.update(chooseExit(this.ascent, index), null, { kind: 'exitChosen' });
   }
 
   abandon(): void {
     if (this.ascent === null) return;
+    this.pages = [];
     this.update(abandonAscent(this.ascent), null, { kind: 'abandoned' });
   }
 
   /** L'écran du boss vaincu est passé : l'écran de transition vers le palier suivant (#38). */
   acknowledgeBossVictory(): void {
     if (this.ascent === null) return;
+    this.pages = [];
     this.update(acknowledgeBossVictory(this.ascent), null, { kind: 'bossAcknowledged' });
   }
 
   /** L'écran de transition est passé : l'étage 1 du palier suivant (#38). */
   enterNextTier(): void {
     if (this.ascent === null) return;
+    this.pages = [];
     this.update(enterNextTier(this.ascent), null, { kind: 'tierEntered' });
   }
 
@@ -370,6 +424,8 @@ export class AscentSession {
   leave(): void {
     this.ascent = null;
     this.battle = null;
+    this.pages = [];
+    this.newFoundItem = null;
     this.publish();
   }
 
@@ -389,6 +445,10 @@ export class AscentSession {
         }
         const ascent = this.ascent!;
         const encounter = ascent.encounter!;
+        // Un combat neuf (pas une reprise) : ses pages remplies partent de zéro, et le carnet note
+        // son palier (#282, D8, D9).
+        this.pages = [];
+        this.dependencies.discoveryBook?.noteTier(ascent.tier);
         const started = startBattle({
           ...options,
           seed: encounter.battleSeed,
@@ -445,11 +505,20 @@ export class AscentSession {
     // Le journal note la mise à jour en mémoire, après les sons et les vibrations, sans rien écrire :
     // il s'écrit aux points de sauvegarde du combat (#197).
     this.dependencies.ascentLog?.recordBattle(battle, events);
+    // Le carnet enregistre la mise à jour en mémoire, avant que le combat d'avant ne soit remplacé
+    // (#282, D6) : `this.battle` est le combat sauvegardé à une reprise, `null` à un combat neuf.
+    // Les mises à jour ignorées pendant l'attente de la fin du combat (`settling`) viennent après
+    // la fin : aucune chute ni entrée ne peut y arriver (ADR 0030).
+    const rises = this.dependencies.discoveryBook?.record(this.battle, battle, events) ?? [];
+    const filled = rises.flatMap(({ kind, state }) => (state === 'defeated' ? [kind] : []));
+    if (filled.length > 0) this.pages = [...this.pages, ...filled];
     this.battle = battle;
     const fell = events.find((event) => event.type === 'summonedFell');
     if (fell !== undefined) this.summonFellAt = fell.at;
     const ended = battle.phase.kind === 'over' ? battle.phase.outcome : null;
     if (ended !== null) {
+      // La ligne du carnet ne suit qu'un combat gagné (B19).
+      if (ended !== 'victory') this.pages = [];
       const next = endFloorBattle(this.ascent, {
         outcome: ended,
         heroHp: battle.hero.hp,
@@ -537,6 +606,14 @@ export class AscentSession {
     if (cause !== undefined && before !== null) {
       this.dependencies.ascentLog?.record({ ...cause, before, after: ascent });
     }
+    // Le seul point d'enregistrement des objets au carnet (#284, D4) : tout changement de l'objet
+    // trouvé passe par ici, avant la sauvegarde, qui écrit le carnet juste avant l'ascension (G6).
+    // Un objet trouvé posé hors de `update()` échapperait au carnet.
+    const found = foundItemDiscovery(before, ascent);
+    if (found !== null) {
+      const rises = this.dependencies.discoveryBook?.recordItems([found]) ?? [];
+      this.newFoundItem = rises.includes(found) ? found : null;
+    }
     this.ascent = ascent;
     this.battle = battle;
     this.save();
@@ -556,8 +633,16 @@ export class AscentSession {
               ASCENT_KEY,
               JSON.stringify({ version: SAVE_VERSION, ascent, battle } satisfies SavedAscent),
             );
+    // Le carnet s'écrit dans la même file, juste avant l'ascension (#282, D6) : il n'est jamais en
+    // retard sur le combat sauvegardé. Son échec ou son attente ne retient ni ne saute jamais
+    // l'écriture de l'ascension (`flush` se résout aussitôt tant qu'il n'est pas lu).
+    const { discoveryBook } = this.dependencies;
+    const queued =
+      discoveryBook === undefined
+        ? this.writing
+        : this.writing.then(() => discoveryBook.flush().catch(() => undefined));
     // Un échec d'écriture n'arrête pas l'ascension : la suivante réessaie.
-    this.writing = this.writing.then(write).catch(() => undefined);
+    this.writing = queued.then(write).catch(() => undefined);
     // Le journal s'écrit juste après, par sa propre file, s'il a changé : il n'attend jamais la
     // sauvegarde (#196). Pendant un combat, le combat s'écrit ainsi aux mêmes points (#197).
     this.dependencies.ascentLog?.flush();

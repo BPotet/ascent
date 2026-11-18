@@ -10,6 +10,7 @@ import type { Exit } from '../../../domain/ascent/exits';
 import type { FateGauge } from '../../../domain/ascent/fateGauge';
 import { ITEMS, type Equipment, type ItemKind, type ItemSlot } from '../../../domain/ascent/items';
 import type { Rarity } from '../../../domain/ascent/rarity';
+import { CODEX_ITEM_DESCRIPTIONS } from './codex/itemDescriptions';
 import { loadoutChipText, rarityLine, rarityName, type LoadoutChipText } from './rarityText';
 
 /** Les libellés de l'ascension (prototype #91), tirés du glossaire et de la maquette de #88. */
@@ -243,10 +244,12 @@ const ITEM_EFFECTS: Readonly<Record<ItemKind, string | null>> = {
   flamberge: 'Attaque +10 %, Frappe parfaite +0,3',
 };
 /**
- * La description d'un objet (Marteau, #129 ; Armure de chevalier déchu, #152 ; objets à débloquer,
- * #195), recopiée de l'Atelier ; les autres objets n'en ont pas.
+ * La description de chaque objet (#284, D14) : celles du Marteau (#129), de l'Armure de chevalier
+ * déchu (#152) et des objets à débloquer (#195), recopiées de l'Atelier, et les 6 recopiées du Codex
+ * par #284 (`codex/itemDescriptions.ts`). Un objet ajouté au jeu sans description ne compile pas.
  */
-const ITEM_DESCRIPTIONS: Partial<Readonly<Record<ItemKind, string>>> = {
+const ITEM_DESCRIPTIONS: Readonly<Record<ItemKind, string>> = {
+  ...CODEX_ITEM_DESCRIPTIONS,
   hammer:
     'Un marteau de forge, trop lourd pour un combat rapide. Aucune garde ne lui résiste longtemps.',
   blackKnightArmor: "L'armure d'un chevalier déchu. Trouvée dans une salle jadis emplie d'écuyers.",
@@ -258,8 +261,9 @@ const ITEM_DESCRIPTIONS: Partial<Readonly<Record<ItemKind, string>>> = {
     "Une épée à lame ondulée, trempée dans la flamme du camp. Le Gardien dit qu'elle a appartenu à quelqu'un qui est monté très haut. Elle ne pèse rien quand le geste est juste.",
 };
 
-export function itemDescription(item: ItemKind): string | null {
-  return ITEM_DESCRIPTIONS[item] ?? null;
+/** La description d'un objet, sur « Objet trouvé » et sur sa fiche du carnet. */
+export function itemDescription(item: ItemKind): string {
+  return ITEM_DESCRIPTIONS[item];
 }
 
 const SLOT_NAMES: Readonly<Record<ItemSlot, string>> = {

@@ -15,6 +15,7 @@ import {
 } from '../../../application/useCases/AscentSession';
 import { BATTLE_HINT_SEEN_KEYS } from '../../../application/useCases/battleHints';
 import { CAMP_KEY, CampSession } from '../../../application/useCases/CampSession';
+import { DiscoveryBookSession } from '../../../application/useCases/DiscoveryBookSession';
 import type { Ascent } from '../../../domain/ascent/Ascent';
 import { serializeCamp, unlockPrice } from '../../../domain/ascent/camp';
 import { powerPrice } from '../../../domain/ascent/powerTree';
@@ -33,6 +34,7 @@ export function ascentSetUp({
   battle,
   unlocks,
   powers,
+  book = false,
 }: {
   seed?: number;
   saved?: Ascent;
@@ -44,6 +46,8 @@ export function ascentSetUp({
   unlocks?: readonly Unlock[];
   /** Les pouvoirs déjà débloqués au camp (#235), à leur prix ; absent, aucun. */
   powers?: readonly PowerKind[];
+  /** La session d'ascension enregistre au carnet de découvertes (#282) ; absent, non. */
+  book?: boolean;
 } = {}) {
   const keyValueStore = memoryKeyValueStore();
   if (shards !== undefined) {
@@ -71,12 +75,14 @@ export function ascentSetUp({
     );
   }
   const clock = new ManualBattleClock(10_000);
+  const discoveryBook = new DiscoveryBookSession({ keyValueStore });
   const session = new AscentSession({
     clock,
     seeds: new FixedSeedSource(seed),
     sound: silentBattleSound(),
     haptics: silentBattleHaptics(),
     keyValueStore,
+    ...(book && { discoveryBook }),
   });
   const campSound = silentBattleSound();
   const campHaptics = silentHaptics();
@@ -95,5 +101,14 @@ export function ascentSetUp({
     clock: dependencies.clock,
     unitOfWork: dependencies.unitOfWork,
   });
-  return { keyValueStore, clock, session, camp, campSound, campHaptics, dependencies };
+  return {
+    keyValueStore,
+    clock,
+    session,
+    camp,
+    campSound,
+    campHaptics,
+    dependencies,
+    discoveryBook,
+  };
 }

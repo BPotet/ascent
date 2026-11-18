@@ -19,6 +19,7 @@ import type { UnitOfWork } from '../application/ports/UnitOfWork';
 import { AscentLogRecorder } from '../application/useCases/AscentLogRecorder';
 import { AscentSession } from '../application/useCases/AscentSession';
 import { CampSession } from '../application/useCases/CampSession';
+import { DiscoveryBookSession } from '../application/useCases/DiscoveryBookSession';
 import { ascentLogExport, type LogExport } from '../application/useCases/exportAscentLog';
 
 /** Le Journal d'ascension (#196) : l'enregistreur de la session, et l'export des deux écrans. */
@@ -29,6 +30,7 @@ export interface AscentLogFeature {
 
 let shared: AscentSession | null = null;
 let sharedCamp: CampSession | null = null;
+let sharedBook: DiscoveryBookSession | null = null;
 let sound: ExpoAudioBattleSound | null = null;
 let feature: AscentLogFeature | null = null;
 
@@ -66,6 +68,15 @@ function sharedSound(): ExpoAudioBattleSound {
 }
 
 /**
+ * La session du carnet de découvertes de l'app (#282), partagée par le pied de la tour, le carnet et
+ * la session d'ascension, qui y enregistre les découvertes : le stockage clé-valeur de l'app.
+ */
+export function sharedDiscoveryBookSession(keyValueStore: KeyValueStore): DiscoveryBookSession {
+  sharedBook ??= new DiscoveryBookSession({ keyValueStore });
+  return sharedBook;
+}
+
+/**
  * La session d'ascension de l'app, partagée par le pied de la tour et l'écran de l'ascension :
  * horloge de combat, graine au hasard, sons, vibrations et stockage clé-valeur de l'app. Tout est
  * sur le téléphone : l'ascension se joue hors ligne.
@@ -79,6 +90,7 @@ export function sharedAscentSession(keyValueStore: KeyValueStore, clock: Clock):
     haptics: new ExpoBattleHaptics(),
     keyValueStore,
     ...(ascentLog !== undefined && { ascentLog }),
+    discoveryBook: sharedDiscoveryBookSession(keyValueStore),
   });
   return shared;
 }
