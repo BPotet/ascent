@@ -97,7 +97,7 @@ au plus tard avec le combat qui l'a produit.
 
 ## Avenant du 18 novembre 2026 — la lecture ratée est relancée d'elle-même
 
-- **Décideur** : le correcteur de bugs, sur le bug #295
+- **Décideur** : orchestrateur, 18/11/2026, sur le bug #295
 - **Contexte** : après une lecture ratée, seules l'ouverture du carnet et « Réessayer » relisaient
   (§ 8). Une lecture ratée au démarrage, une Goule vaincue puis remplacée par un Renfort, et une
   fermeture sans ouvrir le carnet : la découverte, restée en mémoire, était perdue, et la relecture
@@ -109,8 +109,10 @@ au plus tard avec le combat qui l'a produit.
    tant que le carnet n'est pas lu. La lecture relancée, si elle réussit, fusionne les découvertes en
    attente et écrit le carnet par la file de la session (§ 8).
 2. **Pourquoi `flush` et non `noteTier`** : `flush` est appelé à chaque point de sauvegarde de
-   l'ascension, donc avant toute perte possible, y compris dans un combat repris, où `noteTier`
-   n'est pas appelé. `record` n'en relance pas : il suit chaque mise à jour du combat.
+   l'ascension, y compris dans un combat repris, où `noteTier` n'est pas appelé : chaque point de
+   sauvegarde redonne une chance d'écrire les découvertes en attente. La relance ne précède pas pour
+   autant l'écriture de l'ascension de ce point de sauvegarde (voir les conséquences). `record` n'en
+   relance pas : il suit chaque mise à jour du combat.
 3. **Invariants gardés** : rien n'est écrit tant que la lecture n'a pas réussi ; une valeur
    illisible est toujours copiée à part avant toute écriture ; l'écriture de l'ascension n'attend
    jamais la relecture ; au plus une lecture à la fois et une relance par point de sauvegarde, sans
@@ -119,6 +121,13 @@ au plus tard avec le combat qui l'a produit.
 ### Conséquences
 
 - Risque accepté : au point de sauvegarde où la relance réussit, le carnet s'écrit juste après
-  l'ascension, et non juste avant (§ 6) ; une fermeture forcée dans cet intervalle laisse les
-  découvertes de ce combat à la relecture de la première ligne et au point de sauvegarde suivant.
+  l'ascension, et non juste avant (§ 6). Une fermeture forcée dans cet intervalle, d'environ un
+  aller-retour du stockage, perd pour de bon les découvertes en attente qui ne sont plus en première
+  ligne du combat sauvegardé : la relecture de la première ligne à la reprise ne les voit plus. Ce
+  risque n'existe qu'après une lecture ratée.
+- Risque résiduel, soumis au propriétaire : si la lecture échoue à chaque point de sauvegarde
+  jusqu'à la fermeture ou la fin de l'ascension, les découvertes en attente sont perdues. Il est
+  inévitable avec D7, qui interdit d'écrire un carnet non lu, et reste un écart à G2 de #282. C'est
+  une nette amélioration par rapport à avant, où une seule lecture ratée au démarrage suffisait à
+  perdre toutes les découvertes de l'ascension tant que le carnet n'était pas ouvert.
 - Pendant une relance, le carnet affiché passe de l'erreur à la lecture, comme avec « Réessayer ».
