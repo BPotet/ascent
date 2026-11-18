@@ -54,6 +54,8 @@ const LINE = artPixelSize(2);
 const ELITE = roles.rarityEpic;
 const BOSS = roles.curse;
 const TIERS: readonly Tier[] = [1, 2, 3];
+/** Les hachures d'une case « ??? » : le trait de la maquette à 28 %. */
+const HATCH = 'rgba(62,72,112,0.28)';
 /** La marge de l'écran et l'écart entre deux cases (maquette, 16 et 8 dp). */
 const GUTTER = 16;
 const GAP = 8;
@@ -62,6 +64,28 @@ const GAP = 8;
 function useTileWidth(columns: number): number {
   const { width } = useWindowDimensions();
   return Math.floor((width - 2 * GUTTER - GAP * (columns - 1)) / columns);
+}
+
+/**
+ * Des hachures à 45° (maquette 278, `repeating-linear-gradient(135deg, …)`) : celles d'une case
+ * « ??? » et de la part rencontrée de la barre d'un palier. Décoratives.
+ */
+function Hatching({
+  color,
+  count,
+  step,
+}: {
+  readonly color: string;
+  readonly count: number;
+  readonly step: number;
+}) {
+  return (
+    <View pointerEvents="none" style={styles.hatching}>
+      {Array.from({ length: count }, (_, index) => (
+        <View key={index} style={[styles.hatch, { left: index * step, backgroundColor: color }]} />
+      ))}
+    </View>
+  );
 }
 
 /** L'en-tête : retour, « Le carnet » et, une fois lu, le total des découvertes. */
@@ -147,7 +171,9 @@ function TierFrame({ tier }: { readonly tier: BestiaryTier }) {
       </View>
       <View style={styles.bar}>
         <View style={[styles.barFilled, { width: `${filled}%` }]} />
-        <View style={[styles.barMet, { left: `${filled}%`, width: `${met}%` }]} />
+        <View style={[styles.barMet, { left: `${filled}%`, width: `${met}%` }]}>
+          <Hatching color={roles.muted} count={60} step={4} />
+        </View>
       </View>
       <View style={styles.summary}>
         {tier.complete && <PixelIcon name="check8" color={roles.gold} />}
@@ -277,6 +303,7 @@ function Tile({
       testID={`book-entry-${entry.kind}`}
       style={style}
     >
+      {unknown && <Hatching color={HATCH} count={40} step={6} />}
       {content}
     </View>
   );
@@ -592,12 +619,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   barFilled: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: roles.gold },
-  barMet: {
+  barMet: { position: 'absolute', top: 0, bottom: 0, overflow: 'hidden' },
+  hatching: { ...StyleSheet.absoluteFill, overflow: 'hidden' },
+  hatch: {
     position: 'absolute',
-    top: 0,
-    bottom: 0,
-    backgroundColor: roles.muted,
-    opacity: 0.5,
+    top: -40,
+    bottom: -40,
+    width: 2,
+    transform: [{ rotate: '45deg' }],
   },
   summary: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   summaryText: {
@@ -634,7 +663,7 @@ const styles = StyleSheet.create({
     borderColor: roles.line,
   },
   tileBoss: { minHeight: 160 },
-  tileUnknown: { backgroundColor: roles.sunken, borderColor: roles.raised },
+  tileUnknown: { backgroundColor: roles.sunken, borderColor: roles.raised, overflow: 'hidden' },
   well: {
     width: 80,
     height: 80,
