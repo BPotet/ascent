@@ -1,7 +1,12 @@
 import { ENEMIES, type EnemyKind } from '../../../../domain/battle/combatants';
+import { BESTIARY_CATALOG, catalogKinds } from '../../../../domain/discoveryBook/bestiary';
+import { GHOUL_ANIMATION } from './atelier/data/ghoul';
+import { HOUR_RINGER_ANIMATION } from './atelier/data/hourRinger';
+import { HOUR_RINGER_PHASE2 } from './atelier/data/hourRingerPhase2';
 import { PORTRAITS } from './atelier/data/portraits';
 import { tintCode } from './atelier/fullAnimation';
-import { bestiarySilhouette, silhouetteOf } from './silhouettes';
+import { battleImage } from './battle/battleCharacters';
+import { battleSilhouette, bestiarySilhouette, silhouetteOf } from './silhouettes';
 
 const KINDS = Object.keys(ENEMIES) as EnemyKind[];
 
@@ -36,5 +41,32 @@ describe('the silhouette of an encountered enemy in the book (#282)', () => {
     expect(filled.rows).toEqual(['111', '101', '111']);
     expect(silhouette.palette).toHaveLength(2);
     silhouette.palette.forEach((tint) => expect(() => tintCode(tint)).not.toThrow());
+  });
+});
+
+describe('the battle image of an enemy page and its silhouette (#283, D8)', () => {
+  it('is the idle0 pose of the full animation of every entry of the bestiary', () => {
+    catalogKinds(BESTIARY_CATALOG).forEach((kind) => {
+      const image = battleImage(kind);
+      expect(image.rows.length).toBe(image.h);
+      image.rows.forEach((row) => expect(row).toHaveLength(image.w));
+      image.palette.forEach((tint) => expect(() => tintCode(tint)).not.toThrow());
+    });
+    expect(battleImage('ghoul')).toEqual({
+      w: GHOUL_ANIMATION.w,
+      h: GHOUL_ANIMATION.h,
+      palette: GHOUL_ANIMATION.pal,
+      rows: GHOUL_ANIMATION.frames.idle0,
+    });
+  });
+
+  it('takes the phase 1 pose of a boss, whatever its phase 2 aspect', () => {
+    expect(battleImage('hourRinger').rows).toEqual(HOUR_RINGER_ANIMATION.frames.idle0);
+    expect(battleImage('hourRinger').rows).not.toEqual(HOUR_RINGER_PHASE2.frames.idle0);
+  });
+
+  it('gives the hidden page the silhouette of the battle image, the same each time', () => {
+    expect(battleSilhouette('hourRinger')).toEqual(silhouetteOf(battleImage('hourRinger')));
+    expect(battleSilhouette('ghoul')).toBe(battleSilhouette('ghoul'));
   });
 });

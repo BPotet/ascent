@@ -41,7 +41,12 @@ import { CANDLE_BEARER_ANIMATION } from '../atelier/data/candleBearer';
 import { CRYPT_RAT_ANIMATION } from '../atelier/data/cryptRat';
 import { BRAMBLE_MOTHER_ANIMATION } from '../atelier/data/brambleMother';
 import { MATINS_RINGER_ANIMATION } from '../atelier/data/matinsRinger';
-import { animationSprite, type ExtraFrame, type FullAnimation } from '../atelier/fullAnimation';
+import {
+  animationSprite,
+  type AssetImage,
+  type ExtraFrame,
+  type FullAnimation,
+} from '../atelier/fullAnimation';
 import { HERO_ANIMATIONS, HERO_CELL, isHero } from './heroAnimations';
 
 /** Un personnage du combat : un ennemi de trois quarts face, ou l'héroïne de dos. */
@@ -279,6 +284,15 @@ export function playsRed(kind: EnemyKind): boolean {
 
 function isEnemyFrame(frame: BattleFrame): frame is EnemyFrame {
   return (ENEMY_FRAMES as readonly string[]).includes(frame);
+}
+
+/**
+ * L'image de combat d'un ennemi (#283, D8) : la pose `idle0` de son animation complète, celle de sa
+ * phase 1 pour un boss, en image fixe, pour la page d'un ennemi.
+ */
+export function battleImage(kind: EnemyKind): AssetImage {
+  const animation: FullAnimation<EnemyFrame> = FULL_ANIMATIONS[kind];
+  return { w: animation.w, h: animation.h, palette: animation.pal, rows: animation.frames.idle0 };
 }
 
 /** Un boss qui a un aspect de phase 2 (#38). */
