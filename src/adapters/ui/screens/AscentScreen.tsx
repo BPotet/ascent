@@ -1,4 +1,4 @@
-import { type Ref, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, type Ref, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import type { AscentSession } from '../../../application/useCases/AscentSession';
@@ -7,10 +7,12 @@ import { canReroll, type Ascent, type TierPassage } from '../../../domain/ascent
 import { favorRerolls } from '../../../domain/ascent/fateGauge';
 import { loadoutOf } from '../../../domain/ascent/loadout';
 import { SUMMIT_SHARDS, shardSum } from '../../../domain/ascent/shards';
+import type { EnemyKind } from '../../../domain/battle/combatants';
 import { BoonChoicePanel } from '../battle/BoonChoicePanel';
 import type { SceneArea } from '../battle/scene/backdropVeil';
 import { TierBackdrop } from '../battle/TierBackdrop';
 import { BlessingChoice } from '../components/BlessingChoice';
+import { BookLine } from '../components/BookLine';
 import { ExitChoice } from '../components/ExitChoice';
 import { FoundItemPanel } from '../components/FoundItemPanel';
 import { KeysEntry } from '../components/KeysEntry';
@@ -255,11 +257,14 @@ function BossDefeated({
   passage,
   onContinue,
   onPause,
+  line,
 }: {
   readonly ascent: Ascent;
   readonly passage: TierPassage;
   readonly onContinue: () => void;
   readonly onPause: () => void;
+  /** La ligne du carnet (#282), sous « Palier N franchi ». */
+  readonly line: ReactNode;
 }) {
   const shards = ascent.shardAwards.at(-1)?.amount ?? 0;
   useAnnouncement(bossDefeatedAnnouncement(shards));
@@ -269,6 +274,7 @@ function BossDefeated({
       <Text accessibilityRole="header" style={styles.big}>
         {`Palier ${ascent.tier} franchi`}
       </Text>
+      {line}
       <BigShards shards={shards} label={bossDefeatedAnnouncement(shards)} />
       <Text style={styles.line}>Éclats · gardés pour toujours, même si tu tombes.</Text>
       <View style={styles.reward}>
@@ -398,6 +404,14 @@ export function AscentScreen({
   const [sealedOpening, setSealedOpening] = useState(false);
   const [leftBand, setLeftBand] = useState<number | null>(null);
   const [, setEntered] = useState(0);
+  // La ligne du carnet (#282) : les pages remplies du combat gagné, jusqu'au choix d'une sortie ;
+  // elle n'arrive qu'une fois, puis reste là sur les écrans suivants.
+  const pages = session.newPages();
+  const [seenPages, setSeenPages] = useState<readonly EnemyKind[]>([]);
+  const line =
+    pages.length === 0 ? null : (
+      <BookLine kinds={pages} animate={seenPages !== pages} onShown={() => setSeenPages(pages)} />
+    );
   const [counting, setCounting] = useState(() => session.resuming());
   const [paused, setPaused] = useState(false);
   const [mount, setMount] = useState(0);
@@ -510,6 +524,7 @@ export function AscentScreen({
           passage={passage}
           onContinue={() => session.acknowledgeBossVictory()}
           onPause={leave}
+          line={line}
         />
       </Screen>
     ) : (
@@ -609,6 +624,14 @@ export function AscentScreen({
     ascent.lastGold > 0 ? (
       <Text style={styles.gold}>{`Étage franchi · +${goldText(ascent.lastGold)}`}</Text>
     ) : null;
+  // L'Or de l'étage, puis la ligne du carnet dessous (#282, maquette D1).
+  const banner =
+    gained === null && line === null ? null : (
+      <View testID="ascent-floor-banner" style={styles.banner}>
+        {gained}
+        {line}
+      </View>
+    );
 
   // L'objet du coffre scellé ouvert (#226) : l'ouverture se joue d'abord, puis l'objet, sans Coffre.
   const fromSealedChest = ascent.sealedChest?.opened === true;
@@ -639,7 +662,7 @@ export function AscentScreen({
     return (
       <Screen layout="top" background={roles.night} testID="ascent-item">
         <Header ascent={ascent} onPause={leave} onLoadout={openLoadout} loadoutRef={opener} />
-        {fromSealedChest ? null : gained}
+        {fromSealedChest ? line : banner}
         <FoundItemPanel
           key={revealKey}
           item={ascent.foundItem}
@@ -660,6 +683,7 @@ export function AscentScreen({
     return (
       <Screen layout="top" background={roles.night} testID="ascent-sealed-chest">
         <Header ascent={ascent} onPause={leave} onLoadout={openLoadout} loadoutRef={opener} />
+        {line}
         <SealedChestPanel
           keys={keys}
           opening={false}
@@ -686,7 +710,7 @@ export function AscentScreen({
     return (
       <Screen layout="top" background={roles.night} testID="ascent-boons">
         <Header ascent={ascent} onPause={leave} onLoadout={openLoadout} loadoutRef={opener} />
-        {gained}
+        {banner}
         {leftBand !== null && (
           <View accessible role="status" testID="sealed-left-band" style={styles.band}>
             <PixelIcon name="lock" color={roles.parchment} />
@@ -723,7 +747,7 @@ export function AscentScreen({
         exits={ascent.exits}
         gauge={ascent.gauge}
         tier={ascent.tier}
-        banner={gained}
+        banner={banner}
         onChoose={(index) => session.chooseExit(index)}
       />
       {loadoutSheet}
@@ -734,6 +758,7 @@ export function AscentScreen({
 // Stryker disable all: styles d'un écran de prototype.
 const styles = StyleSheet.create({
   camp: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  banner: { alignItems: 'center', gap: 6, paddingHorizontal: 16 },
   campText: { fontFamily: textFont.bold, fontSize: 15, lineHeight: 19, color: roles.light },
   fill: { flex: 1 },
   header: {
