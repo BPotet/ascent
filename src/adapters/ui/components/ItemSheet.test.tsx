@@ -1,8 +1,12 @@
 // La fiche d'un objet découvert (#284, maquette 278, O3, D11) : une feuille avec l'image à 96 dp dans
 // l'écrin de 112 dp, le nom, la rareté, l'effet en or et la description ; « Fermer », le retour
 // Android, le voile et un glissement vers le bas la ferment.
-import { fireEvent, render, screen } from '@testing-library/react-native';
-import type { GestureResponderEvent, PanResponderGestureState } from 'react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  AccessibilityInfo,
+  type GestureResponderEvent,
+  type PanResponderGestureState,
+} from 'react-native';
 
 import { swipe } from '../testing/swipe';
 import { ItemSheet, closesOnSwipe, swipeDownToClose } from './ItemSheet';
@@ -76,6 +80,26 @@ describe('ItemSheet (#284, O3)', () => {
     expect(onClose).not.toHaveBeenCalled();
     await swipe(sheet, 120, 400);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ItemSheet and the reduced motion', () => {
+  const reduceMotion = jest.mocked(AccessibilityInfo.isReduceMotionEnabled);
+
+  afterEach(() => {
+    reduceMotion.mockResolvedValue(false);
+  });
+
+  it('slides up, or appears at once with reduced motion', async () => {
+    reduceMotion.mockResolvedValue(false);
+    await show();
+    await act(async () => {});
+    expect(screen.getByTestId('item-sheet-modal')).toHaveProp('animationType', 'slide');
+
+    reduceMotion.mockResolvedValue(true);
+    await show();
+    await act(async () => {});
+    expect(screen.getByTestId('item-sheet-modal')).toHaveProp('animationType', 'none');
   });
 });
 
