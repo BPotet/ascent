@@ -49,7 +49,8 @@ import type { HeroKind } from '../../domain/battle/combatants';
 import { POWERS, basePower, type PowerKind } from '../../domain/battle/powers';
 import type { HabitId } from '../../domain/habit/Habit';
 import type { Tier } from '../../domain/ascent/tiers';
-import type { Unlock } from '../../domain/ascent/unlocks';
+import type { ItemKind } from '../../domain/ascent/items';
+import { unlockedItems, type Unlock } from '../../domain/ascent/unlocks';
 import type { BattleSound } from '../ports/BattleSound';
 import type { Clock } from '../ports/Clock';
 import type { Haptics } from '../ports/Haptics';
@@ -159,6 +160,11 @@ export interface CampView {
   readonly oaths: Partial<Readonly<Record<PowerKind, CampOath>>>;
   /** Les pouvoirs qui peuvent porter un Serment : débloqués, ou de base, à 2 Élan ou plus (#237). */
   readonly oathBearers: readonly PowerKind[];
+  /**
+   * Les objets à débloquer achetés au Camp, pour cette ascension ou la suivante (#284, D8) : le
+   * carnet en dit « Se débloque au camp » ou « Pas encore trouvé ».
+   */
+  readonly boughtItems: readonly ItemKind[];
 }
 
 /** Un achat : enregistré, en échec (rien n'a changé, on peut réessayer), ou refusé. */
@@ -276,6 +282,7 @@ export class CampSession {
       oathBearers: (Object.keys(POWERS) as PowerKind[]).filter((power) =>
         canBearOath(this.camp, power),
       ),
+      boughtItems: unlockedItems(campUnlocks(this.camp)),
     };
   }
 

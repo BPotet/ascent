@@ -423,3 +423,34 @@ describe('CampSession: the power trees (#235)', () => {
     expect(camp.view().powerTreesSeen).toBe(true);
   });
 });
+
+describe('CampSession: the items bought for the discovery book (#284, D8)', () => {
+  it('has no item bought without a purchase', async () => {
+    const { camp } = await loaded(0);
+
+    expect(camp.view().boughtItems).toEqual([]);
+  });
+
+  it('gives the items bought, never the Ember heart, which is a boon', async () => {
+    const stored = JSON.stringify({
+      version: 1,
+      unlocks: [
+        { unlock: 'flamberge', price: 60 },
+        { unlock: 'emberHeart', price: 30 },
+        { unlock: 'huntingSpear', price: 20 },
+      ],
+    });
+    const { camp } = await loaded(200, stored);
+
+    expect(camp.view().boughtItems).toEqual(['huntingSpear', 'flamberge']);
+  });
+
+  it('gives an item bought during an ascent, for the next one', async () => {
+    const { camp, ascentSession } = await loaded(80);
+    ascentSession.begin();
+
+    expect(await camp.unlock('watchBell')).toBe('unlocked');
+
+    expect(camp.view().boughtItems).toEqual(['watchBell']);
+  });
+});
