@@ -189,7 +189,7 @@ describe('EnemyPageScreen', () => {
     ).toBeOnTheScreen();
     expect(screen.getAllByTestId(/^enemy-page-move-/u)).toHaveLength(3);
     expect(read()).toContain(
-      'Invocation. Sous la moitié de ses PV, elle appelle deux Phalénides à ses côtés. Ils retombent en cendre avec elle.',
+      'Invocation. Quand ses PV descendent à la moitié, elle appelle deux Phalénides à ses côtés. Elles retombent en cendre avec elle.',
     );
   });
 

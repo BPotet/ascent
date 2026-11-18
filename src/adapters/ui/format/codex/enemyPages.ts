@@ -10,8 +10,9 @@
  *   12/11/2026 (`CX`), à une exception près, notée sur la fiche du Nécromancien.
  * - Les autres phrases des mécaniques : la maquette 278 corrigée par le GD, recopiées telles
  *   quelles, sans dégâts chiffrés (B21).
- * - Écrits pour cette story, à relire par le GD : l'Invocation de la Reine des phalènes, et
- *   Frôlement (Phalène voleuse) sans son chiffre ; le Codex n'est pas modifié.
+ * - Écrits pour cette story, relus et corrigés par le GD le 18/11/2026 (bug #299) : l'Invocation
+ *   de la Reine des phalènes, et Frôlement (Phalène voleuse), description et phrase du Vol d'Élan,
+ *   sans son chiffre ; le Codex n'est pas modifié.
  *
  * Pour un boss, la seconde phase ne donne que les coups qu'elle ajoute. `attack` est recopié pour
  * être vérifié contre la fiche du domaine (`ENEMIES`).
@@ -93,7 +94,8 @@ export const ENEMY_PAGES: Readonly<Record<EnemyKind, EnemyPageText>> = {
       },
     ],
   },
-  // Coup sans nom ni description dans le Codex du jour : la révision du 26/10/2026 (maquette 278).
+  // Coup sans nom ni description dans le Codex du jour : le nom vient de la révision du 26/10/2026
+  // (maquette 278), la description a été relue et corrigée par le GD le 18/11/2026 (bug #299).
   // `codex/necromancer` v5 (967b8d4c88f23c680eb6fd6b081b5ac0a62abf1b2bb65fe91c8be895a7e707a0).
   necromancer: {
     lore: "Il garde les morts comme d'autres gardent un troupeau. Tant qu'il veille, rien de ce qui tombe ne reste tombé.",
@@ -108,7 +110,7 @@ export const ENEMY_PAGES: Readonly<Record<EnemyKind, EnemyPageText>> = {
             attack: 'basic',
             name: 'Bâton des veilles',
             description:
-              "Il lève son bâton sans hâte et l'abat d'un coup sec, comme on frappe à une porte. Une préparation lente et lisible, un seul impact.",
+              "Il lève son bâton et l'abat d'un coup sec, comme on frappe à une porte. Un reflet blanc, un seul impact.",
           },
         ],
       },
@@ -523,13 +525,14 @@ export const ENEMY_PAGES: Readonly<Record<EnemyKind, EnemyPageText>> = {
       },
     ],
   },
-  // Frôlement réécrit sans chiffre (B21, à relire par le GD) : le Codex dit « lui vole 1 Élan ».
+  // Frôlement réécrit sans chiffre (B21), relu et corrigé par le GD le 18/11/2026 (bug #299) : le
+  // Codex dit « lui vole 1 Élan ».
   // `codex/thievingMoth` v1 (c486543b4f7dd50e2c84c8661484e4b4f95bcea6ecee763cc83bc5762fd0bfdd).
   thievingMoth: {
     lore: "Une phalène violette aux ailes ocellées d'or, attirée par l'élan des héros comme par une flamme. Elle le leur vole à chaque contact.",
     mechanics: {
       momentumTheft:
-        'Chaque impact qui te touche, bonne parade comprise, lui donne un peu de ton Élan. Une parade parfaite ou une esquive le protège.',
+        'Chaque impact qui te touche, bonne parade comprise, te vole un peu de ton Élan. Une parade parfaite ou une esquive le protège.',
     },
     phases: [
       {
@@ -538,7 +541,7 @@ export const ENEMY_PAGES: Readonly<Record<EnemyKind, EnemyPageText>> = {
             attack: 'double',
             name: 'Frôlement',
             description:
-              'Elle frôle deux fois le héros du bout des ailes. Le reflet se dédouble : deux impacts. Chaque impact qui te touche lui donne un peu de ton Élan.',
+              'Elle frôle deux fois le héros du bout des ailes. Le reflet se dédouble : deux impacts. Chaque impact qui le touche, même sur une bonne parade, lui vole un peu de son Élan.',
           },
           {
             attack: 'feint',
@@ -688,12 +691,13 @@ export const ENEMY_PAGES: Readonly<Record<EnemyKind, EnemyPageText>> = {
       },
     ],
   },
+  // L'Invocation : texte proposé, relu et corrigé par le GD le 18/11/2026 (bug #299).
   // `codex/mothQueen` v3 (a7095d17fe3fb82cca90d09ea04c1f45e4fd8e7a2c616398e944f6573056c2d6).
   mothQueen: {
     lore: "La première à avoir vu la lumière du sommet, et la première à s'y être brûlée. Ses ailes ne la portent plus, mais ceux qui l'ont suivie, devenus Phalénides, reviennent toujours à elle.",
     mechanics: {
       summon:
-        'Sous la moitié de ses PV, elle appelle deux Phalénides à ses côtés. Ils retombent en cendre avec elle.',
+        'Quand ses PV descendent à la moitié, elle appelle deux Phalénides à ses côtés. Elles retombent en cendre avec elle.',
       phaseShift:
         "Sous la moitié de ses PV, sa garde revient entière et ses coups de phase 2 s'ajoutent.",
     },

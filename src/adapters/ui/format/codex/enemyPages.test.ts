@@ -74,12 +74,24 @@ describe('the content of the enemy pages (#283)', () => {
     texts(kind).forEach((text) => expect(text).not.toMatch(/monstre|maudit/iu));
   });
 
-  it('says the Invocation of the Moth Queen and Frôlement without a number (texts for the GD)', () => {
+  it('says the Invocation of the Moth Queen as the GD corrected it (#299)', () => {
     expect(ENEMY_PAGES.mothQueen.mechanics.summon).toBe(
-      'Sous la moitié de ses PV, elle appelle deux Phalénides à ses côtés. Ils retombent en cendre avec elle.',
+      'Quand ses PV descendent à la moitié, elle appelle deux Phalénides à ses côtés. Elles retombent en cendre avec elle.',
     );
+  });
+
+  it('says Frôlement and the Momentum theft of the Thieving moth as the GD corrected them (#299)', () => {
     expect(ENEMY_PAGES.thievingMoth.phases[0]!.moves[0]!.description).toBe(
-      'Elle frôle deux fois le héros du bout des ailes. Le reflet se dédouble : deux impacts. Chaque impact qui te touche lui donne un peu de ton Élan.',
+      'Elle frôle deux fois le héros du bout des ailes. Le reflet se dédouble : deux impacts. Chaque impact qui le touche, même sur une bonne parade, lui vole un peu de son Élan.',
+    );
+    expect(ENEMY_PAGES.thievingMoth.mechanics.momentumTheft).toBe(
+      'Chaque impact qui te touche, bonne parade comprise, te vole un peu de ton Élan. Une parade parfaite ou une esquive le protège.',
+    );
+  });
+
+  it('says the Staff of vigils of the Necromancer as a simple blow, as the GD corrected it (#299)', () => {
+    expect(ENEMY_PAGES.necromancer.phases[0]!.moves[0]!.description).toBe(
+      "Il lève son bâton et l'abat d'un coup sec, comme on frappe à une porte. Un reflet blanc, un seul impact.",
     );
   });
 });
