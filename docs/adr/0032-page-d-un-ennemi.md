@@ -90,12 +90,17 @@ chiffre de jeu sur la page, les mécaniques montrées seulement une fois l'ennem
 
 - Aucun port nouveau, aucune migration ; deux méthodes de plus sur `DiscoveryBookSession` (`page`,
   `markPageSeen`), sans changement de `DiscoveryBookView` ni de `current()`.
-- Textes écrits pour cette story, à relire par le GD, le Codex n'étant pas modifié : l'Invocation de
-  la Reine des phalènes (« Sous la moitié de ses PV, elle appelle deux Phalénides à ses côtés. Ils
-  retombent en cendre avec elle. »), et Frôlement (Phalène voleuse) sans son chiffre (« … Chaque
-  impact qui te touche lui donne un peu de ton Élan. » au lieu de « lui vole 1 Élan »).
-- Le Codex du jour n'a ni nom ni description pour le coup du Nécromancien : la page reprend ceux de
-  la révision du 26/10/2026 (« Bâton des veilles »), copiés dans la maquette 278.
+- Textes écrits pour cette story, le Codex n'étant pas modifié, relus et corrigés par le GD le
+  18/11/2026 (bug #299) : l'Invocation de la Reine des phalènes (« Quand ses PV descendent à la
+  moitié, elle appelle deux Phalénides à ses côtés. Elles retombent en cendre avec elle. »), et
+  Frôlement (Phalène voleuse) sans son chiffre (« … Chaque impact qui le touche, même sur une bonne
+  parade, lui vole un peu de son Élan. » au lieu de « lui vole 1 Élan »), avec la phrase de son Vol
+  d'Élan (« Chaque impact qui te touche, bonne parade comprise, te vole un peu de ton Élan. Une
+  parade parfaite ou une esquive le protège. »).
+- Le Codex du jour n'a ni nom ni description pour le coup du Nécromancien : la page reprend le nom
+  de la révision du 26/10/2026 (« Bâton des veilles »), copié dans la maquette 278 ; sa description,
+  qui parlait d'un coup lent, a été relue et corrigée par le GD le 18/11/2026 (bug #299) : « Il lève
+  son bâton et l'abat d'un coup sec, comme on frappe à une porte. Un reflet blanc, un seul impact. »
 - Risques acceptés : une écriture de la marque en échec puis l'app fermée rejoue « Page remplie » une
   fois (la même garantie que le carnet, ADR 0030, D7) ; un ennemi qui entre dans le jeu après cette
   story écrit sa page dans sa propre story (règle de contenu du carnet).
