@@ -2,6 +2,7 @@ import {
   DISCOVERY_BOOK_VERSION,
   EMPTY_DISCOVERY_BOOK,
   clearNewMarks,
+  markPageSeen,
   mergeBooks,
   newEntryCount,
   noteTier,
@@ -254,6 +255,84 @@ describe('the discovery book (#282, D4)', () => {
       ['items in a list', JSON.stringify({ version: 1, lastTier: null, enemies: {}, items: [] })],
     ])('says that a value with %s is unreadable, and starts again from an empty book', (_, raw) => {
       expect(parseDiscoveryBook(raw)).toEqual({ book: EMPTY_DISCOVERY_BOOK, unreadable: true });
+    });
+  });
+
+  describe('the mark « page vue remplie » (#283, B18)', () => {
+    it('marks a defeated entry once, and keeps the same book for any other entry', () => {
+      const defeated = book({ ghoul: { state: 'defeated', isNew: true } });
+      const seen = markPageSeen(defeated, 'ghoul');
+      expect(seen.enemies.ghoul).toEqual({ state: 'defeated', isNew: true, pageSeen: true });
+      expect(markPageSeen(seen, 'ghoul')).toBe(seen);
+      const met = book({ ghoul: { state: 'encountered' } });
+      expect(markPageSeen(met, 'ghoul')).toBe(met);
+      expect(markPageSeen(met, 'specter')).toBe(met);
+    });
+
+    it('keeps the mark when the entry is recorded again, and when the marks « nouveau » clear', () => {
+      const seen = book({ ghoul: { state: 'defeated', pageSeen: true } });
+      const again = recordDiscoveries(seen, [{ kind: 'ghoul', state: 'defeated' }]);
+      expect(again.book).toBe(seen);
+      const marked = book({ ghoul: { state: 'defeated', isNew: true, pageSeen: true } });
+      expect(clearNewMarks(marked).enemies.ghoul).toEqual({ state: 'defeated', pageSeen: true });
+    });
+
+    it('keeps the other fields of a record that rises', () => {
+      const met = book({ ghoul: { state: 'encountered' } });
+      const risen = recordDiscoveries(met, [{ kind: 'ghoul', state: 'defeated' }]).book;
+      expect(risen.enemies.ghoul).toEqual({ state: 'defeated', isNew: true });
+    });
+
+    it('is kept by a merge at the same state, from either book (R2)', () => {
+      const seen = book({ ghoul: { state: 'defeated', pageSeen: true } });
+      const defeatedAgain = book({ ghoul: { state: 'defeated', isNew: true } });
+      expect(mergeBooks(seen, defeatedAgain).enemies.ghoul).toMatchObject({ pageSeen: true });
+      expect(mergeBooks(defeatedAgain, seen).enemies.ghoul).toMatchObject({ pageSeen: true });
+      expect(mergeBooks(seen, book({})).enemies.ghoul).toEqual({
+        state: 'defeated',
+        pageSeen: true,
+      });
+      const plain = book({ ghoul: { state: 'defeated' } });
+      expect(mergeBooks(plain, plain).enemies.ghoul).toEqual({ state: 'defeated' });
+    });
+
+    it('is read back from the stored value on a defeated entry, ignored on an encountered one', () => {
+      const seen = book({ ghoul: { state: 'defeated', pageSeen: true } });
+      expect(parseDiscoveryBook(serializeDiscoveryBook(seen))).toEqual({
+        book: seen,
+        unreadable: false,
+      });
+      const raw = JSON.stringify({
+        version: 1,
+        lastTier: null,
+        enemies: { ghoul: { state: 'encountered', pageSeen: true } },
+        items: {},
+      });
+      expect(parseDiscoveryBook(raw).book.enemies).toEqual({ ghoul: { state: 'encountered' } });
+    });
+
+    it.each([
+      ['1', 1],
+      ['false', false],
+      ['a word', 'yes'],
+    ])('makes the book unreadable when the mark is %s', (_, pageSeen) => {
+      const raw = JSON.stringify({
+        version: 1,
+        lastTier: null,
+        enemies: { ghoul: { state: 'defeated', pageSeen } },
+        items: {},
+      });
+      expect(parseDiscoveryBook(raw)).toEqual({ book: EMPTY_DISCOVERY_BOOK, unreadable: true });
+    });
+
+    it('is never read on an item', () => {
+      const raw = JSON.stringify({
+        version: 1,
+        lastTier: null,
+        enemies: {},
+        items: { axe: { state: 'discovered', pageSeen: true } },
+      });
+      expect(parseDiscoveryBook(raw).book.items).toEqual({ axe: { state: 'discovered' } });
     });
   });
 });

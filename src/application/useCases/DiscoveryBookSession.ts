@@ -12,6 +12,7 @@ import {
 import {
   EMPTY_DISCOVERY_BOOK,
   clearNewMarks,
+  markPageSeen,
   mergeBooks,
   newEntryCount,
   noteTier,
@@ -21,6 +22,7 @@ import {
   type DiscoveryBook,
   type Discovery,
 } from '../../domain/discoveryBook/DiscoveryBook';
+import { enemyPage, type EnemyPage } from '../../domain/discoveryBook/enemyPage';
 import type { KeyValueStore } from '../ports/KeyValueStore';
 
 /** La clé du carnet de découvertes (#282, ADR 0030) : jamais effacée par l'application. */
@@ -184,6 +186,28 @@ export class DiscoveryBookSession {
   newEntryCount(): number {
     const view = this.current();
     return view.status === 'ready' ? view.newEntries : 0;
+  }
+
+  /**
+   * La page de l'entrée `kind` (#283, B20) : `null` tant que la lecture n'a pas réussi, et pour une
+   * entrée inconnue ou absente du catalogue.
+   */
+  page(kind: string): EnemyPage | null {
+    return this.book === null ? null : enemyPage(this.book, kind, this.catalog);
+  }
+
+  /**
+   * La première ouverture de la page remplie de `kind` (#283, B18) : la marque « page vue remplie »
+   * est posée et le carnet s'écrit, dans la file d'écriture. Rien avant la lecture, ni pour une
+   * entrée qui n'est pas vaincue ou déjà vue. Ne rejette jamais : un échec sera réessayé au `flush`
+   * suivant.
+   */
+  markPageSeen(kind: string): Promise<void> {
+    if (this.book === null) return Promise.resolve();
+    const seen = markPageSeen(this.book, kind);
+    if (seen === this.book) return Promise.resolve();
+    this.change(seen);
+    return this.flush();
   }
 
   private startReading(): void {
