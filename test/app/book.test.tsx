@@ -4,14 +4,16 @@
  * tour ouvre le carnet, qui y ramène et efface ses marques « nouveau » ; hors du build de preview,
  * la route ramène à l'accueil (D11). La scène Skia est simulée.
  */
-import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
+import { act, fireEvent, renderRouter, screen, within } from 'expo-router/testing-library';
 import path from 'node:path';
 
 import { openAscentDatabase } from '../../src/adapters/persistence/sqlite/openAscentDatabase';
 import { prepareAscentDatabase } from '../../src/adapters/persistence/sqlite/prepareAscentDatabase';
 import { SqliteKeyValueStore } from '../../src/adapters/persistence/sqlite/SqliteKeyValueStore';
 import { openNodeSqliteDatabase } from '../../src/adapters/persistence/testing/nodeSqliteDatabase';
+import { CAMP_KEY } from '../../src/application/useCases/CampSession';
 import { DISCOVERY_BOOK_KEY } from '../../src/application/useCases/DiscoveryBookSession';
+import { serializeCamp, unlockPrice } from '../../src/domain/ascent/camp';
 import {
   EMPTY_DISCOVERY_BOOK,
   parseDiscoveryBook,
@@ -54,6 +56,14 @@ describe('the discovery book in the app (#282)', () => {
           enemies: { burningHusk: { state: 'defeated', isNew: true } },
         }),
       );
+      // La Flamberge achetée au camp (#284) : le camp est lu une fois pour toute l'app.
+      await store.set(
+        CAMP_KEY,
+        serializeCamp({
+          unlocks: [{ unlock: 'flamberge', price: unlockPrice('flamberge') }],
+          powers: [],
+        }),
+      );
       return database;
     });
   });
@@ -93,5 +103,21 @@ describe('the discovery book in the app (#282)', () => {
     });
     const stored = parseDiscoveryBook((await store!.get(DISCOVERY_BOOK_KEY)) ?? null).book;
     expect(stored.enemies.burningHusk).toEqual({ state: 'defeated' });
+  });
+
+  it('tells the Items which items to unlock were bought at the camp (#284, D8)', async () => {
+    process.env.EXPO_PUBLIC_ASCENT_CHANNEL = 'preview';
+    await renderRouter(appDirectory, { initialUrl: '/book' });
+
+    await fireEvent.press(await screen.findByRole('tab', { name: 'Objets, 0/11' }));
+
+    expect(
+      await within(screen.getByTestId('book-item-flamberge')).findByText(
+        'Arme · Pas encore trouvé',
+      ),
+    ).toBeOnTheScreen();
+    expect(
+      within(screen.getByTestId('book-item-huntingSpear')).getByText('Arme · Se débloque au camp'),
+    ).toBeOnTheScreen();
   });
 });
