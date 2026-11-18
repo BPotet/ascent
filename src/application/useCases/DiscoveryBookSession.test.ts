@@ -221,7 +221,9 @@ describe('DiscoveryBookSession', () => {
         book.record(null, battleOf(['specter']), []);
         await expect(book.flush()).resolves.toBeUndefined();
         await settle();
-        expect(get).toHaveBeenCalledTimes(2);
+        await expect(book.flush()).resolves.toBeUndefined();
+        await settle();
+        expect(get).toHaveBeenCalledTimes(3);
         expect(values.sets).toEqual([]);
         expect(book.current()).toEqual({ status: 'failed' });
       });
@@ -235,6 +237,22 @@ describe('DiscoveryBookSession', () => {
         await book.flush();
         await book.flush();
         expect(get).toHaveBeenCalledTimes(1);
+      });
+
+      it('never starts a second retry while the first one is waiting', async () => {
+        const values = store();
+        const get = jest
+          .fn<Promise<string | null>, [string]>()
+          .mockRejectedValueOnce(new Error('read failed'))
+          .mockReturnValue(new Promise<string | null>(() => undefined));
+        values.get = get;
+        const book = new DiscoveryBookSession({ keyValueStore: values });
+        await book.load();
+        expect(book.current()).toEqual({ status: 'failed' });
+        await book.flush();
+        await book.flush();
+        expect(get).toHaveBeenCalledTimes(2);
+        expect(book.current()).toEqual({ status: 'loading' });
       });
     });
 
