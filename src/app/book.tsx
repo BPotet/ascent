@@ -1,0 +1,39 @@
+import { Redirect, router, useIsFocused } from 'expo-router';
+
+import { currentBuildChannel } from '../adapters/device/build/buildChannel';
+import { DiscoveryBookScreen } from '../adapters/ui/screens/DiscoveryBookScreen';
+import { useDependencies } from '../adapters/ui/state/Dependencies';
+import { sharedAscentSession, sharedDiscoveryBookSession } from './ascent';
+
+/** Quitter le carnet : toujours vers le pied de la tour ; le geste retour suit la pile. */
+function leave(): void {
+  if (router.canGoBack()) {
+    router.back();
+  } else {
+    router.replace('/tower');
+  }
+}
+
+function Book() {
+  const { keyValueStore, clock } = useDependencies();
+  const focused = useIsFocused();
+  const ascent = sharedAscentSession(keyValueStore, clock).current();
+  return (
+    <DiscoveryBookScreen
+      book={sharedDiscoveryBookSession(keyValueStore)}
+      // Le palier de l'ascension en cours, s'il y en a une (D8).
+      currentTier={ascent !== null && ascent.outcome === null ? ascent.tier : null}
+      onLeave={leave}
+      focused={focused}
+    />
+  );
+}
+
+/**
+ * Le carnet de découvertes (#282), ouvert depuis le pied de la tour, dans le build de preview
+ * seulement, comme toute la tour (D11).
+ */
+export default function BookRoute() {
+  if (currentBuildChannel() !== 'preview') return <Redirect href="/" />;
+  return <Book />;
+}

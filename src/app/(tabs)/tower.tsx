@@ -3,7 +3,12 @@ import { Redirect, router, useIsFocused } from 'expo-router';
 import { currentBuildChannel } from '../../adapters/device/build/buildChannel';
 import { TowerFootScreen } from '../../adapters/ui/screens/TowerFootScreen';
 import { useDependencies } from '../../adapters/ui/state/Dependencies';
-import { ascentLogFeature, sharedAscentSession, sharedCampSession } from '../ascent';
+import {
+  ascentLogFeature,
+  sharedAscentSession,
+  sharedCampSession,
+  sharedDiscoveryBookSession,
+} from '../ascent';
 
 function TowerFoot() {
   const { keyValueStore, clock, unitOfWork } = useDependencies();
@@ -14,6 +19,8 @@ function TowerFoot() {
       camp={sharedCampSession(keyValueStore, clock, unitOfWork)}
       onEnter={() => router.push('/ascent')}
       onCamp={() => router.push('/camp')}
+      book={sharedDiscoveryBookSession(keyValueStore)}
+      onBook={() => router.push('/book')}
       onOpenPowers={({ hero, from }) =>
         router.push({ pathname: '/powers-menu', params: { hero, from } })
       }
