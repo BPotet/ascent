@@ -8,6 +8,7 @@ import {
   DiscoveryBookSession,
 } from '../../../application/useCases/DiscoveryBookSession';
 import type { ItemKind } from '../../../domain/ascent/items';
+import type { EnemyKind } from '../../../domain/battle/combatants';
 import {
   EMPTY_DISCOVERY_BOOK,
   parseDiscoveryBook,
@@ -47,7 +48,12 @@ const MIDWAY: DiscoveryBook = {
 async function show({
   stored = MIDWAY,
   boughtItems,
-}: { stored?: DiscoveryBook; boughtItems?: readonly ItemKind[] | null } = {}) {
+  onOpenEntry,
+}: {
+  stored?: DiscoveryBook;
+  boughtItems?: readonly ItemKind[] | null;
+  onOpenEntry?: (kind: EnemyKind) => void;
+} = {}) {
   const { keyValueStore, dependencies } = ascentSetUp();
   keyValueStore.values.set(DISCOVERY_BOOK_KEY, serializeDiscoveryBook(stored));
   const book = new DiscoveryBookSession({ keyValueStore });
@@ -59,6 +65,7 @@ async function show({
       onLeave={onLeave}
       focused={focused}
       {...(boughtItems !== undefined && { boughtItems })}
+      {...(onOpenEntry !== undefined && { onOpenEntry })}
     />
   );
   const view = await renderScreen(element(true), dependencies);
@@ -226,5 +233,50 @@ describe('DiscoveryBookScreen and its Items (#284)', () => {
     expect(
       within(screen.getByTestId('book-item-hasteAmulet')).queryByText('nouveau'),
     ).not.toBeOnTheScreen();
+  });
+
+  describe('with the page of an enemy (#283)', () => {
+    const settle = () =>
+      act(async () => {
+        for (let index = 0; index < 20; index += 1) await Promise.resolve();
+      });
+
+    it('goes from the Items to a page and back: the Bestiary, then the Items, their marks kept', async () => {
+      const onOpenEntry = jest.fn();
+      const { rerender, stored } = await show({ onOpenEntry });
+      await openItems();
+      await fireEvent.press(tab('bestiary'));
+
+      await fireEvent.press(screen.getByTestId('book-entry-ghoul'));
+      expect(onOpenEntry).toHaveBeenCalledWith('ghoul');
+      // La page est poussée par-dessus le carnet : il perd le focus sans être quitté.
+      await rerender(false);
+      await settle();
+      expect(stored().items.hasteAmulet).toEqual({ state: 'discovered', isNew: true });
+
+      await rerender(true);
+      expect(selected('bestiary')).toBe(true);
+      expect(screen.getByTestId('book-entry-ghoul')).toBeOnTheScreen();
+      await openItems();
+      expect(
+        within(screen.getByTestId('book-item-hasteAmulet')).getByText('nouveau'),
+      ).toBeOnTheScreen();
+      expect(screen.queryByTestId('item-sheet')).toBeNull();
+      await fireEvent.press(screen.getByTestId('book-item-hasteAmulet'));
+      expect(screen.getByTestId('item-sheet')).toBeOnTheScreen();
+    });
+
+    it('treats a loss of focus with an item sheet open as a leave of the book', async () => {
+      const onOpenEntry = jest.fn();
+      const { rerender, stored } = await show({ onOpenEntry });
+      await openItems();
+      await fireEvent.press(screen.getByTestId('book-item-hasteAmulet'));
+
+      await rerender(false);
+      await settle();
+
+      expect(onOpenEntry).not.toHaveBeenCalled();
+      expect(stored().items.hasteAmulet).toEqual({ state: 'discovered' });
+    });
   });
 });
