@@ -91,31 +91,32 @@ export function noteTier(book: DiscoveryBook, tier: Tier): DiscoveryBook {
   return book.lastTier === tier ? book : { ...book, lastTier: tier };
 }
 
-/** Le plus haut des deux enregistrements, avec la marque de celui qui le tient (ou des deux). */
+/**
+ * Le plus haut des deux enregistrements, avec sa marque ; à état égal, l'enregistrement stocké
+ * (`stored`) : une entrée ne prend « nouveau » que si son état monte par rapport à lui (#293).
+ */
 function higher<Entry extends BestiaryRecord | ItemRecord>(
-  left: Entry | undefined,
-  right: Entry | undefined,
+  stored: Entry | undefined,
+  newer: Entry | undefined,
 ): Entry {
-  if (left === undefined) return right!;
-  if (right === undefined) return left;
-  if (RANK[left.state] !== RANK[right.state]) {
-    return RANK[left.state] > RANK[right.state] ? left : right;
-  }
-  return left.isNew === true ? left : right;
+  if (stored === undefined) return newer!;
+  if (newer === undefined) return stored;
+  return RANK[newer.state] > RANK[stored.state] ? newer : stored;
 }
 
 function mergeRecords<Entry extends BestiaryRecord | ItemRecord>(
-  left: Readonly<Record<string, Entry>>,
-  right: Readonly<Record<string, Entry>>,
+  stored: Readonly<Record<string, Entry>>,
+  newer: Readonly<Record<string, Entry>>,
 ): Record<string, Entry> {
-  const keys = new Set([...Object.keys(left), ...Object.keys(right)]);
-  return Object.fromEntries([...keys].map((key) => [key, higher(left[key], right[key])]));
+  const keys = new Set([...Object.keys(stored), ...Object.keys(newer)]);
+  return Object.fromEntries([...keys].map((key) => [key, higher(stored[key], newer[key])]));
 }
 
 /**
  * La fusion d'un carnet stocké et d'un carnet plus récent (D7) : le plus haut état de chaque entrée,
- * avec la marque de l'enregistrement qui le tient ; commutative pour les entrées. Le dernier palier
- * est celui du plus récent, s'il en a un.
+ * avec la marque de l'enregistrement qui le tient ; à état égal, celui du carnet stocké, donc une
+ * entrée ne prend « nouveau » que si son état monte (#293). Le dernier palier est celui du plus
+ * récent, s'il en a un.
  */
 export function mergeBooks(stored: DiscoveryBook, newer: DiscoveryBook): DiscoveryBook {
   return {
