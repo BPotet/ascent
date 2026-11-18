@@ -22,7 +22,7 @@ import {
 import { boonModifiers } from '../../domain/ascent/boons';
 import { blessingModifiers, type BlessingFamily } from '../../domain/ascent/blessings';
 import { favorKeys, favorRerolls, favorSecondChance } from '../../domain/ascent/fateGauge';
-import { STARTING_EQUIPMENT, itemModifiers } from '../../domain/ascent/items';
+import { STARTING_EQUIPMENT, itemModifiers, type ItemKind } from '../../domain/ascent/items';
 import {
   EMPTY_SHARD_TOTAL,
   creditShards,
@@ -37,6 +37,10 @@ import type { BattleEvent } from '../../domain/battle/BattleEvent';
 import type { EnemyKind } from '../../domain/battle/combatants';
 import { basePower } from '../../domain/battle/powers';
 import type { AscentStep, HeroVitals } from '../../domain/ascentLog/AscentLog';
+import {
+  foundItemDiscovery,
+  resumeItemDiscoveries,
+} from '../../domain/discoveryBook/itemDiscoveries';
 import type { AscentLogRecorder } from './AscentLogRecorder';
 import { BattleSession, type BattleSessionDependencies } from './BattleSession';
 import type { DiscoveryBookSession } from './DiscoveryBookSession';
@@ -224,6 +228,13 @@ export class AscentSession {
    * seulement : jamais rejouées après une fermeture.
    */
   private pages: readonly EnemyKind[] = [];
+  /**
+   * L'objet trouvé nouveau au carnet (#284, D5) : celui dont l'enregistrement est monté à l'instant
+   * où il est devenu l'objet trouvé (il était inconnu juste avant). Remis à zéro à chaque nouvel
+   * objet trouvé, au lancement et au retour au pied de la tour. En mémoire seulement : jamais rejoué
+   * après une fermeture (O6).
+   */
+  private newFoundItem: ItemKind | null = null;
 
   constructor(private readonly dependencies: AscentSessionDependencies) {}
 
@@ -240,6 +251,12 @@ export class AscentSession {
     if (saved === null && raw !== null) await keyValueStore.remove(ASCENT_KEY).catch(() => null);
     this.ascent = saved?.ascent ?? null;
     this.battle = saved?.battle ?? null;
+    this.newFoundItem = null;
+    // La reprise d'une ascension en cours : son objet trouvé en attente et ses objets portés entrent
+    // au carnet, sans doublon (#284, O4) ; ils s'écrivent à la sauvegarde suivante.
+    if (this.ascent !== null && this.ascent.outcome === null) {
+      this.dependencies.discoveryBook?.recordItems(resumeItemDiscoveries(this.ascent));
+    }
     // Le journal reprend avec l'ascension (#196) ; une lecture qui échoue ne la bloque jamais.
     if (this.ascent !== null) await this.dependencies.ascentLog?.resume(this.ascent);
     await this.loadShards();
@@ -271,6 +288,15 @@ export class AscentSession {
     return this.pages;
   }
 
+  /**
+   * « Nouveau au carnet » (#284, O6, D5) : l'objet trouvé en attente était inconnu du carnet à
+   * l'instant où il a été montré ; faux sinon, et faux sans objet trouvé.
+   */
+  foundItemIsNew(): boolean {
+    const item = this.ascent?.foundItem ?? null;
+    return item !== null && item === this.newFoundItem;
+  }
+
   /** Le Total d'Éclats du joueur (#38), gardé entre les ascensions. */
   shardTotal(): number {
     return this.shards.total;
@@ -293,6 +319,7 @@ export class AscentSession {
     this.dependencies.ascentLog?.begin(ascent);
     this.entering = true;
     this.pages = [];
+    this.newFoundItem = null;
     return this.update(ascent, null);
   }
 
@@ -398,6 +425,7 @@ export class AscentSession {
     this.ascent = null;
     this.battle = null;
     this.pages = [];
+    this.newFoundItem = null;
     this.publish();
   }
 
@@ -577,6 +605,14 @@ export class AscentSession {
     // Le journal enregistre la transition avant la sauvegarde (#196).
     if (cause !== undefined && before !== null) {
       this.dependencies.ascentLog?.record({ ...cause, before, after: ascent });
+    }
+    // Le seul point d'enregistrement des objets au carnet (#284, D4) : tout changement de l'objet
+    // trouvé passe par ici, avant la sauvegarde, qui écrit le carnet juste avant l'ascension (G6).
+    // Un objet trouvé posé hors de `update()` échapperait au carnet.
+    const found = foundItemDiscovery(before, ascent);
+    if (found !== null) {
+      const rises = this.dependencies.discoveryBook?.recordItems([found]) ?? [];
+      this.newFoundItem = rises.includes(found) ? found : null;
     }
     this.ascent = ascent;
     this.battle = battle;

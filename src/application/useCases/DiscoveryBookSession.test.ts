@@ -5,6 +5,7 @@ import { startBattle, type Battle } from '../../domain/battle/Battle';
 import type { EnemyKind } from '../../domain/battle/combatants';
 import { withEnemyAt } from '../../domain/battle/testing/withEnemyAt';
 import { BESTIARY_CATALOG, type BestiaryCatalog } from '../../domain/discoveryBook/bestiary';
+import { ITEM_CATALOG } from '../../domain/discoveryBook/bookItems';
 import {
   EMPTY_DISCOVERY_BOOK,
   parseDiscoveryBook,
@@ -402,5 +403,122 @@ describe('DiscoveryBookSession', () => {
       ]);
       expect(book.page('ghoul')).toMatchObject({ state: 'defeated', firstFill: true });
     });
+  });
+});
+
+describe('DiscoveryBookSession and the Items (#284, D3)', () => {
+  const HASTE_AMULET = serializeDiscoveryBook({
+    ...EMPTY_DISCOVERY_BOOK,
+    items: { hasteAmulet: { state: 'discovered' } },
+  });
+
+  it('reads the Items with the book: every item unknown at first use', async () => {
+    const book = new DiscoveryBookSession({ keyValueStore: store() });
+    await book.load();
+    const { items } = ready(book.current());
+    expect(items).toMatchObject({ discovered: 0, total: 11, firstUse: true, isNew: false });
+  });
+
+  it('records the items in memory, returns the rises, and writes at flush', async () => {
+    const values = store({ [DISCOVERY_BOOK_KEY]: HASTE_AMULET });
+    const book = new DiscoveryBookSession({ keyValueStore: values });
+    await book.load();
+    expect(book.recordItems(['hasteAmulet', 'hammer'])).toEqual(['hammer']);
+    expect(book.recordItems(['hammer'])).toEqual([]);
+    expect(values.sets).toEqual([]);
+    expect(ready(book.current()).items).toMatchObject({ discovered: 2, isNew: true });
+    await book.flush();
+    expect(storedBook(values).items).toEqual({
+      hasteAmulet: { state: 'discovered' },
+      hammer: { state: 'discovered', isNew: true },
+    });
+  });
+
+  it('keeps the items recorded before the reading, without rise nor write, and merges them', async () => {
+    const values = store({ [DISCOVERY_BOOK_KEY]: DEFEATED_GHOUL });
+    let finishReading: () => void = () => undefined;
+    const get = values.get;
+    values.get = (key) =>
+      new Promise<string | null>((resolve) => {
+        finishReading = () => resolve(get(key));
+      });
+    const book = new DiscoveryBookSession({ keyValueStore: values });
+    expect(book.recordItems(['axe'])).toEqual([]);
+    expect(book.current()).toEqual({ status: 'loading' });
+    expect(values.sets).toEqual([]);
+    finishReading();
+    await book.load();
+    expect(storedBook(values)).toMatchObject({
+      enemies: { ghoul: { state: 'defeated' } },
+      items: { axe: { state: 'discovered', isNew: true } },
+    });
+  });
+
+  it('starts its reading at the first item recorded, when nobody asked for it yet', async () => {
+    const values = store();
+    const book = new DiscoveryBookSession({ keyValueStore: values });
+    book.recordItems(['axe']);
+    await book.load();
+    expect(ready(book.current()).items.discovered).toBe(1);
+  });
+
+  it('never marks « nouveau » an item already discovered, recorded during a slow reading (#293)', async () => {
+    const values = store({ [DISCOVERY_BOOK_KEY]: HASTE_AMULET });
+    let finishReading: () => void = () => undefined;
+    const get = values.get;
+    values.get = (key) =>
+      new Promise<string | null>((resolve) => {
+        finishReading = () => resolve(get(key));
+      });
+    const book = new DiscoveryBookSession({ keyValueStore: values });
+    void book.load();
+    book.recordItems(['hasteAmulet']);
+    finishReading();
+    await book.load();
+    expect(book.newEntryCount()).toBe(0);
+    expect(ready(book.current()).items.isNew).toBe(false);
+    expect(storedBook(values).items).toEqual({ hasteAmulet: { state: 'discovered' } });
+  });
+
+  it('counts the enemies and the items together for « Le carnet » (B17)', async () => {
+    const book = new DiscoveryBookSession({ keyValueStore: store() });
+    await book.load();
+    book.record(null, battleOf(['ghoul']), []);
+    book.recordItems(['hasteAmulet']);
+    expect(book.newEntryCount()).toBe(2);
+    expect(ready(book.current()).newEntries).toBe(2);
+  });
+
+  it('clears the marks of the items too when leaving the book (B16)', async () => {
+    const values = store();
+    const book = new DiscoveryBookSession({ keyValueStore: values });
+    await book.load();
+    book.recordItems(['hasteAmulet']);
+    await book.leave();
+    expect(book.newEntryCount()).toBe(0);
+    expect(ready(book.current()).items.isNew).toBe(false);
+    expect(storedBook(values).items).toEqual({ hasteAmulet: { state: 'discovered' } });
+  });
+
+  it('reads the Items and counts them on the catalog of the game installed (C4, C5)', async () => {
+    const withoutCrossbow = ITEM_CATALOG.filter(({ kind }) => kind !== 'crossbow');
+    const book = new DiscoveryBookSession({
+      keyValueStore: store(),
+      itemCatalog: withoutCrossbow,
+    });
+    await book.load();
+    book.recordItems(['crossbow', 'axe']);
+    expect(ready(book.current()).items).toMatchObject({ discovered: 1, total: 10 });
+    expect(book.newEntryCount()).toBe(1);
+  });
+
+  it('tells its listeners of an item that rises, not of an item already there', async () => {
+    const book = new DiscoveryBookSession({ keyValueStore: store() });
+    const views: DiscoveryBookView[] = [];
+    await book.load();
+    book.subscribe((view) => views.push(view));
+    book.recordItems(['axe']);
+    book.recordItems(['axe']);
+    expect(views).toHaveLength(1);
   });
 });

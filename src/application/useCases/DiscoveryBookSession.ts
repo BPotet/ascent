@@ -1,3 +1,4 @@
+import type { ItemKind } from '../../domain/ascent/items';
 import type { Tier } from '../../domain/ascent/tiers';
 import type { Battle } from '../../domain/battle/Battle';
 import type { BattleEvent } from '../../domain/battle/BattleEvent';
@@ -5,10 +6,16 @@ import { battleDiscoveries } from '../../domain/discoveryBook/battleDiscoveries'
 import {
   BESTIARY_CATALOG,
   bestiary,
-  bookContents,
+  catalogKinds,
   type Bestiary,
   type BestiaryCatalog,
 } from '../../domain/discoveryBook/bestiary';
+import {
+  ITEM_CATALOG,
+  bookItems,
+  type BookItems,
+  type ItemCatalog,
+} from '../../domain/discoveryBook/bookItems';
 import {
   EMPTY_DISCOVERY_BOOK,
   clearNewMarks,
@@ -18,6 +25,7 @@ import {
   noteTier,
   parseDiscoveryBook,
   recordDiscoveries,
+  recordItemDiscoveries,
   serializeDiscoveryBook,
   type DiscoveryBook,
   type Discovery,
@@ -31,8 +39,8 @@ export const DISCOVERY_BOOK_KEY = 'discoveryBook';
 export const UNREADABLE_DISCOVERY_BOOK_KEY = 'discoveryBook.unreadable';
 
 /**
- * Le carnet affiché : en lecture, en échec de lecture (B8), ou lu, avec son Bestiaire, le palier du
- * dernier combat d'étage commencé et le compteur du carnet.
+ * Le carnet affiché : en lecture, en échec de lecture (B8), ou lu, avec son Bestiaire, ses Objets
+ * (#284), le palier du dernier combat d'étage commencé et le compteur du carnet.
  */
 export type DiscoveryBookView =
   | { readonly status: 'loading' }
@@ -40,14 +48,19 @@ export type DiscoveryBookView =
   | {
       readonly status: 'ready';
       readonly bestiary: Bestiary;
+      readonly items: BookItems;
       readonly lastTier: Tier | null;
       readonly newEntries: number;
     };
 
-/** Les ports de la session du carnet ; `catalog` est celui du jeu installé, sauf en test (C4, C5). */
+/**
+ * Les ports de la session du carnet ; `catalog` (le Bestiaire) et `itemCatalog` (les Objets, #284)
+ * sont ceux du jeu installé, sauf en test (C4, C5).
+ */
 export interface DiscoveryBookSessionDependencies {
   readonly keyValueStore: KeyValueStore;
   readonly catalog?: BestiaryCatalog;
+  readonly itemCatalog?: ItemCatalog;
 }
 
 type Listener = (view: DiscoveryBookView) => void;
@@ -80,10 +93,12 @@ export class DiscoveryBookSession {
   private writing: Promise<void> = Promise.resolve();
   private readonly listeners = new Set<Listener>();
   private readonly catalog: BestiaryCatalog;
+  private readonly itemCatalog: ItemCatalog;
   private view: { readonly book: DiscoveryBook; readonly view: DiscoveryBookView } | null = null;
 
   constructor(private readonly dependencies: DiscoveryBookSessionDependencies) {
     this.catalog = dependencies.catalog ?? BESTIARY_CATALOG;
+    this.itemCatalog = dependencies.itemCatalog ?? ITEM_CATALOG;
   }
 
   /**
@@ -110,8 +125,13 @@ export class DiscoveryBookSession {
         view: {
           status: 'ready',
           bestiary: bestiary(book, this.catalog),
+          items: bookItems(book, this.itemCatalog),
           lastTier: book.lastTier,
-          newEntries: newEntryCount(book, bookContents(this.catalog)),
+          // Le compteur du carnet compte les deux familles (B17).
+          newEntries: newEntryCount(book, {
+            bestiary: catalogKinds(this.catalog),
+            items: this.itemCatalog.map(({ kind }) => kind),
+          }),
         },
       };
     }
@@ -143,6 +163,21 @@ export class DiscoveryBookSession {
       return [];
     }
     const { book, rises } = recordDiscoveries(this.book, discoveries);
+    this.change(book);
+    return rises;
+  }
+
+  /**
+   * Enregistre en mémoire les objets découverts (#284, D3), sans rien écrire, et rend les montées.
+   * Avant la première lecture réussie, ils attendent, et aucune montée n'est rendue.
+   */
+  recordItems(items: readonly ItemKind[]): readonly ItemKind[] {
+    if (this.book === null) {
+      this.pending = recordItemDiscoveries(this.pending, items).book;
+      this.startReading();
+      return [];
+    }
+    const { book, rises } = recordItemDiscoveries(this.book, items);
     this.change(book);
     return rises;
   }

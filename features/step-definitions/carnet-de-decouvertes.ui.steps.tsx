@@ -333,7 +333,7 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
       expect(screen.getAllByText('???')).toHaveLength(total);
       expect(within(chip(tier)).getByText(`0/${total}`)).toBeOnTheScreen();
     }
-    expect(screen.getByText('0 découverte sur 37')).toBeOnTheScreen();
+    expect(screen.getByText('0 découverte sur 48')).toBeOnTheScreen();
   });
 
   and(/^le bandeau de première utilisation explique comment le carnet se remplit$/u, () => {

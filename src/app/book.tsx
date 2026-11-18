@@ -2,8 +2,9 @@ import { Redirect, router, useIsFocused } from 'expo-router';
 
 import { currentBuildChannel } from '../adapters/device/build/buildChannel';
 import { DiscoveryBookScreen } from '../adapters/ui/screens/DiscoveryBookScreen';
+import { useCamp } from '../adapters/ui/state/useCamp';
 import { useDependencies } from '../adapters/ui/state/Dependencies';
-import { sharedAscentSession, sharedDiscoveryBookSession } from './ascent';
+import { sharedAscentSession, sharedCampSession, sharedDiscoveryBookSession } from './ascent';
 
 /** Quitter le carnet : toujours vers le pied de la tour ; le geste retour suit la pile. */
 function leave(): void {
@@ -15,9 +16,11 @@ function leave(): void {
 }
 
 function Book() {
-  const { keyValueStore, clock } = useDependencies();
+  const { keyValueStore, clock, unitOfWork } = useDependencies();
   const focused = useIsFocused();
   const ascent = sharedAscentSession(keyValueStore, clock).current();
+  // Les objets à débloquer achetés au Camp (#284, D8), `null` tant qu'il n'est pas lu.
+  const camp = useCamp(sharedCampSession(keyValueStore, clock, unitOfWork));
   return (
     <DiscoveryBookScreen
       book={sharedDiscoveryBookSession(keyValueStore)}
@@ -25,6 +28,7 @@ function Book() {
       currentTier={ascent !== null && ascent.outcome === null ? ascent.tier : null}
       onLeave={leave}
       focused={focused}
+      boughtItems={camp.status === 'ready' ? camp.boughtItems : null}
       onOpenEntry={(kind) => router.push({ pathname: '/bestiary/[kind]', params: { kind } })}
     />
   );

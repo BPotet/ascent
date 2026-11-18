@@ -9,6 +9,7 @@
  * une seule marque, jusqu'à la sortie du carnet. Il ne donne aucune récompense (G5) et ne lit rien
  * du héros, de la jauge ni des habitudes (G4).
  */
+import type { ItemKind } from '../ascent/items';
 import type { Tier } from '../ascent/tiers';
 import type { EnemyKind } from '../battle/combatants';
 
@@ -260,4 +261,24 @@ export function parseDiscoveryBook(raw: string | null): {
   const items = readRecords<ItemRecord>(stored.items ?? {}, ['discovered']);
   if (enemies === null || items === null) return unreadable;
   return { book: { lastTier, enemies, items }, unreadable: false };
+}
+
+/**
+ * Enregistre les objets découverts (`items`, #284, D2), dans leur ordre, avec les règles de
+ * `recordDiscoveries` : une entrée ne monte que d'inconnu à découvert (G1), chaque montée la marque
+ * « nouveau » (une seule marque, B16). Les montées sont rendues dans l'ordre ; quand rien ne monte,
+ * le même carnet est rendu (rien à écrire). Un objet ne produit pas de `Discovery`.
+ */
+export function recordItemDiscoveries(
+  book: DiscoveryBook,
+  items: readonly ItemKind[],
+): { readonly book: DiscoveryBook; readonly rises: readonly ItemKind[] } {
+  const records: Record<string, ItemRecord> = { ...book.items };
+  const rises: ItemKind[] = [];
+  for (const item of items) {
+    if (records[item] !== undefined) continue;
+    records[item] = { state: 'discovered', isNew: true };
+    rises.push(item);
+  }
+  return { book: rises.length === 0 ? book : { ...book, items: records }, rises };
 }

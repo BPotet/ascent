@@ -8,6 +8,7 @@ import {
   noteTier,
   parseDiscoveryBook,
   recordDiscoveries,
+  recordItemDiscoveries,
   serializeDiscoveryBook,
   type DiscoveryBook,
 } from './DiscoveryBook';
@@ -334,5 +335,71 @@ describe('the discovery book (#282, D4)', () => {
       });
       expect(parseDiscoveryBook(raw).book.items).toEqual({ axe: { state: 'discovered' } });
     });
+  });
+});
+
+describe('the items of the discovery book (#284, D2)', () => {
+  it('raises an item from unknown to discovered, marked new, and gives the rise (O2, B16)', () => {
+    const { book: recorded, rises } = recordItemDiscoveries(EMPTY_DISCOVERY_BOOK, ['hasteAmulet']);
+
+    expect(recorded.items).toEqual({ hasteAmulet: { state: 'discovered', isNew: true } });
+    expect(rises).toEqual(['hasteAmulet']);
+  });
+
+  it('never raises an item twice (G1, G3): the same book, without a new mark', () => {
+    const discovered = book({}, { items: { hasteAmulet: { state: 'discovered' } } });
+
+    const again = recordItemDiscoveries(discovered, ['hasteAmulet']);
+
+    expect(again.book).toBe(discovered);
+    expect(again.rises).toEqual([]);
+  });
+
+  it('records the same item twice in one call as once, with a single mark', () => {
+    const { book: recorded, rises } = recordItemDiscoveries(EMPTY_DISCOVERY_BOOK, [
+      'hammer',
+      'hammer',
+    ]);
+
+    expect(rises).toEqual(['hammer']);
+    expect(recorded.items).toEqual({ hammer: { state: 'discovered', isNew: true } });
+  });
+
+  it('gives the rises in order, and keeps the enemies, the last tier and the other items', () => {
+    const before = book(
+      { ghoul: { state: 'defeated', isNew: true } },
+      { lastTier: 2, items: { axe: { state: 'discovered' } } },
+    );
+
+    const { book: recorded, rises } = recordItemDiscoveries(before, ['leather', 'axe', 'hammer']);
+
+    expect(rises).toEqual(['leather', 'hammer']);
+    expect(recorded.enemies).toBe(before.enemies);
+    expect(recorded.lastTier).toBe(2);
+    expect(recorded.items).toEqual({
+      axe: { state: 'discovered' },
+      leather: { state: 'discovered', isNew: true },
+      hammer: { state: 'discovered', isNew: true },
+    });
+  });
+
+  it('keeps the same book when there is nothing to record', () => {
+    expect(recordItemDiscoveries(EMPTY_DISCOVERY_BOOK, []).book).toBe(EMPTY_DISCOVERY_BOOK);
+  });
+
+  it('writes and reads back the items, an item code unknown to the game kept (C5)', () => {
+    const { book: recorded } = recordItemDiscoveries(
+      book({ ghoul: { state: 'encountered' } }, { lastTier: 1 }),
+      ['hasteAmulet'],
+    );
+    const withRetired = {
+      ...recorded,
+      items: { ...recorded.items, retiredItem: { state: 'discovered' as const } },
+    };
+
+    const read = parseDiscoveryBook(serializeDiscoveryBook(withRetired));
+
+    expect(read).toEqual({ book: withRetired, unreadable: false });
+    expect(Object.keys(read.book.items.hasteAmulet!)).toEqual(['state', 'isNew']);
   });
 });
