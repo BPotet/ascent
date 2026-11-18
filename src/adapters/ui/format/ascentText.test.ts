@@ -236,14 +236,16 @@ describe('blessing and item texts (#93)', () => {
     );
   });
 
-  it('gives the Fallen knight armor and the Hammer their description, and no line to the other items', () => {
+  it('gives the Fallen knight armor and the Hammer their description, and the Crossbow the one copied from the Codex (#284)', () => {
     expect(itemDescription('blackKnightArmor')).toBe(
       "L'armure d'un chevalier déchu. Trouvée dans une salle jadis emplie d'écuyers.",
     );
     expect(itemDescription('hammer')).toBe(
       'Un marteau de forge, trop lourd pour un combat rapide. Aucune garde ne lui résiste longtemps.',
     );
-    expect(itemDescription('crossbow')).toBeNull();
+    expect(itemDescription('crossbow')).toBe(
+      "Une arbalète de guet, la corde raidie par le froid des étages. Elle tire avant que l'autre ait levé son arme.",
+    );
   });
 
   it('names the three unlockable items, with their effect and their description (#195)', () => {

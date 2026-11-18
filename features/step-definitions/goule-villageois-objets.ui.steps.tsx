@@ -77,10 +77,24 @@ const ANIMATED: readonly Animated[] = ['ghoul', 'madVillager'];
 const KIND_OF_ITEM: Readonly<Record<string, ItemKind>> = Object.fromEntries(
   (Object.keys(ITEM_IMAGES) as ItemKind[]).map((kind) => [itemText(kind).split(' · ')[0], kind]),
 );
-/** La description des objets à image validée qui en ont une (#129). */
+/**
+ * La description des objets à image validée des exemples : celle du Marteau (#129), et les 6
+ * recopiées du Codex de l'Atelier par #284 (D14).
+ */
 const DESCRIPTION_OF_ITEM: Partial<Readonly<Record<ItemKind, string>>> = {
   hammer:
     'Un marteau de forge, trop lourd pour un combat rapide. Aucune garde ne lui résiste longtemps.',
+  axe: 'Une hache de bûcheron, ébréchée sur les boucliers des morts. Elle fend la garde plus que la chair.',
+  leather:
+    'Une armure souple, tannée par les années et la pluie. Elle laisse au bras la liberté de frapper juste.',
+  chainmail:
+    "Des anneaux rouillés, lourds sur les épaules. Ils retiennent ce que la lame de l'autre ne retient pas.",
+  watchmanShield:
+    "Le bouclier d'un guetteur mort à son poste. Chaque coup bien paré lui rend un peu de la chaleur qu'il a perdue.",
+  hasteAmulet:
+    'Un pendentif de verre où tourne un sable qui ne tombe jamais. Celui qui le porte agit avant les autres.',
+  crossbow:
+    "Une arbalète de guet, la corde raidie par le froid des étages. Elle tire avant que l'autre ait levé son arme.",
 };
 /** Le début de l'action et son premier impact, sur l'horloge de combat. */
 const STEP_IN_AT = 0;
@@ -764,10 +778,11 @@ const steps: StepDefinitions = ({ given, when, then, and }) => {
 
   and("le nom, les chiffres et le texte de l'objet ne changent pas", () => {
     expect(screen.getByText(itemText(world.item!))).toBeOnTheScreen();
-    // Seul le Marteau a une description parmi ces objets (#129) : elle reste affichée telle quelle.
-    const description = DESCRIPTION_OF_ITEM[world.item!] ?? null;
+    // Chacun de ces objets a sa description (#129, #284) : elle est affichée telle quelle, une fois.
+    const description = DESCRIPTION_OF_ITEM[world.item!];
+    expect(description).toBeDefined();
     expect(itemDescription(world.item!)).toBe(description);
-    if (description !== null) expect(screen.getByText(description)).toBeOnTheScreen();
+    expect(screen.getAllByText(description!)).toHaveLength(1);
   });
 
   // --- Les héros ---

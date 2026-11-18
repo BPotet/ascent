@@ -150,7 +150,7 @@ export function FoundItemPanel({
           <Text style={styles.epic}>{rarityLine(rarity)}</Text>
         )}
         <Text style={styles.gold}>{itemText(item)}</Text>
-        {description !== null && <Text style={styles.line}>{description}</Text>}
+        <Text style={styles.line}>{description}</Text>
         <Text style={styles.line}>{`Tu portes : ${wornText(equipment, slot)}`}</Text>
         <Text style={styles.line}>Un objet laissé ne revient pas.</Text>
         {revealed && (

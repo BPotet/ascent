@@ -225,6 +225,23 @@ describe('FoundItemPanel (#227)', () => {
   });
 });
 
+describe('FoundItemPanel and the item descriptions (#284, D14)', () => {
+  beforeEach(() => {
+    reduceMotion.mockResolvedValue(false);
+  });
+
+  it('shows the description copied from the Codex under the item line, once', async () => {
+    await show({ item: 'hasteAmulet', animate: false });
+
+    const description =
+      'Un pendentif de verre où tourne un sable qui ne tombe jamais. Celui qui le porte agit avant les autres.';
+    expect(screen.getAllByText(description)).toHaveLength(1);
+    expect(
+      screen.getByText('Amulette de Hâte · Accessoire · Rare · Initiative +2'),
+    ).toBeOnTheScreen();
+  });
+});
+
 describe('FoundItemPanel from the sealed chest (#226, S4, S5)', () => {
   beforeEach(() => {
     announce.mockClear();
