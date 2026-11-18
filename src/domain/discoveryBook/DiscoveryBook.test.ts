@@ -125,21 +125,22 @@ describe('the discovery book (#282, D4)', () => {
       expect(merged.items).toEqual({ axe: { state: 'discovered' } });
     });
 
-    it('is commutative for the entries', () => {
+    it('is commutative for the entries whose states differ', () => {
       expect(mergeBooks(stored, pending).enemies).toEqual(mergeBooks(pending, stored).enemies);
       expect(mergeBooks(stored, pending).items).toEqual(mergeBooks(pending, stored).items);
     });
 
-    it('keeps the mark of either record when both have the same state', () => {
+    it('marks « nouveau » only an entry whose state rises over the stored book (#293)', () => {
       const marked = book({ ghoul: { state: 'defeated', isNew: true } });
       const plain = book({ ghoul: { state: 'defeated' } });
-      expect(mergeBooks(plain, marked).enemies.ghoul).toEqual({ state: 'defeated', isNew: true });
+      expect(mergeBooks(plain, marked).enemies.ghoul).toEqual({ state: 'defeated' });
       expect(mergeBooks(marked, plain).enemies.ghoul).toEqual({ state: 'defeated', isNew: true });
       const item = {
         ...EMPTY_DISCOVERY_BOOK,
         items: { axe: { state: 'discovered', isNew: true } },
       };
       expect(mergeBooks(EMPTY_DISCOVERY_BOOK, item as DiscoveryBook).items).toEqual(item.items);
+      expect(mergeBooks(item as DiscoveryBook, book({})).items).toEqual(item.items);
     });
 
     it('takes the last tier of the newer book, else of the older one', () => {

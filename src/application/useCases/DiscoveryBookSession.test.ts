@@ -3,6 +3,7 @@
 // pu lire, garde à part une valeur illisible, et efface les marques « nouveau » à la sortie.
 import { startBattle, type Battle } from '../../domain/battle/Battle';
 import type { EnemyKind } from '../../domain/battle/combatants';
+import { withEnemyAt } from '../../domain/battle/testing/withEnemyAt';
 import { BESTIARY_CATALOG, type BestiaryCatalog } from '../../domain/discoveryBook/bestiary';
 import {
   EMPTY_DISCOVERY_BOOK,
@@ -133,6 +134,26 @@ describe('DiscoveryBookSession', () => {
     expect(ready(book.current()).lastTier).toBe(2);
     await book.flush();
     expect(storedBook(values).lastTier).toBe(2);
+  });
+
+  it('never marks « nouveau » an enemy already defeated that falls again during a slow reading (#293)', async () => {
+    const values = store({ [DISCOVERY_BOOK_KEY]: DEFEATED_GHOUL });
+    let finishReading: () => void = () => undefined;
+    const get = values.get;
+    values.get = (key) =>
+      new Promise<string | null>((resolve) => {
+        finishReading = () => resolve(get(key));
+      });
+    const book = new DiscoveryBookSession({ keyValueStore: values });
+    const group = battleOf(['ghoul']);
+    void book.load();
+    book.record(group, withEnemyAt(group, 0, { hp: 0 }), [
+      { type: 'enemyDefeated', at: 1, enemy: 0 },
+    ]);
+    finishReading();
+    await book.load();
+    expect(book.newEntryCount()).toBe(0);
+    expect(storedBook(values).enemies).toEqual({ ghoul: { state: 'defeated' } });
   });
 
   describe('a reading that fails (D7, B8)', () => {
